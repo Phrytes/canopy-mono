@@ -7,20 +7,21 @@ const server = http.createServer(app);
 
 const port = parseInt(process.env.PORT || '9000', 10);
 
-// Root route (VERY important for Railway)
+// Root route
 app.get('/', (req, res) => {
   res.status(200).send('OK');
 });
 
-// Mount PeerJS
+// ✅ IMPORTANT: path matches mount
 const peerServer = PeerServer({
-  path: '/',
+  path: '/peerjs',
   proxied: true,
   allow_discovery: true,
   corsOptions: { origin: '*' },
 });
 
-app.use('/peerjs', peerServer);
+// ✅ mount WITHOUT duplicating path
+app.use(peerServer);
 
 server.listen(port, '0.0.0.0', () => {
   console.log(`Server running on ${port}`);
