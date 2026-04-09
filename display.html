@@ -352,10 +352,8 @@ function copyAddress() {
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 
-// Set to your Railway signaling server once deployed, e.g.:
-// { host: 'yourapp.up.railway.app', port: 443, path: '/', secure: true }
-const PEER_SERVER = { host: 'canopytest-production.up.railway.app', path: '/', secure:
-   true };
+// Use PeerJS cloud server (0.peerjs.com). Set to a { host, path, secure } object to self-host.
+const PEER_SERVER = null;
 const ICE = [
   { urls:'stun:stun.l.google.com:19302' },
   { urls:'stun:stun1.l.google.com:19302' },

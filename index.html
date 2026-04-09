@@ -287,8 +287,8 @@ const conns   = new Map();   // peerId -> DataConnection
 const pending = new Map();   // taskId -> pending task
 const taskLog = [];
 
-// Set to your Railway signaling server once deployed
-const PEER_SERVER = { host: 'canopytest-production.up.railway.app', path: '/', secure: true };
+// Use PeerJS cloud server (0.peerjs.com). Set to a { host, path, secure } object to self-host.
+const PEER_SERVER = null;
 const ICE = [
   {urls:'stun:stun.l.google.com:19302'},
   {urls:'stun:stun1.l.google.com:19302'},
