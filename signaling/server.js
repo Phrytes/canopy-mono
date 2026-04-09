@@ -17,6 +17,7 @@ const peerServer = ExpressPeerServer(server, {
   proxied: true,
   allow_discovery: true,
   corsOptions: { origin: '*' },
+  generateClientId: true,
 });
 
 // mount at /peerjs
