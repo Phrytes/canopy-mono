@@ -2,12 +2,16 @@ const { PeerServer } = require('peer');
 
 const port = parseInt(process.env.PORT ?? '9000', 10);
 
+// path:'/' means:
+//   GET  /        → peer discovery (returns [], HTTP 200) — Railway health check passes
+//   WS   /peerjs  → signaling WebSocket
+// Client config: { host:'...', port:443, path:'/', secure:true }
 const server = PeerServer({
   port,
-  host:            '0.0.0.0',   // bind to all interfaces (required on Railway)
-  path:            '/peerjs',
-  proxied:         true,         // trust X-Forwarded-* from Railway's load balancer
-  allow_discovery: true,         // GET /peerjs/ returns [] with 200 (Railway health check)
+  host:            '0.0.0.0',
+  path:            '/',
+  proxied:         true,
+  allow_discovery: true,
   corsOptions:     { origin: '*' },
 });
 

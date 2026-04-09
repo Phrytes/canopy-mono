@@ -228,9 +228,9 @@
 //   1. New project → Deploy from GitHub → set root to /signaling
 //   2. Railway sets PORT automatically
 //   3. Copy the generated URL and fill in below, e.g.:
-//      { host: 'yourapp.up.railway.app', port: 443, path: '/peerjs', secure: true }
+//      { host: 'yourapp.up.railway.app', port: 443, path: '/', secure: true }
 // ─────────────────────────────────────────────────────────────────────────────
-const PEER_SERVER = { host: 'canopytest-production.up.railway.app', port: 443, path: '/peerjs', secure: true };
+const PEER_SERVER = { host: 'canopytest-production.up.railway.app', port: 443, path: '/', secure: true };
 
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
