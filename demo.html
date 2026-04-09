@@ -435,6 +435,33 @@ function wire(conn) {
     if (e) { e.connected = false; renderPeers(); updateTargetDropdown(); }
     log('sys', `Peer disconnected: ${e?.card?.name ?? conn.peer.slice(0,12)+'…'}`);
   });
+  conn.on('error', (e) => {
+    log('err', `Peer ${conn.peer.slice(0,12)}… error: ${e.message ?? e.type}`);
+    connections.delete(conn.peer);
+    const entry = knownPeers.get(conn.peer);
+    if (entry) { entry.connected = false; renderPeers(); updateTargetDropdown(); }
+  });
+
+  // Detect WebRTC ICE failure (common on mobile ↔ desktop across networks)
+  const rtc = conn.peerConnection;
+  if (rtc) {
+    rtc.addEventListener('connectionstatechange', () => {
+      if (rtc.connectionState === 'failed') {
+        log('err', `ICE failed for ${conn.peer.slice(0,12)}… — TURN relay required for cross-network. Retry or get TURN credentials at metered.ca`);
+        conn.close();
+      }
+    });
+  }
+
+  // Timeout: if not open within 20s, assume ICE failure
+  const tid = setTimeout(() => {
+    if (!conn.open) {
+      log('err', `Connection to ${conn.peer.slice(0,12)}… timed out — likely ICE failure. Try again or ensure both devices are on the same network.`);
+      conn.close();
+      connections.delete(conn.peer);
+    }
+  }, 20000);
+  conn.on('open', () => clearTimeout(tid));
 }
 
 function send(peerId, msg) {
@@ -446,7 +473,7 @@ async function connectPeer() {
   const id = document.getElementById('connect-input').value.trim();
   if (!id)          { toast('Paste a Peer ID first'); return; }
   if (!peer?.open)  { toast('Not ready yet'); return; }
-  if (connections.has(id)) { toast('Already connected'); return; }
+  if (connections.get(id)?.open) { toast('Already connected'); return; }
 
   log('sys', 'Connecting to ' + id.slice(0,16)+'…');
   const conn = peer.connect(id, { reliable: true, serialization: 'json' });
