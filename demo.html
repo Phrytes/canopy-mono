@@ -142,18 +142,29 @@
 
     <div class="section">
       <div class="sec-title">My Address</div>
-      <div id="my-id-display" onclick="copyAddr()" title="Click to copy"
-           style="font-family:monospace;font-size:10px;color:var(--muted);word-break:break-all;cursor:pointer;margin-bottom:8px;line-height:1.5">—</div>
-      <input id="custom-id-input" placeholder="Custom ID (letters, numbers, -)" />
+      <div style="font-size:10px;color:var(--muted);margin-bottom:2px">NKN <span style="opacity:.5">(cross-device)</span></div>
+      <div id="nkn-id-display" onclick="copyNknAddr()" title="Click to copy NKN address"
+           style="font-family:monospace;font-size:9px;color:var(--muted);word-break:break-all;cursor:pointer;margin-bottom:8px;line-height:1.5">connecting…</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:2px">PeerJS <span style="opacity:.5">(same-network)</span></div>
+      <div id="peerjs-id-display" onclick="copyPeerjsAddr()" title="Click to copy PeerJS address"
+           style="font-family:monospace;font-size:10px;color:var(--muted);word-break:break-all;cursor:pointer;margin-bottom:8px;line-height:1.5">connecting…</div>
+      <input id="custom-id-input" placeholder="Custom identifier (NKN prefix)" />
       <div style="height:6px"></div>
       <button class="btn ghost" style="font-size:12px" onclick="applyCustomId()">Use this ID →</button>
     </div>
 
     <div class="section">
       <div class="sec-title">Connect Peer</div>
-      <input id="connect-input" placeholder="Paste Peer ID…" />
-      <div style="height:8px"></div>
-      <button class="btn primary" onclick="connectPeer()">Connect →</button>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">via NKN</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input id="nkn-connect-input" placeholder="identifier.pubkey…" style="flex:1;min-width:0" />
+        <button class="btn primary" style="width:auto;padding:0 12px;flex-shrink:0" onclick="connectViaNkn()">→</button>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">via PeerJS</div>
+      <div style="display:flex;gap:6px">
+        <input id="peerjs-connect-input" placeholder="Paste Peer ID…" style="flex:1;min-width:0" />
+        <button class="btn primary" style="width:auto;padding:0 12px;flex-shrink:0" onclick="connectViaPeerJS()">→</button>
+      </div>
     </div>
 
     <div class="section" style="flex:1">
@@ -211,6 +222,7 @@
 <div id="toast"></div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/nkn-sdk@1.3.6/dist/nkn.js"></script>
 <script>
 // ─────────────────────────────────────────────────────────────────────────────
 // Agent profiles
@@ -218,32 +230,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Signaling + ICE config
-//
-// PEER_SERVER: points to the PeerJS signaling server.
-//   null  → use the default free public server (0.peerjs.com) — often flaky
-//   object → use your own deployed server (recommended for cross-device use)
-//
-// Deploy the server in /signaling to Railway (railway.app, free tier):
-//   1. New project → Deploy from GitHub → set root to /signaling
-//   2. Railway sets PORT automatically
-//   3. Copy the generated URL and fill in below, e.g.:
-//      { host: 'yourapp.up.railway.app', port: 443, path: '/', secure: true }
+// Transport config
+//   NKN    — routes via the NKN decentralized network, no server needed,
+//             works across any NAT/mobile. Preferred for cross-device.
+//   PeerJS — WebRTC data channels via PeerJS cloud signaling (0.peerjs.com).
+//             Works well on the same network; ICE may fail across mobile CGNAT.
 // ─────────────────────────────────────────────────────────────────────────────
-// Use PeerJS cloud server (0.peerjs.com). Set to a { host, path, secure } object to self-host.
-const PEER_SERVER = null;
-
-const ICE_SERVERS = [
+const PEER_SERVER  = null;   // null → PeerJS cloud (0.peerjs.com)
+const ICE_SERVERS  = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun3.l.google.com:19302' },
-  // TURN relay — required for mobile (CGNAT) ↔ desktop connections
-  // Replace with credentials from metered.ca (free account) for reliability
-  { urls: 'turn:openrelay.metered.ca:80',                username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:80?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443',               username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
 ];
 
 let notesStore = [];
@@ -330,11 +326,12 @@ const PROFILES = [
 // Runtime state
 // ─────────────────────────────────────────────────────────────────────────────
 
-let peer, myAddress;
+let peer, myAddress;          // PeerJS
+let nknClient, nknAddress;    // NKN
 let activeProfile = PROFILES[0];
 
-const connections  = new Map();   // peerId  → DataConnection
-const knownPeers   = new Map();   // peerId  → { id, label, card, connected }
+const connections  = new Map();   // peerId  → DataConnection  (PeerJS only)
+const knownPeers   = new Map();   // peerId  → { id, label, card, connected, transport }
 const pendingTasks = new Map();   // taskId  → { from, task, skill, reply }  ← manual queue
 const outPending   = new Map();   // taskId  → { resolve, reject, timer, skill, peerName }
 
@@ -371,6 +368,42 @@ function evaluatePolicy(policy, fromId, task) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// NKN transport
+// ─────────────────────────────────────────────────────────────────────────────
+
+function startNkn() {
+  const savedSeed = localStorage.getItem('demo_nkn_seed');
+  const savedId   = localStorage.getItem('demo_nkn_id');
+  const opts      = {};
+  if (savedId)   opts.identifier = savedId;
+  if (savedSeed) opts.seed = savedSeed;
+
+  nknClient = new nkn.MultiClient(opts);
+
+  nknClient.on('connect', () => {
+    nknAddress = nknClient.addr;
+    if (!savedSeed) localStorage.setItem('demo_nkn_seed', nknClient.seed);
+    document.getElementById('nkn-id-display').textContent = nknAddress;
+    document.getElementById('my-addr').textContent = nknAddress.slice(0,10)+'…'+nknAddress.slice(-6);
+    document.getElementById('qr-btn').disabled = false;
+    updateDot();
+    log('sys', `NKN ready: ${nknAddress.slice(0,30)}…`);
+  });
+
+  nknClient.on('message', ({ src, payload }) => {
+    if (!knownPeers.has(src))
+      knownPeers.set(src, { id: src, label: src.slice(0,16)+'…', card: null, connected: true, transport: 'nkn' });
+    else
+      knownPeers.get(src).connected = true;
+    handleMessage(src, payload.toString ? payload.toString() : String(payload));
+    renderPeers();
+    updateTargetDropdown();
+  });
+
+  nknClient.on('error', (e) => log('err', 'NKN: ' + (e.message || String(e))));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PeerJS transport
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -386,20 +419,18 @@ function start() {
 
   peer.on('open', (id) => {
     myAddress = id;
-    sessionStorage.setItem('demo_peer_id', id);  // lock this tab to this ID
-    document.getElementById('dot').className = 'dot ready';
-    document.getElementById('my-addr').textContent = id.slice(0,8)+'…'+id.slice(-6);
-    document.getElementById('my-id-display').textContent = id;
-    document.getElementById('qr-btn').disabled = false;
-    log('sys', `Ready as "${activeProfile.name}" (${id.slice(0,20)}…)`);
+    sessionStorage.setItem('demo_peer_id', id);
+    document.getElementById('peerjs-id-display').textContent = id;
+    updateDot();
+    log('sys', `PeerJS ready: ${id.slice(0,20)}…`);
   });
 
-  // Incoming connection
+  // Incoming PeerJS connection
   peer.on('connection', (conn) => {
     wire(conn);
     conn.on('open', () => {
       if (!knownPeers.has(conn.peer))
-        knownPeers.set(conn.peer, { id: conn.peer, label: conn.peer.slice(0,12)+'…', card: null, connected: true });
+        knownPeers.set(conn.peer, { id: conn.peer, label: conn.peer.slice(0,12)+'…', card: null, connected: true, transport: 'peerjs' });
       else
         knownPeers.get(conn.peer).connected = true;
       send(conn.peer, { type: 'agent_card_request' });
@@ -416,9 +447,8 @@ function start() {
       toast('Peer ID taken by another tab — assigned a new random ID');
       peer.destroy();
       peer = new Peer({ ...(PEER_SERVER ?? {}), config: { iceServers: ICE_SERVERS } });
-      print(peer)
-      peer.on('open',       (id)  => { myAddress = id; sessionStorage.setItem('demo_peer_id', id); document.getElementById('dot').className='dot ready'; document.getElementById('my-addr').textContent=id.slice(0,8)+'…'+id.slice(-6); document.getElementById('my-id-display').textContent=id; document.getElementById('qr-btn').disabled=false; log('sys',`Fallback ID: ${id.slice(0,20)}…`); });
-      peer.on('connection', (conn) => { wire(conn); conn.on('open', () => { knownPeers.set(conn.peer, knownPeers.get(conn.peer) ?? { id:conn.peer, label:conn.peer.slice(0,12)+'…', card:null, connected:true }); knownPeers.get(conn.peer).connected=true; send(conn.peer,{type:'agent_card_request'}); send(conn.peer,{type:'peer_list_request'}); renderPeers(); }); });
+      peer.on('open',       (id)  => { myAddress = id; sessionStorage.setItem('demo_peer_id', id); document.getElementById('peerjs-id-display').textContent=id; updateDot(); log('sys',`PeerJS fallback ID: ${id.slice(0,20)}…`); });
+      peer.on('connection', (conn) => { wire(conn); conn.on('open', () => { const e = knownPeers.get(conn.peer) ?? { id:conn.peer, label:conn.peer.slice(0,12)+'…', card:null, connected:true, transport:'peerjs' }; e.connected=true; knownPeers.set(conn.peer,e); send(conn.peer,{type:'agent_card_request'}); send(conn.peer,{type:'peer_list_request'}); renderPeers(); }); });
       peer.on('error',      (e)   => log('err', 'PeerJS: ' + e.type));
     } else {
       log('err', 'PeerJS: ' + err.type);
@@ -464,31 +494,63 @@ function wire(conn) {
   conn.on('open', () => clearTimeout(tid));
 }
 
-function send(peerId, msg) {
-  const conn = connections.get(peerId);
-  if (conn?.open) conn.send(JSON.stringify(msg));
+async function send(peerId, msg) {
+  const transport = knownPeers.get(peerId)?.transport ?? 'peerjs';
+  if (transport === 'nkn') {
+    if (!nknClient) return;
+    try {
+      await nknClient.send(peerId, JSON.stringify(msg));
+    } catch (e) {
+      const entry = knownPeers.get(peerId);
+      if (entry) { entry.connected = false; renderPeers(); updateTargetDropdown(); }
+      log('sys', `${entry?.card?.name ?? peerId.slice(0,16)+'…'} went offline (NKN)`);
+    }
+  } else {
+    const conn = connections.get(peerId);
+    if (conn?.open) conn.send(JSON.stringify(msg));
+  }
 }
 
-async function connectPeer() {
-  const id = document.getElementById('connect-input').value.trim();
-  if (!id)          { toast('Paste a Peer ID first'); return; }
-  if (!peer?.open)  { toast('Not ready yet'); return; }
+async function connectViaNkn() {
+  const addr = document.getElementById('nkn-connect-input').value.trim();
+  if (!addr)       { toast('Paste an NKN address first'); return; }
+  if (!nknClient)  { toast('NKN not ready yet'); return; }
+  if (knownPeers.get(addr)?.connected) { toast('Already connected'); return; }
+
+  knownPeers.set(addr, { id: addr, label: addr.slice(0,16)+'…', card: null, connected: false, transport: 'nkn' });
+  renderPeers();
+  try {
+    await nknClient.send(addr, JSON.stringify({ type: 'agent_card_request' }));
+    await nknClient.send(addr, JSON.stringify({ type: 'peer_list_request' }));
+    log('sys', `NKN: reaching out to ${addr.slice(0,20)}…`);
+    document.getElementById('nkn-connect-input').value = '';
+  } catch (e) {
+    log('err', `NKN: could not reach ${addr.slice(0,20)}… — peer may be offline`);
+    knownPeers.delete(addr);
+    renderPeers();
+  }
+}
+
+async function connectViaPeerJS() {
+  const id = document.getElementById('peerjs-connect-input').value.trim();
+  if (!id)         { toast('Paste a Peer ID first'); return; }
+  if (!peer?.open) { toast('PeerJS not ready yet'); return; }
   if (connections.get(id)?.open) { toast('Already connected'); return; }
 
-  log('sys', 'Connecting to ' + id.slice(0,16)+'…');
+  log('sys', 'PeerJS: connecting to ' + id.slice(0,16)+'…');
   const conn = peer.connect(id, { reliable: true, serialization: 'json' });
   wire(conn);
 
   conn.on('open', () => {
-    knownPeers.set(id, { id, label: id.slice(0,12)+'…', card: null, connected: true });
+    knownPeers.set(id, { id, label: id.slice(0,12)+'…', card: null, connected: true, transport: 'peerjs' });
     send(id, { type: 'agent_card_request' });
     send(id, { type: 'peer_list_request' });
     renderPeers();
-    document.getElementById('connect-input').value = '';
-    log('sys', 'Connected — handshaking…');
+    document.getElementById('peerjs-connect-input').value = '';
+    log('sys', 'PeerJS: connected — handshaking…');
   });
 
-  conn.on('error', (e) => log('err', 'Connect error: ' + e.message));
+  conn.on('error', (e) => log('err', 'PeerJS connect error: ' + e.message));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -716,12 +778,12 @@ function switchProfile(profileId) {
 
   activeProfile = profile;
 
-  // Keep the peer and all connections — just push the updated card to everyone
-  for (const peerId of connections.keys())
-    send(peerId, { type: 'agent_card_response', card: myCard() });
+  // Push updated card to all connected peers (any transport)
+  const connected = [...knownPeers.values()].filter(e => e.connected);
+  for (const e of connected) send(e.id, { type: 'agent_card_response', card: myCard() });
 
   renderAll();
-  log('sys', `— Switched to "${profile.name}" — updated ${connections.size} peer(s)`);
+  log('sys', `— Switched to "${profile.name}" — updated ${connected.length} peer(s)`);
 }
 
 function applyCustomId() {
@@ -732,28 +794,30 @@ function applyCustomId() {
     return;
   }
 
-  localStorage.setItem('demo_agent_id', raw);   // remember as preference for future sessions
-  sessionStorage.setItem('demo_peer_id', raw);  // use immediately in this tab
-
-  // Reject pending tasks and drop connections — ID change requires a new peer
+  // Reject pending tasks and drop connections — ID change requires restart
   for (const [, p] of pendingTasks)
     p.reply('rejected', { error: 'Agent restarting with new ID' });
   pendingTasks.clear();
 
-  if (peer) { peer.destroy(); peer = null; myAddress = null; }
+  if (peer)      { peer.destroy(); peer = null; myAddress = null; }
+  if (nknClient) { nknClient.close(); nknClient = null; nknAddress = null; }
   connections.clear();
   for (const e of knownPeers.values()) e.connected = false;
 
+  localStorage.setItem('demo_nkn_id', raw);   // new NKN identifier
+
   document.getElementById('dot').className = 'dot warn';
   document.getElementById('my-addr').textContent = '—';
-  document.getElementById('my-id-display').textContent = '—';
+  document.getElementById('nkn-id-display').textContent = 'connecting…';
+  document.getElementById('peerjs-id-display').textContent = 'connecting…';
   document.getElementById('custom-id-input').value = '';
   document.getElementById('qr-btn').disabled = true;
 
   renderPeers();
   updateTargetDropdown();
   start();
-  log('sys', `Restarting with custom ID: ${raw}`);
+  startNkn();
+  log('sys', `Restarting with identifier: ${raw}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -816,7 +880,7 @@ function renderPeers() {
   }
 
   el.innerHTML = all.map(e => `
-    <div class="peer-item" title="${e.id}" onclick="document.getElementById('connect-input').value='${e.id}'">
+    <div class="peer-item" title="${e.id}" onclick="document.getElementById(${e.transport==='nkn' ? "'nkn-connect-input'" : "'peerjs-connect-input'"}).value='${e.id}'">
       <div class="p-dot2 ${e.connected ? 'on' : ''}"></div>
       <div class="p-info">
         <div class="p-name2">${e.card?.name ?? e.label}</div>
@@ -914,9 +978,24 @@ function toast(msg) {
 }
 
 function copyAddr() {
+  const addr = nknAddress || myAddress;
+  if (!addr) return;
+  navigator.clipboard.writeText(addr);
+  toast('Address copied!');
+}
+function copyNknAddr() {
+  if (!nknAddress) return;
+  navigator.clipboard.writeText(nknAddress);
+  toast('NKN address copied!');
+}
+function copyPeerjsAddr() {
   if (!myAddress) return;
   navigator.clipboard.writeText(myAddress);
-  toast('Address copied!');
+  toast('PeerJS address copied!');
+}
+
+function updateDot() {
+  document.getElementById('dot').className = (nknAddress || peer?.open) ? 'dot ready' : 'dot warn';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -924,8 +1003,9 @@ function copyAddr() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function showQR() {
-  if (!myAddress) return;
-  const url    = `${location.origin}${location.pathname}?connect=${myAddress}`;
+  const addr = nknAddress || myAddress;
+  if (!addr) return;
+  const url = `${location.origin}${location.pathname}?connect=${addr}`;
   const imgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=e2e4ed&bgcolor=13151e&data=${encodeURIComponent(url)}`;
   document.getElementById('qr-img').src = imgSrc;
   document.getElementById('qr-url').textContent = url;
@@ -943,11 +1023,16 @@ function hideQR() {
 function checkAutoConnect() {
   const id = new URLSearchParams(location.search).get('connect');
   if (!id) return;
-  log('sys', `Auto-connect from URL: ${id.slice(0,16)}…`);
-  document.getElementById('connect-input').value = id;
-  // Wait until peer is ready, then connect
+  // NKN addresses contain a 64-char hex public key (optionally prefixed with identifier.)
+  const isNkn = /^(?:[a-zA-Z0-9_-]+\.)?[0-9a-f]{64}$/.test(id);
+  log('sys', `Auto-connect (${isNkn ? 'NKN' : 'PeerJS'}): ${id.slice(0,20)}…`);
+  const inputId = isNkn ? 'nkn-connect-input' : 'peerjs-connect-input';
+  document.getElementById(inputId).value = id;
   const poll = setInterval(() => {
-    if (peer?.open) { clearInterval(poll); connectPeer(); }
+    if (isNkn ? nknClient : peer?.open) {
+      clearInterval(poll);
+      isNkn ? connectViaNkn() : connectViaPeerJS();
+    }
   }, 300);
 }
 
@@ -957,6 +1042,7 @@ function checkAutoConnect() {
 
 renderAll();
 start();
+startNkn();
 checkAutoConnect();
 </script>
 </body>
