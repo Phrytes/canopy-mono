@@ -7,11 +7,12 @@ const server = http.createServer(app);
 
 const port = parseInt(process.env.PORT || '9000', 10);
 
-// health route for Railway + browser
+// Root route (VERY important for Railway)
 app.get('/', (req, res) => {
-  res.send('PeerJS server is alive 🚀');
+  res.status(200).send('OK');
 });
 
+// Mount PeerJS
 const peerServer = PeerServer({
   path: '/',
   proxied: true,
@@ -22,5 +23,5 @@ const peerServer = PeerServer({
 app.use('/peerjs', peerServer);
 
 server.listen(port, '0.0.0.0', () => {
-  console.log(`Running on ${port}`);
+  console.log(`Server running on ${port}`);
 });
