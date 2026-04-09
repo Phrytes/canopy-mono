@@ -218,13 +218,27 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ICE servers — STUN for discovery + TURN for relay through mobile/CGNAT
-// openrelay.metered.ca is a free public TURN service (test/PoC use only)
+// Signaling + ICE config
+//
+// PEER_SERVER: points to the PeerJS signaling server.
+//   null  → use the default free public server (0.peerjs.com) — often flaky
+//   object → use your own deployed server (recommended for cross-device use)
+//
+// Deploy the server in /signaling to Railway (railway.app, free tier):
+//   1. New project → Deploy from GitHub → set root to /signaling
+//   2. Railway sets PORT automatically
+//   3. Copy the generated URL and fill in below, e.g.:
+//      { host: 'yourapp.up.railway.app', port: 443, path: '/peerjs', secure: true }
 // ─────────────────────────────────────────────────────────────────────────────
+const PEER_SERVER = null;   // ← replace with your Railway URL object when ready
+
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:openrelay.metered.ca:80'  },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  // TURN relay — required for mobile (CGNAT) ↔ desktop connections
+  // Replace with credentials from metered.ca (free account) for reliability
   { urls: 'turn:openrelay.metered.ca:80',                username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:80?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443',               username: 'openrelayproject', credential: 'openrelayproject' },
@@ -366,7 +380,7 @@ function start() {
   const preferredId = localStorage.getItem('demo_agent_id');
   const useId      = sessionId || preferredId || null;
 
-  const opts = { config: { iceServers: ICE_SERVERS } };
+  const opts = { ...(PEER_SERVER ?? {}), config: { iceServers: ICE_SERVERS } };
   peer = useId ? new Peer(useId, opts) : new Peer(opts);
 
   peer.on('open', (id) => {
@@ -400,7 +414,7 @@ function start() {
       log('warn', `ID "${useId?.slice(0,20)}…" is taken by another session — using a new random ID`);
       toast('Peer ID taken by another tab — assigned a new random ID');
       peer.destroy();
-      peer = new Peer(opts);
+      peer = new Peer({ ...(PEER_SERVER ?? {}), config: { iceServers: ICE_SERVERS } });
       peer.on('open',       (id)  => { myAddress = id; sessionStorage.setItem('demo_peer_id', id); document.getElementById('dot').className='dot ready'; document.getElementById('my-addr').textContent=id.slice(0,8)+'…'+id.slice(-6); document.getElementById('my-id-display').textContent=id; document.getElementById('qr-btn').disabled=false; log('sys',`Fallback ID: ${id.slice(0,20)}…`); });
       peer.on('connection', (conn) => { wire(conn); conn.on('open', () => { knownPeers.set(conn.peer, knownPeers.get(conn.peer) ?? { id:conn.peer, label:conn.peer.slice(0,12)+'…', card:null, connected:true }); knownPeers.get(conn.peer).connected=true; send(conn.peer,{type:'agent_card_request'}); send(conn.peer,{type:'peer_list_request'}); renderPeers(); }); });
       peer.on('error',      (e)   => log('err', 'PeerJS: ' + e.type));

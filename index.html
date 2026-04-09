@@ -287,20 +287,24 @@ const conns   = new Map();   // peerId -> DataConnection
 const pending = new Map();   // taskId -> pending task
 const taskLog = [];
 
+// Set to your Railway signaling server once deployed
+const PEER_SERVER = null;
+const ICE = [
+  {urls:'stun:stun.l.google.com:19302'},
+  {urls:'stun:stun1.l.google.com:19302'},
+  {urls:'stun:stun2.l.google.com:19302'},
+  {urls:'turn:openrelay.metered.ca:80',                username:'openrelayproject', credential:'openrelayproject'},
+  {urls:'turn:openrelay.metered.ca:80?transport=tcp',  username:'openrelayproject', credential:'openrelayproject'},
+  {urls:'turn:openrelay.metered.ca:443',               username:'openrelayproject', credential:'openrelayproject'},
+  {urls:'turn:openrelay.metered.ca:443?transport=tcp', username:'openrelayproject', credential:'openrelayproject'},
+];
+
 function start() {
   cacheLoad();
   renderAgentList();
   renderStats();
 
-  peer = new Peer({ config:{ iceServers:[
-    {urls:'stun:stun.l.google.com:19302'},
-    {urls:'stun:stun1.l.google.com:19302'},
-    {urls:'stun:openrelay.metered.ca:80'},
-    {urls:'turn:openrelay.metered.ca:80',                username:'openrelayproject', credential:'openrelayproject'},
-    {urls:'turn:openrelay.metered.ca:80?transport=tcp',  username:'openrelayproject', credential:'openrelayproject'},
-    {urls:'turn:openrelay.metered.ca:443',               username:'openrelayproject', credential:'openrelayproject'},
-    {urls:'turn:openrelay.metered.ca:443?transport=tcp', username:'openrelayproject', credential:'openrelayproject'},
-  ]}});
+  peer = new Peer({ ...(PEER_SERVER ?? {}), config:{ iceServers: ICE }});
 
   peer.on('open', (id) => {
     myAddr = id;
