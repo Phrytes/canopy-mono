@@ -1,21 +1,26 @@
 const { PeerServer } = require('peer');
+const express = require('express');
+const http = require('http');
 
-const port = parseInt(process.env.PORT ?? '9000', 10);
+const app = express();
+const server = http.createServer(app);
 
-// path:'/' means:
-//   GET  /        → peer discovery (returns [], HTTP 200) — Railway health check passes
-//   WS   /peerjs  → signaling WebSocket
-// Client config: { host:'...', port:443, path:'/', secure:true }
-const server = PeerServer({
-  port,
-  host:            '0.0.0.0',
-  path:            '/peerjs',
-  proxied:         true,
-  allow_discovery: true,
-  corsOptions:     { origin: '*' },
+const port = parseInt(process.env.PORT || '9000', 10);
+
+// health route for Railway + browser
+app.get('/', (req, res) => {
+  res.send('PeerJS server is alive 🚀');
 });
 
-server.on('connection', (client) => console.log('[+]', client.getId()));
-server.on('disconnect', (client) => console.log('[-]', client.getId()));
+const peerServer = PeerServer({
+  path: '/',
+  proxied: true,
+  allow_discovery: true,
+  corsOptions: { origin: '*' },
+});
 
-console.log(`PeerJS signaling listening on :${port}`);
+app.use('/peerjs', peerServer);
+
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Running on ${port}`);
+});
