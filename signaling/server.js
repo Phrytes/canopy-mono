@@ -9,7 +9,7 @@ const port = parseInt(process.env.PORT ?? '9000', 10);
 const server = PeerServer({
   port,
   host:            '0.0.0.0',
-  path:            '/',
+  path:            '/peerjs',
   proxied:         true,
   allow_discovery: true,
   corsOptions:     { origin: '*' },
