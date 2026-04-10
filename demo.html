@@ -434,16 +434,18 @@ function startNkn() {
   const seed = /^[0-9a-f]{64}$/i.test(rawSeed) ? rawSeed : undefined;
   if (rawSeed && !seed) localStorage.removeItem('demo_nkn_seed'); // clear corrupt value
 
-  nknClient = new nkn.MultiClient(seed ? { seed } : {});
+  nknClient = new nkn.Client(seed ? { seed } : {});
 
   nknClient.on('connect', () => {
     nknAddress = nknClient.addr;
     // Persist seed so address stays stable across reloads
     try {
-      const s = nknClient.key?.seed ?? nknClient.defaultClient?.key?.seed;
+      const s = nknClient.key?.seed;
       if (s) localStorage.setItem('demo_nkn_seed', s);
     } catch (_) {}
     document.getElementById('nkn-id-display').textContent = nknAddress;
+    document.getElementById('my-addr').textContent = nknAddress;
+    document.getElementById('qr-btn').disabled = false;
     updateDot();
     log('sys', `NKN ready: ${nknAddress.slice(0, 24)}…`);
   });
@@ -1049,7 +1051,7 @@ function toast(msg) {
 }
 
 function copyAddr() {
-  const addr = mqttAddress || myAddress;
+  const addr = nknAddress || mqttAddress || myAddress;
   if (!addr) return;
   navigator.clipboard.writeText(addr);
   toast('Address copied!');
@@ -1079,7 +1081,7 @@ function updateDot() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function showQR() {
-  const addr = mqttAddress || myAddress;
+  const addr = nknAddress || mqttAddress || myAddress;
   if (!addr) return;
   const url = `${location.origin}${location.pathname}?connect=${addr}`;
   const imgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=e2e4ed&bgcolor=13151e&data=${encodeURIComponent(url)}`;
