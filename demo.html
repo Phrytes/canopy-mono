@@ -429,18 +429,27 @@ function startMqtt() {
 // NKN transport  (decentralized, uses nkn-sdk browser bundle)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function startNkn() {
+function startNkn(useSeed = true) {
   const rawSeed = localStorage.getItem('demo_nkn_seed');
-  const seed = /^[0-9a-f]{64}$/i.test(rawSeed) ? rawSeed : undefined;
-  if (rawSeed && !seed) localStorage.removeItem('demo_nkn_seed'); // clear corrupt value
+  const seed = useSeed && /^[0-9a-f]{64}$/i.test(rawSeed) ? rawSeed : undefined;
+  if (rawSeed && !seed) localStorage.removeItem('demo_nkn_seed');
 
-  // webRTCConfig: null disables direct browser↔browser WebRTC attempts.
-  // Without this, the SDK tries a WebRTC DataChannel that isn't open yet and throws.
-  nknClient = new nkn.Client({ ...(seed ? { seed } : {}), webRTCConfig: null });
+  nknClient = new nkn.Client(seed ? { seed } : {});
+
+  // Option 2: if connect doesn't fire within 20s, the seed may be the cause —
+  // clear it and retry once with a fresh keypair.
+  const connectTimeout = setTimeout(() => {
+    if (nknAddress) return;
+    log('sys', 'NKN connect timed out — clearing seed and retrying…');
+    localStorage.removeItem('demo_nkn_seed');
+    try { nknClient.close(); } catch (_) {}
+    nknClient = null;
+    startNkn(false);   // retry without seed
+  }, 20000);
 
   nknClient.on('connect', () => {
+    clearTimeout(connectTimeout);
     nknAddress = nknClient.addr;
-    // Persist seed so address stays stable across reloads
     try {
       const s = nknClient.key?.seed;
       if (s) localStorage.setItem('demo_nkn_seed', s);
@@ -565,8 +574,18 @@ async function send(peerId, msg) {
   const transport = knownPeers.get(peerId)?.transport ?? 'peerjs';
   if (transport === 'nkn') {
     if (!nknClient) return;
-    try { await nknClient.send(peerId, JSON.stringify(msg), { noReply: true }); }
-    catch (_) { /* best-effort delivery via relay; errors are expected and harmless */ }
+    const _payload = JSON.stringify(msg);
+    try {
+      await nknClient.send(peerId, _payload, { noReply: true });
+    } catch (e) {
+      // Option 3: RTCDataChannel not open yet — WebRTC channel is being set up
+      // asynchronously. Retry once after 2s via relay.
+      if (e.message?.toLowerCase().includes('rtcdatachannel')) {
+        setTimeout(async () => {
+          try { await nknClient.send(peerId, _payload, { noReply: true }); } catch (_) {}
+        }, 2000);
+      }
+    }
   } else if (transport === 'mqtt') {
     if (!mqttClient?.connected) return;
     mqttClient.publish(MQTT_TOPIC(peerId), JSON.stringify({ ...msg, _from: mqttAddress }));
