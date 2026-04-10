@@ -148,6 +148,9 @@
       <div style="font-size:10px;color:var(--muted);margin-bottom:2px">PeerJS <span style="opacity:.5">(same-network)</span></div>
       <div id="peerjs-id-display" onclick="copyPeerjsAddr()" title="Click to copy PeerJS address"
            style="font-family:monospace;font-size:10px;color:var(--muted);word-break:break-all;cursor:pointer;margin-bottom:8px;line-height:1.5">connecting…</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:2px">NKN <span style="opacity:.5">(decentralized)</span></div>
+      <div id="nkn-id-display" onclick="copyNknAddr()" title="Click to copy NKN address"
+           style="font-family:monospace;font-size:10px;color:var(--muted);word-break:break-all;cursor:pointer;margin-bottom:8px;line-height:1.5">connecting…</div>
       <input id="custom-id-input" placeholder="Custom MQTT address" />
       <div style="height:6px"></div>
       <button class="btn ghost" style="font-size:12px" onclick="applyCustomId()">Use this ID →</button>
@@ -161,9 +164,14 @@
         <button class="btn primary" style="width:auto;padding:0 12px;flex-shrink:0" onclick="connectViaMqtt()">→</button>
       </div>
       <div style="font-size:10px;color:var(--muted);margin-bottom:4px">via PeerJS</div>
-      <div style="display:flex;gap:6px">
+      <div style="display:flex;gap:6px;margin-bottom:10px">
         <input id="peerjs-connect-input" placeholder="Paste Peer ID…" style="flex:1;min-width:0" />
         <button class="btn primary" style="width:auto;padding:0 12px;flex-shrink:0" onclick="connectViaPeerJS()">→</button>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">via NKN</div>
+      <div style="display:flex;gap:6px">
+        <input id="nkn-connect-input" placeholder="Paste NKN address…" style="flex:1;min-width:0" />
+        <button class="btn primary" style="width:auto;padding:0 12px;flex-shrink:0" onclick="connectViaNkn()">→</button>
       </div>
     </div>
 
@@ -221,6 +229,7 @@
 
 <div id="toast"></div>
 
+<script src="https://unpkg.com/nkn-sdk/dist/nkn.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
@@ -328,6 +337,7 @@ const PROFILES = [
 
 let peer, myAddress;          // PeerJS
 let mqttClient, mqttAddress;  // MQTT
+let nknClient,  nknAddress;   // NKN
 let activeProfile = PROFILES[0];
 
 const connections  = new Map();   // peerId  → DataConnection  (PeerJS only)
@@ -413,6 +423,45 @@ function startMqtt() {
 
   mqttClient.on('error',     e  => log('err', 'MQTT: ' + (e.message || String(e))));
   mqttClient.on('offline',   () => { updateDot(); log('sys', 'MQTT offline — reconnecting…'); });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NKN transport  (decentralized, uses nkn-sdk browser bundle)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function startNkn() {
+  const seed = localStorage.getItem('demo_nkn_seed') || undefined;
+
+  nknClient = new nkn.MultiClient(seed ? { seed } : {});
+
+  nknClient.on('connect', () => {
+    nknAddress = nknClient.addr;
+    // Persist seed so address stays stable across reloads
+    try {
+      const s = nknClient.key?.seed ?? nknClient.defaultClient?.key?.seed;
+      if (s) localStorage.setItem('demo_nkn_seed', s);
+    } catch (_) {}
+    document.getElementById('nkn-id-display').textContent = nknAddress;
+    updateDot();
+    log('sys', `NKN ready: ${nknAddress.slice(0, 24)}…`);
+  });
+
+  nknClient.on('message', async (msg) => {
+    const src  = msg.src;
+    const text = typeof msg.payload === 'string' ? msg.payload : msg.payload.toString();
+    try {
+      const parsed = JSON.parse(text);
+      if (!knownPeers.has(src))
+        knownPeers.set(src, { id: src, label: src.slice(0, 20) + '…', card: null, connected: true, transport: 'nkn' });
+      else
+        knownPeers.get(src).connected = true;
+      handleMessage(src, parsed);
+      renderPeers();
+      updateTargetDropdown();
+    } catch (e) { log('err', 'NKN parse error: ' + e.message); }
+  });
+
+  nknClient.on('error', e => log('err', 'NKN: ' + (e.message || String(e))));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -508,7 +557,11 @@ function wire(conn) {
 
 async function send(peerId, msg) {
   const transport = knownPeers.get(peerId)?.transport ?? 'peerjs';
-  if (transport === 'mqtt') {
+  if (transport === 'nkn') {
+    if (!nknClient) return;
+    try { await nknClient.send(peerId, JSON.stringify(msg)); }
+    catch (e) { log('err', 'NKN send: ' + e.message); }
+  } else if (transport === 'mqtt') {
     if (!mqttClient?.connected) return;
     mqttClient.publish(MQTT_TOPIC(peerId), JSON.stringify({ ...msg, _from: mqttAddress }));
   } else {
@@ -529,6 +582,20 @@ function connectViaMqtt() {
   mqttClient.publish(MQTT_TOPIC(addr), JSON.stringify({ type: 'peer_list_request',  _from: mqttAddress }));
   log('sys', `MQTT: reaching out to ${addr}…`);
   document.getElementById('mqtt-connect-input').value = '';
+}
+
+function connectViaNkn() {
+  const addr = document.getElementById('nkn-connect-input').value.trim();
+  if (!addr)      { toast('Paste an NKN address first'); return; }
+  if (!nknClient) { toast('NKN not ready yet'); return; }
+  if (knownPeers.get(addr)?.connected) { toast('Already connected'); return; }
+
+  knownPeers.set(addr, { id: addr, label: addr.slice(0, 20) + '…', card: null, connected: false, transport: 'nkn' });
+  renderPeers();
+  send(addr, { type: 'agent_card_request' });
+  send(addr, { type: 'peer_list_request' });
+  log('sys', `NKN: reaching out to ${addr.slice(0, 24)}…`);
+  document.getElementById('nkn-connect-input').value = '';
 }
 
 async function connectViaPeerJS() {
@@ -694,7 +761,9 @@ function sendTask() {
 
   if (!targetId) { toast('Select a target peer'); return; }
   if (!skillId)  { toast('Select a skill'); return; }
-  if (!peer?.open) { toast('Not ready'); return; }
+  const _tp = knownPeers.get(targetId)?.transport;
+  const _ready = (_tp === 'nkn' && nknAddress) || (_tp === 'mqtt' && mqttClient?.connected) || peer?.open;
+  if (!_ready) { toast('Not ready'); return; }
 
   const task = { id: crypto.randomUUID(), skill: skillId, params, state: 'submitted' };
   send(targetId, { type: 'task', task });
@@ -880,7 +949,7 @@ function renderPeers() {
   }
 
   el.innerHTML = all.map(e => `
-    <div class="peer-item" title="${e.id}" onclick="document.getElementById(${e.transport==='mqtt' ? "'mqtt-connect-input'" : "'peerjs-connect-input'"}).value='${e.id}'">
+    <div class="peer-item" title="${e.id}" onclick="document.getElementById(${e.transport==='mqtt' ? "'mqtt-connect-input'" : e.transport==='nkn' ? "'nkn-connect-input'" : "'peerjs-connect-input'"}).value='${e.id}'">
       <div class="p-dot2 ${e.connected ? 'on' : ''}"></div>
       <div class="p-info">
         <div class="p-name2">${e.card?.name ?? e.label}</div>
@@ -993,9 +1062,14 @@ function copyPeerjsAddr() {
   navigator.clipboard.writeText(myAddress);
   toast('PeerJS address copied!');
 }
+function copyNknAddr() {
+  if (!nknAddress) return;
+  navigator.clipboard.writeText(nknAddress);
+  toast('NKN address copied!');
+}
 
 function updateDot() {
-  document.getElementById('dot').className = (mqttClient?.connected || peer?.open) ? 'dot ready' : 'dot warn';
+  document.getElementById('dot').className = (nknAddress || mqttClient?.connected || peer?.open) ? 'dot ready' : 'dot warn';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1023,15 +1097,23 @@ function hideQR() {
 function checkAutoConnect() {
   const id = new URLSearchParams(location.search).get('connect');
   if (!id) return;
-  // PeerJS IDs are UUIDs (8-4-4-4-12 hex); anything else is treated as MQTT address
+  // Detect transport by address format:
+  //   NKN:    64-char hex, optionally prefixed with "identifier."
+  //   PeerJS: UUID (8-4-4-4-12 hex)
+  //   else:   MQTT
+  const isNkn    = /^(?:[a-zA-Z0-9_-]+\.)?[0-9a-f]{64}$/.test(id);
   const isPeerJS = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-  log('sys', `Auto-connect (${isPeerJS ? 'PeerJS' : 'MQTT'}): ${id}`);
-  const inputId = isPeerJS ? 'peerjs-connect-input' : 'mqtt-connect-input';
+  const transport = isNkn ? 'NKN' : isPeerJS ? 'PeerJS' : 'MQTT';
+  log('sys', `Auto-connect (${transport}): ${id}`);
+  const inputId = isNkn ? 'nkn-connect-input' : isPeerJS ? 'peerjs-connect-input' : 'mqtt-connect-input';
   document.getElementById(inputId).value = id;
   const poll = setInterval(() => {
-    if (isPeerJS ? peer?.open : mqttClient?.connected) {
+    const ready = isNkn ? nknAddress : isPeerJS ? peer?.open : mqttClient?.connected;
+    if (ready) {
       clearInterval(poll);
-      isPeerJS ? connectViaPeerJS() : connectViaMqtt();
+      if (isNkn) connectViaNkn();
+      else if (isPeerJS) connectViaPeerJS();
+      else connectViaMqtt();
     }
   }, 300);
 }
@@ -1043,6 +1125,7 @@ function checkAutoConnect() {
 renderAll();
 start();
 startMqtt();
+startNkn();
 checkAutoConnect();
 </script>
 </body>
