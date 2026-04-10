@@ -430,7 +430,9 @@ function startMqtt() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function startNkn() {
-  const seed = localStorage.getItem('demo_nkn_seed') || undefined;
+  const rawSeed = localStorage.getItem('demo_nkn_seed');
+  const seed = /^[0-9a-f]{64}$/i.test(rawSeed) ? rawSeed : undefined;
+  if (rawSeed && !seed) localStorage.removeItem('demo_nkn_seed'); // clear corrupt value
 
   nknClient = new nkn.MultiClient(seed ? { seed } : {});
 
