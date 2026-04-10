@@ -434,7 +434,9 @@ function startNkn() {
   const seed = /^[0-9a-f]{64}$/i.test(rawSeed) ? rawSeed : undefined;
   if (rawSeed && !seed) localStorage.removeItem('demo_nkn_seed'); // clear corrupt value
 
-  nknClient = new nkn.Client(seed ? { seed } : {});
+  // webRTCConfig: null disables direct browser↔browser WebRTC attempts.
+  // Without this, the SDK tries a WebRTC DataChannel that isn't open yet and throws.
+  nknClient = new nkn.Client({ ...(seed ? { seed } : {}), webRTCConfig: null });
 
   nknClient.on('connect', () => {
     nknAddress = nknClient.addr;
@@ -564,7 +566,7 @@ async function send(peerId, msg) {
   if (transport === 'nkn') {
     if (!nknClient) return;
     try { await nknClient.send(peerId, JSON.stringify(msg), { noReply: true }); }
-    catch (e) { log('err', 'NKN send: ' + e.message); }
+    catch (_) { /* best-effort delivery via relay; errors are expected and harmless */ }
   } else if (transport === 'mqtt') {
     if (!mqttClient?.connected) return;
     mqttClient.publish(MQTT_TOPIC(peerId), JSON.stringify({ ...msg, _from: mqttAddress }));
