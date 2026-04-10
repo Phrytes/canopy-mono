@@ -561,7 +561,7 @@ async function send(peerId, msg) {
   const transport = knownPeers.get(peerId)?.transport ?? 'peerjs';
   if (transport === 'nkn') {
     if (!nknClient) return;
-    try { await nknClient.send(peerId, JSON.stringify(msg)); }
+    try { await nknClient.send(peerId, JSON.stringify(msg), { noReply: true }); }
     catch (e) { log('err', 'NKN send: ' + e.message); }
   } else if (transport === 'mqtt') {
     if (!mqttClient?.connected) return;
