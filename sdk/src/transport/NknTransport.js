@@ -23,7 +23,7 @@ export class NknTransport extends Transport {
   constructor(options = {}) {
     super();
     this.#opts = {
-      connectTimeout: 20_000,
+      connectTimeout: 60_000,
       ...options,
     };
   }
