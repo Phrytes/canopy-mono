@@ -173,7 +173,12 @@ export class Agent extends Emitter {
 
   async start() {
     if (this.#started) return this;
-    await Promise.all(this.#transports.map(t => t.connect()));
+    const results = await Promise.allSettled(this.#transports.map(t => t.connect()));
+    const failed  = results.filter(r => r.status === 'rejected');
+    for (const f of failed) this.emit('transport:error', { error: f.reason });
+    if (failed.length === this.#transports.length) {
+      throw new Error('All transports failed to connect');
+    }
     this.#started = true;
     this.emit('start');
     return this;
