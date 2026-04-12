@@ -112,12 +112,13 @@ registry.define('assistant',          { extends: 'base-agent', capabilities: ['g
 registry.define('advanced-assistant', { extends: 'assistant',  capabilities: ['slow_task'] });
 
 // ── Transport + Agent ─────────────────────────────────────────────────────────
-const seed      = sessionStorage.getItem('ad_seed') ?? undefined;
-const transport = new NknTransport({ seed });
-const agent     = new Agent({
+const nknSeed     = sessionStorage.getItem('ad_nkn_seed') ?? undefined;
+const nknTransport = new NknTransport({ seed: nknSeed });
+
+const agent = new Agent({
   name:       'agent-demo',
   role:       'advanced-assistant',
-  transports: [transport],
+  transports: [nknTransport],
   policy:     { mode: 'accept_all' },
 });
 
@@ -152,10 +153,10 @@ agent.capability('slow_task', async ({ message = 'done' }) => {
 
 // ── Events ────────────────────────────────────────────────────────────────────
 agent.on('transport:connect', ({ transport: t }) => {
+  if (t.seed) sessionStorage.setItem('ad_nkn_seed', t.seed);
   document.getElementById('addr').textContent = t.address;
   document.getElementById('qr-btn').disabled = false;
   document.getElementById('card').textContent = JSON.stringify(agent.export(), null, 2);
-  if (t.seed) sessionStorage.setItem('ad_seed', t.seed);
   log('ok', 'NKN connected: ' + t.address);
 });
 agent.on('transport:warn',  ({ message }) => log('sys', 'warn: ' + message));
@@ -164,12 +165,27 @@ agent.on('peer',  ({ address, card })     => log('ok', `peer: ${card?.name ?? ad
 agent.on('message', ({ from, payload })   => log('in', `msg from ${from.slice(0,12)}…: ${JSON.stringify(payload).slice(0,80)}`));
 
 // ── Start ──────────────────────────────────────────────────────────────────────
-log('sys', 'connecting to NKN…');
-await agent.start();
+// Auto-retry so a slow or flaky NKN node doesn't leave the page stuck.
+// Each attempt creates a fresh NKN client; NKN sometimes just needs a
+// different seed node.
+async function startWithRetry(maxAttempts = 5) {
+  for (let i = 1; i <= maxAttempts; i++) {
+    log('sys', i === 1 ? 'connecting to NKN…' : `NKN attempt ${i}/${maxAttempts}…`);
+    try {
+      await agent.start();
+      return;
+    } catch (e) {
+      log('err', `attempt ${i} failed: ${e.message}`);
+      if (i < maxAttempts) await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+  log('err', 'could not connect — reload to try again');
+}
+await startWithRetry();
 
 // ── QR ────────────────────────────────────────────────────────────────────────
 window.showQR = () => {
-  const addr = transport.address;
+  const addr = nknTransport.address;
   if (!addr) return;
   const url = `${location.origin}${location.pathname}?connect=${encodeURIComponent(addr)}`;
   document.getElementById('qr-img').src =
@@ -185,7 +201,7 @@ if (autoAddr) {
   document.getElementById('peer').value = autoAddr;
   log('sys', 'auto-connect from QR: ' + autoAddr.slice(0,24) + '…');
   const poll = setInterval(() => {
-    if (!transport.address) return;
+    if (!nknTransport.address) return;
     clearInterval(poll);
     doConnect();
   }, 500);
@@ -252,7 +268,7 @@ window.doSign = async () => {
   const secret  = document.getElementById('group-secret').value.trim();
   if (!groupId || !secret) return log('err', 'fill in group id and secret');
   try {
-    lastProof = await GroupManager.sign(groupId, transport.address ?? 'unknown', secret);
+    lastProof = await GroupManager.sign(groupId, nknTransport.address ?? 'unknown', secret);
     document.getElementById('proof-out').textContent = JSON.stringify(lastProof, null, 2);
     log('ok', 'proof signed');
   } catch (e) { log('err', 'sign failed: ' + e.message); }

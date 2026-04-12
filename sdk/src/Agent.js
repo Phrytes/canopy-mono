@@ -173,12 +173,34 @@ export class Agent extends Emitter {
 
   async start() {
     if (this.#started) return this;
-    const results = await Promise.allSettled(this.#transports.map(t => t.connect()));
-    const failed  = results.filter(r => r.status === 'rejected');
-    for (const f of failed) this.emit('transport:error', { error: f.reason });
-    if (failed.length === this.#transports.length) {
-      throw new Error('All transports failed to connect');
-    }
+
+    // Kick off all transports in parallel; resolve as soon as the FIRST one
+    // connects. Slower transports keep going in the background and emit
+    // 'transport:connect' when ready. Only throws if ALL transports fail.
+    await new Promise((resolve, reject) => {
+      let resolved  = false;
+      let failCount = 0;
+      const total   = this.#transports.length;
+
+      if (total === 0) { resolve(); return; }
+
+      for (const t of this.#transports) {
+        t.connect()
+          .then(() => {
+            if (!resolved) { resolved = true; resolve(); }
+          })
+          .catch(err => {
+            const e = err instanceof Error ? err : new Error(String(err));
+            this.emit('transport:error', { transport: t, error: e });
+            failCount++;
+            if (failCount === total && !resolved) {
+              resolved = true;
+              reject(new Error('All transports failed to connect'));
+            }
+          });
+      }
+    });
+
     this.#started = true;
     this.emit('start');
     return this;

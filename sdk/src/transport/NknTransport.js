@@ -23,7 +23,8 @@ export class NknTransport extends Transport {
   constructor(options = {}) {
     super();
     this.#opts = {
-      connectTimeout: 60_000,
+      warnAfter:      20_000,   // emit 'warn' if still connecting after this
+      connectTimeout: 90_000,   // hard limit per attempt (seedless retry gets same)
       ...options,
     };
   }
@@ -84,24 +85,34 @@ export class NknTransport extends Transport {
     return new Promise((resolve, reject) => {
       this.#client = new this.#lib.Client(seed ? { seed } : {});
 
-      // Self-healing timeout: if no connect event within the window,
-      // drop the (possibly stuck) seed and start fresh.
-      // On the retry (isRetry=true) we still apply a timeout so the promise
-      // never hangs indefinitely.
-      const timer = setTimeout(() => {
-        if (this.#address) return;   // already connected — timer fired late
-        if (isRetry) {
-          reject(new Error('NKN connect timed out (seedless retry)'));
-          return;
+      // Soft warn — let the user know it's taking a while
+      const warnTimer = setTimeout(() => {
+        if (this.#address) return;
+        this.emit('warn', 'NKN still connecting — this can take up to 90 s on some nodes…');
+      }, this.#opts.warnAfter);
+
+      // Hard limit — give NKN plenty of time before giving up.
+      // On a seeded connect, first try a seedless retry (different node pool);
+      // on the seedless retry (or if no seed), just reject so the caller can
+      // retry with a fresh client.
+      const hardTimer = setTimeout(() => {
+        if (this.#address) return;
+        clearTimeout(warnTimer);
+        if (!isRetry && seed) {
+          this.emit('warn', 'NKN timed out with seed — retrying without seed…');
+          try { this.#client.close(); } catch (_) {}
+          this.#client = null;
+          this.#tryConnect(null, true).then(resolve, reject);
+        } else {
+          try { this.#client.close(); } catch (_) {}
+          this.#client = null;
+          reject(new Error('NKN connect timed out — will retry'));
         }
-        this.emit('warn', 'NKN connect timed out — retrying without seed');
-        try { this.#client.close(); } catch (_) {}
-        this.#client = null;
-        this.#tryConnect(null, true).then(resolve, reject);
       }, this.#opts.connectTimeout);
 
       this.#client.on('connect', () => {
-        clearTimeout(timer);
+        clearTimeout(warnTimer);
+        clearTimeout(hardTimer);
         this.#address = this.#client.addr;
         this.#seed    = this.#client.key?.seed ?? null;
         this.emit('connect', { address: this.#address });
@@ -115,8 +126,8 @@ export class NknTransport extends Transport {
       });
 
       this.#client.on('error', (err) => {
+        // Non-fatal — NKN SDK handles reconnection internally
         this.emit('error', err instanceof Error ? err : new Error(String(err)));
-        // Don't reject here — errors after connect are non-fatal
       });
     });
   }
