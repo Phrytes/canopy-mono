@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>agent-demo</title>
+  <style>
+    body { font-family: monospace; font-size: 13px; background: #0d0f17; color: #e2e4ed; max-width: 600px; margin: 40px auto; padding: 0 20px 60px; }
+    h2 { color: #6c63ff; font-size: 14px; margin: 28px 0 6px; border-bottom: 1px solid #252836; padding-bottom: 4px; }
+    input, select { width: 100%; background: #13151e; border: 1px solid #252836; color: #e2e4ed; padding: 7px 10px; font-family: monospace; font-size: 13px; border-radius: 6px; box-sizing: border-box; outline: none; margin-bottom: 4px; }
+    input:focus, select:focus { border-color: #6c63ff; }
+    button { background: #6c63ff; border: none; border-radius: 6px; color: #fff; font-size: 13px; font-weight: 600; padding: 8px 16px; cursor: pointer; margin-top: 4px; margin-right: 6px; }
+    button:hover { opacity: .85; }
+    button:disabled { opacity: .4; cursor: default; }
+    button.ghost { background: transparent; border: 1px solid #252836; color: #e2e4ed; }
+    pre { background: #13151e; border: 1px solid #252836; border-radius: 6px; padding: 10px; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; }
+    #addr { word-break: break-all; color: #22c55e; margin: 4px 0 8px; min-height: 16px; }
+    #log  { background: #13151e; border: 1px solid #252836; border-radius: 6px; padding: 10px; min-height: 120px; max-height: 300px; overflow-y: auto; line-height: 1.8; }
+    .ok  { color: #22c55e; }
+    .err { color: #ef4444; }
+    .sys { color: #636579; }
+    .in  { color: #a78bfa; }
+    small { color: #636579; }
+
+    /* QR modal */
+    #qr-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; }
+    #qr-modal.open { display: flex; }
+    #qr-box { background: #13151e; border: 1px solid #252836; border-radius: 12px; padding: 24px; text-align: center; }
+    #qr-box img { display: block; margin: 12px auto; border-radius: 6px; }
+    #qr-url { font-size: 10px; color: #636579; word-break: break-all; margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- QR modal -->
+<div id="qr-modal" onclick="hideQR()">
+  <div id="qr-box" onclick="event.stopPropagation()">
+    <div>Scan to open on another device</div>
+    <img id="qr-img" width="180" height="180" />
+    <div id="qr-url"></div>
+    <button class="ghost" style="margin-top:12px" onclick="hideQR()">close</button>
+  </div>
+</div>
+
+<h2>My NKN address</h2>
+<div id="addr">connecting…</div>
+<button id="qr-btn" disabled onclick="showQR()">QR for phone</button>
+
+<h2>Role: advanced-assistant</h2>
+<small>
+  base-agent: echo, ping<br>
+  assistant (extends base): greet, calculate<br>
+  advanced-assistant (extends assistant): slow_task
+</small>
+
+<h2>Agent card</h2>
+<pre id="card">loading…</pre>
+
+<h2>Peer address</h2>
+<input id="peer" placeholder="Paste other peer's NKN address here" />
+<button onclick="doConnect()">Connect + exchange cards</button>
+
+<h2>Request → Response</h2>
+<select id="skill" onchange="updateParams()">
+  <option value="ping">ping</option>
+  <option value="echo">echo</option>
+  <option value="greet">greet</option>
+  <option value="calculate">calculate</option>
+</select>
+<input id="params" value="{}" />
+<button onclick="doRequest()">Send request</button>
+<small id="result">—</small>
+
+<h2>Submit Task (submitted → working → completed)</h2>
+<select id="task-skill">
+  <option value="echo">echo</option>
+  <option value="slow_task">slow_task (2 s delay)</option>
+</select>
+<input id="task-params" value='{"message":"hello task"}' />
+<button onclick="doTask()">Submit task</button>
+<small id="task-result">—</small>
+
+<h2>Group proof</h2>
+<small>Generate a signed membership proof for a group, then verify it.</small><br><br>
+<input id="group-id" value="my-group" />
+<input id="group-secret" value="supersecret" />
+<button onclick="doSign()">Sign proof</button>
+<button class="ghost" onclick="doVerify()">Verify last proof</button>
+<pre id="proof-out">—</pre>
+
+<h2>Log</h2>
+<button class="ghost" style="float:right;margin-top:-34px" onclick="document.getElementById('log').innerHTML=''">clear</button>
+<div id="log"></div>
+
+<script src="https://unpkg.com/nkn-sdk/dist/nkn.js"></script>
+<script type="module">
+import { Agent, NknTransport, RoleRegistry, GroupManager } from '../sdk/src/index.js';
+
+// ── Logging ───────────────────────────────────────────────────────────────────
+function log(cls, text) {
+  const el = document.getElementById('log');
+  const d  = document.createElement('div');
+  d.className = cls;
+  d.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Role hierarchy ────────────────────────────────────────────────────────────
+const registry = new RoleRegistry();
+registry.define('base-agent',         { capabilities: ['echo', 'ping'], policy: { mode: 'accept_all' } });
+registry.define('assistant',          { extends: 'base-agent', capabilities: ['greet', 'calculate'] });
+registry.define('advanced-assistant', { extends: 'assistant',  capabilities: ['slow_task'] });
+
+// ── Transport + Agent ─────────────────────────────────────────────────────────
+const seed      = sessionStorage.getItem('ad_seed') ?? undefined;
+const transport = new NknTransport({ seed });
+const agent     = new Agent({
+  name:       'agent-demo',
+  role:       'advanced-assistant',
+  transports: [transport],
+  policy:     { mode: 'accept_all' },
+});
+
+// ── Capabilities ──────────────────────────────────────────────────────────────
+agent.capability('ping', async () => {
+  log('in', '← ping');
+  return { pong: true, ts: Date.now() };
+});
+
+agent.capability('echo', async ({ message }) => {
+  log('in', `← echo("${message}")`);
+  return { echo: message };
+});
+
+agent.capability('greet', async ({ name = 'stranger' }) => {
+  log('in', `← greet("${name}")`);
+  return { greeting: `Hello, ${name}! I am ${agent.name}.` };
+});
+
+agent.capability('calculate', async ({ a, b, op = 'add' }) => {
+  const ops = { add: a+b, sub: a-b, mul: a*b, div: b ? a/b : 'div/0' };
+  const result = ops[op] ?? 'unknown op';
+  log('in', `← calculate(${a} ${op} ${b}) = ${result}`);
+  return { result };
+});
+
+agent.capability('slow_task', async ({ message = 'done' }) => {
+  log('in', '← slow_task (sleeping 2 s)…');
+  await new Promise(r => setTimeout(r, 2000));
+  return { done: message };
+});
+
+// ── Events ────────────────────────────────────────────────────────────────────
+agent.on('transport:connect', ({ transport: t }) => {
+  document.getElementById('addr').textContent = t.address;
+  document.getElementById('qr-btn').disabled = false;
+  document.getElementById('card').textContent = JSON.stringify(agent.export(), null, 2);
+  if (t.seed) sessionStorage.setItem('ad_seed', t.seed);
+  log('ok', 'NKN connected: ' + t.address);
+});
+agent.on('transport:warn',  ({ message }) => log('sys', 'warn: ' + message));
+agent.on('transport:error', ({ error })   => log('err', 'transport error: ' + error.message));
+agent.on('peer',  ({ address, card })     => log('ok', `peer: ${card?.name ?? address.slice(0,20)+'…'} — caps: ${(card?.capabilities ?? []).join(', ') || 'none'}`));
+agent.on('message', ({ from, payload })   => log('in', `msg from ${from.slice(0,12)}…: ${JSON.stringify(payload).slice(0,80)}`));
+
+// ── Start ──────────────────────────────────────────────────────────────────────
+log('sys', 'connecting to NKN…');
+await agent.start();
+
+// ── QR ────────────────────────────────────────────────────────────────────────
+window.showQR = () => {
+  const addr = transport.address;
+  if (!addr) return;
+  const url = `${location.origin}${location.pathname}?connect=${encodeURIComponent(addr)}`;
+  document.getElementById('qr-img').src =
+    `https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=e2e4ed&bgcolor=13151e&data=${encodeURIComponent(url)}`;
+  document.getElementById('qr-url').textContent = url;
+  document.getElementById('qr-modal').classList.add('open');
+};
+window.hideQR = () => document.getElementById('qr-modal').classList.remove('open');
+
+// Auto-connect if opened via QR (?connect=<addr>)
+const autoAddr = new URLSearchParams(location.search).get('connect');
+if (autoAddr) {
+  document.getElementById('peer').value = autoAddr;
+  log('sys', 'auto-connect from QR: ' + autoAddr.slice(0,24) + '…');
+  const poll = setInterval(() => {
+    if (!transport.address) return;
+    clearInterval(poll);
+    doConnect();
+  }, 500);
+  setTimeout(() => clearInterval(poll), 60_000);
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+window.doConnect = async () => {
+  const addr = document.getElementById('peer').value.trim();
+  if (!addr) return log('err', 'paste a peer address first');
+  log('sys', 'sending card request to ' + addr.slice(0, 24) + '…');
+  try { await agent.connect(addr); log('ok', 'card request sent'); }
+  catch (e) { log('err', e.message); }
+};
+
+window.updateParams = () => {
+  const hints = { ping: '{}', echo: '{"message":"hello"}', greet: '{"name":"Alice"}', calculate: '{"a":6,"b":7,"op":"mul"}' };
+  document.getElementById('params').value = hints[document.getElementById('skill').value] ?? '{}';
+};
+
+window.doRequest = async () => {
+  const addr  = document.getElementById('peer').value.trim();
+  const skill = document.getElementById('skill').value;
+  const resEl = document.getElementById('result');
+  let params = {};
+  try { params = JSON.parse(document.getElementById('params').value || '{}'); } catch {}
+  if (!addr) return log('err', 'no peer address');
+  resEl.textContent = '⏳ waiting…';
+  log('sys', `→ request: ${skill}(${JSON.stringify(params)})`);
+  try {
+    const r = await agent.request(addr, skill, params, { timeout: 15_000 });
+    resEl.textContent = '← ' + JSON.stringify(r);
+    log('ok', `← ${skill} reply: ${JSON.stringify(r)}`);
+  } catch (e) {
+    resEl.textContent = 'failed: ' + e.message;
+    log('err', `${skill} failed: ${e.message}`);
+  }
+};
+
+window.doTask = async () => {
+  const addr   = document.getElementById('peer').value.trim();
+  const skill  = document.getElementById('task-skill').value;
+  const resEl  = document.getElementById('task-result');
+  let params = {};
+  try { params = JSON.parse(document.getElementById('task-params').value || '{}'); } catch {}
+  if (!addr) return log('err', 'no peer address');
+  resEl.textContent = '⏳ submitted…';
+  log('sys', `→ submitTask: ${skill}(${JSON.stringify(params)})`);
+  try {
+    const r = await agent.submitTask(addr, skill, params, { timeout: 30_000 });
+    resEl.textContent = '✓ completed: ' + JSON.stringify(r);
+    log('ok', `task completed: ${JSON.stringify(r)}`);
+  } catch (e) {
+    resEl.textContent = 'failed: ' + e.message;
+    log('err', `task failed: ${e.message}`);
+  }
+};
+
+// ── GroupManager ──────────────────────────────────────────────────────────────
+let lastProof = null;
+
+window.doSign = async () => {
+  const groupId = document.getElementById('group-id').value.trim();
+  const secret  = document.getElementById('group-secret').value.trim();
+  if (!groupId || !secret) return log('err', 'fill in group id and secret');
+  try {
+    lastProof = await GroupManager.sign(groupId, transport.address ?? 'unknown', secret);
+    document.getElementById('proof-out').textContent = JSON.stringify(lastProof, null, 2);
+    log('ok', 'proof signed');
+  } catch (e) { log('err', 'sign failed: ' + e.message); }
+};
+
+window.doVerify = async () => {
+  const secret = document.getElementById('group-secret').value.trim();
+  if (!lastProof) return log('err', 'sign a proof first');
+  try {
+    const ok = await GroupManager.verify(lastProof, secret);
+    document.getElementById('proof-out').textContent =
+      (ok ? '✓ valid' : '✗ invalid') + '\n\n' + JSON.stringify(lastProof, null, 2);
+    log(ok ? 'ok' : 'err', 'proof verify: ' + (ok ? 'valid' : 'INVALID'));
+  } catch (e) { log('err', 'verify failed: ' + e.message); }
+};
+</script>
+</body>
+</html>
