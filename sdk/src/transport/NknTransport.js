@@ -66,22 +66,27 @@ export class NknTransport extends Transport {
   async _rawSend(to, envelope) {
     if (!this.#client) throw new Error('NknTransport: not connected');
     const payload = JSON.stringify(envelope);
-    // RTCDataChannel opens async — retry with backoff when the channel isn't
-    // ready yet. Mobile / high-latency networks need longer to complete ICE.
-    const delays = [500, 1000, 2000, 4000];
-    let lastErr;
-    for (const delay of [0, ...delays]) {
-      if (delay) await new Promise(r => setTimeout(r, delay));
+
+    // The NKN SDK opens an RTCDataChannel lazily on first send to a peer.
+    // That channel goes connecting → open asynchronously, and the SDK throws
+    // if we send before it's ready. We can't access readyState directly, so
+    // we poll: keep attempting until the send succeeds (= channel is open)
+    // or we hit the deadline.
+    const POLL_MS    = 200;
+    const TIMEOUT_MS = 12_000;
+    const deadline   = Date.now() + TIMEOUT_MS;
+
+    while (true) {
       try {
         await this.#client.send(to, payload, { noReply: true });
         return;
       } catch (e) {
-        lastErr = e;
-        if (!String(e?.message).toLowerCase().includes('rtcdatachannel')) throw e;
-        // else: DataChannel not open yet — wait and retry
+        const msg = String(e?.message ?? '').toLowerCase();
+        if (!msg.includes('rtcdatachannel') && !msg.includes('readystate')) throw e;
+        if (Date.now() >= deadline) throw new Error('RTCDataChannel did not open in time');
+        await new Promise(r => setTimeout(r, POLL_MS));
       }
     }
-    throw lastErr;
   }
 
   // ── Internal ───────────────────────────────────────────────────────────────
