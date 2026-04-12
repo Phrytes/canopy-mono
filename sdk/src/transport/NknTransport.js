@@ -66,17 +66,22 @@ export class NknTransport extends Transport {
   async _rawSend(to, envelope) {
     if (!this.#client) throw new Error('NknTransport: not connected');
     const payload = JSON.stringify(envelope);
-    try {
-      await this.#client.send(to, payload, { noReply: true });
-    } catch (e) {
-      if (String(e?.message).toLowerCase().includes('rtcdatachannel')) {
-        // WebRTC data channel not ready yet — retry once after 2 s
-        await new Promise(r => setTimeout(r, 2000));
+    // RTCDataChannel opens async — retry with backoff when the channel isn't
+    // ready yet. Mobile / high-latency networks need longer to complete ICE.
+    const delays = [500, 1000, 2000, 4000];
+    let lastErr;
+    for (const delay of [0, ...delays]) {
+      if (delay) await new Promise(r => setTimeout(r, delay));
+      try {
         await this.#client.send(to, payload, { noReply: true });
-      } else {
-        throw e;
+        return;
+      } catch (e) {
+        lastErr = e;
+        if (!String(e?.message).toLowerCase().includes('rtcdatachannel')) throw e;
+        // else: DataChannel not open yet — wait and retry
       }
     }
+    throw lastErr;
   }
 
   // ── Internal ───────────────────────────────────────────────────────────────
