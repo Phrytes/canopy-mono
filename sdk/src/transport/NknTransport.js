@@ -82,8 +82,13 @@ export class NknTransport extends Transport {
         return;
       } catch (e) {
         const msg = String(e?.message ?? '').toLowerCase();
-        if (!msg.includes('rtcdatachannel') && !msg.includes('readystate')) throw e;
-        if (Date.now() >= deadline) throw new Error('RTCDataChannel did not open in time');
+        const isTransient =
+          msg.includes('rtcdatachannel') ||
+          msg.includes('readystate')     ||
+          msg.includes('no longer, usable') ||   // DOMException InvalidStateError
+          (e instanceof DOMException && e.name === 'InvalidStateError');
+        if (!isTransient) throw e;
+        if (Date.now() >= deadline) throw new Error('NKN send timed out — connection may be reconnecting');
         await new Promise(r => setTimeout(r, POLL_MS));
       }
     }
