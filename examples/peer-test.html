@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>peer-test</title>
+  <style>
+    body { font-family: monospace; font-size: 13px; background: #0d0f17; color: #e2e4ed; max-width: 560px; margin: 40px auto; padding: 0 20px; }
+    h2 { color: #6c63ff; font-size: 14px; margin: 24px 0 6px; }
+    input { width: 100%; background: #13151e; border: 1px solid #252836; color: #e2e4ed; padding: 7px 10px; font-family: monospace; font-size: 13px; border-radius: 6px; box-sizing: border-box; outline: none; }
+    input:focus { border-color: #6c63ff; }
+    button { background: #6c63ff; border: none; border-radius: 6px; color: #fff; font-size: 13px; font-weight: 600; padding: 8px 16px; cursor: pointer; margin-top: 6px; }
+    button:hover { opacity: .85; }
+    #addr { word-break: break-all; color: #22c55e; margin: 4px 0 8px; min-height: 16px; }
+    #log  { background: #13151e; border: 1px solid #252836; border-radius: 6px; padding: 10px; min-height: 120px; max-height: 320px; overflow-y: auto; line-height: 1.8; margin-top: 6px; }
+    .ok  { color: #22c55e; }
+    .err { color: #ef4444; }
+    .sys { color: #636579; }
+    .in  { color: #a78bfa; }
+  </style>
+</head>
+<body>
+
+<h2>My NKN address</h2>
+<div id="addr">connecting…</div>
+
+<h2>Connect to peer</h2>
+<input id="peer" placeholder="Paste other tab's address here" />
+<button onclick="doConnect()">Connect + exchange cards</button>
+
+<h2>Ping peer</h2>
+<button onclick="doPing()">Ping</button>
+
+<h2>Echo</h2>
+<input id="msg" value="hello from tab A" />
+<button onclick="doEcho()">Send echo request</button>
+
+<h2>Log</h2>
+<div id="log"></div>
+
+<script src="https://unpkg.com/nkn-sdk/dist/nkn.js"></script>
+<script type="module">
+import { Agent, NknTransport } from '../sdk/src/index.js';
+
+function log(cls, text) {
+  const el = document.getElementById('log');
+  const d  = document.createElement('div');
+  d.className = cls;
+  d.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+const seed      = sessionStorage.getItem('pt_seed') ?? undefined;
+const transport = new NknTransport({ seed });
+const agent     = new Agent({
+  name:       'peer-test',
+  transports: [transport],
+  policy:     { mode: 'accept_all' },
+});
+
+agent.capability('echo', async ({ message }) => {
+  log('in', `← echo("${message}")`);
+  return { echo: message };
+});
+
+agent.capability('ping', async () => {
+  log('in', '← ping');
+  return { pong: true };
+});
+
+agent.on('transport:connect', ({ transport: t }) => {
+  document.getElementById('addr').textContent = t.address;
+  log('ok', 'NKN connected: ' + t.address);
+  if (t.seed) sessionStorage.setItem('pt_seed', t.seed);
+});
+agent.on('transport:warn',  ({ message }) => log('sys', 'warn: ' + message));
+agent.on('transport:error', ({ error })   => log('err', 'error: ' + error.message));
+agent.on('peer',  ({ address, card })     => log('ok', `peer card received: ${card?.name ?? address.slice(0,20)+'…'}`));
+agent.on('message', ({ from, payload })   => log('in', `msg from ${from.slice(0,12)}…: ${JSON.stringify(payload)}`));
+
+log('sys', 'connecting to NKN…');
+await agent.start();
+
+window.doConnect = async () => {
+  const addr = document.getElementById('peer').value.trim();
+  if (!addr) return log('err', 'paste a peer address first');
+  log('sys', 'sending card request to ' + addr.slice(0, 24) + '…');
+  try {
+    await agent.connect(addr);
+    log('ok', 'card request sent');
+  } catch (e) { log('err', e.message); }
+};
+
+window.doPing = async () => {
+  const addr = document.getElementById('peer').value.trim();
+  if (!addr) return log('err', 'no peer address');
+  log('sys', '→ ping');
+  try {
+    const r = await agent.request(addr, 'ping', {}, { timeout: 10_000 });
+    log('ok', '← pong: ' + JSON.stringify(r));
+  } catch (e) { log('err', 'ping failed: ' + e.message); }
+};
+
+window.doEcho = async () => {
+  const addr    = document.getElementById('peer').value.trim();
+  const message = document.getElementById('msg').value;
+  if (!addr) return log('err', 'no peer address');
+  log('sys', `→ echo("${message}")`);
+  try {
+    const r = await agent.request(addr, 'echo', { message }, { timeout: 10_000 });
+    log('ok', '← ' + JSON.stringify(r));
+  } catch (e) { log('err', 'echo failed: ' + e.message); }
+};
+</script>
+</body>
+</html>
