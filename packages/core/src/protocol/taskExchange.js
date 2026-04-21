@@ -31,9 +31,10 @@
  *   OW  { type:'cancel',        taskId }              ← CX
  *   OW  { type:'task-expired',  taskId }              ← EX (receiver → caller)
  */
-import { Task }  from './Task.js';
-import { Parts } from '../Parts.js';
-import { genId } from '../Envelope.js';
+import { Task }          from './Task.js';
+import { Parts }         from '../Parts.js';
+import { genId }         from '../Envelope.js';
+import { verifyOrigin }  from '../security/originSignature.js';
 
 /** @param {object} x */
 const isAsyncGen = x => x && typeof x[Symbol.asyncIterator] === 'function';
@@ -89,9 +90,9 @@ export function callSkill(agent, peerId, skillId, parts, opts = {}) {
           type: 'task', taskId, skillId, parts,
           ttl:     opts.ttl    ?? null,
           _token:  tokenJson,
-          // Optional unverified origin header — set by relay-forward so the
-          // receiver can attribute a relayed message to the original caller.
-          _origin: opts.origin ?? null,
+          _origin:    opts.origin    ?? null,
+          _originSig: opts.originSig ?? null,
+          _originTs:  opts.originTs  ?? null,
         },
         timeout,
       );
@@ -132,7 +133,9 @@ export async function handleTaskRequest(agent, envelope) {
     parts        = [],
     ttl: reqTtl  = null,
     _token       = null,
-    _origin      = null,   // unverified; set by relay-forward to preserve original caller
+    _origin      = null,   // claim from relay-forward; verified below when _originSig present
+    _originSig   = null,
+    _originTs    = null,
   } = payload;
 
   // Reply on the same transport the request arrived on.
@@ -229,19 +232,52 @@ export async function handleTaskRequest(agent, envelope) {
     agent.stateManager.deleteTask(`abort:${taskId}`);
   };
 
-  // ── Run handler ────────────────────────────────────────────────────────────
+  // ── Origin signature verification (Group Z) ──────────────────────────────
+  // Default: no verified origin. If the payload carries _origin + _originSig +
+  // _originTs, verify against canonicalize({ v:1, target: agent.pubKey, skill,
+  // parts, ts }). On success → trust the claim. On failure → fall back to the
+  // relay's pubkey and emit a security-warning. Missing sig entirely is the
+  // backward-compat case (pre-Z callers) — attribute to _from silently.
+  let verifiedOrigin = false;
+  let attributedOrigin = envelope._from;
+  if (_origin && _originSig && typeof _originTs === 'number') {
+    const res = verifyOrigin(
+      {
+        origin: _origin,
+        sig:    _originSig,
+        body:   { v: 1, target: agent.pubKey, skill: skillId, parts, ts: _originTs },
+      },
+      { expectedPubKey: agent.pubKey },
+    );
+    if (res.ok) {
+      verifiedOrigin   = true;
+      attributedOrigin = _origin;
+    } else {
+      agent.emit('security-warning', {
+        kind:   'origin-signature',
+        reason: res.reason,
+        envelope,
+      });
+    }
+  } else if (_origin) {
+    // _origin present but no sig → treat as an unverified claim. Do NOT
+    // adopt it; fall back to the relay. No warning (pre-Z compat).
+    attributedOrigin = envelope._from;
+  }
+
   // If _origin is set we came through a relay. Expose both the immediate sender
   // (envelope._from = the relay) and the original caller (originFrom).
   // Handlers that care about identity (e.g. chat) should prefer originFrom.
   const ctx = {
     parts,
-    from:       envelope._from,
-    originFrom: _origin ?? envelope._from,
-    relayedBy:  _origin ? envelope._from : null,
+    from:           envelope._from,
+    originFrom:     attributedOrigin,
+    originVerified: verifiedOrigin,
+    relayedBy:      _origin ? envelope._from : null,
     taskId,
     envelope,
     agent,
-    signal:     controller.signal,
+    signal:         controller.signal,
   };
 
   let result;

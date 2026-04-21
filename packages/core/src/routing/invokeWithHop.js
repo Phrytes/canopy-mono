@@ -29,6 +29,7 @@
  * @returns {Promise<Array>}
  */
 import { DataPart, Parts } from '../Parts.js';
+import { signOrigin }      from '../security/originSignature.js';
 
 const TRANSPORT_ERROR_KEYWORDS = [
   'not connected', 'no connection', 'timeout', 'offline', 'unreachable',
@@ -111,14 +112,39 @@ export async function invokeWithHop(agent, targetPubKey, skillId, parts = [], op
     );
   }
 
-  // ── 3. Try each bridge in order ───────────────────────────────────────────
+  // ── 3. Sign the origin claim once for all bridge attempts (Group Z) ──────
+  // The bridge preserves (originSig, originTs) unchanged through its inner
+  // invoke; the final-hop target verifies canonicalize({v:1, target, skill,
+  // parts, ts}) against the origin pubkey. Re-using one sig across bridges
+  // is safe: each bridge forwards the same body; the target's pubKey is the
+  // same regardless of which bridge delivers it.
+  let originSig   = null;
+  let originTs    = null;
+  if (agent.identity?.sign) {
+    const signed = signOrigin(agent.identity, {
+      target: targetPubKey,
+      skill:  skillId,
+      parts,
+    });
+    originSig = signed.sig;
+    originTs  = signed.originTs;
+  }
+
+  // ── 4. Try each bridge in order ───────────────────────────────────────────
   let lastErr;
   for (const viaPubKey of bridges) {
     try {
       const relayResult = await agent.invoke(
         viaPubKey,
         'relay-forward',
-        [DataPart({ targetPubKey, skill: skillId, payload: parts, timeout: opts.timeout })],
+        [DataPart({
+          targetPubKey,
+          skill:     skillId,
+          payload:   parts,
+          timeout:   opts.timeout,
+          originSig,
+          originTs,
+        })],
         { timeout: (opts.timeout ?? 10_000) + 2_000 },
       );
 

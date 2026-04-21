@@ -59,6 +59,7 @@ describe('Group Y — mesh scenario', () => {
     expect(m.received.carol).toHaveLength(1);
     expect(m.received.carol[0].text).toBe('hi carol');
     expect(m.received.carol[0].originFrom).toBe(m.pubKeys.alice);
+    expect(m.received.carol[0].originVerified).toBe(true);       // Z: sig verified
     expect(m.received.carol[0].relayedBy).toBe(m.pubKeys.bob);
 
     // Carol → Alice (also via Bob).
@@ -66,7 +67,56 @@ describe('Group Y — mesh scenario', () => {
     expect(m.received.alice).toHaveLength(1);
     expect(m.received.alice[0].text).toBe('hi alice');
     expect(m.received.alice[0].originFrom).toBe(m.pubKeys.carol);
+    expect(m.received.alice[0].originVerified).toBe(true);       // Z: sig verified
     expect(m.received.alice[0].relayedBy).toBe(m.pubKeys.bob);
+
+    // No security-warning events — every sig verified cleanly.
+    expect(m.warnings.alice).toHaveLength(0);
+    expect(m.warnings.carol).toHaveLength(0);
+
+    await m.teardown();
+  });
+
+  it('phase 4b (Z): a hostile bridge that forges `_origin` is detected; ' +
+     'Carol falls back to the bridge and emits security-warning', async () => {
+    const m = await buildMesh();
+    await gossipOnce(m.alice, m.pubKeys.bob);
+
+    // Patch Bob's invoke() so when he (as the bridge) forwards to Carol, he
+    // re-signs with his OWN identity but claims Alice as the origin. This
+    // simulates a malicious bridge trying to spoof attribution. Carol's
+    // verifier should reject the sig (it won't match Alice's pubkey) and
+    // fall back to envelope._from (= Bob).
+    const bobOrigInvoke = m.bob.invoke.bind(m.bob);
+    m.bob.invoke = async (peerId, skillId, input, opts = {}) => {
+      if (peerId === m.pubKeys.carol && skillId === 'receive-message') {
+        const { signOrigin } = await import('../../src/security/originSignature.js');
+        // Bob forges a sig with his own key, but claims Alice as origin.
+        const forged = signOrigin(m.bob.identity, {
+          target: m.pubKeys.carol,
+          skill:  skillId,
+          parts:  input,
+        });
+        return bobOrigInvoke(peerId, skillId, input, {
+          ...opts,
+          origin:    m.pubKeys.alice,   // claim Alice
+          originSig: forged.sig,         // signed by Bob
+          originTs:  forged.originTs,
+        });
+      }
+      return bobOrigInvoke(peerId, skillId, input, opts);
+    };
+
+    await m.alice.invokeWithHop(m.pubKeys.carol, 'receive-message', [TextPart('forged?')]);
+
+    expect(m.received.carol).toHaveLength(1);
+    // Forgery caught: Carol sees Bob, not the claimed Alice.
+    expect(m.received.carol[0].originFrom).toBe(m.pubKeys.bob);
+    expect(m.received.carol[0].originVerified).toBe(false);
+    // Security-warning fired on Carol.
+    expect(m.warnings.carol).toHaveLength(1);
+    expect(m.warnings.carol[0].kind).toBe('origin-signature');
+    expect(m.warnings.carol[0].reason).toMatch(/bad signature/);
 
     await m.teardown();
   });
