@@ -72,10 +72,30 @@ export async function invokeWithHop(agent, targetPubKey, skillId, parts = [], op
   }
 
   // ── 2. Build bridge candidates ─────────────────────────────────────────────
-  const bridges = [];
-  if (record?.via) bridges.push(record.via);
-
+  // Order (de-duped):
+  //   a. oracle hits — direct peers whose cached, fresh reachability claim
+  //      contains the target. These are tried first so probe-retry never
+  //      runs on the happy path (Group T, Design-v3 §6).
+  //   b. record.via — the peer that gossiped this target to us.
+  //   c. other reachable direct peers (classic probe-retry fallback).
   const allPeers = (await agent.peers?.all?.()) ?? [];
+  const now      = Date.now();
+
+  const oracleBridges = allPeers
+    .filter(p => p?.pubKey && p.pubKey !== targetPubKey)
+    .filter(p => (p.hops ?? 0) === 0)
+    .filter(p => p.reachable !== false)
+    .filter(p => Array.isArray(p.knownPeers) && p.knownPeers.includes(targetPubKey))
+    .filter(p => typeof p.knownPeersTs === 'number' && p.knownPeersTs > now)
+    .map(p => p.pubKey)
+    .sort();      // deterministic order across oracle candidates
+
+  const bridges = [...oracleBridges];
+
+  if (record?.via && !bridges.includes(record.via)) {
+    bridges.push(record.via);
+  }
+
   for (const p of allPeers) {
     if (!p?.pubKey || p.pubKey === targetPubKey) continue;
     if ((p.hops ?? 0) !== 0)        continue;
