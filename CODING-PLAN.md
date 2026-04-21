@@ -238,36 +238,117 @@ Delete:
 
 ## Group T — Oracle bridge model
 
-**Ref:** `EXTRACTION-PLAN.md` §7 Group T and §5. Depends on M, N.
+**Ref:** `EXTRACTION-PLAN.md` §7 Group T and §5.
+**Design doc:** `Design-v3/oracle-bridge-selection.md` — claim format, signature, canonicalisation, TTL, threats, API. Must be approved before T2 implementation starts.
 
-### Files
+**Dependencies:** M (invokeWithHop, PeerGraph), N (Agent method conventions). Optional: Y phase-9 assertion needs T.
 
-Create (design first):
-- `nkn-test/Design-v3/oracle-bridge-selection.md` — skill schema, signature canonicalisation, TTL rules, cache shape, gossip interaction.
+**Outcome:** when a fresh signed reachability claim is available, `invokeWithHop` picks the correct bridge on the *first* try. Probe-retry remains as cold-start / stale-cache fallback. No existing API breaks.
 
-Create (implementation):
-- `packages/core/src/skills/reachablePeers.js` — signed reachability claim skill.
-- `packages/core/src/security/reachabilityClaim.js` — sign/verify helpers.
-- `packages/core/test/skills/reachablePeers.test.js`
-- `packages/core/test/routing/invokeWithHop.oracle.test.js`
+### Sub-phases
+
+Break Group T into 6 sub-phases, each self-contained and independently testable. Ship them in order; each commits green.
+
+#### T1 — Design doc approval *(no code)*
+
+Decide the open issues in `Design-v3/oracle-bridge-selection.md` §10:
+- `MAX_PEERS` default (1024 vs 256).
+- Clock source (`Date.now()` vs a monotonic source for `ia`).
+- Cross-restart persistence of verified claims (yes/no).
+- Interaction with `CapabilityToken` canonicalisation (reuse helper vs separate).
+
+Recording the decisions in the design doc. Tracked as a task; no commit.
+
+#### T2 — Canonical sign/verify helpers
+
+Files:
+- `packages/core/src/security/reachabilityClaim.js`
+- `packages/core/test/reachabilityClaim.test.js`
+
+Exports:
+```js
+signReachabilityClaim(identity, peerPubKeys, { ttlMs }) → { body, sig }
+verifyReachabilityClaim(claim, { expectedIssuer, now, maxPeers, maxTtlMs, maxBytes, skewMs })
+  → { ok: true } | { ok: false, reason: string }
+```
+
+Tests (minimum):
+- Sign then verify round-trip → ok.
+- Tampered `p` / `ia` / `ea` / `i` → each fails with a specific reason.
+- Wrong `expectedIssuer` → rejected (reflection guard).
+- Expired claim (`ea < now - skew`) → rejected.
+- Future claim (`ia > now + skew`) → rejected.
+- Oversize `p` (`> maxPeers`) → rejected.
+- Oversize serialised payload (`> maxBytes`) → rejected.
+- Version byte not `1` → rejected.
+- Unsorted `p` in the signed body → rejected (determinism guarantee).
+
+#### T3 — `reachable-peers` skill + `agent.enableReachabilityOracle()`
+
+Files:
+- `packages/core/src/skills/reachablePeers.js`
+- `packages/core/test/reachablePeers.test.js`
 
 Modify:
-- `packages/core/src/discovery/PeerGraph.js` — ensure `knownPeers` field is first-class with TTL validation.
-- `packages/core/src/routing/invokeWithHop.js` (from M) — oracle-first lookup, probe-retry fallback.
-- `packages/core/src/discovery/GossipProtocol.js` — also pull `reachable-peers` alongside `peer-list` on each round.
+- `packages/core/src/Agent.js` — add `agent.enableReachabilityOracle({ ttlMs, refreshBufferMs, maxPeers })` method.
 
-### Sequence
+Behaviour:
+- Method registers the skill (idempotent, per existing patterns).
+- Skill handler returns `[DataPart({ body, sig })]`. Caches the claim, re-signing when (a) the direct-peer set changes or (b) the cached claim has `< refreshBufferMs` left.
+- Listens to `peer` and `peer-disconnected` events to invalidate the cache.
 
-1. **Write design doc first.** Decide canonicalisation (JSON-canonical?), TTL (default 5 min), sig format (Ed25519 over canonical body), multi-hop semantics.
-2. Implement `reachabilityClaim.sign / verify` helpers with tests.
-3. Implement the `reachable-peers` skill returning `{ peers, ts, sig }`.
-4. Extend `PeerGraph.upsert` to validate + store `knownPeers` only when attached to a valid claim; reject expired.
-5. Extend `invokeWithHop` to prefer an oracle-picked bridge (target found in some peer's `knownPeers`); fall back to probe-retry if none.
-6. Update `GossipProtocol.runRound` to also fetch `reachable-peers` from the chosen peer.
-7. Write tests per extraction plan's bullets.
+Tests:
+- Calling the skill returns a claim verifiable by the issuer's pubKey.
+- Repeated calls in quick succession return the *same* (cached) claim.
+- After a `peer` event, the next call returns a *different* claim with the new direct peer included.
+- After `peer-disconnected`, the removed peer is gone from the next claim.
+- `enableReachabilityOracle()` is idempotent.
+
+#### T4 — Graph storage
+
+Modify:
+- `packages/core/src/discovery/PeerGraph.js` — document `knownPeers`, `knownPeersTs`, `knownPeersSig` in the record shape; make sure the existing `upsert` spread-merge handles them without duplication.
+
+Files to add:
+- `packages/core/test/PeerGraph.knownPeers.test.js` (minor — existing tests cover most merging logic).
+
+Tests:
+- Upserting a record with `knownPeers` persists them.
+- A second upsert with newer `knownPeersTs` replaces the array; older one is ignored.
+- Upserting without `knownPeers` doesn't clobber an existing set.
+
+#### T5 — Oracle-aware bridge selection in `invokeWithHop`
+
+Modify:
+- `packages/core/src/routing/invokeWithHop.js` — before walking the existing bridges list, build an "oracle list" from direct peers whose `knownPeers` contains the target AND whose `knownPeersTs > now`. Concatenate `[...oracleBridges, record.via, ...remainingDirectPeers]` (de-duped).
+
+Files to add:
+- `packages/core/test/invokeWithHop.oracle.test.js`
+
+Tests:
+- Given a PeerGraph where peer B has `knownPeers: [T]` and `knownPeersTs` in the future, `invokeWithHop(T, ...)` calls `relay-forward` on B *first*.
+- Given the same graph but B's `knownPeersTs` is in the past, B is NOT prioritised (falls back to probe-retry order).
+- Given two direct peers with a valid oracle hit for T, both appear before non-oracle peers in the try order.
+- If the oracle-picked bridge returns `target-unreachable`, we still fall through to probe-retry candidates — no regression.
+- Zero oracle data → behaves exactly like probe-retry (Group M behaviour preserved).
+
+#### T6 — Gossip pulls claims alongside peer-list
+
+Modify:
+- `packages/core/src/discovery/GossipProtocol.js` — after the existing `peer-list` call in `runRound`, also call `reachable-peers`, verify, and upsert into `PeerGraph[issuer].knownPeers` + `knownPeersTs` + `knownPeersSig`.
+
+Files to add:
+- `packages/core/test/GossipProtocol.oracle.test.js`
+
+Tests:
+- A round against a peer that has the oracle enabled populates `knownPeers` on that peer's record in the caller's graph.
+- A round against a peer *without* the oracle (skill absent) is benign — no throw, no graph mutation.
+- A round that receives a malformed / expired claim emits `reachability-claim-rejected` and doesn't mutate the graph.
+- Newer `knownPeersTs` replaces older; older is ignored.
 
 ### DoD
-Oracle-picked bridges get a call-order assertion in tests; probe-retry kicks in cleanly when cache is stale. Design doc approved before implementation starts.
+
+All six sub-phases land as individual commits. Each commit is green against the full core suite + every existing integration test. Y phase-9 (see Group Y below) adds a call-order assertion that fails if the oracle ever mis-picks.
 
 ---
 
@@ -313,7 +394,7 @@ Phone app boots, hops work, app's LOC roughly one-third of pre-extraction. `mesh
 
 ## Group Y — End-to-end integration demo + test
 
-**Ref:** `EXTRACTION-PLAN.md` §7 Group Y. Depends on M, N, Q, R; optional V, W.
+**Ref:** `EXTRACTION-PLAN.md` §7 Group Y. Depends on M, N, Q, R; optional V, W, T.
 
 ### Files
 
@@ -331,14 +412,23 @@ Modify:
 ### Sequence
 
 1. Implement `LoopbackTransport` — two instances share a shared queue + events.
-2. Write phases 1–6 first (base mesh scenario); mark 7 and 8 as `test.skip` until V, W land.
+2. Write phases 1–6 first (base mesh scenario); mark 7, 8, 9 as `test.skip` until V, W, T land.
 3. Factor phase setup into helpers so the `examples/mesh-demo/` script imports the same steps and logs each one to console.
 4. Un-skip phases 7 and 8 as V and W land.
-5. Wire `npm run demo:verify` in CI.
-6. Write `examples/mesh-demo/README.md` with the manual-smoke-test variant (two phones + a laptop).
+5. Un-skip phase 9 when T lands — assert that the *first* `relay-forward` invocation after a gossip round targets the oracle-picked bridge (Bob, not another direct peer).
+6. Wire `npm run demo:verify` in CI.
+7. Write `examples/mesh-demo/README.md` with the manual-smoke-test variant (two phones + a laptop).
+
+### Phase 9 — oracle bridge (gated on Group T)
+
+- All three agents call `enableReachabilityOracle()` after hello.
+- Run one gossip round so Alice's graph has Bob's signed `knownPeers` (including Carol).
+- Spy on `agent.invoke` calls made inside `invokeWithHop`. Alice calls `invokeWithHop(Carol, 'receive-message', [TextPart('oracle')])`.
+- **Assertion:** the first `relay-forward` invocation's target is Bob. No other direct peer is tried first. This guarantees probe-retry was skipped — the oracle picked correctly.
+- Follow-up within the same phase: manually expire Bob's claim (`knownPeersTs = 0`). Send another message. The call must still succeed but now goes through the probe-retry fallback. This proves oracle staleness degrades gracefully.
 
 ### DoD
-CI runs the scenario on every PR. Demo script runs locally with `node examples/mesh-demo/index.js`. Phases 7 and 8 auto-enable when V and W are available.
+CI runs the scenario on every PR. Demo script runs locally with `node examples/mesh-demo/index.js`. Phases 7, 8, 9 auto-enable when V, W, T are available.
 
 ---
 

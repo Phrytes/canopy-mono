@@ -214,7 +214,7 @@ Group S  Relay package migration  (no internal deps on this plan;
                                     depends on core Transport)
 Group T  Oracle bridge model      (depends: M, N — needs design doc first)
 Group U  mesh-chat app rewrite    (depends: Q, R)
-Group Y  Integration demo + test  (depends: M, N, Q, R; optional V, W)
+Group Y  Integration demo + test  (depends: M, N, Q, R; optional V, W, T)
 Group V  BLE store-and-forward    (no internal deps; builds on BleTransport)
 Group W  Hello gate (opt-in)      (no internal deps)
 Group X  Group-visible skills     (depends: M; revisit when a product
@@ -357,7 +357,7 @@ Rename `step1-expo52` → `mesh-chat`, rewrite on top of new SDK APIs.
 - `AgentContext`: non-fatal `error` events don't flip status; fatal `createAgent` rejection does.
 - Smoke test: boot the agent with all transports mocked; assert the expected skills are registered.
 
-### Group Y — End-to-end integration demo + test (depends: M, N, Q, R; optional V, W)
+### Group Y — End-to-end integration demo + test (depends: M, N, Q, R; optional V, W, T)
 
 A capstone that proves all earlier groups compose correctly. Two artefacts sharing one scenario:
 
@@ -376,6 +376,7 @@ A capstone that proves all earlier groups compose correctly. Two artefacts shari
 | 6 | Alice calls `agent.forget(Bob.pubKey)`. | Bob is removed from Alice's graph + SecurityLayer; within ~1 s re-discovery triggers a fresh hello; graph rebuilds. |
 | 7 *(if V landed)* | Carol's loopback "disconnects" for 2 s; Alice sends during the gap. | `buffered` event fires; reconnect drains the queue FIFO; Carol's handler fires with the message. |
 | 8 *(if W landed)* | Carol sets `helloGate = tokenGate('family-key')`. Alice without token → timeout; Alice with token → hello succeeds. | Gate semantics match; no side-channel signal on rejection. |
+| 9 *(if T landed)* | All three enable reachability oracle. After one gossip round, Alice tries `invokeWithHop(Carol)`. | First `relay-forward` call target is exactly Bob (oracle-picked); no probe-retry on any other direct peer. Assertion on call order. Then expire Bob's claim manually (fast-forward `knownPeersTs`): the next send falls through to probe-retry cleanly without throwing. |
 
 **Why it earns its own group.** Phases 1–6 define "the SDK works end-to-end" — any regression in M, N, Q, R, or T surfaces here before an app sees it. 7 and 8 gate V and W by proving each capability in a full-mesh context, not just in isolation.
 
