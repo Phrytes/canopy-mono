@@ -37,6 +37,7 @@ import { handlePubSub }                              from './protocol/pubSub.js'
 import { invokeWithHop }                             from './routing/invokeWithHop.js';
 import { registerRelayForward }                      from './skills/relayForward.js';
 import { PeerDiscovery }                             from './discovery/PeerDiscovery.js';
+import { pullPeerList }                              from './discovery/pullPeerList.js';
 
 export class Agent extends Emitter {
   #identity;
@@ -53,6 +54,9 @@ export class Agent extends Emitter {
   #config        = null;   // AgentConfig | null
   #routing       = null;   // RoutingStrategy | null
   #discovery     = null;   // PeerDiscovery | null — lazy, via startDiscovery()
+  #autoHelloOpts = null;   // opts object if enableAutoHello() has been called
+  #autoHelloBound = new WeakSet();  // transports that already have the listener
+  #autoHelloedMacs = new Set();     // MACs we've already initiated BLE hello to
   #maxTaskTtl    = null;
   #pubSubHistory = 0;
   #started       = false;
@@ -145,6 +149,9 @@ export class Agent extends Emitter {
       transport.on('security-error', err => this.emit('security-error', err));
       transport.connect().catch(err => this.emit('error', err));
     }
+    // If enableAutoHello() was called earlier, newly-added transports also
+    // get the peer-discovered handler installed.
+    if (this.#autoHelloOpts) this.#bindAutoHello(transport);
     return this;
   }
 
@@ -385,6 +392,72 @@ export class Agent extends Emitter {
 
   /** The active PeerDiscovery instance, if startDiscovery() has been called. */
   get discovery() { return this.#discovery; }
+
+  /**
+   * Opt-in: for every attached transport, automatically hello any peer that
+   * is discovered, optionally followed by a peer-list pull. Covers the glue
+   * every mesh app writes today (see EXTRACTION-PLAN.md §3).
+   *
+   * Behaviour per `peer-discovered` event:
+   *   • If the address contains ':' — it's a BLE MAC. Send a raw HI frame via
+   *     the 'ble' transport (one per MAC, deduplicated).
+   *   • Otherwise it's a pubKey. Skip if SecurityLayer already has the key;
+   *     otherwise call agent.hello(). If opts.pullPeers, follow up with
+   *     pullPeerList() to populate indirect peers in the graph.
+   *
+   * Idempotent — subsequent calls update opts but don't re-bind listeners.
+   * Safe to call before or after addTransport(...) — transports added later
+   * pick up the handler via addTransport() above.
+   *
+   * @param {object}  [opts]
+   * @param {boolean} [opts.pullPeers=false]
+   * @param {number}  [opts.helloTimeout=15000]
+   */
+  enableAutoHello(opts = {}) {
+    this.#autoHelloOpts = {
+      pullPeers:    !!opts.pullPeers,
+      helloTimeout: opts.helloTimeout ?? 15_000,
+    };
+    for (const t of this.#transports.values()) this.#bindAutoHello(t);
+    return this;
+  }
+
+  #bindAutoHello(transport) {
+    if (this.#autoHelloBound.has(transport)) return;
+    this.#autoHelloBound.add(transport);
+
+    transport.on('peer-discovered', async (peerAddress) => {
+      if (!this.#autoHelloOpts) return;           // disabled between discovery and handler
+      if (!peerAddress) return;
+      try {
+        if (typeof peerAddress === 'string' && peerAddress.includes(':')) {
+          // BLE MAC — send raw HI, dedup per MAC.
+          if (this.#autoHelloedMacs.has(peerAddress)) return;
+          this.#autoHelloedMacs.add(peerAddress);
+          const bleTransport = this.getTransport('ble');
+          if (bleTransport) {
+            await bleTransport.sendHello(peerAddress, {
+              pubKey: this.pubKey,
+              label:  this.#label ?? null,
+              ack:    false,
+            });
+          }
+          return;
+        }
+
+        // pubKey — skip if SecurityLayer already knows them.
+        if (this.#security.getPeerKey(peerAddress)) return;
+
+        await this.hello(peerAddress, this.#autoHelloOpts.helloTimeout);
+
+        if (this.#autoHelloOpts.pullPeers) {
+          pullPeerList(this, peerAddress).catch(() => {});
+        }
+      } catch (err) {
+        this.emit('auto-hello-error', { peer: peerAddress, error: err });
+      }
+    });
+  }
 
   /**
    * Send a one-way message (OW). No delivery confirmation.
