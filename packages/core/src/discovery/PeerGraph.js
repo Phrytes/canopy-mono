@@ -3,19 +3,34 @@
  *
  * PeerRecord shape:
  * {
- *   pubKey?:       string,   // Ed25519 base64url  (null for A2A-only)
- *   url?:          string,   // HTTPS A2A URL      (null for native-only)
- *   type:          'native' | 'a2a' | 'hybrid',
- *   label?:        string,
- *   reachable:     boolean,  // default true
- *   lastSeen?:     number,   // unix-ms
- *   groups?:       string[],
- *   tier?:         string,   // trust tier from TrustRegistry
- *   skills?:       string[], // known skill IDs
- *   discoverable?: boolean,  // share this peer during gossip (default true)
- *   transports?:   Record<string, object>,  // name → config
- *   latency?:      Record<string, number>,  // transportName → lastLatencyMs
+ *   pubKey?:        string,   // Ed25519 base64url  (null for A2A-only)
+ *   url?:           string,   // HTTPS A2A URL      (null for native-only)
+ *   type:           'native' | 'a2a' | 'hybrid',
+ *   label?:         string,
+ *   reachable:      boolean,  // default true
+ *   lastSeen?:      number,   // unix-ms
+ *   groups?:        string[],
+ *   tier?:          string,   // trust tier from TrustRegistry
+ *   skills?:        string[], // known skill IDs
+ *   discoverable?:  boolean,  // share this peer during gossip (default true)
+ *   transports?:    Record<string, object>,  // name → config
+ *   latency?:       Record<string, number>,  // transportName → lastLatencyMs
+ *
+ *   // Oracle (Group T) — populated by GossipProtocol from signed claims:
+ *   knownPeers?:    string[], // pubkeys this peer claims to reach directly
+ *   knownPeersTs?:  number,   // LOCAL unix-ms at which knownPeers stops
+ *                             // being fresh (receivedAt + body.t). NOT a
+ *                             // wall-clock timestamp from the issuer —
+ *                             // see Design-v3/oracle-bridge-selection.md T1-b.
+ *   knownPeersSeq?: number,   // last accepted issuer sequence; used as
+ *                             // lastSeenSeq on the next verify (replay guard)
+ *   knownPeersSig?: string,   // base64url Ed25519 signature (for debug /
+ *                             // optional re-broadcast)
  * }
+ *
+ * The four knownPeers* fields are **replaced atomically** on upsert, not
+ * merged — a newer claim's peer list is authoritative. Upsert without the
+ * fields does not clobber existing values (standard spread-merge behaviour).
  *
  * storageBackend must implement: get(key), set(key, value), delete(key), list() → string[]
  * Pass null (or omit) to use a plain in-memory Map.
