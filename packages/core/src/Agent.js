@@ -34,6 +34,9 @@ import { handleMessage }                             from './protocol/messaging.
 import { handleSkillDiscovery }                      from './protocol/skillDiscovery.js';
 import { callSkill, handleTaskRequest, handleTaskOneWay } from './protocol/taskExchange.js';
 import { handlePubSub }                              from './protocol/pubSub.js';
+import { invokeWithHop }                             from './routing/invokeWithHop.js';
+import { registerRelayForward }                      from './skills/relayForward.js';
+import { PeerDiscovery }                             from './discovery/PeerDiscovery.js';
 
 export class Agent extends Emitter {
   #identity;
@@ -49,6 +52,7 @@ export class Agent extends Emitter {
   #storage       = null;   // StorageManager | null
   #config        = null;   // AgentConfig | null
   #routing       = null;   // RoutingStrategy | null
+  #discovery     = null;   // PeerDiscovery | null — lazy, via startDiscovery()
   #maxTaskTtl    = null;
   #pubSubHistory = 0;
   #started       = false;
@@ -319,6 +323,68 @@ export class Agent extends Emitter {
     if (result.state === 'failed') throw new Error(result.error ?? `Skill "${skillId}" failed`);
     return result.parts;
   }
+
+  /**
+   * Hop-aware invoke: tries direct first, falls back to relay-forward via a
+   * bridge peer (record.via or any reachable direct peer). Handles the
+   * "hello not yet done" case by auto-hello'ing once and retrying.
+   *
+   * See packages/core/src/routing/invokeWithHop.js for the full strategy.
+   *
+   * @param {string}   peerId
+   * @param {string}   skillId
+   * @param {Array|*}  [input]
+   * @param {object}   [opts]
+   * @returns {Promise<import('./Parts.js').Part[]>}
+   */
+  invokeWithHop(peerId, skillId, input = [], opts = {}) {
+    return invokeWithHop(this, peerId, skillId, Parts.wrap(input), opts);
+  }
+
+  /**
+   * Opt-in: register the 'relay-forward' skill so trusted peers can ask us
+   * to forward their messages to third parties we can reach directly.
+   * Idempotent — calling twice does nothing the second time.
+   *
+   * @param {object} [opts]
+   * @param {'never'|'authenticated'|'trusted'|`group:${string}`|'always'} [opts.policy]
+   *        Override for the allowRelayFor policy. Otherwise pulls from
+   *        agent.config.get('policy.allowRelayFor') and then 'never'.
+   */
+  enableRelayForward(opts = {}) {
+    if (this.#skills.get('relay-forward')) return this;
+    if (opts.policy !== undefined && this.#config?.set) {
+      this.#config.set('policy.allowRelayFor', opts.policy);
+    }
+    registerRelayForward(this, opts);
+    return this;
+  }
+
+  /**
+   * Opt-in: start the ping + gossip loops (PeerDiscovery). Also registers
+   * the 'peer-list' skill.  Idempotent — second call is a no-op.
+   *
+   * @param {object} [opts]
+   * @param {number} [opts.pingIntervalMs=30000]
+   * @param {number} [opts.gossipIntervalMs=60000]
+   * @param {number} [opts.maxGossipPeers=8]
+   * @returns {import('./discovery/PeerDiscovery.js').PeerDiscovery}
+   */
+  startDiscovery(opts = {}) {
+    if (this.#discovery) return this.#discovery;
+    this.#discovery = new PeerDiscovery({
+      agent:           this,
+      peerGraph:       this.#peers,
+      pingIntervalMs:  opts.pingIntervalMs,
+      gossipIntervalMs: opts.gossipIntervalMs,
+      maxGossipPeers:  opts.maxGossipPeers,
+    });
+    this.#discovery.start();
+    return this.#discovery;
+  }
+
+  /** The active PeerDiscovery instance, if startDiscovery() has been called. */
+  get discovery() { return this.#discovery; }
 
   /**
    * Send a one-way message (OW). No delivery confirmation.
