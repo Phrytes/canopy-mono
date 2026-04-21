@@ -540,3 +540,10 @@ Relay-in-path is fine for chat, wasteful for file transfer. WebRTC DataChannels 
 ## Open items (not blocking extraction)
 
 - iOS native counterparts for BLE/mDNS.
+- **Onion routing via `relay-forward`** (placeholder Group BB). Closes the
+  remaining privacy gap that Group Z doesn't address: bridges still *read*
+  the content they forward. Details, sketch, and blockers in
+  [`TODO-SECURITY.md`](./TODO-SECURITY.md). Worth doing when privacy from
+  bridges becomes a product requirement; overkill for current chat usage
+  since the relay server itself is already blind to payloads (E2E via
+  `nacl.box`).

@@ -587,16 +587,24 @@ Files:
 
 Exports:
 ```js
-signOrigin(identity, { target, skill, parts, ts }) → string   // base64url sig
+signOrigin(identity, { target, skill, parts, ts? })
+  → { originTs: number, sig: string }   // base64url sig + resolved ts
 
 verifyOrigin(
   { origin, sig, body: { v, target, skill, parts, ts } },
-  { expectedPubKey, now, windowMs }
+  { expectedPubKey, now?, windowMs? }
 ) → { ok: true } | { ok: false, reason: string }
+
+// Constants:
+ORIGIN_SIG_VERSION       = 1
+DEFAULT_ORIGIN_WINDOW_MS = 10 * 60_000
 ```
 
 Helpers reuse `canonicalize` from `core/Envelope.js`; signing uses the
-existing `AgentIdentity.sign` / static `AgentIdentity.verify`.
+existing `AgentIdentity.sign` / static `AgentIdentity.verify`. Signer
+returns both `sig` and the timestamp it signed — callers ship both with
+the RQ payload (`_originSig`, `_originTs`), so coupling them at the
+return site avoids off-by-one bugs where the caller re-reads the clock.
 
 Tests (minimum):
 - Sign then verify round-trip → ok.
