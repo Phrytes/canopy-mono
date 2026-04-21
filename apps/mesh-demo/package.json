@@ -1,0 +1,45 @@
+{
+  "name": "mesh-demo",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "start": "react-native start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@canopy/core": "file:../../packages/core",
+    "@canopy/react-native": "file:../../packages/react-native",
+    "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-navigation/native": "^7.0.14",
+    "@react-navigation/native-stack": "^7.2.0",
+    "@scure/bip39": "^1.4.0",
+    "ed2curve": "^0.3.0",
+    "expo": "^55.0.15",
+    "expo-dev-client": "^55.0.27",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-native": "0.83.4",
+    "react-native-ble-plx": "^3.4.0",
+    "react-native-keychain": "^9.2.2",
+    "react-native-safe-area-context": "~5.6.2",
+    "react-native-screens": "~4.23.0",
+    "react-native-web": "^0.21.0",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@babel/preset-env": "^7.25.0",
+    "@react-native/babel-preset": "^0.83.0",
+    "@react-native/eslint-config": "^0.83.0",
+    "eslint": "^8.57.0",
+    "vitest": "^4.1.4"
+  },
+  "engines": {
+    "node": ">=20.19.4"
+  }
+}

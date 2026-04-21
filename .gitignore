@@ -2,3 +2,16 @@ node_modules/
 *.agentnet.yaml
 .env
 .vercel
+
+# editor / os
+.obsidian/
+.~lock.*#
+.DS_Store
+
+# personal
+session-notes/
+.claude/
+
+# large assets kept out of git
+Architectural Design/*.pdf
+apps/*/error.*

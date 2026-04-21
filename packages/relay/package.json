@@ -1,0 +1,25 @@
+{
+  "name": "@canopy/relay",
+  "version": "0.1.0",
+  "description": "Relay + rendezvous server for the canopy agent SDK",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@canopy/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@canopy/core": "file:../core",
+    "vitest": "^2.1.0",
+    "ws": "^8.20.0"
+  },
+  "dependencies": {
+    "ws": "^8.20.0"
+  }
+}

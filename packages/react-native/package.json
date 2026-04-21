@@ -1,0 +1,28 @@
+{
+  "name": "@canopy/react-native",
+  "version": "0.1.0",
+  "description": "React Native extras for the canopy agent SDK",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@canopy/core": "^0.1.0",
+    "@react-native-async-storage/async-storage": "*",
+    "react-native-ble-plx": "*",
+    "react-native-keychain": "*"
+  },
+  "peerDependenciesMeta": {
+    "@react-native-async-storage/async-storage": { "optional": false },
+    "react-native-ble-plx": { "optional": false },
+    "react-native-keychain": { "optional": false }
+  },
+  "devDependencies": {
+    "@canopy/core": "file:../core",
+    "vitest": "^2.1.0"
+  }
+}

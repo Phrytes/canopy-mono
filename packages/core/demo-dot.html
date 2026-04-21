@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>@canopy — dot control demo</title>
+<script type="importmap">
+{
+  "imports": {
+    "tweetnacl":                      "https://esm.sh/tweetnacl@1.0.3",
+    "tweetnacl-util":                 "https://esm.sh/tweetnacl-util@0.15.1",
+    "ed2curve":                       "https://esm.sh/ed2curve@0.3.0?deps=tweetnacl@1.0.3",
+    "@scure/bip39":                   "https://esm.sh/@scure/bip39@1.4.0",
+    "@scure/bip39/wordlists/english": "https://esm.sh/@scure/bip39@1.4.0/wordlists/english",
+    "@canopy/core":                 "./src/index.js"
+  }
+}
+</script>
+<style>
+:root {
+  --bg:#0f1117; --panel:#1a1d27; --panel2:#141720;
+  --border:#2d3048; --accent:#5b6af9; --green:#4caf82;
+  --red:#e05c5c; --yellow:#e0b860; --text:#d4d8f0; --dim:#6b7094;
+  --mono:'JetBrains Mono','Fira Code',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;
+     font-size:13px;display:flex;flex-direction:column;height:100dvh;overflow:hidden;
+     touch-action:none}
+
+/* ── header ── */
+header{padding:9px 16px;border-bottom:1px solid var(--border);
+       display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--panel2)}
+header h1{font-size:14px;font-weight:600;color:#fff}
+.badge{font-size:11px;background:var(--accent);color:#fff;padding:2px 8px;
+       border-radius:99px;font-family:var(--mono)}
+#hdr-status{margin-left:auto;font-size:11px;color:var(--dim);font-family:var(--mono)}
+
+/* ── setup ── */
+#setup{flex:1;display:flex;flex-direction:column;align-items:center;
+       justify-content:center;gap:16px;padding:24px;overflow-y:auto}
+#setup h2{font-size:15px;font-weight:600}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+      padding:18px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px}
+.card h3{font-size:13px;font-weight:600;color:#fff}
+.card p{color:var(--dim);font-size:12px;line-height:1.6}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--dim)}
+input,select{background:var(--bg);border:1px solid var(--border);border-radius:6px;
+             color:var(--text);padding:7px 10px;font-size:12px;width:100%;outline:none;font-family:inherit}
+input:focus,select:focus{border-color:var(--accent)}
+#setup-err{color:var(--red);font-size:12px;display:none;max-width:480px;word-break:break-all}
+button{background:var(--accent);color:#fff;border:none;border-radius:6px;
+       padding:7px 14px;font-size:12px;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+button:hover{opacity:.85}
+button.sec{background:var(--panel);border:1px solid var(--border);color:var(--text)}
+button.sec:hover{border-color:var(--accent)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.radio-group{display:flex;flex-direction:column;gap:8px}
+.radio-row{display:flex;align-items:flex-start;gap:8px;cursor:pointer}
+.radio-row input[type=radio]{width:auto;margin-top:2px;accent-color:var(--accent)}
+.radio-row .rl{display:flex;flex-direction:column;gap:2px}
+.radio-row .rl span{font-size:12px;color:var(--text)}
+.radio-row .rl small{font-size:11px;color:var(--dim)}
+
+/* ── main ── */
+#main{flex:1;display:none;flex-direction:column;overflow:hidden}
+#main.ready{display:flex}
+
+/* ── topbar ── */
+#topbar{flex-shrink:0;display:flex;align-items:center;gap:12px;padding:8px 14px;
+        border-bottom:1px solid var(--border);background:var(--panel2);flex-wrap:wrap}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.stat-val{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text)}
+.stat-val.ok{color:var(--green)}
+.stat-val.warn{color:var(--yellow)}
+.stat-val.err{color:var(--red)}
+.divider{width:1px;height:32px;background:var(--border);flex-shrink:0}
+#peer-bar{display:flex;gap:6px;align-items:center;flex:1;overflow:hidden;flex-wrap:wrap}
+.peer-chip{font-family:var(--mono);font-size:11px;background:var(--panel);
+           border:1px solid var(--border);border-radius:4px;padding:3px 8px;
+           cursor:pointer;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis;
+           transition:border-color .15s,color .15s}
+.peer-chip:hover{border-color:var(--accent)}
+.peer-chip.connecting{border-color:var(--yellow);color:var(--yellow)}
+.peer-chip.connected{border-color:var(--green);color:var(--green)}
+.peer-chip.self{color:var(--dim);cursor:default}
+
+/* ── canvas area ── */
+#canvas-wrap{flex:1;position:relative;overflow:hidden;touch-action:none}
+canvas#dot-canvas{display:block;width:100%;height:100%;touch-action:none}
+#canvas-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+            pointer-events:none}
+#canvas-msg p{font-size:14px;color:var(--dim);text-align:center;line-height:1.8;
+              background:rgba(15,17,23,.7);padding:16px 24px;border-radius:8px}
+#canvas-msg kbd{background:var(--panel);border:1px solid var(--border);border-radius:4px;
+               padding:2px 7px;font-family:var(--mono);font-size:12px;color:var(--text)}
+
+/* ── latency chart ── */
+#lat-canvas{height:36px;display:block}
+
+/* ── bottom ── */
+#bottom{flex-shrink:0;border-top:1px solid var(--border);display:flex;
+        max-height:130px;background:var(--panel2)}
+#info-panel{flex:0 0 240px;border-right:1px solid var(--border);padding:8px 12px;
+            display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+#info-panel h4{font-size:10px;color:var(--dim);text-transform:uppercase;
+               letter-spacing:.05em;margin-bottom:2px}
+.ir{display:flex;justify-content:space-between;font-size:11px;gap:4px}
+.ir .l{color:var(--dim);flex-shrink:0}
+.ir .v{font-family:var(--mono);text-align:right;overflow:hidden;text-overflow:ellipsis}
+#log-area{flex:1;font-family:var(--mono);font-size:11px;color:var(--dim);
+          overflow-y:auto;padding:8px 12px;line-height:1.75}
+.ts{color:#3d4260}
+.ok{color:var(--green)}
+.err{color:var(--red)}
+.inf{color:var(--accent)}
+.warn{color:var(--yellow)}
+
+/* ── storage tab indicator ── */
+#storage-badge{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--panel);
+               border:1px solid var(--border);color:var(--dim);font-family:var(--mono);
+               white-space:nowrap}
+#storage-badge.active{border-color:var(--green);color:var(--green)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>@canopy</h1>
+  <span class="badge">dot control</span>
+  <span id="hdr-status">not started</span>
+</header>
+
+<!-- Setup -->
+<div id="setup">
+  <h2>Real-time dot control — latency demo</h2>
+  <div class="card">
+    <h3>How it works</h3>
+    <p>Open this page on <b>two or more devices</b> connected to the same relay.
+    Each device controls its own coloured dot using arrow keys or <b>touch &amp; drag</b>.
+    When connected, you see all dots in real time — the latency you feel is the
+    agent message round-trip time.</p>
+    <p>Click a peer in the relay peer bar after connecting to link up.</p>
+  </div>
+  <div class="card">
+    <h3>Transport</h3>
+    <label>Relay URL
+      <input id="relay-url" placeholder="ws://localhost:8787">
+    </label>
+    <div class="radio-group" style="margin-top:4px">
+      <label class="radio-row">
+        <input type="radio" name="transport" value="relay" checked>
+        <div class="rl"><span>Relay only</span><small>All messages go via the relay server</small></div>
+      </label>
+      <label class="radio-row">
+        <input type="radio" name="transport" value="rendezvous">
+        <div class="rl"><span>Relay + WebRTC (rendezvous)</span><small>Relay signals a direct P2P WebRTC channel — lower latency after handshake</small></div>
+      </label>
+    </div>
+  </div>
+  <div id="setup-err"></div>
+  <button id="start-btn" style="max-width:480px;width:100%;padding:11px;font-size:13px">Connect to relay</button>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <!-- Top stats -->
+  <div id="topbar">
+    <div class="stat">
+      <div class="stat-label">My address</div>
+      <div class="stat-val" id="stat-addr" style="font-size:10px;max-width:130px;overflow:hidden;text-overflow:ellipsis">—</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat">
+      <div class="stat-label">Ping RTT</div>
+      <div class="stat-val" id="stat-ping">—</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat">
+      <div class="stat-label">Move latency</div>
+      <div class="stat-val" id="stat-lat">—</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat">
+      <div class="stat-label">Moves/s</div>
+      <div class="stat-val" id="stat-mps">0</div>
+    </div>
+    <div class="divider"></div>
+    <canvas id="lat-canvas" width="120" height="36" title="Recent move RTTs"></canvas>
+    <div class="divider"></div>
+    <span id="storage-badge">storage: off</span>
+    <div class="divider"></div>
+    <div id="peer-bar"><span style="font-size:11px;color:var(--dim)">Relay peers:</span></div>
+  </div>
+
+  <!-- Canvas -->
+  <div id="canvas-wrap">
+    <canvas id="dot-canvas"></canvas>
+    <div id="canvas-msg">
+      <p id="canvas-hint">Connecting…</p>
+    </div>
+  </div>
+
+  <!-- Bottom info + log -->
+  <div id="bottom">
+    <div id="info-panel">
+      <h4>Session</h4>
+      <div class="ir"><span class="l">Peers</span><span class="v" id="inf-peers">0</span></div>
+      <div class="ir"><span class="l">Moves sent</span><span class="v" id="inf-sent">0</span></div>
+      <div class="ir"><span class="l">Moves recv</span><span class="v" id="inf-recv">0</span></div>
+      <div class="ir"><span class="l">Min RTT</span><span class="v" id="inf-min">—</span></div>
+      <div class="ir"><span class="v" id="inf-mypos" style="color:var(--accent)">me: —</span></div>
+    </div>
+    <div id="log-area"></div>
+  </div>
+</div>
+
+<script type="module">
+import {
+  Agent, AgentIdentity, VaultMemory,
+  RelayTransport, RendezvousTransport,
+  DataPart, Parts,
+} from '@canopy/core';
+import { ping as sdkPing } from './src/protocol/ping.js';
+
+// ── Peer colour palette ────────────────────────────────────────────────────────
+const PALETTE = ['#4caf82','#e0b860','#e05c5c','#a78bfa','#38bdf8','#f472b6','#fb923c'];
+
+// ── State ──────────────────────────────────────────────────────────────────────
+
+let agent         = null;
+let relay         = null;      // RelayTransport (always, even in rendezvous mode)
+let rdvTransport  = null;      // RendezvousTransport (rendezvous mode only)
+let myDot         = { x: 0.5, y: 0.5 };
+const peers       = new Map(); // addr → { x, y, color, label }
+let peerColorIdx  = 0;
+
+const SPEED = 16;
+const DOT_R = 14;
+
+// Stats
+let movesSent = 0, movesRecv = 0;
+const latSamples = [];
+let minRtt = Infinity;
+let recentMovesSent = 0;
+
+// Canvas
+let canvas, ctx;
+let isTouching = false;
+
+// Storage
+let idbSource = null;
+
+// ── Setup ──────────────────────────────────────────────────────────────────────
+
+{
+  const u = new URL(location.href);
+  const p = u.protocol === 'https:' ? 'wss:' : 'ws:';
+  document.getElementById('relay-url').value = `${p}//${u.host}`;
+}
+
+document.getElementById('start-btn').onclick = async () => {
+  const btn = document.getElementById('start-btn');
+  btn.textContent = 'Connecting…'; btn.disabled = true;
+  document.getElementById('setup-err').style.display = 'none';
+  try { await startAgent(); }
+  catch (err) {
+    const el = document.getElementById('setup-err');
+    el.textContent = 'Error: ' + (err?.message ?? err);
+    el.style.display = '';
+    btn.textContent = 'Connect to relay'; btn.disabled = false;
+    console.error(err);
+  }
+};
+
+// ── Start agent ────────────────────────────────────────────────────────────────
+
+async function startAgent() {
+  const relayUrl    = document.getElementById('relay-url').value.trim();
+  const useRdv      = document.querySelector('input[name=transport]:checked').value === 'rendezvous';
+  const vault       = new VaultMemory();
+  const identity    = await AgentIdentity.generate(vault);
+
+  relay = new RelayTransport({ relayUrl, identity });
+
+  let transport;
+  if (useRdv) {
+    rdvTransport = new RendezvousTransport({ signalingTransport: relay, identity });
+    transport    = rdvTransport;
+    await relay.connect();
+    await rdvTransport.connect();
+    log(`<span class="inf">transport: relay + WebRTC rendezvous</span>`);
+  } else {
+    transport = relay;
+    log(`<span class="inf">transport: relay only</span>`);
+  }
+
+  agent = new Agent({ identity, transport });
+
+  // ── 'move' skill: peer updates our view of their dot ───────────────────────
+  agent.register('move', async ({ parts, from }) => {
+    const d = Parts.data(parts);
+    if (d?.x != null && d?.y != null && from) {
+      let peer = peers.get(from);
+      if (!peer) {
+        peer = { x: 0.5, y: 0.5, color: PALETTE[peerColorIdx++ % PALETTE.length], label: from.slice(0,10) };
+        peers.set(from, peer);
+        updatePeerStats();
+      }
+      peer.x = Math.max(0, Math.min(1, d.x));
+      peer.y = Math.max(0, Math.min(1, d.y));
+      movesRecv++;
+      document.getElementById('inf-recv').textContent = movesRecv;
+      drawDots();
+      hideMsgOverlay();
+    }
+    return [DataPart({ ack: true, ts: d?.ts })];
+  }, { visibility: 'public', description: 'Receive dot position from peer' });
+
+  // ── 'ping' skill ───────────────────────────────────────────────────────────
+  agent.register('ping', async () => [DataPart({ ts: Date.now() })],
+    { visibility: 'public' });
+
+  agent.on('error', err => log(`<span class="err">agent error: ${esc(err?.message ?? err)}</span>`));
+  transport.on('security-error', err =>
+    log(`<span class="err">security: ${esc(err?.code)} ${esc(err?.message)}</span>`));
+
+  await agent.start();
+
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('main').classList.add('ready');
+  document.getElementById('hdr-status').textContent = useRdv ? 'relay+rtc · connected' : 'relay · connected';
+  document.getElementById('stat-addr').textContent = agent.address;
+  document.getElementById('stat-addr').title = agent.address;
+
+  initCanvas();
+  await initStorage();
+
+  setHint('Connected to relay. Click a peer in the top bar to link up.<br>Then use <kbd>arrow keys</kbd> or <b>touch &amp; drag</b> on the canvas.');
+  listenRelayPeers(relayUrl);
+  startMpsCounter();
+}
+
+// ── Storage (IndexedDB) ────────────────────────────────────────────────────────
+
+async function initStorage() {
+  try {
+    const { IndexedDBSource } = await import('./src/storage/IndexedDBSource.js');
+    idbSource = new IndexedDBSource({ dbName: 'dot-demo', storeName: 'state' });
+    await idbSource.open();
+
+    const saved = await idbSource.read('myDot');
+    if (saved) {
+      try {
+        const pos = JSON.parse(saved);
+        if (pos?.x != null && pos?.y != null) {
+          myDot.x = pos.x; myDot.y = pos.y;
+          log(`<span class="ok">storage: restored position from IndexedDB</span>`);
+        }
+      } catch {}
+    }
+
+    const badge = document.getElementById('storage-badge');
+    badge.textContent = 'storage: IDB';
+    badge.classList.add('active');
+
+    // Auto-save position every 3 s
+    setInterval(async () => {
+      if (!idbSource) return;
+      try { await idbSource.write('myDot', JSON.stringify({ x: myDot.x, y: myDot.y })); }
+      catch {}
+    }, 3_000);
+  } catch (err) {
+    log(`<span class="warn">storage: IndexedDB unavailable (${esc(err?.message)})</span>`);
+  }
+}
+
+// ── Relay peer bar ─────────────────────────────────────────────────────────────
+
+function listenRelayPeers(relayUrl) {
+  try {
+    const ws = new WebSocket(relayUrl);
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'register', address: '__dot_' + Date.now() }));
+    ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'registered') ws.send(JSON.stringify({ type: 'peer-list' }));
+        if (msg.type === 'peer-list') renderPeerBar(msg.peers ?? []);
+      } catch {}
+    };
+    ws.onerror = () => {};
+    // Refresh peer list every 5 s
+    setInterval(() => {
+      if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'peer-list' }));
+    }, 5_000);
+  } catch {}
+}
+
+function renderPeerBar(peerList) {
+  const myAddr = agent?.address ?? '';
+  const bar    = document.getElementById('peer-bar');
+  bar.innerHTML = '<span style="font-size:11px;color:var(--dim)">Relay peers:</span>';
+
+  peerList.filter(p => !p.startsWith('__dot_')).forEach(p => {
+    const chip    = document.createElement('span');
+    const isSelf  = p === myAddr;
+    const isCon   = peers.has(p);
+    chip.className = `peer-chip${isSelf ? ' self' : isCon ? ' connected' : ''}`;
+    chip.textContent = isSelf ? `${p.slice(0,14)}… (you)` : p.slice(0,14) + '…';
+    chip.title = p;
+    if (!isSelf) {
+      if (isCon) {
+        const dot = peers.get(p);
+        chip.style.borderColor = dot.color;
+        chip.style.color = dot.color;
+      }
+      chip.onclick = () => connectToPeer(p);
+    }
+    bar.appendChild(chip);
+  });
+}
+
+function updatePeerStats() {
+  document.getElementById('inf-peers').textContent = peers.size;
+}
+
+// ── Connect to peer ────────────────────────────────────────────────────────────
+
+const connectingPeers = new Set();
+
+async function connectToPeer(addr) {
+  if (peers.has(addr) || connectingPeers.has(addr)) return;
+  connectingPeers.add(addr);
+  log(`<span class="inf">hello → ${esc(addr.slice(0,16))}…</span>`);
+
+  // Mark chip as connecting
+  const chips = document.querySelectorAll('.peer-chip');
+  chips.forEach(c => { if (c.title === addr) c.classList.add('connecting'); });
+
+  try {
+    if (rdvTransport) {
+      log(`<span class="inf">rtc: negotiating WebRTC with ${esc(addr.slice(0,10))}…</span>`);
+      await rdvTransport.connectToPeer(addr);
+      log(`<span class="ok">rtc: channel open — switching to P2P</span>`);
+    }
+    await agent.hello(addr, 15_000);
+
+    if (!peers.has(addr)) {
+      peers.set(addr, { x: 0.5, y: 0.5, color: PALETTE[peerColorIdx++ % PALETTE.length], label: addr.slice(0,10) });
+    }
+    updatePeerStats();
+    document.getElementById('hdr-status').textContent = rdvTransport ? 'rtc · linked' : 'relay · linked';
+    log(`<span class="ok">linked to ${esc(addr.slice(0,16))}… — move your dot!</span>`);
+    hideMsgOverlay();
+    startPingLoop(addr);
+  } catch (err) {
+    log(`<span class="err">hello failed: ${esc(err?.message)}</span>`);
+    peers.delete(addr);
+  } finally {
+    connectingPeers.delete(addr);
+  }
+}
+
+// ── Arrow key control ──────────────────────────────────────────────────────────
+
+const keysDown = new Set();
+let   moveLoop = null;
+let   sendLock = false;
+
+document.addEventListener('keydown', e => {
+  if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) return;
+  e.preventDefault();
+  keysDown.add(e.key);
+  if (!moveLoop) moveLoop = setInterval(tickMove, 40);
+});
+
+document.addEventListener('keyup', e => {
+  keysDown.delete(e.key);
+  if (keysDown.size === 0 && moveLoop) { clearInterval(moveLoop); moveLoop = null; }
+});
+
+function tickMove() {
+  if (peers.size === 0 || !agent) return;
+
+  const cw = canvas?.width ?? 800, ch = canvas?.height ?? 600;
+  const dx = SPEED / cw, dy = SPEED / ch;
+
+  let moved = false;
+  if (keysDown.has('ArrowLeft'))  { myDot.x = Math.max(0, myDot.x - dx); moved = true; }
+  if (keysDown.has('ArrowRight')) { myDot.x = Math.min(1, myDot.x + dx); moved = true; }
+  if (keysDown.has('ArrowUp'))    { myDot.y = Math.max(0, myDot.y - dy); moved = true; }
+  if (keysDown.has('ArrowDown'))  { myDot.y = Math.min(1, myDot.y + dy); moved = true; }
+
+  if (moved) onMyDotMoved();
+}
+
+// ── Touch control ──────────────────────────────────────────────────────────────
+
+function initTouchControls() {
+  canvas.addEventListener('touchstart', onTouch, { passive: false });
+  canvas.addEventListener('touchmove',  onTouch, { passive: false });
+  canvas.addEventListener('touchend',   () => { isTouching = false; }, { passive: true });
+}
+
+function onTouch(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  if (!touch) return;
+  isTouching = true;
+  const rect = canvas.getBoundingClientRect();
+  myDot.x = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+  myDot.y = Math.max(0, Math.min(1, (touch.clientY - rect.top)  / rect.height));
+  onMyDotMoved();
+}
+
+// Mouse drag support (for testing on desktop)
+let mouseDragging = false;
+canvas?.addEventListener('mousedown', e => { mouseDragging = true; onMouse(e); });
+document.addEventListener('mousemove', e => { if (mouseDragging) onMouse(e); });
+document.addEventListener('mouseup',   () => { mouseDragging = false; });
+
+function onMouse(e) {
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  myDot.x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  myDot.y = Math.max(0, Math.min(1, (e.clientY - rect.top)  / rect.height));
+  onMyDotMoved();
+}
+
+function onMyDotMoved() {
+  drawDots();
+  hideMsgOverlay();
+  document.getElementById('inf-mypos').textContent =
+    `me: ${Math.round(myDot.x*100)}%,${Math.round(myDot.y*100)}%`;
+
+  broadcastPosition();
+}
+
+// ── Broadcast position to all connected peers ──────────────────────────────────
+
+function broadcastPosition() {
+  if (peers.size === 0 || !agent || sendLock) return;
+  sendLock = true;
+  const t0 = Date.now();
+  const calls = [...peers.keys()].map(addr =>
+    agent.invoke(addr, 'move', [DataPart({ x: myDot.x, y: myDot.y, ts: t0 })], { timeout: 3_000 })
+      .then(() => {
+        const rtt = Date.now() - t0;
+        recordLatency(rtt);
+        movesSent++;
+        recentMovesSent++;
+        document.getElementById('inf-sent').textContent = movesSent;
+      })
+      .catch(err => log(`<span class="err">move failed: ${esc(err?.message)}</span>`))
+  );
+  Promise.allSettled(calls).finally(() => { sendLock = false; });
+}
+
+// ── Ping ───────────────────────────────────────────────────────────────────────
+
+function startPingLoop(addr) {
+  runPing(addr);
+  setInterval(() => runPing(addr), 3_000);
+}
+
+async function runPing(addr) {
+  if (!agent) return;
+  try {
+    const t0  = Date.now();
+    await sdkPing(agent, addr, 5_000);
+    const rtt = Date.now() - t0;
+    const el  = document.getElementById('stat-ping');
+    el.textContent = rtt + 'ms';
+    el.className   = 'stat-val ' + (rtt < 60 ? 'ok' : rtt < 200 ? 'warn' : 'err');
+  } catch {
+    document.getElementById('stat-ping').textContent = 'timeout';
+  }
+}
+
+// ── Canvas ─────────────────────────────────────────────────────────────────────
+
+function initCanvas() {
+  canvas = document.getElementById('dot-canvas');
+  ctx    = canvas.getContext('2d');
+  resize();
+  window.addEventListener('resize', resize);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+  initTouchControls();
+  drawDots();
+}
+
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  drawDots();
+}
+
+function drawDots() {
+  if (!ctx) return;
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = '#1e2235'; ctx.lineWidth = 1;
+  const step = 40;
+  for (let x = 0; x < w; x += step) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  for (let y = 0; y < h; y += step) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+
+  // Peer dots
+  for (const [, p] of peers) {
+    drawDot(p.x * w, p.y * h, p.color, p.label);
+  }
+
+  // My dot (accent blue) — drawn on top
+  drawDot(myDot.x * w, myDot.y * h, '#5b6af9', 'you');
+}
+
+function drawDot(cx, cy, color, label) {
+  ctx.shadowColor = color; ctx.shadowBlur = 20;
+  ctx.fillStyle   = color;
+  ctx.beginPath();
+  ctx.arc(cx, cy, DOT_R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Label below dot
+  ctx.fillStyle = color;
+  ctx.font = 'bold 10px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(label, cx, cy + DOT_R + 3);
+}
+
+function hideMsgOverlay() {
+  document.getElementById('canvas-msg').style.display = 'none';
+}
+
+function setHint(html) {
+  document.getElementById('canvas-hint').innerHTML = html;
+  document.getElementById('canvas-msg').style.display = 'flex';
+}
+
+// ── Latency chart ──────────────────────────────────────────────────────────────
+
+function recordLatency(rtt) {
+  latSamples.push(rtt);
+  if (latSamples.length > 60) latSamples.shift();
+  minRtt = Math.min(minRtt, rtt);
+
+  const avg = Math.round(latSamples.reduce((a,b)=>a+b,0) / latSamples.length);
+  const el  = document.getElementById('stat-lat');
+  el.textContent = avg + 'ms avg';
+  el.className   = 'stat-val ' + (avg < 60 ? 'ok' : avg < 200 ? 'warn' : 'err');
+  document.getElementById('inf-min').textContent = minRtt + 'ms';
+  drawLatChart();
+}
+
+function drawLatChart() {
+  const lc = document.getElementById('lat-canvas');
+  const lx = lc.getContext('2d');
+  const w = lc.width, h = lc.height;
+  lx.clearRect(0, 0, w, h);
+  if (!latSamples.length) return;
+  const mx  = Math.max(...latSamples, 1);
+  const bw  = w / Math.max(latSamples.length, 1);
+  latSamples.forEach((v, i) => {
+    const bh  = Math.max(2, (v / mx) * h);
+    lx.fillStyle = v < 60 ? '#4caf82' : v < 200 ? '#e0b860' : '#e05c5c';
+    lx.fillRect(i * bw, h - bh, Math.max(1, bw - 1), bh);
+  });
+}
+
+function startMpsCounter() {
+  setInterval(() => {
+    document.getElementById('stat-mps').textContent = recentMovesSent;
+    recentMovesSent = 0;
+  }, 1_000);
+}
+
+// ── Log ────────────────────────────────────────────────────────────────────────
+
+function log(html) {
+  const el = document.getElementById('log-area');
+  const ts = new Date().toTimeString().slice(0, 8);
+  el.insertAdjacentHTML('beforeend', `<div><span class="ts">${ts}</span>  ${html}</div>`);
+  el.scrollTop = el.scrollHeight;
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

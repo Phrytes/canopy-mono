@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@canopy/core — transport demo</title>
+<script type="importmap">
+{
+  "imports": {
+    "tweetnacl":                      "https://esm.sh/tweetnacl@1.0.3",
+    "tweetnacl-util":                 "https://esm.sh/tweetnacl-util@0.15.1",
+    "ed2curve":                       "https://esm.sh/ed2curve@0.3.0?deps=tweetnacl@1.0.3",
+    "@scure/bip39":                   "https://esm.sh/@scure/bip39@1.4.0",
+    "@scure/bip39/wordlists/english": "https://esm.sh/@scure/bip39@1.4.0/wordlists/english",
+    "@canopy/core":                 "./src/index.js"
+  }
+}
+</script>
+<style>
+:root {
+  --bg: #0f1117; --panel: #1a1d27; --panel2: #141720;
+  --border: #2d3048; --accent: #5b6af9; --green: #4caf82;
+  --red: #e05c5c; --yellow: #e0b860; --text: #d4d8f0; --dim: #6b7094;
+  --mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: system-ui,sans-serif;
+       font-size: 13px; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+header { padding: 10px 16px; border-bottom: 1px solid var(--border);
+         display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+header h1 { font-size: 14px; font-weight: 600; color: #fff; }
+.badge { font-size: 11px; background: var(--accent); color: #fff; padding: 2px 8px;
+         border-radius: 99px; font-family: var(--mono); }
+#status { margin-left: auto; font-size: 12px; color: var(--dim); }
+
+/* ── setup screen ── */
+#setup { flex: 1; display: flex; flex-direction: column; align-items: center;
+         justify-content: center; gap: 20px; padding: 24px; overflow-y: auto; }
+#setup h2 { font-size: 16px; font-weight: 600; }
+.setup-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+              padding: 20px; width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 12px; }
+.setup-card h3 { font-size: 13px; font-weight: 600; color: #fff; }
+.setup-card p  { color: var(--dim); font-size: 12px; line-height: 1.6; }
+label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--dim); }
+input, select { background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+                color: var(--text); padding: 7px 10px; font-size: 13px; width: 100%; outline: none; }
+input:focus, select:focus { border-color: var(--accent); }
+.row { display: flex; gap: 8px; }
+.row label { flex: 1; }
+
+/* ── main layout ── */
+#main { flex: 1; display: none; grid-template-columns: 1fr 1fr; gap: 0;
+        overflow: hidden; }
+#main.ready { display: grid; }
+
+.agent-pane { display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
+.agent-pane:last-child { border-right: none; }
+.pane-header { padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel2);
+               display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.pane-title { font-weight: 600; font-size: 13px; color: #fff; }
+.pane-addr  { font-family: var(--mono); font-size: 10px; color: var(--dim); flex: 1;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+.dot.on { background: var(--green); }
+
+.pane-body { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+
+/* ── section ── */
+section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+          overflow: hidden; flex-shrink: 0; }
+section header { padding: 7px 12px; font-size: 11px; font-weight: 600; color: var(--dim);
+                 text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border);
+                 background: transparent; border-radius: 0; }
+section .inner { padding: 10px 12px; }
+
+/* ── transport table ── */
+.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tbl th { color: var(--dim); font-weight: 500; text-align: left; padding: 3px 0; }
+.tbl td { padding: 3px 6px 3px 0; vertical-align: middle; }
+.tbl tr td:first-child { font-family: var(--mono); color: var(--accent); }
+.pill { display: inline-block; border-radius: 99px; padding: 1px 7px; font-size: 10px; }
+.pill.ok   { background: #1d3d2c; color: var(--green); }
+.pill.deg  { background: #3d2820; color: var(--red);   }
+.pill.idle { background: #252836; color: var(--dim);   }
+.mono { font-family: var(--mono); }
+
+/* ── peer graph ── */
+.peer-list { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.peer-row { display: flex; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.peer-row:last-child { border-bottom: none; }
+.peer-id  { font-family: var(--mono); color: var(--accent); flex: 1; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; }
+.peer-lat { font-family: var(--mono); font-size: 10px; color: var(--dim); min-width: 48px; text-align: right; }
+
+/* ── log ── */
+.log { font-family: var(--mono); font-size: 11px; color: var(--dim); max-height: 120px;
+       overflow-y: auto; line-height: 1.7; }
+.log .ts  { color: #3d4260; }
+.log .ok  { color: var(--green); }
+.log .err { color: var(--red); }
+.log .inf { color: var(--accent); }
+.log .rout{ color: var(--yellow); }
+
+/* ── send form ── */
+.send-row { display: flex; gap: 6px; }
+.send-row input  { flex: 1; }
+.send-row select { width: auto; }
+
+/* ── routing display ── */
+.route-box { font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
+.route-row { display: flex; gap: 8px; align-items: center; }
+.route-label { color: var(--dim); min-width: 70px; }
+.route-val   { font-family: var(--mono); color: var(--yellow); }
+
+/* ── button ── */
+button { background: var(--accent); color: #fff; border: none; border-radius: 6px;
+         padding: 7px 14px; font-size: 12px; cursor: pointer; white-space: nowrap; transition: opacity .15s; }
+button:hover { opacity: .85; }
+button.sec   { background: var(--panel); border: 1px solid var(--border); color: var(--text); }
+button.sec:hover { border-color: var(--accent); }
+button.danger{ background: #3d1a1a; border: 1px solid var(--red); color: var(--red); }
+.btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── identity section ── */
+.id-block { font-size: 11px; font-family: var(--mono); color: var(--dim); word-break: break-all; line-height: 1.8; }
+.id-block .key-label { color: var(--text); }
+
+/* ── routing vis ── */
+#routing-vis { font-size: 12px; border-top: 1px solid var(--border); padding: 8px 12px; flex-shrink: 0;
+               display: none; background: var(--panel2); }
+#routing-vis.show { display: block; }
+#routing-vis h4 { font-size: 11px; color: var(--dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+#routing-vis table { width: 100%; border-collapse: collapse; }
+#routing-vis td, #routing-vis th { padding: 2px 8px; font-family: var(--mono); font-size: 11px; }
+#routing-vis th { color: var(--dim); font-weight: 500; text-align: left; }
+
+/* ── shared relay peers ── */
+#relay-peers { flex-shrink: 0; padding: 8px 16px; border-top: 1px solid var(--border);
+               font-size: 11px; display: none; }
+#relay-peers.show { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+#relay-peers .rp-label { color: var(--dim); }
+#relay-peers .rp-addr  { font-family: var(--mono); color: var(--accent); background: var(--panel);
+                         border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px;
+                         cursor: pointer; }
+#relay-peers .rp-addr:hover { border-color: var(--accent); }
+#relay-peers .rp-addr.self  { color: var(--green); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>@canopy/core</h1>
+  <span class="badge">transport demo</span>
+  <span id="status">setting up…</span>
+</header>
+
+<!-- ── Setup screen ── -->
+<div id="setup">
+  <h2>Configure agent</h2>
+
+  <div class="setup-card">
+    <h3>Transport</h3>
+    <p>Choose how this agent communicates. <b>Internal</b> creates two agents
+    in the same page. <b>Relay</b> connects to the WebSocket relay server —
+    open multiple tabs or your phone to the same URL.</p>
+    <label>Mode
+      <select id="mode-select">
+        <option value="internal">Internal (two in-page agents)</option>
+        <option value="relay" selected>Relay (cross-tab / cross-device)</option>
+      </select>
+    </label>
+    <div id="relay-opts">
+      <label>Relay URL
+        <input id="relay-url" value="" placeholder="ws://localhost:8787">
+      </label>
+    </div>
+  </div>
+
+  <div class="setup-card">
+    <h3>Identity</h3>
+    <p>Leave blank to generate a fresh key pair on each load.
+    Paste a mnemonic to restore a specific identity.</p>
+    <label>Mnemonic (optional)
+      <input id="mnemonic-input" placeholder="word word word … (leave blank to generate)">
+    </label>
+  </div>
+
+  <div class="setup-card">
+    <h3>Skills</h3>
+    <p>The agent will register these skills automatically on start.</p>
+    <div class="row">
+      <label><input type="checkbox" id="sk-echo"    checked> <span>echo</span></label>
+      <label><input type="checkbox" id="sk-ping"    checked> <span>ping</span></label>
+      <label><input type="checkbox" id="sk-counter" checked> <span>counter (streaming)</span></label>
+      <label><input type="checkbox" id="sk-peerlist" checked> <span>peer-list (gossip)</span></label>
+    </div>
+  </div>
+
+  <div id="setup-error" style="color:var(--red);font-size:12px;display:none;max-width:520px;word-break:break-all;"></div>
+  <button id="start-btn" style="max-width:520px;width:100%;padding:12px;">Start agent</button>
+</div>
+
+<!-- ── Main UI ── -->
+<div id="main">
+  <!-- Left pane: This agent -->
+  <div class="agent-pane" id="pane-local">
+    <div class="pane-header">
+      <div class="dot" id="dot-local"></div>
+      <span class="pane-title" id="title-local">This agent</span>
+      <span class="pane-addr" id="addr-local">—</span>
+    </div>
+    <div class="pane-body">
+      <!-- Identity -->
+      <section>
+        <header>Identity</header>
+        <div class="inner">
+          <div class="id-block" id="identity-block">loading…</div>
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="sec" onclick="copyPubKey()">Copy address</button>
+            <button class="sec" onclick="showMnemonic()">Show mnemonic</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Transports -->
+      <section>
+        <header>Transports &amp; RoutingStrategy</header>
+        <div class="inner">
+          <table class="tbl" id="transport-table">
+            <tr><th>name</th><th>status</th><th>latency</th><th>degraded?</th></tr>
+          </table>
+          <div class="route-box" style="margin-top:8px;" id="last-route">
+            <div class="route-row">
+              <span class="route-label">last call →</span>
+              <span class="route-val" id="last-route-val">—</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Skills -->
+      <section>
+        <header>Registered skills</header>
+        <div class="inner">
+          <div id="skill-list" style="font-size:12px; color:var(--dim);">none</div>
+        </div>
+      </section>
+
+      <!-- Send form -->
+      <section>
+        <header>Call skill on peer</header>
+        <div class="inner" style="display:flex;flex-direction:column;gap:8px;">
+          <label>Peer address (pubKey)
+            <input id="peer-addr-input" placeholder="paste peer address or click a name below">
+          </label>
+          <div class="row">
+            <label style="flex:0 0 auto">Skill
+              <select id="skill-select">
+                <option value="echo">echo</option>
+                <option value="ping">ping</option>
+                <option value="counter">counter (stream)</option>
+                <option value="peer-list">peer-list</option>
+              </select>
+            </label>
+            <label>Input (text)
+              <input id="skill-input" placeholder="hello world">
+            </label>
+          </div>
+          <div class="btn-row">
+            <button onclick="callSkillBtn()">Call</button>
+            <button class="sec" onclick="helloBtn()">Hello handshake</button>
+            <button class="sec" onclick="pingBtn()">Ping</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Log -->
+      <section>
+        <header>Log</header>
+        <div class="inner">
+          <div class="log" id="log-local"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Right pane: peer / second agent -->
+  <div class="agent-pane" id="pane-peer">
+    <div class="pane-header">
+      <div class="dot" id="dot-peer"></div>
+      <span class="pane-title" id="title-peer">Second agent</span>
+      <span class="pane-addr" id="addr-peer">—</span>
+    </div>
+    <div class="pane-body">
+
+      <!-- Peer graph -->
+      <section>
+        <header>PeerGraph</header>
+        <div class="inner">
+          <div class="peer-list" id="peer-graph-list">
+            <div style="color:var(--dim);font-size:12px;">No peers discovered yet.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Second agent (internal mode only) -->
+      <div id="second-agent-panel" style="display:none; flex-direction:column; gap:10px;">
+        <section>
+          <header>Second agent identity</header>
+          <div class="inner">
+            <div class="id-block" id="identity-block-b">—</div>
+          </div>
+        </section>
+        <section>
+          <header>Second agent log</header>
+          <div class="inner">
+            <div class="log" id="log-peer"></div>
+          </div>
+        </section>
+        <section>
+          <header>Second agent — call back</header>
+          <div class="inner" style="display:flex;flex-direction:column;gap:8px;">
+            <div class="row">
+              <label style="flex:0 0 auto">Skill
+                <select id="skill-select-b">
+                  <option value="echo">echo</option>
+                  <option value="ping">ping</option>
+                  <option value="counter">counter (stream)</option>
+                </select>
+              </label>
+              <label>Input
+                <input id="skill-input-b" placeholder="reply">
+              </label>
+            </div>
+            <button onclick="callSkillBtnB()">Call from B → A</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Relay peer list (relay mode) -->
+      <section id="relay-peer-section" style="display:none;">
+        <header>Connected to relay</header>
+        <div class="inner">
+          <div id="relay-peer-list" style="font-size:12px;color:var(--dim);">No peers on relay yet.</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--dim);">
+            Click an address to paste it into the peer field.
+          </div>
+        </div>
+      </section>
+
+      <!-- FallbackTable -->
+      <section>
+        <header>FallbackTable (all known peers)</header>
+        <div class="inner">
+          <table class="tbl" id="fallback-table">
+            <tr><th>peer</th><th>transport</th><th>latency</th><th>degraded?</th></tr>
+          </table>
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="sec danger" onclick="simulateFail()">Simulate transport failure</button>
+            <button class="sec" onclick="clearDegraded()">Clear degraded</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Log -->
+      <section>
+        <header>Peer events</header>
+        <div class="inner">
+          <div class="log" id="log-events"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ── Relay peer bar ── -->
+<div id="relay-peers">
+  <span class="rp-label">On relay:</span>
+</div>
+
+<script type="module">
+import {
+  Agent, AgentIdentity, VaultMemory, InternalBus, InternalTransport,
+  RelayTransport, TextPart, DataPart, Parts,
+  FallbackTable, RoutingStrategy, PeerGraph, PeerDiscovery,
+} from '@canopy/core';
+
+// ── State ──────────────────────────────────────────────────────────────────────
+
+let agentA = null, agentB = null;  // agentB only in internal mode
+let idA = null,   idB = null;
+let mode = 'relay';
+let fallbackTable = null;
+let routingStrategy = null;
+let peerGraph = null;
+let peerDiscovery = null;
+let relayWs = null;            // raw WS to relay (for peer-list notifications)
+let knownRelayPeers = [];
+
+// ── Setup helpers ──────────────────────────────────────────────────────────────
+
+// Auto-fill relay URL from current origin if served from relay-server.js
+{
+  const u = new URL(location.href);
+  const wsProto = u.protocol === 'https:' ? 'wss:' : 'ws:';
+  document.getElementById('relay-url').value = `${wsProto}//${u.host}`;
+}
+
+document.getElementById('mode-select').addEventListener('change', e => {
+  document.getElementById('relay-opts').style.display =
+    e.target.value === 'relay' ? '' : 'none';
+});
+
+// ── Start ──────────────────────────────────────────────────────────────────────
+
+document.getElementById('start-btn').onclick = async () => {
+  document.getElementById('start-btn').textContent = 'Starting…';
+  document.getElementById('setup-error').style.display = 'none';
+  try {
+    await startAgent();
+  } catch (err) {
+    const el = document.getElementById('setup-error');
+    el.textContent = 'Error: ' + (err?.message ?? err);
+    el.style.display = '';
+    document.getElementById('start-btn').textContent = 'Start agent';
+    console.error(err);
+  }
+};
+
+async function startAgent() {
+  mode = document.getElementById('mode-select').value;
+  const mnemonicInput = document.getElementById('mnemonic-input').value.trim();
+
+  // ── Build identity A ───────────────────────────────────────────────────────
+  const vaultA = new VaultMemory();
+  idA = mnemonicInput
+    ? await AgentIdentity.fromMnemonic(mnemonicInput, vaultA)
+    : await AgentIdentity.generate(vaultA);
+
+  // ── Build transport A ──────────────────────────────────────────────────────
+  let transportA;
+  if (mode === 'internal') {
+    const bus  = new InternalBus();
+    transportA = new InternalTransport(bus, idA.pubKey);
+
+    const vaultB = new VaultMemory();
+    idB = await AgentIdentity.generate(vaultB);
+    const transportB = new InternalTransport(bus, idB.pubKey);
+
+    agentB = new Agent({ identity: idB, transport: transportB, label: 'Agent B' });
+    registerSkills(agentB, 'B');
+  } else {
+    const relayUrl = document.getElementById('relay-url').value.trim();
+    transportA = new RelayTransport({ relayUrl, identity: idA });
+    subscribeRelayPeers(relayUrl);
+  }
+
+  // ── FallbackTable + RoutingStrategy ───────────────────────────────────────
+  fallbackTable = new FallbackTable();
+  peerGraph     = new PeerGraph();
+
+  const transportName = mode === 'internal' ? 'internal' : 'relay';
+  routingStrategy = new RoutingStrategy({
+    transports:    { [transportName]: transportA },
+    peerGraph,
+    fallbackTable,
+  });
+
+  // ── Build agent A ──────────────────────────────────────────────────────────
+  agentA = new Agent({ identity: idA, transport: transportA, label: 'Agent A' });
+  registerSkills(agentA, 'A');
+  agentA.on('error', err => logA(`<span class="err">error: ${esc(err?.message ?? err)}</span>`));
+  transportA.on('security-error', (err, raw) => {
+    const msg = `sec-error [${err?.code ?? err?.message ?? err}]  _p=${raw?._p}  _from=${raw?._from?.slice(0,10)}…`;
+    console.error('[security-error]', err, raw);
+    logA(`<span class="err">${esc(msg)}</span>`);
+  });
+
+  // ── Start agents ───────────────────────────────────────────────────────────
+  if (agentB) {
+    await agentB.start();
+    agentA.addPeer(agentB.address, agentB.pubKey);
+    agentB.addPeer(agentA.address, agentA.pubKey);
+    // Seed peerGraph with agent B.
+    await peerGraph.upsert({ pubKey: agentB.pubKey, type: 'native', reachable: true,
+                             label: 'Agent B (internal)', skills: registeredSkillNames() });
+  }
+  await agentA.start();
+
+  peerDiscovery = new PeerDiscovery({ agent: agentA, peerGraph, autoHello: false });
+  await peerDiscovery.start();
+
+  // ── Wire PeerGraph events ──────────────────────────────────────────────────
+  peerGraph.on('added',       p => logEvent(`<span class="ok">added</span>   ${shortKey(p.pubKey ?? p.url)}`));
+  peerGraph.on('removed',     p => logEvent(`<span class="err">removed</span>  ${shortKey(p.pubKey ?? p.url)}`));
+  peerGraph.on('reachable',   p => logEvent(`<span class="ok">reachable</span> ${shortKey(p.pubKey ?? p.url)}`));
+  peerGraph.on('unreachable', p => logEvent(`<span class="err">unreachable</span> ${shortKey(p.pubKey ?? p.url)}`));
+  peerGraph.on('tiered',  (p, o, n) => logEvent(`tiered ${shortKey(p.pubKey)} ${o}→${n}`));
+
+  // ── Show main UI ───────────────────────────────────────────────────────────
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('main').classList.add('ready');
+  document.getElementById('status').textContent = 'running';
+
+  if (mode === 'internal') {
+    document.getElementById('second-agent-panel').style.display = 'flex';
+    document.getElementById('title-peer').textContent = 'Agent B (internal)';
+    updateSecondAgentUI();
+  } else {
+    document.getElementById('relay-peer-section').style.display = '';
+  }
+
+  updateLocalUI();
+  setInterval(updateLocalUI, 2_000);
+  setInterval(updateFallbackTable, 2_000);
+  setInterval(updatePeerGraph, 2_000);
+}
+
+// ── Skills ─────────────────────────────────────────────────────────────────────
+
+function registeredSkillNames() {
+  const out = [];
+  if (document.getElementById('sk-echo').checked)    out.push('echo');
+  if (document.getElementById('sk-ping').checked)    out.push('ping');
+  if (document.getElementById('sk-counter').checked) out.push('counter');
+  return out;
+}
+
+function registerSkills(agent, tag) {
+  if (document.getElementById('sk-echo').checked) {
+    agent.register('echo', async ({ parts }) => {
+      const t = Parts.text(parts) ?? '(empty)';
+      logAgent(tag, `<span class="ok">echo←</span> ${esc(t)}`);
+      return [TextPart(`echo: ${t}`)];
+    });
+  }
+
+  if (document.getElementById('sk-ping').checked) {
+    agent.register('ping', async () => {
+      logAgent(tag, `<span class="ok">ping←</span>`);
+      return [TextPart('pong')];
+    });
+  }
+
+  if (document.getElementById('sk-counter').checked) {
+    agent.register('counter', async function* ({ parts }) {
+      const n = parseInt(Parts.text(parts) ?? '5', 10) || 5;
+      logAgent(tag, `<span class="ok">counter←</span> n=${n}`);
+      for (let i = 1; i <= n; i++) {
+        yield [TextPart(`${i}/${n}`)];
+        await new Promise(r => setTimeout(r, 300));
+      }
+    });
+  }
+}
+
+// ── Button handlers ────────────────────────────────────────────────────────────
+
+window.callSkillBtn = async () => {
+  const peerId = document.getElementById('peer-addr-input').value.trim();
+  const skill  = document.getElementById('skill-select').value;
+  const input  = document.getElementById('skill-input').value.trim();
+  if (!peerId) { logA(`<span class="err">No peer address entered</span>`); return; }
+
+  // Update routing strategy + fallback table.
+  const sel = await routingStrategy.selectTransport(peerId);
+  document.getElementById('last-route-val').textContent =
+    sel ? `${sel.name} (${esc(peerId.slice(0,10))}…)` : 'none';
+  logA(`<span class="rout">route → ${sel?.name ?? 'none'}</span>`);
+
+  // Record ping latency in FallbackTable.
+  const tName = mode === 'internal' ? 'internal' : 'relay';
+
+  if (skill === 'counter') {
+    logA(`<span class="inf">stream counter on ${esc(peerId.slice(0,10))}…</span>`);
+    const t0   = Date.now();
+    const task = agentA.call(peerId, 'counter', input ? [TextPart(input)] : [TextPart('5')]);
+    const chunks = [];
+    for await (const c of task.stream()) {
+      const txt = Parts.text(c);
+      chunks.push(txt);
+      logA(`chunk: ${esc(txt)}`);
+    }
+    const ms = Date.now() - t0;
+    fallbackTable.record(peerId, tName, ms);
+    logA(`<span class="ok">stream done (${ms}ms, ${chunks.length} chunks)</span>`);
+  } else if (skill === 'peer-list') {
+    try {
+      const t0   = Date.now();
+      const res  = await agentA.invoke(peerId, 'peer-list', [], { timeout: 8_000 });
+      const ms   = Date.now() - t0;
+      const data = Parts.data(res);
+      const peers = data?.peers ?? [];
+      fallbackTable.record(peerId, tName, ms);
+      logA(`<span class="ok">peer-list: ${peers.length} peers (${ms}ms)</span>`);
+      // Import into local PeerGraph.
+      if (peers.length) {
+        await peerGraph.import(peers);
+        logA(`<span class="inf">imported ${peers.length} peers into PeerGraph</span>`);
+      }
+    } catch (err) {
+      logA(`<span class="err">peer-list error: ${esc(err?.message ?? err)}</span>`);
+    }
+  } else {
+    try {
+      const t0  = Date.now();
+      const res = await agentA.invoke(peerId, skill,
+                                      input ? [TextPart(input)] : [], { timeout: 8_000 });
+      const ms  = Date.now() - t0;
+      fallbackTable.record(peerId, tName, ms);
+      await peerGraph.updateLatency(peerId, tName, ms);
+      logA(`<span class="ok">${skill} (${ms}ms):</span> ${esc(Parts.text(res) ?? '(empty)')}`);
+    } catch (err) {
+      fallbackTable.markDegraded(peerId, tName);
+      logA(`<span class="err">${skill} failed: ${esc(err?.message ?? err)}</span>`);
+    }
+  }
+  updateFallbackTable();
+};
+
+window.callSkillBtnB = async () => {
+  if (!agentB) return;
+  const skill = document.getElementById('skill-select-b').value;
+  const input = document.getElementById('skill-input-b').value.trim();
+  try {
+    const t0  = Date.now();
+    const res = await agentB.invoke(agentA.address, skill,
+                                    input ? [TextPart(input)] : [], { timeout: 8_000 });
+    const ms  = Date.now() - t0;
+    logPeer(`<span class="ok">B→A ${skill} (${ms}ms):</span> ${esc(Parts.text(res) ?? '(empty)')}`);
+  } catch (err) {
+    logPeer(`<span class="err">B→A ${skill} failed: ${esc(err?.message ?? err)}</span>`);
+  }
+};
+
+window.helloBtn = async () => {
+  const peerId = document.getElementById('peer-addr-input').value.trim();
+  if (!peerId) { logA('<span class="err">No peer address</span>'); return; }
+  try {
+    await agentA.hello(peerId, 8_000);
+    await peerGraph.upsert({ pubKey: peerId, type: 'native', reachable: true });
+    logA(`<span class="ok">hello ↔ ${esc(peerId.slice(0,14))}… OK</span>`);
+  } catch (err) {
+    logA(`<span class="err">hello failed: ${esc(err?.message ?? err)}</span>`);
+  }
+  updatePeerGraph();
+};
+
+window.pingBtn = async () => {
+  const peerId = document.getElementById('peer-addr-input').value.trim();
+  if (!peerId) { logA('<span class="err">No peer address</span>'); return; }
+  const { ping: _ping } = await import('./src/protocol/ping.js');
+  try {
+    const t0 = Date.now();
+    await _ping(agentA, peerId, 8_000);
+    const ms = Date.now() - t0;
+    const tName = mode === 'internal' ? 'internal' : 'relay';
+    fallbackTable.record(peerId, tName, ms);
+    await peerGraph.updateLatency(peerId, tName, ms);
+    logA(`<span class="ok">ping ${ms}ms</span>`);
+  } catch (err) {
+    logA(`<span class="err">ping failed: ${esc(err?.message ?? err)}</span>`);
+  }
+  updateFallbackTable();
+};
+
+window.copyPubKey = () => {
+  if (!idA) return;
+  navigator.clipboard.writeText(agentA.address)
+    .then(() => logA('<span class="inf">address copied</span>'))
+    .catch(() => logA(`<span class="inf">address: ${agentA.address}</span>`));
+};
+
+window.showMnemonic = async () => {
+  if (!idA) return;
+  const m = await idA.getMnemonic();
+  logA(`<span class="inf">mnemonic: ${esc(m ?? 'n/a')}</span>`);
+};
+
+window.simulateFail = () => {
+  const peerId = document.getElementById('peer-addr-input').value.trim();
+  if (!peerId) { logA('<span class="err">Set a peer address first</span>'); return; }
+  const tName = mode === 'internal' ? 'internal' : 'relay';
+  fallbackTable.markDegraded(peerId, tName, Date.now() + 20_000);
+  logA(`<span class="err">simulated ${tName} failure for 20s</span>`);
+  updateFallbackTable();
+};
+
+window.clearDegraded = () => {
+  // Re-create table to clear degraded entries.
+  const peerId = document.getElementById('peer-addr-input').value.trim();
+  if (peerId) fallbackTable.clear(peerId);
+  logA('<span class="inf">fallback table cleared for peer</span>');
+  updateFallbackTable();
+};
+
+// ── UI update helpers ──────────────────────────────────────────────────────────
+
+function updateLocalUI() {
+  if (!agentA) return;
+  const pk = agentA.pubKey;
+
+  // Status dot.
+  document.getElementById('dot-local').className = 'dot on';
+  document.getElementById('addr-local').textContent = pk.slice(0,14) + '…';
+
+  // Identity block.
+  document.getElementById('identity-block').innerHTML =
+    `<span class="key-label">pubKey  </span>${pk}<br>` +
+    `<span class="key-label">address </span>${agentA.address}<br>` +
+    `<span class="key-label">transport </span>${mode}`;
+
+  // Transport table.
+  const tName = mode === 'internal' ? 'internal' : 'relay';
+  const status = mode === 'relay' ? (agentA.transport?.connected ? 'connected' : 'connecting') : 'active';
+  const tbl = document.getElementById('transport-table');
+  tbl.innerHTML =
+    `<tr><th>name</th><th>status</th><th>latency</th><th>degraded?</th></tr>` +
+    `<tr><td>${tName}</td><td><span class="pill ok">${status}</span></td><td>—</td><td>—</td></tr>`;
+
+  // Skill list.
+  const skills = agentA.skills.all().map(s => s.id);
+  document.getElementById('skill-list').textContent = skills.join(', ') || 'none';
+}
+
+function updateSecondAgentUI() {
+  if (!agentB) return;
+  document.getElementById('dot-peer').className = 'dot on';
+  document.getElementById('addr-peer').textContent = agentB.pubKey.slice(0,14) + '…';
+  document.getElementById('identity-block-b').innerHTML =
+    `<span class="key-label">pubKey  </span>${agentB.pubKey}<br>` +
+    `<span class="key-label">address </span>${agentB.address}`;
+
+  // Pre-fill peer input with agent B's address.
+  if (!document.getElementById('peer-addr-input').value) {
+    document.getElementById('peer-addr-input').value = agentB.address;
+  }
+}
+
+function updateFallbackTable() {
+  if (!fallbackTable) return;
+  const peerId = document.getElementById('peer-addr-input').value.trim();
+  const el = document.getElementById('fallback-table');
+  if (!peerId) {
+    el.innerHTML = '<tr><th>peer</th><th>transport</th><th>latency</th><th>degraded?</th></tr>' +
+                   '<tr><td colspan="4" style="color:var(--dim);padding:4px 0">enter a peer address above</td></tr>';
+    return;
+  }
+  const entries = fallbackTable.getAll(peerId);
+  if (entries.length === 0) {
+    el.innerHTML = '<tr><th>peer</th><th>transport</th><th>latency</th><th>degraded?</th></tr>' +
+                   '<tr><td colspan="4" style="color:var(--dim);padding:4px 0">no data yet — call a skill first</td></tr>';
+    return;
+  }
+  const rows = entries.map(e => {
+    const deg = fallbackTable.isDegraded(peerId, e.transportName);
+    return `<tr>
+      <td style="max-width:80px;overflow:hidden;text-overflow:ellipsis">${esc(peerId.slice(0,8))}…</td>
+      <td>${esc(e.transportName)}</td>
+      <td>${e.latencyMs}ms</td>
+      <td><span class="pill ${deg ? 'deg' : 'ok'}">${deg ? 'yes' : 'no'}</span></td>
+    </tr>`;
+  });
+  el.innerHTML = '<tr><th>peer</th><th>transport</th><th>latency</th><th>degraded?</th></tr>' + rows.join('');
+}
+
+async function updatePeerGraph() {
+  if (!peerGraph) return;
+  const peers = await peerGraph.all();
+  const el = document.getElementById('peer-graph-list');
+  if (peers.length === 0) {
+    el.innerHTML = '<div style="color:var(--dim);font-size:12px;">No peers discovered yet.</div>';
+    return;
+  }
+  el.innerHTML = peers.map(p => {
+    const id      = p.pubKey ?? p.url ?? '?';
+    const latency = p.latency ? Object.values(p.latency).map(v => v + 'ms').join(', ') : '—';
+    const reach   = p.reachable !== false;
+    return `<div class="peer-row">
+      <div class="dot ${reach ? 'on' : ''}" style="width:6px;height:6px;flex-shrink:0;"></div>
+      <span class="peer-id" title="${esc(id)}" style="cursor:pointer"
+            onclick="document.getElementById('peer-addr-input').value='${esc(id)}'">${esc(id.slice(0,14))}…</span>
+      <span style="font-size:10px;color:var(--dim)">${esc(p.label ?? p.type ?? '')}</span>
+      <span class="peer-lat">${latency}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Relay peer list ────────────────────────────────────────────────────────────
+
+function subscribeRelayPeers(relayUrl) {
+  // Open a separate WS just to receive peer-list notifications from relay server.
+  // We use the relay's custom peer-list message type.
+  // The relay server broadcasts peer-list on each registration/disconnect.
+  // We piggyback on RelayTransport's connection by just listening on agent events
+  // instead — but since that's not wired, we use a raw WS here.
+  try {
+    relayWs = new WebSocket(relayUrl);
+    relayWs.onopen = () => {
+      relayWs.send(JSON.stringify({ type: 'peer-list' }));
+    };
+    relayWs.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'peer-list' && Array.isArray(msg.peers)) {
+          knownRelayPeers = msg.peers;
+          updateRelayPeerBar();
+          updateRelayPeerList();
+        }
+        if (msg.type === 'registered') {
+          // Connected — ask for initial list.
+          relayWs.send(JSON.stringify({ type: 'peer-list' }));
+        }
+      } catch {}
+    };
+    relayWs.onerror = () => {};
+    // Register with a dummy address so relay knows we're here.
+    relayWs.addEventListener('open', () => {
+      relayWs.send(JSON.stringify({ type: 'register', address: '__monitor__' + Date.now() }));
+    });
+  } catch {}
+}
+
+function updateRelayPeerBar() {
+  if (!idA) return;
+  const el = document.getElementById('relay-peers');
+  el.className = 'show';
+  const myAddr = agentA?.address ?? '';
+  const html = knownRelayPeers
+    .filter(p => !p.startsWith('__monitor__'))
+    .map(p => {
+      const isSelf = p === myAddr;
+      return `<span class="rp-addr ${isSelf ? 'self' : ''}" title="${esc(p)}"
+                    onclick="if(!${isSelf}){document.getElementById('peer-addr-input').value='${esc(p)}'}"
+              >${isSelf ? 'you' : esc(p.slice(0,12)+'…')}</span>`;
+    }).join('');
+  el.innerHTML = `<span class="rp-label">On relay (${knownRelayPeers.filter(p=>!p.startsWith('__')).length}):</span>${html}`;
+}
+
+function updateRelayPeerList() {
+  if (!idA) return;
+  const el = document.getElementById('relay-peer-list');
+  const myAddr = agentA?.address ?? '';
+  const others = knownRelayPeers.filter(p => p !== myAddr && !p.startsWith('__monitor__'));
+  if (others.length === 0) {
+    el.textContent = 'No other peers on relay yet.';
+    return;
+  }
+  el.innerHTML = others.map(p =>
+    `<div style="font-family:var(--mono);color:var(--accent);cursor:pointer;padding:2px 0;"
+          onclick="document.getElementById('peer-addr-input').value='${esc(p)}'"
+          title="click to use as peer">${esc(p)}</div>`
+  ).join('');
+}
+
+// ── Log helpers ────────────────────────────────────────────────────────────────
+
+function logAgent(tag, html) { tag === 'A' ? logA(html) : logPeer(html); }
+function logA(html)          { appendLog('log-local', html); }
+function logPeer(html)       { appendLog('log-peer',  html); }
+function logEvent(html)      { appendLog('log-events', html); }
+
+function appendLog(id, html) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const ts = new Date().toTimeString().slice(0,8);
+  el.insertAdjacentHTML('beforeend', `<div><span class="ts">${ts}</span>  ${html}</div>`);
+  el.scrollTop = el.scrollHeight;
+}
+
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function shortKey(k) { return k ? esc(k.slice(0,12)) + '…' : '?'; }
+
+// ── SkillRegistry private access (for display) ─────────────────────────────────
+// The SkillRegistry uses a private Map — we access it by convention.
+// If not accessible, fall back to empty display.
+</script>
+
+</body>
+</html>

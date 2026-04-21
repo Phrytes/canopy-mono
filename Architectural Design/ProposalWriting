@@ -1,0 +1,440 @@
+Proposal
+
+Abstract
+This project focuses on developing a proof of concept that exists out of two parts. 
+1. A standardized method to define a set of decentralized agents that can exchange messages and data, and also send, accept and reject tasks. 
+2. A JavaScript package that makes a developer able to instantiate these agents within their web apps, to let them connect to other agents and to expose the functionality of these web apps as the agent’s capabilities.
+
+
+Proposed solution
+We build a PoC for a minimal, portable standard for turning any JavaScript based web app into an agent that can participate in decentralized data exchange, messaging, streaming and task sharing. In order to do this, we want to develop an open source function package that:
+    • helps developers turn their application into an agent that operates in a user defined decentralized agent network
+    • where data is only shared on terms of the users or agents, without need for a central server
+
+In the description below we offer examples of existing technologies that we could use for functionalities that we think we should not develop ourselves. In order to stay flexible during development, we need to allow ourselves to divert to alternative pieces of software if we find that more appropriate for our goals. The technologies suggested should therefore be understood as examples or candidate solutions, without any commitment in this stage.\
+    • Agent definition and information exchange (e.g. A2A protocol)
+    • Networking: while we strive to implement compatibility with peer-to-peer connectivity, for this PoC we want to use NKN (New Kind of Network), a blockchain solution that organizes peer-to-peer connectivity, as this already implements a lot of the functionality we need
+    • Storage: for now the storage will be done in local memory (while for the future we see especially high potential in compatibility with Solid Pods)
+New Functionality
+The main functionality we want to develop, consists of two parts:
+    1. A portable file in which the user can define:
+        ◦ Data source connections + authentication methods
+        ◦ Addresses for agent peers / addresses for agent peer discovery platforms
+        ◦ Agent network groups: group membership can influence discoverability for other agents, the exposure of peers and connections and they can be used to manage permissions
+
+    2. A portable package that a developer can use to turn an app into one or more agents that are capable of:
+        ◦ Connecting
+            ▪ connecting to data sources
+            ▪ connecting to agent peers
+        ◦ Discovery
+            ▪ discovering peers
+            ▪ exposing their capabilities to peers (e.g. connections and app functions)
+        ◦ Communicating
+            ▪ messaging
+            ▪ exchanging data (requests) with peers
+            ▪ submit + accept/reject tasks to the network
+
+    3. In order to integrate the agent with the app, a developer must be able to redefine its app functions as agent capabilities. For this we want to develop a (for now JavaScript) package that can be imported by developers which provides ways to:
+        ◦ load an agent defined by the user
+        ◦ initialize an agent based on the properties file
+        ◦ define app-functions as agent capabilities
+        ◦ map agent task parameters to function arguments
+This way, users can flexibly connect to their agent network from different places, while developers can create apps that can add new functionality to this network.
+
+Technical approach
+
+All parts will be made public under the MIT-license.
+
+    1. Design for Agents Properties File
+This could be an encrypted yaml or json file that contains:
+- agent ID's
+- pointer to key/passwords/token vault
+- list of connections to:
+- db's
+- api's
+- networks
+- other agent IDs
+- etc
+- agent group ID’s
+- optional: define roles to organize these connections/credentials/groups
+- optional: list of approved app-IDs (or link to list)
+- permissions
+- for sharing capabilities to group members
+- for sharing peers to group members
+
+    2. Optional: Simple web app for creating agent properties file
+    • Easy to make, useful for testing
+
+    3. Agent loading package
+    1. Runtime
+        1. load agent properties file
+        2. initialize agent based on the file (e.g. A2A protocol)
+        3. send messages to other agents
+        4. exchange data with other agents
+        5. send tasks to the network
+    2. Integration functions for application
+        1. connect app functions to agent capabilities
+        2. connect task parameters to function arguments
+    3. Networking
+        1. connect to other devices (e.g. New Kind of Network (NKN), in the future preferably p2p technology such as WebRTC)
+        2. discover given agents on connected devices
+        3. discover new agents by peer discovery
+    4. Coordination
+        1. local cache of known agents and capabilities
+        2. task-capability matcher
+        3. procedure for accepting/rejecting a task from the network
+
+
+lets only build when I ask you to explicitly for now, to save my credits. First I want   
+  to explore again why I should choose either electron or tauri, or maybe some other       
+  alternative. Please keep in mind that I want to develop an open agentic system that      
+  follows the a2a protocol and for which i want to create two main parts: 1. a package for 
+   javascript that helps developers connecting agents to their apps. So people using their 
+   apps can instantiate agents that get some properties (e.g. permissions and (peer)       
+  connections) from a file that is delivered by the user and other properties              
+  (capabilities, other connections, extra connection methods) that are delivered by the    
+  app in which the user is logging in. 2. the second part should be a standardized         
+  definition (yaml or json) for users to define and group properties that can be assigned  
+  to agents that are instantiated in apps. I am very much interested in both p2p and nkn,  
+  as I think that in some cases NKN can be faster and more reliable, although I have some  
+  concerns about the encryption of NKN. Please keep modularity in mind, as I would love to 
+   be able to add new functionality, such as connection methods (maybe bluetooth, or wifi  
+  direct) later. This all having said, the only thing I need right now is a solid          
+  consideration for how to make a base that works both on web and on mobile  
+
+
+  Can you sketch a design that follows the following idea:
+
+  - agent is an object
+  - any function can be decorated as an agent capability
+  - agent capabilities can grow and go (dynamic)
+  - agents have build-in connection capabilities
+  	> defined by original user and by the app
+  - agents can be extended 
+  - agents can be added to a group by both the app and the user (with some kind of key for proof)
+  - the agent object should be exportable to json, which should be standardized so it can be imported somewhere else again
+  - agent blueprint can be labeled (so not connected to a group, but more like a recognizable set of properties) 
+
+- connection layer:
+	- nkn
+	- some semi-centralized option (mtqq)
+	- later: bluetooth, wifi direct etc
+
+- for every connection in the connection layer, these base interaction patterns should be implemented (if applicable):
+	- Request–Response
+	- One-way Send
+	- Acknowledged Send
+	- Publish–Subscribe
+	- Streaming
+	- Bulk Transfer
+	- Session (stateful interaction)
+
+	- what is this? => discovery & state sync ; not part of the other options? 
+
+- these interaction patterns should be connected to basic actions such as:
+  	- pinging (sending, replying)
+  	- capability requesting (sending, confirming, processing)
+  	- messaging (sending, confirming)
+  	- file sharing
+  	- streaming
+  	- negotiating (some kind of request-response on network level)
+  	- stateful session exchange (some kind of request-response on network level)
+  	- task exchange (maybe combination of capability requesting and negotiatiing)
+
+  	And these can have different styles within each interaction pattern
+  	Would also be nice if agents could switch to simpeler versions if some of the connections is missing, but others are still there -- but this is I think for later
+  	E.g. screaming one way sends if requests-response are not possible, for example due to lack of robust connections
+
+
+In the end I want an importable javascript package that offers the developer to initialize an agent object with the applicable methods that are needed for the design above. Please use the knowledge that you got from the project in this folder (for example how to make nkn work on web on both pc and mobile). I also want a flexible design for some kind of yaml or json file that can be used to define a series of agents - consistent with the proposal in the folder
+
+--
+Misschien nog even wat beter nadenken over de interacties. Je capability-idee is nu namelijk volledig rustend op een takensysteem, terwijl bijv streams ook capabilities zijn wat redelijk los kan staan van een taak. Maar goed, dat begreep Claude gelukkig zelf al.
+
+
+Verder:
+Je hebt zo connecties misschien geregeld, maar daarnaast wil je ook nog:
+
+- storage (cache, persistent)
+	- db's / api's / solid | specifieke bronnen / privedata etc (maw: verschillende labels misschien) / app gerelateerd
+
+- permissies en wachtwoorden enzo goed uitwerken, zodat het veilig is, maar ook flexibel
+
+- meer standaardfunctionaliteiten uitdenken die bij de package hoort. Voorbeelden:
+	- je krijgt een message met een agentID (op je request) en die voeg je vervolgens toe aan je lijst met agents. Peer discovery kan dus gewoon rusten op de implementaties van de connectiefunctie die je voor handen hebt; daarmee gaan dingen denk ik makkelijker automatisch goed ipv wanneer je aparate route inbouwt (check deze aanname)
+
+- misschien iets als standaardfunctionaliteiten die je aan een agent/rol kunt hangen? Dat bijvoorbeeld je een transferrable agent hebt die altijd van elke taak die het krijgt een mailtje stuurt/iets logt, ongeacht in welke app -- en dat het een parameter is die bepaalt of deze capabilities wel/niet exposed zijn
+	
+	soort van randvoorwaarden aan het netwerk in de blauwdruk
+	> dan zou je overigens wel een echt een enkele agent willen kunnen definieren (dus role + id -- en die ID staat dan verder los van adressen, het is meer voor het managen vanuit de gebruiker; zo zou bijv de gebruiker ook het aanzetten van agents moeten kunnen automatiseren, maar ook identificeren en limiteren (bijv nooit meer dan 3 agents die je db bevragen kunnen oid en wel alle logs van deze bijhouden)) -- nog even de vraag hoe je functionaliteit veilig portable kunt maken
+
+- en natuurlijk de lokale scanner, die goed werkte in de oude demo!
+	> dit gaat over peer discovery -- en dat is dus weer rustend op die andere functies
+
+TODO:
+> ook uitleg per connectie type enzo die nu is geimplementeerd:)
+> dan kijken of je met de gegeven blauwdruk ook andere connectietypes kunt implementeren:
+     - bluetooth
+     - mdns
+
+     > beide met Capacitor?
+
+- en dan de onderdelen die je hierboven noemt, met name de scanner
+
+
+- bij taken zou je het ook lekker complex uit de hand willen kunnen laten escaleren dat als een taak iets vraagt, dat het er dan niet om gaat dat je het zelf kan, maar dat je iemand kent aan wie je het kunt vragen bijvoorbeeld
+
+- ook zouden capabilities bijv nog aangemerkt moeten kunnen worden als public / private / groupID of wat voor voorwaarde dan ook, zodat je bijv een agent een hele wijk kan laten querien en zelf vervolgens (mbv AI) vertaalslag doen tussen capabilities en datgene wat de zoeker zoekt.
+
+- noouja en die agent definities zou je uiteindelijk ergens op moeten kunnen slaan, bijv een online db, of dat je het opslaat in je eigen pod
+
+- en dan later dus nog die soortvan browser layer waarmee je als gebruiker (of zelfs agent) kunt controleren wat er in en uit gaat (permissies weer)
+
+- ga scenarios uitdenken van complexe combinaties van taken/streams/berichten etc. Bijv bij een groepje menselijke en automatische dronebestuurders. Of een groep collega's. Of bijv wanneer iemand wil onderhandelen over een taak "ik heb deze capability wel, maar ik kan niet bij je langskomen, dus ik wil graag een stream starten om het uit te leggen" oid; maar goed, dit kan ook gewoon een berichtje zijn natuurlijk 
+
+- overigens heb je behalve capabilities misschien ook nog iets als properties
+
+
+Hier nog een beetje over nadenken:
+For your agent system, I’d suggest:
+
+🧱 Layer 1: primitives
+send
+request
+respond
+acknowledge
+🔁 Layer 2: patterns
+request-response
+pub/sub
+streaming
+🎭 Layer 3: protocols
+session
+negotiation
+task execution
+capability discovery
+
+
+
+Beeld nu:
+- zoveel mogelijk dus in JS (web en app)
+- React Native
+    - werkt met NKN client (gewone JS)
+    - werkt met mDNS
+        iOS: Bonjour
+        Android: NSD
+        > dubbelchecken! -- react-native-zeroconf
+    - betere achtergrondtaken dan Capacitor
+    - webRTC: react-native-webrtc
+
+
+Dus conclusie: 
+- React Native verkennen
+- Eerst met Expo!
+- nieuw project starten (deels oude meuk overhevelen)
+    - bedenken hoe je je spul kunt verpakken in modules die herbruikbaar en herkenbaar zijn
+    - kijken welke elementen je nog meer eerst kunt ontwikkelen zonder gelijk verder te gaan in React Native
+        > bijv ww beheer enzo
+        > NKN peer discovery
+        > toch iets met een eigen (railway?) servertje; simpele services om het testen effectiever te maken - MQTT is wellicht nog beter, ook voor de uitwerking van Discovery, Interaction Patterns en Actions
+    - ook nog compatibiliteit met native systemen verkennen om daar je JS op aan te passen
+    - Scanner uitdenken, ook met het oog op verschillende verbindingsmethoden
+    - en hoe doe je de prioritering van processen/taken?
+
+Later:
+    - VS Code installeren, met plugins:
+        React Native Tools
+        ESLint / Prettier
+        TypeScript support
+    - Android Studio
+    - Serieus testen:
+        BrowserStack
+        Firebase Test Lab
+        iOS: CI service Github + TestFlight / cloud Mac
+    - uiteindelijk zullen agent capabilities medebepaald worden niet alleen door de gebruiker en de JS, maar ook door het platform
+
+
+Opmerkingen:
+- goed nadenken over hoe het modulair moet. Stel bijv dat je je verbindingen tussen agent A en B wilt prioriteren (bijv met zowel p2p als via een tussenserver). Dit kun je hardcoded doen, maar je kan het ook doen mbv degene met de laagste ping. Hoe schuif je dit er slim in? En wat zijn algemene denkregels hiervoor?
+    > eventueel eens verdiepen in modulariteitsfilosofieën
+- uiteindelijk zou een soort multichannel verzendsysteem cool zijn (geen prio), maar dan moet je dus wel ID's gaan hangen aan berichten en taken enzo
+- je moet niet doen alsof centrale servers uit den boze zijn. Waar het om gaat is dat centrale servers vervangbaar en verplaatsbaar moeten zijn en dat user data niet op die centrale servers staat
+- er valt nog steeds veel voor te zeggen dat een gebruiker ook een klein servertje moet kunnen hebben met:
+    - nkn node
+    - p2p relay (deels lokaal, deels publiek (https))
+    - huisgebonden agent (IoT)
+    - extra rekenkracht voor bij lokale AI's
+    - lokale backup / cache van solid pod
+    - idee: soort linux-agent waarbij een AI (soort claude/openclaw) de opdrachten van de eigenaar vertaalt naar lokale handelingen?
+
+
+Ik denk dat het goed is, om nu meer vanuit de developer te gaan denken, en designen hoe het inbouwen van een agent voor diegene moet werken, bijv:
+
+- soort decorators voor capabilities, of iets van 'extends agent'
+- wat bepaalt of een agent overgaat tot streamen, taken of wat dan ook?
+- hoe kan de developer limieten stellen aan bijv het aantal taken in een rij, of aantal externe connecties
+
+Eigenlijk bepalen per actie hoe dit intern getriggerd kan worden
+> dit mapt net niet helemaal lekker; zou eigenlijk per basisactie moeten wellicht..? Ook omdat dit nu niet alles technisch gezien covert? hmmmmmm
+
+    - pinging (sending, replying)       -- altijd, parallel (uitzonderingen programmeerbaar - veronderstelt iets van een interne state)
+    - capability requesting (sending, confirming, processing)       -- same
+    - messaging (sending, confirming)           -- same, 'offline gaan' zou ook moeten kunnen
+    - file sharing      -- moet eigenlijk onderdeel zijn van request of taak, maar zou ook onder voorwaarden passief moeten kunnen
+    - streaming         -- kan geopend worden of niet, op request of deel van taak
+    - negotiating (some kind of request-response on network level)      -- ook request of taak
+    - stateful session exchange (some kind of request-response on network level)        -- ook request of taak
+    - task exchange (maybe combination of capability requesting and negotiating)        -- ook request, maar zou ook onder voorwaarden soortvan permanent moeten kunnen
+
+    - eigenlijk zou je ook nog iets van html requests moeten kunnen doen, mocht een agent dat leuk vinden; lijkt dus op filesharing, wat het in feite ook is.
+
+    Het komt erop neer dat je iets van een policy nodig hebt, met een default, maar die ook aanpasbaar is:
+    - altijd actief
+    - gedrag onder voorwaarden 
+    - op aanvraag (open voor staan onder voorwaarden)
+    - na overleg (open voor staan onder voorwaarden)
+
+    En dan is bijvoorbeeld een taak iets wat onder overleg kan, maar openstaan in onderhandelingen is wel iets wat dan weer onder voorwaarden is
+
+    Verder uitzoeken: het moet mogelijk zijn dat je meerdere apps bouwt over dezelfde agent logica, als in: meerdere apps moeten bij gedeelde onderliggende data kunnen (hoe?)
+
+Opmerkingen
+Er moet altijd een voor de gebruiker (webapp) toegankelijke pagina zijn met alle vergaarde data (genererend op aanvraag) in json. Dit moet wel met REST zodat je ook kunt filteren. Liefst alles tussen persoonlijke data en logs in, gesplitst per agent
+
+Verder: hoofdidee zoveel mogelijk in js, en voor hardware dingen dus in native. Voorbeelduitwerking in iets van MQTT. Verder lijkt mij iets van een p2p node pakketje wel cool, die ook weer op verschillende manieren benaderbaar moet kunnen zijn (ook bij uitval)
+
+Misschien ook de multiadresopties delen na connectie, zodat een agent het herkent wanneer het op verschillende manieren met dezelfde agent verbonden is
+
+Een agent heeft verschillende kanalen (p2p, nkn, bluetooth, mqtt etc) met verschillend gedrag, die door de app aan en uit gezet kunnen worden. Hoe moeten die kanalen vorm krijgen binnen bovenstaand idee?
+
+Beheer hierover zou uitbesteed kunnen worden aan een admin agent of een willekeurige agent van een bepaalde groep
+
+
+
+
+Dus in het kort:
+
+# Agent Core
+## Agent class
+- load agent profile from user
+    > with all the permissions etc
+- connect to agent in network
+- keep list of connected agents
+    > list of transports + addresses
+    > preferred transport ?? routingstrategy??
+- add app function as new capability
+- override user definition: close existing or add new transport options (bijv om bluetooth errors te voorkomen als user daarin wat gedefinieerd heeft?)
+- internal event table + listener + actor (but how to prioritize/choose processes?)
+- networkRefresher (check capabillities again)
+- capabilityMatcher (lookup internal model and required capability for interaction (message/task/stream/etc))
+- sending requests from other agents to others by gossiping (how to prevent overflow? how to choose which one can be bothered/addressed?)
+
+- invullen: emitter + de vraagpunten uit de feedbacklijst
+
+Base capabilities:
+- share capabilities
+- start connection X (stream, file sharing, etc)
+
+> uiteindelijk wil je toch wel een soort van browser-level user control...
+
+
+## Agent Interactions
+
+### Transport Layer
+- interne agents binnen app
+- interne agents binnen device (web and mobile)
+- NKN
+- MQTT
+- WebRTC
+- mDNS
+- Bluetooth
+- etc
+
+
+Deze implementeren twee primitives:
+- send {from, to, id, content}
+- respond {from, to, id, replyToId, content}
+> evt alsnog 'ack' erbij als response zonder content
+> een send zonder content zou kunnen voor signalling, 'sig'
+> misschien ook wel stream-open enzo hierbij? of is dat gewoon deel vd content? Hoeft niet toch, ik denk dat meer primitives wel krachtiger is (strikt genomen zou respond ook geen primitive hoeven zijn, alleen maar 'send')
+
+> moet hier nog iets bij van interaction pattern? Hoe weet je anders dat het acknowledged moet zijn?
+
+> zie ook Transport Envelope.txt
+
+### Interaction Patterns
+> bouwen voort op primitives 
+> of maken gebruik van protocol-eigen methodes (transport layer) -- dit zou dan wel in envelope ofzo moeten -- met de primitives als basis heb je altijd een fallback -- wel dus ook in primitives reageren als de ander dat ook doet; het maakt ook nieuwe networking options een stuk makkelijker!
+
+- one-way send
+    > send
+- acknowledged send 
+    > send + respond
+- request-response
+    > send + respond
+- pub-sub (moet je dit standaardiseren? is dit niet gewoon request-response?)
+    > pub: acknowledged send 
+    > sub: request-response
+- streaming (requested)
+    > stream open: acknowledged send
+    > chunks: respond
+    > stream close: respond
+- bulk
+    > transfer open: acknowledged send
+    > seq. chunks: acknowledged send
+    > transfer close: acknowledged send
+
+> dependencies:
+ - state (voor session/stream bijv)
+ - subscribers list (voor pub)
+ - subscribed list (voor actieve sub (zonder pub bijv))
+
+
+
+
+### Protocol Layer
+> bouwen voort op interaction patterns
+> volgens policies
+    - altijd actief
+    - gedrag onder voorwaarden, bijv:
+        - met bepaalde events
+        - op aanvraag 
+        - na overleg 
+
+> dit zou op verschillende manieren geimplementeerd moeten kunnen worden, afhankelijk van welke interaction patterns beschikbaar zijn via welke transportfunctie (in theorie kun je messaging ook zonder acknowledge doen; in theorie kun je een pub-sub opbreken in een request-respond...)
+
+> welke interacties beschikbaar zijn verschilt per agent-agent combinatie en kan deels bepaald worden met groepen
+
+- hello (random scream to network) > one-way
+- ping > request-response
+- messaging > acknowledged send | send
+- capability discovery > request-response
+- session > state + request-response
+- negotiation > request-response
+- task exchange > request-response
+- streaming > streaming
+- file sharing > request-response + (bulk | message) 
+- etc, check ook boven
+
+
+Build-in functions on existing interactions:
+- greeting Agent Card with capabilities, id etc
+
+
+Wat nogal ontbreekt:
+- opslag
+- zie ook kopje 'Verder' boven
+
+
+En uiteindelijk heb je een netwerk van relayservers (ook als agent) nodig in elke straat, waarmee mensen lokaal verbonden kunnen worden, zowel via internet (lokaal geverifieerd met wifi-netwerken oid) of direct via wifi. En die kunnen dan gebruikt worden voor lokale peer-discovery, en gemeenschapsondersteunende apps.
+
+Eigenlijk zou dat het hoofddoel moeten zijn. Wat is de meest effectieve weg daarnaartoe?
+
+> wel je agent nodig, 
+> telefoonapp is een ander verhaal
+> je wilt dus ook een connectie aan kunnen gaan met een agent die als server fungeert
+    > die kan weer verbonden zijn met andere agenten
+    > die kunnen onderling peers delen
+
+> individuele peers kunnen makkelijk zonder tussenkomst via nkn verbinden en daarna bijv een gezamenlijke tussennode voor p2p vinden
+
+
