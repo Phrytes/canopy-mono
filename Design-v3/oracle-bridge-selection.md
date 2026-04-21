@@ -38,8 +38,8 @@ Claim body (canonical JSON, Ed25519-signed):
   "v":  1,
   "i":  "<issuer-pubkey-b64>",
   "p":  ["<peer1-b64>", "<peer2-b64>", ...],   // sorted lexicographically
-  "ia": 1716450000000,    // issuedAt  — ms since epoch
-  "ea": 1716450300000     // expiresAt — ms since epoch
+  "t":  300000,          // ttlMs — validity window starting from receipt
+  "s":  1716450000000    // monotonic sequence from the issuer — replay guard
 }
 ```
 
@@ -56,9 +56,13 @@ Full claim (what's sent on the wire):
 
 **Version byte** (`v: 1`): lets the protocol evolve. Receivers MUST reject unknown versions.
 
+**Receiver-anchored TTL** (T1b decision): the signed body contains a *relative* `t` (ttlMs) rather than absolute timestamps. The recipient stamps the claim with its *own local* `receivedAt` on arrival and treats the claim as valid while `now - receivedAt < t`. No wall-clock is ever compared between issuer and receiver, so clock skew is structurally irrelevant.
+
+**Replay detection** via `s` (sequence). Each issuer advances `s` strictly monotonically — implementation: `s = max(Date.now(), lastSignedSeq + 1)`, persisted in the vault so NTP adjustments or clock jumps don't revert it. Receivers remember the **last accepted `s` per issuer** (one number in RAM) and reject any claim where `s <= lastSeenSeq`.
+
 **Limits** (receiver-enforced):
-- `|p| ≤ MAX_PEERS` (default 1024) — prevents list-flooding DoS.
-- `ea - ia ≤ MAX_TTL_MS` (default 10 min) — bounds the staleness window.
+- `|p| ≤ MAX_PEERS` (default **256**) — prevents list-flooding DoS. Override via `enableReachabilityOracle({ maxPeers })` or the `oracle.maxPeers` field in the agent definition file.
+- `t ≤ MAX_TTL_MS` (default 10 min) — bounds the staleness window; oversize rejected.
 - Payload byte size ≤ `MAX_CLAIM_BYTES` (default 256 KB).
 
 ---
@@ -127,13 +131,15 @@ Two fetch paths, both in `GossipProtocol.runRound`:
 ### Verification checks (in order, fail fast)
 1. `claim.body.v === 1`
 2. `|claim.body.p| ≤ MAX_PEERS` and byte-size ≤ `MAX_CLAIM_BYTES`
-3. `claim.body.ia ≤ now ≤ claim.body.ea` (with ±`CLOCK_SKEW_MS` grace, default 60 s)
-4. `claim.body.ea - claim.body.ia ≤ MAX_TTL_MS`
+3. `claim.body.t > 0` and `claim.body.t ≤ MAX_TTL_MS`
+4. `claim.body.s > lastSeenSeq[claim.body.i]` (replay guard; accept any first sighting)
 5. `claim.body.i === <issuer pubKey we expect>` (prevents reflection)
 6. Ed25519 signature verifies against `claim.body.i`'s key
 
+On success: record `receivedAt = now_local` alongside the claim.  Cache invalidates when `now_local - receivedAt ≥ t`.  No wall-clock is ever compared between the issuer and the receiver.
+
 Any failure → emit a `reachability-claim-rejected` event (telemetry) and
-**do not** update the graph.
+**do not** update the graph. Previously-accepted claim (if any) keeps its freshness window; it isn't invalidated by a bad follow-up.
 
 ---
 
@@ -175,11 +181,13 @@ attempts.
 
 | Threat                       | Mitigation                                                      |
 |------------------------------|-----------------------------------------------------------------|
-| Replay of old claim          | Strict `ea > now` check; sig covers `ia` + `ea`                 |
+| Replay of old claim          | Monotonic `s`; receiver keeps `lastSeenSeq` per issuer and rejects `s ≤ lastSeenSeq` |
+| Replay extending validity    | `t` (ttlMs) is anchored to **receiver's** `receivedAt`, so a re-delivered replay can't outlive the receiver's original window plus one more `t` at worst — and the `s` guard usually catches it first |
 | Forgery (fake issuer)        | Ed25519 sig verified against `i` (caller-known pubkey)          |
 | Claim flood (DoS)            | `MAX_PEERS`, `MAX_CLAIM_BYTES`, producer-side cache             |
 | False reachability claim     | Receiver still calls `relay-forward`; bad claim → `target-unreachable` response → probe-retry picks a real bridge |
-| Clock skew                   | ±60 s grace on `ia`/`ea`; log + reject if out of bounds         |
+| Clock skew across devices    | **Not applicable** — no wall-clock comparison between issuer and receiver (§2 receiver-anchored TTL) |
+| Issuer clock jumps backwards | `s` computed as `max(Date.now(), lastSignedSeq + 1)` persisted in vault — never reverts |
 | Stale oracle after churn     | Short TTL (5 min default) + `peer-disconnected`-triggered re-sign |
 | Signature-verification DoS   | Claims only accepted from hello'd peers (SecurityLayer.getPeerKey) |
 
@@ -190,29 +198,53 @@ attempts.
 Everything opt-in. No existing API breaks.
 
 ```js
-// Producer side
+// Producer side — all knobs optional, each falls through to the
+// agent-definition-file value (AgentConfig 'oracle.*') and finally a
+// built-in default. Code argument wins over config wins over default.
 agent.enableReachabilityOracle({
-  ttlMs           = 5 * 60_000,
-  refreshBufferMs = 60_000,
+  ttlMs            = 5 * 60_000,   // validity window, receiver-anchored
+  refreshBeforeMs  = 60_000,       // re-sign when cached claim has <= this much left
+  maxPeers         = 256,          // hard cap on |p| in our own claim
 });
 
 // Consumer side (implicit — handled by GossipProtocol when available;
-//                or explicit via new function for tests)
+//                or explicit via helpers for tests)
 import { fetchReachabilityClaim, verifyReachabilityClaim }
   from '@canopy/core';
+```
+
+**Agent-definition-file overrides** (recognised by `AgentConfig` so a YAML/JSON
+definition can tune oracle behaviour without code changes):
+
+```yaml
+oracle:
+  ttlMs:           300000
+  refreshBeforeMs:  60000
+  maxPeers:           256
+  # consumer-side caps (used when verifying claims from peers):
+  maxTtlMs:        600000       # reject claims with t > maxTtlMs
+  maxBytes:        262144       # reject claim payloads > maxBytes
 ```
 
 Signed-claim helpers live in `core/security/reachabilityClaim.js`:
 
 ```js
-signReachabilityClaim(identity, peers, { ttlMs }) → { body, sig }
-verifyReachabilityClaim(claim, { expectedIssuer, now }) → { ok, reason? }
+signReachabilityClaim(identity, peers, { ttlMs, seqStore }) → { body, sig }
+//   seqStore:  { read(): Promise<number>, write(n): Promise<void> }
+//   Defaults to an in-memory value bootstrapped with Date.now().
+//   For persistence across restarts, pass a vault-backed store.
+
+verifyReachabilityClaim(claim, {
+  expectedIssuer,
+  lastSeenSeq,          // number | undefined
+  maxPeers, maxTtlMs, maxBytes,
+}) → { ok: true, newLastSeq } | { ok: false, reason: string }
 ```
 
 Skill lives in `core/skills/reachablePeers.js`:
 
 ```js
-registerReachablePeersSkill(agent, { ttlMs, refreshBufferMs });
+registerReachablePeersSkill(agent, { ttlMs, refreshBeforeMs, maxPeers });
 // Called internally by agent.enableReachabilityOracle().
 ```
 
@@ -231,20 +263,77 @@ registerReachablePeersSkill(agent, { ttlMs, refreshBufferMs });
 
 ---
 
-## 10. Open issues to resolve before Phase-T implementation starts
+## 10. T1 decisions (resolved)
 
-1. **`MAX_PEERS` default.** 1024 keeps the payload under ~50 KB at 48-byte
-   keys. Acceptable? Or do we want a lower cap (say 256) to be defensive?
-2. **Clock source.** `Date.now()` everywhere. Good enough on phones +
-   laptops? Or do we want a monotonic source for `ia`?
-3. **Persistence.** Do we cache verified claims across app restarts, or
-   re-pull on every cold start? Caching saves startup latency on flaky
-   networks but needs thought about how to invalidate on key-rotation.
-4. **Interaction with capability tokens.** Could reachability-claim
-   verification piggy-back on the same `CapabilityToken` canonicalisation?
-   (Probably not — tokens are per-skill, claims are per-agent — but worth
-   checking before both codepaths ossify.)
+These were the four open issues blocking Group T implementation. Decided
+2026-04-21; frozen here so T2 can proceed.
 
-These are **input to Group T's first sub-phase** (design doc approval). The
-coding plan must either resolve them or make the defaults above explicit
-before T1 implementation starts.
+### T1-a · `MAX_PEERS` default = 256, overridable
+
+Small default keeps phone-class agents defensive against oversize or
+adversarial claims. Well-connected relays / servers who legitimately
+need more opt in two ways:
+
+- **Code** — `agent.enableReachabilityOracle({ maxPeers: 1024 })`
+- **Agent definition file** — `oracle.maxPeers: 1024` in the YAML/JSON
+  loaded by `AgentConfig`
+
+Resolution order inside `enableReachabilityOracle`: explicit code arg → `agent.config.get('oracle.maxPeers')` → built-in default 256.
+
+### T1-b · No wall-clock comparison between issuer and receiver
+
+Dropped `issuedAt` / `expiresAt` from the signed body. Replaced with a
+pair that sidesteps clock skew entirely:
+
+- `t` — ttl in milliseconds. Receiver anchors against its *own*
+  `receivedAt` when the claim arrives; the claim is valid while
+  `now_local - receivedAt < t`.
+- `s` — monotonic sequence. Issuer advances `s` strictly using
+  `max(Date.now(), lastSignedSeq + 1)` persisted in the vault (so NTP
+  corrections or clock jumps can't revert it). Receivers remember
+  `lastSeenSeq` per issuer and reject `s ≤ lastSeenSeq` as a replay.
+
+No `CLOCK_SKEW_MS` parameter — it's structurally irrelevant now.
+
+### T1-c · Volatile cache only, but producer refreshes before expiry
+
+**No cross-restart persistence.** Verified claims live in RAM. On cold
+start, the first gossip round (≤ 15 s) re-populates the cache. Saves
+us an AsyncStorage integration + key-rotation invalidation story we
+don't need yet.
+
+The *producer* side does refresh its own cached claim proactively,
+so gossip doesn't return an about-to-expire claim that a consumer
+would then immediately discard. Controlled by:
+
+- **Code** — `enableReachabilityOracle({ refreshBeforeMs: 60_000 })`
+- **Agent definition file** — `oracle.refreshBeforeMs: 60000`
+
+When `now - claim.signedAt ≥ (ttlMs - refreshBeforeMs)`, the next
+request re-signs. Default 60 s; override per app.
+
+### T1-d · Share `canonicalize()` with `CapabilityToken`, nothing else
+
+Both modules depend on one primitive for signing: deterministic
+JSON serialisation with sorted keys. That already exists as
+`core/Envelope.js::canonicalize`. `reachabilityClaim.js` and
+`CapabilityToken.js` both import it directly; they don't share a
+higher-level "signed body" helper because their body shapes and
+verification rules are unrelated. Any shared abstraction beyond
+canonicalisation would be speculative.
+
+---
+
+## 11. Future work (deferred)
+
+- **Cross-restart persistence** — revisit if cold-start latency becomes
+  a measurable issue.
+- **Multi-hop oracle routing** — knownPeers-of-knownPeers graph walks;
+  probably needs a link-state / DHT approach rather than more per-peer
+  claims.
+- **Explicit revocation** — signed revocation messages for
+  "forget-this-claim" events. Useful for key rotation. Expiry is
+  sufficient for v1.
+- **Push updates** — publish a fresh claim on every peer-set change
+  instead of waiting for the next gossip pull. Probably paired with
+  a rate limit.
