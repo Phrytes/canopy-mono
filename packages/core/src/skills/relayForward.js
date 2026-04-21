@@ -76,12 +76,21 @@ export function registerRelayForward(agent, opts = {}) {
     }
 
     // ── Forward ──────────────────────────────────────────────────────────────
+    // Preserve the caller's origin signature unchanged — we MUST NOT re-sign
+    // (we don't have the caller's private key, and re-signing would drop
+    // attribution). Missing sig/ts just means the message is pre-Z or the
+    // caller opted out; the target will fall back to envelope._from.
     try {
       const result = await agent.invoke(
         d.targetPubKey,
         d.skill,
         Parts.wrap(d.payload ?? []),
-        { timeout: d.timeout ?? 10_000, origin: from },
+        {
+          timeout:    d.timeout ?? 10_000,
+          origin:     from,
+          originSig:  d.originSig ?? null,
+          originTs:   d.originTs  ?? null,
+        },
       );
       // Encode the full parts array inside the DataPart so TextParts survive the hop.
       return [DataPart({ forwarded: true, parts: result })];

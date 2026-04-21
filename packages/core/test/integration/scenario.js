@@ -82,9 +82,16 @@ export async function buildMesh({ log } = {}) {
   bob.enableRelayForward({ policy: 'always' });
 
   const registerReceiveMessage = (agent, received) => {
-    agent.register('receive-message', async ({ parts, from, originFrom, relayedBy }) => {
+    agent.register('receive-message', async ({
+      parts, from, originFrom, originVerified, relayedBy,
+    }) => {
       const text = Parts.text(parts) ?? JSON.stringify(Parts.data(parts));
-      received.push({ text, from, originFrom: originFrom ?? from, relayedBy });
+      received.push({
+        text, from,
+        originFrom:     originFrom ?? from,
+        originVerified: !!originVerified,
+        relayedBy,
+      });
       return [DataPart({ ack: true })];
     }, { visibility: 'public' });
   };
@@ -95,6 +102,11 @@ export async function buildMesh({ log } = {}) {
   registerReceiveMessage(alice, aliceReceived);
   registerReceiveMessage(bob,   bobReceived);
   registerReceiveMessage(carol, carolReceived);
+
+  const warnings = { alice: [], bob: [], carol: [] };
+  alice.on('security-warning', w => warnings.alice.push(w));
+  bob  .on('security-warning', w => warnings.bob  .push(w));
+  carol.on('security-warning', w => warnings.carol.push(w));
 
   // Peer-list skill (simple version — does what PeerDiscovery would,
   // but without starting a ping loop since the scenario is synchronous).
@@ -118,6 +130,7 @@ export async function buildMesh({ log } = {}) {
     alice, bob, carol,
     relayBus, loopBus,
     received: { alice: aliceReceived, bob: bobReceived, carol: carolReceived },
+    warnings,
     pubKeys: {
       alice: aliceId.pubKey,
       bob:   bobId.pubKey,
