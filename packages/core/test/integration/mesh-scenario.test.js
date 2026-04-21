@@ -94,13 +94,39 @@ describe('Group Y — mesh scenario', () => {
   // ── Conditional phases ─────────────────────────────────────────────────────
 
   it.skip('phase 7 (V): BLE store-and-forward buffers during a disconnect', () => {
-    // TODO: unskip when Group V (BLE buffer) lands.
-    // Simulate a short loopback disconnect, send from Alice, reconnect,
-    // assert the buffered message reaches Carol.
+    // Group V landed — the buffer itself is fully covered by
+    // packages/react-native/test/BleTransport.buffer.test.js. This phase
+    // is kept skipped because the integration scenario uses
+    // InternalTransport (no buffer), not BleTransport. Un-skip once a
+    // test-transport with parity to BleTransport's buffer is added, or
+    // route this scenario through a real BleTransport in CI.
   });
 
-  it.skip('phase 8 (W): hello-gate rejects silently without a matching token', () => {
-    // TODO: unskip when Group W (hello gate) lands.
+  it('phase 8 (W): hello-gate silently drops an unauthenticated hello', async () => {
+    const m = await buildMesh();
+
+    // Wipe the addPeer pre-registration buildMesh does for fast test
+    // startup — we need hello() to go through the full handshake here.
+    await m.alice.forget(m.pubKeys.bob);
+    await m.bob.forget(m.pubKeys.alice);
+
+    // Bob refuses all inbound hellos — should be indistinguishable from
+    // offline for any sender.
+    m.bob.setHelloGate(() => false);
+
+    await expect(m.alice.hello(m.pubKeys.bob, 200))
+      .rejects.toThrow(/timeout/i);
+
+    // Bob never registered Alice's key, so Alice remains unable to talk.
+    expect(m.bob.security.getPeerKey(m.pubKeys.alice)).toBeNull();
+    expect(m.alice.security.getPeerKey(m.pubKeys.bob)).toBeNull();
+
+    // Clearing the gate restores the normal path.
+    m.bob.setHelloGate(null);
+    await m.alice.hello(m.pubKeys.bob, 2_000);
+    expect(m.bob.security.getPeerKey(m.pubKeys.alice)).toBeTruthy();
+
+    await m.teardown();
   });
 
   it('phase 9 (T): oracle picks the right bridge on the first try', async () => {

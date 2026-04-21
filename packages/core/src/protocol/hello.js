@@ -82,6 +82,28 @@ export async function sendHello(agent, peerAddress, timeout = 15_000) {
 export async function handleHello(agent, envelope) {
   const { pubKey, label, ack } = envelope.payload ?? {};
 
+  // Hello gate (Group W): if the agent has installed a gate and it
+  // returns false (or throws — fail closed), drop this HI silently:
+  //   • don't emit 'peer'
+  //   • don't send ack
+  //   • undo the SecurityLayer auto-register that happened during
+  //     decryptAndVerify, so we don't carry a key for someone we
+  //     actively refuse to hello.
+  // From the sender's perspective, the hello simply times out.
+  const gate = agent.helloGate;
+  if (typeof gate === 'function') {
+    let accepted = false;
+    try {
+      accepted = await gate(envelope);
+    } catch {
+      accepted = false;                    // fail-closed on thrown errors
+    }
+    if (!accepted) {
+      agent.security?.unregisterPeer?.(envelope._from);
+      return;
+    }
+  }
+
   // SecurityLayer already registered sender.pubKey when it processed the HI.
   // We emit 'peer' so sendHello() above and application code know about it.
   agent.emit('peer', {

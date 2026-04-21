@@ -62,6 +62,7 @@ export class Agent extends Emitter {
   #pubSubHistory = 0;
   #started       = false;
   #label         = null;
+  #helloGate     = null;   // optional (envelope) => boolean gate; see Group W
 
   /**
    * @param {object} opts
@@ -389,6 +390,31 @@ export class Agent extends Emitter {
     registerReachablePeersSkill(this, opts);
     return this;
   }
+
+  /**
+   * Opt-in: install a hello-gate predicate. An inbound HI is handled
+   * normally only when the gate returns `true`. On `false` (or a thrown
+   * error) the HI is silently dropped — no ack, no `peer` event, no
+   * SecurityLayer registration. From the sender's perspective the result
+   * is indistinguishable from being offline.
+   *
+   * Default (no gate set) accepts all hellos (backward-compatible).
+   *
+   * See packages/core/src/security/helloGates.js for ready-made gates
+   * (tokenGate, groupGate, anyOf) and Design-v3 "layered hello" + Group W.
+   *
+   * @param {null | ((envelope: object) => boolean | Promise<boolean>)} fn
+   */
+  setHelloGate(fn) {
+    if (fn !== null && typeof fn !== 'function') {
+      throw new Error('setHelloGate: argument must be a function or null');
+    }
+    this.#helloGate = fn;
+    return this;
+  }
+
+  /** The currently-installed hello gate, or null. */
+  get helloGate() { return this.#helloGate; }
 
   /**
    * Opt-in: start the ping + gossip loops (PeerDiscovery). Also registers
