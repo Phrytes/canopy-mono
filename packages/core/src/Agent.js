@@ -36,6 +36,7 @@ import { callSkill, handleTaskRequest, handleTaskOneWay } from './protocol/taskE
 import { handlePubSub }                              from './protocol/pubSub.js';
 import { invokeWithHop }                             from './routing/invokeWithHop.js';
 import { registerRelayForward }                      from './skills/relayForward.js';
+import { registerReachablePeersSkill }               from './skills/reachablePeers.js';
 import { PeerDiscovery }                             from './discovery/PeerDiscovery.js';
 import { pullPeerList }                              from './discovery/pullPeerList.js';
 
@@ -364,6 +365,28 @@ export class Agent extends Emitter {
       this.#config.set('policy.allowRelayFor', opts.policy);
     }
     registerRelayForward(this, opts);
+    return this;
+  }
+
+  /**
+   * Opt-in: register the `reachable-peers` skill so callers can cache a
+   * signed list of who this agent can reach directly. Used by the oracle
+   * bridge-selection path in invokeWithHop.
+   *
+   * Each option resolves as: explicit arg → `agent.config.get('oracle.<name>')`
+   * → built-in default. Calling twice is a no-op.
+   *
+   * See Design-v3/oracle-bridge-selection.md.
+   *
+   * @param {object} [opts]
+   * @param {number} [opts.ttlMs]              Validity window of each claim (default 5 min)
+   * @param {number} [opts.refreshBeforeMs]    Re-sign when this much TTL remains (default 60 s)
+   * @param {number} [opts.maxPeers]           Truncate peer list to this size (default 256)
+   * @param {object} [opts.seqStore]           Custom { read, write } store for monotonic `s`
+   */
+  enableReachabilityOracle(opts = {}) {
+    if (this.#skills.get('reachable-peers')) return this;
+    registerReachablePeersSkill(this, opts);
     return this;
   }
 
