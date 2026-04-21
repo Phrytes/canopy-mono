@@ -1,0 +1,76 @@
+/**
+ * @canopy/react-native — Android native module sources.
+ *
+ * Provides two ReactPackage modules:
+ *   - MdnsModule (mDNS/DNS-SD + TCP transport)  — com.canopy.mdns.MdnsPackage
+ *   - BlePeripheralModule (BLE GATT server)      — com.canopy.ble.BlePeripheralPackage
+ *
+ * Built as an Android library and consumed via React Native autolinking.
+ * Apps don't need to hand-edit settings.gradle or MainApplication.kt —
+ * the package.json "react-native" field + this module are enough.
+ */
+buildscript {
+    ext {
+        if (project == rootProject) {
+            buildToolsVersion   = "34.0.0"
+            minSdkVersion       = 23
+            compileSdkVersion   = 34
+            targetSdkVersion    = 34
+            ndkVersion          = "26.1.10909125"
+            kotlinVersion       = "1.9.24"
+        }
+    }
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.6.0"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${ext.kotlinVersion}"
+    }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+
+android {
+    namespace       "com.canopy.reactnative"
+    compileSdkVersion   rootProject.ext.has("compileSdkVersion") ? rootProject.ext.compileSdkVersion : 34
+    buildToolsVersion   rootProject.ext.has("buildToolsVersion")  ? rootProject.ext.buildToolsVersion  : "34.0.0"
+
+    defaultConfig {
+        minSdkVersion      rootProject.ext.has("minSdkVersion")     ? rootProject.ext.minSdkVersion     : 23
+        targetSdkVersion   rootProject.ext.has("targetSdkVersion")  ? rootProject.ext.targetSdkVersion  : 34
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
+
+    sourceSets {
+        main { java.srcDirs = ["src/main/java"] }
+        test { java.srcDirs = ["src/test/kotlin"] }
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation "com.facebook.react:react-android"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:${rootProject.ext.has('kotlinVersion') ? rootProject.ext.kotlinVersion : '1.9.24'}"
+
+    // Unit tests — pure Kotlin, no Android deps.
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+    testImplementation "org.jetbrains.kotlin:kotlin-test:${rootProject.ext.has('kotlinVersion') ? rootProject.ext.kotlinVersion : '1.9.24'}"
+}
+
+test {
+    useJUnitPlatform()
+}
