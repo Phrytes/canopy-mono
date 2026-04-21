@@ -451,20 +451,18 @@ See §8 for full rationale. Optional last group — ship only when a product fea
 
 Hardens the unverified `_origin` header shipped in the 2026-04-20 session. Today a relay peer can set `_origin` to any pubKey and the receiver has no way to detect it — any downstream logic that keys on sender identity (reputation, rate limits, capability tokens) is spoofable.
 
-- Original caller signs the canonical hash of `(targetPubKey, skillId, parts, ts)` with its Ed25519 identity key.
-- `invokeWithHop` includes the signature + caller pubKey in the `relay-forward` DataPart. For multi-hop, each relay preserves the original origin + sig (not re-signs).
-- `handleTaskRequest` verifies `_originSig` against `_origin`'s pubKey:
-  - Signature matches canonical payload ✓
-  - `_origin` pubKey is known to us (hello'd) or trusted via TrustRegistry
-  - Timestamp within replay window
-- On any failed check: fall back to `envelope._from` as `ctx.originFrom` and emit a `security-warning` event. The message still delivers, but attribution is downgraded to "relayed, origin unverified."
-- New helpers in `SecurityLayer`: `signOrigin(payload, targetPubKey, skillId)` / `verifyOrigin(envelope)`.
-- Envelope payload schema grows by one field (`_originSig`). Fully backward-compatible — missing sig = unverified origin (current behaviour).
+**Design doc:** `Design-v3/origin-signature.md` (Z1 decisions recorded 2026-04-22).
 
-**Open design questions** (resolve in a small sub-design doc before implementation):
-- Sign the serialised `parts` directly, or a stable canonical hash? (Latter preserves sig across re-wrapping.)
-- Should the sig cover `ts` to prevent replay across identical-params hops?
-- Interaction with capability tokens (`_token`) already per-caller/skill — can `_originSig` share the same canonicalisation helper?
+**Protocol additions** (fully backward-compatible — missing sig = safe fallback, not rejection):
+
+- Signed body: `{ v: 1, target, skill, parts, ts }` — canonicalised via `core/Envelope.js::canonicalize`, signed with the origin's Ed25519 identity key. No pre-hash of `parts`; Ed25519 handles arbitrary input.
+- Three new RQ-payload fields: `_origin` (already present), `_originSig` (base64url Ed25519), `_originTs` (ms since epoch; must be within ±`ORIGIN_SIG_WINDOW_MS`, default 10 min matching the SecurityLayer replay window).
+- `invokeWithHop` signs before calling `relay-forward`; `relay-forward` preserves `_origin` + `_originSig` + `_originTs` through the hop without re-signing. Multi-hop works because each intermediate bridge carries the exact bytes.
+- `handleTaskRequest` verifies. On success: `ctx.originFrom = _origin`, `ctx.originVerified = true`. On missing/invalid/stale sig: `ctx.originFrom = envelope._from`, `ctx.originVerified = false`, `security-warning` event emitted (except for the "no sig at all" case which is silent for pre-Z backward compat).
+- New handler field `ctx.originVerified` lets apps distinguish "trust-for-security" from "display-only" attribution.
+
+**Tunables** (AgentConfig `originSignature.*` overrides → built-in):
+`windowMs` (10 min), `strictFallback` (true — reserved for "reject delivery on failed sig" future work).
 
 **Files likely touched.**
 - `core/protocol/taskExchange.js` (RQ payload + handleTaskRequest verification)

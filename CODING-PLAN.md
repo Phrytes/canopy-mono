@@ -553,33 +553,118 @@ Group-scoped skills are invisible to non-members in both export and discovery. E
 
 ## Group Z — Origin signature verification
 
-**Ref:** `EXTRACTION-PLAN.md` §7 Group Z. Depends on M.
+**Ref:** `EXTRACTION-PLAN.md` §7 Group Z.
+**Design doc:** `Design-v3/origin-signature.md` — claim format, signature, canonicalisation, window, threats, API. Must be approved before Z2 implementation starts.
 
-### Files
+**Dependencies:** M (invokeWithHop, relayForward), plus the already-shipped unsigned `_origin` field in `callSkill` / `handleTaskRequest`.
 
-Create:
-- `nkn-test/Design-v3/origin-signature.md` — answer the three open design questions (canonical form, timestamp inclusion, token interaction).
-- `packages/core/src/security/originSignature.js` — `signOrigin(payload, targetPubKey, skillId, ts)` / `verifyOrigin(envelope, expectedPubKey)` helpers.
-- `packages/core/test/security/originSignature.test.js`
+**Outcome:** `_origin` stops being a claim and becomes a cryptographic assertion. `ctx.originFrom` is either **verified** or falls back safely to `envelope._from`; apps gate on a new `ctx.originVerified` flag when they care.
+
+### Sub-phases
+
+Like Group T, each sub-phase is a self-contained green commit.
+
+#### Z1 — Design decisions *(doc-only commit)*
+
+Resolved in `Design-v3/origin-signature.md` §10 (2026-04-22):
+
+- **Z1-a · Sign `{ v, target, skill, parts, ts }` directly.** No pre-hash of
+  `parts`; Ed25519 handles arbitrary-length input internally. `relay-forward`
+  passes `parts` verbatim so canonical reconstruction at the target matches.
+- **Z1-b · Signature covers the timestamp.** `_originTs` is signed; receiver
+  checks `|now - ts| ≤ ORIGIN_SIG_WINDOW_MS` (default 10 min, matching the
+  SecurityLayer replay window). Prevents captured-sig replay across days.
+- **Z1-c · Reuse `core/Envelope.js::canonicalize`.** Shared with
+  `CapabilityToken`; no new higher-level body helper.
+
+Commit is docs-only: the design doc plus this plan update.
+
+#### Z2 — Canonical sign/verify helpers
+
+Files:
+- `packages/core/src/security/originSignature.js`
+- `packages/core/test/originSignature.test.js`
+
+Exports:
+```js
+signOrigin(identity, { target, skill, parts, ts }) → string   // base64url sig
+
+verifyOrigin(
+  { origin, sig, body: { v, target, skill, parts, ts } },
+  { expectedPubKey, now, windowMs }
+) → { ok: true } | { ok: false, reason: string }
+```
+
+Helpers reuse `canonicalize` from `core/Envelope.js`; signing uses the
+existing `AgentIdentity.sign` / static `AgentIdentity.verify`.
+
+Tests (minimum):
+- Sign then verify round-trip → ok.
+- Tampered `parts` / `skill` / `target` / `ts` — each fails with a distinct reason.
+- Wrong `expectedPubKey` → rejected.
+- Expired timestamp (`|now - ts| > windowMs`) → rejected.
+- Future timestamp → rejected.
+- Unknown version (`v !== 1`) → rejected.
+- Missing field in body → rejected.
+
+#### Z3 — `callSkill` / `handleTaskRequest` integration
 
 Modify:
-- `packages/core/src/protocol/taskExchange.js::callSkill` — accept `opts.sign = true` (default true when `opts.origin` is set); compute `_originSig` before placing it into the RQ payload.
-- `packages/core/src/protocol/taskExchange.js::handleTaskRequest` — verify `_originSig` when present; on failure emit `security-warning` and fall back to `envelope._from`.
-- `packages/core/src/skills/relayForward.js` (from M) — preserve the original `_origin` + `_originSig` through the hop instead of re-signing.
-- `packages/core/src/routing/invokeWithHop.js` — sign origin before forwarding.
+- `packages/core/src/protocol/taskExchange.js`
+  - `callSkill`: when `opts.origin` is set, also accept `opts.originSig` and
+    `opts.originTs` and include `_origin`, `_originSig`, `_originTs` in the RQ
+    payload. (Signing itself happens in Z4's `invokeWithHop`; `callSkill`
+    just threads the fields through.)
+  - `handleTaskRequest`: extract the three fields. If present, reconstruct
+    the canonical body with the agent's own pubkey as `target`, verify via
+    `verifyOrigin`. On success: `ctx.originFrom = _origin`, `ctx.originVerified = true`.
+    On fail: `ctx.originFrom = envelope._from`, `ctx.originVerified = false`,
+    emit `security-warning` with `{ reason, envelope }`. Skill still runs.
+  - Missing `_originSig` entirely → NOT a warning (backward-compat), just
+    the `_from` fallback. `ctx.originVerified = false`.
 
-### Sequence
+Add tests:
+- Signed + fresh → `ctx.originFrom === origin`, verified = true, no warning.
+- Tampered `parts` (received differ from signed) → fallback, warning emitted.
+- Missing sig → fallback, no warning.
+- Stale `ts` → fallback, warning.
+- Wrong pubkey (signer ≠ `_origin`) → fallback, warning.
 
-1. **Design doc first.** Write `origin-signature.md` resolving canonicalisation, ts coverage, relation to `_token`.
-2. Implement `signOrigin` / `verifyOrigin` helpers + tests.
-3. Extend `callSkill` to include `_originSig`.
-4. Extend `handleTaskRequest` verification with fall-back + `security-warning` emission.
-5. Update `relayForward` to not re-sign (preserves multi-hop chain).
-6. Update `invokeWithHop` to sign.
-7. Tests per extraction plan's bullets. Special attention: tampering, expired, missing (backward-compat with unsigned callers).
+#### Z4 — `invokeWithHop` signs; `relay-forward` preserves
+
+Modify:
+- `packages/core/src/routing/invokeWithHop.js` — before calling
+  `relay-forward` on a bridge, compute `ts = Date.now()` and
+  `sig = signOrigin(agent.identity, { target, skill, parts, ts })`.
+  Include `originSig` + `originTs` in the relay-forward DataPart.
+- `packages/core/src/skills/relayForward.js` — extract `originSig` and
+  `originTs` from the incoming payload, pass through as `opts` on the
+  inner `agent.invoke` so they land in the RQ payload to the target.
+
+Add tests:
+- End-to-end oracle / probe-retry paths: verify that the final RQ at the
+  target carries valid `_originSig` matching the original caller.
+- Multi-hop (A→B→C→D): sig survives without re-signing.
+
+#### Z5 — Integration scenario assertions
+
+Modify:
+- `packages/core/test/integration/mesh-scenario.test.js` phase 4-5:
+  After routing a message via Bob, assert:
+  - `ctx.originVerified === true`
+  - `ctx.originFrom === alice.pubKey`
+- Add a new phase 4b: "a tampered bridge can't forge origin."
+  Build a small test-transport that sits between Bob and Carol and
+  mutates `_origin` on the way through. Assert Carol's handler sees
+  `ctx.originFrom === envelope._from` (the bridge), NOT the forged
+  origin, and a `security-warning` event fired with `reason` matching
+  `/bad signature|bad_sig/`.
 
 ### DoD
-Signed origin is verified end-to-end; tampered or missing sigs degrade attribution gracefully with a warning. Multi-hop preserves the original sig.
+
+All sub-phases land as green commits. Full core suite stays green at every
+step. Integration test Phase 4-5 now asserts verification, and the
+tampering test locks the behaviour in place.
 
 ---
 
