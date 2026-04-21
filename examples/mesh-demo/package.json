@@ -1,0 +1,12 @@
+{
+  "name":        "mesh-demo",
+  "version":     "0.1.0",
+  "private":     true,
+  "type":        "module",
+  "description": "Runnable three-agent mesh scenario demonstrating hello, gossip, hop routing, forget, and oracle bridge selection.",
+  "bin":         { "mesh-demo": "./index.js" },
+  "scripts":     { "start": "node index.js" },
+  "dependencies": {
+    "@canopy/core": "file:../../packages/core"
+  }
+}
