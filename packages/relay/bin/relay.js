@@ -1,0 +1,49 @@
+#!/usr/bin/env node
+/**
+ * @canopy/relay — CLI entry point.
+ *
+ * Reads options from env vars (or argv for port):
+ *   PORT             default 8787
+ *   HOST             default 0.0.0.0
+ *   TLS_CERT         path to PEM cert (enables wss://)
+ *   TLS_KEY          path to PEM key
+ *   STATIC_DIR       optional directory to serve over HTTP
+ *
+ * Usage:
+ *   npx @canopy/relay
+ *   PORT=9000 STATIC_DIR=./public npx @canopy/relay
+ *   TLS_CERT=cert.pem TLS_KEY=key.pem npx @canopy/relay
+ */
+import { readFileSync } from 'node:fs';
+import { startRelay, getLanIp } from '../src/server.js';
+
+const port     = parseInt(process.argv[2] ?? process.env.PORT ?? '8787', 10);
+const host     = process.env.HOST ?? '0.0.0.0';
+const staticDir = process.env.STATIC_DIR ?? null;
+
+let tlsCert = null, tlsKey = null;
+if (process.env.TLS_CERT && process.env.TLS_KEY) {
+  tlsCert = readFileSync(process.env.TLS_CERT);
+  tlsKey  = readFileSync(process.env.TLS_KEY);
+}
+
+const { tls } = await startRelay({
+  port, host,
+  tlsCert, tlsKey,
+  serveStaticDir: staticDir,
+  log: true,
+});
+
+const scheme   = tls ? 'https' : 'http';
+const wsScheme = tls ? 'wss'   : 'ws';
+const lanIp    = getLanIp();
+
+console.log('');
+console.log('  @canopy/relay');
+console.log('  ─────────────────────────────────────');
+console.log(`  Local:    ${scheme}://localhost:${port}`);
+if (lanIp) {
+  console.log(`  Network:  ${scheme}://${lanIp}:${port}`);
+  console.log(`  Relay WS: ${wsScheme}://${lanIp}:${port}`);
+}
+console.log('');
