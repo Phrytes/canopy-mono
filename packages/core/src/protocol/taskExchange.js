@@ -222,7 +222,7 @@ export async function handleTaskRequest(agent, envelope) {
     result = skill.handler(ctx);
   } catch (err) {
     cleanup();
-    await _respondFailed(t, envelope, taskId, err, agent);
+    await _respondFailed(t, agent, envelope, taskId, err);
     return true;
   }
 
@@ -244,7 +244,7 @@ export async function handleTaskRequest(agent, envelope) {
       return true;
     }
     cleanup();
-    await _respondFailed(t, envelope, taskId, err, agent);
+    await _respondFailed(t, agent, envelope, taskId, err);
     return true;
   }
 
