@@ -21,7 +21,7 @@ import {
 import { Parts }           from '@canopy/core';
 import { useAgent }        from '../context/AgentContext';
 import { messageStore }    from '../store/messages.js';
-import { invokeWithHop }   from '../routing/invokeWithHop.js';
+// Hop-aware invoke lives on Agent now (see CODING-PLAN.md Group N).
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -75,7 +75,7 @@ export function MessageScreen({ route }) {
     setMessages([...messageStore.get(pubKey)]);
 
     try {
-      await invokeWithHop(agent, pubKey, 'receive-message',
+      await agent.invokeWithHop(pubKey, 'receive-message',
         [{ type: 'TextPart', text }],
         { timeout: 10_000 },
       );
