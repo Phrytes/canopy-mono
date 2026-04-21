@@ -35,6 +35,13 @@ export {
 
 // ── Security ─────────────────────────────────────────────────────────────────
 export { SecurityLayer, SecurityError, SEC } from './security/SecurityLayer.js';
+export {
+  signReachabilityClaim,
+  verifyReachabilityClaim,
+  createMemorySeqStore,
+  CLAIM_VERSION,
+  DEFAULT_VERIFY_LIMITS,
+}                                            from './security/reachabilityClaim.js';
 
 // ── Transport ────────────────────────────────────────────────────────────────
 export { Transport }                      from './transport/Transport.js';
