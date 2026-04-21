@@ -38,7 +38,13 @@ export async function handleSkillDiscovery(agent, envelope) {
     tier = await agent.trustRegistry.getTier(envelope._from) ?? 'authenticated';
   }
 
-  const skills = agent.skills.forTier(tier).map(s => ({
+  // Per-caller filter: handles group-visible skills via agent.security.groupManager.
+  const gm     = agent.security?.groupManager;
+  const skills = (await agent.skills.forCaller({
+    tier,
+    callerPubKey: envelope._from,
+    checkGroup:   gm ? (pk, gid) => gm.hasValidProof(pk, gid) : undefined,
+  })).map(s => ({
     id:          s.id,
     description: s.description,
     inputModes:  s.inputModes,
