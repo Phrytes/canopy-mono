@@ -10,7 +10,8 @@
  * peer-list requests.  The responder side lives in Agent skill registration
  * (see registerGossipSkill helper).
  */
-import { Parts } from '../Parts.js';
+import { Parts }                      from '../Parts.js';
+import { verifyReachabilityClaim }     from '../security/reachabilityClaim.js';
 
 export class GossipProtocol {
   #agent;
@@ -80,6 +81,48 @@ export class GossipProtocol {
     for (const card of toProcess) {
       await this.#discovery.discoverByIntroduction(card, peerId).catch(() => {});
     }
+
+    // Also pull the signed reachability claim so the oracle bridge-selection
+    // path in invokeWithHop has a fresh cache for this peer. See Group T6.
+    await this.#pullReachabilityClaim(peerId).catch(() => {});
+  }
+
+  /**
+   * Pull `reachable-peers` from `peerId`, verify with the peer's
+   * lastSeenSeq from the graph, and on success upsert knownPeers +
+   * knownPeersTs + knownPeersSeq + knownPeersSig. Errors are emitted
+   * as `reachability-claim-rejected` on the agent for telemetry —
+   * never thrown.
+   */
+  async #pullReachabilityClaim(peerId) {
+    let claim;
+    try {
+      const result = await this.#agent.invoke(peerId, 'reachable-peers', [], { timeout: 10_000 });
+      claim        = Parts.data(result);
+    } catch {
+      return;  // peer doesn't expose the skill, or unreachable — both benign
+    }
+
+    const existing     = await this.#peerGraph.get(peerId);
+    const lastSeenSeq  = existing?.knownPeersSeq;
+
+    const res = verifyReachabilityClaim(claim, {
+      expectedIssuer: peerId,
+      lastSeenSeq,
+    });
+
+    if (!res.ok) {
+      this.#agent.emit('reachability-claim-rejected', { issuer: peerId, reason: res.reason });
+      return;
+    }
+
+    await this.#peerGraph.upsert({
+      pubKey:         peerId,
+      knownPeers:     [...claim.body.p],
+      knownPeersTs:   Date.now() + claim.body.t,
+      knownPeersSeq:  res.newLastSeq,
+      knownPeersSig:  claim.sig,
+    });
   }
 
   // ── Private ────────────────────────────────────────────────────────────────
