@@ -1,0 +1,103 @@
+/**
+ * hello.js — bidirectional hello / key-exchange protocol.
+ *
+ * Purpose: let two agents introduce themselves without requiring pre-registration
+ * via agent.addPeer(). After sendHello() resolves, the SecurityLayer on both
+ * sides has the peer's pubKey registered and encrypted traffic can flow.
+ *
+ * Protocol:
+ *   1. Alice calls sendHello(agent, bobAddress)
+ *   2. Sends HI envelope: { pubKey, label?, ack: false }
+ *      (HI is signed plaintext — SecurityLayer does not encrypt it)
+ *   3. Bob's SecurityLayer auto-registers Alice's pubKey from the HI payload
+ *   4. Agent._dispatch calls handleHello(agent, envelope)
+ *   5. handleHello emits 'peer' on agent and sends HI back (ack: true)
+ *   6. Alice's SecurityLayer receives Bob's HI, auto-registers Bob's pubKey
+ *   7. sendHello() resolves (watches for 'peer' event for bobAddress)
+ *
+ * Both sides can initiate simultaneously without infinite loops because
+ * ack:true responses are never re-responded-to.
+ */
+
+/**
+ * Send a hello announcement and wait until we hear back.
+ *
+ * If the peer is already registered (pubKey known), this is a no-op
+ * and resolves immediately.
+ *
+ * @param {import('../Agent.js').Agent} agent
+ * @param {string}  peerAddress
+ * @param {number}  [timeout=15000]
+ */
+export async function sendHello(agent, peerAddress, timeout = 15_000) {
+  // If already registered, nothing to do.
+  if (agent.security.getPeerKey(peerAddress)) return;
+
+  let timer   = null;
+  let handler = null;
+
+  const waitForPeer = new Promise((resolve, reject) => {
+    timer = setTimeout(() => {
+      if (handler) agent.off('peer', handler);
+      reject(new Error(`Hello timeout — no response from ${peerAddress}`));
+    }, timeout);
+
+    handler = ({ address }) => {
+      if (address === peerAddress) {
+        clearTimeout(timer);
+        agent.off('peer', handler);
+        resolve();
+      }
+    };
+    agent.on('peer', handler);
+  });
+  // Attach a noop catch so a pending rejection (e.g. when sendHello throws
+  // before we reach `await waitForPeer`) is not treated as unhandled.
+  waitForPeer.catch(() => {});
+
+  try {
+    const t = await agent.transportFor(peerAddress);
+    await t.sendHello(peerAddress, {
+      pubKey: agent.pubKey,
+      label:  agent.label ?? null,
+      ack:    false,
+    });
+    await waitForPeer;
+  } catch (err) {
+    clearTimeout(timer);
+    if (handler) agent.off('peer', handler);
+    throw err;
+  }
+}
+
+/**
+ * Handle an inbound HI envelope. Called by Agent._dispatch.
+ *
+ * Registers the peer (SecurityLayer already did it from payload.pubKey)
+ * and responds with our own HI if this is not itself an ack.
+ *
+ * @param {import('../Agent.js').Agent} agent
+ * @param {object} envelope
+ */
+export async function handleHello(agent, envelope) {
+  const { pubKey, label, ack } = envelope.payload ?? {};
+
+  // SecurityLayer already registered sender.pubKey when it processed the HI.
+  // We emit 'peer' so sendHello() above and application code know about it.
+  agent.emit('peer', {
+    address: envelope._from,
+    pubKey:  pubKey ?? null,
+    label:   label  ?? null,
+    ack:     !!ack,
+  });
+
+  // Respond with our own hello if this is the initial (non-ack) announcement.
+  if (!ack) {
+    const t = await agent.transportFor(envelope._from);
+    await t.sendHello(envelope._from, {
+      pubKey: agent.pubKey,
+      label:  agent.label ?? null,
+      ack:    true,
+    }).catch(err => agent.emit('error', err));
+  }
+}

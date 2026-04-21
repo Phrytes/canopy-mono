@@ -1,0 +1,103 @@
+import React from 'react';
+import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+
+if (typeof globalThis !== 'undefined') {
+  const prev = globalThis.onunhandledrejection;
+  globalThis.onunhandledrejection = (event) => {
+    console.error('[unhandledRejection]', event?.reason ?? event);
+    prev?.(event);
+  };
+}
+import { NavigationContainer }        from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { AgentProvider, useAgent }    from './src/context/AgentContext';
+import { PeersScreen }                from './src/screens/PeersScreen';
+import { MessageScreen }              from './src/screens/MessageScreen';
+import { SetupScreen }                from './src/screens/SetupScreen';
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={eb.root}>
+          <Text style={eb.title}>Startup error</Text>
+          <Text style={eb.sub}>
+            Copy this and send it for debugging:
+          </Text>
+          <ScrollView style={eb.scroll}>
+            <Text style={eb.msg} selectable>
+              {this.state.error?.message ?? String(this.state.error)}
+              {'\n\n'}
+              {this.state.error?.stack ?? ''}
+            </Text>
+          </ScrollView>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const eb = StyleSheet.create({
+  root:   { flex: 1, backgroundColor: '#0f1117', padding: 24, paddingTop: 60 },
+  title:  { color: '#e05c5c', fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  sub:    { color: '#6b7094', fontSize: 13, marginBottom: 12 },
+  scroll: { flex: 1, backgroundColor: '#1a1d27', borderRadius: 8, padding: 12 },
+  msg:    { color: '#d4d8f0', fontSize: 11, fontFamily: 'monospace', lineHeight: 18 },
+});
+
+const Stack = createNativeStackNavigator();
+
+const screenOptions = {
+  headerStyle:            { backgroundColor: '#141720' },
+  headerTintColor:        '#d4d8f0',
+  headerTitleStyle:       { fontWeight: '600' },
+  contentStyle:           { backgroundColor: '#0f1117' },
+  headerShadowVisible:    false,
+  headerBackTitleVisible: false,
+};
+
+function AppInner() {
+  const { status, configure } = useAgent();
+
+  if (status === 'loading' || status === 'needs-setup') {
+    return <SetupScreen onDone={configure} />;
+  }
+
+  return (
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#141720" />
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={screenOptions}>
+          <Stack.Screen
+            name="Peers"
+            component={PeersScreen}
+            options={{ title: '@canopy  mesh demo' }}
+          />
+          <Stack.Screen
+            name="Message"
+            component={MessageScreen}
+            options={({ route }) => ({ title: route.params?.label ?? 'Message' })}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AgentProvider>
+        <AppInner />
+      </AgentProvider>
+    </ErrorBoundary>
+  );
+}

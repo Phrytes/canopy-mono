@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>@canopy/core — interactive demo</title>
+<script type="importmap">
+{
+  "imports": {
+    "tweetnacl":                      "https://esm.sh/tweetnacl@1.0.3",
+    "tweetnacl-util":                 "https://esm.sh/tweetnacl-util@0.15.1",
+    "ed2curve":                       "https://esm.sh/ed2curve@0.3.0?deps=tweetnacl@1.0.3",
+    "@scure/bip39":                   "https://esm.sh/@scure/bip39@1.4.0",
+    "@scure/bip39/wordlists/english": "https://esm.sh/@scure/bip39@1.4.0/wordlists/english"
+  }
+}
+</script>
+<style>
+  :root {
+    --bg:     #0f1117;
+    --panel:  #1a1d27;
+    --border: #2d3048;
+    --accent: #5b6af9;
+    --green:  #4caf82;
+    --red:    #e05c5c;
+    --yellow: #e0b860;
+    --text:   #d4d8f0;
+    --dim:    #6b7094;
+    --mono:   'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 { font-size: 15px; font-weight: 600; color: #fff; }
+  header .tag {
+    font-size: 11px;
+    background: var(--accent);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-family: var(--mono);
+  }
+  header .status {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  header .status .dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--dim);
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  header .status.ready .dot { background: var(--green); }
+
+  main {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    overflow: hidden;
+  }
+
+  /* ── Left: controls ── */
+  .controls {
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 8px;
+  }
+
+  .agent-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .agent-card h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .agent-card .addr {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+    word-break: break-all;
+    margin-bottom: 10px;
+  }
+
+  .agent-card .state-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .pill {
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: var(--border);
+    color: var(--text);
+  }
+  .pill.green { background: #1a3a2a; color: var(--green); }
+  .pill.red   { background: #3a1a1a; color: var(--red); }
+
+  button {
+    all: unset;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    transition: background 0.15s, border-color 0.15s;
+    text-align: left;
+  }
+  button:hover  { background: #222640; border-color: var(--accent); }
+  button:active { background: #292d50; }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  button .btn-label { font-weight: 600; }
+  button .btn-desc  { color: var(--dim); font-size: 11px; margin-top: 2px; }
+
+  .btn-group { display: flex; flex-direction: column; gap: 6px; }
+
+  /* ── Right: log ── */
+  .log-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .log-toolbar {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .log-toolbar span { font-size: 12px; color: var(--dim); }
+  .log-toolbar button {
+    all: unset;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--dim);
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    width: auto;
+    display: inline;
+  }
+  .log-toolbar button:hover { color: var(--text); }
+
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .log-entry {
+    display: grid;
+    grid-template-columns: 60px 80px 1fr;
+    gap: 8px;
+    padding: 2px 0;
+    border-bottom: 1px solid #0d1021;
+  }
+  .log-entry .ts   { color: var(--dim); }
+  .log-entry .who  { font-weight: 600; }
+  .log-entry .who.alice { color: #7da4f9; }
+  .log-entry .who.bob   { color: #f97d7d; }
+  .log-entry .who.sys   { color: var(--dim); }
+  .log-entry .msg  { color: var(--text); }
+  .log-entry.ok   .msg { color: var(--green); }
+  .log-entry.err  .msg { color: var(--red); }
+  .log-entry.info .msg { color: var(--yellow); }
+  .log-entry.dim  .msg { color: var(--dim); }
+
+  /* ── Bottom: task state monitor ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    min-height: 44px;
+  }
+  footer .footer-label { font-size: 11px; color: var(--dim); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  #task-monitor { display: flex; gap: 8px; flex-wrap: wrap; }
+  .task-chip {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    transition: all 0.2s;
+  }
+  .task-chip.working       { border-color: var(--yellow); color: var(--yellow); }
+  .task-chip.completed     { border-color: var(--green);  color: var(--green); }
+  .task-chip.failed        { border-color: var(--red);    color: var(--red); }
+  .task-chip.input-required { border-color: var(--accent); color: var(--accent); }
+  .task-chip.streaming     { border-color: #a07df9; color: #a07df9; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>@canopy/core</h1>
+  <span class="tag">v0.1.0</span>
+  <span class="tag">InternalTransport</span>
+  <div class="status" id="header-status">
+    <span class="dot"></span>initialising…
+  </div>
+</header>
+
+<main>
+  <!-- ── Controls ── -->
+  <div class="controls">
+
+    <!-- Alice -->
+    <div class="agent-card" id="alice-card">
+      <h3>🔵 Alice</h3>
+      <div class="addr" id="alice-addr">generating…</div>
+      <div class="state-row">skills: <span class="pill green" id="alice-skill-count">0</span></div>
+    </div>
+
+    <!-- Bob -->
+    <div class="agent-card" id="bob-card">
+      <h3>🔴 Bob</h3>
+      <div class="addr" id="bob-addr">generating…</div>
+      <div class="state-row">skills: <span class="pill green" id="bob-skill-count">0</span></div>
+    </div>
+
+    <div>
+      <div class="section-title">Setup</div>
+      <div class="btn-group">
+        <button id="btn-hello" disabled>
+          <div class="btn-label">hello() handshake</div>
+          <div class="btn-desc">Alice → Bob, exchanges pubKeys</div>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Skills</div>
+      <div class="btn-group">
+        <button id="btn-invoke" disabled>
+          <div class="btn-label">invoke echo</div>
+          <div class="btn-desc">Alice calls Bob's echo skill</div>
+        </button>
+        <button id="btn-invoke-data" disabled>
+          <div class="btn-label">invoke add</div>
+          <div class="btn-desc">Alice sends {a:10,b:5} → Bob returns sum</div>
+        </button>
+        <button id="btn-stream" disabled>
+          <div class="btn-label">streaming generator</div>
+          <div class="btn-desc">Bob yields 4 chunks, Alice collects</div>
+        </button>
+        <button id="btn-inputrequired" disabled>
+          <div class="btn-label">input-required flow</div>
+          <div class="btn-desc">Bob asks Alice for her name mid-task</div>
+        </button>
+        <button id="btn-discover" disabled>
+          <div class="btn-label">discoverSkills()</div>
+          <div class="btn-desc">Alice lists Bob's visible skill cards</div>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Messaging</div>
+      <div class="btn-group">
+        <button id="btn-message" disabled>
+          <div class="btn-label">one-way message</div>
+          <div class="btn-desc">Alice → Bob OW "hello world"</div>
+        </button>
+        <button id="btn-pubsub" disabled>
+          <div class="btn-label">pubSub round-trip</div>
+          <div class="btn-desc">Bob subscribes; Alice publishes 3 msgs</div>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Security</div>
+      <div class="btn-group">
+        <button id="btn-replay" disabled>
+          <div class="btn-label">replay attack</div>
+          <div class="btn-desc">Replay captured envelope → DUPLICATE</div>
+        </button>
+        <button id="btn-tamper" disabled>
+          <div class="btn-label">tamper attack</div>
+          <div class="btn-desc">Flip a ciphertext byte → BAD_SIG</div>
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /controls -->
+
+  <!-- ── Log ── -->
+  <div class="log-panel">
+    <div class="log-toolbar">
+      <span>Event log</span>
+      <button id="btn-clear">clear</button>
+    </div>
+    <div id="log"></div>
+  </div>
+</main>
+
+<footer>
+  <span class="footer-label">Tasks</span>
+  <div id="task-monitor"><span style="color:var(--dim);font-size:11px">none yet</span></div>
+</footer>
+
+<script>
+  // Show module load errors visibly — they would otherwise be silent.
+  window.addEventListener('error', e => {
+    document.getElementById('header-status').innerHTML =
+      '<span class="dot" style="background:var(--red)"></span>load error: ' + e.message;
+  });
+  window.addEventListener('unhandledrejection', e => {
+    const msg = e.reason?.message ?? String(e.reason);
+    const logEl = document.getElementById('log');
+    const row = document.createElement('div');
+    row.className = 'log-entry err';
+    row.innerHTML = `<span class="ts"></span><span class="who sys">sys</span><span class="msg">✗ ${msg}</span>`;
+    logEl.appendChild(row);
+    document.getElementById('header-status').innerHTML =
+      `<span class="dot" style="background:var(--red)"></span>error: ${msg}`;
+  });
+</script>
+<script type="module">
+import { Agent }               from './src/Agent.js';
+import { AgentIdentity }       from './src/identity/AgentIdentity.js';
+import { VaultMemory }         from './src/identity/VaultMemory.js';
+import { InternalBus, InternalTransport } from './src/transport/InternalTransport.js';
+import { TextPart, DataPart, Parts } from './src/Parts.js';
+import { subscribe }           from './src/protocol/pubSub.js';
+import { SecurityLayer }       from './src/security/SecurityLayer.js';
+import { mkEnvelope, P }       from './src/Envelope.js';
+import { Task }                from './src/protocol/Task.js';
+
+// ── Log helpers ───────────────────────────────────────────────────────────────
+
+const logEl    = document.getElementById('log');
+const taskMon  = document.getElementById('task-monitor');
+let   taskMonEmpty = true;
+
+function ts() {
+  const d = new Date();
+  return `${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}.${String(d.getMilliseconds()).padStart(3,'0')}`;
+}
+
+function log(who, msg, cls = '') {
+  const row   = document.createElement('div');
+  row.className = `log-entry ${cls}`;
+  row.innerHTML = `
+    <span class="ts">${ts()}</span>
+    <span class="who ${who}">${who}</span>
+    <span class="msg">${msg}</span>
+  `;
+  logEl.appendChild(row);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function logOk(who, msg)   { log(who, '✓ ' + msg, 'ok'); }
+function logErr(who, msg)  { log(who, '✗ ' + msg, 'err'); }
+function logInfo(who, msg) { log(who, '→ ' + msg, 'info'); }
+function logDim(who, msg)  { log(who, msg, 'dim'); }
+
+document.getElementById('btn-clear').onclick = () => { logEl.innerHTML = ''; };
+
+// ── Task monitor ──────────────────────────────────────────────────────────────
+
+function trackTask(label, task) {
+  if (taskMonEmpty) { taskMon.innerHTML = ''; taskMonEmpty = false; }
+  const chip = document.createElement('span');
+  chip.className = 'task-chip working';
+  chip.title = task.taskId;
+  chip.textContent = `${label} [working]`;
+  taskMon.appendChild(chip);
+
+  function update(state, extra = '') {
+    chip.className = `task-chip ${state === 'streaming' ? 'streaming' : state}`;
+    chip.textContent = `${label} [${state}${extra ? ': ' + extra : ''}]`;
+  }
+
+  task.on('done',           ()  => update('completed'));
+  task.on('failed',         err => update('failed', err));
+  task.on('cancelled',      ()  => update('cancelled'));
+  task.on('input-required', ()  => update('input-required'));
+  task.on('stream-chunk',   ()  => update('streaming'));
+  return chip;
+}
+
+// ── Initialise agents ─────────────────────────────────────────────────────────
+
+// Declare at module scope so button handlers below can close over them.
+let alice, bob, aliceId, bobId;
+
+try {
+
+logInfo('sys', 'Generating Ed25519 identities…');
+
+const bus = new InternalBus();
+aliceId = await AgentIdentity.generate(new VaultMemory());
+bobId   = await AgentIdentity.generate(new VaultMemory());
+
+alice = new Agent({
+  identity:  aliceId,
+  transport: new InternalTransport(bus, aliceId.pubKey),
+  label: 'Alice',
+});
+
+bob = new Agent({
+  identity:  bobId,
+  transport: new InternalTransport(bus, bobId.pubKey),
+  label: 'Bob',
+});
+
+// Register Bob's skills up-front
+bob.register('echo', async ({ parts }) => parts, {
+  description: 'Echo input back to caller',
+  tags: ['utility'],
+});
+
+bob.register('add', async ({ parts }) => {
+  const { a, b } = Parts.data(parts);
+  return [DataPart({ sum: a + b })];
+}, {
+  description: 'Return sum of a + b',
+  tags: ['math'],
+});
+
+bob.register('count', async function* () {
+  yield [TextPart('one')];
+  yield [TextPart('two')];
+  yield [TextPart('three')];
+  yield [TextPart('four')];
+}, {
+  description: 'Stream four chunks',
+  streaming: true,
+  tags: ['demo'],
+});
+
+bob.register('ask-name', async ({ parts }) => {
+  const name = Parts.text(parts);
+  if (!name) throw new Task.InputRequired([TextPart('What is your name?')]);
+  return [TextPart(`Hello, ${name}!`)];
+}, {
+  description: 'Asks for your name before responding',
+  tags: ['interactive'],
+});
+
+// Start agents (they don't know each other's keys yet — hello() does that)
+await alice.start();
+await bob.start();
+
+// Manually pre-register keys (same as addPeer) so transport-level ops work
+// before the hello button is pressed. We do NOT call addPeer yet so the
+// hello() test is meaningful.
+
+// Attach message listeners
+bob.on('message', ({ from, parts }) => {
+  logOk('bob', `received message from alice: "${Parts.text(parts)}"`);
+});
+
+alice.on('publish', ({ topic, parts }) => {
+  logOk('alice', `received publish on "${topic}": "${Parts.text(parts)}"`);
+});
+
+// Update UI
+document.getElementById('alice-addr').textContent = aliceId.pubKey.slice(0,20) + '…' + aliceId.pubKey.slice(-8);
+document.getElementById('bob-addr').textContent   = bobId.pubKey.slice(0,20) + '…' + bobId.pubKey.slice(-8);
+document.getElementById('alice-skill-count').textContent = alice.skills.size;
+document.getElementById('bob-skill-count').textContent   = bob.skills.size;
+
+logOk('sys',   'Agents started (InternalTransport, no network needed)');
+logDim('alice', 'pubKey ' + aliceId.pubKey.slice(0,20) + '…');
+logDim('bob',   'pubKey ' + bobId.pubKey.slice(0,20) + '…');
+logDim('sys',   'Bob has ' + bob.skills.size + ' skills registered');
+
+const statusEl = document.getElementById('header-status');
+statusEl.className = 'status ready';
+statusEl.innerHTML = '<span class="dot"></span>agents running · InternalTransport · no network';
+
+// Enable all buttons (hello must run first for encrypted comms, but buttons
+// that show security concepts work independently)
+const allBtns = document.querySelectorAll('button[id^="btn-"]');
+allBtns.forEach(b => { if (b.id !== 'btn-clear') b.disabled = false; });
+
+} catch (initErr) {
+  logErr('sys', 'Initialisation failed: ' + initErr.message);
+  console.error(initErr);
+  throw initErr;
+}
+
+let helloCompleted = false;
+
+// ── Button handlers ───────────────────────────────────────────────────────────
+
+// hello()
+document.getElementById('btn-hello').onclick = async () => {
+  logInfo('alice', 'sending HI to bob…');
+  try {
+    await alice.hello(bob.address);
+    helloCompleted = true;
+    logOk('alice', 'hello handshake complete — both agents know each other\'s pubKey');
+    logDim('sys',   'SecurityLayer auto-registered keys from HI payload.pubKey');
+  } catch (e) {
+    logErr('alice', 'hello failed: ' + e.message);
+  }
+};
+
+// Warn + auto-hello if not done yet
+async function ensureHello() {
+  if (!helloCompleted) {
+    logInfo('sys', 'auto-running hello() first…');
+    await alice.hello(bob.address);
+    helloCompleted = true;
+    logOk('sys', 'hello complete');
+  }
+}
+
+// invoke echo
+document.getElementById('btn-invoke').onclick = async () => {
+  await ensureHello();
+  logInfo('alice', 'invoke("echo", "hello world")');
+  try {
+    const result = await alice.invoke(bob.address, 'echo', [TextPart('hello world')]);
+    logOk('alice', 'echo result: "' + Parts.text(result) + '"');
+  } catch (e) {
+    logErr('alice', e.message);
+  }
+};
+
+// invoke add (DataPart)
+document.getElementById('btn-invoke-data').onclick = async () => {
+  await ensureHello();
+  logInfo('alice', 'invoke("add", {a:10, b:5})');
+  try {
+    const result = await alice.invoke(bob.address, 'add', [DataPart({ a: 10, b: 5 })]);
+    logOk('alice', 'add result: sum = ' + Parts.data(result).sum);
+  } catch (e) {
+    logErr('alice', e.message);
+  }
+};
+
+// streaming generator
+document.getElementById('btn-stream').onclick = async () => {
+  await ensureHello();
+  logInfo('alice', 'call("count") — streaming…');
+  const task   = alice.call(bob.address, 'count', []);
+  const chip   = trackTask('count', task);
+  const chunks = [];
+  try {
+    for await (const c of task.stream()) {
+      chunks.push(Parts.text(c));
+      logDim('alice', '  chunk: "' + Parts.text(c) + '"');
+    }
+    const res = await task.done();
+    logOk('alice', 'stream complete: [' + chunks.join(', ') + '] state=' + res.state);
+  } catch (e) {
+    logErr('alice', e.message);
+  }
+};
+
+// input-required
+document.getElementById('btn-inputrequired').onclick = async () => {
+  await ensureHello();
+  logInfo('alice', 'call("ask-name") with empty parts');
+  const task = alice.call(bob.address, 'ask-name', []);
+  trackTask('ask-name', task);
+
+  task.once('input-required', async (parts) => {
+    logInfo('bob',   'paused: "' + Parts.text(parts) + '"');
+    logInfo('alice', 'sending reply: "Alice"');
+    await new Promise(r => setTimeout(r, 400)); // small visual delay
+    await task.send([TextPart('Alice')]);
+  });
+
+  try {
+    const res = await task.done();
+    logOk('alice', 'ask-name result: "' + Parts.text(res.parts) + '"');
+  } catch (e) {
+    logErr('alice', e.message);
+  }
+};
+
+// discoverSkills
+document.getElementById('btn-discover').onclick = async () => {
+  await ensureHello();
+  logInfo('alice', 'discoverSkills() on bob…');
+  try {
+    const skills = await alice.discoverSkills(bob.address);
+    logOk('alice', 'discovered ' + skills.length + ' skill(s):');
+    for (const s of skills) {
+      logDim('alice', `  · ${s.id} — ${s.description || '(no description)'} [tags: ${s.tags.join(', ') || 'none'}]`);
+    }
+  } catch (e) {
+    logErr('alice', e.message);
+  }
+};
+
+// one-way message
+document.getElementById('btn-message').onclick = async () => {
+  await ensureHello();
+  logInfo('alice', 'message(bob, "hello world")');
+  await alice.message(bob.address, 'hello world');
+  // bob.on('message') handler above will log the receipt
+};
+
+// pubsub
+let pubsubSetUp = false;
+document.getElementById('btn-pubsub').onclick = async () => {
+  await ensureHello();
+  if (!pubsubSetUp) {
+    logInfo('bob', 'subscribing to "news" topic on alice…');
+    await subscribe(bob, alice.address, 'news', (parts) => {
+      logOk('bob', 'publish on "news": "' + Parts.text(parts) + '"');
+    });
+    pubsubSetUp = true;
+    logOk('bob', 'subscribed to "news"');
+    await new Promise(r => setTimeout(r, 20));
+  }
+  logInfo('alice', 'publish("news", ...) × 3');
+  for (const msg of ['breaking: SDK works', 'update: pubsub confirmed', 'fin: all good']) {
+    await alice.publish('news', msg);
+    await new Promise(r => setTimeout(r, 40));
+  }
+};
+
+// replay attack
+document.getElementById('btn-replay').onclick = async () => {
+  logInfo('sys', 'replay attack demo (no hello needed — uses raw SecurityLayer)');
+
+  const attackerAliceId = await AgentIdentity.generate(new VaultMemory());
+  const attackerBobId   = await AgentIdentity.generate(new VaultMemory());
+
+  const attackBus   = new InternalBus();
+  const attackAlice = new InternalTransport(attackBus, attackerAliceId.pubKey);
+  const attackBob   = new InternalTransport(attackBus, attackerBobId.pubKey);
+  const aliceSec    = new SecurityLayer({ identity: attackerAliceId });
+  const bobSec      = new SecurityLayer({ identity: attackerBobId });
+  aliceSec.registerPeer(attackerBobId.pubKey, attackerBobId.pubKey);
+  bobSec.registerPeer(attackerAliceId.pubKey, attackerAliceId.pubKey);
+  attackAlice.useSecurityLayer(aliceSec);
+  attackBob.useSecurityLayer(bobSec);
+  await attackAlice.connect();
+  await attackBob.connect();
+
+  // Capture a real wire envelope
+  let captured = null;
+  attackBus.once(`msg:${attackerBobId.pubKey}`, e => { captured = e; });
+  await attackAlice.sendOneWay(attackerBobId.pubKey, { secret: 'password123' });
+  await new Promise(r => setTimeout(r, 10));
+
+  // Fresh security layer (fresh dedup state) — first delivery succeeds
+  const freshSec = new SecurityLayer({ identity: attackerBobId });
+  freshSec.registerPeer(attackerAliceId.pubKey, attackerAliceId.pubKey);
+  try {
+    freshSec.decryptAndVerify(captured);
+    logOk('sys', 'first delivery accepted (expected)');
+  } catch(e) { logErr('sys', 'unexpected rejection: ' + e.message); }
+
+  // Replay the same envelope
+  try {
+    freshSec.decryptAndVerify(captured);
+    logErr('sys', 'replay was accepted — dedup failed!');
+  } catch(e) {
+    if (e.code === 'DUPLICATE') {
+      logOk('sys', `replay rejected: SecurityError(${e.code}) — "${e.message}"`);
+    } else {
+      logErr('sys', 'rejected for wrong reason: ' + e.code);
+    }
+  }
+};
+
+// tamper attack
+document.getElementById('btn-tamper').onclick = async () => {
+  logInfo('sys', 'tamper attack demo');
+
+  const tamperAliceId = await AgentIdentity.generate(new VaultMemory());
+  const tamperBobId   = await AgentIdentity.generate(new VaultMemory());
+
+  const aliceSec = new SecurityLayer({ identity: tamperAliceId });
+  const bobSec   = new SecurityLayer({ identity: tamperBobId });
+  aliceSec.registerPeer(tamperBobId.pubKey, tamperBobId.pubKey);
+  bobSec.registerPeer(tamperAliceId.pubKey, tamperAliceId.pubKey);
+
+  const env = mkEnvelope(P.OW, tamperAliceId.pubKey, tamperBobId.pubKey, { value: 'original' });
+  const enc = aliceSec.encrypt(env);
+
+  // Flip a byte in the ciphertext _box blob
+  const b64 = enc.payload._box;
+  const raw  = Uint8Array.from(atob(b64.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
+  raw[30] ^= 0xff;
+  const newB64 = btoa(String.fromCharCode(...raw)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  const tampered = { ...enc, payload: { _box: newB64 } };
+
+  logDim('sys', 'flipped byte 30 of ciphertext _box blob');
+
+  try {
+    bobSec.decryptAndVerify(tampered);
+    logErr('sys', 'tampered envelope accepted — crypto failed!');
+  } catch(e) {
+    logOk('sys', `tampered envelope rejected: SecurityError(${e.code}) — "${e.message}"`);
+  }
+};
+</script>
+</body>
+</html>

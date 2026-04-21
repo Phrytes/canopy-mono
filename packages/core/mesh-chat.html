@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mesh-chat — relay demo</title>
+<script type="importmap">
+{
+  "imports": {
+    "tweetnacl":                      "https://esm.sh/tweetnacl@1.0.3",
+    "tweetnacl-util":                 "https://esm.sh/tweetnacl-util@0.15.1",
+    "ed2curve":                       "https://esm.sh/ed2curve@0.3.0?deps=tweetnacl@1.0.3",
+    "@scure/bip39":                   "https://esm.sh/@scure/bip39@1.4.0",
+    "@scure/bip39/wordlists/english": "https://esm.sh/@scure/bip39@1.4.0/wordlists/english",
+    "@canopy/core":                 "./src/index.js"
+  }
+}
+</script>
+<style>
+:root {
+  --bg:#0f1117; --panel:#1a1d27; --panel2:#141720;
+  --border:#2d3048; --accent:#5b6af9; --green:#4caf82;
+  --red:#e05c5c; --yellow:#e0b860; --text:#d4d8f0; --dim:#6b7094;
+  --mono:'JetBrains Mono','Fira Code',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;
+     font-size:13px;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── setup ── */
+#setup{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+      padding:24px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:14px}
+.card h2{font-size:15px;font-weight:700;color:#fff}
+.card p{color:var(--dim);font-size:12px;line-height:1.6}
+label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--dim)}
+input{background:var(--bg);border:1px solid var(--border);border-radius:6px;
+      color:var(--text);padding:8px 10px;font-size:12px;outline:none;font-family:var(--mono)}
+input:focus{border-color:var(--accent)}
+#err{color:var(--red);font-size:12px;display:none}
+button{background:var(--accent);color:#fff;border:none;border-radius:6px;
+       padding:9px 18px;font-size:13px;cursor:pointer;font-weight:600}
+button:hover{opacity:.85}
+button:disabled{opacity:.4;cursor:default}
+
+/* ── main ── */
+#main{flex:1;display:none;flex-direction:column;overflow:hidden}
+#main.on{display:flex}
+
+header{padding:10px 16px;border-bottom:1px solid var(--border);
+       background:var(--panel2);display:flex;align-items:center;gap:10px;flex-shrink:0}
+header h1{font-size:14px;font-weight:700;color:#fff}
+#my-addr{font-family:var(--mono);font-size:11px;color:var(--dim);
+         overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+#status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);
+            margin-left:auto;flex-shrink:0}
+
+/* ── body ── */
+#body{flex:1;display:flex;overflow:hidden}
+
+/* ── peer list ── */
+#sidebar{width:220px;border-right:1px solid var(--border);
+         display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+#sidebar h3{font-size:10px;color:var(--dim);text-transform:uppercase;
+            letter-spacing:.06em;padding:10px 12px 6px}
+#peer-list{flex:1;overflow-y:auto}
+.peer{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);
+      display:flex;flex-direction:column;gap:3px;transition:background .1s;position:relative}
+.peer-forget{position:absolute;top:6px;right:6px;width:20px;height:20px;
+             background:transparent;border:none;color:var(--dim);font-size:16px;
+             cursor:pointer;border-radius:3px;padding:0;line-height:18px}
+.peer-forget:hover{background:var(--red);color:#fff}
+.peer:hover{background:var(--panel)}
+.peer.active{background:#1d2040;border-left:3px solid var(--accent)}
+.peer-label{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.peer-key{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.peer-badge{font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;
+            display:inline-block;margin-top:1px}
+.badge-direct{background:#1a3328;color:var(--green)}
+.badge-hop{background:#2e2a16;color:var(--yellow)}
+#gossip-btn{margin:10px 12px;padding:7px;font-size:11px;background:var(--panel);
+            color:var(--dim);border:1px solid var(--border);border-radius:6px;
+            cursor:pointer;text-align:center}
+#gossip-btn:hover{border-color:var(--accent);color:var(--text)}
+
+/* ── chat ── */
+#chat{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#chat-header{padding:10px 14px;border-bottom:1px solid var(--border);
+             background:var(--panel2);font-size:13px;font-weight:600;
+             color:var(--dim);flex-shrink:0}
+#messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:80%;border-radius:10px;padding:8px 12px;font-size:14px;line-height:1.5}
+.msg.out{align-self:flex-end;background:#2d3470;color:#e8eaff;border-bottom-right-radius:3px}
+.msg.in{align-self:flex-start;background:var(--panel);border:1px solid var(--border);
+        color:var(--text);border-bottom-left-radius:3px}
+.msg-meta{font-size:10px;color:var(--dim);margin-top:3px;display:flex;gap:6px}
+.msg-meta .hop{color:var(--yellow)}
+.msg-meta .ok{color:var(--green)}
+.msg-meta .err{color:var(--red)}
+#no-peer{flex:1;display:flex;align-items:center;justify-content:center}
+#no-peer p{color:var(--dim);font-size:13px;text-align:center;line-height:1.8}
+#input-row{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border);
+           background:var(--panel2);flex-shrink:0}
+#msg-input{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:20px;
+           padding:9px 16px;color:var(--text);font-size:14px;outline:none}
+#msg-input:focus{border-color:var(--accent)}
+#send-btn{background:var(--accent);color:#fff;border:none;border-radius:20px;
+          padding:9px 18px;font-size:13px;cursor:pointer;font-weight:600}
+#send-btn:disabled{opacity:.4;cursor:default}
+
+/* ── log ── */
+#log{height:90px;border-top:1px solid var(--border);background:var(--panel2);
+     font-family:var(--mono);font-size:11px;color:var(--dim);overflow-y:auto;
+     padding:6px 12px;flex-shrink:0}
+.lts{color:#2d3260}
+.lok{color:var(--green)}.lerr{color:var(--red)}.linf{color:var(--accent)}.lwarn{color:var(--yellow)}
+</style>
+</head>
+<body>
+
+<!-- Setup -->
+<div id="setup">
+  <div class="card">
+    <h2>mesh-chat</h2>
+    <p>Connects to the relay server, discovers phones (direct and via BLE hop), and lets you chat with any of them.</p>
+    <p>Run <code style="color:var(--accent)">node start-relay.js</code> first, then paste the LAN URL below.</p>
+    <label>Relay URL
+      <input id="relay-url" placeholder="ws://192.168.x.x:8787" autocomplete="off" spellcheck="false">
+    </label>
+    <div id="err"></div>
+    <button id="connect-btn">Connect</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <header>
+    <h1>mesh-chat</h1>
+    <span id="my-addr">—</span>
+    <div id="status-dot"></div>
+  </header>
+
+  <div id="body">
+    <!-- Peer sidebar -->
+    <div id="sidebar">
+      <h3>Peers</h3>
+      <div id="peer-list"></div>
+      <div id="gossip-btn">↻ Refresh peer list</div>
+    </div>
+
+    <!-- Chat panel -->
+    <div id="chat">
+      <div id="chat-header">← Select a peer</div>
+      <div id="no-peer"><p>Select a peer on the left<br>to start chatting.</p></div>
+      <div id="messages" style="display:none"></div>
+      <div id="input-row" style="display:none">
+        <input id="msg-input" placeholder="Type a message…" autocomplete="off">
+        <button id="send-btn" disabled>Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="log"></div>
+</div>
+
+<script type="module">
+import {
+  Agent, AgentIdentity, VaultMemory,
+  RelayTransport, DataPart, Parts,
+} from '@canopy/core';
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let agent       = null;
+let activePeer  = null;             // { pubKey, label, hops, via }
+const peers     = new Map();        // pubKey → { label, hops, via }
+const messages  = new Map();        // pubKey → [{ dir, text, status, hops }]
+
+// ── Setup ──────────────────────────────────────────────────────────────────────
+{
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  document.getElementById('relay-url').value = `${proto}//${location.host}`;
+}
+
+document.getElementById('connect-btn').onclick = async () => {
+  const btn = document.getElementById('connect-btn');
+  btn.disabled = true; btn.textContent = 'Connecting…';
+  document.getElementById('err').style.display = 'none';
+  try {
+    await start();
+  } catch (e) {
+    const el = document.getElementById('err');
+    el.textContent = e?.message ?? String(e);
+    el.style.display = '';
+    btn.disabled = false; btn.textContent = 'Connect';
+  }
+};
+
+document.getElementById('gossip-btn').onclick = () => gossipAll();
+
+document.getElementById('msg-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+document.getElementById('send-btn').onclick = sendMessage;
+
+// ── Start ──────────────────────────────────────────────────────────────────────
+async function start() {
+  const url      = document.getElementById('relay-url').value.trim();
+  const vault    = new VaultMemory();
+  const identity = await AgentIdentity.generate(vault);
+  const relay    = new RelayTransport({ relayUrl: url, identity });
+
+  agent = new Agent({ identity, transport: relay });
+
+  agent.register('receive-message', async ({ parts, originFrom, from }) => {
+    const text   = Parts.text(parts) ?? JSON.stringify(Parts.data(parts));
+    const sender = originFrom ?? from;
+    // Ensure sender appears in peer list even if peer-discovered never fired for them
+    if (!peers.has(sender)) {
+      // If relayed (originFrom differs from `from`), the relay hop is `from`.
+      const hops = (originFrom && originFrom !== from) ? 1   : 0;
+      const via  = (originFrom && originFrom !== from) ? from : null;
+      addPeer(sender, { label: null, hops, via });
+    }
+    addMessage(sender, { dir: 'in', text, status: 'ok' });
+    if (!activePeer) selectPeer(sender);
+    return [DataPart({ ack: true })];
+  }, { visibility: 'public', description: 'Receive a text message' });
+
+  // Inbound hello: add peer to list regardless of which side initiated
+  agent.on('peer', ({ address, label }) => {
+    if (address && !peers.has(address)) {
+      addPeer(address, { label: label ?? null, hops: 0, via: null });
+    }
+  });
+
+  relay.on('peer-discovered', async addr => {
+    log(`<span class="linf">peer on relay: ${esc(addr.slice(0,16))}…</span>`);
+    try {
+      await agent.hello(addr);
+      log(`<span class="lok">hello OK: ${esc(addr.slice(0,16))}…</span>`);
+      addPeer(addr, { label: null, hops: 0, via: null });
+      // Pull that peer's peer list to discover indirect (BLE) peers
+      await pullPeerList(addr);
+    } catch (e) {
+      log(`<span class="lerr">hello failed ${esc(addr.slice(0,16))}: ${esc(e?.message)}</span>`);
+    }
+  });
+
+  agent.on('error', e => log(`<span class="lerr">agent: ${esc(e?.message)}</span>`));
+  await agent.start();
+
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('main').classList.add('on');
+  document.getElementById('my-addr').textContent = identity.pubKey;
+  document.getElementById('my-addr').title = identity.pubKey;
+  log(`<span class="lok">connected · ${esc(identity.pubKey.slice(0,16))}…</span>`);
+}
+
+// ── Gossip: pull peer list from a direct peer ─────────────────────────────────
+async function pullPeerList(directPubKey) {
+  if (!agent) return;
+  try {
+    const result = await agent.invoke(directPubKey, 'peer-list', [], { timeout: 5_000 });
+    const data   = Parts.data(result);
+    if (!Array.isArray(data?.peers)) return;
+
+    let found = 0;
+    for (const card of data.peers) {
+      if (!card?.pubKey) continue;
+      if (card.pubKey === agent.pubKey) continue;
+      if (card.pubKey === directPubKey) continue;
+      if (peers.has(card.pubKey) && peers.get(card.pubKey).hops === 0) continue;
+      addPeer(card.pubKey, { label: card.label ?? null, hops: 1, via: directPubKey });
+      found++;
+    }
+    if (found) log(`<span class="linf">gossip: +${found} indirect peer(s) via ${esc(directPubKey.slice(0,12))}…</span>`);
+  } catch (e) {
+    log(`<span class="lwarn">peer-list from ${esc(directPubKey.slice(0,12))}: ${esc(e?.message)}</span>`);
+  }
+}
+
+async function gossipAll() {
+  const direct = [...peers.entries()].filter(([, p]) => p.hops === 0).map(([k]) => k);
+  for (const pk of direct) await pullPeerList(pk);
+}
+
+// Periodic gossip, but never overlap: if the previous round is still running
+// (e.g. a bridge is slow), skip this tick. Prevents RQ pile-ups on the relay.
+let _gossipInFlight = false;
+setInterval(async () => {
+  if (!agent || _gossipInFlight) return;
+  _gossipInFlight = true;
+  try { await gossipAll(); } catch {}
+  finally { _gossipInFlight = false; }
+}, 15_000);
+
+// ── invokeWithHop: direct first, relay-forward fallback ───────────────────────
+async function invokeWithHop(targetPubKey, skillId, parts, opts = {}) {
+  const peer = peers.get(targetPubKey);
+  if (!peer) throw new Error('Unknown peer');
+
+  if (peer.hops === 0) {
+    return agent.invoke(targetPubKey, skillId, parts, opts);
+  }
+
+  // 1-hop relay via the bridge peer
+  const relayResult = await agent.invoke(
+    peer.via,
+    'relay-forward',
+    [DataPart({ targetPubKey, skill: skillId, payload: parts, timeout: opts.timeout })],
+    { timeout: (opts.timeout ?? 10_000) + 2_000 },
+  );
+  const d = Parts.data(relayResult);
+  if (d?.error) throw new Error(`Relay failed: ${d.error}`);
+  return relayResult;
+}
+
+// ── Send ──────────────────────────────────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const text  = input.value.trim();
+  if (!text || !activePeer || !agent) return;
+  input.value = '';
+
+  const peer = peers.get(activePeer);
+  const msg  = addMessage(activePeer, { dir: 'out', text, status: 'sending', hops: peer?.hops ?? 0 });
+
+  try {
+    await invokeWithHop(activePeer, 'receive-message',
+      [{ type: 'TextPart', text }],
+      { timeout: 10_000 },
+    );
+    msg.status = 'ok';
+  } catch (e) {
+    msg.status = 'err';
+    msg.error  = e.message;
+    log(`<span class="lerr">send failed: ${esc(e?.message)}</span>`);
+  }
+  renderMessages();
+}
+
+// ── Peer management ───────────────────────────────────────────────────────────
+function addPeer(pubKey, info) {
+  const existing = peers.get(pubKey);
+  // Never downgrade a direct peer to indirect
+  if (existing && existing.hops === 0 && info.hops > 0) return;
+  peers.set(pubKey, info);
+  if (!messages.has(pubKey)) messages.set(pubKey, []);
+  renderPeers();
+}
+
+function renderPeers() {
+  const list = document.getElementById('peer-list');
+  list.innerHTML = '';
+
+  const sorted = [...peers.entries()].sort((a, b) => a[1].hops - b[1].hops);
+  for (const [pk, p] of sorted) {
+    const el  = document.createElement('div');
+    el.className = 'peer' + (activePeer === pk ? ' active' : '');
+    const label = p.label ?? (pk.slice(0, 14) + '…');
+    const badge = p.hops === 0
+      ? `<span class="peer-badge badge-direct">direct</span>`
+      : `<span class="peer-badge badge-hop">1 hop via ${(p.via ?? '').slice(0,8)}…</span>`;
+    el.innerHTML = `
+      <div class="peer-label">${esc(label)}</div>
+      <div class="peer-key">${esc(pk.slice(0,20))}…</div>
+      ${badge}
+      <button class="peer-forget" title="Forget peer">×</button>`;
+    el.onclick = (e) => {
+      if (e.target.classList.contains('peer-forget')) return; // handled below
+      selectPeer(pk);
+    };
+    el.querySelector('.peer-forget').onclick = async (e) => {
+      e.stopPropagation();
+      if (!confirm(`Forget ${label}?`)) return;
+      peers.delete(pk);
+      messages.delete(pk);
+      if (activePeer === pk) {
+        activePeer = null;
+        document.getElementById('no-peer').style.display = 'flex';
+        document.getElementById('messages').style.display  = 'none';
+        document.getElementById('input-row').style.display = 'none';
+      }
+      await agent.forget(pk).catch(() => {});
+      renderPeers();
+    };
+    list.appendChild(el);
+  }
+
+  if (peers.size === 0) {
+    list.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--dim)">No peers yet.<br>Waiting for relay connections…</div>';
+  }
+}
+
+function selectPeer(pubKey) {
+  activePeer = pubKey;
+  renderPeers();
+
+  const p = peers.get(pubKey);
+  const label = p?.label ?? pubKey.slice(0, 16) + '…';
+  document.getElementById('chat-header').textContent =
+    label + (p?.hops > 0 ? ` (via ${(p.via ?? '').slice(0,10)}…)` : '');
+
+  document.getElementById('no-peer').style.display = 'none';
+  document.getElementById('messages').style.display = 'flex';
+  document.getElementById('input-row').style.display = 'flex';
+  document.getElementById('send-btn').disabled = false;
+
+  renderMessages();
+}
+
+// ── Message list ──────────────────────────────────────────────────────────────
+function addMessage(pubKey, msg) {
+  if (!messages.has(pubKey)) messages.set(pubKey, []);
+  messages.get(pubKey).push(msg);
+  if (activePeer === pubKey) renderMessages();
+  return msg;
+}
+
+function renderMessages() {
+  if (!activePeer) return;
+  const list = document.getElementById('messages');
+  const msgs = messages.get(activePeer) ?? [];
+  list.innerHTML = '';
+
+  for (const m of msgs) {
+    const el   = document.createElement('div');
+    el.className = `msg ${m.dir}`;
+    let meta = '';
+    if (m.dir === 'out') {
+      if (m.status === 'sending') meta = '<span>sending…</span>';
+      else if (m.status === 'err') meta = `<span class="err">failed: ${esc(m.error ?? '')}</span>`;
+      else if (m.hops > 0) meta = `<span class="hop">${m.hops} hop ✓</span>`;
+      else meta = '<span class="ok">direct ✓</span>';
+    }
+    el.innerHTML = `${esc(m.text)}${meta ? `<div class="msg-meta">${meta}</div>` : ''}`;
+    list.appendChild(el);
+  }
+  list.scrollTop = list.scrollHeight;
+}
+
+// ── Log ───────────────────────────────────────────────────────────────────────
+function log(html) {
+  const el = document.getElementById('log');
+  const ts = new Date().toTimeString().slice(0, 8);
+  el.insertAdjacentHTML('beforeend', `<div><span class="lts">${ts}</span>  ${html}</div>`);
+  el.scrollTop = el.scrollHeight;
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

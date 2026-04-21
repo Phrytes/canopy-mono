@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@canopy SDK — full demo</title>
+<script type="importmap">
+{
+  "imports": {
+    "tweetnacl":                      "https://esm.sh/tweetnacl@1.0.3",
+    "tweetnacl-util":                 "https://esm.sh/tweetnacl-util@0.15.1",
+    "ed2curve":                       "https://esm.sh/ed2curve@0.3.0?deps=tweetnacl@1.0.3",
+    "@scure/bip39":                   "https://esm.sh/@scure/bip39@1.4.0",
+    "@scure/bip39/wordlists/english": "https://esm.sh/@scure/bip39@1.4.0/wordlists/english",
+    "@canopy/core":                 "./src/index.js"
+  }
+}
+</script>
+<style>
+:root {
+  --bg:#0f1117; --panel:#1a1d27; --panel2:#141720;
+  --border:#2d3048; --accent:#5b6af9; --green:#4caf82;
+  --red:#e05c5c; --yellow:#e0b860; --cyan:#4fc3f7;
+  --text:#d4d8f0; --dim:#6b7094;
+  --mono:'JetBrains Mono','Fira Code',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;
+     font-size:13px;display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+
+/* ── header ── */
+header.top{padding:9px 16px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--panel2)}
+header.top h1{font-size:14px;font-weight:600;color:#fff}
+.badge{font-size:11px;background:var(--accent);color:#fff;padding:2px 8px;
+       border-radius:99px;font-family:var(--mono)}
+.badge.green{background:#1d4d3a}
+.badge.yellow{background:#4d3b1a}
+#hdr-status{margin-left:auto;font-size:11px;color:var(--dim);font-family:var(--mono)}
+
+/* ── setup ── */
+#setup{flex:1;display:flex;flex-direction:column;align-items:center;
+       justify-content:center;gap:18px;padding:24px;overflow-y:auto}
+#setup h2{font-size:15px;font-weight:600}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+      padding:18px;width:100%;max-width:500px;display:flex;flex-direction:column;gap:11px}
+.card h3{font-size:13px;font-weight:600;color:#fff}
+.card p{color:var(--dim);font-size:12px;line-height:1.6}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--dim)}
+input,select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:6px;
+                      color:var(--text);padding:7px 10px;font-size:12px;width:100%;outline:none;
+                      font-family:inherit}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+.row{display:flex;gap:8px}
+.row label{flex:1}
+#setup-err{color:var(--red);font-size:12px;display:none;max-width:500px;word-break:break-all}
+
+/* ── main layout ── */
+#main{flex:1;display:none;overflow:hidden}
+#main.ready{display:flex;flex-direction:column}
+.panes{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0;overflow:hidden}
+.pane{display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden}
+.pane:last-child{border-right:none}
+.pane-hdr{padding:7px 12px;border-bottom:1px solid var(--border);background:var(--panel2);
+           display:flex;align-items:center;gap:8px;flex-shrink:0}
+.pane-title{font-weight:600;font-size:12px;color:#fff}
+.pane-addr{font-family:var(--mono);font-size:10px;color:var(--dim);flex:1;
+           overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}
+.dot.on{background:var(--green)}
+.pane-body{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:9px}
+
+/* ── section ── */
+section{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0}
+section>header{padding:6px 12px;font-size:10px;font-weight:600;color:var(--dim);
+               text-transform:uppercase;letter-spacing:.06em;
+               border-bottom:1px solid var(--border);background:transparent}
+.inner{padding:10px 12px}
+
+/* ── typography ── */
+.mono{font-family:var(--mono);font-size:11px}
+.dim{color:var(--dim)}
+.ok{color:var(--green)}
+.err{color:var(--red)}
+.inf{color:var(--accent)}
+.warn{color:var(--yellow)}
+
+/* ── log ── */
+.log{font-family:var(--mono);font-size:11px;color:var(--dim);
+     max-height:130px;overflow-y:auto;line-height:1.75}
+.log .ts{color:#3d4260}
+.bottom-log{flex-shrink:0;border-top:1px solid var(--border);background:var(--panel2);
+            display:flex;flex-direction:column;max-height:110px}
+.bottom-log header{padding:4px 12px;font-size:10px;font-weight:600;color:var(--dim);
+                   text-transform:uppercase;letter-spacing:.06em;cursor:pointer;
+                   display:flex;justify-content:space-between;align-items:center}
+.bottom-log .log{padding:4px 12px 8px;max-height:90px}
+
+/* ── buttons ── */
+button{background:var(--accent);color:#fff;border:none;border-radius:6px;
+       padding:6px 13px;font-size:12px;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+button:hover{opacity:.85}
+button.sec{background:var(--panel);border:1px solid var(--border);color:var(--text)}
+button.sec:hover{border-color:var(--accent)}
+button.danger{background:#3d1a1a;border:1px solid var(--red);color:var(--red)}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+
+/* ── identity block ── */
+.id-block{font-size:11px;font-family:var(--mono);color:var(--dim);
+          word-break:break-all;line-height:1.9}
+.id-block .lbl{color:var(--text);display:inline-block;min-width:80px}
+
+/* ── skill list ── */
+.skill-row{display:flex;align-items:center;gap:6px;padding:3px 0;
+           border-bottom:1px solid var(--border);font-size:12px}
+.skill-row:last-child{border-bottom:none}
+.skill-id{font-family:var(--mono);color:var(--accent);min-width:110px}
+.vis-badge{font-size:10px;border-radius:4px;padding:1px 6px;background:var(--panel2)}
+.vis-public{color:var(--green)}
+.vis-authenticated{color:var(--yellow)}
+.vis-private{color:var(--red)}
+
+/* ── peer list ── */
+.peer-row{display:flex;gap:8px;align-items:center;padding:4px 0;
+          border-bottom:1px solid var(--border);font-size:12px;cursor:pointer}
+.peer-row:last-child{border-bottom:none}
+.peer-row:hover .peer-id{color:#fff}
+.peer-id{font-family:var(--mono);color:var(--accent);flex:1;
+         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.peer-tier{font-size:10px;color:var(--dim);min-width:36px;text-align:right}
+
+/* ── storage ── */
+.kv-list{display:flex;flex-direction:column;gap:3px;max-height:100px;overflow-y:auto}
+.kv-row{display:flex;gap:6px;font-size:11px;font-family:var(--mono);align-items:baseline}
+.kv-key{color:var(--cyan);min-width:80px;overflow:hidden;text-overflow:ellipsis}
+.kv-val{color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── a2a card ── */
+.json-box{font-family:var(--mono);font-size:10px;color:var(--dim);
+          white-space:pre-wrap;word-break:break-all;max-height:140px;overflow-y:auto;
+          background:var(--bg);border:1px solid var(--border);border-radius:4px;
+          padding:8px;line-height:1.6}
+.json-key{color:var(--cyan)}
+.json-str{color:var(--green)}
+.json-num{color:var(--yellow)}
+.json-bool{color:var(--accent)}
+
+/* ── relay peer bar ── */
+#relay-bar{flex-shrink:0;border-top:1px solid var(--border);padding:6px 14px;
+           font-size:11px;display:none;gap:10px;align-items:center;flex-wrap:wrap;
+           background:var(--panel2)}
+#relay-bar.show{display:flex}
+.rp-addr{font-family:var(--mono);color:var(--accent);background:var(--panel);
+         border:1px solid var(--border);border-radius:4px;padding:2px 7px;cursor:pointer}
+.rp-addr:hover{border-color:var(--accent)}
+.rp-addr.self{color:var(--green)}
+
+/* ── pill ── */
+.pill{display:inline-block;border-radius:99px;padding:1px 7px;font-size:10px}
+.pill.ok{background:#1d3d2c;color:var(--green)}
+.pill.bad{background:#3d2820;color:var(--red)}
+
+/* ── stream chunks ── */
+.chunk-list{display:flex;flex-wrap:wrap;gap:4px;max-height:60px;overflow-y:auto}
+.chunk{font-family:var(--mono);font-size:11px;background:var(--bg);border:1px solid var(--border);
+       border-radius:4px;padding:1px 6px;color:var(--cyan)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>@canopy SDK</h1>
+  <span class="badge">full demo</span>
+  <span class="badge green">Groups A–L</span>
+  <span id="hdr-status">not started</span>
+</header>
+
+<!-- ── Setup ── -->
+<div id="setup">
+  <h2>Configure agents</h2>
+
+  <div class="card">
+    <h3>Transport</h3>
+    <p><b>Internal</b> — two agents in this tab, zero network.
+       <b>Relay</b> — one agent per tab, cross-device via relay server.</p>
+    <label>Mode
+      <select id="mode">
+        <option value="internal">Internal (two in-page agents)</option>
+        <option value="relay" selected>Relay (cross-tab / cross-device)</option>
+      </select>
+    </label>
+    <div id="relay-opts">
+      <label>Relay URL
+        <input id="relay-url" placeholder="ws://localhost:8787">
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Identity</h3>
+    <p>Leave blank to generate a fresh key pair. Paste a 24-word mnemonic to restore.</p>
+    <label>Mnemonic (optional)
+      <input id="mnemonic-in" placeholder="word word word … leave blank to generate">
+    </label>
+    <label>Agent label
+      <input id="label-in" placeholder="My Agent" value="Agent A">
+    </label>
+  </div>
+
+  <div class="card">
+    <h3>Demo features</h3>
+    <p>All features are enabled. This demo covers: Identity · Skills · Streaming ·
+       PubSub · Storage · A2A Card · A2A Discovery · Permissions · PeerGraph · RoutingStrategy.</p>
+  </div>
+
+  <div id="setup-err"></div>
+  <button id="start-btn" style="max-width:500px;width:100%;padding:11px;font-size:13px">Start agents</button>
+</div>
+
+<!-- ── Main ── -->
+<div id="main">
+  <div class="panes">
+
+    <!-- ── Left pane: Agent A ── -->
+    <div class="pane">
+      <div class="pane-hdr">
+        <div class="dot" id="dot-a"></div>
+        <span class="pane-title" id="title-a">Agent A</span>
+        <span class="pane-addr" id="addr-a">—</span>
+      </div>
+      <div class="pane-body">
+
+        <!-- Identity -->
+        <section>
+          <header>Identity &amp; Vault</header>
+          <div class="inner">
+            <div class="id-block" id="id-block-a">…</div>
+            <div class="btn-row">
+              <button class="sec" onclick="copyAddr()">Copy address</button>
+              <button class="sec" onclick="showMnemonic()">Show mnemonic</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Skills -->
+        <section>
+          <header>Registered Skills</header>
+          <div class="inner">
+            <div id="skill-list-a" style="display:flex;flex-direction:column;gap:0"></div>
+            <div class="btn-row" style="margin-top:10px">
+              <input id="custom-skill-id" placeholder="my-skill" style="flex:1;max-width:110px">
+              <input id="custom-skill-handler" placeholder="return [TextPart('hello!')]" style="flex:2">
+              <button class="sec" onclick="registerCustomSkill()">Register</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Storage (MemorySource) -->
+        <section>
+          <header>Storage — MemorySource</header>
+          <div class="inner" style="display:flex;flex-direction:column;gap:8px">
+            <div class="row">
+              <label style="flex:0 0 100px">Key
+                <input id="stor-key" placeholder="note/1">
+              </label>
+              <label>Value
+                <input id="stor-val" placeholder="hello storage">
+              </label>
+            </div>
+            <div class="btn-row">
+              <button onclick="storWrite()">Write</button>
+              <button class="sec" onclick="storRead()">Read</button>
+              <button class="sec" onclick="storList()">List all</button>
+            </div>
+            <div class="kv-list" id="stor-list"></div>
+            <div class="mono dim" id="stor-out" style="min-height:18px"></div>
+          </div>
+        </section>
+
+        <!-- A2A Card -->
+        <section>
+          <header>A2A Agent Card (AgentCardBuilder)</header>
+          <div class="inner" style="display:flex;flex-direction:column;gap:8px">
+            <div class="row">
+              <label>Tier
+                <select id="card-tier">
+                  <option value="0">0 — public</option>
+                  <option value="1">1 — authenticated</option>
+                  <option value="2" selected>2 — trusted</option>
+                  <option value="3">3 — private</option>
+                </select>
+              </label>
+              <div style="display:flex;align-items:flex-end;gap:6px">
+                <button onclick="buildCard()">Build card</button>
+                <button class="sec" onclick="copyCard()">Copy JSON</button>
+              </div>
+            </div>
+            <div class="json-box" id="card-box">Click "Build card" to generate the A2A agent card.</div>
+          </div>
+        </section>
+
+        <!-- Log A -->
+        <section>
+          <header>Log — Agent A</header>
+          <div class="inner"><div class="log" id="log-a"></div></div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- ── Right pane: Network + A2A + Permissions ── -->
+    <div class="pane">
+      <div class="pane-hdr">
+        <div class="dot" id="dot-b"></div>
+        <span class="pane-title" id="title-b">Network</span>
+        <span class="pane-addr" id="addr-b">—</span>
+      </div>
+      <div class="pane-body">
+
+        <!-- Call peer -->
+        <section>
+          <header>Call skill on peer</header>
+          <div class="inner" style="display:flex;flex-direction:column;gap:8px">
+            <label>Peer address
+              <input id="peer-addr" placeholder="paste address or click a peer below">
+            </label>
+            <div class="row">
+              <label>Skill
+                <select id="skill-sel">
+                  <option value="echo">echo</option>
+                  <option value="ping">ping</option>
+                  <option value="counter">counter (stream)</option>
+                </select>
+              </label>
+              <label>Input
+                <input id="skill-in" placeholder="hello world">
+              </label>
+            </div>
+            <!-- Streaming output -->
+            <div id="stream-area" style="display:none">
+              <div style="font-size:11px;color:var(--dim);margin-bottom:4px">Stream chunks:</div>
+              <div class="chunk-list" id="chunk-list"></div>
+            </div>
+            <div class="btn-row">
+              <button onclick="doCall()">Call</button>
+              <button class="sec" onclick="doHello()">Hello</button>
+              <button class="sec" onclick="doPing()">Ping</button>
+            </div>
+            <div id="call-result" class="mono" style="color:var(--green);min-height:16px;word-break:break-all"></div>
+          </div>
+        </section>
+
+        <!-- PubSub -->
+        <section>
+          <header>PubSub (subscribe / publish)</header>
+          <div class="inner" style="display:flex;flex-direction:column;gap:8px">
+            <div class="row">
+              <label>Publisher address
+                <input id="pub-addr" placeholder="address of publisher agent">
+              </label>
+              <label style="flex:0 0 120px">Topic
+                <input id="pub-topic" value="news">
+              </label>
+            </div>
+            <div class="btn-row">
+              <button onclick="doSubscribe()">Subscribe</button>
+              <button class="sec" onclick="doPublish()">Publish to my subs</button>
+              <input id="pub-msg" placeholder="message to publish" style="flex:1">
+            </div>
+            <div class="log" id="pubsub-log" style="max-height:80px"></div>
+          </div>
+        </section>
+
+        <!-- PeerGraph -->
+        <section>
+          <header>PeerGraph</header>
+          <div class="inner">
+            <div id="peer-graph" style="display:flex;flex-direction:column;gap:0">
+              <div class="dim" style="font-size:12px">No peers yet. Do a Hello handshake or connect via relay.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- A2A Discovery -->
+        <section>
+          <header>A2A Discovery (discoverA2A)</header>
+          <div class="inner" style="display:flex;flex-direction:column;gap:8px">
+            <label>Agent URL (must serve /.well-known/agent.json)
+              <input id="a2a-url" placeholder="https://agent.example.com">
+            </label>
+            <div class="btn-row">
+              <button onclick="doDiscover()">Discover</button>
+            </div>
+            <div class="json-box" id="discover-box" style="max-height:100px">Result will appear here.</div>
+          </div>
+        </section>
+
+        <!-- Permissions -->
+        <section>
+          <header>Permissions — TrustRegistry &amp; CapabilityToken</header>
+          <div class="inner" style="display:flex;flex-direction:column;gap:8px">
+            <label>Peer pubKey (for trust / token)
+              <input id="perm-peer" placeholder="paste peer pubKey">
+            </label>
+            <div class="row">
+              <label>Set trust tier
+                <select id="perm-tier">
+                  <option value="0">0 — unknown</option>
+                  <option value="1">1 — verified</option>
+                  <option value="2">2 — trusted (group)</option>
+                  <option value="3">3 — delegated (token)</option>
+                </select>
+              </label>
+              <div style="display:flex;align-items:flex-end;gap:6px">
+                <button class="sec" onclick="setTier()">Set tier</button>
+                <button class="sec" onclick="getTier()">Read tier</button>
+              </div>
+            </div>
+            <div class="row">
+              <label>Issue CapabilityToken for skill
+                <input id="token-skill" placeholder="echo">
+              </label>
+              <label style="flex:0 0 90px">Expires (s)
+                <input id="token-exp" value="3600">
+              </label>
+            </div>
+            <div class="btn-row">
+              <button onclick="issueToken()">Issue token</button>
+            </div>
+            <div class="json-box" id="token-box" style="max-height:90px">Token JSON will appear here.</div>
+          </div>
+        </section>
+
+        <!-- FallbackTable + routing -->
+        <section>
+          <header>FallbackTable &amp; RoutingStrategy</header>
+          <div class="inner" style="display:flex;flex-direction:column;gap:6px">
+            <div id="fallback-table" style="font-size:12px;color:var(--dim)">
+              Call a skill to populate routing data.
+            </div>
+            <div class="btn-row">
+              <button class="sec danger" onclick="simulateFail()">Simulate transport fail (20s)</button>
+              <button class="sec" onclick="clearFallback()">Clear for peer</button>
+            </div>
+            <div id="last-route" class="mono dim" style="font-size:11px"></div>
+          </div>
+        </section>
+
+        <!-- Agent B panel (internal mode) -->
+        <div id="agent-b-panel" style="display:none;flex-direction:column;gap:9px">
+          <section>
+            <header>Agent B — Identity</header>
+            <div class="inner">
+              <div class="id-block" id="id-block-b">—</div>
+            </div>
+          </section>
+          <section>
+            <header>Agent B — Call back (B → A)</header>
+            <div class="inner" style="display:flex;flex-direction:column;gap:8px">
+              <div class="row">
+                <label>Skill
+                  <select id="skill-sel-b">
+                    <option value="echo">echo</option>
+                    <option value="ping">ping</option>
+                    <option value="counter">counter (stream)</option>
+                  </select>
+                </label>
+                <label>Input
+                  <input id="skill-in-b" placeholder="B says hi">
+                </label>
+              </div>
+              <div class="btn-row">
+                <button onclick="doCallB()">B → A: Call</button>
+                <button class="sec" onclick="doPublishB()">B: Publish to topic</button>
+                <input id="pub-msg-b" placeholder="message" style="flex:1">
+              </div>
+              <div id="call-result-b" class="mono ok" style="min-height:16px;word-break:break-all"></div>
+            </div>
+          </section>
+          <section>
+            <header>Agent B — Log</header>
+            <div class="inner"><div class="log" id="log-b"></div></div>
+          </section>
+        </div>
+
+        <!-- Events -->
+        <section>
+          <header>Peer &amp; PeerGraph events</header>
+          <div class="inner"><div class="log" id="log-events"></div></div>
+        </section>
+
+      </div>
+    </div>
+
+  </div><!-- .panes -->
+
+  <!-- ── Relay peer bar ── -->
+  <div id="relay-bar"><span class="dim">Relay peers:</span></div>
+
+  <!-- ── Bottom log ── -->
+  <div class="bottom-log">
+    <header onclick="toggleLog()">
+      <span>Global log</span><span id="log-toggle">▾</span>
+    </header>
+    <div class="log" id="log-global"></div>
+  </div>
+</div><!-- #main -->
+
+<script type="module">
+import {
+  Agent, AgentIdentity, VaultMemory, VaultLocalStorage,
+  InternalBus, InternalTransport, RelayTransport,
+  TextPart, DataPart, Parts,
+  subscribe, publish,
+  FallbackTable, RoutingStrategy,
+  PeerGraph, PeerDiscovery,
+  TrustRegistry, CapabilityToken,
+  AgentCardBuilder, discoverA2A, sendA2ATask, sendA2AStreamTask,
+  MemorySource, StorageManager,
+  DataSourcePolicy, DataSourceAccessDeniedError,
+} from '@canopy/core';
+
+// ── State ──────────────────────────────────────────────────────────────────────
+
+let agentA = null, agentB = null;
+let idA = null,   idB = null;
+let mode = 'relay';
+let fallbackTable = null;
+let peerGraph     = null;
+let trustRegistry = null;
+let storage       = null;      // StorageManager
+let cardBuilder   = null;      // AgentCardBuilder
+let lastCardJson  = '';
+let knownRelayPeers = [];
+
+// ── Setup helpers ──────────────────────────────────────────────────────────────
+
+{
+  const u = new URL(location.href);
+  const p = u.protocol === 'https:' ? 'wss:' : 'ws:';
+  document.getElementById('relay-url').value = `${p}//${u.host}`;
+}
+
+document.getElementById('mode').addEventListener('change', e => {
+  document.getElementById('relay-opts').style.display =
+    e.target.value === 'relay' ? '' : 'none';
+});
+
+document.getElementById('start-btn').onclick = async () => {
+  const btn = document.getElementById('start-btn');
+  btn.textContent = 'Starting…'; btn.disabled = true;
+  document.getElementById('setup-err').style.display = 'none';
+  try { await startAgents(); }
+  catch (err) {
+    const el = document.getElementById('setup-err');
+    el.textContent = 'Error: ' + (err?.message ?? err);
+    el.style.display = '';
+    btn.textContent = 'Start agents'; btn.disabled = false;
+    console.error(err);
+  }
+};
+
+// ── Start ──────────────────────────────────────────────────────────────────────
+
+async function startAgents() {
+  mode = document.getElementById('mode').value;
+  const mnemonic = document.getElementById('mnemonic-in').value.trim();
+  const label    = document.getElementById('label-in').value.trim() || 'Agent A';
+
+  // Build identity A
+  const vaultA = new VaultMemory();
+  idA = mnemonic
+    ? await AgentIdentity.fromMnemonic(mnemonic, vaultA)
+    : await AgentIdentity.generate(vaultA);
+
+  // Trust registry (shares identity, persists tiers in vault)
+  trustRegistry = new TrustRegistry(vaultA);
+
+  // Storage
+  const source  = new MemorySource();
+  const policy  = new DataSourcePolicy({ secure: { allowedSkills: ['notes-read'] } });
+  storage = new StorageManager({ sources: { public: source, secure: source }, policy });
+
+  // Build transport A
+  let transportA;
+  if (mode === 'internal') {
+    const bus = new InternalBus();
+    transportA = new InternalTransport(bus, idA.pubKey);
+
+    const vaultB = new VaultMemory();
+    idB = await AgentIdentity.generate(vaultB);
+    const transportB = new InternalTransport(bus, idB.pubKey);
+    agentB = new Agent({ identity: idB, transport: transportB, label: 'Agent B' });
+    registerSkills(agentB, 'B');
+    await agentB.start();
+  } else {
+    const url = document.getElementById('relay-url').value.trim();
+    transportA = new RelayTransport({ relayUrl: url, identity: idA });
+    listenRelayPeers(url);
+  }
+
+  // FallbackTable + PeerGraph
+  fallbackTable = new FallbackTable();
+  peerGraph     = new PeerGraph();
+
+  const tName = mode === 'internal' ? 'internal' : 'relay';
+
+  // Agent A
+  agentA = new Agent({ identity: idA, transport: transportA, label, trustRegistry });
+  registerSkills(agentA, 'A');
+  agentA.on('error', err => logA(`<span class="err">error: ${esc(err?.message)}</span>`));
+
+  if (agentB) {
+    agentA.addPeer(agentB.address, agentB.pubKey);
+    agentB.addPeer(agentA.address, agentA.pubKey);
+    await peerGraph.upsert({ pubKey: agentB.pubKey, type: 'native', reachable: true,
+                              label: 'Agent B (internal)' });
+  }
+
+  await agentA.start();
+
+  // AgentCardBuilder
+  cardBuilder = new AgentCardBuilder({ agent: agentA,
+    config: { url: location.origin, description: `${label} — canopy SDK demo` } });
+
+  // PeerGraph events
+  peerGraph.on('added',       p => logEv(`<span class="ok">+peer</span> ${sk(p.pubKey ?? p.url)}`));
+  peerGraph.on('reachable',   p => logEv(`<span class="ok">online</span> ${sk(p.pubKey ?? p.url)}`));
+  peerGraph.on('unreachable', p => logEv(`<span class="err">offline</span> ${sk(p.pubKey ?? p.url)}`));
+
+  // Show main UI
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('main').classList.add('ready');
+  document.getElementById('hdr-status').textContent = `${mode} · running`;
+
+  if (mode === 'internal') {
+    const panel = document.getElementById('agent-b-panel');
+    panel.style.display = 'flex';
+    document.getElementById('title-b').textContent = 'Agent B (internal)';
+    renderAgentB();
+    document.getElementById('pub-addr').value = agentB.address;
+    document.getElementById('peer-addr').value = agentB.address;
+    document.getElementById('perm-peer').value = agentB.pubKey;
+  }
+
+  renderAgentA();
+  setInterval(renderAgentA, 2_000);
+  setInterval(renderPeerGraph, 2_500);
+}
+
+// ── Skills ─────────────────────────────────────────────────────────────────────
+
+function registerSkills(agent, tag) {
+  agent.register('echo', async ({ parts }) => {
+    const t = Parts.text(parts) ?? '(empty)';
+    log(tag, `<span class="ok">echo ←</span> ${esc(t)}`);
+    return [TextPart(`echo: ${t}`)];
+  }, { visibility: 'public', description: 'Returns input text' });
+
+  agent.register('ping', async () => {
+    log(tag, `<span class="ok">ping ←</span>`);
+    return [TextPart('pong')];
+  }, { visibility: 'public', description: 'Returns pong' });
+
+  agent.register('counter', async function* ({ parts }) {
+    const n = Math.min(parseInt(Parts.text(parts) ?? '5', 10) || 5, 20);
+    log(tag, `<span class="ok">counter ← n=${n}</span>`);
+    for (let i = 1; i <= n; i++) {
+      yield [TextPart(`${i}/${n}`)];
+      await new Promise(r => setTimeout(r, 300));
+    }
+  }, { visibility: 'public', description: 'Streaming counter', streaming: 'unidirectional' });
+
+  agent.register('notes-read', async ({ parts }) => {
+    const key = Parts.text(parts) ?? '';
+    const val = await storage.read('secure', key, { skillId: 'notes-read' });
+    return [DataPart({ key, value: val })];
+  }, { visibility: 'authenticated', description: 'Read a storage note by key' });
+}
+
+// ── Button handlers ─────────────────────────────────────────────────────────────
+
+window.doCall = async () => {
+  const peerId = document.getElementById('peer-addr').value.trim();
+  const skill  = document.getElementById('skill-sel').value;
+  const input  = document.getElementById('skill-in').value.trim();
+  if (!peerId) { logA(`<span class="err">No peer address</span>`); return; }
+
+  const tName = mode === 'internal' ? 'internal' : 'relay';
+  document.getElementById('call-result').textContent = '';
+  document.getElementById('stream-area').style.display = 'none';
+  document.getElementById('chunk-list').innerHTML = '';
+
+  if (skill === 'counter') {
+    document.getElementById('stream-area').style.display = '';
+    logA(`<span class="inf">stream counter…</span>`);
+    const t0   = Date.now();
+    const task = agentA.call(peerId, 'counter', input ? [TextPart(input)] : [TextPart('6')]);
+    let count  = 0;
+    for await (const chunk of task.stream()) {
+      const txt = Parts.text(chunk) ?? '…';
+      count++;
+      document.getElementById('chunk-list').insertAdjacentHTML('beforeend',
+        `<span class="chunk">${esc(txt)}</span>`);
+    }
+    const ms = Date.now() - t0;
+    fallbackTable.record(peerId, tName, ms);
+    document.getElementById('last-route').textContent = `last: counter via ${tName} (${ms}ms, ${count} chunks)`;
+    logA(`<span class="ok">stream done (${ms}ms)</span>`);
+  } else {
+    try {
+      const t0  = Date.now();
+      const res = await agentA.invoke(peerId, skill,
+                                      input ? [TextPart(input)] : [], { timeout: 10_000 });
+      const ms  = Date.now() - t0;
+      fallbackTable.record(peerId, tName, ms);
+      await peerGraph.updateLatency(peerId, tName, ms);
+      const txt = Parts.text(res) ?? Parts.data(res) ?? '(empty)';
+      document.getElementById('call-result').textContent = `→ ${JSON.stringify(txt)}`;
+      document.getElementById('last-route').textContent = `last: ${skill} via ${tName} (${ms}ms)`;
+      logA(`<span class="ok">${skill} (${ms}ms):</span> ${esc(String(txt).slice(0, 80))}`);
+    } catch (err) {
+      fallbackTable.markDegraded(peerId, tName);
+      logA(`<span class="err">${skill} failed: ${esc(err?.message)}</span>`);
+    }
+  }
+  renderFallbackTable();
+};
+
+window.doHello = async () => {
+  const peerId = document.getElementById('peer-addr').value.trim();
+  if (!peerId) { logA(`<span class="err">No peer address</span>`); return; }
+  try {
+    await agentA.hello(peerId, 10_000);
+    await peerGraph.upsert({ pubKey: peerId, type: 'native', reachable: true });
+    logA(`<span class="ok">hello ↔ ${esc(peerId.slice(0,14))}… OK</span>`);
+  } catch (err) {
+    logA(`<span class="err">hello failed: ${esc(err?.message)}</span>`);
+  }
+  renderPeerGraph();
+};
+
+window.doPing = async () => {
+  const peerId = document.getElementById('peer-addr').value.trim();
+  if (!peerId) { logA(`<span class="err">No peer address</span>`); return; }
+  try {
+    const { ping } = await import('./src/protocol/ping.js');
+    const t0  = Date.now();
+    await ping(agentA, peerId, 8_000);
+    const ms  = Date.now() - t0;
+    const tN  = mode === 'internal' ? 'internal' : 'relay';
+    fallbackTable.record(peerId, tN, ms);
+    await peerGraph.updateLatency(peerId, tN, ms);
+    logA(`<span class="ok">ping ${ms}ms</span>`);
+  } catch (err) {
+    logA(`<span class="err">ping failed: ${esc(err?.message)}</span>`);
+  }
+  renderFallbackTable();
+};
+
+// Storage
+
+window.storWrite = async () => {
+  const k = document.getElementById('stor-key').value.trim();
+  const v = document.getElementById('stor-val').value;
+  if (!k) return;
+  await storage.write('public', k, v);
+  document.getElementById('stor-out').innerHTML = `<span class="ok">wrote ${esc(k)}</span>`;
+  storRefresh();
+};
+
+window.storRead = async () => {
+  const k = document.getElementById('stor-key').value.trim();
+  if (!k) return;
+  try {
+    const v = await storage.read('public', k);
+    document.getElementById('stor-out').innerHTML =
+      v !== null ? `<span class="ok">${esc(k)}</span> = <span class="inf">${esc(v)}</span>`
+                 : `<span class="warn">${esc(k)} not found</span>`;
+  } catch (e) {
+    document.getElementById('stor-out').innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  }
+};
+
+window.storList = async () => { await storRefresh(true); };
+
+async function storRefresh(show = false) {
+  const keys = await storage.list('public', '');
+  const el   = document.getElementById('stor-list');
+  el.innerHTML = '';
+  for (const k of keys) {
+    const v = await storage.read('public', k);
+    el.insertAdjacentHTML('beforeend',
+      `<div class="kv-row"><span class="kv-key">${esc(k)}</span><span class="kv-val">${esc(v ?? '')}</span></div>`);
+  }
+  if (show) document.getElementById('stor-out').innerHTML =
+    `<span class="dim">${keys.length} entr${keys.length === 1 ? 'y' : 'ies'}</span>`;
+}
+
+// A2A Card
+
+window.buildCard = () => {
+  if (!cardBuilder) return;
+  const tier = parseInt(document.getElementById('card-tier').value);
+  const card = cardBuilder.build(tier);
+  lastCardJson = JSON.stringify(card, null, 2);
+  document.getElementById('card-box').innerHTML = syntaxHL(lastCardJson);
+};
+
+window.copyCard = () => {
+  if (!lastCardJson) { buildCard(); }
+  navigator.clipboard.writeText(lastCardJson).catch(() => {});
+  logA(`<span class="inf">card JSON copied</span>`);
+};
+
+// PubSub
+
+window.doSubscribe = async () => {
+  const addr  = document.getElementById('pub-addr').value.trim();
+  const topic = document.getElementById('pub-topic').value.trim() || 'news';
+  if (!addr) { logPubSub(`<span class="err">No publisher address</span>`); return; }
+  try {
+    await subscribe(agentA, addr, topic, parts => {
+      const txt = Parts.text(parts) ?? Parts.data(parts) ?? '(data)';
+      logPubSub(`<span class="ok">← [${esc(topic)}]</span> ${esc(String(txt).slice(0,80))}`);
+    });
+    logPubSub(`<span class="inf">subscribed to [${esc(topic)}] on ${esc(addr.slice(0,12))}…</span>`);
+  } catch (e) {
+    logPubSub(`<span class="err">subscribe failed: ${esc(e.message)}</span>`);
+  }
+};
+
+window.doPublish = async () => {
+  const topic = document.getElementById('pub-topic').value.trim() || 'news';
+  const msg   = document.getElementById('pub-msg').value.trim() || 'hello subscribers';
+  try {
+    await publish(agentA, topic, [TextPart(msg)]);
+    logPubSub(`<span class="warn">→ published [${esc(topic)}]</span> ${esc(msg)}`);
+  } catch (e) {
+    logPubSub(`<span class="err">publish failed: ${esc(e.message)}</span>`);
+  }
+};
+
+window.doPublishB = async () => {
+  if (!agentB) return;
+  const topic = document.getElementById('pub-topic').value.trim() || 'news';
+  const msg   = document.getElementById('pub-msg-b').value.trim() || 'message from B';
+  try {
+    await publish(agentB, topic, [TextPart(msg)]);
+    logB(`<span class="warn">B → published [${esc(topic)}]</span> ${esc(msg)}`);
+  } catch (e) {
+    logB(`<span class="err">publish failed: ${esc(e.message)}</span>`);
+  }
+};
+
+// A2A Discovery
+
+window.doDiscover = async () => {
+  const url = document.getElementById('a2a-url').value.trim();
+  if (!url) return;
+  document.getElementById('discover-box').textContent = 'Fetching…';
+  try {
+    const record = await discoverA2A(agentA, url, { timeout: 8_000 });
+    const json = JSON.stringify(record, null, 2);
+    document.getElementById('discover-box').innerHTML = syntaxHL(json);
+    await peerGraph.upsert(record);
+    logGlobal(`<span class="ok">discovered A2A agent:</span> ${esc(record.name)} at ${esc(url)}`);
+  } catch (err) {
+    document.getElementById('discover-box').textContent = 'Error: ' + err.message;
+    logGlobal(`<span class="err">discover failed: ${esc(err.message)}</span>`);
+  }
+};
+
+// Permissions
+
+window.setTier = async () => {
+  const peer = document.getElementById('perm-peer').value.trim();
+  const tier = parseInt(document.getElementById('perm-tier').value);
+  if (!peer) return;
+  await trustRegistry.setTier(peer, tier);
+  logGlobal(`<span class="inf">trust tier for ${esc(peer.slice(0,12))}… set to ${tier}</span>`);
+};
+
+window.getTier = async () => {
+  const peer = document.getElementById('perm-peer').value.trim();
+  if (!peer) return;
+  const tier = await trustRegistry.getTier(peer);
+  logGlobal(`<span class="ok">tier for ${esc(peer.slice(0,12))}…</span> = ${tier}`);
+};
+
+window.issueToken = async () => {
+  const subject = document.getElementById('perm-peer').value.trim();
+  const skill   = document.getElementById('token-skill').value.trim() || '*';
+  const expSec  = parseInt(document.getElementById('token-exp').value) || 3600;
+  if (!subject) return;
+  try {
+    const token = await CapabilityToken.issue(idA, {
+      subject, skill, agentId: agentA.pubKey, expiresIn: expSec * 1000,
+    });
+    const json = JSON.stringify(token.toJSON(), null, 2);
+    document.getElementById('token-box').innerHTML = syntaxHL(json);
+    logGlobal(`<span class="ok">issued token:</span> ${skill} → ${esc(subject.slice(0,12))}… (${expSec}s)`);
+  } catch (err) {
+    document.getElementById('token-box').textContent = 'Error: ' + err.message;
+    logGlobal(`<span class="err">token issuance failed: ${esc(err.message)}</span>`);
+  }
+};
+
+// FallbackTable
+
+window.simulateFail = () => {
+  const peerId = document.getElementById('peer-addr').value.trim();
+  if (!peerId) return;
+  const tN = mode === 'internal' ? 'internal' : 'relay';
+  fallbackTable.markDegraded(peerId, tN, Date.now() + 20_000);
+  logA(`<span class="err">simulated ${tN} failure 20s</span>`);
+  renderFallbackTable();
+};
+
+window.clearFallback = () => {
+  const peerId = document.getElementById('peer-addr').value.trim();
+  if (peerId) fallbackTable.clear(peerId);
+  renderFallbackTable();
+};
+
+// Agent B
+
+window.doCallB = async () => {
+  if (!agentB) return;
+  const skill = document.getElementById('skill-sel-b').value;
+  const input = document.getElementById('skill-in-b').value.trim();
+  try {
+    const res = await agentB.invoke(agentA.address, skill,
+                                    input ? [TextPart(input)] : [], { timeout: 8_000 });
+    const txt = Parts.text(res) ?? '(empty)';
+    document.getElementById('call-result-b').textContent = `→ ${JSON.stringify(txt)}`;
+    logB(`<span class="ok">B→A ${skill}:</span> ${esc(txt.slice(0,60))}`);
+  } catch (err) {
+    logB(`<span class="err">B→A ${skill} failed: ${esc(err?.message)}</span>`);
+  }
+};
+
+// Custom skill registration
+
+window.registerCustomSkill = () => {
+  const id   = document.getElementById('custom-skill-id').value.trim();
+  const code = document.getElementById('custom-skill-handler').value.trim();
+  if (!id || !code) return;
+  try {
+    // eslint-disable-next-line no-new-func
+    const handler = new Function('TextPart', 'DataPart', 'Parts', `
+      return async function({ parts, from, agent }) { ${code} }
+    `)(TextPart, DataPart, Parts);
+    agentA.register(id, handler, { visibility: 'public', description: 'custom (demo)' });
+    logA(`<span class="ok">registered skill:</span> ${esc(id)}`);
+    renderAgentA();
+  } catch (err) {
+    logA(`<span class="err">register failed: ${esc(err.message)}</span>`);
+  }
+};
+
+// Identity
+
+window.copyAddr = () => {
+  if (!agentA) return;
+  navigator.clipboard.writeText(agentA.address).catch(() => {});
+  logA('<span class="inf">address copied</span>');
+};
+
+window.showMnemonic = async () => {
+  if (!idA?.getMnemonic) return;
+  const m = await idA.getMnemonic().catch(() => null);
+  logGlobal(`<span class="inf">mnemonic: ${esc(m ?? 'n/a')}</span>`);
+};
+
+// ── UI rendering ────────────────────────────────────────────────────────────────
+
+function renderAgentA() {
+  if (!agentA) return;
+  const pk = agentA.pubKey;
+
+  document.getElementById('dot-a').className = 'dot on';
+  document.getElementById('addr-a').textContent = pk.slice(0, 16) + '…';
+
+  const tName = mode === 'internal' ? 'internal' : 'relay';
+  const connected = mode === 'relay' ? agentA.transport?.connected : true;
+  document.getElementById('id-block-a').innerHTML =
+    `<span class="lbl">pubKey</span>${pk}<br>` +
+    `<span class="lbl">transport</span>${tName} · <span class="${connected ? 'ok' : 'warn'}">${connected ? 'connected' : 'connecting…'}</span><br>` +
+    `<span class="lbl">label</span>${esc(agentA.label ?? '—')}<br>` +
+    `<span class="lbl">vault</span>VaultMemory`;
+
+  // Skills
+  const skEl = document.getElementById('skill-list-a');
+  skEl.innerHTML = agentA.skills.all().map(s => {
+    const vclass = `vis-${s.visibility ?? 'authenticated'}`;
+    return `<div class="skill-row">
+      <span class="skill-id">${esc(s.id)}</span>
+      <span class="vis-badge ${vclass}">${esc(s.visibility ?? 'auth')}</span>
+      <span class="dim" style="flex:1;font-size:11px">${esc(s.description ?? '')}</span>
+    </div>`;
+  }).join('') || '<div class="dim" style="font-size:12px">none</div>';
+}
+
+function renderAgentB() {
+  if (!agentB) return;
+  document.getElementById('dot-b').className = 'dot on';
+  document.getElementById('addr-b').textContent = agentB.pubKey.slice(0, 16) + '…';
+  document.getElementById('id-block-b').innerHTML =
+    `<span class="lbl">pubKey</span>${agentB.pubKey}<br>` +
+    `<span class="lbl">label</span>${esc(agentB.label ?? 'Agent B')}`;
+}
+
+async function renderPeerGraph() {
+  if (!peerGraph) return;
+  const peers = await peerGraph.all();
+  const el = document.getElementById('peer-graph');
+  if (peers.length === 0) {
+    el.innerHTML = '<div class="dim" style="font-size:12px">No peers. Do a Hello or connect via relay.</div>';
+    return;
+  }
+  el.innerHTML = peers.map(p => {
+    const id   = p.pubKey ?? p.url ?? '?';
+    const lat  = p.latency?.[mode === 'internal' ? 'internal' : 'relay'];
+    const reachable = p.reachable !== false;
+    return `<div class="peer-row" onclick="fillPeer('${esc(id)}')">
+      <div class="dot ${reachable ? 'on' : ''}" style="width:6px;height:6px"></div>
+      <span class="peer-id" title="${esc(id)}">${esc(id.slice(0,20))}…</span>
+      <span style="font-size:10px;color:var(--dim)">${esc(p.label ?? p.type ?? 'native')}</span>
+      <span class="peer-tier">${lat ? lat + 'ms' : '—'}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderFallbackTable() {
+  const peerId = document.getElementById('peer-addr').value.trim();
+  const el     = document.getElementById('fallback-table');
+  if (!peerId || !fallbackTable) {
+    el.innerHTML = '<span class="dim">Enter a peer address and call a skill.</span>';
+    return;
+  }
+  const entries = fallbackTable.getAll(peerId);
+  if (!entries.length) {
+    el.innerHTML = '<span class="dim">No routing data yet for this peer.</span>';
+    return;
+  }
+  el.innerHTML = entries.map(e => {
+    const deg = fallbackTable.isDegraded(peerId, e.transportName);
+    return `<div style="display:flex;gap:8px;align-items:center;font-size:12px;margin-bottom:3px">
+      <span class="mono" style="min-width:70px;color:var(--accent)">${esc(e.transportName)}</span>
+      <span class="mono dim">${e.latencyMs}ms</span>
+      <span class="pill ${deg ? 'bad' : 'ok'}">${deg ? 'degraded' : 'ok'}</span>
+    </div>`;
+  }).join('');
+}
+
+window.fillPeer = id => {
+  document.getElementById('peer-addr').value = id;
+  document.getElementById('perm-peer').value = id;
+};
+
+// ── Relay peer bar ─────────────────────────────────────────────────────────────
+
+function listenRelayPeers(relayUrl) {
+  try {
+    const ws = new WebSocket(relayUrl);
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'register', address: '__monitor_' + Date.now() }));
+    ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'registered') ws.send(JSON.stringify({ type: 'peer-list' }));
+        if (msg.type === 'peer-list' && Array.isArray(msg.peers)) {
+          knownRelayPeers = msg.peers;
+          renderRelayBar();
+        }
+      } catch {}
+    };
+    ws.onerror = () => {};
+  } catch {}
+}
+
+function renderRelayBar() {
+  const el    = document.getElementById('relay-bar');
+  const myAddr = agentA?.address ?? '';
+  el.className = 'show';
+  const chips = knownRelayPeers
+    .filter(p => !p.startsWith('__monitor'))
+    .map(p => {
+      const self = p === myAddr;
+      return `<span class="rp-addr${self ? ' self' : ''}" title="${esc(p)}"
+                    onclick="if(!${self}){fillPeer('${esc(p)}')}"
+              >${self ? 'you' : esc(p.slice(0, 12) + '…')}</span>`;
+    }).join('');
+  el.innerHTML = `<span class="dim">Relay (${knownRelayPeers.filter(p=>!p.startsWith('__')).length}):</span>${chips}`;
+}
+
+// ── JSON syntax highlighter ────────────────────────────────────────────────────
+
+function syntaxHL(json) {
+  return json
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
+    .replace(/: "([^"]*)"/g, ': <span class="json-str">"$1"</span>')
+    .replace(/: (\d+\.?\d*)/g, ': <span class="json-num">$1</span>')
+    .replace(/: (true|false|null)/g, ': <span class="json-bool">$1</span>');
+}
+
+// ── Log helpers ────────────────────────────────────────────────────────────────
+
+function log(tag, html) { tag === 'A' ? logA(html) : logB(html); }
+function logA(html)     { appendLog('log-a', html); logGlobal(html); }
+function logB(html)     { appendLog('log-b', html); logGlobal(html); }
+function logEv(html)    { appendLog('log-events', html); }
+function logPubSub(html){ appendLog('pubsub-log', html); }
+function logGlobal(html){ appendLog('log-global', html); }
+
+function appendLog(id, html) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const ts = new Date().toTimeString().slice(0, 8);
+  el.insertAdjacentHTML('beforeend',
+    `<div><span class="ts">${ts}</span>  ${html}</div>`);
+  el.scrollTop = el.scrollHeight;
+}
+
+window.toggleLog = () => {
+  const el  = document.querySelector('.bottom-log .log');
+  const tog = document.getElementById('log-toggle');
+  const hidden = el.style.display === 'none';
+  el.style.display = hidden ? '' : 'none';
+  tog.textContent  = hidden ? '▾' : '▸';
+};
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function sk(k) { return k ? esc(k.slice(0, 14)) + '…' : '?'; }
+</script>
+</body>
+</html>
