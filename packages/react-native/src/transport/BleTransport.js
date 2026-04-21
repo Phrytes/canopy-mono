@@ -63,6 +63,12 @@ export class BleTransport extends Transport {
   // was rejected".  We chain each write behind the previous one per peer key.
   #writeQueues = new Map();
 
+  // Store-and-forward buffer for messages sent while a peer is (temporarily)
+  // not connected. Drained FIFO when the peer re-appears. See Group V.
+  #pendingForPeer    = new Map();   // pubKey → Array<{ payload, enqueuedAt }>
+  #bufferMaxPerPeer  = 50;
+  #bufferTtlMs       = 5 * 60_000;
+
   // Peripheral-mode peers: pubKey → { deviceAddress, mtu, rxBuffer }
   // Keyed by device address until first envelope arrives, then re-keyed to pubKey.
   #peripheralByAddress = new Map();  // deviceAddress → state (unidentified)
@@ -77,15 +83,19 @@ export class BleTransport extends Transport {
   /**
    * @param {object} opts
    * @param {import('@canopy/core').AgentIdentity} opts.identity
-   * @param {boolean} [opts.advertise=true]  — start GATT server and advertise
-   * @param {boolean} [opts.scan=true]       — scan and connect to nearby peripherals
+   * @param {boolean} [opts.advertise=true]        — start GATT server and advertise
+   * @param {boolean} [opts.scan=true]             — scan and connect to nearby peripherals
+   * @param {number}  [opts.bufferMaxPerPeer=50]   — cap on queued messages per offline peer
+   * @param {number}  [opts.bufferTtlMs=300_000]   — drop queued messages older than this on drain
    */
-  constructor({ identity, advertise = true, scan = true }) {
+  constructor({ identity, advertise = true, scan = true, bufferMaxPerPeer, bufferTtlMs } = {}) {
     if (!identity) throw new Error('BleTransport requires identity');
     super({ address: identity.pubKey, identity });
     this.#manager   = new BleManager();
     this.#advertise = advertise;
     this.#scan      = scan;
+    if (typeof bufferMaxPerPeer === 'number') this.#bufferMaxPerPeer = bufferMaxPerPeer;
+    if (typeof bufferTtlMs      === 'number') this.#bufferTtlMs      = bufferTtlMs;
   }
 
   async connect() {
@@ -140,6 +150,7 @@ export class BleTransport extends Transport {
     }
     this.#peripheralByAddress.clear();
     this.#peripheralByPubKey.clear();
+    this.#pendingForPeer.clear();
 
     this.#manager.destroy();
   }
@@ -165,6 +176,10 @@ export class BleTransport extends Transport {
       this.#peripheralByPubKey.delete(pubKey);
       this.#peripheralByAddress.delete(peripheral.deviceAddress);
     }
+    // Drop any buffered messages for this peer too — a forget is a hard
+    // reset and we should not surprise the app by later delivering a
+    // message it tried to cancel.
+    this.#pendingForPeer.delete(pubKey);
     if (this.#scan && this.#started) this.#restartScan();
   }
 
@@ -191,14 +206,50 @@ export class BleTransport extends Transport {
 
   async _put(to, envelope) {
     const payload = JSON.stringify(envelope);
+
+    // If we have no connection to `to` right now, queue for later delivery
+    // instead of throwing. The buffer is capped by #bufferMaxPerPeer and TTL
+    // (see _drainBuffer + forgetPeer). See Group V.
+    if (!this.#centralPeers.has(to) && !this.#peripheralByPubKey.has(to)) {
+      const queue = this.#pendingForPeer.get(to) ?? [];
+      queue.push({ payload, enqueuedAt: Date.now() });
+      while (queue.length > this.#bufferMaxPerPeer) queue.shift();  // drop oldest
+      this.#pendingForPeer.set(to, queue);
+      this.emit('buffered', { to, queueSize: queue.length });
+      return;
+    }
+
     // Serialize writes per peer: one GATT operation at a time.
     const prev = this.#writeQueues.get(to) ?? Promise.resolve();
-    const next = prev.then(() => this.#doWrite(to, payload));
+    const next = prev.then(() => this._doWrite(to, payload));
     this.#writeQueues.set(to, next.catch(() => {}));
     return next;
   }
 
-  async #doWrite(to, payload) {
+  /**
+   * Drain pending messages for `pubKey` through the normal write path, FIFO,
+   * after dropping anything past `#bufferTtlMs`.  Called by the central and
+   * peripheral re-key paths when a peer becomes addressable by pubKey.
+   */
+  async _drainBuffer(pubKey) {
+    const queue = this.#pendingForPeer.get(pubKey);
+    if (!queue || queue.length === 0) return;
+    this.#pendingForPeer.delete(pubKey);
+
+    const cutoff = Date.now() - this.#bufferTtlMs;
+    const fresh  = queue.filter(item => item.enqueuedAt >= cutoff);
+
+    for (const item of fresh) {
+      // Reuse the existing write-queue mutex so a drain-in-flight doesn't
+      // collide with a new _put() in the same microtask.
+      const prev = this.#writeQueues.get(pubKey) ?? Promise.resolve();
+      const next = prev.then(() => this._doWrite(pubKey, item.payload));
+      this.#writeQueues.set(pubKey, next.catch(() => {}));
+      try { await next; } catch { /* drain continues for remaining items */ }
+    }
+  }
+
+  async _doWrite(to, payload) {
     const central = this.#centralPeers.get(to);
     if (central) {
       const chunks = _chunk(payload, central.mtu - 3);
@@ -288,7 +339,7 @@ export class BleTransport extends Transport {
           }
         }
       });
-    } catch { /* device already gone — the entry will be cleaned up by #doWrite */ }
+    } catch { /* device already gone — the entry will be cleaned up by _doWrite */ }
 
     // Monitor notifications from this peripheral. Wrapped because calling
     // monitor() on a disconnected characteristic throws synchronously.
@@ -320,6 +371,7 @@ export class BleTransport extends Transport {
           this.#centralPeers.delete(deviceId);
           this.#centralPeers.set(pubKey, peer);
           this.emit('peer-discovered', pubKey);
+          this._drainBuffer(pubKey).catch(() => {});
         }
       }
 
@@ -368,6 +420,7 @@ export class BleTransport extends Transport {
               state.pubKey = pubKey;
               this.#peripheralByPubKey.set(pubKey, state);
               this.emit('peer-discovered', pubKey);
+              this._drainBuffer(pubKey).catch(() => {});
             }
           }
 
