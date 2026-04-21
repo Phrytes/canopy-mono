@@ -623,19 +623,43 @@ export class Agent extends Emitter {
   /**
    * Export this agent as a plain object (no secrets).
    * Suitable for serialisation, QR codes, or card sharing.
+   *
+   * With no argument, returns the agent's own view (all non-private,
+   * enabled skills). Pass `{ callerPubKey }` to filter group-visible
+   * skills the way they'd appear to that caller — non-members don't
+   * see hidden skills; with `default: 'visible'` they show up but the
+   * call path still rejects them as `Unknown skill`.
+   *
+   * @param {{ callerPubKey?: string, tier?: string }} [opts]
    */
-  export() {
-    const skills = this.#skills.all()
-      .filter(s => s.visibility !== 'private' && s.enabled)
-      .map(s => ({
-        id:          s.id,
-        description: s.description,
-        inputModes:  s.inputModes,
-        outputModes: s.outputModes,
-        tags:        s.tags,
-        streaming:   s.streaming,
-        visibility:  s.visibility,
-      }));
+  async export(opts = {}) {
+    const callerPubKey = opts.callerPubKey ?? null;
+    const tier         = opts.tier         ?? 'authenticated';
+
+    // Self-view: no caller constraint; show all non-private skills.
+    let visibleSkills;
+    if (!callerPubKey) {
+      visibleSkills = this.#skills.all()
+        .filter(s => s.visibility !== 'private' && s.enabled);
+    } else {
+      const gm = this.#security?.groupManager;
+      visibleSkills = await this.#skills.forCaller({
+        tier,
+        callerPubKey,
+        checkGroup: gm ? (pk, gid) => gm.hasValidProof(pk, gid) : undefined,
+      });
+      visibleSkills = visibleSkills.filter(s => s.enabled);
+    }
+
+    const skills = visibleSkills.map(s => ({
+      id:          s.id,
+      description: s.description,
+      inputModes:  s.inputModes,
+      outputModes: s.outputModes,
+      tags:        s.tags,
+      streaming:   s.streaming,
+      visibility:  s.visibility,
+    }));
 
     return {
       pubKey:  this.pubKey,

@@ -18,18 +18,24 @@
 /** @typedef {import('../Parts.js').Part} Part */
 
 /**
+ * @typedef {'public'|'authenticated'|'trusted'|'private'} TierVisibility
+ * @typedef {{ groups: string[], default?: 'hidden'|'visible' }} GroupVisibility
+ * @typedef {TierVisibility|GroupVisibility} Visibility
+ *
  * @typedef {object} SkillDefinition
- * @property {string}   id
- * @property {Function} handler
- * @property {string}   description
- * @property {string[]} inputModes     — accepted MIME types
- * @property {string[]} outputModes    — produced MIME types
- * @property {string[]} tags
- * @property {boolean}  streaming      — supports ST/SE/BT streaming
- * @property {string}   visibility     — 'public'|'authenticated'|'trusted'|'private'
- * @property {string}   policy         — 'on-request'|'always-allow'|'requires-token'
- * @property {boolean}  enabled
+ * @property {string}     id
+ * @property {Function}   handler
+ * @property {string}     description
+ * @property {string[]}   inputModes     — accepted MIME types
+ * @property {string[]}   outputModes    — produced MIME types
+ * @property {string[]}   tags
+ * @property {boolean}    streaming      — supports ST/SE/BT streaming
+ * @property {Visibility} visibility     — tier string or { groups, default }
+ * @property {string}     policy         — 'on-request'|'always-allow'|'requires-token'
+ * @property {boolean}    enabled
  */
+
+const TIERS = ['public', 'authenticated', 'trusted', 'private'];
 
 export function defineSkill(id, handler, opts = {}) {
   if (!id || typeof id !== 'string') throw new Error('defineSkill: id must be a non-empty string');
@@ -43,8 +49,52 @@ export function defineSkill(id, handler, opts = {}) {
     outputModes:  opts.outputModes  ?? ['application/json'],
     tags:         opts.tags         ?? [],
     streaming:    opts.streaming    ?? false,
-    visibility:   opts.visibility   ?? 'authenticated',
+    visibility:   _validateVisibility(opts.visibility, id),
     policy:       opts.policy       ?? 'on-request',
     enabled:      opts.enabled      ?? true,
   };
+}
+
+function _validateVisibility(v, skillId) {
+  if (v == null) return 'authenticated';
+  if (typeof v === 'string') {
+    if (!TIERS.includes(v)) {
+      throw new Error(`defineSkill "${skillId}": unknown visibility tier "${v}"`);
+    }
+    return v;
+  }
+  if (typeof v === 'object' && Array.isArray(v.groups)) {
+    if (v.groups.length === 0) {
+      throw new Error(`defineSkill "${skillId}": visibility.groups must be non-empty`);
+    }
+    const defaultMode = v.default ?? 'hidden';
+    if (defaultMode !== 'hidden' && defaultMode !== 'visible') {
+      throw new Error(`defineSkill "${skillId}": visibility.default must be 'hidden' or 'visible'`);
+    }
+    return { groups: [...v.groups], default: defaultMode };
+  }
+  throw new Error(`defineSkill "${skillId}": visibility must be a tier string or { groups, default }`);
+}
+
+/**
+ * Normalise a visibility value into a tagged union that every consumer
+ * (SkillRegistry.forCaller, Agent.export, skillDiscovery, handleTaskRequest)
+ * can inspect without re-running shape checks.
+ *
+ *   'authenticated'                → { kind: 'tier',   tier: 'authenticated' }
+ *   { groups: ['ops'], default: 'hidden' }
+ *                                  → { kind: 'groups', groups: ['ops'], default: 'hidden' }
+ */
+export function normaliseVisibility(v) {
+  if (typeof v === 'string' || v == null) {
+    return { kind: 'tier', tier: v ?? 'authenticated' };
+  }
+  if (typeof v === 'object' && Array.isArray(v.groups)) {
+    return {
+      kind:    'groups',
+      groups:  [...v.groups],
+      default: v.default ?? 'hidden',
+    };
+  }
+  throw new Error('normaliseVisibility: unknown visibility shape');
 }

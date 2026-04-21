@@ -176,6 +176,33 @@ export async function handleTaskRequest(agent, envelope) {
     return true;
   }
 
+  // ── Group-visibility gate (Group X) ───────────────────────────────────────
+  // If the skill is restricted to group members, verify the caller holds a
+  // valid proof. Non-members receive the same error a missing skill would
+  // produce — preserves "don't reveal existence" (aligned with the hello
+  // gate in Group W).
+  if (typeof skill.visibility === 'object' && Array.isArray(skill.visibility?.groups)) {
+    const gm = agent.security?.groupManager;
+    let isMember = false;
+    if (gm) {
+      for (const gid of skill.visibility.groups) {
+        try {
+          if (await gm.hasValidProof(envelope._from, gid)) { isMember = true; break; }
+        } catch { /* fail-closed */ }
+      }
+    }
+    if (!isMember) {
+      await t.respond(envelope._from, envelope._id, {
+        type:   'task-result',
+        taskId,
+        status: 'failed',
+        error:  `Unknown skill: "${skillId}"`,
+        parts:  [],
+      }).catch(() => {});
+      return true;
+    }
+  }
+
   // ── AbortController + TTL expiry ───────────────────────────────────────────
   const controller   = new AbortController();
   agent.stateManager.createTask(`abort:${taskId}`, { controller });
