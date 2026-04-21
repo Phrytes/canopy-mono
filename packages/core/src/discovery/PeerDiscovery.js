@@ -189,8 +189,14 @@ export class PeerDiscovery {
     if (this.#agent.skills.get('peer-list')) return;
 
     this.#agent.register('peer-list', async ({ from }) => {
-      // Return only peers with discoverable !== false.
+      // Only share peers we can directly reach, and skip the caller's own
+      // pubKey so they don't receive their own entry back.  Indirect peers
+      // are intentionally excluded — we don't want to propagate
+      // second-hand records that would encourage routing loops.
       const peers = (await this.#peerGraph.all())
+        .filter(p => p.reachable !== false)
+        .filter(p => (p.hops ?? 0) === 0)
+        .filter(p => p.pubKey !== from)
         .filter(p => p.discoverable !== false)
         .map(({ pubKey, url, type, label, skills, transports, discoverable }) =>
           ({ pubKey, url, type, label, skills, transports, discoverable }),

@@ -44,10 +44,12 @@ export { MqttTransport }                  from './transport/MqttTransport.js';
 export { NknTransport }                   from './transport/NknTransport.js';
 export { LocalTransport }                 from './transport/LocalTransport.js';
 export { RendezvousTransport }            from './transport/RendezvousTransport.js';
+export { OfflineTransport }               from './transport/OfflineTransport.js';
 
 // ── Skills ────────────────────────────────────────────────────────────────────
-export { defineSkill }   from './skills/defineSkill.js';
-export { SkillRegistry } from './skills/SkillRegistry.js';
+export { defineSkill }         from './skills/defineSkill.js';
+export { SkillRegistry }       from './skills/SkillRegistry.js';
+export { registerRelayForward } from './skills/relayForward.js';
 
 // ── Protocol ──────────────────────────────────────────────────────────────────
 export { Task }                                           from './protocol/Task.js';
@@ -78,14 +80,16 @@ export { GroupManager }     from './permissions/GroupManager.js';
 export { DataSourcePolicy, DataSourceAccessDeniedError } from './permissions/DataSourcePolicy.js';
 
 // ── Routing (Group G) ────────────────────────────────────────────────────────
-export { FallbackTable }                  from './routing/FallbackTable.js';
+export { FallbackTable }                       from './routing/FallbackTable.js';
 export { RoutingStrategy, TRANSPORT_PRIORITY } from './routing/RoutingStrategy.js';
+export { invokeWithHop }                       from './routing/invokeWithHop.js';
 
 // ── Discovery (Group G) ──────────────────────────────────────────────────────
 export { PeerGraph }      from './discovery/PeerGraph.js';
 export { PeerDiscovery }  from './discovery/PeerDiscovery.js';
 export { GossipProtocol } from './discovery/GossipProtocol.js';
 export { PingScheduler }  from './discovery/PingScheduler.js';
+export { pullPeerList }   from './discovery/pullPeerList.js';
 
 // ── A2A layer (Group H) ───────────────────────────────────────────────────────
 export { A2ATLSLayer }      from './a2a/A2ATLSLayer.js';

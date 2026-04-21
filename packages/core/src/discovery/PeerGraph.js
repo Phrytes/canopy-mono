@@ -99,6 +99,17 @@ export class PeerGraph extends Emitter {
     this.emit('removed', record);
   }
 
+  /**
+   * Drop every peer record from the backend. Emits `cleared` once after the
+   * delete pass finishes.  Useful for "wipe mesh memory" UX when persisted
+   * graphs get stale across sessions.
+   */
+  async clear() {
+    const keys = (await this.#backend.list()).filter(k => k.startsWith('peer:'));
+    for (const key of keys) await this.#backend.delete(key);
+    this.emit('cleared', { count: keys.length });
+  }
+
   // ── Filtered queries ───────────────────────────────────────────────────────
 
   /** @returns {Promise<object[]>}  peers that have the given skill */
