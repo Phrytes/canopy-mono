@@ -42,6 +42,12 @@ export {
   CLAIM_VERSION,
   DEFAULT_VERIFY_LIMITS,
 }                                            from './security/reachabilityClaim.js';
+export {
+  signOrigin,
+  verifyOrigin,
+  ORIGIN_SIG_VERSION,
+  DEFAULT_ORIGIN_WINDOW_MS,
+}                                            from './security/originSignature.js';
 
 // ── Transport ────────────────────────────────────────────────────────────────
 export { Transport }                      from './transport/Transport.js';
