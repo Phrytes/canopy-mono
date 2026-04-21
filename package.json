@@ -1,0 +1,16 @@
+{
+  "name":        "canopy-monorepo",
+  "version":     "0.1.0",
+  "private":     true,
+  "description": "@canopy/* packages + mesh-demo example app",
+  "type":        "module",
+  "scripts": {
+    "test":              "npm run test --prefix packages/core && npm run test --prefix packages/react-native && npm run test --prefix packages/relay",
+    "test:core":         "npm run test --prefix packages/core",
+    "test:rn":           "npm run test --prefix packages/react-native",
+    "test:relay":        "npm run test --prefix packages/relay",
+    "demo":              "node examples/mesh-demo/index.js",
+    "demo:verify":       "node examples/mesh-demo/index.js",
+    "relay:start":       "npm run start --prefix packages/relay"
+  }
+}
