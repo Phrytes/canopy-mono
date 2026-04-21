@@ -249,15 +249,16 @@ Delete:
 
 Break Group T into 6 sub-phases, each self-contained and independently testable. Ship them in order; each commits green.
 
-#### T1 — Design doc approval *(no code)*
+#### T1 — Design decisions *(doc-only commit)*
 
-Decide the open issues in `Design-v3/oracle-bridge-selection.md` §10:
-- `MAX_PEERS` default (1024 vs 256).
-- Clock source (`Date.now()` vs a monotonic source for `ia`).
-- Cross-restart persistence of verified claims (yes/no).
-- Interaction with `CapabilityToken` canonicalisation (reuse helper vs separate).
+Resolved in `Design-v3/oracle-bridge-selection.md` §10 (2026-04-21):
 
-Recording the decisions in the design doc. Tracked as a task; no commit.
+- **T1-a · `MAX_PEERS` default = 256**; override via `enableReachabilityOracle({ maxPeers })` or `oracle.maxPeers` in the agent definition file.
+- **T1-b · Receiver-anchored TTL** — signed body carries `t` (ttlMs) + `s` (monotonic sequence). No wall-clock comparison between issuer and receiver. Sequence replay guard supersedes the absolute-expiry / clock-skew approach.
+- **T1-c · Volatile cache only**; producer re-signs when within `refreshBeforeMs` of expiry. Both `ttlMs` and `refreshBeforeMs` tunable in code and via the agent definition file (`oracle.ttlMs`, `oracle.refreshBeforeMs`).
+- **T1-d · Share only `canonicalize()`** with `CapabilityToken`; no new higher-level helper.
+
+Commit is docs-only: the design doc plus this plan update. No code.
 
 #### T2 — Canonical sign/verify helpers
 
@@ -267,21 +268,33 @@ Files:
 
 Exports:
 ```js
-signReachabilityClaim(identity, peerPubKeys, { ttlMs }) → { body, sig }
-verifyReachabilityClaim(claim, { expectedIssuer, now, maxPeers, maxTtlMs, maxBytes, skewMs })
-  → { ok: true } | { ok: false, reason: string }
+signReachabilityClaim(identity, peerPubKeys, { ttlMs, seqStore }) → { body, sig }
+//   seqStore = { read(): Promise<number>, write(n): Promise<void> }
+//              Defaults to an in-memory counter seeded with Date.now().
+
+verifyReachabilityClaim(claim, {
+  expectedIssuer,
+  lastSeenSeq,     // number | undefined; undefined = first time
+  maxPeers, maxTtlMs, maxBytes,
+}) → { ok: true, newLastSeq: number }
+   | { ok: false, reason: string }
 ```
 
+The signed body is `{ v, i, p, t, s }` (see design doc §2). `canonicalize()` from `core/Envelope.js` is reused for determinism; no new canonicaliser.
+
 Tests (minimum):
-- Sign then verify round-trip → ok.
-- Tampered `p` / `ia` / `ea` / `i` → each fails with a specific reason.
+- Sign then verify round-trip → `ok: true`, `newLastSeq === body.s`.
+- Tampered `p` / `t` / `s` / `i` → each fails with a distinct `reason`.
 - Wrong `expectedIssuer` → rejected (reflection guard).
-- Expired claim (`ea < now - skew`) → rejected.
-- Future claim (`ia > now + skew`) → rejected.
+- Replay: `claim.body.s <= lastSeenSeq` → rejected as replay; `lastSeenSeq` unchanged.
+- Strictly newer claim (`s = lastSeenSeq + 1`) → accepted, `newLastSeq` bumped.
+- `t <= 0` or `t > maxTtlMs` → rejected.
 - Oversize `p` (`> maxPeers`) → rejected.
 - Oversize serialised payload (`> maxBytes`) → rejected.
-- Version byte not `1` → rejected.
-- Unsorted `p` in the signed body → rejected (determinism guarantee).
+- Version byte ≠ `1` → rejected.
+- `p` not sorted in the signed body → rejected (determinism guarantee).
+- Signer uses `seqStore` correctly: two consecutive `signReachabilityClaim` calls produce strictly increasing `s`, even if the wall clock is frozen between them (simulate by mocking `Date.now`).
+- Signer tolerates a backwards wall-clock jump: mock `Date.now` to return a value *smaller* than `lastSignedSeq`, expect the next `s` to be `lastSignedSeq + 1` (never decreases).
 
 #### T3 — `reachable-peers` skill + `agent.enableReachabilityOracle()`
 
@@ -290,18 +303,27 @@ Files:
 - `packages/core/test/reachablePeers.test.js`
 
 Modify:
-- `packages/core/src/Agent.js` — add `agent.enableReachabilityOracle({ ttlMs, refreshBufferMs, maxPeers })` method.
+- `packages/core/src/Agent.js` — add `agent.enableReachabilityOracle({ ttlMs, refreshBeforeMs, maxPeers })` method.
+
+Config resolution for every knob: **explicit code arg → `agent.config.get('oracle.<name>')` → built-in default.** So all three can be set via `AgentConfig` overrides (i.e. the agent definition file) and the method call can override that when needed.
+
+Defaults: `ttlMs = 5 * 60_000`, `refreshBeforeMs = 60_000`, `maxPeers = 256`.
 
 Behaviour:
-- Method registers the skill (idempotent, per existing patterns).
-- Skill handler returns `[DataPart({ body, sig })]`. Caches the claim, re-signing when (a) the direct-peer set changes or (b) the cached claim has `< refreshBufferMs` left.
+- Method registers the skill (idempotent).
+- Skill handler returns `[DataPart({ body, sig })]`. Caches the claim, re-signing when (a) the direct-peer set changes, (b) the cached claim has `≤ refreshBeforeMs` of its `ttlMs` left (measured from the producer's own `signedAt`), or (c) there is no cached claim yet.
 - Listens to `peer` and `peer-disconnected` events to invalidate the cache.
+- Respects `maxPeers` by truncating the direct-peer list deterministically (lexicographic on pubKey) before signing.
 
 Tests:
-- Calling the skill returns a claim verifiable by the issuer's pubKey.
-- Repeated calls in quick succession return the *same* (cached) claim.
-- After a `peer` event, the next call returns a *different* claim with the new direct peer included.
+- Calling the skill returns a claim verifiable by the issuer's pubKey (using `verifyReachabilityClaim` from T2).
+- Repeated calls in quick succession return the *same* cached body (byte-equal). The `s` (sequence) therefore doesn't bump until a real refresh is due.
+- After a `peer` event, the next call returns a *different* claim — a higher `s` and the new peer in `p`.
 - After `peer-disconnected`, the removed peer is gone from the next claim.
+- `refreshBeforeMs` observed: simulate time passage by mocking `Date.now`; confirm re-sign fires when remaining TTL drops below the threshold.
+- `maxPeers: 5` with 10 direct peers — claim contains exactly 5, truncated in deterministic order.
+- Values from `AgentConfig` (`oracle.ttlMs`, `oracle.refreshBeforeMs`, `oracle.maxPeers`) flow through when the method is called with no code args.
+- Explicit code args win over `AgentConfig` values.
 - `enableReachabilityOracle()` is idempotent.
 
 #### T4 — Graph storage
@@ -312,39 +334,49 @@ Modify:
 Files to add:
 - `packages/core/test/PeerGraph.knownPeers.test.js` (minor — existing tests cover most merging logic).
 
+**Important:** `knownPeersTs` here is the **receiver's own `receivedAt + ttlMs`** — the locally-computed moment at which the claim stops being fresh. It is *not* a wall-clock timestamp set by the issuer; that distinction is what protects us from issuer/receiver clock skew (see design doc §2 T1-b). The `knownPeersSeq` field stores `body.s` and drives replay detection on the next arrival.
+
+Shape additions on the record:
+- `knownPeers: string[]` — accepted peer list from the latest claim
+- `knownPeersTs: number` — `receivedAt + body.t` (local ms); consult with `now_local` to decide freshness
+- `knownPeersSeq: number` — the issuer's `s` from the latest accepted claim; used as `lastSeenSeq` on the next verification
+- `knownPeersSig?: string` — optional, retained for debugging / re-broadcast
+
 Tests:
-- Upserting a record with `knownPeers` persists them.
-- A second upsert with newer `knownPeersTs` replaces the array; older one is ignored.
+- Upserting a record with `knownPeers` + `knownPeersTs` persists all three fields.
+- A second upsert with a newer `knownPeersSeq` replaces the array; lower `knownPeersSeq` is ignored.
 - Upserting without `knownPeers` doesn't clobber an existing set.
+- Freshness check: `now_local < knownPeersTs` → fresh; `now_local ≥ knownPeersTs` → stale.
 
 #### T5 — Oracle-aware bridge selection in `invokeWithHop`
 
 Modify:
-- `packages/core/src/routing/invokeWithHop.js` — before walking the existing bridges list, build an "oracle list" from direct peers whose `knownPeers` contains the target AND whose `knownPeersTs > now`. Concatenate `[...oracleBridges, record.via, ...remainingDirectPeers]` (de-duped).
+- `packages/core/src/routing/invokeWithHop.js` — before walking the existing bridges list, build an "oracle list" from direct peers whose `knownPeers` contains the target AND whose `knownPeersTs > Date.now()` (receiver-anchored expiry, per T1-b). Concatenate `[...oracleBridges, record.via, ...remainingDirectPeers]` (de-duped).
 
 Files to add:
 - `packages/core/test/invokeWithHop.oracle.test.js`
 
 Tests:
 - Given a PeerGraph where peer B has `knownPeers: [T]` and `knownPeersTs` in the future, `invokeWithHop(T, ...)` calls `relay-forward` on B *first*.
-- Given the same graph but B's `knownPeersTs` is in the past, B is NOT prioritised (falls back to probe-retry order).
-- Given two direct peers with a valid oracle hit for T, both appear before non-oracle peers in the try order.
+- Given the same graph but B's `knownPeersTs` already in the past (`<= now`), B is NOT prioritised — falls back to probe-retry order.
+- Given two direct peers with a valid oracle hit for T, both appear before non-oracle peers in the try order (stable order between oracle candidates — lexicographic on pubKey for determinism).
 - If the oracle-picked bridge returns `target-unreachable`, we still fall through to probe-retry candidates — no regression.
 - Zero oracle data → behaves exactly like probe-retry (Group M behaviour preserved).
 
 #### T6 — Gossip pulls claims alongside peer-list
 
 Modify:
-- `packages/core/src/discovery/GossipProtocol.js` — after the existing `peer-list` call in `runRound`, also call `reachable-peers`, verify, and upsert into `PeerGraph[issuer].knownPeers` + `knownPeersTs` + `knownPeersSig`.
+- `packages/core/src/discovery/GossipProtocol.js` — after the existing `peer-list` call in `runRound`, also call `reachable-peers`, verify it with `lastSeenSeq = existing.knownPeersSeq`, and on success upsert `knownPeers`, `knownPeersTs = Date.now() + body.t`, `knownPeersSeq = body.s`, and `knownPeersSig`.
 
 Files to add:
 - `packages/core/test/GossipProtocol.oracle.test.js`
 
 Tests:
-- A round against a peer that has the oracle enabled populates `knownPeers` on that peer's record in the caller's graph.
+- A round against a peer that has the oracle enabled populates `knownPeers` + `knownPeersTs` + `knownPeersSeq` on that peer's record in the caller's graph.
 - A round against a peer *without* the oracle (skill absent) is benign — no throw, no graph mutation.
-- A round that receives a malformed / expired claim emits `reachability-claim-rejected` and doesn't mutate the graph.
-- Newer `knownPeersTs` replaces older; older is ignored.
+- A round that receives a malformed or size-exceeded claim emits `reachability-claim-rejected` and does not mutate the graph.
+- A replay (same `s` returned twice) is rejected the second time: `knownPeersSeq` must not double-count, but no error bubbles.
+- Newer `knownPeersSeq` replaces older; an older one is rejected as replay and ignored.
 
 ### DoD
 

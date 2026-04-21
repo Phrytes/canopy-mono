@@ -141,15 +141,14 @@ Semantics:
 
 ### Target: signed reachability oracle
 
-Each peer publishes and gossips a **signed list of its direct peers** (its `reachableDirect`). Other peers cache these lists and use them to pick the correct bridge the first time.
+Each peer publishes and gossips a **signed list of its direct peers**. Other peers cache these lists and use them to pick the correct bridge the first time.
 
-**Protocol additions** (to spec out in a future design doc):
+**Protocol** (fully specified in `Design-v3/oracle-bridge-selection.md`):
 
-- `reachable-peers` skill — returns `{ peers: [pubKey, ...], ts, sig }` where `sig` is Ed25519 over `canonical(pubKey || peers || ts)`.
-- Each peer refreshes its published list whenever its direct set changes or on a periodic timer (e.g. every minute).
-- `PeerGraph` stores `knownPeers: [...]` per record (field already exists, currently always empty). Populated from verified `reachable-peers` responses.
-- TTL: treat lists older than N minutes (say 5) as stale and don't use them for routing.
-- `invokeWithHop` uses the oracle first: find direct peers whose `knownPeers` contains the target. Fall back to probe-retry for staleness / missing data.
+- `reachable-peers` skill returns `{ body: { v, i, p, t, s }, sig }` where the body's `t` is a **relative TTL in ms** (receiver-anchored) and `s` is a **monotonic sequence number** for replay detection. Ed25519 signature over `canonicalize(body)`. No wall-clock comparison between issuer and receiver — designed to be immune to clock skew.
+- Each peer refreshes its own signed claim when its direct-peer set changes or when `refreshBeforeMs` of the claim's TTL remain.
+- `PeerGraph` records `knownPeers`, `knownPeersTs` (the receiver's local "valid until" computed at arrival), and `knownPeersSeq` (last accepted issuer sequence, used as the replay guard on the next verify).
+- `invokeWithHop` uses the oracle first: find direct peers whose `knownPeers` contains the target AND whose `knownPeersTs > Date.now()`. Fall back to probe-retry for staleness / missing data.
 
 **Why oracle over probe-retry in the long run:**
 
@@ -158,7 +157,10 @@ Each peer publishes and gossips a **signed list of its direct peers** (its `reac
 - Better UX on flaky links (no "failed via peer X, retrying via Y" delays)
 - Trust chain is explicit and verifiable (signed claims)
 
-**Migration path**: ship probe-retry behind `invokeWithHop` now, add oracle support so `invokeWithHop` prefers oracle when available and falls back to probe-retry. Apps see no API change.
+**Migration path**: ship probe-retry behind `invokeWithHop` now (done — Group M), add oracle as an oracle-first layer so `invokeWithHop` prefers cached claims when available and falls back to probe-retry. Apps see no API change.
+
+**Tunables** (code arg → `AgentConfig` `oracle.*` → default):
+`ttlMs` (5 min), `refreshBeforeMs` (60 s), `maxPeers` (256), `maxTtlMs` (10 min), `maxBytes` (256 KB).
 
 ---
 
