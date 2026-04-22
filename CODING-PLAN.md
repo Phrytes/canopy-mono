@@ -810,6 +810,157 @@ Relay server code unchanged.
 
 ---
 
+## Group BB — Onion routing via `relay-forward`
+
+**Ref:** `EXTRACTION-PLAN.md` § Open items; promoted from deferred
+placeholder 2026-04-23.
+**Design doc:** `Design-v3/onion-routing.md` — threat model, per-group
+config, path selection, padding, fallback, origin-sig interaction,
+reply path. Must be approved before BB2 starts.
+**Dependencies:** M (invokeWithHop + relay-forward), T (oracle — path
+selection), X (group proofs — bridge pool), Z (origin sig —
+survives peeling).
+
+### Outcome
+
+Agents can opt into content-privacy-from-bridges on a **per-group**
+basis. When enabled and hop routing would otherwise run through a
+bridge that can read content, the message is nested in multiple
+`nacl.box` layers so each intermediate only sees "forward this
+opaque blob to the next hop." Direct delivery bypasses onion
+entirely; private-network groups pay zero overhead.
+
+### Sub-phases
+
+Same "each sub-phase is a self-contained green commit" pattern as
+T, Y, Z, AA.
+
+#### BB1 — Design decisions *(doc-only commit)*
+
+`Design-v3/onion-routing.md` captures:
+
+- **BB1-a · Opt-in at the group level.** Default off. Enabled via
+  `agent.enableOnionRoutingFor(groupId, opts)` with a per-message
+  override on `invokeWithHop`.
+- **BB1-b · Default path length = 2, configurable up to 3.** 1-hop
+  doesn't provide privacy — the single bridge still reads everything,
+  same as today's `relay-forward`. Explained at length in the doc §2.
+- **BB1-c · Bridge pool = group members, extensible.** Default
+  `'members'`; per-group config accepts `{ groups: [ids], trustTier }`
+  for cross-group trust or tier-based.
+- **BB1-d · Direct delivery bypasses onion.** Privacy threat only
+  exists when a bridge is in the path. `invokeWithHop`'s direct-first
+  attempt keeps low-cost delivery; onion wrapping triggers only on
+  the bridge branch.
+- **BB1-e · Padding default 8 KB per layer.** Hides hop-count from
+  wire observers. Per-group opt-out for chatty low-bandwidth groups.
+- **BB1-f · Path selection = oracle-aware random.** Reuses Group T
+  reachability claims to filter bridges to reachable peers; random
+  order within the filtered set. Retry on path failure up to
+  `retryBudget`. Never silent-fallback to non-onion.
+- **BB1-g · Reply path = Carol builds her own.** Symmetric onion,
+  stateless, no per-request reply-block. Direct replies fine when
+  direct delivery works (bypass rule).
+- **BB1-h · Origin signature already compatible.** Z's `_originSig`
+  lives in the innermost layer only. Bridges never see it. Final
+  hop verifies normally. No changes to `verifyOrigin`.
+
+Commit is docs-only: the design doc plus this plan update.
+
+#### BB2 — `packOnion` / `unpackOnionLayer` helpers
+
+Files:
+- `packages/core/src/security/onionEnvelope.js`
+- `packages/core/test/onionEnvelope.test.js`
+
+Exports:
+```js
+packOnion({ path, innerBody, identity, pubKeyOf, padding })
+  → Envelope   // ready to send via t.sendOneWay or agent.invoke
+
+unpackOnionLayer(envelope, identity)
+  → { target, nextPayload }  // when a relay-forward bridge
+  → { final: true, body }    // when this is the final layer
+
+// Constants:
+ONION_VERSION     = 1
+DEFAULT_PAD_BYTES = 8192
+```
+
+Uses `nacl.box` via the existing identity helpers. Pure: no Agent
+reference, no side effects.
+
+Tests (minimum):
+- Pack + unpack a 2-hop onion with 3 keys; each layer yields the
+  correct next target / final body.
+- Tampering with a middle layer breaks decryption at that hop.
+- Padding honoured (envelope size is deterministic for fixed inputs).
+- `pubKeyOf` returning `null` on a hop → pack throws a clear error.
+- Nesting depth 1 still works mechanically (useful for symmetry in
+  tests even though 1-hop has no privacy in practice).
+
+#### BB3 — Path selection + Agent API
+
+Files:
+- `packages/core/src/security/onionPathSelector.js`
+- Modify `packages/core/src/Agent.js` — `enableOnionRoutingFor`,
+  `disableOnionRoutingFor`, `getOnionConfig`, new private
+  `#onionConfigs` Map.
+- Modify `packages/core/src/routing/invokeWithHop.js` — when onion
+  applies for the target (group default or per-call opt-in), pack
+  the onion and send via a single `relay-forward` call to the
+  first bridge instead of the direct-hop strategy.
+
+Path selector responsibilities:
+- Inputs: target pubkey, group config, agent's peer graph +
+  reachability oracle data.
+- Resolves the bridge pool (members-only, cross-group, trust tier).
+- Filters by "currently reachable to the next hop in the chain."
+- Returns a shuffled path `[bridge₁, …, bridgeₙ, target]` of
+  length = `pathLength`.
+- Throws `onion-path-unbuildable` on insufficient candidates.
+
+Tests:
+- Path selection unit: enough bridges → returns correct-length
+  path. Not enough → throws.
+- Bridge pool extensibility: `'members'`, `{ groups }`,
+  `{ trustTier }`, combined → each returns the correct filtered set.
+- invokeWithHop integration: onion chosen for group-opt-in target,
+  direct bypassed when reachable, error when no path.
+- Retry budget honoured: first path fails → second path tried;
+  after budget → `onion-delivery-failed` error.
+
+#### BB4 — Integration scenario + docs
+
+Modify:
+- `packages/core/test/integration/scenario.js` — extend `buildMesh`
+  (or add a `buildOnionMesh`) to construct a 4-agent topology with
+  2-hop onion capability: Alice → Bob → Dave → Carol, all members
+  of a test group.
+- `packages/core/test/integration/mesh-scenario.test.js` — new
+  phase 11 suite. Enable onion on the group; Alice sends to Carol;
+  assert Carol's handler sees `ctx.originVerified === true` AND
+  the intermediate agents never had plaintext parts in any received
+  envelope (via a debug hook or transport-tap).
+- `examples/mesh-demo/index.js` — phase 11 counterpart (optional
+  skip if the scenario's onion mesh requires too much scaffolding).
+
+Also:
+- `TODO-GENERAL.md` — mark the onion entry under Security TODOs as
+  shipped; leave the historical text as a design-evolution pointer.
+- `apps/mesh-demo` phone-wiring TODO — add a note: once rendezvous
+  is wired, consider enabling onion for the default group.
+
+### DoD
+
+All sub-phases land as green commits. Full core suite stays green at
+every step. The integration test proves (1) the final hop verifies
+origin, (2) no intermediate could decode the inner body, (3)
+direct-delivery bypass is still taken when available. No existing
+call site changes behaviour without `enableOnionRoutingFor`.
+
+---
+
 ## Overall working order (recommended)
 
 Safe order that avoids circular blockers:
