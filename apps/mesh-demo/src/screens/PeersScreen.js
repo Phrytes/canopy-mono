@@ -18,9 +18,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useAgent }  from '../context/AgentContext';
+import { useAgent }           from '../context/AgentContext';
 import { TouchableOpacity as TO } from 'react-native';
-import { usePeers }  from '../hooks/usePeers';
+import { usePeers }           from '../hooks/usePeers';
+import { useRendezvousState } from '../hooks/useRendezvousState';
 
 const TRANSPORT_ICON = {
   default:    '📡',
@@ -35,7 +36,8 @@ const TRANSPORT_ICON = {
 
 export function PeersScreen({ navigation }) {
   const { agent, status, error, relayUrl, reset } = useAgent();
-  const peers = usePeers();
+  const peers       = usePeers();
+  const rdvPeers    = useRendezvousState();
 
   const openPeer = useCallback((peer) => {
     navigation.navigate('Message', {
@@ -111,7 +113,11 @@ export function PeersScreen({ navigation }) {
           <Text style={s.sectionHeader}>{section.title}</Text>
         )}
         renderItem={({ item }) => (
-          <PeerRow peer={item} onPress={() => openPeer(item)} />
+          <PeerRow
+            peer={item}
+            rendezvous={rdvPeers.has(item.pubKey)}
+            onPress={() => openPeer(item)}
+          />
         )}
         contentContainerStyle={s.list}
       />
@@ -121,9 +127,15 @@ export function PeersScreen({ navigation }) {
 
 // ── PeerRow ───────────────────────────────────────────────────────────────────
 
-function PeerRow({ peer, onPress }) {
-  const icons = peer.transports.length
-    ? peer.transports.map(t => TRANSPORT_ICON[t] ?? '?').join(' ')
+function PeerRow({ peer, rendezvous, onPress }) {
+  // Merge in the rendezvous icon when a direct DataChannel is live for
+  // this peer.  `peer.transports` reflects the PeerGraph record, which
+  // does not track the WebRTC upgrade — that lives on the agent events.
+  const iconList = rendezvous
+    ? [...peer.transports, 'rendezvous']
+    : peer.transports;
+  const icons = iconList.length
+    ? iconList.map(t => TRANSPORT_ICON[t] ?? '?').join(' ')
     : '?';
 
   return (

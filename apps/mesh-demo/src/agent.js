@@ -23,6 +23,10 @@ export async function createAgent({ relayUrl } = {}) {
     relayUrl,
     vault:    new KeychainVault({ service: 'mesh-demo' }),
     peerGraphPrefix: 'mesh-demo:peers:',
+    // Opt in to WebRTC rendezvous upgrade (Group AA).  Falls back to relay
+    // silently when react-native-webrtc isn't available (Expo Go); the app
+    // still boots and all other transports keep working.
+    rendezvous: true,
   });
 
   // Opt-in SDK behaviour: gossip, hop routing via relay-forward, and
