@@ -58,9 +58,10 @@ export async function sendHello(agent, peerAddress, timeout = 15_000) {
   try {
     const t = await agent.transportFor(peerAddress);
     await t.sendHello(peerAddress, {
-      pubKey: agent.pubKey,
-      label:  agent.label ?? null,
-      ack:    false,
+      pubKey:       agent.pubKey,
+      label:        agent.label ?? null,
+      ack:          false,
+      capabilities: _selfCapabilities(agent),
     });
     await waitForPeer;
   } catch (err) {
@@ -80,7 +81,7 @@ export async function sendHello(agent, peerAddress, timeout = 15_000) {
  * @param {object} envelope
  */
 export async function handleHello(agent, envelope) {
-  const { pubKey, label, ack } = envelope.payload ?? {};
+  const { pubKey, label, ack, capabilities } = envelope.payload ?? {};
 
   // Hello gate (Group W): if the agent has installed a gate and it
   // returns false (or throws — fail closed), drop this HI silently:
@@ -104,22 +105,51 @@ export async function handleHello(agent, envelope) {
     }
   }
 
+  // Store the peer's advertised capabilities on their PeerGraph record
+  // so routing / upgrade logic can consult it without re-querying. Missing
+  // field = peer pre-dates the capability protocol; leave record.capabilities
+  // untouched (no clobber of anything we learned earlier).
+  if (capabilities && typeof capabilities === 'object' && agent.peers?.upsert) {
+    await agent.peers.upsert({
+      pubKey:       envelope._from,
+      capabilities,
+    }).catch(() => { /* non-fatal */ });
+  }
+
   // SecurityLayer already registered sender.pubKey when it processed the HI.
   // We emit 'peer' so sendHello() above and application code know about it.
   agent.emit('peer', {
-    address: envelope._from,
-    pubKey:  pubKey ?? null,
-    label:   label  ?? null,
-    ack:     !!ack,
+    address:      envelope._from,
+    pubKey:       pubKey ?? null,
+    label:        label  ?? null,
+    ack:          !!ack,
+    capabilities: capabilities ?? null,
   });
 
   // Respond with our own hello if this is the initial (non-ack) announcement.
   if (!ack) {
     const t = await agent.transportFor(envelope._from);
     await t.sendHello(envelope._from, {
-      pubKey: agent.pubKey,
-      label:  agent.label ?? null,
-      ack:    true,
+      pubKey:       agent.pubKey,
+      label:        agent.label ?? null,
+      ack:          true,
+      capabilities: _selfCapabilities(agent),
     }).catch(err => agent.emit('error', err));
   }
+}
+
+/**
+ * Snapshot the agent's currently-enabled capability flags.
+ * Keep this small — only things peers need to decide "should I attempt an
+ * upgrade / call this skill?" Feature-flag style; fields are opt-in and
+ * unrecognised fields must be ignored by older receivers.
+ *
+ * @param {import('../Agent.js').Agent} agent
+ * @returns {object}
+ */
+function _selfCapabilities(agent) {
+  return {
+    rendezvous: !!agent._rendezvousEnabled,
+    originSig:  true,        // always: Group Z shipped
+  };
 }
