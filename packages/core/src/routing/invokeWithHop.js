@@ -30,6 +30,7 @@
  */
 import { DataPart, Parts } from '../Parts.js';
 import { signOrigin }      from '../security/originSignature.js';
+import { packSealed }      from '../security/sealedForward.js';
 
 const TRANSPORT_ERROR_KEYWORDS = [
   'not connected', 'no connection', 'timeout', 'offline', 'unreachable',
@@ -130,21 +131,62 @@ export async function invokeWithHop(agent, targetPubKey, skillId, parts = [], op
     originTs  = signed.originTs;
   }
 
-  // ── 4. Try each bridge in order ───────────────────────────────────────────
+  // ── 4. Sealed-forward decision (Group BB) ────────────────────────────────
+  // A send is sealed when EITHER:
+  //   • opts.sealed === true (per-call override), OR
+  //   • opts.group is set AND agent has enableSealedForwardFor(opts.group).
+  // Direct delivery (step 1) already succeeded if that path worked, so by
+  // the time we're here we know a bridge will be involved — which is when
+  // content-privacy matters.
+  const groupCfg = opts.group
+    ? agent.getSealedForwardConfig?.(opts.group) ?? null
+    : null;
+  const useSealed = opts.sealed === true || !!groupCfg?.enabled;
+
+  let sealedBlob = null;
+  if (useSealed) {
+    if (!agent.identity?.pubKey) {
+      throw new Error('invokeWithHop: sealed forward requires an identity');
+    }
+    const { sealed, nonce } = packSealed({
+      identity:        agent.identity,
+      recipientPubKey: targetPubKey,
+      skill:           skillId,
+      parts,
+      origin:          agent.pubKey,
+      originSig,
+      originTs,
+    });
+    sealedBlob = { sealed, nonce };
+    agent.emit?.('sealed-forward-sent', {
+      target: targetPubKey, skill: skillId, group: opts.group ?? null,
+    });
+  }
+
+  // ── 5. Try each bridge in order ───────────────────────────────────────────
   let lastErr;
   for (const viaPubKey of bridges) {
     try {
+      const relayPayload = sealedBlob
+        ? {
+            targetPubKey,
+            sealed:  sealedBlob.sealed,
+            nonce:   sealedBlob.nonce,
+            timeout: opts.timeout,
+          }
+        : {
+            targetPubKey,
+            skill:     skillId,
+            payload:   parts,
+            timeout:   opts.timeout,
+            originSig,
+            originTs,
+          };
+
       const relayResult = await agent.invoke(
         viaPubKey,
         'relay-forward',
-        [DataPart({
-          targetPubKey,
-          skill:     skillId,
-          payload:   parts,
-          timeout:   opts.timeout,
-          originSig,
-          originTs,
-        })],
+        [DataPart(relayPayload)],
         { timeout: (opts.timeout ?? 10_000) + 2_000 },
       );
 

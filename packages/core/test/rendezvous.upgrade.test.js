@@ -91,13 +91,17 @@ d('Agent.enableRendezvous + auto-upgrade', () => {
   it('auto: true — hello → upgrade → invoke goes via RendezvousTransport', async () => {
     const { alice, bob, bRx } = await makePair({ auto: true });
 
-    const upgraded = new Promise(res => alice.once('rendezvous-upgraded', res));
+    // Wait for BOTH sides' DataChannel to open — they fire via different
+    // code paths (initiator vs answerer) and can be ~10 ms apart.
+    const aliceUp = new Promise(res => alice.once('rendezvous-upgraded', res));
+    const bobUp   = new Promise(res => bob  .once('rendezvous-upgraded', res));
     await alice.hello(bob.address);
-    const evt = await Promise.race([
-      upgraded,
+    const [aEvt, bEvt] = await Promise.race([
+      Promise.all([aliceUp, bobUp]),
       new Promise((_, rej) => setTimeout(() => rej(new Error('upgrade timeout')), 15_000)),
     ]);
-    expect(evt.peer).toBe(bob.pubKey);
+    expect(aEvt.peer).toBe(bob.pubKey);
+    expect(bEvt.peer).toBe(alice.pubKey);
 
     expect(alice.isRendezvousActive(bob.pubKey)).toBe(true);
     expect(bob.isRendezvousActive(alice.pubKey)).toBe(true);
