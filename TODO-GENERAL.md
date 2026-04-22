@@ -266,24 +266,40 @@ pain points emerge.
 
 ## Security TODOs
 
-### Onion routing via `relay-forward`
+### Blind relay-forward (content privacy from bridges)
 
 **Status:** scheduled as **Group BB**. Design decisions landed
-2026-04-23 (BB1). Implementation in flight.
+2026-04-23 — scope narrowed from the initial onion-routing proposal
+to a content-privacy-only design (no anonymity-from-bridges).
 
-- Design doc: [`Design-v3/onion-routing.md`](./Design-v3/onion-routing.md)
+- Active design doc: [`Design-v3/blind-forward.md`](./Design-v3/blind-forward.md)
 - Roadmap: [`CODING-PLAN.md § Group BB`](./CODING-PLAN.md).
 
-Summary: per-group opt-in privacy-from-bridges layer. Nested
-`nacl.box` layers so each intermediate only sees "forward this opaque
-blob to the next hop." Default off; enable with
-`agent.enableOnionRoutingFor(groupId, { pathLength, padding,
-bridgePool })`. Direct delivery bypasses onion entirely — overhead
-only kicks in when hop routing would otherwise be needed. Reuses
-Group T reachability oracle for path selection and Group Z for
-origin authentication (sig lives in the innermost layer, unchanged
-by peeling). Retained here as an entry-point for future security
-readers; the design doc is the authoritative reference.
+Summary: per-group opt-in. Bridges forward opaque `nacl.box` blobs
+sealed to the final target, instead of decrypting and executing a
+skill call. Bridge sees `{ target, sealed }` and nothing else.
+Default off; enable with `agent.enableSealedForwardFor(groupId)`.
+Direct delivery bypasses sealing entirely — overhead only appears
+when hop routing would otherwise be needed. Compatible with Group Z
+origin signatures (sig travels inside the sealed payload).
+
+### Onion routing (anonymity from bridges)
+
+**Status:** deferred — placeholder **Group CC**. Not currently
+scheduled.
+
+- Reference design: [`Design-v3/onion-routing.md`](./Design-v3/onion-routing.md)
+  (marked superseded; retained as background material).
+
+Goes beyond BB's content-privacy scope by breaking linkage
+("who talks to whom") across multiple bridges. Adds path selection,
+padding, reply paths, and a minimum ≥ 2-hop depth — real cost.
+Revisit when a product feature concretely requires anonymity from
+bridges, not just content hiding. The existing BB (blind-forward)
+covers most practical scenarios; onion only becomes worth it for
+community-run relays, whistleblower-style use cases, or large open
+groups where bridge-to-bridge traffic analysis is part of the
+threat model.
 
 ### Verified relay origin
 
