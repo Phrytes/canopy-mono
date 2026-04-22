@@ -23,10 +23,14 @@ export async function createAgent({ relayUrl } = {}) {
     relayUrl,
     vault:    new KeychainVault({ service: 'mesh-demo' }),
     peerGraphPrefix: 'mesh-demo:peers:',
-    // Opt in to WebRTC rendezvous upgrade (Group AA).  Falls back to relay
-    // silently when react-native-webrtc isn't available (Expo Go); the app
-    // still boots and all other transports keep working.
-    rendezvous: true,
+    // Rendezvous is TEMPORARILY off on the phone.  react-native-webrtc
+    // 124.x doesn't register its TurboModule under RN 0.76's default
+    // bridgeless JS runtime — the module loads, logs "WebRTC native
+    // module not found", and the native side SIGSEGVs shortly after
+    // (OS kills the app, UI flicks back to the launcher).  Turn back on
+    // once we upgrade to a rn-webrtc that supports bridgeless, or once
+    // we pin a config that keeps bridgeless off in Expo 52 + RN 0.76.
+    rendezvous: false,
   });
 
   // Opt-in SDK behaviour: gossip, hop routing via relay-forward, and
