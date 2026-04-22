@@ -268,9 +268,9 @@ pain points emerge.
 
 ### Blind relay-forward (content privacy from bridges)
 
-**Status:** scheduled as **Group BB**. Design decisions landed
-2026-04-23 — scope narrowed from the initial onion-routing proposal
-to a content-privacy-only design (no anonymity-from-bridges).
+**Status:** ✅ **shipped** as **Group BB** (BB1 design 2026-04-23 →
+BB5 integration phase 11). Kept here as a pointer for historical
+context.
 
 - Active design doc: [`Design-v3/blind-forward.md`](./Design-v3/blind-forward.md)
 - Roadmap: [`CODING-PLAN.md § Group BB`](./CODING-PLAN.md).
@@ -282,6 +282,24 @@ Default off; enable with `agent.enableSealedForwardFor(groupId)`.
 Direct delivery bypasses sealing entirely — overhead only appears
 when hop routing would otherwise be needed. Compatible with Group Z
 origin signatures (sig travels inside the sealed payload).
+
+Known limits inherited from the existing `relay-forward` contract:
+streaming handlers, InputRequired multi-round loops, and end-to-end
+cancel do not propagate across a bridge (plaintext or sealed). Group
+CC (hop-aware task tunnel, scheduled) will lift these limits for
+both modes.
+
+### Hop-aware task tunnel
+
+**Status:** scheduled as **Group CC**. Design doc TBD.
+
+- Roadmap: [`CODING-PLAN.md § Group CC`](./CODING-PLAN.md).
+
+Makes every skill pattern (streaming, InputRequired, cancel) work
+identically over direct and hopped paths. The bridge becomes a
+bidirectional OW tunnel keyed by `tunnelId`; the sealed-forward
+wrapper from BB piggybacks naturally on each tunnelled OW when the
+group enables blind mode.
 
 ### Onion routing (anonymity from bridges)
 
