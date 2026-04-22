@@ -62,7 +62,13 @@ export function registerRelayForward(agent, opts = {}) {
     // ── Input validation ─────────────────────────────────────────────────────
     const d = Parts.data(parts);
     if (!d?.targetPubKey) return [DataPart({ error: 'missing targetPubKey' })];
-    if (!d?.skill)        return [DataPart({ error: 'missing skill' })];
+
+    // Accept either a plaintext skill call (existing behaviour) or a sealed
+    // blob (Group BB blind-forward). Exactly one must be present.
+    const isSealed = typeof d.sealed === 'string' && d.sealed.length > 0;
+    if (!isSealed && !d?.skill) {
+      return [DataPart({ error: 'missing skill or sealed payload' })];
+    }
 
     // ── Reachability check ───────────────────────────────────────────────────
     const record = await agent.peers?.get?.(d.targetPubKey);
@@ -75,7 +81,27 @@ export function registerRelayForward(agent, opts = {}) {
       return [DataPart({ error: 'relay-loop: target is the caller' })];
     }
 
-    // ── Forward ──────────────────────────────────────────────────────────────
+    // ── Forward: sealed (blind) branch ───────────────────────────────────────
+    // We call relay-receive-sealed on the target; the blob is opaque to us.
+    // The `sender` field is the envelope._from of THIS request — i.e. the
+    // caller who asked us to forward. The receiver cross-checks this against
+    // the inner origin, so a bridge swapping sender loses the handshake.
+    if (isSealed) {
+      if (!d.nonce) return [DataPart({ error: 'missing nonce for sealed payload' })];
+      try {
+        const result = await agent.invoke(
+          d.targetPubKey,
+          'relay-receive-sealed',
+          [DataPart({ sealed: d.sealed, nonce: d.nonce, sender: from })],
+          { timeout: d.timeout ?? 10_000 },
+        );
+        return [DataPart({ forwarded: true, sealed: true, parts: result })];
+      } catch (err) {
+        return [DataPart({ error: `sealed-forward-failed: ${err?.message ?? err}` })];
+      }
+    }
+
+    // ── Forward: plaintext (existing) branch ─────────────────────────────────
     // Preserve the caller's origin signature unchanged — we MUST NOT re-sign
     // (we don't have the caller's private key, and re-signing would drop
     // attribution). Missing sig/ts just means the message is pre-Z or the
