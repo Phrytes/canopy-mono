@@ -48,6 +48,11 @@ export {
   ORIGIN_SIG_VERSION,
   DEFAULT_ORIGIN_WINDOW_MS,
 }                                            from './security/originSignature.js';
+export {
+  packSealed,
+  openSealed,
+  SEALED_VERSION,
+}                                            from './security/sealedForward.js';
 
 // ── Transport ────────────────────────────────────────────────────────────────
 export { Transport }                      from './transport/Transport.js';
