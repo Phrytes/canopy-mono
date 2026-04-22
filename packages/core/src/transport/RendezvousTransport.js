@@ -114,10 +114,14 @@ export class RendezvousTransport extends Transport {
   }
 
   async disconnect() {
-    for (const { pc } of this.#peers.values()) pc.close();
+    for (const entry of this.#peers.values()) {
+      try { entry?.pc?.close?.(); } catch { /* already closed */ }
+      try { entry?.dc?.close?.(); } catch { /* already closed */ }
+    }
     this.#peers.clear();
-    for (const { reject, timer } of this.#pending.values()) {
+    for (const { reject, timer, pc } of this.#pending.values()) {
       clearTimeout(timer);
+      try { pc?.close?.(); } catch { /* already closed */ }
       reject(new Error('RendezvousTransport disconnected'));
     }
     this.#pending.clear();
@@ -237,8 +241,11 @@ export class RendezvousTransport extends Transport {
 
   #wireDc(dc, peerAddress) {
     dc.onopen = () => {
-      this.#peers.set(peerAddress, { ...this.#pending.get(peerAddress), dc });
-      const pending = this.#pending.get(peerAddress);
+      // Preserve an existing answerer-side pc if we have one; spread
+      // pending only when present (initiator path).
+      const existing = this.#peers.get(peerAddress);
+      const pending  = this.#pending.get(peerAddress);
+      this.#peers.set(peerAddress, { ...(existing ?? pending ?? {}), dc });
       if (pending) {
         clearTimeout(pending.timer);
         pending.resolve();
@@ -247,7 +254,7 @@ export class RendezvousTransport extends Transport {
       this.emit('peer-connected', peerAddress);
     };
     dc.onmessage = ({ data }) => {
-      try { this._receive(JSON.parse(data)); } catch {}
+      try { this._receive(JSON.parse(data)); } catch { /* drop malformed */ }
     };
     dc.onclose = () => {
       this.#peers.delete(peerAddress);
