@@ -6,60 +6,42 @@ into `EXTRACTION-PLAN.md` / `CODING-PLAN.md` when they become concrete.
 
 ---
 
-## Wire rendezvous into the phone app *(high priority)*
+## Wire rendezvous into the phone app ✅ *(shipped — Group DD)*
 
-**Status:** not started. Node + browser both auto-upgrade after AB; the
-phone app is the remaining surface.
+**Status:** SDK + app wiring landed. On-device verification still
+requires a dev build on two Android phones (see `apps/mesh-demo/README.md
+§ Rendezvous / WebRTC`).
 
-Groups AA + AB landed the rendezvous machinery:
-- `examples/mesh-demo/index.js` phase 10 — two Node agents auto-upgrade
-  to a DataChannel and fall back to relay on close.
-- `packages/core/mesh-chat.html` — browser tab calls
-  `agent.enableRendezvous({ signalingTransport: relay, auto: true })`
-  using native `RTCPeerConnection` (no polyfill).
-- `packages/core/test/integration/mesh-scenario.test.js` phase 10 / 10b
-  — CI locks in upgrade + fallback.
+Shipped across DD1 / DD2:
+- `packages/react-native/src/transport/rendezvousRtcLib.js` — safe
+  loader for `react-native-webrtc`, returns `null` on Expo Go so the
+  app still boots.
+- `packages/react-native/src/createMeshAgent.js` — `rendezvous: true`
+  option wires `agent.enableRendezvous({ ..., auto: true })` when the
+  rtc lib + relay are both available; logs and skips otherwise.
+- `apps/mesh-demo/src/agent.js` — passes `rendezvous: true` plus the
+  rest of the DD1 opt-ins (reachability oracle, capabilities skill,
+  sealed-forward for the `mesh` group).
+- `apps/mesh-demo/src/hooks/useRendezvousState.js` — live Set driven
+  by `rendezvous-upgraded` / `rendezvous-downgraded`.
+- `apps/mesh-demo/src/screens/PeersScreen.js` — appends `🔗` to the
+  per-peer transport icons whenever the data path is on a DataChannel.
+- `apps/mesh-demo/README.md` — two-phone smoke-test recipe +
+  Expo Go caveat.
 
-Still TODO for `apps/mesh-demo` (React Native):
-
-1. Add `react-native-webrtc` as a dep. iOS needs a pod install pass;
-   Android works out of the box.
-2. In `src/agent.js`, after the relay transport is constructed, wire:
-   ```js
-   import { RTCPeerConnection, RTCSessionDescription, RTCIceCandidate }
-     from 'react-native-webrtc';
-   agent.enableRendezvous({
-     signalingTransport: relay,
-     rtcLib:             { RTCPeerConnection, RTCSessionDescription, RTCIceCandidate },
-     auto:               true,
-   });
-   ```
-   Guard with a feature flag so builds without RN-WebRTC still run.
-3. Peer-list UI: add a tiny "rendezvous" badge next to each peer —
-   grey when no DataChannel, green on `rendezvous-upgraded`, clears on
-   `rendezvous-downgraded`. Makes the upgrade visible during phone
-   smoke tests.
-4. Smoke test: two phones connected via the relay on the same LAN.
-   Send a message. Assert (via a debug log or UI indicator) that the
-   RQ went over the DataChannel, not the relay.
-
-Blockers to check:
+Open follow-ups (not blockers; track separately if/when hit):
 - **Carrier-grade NAT.** Two phones on mobile data behind NAT44 won't
-  STUN-traverse without TURN. Document this as a known limitation
-  before testing in the wild; see `TODO-GENERAL.md § Custom STUN / TURN
-  server discovery` for where TURN would slot in.
-- **React Native's JSC/Hermes JSON size ceiling.** DataChannel framing
-  is plain JSON today (AA1); bulk transfers already chunk at the
-  protocol layer, but the 16 KB SCTP default still applies. Run a
-  long-message test on-device before declaring it green.
+  STUN-traverse without TURN. Picked up by
+  `TODO-GENERAL.md § Custom STUN / TURN server discovery`.
+- **SCTP framing on RN.** Chunking already happens at the protocol
+  layer, but the 16 KB default still applies. Worth a long-message
+  test in the next on-device pass.
 - **Battery / idle behaviour.** WebRTC keeps a UDP socket open; iOS
-  may suspend the app. The existing BLE path already deals with
-  foreground/background transitions; audit whether the same hooks
-  cover the rendezvous transport.
-
-Deliverable: a commit that wires `enableRendezvous` in the phone app
-behind a feature flag, plus a short note in `apps/mesh-demo/README.md`
-on how to enable it.
+  may suspend the app. BLE already deals with fg/bg transitions;
+  audit whether the same hooks cover the rendezvous transport when
+  iOS is eventually added.
+- **iOS dev build.** DD scoped to Android only. Revisit once Android
+  is green on two devices.
 
 ---
 

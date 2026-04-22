@@ -1,8 +1,10 @@
 # mesh-demo
 
-React Native app demonstrating cooperative mesh routing across BLE and WiFi/mDNS.
+React Native app demonstrating cooperative mesh routing across BLE, WiFi/mDNS,
+a relay server, and WebRTC DataChannel rendezvous.
 
-**Group A** — Agent setup, context, and peers screen stub.
+**Groups A / B / D** — agent setup, peer list, per-peer chat.
+**Group DD**       — origin-signature UI, sealed forwarding, rendezvous upgrade.
 
 ## Prerequisites
 
@@ -98,3 +100,55 @@ All application-level decisions live in `src/`:
 - Whether to relay for trusted peers → `src/agent.js` (config)
 - How to wire inbound hellos into PeerGraph → `src/agent.js` (`agent.on('peer', ...)`)
 - UI and routing helpers → future groups
+
+## Rendezvous / WebRTC (Group DD)
+
+The app can lift any peer's data path off the relay onto a direct
+WebRTC DataChannel once both sides advertise the capability. This is
+transparent — nothing to do from the UI — but you need the right build
+and a relay to make it happen.
+
+### Expo Go caveat
+
+`react-native-webrtc` is a native module, so **Expo Go cannot load it**.
+On Expo Go the rendezvous upgrade is silently skipped (see the warning
+in the Metro log); messages keep working via the relay. To actually
+exercise rendezvous you need a dev build:
+
+```
+cd apps/mesh-demo
+npx expo run:android                 # or: eas build --profile development --platform android
+```
+
+### Two-phone smoke test
+
+1. Start the relay on your laptop:
+   ```
+   cd packages/relay && npm start
+   ```
+   Note the LAN IP and port it prints (e.g. `ws://192.168.1.42:8787`).
+2. Install the dev build on **two** Android phones on the same Wi-Fi.
+3. On each phone, enter the relay URL from step 1 in the setup screen.
+4. Let both phones reach the Peers screen and hello each other (either
+   via direct mDNS/BLE or through the relay).
+5. A `🔗` icon should appear in the transport row of each peer within
+   a second or two — that's the rendezvous-upgraded event firing.
+6. Send a message. The message still delivers; round-trip is noticeably
+   tighter over the DataChannel than over the relay.
+7. Toggle airplane mode on/off on one phone. The `🔗` badge disappears
+   as the channel closes, the next message still arrives via relay, and
+   the badge re-appears once the auto-upgrade re-fires after hello.
+
+### Disabling rendezvous
+
+If you want to force-test relay-only behaviour without uninstalling
+`react-native-webrtc`, flip `rendezvous: true` to `false` in
+`src/agent.js`.
+
+### Verified-origin badge
+
+Incoming messages that arrived via a bridge AND carried a valid
+Ed25519 signature from the original sender render a `🔒 verified`
+indicator (Group Z / DD1). Direct messages omit the badge because the
+sealed envelope already authenticates them; unsigned hops render the
+message but without the badge.
