@@ -7,8 +7,13 @@
 // the missing crypto object.
 import 'react-native-get-random-values';
 import 'expo-dev-client';
-import { AppRegistry } from 'react-native';
+import { registerRootComponent } from 'expo';
 import App from './App';
-import { name as appName } from './app.json';
 
-AppRegistry.registerComponent(appName, () => App);
+// `registerRootComponent` is the Expo-managed equivalent of
+// `AppRegistry.registerComponent('main', () => App)` — the important
+// detail is the component name, which MUST be 'main' to match the
+// Expo prebuild's native boot code.  Using `name` from app.json
+// ("Mesh Demo") registers under the wrong key and yields:
+//   Invariant Violation: "main" has not been registered.
+registerRootComponent(App);
