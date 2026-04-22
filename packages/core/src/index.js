@@ -64,6 +64,7 @@ export { defineSkill }         from './skills/defineSkill.js';
 export { SkillRegistry }       from './skills/SkillRegistry.js';
 export { registerRelayForward }        from './skills/relayForward.js';
 export { registerReachablePeersSkill } from './skills/reachablePeers.js';
+export { registerCapabilitiesSkill }   from './skills/capabilities.js';
 
 // ── Protocol ──────────────────────────────────────────────────────────────────
 export { Task }                                           from './protocol/Task.js';
