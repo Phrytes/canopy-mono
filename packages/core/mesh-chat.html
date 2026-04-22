@@ -166,7 +166,8 @@ header h1{font-size:14px;font-weight:700;color:#fff}
 <script type="module">
 import {
   Agent, AgentIdentity, VaultMemory,
-  RelayTransport, DataPart, Parts,
+  RelayTransport, RoutingStrategy, PeerGraph,
+  DataPart, Parts,
 } from '@canopy/core';
 
 // ── State ──────────────────────────────────────────────────────────────────────
@@ -207,9 +208,14 @@ async function start() {
   const url      = document.getElementById('relay-url').value.trim();
   const vault    = new VaultMemory();
   const identity = await AgentIdentity.generate(vault);
-  const relay    = new RelayTransport({ relayUrl: url, identity });
+  const relay     = new RelayTransport({ relayUrl: url, identity });
+  const peerGraph = new PeerGraph();
+  const routing   = new RoutingStrategy({
+    transports: new Map([['relay', relay]]),
+    peerGraph,
+  });
 
-  agent = new Agent({ identity, transport: relay });
+  agent = new Agent({ identity, transport: relay, peers: peerGraph, routing });
 
   agent.register('receive-message', async ({ parts, originFrom, from }) => {
     const text   = Parts.text(parts) ?? JSON.stringify(Parts.data(parts));
@@ -247,6 +253,20 @@ async function start() {
   });
 
   agent.on('error', e => log(`<span class="lerr">agent: ${esc(e?.message)}</span>`));
+
+  // Rendezvous (Group AA): upgrade alice↔peer links to a direct WebRTC
+  // DataChannel when both sides advertise the capability in hello. The
+  // browser provides RTCPeerConnection natively, so no polyfill is needed.
+  if (typeof RTCPeerConnection === 'function') {
+    agent.enableRendezvous({ signalingTransport: relay, auto: true });
+    agent.on('rendezvous-upgraded',   ({ peer }) => {
+      log(`<span class="lok">rendezvous ↑ ${esc(peer.slice(0,16))}…</span>`);
+    });
+    agent.on('rendezvous-downgraded', ({ peer }) => {
+      log(`<span class="linf">rendezvous ↓ ${esc(peer.slice(0,16))}…</span>`);
+    });
+  }
+
   await agent.start();
 
   document.getElementById('setup').style.display = 'none';

@@ -20,6 +20,7 @@ import {
   TextPart,
   InternalBus,
   InternalTransport,
+  RoutingStrategy,
 }                            from '../../src/index.js';
 
 /**
@@ -27,7 +28,20 @@ import {
  * plus handles that tests / the demo can use. Everything is already
  * `start()`-ed and skill-ready.
  */
-export async function buildMesh({ log } = {}) {
+/**
+ * Build the three-agent mesh.
+ *
+ * @param {object}   [opts]
+ * @param {function} [opts.log]         — optional logger (stdout channel).
+ * @param {boolean}  [opts.rendezvous]  — when true, give Alice and Bob a
+ *     RoutingStrategy and enable rendezvous on both, using their relay-bus
+ *     transport as the signalling channel. Carol stays single-transport
+ *     (she's the "BLE-only endpoint" in the phone analogue). Caller must
+ *     also pass `rtcLib` so Node can drive WebRTC.
+ * @param {object}   [opts.rtcLib]      — { RTCPeerConnection, RTCSessionDescription,
+ *     RTCIceCandidate }. Required if `rendezvous: true`.
+ */
+export async function buildMesh({ log, rendezvous = false, rtcLib } = {}) {
   const say = log ?? (() => {});
 
   const relayBus = new InternalBus();
@@ -52,19 +66,57 @@ export async function buildMesh({ log } = {}) {
     },
   };
 
-  const alice = new Agent({ identity: aliceId, transport: aliceRelay, peers: new PeerGraph(), label: 'alice' });
-  const bob   = new Agent({ identity: bobId,   transport: bobRelay,   peers: new PeerGraph(), routing: bobRouting, label: 'bob'   });
+  // When rendezvous is enabled, Alice and Bob need a RoutingStrategy so the
+  // rendezvous transport can participate in transportFor(peer) once an upgrade
+  // succeeds. Bob already had an inline routing strategy for its two-bus
+  // topology; swap it for a proper RoutingStrategy that can also carry the
+  // rendezvous preference when set.
+  const alicePeers = new PeerGraph();
+  const bobPeers   = new PeerGraph();
+  const aliceRouting = rendezvous
+    ? new RoutingStrategy({ transports: new Map([['relay', aliceRelay]]), peerGraph: alicePeers })
+    : null;
+  const bobRoutingFinal = rendezvous
+    ? new RoutingStrategy({
+        transports: new Map([['relay', bobRelay], ['loop', bobLoop]]),
+        peerGraph:  bobPeers,
+        // We still need address-based transport selection for Bob.
+        // Wrap selectTransport below with a pre-check.
+      })
+    : bobRouting;
+
+  const alice = new Agent({ identity: aliceId, transport: aliceRelay, peers: alicePeers, label: 'alice', routing: aliceRouting });
+  const bob   = new Agent({ identity: bobId,   transport: bobRelay,   peers: bobPeers,   routing: bobRoutingFinal, label: 'bob'   });
   const carol = new Agent({ identity: carolId, transport: carolLoop,  peers: new PeerGraph(), label: 'carol' });
+
+  // For the rendezvous flavour, teach Bob's RoutingStrategy the same
+  // address-based split that the inline strategy does in the base scenario:
+  // loop-bus for Carol, relay-bus for Alice.
+  if (rendezvous) {
+    const baseSelect = bobRoutingFinal.selectTransport.bind(bobRoutingFinal);
+    bobRoutingFinal.selectTransport = async (peerId, opts2) => {
+      if (peerId === aliceId.pubKey) return { name: 'relay', transport: bobRelay };
+      if (peerId === carolId.pubKey) return { name: 'loop',  transport: bobLoop  };
+      return baseSelect(peerId, opts2);
+    };
+  }
 
   bob.addTransport('loop', bobLoop);
 
   // Pre-register keys so we don't need to simulate transport-level
   // discovery events in the test; hello still runs to prove the
   // protocol, but without it we'd time out on first send.
-  alice.addPeer(bobId.pubKey,   bobId.pubKey);
-  bob.addPeer  (aliceId.pubKey, aliceId.pubKey);
-  bob.addPeer  (carolId.pubKey, carolId.pubKey);
-  carol.addPeer(bobId.pubKey,   bobId.pubKey);
+  //
+  // EXCEPTION: when rendezvous is enabled, skip pre-registration so
+  // hello() actually exchanges HIs and fires the 'peer' event that
+  // triggers auto-upgrade. Hello is strictly a superset of addPeer —
+  // it registers the key AND delivers the capabilities payload.
+  if (!rendezvous) {
+    alice.addPeer(bobId.pubKey,   bobId.pubKey);
+    bob.addPeer  (aliceId.pubKey, aliceId.pubKey);
+    bob.addPeer  (carolId.pubKey, carolId.pubKey);
+    carol.addPeer(bobId.pubKey,   bobId.pubKey);
+  }
 
   await alice.start(); await bob.start(); await carol.start();
 
@@ -123,6 +175,13 @@ export async function buildMesh({ log } = {}) {
   registerPeerList(alice);
   registerPeerList(bob);
   registerPeerList(carol);
+
+  // ── Optional: enable rendezvous on alice ↔ bob (Group AA) ─────────────────
+  if (rendezvous) {
+    if (!rtcLib) throw new Error('buildMesh: rendezvous=true requires rtcLib');
+    alice.enableRendezvous({ signalingTransport: aliceRelay, rtcLib, auto: true });
+    bob  .enableRendezvous({ signalingTransport: bobRelay,   rtcLib, auto: true });
+  }
 
   say('[scenario] mesh built — alice, bob, carol');
 
