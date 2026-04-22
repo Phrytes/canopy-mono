@@ -59,10 +59,31 @@ export class Transport extends Emitter {
    */
   setReceiveHandler(fn) { this.#receiveHandler = fn; }
 
+  /**
+   * Currently-registered inbound dispatch function, or null. Used by
+   * transports that wrap another transport (e.g. RendezvousTransport
+   * chaining to its signalling transport's prior handler).
+   *
+   * @returns {((envelope:object)=>void)|null}
+   */
+  get receiveHandler() { return this.#receiveHandler ?? null; }
+
   // ── Lifecycle (subclasses override) ────────────────────────────────────────
 
   async connect()    {}
   async disconnect() {}
+
+  /**
+   * Can this transport deliver to `peerAddress` right now?
+   * Default: yes (most transports are address-agnostic once connected).
+   * Override in transports where reachability is peer-scoped — e.g.
+   * RendezvousTransport returns true only when an open DataChannel
+   * exists for the given peer.
+   *
+   * @param {string} _peerAddress
+   * @returns {boolean}
+   */
+  canReach(_peerAddress) { return true; }
 
   /**
    * Drop any per-peer state this transport caches (e.g. deduped discovery
