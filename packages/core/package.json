@@ -20,5 +20,8 @@
     "@anthropic-ai/sdk": "^0.36.0",
     "vitest": "^2.1.0",
     "ws": "^8.20.0"
+  },
+  "optionalDependencies": {
+    "node-datachannel": "^0.32.2"
   }
 }
