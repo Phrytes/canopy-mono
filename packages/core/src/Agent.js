@@ -37,6 +37,7 @@ import { handlePubSub }                              from './protocol/pubSub.js'
 import { invokeWithHop }                             from './routing/invokeWithHop.js';
 import { registerRelayForward }                      from './skills/relayForward.js';
 import { registerReachablePeersSkill }               from './skills/reachablePeers.js';
+import { RendezvousTransport }                       from './transport/RendezvousTransport.js';
 import { PeerDiscovery }                             from './discovery/PeerDiscovery.js';
 import { pullPeerList }                              from './discovery/pullPeerList.js';
 
@@ -145,6 +146,7 @@ export class Agent extends Emitter {
    */
   addTransport(name, transport) {
     this.#transports.set(name, transport);
+    if (this.#routing?.addTransport) this.#routing.addTransport(name, transport);
     if (this.#started) {
       transport.useSecurityLayer(this.#security);
       transport.setReceiveHandler(env => this._dispatch(env));
@@ -389,6 +391,112 @@ export class Agent extends Emitter {
     if (this.#skills.get('reachable-peers')) return this;
     registerReachablePeersSkill(this, opts);
     return this;
+  }
+
+  // ── Rendezvous (Group AA) ─────────────────────────────────────────────────
+
+  /**
+   * Opt-in: enable WebRTC rendezvous on this agent.
+   *
+   * Creates a `RendezvousTransport` that uses `signalingTransport` (typically
+   * the relay) for SDP / ICE exchange and moves data onto a direct
+   * DataChannel once a peer accepts. Idempotent — the second call returns
+   * the same transport.
+   *
+   * When `auto: true`, the agent listens for `peer` events and — if the
+   * remote peer advertised `capabilities.rendezvous === true` in the hello
+   * payload — kicks off `upgradeToRendezvous(peer)` in the background.
+   *
+   * On DataChannel open, the routing layer pins rendezvous as the preferred
+   * transport for that peer. On close, the pin is cleared and subsequent
+   * sends fall back to priority order (typically the relay). No retry loop
+   * inside the transport — the next hello re-arms the upgrade.
+   *
+   * Ref: Design-v3/rendezvous-mode.md.
+   *
+   * @param {object}  opts
+   * @param {import('./transport/Transport.js').Transport} opts.signalingTransport
+   * @param {object}  [opts.rtcLib]       — { RTCPeerConnection, RTCSessionDescription, RTCIceCandidate }
+   *                                         (browser globals are used by default)
+   * @param {object[]} [opts.iceServers]  — default: one Google STUN
+   * @param {boolean} [opts.auto=false]   — auto-upgrade on capability match
+   * @returns {RendezvousTransport}
+   */
+  enableRendezvous(opts = {}) {
+    const existing = this.#transports.get('rendezvous');
+    if (existing) return existing;
+
+    if (!opts.signalingTransport) {
+      throw new Error('enableRendezvous: signalingTransport is required');
+    }
+
+    const rdv = new RendezvousTransport({
+      signalingTransport: opts.signalingTransport,
+      identity:           this.#identity,
+      rtcLib:             opts.rtcLib,
+      iceServers:         opts.iceServers,
+    });
+    this.addTransport('rendezvous', rdv);
+    this._rendezvousEnabled = true;
+
+    // Hook: DataChannel opened → pin rendezvous as the preferred transport
+    // for this peer. Also emit a user-visible event.
+    rdv.on('peer-connected', (peerAddress) => {
+      if (this.#routing?.setPreferredTransport) {
+        this.#routing.setPreferredTransport(peerAddress, 'rendezvous');
+      }
+      this.emit('rendezvous-upgraded', { peer: peerAddress });
+    });
+
+    // Hook: DataChannel closed → clear the pin, fall back to relay.
+    rdv.on('peer-disconnected', (peerAddress) => {
+      if (this.#routing?.clearPreferredTransport) {
+        this.#routing.clearPreferredTransport(peerAddress);
+      }
+      this.emit('rendezvous-downgraded', { peer: peerAddress, reason: 'channel-closed' });
+    });
+
+    // Auto-upgrade on hello if the peer advertises the flag.
+    if (opts.auto) {
+      this.on('peer', async ({ address, capabilities }) => {
+        if (!capabilities?.rendezvous) return;
+        if (rdv.hasOpenChannelTo(address)) return;       // already up
+        try {
+          await this.upgradeToRendezvous(address);
+        } catch (err) {
+          // Don't bubble — fall back to the signalling transport silently.
+          this.emit('rendezvous-failed', { peer: address, error: err });
+        }
+      });
+    }
+
+    return rdv;
+  }
+
+  /**
+   * Attempt to move the data path for `peerPubKey` onto a direct WebRTC
+   * DataChannel. Requires `enableRendezvous()` to have been called.
+   *
+   * @param {string} peerPubKey
+   * @param {number} [timeout=30000]
+   * @returns {Promise<void>}  resolves when the DataChannel is open
+   */
+  async upgradeToRendezvous(peerPubKey, timeout) {
+    const rdv = this.#transports.get('rendezvous');
+    if (!rdv) throw new Error('upgradeToRendezvous: enableRendezvous() not called');
+    if (rdv.hasOpenChannelTo(peerPubKey)) return;
+    await rdv.connectToPeer(peerPubKey, timeout);
+  }
+
+  /**
+   * True if the agent currently holds an open DataChannel to the given peer.
+   *
+   * @param {string} peerPubKey
+   * @returns {boolean}
+   */
+  isRendezvousActive(peerPubKey) {
+    const rdv = this.#transports.get('rendezvous');
+    return !!(rdv && rdv.hasOpenChannelTo(peerPubKey));
   }
 
   /**

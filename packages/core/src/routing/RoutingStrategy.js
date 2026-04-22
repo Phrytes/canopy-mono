@@ -27,6 +27,9 @@ export class RoutingStrategy {
   #peerGraph;     // PeerGraph | null
   #fallback;      // FallbackTable
   #config;        // { transportFilter?: string[] }
+  #preferred;     // Map<peerId, transportName> — per-peer override set by
+                  // Agent-layer hooks (e.g. rendezvous upgrade). Consulted
+                  // first in selectTransport and cleared on downgrade.
 
   /**
    * @param {object} opts
@@ -42,6 +45,7 @@ export class RoutingStrategy {
     this.#peerGraph = peerGraph;
     this.#fallback  = fallbackTable ?? new FallbackTable();
     this.#config    = config;
+    this.#preferred = new Map();
   }
 
   get fallbackTable() { return this.#fallback; }
@@ -72,11 +76,26 @@ export class RoutingStrategy {
       return t ? { name: 'a2a', transport: t } : null;
     }
 
+    // ── Per-peer preferred transport (set by upgrade hooks) ──────────────────
+    const pinned = this.#preferred.get(peerId);
+    if (pinned) {
+      const t = this.#transports.get(pinned);
+      if (t && !this.#fallback.isDegraded(peerId, pinned) && _canReach(t, peerId)) {
+        return { name: pinned, transport: t };
+      }
+      // Pinned transport missing / degraded / unreachable — fall through.
+    }
+
     // ── Build candidate list ─────────────────────────────────────────────────
     const allowFilter = this.#config.transportFilter;
     const available   = [...this.#transports.keys()].filter(n => {
       if (n === 'a2a') return false;
       if (allowFilter && !allowFilter.includes(n)) return false;
+      // Skip transports that explicitly report they can't reach this peer
+      // (e.g. RendezvousTransport with no open DataChannel). Default
+      // canReach() is true, so this is a no-op for address-agnostic transports.
+      const t = this.#transports.get(n);
+      if (!_canReach(t, peerId)) return false;
       return true;
     });
 
@@ -125,4 +144,53 @@ export class RoutingStrategy {
   onTransportFailure(peerId, transportName, durationMs = 30_000) {
     this.#fallback.markDegraded(peerId, transportName, Date.now() + durationMs);
   }
+
+  /**
+   * Pin a transport as the first choice for a specific peer. Used by
+   * Agent-layer upgrade hooks (e.g. rendezvous DataChannel opened).
+   *
+   * @param {string} peerId
+   * @param {string} transportName
+   */
+  setPreferredTransport(peerId, transportName) {
+    this.#preferred.set(peerId, transportName);
+  }
+
+  /**
+   * Drop the per-peer preference so routing falls back to priority order.
+   *
+   * @param {string} peerId
+   */
+  clearPreferredTransport(peerId) {
+    this.#preferred.delete(peerId);
+  }
+
+  /** @param {string} peerId @returns {string|null} */
+  getPreferredTransport(peerId) {
+    return this.#preferred.get(peerId) ?? null;
+  }
+
+  /**
+   * Register a transport the strategy didn't know about at construction
+   * time. Called by `Agent.addTransport` so late-wired transports (e.g.
+   * rendezvous after `enableRendezvous()`) participate in routing.
+   *
+   * @param {string} name
+   * @param {object} transport
+   */
+  addTransport(name, transport) {
+    this.#transports.set(name, transport);
+  }
+
+  /** @param {string} name */
+  removeTransport(name) {
+    this.#transports.delete(name);
+  }
+}
+
+function _canReach(transport, peerId) {
+  if (!transport) return false;
+  if (typeof transport.canReach !== 'function') return true;
+  try { return transport.canReach(peerId); }
+  catch { return false; }
 }

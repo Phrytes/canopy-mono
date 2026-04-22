@@ -101,15 +101,20 @@ export class RendezvousTransport extends Transport {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   async connect() {
-    this.#sigHandler = envelope => this.#onSignal(envelope);
+    // Wrap — not replace — the existing receive handler. RTC-signalling
+    // envelopes are consumed here; everything else is passed through to
+    // the signalling transport's prior handler (typically the Agent's
+    // dispatch loop). Critical when the signalling transport is shared
+    // with the Agent for normal traffic.
+    const prev = this.#sig.receiveHandler ?? null;
     this.#sig.setReceiveHandler(env => {
       const p = env.payload ?? {};
       if (['rtc-offer','rtc-answer','rtc-ice','rtc-close'].includes(p.type)) {
         this.#onSignal(env);
-      } else {
-        // Pass non-RTC envelopes to any previously registered handler.
-        this.emit('envelope', env);
+        return;
       }
+      if (typeof prev === 'function') prev(env);
+      else this.emit('envelope', env);
     });
   }
 
@@ -155,6 +160,22 @@ export class RendezvousTransport extends Transport {
 
     await this.#awaitOpen(peerAddress, { pc, dc }, timeout);
   }
+
+  /**
+   * True if we currently hold an open DataChannel to this peer.
+   * Used by the Agent layer to decide whether routing should prefer
+   * rendezvous for a given peer.
+   *
+   * @param {string} peerAddress
+   * @returns {boolean}
+   */
+  hasOpenChannelTo(peerAddress) {
+    const entry = this.#peers.get(peerAddress);
+    return !!(entry?.dc && entry.dc.readyState === 'open');
+  }
+
+  /** @override — rendezvous is peer-scoped, unlike relay/internal. */
+  canReach(peerAddress) { return this.hasOpenChannelTo(peerAddress); }
 
   // ── Send via DataChannel ──────────────────────────────────────────────────
 
