@@ -678,33 +678,135 @@ tampering test locks the behaviour in place.
 
 ## Group AA — Relay rendezvous (WebRTC)
 
-**Ref:** `EXTRACTION-PLAN.md` §7 Group AA. Depends on S.
+**Ref:** `EXTRACTION-PLAN.md` §7 Group AA.
+**Design doc:** `Design-v3/rendezvous-mode.md` — signalling schema,
+ICE / STUN / TURN config, framing, capability flag, auto-upgrade flow,
+fallback-on-close, threat model, API. Must be approved before AA2
+starts.
+**Dependencies:** F (RendezvousTransport landed in Group F — the
+mechanical signalling + DataChannel plumbing already exists), S
+(RelayTransport as signalling channel).
 
-### Files
+### Outcome
 
-Create:
-- `nkn-test/Design-v3/rendezvous-mode.md` — schema for `webrtc-signal` envelopes, STUN/TURN config, reconnection, DataChannel framing.
-- `packages/core/src/transport/RendezvousTransport.js` — implements signalling + DataChannel setup.
-- `packages/core/test/transport/RendezvousTransport.test.js` — uses `wrtc` in Node for tests.
+An agent can opt into WebRTC rendezvous with one call
+(`agent.enableRendezvous({ signalingTransport: relay, auto: true })`).
+When both peers advertise `{ rendezvous: true }` in the hello payload,
+the Agent auto-upgrades the data path onto a DataChannel in the
+background; the relay stays up as the signalling channel and the
+fallback carrier. When the DataChannel dies, routing reverts to the
+relay and the next hello re-arms the upgrade. No per-send user code
+changes — `callSkill` / `invoke` just pick the direct route when
+available.
+
+### Sub-phases
+
+Same "each sub-phase is a self-contained green commit" pattern as T, Y, Z.
+
+#### AA1 — Design decisions *(doc-only commit)*
+
+`Design-v3/rendezvous-mode.md` captures:
+
+- **AA1-a · Framing.** Plain JSON over `DataChannel.send()`. Envelopes fit
+  under 16 KB; `BulkTransfer` already chunks large payloads at the
+  protocol layer. Length-prefixed binary is a future option with no
+  user-facing API change if needed.
+- **AA1-b · ICE servers.** Default `stun:stun.l.google.com:19302`;
+  override via `AgentConfig.rendezvous.iceServers`.
+- **AA1-c · TURN.** No default. Symmetric-NAT peers fall back to relay
+  silently. Users configure their own TURN via the override.
+- **AA1-d · Capability advertising.** Two paths: one-shot hello-payload
+  flag (`{ rendezvous: true }`) for cheap bootstrap, plus an opt-in
+  `get-capabilities` skill for mid-session refresh. Agent card must
+  stay consistent (tracked as a TODO-GENERAL audit item).
+- **AA1-e · Auto-upgrade trigger.** `enableRendezvous({ auto: true })`
+  wires a `peer-ready` listener that starts `connectToPeer` in the
+  background. Only fires when both peers advertise the flag. Default
+  `auto: false` — explicit `agent.upgradeToRendezvous(peer)`.
+- **AA1-f · Fallback on close.** Transport fires `peer-disconnected`;
+  Agent clears the routing preference; next send routes via default
+  fallback. No retry loop inside the transport. Reconnection strategy
+  deferred (TODO-GENERAL research item).
+- **AA1-g · Encryption.** DataChannel carries the already-`nacl.box`ed
+  envelope, wrapped transparently in DTLS by the WebRTC stack. No
+  re-encryption, no skipping.
+
+Commit is docs-only: the design doc plus this plan update.
+
+#### AA2 — Test harness + robustness
+
+Files:
+- `packages/core/test/transport/RendezvousTransport.test.js`
+- `packages/core/package.json` — `optionalDependencies.wrtc` (optional
+  devDep), `peerDependenciesMeta` so the package still installs
+  cleanly on platforms where `wrtc` has no prebuilt.
+
+Tests (minimum):
+- Two Node peers establish a DataChannel via an `InternalBus`-backed
+  signalling transport plus `wrtc`.
+- RQ → RS round-trip over the DataChannel.
+- `rtc-close` signal tears down state on both sides.
+- `isSupported()` returns false when no `wrtc`, true with the polyfill.
+- Offer timeout cleans up pending state.
+
+Tests are gated by `describe.skipIf(!hasWrtc)` so CI without a
+`wrtc`-capable toolchain stays green.
+
+#### AA3 — Capability advertising
 
 Modify:
-- `packages/core/package.json` — `peerDependencies: { "wrtc": "*" }` (optional).
-- `packages/core/src/Agent.js` — optional auto-upgrade: when both peers advertise rendezvous capability, swap the active transport from `RelayTransport` to `RendezvousTransport` for that peer.
+- `packages/core/src/protocol/hello.js` — emit
+  `{ rendezvous: !!agent._rendezvousEnabled }` in the hello payload;
+  parse the peer's flag and store on the PeerGraph record as
+  `record.capabilities.rendezvous`.
+- New `packages/core/src/skills/capabilities.js` — exports
+  `registerCapabilitiesSkill(agent)` returning a point-in-time
+  snapshot `{ rendezvous, originSig, groupProofs, … }`.
+- `packages/core/src/index.js` — export the new skill registrar.
 
-### Sequence
+Tests:
+- Hello with the flag set → peer's PeerGraph record has
+  `capabilities.rendezvous === true`.
+- Hello without the flag → capabilities undefined (backward compat).
+- `get-capabilities` returns the expected shape, visibility-gated.
 
-1. **Design doc first.** Answer signalling schema, STUN/TURN defaults, framing (reuse BLE's 4-byte length prefix or plain JSON over DataChannel), reconnect strategy.
-2. Implement `RendezvousTransport` that:
-   - Accepts a `RelayTransport` as signalling channel.
-   - Initiates via `RTCPeerConnection` + `createDataChannel`.
-   - Wraps SDP/ICE in OW envelopes with `payload.type: 'webrtc-signal'`.
-   - Once DataChannel opens, routes `_send` / `_receive` through it.
-3. Add capability handshake (peer advertises `rendezvous: true` in hello payload) so both sides know to attempt upgrade.
-4. On DataChannel close: tear down, revert to `RelayTransport` for that peer, optionally retry signalling after backoff.
-5. Write tests using `wrtc` in Node: handshake, round-trip, fallback on failure, reconnect after close.
+#### AA4 — `enableRendezvous` + auto-upgrade + fallback
+
+Modify:
+- `packages/core/src/Agent.js` —
+  - `enableRendezvous({ signalingTransport, iceServers, auto })`
+    (idempotent); wires the `RendezvousTransport` as a named transport
+    `'rendezvous'`; if `auto: true`, registers a `peer-ready` listener
+    that triggers `upgradeToRendezvous(peer)` when both sides advertise
+    the flag.
+  - `upgradeToRendezvous(peerPubKey)` — attempts `connectToPeer`;
+    on success, sets routing preference; emits
+    `rendezvous-upgraded`.
+  - `isRendezvousActive(peerPubKey)` — introspection boolean.
+- `packages/core/src/routing/RoutingStrategy.js` —
+  `setPreferredTransport(peer, name)` / `clearPreferredTransport(peer)`
+  so `transportFor(peer)` consults the per-peer override first.
+- `packages/core/src/transport/RendezvousTransport.js` — `peer-connected`
+  / `peer-disconnected` events for Agent-layer hooks; `rtc-close` on
+  disconnect already fires today.
+
+Tests:
+- Integration: two Node agents with `wrtc`, `enableRendezvous({
+  auto: true })`, complete a hello, observe
+  `rendezvous-upgraded`, send an RQ and assert via transport-tagged
+  envelope that it went via the DataChannel.
+- Force DataChannel close → observe `rendezvous-downgraded`;
+  next send routes via relay; no user-visible error.
+- Unit: `enableRendezvous({ auto: false })` — upgrade only happens on
+  explicit `upgradeToRendezvous()`.
+- Unit: peer without the capability flag never triggers auto-upgrade.
 
 ### DoD
-Two Node agents establish a DataChannel via the test relay and round-trip an RQ/RS. Fallback path works. Relay server code unchanged.
+
+All sub-phases land as green commits. Full core suite stays green at
+every step. The integration test proves upgrade + downgrade are
+user-invisible — `callSkill` keeps working through both transitions.
+Relay server code unchanged.
 
 ---
 
