@@ -956,6 +956,97 @@ no behaviour change unless they opt in.
 
 ---
 
+## Group CC — Hop-aware task tunnel
+
+**Ref:** scheduled 2026-04-23 after BB3 clarified the interaction-pattern
+gap. Design doc TBD (`Design-v3/hop-tunnel.md`, part of CC1).
+**Dependencies:** M (relay-forward, invokeWithHop), Z (origin sig
+propagation), BB (sealed forwarding — CC's tunnel wraps each forwarded
+OW in a seal when the group enables blind mode).
+
+### Motivation
+
+Today's `relay-forward` (both plaintext and sealed) is a **one-shot**
+invoke: it awaits a terminal task result and returns it. That's fine
+for request/reply skills (chat, short commands), but it breaks three
+patterns that work over a direct transport:
+
+- **Streaming handlers.** Async-generator skills emit
+  `stream-chunk` OW envelopes during execution. Bob only sees the
+  final `task-result`; the chunks never reach Alice.
+- **InputRequired loops.** When Carol throws `InputRequired`, she
+  sends an `input-required` OW to Bob and waits for a `task-input`
+  reply. Alice has no channel to deliver that reply — the outer
+  invocation is already awaiting.
+- **End-to-end cancel / task-expired.** Alice cancelling her outer
+  call doesn't propagate a CX to Carol.
+
+These limits pre-date BB; blind-forward inherits them unchanged.
+
+### Outcome
+
+CC promotes the bridge from one-shot forwarder to **bidirectional
+tunnel**. Bob holds a session table `{ tunnelId → (aliceSide,
+carolSide) }` for the task's lifetime and pass-throughs every
+task-scoped OW (`stream-chunk`, `stream-end`, `input-required`,
+`task-input`, `cancel`, `task-expired`) in both directions. Alice's
+`invokeWithHop` returns a Task that behaves identically to a
+direct-path Task — streaming iterators, IR prompts, cancel — all
+just work.
+
+When BB is also enabled for the target group, each forwarded OW is
+itself sealed to the far end with `packSealed`, so Bob still can't
+see chunk contents, IR prompts, or reply inputs.
+
+### Sub-phases
+
+#### CC1 — Design decisions *(doc-only)*
+
+`Design-v3/hop-tunnel.md` covers:
+- tunnelId scheme (fresh on outbound, carries in every OW).
+- session table lifecycle (create on RQ, drop on RS/task-expired/cancel/TTL).
+- OW forwarding skill (`tunnel-ow`) versus inline piggyback on
+  existing OW types.
+- origin-sig propagation (does each OW re-attach `_originSig`, or
+  is the sig carried once in the opening RQ and trusted for the
+  session?).
+- BB interaction: each OW-in-tunnel is a sealed payload when the
+  group enables blind mode.
+- memory / cleanup on bridge failure.
+- tests of race conditions (IR fires just as Alice cancels).
+
+#### CC2 — `tunnel-ow` skill + session tables
+
+Bob's side. Tracks sessions, routes OWs by tunnelId, emits
+`tunnel-closed` on teardown.
+
+#### CC3 — invokeWithHop / callSkill integration
+
+Alice's side. When the target is hopped, establish a tunnel on the
+chosen bridge; return a Task that iterates streams, handles IR, and
+forwards CX. Plaintext first; sealed variant layered on BB.
+
+#### CC4 — Integration tests + mesh-scenario phase 12
+
+Streaming generator over a hop. IR round-trip over a hop. Cancel
+propagates end-to-end. Sealed-tunnel variant (CC + BB combined).
+
+### DoD
+
+A streaming skill, an IR-based negotiation skill, and a cancellable
+long-running skill all work identically via direct and hopped paths.
+Both plaintext and sealed modes supported. Mesh-scenario phase 12
+locks this in.
+
+### Out of scope for CC
+
+- New routing strategies beyond what BB + T already provide.
+- Multi-bridge tunnels with independent sessions (the same session
+  could traverse two bridges, but the bridges each hold state; no
+  bridge-level session-merging is added).
+
+---
+
 ## Overall working order (recommended)
 
 Safe order that avoids circular blockers:

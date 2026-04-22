@@ -64,6 +64,7 @@ export class Agent extends Emitter {
   #started       = false;
   #label         = null;
   #helloGate     = null;   // optional (envelope) => boolean gate; see Group W
+  #sealedConfigs = null;   // Map<groupId, { enabled, ... }> — Group BB
 
   /**
    * @param {object} opts
@@ -497,6 +498,50 @@ export class Agent extends Emitter {
   isRendezvousActive(peerPubKey) {
     const rdv = this.#transports.get('rendezvous');
     return !!(rdv && rdv.hasOpenChannelTo(peerPubKey));
+  }
+
+  // ── Sealed forwarding (Group BB) ──────────────────────────────────────────
+
+  /**
+   * Opt-in: enable blind relay-forwarding for messages scoped to `groupId`.
+   *
+   * When enabled, outbound `invokeWithHop(target, skill, parts, { group:
+   * groupId })` builds a `nacl.box` sealed payload addressed to the target
+   * and hands it to the bridge as an opaque blob — the bridge sees
+   * `{ target, sealed }` and never reads skill id or parts. The target
+   * opens the seal via `relay-receive-sealed`, verifies the origin sig
+   * (Group Z), and dispatches the inner skill.
+   *
+   * Direct delivery bypasses sealing entirely; per-group opt-in means
+   * private networks pay zero overhead.
+   *
+   * Ref: Design-v3/blind-forward.md.
+   *
+   * @param {string} groupId
+   * @param {object} [opts]  — reserved for future knobs (pathLength, etc.)
+   * @returns {this}
+   */
+  enableSealedForwardFor(groupId, opts = {}) {
+    if (typeof groupId !== 'string' || !groupId) {
+      throw new Error('enableSealedForwardFor: groupId required');
+    }
+    if (!this.#sealedConfigs) this.#sealedConfigs = new Map();
+    this.#sealedConfigs.set(groupId, { enabled: true, ...opts });
+    return this;
+  }
+
+  /** @param {string} groupId */
+  disableSealedForwardFor(groupId) {
+    if (this.#sealedConfigs) this.#sealedConfigs.delete(groupId);
+    return this;
+  }
+
+  /**
+   * @param {string} groupId
+   * @returns {{ enabled: boolean }|null}  null if the group has no entry.
+   */
+  getSealedForwardConfig(groupId) {
+    return this.#sealedConfigs?.get(groupId) ?? null;
   }
 
   /**

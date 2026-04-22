@@ -351,6 +351,12 @@ Explicit scope cuts to avoid gold-plating:
   logic in the reverse direction if needed.
 - **No >2-hop paths.** 2 bridges is the max. 3-hop requires a
   reachability protocol we don't have. Deferred.
+- **No streaming / InputRequired / end-to-end cancel through the
+  bridge.** These pre-date BB — today's plaintext `relay-forward`
+  also awaits a terminal task result only. Lifting this is the
+  scope of Group CC (hop-aware task tunnel); BB inherits the same
+  limit unchanged. Sealed-forward is a content-privacy wrapper, not
+  a new interaction model.
 
 ---
 
