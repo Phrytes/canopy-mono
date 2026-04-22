@@ -100,7 +100,58 @@ async function main() {
 
   await m.teardown();
 
+  // ── Phase 10 (AB) — rendezvous auto-upgrade ──────────────────────────────
+  // Rebuilds the mesh with rendezvous enabled (requires node-datachannel
+  // polyfill). If the polyfill isn't installed, we log a notice and skip —
+  // phases 1-9 are the core demo; 10 is a bonus for showing WebRTC.
+  let rtcLib = null;
+  try {
+    const mod = await import('node-datachannel/polyfill');
+    rtcLib = {
+      RTCPeerConnection:     mod.RTCPeerConnection,
+      RTCSessionDescription: mod.RTCSessionDescription,
+      RTCIceCandidate:       mod.RTCIceCandidate,
+    };
+  } catch {
+    console.log('\n— phase 10 (AB): rendezvous — SKIPPED (node-datachannel/polyfill not installed)\n');
+    console.log('  all phases passed.\n');
+    return;
+  }
+
+  console.log('\n— phase 10 (AB): alice ↔ bob auto-upgrade to a WebRTC DataChannel\n');
+  const m2 = await buildMesh({ log, rendezvous: true, rtcLib });
+  const upgraded = new Promise(res => m2.alice.once('rendezvous-upgraded', res));
+  await m2.alice.hello(m2.pubKeys.bob);
+  const up = await Promise.race([
+    upgraded,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('upgrade timeout')), 15_000)),
+  ]);
+  assert(up.peer === m2.pubKeys.bob, 'rendezvous-upgraded fired for bob');
+  assert(m2.alice.isRendezvousActive(m2.pubKeys.bob), 'alice has an open DataChannel to bob');
+
+  await m2.alice.invoke(m2.pubKeys.bob, 'receive-message', [TextPart('via DataChannel')]);
+  assert(m2.received.bob.at(-1).text === 'via DataChannel', 'bob received the direct message');
+
+  console.log('\n— phase 10b (AB): force-close the channel — next send falls back to relay\n');
+  const downgraded = new Promise(res => m2.alice.once('rendezvous-downgraded', res));
+  await m2.alice.getTransport('rendezvous').disconnect();
+  await downgraded;
+  assert(!m2.alice.isRendezvousActive(m2.pubKeys.bob), 'alice no longer has a DataChannel to bob');
+
+  await m2.alice.invoke(m2.pubKeys.bob, 'receive-message', [TextPart('after downgrade')]);
+  assert(m2.received.bob.at(-1).text === 'after downgrade', 'message still delivered via relay');
+
+  await m2.teardown();
+
   console.log('\n  all phases passed.\n');
+
+  // node-datachannel holds a native worker that can keep Node's event
+  // loop alive after teardown. Explicitly release it and exit.
+  try {
+    const ndc = await import('node-datachannel');
+    ndc.cleanup?.();
+  } catch { /* optional dep not installed — we'd have returned earlier */ }
+  process.exit(0);
 }
 
 main().catch(err => {
