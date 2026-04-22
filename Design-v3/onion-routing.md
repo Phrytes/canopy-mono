@@ -1,9 +1,14 @@
 # Onion routing via `relay-forward` — design
 
-**Status:** proposal. Input for Group BB in `EXTRACTION-PLAN.md` /
-`CODING-PLAN.md`. Supersedes the "deferred idea" entry in
-`TODO-GENERAL.md § Security TODOs` (which is kept as a historical
-pointer).
+> **⚠️ SUPERSEDED (2026-04-23).** Group BB pivoted to
+> [`blind-forward.md`](./blind-forward.md) — a simpler
+> content-privacy-only design that matches the actual threat model
+> ("hide content from bridges" rather than "anonymise sender from
+> bridges"). This document is retained as reference material for a
+> possible future anonymity-oriented group (placeholder CC); it is
+> **not** the active BB plan.
+
+**Status:** deferred reference. Not scheduled for implementation.
 **Dependencies:** M (invokeWithHop, relay-forward), T (reachability oracle —
 used for path selection), X (groups — scope of onion mode), Z (origin
 signature — survives peeling).
