@@ -1068,3 +1068,186 @@ Safe order that avoids circular blockers:
 ```
 
 Design docs for T, Z, AA must be written and reviewed before any implementation starts. Every group merges only after its **Tests** (per extraction plan) are green and reviewed.
+
+---
+
+## Group DD — Phone app integration (`apps/mesh-demo`)
+
+**Ref:** `TODO-GENERAL.md` high-priority "Wire rendezvous into the
+phone app"; scope widened 2026-04-23 after an audit confirmed the app
+is missing oracle (T), rendezvous (AA), blind-forward (BB), the
+`get-capabilities` skill, and UI for `ctx.originVerified` (Z).
+**Design doc:** this section + the new "Phone app integration" chapter
+in `IMPLEMENTATION-PLAN.md`.
+**Dependencies:** T (oracle), Z (originVerified field), AA
+(enableRendezvous), BB (enableSealedForwardFor), AA3
+(registerCapabilitiesSkill). All shipped; this is pure wiring.
+
+### Outcome
+
+`apps/mesh-demo` reaches parity with `examples/mesh-demo`
+(phases 1-11) on hardware. The phone app exercises every feature the
+Node demo does, with on-device smoke test as the definition of done.
+No rewrite — additive wiring only; the existing UI (context, store,
+hooks, screens, navigation) stays intact.
+
+### Audit summary (what's missing today)
+
+| Core feature | Status in app |
+|---|---|
+| hop routing + origin attribution (M, Z) | mostly; no `originVerified` UI |
+| reachability oracle (T) | ✗ missing one-line enable |
+| rendezvous (AA) | ✗ missing — native dep `react-native-webrtc` absent |
+| `get-capabilities` skill (AA3) | ✗ missing |
+| blind relay-forward (BB) | ✗ missing one-line enable |
+| BLE store-and-forward (V) | ✓ automatic in transport |
+| hello gate (W) | n/a — app doesn't need one |
+| group-visible skills (X) | n/a — app has no group skills |
+| UI for rendezvous upgrade badge | ✗ icon exists (`🔗`) but no wire-up |
+
+Also:
+- **`App.js` is currently in native-module-test mode** (re-exports
+  `NativeModuleTest`). Real entry lives at `App.js.bak`. Needs restoring.
+- Stale `apps/mesh-demo (Copy)` / `apps/mesh-demo (17 april)`
+  backup directories exist in the working tree; out of scope for
+  Group DD, left for the user to decide.
+
+### Sub-phases
+
+Same "each sub-phase is a self-contained green commit" pattern as
+T, Y, Z, AA, BB.
+
+#### DD1 — Safe updates (zero native risk)
+
+All pure-JS changes; no new native dependency; no dev-build required.
+
+Files to modify:
+- `apps/mesh-demo/App.js` — restore from `App.js.bak`.
+- `apps/mesh-demo/src/agent.js`
+  - Call `agent.enableReachabilityOracle()` (Group T).
+  - Call `registerCapabilitiesSkill(agent)` (Group AA3).
+  - Call `agent.enableSealedForwardFor('mesh')` (Group BB).
+  - Keep existing `enableRelayForward`, `enableAutoHello`,
+    `startDiscovery` calls.
+- `apps/mesh-demo/src/screens/MessageScreen.js`
+  - Render a small verified-origin indicator (e.g. a checkmark) on
+    inbound messages whose `originVerified === true`.
+- `apps/mesh-demo/src/store/messages.js`
+  - Extend the record to carry `originVerified: boolean`. Default false
+    for backward-compat with existing stored messages.
+- `apps/mesh-demo/src/agent.js` receive-message handler
+  - Read `ctx.originVerified` and pass into `messageStore.add`.
+
+Tests:
+- Run existing `apps/mesh-demo/test/**` — all must stay green.
+- Extend `receiveMessage.test.js` to cover the `originVerified` path
+  (inbound Z-verified message → `originVerified: true` stored).
+- Extend `agentSetup.test.js` to confirm the three new opt-ins are
+  wired (spy on agent methods, or check skill registry).
+
+DoD:
+- App boots on Expo Go unchanged (modulo the `App.js` restore).
+- Core suite + app suite green.
+- Oracle, sealed-forward, capabilities skill all reachable via the
+  running agent.
+
+#### DD2 — Rendezvous on React Native (native dep, dev-build needed)
+
+This is the first phase that requires `react-native-webrtc` and a
+real dev build (Expo Go cannot ship new native modules).
+
+Files to create:
+- `packages/react-native/src/transport/rendezvousRtcLib.js`
+  - `loadRendezvousRtcLib()` — tries in order:
+    1. `require('react-native-webrtc')` (native RN / dev build).
+    2. Native globals (`typeof RTCPeerConnection === 'function'`) for
+       `react-native-web`.
+    3. `null` (unsupported platform — silent no-op).
+  - Returns `{ RTCPeerConnection, RTCSessionDescription, RTCIceCandidate }`
+    or `null`. Guarded behind a try/catch so Metro / Expo Go bundles
+    don't crash on missing native modules.
+
+Files to modify:
+- `packages/react-native/src/createMeshAgent.js`
+  - New opt-in `opts.rendezvous` (default `false` so existing callers
+    are unaffected). When true:
+    - `const rtcLib = loadRendezvousRtcLib();`
+    - If `rtcLib && relay`, call
+      `agent.enableRendezvous({ signalingTransport: relay, rtcLib, auto: true })`.
+    - If missing, log a warning; app still works without rendezvous.
+- `packages/react-native/src/index.js` — export `loadRendezvousRtcLib`.
+- `apps/mesh-demo/package.json` — add `react-native-webrtc` to
+  dependencies. Bump version.
+- `apps/mesh-demo/src/agent.js` — pass `rendezvous: true` to
+  `createMeshAgent`.
+- `apps/mesh-demo/src/hooks/useRendezvousState.js` (new)
+  - Listens for `agent.on('rendezvous-upgraded' / 'rendezvous-downgraded' / 'rendezvous-failed')`.
+  - Tracks a `Set<pubKey>` of peers with an active DataChannel.
+  - Returns the current set, re-renders on change.
+- `apps/mesh-demo/src/screens/PeersScreen.js` / `src/hooks/usePeers.js`
+  - Merge rendezvous state into peer rows so the `🔗` icon lights up
+    for peers with an open DataChannel.
+
+Tests:
+- `packages/react-native/test/rendezvousRtcLib.test.js` — unit:
+  returns null in Node without rt-n-webrtc; returns globals when
+  injected.
+- `apps/mesh-demo/test/agentSetup.test.js` — updated to mock
+  `loadRendezvousRtcLib` and confirm `enableRendezvous` is called
+  when `rendezvous: true` and skipped otherwise.
+- On-device smoke test (runs in DD3).
+
+DoD:
+- App still boots in Expo Go **without** rendezvous (graceful
+  degradation because `loadRendezvousRtcLib` returns `null`).
+- App builds in a dev build with `react-native-webrtc` and wires
+  rendezvous.
+- Tests green.
+
+#### DD3 — On-device smoke test + docs
+
+Hardware verification that the wiring actually does what the Node
+scenario proves in unit-test form.
+
+Steps:
+1. Build a dev build: `cd apps/mesh-demo && npx expo run:android` (or
+   `eas build --profile development --platform android`).
+2. Install on two phones on the same Wi-Fi network.
+3. Start the relay server on the laptop: `cd packages/relay && npm start`.
+4. Both phones: enter the laptop's relay URL (`ws://<lan-ip>:8787`).
+5. Observe `🔗` badges flipping green on both sides once hello
+   completes and the rendezvous auto-upgrade triggers.
+6. Send a message; observe that the round-trip is noticeably faster
+   than without rendezvous (subjective, but measurable via
+   React Native performance overlay if desired).
+7. Force a close (airplane mode off/on) and confirm the badge
+   downgrades and the next message still arrives via relay.
+
+Docs:
+- Update `apps/mesh-demo/README.md`: Phase 2 / 3 smoke-test recipe;
+  Expo Go caveat for `react-native-webrtc`.
+- Update `TODO-GENERAL.md` to mark the phone-rendezvous item shipped.
+
+DoD:
+- Badges reflect real DataChannel state on two phones.
+- A recorded session (terminal logs or screen grab) proves the P2P
+  upgrade happened.
+- Roadmap + TODO updated.
+
+### What Group DD deliberately does NOT cover
+
+- **Rewrite of the app.** Architecture stays; only additive wiring.
+- **New UI for sealed-forward.** Content privacy is silent;
+  no indicator planned (documented in `Design-v3/blind-forward.md § 10`).
+- **Streaming / IR / cancel propagation through bridges.** That's
+  Group CC's scope.
+- **iOS dev-build.** Android first because the user's primary device
+  is Android; iOS is additive once DD2-3 are stable.
+
+### Safety net before DD1 begins
+
+A checkpoint commit lands the plan (this section) before any code
+change to the app. If DD1/DD2 introduce regressions, `git revert` the
+implementation commits and fall back to the last-known-good app at
+`c4f40a7` (`Group BB5: mesh-scenario phase 11 + mesh-demo phase 11 +
+docs`).

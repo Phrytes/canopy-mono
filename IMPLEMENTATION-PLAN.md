@@ -2081,3 +2081,118 @@ peerGraph.updateTier(pubKey, tier)
 // Standard 5-method interface (Group A defines, Group B implements, all consumers use):
 vault.get(key)   vault.set(key, value)   vault.delete(key)   vault.has(key)   vault.list()
 ```
+
+---
+
+## Phone app integration (`apps/mesh-demo`) — Group DD
+
+**Added 2026-04-23.** After the core SDK reached feature-completeness
+through Group BB, the phone app (`apps/mesh-demo`) still wires only
+the Groups M-R / U feature set. This chapter documents how the app
+closes the gap to `examples/mesh-demo` (the Node demo that exercises
+all eleven phases) without rewriting the app.
+
+See `CODING-PLAN.md § Group DD` for the green-commit sub-phases.
+
+### Goal
+
+Parity with `examples/mesh-demo` on device:
+
+1. Phases 1-6 (hello, gossip, hop, forget) — already working.
+2. Phase 9 (oracle bridge selection) — enable.
+3. Phase 10 / 10b (rendezvous + fallback) — enable, visible via UI badge.
+4. Phase 11 (blind relay-forward) — enable by default for the app's group.
+5. Origin-verified indicator on received messages (Group Z UX).
+
+### Strategy — update, not rewrite
+
+The app's architecture is sound: `createMeshAgent` factory, React
+context wrapping a single long-lived agent, hooks over PeerGraph,
+three screens (Setup / Peers / Message), AsyncStorage settings, full
+vitest suite. None of that needs replacing.
+
+Gaps are:
+
+| Area | Fix |
+|---|---|
+| Agent hook-ups | Add `enableReachabilityOracle` + `enableSealedForwardFor` + `registerCapabilitiesSkill` calls in `agent.js`. |
+| WebRTC rendezvous | Add `react-native-webrtc` dep; new `loadRendezvousRtcLib` helper in `@canopy/react-native`; opt-in `rendezvous: true` flag on `createMeshAgent`. |
+| Message UI | Render a checkmark next to messages with `ctx.originVerified === true`. |
+| Peer UI | Light up the existing `🔗` icon when a DataChannel is active for that peer. |
+| Boot | Restore `App.js` from `App.js.bak` (currently in native-module-test mode). |
+
+### Scope cuts (deferred)
+
+- **Sealed-forward UI.** Content privacy is silent by design
+  (`Design-v3/blind-forward.md § 10`). Not exposed in the UI.
+- **Streaming / InputRequired / end-to-end cancel** through hops.
+  Bridge-level tunnel work is Group CC scope; the phone app will
+  benefit from it transparently once CC lands.
+- **iOS dev build.** Android-first. iOS pod wiring is a follow-up
+  once Android is stable.
+
+### Required new dependency
+
+```json
+// apps/mesh-demo/package.json
+{
+  "dependencies": {
+    "react-native-webrtc": "^124.0.5"
+  }
+}
+```
+
+`react-native-webrtc` has native modules — the app cannot run on
+Expo Go once this is in the dependency graph. A dev build is required
+(`npx expo run:android` or `eas build --profile development`).
+
+The existing `createMeshAgent` stays Expo-Go-friendly because
+`loadRendezvousRtcLib` guards the `require('react-native-webrtc')`
+call inside a `try/catch` and returns `null` when the native module
+is missing. Agents in Expo Go still boot; they just don't get
+rendezvous.
+
+### New files
+
+- `packages/react-native/src/transport/rendezvousRtcLib.js` — the
+  optional-dep loader.
+- `apps/mesh-demo/src/hooks/useRendezvousState.js` — subscribes to
+  agent's rendezvous-upgraded / -downgraded / -failed events.
+
+### Modified files
+
+- `packages/react-native/src/createMeshAgent.js` — add `rendezvous`
+  opt-in.
+- `packages/react-native/src/index.js` — export `loadRendezvousRtcLib`.
+- `apps/mesh-demo/App.js` — restored to real app entry.
+- `apps/mesh-demo/src/agent.js` — three new `enable*` / register calls,
+  read `ctx.originVerified`, pass into messageStore.
+- `apps/mesh-demo/src/store/messages.js` — extend record with
+  `originVerified`.
+- `apps/mesh-demo/src/screens/MessageScreen.js` — verified-origin
+  indicator.
+- `apps/mesh-demo/src/hooks/usePeers.js` / `PeersScreen.js` — merge
+  in rendezvous state.
+- `apps/mesh-demo/package.json` — add `react-native-webrtc`.
+- `apps/mesh-demo/README.md` — smoke-test recipe + Expo Go caveat.
+- `TODO-GENERAL.md` — mark phone-rendezvous item shipped.
+
+### Tests
+
+- Reuse + extend the existing `apps/mesh-demo/test/**` vitest suite.
+- `receiveMessage.test.js` — adds originVerified-true case.
+- `agentSetup.test.js` — confirms new opt-ins are wired.
+- New `packages/react-native/test/rendezvousRtcLib.test.js` — unit
+  tests for the loader (null / injected globals / react-native-webrtc
+  mock).
+- On-device smoke test — documented in `CODING-PLAN.md § DD3`.
+
+### Risk register
+
+| Risk | Mitigation |
+|---|---|
+| App regresses on Expo Go after Phase 2 | Phase 1 entirely JS; Phase 2 guards native `require` with try/catch so Expo Go keeps booting. |
+| react-native-webrtc Android build fails | Fall back to pinned known-good version; document minimum NDK / Gradle versions in the README. |
+| Rendezvous connect stalls on real carrier NAT | Documented limitation; falls back to relay automatically. Future work (custom STUN/TURN research) tracked in `TODO-GENERAL.md`. |
+| Changes break the working app without a rollback path | Each DD sub-phase lands as its own commit; a failed one is `git revert`-able. Last-known-good is `c4f40a7`. |
+| Stale backup directories (`apps/mesh-demo (Copy)` etc.) get caught in a commit | Explicitly excluded from Group DD commits; user decides their fate separately. |
