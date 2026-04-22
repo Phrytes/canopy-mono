@@ -54,10 +54,14 @@ config.resolver.blockList = [
 config.resolver = {
   ...config.resolver,
 
-  // Do NOT enable unstable_enablePackageExports — when combined with packages
-  // that have "type":"module" (like @canopy/core), Metro marks those files as
-  // ESM and Hermes executes them without `require` in scope, crashing on startup.
-  // All subpath imports that need the "exports" field are handled explicitly below.
+  // Force package-exports resolution OFF.  Expo 55's getDefaultConfig flips
+  // this on by default; when combined with packages that have "type":"module"
+  // (like @canopy/core) or that publish an ESM-preferred condition path
+  // (like @noble/hashes' "import": "./esm/..."), Metro picks the ESM file,
+  // Hermes executes it without `require` in scope, and startup crashes with
+  // "property 'require' doesn't exist".  All subpath imports that would
+  // normally go through the exports field are handled explicitly below.
+  unstable_enablePackageExports: false,
 
   extraNodeModules: {
     ...(config.resolver?.extraNodeModules ?? {}),
@@ -71,7 +75,13 @@ config.resolver = {
 
     // Explicit subpath resolutions (replaces the need for unstable_enablePackageExports)
     '@scure/bip39/wordlists/english': path.resolve(APP_MODULES, '@scure/bip39/wordlists/english.js'),
-    // @noble/hashes exports "./crypto" without .js extension; Metro warns on "./crypto.js" imports
+
+    // @noble/hashes: with exports-resolution OFF, Metro bare-imports the
+    // subpath as a file.  Pin `@noble/hashes/crypto` to the CJS browser
+    // variant (globalThis.crypto — never node:crypto).  Kept the ".js"
+    // alias too so any transitive normaliser that added the extension
+    // still lands on the same file.
+    '@noble/hashes/crypto':    path.resolve(repoRoot, 'packages/core/node_modules/@noble/hashes/crypto.js'),
     '@noble/hashes/crypto.js': path.resolve(repoRoot, 'packages/core/node_modules/@noble/hashes/crypto.js'),
 
     // Pin core React / RN packages to the app's copies
