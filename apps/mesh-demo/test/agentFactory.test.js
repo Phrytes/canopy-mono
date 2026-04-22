@@ -14,10 +14,12 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('@canopy/react-native', () => {
   class FakeAgent {
     constructor() {
-      this._enableRelayForwardOpts = null;
-      this._enableAutoHelloOpts    = null;
-      this._startDiscoveryOpts     = null;
-      this._skills                  = new Map();
+      this._enableRelayForwardOpts     = null;
+      this._enableAutoHelloOpts        = null;
+      this._startDiscoveryOpts         = null;
+      this._oracleEnabled              = false;
+      this._sealedForwardGroups        = [];
+      this._skills                      = new Map();
     }
     enableRelayForward(opts) {
       this._enableRelayForwardOpts = opts;
@@ -31,10 +33,21 @@ vi.mock('@canopy/react-native', () => {
       this._startDiscoveryOpts = opts;
       return { stop: async () => {} };
     }
+    enableReachabilityOracle(opts) {
+      this._oracleEnabled     = true;
+      this._oracleOpts        = opts ?? {};
+      return this;
+    }
+    enableSealedForwardFor(groupId, opts) {
+      this._sealedForwardGroups.push({ groupId, opts: opts ?? {} });
+      return this;
+    }
     register(id, handler, meta) {
       this._skills.set(id, { handler, meta });
       return this;
     }
+    // `registerCapabilitiesSkill` inspects agent.skills via `skills?.get?.(id)`.
+    get skills() { return this._skills; }
   }
 
   return {
@@ -79,6 +92,23 @@ describe('mesh-demo createAgent factory', () => {
     expect(agent._startDiscoveryOpts).toEqual({ gossipIntervalMs: 15_000 });
   });
 
+  it('enables the reachability oracle', async () => {
+    const agent = await createAgent({});
+    expect(agent._oracleEnabled).toBe(true);
+  });
+
+  it('registers the get-capabilities skill', async () => {
+    const agent = await createAgent({});
+    expect(agent._skills.has('get-capabilities')).toBe(true);
+  });
+
+  it('enables sealed-forward for the "mesh" group', async () => {
+    const agent = await createAgent({});
+    expect(agent._sealedForwardGroups).toEqual([
+      { groupId: 'mesh', opts: {} },
+    ]);
+  });
+
   it('registers the receive-message skill with public visibility', async () => {
     const agent = await createAgent({});
     const skill = agent._skills.get('receive-message');
@@ -115,5 +145,37 @@ describe('mesh-demo createAgent factory', () => {
 
     const msgs = messageStore.get('BOB_PUBKEY');
     expect(msgs.at(-1).text).toBe('direct');
+  });
+
+  it('receive-message records originVerified + relayedBy on forwarded hops', async () => {
+    const { messageStore } = await import('../src/store/messages.js');
+    messageStore.reset?.();
+
+    const agent   = await createAgent({});
+    const handler = agent._skills.get('receive-message').handler;
+    await handler({
+      parts:          [TextPart('signed via bridge')],
+      from:           'BRIDGE_PUBKEY',
+      originFrom:     'ALICE_PUBKEY',
+      originVerified: true,
+    });
+
+    const entry = messageStore.get('ALICE_PUBKEY').at(-1);
+    expect(entry.text).toBe('signed via bridge');
+    expect(entry.originVerified).toBe(true);
+    expect(entry.relayedBy).toBe('BRIDGE_PUBKEY');
+  });
+
+  it('receive-message leaves originVerified=false when the ctx flag is absent', async () => {
+    const { messageStore } = await import('../src/store/messages.js');
+    messageStore.reset?.();
+
+    const agent   = await createAgent({});
+    const handler = agent._skills.get('receive-message').handler;
+    await handler({ parts: [TextPart('unsigned')], from: 'BOB_PUBKEY' });
+
+    const entry = messageStore.get('BOB_PUBKEY').at(-1);
+    expect(entry.originVerified).toBe(false);
+    expect(entry.relayedBy).toBeNull();
   });
 });

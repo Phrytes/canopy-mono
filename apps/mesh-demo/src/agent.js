@@ -10,7 +10,7 @@
  *
  * See EXTRACTION-PLAN.md §7 Group U for the full rewrite rationale.
  */
-import { DataPart, Parts }         from '@canopy/core';
+import { DataPart, Parts, registerCapabilitiesSkill } from '@canopy/core';
 import {
   createMeshAgent,
   KeychainVault,
@@ -31,14 +31,29 @@ export async function createAgent({ relayUrl } = {}) {
   agent.enableAutoHello({ pullPeers: true });
   agent.startDiscovery({ gossipIntervalMs: 15_000 });
 
+  // Oracle (Group T) — on-the-fly bridge selection when routing hop messages.
+  // Capabilities skill (Group AA3) — peers can poll our current feature flags.
+  // Sealed-forward (Group BB) — messages in the "mesh" group travel blind
+  // through any relay bridge, so the bridge cannot read the payload.
+  agent.enableReachabilityOracle();
+  registerCapabilitiesSkill(agent);
+  agent.enableSealedForwardFor('mesh');
+
   // ── App-specific skills ────────────────────────────────────────────────────
   // receive-message pipes a text part into the message store, attributed
   // to the *original* caller (originFrom) when the message travelled
-  // through a relay-forward hop.
-  agent.register('receive-message', async ({ parts, originFrom, from }) => {
+  // through a relay-forward hop.  originVerified is true when the message
+  // carried a valid Ed25519 signature from the originator (Group Z), which
+  // is the only way to trust originFrom across an untrusted bridge.
+  agent.register('receive-message', async ({ parts, originFrom, from, originVerified }) => {
     const text   = Parts.text(parts) ?? JSON.stringify(Parts.data(parts));
     const sender = originFrom ?? from;
-    messageStore.add(sender, { direction: 'in', text });
+    messageStore.add(sender, {
+      direction:      'in',
+      text,
+      originVerified: !!originVerified,
+      relayedBy:      originFrom && originFrom !== from ? from : null,
+    });
     return [DataPart({ ack: true })];
   }, { visibility: 'public', description: 'Receive a text message' });
 

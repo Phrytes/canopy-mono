@@ -43,6 +43,12 @@ describe('MessageStore.add()', () => {
     expect(entry.status).toBe('ok');
   });
 
+  it('defaults originVerified to false and relayedBy to null', () => {
+    const entry = store.add(PEER_A, { direction: 'in', text: 'hi' });
+    expect(entry.originVerified).toBe(false);
+    expect(entry.relayedBy).toBeNull();
+  });
+
   it('stores explicit hops, via, and status', () => {
     const entry = store.add(PEER_A, {
       direction: 'out', text: 'relayed',
@@ -51,6 +57,15 @@ describe('MessageStore.add()', () => {
     expect(entry.hops).toBe(1);
     expect(entry.via).toBe(PEER_B);
     expect(entry.status).toBe('sending');
+  });
+
+  it('stores originVerified and relayedBy when provided', () => {
+    const entry = store.add(PEER_A, {
+      direction: 'in', text: 'signed',
+      originVerified: true, relayedBy: PEER_B,
+    });
+    expect(entry.originVerified).toBe(true);
+    expect(entry.relayedBy).toBe(PEER_B);
   });
 
   it('keeps messages for different peers separate', () => {
