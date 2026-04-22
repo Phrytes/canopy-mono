@@ -2204,25 +2204,32 @@ rendezvous module loads.  A hardware run then surfaced a blocker:
   bridgeless requires, so the host object cannot be resolved and
   a later call dereferences a null native pointer.
 
-DD4 plan (in flight):
+DD4 attempt #1 — rn-webrtc 124.0.5 → 124.0.7 *(failed on-device)*:
+Bumped the dep, regenerated `android/`, rebuilt successfully, but the
+phone still logs `Error: WebRTC native module not found` under
+bridgeless.  124.0.6's TurboModule-parsing fix targets RN 0.80+ and
+doesn't cover 0.76's flavor.  Reverted `rendezvous: false` on the
+phone; DD currently ships as "phone via relay, WebRTC on browser/Node
+only".
 
-1. Bump `react-native-webrtc` from `^124.0.5` → `^124.0.7`.
-   `124.0.6` merged PR #1731 ("Compatibility with RN 0.80+") which
-   fixes the TurboModule annotation parsing — the class of fix that
-   matches our symptom.
-2. Flip `rendezvous: true` back on in `apps/mesh-demo/src/agent.js`.
-3. Regenerate `android/` via `expo prebuild --clean` and confirm
-   `./gradlew app:assembleDebug` stays green (already verified).
-4. On-device: reinstall the dev build, repeat the DD3 smoke-test
-   recipe, watch for the `🔗` badge on the peer row (not just the
-   transport header) and for a clean five-minute run with no
-   force-close.
+Still-open paths (tracked in `CODING-PLAN.md § DD4`):
 
-If 124.0.7 still crashes, fallback is either (a) switching to the
-GetStream fork that completed bridgeless support upstream, or
-(b) reverting to `rendezvous: false` on the phone and shipping DD
-with "phone via relay, WebRTC on browser/Node only" until upstream
-catches up.  Either path is a one-line commit.
+- **Attempt #2 — GetStream fork.**  Pin via
+  `"react-native-webrtc": "github:GetStream/react-native-webrtc#<sha>"`,
+  reinstall, regenerate `android/`, re-test.  Expected to work because
+  the GetStream fork carries the full bridgeless/TurboModule port
+  upstream only partially pulled in via PR #1731.
+
+- **Attempt #3 — Disable bridgeless at the native layer** while
+  keeping 124.0.7.  MainApplication override or Expo gradle toggle.
+
+- **Attempt #4 — Expo 52 → 53/54 upgrade** to get RN ≥ 0.77, where
+  rn-webrtc's existing bridgeless fix should apply.  Risk: reopens
+  the Metro / Hermes class of bugs the 52-downgrade solved.
+
+Each attempt is a self-contained follow-up; none are blocking the
+rest of the project.  Mesh-demo on phone is fully functional over
+the relay today.
 
 ### Risk register
 

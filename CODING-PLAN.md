@@ -1251,31 +1251,52 @@ Short-term mitigation (shipped as commit `9d65fe8` and pushed):
     transport is never attached.  All other routing paths (mDNS,
     relay, sealed-forward) keep working on the phone.
 
-DD4 steps:
-1. Bump `react-native-webrtc` from `^124.0.5` → `^124.0.7`.
+DD4 attempt #1 — rn-webrtc 124.0.5 → 124.0.7 *(tried, did not work)*:
+1. Bumped `react-native-webrtc` from `^124.0.5` → `^124.0.7`.
    Release `124.0.6` shipped the "Compatibility with RN 0.80+" patch
    (PR #1731, fixes TurboModule annotation parsing under bridgeless).
-   This is the smallest change that has a real chance of addressing
-   our symptom.
-2. Flip `rendezvous: false` → `true` in `apps/mesh-demo/src/agent.js`.
-3. `rm -rf android && npx expo prebuild --platform android --no-install`
-   to regenerate the native project with the new native module.
-4. Confirm `./gradlew app:assembleDebug` still BUILD SUCCESSFUL.
-5. Install on two Android phones and rerun the DD3 smoke-test recipe.
+2. Flipped `rendezvous: false` → `true`.
+3. Regenerated `android/` with `expo prebuild`.
+4. `./gradlew app:assembleDebug` BUILD SUCCESSFUL.
+5. On-device: `Error: WebRTC native module not found` still appears
+   in the JS log — the native module does not register.  124.0.7's
+   fix covers RN 0.80+ but not RN 0.76's flavor of bridgeless.
+   Reverted to `rendezvous: false` pending a different approach.
 
-DoD:
-- Same DoD as DD3 — `🔗` badge appears and disappears against real
-  DataChannel state; no SIGSEGV / app-kill within 5 min of use.
+Still-open paths (pick one when re-attacking DD4):
 
-If 124.0.7 still crashes:
-- Fallback path A: pin rn-webrtc to a bridgeless-aware fork
-  (the GetStream fork referenced in rn-webrtc PR #1731 has a more
-  complete bridgeless/TurboModule port).
-- Fallback path B: keep `rendezvous: false` on the phone and ship DD
-  as "phone via relay, WebRTC on browser/Node only".  Revisit when
-  upstream rn-webrtc completes bridgeless support.
-- Either way, the commit that flipped the flag back is the only
-  revert target.
+- **Attempt #2 — GetStream fork.**  PR #1731 was cherry-picked from
+  GetStream/react-native-webrtc, which completed the bridgeless /
+  TurboModule port upstream didn't finish merging.  Pin via
+  `"react-native-webrtc": "github:GetStream/react-native-webrtc#<sha>"`
+  in package.json, `npm install`, regenerate `android/`, rebuild,
+  re-test on-device.  Risk: fork drift if upstream issues fixes
+  elsewhere.
+
+- **Attempt #3 — keep 124.0.7 but disable bridgeless at the native
+  layer.**  RN 0.76 has bridgeless default-on but still supports the
+  legacy runtime.  Add a MainApplication override (or a
+  `gradle.properties` toggle if Expo exposes one) to force
+  bridgeless off.  Risk: divergence from Expo defaults, may break
+  other Expo modules; test every transport after.
+
+- **Attempt #4 — bump RN one minor.**  rn-webrtc PR #1731 explicitly
+  targets RN 0.80+.  Upgrading Expo 52 / RN 0.76 → Expo 53 / RN 0.77
+  or 54 / RN 0.79 may bring in the bridgeless version rn-webrtc
+  expects.  Risk: reopens the Metro / Hermes class of bugs the
+  52-downgrade solved.
+
+Shipped fallback (current state after attempt #1):
+  • `rendezvous: false` on the phone.  All other paths work:
+    mDNS direct, relay forwarding, sealed-forward group, oracle,
+    origin-verified UI.
+  • Browser ↔ Node rendezvous unchanged (they load their own rtcLib
+    through their own loader that is bridgeless-independent).
+
+DoD (unchanged):
+- `🔗` badge appears and disappears against real DataChannel state
+  on a phone.
+- No SIGSEGV / app-kill within 5 min of use.
 
 ### What Group DD deliberately does NOT cover
 
