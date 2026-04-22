@@ -23,16 +23,22 @@ export async function createAgent({ relayUrl } = {}) {
     relayUrl,
     vault:    new KeychainVault({ service: 'mesh-demo' }),
     peerGraphPrefix: 'mesh-demo:peers:',
-    // Opt in to WebRTC rendezvous upgrade (Group AA / DD2).  Falls back
-    // silently to relay when react-native-webrtc can't initialise
-    // (unbuilt dev client, Expo Go, native module registration failure).
+    // Rendezvous is OFF on the phone for now.  react-native-webrtc
+    // 124.0.7 still fails to register WebRTCModule under RN 0.76's
+    // default bridgeless JS runtime (same "WebRTC native module not
+    // found" / native SIGSEGV as 124.0.5 — PR #1731's TurboModule
+    // fix covers RN 0.80+ but not 0.76's flavor of bridgeless).
     //
-    // DD4 history: rn-webrtc 124.0.5 + RN 0.76 bridgeless runtime crashed
-    // the app with "WebRTC native module not found" → native SIGSEGV.
-    // 124.0.7 landed the "Compatibility with RN 0.80+" patch (fixes
-    // TurboModule annotation parsing under bridgeless).  On-device
-    // verification is tracked in CODING-PLAN.md § DD4.
-    rendezvous: true,
+    // Re-enable when any of these unblock:
+    //   • Upstream rn-webrtc publishes a release with RN 0.76-aware
+    //     bridgeless support.
+    //   • We adopt the GetStream fork that has the full bridgeless
+    //     port upstream tried to cherry-pick from in #1731.
+    //   • We pin a React Native / Expo config that keeps bridgeless
+    //     off on 0.76 (requires MainApplication override).
+    //
+    // History + fallbacks documented in CODING-PLAN.md § DD4.
+    rendezvous: false,
   });
 
   // Opt-in SDK behaviour: gossip, hop routing via relay-forward, and
