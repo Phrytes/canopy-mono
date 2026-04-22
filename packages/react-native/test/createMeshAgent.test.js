@@ -111,6 +111,15 @@ vi.mock('../src/transport/BleTransport.js', () => {
   };
 });
 
+// ── Mock rendezvousRtcLib loader ─────────────────────────────────────────────
+// Default: loader returns null (acts like the native module isn't installed).
+// Individual tests that care about rendezvous override per-test.
+
+const rtcLibState = { lib: null };
+vi.mock('../src/transport/rendezvousRtcLib.js', () => ({
+  loadRendezvousRtcLib: vi.fn(async () => rtcLibState.lib),
+}));
+
 // Import AFTER all mocks are in place.
 import { createMeshAgent } from '../src/createMeshAgent.js';
 
@@ -120,6 +129,7 @@ beforeEach(() => {
   mdnsState.connectImpl = async () => {};
   mdnsState.peers       = new Set();
   bleState.peers        = new Set();
+  rtcLibState.lib       = null;
 });
 
 describe('createMeshAgent', () => {
@@ -202,6 +212,64 @@ describe('createMeshAgent', () => {
     asStore.clear();
     const agent = await createMeshAgent({ label: 'policy-check' });
     expect(agent.config.get('policy.allowRelayFor')).toBe('authenticated');
+    await agent.stop();
+  });
+
+  // ── Rendezvous (Group AA via DD2) ─────────────────────────────────────────
+
+  it('does not enable rendezvous by default', async () => {
+    kcStore.clear();
+    asStore.clear();
+    const agent = await createMeshAgent({ relayUrl: 'ws://127.0.0.1:9999' });
+    expect(agent.transportNames).not.toContain('rendezvous');
+    await agent.stop();
+  });
+
+  it('silently skips rendezvous when the rtc lib is unavailable', async () => {
+    kcStore.clear();
+    asStore.clear();
+    rtcLibState.lib = null;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const agent = await createMeshAgent({
+      relayUrl:   'ws://127.0.0.1:9999',
+      rendezvous: true,
+    });
+    expect(agent.transportNames).not.toContain('rendezvous');
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+    await agent.stop();
+  });
+
+  it('silently skips rendezvous when no relay is configured', async () => {
+    kcStore.clear();
+    asStore.clear();
+    rtcLibState.lib = {
+      RTCPeerConnection:     class {},
+      RTCSessionDescription: class {},
+      RTCIceCandidate:       class {},
+    };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const agent = await createMeshAgent({ rendezvous: true });
+    expect(agent.transportNames).not.toContain('rendezvous');
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+    await agent.stop();
+  });
+
+  it('attaches the rendezvous transport when rtc lib + relay are both available', async () => {
+    kcStore.clear();
+    asStore.clear();
+    rtcLibState.lib = {
+      RTCPeerConnection:     class {},
+      RTCSessionDescription: class {},
+      RTCIceCandidate:       class {},
+    };
+    const agent = await createMeshAgent({
+      relayUrl:   'ws://127.0.0.1:9999',
+      rendezvous: true,
+    });
+    expect(agent.transportNames).toContain('rendezvous');
+    expect(agent._rendezvousEnabled).toBe(true);
     await agent.stop();
   });
 

@@ -33,10 +33,11 @@ import {
   RelayTransport,
 } from '@canopy/core';
 
-import { KeychainVault }       from './identity/KeychainVault.js';
-import { AsyncStorageAdapter } from './storage/AsyncStorageAdapter.js';
-import { MdnsTransport }       from './transport/MdnsTransport.js';
-import { BleTransport }        from './transport/BleTransport.js';
+import { KeychainVault }         from './identity/KeychainVault.js';
+import { AsyncStorageAdapter }   from './storage/AsyncStorageAdapter.js';
+import { MdnsTransport }         from './transport/MdnsTransport.js';
+import { BleTransport }          from './transport/BleTransport.js';
+import { loadRendezvousRtcLib }  from './transport/rendezvousRtcLib.js';
 import { requestMeshPermissions } from './permissions.js';
 
 /**
@@ -48,6 +49,10 @@ import { requestMeshPermissions } from './permissions.js';
  * @param {string}  [opts.peerGraphPrefix]    — AsyncStorage key prefix (default 'mesh:peers:')
  * @param {number}  [opts.mdnsTimeoutMs]      — how long to wait for mDNS pre-connect (default 6000)
  * @param {object}  [opts.configOverrides]    — merged into AgentConfig overrides
+ * @param {boolean} [opts.rendezvous]         — opt in to WebRTC rendezvous upgrade (Group AA).
+ *                                              Requires relay + react-native-webrtc native module.
+ *                                              Silently skips with a warning if the module is not
+ *                                              available (e.g. when running in Expo Go).
  * @returns {Promise<import('@canopy/core').Agent>}
  */
 export async function createMeshAgent(opts = {}) {
@@ -59,6 +64,7 @@ export async function createMeshAgent(opts = {}) {
     peerGraphPrefix   = 'mesh:peers:',
     mdnsTimeoutMs     = 6_000,
     configOverrides,
+    rendezvous:       enableRdv = false,
   } = opts;
 
   const enableBle   = transportEnabled.ble   !== false;
@@ -162,6 +168,30 @@ export async function createMeshAgent(opts = {}) {
 
   if (ble)   agent.addTransport('ble',   ble);
   if (relay) agent.addTransport('relay', relay);
+
+  // ── Rendezvous (Group AA) — optional WebRTC upgrade ───────────────────────
+  // Needs (a) the relay as a signalling transport and (b) the
+  // react-native-webrtc native module.  Both are optional: if either is
+  // missing, the agent keeps working over the existing transports, and we
+  // surface a warning instead of throwing.  `auto: true` makes the agent
+  // upgrade a peer's path as soon as the hello handshake confirms the
+  // peer advertises the `rendezvous` capability flag (Group AA3).
+  if (enableRdv) {
+    if (!relay) {
+      console.warn('[createMeshAgent] rendezvous requested but no relay is configured — skipping');
+    } else {
+      const rtcLib = await loadRendezvousRtcLib();
+      if (!rtcLib) {
+        console.warn('[createMeshAgent] rendezvous requested but react-native-webrtc is not available — skipping');
+      } else {
+        agent.enableRendezvous({
+          signalingTransport: relay,
+          rtcLib,
+          auto: true,
+        });
+      }
+    }
+  }
 
   // ── Keep PeerGraph in sync with inbound hellos ─────────────────────────────
   // An inbound HI means we now have a DIRECT path to this peer. Explicitly
