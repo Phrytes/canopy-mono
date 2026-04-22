@@ -1234,6 +1234,49 @@ DoD:
   upgrade happened.
 - Roadmap + TODO updated.
 
+#### DD4 — Phone rendezvous re-enable (bridgeless follow-up)
+
+Unblocks an issue surfaced during DD3's first on-device run: with
+`react-native-webrtc@124.0.5` on Expo 52 / RN 0.76, the WebRTC
+TurboModule doesn't register under RN's default bridgeless JS runtime.
+Symptoms on-device:
+  • JS log: `Error: WebRTC native module not found` (caught by
+    `loadRendezvousRtcLib`, surfaces as a warning only).
+  • A few seconds after the first SDP exchange the native side
+    SIGSEGVs and the OS kills the app — user sees the UI flick back
+    to the launcher.
+
+Short-term mitigation (shipped as commit `9d65fe8` and pushed):
+  • `apps/mesh-demo/src/agent.js` sets `rendezvous: false` so the
+    transport is never attached.  All other routing paths (mDNS,
+    relay, sealed-forward) keep working on the phone.
+
+DD4 steps:
+1. Bump `react-native-webrtc` from `^124.0.5` → `^124.0.7`.
+   Release `124.0.6` shipped the "Compatibility with RN 0.80+" patch
+   (PR #1731, fixes TurboModule annotation parsing under bridgeless).
+   This is the smallest change that has a real chance of addressing
+   our symptom.
+2. Flip `rendezvous: false` → `true` in `apps/mesh-demo/src/agent.js`.
+3. `rm -rf android && npx expo prebuild --platform android --no-install`
+   to regenerate the native project with the new native module.
+4. Confirm `./gradlew app:assembleDebug` still BUILD SUCCESSFUL.
+5. Install on two Android phones and rerun the DD3 smoke-test recipe.
+
+DoD:
+- Same DoD as DD3 — `🔗` badge appears and disappears against real
+  DataChannel state; no SIGSEGV / app-kill within 5 min of use.
+
+If 124.0.7 still crashes:
+- Fallback path A: pin rn-webrtc to a bridgeless-aware fork
+  (the GetStream fork referenced in rn-webrtc PR #1731 has a more
+  complete bridgeless/TurboModule port).
+- Fallback path B: keep `rendezvous: false` on the phone and ship DD
+  as "phone via relay, WebRTC on browser/Node only".  Revisit when
+  upstream rn-webrtc completes bridgeless support.
+- Either way, the commit that flipped the flag back is the only
+  revert target.
+
 ### What Group DD deliberately does NOT cover
 
 - **Rewrite of the app.** Architecture stays; only additive wiring.

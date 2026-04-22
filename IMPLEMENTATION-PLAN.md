@@ -2187,6 +2187,43 @@ rendezvous.
   mock).
 - On-device smoke test — documented in `CODING-PLAN.md § DD3`.
 
+### Follow-up — DD4 (phone rendezvous re-enable)
+
+DD1-DD3 landed and were pushed; the phone app is stable end-to-end
+over mDNS + relay and the `🔗` transport icon appears when the
+rendezvous module loads.  A hardware run then surfaced a blocker:
+
+- **Stack:** Expo 52 / RN 0.76 / `react-native-webrtc@124.0.5`.
+- **Symptom:** `Error: WebRTC native module not found` in the JS log,
+  followed by a native SIGSEGV within a few seconds of any SDP
+  exchange — OS kills the app, UI returns to the launcher.
+- **Root cause:** RN 0.76 ships the "bridgeless" JS runtime on by
+  default even when `newArchEnabled=false` (the two flags are
+  decoupled in 0.76).  `react-native-webrtc@124.0.5` registers its
+  WebRTCModule without the TurboModule-interop annotations that
+  bridgeless requires, so the host object cannot be resolved and
+  a later call dereferences a null native pointer.
+
+DD4 plan (in flight):
+
+1. Bump `react-native-webrtc` from `^124.0.5` → `^124.0.7`.
+   `124.0.6` merged PR #1731 ("Compatibility with RN 0.80+") which
+   fixes the TurboModule annotation parsing — the class of fix that
+   matches our symptom.
+2. Flip `rendezvous: true` back on in `apps/mesh-demo/src/agent.js`.
+3. Regenerate `android/` via `expo prebuild --clean` and confirm
+   `./gradlew app:assembleDebug` stays green (already verified).
+4. On-device: reinstall the dev build, repeat the DD3 smoke-test
+   recipe, watch for the `🔗` badge on the peer row (not just the
+   transport header) and for a clean five-minute run with no
+   force-close.
+
+If 124.0.7 still crashes, fallback is either (a) switching to the
+GetStream fork that completed bridgeless support upstream, or
+(b) reverting to `rendezvous: false` on the phone and shipping DD
+with "phone via relay, WebRTC on browser/Node only" until upstream
+catches up.  Either path is a one-line commit.
+
 ### Risk register
 
 | Risk | Mitigation |
@@ -2196,3 +2233,4 @@ rendezvous.
 | Rendezvous connect stalls on real carrier NAT | Documented limitation; falls back to relay automatically. Future work (custom STUN/TURN research) tracked in `TODO-GENERAL.md`. |
 | Changes break the working app without a rollback path | Each DD sub-phase lands as its own commit; a failed one is `git revert`-able. Last-known-good is `c4f40a7`. |
 | Stale backup directories (`apps/mesh-demo (Copy)` etc.) get caught in a commit | Explicitly excluded from Group DD commits; user decides their fate separately. |
+| rn-webrtc vs bridgeless crash on phone | Tracked as sub-phase DD4 above; mitigation ladder is (1) 124.0.7 bump, (2) GetStream fork, (3) ship with phone-rendezvous-off. |
