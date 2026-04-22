@@ -41,10 +41,19 @@ export function AgentProvider({ children }) {
       });
   }, []);
 
-  // Start agent whenever relayUrl is set (and status is 'starting')
+  // Start (or restart) the agent whenever `relayUrl` changes.
+  //
+  // IMPORTANT: the dependency array must be `[relayUrl]` only — NOT
+  // `[status, relayUrl]`.  With `status` in the deps, the effect re-runs
+  // when the agent itself transitions 'starting' → 'ready', which fires
+  // the previous effect's cleanup and silently nulls the just-created
+  // agent.  Symptom: PeersScreen renders with status='ready' but
+  // `agent` is null, so `MY ADDRESS` shows `—`.
   useEffect(() => {
-    if (status !== 'starting' || !relayUrl) return;
+    if (!relayUrl) return;
     let cancelled = false;
+
+    setStatus('starting');
 
     createAgent({ relayUrl })
       .then(a => {
@@ -61,7 +70,7 @@ export function AgentProvider({ children }) {
       cancelled = true;
       setAgent(prev => { prev?.stop(); return null; });
     };
-  }, [status, relayUrl]);
+  }, [relayUrl]);
 
   /** Called by SetupScreen once the user enters a relay URL. */
   const configure = useCallback(async (url) => {

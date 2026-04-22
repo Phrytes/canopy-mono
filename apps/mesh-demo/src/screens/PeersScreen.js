@@ -85,7 +85,7 @@ export function PeersScreen({ navigation }) {
       <View style={s.header}>
         <Text style={s.headerLabel}>MY ADDRESS</Text>
         <Text style={s.headerMono} numberOfLines={1} ellipsizeMode="middle">
-          {agent?.address ?? '—'}
+          {agent?.pubKey ?? agent?.address ?? '—'}
         </Text>
         <View style={s.headerRow}>
           <Text style={s.headerLabel}>TRANSPORTS </Text>
