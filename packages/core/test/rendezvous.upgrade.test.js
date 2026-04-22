@@ -114,12 +114,17 @@ d('Agent.enableRendezvous + auto-upgrade', () => {
   }, 30_000);
 
   it('on DataChannel close: routing pin cleared, next invoke uses relay', async () => {
+    // Let any previous test's node-datachannel ICE state drain.
+    await new Promise(r => setTimeout(r, 300));
     const { alice, bob, bRx } = await makePair({ auto: true });
 
-    await new Promise(res => {
-      alice.once('rendezvous-upgraded', res);
-      alice.hello(bob.address);
-    });
+    const aUp = new Promise(res => alice.once('rendezvous-upgraded', res));
+    const bUp = new Promise(res => bob  .once('rendezvous-upgraded', res));
+    alice.hello(bob.address);
+    await Promise.race([
+      Promise.all([aUp, bUp]),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('upgrade timeout')), 20_000)),
+    ]);
 
     await alice.invoke(bob.address, 'echo', [DataPart({ n: 1 })]);
     expect(bRx.at(-1).transport).toBe('RendezvousTransport');

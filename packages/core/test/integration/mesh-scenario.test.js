@@ -258,12 +258,13 @@ describeIfRtc('Group AB — rendezvous phase 10 (WebRTC auto-upgrade)', () => {
 
   it('phase 10: alice ↔ bob auto-upgrade to a DataChannel; invoke routes via rendezvous', async () => {
     const m = await buildMesh({ rendezvous: true, rtcLib });
-    // Wait for both sides to rendezvous. Either side's event is enough —
-    // we trigger hello from alice.
-    const upgraded = new Promise(res => m.alice.once('rendezvous-upgraded', res));
+    // Wait for BOTH sides' DataChannel to open — they fire via different
+    // code paths (initiator vs answerer) and can be ~10 ms apart.
+    const aliceUp = new Promise(res => m.alice.once('rendezvous-upgraded', res));
+    const bobUp   = new Promise(res => m.bob  .once('rendezvous-upgraded', res));
     await m.alice.hello(m.pubKeys.bob);
     await Promise.race([
-      upgraded,
+      Promise.all([aliceUp, bobUp]),
       new Promise((_, rej) => setTimeout(() => rej(new Error('upgrade timeout')), 15_000)),
     ]);
 
@@ -282,6 +283,10 @@ describeIfRtc('Group AB — rendezvous phase 10 (WebRTC auto-upgrade)', () => {
   }, 30_000);
 
   it('phase 10b: force-close the DataChannel → routing pin cleared, next invoke uses relay', async () => {
+    // Let node-datachannel's native ICE state from phase 10 fully drain
+    // before we spin up a fresh mesh — without this, phase 10b's upgrade
+    // occasionally stalls under ICE state leak.
+    await new Promise(r => setTimeout(r, 200));
     const m = await buildMesh({ rendezvous: true, rtcLib });
     await new Promise(res => {
       m.alice.once('rendezvous-upgraded', res);
@@ -305,4 +310,77 @@ describeIfRtc('Group AB — rendezvous phase 10 (WebRTC auto-upgrade)', () => {
 
     await m.teardown();
   }, 30_000);
+});
+
+// ── Phase 11 (BB) — blind relay-forward ─────────────────────────────────────
+describe('Group BB — blind relay-forward', () => {
+
+  it('phase 11: alice enables sealed-forward; bob forwards opaque; carol verifies origin', async () => {
+    const m = await buildMesh();
+    await gossipOnce(m.alice, m.pubKeys.bob);   // alice learns carol via bob
+
+    m.alice.enableSealedForwardFor('home');
+
+    await m.alice.invokeWithHop(
+      m.pubKeys.carol, 'receive-message',
+      [TextPart('sealed hi carol')],
+      { group: 'home' },
+    );
+
+    // Delivery succeeded, origin verified.
+    expect(m.received.carol).toHaveLength(1);
+    expect(m.received.carol[0].text).toBe('sealed hi carol');
+    expect(m.received.carol[0].originFrom).toBe(m.pubKeys.alice);
+    expect(m.received.carol[0].originVerified).toBe(true);
+    expect(m.received.carol[0].relayedBy).toBe(m.pubKeys.bob);
+
+    // Bob forwarded via relay-receive-sealed, NOT receive-message, and the
+    // forwarded payload contains no plaintext text.
+    const fwd = m.bobOutbound.find(e => e.peerId === m.pubKeys.carol);
+    expect(fwd?.skillId).toBe('relay-receive-sealed');
+    expect(fwd?.payload.includes('sealed hi carol')).toBe(false);
+
+    await m.teardown();
+  });
+
+  it('phase 11b: direct delivery bypasses sealing entirely', async () => {
+    const m = await buildMesh();
+    // Alice has a direct path to bob (bob is a direct peer in the mesh).
+    // When she sends to bob directly, invokeWithHop's step 1 succeeds and
+    // nothing in the sealed code path runs — even with the group enabled.
+    m.alice.enableSealedForwardFor('home');
+
+    await m.alice.invokeWithHop(
+      m.pubKeys.bob, 'receive-message',
+      [TextPart('direct, no seal needed')],
+      { group: 'home' },
+    );
+
+    expect(m.received.bob).toHaveLength(1);
+    expect(m.received.bob[0].text).toBe('direct, no seal needed');
+    // No bridge was involved, so bob.invoke was never called for forwarding.
+    const fwd = m.bobOutbound.find(e => e.peerId === m.pubKeys.carol);
+    expect(fwd).toBeUndefined();
+
+    await m.teardown();
+  });
+
+  it('phase 11c: group disabled (no enable call) → plaintext path, backward compat', async () => {
+    const m = await buildMesh();
+    await gossipOnce(m.alice, m.pubKeys.bob);
+    // NO enableSealedForwardFor — opts.group present but no config.
+
+    await m.alice.invokeWithHop(
+      m.pubKeys.carol, 'receive-message',
+      [TextPart('plain is fine')],
+      { group: 'home' },
+    );
+
+    expect(m.received.carol[0].text).toBe('plain is fine');
+    const fwd = m.bobOutbound.find(e => e.peerId === m.pubKeys.carol);
+    expect(fwd?.skillId).toBe('receive-message');
+    expect(fwd?.payload.includes('plain is fine')).toBe(true);
+
+    await m.teardown();
+  });
 });

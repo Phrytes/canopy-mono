@@ -98,6 +98,32 @@ async function main() {
   assert(m.received.carol.at(-1)?.text === 'after expiry',
     'message still delivered via probe-retry after oracle expiry');
 
+  // ── Phase 11 (BB) — blind relay-forward ──────────────────────────────────
+  // Alice enables sealed-forward on a test group; routes a message to Carol
+  // via Bob; we prove Bob's forwarded call went through relay-receive-sealed
+  // and did NOT contain the plaintext text.
+  console.log('\n— phase 11 (BB): blind relay-forward — bob cannot read content\n');
+
+  m.received.carol.length = 0;
+  m.bobOutbound.length = 0;
+  m.alice.enableSealedForwardFor('home');
+
+  await m.alice.invokeWithHop(
+    m.pubKeys.carol, 'receive-message',
+    [TextPart('sealed hi carol')],
+    { group: 'home' },
+  );
+
+  assert(m.received.carol.at(-1)?.text === 'sealed hi carol',
+    'carol got the sealed text');
+  assert(m.received.carol.at(-1)?.originVerified === true,
+    'carol verified the origin signature');
+  const fwd = m.bobOutbound.find(e => e.peerId === m.pubKeys.carol);
+  assert(fwd?.skillId === 'relay-receive-sealed',
+    'bob forwarded via relay-receive-sealed, not the raw skill');
+  assert(!fwd?.payload.includes('sealed hi carol'),
+    'bob\'s forwarded payload did NOT contain the plaintext');
+
   await m.teardown();
 
   // ── Phase 10 (AB) — rendezvous auto-upgrade ──────────────────────────────

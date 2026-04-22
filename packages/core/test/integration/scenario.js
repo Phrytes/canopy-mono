@@ -21,6 +21,7 @@ import {
   InternalBus,
   InternalTransport,
   RoutingStrategy,
+  registerRelayReceiveSealed,
 }                            from '../../src/index.js';
 
 /**
@@ -183,6 +184,27 @@ export async function buildMesh({ log, rendezvous = false, rtcLib } = {}) {
     bob  .enableRendezvous({ signalingTransport: bobRelay,   rtcLib, auto: true });
   }
 
+  // ── Group BB: the receiver skill is registered on everyone so any agent
+  // can be the final hop of a blind-forward. enableSealedForwardFor is
+  // per-call (test opts in explicitly); this just makes the receive side
+  // always available.
+  registerRelayReceiveSealed(alice);
+  registerRelayReceiveSealed(bob);
+  registerRelayReceiveSealed(carol);
+
+  // Bridge tap: wrap bob.invoke so tests can see whether a forwarded
+  // call targeted the raw skill (plaintext) or relay-receive-sealed
+  // (blind), and whether the forwarded payload contained any plaintext.
+  const bobOutbound = [];
+  const origBobInvoke = bob.invoke.bind(bob);
+  bob.invoke = async (peerId, skillId, input, opts) => {
+    bobOutbound.push({
+      peerId, skillId,
+      payload: JSON.stringify(input),
+    });
+    return origBobInvoke(peerId, skillId, input, opts);
+  };
+
   say('[scenario] mesh built — alice, bob, carol');
 
   return {
@@ -190,6 +212,7 @@ export async function buildMesh({ log, rendezvous = false, rtcLib } = {}) {
     relayBus, loopBus,
     received: { alice: aliceReceived, bob: bobReceived, carol: carolReceived },
     warnings,
+    bobOutbound,            // Group BB tap — see what Bob forwarded onwards
     pubKeys: {
       alice: aliceId.pubKey,
       bob:   bobId.pubKey,
