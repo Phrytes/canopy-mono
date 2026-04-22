@@ -11,17 +11,27 @@ export class MessageStore extends Emitter {
 
   /**
    * @param {string} peerPubKey
-   * @param {{ direction: 'in'|'out', text: string, hops?: number, via?: string|null }} msg
+   * @param {{
+   *   direction:       'in'|'out',
+   *   text:            string,
+   *   hops?:           number,
+   *   via?:            string|null,
+   *   status?:         string,
+   *   originVerified?: boolean,
+   *   relayedBy?:      string|null,
+   * }} msg
    */
   add(peerPubKey, msg) {
     const entry = {
-      id:        `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      ts:        Date.now(),
-      direction: msg.direction,
-      text:      msg.text,
-      hops:      msg.hops ?? 0,
-      via:       msg.via  ?? null,
-      status:    msg.status ?? 'ok',
+      id:             `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      ts:             Date.now(),
+      direction:      msg.direction,
+      text:           msg.text,
+      hops:           msg.hops ?? 0,
+      via:            msg.via  ?? null,
+      status:         msg.status ?? 'ok',
+      originVerified: msg.originVerified ?? false,
+      relayedBy:      msg.relayedBy ?? null,
     };
     const list = this.#log.get(peerPubKey) ?? [];
     list.push(entry);

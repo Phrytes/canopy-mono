@@ -174,6 +174,13 @@ function MessageBubble({ msg }) {
               {msg.via ? ` via ${msg.via.slice(0, 8)}…` : ''} ✓
             </Text>
           )}
+          {/* Verified-origin badge on incoming messages that carried a
+              signature from the originator (Group Z).  Only shown when the
+              hop went through a bridge, since direct messages are always
+              authenticated by the sealed envelope. */}
+          {!isOut && msg.originVerified && msg.relayedBy && (
+            <Text style={s.metaVerified}>🔒 verified</Text>
+          )}
           <Text style={s.metaTime}>
             {new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
@@ -210,6 +217,7 @@ const s = StyleSheet.create({
   metaErr:       { color: '#e05c5c', fontSize: 10 },
   metaOk:        { color: '#4caf82', fontSize: 10 },
   metaHop:       { color: '#e0b860', fontSize: 10 },
+  metaVerified:  { color: '#7ba8ff', fontSize: 10 },
   metaTime:      { color: '#6b7094', fontSize: 10, marginLeft: 'auto' },
 
   inputRow:      { flexDirection: 'row', padding: 10, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: '#2d3048', backgroundColor: '#141720', alignItems: 'flex-end', gap: 8 },

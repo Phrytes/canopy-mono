@@ -159,7 +159,7 @@ describe('Agent.export()', () => {
   it('returns pubKey, address, label, skills, transports', async () => {
     const bus   = new InternalBus();
     const agent = await makeAgent(bus, { label: 'export-test' });
-    const out   = agent.export();
+    const out   = await agent.export();
 
     expect(out.pubKey).toBe(agent.pubKey);
     expect(out.address).toBe(agent.address);
@@ -174,7 +174,7 @@ describe('Agent.export()', () => {
     agent.register('public-skill',  async () => [], { visibility: 'public' });
     agent.register('private-skill', async () => [], { visibility: 'private' });
 
-    const out      = agent.export();
+    const out      = await agent.export();
     const skillIds = out.skills.map(s => s.id);
     expect(skillIds).toContain('public-skill');
     expect(skillIds).not.toContain('private-skill');

@@ -17,9 +17,15 @@ import { makeAgent, startAndConnect }             from './helpers.js';
  * Mirrors the registration in src/agent.js.
  */
 function registerReceiveMessage(agent, store) {
-  agent.register('receive-message', async ({ parts, from }) => {
-    const text = Parts.text(parts) ?? JSON.stringify(Parts.data(parts));
-    store.add(from, { direction: 'in', text });
+  agent.register('receive-message', async ({ parts, originFrom, from, originVerified }) => {
+    const text   = Parts.text(parts) ?? JSON.stringify(Parts.data(parts));
+    const sender = originFrom ?? from;
+    store.add(sender, {
+      direction:      'in',
+      text,
+      originVerified: !!originVerified,
+      relayedBy:      originFrom && originFrom !== from ? from : null,
+    });
     return [DataPart({ ack: true })];
   }, { visibility: 'public', description: 'Receive a text message' });
 }
@@ -102,5 +108,53 @@ describe('receive-message → MessageStore', () => {
     expect(received).not.toBeNull();
     expect(received.peerPubKey).toBe(sender.pubKey);
     expect(received.message.text).toBe('event-test');
+  });
+
+  it('records originVerified=false and relayedBy=null for direct messages', async () => {
+    await sender.invoke(receiver.address, 'receive-message', [TextPart('direct')]);
+    const entry = store.get(sender.pubKey)[0];
+    expect(entry.originVerified).toBe(false);
+    expect(entry.relayedBy).toBeNull();
+  });
+});
+
+// ── Forwarded path — originVerified + relayedBy ──────────────────────────────
+
+describe('receive-message with originFrom / originVerified', () => {
+  it('attributes to originFrom and marks verified when ctx.originVerified is true', async () => {
+    // Simulate a forwarded invocation by calling the registered handler
+    // directly with a ctx that includes originFrom + originVerified.
+    const def    = receiver.skills.get('receive-message');
+    const bridge = 'bridge-pubkey-xyz';
+    const origin = 'origin-pubkey-abc';
+
+    await def.handler({
+      parts:          [TextPart('via bridge')],
+      from:           bridge,
+      originFrom:     origin,
+      originVerified: true,
+    });
+
+    const msgs = store.get(origin);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].text).toBe('via bridge');
+    expect(msgs[0].originVerified).toBe(true);
+    expect(msgs[0].relayedBy).toBe(bridge);
+  });
+
+  it('leaves relayedBy=null when originFrom === from', async () => {
+    const def    = receiver.skills.get('receive-message');
+    const caller = 'direct-pubkey';
+
+    await def.handler({
+      parts:          [TextPart('direct signed')],
+      from:           caller,
+      originFrom:     caller,
+      originVerified: true,
+    });
+
+    const msgs = store.get(caller);
+    expect(msgs[0].relayedBy).toBeNull();
+    expect(msgs[0].originVerified).toBe(true);
   });
 });
