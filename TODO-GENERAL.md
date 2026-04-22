@@ -113,6 +113,42 @@ advertise it, plus a patchset for any gaps.
 
 ---
 
+## Custom STUN / TURN server discovery
+
+**Status:** research item. Owner: not assigned.
+
+Rendezvous (Group AA) currently defaults to `stun:stun.l.google.com:19302`
+and lets users override via `AgentConfig.rendezvous.iceServers`. That's
+enough for the "someone configured it by hand" case, but leaves open
+the broader question of how a typical user should find and pick STUN /
+TURN endpoints they trust.
+
+Angles worth researching:
+
+- **Curated public-STUN lists.** Several community-maintained lists
+  exist (e.g. the `pradt2/always-online-stun` repo). Worth bundling a
+  small, vetted default list instead of a single Google endpoint?
+- **Dynamic discovery.** Could the agent probe a list of STUN servers
+  on startup and pick the ones that respond fastest + give consistent
+  mapped addresses? Cost / complexity trade-off.
+- **Self-hosted TURN guidance.** Document the minimum viable coturn
+  config for a user who wants a private TURN box (credentials, realms,
+  ephemeral-token flow). Possibly ship a reference `docker-compose.yml`.
+- **TURN credentials over the relay.** A relay-server-issued
+  short-lived TURN credential (HMAC'd secret + timestamp) so users
+  don't ship long-lived credentials with their app.
+- **STUN diversity for privacy.** Rotating through multiple STUN
+  servers reveals connection metadata to fewer parties. Does that
+  matter for the threat model, and at what engineering cost?
+- **IPv6 / dual-stack behaviour.** When a peer is on IPv6-only, what's
+  the right default? Most public STUN are IPv4-only today.
+
+Output: a short note summarising the options; either a concrete
+default improvement in `RendezvousTransport` or an informational doc
+under `docs/` for users to pick from.
+
+---
+
 ## Reconnection strategy research
 
 **Status:** research item. Owner: not assigned.
