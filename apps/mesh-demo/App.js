@@ -10,6 +10,7 @@ if (typeof globalThis !== 'undefined') {
 }
 import { NavigationContainer }        from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider }           from 'react-native-safe-area-context';
 import { AgentProvider, useAgent }    from './src/context/AgentContext';
 import { PeersScreen }                from './src/screens/PeersScreen';
 import { MessageScreen }              from './src/screens/MessageScreen';
@@ -93,11 +94,19 @@ function AppInner() {
 }
 
 export default function App() {
+  // SafeAreaProvider MUST wrap NavigationContainer / Stack.Navigator —
+  // react-native-screens reads safe-area insets to position headers on
+  // Android, and without the provider the native view-tree bookkeeping
+  // drifts on navigation pop and you get:
+  //   "cannot remove child at index 0 from parent ViewGroup [320]"
+  // Matches the step1-expo52 setup.
   return (
-    <ErrorBoundary>
-      <AgentProvider>
-        <AppInner />
-      </AgentProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <AgentProvider>
+          <AppInner />
+        </AgentProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
