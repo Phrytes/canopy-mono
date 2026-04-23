@@ -131,7 +131,11 @@ export class Task extends Emitter {
     const VALID = {
       submitted:        ['working', 'cancelled', 'failed'],
       working:          ['completed', 'failed', 'cancelled', 'input-required', 'expired'],
-      'input-required': ['working', 'cancelled', 'failed', 'expired'],
+      // input-required → completed is a legal direct transition: a bridge
+      // agent (Group CC tunnel-open) never calls task.send, so its local
+      // copy of the task never returns to 'working' before the remote
+      // handler responds with task-result.  We accept the RS directly.
+      'input-required': ['working', 'completed', 'cancelled', 'failed', 'expired'],
     };
     // Allow transitions from terminal state only if no-op.
     if (this.#isTerminal() && state === this.#state) return;

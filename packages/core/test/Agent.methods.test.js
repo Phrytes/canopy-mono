@@ -27,19 +27,28 @@ async function makeAgent({ peers, config } = {}) {
 }
 
 describe('agent.invokeWithHop', () => {
-  it('delegates to invokeWithHop() and returns the peer\'s parts', async () => {
+  it('delegates through callWithHop and returns the peer\'s parts', async () => {
     const peers = new PeerGraph();
     await peers.upsert({ pubKey: 'peer-X', hops: 0, reachable: true });
 
     const agent = await makeAgent({ peers });
-    // Stub the underlying invoke so we don't need a real remote peer.
-    agent.invoke = vi.fn(async () => [DataPart({ ok: 'hop' })]);
+
+    // Stub the underlying direct-call so we don't need a real remote peer.
+    // After Group CC3, the direct path goes through agent.call (which
+    // returns a Task) rather than agent.invoke; callWithHop is the actual
+    // entry point so that streaming/IR/cancel work on the direct leg.
+    const { Task } = await import('../src/protocol/Task.js');
+    agent.call = vi.fn((peer, skill) => {
+      const t = new Task({ taskId: 'stub-1', skillId: skill, agent, peerId: peer, state: 'working' });
+      queueMicrotask(() => t._transition('completed', { parts: [DataPart({ ok: 'hop' })] }));
+      return t;
+    });
 
     const out = await agent.invokeWithHop('peer-X', 'echo', []);
     expect(Parts.data(out)).toEqual({ ok: 'hop' });
-    expect(agent.invoke).toHaveBeenCalledTimes(1);
-    expect(agent.invoke.mock.calls[0][0]).toBe('peer-X');
-    expect(agent.invoke.mock.calls[0][1]).toBe('echo');
+    expect(agent.call).toHaveBeenCalledTimes(1);
+    expect(agent.call.mock.calls[0][0]).toBe('peer-X');
+    expect(agent.call.mock.calls[0][1]).toBe('echo');
   });
 });
 
