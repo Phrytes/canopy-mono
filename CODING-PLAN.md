@@ -1030,12 +1030,27 @@ evicts stale rows. Capability flag added to
 
 #### CC3 — invokeWithHop / callSkill integration
 
-Alice's and Carol's sides. `invokeWithHop` prefers `tunnel-open`
-when the bridge advertises `tunnel: true` in `get-capabilities`;
-falls back to `relay-forward` (one-shot) otherwise. Returns a real
-`Task` that streams, handles IR, and forwards CX. Session-key
-handshake on both ends when BB is active: Alice generates K, seals
-into the opening RQ; Carol unseals on `relay-receive-sealed`.
+- **CC3a — plaintext tunnel (shipped):** new `agent.callWithHop`
+  that returns a `Task` synchronously.  `invokeWithHop` becomes a
+  `callWithHop().done()` facade so existing Parts[]-returning
+  callers are unaffected.  When the chosen bridge advertises
+  `tunnel: true` (read from `record.capabilities.tunnel`, populated
+  by hello — no per-call probe) and the call is NOT sealed,
+  `callWithHop` opens via `tunnel-open`, overrides `task.cancel` /
+  `task.send` to route through `tunnel-ow`, and the existing OW
+  dispatch (handleTaskOneWay) routes inbound OWs back to the outer
+  Task because the outer task's `taskId === aliceTaskId`.  Falls
+  back to one-shot `relay-forward` when no tunnel-capable bridge
+  is available or the call is sealed.
+
+- **CC3b — BB + CC combined (deferred).**  The session-key
+  handshake is spec'd in `Design-v3/hop-tunnel.md § 7` but
+  implementation is punted: it requires a per-task symmetric-
+  decryption layer over `handleTaskOneWay` on both endpoints, plus
+  converting Carol's `relay-receive-sealed` dispatch from a
+  one-shot handler to a streaming Task.  Non-trivial and not
+  needed for the current NLnet scope (BB group calls still work
+  end-to-end via the one-shot path, they just don't stream).
 
 #### CC4 — Integration tests + mesh-scenario phase 12
 

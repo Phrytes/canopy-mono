@@ -70,7 +70,13 @@ export function registerTunnelOw(agent) {
     }
 
     try {
-      await agent.transport.sendOneWay(row.carolAddr, rewritten);
+      // Route via the agent's routing strategy so a multi-homed bridge
+      // reaches Carol on the correct transport.  Falls back to the primary
+      // when no routing strategy is attached.
+      const t = typeof agent.transportFor === 'function'
+        ? await agent.transportFor(row.carolAddr)
+        : agent.transport;
+      await t.sendOneWay(row.carolAddr, rewritten);
       return [DataPart({ forwarded: true })];
     } catch (err) {
       return [DataPart({ error: `tunnel-forward-failed: ${err?.message ?? err}` })];

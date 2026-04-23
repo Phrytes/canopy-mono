@@ -34,7 +34,7 @@ import { handleMessage }                             from './protocol/messaging.
 import { handleSkillDiscovery }                      from './protocol/skillDiscovery.js';
 import { callSkill, handleTaskRequest, handleTaskOneWay } from './protocol/taskExchange.js';
 import { handlePubSub }                              from './protocol/pubSub.js';
-import { invokeWithHop }                             from './routing/invokeWithHop.js';
+import { invokeWithHop, callWithHop }                from './routing/invokeWithHop.js';
 import { registerRelayForward }                      from './skills/relayForward.js';
 import { registerTunnelOpen }                         from './skills/tunnelOpen.js';
 import { registerTunnelOw }                           from './skills/tunnelOw.js';
@@ -355,6 +355,27 @@ export class Agent extends Emitter {
    */
   invokeWithHop(peerId, skillId, input = [], opts = {}) {
     return invokeWithHop(this, peerId, skillId, Parts.wrap(input), opts);
+  }
+
+  /**
+   * Hop-aware version of agent.call() — returns a Task synchronously.
+   *
+   * Unlike invokeWithHop (which awaits terminal and returns Parts[]), this
+   * returns the Task immediately so the caller can iterate task.stream(),
+   * listen for task.on('input-required'), or task.cancel().  When the
+   * chosen bridge advertises `tunnel: true` in get-capabilities, the call
+   * goes through the Group CC hop-aware tunnel; otherwise it falls back
+   * to the one-shot relay-forward path with semantically-equivalent
+   * results (no streaming / IR / cancel).
+   *
+   * @param {string}   peerId
+   * @param {string}   skillId
+   * @param {Array|*}  [input]
+   * @param {object}   [opts]
+   * @returns {import('./protocol/Task.js').Task}
+   */
+  callWithHop(peerId, skillId, input = [], opts = {}) {
+    return callWithHop(this, peerId, skillId, Parts.wrap(input), opts);
   }
 
   /**

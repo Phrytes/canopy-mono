@@ -102,8 +102,14 @@ export function registerTunnelOpen(agent, opts = {}) {
     }
 
     // ── Session row ──────────────────────────────────────────────────────────
+    // Alice passes her local taskId so incoming OWs from us can be dispatched
+    // to her outer Task without aliasing.  Fall back to generating one if
+    // the caller didn't supply it (keeps the skill usable from tests and
+    // low-level tooling).
     const tunnelId    = genId();
-    const aliceTaskId = genId();
+    const aliceTaskId = typeof d.aliceTaskId === 'string' && d.aliceTaskId
+      ? d.aliceTaskId
+      : genId();
 
     const row = sessions.add({
       tunnelId,
@@ -193,8 +199,14 @@ export function registerTunnelOpen(agent, opts = {}) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function _forwardOW(agent, row, payload) {
-  agent.transport
-    .sendOneWay(row.aliceAddr, payload)
-    .catch(() => { /* best-effort; Alice times out if chronically unreachable */ });
+async function _forwardOW(agent, row, payload) {
+  try {
+    // Pick the right transport for Alice's address — agent.transport is the
+    // primary, which may not reach her if the bridge is multi-homed (common
+    // in the bridge use case).  transportFor respects the agent's routing.
+    const t = typeof agent.transportFor === 'function'
+      ? await agent.transportFor(row.aliceAddr)
+      : agent.transport;
+    await t.sendOneWay(row.aliceAddr, payload);
+  } catch { /* best-effort; Alice's own timeouts cover chronic unreachability */ }
 }
