@@ -36,6 +36,8 @@ import { callSkill, handleTaskRequest, handleTaskOneWay } from './protocol/taskE
 import { handlePubSub }                              from './protocol/pubSub.js';
 import { invokeWithHop }                             from './routing/invokeWithHop.js';
 import { registerRelayForward }                      from './skills/relayForward.js';
+import { registerTunnelOpen }                         from './skills/tunnelOpen.js';
+import { registerTunnelOw }                           from './skills/tunnelOw.js';
 import { registerReachablePeersSkill }               from './skills/reachablePeers.js';
 import { RendezvousTransport }                       from './transport/RendezvousTransport.js';
 import { PeerDiscovery }                             from './discovery/PeerDiscovery.js';
@@ -252,6 +254,8 @@ export class Agent extends Emitter {
   async stop() {
     if (!this.#started) return;
     this.#started = false;
+    // Tear down the tunnel session sweeper if we registered tunnel-open.
+    this._tunnelSessions?.stop?.();
     await Promise.allSettled([...this.#transports.values()].map(t => t.disconnect()));
     this.emit('stop');
   }
@@ -369,6 +373,31 @@ export class Agent extends Emitter {
       this.#config.set('policy.allowRelayFor', opts.policy);
     }
     registerRelayForward(this, opts);
+    return this;
+  }
+
+  /**
+   * Opt-in: register the `tunnel-open` + `tunnel-ow` skills so this agent
+   * can act as a bridge for a hop-aware task tunnel (Group CC).  Unlike
+   * `enableRelayForward` which gives callers a one-shot await-for-terminal
+   * hop, a tunnel is bidirectional for the task's lifetime — streaming,
+   * input-required, and cancel flow through the bridge transparently.
+   *
+   * See Design-v3/hop-tunnel.md.
+   *
+   * @param {object} [opts]
+   * @param {'never'|'authenticated'|'trusted'|`group:${string}`|'always'} [opts.policy]
+   *        Override for the allowTunnelFor policy. Otherwise pulls from
+   *        `agent.config.get('policy.allowTunnelFor')` → `allowRelayFor` → 'never'.
+   * @returns {this}
+   */
+  enableTunnelForward(opts = {}) {
+    if (this.#skills.get('tunnel-open')) return this;
+    if (opts.policy !== undefined && this.#config?.set) {
+      this.#config.set('policy.allowTunnelFor', opts.policy);
+    }
+    registerTunnelOpen(this, opts);
+    registerTunnelOw(this);
     return this;
   }
 

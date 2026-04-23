@@ -51,6 +51,7 @@ export function _snapshot(agent) {
     originSig:  true,                     // Group Z shipped
     relay:      !!agent.skills?.get?.('relay-forward')?.enabled,
     oracle:     !!agent.skills?.get?.('reachable-peers')?.enabled,
+    tunnel:     !!agent.skills?.get?.('tunnel-open')?.enabled,   // Group CC
     groups:     _groupsAsMember(agent),
   };
 }

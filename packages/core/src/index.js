@@ -71,6 +71,9 @@ export { registerRelayForward }        from './skills/relayForward.js';
 export { registerRelayReceiveSealed }  from './skills/relayReceiveSealed.js';
 export { registerReachablePeersSkill } from './skills/reachablePeers.js';
 export { registerCapabilitiesSkill }   from './skills/capabilities.js';
+export { registerTunnelOpen }          from './skills/tunnelOpen.js';
+export { registerTunnelOw }            from './skills/tunnelOw.js';
+export { TunnelSessions }              from './skills/tunnelSessions.js';
 
 // ── Protocol ──────────────────────────────────────────────────────────────────
 export { Task }                                           from './protocol/Task.js';

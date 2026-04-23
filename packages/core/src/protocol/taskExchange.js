@@ -336,7 +336,8 @@ export async function handleTaskRequest(agent, envelope) {
  * @param {object} envelope  — decrypted OW/AS envelope
  */
 export function handleTaskOneWay(agent, envelope) {
-  const { type, taskId, parts = [] } = envelope.payload ?? {};
+  const payload = envelope.payload ?? {};
+  const { type, taskId, parts = [] } = payload;
   if (!taskId) return false;
 
   const task = agent.stateManager.getTask(taskId);
@@ -359,6 +360,25 @@ export function handleTaskOneWay(agent, envelope) {
 
     case 'task-expired':
       if (task) task._transition('expired');
+      agent.stateManager.deleteTask(taskId);
+      return true;
+
+    // ── Group CC: terminal OW carrying Carol's final state through a bridge ──
+    // Used by tunnel-open (bridge side) to deliver Carol's terminal to Alice
+    // after the outer RQ/RS round-trip already closed with { tunnelId, ... }.
+    case 'tunnel-result':
+      if (task) {
+        const status = payload.status ?? 'failed';
+        if (status === 'completed') {
+          task._transition('completed', { parts: payload.parts ?? [] });
+        } else if (status === 'cancelled') {
+          task._transition('cancelled');
+        } else if (status === 'expired') {
+          task._transition('expired');
+        } else {
+          task._transition('failed', { error: payload.error ?? 'tunnel-failed' });
+        }
+      }
       agent.stateManager.deleteTask(taskId);
       return true;
 
