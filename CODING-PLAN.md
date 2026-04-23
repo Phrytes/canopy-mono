@@ -1251,6 +1251,20 @@ Short-term mitigation (shipped as commit `9d65fe8` and pushed):
     transport is never attached.  All other routing paths (mDNS,
     relay, sealed-forward) keep working on the phone.
 
+**Decision (2026-04-23):** phone rendezvous is **parked**, not cancelled.
+After attempt #1 failed the user re-evaluated the cost/benefit and
+concluded it is not worth the effort for the current use case:
+  • Rendezvous still depends on the relay for signalling, so the
+    "decentralized" story doesn't improve much.
+  • Most real-world mobile scenarios are CGNAT — STUN alone won't
+    traverse, so rendezvous would need a hosted TURN server to be
+    useful, which is a bigger commitment than we're ready to make.
+  • Mobile-specific instability (frequent reconnects, ICE restarts,
+    NAT rebinds) adds failure modes that offset the latency win.
+Revisit when any of these changes: we run a TURN server, users start
+to care about relay-metadata privacy on phone, or upstream rn-webrtc
+publishes a bridgeless-native 0.76-compatible release.
+
 DD4 attempt #1 — rn-webrtc 124.0.5 → 124.0.7 *(tried, did not work)*:
 1. Bumped `react-native-webrtc` from `^124.0.5` → `^124.0.7`.
    Release `124.0.6` shipped the "Compatibility with RN 0.80+" patch

@@ -2204,6 +2204,13 @@ rendezvous module loads.  A hardware run then surfaced a blocker:
   bridgeless requires, so the host object cannot be resolved and
   a later call dereferences a null native pointer.
 
+**Decision (2026-04-23):** phone rendezvous is parked — see
+`CODING-PLAN.md § DD4` for reasoning.  Short version: the reward
+(metadata privacy on cellular) doesn't justify the cost (CGNAT
+demands TURN infrastructure, mobile reconnects demand ICE-restart
+hardening).  Ship the phone on relay-only; revisit when priorities
+or infrastructure change.
+
 DD4 attempt #1 — rn-webrtc 124.0.5 → 124.0.7 *(failed on-device)*:
 Bumped the dep, regenerated `android/`, rebuilt successfully, but the
 phone still logs `Error: WebRTC native module not found` under
