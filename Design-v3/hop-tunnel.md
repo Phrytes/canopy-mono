@@ -263,27 +263,9 @@ trusting the tunnel-level binding.
 
 ## 7. Interaction with sealed forwarding (BB)
 
-**Current status (2026-04-23): BB + CC combined is DEFERRED.** Shipping
-the plaintext tunnel (CC3a) alone because combining the two requires
-deeper plumbing than initially scoped: each in-tunnel OW would need a
-per-task symmetric-decryption layer wrapping `handleTaskOneWay` on
-both endpoints, and the Carol-side dispatch currently goes through
-`relay-receive-sealed` (a one-shot skill handler) rather than a
-streaming Task.  Proper design + implementation is its own follow-up.
-
-Until then:
-  • BB alone (no streaming): works via the existing one-shot
-    `relay-forward` + `relay-receive-sealed` path — content private
-    from the bridge, no streaming / IR / cancel through the hop.
-  • CC alone (plaintext tunnel): works via `tunnel-open` +
-    `tunnel-ow` — streaming / IR / cancel through the hop, but the
-    bridge sees message contents.
-  • BB + CC together: `callWithHop` detects a sealed call and falls
-    back to the one-shot path.  The caller's skill works (content
-    stays private) but without the tunnel's streaming affordances.
-
-The design below for the session-key handshake is preserved as the
-plan for when we come back to CC3b.
+**Status (2026-04-24): BB + CC combined is SHIPPED.** Streaming /
+IR / cancel work through a hop with full content privacy from the
+bridge.  The implementation follows the session-key design below.
 
 When the outer group has `enableSealedForwardFor(groupId)`, the
 opening RQ is sealed end-to-end: Alice → `packSealed` → Bob routes

@@ -31,10 +31,11 @@
  *   OW  { type:'cancel',        taskId }              ← CX
  *   OW  { type:'task-expired',  taskId }              ← EX (receiver → caller)
  */
-import { Task }          from './Task.js';
-import { Parts }         from '../Parts.js';
-import { genId }         from '../Envelope.js';
-import { verifyOrigin }  from '../security/originSignature.js';
+import { Task }            from './Task.js';
+import { Parts }           from '../Parts.js';
+import { genId }           from '../Envelope.js';
+import { verifyOrigin }    from '../security/originSignature.js';
+import { openTunnelOW }    from '../security/tunnelSeal.js';
 
 /** @param {object} x */
 const isAsyncGen = x => x && typeof x[Symbol.asyncIterator] === 'function';
@@ -338,6 +339,14 @@ export async function handleTaskRequest(agent, envelope) {
 export function handleTaskOneWay(agent, envelope) {
   const payload = envelope.payload ?? {};
   const { type, taskId, parts = [] } = payload;
+
+  // Group CC3b: sealed-tunnel-ow OWs carry their taskId inside the
+  // ciphertext — they're opaque to the bridge that forwards them.
+  // Handle before the taskId guard.
+  if (type === 'sealed-tunnel-ow') {
+    return _dispatchSealedTunnelOW(agent, envelope, payload);
+  }
+
   if (!taskId) return false;
 
   const task = agent.stateManager.getTask(taskId);
@@ -405,9 +414,44 @@ export function handleTaskOneWay(agent, envelope) {
       }
       return true;
 
+    // sealed-tunnel-ow is handled above the taskId guard — its taskId
+    // lives inside the ciphertext and is only known post-decrypt.
+
     default:
       return false;
   }
+}
+
+function _dispatchSealedTunnelOW(agent, envelope, payload) {
+  const { tunnelId, sealed, nonce } = payload ?? {};
+  if (!tunnelId || !sealed || !nonce) return false;
+
+  const entry = agent._sealedTunnelKeys?.get(tunnelId);
+  if (!entry) {
+    // Drop unknown tunnels silently — may be a stale OW racing a
+    // just-closed tunnel, or a mis-routed one.
+    return true;
+  }
+
+  const innerOW = openTunnelOW({ key: entry.K, sealed, nonce });
+  if (!innerOW) {
+    agent.emit?.('security-warning', {
+      kind:   'sealed-tunnel-ow',
+      reason: 'open-failed',
+      envelope,
+    });
+    return true;
+  }
+
+  // Inject the local taskId — the inner OW doesn't carry it (saves wire
+  // bytes; the taskId is implied by the tunnelId ↔ task binding kept in
+  // _sealedTunnelKeys).  Re-dispatch through handleTaskOneWay so the
+  // standard switch above handles stream-chunk / IR / cancel / etc.
+  const synthEnvelope = {
+    ...envelope,
+    payload: { ...innerOW, taskId: entry.taskId },
+  };
+  return handleTaskOneWay(agent, synthEnvelope);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

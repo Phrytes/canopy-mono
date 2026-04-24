@@ -73,7 +73,11 @@ export { registerReachablePeersSkill } from './skills/reachablePeers.js';
 export { registerCapabilitiesSkill }   from './skills/capabilities.js';
 export { registerTunnelOpen }          from './skills/tunnelOpen.js';
 export { registerTunnelOw }            from './skills/tunnelOw.js';
+export { registerTunnelReceiveSealed } from './skills/tunnelReceiveSealed.js';
 export { TunnelSessions }              from './skills/tunnelSessions.js';
+export { generateTunnelKey,
+         sealTunnelOW,
+         openTunnelOW }                from './security/tunnelSeal.js';
 
 // ── Protocol ──────────────────────────────────────────────────────────────────
 export { Task }                                           from './protocol/Task.js';

@@ -53,6 +53,7 @@ export function packSealed({
   origin,
   originSig,
   originTs,
+  extras,                                       // optional extension fields
 } = {}) {
   if (!identity?.box)                            throw new Error('packSealed: identity required');
   if (typeof recipientPubKey !== 'string'
@@ -64,7 +65,17 @@ export function packSealed({
   if (typeof originTs !== 'number'
       || !Number.isFinite(originTs))             throw new Error('packSealed: originTs must be a finite number');
 
-  const body      = { v: SEALED_VERSION, skill, parts, origin, originSig, originTs };
+  // `extras` carries opt-in fields that ride inside the seal without
+  // affecting the canonical field set — used by Group CC3b to smuggle
+  // a `tunnelKey` and `aliceTaskId` without polluting the base shape.
+  const body = { v: SEALED_VERSION, skill, parts, origin, originSig, originTs };
+  if (extras && typeof extras === 'object') {
+    for (const k of Object.keys(extras)) {
+      if (k in body) continue;          // never overwrite core fields
+      body[k] = extras[k];
+    }
+  }
+
   const plaintext = new TextEncoder().encode(canonicalize(body));
   const { nonce, ciphertext } = identity.box(plaintext, recipientPubKey);
 
@@ -139,11 +150,21 @@ export function openSealed({ identity, sealed, nonce, senderPubKey } = {}) {
     );
   }
 
+  // Extras: any field in the sealed body beyond the canonical set is
+  // returned under `extras` so opt-in extensions (Group CC3b tunnel
+  // fields) ride through without requiring new named parameters here.
+  const CORE = new Set(['v', 'skill', 'parts', 'origin', 'originSig', 'originTs']);
+  const extras = {};
+  for (const k of Object.keys(body)) {
+    if (!CORE.has(k)) extras[k] = body[k];
+  }
+
   return {
     skill:     body.skill,
     parts:     body.parts,
     origin:    body.origin,
     originSig: body.originSig,
     originTs:  body.originTs,
+    extras,
   };
 }

@@ -1,24 +1,21 @@
 /**
  * tunnelOw — OW pass-through for an open tunnel (Group CC).
  *
- * The bridge (Bob) registers this skill; Alice calls it every time she
- * wants to push a task-scoped OW (cancel, task-input) to Carol through
- * the tunnel identified by tunnelId.  Carol-side OWs flow back to Alice
- * via Task listeners in tunnelOpen.js — they do NOT go through this
- * skill.
+ * Plaintext mode (CC3a):
+ *   Payload: [DataPart({ tunnelId, inner: { type, taskId, parts? } })]
+ *   Only the session's `aliceAddr` may push.  Bob rewrites inner.taskId
+ *   to carolTaskId and forwards as a raw OW.  Carol's OWs flow back via
+ *   Task listeners on Bob's carolTask (see tunnelOpen.js).
  *
- * Payload shape:
- *   [DataPart({ tunnelId, inner: { type, taskId, parts? } })]
+ * Sealed mode (CC3b):
+ *   Payload: [DataPart({ tunnelId, sealedInner: { sealed, nonce } })]
+ *   EITHER endpoint may push (Carol has no Bob-side Task to hang her
+ *   OWs off in sealed mode, so she pushes via tunnel-ow too).  Bob has
+ *   no K — he forwards as a `sealed-tunnel-ow` OW (type carried in the
+ *   OW header, not in the ciphertext).  The receiver decrypts with K
+ *   and re-dispatches the inner through handleTaskOneWay.
  *
- * Bob's job:
- *   1. Look up the session row by tunnelId.
- *   2. Reject if the caller is not the session's Alice side
- *      (prevents a rogue peer from writing into someone else's tunnel).
- *   3. Rewrite inner.taskId from aliceTaskId → carolTaskId.
- *   4. Send the rewritten OW to Carol via sendOneWay.
- *   5. Observe terminal OWs (cancel) and mark the session closing.
- *
- * See `Design-v3/hop-tunnel.md § 5.2`.
+ * See `Design-v3/hop-tunnel.md § 5.2` (plaintext) and § 7 (sealed).
  */
 import { Parts, DataPart } from '../Parts.js';
 
@@ -42,9 +39,9 @@ export function registerTunnelOw(agent) {
 
   agent.register('tunnel-ow', async ({ parts, from }) => {
     const d = Parts.data(parts) ?? {};
-    const { tunnelId, inner } = d;
-    if (!tunnelId || !inner?.type) {
-      return [DataPart({ error: 'missing tunnelId or inner' })];
+    const { tunnelId, inner, sealedInner } = d;
+    if (!tunnelId || (!inner?.type && !sealedInner)) {
+      return [DataPart({ error: 'missing tunnelId or inner / sealedInner' })];
     }
 
     const row = sessions.get(tunnelId);
@@ -52,27 +49,49 @@ export function registerTunnelOw(agent) {
       return [DataPart({ error: 'unknown-tunnel' })];
     }
 
-    // Only the tunnel's Alice side may push OWs through this path.
-    // (Carol's OWs flow back via the Task listeners in tunnelOpen.js.)
+    // ── Sealed mode: EITHER endpoint may push, Bob forwards opaque. ────────
+    if (sealedInner) {
+      if (!row.sealed) {
+        return [DataPart({ error: 'sealed-payload-on-plaintext-tunnel' })];
+      }
+      const isAlice = from === row.aliceAddr;
+      const isCarol = from === row.carolAddr;
+      if (!isAlice && !isCarol) {
+        return [DataPart({ error: 'tunnel-denied: not tunnel owner' })];
+      }
+      const dstAddr = isAlice ? row.carolAddr : row.aliceAddr;
+      if (!sealedInner.sealed || !sealedInner.nonce) {
+        return [DataPart({ error: 'sealedInner missing sealed/nonce' })];
+      }
+
+      try {
+        const t = typeof agent.transportFor === 'function'
+          ? await agent.transportFor(dstAddr)
+          : agent.transport;
+        await t.sendOneWay(dstAddr, {
+          type:     'sealed-tunnel-ow',
+          tunnelId,
+          sealed:   sealedInner.sealed,
+          nonce:    sealedInner.nonce,
+        });
+        return [DataPart({ forwarded: true, sealed: true })];
+      } catch (err) {
+        return [DataPart({ error: `tunnel-forward-failed: ${err?.message ?? err}` })];
+      }
+    }
+
+    // ── Plaintext mode: only the session's Alice may push. ────────────────
+    if (row.sealed) {
+      return [DataPart({ error: 'plaintext-payload-on-sealed-tunnel' })];
+    }
     if (from !== row.aliceAddr) {
       return [DataPart({ error: 'tunnel-denied: not tunnel owner' })];
     }
 
-    // Rewrite taskId so Carol's side sees her own.
     const rewritten = { ...inner, taskId: row.carolTaskId };
-
-    // If this is a terminal OW from Alice, mark the session closing.
-    // We keep forwarding in-flight OWs; Bob drops the row once his
-    // local carolTask emits its own terminal (task-result / cancelled /
-    // expired) — that's handled by the listeners in tunnelOpen.js.
-    if (inner.type === 'cancel') {
-      sessions.markClosing(tunnelId, 'alice-cancel');
-    }
+    if (inner.type === 'cancel') sessions.markClosing(tunnelId, 'alice-cancel');
 
     try {
-      // Route via the agent's routing strategy so a multi-homed bridge
-      // reaches Carol on the correct transport.  Falls back to the primary
-      // when no routing strategy is attached.
       const t = typeof agent.transportFor === 'function'
         ? await agent.transportFor(row.carolAddr)
         : agent.transport;
