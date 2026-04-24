@@ -12,6 +12,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { buildMesh, gossipOnce, gossipOracle, TextPart, Parts } from './scenario.js';
+import { Task } from '../../src/protocol/Task.js';
 
 describe('Group Y — mesh scenario', () => {
 
@@ -380,6 +381,116 @@ describe('Group BB — blind relay-forward', () => {
     const fwd = m.bobOutbound.find(e => e.peerId === m.pubKeys.carol);
     expect(fwd?.skillId).toBe('receive-message');
     expect(fwd?.payload.includes('plain is fine')).toBe(true);
+
+    await m.teardown();
+  });
+});
+
+// ── Phase 12 (CC) — hop-aware task tunnel ──────────────────────────────────
+describe('Group CC — hop-aware task tunnel', () => {
+
+  it('phase 12a: streaming async-generator over a hopped call yields chunks in order', async () => {
+    const m = await buildMesh({ tunnel: true });
+    await gossipOnce(m.alice, m.pubKeys.bob);   // alice learns carol via bob
+
+    // Carol hosts a streaming generator.  Bob is the bridge.
+    m.carol.register('slow-count', async function* () {
+      yield [TextPart('one')];
+      yield [TextPart('two')];
+      yield [TextPart('three')];
+    });
+
+    const task = m.alice.callWithHop(m.pubKeys.carol, 'slow-count', []);
+    const chunks = [];
+    for await (const c of task.stream()) chunks.push(Parts.text(c));
+    const snap = await task.done();
+
+    expect(snap.state).toBe('completed');
+    expect(chunks).toEqual(['one', 'two', 'three']);
+
+    // Bob's outbound tap should show the inner call going to carol on
+    // slow-count (tunnel path), not relay-receive-sealed (one-shot).
+    const fwd = m.bobOutbound.find(e => e.peerId === m.pubKeys.carol);
+    expect(fwd?.skillId).toBe('slow-count');
+
+    await m.teardown();
+  });
+
+  it('phase 12b: input-required prompt from Carol round-trips through the tunnel', async () => {
+    const m = await buildMesh({ tunnel: true });
+    await gossipOnce(m.alice, m.pubKeys.bob);
+
+    m.carol.register('ask-name', async ({ parts }) => {
+      if (Parts.text(parts) === 'start') {
+        throw new Task.InputRequired([TextPart('Name?')]);
+      }
+      return [TextPart(`hi ${Parts.text(parts)}`)];
+    });
+
+    const task = m.alice.callWithHop(m.pubKeys.carol, 'ask-name', [TextPart('start')]);
+
+    const irParts = await new Promise(res => task.once('input-required', res));
+    expect(Parts.text(irParts)).toBe('Name?');
+
+    await task.send([TextPart('Alice')]);
+
+    const snap = await task.done();
+    expect(snap.state).toBe('completed');
+    expect(Parts.text(snap.parts)).toBe('hi Alice');
+
+    await m.teardown();
+  });
+
+  it('phase 12c: cancel from Alice propagates Alice → Bob → Carol', async () => {
+    const m = await buildMesh({ tunnel: true });
+    await gossipOnce(m.alice, m.pubKeys.bob);
+
+    let sawAbort = false;
+    m.carol.register('long-runner', async ({ signal }) => {
+      await new Promise((_, reject) => {
+        const id = setInterval(() => {
+          if (signal?.aborted) {
+            sawAbort = true;
+            clearInterval(id);
+            reject(new Error('aborted'));
+          }
+        }, 20);
+        signal?.addEventListener?.('abort', () => {
+          sawAbort = true;
+          clearInterval(id);
+          reject(new Error('aborted'));
+        });
+      });
+    });
+
+    const task = m.alice.callWithHop(m.pubKeys.carol, 'long-runner', []);
+    await new Promise(r => setTimeout(r, 60));   // let the RQ reach Carol
+    await task.cancel();
+    await new Promise(r => setTimeout(r, 120));  // allow Alice → Bob → Carol
+
+    expect(sawAbort).toBe(true);
+    expect(task.state).toBe('cancelled');
+
+    await m.teardown();
+  });
+
+  it('phase 12d: bridge without tunnel capability → callWithHop falls back to one-shot relay-forward', async () => {
+    // tunnel: false — Bob does NOT advertise tunnel; callWithHop should
+    // pick the one-shot path transparently.
+    const m = await buildMesh();   // no tunnel flag
+    await gossipOnce(m.alice, m.pubKeys.bob);
+
+    m.carol.register('echo', async ({ parts }) => [TextPart(`echo:${Parts.text(parts)}`)]);
+
+    const task = m.alice.callWithHop(m.pubKeys.carol, 'echo', [TextPart('hi')]);
+    const snap = await task.done();
+
+    expect(snap.state).toBe('completed');
+    expect(Parts.text(snap.parts)).toBe('echo:hi');
+
+    // No tunnel session row was ever created on Bob — confirms the
+    // one-shot relay-forward path was taken.
+    expect(m.bob._tunnelSessions?.size ?? 0).toBe(0);
 
     await m.teardown();
   });
