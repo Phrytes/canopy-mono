@@ -108,6 +108,14 @@ ul.peer-list li.no-tunnel{color:var(--yellow)}
       <select id="target-sel"></select>
     </div>
   </div>
+  <div style="margin-top:10px">
+    <button id="gossip-btn" class="secondary">Gossip peers via direct bridges</button>
+    <span style="color:var(--dim);font-size:11px">
+      Pulls each direct peer's own peer list → adds their peers as hops:1.
+      Click after bridges come online so the browser can see devices it
+      can only reach through a hop (laptop → Wi-Fi → Phone A → BT → Phone B).
+    </span>
+  </div>
 </section>
 
 <!-- ── Tests ────────────────────────────────────────────────────────────── -->
@@ -132,7 +140,7 @@ import {
 } from '@canopy/core';
 
 let agent     = null;
-const peers   = new Map();         // pubKey → { label, capabilities }
+const peers   = new Map();         // pubKey → { label, capabilities, hops, via }
 const logEl   = document.getElementById('log');
 
 // ── Util ───────────────────────────────────────────────────────────────────
@@ -156,26 +164,45 @@ function renderPeers() {
   brSel.innerHTML  = '<option value="">— pick a bridge —</option>';
   tgSel.innerHTML  = '<option value="">— pick a target —</option>';
   let n = 0;
-  for (const [pk, p] of peers) {
-    if (pk === agent?.pubKey) continue;
+  // Sort: direct tunnel-capable first, then direct others, then indirect.
+  const sorted = [...peers.entries()]
+    .filter(([pk]) => pk !== agent?.pubKey)
+    .sort(([, a], [, b]) => {
+      const sa = (a.hops ?? 0) + (a.capabilities?.tunnel ? 0 : 0.5);
+      const sb = (b.hops ?? 0) + (b.capabilities?.tunnel ? 0 : 0.5);
+      return sa - sb;
+    });
+
+  for (const [pk, p] of sorted) {
     n++;
+    const hops      = p.hops ?? 0;
     const hasTunnel = !!p.capabilities?.tunnel;
+    const capState  =
+      p.capabilities === undefined ? 'capabilities: ?' :
+      hasTunnel                    ? 'tunnel ✓'        :
+                                     'tunnel ✗';
+    const hopTag = hops === 0 ? 'direct'
+                              : `indirect · via ${shortPk(p.via)}`;
+
     const li = document.createElement('li');
-    li.className = hasTunnel ? 'tunnel' : 'no-tunnel';
-    li.textContent = (p.label ? p.label + '  ' : '') + shortPk(pk)
-      + (hasTunnel ? '  · tunnel' : '  · no-tunnel');
+    li.className = hops === 0 ? (hasTunnel ? 'tunnel' : 'no-tunnel') : 'no-tunnel';
+    li.textContent =
+      (p.label ? p.label + '  ' : '') + shortPk(pk)
+      + '  — ' + hopTag + '  · ' + capState;
     listEl.appendChild(li);
 
-    const opB = document.createElement('option');
-    opB.value = pk;
-    opB.textContent = (hasTunnel ? '🟢 ' : '⚠️ ') + shortPk(pk)
-      + (p.label ? ` (${p.label})` : '');
-    opB.disabled = !hasTunnel;
-    brSel.appendChild(opB);
-
+    // Bridge dropdown: only direct tunnel-capable peers.
+    if (hops === 0 && hasTunnel) {
+      const opB = document.createElement('option');
+      opB.value = pk;
+      opB.textContent = '🟢 ' + shortPk(pk) + (p.label ? ` (${p.label})` : '');
+      brSel.appendChild(opB);
+    }
+    // Target dropdown: every peer (direct or indirect).
     const opT = document.createElement('option');
     opT.value = pk;
-    opT.textContent = shortPk(pk) + (p.label ? ` (${p.label})` : '');
+    opT.textContent =
+      (hops === 0 ? '⬤ ' : `→${hops} `) + shortPk(pk) + (p.label ? ` (${p.label})` : '');
     tgSel.appendChild(opT);
   }
   if (prevB && [...brSel.options].some(o => o.value === prevB)) brSel.value = prevB;
@@ -189,15 +216,78 @@ async function probeCapabilities(pk) {
     const data = Parts.data(caps);
     const record = await agent.peers.get(pk) ?? { pubKey: pk };
     record.capabilities = data;
-    record.hops      = 0;
+    record.hops      = record.hops ?? 0;
     record.reachable = true;
     await agent.peers.upsert(record);
     const local = peers.get(pk) ?? { label: null };
     local.capabilities = data;
+    local.hops         = record.hops;
+    local.via          = record.via;
     peers.set(pk, local);
+    log(`probed ${shortPk(pk)}: tunnel=${!!data?.tunnel}`, 'info');
   } catch (e) {
-    log(`probeCapabilities ${shortPk(pk)} failed: ${e.message}`, 'err');
+    // Non-fatal: peer stays in the list as "capabilities: ?" and the
+    // bridge dropdown excludes it.  Could be offline, old build, or a
+    // chatty peer-graph (typical with many stale peers).
+    const local = peers.get(pk) ?? { label: null };
+    local.capabilities = null;
+    peers.set(pk, local);
+    log(`probe ${shortPk(pk)}: ${e.message}`, 'err');
   }
+}
+
+// ── Gossip: learn about indirect peers through a direct bridge ────────────
+async function gossipViaPeer(bridgePk) {
+  try {
+    const parts = await agent.invoke(bridgePk, 'peer-list', [], { timeout: 5_000 });
+    const data  = Parts.data(parts);
+    if (!Array.isArray(data?.peers)) { log(`gossip ${shortPk(bridgePk)}: no peers`, 'info'); return 0; }
+    let added = 0;
+    for (const card of data.peers) {
+      if (!card?.pubKey)                 continue;
+      if (card.pubKey === agent.pubKey)  continue;
+      if (card.pubKey === bridgePk)      continue;
+      // Only upsert as indirect if we don't already have a direct path.
+      const existing = await agent.peers.get(card.pubKey);
+      if (existing && (existing.hops ?? 0) === 0) continue;
+      await agent.peers.upsert({
+        type:          'native',
+        pubKey:        card.pubKey,
+        label:         card.label ?? null,
+        reachable:     true,
+        hops:          1,
+        via:           bridgePk,
+        discoveredVia: 'gossip',
+      });
+      const local = peers.get(card.pubKey) ?? {};
+      local.label = card.label ?? local.label ?? null;
+      local.hops  = 1;
+      local.via   = bridgePk;
+      peers.set(card.pubKey, local);
+      added++;
+    }
+    log(`gossip ${shortPk(bridgePk)}: +${added} indirect peer(s)`, 'info');
+    // Fire off capability probes for newly-added peers (tunnel target
+    // doesn't need tunnel itself, but we show the badge either way).
+    for (const [pk, p] of peers) {
+      if (p.hops > 0 && p.capabilities === undefined) {
+        probeCapabilities(pk).catch(() => {});
+      }
+    }
+    return added;
+  } catch (e) {
+    log(`gossip ${shortPk(bridgePk)} failed: ${e.message}`, 'err');
+    return 0;
+  }
+}
+
+async function gossipAll() {
+  const directs = [...peers.entries()]
+    .filter(([pk, p]) => pk !== agent?.pubKey && (p.hops ?? 0) === 0)
+    .map(([pk]) => pk);
+  log(`gossip: asking ${directs.length} direct peer(s)…`, 'meta');
+  await Promise.all(directs.map(pk => gossipViaPeer(pk)));
+  renderPeers();
 }
 
 // ── Connect ───────────────────────────────────────────────────────────────
@@ -253,14 +343,18 @@ function getSelection() {
 }
 
 async function ensureIndirectRoute(bridge, target) {
-  // Mark target as indirect through the chosen bridge so callWithHop
-  // skips the direct relay path and takes the tunnel.
+  // Make sure the target is seen as indirect-via-bridge, so callWithHop
+  // takes the tunnel path instead of whatever direct route the relay
+  // peer-list advertised.  If gossip already populated target as
+  // hops:1 via <bridge>, this is a no-op; otherwise we force-set it.
   const rec = await agent.peers.get(target) ?? { pubKey: target };
-  rec.hops = 1;
-  rec.via  = bridge;
-  rec.reachable = true;
-  await agent.peers.upsert(rec);
-  log(`routed: target=${shortPk(target)} via bridge=${shortPk(bridge)}`, 'info');
+  if ((rec.hops ?? 0) !== 1 || rec.via !== bridge) {
+    rec.hops = 1;
+    rec.via  = bridge;
+    rec.reachable = true;
+    await agent.peers.upsert(rec);
+    log(`routed target=${shortPk(target)} as hops:1 via ${shortPk(bridge)}`, 'info');
+  }
 }
 
 async function runStream({ sealed }) {
@@ -335,6 +429,7 @@ document.getElementById('stream-sealed').onclick  = () => runStream({ sealed: tr
 document.getElementById('ir-plain').onclick       = () => runIR();
 document.getElementById('cancel-test').onclick    = () => runCancel();
 document.getElementById('clear-log').onclick      = () => { logEl.innerHTML = ''; };
+document.getElementById('gossip-btn').onclick     = () => gossipAll();
 
 // Pre-fill relay URL based on host
 const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
