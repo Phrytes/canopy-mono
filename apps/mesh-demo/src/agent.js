@@ -10,7 +10,11 @@
  *
  * See EXTRACTION-PLAN.md §7 Group U for the full rewrite rationale.
  */
-import { DataPart, Parts, registerCapabilitiesSkill } from '@canopy/core';
+import {
+  DataPart, TextPart, Parts,
+  registerCapabilitiesSkill,
+  registerTunnelReceiveSealed,
+} from '@canopy/core';
 import {
   createMeshAgent,
   KeychainVault,
@@ -51,9 +55,13 @@ export async function createAgent({ relayUrl } = {}) {
   // Capabilities skill (Group AA3) — peers can poll our current feature flags.
   // Sealed-forward (Group BB) — messages in the "mesh" group travel blind
   // through any relay bridge, so the bridge cannot read the payload.
+  // Tunnel (Group CC) — this phone can act as a bridge for other peers'
+  // streaming / IR / cancel calls AND can be the target of sealed tunnels.
   agent.enableReachabilityOracle();
   registerCapabilitiesSkill(agent);
   agent.enableSealedForwardFor('mesh');
+  agent.enableTunnelForward({ policy: 'authenticated' });
+  registerTunnelReceiveSealed(agent);
 
   // ── App-specific skills ────────────────────────────────────────────────────
   // receive-message pipes a text part into the message store, attributed
@@ -72,6 +80,20 @@ export async function createAgent({ relayUrl } = {}) {
     });
     return [DataPart({ ack: true })];
   }, { visibility: 'public', description: 'Receive a text message' });
+
+  // A tiny streaming test skill for exercising Group CC tunnels from a
+  // laptop browser tab (or another phone).  Yields `count` chunks, each
+  // with the phrase + index.  Remove once streaming is wired into real UI.
+  agent.register('stream-demo', async function* ({ parts }) {
+    const d     = Parts.data(parts) ?? {};
+    const text  = typeof d.text  === 'string' ? d.text  : 'hello from phone';
+    const count = Number.isFinite(d.count)    ? d.count : 3;
+    for (let i = 1; i <= count; i++) {
+      yield [TextPart(`${text} [${i}/${count}]`)];
+      // Small gap so the caller actually sees chunks arriving over time.
+      await new Promise(r => setTimeout(r, 250));
+    }
+  }, { visibility: 'public', description: 'Stream a short demo message (CC test skill)' });
 
   return agent;
 }

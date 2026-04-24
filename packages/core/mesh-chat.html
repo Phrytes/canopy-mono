@@ -168,6 +168,7 @@ import {
   Agent, AgentIdentity, VaultMemory,
   RelayTransport, RoutingStrategy, PeerGraph,
   DataPart, Parts,
+  registerTunnelReceiveSealed,
 } from '@canopy/core';
 
 // ── State ──────────────────────────────────────────────────────────────────────
@@ -216,6 +217,15 @@ async function start() {
   });
 
   agent = new Agent({ identity, transport: relay, peers: peerGraph, routing });
+  // Expose for browser devtools testing — run e.g.:
+  //   const t = agent.callWithHop('<target-pubkey>', 'stream-demo', []);
+  //   for await (const c of t.stream()) console.log('chunk:', c);
+  //   await t.done();
+  window.agent = agent;
+
+  // Accept sealed tunnels (CC3b) so the browser can be the target of a
+  // sealed streaming call from a phone.
+  registerTunnelReceiveSealed(agent);
 
   agent.register('receive-message', async ({ parts, originFrom, from }) => {
     const text   = Parts.text(parts) ?? JSON.stringify(Parts.data(parts));
