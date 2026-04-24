@@ -149,8 +149,13 @@ export async function createMeshAgent(opts = {}) {
       if (typeof peerId === 'string' && peerId.includes(':')) {
         return { transport: ble };                    // BLE MAC → initial hello
       }
-      if (ble?._hasPeer?.(peerId))  return { transport: ble };
+      // Priority order, most reliable first.  mDNS is plain TCP — much
+      // more robust than Android BLE's GATT (which is prone to stale
+      // handle caches on device restart, CCCD deadlocks, etc.).  BLE is
+      // kept as a direct-path fallback for the no-Wi-Fi case; relay
+      // closes the loop when neither direct transport has the peer.
       if (mdns?._hasPeer?.(peerId)) return { transport: mdns };
+      if (ble?._hasPeer?.(peerId))  return { transport: ble };
       if (relay)                    return { transport: relay };
       return { transport: offline };                   // fails cleanly
     },
