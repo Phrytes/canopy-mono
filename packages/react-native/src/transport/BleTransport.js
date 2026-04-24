@@ -279,10 +279,15 @@ export class BleTransport extends Transport {
         }
       } catch (err) {
         // Stale characteristic / disconnected device — drop the entry so we
-        // don't keep failing on queued writes.
-        if (/characteristic|not connected|disconnected/i.test(err?.message ?? '')) {
+        // don't keep failing on queued writes.  We also explicitly
+        // cancelConnection so Android tears down the stale BluetoothGatt
+        // context; merely deleting our map entry leaves the underlying
+        // connection alive and the next scan would reuse the same
+        // corrupted handle cache ("Characteristic 11 not found" → again).
+        if (/characteristic|not connected|disconnected|not found/i.test(err?.message ?? '')) {
           this.#centralPeers.delete(to);
           this.#writeQueues.delete(to);
+          central.device?.cancelConnection?.().catch(() => {});
           if (central.pubKey) this.emit('peer-disconnected', central.pubKey);
         }
         throw err;
