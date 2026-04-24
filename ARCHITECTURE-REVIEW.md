@@ -611,7 +611,10 @@ In descending bang-for-buck:
 3. ~~Wire `RoutingStrategy` + `FallbackTable` into `createMeshAgent`~~ —
    **shipped 2026-04-24** as Group EE.  Fixed the `send of null`
    cascade.
-4. **Split `callWithHop.js`** into the four functions listed in 2.2.
+4. ~~Split `callWithHop.js`~~ — **shipped 2026-04-25**.  542 LoC →
+   290 LoC orchestrator + three focused modules: `hopBridges.js`
+   (bridge selection), `hopTunnel.js` (open + sealed tunnels),
+   `hopOneShot.js` (relay-forward fallback).
 5. **Put a visible warning in the relay README** about no-auth /
    private-network-only. Takes five minutes; removes a footgun.
 

@@ -104,7 +104,7 @@ Layered features built on top of the extracted core.
 | **AA3** | `get-capabilities` skill (sub-phase of AA) | — | `src/skills/capabilities.js` |
 | **BB** | Blind / sealed relay-forward (content privacy from bridges) | `Design-v3/blind-forward.md` | `src/security/sealedForward.js`, `src/skills/relayReceiveSealed.js`, `src/Agent.js` (`enableSealedForwardFor`) |
 | **BB5** | mesh-scenario phase 11 — sealed-forward integration test | — | `packages/core/test/integration/mesh-scenario.test.js` (phase 11) |
-| **CC** | Hop-aware task tunnel (bidirectional streaming via bridge) | `Design-v3/hop-tunnel.md` | `src/routing/callWithHop.js`, `src/skills/tunnelOpen.js`, `src/skills/tunnelOw.js`, `src/skills/tunnelReceiveSealed.js`, `src/skills/tunnelSessions.js`, `src/security/tunnelSeal.js`, `src/Agent.js` (`enableTunnelForward`) |
+| **CC** | Hop-aware task tunnel (bidirectional streaming via bridge) | `Design-v3/hop-tunnel.md` | `src/routing/callWithHop.js` (orchestrator), `src/routing/hopBridges.js` (selection), `src/routing/hopTunnel.js` (open + sealed), `src/routing/hopOneShot.js` (fallback), `src/skills/tunnelOpen.js`, `src/skills/tunnelOw.js`, `src/skills/tunnelReceiveSealed.js`, `src/skills/tunnelSessions.js`, `src/security/tunnelSeal.js`, `src/Agent.js` (`enableTunnelForward`) |
 | **DD** | Phone app integration (mesh-demo wires T/AA/BB/CC) | `CODING-PLAN.md` § Group DD | `apps/mesh-demo/src/agent.js`, `apps/mesh-demo/src/context/AgentContext.js`, `packages/react-native/src/createMeshAgent.js` (rendezvous opt) |
 
 ### Operational hardening (EE–FF+1)
