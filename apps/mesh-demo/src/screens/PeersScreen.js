@@ -22,6 +22,7 @@ import { useAgent }           from '../context/AgentContext';
 import { TouchableOpacity as TO } from 'react-native';
 import { usePeers }           from '../hooks/usePeers';
 import { useRendezvousState } from '../hooks/useRendezvousState';
+import { useActivity }        from '../hooks/useActivity';
 
 const TRANSPORT_ICON = {
   default:    '📡',
@@ -38,6 +39,7 @@ export function PeersScreen({ navigation }) {
   const { agent, status, error, relayUrl, reset, forgetPeers } = useAgent();
   const peers       = usePeers();
   const rdvPeers    = useRendezvousState();
+  const activity    = useActivity();
 
   const openPeer = useCallback((peer) => {
     navigation.navigate('Message', {
@@ -107,6 +109,8 @@ export function PeersScreen({ navigation }) {
         </View>
       </View>
 
+      {activity.length > 0 && <ActivityPanel entries={activity} />}
+
       <SectionList
         sections={sections}
         keyExtractor={item => item.pubKey}
@@ -169,6 +173,35 @@ function PeerRow({ peer, rendezvous, onPress }) {
   );
 }
 
+// ── ActivityPanel ─────────────────────────────────────────────────────────────
+
+function ActivityPanel({ entries }) {
+  // Show newest first, oldest last.  Cap to 5 rows visually so it doesn't
+  // push peers off-screen.
+  const shown = [...entries].slice(-5).reverse();
+  return (
+    <View style={s.activity}>
+      <Text style={s.sectionHeader}>Activity</Text>
+      {shown.map(e => (
+        <View key={e.id} style={s.actRow}>
+          <Text style={s.actKind} numberOfLines={1}>{KIND_ICON[e.kind] ?? '•'}</Text>
+          <Text style={s.actLabel} numberOfLines={1}>{e.label}</Text>
+          {e.caller && <Text style={s.actMeta} numberOfLines={1}>from {e.caller}</Text>}
+          {e.detail && <Text style={s.actDetail} numberOfLines={1}>{e.detail}</Text>}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const KIND_ICON = {
+  'skill-call':    '⚡',
+  'stream-chunk':  '▶',
+  'stream-end':    '■',
+  'ir-prompt':     '❓',
+  'ir-reply':      '↩',
+};
+
 function HopBadge({ hops, reachable }) {
   if (!reachable) {
     return <Text style={[s.badge, s.badgeOffline]}>offline</Text>;
@@ -210,6 +243,13 @@ const s = StyleSheet.create({
 
   list:          { padding: 12, paddingTop: 4, gap: 6 },
   sectionHeader: { fontSize: 10, color: '#6b7094', letterSpacing: 1, textTransform: 'uppercase', paddingTop: 14, paddingBottom: 6, paddingHorizontal: 2 },
+
+  activity:      { paddingHorizontal: 14, paddingTop: 6, borderBottomWidth: 1, borderBottomColor: '#2d3048', backgroundColor: '#141720' },
+  actRow:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 3, gap: 8 },
+  actKind:       { color: '#5b6af9', fontSize: 12, width: 18 },
+  actLabel:      { color: '#d4d8f0', fontSize: 12, fontWeight: '600' },
+  actMeta:       { color: '#6b7094', fontSize: 11, fontFamily: 'monospace' },
+  actDetail:     { color: '#e0b860', fontSize: 11, flex: 1 },
 
   row:           { backgroundColor: '#1a1d27', borderWidth: 1, borderColor: '#2d3048', borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center' },
   rowDim:        { opacity: 0.45 },

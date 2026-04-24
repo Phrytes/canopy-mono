@@ -404,14 +404,32 @@ async function runIR() {
   const sel = getSelection(); if (!sel) return;
   await ensureIndirectRoute(sel.bridge, sel.target);
 
-  // ask-name doesn't exist as a default phone skill; we use stream-demo
-  // in a minimal IR-ish test by interrupting it.  To truly test IR we'd
-  // need an IR-capable skill registered on the target — left as a noop
-  // for now with a friendly message.
-  log('ir: no IR-capable skill registered on the target phone — skipping.',
-      'meta');
-  log('ir: to enable, add a skill that throws Task.InputRequired on start.',
-      'info');
+  // Phone registers an `ask-name` skill that throws InputRequired once,
+  // then returns a greeting when the caller replies with a name.
+  log('[ir] calling ask-name — expect an input-required prompt', 'meta');
+  try {
+    const task = agent.callWithHop(sel.target, 'ask-name', [TextPart('start')],
+                                   { timeout: 15000 });
+
+    const prompt = await new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('no IR prompt within 8s')), 8_000);
+      task.once('input-required', (parts) => { clearTimeout(t); resolve(parts); });
+    });
+    log(`[ir] prompt from phone: "${Parts.text(prompt)}"`, 'chunk');
+
+    const reply = `test-user-${Date.now().toString().slice(-4)}`;
+    log(`[ir] replying with: "${reply}"`, 'meta');
+    await task.send([TextPart(reply)]);
+
+    const snap = await task.done();
+    if (snap.state === 'completed') {
+      log(`[ir] got: "${Parts.text(snap.parts)}"`, 'ok');
+    } else {
+      log(`[ir] done — ${snap.state} ${snap.error ? `(${snap.error})` : ''}`, 'err');
+    }
+  } catch (e) {
+    log(`[ir] failed: ${e.message}`, 'err');
+  }
 }
 
 async function runCancel() {
