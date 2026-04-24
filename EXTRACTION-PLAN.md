@@ -548,6 +548,18 @@ existing machinery into production; no new algorithms, pure plumbing.
 
 See `CODING-PLAN.md § Group EE` for the sub-phase breakdown.
 
+### Group FF — Key rotation end-to-end integration (depends: none; FF can ship independent of EE)
+
+`identity/KeyRotation.js` has `buildProof`, `verify`, `broadcast`, and
+`applyToRegistry` implemented, with 14 unit tests passing. What is
+missing: a receive-path handler, an `agent.rotateIdentity()`
+entry-point, `SecurityLayer` grace-period semantics (accept old OR
+new signature during grace), and vault dual-key storage. Group FF
+closes those four gaps so that identities are actually rotatable — a
+prerequisite for any long-lived deployment.
+
+See `CODING-PLAN.md § Group FF` for the sub-phase breakdown.
+
 ---
 
 ## Open items (not blocking extraction)

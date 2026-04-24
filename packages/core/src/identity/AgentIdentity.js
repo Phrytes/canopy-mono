@@ -37,7 +37,7 @@ export class AgentIdentity {
   /** Generate a new keypair, persist the seed to the vault. */
   static async generate(vault) {
     const seed = nacl.randomBytes(32);
-    await vault.set('agent-privkey', b64encode(seed));
+    await vault.set('agent-privkey', _writeEntry(seed, null));
     return new AgentIdentity({ seed, vault });
   }
 
@@ -45,7 +45,37 @@ export class AgentIdentity {
   static async restore(vault) {
     const raw = await vault.get('agent-privkey');
     if (!raw) throw new Error('No agent key found in vault');
-    return new AgentIdentity({ seed: b64decode(raw), vault });
+    const parsed = _parseEntry(raw);
+    return new AgentIdentity({ seed: b64decode(parsed.current), vault });
+  }
+
+  /**
+   * Group FF — restore the current identity AND (if available + still in
+   * grace) the previous identity from before the most recent rotation.
+   * Callers that support grace-period decryption (e.g. SecurityLayer)
+   * use `previous` to keep decrypting envelopes addressed to our old
+   * pubkey until graceUntil expires.
+   *
+   * @param {import('./Vault.js').Vault} vault
+   * @returns {Promise<{ current: AgentIdentity, previous: { identity: AgentIdentity, graceUntil: number } | null }>}
+   */
+  static async restoreWithPrevious(vault) {
+    const raw = await vault.get('agent-privkey');
+    if (!raw) throw new Error('No agent key found in vault');
+    const parsed  = _parseEntry(raw);
+    const current = new AgentIdentity({ seed: b64decode(parsed.current), vault });
+    let previous  = null;
+    if (parsed.previous?.seed
+        && typeof parsed.previous.graceUntil === 'number'
+        && parsed.previous.graceUntil > Date.now()) {
+      // Previous identity is NOT given the vault (we don't want it to
+      // overwrite the current-identity blob via any future writes).
+      previous = {
+        identity:   new AgentIdentity({ seed: b64decode(parsed.previous.seed), vault: null }),
+        graceUntil: parsed.previous.graceUntil,
+      };
+    }
+    return { current, previous };
   }
 
   /**
@@ -54,8 +84,47 @@ export class AgentIdentity {
    */
   static async fromMnemonic(mnemonic, vault) {
     const seed = mnemonicToSeed(mnemonic);
-    await vault.set('agent-privkey', b64encode(seed));
+    await vault.set('agent-privkey', _writeEntry(seed, null));
     return new AgentIdentity({ seed, vault });
+  }
+
+  /**
+   * Group FF — rotate the agent's Ed25519 keypair.
+   * Generates a fresh seed, persists a `{ current, previous: { seed,
+   * pubkey, graceUntil } }` blob to the vault, and returns both
+   * identities.  The caller (Agent.rotateIdentity) is responsible for:
+   *   • building + broadcasting the KeyRotationProof signed by `old`
+   *   • registering `old` with SecurityLayer for grace-period decryption
+   *   • swapping agent.identity to `new`
+   *
+   * @param {import('./Vault.js').Vault} vault
+   * @param {object} [opts]
+   * @param {number} [opts.gracePeriodSeconds=604800]  — 7 days default
+   * @returns {Promise<{ oldIdentity: AgentIdentity, newIdentity: AgentIdentity, graceUntil: number }>}
+   */
+  static async rotate(vault, { gracePeriodSeconds = 604_800 } = {}) {
+    const raw = await vault.get('agent-privkey');
+    if (!raw) throw new Error('No agent key found in vault');
+    const parsed = _parseEntry(raw);
+
+    const oldSeed     = b64decode(parsed.current);
+    const oldIdentity = new AgentIdentity({ seed: oldSeed, vault });
+
+    const newSeed     = nacl.randomBytes(32);
+    const graceUntil  = Date.now() + gracePeriodSeconds * 1_000;
+
+    const blob = {
+      current: b64encode(newSeed),
+      previous: {
+        seed:       b64encode(oldSeed),
+        pubkey:     oldIdentity.pubKey,
+        graceUntil,
+      },
+    };
+    await vault.set('agent-privkey', JSON.stringify(blob));
+
+    const newIdentity = new AgentIdentity({ seed: newSeed, vault });
+    return { oldIdentity, newIdentity, graceUntil };
   }
 
   // ── Identity ───────────────────────────────────────────────────────────────
@@ -64,6 +133,13 @@ export class AgentIdentity {
   get pubKey() {
     return b64encode(this.#signKP.publicKey);
   }
+
+  /**
+   * The underlying Vault instance (may be null for "detached" identities
+   * such as the previous-identity handed back by restoreWithPrevious —
+   * those intentionally can't write back to the vault).
+   */
+  get vault() { return this.#vault; }
 
   /** Ed25519 public key as raw Uint8Array. */
   get pubKeyBytes() {
@@ -77,9 +153,11 @@ export class AgentIdentity {
 
   /** Return the BIP39 mnemonic for the current seed (reads from vault). */
   async getMnemonic() {
+    if (!this.#vault) return null;
     const raw = await this.#vault.get('agent-privkey');
     if (!raw) return null;
-    return seedToMnemonic(b64decode(raw));
+    const parsed = _parseEntry(raw);
+    return seedToMnemonic(b64decode(parsed.current));
   }
 
   // ── Signing ────────────────────────────────────────────────────────────────
@@ -176,4 +254,38 @@ export class AgentIdentity {
   static secretunbox(ciphertext, nonce, sessionKey) {
     return nacl.secretbox.open(ciphertext, nonce, sessionKey);
   }
+}
+
+// ── Vault envelope helpers (Group FF) ────────────────────────────────────────
+//
+// Old format (legacy, pre-rotation): the vault stored a bare base64url seed
+// ("42-ish chars") under 'agent-privkey'.
+// New format: a JSON blob with a `current` seed (b64) and optional
+// `previous: { seed, pubkey, graceUntil }` for the last rotated-from
+// identity.  Legacy values read fine — they get parsed as current-only,
+// and any subsequent generate/rotate upgrades the blob in place.
+
+function _parseEntry(raw) {
+  if (typeof raw !== 'string' || raw.length === 0) return { current: '', previous: null };
+  // Try JSON first.
+  if (raw[0] === '{') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.current === 'string') {
+        return {
+          current:  parsed.current,
+          previous: parsed.previous ?? null,
+        };
+      }
+    } catch { /* fall through to legacy */ }
+  }
+  // Legacy bare-b64 seed.
+  return { current: raw, previous: null };
+}
+
+function _writeEntry(seed, previous) {
+  return JSON.stringify({
+    current:  typeof seed === 'string' ? seed : b64encode(seed),
+    previous: previous ?? null,
+  });
 }

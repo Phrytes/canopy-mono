@@ -1363,6 +1363,9 @@ change to the app. If DD1/DD2 introduce regressions, `git revert` the
 implementation commits and fall back to the last-known-good app at
 `c4f40a7` (`Group BB5: mesh-scenario phase 11 + mesh-demo phase 11 +
 docs`).
+
+---
+
 ## Group EE — Wire RoutingStrategy + FallbackTable into production
 
 **Ref:** `ARCHITECTURE-REVIEW.md` §2.4 (dead-looking code) and §6 (top-5
@@ -1436,3 +1439,162 @@ Run full core + react-native test suites; no regressions accepted.
 
 ---
 
+## Group FF — Key rotation integration (end-to-end)
+
+**Ref:** `ARCHITECTURE-REVIEW.md` §3.2 (no key rotation). `KeyRotation.js`
+has build/verify/broadcast/applyToRegistry but there is no:
+  - receive-side handler (inbound `key-rotation` OW envelopes silently fall through),
+  - `agent.rotateIdentity()` entry-point,
+  - SecurityLayer grace-period accept-old-or-new behaviour,
+  - vault-level dual-key storage.
+
+**Dependencies:** Group EE is not required but lands first anyway.
+**Motivation:** identities currently last the lifetime of the vault.
+If a device is lost/compromised, peers have no in-band way to learn
+the new key. Required before the SDK can be used for anything beyond
+throwaway demos.
+
+### Outcome
+
+`agent.rotateIdentity({ gracePeriodSeconds })` generates a new Ed25519
+keypair, broadcasts a signed proof to all reachable peers, and
+switches the agent to the new key. For the grace window, inbound
+messages signed by *either* the old or new key decrypt; outbound uses
+the new key only. Peers that receive the proof update their
+`PeerGraph` + `TrustRegistry` so routes previously keyed on the old
+pubkey now resolve to the new one.
+
+### Sub-phases
+
+#### FF1 — Receive-path handler
+
+- Register a protocol handler (not an app skill — a core protocol
+  hook) that inspects OW envelopes with `payload.type ===
+  'key-rotation'`.
+- On valid proof + within grace: update `PeerGraph` (copy record from
+  `oldPub` → `newPub`, mark old as `rotatedTo: newPub`); call
+  `KeyRotation.applyToRegistry(proof, trustRegistry)` if a registry
+  is wired; emit `'peer-rotated'` event.
+- On invalid proof: ignore silently (don't log at error — noisy
+  channel), but do emit a debug event for test visibility.
+
+Files:
+- new: `packages/core/src/protocol/keyRotation.js` (handler + registrar).
+- modify: `packages/core/src/Agent.js` — call `registerKeyRotationReceiver(agent)` from `start()` so it's always on (unlike `enableXxx` opt-ins — rotation is safety-critical).
+
+Tests: `packages/core/test/protocol/keyRotation.receive.test.js` —
+valid proof updates PeerGraph; forged proof ignored; proof beyond
+grace ignored.
+
+#### FF2 — Vault dual-key support
+
+- Extend `KeychainVault` (RN) + `VaultNodeFs`/`VaultMemory` so the
+  stored identity is a JSON blob `{ current, previous, graceUntil }`
+  instead of raw `privkey64`.
+- Back-compat: if the stored value is a bare privkey (legacy), treat
+  it as `{ current: <that>, previous: null, graceUntil: null }` on
+  first load.
+- New method: `vault.saveRotated({ current, previous, graceUntil })`
+  atomic write.
+- Expose `vault.getPrevious()` returning `{ privkey, pubkey, graceUntil }` or null.
+
+Tests: dual-key roundtrip, legacy-format read, grace-period load.
+
+#### FF3 — `agent.rotateIdentity` + grace period
+
+- New method on `Agent`:
+
+  ```js
+  await agent.rotateIdentity({
+    gracePeriodSeconds = 604_800,  // 7 days
+    broadcast          = true,
+  }) → { oldPubKey, newPubKey, proof }
+  ```
+
+  Steps: generate new keypair; `vault.saveRotated(...)`; build proof
+  via old; if `broadcast` → `KeyRotation.broadcast(proof, agent, peerGraph)`;
+  swap `agent.identity`; tell `SecurityLayer` to accept old+new until
+  graceUntil; persist grace state via AsyncStorage / vault so restarts
+  during grace don't stall.
+
+- `SecurityLayer` change: internally track `#selfKeyHistory` = Map<pubkey,graceUntil>.
+  On sign, use current only. On outbound envelope's `_from`, current only.
+  Inbound envelopes where the outer signature is by a pubkey in
+  `#selfKeyHistory` with grace not expired → accept and verify using that key's
+  verify material.
+
+Tests: rotate → verify old signatures still decrypt during grace →
+advance time past grace → verify old rejected.
+
+#### FF4 — End-to-end test
+
+`packages/core/test/keyRotation.e2e.test.js`:
+- Alice (agent) + Bob (agent) on LocalTransport pair.
+- Alice rotates.
+- Bob receives proof, PeerGraph updates to newPub.
+- Alice sends message signed by *new* key — Bob decrypts.
+- During grace, Alice forges an outbound-as-old-key via raw
+  SecurityLayer access — Bob still decrypts (grace window).
+- Advance time past grace — old-key message rejected.
+
+### DoD
+
+- `agent.rotateIdentity()` works end-to-end on LocalTransport.
+- Receive handler registered by default in `Agent.start()`.
+- Vault dual-key storage in both `KeychainVault` and `VaultMemory`;
+  legacy format loads without migration error.
+- Grace state survives an app restart (persisted).
+- All existing KeyRotation unit tests still pass + new FF1/FF3/FF4
+  tests green.
+- Manual: mesh-demo `Reset identity` button becomes `Rotate identity`
+  (optional UI; can defer to follow-up).
+
+---
+
+## Group FF+1 — Inline rotation proof during grace  ✅ shipped 2026-04-24
+
+**Motivation:** FF's broadcast is best-effort OW.  A peer that is
+offline at the moment Alice rotates misses the broadcast entirely and
+thereafter drops every envelope signed by Alice's new key (signature
+verification fails because the peer still has her old key registered).
+The only recovery path without FF+1 was a full re-hello — which
+doesn't happen for stable already-known peers.
+
+**Solution:** during Alice's grace window, SecurityLayer attaches the
+signed rotation proof as a top-level envelope field `_rotationProof`
+on every outbound encrypted envelope.  Receiver's SecurityLayer
+detects the field, verifies it against the sender's currently-known
+(old) pubkey, migrates its peers-map *before* signature verification,
+and then the signature (made with the new key) verifies cleanly.
+Agent._dispatch mirrors the migration into PeerGraph + TrustRegistry
+and emits `peer-rotated { via: 'inline-proof' }`.
+
+**Files**:
+- `packages/core/src/security/SecurityLayer.js` — `#inlineProof` field,
+  `setInlineProof(proof, graceUntil)`, encrypt-side attach in grace,
+  decrypt-side detect-verify-migrate pre-signature-check, rollback on
+  bad-sig (so forged proofs don't leave a migrated peers-map behind).
+- `packages/core/src/Agent.js` — `rotateIdentity` now calls
+  `security.setInlineProof(proof, graceUntil)`.  `_dispatch` inspects
+  `envelope._rotationMigrated` (set by SecurityLayer on successful
+  inline migration), mirrors the migration into PeerGraph +
+  TrustRegistry, emits `peer-rotated`, dedupes via `#rotationInlineSeen`
+  so subsequent envelopes in the window don't re-upsert.
+- `packages/core/src/protocol/keyRotation.js` — export the
+  `migratePeerGraph` helper (same logic as handleKeyRotationOW uses)
+  so both the OW and inline paths funnel through a single function.
+
+**Tests**: `packages/core/test/keyRotation.inline-proof.test.js` (5
+tests) — auto-migrate on first post-rotation envelope, PeerGraph mirror,
+deduplication, forged-proof rejection (with rollback), proof stops
+attaching past graceUntil.
+
+**Not covered (still open)**:
+- Long-offline peers (offline for longer than graceUntil): sender stops
+  attaching the inline proof past grace, AND the receiver enforces
+  `isWithinGracePeriod` on the proof it sees, so stale proofs are
+  ignored. The long-offline peer recovers via a fresh hello (HI
+  auto-registers the peer's current payload.pubKey).
+- Relay-mediated path where the relay sees `_rotationProof` in plaintext.
+  Proof is a public claim signed by the rotating peer's old pubkey, so
+  there's no confidentiality loss.  Documented in Design-v3 TODO.
