@@ -18,6 +18,7 @@
  * Both sides can initiate simultaneously without infinite loops because
  * ack:true responses are never re-responded-to.
  */
+import { _snapshot } from '../skills/capabilities.js';
 
 /**
  * Send a hello announcement and wait until we hear back.
@@ -148,8 +149,10 @@ export async function handleHello(agent, envelope) {
  * @returns {object}
  */
 function _selfCapabilities(agent) {
-  return {
-    rendezvous: !!agent._rendezvousEnabled,
-    originSig:  true,        // always: Group Z shipped
-  };
+  // Delegate to the full capabilities snapshot so every opt-in feature
+  // flag (relay, tunnel, oracle, groups, …) travels in the HI payload.
+  // Previously this was a reduced set containing only rendezvous +
+  // originSig — which meant `tunnel:true` agents looked like
+  // `tunnel:false` to anyone who picked caps off the peer graph.
+  return _snapshot(agent);
 }
