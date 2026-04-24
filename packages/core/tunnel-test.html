@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tunnel-test — Group CC hop-aware tunnel demo</title>
+<script type="importmap">
+{
+  "imports": {
+    "tweetnacl":                      "https://esm.sh/tweetnacl@1.0.3",
+    "tweetnacl-util":                 "https://esm.sh/tweetnacl-util@0.15.1",
+    "ed2curve":                       "https://esm.sh/ed2curve@0.3.0?deps=tweetnacl@1.0.3",
+    "@scure/bip39":                   "https://esm.sh/@scure/bip39@1.4.0",
+    "@scure/bip39/wordlists/english": "https://esm.sh/@scure/bip39@1.4.0/wordlists/english",
+    "@canopy/core":                 "./src/index.js"
+  }
+}
+</script>
+<style>
+:root {
+  --bg:#0f1117; --panel:#1a1d27; --panel2:#141720;
+  --border:#2d3048; --accent:#5b6af9; --green:#4caf82;
+  --red:#e05c5c; --yellow:#e0b860; --blue:#7ba8ff;
+  --text:#d4d8f0; --dim:#6b7094;
+  --mono:'JetBrains Mono','Fira Code','SF Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;
+     font-size:13px;min-height:100dvh;padding:16px;max-width:1100px;margin:0 auto}
+h1{font-size:18px;font-weight:600;margin-bottom:4px}
+.sub{color:var(--dim);margin-bottom:20px;font-size:12px}
+section{background:var(--panel);border:1px solid var(--border);border-radius:8px;
+        padding:14px;margin-bottom:14px}
+section h2{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;
+           margin-bottom:10px;font-weight:600}
+label{display:block;font-size:11px;color:var(--dim);margin-bottom:4px}
+input,select,button{font-family:inherit;font-size:13px;background:var(--panel2);
+                    color:var(--text);border:1px solid var(--border);
+                    border-radius:6px;padding:8px 10px}
+input,select{width:100%}
+button{background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:600;
+       padding:9px 14px;margin-right:8px;margin-bottom:6px}
+button:hover{filter:brightness(1.15)}
+button:disabled{opacity:0.4;cursor:not-allowed}
+button.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row > *{flex:1 1 200px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mono{font-family:var(--mono);font-size:11px;color:var(--dim);
+      word-break:break-all}
+.pk{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:2px}
+ul.peer-list{list-style:none;max-height:180px;overflow-y:auto;
+             border:1px solid var(--border);border-radius:6px;padding:4px;
+             background:var(--panel2)}
+ul.peer-list li{padding:6px 8px;border-radius:4px;font-size:12px}
+ul.peer-list li.tunnel{color:var(--green)}
+ul.peer-list li.no-tunnel{color:var(--yellow)}
+#log{background:#0a0c12;border:1px solid var(--border);border-radius:6px;
+     padding:10px;height:320px;overflow-y:auto;font-family:var(--mono);
+     font-size:11px;white-space:pre-wrap}
+#log .chunk{color:var(--blue)}
+#log .info{color:var(--dim)}
+#log .ok{color:var(--green)}
+#log .err{color:var(--red)}
+#log .meta{color:var(--yellow)}
+.tag{display:inline-block;font-size:10px;background:var(--panel2);
+     border:1px solid var(--border);color:var(--dim);border-radius:4px;
+     padding:1px 6px;margin-left:6px;font-family:var(--mono)}
+.tag.ok{color:var(--green);border-color:var(--green)}
+</style>
+</head>
+<body>
+
+<h1>Group CC tunnel test</h1>
+<p class="sub">
+  Hop-aware streaming / input-required / cancel test harness.  Point Alice
+  (this tab) at a bridge peer and a target peer; each test opens a tunnel
+  through the bridge and exercises one capability.
+</p>
+
+<!-- ── Setup ─────────────────────────────────────────────────────────────── -->
+<section id="setup-section">
+  <h2>Setup</h2>
+  <div class="row">
+    <div style="flex:3 1 300px">
+      <label>Relay URL</label>
+      <input id="relay-url" placeholder="ws://192.168.x.x:8787" autocomplete="off">
+    </div>
+    <div style="flex:0 0 120px;display:flex;align-items:flex-end">
+      <button id="connect-btn" style="width:100%">Connect</button>
+    </div>
+  </div>
+  <p id="self" class="pk"></p>
+</section>
+
+<!-- ── Peers & Selection ────────────────────────────────────────────────── -->
+<section id="peers-section" style="display:none">
+  <h2>Known Peers <span id="peer-count" class="tag">0</span></h2>
+  <ul id="peer-list" class="peer-list"></ul>
+
+  <div class="grid2" style="margin-top:12px">
+    <div>
+      <label>Bridge peer (Bob — must have <code>tunnel:true</code>)</label>
+      <select id="bridge-sel"></select>
+    </div>
+    <div>
+      <label>Target peer (Carol — runs the skill)</label>
+      <select id="target-sel"></select>
+    </div>
+  </div>
+</section>
+
+<!-- ── Tests ────────────────────────────────────────────────────────────── -->
+<section id="tests-section" style="display:none">
+  <h2>Tests</h2>
+  <div>
+    <button id="stream-plain">Stream (plaintext tunnel)</button>
+    <button id="stream-sealed">Stream (sealed tunnel)</button>
+    <button id="ir-plain">Input-required round-trip</button>
+    <button id="cancel-test" class="secondary">Cancel mid-stream</button>
+    <button id="clear-log" class="secondary" style="float:right">Clear log</button>
+  </div>
+  <div id="log" style="margin-top:12px"></div>
+</section>
+
+<script type="module">
+import {
+  Agent, AgentIdentity, VaultMemory,
+  RelayTransport, RoutingStrategy, PeerGraph,
+  DataPart, TextPart, Parts, Task,
+  registerTunnelReceiveSealed,
+} from '@canopy/core';
+
+let agent     = null;
+const peers   = new Map();         // pubKey → { label, capabilities }
+const logEl   = document.getElementById('log');
+
+// ── Util ───────────────────────────────────────────────────────────────────
+function log(html, cls = '') {
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.innerHTML = html;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+const shortPk = (pk) => pk ? pk.slice(0, 12) + '…' : '—';
+
+// ── Peer list UI ──────────────────────────────────────────────────────────
+function renderPeers() {
+  const listEl = document.getElementById('peer-list');
+  const brSel  = document.getElementById('bridge-sel');
+  const tgSel  = document.getElementById('target-sel');
+  const prevB  = brSel.value;
+  const prevT  = tgSel.value;
+  listEl.innerHTML = '';
+  brSel.innerHTML  = '<option value="">— pick a bridge —</option>';
+  tgSel.innerHTML  = '<option value="">— pick a target —</option>';
+  let n = 0;
+  for (const [pk, p] of peers) {
+    if (pk === agent?.pubKey) continue;
+    n++;
+    const hasTunnel = !!p.capabilities?.tunnel;
+    const li = document.createElement('li');
+    li.className = hasTunnel ? 'tunnel' : 'no-tunnel';
+    li.textContent = (p.label ? p.label + '  ' : '') + shortPk(pk)
+      + (hasTunnel ? '  · tunnel' : '  · no-tunnel');
+    listEl.appendChild(li);
+
+    const opB = document.createElement('option');
+    opB.value = pk;
+    opB.textContent = (hasTunnel ? '🟢 ' : '⚠️ ') + shortPk(pk)
+      + (p.label ? ` (${p.label})` : '');
+    opB.disabled = !hasTunnel;
+    brSel.appendChild(opB);
+
+    const opT = document.createElement('option');
+    opT.value = pk;
+    opT.textContent = shortPk(pk) + (p.label ? ` (${p.label})` : '');
+    tgSel.appendChild(opT);
+  }
+  if (prevB && [...brSel.options].some(o => o.value === prevB)) brSel.value = prevB;
+  if (prevT && [...tgSel.options].some(o => o.value === prevT)) tgSel.value = prevT;
+  document.getElementById('peer-count').textContent = n;
+}
+
+async function probeCapabilities(pk) {
+  try {
+    const caps = await agent.invoke(pk, 'get-capabilities', [], { timeout: 5000 });
+    const data = Parts.data(caps);
+    const record = await agent.peers.get(pk) ?? { pubKey: pk };
+    record.capabilities = data;
+    record.hops      = 0;
+    record.reachable = true;
+    await agent.peers.upsert(record);
+    const local = peers.get(pk) ?? { label: null };
+    local.capabilities = data;
+    peers.set(pk, local);
+  } catch (e) {
+    log(`probeCapabilities ${shortPk(pk)} failed: ${e.message}`, 'err');
+  }
+}
+
+// ── Connect ───────────────────────────────────────────────────────────────
+document.getElementById('connect-btn').onclick = async () => {
+  const url = document.getElementById('relay-url').value.trim();
+  if (!url) { alert('Enter a relay URL first'); return; }
+
+  const vault    = new VaultMemory();
+  const identity = await AgentIdentity.generate(vault);
+  const relay     = new RelayTransport({ relayUrl: url, identity });
+  const peerGraph = new PeerGraph();
+  const routing   = new RoutingStrategy({
+    transports: new Map([['relay', relay]]),
+    peerGraph,
+  });
+
+  agent = new Agent({ identity, transport: relay, peers: peerGraph, routing });
+  window.agent = agent;   // for hand-testing in devtools
+  registerTunnelReceiveSealed(agent);
+
+  agent.on('peer', async ({ address, label }) => {
+    if (!address || address === agent.pubKey) return;
+    if (!peers.has(address)) peers.set(address, { label: label ?? null });
+    await probeCapabilities(address);
+    renderPeers();
+  });
+
+  // Relay gossips its peer list; when the relay sends us one, hello each.
+  relay.on?.('peer-list', async (list) => {
+    for (const pk of list ?? []) {
+      if (pk === agent.pubKey) continue;
+      if (!peers.has(pk)) peers.set(pk, { label: null });
+      try { await agent.hello(pk, 5000); } catch {}
+    }
+    renderPeers();
+  });
+
+  await agent.start();
+  document.getElementById('self').textContent = 'me: ' + agent.pubKey;
+  document.getElementById('peers-section').style.display = 'block';
+  document.getElementById('tests-section').style.display = 'block';
+  log('connected; waiting for peers…', 'info');
+};
+
+// ── Test runners ──────────────────────────────────────────────────────────
+
+function getSelection() {
+  const bridge = document.getElementById('bridge-sel').value;
+  const target = document.getElementById('target-sel').value;
+  if (!bridge || !target) { alert('Pick a bridge and a target first.'); return null; }
+  if (bridge === target)   { alert('Bridge and target must be different.'); return null; }
+  return { bridge, target };
+}
+
+async function ensureIndirectRoute(bridge, target) {
+  // Mark target as indirect through the chosen bridge so callWithHop
+  // skips the direct relay path and takes the tunnel.
+  const rec = await agent.peers.get(target) ?? { pubKey: target };
+  rec.hops = 1;
+  rec.via  = bridge;
+  rec.reachable = true;
+  await agent.peers.upsert(rec);
+  log(`routed: target=${shortPk(target)} via bridge=${shortPk(bridge)}`, 'info');
+}
+
+async function runStream({ sealed }) {
+  const sel = getSelection(); if (!sel) return;
+  await ensureIndirectRoute(sel.bridge, sel.target);
+
+  const tag = sealed ? '[sealed]' : '[plain]';
+  log(`${tag} calling stream-demo on ${shortPk(sel.target)}`, 'meta');
+
+  const t0 = performance.now();
+  try {
+    const task = agent.callWithHop(
+      sel.target, 'stream-demo',
+      [DataPart({ text: sealed ? 'sealed hello' : 'plaintext hello', count: 5 })],
+      sealed ? { sealed: true, timeout: 15000 } : { timeout: 15000 },
+    );
+    for await (const chunk of task.stream()) {
+      log(`${tag} chunk: ${Parts.text(chunk)}`, 'chunk');
+    }
+    const snap = await task.done();
+    log(`${tag} done in ${(performance.now() - t0).toFixed(0)}ms — ${snap.state}`, 'ok');
+  } catch (e) {
+    log(`${tag} failed: ${e.message}`, 'err');
+  }
+}
+
+async function runIR() {
+  const sel = getSelection(); if (!sel) return;
+  await ensureIndirectRoute(sel.bridge, sel.target);
+
+  // ask-name doesn't exist as a default phone skill; we use stream-demo
+  // in a minimal IR-ish test by interrupting it.  To truly test IR we'd
+  // need an IR-capable skill registered on the target — left as a noop
+  // for now with a friendly message.
+  log('ir: no IR-capable skill registered on the target phone — skipping.',
+      'meta');
+  log('ir: to enable, add a skill that throws Task.InputRequired on start.',
+      'info');
+}
+
+async function runCancel() {
+  const sel = getSelection(); if (!sel) return;
+  await ensureIndirectRoute(sel.bridge, sel.target);
+
+  log('[cancel] starting long stream with count=50', 'meta');
+  const task = agent.callWithHop(
+    sel.target, 'stream-demo',
+    [DataPart({ text: 'cancel me', count: 50 })],
+    { timeout: 20000 },
+  );
+  // Iterate and cancel after the 3rd chunk.
+  let i = 0;
+  try {
+    for await (const chunk of task.stream()) {
+      i++;
+      log(`[cancel] chunk ${i}: ${Parts.text(chunk)}`, 'chunk');
+      if (i === 3) {
+        log('[cancel] calling task.cancel()', 'meta');
+        await task.cancel();
+      }
+    }
+    const snap = await task.done();
+    log(`[cancel] done — state=${snap.state}`, snap.state === 'cancelled' ? 'ok' : 'err');
+  } catch (e) {
+    log(`[cancel] caught: ${e.message}`, 'err');
+  }
+}
+
+// ── Button wiring ─────────────────────────────────────────────────────────
+document.getElementById('stream-plain').onclick   = () => runStream({ sealed: false });
+document.getElementById('stream-sealed').onclick  = () => runStream({ sealed: true });
+document.getElementById('ir-plain').onclick       = () => runIR();
+document.getElementById('cancel-test').onclick    = () => runCancel();
+document.getElementById('clear-log').onclick      = () => { logEl.innerHTML = ''; };
+
+// Pre-fill relay URL based on host
+const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+document.getElementById('relay-url').value = `${proto}//${location.host}`;
+</script>
+
+</body>
+</html>
