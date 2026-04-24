@@ -210,25 +210,40 @@ function renderPeers() {
   document.getElementById('peer-count').textContent = n;
 }
 
+// Read capabilities from the hello-delivered PeerGraph record.  hello.js
+// puts the peer's _snapshot(agent) into record.capabilities at handshake
+// time, so we don't need a separate get-capabilities RQ — that was
+// both racy (runs before hello fully settles) and unnecessary.
+async function readCapsFromPeerGraph(pk) {
+  const record = await agent.peers.get(pk);
+  const caps   = record?.capabilities ?? null;
+  const local  = peers.get(pk) ?? { label: null };
+  local.capabilities = caps;
+  local.hops         = record?.hops ?? local.hops ?? 0;
+  local.via          = record?.via  ?? local.via  ?? null;
+  peers.set(pk, local);
+  if (caps) {
+    log(`caps ${shortPk(pk)}: tunnel=${!!caps.tunnel} relay=${!!caps.relay}`, 'info');
+    return true;
+  }
+  log(`${shortPk(pk)}: no caps on record yet`, 'meta');
+  return false;
+}
+
+// Fallback: if the hello didn't attach capabilities for some reason,
+// fall back to invoking get-capabilities directly.  Longer timeout
+// than before (phones can be slow when their peer graph is full).
 async function probeCapabilities(pk) {
   try {
-    const caps = await agent.invoke(pk, 'get-capabilities', [], { timeout: 5000 });
+    const caps = await agent.invoke(pk, 'get-capabilities', [], { timeout: 10000 });
     const data = Parts.data(caps);
     const record = await agent.peers.get(pk) ?? { pubKey: pk };
     record.capabilities = data;
     record.hops      = record.hops ?? 0;
     record.reachable = true;
     await agent.peers.upsert(record);
-    const local = peers.get(pk) ?? { label: null };
-    local.capabilities = data;
-    local.hops         = record.hops;
-    local.via          = record.via;
-    peers.set(pk, local);
-    log(`probed ${shortPk(pk)}: tunnel=${!!data?.tunnel}`, 'info');
+    await readCapsFromPeerGraph(pk);
   } catch (e) {
-    // Non-fatal: peer stays in the list as "capabilities: ?" and the
-    // bridge dropdown excludes it.  Could be offline, old build, or a
-    // chatty peer-graph (typical with many stale peers).
     const local = peers.get(pk) ?? { label: null };
     local.capabilities = null;
     peers.set(pk, local);
@@ -311,7 +326,11 @@ document.getElementById('connect-btn').onclick = async () => {
   agent.on('peer', async ({ address, label }) => {
     if (!address || address === agent.pubKey) return;
     if (!peers.has(address)) peers.set(address, { label: label ?? null });
-    await probeCapabilities(address);
+    // Prefer hello-delivered caps (synchronous — already in PeerGraph).
+    // Only invoke get-capabilities as a fallback if the peer pre-dates
+    // the capabilities-in-hello protocol and never populated caps.
+    const haveCaps = await readCapsFromPeerGraph(address);
+    if (!haveCaps) await probeCapabilities(address);
     renderPeers();
   });
 
