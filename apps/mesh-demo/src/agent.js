@@ -27,6 +27,12 @@ export async function createAgent({ relayUrl } = {}) {
     relayUrl,
     vault:    new KeychainVault({ service: 'mesh-demo' }),
     peerGraphPrefix: 'mesh-demo:peers:',
+    // Defer start() until we've registered this app's skills so the
+    // capabilities snapshot sent in the first HI-ACK reflects relay /
+    // tunnel / sealed-forward support.  Otherwise an inbound hello
+    // arriving before agent.register(...) would bake tunnel:false into
+    // the other peer's PeerGraph.
+    autoStart: false,
     // Rendezvous is OFF on the phone for now.  react-native-webrtc
     // 124.0.7 still fails to register WebRTCModule under RN 0.76's
     // default bridgeless JS runtime (same "WebRTC native module not
@@ -94,6 +100,10 @@ export async function createAgent({ relayUrl } = {}) {
       await new Promise(r => setTimeout(r, 250));
     }
   }, { visibility: 'public', description: 'Stream a short demo message (CC test skill)' });
+
+  // All skills registered; NOW start the agent so the first HI-ACK
+  // we send reports relay/tunnel/sealed-forward as `true`.
+  await agent.start();
 
   return agent;
 }

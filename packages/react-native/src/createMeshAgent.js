@@ -63,6 +63,7 @@ export async function createMeshAgent(opts = {}) {
     transports:       transportEnabled = {},
     peerGraphPrefix   = 'mesh:peers:',
     mdnsTimeoutMs     = 6_000,
+    autoStart         = true,
     configOverrides,
     rendezvous:       enableRdv = false,
   } = opts;
@@ -258,7 +259,13 @@ export async function createMeshAgent(opts = {}) {
   bindPeerDiscovered('ble',   ble);
   bindPeerDiscovered('mdns',  mdns);
 
-  await agent.start();
+  // autoStart:false gives the caller a chance to register app-specific
+  // skills (relay-forward, tunnel-open, receive-message, …) BEFORE any
+  // inbound HI is processed.  Otherwise a hello arriving during the
+  // microtask gap would make a capabilities snapshot with those skills
+  // reporting as `false`, and that stale snapshot gets baked into the
+  // peer's PeerGraph record on the other side.
+  if (autoStart) await agent.start();
   return agent;
 }
 
