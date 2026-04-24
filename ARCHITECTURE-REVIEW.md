@@ -237,23 +237,14 @@ explicit and easier to reason about for new contributors.
 - `transport/NknTransport.js`, `transport/MqttTransport.js` — legacy /
   experimental; flag with a header comment or move to `transport/legacy/`.
 
-### 2.5 Group labels (A–DD) are comment-level only
+### 2.5 Group labels (A–FF+1) — fixed by `ARCHITECTURE.md`
 
-Commits and code reference "Group R" / "Group BB" / "Group CC". There
-is no single map from group → design doc → code files. A new
-contributor cannot navigate.
-
-Fix: add `ARCHITECTURE.md` (or extend this file) with a table:
-
-| Group | Feature | Design doc | Code anchor |
-|---|---|---|---|
-| R | Auto-hello | — | `Agent.enableAutoHello` |
-| Z | Origin signatures | `Design-v3/origin-signature.md` | `security/originSignature.js` |
-| BB | Sealed forward | `Design-v3/blind-forward.md` | `security/sealedForward.js`, `skills/relayReceiveSealed.js` |
-| CC | Hop tunnel | `Design-v3/hop-tunnel.md` | `routing/callWithHop.js`, `skills/tunnel*.js`, `security/tunnelSeal.js` |
-| T | Reachability oracle | `Design-v3/oracle-bridge-selection.md` | `security/reachabilityClaim.js`, `skills/reachablePeers.js` |
-| AA | Rendezvous (WebRTC) | `Design-v3/rendezvous-mode.md` | `transport/RendezvousTransport.js` |
-| DD | RN rendezvous wiring | — | `react-native/createMeshAgent.js` (rendezvous opt) |
+Commits and code reference "Group R" / "Group BB" / "Group CC".  The
+single map from Group → feature → design doc → code now lives in
+[`ARCHITECTURE.md`](./ARCHITECTURE.md), so this finding is **closed**.
+The map covers all SDK-extraction groups M through FF+1 plus a
+footnote on the legacy app-level letters (A–L) that predate the
+extraction.
 
 ### 2.6 `createMeshAgent` is the cleanest part
 
@@ -615,14 +606,11 @@ In descending bang-for-buck:
    Start with step 1 of §5.5 (`attachReachabilityOracle`) — it's a
    one-file move that proves the pattern. Everything else gets easier
    afterward.
-2. **Add `ARCHITECTURE.md` (or a Groups-map section here)** — cost
-   measured in minutes, ROI measured in hours saved per new contributor
-   or per future the author reading this in six months.
-3. **Wire `RoutingStrategy` + `FallbackTable` into `createMeshAgent`**
-   — you already have the machinery for "prefer last-working transport,
-   skip dead ones." It just isn't plugged in. Would fix the
-   `Cannot read property 'send' of null` relay cascade observed on
-   2026-04-24.
+2. ~~Add `ARCHITECTURE.md`~~ — **shipped 2026-04-25**, see
+   [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+3. ~~Wire `RoutingStrategy` + `FallbackTable` into `createMeshAgent`~~ —
+   **shipped 2026-04-24** as Group EE.  Fixed the `send of null`
+   cascade.
 4. **Split `callWithHop.js`** into the four functions listed in 2.2.
 5. **Put a visible warning in the relay README** about no-auth /
    private-network-only. Takes five minutes; removes a footgun.
