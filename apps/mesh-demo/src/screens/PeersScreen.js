@@ -35,7 +35,7 @@ const TRANSPORT_ICON = {
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export function PeersScreen({ navigation }) {
-  const { agent, status, error, relayUrl, reset } = useAgent();
+  const { agent, status, error, relayUrl, reset, forgetPeers } = useAgent();
   const peers       = usePeers();
   const rdvPeers    = useRendezvousState();
 
@@ -98,7 +98,10 @@ export function PeersScreen({ navigation }) {
           <Text style={s.headerMono} numberOfLines={1} ellipsizeMode="middle">
             {relayUrl ?? '—'}
           </Text>
-          <TO onPress={reset} style={{ marginLeft: 'auto' }}>
+          <TO onPress={forgetPeers} style={{ marginLeft: 'auto' }}>
+            <Text style={{ color: '#6b7094', fontSize: 11, paddingHorizontal: 6 }}>forget peers</Text>
+          </TO>
+          <TO onPress={reset}>
             <Text style={{ color: '#6b7094', fontSize: 11, paddingHorizontal: 6 }}>change</Text>
           </TO>
         </View>

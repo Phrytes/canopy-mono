@@ -13,8 +13,11 @@
  *   configure(url)  // call from SetupScreen to set relay URL and start agent
  */
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import AsyncStorage        from '@react-native-async-storage/async-storage';
 import { createAgent }    from '../agent.js';
 import { loadSettings, saveSettings } from '../store/settings.js';
+
+const PEER_GRAPH_PREFIX = 'mesh-demo:peers:';
 
 const AgentContext = createContext(null);
 
@@ -95,14 +98,42 @@ export function AgentProvider({ children }) {
   /** Reset settings and return to setup screen. */
   const reset = useCallback(async () => {
     await saveSettings({ relayUrl: null });
+    // Also wipe the persisted PeerGraph — stale peers accumulate between
+    // sessions (the graph is merge-not-replace), and when Wi-Fi/relay is
+    // unreachable they cause callWithHop to keep trying dead bridges.
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const peerKeys = keys.filter(k => k.startsWith(PEER_GRAPH_PREFIX));
+      if (peerKeys.length) await AsyncStorage.multiRemove(peerKeys);
+    } catch { /* best effort */ }
     agent?.stop();
     setAgent(null);
     setRelayUrl(null);
     setStatus('needs-setup');
   }, [agent]);
 
+  /** Clear cached peers WITHOUT logging out — useful when BLE routing gets
+   *  confused because an old session left an indirect record for a peer
+   *  that's now directly reachable over BLE or mDNS. */
+  const forgetPeers = useCallback(async () => {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const peerKeys = keys.filter(k => k.startsWith(PEER_GRAPH_PREFIX));
+      if (peerKeys.length) await AsyncStorage.multiRemove(peerKeys);
+    } catch { /* best effort */ }
+    // Restart the agent so in-memory transport caches (BLE _hasPeer maps,
+    // SecurityLayer keys) also clear.  Changing relayUrl's identity by
+    // flipping to null and back re-runs the main effect.
+    if (relayUrl) {
+      const saved = relayUrl;
+      setRelayUrl(null);
+      // Next tick: re-set to trigger agent restart via the [relayUrl] effect.
+      setTimeout(() => setRelayUrl(saved), 50);
+    }
+  }, [relayUrl]);
+
   return (
-    <AgentContext.Provider value={{ agent, status, error, relayUrl, configure, reset }}>
+    <AgentContext.Provider value={{ agent, status, error, relayUrl, configure, reset, forgetPeers }}>
       {children}
     </AgentContext.Provider>
   );
