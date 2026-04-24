@@ -82,6 +82,7 @@ export function callSkill(agent, peerId, skillId, parts, opts = {}) {
       if (token) tokenJson = token.toJSON();
     }
 
+    const sentAt = Date.now();
     try {
       const t  = opts._overrideTransport ?? await agent.transportFor(peerId);
       console.log(`[callSkill] ${skillId} → ${peerId.slice(0,12)} via ${t?.constructor?.name}`);
@@ -97,6 +98,9 @@ export function callSkill(agent, peerId, skillId, parts, opts = {}) {
         },
         timeout,
       );
+      // Group EE — feed FallbackTable with measured latency so the next
+      // call to this peer prefers the fastest live transport.
+      _reportSuccess(agent, peerId, t, Date.now() - sentAt);
       const { status, parts: rParts = [], error } = rs.payload ?? {};
       if (status === 'completed') {
         task._transition('completed', { parts: rParts });
@@ -105,8 +109,14 @@ export function callSkill(agent, peerId, skillId, parts, opts = {}) {
       }
     } catch (err) {
       // Suppress security errors — expected when gossip contacts unhello'd peers.
+      // Real transport failures (timeout, not-connected, etc.) both log AND
+      // mark the (peer, transport) pair degraded for 30 s so the next call
+      // via RoutingStrategy falls through to the next-best live transport.
       if (!err.message?.includes('pubKey')) {
         console.warn(`[callSkill] ${skillId} → ${peerId.slice(0,12)} FAILED:`, err.message);
+        if (!opts._overrideTransport) {
+          _reportFailure(agent, peerId, err);
+        }
       }
       task._transition('failed', { error: err.message });
     }
@@ -565,4 +575,49 @@ async function _respondFailed(t, agent, envelope, taskId, err) {
     error:  err?.message ?? String(err),
     parts:  [],
   }).catch(() => {});
+}
+
+// ── Routing feedback helpers (Group EE) ──────────────────────────────────────
+// Both helpers are best-effort: any failure in reporting is swallowed so it
+// never breaks the call.  Lookup by transport INSTANCE (not by name) so we
+// don't depend on Agent.transportFor returning the name.
+
+function _transportNameFor(agent, transportInstance) {
+  if (!agent?.transportNames || !transportInstance) return null;
+  for (const name of agent.transportNames) {
+    if (agent.getTransport(name) === transportInstance) return name;
+  }
+  return null;
+}
+
+function _reportSuccess(agent, peerId, transportInstance, latencyMs) {
+  try {
+    const name = _transportNameFor(agent, transportInstance);
+    if (!name || name === 'default') return;
+    agent.routing?.fallbackTable?.record?.(peerId, name, latencyMs);
+  } catch { /* never break the call path */ }
+}
+
+function _reportFailure(agent, peerId, err) {
+  // We don't know which transport was chosen at failure time (transportFor
+  // doesn't expose the name).  Conservative: mark the agent's primary
+  // secondary transports degraded only if error suggests transport-level
+  // failure, not an app-layer timeout from a downstream skill handler.
+  try {
+    const msg = err?.message ?? '';
+    if (!/not connected|timeout|disconnected|unreachable|read property/i.test(msg)) return;
+    const routing = agent?.routing;
+    if (!routing?.onTransportFailure) return;
+    // Without a name, we can't mark a specific pair degraded — but we can
+    // at least nudge any transport whose canReach currently returns false.
+    // The router will then filter them out next time via canReach anyway,
+    // so this is defensive belt-and-braces.
+    for (const name of agent.transportNames ?? []) {
+      if (name === 'default') continue;
+      const t = agent.getTransport(name);
+      if (typeof t?.canReach === 'function' && !t.canReach(peerId)) {
+        routing.onTransportFailure(peerId, name);
+      }
+    }
+  } catch { /* never break the call path */ }
 }

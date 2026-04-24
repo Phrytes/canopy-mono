@@ -128,6 +128,25 @@ export class MdnsTransport extends Transport {
   }
 
   /**
+   * Freshness threshold for canReach().  mDNS connections can go silent
+   * without closing (Wi-Fi drop, peer moved subnet), leaving a live
+   * socket that no longer delivers data.  A peer whose last observed
+   * activity is beyond this window is treated as unreachable so
+   * RoutingStrategy falls through to BLE / relay instead.
+   */
+  static FRESHNESS_MS = 30_000;
+
+  /**
+   * Routing hint (Group EE).  Reachable iff we have a live TCP connection
+   * AND we've seen activity on it within the freshness window.
+   */
+  canReach(pubKey) {
+    if (!this.#pubKeyToConn.has(pubKey)) return false;
+    const last = this.#lastActivity.get(pubKey) ?? 0;
+    return (Date.now() - last) < MdnsTransport.FRESHNESS_MS;
+  }
+
+  /**
    * Drop cached connection for a peer and close the TCP socket.  Subsequent
    * mDNS service-discovery events for the same peer will reopen the connection.
    */

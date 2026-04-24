@@ -1363,3 +1363,76 @@ change to the app. If DD1/DD2 introduce regressions, `git revert` the
 implementation commits and fall back to the last-known-good app at
 `c4f40a7` (`Group BB5: mesh-scenario phase 11 + mesh-demo phase 11 +
 docs`).
+## Group EE — Wire RoutingStrategy + FallbackTable into production
+
+**Ref:** `ARCHITECTURE-REVIEW.md` §2.4 (dead-looking code) and §6 (top-5
+priority fix #3). `RoutingStrategy` + `FallbackTable` exist with full
+test coverage but are not consumed anywhere outside tests.
+**Dependencies:** none — both modules are already shipped in core.
+**Motivation:** fixes the "dead relay cascading `Cannot read property
+'send' of null`" symptom observed 2026-04-24 on two phones; replaces
+the hardcoded inline `selectTransport` in `createMeshAgent` with a
+learning router that skips degraded transports and prefers the one
+most recently successful for each peer.
+
+### Outcome
+
+`createMeshAgent` uses `RoutingStrategy` as its routing layer.
+Transport failures mark that (peer, transport) pair degraded for 30 s
+so the next call falls through to the next-best. Successes record
+latency so fresh paths beat stale ones over time. Existing behaviour
+(mDNS fresh > BLE > mDNS stale > relay > offline) is preserved by
+supplying transport-liveness hints via `transport.canReach(peerId)`.
+
+### Sub-phases
+
+#### EE1 — Transport-liveness adapters
+
+Add a thin adapter so each RN transport reports "can I reach this peer
+right now?" in a way `RoutingStrategy._canReach` understands:
+
+- `BleTransport.canReach(pubKey)` → `_hasPeer(pubKey)` (already exists).
+- `MdnsTransport.canReach(pubKey)` → `_hasPeer(pubKey) && lastActivityAt(pubKey) within freshness window`.
+- `RelayTransport.canReach(_)` → `this.#ws && this.#ws.readyState === OPEN` (prevents
+  the `send of null` cascade).
+- `OfflineTransport.canReach(_)` → `false` always (it's only a clean-error fallback).
+
+`RoutingStrategy` already calls `transport.canReach(peerId)` if the
+method exists; transports that don't implement it default to `true`.
+
+#### EE2 — Replace inline `selectTransport` in `createMeshAgent`
+
+Instantiate `RoutingStrategy` with the transport map, pass it to
+`Agent` as the `routing` option. Drop the inline `selectTransport`
+closure. Keep `TRANSPORT_PRIORITY` ordering semantically equivalent
+to the current priority (mDNS > BLE > relay > offline for mesh usage).
+
+#### EE3 — Wire failure / success reporting
+
+- In `Agent._dispatch` (or in the transport-send path): on caught
+  send errors, call `routing.onTransportFailure(peerId, transportName)`.
+- On successful RS receipt, call
+  `routing.fallbackTable.record(peerId, transportName, latencyMs)`.
+  Latency = `Date.now() - sentAt` tracked in the Task.
+
+#### EE4 — Tests + regression sweep
+
+New test file `packages/react-native/test/createMeshAgent.routing.test.js`:
+- fresh mDNS → mDNS selected.
+- mDNS stale (beyond freshness window) + BLE fresh → BLE selected.
+- relay WS null → relay skipped, offline chosen as clean error.
+- BLE failure → BLE marked degraded for 30 s; next call skips BLE.
+
+Run full core + react-native test suites; no regressions accepted.
+
+### DoD
+
+- `createMeshAgent` no longer contains an inline `selectTransport`.
+- Both `RoutingStrategy` and `FallbackTable` are imported by
+  `createMeshAgent`.
+- New routing test passes; existing tests still green.
+- Manual: when relay is down + BLE/mDNS are up, calls route via direct
+  transport without the `send of null` error on FP4/Samsung.
+
+---
+

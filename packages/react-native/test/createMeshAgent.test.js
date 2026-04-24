@@ -79,6 +79,11 @@ vi.mock('../src/transport/MdnsTransport.js', () => {
     on()                 {}
     off()                {}
     _hasPeer(pk)         { return mdnsState.peers?.has?.(pk) ?? false; }
+    // Mirror the real canReach contract (Group EE): reachable iff we
+    // have an entry AND the test has marked activity as fresh.  By
+    // default a mock peer is considered fresh.
+    lastActivityAt(pk)   { return this._hasPeer(pk) ? Date.now() : 0; }
+    canReach(pk)         { return this._hasPeer(pk); }
     useSecurityLayer()   {}
     setReceiveHandler()  {}
     emit()               {}
@@ -100,6 +105,14 @@ vi.mock('../src/transport/BleTransport.js', () => {
     on()                 {}
     off()                {}
     _hasPeer(pk)         { return bleState.peers.has(pk); }
+    // Mirror the real canReach contract (Group EE): reachable iff we have
+    // a GATT connection OR peerId looks like a raw BLE MAC (':' separated)
+    // so the MAC-bootstrap hello path works.
+    canReach(pk) {
+      if (this._hasPeer(pk)) return true;
+      if (typeof pk === 'string' && pk.includes(':')) return true;
+      return false;
+    }
     useSecurityLayer()   {}
     setReceiveHandler()  {}
     emit()               {}
@@ -167,7 +180,7 @@ describe('createMeshAgent', () => {
     // Transport.address === the agent's own pubKey for OfflineTransport
     expect(agent.transport.address).toBe(agent.pubKey);
     // And MdnsTransport should not be attached
-    expect(agent.transportNames).not.toContain('mdns'); // secondary was never added anyway
+    expect(agent.transportNames).not.toContain('mdns');
     await agent.stop();
   });
 
@@ -179,18 +192,29 @@ describe('createMeshAgent', () => {
 
     const agent = await createMeshAgent({ relayUrl: 'ws://127.0.0.1:9999' });
 
+    // MAC-looking peerId — BLE bootstrap path.
     const bleForMac = await agent.transportFor('AA:BB:CC:DD:EE:FF');
     expect(bleForMac).toBe(agent.getTransport('ble'));
 
+    // Pubkey known to BLE only → BLE.
     const bleForPubKey = await agent.transportFor('BLE_PEER_PUBKEY');
     expect(bleForPubKey).toBe(agent.getTransport('ble'));
 
+    // Pubkey known to mDNS only → mDNS (mdns is now a named secondary,
+    // not the primary transport, since Group EE routes everything through
+    // RoutingStrategy).
     const mdnsForPubKey = await agent.transportFor('MDNS_PEER_PUBKEY');
-    // mdns is the primary ("default"), not added as a secondary.
-    expect(mdnsForPubKey).toBe(agent.transport);
+    expect(mdnsForPubKey).toBe(agent.getTransport('mdns'));
 
-    const relayForUnknown = await agent.transportFor('UNKNOWN_PEER');
-    expect(relayForUnknown).toBe(agent.getTransport('relay'));
+    // Pubkey that no transport can reach → RoutingStrategy returns null
+    // → Agent.transportFor falls back to the OfflineTransport primary, so
+    // the call fails cleanly rather than silently succeeding into a dead
+    // relay socket.  (The real RelayTransport only claims canReach when
+    // its WS is connected; the dummy ws://127.0.0.1:9999 used here is
+    // never up, so relay is correctly skipped.)
+    const offlineForUnknown = await agent.transportFor('UNKNOWN_PEER');
+    expect(offlineForUnknown).toBe(agent.transport);
+    expect(offlineForUnknown.constructor.name).toBe('OfflineTransport');
 
     await agent.stop();
   });

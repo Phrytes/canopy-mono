@@ -167,6 +167,23 @@ export class BleTransport extends Transport {
   }
 
   /**
+   * Routing hint (Group EE).  A peer is reachable over BLE iff we have
+   * an active GATT connection in either direction — OR the peerId looks
+   * like a raw BLE MAC (contains ':') in which case we're in the
+   * "initial hello to a freshly-scanned device" bootstrap path and need
+   * BLE to claim it so the call triggers a connect.
+   *
+   * Note: this does NOT distinguish "fresh" from "silently-stale"
+   * handles — if you need staleness-based eviction, do it on write
+   * failure via RoutingStrategy.onTransportFailure, not here.
+   */
+  canReach(pubKey) {
+    if (this._hasPeer(pubKey)) return true;
+    if (typeof pubKey === 'string' && pubKey.includes(':')) return true;
+    return false;
+  }
+
+  /**
    * Drop cached entries for a peer and kick the scanner so it can re-discover
    * the device. Without the scan restart the BleManager's de-dup filter keeps
    * the device in a "recently seen" state and suppresses a fresh report.

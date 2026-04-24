@@ -42,6 +42,14 @@ export class RelayTransport extends Transport {
   /** True when the WebSocket is open and registered with the relay. */
   get connected() { return this.#ws?.readyState === 1; }
 
+  /**
+   * Routing hint (Group EE): a relay can reach any peer *only if* its own
+   * WebSocket is open.  When the WS is null/closed/closing, RoutingStrategy
+   * should skip this transport instead of trying it and cascading the
+   * classic `Cannot read property 'send' of null` failure.
+   */
+  canReach(_peerId) { return this.connected; }
+
   async connect() {
     this.#stopped = false;
     this.#resetConnectPromise();

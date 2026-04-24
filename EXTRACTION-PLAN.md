@@ -537,6 +537,19 @@ Relay-in-path is fine for chat, wasteful for file transfer. WebRTC DataChannels 
 
 ---
 
+### Group EE — Wire RoutingStrategy + FallbackTable into production (depends: Q)
+
+`RoutingStrategy` + `FallbackTable` are fully implemented and tested in
+`packages/core/src/routing/` but consumed only by their own test files
+— `createMeshAgent` uses an inline hardcoded `selectTransport` that
+does not learn from failures, skips health checks, and caused the
+"relay WS null cascade" observed 2026-04-24. Group EE wires the
+existing machinery into production; no new algorithms, pure plumbing.
+
+See `CODING-PLAN.md § Group EE` for the sub-phase breakdown.
+
+---
+
 ## Open items (not blocking extraction)
 
 - iOS native counterparts for BLE/mDNS.

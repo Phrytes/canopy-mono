@@ -31,6 +31,8 @@ import {
   OfflineTransport,
   PeerGraph,
   RelayTransport,
+  RoutingStrategy,
+  FallbackTable,
 } from '@canopy/core';
 
 import { KeychainVault }         from './identity/KeychainVault.js';
@@ -143,31 +145,33 @@ export async function createMeshAgent(opts = {}) {
 
   // ── Primary + routing ──────────────────────────────────────────────────────
   const offline = new OfflineTransport({ identity });
-  const primary = mdns ?? offline;
+  // Use offline as primary so Agent.transportFor falls back to a
+  // clean-error transport when RoutingStrategy returns null (no transport
+  // can currently reach the peer).  Direct transports are registered as
+  // secondaries below — RoutingStrategy picks among them based on
+  // per-transport canReach() hints + FallbackTable health.
+  const primary = offline;
 
-  // Routing: prefer mDNS (plain TCP, more robust than Android BLE GATT)
-  // when its connection is HEALTHY — i.e. we've seen activity on it in
-  // the last MDNS_FRESHNESS_MS.  If the mDNS entry is a zombie (present
-  // in the map but idle — Wi-Fi died, peer moved away, etc.) we fall
-  // through to BLE rather than send into a dead socket.  BLE remains
-  // the direct-path fallback for the no-Wi-Fi case.  Relay closes the
-  // loop when neither direct transport has a live path.
-  const MDNS_FRESHNESS_MS = 30_000;
-
-  const routing = {
-    selectTransport: (peerId) => {
-      if (typeof peerId === 'string' && peerId.includes(':')) {
-        return { transport: ble };                    // BLE MAC → initial hello
-      }
-      const mdnsFresh = mdns?._hasPeer?.(peerId)
-        && (Date.now() - (mdns.lastActivityAt?.(peerId) ?? 0) < MDNS_FRESHNESS_MS);
-      if (mdnsFresh)                return { transport: mdns };
-      if (ble?._hasPeer?.(peerId))  return { transport: ble };
-      if (mdns?._hasPeer?.(peerId)) return { transport: mdns };  // stale but last resort
-      if (relay)                    return { transport: relay };
-      return { transport: offline };                   // fails cleanly
-    },
-  };
+  // RoutingStrategy (Group EE).  Replaces the prior inline selectTransport
+  // closure with a learning router:
+  //   • Each transport exposes canReach(peerId) — mDNS is fresh-aware,
+  //     BLE checks the central/peripheral maps, relay checks WS state,
+  //     offline always returns false.  RoutingStrategy skips transports
+  //     whose canReach returns false.
+  //   • On successful RS receipt, fallbackTable.record(peer, transport,
+  //     latencyMs) is called so future sends prefer the fastest live
+  //     transport per-peer.
+  //   • On send failure, routing.onTransportFailure(peer, transport) marks
+  //     that (peer, transport) pair degraded for 30 s.
+  // Semantically this preserves the old ordering (fresh mDNS > BLE > stale
+  // mDNS > relay > offline) via TRANSPORT_PRIORITY + canReach, while also
+  // fixing the dead-relay cascade (relay.canReach == ws.connected).
+  const fallbackTable = new FallbackTable();
+  const routing = new RoutingStrategy({
+    transports: new Map(),   // filled in by Agent.addTransport via routing.addTransport
+    peerGraph:  peers,
+    fallbackTable,
+  });
 
   // ── Agent ──────────────────────────────────────────────────────────────────
   const agent = new Agent({
@@ -179,6 +183,12 @@ export async function createMeshAgent(opts = {}) {
     label:     label ?? null,
   });
 
+  // Register every available transport so RoutingStrategy can pick among
+  // them.  The 'default' slot in Agent.#transports is the offline primary
+  // (clean-error fallback); these named slots are the real candidates.
+  // The name strings MUST match RoutingStrategy's TRANSPORT_PRIORITY
+  // (`'mdns', 'ble', 'relay'`) so the default ordering applies.
+  if (mdns)  agent.addTransport('mdns',  mdns);
   if (ble)   agent.addTransport('ble',   ble);
   if (relay) agent.addTransport('relay', relay);
 
