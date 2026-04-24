@@ -255,7 +255,27 @@ export class BleTransport extends Transport {
       const chunks = _chunk(payload, central.mtu - 3);
       try {
         for (const chunk of chunks) {
-          await central.char.writeWithResponse(chunk);
+          // writeWithoutResponse uses LE link-layer credits (handled in the
+          // Bluetooth controller) and does NOT occupy the BluetoothGatt
+          // "one pending GATT command at a time" slot.  That slot is
+          // needed by the CCCD descriptor write that `char.monitor()`
+          // fires during central setup — using writeWithResponse here
+          // would deadlock with it and surface as "Operation was rejected"
+          // / "prior command is not finished" on Android.
+          //
+          // Reliability is covered at the application layer (RQ/RS
+          // timeouts via Task.done()); we don't need per-chunk GATT ACKs.
+          try {
+            await central.char.writeWithoutResponse(chunk);
+          } catch (wErr) {
+            // Some stacks (or certain characteristic configurations) may
+            // only accept writeWithResponse.  Fall back once per chunk.
+            if (/write\s*without/i.test(wErr?.message ?? '')) {
+              await central.char.writeWithResponse(chunk);
+            } else {
+              throw wErr;
+            }
+          }
         }
       } catch (err) {
         // Stale characteristic / disconnected device — drop the entry so we
