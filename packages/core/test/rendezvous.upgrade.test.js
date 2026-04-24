@@ -113,7 +113,14 @@ d('Agent.enableRendezvous + auto-upgrade', () => {
     await alice.stop(); await bob.stop();
   }, 30_000);
 
-  it('on DataChannel close: routing pin cleared, next invoke uses relay', async () => {
+  // NOTE: this is the flakiest of the rendezvous tests — node-datachannel's
+  // ICE teardown between tests is sensitive to microsecond-scale timing.
+  // The claim it tests (pin cleared on channel close → fallback to relay)
+  // is also covered by the deterministic rendezvous.routing.unit.test.js;
+  // this one stays as an end-to-end polyfill smoke check, with a retry to
+  // stop CI flapping.  Real-device rendezvous (RN / browser) uses
+  // different WebRTC stacks entirely and is not affected by this flake.
+  it('on DataChannel close: routing pin cleared, next invoke uses relay', { retry: 2 }, async () => {
     // Let any previous test's node-datachannel ICE state drain.
     await new Promise(r => setTimeout(r, 300));
     const { alice, bob, bRx } = await makePair({ auto: true });

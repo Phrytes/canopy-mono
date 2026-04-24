@@ -27,6 +27,14 @@ export class OfflineTransport extends Transport {
   async connect()    {}
   async disconnect() {}
 
+  /**
+   * Routing hint (Group EE): offline transport never claims reach so it's
+   * only selected by RoutingStrategy as the explicit null-fallback (via
+   * Agent.transportFor → primary).  Returning false here keeps it out of
+   * the normal candidate list.
+   */
+  canReach(_peerId) { return false; }
+
   async _put(to) {
     const hint = typeof to === 'string' && to.length ? to.slice(0, 16) : 'unknown';
     throw new Error(`Agent is offline — no transport can reach ${hint}`);

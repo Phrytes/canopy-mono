@@ -278,6 +278,23 @@ export class Agent extends Emitter {
     return this.#transport;
   }
 
+  /**
+   * Like transportFor() but returns both the chosen transport AND the
+   * name RoutingStrategy indexed it under.  Callers that want to report
+   * success/failure back to the FallbackTable need the name.
+   *
+   * @param {string} peerId
+   * @param {object} [opts]
+   * @returns {Promise<{ name: string, transport: import('./transport/Transport.js').Transport }>}
+   */
+  async routeFor(peerId, opts = {}) {
+    if (this.#routing && this.#transports.size > 1) {
+      const result = await this.#routing.selectTransport(peerId, opts);
+      if (result?.transport) return result;
+    }
+    return { name: 'default', transport: this.#transport };
+  }
+
   // ── High-level API ────────────────────────────────────────────────────────
 
   /**

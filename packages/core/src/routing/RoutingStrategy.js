@@ -100,8 +100,14 @@ export class RoutingStrategy {
     });
 
     // Try FallbackTable first — if we have latency data for this peer.
+    // Skip if the "best" record is itself degraded (Group EE): getBest
+    // returns the top-sorted entry even when all entries are degraded,
+    // which would let a dying transport win over a fresh unrecorded
+    // alternative.  When ftBest is degraded, fall through to the
+    // priority-order path so an unrecorded healthy candidate can be
+    // chosen instead.
     const ftBest = this.#fallback.getBest(peerId, filter, available);
-    if (ftBest) {
+    if (ftBest && !this.#fallback.isDegraded(peerId, ftBest)) {
       const t = this.#transports.get(ftBest);
       if (t) return { name: ftBest, transport: t };
     }
