@@ -58,7 +58,10 @@ export async function createAgent({ relayUrl } = {}) {
   // auto-hello on discovery.  See CODING-PLAN.md Groups N/R.
   agent.enableRelayForward({ policy: 'authenticated' });
   agent.enableAutoHello({ pullPeers: true });
-  agent.startDiscovery({ gossipIntervalMs: 15_000 });
+  // 60 s gossip interval — 15 s was spammy, especially when Wi-Fi is off
+  // and every round of `peer-list → <peer> via RelayTransport` fails
+  // immediately with "Relay: not connected" before even attempting BLE.
+  agent.startDiscovery({ gossipIntervalMs: 60_000 });
 
   // Oracle (Group T) — on-the-fly bridge selection when routing hop messages.
   // Capabilities skill (Group AA3) — peers can poll our current feature flags.

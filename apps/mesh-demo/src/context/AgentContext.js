@@ -124,11 +124,16 @@ export function AgentProvider({ children }) {
     // Restart the agent so in-memory transport caches (BLE _hasPeer maps,
     // SecurityLayer keys) also clear.  Changing relayUrl's identity by
     // flipping to null and back re-runs the main effect.
+    //
+    // 50 ms wasn't enough: Android's BLE stack needs real time to process
+    // scan-stop + advertise-stop before a new BleTransport tries to
+    // startScan() and startAdvertising() on a fresh manager.  1.5 s is
+    // empirically enough to avoid "BLE peers vanish after forget peers"
+    // symptoms on both Samsung and FP4.
     if (relayUrl) {
       const saved = relayUrl;
       setRelayUrl(null);
-      // Next tick: re-set to trigger agent restart via the [relayUrl] effect.
-      setTimeout(() => setRelayUrl(saved), 50);
+      setTimeout(() => setRelayUrl(saved), 1500);
     }
   }, [relayUrl]);
 

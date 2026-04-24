@@ -96,9 +96,9 @@ describe('mesh-demo createAgent factory', () => {
     expect(agent._enableAutoHelloOpts).toEqual({ pullPeers: true });
   });
 
-  it('starts discovery with a 15-second gossip interval', async () => {
+  it('starts discovery with a 60-second gossip interval', async () => {
     const agent = await createAgent({});
-    expect(agent._startDiscoveryOpts).toEqual({ gossipIntervalMs: 15_000 });
+    expect(agent._startDiscoveryOpts).toEqual({ gossipIntervalMs: 60_000 });
   });
 
   it('enables the reachability oracle', async () => {

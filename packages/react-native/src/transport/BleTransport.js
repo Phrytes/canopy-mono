@@ -152,7 +152,14 @@ export class BleTransport extends Transport {
     this.#peripheralByPubKey.clear();
     this.#pendingForPeer.clear();
 
-    this.#manager.destroy();
+    // Intentionally NOT calling this.#manager.destroy():
+    // destroy() is ble-plx's "I'm permanently done with BLE" call and
+    // puts Android's BLE stack into a heavy teardown state that can
+    // persist for several seconds.  When we just want to restart the
+    // agent (e.g. after forgetPeers), a fresh BleTransport creates its
+    // own BleManager — the old one is GC'd cleanly, no global stack
+    // hostile state lingers, and a fresh scan on the new transport
+    // works immediately.
   }
 
   _hasPeer(pubKey) {
