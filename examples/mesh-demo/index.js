@@ -15,6 +15,8 @@ import {
   gossipOnce,
   gossipOracle,
   TextPart,
+  Parts,
+  Task,
 }                         from '../../packages/core/test/integration/scenario.js';
 
 const log = (msg) => console.log(`  ${msg}`);
@@ -125,6 +127,61 @@ async function main() {
     'bob\'s forwarded payload did NOT contain the plaintext');
 
   await m.teardown();
+
+  // ── Phase 12 (CC) — hop-aware task tunnel ────────────────────────────────
+  // Rebuilds the mesh with tunneling enabled on Bob.  Alice calls a
+  // streaming generator skill on Carol over the hop and consumes the
+  // chunks as an async iterator — exactly the same API as a direct call.
+  console.log('\n— phase 12 (CC): streaming + IR + cancel over a hop\n');
+  const mt = await buildMesh({ log, tunnel: true });
+  await gossipOnce(mt.alice, mt.pubKeys.bob);
+
+  // 12a — streaming
+  mt.carol.register('slow-count', async function* () {
+    yield [TextPart('one')];
+    yield [TextPart('two')];
+    yield [TextPart('three')];
+  });
+  const tStream = mt.alice.callWithHop(mt.pubKeys.carol, 'slow-count', []);
+  const chunks = [];
+  for await (const c of tStream.stream()) chunks.push(Parts.text(c));
+  const streamSnap = await tStream.done();
+  assert(streamSnap.state === 'completed',  'streaming task completed');
+  assert(chunks.join(',') === 'one,two,three',
+    `alice received chunks in order (got: ${chunks.join(',')})`);
+
+  // 12b — input-required round-trip
+  mt.carol.register('ask-name', async ({ parts }) => {
+    if (Parts.text(parts) === 'start') {
+      throw new Task.InputRequired([TextPart('Name?')]);
+    }
+    return [TextPart(`hi ${Parts.text(parts)}`)];
+  });
+  const tIr = mt.alice.callWithHop(mt.pubKeys.carol, 'ask-name', [TextPart('start')]);
+  const prompt = await new Promise(res => tIr.once('input-required', res));
+  assert(Parts.text(prompt) === 'Name?', 'alice sees the IR prompt');
+  await tIr.send([TextPart('demo')]);
+  const irSnap = await tIr.done();
+  assert(irSnap.state === 'completed', 'IR round-trip completes');
+  assert(Parts.text(irSnap.parts) === 'hi demo', `alice got \"hi demo\" (got: ${Parts.text(irSnap.parts)})`);
+
+  // 12c — cancel propagates
+  let sawAbort = false;
+  mt.carol.register('long-runner', async ({ signal }) => {
+    await new Promise((_, reject) => {
+      const id = setInterval(() => {
+        if (signal?.aborted) { sawAbort = true; clearInterval(id); reject(new Error('aborted')); }
+      }, 20);
+    });
+  });
+  const tCancel = mt.alice.callWithHop(mt.pubKeys.carol, 'long-runner', []);
+  await new Promise(r => setTimeout(r, 60));
+  await tCancel.cancel();
+  await new Promise(r => setTimeout(r, 120));
+  assert(sawAbort, 'carol saw signal.aborted after alice cancelled');
+  assert(tCancel.state === 'cancelled', 'alice-side task state is cancelled');
+
+  await mt.teardown();
 
   // ── Phase 10 (AB) — rendezvous auto-upgrade ──────────────────────────────
   // Rebuilds the mesh with rendezvous enabled (requires node-datachannel

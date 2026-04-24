@@ -41,8 +41,12 @@ import {
  *     also pass `rtcLib` so Node can drive WebRTC.
  * @param {object}   [opts.rtcLib]      — { RTCPeerConnection, RTCSessionDescription,
  *     RTCIceCandidate }. Required if `rendezvous: true`.
+ * @param {boolean}  [opts.tunnel]      — when true, register tunnel-open /
+ *     tunnel-ow on Bob and seed Alice's peer-graph record for Bob with
+ *     capabilities.tunnel:true so callWithHop picks the tunnel path.
+ *     Carol's handlers run unchanged — she only sees regular skill calls.
  */
-export async function buildMesh({ log, rendezvous = false, rtcLib } = {}) {
+export async function buildMesh({ log, rendezvous = false, rtcLib, tunnel = false } = {}) {
   const say = log ?? (() => {});
 
   const relayBus = new InternalBus();
@@ -134,6 +138,19 @@ export async function buildMesh({ log, rendezvous = false, rtcLib } = {}) {
   // receive-message on everyone so responses work symmetrically.
   bob.enableRelayForward({ policy: 'always' });
 
+  // Group CC: opt-in tunnel bridge on Bob.  Also mark Bob as tunnel-
+  // capable in Alice's peer graph so callWithHop picks the tunnel path
+  // on its first try (in real life this is populated by hello).
+  if (tunnel) {
+    bob.enableTunnelForward({ policy: 'always' });
+    await alicePeers.upsert({
+      pubKey:       bobId.pubKey,
+      hops:         0,
+      reachable:    true,
+      capabilities: { tunnel: true, relay: true },
+    });
+  }
+
   const registerReceiveMessage = (agent, received) => {
     agent.register('receive-message', async ({
       parts, from, originFrom, originVerified, relayedBy,
@@ -192,17 +209,21 @@ export async function buildMesh({ log, rendezvous = false, rtcLib } = {}) {
   registerRelayReceiveSealed(bob);
   registerRelayReceiveSealed(carol);
 
-  // Bridge tap: wrap bob.invoke so tests can see whether a forwarded
-  // call targeted the raw skill (plaintext) or relay-receive-sealed
-  // (blind), and whether the forwarded payload contained any plaintext.
+  // Bridge tap: wrap bob.invoke AND bob.call so tests can see whether a
+  // forwarded call targeted the raw skill (plaintext), relay-receive-sealed
+  // (blind), or an inner skill over the tunnel (CC).  `tunnel-open` uses
+  // bob.call (pre-terminal Task) rather than bob.invoke, so both wrappers
+  // are needed for the tap to cover all bridge behaviours.
   const bobOutbound = [];
   const origBobInvoke = bob.invoke.bind(bob);
   bob.invoke = async (peerId, skillId, input, opts) => {
-    bobOutbound.push({
-      peerId, skillId,
-      payload: JSON.stringify(input),
-    });
+    bobOutbound.push({ peerId, skillId, payload: JSON.stringify(input) });
     return origBobInvoke(peerId, skillId, input, opts);
+  };
+  const origBobCall = bob.call.bind(bob);
+  bob.call = (peerId, skillId, input, opts) => {
+    bobOutbound.push({ peerId, skillId, payload: JSON.stringify(input) });
+    return origBobCall(peerId, skillId, input, opts);
   };
 
   say('[scenario] mesh built — alice, bob, carol');
@@ -285,3 +306,4 @@ export async function gossipOracle(agent, bridgePubKey) {
 }
 
 export { TextPart, Parts };
+export { Task } from '../../src/protocol/Task.js';
