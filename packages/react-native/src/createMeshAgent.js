@@ -213,6 +213,39 @@ export async function createMeshAgent(opts = {}) {
     }).catch(() => {});
   });
 
+  // ── Also upgrade on bare peer-discovered (no hello yet) ─────────────────
+  // When BLE / mDNS / relay sees a peer's pubKey directly (rather than a
+  // MAC address), that's proof of a direct path *regardless* of whether
+  // hello has completed yet.  If the PeerGraph had this peer cached as
+  // hops:1 from an earlier gossip, callWithHop would stubbornly skip the
+  // direct attempt and try to bridge over the relay — which then fails
+  // when Wi-Fi is off.  Upsert hops:0 as soon as we see the pubkey
+  // directly, so subsequent sends route via the actual direct transport.
+  //
+  // We bind per-transport to preserve the `discoveredVia` provenance
+  // (useful for diagnostics) and skip MAC addresses (they'll be
+  // rewritten to pubKey once the first envelope decodes).
+  const bindPeerDiscovered = (name, transport) => {
+    if (!transport) return;
+    transport.on('peer-discovered', (peerAddress) => {
+      if (!peerAddress || typeof peerAddress !== 'string') return;
+      if (peerAddress.includes(':')) return;   // BLE MAC — not a pubKey yet
+      if (peerAddress === identity.pubKey) return;
+      peers.upsert({
+        type:          'native',
+        pubKey:        peerAddress,
+        reachable:     true,
+        hops:          0,
+        via:           null,
+        lastSeen:      Date.now(),
+        discoveredVia: `${name}-peer-discovered`,
+      }).catch(() => {});
+    });
+  };
+  bindPeerDiscovered('relay', relay);
+  bindPeerDiscovered('ble',   ble);
+  bindPeerDiscovered('mdns',  mdns);
+
   await agent.start();
   return agent;
 }
