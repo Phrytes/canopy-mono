@@ -45,6 +45,83 @@ Open follow-ups (not blockers; track separately if/when hit):
 
 ---
 
+## BT-only messaging reliability (parked 2026-04-24)
+
+**Status:** parked. BT-only two-phone messaging is unreliable on Android
+and was set aside so the PoC's core value prop (sealed tunnels through a
+bridge over Wi-Fi / mixed transports) can land first. Come back to this
+with a proper native-side debugging session.
+
+### Observed symptom
+
+On two Android phones (Samsung + FP4) with Wi-Fi off, after initial
+pairing works, outbound BLE writes from phone A to phone B time out
+(10 s `Timeout waiting for reply to <reqId>`) even though inbound BLE
+writes *to* phone A from phone B are handled correctly. The pattern is
+asymmetric: one direction's RQ lands and is processed, the return-path
+RS never arrives. Sometimes a stale `Characteristic 11 not found` is
+emitted on the reply leg (see session log 2026-04-24 around 16:07 —
+Samsung peripheral received RQ at 16:07:22.818, `agent error` at
+16:07:22.961).
+
+### Hypotheses tried this session (none fixed it)
+
+1. `writeWithoutResponse` silently dropping writes → flipped to
+   `writeWithResponse`, no improvement (reverted).
+2. Peer-restart detection in `#onCentralDevice` — tear down stale
+   `centralPeers` entry when the peer re-advertises → did not help
+   (reverted).
+3. Idle-connection staleness teardown in `_put` using a
+   `#lastInboundAt` map → detected correctly and routed to relay
+   after timeout, but didn't fix the underlying drop (reverted).
+
+All three are documented in the Claude session transcript for
+2026-04-24 and can be cherry-picked back if they turn out to be useful
+in combination with the real root-cause fix.
+
+### Candidates for the real root cause
+
+- **Characteristic handle staleness across peer app restart**: Android
+  caches the peer's GATT service table per MAC. When the peer's app
+  restarts with fresh GATT registrations, our cached handle numbers no
+  longer match. `writeWithResponse` may succeed at the OS layer
+  (Android thinks the connection is alive) while the characteristic
+  handle is invalid → data goes to a ghost handle.
+- **Reply-path uses central→peripheral write, not peripheral notify**:
+  Samsung's `agent error Characteristic 11 not found` suggests our
+  reply path for an inbound RQ writes back through Samsung's own
+  central connection to FP4 (i.e. Samsung-as-central → FP4-as-
+  peripheral), not through Samsung's peripheral notify to FP4's
+  subscribed central. Worth confirming by reading the RS path in
+  `BleTransport._put` / `_doWrite` vs. `BlePeripheral.notify`.
+- **CCCD subscription race** on the central side — `monitor()` fires
+  during setup and may not be fully wired before the first write's
+  reply lands.
+
+### Recommended approach when resuming
+
+1. Instrument BlePeripheral (Kotlin) + BleTransport with verbose logs
+   on both legs: `[_doWrite] wrote N bytes to handle H`,
+   `[peripheral] onWrite addr=..., N bytes`,
+   `[peripheral] notify addr=..., N bytes`,
+   `[central] monitor chunk from handle H`. Run with full adb logcat
+   (not only `ReactNativeJS`) so native-side errors are visible.
+2. Pin whether the reply goes via `BlePeripheral.notify` (correct
+   path) or via the peripheral's `centralPeers` entry to the peer's
+   peripheral (probably wrong / fragile).
+3. Test the "peer app restarted" scenario in isolation — kill the
+   peer app mid-session and watch whether `onDisconnected` fires on
+   our side.
+
+### Leave-behind
+
+Currently mixed-transport is solid (Wi-Fi + relay + BLE fallback). The
+sealed-tunnel-through-bridge demo works end-to-end on two phones + a
+laptop browser over Wi-Fi. BT-only is the hard case; not a blocker
+for the PoC.
+
+---
+
 ## User-facing parameter overview (categorized)
 
 **Status:** not started.
