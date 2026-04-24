@@ -58,11 +58,24 @@ export function AgentProvider({ children }) {
     createAgent({ relayUrl })
       .then(a => {
         if (cancelled) { a.stop(); return; }
-        a.on('error', err => { setError(err); setStatus('error'); });
+        // Once the agent has reached 'ready', runtime errors from
+        // transports (e.g. relay WebSocket drops when Wi-Fi toggles)
+        // are transient and should NOT demote the UI to the error
+        // screen.  The relay auto-reconnects with backoff; BLE resumes
+        // when the radio is back; mDNS picks up when the interface
+        // returns.  Just log them and record the most-recent error for
+        // diagnostics — the user keeps a usable Peers screen.
+        a.on('error', err => {
+          console.warn('[agent error]', err?.message ?? err);
+          setError(err);
+        });
         setAgent(a);
         setStatus('ready');
       })
       .catch(err => {
+        // Boot-time errors (identity generation, primary-transport
+        // startup, etc.) ARE fatal — the user needs to re-enter the
+        // relay URL or reinstall.
         if (!cancelled) { setError(err); setStatus('error'); }
       });
 
