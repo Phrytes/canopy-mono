@@ -52,6 +52,10 @@ export class MdnsTransport extends Transport {
   #pubKeyToConn = new Map();
   // connectionId → null (unidentified inbound, waiting for hello frame)
   #pending      = new Set();
+  // pubKey → ms timestamp of last successful send or inbound frame — used
+  // by routing to detect zombie TCP connections (present in the maps but
+  // not actually delivering).  A value of 0 means "never seen activity".
+  #lastActivity = new Map();
 
   #eventSubs    = [];
   #started      = false;
@@ -105,12 +109,22 @@ export class MdnsTransport extends Transport {
     this.#connToPubKey.clear();
     this.#pubKeyToConn.clear();
     this.#pending.clear();
+    this.#lastActivity.clear();
   }
 
   get _pubKeyToConn() { return this.#pubKeyToConn; }
 
   _hasPeer(pubKey) {
     return this.#pubKeyToConn.has(pubKey);
+  }
+
+  /**
+   * ms-epoch timestamp of last successful send / inbound frame for this
+   * peer, or 0 if we've never observed activity.  The routing layer uses
+   * this to avoid picking a zombie TCP connection over a live BLE one.
+   */
+  lastActivityAt(pubKey) {
+    return this.#lastActivity.get(pubKey) ?? 0;
   }
 
   /**
@@ -122,6 +136,7 @@ export class MdnsTransport extends Transport {
     if (connId == null) return;
     this.#pubKeyToConn.delete(pubKey);
     this.#connToPubKey.delete(connId);
+    this.#lastActivity.delete(pubKey);
     MdnsNative.close?.(connId).catch(() => {});
   }
 
@@ -131,6 +146,7 @@ export class MdnsTransport extends Transport {
     const json  = JSON.stringify(envelope);
     const bytes = new TextEncoder().encode(json);
     await MdnsNative.send(connId, b64Encode(bytes));
+    this.#lastActivity.set(to, Date.now());
   }
 
   // ── Private ────────────────────────────────────────────────────────────────
@@ -180,6 +196,7 @@ export class MdnsTransport extends Transport {
             if (peerKey && !this.#pubKeyToConn.has(peerKey)) {
               this.#pending.delete(connectionId);
               this.#registerConn(connectionId, peerKey);
+              this.#lastActivity.set(peerKey, Date.now());
               this.emit('peer-discovered', peerKey);
             }
             return; // internal frame — don't pass upstream
@@ -187,6 +204,9 @@ export class MdnsTransport extends Transport {
           // Non-hello first frame: pass upstream and let Agent identify via its own protocol
           this.#pending.delete(connectionId);
         }
+
+        const mappedPubKey = this.#connToPubKey.get(connectionId);
+        if (mappedPubKey) this.#lastActivity.set(mappedPubKey, Date.now());
 
         try { this._receive(envelope); } catch {}
       }),
@@ -198,6 +218,7 @@ export class MdnsTransport extends Transport {
         if (pubKey) {
           this.#connToPubKey.delete(connectionId);
           this.#pubKeyToConn.delete(pubKey);
+          this.#lastActivity.delete(pubKey);
           this.emit('peer-disconnected', pubKey);
         }
       }),

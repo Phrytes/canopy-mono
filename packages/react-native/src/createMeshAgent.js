@@ -144,18 +144,25 @@ export async function createMeshAgent(opts = {}) {
   const offline = new OfflineTransport({ identity });
   const primary = mdns ?? offline;
 
+  // Routing: prefer mDNS (plain TCP, more robust than Android BLE GATT)
+  // when its connection is HEALTHY — i.e. we've seen activity on it in
+  // the last MDNS_FRESHNESS_MS.  If the mDNS entry is a zombie (present
+  // in the map but idle — Wi-Fi died, peer moved away, etc.) we fall
+  // through to BLE rather than send into a dead socket.  BLE remains
+  // the direct-path fallback for the no-Wi-Fi case.  Relay closes the
+  // loop when neither direct transport has a live path.
+  const MDNS_FRESHNESS_MS = 30_000;
+
   const routing = {
     selectTransport: (peerId) => {
       if (typeof peerId === 'string' && peerId.includes(':')) {
         return { transport: ble };                    // BLE MAC → initial hello
       }
-      // Priority order, most reliable first.  mDNS is plain TCP — much
-      // more robust than Android BLE's GATT (which is prone to stale
-      // handle caches on device restart, CCCD deadlocks, etc.).  BLE is
-      // kept as a direct-path fallback for the no-Wi-Fi case; relay
-      // closes the loop when neither direct transport has the peer.
-      if (mdns?._hasPeer?.(peerId)) return { transport: mdns };
+      const mdnsFresh = mdns?._hasPeer?.(peerId)
+        && (Date.now() - (mdns.lastActivityAt?.(peerId) ?? 0) < MDNS_FRESHNESS_MS);
+      if (mdnsFresh)                return { transport: mdns };
       if (ble?._hasPeer?.(peerId))  return { transport: ble };
+      if (mdns?._hasPeer?.(peerId)) return { transport: mdns };  // stale but last resort
       if (relay)                    return { transport: relay };
       return { transport: offline };                   // fails cleanly
     },
