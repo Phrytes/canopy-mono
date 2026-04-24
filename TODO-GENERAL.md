@@ -122,6 +122,50 @@ for the PoC.
 
 ---
 
+## Production-ready relay for online deployment
+
+**Status:** future feature.  Today's `@canopy/relay` is a private-LAN
+broker — no auth, no rate limiting, no TLS termination, in-memory
+queues.  Fine for demos on a home network, **unsafe on the open
+internet** (memory-exhaustion amplifier, anyone-can-register-as-anyone).
+
+The intent is to develop a hardened relay suitable for hosting on a
+public endpoint.  When this work begins, scope likely includes:
+
+- **Authenticated registration**: prove ownership of the claimed
+  pubkey before the relay forwards messages on its behalf (signed
+  challenge-response at register time, verified against `payload.pubKey`).
+- **Per-pubkey rate limits + queue caps** to prevent a single
+  rogue client from filling memory.
+- **TLS termination** (wss://) with a sane default config + docs for
+  Let's Encrypt or Caddy / nginx fronting.
+- **Optional persistence** (Redis or SQLite) for queued messages
+  across relay restarts; today it's pure in-memory.
+- **Operator hooks**: `validateAddress(socket, claim) → boolean`,
+  metrics endpoint, structured logs.
+- **Multi-tenant model** if needed (separate namespaces per relay
+  operator) — possibly out of scope for v1.
+- **Deployment recipe**: a reference Docker / docker-compose / fly.io
+  config that someone can stand up in under 10 minutes.
+
+Until then: `packages/relay/README.md` should carry a prominent
+warning that the current relay is for trusted-network use only.  Add
+that warning when starting the hardening work, not as a separate task
+— it'll be a one-liner pointing at this section as the "real fix in
+progress."
+
+Related considerations:
+- Decision: open-source the hardened relay or keep it as a paid
+  hosted service?  Affects API surface (built-in auth backend
+  pluggability).
+- Once auth lands, `'authenticated'` policy tier on the relay-forward
+  skill becomes meaningfully stronger — the relay can vouch for the
+  identity of any forwarded sender.
+- `@canopy/relay` versioning: clients and relays will need a clean
+  protocol-version negotiation if breaking changes happen post-auth.
+
+---
+
 ## User-facing parameter overview (categorized)
 
 **Status:** not started.
