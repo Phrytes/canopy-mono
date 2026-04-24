@@ -1043,14 +1043,20 @@ evicts stale rows. Capability flag added to
   back to one-shot `relay-forward` when no tunnel-capable bridge
   is available or the call is sealed.
 
-- **CC3b — BB + CC combined (deferred).**  The session-key
-  handshake is spec'd in `Design-v3/hop-tunnel.md § 7` but
-  implementation is punted: it requires a per-task symmetric-
-  decryption layer over `handleTaskOneWay` on both endpoints, plus
-  converting Carol's `relay-receive-sealed` dispatch from a
-  one-shot handler to a streaming Task.  Non-trivial and not
-  needed for the current NLnet scope (BB group calls still work
-  end-to-end via the one-shot path, they just don't stream).
+- **CC3b — BB + CC combined (shipped 2026-04-24).**  Streaming /
+  IR / cancel through a hop with content privacy from the bridge.
+  Alice generates a 32-byte session key `K`, packs it inside the
+  sealed opening RQ under `packSealed` extras (Bob never sees K),
+  Carol unseals via a new `tunnel-receive-sealed` skill and stores
+  K in `agent._sealedTunnelKeys`.  Every in-tunnel OW between
+  Alice and Carol is `nacl.secretbox`-encrypted with K and
+  forwarded opaquely by Bob as a `sealed-tunnel-ow` OW.  On the
+  receiver, `handleTaskOneWay` decrypts and re-dispatches the
+  inner OW through the standard switch, so streaming / IR / cancel
+  use exactly the same Task semantics as plaintext tunnels.
+  `callWithHop` picks sealed-tunnel automatically when the call
+  is sealed AND the bridge advertises `tunnel:true`; otherwise it
+  falls back to one-shot `relay-receive-sealed` as before.
 
 #### CC4 — Integration tests + mesh-scenario phase 12
 

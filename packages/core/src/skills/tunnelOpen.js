@@ -76,7 +76,18 @@ export function registerTunnelOpen(agent, opts = {}) {
     // ── Input validation ─────────────────────────────────────────────────────
     const d = Parts.data(parts);
     if (!d?.targetPubKey) return [DataPart({ error: 'missing targetPubKey' })];
-    if (!d?.skill)        return [DataPart({ error: 'missing skill' })];
+
+    // Sealed tunnel path: caller provides an opaque sealed blob instead
+    // of `skill` / `payload`.  The inner skill / parts / origin-sig are
+    // visible only to the target after they unseal.  Bob forwards via
+    // `tunnel-receive-sealed` and never decrypts.
+    const isSealed = typeof d.sealed === 'string' && d.sealed.length > 0;
+    if (!isSealed && !d?.skill) {
+      return [DataPart({ error: 'missing skill or sealed payload' })];
+    }
+    if (isSealed && !d?.nonce) {
+      return [DataPart({ error: 'missing nonce for sealed payload' })];
+    }
 
     const record = await agent.peers?.get?.(d.targetPubKey);
     if (!record || !record.reachable) {
@@ -86,7 +97,68 @@ export function registerTunnelOpen(agent, opts = {}) {
       return [DataPart({ error: 'tunnel-loop: target is the caller' })];
     }
 
-    // ── Kick off the inner call (returns a pre-terminal Task) ────────────────
+    // Alice's local taskId for the outer Task — shared with Carol in
+    // sealed mode so both sides reference the same id for
+    // sealed-tunnel-ow dispatch.  Alice may also pre-allocate the
+    // tunnelId and pass it in the RQ so she can register her session
+    // key BEFORE the round-trip, avoiding a race where Carol emits
+    // sealed-tunnel-ow OWs before Alice knows her own tunnelId.
+    const tunnelId = typeof d.tunnelId === 'string' && d.tunnelId
+      ? d.tunnelId
+      : genId();
+    const aliceTaskId = typeof d.aliceTaskId === 'string' && d.aliceTaskId
+      ? d.aliceTaskId
+      : genId();
+
+    // ── Sealed branch — Bob cannot read the inner call ──────────────────────
+    if (isSealed) {
+      // Pre-register the session row BEFORE delivering to Carol.  Once
+      // tunnel-receive-sealed ACKs Carol's runner has already kicked off
+      // and may emit the first stream-chunk through tunnel-ow on us —
+      // we need the row to exist so we can forward, not drop.
+      sessions.add({
+        tunnelId,
+        aliceAddr:    from,
+        aliceTaskId,
+        carolAddr:    d.targetPubKey,
+        // In sealed mode both endpoints use aliceTaskId as the local
+        // Task id — there's no Bob-side Task to allocate one for.
+        carolTaskId:  aliceTaskId,
+        carolTask:    null,
+        originPubKey: from,
+        originSig:    d.originSig ?? null,
+        originTs:     d.originTs  ?? null,
+        sealed:       true,
+        ttlMs:        d.ttlMs ?? undefined,
+      });
+
+      try {
+        const ack = await agent.invoke(
+          d.targetPubKey,
+          'tunnel-receive-sealed',
+          [DataPart({
+            sealed:   d.sealed,
+            nonce:    d.nonce,
+            sender:   from,                       // Alice
+            tunnelId,
+            bobAddr:  agent.pubKey,
+          })],
+          { timeout: d.timeout ?? 10_000 },
+        );
+        const ackData = Parts.data(ack);
+        if (ackData?.error) {
+          sessions.drop(tunnelId, 'sealed-deliver-refused');
+          return [DataPart({ error: `sealed-deliver-refused: ${ackData.error}` })];
+        }
+      } catch (err) {
+        sessions.drop(tunnelId, 'sealed-deliver-failed');
+        return [DataPart({ error: `sealed-deliver-failed: ${err?.message ?? err}` })];
+      }
+
+      return [DataPart({ tunnelId, aliceTaskId, sealed: true })];
+    }
+
+    // ── Plaintext branch — kick off the inner call ─────────────────────────
     const payload = Parts.wrap(d.payload ?? []);
 
     let carolTask;
@@ -101,16 +173,10 @@ export function registerTunnelOpen(agent, opts = {}) {
       return [DataPart({ error: `tunnel-call-failed: ${err?.message ?? err}` })];
     }
 
-    // ── Session row ──────────────────────────────────────────────────────────
-    // Alice passes her local taskId so incoming OWs from us can be dispatched
-    // to her outer Task without aliasing.  Fall back to generating one if
-    // the caller didn't supply it (keeps the skill usable from tests and
-    // low-level tooling).
-    const tunnelId    = genId();
-    const aliceTaskId = typeof d.aliceTaskId === 'string' && d.aliceTaskId
-      ? d.aliceTaskId
-      : genId();
-
+    // ── Session row (plaintext branch) ───────────────────────────────────────
+    // tunnelId + aliceTaskId were allocated above.  Alice passes her
+    // local taskId so incoming OWs from us can be dispatched to her
+    // outer Task without aliasing.
     const row = sessions.add({
       tunnelId,
       aliceAddr:    from,
