@@ -305,6 +305,81 @@ export class BleTransport extends Transport {
 
   // ── Central mode: private ──────────────────────────────────────────────────
 
+  /**
+   * Connect + discover services/characteristics + requestMTU, retrying on
+   * Android's stale-GATT-cache errors ("Characteristic N not found",
+   * "Service N not found", etc.).
+   *
+   * Android's BLE stack caches each peer's service table per-device-MAC.
+   * When the peer has been reset since our last connection (e.g. the app
+   * restarted with fresh GATT registrations), the cached handles are
+   * invalidated, but subsequent discovery calls still return the stale
+   * table — later operations then fail resolving the (nonexistent)
+   * numeric handle.  Android doesn't expose a public API to refresh the
+   * cache, but disconnecting and waiting a few seconds causes the
+   * framework to drop the stale entry.
+   *
+   * Strategy: on a "not found" error class, cancelConnection, sleep,
+   * retry from a fresh connect() up to {RETRY_LIMIT} attempts.  Any
+   * other error class bubbles out immediately.
+   *
+   * @returns {{connected, char, mtu} | null}  null if the peer doesn't
+   *   expose our SERVICE_UUID / CHARACTERISTIC_UUID (wrong kind of peer).
+   */
+  async #connectWithStaleCacheRetry(device) {
+    const RETRY_LIMIT = 3;
+    const STALE_CACHE_PATTERN = /not found|not supported|characteristic|service/i;
+    let lastErr;
+
+    for (let attempt = 1; attempt <= RETRY_LIMIT; attempt++) {
+      let connected;
+      try {
+        connected = await device.connect();
+      } catch (err) {
+        // Connect itself failed — don't retry indefinitely on genuine
+        // connect errors (peer out of range, etc.).
+        throw err;
+      }
+
+      try {
+        const discovered = await connected.discoverAllServicesAndCharacteristics();
+        const services   = await discovered.services();
+        const svc        = services.find(s => s.uuid === SERVICE_UUID);
+        if (!svc) {
+          await connected.cancelConnection().catch(() => {});
+          return null;
+        }
+
+        const chars = await svc.characteristics();
+        const char  = chars.find(c => c.uuid === CHARACTERISTIC_UUID);
+        if (!char) {
+          await connected.cancelConnection().catch(() => {});
+          return null;
+        }
+
+        const mtuDevice = await connected.requestMTU(512).catch(() => null);
+        const mtu       = mtuDevice?.mtu ?? DEFAULT_MTU;
+
+        // All checks passed.
+        return { connected, char, mtu };
+      } catch (err) {
+        lastErr = err;
+        await connected.cancelConnection().catch(() => {});
+
+        // Only retry on the stale-cache signature; anything else
+        // (connect-was-cancelled, device-out-of-range, etc.) bubbles.
+        if (attempt < RETRY_LIMIT && STALE_CACHE_PATTERN.test(err?.message ?? '')) {
+          // Android evicts the stale service-table entry after a few
+          // seconds of idle; 3 s empirically covers Samsung + Pixel stacks.
+          await new Promise(r => setTimeout(r, 3_000));
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastErr ?? new Error('BLE connect failed after retries');
+  }
+
   async #onCentralDevice(device) {
     // Guard against duplicate connection attempts: check both the completed-peers
     // map and the in-progress set so a second scan result arriving during the
@@ -313,28 +388,13 @@ export class BleTransport extends Transport {
     if (this.#connectingDevices.has(device.id)) return;
     this.#connectingDevices.add(device.id);
 
-    let connected;
+    let connected, char, mtu;
     try {
-      connected = await device.connect();
+      const result = await this.#connectWithStaleCacheRetry(device);
+      if (!result) { this.#connectingDevices.delete(device.id); return; }
+      ({ connected, char, mtu } = result);
     } catch (err) {
       this.#connectingDevices.delete(device.id);
-      this.emit('error', err);
-      return;
-    }
-    let char, mtu;
-    try {
-      const discovered = await connected.discoverAllServicesAndCharacteristics();
-      const services   = await discovered.services();
-      const svc        = services.find(s => s.uuid === SERVICE_UUID);
-      if (!svc) { await connected.cancelConnection().catch(() => {}); return; }
-
-      const chars = await svc.characteristics();
-      char = chars.find(c => c.uuid === CHARACTERISTIC_UUID);
-      if (!char) { await connected.cancelConnection().catch(() => {}); return; }
-
-      const mtuDevice = await connected.requestMTU(512).catch(() => null);
-      mtu = mtuDevice?.mtu ?? DEFAULT_MTU;
-    } catch (err) {
       this.emit('error', err);
       return;
     } finally {
