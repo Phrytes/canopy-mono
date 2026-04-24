@@ -11,7 +11,7 @@
  * See EXTRACTION-PLAN.md §7 Group U for the full rewrite rationale.
  */
 import {
-  DataPart, TextPart, Parts,
+  DataPart, TextPart, Parts, Task,
   registerCapabilitiesSkill,
   registerTunnelReceiveSealed,
 } from '@canopy/core';
@@ -20,6 +20,9 @@ import {
   KeychainVault,
 }                                  from '@canopy/react-native';
 import { messageStore }            from './store/messages.js';
+import { activityStore }           from './store/activity.js';
+
+const shortPk = (pk) => typeof pk === 'string' ? pk.slice(0, 10) + '…' : '?';
 
 export async function createAgent({ relayUrl } = {}) {
   const agent = await createMeshAgent({
@@ -89,17 +92,60 @@ export async function createAgent({ relayUrl } = {}) {
 
   // A tiny streaming test skill for exercising Group CC tunnels from a
   // laptop browser tab (or another phone).  Yields `count` chunks, each
-  // with the phrase + index.  Remove once streaming is wired into real UI.
-  agent.register('stream-demo', async function* ({ parts }) {
-    const d     = Parts.data(parts) ?? {};
-    const text  = typeof d.text  === 'string' ? d.text  : 'hello from phone';
-    const count = Number.isFinite(d.count)    ? d.count : 3;
+  // with the phrase + index.  Activity is mirrored to activityStore so
+  // the PeersScreen can show "someone is streaming through / from us".
+  agent.register('stream-demo', async function* ({ parts, from, originFrom }) {
+    const d      = Parts.data(parts) ?? {};
+    const text   = typeof d.text  === 'string' ? d.text  : 'hello from phone';
+    const count  = Number.isFinite(d.count)    ? d.count : 3;
+    const caller = originFrom ?? from;
+    activityStore.add({
+      kind:   'skill-call',
+      label:  'stream-demo',
+      caller: shortPk(caller),
+      detail: `streaming ${count} chunk${count > 1 ? 's' : ''}`,
+    });
     for (let i = 1; i <= count; i++) {
       yield [TextPart(`${text} [${i}/${count}]`)];
-      // Small gap so the caller actually sees chunks arriving over time.
       await new Promise(r => setTimeout(r, 250));
+      activityStore.add({
+        kind:   'stream-chunk',
+        label:  'stream-demo',
+        caller: shortPk(caller),
+        detail: `${i}/${count}`,
+      });
     }
+    activityStore.add({
+      kind:   'stream-end',
+      label:  'stream-demo',
+      caller: shortPk(caller),
+      detail: 'done',
+    });
   }, { visibility: 'public', description: 'Stream a short demo message (CC test skill)' });
+
+  // Input-required test skill.  First call throws InputRequired with a
+  // prompt; when the caller replies via task.send(...), the handler
+  // resumes with the reply's parts and returns a greeting.
+  agent.register('ask-name', async ({ parts, from, originFrom }) => {
+    const caller = originFrom ?? from;
+    const text   = Parts.text(parts);
+    if (!text || text === 'start') {
+      activityStore.add({
+        kind:   'ir-prompt',
+        label:  'ask-name',
+        caller: shortPk(caller),
+        detail: 'prompt sent: What is your name?',
+      });
+      throw new Task.InputRequired([TextPart('What is your name?')]);
+    }
+    activityStore.add({
+      kind:   'ir-reply',
+      label:  'ask-name',
+      caller: shortPk(caller),
+      detail: `got reply: "${text}"`,
+    });
+    return [TextPart(`Hello, ${text}!`)];
+  }, { visibility: 'public', description: 'Prompt the caller for a name and greet them (IR test skill)' });
 
   // All skills registered; NOW start the agent so the first HI-ACK
   // we send reports relay/tunnel/sealed-forward as `true`.

@@ -19,6 +19,8 @@ vi.mock('@canopy/react-native', () => {
       this._startDiscoveryOpts         = null;
       this._oracleEnabled              = false;
       this._sealedForwardGroups        = [];
+      this._tunnelEnabled              = false;
+      this._started                     = false;
       this._skills                      = new Map();
     }
     enableRelayForward(opts) {
@@ -42,11 +44,18 @@ vi.mock('@canopy/react-native', () => {
       this._sealedForwardGroups.push({ groupId, opts: opts ?? {} });
       return this;
     }
+    enableTunnelForward(opts) {
+      this._tunnelEnabled     = true;
+      this._tunnelOpts        = opts ?? {};
+      return this;
+    }
+    async start() { this._started = true; }
     register(id, handler, meta) {
       this._skills.set(id, { handler, meta });
       return this;
     }
-    // `registerCapabilitiesSkill` inspects agent.skills via `skills?.get?.(id)`.
+    // `registerCapabilitiesSkill` + `registerTunnelReceiveSealed` inspect
+    // agent.skills via `skills?.get?.(id)`.
     get skills() { return this._skills; }
   }
 
