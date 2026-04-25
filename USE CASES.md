@@ -466,6 +466,75 @@ upstream items, GUI tech-stack choice when that phase begins.
 
 ---
 
+## 6. Proof of location — signed beacons + witness network
+
+### Sketch (added 2026-04-26)
+
+> Are there any open source initiatives to help prove (to some
+> app) in a privacy-safe way, that you really are at a specific
+> location?
+
+Plus, on multi-signal approaches:
+
+> I thought, maybe the combination of nearby wifi-networks,
+> photos verified with weather info, parked license plates, or
+> locally distributed regularly-updated qr codes could help for
+> this goal.
+
+### Reading (English)
+
+A privacy-preserving proof-of-presence service.  Two layers:
+**privacy** (prove "I am inside region X" without revealing
+exact coordinates — Zero-Knowledge Proofs) and **authenticity**
+(prevent the user from simply lying about where they are —
+trusted hardware, witness networks, or radio beacons).  Most
+research projects address one well and the other less well.
+The recommended starting point is **multi-signal**: combine
+weak signals (rotating-QR beacons, witness peers, signed sensor
+data) into a stronger composite proof.
+
+### Status
+
+Scope sketched in
+[`projects/06-proof-of-location/README.md`](./projects/06-proof-of-location/README.md).
+Includes a landscape survey of existing projects (ZKLP, OLP,
+POLP, FOAM, C2PA, Truepic), per-signal honest read on the
+user's multi-signal ideas (WiFi fingerprinting, photos +
+weather, license plates, rotating QR codes), a 4-layer
+architectural decomposition, and a recommended v1 starting
+point: **signed rotating-QR beacons + witness-network skill**,
+deferring ZKP composition until there's a concrete need.
+
+### Overlap with other use cases
+
+- **Strong overlap with #2.**  Witness networks ARE skill
+  matchmaking with `attest-presence` as the skill.  Reuses
+  pubsub-of-skills, closed-group governance.
+- **Strong overlap with #4.**  Role-aware groups weight witness
+  signatures by trust.  Tasks can be claim-bound to presence
+  attestations ("water the garden — only claimable if presence-
+  attested at the garden").
+- **Composable verification primitive.**  Becomes a building
+  block other use cases consume; not a standalone app surface.
+
+### What's resolved
+
+- Two-layer problem decomposition (privacy + authenticity).
+- Multi-signal composition is the right architecture.
+- Layer 1 (signed rotating-QR beacon) + Layer 2 (witness skill)
+  is the v1 scope.
+- ZKP composition (Layer 4) deferred until a concrete consumer
+  demands it.
+
+### Still-open questions
+
+See [`projects/06-proof-of-location/README.md` § Open questions](./projects/06-proof-of-location/README.md).
+Notable: beacon hardware scope (ESP32 vs phone-to-phone),
+trust model for beacon operators, witness-graph privacy,
+anti-Sybil for witnesses, GUI for the beacon-tap flow.
+
+---
+
 ## Cross-cutting threads (refined for pass 3)
 
 | Theme | Use cases | What the SDK might need |
