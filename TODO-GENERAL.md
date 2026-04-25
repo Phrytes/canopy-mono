@@ -166,6 +166,168 @@ Related considerations:
 
 ---
 
+## Slim-Agent refactor (parked 2026-04-25)
+
+**Status:** designed, not started.  Full proposal in
+[`Design-v3/slim-agent.md`](./Design-v3/slim-agent.md).
+
+`Agent.js` is at 1219 LoC and growing.  The proposal extracts every
+optional feature (`enableRelayForward`, `enableTunnelForward`,
+`enableSealedForwardFor`, `enableReachabilityOracle`,
+`enableRendezvous`, `enableAutoHello`, `startDiscovery`, `setHelloGate`,
+the A2A methods) into standalone `attach*` modules.  `Agent.js`
+shrinks to ~350 LoC; a new `MeshAgent` subclass bundles the standard
+mesh feature set; `createMeshAgent` (RN factory) stays as the
+opinionated entry point.
+
+The design doc covers: full method-by-method inventory, three
+worked extension patterns (closure / controller / free function),
+the one three-line Agent change (`#extensions` registry +
+`transport-added` event + `stop()` cleanup hook), proposed file
+layout, 11-step migration order, and a "decisions to surface"
+section flagging six choices that shape the result.
+
+**Why parked:** ergonomic refactor, not a bug fix.  The current
+Agent works; this just makes it cleaner.  Pick this up when you
+have a focused session for it (steps 1–3 in one PR is the
+fastest path to validate the pattern).
+
+---
+
+## REST / HTTP API for agents
+
+**Status:** idea captured 2026-04-25, not designed.
+
+Goal: let non-`@canopy` clients (web apps, IoT, cloud functions,
+AI services that don't want to embed the SDK) talk to an agent over
+plain HTTP.  Distinct from A2A — A2A is a specific industry protocol
+already implemented in `packages/core/src/a2a/`; this is a thin,
+general-purpose REST surface.
+
+### Sketch — endpoints
+
+```
+GET  /card                                          export agent card (no secrets)
+GET  /skills                                        list skills this agent exposes
+POST /skills/:skillId                               invoke own skill, return Parts
+POST /peers/:pubKey/skills/:skillId                 invoke a peer's skill (proxy)
+POST /peers/:pubKey/skills/:skillId/stream          SSE stream of Parts chunks
+POST /peers/:pubKey/skills/:skillId/input/:taskId   reply to an input-required task
+GET  /peers                                         list known peers (filtered)
+POST /peers/:pubKey/hello                           hello a peer by pubkey
+POST /messages/:pubKey                              send a one-way message (OW)
+```
+
+Operator endpoints (separate auth):
+
+```
+POST /admin/rotate-identity                          trigger rotation
+POST /admin/forget/:pubKey                           drop a peer
+GET  /admin/transports                               liveness summary
+```
+
+### Authentication
+
+Capability tokens already implemented in
+`packages/core/src/permissions/CapabilityToken.js` map naturally to
+HTTP Bearer:
+
+```
+Authorization: Bearer <signed-capability-token>
+```
+
+Tokens are signed by the agent's identity, scope-restricted (skill
+id, expiry, optional constraints), and verifiable without a
+round-trip.  `agent.issueCapabilityToken({ subject, skill, expiresIn })`
+is already the issuance path.
+
+### Streaming
+
+REST doesn't natively stream.  Two options:
+- **SSE** (`text/event-stream`): simple, plays well with most
+  clients, browser-native via `EventSource`.  Recommended.
+- **WebSocket upgrade** on the same routes: bidirectional, but adds
+  protocol complexity for the input-required flow.
+
+For input-required: SSE plus a separate `POST .../input/:taskId`
+endpoint to send the reply.  Keeps the read/write halves separate.
+
+### Hop / sealed-forward
+
+Plain REST exposes one agent.  If the caller wants to invoke a peer
+the agent can only reach via a bridge, the agent itself does the hop
+on the caller's behalf — i.e., `POST /peers/:pubKey/skills/...`
+internally calls `agent.invokeWithHop`.  The HTTP caller just sees a
+result; routing decisions are local to the agent.
+
+This means: **the HTTP surface is a "bridge to my agent's mesh,"**
+not a way to address arbitrary mesh peers from the outside.  Calls
+are scoped to peers the local agent already knows.
+
+### Open design questions
+
+1. **Where does this live?**  New package
+   `@canopy/http-adapter` (depends on `@canopy/core`)?  Or part
+   of `@canopy/relay` since both deal with HTTP/WS infra?
+   I'd lean: separate package — relay is a broker between agents,
+   http-adapter is a client interface to a single agent.
+2. **TLS termination**: same answer as the production-relay roadmap
+   above — recommend a doc-level recipe (Caddy / nginx / fly.io)
+   rather than baking TLS into the adapter.
+3. **What's the relationship with the existing `A2ATransport`?**
+   A2A is its own protocol (cards, JWT, JSON-RPC).  HTTP-adapter is
+   the bare-metal version.  Could share auth helpers; should NOT
+   share endpoints (different semantics).
+4. **Do we need a JS client library** (`@canopy/http-client`)?
+   For non-JS callers a curl example + OpenAPI spec is enough.  For
+   JS callers, a thin wrapper that handles capability-token rotation
+   would be nice but is a follow-up, not a blocker.
+5. **Rate limiting / quota** per token: yes, but probably as
+   middleware (express-rate-limit) rather than custom code.
+6. **CORS**: needed for browser clients.  Configurable per agent.
+7. **Multipart / file upload**: maps to FilePart payload.  Need a
+   convention for `multipart/form-data` → Parts conversion.
+8. **Should the adapter be transport-pluggable**?  i.e. could we
+   have a Fastify variant + an Express variant + a Node native
+   variant?  Probably overkill; pick one (Fastify is a reasonable
+   default — fast, well-typed, plugin ecosystem).
+
+### Why this is a good idea
+
+- **Removes the "you must speak our wire protocol" barrier.**  Most
+  third-party integrations will be HTTP first; native-protocol
+  later, if at all.
+- **Auth story is already there.**  CapabilityToken was built for
+  exactly this scenario — signed, time-limited, scope-restricted
+  grants.  Wiring them to HTTP Bearer is the cleanest part.
+- **Keeps the core untouched.**  HTTP-adapter is a consumer of the
+  existing public Agent API (post-slim-Agent refactor, even
+  cleaner).  No protocol changes.
+- **Doesn't preclude anything.**  Native protocol stays the canonical
+  path; HTTP is an additional surface for clients who want it.
+
+### Why be careful
+
+- **It IS a real internet-facing surface.**  Same caveats as the
+  production-relay roadmap: needs auth, rate limiting, TLS,
+  thoughtful CORS, audit logs.
+- **Scope creep risk:** "while we're at it, let's add GraphQL / a
+  WebSocket subscription API / a gRPC variant…"  Resist.  One
+  well-done REST surface beats three half-done ones.
+- **Streaming-with-IR over HTTP is awkward.**  Worth a focused
+  design doc before writing endpoints.
+
+### Recommended next step (when this thaws)
+
+Write `Design-v3/http-adapter.md` answering the eight open questions
+above, sketch the OpenAPI surface, and pick the framework.  Then
+build it as `packages/http-adapter/` against the existing public
+Agent API.  The slim-Agent refactor (parked above) makes the
+adapter's job easier but is not a hard prerequisite — current Agent
+already exposes everything an HTTP adapter would need.
+
+---
+
 ## User-facing parameter overview (categorized)
 
 **Status:** not started.
