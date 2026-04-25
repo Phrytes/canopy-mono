@@ -43,6 +43,8 @@ preserve intent.
 > Uiteindelijk zou je er ook in willen kunnen samenwerken, zoals in
 > google docs, eenvoudig forks/kopieen maken enzo.
 
+> punt is, uiteindelijk wil je gewoon dat je met je agent bij je documenten kunt en je wilt erin kunnen samenwerken, los van bijv. Google
+
 ### Reading (English)
 
 A **local-on-device** private agent that owns (or has access to)
@@ -91,6 +93,11 @@ documents.
 - **Etherpad** — most mature for real-time text collab; plain
   text + plugin system; less doc-shaped (no headings, no
   attachments by default).
+
+Alternatives: 
+- Nextcloud → full API, but less zero-knowledge
+- Outline → API-friendly docs
+- Appwrite → structured data + APIs
 
 The integration question becomes: which of these has a sync /
 storage layer pluggable enough to point at a Solid pod?
@@ -153,6 +160,7 @@ investigation item.
 > scrollen door skills (ook anoniem) en dat pas na goedkeuring
 > van beide kanten de anonimiteit wordt opgeheven.
 
+> wellicht tijd voor een clustering van skills: technisch, menselijk, app-gerelateerd
 ### Reading (English)
 
 A relay you can only join by invitation (closed network of, say,
@@ -272,6 +280,8 @@ on them when this is unparked.
 > als directe opslag te gebruiken of is het altijd een
 > referentieboek?).
 
+> later ook voor whatsapp (waarbij je misschien een agent je berichten kunt laten exporten, die export ophalen en die weer omzetten naar json met die ene github-applicatie). Moet rekening houden met overlap/duplicaten tussen berichten
+
 ### Reading (English)
 
 An agent whose job is "see a Google Doc URL, fetch it via Google's
@@ -389,6 +399,70 @@ not just flat membership.  Group X (group-visibility) gets you
 This is a generalization of the existing trust-tier system
 (`anonymous` < `authenticated` < `trusted` + group-membership)
 that adds an in-group axis.
+
+---
+
+## 5. Archive app — search and browse the migrated data
+
+### Sketch (added 2026-04-26)
+
+> Find all kinds of data imported from external services
+> (gdrive, docs, ms counterparts, whatsapp etc) in a solid pod
+> and make them searchable.
+
+### Reading (English)
+
+The natural pairing of #3.  #3 *gets data into the pod*; #5
+*makes it useful*.  A local-on-device app that sits on top of
+the user's Solid pod and lets them browse, search, and link
+across everything that's been imported — emails, photos,
+documents, messages, calendar events, contacts, social posts,
+etc.  **API-first** (per the author's framing): the archive
+registers a small set of agent skills (`search`, `list`, `get`,
+`timeline`, `related`, `share`, `ingest`, `annotate`, `link`,
+`tag`, …) that any consumer (a GUI, a CLI, another agent, an
+LLM) reaches the same way.  GUI is a later layer on top.
+
+### Status
+
+Scope sketched in
+[`projects/05-archive-app/README.md`](./projects/05-archive-app/README.md),
+which holds the full API draft, data-model proposal,
+pod-layout sketch, search-implementation choice (SQLite FTS5
+for v1, embeddings for v2), encryption / sharing model, and
+GUI considerations (deferred).
+
+### Overlap with other use cases
+
+- **Strong overlap with #3** — same agent ecosystem, with #3
+  upstream of #5.  Connectors call `archive.ingest`; the
+  archive doesn't fetch upstream itself.
+- **Partial overlap with #1** — both consume content from the
+  pod.  The notes app (#1) is focused on *editing*; the archive
+  (#5) is focused on *querying / browsing*.  Could share the
+  same pod backing.
+- **Sharing flow reuses CapabilityToken** infrastructure from
+  the SDK (already present), bridging to existing skill-call
+  semantics.
+
+### What's resolved
+
+- API-first.  GUI later.
+- Read-side and write-side skills sketched (10+ skills).
+- `ArchiveItem` schema + extensible type enum proposed.
+- Pod layout: `/archive/sources/<source-id>/items/...` plus
+  manifest, links, annotations, people directories.
+- Search: SQLite FTS5 local-to-device for v1; embeddings for
+  v2 (later).
+- Encryption-by-ACL convention reused; sharing via
+  CapabilityToken.
+
+### Still-open questions
+
+See [`projects/05-archive-app/README.md` § Open questions](./projects/05-archive-app/README.md).
+Notable: identity reconciliation depth (auto / manual / both),
+search index in pod or local-only, what happens to deleted-
+upstream items, GUI tech-stack choice when that phase begins.
 
 ---
 

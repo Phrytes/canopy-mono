@@ -21,8 +21,9 @@ folder here holds:
 |---|---|---|
 | `01-notes-app/` | Documents / notes / project-files app | Pass-3 design dialogue (see USE CASES.md §1) |
 | `02-neighborhood-app/` | Gated relay + skill matchmaking with anonymity | Pass-3 design (anonymity model parked) |
-| `03-import-bridge/` | Document import bridge (Google Docs etc. → markdown → Solid pod) | Pass-3 design + Google Docs feasibility note |
+| `03-import-bridge/` | Migration bridge — pull data out of cloud silos (Google, Microsoft, Apple, messaging, social) into the user's Solid pod | Pass-3 design + Google Docs feasibility note + broader migration-scope investigation |
 | `04-tasks-app/` | Task / workflow app with skill-based dispatch | Pass-2 design (carries forward) |
+| `05-archive-app/` | Archive app — search, browse, link the data brought in by #3.  API-first design (skills the archive registers); GUI later. | Scope sketched + API draft |
 
 **Boundaries:**
 
