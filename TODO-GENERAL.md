@@ -194,137 +194,171 @@ fastest path to validate the pattern).
 
 ---
 
-## REST / HTTP API for agents
+## REST API for agents — protocol-agnostic
 
-**Status:** idea captured 2026-04-25, not designed.
+**Status:** idea captured 2026-04-25, refined 2026-04-25, not
+designed.
 
-Goal: let non-`@canopy` clients (web apps, IoT, cloud functions,
-AI services that don't want to embed the SDK) talk to an agent over
-plain HTTP.  Distinct from A2A — A2A is a specific industry protocol
-already implemented in `packages/core/src/a2a/`; this is a thin,
-general-purpose REST surface.
+Goal: let any caller (third-party web apps, IoT devices, AI
+services, OR another `@canopy` peer over the native mesh) talk to
+an agent through a uniform REST-shaped surface.  Distinct from A2A
+— A2A is a specific industry protocol already in
+`packages/core/src/a2a/`; this is a thin, general-purpose REST
+surface.
 
-### Sketch — endpoints
+### Key insight: REST is a style, not a transport
 
+Roy Fielding's REST = a set of architectural constraints (uniform
+interface, resource-orientation, statelessness, layered).  HTTP is
+the dominant implementation but not the only one.  Treat REST here
+as a **payload shape** — `{ method, path, query, headers, body } →
+{ status, headers, body }` — that any transport can carry.
+
+### Architecture
+
+Two layers, two packages:
+
+#### `@canopy/rest` — protocol-agnostic core
+
+A single skill, `rest`, registered on the agent.  Handler dispatches
+to user-defined route handlers via a small route table (path +
+method matching, parameter extraction).
+
+```js
+import { attachRest, route } from '@canopy/rest';
+
+attachRest(agent, [
+  route.get ('/skills',                   listOwnSkills),
+  route.post('/skills/:id',               invokeOwnSkill),
+  route.get ('/peers',                    listPeers),
+  route.post('/peers/:pubkey/skills/:id', proxyToPeer),  // uses agent.invokeWithHop
+]);
 ```
-GET  /card                                          export agent card (no secrets)
-GET  /skills                                        list skills this agent exposes
-POST /skills/:skillId                               invoke own skill, return Parts
-POST /peers/:pubKey/skills/:skillId                 invoke a peer's skill (proxy)
-POST /peers/:pubKey/skills/:skillId/stream          SSE stream of Parts chunks
-POST /peers/:pubKey/skills/:skillId/input/:taskId   reply to an input-required task
-GET  /peers                                         list known peers (filtered)
-POST /peers/:pubKey/hello                           hello a peer by pubkey
-POST /messages/:pubKey                              send a one-way message (OW)
+
+The skill is gated by the same skill-visibility / capability-token /
+originVerified machinery as any other skill — auth is uniform with
+the rest of the SDK.
+
+#### `@canopy/http-adapter` — HTTP gateway (optional, Node + RN)
+
+Wraps a Node HTTP server (Fastify recommended) that translates
+HTTP requests into the same REST envelope shape, then calls the
+local agent's `rest` skill (or `routeRestRequest` directly to skip
+the round-trip).  Handles TLS, CORS, rate limiting, multipart →
+FilePart, SSE for streaming, Bearer-token → CapabilityToken
+mapping.
+
+### Two consumption paths, one set of handlers
+
+**Native peer (any transport — relay, BLE, mDNS, rendezvous, sealed tunnel):**
+
+```js
+const res = await agent.invoke(peerPubKey, 'rest', [DataPart({
+  method: 'POST',
+  path:   '/skills/greet',
+  body:   { name: 'the author' },
+})]);
+const { status, body } = Parts.data(res);
 ```
 
-Operator endpoints (separate auth):
+Or hop-aware:
 
-```
-POST /admin/rotate-identity                          trigger rotation
-POST /admin/forget/:pubKey                           drop a peer
-GET  /admin/transports                               liveness summary
-```
-
-### Authentication
-
-Capability tokens already implemented in
-`packages/core/src/permissions/CapabilityToken.js` map naturally to
-HTTP Bearer:
-
-```
-Authorization: Bearer <signed-capability-token>
+```js
+const res = await agent.invokeWithHop(peerPubKey, 'rest',
+  [DataPart({ method: 'GET', path: '/peers' })]);
 ```
 
-Tokens are signed by the agent's identity, scope-restricted (skill
-id, expiry, optional constraints), and verifiable without a
-round-trip.  `agent.issueCapabilityToken({ subject, skill, expiresIn })`
-is already the issuance path.
+**External HTTP client (browser, curl, IoT, anything):**
 
-### Streaming
+```bash
+curl -H "Authorization: Bearer <token>" \
+     -X POST https://agent.example.com/skills/greet \
+     -d '{"name":"the author"}'
+```
 
-REST doesn't natively stream.  Two options:
-- **SSE** (`text/event-stream`): simple, plays well with most
-  clients, browser-native via `EventSource`.  Recommended.
-- **WebSocket upgrade** on the same routes: bidirectional, but adds
-  protocol complexity for the input-required flow.
+Both paths reach the same route handlers.  Same auth.  Same
+semantics.
 
-For input-required: SSE plus a separate `POST .../input/:taskId`
-endpoint to send the reply.  Keeps the read/write halves separate.
+### What this buys
 
-### Hop / sealed-forward
-
-Plain REST exposes one agent.  If the caller wants to invoke a peer
-the agent can only reach via a bridge, the agent itself does the hop
-on the caller's behalf — i.e., `POST /peers/:pubKey/skills/...`
-internally calls `agent.invokeWithHop`.  The HTTP caller just sees a
-result; routing decisions are local to the agent.
-
-This means: **the HTTP surface is a "bridge to my agent's mesh,"**
-not a way to address arbitrary mesh peers from the outside.  Calls
-are scoped to peers the local agent already knows.
+- **REST works on phones over BLE.**  A bridge agent on Wi-Fi runs
+  the HTTP adapter; phones invoke `'rest'` on the bridge over BLE +
+  hop and reach the same routes external HTTP clients hit.  Sealed
+  REST through a bridge is just `invokeWithHop` with a sealed
+  group.
+- **Native crypto + auth come free for p2p REST.**  The `rest`
+  skill rides the same security layer as everything else; no
+  HTTP-only auth path to maintain.
+- **HTTP becomes optional.**  Agent-to-agent REST works without the
+  HTTP adapter ever being installed.
+- **One set of route handlers, written once, called both ways.**
+- **Capability tokens already exist** for exactly this scenario:
+  signed, time-limited, scope-restricted grants
+  (`CapabilityToken`).  HTTP Bearer is a 5-line mapping.
 
 ### Open design questions
 
-1. **Where does this live?**  New package
-   `@canopy/http-adapter` (depends on `@canopy/core`)?  Or part
-   of `@canopy/relay` since both deal with HTTP/WS infra?
-   I'd lean: separate package — relay is a broker between agents,
-   http-adapter is a client interface to a single agent.
-2. **TLS termination**: same answer as the production-relay roadmap
-   above — recommend a doc-level recipe (Caddy / nginx / fly.io)
-   rather than baking TLS into the adapter.
-3. **What's the relationship with the existing `A2ATransport`?**
-   A2A is its own protocol (cards, JWT, JSON-RPC).  HTTP-adapter is
-   the bare-metal version.  Could share auth helpers; should NOT
-   share endpoints (different semantics).
-4. **Do we need a JS client library** (`@canopy/http-client`)?
-   For non-JS callers a curl example + OpenAPI spec is enough.  For
-   JS callers, a thin wrapper that handles capability-token rotation
-   would be nice but is a follow-up, not a blocker.
-5. **Rate limiting / quota** per token: yes, but probably as
-   middleware (express-rate-limit) rather than custom code.
-6. **CORS**: needed for browser clients.  Configurable per agent.
-7. **Multipart / file upload**: maps to FilePart payload.  Need a
-   convention for `multipart/form-data` → Parts conversion.
-8. **Should the adapter be transport-pluggable**?  i.e. could we
-   have a Fastify variant + an Express variant + a Node native
-   variant?  Probably overkill; pick one (Fastify is a reasonable
-   default — fast, well-typed, plugin ecosystem).
-
-### Why this is a good idea
-
-- **Removes the "you must speak our wire protocol" barrier.**  Most
-  third-party integrations will be HTTP first; native-protocol
-  later, if at all.
-- **Auth story is already there.**  CapabilityToken was built for
-  exactly this scenario — signed, time-limited, scope-restricted
-  grants.  Wiring them to HTTP Bearer is the cleanest part.
-- **Keeps the core untouched.**  HTTP-adapter is a consumer of the
-  existing public Agent API (post-slim-Agent refactor, even
-  cleaner).  No protocol changes.
-- **Doesn't preclude anything.**  Native protocol stays the canonical
-  path; HTTP is an additional surface for clients who want it.
+1. **Path matching library.**  Roll our own (radix tree) or vendor
+   one (e.g. `find-my-way` from Fastify)?  Recommend: `find-my-way`
+   — battle-tested, small, no HTTP dependency.
+2. **Streaming semantics.**  For native callers, the RQ/RS exchange
+   is one-shot.  Streaming maps onto `agent.call(...).stream()` (the
+   skill becomes a generator).  HTTP adapter translates that to SSE.
+   Worth a small design note (`Design-v3/rest-streaming.md`) before
+   coding.
+3. **Input-required over REST.**  HTTP needs a separate
+   `POST /tasks/:taskId/input` endpoint; over native this is just
+   `task.send(reply)`.  The route handler signature has to surface
+   IR coherently for both.
+4. **Body-size handling.**  Native envelopes encrypt the whole
+   payload — a 50 MB body lives in memory.  HTTP can stream chunked
+   uploads natively.  For large bodies, lean on Group D streaming
+   skills (`streaming.js`, `fileSharing.js`); chunked uploads
+   over native need a separate "upload session" pattern.
+5. **HTTP semantics that don't map cleanly.**  Cookies, redirects,
+   conditional GET, HTTP/2 push.  Position: explicitly out of scope
+   — we're committing to REST-the-style, not full HTTP fidelity.
+6. **Auth identity for HTTP callers.**  Native callers come with a
+   pubkey (`originFrom`); HTTP callers come with a bearer token →
+   resolved to a subject pubkey via `CapabilityToken.verify`.
+   Route handlers see a uniform `caller: { pubKey, verified }`
+   field on context regardless of path.
+7. **Rate limiting / quota.**  HTTP-adapter only: standard
+   middleware.  Native callers are already rate-limited by the
+   transport layer + replay window.
+8. **CORS.**  HTTP-adapter only: configurable per-agent.
+9. **Where to put `@canopy/rest`** — its own package or part of
+   `@canopy/core`?  Lean: separate package (`packages/rest/`),
+   peer-depends on core.  HTTP-adapter is a separate package on top.
+10. **JS client library** (`@canopy/rest-client`)?  For native
+    callers, just `agent.invoke(peer, 'rest', ...)` is enough.  For
+    HTTP callers, a thin wrapper that handles capability-token
+    rotation is a nice-to-have, not a blocker.
 
 ### Why be careful
 
-- **It IS a real internet-facing surface.**  Same caveats as the
-  production-relay roadmap: needs auth, rate limiting, TLS,
-  thoughtful CORS, audit logs.
-- **Scope creep risk:** "while we're at it, let's add GraphQL / a
-  WebSocket subscription API / a gRPC variant…"  Resist.  One
-  well-done REST surface beats three half-done ones.
-- **Streaming-with-IR over HTTP is awkward.**  Worth a focused
-  design doc before writing endpoints.
+- **Internet-facing surface.**  Same caveats as the production-relay
+  roadmap: needs auth, rate limiting, TLS, CORS, audit logs.
+- **Scope creep risk.**  "While we're at it, GraphQL / WebSocket
+  subscriptions / gRPC…"  Resist.  One well-done REST surface
+  > three half-done ones.
+- **Streaming-with-IR is non-trivial.**  Design before code.
 
-### Recommended next step (when this thaws)
+### Recommended sequence (when this thaws)
 
-Write `Design-v3/http-adapter.md` answering the eight open questions
-above, sketch the OpenAPI surface, and pick the framework.  Then
-build it as `packages/http-adapter/` against the existing public
-Agent API.  The slim-Agent refactor (parked above) makes the
-adapter's job easier but is not a hard prerequisite — current Agent
-already exposes everything an HTTP adapter would need.
+1. Write `Design-v3/rest.md` answering the 10 open questions above
+   and committing to a path-matching library + a streaming
+   contract.
+2. Build `packages/rest/` (the protocol-agnostic core) — this is
+   the bigger ROI piece and unblocks p2p REST without any HTTP
+   work.
+3. Build `packages/http-adapter/` on top.  Optional dependency;
+   only Node deployments install it.
+4. Update `apps/mesh-demo` to register a couple of routes via
+   `attachRest(agent, [...])` for demo-ability.
+
+The slim-Agent refactor (parked above) makes step 2 cleaner but is
+not a prerequisite.
 
 ---
 
