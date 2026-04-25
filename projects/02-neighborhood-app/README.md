@@ -52,6 +52,7 @@ is per-group.
    multi-recipient fan-out / fan-in.
 5. **Spam, abuse-tracing, "graceful identity reveal"**: explicit
    policy needed.
+6. What llm to use for skills - request matching? see [[LOCAL LLM OVERVIEW]]
 
 ## What this app needs that the SDK doesn't have today
 

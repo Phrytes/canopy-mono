@@ -24,6 +24,7 @@ folder here holds:
 | `03-import-bridge/` | Migration bridge — pull data out of cloud silos (Google, Microsoft, Apple, messaging, social) into the user's Solid pod | Pass-3 design + Google Docs feasibility note + broader migration-scope investigation |
 | `04-tasks-app/` | Task / workflow app with skill-based dispatch | Pass-2 design (carries forward) |
 | `05-archive-app/` | Archive app — search, browse, link the data brought in by #3.  API-first design (skills the archive registers); GUI later. | Scope sketched + API draft |
+| `06-proof-of-location/` | Privacy-preserving proof-of-presence — signed rotating-QR beacons + witness-network skill (reuses #2's infrastructure). | Scope sketched + landscape note |
 
 **Boundaries:**
 
