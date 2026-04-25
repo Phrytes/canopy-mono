@@ -194,6 +194,85 @@ fastest path to validate the pattern).
 
 ---
 
+## A2A interop verification
+
+**Status:** not started.  Half-day task.
+
+The SDK has a full A2A implementation
+(`packages/core/src/a2a/`) covering server endpoints
+(`/.well-known/agent.json`, `/tasks/send`, `/tasks/sendSubscribe`,
+`/tasks/:id/cancel`, `/tasks/:id`), client helpers
+(`discoverA2A`, `sendA2ATask`, `sendA2AStreamTask`), JWT bearer
+auth (`A2AAuth`), and tier-based skill filtering on the card.
+All tested agent-to-agent inside this codebase.
+
+**What's missing for confident "we speak A2A" claims:**
+
+1. **No interop test against an external reference
+   implementation.**  Spec-written-against vs. spec-as-implemented-
+   elsewhere can disagree on field names, JSON-RPC envelope shape,
+   error codes.  First external client to point at the SDK will
+   surface 1–2 small fixable issues.
+2. **Push notifications: not implemented.**  Card advertises
+   `pushNotifications: false`.  SSE-on-sendSubscribe covers
+   streaming; push is the optional callback-URL flow.  Add only
+   if a real consumer needs it.
+3. **Spec version not pinned in the card.**  Add
+   `x-canopy.a2aVersion: '<spec-version>'` so future bumps are
+   detectable.
+4. **Group-visibility skills (Group X) don't propagate to A2A
+   yet.**  A JWT could carry a group claim; `A2AAuth` would need
+   a small extension to enforce it.  Out of scope for the first
+   interop run — flag if needed.
+
+### Recommended steps
+
+1. Pick a reference A2A client.  Google's a2a-python or
+   a2a-typescript SDK is the obvious choice; otherwise any
+   community A2A implementation that has its own conformance
+   tests.
+2. **Stand up a test agent** with three skills:
+   `greet` (public, simple), `chat` (authenticated, multi-turn
+   input-required), `stream-clock` (public, streaming).
+3. **Drive the test agent from the external client:**
+   - GET `/.well-known/agent.json` → parses cleanly.
+   - `tasks/send greet` → result returned.
+   - `tasks/send chat` → input-required + reply round-trip.
+   - `tasks/sendSubscribe stream-clock` → SSE chunks arrive.
+   - `tasks/:id/cancel` mid-stream → task transitions to
+     cancelled.
+   - JWT auth: 401 without token, 200 with valid token.
+4. **Reverse-direction test:**  Stand up the external A2A
+   reference implementation as a server and have our agent
+   `discoverA2A(url)` + `sendA2ATask(...)` it.  Confirms the
+   client side is also conformant.
+5. **Document findings** in `Design-v3/03-A2ATransport.md` —
+   conformance level, tested versions of external clients,
+   list of known mismatches.
+
+### What done looks like
+
+- A2A interop matrix in `Design-v3/03-A2ATransport.md` showing
+  which client/server combinations work, against which spec
+  version.
+- One paragraph in `QUICKSTART.md` § A2A confirming "tested
+  against {ref-impl} {version}, full conformance for {tier-0
+  + tier-1 + streaming + input-required}."
+- `x-canopy.a2aVersion` field on the card.
+- Any field-naming or JSON-RPC envelope fixes upstreamed to
+  `A2ATransport.js`.
+
+### Why this matters
+
+Until verified, "the SDK speaks A2A" is a 95 %-confident claim.
+Verification turns it into a 99 %-confident one — important if
+A2A is the canonical textual remote API
+(see § "External-callable agent surface — decided 2026-04-25"
+below) and the story for users wanting interop with non-`@canopy`
+agent frameworks.
+
+---
+
 ## External-callable agent surface — decided 2026-04-25
 
 **Decision:** A2A is the canonical textual / remote-compatible
