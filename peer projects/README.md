@@ -14,15 +14,13 @@ mistakes, and recognize potential partners or upstream projects.
 
 | File | Project | Why it's relevant |
 |---|---|---|
-| [`holochain.md`](./holochain.md) | Holochain | Closest philosophical neighbor — agent-centric not data-centric, anti-platform.  Strong overlap on principles; bets differently on substrate. |
+| [`holochain.md`](./holochain.md) | Holochain | Closest philosophical neighbor — agent-centric not data-centric, anti-platform.  Strong overlap on principles; bets differently on substrate.  Verdict: kindred spirit, useful prior art, not a competitor or upstream. |
+| [`dxos.md`](./dxos.md) | DXOS | Most actively-developed peer.  Local-first, JS/TS-native, "Decentralized Operating System."  HALO + ECHO + KUBE; Composer as flagship app.  Verdict: track and bridge, don't adopt as foundation. |
 
 ## Candidates for future deep-dives
 
 In rough order of how much they'd reward attention:
 
-- **DXOS** — explicitly "operating system for collaborative
-  software."  HALO + ECHO + KUBE.  Most actively-developed
-  spiritual peer.  Closest *active* project.
 - **Local-First Software movement / Ink & Switch** — research
   agenda since ~2019; Automerge / Cambria / hypermerge.
   Defines the principles aligning ~80% with this project.
