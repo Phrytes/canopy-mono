@@ -6,7 +6,7 @@ shape of the API; once you're past the smoke test, see
 
 ---
 
-## 1. Two agents, one process — no network setup
+## 1. Two agents — no network setup
 
 Smallest possible thing that's still a real round-trip.  Two agents
 share an in-process bus and call each other's skills.  No relay, no
@@ -111,8 +111,104 @@ vault file → distinct identities).  Print each pubkey, then
 
 ## 3. Phone app — `createMeshAgent`
 
-For a React-Native / Expo phone app, `@canopy/react-native` bundles
-the BLE + mDNS + relay + identity wiring behind one factory:
+The SDK isn't on npm yet (`packages/*` are local-only).  Two ways to
+get the JS code wired up so Metro can find it.
+
+### 3a. File layout — easy path (inside this monorepo)
+
+Easiest if you're prototyping or evaluating: copy `apps/mesh-demo`
+and put your new app next to it.
+
+```
+nkn-test/
+  packages/
+    core/                          ← SDK (don't touch)
+    react-native/                  ← SDK (don't touch)
+    relay/                         ← SDK (run the server from here)
+  apps/
+    mesh-demo/                     ← reference app (works out of the box)
+    my-app/                        ← ← ← put your new app here
+      package.json                 ← copy from mesh-demo, change "name"
+      metro.config.js              ← copy from mesh-demo verbatim
+      app.json                     ← change "slug"/"name"; otherwise copy
+      babel.config.js              ← copy verbatim
+      index.js                     ← copy verbatim
+      App.js                       ← your code
+      src/
+        agent.js                   ← your createMeshAgent factory
+```
+
+Your `package.json` references the SDK via `file:` links:
+
+```json
+"dependencies": {
+  "@canopy/core":         "file:../../packages/core",
+  "@canopy/react-native": "file:../../packages/react-native",
+  …
+}
+```
+
+Then `npm install && npx expo run:android` from inside
+`apps/my-app/`.  Metro's `watchFolders` (set in the copied
+`metro.config.js`) picks up live edits to the SDK source, so you can
+edit `packages/core/src/...` and the app reloads.
+
+### 3b. File layout — standalone (your own clone of the SDK elsewhere)
+
+If your app lives outside this repo (e.g. `~/projects/my-app`) and
+you cloned the SDK at `~/sdk/nkn-test/`, you need three things:
+
+1. **package.json** — point the file: links at the cloned SDK:
+
+   ```json
+   "dependencies": {
+     "@canopy/core":         "file:../../sdk/nkn-test/packages/core",
+     "@canopy/react-native": "file:../../sdk/nkn-test/packages/react-native"
+   }
+   ```
+
+   Use a path relative to `my-app/` so the link survives moves.
+
+2. **metro.config.js** — Metro doesn't follow symlinks well, so
+   tell it explicitly to watch the SDK folders.  The shape mirrors
+   `apps/mesh-demo/metro.config.js`; the key bits are
+   `watchFolders` and `extraNodeModules`:
+
+   ```js
+   const path     = require('path');
+   const { getDefaultConfig } = require('expo/metro-config');
+
+   const sdkRoot = path.resolve(__dirname, '../../sdk/nkn-test');
+   const config  = getDefaultConfig(__dirname);
+
+   config.watchFolders = [
+     path.resolve(sdkRoot, 'packages/core'),
+     path.resolve(sdkRoot, 'packages/react-native'),
+   ];
+   config.resolver = {
+     ...config.resolver,
+     unstable_enablePackageExports: false,
+     extraNodeModules: {
+       ...(config.resolver?.extraNodeModules ?? {}),
+       '@canopy/core':         path.resolve(sdkRoot, 'packages/core'),
+       '@canopy/react-native': path.resolve(sdkRoot, 'packages/react-native'),
+     },
+   };
+
+   module.exports = config;
+   ```
+
+   The full mesh-demo config does more (Node-builtin shims, blockList
+   for the SDK's own `node_modules`, version-pinning of native modules
+   to your app's copies).  Copy the whole file once you hit your first
+   "duplicate native module" or "module not found" error from Metro.
+
+3. **Run the relay** from the SDK clone:
+   `node ~/sdk/nkn-test/packages/relay/src/server.js`.  Point your
+   app's `relayUrl` at your laptop's LAN IP, e.g.
+   `ws://192.168.2.20:8787`.
+
+### 3c. Your `src/agent.js`
 
 ```js
 import {
@@ -121,23 +217,26 @@ import {
 } from '@canopy/react-native';
 import { TextPart, Parts } from '@canopy/core';
 
-const agent = await createMeshAgent({
-  label:    'my-phone',
-  relayUrl: 'ws://192.168.2.20:8787',                        // your LAN relay
-  vault:    new KeychainVault({ service: 'my-app' }),
-});
+export async function makeAgent({ relayUrl }) {
+  const agent = await createMeshAgent({
+    label:    'my-phone',
+    relayUrl,                                               // e.g. ws://192.168.2.20:8787
+    vault:    new KeychainVault({ service: 'my-app' }),
+  });
 
-agent.register('greet', async ({ parts, from }) => {
-  return [TextPart(`Hi from phone — you said "${Parts.text(parts) ?? ''}"`)];
-}, { visibility: 'public' });
+  agent.register('greet', async ({ parts, from }) => {
+    return [TextPart(`Hi from phone — you said "${Parts.text(parts) ?? ''}"`)];
+  }, { visibility: 'public' });
 
-// Optional opt-ins — match what apps/mesh-demo turns on.
-agent.enableAutoHello({ pullPeers: true });
-agent.startDiscovery({ gossipIntervalMs: 60_000 });
+  // Optional opt-ins — match what apps/mesh-demo turns on.
+  agent.enableAutoHello({ pullPeers: true });
+  agent.startDiscovery({ gossipIntervalMs: 60_000 });
 
-// Start the agent ONLY after registering everything you want
-// advertised in the first hello payload (capabilities snapshot).
-await agent.start();
+  // Start the agent ONLY after registering everything you want
+  // advertised in the first hello payload (capabilities snapshot).
+  await agent.start();
+  return agent;
+}
 ```
 
 `createMeshAgent` handles permission requests, identity restore-or-
@@ -145,7 +244,7 @@ generate, BLE central+peripheral, mDNS over TCP, relay reconnection,
 peer-graph persistence, and the live routing strategy that learns
 which transport works best per peer.
 
-For a fully wired example see
+For a fully wired reference see
 [`apps/mesh-demo/src/agent.js`](./apps/mesh-demo/src/agent.js) — it
 opts into hop tunnels, sealed-forward, reachability oracle, and
 rendezvous (WebRTC upgrade).
@@ -197,5 +296,3 @@ to ask the caller for more input.
 - **Browser demo** — `examples/mesh-demo/` for a no-RN single-page version.
 - **Architecture map** — [`ARCHITECTURE.md`](./ARCHITECTURE.md) for
   the full feature list and where things live.
-- **Critique-of-current-state** — [`ARCHITECTURE-REVIEW.md`](./ARCHITECTURE-REVIEW.md)
-  if you want to know what's solid and what's still drifting.
