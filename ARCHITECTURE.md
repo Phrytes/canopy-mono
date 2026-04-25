@@ -4,6 +4,7 @@ A pointer document.  Use it to find: *"the code for feature X lives where?"*
 or *"this commit message says Group BB — what does that mean?"*
 
 For a deeper read, see:
+- `QUICKSTART.md` — hands-on minimal agent in ~20 lines; start here if you've never used the SDK.
 - `ARCHITECTURE-REVIEW.md` — current SDK shape, findings, refactor proposals.
 - `EXTRACTION-PLAN.md` — vision + delegation tree for SDK extraction.
 - `CODING-PLAN.md` — per-Group implementation checklist with tests.
