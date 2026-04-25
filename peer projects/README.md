@@ -16,12 +16,13 @@ mistakes, and recognize potential partners or upstream projects.
 |---|---|---|
 | [`holochain.md`](./holochain.md) | Holochain | Closest philosophical neighbor — agent-centric not data-centric, anti-platform.  Strong overlap on principles; bets differently on substrate.  Verdict: kindred spirit, useful prior art, not a competitor or upstream. |
 | [`dxos.md`](./dxos.md) | DXOS | Most actively-developed peer.  Local-first, JS/TS-native, "Decentralized Operating System."  HALO + ECHO + KUBE; Composer as flagship app.  Verdict: track and bridge, don't adopt as foundation. |
+| [`local-first.md`](./local-first.md) | Ink & Switch / Local-First / Automerge | Upstream intellectual cluster.  Coined "local-first," wrote the seven ideals, built Automerge (the canonical CRDT library).  Includes a CRDT primer.  Verdict: not a peer or competitor — vocabulary source, default-choice library supplier, background radiation that shaped the field. |
 
 ## Candidates for future deep-dives
 
 In rough order of how much they'd reward attention:
 
-- **Local-First Software movement / Ink & Switch** — research
+
   agenda since ~2019; Automerge / Cambria / hypermerge.
   Defines the principles aligning ~80% with this project.
 - **Hypercore / Holepunch / Pears** — peer-to-peer hypermedia,
