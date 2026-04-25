@@ -53,11 +53,21 @@ and forwards them; one-shot import is the simpler subset.
 
 ## Investigation notes
 
+- **[`migration-scope.md`](./migration-scope.md)** — broader
+  scope this project really wants to grow into.  Per-source
+  feasibility (Google / Microsoft / Apple / messaging /
+  social), cross-cutting challenges (OAuth multiplication, lossy
+  exports, schema diversity, ToS pressure), what's almost
+  impossible (real-time WhatsApp / Signal / iMessage; full
+  iCloud), and an honest read on living projects in this space
+  (especially **Data Transfer Project** — the stalled
+  ancestor).  Suggested staging for adding connectors.
 - **[`google-docs-api.md`](./google-docs-api.md)** — feasibility
   + format options + OAuth setup + sync-mode mechanics + gotchas
   + effort estimate for the Google Docs source specifically.
   First investigation; future docs will follow the same shape
-  for Notion / Dropbox Paper / etc.
+  for Gmail, Microsoft Graph, iCloud-via-standards, Telegram,
+  WhatsApp-via-backup-decrypt, etc.
 
 ## What this app needs that the SDK doesn't have today
 
