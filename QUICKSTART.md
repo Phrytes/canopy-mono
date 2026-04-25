@@ -251,7 +251,101 @@ rendezvous (WebRTC upgrade).
 
 ---
 
-## 4. The three methods you'll use 90% of the time
+## 4. Expose your agent over HTTP — A2A
+
+If you want non-`@canopy` clients (curl, browser fetch, IoT
+devices, other agent frameworks) to call your agent's skills,
+attach an `A2ATransport`.  A2A is an industry-standard agent-to-
+agent protocol (JSON-RPC over HTTPS with JWT bearer auth, SSE for
+streaming).  The implementation lives at `packages/core/src/a2a/`.
+
+```js
+// my-agent.js  — extend the section-2 example
+import {
+  Agent, AgentIdentity, VaultNodeFs,
+  RelayTransport,
+  A2ATransport, A2ATLSLayer,
+  TextPart, Parts,
+} from '@canopy/core';
+
+const identity  = await AgentIdentity.generate(new VaultMemory());
+const agent     = new Agent({
+  identity,
+  transport: new RelayTransport({ identity, relayUrl: 'ws://localhost:8787' }),
+  label:     'my-app',
+});
+
+agent.register('greet', async ({ parts }) => {
+  return [TextPart(`Hello, ${Parts.text(parts) ?? 'stranger'}!`)];
+}, { visibility: 'public' });
+
+// Add an HTTP server that speaks A2A.  port: 0 picks a random port;
+// pick a fixed one for production deployment.
+const a2a = new A2ATransport({ agent, port: 8080 });
+agent.addTransport('a2a', a2a);
+agent.useSecurityLayer(new A2ATLSLayer());   // TLS-channel auth, not nacl.box
+await agent.start();
+
+console.log(`A2A endpoint: http://localhost:${a2a.serverPort}`);
+console.log(`Agent card:   http://localhost:${a2a.serverPort}/.well-known/agent.json`);
+```
+
+Now anyone can reach your agent over plain HTTP:
+
+```bash
+# Discover what skills the agent exposes:
+curl http://localhost:8080/.well-known/agent.json
+
+# Invoke a skill (no auth — public visibility):
+curl -X POST http://localhost:8080/tasks/send \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "skillId": "greet",
+       "parts": [{ "kind": "text", "text": "the author" }]
+     }'
+
+# Stream skill output (SSE):
+curl -X POST http://localhost:8080/tasks/sendSubscribe \
+     -H 'Content-Type: application/json' \
+     -d '{ "skillId": "stream-demo", "parts": [...] }'
+```
+
+For authenticated skills, attach a JWT bearer token issued via
+`agent.issueA2ACapabilityToken({ subject, skill, expiresIn })`:
+
+```bash
+curl -X POST http://localhost:8080/tasks/send \
+     -H "Authorization: Bearer ${TOKEN}" \
+     -H 'Content-Type: application/json' \
+     -d '{ "skillId": "greet-private", "parts": [...] }'
+```
+
+A2A endpoints exposed:
+
+| Method + path | Purpose |
+|---|---|
+| `GET /.well-known/agent.json` | Agent card (skills, capabilities, auth schemes) |
+| `POST /tasks/send` | Invoke a skill, get JSON result |
+| `POST /tasks/sendSubscribe` | Invoke a skill, get SSE stream of chunks |
+| `GET /tasks/:id` | Task status |
+| `POST /tasks/:id/cancel` | Cancel a running task |
+
+For a deeper dive see [`Design-v3/03-A2ATransport.md`](./Design-v3/03-A2ATransport.md).
+
+**TLS in production:** front the A2A endpoint with Caddy / nginx /
+Cloudflare for HTTPS termination + rate limiting + CORS rules.
+A2A is the "expose your agent textually" surface; the operational
+hardening is standard reverse-proxy work.
+
+**Custom routes** (e.g. `GET /weather/:city`) are deliberately not
+SDK-supported — wire them up with whatever framework you prefer
+(Express, Fastify, hono) and forward to `agent.invoke` internally.
+A2A handles the standard agent-to-agent case; your custom HTTP API
+is your call.
+
+---
+
+## 5. The three methods you'll use 90% of the time
 
 | Method | Use when |
 |---|---|
@@ -266,7 +360,7 @@ to ask the caller for more input.
 
 ---
 
-## 5. Gotchas the tutorial glosses over
+## 6. Gotchas the tutorial glosses over
 
 - **Two peers must hello each other first.**  `invoke` after a
   `hello` works; without one, `SecurityLayer` rejects with
@@ -288,7 +382,7 @@ to ask the caller for more input.
 
 ---
 
-## 6. Where to go next
+## 7. Where to go next
 
 - **Try it on hardware** — `apps/mesh-demo` is the reference Expo app.
   Build it, run it on two phones, run the relay on your laptop, and
