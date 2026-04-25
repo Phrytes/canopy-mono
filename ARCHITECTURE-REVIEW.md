@@ -400,8 +400,14 @@ Parked until a native-side debugging session is feasible.
 
 ## 5. Proposal: slim Agent + opt-in extensions
 
+> **Detailed proposal lives in [`Design-v3/slim-agent.md`](./Design-v3/slim-agent.md)**
+> — full method-by-method inventory, three worked extension patterns
+> (closure, controller-on-`agent.extensions`, free function),
+> proposed file layout, 11-step migration order.  This section is now
+> a high-level summary; refer to the design doc for implementation.
+
 Goal: a minimal `Agent` base class that a dev can **extend with whatever
-features they actually want** — instead of a 1103-line class that has
+features they actually want** — instead of a 1219-line class that has
 every feature baked in. Applies finding 2.1.
 
 ### 5.1 What stays in the slim base (target: ~300 LoC)
