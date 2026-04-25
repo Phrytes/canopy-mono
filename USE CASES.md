@@ -535,21 +535,51 @@ anti-Sybil for witnesses, GUI for the beacon-tap flow.
 
 ---
 
-## Cross-cutting threads (refined for pass 3)
+## Cross-cutting threads (refined for pass 3, refreshed for #5 + #6)
+
+Each row picks up new use-case touchpoints as the project list
+has grown.  The "use cases" column is now denser; that density is
+the signal that L0/L1/L2 layering pays off — the SDK additions
+in the right column are mostly shared, not duplicated per app.
 
 | Theme | Use cases | What the SDK might need |
 |---|---|---|
-| **Solid pod as shared storage with the convention** (small/structured = direct, big = reference) | 1, 3, 4 | Already in `packages/core/src/storage/SolidPodSource.js` and `SolidVault.js`.  Convention is now binding across use cases.  Document once. |
+| **Solid pod as shared storage with the convention** (small/structured = direct, big = reference) | 1, 3, 4, 5 | Already in `packages/core/src/storage/SolidPodSource.js` and `SolidVault.js`.  Convention is now binding across use cases.  Document once. |
 | **OSS-doc-tool integration for real-time collab** | 1 | App-level integration work; the SDK does NOT need a CRDT primitive.  Investigation item: which OSS tool, how to plug pod as backing store. |
-| **Encryption at rest + public-content override** | 1 (private/public docs), 3 (private vs. shared imports), 4 (audit trail privacy) | Envelope encryption per pod-resource.  Per-resource ACL determines whether decryption happens at all (public = plaintext stored, private = encrypted to user's agent). |
+| **Encryption at rest + public-content override** | 1 (private/public docs), 3 (private vs. shared imports), 4 (audit trail privacy), 5 (archive items encrypted; public sub-set plaintext) | Envelope encryption per pod-resource.  Per-resource ACL determines whether decryption happens at all (public = plaintext stored, private = encrypted to user's agent). |
+| **CapabilityToken-based attestation / sharing** | 5 (share archive items with peer), 6 (signed-beacon presence claims, witness attestations) | Already exists in `packages/core/src/permissions/CapabilityToken.js`.  Need standardised usage patterns: short-lived tokens for ephemeral shares (#5); signed-beacon-as-token (#6 layer 1); aggregate-witness-tokens (#6 layer 2). |
 | **Skill posture flag** (always-callable vs. negotiable, machine vs. human) | 2, 4 | Extend `agent.register(id, handler, { posture: 'always' \| 'negotiable', humanInTheLoop: bool })` |
-| **Skill-based broadcast / matchmaking** | 2 (neighbor questions), 4 (task dispatch) | Pub/sub-of-skills primitive (`broadcast(skillId, payload)` → arrives at every peer that has registered `skillId`); maybe extend `pubSub.js` |
-| **Mobile push (APNs/FCM) for human-skill notifications** | 2, 4 | New: backend bridge so phone agents can wake on incoming requests.  Single piece of new infra needed by 2/4 of the use cases. |
-| **Role-aware groups** (extension of Group X) | 4, partially 1 (collab access), partially 2 (group governance) | Per-role credentials within a group.  Per-role permissions on skills + content. |
-| **Closed-group membership with invitation governance** | 2, 4 | Relay-side allowlist + invite-token issuance (already on the relay roadmap). |
+| **Skill-based broadcast / matchmaking** | 2 (neighbor questions), 4 (task dispatch), 6 (witness-network presence challenges) | Pub/sub-of-skills primitive (`broadcast(skillId, payload)` → arrives at every peer that has registered `skillId`); maybe extend `pubSub.js` |
+| **Mobile push (APNs/FCM) for human-skill notifications** | 2, 4, 6 (wake witnessing agents) | New: backend bridge so phone agents can wake on incoming requests.  Single piece of new infra needed by 3 of the 6 use cases. |
+| **Role-aware groups** (extension of Group X) | 4, 1 (collab access tiers), 2 (group governance), 6 (witness-trust weighting) | Per-role credentials within a group.  Per-role permissions on skills + content. |
+| **Closed-group membership with invitation governance** | 2, 4, 6 (beacon-operator trust model) | Relay-side allowlist + invite-token issuance (already on the relay roadmap). |
 | **OAuth credential management** | 3 | Extend `Vault` to store per-service OAuth tokens.  Refresh-token handling.  Per-service vault namespacing. |
-| **Sync vs one-shot operations** | 3 | New: a "live-sync skill" pattern — agent declares "I will keep X in sync with Y", with explicit conflict-resolution callbacks. |
-| **Anonymous discovery + bilateral identity reveal (PARKED)** | 2 | New protocol layer above sealed-forward.  Not designed yet; the author has thoughts to share when unparked. |
+| **Sync vs one-shot operations** | 3 (cloud-source sync), 5 (archive ingest from connectors) | New: a "live-sync skill" pattern — agent declares "I will keep X in sync with Y", with explicit conflict-resolution callbacks. |
+| **Anonymous discovery + bilateral identity reveal (PARKED)** | 2, partially 6 (anonymous witnessing as a privacy-of-the-witness-graph mitigation) | New protocol layer above sealed-forward.  Not designed yet; the author has thoughts to share when unparked. |
+| **Identity reconciliation across sources** | 5 (same person via gmail / phone / pubkey) | Possibly L0 SDK primitive, possibly app-level.  Open question. |
+| **Composable verification primitive** (proof-of-presence, proof-of-membership, proof-of-skill, …) | 6 (proof-of-presence as the first instance), potentially 4 (proof-of-skill for task claims) | New: a verification-token shape that other use cases consume.  App-level for now; could become an L1 building block once a second use case demands the same shape. |
+
+### Notes on the refresh
+
+- **Pod-storage and encryption-at-rest** now reach 4 of 6 use
+  cases each.  These are the strongest "L0 SDK convention"
+  candidates.
+- **Skill matchmaking + push + role-aware-groups + closed-group
+  governance** form a tight cluster used by #2, #4, and #6.
+  They constitute the **"L1 skill-matchmaking building block"**
+  proposed in the pass-3 structural decision.  Building it once
+  unlocks three apps.
+- **CapabilityToken** is already implemented — what's missing
+  is standardised *usage patterns* for the new shapes (#5's
+  share flow, #6's beacon and witness tokens).  No new
+  cryptography needed.
+- **Identity reconciliation** (new row from #5) is the only
+  fundamentally novel SDK question that the project list raises
+  beyond what was already on the table.  Worth its own design
+  pass when #5 thaws.
+- **Anonymous discovery** (parked) is now also relevant to #6
+  for witness-graph privacy.  When it unparks, the design
+  serves both #2 and #6.
 
 ---
 
