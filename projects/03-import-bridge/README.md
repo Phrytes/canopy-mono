@@ -6,6 +6,10 @@ Local + cloud variants both supported.  Sync mode required, not
 just one-shot import.  Investigation notes ongoing — see
 `google-docs-api.md`.
 
+**In het kort**
+- Dit gaat niet over communities, maar over loskomen van bestaande systemen
+- Gebruikers moeten data kunnen importeren van eigen diensten en uploaden naar een willekeurige andere dienst
+
 ## In one paragraph
 
 An agent that fetches documents from third-party sources (Google

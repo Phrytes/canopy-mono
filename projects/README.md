@@ -25,6 +25,7 @@ folder here holds:
 | `04-tasks-app/` | Task / workflow app with skill-based dispatch | Pass-2 design (carries forward) |
 | `05-archive-app/` | Archive app — search, browse, link the data brought in by #3.  API-first design (skills the archive registers); GUI later. | Scope sketched + API draft |
 | `06-proof-of-location/` | Privacy-preserving proof-of-presence — signed rotating-QR beacons + witness-network skill (reuses #2's infrastructure). | Scope sketched + landscape note |
+| `07-household-app/` | Household chat → LLM → shared pod state.  Ambient Telegram messages get filtered + extracted by a local LLM into a household task list, with a follow-up loop.  First app where an LLM is the agent's intelligence. | Scope sketched + LLM cost analysis |
 
 **Boundaries:**
 

@@ -5,6 +5,9 @@
 all the migrated data is files on a server.  Without #3, #5 has
 nothing to look at.
 
+**In het kort**
+- lijkt eigenlijk sterk op 1, notes app: software nodig om bestanden te zoeken en te openen. Evt kun je hier weer een llm bij gebruiken
+
 **User's framing (verbatim):**
 
 > "Find all kinds of data imported from external services

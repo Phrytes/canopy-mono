@@ -4,6 +4,8 @@
 **Status:** pass-2 design carries forward.  No new input pass 3.
 Heavy overlap with #2 on skill matchmaking + push notifications.
 
+**In het kort**
+- Eigenlijk hetzelfde als de buurt-app, maar ipv een soort tinder (connectie, en daarna chat), zit er ook nog een afrondingsmoment in waarna dependent tasks worden getriggerd
 ## In one paragraph
 
 A shared task list among a group.  Tasks have dependencies (a

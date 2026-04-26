@@ -4,31 +4,81 @@
 **Status:** pass-3 design dialogue.  Real-time collab via OSS-tool
 integration is the chosen direction.  No code yet.
 
+**In het kort**
+Eigenlijk wil je gewoon dat:
+- je md-bestanden kunt bewerken en dat die weer in je pod komen. Dus een soort vertaallaag tussen opslag en app
+- je agent ook md-bestanden kan schrijven in je pod. Heeft zelf die app niet nodig
+
 ## In one paragraph
 
 A local-on-device private agent that owns the user's Solid pod.
 The pod is the single store of truth for personal documents,
 notes, and project files.  Other agents request access to
-selectively-shared content via Solid (e.g. collaboration docs, a
-public blog).  Editing happens in an integrated open-source
-Google-Docs-like tool that already does real-time collab +
+selectively-shared content via Solid (e.g. collaboration docs,
+a public blog).
+
+**V0 — translation layer.**  The simplest viable shape:
+markdown files live in a local folder, the agent syncs that
+folder bidirectionally with the pod.  Any markdown editor (the
+user's existing Obsidian / iA Writer / VSCode / whatever) just
+sees a folder of `.md` files.  The agent itself can also read
+and write files in the pod directly without the editor running
+— important because the household app (#7), the archive app
+(#5), and the import bridge (#3) all need to write into the
+same pod.
+
+**V1 — real-time collab.**  Editing happens in an integrated
+open-source Google-Docs-like tool that already does real-time
+collab +
 versioning — we don't reinvent that.  Encrypted by default,
 plaintext only when public.
 
-## Resolved direction (pass 3)
+## Resolved direction (pass 3 + pass 4)
+
+### V0 — pod ↔ local-folder sync (no real-time collab)
+
+Build first because it's the foundational app: get markdown
+content flowing between pod and devices.  Reuses any existing
+markdown editor.  Ships in a few weeks; gives friends something
+real to test with.
+
+- **Translation layer** between pod and local filesystem.  The
+  agent watches a local `~/notes/` folder and a pod container,
+  syncs changes both ways.
+- **Any editor works** because what the editor sees is just a
+  folder.  Obsidian, iA Writer, VSCode, even plain `vim`.
+  No editor lock-in.
+- **Agent can write directly to the pod** without the editor
+  running — important because #3 (import bridge), #5 (archive),
+  #7 (household app) all write to the same pod.
+- **Conflict policy:** last-write-wins for v0; surface a UI for
+  conflicts later.  Deliberately punt on the merge problem in
+  v0.
+- **"Remove from local but keep in pod"** is a per-file flag in
+  the file manager — supported via a sync-marker convention
+  (file in pod stays; local file gets a placeholder or is
+  dropped).
+- **Encryption by default.**  Per-resource: public ACL =
+  plaintext in pod; private ACL = encrypted to user's agent
+  key.
+- **Pod-storage convention** binding: markdown direct, big
+  attachments as references.
+
+### V1 — real-time collab via OSS doc tool
+
+Layered on top of V0 once the storage substrate is real.
 
 - **Real-time collab via integration with an existing OSS docs
-  tool**, not home-grown CRDTs.  Side-project capacity does not
-  cover building a docs editor.
-- **Solid pod is the storage spine.**  The OSS tool's files live
-  there, and other agents access via Solid.  Pod-storage
-  convention: small/structured = direct, big binaries = reference.
-- **Encryption by default.**  Per-resource: public ACL = plaintext
-  in pod; private ACL = encrypted to user's agent key.
+  tool**, not home-grown CRDTs.  Side-project capacity does
+  not cover building a docs editor.
 - **Versioning is delegated** to the OSS tool — most candidates
   do this natively.  No SDK-side versioning primitive needed.
 - **Obsidian is inspiration, not the integration target.**
-- **Blog** = public-readable subset of the pod.  No feed needed.
+  V0 supports it via plain folder sync; V1 adds collaborative
+  editing with a different tool.
+- **Blog** = public-readable subset of the pod.  No feed
+  needed.  Works at V0 (publish a folder); enriches at V1
+  if the collab tool also handles publishing.
 
 ## Candidate OSS docs tools (to evaluate)
 
