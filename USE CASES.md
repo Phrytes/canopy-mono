@@ -535,7 +535,75 @@ anti-Sybil for witnesses, GUI for the beacon-tap flow.
 
 ---
 
-## Cross-cutting threads (refined for pass 3, refreshed for #5 + #6)
+## 7. Household app — chat-driven, LLM-mediated household state
+
+### Sketch (added 2026-04-26, original Dutch)
+
+> Een soort huisgenoten-app, bijv:
+> - een telegramkanaal die je een appje kunt sturen met "we
+>   hebben brood nodig"
+> - dit wordt opgeslagen in een gezamenlijke pod (of een pod die
+>   linkt naar items op individuele pods)
+> - vóór je naar de winkel gaat: app het kanaal met "wat hebben
+>   we nodig in de supermarkt?"
+> - de llm filtert irrelevante huishoudelijke chat eruit en
+>   stuurt de juiste lijst terug
+> - na 30 min appt de llm wat er is afgewikkeld
+> - de gebruiker antwoordt, llm vertaalt naar pod-updates
+
+### Reading (English)
+
+A bot in a household Telegram channel watches incoming messages.
+A **local-LLM-mediated agent** classifies each message
+(actionable / noise), extracts structured items from actionable
+ones (shopping, repair, errand, schedule), stores them in a
+shared household pod.  On retrieval ("what do we need at the
+supermarket?"), it returns a clean filtered list.  After
+completion, it follows up, captures what got done, updates pod
+state.  **First app where the LLM is the agent's intelligence,
+not just a tool.**
+
+### Status
+
+Scope sketched in
+[`projects/07-household-app/README.md`](./projects/07-household-app/README.md).
+LLM feasibility + monthly-cost analysis in
+[`projects/07-household-app/llm-cost.md`](./projects/07-household-app/llm-cost.md):
+local LLM is viable on a used Mac mini M2 (~€500 once + ~€2/mo
+electricity) for production, anything-you-already-have for
+testing.
+
+### What's resolved
+
+- **Telegram for v0** as the input channel; native protocol /
+  Signal / Matrix later.
+- **Local LLM is the default** (privacy-aligned with the rest
+  of the project; cloud-API is opt-in only).
+- **Shared household pod for v0**; per-housemate-pod-with-
+  shared-references for v1 if privacy boundaries within the
+  household become important.
+- **Schema aligned with #4's task model** so households that
+  grow into structured task management can migrate cleanly.
+
+### Open questions
+
+See [`projects/07-household-app/README.md` § Open questions](./projects/07-household-app/README.md).
+Notable: one-pod-or-many, channel-to-pod mapping, tool-calling
+shape (MCP-like vs custom), hallucination tolerance,
+completion-loop cadence, multilingual handling.
+
+### Why this is project #7 and not a variant of #4
+
+**#4 is structured** — task DAG with skill requirements + claim
+semantics + role-based permissions.  **#7 is freeform** —
+ambient natural-language chat parsed by an LLM.  Different
+acquisition pattern even though the post-extraction state model
+overlaps.  Worth keeping the schemas aligned so they can
+migrate one to the other if needed.
+
+---
+
+## Cross-cutting threads (refined for pass 3, refreshed for #5 + #6, expanded for #7)
 
 Each row picks up new use-case touchpoints as the project list
 has grown.  The "use cases" column is now denser; that density is
@@ -544,38 +612,52 @@ in the right column are mostly shared, not duplicated per app.
 
 | Theme | Use cases | What the SDK might need |
 |---|---|---|
-| **Solid pod as shared storage with the convention** (small/structured = direct, big = reference) | 1, 3, 4, 5 | Already in `packages/core/src/storage/SolidPodSource.js` and `SolidVault.js`.  Convention is now binding across use cases.  Document once. |
-| **OSS-doc-tool integration for real-time collab** | 1 | App-level integration work; the SDK does NOT need a CRDT primitive.  Investigation item: which OSS tool, how to plug pod as backing store. |
-| **Encryption at rest + public-content override** | 1 (private/public docs), 3 (private vs. shared imports), 4 (audit trail privacy), 5 (archive items encrypted; public sub-set plaintext) | Envelope encryption per pod-resource.  Per-resource ACL determines whether decryption happens at all (public = plaintext stored, private = encrypted to user's agent). |
-| **CapabilityToken-based attestation / sharing** | 5 (share archive items with peer), 6 (signed-beacon presence claims, witness attestations) | Already exists in `packages/core/src/permissions/CapabilityToken.js`.  Need standardised usage patterns: short-lived tokens for ephemeral shares (#5); signed-beacon-as-token (#6 layer 1); aggregate-witness-tokens (#6 layer 2). |
+| **Solid pod as shared storage with the convention** (small/structured = direct, big = reference) | 1, 3, 4, 5, 7 | Already in `packages/core/src/storage/SolidPodSource.js` and `SolidVault.js`.  Convention is now binding across use cases.  Document once. |
+| **Pod ↔ local-folder sync (translation layer)** | 1 (V0), 7 (household pod synced across phones / laptops) | New: a sync-skill pattern.  Watches a local folder + a pod container, propagates changes both ways.  Last-write-wins for v0; conflict UI later. |
+| **OSS-doc-tool integration for real-time collab** | 1 (V1) | App-level integration work; the SDK does NOT need a CRDT primitive.  Investigation item: which OSS tool, how to plug pod as backing store. |
+| **Encryption at rest + public-content override** | 1, 3, 4 (audit trail privacy), 5 (archive items encrypted; public sub-set plaintext), 7 (household pod encrypted to household-group key) | Envelope encryption per pod-resource.  Per-resource ACL determines whether decryption happens at all (public = plaintext stored, private = encrypted to user's agent / group). |
+| **CapabilityToken-based attestation / sharing** | 5 (share archive items with peer), 6 (signed-beacon presence claims, witness attestations), 7 (Telegram-bot agent authorises against household pod) | Already exists in `packages/core/src/permissions/CapabilityToken.js`.  Need standardised usage patterns: short-lived tokens for ephemeral shares (#5); signed-beacon-as-token (#6 layer 1); aggregate-witness-tokens (#6 layer 2); bot-agent-bearer (#7). |
 | **Skill posture flag** (always-callable vs. negotiable, machine vs. human) | 2, 4 | Extend `agent.register(id, handler, { posture: 'always' \| 'negotiable', humanInTheLoop: bool })` |
 | **Skill-based broadcast / matchmaking** | 2 (neighbor questions), 4 (task dispatch), 6 (witness-network presence challenges) | Pub/sub-of-skills primitive (`broadcast(skillId, payload)` → arrives at every peer that has registered `skillId`); maybe extend `pubSub.js` |
-| **Mobile push (APNs/FCM) for human-skill notifications** | 2, 4, 6 (wake witnessing agents) | New: backend bridge so phone agents can wake on incoming requests.  Single piece of new infra needed by 3 of the 6 use cases. |
-| **Role-aware groups** (extension of Group X) | 4, 1 (collab access tiers), 2 (group governance), 6 (witness-trust weighting) | Per-role credentials within a group.  Per-role permissions on skills + content. |
-| **Closed-group membership with invitation governance** | 2, 4, 6 (beacon-operator trust model) | Relay-side allowlist + invite-token issuance (already on the relay roadmap). |
+| **Mobile push (APNs/FCM) for human-skill notifications** | 2, 4, 6 (wake witnessing agents) | New: backend bridge so phone agents can wake on incoming requests.  Single piece of new infra needed by 3 of the 7 use cases. |
+| **Role-aware groups** (extension of Group X) | 4, 1 (collab access tiers), 2 (group governance), 6 (witness-trust weighting), 7 (household roles: member / admin / guest) | Per-role credentials within a group.  Per-role permissions on skills + content. |
+| **Closed-group membership with invitation governance** | 2, 4, 6 (beacon-operator trust model), 7 (household membership) | Relay-side allowlist + invite-token issuance (already on the relay roadmap). |
 | **OAuth credential management** | 3 | Extend `Vault` to store per-service OAuth tokens.  Refresh-token handling.  Per-service vault namespacing. |
-| **Sync vs one-shot operations** | 3 (cloud-source sync), 5 (archive ingest from connectors) | New: a "live-sync skill" pattern — agent declares "I will keep X in sync with Y", with explicit conflict-resolution callbacks. |
+| **Sync vs one-shot operations** | 3 (cloud-source sync), 5 (archive ingest from connectors), 1 + 7 (pod ↔ local-folder sync) | New: a "live-sync skill" pattern — agent declares "I will keep X in sync with Y", with explicit conflict-resolution callbacks. |
 | **Anonymous discovery + bilateral identity reveal (PARKED)** | 2, partially 6 (anonymous witnessing as a privacy-of-the-witness-graph mitigation) | New protocol layer above sealed-forward.  Not designed yet; the author has thoughts to share when unparked. |
 | **Identity reconciliation across sources** | 5 (same person via gmail / phone / pubkey) | Possibly L0 SDK primitive, possibly app-level.  Open question. |
 | **Composable verification primitive** (proof-of-presence, proof-of-membership, proof-of-skill, …) | 6 (proof-of-presence as the first instance), potentially 4 (proof-of-skill for task claims) | New: a verification-token shape that other use cases consume.  App-level for now; could become an L1 building block once a second use case demands the same shape. |
+| **LLM-mediated agent** (the agent's intelligence is an LLM) | 7 (household chat → extraction → pod state) | New: idiomatic "register a skill where the implementation is an LLM with these other agent skills as tools."  Possibly L1 helper; possibly app-level wrapper.  Tool-catalog accessor on `SkillRegistry` for the LLM to introspect available skills.  L0. |
+| **External chat-channel bridge** (Telegram, Signal, Matrix, Discord) | 7 (Telegram first) | New: a bridge-agent pattern that translates external-platform messages into native skill calls.  App-level for one platform; promote to L1 if a second platform follows.  Closest analogue: `A2ATransport` for HTTP, but chat-bots are a different shape (long-poll / webhook, bot tokens). |
 
 ### Notes on the refresh
 
-- **Pod-storage and encryption-at-rest** now reach 4 of 6 use
+- **Pod-storage and encryption-at-rest** now reach 5 of 7 use
   cases each.  These are the strongest "L0 SDK convention"
-  candidates.
+  candidates — the cheapest things to make binding because
+  they're already mostly built.
 - **Skill matchmaking + push + role-aware-groups + closed-group
-  governance** form a tight cluster used by #2, #4, and #6.
-  They constitute the **"L1 skill-matchmaking building block"**
-  proposed in the pass-3 structural decision.  Building it once
-  unlocks three apps.
+  governance** form a tight cluster used by #2, #4, #6, and
+  partially #7.  They constitute the **"L1 skill-matchmaking
+  building block"** proposed in the pass-3 structural decision.
+  Building it once unlocks four apps.
 - **CapabilityToken** is already implemented — what's missing
   is standardised *usage patterns* for the new shapes (#5's
-  share flow, #6's beacon and witness tokens).  No new
-  cryptography needed.
-- **Identity reconciliation** (new row from #5) is the only
-  fundamentally novel SDK question that the project list raises
-  beyond what was already on the table.  Worth its own design
+  share flow, #6's beacon and witness tokens, #7's bot-agent
+  bearer).  No new cryptography needed.
+- **Pod ↔ local-folder sync** (new row from #1's V0 + #7) is
+  more concrete and immediate than the abstract "sync vs.
+  one-shot" theme.  Probably its own L1 building block.
+- **LLM-mediated agent + external chat-channel bridge**
+  (new rows from #7) are genuinely new themes the project list
+  hadn't surfaced before.  Both are app-level for now, but
+  they imply the SDK should make the skill registry more
+  introspectable (so an LLM can enumerate available tools at
+  runtime).
+- **Identity reconciliation** (new row from #5) is still the
+  only fundamentally novel SDK question that the project list
+  raises beyond what was already on the table.  Worth its own
+  design
   pass when #5 thaws.
 - **Anonymous discovery** (parked) is now also relevant to #6
   for witness-graph privacy.  When it unparks, the design

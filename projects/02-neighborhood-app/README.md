@@ -6,6 +6,14 @@ the author has thoughts to share.  The non-anonymity parts of #2
 overlap heavily with use case #4 (skill matchmaking, push
 notifications, group governance) and will be designed together.
 
+**In het kort**
+- je wilt een server waar gebruikers de buurt kunnen querieen
+- dit gaat om taakjes of spullen of wat dan ook
+- iedereen heeft een model van de anderen lokaal (opgehaald via relay)
+- op basis hiervan kan de agent zelf filteren, eventueel ondersteund met een llm die dan weer ergens draait
+- dan worden verzoekjes verzonden naar de relevante geselecteerden
+- dan begint de onderhandeling en evt toewijzing
+
 ## In one paragraph
 
 A relay you can only join by invitation (closed network — your
