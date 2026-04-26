@@ -204,6 +204,37 @@ beacon) + layer 2 (witness-network skill).**  Skip layer 3 for
 v1.  Add layer 4 (ZK composition) only when you have something
 real to compose.
 
+### Even simpler v0: WiFi + on-LAN-agent (no new hardware)
+
+**the author's contribution (2026-04-26):** the cheapest viable
+variant collapses layers 1 and 2 onto a single existing device.
+Be considered "local" if (a) the user's device is connected to
+an associated WiFi network AND (b) the user's agent can reach a
+specific *home agent* via direct LAN (mDNS / BLE) — *not* via
+the relay.  The home agent issues a short-lived signed
+attestation if both factors hold.
+
+This works on existing SDK primitives — Group EE's transport-
+name routing already distinguishes LAN-direct from relay paths
+— and stays neatly within GDPR's household exemption when WiFi
+data lives only on the user's own devices.
+
+Detailed design + threat model + GDPR analysis in
+[`wifi-and-agent.md`](./wifi-and-agent.md).  This is the
+recommended v0 milestone for #6.
+
+---
+
+## Investigation notes
+
+- **[`wifi-and-agent.md`](./wifi-and-agent.md)** — the
+  WiFi + on-LAN-agent v0 path: mechanism, why it's stronger
+  than either factor alone, threat model and mitigations,
+  what the SDK already provides (almost everything), GDPR
+  analysis (household exemption applies; future-proofing
+  precautions: hash SSIDs, device-local by default), and a
+  ~1-week staging plan.
+
 ---
 
 ## How this fits with the project
