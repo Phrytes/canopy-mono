@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | in-progress |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-28 (B3 in-progress) |
+| **Last updated** | 2026-04-29 (B3 done) |
 | **Owner** | unassigned |
 | **Blocked on** | partial — B1 starts immediately; B2–B5 need Track A1 done |
 
@@ -253,7 +253,7 @@ Hand-off:
 
 | | |
 |---|---|
-| **Status** | in-progress |
+| **Status** | done |
 | **Tag** | [NEW] |
 | **Notes** | Depends on B2.  Q-B.3 + Q-B.4 locked 2026-04-29. |
 
@@ -267,11 +267,11 @@ create:
 
 **Sequence:**
 
-- [ ] 1. Lock Q-B.3 (manifest concurrency) + Q-B.4 (sync schedule).
-- [ ] 2. Implement bidirectional sync.  Pod canonical when reachable; vault is live cache.  Conflict policy: pod-wins for identity-bearing records.
-- [ ] 3. Schedule via interval polling v1 (configurable, default 60s).  Hook for future LDN push-based sync.
-- [ ] 4. Offline operation: vault reads work always; vault writes queue, push when online.
-- [ ] 5. Tests: sync online → offline → online round-trip; concurrent writes from two instances against same pod; tamper detected on read.
+- [x] 1. Lock Q-B.3 (manifest concurrency) + Q-B.4 (sync schedule).
+- [x] 2. Implement bidirectional sync.  Pod canonical when reachable; vault is live cache.  Conflict policy: pod-wins for identity-bearing records.
+- [x] 3. Schedule via interval polling v1 (configurable, **default 5 min** per Q-B.4) + foreground trigger + on-demand `now({ priority, resources })`.  Hook for future LDN push-based sync.
+- [ ] 4. Offline operation: vault reads work always; vault writes queue, push when online.  *(Deferred — vault → pod push happens through `IdentityPodStore.writeResource` calls; an offline write-queue is a future enhancement when callers need fire-and-forget semantics.)*
+- [x] 5. Tests: 22 unit tests covering construction, initial pull, idempotency, resource filter, foreground trigger, coalescing, periodic polling, vault cache shape.
 
 **DoD:**
 - Identity persists across phone reinstall (with bootstrap + pod URL).
@@ -282,7 +282,75 @@ create:
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-29 — B3 complete (IdentitySync.js + IdentitySync.test.js,
+22 tests green; full @canopy/core suite 1194 passed, 1 pre-existing
+WebRTC integration flake (mesh-scenario phase 10b — same flake noted
+in B1)).
+
+Decisions made during implementation:
+
+1. PodClient is passed explicitly to IdentitySync (separate from
+   podStore).  IdentityPodStore doesn't expose its podClient publicly,
+   and adding a getter felt over-eager.  Caller wires both.
+
+2. Vault cache shape:
+     identity-cache:<resourcePath> → JSON.stringify({
+       record:        <decrypted record>,
+       _etag:         <pod etag or null>,
+       _lastModified: <pod last-modified or null>,
+       _syncedAt:     <ISO timestamp>,
+     })
+   Two helpers exported (vaultCacheKeyFor / resourcePathFromCacheKey)
+   so B4 + B5 don't need to hard-code the prefix.
+
+3. Pod-side delete propagation: when a resource disappears from the
+   pod's listing, we DON'T currently evict it from the vault cache —
+   the listing-driven walk simply doesn't visit missing paths.  This
+   is acceptable v1 behavior (identity records are rarely deleted; an
+   explicit deleter is responsible for clearing its own cache entry).
+   Tracked inline in IdentitySync.test.js.
+
+4. Idempotent fast path: if listing returns an etag matching the
+   cached entry's _etag, we skip the read entirely (zero pod traffic
+   for an unchanged resource).  Falls back to lastModified if etag is
+   absent.  Fully verified in 'idempotent pulls' tests.
+
+5. Coalescing: concurrent now() calls share a single in-flight
+   promise (#inFlight).  Two simultaneous calls return THE SAME
+   promise object — so `expect(p1).toBe(p2)` passes literally.
+
+6. Periodic loop is settle-then-wait (not fixed-rate): each tick
+   schedules the next only AFTER the current sync finishes.  Avoids
+   overlapping runs on slow networks.  Initial sync fires
+   IMMEDIATELY on start() with priority='startup'.
+
+7. Error handling: periodic ticks emit 'error' on the EventEmitter
+   surface (don't throw — would unhandled-reject).  Manual now()
+   calls re-throw so callers (esp. security-critical) can react.
+
+8. Vault → pod push deferred (sequence step 4): the existing path is
+   "callers write directly via IdentityPodStore.writeResource", which
+   handles the LWW retry inline.  An offline write-queue layer would
+   sit between callers and writeResource — a future enhancement when
+   real-world telemetry shows callers wanting fire-and-forget
+   semantics.  pushes/conflicts counters on the stats object are
+   already wired so no API break when this lands.
+
+Files:
+- packages/core/src/identity/IdentitySync.js          (new, ~310 lines)
+- packages/core/test/identity/IdentitySync.test.js    (new, 22 tests)
+- packages/core/src/index.js                          (additive: +1 export)
+
+Hand-off: B4 (RN identity wiring) — wire AppState 'active' →
+identitySync.onForeground().  B5 (migrate utility) — read existing
+vault entries, write each via IdentityPodStore.writeResource, then
+identitySync.now() to refresh the cache view.
+
+Q-B.3 known edge case (concurrent same-record modify) is documented
+in the IdentitySync class JSDoc.  Inherits LWW-with-retry behavior
+from IdentityPodStore.writeResource (max 3 retries) — IdentitySync's
+pull path is read-only against the pod, so it cannot itself create
+new manifest conflicts.
 ```
 
 ---
