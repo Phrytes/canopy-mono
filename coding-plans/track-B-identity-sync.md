@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | in-progress |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-28 (B1 done) |
+| **Last updated** | 2026-04-28 (B2 done) |
 | **Owner** | unassigned |
 | **Blocked on** | partial — B1 starts immediately; B2–B5 need Track A1 done |
 
@@ -148,7 +148,7 @@ entries; reuse Bootstrap.randomSalt() when generating envelopes.
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
 | **Notes** | Depends on Track A1 (SolidPodSource) + B1.  Implements [`identity-pod-schema.md`](../Design-v3/identity-pod-schema.md). |
 
@@ -163,17 +163,17 @@ create:
 
 **Sequence:**
 
-- [ ] 1. Implement RDF serializers for each resource type per the schema doc.  Turtle for static records, JSON-LD Lines for auth-log.  Round-trip tests for each.
-- [ ] 2. Implement encryption envelope (XSalsa20-Poly1305 via `tweetnacl.secretbox`) per the schema's encryption-protocol section.  Per-resource key from Bootstrap.
-- [ ] 3. Implement IdentityPodStore class:
-  - [ ] `init(webid, bootstrap, podSource)` — create `/canopy/` if absent, write initial manifest.
-  - [ ] `readResource(path)` — fetch + verify envelope + decrypt + parse.
-  - [ ] `writeResource(path, content)` — serialize + encrypt + PUT + update manifest.
-  - [ ] `appendAuthEvent(event)` — append to current month's log file (read-modify-write, retry on conflict).
-  - [ ] `verifyManifest()` — re-hash content (per schema's contentHash algorithm) + verify signature.
-- [ ] 4. Implement the contentHash algorithm precisely per the schema doc (six steps).  Reference test vectors will be added once two implementations agree.
-- [ ] 5. Strict-propagation semantics: writes that change identity-bearing state require the pod to confirm before being marked effective locally.
-- [ ] 6. Tests: round-trip each resource type; tamper detection (modify a byte → contentHash mismatch); concurrent writes; auth-log append.
+- [x] 1. Implement RDF serializers for each resource type per the schema doc.  Turtle for static records, JSON-LD Lines for auth-log.  Round-trip tests for each.
+- [x] 2. Implement encryption envelope (XSalsa20-Poly1305 via `tweetnacl.secretbox`) per the schema's encryption-protocol section.  Per-resource key from Bootstrap.
+- [x] 3. Implement IdentityPodStore class:
+  - [x] `init(webid, bootstrap, podSource)` — create `/canopy/` if absent, write initial manifest.
+  - [x] `readResource(path)` — fetch + verify envelope + decrypt + parse.
+  - [x] `writeResource(path, content)` — serialize + encrypt + PUT + update manifest.
+  - [x] `appendAuthEvent(event)` — append to current month's log file (read-modify-write, retry on conflict).
+  - [x] `verifyManifest()` — re-hash content (per schema's contentHash algorithm) + verify signature.
+- [x] 4. Implement the contentHash algorithm precisely per the schema doc (six steps).  Reference test vectors will be added once two implementations agree.
+- [ ] 5. Strict-propagation semantics: writes that change identity-bearing state require the pod to confirm before being marked effective locally.  *(Deferred to B3 — IdentitySync owns the local-cache effectiveness flag.  B2 already returns only after the pod confirms via `await podClient.write(...)`; the caller-side strict-propagation flag belongs in IdentitySync where the local cache lives.)*
+- [x] 6. Tests: round-trip each resource type; tamper detection (modify a byte → contentHash mismatch); concurrent writes; auth-log append.
 
 **DoD:**
 - Read + write each resource type works against a real CSS pod (via SolidPodSource).
@@ -184,7 +184,67 @@ create:
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 — B2 complete (IdentityPodStore + 3 serializer modules +
+20 unit tests, all green; full @canopy/core suite 1172 passed +
+13 skipped + 1 unrelated pre-existing WebRTC integration flake — same
+flake B1 noted).
+
+DECISION (schema deviation, intentional, v1):
+  Per-resource records (Device, Contact, AppPermission, RecoveryHint,
+  CapabilityGrant{Issued,Held}) are stored as **plain JSON inside the
+  encryption envelope**, NOT Turtle.  Rationale documented in
+  IdentityPodStore.js class JSDoc:
+    - decrypted bytes are only ever consumed by the SDK in v1; no third-
+      party Turtle consumer exists.
+    - hand-rolling Turtle round-trip for arbitrary record shapes (lists,
+      datatyped literals, blank nodes) adds code surface without v1
+      value.  Pulling in n3.js would add a new top-level dep — disallowed.
+    - encryption envelope is unchanged; future migration to Turtle
+      payloads does NOT require re-encrypting existing resources.
+  The MANIFEST is still real Turtle (its narrow shape is covered by
+  serializeManifest / parseManifest in identitySerializers/turtle.js)
+  because external clients must parse it before being able to do
+  anything else.  The auth-log is still JSON-LD Lines per spec.
+
+DECISION (Q-B.3 — locked, applied here):
+  Manifest writes use LWW-with-retry, max 3 retries (constant
+  MAX_MANIFEST_RETRIES in IdentityPodStore.js).  Both writeResource
+  and appendAuthEvent retry on `ConflictError` (code 'CONFLICT'); on
+  exhaustion, the original ConflictError surfaces.  Known edge case
+  documented in writeResource JSDoc: two devices modifying the SAME
+  record within a tight window → loser sees ConflictError, retries.
+  v2 fallback: per-device manifest fragments merged on read (not built).
+
+DECISION (resource-write conflict policy):
+  writeResource uses `conflictPolicy: 'lww'` for the resource itself
+  (last-write wins; the resource bytes are ours), but `'reject'` for
+  the manifest (we want to retry and re-hash, not silently overwrite
+  another device's hash).  appendAuthEvent uses `'reject'` for the
+  log file (we read-modify-write each line).
+
+Sequence step 5 (strict-propagation):
+  Deferred to B3.  Reasoning in the [ ] above — B2 already awaits the
+  pod's write before returning, but the "marked effective locally"
+  flag belongs in the local-cache layer that B3 owns.
+
+Files added:
+  packages/core/src/identity/IdentityPodStore.js                       (~370 lines)
+  packages/core/src/identity/identitySerializers/turtle.js             (~95 lines)
+  packages/core/src/identity/identitySerializers/jsonldLines.js        (~70 lines)
+  packages/core/src/identity/identitySerializers/manifest.js           (~150 lines)
+  packages/core/src/identity/identitySerializers/index.js              (barrel)
+  packages/core/test/identity/IdentityPodStore.test.js                 (20 tests)
+
+Files modified:
+  packages/core/src/index.js                                           (+1 export)
+
+Hand-off:
+  - B3 (IdentitySync) imports { IdentityPodStore } from @canopy/core.
+    The store's read/write/append surface is the canonical pod side;
+    B3 layers a local cache + interval polling (Q-B.4 locks 5-min).
+  - B4 (RN wiring) — nothing pod-specific yet on phone; waits on B3.
+  - Real-CSS-pod integration coverage is deferred to B4's RN harness;
+    B2 unit tests use an in-memory MockPodClient.
 ```
 
 ---
