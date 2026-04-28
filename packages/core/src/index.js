@@ -147,6 +147,8 @@ export { FileSystemSource }  from './storage/FileSystemSource.js';
 export { SolidPodSource }    from './storage/SolidPodSource.js';
 export { SolidVault }        from './storage/SolidVault.js';
 export { StorageManager }    from './storage/StorageManager.js';
+export { PodExporter }       from './storage/PodExporter.js';
+export { PodImporter }       from './storage/PodImporter.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 export { AgentConfig } from './config/AgentConfig.js';
