@@ -4,7 +4,7 @@
 | ---------------- | ----------------------------------------- |
 | **Status**       | not-started                               |
 | **Started**      | —                                         |
-| **Last updated** | 2026-04-28 (initial draft)                |
+| **Last updated** | 2026-04-28 (E2a done)                     |
 | **Owner**        | unassigned                                |
 | **Blocked on**   | nothing — fully independent of A/B/C/D/F. |
 
@@ -94,43 +94,75 @@ create:
 
 ---
 
-### E2a — Relay invite-only auth
+### E2a — Relay group-membership auth
 
 | | |
 |---|---|
-| **Status** | not-started |
-| **Tag** | [EXTENDS] `packages/relay/` |
-| **Notes** | Independent.  Decide Q-E.2 before starting. |
+| **Status** | done |
+| **Tag** | [EXTENDS] `packages/relay/` + [EXTENDS] `packages/core/` |
+| **Notes** | Locked Q-E.2 (group-membership auth via existing `GroupManager` proofs).  Replaces the original signed-invite-token design; no new token type. |
 
 **Files:**
 
 ```
 modify:
-  packages/relay/src/server.js                            # invite verification on connect
-  packages/relay/src/RelayAgent.js                        # invite issuance
+  packages/relay/src/server.js                            # GroupAuthVerifier on connect/register
+  packages/core/src/index.js                              # additive: export verifyGroupProof
 
 create:
-  packages/relay/src/InviteVerifier.js
-  packages/relay/test/InviteVerifier.test.js
+  packages/core/src/permissions/groupProofVerify.js       # standalone verifyGroupProof()
+  packages/relay/src/GroupAuthVerifier.js
+  packages/relay/test/GroupAuthVerifier.test.js
 ```
 
 **Sequence:**
 
-- [ ] 1. Lock Q-E.2 (invite mechanism).
-- [ ] 2. Implement signed invite tokens: `{ groupId, issuedTo?, expiresAt, sig }` signed by relay operator.
-- [ ] 3. Add invite verification on relay connect: client presents invite → relay verifies signature + expiry + (optional single-use) before accepting.
-- [ ] 4. Issuance API: relay operator can mint invites via CLI or admin API.
-- [ ] 5. Tests: valid invite accepts; expired rejects; wrong-issuer rejects; replay (single-use) rejects on second attempt.
+- [x] 1. Lock Q-E.2 (locked: group-membership-based auth).
+- [x] 2. Extract `verifyGroupProof(proof, expectedAdminPubKey)` standalone helper in `@canopy/core` mirroring `GroupManager.verifyProof`'s canonical-form check; export from `packages/core/src/index.js`.
+- [x] 3. Implement `GroupAuthVerifier` in `packages/relay/src/`: takes `acceptedGroups: [{ groupId, adminPubKey, requiredRole? }]`; `verify(proof) → { ok, group | reason }`; open-mode (empty/unset acceptedGroups) accepts everyone (backward compat).
+- [x] 4. Wire into `startRelay`: extend `register` message schema with optional `groupProof` field; if `acceptedGroups` is configured, run `verifier.verify` before accepting the register; on rejection emit `{ type: 'error', message: <reason> }` and close.
+- [x] 5. Tests — `GroupAuthVerifier.test.js` (open mode; wrong group; wrong admin; expired; tampered sig; valid; requiredRole satisfied; requiredRole insufficient; happy path uses real `GroupManager.issueProof`) + `server.test.js` integration coverage (no proof rejected; valid proof accepted; wrong-group proof rejected; backward-compat: existing tests still pass without `acceptedGroups`).
 
 **DoD:**
-- Closed-group relay works.
-- Existing relay tests still pass (default behavior is open if no invites configured).
-- New invite tests cover the four cases above.
+- Closed-group relay works (clients without a valid group proof are rejected when `acceptedGroups` is set).
+- Open-mode default preserved: existing relay tests still pass when `acceptedGroups` is unset.
+- `verifyGroupProof` is additively exported from `@canopy/core` and verified by tests against real `GroupManager`-issued proofs.
+- Composes with D3 roles via optional `requiredRole` per group entry.
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 — E2a done.
+- `verifyGroupProof` exported additively from `@canopy/core`
+  (`packages/core/src/permissions/groupProofVerify.js`).  Mirrors
+  GroupManager.verifyProof's canonical-form check; pure function so
+  the relay does not need a vault.
+- `GroupAuthVerifier` (`packages/relay/src/GroupAuthVerifier.js`)
+  takes `{ acceptedGroups, roleRanks? }`.  Open-mode = empty
+  acceptedGroups (legacy backward compat).  Reasons returned on reject:
+  NO_PROOF, GROUP_NOT_ACCEPTED, INVALID_PROOF, INSUFFICIENT_ROLE.
+- `startRelay` extends the `register` schema with optional
+  `groupProof`; on reject we send `{ type: 'error', message: <reason> }`
+  and close the socket.  Existing relay tests pass unchanged because
+  open-mode is the default.
+- D3 composition: per-group `requiredRole` is checked via the standard
+  rank table (admin=100, coordinator=80, member=60, observer=40,
+  external=20).  Custom roles can override via the `roleRanks` opt.
+- Test counts (npm test --prefix packages/relay):
+    GroupAuthVerifier.test.js  14 tests
+    server.test.js              13 tests (4 new group-auth + 9 existing)
+    RelayAgent.test.js          10 tests
+    WsServerTransport.test.js    9 tests
+    -- total: 46 passed --
+- Core tests still green (1109 passed | 13 skipped).
+- Q-E.2 design dictated this: NO new dependency added (relay imports
+  `verifyGroupProof` via the existing `@canopy/core` peer-dep).
+- Shared file with E2b: `packages/relay/src/server.js`.  My edits are
+  scoped to imports, opts destructuring, and the `register` handler;
+  E2b's edits will be in the `send` handler / queue routing.  Should
+  merge cleanly.
+- Shared file with all of core: `packages/core/src/index.js`.  My edit
+  is a single additive export line under "Permissions" — append-only.
 ```
 
 ---
