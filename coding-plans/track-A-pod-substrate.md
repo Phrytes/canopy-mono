@@ -28,8 +28,8 @@ answer when locked.
 
 | # | Question | Answer (when known) |
 |---|---|---|
-| Q-A.1 | Pod-storage convention threshold (default: 1 MB? 4 MB?) | TBD before A3 |
-| Q-A.2 | Default external store for `writeWithConvention` v1 (`none` / S3 / etc.) | TBD before A3 |
+| Q-A.1 | Pod-storage convention threshold (default: 1 MB? 4 MB?) | **Locked 2026-04-28: 1 MB default (configurable per-call)** |
+| Q-A.2 | Default external store for `writeWithConvention` v1 (`none` / S3 / etc.) | **Locked 2026-04-28: `NoneStore` v1.  Apps must explicitly supply a store for big content; throws if asked to put/get.  See `TODO-GENERAL.md § External-store adapters`.** |
 | Q-A.3 | Tombstone-storage adapter default: IndexedDB on web, AsyncStorage on RN, file on Node | TBD before A6 — defaults likely fine |
 | Q-A.4 | Append-on-conflict retry count (default: 3) | TBD before A7 |
 | Q-A.5 | ~~Whether to ship `client.patch` (n3 patch) in v1 or defer~~ | **Locked: ship in v1** |
@@ -415,19 +415,24 @@ modify:
 - [ ] 5. Implement `CapabilityAuth.js` — wraps a capability token, presents as `Authorization: Bearer <token>` (mode `'pod-direct'` only in v1).
 - [ ] 6. Implement `SolidOidcAuth.js` — wraps a `SolidVault` instance; delegates `getAuthHeaders` to vault's authenticated-fetch sample request.
 - [ ] 7. Implement `PodClient.js` core methods (`read`, `list`, `write`, `append`) by delegating to a `SolidPodSource` constructed with the auth's authenticated fetch.
-- [ ] 8. Map `SolidPodSource` errors to `PodClientError` subtypes.
-- [ ] 9. Unit tests for each method against a mocked `SolidPodSource`.
-- [ ] 10. Integration test: full flow with a real CSS instance + a test capability token (issued via existing `CapabilityToken.issue`).
+- [ ] 8. Implement `client.patch(uri, patch, opts)` per Q-A.5 (ship-in-v1 lock).  v1 uses path (a) — a thin wrapper translating a small `{ add: [quad...], remove: [quad...] }` shape into Inrupt's `solid-client` quad-add/quad-remove + `saveSolidDatasetAt` flow.  Document the `{add, remove}` shape clearly; emit raw n3-patch HTTP body is an optional future path (b) and not implemented in v1.
+- [ ] 9. Map `SolidPodSource` errors to `PodClientError` subtypes.
+- [ ] 10. Unit tests for each method against a mocked `SolidPodSource`.
+- [ ] 11. Integration test: full flow with a real CSS instance + a test capability token (issued via existing `CapabilityToken.issue`).
 
 **DoD:**
-- `PodClient` round-trips read/write/list/append against CSS using both `CapabilityAuth` and `SolidOidcAuth`.
+- `PodClient` round-trips read/write/list/append/patch against CSS using both `CapabilityAuth` and `SolidOidcAuth`.
+- `patch({add, remove})` updates RDF resource without full read-modify-write.
 - All errors typed per the spec.
 - Tests green.
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+Q-A.5 locked 2026-04-28: ship patch in v1 via path (a) — thin
+wrapper around Inrupt's quad-add/quad-remove + saveSolidDatasetAt.
+Path (b) (raw n3-patch HTTP body) is an optional future option,
+not implemented in v1.
 ```
 
 ---

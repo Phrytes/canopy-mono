@@ -6,6 +6,34 @@ into `EXTRACTION-PLAN.md` / `CODING-PLAN.md` when they become concrete.
 
 ---
 
+## External-store adapters for `writeWithConvention`
+
+**Status:** v1 ships `NoneStore` only — apps must supply their own
+external-storage adapter for content above the convention threshold
+(see `Design-v3/pod-client-api.md` §writeWithConvention,
+`coding-plans/track-A-pod-substrate.md` §A3).
+
+Lock confirmed 2026-04-28 (Track A Q-A.2): default = `NoneStore`,
+threshold = 1 MB (Q-A.1).  Apps must opt in to big-content handling
+by supplying a real `ExternalStore` adapter.
+
+Future work (when an app demands it):
+- **S3 adapter** (`@canopy/external-store-s3`) — likely first;
+  most generic.
+- **Drive / Dropbox / iCloud adapters** — reuse the OAuth-in-Vault
+  work from Track F.
+- **IPFS / Hypercore adapter** — decentralization-aligned; bigger
+  stack to ship.
+- **Pod-resident "blob container" adapter** — store big blobs in a
+  separate container on the same pod with relaxed quotas; no
+  external store at all.
+
+Pick the first one based on which app actually needs big-content
+handling first (likely #5 archive for photos / videos, or #3 import
+bridge for big email attachments).
+
+---
+
 ## Wire rendezvous into the phone app ✅ *(shipped — Group DD)*
 
 **Status:** SDK + app wiring landed. On-device verification still
