@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | in-progress |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-28 — Q-D.1..5 locked; D1 done (24 tests); D4 done (32 tests); D3 in-flight |
+| **Last updated** | 2026-04-28 — Wave 1 complete: D1 (24 tests), D3 (32 tests), D4 (32 tests) all done.  D2 + D5 ready to start. |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — fully parallel with Track A from day one |
 
@@ -230,9 +230,9 @@ modify:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [EXTENDS] `GroupManager.js` |
-| **Notes** | Independent.  Decide Q-D.1 + Q-D.5 before starting. |
+| **Notes** | Independent.  Q-D.1 + Q-D.5 locked.  Shipped 2026-04-28; 32 tests green.  Backwards-compatible with legacy role-less proofs. |
 
 **Files:**
 
@@ -249,14 +249,14 @@ create:
 
 **Sequence:**
 
-- [ ] 1. Lock Q-D.1 (standard set vs app-defined).  Likely: ship five standard roles (`admin`, `coordinator`, `member`, `observer`, `external`) + allow apps to register custom role IDs via a registration API.
-- [ ] 2. Lock Q-D.5 (revocation vs demotion).  Likely: `revokeProof` continues to fully invalidate; new `setRole(memberPubKey, newRole)` issues a fresh proof at the new role and invalidates the old one.  Re-issuing is the primitive; demotion is `setRole(_, 'observer')`.
-- [ ] 3. Read existing `GroupManager.js` carefully.  Note the proof shape (Ed25519-signed membership proof).  Add a `role` field; existing two-role proofs (`admin`/`member`) stay valid by default.
-- [ ] 4. Implement `Roles.js` — exports role constants, `isStandardRole(role)`, `roleRank(role)` (numeric ordering for hierarchy checks), `canPromote(actorRole, targetRole)`.
-- [ ] 5. Extend GroupManager: `issueProof({ subject, role, ... })`, `getRole(memberPubKey)`, `setRole(...)`, `listMembersByRole(role)`.
-- [ ] 6. Backward compat: existing two-role proofs default to standard roles when read; tests for migration scenarios.
-- [ ] 7. Wire into `PolicyEngine.checkInbound` — operations can declare a `requiredRole` constraint; engine reads the caller's group proof and verifies the role matches or exceeds.
-- [ ] 8. Tests: role hierarchy ordering, promote/demote, revoke vs demote distinction, custom-role registration, policy-engine integration.
+- [x] 1. **Q-D.1 locked**: 5 standard roles (admin/coordinator/member/observer/external) + app-defined-extension API.
+- [x] 2. **Q-D.5 locked**: `revokeProof` keeps current behaviour; new atomic `setRole` is the demote/promote primitive.
+- [x] 3. Read existing `GroupManager.js` and updated proof shape — added `role` field; verified backward compat for legacy role-less proofs (they still verify and read as `'member'`).
+- [x] 4. Implemented `Roles.js` — role constants, `roleRank`, `isStandardRole`, `isKnownRole`, `canPromote`, `registerCustomRole` / `unregisterCustomRole` / `listKnownRoles`.
+- [x] 5. Extended GroupManager: `issueProof(subj, group, { role?, expiresIn? })` (legacy `(subj, group, expiresIn)` shape still works), `getRole`, atomic `setRole`, `listMembersByRole`, `canChangeRole`.
+- [x] 6. Backward compat verified — legacy proofs (no `role` field) verify with the original canonical body and read as `'member'` at runtime.
+- [x] 7. Wired into `PolicyEngine.checkInbound` — `skill.requiredRole = { group, role }` triggers a group lookup via the optional injected `groupManager`; new typed errors `NO_GROUP_MANAGER`, `INVALID_REQUIRED_ROLE`, `NOT_A_MEMBER`, `INSUFFICIENT_ROLE`.  `defineSkill` accepts the new opt; defaults to `null` (skipped if absent — backward compat).
+- [x] 8. Tests in `packages/core/test/permissions/RoleAwareGroups.test.js` — 32 green covering: role taxonomy, canPromote with admin override, custom-role registration + collision detection, issueProof with/without role + legacy shape, getRole / listMembersByRole, atomic setRole (single vault transaction; old proof gone), canChangeRole, PolicyEngine requiredRole accept/reject paths, missing-groupManager error, malformed requiredRole, backward compat for skills without requiredRole.
 
 **DoD:**
 - Five standard roles + custom role registration.
@@ -268,7 +268,39 @@ create:
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 — D3 shipped.
+
+Two background-agent attempts stalled on the watchdog (one wrote
+Roles.js to ~80% before the stream timed out; the other did
+nothing).  The orchestrator wrote the implementation directly to
+unblock — same playbook as A5b2.
+
+Implementation choices worth flagging:
+  - Legacy proof signatures are preserved.  The pre-D3 canonical
+    body did not include `role`, so we sign new proofs with the
+    role field present and treat legacy proofs as having role
+    'member' for runtime reads.  Existing tests pass unchanged.
+  - issueProof's third arg is overloaded: a number is treated as
+    legacy `expiresIn`, an object as the new opts shape.  No
+    breaking change for old callers.
+  - setRole is atomic from the caller's perspective: it composes
+    the new array (filtered + appended) and does a single vault
+    .set().  No transient out-of-group window.
+  - Roles.js has module-local custom-role state.  Tests must
+    unregister custom roles in afterEach to keep tests isolated.
+  - PolicyEngine takes an optional `groupManager`; if a skill
+    declares `requiredRole` and groupManager is missing, the
+    engine throws `NO_GROUP_MANAGER` rather than silently passing
+    — fail closed.
+  - defineSkill now accepts `requiredRole`; default null
+    (backward-compat — skills without it are not subject to the
+    new check).
+
+Hand-off:
+  - D2 (skills pubsub) does NOT depend on roles, so it can
+    proceed against the merged D1 work directly.
+  - Track H apps using #4 / #7 governance now have the role
+    primitives they need.
 ```
 
 ---
