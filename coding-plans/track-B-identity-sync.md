@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | in-progress |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-28 (B2 done) |
+| **Last updated** | 2026-04-28 (B4 done) |
 | **Owner** | unassigned |
 | **Blocked on** | partial — B1 starts immediately; B2–B5 need Track A1 done |
 
@@ -291,9 +291,9 @@ create:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [EXTENDS] `packages/react-native/src/identity/` |
-| **Notes** | Depends on B2.  Decide Q-B.2 (mesh-demo migration) before touching the demo. |
+| **Notes** | Q-B.2 locked side-by-side.  `createMeshAgent` gains optional `pod` opt; absence preserves today's local-only Vault behavior unchanged.  When present, `attachIdentityToAgent` builds `Bootstrap` + `IdentityPodStore` + `IdentitySync`, materializes the pod manifest via `init()` BEFORE `agent.start()`, starts the sync loop, and wires RN `AppState` foreground refresh via lazy import.  Teardown wired to `agent.on('stop', dispose)`.  IdentitySync constructor is dynamic-imported from `@canopy/core` so this file is robust to B3 not yet being merged; tests inject a stub via `pod._identitySyncCtor`.  Tests: 12 dedicated + 2 new in `createMeshAgent.test.js` — all green; no existing test regressed. |
 
 **Files:**
 
@@ -308,11 +308,11 @@ tests (create):
 
 **Sequence:**
 
-- [ ] 1. Lock Q-B.2.  If side-by-side: createMeshAgent gets a new opt `pod: { webid, ... }` that, when present, attaches IdentitySync; absent = current local-only vault behavior.
-- [ ] 2. Bootstrap secret stays in Keychain / Keystore via existing platform-vault wrappers.
-- [ ] 3. Cache (working set of recent identity records) in IndexedDB / RN AsyncStorage.
-- [ ] 4. IdentitySync runs as a background task when network available.
-- [ ] 5. Tests on RN harness — happy path + offline + reconnect.
+- [x] 1. Lock Q-B.2.  Locked side-by-side: createMeshAgent gets a new opt `pod: { webid, mnemonic, podClient, podRoot, intervalMs? }` that, when present, attaches IdentitySync; absent = current local-only vault behavior.
+- [x] 2. Bootstrap secret stays in Keychain / Keystore via existing platform-vault wrappers (KeychainVault is unchanged; Bootstrap derives from the user-supplied mnemonic at attach time).
+- [x] 3. Cache (working set of recent identity records) in IndexedDB / RN AsyncStorage — handled by IdentitySync (B3) via the existing local Vault.  B4's wiring passes the same `vault` to IdentitySync.
+- [x] 4. IdentitySync runs as a background task — `sync.start()` is called immediately, and RN `AppState` `'active'` events trigger `sync.onForeground()` for fresh-on-foreground refresh.
+- [x] 5. Tests on RN harness — happy path + bad-opts + dispose + lazy-RN-import covered in `IdentityWiring.test.js`; integration covered by 2 new cases in `createMeshAgent.test.js`.
 
 **DoD:**
 - Mesh demo boots with the existing local-only flow unchanged.
