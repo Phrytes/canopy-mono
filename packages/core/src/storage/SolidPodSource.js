@@ -1,40 +1,474 @@
 /**
- * SolidPodSource — DataSource backed by a Solid Pod.
+ * SolidPodSource — DataSource backed by a Solid Pod (LDP).
  *
- * Peer dependency: @inrupt/solid-client
- * Install: npm install @inrupt/solid-client @inrupt/solid-client-authn-browser
+ * Implementation engine for Track A1 of the pod substrate.  Wraps
+ * `@inrupt/solid-client` for read/write/list/delete and a raw HEAD via
+ * `fetch` for `exists`.  The higher-level `@canopy/pod-client` API
+ * (Track A5) is layered on top of this class and maps the raw `code`-bearing
+ * errors thrown here onto its own `PodClientError` taxonomy.
  *
- * STUB — throws NOT_IMPLEMENTED until Group H/solid integration is complete.
+ * Note that this class diverges from the abstract `DataSource` contract in
+ * one important way: `read(uri)` returns a *rich object*
+ * `{ content, contentType, lastModified, etag, size }` rather than a raw
+ * `Buffer|string|null`.  This is intentional — the pod-client surface
+ * (see `Design-v3/pod-client-api.md`) needs the metadata for conflict
+ * detection.  Consumers that only want the bytes pull `.content`.
+ *
+ * Errors thrown by this class are plain `Error`s with a `code` field drawn
+ * from this small taxonomy:
+ *
+ *   - `NOT_FOUND`           — resource doesn't exist (HTTP 404)
+ *   - `UNAUTHORIZED`        — auth missing or invalid (HTTP 401)
+ *   - `FORBIDDEN`           — auth valid but lacks the requested scope (HTTP 403)
+ *   - `CONFLICT`            — `If-Match` precondition failed (HTTP 409 / 412)
+ *   - `RATE_LIMITED`        — server told us to back off (HTTP 429)
+ *   - `SERVER_ERROR`        — 5xx
+ *   - `NETWORK_ERROR`       — fetch threw before a response arrived
+ *   - `INVALID_ARGUMENT`    — bad input (no podUrl, etc.)
+ *   - `HTTP_ERROR`          — anything else
+ *
+ * `@canopy/pod-client` is responsible for translating these to typed
+ * `PodClientError` subclasses.
  */
+import {
+  getFile,
+  overwriteFile,
+  deleteFile,
+  getSolidDataset,
+  getContainedResourceUrlAll,
+  getContentType,
+  getSourceUrl,
+} from '@inrupt/solid-client';
+
 import { DataSource } from './DataSource.js';
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+const DEFAULT_CONTENT_TYPE = 'application/octet-stream';
+
+/**
+ * Map an HTTP status to one of our error codes.
+ * @param {number} status
+ * @returns {string}
+ */
+function codeForStatus(status) {
+  if (status === 404)               return 'NOT_FOUND';
+  if (status === 401)               return 'UNAUTHORIZED';
+  if (status === 403)               return 'FORBIDDEN';
+  if (status === 409 || status === 412) return 'CONFLICT';
+  if (status === 429)               return 'RATE_LIMITED';
+  if (status >= 500 && status < 600) return 'SERVER_ERROR';
+  return 'HTTP_ERROR';
+}
+
+/**
+ * Build an Error with a `.code`, `.status`, `.uri` and optional `.cause`.
+ * Use this everywhere instead of throwing raw — it keeps A5's mapper simple.
+ */
+function podError(message, { code, status, uri, cause } = {}) {
+  const err = new Error(message);
+  if (code   !== undefined) err.code   = code;
+  if (status !== undefined) err.status = status;
+  if (uri    !== undefined) err.uri    = uri;
+  if (cause  !== undefined) err.cause  = cause;
+  return err;
+}
+
+/**
+ * Translate an exception thrown by `@inrupt/solid-client` (or by a raw
+ * `fetch`) into a code-bearing `Error`.  The Inrupt v3 client throws
+ * `ClientHttpError` instances that expose `.response.status`; older
+ * shapes (and our own `fetch` paths) expose `.statusCode` or `.status`.
+ */
+function rethrow(err, uri) {
+  // Already one of ours — propagate unchanged.
+  if (err && typeof err.code === 'string' && err.code !== undefined && err.message) {
+    if (['NOT_FOUND', 'UNAUTHORIZED', 'FORBIDDEN', 'CONFLICT', 'RATE_LIMITED',
+         'SERVER_ERROR', 'NETWORK_ERROR', 'INVALID_ARGUMENT', 'HTTP_ERROR'].includes(err.code)) {
+      throw err;
+    }
+  }
+
+  // Inrupt v3 ClientHttpError — has `response.status`.
+  const status =
+    err?.response?.status ??
+    err?.statusCode ??
+    err?.status ??
+    null;
+
+  if (typeof status === 'number') {
+    throw podError(err.message || `Pod request failed (${status})`, {
+      code: codeForStatus(status),
+      status,
+      uri,
+      cause: err,
+    });
+  }
+
+  // Fetch-level failure — DNS, connection refused, abort, etc.
+  throw podError(err?.message || 'Pod network error', {
+    code: 'NETWORK_ERROR',
+    uri,
+    cause: err,
+  });
+}
+
+/**
+ * Convert an arbitrary write payload into a Blob suitable for
+ * `overwriteFile`.  We pass the explicit `type` so the LDP server's
+ * Content-Type is set correctly.
+ *
+ * @param {string|Uint8Array|ArrayBuffer|Blob|Buffer} data
+ * @param {string} contentType
+ * @returns {Blob}
+ */
+function toBlob(data, contentType) {
+  if (typeof Blob === 'undefined') {
+    throw podError('Blob is not available in this runtime', { code: 'INVALID_ARGUMENT' });
+  }
+  if (data instanceof Blob) {
+    // If the caller already gave us a Blob with a different type, re-wrap so
+    // the contentType the caller asked for wins.
+    if (data.type === contentType) return data;
+    return new Blob([data], { type: contentType });
+  }
+  if (typeof data === 'string') {
+    return new Blob([data], { type: contentType });
+  }
+  if (data instanceof Uint8Array) {
+    return new Blob([data], { type: contentType });
+  }
+  if (data instanceof ArrayBuffer) {
+    return new Blob([data], { type: contentType });
+  }
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(data)) {
+    return new Blob([new Uint8Array(data)], { type: contentType });
+  }
+  throw podError('Unsupported write payload', { code: 'INVALID_ARGUMENT' });
+}
+
+/**
+ * Read a couple of conventional headers off whatever `solid-client` returned.
+ * We piggy-back on the underlying Blob plus the `internal_resourceInfo`
+ * metadata; we cannot get `lastModified` / `etag` from the Inrupt API
+ * directly so we re-fetch the headers via HEAD when callers need them.
+ *
+ * Returns `{ contentType, size }` — the rest is filled in by callers that
+ * also issued a HEAD.
+ */
+function infoFromInruptFile(file) {
+  const contentType = getContentType(file) ?? DEFAULT_CONTENT_TYPE;
+  // Blob exposes `.size`; if not present (defensive), fall back to 0.
+  const size = typeof file?.size === 'number' ? file.size : 0;
+  return { contentType, size };
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
 
 export class SolidPodSource extends DataSource {
   #podUrl;
-  #credential;
+  #fetch;
 
   /**
    * @param {object} opts
-   * @param {string} opts.podUrl     — base URL of the Solid Pod (e.g. https://pod.example.org/)
-   * @param {string} opts.credential — vault key storing the OIDC access token
+   * @param {string}   [opts.podUrl]   — base URL of the Solid Pod (e.g.
+   *                                      `https://pod.example.org/`).  Used
+   *                                      when callers pass a relative URI.
+   *                                      Optional; absolute URIs work without it.
+   * @param {Function} [opts.fetch]    — authenticated fetch (e.g. from
+   *                                      `SolidVault.getAuthenticatedFetch()`).
+   *                                      Falls back to `globalThis.fetch`.
+   * @param {string}   [opts.credential] — DEPRECATED.  Kept only for backwards
+   *                                      compatibility with the previous stub;
+   *                                      currently unused.  Pass `fetch`
+   *                                      instead.
    */
-  constructor({ podUrl, credential }) {
+  constructor({ podUrl, fetch: fetchFn, credential } = {}) {
     super();
-    this.#podUrl    = podUrl;
-    this.#credential = credential;
+    this.#podUrl = podUrl ?? null;
+    this.#fetch  = fetchFn ?? (typeof globalThis !== 'undefined' ? globalThis.fetch : undefined);
+    // `credential` is accepted but ignored.  See class JSDoc.
+    void credential;
   }
 
   get podUrl() { return this.#podUrl; }
 
-  async read()   { this.#notImpl(); }
-  async write()  { this.#notImpl(); }
-  async delete() { this.#notImpl(); }
-  async list()   { this.#notImpl(); }
-  async query()  { this.#notImpl(); }
+  // ── DataSource API ──────────────────────────────────────────────────────
 
-  #notImpl() {
-    throw Object.assign(
-      new Error('SolidPodSource: @inrupt/solid-client integration not yet implemented'),
-      { code: 'NOT_IMPLEMENTED' },
-    );
+  /**
+   * Read a resource and return both its bytes and metadata needed for
+   * conflict detection upstream.
+   *
+   * @param {string} uri  — absolute URI, or path relative to `podUrl`.
+   * @param {object} [opts]
+   * @returns {Promise<{
+   *   content:      Uint8Array,
+   *   contentType:  string,
+   *   lastModified: string|null,
+   *   etag:         string|null,
+   *   size:         number,
+   * }>}
+   */
+  async read(uri, _opts = {}) {   // eslint-disable-line no-unused-vars
+    const fullUri = this.#resolve(uri);
+    let blob;
+    try {
+      blob = await getFile(fullUri, { fetch: this.#fetch });
+    } catch (err) {
+      rethrow(err, fullUri);
+    }
+
+    const { contentType, size: blobSize } = infoFromInruptFile(blob);
+    const buf  = await blob.arrayBuffer();
+    const content = new Uint8Array(buf);
+    const size = content.byteLength || blobSize;
+
+    // The Inrupt API hides response headers from us; re-fetch with HEAD to
+    // get etag/lastModified for conflict detection.  Best-effort — failure
+    // here doesn't fail the read.
+    let etag = null;
+    let lastModified = null;
+    try {
+      const headRes = await this.#headFetch(fullUri);
+      if (headRes && headRes.ok) {
+        etag         = headRes.headers.get('etag');
+        lastModified = headRes.headers.get('last-modified');
+      }
+    } catch {
+      // ignore — etag/lastModified stay null
+    }
+
+    return { content, contentType, lastModified, etag, size };
+  }
+
+  /**
+   * Write (overwrite) a resource.
+   *
+   * @param {string} uri  — absolute URI or path relative to `podUrl`.
+   * @param {string|Uint8Array|ArrayBuffer|Blob|Buffer} content
+   * @param {object} [opts]
+   * @param {string} [opts.contentType='application/octet-stream']
+   * @param {string} [opts.ifMatch]   — value for the `If-Match` precondition
+   * @returns {Promise<{
+   *   uri:          string,
+   *   contentType:  string,
+   *   lastModified: string|null,
+   *   etag:         string|null,
+   *   size:         number,
+   * }>}
+   */
+  async write(uri, content, opts = {}) {
+    const fullUri     = this.#resolve(uri);
+    const contentType = opts.contentType || DEFAULT_CONTENT_TYPE;
+    const blob        = toBlob(content, contentType);
+
+    // If the caller wants conflict detection, do a manual PUT so we can
+    // attach `If-Match`.  `overwriteFile` does not surface request-init.
+    if (opts.ifMatch) {
+      let res;
+      try {
+        res = await this.#fetch(fullUri, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': contentType,
+            'If-Match':     opts.ifMatch,
+          },
+          body: blob,
+        });
+      } catch (err) {
+        rethrow(err, fullUri);
+      }
+      if (!res.ok) {
+        throw podError(`PUT ${fullUri} failed: ${res.status} ${res.statusText}`, {
+          code:   codeForStatus(res.status),
+          status: res.status,
+          uri:    fullUri,
+        });
+      }
+      return {
+        uri:          fullUri,
+        contentType,
+        lastModified: res.headers.get('last-modified'),
+        etag:         res.headers.get('etag'),
+        size:         blob.size,
+      };
+    }
+
+    // Default path: delegate to Inrupt.
+    let saved;
+    try {
+      saved = await overwriteFile(fullUri, blob, {
+        contentType,
+        fetch: this.#fetch,
+      });
+    } catch (err) {
+      rethrow(err, fullUri);
+    }
+
+    // Best-effort HEAD for fresh etag/lastModified.
+    let etag = null;
+    let lastModified = null;
+    try {
+      const headRes = await this.#headFetch(fullUri);
+      if (headRes && headRes.ok) {
+        etag         = headRes.headers.get('etag');
+        lastModified = headRes.headers.get('last-modified');
+      }
+    } catch { /* ignore */ }
+
+    const savedUrl =
+      (saved && getSourceUrl?.(saved)) ||
+      fullUri;
+
+    return {
+      uri:          savedUrl,
+      contentType,
+      lastModified,
+      etag,
+      size:         blob.size,
+    };
+  }
+
+  /**
+   * Delete a resource.
+   *
+   * @param {string} uri
+   * @param {object} [opts]
+   * @param {string} [opts.ifMatch]   — `If-Match` precondition.
+   */
+  async delete(uri, opts = {}) {
+    const fullUri = this.#resolve(uri);
+
+    if (opts.ifMatch) {
+      let res;
+      try {
+        res = await this.#fetch(fullUri, {
+          method: 'DELETE',
+          headers: { 'If-Match': opts.ifMatch },
+        });
+      } catch (err) {
+        rethrow(err, fullUri);
+      }
+      if (!res.ok && res.status !== 404) {
+        throw podError(`DELETE ${fullUri} failed: ${res.status} ${res.statusText}`, {
+          code:   codeForStatus(res.status),
+          status: res.status,
+          uri:    fullUri,
+        });
+      }
+      return;
+    }
+
+    try {
+      await deleteFile(fullUri, { fetch: this.#fetch });
+    } catch (err) {
+      // 404 on delete is a no-op per DataSource semantics.
+      const status = err?.response?.status ?? err?.statusCode ?? err?.status ?? null;
+      if (status === 404) return;
+      rethrow(err, fullUri);
+    }
+  }
+
+  /**
+   * List the contents of a container.  `containerUri` should typically end
+   * with a `/` per LDP convention; if it doesn't, one is appended.
+   *
+   * @param {string} containerUri
+   * @param {object} [opts]
+   * @returns {Promise<{ container: string, entries: Array<{
+   *   uri:           string,
+   *   type:          'resource'|'container',
+   *   contentType?:  string,
+   *   lastModified?: string,
+   *   size?:         number,
+   * }>}>}
+   */
+  async list(containerUri = '', _opts = {}) {   // eslint-disable-line no-unused-vars
+    let resolved = this.#resolve(containerUri);
+    if (!resolved.endsWith('/')) resolved += '/';
+
+    let dataset;
+    try {
+      dataset = await getSolidDataset(resolved, { fetch: this.#fetch });
+    } catch (err) {
+      rethrow(err, resolved);
+    }
+
+    const urls = getContainedResourceUrlAll(dataset);
+    const entries = urls.map((uri) => ({
+      uri,
+      type: uri.endsWith('/') ? 'container' : 'resource',
+    }));
+
+    return { container: resolved, entries };
+  }
+
+  /**
+   * Check whether a resource exists by issuing a HEAD.
+   *
+   * @param {string} uri
+   * @returns {Promise<boolean>}
+   */
+  async exists(uri) {
+    const fullUri = this.#resolve(uri);
+    let res;
+    try {
+      res = await this.#headFetch(fullUri);
+    } catch (err) {
+      rethrow(err, fullUri);
+    }
+    if (res.ok)              return true;
+    if (res.status === 404)  return false;
+    if (res.status === 401)  throw podError('Unauthorized', { code: 'UNAUTHORIZED', status: 401, uri: fullUri });
+    if (res.status === 403)  throw podError('Forbidden',    { code: 'FORBIDDEN',    status: 403, uri: fullUri });
+    throw podError(`HEAD ${fullUri} failed: ${res.status} ${res.statusText}`, {
+      code:   codeForStatus(res.status),
+      status: res.status,
+      uri:    fullUri,
+    });
+  }
+
+  /**
+   * `query` is intentionally unsupported on Solid pods — there's no LDP
+   * equivalent of "structured field-match across all resources".  The
+   * pod-client API exposes higher-level helpers on top of `read`/`list`.
+   */
+  async query() {
+    throw podError('SolidPodSource does not support query()', {
+      code: 'INVALID_ARGUMENT',
+    });
+  }
+
+  // ── Private helpers ─────────────────────────────────────────────────────
+
+  /**
+   * Resolve an input URI:
+   * - absolute URLs (`http(s)://…`) pass through unchanged
+   * - relative paths are joined to `#podUrl` if it is set
+   * - throws if neither holds
+   */
+  #resolve(input) {
+    if (typeof input !== 'string' || input.length === 0) {
+      throw podError('SolidPodSource: uri is required', { code: 'INVALID_ARGUMENT' });
+    }
+    if (/^https?:\/\//i.test(input)) return input;
+    if (!this.#podUrl) {
+      throw podError(`SolidPodSource: relative URI '${input}' but no podUrl configured`, {
+        code: 'INVALID_ARGUMENT',
+      });
+    }
+    const base = this.#podUrl.endsWith('/') ? this.#podUrl : `${this.#podUrl}/`;
+    const tail = input.startsWith('/') ? input.slice(1) : input;
+    return base + tail;
+  }
+
+  /** Issue a HEAD via the configured fetch, throwing NETWORK_ERROR on failure. */
+  async #headFetch(uri) {
+    if (typeof this.#fetch !== 'function') {
+      throw podError('SolidPodSource: no fetch implementation available', {
+        code: 'NETWORK_ERROR', uri,
+      });
+    }
+    return await this.#fetch(uri, { method: 'HEAD' });
   }
 }
