@@ -26,6 +26,7 @@ export { VaultIndexedDB }     from './identity/VaultIndexedDB.js';
 export { VaultNodeFs }        from './identity/VaultNodeFs.js';
 export { AgentIdentity }      from './identity/AgentIdentity.js';
 export { KeyRotation }        from './identity/KeyRotation.js';
+export { Bootstrap }          from './identity/Bootstrap.js';
 export {
   generateMnemonic,
   mnemonicToSeed,
