@@ -2,9 +2,10 @@
  * startRelay — integration tests.
  * See EXTRACTION-PLAN.md §7 Group S and CODING-PLAN.md Group S.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import { WebSocket } from 'ws';
 import { startRelay } from '../src/server.js';
+import { AgentIdentity, GroupManager, VaultMemory } from '@canopy/core';
 
 // ── Self-signed cert fixture, generated per test run so there is no ─────────
 // ── on-disk state. Uses selfsigned library if present, otherwise skips TLS. ──
@@ -322,5 +323,84 @@ describe('startRelay — wss://', async () => {
     expect(bob.messages.find(m => m.type === 'message').envelope.payload).toEqual({ secure: true });
 
     alice.close(); bob.close();
+  });
+});
+
+// ── Group-membership auth (Q-E.2) ───────────────────────────────────────────
+
+describe('startRelay — group auth (Q-E.2)', () => {
+  let admin;
+  let member;
+  let gm;
+  let validProof;
+  let strangerProof;
+
+  beforeAll(async () => {
+    admin    = await AgentIdentity.generate(new VaultMemory());
+    member   = await AgentIdentity.generate(new VaultMemory());
+    gm       = new GroupManager({ identity: admin, vault: new VaultMemory() });
+    validProof = await gm.issueProof(member.pubKey, 'my-block');
+
+    // A proof for a different group (not in acceptedGroups).
+    strangerProof = await gm.issueProof(member.pubKey, 'some-other-block');
+  });
+
+  let relay;
+
+  beforeEach(async () => {
+    relay = await startRelay({
+      port: 0,
+      acceptedGroups: [{ groupId: 'my-block', adminPubKey: admin.pubKey }],
+    });
+  });
+
+  afterEach(async () => {
+    if (relay) await relay.stop();
+  });
+
+  it('rejects register without a groupProof when acceptedGroups is set', async () => {
+    const ws = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(ws, { type: 'register', address: member.pubKey });
+
+    await waitFor(() => ws.messages.some(m => m.type === 'error'));
+    const err = ws.messages.find(m => m.type === 'error');
+    expect(err.message).toBe('NO_PROOF');
+    // No `registered` ack must have been sent.
+    expect(ws.messages.some(m => m.type === 'registered')).toBe(false);
+    try { ws.close(); } catch {}
+  });
+
+  it('rejects a proof for a group the relay does not accept', async () => {
+    const ws = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(ws, { type: 'register', address: member.pubKey, groupProof: strangerProof });
+
+    await waitFor(() => ws.messages.some(m => m.type === 'error'));
+    const err = ws.messages.find(m => m.type === 'error');
+    expect(err.message).toBe('GROUP_NOT_ACCEPTED');
+    expect(ws.messages.some(m => m.type === 'registered')).toBe(false);
+    try { ws.close(); } catch {}
+  });
+
+  it('accepts a valid proof and proceeds with the register flow', async () => {
+    const ws = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(ws, { type: 'register', address: member.pubKey, groupProof: validProof });
+
+    await waitFor(() => ws.messages.some(m => m.type === 'registered'));
+    // No error frame.
+    expect(ws.messages.some(m => m.type === 'error')).toBe(false);
+    try { ws.close(); } catch {}
+  });
+
+  it('open mode (no acceptedGroups) accepts every client (legacy behavior)', async () => {
+    const openRelay = await startRelay({ port: 0 }); // no acceptedGroups
+    try {
+      const ws = await openClient(`ws://127.0.0.1:${openRelay.port}`);
+      send(ws, { type: 'register', address: 'any-address' });
+      await waitFor(() => ws.messages.some(m => m.type === 'registered'));
+      expect(ws.messages.some(m => m.type === 'error')).toBe(false);
+      try { ws.close(); } catch {}
+    } finally {
+      await openRelay.stop();
+    }
   });
 });

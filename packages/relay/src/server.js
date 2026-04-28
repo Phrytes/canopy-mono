@@ -6,7 +6,7 @@
  * get up to 50 messages queued for 5 minutes.
  *
  * Protocol (JSON over WebSocket):
- *   Client → Relay: { type: 'register', address: '<pubKey>' }
+ *   Client → Relay: { type: 'register', address: '<pubKey>', groupProof? }
  *   Relay  → Client: { type: 'registered' }
  *   Client → Relay: { type: 'send',  to: '<address>', envelope: { ... } }
  *   Relay  → Client: { type: 'message', envelope: { ... } }
@@ -20,6 +20,14 @@
  *   Relay  → Target: { type: 'multi-deliver', id, from: '<callerPubKey>', payload }
  *   Target → Relay: { type: 'multi-response-from-target', id, response }
  *   Relay  → Client: { type: 'multi-response', id, responses: [...], partial: bool }
+ *
+ * Group auth (Q-E.2, locked 2026-04-28): when `acceptedGroups` is
+ * configured, the first `register` message MUST include a `groupProof`
+ * field — a `GroupManager`-issued proof for one of the accepted groups.
+ * The relay verifies the proof's signature, expiry, and configured
+ * `requiredRole` (if any) before accepting the registration.  When
+ * `acceptedGroups` is unset or empty, the relay accepts every client
+ * (legacy behavior, fully backward compatible).
  *
  * When `tlsCert` and `tlsKey` are supplied, the server listens on HTTPS/WSS.
  * Without them, HTTP/WS. Usage:
@@ -38,6 +46,7 @@ import { extname, join, resolve }            from 'node:path';
 import { networkInterfaces }                 from 'node:os';
 import { WebSocketServer }                   from 'ws';
 import { MultiRecipientQueue }               from './MultiRecipientQueue.js';
+import { GroupAuthVerifier }                 from './GroupAuthVerifier.js';
 
 const DEFAULT_PORT       = 8787;
 const DEFAULT_QUEUE_TTL  = 5 * 60_000;  // 5 min
@@ -71,6 +80,14 @@ const MIME = {
  *                                                   (e.g. `{ store, defaultTimeoutMs }`).
  *                                                   Defaults to a fresh in-memory queue.
  * @param {MultiRecipientQueue} [opts.multiRecipientQueue]  Inject a pre-built queue (tests).
+ * @param {Array<{ groupId: string, adminPubKey: string, requiredRole?: string }>} [opts.acceptedGroups]
+ *   Group-membership gating (Q-E.2).  If provided + non-empty, clients
+ *   must present a valid `GroupManager`-issued proof in the `register`
+ *   message for one of these groups.  If unset/empty, the relay is open.
+ * @param {Record<string, number>} [opts.roleRanks]
+ *   Optional role-rank override for `requiredRole` checks (e.g. when an
+ *   app registers custom roles via `Roles.registerCustomRole`).  Merged
+ *   on top of the standard 5-role rank table.
  * @returns {Promise<{
  *   httpServer: import('node:http').Server | import('node:https').Server,
  *   wss: WebSocketServer,
@@ -92,11 +109,20 @@ export async function startRelay(opts = {}) {
     log                       = false,
     multiRecipientQueue       = undefined,
     multiRecipientQueueOpts   = undefined,
+    acceptedGroups,
+    roleRanks,
   } = opts;
 
   // Multi-recipient (E2b) — additive.  Defaults to a fresh in-memory queue.
   const mrQueue = multiRecipientQueue
     ?? new MultiRecipientQueue(multiRecipientQueueOpts ?? {});
+
+  // Q-E.2: optional group-membership gate.  Open mode (no acceptedGroups)
+  // preserves the legacy behavior — every existing relay test still passes.
+  const groupAuth = new GroupAuthVerifier({
+    acceptedGroups: acceptedGroups ?? [],
+    roleRanks,
+  });
 
   const hasTls = Boolean(tlsCert && tlsKey);
   if ((tlsCert && !tlsKey) || (!tlsCert && tlsKey)) {
@@ -162,9 +188,19 @@ export async function startRelay(opts = {}) {
 
       // ── register ────────────────────────────────────────────────────────────
       if (msg.type === 'register') {
-        const { address } = msg;
+        const { address, groupProof } = msg;
         if (!address) {
           socket.send(JSON.stringify({ type: 'error', message: 'Missing address' }));
+          return;
+        }
+
+        // Q-E.2: gate on group membership when configured.  In open mode
+        // (no acceptedGroups), groupAuth.verify always returns ok=true.
+        const auth = groupAuth.verify(groupProof);
+        if (!auth.ok) {
+          socket.send(JSON.stringify({ type: 'error', message: auth.reason }));
+          logLine(`[relay] auth-rejected ${shortId(address)} (${auth.reason})`);
+          try { socket.close(); } catch {}
           return;
         }
 

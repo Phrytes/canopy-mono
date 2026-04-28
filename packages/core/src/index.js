@@ -114,6 +114,7 @@ export { CapabilityToken }  from './permissions/CapabilityToken.js';
 export { PodCapabilityToken } from './permissions/PodCapabilityToken.js';
 export { TokenRegistry }    from './permissions/TokenRegistry.js';
 export { GroupManager }     from './permissions/GroupManager.js';
+export { verifyGroupProof } from './permissions/groupProofVerify.js';
 export { DataSourcePolicy, DataSourceAccessDeniedError } from './permissions/DataSourcePolicy.js';
 
 // ── Routing (Group G) ────────────────────────────────────────────────────────
