@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | in-progress |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-28 — Q-D.1..5 locked; D4 done (32 tests green); D1/D3 in-flight |
+| **Last updated** | 2026-04-28 — Q-D.1..5 locked; D1 done (24 tests); D4 done (32 tests); D3 in-flight |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — fully parallel with Track A from day one |
 
@@ -84,9 +84,9 @@ D4 ── D5 ── ⤳ (cross-track: D5 real testing needs A5)
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [EXTENDS] `defineSkill` opts |
-| **Notes** | Independent.  Decide Q-D.2 before starting. |
+| **Notes** | Independent.  Q-D.2 locked.  Shipped 2026-04-28; 24 tests green. |
 
 **Files:**
 
@@ -105,12 +105,12 @@ tests (create):
 - [x] 1. **Q-D.2 locked** (see §Track-level open questions): two orthogonal opts.
   - `posture: 'always' | 'negotiable'`, default `'always'`.
   - `humanInTheLoop: 'never' | 'either' | 'required'`, default `'never'`.  Three-value enum, NOT boolean.  `'either'` = both humans and machines are valid responders (e.g. summarize-this-text accepts either).
-- [ ] 2. Read existing `defineSkill.js` carefully.  Note the existing `policy` and `visibility` opts; the new flags are **orthogonal** to those (policy = authorization, posture/humanInTheLoop = how the request is delivered + who answers).  Mirror the validation pattern.
-- [ ] 3. Add the two new opts to defineSkill, with validation (reject unknown values; both opts are independent — every (posture, humanInTheLoop) combination is valid, all 6 cells of the 2×3 matrix).
-- [ ] 4. Store in SkillRegistry alongside other skill metadata.
-- [ ] 5. Surface in `capabilities.js` so the skill listing in the agent card includes both `posture` and `humanInTheLoop` (peers and D2 consume this).
-- [ ] 6. Add accessor `SkillRegistry.getByPosture({ posture?, humanInTheLoop? })` (filter helper) for D2 to consume.  Both filters optional; combined as AND.
-- [ ] 7. Tests: register all 6 (posture, humanInTheLoop) combinations including `'either'`, verify metadata round-trip, verify agent card carries both fields, verify backward-compat (skills registered without the new opts default to `'always'` + `'never'` and pre-existing skill tests still pass).
+- [x] 2. Read existing `defineSkill.js` carefully.  Note the existing `policy` and `visibility` opts; the new flags are **orthogonal** to those (policy = authorization, posture/humanInTheLoop = how the request is delivered + who answers).  Mirror the validation pattern.
+- [x] 3. Add the two new opts to defineSkill, with validation (reject unknown values; both opts are independent — every (posture, humanInTheLoop) combination is valid, all 6 cells of the 2×3 matrix).
+- [x] 4. Store in SkillRegistry alongside other skill metadata.
+- [x] 5. Surface in `capabilities.js` so the skill listing in the agent card includes both `posture` and `humanInTheLoop` (peers and D2 consume this).
+- [x] 6. Add accessor `SkillRegistry.getByPosture({ posture?, humanInTheLoop? })` (filter helper) for D2 to consume.  Both filters optional; combined as AND.
+- [x] 7. Tests: register all 6 (posture, humanInTheLoop) combinations including `'either'`, verify metadata round-trip, verify agent card carries both fields, verify backward-compat (skills registered without the new opts default to `'always'` + `'never'` and pre-existing skill tests still pass).
 
 **DoD:**
 - Posture flag accepted, validated, stored, exposed.
@@ -121,7 +121,54 @@ tests (create):
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 — D1 shipped on worktree-agent-a0477fd8aebeb0cec.
+
+  Source changes (additive, backward-compatible):
+   • defineSkill.js — two new opts validated independently against
+     POSTURES = ['always','negotiable'] and HITL = ['never','either',
+     'required'].  Defaults: posture='always', humanInTheLoop='never'.
+     Boolean humanInTheLoop is rejected (it is a 3-value enum).
+   • SkillRegistry.js — new method
+       getByPosture({ posture?, humanInTheLoop? }) → SkillDefinition[]
+     AND-combines both filters.  Empty/missing filter ⇒ all skills.
+     Helper is intended for D2's bucketing into the topic hierarchy
+     `skills:<group-id>:<posture>:<audience>:<skill-id>` (Q-D.4).
+   • capabilities._snapshot() additively gained
+       skills: [{ id, posture, humanInTheLoop }]
+     Pre-existing keys (rendezvous, originSig, relay, oracle, tunnel,
+     groups) are unchanged — hello.js and tunnel-test.html consumers
+     untouched.
+
+  Test coverage (packages/core/test/skills/posture.test.js, 24 tests):
+   • Defaults & validation, including bool-rejection for humanInTheLoop.
+   • Full 6-cell matrix (2 postures × 3 humanInTheLoop).
+   • Orthogonality with policy + visibility.
+   • SkillRegistry round-trip + backward-compat default for legacy skills.
+   • SkillRegistry.getByPosture: no-filter, posture-only, hitl-only,
+     AND-combined, empty-result, defaults-match.
+   • capabilities snapshot: per-skill array shape, all 6 cells covered,
+     legacy keys preserved (additive only).
+
+  npm run test:core: all green.  All pre-existing skill tests
+  (SkillRegistry.test.js, groupVisibility.test.js, Permissions.test.js,
+  capabilities.test.js, skillDiscovery.test.js, features.test.js)
+  pass unmodified — backward compat verified.
+
+  Hand-off note for D2 / Q-D.4 audience mapping:
+    humanInTheLoop ↔ topic <audience> segment
+      'never'    → 'machine'
+      'either'   → 'either'
+      'required' → 'human'
+    Mapping should live in the D2 helper (subscribeToSkills /
+    publishToSkills), NOT in core.skills — keeping core unaware of
+    pubsub topic conventions.
+
+  Worktree caveat: the worktree-agent-a0477fd8aebeb0cec branch was
+  created off `master` (commit c563b98), not off `track-D-multi-member`
+  (commit 23947d0).  When merging this work to track-D-multi-member,
+  cherry-pick the source/test changes; the §D1 status / checkbox flips
+  / scratchpad addition need to be re-applied to the doc on that branch
+  by the merger.
 ```
 
 ---
