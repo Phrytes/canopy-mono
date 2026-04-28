@@ -593,9 +593,9 @@ are async methods on the instance.  SolidOidcAuth.identity() reads the
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
-| **Notes** | Depends on A5a.  Runs in parallel with A5b1 (disjoint files). |
+| **Notes** | Depends on A5a.  Runs in parallel with A5b1 (disjoint files).  Two background-agent attempts stalled on the watchdog before any files were written; final implementation done by orchestrator directly (2026-04-28). |
 
 **Files:**
 
@@ -611,16 +611,16 @@ modify:
 
 **Sequence:**
 
-- [ ] 1. `PodClient.js` constructor: `{ podRoot, auth, options? }`.  Internally constructs a `SolidPodSource(podRoot, { fetch })` where `fetch` comes from the `auth` (call `auth.getAuthenticatedFetch()` if available, else build a fetch that injects `auth.getAuthHeaders()` into requests).  Hold `lastEtag`/`lastModified` per-URI in an in-memory `Map` (reused later by A7 for conflict detection — leave the hooks but no 412 handling yet).
-- [ ] 2. `read(uri, opts)` — delegates to `SolidPodSource.read`.  Capture etag/lastModified.  On `decode: 'string' | 'json' | 'bytes' | 'auto'` post-process the SolidPodSource's `content` (which is bytes/string).  Wrap thrown errors via `mapSourceCode` from `Errors.js`.
-- [ ] 3. `list(containerUri, opts)` — delegates to `SolidPodSource.list`; pass through filter/recursive options.  Wrap errors.
-- [ ] 4. `write(uri, content, opts)` — delegates to `SolidPodSource.write`.  Auto-`If-Match` from `lastEtag` (unless `force: true`).  No 412 handling at this layer (A7).  Wrap errors.
-- [ ] 5. `append(uri, line, opts)` — read-modify-write loop with retry budget (Q-A.4 default 3, lock during A7).  Use `force: false` so an in-flight `If-Match` mismatch retries.  Throws `ConflictError` if retries exhaust.  v1 simple impl; A7 will wire it tighter.
-- [ ] 6. `patch(uri, patch, opts)` — Q-A.5 path (a).  Accept `patch = { add: Quad[], remove: Quad[] }` shape.  Use `getSolidDataset(uri, { fetch })` from `@inrupt/solid-client`, apply the quads via `setThing`/`addQuad`/`removeQuad` (or whichever Inrupt API is cleanest — investigate which surface is most ergonomic during impl), then `saveSolidDatasetAt(uri, dataset, { fetch })`.  Document the `{add, remove}` shape clearly in JSDoc.  Wrap errors.
-- [ ] 7. `disconnect()` / `close()` — flush state, idempotent close.  Leave hooks for A6/A7.
-- [ ] 8. Re-export `PodClient` from `packages/pod-client/src/index.js` (coordinate with A5b1's edit).
-- [ ] 9. `PodClient.test.js` — unit tests for each method against a mocked `SolidPodSource`.  Cover: read happy path, read 404 → `NotFoundError`, read 401 → `AuthError`, write happy path, write 409 → `ConflictError`, list, append-with-retry, patch happy path.  Mock the `Auth` interface — don't depend on B1's concretes.
-- [ ] 10. `PodClient.css.test.js` — full CSS integration test gated on `CSS_URL`.  Construct two `PodClient`s — one with `CapabilityAuth`, one with `SolidOidcAuth` — and round-trip read/write/list/append/patch against a real CSS instance.  Skip if env is missing (B1's auth concretes will be available at the time this test actually runs in CI).
+- [x] 1. `PodClient.js` constructor: `{ podRoot, auth, options? }` (+ test-only `podSourceFactory` escape hatch).  Builds the fetch from `auth.getAuthenticatedFetch()` (SolidOidcAuth) or wraps `globalThis.fetch` with `auth.getAuthHeaders()` injection (CapabilityAuth).  Per-resource etag/lastModified `Map` populated on read+write for A7 reuse.
+- [x] 2. `read(uri, opts)` — `decode: 'auto'|'string'|'bytes'|'json'`.  `'auto'` decodes text/* + application/(*+)json to a string/object; everything else stays bytes.  Errors mapped via `mapSourceCode`.
+- [x] 3. `list(containerUri, opts)` — pass-through; supports `recursive` and a local `filter` function.
+- [x] 4. `write(uri, content, opts)` — auto-`If-Match` (or `If-Unmodified-Since` fallback) from etag map; `force: true` skips it.  Plain objects auto-JSON-encoded with `application/json` contentType.
+- [x] 5. `append(uri, line, opts)` — RMW loop, retry budget defaults to 3, exhaustion → `ConflictError` with `code: 'CONFLICT_RETRY_EXHAUSTED'`.  404 on read = start fresh.
+- [x] 6. `patch(uri, patch, opts)` — Q-A.5 path (a).  Lazy-loads `@inrupt/solid-client` (avoids a hard dep declaration on `pod-client`; resolves transitively via `core`).  Triple shape: `{ subject?, predicate, object, datatype? }`.  `datatype: 'string'` uses `addStringNoLocale`; default uses `addUrl`.  Custom `applyFn(dataset)` escape hatch for richer RDF semantics.
+- [x] 7. `close()` (and `disconnect()` alias) — idempotent; clears etag map; calls `auth.close()` if defined.
+- [x] 8. `PodClient` re-exported from `packages/pod-client/src/index.js` (additive; A5b1's `CapabilityAuth`/`SolidOidcAuth` exports preserved).
+- [x] 9. `PodClient.test.js` — 46 tests against a mocked `SolidPodSource` via the `podSourceFactory` escape hatch.  Inrupt mocked via `vi.hoisted` + `vi.mock('@inrupt/solid-client')` for `patch` tests.  Covers all 5 methods, full error-code mapping table (10 codes → subclass), append retry+exhaust, lifecycle.
+- [x] 10. `PodClient.css.test.js` — gated on `CSS_URL` (skips otherwise).  Mints a real `PodCapabilityToken` via `AgentIdentity.generate` for the CapabilityAuth round-trip; OIDC path gated additionally on `CSS_CLIENT_ID` + `CSS_CLIENT_SECRET`.
 
 **DoD:**
 - All five methods (`read`/`list`/`write`/`append`/`patch`) pass unit tests against mocked `SolidPodSource`.
