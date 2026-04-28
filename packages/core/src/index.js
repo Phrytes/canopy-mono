@@ -111,6 +111,13 @@ export { DataSourcePolicy, DataSourceAccessDeniedError } from './permissions/Dat
 export { FallbackTable }                       from './routing/FallbackTable.js';
 export { RoutingStrategy, TRANSPORT_PRIORITY } from './routing/RoutingStrategy.js';
 export { invokeWithHop }                       from './routing/invokeWithHop.js';
+export {
+  default as ReachabilityTier,
+  TIERS as REACHABILITY_TIERS,
+  tierForTransport,
+  tierForRouteVia,
+  compareTiers,
+}                                              from './routing/ReachabilityTier.js';
 
 // ── Discovery (Group G) ──────────────────────────────────────────────────────
 export { PeerGraph }      from './discovery/PeerGraph.js';

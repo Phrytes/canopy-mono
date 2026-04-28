@@ -16,6 +16,7 @@
  * For single-transport agents pass `{ [name]: transport }`.
  */
 import { FallbackTable } from './FallbackTable.js';
+import { tierForTransport, tierForRouteVia, TIERS } from './ReachabilityTier.js';
 
 /** Canonical priority order (index 0 = highest priority). */
 export const TRANSPORT_PRIORITY = [
@@ -191,6 +192,67 @@ export class RoutingStrategy {
   /** @param {string} name */
   removeTransport(name) {
     this.#transports.delete(name);
+  }
+
+  /**
+   * Classify how this agent currently reaches `peerId` into one of
+   * three reachability tiers: `direct`, `mesh`, or `hop`.  See
+   * `routing/ReachabilityTier.js` for definitions.
+   *
+   * Additive accessor on top of `selectTransport()` — does not change
+   * routing behavior, only exposes it.
+   *
+   * @param {string} peerId
+   * @param {object} [opts]
+   * @param {object} [opts.via]   — optional route-via descriptor
+   *        (e.g. `{ kind: 'hop', through: peerId }`).  When provided
+   *        and resolves to `'hop'`, overrides the transport tier.
+   * @param {string}   [opts.pattern]
+   * @param {string[]} [opts.preferredTransports]
+   * @returns {Promise<{ name: string, transport: object, tier: 'direct'|'mesh'|'hop', latencyEstimate?: number }|null>}
+   */
+  async tierFor(peerId, opts = {}) {
+    // Hop overrides any transport selection — the route-via
+    // descriptor wins because it carries semantic intent.
+    if (opts.via != null) {
+      const viaTier = tierForRouteVia(opts.via);
+      if (viaTier === TIERS.HOP) {
+        const sel = await this.selectTransport(peerId, opts);
+        return {
+          name:            sel?.name ?? null,
+          transport:       sel?.transport ?? null,
+          tier:            TIERS.HOP,
+          latencyEstimate: sel ? this.#latencyFor(peerId, sel.name) : undefined,
+        };
+      }
+    }
+
+    const sel = await this.selectTransport(peerId, opts);
+    if (!sel) return null;
+
+    return {
+      name:            sel.name,
+      transport:       sel.transport,
+      tier:            tierForTransport(sel.transport) || tierForTransport(sel.name),
+      latencyEstimate: this.#latencyFor(peerId, sel.name),
+    };
+  }
+
+  /**
+   * Look up the latest recorded latency for (peer, transport) from
+   * the FallbackTable.  Returns `undefined` when no measurement has
+   * been recorded yet.
+   *
+   * @param {string} peerId
+   * @param {string} transportName
+   * @returns {number|undefined}
+   */
+  #latencyFor(peerId, transportName) {
+    if (!this.#fallback) return undefined;
+    const entries = this.#fallback.getAll(peerId);
+    const hit = entries.find(e => e.transportName === transportName);
+    if (!hit) return undefined;
+    return Number.isFinite(hit.latencyMs) ? hit.latencyMs : undefined;
   }
 }
 
