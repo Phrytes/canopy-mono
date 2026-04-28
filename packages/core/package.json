@@ -11,6 +11,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@inrupt/solid-client": "3.0.0",
+    "@inrupt/solid-client-authn-node": "4.0.0",
     "@scure/bip39": "^1.4.0",
     "ed2curve": "^0.3.0",
     "tweetnacl": "^1.0.3",
