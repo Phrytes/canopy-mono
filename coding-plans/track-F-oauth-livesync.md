@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | not-started |
-| **Started** | — |
-| **Last updated** | 2026-04-28 (initial draft) |
+| **Status** | in-progress |
+| **Started** | 2026-04-28 |
+| **Last updated** | 2026-04-28 (F1 done; F2 in progress) |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — fully independent |
 
@@ -56,9 +56,9 @@ Single dev: order doesn't matter; F1 unblocks #3 sooner.
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [EXTENDS] `Vault.js` |
-| **Notes** | Decide Q-F.1 + Q-F.2 before starting. |
+| **Notes** | Q-F.1 + Q-F.2 locked 2026-04-29.  Shipped 2026-04-28.  See scratchpad. |
 
 **Files:**
 
@@ -73,20 +73,20 @@ create:
 
 **Sequence:**
 
-- [ ] 1. Lock Q-F.1 (key scheme) + Q-F.2 (refresh policy).
-- [ ] 2. Read existing `Vault.js` and the platform-vault
+- [x] 1. Lock Q-F.1 (key scheme) + Q-F.2 (refresh policy).
+- [x] 2. Read existing `Vault.js` and the platform-vault
   adapters (`VaultIndexedDB`, `VaultLocalStorage`,
   `VaultMemory`, `VaultNodeFs`).  Don't duplicate — F1 is a
   thin layer above Vault.
-- [ ] 3. Implement `OAuthVault` class wrapping a Vault instance.
+- [x] 3. Implement `OAuthVault` class wrapping a Vault instance.
   API:
-  - [ ] `storeTokens(service, accountId, { access, refresh, expiresAt, scopes, idToken? })`
-  - [ ] `getTokens(service, accountId)` → returns object or `null`; auto-refreshes if near expiry.
-  - [ ] `refreshTokens(service, accountId, refreshFn)` — calls the per-service refresh fn, persists results.
-  - [ ] `revokeTokens(service, accountId)` — removes from vault.
-  - [ ] `listAccounts(service)` — returns known account IDs for the service.
-- [ ] 4. Per-service refresh-fn registry: each service (Google, Notion, …) registers a refresh implementation; OAuthVault dispatches.
-- [ ] 5. Tests with mock services — storage, retrieval, refresh near expiry, revoke, list.
+  - [x] `storeTokens(service, accountId, { access, refresh, expiresAt, scopes, idToken? })`
+  - [x] `getTokens(service, accountId)` → returns object or `null`; auto-refreshes if near expiry.
+  - [x] `refreshTokens(service, accountId, refreshFn)` — calls the per-service refresh fn, persists results.
+  - [x] `revokeTokens(service, accountId)` — removes from vault.
+  - [x] `listAccounts(service)` — returns known account IDs for the service.
+- [x] 4. Per-service refresh-fn registry: each service (Google, Notion, …) registers a refresh implementation; OAuthVault dispatches.
+- [x] 5. Tests with mock services — storage, retrieval, refresh near expiry, revoke, list.
 
 **DoD:**
 - Multi-service, multi-account OAuth tokens persist in Vault.
@@ -96,7 +96,49 @@ create:
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 — F1 complete.
+
+Architecture decision: OAuthVault is a *wrapper* over any Vault adapter,
+not a Vault subclass.  Vault stays a generic key-value store; OAuth
+typing + refresh policy lives in OAuthVault.  The launch prompt mentioned
+modifying Vault.js for "oauth namespace helpers" — explicitly skipped to
+keep the abstraction clean.
+
+Surface:
+  new OAuthVault({ vault })
+  .registerRefreshFn(service, fn)
+  .storeTokens(service, accountId, bundle)
+  .getTokens(service, accountId?)             // accountId defaults to 'default'
+  .refreshTokens(service, accountId?)         // forces refresh; coalesced
+  .revokeTokens(service, accountId?)
+  .listAccounts(service)
+  makeAuthorizedFetch(oauth, service, accountId?, { fetch? })
+                                              // 401 → refresh → retry once
+
+Key scheme: oauth:<service>:<accountId>
+Default-account fallback: when accountId is null/undefined, 'default' is
+used as the literal accountId.  So listAccounts('google') for a
+single-account user returns ['default'].
+
+Refresh policy mirrors SolidVault:
+  - REFRESH_BUFFER_MS = 60_000 (matches SolidVault REFRESH_LEEWAY_MS pattern)
+  - in-flight Map keyed by `${service}:${accountId}` coalesces concurrent
+    refresh calls (mirrors SolidVault's `#refreshing` single-promise pattern,
+    extended to per-account)
+  - if the refresh fn omits `refresh`, the previous refresh token is kept
+    (handles providers that don't rotate)
+  - if no refreshFn registered or no refresh token in bundle, getTokens()
+    returns the stale bundle as-is — caller will see 401 and trigger the
+    reactive path via makeAuthorizedFetch
+
+Error codes (exposed via `err.code`):
+  OAUTH_NO_TOKENS, OAUTH_NO_REFRESH_TOKEN, OAUTH_NO_REFRESH_FN
+
+Tests: 25 new tests in packages/core/test/identity/OAuthVault.test.js.
+Full core suite: 1134 passed (no regressions).
+
+Public API (additive in packages/core/src/index.js):
+  export { OAuthVault, makeAuthorizedFetch } from './identity/OAuthVault.js';
 ```
 
 ---
@@ -105,9 +147,9 @@ create:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | in-progress |
 | **Tag** | [NEW] |
-| **Notes** | Independent.  Decide Q-F.3 before starting. |
+| **Notes** | Independent.  Q-F.3 locked 2026-04-29 (per-record onConflict; v1 ONE-WAY source→target). |
 
 **Files:**
 
