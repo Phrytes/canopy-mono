@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | not-started |
 | **Started** | — |
-| **Last updated** | 2026-04-28 (G2 in-progress, G3 in-progress) |
+| **Last updated** | 2026-04-28 (G2 done, G3 done) |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — fully independent. |
 
@@ -165,7 +165,7 @@ modify:
 
 | | |
 |---|---|
-| **Status** | in-progress |
+| **Status** | done |
 | **Tag** | [EXTENDS] `RoutingStrategy.js` |
 | **Notes** | Small refactor.  Existing `RoutingStrategy` already does priority + latency scoring; just needs an explicit tier classification surfaced. |
 
@@ -182,12 +182,12 @@ create:
 
 **Sequence:**
 
-- [ ] 1. Define three tiers: `direct` (WebRTC / BLE / mDNS / local /
+- [x] 1. Define three tiers: `direct` (WebRTC / BLE / mDNS / local /
   internal), `mesh` (relay / NKN), `hop` (peer-as-relay / sealed-tunnel).
-- [ ] 2. Map each existing transport to a tier.
-- [ ] 3. Expose `agent.reachabilityFor(peerId)` returning
+- [x] 2. Map each existing transport to a tier.
+- [x] 3. Expose `agent.reachabilityFor(peerId)` returning
   `{ transport, tier, latencyEstimate? }`.
-- [ ] 4. Tests: tier classification stable across transports;
+- [x] 4. Tests: tier classification stable across transports;
   reachabilityFor returns expected tier per scenario.
 
 **DoD:**
@@ -198,7 +198,34 @@ create:
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 (G3 wave-B1):
+- New module: packages/core/src/routing/ReachabilityTier.js
+  Exports: TIERS (direct/mesh/hop), tierForTransport(),
+  tierForRouteVia(), compareTiers(), default-export bundle.
+- Tier mapping covers both PascalCase class names (LocalTransport,
+  RelayTransport, ...) AND lowercase RoutingStrategy names (local,
+  relay, ...). The lowercase support is what made the smoke tests
+  work with the { name: 'relay' } stub style used elsewhere in
+  test/RoutingStrategy.test.js — this avoided duplicating a class
+  fixture across the two test files.
+- Hop is *not* a transport class; it's a routing decision via
+  routing/hopTunnel.js + routing/invokeWithHop.js. So
+  RoutingStrategy.tierFor(peerId, { via: { kind: 'hop', through } })
+  overrides the transport tier with 'hop' while still resolving the
+  underlying transport so the caller has it for actual sending.
+- Unknown transports default to 'mesh' (conservative — apps still
+  see "reachable via something indirect").
+- agent.reachabilityFor(peerId, opts) added in Agent.js; returns
+  null when no RoutingStrategy is wired or when no transport is
+  selectable for the peer.
+- index.js: re-exports ReachabilityTier (default) plus named
+  helpers (REACHABILITY_TIERS, tierForTransport, tierForRouteVia,
+  compareTiers).
+- Tests: 25 new in test/routing/ReachabilityTier.test.js, all
+  green; existing RoutingStrategy.test.js (10 tests) still green;
+  full npm run test:core: 70 files, 779 tests, 3 skipped, 0 fail.
+- Additive only — no behaviour change to selectTransport(),
+  transportFor(), routeFor().
 ```
 
 ---

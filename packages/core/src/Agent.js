@@ -298,6 +298,29 @@ export class Agent extends Emitter {
     return { name: 'default', transport: this.#transport };
   }
 
+  /**
+   * Classify how this agent reaches `peerId` into a three-tier
+   * reachability model: `direct` (WebRTC/BLE/mDNS/local/internal),
+   * `mesh` (relay/NKN/MQTT/offline), or `hop` (peer-as-relay).
+   *
+   * Returns `null` when there is no RoutingStrategy or no candidate
+   * transport for the peer.  Returns
+   * `{ transport, name, tier, latencyEstimate? }` otherwise — see
+   * `routing/ReachabilityTier.js`.
+   *
+   * Additive — does not change behavior of `transportFor()` /
+   * `routeFor()`; intended for apps that want to surface the link
+   * quality / privacy posture per peer.
+   *
+   * @param {string} peerId
+   * @param {object} [opts]   — passed to RoutingStrategy.tierFor
+   * @returns {Promise<{ name: string, transport: object, tier: 'direct'|'mesh'|'hop', latencyEstimate?: number }|null>}
+   */
+  async reachabilityFor(peerId, opts = {}) {
+    if (!this.#routing || typeof this.#routing.tierFor !== 'function') return null;
+    return this.#routing.tierFor(peerId, opts);
+  }
+
   // ── High-level API ────────────────────────────────────────────────────────
 
   /**
