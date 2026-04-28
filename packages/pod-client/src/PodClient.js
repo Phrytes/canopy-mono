@@ -73,6 +73,13 @@ export class PodClient extends Emitter {
   #etagMap = new Map(); // uri → { etag, lastModified }
   #tombstoneStore;
   #closed = false;
+  /**
+   * Per-event listener count, mirrored from `on`/`off`/`removeAllListeners`.
+   * The base `Emitter` keeps its handler map private; we shadow the count so
+   * `write` can take the no-listener fast-path on a conflict (skip the remote
+   * fetch + skip the timeout wait).
+   */
+  #listenerCounts = new Map();
 
   /**
    * @param {object} opts
@@ -111,6 +118,34 @@ export class PodClient extends Emitter {
 
   /** The configured `TombstoneStore`.  Exposed for tests + advanced callers. */
   get tombstoneStore() { return this.#tombstoneStore; }
+
+  // ── Emitter overrides ─────────────────────────────────────────────────────
+  // Shadow the listener-count so the conflict path can take a no-listener
+  // fast-path without breaking the base Emitter's encapsulation.
+
+  on(event, fn) {
+    this.#listenerCounts.set(event, (this.#listenerCounts.get(event) ?? 0) + 1);
+    return super.on(event, fn);
+  }
+  off(event, fn) {
+    const next = Math.max(0, (this.#listenerCounts.get(event) ?? 0) - 1);
+    this.#listenerCounts.set(event, next);
+    return super.off(event, fn);
+  }
+  once(event, fn) {
+    // The base `once` calls `on` (which we already track), then `off` inside
+    // a wrapper.  But the wrapper calls super's `off` directly, bypassing our
+    // override.  Wrap manually to keep the count accurate.
+    const wrapper = (...args) => { this.off(event, wrapper); fn(...args); };
+    return this.on(event, wrapper);
+  }
+  removeAllListeners(event) {
+    if (event) this.#listenerCounts.delete(event);
+    else       this.#listenerCounts.clear();
+    return super.removeAllListeners(event);
+  }
+  /** Public listener-count helper. */
+  listenerCount(event) { return this.#listenerCounts.get(event) ?? 0; }
 
   // ── fetch wiring ──────────────────────────────────────────────────────────
 
@@ -298,8 +333,7 @@ export class PodClient extends Emitter {
 
       // Listener fast-path: if no one is subscribed, skip the event entirely.
       // For 'remote-wins' we still need a remote snapshot to fill the result.
-      const hasListener = this.listenerCount?.('conflict') > 0
-        || (this._h?.conflict && this._h.conflict.length > 0); // robustness across Emitter shapes
+      const hasListener = this.listenerCount('conflict') > 0;
       const needsRemote = hasListener || policy === 'remote-wins';
       const remoteSnapshot = needsRemote ? await this.#fetchRemoteForConflict(uri) : null;
 
