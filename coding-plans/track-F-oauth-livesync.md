@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | in-progress |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-28 (F1 done; F2 in progress) |
+| **Last updated** | 2026-04-28 (F1 done; F2 done) |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — fully independent |
 
@@ -147,9 +147,9 @@ Public API (additive in packages/core/src/index.js):
 
 | | |
 |---|---|
-| **Status** | in-progress |
+| **Status** | done |
 | **Tag** | [NEW] |
-| **Notes** | Independent.  Q-F.3 locked 2026-04-29 (per-record onConflict; v1 ONE-WAY source→target). |
+| **Notes** | Q-F.3 locked 2026-04-29 (per-record onConflict; v1 ONE-WAY source→target).  Shipped 2026-04-28.  See scratchpad. |
 
 **Files:**
 
@@ -164,8 +164,8 @@ modify:
 
 **Sequence:**
 
-- [ ] 1. Lock Q-F.3 (callback shape).
-- [ ] 2. Define the live-sync skill API.  An agent declares a
+- [x] 1. Lock Q-F.3 (callback shape).
+- [x] 2. Define the live-sync skill API.  An agent declares a
   live-sync via:
   ```js
   agent.registerLiveSync({
@@ -177,13 +177,13 @@ modify:
     pollIntervalMs: 60_000,         // optional; for sources without webhooks
   });
   ```
-- [ ] 3. Implement the lifecycle: register → start polling/listening →
+- [x] 3. Implement the lifecycle: register → start polling/listening →
   detect change → call onChange → write to target → record state →
   loop.  Conflict detection on target write surfaces via onConflict.
-- [ ] 4. State persistence — last-synced timestamp / cursor / etag
+- [x] 4. State persistence — last-synced timestamp / cursor / etag
   per `name`, stored via existing storage adapter.
-- [ ] 5. Idempotency: re-running an already-synced event is a no-op.
-- [ ] 6. Tests with mock source + target — happy path, missed event
+- [x] 5. Idempotency: re-running an already-synced event is a no-op.
+- [x] 6. Tests with mock source + target — happy path, missed event
   recovery, conflict callback invocation, idempotency.
 
 **DoD:**
@@ -196,7 +196,65 @@ modify:
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 — F2 complete.
+
+v1 SCOPE (locked Q-F.3): one-way sync, source → target.  Designed for
+migration use cases (Google Docs → pod, Notion → pod, etc.).  The target
+is a destination, not a co-equal source.  Bidirectional sync is a v2
+design conversation when a real consumer needs it.
+
+Surface (no Agent.registerLiveSync wrapper — caller instantiates directly):
+  new LiveSyncSkill({ name, source, target, vault, onChange?, onConflict?, pollIntervalMs? })
+    .start() / .stop()
+    .runOnce() → { applied, skipped, conflicts }
+    .name / .isRunning / .stats / .lastError
+
+Adapter shapes are caller-supplied (kept the design flexible — Track-H or
+project #3 will provide concrete adapters):
+  source: { listChanges({ cursor }) → { events, nextCursor }, fetchPayload(id) }
+  target: { write(uri, content, opts), read(uri), exists(uri), delete?(uri) }
+
+Conflict resolution (3 shapes from onConflict):
+  'remote'                            → skip; target untouched
+  'local'                             → write source payload, force:true
+  { content, contentType? }           → write merged content, force:true
+  garbage                             → throws LIVESYNC_CONFLICT_BAD_RESOLUTION
+  thrown                              → wrapped as LIVESYNC_CONFLICT_HANDLER_THREW
+  no onConflict + existing target     → throws LIVESYNC_CONFLICT_UNRESOLVED
+                                        (loop continues, conflicts++ )
+
+State persistence:
+  Vault key: 'livesync:<name>'
+  Value: JSON { cursor, appliedIds[] }
+  appliedIds capped at last 10_000 to bound vault size.
+
+Idempotency: events whose id is already in appliedIds are skipped on
+subsequent runs.  Same source can be re-played safely.
+
+Concurrency: runOnce() coalesces — overlapping calls share the same
+in-flight promise (prevents duplicate target writes when poll-tick
+overlaps an explicit runOnce()).
+
+Errors swallowed (must not break sync):
+  - onChange() throws → swallowed (observability hook)
+  - per-event apply throws → caught, lastError set, loop continues
+
+Tests: 19 in packages/core/test/protocol/LiveSyncSkill.test.js.
+Full core suite: 1153 passed (no regressions).
+
+Public API (additive in packages/core/src/index.js):
+  export { LiveSyncSkill } from './protocol/LiveSyncSkill.js';
+
+Sketch — projects/03 import bridge:
+  const sync = new LiveSyncSkill({
+    name: 'gdocs-import',
+    source: gdocsAdapter,            // wraps OAuthVault (F1) + Drive API
+    target: podAdapter,              // wraps PodClient
+    vault: agent.identity.vault,
+    onConflict: async (local, remote) => 'remote',
+    pollIntervalMs: 5 * 60_000,
+  });
+  sync.start();
 ```
 
 ---
