@@ -1,0 +1,20 @@
+{
+  "name": "@canopy/pod-client",
+  "version": "0.1.0",
+  "description": "High-level Solid pod-client for @canopy — read/write/list/patch with capability + OIDC auth",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/core": "file:../core"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}
