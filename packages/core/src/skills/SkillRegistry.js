@@ -99,6 +99,27 @@ export class SkillRegistry {
     return out;
   }
 
+  /**
+   * Filter registered skills by posture metadata.  Both filters are
+   * optional and AND-combined; passing nothing returns all skills.
+   *
+   * Used by D2 (skills-pubsub) to bucket skills into the topic
+   * hierarchy `skills:<group-id>:<posture>:<audience>:<skill-id>`.
+   *
+   * @param {object} [filter]
+   * @param {'always'|'negotiable'}            [filter.posture]
+   * @param {'never'|'either'|'required'}      [filter.humanInTheLoop]
+   * @returns {import('./defineSkill.js').SkillDefinition[]}
+   */
+  getByPosture(filter = {}) {
+    const { posture, humanInTheLoop } = filter;
+    return this.all().filter(s => {
+      if (posture        != null && s.posture        !== posture)        return false;
+      if (humanInTheLoop != null && s.humanInTheLoop !== humanInTheLoop) return false;
+      return true;
+    });
+  }
+
   has(id) { return this.#skills.has(id); }
 
   get size() { return this.#skills.size; }

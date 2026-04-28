@@ -53,7 +53,34 @@ export function _snapshot(agent) {
     oracle:     !!agent.skills?.get?.('reachable-peers')?.enabled,
     tunnel:     !!agent.skills?.get?.('tunnel-open')?.enabled,   // Group CC
     groups:     _groupsAsMember(agent),
+    skills:     _skillPostures(agent),
   };
+}
+
+/**
+ * Per-skill posture metadata for the agent card (Group D1).
+ *
+ * Returns one entry per registered skill:
+ *   { id, posture: 'always'|'negotiable',
+ *         humanInTheLoop: 'never'|'either'|'required' }
+ *
+ * Peers consume this to know which skills can be negotiated or require
+ * a human responder before invoking; D2 also reuses these values to
+ * compute pubsub topic segments.  Skills registered before Group D1
+ * are exposed with the defaults (`always` / `never`) thanks to the
+ * defineSkill backward-compat layer, so unrecognised skill records do
+ * not break the snapshot.
+ *
+ * @param {import('../Agent.js').Agent} agent
+ */
+function _skillPostures(agent) {
+  const reg = agent.skills;
+  if (!reg || typeof reg.all !== 'function') return [];
+  return reg.all().map(s => ({
+    id:             s.id,
+    posture:        s.posture        ?? 'always',
+    humanInTheLoop: s.humanInTheLoop ?? 'never',
+  }));
 }
 
 function _groupsAsMember(agent) {
