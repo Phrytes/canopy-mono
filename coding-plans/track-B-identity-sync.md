@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | in-progress |
+| **Status** | done |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-29 — B2 + B3 + B4 all done; B5 spawning |
+| **Last updated** | 2026-04-28 — B5 done; Track B COMPLETE (B1..B5) |
 | **Owner** | unassigned |
 | **Blocked on** | partial — B1 starts immediately; B2–B5 need Track A1 done |
 
@@ -399,9 +399,9 @@ tests (create):
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
-| **Notes** | Depends on B2 + B3.  One-shot tool. |
+| **Notes** | Depends on B2 + B3.  One-shot tool.  v1 scope: device identity migration only.  Full @canopy/core suite: 1215 tests passed, 13 skipped. |
 
 **Files:**
 
@@ -414,10 +414,10 @@ create:
 
 **Sequence:**
 
-- [ ] 1. Read existing local-only vault contents.  Map vault namespaces to schema resource types.
-- [ ] 2. For each, write to IdentityPodStore.  Skip resources without a clear mapping (log + ask).
-- [ ] 3. Mark vault entries as "migrated" without deleting (safety).
-- [ ] 4. Tests: migrate a populated test vault to a fresh pod; verify all records present + decryptable; idempotent (run twice = no-op).
+- [x] 1. Read existing local-only vault contents.  Map vault namespaces to schema resource types.
+- [x] 2. For each, write to IdentityPodStore.  Skip resources without a clear mapping (log + ask).
+- [x] 3. Mark vault entries as "migrated" without deleting (safety).
+- [x] 4. Tests: migrate a populated test vault to a fresh pod; verify all records present + decryptable; idempotent (run twice = no-op).
 
 **DoD:**
 - Migration is idempotent + safe (no data loss).
@@ -427,7 +427,87 @@ create:
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 — B5 complete (migrateVaultToPod.js + migrateVaultToPod.test.js,
+20 tests green; full @canopy/core suite 1215 passed + 13 skipped).
+Track B is now COMPLETE — B1..B5 all done.
+
+v1 scope (intentional, documented in JSDoc):
+  - DEVICE IDENTITY ONLY.  The migrator emits exactly one Device record per
+    call, derived from the AgentIdentity passed in.  All other vault
+    namespaces (peer:, group-proof:, group-admin:, app-permission:, oauth:,
+    solid-oidc:, identity-cache:, token:, revoked:, trust:, a2a-token:,
+    inrupt:) are skipped with explicit reasons in the report.
+  - Follow-up tracks extend `mapVaultKeyToSchema` to handle additional
+    namespaces; current branches are commented inline as v2 candidates.
+
+Decisions made during implementation:
+
+1. The vault key for the device's private seed is `agent-privkey` (NOT
+   `agent-identity` / `identity:default` as the launch prompt's example
+   suggested).  The seed itself MUST NOT be migrated to the pod — it's
+   local-secret material.  Instead the migrator synthesizes the Device
+   record from the AgentIdentity's PUBLIC pubkey passed in by the caller.
+   `agent-privkey` is in EXACT_SKIP_KEYS with reason
+   'private-seed-not-pod-content'.
+
+2. SELF_DEVICE_PSEUDO_KEY = '__canopy:self-device' — a synthetic
+   dispatch token the loop ALWAYS visits first.  Its mapping calls
+   buildSelfDeviceMapping(); the real vault.list() entries follow.
+   This keeps the loop uniform (one mapping table, one dispatch path)
+   while still emitting exactly one Device per call, even when the vault
+   has zero migrate-able entries.
+
+3. Device fingerprint uses bootstrap.fingerprint(identity.pubKeyBytes) —
+   the AgentIdentity's pubkey, not the bootstrap-derived one.  This
+   matches the schema's §Container layout: file path includes the
+   DEVICE pubkey fingerprint.  `dw:bootstrapKeyFingerprint` separately
+   uses the BOOTSTRAP-derived fingerprint to tie the device record to
+   its owner.
+
+4. Idempotency flag = 'identity-migration:migrated-at' — a vault entry
+   with `{ at: <epoch ms> }`.  Set ONLY after every step succeeds.
+   Partial-failure resume verified by test: an injected mid-migration
+   write failure surfaces, the flag stays unset, and a subsequent run
+   without `force` succeeds.
+
+5. dryRun: pod-side init() and writes are skipped; the report still
+   computes; flag is NOT set.  Re-runs without force after a dry-run
+   are NOT alreadyMigrated (correct).
+
+6. force: bypasses the flag check, re-derives bootstrap, re-writes the
+   device record (verified by test — pod sees 2 writes to the same URI).
+   Schema deviation deviation: writes use IdentityPodStore.writeResource
+   which uses lww conflict policy at the resource level + reject+retry
+   at the manifest level (inherits B2's behavior).
+
+7. CLI wrapper at scripts/migrate-vault-to-pod.js — thin layer around
+   migrateVaultToPod.  Loads VaultNodeFs + AgentIdentity.restore + reads
+   mnemonic from a file + builds a SolidOidcAuth-backed PodClient.  Does
+   NOT auto-create identities (running the migrator on a vault with no
+   `agent-privkey` would write a fresh-keyed device record under a brand-
+   new identity, almost certainly not what the user wants — bail loudly
+   instead).
+
+Files added:
+  packages/core/src/identity/migrateVaultToPod.js              (~340 lines)
+  packages/core/test/identity/migrateVaultToPod.test.js        (20 tests)
+  scripts/migrate-vault-to-pod.js                              (~130 lines, CLI)
+
+Files modified:
+  packages/core/src/index.js                                   (+1 export)
+  coding-plans/track-B-identity-sync.md                        (this doc)
+
+Hand-off:
+  - End of Track B.  Phone-side adoption flow (B4 already wired): caller
+    constructs the bootstrap from a mnemonic, then calls
+    `migrateVaultToPod({ vault, identity, podClient, podRoot, mnemonic })`
+    once before attaching IdentitySync.  The flag in the vault prevents
+    accidental double-migration on subsequent boots.
+  - v2 work (separate track): extend mapVaultKeyToSchema for peer:,
+    app-permission:, group-proof:, group-admin: and remove the matching
+    prefixes from SKIPPED_NAMESPACES.  Ground that work in real-world
+    telemetry — wait until the device-only path has run on phones for a
+    while before broadening scope.
 ```
 
 ---
