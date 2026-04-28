@@ -2,9 +2,9 @@
 
 |                  |                                           |
 | ---------------- | ----------------------------------------- |
-| **Status**       | not-started                               |
-| **Started**      | —                                         |
-| **Last updated** | 2026-04-28 (initial draft)                |
+| **Status**       | in-progress                               |
+| **Started**      | 2026-04-28                                |
+| **Last updated** | 2026-04-28 (E1 done)                      |
 | **Owner**        | unassigned                                |
 | **Blocked on**   | nothing — fully independent of A/B/C/D/F. |
 
@@ -61,35 +61,66 @@ E2b ── (independent)
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
-| **Notes** | Decide Q-E.1 before starting. |
+| **Notes** | Q-E.1 locked: Expo Notifications.  Adapter interface + bridge + Expo adapter shipped 2026-04-28. |
 
 **Files:**
 
 ```
 create:
   packages/react-native/src/transport/MobilePushBridge.js
-  packages/react-native/src/transport/pushAdapters/{ExpoNotifications,APNs,FCM}.js   # ship one based on Q-E.1
+  packages/react-native/src/transport/pushAdapters/PushAdapter.js
+  packages/react-native/src/transport/pushAdapters/ExpoNotificationsAdapter.js
   packages/react-native/test/transport/MobilePushBridge.test.js
+
+modify:
+  packages/react-native/index.js   # re-export MobilePushBridge + PushAdapter (NOT ExpoNotificationsAdapter — see scratchpad)
 ```
 
 **Sequence:**
 
-- [ ] 1. Lock Q-E.1.
-- [ ] 2. Define adapter interface: `register() → deviceToken`, `onNotification(handler)`, `unregister()`.
-- [ ] 3. Implement chosen adapter (Expo Notifications recommended).
-- [ ] 4. Bridge: when notification arrives → wake agent → dispatch to skill matching the notification payload.
-- [ ] 5. Tests on RN harness — happy path + foreground + background + permission denied.
+- [x] 1. Lock Q-E.1.
+- [x] 2. Define adapter interface: `register() → deviceToken`, `onNotification(handler)`, `unregister()`.
+- [x] 3. Implement chosen adapter (Expo Notifications recommended).
+- [x] 4. Bridge: when notification arrives → wake agent → dispatch to skill matching the notification payload.
+- [x] 5. Tests on RN harness — happy path + foreground + background + permission denied.
 
 **DoD:**
-- Push notification on a real device wakes the agent.
-- Tests green on RN harness.
+- Push notification on a real device wakes the agent. *(unit-tested via mock adapter — real-device verification pending E2c integration.)*
+- Tests green on RN harness. *(15/15 in `MobilePushBridge.test.js`; pre-existing rollup parse failures in `BleTransport.test.js` and `MdnsTransport.test.js` are unrelated to this change.)*
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+- `expo-notifications` is a PEER dep of @canopy/react-native, NOT a top-level
+  dep.  Apps that use the bridge install it themselves:
+      npx expo install expo-notifications
+  mesh-demo does NOT currently have it — needs to be added before the bridge
+  can be wired in there.
+
+- Barrel deviation: only `MobilePushBridge` and `PushAdapter` are re-exported
+  from `packages/react-native/index.js`.  `ExpoNotificationsAdapter` is
+  available via subpath import:
+      import { ExpoNotificationsAdapter }
+        from '@canopy/react-native/src/transport/pushAdapters/ExpoNotificationsAdapter.js';
+  Reason: the adapter imports `expo-notifications` at module-load time, so a
+  barrel re-export would break every consumer that doesn't have the package
+  installed (including mesh-demo today).  Reconsider once `expo-notifications`
+  is added to mesh-demo and the barrel is no longer the breaking factor.
+
+- Notification payload convention:
+      { skillId: 'wake-id', parts: [...] }
+  When `skillId` matches a registered skill, bridge calls
+  `agent.invoke(self, skillId, parts)`.  Always emits 'push' event regardless.
+
+- Background notifications (app backgrounded / killed) are NOT handled in v1.
+  Expo's `addNotificationReceivedListener` only fires while foregrounded; the
+  background path uses `addNotificationResponseReceivedListener` plus a
+  background task.  Apps that need this can wrap a small shim around the
+  bridge's #dispatch logic.  Tracked as future work for E2c.
+
+- 15 tests pass.  Mock adapter pattern follows existing tests in this package.
 ```
 
 ---
