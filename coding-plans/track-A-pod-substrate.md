@@ -41,9 +41,9 @@ answer when locked.
 
 ```
 A1 ──┐
-A2 ──┼── A5 ── A6
-A4 ──┘    └─── A7
-A3 ── (independent of A5)
+A2 ──┼── A5a ── A5b1 ┐
+A4 ──┘         A5b2 ┴── A6
+A3 ── (independent of A5)         └─ A7
 ```
 
 - **A1, A2, A4 are independent.**  Up to three devs can split
@@ -51,11 +51,17 @@ A3 ── (independent of A5)
 - **A3 depends on A1 only** (needs read/write working).  Can
   run in parallel with A2/A4/A5.
 - **A5 needs A1 + A2 + A4** (storage + auth + token class).
+- **A5 itself is split into A5a + A5b1/A5b2** (see §A5 below).
+  A5a is the package skeleton + Errors + Auth interface; A5b1
+  and A5b2 are two parallel impl agents (auth concretes vs
+  PodClient + patch + tests).
 - **A6 and A7 are layered onto A5** but are mostly independent
   of each other; can be interleaved.
-- A team of 1: linear A1 → A2 → A4 → A3 → A5 → A6 → A7.
-- A team of 2: dev1 = A1 → A3 → A5 → A6/A7; dev2 = A2 → A4.
-- A team of 3: dev1 = A1 → A3; dev2 = A2; dev3 = A4 → A5 → A6/A7.
+- A team of 1: linear A1 → A2 → A4 → A3 → A5a → A5b1 → A5b2 → A6 → A7.
+- A team of 2: dev1 = A1 → A3 → A5a → A5b2 → A6; dev2 = A2 → A4 → A5b1 → A7.
+- A team of 3+: per the diagram — A1/A2/A4 first wave, A3 runs
+  in parallel with A5a once A1 lands, A5b1/A5b2 fan out after
+  A5a, A6/A7 in parallel after A5b1+A5b2.
 
 ---
 
@@ -437,55 +443,159 @@ modify:
 |---|---|
 | **Status** | not-started |
 | **Tag** | [NEW] |
-| **Notes** | Depends on A1 + A2 + A4.  Implements the [`pod-client-api.md`](../Design-v3/pod-client-api.md) spec. |
+| **Notes** | Depends on A1 + A2 + A4.  Split into A5a (scaffold) → A5b1 (auth) ‖ A5b2 (PodClient) for parallelism.  Implements the [`pod-client-api.md`](../Design-v3/pod-client-api.md) spec. |
+
+**Note on monorepo wiring:** the existing repo uses `file:` references (e.g. `"@canopy/core": "file:../core"`) instead of npm workspaces.  Stick with that pattern — `packages/pod-client/package.json` declares `"@canopy/core": "file:../core"` and runs its own `npm install`.  No root-`package.json` workspace declaration is needed.
+
+---
+
+#### A5a — Scaffold + Errors + Auth interface
+
+| | |
+|---|---|
+| **Status** | not-started |
+| **Tag** | [NEW] |
+| **Notes** | Single agent.  Builds the contracts that A5b1 + A5b2 share.  Small (~30% of A5 total). |
 
 **Files:**
 
 ```
 create:
   packages/pod-client/package.json
-  packages/pod-client/src/PodClient.js
-  packages/pod-client/src/Auth/Auth.js                  # interface only
-  packages/pod-client/src/Auth/CapabilityAuth.js
-  packages/pod-client/src/Auth/SolidOidcAuth.js
-  packages/pod-client/src/Errors.js
-  packages/pod-client/src/index.js
-  packages/pod-client/test/PodClient.test.js
-  packages/pod-client/test/Auth.test.js
+  packages/pod-client/src/index.js                      # barrel (placeholder until A5b lands)
+  packages/pod-client/src/Errors.js                     # full PodClientError taxonomy
+  packages/pod-client/src/Auth/Auth.js                  # interface JSDoc only
+  packages/pod-client/test/Errors.test.js               # smoke
 
 modify:
-  package.json                                          # add packages/pod-client to workspace
-  packages/core/package.json                            # depend on @canopy/pod-client (later — when core consumers migrate)
+  package.json                                          # add `test:pod-client` script alongside test:core / test:rn / test:relay
 ```
 
 **Sequence:**
 
-- [ ] 1. Create the new package skeleton — `package.json` with `"name": "@canopy/pod-client"`, `"type": "module"`, `vitest` dev dep, `@canopy/core` dep.
-- [ ] 2. Add to root workspace.
-- [ ] 3. Implement `Errors.js` per [`pod-client-api.md` §Error model](../Design-v3/pod-client-api.md#error-model). All errors extend `PodClientError`.
-- [ ] 4. Implement `Auth.js` interface (no implementation, just JSDoc).
-- [ ] 5. Implement `CapabilityAuth.js` — wraps a capability token, presents as `Authorization: Bearer <token>` (mode `'pod-direct'` only in v1).
-- [ ] 6. Implement `SolidOidcAuth.js` — wraps a `SolidVault` instance; delegates `getAuthHeaders` to vault's authenticated-fetch sample request.
-- [ ] 7. Implement `PodClient.js` core methods (`read`, `list`, `write`, `append`) by delegating to a `SolidPodSource` constructed with the auth's authenticated fetch.
-- [ ] 8. Implement `client.patch(uri, patch, opts)` per Q-A.5 (ship-in-v1 lock).  v1 uses path (a) — a thin wrapper translating a small `{ add: [quad...], remove: [quad...] }` shape into Inrupt's `solid-client` quad-add/quad-remove + `saveSolidDatasetAt` flow.  Document the `{add, remove}` shape clearly; emit raw n3-patch HTTP body is an optional future path (b) and not implemented in v1.
-- [ ] 9. Map `SolidPodSource` errors to `PodClientError` subtypes.
-- [ ] 10. Unit tests for each method against a mocked `SolidPodSource`.
-- [ ] 11. Integration test: full flow with a real CSS instance + a test capability token (issued via existing `CapabilityToken.issue`).
+- [ ] 1. Create `packages/pod-client/package.json`: `"name": "@canopy/pod-client"`, `"type": "module"`, `"main": "src/index.js"`, `"@canopy/core": "file:../core"` dep, `vitest` dev dep, `test` script.
+- [ ] 2. Add `"test:pod-client": "npm run test --prefix packages/pod-client"` to root `package.json` `scripts`; extend the root `test` script to include it.
+- [ ] 3. Run `npm install` from `packages/pod-client/` to materialize `node_modules`.
+- [ ] 4. Implement `Errors.js` per [`pod-client-api.md` §Error model](../Design-v3/pod-client-api.md#error-model).  Base `PodClientError extends Error` with `{ code, uri?, cause?, retryable }`.  Subclasses: `AuthError`, `CapabilityError`, `NotFoundError`, `ConflictError`, `NetworkError`, `PolicyError`, `MalformedResourceError`, `EncryptionError`, `ConventionError`.  Export `mapSourceCode(code)` helper that maps `SolidPodSource` `.code` strings (`NOT_FOUND` → `NotFoundError`, `UNAUTHORIZED` → `AuthError`, `FORBIDDEN` → `CapabilityError`, `CONFLICT` → `ConflictError`, `RATE_LIMITED` → `PolicyError`, `SERVER_ERROR`/`HTTP_ERROR` → `NetworkError`, `NETWORK_ERROR` → `NetworkError`, `INVALID_ARGUMENT` → `PodClientError`).  A3's convention codes (`HASH_MISMATCH`, `INVALID_MANIFEST`, `EXTERNAL_STORE_NOT_CONFIGURED`, `EXTERNAL_STORE_BAD_RESPONSE`) map to `ConventionError`.
+- [ ] 5. Implement `Auth/Auth.js` — JSDoc-only abstract describing the interface: `getAuthHeaders(uri, method) → Promise<Record<string,string>>`, `identity() → string`, optional `refresh()` and `close()`.  No implementation; A5b1 fills these in.
+- [ ] 6. `src/index.js`: re-export everything from `Errors.js` and `Auth/Auth.js`.  Leave a `// PodClient + Auth concretes added in A5b` comment for the next agents.
+- [ ] 7. Smoke-test: `Errors.test.js` constructs each error subclass, asserts `instanceof PodClientError`, asserts `code` field, asserts `mapSourceCode` mapping table.  Run `npm test --prefix packages/pod-client` and `npm test` from root — all green.
 
 **DoD:**
-- `PodClient` round-trips read/write/list/append/patch against CSS using both `CapabilityAuth` and `SolidOidcAuth`.
-- `patch({add, remove})` updates RDF resource without full read-modify-write.
-- All errors typed per the spec.
-- Tests green.
+- New `@canopy/pod-client` package boots; `npm test --prefix packages/pod-client` runs Errors smoke test green.
+- Root `npm test` includes pod-client and stays green across all packages.
+- `import { PodClientError, AuthError, ConflictError, ... } from '@canopy/pod-client'` resolves from a sibling package via `file:` reference.
 
 **Notes (team scratchpad):**
 
 ```
+(empty — fill in when A5a starts)
+```
+
+---
+
+#### A5b1 — Auth concretes (parallel with A5b2)
+
+| | |
+|---|---|
+| **Status** | not-started |
+| **Tag** | [NEW] |
+| **Notes** | Depends on A5a.  Runs in parallel with A5b2 (disjoint files). |
+
+**Files:**
+
+```
+create:
+  packages/pod-client/src/Auth/CapabilityAuth.js
+  packages/pod-client/src/Auth/SolidOidcAuth.js
+  packages/pod-client/test/Auth.test.js
+
+modify:
+  packages/pod-client/src/index.js                       # re-export CapabilityAuth + SolidOidcAuth
+```
+
+**Sequence:**
+
+- [ ] 1. `CapabilityAuth.js` — constructor accepts `{ token, mode }` where `mode` must be `'pod-direct'` (v1; throw on `'agent-proxy'` with a "deferred" error).  `token` is a signed `PodCapabilityToken` (string JSON or instance).  On construction, parse + verify signature via `PodCapabilityToken.verify`; throw `AuthError` if invalid/expired.  `getAuthHeaders(uri, method)` returns `{ Authorization: 'Bearer <serialized-token>' }` (and includes any constraints headers if the token has rate-limit / etc. constraints — keep simple v1: just Bearer).  `identity()` returns the token's `subject`.  No `refresh` (capability tokens don't refresh).
+- [ ] 2. `SolidOidcAuth.js` — constructor accepts `{ vault }` where `vault` is a `SolidVault` instance.  `getAuthHeaders(uri, method)` either (a) invokes `vault.getAuthenticatedFetch()` and lets PodClient use that fetch directly, OR (b) sniffs the `Authorization` header from a sample request via the authenticated fetch.  Pick (a): expose `getAuthenticatedFetch()` on the auth itself so `PodClient` constructs `SolidPodSource(podRoot, { fetch: auth.getAuthenticatedFetch() })`.  `getAuthHeaders` becomes a thin compatibility shim that throws "use getAuthenticatedFetch()" — document why.  `identity()` returns the WebID.  `refresh()` delegates to `vault.refresh()`.  `close()` calls `vault.logout()`.
+- [ ] 3. Re-export both from `packages/pod-client/src/index.js`.  Coordinate this single line edit with A5b2 (probably trivial merge — A5b2 also adds a `PodClient` re-export; both edits land cleanly).
+- [ ] 4. Tests in `Auth.test.js`: 
+  - [ ] CapabilityAuth: valid token → headers contain Bearer.  Tampered token → throws `AuthError`.  Expired token → throws.
+  - [ ] SolidOidcAuth: mocked `SolidVault` (`isAuthenticated`/`getAuthenticatedFetch`/`refresh`/`logout`) — `getAuthenticatedFetch()` returns the wrapped fetch; `refresh()` propagates; `close()` calls `logout`.
+
+**DoD:**
+- Both auth classes exported and tested.
+- `npm test --prefix packages/pod-client` green.
+- No regressions in core (`npm run test:core`).
+
+**Notes (team scratchpad):**
+
+```
+(empty — fill in when A5b1 starts)
+```
+
+---
+
+#### A5b2 — PodClient core + patch + tests (parallel with A5b1)
+
+| | |
+|---|---|
+| **Status** | not-started |
+| **Tag** | [NEW] |
+| **Notes** | Depends on A5a.  Runs in parallel with A5b1 (disjoint files). |
+
+**Files:**
+
+```
+create:
+  packages/pod-client/src/PodClient.js
+  packages/pod-client/test/PodClient.test.js
+  packages/pod-client/test/PodClient.css.test.js          # gated on CSS_URL
+
+modify:
+  packages/pod-client/src/index.js                        # re-export PodClient
+```
+
+**Sequence:**
+
+- [ ] 1. `PodClient.js` constructor: `{ podRoot, auth, options? }`.  Internally constructs a `SolidPodSource(podRoot, { fetch })` where `fetch` comes from the `auth` (call `auth.getAuthenticatedFetch()` if available, else build a fetch that injects `auth.getAuthHeaders()` into requests).  Hold `lastEtag`/`lastModified` per-URI in an in-memory `Map` (reused later by A7 for conflict detection — leave the hooks but no 412 handling yet).
+- [ ] 2. `read(uri, opts)` — delegates to `SolidPodSource.read`.  Capture etag/lastModified.  On `decode: 'string' | 'json' | 'bytes' | 'auto'` post-process the SolidPodSource's `content` (which is bytes/string).  Wrap thrown errors via `mapSourceCode` from `Errors.js`.
+- [ ] 3. `list(containerUri, opts)` — delegates to `SolidPodSource.list`; pass through filter/recursive options.  Wrap errors.
+- [ ] 4. `write(uri, content, opts)` — delegates to `SolidPodSource.write`.  Auto-`If-Match` from `lastEtag` (unless `force: true`).  No 412 handling at this layer (A7).  Wrap errors.
+- [ ] 5. `append(uri, line, opts)` — read-modify-write loop with retry budget (Q-A.4 default 3, lock during A7).  Use `force: false` so an in-flight `If-Match` mismatch retries.  Throws `ConflictError` if retries exhaust.  v1 simple impl; A7 will wire it tighter.
+- [ ] 6. `patch(uri, patch, opts)` — Q-A.5 path (a).  Accept `patch = { add: Quad[], remove: Quad[] }` shape.  Use `getSolidDataset(uri, { fetch })` from `@inrupt/solid-client`, apply the quads via `setThing`/`addQuad`/`removeQuad` (or whichever Inrupt API is cleanest — investigate which surface is most ergonomic during impl), then `saveSolidDatasetAt(uri, dataset, { fetch })`.  Document the `{add, remove}` shape clearly in JSDoc.  Wrap errors.
+- [ ] 7. `disconnect()` / `close()` — flush state, idempotent close.  Leave hooks for A6/A7.
+- [ ] 8. Re-export `PodClient` from `packages/pod-client/src/index.js` (coordinate with A5b1's edit).
+- [ ] 9. `PodClient.test.js` — unit tests for each method against a mocked `SolidPodSource`.  Cover: read happy path, read 404 → `NotFoundError`, read 401 → `AuthError`, write happy path, write 409 → `ConflictError`, list, append-with-retry, patch happy path.  Mock the `Auth` interface — don't depend on B1's concretes.
+- [ ] 10. `PodClient.css.test.js` — full CSS integration test gated on `CSS_URL`.  Construct two `PodClient`s — one with `CapabilityAuth`, one with `SolidOidcAuth` — and round-trip read/write/list/append/patch against a real CSS instance.  Skip if env is missing (B1's auth concretes will be available at the time this test actually runs in CI).
+
+**DoD:**
+- All five methods (`read`/`list`/`write`/`append`/`patch`) pass unit tests against mocked `SolidPodSource`.
+- Error mapping covers every `SolidPodSource` `.code` → `PodClientError` subclass.
+- CSS integration test file written (skipped without `CSS_URL`); structurally valid.
+- `npm test --prefix packages/pod-client` green.
+- No regressions in core.
+
+**Notes (team scratchpad):**
+
+```
+(empty — fill in when A5b2 starts)
+
 Q-A.5 locked 2026-04-28: ship patch in v1 via path (a) — thin
 wrapper around Inrupt's quad-add/quad-remove + saveSolidDatasetAt.
 Path (b) (raw n3-patch HTTP body) is an optional future option,
 not implemented in v1.
 ```
+
+---
+
+#### A5 — overall DoD (rolls up A5a + A5b1 + A5b2)
+
+- `PodClient` round-trips read/write/list/append/patch against CSS using both `CapabilityAuth` and `SolidOidcAuth` (CSS test gated, but file structurally valid).
+- `patch({add, remove})` updates RDF resource without full read-modify-write.
+- All errors typed per the spec.
+- All three sub-task statuses are `done`.
+- `npm test` from root green across all packages.
 
 ---
 
