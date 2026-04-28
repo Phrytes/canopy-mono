@@ -4,7 +4,7 @@
 | ---------------- | ----------------------------------------- |
 | **Status**       | in-progress                               |
 | **Started**      | 2026-04-28                                |
-| **Last updated** | 2026-04-28 (E1 done)                      |
+| **Last updated** | 2026-04-28 — E1 done (15 tests); E2a + E2b in-progress |
 | **Owner**        | unassigned                                |
 | **Blocked on**   | nothing — fully independent of A/B/C/D/F. |
 
@@ -125,13 +125,13 @@ modify:
 
 ---
 
-### E2a — Relay invite-only auth
+### E2a — Relay group-membership auth
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | in-progress |
 | **Tag** | [EXTENDS] `packages/relay/` |
-| **Notes** | Independent.  Decide Q-E.2 before starting. |
+| **Notes** | Locked Q-E.2 (group-membership auth, see §Track-level open questions).  Replaces the original signed-invite-token design. |
 
 **Files:**
 
@@ -170,7 +170,7 @@ create:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | in-progress |
 | **Tag** | [EXTENDS] `packages/relay/` |
 | **Notes** | Independent.  Decide Q-E.3 before starting. |
 
