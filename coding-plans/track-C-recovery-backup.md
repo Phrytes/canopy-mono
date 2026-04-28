@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | not-started |
 | **Started** | — |
-| **Last updated** | 2026-04-28 (initial draft) |
+| **Last updated** | 2026-04-28 (C1 in-progress) |
 | **Owner** | unassigned |
 | **Blocked on** | partial — C1/C3 wait for B1 + A1; C4/C5 are app-level. |
 
@@ -68,7 +68,7 @@ C2 (platform shims) ─────┘
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
 | **Notes** | Depends on B1.  Decide Q-C.1 + Q-C.2 + Q-C.5 before starting. |
 
@@ -77,35 +77,58 @@ C2 (platform shims) ─────┘
 ```
 create:
   packages/core/src/identity/CloudBackup.js
-  packages/core/src/identity/cloud-adapters/index.js      # adapter registry
-  packages/core/src/identity/cloud-adapters/DropboxAdapter.js
+  packages/core/src/identity/CloudAdapter.js              # interface + MemoryAdapter
   packages/core/test/identity/CloudBackup.test.js
+modify:
+  packages/core/src/index.js                              # additive re-export
+  packages/core/package.json                              # add @noble/hashes
 ```
 
 **Sequence:**
 
-- [ ] 1. Lock Q-C.1 (contents) + Q-C.2 (encryption key) + Q-C.5 (which adapter ships first).
-- [ ] 2. Define adapter interface: `put(blob, opts) → ref`, `get(ref) → blob`, `delete(ref)`, `list() → refs[]`.
-- [ ] 3. Implement `CloudBackup.create(bootstrap, adapter)`:
-  - serialize backup contents (bootstrap + hints, or full pod export based on Q-C.1).
-  - encrypt per Q-C.2 derivation.
+- [x] 1. Lock Q-C.1 (contents) + Q-C.2 (encryption key) + Q-C.5 (which adapter ships first).
+- [x] 2. Define adapter interface: `put(blob, opts) → ref`, `get(ref) → blob`, `delete(ref)`, `list() → refs[]`.
+- [x] 3. Implement `CloudBackup.upload({ bootstrap, passphrase, hints, fullPodArchive })`:
+  - serialize backup contents (bootstrap + hints, with opt-in full-pod archive per Q-C.1).
+  - encrypt per Q-C.2 derivation (Argon2id + nacl.secretbox).
   - upload via adapter.
-- [ ] 4. Implement `CloudBackup.restore(adapter, opts)`:
+- [x] 4. Implement `CloudBackup.restore({ passphrase })`:
   - download via adapter.
-  - decrypt using bootstrap (recovered from BIP-39 seed).
-  - return restored bootstrap + hints.
-- [ ] 5. Ship `DropboxAdapter` first (cross-platform via SDK).
-- [ ] 6. Tests with a mock adapter — round-trip backup + restore; corrupt blob detection; wrong-key failure.
+  - decrypt using passphrase-derived key.
+  - return restored bootstrap + hints (+ optional fullPodArchive).
+- [x] 5. ~~Ship `DropboxAdapter` first~~ — superseded by Q-C.5: adapter selection PARKED.  C1 ships `CloudAdapter` interface + `MemoryAdapter` for tests.  Concrete adapters land in C2.
+- [x] 6. Tests with a mock adapter — round-trip backup + restore; corrupt blob detection; wrong-key failure.
 
 **DoD:**
-- Round-trip backup + restore works against a mock adapter.
-- DropboxAdapter works against a real Dropbox (gated test, behind env var).
-- Tests green.
+- [x] Round-trip backup + restore works against MemoryAdapter.
+- [x] ~~DropboxAdapter works against a real Dropbox (gated test, behind env var).~~ — deferred to C2 (Q-C.5).
+- [x] Tests green (`packages/core` 980 tests, 21 new in CloudBackup.test.js).
+- [x] `@noble/hashes` is the only new top-level dep (per Q-C.2 lock).
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+- @noble/hashes 2.2.0 installed.  Subpath imports require the `.js`
+  extension in this version: `import { argon2id } from '@noble/hashes/argon2.js'`
+  (NOT `@noble/hashes/argon2` — that path is not in the package's exports
+  field).  Heads-up for anyone adding more @noble/hashes subpath imports.
+- Q-C.5 deferred: CloudAdapter is the public interface; MemoryAdapter is
+  the only concrete implementation in core.  C2 will plug in real backends
+  (iCloud / Drive / Dropbox / S3) without touching CloudBackup.
+- Tests pass `argonOpts: { m: 1024, t: 1, p: 1 }` to keep the suite fast
+  (~240ms for 21 tests).  Production cost is m=64MB, t=3, p=1 (Q-C.2).
+  The constructor opt is documented as test-only; production callers MUST
+  omit it.
+- Argon2 params (m/t/p) are stored in the envelope alongside the salt, so
+  future cost upgrades don't break existing backups (restore re-derives
+  using whatever params were used at upload time).
+- Envelope format is v=1, alg='argon2id+xsalsa20poly1305'.  Bumping either
+  is the migration hook for future format changes.
+- Typed errors via .code: CLOUD_BACKUP_NOT_FOUND, CLOUD_BACKUP_MALFORMED,
+  CLOUD_BACKUP_UNSUPPORTED_VERSION, CLOUD_BACKUP_DECRYPT_FAILED.
+- C3 (PodExporter) produces the bytes that go into `fullPodArchive` —
+  C1 treats the bytes as opaque and only round-trips them through the
+  encrypted blob.  No coupling to PodExporter API.
 ```
 
 ---

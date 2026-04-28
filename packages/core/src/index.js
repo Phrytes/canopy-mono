@@ -27,6 +27,8 @@ export { VaultNodeFs }        from './identity/VaultNodeFs.js';
 export { AgentIdentity }      from './identity/AgentIdentity.js';
 export { KeyRotation }        from './identity/KeyRotation.js';
 export { Bootstrap }          from './identity/Bootstrap.js';
+export { CloudBackup }                 from './identity/CloudBackup.js';
+export { CloudAdapter, MemoryAdapter } from './identity/CloudAdapter.js';
 export {
   generateMnemonic,
   mnemonicToSeed,
