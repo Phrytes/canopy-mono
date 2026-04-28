@@ -36,6 +36,7 @@ import {
 } from '@canopy/core';
 
 import { KeychainVault }         from './identity/KeychainVault.js';
+import { attachIdentityToAgent } from './identity/IdentityWiring.js';
 import { AsyncStorageAdapter }   from './storage/AsyncStorageAdapter.js';
 import { MdnsTransport }         from './transport/MdnsTransport.js';
 import { BleTransport }          from './transport/BleTransport.js';
@@ -55,6 +56,14 @@ import { requestMeshPermissions } from './permissions.js';
  *                                              Requires relay + react-native-webrtc native module.
  *                                              Silently skips with a warning if the module is not
  *                                              available (e.g. when running in Expo Go).
+ * @param {object}  [opts.pod]                 — opt in to identity-as-pod-content sync (Track B).
+ *                                              When present, builds Bootstrap + IdentityPodStore +
+ *                                              IdentitySync and attaches them; absent = today's
+ *                                              local-only Vault behavior is preserved unchanged
+ *                                              (Q-B.2 side-by-side migration, locked 2026-04-29).
+ *                                              Shape: `{ webid, mnemonic, podClient, podRoot,
+ *                                              intervalMs?, bootstrap? }`.  See
+ *                                              `attachIdentityToAgent` for full opt docs.
  * @returns {Promise<import('@canopy/core').Agent>}
  */
 export async function createMeshAgent(opts = {}) {
@@ -68,6 +77,7 @@ export async function createMeshAgent(opts = {}) {
     autoStart         = true,
     configOverrides,
     rendezvous:       enableRdv = false,
+    pod:              podOpt,
   } = opts;
 
   const enableBle   = transportEnabled.ble   !== false;
@@ -268,6 +278,27 @@ export async function createMeshAgent(opts = {}) {
   bindPeerDiscovered('relay', relay);
   bindPeerDiscovered('ble',   ble);
   bindPeerDiscovered('mdns',  mdns);
+
+  // ── Identity-as-pod-content sync (Track B, opt-in via `pod`) ──────────────
+  // Q-B.2 side-by-side migration: when `pod` is absent we behave EXACTLY as
+  // before — local-only Vault is the source of truth.  When `pod` is
+  // present, attachIdentityToAgent constructs Bootstrap + IdentityPodStore
+  // + IdentitySync, materializes the pod manifest via init(), starts the
+  // sync loop, and wires AppState foreground refresh.  We do this BEFORE
+  // agent.start() so any inbound HI sees a populated identity store.
+  // Teardown is wired to the agent's 'stop' event so dispose() runs as
+  // part of agent.stop().
+  if (podOpt) {
+    const wiring = await attachIdentityToAgent({
+      vault: resolvedVault,
+      identity,
+      pod: podOpt,
+    });
+    agent._identityWiring = wiring;
+    agent.once('stop', () => {
+      try { wiring.dispose(); } catch { /* swallow — non-fatal */ }
+    });
+  }
 
   // autoStart:false gives the caller a chance to register app-specific
   // skills (relay-forward, tunnel-open, receive-message, …) BEFORE any
