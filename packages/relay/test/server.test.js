@@ -160,6 +160,115 @@ describe('startRelay — ws://', () => {
   });
 });
 
+// ── Multi-recipient (E2b) ────────────────────────────────────────────────────
+
+describe('startRelay — multi-recipient (E2b)', () => {
+  let relay;
+
+  beforeEach(async () => {
+    relay = await startRelay({
+      port: 0,
+      // Tight poll interval keeps tests snappy.
+      multiRecipientQueueOpts: { pollIntervalMs: 5, defaultTimeoutMs: 1_000 },
+    });
+  });
+
+  afterEach(async () => {
+    await relay.stop();
+  });
+
+  it('fans out a multi-request to B+C and returns aggregated responses to A', async () => {
+    const a = await openClient(`ws://127.0.0.1:${relay.port}`);
+    const b = await openClient(`ws://127.0.0.1:${relay.port}`);
+    const c = await openClient(`ws://127.0.0.1:${relay.port}`);
+
+    send(a, { type: 'register', address: 'alice' });
+    send(b, { type: 'register', address: 'bob'   });
+    send(c, { type: 'register', address: 'carol' });
+    await waitFor(() =>
+      a.messages.some(m => m.type === 'registered') &&
+      b.messages.some(m => m.type === 'registered') &&
+      c.messages.some(m => m.type === 'registered'),
+    );
+
+    // A fires the multi-request.
+    send(a, {
+      type:    'multi-request',
+      targets: ['bob', 'carol'],
+      payload: { task: 'ping' },
+      timeoutMs: 1_000,
+    });
+
+    // B and C each receive a multi-deliver; they reply.
+    await waitFor(() => b.messages.some(m => m.type === 'multi-deliver'));
+    await waitFor(() => c.messages.some(m => m.type === 'multi-deliver'));
+
+    const bDeliver = b.messages.find(m => m.type === 'multi-deliver');
+    const cDeliver = c.messages.find(m => m.type === 'multi-deliver');
+    expect(bDeliver.from).toBe('alice');
+    expect(bDeliver.id).toBe(cDeliver.id);
+    expect(bDeliver.payload).toEqual({ task: 'ping' });
+
+    send(b, { type: 'multi-response-from-target', id: bDeliver.id, response: { from: 'bob' } });
+    send(c, { type: 'multi-response-from-target', id: cDeliver.id, response: { from: 'carol' } });
+
+    await waitFor(() => a.messages.some(m => m.type === 'multi-response'));
+    const reply = a.messages.find(m => m.type === 'multi-response');
+    expect(reply.id).toBe(bDeliver.id);
+    expect(reply.partial).toBe(false);
+    expect(reply.responses).toHaveLength(2);
+    const fromKeys = reply.responses.map(r => r.fromPubKey).sort();
+    expect(fromKeys).toEqual(['bob', 'carol']);
+
+    a.close(); b.close(); c.close();
+  });
+
+  it('returns a partial multi-response when a target does not reply before deadline', async () => {
+    const a = await openClient(`ws://127.0.0.1:${relay.port}`);
+    const b = await openClient(`ws://127.0.0.1:${relay.port}`);
+    const c = await openClient(`ws://127.0.0.1:${relay.port}`);
+
+    send(a, { type: 'register', address: 'alice' });
+    send(b, { type: 'register', address: 'bob'   });
+    send(c, { type: 'register', address: 'carol' });
+    await waitFor(() =>
+      a.messages.some(m => m.type === 'registered') &&
+      b.messages.some(m => m.type === 'registered') &&
+      c.messages.some(m => m.type === 'registered'),
+    );
+
+    send(a, {
+      type:    'multi-request',
+      targets: ['bob', 'carol'],
+      payload: { task: 'ping' },
+      timeoutMs: 80,
+    });
+
+    await waitFor(() => b.messages.some(m => m.type === 'multi-deliver'));
+    const bDeliver = b.messages.find(m => m.type === 'multi-deliver');
+    // Only bob replies; carol stays silent.
+    send(b, { type: 'multi-response-from-target', id: bDeliver.id, response: { from: 'bob' } });
+
+    await waitFor(() => a.messages.some(m => m.type === 'multi-response'), 2_000);
+    const reply = a.messages.find(m => m.type === 'multi-response');
+    expect(reply.partial).toBe(true);
+    expect(reply.responses).toHaveLength(1);
+    expect(reply.responses[0].fromPubKey).toBe('bob');
+
+    a.close(); b.close(); c.close();
+  });
+
+  it('rejects multi-request with non-array targets', async () => {
+    const a = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(a, { type: 'register', address: 'alice' });
+    await waitFor(() => a.messages.some(m => m.type === 'registered'));
+
+    send(a, { type: 'multi-request', targets: 'nope', payload: {} });
+    await waitFor(() => a.messages.some(m => m.type === 'error' && /targets/i.test(m.message)));
+    a.close();
+  });
+});
+
 // ── TLS config validation ───────────────────────────────────────────────────
 
 describe('startRelay — config', () => {
