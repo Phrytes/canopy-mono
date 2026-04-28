@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | in-progress |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-28 — Q-D.1..5 all locked, Wave 1 (D1/D3/D4) spawning |
+| **Last updated** | 2026-04-28 — Q-D.1..5 locked; D4 done (32 tests green); D1/D3 in-flight |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — fully parallel with Track A from day one |
 
@@ -230,9 +230,9 @@ create:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
-| **Notes** | Independent.  Pure functions — no I/O, no transport. |
+| **Notes** | Independent.  Pure functions — no I/O, no transport.  Shipped 2026-04-28; 32 tests green. |
 
 **Files:**
 
@@ -250,23 +250,23 @@ modify:
 
 **Sequence:**
 
-- [ ] 1. Define the merge-contract interface: `merge(versions: Array<{ value, timestamp, sourceId }>) → mergedValue`.  Each input element comes from one peer's pod read.  Output is whatever the contract decides.
-- [ ] 2. Implement `setUnionWithDedupe(versions, opts)`:
+- [x] 1. Define the merge-contract interface: `merge(versions: Array<{ value, timestamp, sourceId }>) → mergedValue`.  Each input element comes from one peer's pod read.  Output is whatever the contract decides.
+- [x] 2. Implement `setUnionWithDedupe(versions, opts)`:
   - Each `value` is treated as an array of items.
   - Dedup criterion: equal item hash (or equal value if no hash field configured).
   - On duplicates, keep the highest-timestamp instance.
   - Output: union array, deterministic sort order (item-hash ascending).
-- [ ] 3. Implement `appendOnlyEventLog(versions, opts)`:
+- [x] 3. Implement `appendOnlyEventLog(versions, opts)`:
   - Each `value` is an array of events.
   - Concatenate by event timestamp (ascending).
   - Stable sort: tie-break by `sourceId`.
   - Output: single ordered event array.
-- [ ] 4. Implement `lastWriteWins(versions, opts)`:
+- [x] 4. Implement `lastWriteWins(versions, opts)`:
   - Pick the version with the highest timestamp.
   - Tie-break by `sourceId` lexicographic order.
   - Output: that single value.
-- [ ] 5. All three contracts are exported as pure functions plus a `MergeContracts` object that maps name → function.
-- [ ] 6. Tests: empty input, single input, identical values, conflicting values, timestamp ties, sourceId ties, large inputs (100+ versions).  Property-based tests if convenient.
+- [x] 5. All three contracts are exported as pure functions plus a `MergeContracts` object that maps name → function.
+- [x] 6. Tests: empty input, single input, identical values, conflicting values, timestamp ties, sourceId ties, large inputs (100+ versions).  Property-based tests if convenient.
 
 **DoD:**
 - Three contracts with consistent interface.
@@ -277,7 +277,25 @@ modify:
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 — D4 shipped on worktree-agent-af87c8bfbee657c36, merged
+into track-D-multi-member.
+
+Decisions made during implementation (flag for D5 consumer):
+  - Tie-break for setUnionWithDedupe / lastWriteWins on equal
+    `version.timestamp`: the lexicographically *largest* sourceId wins
+    (consistent across both contracts).  Documented in JSDoc.
+  - appendOnlyEventLog tie-breaks ascending sourceId (different from
+    above — chronological-leaning order matches "who wrote first").
+  - Default itemHash for setUnionWithDedupe is a stable structural hash
+    (recursive JSON.stringify with sorted object keys).  Sufficient for
+    JSON-safe items.  Apps with non-JSON values (functions, BigInt,
+    cycles) should pass `opts.itemHash`.
+  - lastWriteWins on empty input → undefined (callers must check).
+  - All three contracts gracefully skip versions with malformed `value`
+    (null, non-array where array expected) instead of throwing.
+
+Test coverage: 32 tests, all green.  ~100-version determinism tests
+included for each contract.  Verified pure (input not mutated).
 ```
 
 ---
