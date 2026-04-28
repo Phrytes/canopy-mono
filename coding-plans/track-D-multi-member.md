@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | in-progress |
+| **Status** | done |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-28 — Wave 1 complete: D1 (24 tests), D3 (32 tests), D4 (32 tests) all done.  D2 + D5 ready to start. |
+| **Last updated** | 2026-04-28 — **Track D complete**.  D1 (24), D2 (15), D3 (32), D4 (32), D5 (24) = 127 new tests, 0 regressions.  CSS integration of D5 against A5's PodClient deferred to Track H. |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — fully parallel with Track A from day one |
 
@@ -177,9 +177,9 @@ tests (create):
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW, thin] |
-| **Notes** | Depends on D1 (consumes posture metadata).  Decide Q-D.4 before starting. |
+| **Notes** | Depends on D1 (consumes posture metadata).  Q-D.4 locked.  Shipped 2026-04-28; 15 SkillsPubSub tests + full core suite (857 pass / 3 skip) green. |
 
 **Files:**
 
@@ -199,18 +199,18 @@ modify:
   - `<posture>`: `always` or `negotiable` (from D1).
   - `<audience>`: derived from D1's `humanInTheLoop` — `machine` (`'never'`), `human` (`'required'`), or `either` (`'either'`).  Literal value on the wire — no fan-out.
   - `<skill-id>`: the skill id.
-- [ ] 2. **Note: existing `pubSub.js` does not support wildcards** — topics are exact-match strings.  D2 needs to add a pattern-matching layer on top.  Use a simple per-segment `*` wildcard convention (`skills:*:*:human:*` matches any group, any posture, audience `human`, any skill).  No alternation operator needed at the pattern level — `D2.subscribeToSkills` registers multiple patterns when needed.
-- [ ] 3. Read existing `packages/core/src/protocol/pubSub.js`.  Plan: D2 keeps its own `Map<pattern, handler[]>` and intercepts incoming `'publish'` events to test patterns; broadcasts go through `pubSub.publish(agent, topic, parts)` unchanged.
-- [ ] 4. Implement `broadcastSkill(agent, skillId, { group? = 'none' })` — looks up the skill's `posture` + `humanInTheLoop` in the local SkillRegistry, derives the topic, publishes ONE message with payload `{ skillId, agentId, posture, humanInTheLoop, capabilities, expiresAt }`.
-- [ ] 5. Implement `subscribeToSkills(agent, publisherAddress, filter, handler)` where `filter = { skill?, posture?, audience?, group? }`.  Translation rules:
+- [x] 2. **Note: existing `pubSub.js` does not support wildcards** — topics are exact-match strings.  D2 needs to add a pattern-matching layer on top.  Use a simple per-segment `*` wildcard convention (`skills:*:*:human:*` matches any group, any posture, audience `human`, any skill).  No alternation operator needed at the pattern level — `D2.subscribeToSkills` registers multiple patterns when needed.
+- [x] 3. Read existing `packages/core/src/protocol/pubSub.js`.  Plan: D2 keeps its own `Map<pattern, handler[]>` and intercepts incoming `'publish'` events to test patterns; broadcasts go through `pubSub.publish(agent, topic, parts)` unchanged.
+- [x] 4. Implement `broadcastSkill(agent, skillId, { group? = 'none' })` — looks up the skill's `posture` + `humanInTheLoop` in the local SkillRegistry, derives the topic, publishes ONE message with payload `{ skillId, agentId, posture, humanInTheLoop, capabilities, expiresAt }`.
+- [x] 5. Implement `subscribeToSkills(agent, publisherAddress, filter, handler)` where `filter = { skill?, posture?, audience?, group? }`.  Translation rules:
   - `audience: 'human'` → register two patterns: `skills:<group>:<posture>:human:<skill>` AND `skills:<group>:<posture>:either:<skill>` against the same handler.
   - `audience: 'machine'` → `*:machine:*` AND `*:either:*`, same handler.
   - `audience: 'any'` (or unset) → single `*` segment.
   - `audience: 'either-only'` → just `*:either:*` (rare; e.g. an audit tool).
   - Unset filter fields collapse to `*` for that segment.
-- [ ] 6. Implement `republishOnSkillChange(agent, opts)` helper: re-broadcasts when the local agent's SkillRegistry mutates.  Optional opt-in to keep network chatter low.
-- [ ] 7. Tests: two-agent harness — register skill A with `humanInTheLoop: 'either'` on agent X, subscribe with `audience: 'human'` on agent Y, verify event delivery (the `either` topic matches the human-audience subscription).  Same skill with `audience: 'machine'` filter on agent Z — also receives.  `humanInTheLoop: 'required'` skill broadcast → only `audience: 'human'` (and `'any'`) subscribers receive.  Negative cases.
-- [ ] 8. Tests: posture changes after broadcast — `republishOnSkillChange` makes subscribers see the update.
+- [x] 6. Implement `republishOnSkillChange(agent, opts)` helper: re-broadcasts when the local agent's SkillRegistry mutates.  Optional opt-in to keep network chatter low.
+- [x] 7. Tests: two-agent harness — register skill A with `humanInTheLoop: 'either'` on agent X, subscribe with `audience: 'human'` on agent Y, verify event delivery (the `either` topic matches the human-audience subscription).  Same skill with `audience: 'machine'` filter on agent Z — also receives.  `humanInTheLoop: 'required'` skill broadcast → only `audience: 'human'` (and `'any'`) subscribers receive.  Negative cases.
+- [x] 8. Tests: posture changes after broadcast — `republishOnSkillChange` makes subscribers see the update.  *(V1 ships interval-based republish; covered indirectly by the round-trip tests.  An opt-in mutation-hook variant is a future iteration once SkillRegistry emits change events.)*
 
 **DoD:**
 - Broadcast + subscribe APIs work cross-agent.
@@ -221,7 +221,45 @@ modify:
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 — D2 shipped.
+
+Public surface (re-exported from @canopy/core):
+  SkillsPubSub                — class wrapping an Agent + its SkillRegistry
+  buildSkillTopic             — pure helper: { group, posture, audience, skillId } → 5-segment string
+  audienceFromHumanInTheLoop  — pure helper: 'never'|'either'|'required' → 'machine'|'either'|'human'
+
+Key API:
+  new SkillsPubSub({ agent, skillRegistry? })
+    .topicFor(skillId, { group? })
+    .broadcastSkill(skillId, { group?, expiresAt?, extra? })   → { topic, payload }
+    .broadcastAll({ filter?, group? })
+    .subscribeToSkills({ skill?, posture?, audience?, group? }, handler) → unsubscribe()
+       — handler receives ({ topic, payload, from })
+       — audience: 'human' adds patterns for human + either
+       —           'machine' adds machine + either
+       —           'either-only' adds either only
+       —           'any' / unset → fully wildcard segment
+    .republishOnSkillChange({ intervalMs?, group?, filter? }) → stop()
+       — V1 interval-based opt-in; mutation-hook variant TBD
+    .destroy()
+
+Wire detail / gotcha:
+  pubSub.js is exact-match.  Subscribers need an underlying pubSub
+  subscription PER concrete topic that publishers might emit
+  (because the OW carrying the publish only flows to registered
+  subscriber addresses).  In tests we use pubSub.subscribe()
+  directly with the concrete topic; in production a higher-level
+  layer (e.g. group-discovery) is expected to bootstrap the
+  underlying subscriptions for the topic family.
+  SkillsPubSub itself listens to the agent's 'publish' event and
+  dispatches to handlers via per-segment `*` regexes.
+
+Payload extraction reads parts[0] as a DataPart (Parts.wrap of an
+object yields a single DataPart with type:'DataPart').  TextPart
+JSON fallback included for hardening but unused on the happy path.
+
+15 SkillsPubSub tests pass.  Full core suite: 73 files, 857 pass /
+3 skipped.
 ```
 
 ---
@@ -383,9 +421,9 @@ included for each contract.  Verified pure (input not mutated).
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
-| **Notes** | Depends on D4.  Cross-track: real integration tests need Track A5 (`@canopy/pod-client`) shipped.  Implementation can proceed against a mock PodClient interface; integration tests gated until A5 lands. |
+| **Notes** | Depends on D4.  Q-D.3 locked.  Shipped 2026-04-28; 24 unit tests green (mocked PodClient).  Background agent stalled on the watchdog right before adding the index.js re-export — orchestrator finished + committed.  CSS integration test deferred to a separate Track-H follow-up now that A5 has landed (logged in TODO-GENERAL.md). |
 
 **Files:**
 
@@ -397,7 +435,7 @@ create:
 
 **Sequence:**
 
-- [ ] 1. Lock Q-D.3 (failure-mode default).  Recommended: `partial-success-with-flag` — read returns `{ merged, failures: [{ pod, error }] }`.  Alternative modes available per-call.
+- [x] 1. Lock Q-D.3 (failure-mode default).  Recommended: `partial-success-with-flag` — read returns `{ merged, failures: [{ pod, error }] }`.  Alternative modes available per-call.
 - [ ] 2. Define the `PodClient` shape D5 consumes: minimum interface is `{ read(uri): Promise<{ content, lastModified, ... }> }`.  Document this shape so it's testable with mocks AND swappable with the real Track-A5 PodClient.
 - [ ] 3. Implement `FederatedReader` constructor: `new FederatedReader({ pods: Array<PodClient>, mergeContract, failurePolicy = 'partial-success-with-flag' })`.
 - [ ] 4. Implement `read(path, opts)`:
