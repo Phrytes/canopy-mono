@@ -30,6 +30,7 @@ export { KeyRotation }        from './identity/KeyRotation.js';
 export { Bootstrap }          from './identity/Bootstrap.js';
 export { IdentityPodStore }   from './identity/IdentityPodStore.js';
 export { IdentitySync }       from './identity/IdentitySync.js';
+export { migrateVaultToPod }  from './identity/migrateVaultToPod.js';
 export { CloudBackup }                 from './identity/CloudBackup.js';
 export { CloudAdapter, MemoryAdapter } from './identity/CloudAdapter.js';
 export {
