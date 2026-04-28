@@ -21,6 +21,7 @@ export {
 // ── Identity ────────────────────────────────────────────────────────────────
 export { Vault }              from './identity/Vault.js';
 export { VaultMemory }        from './identity/VaultMemory.js';
+export { OAuthVault, makeAuthorizedFetch } from './identity/OAuthVault.js';
 export { VaultLocalStorage }  from './identity/VaultLocalStorage.js';
 export { VaultIndexedDB }     from './identity/VaultIndexedDB.js';
 export { VaultNodeFs }        from './identity/VaultNodeFs.js';
@@ -103,6 +104,7 @@ export {
 export {
   sendFile, bulkTransferSend, handleBulkChunk,
 }                                                         from './protocol/fileSharing.js';
+export { LiveSyncSkill }                                  from './protocol/LiveSyncSkill.js';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 export { StateManager } from './state/StateManager.js';
