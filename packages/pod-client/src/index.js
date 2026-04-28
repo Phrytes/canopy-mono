@@ -23,5 +23,4 @@ export {
 export { Auth } from './Auth/Auth.js';
 export { CapabilityAuth } from './Auth/CapabilityAuth.js';
 export { SolidOidcAuth }  from './Auth/SolidOidcAuth.js';
-
-// PodClient (A5b2) added next.
+export { PodClient }      from './PodClient.js';
