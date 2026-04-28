@@ -21,5 +21,6 @@ export {
 } from './Errors.js';
 
 export { Auth } from './Auth/Auth.js';
+export { CapabilityAuth } from './Auth/CapabilityAuth.js';
 
-// PodClient + Auth concretes (CapabilityAuth, SolidOidcAuth) added in A5b1 + A5b2.
+// SolidOidcAuth (A5b1) + PodClient (A5b2) added next.
