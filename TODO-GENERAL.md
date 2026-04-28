@@ -1,5 +1,25 @@
 # General TODOs
 
+## Battery-aware reachability tuning (2026-04-29)
+
+Q-G.2 locked the oracle TTL default at 5 minutes (configurable).  Future
+work: tune TTL based on live power-state signals.  Concretely:
+- Phone charging → tighter TTL (e.g. 2 min) for freshness; bandwidth is
+  cheap when plugged in.
+- Phone in battery-saver mode → wider TTL (e.g. 30 min) to reduce wakeups
+  + radio cycling.
+- Phone backgrounded for >N minutes → pause oracle gossip entirely.
+
+Apply the same idea to other periodic-work parameters across the SDK:
+push polling intervals, IdentitySync polling, BLE advertise duty cycle,
+relay reconnection backoff.  Centralized "power policy" object that
+modules subscribe to.
+
+Defer until real-device telemetry shows the cost is worth measuring.
+
+---
+
+
 ## Per-filetype write-conflict policy (2026-04-29)
 
 Q-A.4 locked `write`'s default `conflictPolicy` to `'reject'` — conservative

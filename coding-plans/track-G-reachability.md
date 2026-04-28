@@ -28,8 +28,8 @@ one dev in a quiet week.
 
 | # | Question | Answer (when known) |
 |---|---|---|
-| Q-G.1 | Oracle gossip frequency: per-connect / interval / change-driven? | TBD before G1 — leaning change-driven + interval safety net |
-| Q-G.2 | Oracle TTL default: 5 min / 15 min / 1 hour? | TBD before G1 — leaning 15 min |
+| Q-G.1 | Oracle gossip frequency: per-connect / interval / change-driven? | **Locked 2026-04-29: change-driven + 60-second interval safety net.**  Re-broadcast immediately when reachability state changes (transport added/lost) AND a 60s heartbeat for liveness.  Both intervals configurable via constructor opts. |
+| Q-G.2 | Oracle TTL default: 5 min / 15 min / 1 hour? | **Locked 2026-04-29: 5-minute TTL default, configurable via `ttlMs` opt.**  Future v2 work: tune TTL based on power state (charging → tighter TTL for freshness; battery-saver → wider TTL to save power) and other live signals.  Logged in `TODO-GENERAL.md § Battery-aware reachability tuning`. |
 
 ---
 
