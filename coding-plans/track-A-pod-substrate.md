@@ -254,7 +254,7 @@ tests (create):
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
 | **Notes** | Depends on A1.  Decide Q-A.1 + Q-A.2 first. |
 
@@ -274,21 +274,21 @@ tests (create):
 
 **Sequence:**
 
-- [ ] 1. Lock Q-A.1 (threshold) and Q-A.2 (default external store).
-- [ ] 2. Define the reference-manifest JSON shape per [`pod-client-api.md` §writeWithConvention](../Design-v3/pod-client-api.md#writewithconventionclient-uri-content-opts):
+- [x] 1. Lock Q-A.1 (threshold) and Q-A.2 (default external store).
+- [x] 2. Define the reference-manifest JSON shape per [`pod-client-api.md` §writeWithConvention](../Design-v3/pod-client-api.md#writewithconventionclient-uri-content-opts):
   ```json
   { "$type": "external-reference", "uri": "...", "contentType": "...", "size": ..., "hash": "sha256:..." }
   ```
-- [ ] 3. Implement `writeWithConvention(podSource, externalStore, uri, content, opts)`:
+- [x] 3. Implement `writeWithConvention(podSource, externalStore, uri, content, opts)`:
   - if `content.size <= threshold` → write inline via `podSource.write(uri, content)`.
   - else → upload to `externalStore`, write reference manifest at `uri` instead.
-- [ ] 4. Implement `readWithConvention(podSource, externalStore, uri)`:
+- [x] 4. Implement `readWithConvention(podSource, externalStore, uri)`:
   - read via `podSource.read(uri)`.
   - if content is reference manifest → fetch from `externalStore`, return as if inline.
   - if not → return as-is.
-- [ ] 5. `ExternalStore` interface: `put(blob, opts) → uri`, `get(uri) → blob`, `delete(uri)`, `exists(uri)`.
-- [ ] 6. Ship `NoneStore` as the v1 default — throws if asked to put/get. Forces explicit opt-in for big content.
-- [ ] 7. Unit tests covering small content, big content, reference parsing, hash mismatch detection.
+- [x] 5. `ExternalStore` interface: `put(blob, opts) → uri`, `get(uri) → blob`, `delete(uri)`, `exists(uri)`.
+- [x] 6. Ship `NoneStore` as the v1 default — throws if asked to put/get. Forces explicit opt-in for big content.
+- [x] 7. Unit tests covering small content, big content, reference parsing, hash mismatch detection.
 
 **DoD:**
 - Round-trip a 500 KB file (inline) and a 5 MB file (referenced via a mock external store) through the helpers.
@@ -298,7 +298,59 @@ tests (create):
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 (agent):
+- Files created:
+    packages/core/src/storage/PodStorageConvention.js
+    packages/core/src/storage/external-stores/index.js
+    packages/core/src/storage/external-stores/NoneStore.js
+    packages/core/src/storage/reference-manifest.js
+    packages/core/test/storage/PodStorageConvention.test.js
+    packages/core/test/storage/reference-manifest.test.js
+- No new top-level deps.  SHA-256 via Node's built-in `crypto.createHash`
+  (already a Node built-in, not a package).  Confirmed `tweetnacl` does
+  not ship a SHA-256 implementation; `crypto` is the simpler path.
+- ExternalStore interface is JSDoc-only (duck-typed).  `NoneStore` is
+  exported from external-stores/index.js alongside the interface docs;
+  S3/IPFS/Drive adapters live outside core per TODO-GENERAL.md.
+- Reference manifest field order is fixed at serialize time
+  ($type, uri, contentType, size, hash) for byte-deterministic output.
+  Future hashing of manifests-of-manifests will be stable.
+- `parseReferenceManifest` returns null for content that isn't a
+  manifest (plain text, unrelated JSON, non-string/non-bytes input);
+  throws INVALID_MANIFEST when content claims `$type ===
+  'external-reference'` but the shape is broken.  This split lets
+  `readWithConvention` fall through transparently for inline content
+  and still surface corruption loudly.
+- `readWithConvention` calls `parseReferenceManifest` directly rather
+  than `isReferenceManifest`, so a corrupted manifest at the pod
+  surfaces as INVALID_MANIFEST instead of being silently returned as
+  bytes.
+- contentType heuristic in writeWithConvention:
+    explicit opts.contentType > string→text/plain;charset=utf-8 >
+    bytes→application/octet-stream > object→application/json.
+  Manifest itself is always written as application/json.
+- Result envelope: writeWithConvention adds a `convention: 'inline' |
+  'reference'` field on top of whatever podSource.write returns, plus
+  the manifest object on the reference path.  readWithConvention always
+  returns the SolidPodSource shape ({content, contentType, lastModified,
+  etag, size}); for the reference path content/contentType/size come
+  from the external bytes + manifest, while etag/lastModified come from
+  the pod resource (so conflict detection at A5 still works).
+- Error code surface this layer can throw:
+    INVALID_ARGUMENT          (bad podSource / uri / null content)
+    EXTERNAL_STORE_NOT_CONFIGURED  (NoneStore default; bubbles up)
+    INVALID_MANIFEST          (re-thrown from parseReferenceManifest)
+    HASH_MISMATCH             (fetched bytes don't match manifest)
+    EXTERNAL_STORE_BAD_RESPONSE (adapter returned non-string / non-bytes)
+  A5 will map these onto ConventionError subclasses.
+- Tests: 51 new tests (28 in reference-manifest.test.js, 23 in
+  PodStorageConvention.test.js).  Full core suite: 887 passed |
+  13 skipped — no regressions.
+- Open question for A5: should writeWithConvention populate the pod
+  resource's metadata (etag/lastModified) from the inline path's
+  podSource.write result vs the manifest's own?  Today we just
+  pass the result through; A5 may want to re-key conflict detection
+  off the manifest URI.  Documented in PodStorageConvention.js JSDoc.
 ```
 
 ---
