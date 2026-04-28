@@ -135,6 +135,7 @@ vi.mock('../src/transport/rendezvousRtcLib.js', () => ({
 
 // Import AFTER all mocks are in place.
 import { createMeshAgent } from '../src/createMeshAgent.js';
+import { generateMnemonic, Bootstrap } from '@canopy/core';
 
 beforeEach(() => {
   // Reset per-test mock state so each test starts clean.
@@ -295,6 +296,68 @@ describe('createMeshAgent', () => {
     expect(agent.transportNames).toContain('rendezvous');
     expect(agent._rendezvousEnabled).toBe(true);
     await agent.stop();
+  });
+
+  // ── Track B / B4: identity-as-pod-content wiring (opt-in via `pod`) ──────
+  // Q-B.2 side-by-side: absence of `pod` preserves today's behavior; presence
+  // attaches IdentitySync + materializes the pod manifest before agent.start.
+
+  it('does not attach identity wiring when `pod` opt is absent', async () => {
+    kcStore.clear();
+    asStore.clear();
+    const agent = await createMeshAgent({ label: 'no-pod' });
+    expect(agent._identityWiring).toBeUndefined();
+    await agent.stop();
+  });
+
+  it('attaches IdentitySync when `pod` opt is provided, and tears it down on stop', async () => {
+    kcStore.clear();
+    asStore.clear();
+
+    // Stub PodClient — empty container, NOT_FOUND on missing reads.
+    const podStore = new Map();
+    const podClient = {
+      async read(uri) {
+        if (!podStore.has(uri)) {
+          const e = new Error(`NOT_FOUND ${uri}`);
+          e.code = 'NOT_FOUND';
+          throw e;
+        }
+        return { content: podStore.get(uri), uri };
+      },
+      async write(uri, bytes) { podStore.set(uri, bytes); return { uri }; },
+      async list()           { return { entries: [] }; },
+    };
+
+    // Stub IdentitySync — capture start/stop calls.
+    const syncEvents = [];
+    class IdentitySync {
+      constructor(opts) { this.opts = opts; this.isRunning = false; syncEvents.push('ctor'); }
+      start() { this.isRunning = true;  syncEvents.push('start'); }
+      stop()  { this.isRunning = false; syncEvents.push('stop');  }
+      onForeground() { syncEvents.push('fg'); }
+    }
+
+    const agent = await createMeshAgent({
+      label: 'with-pod',
+      pod: {
+        webid:    'https://alice.example/profile/card#me',
+        mnemonic: generateMnemonic(),
+        podClient,
+        podRoot:  'https://alice.example/',
+        _identitySyncCtor: IdentitySync,
+      },
+    });
+    expect(agent._identityWiring).toBeTruthy();
+    expect(agent._identityWiring.bootstrap).toBeInstanceOf(Bootstrap);
+    expect(agent._identityWiring.podStore.root).toBe('https://alice.example/canopy/');
+    expect(agent._identityWiring.sync.isRunning).toBe(true);
+    expect(syncEvents).toEqual(['ctor', 'start']);
+
+    await agent.stop();
+    // 'stop' on the agent should fire the dispose, which stops the sync.
+    expect(agent._identityWiring.sync.isRunning).toBe(false);
+    expect(syncEvents).toContain('stop');
   });
 
   it('upserts inbound hellos into the PeerGraph as hops:0/via:null', async () => {
