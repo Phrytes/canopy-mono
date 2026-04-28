@@ -152,3 +152,29 @@ Ed25519 signature from the original sender render a `🔒 verified`
 indicator (Group Z / DD1). Direct messages omit the badge because the
 sealed envelope already authenticates them; unsigned hops render the
 message but without the badge.
+
+## NKN — rendezvous-less reachability
+
+Beyond mDNS / BLE / relay, the SDK also ships an `NknTransport`
+(`@canopy/core`) that connects to the
+[NKN](https://nkn.org) public messaging network.  This is useful in
+the case where two phones don't share a relay URL and have no direct
+LAN/BLE path — both ends only need NKN access, and the address is
+derived from the agent's identity seed (no operator credentials
+needed).
+
+The mesh-demo doesn't enable NKN by default — to try it, add an
+`NknTransport` to your agent in `src/agent.js`:
+
+```js
+import { NknTransport } from '@canopy/core';
+
+const nkn = new NknTransport({ identity });
+await nkn.connect();
+agent.addTransport('nkn', nkn);
+```
+
+`RoutingStrategy` will then pick NKN per peer when nothing else
+reaches.  See the repo root [`README.md`](../../README.md)
+§Reachability for the bigger picture across all four mechanisms
+(direct / relay / NKN / hop).
