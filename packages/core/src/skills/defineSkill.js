@@ -60,6 +60,7 @@ export function defineSkill(id, handler, opts = {}) {
     policy:         opts.policy       ?? 'on-request',
     posture:        _validatePosture(opts.posture, id),
     humanInTheLoop: _validateHumanInTheLoop(opts.humanInTheLoop, id),
+    requiredRole:   opts.requiredRole ?? null,
     enabled:        opts.enabled      ?? true,
   };
 }

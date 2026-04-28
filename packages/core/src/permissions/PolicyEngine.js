@@ -14,6 +14,7 @@
  */
 import { TIER_LEVEL }    from './TrustRegistry.js';
 import { CapabilityToken } from './CapabilityToken.js';
+import { roleRank }        from './Roles.js';
 
 export class PolicyDeniedError extends Error {
   constructor(code, message) {
@@ -28,16 +29,20 @@ export class PolicyEngine {
   #skillRegistry;
   #agentPubKey;   // this agent's pubKey, used to verify token.agentId binding
 
+  #groupManager;
+
   /**
    * @param {object} opts
    * @param {import('./TrustRegistry.js').TrustRegistry}         opts.trustRegistry
    * @param {import('../skills/SkillRegistry.js').SkillRegistry} opts.skillRegistry
    * @param {string} [opts.agentPubKey]  — this agent's Ed25519 pubKey (base64url)
+   * @param {import('./GroupManager.js').GroupManager} [opts.groupManager]  — D3: enables `requiredRole` checks
    */
-  constructor({ trustRegistry, skillRegistry, agentPubKey = null }) {
+  constructor({ trustRegistry, skillRegistry, agentPubKey = null, groupManager = null }) {
     this.#trustRegistry = trustRegistry;
     this.#skillRegistry = skillRegistry;
     this.#agentPubKey   = agentPubKey;
+    this.#groupManager  = groupManager;
   }
 
   /**
@@ -80,6 +85,40 @@ export class PolicyEngine {
         'POLICY_NEVER',
         `Skill "${skillId}" is not available to external callers`,
       );
+    }
+
+    // D3: role-aware group check.  A skill may declare
+    //   requiredRole: { group: <groupId>, role: <roleId> }
+    // to require the caller hold a group proof at or above the given role.
+    if (skill.requiredRole) {
+      if (!this.#groupManager) {
+        throw new PolicyDeniedError(
+          'NO_GROUP_MANAGER',
+          `Skill "${skillId}" requires a group role but PolicyEngine has no GroupManager wired`,
+        );
+      }
+      const { group, role } = skill.requiredRole;
+      if (!group || !role) {
+        throw new PolicyDeniedError(
+          'INVALID_REQUIRED_ROLE',
+          `Skill "${skillId}" requiredRole must specify { group, role }`,
+        );
+      }
+      const callerRole = await this.#groupManager.getRole(peerPubKey, group);
+      if (!callerRole) {
+        throw new PolicyDeniedError(
+          'NOT_A_MEMBER',
+          `Skill "${skillId}" requires membership in group "${group}"`,
+        );
+      }
+      const callerRank   = roleRank(callerRole) ?? 0;
+      const requiredRank = roleRank(role)        ?? 0;
+      if (callerRank < requiredRank) {
+        throw new PolicyDeniedError(
+          'INSUFFICIENT_ROLE',
+          `Skill "${skillId}" requires role "${role}" in group "${group}" but caller has "${callerRole}"`,
+        );
+      }
     }
 
     if (skill.policy === 'always-allow') {
