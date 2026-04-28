@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | in-progress |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-28 (B2 done) |
+| **Last updated** | 2026-04-28 (B3 in-progress) |
 | **Owner** | unassigned |
 | **Blocked on** | partial — B1 starts immediately; B2–B5 need Track A1 done |
 
@@ -253,9 +253,9 @@ Hand-off:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | in-progress |
 | **Tag** | [NEW] |
-| **Notes** | Depends on B2.  Decide Q-B.3 + Q-B.4 before starting. |
+| **Notes** | Depends on B2.  Q-B.3 + Q-B.4 locked 2026-04-29. |
 
 **Files:**
 
