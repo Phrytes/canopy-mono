@@ -150,13 +150,28 @@ describe('FileSystemSource', () => {
   });
 });
 
-// ── SolidPodSource stub ───────────────────────────────────────────────────────
+// ── SolidPodSource ───────────────────────────────────────────────────────────
+//
+// Detailed unit tests with mocked fetch live in
+// `test/storage/SolidPodSource.unit.test.js`.  CSS integration tests
+// (gated by `CSS_URL`) live in `test/storage/SolidPodSource.css.test.js`.
+// Here we only assert the constructor/shape so the existing suite keeps
+// covering it.
 
-describe('SolidPodSource', () => {
-  it('throws NOT_IMPLEMENTED on all methods', async () => {
-    const s = new SolidPodSource({ podUrl: 'https://pod.example.org/', credential: 'tok' });
-    await expect(s.read('x')).rejects.toMatchObject({ code: 'NOT_IMPLEMENTED' });
-    await expect(s.write('x', '')).rejects.toMatchObject({ code: 'NOT_IMPLEMENTED' });
+describe('SolidPodSource (smoke)', () => {
+  it('exposes the DataSource API and the new `exists` method', () => {
+    const s = new SolidPodSource({ podUrl: 'https://pod.example.org/' });
+    expect(typeof s.read).toBe('function');
+    expect(typeof s.write).toBe('function');
+    expect(typeof s.delete).toBe('function');
+    expect(typeof s.list).toBe('function');
+    expect(typeof s.exists).toBe('function');
+    expect(s.podUrl).toBe('https://pod.example.org/');
+  });
+
+  it('query() throws INVALID_ARGUMENT (not supported on LDP)', async () => {
+    const s = new SolidPodSource({ podUrl: 'https://pod.example.org/' });
+    await expect(s.query({})).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
   });
 });
 
