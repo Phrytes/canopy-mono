@@ -453,7 +453,7 @@ modify:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
 | **Notes** | Single agent.  Builds the contracts that A5b1 + A5b2 share.  Small (~30% of A5 total). |
 
@@ -473,13 +473,13 @@ modify:
 
 **Sequence:**
 
-- [ ] 1. Create `packages/pod-client/package.json`: `"name": "@canopy/pod-client"`, `"type": "module"`, `"main": "src/index.js"`, `"@canopy/core": "file:../core"` dep, `vitest` dev dep, `test` script.
-- [ ] 2. Add `"test:pod-client": "npm run test --prefix packages/pod-client"` to root `package.json` `scripts`; extend the root `test` script to include it.
-- [ ] 3. Run `npm install` from `packages/pod-client/` to materialize `node_modules`.
-- [ ] 4. Implement `Errors.js` per [`pod-client-api.md` §Error model](../Design-v3/pod-client-api.md#error-model).  Base `PodClientError extends Error` with `{ code, uri?, cause?, retryable }`.  Subclasses: `AuthError`, `CapabilityError`, `NotFoundError`, `ConflictError`, `NetworkError`, `PolicyError`, `MalformedResourceError`, `EncryptionError`, `ConventionError`.  Export `mapSourceCode(code)` helper that maps `SolidPodSource` `.code` strings (`NOT_FOUND` → `NotFoundError`, `UNAUTHORIZED` → `AuthError`, `FORBIDDEN` → `CapabilityError`, `CONFLICT` → `ConflictError`, `RATE_LIMITED` → `PolicyError`, `SERVER_ERROR`/`HTTP_ERROR` → `NetworkError`, `NETWORK_ERROR` → `NetworkError`, `INVALID_ARGUMENT` → `PodClientError`).  A3's convention codes (`HASH_MISMATCH`, `INVALID_MANIFEST`, `EXTERNAL_STORE_NOT_CONFIGURED`, `EXTERNAL_STORE_BAD_RESPONSE`) map to `ConventionError`.
-- [ ] 5. Implement `Auth/Auth.js` — JSDoc-only abstract describing the interface: `getAuthHeaders(uri, method) → Promise<Record<string,string>>`, `identity() → string`, optional `refresh()` and `close()`.  No implementation; A5b1 fills these in.
-- [ ] 6. `src/index.js`: re-export everything from `Errors.js` and `Auth/Auth.js`.  Leave a `// PodClient + Auth concretes added in A5b` comment for the next agents.
-- [ ] 7. Smoke-test: `Errors.test.js` constructs each error subclass, asserts `instanceof PodClientError`, asserts `code` field, asserts `mapSourceCode` mapping table.  Run `npm test --prefix packages/pod-client` and `npm test` from root — all green.
+- [x] 1. Create `packages/pod-client/package.json`: `"name": "@canopy/pod-client"`, `"type": "module"`, `"main": "src/index.js"`, `"@canopy/core": "file:../core"` dep, `vitest` dev dep, `test` script.
+- [x] 2. Add `"test:pod-client": "npm run test --prefix packages/pod-client"` to root `package.json` `scripts`; extend the root `test` script to include it.
+- [x] 3. Run `npm install` from `packages/pod-client/` to materialize `node_modules`.
+- [x] 4. Implement `Errors.js` per [`pod-client-api.md` §Error model](../Design-v3/pod-client-api.md#error-model).  Base `PodClientError extends Error` with `{ code, uri?, cause?, retryable }`.  Subclasses: `AuthError`, `CapabilityError`, `NotFoundError`, `ConflictError`, `NetworkError`, `PolicyError`, `MalformedResourceError`, `EncryptionError`, `ConventionError`.  Export `mapSourceCode(code)` helper that maps `SolidPodSource` `.code` strings (`NOT_FOUND` → `NotFoundError`, `UNAUTHORIZED` → `AuthError`, `FORBIDDEN` → `CapabilityError`, `CONFLICT` → `ConflictError`, `RATE_LIMITED` → `PolicyError`, `SERVER_ERROR`/`HTTP_ERROR` → `NetworkError`, `NETWORK_ERROR` → `NetworkError`, `INVALID_ARGUMENT` → `PodClientError`).  A3's convention codes (`HASH_MISMATCH`, `INVALID_MANIFEST`, `EXTERNAL_STORE_NOT_CONFIGURED`, `EXTERNAL_STORE_BAD_RESPONSE`) map to `ConventionError`.
+- [x] 5. Implement `Auth/Auth.js` — JSDoc-only abstract describing the interface: `getAuthHeaders(uri, method) → Promise<Record<string,string>>`, `identity() → string`, optional `refresh()` and `close()`.  No implementation; A5b1 fills these in.
+- [x] 6. `src/index.js`: re-export everything from `Errors.js` and `Auth/Auth.js`.  Leave a `// PodClient + Auth concretes added in A5b` comment for the next agents.
+- [x] 7. Smoke-test: `Errors.test.js` constructs each error subclass, asserts `instanceof PodClientError`, asserts `code` field, asserts `mapSourceCode` mapping table.  Run `npm test --prefix packages/pod-client` and `npm test` from root — all green.
 
 **DoD:**
 - New `@canopy/pod-client` package boots; `npm test --prefix packages/pod-client` runs Errors smoke test green.
@@ -489,7 +489,49 @@ modify:
 **Notes (team scratchpad):**
 
 ```
-(empty — fill in when A5a starts)
+2026-04-28 (agent A5a):
+- Package scaffolded at packages/pod-client/.  All 38 smoke tests green
+  via `npm run test:pod-client` from root.
+- Cross-package import verified end-to-end: `import { ... } from
+  '@canopy/pod-client'` resolves Auth, Errors, mapSourceCode cleanly
+  via the file:../core link.  No linking gotchas.
+- Subclass default codes chosen for ergonomic throw-without-opts:
+    AuthError              → UNAUTHORIZED
+    CapabilityError        → FORBIDDEN
+    NotFoundError          → NOT_FOUND
+    ConflictError          → CONFLICT
+    NetworkError           → NETWORK_ERROR  (retryable: true by default)
+    PolicyError            → RATE_LIMITED
+    MalformedResourceError → MALFORMED_RESOURCE   (no source code from A1; new tag)
+    EncryptionError        → ENCRYPTION_FAILED    (no source code from A3; new tag)
+    ConventionError        → CONVENTION_ERROR     (default; mapSourceCode preserves
+                                                  HASH_MISMATCH / INVALID_MANIFEST /
+                                                  EXTERNAL_STORE_NOT_CONFIGURED /
+                                                  EXTERNAL_STORE_BAD_RESPONSE on the
+                                                  instance via the `code` opt)
+  All defaults are overridable through the constructor `opts.code`.
+- mapSourceCode threads `{ uri, cause }` through.  Unknown codes → base
+  PodClientError preserving raw code (forensic value for A5b2's mock
+  tests + future A1 code additions).
+- A5b1 / A5b2 can both extend `src/index.js`: marker comment is
+    `// PodClient + Auth concretes (CapabilityAuth, SolidOidcAuth) added in A5b1 + A5b2.`
+  Both adds are pure appends; merge should be trivial.  If you reorder
+  the existing exports, please coordinate.
+- Pre-existing test failure (NOT introduced by A5a, NOT a regression):
+  packages/react-native — BleTransport.test.js + MdnsTransport.test.js
+  fail with rollup `Expected 'from', got 'typeOf'`.  Confirmed identical
+  failure on track-A-pod-substrate HEAD before any A5a edits.  Root
+  `npm test` chain therefore halts at react-native.  All other packages
+  (core: 887 pass / 13 skip; relay: 28 pass; pod-client: 38 pass) are
+  green.  Flag for whoever owns Track ?-RN-test-infra.
+- node_modules in the worktree was missing for core/react-native/relay
+  on arrival; ran `npm install --prefer-offline --no-audit --no-fund`
+  in each.  Fast (<5s each).  package-lock changes for relay + RN are
+  artifacts of that install, not behavioural changes.
+- Worktree note: this worktree branch (`worktree-agent-...`) was checked
+  out from an older commit pre-dating the track-A-pod-substrate branch
+  itself.  Reset to `track-A-pod-substrate` HEAD before starting work,
+  then committed on top.  Orchestrator merge should be a fast-forward.
 ```
 
 ---
