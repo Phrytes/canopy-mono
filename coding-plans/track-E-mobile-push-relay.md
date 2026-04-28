@@ -4,7 +4,7 @@
 | ---------------- | ----------------------------------------- |
 | **Status**       | in-progress                               |
 | **Started**      | 2026-04-28                                |
-| **Last updated** | 2026-04-28 — E1 done (15 tests); E2a + E2b in-progress |
+| **Last updated** | 2026-04-28 — E1 done (15 tests); E2b done (42 tests); E2a in-progress |
 | **Owner**        | unassigned                                |
 | **Blocked on**   | nothing — fully independent of A/B/C/D/F. |
 
@@ -170,38 +170,63 @@ create:
 
 | | |
 |---|---|
-| **Status** | in-progress |
+| **Status** | done |
 | **Tag** | [EXTENDS] `packages/relay/` |
-| **Notes** | Independent.  Decide Q-E.3 before starting. |
+| **Notes** | Independent.  Q-E.3 locked: SQLite + `QueueStore` interface, `MemoryQueueStore` for tests. |
 
 **Files:**
 
 ```
 modify:
   packages/relay/src/server.js                            # multi-recipient routing
+  packages/relay/package.json                             # better-sqlite3 dep
 
 create:
   packages/relay/src/MultiRecipientQueue.js
+  packages/relay/src/queueStores/QueueStore.js
+  packages/relay/src/queueStores/MemoryQueueStore.js
+  packages/relay/src/queueStores/SqliteQueueStore.js
   packages/relay/test/MultiRecipientQueue.test.js
 ```
 
 **Sequence:**
 
-- [ ] 1. Lock Q-E.3 (persistence).
-- [ ] 2. Define request/response shapes: `request → list of matching subscribers → fan-out → fan-in responses → caller gets aggregated result`.
-- [ ] 3. Persist queue per Q-E.3.
-- [ ] 4. Timeout handling: caller gets partial responses if some recipients don't reply within deadline.
-- [ ] 5. Tests: fan-out to N subscribers; fan-in with all responses; partial responses on timeout; subscriber offline + reconnect.
+- [x] 1. Lock Q-E.3 (persistence).
+- [x] 2. Define request/response shapes: `request → list of matching subscribers → fan-out → fan-in responses → caller gets aggregated result`.
+- [x] 3. Persist queue per Q-E.3.
+- [x] 4. Timeout handling: caller gets partial responses if some recipients don't reply within deadline.
+- [x] 5. Tests: fan-out to N subscribers; fan-in with all responses; partial responses on timeout; subscriber offline + reconnect.
 
 **DoD:**
-- Multi-recipient broadcast works end-to-end.
-- Persistence survives relay restart.
-- Tests green.
+- [x] Multi-recipient broadcast works end-to-end.
+- [x] Persistence survives relay restart (verified via `SqliteQueueStore` round-trip test using `os.tmpdir()`).
+- [x] Tests green (42/42 in `packages/relay`; 11 new in `MultiRecipientQueue.test.js` + 3 new in `server.test.js`).
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+- New wire types (additive, do NOT replace existing ones):
+    Client → Relay: { type: 'multi-request', targets: string[], payload, timeoutMs? }
+    Relay → Target: { type: 'multi-deliver', id, from, payload }
+    Target → Relay: { type: 'multi-response-from-target', id, response }
+    Relay → Client: { type: 'multi-response', id, responses, partial }
+- `QueueStore` is the swap point.  `MemoryQueueStore` for tests, `SqliteQueueStore`
+  for prod.  Redis store can drop in later; the interface is async-shaped.
+- `MultiRecipientQueue.fanOut`'s `dispatch` receives `(target, payload, ctx)`
+  where `ctx.id` is the request id.  The relay uses this to embed the id in
+  `multi-deliver` so targets can correlate their fan-in responses.
+- `better-sqlite3@^11.10.0` (the only new dep) installs from prebuild on Linux;
+  no native compile required.
+- `resumeOpen()` exists and reports the count of in-flight requests after a
+  restart, but does NOT yet re-attach a wait-loop / re-serve callers.  Out of
+  scope for E2b DoD ("persistence survives relay restart" — verified by the
+  SQLite round-trip test).  Future work: tie `resumeOpen` into the relay
+  startup so reconnecting callers can be served their pending aggregated result.
+- E2c (push integration) hooks the offline-target case in `dispatch` — keep
+  that in mind when wiring `PushTrigger`.
+- E2a also touches `server.js` (auth at the connect/register phase); E2b's
+  edits are confined to a new branch in the message-dispatch loop and
+  constructor option plumbing — should merge cleanly.
 ```
 
 ---

@@ -14,6 +14,13 @@
  *   Relay  → Client: { type: 'peer-list', peers: ['...','...'] }    // response + broadcast
  *   Relay  → Client: { type: 'error', message: '<reason>' }
  *
+ * Multi-recipient (E2b):
+ *   Client → Relay: { type: 'multi-request', targets: [...], payload: {...},
+ *                     timeoutMs?: number }
+ *   Relay  → Target: { type: 'multi-deliver', id, from: '<callerPubKey>', payload }
+ *   Target → Relay: { type: 'multi-response-from-target', id, response }
+ *   Relay  → Client: { type: 'multi-response', id, responses: [...], partial: bool }
+ *
  * When `tlsCert` and `tlsKey` are supplied, the server listens on HTTPS/WSS.
  * Without them, HTTP/WS. Usage:
  *
@@ -30,6 +37,7 @@ import { readFile, stat }                    from 'node:fs/promises';
 import { extname, join, resolve }            from 'node:path';
 import { networkInterfaces }                 from 'node:os';
 import { WebSocketServer }                   from 'ws';
+import { MultiRecipientQueue }               from './MultiRecipientQueue.js';
 
 const DEFAULT_PORT       = 8787;
 const DEFAULT_QUEUE_TTL  = 5 * 60_000;  // 5 min
@@ -59,6 +67,10 @@ const MIME = {
  * @param {number}   [opts.queueTtlMs]       How long to buffer messages for offline peers
  * @param {number}   [opts.queueCap]         Max buffered messages per offline peer
  * @param {boolean}  [opts.log=false]        Log per-message events to stdout
+ * @param {object}   [opts.multiRecipientQueueOpts]  Forwarded to `MultiRecipientQueue`
+ *                                                   (e.g. `{ store, defaultTimeoutMs }`).
+ *                                                   Defaults to a fresh in-memory queue.
+ * @param {MultiRecipientQueue} [opts.multiRecipientQueue]  Inject a pre-built queue (tests).
  * @returns {Promise<{
  *   httpServer: import('node:http').Server | import('node:https').Server,
  *   wss: WebSocketServer,
@@ -75,10 +87,16 @@ export async function startRelay(opts = {}) {
     tlsKey,
     serveStaticDir,
     indexFile       = 'index.html',
-    queueTtlMs      = DEFAULT_QUEUE_TTL,
-    queueCap        = DEFAULT_QUEUE_CAP,
-    log             = false,
+    queueTtlMs                = DEFAULT_QUEUE_TTL,
+    queueCap                  = DEFAULT_QUEUE_CAP,
+    log                       = false,
+    multiRecipientQueue       = undefined,
+    multiRecipientQueueOpts   = undefined,
   } = opts;
+
+  // Multi-recipient (E2b) — additive.  Defaults to a fresh in-memory queue.
+  const mrQueue = multiRecipientQueue
+    ?? new MultiRecipientQueue(multiRecipientQueueOpts ?? {});
 
   const hasTls = Boolean(tlsCert && tlsKey);
   if ((tlsCert && !tlsKey) || (!tlsCert && tlsKey)) {
@@ -192,6 +210,79 @@ export async function startRelay(opts = {}) {
           type:  'peer-list',
           peers: [...clients.keys()],
         }));
+        return;
+      }
+
+      // ── multi-recipient request (E2b) ───────────────────────────────────────
+      // Caller fans out a payload to N targets; relay aggregates fan-in
+      // responses (or partial set on timeout) and replies to the caller.
+      if (msg.type === 'multi-request') {
+        if (!registeredAddress) {
+          socket.send(JSON.stringify({ type: 'error', message: 'multi-request requires register first' }));
+          return;
+        }
+        const { targets, payload, timeoutMs } = msg;
+        if (!Array.isArray(targets)) {
+          socket.send(JSON.stringify({ type: 'error', message: 'multi-request: targets must be an array' }));
+          return;
+        }
+
+        // Capture caller socket up-front; resolve sends back to whoever asked.
+        const callerSocket = socket;
+        const callerAddress = registeredAddress;
+
+        // Dispatch — deliver to a single connected target (drops if offline).
+        // Offline-target wake-hint is E2c's job; here we just don't deliver.
+        // `ctx.id` is supplied by the queue so we can embed it in the wire
+        // frame for fan-in correlation.
+        const dispatchWithId = (target, p, ctx) => {
+          const sock = clients.get(target);
+          if (!sock || sock.readyState !== 1) return;
+          try {
+            sock.send(JSON.stringify({
+              type:    'multi-deliver',
+              id:      ctx?.id,
+              from:    callerAddress,
+              payload: p,
+            }));
+          } catch { /* socket may have raced a close */ }
+        };
+
+        mrQueue.fanOut({
+          callerPubKey: callerAddress,
+          targets,
+          payload,
+          timeoutMs,
+          dispatch: dispatchWithId,
+        }).then((result) => {
+          if (callerSocket.readyState !== 1) return;
+          try {
+            callerSocket.send(JSON.stringify({
+              type:      'multi-response',
+              id:        result.id,
+              responses: result.responses,
+              partial:   result.partial,
+            }));
+          } catch { /* caller may have disconnected */ }
+        }).catch((err) => {
+          if (callerSocket.readyState !== 1) return;
+          try {
+            callerSocket.send(JSON.stringify({
+              type:    'error',
+              message: `multi-request failed: ${err?.message ?? String(err)}`,
+            }));
+          } catch {}
+        });
+        return;
+      }
+
+      // ── multi-recipient fan-in response from a target ───────────────────────
+      if (msg.type === 'multi-response-from-target') {
+        const { id, response } = msg;
+        if (!id || !registeredAddress) return;
+        // Best-effort: addResponse returns null for unknown/closed ids.
+        mrQueue.addResponse(id, registeredAddress, response).catch(() => {});
+        return;
       }
     });
 
@@ -234,9 +325,10 @@ export async function startRelay(opts = {}) {
     clients.clear();
     await new Promise(r => wss.close(() => r()));
     await new Promise(r => httpServer.close(() => r()));
+    try { await mrQueue.close(); } catch {}
   }
 
-  return { httpServer, wss, port: boundPort, tls: hasTls, stop };
+  return { httpServer, wss, port: boundPort, tls: hasTls, stop, multiRecipientQueue: mrQueue };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
