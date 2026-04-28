@@ -90,6 +90,11 @@ export { sendHello, handleHello }                         from './protocol/hello
 export { requestSkills, handleSkillDiscovery }            from './protocol/skillDiscovery.js';
 export { callSkill, handleTaskRequest, handleTaskOneWay } from './protocol/taskExchange.js';
 export { subscribe, unsubscribe, publish, handlePubSub }  from './protocol/pubSub.js';
+export {
+  SkillsPubSub,
+  buildTopic               as buildSkillTopic,
+  audienceFromHumanInTheLoop,
+} from './protocol/SkillsPubSub.js';
 export { streamOut, handleStreamChunk, streamBidi }       from './protocol/streaming.js';
 export {
   handleSessionOpen, handleSessionMessage, handleSessionClose,
@@ -149,6 +154,13 @@ export { SolidVault }        from './storage/SolidVault.js';
 export { StorageManager }    from './storage/StorageManager.js';
 export { PodExporter }       from './storage/PodExporter.js';
 export { PodImporter }       from './storage/PodImporter.js';
+export {
+  setUnionWithDedupe,
+  appendOnlyEventLog,
+  lastWriteWins,
+  MergeContracts,
+}                            from './storage/MergeContracts/index.js';
+export { FederatedReader }   from './storage/FederatedReader.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 export { AgentConfig } from './config/AgentConfig.js';

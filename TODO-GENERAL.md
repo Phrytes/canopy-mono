@@ -1,5 +1,22 @@
 # General TODOs
 
+## D5 ↔ A5 CSS integration test (2026-04-28)
+
+D5's `FederatedReader` ships with mock-PodClient unit tests only.  Now
+that Track A5 (`@canopy/pod-client`) is complete, a real-end-to-end
+test would construct N `PodClient` instances against a CSS pod with
+overlapping containers, federate-read across them, and verify the
+merge contract gives the expected output.
+
+Cleanest place to land this: as part of a Track-H app that actually
+uses the federated read (e.g. #4 Tasks DAG/work-log split, or #7
+Household state projection across member pods).  Until then, the
+plumbing is verified at the seam by D5's unit tests + A5's CSS tests
+independently.
+
+---
+
+
 A collected list of ideas, open questions, and follow-up work items that
 are not scheduled into any specific group yet. Promote items out of here
 into `EXTRACTION-PLAN.md` / `CODING-PLAN.md` when they become concrete.
