@@ -158,7 +158,7 @@ tests (create):
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [REPLACES STUB] |
 | **Notes** | Independent of A1 — can be done in parallel. |
 
@@ -176,19 +176,19 @@ tests (create):
 
 **Sequence:**
 
-- [ ] 1. Add `@inrupt/solid-client-authn-node` to `packages/core/package.json`. Browser variant (`@inrupt/solid-client-authn-browser`) goes into `packages/react-native/package.json` later (Track B); for now Node-only is fine.
-- [ ] 2. Public API:
-  - [ ] `constructor({ webid, oidcIssuer?, redirectUrl?, vault? })` — `vault` is the existing `Vault` instance for token storage.
-  - [ ] `login(opts)` — performs OIDC flow. For Node, token-issuer-based; for browser/RN, redirect-based (RN wiring is Track B).
-  - [ ] `logout()` — invalidate tokens, clear vault entries.
-  - [ ] `isAuthenticated()` — bool.
-  - [ ] `getAuthenticatedFetch()` — returns a `fetch` function bound to the session, suitable for `SolidPodSource`'s constructor.
-  - [ ] `refresh()` — refresh tokens; emit `'auth-state'` event.
-  - [ ] `podRoot` getter — derived from WebID profile.
-- [ ] 3. Token storage in `Vault` under namespace `solid-oidc:<webid>`. Keys: `access_token`, `refresh_token`, `expires_at`, `id_token`.
-- [ ] 4. Implement automatic refresh when access token within 60s of expiry.
-- [ ] 5. Unit tests with mocked OIDC server — login flow, refresh, logout, expired-without-refresh.
-- [ ] 6. CSS integration test — actually log in to a CSS instance, write + read a resource through `SolidPodSource` using the vault's authenticated fetch.
+- [x] 1. Add `@inrupt/solid-client-authn-node` to `packages/core/package.json`. Browser variant (`@inrupt/solid-client-authn-browser`) goes into `packages/react-native/package.json` later (Track B); for now Node-only is fine.
+- [x] 2. Public API:
+  - [x] `constructor({ webid, oidcIssuer?, redirectUrl?, vault? })` — `vault` is the existing `Vault` instance for token storage.
+  - [x] `login(opts)` — performs OIDC flow. For Node, token-issuer-based; for browser/RN, redirect-based (RN wiring is Track B).
+  - [x] `logout()` — invalidate tokens, clear vault entries.
+  - [x] `isAuthenticated()` — bool.
+  - [x] `getAuthenticatedFetch()` — returns a `fetch` function bound to the session, suitable for `SolidPodSource`'s constructor.
+  - [x] `refresh()` — refresh tokens; emit `'auth-state'` event.
+  - [x] `podRoot` getter — derived from WebID profile.
+- [x] 3. Token storage in `Vault` under namespace `solid-oidc:<webid>`. Keys: `access_token`, `refresh_token`, `expires_at`, `id_token`.
+- [x] 4. Implement automatic refresh when access token within 60s of expiry.
+- [x] 5. Unit tests with mocked OIDC server — login flow, refresh, logout, expired-without-refresh.
+- [x] 6. CSS integration test — actually log in to a CSS instance, write + read a resource through `SolidPodSource` using the vault's authenticated fetch.
 
 **DoD:**
 - No remaining `NOT_IMPLEMENTED` throws.
@@ -199,7 +199,53 @@ tests (create):
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 (agent):
+- Pinned @inrupt/solid-client-authn-node at 4.0.0 (current latest stable;
+  compatible with @inrupt/solid-client@3.0.0 already in core deps).
+- Class no longer extends `Vault`.  The previous stub did, but the spec
+  treats SolidVault as an OIDC session manager that *uses* a user-supplied
+  Vault for token storage — not as a Vault implementation itself.  It now
+  extends `EventEmitter` so it can emit 'auth-state'.
+- Login: Node `@inrupt/solid-client-authn-node` Session with client_id /
+  client_secret + optional refresh_token.  No-op `handleRedirect` so headless
+  Node flows don't crash.  No browser-side redirect flow — Track B.
+- Inrupt's own internal storage is bridged onto the supplied Vault via a
+  small `VaultBackedInruptStorage` adapter (IStorage = get/set/delete).
+  Inrupt internal keys are namespaced under `inrupt:` to avoid colliding
+  with our `solid-oidc:<webid>:*` keys.
+- Token absorption: NEW_TOKENS event handler persists access_token,
+  refresh_token, id_token, and expires_at on every refresh.  We also have
+  a fallback that pulls state directly off `session.info.expirationDate`
+  after `login()` because the Node session doesn't always emit NEW_TOKENS
+  on first login.  Unit-tested.
+- expires_at unit handling: SessionTokenSet `expiresAt` is sometimes
+  seconds-since-epoch in the wild.  Detect: any value < 1e12 is treated
+  as seconds and multiplied by 1000.  Stored as unix-ms in the vault.
+- Automatic refresh: `getAuthenticatedFetch()` checks `Date.now() >=
+  expiresAt - 60_000` before each request and triggers `refresh()`
+  transparently.  Refresh calls are coalesced via a single `#refreshing`
+  in-flight promise so concurrent fetches don't multi-refresh.
+- Persistence-across-processes: `login({})` with no opts will pull
+  client_id, client_secret, oidc_issuer and refresh_token from the
+  vault.  This is what gives us "fresh process re-login from refresh
+  token alone" without requiring the caller to pass creds twice.
+- podRoot: read WebID profile via global fetch (best-effort, works
+  unauthenticated for public WebIDs); regex out `pim:storage <uri>` from
+  Turtle, also handles JSON-LD's `@id` form.  Falls back to the WebID
+  origin if the profile is unreachable / has no storage triple.
+- Test seam: `_setSessionFactory(fn)` swaps the Inrupt Session ctor with
+  a fake.  Used by all unit tests so we never hit a real OIDC server.
+  Pass `null` to restore the default (lazy import of the Inrupt module).
+- CSS integration test: gated on `CSS_URL` + `CSS_WEBID` + `CSS_CLIENT_ID`
+  + `CSS_CLIENT_SECRET`.  Optional `CSS_OIDC_ISSUER`, `CSS_POD_ROOT`,
+  `CSS_SCRATCH`.  Skipped locally (no CSS available); test file is valid
+  per `vitest run` (4 tests reported as skipped).  Setup: use CSS's
+  `/idp/credentials/` endpoint to mint a (client_id, client_secret) pair.
+- Unit tests: 22 tests covering login, refresh (manual + auto-near-expiry),
+  logout, expired-without-refresh, persistence-across-instances, podRoot
+  extraction (Turtle pim:storage / fallback / fetch failure).
+- Full core test suite: 803 passed | 13 skipped — no pre-existing tests
+  broken by this change.
 ```
 
 ---
