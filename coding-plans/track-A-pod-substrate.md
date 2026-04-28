@@ -540,7 +540,7 @@ modify:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
 | **Notes** | Depends on A5a.  Runs in parallel with A5b2 (disjoint files). |
 
@@ -558,12 +558,12 @@ modify:
 
 **Sequence:**
 
-- [ ] 1. `CapabilityAuth.js` — constructor accepts `{ token, mode }` where `mode` must be `'pod-direct'` (v1; throw on `'agent-proxy'` with a "deferred" error).  `token` is a signed `PodCapabilityToken` (string JSON or instance).  On construction, parse + verify signature via `PodCapabilityToken.verify`; throw `AuthError` if invalid/expired.  `getAuthHeaders(uri, method)` returns `{ Authorization: 'Bearer <serialized-token>' }` (and includes any constraints headers if the token has rate-limit / etc. constraints — keep simple v1: just Bearer).  `identity()` returns the token's `subject`.  No `refresh` (capability tokens don't refresh).
-- [ ] 2. `SolidOidcAuth.js` — constructor accepts `{ vault }` where `vault` is a `SolidVault` instance.  `getAuthHeaders(uri, method)` either (a) invokes `vault.getAuthenticatedFetch()` and lets PodClient use that fetch directly, OR (b) sniffs the `Authorization` header from a sample request via the authenticated fetch.  Pick (a): expose `getAuthenticatedFetch()` on the auth itself so `PodClient` constructs `SolidPodSource(podRoot, { fetch: auth.getAuthenticatedFetch() })`.  `getAuthHeaders` becomes a thin compatibility shim that throws "use getAuthenticatedFetch()" — document why.  `identity()` returns the WebID.  `refresh()` delegates to `vault.refresh()`.  `close()` calls `vault.logout()`.
-- [ ] 3. Re-export both from `packages/pod-client/src/index.js`.  Coordinate this single line edit with A5b2 (probably trivial merge — A5b2 also adds a `PodClient` re-export; both edits land cleanly).
-- [ ] 4. Tests in `Auth.test.js`: 
-  - [ ] CapabilityAuth: valid token → headers contain Bearer.  Tampered token → throws `AuthError`.  Expired token → throws.
-  - [ ] SolidOidcAuth: mocked `SolidVault` (`isAuthenticated`/`getAuthenticatedFetch`/`refresh`/`logout`) — `getAuthenticatedFetch()` returns the wrapped fetch; `refresh()` propagates; `close()` calls `logout`.
+- [x] 1. `CapabilityAuth.js` — constructor accepts `{ token, mode }` where `mode` must be `'pod-direct'` (v1; throw on `'agent-proxy'` with a "deferred" error).  `token` is a signed `PodCapabilityToken` (string JSON or instance).  On construction, parse + verify signature via `PodCapabilityToken.verify`; throw `AuthError` if invalid/expired.  `getAuthHeaders(uri, method)` returns `{ Authorization: 'Bearer <serialized-token>' }` (and includes any constraints headers if the token has rate-limit / etc. constraints — keep simple v1: just Bearer).  `identity()` returns the token's `subject`.  No `refresh` (capability tokens don't refresh).
+- [x] 2. `SolidOidcAuth.js` — constructor accepts `{ vault }` where `vault` is a `SolidVault` instance.  `getAuthHeaders(uri, method)` either (a) invokes `vault.getAuthenticatedFetch()` and lets PodClient use that fetch directly, OR (b) sniffs the `Authorization` header from a sample request via the authenticated fetch.  Pick (a): expose `getAuthenticatedFetch()` on the auth itself so `PodClient` constructs `SolidPodSource(podRoot, { fetch: auth.getAuthenticatedFetch() })`.  `getAuthHeaders` becomes a thin compatibility shim that throws "use getAuthenticatedFetch()" — document why.  `identity()` returns the WebID.  `refresh()` delegates to `vault.refresh()`.  `close()` calls `vault.logout()`.
+- [x] 3. Re-export both from `packages/pod-client/src/index.js`.  Coordinate this single line edit with A5b2 (probably trivial merge — A5b2 also adds a `PodClient` re-export; both edits land cleanly).
+- [x] 4. Tests in `Auth.test.js`: 
+  - [x] CapabilityAuth: valid token → headers contain Bearer.  Tampered token → throws `AuthError`.  Expired token → throws.
+  - [x] SolidOidcAuth: mocked `SolidVault` (`isAuthenticated`/`getAuthenticatedFetch`/`refresh`/`logout`) — `getAuthenticatedFetch()` returns the wrapped fetch; `refresh()` propagates; `close()` calls `logout`.
 
 **DoD:**
 - Both auth classes exported and tested.
@@ -573,7 +573,18 @@ modify:
 **Notes (team scratchpad):**
 
 ```
-(empty — fill in when A5b1 starts)
+2026-04-28 — first agent timed out partway through, having only written
+CapabilityAuth.js (recovered + committed by orchestrator from the dead
+worktree).  Continuation agent finished SolidOidcAuth.js + Auth.test.js
++ index.js export.  Tests: 24 Auth tests added (12 CapabilityAuth +
+12 SolidOidcAuth).  Errors taxonomy unaffected (still 38 tests).
+Pod-client total: 62/62 passing.  Core: 887/900 (13 pre-existing skips),
+no regressions.
+
+SolidVault API spot-check: `webid` is a getter (string), `podRoot` is a
+getter (string|null), `getAuthenticatedFetch()` / `refresh()` / `logout()`
+are async methods on the instance.  SolidOidcAuth.identity() reads the
+`webid` getter directly (with fallbacks for non-SolidVault adapters).
 ```
 
 ---
