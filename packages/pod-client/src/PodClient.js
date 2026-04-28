@@ -16,12 +16,35 @@
  * Conflict detection (per-resource etag map) is populated here; A7 hangs the
  * 'conflict' event + retry policies off the same map.  In v1 we surface
  * `ConflictError` on 412 from the pod and let the caller handle.
+ *
+ * **No auto-sync.**  The SDK is on-demand by design.  The pod is the source
+ * of truth; this client reads, writes, lists, deletes — but it does NOT
+ * crawl the pod or maintain a background mirror.  Apps decide what to fetch
+ * and when.
+ *
+ * **Tombstones (`deleteLocal`) are the per-device exception path within
+ * whatever the app has chosen to sync.**  When you call `deleteLocal(uri)`,
+ * the pod is untouched; a tombstone is recorded in the `tombstoneStore` so
+ * that subsequent `client.list()` calls hide that URI on this device, and
+ * any app-level sync routine the app builds can skip it.  Use
+ * `clearTombstone(uri)` to undo a `deleteLocal`.  Use `deleteCompletely(uri)`
+ * (or its alias `delete(uri)`) to remove from the pod for everyone — that
+ * also drops any local tombstone (it is no longer relevant).
+ *
+ * The default `tombstoneStore` is `MemoryTombstones` (non-persistent).
+ * Production apps should pass a platform-appropriate adapter:
+ *   - Web:  `IndexedDBTombstones`
+ *   - RN:   `AsyncStorageTombstones`
+ *   - Node: `FileTombstones`
  */
 import {
+  Emitter,
   SolidPodSource,
 } from '@canopy/core';
 
 import { ConflictError, mapSourceCode } from './Errors.js';
+import { ConflictResolver }             from './ConflictResolver.js';
+import { MemoryTombstones }             from './tombstones/MemoryTombstones.js';
 
 // Inrupt's RDF API is loaded lazily inside `patch()` — pod-client itself does
 // not declare `@inrupt/solid-client` as a direct dep; we resolve it via the
@@ -34,13 +57,21 @@ async function loadInrupt() {
   return _inrupt;
 }
 
-const DEFAULT_APPEND_RETRIES = 3;
-const TEXT_CONTENT_TYPE_RE   = /^(text\/|application\/json\b|application\/.*\+json\b)/i;
+const DEFAULT_APPEND_RETRIES         = 3;
+const DEFAULT_CONFLICT_POLICY        = 'reject';   // Q-A.4 LOCK 2026-04-28
+const DEFAULT_CONFLICT_LISTENER_TIMEOUT_MS = 30_000;
+// Soft cap for fetching `remoteContent` to attach to the 'conflict' event.
+// Above this size, or for non-text content types, `remoteContent` is left
+// undefined and the listener can decide what to do (re-fetch via client.read,
+// merge by URI, etc.).  This bound also protects against runaway memory use.
+const REMOTE_CONTENT_FETCH_LIMIT     = 1_000_000;
+const TEXT_CONTENT_TYPE_RE           = /^(text\/|application\/json\b|application\/.*\+json\b)/i;
 
-export class PodClient {
+export class PodClient extends Emitter {
   #podSource;
   #auth;
   #etagMap = new Map(); // uri → { etag, lastModified }
+  #tombstoneStore;
   #closed = false;
 
   /**
@@ -48,17 +79,28 @@ export class PodClient {
    * @param {string} opts.podRoot         — root URI of the pod
    * @param {object} opts.auth            — an Auth instance (CapabilityAuth/SolidOidcAuth)
    * @param {object} [opts.options]
+   * @param {object} [opts.tombstoneStore] — `TombstoneStore` impl.  Defaults to
+   *   a `MemoryTombstones` (non-persistent).  Production apps should pass a
+   *   platform-appropriate adapter (`IndexedDBTombstones` /
+   *   `AsyncStorageTombstones` / `FileTombstones`) so deletions survive
+   *   process restarts.
    * @param {Function} [opts.podSourceFactory] — escape hatch for tests; receives
    *   `({ podUrl, fetch })` and returns a SolidPodSource-shaped object.
    */
-  constructor({ podRoot, auth, options, podSourceFactory } = {}) {
+  constructor({ podRoot, auth, options, tombstoneStore, podSourceFactory } = {}) {
+    super();
     if (!podRoot) throw mapSourceCode('INVALID_ARGUMENT', { message: 'PodClient: podRoot is required' });
     if (!auth)    throw mapSourceCode('INVALID_ARGUMENT', { message: 'PodClient: auth is required' });
-    this.#auth     = auth;
+    this.#auth          = auth;
+    this.#tombstoneStore = tombstoneStore ?? new MemoryTombstones();
     const fetchFn  = this.#buildFetch();
     const factory  = podSourceFactory ?? ((init) => new SolidPodSource(init));
     this.#podSource = factory({ podUrl: podRoot, fetch: fetchFn });
-    this.options    = { appendRetries: DEFAULT_APPEND_RETRIES, ...(options || {}) };
+    this.options    = {
+      appendRetries:           DEFAULT_APPEND_RETRIES,
+      conflictListenerTimeout: DEFAULT_CONFLICT_LISTENER_TIMEOUT_MS,
+      ...(options || {}),
+    };
   }
 
   /** Underlying SolidPodSource (or test-supplied stub).  Useful for advanced callers. */
@@ -66,6 +108,9 @@ export class PodClient {
 
   /** Internal etag/lastModified map — exposed for A7 conflict-detection layer. */
   get _etagMap() { return this.#etagMap; }
+
+  /** The configured `TombstoneStore`.  Exposed for tests + advanced callers. */
+  get tombstoneStore() { return this.#tombstoneStore; }
 
   // ── fetch wiring ──────────────────────────────────────────────────────────
 
@@ -143,6 +188,12 @@ export class PodClient {
     try {
       res = await this.#podSource.read(uri, opts);
     } catch (err) {
+      // 404-GC: if the resource is gone from the pod, any local tombstone is
+      // redundant (the resource was deleted by another device).  Best-effort:
+      // swallow tombstone-store errors so we never mask the real read failure.
+      if (err?.code === 'NOT_FOUND') {
+        try { await this.#tombstoneStore.remove(uri); } catch { /* swallow */ }
+      }
       this.#wrapAndThrow(err, uri);
     }
     if (res.etag || res.lastModified) {
@@ -153,20 +204,39 @@ export class PodClient {
   }
 
   /**
-   * List a container.
+   * List a container.  By default, URIs marked deleted-locally (via
+   * `deleteLocal`) are filtered out.  Pass `opts.includeTombstoned: true`
+   * to surface them (useful for "you previously deleted these locally —
+   * restore?").
    *
    * @param {string} containerUri
    * @param {object} [opts]
    * @param {boolean} [opts.recursive=false]
    * @param {(uri: string) => boolean} [opts.filter]
+   * @param {boolean} [opts.includeTombstoned=false]
    * @returns {Promise<{ container, entries }>}
    */
   async list(containerUri, opts = {}) {
     this.#ensureOpen();
+    // Strip pod-client-specific opts before forwarding to the pod source.
+    const sourceOpts = { ...opts };
+    delete sourceOpts.includeTombstoned;
+    delete sourceOpts.filter;
     try {
-      const res = await this.#podSource.list(containerUri, opts);
+      const res = await this.#podSource.list(containerUri, sourceOpts);
       let entries = res.entries;
       if (opts.filter) entries = entries.filter((e) => opts.filter(e.uri));
+      if (!opts.includeTombstoned) {
+        const filtered = [];
+        for (const e of entries) {
+          // Best-effort: if the tombstone store fails, surface the entry.
+          let isTombstoned = false;
+          try { isTombstoned = await this.#tombstoneStore.has(e.uri); }
+          catch { isTombstoned = false; }
+          if (!isTombstoned) filtered.push(e);
+        }
+        entries = filtered;
+      }
       return { ...res, entries };
     } catch (err) {
       this.#wrapAndThrow(err, containerUri);
@@ -177,17 +247,104 @@ export class PodClient {
    * Write a resource.  Auto-attaches `If-Match` from the in-memory etag map
    * unless `opts.force === true`.
    *
+   * On a 412 (write-conflict) the client:
+   *   1. Builds a `'conflict'` event carrying local + remote contents (the
+   *      remote is fetched on demand for small text/JSON; left undefined
+   *      for binary or oversized resources — listeners can re-read).
+   *   2. Emits `'conflict'`.  A listener may call:
+   *        - `event.resolveWith(content)` → re-write with `force: true`.
+   *        - `event.cancelWrite()`        → throw `ConflictError`.
+   *   3. If neither happens (no listener / listener does nothing within
+   *      `options.conflictListenerTimeout`), the call falls through to
+   *      `opts.conflictPolicy`:
+   *        - `'reject'`        — throw `ConflictError` (DEFAULT, per Q-A.4).
+   *        - `'lww'`           — silently retry with `force: true`.
+   *        - `'remote-wins'`   — abandon; resolve with `{ skipped: true,
+   *                              reason: 'remote-wins', ... }` and refresh
+   *                              the etag from the pod's current version.
+   *
    * @param {string} uri
    * @param {string|Uint8Array|ArrayBuffer|object} content
    * @param {object} [opts]
    * @param {string} [opts.contentType]
    * @param {string} [opts.ifMatch]
    * @param {boolean} [opts.force=false]
-   * @returns {Promise<{ uri, contentType, lastModified, etag, size }>}
+   * @param {'reject'|'lww'|'remote-wins'} [opts.conflictPolicy='reject']
+   * @returns {Promise<{ uri, contentType, lastModified, etag, size, skipped?: boolean, reason?: string }>}
    */
   async write(uri, content, opts = {}) {
     this.#ensureOpen();
+    const policy = opts.conflictPolicy ?? DEFAULT_CONFLICT_POLICY;
+    if (policy !== 'reject' && policy !== 'lww' && policy !== 'remote-wins') {
+      throw mapSourceCode('INVALID_ARGUMENT', {
+        message: `PodClient.write: invalid conflictPolicy '${policy}' (expected 'reject' | 'lww' | 'remote-wins')`,
+        uri,
+      });
+    }
+
+    try {
+      return await this.#writeOnce(uri, content, opts);
+    } catch (err) {
+      if (!(err instanceof ConflictError)) throw err;
+
+      // Internal callers (e.g. `append`'s retry loop) opt out of the 'conflict'
+      // event because the etag race is a known false positive that the caller
+      // is already handling.  Re-throw so the caller's loop sees it.
+      if (opts._suppressConflictEvent) throw err;
+
+      // Capture the local lastModified BEFORE we fetch the remote (which
+      // overwrites the etag map as a side effect).
+      const localLastModified = this.#etagMap.get(uri)?.lastModified ?? null;
+
+      // Listener fast-path: if no one is subscribed, skip the event entirely.
+      // For 'remote-wins' we still need a remote snapshot to fill the result.
+      const hasListener = this.listenerCount?.('conflict') > 0
+        || (this._h?.conflict && this._h.conflict.length > 0); // robustness across Emitter shapes
+      const needsRemote = hasListener || policy === 'remote-wins';
+      const remoteSnapshot = needsRemote ? await this.#fetchRemoteForConflict(uri) : null;
+
+      if (hasListener) {
+        const resolver = new ConflictResolver({
+          uri,
+          localContent:        content,
+          remoteContent:       remoteSnapshot?.content,
+          localLastModified,
+          remoteLastModified:  remoteSnapshot?.lastModified ?? null,
+        });
+
+        this.emit('conflict', resolver);
+
+        const decision = await resolver._wait(this.options.conflictListenerTimeout);
+
+        if (decision.kind === ConflictResolver.RESOLVE) {
+          // Listener supplied merged content — force-overwrite.
+          return this.#writeOnce(uri, decision.content, { ...opts, force: true });
+        }
+        if (decision.kind === ConflictResolver.CANCEL) {
+          throw err;
+        }
+        // TIMEOUT → fall through to policy default.
+      }
+      // No listener (or listener did nothing) → policy fallthrough.
+      if (policy === 'reject')      throw err;
+      if (policy === 'lww')         return this.#writeOnce(uri, content, { ...opts, force: true });
+      if (policy === 'remote-wins') return this.#abandonForRemote(uri, remoteSnapshot);
+      throw err; // unreachable
+    }
+  }
+
+  /**
+   * Single-shot write.  Pulls etag from the map, JSON-encodes objects,
+   * forwards to `#podSource.write`, and updates the etag map on success.
+   * Throws the `mapSourceCode`-wrapped error on failure (so callers see
+   * `ConflictError` for 412s).
+   *
+   * @internal
+   */
+  async #writeOnce(uri, content, opts = {}) {
     const writeOpts = { ...opts };
+    delete writeOpts.conflictPolicy; // not for the source layer
+    delete writeOpts._suppressConflictEvent;
     if (!opts.force && !opts.ifMatch) {
       const known = this.#etagMap.get(uri);
       if (known?.etag)              writeOpts.ifMatch         = known.etag;
@@ -213,6 +370,54 @@ export class PodClient {
       this.#etagMap.set(uri, { etag: res.etag, lastModified: res.lastModified });
     }
     return res;
+  }
+
+  /**
+   * Best-effort fetch of the remote version on a 412, so we can attach it to
+   * the `'conflict'` event.  Returns `null` if the read fails; otherwise the
+   * raw read result with `content` decoded for small text/JSON, or
+   * `undefined` for binary/oversized payloads.
+   *
+   * Side effect: refreshes the etag map from the just-read remote so a
+   * subsequent `force: true` write or a `'remote-wins'` resolution has the
+   * pod's current state.
+   *
+   * @internal
+   */
+  async #fetchRemoteForConflict(uri) {
+    try {
+      const res = await this.#podSource.read(uri);
+      if (res?.etag || res?.lastModified) {
+        this.#etagMap.set(uri, { etag: res.etag, lastModified: res.lastModified });
+      }
+      const isText = TEXT_CONTENT_TYPE_RE.test(res?.contentType || '');
+      const tooBig = typeof res?.size === 'number' && res.size > REMOTE_CONTENT_FETCH_LIMIT;
+      const content = (!tooBig && isText && res?.content !== undefined && res?.content !== null)
+        ? this.#decode(res.content, res.contentType, 'auto')
+        : undefined;
+      return { ...res, content };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Caller picked `conflictPolicy: 'remote-wins'`.  Refresh our etag from
+   * the pod's current version (already done in `#fetchRemoteForConflict`)
+   * and resolve the write promise with a `skipped: true` shape.
+   *
+   * @internal
+   */
+  #abandonForRemote(uri, remoteSnapshot) {
+    return {
+      uri,
+      contentType:  remoteSnapshot?.contentType,
+      lastModified: remoteSnapshot?.lastModified,
+      etag:         remoteSnapshot?.etag,
+      size:         remoteSnapshot?.size,
+      skipped:      true,
+      reason:       'remote-wins',
+    };
   }
 
   /**
@@ -247,7 +452,15 @@ export class PodClient {
 
       const next = existing + tail;
       try {
-        return await this.write(uri, next, { contentType });
+        // Append's etag race is a known false positive (the underlying log
+        // is associative).  We use the strict 'reject' policy + suppress the
+        // public 'conflict' event so this loop is the only thing that sees
+        // the 412.
+        return await this.write(uri, next, {
+          contentType,
+          conflictPolicy:        'reject',
+          _suppressConflictEvent: true,
+        });
       } catch (err) {
         if (err instanceof ConflictError) {
           lastErr = err;
@@ -336,11 +549,17 @@ export class PodClient {
   }
 
   /**
-   * Delete a resource.  v1 path; A6 will add `deleteLocal` (tombstone) +
-   * `deleteCompletely` (with explicit scope) on top.
+   * Delete a resource from the pod.  Removes the resource for everyone (it
+   * is gone from the pod once the call succeeds).  Also clears any local
+   * tombstone — the local marker is no longer relevant once the resource
+   * is gone everywhere.
+   *
+   * Equivalent to `deleteCompletely(uri, opts)`; both names exist for
+   * spec-compliance with `pod-client-api.md` §Delete scope.
    *
    * @param {string} uri
    * @param {object} [opts]
+   * @param {string}  [opts.ifMatch]
    * @param {boolean} [opts.force=false]
    */
   async delete(uri, opts = {}) {
@@ -357,15 +576,73 @@ export class PodClient {
       this.#wrapAndThrow(err, uri);
     }
     this.#etagMap.delete(uri);
+    // Resource is gone from the pod — any local tombstone is now redundant.
+    // Best-effort: swallow tombstone-store errors so we don't mask success.
+    try { await this.#tombstoneStore.remove(uri); } catch { /* swallow */ }
   }
 
-  /** Idempotent close.  Clears the etag map and propagates to auth. */
+  /**
+   * Spec alias for `delete(uri, opts)`.  See `pod-client-api.md` §Delete
+   * scope — `deleteCompletely` is the explicit-scope name; `delete` is the
+   * shorter convenience.  Identical behaviour: remove from pod + clear any
+   * local tombstone.
+   *
+   * @param {string} uri
+   * @param {object} [opts]
+   */
+  async deleteCompletely(uri, opts = {}) {
+    return this.delete(uri, opts);
+  }
+
+  /**
+   * Mark a resource deleted on this device only.  The pod is NOT touched.
+   *
+   * Records a tombstone so future `client.list()` calls hide this URI
+   * (unless `includeTombstoned: true` is passed) and any app-level sync
+   * routine the app builds can skip it.
+   *
+   * The tombstone is automatically cleared if a later `read(uri)` returns
+   * 404 (resource gone from pod — local marker redundant) or if
+   * `deleteCompletely(uri)` succeeds (resource gone everywhere).  Use
+   * `clearTombstone(uri)` to undo.
+   *
+   * Note: `deleteLocal` is the per-device exception path within whatever
+   * the app has chosen to sync.  The SDK does not auto-sync.
+   *
+   * @param {string} uri
+   * @returns {Promise<void>}
+   */
+  async deleteLocal(uri) {
+    this.#ensureOpen();
+    await this.#tombstoneStore.add(uri, { at: Date.now() });
+    // Drop any cached etag — we no longer claim to know the resource state
+    // from this device's POV.
+    this.#etagMap.delete(uri);
+  }
+
+  /**
+   * Clear a previously-set local tombstone for `uri`.  "I changed my mind."
+   *
+   * Idempotent: removing an absent tombstone is a no-op.
+   *
+   * @param {string} uri
+   * @returns {Promise<void>}
+   */
+  async clearTombstone(uri) {
+    this.#ensureOpen();
+    await this.#tombstoneStore.remove(uri);
+  }
+
+  /** Idempotent close.  Clears the etag map and propagates to auth + tombstone store. */
   async close() {
     if (this.#closed) return;
     this.#closed = true;
     this.#etagMap.clear();
     if (typeof this.#auth.close === 'function') {
       try { await this.#auth.close(); } catch { /* swallow — close is best-effort */ }
+    }
+    if (this.#tombstoneStore && typeof this.#tombstoneStore.close === 'function') {
+      try { await this.#tombstoneStore.close(); } catch { /* swallow */ }
     }
   }
 
