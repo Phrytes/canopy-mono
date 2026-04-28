@@ -1,5 +1,19 @@
 # General TODOs
 
+## Per-filetype write-conflict policy (2026-04-29)
+
+Q-A.4 locked `write`'s default `conflictPolicy` to `'reject'` — conservative
+default; concurrent overwrites surface an error so the app decides.
+
+Future refinement: some content types have natural merge semantics that
+make a different default appropriate (e.g. CRDT for markdown, append for
+audit logs, reject for binary).  Shape: a per-content-type policy map on
+`PodClient` opts (`conflictPolicyByContentType`) + existing per-call
+override.  Defer until a Track-H app actually has the multi-content-type
+write surface that needs this distinction.
+
+---
+
 ## D5 ↔ A5 CSS integration test (2026-04-28)
 
 D5's `FederatedReader` ships with mock-PodClient unit tests only.  Now
