@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | in-progress |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-29 (A6 done; A7 in-progress) |
+| **Last updated** | 2026-04-29 (A6 + A7 done) |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — ready to start |
 
@@ -730,7 +730,7 @@ modify:
 
 | | |
 |---|---|
-| **Status** | in-progress |
+| **Status** | done |
 | **Tag** | [NEW] |
 | **Notes** | Depends on A5. Q-A.4 LOCKED 2026-04-28: write default `conflictPolicy` flipped from `'lww'` to `'reject'` (breaking vs. spec); append retry budget = 3 (re-read+re-append; etag race is a false positive since append is associative). |
 
@@ -747,25 +747,48 @@ modify:
 
 **Sequence:**
 
-- [ ] 1. Per-resource last-known etag/lastModified state inside `PodClient` (in-memory map keyed by URI; persists across calls within the lifetime of the client).
-- [ ] 2. On every `read`, capture etag/lastModified.
-- [ ] 3. On every `write` / `delete` / `append`, send `If-Match` with the last-known value (unless `force: true`).
-- [ ] 4. On HTTP 412 from the pod, emit `'conflict'` event with both versions per [`pod-client-api.md` §Conflict detection](../Design-v3/pod-client-api.md#conflict-detection).
-- [ ] 5. Implement the four conflict policies: `lww`, `remote-wins`, `reject`, listener-driven. Default per call: `lww`.
-- [ ] 6. `event.resolveWith(content)` re-issues the write with `force: true` and the resolved content.
-- [ ] 7. `event.cancelWrite()` aborts; promise rejects with `ConflictError`.
-- [ ] 8. Append retry: read-modify-write loop with up to N retries (Q-A.4); raise `ConflictError` if exhausted.
-- [ ] 9. Tests: simulate concurrent writes (two `PodClient` instances against the same CSS pod), verify each policy.
+- [x] 1. Per-resource last-known etag/lastModified state inside `PodClient` (in-memory map keyed by URI; persists across calls within the lifetime of the client). _(landed in A5b2; reused.)_
+- [x] 2. On every `read`, capture etag/lastModified. _(A5b2.)_
+- [x] 3. On every `write` / `delete` / `append`, send `If-Match` with the last-known value (unless `force: true`). _(A5b2; A7 keeps this behaviour and threads `conflictPolicy` through.)_
+- [x] 4. On HTTP 412 from the pod, emit `'conflict'` event with both versions per [`pod-client-api.md` §Conflict detection](../Design-v3/pod-client-api.md#conflict-detection).
+- [x] 5. Implement the conflict policies: `'lww'`, `'remote-wins'`, `'reject'` (default — Q-A.4 LOCK 2026-04-28), plus listener-driven. Default per call: **`'reject'`** (was `'lww'`; spec doc updated).
+- [x] 6. `event.resolveWith(content)` re-issues the write with `force: true` and the resolved content.
+- [x] 7. `event.cancelWrite()` aborts; promise rejects with `ConflictError`.
+- [x] 8. Append retry: read-modify-write loop with up to N retries (Q-A.4); raise `ConflictError` (`code: 'CONFLICT_RETRY_EXHAUSTED'`) if exhausted. Append's internal retries do NOT surface the public `'conflict'` event (etag race on append is a false positive).
+- [x] 9. Tests: stub `SolidPodSource` simulating concurrent-write scenarios. All four policies + listener-driven + append retry budget covered. CSS-backed integration test deferred (existing `PodClient.css.test.js` still gated by env var).
 
 **DoD:**
 - Concurrent-write scenario surfaces a 'conflict' event with expected payloads.
 - All four policies work.
 - Append retry exhausts to `ConflictError` on hostile contention.
+- Default `conflictPolicy = 'reject'` (Q-A.4).
+- `pod-client-api.md` §Conflict detection updated to reflect the locked default.
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-29 (A7 agent):
+- PodClient now extends Emitter (re-exported from @canopy/core).
+  Listener counts are mirrored in a private map so write() can take a
+  no-listener fast-path on 412 (skips the remote re-fetch).
+- Conflict-event remoteContent is fetched lazily for small text/JSON
+  (≤ 1 MB) — undefined for binary/oversized.  Listener can re-read via
+  client.read(uri) if it needs the body.
+- options.conflictListenerTimeout (default 30 s) governs the wait for
+  resolveWith/cancelWrite.  Tests use 50 ms so the silent-listener path
+  resolves quickly.
+- Append's internal write() carries `_suppressConflictEvent: true` so
+  the public 'conflict' event isn't emitted during the read-modify-write
+  retry loop.  Q-A.4 lock states the etag race on append is a false
+  positive that re-read+re-append cleanly resolves.
+- Internal write opt `force: true` is used for both LWW and listener-
+  resolveWith paths to bypass If-Match.
+- Spec edit (Design-v3/pod-client-api.md §Conflict detection):
+  flipped default policy 'lww' → 'reject' per the Q-A.4 lock.  Updated
+  the §Subscribing-to-conflicts policy bullets and §Strict mode prose.
+- Tests: 16 new in conflict.test.js.  Total package: 140 passed,
+  2 skipped (CSS).  npm test --prefix packages/core also green
+  (1109 passed) — Emitter import didn't regress core.
 ```
 
 ---
