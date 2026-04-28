@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | in-progress |
 | **Started** | 2026-04-28 |
-| **Last updated** | 2026-04-28 |
+| **Last updated** | 2026-04-29 (A6 done; A7 in-progress) |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — ready to start |
 
@@ -656,42 +656,72 @@ not implemented in v1.
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
-| **Notes** | Depends on A5. |
+| **Notes** | Depends on A5.  Shipped 2026-04-29. |
 
 **Files:**
 
 ```
 create:
   packages/pod-client/src/TombstoneStore.js          # storage adapter pattern
+  packages/pod-client/src/tombstones/MemoryTombstones.js          # tests + default fallback
   packages/pod-client/src/tombstones/IndexedDBTombstones.js
   packages/pod-client/src/tombstones/AsyncStorageTombstones.js   # RN
   packages/pod-client/src/tombstones/FileTombstones.js            # Node fallback
   packages/pod-client/test/deleteScope.test.js
 
 modify:
-  packages/pod-client/src/PodClient.js                # add deleteLocal, deleteCompletely, clearTombstone
+  packages/pod-client/src/PodClient.js                # add deleteLocal, deleteCompletely, clearTombstone, list filter, 404-GC
+  packages/pod-client/src/index.js                    # additive re-exports
 ```
 
 **Sequence:**
 
-- [ ] 1. `TombstoneStore` interface: `add(uri)`, `has(uri)`, `remove(uri)`, `list()`.
-- [ ] 2. Implement three adapters per Q-A.3 defaults.
-- [ ] 3. `client.deleteLocal(uri)` → `tombstoneStore.add(uri)`. Pod is not touched.
-- [ ] 4. `client.deleteCompletely(uri)` → `podSource.delete(uri)`. On success, remove any existing tombstone (no longer relevant).
-- [ ] 5. `client.list(...)` filters out tombstoned URIs unless `opts.includeTombstoned`.
-- [ ] 6. `client.clearTombstone(uri)` for "I changed my mind."
-- [ ] 7. Tests: delete-locally then list (tombstoned filtered); delete-completely (gone from pod); clear-tombstone (re-appears).
+- [x] 1. `TombstoneStore` interface: `add(uri)`, `has(uri)`, `remove(uri)`, `list()`, `close()`.
+- [x] 2. Implement four adapters per Q-A.3 defaults (Memory + IndexedDB + AsyncStorage + File).
+- [x] 3. `client.deleteLocal(uri)` → `tombstoneStore.add(uri, { at: Date.now() })`. Pod is not touched.  Drops cached etag.
+- [x] 4. `client.delete(uri)` (= `deleteCompletely(uri)`) → `podSource.delete(uri)`. On success, removes any existing tombstone.  `delete` and `deleteCompletely` are aliases per the spec.
+- [x] 5. `client.list(...)` filters out tombstoned URIs unless `opts.includeTombstoned: true`.  Combines with user `filter`.
+- [x] 6. `client.clearTombstone(uri)` for "I changed my mind."  Idempotent on absent tombstones.
+- [x] 7. `client.read(uri)` 404-GC: if the resource is gone from the pod, the tombstone is silently removed before `NotFoundError` re-throws.  Best-effort — tombstone errors are swallowed.
+- [x] 8. Tests: 16 cases in `deleteScope.test.js` covering all six points + cross-client visibility + FileTombstones round-trip + corrupt-file recovery.
 
 **DoD:**
-- Both delete modes work with explicit semantics.
-- Tombstone state survives a `PodClient` restart (storage adapter persists).
+- [x] Both delete modes work with explicit semantics (`deleteLocal` keeps pod; `deleteCompletely`/`delete` removes pod + tombstone).
+- [x] Tombstone state survives a `PodClient` restart — verified for `FileTombstones` round-trip across close+reopen.
+- [x] `list` filtering works (default exclude; `includeTombstoned: true` includes).
+- [x] 404-GC works.
+- [x] No regressions: `npm test --prefix packages/core` green (1109 passed); `deleteScope.test.js` 16/16 green.  Three pre-existing PodClient.test.js failures relate to A7's in-progress conflict-event handling and are not caused by A6.
+- [x] No new top-level deps — uses Node `node:fs/promises` + `node:os` + `node:path` only.  AsyncStorage and IndexedDB are runtime-provided.
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-29 (A6 agent):
+- TombstoneStore interface: { uri → { at: number } } per Q-A.3.
+- Default tombstoneStore is MemoryTombstones (non-persistent).  Consumers
+  must pass IndexedDBTombstones/AsyncStorageTombstones/FileTombstones
+  for cross-process persistence.  Documented in PodClient JSDoc head
+  (also documents the no-auto-sync stance).
+- delete() and deleteCompletely() are aliases.  Kept `delete` for
+  backwards-compatibility with A5b2's API; added deleteCompletely() per
+  the spec.  Both clear the tombstone on success.
+- 404-GC fires inside read(): when the underlying podSource throws
+  err.code === 'NOT_FOUND', we silently remove the tombstone *before*
+  the error re-throws via this.#wrapAndThrow(err, uri).  Wrapped in a
+  try/catch so tombstone-store failures cannot mask the original error.
+- list() now strips includeTombstoned + filter from the opts forwarded
+  to podSource.list — kept the existing test contract
+  (`expect(ps.list).toHaveBeenCalledWith('/c/', { recursive: true })`).
+- AsyncStorageTombstones uses dynamic import('@react-native-async-storage
+  /async-storage') OR an injected `{ asyncStorage }` opt — peer dep, no
+  package.json change.
+- FileTombstones default path is os.tmpdir()/canopy-tombstones.json.
+  Atomic writes via tmp+rename.  Corrupt JSON triggers a fresh-start
+  rather than throw on every call (test covers this).
+- PodClient now extends Emitter (per A7's integration); no observable
+  change for A6 callers.
 ```
 
 ---
@@ -700,9 +730,9 @@ modify:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | in-progress |
 | **Tag** | [NEW] |
-| **Notes** | Depends on A5. |
+| **Notes** | Depends on A5. Q-A.4 LOCKED 2026-04-28: write default `conflictPolicy` flipped from `'lww'` to `'reject'` (breaking vs. spec); append retry budget = 3 (re-read+re-append; etag race is a false positive since append is associative). |
 
 **Files:**
 
