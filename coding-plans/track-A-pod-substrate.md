@@ -261,7 +261,7 @@ tests (create):
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [NEW] |
 | **Notes** | Independent of A1 / A2 / A3 — fully parallelizable.  Mirrors existing `CapabilityToken.js` shape; pod-resource scopes instead of agent-skill auth. |
 
@@ -280,16 +280,16 @@ modify:
 
 **Sequence:**
 
-- [ ] 1. Read existing `packages/core/src/permissions/CapabilityToken.js` carefully — `PodCapabilityToken` mirrors its shape with two differences: `agentId` → `pod` (pod root URI) and `skill` → `scopes` (array of scope strings).
-- [ ] 2. Implement constructor + getters matching the spec wire format (`id`, `issuer`, `subject`, `pod`, `scopes`, `constraints?`, `issuedAt`, `expiresAt`, `parentId?`, `sig`).
-- [ ] 3. Implement `static async issue(identity, opts)` mirroring `CapabilityToken.issue`.
-- [ ] 4. Implement `static async verify(token)` — verifies signature against `issuer` pubKey.
-- [ ] 5. Implement `static async verifyChain(token, allTokens)` — chain attenuation (parent's scopes must be supersets, parent's expiry must be ≥ child's).
-- [ ] 6. Implement `matchesScope(scope, requiredScope)` — prefix-strict scope matching per [`pod-client-api.md`](../Design-v3/pod-client-api.md#podcapabilitytoken).  Test cases:
-  - [ ] `pod.read:/notes/` matches `pod.read:/notes/foo.md` ✓
-  - [ ] `pod.read:/notes/` does NOT match `pod.read:/photos/` ✗
-  - [ ] `pod.*:/notes/` matches `pod.read:/notes/foo.md` ✓ and `pod.write:/notes/foo.md` ✓
-- [ ] 7. Tests: issue / verify / chain / scope matching / expiry / signature failure.
+- [x] 1. Read existing `packages/core/src/permissions/CapabilityToken.js` carefully — `PodCapabilityToken` mirrors its shape with two differences: `agentId` → `pod` (pod root URI) and `skill` → `scopes` (array of scope strings).
+- [x] 2. Implement constructor + getters matching the spec wire format (`id`, `issuer`, `subject`, `pod`, `scopes`, `constraints?`, `issuedAt`, `expiresAt`, `parentId?`, `sig`).
+- [x] 3. Implement `static async issue(identity, opts)` mirroring `CapabilityToken.issue`.
+- [x] 4. Implement `static async verify(token)` — verifies signature against `issuer` pubKey.
+- [x] 5. Implement `static async verifyChain(token, allTokens)` — chain attenuation (parent's scopes must be supersets, parent's expiry must be ≥ child's).
+- [x] 6. Implement `matchesScope(scope, requiredScope)` — prefix-strict scope matching per [`pod-client-api.md`](../Design-v3/pod-client-api.md#podcapabilitytoken).  Test cases:
+  - [x] `pod.read:/notes/` matches `pod.read:/notes/foo.md` ✓
+  - [x] `pod.read:/notes/` does NOT match `pod.read:/photos/` ✗
+  - [x] `pod.*:/notes/` matches `pod.read:/notes/foo.md` ✓ and `pod.write:/notes/foo.md` ✓
+- [x] 7. Tests: issue / verify / chain / scope matching / expiry / signature failure.
 
 **DoD:**
 - Class works in isolation (no pod / no SolidPodSource needed).
@@ -300,7 +300,35 @@ modify:
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 (agent):
+- Created packages/core/src/permissions/PodCapabilityToken.js — pure mirror
+  of CapabilityToken.js, swapping agentId → pod and skill → scopes (array).
+- No new deps (reuses AgentIdentity, b64, genId).  Existing
+  CapabilityToken.js is untouched and the two coexist.
+- Exported alongside CapabilityToken from packages/core/src/index.js — no
+  permissions/index.js barrel exists in this codebase, matching the pattern
+  used by every other permissions class (TrustRegistry, TokenRegistry, …).
+- verifyChain() walks parent-first: tokens[0] is the root issuance, each
+  subsequent entry must (a) verify on its own, (b) reference the previous
+  token via parentId, (c) cover the same pod, (d) carry only scopes that
+  are subsets of some parent scope under matchesScope, and (e) have an
+  expiresAt no later than the parent.
+- Trailing-slash interpretation (the spec ambiguity).  The spec says
+  "trailing slash required for container-level scopes".  We read this as:
+  scopes WITH a trailing slash (e.g. `pod.read:/notes/`) are container
+  scopes and prefix-match anything under that path; scopes WITHOUT a
+  trailing slash (e.g. `pod.read:/notes/foo.md` or `pod.read:/note`) are
+  resource scopes and only match the exact same path.  Consequence:
+  `pod.read:/note` does NOT match `pod.read:/note/foo.md`, which forces
+  issuers to be explicit when they mean "the container, recursively".
+  This is documented in the class JSDoc and exercised by tests.
+- Edge case I locked: `pod.*` on the granted side covers any of the
+  three concrete actions on the required side; but a *required* `pod.*`
+  is only covered by a granted `pod.*` (asking for "all actions" needs
+  an "all actions" grant).  Tests cover this.
+- 33 unit tests in packages/core/test/permissions/PodCapabilityToken.test.js
+  (issue/verify/expiry/tampering/scope-matching/chain).  Full
+  `npm run test:core` is green: 802 passed, 21 skipped, 0 failed.
 ```
 
 ---
