@@ -125,7 +125,7 @@ C1 is purely the library-side adapter work.
 | Q-C1.3 | Single `apps/folio-mobile/` workspace OR fold into `apps/mesh-demo/` as a screen module? | **TBD — defer to C2.**  C1 doesn't ship an RN app; C2 decides. |
 | Q-C1.4 | Background-fetch cadence — every 15 min?  Every hour?  Configurable? | **Configurable; default 30 min.**  Document iOS Doze behavior + Android Doze caveats. |
 | Q-C1.5 | Vault-on-mobile — use `expo-secure-store` directly, or wrap via `@canopy/react-native`'s existing `VaultRN`? | **Wrap via `VaultRN`.**  Already-shipped surface; consistent with mesh-demo's existing identity flow. |
-| Q-C1.6 | Reuse `@canopy/pod-client`'s `CapabilityAuth` + `SolidOidcAuth` directly, or write a thin RN-aware variant? | **Reuse directly.**  The auth modules don't touch fs; they're pure crypto + http.  RN's `fetch` is compatible.  OIDC redirect flow needs `expo-auth-session` (separate from this slice — C1 ships the engine + adapters; auth flow on mobile is a C2 concern). |
+| Q-C1.6 | Reuse `@canopy/pod-client`'s `CapabilityAuth` + `SolidOidcAuth` directly, or write a thin RN-aware variant? | **Reuse directly.**  The auth modules don't touch fs; they're pure crypto + http.  RN's `fetch` is compatible.  The OIDC *redirect* flow is C2's concern (see "Mobile auth flow" below) — C1 just makes sure the engine, vault, and PodClient still wire together when given an authenticated session from RN-land. |
 
 User leans documented; nothing requires a lock before C1 spawns.
 
@@ -169,6 +169,56 @@ User leans documented; nothing requires a lock before C1 spawns.
 | **C1 (this slice)** | C2 (RN screens) can be built on top — no further engine refactoring needed |
 | **C1 + the smoke (S1–S10) green** | C2 spawns; mobile Folio enters real-device testing |
 | **C2 ships** | Folio is end-to-end on mobile; Phase C complete |
+
+---
+
+## Mobile auth flow (C2's job; documented here for continuity)
+
+The desktop web flow opens the system browser and waits for a localhost
+callback.  Mobile uses `expo-auth-session` instead — same OIDC standard,
+different transport.  User experience:
+
+1. User taps "Sign in" in Folio mobile
+2. **Safari View Controller** (iOS) or **Chrome Custom Tab** (Android)
+   slides up as a native modal showing `https://login.inrupt.com/...`
+3. User authenticates (Inrupt's full login UX — password manager,
+   biometrics, etc.)
+4. Inrupt redirects to a custom URL scheme: `folio://auth/callback?code=...`
+5. The OS recognises the scheme, dismisses the browser sheet, hands
+   the URL to the Folio app
+6. Folio exchanges the auth code for tokens via Inrupt's token endpoint
+   (**PKCE** — no client-secret embedded in the binary)
+7. Refresh token persisted to the OS keychain via `expo-secure-store`
+   (iOS Keychain / Android Keystore — hardware-backed where available)
+8. UI updates: signed in, sync starts
+
+This is **NOT**:
+- ❌ a WebView pointing at the desktop's `localhost:8888`
+- ❌ a context-switch into a separate browser app + manual return
+- ❌ a custom password form (security smell)
+
+What stays the same as desktop:
+- PKCE protection against auth-code intercept
+- Inrupt's dynamic client registration (no pre-registration of the app)
+- Same `OidcSession.js` logic for token refresh once tokens are obtained
+- Same `SolidOidcAuth` plumbing into PodClient
+
+C2 work to ship this:
+- New `apps/folio/src/rn/auth/folioAuth.js` — wraps
+  `expo-auth-session.useAuthRequest()`, handles the redirect, hands the
+  resulting tokens to a `OidcSession` instance.
+- `app.json` (RN app's) `scheme: 'folio'` so the OS routes
+  `folio://auth/callback` back to the app.
+- Inrupt registration of `folio://auth/callback` as an allowed redirect
+  URI for our dynamically-registered client (Inrupt accepts custom
+  schemes for native apps).
+- `expo-auth-session` + `expo-web-browser` + `expo-secure-store` added
+  to the RN app's `package.json`.
+
+C1 explicitly does NOT touch any of this — but the C1 SyncEngine
+refactor must keep `OidcSession` injection-friendly so C2 can hand it
+a session built from `expo-auth-session` tokens without further engine
+changes.
 
 ---
 
