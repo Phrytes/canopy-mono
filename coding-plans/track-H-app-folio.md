@@ -124,6 +124,86 @@ A team of 2: dev1 = sync core (A1 → C1 adapter); dev2 = drivers (A2 → B1+B2 
 
 ---
 
+## Identity: what Folio is (and isn't)
+
+> **Folio is a Dropbox-shaped validator for the pod-client substrate.**
+> A markdown folder quietly mirrors itself into a Solid pod; the user's
+> favorite editor sees a normal folder; Folio is invisible most of the time.
+>
+> First job: prove the SDK's hot path on real product code.
+> Second job: be useful enough that the user runs it daily.
+
+**Folio is NOT Obsidian.**  No editor inside Folio.  No backlinks /
+graph / tags / plugin system.  No "library" feel inside the web UI.
+The user's chosen markdown editor opens the folder as a normal folder.
+
+The web app, when present, is **diagnostics + advanced settings + the
+occasional conflict-resolution moment** — not the daily-driver surface.
+The daily-driver surface is the menubar icon (when present) plus the
+folder itself.
+
+### Re-orientation shipped post-Phase B (2026-04-29)
+
+Phase A + Phase B + B1.auth + B3 + B4 + B1.tray + folio doctor all
+landed.  The web UI grew four primary tabs (Status / Conflicts /
+Share / History) which started to feel "library-shaped".  Course
+correction:
+
+1. **Drop Folio v2.4** (markdown-preview toggle).  In-UI rendering
+   is Obsidian's lane; out of scope for Folio.
+2. **Demote History from a primary tab.**  Versioning stays —
+   accessed from a per-file affordance ("see history") not a top-level
+   navigation tab.  Less "browse your library", more "go back when
+   something broke."
+3. **Demote Diagnostics into a Settings panel** rather than a primary
+   tab.  Users hit it when something's wrong, not as a daily destination.
+4. **Reshape the menubar icon as the primary UI** — persistent status
+   indicator, click for a small drop-down (sync state, recent activity,
+   "open notes folder", "open settings", optional unresolved-conflicts
+   shortcut).  Settings opens the web app on `http://127.0.0.1:8888`
+   only when needed.
+5. **Daemon-mode CLI** — `folio install-service` writes a
+   launchd / systemd unit so Folio auto-starts on login.  No more
+   "remember to run `folio serve`."
+
+### v2 queue, restated
+
+Survivors of the re-orientation, ordered by impact:
+
+| | Slice | Status |
+|---|---|---|
+| v2.1 | Hot-swap PodClient on sign-in | ✅ shipped 2026-04-29 |
+| v2.2 | Loud error surfacing (banner + ring buffer + yellow pill) | ✅ shipped 2026-04-29 |
+| v2.3 | Diagnostics surfaced in web UI — *but as a Settings panel, not a top tab* | queued |
+| v2.5 | Force re-push + Verify-pod-state (advanced actions) | queued |
+| v2.6 | Watcher sha-stable hardening | queued |
+| **v2.7** | **Real menubar icon (persistent)** with click-menu — replaces toast-only B1.tray | queued |
+| **v2.8** | **`folio install-service` daemon mode** (launchd / systemd / Task Scheduler) | queued |
+| **v2.9** | **Web UI re-shape**: collapse History tab into per-file menu; collapse Diagnostics into Settings panel; primary tabs become Status / Conflicts / Share | queued |
+| ~~v2.4~~ | ~~Markdown preview toggle~~ | **dropped** (Obsidian lane) |
+
+v2.7 + v2.8 are the new "menubar-first" pieces.  v2.9 is the UI demotion.
+
+### Hard constraints — origin-of-rule audit
+
+The Folio launch prompts carried these constraints; some came from
+CLAUDE.md, some I inferred:
+
+| Constraint | Origin |
+|---|---|
+| No new top-level deps | CLAUDE.md (real rule) |
+| ES modules, vanilla JS, vitest | CLAUDE.md (real rule) |
+| No build step | inferred — defensible (keeps deps light) |
+| Localhost-only (127.0.0.1) | inferred — security default |
+| No XSS / `textContent` only for user-controlled | inferred — web hygiene default |
+| Atomic writes (tmp-then-rename) | inferred — crash safety default |
+| `Q-Folio.6 = standalone web` | user-locked 2026-04-29 |
+| Conflicts = git-style markers | user-locked from design sketch |
+| **No native-build deps (gyp)** | **inferred — and overly strict.**  Cost us a real B1.tray icon (the agent fell back to shell-out toasts).  Allowed `better-sqlite3` for Archive because of prebuilt binaries — same trade-off should apply to a tray library.  v2.7 unwinds this. |
+| Time-machine retention 50 / 100 MB | inferred — sensible default; revisit if needed |
+
+---
+
 ## Hand-off triggers
 
 | When this completes | These tracks unblock |
