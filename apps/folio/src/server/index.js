@@ -55,7 +55,7 @@ const STATIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'static');
  *   close:  () => Promise<void>,
  * }}
  */
-export function createServer({ engine, podClient, vault, identity, oidc, oidcCallbackUrl, errorBuffer, cfg, buildPodClient } = {}) {
+export function createServer({ engine, podClient, vault, identity, oidc, oidcCallbackUrl, errorBuffer, cfg, buildPodClient, runDiagnostics, diagnosticsDeps } = {}) {
   if (!engine) throw new Error('createServer: engine is required');
 
   const app    = express();
@@ -108,7 +108,11 @@ export function createServer({ engine, podClient, vault, identity, oidc, oidcCal
     }));
   }
 
-  app.use(createRouter({ engine, podClient, vault, identity, hub, errorBuffer: errBuf }));
+  app.use(createRouter({
+    engine, podClient, vault, identity, hub,
+    errorBuffer: errBuf,
+    runDiagnostics, diagnosticsDeps,
+  }));
 
   hub.attach(server);
 

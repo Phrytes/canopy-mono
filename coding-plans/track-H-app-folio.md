@@ -174,7 +174,7 @@ Survivors of the re-orientation, ordered by impact:
 |---|---|---|
 | v2.1 | Hot-swap PodClient on sign-in | ✅ shipped 2026-04-29 |
 | v2.2 | Loud error surfacing (banner + ring buffer + yellow pill) | ✅ shipped 2026-04-29 |
-| v2.3 | Diagnostics surfaced in web UI — *but as a Settings panel, not a top tab* | queued |
+| v2.3 | Diagnostics surfaced in web UI — *but as a Settings panel, not a top tab* | ✅ shipped 2026-04-29 |
 | v2.5 | Force re-push + Verify-pod-state (advanced actions) | queued |
 | v2.6 | Watcher sha-stable hardening | queued |
 | **v2.7** | **Real menubar icon (persistent)** with click-menu — replaces toast-only B1.tray | queued |
@@ -1646,3 +1646,79 @@ folio.log`; Task Scheduler does not redirect stdout itself.
 - Remote management — out of scope for the local-first agent model.
 
 **Test count:** 269 baseline → **288 total** (+19 new).  All green.
+## §Folio v2.3 — Diagnostics in the web UI as a Settings panel (2026-04-29)
+
+**Problem.** `folio doctor` (CLI) ships 16 PASS/FAIL/WARN steps that diagnose
+the bring-up chain end-to-end.  Users without a comfortable terminal never
+see them — when something looks wrong in the web UI ("0 up / 0 down" but no
+sync), there's no way to ask "what failed?".
+
+**Re-orientation discipline (§Identity, 2026-04-29).** v2.3's specific brief
+was *don't* add a 4th primary Diagnostics tab.  The web UI is for diagnostics
++ advanced settings, not a daily-driver: primary tabs stay Status / Conflicts
+/ Share / History, and Diagnostics lives behind a small "Settings" link in
+the header.  When the menubar icon (v2.7) and daemon mode (v2.8) ship, the
+"Settings" link will be the user's primary entry point into the web app.
+
+**Shipped.**
+
+1. **Step engine lifted** to `apps/folio/src/diagnostics.js`.  Pure ES
+   module; consumes a `{ step(event) }` reporter.  CLI's `doctorCmd.js`
+   refactored to a thin pretty-printer that delegates to the engine —
+   all 13 existing CLI tests pass unchanged.  Probe URI rule preserved
+   verbatim: `<podRoot>.folio-doctor-probe-<random-8-hex>` with
+   `try { … } finally { delete probe }` cleanup.  Exports
+   `STEP_IDS` (frozen, in streaming order), `STEP_TOTAL`, `labelFor(id)`,
+   `recommendFix(steps)` so both CLI summary and the UI fix-hint pull
+   from the same source.
+
+2. **REST + WS contract:**
+   - `POST /diagnostics` → `202 { ok, started, total }` to start a run.
+   - `409 DIAGNOSTICS_IN_PROGRESS` if one is already in flight (server-side
+     in-memory flag; reset in `finally`).
+   - WS frame `{ type: 'diagnostics.step', ts, idx, total, id, label,
+     status, detail? }` per step (forwarded as-is to every connected
+     client via the existing `wsHub.broadcast`).
+   - Closing frame `{ type: 'diagnostics.done', ts, ok, counts,
+     abortReason?, recommendedFix? }`.
+
+3. **Settings panel (NOT a primary tab).**  Header gains a small "Settings"
+   link (text + gear glyph); clicking opens a right-anchored overlay panel
+   with a backdrop.  Esc / × / backdrop click closes it.  v2.3's only
+   inhabitant is the Diagnostics section — future settings stack alongside
+   in their own `<section class="settings-section">` blocks (no v2.3 work
+   needed for that).
+
+4. **Diagnostics rendering.**  Run button → POST.  As `diagnostics.step`
+   frames arrive, rows are inserted (or updated in place if the same id
+   re-fires).  Each row: colored dot (PASS=green, WARN=amber, FAIL=red,
+   SKIP=grey), label, status text, optional detail.  All step text
+   rendered with `textContent` only — server forwards the WS frame fields
+   verbatim, the UI is the XSS boundary.  Closing frame surfaces a summary
+   ("Healthy — N PASS / N WARN") and a recommended-fix paragraph if any
+   step FAILed.
+
+**Files touched:**
+- `apps/folio/src/diagnostics.js`               (new — extracted engine)
+- `apps/folio/test/diagnostics.test.js`         (new — 14 tests)
+- `apps/folio/src/cli/doctorCmd.js`             (refactored — delegates to engine)
+- `apps/folio/src/server/routes.js`             (POST /diagnostics, 202 + 409 guard)
+- `apps/folio/src/server/wsHub.js`              (docstring: diagnostics.* contract)
+- `apps/folio/src/server/index.js`              (forward runDiagnostics override into router)
+- `apps/folio/src/server/static/settings.js`    (new — Settings panel controller)
+- `apps/folio/src/server/static/index.html`     (Settings link + panel + Diagnostics section)
+- `apps/folio/src/server/static/app.js`         (boot Settings; expose on window.__folio)
+- `apps/folio/src/server/static/style.css`      (settings panel + diagnostic-row + colored dots)
+- `apps/folio/test/server.test.js`              (+4 tests: 202, 409, recommendedFix, raw-label safety)
+- `apps/folio/test/ui.test.js`                  (+6 tests: header link, no-new-tab, settings.js, css, e2e, 409)
+
+**Constraints honored:**
+- NO new top-level Diagnostics tab.  The .tabs nav is asserted to NOT
+  contain `id="tab-diagnostics"` or a `Diagnostics</button>` text node.
+- No new top-level deps (vanilla DOM + CSS; no overlay/modal library).
+- 16 doctor steps preserved verbatim — same ids, same labels, same probe URI rule.
+- Concurrent-run guard returns 409.
+- All step labels / details rendered with `textContent` only.
+- ES modules; vanilla JS; vitest.
+
+**Test count:** 269 baseline → **293 total** (+24 new).  All green.

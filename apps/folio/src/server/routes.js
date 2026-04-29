@@ -45,16 +45,24 @@
  * │                          │       │                                                 │
  * │ /watch/start             │ POST  │ → { ok: true, watching: true }                 │
  * │ /watch/stop              │ POST  │ → { ok: true, watching: false }                │
+ * │                          │       │                                                 │
+ * │ /diagnostics             │ POST  │ → 202 { ok: true, started: true, total }       │
+ * │                          │       │ Folio v2.3 — kicks off the 16-step doctor      │
+ * │                          │       │ engine; results stream over /events as         │
+ * │                          │       │ diagnostics.step + diagnostics.done frames.    │
+ * │                          │       │ Errors: 409 DIAGNOSTICS_IN_PROGRESS            │
  * └──────────────────────────┴───────┴────────────────────────────────────────────────┘
  *
  * WebSocket (/events) frames:
- *   { type: 'status',           ts, stats, watching }
- *   { type: 'sync.progress',    ts, phase: 'start'|'scanning'|'applying', direction }
- *   { type: 'sync.done',        ts, uploads, downloads, deletes, conflicts }
- *   { type: 'sync.force.start', ts }                              (Folio v2.5)
- *   { type: 'sync.force.done',  ts, uploads, errors }             (Folio v2.5)
- *   { type: 'conflict.new',     ts, id, relPath, podUri }
- *   { type: 'error',            ts, phase, relPath?, message }
+ *   { type: 'status',            ts, stats, watching }
+ *   { type: 'sync.progress',     ts, phase: 'start'|'scanning'|'applying', direction }
+ *   { type: 'sync.done',         ts, uploads, downloads, deletes, conflicts }
+ *   { type: 'sync.force.start',  ts }                                          (v2.5)
+ *   { type: 'sync.force.done',   ts, uploads, errors }                         (v2.5)
+ *   { type: 'conflict.new',      ts, id, relPath, podUri }
+ *   { type: 'error',             ts, phase, relPath?, message }
+ *   { type: 'diagnostics.step',  ts, idx, total, id, label, status, detail? } (v2.3)
+ *   { type: 'diagnostics.done',  ts, ok, counts, abortReason?, recommendedFix? } (v2.3)
  */
 
 import express from 'express';
@@ -80,6 +88,11 @@ import {
   isVersionable,
   listFilesWithVersions,
 } from '../versions.js';
+import {
+  runDiagnostics as defaultRunDiagnostics,
+  STEP_TOTAL,
+  recommendFix as recommendFixFromSteps,
+} from '../diagnostics.js';
 
 const STATE_FILE_RELPATH = '.canopy/notes-sync-state.json';
 
@@ -100,10 +113,15 @@ const STATE_FILE_RELPATH = '.canopy/notes-sync-state.json';
  *                                    and POST /errors/clear empties it.
  * @returns {express.Router}
  */
-export function createRouter({ engine, podClient, vault, identity, hub, errorBuffer }) {
+export function createRouter({ engine, podClient, vault, identity, hub, errorBuffer, runDiagnostics, diagnosticsDeps }) {
   if (!engine) throw new Error('createRouter: engine is required');
   if (!hub)    throw new Error('createRouter: hub is required');
   const resolvedPodClient = podClient ?? engine._podClient ?? engine.__podClient ?? null;
+  const runDiagnosticsFn  = runDiagnostics ?? defaultRunDiagnostics;
+
+  // Folio v2.3 — guard so only one diagnostics run is in flight at a time.
+  // 409 Conflict is returned for concurrent POST /diagnostics requests.
+  let diagnosticsInFlight = false;
 
   const router = express.Router();
   router.use(express.json({ limit: '4mb' }));
@@ -549,6 +567,68 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
       res.json({ ok: true, watching: false });
     } catch (err) {
       sendError(res, 500, 'WATCH_STOP_FAILED', err?.message ?? String(err));
+    }
+  });
+
+  // ── /diagnostics (Folio v2.3) ─────────────────────────────────────────────
+  // POST /diagnostics → 202 (accepted, runs in the background) or 409
+  // (one is already in flight).  Step events stream over the WebSocket
+  // /events as `{ type: 'diagnostics.step', ts, idx, total, label, status,
+  // detail? }` frames; the run ends with `{ type: 'diagnostics.done', ts,
+  // ok, counts, recommendedFix? }`.
+  //
+  // The CLI's `folio doctor` consumes the same step engine — see
+  // `apps/folio/src/diagnostics.js` for the 16-step sequence.
+  router.post('/diagnostics', async (_req, res) => {
+    if (diagnosticsInFlight) {
+      return sendError(res, 409, 'DIAGNOSTICS_IN_PROGRESS',
+        'a diagnostics run is already in progress; wait for diagnostics.done');
+    }
+    diagnosticsInFlight = true;
+    res.status(202).json({ ok: true, started: true, total: STEP_TOTAL });
+
+    // Run async so we return the 202 immediately.  Errors are surfaced via
+    // a `diagnostics.done` frame with ok:false rather than swallowed.
+    const steps = [];
+    let idx = 0;
+    const reporter = {
+      step(event) {
+        idx++;
+        steps.push(event);
+        hub.broadcast({
+          type:   'diagnostics.step',
+          idx,
+          total:  STEP_TOTAL,
+          id:     event.id,
+          label:  event.label,
+          status: event.status,
+          ...(event.detail ? { detail: String(event.detail) } : {}),
+        });
+      },
+    };
+
+    try {
+      const result = await runDiagnosticsFn(reporter, diagnosticsDeps ?? {});
+      const counts = result?.counts ?? { PASS: 0, FAIL: 0, WARN: 0, SKIP: 0 };
+      const ok = counts.FAIL === 0 && result?.abortReason !== 'NO_CONFIG';
+      const recommendedFix = recommendFixFromSteps(steps);
+      hub.broadcast({
+        type:        'diagnostics.done',
+        ok,
+        counts,
+        abortReason: result?.abortReason ?? null,
+        ...(recommendedFix ? { recommendedFix } : {}),
+      });
+    } catch (err) {
+      // Engine-level throw (very unlikely — the engine catches its own).
+      hub.broadcast({
+        type:    'diagnostics.done',
+        ok:      false,
+        counts:  { PASS: 0, FAIL: 1, WARN: 0, SKIP: 0 },
+        error:   err?.message ?? String(err),
+      });
+    } finally {
+      diagnosticsInFlight = false;
     }
   });
 

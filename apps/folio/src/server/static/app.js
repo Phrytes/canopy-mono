@@ -14,6 +14,7 @@ import { initConflicts } from '/conflicts.js';
 import { initShare }     from '/share.js';
 import { initAuth }      from '/auth.js';
 import { initVersions }  from '/versions.js';
+import { initSettings }  from '/settings.js';
 
 // ── Tiny event bus ────────────────────────────────────────────────────────
 // Per-pane modules subscribe via bus.on(type, handler).  WS frames from
@@ -362,6 +363,7 @@ async function probeHealthAndBoot() {
 
 // ── Boot ──────────────────────────────────────────────────────────────────
 let errorBanner = null;
+let settings    = null;
 window.addEventListener('DOMContentLoaded', () => {
   wireTabs();
   errorBanner = makeErrorBanner({ postJson });
@@ -370,6 +372,8 @@ window.addEventListener('DOMContentLoaded', () => {
   initShare({ bus, postJson });
   initVersions({ bus, getJson, postJson });
   try { initAuth({ bus, getJson, postJson }); } catch (err) { console.error('auth init failed', err); }
+  // Folio v2.3 — Settings panel (houses Diagnostics; NOT a primary tab).
+  try { settings = initSettings({ bus, postJson }); } catch (err) { console.error('settings init failed', err); }
   probeHealthAndBoot();
 });
 
@@ -379,4 +383,5 @@ window.__folio = {
   isConnected: () => ws && ws.readyState === 1,
   reconnect:   connect,
   get errorBanner() { return errorBanner; },
+  get settings()    { return settings; },
 };
