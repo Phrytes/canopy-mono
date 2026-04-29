@@ -1083,3 +1083,68 @@ Once confirmed, the implementation cascade is:
 - [`./track-H-design-sketches.md`](./track-H-design-sketches.md) §H1 — the functional sketch.
 - [`./sdk-test-strategy.md`](./sdk-test-strategy.md) — testing tiers; Folio benefits from the scenario harness for cross-pod-edit tests.
 - [`../projects/01-notes-app/README.md`](../projects/01-notes-app/README.md) — existing L2 design.
+
+---
+
+## §Folio v2.2 — Loud error surfacing in the web UI (2026-04-29)
+
+**Problem.** SyncEngine emits `'error'` events that reach the WS log pane as
+one-line entries.  Users miss them — they see "0 up / 0 down" and assume things
+are fine, while a 401/404/403 silently scrolls past.
+
+**Shipped.** Three surfaces, all driven by the same `{ type: 'error', … }` WS
+frame the engine already broadcasts:
+
+1. **Red banner at the top of the page**, persistent + dismissible.
+   Format: `Last error: <phase> failed for <relPath>: <message> · <relative-time>`.
+   Multiple errors collapse to `N sync errors — see Recent errors below`.
+   - **Retry sync** button → `POST /sync/now`, banner clears on next clean done.
+   - **Dismiss** "×"        → hides until a new error fires (history kept).
+   - **5-second clean-sync debounce** auto-clears (no whiplash on bursty errors).
+   - `phase: 'conflict'` is excluded — conflicts are normal flow, not failures.
+   - `phase: 'ensure-container'` IS surfaced — the most likely failure for
+     new pod users.
+
+2. **Recent errors collapsible** in the Status pane (`<details>`, last-10,
+   newest-first).  Each row: `phase`, `relPath`, timestamp, raw `message` in
+   `title=` tooltip.  Driven by a new bus event `errors.changed` emitted from
+   the central tracker in `app.js`.
+
+3. **Yellow auth-pill state**.  When `errors.length > 0` the pill gains a
+   warning border + an amber "!" overlay (hover tooltip:
+   `N sync errors — click to view`).  Webid stays visible.
+
+**Server-side ring buffer** (`apps/folio/src/server/errorBuffer.js`):
+- `class SyncErrorBuffer` — capacity 50, in-memory, newest-first.
+- `attachEngine(engine)` subscribes to `error` events, normalizes `{ err }`
+  → `{ message }`, drops `phase: 'conflict'` at ingest.
+- Wired by `serveCmd.js` (owns the buffer for the process lifetime) AND
+  auto-built by `createServer()` if no buffer is injected (so all in-tree
+  tests cover the path).
+- **Documented limitation:** survives the process lifetime, NOT restart.
+
+**REST surface additions:**
+- `GET /status` → response now carries `lastError` (most recent or null) and
+  `errors` (last 10, newest-first).  Conflict-phase errors are excluded.
+- `POST /errors/clear` → 204 No Content; empties the ring buffer (idempotent).
+
+**Files touched:**
+- `apps/folio/src/server/errorBuffer.js` (new)
+- `apps/folio/src/server/index.js`        (auto-build + export)
+- `apps/folio/src/server/routes.js`       (lastError/errors on /status,
+                                           POST /errors/clear)
+- `apps/folio/src/cli/serveCmd.js`        (own the buffer at the CLI layer)
+- `apps/folio/src/server/static/index.html` (banner + recent-errors DOM hooks)
+- `apps/folio/src/server/static/style.css`  (red banner, yellow pill, list)
+- `apps/folio/src/server/static/app.js`     (banner controller; bus.errors.changed)
+- `apps/folio/src/server/static/status.js`  (renders recent-errors collapsible)
+- `apps/folio/test/server.test.js`          (+8 tests)
+- `apps/folio/test/ui.test.js`              (+6 tests)
+
+**Constraints honored:**
+- No new top-level deps (vanilla DOM + CSS).
+- No `innerHTML` on user-controlled text — `textContent` only (XSS hardening).
+- WS frame shape is unchanged; the UI just listens harder.
+- ES modules; vanilla JS; vitest.
+
+**Test count:** 242 baseline → **256 total** (+14 new).  All green.
