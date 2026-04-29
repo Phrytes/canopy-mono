@@ -15,6 +15,7 @@
  *   folio serve [--port 8888] [--host 127.0.0.1] [--watch]
  *   folio tray [--url <base>] [--interval <ms>]
  *   folio reset [--yes] [--dry-run]
+ *   folio doctor [--json] [--verbose]
  *
  * Exit codes:
  *   0   success
@@ -31,6 +32,7 @@ import { rmCmd }        from './cli/rmCmd.js';
 import { serveCmd }     from './cli/serveCmd.js';
 import { trayCmd }      from './cli/trayCmd.js';
 import { resetCmd }     from './cli/resetCmd.js';
+import { doctorCmd }    from './cli/doctorCmd.js';
 
 const COMMANDS = {
   init:      initCmd,
@@ -43,6 +45,7 @@ const COMMANDS = {
   serve:     serveCmd,
   tray:      trayCmd,
   reset:     resetCmd,
+  doctor:    doctorCmd,
 };
 
 async function main() {
@@ -100,6 +103,9 @@ Commands:
                                   --backoff <ms>   slow interval after failures (default 30000)
   reset [--yes] [--dry-run]     Remove local Folio settings (config + vault + per-folder
                                 metadata).  Your notes folder content is NOT touched.
+  doctor [--json] [--verbose]   Diagnose your Folio setup step-by-step.  PASS/FAIL for
+                                each link in the bring-up chain.  Exit 0 healthy / 1 any
+                                FAIL / 2 no config.
 
   --help, -h                    Show this help
   --version, -v                 Print version
