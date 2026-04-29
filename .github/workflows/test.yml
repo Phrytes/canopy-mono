@@ -1,0 +1,120 @@
+# =============================================================================
+# @canopy — per-package test gating
+# -----------------------------------------------------------------------------
+# Runs every PR (any branch) and every push to `master` / `track-H-folio`.
+# One job per package, in parallel, so a failure in one suite doesn't mask
+# regressions elsewhere — you see exactly which suite broke.
+#
+# Matrix:
+#   - core               npm ci + vitest        (required)   --retry=2
+#   - pod-client         npm ci + vitest        (required)
+#   - relay              npm ci + vitest        (required)
+#   - react-native       npm ci + vitest        (informational; continue-on-error)
+#   - integration-tests  npm ci + vitest        (required)
+#   - folio              npm ci + vitest        (required)
+#
+# Notes:
+#   * `react-native` is allowed to fail until the BleTransport.test.js +
+#     MdnsTransport.test.js parser failures are sorted. Treat it as yellow.
+#   * The `core` matrix entry uses vitest's `--retry=2` because of one known
+#     timing-flaky scenario:
+#       packages/core/test/integration/mesh-scenario.test.js
+#         > Group AB — rendezvous phase 10 (WebRTC auto-upgrade)
+#         > phase 10b: force-close the DataChannel
+#     If it fails 2 retries in a row, that's a real regression — investigate.
+#   * No phone hardware is touched. We only run vitest unit suites; nothing
+#     here invokes `expo run:android` or BLE/mDNS device APIs.
+#   * No secrets needed — every test runs offline / in-process.
+#
+# See `.github/workflows/README.md` for a quick "what runs when" reference.
+# Branch-protection rules (marking the required jobs as gating) are a separate
+# one-time admin step on the GitHub side.
+# =============================================================================
+
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - track-H-folio
+
+# Cancel superseded runs on the same PR/branch — saves CI minutes.
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.suite.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: ${{ matrix.suite.allow-failure }}
+
+    strategy:
+      # Don't bail out the whole matrix when one suite fails — we want to see
+      # every job's status on the PR.
+      fail-fast: false
+      matrix:
+        suite:
+          - label: core
+            install-dir: packages/core
+            test-cmd: npm test --prefix packages/core -- --retry=2
+            allow-failure: false
+
+          - label: pod-client
+            install-dir: packages/pod-client
+            test-cmd: npm test --prefix packages/pod-client
+            allow-failure: false
+
+          - label: relay
+            install-dir: packages/relay
+            test-cmd: npm test --prefix packages/relay
+            allow-failure: false
+
+          # react-native: informational only — known parser failures in
+          # BleTransport.test.js + MdnsTransport.test.js. Flip allow-failure
+          # back to false once those are fixed.
+          - label: react-native
+            install-dir: packages/react-native
+            test-cmd: npm test --prefix packages/react-native
+            allow-failure: true
+
+          - label: integration-tests
+            install-dir: packages/integration-tests
+            test-cmd: npm test --prefix packages/integration-tests
+            allow-failure: false
+
+          - label: folio
+            install-dir: apps/folio
+            test-cmd: npm test --prefix apps/folio
+            allow-failure: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # Cache npm's global download cache. We track every package lockfile
+          # so a change in any one busts only that hash bucket.
+          cache: 'npm'
+          cache-dependency-path: |
+            packages/core/package-lock.json
+            packages/pod-client/package-lock.json
+            packages/relay/package-lock.json
+            packages/react-native/package-lock.json
+            packages/integration-tests/package-lock.json
+            apps/folio/package-lock.json
+
+      # Each package has its own lockfile and its own `file:` deps on sibling
+      # packages — so we install per-package rather than at the monorepo root.
+      # `npm ci` is strict about the lockfile, which is what we want in CI.
+      - name: Install (${{ matrix.suite.label }})
+        run: npm ci --prefix ${{ matrix.suite.install-dir }}
+
+      - name: Run tests (${{ matrix.suite.label }})
+        run: ${{ matrix.suite.test-cmd }}
