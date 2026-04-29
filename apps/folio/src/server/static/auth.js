@@ -26,6 +26,7 @@ export function initAuth({ getJson, postJson, bus } = {}) {
     customInput: document.getElementById('auth-issuer-custom'),
     cancelBtn:   document.getElementById('auth-cancel-btn'),
     modalLog:    document.getElementById('auth-modal-log'),
+    toast:       document.getElementById('auth-toast'),
   };
   if (!els.pill) return; // Auth UI not present (e.g. in legacy index.html) — bail.
 
@@ -136,6 +137,38 @@ export function initAuth({ getJson, postJson, bus } = {}) {
     }
   });
 
+  // ── Toast (Folio v2.1) ──────────────────────────────────────────────────
+  let toastHideTimer = null;
+  function showToast(message, kind = 'info') {
+    if (!els.toast) return;
+    if (toastHideTimer) {
+      clearTimeout(toastHideTimer);
+      toastHideTimer = null;
+    }
+    els.toast.className = `auth-toast auth-toast--${kind}`;
+    els.toast.textContent = message;
+    els.toast.hidden = false;
+    toastHideTimer = setTimeout(() => {
+      if (els.toast) els.toast.hidden = true;
+      toastHideTimer = null;
+    }, 5000);
+  }
+
+  // Folio v2.1 — `auth.swapped` arrives over WS right after the user signs
+  // in.  The server has hot-swapped the PodClient and kicked off a runOnce;
+  // surface a friendly toast and re-paint the pill straight away (don't
+  // wait for the 5s /auth/status poll).
+  bus?.on?.('ws.auth.swapped', (frame) => {
+    const webid = frame?.webid ?? '';
+    showToast(webid
+      ? `Signed in as ${webid} — syncing now`
+      : 'Signed in — syncing now',
+    'ok');
+    // Optimistic pill paint; refresh() reconciles on the next poll.
+    paint({ authenticated: true, webid });
+    refresh().catch(() => { /* ignore */ });
+  });
+
   // ── Boot ────────────────────────────────────────────────────────────────
   refresh().then(startPolling);
 
@@ -144,5 +177,6 @@ export function initAuth({ getJson, postJson, bus } = {}) {
     refresh,
     paint,
     get last() { return lastStatus; },
+    showToast,
   };
 }

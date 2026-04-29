@@ -70,6 +70,9 @@ export async function serveCmd(args) {
     podClient: podClient ?? undefined,
     vault,
     oidc: oidc ?? undefined,
+    // Folio v2.1: forward `cfg` so the auth router can build a real PodClient
+    // on /auth/callback success and hot-swap it into the live engine.
+    cfg,
   });
 
   engine.on('error', (e) => {
@@ -126,10 +129,9 @@ async function safeBuildPodClient(cfg, deps) {
 
 /**
  * A throwing stub for pre-auth boot.  Calls fail with a clear message; the
- * web UI's /auth/* routes are still served.  Once the user signs in we'd
- * normally swap a real PodClient in — for v1 we ask them to restart serve
- * after sign-in (the refresh token in the vault means it picks up
- * automatically).  TODO: hot-swap PodClient when /auth/callback succeeds.
+ * web UI's /auth/* routes are still served.  Once the user signs in (Folio
+ * v2.1), the auth-callback route hot-swaps a real PodClient into the live
+ * engine — no `folio serve` restart needed.
  */
 function makeOfflinePodStub(cfg) {
   const err = () => Object.assign(
