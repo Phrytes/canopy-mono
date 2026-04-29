@@ -31,7 +31,7 @@ the end of 2026-04-29.
 | H | App | Deps | State | Verdict |
 |---|---|---|---|---|
 | **H1** | #1 Notes V0 (folder ↔ pod sync) | A ✅, B (B5 in flight) | Ready as soon as B5 lands | **Tier 1 — start here** |
-| **H7** | #5 Archive read-side + SQLite FTS5 | A ✅, B (B5 in flight) | Ready as soon as B5 lands | **Tier 1 — start here** |
+| **H7** | #5 Archive read-side + SQLite FTS5 | A ✅, B (B5 in flight) | in flight (v0 shipped: lib + CLI; web UI + real-pod auth deferred) | **Tier 1 — start here** |
 | **H6** | #3 Import bridge (Google Docs first) | A ✅, B (B5 in flight), F ✅ | Ready as soon as B5 lands | Tier 2 |
 | **H4** | #4 Tasks V0 (single household) | A ✅, B (B5 in flight), D ✅ | Ready as soon as B5 lands | Tier 2 |
 | **H2** | #7 Household V0 (Telegram, no LLM) | A ✅, B, F1 ✅ | Ready, but high external-ops cost | Tier 3 — defer |
@@ -216,7 +216,7 @@ SDK track plans:
 Drafts to be written when we kick off each:
 
 - [ ] H1 — **Folio** (Notes V0) — plan in [`./track-H-app-folio.md`](./track-H-app-folio.md) *(awaiting plan-confirmation review)*
-- [ ] H7 — Archive V0  *(plan-not-yet-written)*
+- [~] H7 — Archive V0 — v0 shipped (`apps/archive/`: lib + CLI + 77 tests; web UI + real-pod auth deferred)
 - [ ] H6 — Import bridge V0  *(plan-not-yet-written)*
 - [ ] H4 — Tasks V0  *(plan-not-yet-written)*
 - [ ] H2 — Household V0 (Telegram, no LLM)  *(plan-not-yet-written)*
