@@ -11,6 +11,7 @@
  *   { type: 'sync.done',         ts, uploads, downloads, deletes, conflicts }
  *   { type: 'sync.force.start',  ts }                              (Folio v2.5)
  *   { type: 'sync.force.done',   ts, uploads, errors }             (Folio v2.5)
+ *   { type: 'sync.delete.done',  ts, relPath, podUri }             (Folio v2.11)
  *   { type: 'conflict.new',      ts, id, relPath, podUri }
  *   { type: 'error',             ts, phase, relPath?, message }
  *   { type: 'auth.swapped',      ts, webid }                       (Folio v2.1)
@@ -184,6 +185,20 @@ export class WsHub {
       });
     };
 
+    // Folio v2.11 — permanent pod-delete.  Emitted by SyncEngine.deleteCompletely
+    // after the pod resource is gone, the local copy is unlinked, knownState +
+    // version history are wiped.  Local-only tombstone (deleteLocal) does NOT
+    // emit a frame — the next runOnce surfaces it via the existing `sync.done`
+    // frame's `deletes` count.
+    const onDeleteDone = (d) => {
+      this.broadcast({
+        type:    'sync.delete.done',
+        ts:      d?.ts ?? Date.now(),
+        relPath: d?.relPath ?? '',
+        podUri:  d?.podUri ?? '',
+      });
+    };
+
     this.#engine.on('synced',           onSynced);
     this.#engine.on('conflict',         onConflict);
     this.#engine.on('error',            onError);
@@ -191,6 +206,7 @@ export class WsHub {
     this.#engine.on('auth.swapped',     onAuthSwapped);
     this.#engine.on('sync.force.start', onForceStart);
     this.#engine.on('sync.force.done',  onForceDone);
+    this.#engine.on('sync.delete.done', onDeleteDone);
 
     this.#unsubs.push(() => this.#engine.off('synced',           onSynced));
     this.#unsubs.push(() => this.#engine.off('conflict',         onConflict));
@@ -199,5 +215,6 @@ export class WsHub {
     this.#unsubs.push(() => this.#engine.off('auth.swapped',     onAuthSwapped));
     this.#unsubs.push(() => this.#engine.off('sync.force.start', onForceStart));
     this.#unsubs.push(() => this.#engine.off('sync.force.done',  onForceDone));
+    this.#unsubs.push(() => this.#engine.off('sync.delete.done', onDeleteDone));
   }
 }

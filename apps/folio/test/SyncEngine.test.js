@@ -468,6 +468,75 @@ describe('SyncEngine.dropVersions — wired into deleteLocal', () => {
   });
 });
 
+// ── Folio v2.11 — deleteCompletely (permanent pod + local + history wipe) ──
+
+describe('SyncEngine.deleteCompletely (Folio v2.11)', () => {
+  it('removes the pod resource, the local file, and the version history; emits sync.delete.done', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'first');
+    const e = newEngine();
+    await e.runOnce();
+    // Sanity: pre-conditions satisfied.
+    expect(pod.store.has(`${POD_ROOT}a.md`)).toBe(true);
+    expect((await e.versions('a.md')).length).toBeGreaterThan(0);
+    await fs.access(join(localRoot, 'a.md')); // exists
+
+    const events = [];
+    e.on('sync.delete.done', (d) => events.push(d));
+
+    const r = await e.deleteCompletely('a.md');
+    expect(r.relPath).toBe('a.md');
+    expect(r.podUri).toBe(`${POD_ROOT}a.md`);
+
+    // Pod-side gone.
+    expect(pod.store.has(`${POD_ROOT}a.md`)).toBe(false);
+    // Local file gone.
+    await expect(fs.access(join(localRoot, 'a.md'))).rejects.toThrow();
+    // Version history wiped — pod-delete is "permanent".
+    expect(await e.versions('a.md')).toEqual([]);
+    // Event emitted with the right payload.
+    expect(events).toHaveLength(1);
+    expect(events[0].relPath).toBe('a.md');
+    expect(events[0].podUri).toBe(`${POD_ROOT}a.md`);
+    expect(typeof events[0].ts).toBe('number');
+  });
+
+  it('treats pod-side NOT_FOUND as success (idempotent local cleanup)', async () => {
+    await fs.writeFile(join(localRoot, 'gone.md'), 'still-local');
+    const e = newEngine();
+    // Force a NOT_FOUND from the pod-client.
+    pod.delete = async () => {
+      const err = new Error('mock 404');
+      err.code = 'NOT_FOUND';
+      throw err;
+    };
+    pod.deleteCompletely = async (uri) => pod.delete(uri);
+
+    const r = await e.deleteCompletely('gone.md');
+    expect(r.relPath).toBe('gone.md');
+    // Local cleanup proceeded despite pod-side 404.
+    await expect(fs.access(join(localRoot, 'gone.md'))).rejects.toThrow();
+  });
+
+  it('rejects empty / missing relPath', async () => {
+    const e = newEngine();
+    await expect(e.deleteCompletely('')).rejects.toThrow();
+    await expect(e.deleteCompletely(undefined)).rejects.toThrow();
+  });
+
+  it('propagates non-NOT_FOUND errors from the pod-client', async () => {
+    await fs.writeFile(join(localRoot, 'b.md'), 'oops');
+    const e = newEngine();
+    pod.deleteCompletely = async () => {
+      const err = new Error('forbidden');
+      err.code = 'FORBIDDEN';
+      throw err;
+    };
+    await expect(e.deleteCompletely('b.md')).rejects.toThrow(/forbidden/);
+    // On a hard pod failure the local file MUST remain so the user can retry.
+    await fs.access(join(localRoot, 'b.md'));
+  });
+});
+
 describe('SyncEngine — versions retention', () => {
   it('options.versions threads through to captureVersion', async () => {
     const e = new SyncEngine({
