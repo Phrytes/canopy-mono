@@ -29,3 +29,18 @@ export {
   SHARE_RENEW_WINDOW_MS,
   SHARES_FILE_RELPATH,
 } from './autoShare.js';
+// Folio.B4 — time-machine versioning (Q-Folio.4).
+export {
+  captureVersion,
+  listVersions,
+  restoreVersion,
+  dropVersions,
+  pruneVersions,
+  listFilesWithVersions,
+  readVersionContent,
+  isVersionable,
+  sha256Of,
+  VERSIONS_DIR_RELPATH,
+  DEFAULT_VERSIONS_PER_FILE,
+  DEFAULT_VERSIONS_BUDGET_MB,
+} from './versions.js';

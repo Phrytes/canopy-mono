@@ -61,6 +61,12 @@ import { diff }               from '../diff.js';
 import { hasConflictMarkers } from '../applyConflict.js';
 
 import { conflictIdFromRelPath, relPathFromConflictId } from './conflictId.js';
+import {
+  listVersions,
+  readVersionContent,
+  isVersionable,
+  listFilesWithVersions,
+} from '../versions.js';
 
 const STATE_FILE_RELPATH = '.canopy/notes-sync-state.json';
 
@@ -260,7 +266,107 @@ export function createRouter({ engine, podClient, vault, identity, hub }) {
       return sendError(res, 500, 'WRITE_FAILED', err?.message ?? String(err));
     }
 
+    // Folio.B4: snapshot the resolution.  Best-effort — never fail a resolve
+    // because versioning had a hiccup.
+    if (typeof engine.captureVersion === 'function') {
+      try { await engine.captureVersion(relPath, resolvedText); }
+      catch { /* swallow */ }
+    }
+
     res.json({ ok: true, relPath });
+  });
+
+  // ── /versions ─────────────────────────────────────────────────────────────
+  // Folio.B4 — list versions for a file.  id = base64url(relPath), same
+  // encoding the conflicts UI uses.
+  router.get('/versions/:id', async (req, res) => {
+    const id = req.params.id;
+    const relPath = relPathFromConflictId(id);
+    if (!relPath || !isVersionable(relPath)) {
+      return sendError(res, 400, 'BAD_VERSION_ID', 'version id is malformed or refers to an unsupported path');
+    }
+    try {
+      const versions = await listVersions({ localRoot: engine.localRoot, relPath });
+      // Do not leak absolute paths.
+      const out = versions.map(({ ts, sha256, size }) => ({ ts, sha256, size }));
+      res.json({ relPath, versions: out });
+    } catch (err) {
+      sendError(res, 500, 'READ_FAILED', err?.message ?? String(err));
+    }
+  });
+
+  // ── /versions/:id/content/:ms ─────────────────────────────────────────────
+  router.get('/versions/:id/content/:ms', async (req, res) => {
+    const id = req.params.id;
+    const relPath = relPathFromConflictId(id);
+    if (!relPath || !isVersionable(relPath)) {
+      return sendError(res, 400, 'BAD_VERSION_ID', 'version id is malformed or refers to an unsupported path');
+    }
+    const ms = Number(req.params.ms);
+    if (!Number.isFinite(ms)) {
+      return sendError(res, 400, 'BAD_VERSION_ID', 'ms must be a number');
+    }
+    try {
+      const buf = await readVersionContent({ localRoot: engine.localRoot, relPath, ts: ms });
+      res.type('text/plain; charset=utf-8').send(buf);
+    } catch (err) {
+      if (err?.code === 'VERSION_NOT_FOUND') {
+        return sendError(res, 404, 'VERSION_NOT_FOUND', err.message);
+      }
+      sendError(res, 500, 'READ_FAILED', err?.message ?? String(err));
+    }
+  });
+
+  // ── /versions/:id/restore ─────────────────────────────────────────────────
+  router.post('/versions/:id/restore', async (req, res) => {
+    const id = req.params.id;
+    const relPath = relPathFromConflictId(id);
+    if (!relPath || !isVersionable(relPath)) {
+      return sendError(res, 400, 'BAD_VERSION_ID', 'version id is malformed or refers to an unsupported path');
+    }
+    const body = req.body ?? {};
+    const ts = Number(body.ts);
+    if (!Number.isFinite(ts)) {
+      return sendError(res, 400, 'BAD_VERSION_ID', 'body.ts must be a number');
+    }
+    if (typeof engine.restoreVersion !== 'function') {
+      return sendError(res, 500, 'WRITE_FAILED', 'engine has no restoreVersion()');
+    }
+    try {
+      const r = await engine.restoreVersion(relPath, ts);
+      res.json({
+        relPath:                 r.relPath,
+        restoredFromMs:          r.restoredFromMs,
+        snapshotMsBeforeRestore: r.snapshotMsBeforeRestore,
+      });
+    } catch (err) {
+      if (err?.code === 'VERSION_NOT_FOUND') {
+        return sendError(res, 404, 'VERSION_NOT_FOUND', err.message);
+      }
+      if (err?.code === 'NOT_VERSIONABLE') {
+        return sendError(res, 400, 'BAD_VERSION_ID', err.message);
+      }
+      sendError(res, 500, 'WRITE_FAILED', err?.message ?? String(err));
+    }
+  });
+
+  // ── /versions (collection) ────────────────────────────────────────────────
+  // List every relPath that has at least one snapshot, newest-first.  Used
+  // by the UI's history-pane file picker.
+  router.get('/versions', async (_req, res) => {
+    try {
+      const files = await listFilesWithVersions(engine.localRoot);
+      // Attach an `id` field so the UI doesn't have to re-encode.
+      const out = files.map((f) => ({
+        id:       conflictIdFromRelPath(f.relPath),
+        relPath:  f.relPath,
+        latestMs: f.latestMs,
+        count:    f.count,
+      }));
+      res.json({ ts: Date.now(), files: out });
+    } catch (err) {
+      sendError(res, 500, 'READ_FAILED', err?.message ?? String(err));
+    }
   });
 
   // ── /share ────────────────────────────────────────────────────────────────
