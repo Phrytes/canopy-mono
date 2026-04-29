@@ -20,5 +20,19 @@
   },
   "devDependencies": {
     "vitest": "^2.1.0"
+  },
+  "peerDependencies": {
+    "expo-background-fetch": "*",
+    "expo-crypto":           "*",
+    "expo-file-system":      "*",
+    "expo-secure-store":     "*",
+    "expo-task-manager":     "*"
+  },
+  "peerDependenciesMeta": {
+    "expo-background-fetch": { "optional": true },
+    "expo-crypto":           { "optional": true },
+    "expo-file-system":      { "optional": true },
+    "expo-secure-store":     { "optional": true },
+    "expo-task-manager":     { "optional": true }
   }
 }

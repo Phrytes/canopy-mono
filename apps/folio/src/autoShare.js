@@ -35,17 +35,22 @@
  *   }
  *
  * Atomicity: every persist call writes to `shares.json.tmp` then renames,
- * so a crash mid-write cannot corrupt the file.
+ * so a crash mid-write cannot corrupt the file.  On RN, `expo-file-system`
+ * has no atomic-rename primitive — we use temp-then-move (best-effort);
+ * see `apps/folio/src/adapters/fsRN.js`.
  *
  * Error code: malformed `with-...` segments throw an Error with
  * `.code === 'AUTO_SHARE_BAD_PATH'` so the caller can distinguish them
  * from genuine runtime errors.
+ *
+ * Folio.C1 — adapter-aware: every `node:fs/promises` call goes through an
+ * injected `FsAdapter` (default Node).
  */
 
-import { promises as fs }      from 'node:fs';
-import { dirname, join }       from 'node:path';
-
 import { PodCapabilityToken }  from '@canopy/core';
+
+import { fsNode }              from './adapters/fsNode.js';
+import { joinPosix, dirnamePosix } from './adapters/pathPosix.js';
 
 // ── Public constants ────────────────────────────────────────────────────────
 
@@ -133,7 +138,7 @@ function shareKey(webid, sharePath) {
 }
 
 function sharesFilePath(localRoot) {
-  return join(localRoot, SHARES_FILE_RELPATH);
+  return joinPosix(localRoot, SHARES_FILE_RELPATH);
 }
 
 /**
@@ -142,13 +147,15 @@ function sharesFilePath(localRoot) {
  * (we'd rather re-mint than crash the SyncEngine).
  *
  * @param {string} localRoot
+ * @param {{ fs?: import('./adapters/index.js').FsAdapter }} [opts]
  * @returns {Promise<Record<string, ShareRecord>>}
  */
-export async function loadShares(localRoot) {
+export async function loadShares(localRoot, opts = {}) {
+  const fs = opts.fs ?? fsNode;
   const file = sharesFilePath(localRoot);
   let raw;
   try {
-    raw = await fs.readFile(file, 'utf8');
+    raw = await fs.readFileText(file, 'utf8');
   } catch (err) {
     if (err.code === 'ENOENT') return {};
     throw err;
@@ -168,10 +175,12 @@ export async function loadShares(localRoot) {
  *
  * @param {string} localRoot
  * @param {Record<string, ShareRecord>} shares
+ * @param {{ fs?: import('./adapters/index.js').FsAdapter }} [opts]
  */
-export async function saveShares(localRoot, shares) {
+export async function saveShares(localRoot, shares, opts = {}) {
+  const fs = opts.fs ?? fsNode;
   const file = sharesFilePath(localRoot);
-  const dir  = dirname(file);
+  const dir  = dirnamePosix(file);
   await fs.mkdir(dir, { recursive: true });
   const tmp  = `${file}.tmp`;
   const payload = JSON.stringify({
@@ -179,7 +188,7 @@ export async function saveShares(localRoot, shares) {
     writtenAt: Date.now(),
     shares,
   }, null, 2);
-  await fs.writeFile(tmp, payload, 'utf8');
+  await fs.writeFile(tmp, payload, { encoding: 'utf8' });
   await fs.rename(tmp, file);
 }
 
@@ -260,9 +269,11 @@ export function shouldRenew(record, currentPubKey, now = Date.now()) {
  * `ensureShares` pass.
  *
  * @param {string} localRoot
+ * @param {{ fs?: import('./adapters/index.js').FsAdapter }} [opts]
  * @returns {Promise<{ folders: Array<{ webid, sharePath, absPath }>, errors: Array<{ name, code, message }> }>}
  */
-export async function findShareFolders(localRoot) {
+export async function findShareFolders(localRoot, opts = {}) {
+  const fs = opts.fs ?? fsNode;
   const folders = [];
   const errors  = [];
 
@@ -284,7 +295,7 @@ export async function findShareFolders(localRoot) {
       folders.push({
         webid:     parsed.webid,
         sharePath: parsed.sharePath,
-        absPath:   join(localRoot, name),
+        absPath:   joinPosix(localRoot, name),
       });
     } catch (err) {
       errors.push({
@@ -307,21 +318,26 @@ export async function findShareFolders(localRoot) {
  *
  * Safe to call repeatedly: idempotent when no folder changed.
  *
- * @param {object} engine    SyncEngine (must expose `localRoot`, `podRoot`, `pathMap`)
+ * The optional `fs` adapter is taken first from the engine itself (if it
+ * exposes one via `engine.fs`), then from `opts.fs`, finally Node default.
+ *
+ * @param {object} engine    SyncEngine (must expose `localRoot`, `podRoot`, `pathMap`; may expose `fs`)
  * @param {object} identity  AgentIdentity for signing tokens
+ * @param {{ fs?: import('./adapters/index.js').FsAdapter }} [opts]
  * @returns {Promise<{ shares: Record<string, ShareRecord>, minted: number, renewed: number, errors: Array<object> }>}
  */
-export async function ensureShares(engine, identity) {
+export async function ensureShares(engine, identity, opts = {}) {
   if (!engine || typeof engine.localRoot !== 'string') {
     throw new Error('ensureShares: engine.localRoot is required');
   }
   if (!identity || typeof identity.pubKey !== 'string' || typeof identity.sign !== 'function') {
     throw new Error('ensureShares: identity with pubKey + sign() is required');
   }
+  const fs = opts.fs ?? engine.fs ?? fsNode;
 
   const { localRoot, podRoot, pathMap } = engine;
-  const shares = await loadShares(localRoot);
-  const { folders, errors } = await findShareFolders(localRoot);
+  const shares = await loadShares(localRoot, { fs });
+  const { folders, errors } = await findShareFolders(localRoot, { fs });
 
   let minted  = 0;
   let renewed = 0;
@@ -378,7 +394,7 @@ export async function ensureShares(engine, identity) {
   }
 
   if (mutated) {
-    await saveShares(localRoot, shares);
+    await saveShares(localRoot, shares, { fs });
   }
 
   return { shares, minted, renewed, errors };
@@ -389,10 +405,12 @@ export async function ensureShares(engine, identity) {
  * for `engine.shares()` consumers.
  *
  * @param {string} localRoot
+ * @param {{ fs?: import('./adapters/index.js').FsAdapter }} [opts]
  * @returns {Promise<Array<{ webid, path, expires, issuedAt, podUri, issuer }>>}
  */
-export async function listShares(localRoot) {
-  const shares = await loadShares(localRoot);
+export async function listShares(localRoot, opts = {}) {
+  const fs = opts.fs ?? fsNode;
+  const shares = await loadShares(localRoot, { fs });
   return Object.values(shares).map((r) => ({
     webid:     r.webid,
     path:      r.sharePath,

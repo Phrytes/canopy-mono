@@ -133,32 +133,32 @@ User leans documented; nothing requires a lock before C1 spawns.
 
 ## Sequence (one agent slice, ~1.5 days)
 
-- [ ] 1. Define adapter interfaces in `apps/folio/src/adapters/index.js` (JSDoc only; no code yet)
-- [ ] 2. Extract Node implementations: `fsNode.js` / `watcherNode.js` / `hashNode.js` from current SyncEngine code
-- [ ] 3. Refactor `SyncEngine.js` to accept `{ fs, watcher, hash }` via constructor; default to Node adapters
-- [ ] 4. Apply same refactor to `scanLocal.js`, `applyConflict.js`, `versions.js`, `autoShare.js` (each takes `fs` and/or `hash` parameters)
-- [ ] 5. Verify all 367+ existing Folio tests still pass — Node-side regression check
-- [ ] 6. Implement RN adapters: `fsRN.js` (expo-file-system), `watcherRN.js` (interval poll), `hashRN.js` (expo-crypto)
-- [ ] 7. Write `pathPosix.js` — pure string `join`/`dirname`/`basename`
-- [ ] 8. Write `serviceFactory.js` — convenience that wires RN adapters + a real PodClient
-- [ ] 9. Tests: vitest with mocked `expo-file-system` / `expo-crypto` / `expo-secure-store` modules.  At least 25 new tests across the adapter files + the service factory
-- [ ] 10. `backgroundTasks.js` — minimal scaffold for `expo-background-fetch` + WorkManager.  Tests mock the platform APIs
-- [ ] 11. Update `apps/folio/package.json` peerDependencies for the Expo libs
-- [ ] 12. Document the new constructor shape in a §C1 scratchpad entry of this file
+- [x] 1. Define adapter interfaces in `apps/folio/src/adapters/index.js` (JSDoc only; no code yet)
+- [x] 2. Extract Node implementations: `fsNode.js` / `watcherNode.js` / `hashNode.js` from current SyncEngine code
+- [x] 3. Refactor `SyncEngine.js` to accept `{ fs, watcher, hash }` via constructor; default to Node adapters
+- [x] 4. Apply same refactor to `scanLocal.js`, `applyConflict.js`, `versions.js`, `autoShare.js` (each takes `fs` and/or `hash` parameters)
+- [x] 5. Verify all 367+ existing Folio tests still pass — Node-side regression check (390 baseline → all green after refactor)
+- [x] 6. Implement RN adapters: `fsRN.js` (expo-file-system), `watcherRN.js` (interval poll), `hashRN.js` (expo-crypto)
+- [x] 7. Write `pathPosix.js` — pure string `join`/`dirname`/`basename`
+- [x] 8. Write `serviceFactory.js` — convenience that wires RN adapters + a real PodClient
+- [x] 9. Tests: vitest with mocked `expo-file-system` / `expo-crypto` / `expo-secure-store` modules.  At least 25 new tests across the adapter files + the service factory (62 new tests landed)
+- [x] 10. `backgroundTasks.js` — minimal scaffold for `expo-background-fetch` + WorkManager
+- [x] 11. Update `apps/folio/package.json` peerDependencies for the Expo libs
+- [x] 12. Document the new constructor shape in a §C1 scratchpad entry of this file
 
 ---
 
 ## DoD
 
-- [ ] SyncEngine accepts `{ fs, watcher, hash }` via constructor; defaults to Node adapters
-- [ ] All 367 baseline Folio tests pass with the refactor (Node side)
-- [ ] At least 25 new tests for the RN adapters (mocked Expo modules)
-- [ ] `serviceFactory.js` builds an engine + runs a smoke `runOnce()` against `FsBackedMockPodClient` (proving the RN-shaped construction path works at all)
-- [ ] Documented adapter API surface (JSDoc complete)
-- [ ] No new top-level deps in root or `packages/*`
-- [ ] `expo-*` libs declared as `peerDependencies` only — not pulled in for the CLI / web build
-- [ ] `npm test --prefix apps/folio` green
-- [ ] §Folio.C1 scratchpad in this file (`track-H-folio-C1.md`)
+- [x] SyncEngine accepts `{ fs, watcher, hash }` via constructor; defaults to Node adapters
+- [x] All 390 baseline Folio tests pass with the refactor (Node side)
+- [x] At least 25 new tests for the RN adapters (mocked Expo modules) — 62 landed
+- [x] `serviceFactory.js` builds an engine + runs a smoke `runOnce()` against an in-memory MockPodClient (proving the RN-shaped construction path works at all)
+- [x] Documented adapter API surface (JSDoc complete in `apps/folio/src/adapters/index.js`)
+- [x] No new top-level deps in root or `packages/*`
+- [x] `expo-*` libs declared as `peerDependencies` only — not pulled in for the CLI / web build
+- [x] `npm test --prefix apps/folio` green (452 tests, 0 fail)
+- [x] §Folio.C1 scratchpad in this file (`track-H-folio-C1.md`)
 
 ---
 
@@ -258,3 +258,156 @@ the watcher's interval scan is a well-understood pattern.
 - `apps/mesh-demo/package.json` for the pinned Expo / RN versions C1 must match
 - `packages/react-native/src/` for `VaultRN` / `attachIdentityToAgent` patterns C1 should fit alongside
 - [Expo File System docs](https://docs.expo.dev/versions/latest/sdk/filesystem/) — the API surface `fsRN.js` wraps
+
+---
+
+## §Folio.C1 — implementation scratchpad
+
+**Landed:** 2026-04-29.  Worktree-isolated; orchestrator merges.
+
+### What shipped
+
+```
+apps/folio/src/adapters/
+  index.js            — JSDoc-only interface contract + Node default re-exports
+  pathPosix.js        — pure-string joinPosix/dirnamePosix/basenamePosix/extnamePosix
+  fsNode.js           — node:fs/promises wrapper (FsAdapter)
+  fsRN.js             — expo-file-system wrapper, ENOENT-normalized
+  hashNode.js         — node:crypto wrapper (async sha256(input))
+  hashRN.js           — expo-crypto wrapper (Crypto.digestStringAsync)
+  watcherNode.js      — chokidar wrapper translating to {event, absPath}
+  watcherRN.js        — interval-poll watcher diffing (mtimeMs, size)
+apps/folio/src/rn/
+  serviceFactory.js   — createSyncEngine({ podClient, FileSystem, Crypto, ... })
+  backgroundTasks.js  — expo-background-fetch + expo-task-manager scaffold
+apps/folio/test/adapters/
+  pathPosix.test.js   — 23 tests
+  fsRN.test.js        — 12 tests (in-memory FileSystem mock)
+  hashRN.test.js      —  7 tests (digest equality vs Node)
+  watcherRN.test.js   — 11 tests (diffing across ticks)
+apps/folio/test/rn/
+  serviceFactory.test.js — 9 tests (validation + smoke runOnce)
+```
+
+### New SyncEngine constructor signature
+
+```js
+new SyncEngine({
+  podClient,                // unchanged — required
+  localRoot,                // unchanged — required
+  podRoot,                  // unchanged — required
+  identity,                 // unchanged — optional
+  pollIntervalMs,           // unchanged
+  debounceMs,               // unchanged
+  versions,                 // unchanged — Folio.B4 retention policy
+  watcher,                  // unchanged — Folio v2.6/v2.10 stable+grace timings
+  // ── Folio.C1 — new (all optional, default Node) ──
+  fs,                       // FsAdapter      — default: fsNode
+  hash,                     // HashAdapter    — default: hashNode
+  watcherFactory,           // WatcherAdapter — default: watcherNode
+});
+```
+
+`SyncEngine` exposes two new getters: `engine.fs` and `engine.hash` so
+helpers (notably `ensureShares`) can re-use the engine's adapter without
+the caller re-passing it.
+
+### Adapter API surface
+
+`FsAdapter` (subset of `node:fs/promises` actually used by Folio):
+- `readFile(absPath) → Promise<Uint8Array | Buffer>` — bytes
+- `readFileText(absPath, encoding?) → Promise<string>` — UTF-8 text
+- `writeFile(absPath, content, opts?) → Promise<void>`
+- `unlink(absPath) → Promise<void>` — ENOENT throws `.code === 'ENOENT'`
+- `rmdir(absPath) → Promise<void>`
+- `mkdir(absPath, { recursive? }) → Promise<void>` — defaults to recursive
+- `readdir(absPath, { withFileTypes? }) → Promise<string[] | DirEnt[]>`
+- `stat(absPath) → Promise<{ size, mtimeMs, isFile(), isDirectory() }>`
+- `rename(srcPath, destPath) → Promise<void>` — used for atomic writes
+
+`HashAdapter`:
+- `sha256(input: string | Uint8Array | Buffer) → Promise<string>` — hex
+
+`WatcherAdapter`:
+- `start({ root, ignored?, onEvent, onError? }) → Promise<{ stop() }>`
+  emits `{ event: 'add'|'change'|'unlink', absPath }` per FS event
+
+### Helper signature changes (additive — defaults preserved)
+
+All take an extra `fs` (and optionally `hash`) in their options bag:
+
+- `scanLocal(rootPath, { pathMap?, fs?, hash? })` — defaults to Node
+- `scanPod(podClient, containerUri, { pathMap?, hash? })`
+- `applyConflict(absPath, localText, remoteText, { localTimestamp?, remoteTimestamp?, fs? })`
+- `captureVersion({ localRoot, relPath, content, now?, retention?, fs?, hash? })`
+- `listVersions({ localRoot, relPath, fs?, hash? })`
+- `restoreVersion({ localRoot, relPath, ts, retention?, fs?, hash? })`
+- `dropVersions({ localRoot, relPath, fs? })`
+- `pruneVersions({ localRoot, relPath?, retention?, fs?, hash? })`
+- `listFilesWithVersions(localRoot, { fs? })`
+- `readVersionContent({ localRoot, relPath, ts, fs?, hash? })`
+- `loadShares(localRoot, { fs? })`
+- `saveShares(localRoot, shares, { fs? })`
+- `findShareFolders(localRoot, { fs? })`
+- `ensureShares(engine, identity, { fs? })` — also reads `engine.fs` if present
+- `listShares(localRoot, { fs? })`
+
+Existing positional / single-arg callers (CLI, web driver, all 390 v1
+tests) keep working untouched.
+
+### Deviations from the plan
+
+1. **`sha256Of()` in `versions.js` stays sync (`node:crypto`-backed).**
+   The plan implied moving everything to the hash adapter, but
+   `sha256Of` is a public export with a sync signature already exercised
+   by tests outside the adapter path.  We added an async sibling
+   `sha256OfAsync(hash, content)` for callers that want the adapter
+   path; internally, `versions.js` uses the injected adapter via
+   `hash.sha256(...)` for every read/write code path that the RN engine
+   actually reaches.  RN bundlers don't import `versions.js` from the
+   sync export; the RN code path threads through the adapter exclusively.
+
+2. **`extnamePosix` added to `pathPosix.js`.**  The plan listed
+   "join / dirname / basename"; `versions.js` also needed `extname` to
+   build snapshot filenames.  Pure-string, two-line implementation.
+
+3. **`backgroundTasks.js` is namespace-injection-friendly.**  Rather
+   than `import 'expo-task-manager'` at module load (which would crash
+   on the CLI build), each function takes `{ TaskManager, BackgroundFetch }`
+   as args.  C2 calls them once at app startup with the namespace
+   imports.
+
+4. **No `expo-secure-store` adapter.**  The plan mentioned "Vault uses
+   `VaultRN` from `@canopy/react-native`" (Q-C1.5) — that wiring is
+   already in place upstream; C1 does NOT need a new vault shim.
+   `expo-secure-store` IS declared in `peerDependencies` so a future
+   RN-side Folio vault can pull it in without re-touching the package.
+
+5. **`watcherFactory` rather than `watcher`.**  The constructor already
+   had a `watcher` parameter (Folio v2.6/v2.10 stability + grace
+   timings), so the adapter slot was named `watcherFactory` to avoid
+   collision.  This is consistent with the rest of the constructor's
+   nested-options pattern.
+
+### Risk follow-ups
+
+- `apps/folio/src/scanLocal.js` now uses `joinPosix` instead of
+  `node:path.join` for child-path construction.  On Linux this is
+  identical; on Windows the absPath strings would be `/`-separated
+  rather than `\`-separated.  Folio's CI is Linux-only and the RN target
+  is iOS/Android, so this is benign — but it IS a behavior change that
+  a Windows user could trip over.
+- `expo-file-system`'s `moveAsync` is *not* atomic across-volume; the
+  tmp-then-rename atomic-write pattern in `versions.js` / `autoShare.js`
+  is best-effort on RN.  Documented inline.
+- The watcher's `_walkOnce` test seam is exposed for vitest; production
+  code should never reach for it.
+
+### How C2 plugs in
+
+C2 (mobile screens) imports `createSyncEngine` from
+`apps/folio/src/rn/serviceFactory.js`, builds a `PodClient` with an
+`OidcSession` derived from `expo-auth-session` tokens, and hands the
+engine to a thin React component tree.  No engine refactoring needed.
+The mobile-auth flow remains as documented above (system browser sheet,
+PKCE, custom URL scheme `folio://`).

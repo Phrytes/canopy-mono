@@ -13,10 +13,12 @@
  * markers (a pre-applied conflict that the user hasn't resolved yet), we
  * do NOT double-mark.  We re-write the existing file verbatim — the
  * user's hands-off-until-resolved guarantee.
+ *
+ * Folio.C1 — adapter-aware: takes an optional `fs` adapter (default Node).
  */
 
-import { promises as fs } from 'node:fs';
-import { dirname } from 'node:path';
+import { fsNode }       from './adapters/fsNode.js';
+import { dirnamePosix } from './adapters/pathPosix.js';
 
 const CONFLICT_HEAD = '<<<<<<<';
 const CONFLICT_MID  = '=======';
@@ -32,14 +34,15 @@ const CONFLICT_RE   = /^<{7} YOURS\b/m;
  * @param {string} absPath
  * @param {string} localText
  * @param {string} remoteText
- * @param {{ localTimestamp?: number, remoteTimestamp?: number }} [opts]
+ * @param {{ localTimestamp?: number, remoteTimestamp?: number, fs?: import('./adapters/index.js').FsAdapter }} [opts]
  */
 export async function applyConflict(absPath, localText, remoteText, opts = {}) {
+  const fs = opts.fs ?? fsNode;
   // Idempotency: if the file on disk already has conflict markers, don't
   // double-mark.  This protects against a re-run of runOnce while the user
   // is mid-edit.
   let existing = '';
-  try { existing = await fs.readFile(absPath, 'utf8'); }
+  try { existing = await fs.readFileText(absPath, 'utf8'); }
   catch (err) {
     if (err.code !== 'ENOENT') throw err;
   }
@@ -56,8 +59,8 @@ export async function applyConflict(absPath, localText, remoteText, opts = {}) {
     ensureTrailingNewline(remoteText) +
     `${CONFLICT_TAIL} THEIRS (pod ${remoteTs})\n`;
 
-  await fs.mkdir(dirname(absPath), { recursive: true });
-  await fs.writeFile(absPath, merged, 'utf8');
+  await fs.mkdir(dirnamePosix(absPath), { recursive: true });
+  await fs.writeFile(absPath, merged, { encoding: 'utf8' });
 }
 
 function ensureTrailingNewline(s) {
