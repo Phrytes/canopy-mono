@@ -13,6 +13,7 @@
  *   folio conflicts [--resolve]
  *   folio rm <path>
  *   folio serve [--port 8888] [--host 127.0.0.1] [--watch]
+ *   folio tray [--url <base>] [--interval <ms>]
  *
  * Exit codes:
  *   0   success
@@ -27,6 +28,7 @@ import { shareCmd }     from './cli/shareCmd.js';
 import { conflictsCmd } from './cli/conflictsCmd.js';
 import { rmCmd }        from './cli/rmCmd.js';
 import { serveCmd }     from './cli/serveCmd.js';
+import { trayCmd }      from './cli/trayCmd.js';
 
 const COMMANDS = {
   init:      initCmd,
@@ -37,6 +39,7 @@ const COMMANDS = {
   conflicts: conflictsCmd,
   rm:        rmCmd,
   serve:     serveCmd,
+  tray:      trayCmd,
 };
 
 async function main() {
@@ -89,6 +92,9 @@ Commands:
   conflicts [--resolve]         List unresolved conflicts; --resolve opens \$EDITOR
   rm <path>                     Mark a file as deleted-locally (tombstone)
   serve [--port 8888] [--watch] Start the local web server (Express + WebSocket on 127.0.0.1)
+  tray [--url <base>]           Run the tray-bar status indicator (foreground)
+                                  --interval <ms>  poll interval (default 5000)
+                                  --backoff <ms>   slow interval after failures (default 30000)
 
   --help, -h                    Show this help
   --version, -v                 Print version
