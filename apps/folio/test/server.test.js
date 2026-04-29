@@ -746,6 +746,143 @@ describe('SyncErrorBuffer wired through the live engine event flow', () => {
   });
 });
 
+// ── Folio v2.5 — /sync/force + /verify/:id ─────────────────────────────────
+
+describe('POST /sync/force (Folio v2.5)', () => {
+  it('returns 202 and re-uploads every local file', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    await fs.writeFile(join(localRoot, 'b.md'), 'banana');
+    // Bring local + pod in-sync.
+    await engine.runOnce();
+
+    // Track writes performed from this point onward.
+    const writeBefore = (() => {
+      let n = 0;
+      const orig = podClient.write.bind(podClient);
+      podClient.write = async (...args) => { n++; return orig(...args); };
+      return () => n;
+    })();
+
+    const { status, body } = await postJson('/sync/force', {});
+    expect(status).toBe(202);
+    expect(body.ok).toBe(true);
+    expect(body.started).toBe(true);
+
+    // Wait for the engine's force-push to finish.
+    await new Promise((r) => setTimeout(r, 200));
+    // 2 files were re-uploaded even though they were already in-sync.
+    expect(writeBefore()).toBe(2);
+  });
+
+  it('streams sync.force.start and sync.force.done over /events', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+
+    const ws = new WebSocket(wsUrl);
+    const frames = [];
+    await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
+    ws.on('message', (data) => {
+      try { frames.push(JSON.parse(data.toString('utf8'))); } catch { /* ignore */ }
+    });
+
+    await postJson('/sync/force', {});
+
+    await waitFor(() => frames.some((f) => f.type === 'sync.force.done'));
+
+    const startFrame = frames.find((f) => f.type === 'sync.force.start');
+    const doneFrame  = frames.find((f) => f.type === 'sync.force.done');
+    expect(startFrame).toBeDefined();
+    expect(doneFrame).toBeDefined();
+    expect(typeof doneFrame.uploads).toBe('number');
+    expect(typeof doneFrame.errors).toBe('number');
+    expect(doneFrame.uploads).toBeGreaterThanOrEqual(1);
+
+    ws.close();
+  });
+
+  it('returns 500 NOT_SUPPORTED when the engine has no forcePush()', async () => {
+    // Build a server with a stripped-down engine that lacks forcePush.
+    await srv.close();
+    const dummyEngine = {
+      localRoot,
+      podRoot: POD_ROOT,
+      stats:   {},
+      __watching: false,
+      runOnce: async () => ({ uploads: 0, downloads: 0, deletes: 0, conflicts: 0 }),
+      // forcePush deliberately absent.
+      verifyPodState: async () => ({ exists: false }),
+      stop: async () => {},
+      on() {}, off() {}, emit() {},
+      _podClient: podClient,
+    };
+    srv = createServer({ engine: dummyEngine, vault });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+
+    const { status, body } = await postJson('/sync/force', {});
+    expect(status).toBe(500);
+    expect(body.error.code).toBe('NOT_SUPPORTED');
+  });
+});
+
+describe('GET /verify/:id (Folio v2.5)', () => {
+  it('returns exists=true with size+sha matches for an in-sync file', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    await engine.runOnce();
+
+    const id = conflictIdFromRelPath('a.md');
+    const { status, body } = await getJson(`/verify/${id}`);
+    expect(status).toBe(200);
+    expect(body.relPath).toBe('a.md');
+    expect(body.podUri).toBe(`${POD_ROOT}a.md`);
+    expect(body.exists).toBe(true);
+    expect(body.sizeMatches).toBe(true);
+    expect(body.shaMatches).toBe(true);
+    expect(typeof body.ts).toBe('number');
+  });
+
+  it('returns exists=false for a file that was never uploaded', async () => {
+    await fs.writeFile(join(localRoot, 'never.md'), 'local');
+    // Don't sync.
+    const id = conflictIdFromRelPath('never.md');
+    const { status, body } = await getJson(`/verify/${id}`);
+    expect(status).toBe(200);
+    expect(body.exists).toBe(false);
+  });
+
+  it('returns 400 BAD_VERIFY_ID for path-escape attempts', async () => {
+    // '../etc/passwd' must never decode through to a real fs path.
+    const id = Buffer.from('../etc/passwd', 'utf8').toString('base64')
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const { status, body } = await getJson(`/verify/${id}`);
+    expect(status).toBe(400);
+    expect(body.error.code).toBe('BAD_VERIFY_ID');
+  });
+
+  it('returns 500 NOT_SUPPORTED when the engine has no verifyPodState()', async () => {
+    await srv.close();
+    const dummyEngine = {
+      localRoot,
+      podRoot: POD_ROOT,
+      stats: {},
+      __watching: false,
+      runOnce: async () => ({ uploads: 0, downloads: 0, deletes: 0, conflicts: 0 }),
+      forcePush: async () => ({ uploads: 0, errors: 0 }),
+      // verifyPodState deliberately absent.
+      stop: async () => {},
+      on() {}, off() {}, emit() {},
+      _podClient: podClient,
+    };
+    srv = createServer({ engine: dummyEngine, vault });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+
+    const id = conflictIdFromRelPath('whatever.md');
+    const { status, body } = await getJson(`/verify/${id}`);
+    expect(status).toBe(500);
+    expect(body.error.code).toBe('NOT_SUPPORTED');
+  });
+});
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 async function waitFor(predicate, { timeoutMs = 2000, stepMs = 25 } = {}) {

@@ -1480,3 +1480,88 @@ Defaults match the spec (250ms / 5000ms).  Tests use 30–60ms / 200–800ms.
 - ES modules; vanilla JS; vitest; real-clock test budget < 2s wall.
 
 **Test count:** 269 baseline → **276 total** (+7 new).  All green.
+
+## §Folio v2.5 — Force re-push + Verify pod state (2026-04-29)
+
+**Problem.** Folio is Dropbox-shaped: when the local sha cache thinks "all
+matches", uploads skip.  Three real-world scenarios bypass that cache and
+leave users stuck:
+
+1. The pod was edited out-of-band (another client, server reset, manual edit
+   via the pod's web UI).
+2. `notes-sync-state.json` was tampered with or got out of sync with the pod.
+3. The user simply wants to confirm "is THIS file actually in the pod?" without
+   leaving Folio.
+
+There's no escape hatch — `folio sync` is a no-op when knownState says clean.
+
+**Shipped.** Two surfaces, one engine, one REST pair, one Status-pane addition:
+
+1. **`engine.forcePush()`** — re-uploads every local file regardless of
+   `knownState`.  Push only — never pulls or deletes.  Updates `knownState`
+   so a subsequent `runOnce()` sees "clean".  Per-file errors don't abort the
+   run.  Respects `#runChain` so an in-flight sync waits its turn.  Emits
+   `'sync.force.start'` and `'sync.force.done'` events.
+
+2. **`engine.verifyPodState(relPath)`** — returns
+   `{ relPath, podUri, exists, sizeMatches?, shaMatches?, podEtag? }`.  Uses
+   the cheapest path: `podClient.exists()` + `podClient.head()` first; falls
+   back to `podClient.read()` only if metadata is insufficient.  Pure
+   snapshot — no state mutation.
+
+3. **REST**:
+   - `POST /sync/force` — fire-and-forget; 202 + WS stream.  Adds
+     `sync.force.start` / `sync.force.done` to the WebSocket frame contract
+     (mirrored by `WsHub` from the engine events).
+   - `GET /verify/:id` — `id = base64url(relPath)` (same encoding as
+     conflicts + versions).  400 `BAD_VERIFY_ID` on path-escape or malformed
+     ids; 500 `NOT_SUPPORTED` when the engine lacks `verifyPodState()`.
+
+4. **UI — in the Status pane (NOT a new tab)**:
+   - "Force re-push" button next to "Sync now" + "Start watch".
+   - Confirm modal blocks accidental clicks: "This re-uploads every file
+     regardless of cached state.  Continue?" + Cancel + Continue buttons.
+   - "Recently synced files" collapsible (last 10).  Each row: filename + dot.
+   - Dot states:
+     - **gray**   — not yet verified
+     - **green**  — exists + size + sha match
+     - **yellow** — exists but size or sha mismatch
+     - **red**   — missing on the pod
+   - Per-row "Verify" button + a "Verify all" button at the top of the list
+     (bounded to 4 parallel HEADs).
+   - List is seeded from `version.new` WS frames (push + pull + conflict
+     resolve all emit one) so it stays in sync with what the engine actually
+     touched.  No persistent history — snapshot only.
+
+**Files touched:**
+- `apps/folio/src/SyncEngine.js`             (+ forcePush() + verifyPodState())
+- `apps/folio/src/server/routes.js`          (+ POST /sync/force, GET /verify/:id)
+- `apps/folio/src/server/wsHub.js`           (+ sync.force.start / sync.force.done)
+- `apps/folio/src/server/static/index.html`  (+ button, confirm modal, verify list)
+- `apps/folio/src/server/static/status.js`   (+ button wiring + dot rendering)
+- `apps/folio/src/server/static/style.css`   (+ dot states + .modal styles)
+- `apps/folio/test/SyncEngine.test.js`       (+12 tests)
+- `apps/folio/test/server.test.js`           (+ 7 tests)
+- `apps/folio/test/ui.test.js`               (+ 6 tests)
+
+**Constraints honored (HARD list):**
+- No new top-level deps.
+- `forcePush` never touches the pull path — only push.  Tests cover the
+  pod-only-file case to lock that down.
+- `forcePush` updates `knownState`; a follow-up `runOnce` reports zero
+  uploads.
+- `verifyPodState` uses `podClient.exists()` + `podClient.head()` first;
+  read() only when head() is unavailable.  Verified with call counters.
+- Confirm modal gates the force-push action; the button never fires the
+  POST directly.
+- Concurrency: `forcePush` queues onto `#runChain` so an in-flight `runOnce`
+  finishes first.
+- No `innerHTML` on user-controlled relPaths — `textContent` only.
+
+**Out of scope (parked):**
+- "Force pull" — separate UX call; would need conflict semantics.
+- Bulk verify-everything: list shows the most recent 10 only.
+- Persistent verify history — snapshot only.
+
+**Test count:** 269 baseline → **294 total** (+25 new across SyncEngine,
+server, and ui suites).  All green via `npm test --prefix apps/folio`.
