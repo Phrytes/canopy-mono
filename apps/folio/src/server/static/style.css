@@ -171,6 +171,58 @@ main { padding: 1rem 1.25rem 2rem; }
 .share-recent li.empty { color: #999; }
 .share-recent code { font-family: ui-monospace, Menlo, Consolas, monospace; }
 
+/* ── History (Folio.B4) ───────────────────────────────────────────────── */
+.history-grid {
+  display: grid;
+  grid-template-columns: 16rem 1fr;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 24rem;
+  overflow-y: auto;
+}
+.history-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.history-list li:hover { background: #f6f8fc; }
+.history-list li.empty { color: #999; cursor: default; }
+.history-list li.empty:hover { background: transparent; }
+.history-list code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  word-break: break-all;
+}
+.history-list__row--active { background: #e8f0fc; }
+.history-meta { font-size: 0.75rem; color: #777; }
+.history-version-ts { font-family: ui-monospace, Menlo, Consolas, monospace; }
+#history-content {
+  width: 100%;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fafafa;
+  resize: vertical;
+}
+.history-viewer { margin-top: 0.75rem; background: #fdfdfd; }
+.conflict-history-link {
+  margin-left: 0.75rem;
+  font-size: 0.8rem;
+  color: #1d6fd8;
+  text-decoration: underline;
+}
+.conflict-history-link:hover { color: #155bb3; }
+
 /* ── Auth pill ───────────────────────────────────────────────────────── */
 .auth-pill {
   display: inline-flex;

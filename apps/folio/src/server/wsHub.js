@@ -128,13 +128,30 @@ export class WsHub {
         message: e?.err?.message ?? String(e?.err ?? 'unknown'),
       });
     };
+    // Folio.B4 — version.new is emitted by SyncEngine on every successful
+    // captureVersion (push, pull, conflict-write, conflict-resolve).  The
+    // history pane subscribes and refreshes when its current selection
+    // matches.
+    const onVersionNew = (v) => {
+      // Frame shape per spec: { type: 'version.new', ts, relPath } — `ts`
+      // is the version's own timestamp.  broadcast() does
+      // `{ ts: Date.now(), ...payload }`, so a payload-provided `ts`
+      // overrides the wall-clock default.
+      this.broadcast({
+        type:    'version.new',
+        ts:      v?.ts ?? Date.now(),
+        relPath: v?.relPath ?? '',
+      });
+    };
 
-    this.#engine.on('synced',   onSynced);
-    this.#engine.on('conflict', onConflict);
-    this.#engine.on('error',    onError);
+    this.#engine.on('synced',      onSynced);
+    this.#engine.on('conflict',    onConflict);
+    this.#engine.on('error',       onError);
+    this.#engine.on('version.new', onVersionNew);
 
-    this.#unsubs.push(() => this.#engine.off('synced',   onSynced));
-    this.#unsubs.push(() => this.#engine.off('conflict', onConflict));
-    this.#unsubs.push(() => this.#engine.off('error',    onError));
+    this.#unsubs.push(() => this.#engine.off('synced',      onSynced));
+    this.#unsubs.push(() => this.#engine.off('conflict',    onConflict));
+    this.#unsubs.push(() => this.#engine.off('error',       onError));
+    this.#unsubs.push(() => this.#engine.off('version.new', onVersionNew));
   }
 }

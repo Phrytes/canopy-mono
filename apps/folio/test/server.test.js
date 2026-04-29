@@ -398,6 +398,150 @@ describe('unknown route', () => {
   });
 });
 
+// ── /versions (Folio.B4) ───────────────────────────────────────────────────
+
+describe('GET /versions/:id', () => {
+  it('returns the snapshot list for a relPath that has history', async () => {
+    // Drive a real capture through the engine to populate history.
+    await fs.writeFile(join(localRoot, 'a.md'), 'hello');
+    await engine.runOnce();
+    const id = conflictIdFromRelPath('a.md');
+    const { status, body } = await getJson(`/versions/${id}`);
+    expect(status).toBe(200);
+    expect(body.relPath).toBe('a.md');
+    expect(Array.isArray(body.versions)).toBe(true);
+    expect(body.versions.length).toBeGreaterThanOrEqual(1);
+    expect(body.versions[0]).toHaveProperty('ts');
+    expect(body.versions[0]).toHaveProperty('sha256');
+    expect(body.versions[0]).toHaveProperty('size');
+    // Absolute paths must NOT leak — only ts/sha256/size.
+    expect(body.versions[0].path).toBeUndefined();
+  });
+
+  it('rejects malformed version IDs with 400 BAD_VERSION_ID', async () => {
+    // `.folio/foo.md` is base64-encoded but isVersionable rejects it.
+    const id = Buffer.from('.folio/foo.md', 'utf8').toString('base64')
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const { status, body } = await getJson(`/versions/${id}`);
+    expect(status).toBe(400);
+    expect(body.error.code).toBe('BAD_VERSION_ID');
+  });
+
+  it('returns an empty list when the relPath has no history', async () => {
+    const id = conflictIdFromRelPath('untouched.md');
+    const { status, body } = await getJson(`/versions/${id}`);
+    expect(status).toBe(200);
+    expect(body.versions).toEqual([]);
+  });
+});
+
+describe('GET /versions/:id/content/:ms', () => {
+  it('returns the snapshot raw text for an existing version', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'snapshot-content');
+    await engine.runOnce();
+    const id = conflictIdFromRelPath('a.md');
+    const list = await (await fetch(`${baseUrl}/versions/${id}`)).json();
+    const ts = list.versions[0].ts;
+
+    const r = await fetch(`${baseUrl}/versions/${id}/content/${ts}`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toMatch(/text\/plain/);
+    expect(await r.text()).toBe('snapshot-content');
+  });
+
+  it('returns 404 VERSION_NOT_FOUND for an unknown ts', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'first');
+    await engine.runOnce();
+    const id = conflictIdFromRelPath('a.md');
+    const r = await fetch(`${baseUrl}/versions/${id}/content/99999999`);
+    expect(r.status).toBe(404);
+    const body = await r.json();
+    expect(body.error.code).toBe('VERSION_NOT_FOUND');
+  });
+});
+
+describe('POST /versions/:id/restore', () => {
+  it('restores a snapshot and returns the snapshotMsBeforeRestore', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'v1');
+    await engine.runOnce();
+
+    const id = conflictIdFromRelPath('a.md');
+    const list = await (await fetch(`${baseUrl}/versions/${id}`)).json();
+    const oldestTs = list.versions[0].ts;
+
+    // Mutate live; restore.
+    await fs.writeFile(join(localRoot, 'a.md'), 'live-now');
+    const { status, body } = await postJson(`/versions/${id}/restore`, { ts: oldestTs });
+    expect(status).toBe(200);
+    expect(body.restoredFromMs).toBe(oldestTs);
+    expect(typeof body.snapshotMsBeforeRestore).toBe('number');
+    expect(await fs.readFile(join(localRoot, 'a.md'), 'utf8')).toBe('v1');
+  });
+
+  it('returns 404 VERSION_NOT_FOUND for an unknown ts', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'x');
+    await engine.runOnce();
+    const id = conflictIdFromRelPath('a.md');
+    const { status, body } = await postJson(`/versions/${id}/restore`, { ts: 999_999 });
+    expect(status).toBe(404);
+    expect(body.error.code).toBe('VERSION_NOT_FOUND');
+  });
+
+  it('returns 400 BAD_VERSION_ID when ts is missing', async () => {
+    const id = conflictIdFromRelPath('a.md');
+    const { status, body } = await postJson(`/versions/${id}/restore`, {});
+    expect(status).toBe(400);
+    expect(body.error.code).toBe('BAD_VERSION_ID');
+  });
+});
+
+describe('GET /versions (collection)', () => {
+  it('lists every relPath that has at least one snapshot', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'A');
+    await fs.writeFile(join(localRoot, 'sub/b.md'), 'B').catch(async () => {
+      await fs.mkdir(join(localRoot, 'sub'), { recursive: true });
+      await fs.writeFile(join(localRoot, 'sub/b.md'), 'B');
+    });
+    await fs.mkdir(join(localRoot, 'sub'), { recursive: true });
+    await fs.writeFile(join(localRoot, 'sub/b.md'), 'B');
+    await engine.runOnce();
+
+    const { status, body } = await getJson('/versions');
+    expect(status).toBe(200);
+    const rels = body.files.map((f) => f.relPath).sort();
+    expect(rels).toContain('a.md');
+    expect(rels).toContain('sub/b.md');
+    for (const f of body.files) {
+      expect(typeof f.id).toBe('string');
+      expect(typeof f.latestMs).toBe('number');
+      expect(f.count).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('WebSocket /events — version.new (Folio.B4)', () => {
+  it('broadcasts version.new when SyncEngine captures a snapshot', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'aaa');
+
+    const ws = new WebSocket(wsUrl);
+    const frames = [];
+    await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
+    ws.on('message', (data) => {
+      try { frames.push(JSON.parse(data.toString('utf8'))); } catch { /* ignore */ }
+    });
+
+    await postJson('/sync/now', { direction: 'push' });
+    await waitFor(() => frames.some((f) => f.type === 'version.new'), { timeoutMs: 3_000 });
+
+    const v = frames.find((f) => f.type === 'version.new');
+    expect(v).toBeDefined();
+    expect(v.relPath).toBe('a.md');
+    expect(typeof v.ts).toBe('number');
+
+    ws.close();
+  });
+});
+
 // ── WebSocket ──────────────────────────────────────────────────────────────
 
 describe('WebSocket /events', () => {

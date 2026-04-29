@@ -31,6 +31,14 @@ import { scanPod }       from './scanPod.js';
 import { diff }          from './diff.js';
 import { applyConflict } from './applyConflict.js';
 import { ensureShares, listShares } from './autoShare.js';
+import {
+  captureVersion,
+  listVersions,
+  restoreVersion,
+  dropVersions,
+  pruneVersions,
+  isVersionable,
+} from './versions.js';
 
 const STATE_FILE_RELPATH = '.canopy/notes-sync-state.json';
 const DEFAULT_DEBOUNCE_MS = 500;
@@ -54,6 +62,8 @@ export class SyncEngine extends Emitter {
   #runChain = Promise.resolve();
   #stats = { uploads: 0, downloads: 0, deletes: 0, conflicts: 0, lastSyncAt: null };
 
+  #versionsOpts;
+
   /**
    * @param {object} opts
    * @param {object} opts.podClient                     — @canopy/pod-client PodClient (or any compatible mock)
@@ -62,8 +72,11 @@ export class SyncEngine extends Emitter {
    * @param {object} [opts.identity]                    — AgentIdentity (enables Q-Folio.3 auto-share)
    * @param {number} [opts.pollIntervalMs=60_000]       — pod-side scan interval (until LDN ships)
    * @param {number} [opts.debounceMs=500]              — coalesce window for FS events
+   * @param {{perFile?:number, budgetMb?:number}} [opts.versions]
+   *        Folio.B4 retention policy.  Defaults: 50 versions per file,
+   *        100 MB total under <localRoot>/.folio/versions.
    */
-  constructor({ podClient, localRoot, podRoot, identity, pollIntervalMs = DEFAULT_POLL_MS, debounceMs = DEFAULT_DEBOUNCE_MS } = {}) {
+  constructor({ podClient, localRoot, podRoot, identity, pollIntervalMs = DEFAULT_POLL_MS, debounceMs = DEFAULT_DEBOUNCE_MS, versions = null } = {}) {
     super();
     if (!podClient) throw new Error('SyncEngine: podClient is required');
     if (!localRoot) throw new Error('SyncEngine: localRoot is required');
@@ -76,6 +89,9 @@ export class SyncEngine extends Emitter {
     this.#pollIntervalMs = pollIntervalMs;
     this.#debounceMs     = debounceMs;
     this.#stateFilePath  = join(this.#localRoot, STATE_FILE_RELPATH);
+    this.#versionsOpts   = versions ?? {};
+    // Public accessor so consumers can read the configured retention.
+    this.options = { versions: { ...this.#versionsOpts } };
   }
 
   get stats()     { return { ...this.#stats }; }
@@ -161,6 +177,9 @@ export class SyncEngine extends Emitter {
           await this.#podClient.write(podUri, content, { contentType: ct });
           this.#knownState[f.relPath] = { sha256: f.sha256, syncedAt: Date.now() };
           uploads++;
+          // Folio.B4: snapshot the just-uploaded content.  Skip dotted paths
+          // (which would feed back into .folio/versions/ itself).
+          await this.#captureVersionSafe(f.relPath, content);
         } catch (err) {
           this.emit('error', { phase: 'upload', relPath: f.relPath, err });
         }
@@ -178,6 +197,8 @@ export class SyncEngine extends Emitter {
           await fs.writeFile(absPath, r.content, typeof r.content === 'string' ? 'utf8' : undefined);
           this.#knownState[f.relPath] = { sha256: f.sha256, syncedAt: Date.now() };
           downloads++;
+          // Folio.B4: snapshot the just-downloaded content.
+          await this.#captureVersionSafe(f.relPath, r.content);
         } catch (err) {
           if (err?.code === 'NOT_FOUND') {
             // 404-on-read GC'd the tombstone (per A6); ignore.
@@ -196,6 +217,13 @@ export class SyncEngine extends Emitter {
           localTimestamp:  f.localMtimeMs,
           remoteTimestamp: f.remoteMtimeMs,
         });
+        // Folio.B4: snapshot the conflicted-state content too — it's the
+        // intermediate state the user sees, and rolling back a botched
+        // resolve to the marker form is genuinely useful.
+        try {
+          const conflictedText = await fs.readFile(f.absPath, 'utf8');
+          await this.#captureVersionSafe(f.relPath, conflictedText);
+        } catch { /* swallow — captureVersion is best-effort */ }
         // Don't update knownState — file is in conflict until user resolves.
         conflicts++;
         this.emit('conflict', { relPath: f.relPath, absPath: f.absPath, podUri: f.podUri });
@@ -292,7 +320,8 @@ export class SyncEngine extends Emitter {
 
   /**
    * Local-only delete (tombstone via PodClient).  Subsequent runOnce calls
-   * skip this URI.
+   * skip this URI.  Folio.B4 — also drops the version history under
+   * `.folio/versions/<relPath>/` (so `folio rm` is a true forget).
    *
    * @param {string} relPath  POSIX-style relative path
    */
@@ -304,9 +333,105 @@ export class SyncEngine extends Emitter {
     // Also drop from local known state so we don't try to push a phantom.
     delete this.#knownState[relPath];
     await this.#saveState();
+    // Drop version history so `folio rm` is a complete forget.  Best-effort.
+    try { await this.dropVersions(relPath); } catch { /* swallow */ }
+  }
+
+  // ── Folio.B4 — time-machine versioning ────────────────────────────────────
+
+  /**
+   * List all versions of `relPath`, newest-first.
+   *
+   * @param {string} relPath POSIX-style path (matches the SyncEngine convention).
+   * @returns {Promise<Array<{ts:number, sha256:string, size:number, path:string}>>}
+   */
+  async versions(relPath) {
+    return listVersions({ localRoot: this.#localRoot, relPath });
+  }
+
+  /**
+   * Restore the version at `ts` to the live file.  Captures the CURRENT
+   * content as a fresh version FIRST (so the user can undo).  Returns
+   * `{ relPath, restoredFromMs, snapshotMsBeforeRestore }`.
+   */
+  async restoreVersion(relPath, ts) {
+    const r = await restoreVersion({
+      localRoot: this.#localRoot,
+      relPath,
+      ts,
+      retention: this.#versionsOpts,
+    });
+    // Emit so UIs (history pane) can refresh.  Same shape as the capture
+    // event so the WS layer can fan both out cleanly.
+    if (r.snapshotMsBeforeRestore != null) {
+      this.emit('version.new', {
+        relPath,
+        ts: r.snapshotMsBeforeRestore,
+      });
+    }
+    return r;
+  }
+
+  /**
+   * Drop ALL version history for `relPath`.
+   * @returns {Promise<number>} count deleted
+   */
+  async dropVersions(relPath) {
+    return dropVersions({ localRoot: this.#localRoot, relPath });
+  }
+
+  /**
+   * Run the retention policy across the whole versions tree.  Called
+   * automatically on every capture; exposed for tests + manual cleanup.
+   */
+  async pruneVersions() {
+    return pruneVersions({
+      localRoot: this.#localRoot,
+      retention: this.#versionsOpts,
+    });
+  }
+
+  /**
+   * Capture a brand-new snapshot for `relPath` with the given content.
+   * Used by route handlers (e.g. POST /conflicts/:id/resolve) to log the
+   * resolved content as a version.  No-op when relPath is dotted.
+   *
+   * @param {string} relPath
+   * @param {string|Uint8Array|Buffer} content
+   * @returns {Promise<{captured:boolean, ts?:number, sha256?:string, reason?:string}>}
+   */
+  async captureVersion(relPath, content) {
+    return this.#captureVersionSafe(relPath, content);
   }
 
   // ── internals ─────────────────────────────────────────────────────────────
+
+  /**
+   * Capture a version for `relPath` with the given content.  Internal
+   * wrapper that:
+   *   - skips dotted paths (would feedback into .folio/versions/),
+   *   - swallows capture failures (versioning must never break sync),
+   *   - emits `version.new` on a successful capture.
+   */
+  async #captureVersionSafe(relPath, content) {
+    if (!isVersionable(relPath)) return { captured: false, reason: 'NOT_VERSIONABLE' };
+    let r;
+    try {
+      r = await captureVersion({
+        localRoot: this.#localRoot,
+        relPath,
+        content,
+        retention: this.#versionsOpts,
+      });
+    } catch (err) {
+      this.emit('error', { phase: 'version', relPath, err });
+      return { captured: false, reason: 'CAPTURE_FAILED' };
+    }
+    if (r.captured) {
+      this.emit('version.new', { relPath, ts: r.ts, sha256: r.sha256, size: r.size });
+    }
+    return r;
+  }
 
   #scheduleRun() {
     if (!this.#running) return;
