@@ -19,11 +19,6 @@
  *   - State is written atomically via tmp-then-rename.
  */
 
-import chokidar from 'chokidar';
-import { createHash } from 'node:crypto';
-import { promises as fs } from 'node:fs';
-import { dirname, join } from 'node:path';
-
 import { Emitter } from '@canopy/core';
 
 import { PathMap }       from './PathMap.js';
@@ -40,6 +35,14 @@ import {
   pruneVersions,
   isVersionable,
 } from './versions.js';
+
+// Folio.C1 — pluggable adapters.  Default to Node so the CLI + web driver
+// keep working with no callsite changes.  RN callers pass their own
+// adapters (see apps/folio/src/rn/serviceFactory.js).
+import { fsNode }      from './adapters/fsNode.js';
+import { hashNode }    from './adapters/hashNode.js';
+import { watcherNode } from './adapters/watcherNode.js';
+import { joinPosix, dirnamePosix } from './adapters/pathPosix.js';
 
 const STATE_FILE_RELPATH = '.canopy/notes-sync-state.json';
 const DEFAULT_DEBOUNCE_MS = 500;
@@ -83,6 +86,11 @@ export class SyncEngine extends Emitter {
   #stats = { uploads: 0, downloads: 0, deletes: 0, conflicts: 0, lastSyncAt: null };
 
   #versionsOpts;
+
+  // Folio.C1 — adapter handles (default to Node singletons).
+  #fs;
+  #hash;
+  #watcherFactory;
 
   // Folio v2.6 — sha-stable hardening.
   #stableMs;
@@ -150,8 +158,23 @@ export class SyncEngine extends Emitter {
    *        `A (Copy).md` → `B.md` then never pushes the intermediate to the
    *        pod.  Set `graceMs: 0` to disable the grace phase and revert to
    *        v2.6 behaviour (fire as soon as sha is stable).
+   * @param {import('./adapters/index.js').FsAdapter}      [opts.fs]
+   *        Folio.C1 — filesystem adapter.  Defaults to a Node-backed
+   *        adapter wrapping `node:fs/promises`.  RN callers (see
+   *        `apps/folio/src/rn/serviceFactory.js`) pass an `expo-file-system`
+   *        wrapper.  Threaded into `scanLocal`, `applyConflict`,
+   *        `versions`, and `autoShare` for every read/write.
+   * @param {import('./adapters/index.js').HashAdapter}    [opts.hash]
+   *        Folio.C1 — hash adapter.  Defaults to a Node-backed
+   *        `createHash('sha256')` wrapper.  RN callers pass an
+   *        `expo-crypto` wrapper.
+   * @param {import('./adapters/index.js').WatcherAdapter} [opts.watcherFactory]
+   *        Folio.C1 — watcher adapter.  Defaults to a chokidar wrapper.
+   *        RN callers pass an interval-poll watcher.  This is a SEPARATE
+   *        knob from the legacy `watcher` parameter (above) which
+   *        configures stability / grace timings.
    */
-  constructor({ podClient, localRoot, podRoot, identity, pollIntervalMs = DEFAULT_POLL_MS, debounceMs = DEFAULT_DEBOUNCE_MS, versions = null, watcher = null } = {}) {
+  constructor({ podClient, localRoot, podRoot, identity, pollIntervalMs = DEFAULT_POLL_MS, debounceMs = DEFAULT_DEBOUNCE_MS, versions = null, watcher = null, fs = null, hash = null, watcherFactory = null } = {}) {
     super();
     if (!podClient) throw new Error('SyncEngine: podClient is required');
     if (!localRoot) throw new Error('SyncEngine: localRoot is required');
@@ -163,7 +186,10 @@ export class SyncEngine extends Emitter {
     this.#identity       = identity ?? null;
     this.#pollIntervalMs = pollIntervalMs;
     this.#debounceMs     = debounceMs;
-    this.#stateFilePath  = join(this.#localRoot, STATE_FILE_RELPATH);
+    this.#fs             = fs   ?? fsNode;
+    this.#hash           = hash ?? hashNode;
+    this.#watcherFactory = watcherFactory ?? watcherNode;
+    this.#stateFilePath  = joinPosix(this.#localRoot, STATE_FILE_RELPATH);
     this.#versionsOpts   = versions ?? {};
     const w = watcher ?? {};
     this.#stableMs        = Number.isFinite(w.stableMs)        ? Math.max(0, w.stableMs)        : DEFAULT_STABLE_MS;
@@ -179,6 +205,15 @@ export class SyncEngine extends Emitter {
       },
     };
   }
+
+  /**
+   * Adapter introspection — useful for autoShare/ensureShares so it can
+   * thread the SyncEngine's `fs` adapter through to its own helpers.
+   * @returns {import('./adapters/index.js').FsAdapter}
+   */
+  get fs() { return this.#fs; }
+  /** @returns {import('./adapters/index.js').HashAdapter} */
+  get hash() { return this.#hash; }
 
   get stats()     { return { ...this.#stats }; }
   get pathMap()   { return this.#pathMap; }
@@ -227,7 +262,7 @@ export class SyncEngine extends Emitter {
    * @returns {Promise<Array<object>>}
    */
   async shares() {
-    return listShares(this.#localRoot);
+    return listShares(this.#localRoot, { fs: this.#fs });
   }
 
   /**
@@ -248,7 +283,7 @@ export class SyncEngine extends Emitter {
     await this.#loadState();
 
     // Ensure local root exists so chokidar / scanLocal don't blow up.
-    await fs.mkdir(this.#localRoot, { recursive: true });
+    await this.#fs.mkdir(this.#localRoot, { recursive: true });
 
     // Folio v2.1 — snapshot the podClient ref once at the start of the
     // internal run.  setPodClient() may replace `#podClient` mid-flight; the
@@ -257,8 +292,8 @@ export class SyncEngine extends Emitter {
     // reads/writes in this run go through `podClient` (the local snapshot).
     const podClient = this.#podClient;
 
-    const localScan = await scanLocal(this.#localRoot, { pathMap: this.#pathMap });
-    const podScan   = await scanPod(podClient, this.#podRoot, { pathMap: this.#pathMap });
+    const localScan = await scanLocal(this.#localRoot, { pathMap: this.#pathMap, fs: this.#fs, hash: this.#hash });
+    const podScan   = await scanPod(podClient, this.#podRoot, { pathMap: this.#pathMap, hash: this.#hash });
     const d         = diff(localScan, podScan, this.#knownState);
 
     let uploads = 0, downloads = 0, deletes = 0, conflicts = 0;
@@ -289,7 +324,7 @@ export class SyncEngine extends Emitter {
       for (const f of d.toUpload) {
         try {
           const podUri = this.#pathMap.localToPod(f.absPath);
-          const content = await fs.readFile(f.absPath);
+          const content = await this.#fs.readFile(f.absPath);
           const ct = guessContentType(f.relPath);
           await podClient.write(podUri, content, { contentType: ct });
           this.#knownState[f.relPath] = { sha256: f.sha256, syncedAt: Date.now() };
@@ -308,10 +343,14 @@ export class SyncEngine extends Emitter {
         try {
           const r = await podClient.read(f.podUri, { decode: 'string' });
           const absPath = this.#pathMap.podToLocal(f.podUri);
-          await fs.mkdir(dirname(absPath), { recursive: true });
+          await this.#fs.mkdir(dirnamePosix(absPath), { recursive: true });
           // Write content as-is.  PodClient.read with decode:'string' returns a string;
           // for binary content, callers can switch to bytes — v1 Folio is markdown.
-          await fs.writeFile(absPath, r.content, typeof r.content === 'string' ? 'utf8' : undefined);
+          if (typeof r.content === 'string') {
+            await this.#fs.writeFile(absPath, r.content, { encoding: 'utf8' });
+          } else {
+            await this.#fs.writeFile(absPath, r.content);
+          }
           this.#knownState[f.relPath] = { sha256: f.sha256, syncedAt: Date.now() };
           downloads++;
           // Folio.B4: snapshot the just-downloaded content.
@@ -328,17 +367,18 @@ export class SyncEngine extends Emitter {
 
     for (const f of d.conflicts) {
       try {
-        const localText = await fs.readFile(f.absPath, 'utf8');
+        const localText = await this.#fs.readFileText(f.absPath, 'utf8');
         const remote    = await podClient.read(f.podUri, { decode: 'string' });
         await applyConflict(f.absPath, localText, String(remote.content ?? ''), {
           localTimestamp:  f.localMtimeMs,
           remoteTimestamp: f.remoteMtimeMs,
+          fs:              this.#fs,
         });
         // Folio.B4: snapshot the conflicted-state content too — it's the
         // intermediate state the user sees, and rolling back a botched
         // resolve to the marker form is genuinely useful.
         try {
-          const conflictedText = await fs.readFile(f.absPath, 'utf8');
+          const conflictedText = await this.#fs.readFileText(f.absPath, 'utf8');
           await this.#captureVersionSafe(f.relPath, conflictedText);
         } catch { /* swallow — captureVersion is best-effort */ }
         // Don't update knownState — file is in conflict until user resolves.
@@ -400,7 +440,7 @@ export class SyncEngine extends Emitter {
 
   async #forcePushInternal() {
     await this.#loadState();
-    await fs.mkdir(this.#localRoot, { recursive: true });
+    await this.#fs.mkdir(this.#localRoot, { recursive: true });
 
     // Snapshot the live podClient so a hot-swap mid-flight doesn't reroute
     // in-flight writes (mirrors the `runOnce` contract).
@@ -408,7 +448,7 @@ export class SyncEngine extends Emitter {
 
     this.emit('sync.force.start', { ts: Date.now() });
 
-    const localScan = await scanLocal(this.#localRoot, { pathMap: this.#pathMap });
+    const localScan = await scanLocal(this.#localRoot, { pathMap: this.#pathMap, fs: this.#fs, hash: this.#hash });
 
     let uploads = 0, errors = 0;
 
@@ -434,7 +474,7 @@ export class SyncEngine extends Emitter {
     for (const f of localScan) {
       try {
         const podUri = this.#pathMap.localToPod(f.absPath);
-        const content = await fs.readFile(f.absPath);
+        const content = await this.#fs.readFile(f.absPath);
         const ct = guessContentType(f.relPath);
         // `force: true` skips PodClient's If-Match handshake — we explicitly
         // want to overwrite remote with local content regardless of etag.
@@ -495,9 +535,9 @@ export class SyncEngine extends Emitter {
     const absPath = this.#pathMap.podToLocal(podUri);
     let localSize, localSha256;
     try {
-      const buf = await fs.readFile(absPath);
+      const buf = await this.#fs.readFile(absPath);
       localSize = buf.byteLength;
-      localSha256 = createHash('sha256').update(buf).digest('hex');
+      localSha256 = await this.#hash.sha256(buf);
     } catch (err) {
       if (err.code !== 'ENOENT') {
         // Surface but don't abort — we can still verify pod existence.
@@ -546,7 +586,7 @@ export class SyncEngine extends Emitter {
         ? r.content
         : (typeof r.content === 'string' ? new TextEncoder().encode(r.content) : new Uint8Array());
       const podSize = typeof r.size === 'number' ? r.size : bytes.byteLength;
-      const podSha = createHash('sha256').update(bytes).digest('hex');
+      const podSha = await this.#hash.sha256(bytes);
       const out = {
         relPath,
         podUri,
@@ -571,7 +611,7 @@ export class SyncEngine extends Emitter {
   async #ensureSharesSafe() {
     if (!this.#identity) return;
     try {
-      const r = await ensureShares(this, this.#identity);
+      const r = await ensureShares(this, this.#identity, { fs: this.#fs });
       if (r.minted > 0 || r.renewed > 0) {
         this.emit('shares', { minted: r.minted, renewed: r.renewed, errors: r.errors });
       }
@@ -583,29 +623,49 @@ export class SyncEngine extends Emitter {
     }
   }
 
-  /** Continuous: chokidar for FS, interval for pod. */
+  /**
+   * Continuous mode: starts the watcher (Node default = chokidar; RN =
+   * interval poll) plus an interval-poll-the-pod timer.  An initial
+   * `runOnce()` fires once the watcher's `start()` resolves.
+   *
+   * Starts async-fire-and-forget so callers don't have to await; tests
+   * give chokidar a brief attach window before exercising events.
+   */
   start() {
     if (this.#running) return;
     this.#running = true;
 
-    this.#watcher = chokidar.watch(this.#localRoot, {
-      persistent:    true,
-      ignoreInitial: true,
-      // Skip dotfiles + the metadata dir at the chokidar layer for efficiency.
-      ignored: (p) => {
-        // chokidar may pass abs path or rel; normalize.
-        const pp = String(p);
-        if (pp === this.#localRoot) return false;
-        // Quick reject: any path segment that begins with '.'.
-        const tail = pp.startsWith(this.#localRoot)
-          ? pp.slice(this.#localRoot.length).replace(/^[\/\\]+/, '')
-          : pp;
-        const segs = tail.split(/[\/\\]/);
-        return segs.some((s) => s.startsWith('.'));
-      },
+    const ignored = (p) => {
+      // chokidar/RN-walker may pass abs path or rel; normalize.
+      const pp = String(p);
+      if (pp === this.#localRoot) return false;
+      // Quick reject: any path segment that begins with '.'.
+      const tail = pp.startsWith(this.#localRoot)
+        ? pp.slice(this.#localRoot.length).replace(/^[\/\\]+/, '')
+        : pp;
+      const segs = tail.split(/[\/\\]/);
+      return segs.some((s) => s.startsWith('.'));
+    };
+
+    // Start the watcher via the adapter.  The handle is stored on
+    // `#watcher` so `stop()` can shut it down.  Uses a fire-and-forget
+    // .then() so `start()` stays synchronous (matches the v1 contract).
+    this.#watcherFactory.start({
+      root:    this.#localRoot,
+      ignored,
+      onEvent: ({ event, absPath }) => { this.#scheduleRun(absPath, event); },
+      onError: (err) => { this.emit('error', { phase: 'watcher', err }); },
+    }).then((handle) => {
+      // If stop() ran between start() and the watcher attaching, shut
+      // the freshly-started watcher down immediately.
+      if (!this.#running) {
+        try { handle.stop(); } catch { /* swallow */ }
+        return;
+      }
+      this.#watcher = handle;
+    }).catch((err) => {
+      this.emit('error', { phase: 'watcher', err });
     });
-    this.#watcher.on('all', (event, path) => { this.#scheduleRun(path, event); });
-    this.#watcher.on('error', (err) => { this.emit('error', { phase: 'watcher', err }); });
 
     this.#pollTimer = setInterval(() => { this.#scheduleRun(); }, this.#pollIntervalMs);
     if (typeof this.#pollTimer.unref === 'function') this.#pollTimer.unref();
@@ -638,7 +698,7 @@ export class SyncEngine extends Emitter {
     this.#pendingPaths.clear();
     this.#pendingPollRun = false;
     if (this.#watcher) {
-      try { await this.#watcher.close(); } catch { /* swallow */ }
+      try { await this.#watcher.stop(); } catch { /* swallow */ }
       this.#watcher = null;
     }
     // Drain any in-flight runOnce so callers can rely on no further state writes.
@@ -692,7 +752,7 @@ export class SyncEngine extends Emitter {
     if (typeof relPath !== 'string' || relPath.length === 0) {
       throw new Error('deleteCompletely: relPath is required');
     }
-    const podUri = this.#pathMap.localToPod(join(this.#localRoot, ...relPath.split('/')));
+    const podUri = this.#pathMap.localToPod(joinPosix(this.#localRoot, ...relPath.split('/')));
     const podClient = this.#podClient;
     try {
       if (typeof podClient.deleteCompletely === 'function') {
@@ -706,8 +766,8 @@ export class SyncEngine extends Emitter {
     }
     // Best-effort local file removal — the file may be absent (e.g. the
     // user deleted it from the OS file manager already).
-    const absPath = join(this.#localRoot, ...relPath.split('/'));
-    try { await fs.unlink(absPath); } catch (err) {
+    const absPath = joinPosix(this.#localRoot, ...relPath.split('/'));
+    try { await this.#fs.unlink(absPath); } catch (err) {
       if (err && err.code !== 'ENOENT') {
         this.emit('error', { phase: 'delete-local-file', relPath, err });
       }
@@ -730,7 +790,7 @@ export class SyncEngine extends Emitter {
    * @returns {Promise<Array<{ts:number, sha256:string, size:number, path:string}>>}
    */
   async versions(relPath) {
-    return listVersions({ localRoot: this.#localRoot, relPath });
+    return listVersions({ localRoot: this.#localRoot, relPath, fs: this.#fs, hash: this.#hash });
   }
 
   /**
@@ -744,6 +804,8 @@ export class SyncEngine extends Emitter {
       relPath,
       ts,
       retention: this.#versionsOpts,
+      fs:        this.#fs,
+      hash:      this.#hash,
     });
     // Emit so UIs (history pane) can refresh.  Same shape as the capture
     // event so the WS layer can fan both out cleanly.
@@ -761,7 +823,7 @@ export class SyncEngine extends Emitter {
    * @returns {Promise<number>} count deleted
    */
   async dropVersions(relPath) {
-    return dropVersions({ localRoot: this.#localRoot, relPath });
+    return dropVersions({ localRoot: this.#localRoot, relPath, fs: this.#fs });
   }
 
   /**
@@ -772,6 +834,8 @@ export class SyncEngine extends Emitter {
     return pruneVersions({
       localRoot: this.#localRoot,
       retention: this.#versionsOpts,
+      fs:        this.#fs,
+      hash:      this.#hash,
     });
   }
 
@@ -806,6 +870,8 @@ export class SyncEngine extends Emitter {
         relPath,
         content,
         retention: this.#versionsOpts,
+        fs:        this.#fs,
+        hash:      this.#hash,
       });
     } catch (err) {
       this.emit('error', { phase: 'version', relPath, err });
@@ -1067,12 +1133,12 @@ export class SyncEngine extends Emitter {
   async #sha256OfFile(absPath) {
     let buf;
     try {
-      buf = await fs.readFile(absPath);
+      buf = await this.#fs.readFile(absPath);
     } catch (err) {
       if (err && err.code === 'ENOENT') return null;
       throw err;
     }
-    return createHash('sha256').update(buf).digest('hex');
+    return this.#hash.sha256(buf);
   }
 
   /** Internal: actually dispatch a runOnce, forwarding errors to `error` events. */
@@ -1164,7 +1230,7 @@ export class SyncEngine extends Emitter {
   async #loadState() {
     if (this.#stateLoaded) return;
     try {
-      const raw = await fs.readFile(this.#stateFilePath, 'utf8');
+      const raw = await this.#fs.readFileText(this.#stateFilePath, 'utf8');
       const parsed = JSON.parse(raw);
       this.#knownState = parsed?.files ?? {};
     } catch (err) {
@@ -1177,16 +1243,16 @@ export class SyncEngine extends Emitter {
   }
 
   async #saveState() {
-    const dir = dirname(this.#stateFilePath);
-    await fs.mkdir(dir, { recursive: true });
+    const dir = dirnamePosix(this.#stateFilePath);
+    await this.#fs.mkdir(dir, { recursive: true });
     const tmp = `${this.#stateFilePath}.tmp`;
     const payload = JSON.stringify({
       version: 1,
       writtenAt: Date.now(),
       files: this.#knownState,
     }, null, 2);
-    await fs.writeFile(tmp, payload, 'utf8');
-    await fs.rename(tmp, this.#stateFilePath);
+    await this.#fs.writeFile(tmp, payload, { encoding: 'utf8' });
+    await this.#fs.rename(tmp, this.#stateFilePath);
   }
 }
 

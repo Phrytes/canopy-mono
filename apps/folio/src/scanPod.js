@@ -8,22 +8,26 @@
  * (relPath, etag) — a future optimization is to skip the read when the
  * etag hasn't changed since the last sync.  v1 re-fetches everything for
  * simplicity; this is the documented hot spot for Phase B perf work.
+ *
+ * Folio.C1 — adapter-aware: takes an optional `hash` adapter (default
+ * Node).  No fs adapter needed — pod-side reads go through `podClient`,
+ * which is already pluggable.
  */
 
-import { createHash } from 'node:crypto';
-
-import { PathMap } from './PathMap.js';
+import { PathMap }   from './PathMap.js';
+import { hashNode }  from './adapters/hashNode.js';
 
 /**
  * @param {object} podClient
  * @param {string} containerUri
- * @param {{ pathMap?: PathMap }} [opts]
+ * @param {{ pathMap?: PathMap, hash?: import('./adapters/index.js').HashAdapter }} [opts]
  * @returns {Promise<Array<{ relPath: string, podUri: string, mtimeMs: number, sha256: string, size: number, etag?: string }>>}
  */
 export async function scanPod(podClient, containerUri, opts = {}) {
   if (!podClient)    throw new Error('scanPod: podClient is required');
   if (!containerUri) throw new Error('scanPod: containerUri is required');
   const pathMap = opts.pathMap ?? new PathMap({ localRoot: '/__scan_pod__', podRoot: containerUri });
+  const hash    = opts.hash ?? hashNode;
 
   const root = containerUri.endsWith('/') ? containerUri : `${containerUri}/`;
   const out = [];
@@ -62,7 +66,7 @@ export async function scanPod(podClient, containerUri, opts = {}) {
         throw err;
       }
       const bytes = toBytes(r.content);
-      const sha = createHash('sha256').update(bytes).digest('hex');
+      const sha = await hash.sha256(bytes);
       out.push({
         relPath,
         podUri:  ent.uri,
