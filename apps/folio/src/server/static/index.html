@@ -29,6 +29,17 @@
       <button id="auth-signin-btn"  class="btn btn--small" hidden>Sign in</button>
       <button id="auth-signout-btn" class="btn btn--small btn--ghost" hidden>Sign out</button>
     </div>
+    <!-- Folio v2.3 — Settings link (NOT a primary tab).  Opens the
+         settings overlay which currently houses Diagnostics; will grow
+         other advanced/diagnostic surfaces in v3+. -->
+    <button id="settings-open-btn"
+            class="settings-link"
+            type="button"
+            aria-haspopup="dialog"
+            aria-controls="settings-panel">
+      <span class="settings-link__icon" aria-hidden="true">&#9881;</span>
+      <span class="settings-link__label">Settings</span>
+    </button>
   </header>
 
   <!-- Hidden modal for picking the OIDC issuer.  The form posts to
@@ -57,6 +68,39 @@
         <div id="auth-modal-log" class="log" aria-live="polite"></div>
       </form>
     </div>
+  </div>
+
+  <!-- Folio v2.3 — Settings overlay/panel.  Opened by the header
+       Settings button; closes via the × in its own header, the Esc key,
+       or a click on the dimmed backdrop.  NOT a primary tab — primary
+       tabs remain Status / Conflicts / Share (+ History from B4). -->
+  <div id="settings-panel" class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-panel-title" hidden>
+    <div class="settings-panel__backdrop" id="settings-panel-backdrop"></div>
+    <aside class="settings-panel__inner">
+      <header class="settings-panel__header">
+        <h2 id="settings-panel-title">Settings</h2>
+        <button id="settings-close-btn" class="settings-panel__close" type="button" aria-label="Close settings">×</button>
+      </header>
+      <div class="settings-panel__body">
+        <!-- Diagnostics section.  v2.3's only inhabitant; future settings
+             (v3+) will live alongside in their own <section class="settings-section"> blocks. -->
+        <section id="settings-diagnostics" class="settings-section">
+          <h3>Diagnostics</h3>
+          <p class="settings-section__intro">
+            Run the same 16-step bring-up check as <code>folio doctor</code>.
+            Useful when something looks wrong: it walks the local config,
+            vault, OIDC session, pod reachability, and a write/read/delete
+            probe end-to-end.
+          </p>
+          <div class="actions">
+            <button id="btn-diagnostics-run" class="btn btn--primary" type="button">Run diagnostics</button>
+            <span id="diagnostics-summary" class="diagnostics-summary"></span>
+          </div>
+          <ol id="diagnostics-list" class="diagnostics-list" aria-live="polite"></ol>
+          <p id="diagnostics-fix" class="diagnostics-fix" hidden></p>
+        </section>
+      </div>
+    </aside>
   </div>
 
   <nav class="tabs" role="tablist">

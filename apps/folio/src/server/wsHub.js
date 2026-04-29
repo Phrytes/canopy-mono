@@ -6,12 +6,20 @@
  *
  * Broadcast contract (matches the comment block at the top of routes.js):
  *
- *   { type: 'status',         ts, ... }
- *   { type: 'sync.progress',  ts, phase, relPath?, ... }
- *   { type: 'sync.done',      ts, uploads, downloads, deletes, conflicts }
- *   { type: 'conflict.new',   ts, id, relPath, podUri }
- *   { type: 'error',          ts, phase, relPath?, message }
- *   { type: 'auth.swapped',   ts, webid }                       (Folio v2.1)
+ *   { type: 'status',            ts, ... }
+ *   { type: 'sync.progress',     ts, phase, relPath?, ... }
+ *   { type: 'sync.done',         ts, uploads, downloads, deletes, conflicts }
+ *   { type: 'conflict.new',      ts, id, relPath, podUri }
+ *   { type: 'error',             ts, phase, relPath?, message }
+ *   { type: 'auth.swapped',      ts, webid }                       (Folio v2.1)
+ *   { type: 'diagnostics.step',  ts, idx, total, id, label, status, detail? }
+ *                                                                  (Folio v2.3)
+ *   { type: 'diagnostics.done',  ts, ok, counts, abortReason?,
+ *                                recommendedFix? }                 (Folio v2.3)
+ *
+ * The `diagnostics.*` frames are broadcast by the POST /diagnostics route
+ * handler (see routes.js); the hub doesn't subscribe to a diagnostics
+ * source on the engine — runs are kicked off by HTTP, not by SyncEngine.
  *
  * All events carry a millisecond `ts`.  Clients are expected to ignore types
  * they don't understand (forward-compat).

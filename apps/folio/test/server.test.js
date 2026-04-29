@@ -717,6 +717,191 @@ describe('POST /errors/clear (Folio v2.2)', () => {
   });
 });
 
+// ── Folio v2.3 — POST /diagnostics + WS streaming + 409 guard ─────────────
+
+describe('POST /diagnostics (Folio v2.3)', () => {
+  /**
+   * Build a fake runDiagnostics that emits N step events with deterministic
+   * status, optionally pausing between them so we can race a second request.
+   */
+  function makeFakeRun({ stepStatuses = ['PASS', 'PASS', 'WARN'], stepDelayMs = 0, abortReason = null } = {}) {
+    let calls = 0;
+    return {
+      get calls() { return calls; },
+      async run(reporter, _deps) {
+        calls++;
+        const counts = { PASS: 0, FAIL: 0, WARN: 0, SKIP: 0 };
+        for (let i = 0; i < stepStatuses.length; i++) {
+          const status = stepStatuses[i];
+          counts[status]++;
+          reporter.step({
+            id:     `step-${i + 1}`,
+            label:  `synthetic step ${i + 1}`,
+            status,
+            detail: status === 'FAIL' ? 'simulated' : null,
+          });
+          if (stepDelayMs > 0) await new Promise((r) => setTimeout(r, stepDelayMs));
+        }
+        return { abortReason, cfg: {}, counts };
+      },
+    };
+  }
+
+  it('returns 202 immediately and streams diagnostics.step + diagnostics.done', async () => {
+    const fake = makeFakeRun({ stepStatuses: ['PASS', 'PASS', 'WARN', 'PASS'] });
+    await srv.close();
+    srv = createServer({
+      engine, vault,
+      runDiagnostics: fake.run,
+    });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+    wsUrl   = `ws://${host}:${port}/events`;
+
+    const ws = new WebSocket(wsUrl);
+    const frames = [];
+    await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
+    ws.on('message', (data) => {
+      try { frames.push(JSON.parse(data.toString('utf8'))); } catch { /* ignore */ }
+    });
+
+    const { status, body } = await postJson('/diagnostics');
+    expect(status).toBe(202);
+    expect(body.ok).toBe(true);
+    expect(body.started).toBe(true);
+    expect(typeof body.total).toBe('number');
+
+    await waitFor(() => frames.some((f) => f.type === 'diagnostics.done'), { timeoutMs: 3000 });
+
+    const stepFrames = frames.filter((f) => f.type === 'diagnostics.step');
+    expect(stepFrames).toHaveLength(4);
+    for (let i = 0; i < stepFrames.length; i++) {
+      expect(stepFrames[i].idx).toBe(i + 1);
+      expect(typeof stepFrames[i].label).toBe('string');
+      expect(['PASS', 'FAIL', 'WARN', 'SKIP']).toContain(stepFrames[i].status);
+      expect(typeof stepFrames[i].total).toBe('number');
+    }
+    const doneFrame = frames.find((f) => f.type === 'diagnostics.done');
+    expect(doneFrame.ok).toBe(true);
+    expect(doneFrame.counts).toEqual({ PASS: 3, FAIL: 0, WARN: 1, SKIP: 0 });
+    // No FAILs ⇒ no recommendedFix.
+    expect(doneFrame.recommendedFix).toBeUndefined();
+
+    ws.close();
+  });
+
+  it('returns 409 DIAGNOSTICS_IN_PROGRESS when a run is already in flight', async () => {
+    // First call: long-running so we can race a second request.
+    const fake = makeFakeRun({ stepStatuses: ['PASS', 'PASS'], stepDelayMs: 80 });
+    await srv.close();
+    srv = createServer({
+      engine, vault,
+      runDiagnostics: fake.run,
+    });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+    wsUrl   = `ws://${host}:${port}/events`;
+
+    const ws = new WebSocket(wsUrl);
+    const frames = [];
+    await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
+    ws.on('message', (data) => {
+      try { frames.push(JSON.parse(data.toString('utf8'))); } catch { /* ignore */ }
+    });
+
+    // Kick off the first run and DON'T wait for done.
+    const first = await postJson('/diagnostics');
+    expect(first.status).toBe(202);
+
+    // While it's still running (the fake awaits between steps), fire a
+    // second request — must come back 409.
+    const second = await postJson('/diagnostics');
+    expect(second.status).toBe(409);
+    expect(second.body.error.code).toBe('DIAGNOSTICS_IN_PROGRESS');
+
+    // After the first run finishes, a third request succeeds again — proves
+    // the guard is reset.
+    await waitFor(() => frames.some((f) => f.type === 'diagnostics.done'), { timeoutMs: 3000 });
+    expect(fake.calls).toBe(1);
+
+    const third = await postJson('/diagnostics');
+    expect(third.status).toBe(202);
+    await waitFor(() => frames.filter((f) => f.type === 'diagnostics.done').length >= 2,
+      { timeoutMs: 3000 });
+    expect(fake.calls).toBe(2);
+
+    ws.close();
+  });
+
+  it('forwards a recommendedFix when the run reports any FAIL', async () => {
+    // Use a fake run that emits a known FAIL id (`config`) so we exercise
+    // the recommendFix path that the route surfaces in diagnostics.done.
+    const fake = {
+      async run(reporter, _deps) {
+        reporter.step({ id: 'config', status: 'FAIL', label: 'config exists', detail: 'no config' });
+        return { abortReason: 'NO_CONFIG', cfg: null, counts: { PASS: 0, FAIL: 1, WARN: 0, SKIP: 0 } };
+      },
+    };
+    await srv.close();
+    srv = createServer({ engine, vault, runDiagnostics: fake.run });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+    wsUrl   = `ws://${host}:${port}/events`;
+
+    const ws = new WebSocket(wsUrl);
+    const frames = [];
+    await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
+    ws.on('message', (data) => {
+      try { frames.push(JSON.parse(data.toString('utf8'))); } catch { /* ignore */ }
+    });
+
+    const r = await postJson('/diagnostics');
+    expect(r.status).toBe(202);
+    await waitFor(() => frames.some((f) => f.type === 'diagnostics.done'), { timeoutMs: 3000 });
+    const doneFrame = frames.find((f) => f.type === 'diagnostics.done');
+    expect(doneFrame.ok).toBe(false);
+    expect(doneFrame.abortReason).toBe('NO_CONFIG');
+    expect(doneFrame.recommendedFix).toMatch(/folio init/);
+
+    ws.close();
+  });
+
+  it('every diagnostics.step frame uses textContent-safe label / status (no HTML in fields)', async () => {
+    // Sanity: the server pipes step.label / status through JSON; nothing in
+    // the route should HTML-encode or HTML-strip.  This is a structural
+    // test — the UI is responsible for rendering with textContent (covered
+    // in ui.test.js).
+    const fake = {
+      async run(reporter) {
+        reporter.step({ id: 'x', status: 'PASS', label: '<script>alert(1)</script>', detail: '<b>bold</b>' });
+        return { abortReason: null, cfg: {}, counts: { PASS: 1, FAIL: 0, WARN: 0, SKIP: 0 } };
+      },
+    };
+    await srv.close();
+    srv = createServer({ engine, vault, runDiagnostics: fake.run });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+    wsUrl   = `ws://${host}:${port}/events`;
+
+    const ws = new WebSocket(wsUrl);
+    const frames = [];
+    await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
+    ws.on('message', (data) => {
+      try { frames.push(JSON.parse(data.toString('utf8'))); } catch { /* ignore */ }
+    });
+
+    await postJson('/diagnostics');
+    await waitFor(() => frames.some((f) => f.type === 'diagnostics.done'), { timeoutMs: 3000 });
+
+    const step = frames.find((f) => f.type === 'diagnostics.step');
+    // Label is forwarded verbatim — the UI is the XSS boundary.
+    expect(step.label).toBe('<script>alert(1)</script>');
+    expect(step.detail).toBe('<b>bold</b>');
+
+    ws.close();
+  });
+});
+
 describe('SyncErrorBuffer wired through the live engine event flow', () => {
   it('an error emitted by the engine lands in /status.errors after a sync', async () => {
     // Use the default-built buffer (the one createServer auto-wires).
