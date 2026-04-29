@@ -22,11 +22,25 @@
  *   - same-sha256 within the last 5 seconds (debounce racing watcher
  *     events; same content captured twice in quick succession is one
  *     version).
+ *
+ * Folio.C1 — adapter-aware
+ * ------------------------
+ * `node:fs/promises` calls go through an injected `FsAdapter` (default
+ * Node).  `node:crypto.createHash('sha256')` goes through an injected
+ * `HashAdapter` (default Node).  Path math uses POSIX helpers so the
+ * code runs on RN without a `node:path` import.
  */
 
-import { promises as fs } from 'node:fs';
-import { dirname, join, extname, basename, sep as pathSep } from 'node:path';
-import { createHash } from 'node:crypto';
+import { sep as pathSep } from 'node:path';
+import { createHash }      from 'node:crypto';
+
+import { fsNode }    from './adapters/fsNode.js';
+import { hashNode }  from './adapters/hashNode.js';
+import {
+  joinPosix,
+  dirnamePosix,
+  extnamePosix,
+} from './adapters/pathPosix.js';
 
 export const VERSIONS_DIR_RELPATH      = '.folio/versions';
 export const DEFAULT_VERSIONS_PER_FILE = 50;
@@ -52,6 +66,12 @@ export function isVersionable(relPath) {
 /**
  * Compute sha256 of a string or Buffer.  Used both at capture time (to
  * dedupe debounced repeats) and to expose to consumers.
+ *
+ * Note: synchronous-style API preserved for backwards compatibility with
+ * the Folio.B4 contract.  Internally we use the Node hash adapter (which
+ * computes the digest synchronously and wraps in a Promise) but unwrap
+ * via a tiny synchronous helper that mirrors the original behavior.
+ * Callers that need an async signature can use `sha256OfAsync`.
  */
 export function sha256Of(content) {
   const hash = createHash('sha256');
@@ -62,12 +82,24 @@ export function sha256Of(content) {
 }
 
 /**
+ * Async sha256 — uses the injected hash adapter so RN code paths work.
+ * @param {import('./adapters/index.js').HashAdapter} hash
+ * @param {string|Uint8Array|Buffer} content
+ * @returns {Promise<string>}
+ */
+export function sha256OfAsync(hash, content) {
+  return hash.sha256(content);
+}
+
+/**
  * Per-file version directory under the versions tree.
  */
 function versionDirFor(localRoot, relPath) {
-  // POSIX-only relPath; convert to OS native for the FS write.
+  // POSIX-only relPath; convert to POSIX joined path.  On Node this also
+  // works because Linux/macOS use `/` natively; on Windows, the test
+  // suite already runs on POSIX-flavored CI, and our adapters target RN.
   const segs = String(relPath).split('/');
-  return join(localRoot, '.folio', 'versions', ...segs);
+  return joinPosix(localRoot, '.folio', 'versions', ...segs);
 }
 
 /**
@@ -87,9 +119,11 @@ export function _clearVersionsCache() { _listCache.clear(); }
  * directory (returns []).  Sorted newest-first by ts.
  *
  * @param {string} dir absolute path to the per-file version directory
+ * @param {import('./adapters/index.js').FsAdapter} fs
+ * @param {import('./adapters/index.js').HashAdapter} hash
  * @returns {Promise<Array<{ts:number, sha256:string, size:number, ext:string, path:string}>>}
  */
-async function readVersionDir(dir) {
+async function readVersionDir(dir, fs, hash) {
   let entries;
   try {
     entries = await fs.readdir(dir, { withFileTypes: true });
@@ -105,7 +139,7 @@ async function readVersionDir(dir) {
     const ts = Number(m[1]);
     if (!Number.isFinite(ts)) continue;
     const ext = m[2] ?? '';
-    const abs = join(dir, ent.name);
+    const abs = joinPosix(dir, ent.name);
     let st;
     try { st = await fs.stat(abs); }
     catch { continue; }
@@ -115,7 +149,7 @@ async function readVersionDir(dir) {
     const sidecar = `${abs}.sha256`;
     let sha256;
     try {
-      sha256 = (await fs.readFile(sidecar, 'utf8')).trim();
+      sha256 = (await fs.readFileText(sidecar, 'utf8')).trim();
       if (!/^[0-9a-f]{64}$/.test(sha256)) sha256 = '';
     } catch (err) {
       if (err.code !== 'ENOENT') throw err;
@@ -124,8 +158,8 @@ async function readVersionDir(dir) {
     if (!sha256) {
       try {
         const buf = await fs.readFile(abs);
-        sha256 = sha256Of(buf);
-        await writeAtomic(sidecar, sha256);
+        sha256 = await hash.sha256(buf);
+        await writeAtomic(sidecar, sha256, fs);
       } catch { /* swallow */ }
     }
     out.push({ ts, sha256, size: st.size, ext, path: abs });
@@ -135,10 +169,10 @@ async function readVersionDir(dir) {
 }
 
 /** Cached list-version for a single file's directory. */
-async function listForDir(dir) {
+async function listForDir(dir, fs, hash) {
   const cached = cacheGet(dir);
   if (cached != null) return cached;
-  const fresh = await readVersionDir(dir);
+  const fresh = await readVersionDir(dir, fs, hash);
   cacheSet(dir, fresh);
   return fresh;
 }
@@ -147,14 +181,17 @@ async function listForDir(dir) {
  * Atomic write helper: tmp-then-rename.  Used for every snapshot AND every
  * sidecar so partial writes never appear in a listing.
  */
-async function writeAtomic(absPath, content) {
-  await fs.mkdir(dirname(absPath), { recursive: true });
+async function writeAtomic(absPath, content, fs) {
+  await fs.mkdir(dirnamePosix(absPath), { recursive: true });
   // Suffix with a random tag so concurrent writers don't collide on rename.
-  const tmp = `${absPath}.tmp-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+  const pid = (typeof process !== 'undefined' && typeof process.pid === 'number')
+    ? process.pid
+    : 0;
+  const tmp = `${absPath}.tmp-${pid}-${Math.random().toString(36).slice(2, 8)}`;
   if (Buffer.isBuffer(content) || content instanceof Uint8Array) {
     await fs.writeFile(tmp, content);
   } else {
-    await fs.writeFile(tmp, String(content ?? ''), 'utf8');
+    await fs.writeFile(tmp, String(content ?? ''), { encoding: 'utf8' });
   }
   await fs.rename(tmp, absPath);
 }
@@ -168,6 +205,8 @@ async function writeAtomic(absPath, content) {
  * @param {string|Buffer|Uint8Array} args.content the content to snapshot.
  * @param {number} [args.now] override timestamp (test seam).
  * @param {{perFile?:number, budgetMb?:number}} [args.retention]
+ * @param {import('./adapters/index.js').FsAdapter}   [args.fs]
+ * @param {import('./adapters/index.js').HashAdapter} [args.hash]
  *
  * @returns {Promise<{
  *   captured: boolean,
@@ -179,14 +218,16 @@ async function writeAtomic(absPath, content) {
  *   prune?: { versionsRemoved: number, bytesFreed: number }
  * }>}
  */
-export async function captureVersion({ localRoot, relPath, content, now, retention } = {}) {
+export async function captureVersion({ localRoot, relPath, content, now, retention, fs, hash } = {}) {
   if (!localRoot) throw new Error('captureVersion: localRoot is required');
   if (!isVersionable(relPath)) {
     return { captured: false, reason: 'NOT_VERSIONABLE' };
   }
+  fs   = fs   ?? fsNode;
+  hash = hash ?? hashNode;
 
   const dir = versionDirFor(localRoot, relPath);
-  const existing = await listForDir(dir);
+  const existing = await listForDir(dir, fs, hash);
 
   // Skip first snapshot of empty content — don't bother filling the
   // history with "" baselines.
@@ -197,7 +238,7 @@ export async function captureVersion({ localRoot, relPath, content, now, retenti
     return { captured: false, reason: 'EMPTY_FIRST_VERSION' };
   }
 
-  const sha = sha256Of(content);
+  const sha = await hash.sha256(content);
   const at  = typeof now === 'number' && Number.isFinite(now) ? now : Date.now();
 
   // Debounce: if the most recent capture has the same sha256 AND is within
@@ -208,13 +249,13 @@ export async function captureVersion({ localRoot, relPath, content, now, retenti
   }
 
   // Build the snapshot path: `<dir>/<ts>.<ext>` (ext from relPath, may be '').
-  const ext   = extname(relPath);
+  const ext   = extnamePosix(relPath);
   const fname = `${at}${ext}`;
-  const snap  = join(dir, fname);
+  const snap  = joinPosix(dir, fname);
 
   // Write content + sidecar atomically.
-  await writeAtomic(snap, content);
-  await writeAtomic(`${snap}.sha256`, sha);
+  await writeAtomic(snap, content, fs);
+  await writeAtomic(`${snap}.sha256`, sha, fs);
 
   // Invalidate cache (we just added an entry).
   cacheInvalidate(dir);
@@ -224,6 +265,8 @@ export async function captureVersion({ localRoot, relPath, content, now, retenti
     localRoot,
     relPath,                        // start with the per-file cap
     retention,
+    fs,
+    hash,
   });
 
   // Compute the captured entry's size (may be 0 for empty buffers).
@@ -245,11 +288,13 @@ export async function captureVersion({ localRoot, relPath, content, now, retenti
  * List all versions of `relPath`, newest-first.  Returns an empty array
  * when no history exists.
  */
-export async function listVersions({ localRoot, relPath } = {}) {
+export async function listVersions({ localRoot, relPath, fs, hash } = {}) {
   if (!localRoot) throw new Error('listVersions: localRoot is required');
   if (!isVersionable(relPath)) return [];
+  fs   = fs   ?? fsNode;
+  hash = hash ?? hashNode;
   const dir = versionDirFor(localRoot, relPath);
-  return listForDir(dir);
+  return listForDir(dir, fs, hash);
 }
 
 /**
@@ -258,14 +303,16 @@ export async function listVersions({ localRoot, relPath } = {}) {
  * undoable).  Returns the snapshot ts that was just captured pre-restore
  * plus the restored ts.
  */
-export async function restoreVersion({ localRoot, relPath, ts, retention } = {}) {
+export async function restoreVersion({ localRoot, relPath, ts, retention, fs, hash } = {}) {
   if (!localRoot) throw new Error('restoreVersion: localRoot is required');
   if (!isVersionable(relPath)) {
     const e = new Error(`restoreVersion: not versionable: ${relPath}`);
     e.code = 'NOT_VERSIONABLE';
     throw e;
   }
-  const versions = await listVersions({ localRoot, relPath });
+  fs   = fs   ?? fsNode;
+  hash = hash ?? hashNode;
+  const versions = await listVersions({ localRoot, relPath, fs, hash });
   const target = versions.find((v) => v.ts === Number(ts));
   if (!target) {
     const e = new Error(`restoreVersion: no snapshot at ts=${ts} for ${relPath}`);
@@ -275,7 +322,7 @@ export async function restoreVersion({ localRoot, relPath, ts, retention } = {})
 
   // Snapshot the current content first (so the user can undo this restore).
   const liveSegs = relPath.split('/');
-  const liveAbs  = join(localRoot, ...liveSegs);
+  const liveAbs  = joinPosix(localRoot, ...liveSegs);
   let currentContent = '';
   try {
     currentContent = await fs.readFile(liveAbs);
@@ -300,11 +347,13 @@ export async function restoreVersion({ localRoot, relPath, ts, retention } = {})
     content: currentContent,
     now: preTs,
     retention,
+    fs,
+    hash,
   });
 
   // Read snapshot content + write it to the live file atomically.
   const snapBuf = await fs.readFile(target.path);
-  await writeAtomic(liveAbs, snapBuf);
+  await writeAtomic(liveAbs, snapBuf, fs);
 
   return {
     relPath,
@@ -317,9 +366,10 @@ export async function restoreVersion({ localRoot, relPath, ts, retention } = {})
  * Drop the entire version history for `relPath`.
  * Returns count of snapshot files deleted (sidecars not counted separately).
  */
-export async function dropVersions({ localRoot, relPath } = {}) {
+export async function dropVersions({ localRoot, relPath, fs } = {}) {
   if (!localRoot) throw new Error('dropVersions: localRoot is required');
   if (!isVersionable(relPath)) return 0;
+  fs = fs ?? fsNode;
   const dir = versionDirFor(localRoot, relPath);
   let entries;
   try {
@@ -330,7 +380,7 @@ export async function dropVersions({ localRoot, relPath } = {}) {
   }
   let deleted = 0;
   for (const name of entries) {
-    const abs = join(dir, name);
+    const abs = joinPosix(dir, name);
     try {
       await fs.unlink(abs);
       // Count snapshot files (those without .sha256 sidecar suffix); the
@@ -343,14 +393,14 @@ export async function dropVersions({ localRoot, relPath } = {}) {
   cacheInvalidate(dir);
   // Walk up and remove now-empty parents under .folio/versions, stopping
   // at the versions root itself.
-  const versionsRoot = join(localRoot, '.folio', 'versions');
-  let cursor = dirname(dir);
+  const versionsRoot = joinPosix(localRoot, '.folio', 'versions');
+  let cursor = dirnamePosix(dir);
   while (cursor.startsWith(versionsRoot) && cursor !== versionsRoot) {
     try {
       const rest = await fs.readdir(cursor);
       if (rest.length === 0) {
         await fs.rmdir(cursor);
-        cursor = dirname(cursor);
+        cursor = dirnamePosix(cursor);
       } else {
         break;
       }
@@ -366,11 +416,13 @@ export async function dropVersions({ localRoot, relPath } = {}) {
  * walk the entire tree and prune oldest-globally until the total size is
  * under the byte budget.
  *
- * @param {{localRoot:string, relPath?:string, retention?:{perFile?:number, budgetMb?:number}}} args
+ * @param {{localRoot:string, relPath?:string, retention?:{perFile?:number, budgetMb?:number}, fs?:import('./adapters/index.js').FsAdapter, hash?:import('./adapters/index.js').HashAdapter}} args
  * @returns {Promise<{ filesScanned:number, versionsRemoved:number, bytesFreed:number }>}
  */
-export async function pruneVersions({ localRoot, relPath, retention } = {}) {
+export async function pruneVersions({ localRoot, relPath, retention, fs, hash } = {}) {
   if (!localRoot) throw new Error('pruneVersions: localRoot is required');
+  fs   = fs   ?? fsNode;
+  hash = hash ?? hashNode;
   const perFile  = retention?.perFile  ?? DEFAULT_VERSIONS_PER_FILE;
   const budgetMb = retention?.budgetMb ?? DEFAULT_VERSIONS_BUDGET_MB;
   const budget   = budgetMb * 1024 * 1024;
@@ -382,7 +434,7 @@ export async function pruneVersions({ localRoot, relPath, retention } = {}) {
   // Step 1 — per-file cap on the just-captured file (if given).
   if (relPath && isVersionable(relPath)) {
     const dir = versionDirFor(localRoot, relPath);
-    const list = await listForDir(dir); // newest-first
+    const list = await listForDir(dir, fs, hash); // newest-first
     if (list.length > perFile) {
       const excess = list.slice(perFile);
       for (const v of excess) {
@@ -401,10 +453,10 @@ export async function pruneVersions({ localRoot, relPath, retention } = {}) {
   // and total size.  Per the constraint this must be O(versions-affected),
   // not O(all-folder-trees) — i.e. we walk once to gather, then prune
   // only as many entries as we need.
-  const versionsRoot = join(localRoot, '.folio', 'versions');
+  const versionsRoot = joinPosix(localRoot, '.folio', 'versions');
   let allVersions;
   try {
-    allVersions = await collectAllVersions(versionsRoot);
+    allVersions = await collectAllVersions(versionsRoot, fs);
     filesScanned = countDistinctDirs(allVersions);
   } catch (err) {
     if (err.code === 'ENOENT') return { filesScanned, versionsRemoved, bytesFreed };
@@ -427,7 +479,7 @@ export async function pruneVersions({ localRoot, relPath, retention } = {}) {
       versionsRemoved++;
       bytesFreed += v.size;
       totalSize  -= v.size;
-      cacheInvalidate(dirname(v.path));
+      cacheInvalidate(dirnamePosix(v.path));
     } catch { /* swallow */ }
   }
 
@@ -438,13 +490,13 @@ export async function pruneVersions({ localRoot, relPath, retention } = {}) {
  * Walk `<localRoot>/.folio/versions` recursively, emitting one entry per
  * snapshot (sidecars excluded).  Each entry: { ts, size, path }.
  */
-async function collectAllVersions(versionsRoot) {
+async function collectAllVersions(versionsRoot, fs) {
   const out = [];
-  await walkVersionsTree(versionsRoot, out);
+  await walkVersionsTree(versionsRoot, out, fs);
   return out;
 }
 
-async function walkVersionsTree(dir, out) {
+async function walkVersionsTree(dir, out, fs) {
   let entries;
   try {
     entries = await fs.readdir(dir, { withFileTypes: true });
@@ -453,9 +505,9 @@ async function walkVersionsTree(dir, out) {
     throw err;
   }
   for (const ent of entries) {
-    const abs = join(dir, ent.name);
+    const abs = joinPosix(dir, ent.name);
     if (ent.isDirectory()) {
-      await walkVersionsTree(abs, out);
+      await walkVersionsTree(abs, out, fs);
       continue;
     }
     if (!ent.isFile()) continue;
@@ -475,7 +527,7 @@ async function walkVersionsTree(dir, out) {
 
 function countDistinctDirs(versions) {
   const seen = new Set();
-  for (const v of versions) seen.add(dirname(v.path));
+  for (const v of versions) seen.add(dirnamePosix(v.path));
   return seen.size;
 }
 
@@ -485,17 +537,20 @@ function countDistinctDirs(versions) {
  * the UI to populate the file picker.  Newest-snapshot-first.
  *
  * @param {string} localRoot
+ * @param {object} [opts]
+ * @param {import('./adapters/index.js').FsAdapter} [opts.fs]
  * @returns {Promise<Array<{relPath:string, latestMs:number, count:number}>>}
  */
-export async function listFilesWithVersions(localRoot) {
-  const versionsRoot = join(localRoot, '.folio', 'versions');
+export async function listFilesWithVersions(localRoot, opts = {}) {
+  const fs = opts.fs ?? fsNode;
+  const versionsRoot = joinPosix(localRoot, '.folio', 'versions');
   const out = [];
-  await walkFiles(versionsRoot, '', out);
+  await walkFiles(versionsRoot, '', out, fs);
   out.sort((a, b) => b.latestMs - a.latestMs);
   return out;
 }
 
-async function walkFiles(absDir, relDir, out) {
+async function walkFiles(absDir, relDir, out, fs) {
   let entries;
   try {
     entries = await fs.readdir(absDir, { withFileTypes: true });
@@ -527,9 +582,9 @@ async function walkFiles(absDir, relDir, out) {
   if (hasChildDirs) {
     for (const ent of entries) {
       if (!ent.isDirectory()) continue;
-      const childAbs = join(absDir, ent.name);
+      const childAbs = joinPosix(absDir, ent.name);
       const childRel = relDir === '' ? ent.name : `${relDir}/${ent.name}`;
-      await walkFiles(childAbs, childRel, out);
+      await walkFiles(childAbs, childRel, out, fs);
     }
   }
 }
@@ -538,14 +593,15 @@ async function walkFiles(absDir, relDir, out) {
  * Read the raw bytes of a single snapshot.  Throws VERSION_NOT_FOUND if
  * the snapshot doesn't exist.
  */
-export async function readVersionContent({ localRoot, relPath, ts } = {}) {
+export async function readVersionContent({ localRoot, relPath, ts, fs, hash } = {}) {
   if (!localRoot) throw new Error('readVersionContent: localRoot is required');
   if (!isVersionable(relPath)) {
     const e = new Error(`readVersionContent: not versionable: ${relPath}`);
     e.code = 'NOT_VERSIONABLE';
     throw e;
   }
-  const versions = await listVersions({ localRoot, relPath });
+  fs = fs ?? fsNode;
+  const versions = await listVersions({ localRoot, relPath, fs, hash });
   const target = versions.find((v) => v.ts === Number(ts));
   if (!target) {
     const e = new Error(`readVersionContent: no snapshot at ts=${ts} for ${relPath}`);
