@@ -345,7 +345,68 @@ describe('share form (POST /share)', () => {
   });
 });
 
-// ── 8. WebSocket reconnect ────────────────────────────────────────────────
+// ── 8. Folio.B4 — History pane ─────────────────────────────────────────────
+
+describe('history pane (Folio.B4)', () => {
+  it('serves /versions.js with the History pane logic', async () => {
+    const r = await fetch(`${baseUrl}/versions.js`);
+    expect(r.status).toBe(200);
+    const text = await r.text();
+    expect(text).toContain('/versions');
+    expect(text).toContain('initVersions');
+    // No innerHTML on user-controlled values.
+    expect(text).not.toMatch(/\.innerHTML\s*=/);
+  });
+
+  it('index.html has a History tab + pane wired with the expected hooks', async () => {
+    const r = await fetch(`${baseUrl}/`);
+    const html = await r.text();
+    expect(html).toMatch(/id="tab-history"/);
+    expect(html).toMatch(/id="pane-history"/);
+    expect(html).toMatch(/id="history-file-list"/);
+    expect(html).toMatch(/id="history-version-list"/);
+    expect(html).toMatch(/id="history-content"/);
+    expect(html).toMatch(/id="btn-history-restore"/);
+  });
+
+  it('GET /versions returns the file picker feed; restore endpoint fires', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'first');
+    // Drive a sync to populate history.
+    await engine.runOnce();
+
+    const list = await (await fetch(`${baseUrl}/versions`)).json();
+    expect(list.files.length).toBeGreaterThanOrEqual(1);
+    const aFile = list.files.find((f) => f.relPath === 'a.md');
+    expect(aFile).toBeDefined();
+    expect(aFile.id).toBe(conflictIdFromRelPath('a.md'));
+
+    // Pull the version list for that file.
+    const v = await (await fetch(`${baseUrl}/versions/${aFile.id}`)).json();
+    expect(v.versions.length).toBeGreaterThanOrEqual(1);
+
+    // Restore the only known version.
+    const ts = v.versions[0].ts;
+    await fs.writeFile(join(localRoot, 'a.md'), 'mutated');
+    const restoreResp = await fetch(`${baseUrl}/versions/${aFile.id}/restore`, {
+      method:  'POST',
+      headers: { 'content-type': 'application/json' },
+      body:    JSON.stringify({ ts }),
+    });
+    expect(restoreResp.status).toBe(200);
+    const r = await restoreResp.json();
+    expect(r.restoredFromMs).toBe(ts);
+    expect(typeof r.snapshotMsBeforeRestore).toBe('number');
+    expect(await fs.readFile(join(localRoot, 'a.md'), 'utf8')).toBe('first');
+  });
+
+  it('conflicts.js wires a "View history" link emitting history.openFor', async () => {
+    const text = await (await fetch(`${baseUrl}/conflicts.js`)).text();
+    expect(text).toContain('View history');
+    expect(text).toContain('history.openFor');
+  });
+});
+
+// ── 9. WebSocket reconnect ────────────────────────────────────────────────
 
 describe('WebSocket /events reconnect', () => {
   it('the server accepts a fresh WS connection after the previous one closes', async () => {

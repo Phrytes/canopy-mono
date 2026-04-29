@@ -51,6 +51,7 @@
     <button id="tab-status"    class="tab tab--active" role="tab" aria-controls="pane-status"    aria-selected="true">Status</button>
     <button id="tab-conflicts" class="tab"             role="tab" aria-controls="pane-conflicts" aria-selected="false">Conflicts <span id="tab-conflicts-count" class="badge"></span></button>
     <button id="tab-share"     class="tab"             role="tab" aria-controls="pane-share"     aria-selected="false">Share</button>
+    <button id="tab-history"   class="tab"             role="tab" aria-controls="pane-history"   aria-selected="false">History</button>
   </nav>
 
   <main>
@@ -101,6 +102,32 @@
           <button id="btn-cancel-merge" class="btn btn--ghost">Close</button>
         </div>
         <div id="merge-log" class="log" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- History pane ------------------------------------------------------ -->
+    <section id="pane-history" class="pane" role="tabpanel" aria-labelledby="tab-history" hidden>
+      <div class="card">
+        <h2>Version history</h2>
+        <div class="history-grid">
+          <div class="history-files">
+            <h3>Files</h3>
+            <ul id="history-file-list" class="history-list"><li class="empty">No history yet.</li></ul>
+          </div>
+          <div class="history-versions">
+            <h3>Versions of <code id="history-active-relpath">—</code></h3>
+            <ul id="history-version-list" class="history-list"><li class="empty">Pick a file.</li></ul>
+          </div>
+        </div>
+        <div id="history-viewer" class="card history-viewer" hidden>
+          <h3>Snapshot at <code id="history-active-ts">—</code></h3>
+          <textarea id="history-content" readonly rows="14"></textarea>
+          <div class="actions">
+            <button id="btn-history-restore" class="btn btn--primary">Restore this version</button>
+            <button id="btn-history-close"   class="btn btn--ghost">Close</button>
+          </div>
+        </div>
+        <div id="history-log" class="log" aria-live="polite"></div>
       </div>
     </section>
 

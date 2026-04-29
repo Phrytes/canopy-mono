@@ -88,6 +88,25 @@ export function initConflicts({ bus, getJson, postJson }) {
       // textContent — never trust file paths.
       code.textContent = c.relPath;
       li.appendChild(code);
+
+      // Folio.B4 — "View history" link jumps to the History tab pre-loaded
+      // with this file.  Stop-propagation so it doesn't double-fire the
+      // openMerge() handler bound to the row.
+      const historyLink = document.createElement('a');
+      historyLink.className   = 'conflict-history-link';
+      historyLink.href        = '#history';
+      historyLink.textContent = 'View history';
+      historyLink.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        // Tell the history pane which file we want…
+        bus.emit('history.openFor', { relPath: c.relPath, id: c.id });
+        // …and switch to that tab.
+        const tab = document.getElementById('tab-history');
+        if (tab) tab.click();
+      });
+      li.appendChild(historyLink);
+
       li.addEventListener('click', () => openMerge(c));
       $list.appendChild(li);
     }

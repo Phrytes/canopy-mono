@@ -374,6 +374,120 @@ describe('SyncEngine — direction filters', () => {
   });
 });
 
+// ── Folio.B4 — versioning integration ──────────────────────────────────────
+
+describe('SyncEngine.versions — capture sites', () => {
+  it('captures a snapshot after a successful push', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'first');
+    const e = newEngine();
+    await e.runOnce();
+    const list = await e.versions('a.md');
+    expect(list).toHaveLength(1);
+    expect(list[0].size).toBe(5);
+  });
+
+  it('captures a snapshot after a successful pull', async () => {
+    pod._seed(`${POD_ROOT}b.md`, 'banana');
+    const e = newEngine();
+    await e.runOnce();
+    const list = await e.versions('b.md');
+    expect(list).toHaveLength(1);
+  });
+
+  it('emits version.new on each successful capture', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'first');
+    const e = newEngine();
+    const events = [];
+    e.on('version.new', (v) => events.push(v));
+    await e.runOnce();
+    expect(events.length).toBe(1);
+    expect(events[0].relPath).toBe('a.md');
+    expect(typeof events[0].ts).toBe('number');
+  });
+
+  it('captures the conflicted intermediate state on conflict', async () => {
+    const file = join(localRoot, 'note.md');
+    await fs.writeFile(file, 'orig');
+    pod._seed(`${POD_ROOT}note.md`, 'orig');
+    const e = newEngine();
+    await e.runOnce(); // common state established (no upload, both sides identical)
+    await fs.writeFile(file, 'local-edit');
+    pod._seed(`${POD_ROOT}note.md`, 'remote-edit');
+    await e.runOnce();
+    const list = await e.versions('note.md');
+    // The conflict path captured the intermediate marker-laden state.
+    expect(list.length).toBeGreaterThanOrEqual(1);
+    // Newest version should contain conflict markers.
+    const newest = await fs.readFile(list[0].path, 'utf8');
+    expect(newest).toMatch(/<{7}\sYOURS/);
+  });
+
+  it('skips snapshotting files under dotted paths (no versions of versions)', async () => {
+    await fs.mkdir(join(localRoot, '.folio'), { recursive: true });
+    await fs.writeFile(join(localRoot, '.folio', 'foo.md'), 'should-not-be-versioned');
+    const e = newEngine();
+    await e.runOnce();
+    const list = await e.versions('.folio/foo.md');
+    expect(list).toEqual([]);
+  });
+});
+
+describe('SyncEngine.restoreVersion', () => {
+  it('writes the snapshot back to the live file and emits version.new for the pre-restore snapshot', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'v1');
+    const e = newEngine();
+    await e.runOnce();                                   // captures v1
+
+    // Read back what was captured so we can target it for restore.
+    const list1 = await e.versions('a.md');
+    expect(list1.length).toBe(1);
+    const v1Ts = list1[0].ts;
+
+    // Mutate live to a different state, then restore.
+    await fs.writeFile(join(localRoot, 'a.md'), 'live-now');
+    const r = await e.restoreVersion('a.md', v1Ts);
+    expect(r.restoredFromMs).toBe(v1Ts);
+    expect(typeof r.snapshotMsBeforeRestore).toBe('number');
+    expect(await fs.readFile(join(localRoot, 'a.md'), 'utf8')).toBe('v1');
+
+    // The pre-restore snapshot of 'live-now' is now in history.
+    const list2 = await e.versions('a.md');
+    const preSnap = list2.find((v) => v.ts === r.snapshotMsBeforeRestore);
+    expect(preSnap).toBeDefined();
+  });
+});
+
+describe('SyncEngine.dropVersions — wired into deleteLocal', () => {
+  it('deleteLocal removes version history for the tombstoned file', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'first');
+    const e = newEngine();
+    await e.runOnce();
+    expect((await e.versions('a.md')).length).toBeGreaterThan(0);
+    await e.deleteLocal('a.md');
+    expect(await e.versions('a.md')).toEqual([]);
+  });
+});
+
+describe('SyncEngine — versions retention', () => {
+  it('options.versions threads through to captureVersion', async () => {
+    const e = new SyncEngine({
+      podClient: pod,
+      localRoot,
+      podRoot: POD_ROOT,
+      pollIntervalMs: 1_000_000,
+      debounceMs: 50,
+      versions: { perFile: 3, budgetMb: 100 },
+    });
+    expect(e.options.versions.perFile).toBe(3);
+    // Capture 5 unique versions; only 3 should remain.
+    for (let i = 0; i < 5; i++) {
+      await e.captureVersion('a.md', `v${i}-${i}`);
+    }
+    const list = await e.versions('a.md');
+    expect(list.length).toBeLessThanOrEqual(3);
+  });
+});
+
 describe('SyncEngine — start/stop lifecycle', () => {
   it('start sets up watcher + interval; stop tears them down without leaks', async () => {
     const e = newEngine();
