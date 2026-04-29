@@ -5,6 +5,14 @@
  * backoff), and the connection banner.  Routes WS frames to per-pane
  * modules via a shared event bus.
  *
+ * After the v2.9 re-shape, primary tabs are exactly three:
+ *   Status  — daily check-in (default landing pane)
+ *   Conflicts — always present; gray badge at zero, yellow when N>0
+ *   Share — mint capability tokens + show recent shares
+ * Settings is a header link (NOT a primary tab) — it opens an overlay.
+ * History is a feature, not a tab: each file row offers a "↻ history"
+ * affordance that opens the per-file versions popover (versions.js).
+ *
  * Modules import this file purely for the bus + helpers; they don't form
  * a hard dependency graph (which would require a build step).
  */
