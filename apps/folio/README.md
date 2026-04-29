@@ -84,7 +84,7 @@ folio serve --port 9000  # override port
 folio serve --watch      # also start the SyncEngine watcher on boot
 ```
 
-REST endpoints (all JSON; localhost only — no auth):
+REST endpoints (all JSON; localhost only — no auth on the loopback layer):
 
 | Verb   | Path                       | Body / notes                                          |
 |--------|----------------------------|--------------------------------------------------------|
@@ -95,6 +95,43 @@ REST endpoints (all JSON; localhost only — no auth):
 | POST   | `/sync/now`                | `{ direction?: 'both'\|'push'\|'pull' }` (202 + WS)    |
 | POST   | `/watch/start`             | start the SyncEngine watcher                            |
 | POST   | `/watch/stop`              | stop the SyncEngine watcher                             |
+| POST   | `/auth/login`              | `{ issuer }` → `{ redirectUrl }` (Solid OIDC)          |
+| GET    | `/auth/callback`           | provider redirects here; 302 → `/`                     |
+| GET    | `/auth/status`             | `{ authenticated, webid?, expiresAt?, issuer? }`        |
+| POST   | `/auth/logout`             | clear the in-memory session + vault refresh token      |
+
+## How to sign in to your Solid pod
+
+Folio talks to your pod over standard Solid OIDC, via Inrupt's
+[`@inrupt/solid-client-authn-node`](https://www.npmjs.com/package/@inrupt/solid-client-authn-node).
+
+```bash
+folio init      # one-time: creates the vault + sync config
+folio serve     # starts the local agent on http://127.0.0.1:8888
+```
+
+Open `http://127.0.0.1:8888/` in any browser.  Top-right shows a "Sign in"
+button:
+
+1. Click **Sign in**.  Pick `solidcommunity.net`, `login.inrupt.com`, or
+   paste a custom issuer URL.
+2. The browser is sent to your identity provider's login page.
+3. After a successful login the provider redirects you back to
+   `http://127.0.0.1:8888/auth/callback?…`; Folio exchanges the code for
+   tokens and lands you on `/` with the status pill showing your WebID.
+4. The refresh token is encrypted-at-rest in the vault — you do **not**
+   need to sign in again across `folio serve` restarts.
+
+The access token lives in process memory only; the refresh token is the
+one persistent piece of credential material.  `folio serve` will silently
+re-establish the session on boot if a valid refresh token is in the vault.
+
+To sign out, click **Sign out** in the pill — that clears the in-memory
+session and removes the refresh token from the vault.
+
+The `/auth/callback` endpoint is hard-bound to localhost only; even if
+something resolves the Folio host externally, the server returns `403
+FORBIDDEN` for non-loopback callers.
 
 WebSocket `/events` broadcasts `status`, `sync.progress`, `sync.done`,
 `conflict.new`, and `error` frames.  Errors are shaped

@@ -1,38 +1,72 @@
 /**
- * _podFactory.js — construct a PodClient (or a test-mode in-memory mock).
+ * _podFactory.js — construct a PodClient (mock, or real Solid OIDC).
  *
- * In production the CLI builds a real `PodClient` using `SolidOidcAuth` over
- * the user's OIDC session.  Wiring up an interactive OIDC dance is Phase B's
- * problem (the local web wrapper handles login redirects); the CLI v1 punts:
+ * Three branches, in priority order:
  *
- *   - If `FOLIO_TEST_MOCK_POD=1` is set, returns an in-memory MockPodClient
- *     (sharable across CLI invocations within the same test run via a
- *     shared on-disk JSON file at `FOLIO_MOCK_POD_FILE`).  This is the
- *     primary code path exercised by the CLI tests.
+ *   1. `FOLIO_TEST_MOCK_POD=1` ⇒ in-memory `FsBackedMockPodClient`.
+ *      Primary code path for unit tests.
  *
- *   - Otherwise, it throws a clear "production pod auth not yet wired —
- *     use FOLIO_TEST_MOCK_POD=1 for now" error.  Phase B's web wrapper will
- *     own the real auth flow and replace this stub.
+ *   2. An authenticated `OidcSession` is reachable (either passed in
+ *      via `__deps.oidc` or restored on boot from the vault refresh
+ *      token) ⇒ a real `PodClient` from `@canopy/pod-client`, wrapping
+ *      the session's authenticated `fetch` via `SolidOidcAuth`.
  *
- * Tests construct the mock directly; the CLI commands accept a factory
- * via `__deps` so unit tests can also inject without env vars.
+ *   3. No mock, no session ⇒ throw a clear error pointing the user at
+ *      `folio serve` + the web sign-in flow.
+ *
+ * The CLI wires this in `serveCmd.js` (which holds the OIDC session in
+ * the live process) and `syncCmd.js` (which today calls into this factory
+ * for one-shot sync; the v1 plan parks CLI sign-in on Phase C).
  */
 import { promises as fs }                from 'node:fs';
 import { dirname }                       from 'node:path';
 
 /**
  * Construct a PodClient-shaped object for the given config.
- * @param {object} cfg  Loaded folio config
+ *
+ * @param {object} cfg                    Loaded folio config
+ * @param {object} [deps]                 Optional injected deps (tests + CLI)
+ * @param {object} [deps.oidc]            An `OidcSession` instance (if any)
  * @returns {Promise<object>}
  */
-export async function buildPodClient(cfg) {
+export async function buildPodClient(cfg, deps = {}) {
   if (process.env.FOLIO_TEST_MOCK_POD === '1') {
     return new FsBackedMockPodClient(cfg.podRoot, process.env.FOLIO_MOCK_POD_FILE ?? null);
   }
+
+  const oidc = deps.oidc ?? null;
+  if (oidc && typeof oidc.isAuthenticated === 'function' && oidc.isAuthenticated()) {
+    return await buildRealPodClient(cfg, oidc);
+  }
+
   throw new Error(
-    'pod authentication not wired in CLI v1 — set FOLIO_TEST_MOCK_POD=1 to use the in-memory mock pod, '
-    + 'or wait for Phase B (web wrapper) which owns the real OIDC dance.',
+    'pod authentication required — start `folio serve` and sign in via http://127.0.0.1:8888 '
+    + '(or set FOLIO_TEST_MOCK_POD=1 for the in-memory mock).',
   );
+}
+
+/**
+ * Build a real `PodClient` over the user's authenticated OIDC session.
+ *
+ * The auth shim is a tiny adapter that satisfies `SolidOidcAuth`'s
+ * vault contract — it just exposes `getAuthenticatedFetch()` + `webid`.
+ * We don't reuse the heavyweight `SolidVault` from core here because
+ * that one drives its OWN OIDC dance; the OidcSession we own is the
+ * source of truth for tokens.
+ */
+async function buildRealPodClient(cfg, oidc) {
+  const podClientMod = await import('@canopy/pod-client');
+  const { PodClient, SolidOidcAuth } = podClientMod;
+
+  const authVault = {
+    getAuthenticatedFetch: () => oidc.getAuthenticatedFetch(),
+    get webid() { return oidc.webid; },
+    refresh: async () => { /* OidcSession refreshes via Inrupt internally */ },
+    logout:  async () => { await oidc.logout(); },
+  };
+  const auth = new SolidOidcAuth({ vault: authVault });
+
+  return new PodClient({ podRoot: cfg.podRoot, auth });
 }
 
 /**
