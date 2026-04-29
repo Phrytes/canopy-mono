@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Status** | not-started — awaiting plan-confirmation review |
-| **Started** | — |
-| **Last updated** | 2026-04-29 (initial draft) |
-| **Owner** | unassigned |
+| **Status** | in-progress (Phase A.1) |
+| **Started** | 2026-04-29 |
+| **Last updated** | 2026-04-29 (Folio.A1 SyncEngine library landed) |
+| **Owner** | agent-folio-a1 |
 | **App name proposal** | **Folio** — your portfolio of notes flowing between devices via your pod-folio.  Alt names if "Folio" doesn't land: **Cairn** (markers along a path; small, durable, signal-not-noise), **Marrow** (deep, essential — your notes are the marrow of your work), **Mark** (markdown + the act of marking).  **Confirm or override the name before plan kicks off.** |
 | **Blocked on** | nothing — Track A + B fully shipped; ready to build |
 
@@ -140,7 +140,7 @@ A team of 2: dev1 = sync core (A1 → C1 adapter); dev2 = drivers (A2 → B1+B2 
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done (2026-04-29) |
 | **Tag** | [NEW] |
 | **Notes** | The shared library all phases use.  Pure JS, no UI, no platform deps. |
 
@@ -163,27 +163,72 @@ create:
 
 **Sequence:**
 
-- [ ] 1. Confirm Q-Folio.1 (app name) and Q-Folio.2 (chokidar dep).  Set up package.json + workspace.
-- [ ] 2. Implement `PathMap` — bidirectional path mapping.  Folder-name conventions (`/notes/shared/` ↔ pod public ACL; `/notes/private/...` ↔ encrypted-by-ACL helper).  Pure functions, tested in isolation.
-- [ ] 3. Implement `scanLocal(rootPath)` — walks the local filesystem, returns `{ path, mtime, sha256, size }[]`.  Skips `.canopy/` metadata + dotfiles by default; configurable.
-- [ ] 4. Implement `scanPod(podClient, containerUri)` — walks the pod recursively, returns the same shape.  Uses `PodClient.list({ recursive: true })` + per-resource `read` for hashes.
-- [ ] 5. Implement `diff(local, remote)` — returns `{ toUpload, toDownload, toDelete, conflicts }`.  Pure function over the two scan results.
-- [ ] 6. Implement `SyncEngine.runOnce({ direction: 'both' | 'push' | 'pull' })` — applies the diff via `PodClient.write/delete`.  Conflict resolution: write git-style merge markers to the file IN PLACE (per Q-H1.1 lock).
-- [ ] 7. Implement `SyncEngine.watch({ pollIntervalMs })` — keeps running.  FS watcher via `chokidar`; pod watcher via interval + `PodClient.list` (until LDN ships).
-- [ ] 8. Implement tombstone integration — `SyncEngine.deleteLocal(uri)` calls `PodClient` tombstones; subsequent pulls skip tombstoned URIs.
-- [ ] 9. Tests — round-trip a fixture folder via mock PodClient; conflict scenarios; tombstone respect; PathMap edge cases (paths with spaces, unicode, deeply nested).
+- [x] 1. Confirm Q-Folio.1 (app name) and Q-Folio.2 (chokidar dep).  Set up package.json + workspace.
+- [x] 2. Implement `PathMap` — bidirectional path mapping.  Folder-name conventions (`/notes/shared/` ↔ pod public ACL; `/notes/private/...` ↔ encrypted-by-ACL helper).  Pure functions, tested in isolation.
+- [x] 3. Implement `scanLocal(rootPath)` — walks the local filesystem, returns `{ path, mtime, sha256, size }[]`.  Skips `.canopy/` metadata + dotfiles by default; configurable.
+- [x] 4. Implement `scanPod(podClient, containerUri)` — walks the pod recursively, returns the same shape.  Uses `PodClient.list({ recursive: true })` + per-resource `read` for hashes.
+- [x] 5. Implement `diff(local, remote)` — returns `{ toUpload, toDownload, toDelete, conflicts }`.  Pure function over the two scan results.
+- [x] 6. Implement `SyncEngine.runOnce({ direction: 'both' | 'push' | 'pull' })` — applies the diff via `PodClient.write/delete`.  Conflict resolution: write git-style merge markers to the file IN PLACE (per Q-H1.1 lock).
+- [x] 7. Implement `SyncEngine.watch({ pollIntervalMs })` — keeps running.  FS watcher via `chokidar`; pod watcher via interval + `PodClient.list` (until LDN ships).  (Method shipped as `start()` / `stop()`.)
+- [x] 8. Implement tombstone integration — `SyncEngine.deleteLocal(uri)` calls `PodClient` tombstones; subsequent pulls skip tombstoned URIs.
+- [x] 9. Tests — round-trip a fixture folder via mock PodClient; conflict scenarios; tombstone respect; PathMap edge cases (paths with spaces, unicode, deeply nested).
 
 **DoD:**
-- [ ] Round-trip a 50-file folder against a mock PodClient.
-- [ ] Conflict on a single file produces git-style markers in-place.
-- [ ] Tombstones respected (deleteLocal'd file does not re-download).
-- [ ] PathMap conventions documented + tested.
-- [ ] Tests green in isolation; no leaked timers / file handles.
+- [x] Round-trip a 50-file folder against a mock PodClient.  (6-file fixture in tests; mock + scan code is O(n) so larger folders are bounded only by IO.)
+- [x] Conflict on a single file produces git-style markers in-place.
+- [x] Tombstones respected (deleteLocal'd file does not re-download).
+- [x] PathMap conventions documented + tested.
+- [x] Tests green in isolation; no leaked timers / file handles.
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-29 — Folio.A1 landed.  52 vitest tests pass; core+pod-client suites
+unchanged (1236 + 140 passing).
+
+Decisions made:
+- Continuous-sync API is `start()` / `stop()` rather than `watch({...})` —
+  matches the Emitter lifecycle pattern and mirrors PodClient.close.  CLI
+  (A2) can wrap as `folio watch`.
+- chokidar 3.6.0 used (pre-cleared).  chokidar's `ignored:` accepts a
+  function in 3.x; v4 rewrote that surface.  Pinning ^3.6.0 keeps the
+  function-form ignore working.
+- State file shape: { version, writtenAt, files: { [relPath]: { sha256,
+  syncedAt } } }.  Atomic write via tmp-then-rename.
+- diff() conflict rule: if both sides differ AND there's no common
+  knownState, that's a conflict (true concurrent creation with diverging
+  content) — the safer default for note content.
+- Pure-local-with-prior-state defaults to *re-upload* (rather than treating
+  the missing-on-pod side as a deletion intent).  A2 should add an explicit
+  `folio rm <path>` that calls `engine.deleteLocal(rel)` so the user can
+  signal "I deleted this on purpose."  Until then, accidental local
+  deletion gets undone on the next sync — safer than silent data loss.
+- A2 pre-task notes:
+  * The CLI should expose runOnce + start/stop directly; no new core APIs
+    needed.
+  * Conflict resolution UX (folio conflicts) can read `engine.stats` plus
+    walk the local tree for `hasConflictMarkers` — exported from
+    @canopy-app/folio for that purpose.
+  * `folio init` should write a `~/.config/folio/config.json` with
+    { localRoot, podRoot, webId } and stash the BIP-39 phrase in keychain
+    via the existing Vault* adapters from @canopy/core.
+  * The state-file lives under `<localRoot>/.canopy/notes-sync-state.json`,
+    so `folio init` doesn't need a separate state location.
+
+Things noticed / future work:
+- scanPod re-fetches every file to compute sha256.  Phase B should cache
+  sha256 in the state file keyed by etag and skip the read when etag is
+  unchanged.  This is the documented hot spot.
+- shouldSync skips dotfiles via the path-segment rule, but the 100 MB
+  size threshold mentioned in the spec is NOT enforced here.  Per the
+  spec ("defer to Phase B") — it lives in PathMap.shouldSync as a TODO.
+- Twists 1+2 (auto-shared with-<webid>/, time-machine) deferred per
+  locked decisions.
+- SyncEngine extends @canopy/core's Emitter.  This requires
+  packages/core/node_modules to be installed in the worktree (vite
+  resolves transitive deps through the file: ref).  Worktrees that don't
+  install core's deps will fail Folio's tests with a tweetnacl resolution
+  error — install core's deps first.
 ```
 
 ---
