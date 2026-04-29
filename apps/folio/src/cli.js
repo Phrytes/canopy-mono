@@ -16,36 +16,45 @@
  *   folio tray [--url <base>] [--interval <ms>]
  *   folio reset [--yes] [--dry-run]
  *   folio doctor [--json] [--verbose]
+ *   folio install-service
+ *   folio uninstall-service
+ *   folio service-status [--json]
  *
  * Exit codes:
  *   0   success
  *   1   command failed at runtime (use FOLIO_DEBUG=1 to see stack traces)
  *   2   usage error / unknown command / no command
  */
-import { initCmd }      from './cli/initCmd.js';
-import { syncCmd }      from './cli/syncCmd.js';
-import { watchCmd }     from './cli/watchCmd.js';
-import { statusCmd }    from './cli/statusCmd.js';
-import { shareCmd }     from './cli/shareCmd.js';
-import { conflictsCmd } from './cli/conflictsCmd.js';
-import { rmCmd }        from './cli/rmCmd.js';
-import { serveCmd }     from './cli/serveCmd.js';
-import { trayCmd }      from './cli/trayCmd.js';
-import { resetCmd }     from './cli/resetCmd.js';
-import { doctorCmd }    from './cli/doctorCmd.js';
+import { initCmd }              from './cli/initCmd.js';
+import { syncCmd }              from './cli/syncCmd.js';
+import { watchCmd }             from './cli/watchCmd.js';
+import { statusCmd }            from './cli/statusCmd.js';
+import { shareCmd }             from './cli/shareCmd.js';
+import { conflictsCmd }         from './cli/conflictsCmd.js';
+import { rmCmd }                from './cli/rmCmd.js';
+import { serveCmd }             from './cli/serveCmd.js';
+import { trayCmd }              from './cli/trayCmd.js';
+import { resetCmd }             from './cli/resetCmd.js';
+import { doctorCmd }            from './cli/doctorCmd.js';
+import { installServiceCmd }    from './cli/installServiceCmd.js';
+import { uninstallServiceCmd }  from './cli/uninstallServiceCmd.js';
+import { serviceStatusCmd }     from './cli/serviceStatusCmd.js';
 
 const COMMANDS = {
-  init:      initCmd,
-  sync:      syncCmd,
-  watch:     watchCmd,
-  status:    statusCmd,
-  share:     shareCmd,
-  conflicts: conflictsCmd,
-  rm:        rmCmd,
-  serve:     serveCmd,
-  tray:      trayCmd,
-  reset:     resetCmd,
-  doctor:    doctorCmd,
+  'init':              initCmd,
+  'sync':              syncCmd,
+  'watch':             watchCmd,
+  'status':            statusCmd,
+  'share':             shareCmd,
+  'conflicts':         conflictsCmd,
+  'rm':                rmCmd,
+  'serve':             serveCmd,
+  'tray':              trayCmd,
+  'reset':             resetCmd,
+  'doctor':            doctorCmd,
+  'install-service':   installServiceCmd,
+  'uninstall-service': uninstallServiceCmd,
+  'service-status':    serviceStatusCmd,
 };
 
 async function main() {
@@ -106,6 +115,11 @@ Commands:
   doctor [--json] [--verbose]   Diagnose your Folio setup step-by-step.  PASS/FAIL for
                                 each link in the bring-up chain.  Exit 0 healthy / 1 any
                                 FAIL / 2 no config.
+  install-service               Install a per-user OS service unit (launchd / systemd /
+                                Task Scheduler) so Folio auto-starts on login.
+  uninstall-service             Stop, disable, and remove the service unit (idempotent).
+  service-status [--json]       Print the current service state: running / stopped /
+                                not-installed.  Exit 0 running / 1 otherwise.
 
   --help, -h                    Show this help
   --version, -v                 Print version

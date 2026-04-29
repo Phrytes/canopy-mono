@@ -178,7 +178,7 @@ Survivors of the re-orientation, ordered by impact:
 | v2.5 | Force re-push + Verify-pod-state (advanced actions) | queued |
 | v2.6 | Watcher sha-stable hardening | queued |
 | **v2.7** | **Real menubar icon (persistent)** with click-menu — replaces toast-only B1.tray | queued |
-| **v2.8** | **`folio install-service` daemon mode** (launchd / systemd / Task Scheduler) | queued |
+| **v2.8** | **`folio install-service` daemon mode** (launchd / systemd / Task Scheduler) | ✅ shipped 2026-04-29 |
 | **v2.9** | **Web UI re-shape**: collapse History tab into per-file menu; collapse Diagnostics into Settings panel; primary tabs become Status / Conflicts / Share | queued |
 | ~~v2.4~~ | ~~Markdown preview toggle~~ | **dropped** (Obsidian lane) |
 
@@ -1565,3 +1565,84 @@ There's no escape hatch — `folio sync` is a no-op when knownState says clean.
 
 **Test count:** 269 baseline → **294 total** (+25 new across SyncEngine,
 server, and ui suites).  All green via `npm test --prefix apps/folio`.
+## §Folio v2.8 — `folio install-service` daemon mode (2026-04-29)
+
+**Problem.** For Folio to feel like Dropbox (the H1 design north star), it
+has to be running.  Today the user has to remember to type `folio serve` in a
+shell after every login — most won't, and the agent quietly stops syncing.
+The fix: a `folio install-service` command that writes a per-user OS service
+unit so the daemon auto-starts on login.
+
+**Shipped.** Three CLI commands and one platform-dispatch module:
+
+| Command                  | What it does                                                  |
+|--------------------------|---------------------------------------------------------------|
+| `folio install-service`  | Writes a per-user unit, enables, starts, polls status (≤5 s). |
+| `folio uninstall-service`| Stops + disables + removes the unit.  Idempotent.             |
+| `folio service-status`   | Prints `running` / `stopped` / `not-installed` (+ `--json`).  |
+
+Per-platform implementation, all per-user only (NEVER `sudo`):
+
+| OS      | Unit file                                       | Backend                                 |
+|---------|--------------------------------------------------|-----------------------------------------|
+| macOS   | `~/Library/LaunchAgents/ag.canopy.folio.plist` | `launchctl load/unload` (LaunchAgent)   |
+| Linux   | `~/.config/systemd/user/folio.service`           | `systemctl --user enable --now`         |
+| Windows | Scheduled Task `Folio` (sentinel under `%LOCALAPPDATA%/folio/`) | `schtasks /SC ONLOGON /RL LIMITED /F`   |
+
+**Behaviour:**
+- Refuses to install (exit 2) when no `~/.config/folio/config.json` exists —
+  pushes the user back to `folio init` first.
+- Resolves `process.execPath` (the node binary) and `cli.js` absolute path
+  at install time so the unit references absolute paths only — survives
+  shell `PATH` changes.
+- WorkingDirectory is `cfg.localRoot` (so logs default-rotate close to the
+  user's notes folder).
+- After install, briefly polls `service.status()` for up to 5 seconds at
+  250 ms cadence; reports `running` once seen, otherwise the last state.
+- Idempotent install: writes the unit even if it exists, reloads it under
+  launchd (`unload` → `load`); systemd auto-picks-up via `daemon-reload`.
+  Returns `alreadyInstalled = true` so the CLI prints "already installed —
+  re-loaded with current config".
+- Idempotent uninstall: safe when nothing is installed (exits 0 with a
+  "nothing to do" line).
+- `service-status --json` emits `{ state, unitPath, logPath, detail,
+  lastLogLines }` — structured for the v2.7 menubar tray to consume.
+
+**Files added:**
+- `apps/folio/src/service/index.js`             (OS dispatch)
+- `apps/folio/src/service/_util.js`             (`execAsync`, `escapeXml`, `SERVICE_ID`)
+- `apps/folio/src/service/launchd.js`           (macOS plist + launchctl)
+- `apps/folio/src/service/systemd.js`           (Linux .service + systemctl --user)
+- `apps/folio/src/service/windows.js`           (Windows schtasks; best-effort)
+- `apps/folio/src/cli/installServiceCmd.js`
+- `apps/folio/src/cli/uninstallServiceCmd.js`
+- `apps/folio/src/cli/serviceStatusCmd.js`
+- `apps/folio/test/service.test.js`             (+19 tests; all `exec` mocked)
+
+**Files modified:**
+- `apps/folio/src/cli.js`                       (register the 3 commands + help)
+- `apps/folio/README.md`                        ("Run Folio as a service" section)
+
+**Constraints honored:**
+- No new top-level deps — uses `child_process.exec` only.
+- Tests mock the platform commands (`launchctl` / `systemctl` / `schtasks`)
+  via an injected `exec` stub.  No real services started in CI.
+- Generated unit files are human-readable and live in user-visible config
+  dirs (LaunchAgents / `~/.config/systemd/user/`).
+- Per-user only.  No `sudo`.  No system-wide install path.
+- ES modules; vanilla JS; vitest.
+
+**Documented limitation (Windows):** Windows is not part of CI; the
+implementation creates a Scheduled Task with `ONLOGON` trigger, but does
+NOT replicate systemd's `Restart=on-failure` semantics.  The user must
+re-run `folio install-service` (or log out / in) to restart a crashed
+daemon.  Logs are written by the Folio process to `%LOCALAPPDATA%\folio\
+folio.log`; Task Scheduler does not redirect stdout itself.
+
+**Out of scope (deferred):**
+- System-wide install (sudo paths) — single-user agents only.
+- Auto-update mechanism — separate concern.
+- Logrotate setup — Folio writes append-only; manual rotation for now.
+- Remote management — out of scope for the local-first agent model.
+
+**Test count:** 269 baseline → **288 total** (+19 new).  All green.

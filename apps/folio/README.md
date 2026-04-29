@@ -140,6 +140,50 @@ WebSocket `/events` broadcasts `status`, `sync.progress`, `sync.done`,
 The full contract lives in a comment block at the top of
 [`src/server/routes.js`](src/server/routes.js).
 
+## Run Folio as a service
+
+To make Folio auto-start on login (so notes keep syncing without you having
+to remember to run `folio serve`), install the per-user service unit:
+
+```bash
+folio install-service       # install + start
+folio service-status        # running / stopped / not-installed
+folio uninstall-service     # stop + disable + remove (idempotent)
+```
+
+What gets written, by platform:
+
+| OS      | Unit file                                          | Backend           |
+|---------|----------------------------------------------------|-------------------|
+| macOS   | `~/Library/LaunchAgents/ag.canopy.folio.plist`   | launchd (LaunchAgent) |
+| Linux   | `~/.config/systemd/user/folio.service`             | systemd `--user`  |
+| Windows | Scheduled Task `Folio` (sentinel in `%LOCALAPPDATA%/folio/`) | Task Scheduler `/SC ONLOGON /RL LIMITED` |
+
+The unit references absolute paths to the `node` binary and `cli.js`
+resolved at install time, so it survives `PATH` changes in your shell.
+Working directory is set to your `localRoot` (the folder you passed to
+`folio init`).
+
+**Per-user only.**  No `sudo` is ever required: macOS uses LaunchAgents
+(not LaunchDaemons), Linux uses `systemctl --user`, Windows uses
+unprivileged Task Scheduler.
+
+**Logs:**
+- macOS:   `~/Library/Logs/folio/folio.log`
+- Linux:   `~/.cache/folio/folio.log`
+- Windows: `%LOCALAPPDATA%\folio\folio.log`
+
+`install-service` is idempotent — running it twice re-writes the unit and
+re-loads it, so changes you make to your `localRoot` propagate cleanly.
+
+`uninstall-service` is also idempotent — safe to call when nothing is
+installed.
+
+> **Windows is best-effort.**  No Windows CI verification; the task uses
+> Task Scheduler `ONLOGON` triggers but does not have systemd's
+> `Restart=on-failure` semantics — the process is restarted only on the
+> next logon (or when you re-run `folio install-service`).
+
 ## Troubleshooting
 
 Run `folio doctor` to diagnose setup issues.  It walks the bring-up chain
