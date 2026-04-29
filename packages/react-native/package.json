@@ -2,6 +2,7 @@
   "name": "@canopy/react-native",
   "version": "0.1.0",
   "description": "React Native extras for the canopy agent SDK",
+  "type": "module",
   "main": "index.js",
   "exports": {
     ".": "./index.js"

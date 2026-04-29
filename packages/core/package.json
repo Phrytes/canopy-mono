@@ -2,6 +2,7 @@
   "name": "@canopy/core",
   "version": "0.1.0",
   "description": "Portable decentralised agent SDK — transport, security, identity, protocol",
+  "type": "module",
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js"
