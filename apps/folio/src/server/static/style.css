@@ -387,6 +387,173 @@ main { padding: 1rem 1.25rem 2rem; }
 .auth-modal__inner label { display: block; margin: 0.4rem 0; }
 .auth-modal__inner input[type="url"] { padding: 0.25rem 0.4rem; min-width: 16rem; }
 
+/* ── Folio v2.3 — Settings panel + Diagnostics ──────────────────────────── */
+/* The Settings link in the header.  Compact text + gear glyph, NOT a
+   tab.  Clicking opens the settings overlay. */
+.settings-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  color: #444;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.settings-link:hover {
+  background: #ececef;
+  border-color: #ddd;
+}
+.settings-link__icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.settings-link__label { /* keep visible on the desktop layout */ }
+
+/* The settings overlay/panel: a backdrop + a right-anchored panel.
+   Vanilla CSS — no transitions library, no framework. */
+.settings-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  justify-content: flex-end;
+}
+.settings-panel[hidden] { display: none; }
+.settings-panel__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+.settings-panel__inner {
+  position: relative;
+  width: min(100%, 32rem);
+  height: 100%;
+  background: #fff;
+  border-left: 1px solid #ddd;
+  box-shadow: -8px 0 18px rgba(0, 0, 0, 0.10);
+  display: flex;
+  flex-direction: column;
+}
+.settings-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #eee;
+}
+.settings-panel__header h2 { margin: 0; font-size: 1.1rem; }
+.settings-panel__close {
+  font: inherit;
+  font-size: 1.4rem;
+  line-height: 1;
+  width: 2rem;
+  height: 2rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #555;
+}
+.settings-panel__close:hover { background: #f0f0f3; border-color: #ddd; }
+.settings-panel__body {
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* A future-proof section wrapper.  v2.3 ships one section (Diagnostics);
+   v3+ will stack more (Sync settings, etc). */
+.settings-section { margin-bottom: 1.25rem; }
+.settings-section h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  color: #333;
+}
+.settings-section__intro {
+  font-size: 0.85rem;
+  color: #555;
+  margin: 0 0 0.6rem;
+}
+.settings-section__intro code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  background: #f3f3f5;
+  padding: 0 0.25rem;
+  border-radius: 3px;
+}
+
+.diagnostics-summary {
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+  color: #555;
+}
+.diagnostics-summary--ok  { color: #086e3a; font-weight: 600; }
+.diagnostics-summary--bad { color: #7a1818; font-weight: 600; }
+
+.diagnostics-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+}
+
+/* One row per step.  Layout: [colored dot] [label] [STATUS] [detail]. */
+.diagnostic-row {
+  display: grid;
+  grid-template-columns: 0.85rem 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid #f1f1f3;
+  align-items: center;
+}
+.diagnostic-row__dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: #ccc;
+  display: inline-block;
+  grid-row: 1;
+  grid-column: 1;
+}
+.diagnostic-row__dot--pass { background: #1f9d55; }
+.diagnostic-row__dot--warn { background: #d97706; }
+.diagnostic-row__dot--fail { background: #b91c1c; }
+.diagnostic-row__dot--skip { background: #9aa0a6; }
+.diagnostic-row__label {
+  grid-row: 1;
+  grid-column: 2;
+  color: #222;
+  word-break: break-word;
+}
+.diagnostic-row__status {
+  grid-row: 1;
+  grid-column: 3;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  color: #555;
+}
+.diagnostic-row__detail {
+  grid-row: 2;
+  grid-column: 2 / span 2;
+  color: #777;
+  font-size: 0.8rem;
+}
+
+.diagnostics-fix {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff8eb;
+  border: 1px solid #f1d68a;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #6b4f00;
+}
+.diagnostics-fix[hidden] { display: none; }
+
 /* Folio v2.1 — toast for auth.swapped frame.  Bottom-right corner. */
 .auth-toast {
   position: fixed;

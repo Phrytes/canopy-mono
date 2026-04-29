@@ -510,6 +510,160 @@ describe('Folio v2.2 — error banner static contract', () => {
   });
 });
 
+// ── 11. Folio v2.3 — Settings panel + Diagnostics ────────────────────────
+
+describe('Folio v2.3 — Settings panel (NOT a top tab)', () => {
+  it('index.html ships a header Settings button + settings overlay (no new top-level tab)', async () => {
+    const r = await fetch(`${baseUrl}/`);
+    expect(r.status).toBe(200);
+    const html = await r.text();
+
+    // Header affordance: text + gear character (HTML entity).  Must NOT
+    // be a new tab inside the .tabs nav.
+    expect(html).toMatch(/id="settings-open-btn"/);
+    expect(html).toMatch(/class="settings-link"/);
+    expect(html).toMatch(/&#9881;/);                     // gear glyph
+
+    // Settings overlay/panel structure.
+    expect(html).toMatch(/id="settings-panel"/);
+    expect(html).toMatch(/role="dialog"/);
+    expect(html).toMatch(/aria-modal="true"/);
+
+    // Diagnostics section lives INSIDE the settings panel.
+    expect(html).toMatch(/id="settings-diagnostics"/);
+    expect(html).toMatch(/id="btn-diagnostics-run"/);
+    expect(html).toMatch(/id="diagnostics-list"/);
+
+    // Hard rule: NO new top-level Diagnostics tab.  The only tabs in the
+    // .tabs nav are status / conflicts / share / history.
+    const tabsBlock = html.match(/<nav class="tabs"[\s\S]*?<\/nav>/);
+    expect(tabsBlock).toBeTruthy();
+    expect(tabsBlock[0]).not.toMatch(/id="tab-diagnostics"/i);
+    expect(tabsBlock[0]).not.toMatch(/Diagnostics<\/button>/i);
+    // Sanity: existing primary tabs still present.
+    expect(tabsBlock[0]).toMatch(/id="tab-status"/);
+    expect(tabsBlock[0]).toMatch(/id="tab-conflicts"/);
+    expect(tabsBlock[0]).toMatch(/id="tab-share"/);
+  });
+
+  it('settings.js wires Run button → POST /diagnostics + ws.diagnostics.* with textContent only', async () => {
+    const r = await fetch(`${baseUrl}/settings.js`);
+    expect(r.status).toBe(200);
+    const text = await r.text();
+    // Hits the 202+409 route.
+    expect(text).toMatch(/['"]\/diagnostics['"]/);
+    // Subscribes to streaming frames over the existing WS bus.
+    expect(text).toMatch(/ws\.diagnostics\.step/);
+    expect(text).toMatch(/ws\.diagnostics\.done/);
+    // Open / close + Esc handling for the panel.
+    expect(text).toMatch(/Escape/);
+    // Strict XSS hardening — no innerHTML on user-controlled data.
+    expect(text).not.toMatch(/\.innerHTML\s*=/);
+  });
+
+  it('style.css ships the settings panel + diagnostic-row + colored-dot rules', async () => {
+    const r = await fetch(`${baseUrl}/style.css`);
+    expect(r.status).toBe(200);
+    const css = await r.text();
+    expect(css).toMatch(/\.settings-panel\s*\{/);
+    expect(css).toMatch(/\.settings-link/);
+    expect(css).toMatch(/\.diagnostic-row\s*\{/);
+    expect(css).toMatch(/\.diagnostic-row__dot/);
+    expect(css).toMatch(/\.diagnostic-row__dot--pass/);
+    expect(css).toMatch(/\.diagnostic-row__dot--warn/);
+    expect(css).toMatch(/\.diagnostic-row__dot--fail/);
+    expect(css).toMatch(/\.diagnostic-row__dot--skip/);
+  });
+
+  it('app.js boots the Settings controller and exposes it on window.__folio', async () => {
+    const r = await fetch(`${baseUrl}/app.js`);
+    expect(r.status).toBe(200);
+    const text = await r.text();
+    expect(text).toContain('initSettings');
+    expect(text).toContain('/settings.js');
+    // Test hook: __folio.settings exposes the controller for ui-tests /
+    // browser console inspection.
+    expect(text).toMatch(/get settings\(\)/);
+  });
+
+  it('end-to-end: POST /diagnostics streams diagnostics.step + .done over /events', async () => {
+    // We can't easily exercise the real diagnostics engine in this UI test
+    // (it needs a config fixture); we instead spin a server with an
+    // injected fake `runDiagnostics` so the test stays fast + offline,
+    // and confirm the WS frames the UI subscribes to are emitted.
+    await srv.close();
+    const fakeRun = async (reporter) => {
+      reporter.step({ id: 'config',         status: 'PASS', label: 'config exists' });
+      reporter.step({ id: 'vault',          status: 'PASS', label: 'vault exists' });
+      reporter.step({ id: 'pod-head',       status: 'WARN', label: 'pod root reachable', detail: 'slow' });
+      return { abortReason: null, cfg: {}, counts: { PASS: 2, FAIL: 0, WARN: 1, SKIP: 0 } };
+    };
+    srv = createServer({ engine, vault, runDiagnostics: fakeRun });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+    wsUrl   = `ws://${host}:${port}/events`;
+
+    const ws = new WebSocket(wsUrl);
+    const frames = [];
+    await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
+    ws.on('message', (data) => {
+      try { frames.push(JSON.parse(data.toString('utf8'))); } catch { /* ignore */ }
+    });
+
+    const r = await fetch(`${baseUrl}/diagnostics`, {
+      method:  'POST',
+      headers: { 'content-type': 'application/json' },
+      body:    '{}',
+    });
+    expect(r.status).toBe(202);
+
+    await waitForFrame(frames, 'diagnostics.done');
+    const stepFrames = frames.filter((f) => f.type === 'diagnostics.step');
+    expect(stepFrames.length).toBe(3);
+    expect(stepFrames[0].label).toBe('config exists');
+    const done = frames.find((f) => f.type === 'diagnostics.done');
+    expect(done.ok).toBe(true);
+    expect(done.counts).toEqual({ PASS: 2, FAIL: 0, WARN: 1, SKIP: 0 });
+
+    ws.close();
+  });
+
+  it('returns 409 on a concurrent POST /diagnostics', async () => {
+    await srv.close();
+    const fakeRun = async (reporter) => {
+      reporter.step({ id: 'a', status: 'PASS', label: 'a' });
+      // Hold open for a few ticks so a second request races us.
+      await new Promise((r) => setTimeout(r, 80));
+      reporter.step({ id: 'b', status: 'PASS', label: 'b' });
+      return { abortReason: null, cfg: {}, counts: { PASS: 2, FAIL: 0, WARN: 0, SKIP: 0 } };
+    };
+    srv = createServer({ engine, vault, runDiagnostics: fakeRun });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+
+    const first = await fetch(`${baseUrl}/diagnostics`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    });
+    expect(first.status).toBe(202);
+
+    const second = await fetch(`${baseUrl}/diagnostics`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    });
+    expect(second.status).toBe(409);
+    const body = await second.json();
+    expect(body.error.code).toBe('DIAGNOSTICS_IN_PROGRESS');
+  });
+});
+
+// Helper used by the diagnostics UI test above.
+async function waitForFrame(frames, type, timeoutMs = 3000) {
+  const start = Date.now();
+  while (!frames.some((f) => f.type === type)) {
+    if (Date.now() - start > timeoutMs) throw new Error(`waitForFrame: timed out for ${type}`);
+    await new Promise((r) => setTimeout(r, 25));
+  }
+}
+
 describe('Folio v2.2 — banner end-to-end against the server', () => {
   it('GET /status carries lastError + errors so the UI paints on first load', async () => {
     // Replace the server with one we own the buffer for.
