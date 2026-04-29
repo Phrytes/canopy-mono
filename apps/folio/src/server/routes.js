@@ -82,9 +82,12 @@ const STATE_FILE_RELPATH = '.canopy/notes-sync-state.json';
  * @param {object} [deps.identity] AgentIdentity — optional; if absent, /share
  *                                 lazy-derives one from the vault.
  * @param {object} deps.hub        WsHub for broadcasting progress.
+ * @param {object} [deps.errorBuffer] Folio v2.2 — SyncErrorBuffer; if present,
+ *                                    /status carries `lastError` + `errors`,
+ *                                    and POST /errors/clear empties it.
  * @returns {express.Router}
  */
-export function createRouter({ engine, podClient, vault, identity, hub }) {
+export function createRouter({ engine, podClient, vault, identity, hub, errorBuffer }) {
   if (!engine) throw new Error('createRouter: engine is required');
   if (!hub)    throw new Error('createRouter: hub is required');
   const resolvedPodClient = podClient ?? engine._podClient ?? engine.__podClient ?? null;
@@ -140,6 +143,12 @@ export function createRouter({ engine, podClient, vault, identity, hub }) {
         scanError = err?.message ?? String(err);
       }
 
+      // Folio v2.2 — surface the in-memory ring buffer's recent errors so the
+      // UI paints the banner + recent-errors list on first load (no need to
+      // wait for the next WS error frame).
+      const lastError = errorBuffer?.lastError ?? null;
+      const errors    = errorBuffer ? errorBuffer.recent(10) : [];
+
       res.json({
         ts:        Date.now(),
         stats,
@@ -149,11 +158,24 @@ export function createRouter({ engine, podClient, vault, identity, hub }) {
         lastSyncAt,
         pending,
         openConflictFiles,
+        lastError,
+        errors,
         ...(scanError ? { scanError } : {}),
       });
     } catch (err) {
       sendError(res, 500, 'STATUS_FAILED', err?.message ?? String(err));
     }
+  });
+
+  // ── /errors/clear ─────────────────────────────────────────────────────────
+  // Folio v2.2 — empties the in-memory ring buffer.  Returns 204 No Content
+  // either way (idempotent).  When no buffer is wired, still 204 — callers
+  // shouldn't have to special-case the missing-buffer state.
+  router.post('/errors/clear', (_req, res) => {
+    if (errorBuffer && typeof errorBuffer.clear === 'function') {
+      errorBuffer.clear();
+    }
+    res.status(204).end();
   });
 
   // ── /conflicts ────────────────────────────────────────────────────────────

@@ -76,6 +76,191 @@ export function hideBanner() {
   banner.textContent = '';
 }
 
+// ── Folio v2.2 — Error banner ──────────────────────────────────────────────
+//
+// Surfaces the most recent *unresolved* sync error at the top of the page.
+// "Unresolved" means: an `error` WS frame fired and the user hasn't dismissed
+// it AND no clean sync has happened in the past 5 seconds.
+//
+// Wiring contract:
+//   - subscribed to `ws.error`           → show
+//   - subscribed to `ws.sync.done`       → start 5s clean-sync debounce
+//   - "Retry sync"  button → POST /sync/now (banner clears on next clean done)
+//   - "Dismiss"     button → hide until a new error fires (preserves history)
+//
+// Conflicts that surface as `phase: 'conflict'` on an `error` frame are
+// excluded: those are normal-flow events, not failures.
+const PHASE_BLOCKLIST = new Set(['conflict']);
+const CLEAN_DEBOUNCE_MS = 5_000;
+
+function fmtRelativeTime(ts) {
+  if (!ts) return '';
+  const d = Math.max(0, Date.now() - ts);
+  if (d <  10_000)  return 'just now';
+  if (d <  60_000)  return `${Math.round(d / 1_000)}s ago`;
+  if (d < 3_600_000) return `${Math.round(d / 60_000)}m ago`;
+  return `${Math.round(d / 3_600_000)}h ago`;
+}
+
+function makeErrorBanner({ postJson }) {
+  const $banner  = document.getElementById('error-banner');
+  const $message = document.getElementById('error-banner-message');
+  const $retry   = document.getElementById('error-banner-retry');
+  const $dismiss = document.getElementById('error-banner-dismiss');
+  const $pill    = document.getElementById('auth-pill');
+  const $pillWarn = document.getElementById('auth-pill-warn');
+  if (!$banner) return null;
+
+  /** @type {{ phase, relPath, message, ts }[]} */
+  let errors = [];
+  /** Last error currently being surfaced (banner shows this). */
+  let active = null;
+  /** When the user clicks Dismiss, we hide until a new error fires. */
+  let dismissedUntilNew = false;
+  let cleanTimer = null;
+  let lastRender = 0;
+  let renderTimer = null;
+
+  function setYellowPill(on) {
+    if (!$pill) return;
+    $pill.classList.toggle('auth-pill--warn', !!on);
+    if ($pillWarn) {
+      $pillWarn.hidden = !on;
+      if (on) {
+        $pillWarn.title = `${errors.length} sync error${errors.length === 1 ? '' : 's'} — click to view`;
+      }
+    }
+  }
+
+  function render() {
+    lastRender = Date.now();
+    if (!active || dismissedUntilNew) {
+      $banner.className = 'error-banner error-banner--hidden';
+      $message.textContent = '';
+      setYellowPill(errors.length > 0 && !dismissedUntilNew);
+      return;
+    }
+    const errCount = errors.length;
+    let text;
+    if (errCount > 1) {
+      text = `${errCount} sync errors — see Recent errors below · ${active.phase} failed for ${active.relPath || '(no path)'}: ${active.message}`;
+    } else {
+      text = `Last error: ${active.phase} failed for ${active.relPath || '(no path)'}: ${active.message} · ${fmtRelativeTime(active.ts)}`;
+    }
+    $message.textContent = text;
+    $banner.className = 'error-banner';
+    setYellowPill(true);
+  }
+
+  // Re-render every 10s so the relative timestamp stays fresh.
+  function scheduleRefresh() {
+    if (renderTimer) return;
+    renderTimer = setInterval(() => {
+      if (active && !dismissedUntilNew) render();
+    }, 10_000);
+  }
+
+  function pushError(frame) {
+    if (!frame || PHASE_BLOCKLIST.has(frame.phase)) return;
+    const e = {
+      phase:   frame.phase  ?? 'unknown',
+      relPath: frame.relPath ?? '',
+      message: frame.message ?? '',
+      ts:      frame.ts ?? Date.now(),
+    };
+    errors.unshift(e);
+    if (errors.length > 50) errors.length = 50;
+    active = e;
+    dismissedUntilNew = false; // a new error always re-surfaces.
+    if (cleanTimer) { clearTimeout(cleanTimer); cleanTimer = null; }
+    render();
+    bus.emit('errors.changed', { errors: errors.slice(0, 10), lastError: active });
+    scheduleRefresh();
+  }
+
+  function clearActive() {
+    active = null;
+    errors = [];
+    dismissedUntilNew = false;
+    if (cleanTimer) { clearTimeout(cleanTimer); cleanTimer = null; }
+    render();
+    bus.emit('errors.changed', { errors: [], lastError: null });
+  }
+
+  // 5-second clean-sync debounce — if a sync.done lands and no new error
+  // arrives within the window, the banner clears.
+  function onCleanSync() {
+    if (!active) return;
+    if (cleanTimer) clearTimeout(cleanTimer);
+    cleanTimer = setTimeout(() => {
+      // Verify by asking the server whether its ring buffer says "all clear".
+      // The server-side ring buffer holds the source of truth; this avoids
+      // whiplash if errors are still queueing.
+      clearActive();
+    }, CLEAN_DEBOUNCE_MS);
+  }
+
+  // ── Wire WS frames to the banner ───────────────────────────────────────
+  bus.on('ws.error', (frame) => pushError(frame));
+  bus.on('ws.sync.done', () => onCleanSync());
+
+  // Initial paint: /status carries the ring buffer's lastError + errors[].
+  bus.on('status.snapshot', (snap) => {
+    if (!snap) return;
+    if (Array.isArray(snap.errors)) {
+      errors = snap.errors.slice(0, 50).map((e) => ({
+        phase:   e.phase ?? 'unknown',
+        relPath: e.relPath ?? '',
+        message: e.message ?? '',
+        ts:      e.ts ?? 0,
+      }));
+    }
+    if (snap.lastError && !PHASE_BLOCKLIST.has(snap.lastError.phase)) {
+      active = {
+        phase:   snap.lastError.phase ?? 'unknown',
+        relPath: snap.lastError.relPath ?? '',
+        message: snap.lastError.message ?? '',
+        ts:      snap.lastError.ts ?? 0,
+      };
+    }
+    render();
+    if (active) scheduleRefresh();
+    bus.emit('errors.changed', { errors: errors.slice(0, 10), lastError: active });
+  });
+
+  // ── Buttons ────────────────────────────────────────────────────────────
+  $retry?.addEventListener('click', async () => {
+    $retry.disabled = true;
+    try {
+      await postJson('/sync/now', { direction: 'both' });
+      // If the next sync.done is clean, our 5s debounce will clear the banner.
+    } catch (err) {
+      // Reload didn't take — leave the banner up; surface the failure in the
+      // existing log via the bus.
+      bus.emit('error.retry-failed', { message: err?.message ?? String(err) });
+    } finally {
+      setTimeout(() => { $retry.disabled = false; }, 500);
+    }
+  });
+
+  $dismiss?.addEventListener('click', () => {
+    if (!active) return;
+    dismissedUntilNew = true;
+    render();
+  });
+
+  // Test hook.
+  return {
+    pushError,
+    clearActive,
+    onCleanSync,
+    get errors()   { return errors.slice(); },
+    get active()   { return active; },
+    get dismissed(){ return dismissedUntilNew; },
+    render,
+  };
+}
+
 // ── Tab switcher ──────────────────────────────────────────────────────────
 function wireTabs() {
   const tabs  = Array.from(document.querySelectorAll('.tab'));
@@ -176,8 +361,10 @@ async function probeHealthAndBoot() {
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────
+let errorBanner = null;
 window.addEventListener('DOMContentLoaded', () => {
   wireTabs();
+  errorBanner = makeErrorBanner({ postJson });
   initStatus({ bus, getJson, postJson, showBanner, hideBanner });
   initConflicts({ bus, getJson, postJson });
   initShare({ bus, postJson });
@@ -191,4 +378,5 @@ window.__folio = {
   bus,
   isConnected: () => ws && ws.readyState === 1,
   reconnect:   connect,
+  get errorBanner() { return errorBanner; },
 };

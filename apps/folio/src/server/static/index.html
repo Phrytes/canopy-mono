@@ -8,12 +8,24 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+  <!-- Folio v2.2 — loud error banner.  Sticky at the very top, above the
+       header.  Hidden by default; shown by app.js on `ws.error` frames whose
+       phase ∈ { upload, download, ensure-container } (conflicts excluded).
+       Cleared automatically on a 5-second window of clean syncs, or by the
+       Dismiss button (until a new error fires). -->
+  <div id="error-banner" class="error-banner error-banner--hidden" role="alert" aria-live="assertive">
+    <button id="error-banner-retry"   class="error-banner__retry"   type="button">Retry sync</button>
+    <span   id="error-banner-message" class="error-banner__message"></span>
+    <button id="error-banner-dismiss" class="error-banner__dismiss" type="button" aria-label="Dismiss">×</button>
+  </div>
+
   <header class="banner-row">
     <h1>Folio</h1>
     <div id="conn-banner" class="banner banner--hidden" role="status"></div>
     <div id="auth-pill" class="auth-pill" role="status" aria-live="polite">
       <span id="auth-pill-state" class="auth-pill__state auth-pill__state--unknown">checking…</span>
       <span id="auth-pill-webid" class="auth-pill__webid"></span>
+      <span id="auth-pill-warn"  class="auth-pill__warn" hidden title="">!</span>
       <button id="auth-signin-btn"  class="btn btn--small" hidden>Sign in</button>
       <button id="auth-signout-btn" class="btn btn--small btn--ghost" hidden>Sign out</button>
     </div>
@@ -72,6 +84,16 @@
           <button id="btn-watch-toggle" class="btn">Start watch</button>
         </div>
         <div id="status-log" class="log" aria-live="polite"></div>
+
+        <!-- Folio v2.2 — recent-errors collapsible.  Shows the last 10 sync
+             errors (newest first) so users can see the history beyond the
+             single banner above.  Toggled with the summary; populated from
+             /status's `errors` array on initial paint and from `ws.error`
+             frames thereafter. -->
+        <details id="recent-errors" class="recent-errors" hidden>
+          <summary>Recent errors (<span id="recent-errors-count">0</span>)</summary>
+          <ul id="recent-errors-list" class="recent-errors__list"></ul>
+        </details>
       </div>
     </section>
 
