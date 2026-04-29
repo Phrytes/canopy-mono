@@ -78,6 +78,40 @@ this TODO into a proper coding plan when ready to schedule.
 
 ---
 
+## Folio tray — GNOME ship blocker (2026-04-29)
+
+Folio v2.7's persistent menubar icon (via `systray2` Go-binary worker)
+works on macOS, KDE, Cinnamon, Xfce, MATE — but **modern GNOME Shell
+hides system-tray icons by default**.  User confirmed this against
+their GNOME setup: `folio serve` runs, `pgrep -f tray_linux_release`
+finds the worker, but no icon visible.
+
+**Before ship:** verify the workaround is documented and reproducible:
+```
+sudo apt install gnome-shell-extension-appindicator
+# log out/in; enable AppIndicator in Extensions
+```
+
+Options to consider:
+1. Document GNOME workaround in `apps/folio/src/tray/CHOICE.md` + README
+   (cheapest fix; most accurate framing)
+2. Auto-detect GNOME at `folio serve` startup and surface a one-time
+   notification: "GNOME hides tray icons by default — install
+   gnome-shell-extension-appindicator to see Folio's menu" (helpful but
+   adds cross-distro detection logic)
+3. Fall back to a desktop notification on every state change for
+   GNOME-without-extension users (accidentally re-introduces the v1
+   toast-only experience we just replaced)
+
+**Lean: option 1 + option 2.**  Document + detect-and-warn-once.  Don't
+fall back to toasts.
+
+Not a personal blocker for the original reporter; flagged here so we
+catch it in pre-ship QA on Ubuntu GNOME (likely most common Linux
+desktop our users hit).
+
+---
+
 ## Battery-aware reachability tuning (2026-04-29)
 
 Q-G.2 locked the oracle TTL default at 5 minutes (configurable).  Future
