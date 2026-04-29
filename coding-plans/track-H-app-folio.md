@@ -364,7 +364,7 @@ create:
 - [x] 2. **B1.server** — REST API: `/status`, `/conflicts`, `/conflicts/:id/resolve`, `/share`, `/sync/now`, `/watch/start|stop`.  WebSocket for live status updates.  Express integration tests.
 - [x] 3. **B1.ui** — single-page vanilla JS.  Status pane shows sync state; conflicts pane shows side-by-side merge UI (CodeMirror via `<script>` tag — no build step); share pane mints capability tokens with a friendly form.  Playwright happy-path tests.
 - [x] 4. **B1.tray** — tray-bar / menubar icon — small badge showing sync status.  Click → opens `http://localhost:8888`.  macOS + Linux for v1; Windows is stretch.
-- [ ] 5. **B3** (Q-Folio.3 — auto-shared `with-<webid>/` folders) and **B4** (Q-Folio.4 — time-machine versioning) split into their own subsections.  B3 spawns as peer to B1; B4 deferred until after B1 lands.
+- [x] 5. **B3** (Q-Folio.3 — auto-shared `with-<webid>/` folders) and **B4** (Q-Folio.4 — time-machine versioning) split into their own subsections.  B3 spawns as peer to B1; B4 landed 2026-04-29.
 - [ ] 6. Tests are owned by each slice (server tests in B1.server; UI tests in B1.ui; tray smoke test in B1.tray).
 
 **DoD:**
@@ -796,13 +796,144 @@ modify:
 
 ---
 
-#### Folio.B4 — Time-machine versioning (Q-Folio.4) — DEFERRED until B1 lands
+#### Folio.B4 — Time-machine versioning (Q-Folio.4)
 
 | | |
 |---|---|
-| **Status** | deferred (depends on B1; pick up next) |
+| **Status** | done (2026-04-29) |
 | **Tag** | [NEW] |
-| **Notes** | Per design sketch H1 Twist 2.  Per-folder versioning; on every successful pod write, snapshot the previous content under `.folio/versions/<path>/<unix-ms>.md`.  UI surface: a "history" pane in B1.ui that lets the user diff & restore.  Decoupled from B1's launch but useful UX once B1 is up. |
+| **Notes** | Per design sketch H1 Twist 2.  Per-file versioning; on every successful sync operation that touches a file (push, pull, conflict-write, conflict-resolve), the new content is snapshotted under `<root>/.folio/versions/<rel-path>/<unix-ms>.<ext>`.  UI surface: a "History" pane in B1.ui with a file picker, version list, content viewer and restore button.  WS frame `version.new` keeps the pane live. |
+
+**Files:**
+
+```
+create:
+  apps/folio/src/versions.js                         # capture, list, prune, restore
+  apps/folio/test/versions.test.js                   # 28 unit tests
+  apps/folio/src/server/static/versions.js           # History pane logic
+modify:
+  apps/folio/src/SyncEngine.js                       # captureVersion on every successful change + versions/restoreVersion/dropVersions/pruneVersions/captureVersion API
+  apps/folio/src/server/routes.js                    # /versions endpoints + capture on resolve
+  apps/folio/src/server/wsHub.js                     # forward 'version.new' engine events
+  apps/folio/src/server/static/index.html            # History tab + per-file history panel
+  apps/folio/src/server/static/app.js                # tab routing for History
+  apps/folio/src/server/static/style.css             # versions list styling
+  apps/folio/src/server/static/conflicts.js          # "View history" link per file
+  apps/folio/src/index.js                            # public-barrel exports for versions
+  apps/folio/test/server.test.js                     # 10 new endpoint + WS tests
+  apps/folio/test/SyncEngine.test.js                 # 8 new capture-site / restore / drop tests
+  apps/folio/test/ui.test.js                         # 4 new history-pane smoke tests
+```
+
+**Sequence:**
+
+- [x] 1. `versions.js` — `captureVersion` + `listVersions` + `restoreVersion` + `dropVersions` + `pruneVersions` + helpers.  Pure JS, no new deps; uses `node:fs/promises` + `crypto`.  Atomic write via tmp-then-rename.  Per-file list cache invalidated on write/delete.
+- [x] 2. SyncEngine integration — capture sites at push, pull, conflict-write.  `engine.captureVersion(rel, content)` exposed for the resolve route.  `engine.deleteLocal` calls `engine.dropVersions` so `folio rm` is a true forget.  Engine emits `version.new` on each successful capture.
+- [x] 3. REST endpoints — `GET /versions`, `GET /versions/:id`, `GET /versions/:id/content/:ms`, `POST /versions/:id/restore`.  Re-use `conflictId.js` (base64url) so the UI doesn't need a new id encoding.
+- [x] 4. WS frame `{ type: 'version.new', ts, relPath }` — wsHub subscribes to `engine.on('version.new', …)` and rebroadcasts.
+- [x] 5. UI — History tab, file picker, version list, read-only content viewer, restore button.  "View history" link in the conflicts list emits `history.openFor` and switches tab.  XSS-safe (textContent everywhere).
+- [x] 6. Tests — ≥10 unit, ≥5 server, ≥3 UI, plus capture-site coverage in SyncEngine.test.
+
+**DoD:**
+
+- [x] `apps/folio/src/versions.js` with `captureVersion`, `listVersions`, `restoreVersion`, `dropVersions`, `pruneVersions`. ≥10 unit tests (28 added).
+- [x] SyncEngine integrates the four capture sites (push/pull/conflict-write/conflict-resolve).
+- [x] All 3 REST endpoints + the WebSocket frame implemented and tested (10 new server tests).
+- [x] History tab in the UI works end-to-end against a real B1.server.
+- [x] ≥3 UI tests covering: History tab loads, version selection renders content, restore endpoint fires (4 new UI tests).
+- [x] Total Folio test count ≥197 (179 baseline + 50 new = 229 total).
+- [x] §Folio.B4 in `coding-plans/track-H-app-folio.md` marked done with the scratchpad below.
+- [x] No new top-level deps.
+- [x] `apps/folio` runs cleanly: `npm test --prefix apps/folio` green.
+
+**Notes (team scratchpad):**
+
+```
+2026-04-29 — Folio.B4 landed.  229 vitest tests pass (179 baseline + 50 new).
+No new top-level deps; pure JS over node:fs/promises + node:crypto.
+
+Files added:
+  apps/folio/src/versions.js                  # captureVersion + listVersions
+                                              # + restoreVersion + dropVersions
+                                              # + pruneVersions + helpers
+  apps/folio/test/versions.test.js            # 28 unit tests
+  apps/folio/src/server/static/versions.js    # History pane controller
+Files modified:
+  apps/folio/src/SyncEngine.js                # 4 capture sites + public API
+  apps/folio/src/server/routes.js             # /versions endpoints + capture-on-resolve
+  apps/folio/src/server/wsHub.js              # forward version.new
+  apps/folio/src/server/static/index.html     # History tab + pane markup
+  apps/folio/src/server/static/app.js         # initVersions() wiring
+  apps/folio/src/server/static/style.css      # history-list + viewer styles
+  apps/folio/src/server/static/conflicts.js   # "View history" cross-link
+  apps/folio/src/index.js                     # public-barrel exports
+  apps/folio/test/server.test.js              # +10 endpoint + WS tests
+  apps/folio/test/SyncEngine.test.js          # +8 capture-site + restore + drop
+  apps/folio/test/ui.test.js                  # +4 history-pane smoke tests
+
+Retention defaults (Q-Folio.4 lock):
+  - perFile  = 50 versions per file (oldest pruned first on every capture).
+  - budgetMb = 100 MB total under <root>/.folio/versions/.  When the
+    capture pushes us over budget, oldest snapshots across ALL files are
+    evicted until under.  This is the "garbage-collected always" model
+    the spec asked for; no background timer.
+  - Configurable via `engine.options.versions = { perFile, budgetMb }` and
+    threaded through every internal capture call.
+
+Snapshot debounce window: 5 seconds.  When two captures of the SAME sha256
+land within 5s of each other (e.g. a chokidar event fires alongside a
+push), the second capture is dropped (return { captured:false, reason:
+'DEBOUNCED' }).  This keeps "save in editor" from spamming the history.
+Empty content is also skipped on the FIRST snapshot (don't fill history
+with "" baselines for a file that's about to be filled in).
+
+Restore semantics:
+  - `engine.restoreVersion(rel, ts)` ALWAYS captures the current live
+    content as a fresh snapshot first (so a wrong restore is itself
+    undoable).  Returns `{ relPath, restoredFromMs, snapshotMsBeforeRestore }`.
+  - The pre-restore capture goes through the SAME captureVersion path so
+    retention is enforced.  If the live file is missing (was deleted),
+    we capture an empty Buffer as the pre-restore baseline; the spec's
+    EMPTY_FIRST_VERSION skip rule is bypassed for restoreVersion (we
+    always want to record what was there).
+
+Decisions made:
+- ID encoding for /versions/:id REUSES `conflictIdFromRelPath`
+  (base64url(relPath)).  Same encoding for both surfaces means the UI
+  doesn't need a new helper, and "View history" from the conflicts pane
+  passes the same ID through.
+- Sidecar files (`<ts>.<ext>.sha256`) hold the sha256 so listVersions
+  doesn't re-read the snapshot bytes on every list().  If a sidecar goes
+  missing, listVersions recomputes + writes it back (self-healing).
+- Per-file dir cache: each `<dir>` listing is cached in-process and
+  invalidated on every write/delete that touches that dir.  Walking the
+  tree (for the global byte budget + the file-picker) is unavoidable but
+  bounded by versions count, not folder count, satisfying the "O(versions-
+  affected)" constraint in the spec.
+- pruneVersions runs SYNCHRONOUSLY on every capture; per spec there's no
+  background timer.  The hot path: capture writes the snapshot + sidecar,
+  then prunes per-file (≤ perFile + the just-written one), then walks the
+  tree once if the per-file step + new total exceeds the byte budget.
+- Conflict capture: on every diff that yields a conflict, after applyConflict
+  writes markers in place, we re-read the file and snapshot that
+  intermediate state.  Useful for rolling back a botched manual resolve.
+- DROPPING versions on `engine.deleteLocal(rel)`: aligns with "folio rm"
+  meaning "I deleted this on purpose"; the user wouldn't expect the
+  history to linger.  Best-effort — never throws on cleanup failure.
+
+Hand-off / things to know:
+- The /versions/:id/content/:ms endpoint serves text/plain.  For binary
+  files (v1 only handles markdown/text but the API is generic), the UI
+  may need a Content-Type sniff in v2.  Today's code reads the snapshot
+  via fs.readFile (no encoding) and pipes the buffer through res.send.
+- Restoring a snapshot writes the live file ATOMICALLY (tmp-then-rename
+  via the same writeAtomic helper used for snapshots).  Subsequent
+  runOnce will see the changed mtime and push it to the pod.
+- The "View history" link is a forward-link only — the History pane has
+  no back-link to the conflicts pane (resolving from the History viewer
+  isn't a v1 feature).  Diffing two versions, multi-select restore, or
+  pod-side versioning are explicit out-of-scope items.
+```
 
 ---
 

@@ -13,6 +13,7 @@ import { initStatus }    from '/status.js';
 import { initConflicts } from '/conflicts.js';
 import { initShare }     from '/share.js';
 import { initAuth }      from '/auth.js';
+import { initVersions }  from '/versions.js';
 
 // ── Tiny event bus ────────────────────────────────────────────────────────
 // Per-pane modules subscribe via bus.on(type, handler).  WS frames from
@@ -180,6 +181,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initStatus({ bus, getJson, postJson, showBanner, hideBanner });
   initConflicts({ bus, getJson, postJson });
   initShare({ bus, postJson });
+  initVersions({ bus, getJson, postJson });
   try { initAuth({ bus, getJson, postJson }); } catch (err) { console.error('auth init failed', err); }
   probeHealthAndBoot();
 });
