@@ -177,7 +177,7 @@ Survivors of the re-orientation, ordered by impact:
 | v2.3 | Diagnostics surfaced in web UI — *but as a Settings panel, not a top tab* | ✅ shipped 2026-04-29 |
 | v2.5 | Force re-push + Verify-pod-state (advanced actions) | queued |
 | v2.6 | Watcher sha-stable hardening | queued |
-| **v2.7** | **Real menubar icon (persistent)** with click-menu — replaces toast-only B1.tray | queued |
+| **v2.7** | **Real menubar icon (persistent)** with click-menu — replaces toast-only B1.tray | ✅ shipped 2026-04-29 |
 | **v2.8** | **`folio install-service` daemon mode** (launchd / systemd / Task Scheduler) | ✅ shipped 2026-04-29 |
 | **v2.9** | **Web UI re-shape**: collapse History tab into per-file menu; collapse Diagnostics into Settings panel; primary tabs become Status / Conflicts / Share | queued |
 | ~~v2.4~~ | ~~Markdown preview toggle~~ | **dropped** (Obsidian lane) |
@@ -1819,3 +1819,112 @@ Settings overlay; v2.9 finishes the shape by removing the History tab.
 - Search across notes — H7 Archive's job, not Folio's.
 
 **Test count:** 344 baseline → **348 total** (+6 new, −2 obsolete).  All green.
+
+## §Folio v2.7 — Real persistent menubar / system-tray icon (2026-04-29)
+
+Folio is Dropbox-shaped: the menubar/tray icon is the **primary daily-use
+surface**.  v1's B1.tray fell back to ephemeral toasts (`notify-send` on
+Linux, `osascript` on macOS) because the author inferred a "no native-build
+deps" rule.  That rule was over-strict — `better-sqlite3` (Archive) already
+ships prebuilt binaries — so v2.7 unwinds it: ONE new dep with a
+prebuilt-binary install path.
+
+**Library chosen:** `systray2` v2.1.4.  Prebuilt Go binaries shipped inside
+the npm tarball; no `install` / `postinstall` hook → `npm install` on a
+clean Linux box is ~2 s, no compile.  Full rationale + binary sha256s in
+`apps/folio/src/tray/CHOICE.md`.
+
+**Shipped.**
+
+1. **Real-mode tray** at `apps/folio/src/tray/index.js`:
+   - Spawns systray2 via `import('systray2')` (CJS-default-export interop
+     handled by `unwrapClass`).
+   - Persistent icon, four states (idle/active/conflict/error) backed by
+     the existing 16x16 PNGs in `icons/`.  Synchronous one-time icon
+     pre-load (`readFileSync`) so fake-timers in tests can't deadlock the
+     poll loop.
+   - Menu shape (built by `buildMenu()`):
+       * Header: "Folio — synced N minutes ago" / "Folio — error"
+       * Open notes folder        → `openFolder(localRoot)`
+       * Open Folio               → `openUrl(<base>)`
+       * `<separator>`
+       * Sync now                 → POST `<base>/sync/now`
+       * Pause sync / Resume sync → POST `<base>/watch/{stop,start}`
+       * `<separator>`
+       * Recent conflicts (N)     → submenu (≤5) → `<base>/#conflicts`
+       * `<separator>`
+       * Quit Folio               → POST `<base>/shutdown` (X-Folio-Shutdown:true)
+   - Poll loop: `/status` every 5 s; 30 s back-off after 5 consecutive
+     failures (configurable).  Same back-off contract as v1.
+   - Click router never throws — every handler swallows + logs through
+     the injectable `log` hook.
+
+2. **POST /shutdown** (Folio v2.7) at `apps/folio/src/server/routes.js`:
+   - Gated by `X-Folio-Shutdown: true` header (curl-misses can't kill
+     the agent).  400 BAD_HEADER otherwise.
+   - 503 NO_SHUTDOWN_HOOK when the hook isn't registered (programmatic
+     embeds).
+   - 202 + `{ ok: true, stopping: true }` on success; deferred 50 ms
+     before invoking `app.locals.folioShutdown` so the response ships.
+
+3. **`folio serve` auto-launches the tray** unless `--no-tray` (or
+   `FOLIO_NO_TRAY=1`):
+   - Tray failure logs to stderr; server keeps running headless.
+   - `app.locals.folioShutdown` registered after `listen` so /shutdown
+     can call back into the same graceful-stop path that SIGINT uses.
+
+4. **`folio tray`** still standalone for users who run the server on a
+   different machine.  Auto-discovers `localRoot` from saved config so
+   "Open notes folder" works without `--local-root`.
+
+5. **Per-OS shims** (`./linux.js` / `./macos.js` / `./windows.js`) become
+   thin compatibility stubs — exercised only by the legacy driver-mode
+   tests.  Real-mode no longer routes through them.
+
+6. **Test surface** — 16 new tests (37 total tray tests) + 3 new
+   /shutdown tests:
+   - statusToState (5 cases incl. v2 /status shape with pending.conflicts
+     + lastError)
+   - headerText (6 cases: never/error/just now/min/hours/days)
+   - buildMenu (4 cases: shape, pause-resume label, conflicts ≤5, header
+     disabled)
+   - real-mode startTray (2: construct + poll-loop)
+   - backoff (1: 5 fails → slow interval)
+   - menu-action wiring (6: sync, pause/resume, open Folio, open folder,
+     conflicts, quit + X-Folio-Shutdown header)
+   - driver-mode regression (1)
+   - per-OS shim smoke (5)
+   - openUrl shell-out (1)
+   - /shutdown 400 / 503 / 202 (3)
+
+**Files touched:**
+- `apps/folio/package.json`                     (+ `systray2: "^2.1.4"`)
+- `apps/folio/src/tray/index.js`                (rewrite — real-mode systray2 + driver-mode legacy harness)
+- `apps/folio/src/tray/linux.js`                (thin shim — comment-updated, behaviour preserved)
+- `apps/folio/src/tray/macos.js`                (thin shim)
+- `apps/folio/src/tray/windows.js`              (thin shim)
+- `apps/folio/src/tray/CHOICE.md`               (rewritten — systray2 rationale + sha256s)
+- `apps/folio/src/cli/trayCmd.js`               (adapted — `--local-root` + auto-discover from config)
+- `apps/folio/src/cli/serveCmd.js`              (auto-launch tray + register `folioShutdown` hook)
+- `apps/folio/src/server/routes.js`             (POST /shutdown with X-Folio-Shutdown gate)
+- `apps/folio/src/cli.js`                       (help text — `--no-tray`, `--local-root`)
+- `apps/folio/test/tray.test.js`                (rewrite — mocks systray2 at module boundary)
+- `apps/folio/test/server.test.js`              (+3 tests for /shutdown)
+- `coding-plans/track-H-app-folio.md`           (this scratchpad)
+
+**Constraints honored:**
+- ONE new dep (`systray2`) added to `apps/folio/package.json` only.  No
+  new deps in root or `packages/`.
+- Prebuilt-binary install path — `npm view systray2 scripts` confirms NO
+  `install` / `preinstall` / `postinstall` hook; binaries shipped in the
+  tarball under `traybin/`.  sha256s recorded in CHOICE.md.
+- Tests mock the tray library at the module boundary via the
+  `loadSystray` injection point on `startTray` — no real icon spawned
+  during CI.
+- `POST /shutdown` requires `X-Folio-Shutdown: true` header.
+- Cross-platform: macOS + Linux first; Windows best-effort (systray2
+  ships a Windows binary too).
+- ES modules; vanilla JS; vitest.
+
+**Test count.**  Baseline at start of work: 348 (post-v2.9).  After v2.7:
+**367 total** (+19 new — 16 tray, 3 server).  All green.
