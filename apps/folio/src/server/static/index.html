@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Folio</title>
+  <link rel="stylesheet" href="/vendor/codemirror.min.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="banner-row">
+    <h1>Folio</h1>
+    <div id="conn-banner" class="banner banner--hidden" role="status"></div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button id="tab-status"    class="tab tab--active" role="tab" aria-controls="pane-status"    aria-selected="true">Status</button>
+    <button id="tab-conflicts" class="tab"             role="tab" aria-controls="pane-conflicts" aria-selected="false">Conflicts <span id="tab-conflicts-count" class="badge"></span></button>
+    <button id="tab-share"     class="tab"             role="tab" aria-controls="pane-share"     aria-selected="false">Share</button>
+  </nav>
+
+  <main>
+    <!-- Status pane ------------------------------------------------------- -->
+    <section id="pane-status" class="pane pane--active" role="tabpanel" aria-labelledby="tab-status">
+      <div class="card">
+        <h2>Sync state</h2>
+        <dl class="kv">
+          <dt>Local root</dt><dd id="status-local-root">—</dd>
+          <dt>Pod root</dt>  <dd id="status-pod-root">—</dd>
+          <dt>Last sync</dt> <dd id="status-last-sync">—</dd>
+          <dt>Watching</dt>  <dd id="status-watching">—</dd>
+          <dt>Pending</dt>   <dd id="status-pending">—</dd>
+          <dt>Open conflicts</dt><dd id="status-open-conflicts">—</dd>
+        </dl>
+        <div class="actions">
+          <button id="btn-sync-now" class="btn btn--primary">Sync now</button>
+          <button id="btn-watch-toggle" class="btn">Start watch</button>
+        </div>
+        <div id="status-log" class="log" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- Conflicts pane ---------------------------------------------------- -->
+    <section id="pane-conflicts" class="pane" role="tabpanel" aria-labelledby="tab-conflicts" hidden>
+      <div class="card">
+        <h2>Open conflicts</h2>
+        <ul id="conflict-list" class="conflict-list"><li class="empty">No conflicts.</li></ul>
+      </div>
+      <div id="merge-region" class="card" hidden>
+        <h2>Merge: <code id="merge-relpath"></code></h2>
+        <div class="merge-grid">
+          <div class="merge-col">
+            <h3>Yours</h3>
+            <textarea id="merge-mine" readonly></textarea>
+          </div>
+          <div class="merge-col">
+            <h3>Theirs</h3>
+            <textarea id="merge-theirs" readonly></textarea>
+          </div>
+        </div>
+        <h3>Merged</h3>
+        <textarea id="merge-merged" rows="12"></textarea>
+        <div class="actions">
+          <button id="btn-keep-mine"  class="btn">Keep mine</button>
+          <button id="btn-keep-theirs" class="btn">Keep theirs</button>
+          <button id="btn-save-merged" class="btn btn--primary">Save merged</button>
+          <button id="btn-cancel-merge" class="btn btn--ghost">Close</button>
+        </div>
+        <div id="merge-log" class="log" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- Share pane -------------------------------------------------------- -->
+    <section id="pane-share" class="pane" role="tabpanel" aria-labelledby="tab-share" hidden>
+      <div class="card">
+        <h2>Mint a capability token</h2>
+        <form id="share-form" class="share-form">
+          <label>WebID
+            <input type="text" id="share-webid" required autocomplete="off" placeholder="https://alice.example.com/profile/card#me">
+          </label>
+          <fieldset class="scopes">
+            <legend>Scopes</legend>
+            <label><input type="checkbox" id="scope-read"   value="read" checked> read</label>
+            <label><input type="checkbox" id="scope-write"  value="write"> write</label>
+            <label><input type="checkbox" id="scope-delete" value="delete"> delete</label>
+          </fieldset>
+          <label>Expires in
+            <select id="share-expires">
+              <option value="3600000">1 hour</option>
+              <option value="86400000" selected>24 hours</option>
+              <option value="604800000">7 days</option>
+              <option value="2592000000">30 days</option>
+              <option value="7776000000">90 days</option>
+            </select>
+          </label>
+          <label>Path (optional)
+            <input type="text" id="share-path" placeholder="/" autocomplete="off">
+          </label>
+          <button type="submit" class="btn btn--primary">Mint token</button>
+        </form>
+        <div id="share-result" hidden>
+          <h3>Token</h3>
+          <textarea id="share-token-out" readonly rows="10"></textarea>
+          <div class="actions">
+            <button id="btn-copy-token" class="btn">Copy to clipboard</button>
+          </div>
+        </div>
+        <div id="share-log" class="log" aria-live="polite"></div>
+        <h3>Recent shares</h3>
+        <ul id="share-recent" class="share-recent"><li class="empty">No recent shares.</li></ul>
+      </div>
+    </section>
+  </main>
+
+  <!-- Vendored CodeMirror; loaded as a classic <script> so it registers
+       a window.CodeMirror global, which our ES-module app code reads. -->
+  <script src="/vendor/codemirror.min.js"></script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
