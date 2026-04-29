@@ -19,12 +19,16 @@
 
 import express from 'express';
 import http from 'node:http';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 import { createRouter } from './routes.js';
 import { WsHub }        from './wsHub.js';
 
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8888;
+
+const STATIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'static');
 
 /**
  * @param {object} deps
@@ -52,6 +56,18 @@ export function createServer({ engine, podClient, vault, identity } = {}) {
   app.get('/healthz', (_req, res) => {
     res.json({ ok: true, ts: Date.now() });
   });
+
+  // Single-page web UI (B1.ui).  Served from the bundled static dir.
+  // Mounted BEFORE the API router so the SPA shell at `/` is found first;
+  // any path that isn't a file falls through to the router (which handles
+  // /status, /conflicts, /share, etc., and emits its own 404 for anything
+  // unmatched — preserving the JSON-error shape REST tests expect).
+  app.use(express.static(STATIC_DIR, {
+    index:       'index.html',
+    fallthrough: true,
+    maxAge:      0,
+    etag:        false,
+  }));
 
   app.use(createRouter({ engine, podClient, vault, identity, hub }));
 

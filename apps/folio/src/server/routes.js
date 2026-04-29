@@ -173,6 +173,34 @@ export function createRouter({ engine, podClient, vault, identity, hub }) {
     }
   });
 
+  // ── /conflicts/:id/content ────────────────────────────────────────────────
+  // Returns the raw file content for a conflicted file so the UI can extract
+  // the "yours" / "theirs" sides for the merge view.  Body is text/plain;
+  // path is the same base64url(relPath) used by /resolve.  Confined to
+  // localRoot — the conflictId decoder rejects '..' segments via the
+  // round-trip check.
+  router.get('/conflicts/:id/content', async (req, res) => {
+    const id = req.params.id;
+    const relPath = relPathFromConflictId(id);
+    if (!relPath) {
+      return sendError(res, 400, 'BAD_CONFLICT_ID', 'conflict id is malformed');
+    }
+    if (relPath.split(/[\\/]/).some((seg) => seg === '..' || seg === '')) {
+      return sendError(res, 400, 'BAD_CONFLICT_ID', 'conflict id has invalid path segments');
+    }
+    const localRoot = engine.localRoot;
+    const absPath   = join(localRoot, ...relPath.split('/'));
+    try {
+      const text = await fs.readFile(absPath, 'utf8');
+      res.type('text/plain; charset=utf-8').send(text);
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        return sendError(res, 404, 'NOT_FOUND', `no file at ${relPath}`);
+      }
+      sendError(res, 500, 'READ_FAILED', err?.message ?? String(err));
+    }
+  });
+
   // ── /conflicts/:id/resolve ────────────────────────────────────────────────
   router.post('/conflicts/:id/resolve', async (req, res) => {
     const id = req.params.id;
