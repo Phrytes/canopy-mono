@@ -180,6 +180,7 @@ Survivors of the re-orientation, ordered by impact:
 | **v2.7** | **Real menubar icon (persistent)** with click-menu — replaces toast-only B1.tray | ✅ shipped 2026-04-29 |
 | **v2.8** | **`folio install-service` daemon mode** (launchd / systemd / Task Scheduler) | ✅ shipped 2026-04-29 |
 | **v2.9** | **Web UI re-shape**: collapse History tab into per-file menu; collapse Diagnostics into Settings panel; primary tabs become Status / Conflicts / Share | queued |
+| **v2.10** | **Copy-rename grace window** — skip sync of short-lived intermediates (`A (Copy).md` → renamed to `B.md` no longer pollutes pod history) | ✅ shipped 2026-04-29 |
 | ~~v2.4~~ | ~~Markdown preview toggle~~ | **dropped** (Obsidian lane) |
 
 v2.7 + v2.8 are the new "menubar-first" pieces.  v2.9 is the UI demotion.
@@ -1480,6 +1481,113 @@ Defaults match the spec (250ms / 5000ms).  Tests use 30–60ms / 200–800ms.
 - ES modules; vanilla JS; vitest; real-clock test budget < 2s wall.
 
 **Test count:** 269 baseline → **276 total** (+7 new).  All green.
+
+## §Folio v2.10 — Copy-rename grace window (2026-04-29)
+
+**Problem.**  The user copies `A.md` → `A (Copy).md` then renames the copy to
+`B.md`.  v2.6's sha-stable check fires on `A (Copy).md` after the file is
+fully written, so `runOnce()` syncs the intermediate to the pod — which then
+shows up in the per-file version history forever, even though the user
+never wanted it.  The rename then tombstones `A (Copy).md` and pushes
+`B.md`, so the pod ends up with: a tombstoned intermediate + B + a noise
+entry in B's version history.
+
+**Fix.**  Add a grace phase after v2.6's sha-stable check.  When stability
+passes, instead of firing `runOnce()` immediately, arm a `graceMs` timer
+(default 3000 ms).  If an `unlink` lands for that path inside the window
+(the delete-half of a rename, or a plain delete), drop the entry — no
+sync for the intermediate.  If an `add`/`change` lands for the same path
+inside the window, restart the stability + grace cycle so the latest
+content is what eventually syncs.  If the timer elapses untouched,
+`runOnce()` fires exactly as in v2.6.
+
+**Wiring (additive — v2.6's stability layer is unchanged).**
+```
+chokidar('all', path, event)
+   → #scheduleRun(path, event)
+       │  if path is currently in #grace:
+       │    cancel grace timer; drop entry
+       │    if event === 'unlink' → return (no vigil for the intermediate)
+       │    else (add/change)     → fall through (restart vigil)
+       └→ accumulate in #pendingPaths; arm debounce
+   → (after debounceMs)
+   → #onDebounceFire()
+       └→ #startStabilityVigil(path)
+           → setTimeout stableMs →
+           → #stabilityRecheck(path)
+               sha matches  → drop stability entry; #armGrace(path)  ← NEW
+               sha differs  → restart vigil
+               file gone    → drop tracker, NO runOnce
+               elapsed ≥ cap → fire runOnce + emit 'warning' (bypasses grace)
+
+   #armGrace(path):
+       graceMs === 0 → fire runOnce immediately (v2.6 parity)
+       else          → setTimeout graceMs → fire runOnce; drop #grace entry
+```
+
+**Per-path grace tracker shape:**
+```js
+#grace: Map<absPath, { armedAt: number, timer: any }>
+```
+- `armedAt` records when the timer was armed (Date.now()) — informational.
+- `timer` is the setTimeout handle; `stop()` / `_disarmForTest()` clear all.
+
+**Edge cases handled:**
+- **Copy then rename within grace** → unlink of the intermediate drops the
+  grace entry; the add of the final name starts its own stability + grace
+  cycle from scratch.  Pod sees only the final name.
+- **Copy alone** (no rename) → grace timer elapses untouched; runOnce fires
+  after `graceMs`.
+- **Rapid edits within grace** → `change` event for a path in `#grace`
+  cancels grace, restarts the stability vigil with the new content, and
+  re-arms grace on the new sha.  Only the LAST content syncs.
+- **stop() during grace** → all grace timers cleared (mirrors v2.6's
+  stability-vigil teardown).
+- **Explicit `runOnce()`** (called by tests, CLI, force-push, etc.) →
+  bypasses grace entirely; runs end-to-end immediately.
+- **Poll tick** during grace → poll subsumes everything, including grace
+  timers; runOnce fires once for all pending paths.
+- **`maxStableWaitMs` cap** during a vigil → still fires runOnce directly
+  (bypasses grace) and emits the `unstable-write` warning.  Rationale: a
+  capped path is an emergency — we DON'T want grace to defer it further.
+
+**Configurable** via constructor `options.watcher`:
+```js
+new SyncEngine({
+  ...,
+  watcher: { stableMs: 250, maxStableWaitMs: 5000, graceMs: 3000 },
+});
+```
+- `graceMs: 0` disables grace entirely → fires runOnce as soon as sha is
+  stable (v2.6 behaviour).  All v2.6 tests opt in to `graceMs: 0` for parity.
+- Default 3000 ms — long enough that the user's "copy-then-rename" gesture
+  (typically <1 s) fits comfortably; short enough that a copy-alone still
+  syncs within ~3 s of write completion.
+
+**Test-only seams** (mirror v2.6's pattern):
+- `_onGraceDecision(fn)` — spy hook; receives `{absPath, decision}` after
+  each grace event: `armed`, `fired`, `dropped`, `restarted`.
+- `_disarmForGraceTest()` — clears pending grace timers without touching
+  `#running` (rarely needed; `_disarmForTest` already handles grace).
+
+**Files touched:**
+- `apps/folio/src/SyncEngine.js`     (+ ~110 lines: grace map, `#armGrace`,
+                                        `#scheduleRun` interception, test
+                                        seams, scattered teardown hooks)
+- `apps/folio/test/SyncEngine.test.js` (+7 new v2.10 tests; existing v2.6
+                                        tests opted in to `graceMs: 0` for
+                                        v2.6 parity assertions)
+- `coding-plans/track-H-app-folio.md`  (this scratchpad)
+
+**Constraints honored:**
+- No new top-level deps.
+- v2.6's stability check is intact — grace is purely additive.
+- `runOnce()` stays the dispatch entry point — no reach into `#runChain`.
+- ES modules; vanilla JS; vitest; real-clock test budget < 2 s wall.
+- Test seams marked `_…ForTest` / `_disarmForGraceTest` mirror v2.6's
+  underscore convention.
+
+**Test count:** 367 baseline → **374 total** (+7 new).  All green.
 
 ## §Folio v2.5 — Force re-push + Verify pod state (2026-04-29)
 

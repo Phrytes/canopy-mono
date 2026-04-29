@@ -55,6 +55,15 @@ const DEFAULT_POLL_MS     = 60_000;
 const DEFAULT_STABLE_MS          = 250;
 const DEFAULT_MAX_STABLE_WAIT_MS = 5_000;
 
+// Folio v2.10 — copy-rename grace window.
+// After the v2.6 sha-stable check passes, defer `runOnce()` for `graceMs` so a
+// short-lived intermediate (e.g. `A (Copy).md` that the user is about to
+// rename to `B.md`) never gets pushed to the pod.  If the path is deleted
+// (e.g. by a rename that fires unlink+add) within the grace window, we drop
+// the path entirely.  `graceMs: 0` disables grace and reverts to v2.6
+// behaviour (fire runOnce as soon as the sha is stable).
+const DEFAULT_GRACE_MS = 3_000;
+
 export class SyncEngine extends Emitter {
   #podClient;
   #pathMap;
@@ -97,6 +106,25 @@ export class SyncEngine extends Emitter {
   /** A spy hook for tests — fires after a stability decision (settled / unstable / deleted). */
   #onStabilityDecisionForTest = null;
 
+  // Folio v2.10 — grace window after stability.
+  #graceMs;
+  /**
+   * Per-path grace tracker.  Keys are absolute paths.  When a path's
+   * stability vigil decides `stable`, we enter a grace phase rather than
+   * firing runOnce immediately.  If the path is unlinked (delete or rename)
+   * inside the grace window, the entry is dropped and runOnce never fires
+   * for that intermediate.  If the grace timer elapses untouched, runOnce
+   * fires and the entry is dropped.
+   *
+   * `armedAt` is when the grace timer was started (Date.now()).
+   * `timer` is the setTimeout handle.
+   *
+   * @type {Map<string, { armedAt: number, timer: any }>}
+   */
+  #grace = new Map();
+  /** A spy hook for tests — fires after a grace decision (`fired` / `dropped` / `restarted`). */
+  #onGraceDecisionForTest = null;
+
   /**
    * @param {object} opts
    * @param {object} opts.podClient                     — @canopy/pod-client PodClient (or any compatible mock)
@@ -108,12 +136,20 @@ export class SyncEngine extends Emitter {
    * @param {{perFile?:number, budgetMb?:number}} [opts.versions]
    *        Folio.B4 retention policy.  Defaults: 50 versions per file,
    *        100 MB total under <localRoot>/.folio/versions.
-   * @param {{stableMs?:number, maxStableWaitMs?:number}} [opts.watcher]
+   * @param {{stableMs?:number, maxStableWaitMs?:number, graceMs?:number}} [opts.watcher]
    *        Folio v2.6 sha-stable hardening.  After the standard `debounceMs`
    *        window, each touched path is re-hashed; we only fire `runOnce()`
    *        once the sha is unchanged for `stableMs` (default 250ms).
    *        After `maxStableWaitMs` (default 5000ms) the run fires anyway and
    *        a `'warning'` event with `phase: 'unstable-write'` is emitted.
+   *
+   *        Folio v2.10 copy-rename grace window: after the sha-stable check
+   *        passes, wait an additional `graceMs` (default 3000ms) before
+   *        firing `runOnce()`.  If the file is deleted/renamed within the
+   *        grace window, the intermediate is skipped — the rename of
+   *        `A (Copy).md` → `B.md` then never pushes the intermediate to the
+   *        pod.  Set `graceMs: 0` to disable the grace phase and revert to
+   *        v2.6 behaviour (fire as soon as sha is stable).
    */
   constructor({ podClient, localRoot, podRoot, identity, pollIntervalMs = DEFAULT_POLL_MS, debounceMs = DEFAULT_DEBOUNCE_MS, versions = null, watcher = null } = {}) {
     super();
@@ -132,10 +168,15 @@ export class SyncEngine extends Emitter {
     const w = watcher ?? {};
     this.#stableMs        = Number.isFinite(w.stableMs)        ? Math.max(0, w.stableMs)        : DEFAULT_STABLE_MS;
     this.#maxStableWaitMs = Number.isFinite(w.maxStableWaitMs) ? Math.max(0, w.maxStableWaitMs) : DEFAULT_MAX_STABLE_WAIT_MS;
+    this.#graceMs         = Number.isFinite(w.graceMs)         ? Math.max(0, w.graceMs)         : DEFAULT_GRACE_MS;
     // Public accessor so consumers can read the configured retention.
     this.options = {
       versions: { ...this.#versionsOpts },
-      watcher:  { stableMs: this.#stableMs, maxStableWaitMs: this.#maxStableWaitMs },
+      watcher:  {
+        stableMs:        this.#stableMs,
+        maxStableWaitMs: this.#maxStableWaitMs,
+        graceMs:         this.#graceMs,
+      },
     };
   }
 
@@ -589,6 +630,11 @@ export class SyncEngine extends Emitter {
       if (entry.timer) clearTimeout(entry.timer);
     }
     this.#stability.clear();
+    // Folio v2.10 — drop any pending grace timers.
+    for (const entry of this.#grace.values()) {
+      if (entry.timer) clearTimeout(entry.timer);
+    }
+    this.#grace.clear();
     this.#pendingPaths.clear();
     this.#pendingPollRun = false;
     if (this.#watcher) {
@@ -727,13 +773,40 @@ export class SyncEngine extends Emitter {
    * @param {string} [path]   chokidar absolute path (when present)
    * @param {string} [_event] chokidar event name (add/change/unlink/...) — currently unused but logged
    */
-  #scheduleRun(path, _event) {
+  #scheduleRun(path, event) {
     if (!this.#running) return;
     if (typeof path === 'string' && path.length > 0) {
+      // Folio v2.10 — intercept events for paths currently inside the grace
+      // window.  An `unlink` (delete or the delete-half of a rename) drops
+      // the grace entry so the intermediate is never synced.  A re-armed
+      // `add` / `change` cancels the grace timer and restarts the stability
+      // vigil from scratch via the normal pendingPaths flow.
+      if (this.#grace.has(path)) {
+        const entry = this.#grace.get(path);
+        if (entry?.timer) clearTimeout(entry.timer);
+        this.#grace.delete(path);
+        if (event === 'unlink') {
+          // Pure delete inside grace — no sync of the intermediate, no new
+          // stability vigil.  Skip pendingPaths add for this event so the
+          // unlink doesn't itself trigger a vigil that would re-discover the
+          // missing file and decide 'deleted' (harmless but noisy).
+          this.#emitGraceDecisionForTest({ absPath: path, decision: 'dropped' });
+          // Still arm the debounce so any OTHER pendingPaths get processed.
+          this.#armDebounce();
+          return;
+        }
+        // Edit / re-add inside grace → fall through to the normal vigil
+        // restart so the latest content settles + grace re-arms.
+        this.#emitGraceDecisionForTest({ absPath: path, decision: 'restarted' });
+      }
       this.#pendingPaths.add(path);
     } else {
       this.#pendingPollRun = true;
     }
+    this.#armDebounce();
+  }
+
+  #armDebounce() {
     if (this.#debounceTimer) clearTimeout(this.#debounceTimer);
     this.#debounceTimer = setTimeout(() => {
       this.#debounceTimer = null;
@@ -759,6 +832,12 @@ export class SyncEngine extends Emitter {
         if (entry.timer) clearTimeout(entry.timer);
       }
       this.#stability.clear();
+      // Folio v2.10 — also drop in-flight grace timers; the imminent runOnce
+      // covers their pending paths.
+      for (const entry of this.#grace.values()) {
+        if (entry.timer) clearTimeout(entry.timer);
+      }
+      this.#grace.clear();
       this.#pendingPaths.clear();
       this.#fireRunOnce('scheduled');
       return;
@@ -857,11 +936,13 @@ export class SyncEngine extends Emitter {
       return;
     }
     if (sha === entry.lastSha) {
-      // STABLE — content has not changed across a `stableMs` window.  Fire
-      // runOnce once and forget this path.
+      // STABLE — content has not changed across a `stableMs` window.
+      // Folio v2.10: do NOT fire runOnce yet.  Hand the path off to the
+      // grace tracker; runOnce fires only after `graceMs` elapses without
+      // a delete/rename arriving for this path.
       this.#stability.delete(absPath);
       this.#emitStabilityDecisionForTest({ absPath, decision: 'stable', sha });
-      this.#fireRunOnce('scheduled');
+      this.#armGrace(absPath);
       return;
     }
     // UNSTABLE — content changed.  Restart the vigil with the new sha
@@ -879,6 +960,47 @@ export class SyncEngine extends Emitter {
     if (typeof entry.timer.unref === 'function') entry.timer.unref();
     this.#stability.set(absPath, entry);
     this.#emitStabilityDecisionForTest({ absPath, decision: 'changed', sha });
+  }
+
+  /**
+   * Folio v2.10 — arm the grace timer for `absPath`.
+   *
+   * After v2.6's sha-stable check has passed, we wait `graceMs` before
+   * firing `runOnce()`.  If the path is unlinked (delete or rename) within
+   * that window, `#scheduleRun` clears the grace entry and we never sync
+   * the intermediate.  If the timer elapses untouched, we fire `runOnce()`
+   * exactly as v2.6 did.
+   *
+   * `graceMs: 0` disables grace entirely — fire immediately.
+   */
+  #armGrace(absPath) {
+    if (!this.#running) return;
+    if (this.#graceMs <= 0) {
+      // Grace disabled — preserve v2.6 behaviour (fire as soon as stable).
+      this.#fireRunOnce('scheduled');
+      return;
+    }
+    // Cancel any prior grace for this path (defensive — should be cleared
+    // by `#scheduleRun` already).
+    const prior = this.#grace.get(absPath);
+    if (prior?.timer) clearTimeout(prior.timer);
+
+    const entry = { armedAt: Date.now(), timer: null };
+    entry.timer = setTimeout(() => {
+      // Grace elapsed untouched — fire runOnce.
+      if (!this.#running) {
+        this.#grace.delete(absPath);
+        return;
+      }
+      // Re-check membership: stop()/_disarm could have cleared us.
+      if (!this.#grace.has(absPath)) return;
+      this.#grace.delete(absPath);
+      this.#emitGraceDecisionForTest({ absPath, decision: 'fired' });
+      this.#fireRunOnce('scheduled');
+    }, this.#graceMs);
+    if (typeof entry.timer.unref === 'function') entry.timer.unref();
+    this.#grace.set(absPath, entry);
+    this.#emitGraceDecisionForTest({ absPath, decision: 'armed' });
   }
 
   /**
@@ -912,6 +1034,27 @@ export class SyncEngine extends Emitter {
   }
 
   /**
+   * Test-only spy hook (Folio v2.10).  Receives `{ absPath, decision }`
+   * after each grace-window decision: `armed`, `fired`, `dropped`,
+   * `restarted`.  Production code never reads this.
+   */
+  _onGraceDecision(fn) {
+    this.#onGraceDecisionForTest = typeof fn === 'function' ? fn : null;
+  }
+
+  /**
+   * Test-only — clear all pending grace timers (mirrors `_disarmForTest`'s
+   * stability cleanup but isolated).  Useful for tests that want to
+   * inspect grace state then teardown without touching `#running`.
+   */
+  _disarmForGraceTest() {
+    for (const entry of this.#grace.values()) {
+      if (entry.timer) clearTimeout(entry.timer);
+    }
+    this.#grace.clear();
+  }
+
+  /**
    * Test-only entry point — feed a synthetic chokidar event without standing
    * up a real watcher.  Equivalent to what `start()`'s `'all'` handler does.
    * Requires `start()` to have been called (so `#running` is true) — tests
@@ -940,6 +1083,11 @@ export class SyncEngine extends Emitter {
       if (entry.timer) clearTimeout(entry.timer);
     }
     this.#stability.clear();
+    // Folio v2.10 — drop any pending grace timers.
+    for (const entry of this.#grace.values()) {
+      if (entry.timer) clearTimeout(entry.timer);
+    }
+    this.#grace.clear();
     this.#pendingPaths.clear();
     this.#pendingPollRun = false;
   }
@@ -947,6 +1095,12 @@ export class SyncEngine extends Emitter {
   #emitStabilityDecisionForTest(payload) {
     if (this.#onStabilityDecisionForTest) {
       try { this.#onStabilityDecisionForTest(payload); } catch { /* swallow */ }
+    }
+  }
+
+  #emitGraceDecisionForTest(payload) {
+    if (this.#onGraceDecisionForTest) {
+      try { this.#onGraceDecisionForTest(payload); } catch { /* swallow */ }
     }
   }
 
