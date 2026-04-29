@@ -65,7 +65,11 @@ export function initConflicts({ bus, getJson, postJson }) {
   }
 
   function setBadge(n) {
-    $tabBadge.textContent = n > 0 ? String(n) : '';
+    // Folio v2.9 — always show the badge (gray at 0, yellow when N>0) so
+    // the Conflicts tab stays stable and never appears to "vanish".
+    const count = Number(n) || 0;
+    $tabBadge.textContent = String(count);
+    $tabBadge.classList.toggle('badge--zero', count === 0);
   }
 
   function renderList(conflicts) {
@@ -89,21 +93,19 @@ export function initConflicts({ bus, getJson, postJson }) {
       code.textContent = c.relPath;
       li.appendChild(code);
 
-      // Folio.B4 — "View history" link jumps to the History tab pre-loaded
-      // with this file.  Stop-propagation so it doesn't double-fire the
-      // openMerge() handler bound to the row.
+      // Folio v2.9 — per-file "↻ history" affordance.  Opens the per-file
+      // versions popover via versions.js (no longer a primary tab).
+      // Stop-propagation so it doesn't double-fire the openMerge() handler
+      // bound to the row.
       const historyLink = document.createElement('a');
-      historyLink.className   = 'conflict-history-link';
+      historyLink.className   = 'conflict-history-link history-affordance';
       historyLink.href        = '#history';
-      historyLink.textContent = 'View history';
+      historyLink.title       = `View version history for ${c.relPath}`;
+      historyLink.textContent = '↻ history'; // U+21BB CLOCKWISE OPEN CIRCLE ARROW
       historyLink.addEventListener('click', (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
-        // Tell the history pane which file we want…
-        bus.emit('history.openFor', { relPath: c.relPath, id: c.id });
-        // …and switch to that tab.
-        const tab = document.getElementById('tab-history');
-        if (tab) tab.click();
+        bus.emit('history.popover.open', { relPath: c.relPath, id: c.id });
       });
       li.appendChild(historyLink);
 

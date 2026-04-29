@@ -1722,3 +1722,100 @@ the header.  When the menubar icon (v2.7) and daemon mode (v2.8) ship, the
 - ES modules; vanilla JS; vitest.
 
 **Test count:** 269 baseline → **293 total** (+24 new).  All green.
+
+## §Folio v2.9 — Web UI re-shape (Dropbox-shaped) (2026-04-29)
+
+**Problem.** Through Phase B + B1.auth + B3 + B4 + the v2.x advanced surfaces,
+Folio's web UI grew **four primary tabs** — Status / Conflicts / Share /
+History.  Four tabs is "library-shaped" (Obsidian, Bear, Notion).  Per the
+§Identity discipline, Folio is **Dropbox-shaped**: a quiet sync utility, not
+a daily-driver content app.  History matters when something broke — not as a
+top-level navigation destination.
+
+**Re-orientation discipline.** §Identity (this doc) says: demote History
+into a per-file affordance, keep three primary tabs, leave the daily-driver
+surface to the menubar (v2.7) + the user's own editor against the synced
+folder.  v2.3 already moved Diagnostics out of the tabs into a header
+Settings overlay; v2.9 finishes the shape by removing the History tab.
+
+**Shipped.**
+
+1. **Three primary tabs.**  `index.html` `.tabs` nav now contains exactly
+   `tab-status`, `tab-conflicts`, `tab-share`.  The fourth (`tab-history`)
+   is removed; the corresponding `pane-history` block is deleted (the
+   two-column file-picker / version-list grid no longer exists).  The
+   Settings link in the header (v2.3) is preserved verbatim — asserted in
+   the new test suite so a future regression that drops it is caught.
+
+2. **Conflicts badge stays stable at zero.**  Old behaviour: `<span class="badge">`
+   was hidden via `:empty { display: none }` when the count was 0, so the
+   "Conflicts" tab visually shrank/expanded as conflicts came and went.
+   New behaviour: `setBadge()` always writes the count (`"0"` / `"3"` / …)
+   and toggles a `.badge--zero` modifier; CSS renders `--zero` in gray and
+   the default rule renders N>0 in yellow/amber.
+
+3. **Per-file history popover.**  `versions.js` was rewritten as a
+   closed-by-default modal overlay rooted at ONE file at a time:
+     - DOM: `#history-popover` + `#history-popover-backdrop` +
+       `#history-popover-versions` + `#history-popover-content` +
+       `#btn-history-popover-restore` (etc.).
+     - Wire contract: `bus.emit('history.popover.open', { relPath, id })`
+       opens it; backdrop click / × button / Esc close it.
+     - REST surface unchanged — `GET /versions`, `GET /versions/:id`,
+       `GET /versions/:id/content/:ms`, `POST /versions/:id/restore` all
+       still work; no server-side regression (asserted in tests).
+     - All user-controlled fields (relPath, ts, sha, content) rendered
+       via `textContent` only — XSS rule preserved.
+
+4. **Per-file affordances.**  Both list surfaces gained a small
+   "↻ history" link (U+21BB CLOCKWISE OPEN CIRCLE ARROW + plain text
+   "history"):
+     - `conflicts.js` — on each conflict row.  Old "View history" anchor
+       that switched to the History tab is replaced with a `history.popover.open`
+       emitter.  No more `getElementById('tab-history').click()`.
+     - `status.js` — on each row in the Recently-synced list.  The link
+       sits next to the existing "Verify" button inside `verify-list__meta`,
+       which became a flex container.
+
+5. **Style cleanup.**  `style.css` lost the `.history-grid` two-column
+   layout (no top-level pane to contain it).  Gained `.history-popover*`
+   rules (right-anchored panel + backdrop, mirrors `.settings-panel` for
+   visual consistency), plus `.history-affordance` link styling and the
+   `.tab .badge--zero` gray treatment.
+
+**Files touched:**
+- `apps/folio/src/server/static/index.html`     (drop tab-history + pane-history; add history-popover)
+- `apps/folio/src/server/static/app.js`         (doc comment: 3 primary tabs)
+- `apps/folio/src/server/static/conflicts.js`   (per-row affordance → history.popover.open; gray-zero badge)
+- `apps/folio/src/server/static/status.js`      (per-row affordance in recently-synced list)
+- `apps/folio/src/server/static/versions.js`    (rewritten as per-file popover controller)
+- `apps/folio/src/server/static/style.css`      (popover styles + gray-zero badge; drop .history-grid)
+- `apps/folio/test/ui.test.js`                  (update §8; add §13 = +6 v2.9 tests)
+- `coding-plans/track-H-app-folio.md`           (§v2.9 scratchpad — this section)
+
+**Constraints honored:**
+- No new top-level deps.  Pure vanilla DOM + CSS; no modal library.
+- ES modules; vanilla JS; vitest.
+- All `/versions/*` REST endpoints preserved — server contract unchanged.
+- Settings link in header preserved (asserted in the new tests).
+- v2.3 baseline (Diagnostics in Settings) untouched.
+- Per-file popover is closed-by-default (`hidden` on first paint).
+- Conflicts tab visible at zero with a gray badge (always-stable layout).
+- All user-controlled values rendered via `textContent` only.
+- 344 baseline Folio tests: 342 stay green; 2 obsolete tests asserting
+  the now-removed History tab/pane (`tab-history`, `pane-history`,
+  `history-file-list`, `history-version-list`) and the old "View history"
+  text are removed (their replacement assertions live in §13 below).
+- 6 new v2.9 tests cover: 3-tab nav (no History), popover DOM (closed-by-
+  default), per-row affordances + emitted bus events, popover JS controller
+  (open/close + Esc), CSS rules, and a `/versions/*` REST round-trip
+  (no server-side regression).
+
+**Out of scope (deferred):**
+- Animated tab transitions.
+- Drag-and-drop file management.
+- A "Files" tab listing every file (the recently-synced mini-list in
+  Status is enough for the daily-driver surface).
+- Search across notes — H7 Archive's job, not Folio's.
+
+**Test count:** 344 baseline → **348 total** (+6 new, −2 obsolete).  All green.

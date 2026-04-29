@@ -1,19 +1,27 @@
 /**
- * versions.js — Folio.B4 "History" pane.
+ * versions.js — Folio.B4 versioning, v2.9 re-shape.
  *
- * Two-column layout:
- *   - Left:  every relPath that has at least one snapshot, fetched from
- *            GET /versions.
- *   - Right: every snapshot for the picked relPath, fetched from
- *            GET /versions/:id.
+ * History is no longer a primary top-level tab.  This module owns the
+ * per-file history *popover*: a closed-by-default modal overlay opened
+ * by a "↻ history" affordance on each file row in the conflicts list
+ * and the recently-synced list inside the Status pane.
  *
- * Click a version row → fetches GET /versions/:id/content/:ms and shows the
+ * Wire contract
+ * --------------
+ *   bus.emit('history.popover.open', { relPath, id })
+ *       → opens the popover rooted at one file, fetches its versions
+ *         from GET /versions/:id, paints them.
+ *
+ *   bus.emit('history.popover.close')
+ *       → closes the popover (also wired to backdrop click, ×, Esc).
+ *
+ * Click a version → fetches GET /versions/:id/content/:ms and shows the
  * raw content read-only.  "Restore this version" POSTs to
- * /versions/:id/restore.
+ * /versions/:id/restore — same REST endpoint as before.
  *
  * Live:
- *   - ws.version.new   → if the active relPath matches, refresh.
- *   - tab.change       → re-fetch both lists when re-opening the tab.
+ *   - ws.version.new   → if the popover is open and the frame's relPath
+ *                        matches the active file, refresh the version list.
  *
  * XSS hardening: every user-controlled string flows through textContent.
  */
@@ -35,21 +43,27 @@ function fmtSize(n) {
 }
 
 export function initVersions({ bus, getJson, postJson }) {
-  const $files     = document.getElementById('history-file-list');
-  const $versions  = document.getElementById('history-version-list');
-  const $rel       = document.getElementById('history-active-relpath');
-  const $tsLabel   = document.getElementById('history-active-ts');
-  const $viewer    = document.getElementById('history-viewer');
-  const $content   = document.getElementById('history-content');
-  const $btnRestore = document.getElementById('btn-history-restore');
-  const $btnClose  = document.getElementById('btn-history-close');
-  const $log       = document.getElementById('history-log');
+  const $popover    = document.getElementById('history-popover');
+  const $backdrop   = document.getElementById('history-popover-backdrop');
+  const $closeBtn   = document.getElementById('history-popover-close');
+  const $relpath    = document.getElementById('history-popover-relpath');
+  const $versions   = document.getElementById('history-popover-versions');
+  const $viewer     = document.getElementById('history-popover-viewer');
+  const $tsLabel    = document.getElementById('history-popover-ts');
+  const $content    = document.getElementById('history-popover-content');
+  const $btnRestore = document.getElementById('btn-history-popover-restore');
+  const $btnViewerClose = document.getElementById('btn-history-popover-viewer-close');
+  const $log        = document.getElementById('history-popover-log');
+  if (!$popover) return null;
 
-  let activeId  = null;     // base64url(relPath) of the picked file
+  /** Active file scope (popover is rooted at one file at a time). */
+  let activeId  = null;     // base64url(relPath)
   let activeRel = null;
+  /** Currently picked version timestamp inside the active file. */
   let activeTs  = null;
 
   function logEntry(msg, isErr = false) {
+    if (!$log) return;
     const div = document.createElement('div');
     div.className = `log-entry${isErr ? ' log-entry--err' : ''}`;
     const ts = new Date().toLocaleTimeString();
@@ -58,30 +72,29 @@ export function initVersions({ bus, getJson, postJson }) {
     while ($log.childNodes.length > 30) $log.removeChild($log.firstChild);
   }
 
-  function renderFiles(files) {
-    while ($files.firstChild) $files.removeChild($files.firstChild);
-    if (!files || files.length === 0) {
+  // ── Popover open / close ────────────────────────────────────────────────
+  function openPopover() {
+    $popover.hidden = false;
+    setTimeout(() => { $closeBtn?.focus(); }, 0);
+    bus.emit('history.popover.opened', { relPath: activeRel, id: activeId });
+  }
+  function closePopover() {
+    $popover.hidden = true;
+    activeId  = null;
+    activeRel = null;
+    activeTs  = null;
+    if ($viewer) $viewer.hidden = true;
+    if ($content) $content.value = '';
+    if ($relpath) $relpath.textContent = '—';
+    // Clear the version list to avoid stale data flashing on next open.
+    if ($versions) {
+      while ($versions.firstChild) $versions.removeChild($versions.firstChild);
       const empty = document.createElement('li');
       empty.className   = 'empty';
-      empty.textContent = 'No history yet.';
-      $files.appendChild(empty);
-      return;
+      empty.textContent = 'No versions yet.';
+      $versions.appendChild(empty);
     }
-    for (const f of files) {
-      const li = document.createElement('li');
-      li.dataset.id      = f.id;
-      li.dataset.relPath = f.relPath;
-      const code = document.createElement('code');
-      code.textContent = f.relPath;
-      li.appendChild(code);
-      const meta = document.createElement('span');
-      meta.className = 'history-meta';
-      meta.textContent = `${f.count}×  ${fmtTs(f.latestMs)}`;
-      li.appendChild(meta);
-      if (activeRel === f.relPath) li.classList.add('history-list__row--active');
-      li.addEventListener('click', () => pickFile(f));
-      $files.appendChild(li);
-    }
+    bus.emit('history.popover.closed');
   }
 
   function renderVersions(versions) {
@@ -89,7 +102,7 @@ export function initVersions({ bus, getJson, postJson }) {
     if (!versions || versions.length === 0) {
       const empty = document.createElement('li');
       empty.className   = 'empty';
-      empty.textContent = 'No versions for this file.';
+      empty.textContent = 'No versions for this file yet.';
       $versions.appendChild(empty);
       return;
     }
@@ -110,15 +123,6 @@ export function initVersions({ bus, getJson, postJson }) {
     }
   }
 
-  async function refreshFiles() {
-    try {
-      const r = await getJson('/versions');
-      renderFiles(r.files ?? []);
-    } catch (err) {
-      logEntry(`fetch /versions failed: ${err.message}`, true);
-    }
-  }
-
   async function refreshVersions() {
     if (!activeId) {
       renderVersions([]);
@@ -132,34 +136,22 @@ export function initVersions({ bus, getJson, postJson }) {
     }
   }
 
-  async function pickFile(f) {
-    activeId  = f.id;
-    activeRel = f.relPath;
-    activeTs  = null;
-    $rel.textContent = f.relPath;
-    $viewer.hidden = true;
-    await refreshVersions();
-    // Re-render files to update the active highlight.
-    refreshFiles();
-  }
-
   async function pickVersion(v) {
     if (!activeId || !activeRel) return;
     activeTs = v.ts;
-    $tsLabel.textContent = fmtTs(v.ts);
-    $viewer.hidden = false;
+    if ($tsLabel) $tsLabel.textContent = fmtTs(v.ts);
+    if ($viewer)  $viewer.hidden = false;
     try {
       const r = await fetch(`/versions/${activeId}/content/${v.ts}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const text = await r.text();
-      // textContent — never innerHTML — even though this is just a value
-      // assignment to a textarea (which is text-safe by spec).
-      $content.value = text;
+      // textContent on a textarea value is text-safe by spec.
+      if ($content) $content.value = text;
     } catch (err) {
       logEntry(`fetch snapshot ${v.ts} failed: ${err.message}`, true);
-      $content.value = '';
+      if ($content) $content.value = '';
     }
-    // Update version-list highlights.
+    // Re-render to update the active highlight.
     refreshVersions();
   }
 
@@ -168,8 +160,6 @@ export function initVersions({ bus, getJson, postJson }) {
     try {
       const r = await postJson(`/versions/${activeId}/restore`, { ts: activeTs });
       logEntry(`restored ${activeRel} → live (was ${fmtTs(r.snapshotMsBeforeRestore)})`);
-      // Force a status + history refresh.
-      await refreshFiles();
       await refreshVersions();
     } catch (err) {
       logEntry(`restore failed: ${err.message}`, true);
@@ -178,44 +168,50 @@ export function initVersions({ bus, getJson, postJson }) {
 
   function closeViewer() {
     activeTs = null;
-    $viewer.hidden = true;
+    if ($viewer) $viewer.hidden = true;
     refreshVersions();
   }
 
   // ── Wire up ─────────────────────────────────────────────────────────────
-  $btnRestore.addEventListener('click', restoreActive);
-  $btnClose.addEventListener('click',   closeViewer);
+  $btnRestore?.addEventListener('click', restoreActive);
+  $btnViewerClose?.addEventListener('click', closeViewer);
+  $closeBtn?.addEventListener('click', closePopover);
+  $backdrop?.addEventListener('click', closePopover);
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && !$popover.hidden) closePopover();
+  });
 
-  // Live: a version was captured.  If it's for our active file (or if no
-  // file is active yet), refresh the lists.
+  // Live: a new version was captured.  If it's for our active file and
+  // the popover is open, refresh the list in place.
   bus.on('ws.version.new', (frame) => {
-    if (frame?.relPath && activeRel && frame.relPath === activeRel) {
-      refreshVersions();
-    }
-    // File picker may need a count bump.
-    refreshFiles();
-  });
-
-  // Re-fetch when the tab is opened.
-  bus.on('tab.change', (paneId) => {
-    if (paneId === 'pane-history') {
-      refreshFiles();
+    if (!frame?.relPath) return;
+    if (!$popover.hidden && activeRel && frame.relPath === activeRel) {
       refreshVersions();
     }
   });
 
-  // Cross-pane: a "view history" link from the conflicts pane sets the
-  // active file then switches to this tab.
-  bus.on('history.openFor', async ({ relPath, id }) => {
+  // Per-file popover open: rooted at one file, fetched from /versions/:id.
+  bus.on('history.popover.open', async ({ relPath, id }) => {
     activeId  = id ?? null;
     activeRel = relPath ?? null;
     activeTs  = null;
-    $rel.textContent = activeRel || '—';
-    $viewer.hidden = true;
-    await refreshFiles();
+    if ($relpath) $relpath.textContent = activeRel || '—';
+    if ($viewer)  $viewer.hidden = true;
+    if ($content) $content.value = '';
+    openPopover();
     await refreshVersions();
   });
+  // Programmatic / test-driven close.
+  bus.on('history.popover.close', closePopover);
 
-  // First paint (best-effort).
-  refreshFiles();
+  // Test hook — exposes the controller so ui-tests / browser console can
+  // inspect the popover state without scraping the DOM.
+  return {
+    openPopover,
+    closePopover,
+    get isOpen() { return !$popover.hidden; },
+    get activeRel() { return activeRel; },
+    get activeId()  { return activeId; },
+    get activeTs()  { return activeTs; },
+  };
 }
