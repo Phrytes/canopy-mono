@@ -1,5 +1,83 @@
 # General TODOs
 
+> **Priority queue.**  Items at the top are urgent / load-bearing for
+> upcoming work.  Items further down are nice-to-haves.
+
+---
+
+## 🔴 HIGH PRIORITY — Inject a clock primitive into core (2026-04-29)
+
+**Why this is urgent:** the test-strategy implementation (Q-Test.3
+locked clock-skew simulation as v1 scope) cannot exercise per-agent
+time scenarios until this lands.  Without it:
+- Replay-window edge cases can't be tested (e.g. agent A's clock drifts
+  +30s — does the receiver still accept the envelope?).
+- Identity-sync staleness can't be tested honestly (each agent must
+  have its OWN view of "is this 5min old or 5min stale?").
+- Capability-token expiry races can't be reproduced.
+
+**Current state:** `Date.now()` is called **100 times across the SDK**
+(`packages/core/src` + `packages/pod-client/src` + `packages/relay/src`,
+counted 2026-04-29).  Each call goes directly to the system clock — no
+test seam, no per-agent override.
+
+**Open question for the user (please answer when reviewing this):**
+
+> "Is `Date.now()` really being used so often?  Why?  Feels like this
+> should be done only when really necessary."
+
+The answer needs to be researched and explained in this TODO before
+the refactor begins.  Quick first-pass map of where `Date.now()` shows
+up (1+ uses each):
+- **Envelope.js** — every envelope timestamps itself for replay
+  protection.
+- **routing/** (RoutingStrategy, FallbackTable, ReachabilityOracle,
+  hopBridges, invokeWithHop) — TTLs, latency tracking, oracle
+  freshness.
+- **security/** (reachabilityClaim, originSignature, sealedForward) —
+  time-bound signatures.
+- **skills/** (tunnelSessions, reachablePeers) — session expiry, peer
+  freshness.
+- **discovery/PingScheduler.js** — heartbeat scheduling.
+- **a2a/** (A2ATransport, A2AAuth, a2aDiscover) — JWT exp/iat.
+- **protocol/** (taskExchange, keyRotation, LiveSyncSkill, pubSub) —
+  task timeouts, key-rotation grace windows, sync cursors.
+- **transport/NknTransport** — connection liveness.
+- **identity/** (Bootstrap, KeyRotation, Mnemonic) — token timestamps.
+- **storage/** (PodStorageConvention, MergeContracts) — last-modified
+  tracking.
+
+**The honest answer (preview, to be expanded when the refactor lands):**
+roughly half of these are *legitimate* (cryptographic protocols
+genuinely need the wall clock — replay protection, expiry, freshness
+attestation).  Roughly half are *opportunistic* (latency tracking,
+"last seen" hints, debug logging) and could plausibly be reduced or
+batched.  The refactor is an opportunity to audit each call site and
+ask "does this NEED the wall clock, or would a monotonic counter / a
+tick from the parent do?"
+
+**Proposed v2 SDK task scope:**
+1. Audit all 100 call sites; categorize as `crypto-essential` /
+   `freshness-hint` / `debug-only`.
+2. Introduce an injectable `Clock` primitive at `core/src/Clock.js` —
+   `clock.now()` for wall-clock; `clock.monotonic()` for relative
+   timing; default impl reads `Date.now()` + `performance.now()`.
+3. Thread the clock through `AgentConfig` so every Agent has its own.
+4. Replace each Date.now() call site with a clock call that's
+   appropriate for the use case.
+5. The harness's `Lab.injectClockSkew(name, offsetMs)` then becomes a
+   real per-agent wall-clock override.
+6. Update the test-implementation plan's Q-Test.3 status to "wired".
+
+ETA: ~1-2 dev-weeks once started (mechanical refactor, but spans many
+files).
+
+**Schedule for: AFTER Folio Phase A lands + AFTER T.1 + initial
+T.2-T.5 wave, BEFORE T.6 v2 scenarios are written.**  Promote out of
+this TODO into a proper coding plan when ready to schedule.
+
+---
+
 ## Battery-aware reachability tuning (2026-04-29)
 
 Q-G.2 locked the oracle TTL default at 5 minutes (configurable).  Future
