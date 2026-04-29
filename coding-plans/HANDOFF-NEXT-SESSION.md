@@ -12,7 +12,14 @@ Last updated: 2026-04-29 — Folio v2 fully shipped + Folio.C1 LANDED.
 
 | Agent | Slice | Plan doc | Notes |
 |---|---|---|---|
-(none — C1 has landed; no agents in flight)
+| `a7e959d3f2482b5ec` | **Folio.C2** — RN screens + auth + editor (mobile v0) | inline launch prompt — see this session's history; key locks below | User explicitly OK'd spawning C2 even though smoke gate not satisfied (PoC-tight timeline).  Real-device validation is still gated on two-device smoke. |
+
+C2 locks (in case you need to re-spawn):
+- Q-C1.3 = **separate `apps/folio-mobile/` workspace** (not folded into mesh-demo)
+- Pinned versions: Expo 52 / RN 0.76.9 / React 18.3.1 — match `apps/mesh-demo/package.json` exactly
+- Auth: `expo-auth-session` + custom URL scheme `folio://auth/callback`; refresh token to `expo-secure-store`
+- Editor v0: plain `<TextInput>` (no markdown preview, no syntax highlighting)
+- Tests: vitest with mocked Expo modules; NOT expo-test or jest
 
 If the agent's notification reports `You've hit your limit · resets <time>`, re-spawn after the reset using the launch prompt at the bottom of `coding-plans/track-H-folio-C1.md` (the §"DoD" + §"Out of scope" sections cover the contract).
 
