@@ -4,6 +4,7 @@
   "description": "Folio — your markdown notes, mirrored into your Solid pod",
   "type":        "module",
   "main":        "src/index.js",
+  "bin":         { "folio": "src/cli.js" },
   "scripts": {
     "test":       "vitest run",
     "test:watch": "vitest"
