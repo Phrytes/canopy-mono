@@ -288,6 +288,64 @@ describe('folio conflicts', () => {
   });
 });
 
+describe('folio reset', () => {
+  it('removes config + vault + per-folder metadata; leaves notes intact', async () => {
+    await runInit();
+
+    // Drop a real note alongside the metadata so we can prove it survives.
+    await fs.writeFile(join(localRoot, 'keep-me.md'), 'precious user content\n');
+    await fs.mkdir(join(localRoot, '.folio'), { recursive: true });
+    await fs.writeFile(join(localRoot, '.folio', 'shares.json'), '{}');
+
+    // Pre-conditions: metadata + vault + config all present.
+    await fs.access(join(cfgDir, 'config.json'));
+    await fs.access(join(cfgDir, 'vault.json'));
+    await fs.access(join(localRoot, '.canopy', '.folio-managed'));
+    await fs.access(join(localRoot, '.folio', 'shares.json'));
+
+    const r = await runCli({ args: ['reset', '--yes'], env: baseEnv() });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain('removed');
+
+    // Settings gone.
+    await expect(fs.access(join(cfgDir, 'config.json'))).rejects.toThrow();
+    await expect(fs.access(join(cfgDir, 'vault.json'))).rejects.toThrow();
+    await expect(fs.access(join(localRoot, '.canopy'))).rejects.toThrow();
+    await expect(fs.access(join(localRoot, '.folio'))).rejects.toThrow();
+
+    // User content untouched.
+    expect(await fs.readFile(join(localRoot, 'keep-me.md'), 'utf8'))
+      .toBe('precious user content\n');
+  });
+
+  it('--dry-run lists targets without deleting anything', async () => {
+    await runInit();
+    const r = await runCli({ args: ['reset', '--dry-run'], env: baseEnv() });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain('config');
+    expect(r.stdout).toContain('vault');
+    expect(r.stdout).toContain('Dry run');
+    // Files still there.
+    await fs.access(join(cfgDir, 'config.json'));
+    await fs.access(join(cfgDir, 'vault.json'));
+  });
+
+  it('declining the prompt aborts with exit code 2 and leaves files', async () => {
+    await runInit();
+    const r = await runCli({ args: ['reset'], env: baseEnv(), stdin: 'n\n' });
+    expect(r.code).toBe(2);
+    expect(r.stdout).toContain('Aborted');
+    await fs.access(join(cfgDir, 'config.json')); // still present
+  });
+
+  it('reports nothing-to-do when no settings exist', async () => {
+    // Fresh cfgDir with nothing in it; no localRoot config either.
+    const r = await runCli({ args: ['reset', '--yes'], env: baseEnv() });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain('nothing to remove');
+  });
+});
+
 describe('folio rm', () => {
   it('tombstones a file so subsequent sync does not re-download it', async () => {
     await runInit();

@@ -14,6 +14,7 @@
  *   folio rm <path>
  *   folio serve [--port 8888] [--host 127.0.0.1] [--watch]
  *   folio tray [--url <base>] [--interval <ms>]
+ *   folio reset [--yes] [--dry-run]
  *
  * Exit codes:
  *   0   success
@@ -29,6 +30,7 @@ import { conflictsCmd } from './cli/conflictsCmd.js';
 import { rmCmd }        from './cli/rmCmd.js';
 import { serveCmd }     from './cli/serveCmd.js';
 import { trayCmd }      from './cli/trayCmd.js';
+import { resetCmd }     from './cli/resetCmd.js';
 
 const COMMANDS = {
   init:      initCmd,
@@ -40,6 +42,7 @@ const COMMANDS = {
   rm:        rmCmd,
   serve:     serveCmd,
   tray:      trayCmd,
+  reset:     resetCmd,
 };
 
 async function main() {
@@ -95,6 +98,8 @@ Commands:
   tray [--url <base>]           Run the tray-bar status indicator (foreground)
                                   --interval <ms>  poll interval (default 5000)
                                   --backoff <ms>   slow interval after failures (default 30000)
+  reset [--yes] [--dry-run]     Remove local Folio settings (config + vault + per-folder
+                                metadata).  Your notes folder content is NOT touched.
 
   --help, -h                    Show this help
   --version, -v                 Print version
