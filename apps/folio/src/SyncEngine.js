@@ -20,6 +20,7 @@
  */
 
 import chokidar from 'chokidar';
+import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { dirname, join } from 'node:path';
 
@@ -282,6 +283,204 @@ export class SyncEngine extends Emitter {
     this.#stats.lastSyncAt = Date.now();
     this.emit('synced', { uploads, downloads, deletes, conflicts });
     return { uploads, downloads, deletes, conflicts };
+  }
+
+  /**
+   * Force re-push (Folio v2.5).  Re-uploads EVERY file in `localScan`,
+   * ignoring `knownState` and ignoring whether `localSha === podSha`.
+   *
+   * Useful when local and pod have drifted (manual edits in the pod, server
+   * reset, knownState corruption) and the user wants a guaranteed push.
+   *
+   * Contract:
+   *   - Push only — never pulls or deletes.
+   *   - Iterates every file in `localScan` and uploads each one.
+   *   - After upload, knownState is rewritten with the new sha for every
+   *     file so subsequent `runOnce()` calls see "in sync".
+   *   - Errors on individual files don't abort the run — others still attempt.
+   *   - Uses the same `#runChain` as `runOnce()` so an in-flight sync waits
+   *     its turn.
+   *
+   * Emits:
+   *   - 'sync.force.start' { ts }
+   *   - 'sync.force.done'  { ts, uploads, errors }
+   *
+   * @returns {Promise<{ uploads:number, errors:number }>}
+   */
+  async forcePush() {
+    const next = this.#runChain.then(() => this.#forcePushInternal());
+    this.#runChain = next.catch(() => {});
+    return next;
+  }
+
+  async #forcePushInternal() {
+    await this.#loadState();
+    await fs.mkdir(this.#localRoot, { recursive: true });
+
+    // Snapshot the live podClient so a hot-swap mid-flight doesn't reroute
+    // in-flight writes (mirrors the `runOnce` contract).
+    const podClient = this.#podClient;
+
+    this.emit('sync.force.start', { ts: Date.now() });
+
+    const localScan = await scanLocal(this.#localRoot, { pathMap: this.#pathMap });
+
+    let uploads = 0, errors = 0;
+
+    // Ensure every parent container exists before writing (same path as
+    // `runOnce` push).
+    const containersToEnsure = new Set();
+    for (const f of localScan) {
+      const podUri = this.#pathMap.localToPod(f.absPath);
+      for (const c of parentContainersOf(podUri, this.#podRoot)) {
+        containersToEnsure.add(c);
+      }
+    }
+    for (const c of containersToEnsure) {
+      try {
+        if (typeof podClient.createContainer === 'function') {
+          await podClient.createContainer(c);
+        }
+      } catch (err) {
+        this.emit('error', { phase: 'ensure-container', uri: c, err });
+      }
+    }
+
+    for (const f of localScan) {
+      try {
+        const podUri = this.#pathMap.localToPod(f.absPath);
+        const content = await fs.readFile(f.absPath);
+        const ct = guessContentType(f.relPath);
+        // `force: true` skips PodClient's If-Match handshake — we explicitly
+        // want to overwrite remote with local content regardless of etag.
+        await podClient.write(podUri, content, { contentType: ct, force: true });
+        // Update knownState with the just-pushed sha so subsequent runOnce
+        // calls don't re-push the same content.
+        this.#knownState[f.relPath] = { sha256: f.sha256, syncedAt: Date.now() };
+        uploads++;
+        // Snapshot like runOnce does.
+        await this.#captureVersionSafe(f.relPath, content);
+      } catch (err) {
+        errors++;
+        this.emit('error', { phase: 'force-push', relPath: f.relPath, err });
+      }
+    }
+
+    await this.#saveState();
+    this.#stats.uploads += uploads;
+    this.#stats.lastSyncAt = Date.now();
+    this.emit('sync.force.done', { ts: Date.now(), uploads, errors });
+    return { uploads, errors };
+  }
+
+  /**
+   * Verify the pod's view of one file (Folio v2.5).
+   *
+   * Returns a structured result describing whether `relPath` exists in the
+   * pod and whether its size + sha256 match the local file.
+   *
+   * Uses the cheapest path:
+   *   1. `podClient.exists(uri)` if available — pure HEAD, no body read.
+   *   2. Fallback to `podClient.read(uri, { decode: 'bytes' })` — reads
+   *      content but lets us compute exact size + sha matches.
+   *
+   * No state mutation; this is a snapshot, not a sync.
+   *
+   * @param {string} relPath POSIX-style relative path
+   * @returns {Promise<{
+   *   relPath: string,
+   *   podUri:  string,
+   *   exists:  boolean,
+   *   sizeMatches?: boolean,
+   *   shaMatches?:  boolean,
+   *   localSize?:   number,
+   *   podSize?:     number,
+   *   podEtag?:     string,
+   * }>}
+   */
+  async verifyPodState(relPath) {
+    if (typeof relPath !== 'string' || relPath.length === 0) {
+      throw new Error('verifyPodState: relPath is required');
+    }
+    const podUri = `${this.#podRoot}${relPath.split('/').map(encodeURIComponent).join('/')}`;
+    const podClient = this.#podClient;
+
+    // Read local first (cheap) — if it doesn't exist locally we can still
+    // report on the pod side.
+    const absPath = this.#pathMap.podToLocal(podUri);
+    let localSize, localSha256;
+    try {
+      const buf = await fs.readFile(absPath);
+      localSize = buf.byteLength;
+      localSha256 = createHash('sha256').update(buf).digest('hex');
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        // Surface but don't abort — we can still verify pod existence.
+      }
+    }
+
+    // Step 1 — try cheapest: HEAD-only via podClient.exists().
+    if (typeof podClient.exists === 'function') {
+      let exists = false;
+      try {
+        exists = !!(await podClient.exists(podUri));
+      } catch {
+        exists = false;
+      }
+      if (!exists) {
+        return { relPath, podUri, exists: false };
+      }
+      // Try to get metadata without a body read; not every PodClient has a
+      // dedicated head().  If we can't get size/etag cheaply, fall through
+      // to the read() path so size/sha verification is still possible.
+      if (typeof podClient.head === 'function') {
+        try {
+          const meta = await podClient.head(podUri);
+          const out = { relPath, podUri, exists: true };
+          if (meta?.etag) out.podEtag = meta.etag;
+          if (typeof meta?.size === 'number') {
+            out.podSize = meta.size;
+            if (typeof localSize === 'number') {
+              out.sizeMatches = meta.size === localSize;
+            }
+          }
+          // No content available → can't verify sha.  Caller can decide
+          // whether to fall back to a full read.
+          return out;
+        } catch {
+          // fall through to read()
+        }
+      }
+      // No head() — fall through to read().
+    }
+
+    // Step 2 — fall back to read().  Captures size + (with content) sha.
+    try {
+      const r = await podClient.read(podUri, { decode: 'bytes' });
+      const bytes = r.content instanceof Uint8Array
+        ? r.content
+        : (typeof r.content === 'string' ? new TextEncoder().encode(r.content) : new Uint8Array());
+      const podSize = typeof r.size === 'number' ? r.size : bytes.byteLength;
+      const podSha = createHash('sha256').update(bytes).digest('hex');
+      const out = {
+        relPath,
+        podUri,
+        exists:  true,
+        podSize,
+        podEtag: r.etag,
+      };
+      if (typeof localSize === 'number') {
+        out.localSize    = localSize;
+        out.sizeMatches  = podSize === localSize;
+        out.shaMatches   = !!localSha256 && podSha === localSha256;
+      }
+      return out;
+    } catch (err) {
+      if (err?.code === 'NOT_FOUND') {
+        return { relPath, podUri, exists: false };
+      }
+      throw err;
+    }
   }
 
   async #ensureSharesSafe() {

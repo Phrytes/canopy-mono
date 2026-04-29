@@ -510,6 +510,104 @@ describe('Folio v2.2 — error banner static contract', () => {
   });
 });
 
+// ── 11. Folio v2.5 — Force re-push + Verify pod state ─────────────────────
+
+describe('Folio v2.5 — static UI contract (Force re-push + verify dots)', () => {
+  it('index.html carries the Force re-push button + confirm modal + verify list', async () => {
+    const r = await fetch(`${baseUrl}/`);
+    expect(r.status).toBe(200);
+    const html = await r.text();
+    // Button lives in the Status pane below "Sync now".
+    expect(html).toMatch(/id="btn-force-push"/);
+    // Confirm modal + buttons.
+    expect(html).toMatch(/id="force-confirm-modal"/);
+    expect(html).toMatch(/id="btn-force-confirm"/);
+    expect(html).toMatch(/id="btn-force-cancel"/);
+    // Modal starts hidden so the user can never accidentally trigger force.
+    expect(html).toMatch(/id="force-confirm-modal"[^>]*hidden/);
+    // Verify list + Verify-all button.
+    expect(html).toMatch(/id="verify-list"/);
+    expect(html).toMatch(/id="verify-list-items"/);
+    expect(html).toMatch(/id="btn-verify-all"/);
+    // The button is part of the Status pane (NOT a new tab).  No new tab id
+    // for force/verify must have been added.
+    expect(html).not.toMatch(/id="tab-force"/);
+    expect(html).not.toMatch(/id="tab-verify"/);
+  });
+
+  it('style.css ships the verify-dot states + modal rules', async () => {
+    const r = await fetch(`${baseUrl}/style.css`);
+    expect(r.status).toBe(200);
+    const css = await r.text();
+    expect(css).toMatch(/\.verify-dot\s*\{/);
+    expect(css).toMatch(/\.verify-dot--green/);
+    expect(css).toMatch(/\.verify-dot--yellow/);
+    expect(css).toMatch(/\.verify-dot--red/);
+    expect(css).toMatch(/\.verify-dot--gray/);
+    expect(css).toMatch(/\.modal\s*\{/);
+    expect(css).toMatch(/\.modal__inner/);
+  });
+
+  it('status.js wires the Force re-push button + verify list with no innerHTML', async () => {
+    const r = await fetch(`${baseUrl}/status.js`);
+    expect(r.status).toBe(200);
+    const text = await r.text();
+    // Modal-gated POST /sync/force.
+    expect(text).toContain('/sync/force');
+    expect(text).toContain('force-confirm-modal');
+    // Verify-all button hits /verify/<id>.
+    expect(text).toContain('/verify/');
+    // Subscribed to the new WS frames.
+    expect(text).toMatch(/ws\.sync\.force\.start/);
+    expect(text).toMatch(/ws\.sync\.force\.done/);
+    // XSS hardening: no innerHTML anywhere in this module.
+    expect(text).not.toMatch(/\.innerHTML\s*=/);
+  });
+});
+
+describe('Folio v2.5 — endpoints end-to-end (force + verify)', () => {
+  it('POST /sync/force returns 202 and re-uploads every file', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    await fs.writeFile(join(localRoot, 'b.md'), 'banana');
+    await engine.runOnce();
+    // Track writes from now on.
+    let writes = 0;
+    const orig = podClient.write.bind(podClient);
+    podClient.write = async (...args) => { writes++; return orig(...args); };
+
+    const r = await fetch(`${baseUrl}/sync/force`, {
+      method:  'POST',
+      headers: { 'content-type': 'application/json' },
+      body:    JSON.stringify({}),
+    });
+    expect(r.status).toBe(202);
+    await new Promise((res) => setTimeout(res, 200));
+    expect(writes).toBe(2);
+  });
+
+  it('GET /verify/:id returns the structured pod-state result for a synced file', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'hello');
+    await engine.runOnce();
+    const id = conflictIdFromRelPath('a.md');
+    const r = await fetch(`${baseUrl}/verify/${id}`);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.relPath).toBe('a.md');
+    expect(body.exists).toBe(true);
+    expect(body.sizeMatches).toBe(true);
+    expect(body.shaMatches).toBe(true);
+  });
+
+  it('GET /verify/:id reports exists=false for an unsynced file', async () => {
+    await fs.writeFile(join(localRoot, 'unsynced.md'), 'x');
+    const id = conflictIdFromRelPath('unsynced.md');
+    const r = await fetch(`${baseUrl}/verify/${id}`);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.exists).toBe(false);
+  });
+});
+
 describe('Folio v2.2 — banner end-to-end against the server', () => {
   it('GET /status carries lastError + errors so the UI paints on first load', async () => {
     // Replace the server with one we own the buffer for.

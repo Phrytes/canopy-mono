@@ -6,12 +6,14 @@
  *
  * Broadcast contract (matches the comment block at the top of routes.js):
  *
- *   { type: 'status',         ts, ... }
- *   { type: 'sync.progress',  ts, phase, relPath?, ... }
- *   { type: 'sync.done',      ts, uploads, downloads, deletes, conflicts }
- *   { type: 'conflict.new',   ts, id, relPath, podUri }
- *   { type: 'error',          ts, phase, relPath?, message }
- *   { type: 'auth.swapped',   ts, webid }                       (Folio v2.1)
+ *   { type: 'status',           ts, ... }
+ *   { type: 'sync.progress',    ts, phase, relPath?, ... }
+ *   { type: 'sync.done',        ts, uploads, downloads, deletes, conflicts }
+ *   { type: 'sync.force.start', ts }                            (Folio v2.5)
+ *   { type: 'sync.force.done',  ts, uploads, errors }           (Folio v2.5)
+ *   { type: 'conflict.new',     ts, id, relPath, podUri }
+ *   { type: 'error',            ts, phase, relPath?, message }
+ *   { type: 'auth.swapped',     ts, webid }                     (Folio v2.1)
  *
  * All events carry a millisecond `ts`.  Clients are expected to ignore types
  * they don't understand (forward-compat).
@@ -156,16 +158,38 @@ export class WsHub {
       });
     };
 
-    this.#engine.on('synced',       onSynced);
-    this.#engine.on('conflict',     onConflict);
-    this.#engine.on('error',        onError);
-    this.#engine.on('version.new',  onVersionNew);
-    this.#engine.on('auth.swapped', onAuthSwapped);
+    // Folio v2.5 — force-push lifecycle.  Engine emits the start frame at
+    // the very beginning of #forcePushInternal and the done frame after every
+    // file has been attempted (errors don't abort the run).
+    const onForceStart = (s) => {
+      this.broadcast({
+        type: 'sync.force.start',
+        ts:   s?.ts ?? Date.now(),
+      });
+    };
+    const onForceDone = (s) => {
+      this.broadcast({
+        type:    'sync.force.done',
+        ts:      s?.ts ?? Date.now(),
+        uploads: s?.uploads ?? 0,
+        errors:  s?.errors ?? 0,
+      });
+    };
 
-    this.#unsubs.push(() => this.#engine.off('synced',       onSynced));
-    this.#unsubs.push(() => this.#engine.off('conflict',     onConflict));
-    this.#unsubs.push(() => this.#engine.off('error',        onError));
-    this.#unsubs.push(() => this.#engine.off('version.new',  onVersionNew));
-    this.#unsubs.push(() => this.#engine.off('auth.swapped', onAuthSwapped));
+    this.#engine.on('synced',           onSynced);
+    this.#engine.on('conflict',         onConflict);
+    this.#engine.on('error',            onError);
+    this.#engine.on('version.new',      onVersionNew);
+    this.#engine.on('auth.swapped',     onAuthSwapped);
+    this.#engine.on('sync.force.start', onForceStart);
+    this.#engine.on('sync.force.done',  onForceDone);
+
+    this.#unsubs.push(() => this.#engine.off('synced',           onSynced));
+    this.#unsubs.push(() => this.#engine.off('conflict',         onConflict));
+    this.#unsubs.push(() => this.#engine.off('error',            onError));
+    this.#unsubs.push(() => this.#engine.off('version.new',      onVersionNew));
+    this.#unsubs.push(() => this.#engine.off('auth.swapped',     onAuthSwapped));
+    this.#unsubs.push(() => this.#engine.off('sync.force.start', onForceStart));
+    this.#unsubs.push(() => this.#engine.off('sync.force.done',  onForceDone));
   }
 }

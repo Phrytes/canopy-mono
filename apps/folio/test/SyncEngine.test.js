@@ -633,3 +633,246 @@ describe('SyncEngine — start/stop lifecycle', () => {
     expect(pod.store.has(`${POD_ROOT}init.md`)).toBe(true);
   });
 });
+
+// ── Folio v2.5 — forcePush + verifyPodState ────────────────────────────────
+
+describe('SyncEngine.forcePush — Folio v2.5', () => {
+  it('re-uploads every local file even when knownState is in sync', async () => {
+    // Seed local + pod identical so a normal runOnce is a no-op.
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    await fs.writeFile(join(localRoot, 'b.md'), 'banana');
+    const e = newEngine();
+    await e.runOnce(); // populates knownState; pod now has both files.
+    const writesAfterFirst = pod.writeCalls;
+
+    // A second runOnce: zero uploads (cached as in-sync).
+    const noop = await e.runOnce();
+    expect(noop.uploads).toBe(0);
+    expect(pod.writeCalls).toBe(writesAfterFirst);
+
+    // forcePush: re-uploads regardless.
+    const r = await e.forcePush();
+    expect(r.uploads).toBe(2);
+    expect(r.errors).toBe(0);
+    expect(pod.writeCalls).toBe(writesAfterFirst + 2);
+  });
+
+  it('emits sync.force.start + sync.force.done with counts', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    await fs.writeFile(join(localRoot, 'b.md'), 'banana');
+    const e = newEngine();
+    await e.runOnce();
+
+    const events = [];
+    e.on('sync.force.start', (s) => events.push({ type: 'start', ...s }));
+    e.on('sync.force.done',  (s) => events.push({ type: 'done',  ...s }));
+
+    const r = await e.forcePush();
+    expect(events.map((x) => x.type)).toEqual(['start', 'done']);
+    expect(typeof events[0].ts).toBe('number');
+    expect(events[1].uploads).toBe(2);
+    expect(events[1].errors).toBe(0);
+    expect(r.uploads).toBe(2);
+  });
+
+  it('counts per-file errors without aborting the rest of the run', async () => {
+    await fs.writeFile(join(localRoot, 'good.md'),  'ok');
+    await fs.writeFile(join(localRoot, 'flaky.md'), 'oops');
+    await fs.writeFile(join(localRoot, 'good2.md'), 'ok2');
+    const e = newEngine();
+    // Wrap pod.write so flaky.md throws once.
+    const origWrite = pod.write.bind(pod);
+    pod.write = async (uri, content, opts) => {
+      if (uri.endsWith('flaky.md')) {
+        const err = new Error('PUT 503');
+        err.code = 'TRANSIENT';
+        throw err;
+      }
+      return origWrite(uri, content, opts);
+    };
+    const errs = [];
+    e.on('error', (ev) => errs.push(ev));
+
+    const r = await e.forcePush();
+    expect(r.uploads).toBe(2);
+    expect(r.errors).toBe(1);
+    // Per-file error is surfaced via the standard error event.
+    const flakyErr = errs.find((x) => x.phase === 'force-push' && x.relPath === 'flaky.md');
+    expect(flakyErr).toBeDefined();
+    expect(flakyErr.err.message).toMatch(/503/);
+    // Other files were still uploaded.
+    expect(pod.store.has(`${POD_ROOT}good.md`)).toBe(true);
+    expect(pod.store.has(`${POD_ROOT}good2.md`)).toBe(true);
+  });
+
+  it('only pushes — never pulls or deletes (pod-only file is untouched locally)', async () => {
+    await fs.writeFile(join(localRoot, 'mine.md'), 'local-only');
+    pod._seed(`${POD_ROOT}theirs.md`, 'pod-only');
+    const e = newEngine();
+    // No prior runOnce: knownState is empty.  forcePush must still ignore the
+    // pod-only file (no download) and push the local-only file.
+    const r = await e.forcePush();
+    expect(r.uploads).toBe(1);
+
+    // Local file system unchanged: no theirs.md created.
+    await expect(fs.access(join(localRoot, 'theirs.md'))).rejects.toThrow();
+    // Pod still has its file (we don't delete).
+    expect(pod.store.has(`${POD_ROOT}theirs.md`)).toBe(true);
+    // Our local file was uploaded.
+    expect(pod.store.has(`${POD_ROOT}mine.md`)).toBe(true);
+  });
+
+  it('updates knownState — a follow-up runOnce reports zero uploads', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    const e = newEngine();
+    // Skip the initial runOnce: forcePush should still leave knownState clean.
+    const r = await e.forcePush();
+    expect(r.uploads).toBe(1);
+
+    const r2 = await e.runOnce();
+    expect(r2.uploads).toBe(0);
+    expect(r2.downloads).toBe(0);
+  });
+
+  it('respects #runChain — a force fired during an in-flight runOnce waits its turn', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    const e = newEngine();
+    await e.runOnce();
+
+    // Gate pod.list so the in-flight runOnce stalls; track the order in which
+    // pod.write is called to confirm forcePush waited.
+    let releaseList;
+    const listGate = new Promise((resolve) => { releaseList = resolve; });
+    const origList = pod.list.bind(pod);
+    let inflightActive = true;
+    const writeOrder = [];
+    const origWrite = pod.write.bind(pod);
+    pod.write = async (uri, content, opts) => {
+      writeOrder.push({ uri, inflight: inflightActive });
+      return origWrite(uri, content, opts);
+    };
+    pod.list = async (...args) => {
+      await listGate;
+      return origList(...args);
+    };
+
+    // Modify the file so the in-flight runOnce will write.
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple-v2');
+    const inflight = e.runOnce({ direction: 'push' });
+    // forcePush queued behind it.
+    const forcing = e.forcePush();
+
+    // Release the gate; in-flight resolves first, then forcePush runs.
+    inflightActive = true;
+    releaseList();
+    await inflight;
+    inflightActive = false;
+    const r = await forcing;
+    expect(r.uploads).toBe(1);
+    // Both the in-flight (during inflight=true) and the force (inflight=false)
+    // wrote.  The force must have written AFTER the in-flight's writes —
+    // there must be an entry with inflight=false (the force's), and at least
+    // one with inflight=true (the queued runOnce's).
+    expect(writeOrder.some((w) => w.inflight)).toBe(true);
+    expect(writeOrder.some((w) => !w.inflight)).toBe(true);
+    // The first force-push write index is after the last inflight write.
+    const lastInflightIx = writeOrder.findLastIndex
+      ? writeOrder.findLastIndex((w) => w.inflight)
+      : (() => { for (let i = writeOrder.length - 1; i >= 0; i--) if (writeOrder[i].inflight) return i; return -1; })();
+    const firstForceIx   = writeOrder.findIndex((w) => !w.inflight);
+    expect(firstForceIx).toBeGreaterThan(lastInflightIx);
+  });
+});
+
+describe('SyncEngine.verifyPodState — Folio v2.5', () => {
+  it('reports exists=true and matches when pod === local', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'hello');
+    const e = newEngine();
+    await e.runOnce();
+
+    const r = await e.verifyPodState('a.md');
+    expect(r.relPath).toBe('a.md');
+    expect(r.podUri).toBe(`${POD_ROOT}a.md`);
+    expect(r.exists).toBe(true);
+    expect(r.sizeMatches).toBe(true);
+    expect(r.shaMatches).toBe(true);
+    // etag string came from the mock pod.
+    expect(typeof r.podEtag).toBe('string');
+  });
+
+  it('reports exists=false when the pod has no such resource', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'hello');
+    const e = newEngine();
+    // Don't push.  Pod is empty.
+
+    const r = await e.verifyPodState('a.md');
+    expect(r.exists).toBe(false);
+    // No size/sha fields populated (we can't compare to a nonexistent pod copy).
+    expect(r.sizeMatches).toBeUndefined();
+    expect(r.shaMatches).toBeUndefined();
+  });
+
+  it('reports mismatch when pod content differs from local', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'local-version');
+    pod._seed(`${POD_ROOT}a.md`, 'pod-version-different');
+    const e = newEngine();
+
+    const r = await e.verifyPodState('a.md');
+    expect(r.exists).toBe(true);
+    expect(r.sizeMatches).toBe(false);
+    expect(r.shaMatches).toBe(false);
+  });
+
+  it('uses HEAD-cheap path when podClient.exists() + head() are present', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'hello');
+    pod._seed(`${POD_ROOT}a.md`, 'hello');
+
+    let existsCalls = 0;
+    let headCalls = 0;
+    let readCalls = 0;
+    pod.exists = async (uri) => { existsCalls++; return pod.store.has(uri); };
+    pod.head   = async (uri) => {
+      headCalls++;
+      const r = pod.store.get(uri);
+      return { etag: r.etag, size: r.size };
+    };
+    const origRead = pod.read.bind(pod);
+    pod.read = async (...args) => { readCalls++; return origRead(...args); };
+
+    const e = newEngine();
+    const r = await e.verifyPodState('a.md');
+    expect(existsCalls).toBe(1);
+    expect(headCalls).toBe(1);
+    // Crucially, no read() — HEAD-cheap stays cheap.
+    expect(readCalls).toBe(0);
+    expect(r.exists).toBe(true);
+    expect(r.sizeMatches).toBe(true);
+    expect(r.podEtag).toBeDefined();
+    // No content available → no shaMatches.
+    expect(r.shaMatches).toBeUndefined();
+  });
+
+  it('falls back to read() when podClient.head() is absent', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'hello');
+    pod._seed(`${POD_ROOT}a.md`, 'hello');
+
+    pod.exists = async (uri) => pod.store.has(uri);
+    // No pod.head — should fall through to read().
+    const origRead = pod.read.bind(pod);
+    let readCalls = 0;
+    pod.read = async (...args) => { readCalls++; return origRead(...args); };
+
+    const e = newEngine();
+    const r = await e.verifyPodState('a.md');
+    expect(readCalls).toBe(1);
+    expect(r.exists).toBe(true);
+    expect(r.sizeMatches).toBe(true);
+    expect(r.shaMatches).toBe(true);
+  });
+
+  it('throws on empty/missing relPath', async () => {
+    const e = newEngine();
+    await expect(e.verifyPodState('')).rejects.toThrow();
+    await expect(e.verifyPodState(null)).rejects.toThrow();
+  });
+});
