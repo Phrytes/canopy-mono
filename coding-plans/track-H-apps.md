@@ -215,7 +215,7 @@ SDK track plans:
 
 Drafts to be written when we kick off each:
 
-- [ ] H1 — Notes V0  *(plan-not-yet-written)*
+- [ ] H1 — **Folio** (Notes V0) — plan in [`./track-H-app-folio.md`](./track-H-app-folio.md) *(awaiting plan-confirmation review)*
 - [ ] H7 — Archive V0  *(plan-not-yet-written)*
 - [ ] H6 — Import bridge V0  *(plan-not-yet-written)*
 - [ ] H4 — Tasks V0  *(plan-not-yet-written)*

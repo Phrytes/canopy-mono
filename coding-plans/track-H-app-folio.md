@@ -1,0 +1,434 @@
+# H1 — Folio (Notes V0)
+
+| | |
+|---|---|
+| **Status** | not-started — awaiting plan-confirmation review |
+| **Started** | — |
+| **Last updated** | 2026-04-29 (initial draft) |
+| **Owner** | unassigned |
+| **App name proposal** | **Folio** — your portfolio of notes flowing between devices via your pod-folio.  Alt names if "Folio" doesn't land: **Cairn** (markers along a path; small, durable, signal-not-noise), **Marrow** (deep, essential — your notes are the marrow of your work), **Mark** (markdown + the act of marking).  **Confirm or override the name before plan kicks off.** |
+| **Blocked on** | nothing — Track A + B fully shipped; ready to build |
+
+**Goal:** ship the simplest possible pod-client validator on real product
+code.  A markdown folder that quietly mirrors itself into your Solid pod;
+any markdown editor sees a normal folder; other agents (the household
+app, the archive, the import bridge) can write to the same pod.
+
+This is the **single most important first app**: it validates the
+SDK's hot path on real content, has zero external service
+dependencies, and produces the universal substrate (markdown notes)
+that every other H app will read.
+
+**Refs:**
+- [`./track-H-apps.md`](./track-H-apps.md) — Track H readiness analysis;
+  lists Folio as Tier-1 first-wave alongside H7 Archive.
+- [`./track-H-design-sketches.md`](./track-H-design-sketches.md) §H1 — the functional sketch this plan implements.
+- [`../projects/01-notes-app/README.md`](../projects/01-notes-app/README.md) — existing L2 design notes.
+
+---
+
+## SDK changes advised? **No.**
+
+Quick verdict: **Folio v1 ships entirely on top of the existing SDK.**
+No changes to `@canopy/core`, `@canopy/pod-client`,
+`@canopy/react-native`, or `@canopy/relay` are required for any of
+the three phases.
+
+What Folio uses from each:
+
+| Package | What Folio consumes | Status |
+|---|---|---|
+| `@canopy/core` | `AgentIdentity`, `Bootstrap`, `IdentityPodStore`, `IdentitySync`, `Vault*` | ✅ shipped (A + B complete) |
+| `@canopy/pod-client` | `PodClient.read/list/write/append/delete`, `'conflict'` event, `TombstoneStore`, `CapabilityAuth` | ✅ shipped (A1–A7 complete) |
+| `@canopy/react-native` | `attachIdentityToAgent` (Phase C only) | ✅ shipped (B4 complete) |
+| `@canopy/relay` | not used (single-user) | n/a |
+
+**Possible v2 enhancements that are NOT in scope here**, surfaced for
+later if real-world use proves they're needed:
+- `PodClient.bulkWrite([{uri, content}, ...])` — batch first-sync of a
+  large folder.  Today's loop-of-writes is fine for v1; revisit if
+  initial-sync UX gets bad on >1000 files.
+- A `SyncEngine` helper in pod-client that takes a local file tree +
+  pod root and returns the diff.  Currently app-side; pulling it into
+  pod-client makes sense once a SECOND consumer (H6 import bridge?)
+  needs the same logic.
+- For Phase C (mobile): RN background-task integration with
+  `IdentitySync.start()`.  Separate concern from Folio's sync engine;
+  belongs in `@canopy/react-native` if/when needed.
+
+The ONE NEW DEP Folio needs (per phase):
+- Phase A: **`chokidar`** for file-watching.  Standard Node FS-watch
+  library; small (~30 KB); used by every major Node tool that
+  watches files.  **Needs approval before plan kicks off.**
+- Phase B: **`express`** for the local web server.  Already proposed
+  for Mesh Lab; defer to a single decision when both lands.
+- Phase C: nothing new beyond what mesh-demo already pulls in.
+
+---
+
+## Phased plan
+
+Three phases, sequential.  Each ends with a working artifact you can
+demo on its own.
+
+```
+Phase A — CLI v0          (~1 week)
+   ↓
+Phase B — Web wrapper      (~1 week)
+   ↓
+Phase C — Mobile RN app    (~2 weeks)
+```
+
+The phases share a **core sync engine** (one library, three drivers).
+Phase A wires it to a CLI; Phase B wraps it in a web UI; Phase C wraps
+it in React Native screens.
+
+---
+
+## Track-level open questions
+
+| # | Question | Lean / status |
+|---|---|---|
+| Q-Folio.1 | App name | **TBD before kickoff** — "Folio" / "Cairn" / "Marrow" / "Mark" / your override |
+| Q-Folio.2 | New dep `chokidar` for FS watching: OK?  Alternative is `node:fs.watch` (built-in but less reliable across platforms) | TBD before Phase A — leaning chokidar (cross-platform reliable; small) |
+| Q-Folio.3 | `with-<webid>/` auto-share folder convention (per design sketch Twist 1) — Phase A or defer? | TBD — leaning defer to Phase B (CLI v0 should be the smallest viable surface; auto-sharing is a UI feature) |
+| Q-Folio.4 | Per-folder time-machine versioning (per design sketch Twist 2) — Phase A or defer? | TBD — leaning defer to Phase B (same reason) |
+| Q-Folio.5 | Conflict resolution UX — auto-merge git-style markers (CLI v0) or prompt-and-stop?  Q-H1.1 in design sketch was "git-style for v1". | Locked from sketch: git-style markers, written in-place to the file |
+| Q-Folio.6 | Phase B desktop wrapper choice: standalone web app served by local agent vs Tauri vs Electron | TBD before Phase B — leaning standalone web app (zero new deps; user opens `http://localhost:8888` in any browser) |
+
+---
+
+## Internal parallelism
+
+Within a phase, parallelism is limited:
+
+```
+Phase A (CLI v0)
+├── A1 — sync engine library (independent)
+└── A2 — CLI wrapper (depends on A1)
+
+Phase B (web)
+├── B1 — web UI (depends on A1)
+└── B2 — share-link generator UI (independent of A1, but depends on A1 having mature)
+
+Phase C (mobile)
+├── C1 — RN sync engine adapter (depends on A1; some platform-specific tweaks)
+└── C2 — RN screens + editor integration (depends on C1)
+```
+
+A team of 1: linear A1 → A2 → B1 → B2 → C1 → C2.
+A team of 2: dev1 = sync core (A1 → C1 adapter); dev2 = drivers (A2 → B1+B2 → C2).
+
+---
+
+## Hand-off triggers
+
+| When this completes | These tracks unblock |
+|---|---|
+| **Phase A (CLI)** | Real users (read: you, me, fellow developers) can sync notes; SDK hot path validated on real content. |
+| **Phase B (web)** | Non-CLI users get a graphical entry point.  Conflict resolution UX is mature. |
+| **Phase C (mobile)** | Notes available + editable on iOS / Android. |
+| **All Folio phases done** | H7 Archive can index Folio's content as its first source.  Other H apps have a confirmed-working pod-client integration to refer to. |
+
+---
+
+## Tasks
+
+### Phase A — CLI v0
+
+#### Folio.A1 — Sync engine library (`@canopy-app/folio-core`)
+
+| | |
+|---|---|
+| **Status** | not-started |
+| **Tag** | [NEW] |
+| **Notes** | The shared library all phases use.  Pure JS, no UI, no platform deps. |
+
+**Files:**
+
+```
+create:
+  apps/folio/                                        # new app workspace
+  apps/folio/package.json                            # @canopy-app/folio-core (or @canopy-app/folio if we ship as one package)
+  apps/folio/src/SyncEngine.js                       # the heart of it
+  apps/folio/src/scanLocal.js                        # walk a local directory
+  apps/folio/src/scanPod.js                          # walk a pod container
+  apps/folio/src/diff.js                             # compute add/update/delete diff
+  apps/folio/src/applyConflict.js                    # write git-style merge markers
+  apps/folio/src/PathMap.js                          # local-path ↔ pod-uri rules (incl. ACL templates)
+  apps/folio/test/SyncEngine.test.js
+  apps/folio/test/diff.test.js
+  apps/folio/test/PathMap.test.js
+```
+
+**Sequence:**
+
+- [ ] 1. Confirm Q-Folio.1 (app name) and Q-Folio.2 (chokidar dep).  Set up package.json + workspace.
+- [ ] 2. Implement `PathMap` — bidirectional path mapping.  Folder-name conventions (`/notes/shared/` ↔ pod public ACL; `/notes/private/...` ↔ encrypted-by-ACL helper).  Pure functions, tested in isolation.
+- [ ] 3. Implement `scanLocal(rootPath)` — walks the local filesystem, returns `{ path, mtime, sha256, size }[]`.  Skips `.canopy/` metadata + dotfiles by default; configurable.
+- [ ] 4. Implement `scanPod(podClient, containerUri)` — walks the pod recursively, returns the same shape.  Uses `PodClient.list({ recursive: true })` + per-resource `read` for hashes.
+- [ ] 5. Implement `diff(local, remote)` — returns `{ toUpload, toDownload, toDelete, conflicts }`.  Pure function over the two scan results.
+- [ ] 6. Implement `SyncEngine.runOnce({ direction: 'both' | 'push' | 'pull' })` — applies the diff via `PodClient.write/delete`.  Conflict resolution: write git-style merge markers to the file IN PLACE (per Q-H1.1 lock).
+- [ ] 7. Implement `SyncEngine.watch({ pollIntervalMs })` — keeps running.  FS watcher via `chokidar`; pod watcher via interval + `PodClient.list` (until LDN ships).
+- [ ] 8. Implement tombstone integration — `SyncEngine.deleteLocal(uri)` calls `PodClient` tombstones; subsequent pulls skip tombstoned URIs.
+- [ ] 9. Tests — round-trip a fixture folder via mock PodClient; conflict scenarios; tombstone respect; PathMap edge cases (paths with spaces, unicode, deeply nested).
+
+**DoD:**
+- [ ] Round-trip a 50-file folder against a mock PodClient.
+- [ ] Conflict on a single file produces git-style markers in-place.
+- [ ] Tombstones respected (deleteLocal'd file does not re-download).
+- [ ] PathMap conventions documented + tested.
+- [ ] Tests green in isolation; no leaked timers / file handles.
+
+**Notes (team scratchpad):**
+
+```
+(empty)
+```
+
+---
+
+#### Folio.A2 — CLI wrapper (`folio` command)
+
+| | |
+|---|---|
+| **Status** | not-started |
+| **Tag** | [NEW] |
+| **Notes** | Depends on Folio.A1.  Thin layer; commands map 1:1 to SyncEngine methods. |
+
+**Files:**
+
+```
+create:
+  apps/folio/src/cli.js                              # entry point; argv parsing
+  apps/folio/src/cli/initCmd.js                      # 'folio init <path>'
+  apps/folio/src/cli/syncCmd.js                      # 'folio sync' (one-shot)
+  apps/folio/src/cli/watchCmd.js                     # 'folio watch' (continuous)
+  apps/folio/src/cli/statusCmd.js                    # 'folio status'
+  apps/folio/src/cli/shareCmd.js                     # 'folio share <path>' — mints PodCapabilityToken
+  apps/folio/src/cli/conflictsCmd.js                 # 'folio conflicts' — lists open conflicts; interactive resolve
+  apps/folio/test/cli.test.js                        # spawn-as-subprocess tests
+```
+
+**Sequence:**
+
+- [ ] 1. Lock Q-Folio.6 (web wrapper choice) so the CLI architecture matches.  (Doesn't affect Phase A code, but informs how the CLI exposes its state for Phase B to read.)
+- [ ] 2. Wire argv parsing — pick a small dep or hand-roll.  Suggest hand-roll (no new dep); the command set is small.
+- [ ] 3. Implement `init` — interactive prompts for WebID, pod root, BIP-39 phrase recovery (or "I'll generate one for you" path); persists config to `~/.config/folio/config.json` (Linux) / equivalent for Mac/Win.  Stores the BIP-39 phrase in OS keychain via existing `Vault*` adapters.
+- [ ] 4. Implement `sync` — one-shot `SyncEngine.runOnce`; pretty progress output.
+- [ ] 5. Implement `watch` — daemonized `SyncEngine.watch`; logs to `~/.cache/folio/folio.log` for debugging; foreground vs `--daemon` mode.
+- [ ] 6. Implement `status` — prints SyncEngine stats + last sync time + open conflicts count.
+- [ ] 7. Implement `share` — wraps `PodCapabilityToken.issue(identity, { subject: <peer-pubkey>, scopes: [...]})`; prints a shareable URL.
+- [ ] 8. Implement `conflicts` — interactive: lists conflicted files; for each, prompts (1) keep mine (2) keep theirs (3) open in $EDITOR (4) skip; on completion writes resolution back to pod.
+- [ ] 9. CLI tests — spawn `folio` as a subprocess; pipe input; assert stdout / exit codes.
+
+**DoD:**
+- [ ] `folio init`, `sync`, `watch`, `status`, `share`, `conflicts` all functional end-to-end against a real PodClient (CSS or test fixture).
+- [ ] CLI tests cover the 6 commands' happy paths + 1 negative path each.
+- [ ] BIP-39 phrase persisted in OS keychain (or vault file) — never logged.
+- [ ] CLI works on macOS, Linux, Windows (last verified manually; CI on Linux).
+
+**Notes (team scratchpad):**
+
+```
+(empty)
+```
+
+---
+
+### Phase B — Web wrapper
+
+#### Folio.B1 — Local web app
+
+| | |
+|---|---|
+| **Status** | not-started |
+| **Tag** | [NEW] |
+| **Notes** | Depends on Folio.A1 (sync engine).  Standalone web app served on `http://localhost:8888` by the Folio agent process.  Q-Folio.6 lock decides Tauri vs standalone — strongly leaning standalone. |
+
+**Files:**
+
+```
+create:
+  apps/folio/src/server/index.js                     # express server, mounts the SyncEngine
+  apps/folio/src/server/routes.js                    # REST API: status, conflicts, share, control
+  apps/folio/src/server/static/                      # web UI assets (vanilla JS; no build step v1)
+    index.html
+    app.js
+    style.css
+    icons/                                           # tray-bar icon files
+  apps/folio/src/tray/                               # Mac menubar / Linux tray-bar / Windows notification area
+    macos.js                                         # via `node-mac-tray` or AppleScript fallback
+    linux.js                                         # via `appindicator3` or `notify-send` fallback
+    windows.js                                       # via Windows-toolkit
+```
+
+**Sequence:**
+
+- [ ] 1. Lock Q-Folio.6 (standalone vs Tauri).  Assuming standalone: Express + WebSocket for live status updates.
+- [ ] 2. REST API: `/status`, `/conflicts`, `/conflicts/:id/resolve`, `/share`, `/sync/now`, `/watch/start|stop`.
+- [ ] 3. Web UI — single-page vanilla JS.  Status pane shows sync state; conflicts pane shows side-by-side merge UI (CodeMirror for the editor, free dep — confirm size + license); share pane mints capability tokens with a friendly form.
+- [ ] 4. Tray-bar / menubar icon — small badge showing sync status.  Click → opens `http://localhost:8888`.
+- [ ] 5. Phase B integrates Q-Folio.3 (auto-shared `with-<webid>/` folders) and Q-Folio.4 (time-machine versioning) — these were deferred from Phase A for UX reasons; lock here.
+- [ ] 6. Tests — Express integration tests; Playwright/Puppeteer for the UI happy paths.
+
+**DoD:**
+- [ ] Web UI shows live sync status; conflicts resolvable in the UI.
+- [ ] Tray-bar icon works on macOS + Linux (Windows: stretch goal for v1).
+- [ ] Share UI mints + copies a URL.
+- [ ] No build step required; vanilla JS + a CodeMirror script tag.
+
+**Notes (team scratchpad):**
+
+```
+(empty)
+```
+
+---
+
+### Phase C — Mobile RN app
+
+#### Folio.C1 — RN sync engine adapter
+
+| | |
+|---|---|
+| **Status** | not-started |
+| **Tag** | [NEW] |
+| **Notes** | Depends on Folio.A1.  Most of the engine is portable; some adaptations needed for RN's filesystem + lifecycle. |
+
+**Files:**
+
+```
+create:
+  apps/folio/src/rn/                                 # RN-specific shims
+    fsAdapter.js                                     # uses expo-file-system instead of node:fs
+    backgroundTasks.js                               # iOS/Android background-fetch hooks
+    keychain.js                                      # uses expo-secure-store for the BIP-39 phrase
+```
+
+**Sequence:**
+
+- [ ] 1. Audit Folio.A1 — list every `node:fs` / `node:path` / `chokidar` call.  These are the platform-dependent hooks.
+- [ ] 2. Replace with `expo-file-system` (already in mesh-demo's stack).  `chokidar` doesn't run on RN; replace with manual interval-based scan + change-detection (mtime + size).
+- [ ] 3. Background-task integration — iOS `BGAppRefreshTask` via `expo-background-fetch`; Android via WorkManager (Expo wraps both).
+- [ ] 4. Test on RN simulator + at least one real device for each platform.
+
+**DoD:**
+- [ ] SyncEngine runs in RN; happy-path round-trip works on simulator.
+- [ ] Background sync wakes the app; pulls latest pod state.
+- [ ] No regressions in mesh-demo (which shares the RN package).
+
+---
+
+#### Folio.C2 — RN screens + editor integration
+
+| | |
+|---|---|
+| **Status** | not-started |
+| **Tag** | [NEW] |
+| **Notes** | Depends on Folio.C1.  Follows mesh-demo's existing RN patterns. |
+
+**Files:**
+
+```
+create:
+  apps/folio-mobile/                                 # separate Expo app workspace, OR a screen module inside mesh-demo
+    package.json
+    src/screens/
+      NotesListScreen.js
+      NoteEditScreen.js
+      ConflictsScreen.js
+      SettingsScreen.js
+    src/components/
+      MarkdownEditor.js                              # via react-native-markdown-editor or similar
+```
+
+**Sequence:**
+
+- [ ] 1. Decide whether Folio mobile is a STANDALONE Expo app or a screen module inside mesh-demo.  Standalone is cleaner for repo-extraction; mesh-demo integration is faster to ship.  Lean: standalone for v1.
+- [ ] 2. Notes list — tree view of `~/notes/` mirrored in RN's app sandbox.  Tap to edit.
+- [ ] 3. Note edit — markdown editor with live preview.  Pick an editor library (size + RN-compat).
+- [ ] 4. Conflicts screen — same idea as web UI's conflict pane.
+- [ ] 5. Settings — WebID, pod root, BIP-39 phrase recovery, sync interval, share-link UI.
+- [ ] 6. Tests — vitest for app logic; manual on-device for UX.
+
+**DoD:**
+- [ ] Notes app boots on iOS + Android.
+- [ ] Notes editable + sync via Folio.C1.
+- [ ] Conflicts resolvable in-app.
+- [ ] Repo-extraction-clean — folio-mobile can move to its own repo without rewrites.
+
+---
+
+## Architecture for repo extraction
+
+Per [`./track-H-apps.md`](./track-H-apps.md) §Architecture-for-repo-extraction:
+
+```
+apps/folio/                                     # this app
+  package.json                                  # name: "@canopy-app/folio"
+                                                # main: "src/index.js"
+                                                # bin: { "folio": "src/cli.js" }
+  src/
+    SyncEngine.js
+    cli.js
+    server/
+    rn/
+  test/
+  README.md
+
+apps/folio-mobile/                              # if Phase C splits out
+  package.json                                  # name: "@canopy-app/folio-mobile"
+  ...
+```
+
+Per-app `package.json` declares deps via `file:`:
+```json
+"dependencies": {
+  "@canopy/core":         "file:../../packages/core",
+  "@canopy/pod-client":   "file:../../packages/pod-client",
+  "chokidar":               "^3.6.0"
+},
+"bin": { "folio": "src/cli.js" }
+```
+
+Extraction rules followed:
+- Never `import { X } from '../../packages/core/src/X.js'`.
+- No reaching into adjacent apps.
+- Tests live within the app.
+- README per app.
+
+---
+
+## Pre-kickoff checklist (the verification step)
+
+**Before any implementation agent spawns**, please confirm or override:
+
+| # | Decision | Proposed | Action |
+|---|---|---|---|
+| 1 | App name (Q-Folio.1) | **Folio** | Confirm or pick: Cairn / Marrow / Mark / your choice |
+| 2 | New dep `chokidar` (Q-Folio.2) | yes | Confirm |
+| 3 | Phase A scope: CLI only, no UI | yes | Confirm |
+| 4 | Phase B wrapper (Q-Folio.6): standalone web app served by Folio agent | yes | Confirm or override (Tauri / Electron) |
+| 5 | Twists 1+2 (auto-share / time-machine, Q-Folio.3+4): **defer to Phase B** | yes | Confirm |
+| 6 | Conflict UX (Q-Folio.5): **git-style markers in-place**, locked from H1 sketch | yes | Confirm |
+| 7 | Mobile (Phase C): standalone Expo app, NOT a screen in mesh-demo | yes | Confirm or override |
+| 8 | SDK changes needed: **none** | yes | Confirm |
+| 9 | Order: A → B → C strictly sequential | yes | Confirm or override (parallelize?) |
+| 10 | First implementation step: spawn agent for Folio.A1 (sync engine library) | yes | Confirm to start |
+
+Once confirmed, the implementation cascade is:
+
+1. Spawn agent for Folio.A1 (sync engine + tests).
+2. When A1 lands, spawn Folio.A2 (CLI wrapper).
+3. When A2 lands, Phase A is shippable; pause for evaluation.
+4. (Phase B + C similarly cascaded after evaluation.)
+
+---
+
+## Pointers
+
+- [`./track-H-apps.md`](./track-H-apps.md) — Track H readiness analysis.
+- [`./track-H-design-sketches.md`](./track-H-design-sketches.md) §H1 — the functional sketch.
+- [`./sdk-test-strategy.md`](./sdk-test-strategy.md) — testing tiers; Folio benefits from the scenario harness for cross-pod-edit tests.
+- [`../projects/01-notes-app/README.md`](../projects/01-notes-app/README.md) — existing L2 design.
