@@ -1,28 +1,26 @@
 /**
- * Folio.B1.tray — Linux driver.
+ * Folio.B1.tray — Linux driver shim (post-v2.7).
  *
- * Implementation strategy: shell-out only, no GUI dep.
+ * The real Linux tray icon is now driven by `systray2` from `./index.js`.
+ * This module survives only as a thin compatibility shim for the legacy
+ * driver-mode tests (`tray.test.js`'s "linux driver — shells out to
+ * notify-send" suite).  In production, `./index.js` does NOT load this
+ * file; OS dispatch happens inside the `systray2` Go binary.
  *
- *   • Status changes → `notify-send` desktop notification (every common
- *     Linux desktop ships libnotify; if it's missing, we just log).
- *   • Click is provided by a CLI helper (`folio tray --open` or just
- *     printing the URL) — pure-Node has no way to listen for clicks on a
- *     desktop notification or system tray without a GUI binding.
- *
- * If you have `yad` installed, it can render an actual system-tray icon via
- * `yad --notification` — we DON'T spawn it by default (it's not standard on
- * every distro), but the driver exposes a hook so a future PR can wire it
- * up.
- *
- * The driver interface (matched by macos.js + windows.js):
+ * The shim implements the historical driver interface:
  *
  *   {
  *     setIcon(stateName: string): Promise<void>
  *     onClick(handler: () => void): void
+ *     triggerClick(): void
  *     destroy(): Promise<void>
  *   }
+ *
+ * `setIcon` shells out to `notify-send` only if `exec` is supplied (the
+ * tests inject a stub).  Without `exec`, `setIcon` is a no-op so this
+ * file never spawns notifications during real-mode runs.
  */
-import { exec } from 'node:child_process';
+import { exec as defaultExec } from 'node:child_process';
 
 const NOTIFY_TITLE = 'Folio';
 const STATE_TEXT = {
@@ -33,15 +31,12 @@ const STATE_TEXT = {
 };
 
 /**
- * Factory.  `index.js` calls `createDriver({ iconsDir })`.
- *
  * @param {object} opts
- * @param {URL}    [opts.iconsDir]   — folder containing PNG icons (used for notify-send `--icon`)
- * @param {Function} [opts.exec]     — override for tests
- * @returns {Promise<object>}
+ * @param {URL}    [opts.iconsDir]
+ * @param {Function} [opts.exec]
  */
 export async function createDriver({ iconsDir, exec: execImpl } = {}) {
-  const run = execImpl ?? exec;
+  const run = execImpl ?? defaultExec;
   let clickHandler = () => {};
   let lastState = null;
   let destroyed = false;
@@ -66,7 +61,6 @@ export async function createDriver({ iconsDir, exec: execImpl } = {}) {
       ];
       if (icon) args.unshift(`--icon=${JSON.stringify(icon)}`);
       const cmd = `notify-send ${args.join(' ')}`;
-      // Best-effort: never throw if notify-send is missing.
       await new Promise((res) => {
         run(cmd, (err) => {
           if (err) {
@@ -81,7 +75,6 @@ export async function createDriver({ iconsDir, exec: execImpl } = {}) {
       clickHandler = typeof handler === 'function' ? handler : (() => {});
     },
     triggerClick() {
-      // Public hook: a future yad / xdotool integration can call this.
       try { return clickHandler(); } catch { /* swallow */ }
     },
     async destroy() {
