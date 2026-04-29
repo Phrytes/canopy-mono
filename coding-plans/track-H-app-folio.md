@@ -362,16 +362,16 @@ create:
 
 - [x] 1. Lock Q-Folio.6 (standalone vs Tauri).  Locked 2026-04-29: standalone web app — Express + WebSocket.
 - [x] 2. **B1.server** — REST API: `/status`, `/conflicts`, `/conflicts/:id/resolve`, `/share`, `/sync/now`, `/watch/start|stop`.  WebSocket for live status updates.  Express integration tests.
-- [ ] 3. **B1.ui** — single-page vanilla JS.  Status pane shows sync state; conflicts pane shows side-by-side merge UI (CodeMirror via `<script>` tag — no build step); share pane mints capability tokens with a friendly form.  Playwright happy-path tests.
+- [x] 3. **B1.ui** — single-page vanilla JS.  Status pane shows sync state; conflicts pane shows side-by-side merge UI (CodeMirror via `<script>` tag — no build step); share pane mints capability tokens with a friendly form.  Playwright happy-path tests.
 - [x] 4. **B1.tray** — tray-bar / menubar icon — small badge showing sync status.  Click → opens `http://localhost:8888`.  macOS + Linux for v1; Windows is stretch.
 - [ ] 5. **B3** (Q-Folio.3 — auto-shared `with-<webid>/` folders) and **B4** (Q-Folio.4 — time-machine versioning) split into their own subsections.  B3 spawns as peer to B1; B4 deferred until after B1 lands.
 - [ ] 6. Tests are owned by each slice (server tests in B1.server; UI tests in B1.ui; tray smoke test in B1.tray).
 
 **DoD:**
-- [ ] Web UI shows live sync status; conflicts resolvable in the UI.
-- [ ] Tray-bar icon works on macOS + Linux (Windows: stretch goal for v1).
-- [ ] Share UI mints + copies a URL.
-- [ ] No build step required; vanilla JS + a CodeMirror script tag.
+- [x] Web UI shows live sync status; conflicts resolvable in the UI.
+- [x] Tray-bar icon works on macOS + Linux (Windows: stretch goal for v1).
+- [x] Share UI mints + copies a URL.
+- [x] No build step required; vanilla JS + a CodeMirror script tag.
 
 **Notes (team scratchpad):**
 
@@ -475,6 +475,86 @@ Hand-off to B1.tray:
 - Connect to /events to flip the menu-bar icon between idle / syncing /
   conflict states based on the frame `type`.
 - Click → open `http://127.0.0.1:<port>` (default 8888).
+
+2026-04-29 — Folio.B1.ui landed.  156 vitest tests pass (141 baseline + 15
+new UI tests).  No new top-level deps; CodeMirror 5.65.16 vendored (a
+combined codemirror.min.js = lib + markdown mode, 423 KB) under
+src/server/static/vendor/.
+
+Files added:
+  apps/folio/src/server/static/index.html       # SPA shell, 3 panes
+  apps/folio/src/server/static/app.js           # tab switcher + WS lifecycle
+  apps/folio/src/server/static/status.js        # status pane
+  apps/folio/src/server/static/conflicts.js     # conflicts pane + merge view
+  apps/folio/src/server/static/share.js         # share form + recent list
+  apps/folio/src/server/static/style.css
+  apps/folio/src/server/static/vendor/codemirror.min.js
+  apps/folio/src/server/static/vendor/codemirror.min.css
+  apps/folio/test/ui.test.js                    # 15 UI tests
+Files modified:
+  apps/folio/src/server/index.js                # mount express.static('/')
+  apps/folio/src/server/routes.js               # add GET /conflicts/:id/content
+
+Decisions made:
+- **No Playwright.**  The spec called it "OK as a devDep" but flagged the
+  browser-download cost.  We use the lean approach the spec offered:
+  spin up B1.server with a mock engine, fetch the static files + REST,
+  assert DOM hooks via regex against the served HTML.  Total UI-test
+  wall-clock: ~450 ms.
+- **CodeMirror 5, not 6.**  CodeMirror 6 is module-only and requires a
+  bundler; 5 ships a single classic-script lib that registers
+  window.CodeMirror.  We concat lib + markdown mode into one
+  codemirror.min.js to keep the index.html script tag count down.
+  Loaded via classic <script> (registers window.CodeMirror); the merge
+  pane lazy-attaches when the global is present and falls back to a
+  plain textarea if init throws.
+- **No build step.**  ES modules via <script type="module"> for the
+  SPA's own files; classic <script> for CodeMirror.  All cross-file
+  imports use absolute paths ('/status.js', '/conflicts.js', ...) so
+  the browser resolves them against the static-file root.
+- **Tab switcher: ARIA-correct.**  role=tablist + aria-controls + hidden
+  attribute toggling.  Each tab also fires a 'tab.change' bus event so
+  the conflict + status panes re-fetch when re-opened.
+- **WebSocket reconnect:** exponential backoff 1s/2s/5s/10s/30s, capped.
+  On 'close', we show a yellow banner + schedule reconnect.  On 'open'
+  the banner auto-hides.  window.__folio.reconnect() is exposed for
+  tests + manual hot-recovery.
+- **XSS hardening:** every user-controlled value (file paths, conflict
+  text, WebIDs, scope strings) goes through textContent or a readonly
+  textarea — never innerHTML.  ui.test.js asserts that share.js does
+  not contain a `.innerHTML =` assignment as a guard.
+- **New endpoint added:** GET /conflicts/:id/content (text/plain).  The
+  REST contract documented in routes.js had no way to fetch the raw
+  conflicted file content — without it, the merge view would have no
+  source for the "yours" / "theirs" panes.  Adding (not rewriting) a
+  route is consistent with the spec's "do not rewrite routes.js".  The
+  endpoint is path-confined to localRoot (rejects '..' segments).
+- **Static mounted before the API router.**  The router has a catch-all
+  404 at the end (existing tests rely on it), so static must be first
+  to serve `/`.  express.static is in fallthrough mode so unknown
+  paths still hit the router and get the structured 404 JSON.
+
+Hand-off to ops / users:
+- Boot with `folio serve`; visit http://127.0.0.1:8888 in any browser.
+- The SPA degrades gracefully: if /healthz fails, a red banner says
+  "Folio agent not running"; if WS drops, a yellow banner says
+  "Reconnecting…" and the buttons remain functional via plain HTTP.
+- "Sync now" returns immediately (202); progress streams over WS and
+  the log pane shows phase + done frames.
+- The merged buffer in the conflict pane uses CodeMirror when
+  available (markdown highlighting + line numbers); falls back to a
+  monospace textarea if CodeMirror failed to load.
+- Token JSON in /share is rendered into a readonly <textarea> so HTML
+  is never interpreted; the "Copy to clipboard" button uses
+  navigator.clipboard.writeText (with execCommand fallback).
+- Recent shares are kept in browser localStorage only; the server
+  does not persist this list in v1 (per spec).
+
+Out of scope (handed forward):
+- B4 time-machine UI: separate tab + history endpoint will need a
+  scratchpad of its own.
+- Auth: localhost-only, no login surface.  The "Folio agent not
+  running" banner is the only auth-adjacent UX.
 
 2026-04-29 — Folio.B1.tray landed.  86 vitest tests pass (65 baseline + 21
 new).  No new top-level deps.  See `apps/folio/src/tray/CHOICE.md` for the
