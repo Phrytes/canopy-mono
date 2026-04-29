@@ -323,6 +323,26 @@ export function initStatus({ bus, getJson, postJson, showBanner, hideBanner }) {
       verifyBtn.addEventListener('click', () => verifyOne(relPath));
       meta.appendChild(verifyBtn);
 
+      // Folio v2.11 — Delete locally (tombstone).  Plain text label, modal
+      // gated.  Click opens the local-tombstone confirm modal.
+      const rmBtn = document.createElement('button');
+      rmBtn.className   = 'btn btn--small verify-list__rm';
+      rmBtn.type        = 'button';
+      rmBtn.textContent = 'Delete locally';
+      rmBtn.title       = `Tombstone ${relPath} (pod copy stays)`;
+      rmBtn.addEventListener('click', () => openDeleteModal('local', relPath));
+      meta.appendChild(rmBtn);
+
+      // Folio v2.11 — Permanent pod-delete.  Distinct red-styled button so
+      // the destructive action looks distinct even before the modal opens.
+      const podDelBtn = document.createElement('button');
+      podDelBtn.className   = 'btn btn--small btn--danger verify-list__pod-delete';
+      podDelBtn.type        = 'button';
+      podDelBtn.textContent = 'Delete from pod';
+      podDelBtn.title       = `Permanently delete ${relPath} from your pod`;
+      podDelBtn.addEventListener('click', () => openDeleteModal('pod', relPath));
+      meta.appendChild(podDelBtn);
+
       li.appendChild(dot);
       li.appendChild(path);
       li.appendChild(meta);
@@ -403,6 +423,111 @@ export function initStatus({ bus, getJson, postJson, showBanner, hideBanner }) {
   bus.on('ws.version.new', (frame) => {
     if (!frame || !frame.relPath) return;
     pushVerifyEntry(frame.relPath);
+  });
+
+  // ── Folio v2.11 — Per-file delete (local tombstone + pod permanent) ─────
+  //
+  // Two modes share the same click → modal → POST flow.  The modal markup
+  // is duplicated in index.html so the destructive (pod) variant can carry
+  // distinct red styling without us re-painting every open.  ESC + backdrop
+  // both close.
+
+  const $rmModal      = document.getElementById('rm-confirm-modal');
+  const $rmBackdrop   = document.getElementById('rm-confirm-backdrop');
+  const $rmClose      = document.getElementById('btn-rm-close');
+  const $rmConfirm    = document.getElementById('btn-rm-confirm');
+  const $rmCancel     = document.getElementById('btn-rm-cancel');
+  const $rmPath       = document.getElementById('rm-confirm-path');
+
+  const $podDelModal    = document.getElementById('pod-delete-confirm-modal');
+  const $podDelBackdrop = document.getElementById('pod-delete-confirm-backdrop');
+  const $podDelClose    = document.getElementById('btn-pod-delete-close');
+  const $podDelConfirm  = document.getElementById('btn-pod-delete-confirm');
+  const $podDelCancel   = document.getElementById('btn-pod-delete-cancel');
+  const $podDelPath     = document.getElementById('pod-delete-confirm-path');
+
+  // The currently-pending action.  null when no modal is open.
+  // { mode: 'local' | 'pod', relPath: string }
+  let pendingDelete = null;
+
+  function openDeleteModal(mode, relPath) {
+    pendingDelete = { mode, relPath };
+    if (mode === 'local') {
+      if ($rmPath) $rmPath.textContent = String(relPath); // textContent — XSS-safe.
+      if ($rmModal) $rmModal.hidden = false;
+    } else {
+      if ($podDelPath) $podDelPath.textContent = String(relPath);
+      if ($podDelModal) $podDelModal.hidden = false;
+    }
+  }
+
+  function closeDeleteModal() {
+    pendingDelete = null;
+    if ($rmModal)    $rmModal.hidden = true;
+    if ($podDelModal) $podDelModal.hidden = true;
+  }
+
+  // Esc handler — closes whichever delete modal is open.  Bound at document
+  // level so it works regardless of focus.
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Escape') return;
+    const localOpen = $rmModal    && !$rmModal.hidden;
+    const podOpen   = $podDelModal && !$podDelModal.hidden;
+    if (localOpen || podOpen) {
+      ev.stopPropagation();
+      closeDeleteModal();
+    }
+  });
+
+  // Backdrop click closes (same UX as the v2.3 settings panel).  Each modal
+  // has its own backdrop element so clicks on `.modal__inner` don't close.
+  if ($rmBackdrop)    $rmBackdrop.addEventListener('click',    closeDeleteModal);
+  if ($podDelBackdrop) $podDelBackdrop.addEventListener('click', closeDeleteModal);
+  if ($rmClose)        $rmClose.addEventListener('click',       closeDeleteModal);
+  if ($podDelClose)    $podDelClose.addEventListener('click',   closeDeleteModal);
+  if ($rmCancel)       $rmCancel.addEventListener('click',      closeDeleteModal);
+  if ($podDelCancel)   $podDelCancel.addEventListener('click',  closeDeleteModal);
+
+  async function performDelete(mode, relPath) {
+    const id = relPathToId(relPath);
+    const url = mode === 'local' ? `/rm/${id}` : `/delete/${id}`;
+    logEntry(`${mode === 'local' ? 'tombstone' : 'permanent delete'} requested for ${relPath}…`);
+    try {
+      await postJson(url, {});
+      // Drop from the recently-synced list immediately so the row vanishes;
+      // future sync.done frames + version.new frames will re-add the file
+      // only if it's still alive.
+      verifyState.delete(relPath);
+      renderVerifyList();
+      logEntry(`${mode === 'local' ? 'tombstoned' : 'pod-deleted'} ${relPath}`);
+    } catch (err) {
+      logEntry(`delete failed for ${relPath}: ${err.message}`, true);
+    }
+  }
+
+  if ($rmConfirm) {
+    $rmConfirm.addEventListener('click', async () => {
+      const pending = pendingDelete;
+      closeDeleteModal();
+      if (!pending || pending.mode !== 'local') return;
+      await performDelete('local', pending.relPath);
+    });
+  }
+  if ($podDelConfirm) {
+    $podDelConfirm.addEventListener('click', async () => {
+      const pending = pendingDelete;
+      closeDeleteModal();
+      if (!pending || pending.mode !== 'pod') return;
+      await performDelete('pod', pending.relPath);
+    });
+  }
+
+  // Listen for the WS frame so any other open browser session also drops
+  // the row when a permanent delete completes elsewhere.
+  bus.on('ws.sync.delete.done', (frame) => {
+    if (!frame || !frame.relPath) return;
+    if (verifyState.delete(frame.relPath)) renderVerifyList();
+    logEntry(`pod-deleted ${frame.relPath}`);
   });
 
   // Initial render of the (empty) list so the count + empty-state line paint
