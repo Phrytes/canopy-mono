@@ -62,4 +62,44 @@ describe('applyConflict', () => {
     expect(out).toMatch(/local unknown/);
     expect(out).toMatch(/pod unknown/);
   });
+
+  describe('hasConflictMarkers', () => {
+    it('returns false for plain user content that mentions <<<<<<<', () => {
+      const debugLog = [
+        'shell session:',
+        '$ git pull',
+        'CONFLICT (content): Merge conflict in foo.txt',
+        '<<<<<<< HEAD',
+        'my line',
+        '=======',
+        'their line',
+        '>>>>>>> origin/main',
+        '',
+        'tutorial note: a Git conflict marker starts with `<<<<<<<`.',
+      ].join('\n');
+      expect(hasConflictMarkers(debugLog)).toBe(false);
+    });
+
+    it('returns true only for Folio-written conflict signatures', () => {
+      const folioConflict =
+        '<<<<<<< YOURS (local 2026-04-29 14:32 UTC)\n' +
+        'mine\n' +
+        '=======\n' +
+        'theirs\n' +
+        '>>>>>>> THEIRS (pod 2026-04-29 14:35 UTC)\n';
+      expect(hasConflictMarkers(folioConflict)).toBe(true);
+    });
+
+    it('does not flag a file whose only `<<<<<<<` is git-conflict-shaped', () => {
+      // Critically: a file that contains a *git*-style conflict marker
+      // (`<<<<<<< HEAD`) but NOT a Folio one must not be flagged.
+      const gitConflict =
+        '<<<<<<< HEAD\n' +
+        'mine\n' +
+        '=======\n' +
+        'theirs\n' +
+        '>>>>>>> origin/main\n';
+      expect(hasConflictMarkers(gitConflict)).toBe(false);
+    });
+  });
 });
