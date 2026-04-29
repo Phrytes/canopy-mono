@@ -4,7 +4,7 @@ This file is the rolling TODO for whoever opens the next Claude session
 on this repo (often Claude itself, sometimes you).  Keep it short.
 Update as items land or new ones appear.
 
-Last updated: 2026-04-29 — Folio v2 fully shipped + Folio.C1 spawned.
+Last updated: 2026-04-29 — Folio v2 fully shipped + Folio.C1 LANDED.
 
 ---
 
@@ -12,7 +12,7 @@ Last updated: 2026-04-29 — Folio v2 fully shipped + Folio.C1 spawned.
 
 | Agent | Slice | Plan doc | Notes |
 |---|---|---|---|
-| `a2bb2403ef78371f8` | **Folio.C1** — RN sync engine adapter | [`./track-H-folio-C1.md`](./track-H-folio-C1.md) | Started this session; rate-limit risk.  When notification arrives, merge per the standard pattern (see "Merge cookbook" below). |
+(none — C1 has landed; no agents in flight)
 
 If the agent's notification reports `You've hit your limit · resets <time>`, re-spawn after the reset using the launch prompt at the bottom of `coding-plans/track-H-folio-C1.md` (the §"DoD" + §"Out of scope" sections cover the contract).
 
@@ -25,6 +25,7 @@ Branch `track-H-folio` at `c4fcd60`.  390 Folio tests green.
 - v2.10 (copy-rename grace window) — merged b77b32a → c4fcd60
 - v2.11 (per-file delete buttons) — merged 724cab0 → c4fcd60
 - C1 plan committed (d665758 + 2ba5e25)
+- **Folio.C1 (RN sync engine adapter)** — merged 96aa3d7 → f500b37 (62 new tests; 452 total)
 
 Folio v2 is **complete** — v2.1 through v2.11 minus dropped v2.4
 (markdown preview).  See `coding-plans/track-H-app-folio.md` for the
