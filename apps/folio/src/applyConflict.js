@@ -21,7 +21,12 @@ import { dirname } from 'node:path';
 const CONFLICT_HEAD = '<<<<<<<';
 const CONFLICT_MID  = '=======';
 const CONFLICT_TAIL = '>>>>>>>';
-const CONFLICT_RE   = /^(<{7}|={7}|>{7})/m;
+// Match only Folio's own conflict signature so user content that happens to
+// contain `<<<<<<<` (e.g. shell output, tutorials, git transcripts) is not
+// misclassified as a Folio conflict.  Folio always writes `<<<<<<< YOURS`
+// at the head of a conflict; git uses `<<<<<<< HEAD` or branch names, so
+// the `YOURS` keyword (with word boundary) is unambiguously Folio.
+const CONFLICT_RE   = /^<{7} YOURS\b/m;
 
 /**
  * @param {string} absPath
