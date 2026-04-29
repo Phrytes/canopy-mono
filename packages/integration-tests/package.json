@@ -1,0 +1,20 @@
+{
+  "name":        "@canopy/integration-tests",
+  "version":     "0.1.0",
+  "description": "Cross-component scenario tests for the @canopy SDK",
+  "type":        "module",
+  "private":     true,
+  "main":        "src/_harness/index.js",
+  "scripts":     {
+    "test":       "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/core":       "file:../core",
+    "@canopy/pod-client": "file:../pod-client",
+    "@canopy/relay":      "file:../relay"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}
