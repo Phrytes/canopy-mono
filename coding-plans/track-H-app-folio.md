@@ -397,7 +397,7 @@ create:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done (2026-04-29) |
 | **Tag** | [NEW] |
 | **Notes** | Per design sketch H1 Twist 1.  Anything dropped under `<root>/with-<webid>/` auto-mints a `PodCapabilityToken` granting that WebID `pod.read` + `pod.write` on the folder's pod path; tokens are persisted alongside the SyncEngine state file and re-issued on rotation.  Pure SyncEngine extension; doesn't touch web layer.  Independent of B1.server. |
 
@@ -414,23 +414,84 @@ modify:
 
 **Sequence:**
 
-- [ ] 1. Path parser: extract WebID from folder name segment `with-<webid>` (URL-decoded).  Reject malformed segments with a structured error.
-- [ ] 2. Token minter: wraps `PodCapabilityToken.issue(identity, { subject: webid, scopes: ['pod.read:<path>', 'pod.write:<path>'], expires: Date.now() + 90d })`.  90-day expiry; auto-renews on next sync if within 7 days of expiry.
-- [ ] 3. Persistence: tokens stored in `<root>/.folio/shares.json` keyed by `(webid, path)`.  Re-loaded on boot.  Survives identity rotation by re-issuing under the new key.
-- [ ] 4. SyncEngine integration: on every successful `runOnce`, walk the path map, ensure every `with-<webid>/` folder has a current token; mint or renew as needed.  Surface result via `engine.shares()`.
-- [ ] 5. Tests — happy path (mint on new folder), rotation (renew within 7 days), revocation (manually delete entry → next sync re-mints), malformed-segment rejection.
+- [x] 1. Path parser: extract WebID from folder name segment `with-<webid>` (URL-decoded).  Reject malformed segments with a structured error.
+- [x] 2. Token minter: wraps `PodCapabilityToken.issue(identity, { subject: webid, scopes: ['pod.read:<path>', 'pod.write:<path>'], expires: Date.now() + 90d })`.  90-day expiry; auto-renews on next sync if within 7 days of expiry.
+- [x] 3. Persistence: tokens stored in `<root>/.folio/shares.json` keyed by `(webid, path)`.  Re-loaded on boot.  Survives identity rotation by re-issuing under the new key.
+- [x] 4. SyncEngine integration: on every successful `runOnce`, walk the path map, ensure every `with-<webid>/` folder has a current token; mint or renew as needed.  Surface result via `engine.shares()`.
+- [x] 5. Tests — happy path (mint on new folder), rotation (renew within 7 days), revocation (manually delete entry → next sync re-mints), malformed-segment rejection.
 
 **DoD:**
 
-- [ ] Dropping a file into `with-https://alice.example.com/profile/card#me/` auto-mints a token granting that WebID read+write.
-- [ ] Tokens persist across restarts.
-- [ ] Tests cover the four cases above.
-- [ ] Doesn't break any existing Folio.A test (52 baseline tests stay green).
+- [x] Dropping a file into `with-https://alice.example.com/profile/card#me/` auto-mints a token granting that WebID read+write.
+- [x] Tokens persist across restarts.
+- [x] Tests cover the four cases above.
+- [x] Doesn't break any existing Folio.A test (65 baseline tests stay green; 35 new B3 tests added → 100 total).
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-29 — Folio.B3 landed.  100 vitest tests pass (65 baseline + 35 new).
+No new top-level deps; pure JS extension over PodCapabilityToken.
+
+Files added:
+  apps/folio/src/autoShare.js          # parser + minter + persister + walker
+  apps/folio/test/autoShare.test.js    # 35 unit + integration tests
+Files modified:
+  apps/folio/src/PathMap.js            # adds shareFolderFor(rel)
+  apps/folio/src/SyncEngine.js         # accepts identity; calls ensureShares
+                                       # after every successful runOnce; exposes
+                                       # engine.shares() and engine.setIdentity()
+  apps/folio/src/index.js              # public-barrel exports for autoShare
+
+API surface added:
+  parseSharePath(rootRel)              # → { webid, sharePath, rest } | null
+  shareFolderName(webid)               # canonical with-<urlenc-webid> filename
+  ensureShares(engine, identity)       # mint+renew; persist; returns counts/errors
+  listShares(localRoot)                # → [{ webid, path, expires, ... }]
+  loadShares / saveShares              # raw read/write of .folio/shares.json
+  shouldRenew(record, currentPubKey)   # 7-day window + identity rotation rule
+  findShareFolders(localRoot)          # O(top-level-folders)
+  PathMap#shareFolderFor(rel)          # → { webid, sharePath } | null
+  SyncEngine#shares()                  # async, reads shares.json
+  SyncEngine#setIdentity(id|null)
+  engine.on('shares', { minted, renewed, errors })  # emitted on changes only
+
+Edge cases hit + decisions:
+- WebID decoding fences: empty (`with-`), URL-encoding errors (`%E0%A4%A`),
+  and "decoded text isn't a URI" all surface as AUTO_SHARE_BAD_PATH.  We
+  require an RFC-3986-style scheme prefix (`https:`, `did:`, etc.) so
+  innocent typos don't silently become "WebID" subjects.
+- shares.json is loaded fresh on every ensureShares call (cheap, single file)
+  rather than cached, because manual revocation (test case #3) edits the file
+  directly between runs and the engine should pick that up immediately.
+- A record's "issuer" is the identity pubKey at mint time; identity rotation
+  triggers re-issue on the next sync.  Old tokens stay verifiable until
+  their natural 90-day expiry — per the spec, retroactive revocation is
+  the user's call (out of scope for B3, lives in the share CLI / API).
+- ensureShares handles malformed siblings without aborting the whole pass:
+  bad folders go into `errors[]`; good folders still get tokens.  The
+  SyncEngine's #ensureSharesSafe wrapper emits 'error' events for those
+  but never throws.
+- Walks are TOP-LEVEL ONLY — by convention, a `with-<webid>/` folder MUST
+  be at the root of the local tree.  This keeps the walk O(top-level)
+  instead of recursing into every share folder, satisfying the "don't
+  break runOnce performance" constraint in the spec.
+- Performance: ensureShares is called AFTER #saveState in runOnce so the
+  state-file write isn't held up if a token mint fails (mints emit 'error'
+  but don't reject the runOnce promise).
+- Identity is OPTIONAL on SyncEngine — existing tests construct engines
+  without an identity and the new auto-share path silently no-ops.  The
+  CLI v1 path (which doesn't yet pass identity to the engine) keeps
+  working unchanged; B3 is opt-in via the new `identity` constructor arg.
+- PodCapabilityToken.issue signature divergence: the spec text says
+  `expires: Date.now() + 90d`, but the SDK API takes `expiresIn` (a
+  relative duration).  We translate at the call site and use 90 days
+  exactly (SHARE_EXPIRY_MS const).  No SDK change needed.
+- subject = WebID (full URL string), not a pubKey.  PodCapabilityToken
+  treats `subject` as an opaque string at signing time; verification of
+  the held token happens elsewhere (CapabilityAuth) and matches subjects
+  by string equality.  Using the WebID directly is consistent with how a
+  pod ACL would name the grantee.
 ```
 
 ---
