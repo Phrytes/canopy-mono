@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | in-progress |
+| **Status** | T.1 done; T.2–T.5 ready to spawn |
 | **Started** | 2026-04-28 (T.1 spawned) |
-| **Last updated** | 2026-04-28 (T.1 in-progress) |
+| **Last updated** | 2026-04-28 (T.1 shipped — harness + smoke test green) |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — strategy locked, ready to build |
 
@@ -85,7 +85,7 @@ A team of 4 (after T.1): T.1 (~1 day) then T.2/T.3/T.4/T.5 in parallel (~2 days 
 
 | | |
 |---|---|
-| **Status** | in-progress |
+| **Status** | done |
 | **Tag** | [NEW] |
 | **Notes** | Bottleneck.  Must land before T.2–T.5 can start.  Single agent. |
 
@@ -93,61 +93,122 @@ A team of 4 (after T.1): T.1 (~1 day) then T.2/T.3/T.4/T.5 in parallel (~2 days 
 
 ```
 create:
-  test/scenarios/                                   # new top-level test workspace
-  test/scenarios/package.json                       # name: "@canopy/test-scenarios"
-                                                    # file: refs to all SDK packages
-  test/scenarios/_harness/
+  packages/integration-tests/                       # new workspace (Q-Test.1: package, not top-level)
+  packages/integration-tests/package.json           # name: "@canopy/integration-tests"
+                                                    # file: refs to core/pod-client/relay
+  packages/integration-tests/src/_harness/
     Lab.js                                          # the orchestrator class
     ToggleableTransport.js                          # transport wrapper for chaos toggles
-    MockPod.js                                      # in-memory pod backend conforming to PodClient shape
-    fixtures.js                                     # canned identities, mnemonics, group keys for scenarios
+    MockPod.js                                      # in-memory pod backend
+    MockClock.js                                    # per-agent clock-skew (Q-Test.3 v1)
+    fixtures.js                                     # canned identities, mnemonics, group keys
     index.js                                        # barrel
-  test/scenarios/_harness.test.js                   # smoke test: Lab boots, 3 agents ping each other, teardown
-  test/scenarios/README.md                          # how to write a scenario, harness API reference
+  packages/integration-tests/test/_harness.test.js  # smoke test (11 tests)
+  packages/integration-tests/README.md              # how to write a scenario; API reference
 
 modify:
-  package.json (root)                               # add `test:scenarios` script + extend root `test`
+  package.json (root)                               # added `test:scenarios` script; extended root `test`
 ```
 
 **Sequence:**
 
-- [ ] 1. Lock Q-Test.1 (top-level) + Q-Test.2 (default + opt-in) + Q-Test.4 (CSS opt-in via env).
-- [ ] 2. Set up the `test/scenarios/` workspace.  `package.json` declares `file:` deps on `@canopy/core`, `@canopy/pod-client`, `@canopy/relay`, plus `vitest` devDep.  `npm install --prefix test/scenarios`.
-- [ ] 3. Implement `Lab.boot({ agents, transports, relay, pod, topology })`.  Constructs N `Agent` instances over `InternalTransport` (single shared `InternalBus`); each gets fresh `AgentIdentity` + `VaultMemory`; identities pre-populated for predictable test fixtures.
-- [ ] 4. Implement `ToggleableTransport` — wraps a real transport instance; per-instance `enabled: boolean`; when disabled, every method throws `TRANSPORT_DISABLED`.  This is the chaos primitive.
-- [ ] 5. Implement `MockPod` — in-memory pod backend.  Implements the same shape as Track A's `PodClient` consumes (`read`, `list`, `write`, `delete`, `exists`).  Stores resources in a `Map`.  Optional knobs: simulated latency, write-conflict injection.
-- [ ] 6. Implement `Lab` helper methods:
-  - `partitionMesh(groups)` — sets ToggleableTransport.enabled = false for cross-group edges.
-  - `healPartition()` — re-enables all.
-  - `dropTransport(agentName, transportName)` / `addTransport(...)` — swap a single transport.
-  - `injectLatency(a, b, ms)` — adds a per-edge timeout wrapper.
-  - `killAgent(name)` / `restartAgent(name)` / `respawnFromMnemonic(name, mnemonic)` — lifecycle helpers.
-  - `routeFor(a, b)` → `{ tier, transport, via? }` (delegates to `agent.reachabilityFor`).
-  - `assertRoute(a, b, expected)` — vitest assertion sugar.
-  - `invoke(a, b, skill, parts)` — sugar over `agent.invoke`.
-  - `invokeStream(a, b, skill, parts)` — sugar; returns a stream handle with `.cancel()`.
-  - `podWrite(name, uri, content)` / `podRead(name, uri)` — sugar over `PodClient`.
-  - `advanceTime(ms)` — exposes `vi.useFakeTimers` for interval-based scenarios.
-  - `assertNoLeak(viaName, secretBytes)` — asserts the named bridge agent's transport log doesn't contain the secret.
-  - `assertManifestIntact(name)` — calls `IdentityPodStore.verifyManifest` for that agent.
-  - `assertSyncConverged(names, path)` — both/all named agents have the same content at `path`.
-- [ ] 7. Implement `Lab.teardown()` — clears all timers, closes all agents, drops all bus state, releases tmp-dir handles.  Idempotent.
-- [ ] 8. Add `Lab.agent(name)` escape hatch → returns the underlying `Agent` instance for custom needs.
-- [ ] 9. Smoke test in `_harness.test.js`: boot 3 agents; assert they can ping each other; teardown; verify no leaked timers.
-- [ ] 10. Write `test/scenarios/README.md` — short reference covering how to write a scenario file, the Lab API, and the harness invariants (no real network, no real pod by default, deterministic).
+- [x] 1. Lock Q-Test.1 (`packages/integration-tests/`) + Q-Test.2 (default + opt-in) + Q-Test.3 (clock-skew v1) + Q-Test.4 (CSS opt-in via env).
+- [x] 2. Set up the `packages/integration-tests/` workspace.  `package.json` declares `file:` deps on `@canopy/core`, `@canopy/pod-client`, `@canopy/relay`, plus `vitest` devDep.  `npm install` from inside the workspace.
+- [x] 3. Implement `Lab.boot({ agents, transports, relay, pod, topology })`.  Constructs N `Agent` instances over `InternalTransport` (single shared `InternalBus`); each gets fresh `AgentIdentity` + `VaultMemory`.
+- [x] 4. Implement `ToggleableTransport` — wraps a real transport instance via monkey-patching `_send` + `_receive`; per-instance `enabled: boolean`; when disabled, every primitive throws `TRANSPORT_DISABLED`.
+- [x] 5. Implement `MockPod` — in-memory pod backend; `read`/`write`/`list`/`delete`/`exists`; knobs for latency + conflict + arbitrary failure injection.
+- [x] 6. Implement `Lab` helper methods (every one listed in the agent prompt):
+  - `partitionMesh(groups)` / `healPartition()` — install / remove a sender-side filter on each transport's `_send` that drops cross-group envelopes.
+  - `dropTransport(agentName, transportName)` / `addTransport(...)` — flip a single ToggleableTransport.
+  - `injectLatency(a, b, ms)` — set per-transport latency on `a`'s outbound (v1: applies to ALL of `a`'s out, not just to `b`).
+  - `killAgent(name)` / `restartAgent(name)` / `respawnFromMnemonic(name, mnemonic)` — lifecycle helpers; restart preserves vault, respawn rebuilds from BIP-39 seed.
+  - `routeFor(a, b)` → `{ tier, transport, via? }` (defaults to `'direct'`/`'internal'` when no RoutingStrategy is wired).
+  - `peers(name)` — names of peers known via SecurityLayer.
+  - `invoke(a, b, skill, parts)` / `invokeStream(...)` — sugar over `agent.invoke` / `agent.call`.
+  - `podWrite/Read/List/Delete(name, ...)` — sugar over the slot's MockPod.
+  - `advanceTime(ms)` — calls `vi.advanceTimersByTime`.
+  - **`injectClockSkew(name, offsetMs)`** — sets per-agent MockClock; see §Notes for SDK-side limitation.
+  - `clock(name)` — returns the agent's MockClock for direct inspection.
+  - `assertRoute(a, b, expected)` — vitest assertion.
+  - `assertNoLeak(viaName, secretBytes)` — checks captured envelopes (call `enableLeakLogging(name)` first).
+  - `enableLeakLogging(viaName)` — start capturing every envelope through the named agent.
+  - `assertManifestIntact(name)` — delegates to `IdentityPodStore.verifyManifest` (call `attachIdentityPodStore` first).
+  - `attachIdentityPodStore(name, store)` — wire a store into a slot for assertions.
+  - `assertSyncConverged(names, path)` — all named agents have matching pod content at `path`.
+- [x] 7. Implement `Lab.teardown()` — restores monkey-patches before stopping agents; idempotent; clears bus + relay.
+- [x] 8. Add `Lab.agent(name)` escape hatch → underlying Agent.  Also added `lab.agentNames()`, `lab.relay()`, `lab.pod(name)`.
+- [x] 9. Smoke test in `_harness.test.js`: 11 tests covering boot speed, ping/echo round-trip, peers map, partitionMesh, dropTransport/addTransport, teardown idempotence, routeFor defaults, MockClock skew, podWrite/Read, assertSyncConverged, star topology.  All pass in <2s.
+- [x] 10. Write `packages/integration-tests/README.md` — full Lab API reference + scenario template + harness invariants.
 
 **DoD:**
-- [ ] `Lab.boot` constructs 3 agents over InternalTransport in <500ms.
-- [ ] All listed helper methods present + JSDoc'd; smoke-tested.
-- [ ] `_harness.test.js` smoke test passes; teardown leaves no timers.
-- [ ] `npm run test:scenarios` runs from repo root and passes.
-- [ ] `npm test` (root) includes `test:scenarios` in the aggregate.
-- [ ] No new top-level deps in `@canopy/*` packages (test workspace is its own thing).
+- [x] `Lab.boot` constructs 3 agents over InternalTransport in <500ms.  (Verified by `boots fast` test.)
+- [x] All listed helper methods present + JSDoc'd; smoke-tested.
+- [x] `_harness.test.js` smoke test passes; teardown leaves no timers.
+- [x] `npm run test:scenarios` runs from repo root and passes.
+- [x] `npm test` (root) includes `test:scenarios` in the aggregate.
+- [x] No new top-level deps in `@canopy/*` packages (test workspace is its own thing; only `vitest` as devDep + `file:` refs to existing packages).
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+T.1 ship date: 2026-04-28.  All 11 smoke tests green.
+
+═══ Q-Test.3 clock-skew gap (CRITICAL for T.6 scenario authors) ═══
+
+We ship `MockClock` + `Lab.injectClockSkew(name, offsetMs)` as the
+v1 API, but the SDK currently reads time via raw `Date.now()` in ~100
+places (see TODO-GENERAL.md HIGH-PRIORITY entry "Inject a clock
+primitive into core").  This means:
+
+  Scenarios that CAN be written today against MockClock:
+  - Tests that read `lab.clock(name).now()` and pass it to SDK
+    surfaces accepting an explicit `now` argument (limited — most
+    SDK call sites don't expose this).
+  - Tests that compare relative skew between agents at the harness
+    level only (e.g. "alice's MockClock is +30s; assert that").
+
+  Scenarios that CANNOT be written until clock-injection lands:
+  - identity/key-rotation-mid-call (needs SecurityLayer to honour
+    a per-agent grace-window clock).
+  - Replay-window edge cases (envelope timestamp ±10min check in
+    SecurityLayer).
+  - Capability-token expiry races (TokenRegistry checks `Date.now()`).
+  - IdentitySync staleness ("is this 5min old or 5min stale?").
+  - Reachability oracle freshness gossip windows.
+
+This is a documented v2 task — tracked in TODO-GENERAL.md as
+"🔴 HIGH PRIORITY — Inject a clock primitive into core".  T.6
+scenarios that need real per-agent skew block on that work.
+
+═══ Other v1 limitations to mention to T.2–T.5 authors ═══
+
+1. `injectLatency(a, b, ms)` applies to ALL of agent `a`'s outbound
+   traffic on its transports, not just to peer `b`.  For per-edge
+   latency, the underlying ToggleableTransport's `_send` would need
+   to filter by `to === b.address`.  Would be a 5-line change inside
+   `ToggleableTransport.setLatency` if needed.
+
+2. `pod: 'real:css'` is a stub — throws NOT_IMPLEMENTED.  T.6 work.
+
+3. The default agent transport (when `Lab` boots agents) is named
+   'default' inside the Agent's own transport map (Agent's primary
+   slot is hard-coded to that name in its constructor).  The HARNESS
+   refers to it as 'internal' via Lab's slot-side map.  If a scenario
+   needs to address the agent's own map, use 'default'; if it uses
+   `dropTransport('alice', 'internal')`, that goes through the harness
+   wrapper.  This dual-naming is intentional but worth flagging.
+
+4. `assertNoLeak` is best-effort — if the scenario forgets to call
+   `enableLeakLogging(viaName)` BEFORE the secret travels, the
+   assertion no-ops and prints a console.warn.  Not a hard fail
+   because some scenarios assert post-hoc on captured logs they
+   built up themselves.
+
+5. `restartAgent` re-wires peer addresses against all alive peers.
+   `respawnFromMnemonic` does the same.  Neither restores SecurityLayer
+   state from the old agent — if a scenario depended on, say, an
+   established PerfectForwardSecrecy session, it WILL be lost.
+   Scenarios should re-hello after a restart/respawn.
 ```
 
 ---
