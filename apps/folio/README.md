@@ -8,10 +8,14 @@ agents (the household app, the archive, the import bridge) write to the
 same pod over the network.  No editor lock-in, no proprietary sync layer
 — your existing tools just work.
 
-## v1 scope (Phase A.1)
+## v1 scope
 
-This package currently ships **only the SyncEngine library** — no CLI yet.
-The CLI (`folio init`, `folio sync`, `folio watch`, ...) lands in Folio.A2.
+Phase A (CLI) and Phase B.1.server (Express + WebSocket) are shipped:
+
+- `SyncEngine` library (Folio.A1) — pure JS, used by all phases.
+- `folio` CLI (Folio.A2) — `init / sync / watch / status / share / conflicts / rm`.
+- Local web server (Folio.B1.server) — Express + WebSocket on
+  `http://127.0.0.1:8888`; consumed by the upcoming web UI (B1.ui).
 
 ```js
 import { SyncEngine } from '@canopy-app/folio';
@@ -71,6 +75,33 @@ again to push the merge back to the pod.
 Per-folder sync state lives at `<localRoot>/.canopy/notes-sync-state.json`
 and is the source of truth for "what was the last common version of each
 file."  Delete the state file to force a full re-scan on next sync.
+
+## Web server (Folio.B1.server)
+
+```bash
+folio serve              # binds to 127.0.0.1:8888 by default
+folio serve --port 9000  # override port
+folio serve --watch      # also start the SyncEngine watcher on boot
+```
+
+REST endpoints (all JSON; localhost only — no auth):
+
+| Verb   | Path                       | Body / notes                                          |
+|--------|----------------------------|--------------------------------------------------------|
+| GET    | `/status`                  | sync stats + pending counts                            |
+| GET    | `/conflicts`               | list of conflicted files                               |
+| POST   | `/conflicts/:id/resolve`   | `{ resolution: 'mine'\|'theirs'\|<text> }`             |
+| POST   | `/share`                   | `{ webid, scopes, expiresIn?, path? }` → token JSON    |
+| POST   | `/sync/now`                | `{ direction?: 'both'\|'push'\|'pull' }` (202 + WS)    |
+| POST   | `/watch/start`             | start the SyncEngine watcher                            |
+| POST   | `/watch/stop`              | stop the SyncEngine watcher                             |
+
+WebSocket `/events` broadcasts `status`, `sync.progress`, `sync.done`,
+`conflict.new`, and `error` frames.  Errors are shaped
+`{ error: { code, message } }` with appropriate HTTP status.
+
+The full contract lives in a comment block at the top of
+[`src/server/routes.js`](src/server/routes.js).
 
 ## Tests
 
