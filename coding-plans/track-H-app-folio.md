@@ -709,6 +709,93 @@ Edge cases hit + decisions:
 
 ---
 
+#### Folio.B1.auth — Real Solid OIDC sign-in for the web wrapper
+
+| | |
+|---|---|
+| **Status** | done (2026-04-29) |
+| **Tag** | [NEW] |
+| **Notes** | The `/auth/*` half of the Inrupt migration.  Replaces the `_podFactory.js` "wait for Phase B" stub with a real `PodClient` over Inrupt's `Session.fetch` once the user signs in via the web UI.  Sharing-layer migration (capability-token → ACP/WAC) is parked as a separate future task. |
+
+**Files:**
+
+```
+create:
+  apps/folio/src/auth/OidcSession.js   # wraps @inrupt/solid-client-authn-node Session
+  apps/folio/src/auth/authRoutes.js    # /auth/login, /auth/callback, /auth/status, /auth/logout
+  apps/folio/src/server/static/auth.js # UI: sign-in pill + issuer-picker modal
+  apps/folio/test/auth.test.js         # 13 integration tests with a fake Inrupt Session
+modify:
+  apps/folio/src/server/index.js       # mount auth router; expose `oidc` on app.locals
+  apps/folio/src/cli/_podFactory.js    # real PodClient when an OIDC session is present
+  apps/folio/src/cli/serveCmd.js       # boot-time restoreFromVault; offline-stub PodClient
+  apps/folio/src/server/static/index.html  # sign-in pill + modal markup
+  apps/folio/src/server/static/app.js  # wire initAuth()
+  apps/folio/src/server/static/style.css   # pill + modal styles
+  apps/folio/package.json              # mirror @inrupt/solid-client-authn-node ^4.0.0 (already in core)
+  apps/folio/README.md                 # "How to sign in to your Solid pod"
+```
+
+**Decisions:**
+
+- **Use Inrupt's standard browser-redirect flow.**  `Session.login()` with a
+  `handleRedirect` capture; the route returns `{ redirectUrl }` to the
+  browser which then navigates.  No bespoke OIDC primitives.
+- **Refresh token is the only persistent credential.**  Stored under the
+  vault key `oidc-refresh-token`; the access token stays in-memory on
+  Inrupt's `Session`.  Issuer + (post-dynamic-registration) client_id are
+  also stored so `restoreFromVault()` can rebuild the session without
+  prompting on `folio serve` restart.
+- **Loopback enforcement on `/auth/callback`.**  Even though the server
+  binds to 127.0.0.1, the callback handler additionally rejects any
+  remote address that isn't `127.0.0.1` / `::1` / `localhost` /
+  `::ffff:127.0.0.1` with a 403.  Defence-in-depth against DNS rebinding
+  / misconfigured trust-proxy.
+- **`OidcSession` lives on `req.app.locals.oidc`** (not in module-level
+  state).  Tests inject their own Session via `_setSessionFactory(fn)`,
+  matching the seam pattern already in `core/src/storage/SolidVault.js`.
+- **MOCK mode is preserved exactly.**  `FOLIO_TEST_MOCK_POD=1` short-
+  circuits `_podFactory.js` before the OIDC branch; the existing 159
+  tests remain green (52 SyncEngine + 13 CLI + 20 server + 21 tray + 35
+  auto-share + 15 UI + 3 conflict regression).
+- **Boot-time PodClient is best-effort.**  If `restoreFromVault` succeeds
+  the engine gets a real PodClient; if not, the engine boots with a
+  throwing offline stub so `folio serve` still starts and serves the
+  sign-in flow.  Hot-swapping the PodClient on the live engine after the
+  user signs in is **TODO** — for v1 the user restarts `folio serve`.
+- **Sharing-layer migration deferred.**  Per the task spec, the existing
+  `PodCapabilityToken` / `with-<webid>/` UX is left untouched.  Migrating
+  share UX to ACP/WAC is a follow-up task.
+
+**Tests:**
+
+13 new integration tests, all green; total folio suite = 172 tests.
+
+| # | Test | Asserts |
+|---|---|---|
+| 1 | POST /auth/login → redirectUrl | issuer authorize URL is well-formed |
+| 2 | POST /auth/login → 400 BAD_REQUEST | missing / non-http issuer |
+| 3 | GET /auth/callback success | 302 → `/`; vault holds `oidc-refresh-token` + `oidc-issuer` |
+| 4 | GET /auth/callback (bad code) | 400 OIDC_CALLBACK_FAILED; no vault entry |
+| 5 | GET /auth/status | unauthenticated → authenticated transition |
+| 6 | POST /auth/logout | session + vault cleared |
+| 7 | restoreFromVault — happy | rebuilds an authenticated session from a stored refresh token |
+| 8 | restoreFromVault — empty vault | no-op; returns false |
+| 9 | restoreFromVault — refresh fails | returns false; warning surfaced; no crash |
+| 10 | /auth/callback non-loopback peer | 403 FORBIDDEN |
+| 11 | _podFactory MOCK regression | FOLIO_TEST_MOCK_POD=1 unaffected by oidc presence |
+| 12 | _podFactory unauthenticated | clear "sign in via web UI" error |
+| 13 | _podFactory authenticated | real PodClient (read/write/list functions present) |
+
+**Out of scope (handed forward):**
+
+- CLI sign-in flow (no `folio serve` running).  Defer to Phase C.
+- Hot-swap PodClient on the live engine after `/auth/callback` lands —
+  for v1 the user restarts `folio serve`.
+- Multi-account: a single OIDC session per process for v1.
+
+---
+
 #### Folio.B4 — Time-machine versioning (Q-Folio.4) — DEFERRED until B1 lands
 
 | | |

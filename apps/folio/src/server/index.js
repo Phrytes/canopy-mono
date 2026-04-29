@@ -22,8 +22,9 @@ import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { createRouter } from './routes.js';
-import { WsHub }        from './wsHub.js';
+import { createRouter }     from './routes.js';
+import { WsHub }            from './wsHub.js';
+import { createAuthRouter } from '../auth/authRoutes.js';
 
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8888;
@@ -37,6 +38,9 @@ const STATIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'static');
  *                                  optional in tests that set engine.__podClient.
  * @param {object} [deps.vault]    Vault* used by /share when no identity is provided
  * @param {object} [deps.identity] AgentIdentity (optional; lazily derived from vault)
+ * @param {object} [deps.oidc]     OidcSession (optional; if provided, mounts /auth/* routes)
+ * @param {string} [deps.oidcCallbackUrl] explicit callback URL forwarded to authRoutes;
+ *                                        defaults to <inbound-host>/auth/callback.
  * @returns {{
  *   app: import('express').Express,
  *   server: import('http').Server,
@@ -45,12 +49,16 @@ const STATIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'static');
  *   close:  () => Promise<void>,
  * }}
  */
-export function createServer({ engine, podClient, vault, identity } = {}) {
+export function createServer({ engine, podClient, vault, identity, oidc, oidcCallbackUrl } = {}) {
   if (!engine) throw new Error('createServer: engine is required');
 
   const app    = express();
   const server = http.createServer(app);
   const hub    = new WsHub({ engine });
+
+  // Stash the OIDC session on app.locals so route handlers + tests can
+  // read or replace it without reaching into module state.
+  if (oidc) app.locals.oidc = oidc;
 
   // Liveness probe — handy for the tray-bar app to know when the server is up.
   app.get('/healthz', (_req, res) => {
@@ -68,6 +76,13 @@ export function createServer({ engine, podClient, vault, identity } = {}) {
     maxAge:      0,
     etag:        false,
   }));
+
+  // Auth routes (Folio.B1.auth) — mounted before the main API router so the
+  // /auth/* paths reach their handlers, and so the main router's 404
+  // catch-all only sees genuinely-unknown paths.
+  if (oidc) {
+    app.use(createAuthRouter({ oidc, callbackUrl: oidcCallbackUrl }));
+  }
 
   app.use(createRouter({ engine, podClient, vault, identity, hub }));
 
@@ -109,3 +124,5 @@ export function createServer({ engine, podClient, vault, identity } = {}) {
 
 export { WsHub } from './wsHub.js';
 export { createRouter } from './routes.js';
+export { createAuthRouter } from '../auth/authRoutes.js';
+export { OidcSession } from '../auth/OidcSession.js';
