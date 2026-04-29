@@ -1383,3 +1383,100 @@ frame the engine already broadcasts:
 - ES modules; vanilla JS; vitest.
 
 **Test count:** 242 baseline → **256 total** (+14 new).  All green.
+
+---
+
+## §Folio v2.6 — Watcher sha-stable hardening (2026-04-29)
+
+**Problem.** A `.txt` dropped into the notes folder triggered a partial-content
+read because chokidar fired before the file was fully written.  Two failure
+modes seen in the wild:
+
+1. **Two-write editors.** Some editors save in two writes (open-truncate then
+   stream-append).  Chokidar fires for the first write; SyncEngine reads,
+   computes a sha over the half-written file, uploads, then fires AGAIN on
+   the second write — and now the *previously persisted* sha disagrees with
+   the *current* sha, producing a false-positive conflict on the next pod
+   pull.
+2. **Atomic-rename saves.** `tmp-then-rename` patterns make chokidar see TWO
+   events (the tmp create + the rename onto the target).  Same partial-read
+   trap.
+
+**Fix.** After the existing 500ms debounce, gate `runOnce()` on a per-path
+sha-stability check: re-hash the file every `stableMs` (default 250ms) and
+only fire when two consecutive hashes match.  Cap total wait at
+`maxStableWaitMs` (default 5000ms) — after that the run fires anyway and
+a `'warning'` event with `phase: 'unstable-write'` is emitted (so the user
+can investigate, e.g. a downloader streaming bytes into the notes folder).
+
+**Wiring (additive — the existing 500ms debounce is preserved).**
+```
+chokidar('all', path)
+   → #scheduleRun(path)               // accumulate + arm debounce
+       → (after debounceMs)
+       → #onDebounceFire()
+           → for each pending path:
+               #startStabilityVigil(path)   // hash now
+                   → setTimeout stableMs →
+                   → #stabilityRecheck(path) // re-hash; compare
+                       sha matches    → fire runOnce, drop tracker
+                       sha differs    → restart vigil (firstSeenAt sticky)
+                       file gone      → drop tracker, NO runOnce
+                       elapsed ≥ cap  → fire runOnce + emit 'warning', drop
+```
+
+A poll-tick (the 60s interval) calls `#scheduleRun()` with NO path — that
+path subsumes any in-flight per-path vigils, cancels them, and fires
+`runOnce` directly.  Rationale: a poll tick is a coarse "settle and run"
+signal; we don't want a flapping local file to defer a pod-side scan.
+
+**Per-path tracker shape:**
+```js
+#stability: Map<absPath, { firstSeenAt: number, lastSha: string|null, timer: any }>
+```
+- `firstSeenAt` is sticky across restarts of the vigil (so `maxStableWaitMs`
+  is a global cap, not a per-attempt one).
+- `lastSha` is the most recently observed hex sha256.
+- `timer` is the next scheduled re-check; `stop()` clears all timers and
+  drops the map.
+
+**Edge cases handled:**
+- File deleted before stability check → tracker dropped, no runOnce fires.
+- Multiple files saved at once → independent vigils; each fires runOnce
+  when its own sha settles.  `runOnce` is serialised by `#runChain` so
+  back-to-back fires don't double-process.
+- File appears stable then changes → vigil restarts with the new sha;
+  `firstSeenAt` is preserved so the cap can still kick in.
+- `stop()` mid-vigil → all timers cleared; no runOnce after teardown.
+- Poll tick during a vigil → vigil cancelled, runOnce fires immediately.
+
+**Configurable** via constructor `options.watcher`:
+```js
+new SyncEngine({
+  ...,
+  watcher: { stableMs: 250, maxStableWaitMs: 5000 },
+});
+```
+Defaults match the spec (250ms / 5000ms).  Tests use 30–60ms / 200–800ms.
+
+**Test-only seams** (private; named `_…ForTest` / `_arm…` / `_disarm…`):
+- `_armForStabilityTest()` / `_disarmForTest()` — flip `#running` without
+  standing up a real watcher / poll timer.
+- `_injectWatchEventForTest(path, event)` — synthesises a chokidar event.
+- `_onStabilityDecision(fn)` — spy hook, fires after each per-path
+  decision (`stable` / `changed` / `deleted` / `capped` / `error`).
+
+**Files touched:**
+- `apps/folio/src/SyncEngine.js`     (+ ~180 lines: stability map, vigil,
+                                       recheck, sha helper, test seams)
+- `apps/folio/test/SyncEngine.test.js` (+7 tests covering the new behaviour)
+- `coding-plans/track-H-app-folio.md`  (this scratchpad)
+
+**Constraints honored:**
+- No new top-level deps (`node:crypto.createHash` is built-in).
+- Existing 500ms debounce stays — stability is additive.
+- `runOnce()` is the dispatch entry point — no reach into `#runChain`.
+- Existing 269 tests stay green.
+- ES modules; vanilla JS; vitest; real-clock test budget < 2s wall.
+
+**Test count:** 269 baseline → **276 total** (+7 new).  All green.
