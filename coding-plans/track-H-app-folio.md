@@ -363,7 +363,7 @@ create:
 - [x] 1. Lock Q-Folio.6 (standalone vs Tauri).  Locked 2026-04-29: standalone web app — Express + WebSocket.
 - [ ] 2. **B1.server** — REST API: `/status`, `/conflicts`, `/conflicts/:id/resolve`, `/share`, `/sync/now`, `/watch/start|stop`.  WebSocket for live status updates.  Express integration tests.
 - [ ] 3. **B1.ui** — single-page vanilla JS.  Status pane shows sync state; conflicts pane shows side-by-side merge UI (CodeMirror via `<script>` tag — no build step); share pane mints capability tokens with a friendly form.  Playwright happy-path tests.
-- [ ] 4. **B1.tray** — tray-bar / menubar icon — small badge showing sync status.  Click → opens `http://localhost:8888`.  macOS + Linux for v1; Windows is stretch.
+- [x] 4. **B1.tray** — tray-bar / menubar icon — small badge showing sync status.  Click → opens `http://localhost:8888`.  macOS + Linux for v1; Windows is stretch.
 - [ ] 5. **B3** (Q-Folio.3 — auto-shared `with-<webid>/` folders) and **B4** (Q-Folio.4 — time-machine versioning) split into their own subsections.  B3 spawns as peer to B1; B4 deferred until after B1 lands.
 - [ ] 6. Tests are owned by each slice (server tests in B1.server; UI tests in B1.ui; tray smoke test in B1.tray).
 
@@ -389,6 +389,53 @@ create:
 
   CodeMirror confirmed acceptable as <script> tag (CDN or local copy);
   MIT-licensed, ~200KB minified.  No build step.
+
+2026-04-29 — Folio.B1.tray landed.  86 vitest tests pass (65 baseline + 21
+new).  No new top-level deps.  See `apps/folio/src/tray/CHOICE.md` for the
+library-choice rationale.
+
+Files added:
+  apps/folio/src/tray/index.js              # cross-platform entry; OS dispatch + 5 s poll loop with 30 s backoff
+  apps/folio/src/tray/macos.js              # osascript display-notification driver
+  apps/folio/src/tray/linux.js              # notify-send (libnotify) driver
+  apps/folio/src/tray/windows.js            # logging stub (v1 stretch)
+  apps/folio/src/tray/CHOICE.md             # scratchpad: why no npm dep
+  apps/folio/src/tray/icons/{sync-idle,sync-active,sync-conflict,sync-error}.png
+  apps/folio/src/tray/icons/_generate.mjs   # PNG regenerator (no Sharp/Pngjs)
+  apps/folio/src/cli/trayCmd.js             # `folio tray` command
+  apps/folio/test/tray.test.js              # 21 unit tests
+Files modified:
+  apps/folio/src/cli.js                     # wire `folio tray` command + help
+
+Decisions:
+- **No new npm dep.**  Every cross-platform tray library either pulls in
+  node-gyp, ships a ~10 MB Go binary, or wraps Electron.  The hard
+  constraint forbids the first; the binary download is gray-area; Electron
+  fails the 5 MB budget.  Drivers shell out to `notify-send` (Linux) and
+  `osascript` (macOS).  Windows is a logging stub.  Trade-off: no
+  always-visible tray icon — state surfaces as a desktop notification.
+  When a no-gyp clickable-tray lib emerges, swapping a driver is trivial.
+- **`folio tray` is a separate command** (not auto-launched by `folio
+  serve`).  Two reasons: (a) `folio serve` is owned by another agent
+  (B1.server) — separate command avoids merge conflicts; (b) users may
+  want headless serving / `folio watch` instead — tray is opt-in.
+- **Backoff:** 5 s poll → 30 s after 5 consecutive `/status` failures, per
+  spec.  Recovers to 5 s on the first successful poll.
+- **Icon mapping:** `statusToState()` accepts both `{state: '…'}` and
+  derived form `{syncing, conflicts, errors}`.  Errors trump conflicts
+  trump active.
+- **Tests:** driver factory accepts `{ exec }` injection; `startTray`
+  accepts `{ loadDriver, fetch, platform }`.  No display required for CI.
+
+Hand-off to B1.server:
+- The tray polls `GET /status` and expects JSON.  Shape is flexible:
+  either `{ state: 'idle'|'active'|'conflict'|'error' }` or
+  `{ syncing: bool, conflicts: number, errors: number }`.  Pick whichever
+  is cheaper to emit; both work.
+- The server can run on any port — `folio tray --url http://host:9000`
+  overrides the default.
+- Click → open is purely client-side; B1.server doesn't need to do
+  anything for it.
 ```
 
 ---

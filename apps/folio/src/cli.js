@@ -12,6 +12,7 @@
  *   folio share <path> --for <peer-pubkey> [--scope read|write|delete|*] [--expires <ms>]
  *   folio conflicts [--resolve]
  *   folio rm <path>
+ *   folio tray [--url <base>] [--interval <ms>]
  *
  * Exit codes:
  *   0   success
@@ -25,6 +26,7 @@ import { statusCmd }    from './cli/statusCmd.js';
 import { shareCmd }     from './cli/shareCmd.js';
 import { conflictsCmd } from './cli/conflictsCmd.js';
 import { rmCmd }        from './cli/rmCmd.js';
+import { trayCmd }      from './cli/trayCmd.js';
 
 const COMMANDS = {
   init:      initCmd,
@@ -34,6 +36,7 @@ const COMMANDS = {
   share:     shareCmd,
   conflicts: conflictsCmd,
   rm:        rmCmd,
+  tray:      trayCmd,
 };
 
 async function main() {
@@ -85,6 +88,9 @@ Commands:
                                   --expires <ms-from-now>      (default: 1h)
   conflicts [--resolve]         List unresolved conflicts; --resolve opens \$EDITOR
   rm <path>                     Mark a file as deleted-locally (tombstone)
+  tray [--url <base>]           Run the tray-bar status indicator (foreground)
+                                  --interval <ms>  poll interval (default 5000)
+                                  --backoff <ms>   slow interval after failures (default 30000)
 
   --help, -h                    Show this help
   --version, -v                 Print version
