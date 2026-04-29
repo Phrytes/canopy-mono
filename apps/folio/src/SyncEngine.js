@@ -111,6 +111,30 @@ export class SyncEngine extends Emitter {
   }
 
   /**
+   * Hot-swap the live PodClient (Folio v2.1).
+   *
+   * Replaces `#podClient` atomically.  Any in-flight runOnce keeps using the
+   * old client until it resolves — we deliberately do NOT touch `#runChain`,
+   * so currently-in-flight reads/writes against the OLD client are allowed
+   * to finish.  The NEXT scheduled / explicit `runOnce` picks up the new
+   * client.
+   *
+   * `#stateLoaded` is reset so the state file is re-read on the next run —
+   * the new pod's view of state may differ from the old one's.
+   *
+   * Emits a private `pod-client-swapped` event for internal subscribers
+   * (intentionally NOT mirrored to the public WS API).
+   *
+   * @param {object} newClient — a PodClient (or compatible mock).
+   */
+  setPodClient(newClient) {
+    if (!newClient) throw new Error('SyncEngine.setPodClient: newClient is required');
+    this.#podClient = newClient;
+    this.#stateLoaded = false;
+    this.emit('pod-client-swapped', { ts: Date.now() });
+  }
+
+  /**
    * Return the live list of auto-share tokens, suitable for CLI / UI display.
    * Each entry: `{ webid, path, podUri, issuer, issuedAt, expires }`.
    *
@@ -140,8 +164,15 @@ export class SyncEngine extends Emitter {
     // Ensure local root exists so chokidar / scanLocal don't blow up.
     await fs.mkdir(this.#localRoot, { recursive: true });
 
+    // Folio v2.1 — snapshot the podClient ref once at the start of the
+    // internal run.  setPodClient() may replace `#podClient` mid-flight; the
+    // contract is that an already-started run continues against the OLD
+    // client (so in-flight writes don't get re-routed).  All subsequent
+    // reads/writes in this run go through `podClient` (the local snapshot).
+    const podClient = this.#podClient;
+
     const localScan = await scanLocal(this.#localRoot, { pathMap: this.#pathMap });
-    const podScan   = await scanPod(this.#podClient, this.#podRoot, { pathMap: this.#pathMap });
+    const podScan   = await scanPod(podClient, this.#podRoot, { pathMap: this.#pathMap });
     const d         = diff(localScan, podScan, this.#knownState);
 
     let uploads = 0, downloads = 0, deletes = 0, conflicts = 0;
@@ -161,8 +192,8 @@ export class SyncEngine extends Emitter {
       }
       for (const c of containersToEnsure) {
         try {
-          if (typeof this.#podClient.createContainer === 'function') {
-            await this.#podClient.createContainer(c);
+          if (typeof podClient.createContainer === 'function') {
+            await podClient.createContainer(c);
           }
         } catch (err) {
           this.emit('error', { phase: 'ensure-container', uri: c, err });
@@ -174,7 +205,7 @@ export class SyncEngine extends Emitter {
           const podUri = this.#pathMap.localToPod(f.absPath);
           const content = await fs.readFile(f.absPath);
           const ct = guessContentType(f.relPath);
-          await this.#podClient.write(podUri, content, { contentType: ct });
+          await podClient.write(podUri, content, { contentType: ct });
           this.#knownState[f.relPath] = { sha256: f.sha256, syncedAt: Date.now() };
           uploads++;
           // Folio.B4: snapshot the just-uploaded content.  Skip dotted paths
@@ -189,7 +220,7 @@ export class SyncEngine extends Emitter {
     if (direction === 'both' || direction === 'pull') {
       for (const f of d.toDownload) {
         try {
-          const r = await this.#podClient.read(f.podUri, { decode: 'string' });
+          const r = await podClient.read(f.podUri, { decode: 'string' });
           const absPath = this.#pathMap.podToLocal(f.podUri);
           await fs.mkdir(dirname(absPath), { recursive: true });
           // Write content as-is.  PodClient.read with decode:'string' returns a string;
@@ -212,7 +243,7 @@ export class SyncEngine extends Emitter {
     for (const f of d.conflicts) {
       try {
         const localText = await fs.readFile(f.absPath, 'utf8');
-        const remote    = await this.#podClient.read(f.podUri, { decode: 'string' });
+        const remote    = await podClient.read(f.podUri, { decode: 'string' });
         await applyConflict(f.absPath, localText, String(remote.content ?? ''), {
           localTimestamp:  f.localMtimeMs,
           remoteTimestamp: f.remoteMtimeMs,

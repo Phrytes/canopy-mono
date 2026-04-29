@@ -53,8 +53,16 @@ export async function buildPodClient(cfg, deps = {}) {
  * We don't reuse the heavyweight `SolidVault` from core here because
  * that one drives its OWN OIDC dance; the OidcSession we own is the
  * source of truth for tokens.
+ *
+ * Exported as a public-ish helper (Folio v2.1) so the auth callback
+ * route can build a real PodClient from a freshly-authenticated session
+ * without going through the env-var-keyed `buildPodClient`.
+ *
+ * @param {object} cfg                 Loaded folio config (needs `podRoot`)
+ * @param {object} oidc                Authenticated `OidcSession` instance
+ * @returns {Promise<object>}          A real `PodClient`.
  */
-async function buildRealPodClient(cfg, oidc) {
+export async function buildRealPodClient(cfg, oidc) {
   const podClientMod = await import('@canopy/pod-client');
   const { PodClient, SolidOidcAuth } = podClientMod;
 

@@ -11,6 +11,7 @@
  *   { type: 'sync.done',      ts, uploads, downloads, deletes, conflicts }
  *   { type: 'conflict.new',   ts, id, relPath, podUri }
  *   { type: 'error',          ts, phase, relPath?, message }
+ *   { type: 'auth.swapped',   ts, webid }                       (Folio v2.1)
  *
  * All events carry a millisecond `ts`.  Clients are expected to ignore types
  * they don't understand (forward-compat).
@@ -144,14 +145,27 @@ export class WsHub {
       });
     };
 
-    this.#engine.on('synced',      onSynced);
-    this.#engine.on('conflict',    onConflict);
-    this.#engine.on('error',       onError);
-    this.#engine.on('version.new', onVersionNew);
+    // Folio v2.1 — `auth.swapped` is fired by the auth-callback path on a
+    // successful PodClient hot-swap.  Frame carries ONLY the webid; never
+    // any tokens (hard rule per spec).
+    const onAuthSwapped = (a) => {
+      this.broadcast({
+        type:  'auth.swapped',
+        ts:    a?.ts ?? Date.now(),
+        webid: a?.webid ?? null,
+      });
+    };
 
-    this.#unsubs.push(() => this.#engine.off('synced',      onSynced));
-    this.#unsubs.push(() => this.#engine.off('conflict',    onConflict));
-    this.#unsubs.push(() => this.#engine.off('error',       onError));
-    this.#unsubs.push(() => this.#engine.off('version.new', onVersionNew));
+    this.#engine.on('synced',       onSynced);
+    this.#engine.on('conflict',     onConflict);
+    this.#engine.on('error',        onError);
+    this.#engine.on('version.new',  onVersionNew);
+    this.#engine.on('auth.swapped', onAuthSwapped);
+
+    this.#unsubs.push(() => this.#engine.off('synced',       onSynced));
+    this.#unsubs.push(() => this.#engine.off('conflict',     onConflict));
+    this.#unsubs.push(() => this.#engine.off('error',        onError));
+    this.#unsubs.push(() => this.#engine.off('version.new',  onVersionNew));
+    this.#unsubs.push(() => this.#engine.off('auth.swapped', onAuthSwapped));
   }
 }

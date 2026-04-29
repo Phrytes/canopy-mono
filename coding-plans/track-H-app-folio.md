@@ -791,8 +791,163 @@ modify:
 
 - CLI sign-in flow (no `folio serve` running).  Defer to Phase C.
 - Hot-swap PodClient on the live engine after `/auth/callback` lands —
-  for v1 the user restarts `folio serve`.
+  ✅ shipped in **Folio v2.1** (below); no `folio serve` restart needed.
 - Multi-account: a single OIDC session per process for v1.
+
+---
+
+#### Folio v2.1 — Hot-swap PodClient on sign-in
+
+| | |
+|---|---|
+| **Status** | done (2026-04-29) |
+| **Tag** | [NEW] |
+| **Notes** | Closes the v2 follow-up flagged by B1.auth.  When `/auth/callback` succeeds, the live `SyncEngine` now hot-swaps its PodClient over the freshly-authenticated `OidcSession` and auto-fires one `runOnce({ direction: 'both' })`.  The user's notes start flowing the moment they sign in — no `folio serve` restart. |
+
+**Files:**
+
+```
+modify:
+  apps/folio/src/SyncEngine.js               # add setPodClient(newClient); snapshot
+                                             # podClient at start of #runOnceInternal
+                                             # so in-flight runs use the OLD client
+  apps/folio/src/cli/_podFactory.js          # export buildRealPodClient as a public
+                                             # helper (was a private function)
+  apps/folio/src/auth/authRoutes.js          # callback now triggers the swap +
+                                             # runOnce + emits engine 'auth.swapped'
+                                             # event; redirect bounded by 5s race
+  apps/folio/src/cli/serveCmd.js             # forward `cfg` to createServer
+  apps/folio/src/server/index.js             # forward engine/cfg/hub/buildPodClient
+                                             # to createAuthRouter
+  apps/folio/src/server/wsHub.js             # forward 'auth.swapped' engine events
+  apps/folio/src/server/static/auth.js       # listen for ws.auth.swapped; show toast
+  apps/folio/src/server/static/index.html    # toast region (#auth-toast)
+  apps/folio/src/server/static/style.css     # .auth-toast styles
+  apps/folio/test/SyncEngine.test.js         # 5 setPodClient tests (rapid swap,
+                                             # swap-during-sync, pending-watch, etc.)
+  apps/folio/test/auth.test.js               # 6 hot-swap tests + 1 export check +
+                                             # 1 callback-failure path test
+```
+
+**Decisions:**
+
+- **`setPodClient(newClient)` is intentionally minimal.**  Synchronously
+  replaces `#podClient`, resets `#stateLoaded`, emits a private
+  `'pod-client-swapped'` event.  Does NOT touch `#runChain` privates, so a
+  currently-in-flight runOnce keeps using the OLD client.  Achieved by
+  capturing `const podClient = this.#podClient` at the start of
+  `#runOnceInternal` and using that local for every read/write/createContainer
+  in the body.  The next runOnce sees the new client.
+- **Callback redirect is bounded by `swapTimeoutMs` (default 5000ms).**
+  `Promise.race` between the swap and a `setTimeout` ensures the browser
+  redirect never hangs even if the PodClient construction stalls.  The swap
+  continues in the background regardless.
+- **`auth.swapped` is an engine event forwarded by wsHub** (matches the
+  existing `synced` / `conflict` / `error` / `version.new` pattern).  The
+  authRoutes handler `engine.emit('auth.swapped', { ts, webid })`; wsHub's
+  forwarder broadcasts as a WS frame.
+- **Frame carries WebID only.**  Hard rule: `accessToken` / `refreshToken`
+  never leak through the broadcast.  Test asserts the JSON does not contain
+  any of the test session's token strings.
+- **runOnce after swap is fire-and-forget.**  The auth callback returns
+  promptly; sync errors emit through the engine's normal `'error'` event
+  channel and the existing wsHub forwarding path.  Surfacing errors more
+  loudly in the UI is v2.2's job.
+- **`buildRealPodClient` is now exported.**  Slight refactor of
+  `_podFactory.js`: the helper was a private function; now `export`-ed so
+  the auth-route handler can call it directly without going through the
+  env-var-keyed `buildPodClient`.  The `buildPodClient(cfg, deps)` signature
+  is unchanged.
+- **Mock-pod path is untouched.**  `FOLIO_TEST_MOCK_POD=1` users never hit
+  the swap (the env-var path short-circuits before any OIDC branch); the
+  v2.1 callback handler only swaps when `engine + cfg + oidc.isAuthenticated`
+  are all present.  Test asserts `buildPodClientCalls === 0` in mock mode.
+
+**Tests:**
+
+13 new tests, all green.  Total folio suite = 255 (242 baseline + 13 new).
+
+| # | Test | Asserts |
+|---|---|---|
+| 1 | SyncEngine.setPodClient — basic swap | next runOnce uses new client |
+| 2 | SyncEngine.setPodClient — null/undefined | throws |
+| 3 | SyncEngine.setPodClient — emits event | `pod-client-swapped` fires |
+| 4 | SyncEngine.setPodClient — rapid swap | only the last client is used |
+| 5 | SyncEngine.setPodClient — swap during in-flight | OLD client finishes; NEW client picks up next |
+| 6 | SyncEngine.setPodClient — swap-with-pending-watch | scheduled run uses new client |
+| 7 | /auth/callback hot-swap | builds new PodClient + swaps |
+| 8 | /auth/callback auto-runs runOnce | uploads land on the new client |
+| 9 | /auth/callback broadcasts auth.swapped WS frame | webid only; no tokens |
+| 10 | /auth/callback redirect bounded by 5s | redirects even when build is slow |
+| 11 | mock-pod regression | swap is skipped when FOLIO_TEST_MOCK_POD=1 |
+| 12 | callback failure: no swap | bad code → 400 → no swap, no auth.swapped, no extra runOnce |
+| 13 | _podFactory exports buildRealPodClient | public-ish helper available |
+
+**DoD:**
+
+- [x] `SyncEngine.setPodClient(newClient)` exists, with tests
+- [x] Auth callback triggers PodClient swap + auto-sync
+- [x] `auth.swapped` WS frame fires; UI shows a toast
+- [x] If runOnce after swap errors, the error fires as a normal sync error
+      event (per the existing pattern)
+- [x] User-visible behavior: sign in via web → page redirects to `/` → status
+      pill shows webid → ≤2s later, the status pane shows files syncing → no
+      manual restart of `folio serve` needed
+- [x] ≥6 new tests across `SyncEngine.test.js` + `auth.test.js` (13 added)
+- [x] Total Folio test count ≥248 (255 actual)
+- [x] All 242 baseline tests stay green
+- [x] `npm test --prefix apps/folio` green
+
+**Out of scope (handed forward to v2.2 / v2.5 / v3):**
+
+- Surfacing errors loudly in the UI on a failed post-swap runOnce — v2.2.
+- Force re-sync UI button — v2.5.
+- Multi-account support (single OIDC session per process for now) — v3.
+- Token refresh — Inrupt's `Session` already handles that internally.
+
+**Notes (team scratchpad):**
+
+```
+2026-04-29 — Folio v2.1 landed.  255 vitest tests pass (242 baseline + 13 new).
+No new top-level deps; pure event-wiring + a small refactor of _podFactory.
+
+Key implementation choices:
+- SyncEngine.#runOnceInternal snapshots `const podClient = this.#podClient`
+  at its top, AFTER #loadState and fs.mkdir but BEFORE scanPod.  All reads /
+  writes / createContainer calls in the body use the local snapshot.  This
+  guarantees that an in-flight run keeps writing to the OLD client even if
+  setPodClient lands mid-run.  The change is a 1-letter rename from
+  `this.#podClient` → `podClient` at six call sites; behaviour for callers
+  that don't swap is identical.
+- The callback handler awaits the swap with Promise.race against a setTimeout
+  (default 5s).  Even if PodClient construction never resolves, the browser
+  redirect fires.  The swap continues asynchronously and emits 'auth.swapped'
+  + runs runOnce when it eventually completes.
+- The runOnce is dispatched via Promise.resolve().then(() => engine.runOnce(...))
+  so it never blocks the caller microtask AND its rejection is caught by a
+  trailing .catch that re-emits as a synthetic error event.
+- The WS forwarder in wsHub.js follows the existing pattern: subscribe to
+  engine.on('auth.swapped', ...) at construction; unsubscribe on close().
+  Frame shape: { type: 'auth.swapped', ts, webid }.
+
+Why an engine event instead of a direct hub.broadcast:
+- Matches the existing pattern (synced/conflict/error/version.new are all
+  engine events that wsHub forwards).
+- Decouples the auth router from the WS layer — engines are observable, the
+  hub is one of N possible observers (tests can listen too).
+
+Things to know for v2.2 / future work:
+- The auth.swapped frame fires BEFORE the auto-runOnce starts, so UIs that
+  want to show "syncing now…" can paint optimistically and wait for the
+  next sync.progress / sync.done frames to land naturally.
+- The toast in static/auth.js auto-hides after 5s.  Re-firing within that
+  window cancels the prior timer.
+- If someone signs out and then signs back in as a different user, the
+  current process gets a fresh PodClient via the same path — but the
+  SyncEngine's #knownState file is per-localRoot, not per-pod, so the
+  diff layer will see the new pod as "all uploads needed" on first runOnce.
+  That's surprising behaviour for multi-account; v3 needs per-account state.
+```
 
 ---
 
