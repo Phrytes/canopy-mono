@@ -47,6 +47,7 @@ import { networkInterfaces }                 from 'node:os';
 import { WebSocketServer }                   from 'ws';
 import { MultiRecipientQueue }               from './MultiRecipientQueue.js';
 import { GroupAuthVerifier }                 from './GroupAuthVerifier.js';
+import { logHop }                            from './verbose.js';
 
 const DEFAULT_PORT       = 8787;
 const DEFAULT_QUEUE_TTL  = 5 * 60_000;  // 5 min
@@ -213,7 +214,12 @@ export async function startRelay(opts = {}) {
         // Drain any queued messages.
         const queued = queue.get(address) ?? [];
         for (const { envelope } of queued) {
-          try { socket.send(JSON.stringify({ type: 'message', envelope })); } catch {}
+          try {
+            // Verbose hop log for the drain — preserves the on-the-wire
+            // record even when the recipient was offline at send time.
+            logHop({ kind: 'send-queued', from: '?', to: address, envelope });
+            socket.send(JSON.stringify({ type: 'message', envelope }));
+          } catch {}
         }
         queue.delete(address);
 
@@ -229,6 +235,10 @@ export async function startRelay(opts = {}) {
         const target = clients.get(to);
         if (target && target.readyState === 1 /* OPEN */) {
           logLine(`[relay] ${shortId(registeredAddress)} → ${shortId(to)}  _p=${envelope._p ?? '?'}`);
+          // Q-Smoke.4 (locked 2026-04-29): per-hop verbose log + plaintext-leak
+          // detector for the S9 sealed-forward smoke check.  No-op unless
+          // RELAY_VERBOSE=1 is set.
+          logHop({ kind: 'send', from: registeredAddress, to, envelope });
           target.send(JSON.stringify({ type: 'message', envelope }));
         } else {
           // Buffer up to queueCap messages per offline peer.
@@ -275,6 +285,9 @@ export async function startRelay(opts = {}) {
           const sock = clients.get(target);
           if (!sock || sock.readyState !== 1) return;
           try {
+            // Verbose hop log (no-op unless RELAY_VERBOSE=1).  We log per
+            // delivered target so the leak detector covers fan-out paths.
+            logHop({ kind: 'multi-deliver', from: callerAddress, to: target, payload: p });
             sock.send(JSON.stringify({
               type:    'multi-deliver',
               id:      ctx?.id,
