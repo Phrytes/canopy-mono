@@ -171,6 +171,56 @@
           </div>
         </div>
 
+        <!-- Folio v2.11 — Per-file local-tombstone confirm modal.
+             Opened by status.js when the user clicks "Delete locally" on a
+             row in the recently-synced list.  Closes on Cancel, the × in
+             the corner, the Esc key, or a click on the modal backdrop. -->
+        <div id="rm-confirm-modal" class="modal modal--rm" hidden role="dialog" aria-modal="true" aria-labelledby="rm-confirm-title">
+          <div class="modal__backdrop" id="rm-confirm-backdrop"></div>
+          <div class="modal__inner">
+            <button class="modal__close" id="btn-rm-close" type="button" aria-label="Close">×</button>
+            <h2 id="rm-confirm-title">Stop syncing this file locally?</h2>
+            <p>
+              <strong>File:</strong>
+              <code id="rm-confirm-path" class="modal__path"></code>
+            </p>
+            <p>
+              The pod copy stays. The local file will be removed on the next
+              sync; it won't re-download because of the tombstone.
+              You can recover it later via Verify pod state.
+            </p>
+            <div class="actions">
+              <button id="btn-rm-confirm" class="btn btn--primary">Delete locally</button>
+              <button id="btn-rm-cancel"  class="btn btn--ghost">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Folio v2.11 — Per-file PERMANENT pod-delete confirm modal.
+             Looks visibly different (red border, red OK button) so the
+             destructive action stands out.  Same close-affordances as the
+             local-tombstone modal: Cancel, ×, Esc, backdrop. -->
+        <div id="pod-delete-confirm-modal" class="modal modal--pod-delete" hidden role="dialog" aria-modal="true" aria-labelledby="pod-delete-confirm-title">
+          <div class="modal__backdrop" id="pod-delete-confirm-backdrop"></div>
+          <div class="modal__inner modal__inner--danger">
+            <button class="modal__close" id="btn-pod-delete-close" type="button" aria-label="Close">×</button>
+            <h2 id="pod-delete-confirm-title">Permanently delete from your pod?</h2>
+            <p>
+              <strong>File:</strong>
+              <code id="pod-delete-confirm-path" class="modal__path"></code>
+            </p>
+            <p class="modal__warn modal__warn--danger">
+              This cannot be undone. There is no time-machine restore — the
+              file's version history is also wiped, and the pod-side copy
+              is removed for everyone with access.
+            </p>
+            <div class="actions">
+              <button id="btn-pod-delete-confirm" class="btn btn--danger">Permanently delete</button>
+              <button id="btn-pod-delete-cancel"  class="btn btn--ghost">Cancel</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Folio v2.2 — recent-errors collapsible.  Shows the last 10 sync
              errors (newest first) so users can see the history beyond the
              single banner above.  Toggled with the summary; populated from

@@ -664,6 +664,63 @@ export class SyncEngine extends Emitter {
     try { await this.dropVersions(relPath); } catch { /* swallow */ }
   }
 
+  /**
+   * Permanent delete (Folio v2.11).  Removes the file from the pod and the
+   * local working copy, drops knownState, and wipes the time-machine
+   * history for the file — "fully forget this file, everywhere".
+   *
+   * Contract:
+   *   - Resolves the pod URI from `relPath` via the engine's PathMap.
+   *   - Calls `podClient.deleteCompletely(podUri)` — pod-side resource is
+   *     gone for everyone after this returns.  NOT_FOUND is treated as a
+   *     success (the resource is already gone).
+   *   - Removes the local file (best-effort; ENOENT is fine).
+   *   - Drops the file's entry from `#knownState` and persists.
+   *   - Drops the file's version history (`dropVersions(relPath)`) so a
+   *     restore via the time-machine is impossible after this call.
+   *   - Emits `sync.delete.done` with `{ ts, relPath, podUri }`.
+   *
+   * Errors from the pod client (other than NOT_FOUND) propagate to the
+   * caller; the route handler turns them into a 500.  knownState + version
+   * history are NOT touched on a pod-side failure (the resource still
+   * exists; the user can retry).
+   *
+   * @param {string} relPath  POSIX-style relative path
+   * @returns {Promise<{ relPath: string, podUri: string }>}
+   */
+  async deleteCompletely(relPath) {
+    if (typeof relPath !== 'string' || relPath.length === 0) {
+      throw new Error('deleteCompletely: relPath is required');
+    }
+    const podUri = this.#pathMap.localToPod(join(this.#localRoot, ...relPath.split('/')));
+    const podClient = this.#podClient;
+    try {
+      if (typeof podClient.deleteCompletely === 'function') {
+        await podClient.deleteCompletely(podUri);
+      } else if (typeof podClient.delete === 'function') {
+        await podClient.delete(podUri);
+      }
+    } catch (err) {
+      if (err?.code !== 'NOT_FOUND') throw err;
+      // Already gone from the pod — proceed with local cleanup.
+    }
+    // Best-effort local file removal — the file may be absent (e.g. the
+    // user deleted it from the OS file manager already).
+    const absPath = join(this.#localRoot, ...relPath.split('/'));
+    try { await fs.unlink(absPath); } catch (err) {
+      if (err && err.code !== 'ENOENT') {
+        this.emit('error', { phase: 'delete-local-file', relPath, err });
+      }
+    }
+    await this.#loadState();
+    delete this.#knownState[relPath];
+    await this.#saveState();
+    // Wipe the time-machine history — pod-delete is "permanent."
+    try { await this.dropVersions(relPath); } catch { /* swallow */ }
+    this.emit('sync.delete.done', { ts: Date.now(), relPath, podUri });
+    return { relPath, podUri };
+  }
+
   // ── Folio.B4 — time-machine versioning ────────────────────────────────────
 
   /**

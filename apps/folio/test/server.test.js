@@ -1118,6 +1118,99 @@ describe('GET /verify/:id (Folio v2.5)', () => {
   });
 });
 
+// ── Folio v2.11 — POST /rm/:id + POST /delete/:id ──────────────────────────
+
+describe('POST /rm/:id (Folio v2.11 — local tombstone)', () => {
+  it('tombstones the file: pod copy stays, local sync skips it on next runOnce', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    await engine.runOnce(); // a.md is now in the pod + knownState.
+    expect(podClient.store.has(`${POD_ROOT}a.md`)).toBe(true);
+
+    const id = conflictIdFromRelPath('a.md');
+    const { status, body } = await postJson(`/rm/${id}`, {});
+    expect(status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.relPath).toBe('a.md');
+
+    // Pod copy stays (this is the entire point of the tombstone path).
+    expect(podClient.store.has(`${POD_ROOT}a.md`)).toBe(true);
+    // The pod-client mock recorded the tombstone.
+    expect(podClient.tombstones.has(`${POD_ROOT}a.md`)).toBe(true);
+  });
+
+  it('returns 400 BAD_DELETE_ID for malformed ids (path-traversal hardening)', async () => {
+    const id = Buffer.from('../etc/passwd', 'utf8').toString('base64')
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const { status, body } = await postJson(`/rm/${id}`, {});
+    expect(status).toBe(400);
+    expect(body.error.code).toBe('BAD_DELETE_ID');
+  });
+
+  it('returns 404 NOT_FOUND when no local file and no knownState entry exist', async () => {
+    const id = conflictIdFromRelPath('never-existed.md');
+    const { status, body } = await postJson(`/rm/${id}`, {});
+    expect(status).toBe(404);
+    expect(body.error.code).toBe('NOT_FOUND');
+  });
+});
+
+describe('POST /delete/:id (Folio v2.11 — permanent pod delete)', () => {
+  it('removes the pod resource + local file + version history and broadcasts sync.delete.done', async () => {
+    await fs.writeFile(join(localRoot, 'gone.md'), 'bye');
+    await engine.runOnce();
+    expect(podClient.store.has(`${POD_ROOT}gone.md`)).toBe(true);
+    expect((await engine.versions('gone.md')).length).toBeGreaterThan(0);
+
+    const ws = new WebSocket(wsUrl);
+    const frames = [];
+    await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
+    ws.on('message', (data) => {
+      try { frames.push(JSON.parse(data.toString('utf8'))); } catch { /* ignore */ }
+    });
+
+    const id = conflictIdFromRelPath('gone.md');
+    const { status, body } = await postJson(`/delete/${id}`, {});
+    expect(status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.relPath).toBe('gone.md');
+    expect(body.podUri).toBe(`${POD_ROOT}gone.md`);
+
+    // Pod-side: gone.
+    expect(podClient.store.has(`${POD_ROOT}gone.md`)).toBe(false);
+    // Local file: gone.
+    await expect(fs.access(join(localRoot, 'gone.md'))).rejects.toThrow();
+    // Version history: wiped (pod-delete is permanent).
+    expect(await engine.versions('gone.md')).toEqual([]);
+
+    // WS frame fired.
+    await waitFor(() => frames.some((f) => f.type === 'sync.delete.done'),
+      { timeoutMs: 2000 });
+    const f = frames.find((x) => x.type === 'sync.delete.done');
+    expect(f.relPath).toBe('gone.md');
+    expect(f.podUri).toBe(`${POD_ROOT}gone.md`);
+    expect(typeof f.ts).toBe('number');
+
+    ws.close();
+  });
+
+  it('returns 400 BAD_DELETE_ID for path-traversal attempts', async () => {
+    const id = Buffer.from('../../etc/shadow', 'utf8').toString('base64')
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const { status, body } = await postJson(`/delete/${id}`, {});
+    expect(status).toBe(400);
+    expect(body.error.code).toBe('BAD_DELETE_ID');
+  });
+
+  it('returns 404 NOT_FOUND when the file is absent locally AND from the pod', async () => {
+    const id = conflictIdFromRelPath('phantom.md');
+    // Mock supports exists() so the route can confidently 404.
+    podClient.exists = async () => false;
+    const { status, body } = await postJson(`/delete/${id}`, {});
+    expect(status).toBe(404);
+    expect(body.error.code).toBe('NOT_FOUND');
+  });
+});
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 async function waitFor(predicate, { timeoutMs = 2000, stepMs = 25 } = {}) {
