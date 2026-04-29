@@ -346,10 +346,10 @@ describe('share form (POST /share)', () => {
   });
 });
 
-// ── 8. Folio.B4 — History pane ─────────────────────────────────────────────
+// ── 8. Folio.B4 — Versioning (per-file popover after the v2.9 re-shape) ───
 
-describe('history pane (Folio.B4)', () => {
-  it('serves /versions.js with the History pane logic', async () => {
+describe('versioning (Folio.B4 — per-file popover after v2.9)', () => {
+  it('serves /versions.js with the per-file popover controller', async () => {
     const r = await fetch(`${baseUrl}/versions.js`);
     expect(r.status).toBe(200);
     const text = await r.text();
@@ -357,17 +357,6 @@ describe('history pane (Folio.B4)', () => {
     expect(text).toContain('initVersions');
     // No innerHTML on user-controlled values.
     expect(text).not.toMatch(/\.innerHTML\s*=/);
-  });
-
-  it('index.html has a History tab + pane wired with the expected hooks', async () => {
-    const r = await fetch(`${baseUrl}/`);
-    const html = await r.text();
-    expect(html).toMatch(/id="tab-history"/);
-    expect(html).toMatch(/id="pane-history"/);
-    expect(html).toMatch(/id="history-file-list"/);
-    expect(html).toMatch(/id="history-version-list"/);
-    expect(html).toMatch(/id="history-content"/);
-    expect(html).toMatch(/id="btn-history-restore"/);
   });
 
   it('GET /versions returns the file picker feed; restore endpoint fires', async () => {
@@ -398,12 +387,6 @@ describe('history pane (Folio.B4)', () => {
     expect(r.restoredFromMs).toBe(ts);
     expect(typeof r.snapshotMsBeforeRestore).toBe('number');
     expect(await fs.readFile(join(localRoot, 'a.md'), 'utf8')).toBe('first');
-  });
-
-  it('conflicts.js wires a "View history" link emitting history.openFor', async () => {
-    const text = await (await fetch(`${baseUrl}/conflicts.js`)).text();
-    expect(text).toContain('View history');
-    expect(text).toContain('history.openFor');
   });
 });
 
@@ -632,8 +615,8 @@ describe('Folio v2.3 — Settings panel (NOT a top tab)', () => {
     expect(html).toMatch(/id="btn-diagnostics-run"/);
     expect(html).toMatch(/id="diagnostics-list"/);
 
-    // Hard rule: NO new top-level Diagnostics tab.  The only tabs in the
-    // .tabs nav are status / conflicts / share / history.
+    // Hard rule: NO new top-level Diagnostics tab.  After the v2.9 re-shape
+    // the only primary tabs are Status / Conflicts / Share.
     const tabsBlock = html.match(/<nav class="tabs"[\s\S]*?<\/nav>/);
     expect(tabsBlock).toBeTruthy();
     expect(tabsBlock[0]).not.toMatch(/id="tab-diagnostics"/i);
@@ -812,5 +795,148 @@ describe('Folio v2.2 — banner end-to-end against the server', () => {
     const body = await (await fetch(`${baseUrl}/status`)).json();
     expect(body.lastError).toBeNull();
     expect(body.errors).toEqual([]);
+  });
+});
+
+// ── 13. Folio v2.9 — Web UI re-shape (Dropbox-shaped) ────────────────────
+
+describe('Folio v2.9 — three primary tabs + per-file history popover', () => {
+  it('index.html exposes exactly three primary tabs (Status / Conflicts / Share); History is gone', async () => {
+    const r = await fetch(`${baseUrl}/`);
+    expect(r.status).toBe(200);
+    const html = await r.text();
+
+    // Tabs nav block: only the three primary tabs.
+    const tabsBlock = html.match(/<nav class="tabs"[\s\S]*?<\/nav>/);
+    expect(tabsBlock).toBeTruthy();
+    expect(tabsBlock[0]).toMatch(/id="tab-status"/);
+    expect(tabsBlock[0]).toMatch(/id="tab-conflicts"/);
+    expect(tabsBlock[0]).toMatch(/id="tab-share"/);
+    // History is no longer a primary tab.
+    expect(tabsBlock[0]).not.toMatch(/id="tab-history"/);
+    expect(tabsBlock[0]).not.toMatch(/>History</);
+
+    // The History pane wrapper has been removed too — versioning lives in
+    // the per-file popover now.
+    expect(html).not.toMatch(/id="pane-history"/);
+    expect(html).not.toMatch(/id="history-file-list"/);
+    expect(html).not.toMatch(/id="history-version-list"/);
+
+    // Settings link in the header survives v2.9 (it predates this slice
+    // — landed in v2.3 — but v2.9 must keep it intact).
+    expect(html).toMatch(/id="settings-open-btn"/);
+    expect(html).toMatch(/class="settings-link"/);
+  });
+
+  it('index.html ships the per-file history popover, closed-by-default', async () => {
+    const r = await fetch(`${baseUrl}/`);
+    const html = await r.text();
+
+    // Popover overlay + its component hooks.
+    expect(html).toMatch(/id="history-popover"/);
+    expect(html).toMatch(/id="history-popover-backdrop"/);
+    expect(html).toMatch(/id="history-popover-close"/);
+    expect(html).toMatch(/id="history-popover-relpath"/);
+    expect(html).toMatch(/id="history-popover-versions"/);
+    expect(html).toMatch(/id="history-popover-content"/);
+    expect(html).toMatch(/id="btn-history-popover-restore"/);
+
+    // ARIA: the popover is a modal dialog.
+    expect(html).toMatch(/id="history-popover"[^>]*role="dialog"/);
+    expect(html).toMatch(/id="history-popover"[^>]*aria-modal="true"/);
+
+    // Closed-by-default: the popover element carries `hidden` on first paint.
+    expect(html).toMatch(/id="history-popover"[^>]*hidden/);
+  });
+
+  it('conflicts.js + status.js wire per-file history affordances that emit history.popover.open (no tab navigation)', async () => {
+    const conflictsText = await (await fetch(`${baseUrl}/conflicts.js`)).text();
+    const statusText    = await (await fetch(`${baseUrl}/status.js`)).text();
+
+    // Both modules emit the v2.9 popover-open bus event for the file row.
+    expect(conflictsText).toContain('history.popover.open');
+    expect(statusText).toContain('history.popover.open');
+
+    // The "↻ history" affordance text (U+21BB) is the user-visible label.
+    expect(conflictsText).toContain('↻ history');
+    expect(statusText).toContain('↻ history');
+
+    // Critically: no tab navigation — the conflicts module must NOT click()
+    // a former history tab anymore (which doesn't exist in the v2.9 DOM).
+    expect(conflictsText).not.toMatch(/getElementById\(['"]tab-history['"]\)/);
+
+    // No innerHTML on either module — XSS hardening preserved.
+    expect(conflictsText).not.toMatch(/\.innerHTML\s*=/);
+    expect(statusText).not.toMatch(/\.innerHTML\s*=/);
+  });
+
+  it('versions.js implements the popover (open/close + Esc) and still hits /versions/* REST endpoints', async () => {
+    const r = await fetch(`${baseUrl}/versions.js`);
+    expect(r.status).toBe(200);
+    const text = await r.text();
+
+    // REST surface unchanged: list, list-for-id, content-for-ts, restore.
+    expect(text).toContain('/versions');
+    expect(text).toContain('/versions/${activeId}');
+    expect(text).toContain('/versions/${activeId}/restore');
+    // Content path uses both the id + ts.
+    expect(text).toMatch(/\/versions\/\$\{activeId\}\/content\/\$\{v\.ts\}/);
+
+    // Subscribed to the popover-open event from conflicts.js / status.js.
+    expect(text).toContain('history.popover.open');
+    // Esc-to-close handling.
+    expect(text).toMatch(/Escape/);
+    // No innerHTML anywhere — same XSS rule as the rest of the SPA.
+    expect(text).not.toMatch(/\.innerHTML\s*=/);
+  });
+
+  it('style.css ships the per-file popover styles + the gray-zero conflicts badge rule', async () => {
+    const r = await fetch(`${baseUrl}/style.css`);
+    expect(r.status).toBe(200);
+    const css = await r.text();
+
+    // Popover skeleton.
+    expect(css).toMatch(/\.history-popover\s*\{/);
+    expect(css).toMatch(/\.history-popover__backdrop/);
+    expect(css).toMatch(/\.history-popover__inner/);
+    expect(css).toMatch(/\.history-popover__close/);
+
+    // Per-row affordance link styling.
+    expect(css).toMatch(/\.history-affordance/);
+
+    // Gray-zero badge (Conflicts tab stable at N=0).
+    expect(css).toMatch(/\.tab \.badge--zero/);
+  });
+
+  it('GET /versions endpoints remain functional after the re-shape (no server-side regression)', async () => {
+    // Sanity: the REST contract that backs the per-file popover is the
+    // exact same one the old History tab used.  This test exercises it
+    // end-to-end so a future accidental server-side regression is caught.
+    await fs.writeFile(join(localRoot, 'note.md'), 'one');
+    await engine.runOnce();
+
+    const list = await (await fetch(`${baseUrl}/versions`)).json();
+    const f = list.files.find((x) => x.relPath === 'note.md');
+    expect(f).toBeDefined();
+    const id = conflictIdFromRelPath('note.md');
+    expect(f.id).toBe(id);
+
+    const versions = await (await fetch(`${baseUrl}/versions/${id}`)).json();
+    expect(versions.versions.length).toBeGreaterThanOrEqual(1);
+    const ts = versions.versions[0].ts;
+
+    const contentResp = await fetch(`${baseUrl}/versions/${id}/content/${ts}`);
+    expect(contentResp.status).toBe(200);
+    expect(await contentResp.text()).toBe('one');
+
+    // Restore round-trips against a mutated working copy.
+    await fs.writeFile(join(localRoot, 'note.md'), 'two');
+    const restore = await fetch(`${baseUrl}/versions/${id}/restore`, {
+      method:  'POST',
+      headers: { 'content-type': 'application/json' },
+      body:    JSON.stringify({ ts }),
+    });
+    expect(restore.status).toBe(200);
+    expect(await fs.readFile(join(localRoot, 'note.md'), 'utf8')).toBe('one');
   });
 });

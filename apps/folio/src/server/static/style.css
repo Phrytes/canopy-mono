@@ -56,13 +56,20 @@ body {
   min-width: 1.25rem;
   padding: 0 0.4rem;
   margin-left: 0.25rem;
-  background: #d44;
+  background: #d97706; /* yellow/amber when N>0 — Folio v2.9 */
   color: #fff;
   border-radius: 999px;
   font-size: 0.75rem;
   text-align: center;
 }
-.tab .badge:empty { display: none; }
+/* Folio v2.9 — Conflicts tab is always visible.  When N=0 the badge
+   stays present but renders gray so the tab feels "stable" rather than
+   appearing/disappearing as conflicts come and go.  When N>0 the badge
+   inherits the .tab .badge yellow/amber rule above. */
+.tab .badge--zero {
+  background: #c7c7c7;
+  color: #5b5b5b;
+}
 
 main { padding: 1rem 1.25rem 2rem; }
 .pane { display: none; }
@@ -171,13 +178,11 @@ main { padding: 1rem 1.25rem 2rem; }
 .share-recent li.empty { color: #999; }
 .share-recent code { font-family: ui-monospace, Menlo, Consolas, monospace; }
 
-/* ── History (Folio.B4) ───────────────────────────────────────────────── */
-.history-grid {
-  display: grid;
-  grid-template-columns: 16rem 1fr;
-  gap: 1rem;
-  margin-top: 0.5rem;
-}
+/* ── History (Folio.B4 → v2.9 per-file popover) ───────────────────────── */
+/* The .history-list ruleset is shared between the conflicts pane (legacy
+   Folio.B4 hooks that live on per-conflict rows) and the v2.9 popover's
+   version list.  No more two-column grid: history is now a per-file
+   modal overlay rather than a primary tab. */
 .history-list {
   list-style: none;
   padding: 0;
@@ -204,7 +209,93 @@ main { padding: 1rem 1.25rem 2rem; }
 .history-list__row--active { background: #e8f0fc; }
 .history-meta { font-size: 0.75rem; color: #777; }
 .history-version-ts { font-family: ui-monospace, Menlo, Consolas, monospace; }
-#history-content {
+
+/* Per-file history affordance — appears on conflict rows + recently-synced
+   rows.  Compact text link with the U+21BB clockwise-circle glyph; opens
+   the history popover for THAT file (no navigation). */
+.history-affordance,
+.conflict-history-link {
+  margin-left: 0.75rem;
+  font-size: 0.8rem;
+  color: #1d6fd8;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.history-affordance:hover,
+.conflict-history-link:hover { color: #155bb3; }
+
+/* Folio v2.9 — Per-file history popover.  Closed by default; opened by
+   versions.js in response to `history.popover.open`.  Same overall
+   pattern as the .settings-panel: backdrop + right-anchored panel. */
+.history-popover {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  justify-content: flex-end;
+}
+.history-popover[hidden] { display: none; }
+.history-popover__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+.history-popover__inner {
+  position: relative;
+  width: min(100%, 36rem);
+  height: 100%;
+  background: #fff;
+  border-left: 1px solid #ddd;
+  box-shadow: -8px 0 18px rgba(0, 0, 0, 0.10);
+  display: flex;
+  flex-direction: column;
+}
+.history-popover__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #eee;
+}
+.history-popover__header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.history-popover__header code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  color: #333;
+}
+.history-popover__close {
+  font: inherit;
+  font-size: 1.4rem;
+  line-height: 1;
+  width: 2rem;
+  height: 2rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #555;
+}
+.history-popover__close:hover { background: #f0f0f3; border-color: #ddd; }
+.history-popover__body {
+  padding: 0.75rem 1.25rem 1rem;
+  overflow-y: auto;
+  flex: 1;
+}
+.history-popover__viewer {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fdfdfd;
+}
+.history-popover__viewer h3 { margin: 0 0 0.4rem; font-size: 0.95rem; }
+#history-popover-content {
   width: 100%;
   font-family: ui-monospace, Menlo, Consolas, monospace;
   font-size: 0.85rem;
@@ -214,14 +305,6 @@ main { padding: 1rem 1.25rem 2rem; }
   background: #fafafa;
   resize: vertical;
 }
-.history-viewer { margin-top: 0.75rem; background: #fdfdfd; }
-.conflict-history-link {
-  margin-left: 0.75rem;
-  font-size: 0.8rem;
-  color: #1d6fd8;
-  text-decoration: underline;
-}
-.conflict-history-link:hover { color: #155bb3; }
 
 /* ── Auth pill ───────────────────────────────────────────────────────── */
 .auth-pill {
@@ -466,6 +549,13 @@ main { padding: 1rem 1.25rem 2rem; }
 .verify-list__meta {
   color: #777;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+/* Folio v2.9 — per-row history affordance inside the recently-synced list. */
+.verify-list__history {
+  font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 .verify-list__verify {
   font-size: 0.75rem;

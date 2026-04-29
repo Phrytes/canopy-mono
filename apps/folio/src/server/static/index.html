@@ -73,7 +73,7 @@
   <!-- Folio v2.3 — Settings overlay/panel.  Opened by the header
        Settings button; closes via the × in its own header, the Esc key,
        or a click on the dimmed backdrop.  NOT a primary tab — primary
-       tabs remain Status / Conflicts / Share (+ History from B4). -->
+       tabs (after the v2.9 reshape) are Status / Conflicts / Share. -->
   <div id="settings-panel" class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-panel-title" hidden>
     <div class="settings-panel__backdrop" id="settings-panel-backdrop"></div>
     <aside class="settings-panel__inner">
@@ -103,11 +103,15 @@
     </aside>
   </div>
 
+  <!-- Folio v2.9 — Dropbox-shaped UI.  Three primary tabs (Status, Conflicts,
+       Share) plus a Settings link in the header.  History is no longer a
+       primary tab: it remains a feature, accessed per-file via a small
+       "↻ history" affordance on each file row.  See versions.js for the
+       per-file popover that opens in response to `history.popover.open`. -->
   <nav class="tabs" role="tablist">
     <button id="tab-status"    class="tab tab--active" role="tab" aria-controls="pane-status"    aria-selected="true">Status</button>
-    <button id="tab-conflicts" class="tab"             role="tab" aria-controls="pane-conflicts" aria-selected="false">Conflicts <span id="tab-conflicts-count" class="badge"></span></button>
+    <button id="tab-conflicts" class="tab"             role="tab" aria-controls="pane-conflicts" aria-selected="false">Conflicts <span id="tab-conflicts-count" class="badge badge--zero"></span></button>
     <button id="tab-share"     class="tab"             role="tab" aria-controls="pane-share"     aria-selected="false">Share</button>
-    <button id="tab-history"   class="tab"             role="tab" aria-controls="pane-history"   aria-selected="false">History</button>
   </nav>
 
   <main>
@@ -209,32 +213,6 @@
       </div>
     </section>
 
-    <!-- History pane ------------------------------------------------------ -->
-    <section id="pane-history" class="pane" role="tabpanel" aria-labelledby="tab-history" hidden>
-      <div class="card">
-        <h2>Version history</h2>
-        <div class="history-grid">
-          <div class="history-files">
-            <h3>Files</h3>
-            <ul id="history-file-list" class="history-list"><li class="empty">No history yet.</li></ul>
-          </div>
-          <div class="history-versions">
-            <h3>Versions of <code id="history-active-relpath">—</code></h3>
-            <ul id="history-version-list" class="history-list"><li class="empty">Pick a file.</li></ul>
-          </div>
-        </div>
-        <div id="history-viewer" class="card history-viewer" hidden>
-          <h3>Snapshot at <code id="history-active-ts">—</code></h3>
-          <textarea id="history-content" readonly rows="14"></textarea>
-          <div class="actions">
-            <button id="btn-history-restore" class="btn btn--primary">Restore this version</button>
-            <button id="btn-history-close"   class="btn btn--ghost">Close</button>
-          </div>
-        </div>
-        <div id="history-log" class="log" aria-live="polite"></div>
-      </div>
-    </section>
-
     <!-- Share pane -------------------------------------------------------- -->
     <section id="pane-share" class="pane" role="tabpanel" aria-labelledby="tab-share" hidden>
       <div class="card">
@@ -276,6 +254,44 @@
       </div>
     </section>
   </main>
+
+  <!-- Folio v2.9 — Per-file history popover.  Closed-by-default overlay
+       opened by versions.js in response to a `history.popover.open` bus
+       event from the conflicts list or the recently-synced rows.  Lists
+       the snapshots for ONE file; click a snapshot to view content;
+       Restore writes the chosen version back as the live file.  Closes
+       on backdrop click, the × button, or Esc. -->
+  <div id="history-popover"
+       class="history-popover"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="history-popover-title"
+       hidden>
+    <div id="history-popover-backdrop" class="history-popover__backdrop"></div>
+    <aside class="history-popover__inner">
+      <header class="history-popover__header">
+        <h2 id="history-popover-title">
+          History for <code id="history-popover-relpath">—</code>
+        </h2>
+        <button id="history-popover-close"
+                class="history-popover__close"
+                type="button"
+                aria-label="Close history">×</button>
+      </header>
+      <div class="history-popover__body">
+        <ul id="history-popover-versions" class="history-list"><li class="empty">No versions yet.</li></ul>
+        <div id="history-popover-viewer" class="history-popover__viewer" hidden>
+          <h3>Snapshot at <code id="history-popover-ts">—</code></h3>
+          <textarea id="history-popover-content" readonly rows="12"></textarea>
+          <div class="actions">
+            <button id="btn-history-popover-restore" class="btn btn--primary">Restore this version</button>
+            <button id="btn-history-popover-viewer-close" class="btn btn--ghost">Close snapshot</button>
+          </div>
+        </div>
+        <div id="history-popover-log" class="log" aria-live="polite"></div>
+      </div>
+    </aside>
+  </div>
 
   <!-- Toast region (Folio v2.1).  auth.js paints transient "Signed in —
        syncing now" messages here when an `auth.swapped` WS frame arrives. -->
