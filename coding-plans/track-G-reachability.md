@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | not-started |
 | **Started** | — |
-| **Last updated** | 2026-04-28 (G2 done, G3 done) |
+| **Last updated** | 2026-04-28 (G1 done, G2 done, G3 done) |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — fully independent. |
 
@@ -62,7 +62,7 @@ G3 + G1 medium-effort.
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done |
 | **Tag** | [WIRE-UP] |
 | **Notes** | Implements the existing design at `Design-v3/oracle-bridge-selection.md`.  Today: probe-retry. |
 
@@ -80,15 +80,15 @@ modify:
 
 **Sequence:**
 
-- [ ] 1. Lock Q-G.1 + Q-G.2.
-- [ ] 2. Read `Design-v3/oracle-bridge-selection.md` carefully.
+- [x] 1. Lock Q-G.1 + Q-G.2.
+- [x] 2. Read `Design-v3/oracle-bridge-selection.md` carefully.
   Implement what it specifies.
-- [ ] 3. Signed reachability oracle entries (already partially
+- [x] 3. Signed reachability oracle entries (already partially
   exists in `security/reachabilityClaim.js` — confirm + reuse).
-- [ ] 4. Gossip via existing pubSub.  TTL-based caching.
-- [ ] 5. `hopBridges.js` consults oracle first; falls back to
+- [x] 4. Gossip via existing pubSub.  TTL-based caching.
+- [x] 5. `hopBridges.js` consults oracle first; falls back to
   probe-retry if oracle is silent.
-- [ ] 6. Tests: oracle-driven path picks the right bridge;
+- [x] 6. Tests: oracle-driven path picks the right bridge;
   oracle-stale falls back to probe; conflicting oracle entries
   resolved by signature freshness.
 
@@ -100,7 +100,57 @@ modify:
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-28 (G1 wave-C):
+- Substrate audit: most of the oracle was already wired in pull form.
+  - signReachabilityClaim / verifyReachabilityClaim — security/reachabilityClaim.js
+  - registerReachablePeersSkill — skills/reachablePeers.js
+  - GossipProtocol.#pullReachabilityClaim — populates PeerGraph.knownPeers
+  - hopBridges.buildBridgeList — already prepended PeerGraph oracle peers
+  G1 added the missing PUSH side: a ReachabilityOracle class that signs
+  + publishes the agent's own claim and verifies/stores incoming claims
+  from peers.
+- New module: packages/core/src/routing/ReachabilityOracle.js
+  - Q-G.1: change-driven via 'transport-added' / 'transport-removed'
+    events on the agent, plus a 60s heartbeat safety net (intervalMs
+    default). Both knobs (changeDriven, intervalMs) configurable via
+    constructor. notifyTransportChange() is exposed for callers whose
+    agent doesn't emit the events. NB: Agent doesn't currently emit
+    transport-added/removed; addTransport/removeTransport could be
+    extended in a future task to emit those — out of scope for G1
+    additive wiring.
+  - Q-G.2: 5-min TTL default (ttlMs option). Entries evict lazily on
+    bridgeFor() / size / knownIssuers() and aggressively in #onPublish
+    when the body.t is shorter than ttlMs (we min() the two).
+  - Verifies via existing verifyReachabilityClaim — replay guard via a
+    per-issuer lastSeenSeq Map; rejection emits 'claim-rejected' for
+    telemetry, mirroring GossipProtocol's 'reachability-claim-rejected'.
+  - Pubsub topic constant: 'reachability:oracle' (also exported as
+    REACHABILITY_ORACLE_TOPIC).
+- hopBridges.buildBridgeList: additive prepend of the push-side oracle
+  pick (agent.reachabilityOracle?.bridgeFor(target)). When no oracle is
+  wired the function behaves exactly as before — preserving every
+  existing invokeWithHop test.
+- index.js: re-exports ReachabilityOracle + REACHABILITY_ORACLE_TOPIC.
+- bridgeFor() returns { bridge, transport: null, latencyEstimate: null }
+  — the existing claim format only carries pubkeys, not transport names,
+  so transport/latency hints are nullable placeholders for future
+  multi-transport claims (deferred — see Design-v3 §11 future work).
+- Tests: 21 new in test/routing/ReachabilityOracle.test.js, all green.
+  - Constructor validation, immediate-on-start broadcast, 30ms-interval
+    heartbeat, change-driven re-broadcast (+changeDriven=false negative),
+    notifyTransportChange(), stop halts heartbeat, idempotent start/stop,
+    direct-peer snapshot filtering, bridgeFor null-when-empty, lex-order
+    determinism, TTL eviction, signature tamper rejection, replay guard,
+    unrelated-topic ignore, malformed payload ignore, hopBridges
+    integration both with-oracle and without-oracle.
+- Full focused regression: 7 oracle/hop test files = 101 passing.
+- Full core suite: 1235/1249 passing (pre-existing flake in
+  test/integration/mesh-scenario.test.js phase 10b — also fails on
+  baseline pre-G1; passes deterministically when run in isolation;
+  test already wraps with retry: 2). Not a G1 regression.
+- Only files in scope: index.js (additive re-exports), hopBridges.js
+  (additive prepend with safe fallback). Did NOT touch protocol/pubSub.js
+  — the existing surface (agent.publish, 'publish' event) was sufficient.
 ```
 
 ---

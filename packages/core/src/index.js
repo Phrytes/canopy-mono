@@ -133,6 +133,10 @@ export {
   tierForRouteVia,
   compareTiers,
 }                                              from './routing/ReachabilityTier.js';
+export {
+  ReachabilityOracle,
+  ORACLE_TOPIC as REACHABILITY_ORACLE_TOPIC,
+}                                              from './routing/ReachabilityOracle.js';
 
 // ── Discovery (Group G) ──────────────────────────────────────────────────────
 export { PeerGraph }      from './discovery/PeerGraph.js';
