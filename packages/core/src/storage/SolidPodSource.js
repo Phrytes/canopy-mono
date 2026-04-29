@@ -38,6 +38,7 @@ import {
   getContainedResourceUrlAll,
   getContentType,
   getSourceUrl,
+  createContainerAt,
 } from '@inrupt/solid-client';
 
 import { DataSource } from './DataSource.js';
@@ -426,6 +427,26 @@ export class SolidPodSource extends DataSource {
       status: res.status,
       uri:    fullUri,
     });
+  }
+
+  /**
+   * Idempotently create an LDP container at the given URI.  Inrupt's
+   * `createContainerAt` is a no-op (returns the existing container) when
+   * the container is already present, so callers don't need to check
+   * `exists()` first.  Trailing slash is enforced.
+   *
+   * @param {string} uri
+   * @returns {Promise<{ uri: string }>}
+   */
+  async createContainer(uri) {
+    let fullUri = this.#resolve(uri);
+    if (!fullUri.endsWith('/')) fullUri += '/';
+    try {
+      await createContainerAt(fullUri, { fetch: this.#fetch });
+    } catch (err) {
+      rethrow(err, fullUri);
+    }
+    return { uri: fullUri };
   }
 
   /**

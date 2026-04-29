@@ -596,6 +596,32 @@ export class PodClient extends Emitter {
    * @param {string}  [opts.ifMatch]
    * @param {boolean} [opts.force=false]
    */
+  /**
+   * Idempotently create an LDP container at `uri`.  Required by some pod
+   * servers (e.g. Inrupt's storage.inrupt.com) which don't auto-create
+   * parent containers on PUT — without an explicit container, the first
+   * `write()` to a fresh sub-path 404s.  Trailing slash is enforced.
+   *
+   * No-op if the container already exists.
+   *
+   * @param {string} uri
+   * @returns {Promise<{ uri: string }>}
+   */
+  async createContainer(uri) {
+    this.#ensureOpen();
+    if (typeof this.#podSource.createContainer !== 'function') {
+      // Mock/test sources may not implement this; treat as success (the
+      // mock pod is hierarchical-by-string-key — no containers to track).
+      const resolved = uri.endsWith('/') ? uri : `${uri}/`;
+      return { uri: resolved };
+    }
+    try {
+      return await this.#podSource.createContainer(uri);
+    } catch (err) {
+      this.#wrapAndThrow(err, uri);
+    }
+  }
+
   async delete(uri, opts = {}) {
     this.#ensureOpen();
     const delOpts = { ...opts };
