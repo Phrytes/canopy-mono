@@ -11,7 +11,41 @@
   <header class="banner-row">
     <h1>Folio</h1>
     <div id="conn-banner" class="banner banner--hidden" role="status"></div>
+    <div id="auth-pill" class="auth-pill" role="status" aria-live="polite">
+      <span id="auth-pill-state" class="auth-pill__state auth-pill__state--unknown">checking…</span>
+      <span id="auth-pill-webid" class="auth-pill__webid"></span>
+      <button id="auth-signin-btn"  class="btn btn--small" hidden>Sign in</button>
+      <button id="auth-signout-btn" class="btn btn--small btn--ghost" hidden>Sign out</button>
+    </div>
   </header>
+
+  <!-- Hidden modal for picking the OIDC issuer.  The form posts to
+       /auth/login then redirects the browser to the returned URL. -->
+  <div id="auth-modal" class="auth-modal" hidden>
+    <div class="auth-modal__inner">
+      <h2>Sign in to your Solid pod</h2>
+      <p>Pick your identity provider, or paste a custom one.</p>
+      <form id="auth-issuer-form">
+        <label>
+          <input type="radio" name="issuer-choice" value="https://solidcommunity.net" checked>
+          solidcommunity.net
+        </label>
+        <label>
+          <input type="radio" name="issuer-choice" value="https://login.inrupt.com">
+          inrupt.com (login.inrupt.com)
+        </label>
+        <label>
+          <input type="radio" name="issuer-choice" value="custom">
+          Custom: <input type="url" id="auth-issuer-custom" placeholder="https://my-pod.example/" autocomplete="off">
+        </label>
+        <div class="actions">
+          <button type="submit" class="btn btn--primary">Continue</button>
+          <button type="button" id="auth-cancel-btn" class="btn btn--ghost">Cancel</button>
+        </div>
+        <div id="auth-modal-log" class="log" aria-live="polite"></div>
+      </form>
+    </div>
+  </div>
 
   <nav class="tabs" role="tablist">
     <button id="tab-status"    class="tab tab--active" role="tab" aria-controls="pane-status"    aria-selected="true">Status</button>
