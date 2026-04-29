@@ -140,6 +140,14 @@ WebSocket `/events` broadcasts `status`, `sync.progress`, `sync.done`,
 The full contract lives in a comment block at the top of
 [`src/server/routes.js`](src/server/routes.js).
 
+## Troubleshooting
+
+Run `folio doctor` to diagnose setup issues.  It walks the bring-up chain
+step-by-step (config → vault → OIDC → pod write/read/delete) and prints one
+`[PASS]` / `[FAIL]` / `[WARN]` / `[SKIP]` line per check, so the failure
+mode is obvious in 5 seconds without having to read source.  Use `--json`
+for machine-parseable output, `--verbose` for raw error text per step.
+
 ## Tests
 
 ```bash
