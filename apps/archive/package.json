@@ -1,0 +1,20 @@
+{
+  "name":        "@canopy-app/archive",
+  "version":     "0.1.0",
+  "description": "Archive — read-side validator + SQLite FTS5 search over pod content",
+  "type":        "module",
+  "main":        "src/index.js",
+  "bin":         { "archive": "src/cli.js" },
+  "scripts": {
+    "test":       "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/core":       "file:../../packages/core",
+    "@canopy/pod-client": "file:../../packages/pod-client",
+    "better-sqlite3":       "^11.9.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}
