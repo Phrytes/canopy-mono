@@ -95,17 +95,7 @@ The **scenario-based integration** tier is the new addition, and it's
 the **first route** for the test workstream.  Mesh Lab can come later
 as a visualizer over the same scenario library.
 
-### Why scenarios go in `test/scenarios/` (repo-root) rather than per-package
-
-Scenarios are inherently cross-package: they wire `@canopy/core` +
-`@canopy/pod-client` + `@canopy/relay` together.  Putting them in
-any one package's `test/` directory is misleading.  A repo-level
-`test/scenarios/` keeps the tests honest about their scope — they're
-**system tests**, not module tests.
-
-The directory ships as a workspace-style `package.json` with the
-`@canopy/*` packages as `file:` deps, identical to how Track H apps
-will be structured.  Tests run via `npm run test:scenarios`.
+ Tests run via `npm run test:scenarios`.
 
 ---
 
