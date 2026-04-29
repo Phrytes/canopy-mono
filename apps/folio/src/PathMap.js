@@ -4,10 +4,10 @@
  *
  * Conventions (locked from H1 sketch):
  *   /notes/shared/...               → public-readable on pod  (aclFor: 'public')
+ *   /notes/with-<webid>/...         → auto-share with <webid> (Q-Folio.3 / B3)
  *   /notes/<anything-else>/...      → private (default; ACL: self-only)
  *
  * Future Phase B conventions (NOT implemented here):
- *   /notes/with-<webid>/...         → auto-share with <webid>
  *   /notes/private/...              → encrypted-by-ACL helper
  *
  * Path semantics (POSIX-style internal representation; we normalize
@@ -28,6 +28,8 @@
  */
 
 import { sep as pathSep, posix } from 'node:path';
+
+import { parsePath as parseSharePath } from './autoShare.js';
 
 const SKIP_NAMES = new Set([
   '.DS_Store',
@@ -198,6 +200,29 @@ export class PathMap {
       if (SKIP_NAMES.has(seg)) return false;
     }
     return true;
+  }
+
+  /**
+   * Detect the `with-<urlencoded-webid>/` share-folder convention (Q-Folio.3).
+   *
+   * Returns `{ webid, sharePath }` when `relPath` falls under a top-level
+   * `with-<webid>/` folder, where:
+   *   - `webid`     is the URL-decoded WebID
+   *   - `sharePath` is the top-level segment ("with-<webid>"), POSIX-style
+   *
+   * Returns `null` for paths outside a share folder.  Throws an Error with
+   * `.code === 'AUTO_SHARE_BAD_PATH'` when the segment starts with `with-`
+   * but the WebID is malformed.
+   *
+   * @param {string} relPath  POSIX-style relative path
+   * @returns {{ webid: string, sharePath: string } | null}
+   */
+  shareFolderFor(relPath) {
+    const r = normalizeRel(String(relPath ?? ''));
+    if (r === '') return null;
+    const parsed = parseSharePath(r);
+    if (!parsed) return null;
+    return { webid: parsed.webid, sharePath: parsed.sharePath };
   }
 
   /**

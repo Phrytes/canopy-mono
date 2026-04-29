@@ -361,7 +361,7 @@ create:
 **Sequence:**
 
 - [x] 1. Lock Q-Folio.6 (standalone vs Tauri).  Locked 2026-04-29: standalone web app — Express + WebSocket.
-- [ ] 2. **B1.server** — REST API: `/status`, `/conflicts`, `/conflicts/:id/resolve`, `/share`, `/sync/now`, `/watch/start|stop`.  WebSocket for live status updates.  Express integration tests.
+- [x] 2. **B1.server** — REST API: `/status`, `/conflicts`, `/conflicts/:id/resolve`, `/share`, `/sync/now`, `/watch/start|stop`.  WebSocket for live status updates.  Express integration tests.
 - [ ] 3. **B1.ui** — single-page vanilla JS.  Status pane shows sync state; conflicts pane shows side-by-side merge UI (CodeMirror via `<script>` tag — no build step); share pane mints capability tokens with a friendly form.  Playwright happy-path tests.
 - [ ] 4. **B1.tray** — tray-bar / menubar icon — small badge showing sync status.  Click → opens `http://localhost:8888`.  macOS + Linux for v1; Windows is stretch.
 - [ ] 5. **B3** (Q-Folio.3 — auto-shared `with-<webid>/` folders) and **B4** (Q-Folio.4 — time-machine versioning) split into their own subsections.  B3 spawns as peer to B1; B4 deferred until after B1 lands.
@@ -389,6 +389,92 @@ create:
 
   CodeMirror confirmed acceptable as <script> tag (CDN or local copy);
   MIT-licensed, ~200KB minified.  No build step.
+
+2026-04-29 — Folio.B1.server landed.  85 vitest tests pass (52 SyncEngine
++ 13 CLI + 20 new server tests).  New deps: express ^4.21.0, ws ^8.18.0
+(app-local; not added to root or any packages/).  No SDK changes.
+
+Files added:
+  apps/folio/src/server/index.js       # createServer factory + listen/close
+  apps/folio/src/server/routes.js      # REST router; contract comment block
+  apps/folio/src/server/wsHub.js       # WebSocket broadcast hub
+  apps/folio/src/server/conflictId.js  # base64url(relPath) <-> id
+  apps/folio/src/cli/serveCmd.js       # `folio serve` wires real instances
+  apps/folio/test/server.test.js       # 20 integration tests
+Files modified:
+  apps/folio/src/cli.js                # registers serveCmd + help text
+  apps/folio/package.json              # express + ws deps
+  apps/folio/README.md                 # /serve docs + REST table
+
+Final REST contract (URI/verb/body/response):
+
+  GET   /status
+        → 200 { ts, stats, localRoot, podRoot, watching, lastSyncAt,
+                 pending: { uploads, downloads, deletes, conflicts },
+                 openConflictFiles, scanError? }
+
+  GET   /conflicts
+        → 200 { ts, conflicts: [{ id, relPath, absPath }] }
+
+  POST  /conflicts/:id/resolve
+        body: { resolution: 'mine' | 'theirs' | <text> }
+        → 200 { ok: true, relPath }
+        errors: 400 BAD_RESOLUTION / BAD_CONFLICT_ID / NO_CONFLICT_MARKERS,
+                404 NOT_FOUND, 500 WRITE_FAILED
+
+  POST  /share
+        body: { webid, scopes:[<verb>|pod.<verb>:<path>], expiresIn?, path? }
+        → 200 { token: <serialized PodCapabilityToken JSON> }
+        errors: 400 BAD_REQUEST, 503 NO_IDENTITY, 500 ISSUE_FAILED
+
+  POST  /sync/now
+        body: { direction?: 'both' | 'push' | 'pull' }
+        → 202 { ok: true, started: true }   (progress streamed over WS)
+        errors: 400 BAD_DIRECTION
+
+  POST  /watch/start  → 200 { ok: true, watching: true }
+  POST  /watch/stop   → 200 { ok: true, watching: false }
+
+  GET   /healthz      → 200 { ok: true, ts }   (liveness probe)
+
+  WebSocket /events frames:
+    { type: 'status',         ts, stats, watching }
+    { type: 'sync.progress',  ts, phase: 'start' | …, direction }
+    { type: 'sync.done',      ts, uploads, downloads, deletes, conflicts }
+    { type: 'conflict.new',   ts, id, relPath, podUri }
+    { type: 'error',          ts, phase, relPath?, message }
+
+  All errors: { error: { code, message } }; status code per row above.
+
+Decisions made:
+- Server binds to 127.0.0.1 only — local-only by design; no auth on this layer.
+- `createServer({ engine, podClient?, vault?, identity? })` is the injection
+  surface; tests pass mocks, the CLI wires real instances.  podClient is
+  optional because /status's pod scan also tries `engine._podClient` /
+  `engine.__podClient` first (the SyncEngine keeps the real one private).
+- Conflict IDs = base64url(relPath) — reversible, URL-safe, no extra state.
+- /sync/now returns 202 immediately and streams progress over the existing
+  WS hub.  The hub forwards SyncEngine 'synced' / 'conflict' / 'error' events.
+- `engine.__watching` is the public flag for the watcher; routes flip it
+  alongside engine.start() / engine.stop() so /status can report the state.
+- supertest NOT added — tests use Node's built-in fetch + the already-installed
+  ws client, keeping the dep footprint at 2 (express + ws) per the spec.
+
+Hand-off to B1.ui:
+- Connect WS first, paint optimistically from /status, then react to frames.
+- /sync/now is fire-and-forget — show progress from the WS frames, not the
+  HTTP response.
+- /share's request body matches the existing CLI semantics; 'read' / 'write'
+  / 'delete' / '*' are accepted as short-form scopes (combined with body.path)
+  AND fully-qualified 'pod.<verb>:<path>' strings pass through unchanged.
+- Conflict IDs are base64url; the UI can decode for display if it wants but
+  /conflicts already returns the relPath alongside.
+
+Hand-off to B1.tray:
+- Use /healthz for the "is the server up?" probe.
+- Connect to /events to flip the menu-bar icon between idle / syncing /
+  conflict states based on the frame `type`.
+- Click → open `http://127.0.0.1:<port>` (default 8888).
 ```
 
 ---
@@ -397,7 +483,7 @@ create:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done (2026-04-29) |
 | **Tag** | [NEW] |
 | **Notes** | Per design sketch H1 Twist 1.  Anything dropped under `<root>/with-<webid>/` auto-mints a `PodCapabilityToken` granting that WebID `pod.read` + `pod.write` on the folder's pod path; tokens are persisted alongside the SyncEngine state file and re-issued on rotation.  Pure SyncEngine extension; doesn't touch web layer.  Independent of B1.server. |
 
@@ -414,23 +500,84 @@ modify:
 
 **Sequence:**
 
-- [ ] 1. Path parser: extract WebID from folder name segment `with-<webid>` (URL-decoded).  Reject malformed segments with a structured error.
-- [ ] 2. Token minter: wraps `PodCapabilityToken.issue(identity, { subject: webid, scopes: ['pod.read:<path>', 'pod.write:<path>'], expires: Date.now() + 90d })`.  90-day expiry; auto-renews on next sync if within 7 days of expiry.
-- [ ] 3. Persistence: tokens stored in `<root>/.folio/shares.json` keyed by `(webid, path)`.  Re-loaded on boot.  Survives identity rotation by re-issuing under the new key.
-- [ ] 4. SyncEngine integration: on every successful `runOnce`, walk the path map, ensure every `with-<webid>/` folder has a current token; mint or renew as needed.  Surface result via `engine.shares()`.
-- [ ] 5. Tests — happy path (mint on new folder), rotation (renew within 7 days), revocation (manually delete entry → next sync re-mints), malformed-segment rejection.
+- [x] 1. Path parser: extract WebID from folder name segment `with-<webid>` (URL-decoded).  Reject malformed segments with a structured error.
+- [x] 2. Token minter: wraps `PodCapabilityToken.issue(identity, { subject: webid, scopes: ['pod.read:<path>', 'pod.write:<path>'], expires: Date.now() + 90d })`.  90-day expiry; auto-renews on next sync if within 7 days of expiry.
+- [x] 3. Persistence: tokens stored in `<root>/.folio/shares.json` keyed by `(webid, path)`.  Re-loaded on boot.  Survives identity rotation by re-issuing under the new key.
+- [x] 4. SyncEngine integration: on every successful `runOnce`, walk the path map, ensure every `with-<webid>/` folder has a current token; mint or renew as needed.  Surface result via `engine.shares()`.
+- [x] 5. Tests — happy path (mint on new folder), rotation (renew within 7 days), revocation (manually delete entry → next sync re-mints), malformed-segment rejection.
 
 **DoD:**
 
-- [ ] Dropping a file into `with-https://alice.example.com/profile/card#me/` auto-mints a token granting that WebID read+write.
-- [ ] Tokens persist across restarts.
-- [ ] Tests cover the four cases above.
-- [ ] Doesn't break any existing Folio.A test (52 baseline tests stay green).
+- [x] Dropping a file into `with-https://alice.example.com/profile/card#me/` auto-mints a token granting that WebID read+write.
+- [x] Tokens persist across restarts.
+- [x] Tests cover the four cases above.
+- [x] Doesn't break any existing Folio.A test (65 baseline tests stay green; 35 new B3 tests added → 100 total).
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-29 — Folio.B3 landed.  100 vitest tests pass (65 baseline + 35 new).
+No new top-level deps; pure JS extension over PodCapabilityToken.
+
+Files added:
+  apps/folio/src/autoShare.js          # parser + minter + persister + walker
+  apps/folio/test/autoShare.test.js    # 35 unit + integration tests
+Files modified:
+  apps/folio/src/PathMap.js            # adds shareFolderFor(rel)
+  apps/folio/src/SyncEngine.js         # accepts identity; calls ensureShares
+                                       # after every successful runOnce; exposes
+                                       # engine.shares() and engine.setIdentity()
+  apps/folio/src/index.js              # public-barrel exports for autoShare
+
+API surface added:
+  parseSharePath(rootRel)              # → { webid, sharePath, rest } | null
+  shareFolderName(webid)               # canonical with-<urlenc-webid> filename
+  ensureShares(engine, identity)       # mint+renew; persist; returns counts/errors
+  listShares(localRoot)                # → [{ webid, path, expires, ... }]
+  loadShares / saveShares              # raw read/write of .folio/shares.json
+  shouldRenew(record, currentPubKey)   # 7-day window + identity rotation rule
+  findShareFolders(localRoot)          # O(top-level-folders)
+  PathMap#shareFolderFor(rel)          # → { webid, sharePath } | null
+  SyncEngine#shares()                  # async, reads shares.json
+  SyncEngine#setIdentity(id|null)
+  engine.on('shares', { minted, renewed, errors })  # emitted on changes only
+
+Edge cases hit + decisions:
+- WebID decoding fences: empty (`with-`), URL-encoding errors (`%E0%A4%A`),
+  and "decoded text isn't a URI" all surface as AUTO_SHARE_BAD_PATH.  We
+  require an RFC-3986-style scheme prefix (`https:`, `did:`, etc.) so
+  innocent typos don't silently become "WebID" subjects.
+- shares.json is loaded fresh on every ensureShares call (cheap, single file)
+  rather than cached, because manual revocation (test case #3) edits the file
+  directly between runs and the engine should pick that up immediately.
+- A record's "issuer" is the identity pubKey at mint time; identity rotation
+  triggers re-issue on the next sync.  Old tokens stay verifiable until
+  their natural 90-day expiry — per the spec, retroactive revocation is
+  the user's call (out of scope for B3, lives in the share CLI / API).
+- ensureShares handles malformed siblings without aborting the whole pass:
+  bad folders go into `errors[]`; good folders still get tokens.  The
+  SyncEngine's #ensureSharesSafe wrapper emits 'error' events for those
+  but never throws.
+- Walks are TOP-LEVEL ONLY — by convention, a `with-<webid>/` folder MUST
+  be at the root of the local tree.  This keeps the walk O(top-level)
+  instead of recursing into every share folder, satisfying the "don't
+  break runOnce performance" constraint in the spec.
+- Performance: ensureShares is called AFTER #saveState in runOnce so the
+  state-file write isn't held up if a token mint fails (mints emit 'error'
+  but don't reject the runOnce promise).
+- Identity is OPTIONAL on SyncEngine — existing tests construct engines
+  without an identity and the new auto-share path silently no-ops.  The
+  CLI v1 path (which doesn't yet pass identity to the engine) keeps
+  working unchanged; B3 is opt-in via the new `identity` constructor arg.
+- PodCapabilityToken.issue signature divergence: the spec text says
+  `expires: Date.now() + 90d`, but the SDK API takes `expiresIn` (a
+  relative duration).  We translate at the call site and use 90 days
+  exactly (SHARE_EXPIRY_MS const).  No SDK change needed.
+- subject = WebID (full URL string), not a pubKey.  PodCapabilityToken
+  treats `subject` as an opaque string at signing time; verification of
+  the held token happens elsewhere (CapabilityAuth) and matches subjects
+  by string equality.  Using the WebID directly is consistent with how a
+  pod ACL would name the grantee.
 ```
 
 ---
