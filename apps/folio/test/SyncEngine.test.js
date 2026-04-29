@@ -657,15 +657,17 @@ describe('SyncEngine — watcher sha-stability (Folio v2.6)', () => {
 
   it('exposes options.watcher with defaults + threads custom values through', () => {
     const def = newEngine();
-    expect(def.options.watcher).toEqual({ stableMs: 250, maxStableWaitMs: 5000 });
-    const custom = newEngine({ watcher: { stableMs: 30, maxStableWaitMs: 200 } });
-    expect(custom.options.watcher).toEqual({ stableMs: 30, maxStableWaitMs: 200 });
+    expect(def.options.watcher).toEqual({ stableMs: 250, maxStableWaitMs: 5000, graceMs: 3000 });
+    const custom = newEngine({ watcher: { stableMs: 30, maxStableWaitMs: 200, graceMs: 0 } });
+    expect(custom.options.watcher).toEqual({ stableMs: 30, maxStableWaitMs: 200, graceMs: 0 });
   });
 
   it('waits for sha to stabilise before firing runOnce (stable case)', async () => {
     // Tight stability window so the test is bounded.  debounceMs is the
     // existing 50ms test default; stableMs 30ms; max wait 500ms.
-    const e = newEngine({ watcher: { stableMs: 30, maxStableWaitMs: 500 } });
+    // graceMs: 0 disables Folio v2.10's grace window — this test asserts
+    // pure v2.6 behaviour.
+    const e = newEngine({ watcher: { stableMs: 30, maxStableWaitMs: 500, graceMs: 0 } });
     e._armForStabilityTest();
 
     const decisions = [];
@@ -691,7 +693,7 @@ describe('SyncEngine — watcher sha-stability (Folio v2.6)', () => {
   });
 
   it('does NOT fire runOnce for a file deleted before the vigil settles', async () => {
-    const e = newEngine({ watcher: { stableMs: 60, maxStableWaitMs: 500 } });
+    const e = newEngine({ watcher: { stableMs: 60, maxStableWaitMs: 500, graceMs: 0 } });
     e._armForStabilityTest();
 
     const decisions = [];
@@ -719,7 +721,8 @@ describe('SyncEngine — watcher sha-stability (Folio v2.6)', () => {
 
   it('caps total wait at maxStableWaitMs for an ever-changing file + emits warning', async () => {
     // Tight cap so the test runs fast (real wall clock).
-    const e = newEngine({ watcher: { stableMs: 25, maxStableWaitMs: 200 } });
+    // graceMs: 0 — capped path bypasses grace, but be explicit for v2.6 parity.
+    const e = newEngine({ watcher: { stableMs: 25, maxStableWaitMs: 200, graceMs: 0 } });
     e._armForStabilityTest();
 
     const decisions = [];
@@ -759,7 +762,7 @@ describe('SyncEngine — watcher sha-stability (Folio v2.6)', () => {
   });
 
   it('handles two files saved at once with independent stability vigils', async () => {
-    const e = newEngine({ watcher: { stableMs: 30, maxStableWaitMs: 500 } });
+    const e = newEngine({ watcher: { stableMs: 30, maxStableWaitMs: 500, graceMs: 0 } });
     e._armForStabilityTest();
 
     const decisions = [];
@@ -794,7 +797,7 @@ describe('SyncEngine — watcher sha-stability (Folio v2.6)', () => {
   });
 
   it('restarts the wait when sha changes between checks (no premature fire)', async () => {
-    const e = newEngine({ watcher: { stableMs: 40, maxStableWaitMs: 800 } });
+    const e = newEngine({ watcher: { stableMs: 40, maxStableWaitMs: 800, graceMs: 0 } });
     e._armForStabilityTest();
 
     const decisions = [];
@@ -827,7 +830,7 @@ describe('SyncEngine — watcher sha-stability (Folio v2.6)', () => {
   });
 
   it('stop() cancels pending stability vigils — no spurious runOnce', async () => {
-    const e = newEngine({ watcher: { stableMs: 50, maxStableWaitMs: 500 } });
+    const e = newEngine({ watcher: { stableMs: 50, maxStableWaitMs: 500, graceMs: 0 } });
     e._armForStabilityTest();
 
     const decisions = [];
@@ -849,6 +852,232 @@ describe('SyncEngine — watcher sha-stability (Folio v2.6)', () => {
     const fired = decisions.filter((d) => d.decision === 'stable' || d.decision === 'capped');
     expect(fired).toEqual([]);
     expect(syncedCount.count).toBe(0);
+  });
+});
+
+// ── Folio v2.10 — copy-rename grace window ─────────────────────────────────
+
+describe('SyncEngine — copy-rename grace window (Folio v2.10)', () => {
+  // Helper: count `synced` events fired by an engine.
+  function countSynced(engine) {
+    const state = { count: 0 };
+    engine.on('synced', () => { state.count++; });
+    return state;
+  }
+
+  async function waitFor(predicate, timeoutMs = 1500, intervalMs = 10) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (await predicate()) return true;
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+    return false;
+  }
+
+  it('exposes the graceMs default (3000) and threads custom values through', () => {
+    const def = newEngine();
+    expect(def.options.watcher.graceMs).toBe(3000);
+    const custom = newEngine({ watcher: { graceMs: 75 } });
+    expect(custom.options.watcher.graceMs).toBe(75);
+    const zero = newEngine({ watcher: { graceMs: 0 } });
+    expect(zero.options.watcher.graceMs).toBe(0);
+  });
+
+  it('copy-then-rename within grace: intermediate is NOT synced; final name IS synced', async () => {
+    // Tight windows so the test fits inside the wall-clock budget.
+    const e = newEngine({ watcher: { stableMs: 25, maxStableWaitMs: 400, graceMs: 120 } });
+    e._armForStabilityTest();
+
+    const stabilityDecisions = [];
+    const graceDecisions = [];
+    e._onStabilityDecision((d) => stabilityDecisions.push(d));
+    e._onGraceDecision((d) => graceDecisions.push(d));
+    const syncedCount = countSynced(e);
+
+    const intermediate = join(localRoot, 'A (Copy).md');
+    const finalName    = join(localRoot, 'B.md');
+
+    // Step 1 — user copies A.md → A (Copy).md.  Chokidar fires `add`.
+    await fs.writeFile(intermediate, 'shared content');
+    e._injectWatchEventForTest(intermediate, 'add');
+
+    // Step 2 — wait for stability to settle on the intermediate.
+    const settled = await waitFor(() =>
+      stabilityDecisions.some((d) => d.decision === 'stable' && d.absPath === intermediate),
+    );
+    expect(settled).toBe(true);
+
+    // Step 3 — confirm grace was armed for the intermediate (not yet fired).
+    const armed = await waitFor(() =>
+      graceDecisions.some((d) => d.decision === 'armed' && d.absPath === intermediate),
+    );
+    expect(armed).toBe(true);
+
+    // Step 4 — user renames A (Copy).md → B.md WITHIN the grace window.
+    // chokidar represents this as `unlink` of the source + `add` of the target.
+    await fs.rename(intermediate, finalName);
+    e._injectWatchEventForTest(intermediate, 'unlink');
+    e._injectWatchEventForTest(finalName,    'add');
+
+    // The intermediate must be dropped from grace — no sync of A (Copy).md.
+    const dropped = await waitFor(() =>
+      graceDecisions.some((d) => d.decision === 'dropped' && d.absPath === intermediate),
+    );
+    expect(dropped).toBe(true);
+
+    // The final name runs its own stability + grace cycle.
+    const finalSettled = await waitFor(() =>
+      stabilityDecisions.some((d) => d.decision === 'stable' && d.absPath === finalName),
+    );
+    expect(finalSettled).toBe(true);
+
+    // After grace elapses for the FINAL name, runOnce fires.
+    const ran = await waitFor(() => syncedCount.count >= 1);
+    expect(ran).toBe(true);
+
+    // Critical invariant: the pod has B.md but never saw A (Copy).md.
+    expect(pod.store.has(`${POD_ROOT}B.md`)).toBe(true);
+    expect(pod.store.has(`${POD_ROOT}${encodeURIComponent('A (Copy).md')}`)).toBe(false);
+    expect(pod.store.has(`${POD_ROOT}A (Copy).md`)).toBe(false);
+
+    e._disarmForTest();
+  });
+
+  it('copy alone (no rename) syncs after graceMs elapses', async () => {
+    const e = newEngine({ watcher: { stableMs: 25, maxStableWaitMs: 400, graceMs: 80 } });
+    e._armForStabilityTest();
+
+    const graceDecisions = [];
+    e._onGraceDecision((d) => graceDecisions.push(d));
+    const syncedCount = countSynced(e);
+
+    const file = join(localRoot, 'standalone.md');
+    await fs.writeFile(file, 'just a copy');
+    e._injectWatchEventForTest(file, 'add');
+
+    // Grace should fire untouched and runOnce should sync the file.
+    const fired = await waitFor(() =>
+      graceDecisions.some((d) => d.decision === 'fired' && d.absPath === file),
+    );
+    expect(fired).toBe(true);
+
+    const ran = await waitFor(() => syncedCount.count >= 1);
+    expect(ran).toBe(true);
+    expect(pod.store.has(`${POD_ROOT}standalone.md`)).toBe(true);
+
+    e._disarmForTest();
+  });
+
+  it('rapid edits within grace: only the LAST content is what eventually syncs', async () => {
+    const e = newEngine({ watcher: { stableMs: 25, maxStableWaitMs: 800, graceMs: 100 } });
+    e._armForStabilityTest();
+
+    const graceDecisions = [];
+    e._onGraceDecision((d) => graceDecisions.push(d));
+    const syncedCount = countSynced(e);
+
+    const file = join(localRoot, 'edited.md');
+
+    // First write + reach stable + arm grace.
+    await fs.writeFile(file, 'v1');
+    e._injectWatchEventForTest(file, 'add');
+    const armed = await waitFor(() =>
+      graceDecisions.some((d) => d.decision === 'armed' && d.absPath === file),
+    );
+    expect(armed).toBe(true);
+
+    // Edit the file BEFORE grace elapses.  Inject the corresponding `change`
+    // event — this should restart the grace cycle (cancel + new vigil).
+    await fs.writeFile(file, 'v2-final');
+    e._injectWatchEventForTest(file, 'change');
+
+    // We expect a 'restarted' decision for the file (grace cancelled).
+    const restarted = await waitFor(() =>
+      graceDecisions.some((d) => d.decision === 'restarted' && d.absPath === file),
+    );
+    expect(restarted).toBe(true);
+
+    // Eventually grace fires + runOnce uploads the LAST content.
+    const ran = await waitFor(() => syncedCount.count >= 1);
+    expect(ran).toBe(true);
+
+    // Content on the pod must be 'v2-final', not 'v1'.
+    const stored = pod.store.get(`${POD_ROOT}edited.md`);
+    expect(stored).toBeDefined();
+    const content = typeof stored.content === 'string'
+      ? stored.content
+      : new TextDecoder().decode(stored.content);
+    expect(content).toBe('v2-final');
+
+    e._disarmForTest();
+  });
+
+  it('stop() cancels pending grace timers — no spurious runOnce after teardown', async () => {
+    const e = newEngine({ watcher: { stableMs: 25, maxStableWaitMs: 400, graceMs: 200 } });
+    e._armForStabilityTest();
+
+    const graceDecisions = [];
+    e._onGraceDecision((d) => graceDecisions.push(d));
+    const syncedCount = countSynced(e);
+
+    const file = join(localRoot, 'mid-grace.md');
+    await fs.writeFile(file, 'about to be torn down');
+    e._injectWatchEventForTest(file, 'add');
+
+    // Wait until grace is armed, then teardown well before it would fire.
+    const armed = await waitFor(() =>
+      graceDecisions.some((d) => d.decision === 'armed' && d.absPath === file),
+    );
+    expect(armed).toBe(true);
+
+    e._disarmForTest();
+
+    // Wait past where grace would have fired had we not torn down.
+    await new Promise((r) => setTimeout(r, 250));
+
+    // Grace must NOT have fired; runOnce must NOT have run.
+    const fired = graceDecisions.filter((d) => d.decision === 'fired');
+    expect(fired).toEqual([]);
+    expect(syncedCount.count).toBe(0);
+  });
+
+  it('graceMs: 0 → fires runOnce immediately on stable (v2.6 behaviour preserved)', async () => {
+    const e = newEngine({ watcher: { stableMs: 25, maxStableWaitMs: 400, graceMs: 0 } });
+    e._armForStabilityTest();
+
+    const stabilityDecisions = [];
+    const graceDecisions = [];
+    e._onStabilityDecision((d) => stabilityDecisions.push(d));
+    e._onGraceDecision((d) => graceDecisions.push(d));
+    const syncedCount = countSynced(e);
+
+    const file = join(localRoot, 'no-grace.md');
+    await fs.writeFile(file, 'no waiting');
+    e._injectWatchEventForTest(file, 'add');
+
+    // Sync should fire as soon as stability passes.
+    const settled = await waitFor(() =>
+      stabilityDecisions.some((d) => d.decision === 'stable'),
+    );
+    expect(settled).toBe(true);
+
+    const ran = await waitFor(() => syncedCount.count >= 1);
+    expect(ran).toBe(true);
+
+    // No grace decisions should have been emitted at all.
+    expect(graceDecisions).toEqual([]);
+
+    e._disarmForTest();
+  });
+
+  it('runOnce() called explicitly bypasses grace entirely', async () => {
+    // Even with a long graceMs, an explicit runOnce should run end-to-end
+    // immediately — grace only gates watcher-driven runs.
+    const e = newEngine({ watcher: { stableMs: 25, maxStableWaitMs: 400, graceMs: 5000 } });
+    await fs.writeFile(join(localRoot, 'manual.md'), 'pushed by hand');
+    const r = await e.runOnce();
+    expect(r.uploads).toBe(1);
+    expect(pod.store.has(`${POD_ROOT}manual.md`)).toBe(true);
   });
 });
 
