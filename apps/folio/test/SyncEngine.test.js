@@ -179,6 +179,50 @@ describe('SyncEngine.runOnce — push (local → pod)', () => {
     expect(pod.store.has(`${POD_ROOT}top.md`)).toBe(true);
     expect(pod.store.has(`${POD_ROOT}recipes/desserts/cake.md`)).toBe(true);
   });
+
+  it('ensures the pod root container exists before pushing (Inrupt fix)', async () => {
+    // Simulate a pod server that requires explicit container creation
+    // before PUT (e.g. Inrupt's storage.inrupt.com).
+    const created = [];
+    pod.createContainer = async (uri) => {
+      const u = uri.endsWith('/') ? uri : `${uri}/`;
+      created.push(u);
+      return { uri: u };
+    };
+    await fs.writeFile(join(localRoot, 'a.md'), 'A');
+    const e = newEngine();
+    await e.runOnce();
+    expect(created).toContain(POD_ROOT);
+    expect(pod.store.has(`${POD_ROOT}a.md`)).toBe(true);
+  });
+
+  it('ensures every nested parent container before pushing nested files', async () => {
+    const created = new Set();
+    pod.createContainer = async (uri) => {
+      const u = uri.endsWith('/') ? uri : `${uri}/`;
+      created.add(u);
+      return { uri: u };
+    };
+    await fs.mkdir(join(localRoot, 'recipes', 'desserts'), { recursive: true });
+    await fs.writeFile(join(localRoot, 'recipes', 'desserts', 'cake.md'), 'cake');
+    const e = newEngine();
+    await e.runOnce();
+    expect(created.has(POD_ROOT)).toBe(true);
+    expect(created.has(`${POD_ROOT}recipes/`)).toBe(true);
+    expect(created.has(`${POD_ROOT}recipes/desserts/`)).toBe(true);
+    expect(pod.store.has(`${POD_ROOT}recipes/desserts/cake.md`)).toBe(true);
+  });
+
+  it('skips container-ensure when the pod client lacks createContainer (back-compat)', async () => {
+    // Mock pod (no createContainer method) — the pre-fix behaviour must
+    // continue to work for tests + the in-memory FsBackedMockPodClient.
+    expect(typeof pod.createContainer).toBe('undefined');
+    await fs.writeFile(join(localRoot, 'a.md'), 'A');
+    const e = newEngine();
+    const r = await e.runOnce();
+    expect(r.uploads).toBe(1);
+    expect(pod.store.has(`${POD_ROOT}a.md`)).toBe(true);
+  });
 });
 
 describe('SyncEngine.runOnce — pull (pod → local)', () => {

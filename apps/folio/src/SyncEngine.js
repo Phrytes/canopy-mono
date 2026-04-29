@@ -131,6 +131,28 @@ export class SyncEngine extends Emitter {
     let uploads = 0, downloads = 0, deletes = 0, conflicts = 0;
 
     if (direction === 'both' || direction === 'push') {
+      // Some pod servers (notably Inrupt's storage.inrupt.com) don't
+      // auto-create parent containers on PUT — we have to create them
+      // explicitly or the first write to a fresh subdir 404s.  Collect
+      // every unique parent container the upload set needs (including
+      // the pod root itself) and ensure each exists once before writing.
+      const containersToEnsure = new Set();
+      for (const f of d.toUpload) {
+        const podUri = this.#pathMap.localToPod(f.absPath);
+        for (const c of parentContainersOf(podUri, this.#podRoot)) {
+          containersToEnsure.add(c);
+        }
+      }
+      for (const c of containersToEnsure) {
+        try {
+          if (typeof this.#podClient.createContainer === 'function') {
+            await this.#podClient.createContainer(c);
+          }
+        } catch (err) {
+          this.emit('error', { phase: 'ensure-container', uri: c, err });
+        }
+      }
+
       for (const f of d.toUpload) {
         try {
           const podUri = this.#pathMap.localToPod(f.absPath);
@@ -334,4 +356,32 @@ function guessContentType(relPath) {
   if (p.endsWith('.html') || p.endsWith('.htm')) return 'text/html';
   if (p.endsWith('.css')) return 'text/css';
   return 'application/octet-stream';
+}
+
+/**
+ * Return the chain of parent containers (closest-first) for a resource URI,
+ * stopping at — and including — `podRoot`.  e.g. for
+ *   resource = https://pod/notes/recipes/cake.md
+ *   podRoot  = https://pod/notes/
+ * yields ['https://pod/notes/recipes/', 'https://pod/notes/'] (closest first
+ * so callers create the deepest container last; LDP servers handle this
+ * order fine since `createContainerAt` is idempotent).
+ *
+ * Returns just `[podRoot]` when the resource sits directly under the root.
+ * Always trailing-slashed.
+ */
+function parentContainersOf(resourceUri, podRoot) {
+  const root = podRoot.endsWith('/') ? podRoot : `${podRoot}/`;
+  if (!resourceUri.startsWith(root)) return [root];
+  const tail = resourceUri.slice(root.length);
+  const segs = tail.split('/').filter(Boolean);
+  segs.pop(); // drop the file name
+  const out = [];
+  let cursor = root;
+  for (const seg of segs) {
+    cursor = `${cursor}${seg}/`;
+    out.unshift(cursor); // closest-to-resource first
+  }
+  out.push(root); // and the root itself last
+  return out;
 }
