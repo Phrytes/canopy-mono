@@ -488,6 +488,127 @@ describe('SyncEngine — versions retention', () => {
   });
 });
 
+// ── Folio v2.1 — setPodClient (hot-swap) ──────────────────────────────────
+
+describe('SyncEngine.setPodClient — hot-swap', () => {
+  it('replaces the internal podClient — next runOnce uses the new one', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    const e = newEngine();
+    await e.runOnce(); // pushes via the original `pod`.
+    expect(pod.store.has(`${POD_ROOT}a.md`)).toBe(true);
+    expect(pod.writeCalls).toBeGreaterThan(0);
+
+    // Build a fresh, empty MockPodClient.  After the swap, the new client
+    // sees a.md as "missing on pod" (no known state from new pod's view) so
+    // the next runOnce uploads to the NEW client, not the old one.
+    const pod2 = new MockPodClient(POD_ROOT);
+    const before2 = pod2.writeCalls;
+    e.setPodClient(pod2);
+
+    await e.runOnce();
+    // The swap reset stateLoaded; with an empty `pod2` and the local file
+    // present, the diff should classify a.md as "upload to pod2".
+    expect(pod2.writeCalls).toBeGreaterThan(before2);
+    expect(pod2.store.has(`${POD_ROOT}a.md`)).toBe(true);
+  });
+
+  it('throws when newClient is missing', () => {
+    const e = newEngine();
+    expect(() => e.setPodClient(null)).toThrow();
+    expect(() => e.setPodClient(undefined)).toThrow();
+  });
+
+  it('emits a "pod-client-swapped" event for internal subscribers', () => {
+    const e = newEngine();
+    const events = [];
+    e.on('pod-client-swapped', (p) => events.push(p));
+    const pod2 = new MockPodClient(POD_ROOT);
+    e.setPodClient(pod2);
+    expect(events).toHaveLength(1);
+    expect(typeof events[0].ts).toBe('number');
+  });
+
+  it('rapid swaps: only the last one is observable on the next runOnce', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    const e = newEngine();
+    await e.runOnce();
+
+    const podA = new MockPodClient(POD_ROOT);
+    const podB = new MockPodClient(POD_ROOT);
+    const podC = new MockPodClient(POD_ROOT);
+    e.setPodClient(podA);
+    e.setPodClient(podB);
+    e.setPodClient(podC);
+
+    await e.runOnce();
+    // Only podC should see writes.
+    expect(podA.writeCalls).toBe(0);
+    expect(podB.writeCalls).toBe(0);
+    expect(podC.writeCalls).toBeGreaterThan(0);
+    expect(podC.store.has(`${POD_ROOT}a.md`)).toBe(true);
+  });
+
+  it('swap during in-flight runOnce: the in-flight run uses the OLD client', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    await fs.writeFile(join(localRoot, 'b.md'), 'banana');
+    const e = newEngine();
+
+    // Gate `pod.list` so we can deterministically synchronise: the run will
+    // pause at scanPod's first list() call until we release.  At that point
+    // the runOnce body has already snapshotted `#podClient` (which happens
+    // BEFORE scanPod) — so swapping `#podClient` after we observe the gate
+    // hit cannot affect the in-flight run.
+    let releaseList;
+    const listGate = new Promise((resolve) => { releaseList = resolve; });
+    let listEntered = null;
+    const enteredP = new Promise((resolve) => { listEntered = resolve; });
+    const origList = pod.list.bind(pod);
+    pod.list = async (...args) => {
+      listEntered();
+      await listGate;
+      return origList(...args);
+    };
+
+    // Kick off a runOnce against the original `pod`; do NOT await.
+    const inflight = e.runOnce();
+
+    // Wait for pod.list to actually be entered — at this point, the
+    // runOnce body has executed past the `const podClient = this.#podClient`
+    // line.  Now any swap is "after the snapshot".
+    await enteredP;
+
+    // Swap — the in-flight run has already snapshotted `pod`.
+    const pod2 = new MockPodClient(POD_ROOT);
+    e.setPodClient(pod2);
+
+    // Release the list gate so the in-flight run can finish.
+    releaseList();
+
+    // The in-flight run finishes against `pod` (per the contract).
+    const r = await inflight;
+    expect(r.uploads).toBe(2);
+    expect(pod.store.has(`${POD_ROOT}a.md`)).toBe(true);
+    expect(pod.store.has(`${POD_ROOT}b.md`)).toBe(true);
+    // pod2 should have no writes from the in-flight run.
+    expect(pod2.writeCalls).toBe(0);
+
+    // Next runOnce uses pod2.
+    await e.runOnce();
+    expect(pod2.store.has(`${POD_ROOT}a.md`)).toBe(true);
+  });
+
+  it('swap-with-pending-watch-event: scheduled run uses the new client', async () => {
+    const e = newEngine();
+    const pod2 = new MockPodClient(POD_ROOT);
+    e.setPodClient(pod2);
+    await fs.writeFile(join(localRoot, 'pend.md'), 'pending');
+    // Manual runOnce stands in for a debounced watch event landing post-swap.
+    await e.runOnce();
+    expect(pod2.store.has(`${POD_ROOT}pend.md`)).toBe(true);
+    expect(pod.store.has(`${POD_ROOT}pend.md`)).toBe(false);
+  });
+});
+
 describe('SyncEngine — start/stop lifecycle', () => {
   it('start sets up watcher + interval; stop tears them down without leaks', async () => {
     const e = newEngine();

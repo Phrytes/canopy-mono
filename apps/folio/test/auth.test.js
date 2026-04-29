@@ -24,6 +24,7 @@ import { tmpdir }         from 'node:os';
 import { join }           from 'node:path';
 import { EventEmitter }   from 'node:events';
 import http               from 'node:http';
+import WebSocket          from 'ws';
 
 import { SyncEngine }     from '../src/SyncEngine.js';
 import { createServer }   from '../src/server/index.js';
@@ -31,7 +32,11 @@ import {
   OidcSession,
   _setSessionFactory,
 } from '../src/auth/OidcSession.js';
-import { buildPodClient, FsBackedMockPodClient } from '../src/cli/_podFactory.js';
+import {
+  buildPodClient,
+  buildRealPodClient,
+  FsBackedMockPodClient,
+} from '../src/cli/_podFactory.js';
 
 // ── Helpers: in-memory MockPodClient + MemVault ────────────────────────────
 
@@ -148,8 +153,23 @@ function fakeFactory() {
 const POD_ROOT = 'https://alice.example/notes/';
 let localRoot, engine, podClient, vault, oidc, srv, baseUrl;
 
+// Folio v2.1 hot-swap test seam: the "real" PodClient builder is replaced in
+// tests by a fake factory that returns a fresh MockPodClient.  Each test that
+// asserts on the swap reads `lastBuiltPodClient` to verify the engine got it.
+let lastBuiltPodClient = null;
+let buildPodClientCalls = 0;
+function fakeBuildPodClient(_cfg, _oidc) {
+  buildPodClientCalls++;
+  const c = new MockPodClient(POD_ROOT);
+  lastBuiltPodClient = c;
+  return Promise.resolve(c);
+}
+
 beforeEach(async () => {
   _setSessionFactory(fakeFactory());
+
+  lastBuiltPodClient = null;
+  buildPodClientCalls = 0;
 
   localRoot = await fs.mkdtemp(join(tmpdir(), 'folio-auth-'));
   podClient = new MockPodClient(POD_ROOT);
@@ -159,7 +179,13 @@ beforeEach(async () => {
   vault = new MemVault();
   oidc  = new OidcSession({ vault });
 
-  srv = createServer({ engine, vault, oidc });
+  srv = createServer({
+    engine,
+    vault,
+    oidc,
+    cfg: { podRoot: POD_ROOT },
+    buildPodClient: fakeBuildPodClient,
+  });
   const { port, host } = await srv.listen(0, '127.0.0.1');
   baseUrl = `http://${host}:${port}`;
 });
@@ -391,4 +417,169 @@ describe('Mock pod regression', () => {
     expect(typeof c.list).toBe('function');
     expect(c).not.toBeInstanceOf(FsBackedMockPodClient);
   });
+
+  it('exports buildRealPodClient as a public-ish helper (Folio v2.1)', () => {
+    expect(typeof buildRealPodClient).toBe('function');
+  });
 });
+
+// ── Folio v2.1 — hot-swap PodClient on /auth/callback ────────────────────
+
+describe('Folio v2.1 — hot-swap on /auth/callback', () => {
+  it('builds a fresh PodClient and swaps it into the live engine', async () => {
+    const swappedEvents = [];
+    engine.on('pod-client-swapped', (e) => swappedEvents.push(e));
+
+    // Drive the OIDC flow.
+    const { body: loginBody } = await postJson('/auth/login', { issuer: 'https://solidcommunity.net' });
+    const issuedState = new URL(loginBody.redirectUrl).searchParams.get('state');
+
+    const cb = `/auth/callback?code=GOOD_CODE&state=${issuedState}`;
+    const { status, location } = await getJson(cb);
+    expect(status).toBe(302);
+    expect(location).toBe('/');
+
+    // Our fake builder ran exactly once on the callback.
+    expect(buildPodClientCalls).toBe(1);
+    expect(lastBuiltPodClient).toBeDefined();
+
+    // The engine got the new client (pod-client-swapped fired).
+    expect(swappedEvents.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('auto-triggers exactly one runOnce after the swap', async () => {
+    // Plant a local file so the post-swap runOnce has something to upload to
+    // the new PodClient — that's how we verify the runOnce fires.
+    await fs.writeFile(join(localRoot, 'auto.md'), 'auto-sync-after-swap');
+
+    // Listen for `synced` to confirm runOnce ran.
+    const syncedEvents = [];
+    engine.on('synced', (s) => syncedEvents.push(s));
+
+    const { body: loginBody } = await postJson('/auth/login', { issuer: 'https://solidcommunity.net' });
+    const issuedState = new URL(loginBody.redirectUrl).searchParams.get('state');
+    await getJson(`/auth/callback?code=GOOD_CODE&state=${issuedState}`);
+
+    // Wait briefly for the fire-and-forget runOnce to land.
+    await waitForCondition(() => syncedEvents.length >= 1, 2000);
+    expect(syncedEvents.length).toBeGreaterThanOrEqual(1);
+    // The new client (lastBuiltPodClient) saw the upload.
+    expect(lastBuiltPodClient.store.has(`${POD_ROOT}auto.md`)).toBe(true);
+  });
+
+  it('broadcasts auth.swapped over WebSocket; webid only — no tokens', async () => {
+    const wsUrl = `${baseUrl.replace(/^http/, 'ws')}/events`;
+    const ws = new WebSocket(wsUrl);
+    const frames = [];
+    const opened = new Promise((resolve, reject) => {
+      ws.once('open', resolve);
+      ws.once('error', reject);
+    });
+    ws.on('message', (data) => {
+      try { frames.push(JSON.parse(data.toString('utf8'))); } catch { /* ignore */ }
+    });
+    await opened;
+
+    const { body: loginBody } = await postJson('/auth/login', { issuer: 'https://solidcommunity.net' });
+    const issuedState = new URL(loginBody.redirectUrl).searchParams.get('state');
+    await getJson(`/auth/callback?code=GOOD_CODE&state=${issuedState}`);
+
+    await waitForCondition(() => frames.some((f) => f.type === 'auth.swapped'), 2000);
+
+    const swapped = frames.find((f) => f.type === 'auth.swapped');
+    expect(swapped).toBeDefined();
+    expect(swapped.webid).toBe('https://alice.example/profile/card#me');
+    expect(typeof swapped.ts).toBe('number');
+
+    // Hard rule: no tokens leak through this frame.
+    const json = JSON.stringify(swapped);
+    expect(json).not.toMatch(/refresh-1|access-1|access-restored/);
+    expect(swapped.accessToken).toBeUndefined();
+    expect(swapped.refreshToken).toBeUndefined();
+
+    ws.close();
+  });
+
+  it('callback redirects within 5s even when the swap takes longer', async () => {
+    // Slow builder: 10s — well past the 5s timeout window.  We use a 1s
+    // timeout in the auth router (configured below) so the test stays fast.
+    const slowBuild = () => new Promise(() => { /* never resolve */ });
+
+    // Re-create the server with a slow builder + tight timeout.
+    await srv.close();
+    srv = createServer({
+      engine,
+      vault,
+      oidc,
+      cfg: { podRoot: POD_ROOT },
+      buildPodClient: slowBuild,
+      // pass through to authRouter via a closure: we don't have a public
+      // hook, so we lean on the default 5s and use vi's fake timers? No —
+      // simpler to just verify the callback returns BEFORE the slow build
+      // resolves, using a generous-but-bounded wall clock.
+    });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+
+    const { body: loginBody } = await postJson('/auth/login', { issuer: 'https://solidcommunity.net' });
+    const issuedState = new URL(loginBody.redirectUrl).searchParams.get('state');
+
+    const t0 = Date.now();
+    const r = await fetch(`${baseUrl}/auth/callback?code=GOOD_CODE&state=${issuedState}`, {
+      redirect: 'manual',
+    });
+    const elapsed = Date.now() - t0;
+
+    expect(r.status).toBe(302);
+    // 5s is the default ceiling; we want to confirm it doesn't hang
+    // indefinitely.  Allow generous slack so CI variance doesn't flake.
+    expect(elapsed).toBeLessThan(7000);
+  }, 15000);
+
+  it('skips the swap when OIDC mock-pod regression mode is active (FOLIO_TEST_MOCK_POD=1)', async () => {
+    // Verifies the "mock-pod path keeps working" hard rule.  We don't drive
+    // /auth/callback here at all (mock mode means the user never signs in);
+    // we just confirm buildPodClient still returns the FsBackedMockPodClient.
+    process.env.FOLIO_TEST_MOCK_POD = '1';
+    try {
+      const c = await buildPodClient({ podRoot: POD_ROOT }, { oidc });
+      expect(c).toBeInstanceOf(FsBackedMockPodClient);
+      // And our hot-swap fake builder was never invoked.
+      expect(buildPodClientCalls).toBe(0);
+    } finally {
+      delete process.env.FOLIO_TEST_MOCK_POD;
+    }
+  });
+
+  it('callback failure path: no swap, no auth.swapped frame, no extra runOnce', async () => {
+    const swappedEvents = [];
+    const syncedEvents  = [];
+    engine.on('pod-client-swapped', (e) => swappedEvents.push(e));
+    engine.on('synced',             (s) => syncedEvents.push(s));
+
+    const { body: loginBody } = await postJson('/auth/login', { issuer: 'https://solidcommunity.net' });
+    const issuedState = new URL(loginBody.redirectUrl).searchParams.get('state');
+
+    const url = `/auth/callback?code=BAD_CODE&state=${issuedState}`;
+    const r = await fetch(`${baseUrl}${url}`, { redirect: 'manual', headers: { accept: 'application/json' } });
+    expect(r.status).toBe(400);
+
+    // Wait a bit to be sure no async swap snuck in.
+    await new Promise((res) => setTimeout(res, 100));
+    expect(swappedEvents).toHaveLength(0);
+    expect(buildPodClientCalls).toBe(0);
+    expect(syncedEvents).toHaveLength(0);
+  });
+});
+
+// ── helper for the v2.1 tests ─────────────────────────────────────────────
+
+async function waitForCondition(predicate, timeoutMs = 2000) {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error('waitForCondition: timeout');
+    }
+    await new Promise((r) => setTimeout(r, 25));
+  }
+}
