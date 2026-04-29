@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | not-started |
-| **Started** | — |
-| **Last updated** | 2026-04-29 (initial draft) |
+| **Status** | in-progress |
+| **Started** | 2026-04-28 (T.1 spawned) |
+| **Last updated** | 2026-04-28 (T.1 in-progress) |
 | **Owner** | unassigned |
 | **Blocked on** | nothing — strategy locked, ready to build |
 
@@ -28,15 +28,15 @@ specs that implementation agents can execute.  This is the plan for
 Inherited from the strategy (and already leaned).  Confirm-or-override
 before T.1 spawns.
 
-| # | Question | Lean | Lock target |
-|---|---|---|---|
-| Q-Test.1 | `test/scenarios/` location: top-level (repo-root) vs `packages/integration-tests/` workspace package | Top-level for v1; convert to workspace-package only if the boundary pays off | Before T.1 |
-| Q-Test.2 | Run as part of `npm test` (default) vs `npm run test:scenarios` (opt-in) | Both — root `npm test` includes scenarios; `npm run test:scenarios` is the fast-path dev command | Before T.1 |
-| Q-Test.3 | Simulate clock-skew between agents (each agent has its own offset from `Date.now()`)? | Yes for v2; out of scope for v1 priority scenarios | Before T.6 |
-| Q-Test.4 | `pod: 'real:css'` opt-in (env var) vs default-when-CSS-running | Opt-in via env (matches existing `CSS_URL` pattern) | Before T.1 |
-| Q-Test.5 | A2A external-interop scenario: Node `eventsource` polyfill (dev-dep on test-scenarios workspace) vs skip on older Node | `eventsource` polyfill in test-scenarios devDeps; doesn't pollute SDK package deps | Before T.6 |
-| Q-Test.6 | Granularity within T.2–T.5: ONE agent per area (5 scenarios per agent) vs ONE agent per scenario | One agent per area — scenarios in the same area share fixture setup; cuts agent count to manageable | Before T.2 |
-| Q-Test.7 | Mesh Lab (T.7): build now or defer until apps demand it | Defer — scenario suite has full correctness coverage; visualizer is dev-experience polish | Before T.7 |
+| #        | Question                                                                                                               | Lean                                                                                             | Lock target |
+| -------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ----------- |
+| Q-Test.1 | `test/scenarios/` location: top-level (repo-root) vs `packages/integration-tests/` workspace package                   | put it in the packages folder right away                                                         | Before T.1  |
+| Q-Test.2 | Run as part of `npm test` (default) vs `npm run test:scenarios` (opt-in)                                               | Both — root `npm test` includes scenarios; `npm run test:scenarios` is the fast-path dev command | Before T.1  |
+| Q-Test.3 | Simulate clock-skew between agents (each agent has its own offset from `Date.now()`)?                                  | **Locked: v1 scope.** T.1 ships `MockClock` + best-effort `Lab.injectClockSkew`; full per-agent SDK-side wiring requires a clock-injection refactor across ~100 `Date.now()` call sites — tracked as 🔴 HIGH PRIORITY in `TODO-GENERAL.md`.  Real clock-skew scenarios wait on that refactor.                                                                | Before T.6  |
+| Q-Test.4 | `pod: 'real:css'` opt-in (env var) vs default-when-CSS-running                                                         | Opt-in via env (matches existing `CSS_URL` pattern)                                              | Before T.1  |
+| Q-Test.5 | A2A external-interop scenario: Node `eventsource` polyfill (dev-dep on test-scenarios workspace) vs skip on older Node | `eventsource` polyfill in test-scenarios devDeps; doesn't pollute SDK package deps               | Before T.6  |
+| Q-Test.6 | Granularity within T.2–T.5: ONE agent per area (5 scenarios per agent) vs ONE agent per scenario                       | please explain this one                                                                          | Before T.2  |
+| Q-Test.7 | Mesh Lab (T.7): build now or defer until apps demand it                                                                | Defer — scenario suite has full correctness coverage; visualizer is dev-experience polish        | Before T.7  |
 
 ---
 
@@ -85,7 +85,7 @@ A team of 4 (after T.1): T.1 (~1 day) then T.2/T.3/T.4/T.5 in parallel (~2 days 
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | in-progress |
 | **Tag** | [NEW] |
 | **Notes** | Bottleneck.  Must land before T.2–T.5 can start.  Single agent. |
 
