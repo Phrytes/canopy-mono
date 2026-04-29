@@ -43,6 +43,20 @@
  * │                          │       │     sizeMatches?, shaMatches?, podEtag? }      │
  * │                          │       │ Errors: 400 BAD_VERIFY_ID, 500 VERIFY_FAILED   │
  * │                          │       │                                                 │
+ * │ /rm/:id                  │ POST  │ Folio v2.11 — local tombstone for one file.    │
+ * │                          │       │ id = base64url(relPath).                       │
+ * │                          │       │ → { ok: true, relPath }                        │
+ * │                          │       │ Errors: 400 BAD_DELETE_ID, 404 NOT_FOUND,      │
+ * │                          │       │         500 DELETE_FAILED                      │
+ * │                          │       │                                                 │
+ * │ /delete/:id              │ POST  │ Folio v2.11 — permanent pod delete + local +   │
+ * │                          │       │ knownState + version history wipe.             │
+ * │                          │       │ id = base64url(relPath).                       │
+ * │                          │       │ → { ok: true, relPath, podUri }                │
+ * │                          │       │ Streams sync.delete.done over /events.         │
+ * │                          │       │ Errors: 400 BAD_DELETE_ID, 404 NOT_FOUND,      │
+ * │                          │       │         500 DELETE_FAILED                      │
+ * │                          │       │                                                 │
  * │ /watch/start             │ POST  │ → { ok: true, watching: true }                 │
  * │ /watch/stop              │ POST  │ → { ok: true, watching: false }                │
  * │                          │       │                                                 │
@@ -63,6 +77,7 @@
  *   { type: 'error',             ts, phase, relPath?, message }
  *   { type: 'diagnostics.step',  ts, idx, total, id, label, status, detail? } (v2.3)
  *   { type: 'diagnostics.done',  ts, ok, counts, abortReason?, recommendedFix? } (v2.3)
+ *   { type: 'sync.delete.done',  ts, relPath, podUri }                          (v2.11)
  */
 
 import express from 'express';
@@ -539,6 +554,119 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
       res.json({ ts: Date.now(), ...r });
     } catch (err) {
       sendError(res, 500, 'VERIFY_FAILED', err?.message ?? String(err));
+    }
+  });
+
+  // ── /rm/:id (Folio v2.11) ─────────────────────────────────────────────────
+  // Per-file local-tombstone delete.  `id` = base64url(relPath) — same
+  // encoding the conflicts + versions + verify endpoints use.  The pod copy
+  // is preserved; the local file is removed on the next sync; the file
+  // won't re-download because the SDK records a tombstone.
+  //
+  // Errors:
+  //   - 400 BAD_DELETE_ID — id malformed or has '..' segments
+  //   - 404 NOT_FOUND     — relPath has no local file AND no knownState
+  //                          entry (nothing to tombstone)
+  //   - 500 DELETE_FAILED — engine threw during deleteLocal
+  router.post('/rm/:id', async (req, res) => {
+    const id = req.params.id;
+    const relPath = relPathFromConflictId(id);
+    if (!relPath || relPath.length === 0) {
+      return sendError(res, 400, 'BAD_DELETE_ID', 'delete id is malformed');
+    }
+    if (relPath.split(/[\\/]/).some((seg) => seg === '..' || seg === '')) {
+      return sendError(res, 400, 'BAD_DELETE_ID', 'delete id has invalid path segments');
+    }
+    if (typeof engine.deleteLocal !== 'function') {
+      return sendError(res, 500, 'NOT_SUPPORTED', 'engine has no deleteLocal()');
+    }
+
+    // Confirm there's something to tombstone.  We treat "file present locally"
+    // OR "file ever synced (knownState)" as the precondition.  Without either,
+    // a tombstone for a never-seen file is a no-op the user probably didn't
+    // mean — surface as 404 so the UI can warn.
+    const localRoot = engine.localRoot;
+    const absPath   = join(localRoot, ...relPath.split('/'));
+    let hasLocal = false;
+    try { await fs.access(absPath); hasLocal = true; } catch { /* ENOENT */ }
+    let hasKnown = false;
+    try {
+      const text = await fs.readFile(join(localRoot, STATE_FILE_RELPATH), 'utf8');
+      const parsed = JSON.parse(text);
+      hasKnown = !!parsed?.files?.[relPath];
+    } catch { /* no state yet */ }
+    if (!hasLocal && !hasKnown) {
+      return sendError(res, 404, 'NOT_FOUND', `no file at ${relPath}`);
+    }
+
+    try {
+      await engine.deleteLocal(relPath);
+    } catch (err) {
+      return sendError(res, 500, 'DELETE_FAILED', err?.message ?? String(err));
+    }
+    res.json({ ok: true, relPath });
+  });
+
+  // ── /delete/:id (Folio v2.11) ─────────────────────────────────────────────
+  // Per-file PERMANENT delete.  Removes the resource from the pod for
+  // everyone, removes the local file, drops knownState, and wipes the
+  // file's time-machine history.
+  //
+  // Emits `sync.delete.done` over /events on success.  Local-only tombstone
+  // (POST /rm/:id) intentionally has no WS frame — the next sync's
+  // `sync.done` frame surfaces it via `deletes`.
+  //
+  // Errors:
+  //   - 400 BAD_DELETE_ID — id malformed or has '..' segments
+  //   - 404 NOT_FOUND     — file is absent locally AND from the pod
+  //   - 500 DELETE_FAILED — engine / pod-client threw
+  router.post('/delete/:id', async (req, res) => {
+    const id = req.params.id;
+    const relPath = relPathFromConflictId(id);
+    if (!relPath || relPath.length === 0) {
+      return sendError(res, 400, 'BAD_DELETE_ID', 'delete id is malformed');
+    }
+    if (relPath.split(/[\\/]/).some((seg) => seg === '..' || seg === '')) {
+      return sendError(res, 400, 'BAD_DELETE_ID', 'delete id has invalid path segments');
+    }
+    if (typeof engine.deleteCompletely !== 'function') {
+      return sendError(res, 500, 'NOT_SUPPORTED', 'engine has no deleteCompletely()');
+    }
+
+    // Confirm something exists somewhere.  We're more permissive than /rm:
+    // a stale local copy is enough; an absent local copy is fine if the
+    // file is on the pod.  Only refuse when both are missing.
+    const localRoot = engine.localRoot;
+    const absPath   = join(localRoot, ...relPath.split('/'));
+    let hasLocal = false;
+    try { await fs.access(absPath); hasLocal = true; } catch { /* ENOENT */ }
+
+    let hasPod = false;
+    if (!hasLocal) {
+      // Probe the pod cheaply.  If there's no `exists()` we just let the
+      // engine try and surface NOT_FOUND from the pod-client below.
+      const pc = resolvedPodClient;
+      if (pc && typeof pc.exists === 'function') {
+        try {
+          const podUri = engine.pathMap?.localToPod
+            ? engine.pathMap.localToPod(absPath)
+            : `${engine.podRoot}${relPath.split('/').map(encodeURIComponent).join('/')}`;
+          hasPod = !!(await pc.exists(podUri));
+        } catch { /* treat as unknown — let engine decide */ hasPod = true; }
+      } else {
+        // Unknown — defer to engine; we can't 404 confidently.
+        hasPod = true;
+      }
+      if (!hasPod) {
+        return sendError(res, 404, 'NOT_FOUND', `no file at ${relPath}`);
+      }
+    }
+
+    try {
+      const r = await engine.deleteCompletely(relPath);
+      res.json({ ok: true, relPath: r.relPath, podUri: r.podUri });
+    } catch (err) {
+      sendError(res, 500, 'DELETE_FAILED', err?.message ?? String(err));
     }
   });
 

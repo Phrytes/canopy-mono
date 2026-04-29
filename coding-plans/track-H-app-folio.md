@@ -181,6 +181,7 @@ Survivors of the re-orientation, ordered by impact:
 | **v2.8** | **`folio install-service` daemon mode** (launchd / systemd / Task Scheduler) | ✅ shipped 2026-04-29 |
 | **v2.9** | **Web UI re-shape**: collapse History tab into per-file menu; collapse Diagnostics into Settings panel; primary tabs become Status / Conflicts / Share | queued |
 | **v2.10** | **Copy-rename grace window** — skip sync of short-lived intermediates (`A (Copy).md` → renamed to `B.md` no longer pollutes pod history) | ✅ shipped 2026-04-29 |
+| **v2.11** | **Per-file delete buttons** (local tombstone + pod permanent) in the recently-synced list | ✅ shipped 2026-04-29 |
 | ~~v2.4~~ | ~~Markdown preview toggle~~ | **dropped** (Obsidian lane) |
 
 v2.7 + v2.8 are the new "menubar-first" pieces.  v2.9 is the UI demotion.
@@ -2036,3 +2037,107 @@ clean Linux box is ~2 s, no compile.  Full rationale + binary sha256s in
 
 **Test count.**  Baseline at start of work: 348 (post-v2.9).  After v2.7:
 **367 total** (+19 new — 16 tray, 3 server).  All green.
+
+---
+
+### Folio v2.11 — Per-file delete buttons in the web UI
+
+**Problem.**  CLI has `folio rm <path>` (tombstone — pod keeps file, local
+copy stops re-downloading).  The web UI exposed neither tombstone nor a
+permanent pod-delete affordance per file.  Users could only mass-delete
+by renaming the local folder or hand-editing files; both are awkward.
+
+**Two delete modes per file row** (in the recently-synced list,
+alongside Verify-dot + ↻ history):
+
+1. **Delete locally** (tombstone) — `POST /rm/:id` (id = base64url(relPath)).
+   - Server calls `engine.deleteLocal(relPath)` — existing API since
+     Folio.B4: drops knownState, version history (best-effort), tells
+     `PodClient` to tombstone the URI.
+   - File removed locally on next sync; pod keeps it; tombstone prevents
+     re-download.
+   - Modal copy: "Stop syncing this file locally? Pod copy stays.
+     Recover via Verify pod state."
+
+2. **Delete from pod** (permanent) — `POST /delete/:id`.
+   - New `engine.deleteCompletely(relPath)` resolves URI via
+     `pathMap.localToPod`, calls `podClient.deleteCompletely(podUri)`,
+     unlinks the local file (best-effort), drops knownState, wipes the
+     time-machine history (`dropVersions`), emits `sync.delete.done`.
+   - NOT_FOUND from the pod is treated as success (idempotent).
+     Non-NOT_FOUND errors propagate; local file is NOT touched on hard
+     failure so the user can retry.
+   - Modal copy: "Permanently delete from your pod? This cannot be
+     undone — version history is wiped too."  Distinct red border + red
+     primary button so the destructive action is visually distinct from
+     the local tombstone.
+
+**Modal hygiene** (both modes):
+- Distinct DOM ids — `rm-confirm-modal` (local) vs
+  `pod-delete-confirm-modal` (pod).
+- Same close-affordances: Cancel button, × in the corner, Esc keypress,
+  click on the modal backdrop.
+- File path is rendered via `textContent` (no XSS surface).
+- Clicking through the confirm fires `POST /rm/:id` or `POST /delete/:id`;
+  on success the row drops out of the recently-synced list immediately.
+
+**WebSocket frame** — `{ type: 'sync.delete.done', ts, relPath, podUri }`
+emitted by `WsHub` when SyncEngine fires its `sync.delete.done` event.
+Local-tombstone (POST /rm/:id) intentionally has NO new frame — the
+next runOnce surfaces it via the existing `sync.done` frame's `deletes`
+count.
+
+**Path-traversal hardening.**  `/rm/:id` and `/delete/:id` decode
+base64url and reject ids whose decoded relPath has any `..` or empty
+segment, mirroring the v2.5 `/verify/:id` and the conflict-id
+endpoints.
+
+**Test surface** — 16 new tests (test count 367 → 383):
+- `SyncEngine.test.js` (+4):
+  - happy path (pod gone, local gone, history wiped, event emitted)
+  - NOT_FOUND from pod is idempotent success
+  - empty / undefined relPath rejected
+  - non-NOT_FOUND error propagates; local file preserved
+- `server.test.js` (+6):
+  - POST /rm: happy (tombstone), 400 BAD_DELETE_ID for path-traversal
+    id, 404 NOT_FOUND for never-seen file
+  - POST /delete: happy (pod + local + history wiped, sync.delete.done
+    over WS), 400 BAD_DELETE_ID for path-traversal id, 404 NOT_FOUND
+    when both local + pod are absent
+- `ui.test.js` (+6):
+  - index.html ships both confirm modals (closed by default, role=dialog,
+    distinct ids + the danger-styled inner)
+  - status.js wires per-row buttons + ESC/backdrop close, no innerHTML,
+    `ws.sync.delete.done` subscription present
+  - style.css ships `.btn--danger` + `.modal__inner--danger` +
+    `.modal__warn--danger` + the per-row class hooks
+  - end-to-end POST /rm + POST /delete round-trips
+  - both endpoints reject path-traversal with 400 BAD_DELETE_ID
+
+**Files touched:**
+- `apps/folio/src/SyncEngine.js`                (+ `deleteCompletely(relPath)`)
+- `apps/folio/src/server/routes.js`             (+ POST /rm/:id + POST /delete/:id + header docs)
+- `apps/folio/src/server/wsHub.js`              (+ wire `sync.delete.done` engine → WS frame)
+- `apps/folio/src/server/static/index.html`     (+ two confirm modals)
+- `apps/folio/src/server/static/status.js`      (+ per-row Delete buttons + modal handlers + ESC + backdrop close + ws subscription)
+- `apps/folio/src/server/static/style.css`      (+ `.btn--danger`, `.modal__inner--danger`, `.modal__warn--danger`, `.verify-list__rm`, `.verify-list__pod-delete`, `.modal__close`, `.modal__path`, `.modal__backdrop`)
+- `apps/folio/test/server.test.js`              (+6)
+- `apps/folio/test/ui.test.js`                  (+6)
+- `apps/folio/test/SyncEngine.test.js`          (+4)
+- `coding-plans/track-H-app-folio.md`           (this scratchpad)
+
+**Constraints honored:**
+- No new top-level deps.
+- Local-tombstone path leaves version history intact (so the user can
+  recover via Verify pod state).  Pod-permanent path wipes the history
+  (`engine.dropVersions`) — "permanent" really means permanent.
+- Confirm modals block accidental clicks.  ESC + backdrop close both
+  exercised by the new tests.
+- Path-traversal hardening on both endpoints (mirrors v2.5 /verify).
+- File paths rendered via `textContent`; no innerHTML in the new code.
+- WS frame `sync.delete.done` only for full-delete; tombstone has no
+  new frame (next `sync.done` surfaces it via `deletes`).
+- ES modules; vanilla JS; vitest.
+
+**Test count.**  Baseline 374 (post-v2.10).  After v2.11: **390 total**
+(+16 new — 4 SyncEngine, 6 server, 6 ui).  All green.

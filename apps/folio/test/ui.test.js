@@ -940,3 +940,140 @@ describe('Folio v2.9 — three primary tabs + per-file history popover', () => {
     expect(await fs.readFile(join(localRoot, 'note.md'), 'utf8')).toBe('one');
   });
 });
+
+// ── 14. Folio v2.11 — Per-file delete buttons (local + pod) ───────────────
+
+describe('Folio v2.11 — per-file delete buttons (UI contract)', () => {
+  it('index.html ships both confirm modals (rm + pod-delete), distinct + closed-by-default', async () => {
+    const r = await fetch(`${baseUrl}/`);
+    expect(r.status).toBe(200);
+    const html = await r.text();
+
+    // Local-tombstone modal.
+    expect(html).toMatch(/id="rm-confirm-modal"/);
+    expect(html).toMatch(/id="btn-rm-confirm"/);
+    expect(html).toMatch(/id="btn-rm-cancel"/);
+    expect(html).toMatch(/id="rm-confirm-backdrop"/);
+    expect(html).toMatch(/id="rm-confirm-modal"[^>]*hidden/);
+
+    // Permanent pod-delete modal — distinct ids.  The destructive variant
+    // carries `modal--pod-delete` so the red styling kicks in.
+    expect(html).toMatch(/id="pod-delete-confirm-modal"/);
+    expect(html).toMatch(/id="btn-pod-delete-confirm"/);
+    expect(html).toMatch(/id="btn-pod-delete-cancel"/);
+    expect(html).toMatch(/id="pod-delete-confirm-backdrop"/);
+    expect(html).toMatch(/id="pod-delete-confirm-modal"[^>]*hidden/);
+    expect(html).toMatch(/modal--pod-delete/);
+    expect(html).toMatch(/modal__inner--danger/);
+
+    // ARIA roles for the confirm modals.
+    expect(html).toMatch(/id="rm-confirm-modal"[^>]*role="dialog"/);
+    expect(html).toMatch(/id="pod-delete-confirm-modal"[^>]*role="dialog"/);
+  });
+
+  it('status.js wires per-row delete buttons + ESC + backdrop close, with no innerHTML', async () => {
+    const r = await fetch(`${baseUrl}/status.js`);
+    expect(r.status).toBe(200);
+    const text = await r.text();
+
+    // Both endpoints referenced from the controller.
+    expect(text).toMatch(/['"]\/rm\/\$\{id\}['"]|`\/rm\/\$\{id\}`/);
+    expect(text).toMatch(/['"]\/delete\/\$\{id\}['"]|`\/delete\/\$\{id\}`/);
+
+    // Plain-text labels on the per-row buttons (no glyph required).
+    expect(text).toContain('Delete locally');
+    expect(text).toContain('Delete from pod');
+
+    // Modal hygiene: ESC + backdrop close.
+    expect(text).toMatch(/Escape/);
+    expect(text).toMatch(/backdrop/i);
+
+    // Subscribed to the new WS frame.
+    expect(text).toMatch(/ws\.sync\.delete\.done/);
+
+    // XSS hardening preserved (no innerHTML anywhere in this controller).
+    expect(text).not.toMatch(/\.innerHTML\s*=/);
+  });
+
+  it('style.css ships the danger button + danger-modal rules', async () => {
+    const r = await fetch(`${baseUrl}/style.css`);
+    expect(r.status).toBe(200);
+    const css = await r.text();
+    expect(css).toMatch(/\.btn--danger/);
+    expect(css).toMatch(/\.modal__inner--danger/);
+    expect(css).toMatch(/\.modal__warn--danger/);
+    expect(css).toMatch(/\.verify-list__rm/);
+    expect(css).toMatch(/\.verify-list__pod-delete/);
+  });
+
+  it('POST /rm/:id tombstones the file (pod copy stays) end-to-end', async () => {
+    await fs.writeFile(join(localRoot, 'a.md'), 'apple');
+    await engine.runOnce();
+    expect(podClient.store.has(`${POD_ROOT}a.md`)).toBe(true);
+
+    const id = conflictIdFromRelPath('a.md');
+    const r = await fetch(`${baseUrl}/rm/${id}`, {
+      method:  'POST',
+      headers: { 'content-type': 'application/json' },
+      body:    '{}',
+    });
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.ok).toBe(true);
+    expect(body.relPath).toBe('a.md');
+    // Pod copy survives the tombstone.
+    expect(podClient.store.has(`${POD_ROOT}a.md`)).toBe(true);
+    expect(podClient.tombstones.has(`${POD_ROOT}a.md`)).toBe(true);
+  });
+
+  it('POST /delete/:id permanently removes pod + local + history; broadcasts sync.delete.done', async () => {
+    await fs.writeFile(join(localRoot, 'doomed.md'), 'erase me');
+    await engine.runOnce();
+    expect(podClient.store.has(`${POD_ROOT}doomed.md`)).toBe(true);
+
+    const ws = new WebSocket(wsUrl);
+    const frames = [];
+    await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
+    ws.on('message', (data) => {
+      try { frames.push(JSON.parse(data.toString('utf8'))); } catch { /* ignore */ }
+    });
+
+    const id = conflictIdFromRelPath('doomed.md');
+    const r = await fetch(`${baseUrl}/delete/${id}`, {
+      method:  'POST',
+      headers: { 'content-type': 'application/json' },
+      body:    '{}',
+    });
+    expect(r.status).toBe(200);
+
+    expect(podClient.store.has(`${POD_ROOT}doomed.md`)).toBe(false);
+    await expect(fs.access(join(localRoot, 'doomed.md'))).rejects.toThrow();
+
+    // Wait for the WS frame the UI subscribes to.
+    const start = Date.now();
+    while (!frames.some((f) => f.type === 'sync.delete.done')) {
+      if (Date.now() - start > 2000) throw new Error('timeout waiting for sync.delete.done');
+      await new Promise((rr) => setTimeout(rr, 25));
+    }
+    const frame = frames.find((f) => f.type === 'sync.delete.done');
+    expect(frame.relPath).toBe('doomed.md');
+    ws.close();
+  });
+
+  it('POST /rm + POST /delete reject path-traversal ids with 400', async () => {
+    const id = Buffer.from('../etc/passwd', 'utf8').toString('base64')
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+    const rmResp = await fetch(`${baseUrl}/rm/${id}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    });
+    expect(rmResp.status).toBe(400);
+    expect((await rmResp.json()).error.code).toBe('BAD_DELETE_ID');
+
+    const delResp = await fetch(`${baseUrl}/delete/${id}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    });
+    expect(delResp.status).toBe(400);
+    expect((await delResp.json()).error.code).toBe('BAD_DELETE_ID');
+  });
+});
