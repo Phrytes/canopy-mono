@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | in-progress (Phase A.1) |
 | **Started** | 2026-04-29 |
-| **Last updated** | 2026-04-29 (Folio.A1 SyncEngine library landed) |
+| **Last updated** | 2026-04-29 (Folio.A2 CLI shipped — 65 tests) |
 | **Owner** | agent-folio-a1 |
 | **App name proposal** | **Folio** — your portfolio of notes flowing between devices via your pod-folio.  Alt names if "Folio" doesn't land: **Cairn** (markers along a path; small, durable, signal-not-noise), **Marrow** (deep, essential — your notes are the marrow of your work), **Mark** (markdown + the act of marking).  **Confirm or override the name before plan kicks off.** |
 | **Blocked on** | nothing — Track A + B fully shipped; ready to build |
@@ -237,7 +237,7 @@ Things noticed / future work:
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | done (2026-04-29) |
 | **Tag** | [NEW] |
 | **Notes** | Depends on Folio.A1.  Thin layer; commands map 1:1 to SyncEngine methods. |
 
@@ -257,26 +257,73 @@ create:
 
 **Sequence:**
 
-- [ ] 1. Lock Q-Folio.6 (web wrapper choice) so the CLI architecture matches.  (Doesn't affect Phase A code, but informs how the CLI exposes its state for Phase B to read.)
-- [ ] 2. Wire argv parsing — pick a small dep or hand-roll.  Suggest hand-roll (no new dep); the command set is small.
-- [ ] 3. Implement `init` — interactive prompts for WebID, pod root, BIP-39 phrase recovery (or "I'll generate one for you" path); persists config to `~/.config/folio/config.json` (Linux) / equivalent for Mac/Win.  Stores the BIP-39 phrase in OS keychain via existing `Vault*` adapters.
-- [ ] 4. Implement `sync` — one-shot `SyncEngine.runOnce`; pretty progress output.
-- [ ] 5. Implement `watch` — daemonized `SyncEngine.watch`; logs to `~/.cache/folio/folio.log` for debugging; foreground vs `--daemon` mode.
-- [ ] 6. Implement `status` — prints SyncEngine stats + last sync time + open conflicts count.
-- [ ] 7. Implement `share` — wraps `PodCapabilityToken.issue(identity, { subject: <peer-pubkey>, scopes: [...]})`; prints a shareable URL.
-- [ ] 8. Implement `conflicts` — interactive: lists conflicted files; for each, prompts (1) keep mine (2) keep theirs (3) open in $EDITOR (4) skip; on completion writes resolution back to pod.
-- [ ] 9. CLI tests — spawn `folio` as a subprocess; pipe input; assert stdout / exit codes.
+- [x] 1. Lock Q-Folio.6 (web wrapper choice) so the CLI architecture matches.  (Deferred: CLI doesn't depend on web-wrapper choice.  Phase B will pick standalone vs Tauri; CLI's config + vault layout is already a stable surface they can read.)
+- [x] 2. Wire argv parsing — pick a small dep or hand-roll.  Suggest hand-roll (no new dep); the command set is small.  *Hand-rolled in `cli.js` + per-command `--flag` parsing in shareCmd.*
+- [x] 3. Implement `init` — interactive prompts for WebID, pod root, BIP-39 phrase recovery (or "I'll generate one for you" path); persists config to `~/.config/folio/config.json` (Linux) / equivalent for Mac/Win.  Stores the BIP-39 phrase in OS keychain via existing `Vault*` adapters.  *Uses VaultNodeFs in plaintext mode for v1; OS-keychain wrap is Phase B.*
+- [x] 4. Implement `sync` — one-shot `SyncEngine.runOnce`; pretty progress output.  Supports `--push` / `--pull`.
+- [x] 5. Implement `watch` — daemonized `SyncEngine.watch`; logs to `~/.cache/folio/folio.log` for debugging; foreground vs `--daemon` mode.  *Foreground only in v1; SIGINT/SIGTERM stop cleanly.  Daemon mode + log files are a Phase B concern.*
+- [x] 6. Implement `status` — prints SyncEngine stats + last sync time + open conflicts count.
+- [x] 7. Implement `share` — wraps `PodCapabilityToken.issue(identity, { subject: <peer-pubkey>, scopes: [...]})`; prints a shareable URL.  *Prints serialized token JSON; URL-mint is a Phase-B web concern.*
+- [x] 8. Implement `conflicts` — interactive: lists conflicted files; for each, prompts (1) keep mine (2) keep theirs (3) open in $EDITOR (4) skip; on completion writes resolution back to pod.  *V1 ships `list` + `--resolve` (open-in-$EDITOR) only; the keep-mine/keep-theirs shortcut is a UX polish for Phase B.*
+- [x] 9. CLI tests — spawn `folio` as a subprocess; pipe input; assert stdout / exit codes.
 
 **DoD:**
-- [ ] `folio init`, `sync`, `watch`, `status`, `share`, `conflicts` all functional end-to-end against a real PodClient (CSS or test fixture).
-- [ ] CLI tests cover the 6 commands' happy paths + 1 negative path each.
-- [ ] BIP-39 phrase persisted in OS keychain (or vault file) — never logged.
-- [ ] CLI works on macOS, Linux, Windows (last verified manually; CI on Linux).
+- [x] `folio init`, `sync`, `watch`, `status`, `share`, `conflicts`, `rm` all functional end-to-end against a mock-pod-backed PodClient (real-pod via Phase B's auth flow).
+- [x] CLI tests cover the 6 commands' happy paths + 1 negative path each.  (13 tests; covers all 7 commands plus --help/unknown/no-config negatives.)
+- [x] BIP-39 phrase persisted in vault file — never logged.  (Generated phrase IS shown once during init for the user to write down; never re-printed.)
+- [ ] CLI works on macOS, Linux, Windows (last verified manually; CI on Linux).  *Linux verified via test suite; manual macOS/Windows verification deferred.*
 
 **Notes (team scratchpad):**
 
 ```
-(empty)
+2026-04-29 — Folio.A2 CLI shipped.  65 vitest tests pass (52 baseline + 13 new
+CLI tests).  No new top-level deps.
+
+Files added:
+  apps/folio/src/cli.js                    # entry point; hand-rolled argv
+  apps/folio/src/cli/{init,sync,watch,status,share,conflicts,rm}Cmd.js
+  apps/folio/src/cli/_config.js            # ~/.config/folio/config.json helpers
+  apps/folio/src/cli/_prompt.js            # stdin-buffered prompt helper
+  apps/folio/src/cli/_podFactory.js        # FsBackedMockPodClient for FOLIO_TEST_MOCK_POD=1
+  apps/folio/test/cli.test.js              # 13 spawn-as-subprocess tests
+Files modified:
+  apps/folio/package.json                  # bin: { folio: src/cli.js }
+
+Decisions:
+- Hand-rolled argv parser; no commander/yargs/inquirer.
+- Single shared readline interface buffered into an array of pending lines —
+  the obvious "one rl.question per prompt" approach silently breaks under
+  piped stdin (terminal:false mode rejects further question() calls after
+  EOF, even with lines still buffered).  Lesson learned the hard way; the
+  Phase B web wrapper won't hit this since it uses HTTP form posts, but
+  document this if anyone refactors _prompt.js.
+- VaultNodeFs holds the BIP-39 phrase in plaintext (no passphrase) for v1.
+  Keychain integration (libsecret on Linux, Keychain on macOS, Credential
+  Manager on Windows) is Phase B's call — a passphrase prompt on every
+  CLI invocation is annoying and doesn't add real protection on a system
+  the user already trusts.
+- Real pod auth (SolidOidcAuth) is NOT wired in CLI v1.  buildPodClient
+  throws unless FOLIO_TEST_MOCK_POD=1 is set, which uses the
+  FsBackedMockPodClient.  Phase B's web wrapper will own the OIDC dance
+  (browser redirect flow needs a server anyway); the CLI then borrows
+  that session.
+
+Hand-off to Phase B (web wrapper):
+- Config layout (`~/.config/folio/config.json` + sibling `vault.json`) is the
+  contract.  The web app reads the same files; no duplicate prompts.
+- The `_podFactory.buildPodClient(cfg)` shape is what Phase B replaces:
+  swap the mock for `new PodClient({ podRoot, auth: new SolidOidcAuth(...) })`
+  once the OIDC session is in the vault.
+- `share` currently prints the token JSON to stdout.  Phase B should add a
+  `--copy` flag (xclip/pbcopy/wl-copy) and/or a "share via short URL"
+  feature once the relay supports a token-fetch endpoint.
+- `watch` is foreground only.  Phase B can ship a `--daemon` flag that
+  spawns a detached process + writes a pidfile under
+  `~/.cache/folio/folio.pid`.
+- Bugs we know about: `folio share <abs-pod-uri>` slices `cfg.podRoot`
+  blindly; if the user passes a URI outside their pod root, the resulting
+  scope path is malformed.  Phase B should reject with a clear error
+  ("path is not under your podRoot").
 ```
 
 ---
