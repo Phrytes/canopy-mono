@@ -42,6 +42,11 @@ const STATIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'static');
  * @param {object} [deps.oidc]     OidcSession (optional; if provided, mounts /auth/* routes)
  * @param {string} [deps.oidcCallbackUrl] explicit callback URL forwarded to authRoutes;
  *                                        defaults to <inbound-host>/auth/callback.
+ * @param {object} [deps.cfg]      Folio config (needs `podRoot`).  Forwarded to
+ *                                 the auth router so v2.1's hot-swap can build
+ *                                 a real PodClient at callback time.
+ * @param {(cfg, oidc) => Promise<object>} [deps.buildPodClient] override for
+ *                                 the v2.1 hot-swap; tests inject a fake.
  * @returns {{
  *   app: import('express').Express,
  *   server: import('http').Server,
@@ -50,7 +55,7 @@ const STATIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'static');
  *   close:  () => Promise<void>,
  * }}
  */
-export function createServer({ engine, podClient, vault, identity, oidc, oidcCallbackUrl, errorBuffer } = {}) {
+export function createServer({ engine, podClient, vault, identity, oidc, oidcCallbackUrl, errorBuffer, cfg, buildPodClient } = {}) {
   if (!engine) throw new Error('createServer: engine is required');
 
   const app    = express();
@@ -91,7 +96,16 @@ export function createServer({ engine, podClient, vault, identity, oidc, oidcCal
   // /auth/* paths reach their handlers, and so the main router's 404
   // catch-all only sees genuinely-unknown paths.
   if (oidc) {
-    app.use(createAuthRouter({ oidc, callbackUrl: oidcCallbackUrl }));
+    app.use(createAuthRouter({
+      oidc,
+      callbackUrl: oidcCallbackUrl,
+      // Folio v2.1 wiring: pass engine / cfg / hub / buildPodClient so the
+      // /auth/callback handler can hot-swap the PodClient on success.
+      engine,
+      cfg,
+      hub,
+      buildPodClient,
+    }));
   }
 
   app.use(createRouter({ engine, podClient, vault, identity, hub, errorBuffer: errBuf }));

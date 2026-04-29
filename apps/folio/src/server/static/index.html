@@ -195,6 +195,10 @@
     </section>
   </main>
 
+  <!-- Toast region (Folio v2.1).  auth.js paints transient "Signed in —
+       syncing now" messages here when an `auth.swapped` WS frame arrives. -->
+  <div id="auth-toast" class="auth-toast" role="status" aria-live="polite" hidden></div>
+
   <!-- Vendored CodeMirror; loaded as a classic <script> so it registers
        a window.CodeMirror global, which our ES-module app code reads. -->
   <script src="/vendor/codemirror.min.js"></script>

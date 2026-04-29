@@ -386,3 +386,22 @@ main { padding: 1rem 1.25rem 2rem; }
 .auth-modal__inner h2 { margin-top: 0; }
 .auth-modal__inner label { display: block; margin: 0.4rem 0; }
 .auth-modal__inner input[type="url"] { padding: 0.25rem 0.4rem; min-width: 16rem; }
+
+/* Folio v2.1 — toast for auth.swapped frame.  Bottom-right corner. */
+.auth-toast {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  background: #086e3a;
+  color: #fff;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  font-size: 0.95rem;
+  z-index: 1100;
+  max-width: 32rem;
+}
+.auth-toast[hidden] { display: none; }
+.auth-toast--ok    { background: #086e3a; }
+.auth-toast--info  { background: #1d4977; }
+.auth-toast--error { background: #8a1d1d; }
