@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Status** | in-progress (Phase A.1) |
+| **Status** | Phase A done; Phase B kickoff (B1.server + B1.tray + B3 spawned) |
 | **Started** | 2026-04-29 |
-| **Last updated** | 2026-04-29 (Folio.A2 CLI shipped — 65 tests) |
-| **Owner** | agent-folio-a1 |
+| **Last updated** | 2026-04-29 (Q-Folio.6 locked = standalone web; B1 split into 3 slices + B3 peer) |
+| **Owner** | agent-folio-b (multiple) |
 | **App name proposal** | **Folio** — your portfolio of notes flowing between devices via your pod-folio.  Alt names if "Folio" doesn't land: **Cairn** (markers along a path; small, durable, signal-not-noise), **Marrow** (deep, essential — your notes are the marrow of your work), **Mark** (markdown + the act of marking).  **Confirm or override the name before plan kicks off.** |
 | **Blocked on** | nothing — Track A + B fully shipped; ready to build |
 
@@ -94,7 +94,7 @@ it in React Native screens.
 | Q-Folio.3 | `with-<webid>/` auto-share folder convention (per design sketch Twist 1) — Phase A or defer? | TBD — leaning defer to Phase B (CLI v0 should be the smallest viable surface; auto-sharing is a UI feature) |
 | Q-Folio.4 | Per-folder time-machine versioning (per design sketch Twist 2) — Phase A or defer? | TBD — leaning defer to Phase B (same reason) |
 | Q-Folio.5 | Conflict resolution UX — auto-merge git-style markers (CLI v0) or prompt-and-stop?  Q-H1.1 in design sketch was "git-style for v1". | Locked from sketch: git-style markers, written in-place to the file |
-| Q-Folio.6 | Phase B desktop wrapper choice: standalone web app served by local agent vs Tauri vs Electron | TBD before Phase B — leaning standalone web app (zero new deps; user opens `http://localhost:8888` in any browser) |
+| Q-Folio.6 | Phase B desktop wrapper choice: standalone web app served by local agent vs Tauri vs Electron | **Locked 2026-04-29: standalone web app.**  Express + WebSocket on `http://localhost:8888`; user opens it in any browser.  No native wrapper — keeps deps light, works on every desktop, and the same HTTP layer is reusable from the RN app in Phase C. |
 
 ---
 
@@ -107,9 +107,12 @@ Phase A (CLI v0)
 ├── A1 — sync engine library (independent)
 └── A2 — CLI wrapper (depends on A1)
 
-Phase B (web)
-├── B1 — web UI (depends on A1)
-└── B2 — share-link generator UI (independent of A1, but depends on A1 having mature)
+Phase B (web)            (split into 4 agent slices for parallelism)
+├── B1.server — Express + REST + WebSocket (depends on A1, A2)
+├── B1.ui     — vanilla JS SPA          (depends on B1.server contract)
+├── B1.tray   — tray-bar / menubar icon (independent)
+└── B3        — with-<webid>/ auto-share (Q-Folio.3; SyncEngine extension; independent of B1)
+   B4        — time-machine versioning (Q-Folio.4; deferred — pick up after B1 lands)
 
 Phase C (mobile)
 ├── C1 — RN sync engine adapter (depends on A1; some platform-specific tweaks)
@@ -334,9 +337,9 @@ Hand-off to Phase B (web wrapper):
 
 | | |
 |---|---|
-| **Status** | not-started |
+| **Status** | kickoff (split into B1.server / B1.ui / B1.tray; B3 spawned as peer for Q-Folio.3) |
 | **Tag** | [NEW] |
-| **Notes** | Depends on Folio.A1 (sync engine).  Standalone web app served on `http://localhost:8888` by the Folio agent process.  Q-Folio.6 lock decides Tauri vs standalone — strongly leaning standalone. |
+| **Notes** | Depends on Folio.A1 (sync engine).  Q-Folio.6 locked: **standalone web app** (Express + WebSocket on `http://localhost:8888`).  Split into three parallel slices for agent execution (see scratchpad). |
 
 **Files:**
 
@@ -357,12 +360,12 @@ create:
 
 **Sequence:**
 
-- [ ] 1. Lock Q-Folio.6 (standalone vs Tauri).  Assuming standalone: Express + WebSocket for live status updates.
-- [ ] 2. REST API: `/status`, `/conflicts`, `/conflicts/:id/resolve`, `/share`, `/sync/now`, `/watch/start|stop`.
-- [ ] 3. Web UI — single-page vanilla JS.  Status pane shows sync state; conflicts pane shows side-by-side merge UI (CodeMirror for the editor, free dep — confirm size + license); share pane mints capability tokens with a friendly form.
-- [ ] 4. Tray-bar / menubar icon — small badge showing sync status.  Click → opens `http://localhost:8888`.
-- [ ] 5. Phase B integrates Q-Folio.3 (auto-shared `with-<webid>/` folders) and Q-Folio.4 (time-machine versioning) — these were deferred from Phase A for UX reasons; lock here.
-- [ ] 6. Tests — Express integration tests; Playwright/Puppeteer for the UI happy paths.
+- [x] 1. Lock Q-Folio.6 (standalone vs Tauri).  Locked 2026-04-29: standalone web app — Express + WebSocket.
+- [ ] 2. **B1.server** — REST API: `/status`, `/conflicts`, `/conflicts/:id/resolve`, `/share`, `/sync/now`, `/watch/start|stop`.  WebSocket for live status updates.  Express integration tests.
+- [ ] 3. **B1.ui** — single-page vanilla JS.  Status pane shows sync state; conflicts pane shows side-by-side merge UI (CodeMirror via `<script>` tag — no build step); share pane mints capability tokens with a friendly form.  Playwright happy-path tests.
+- [ ] 4. **B1.tray** — tray-bar / menubar icon — small badge showing sync status.  Click → opens `http://localhost:8888`.  macOS + Linux for v1; Windows is stretch.
+- [ ] 5. **B3** (Q-Folio.3 — auto-shared `with-<webid>/` folders) and **B4** (Q-Folio.4 — time-machine versioning) split into their own subsections.  B3 spawns as peer to B1; B4 deferred until after B1 lands.
+- [ ] 6. Tests are owned by each slice (server tests in B1.server; UI tests in B1.ui; tray smoke test in B1.tray).
 
 **DoD:**
 - [ ] Web UI shows live sync status; conflicts resolvable in the UI.
@@ -373,8 +376,72 @@ create:
 **Notes (team scratchpad):**
 
 ```
+2026-04-29 — Q-Folio.6 locked: standalone web (Express + WebSocket).
+  B1 split into 3 parallel agent slices + B3 spawned as peer:
+    B1.server  — REST + WebSocket (foundation; first agent)
+    B1.ui      — vanilla JS SPA   (waits for B1.server contract)
+    B1.tray    — tray-bar icon    (independent, parallel with B1.server)
+    B3         — Q-Folio.3 auto-share (independent, parallel with B1.server)
+  B4 (time-machine) deferred until B1 lands.
+
+  Wave 1: B1.server + B1.tray + B3 in parallel.
+  Wave 2: B1.ui after B1.server REST contract is committed.
+
+  CodeMirror confirmed acceptable as <script> tag (CDN or local copy);
+  MIT-licensed, ~200KB minified.  No build step.
+```
+
+---
+
+#### Folio.B3 — `with-<webid>/` auto-share folder convention (Q-Folio.3)
+
+| | |
+|---|---|
+| **Status** | not-started |
+| **Tag** | [NEW] |
+| **Notes** | Per design sketch H1 Twist 1.  Anything dropped under `<root>/with-<webid>/` auto-mints a `PodCapabilityToken` granting that WebID `pod.read` + `pod.write` on the folder's pod path; tokens are persisted alongside the SyncEngine state file and re-issued on rotation.  Pure SyncEngine extension; doesn't touch web layer.  Independent of B1.server. |
+
+**Files:**
+
+```
+create:
+  apps/folio/src/autoShare.js         # parses path, mints tokens, persists
+  apps/folio/test/autoShare.test.js   # unit tests
+modify:
+  apps/folio/src/PathMap.js           # recognise the with-<webid>/ prefix
+  apps/folio/src/SyncEngine.js        # call autoShare on file create/move
+```
+
+**Sequence:**
+
+- [ ] 1. Path parser: extract WebID from folder name segment `with-<webid>` (URL-decoded).  Reject malformed segments with a structured error.
+- [ ] 2. Token minter: wraps `PodCapabilityToken.issue(identity, { subject: webid, scopes: ['pod.read:<path>', 'pod.write:<path>'], expires: Date.now() + 90d })`.  90-day expiry; auto-renews on next sync if within 7 days of expiry.
+- [ ] 3. Persistence: tokens stored in `<root>/.folio/shares.json` keyed by `(webid, path)`.  Re-loaded on boot.  Survives identity rotation by re-issuing under the new key.
+- [ ] 4. SyncEngine integration: on every successful `runOnce`, walk the path map, ensure every `with-<webid>/` folder has a current token; mint or renew as needed.  Surface result via `engine.shares()`.
+- [ ] 5. Tests — happy path (mint on new folder), rotation (renew within 7 days), revocation (manually delete entry → next sync re-mints), malformed-segment rejection.
+
+**DoD:**
+
+- [ ] Dropping a file into `with-https://alice.example.com/profile/card#me/` auto-mints a token granting that WebID read+write.
+- [ ] Tokens persist across restarts.
+- [ ] Tests cover the four cases above.
+- [ ] Doesn't break any existing Folio.A test (52 baseline tests stay green).
+
+**Notes (team scratchpad):**
+
+```
 (empty)
 ```
+
+---
+
+#### Folio.B4 — Time-machine versioning (Q-Folio.4) — DEFERRED until B1 lands
+
+| | |
+|---|---|
+| **Status** | deferred (depends on B1; pick up next) |
+| **Tag** | [NEW] |
+| **Notes** | Per design sketch H1 Twist 2.  Per-folder versioning; on every successful pod write, snapshot the previous content under `.folio/versions/<path>/<unix-ms>.md`.  UI surface: a "history" pane in B1.ui that lets the user diff & restore.  Decoupled from B1's launch but useful UX once B1 is up. |
 
 ---
 
