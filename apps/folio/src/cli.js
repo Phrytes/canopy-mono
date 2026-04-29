@@ -12,6 +12,7 @@
  *   folio share <path> --for <peer-pubkey> [--scope read|write|delete|*] [--expires <ms>]
  *   folio conflicts [--resolve]
  *   folio rm <path>
+ *   folio serve [--port 8888] [--host 127.0.0.1] [--watch]
  *
  * Exit codes:
  *   0   success
@@ -25,6 +26,7 @@ import { statusCmd }    from './cli/statusCmd.js';
 import { shareCmd }     from './cli/shareCmd.js';
 import { conflictsCmd } from './cli/conflictsCmd.js';
 import { rmCmd }        from './cli/rmCmd.js';
+import { serveCmd }     from './cli/serveCmd.js';
 
 const COMMANDS = {
   init:      initCmd,
@@ -34,6 +36,7 @@ const COMMANDS = {
   share:     shareCmd,
   conflicts: conflictsCmd,
   rm:        rmCmd,
+  serve:     serveCmd,
 };
 
 async function main() {
@@ -85,6 +88,7 @@ Commands:
                                   --expires <ms-from-now>      (default: 1h)
   conflicts [--resolve]         List unresolved conflicts; --resolve opens \$EDITOR
   rm <path>                     Mark a file as deleted-locally (tombstone)
+  serve [--port 8888] [--watch] Start the local web server (Express + WebSocket on 127.0.0.1)
 
   --help, -h                    Show this help
   --version, -v                 Print version

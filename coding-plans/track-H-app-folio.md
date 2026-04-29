@@ -361,7 +361,7 @@ create:
 **Sequence:**
 
 - [x] 1. Lock Q-Folio.6 (standalone vs Tauri).  Locked 2026-04-29: standalone web app — Express + WebSocket.
-- [ ] 2. **B1.server** — REST API: `/status`, `/conflicts`, `/conflicts/:id/resolve`, `/share`, `/sync/now`, `/watch/start|stop`.  WebSocket for live status updates.  Express integration tests.
+- [x] 2. **B1.server** — REST API: `/status`, `/conflicts`, `/conflicts/:id/resolve`, `/share`, `/sync/now`, `/watch/start|stop`.  WebSocket for live status updates.  Express integration tests.
 - [ ] 3. **B1.ui** — single-page vanilla JS.  Status pane shows sync state; conflicts pane shows side-by-side merge UI (CodeMirror via `<script>` tag — no build step); share pane mints capability tokens with a friendly form.  Playwright happy-path tests.
 - [ ] 4. **B1.tray** — tray-bar / menubar icon — small badge showing sync status.  Click → opens `http://localhost:8888`.  macOS + Linux for v1; Windows is stretch.
 - [ ] 5. **B3** (Q-Folio.3 — auto-shared `with-<webid>/` folders) and **B4** (Q-Folio.4 — time-machine versioning) split into their own subsections.  B3 spawns as peer to B1; B4 deferred until after B1 lands.
@@ -389,6 +389,92 @@ create:
 
   CodeMirror confirmed acceptable as <script> tag (CDN or local copy);
   MIT-licensed, ~200KB minified.  No build step.
+
+2026-04-29 — Folio.B1.server landed.  85 vitest tests pass (52 SyncEngine
++ 13 CLI + 20 new server tests).  New deps: express ^4.21.0, ws ^8.18.0
+(app-local; not added to root or any packages/).  No SDK changes.
+
+Files added:
+  apps/folio/src/server/index.js       # createServer factory + listen/close
+  apps/folio/src/server/routes.js      # REST router; contract comment block
+  apps/folio/src/server/wsHub.js       # WebSocket broadcast hub
+  apps/folio/src/server/conflictId.js  # base64url(relPath) <-> id
+  apps/folio/src/cli/serveCmd.js       # `folio serve` wires real instances
+  apps/folio/test/server.test.js       # 20 integration tests
+Files modified:
+  apps/folio/src/cli.js                # registers serveCmd + help text
+  apps/folio/package.json              # express + ws deps
+  apps/folio/README.md                 # /serve docs + REST table
+
+Final REST contract (URI/verb/body/response):
+
+  GET   /status
+        → 200 { ts, stats, localRoot, podRoot, watching, lastSyncAt,
+                 pending: { uploads, downloads, deletes, conflicts },
+                 openConflictFiles, scanError? }
+
+  GET   /conflicts
+        → 200 { ts, conflicts: [{ id, relPath, absPath }] }
+
+  POST  /conflicts/:id/resolve
+        body: { resolution: 'mine' | 'theirs' | <text> }
+        → 200 { ok: true, relPath }
+        errors: 400 BAD_RESOLUTION / BAD_CONFLICT_ID / NO_CONFLICT_MARKERS,
+                404 NOT_FOUND, 500 WRITE_FAILED
+
+  POST  /share
+        body: { webid, scopes:[<verb>|pod.<verb>:<path>], expiresIn?, path? }
+        → 200 { token: <serialized PodCapabilityToken JSON> }
+        errors: 400 BAD_REQUEST, 503 NO_IDENTITY, 500 ISSUE_FAILED
+
+  POST  /sync/now
+        body: { direction?: 'both' | 'push' | 'pull' }
+        → 202 { ok: true, started: true }   (progress streamed over WS)
+        errors: 400 BAD_DIRECTION
+
+  POST  /watch/start  → 200 { ok: true, watching: true }
+  POST  /watch/stop   → 200 { ok: true, watching: false }
+
+  GET   /healthz      → 200 { ok: true, ts }   (liveness probe)
+
+  WebSocket /events frames:
+    { type: 'status',         ts, stats, watching }
+    { type: 'sync.progress',  ts, phase: 'start' | …, direction }
+    { type: 'sync.done',      ts, uploads, downloads, deletes, conflicts }
+    { type: 'conflict.new',   ts, id, relPath, podUri }
+    { type: 'error',          ts, phase, relPath?, message }
+
+  All errors: { error: { code, message } }; status code per row above.
+
+Decisions made:
+- Server binds to 127.0.0.1 only — local-only by design; no auth on this layer.
+- `createServer({ engine, podClient?, vault?, identity? })` is the injection
+  surface; tests pass mocks, the CLI wires real instances.  podClient is
+  optional because /status's pod scan also tries `engine._podClient` /
+  `engine.__podClient` first (the SyncEngine keeps the real one private).
+- Conflict IDs = base64url(relPath) — reversible, URL-safe, no extra state.
+- /sync/now returns 202 immediately and streams progress over the existing
+  WS hub.  The hub forwards SyncEngine 'synced' / 'conflict' / 'error' events.
+- `engine.__watching` is the public flag for the watcher; routes flip it
+  alongside engine.start() / engine.stop() so /status can report the state.
+- supertest NOT added — tests use Node's built-in fetch + the already-installed
+  ws client, keeping the dep footprint at 2 (express + ws) per the spec.
+
+Hand-off to B1.ui:
+- Connect WS first, paint optimistically from /status, then react to frames.
+- /sync/now is fire-and-forget — show progress from the WS frames, not the
+  HTTP response.
+- /share's request body matches the existing CLI semantics; 'read' / 'write'
+  / 'delete' / '*' are accepted as short-form scopes (combined with body.path)
+  AND fully-qualified 'pod.<verb>:<path>' strings pass through unchanged.
+- Conflict IDs are base64url; the UI can decode for display if it wants but
+  /conflicts already returns the relPath alongside.
+
+Hand-off to B1.tray:
+- Use /healthz for the "is the server up?" probe.
+- Connect to /events to flip the menu-bar icon between idle / syncing /
+  conflict states based on the frame `type`.
+- Click → open `http://127.0.0.1:<port>` (default 8888).
 ```
 
 ---
