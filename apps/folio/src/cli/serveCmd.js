@@ -26,12 +26,18 @@ import { OidcSession }     from '../auth/OidcSession.js';
 
 import { createServer }      from '../server/index.js';
 import { SyncErrorBuffer }   from '../server/errorBuffer.js';
+import { startTray }         from '../tray/index.js';
 
 export async function serveCmd(args) {
   const flags = parseFlags(args);
   const port  = flags.port ? Number(flags.port) : 8888;
   const host  = flags.host ?? '127.0.0.1';
   const watch = !!flags.watch;
+  // Folio v2.7 — `folio serve` auto-launches the menubar tray.  Pass
+  // `--no-tray` to suppress (e.g. headless servers, CI).  We can also
+  // suppress via FOLIO_NO_TRAY=1 for service-mode boots that already
+  // own the tray.
+  const noTray = !!flags['no-tray'] || process.env.FOLIO_NO_TRAY === '1';
 
   if (!Number.isFinite(port) || port < 0 || port > 65_535) {
     throw new Error('--port must be a number in [0, 65535]');
@@ -73,7 +79,7 @@ export async function serveCmd(args) {
   const errorBuffer = new SyncErrorBuffer({ capacity: 50 });
   errorBuffer.attachEngine(engine);
 
-  const { hub, listen, close } = createServer({
+  const { app, hub, listen, close } = createServer({
     engine,
     podClient: podClient ?? undefined,
     vault,
@@ -106,18 +112,43 @@ export async function serveCmd(args) {
     process.stdout.write(`folio serve — watcher started\n`);
   }
 
+  // Folio v2.7 — auto-launch the menubar tray.  Best-effort: failures don't
+  // block the server from running headless.  A SIGTERM / SIGINT (or POST
+  // /shutdown) will tear the tray down alongside the server.
+  let trayHandle = null;
+  if (!noTray) {
+    try {
+      trayHandle = await startTray({
+        statusUrl: `http://${actualHost}:${actualPort}/status`,
+        openUrl:   `http://${actualHost}:${actualPort}`,
+        localRoot: cfg.localRoot,
+      });
+      process.stdout.write(`folio serve — menubar tray started\n`);
+    } catch (err) {
+      process.stderr.write(`folio serve — menubar tray failed to start: ${err?.message ?? err}\n`);
+    }
+  }
+
   let stopping = false;
   const stop = async (sig) => {
     if (stopping) return;
     stopping = true;
     process.stdout.write(`\nfolio serve: ${sig} received, stopping…\n`);
     try {
+      if (trayHandle) {
+        try { await trayHandle.stop(); } catch { /* ignore */ }
+      }
       try { errorBuffer.close(); } catch { /* ignore */ }
       await close();
     } finally { process.exit(0); }
   };
   process.on('SIGINT',  () => stop('SIGINT'));
   process.on('SIGTERM', () => stop('SIGTERM'));
+
+  // Folio v2.7 — POST /shutdown calls back into this stop() so the route
+  // layer can trigger graceful shutdown.  The route handler reads
+  // `app.locals.folioShutdown` lazily so this assignment timing is fine.
+  app.locals.folioShutdown = () => stop('POST /shutdown');
 
   // Park.
   await new Promise(() => {});

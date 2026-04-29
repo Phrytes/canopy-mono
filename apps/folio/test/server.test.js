@@ -399,6 +399,56 @@ describe('unknown route', () => {
   });
 });
 
+// ── POST /shutdown (Folio v2.7) ────────────────────────────────────────────
+
+describe('POST /shutdown', () => {
+  it('returns 400 when the X-Folio-Shutdown header is missing', async () => {
+    const r = await fetch(`${baseUrl}/shutdown`, {
+      method:  'POST',
+      headers: { 'content-type': 'application/json' },
+      body:    '{}',
+    });
+    expect(r.status).toBe(400);
+    const body = await r.json();
+    expect(body.error.code).toBe('BAD_HEADER');
+  });
+
+  it('returns 503 when no shutdown hook is registered (programmatic embed)', async () => {
+    const r = await fetch(`${baseUrl}/shutdown`, {
+      method:  'POST',
+      headers: {
+        'content-type':       'application/json',
+        'x-folio-shutdown':   'true',
+      },
+      body: '{}',
+    });
+    expect(r.status).toBe(503);
+    const body = await r.json();
+    expect(body.error.code).toBe('NO_SHUTDOWN_HOOK');
+  });
+
+  it('returns 202 + invokes the shutdown hook when one is registered', async () => {
+    let invoked = 0;
+    srv.app.locals.folioShutdown = () => { invoked++; };
+
+    const r = await fetch(`${baseUrl}/shutdown`, {
+      method:  'POST',
+      headers: {
+        'content-type':       'application/json',
+        'x-folio-shutdown':   'true',
+      },
+      body: '{}',
+    });
+    expect(r.status).toBe(202);
+    const body = await r.json();
+    expect(body).toEqual({ ok: true, stopping: true });
+
+    // The hook fires after a 50 ms deferral; wait briefly.
+    await new Promise((res) => setTimeout(res, 100));
+    expect(invoked).toBe(1);
+  });
+});
+
 // ── /versions (Folio.B4) ───────────────────────────────────────────────────
 
 describe('GET /versions/:id', () => {

@@ -632,6 +632,33 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
     }
   });
 
+  // ── /shutdown (Folio v2.7) ─────────────────────────────────────────────
+  // POST /shutdown — graceful shutdown of `folio serve` (server + tray + engine).
+  //
+  // Gated by an explicit confirmation header (`X-Folio-Shutdown: true`) so a
+  // misfired curl POST or a typo'd Open-graph crawl can NOT kill the running
+  // agent.  When the header is missing, returns 400 BAD_HEADER.
+  //
+  // The actual shutdown function is registered by `serveCmd` on
+  // `req.app.locals.folioShutdown`.  Tests that wire `createServer()` without
+  // a CLI driver will get 503 NO_SHUTDOWN_HOOK so they can assert the
+  // contract independently.
+  router.post('/shutdown', (req, res) => {
+    if (req.get('x-folio-shutdown') !== 'true') {
+      return sendError(res, 400, 'BAD_HEADER',
+        'POST /shutdown requires the header X-Folio-Shutdown: true');
+    }
+    const hook = req.app?.locals?.folioShutdown;
+    if (typeof hook !== 'function') {
+      return sendError(res, 503, 'NO_SHUTDOWN_HOOK',
+        'shutdown hook not registered (folio serve only — not a programmatic embed)');
+    }
+    res.status(202).json({ ok: true, stopping: true });
+    // Defer the call so the response actually ships before the process
+    // exits.  The hook itself calls process.exit(0); we never come back.
+    setTimeout(() => { try { hook(); } catch { /* ignore */ } }, 50);
+  });
+
   // 404 for anything else under this router (lets index.js mount it cleanly).
   router.use((_req, res) => {
     sendError(res, 404, 'NOT_FOUND', 'no such endpoint');

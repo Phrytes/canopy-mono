@@ -1,22 +1,14 @@
 /**
- * Folio.B1.tray — macOS driver.
+ * Folio.B1.tray — macOS driver shim (post-v2.7).
  *
- * Implementation strategy: shell-out to `osascript`.
- *
- *   • Status changes → `osascript -e 'display notification …'` for a native
- *     macOS Notification Center entry.
- *   • Click handling has no native hook from pure Node; users open the URL
- *     via the CLI (`folio tray --open`) or by reacting to the notification.
- *
- * For users who run a third-party menu-bar manager (BitBar / xbar / SwiftBar),
- * `folio tray --xbar` (future flag) will print a SwiftBar-formatted line —
- * those tools poll a script and render the result as a real menu-bar icon.
- * That route is documented in `apps/folio/src/tray/CHOICE.md` but not wired
- * up in v1.
+ * The real macOS menubar icon is now driven by `systray2` from `./index.js`.
+ * This module survives only as a thin compatibility shim for the legacy
+ * driver-mode tests.  In production, `./index.js` does NOT load this file;
+ * OS dispatch happens inside the `systray2` Go binary.
  *
  * Driver interface matches `linux.js` and `windows.js`.
  */
-import { exec } from 'node:child_process';
+import { exec as defaultExec } from 'node:child_process';
 
 const STATE_TEXT = {
   'sync-idle':     'Folio: idle — up to date',
@@ -29,10 +21,9 @@ const STATE_TEXT = {
  * @param {object}   opts
  * @param {URL}      [opts.iconsDir]
  * @param {Function} [opts.exec]
- * @returns {Promise<object>}
  */
 export async function createDriver({ exec: execImpl } = {}) {
-  const run = execImpl ?? exec;
+  const run = execImpl ?? defaultExec;
   let clickHandler = () => {};
   let lastState = null;
   let destroyed = false;
@@ -43,8 +34,6 @@ export async function createDriver({ exec: execImpl } = {}) {
       if (stateName === lastState) return;
       lastState = stateName;
       const text = STATE_TEXT[stateName] ?? `Folio: ${stateName}`;
-      // osascript needs the inner string properly escaped.  Use single-quoted
-      // shell + escape any single quotes in the message.
       const escaped = text.replace(/'/g, `'\\''`);
       const cmd = `osascript -e 'display notification "${escaped}" with title "Folio"'`;
       await new Promise((res) => {

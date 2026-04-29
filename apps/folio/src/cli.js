@@ -107,9 +107,11 @@ Commands:
   conflicts [--resolve]         List unresolved conflicts; --resolve opens \$EDITOR
   rm <path>                     Mark a file as deleted-locally (tombstone)
   serve [--port 8888] [--watch] Start the local web server (Express + WebSocket on 127.0.0.1)
-  tray [--url <base>]           Run the tray-bar status indicator (foreground)
-                                  --interval <ms>  poll interval (default 5000)
-                                  --backoff <ms>   slow interval after failures (default 30000)
+                                  [--no-tray]    skip the auto-launched menubar tray
+  tray [--url <base>]           Run the menubar / system-tray icon (foreground)
+                                  --interval <ms>     poll interval (default 5000)
+                                  --backoff <ms>      slow interval after failures (default 30000)
+                                  --local-root <dir>  override the "Open notes folder" target
   reset [--yes] [--dry-run]     Remove local Folio settings (config + vault + per-folder
                                 metadata).  Your notes folder content is NOT touched.
   doctor [--json] [--verbose]   Diagnose your Folio setup step-by-step.  PASS/FAIL for

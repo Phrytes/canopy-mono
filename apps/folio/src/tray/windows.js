@@ -1,15 +1,13 @@
 /**
- * Folio.B1.tray — Windows driver (stub for v1).
+ * Folio.B1.tray — Windows driver shim (post-v2.7).
  *
- * Spec calls macOS + Linux as v1 targets; Windows is stretch.  This stub
- * matches the driver interface so `index.js`'s OS dispatch never throws on
- * Windows — it just logs state changes to stdout.
+ * The real Windows tray icon is now driven by `systray2` from `./index.js`.
+ * This module survives only as a thin compatibility shim for the legacy
+ * driver-mode tests.  In production, `./index.js` does NOT load this file;
+ * OS dispatch happens inside the `systray2` Go binary.
  *
- * A real implementation could use Windows Toast notifications via
- * `powershell -Command "...BurntToast..."` or wrap the `node-notifier`
- * Snore-Toast helper.  Both are out of scope for v1.
+ * Driver interface matches `linux.js` and `macos.js`.
  */
-
 const STATE_TEXT = {
   'sync-idle':     'Folio: idle — up to date',
   'sync-active':   'Folio: syncing…',
@@ -24,10 +22,10 @@ export async function createDriver() {
   let clickHandler = () => {};
   let lastState = null;
   let destroyed = false;
-  // Print once at startup so a user running `folio tray` on Windows knows
-  // they're on the stub.
+  // Keep the historical "starting up" log so legacy callers know they're on
+  // the shim path.  Tests stub out console.log to silence this.
   // eslint-disable-next-line no-console
-  console.log('folio tray: Windows tray driver is a stub in v1 — status changes will print to stdout.');
+  console.log('folio tray: legacy windows driver shim — real-mode uses systray2.');
 
   return {
     async setIcon(stateName) {
