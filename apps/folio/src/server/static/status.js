@@ -299,6 +299,23 @@ export function initStatus({ bus, getJson, postJson, showBanner, hideBanner }) {
 
       const meta = document.createElement('span');
       meta.className = 'verify-list__meta';
+
+      // Folio v2.9 — per-file history affordance.  Opens the per-file
+      // versions popover via versions.js (history is no longer a top-level
+      // tab).  Anchor styled like a small text link, not a button.
+      const historyLink = document.createElement('a');
+      historyLink.className   = 'verify-list__history history-affordance';
+      historyLink.href        = '#history';
+      historyLink.title       = `View version history for ${relPath}`;
+      historyLink.textContent = '↻ history'; // U+21BB CLOCKWISE OPEN CIRCLE ARROW
+      historyLink.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const id = relPathToId(relPath);
+        bus.emit('history.popover.open', { relPath, id });
+      });
+      meta.appendChild(historyLink);
+
       const verifyBtn = document.createElement('button');
       verifyBtn.className   = 'btn btn--small verify-list__verify';
       verifyBtn.type        = 'button';
