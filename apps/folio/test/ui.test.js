@@ -41,6 +41,7 @@ import { Bootstrap } from '@canopy/core';
 import { SyncEngine }            from '../src/SyncEngine.js';
 import { createServer }          from '../src/server/index.js';
 import { conflictIdFromRelPath } from '../src/server/conflictId.js';
+import { SyncErrorBuffer }       from '../src/server/errorBuffer.js';
 
 // Reuse the pod-mock + vault from server.test.js (kept minimal here).
 class MockPodClient {
@@ -441,5 +442,123 @@ describe('WebSocket /events reconnect', () => {
     const text = await r.text();
     expect(text).toContain('window.__folio');
     expect(text).toMatch(/reconnect:\s*connect/);
+  });
+});
+
+// ── 10. Folio v2.2 — loud error surfacing ─────────────────────────────────
+
+describe('Folio v2.2 — error banner static contract', () => {
+  it('index.html carries the error-banner DOM hooks and recent-errors collapsible', async () => {
+    const r = await fetch(`${baseUrl}/`);
+    expect(r.status).toBe(200);
+    const html = await r.text();
+    // Banner element + buttons.
+    expect(html).toMatch(/id="error-banner"/);
+    expect(html).toMatch(/id="error-banner-message"/);
+    expect(html).toMatch(/id="error-banner-retry"/);
+    expect(html).toMatch(/id="error-banner-dismiss"/);
+    // Banner starts hidden.
+    expect(html).toMatch(/id="error-banner"[^>]*class="error-banner error-banner--hidden"/);
+    // Recent errors collapsible.
+    expect(html).toMatch(/id="recent-errors"/);
+    expect(html).toMatch(/id="recent-errors-count"/);
+    expect(html).toMatch(/id="recent-errors-list"/);
+    // Auth-pill warning indicator (yellow-pill state).
+    expect(html).toMatch(/id="auth-pill-warn"/);
+  });
+
+  it('style.css ships the red banner + yellow-pill rules', async () => {
+    const r = await fetch(`${baseUrl}/style.css`);
+    expect(r.status).toBe(200);
+    const css = await r.text();
+    expect(css).toMatch(/\.error-banner\s*\{/);
+    expect(css).toMatch(/\.error-banner--hidden/);
+    expect(css).toMatch(/\.error-banner__retry/);
+    expect(css).toMatch(/\.error-banner__dismiss/);
+    expect(css).toMatch(/\.auth-pill--warn/);
+    expect(css).toMatch(/\.recent-errors/);
+  });
+
+  it('app.js wires ws.error → banner with a 5s clean-sync debounce; conflict phase excluded', async () => {
+    const r = await fetch(`${baseUrl}/app.js`);
+    expect(r.status).toBe(200);
+    const text = await r.text();
+    // Subscribed to ws.error.
+    expect(text).toMatch(/ws\.error/);
+    // Subscribed to ws.sync.done for the clean-sync debounce.
+    expect(text).toMatch(/ws\.sync\.done/);
+    // 5s debounce constant.
+    expect(text).toMatch(/CLEAN_DEBOUNCE_MS\s*=\s*5_?000/);
+    // Phase blocklist (conflict not surfaced).
+    expect(text).toMatch(/PHASE_BLOCKLIST[^\n]*conflict/);
+    // Retry button hits /sync/now.
+    expect(text).toMatch(/postJson\(['"]\/sync\/now/);
+    // Dismiss path exists.
+    expect(text).toMatch(/dismissedUntilNew/);
+    // No innerHTML in the banner controller — XSS hardening.
+    expect(text).not.toMatch(/\.innerHTML\s*=/);
+  });
+
+  it('status.js renders the recent-errors list using textContent only', async () => {
+    const r = await fetch(`${baseUrl}/status.js`);
+    expect(r.status).toBe(200);
+    const text = await r.text();
+    expect(text).toMatch(/errors\.changed/);
+    expect(text).toMatch(/recent-errors-list/);
+    // No innerHTML on the user-controlled error fields.
+    expect(text).not.toMatch(/\.innerHTML\s*=/);
+  });
+});
+
+describe('Folio v2.2 — banner end-to-end against the server', () => {
+  it('GET /status carries lastError + errors so the UI paints on first load', async () => {
+    // Replace the server with one we own the buffer for.
+    await srv.close();
+    const buf = new SyncErrorBuffer();
+    srv = createServer({ engine, vault, errorBuffer: buf });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+
+    buf.push({ phase: 'upload', relPath: 'cake.md', message: 'PUT 403' });
+    buf.push({ phase: 'ensure-container', uri: 'https://pod/x/', message: 'mkdir 401' });
+
+    const r = await fetch(`${baseUrl}/status`);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.lastError.phase).toBe('ensure-container');
+    expect(body.lastError.message).toBe('mkdir 401');
+    expect(body.errors).toHaveLength(2);
+    // Conflicts are NOT in the banner feed.
+    buf.push({ phase: 'conflict', relPath: 'noisy.md', message: 'normal flow' });
+    const r2 = await fetch(`${baseUrl}/status`);
+    const body2 = await r2.json();
+    expect(body2.errors.find((e) => e.phase === 'conflict')).toBeUndefined();
+  });
+
+  it('"Retry sync" hits /sync/now and POST /errors/clear empties the history', async () => {
+    await srv.close();
+    const buf = new SyncErrorBuffer();
+    srv = createServer({ engine, vault, errorBuffer: buf });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+
+    buf.push({ phase: 'upload', relPath: 'a.md', message: 'flaky' });
+    expect(buf.size).toBe(1);
+
+    // Retry sync — same endpoint the banner button triggers.
+    const retry = await fetch(`${baseUrl}/sync/now`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ direction: 'both' }),
+    });
+    expect(retry.status).toBe(202);
+
+    // Dismiss-equivalent server-side: explicit clear endpoint.
+    const clear = await fetch(`${baseUrl}/errors/clear`, { method: 'POST' });
+    expect(clear.status).toBe(204);
+
+    const body = await (await fetch(`${baseUrl}/status`)).json();
+    expect(body.lastError).toBeNull();
+    expect(body.errors).toEqual([]);
   });
 });

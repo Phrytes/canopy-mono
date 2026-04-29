@@ -25,6 +25,7 @@ import { dirname, join } from 'node:path';
 import { createRouter }     from './routes.js';
 import { WsHub }            from './wsHub.js';
 import { createAuthRouter } from '../auth/authRoutes.js';
+import { SyncErrorBuffer }  from './errorBuffer.js';
 
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8888;
@@ -49,12 +50,21 @@ const STATIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'static');
  *   close:  () => Promise<void>,
  * }}
  */
-export function createServer({ engine, podClient, vault, identity, oidc, oidcCallbackUrl } = {}) {
+export function createServer({ engine, podClient, vault, identity, oidc, oidcCallbackUrl, errorBuffer } = {}) {
   if (!engine) throw new Error('createServer: engine is required');
 
   const app    = express();
   const server = http.createServer(app);
   const hub    = new WsHub({ engine });
+
+  // Folio v2.2 — in-memory error history fed by the engine.  Caller may
+  // inject one (tests do this for control); otherwise we build + attach a
+  // default-capacity buffer so /status always carries a `lastError` + `errors`.
+  const errBuf = errorBuffer ?? new SyncErrorBuffer();
+  if (!errorBuffer) {
+    // We constructed it; we own its subscription.
+    errBuf.attachEngine(engine);
+  }
 
   // Stash the OIDC session on app.locals so route handlers + tests can
   // read or replace it without reaching into module state.
@@ -84,7 +94,7 @@ export function createServer({ engine, podClient, vault, identity, oidc, oidcCal
     app.use(createAuthRouter({ oidc, callbackUrl: oidcCallbackUrl }));
   }
 
-  app.use(createRouter({ engine, podClient, vault, identity, hub }));
+  app.use(createRouter({ engine, podClient, vault, identity, hub, errorBuffer: errBuf }));
 
   hub.attach(server);
 
@@ -110,6 +120,11 @@ export function createServer({ engine, podClient, vault, identity, oidc, oidcCal
 
   async function close() {
     await hub.close();
+    // Drop the engine subscription if we own the buffer.  Tests that injected
+    // their own buffer keep it alive across createServer() lifecycles.
+    if (!errorBuffer) {
+      try { errBuf.close(); } catch { /* ignore */ }
+    }
     await new Promise((resolve) => server.close(() => resolve()));
     // Best-effort engine teardown.  Don't throw — the caller may still want to
     // re-create another server immediately.
@@ -119,10 +134,11 @@ export function createServer({ engine, podClient, vault, identity, oidc, oidcCal
     }
   }
 
-  return { app, server, hub, listen, close };
+  return { app, server, hub, errorBuffer: errBuf, listen, close };
 }
 
 export { WsHub } from './wsHub.js';
 export { createRouter } from './routes.js';
 export { createAuthRouter } from '../auth/authRoutes.js';
 export { OidcSession } from '../auth/OidcSession.js';
+export { SyncErrorBuffer, attachErrorBuffer } from './errorBuffer.js';

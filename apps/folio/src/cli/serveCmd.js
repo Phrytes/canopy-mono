@@ -24,7 +24,8 @@ import { requireConfig }   from './_config.js';
 import { buildPodClient }  from './_podFactory.js';
 import { OidcSession }     from '../auth/OidcSession.js';
 
-import { createServer }    from '../server/index.js';
+import { createServer }      from '../server/index.js';
+import { SyncErrorBuffer }   from '../server/errorBuffer.js';
 
 export async function serveCmd(args) {
   const flags = parseFlags(args);
@@ -65,11 +66,19 @@ export async function serveCmd(args) {
     pollIntervalMs: cfg.intervalMs ?? 60_000,
   });
 
+  // Folio v2.2 — own the error ring buffer at the CLI level.  Capacity 50,
+  // in-memory only (does NOT survive restart).  Attach to the engine BEFORE
+  // we create the server so any startup error fired during the createServer
+  // wiring still lands in the buffer.
+  const errorBuffer = new SyncErrorBuffer({ capacity: 50 });
+  errorBuffer.attachEngine(engine);
+
   const { hub, listen, close } = createServer({
     engine,
     podClient: podClient ?? undefined,
     vault,
     oidc: oidc ?? undefined,
+    errorBuffer,
   });
 
   engine.on('error', (e) => {
@@ -99,8 +108,10 @@ export async function serveCmd(args) {
     if (stopping) return;
     stopping = true;
     process.stdout.write(`\nfolio serve: ${sig} received, stopping…\n`);
-    try { await close(); }
-    finally { process.exit(0); }
+    try {
+      try { errorBuffer.close(); } catch { /* ignore */ }
+      await close();
+    } finally { process.exit(0); }
   };
   process.on('SIGINT',  () => stop('SIGINT'));
   process.on('SIGTERM', () => stop('SIGTERM'));

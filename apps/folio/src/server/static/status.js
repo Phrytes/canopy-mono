@@ -24,6 +24,11 @@ export function initStatus({ bus, getJson, postJson, showBanner, hideBanner }) {
   const $btnSync       = document.getElementById('btn-sync-now');
   const $btnWatch      = document.getElementById('btn-watch-toggle');
 
+  // Folio v2.2 — recent-errors collapsible.
+  const $recentErrors      = document.getElementById('recent-errors');
+  const $recentErrorsCount = document.getElementById('recent-errors-count');
+  const $recentErrorsList  = document.getElementById('recent-errors-list');
+
   let watchingState = false;
 
   function setText(el, value) {
@@ -93,6 +98,44 @@ export function initStatus({ bus, getJson, postJson, showBanner, hideBanner }) {
 
   bus.on('ws.error', (frame) => {
     logEntry(`error in ${frame.phase}${frame.relPath ? ' ('+frame.relPath+')' : ''}: ${frame.message}`, true);
+  });
+
+  // Folio v2.2 — paint the recent-errors collapsible whenever the central
+  // error tracker (in app.js) updates its view.  Last-error-first.  All text
+  // is set via textContent so any user-controlled relPath/message can't XSS.
+  bus.on('errors.changed', ({ errors }) => {
+    if (!$recentErrors) return;
+    const list = Array.isArray(errors) ? errors : [];
+    const display = list.slice(0, 10);
+    $recentErrors.hidden = display.length === 0;
+    if ($recentErrorsCount) $recentErrorsCount.textContent = String(list.length);
+    if (!$recentErrorsList) return;
+    while ($recentErrorsList.firstChild) {
+      $recentErrorsList.removeChild($recentErrorsList.firstChild);
+    }
+    for (const e of display) {
+      const li = document.createElement('li');
+
+      const phase = document.createElement('span');
+      phase.className   = 'recent-errors__phase';
+      phase.textContent = String(e.phase ?? 'unknown');
+
+      const path = document.createElement('span');
+      path.className   = 'recent-errors__path';
+      path.textContent = String(e.relPath ?? '');
+      // Tooltip carries the raw message — textContent on a title attribute
+      // assignment is automatic since `title=` is a string property.
+      path.title = String(e.message ?? '');
+
+      const ts = document.createElement('span');
+      ts.className   = 'recent-errors__ts';
+      ts.textContent = e.ts ? new Date(e.ts).toLocaleTimeString() : '';
+
+      li.appendChild(phase);
+      li.appendChild(path);
+      li.appendChild(ts);
+      $recentErrorsList.appendChild(li);
+    }
   });
 
   bus.on('conn.up', () => { hideBanner(); });

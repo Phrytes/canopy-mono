@@ -37,6 +37,7 @@ import {
 import { SyncEngine }       from '../src/SyncEngine.js';
 import { createServer }     from '../src/server/index.js';
 import { conflictIdFromRelPath } from '../src/server/conflictId.js';
+import { SyncErrorBuffer }  from '../src/server/errorBuffer.js';
 
 // ── In-memory PodClient mock (mirrors the SyncEngine.test.js fixture) ──────
 
@@ -576,6 +577,172 @@ describe('WebSocket /events', () => {
     expect(done.uploads).toBeGreaterThanOrEqual(1);
 
     ws.close();
+  });
+});
+
+// ── Folio v2.2 — error ring buffer + /status.lastError + /errors/clear ─────
+
+describe('Folio v2.2 — SyncErrorBuffer (in-memory ring)', () => {
+  it('keeps the most recent N events newest-first; drops phase=conflict', () => {
+    const buf = new SyncErrorBuffer({ capacity: 3 });
+    buf.push({ phase: 'upload',           relPath: 'a.md', message: 'one'   });
+    buf.push({ phase: 'conflict',         relPath: 'b.md', message: 'skip'  });
+    buf.push({ phase: 'download',         relPath: 'c.md', message: 'two'   });
+    buf.push({ phase: 'ensure-container', uri:     'd/',   message: 'three' });
+    buf.push({ phase: 'upload',           relPath: 'e.md', message: 'four'  });
+
+    const recent = buf.recent(10);
+    expect(recent).toHaveLength(3); // capped at capacity
+    expect(recent[0].message).toBe('four');
+    expect(recent[1].message).toBe('three');
+    expect(recent[2].message).toBe('two');
+    // conflict was filtered.
+    expect(recent.find((e) => e.message === 'skip')).toBeUndefined();
+    // lastError is the most recent.
+    expect(buf.lastError.message).toBe('four');
+    // size matches.
+    expect(buf.size).toBe(3);
+  });
+
+  it('clear() empties everything', () => {
+    const buf = new SyncErrorBuffer();
+    buf.push({ phase: 'upload', relPath: 'x.md', message: 'oops' });
+    expect(buf.size).toBe(1);
+    buf.clear();
+    expect(buf.size).toBe(0);
+    expect(buf.lastError).toBeNull();
+    expect(buf.recent()).toEqual([]);
+  });
+
+  it('attachEngine() subscribes to the engine and normalizes the err shape', () => {
+    const fakeEngine = {
+      _handlers: new Map(),
+      on(name, fn) { (this._handlers.get(name) ?? this._handlers.set(name, []).get(name)).push(fn); },
+      off(name, fn) {
+        const arr = this._handlers.get(name) ?? [];
+        const ix = arr.indexOf(fn);
+        if (ix >= 0) arr.splice(ix, 1);
+      },
+      emit(name, payload) { for (const fn of this._handlers.get(name) ?? []) fn(payload); },
+    };
+    const buf = new SyncErrorBuffer();
+    buf.attachEngine(fakeEngine);
+
+    fakeEngine.emit('error', { phase: 'upload',  relPath: 'a.md', err: new Error('boom') });
+    fakeEngine.emit('error', { phase: 'conflict', relPath: 'b.md', err: new Error('skip') });
+    fakeEngine.emit('error', { phase: 'ensure-container', uri: 'pod/x/', err: new Error('403') });
+
+    const recent = buf.recent(10);
+    // phase=conflict was filtered.
+    expect(recent.map((e) => e.phase)).toEqual(['ensure-container', 'upload']);
+    // err.message normalized.
+    expect(recent[0].message).toBe('403');
+    expect(recent[1].message).toBe('boom');
+
+    buf.close();
+    fakeEngine.emit('error', { phase: 'upload', relPath: 'c.md', err: new Error('after-close') });
+    // Closed buffer no longer accumulates.
+    expect(buf.size).toBe(2);
+  });
+});
+
+describe('GET /status — Folio v2.2 lastError + errors[]', () => {
+  it('reports lastError and the most-recent 10 entries from the ring buffer', async () => {
+    // Seed via the buffer's public push (we don't have a real failing engine
+    // available in this fixture).
+    const buf = new SyncErrorBuffer();
+    // Create a fresh server instance with an explicit buffer so we can seed.
+    await srv.close();
+    srv = createServer({ engine, vault, errorBuffer: buf });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+
+    // Seed several errors; one conflict that must be filtered.
+    buf.push({ ts: 1, phase: 'upload',           relPath: 'a.md', message: 'PUT 403' });
+    buf.push({ ts: 2, phase: 'conflict',         relPath: 'b.md', message: 'normal'  });
+    buf.push({ ts: 3, phase: 'download',         relPath: 'c.md', message: 'GET 404' });
+    buf.push({ ts: 4, phase: 'ensure-container', relPath: null,   message: 'mkdir 401' });
+
+    const { status, body } = await getJson('/status');
+    expect(status).toBe(200);
+    expect(body.lastError).toBeDefined();
+    expect(body.lastError.phase).toBe('ensure-container');
+    expect(body.lastError.message).toBe('mkdir 401');
+    expect(Array.isArray(body.errors)).toBe(true);
+    expect(body.errors).toHaveLength(3); // conflict was filtered
+    expect(body.errors.map((e) => e.message)).toEqual([
+      'mkdir 401', 'GET 404', 'PUT 403',
+    ]);
+  });
+
+  it('reports lastError=null + errors=[] when no errors fired', async () => {
+    const { status, body } = await getJson('/status');
+    expect(status).toBe(200);
+    expect(body.lastError).toBeNull();
+    expect(body.errors).toEqual([]);
+  });
+});
+
+describe('POST /errors/clear (Folio v2.2)', () => {
+  it('returns 204 and empties the in-memory ring buffer', async () => {
+    const buf = new SyncErrorBuffer();
+    await srv.close();
+    srv = createServer({ engine, vault, errorBuffer: buf });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+
+    buf.push({ phase: 'upload', relPath: 'a.md', message: 'oops' });
+    expect(buf.size).toBe(1);
+
+    const r = await fetch(`${baseUrl}/errors/clear`, { method: 'POST' });
+    expect(r.status).toBe(204);
+    // 204 carries no body.
+    expect(buf.size).toBe(0);
+
+    // /status reflects the empty state.
+    const { body } = await getJson('/status');
+    expect(body.lastError).toBeNull();
+    expect(body.errors).toEqual([]);
+
+    // Idempotent — second call still 204.
+    const r2 = await fetch(`${baseUrl}/errors/clear`, { method: 'POST' });
+    expect(r2.status).toBe(204);
+  });
+
+  it('returns 204 even when no buffer is wired', async () => {
+    // Default createServer() auto-builds a buffer; force a regression-style
+    // sanity check: clearing while the buffer has zero entries is still 204.
+    const r = await fetch(`${baseUrl}/errors/clear`, { method: 'POST' });
+    expect(r.status).toBe(204);
+  });
+});
+
+describe('SyncErrorBuffer wired through the live engine event flow', () => {
+  it('an error emitted by the engine lands in /status.errors after a sync', async () => {
+    // Use the default-built buffer (the one createServer auto-wires).
+    await srv.close();
+    srv = createServer({ engine, vault });
+    const { port, host } = await srv.listen(0, '127.0.0.1');
+    baseUrl = `http://${host}:${port}`;
+
+    // Force an upload failure: write to the pod will throw.
+    podClient.write = async () => {
+      const e = new Error('PUT failed: 403 Forbidden');
+      e.code = 'FORBIDDEN';
+      throw e;
+    };
+    await fs.writeFile(join(localRoot, 'failing.md'), 'content');
+    await engine.runOnce();
+
+    // Give the event loop a tick for the synchronous emit to land.
+    await new Promise((r) => setTimeout(r, 50));
+
+    const { body } = await getJson('/status');
+    const upload = body.errors.find((e) => e.phase === 'upload');
+    expect(upload).toBeDefined();
+    expect(upload.relPath).toBe('failing.md');
+    expect(upload.message).toMatch(/403 Forbidden/);
+    expect(body.lastError.phase).toBe('upload');
   });
 });
 
