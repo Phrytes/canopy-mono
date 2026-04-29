@@ -82,8 +82,46 @@
         <div class="actions">
           <button id="btn-sync-now" class="btn btn--primary">Sync now</button>
           <button id="btn-watch-toggle" class="btn">Start watch</button>
+          <!-- Folio v2.5 — escape hatch when local + pod have drifted. -->
+          <button id="btn-force-push" class="btn">Force re-push</button>
         </div>
         <div id="status-log" class="log" aria-live="polite"></div>
+
+        <!-- Folio v2.5 — recently-synced files + per-file verify dots.
+             Dots: green = exists+matches, yellow = exists+mismatch,
+                   red = missing, gray = not yet verified.  Each row is
+             its own grid line; the file path is the only user-controlled
+             field rendered, set via textContent (no XSS surface). -->
+        <details id="verify-list" class="verify-list" open>
+          <summary>Recently synced files (<span id="verify-list-count">0</span>)</summary>
+          <div class="verify-list__actions">
+            <button id="btn-verify-all" class="btn btn--small">Verify all</button>
+          </div>
+          <ul id="verify-list-items" class="verify-list__items"><li class="empty">No files synced yet.</li></ul>
+        </details>
+
+        <!-- Folio v2.5 — Force re-push confirm modal.  Hidden by default;
+             opened by status.js when the user clicks "Force re-push".
+             Same backdrop pattern as the auth-modal. -->
+        <div id="force-confirm-modal" class="modal" hidden>
+          <div class="modal__inner">
+            <h2>Force re-push every file?</h2>
+            <p>
+              This re-uploads every file regardless of cached state.
+              Use it when you suspect drift between local and pod.
+              It does not pull or delete anything.
+            </p>
+            <p class="modal__warn">
+              This may take a while and will overwrite remote contents
+              for any file whose pod-side copy was edited after your
+              last sync.
+            </p>
+            <div class="actions">
+              <button id="btn-force-confirm" class="btn btn--primary">Continue</button>
+              <button id="btn-force-cancel"  class="btn btn--ghost">Cancel</button>
+            </div>
+          </div>
+        </div>
 
         <!-- Folio v2.2 — recent-errors collapsible.  Shows the last 10 sync
              errors (newest first) so users can see the history beyond the

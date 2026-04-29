@@ -32,16 +32,29 @@
  * │                          │       │ Progress streamed over /events WebSocket as     │
  * │                          │       │   sync.progress / sync.done frames.            │
  * │                          │       │                                                 │
+ * │ /sync/force              │ POST  │ Folio v2.5 — re-upload every local file        │
+ * │                          │       │ → 202 { ok: true, started: true }              │
+ * │                          │       │ Streams sync.force.start / sync.force.done      │
+ * │                          │       │ over /events.                                  │
+ * │                          │       │                                                 │
+ * │ /verify/:id              │ GET   │ Folio v2.5 — verify pod's view of one file.    │
+ * │                          │       │ id = base64url(relPath).                       │
+ * │                          │       │ → { ts, relPath, podUri, exists,                │
+ * │                          │       │     sizeMatches?, shaMatches?, podEtag? }      │
+ * │                          │       │ Errors: 400 BAD_VERIFY_ID, 500 VERIFY_FAILED   │
+ * │                          │       │                                                 │
  * │ /watch/start             │ POST  │ → { ok: true, watching: true }                 │
  * │ /watch/stop              │ POST  │ → { ok: true, watching: false }                │
  * └──────────────────────────┴───────┴────────────────────────────────────────────────┘
  *
  * WebSocket (/events) frames:
- *   { type: 'status',         ts, stats, watching }
- *   { type: 'sync.progress',  ts, phase: 'start'|'scanning'|'applying', direction }
- *   { type: 'sync.done',      ts, uploads, downloads, deletes, conflicts }
- *   { type: 'conflict.new',   ts, id, relPath, podUri }
- *   { type: 'error',          ts, phase, relPath?, message }
+ *   { type: 'status',           ts, stats, watching }
+ *   { type: 'sync.progress',    ts, phase: 'start'|'scanning'|'applying', direction }
+ *   { type: 'sync.done',        ts, uploads, downloads, deletes, conflicts }
+ *   { type: 'sync.force.start', ts }                              (Folio v2.5)
+ *   { type: 'sync.force.done',  ts, uploads, errors }             (Folio v2.5)
+ *   { type: 'conflict.new',     ts, id, relPath, podUri }
+ *   { type: 'error',            ts, phase, relPath?, message }
  */
 
 import express from 'express';
@@ -466,6 +479,49 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
           message: err?.message ?? String(err),
         });
       });
+  });
+
+  // ── /sync/force ───────────────────────────────────────────────────────────
+  // Folio v2.5 — re-uploads every local file regardless of cached state.
+  // Same fire-and-forget shape as /sync/now: 202 immediately, progress over
+  // the WebSocket as `sync.force.start` / `sync.force.done` frames.
+  router.post('/sync/force', async (_req, res) => {
+    if (typeof engine.forcePush !== 'function') {
+      return sendError(res, 500, 'NOT_SUPPORTED', 'engine has no forcePush()');
+    }
+    res.status(202).json({ ok: true, started: true });
+    Promise.resolve()
+      .then(() => engine.forcePush())
+      .catch((err) => {
+        hub.broadcast({
+          type:    'error',
+          phase:   'sync.force',
+          message: err?.message ?? String(err),
+        });
+      });
+  });
+
+  // ── /verify/:id ───────────────────────────────────────────────────────────
+  // Folio v2.5 — verify the pod's view of one file.  `id` is the same
+  // base64url(relPath) encoding the conflicts + versions endpoints use.
+  router.get('/verify/:id', async (req, res) => {
+    const id = req.params.id;
+    const relPath = relPathFromConflictId(id);
+    if (!relPath || relPath.length === 0) {
+      return sendError(res, 400, 'BAD_VERIFY_ID', 'verify id is malformed');
+    }
+    if (relPath.split(/[\\/]/).some((seg) => seg === '..')) {
+      return sendError(res, 400, 'BAD_VERIFY_ID', 'verify id has invalid path segments');
+    }
+    if (typeof engine.verifyPodState !== 'function') {
+      return sendError(res, 500, 'NOT_SUPPORTED', 'engine has no verifyPodState()');
+    }
+    try {
+      const r = await engine.verifyPodState(relPath);
+      res.json({ ts: Date.now(), ...r });
+    } catch (err) {
+      sendError(res, 500, 'VERIFY_FAILED', err?.message ?? String(err));
+    }
   });
 
   // ── /watch/start ──────────────────────────────────────────────────────────
