@@ -633,3 +633,221 @@ describe('SyncEngine — start/stop lifecycle', () => {
     expect(pod.store.has(`${POD_ROOT}init.md`)).toBe(true);
   });
 });
+
+// ── Folio v2.6 — sha-stable watcher hardening ──────────────────────────────
+
+describe('SyncEngine — watcher sha-stability (Folio v2.6)', () => {
+  // Helper: quietly count `synced` events fired by an engine.
+  function countSynced(engine) {
+    const state = { count: 0 };
+    engine.on('synced', () => { state.count++; });
+    return state;
+  }
+
+  // Helper: poll until `predicate()` returns true, capped at `timeoutMs` of
+  // wall clock.  Uses real-time setTimeout (so no fake-timer interference).
+  async function waitFor(predicate, timeoutMs = 1500, intervalMs = 10) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (await predicate()) return true;
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+    return false;
+  }
+
+  it('exposes options.watcher with defaults + threads custom values through', () => {
+    const def = newEngine();
+    expect(def.options.watcher).toEqual({ stableMs: 250, maxStableWaitMs: 5000 });
+    const custom = newEngine({ watcher: { stableMs: 30, maxStableWaitMs: 200 } });
+    expect(custom.options.watcher).toEqual({ stableMs: 30, maxStableWaitMs: 200 });
+  });
+
+  it('waits for sha to stabilise before firing runOnce (stable case)', async () => {
+    // Tight stability window so the test is bounded.  debounceMs is the
+    // existing 50ms test default; stableMs 30ms; max wait 500ms.
+    const e = newEngine({ watcher: { stableMs: 30, maxStableWaitMs: 500 } });
+    e._armForStabilityTest();
+
+    const decisions = [];
+    e._onStabilityDecision((d) => decisions.push(d));
+    const syncedCount = countSynced(e);
+
+    const file = join(localRoot, 'stable.md');
+    await fs.writeFile(file, 'first');
+    e._injectWatchEventForTest(file, 'add');
+
+    // Wait for the debounce + stability windows to elapse.  No further
+    // writes — the file's sha is stable.
+    const decided = await waitFor(() => decisions.some((d) => d.decision === 'stable'));
+    expect(decided).toBe(true);
+
+    // runOnce fires after the stable decision.  We tolerate a brief gap
+    // for the runOnce promise to resolve.
+    const ran = await waitFor(() => syncedCount.count >= 1);
+    expect(ran).toBe(true);
+    expect(syncedCount.count).toBe(1);
+
+    e._disarmForTest();
+  });
+
+  it('does NOT fire runOnce for a file deleted before the vigil settles', async () => {
+    const e = newEngine({ watcher: { stableMs: 60, maxStableWaitMs: 500 } });
+    e._armForStabilityTest();
+
+    const decisions = [];
+    e._onStabilityDecision((d) => decisions.push(d));
+    const syncedCount = countSynced(e);
+
+    const file = join(localRoot, 'doomed.md');
+    await fs.writeFile(file, 'gonna-go');
+    e._injectWatchEventForTest(file, 'add');
+
+    // Delete BEFORE the first stability re-check fires.  We need to wait
+    // out the debounce (~50ms) but delete inside the stableMs window.
+    await new Promise((r) => setTimeout(r, 55)); // past debounce, into vigil
+    await fs.rm(file, { force: true });
+
+    // Wait long enough for the re-check to land + decide "deleted".
+    const decided = await waitFor(() => decisions.some((d) => d.decision === 'deleted'));
+    expect(decided).toBe(true);
+
+    // No runOnce should have fired.
+    expect(syncedCount.count).toBe(0);
+
+    e._disarmForTest();
+  });
+
+  it('caps total wait at maxStableWaitMs for an ever-changing file + emits warning', async () => {
+    // Tight cap so the test runs fast (real wall clock).
+    const e = newEngine({ watcher: { stableMs: 25, maxStableWaitMs: 200 } });
+    e._armForStabilityTest();
+
+    const decisions = [];
+    e._onStabilityDecision((d) => decisions.push(d));
+    const warnings = [];
+    e.on('warning', (w) => warnings.push(w));
+    const syncedCount = countSynced(e);
+
+    const file = join(localRoot, 'churn.md');
+    await fs.writeFile(file, 'v0');
+    e._injectWatchEventForTest(file, 'add');
+
+    // Mutate the file every ~10ms until the cap fires.  Bounded by 400ms
+    // of wall clock to keep the test under the 2s budget.
+    const churnDeadline = Date.now() + 400;
+    let i = 0;
+    while (Date.now() < churnDeadline) {
+      i++;
+      try { await fs.writeFile(file, `v${i}-${Date.now()}-${Math.random()}`); }
+      catch { /* race with internal read; ignore */ }
+      if (decisions.some((d) => d.decision === 'capped')) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+
+    // The cap MUST have fired, with a warning + a runOnce dispatched.
+    const capped = await waitFor(() => decisions.some((d) => d.decision === 'capped'));
+    expect(capped).toBe(true);
+    expect(warnings.length).toBeGreaterThanOrEqual(1);
+    expect(warnings[0].phase).toBe('unstable-write');
+    expect(warnings[0].absPath).toBe(file);
+    expect(typeof warnings[0].elapsedMs).toBe('number');
+
+    const ran = await waitFor(() => syncedCount.count >= 1);
+    expect(ran).toBe(true);
+
+    e._disarmForTest();
+  });
+
+  it('handles two files saved at once with independent stability vigils', async () => {
+    const e = newEngine({ watcher: { stableMs: 30, maxStableWaitMs: 500 } });
+    e._armForStabilityTest();
+
+    const decisions = [];
+    e._onStabilityDecision((d) => decisions.push(d));
+    const syncedCount = countSynced(e);
+
+    const f1 = join(localRoot, 'a.md');
+    const f2 = join(localRoot, 'b.md');
+    await fs.writeFile(f1, 'A');
+    await fs.writeFile(f2, 'B');
+    e._injectWatchEventForTest(f1, 'add');
+    e._injectWatchEventForTest(f2, 'add');
+
+    // Both should reach 'stable' independently.
+    const allStable = await waitFor(() =>
+      decisions.filter((d) => d.decision === 'stable').length >= 2,
+    );
+    expect(allStable).toBe(true);
+    const stablePaths = decisions
+      .filter((d) => d.decision === 'stable')
+      .map((d) => d.absPath)
+      .sort();
+    expect(stablePaths).toContain(f1);
+    expect(stablePaths).toContain(f2);
+
+    // runOnce should have run at least once and completed both uploads.
+    const ran = await waitFor(() => syncedCount.count >= 1 &&
+      pod.store.has(`${POD_ROOT}a.md`) && pod.store.has(`${POD_ROOT}b.md`));
+    expect(ran).toBe(true);
+
+    e._disarmForTest();
+  });
+
+  it('restarts the wait when sha changes between checks (no premature fire)', async () => {
+    const e = newEngine({ watcher: { stableMs: 40, maxStableWaitMs: 800 } });
+    e._armForStabilityTest();
+
+    const decisions = [];
+    e._onStabilityDecision((d) => decisions.push(d));
+    const syncedCount = countSynced(e);
+
+    const file = join(localRoot, 'flap.md');
+    await fs.writeFile(file, 'first');
+    e._injectWatchEventForTest(file, 'add');
+
+    // Wait past the debounce window so the vigil is armed, then change
+    // content once before the first stable check fires.
+    await new Promise((r) => setTimeout(r, 55)); // past 50ms debounce
+    await fs.writeFile(file, 'second'); // mutate during vigil
+    // Now leave it alone — the vigil should detect the change, restart,
+    // then settle on the second sha.
+
+    // Eventually we expect at least one 'changed' decision followed by
+    // a 'stable' decision, and exactly one runOnce.
+    const sawChange = await waitFor(() => decisions.some((d) => d.decision === 'changed'));
+    expect(sawChange).toBe(true);
+
+    const settled = await waitFor(() => decisions.some((d) => d.decision === 'stable'));
+    expect(settled).toBe(true);
+
+    // No premature firing — runOnce only counts after the stable decision.
+    expect(syncedCount.count).toBe(1);
+
+    e._disarmForTest();
+  });
+
+  it('stop() cancels pending stability vigils — no spurious runOnce', async () => {
+    const e = newEngine({ watcher: { stableMs: 50, maxStableWaitMs: 500 } });
+    e._armForStabilityTest();
+
+    const decisions = [];
+    e._onStabilityDecision((d) => decisions.push(d));
+    const syncedCount = countSynced(e);
+
+    const file = join(localRoot, 'mid.md');
+    await fs.writeFile(file, 'mid-state');
+    e._injectWatchEventForTest(file, 'add');
+
+    // Tear down before the vigil could possibly settle.
+    await new Promise((r) => setTimeout(r, 10));
+    e._disarmForTest();
+
+    // Wait past where 'stable' would have landed had we not torn down.
+    await new Promise((r) => setTimeout(r, 200));
+
+    // No 'stable' or 'capped' decisions; no runOnce.
+    const fired = decisions.filter((d) => d.decision === 'stable' || d.decision === 'capped');
+    expect(fired).toEqual([]);
+    expect(syncedCount.count).toBe(0);
+  });
+});

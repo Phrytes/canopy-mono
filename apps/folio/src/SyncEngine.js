@@ -20,6 +20,7 @@
  */
 
 import chokidar from 'chokidar';
+import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { dirname, join } from 'node:path';
 
@@ -44,6 +45,16 @@ const STATE_FILE_RELPATH = '.canopy/notes-sync-state.json';
 const DEFAULT_DEBOUNCE_MS = 500;
 const DEFAULT_POLL_MS     = 60_000;
 
+// Folio v2.6 — sha-stable watcher hardening.
+// Some editors save in two writes; some atomic-save patterns rename a temp
+// over the target — chokidar fires for both events.  Reading too eagerly
+// computes a sha over partial content and produces a false-positive conflict
+// on the next tick.  Wait for the file's sha to settle for `stableMs` before
+// triggering runOnce.  Cap total wait at `maxStableWaitMs` so an
+// ever-changing file (e.g. a downloader streaming bytes) eventually fires.
+const DEFAULT_STABLE_MS          = 250;
+const DEFAULT_MAX_STABLE_WAIT_MS = 5_000;
+
 export class SyncEngine extends Emitter {
   #podClient;
   #pathMap;
@@ -64,6 +75,28 @@ export class SyncEngine extends Emitter {
 
   #versionsOpts;
 
+  // Folio v2.6 — sha-stable hardening.
+  #stableMs;
+  #maxStableWaitMs;
+  /** @type {Set<string>} paths reported by chokidar within the current debounce window */
+  #pendingPaths = new Set();
+  /** Pending runOnce queued because of a poll-tick (no path). */
+  #pendingPollRun = false;
+  /**
+   * Per-path stability tracker.  Keys are absolute paths (chokidar's `path` arg).
+   * `timer` is the setTimeout handle for the next stability re-check; cleared
+   * on stop() and on path eviction.
+   * `firstSeenAt` is when we first started the stability vigil for this path
+   *   (Date.now() at that moment) — used to enforce `maxStableWaitMs`.
+   * `lastSha` is the most-recently-computed sha; matches across two passes
+   *   ⇒ stable.  `null` means the file did not exist on the last pass
+   *   (we treat sustained ENOENT as "deleted; drop the entry").
+   * @type {Map<string, { firstSeenAt: number, lastSha: string|null, timer: any }>}
+   */
+  #stability = new Map();
+  /** A spy hook for tests — fires after a stability decision (settled / unstable / deleted). */
+  #onStabilityDecisionForTest = null;
+
   /**
    * @param {object} opts
    * @param {object} opts.podClient                     — @canopy/pod-client PodClient (or any compatible mock)
@@ -75,8 +108,14 @@ export class SyncEngine extends Emitter {
    * @param {{perFile?:number, budgetMb?:number}} [opts.versions]
    *        Folio.B4 retention policy.  Defaults: 50 versions per file,
    *        100 MB total under <localRoot>/.folio/versions.
+   * @param {{stableMs?:number, maxStableWaitMs?:number}} [opts.watcher]
+   *        Folio v2.6 sha-stable hardening.  After the standard `debounceMs`
+   *        window, each touched path is re-hashed; we only fire `runOnce()`
+   *        once the sha is unchanged for `stableMs` (default 250ms).
+   *        After `maxStableWaitMs` (default 5000ms) the run fires anyway and
+   *        a `'warning'` event with `phase: 'unstable-write'` is emitted.
    */
-  constructor({ podClient, localRoot, podRoot, identity, pollIntervalMs = DEFAULT_POLL_MS, debounceMs = DEFAULT_DEBOUNCE_MS, versions = null } = {}) {
+  constructor({ podClient, localRoot, podRoot, identity, pollIntervalMs = DEFAULT_POLL_MS, debounceMs = DEFAULT_DEBOUNCE_MS, versions = null, watcher = null } = {}) {
     super();
     if (!podClient) throw new Error('SyncEngine: podClient is required');
     if (!localRoot) throw new Error('SyncEngine: localRoot is required');
@@ -90,8 +129,14 @@ export class SyncEngine extends Emitter {
     this.#debounceMs     = debounceMs;
     this.#stateFilePath  = join(this.#localRoot, STATE_FILE_RELPATH);
     this.#versionsOpts   = versions ?? {};
+    const w = watcher ?? {};
+    this.#stableMs        = Number.isFinite(w.stableMs)        ? Math.max(0, w.stableMs)        : DEFAULT_STABLE_MS;
+    this.#maxStableWaitMs = Number.isFinite(w.maxStableWaitMs) ? Math.max(0, w.maxStableWaitMs) : DEFAULT_MAX_STABLE_WAIT_MS;
     // Public accessor so consumers can read the configured retention.
-    this.options = { versions: { ...this.#versionsOpts } };
+    this.options = {
+      versions: { ...this.#versionsOpts },
+      watcher:  { stableMs: this.#stableMs, maxStableWaitMs: this.#maxStableWaitMs },
+    };
   }
 
   get stats()     { return { ...this.#stats }; }
@@ -320,7 +365,7 @@ export class SyncEngine extends Emitter {
         return segs.some((s) => s.startsWith('.'));
       },
     });
-    this.#watcher.on('all', () => { this.#scheduleRun(); });
+    this.#watcher.on('all', (event, path) => { this.#scheduleRun(path, event); });
     this.#watcher.on('error', (err) => { this.emit('error', { phase: 'watcher', err }); });
 
     this.#pollTimer = setInterval(() => { this.#scheduleRun(); }, this.#pollIntervalMs);
@@ -341,6 +386,13 @@ export class SyncEngine extends Emitter {
       clearInterval(this.#pollTimer);
       this.#pollTimer = null;
     }
+    // Folio v2.6 — drop any pending stability vigils.
+    for (const entry of this.#stability.values()) {
+      if (entry.timer) clearTimeout(entry.timer);
+    }
+    this.#stability.clear();
+    this.#pendingPaths.clear();
+    this.#pendingPollRun = false;
     if (this.#watcher) {
       try { await this.#watcher.close(); } catch { /* swallow */ }
       this.#watcher = null;
@@ -464,15 +516,240 @@ export class SyncEngine extends Emitter {
     return r;
   }
 
-  #scheduleRun() {
+  /**
+   * Schedule a run after the standard `debounceMs` coalesce window.
+   *
+   * Folio v2.6: when invoked with a `path` (chokidar event), the path is
+   * accumulated into `#pendingPaths` and gates a sha-stability check before
+   * `runOnce()` actually fires.  Path-less calls (poll tick) still fire
+   * `runOnce()` after the debounce window, but they ALSO clear any
+   * stability vigils in flight — a poll tick is a coarse "settle and run"
+   * signal that should subsume any pending per-path waits.
+   *
+   * @param {string} [path]   chokidar absolute path (when present)
+   * @param {string} [_event] chokidar event name (add/change/unlink/...) — currently unused but logged
+   */
+  #scheduleRun(path, _event) {
     if (!this.#running) return;
+    if (typeof path === 'string' && path.length > 0) {
+      this.#pendingPaths.add(path);
+    } else {
+      this.#pendingPollRun = true;
+    }
     if (this.#debounceTimer) clearTimeout(this.#debounceTimer);
     this.#debounceTimer = setTimeout(() => {
       this.#debounceTimer = null;
       if (!this.#running) return;
-      this.runOnce().catch((err) => this.emit('error', { phase: 'scheduled', err }));
+      this.#onDebounceFire();
     }, this.#debounceMs);
     if (typeof this.#debounceTimer.unref === 'function') this.#debounceTimer.unref();
+  }
+
+  /**
+   * The 500ms debounce just elapsed.  Drain `#pendingPaths` into per-path
+   * stability vigils.  When all vigils settle (or the maxWait cap fires),
+   * a single `runOnce()` is dispatched.  A path-less `pendingPollRun` short-
+   * circuits the vigils — runOnce fires immediately and pending vigils are
+   * cancelled.
+   */
+  #onDebounceFire() {
+    // Poll tick subsumes pending per-path waits.
+    if (this.#pendingPollRun) {
+      this.#pendingPollRun = false;
+      // Cancel any in-flight stability vigils — runOnce is about to cover them.
+      for (const entry of this.#stability.values()) {
+        if (entry.timer) clearTimeout(entry.timer);
+      }
+      this.#stability.clear();
+      this.#pendingPaths.clear();
+      this.#fireRunOnce('scheduled');
+      return;
+    }
+    if (this.#pendingPaths.size === 0) {
+      // Nothing to do — likely a stop() between the schedule and fire.
+      return;
+    }
+    const paths = [...this.#pendingPaths];
+    this.#pendingPaths.clear();
+    // Each path runs its own stability vigil; the first one to "decide" that
+    // produces a need-to-run schedules a single shared runOnce.  We don't
+    // batch by waiting for ALL paths — each settled path is an independent
+    // signal that "something is now stable enough to sync", so we fire on
+    // each.  runOnce serializes via #runChain, so even rapid-fire decisions
+    // don't double-run real work.
+    for (const p of paths) {
+      this.#startStabilityVigil(p);
+    }
+  }
+
+  /**
+   * Begin (or restart) the sha-stability vigil for `absPath`.
+   *
+   * Phase A (this method): hash now, store the sha as the "candidate", and
+   * arm a timer for `stableMs`.  When the timer fires we re-hash and
+   * compare (Phase B).  ENOENT clears the entry without firing runOnce
+   * (file was deleted before we got there).
+   */
+  #startStabilityVigil(absPath) {
+    if (!this.#running) return;
+    // Cancel any in-flight vigil for this path; we restart fresh.
+    const prior = this.#stability.get(absPath);
+    if (prior?.timer) clearTimeout(prior.timer);
+
+    const firstSeenAt = prior?.firstSeenAt ?? Date.now();
+
+    // Hash now (best-effort).  We tolerate ENOENT: a deleted-while-pending
+    // file simply drops the entry.
+    const hashAndArm = async () => {
+      let sha;
+      try {
+        sha = await this.#sha256OfFile(absPath);
+      } catch (err) {
+        // Unexpected I/O failure — surface and bail without firing.
+        this.emit('error', { phase: 'watcher-stability', absPath, err });
+        this.#stability.delete(absPath);
+        this.#emitStabilityDecisionForTest({ absPath, decision: 'error' });
+        return;
+      }
+      if (sha === null) {
+        // ENOENT — file vanished.  Drop the tracker; do NOT fire runOnce.
+        this.#stability.delete(absPath);
+        this.#emitStabilityDecisionForTest({ absPath, decision: 'deleted' });
+        return;
+      }
+      const entry = this.#stability.get(absPath) ?? { firstSeenAt, lastSha: null, timer: null };
+      entry.firstSeenAt = firstSeenAt;
+      entry.lastSha = sha;
+      const elapsed = Date.now() - firstSeenAt;
+      // Cap on total wait — fire even if not yet stable, but warn loudly.
+      if (elapsed >= this.#maxStableWaitMs) {
+        this.#stability.delete(absPath);
+        this.emit('warning', { phase: 'unstable-write', absPath, elapsedMs: elapsed });
+        this.#emitStabilityDecisionForTest({ absPath, decision: 'capped' });
+        this.#fireRunOnce('scheduled');
+        return;
+      }
+      // Arm the next pass.  When it fires we'll re-hash and compare.
+      entry.timer = setTimeout(() => { void this.#stabilityRecheck(absPath); }, this.#stableMs);
+      if (typeof entry.timer.unref === 'function') entry.timer.unref();
+      this.#stability.set(absPath, entry);
+    };
+    void hashAndArm();
+  }
+
+  async #stabilityRecheck(absPath) {
+    if (!this.#running) return;
+    const entry = this.#stability.get(absPath);
+    if (!entry) return; // dropped (deleted, or stop()).
+    let sha;
+    try {
+      sha = await this.#sha256OfFile(absPath);
+    } catch (err) {
+      this.emit('error', { phase: 'watcher-stability', absPath, err });
+      this.#stability.delete(absPath);
+      this.#emitStabilityDecisionForTest({ absPath, decision: 'error' });
+      return;
+    }
+    if (sha === null) {
+      // File was deleted during the vigil.  Drop the tracker — no runOnce
+      // for the deletion path; chokidar's unlink event would itself fire a
+      // poll-style scheduleRun if it mattered.
+      this.#stability.delete(absPath);
+      this.#emitStabilityDecisionForTest({ absPath, decision: 'deleted' });
+      return;
+    }
+    if (sha === entry.lastSha) {
+      // STABLE — content has not changed across a `stableMs` window.  Fire
+      // runOnce once and forget this path.
+      this.#stability.delete(absPath);
+      this.#emitStabilityDecisionForTest({ absPath, decision: 'stable', sha });
+      this.#fireRunOnce('scheduled');
+      return;
+    }
+    // UNSTABLE — content changed.  Restart the vigil with the new sha
+    // (firstSeenAt remains the same so maxStableWaitMs is global).
+    const elapsed = Date.now() - entry.firstSeenAt;
+    if (elapsed >= this.#maxStableWaitMs) {
+      this.#stability.delete(absPath);
+      this.emit('warning', { phase: 'unstable-write', absPath, elapsedMs: elapsed });
+      this.#emitStabilityDecisionForTest({ absPath, decision: 'capped' });
+      this.#fireRunOnce('scheduled');
+      return;
+    }
+    entry.lastSha = sha;
+    entry.timer = setTimeout(() => { void this.#stabilityRecheck(absPath); }, this.#stableMs);
+    if (typeof entry.timer.unref === 'function') entry.timer.unref();
+    this.#stability.set(absPath, entry);
+    this.#emitStabilityDecisionForTest({ absPath, decision: 'changed', sha });
+  }
+
+  /**
+   * Hash a file.  Returns the hex sha256 string, or `null` if the file does
+   * not exist (ENOENT).  Other errors propagate.
+   */
+  async #sha256OfFile(absPath) {
+    let buf;
+    try {
+      buf = await fs.readFile(absPath);
+    } catch (err) {
+      if (err && err.code === 'ENOENT') return null;
+      throw err;
+    }
+    return createHash('sha256').update(buf).digest('hex');
+  }
+
+  /** Internal: actually dispatch a runOnce, forwarding errors to `error` events. */
+  #fireRunOnce(phase) {
+    if (!this.#running) return;
+    this.runOnce().catch((err) => this.emit('error', { phase, err }));
+  }
+
+  /**
+   * Test-only spy hook.  Receives `{ absPath, decision, sha? }` after each
+   * stability decision (`stable`, `changed`, `deleted`, `capped`, `error`).
+   * Production code never reads this; it's `null` unless tests installed it.
+   */
+  _onStabilityDecision(fn) {
+    this.#onStabilityDecisionForTest = typeof fn === 'function' ? fn : null;
+  }
+
+  /**
+   * Test-only entry point — feed a synthetic chokidar event without standing
+   * up a real watcher.  Equivalent to what `start()`'s `'all'` handler does.
+   * Requires `start()` to have been called (so `#running` is true) — tests
+   * can also flip `#running` via `_armForStabilityTest()`.
+   *
+   * @param {string} absPath  absolute path
+   * @param {string} [event]  chokidar event name (default 'change')
+   */
+  _injectWatchEventForTest(absPath, event = 'change') {
+    this.#scheduleRun(absPath, event);
+  }
+
+  /**
+   * Test-only — flip `#running` true without starting a real watcher / poll
+   * timer / initial runOnce.  Use this when you want to exercise the
+   * stability path in isolation.  Pair with `_disarmForTest()` (or `stop()`).
+   */
+  _armForStabilityTest() {
+    this.#running = true;
+  }
+
+  _disarmForTest() {
+    this.#running = false;
+    if (this.#debounceTimer) { clearTimeout(this.#debounceTimer); this.#debounceTimer = null; }
+    for (const entry of this.#stability.values()) {
+      if (entry.timer) clearTimeout(entry.timer);
+    }
+    this.#stability.clear();
+    this.#pendingPaths.clear();
+    this.#pendingPollRun = false;
+  }
+
+  #emitStabilityDecisionForTest(payload) {
+    if (this.#onStabilityDecisionForTest) {
+      try { this.#onStabilityDecisionForTest(payload); } catch { /* swallow */ }
+    }
   }
 
   async #loadState() {
