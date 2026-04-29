@@ -30,6 +30,7 @@ import { scanLocal }     from './scanLocal.js';
 import { scanPod }       from './scanPod.js';
 import { diff }          from './diff.js';
 import { applyConflict } from './applyConflict.js';
+import { ensureShares, listShares } from './autoShare.js';
 
 const STATE_FILE_RELPATH = '.canopy/notes-sync-state.json';
 const DEFAULT_DEBOUNCE_MS = 500;
@@ -43,6 +44,7 @@ export class SyncEngine extends Emitter {
   #pollIntervalMs;
   #debounceMs;
   #stateFilePath;
+  #identity = null;
   #knownState = {};
   #stateLoaded = false;
   #watcher = null;
@@ -57,10 +59,11 @@ export class SyncEngine extends Emitter {
    * @param {object} opts.podClient                     — @canopy/pod-client PodClient (or any compatible mock)
    * @param {string} opts.localRoot                     — absolute path to local folder
    * @param {string} opts.podRoot                       — pod URI root, e.g. 'https://alice.example/notes/'
+   * @param {object} [opts.identity]                    — AgentIdentity (enables Q-Folio.3 auto-share)
    * @param {number} [opts.pollIntervalMs=60_000]       — pod-side scan interval (until LDN ships)
    * @param {number} [opts.debounceMs=500]              — coalesce window for FS events
    */
-  constructor({ podClient, localRoot, podRoot, pollIntervalMs = DEFAULT_POLL_MS, debounceMs = DEFAULT_DEBOUNCE_MS } = {}) {
+  constructor({ podClient, localRoot, podRoot, identity, pollIntervalMs = DEFAULT_POLL_MS, debounceMs = DEFAULT_DEBOUNCE_MS } = {}) {
     super();
     if (!podClient) throw new Error('SyncEngine: podClient is required');
     if (!localRoot) throw new Error('SyncEngine: localRoot is required');
@@ -69,6 +72,7 @@ export class SyncEngine extends Emitter {
     this.#localRoot      = String(localRoot).replace(/[\/\\]+$/, '');
     this.#podRoot        = String(podRoot).endsWith('/') ? String(podRoot) : `${podRoot}/`;
     this.#pathMap        = new PathMap({ localRoot: this.#localRoot, podRoot: this.#podRoot });
+    this.#identity       = identity ?? null;
     this.#pollIntervalMs = pollIntervalMs;
     this.#debounceMs     = debounceMs;
     this.#stateFilePath  = join(this.#localRoot, STATE_FILE_RELPATH);
@@ -78,6 +82,27 @@ export class SyncEngine extends Emitter {
   get pathMap()   { return this.#pathMap; }
   get localRoot() { return this.#localRoot; }
   get podRoot()   { return this.#podRoot; }
+  get identity()  { return this.#identity; }
+
+  /**
+   * Set or replace the signing identity used for the Q-Folio.3 auto-share
+   * convention.  Pass `null` to disable auto-share until a new identity is set.
+   * On the next `runOnce`, any token whose `issuer` differs from the new
+   * identity's pubKey will be re-issued (per the rotation rule).
+   */
+  setIdentity(identity) {
+    this.#identity = identity ?? null;
+  }
+
+  /**
+   * Return the live list of auto-share tokens, suitable for CLI / UI display.
+   * Each entry: `{ webid, path, podUri, issuer, issuedAt, expires }`.
+   *
+   * @returns {Promise<Array<object>>}
+   */
+  async shares() {
+    return listShares(this.#localRoot);
+  }
 
   /**
    * One-shot sync: scan both sides, compute diff, apply, persist state.
@@ -164,6 +189,11 @@ export class SyncEngine extends Emitter {
     }
 
     await this.#saveState();
+    // Q-Folio.3 — ensure `with-<webid>/` folders have current capability tokens.
+    // Runs after a successful sync so any newly-pushed share folder has its
+    // pod resources in place when we mint the token.  No-op when no identity
+    // is configured (existing tests + CLI v1 path).
+    await this.#ensureSharesSafe();
     this.#stats.uploads   += uploads;
     this.#stats.downloads += downloads;
     this.#stats.deletes   += deletes;
@@ -171,6 +201,21 @@ export class SyncEngine extends Emitter {
     this.#stats.lastSyncAt = Date.now();
     this.emit('synced', { uploads, downloads, deletes, conflicts });
     return { uploads, downloads, deletes, conflicts };
+  }
+
+  async #ensureSharesSafe() {
+    if (!this.#identity) return;
+    try {
+      const r = await ensureShares(this, this.#identity);
+      if (r.minted > 0 || r.renewed > 0) {
+        this.emit('shares', { minted: r.minted, renewed: r.renewed, errors: r.errors });
+      }
+      for (const e of r.errors ?? []) {
+        this.emit('error', { phase: 'auto-share', code: e.code, message: e.message, name: e.name });
+      }
+    } catch (err) {
+      this.emit('error', { phase: 'auto-share', err });
+    }
   }
 
   /** Continuous: chokidar for FS, interval for pod. */
