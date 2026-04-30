@@ -1,3 +1,17 @@
+// Why this file is so long:
+// see docs/SOLID-RN-NOTES.md for the full backstory + audit checklist.
+// Quick map:
+//   - NODE_BUILTINS (below) — server-only Node builtins shimmed to
+//     `shims/node-builtins.js` (empty-ish object with lazy getters).
+//   - `util`, `events`, `punycode` are NOT in NODE_BUILTINS — they have
+//     real polyfill packages installed and routed through normal
+//     resolution, because libraries actually invoke them at runtime
+//     (whatwg-url's punycode.ucs2.decode, EventEmitter subclassing, etc.).
+//   - `node:` prefix is stripped in `resolveRequest`.
+//   - `@canopy-app/folio/rn/*` subpath imports are intercepted in
+//     `resolveRequest` because Metro's `extraNodeModules` doesn't
+//     reliably match subpath keys when a shorter prefix (`@canopy-app/folio`)
+//     is also present.
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
@@ -9,15 +23,23 @@ const shimPath  = path.resolve(__dirname, 'shims/node-builtins.js');
 // but are never called on mobile.  Metro resolves dynamic imports at
 // bundle time, so we shim them to prevent "module not found" errors
 // without breaking runtime behaviour.
+// `util`, `events`, `punycode`, `buffer`, `path` deliberately omitted
+// — they have real implementations available.  `util/events/punycode/
+// buffer` come from npm polyfills via normal resolution; `path` is
+// shimmed via shims/path.js (pure-JS POSIX helpers — no npm polyfill
+// needed since RN's FS is always `/`-separated and PathMap.js
+// destructures `posix` at module-load time).
 const NODE_BUILTINS = new Set([
   'http', 'https', 'net', 'tls', 'fs', 'fs/promises',
-  'path', 'os', 'stream', 'zlib', 'dns', 'dgram',
+  'os', 'stream', 'zlib', 'dns', 'dgram',
   'child_process', 'cluster', 'worker_threads',
   'readline', 'repl', 'vm', 'module', 'perf_hooks',
-  'assert', 'constants', 'domain', 'punycode', 'sys',
+  'assert', 'constants', 'domain', 'sys',
   'timers', 'string_decoder', 'v8',
   // Required by ws internals (sender.js, websocket-server.js)
-  'crypto', 'events', 'buffer',
+  'crypto',
+  // Required by @inrupt/solid-client-authn-node bundling chain
+  'url', 'querystring', 'tty',
 ]);
 
 // Force all native / React modules to resolve from THIS app's node_modules.
@@ -113,11 +135,41 @@ config.resolver = {
   ],
 
   resolveRequest: (context, moduleName, platform) => {
-    if (NODE_BUILTINS.has(moduleName)) {
+    // Accept both 'crypto' and 'node:crypto' forms for Node builtins.
+    const stripped = moduleName.startsWith('node:') ? moduleName.slice(5) : moduleName;
+    if (NODE_BUILTINS.has(stripped)) {
       return { filePath: shimPath, type: 'sourceFile' };
+    }
+    // `util` needs a polyfill PLUS TextDecoder/TextEncoder top-up
+    // (whatwg-url destructures them and the bare `util` package
+    // doesn't export them).  See shims/util.js.
+    if (stripped === 'util') {
+      return { filePath: path.resolve(__dirname, 'shims/util.js'), type: 'sourceFile' };
+    }
+    // `path` needs a real POSIX impl — PathMap.js destructures
+    // `posix.join` at module-load time.  See shims/path.js.
+    if (stripped === 'path') {
+      return { filePath: path.resolve(__dirname, 'shims/path.js'), type: 'sourceFile' };
     }
     if (moduleName === 'ws' || moduleName.startsWith('ws/')) {
       return { filePath: path.resolve(__dirname, 'shims/ws.js'), type: 'sourceFile' };
+    }
+    // Folio RN subpath imports.  unstable_enablePackageExports is OFF, so
+    // Metro can't read folio's package.json `exports`; and the
+    // `extraNodeModules` subpath keys are silently overridden by the
+    // shorter `@canopy-app/folio` prefix.  Resolve explicitly here.
+    if (moduleName.startsWith('@canopy-app/folio/rn/')) {
+      const sub = moduleName.slice('@canopy-app/folio/rn/'.length);
+      return {
+        filePath: path.resolve(repoRoot, 'apps/folio/src/rn', sub + '.js'),
+        type: 'sourceFile',
+      };
+    }
+    // `node:events` → `events` (real polyfill in node_modules).  Same
+    // trick for any other node:-prefixed import that doesn't match
+    // NODE_BUILTINS above — let normal resolution find the polyfill.
+    if (moduleName.startsWith('node:')) {
+      return context.resolveRequest(context, stripped, platform);
     }
     return context.resolveRequest(context, moduleName, platform);
   },

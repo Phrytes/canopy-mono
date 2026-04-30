@@ -27,6 +27,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
+import * as SecureStore from 'expo-secure-store';
+
+import { loadOrRegisterClient } from './dcr.js';
 
 // Required on Android Chrome Custom Tabs to dismiss the browser sheet
 // after the redirect lands; safe to call multiple times.  iOS no-ops.
@@ -106,8 +109,9 @@ export function useFolioAuth({
   scopes    = DEFAULT_SCOPES,
   onWarning,
 } = {}) {
-  const [discovery, setDiscovery] = useState(null);
-  const [lastError, setLastError] = useState(null);
+  const [discovery, setDiscovery]   = useState(null);
+  const [resolvedClientId, setResolvedClientId] = useState(clientId);
+  const [lastError, setLastError]   = useState(null);
 
   const redirectUri = useMemo(
     () => AuthSession.makeRedirectUri({ scheme, path, native: `${scheme}://${path}` }),
@@ -129,10 +133,45 @@ export function useFolioAuth({
     return () => { cancelled = true; };
   }, [issuer, onWarning]);
 
+  // Dynamic Client Registration (RFC 7591).  Solid OIDC requires the
+  // client_id to be either pre-registered or DCR-issued; a custom-scheme
+  // redirect URI cannot serve as a self-describing client_id.  See
+  // ./dcr.js + ../docs/SOLID-RN-NOTES.md.
+  //
+  // Skipped when the caller passed an explicit `clientId` prop.
+  useEffect(() => {
+    if (clientId) return;        // caller-provided client_id wins
+    if (!discovery) return;      // wait for discovery
+    if (resolvedClientId) return; // already resolved this session
+
+    let cancelled = false;
+    loadOrRegisterClient({
+      issuer,
+      discovery,
+      redirectUri,
+      store: SecureStore,
+      clientName: 'Folio (mobile)',
+      scopes,
+    })
+      .then((id) => { if (!cancelled) setResolvedClientId(id); })
+      .catch((err) => {
+        if (!cancelled) {
+          setLastError(err);
+          onWarning?.(`useFolioAuth: DCR failed: ${err?.message ?? err}`);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [clientId, discovery, issuer, redirectUri, resolvedClientId, scopes, onWarning]);
+
   // The auth request — useAuthRequest returns [request, response, promptAsync].
+  // useAuthRequest reads `.scopes` etc. on the config unconditionally, so
+  // we always pass a valid object — falling back to redirectUri as a
+  // placeholder client_id until DCR completes.  The actual `promptAsync()`
+  // call is gated on `resolvedClientId` in signIn(), so the placeholder
+  // never reaches the IdP.
   const [request, , promptAsync] = AuthSession.useAuthRequest(
     {
-      clientId:           clientId ?? redirectUri,
+      clientId:           resolvedClientId ?? redirectUri,
       scopes,
       redirectUri,
       responseType:       AuthSession.ResponseType.Code,
@@ -149,6 +188,12 @@ export function useFolioAuth({
         { code: 'DISCOVERY_PENDING' },
       );
     }
+    if (!resolvedClientId) {
+      throw Object.assign(
+        new Error('useFolioAuth: client registration not yet complete'),
+        { code: 'CLIENT_ID_PENDING' },
+      );
+    }
     if (!request) {
       throw Object.assign(
         new Error('useFolioAuth: auth request not yet built'),
@@ -159,14 +204,15 @@ export function useFolioAuth({
     const result = await promptAsync({ showInRecents: false });
     return completeSignIn({
       result, request, discovery, redirectUri,
-      clientId: clientId ?? redirectUri,
+      clientId: resolvedClientId,
       issuer,
     });
-  }, [discovery, request, promptAsync, redirectUri, clientId, issuer]);
+  }, [discovery, request, promptAsync, redirectUri, resolvedClientId, issuer]);
 
   return {
-    ready: !!(discovery && request),
+    ready: !!(discovery && request && resolvedClientId),
     discovery,
+    clientId: resolvedClientId,
     request,
     redirectUri,
     signIn,

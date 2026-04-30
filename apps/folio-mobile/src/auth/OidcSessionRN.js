@@ -194,26 +194,129 @@ export class OidcSessionRN {
   /** @returns {number|null} */ get expiresAt()    { return this.#expiresAt; }
 
   /**
-   * Returns a `fetch` wrapper that injects the bearer token.  Mirrors the
-   * shape PodClient's `Auth` interface expects (no `vault.refresh()` —
-   * v0 uses sign-in-again on lapse; future versions can layer refresh).
+   * Returns a `fetch` wrapper that injects the bearer token AND
+   * transparently refreshes on 401 (one retry).  The wrapper reads
+   * `this.#accessToken` AT CALL TIME — not at `getAuthenticatedFetch()`
+   * time — so re-login / token-refresh updates take effect without
+   * rebuilding the engine's fetch.
+   *
+   * Refresh strategy: when the underlying fetch returns 401 AND we have
+   * a refresh token, POST to the token endpoint with
+   * `grant_type=refresh_token`, save the new access/refresh tokens,
+   * and retry the original request once with the new bearer.  If the
+   * refresh fails (or there's no refresh token), the 401 surfaces to
+   * the caller — they can re-prompt sign-in.
    *
    * @returns {typeof fetch}
    */
   getAuthenticatedFetch() {
-    if (!this.isAuthenticated()) {
+    if (!this.isAuthenticated() && !this.#refreshToken) {
       const err = new Error('OidcSessionRN.getAuthenticatedFetch: not authenticated');
       err.code  = 'NOT_AUTHENTICATED';
       throw err;
     }
-    const token = this.#accessToken;
-    return async (input, init = {}) => {
+    const doFetch = async (input, init = {}) => {
       const headers = new Headers(init.headers ?? {});
-      if (!headers.has('Authorization')) {
-        headers.set('Authorization', `Bearer ${token}`);
+      if (!headers.has('Authorization') && this.#accessToken) {
+        headers.set('Authorization', `Bearer ${this.#accessToken}`);
       }
       return globalThis.fetch(input, { ...init, headers });
     };
+    return async (input, init = {}) => {
+      // Pro-active refresh if we know the access token has expired.
+      if (
+        this.#refreshToken &&
+        (!this.#accessToken || (this.#expiresAt && Date.now() >= this.#expiresAt))
+      ) {
+        try { await this.refresh(); } catch { /* fall through to 401 path */ }
+      }
+      let res = await doFetch(input, init);
+      // Reactive refresh on 401 (covers expiresAt skew + revocation cases).
+      if (res.status === 401 && this.#refreshToken) {
+        try {
+          await this.refresh();
+          res = await doFetch(input, init);
+        } catch { /* surface the original 401 */ }
+      }
+      return res;
+    };
+  }
+
+  /**
+   * Use the stored refresh_token to obtain a fresh access_token (and
+   * optionally a rotated refresh_token) from the issuer's token
+   * endpoint.  Updates secure-store + in-memory state.  Throws on
+   * failure; callers that want a "best effort" can wrap in try/catch.
+   *
+   * @returns {Promise<void>}
+   */
+  async refresh() {
+    if (!this.#refreshToken) {
+      throw Object.assign(new Error('OidcSessionRN.refresh: no refresh token'), { code: 'NO_REFRESH_TOKEN' });
+    }
+    if (!this.#issuer) {
+      throw Object.assign(new Error('OidcSessionRN.refresh: no issuer'), { code: 'NO_ISSUER' });
+    }
+    if (!this.#clientId) {
+      throw Object.assign(new Error('OidcSessionRN.refresh: no client_id'), { code: 'NO_CLIENT_ID' });
+    }
+
+    // Fetch discovery to find the token endpoint (cheap; could be cached).
+    const discRes = await globalThis.fetch(this.#issuer.replace(/\/$/, '') + '/.well-known/openid-configuration', {
+      headers: { Accept: 'application/json' },
+    });
+    if (!discRes.ok) {
+      throw Object.assign(new Error(`refresh: discovery failed: ${discRes.status}`), { code: 'DISCOVERY_FAILED' });
+    }
+    const disc = await discRes.json();
+    const tokenEndpoint = disc.token_endpoint || disc.tokenEndpoint;
+    if (!tokenEndpoint) {
+      throw Object.assign(new Error('refresh: discovery missing token_endpoint'), { code: 'NO_TOKEN_ENDPOINT' });
+    }
+
+    const body = new URLSearchParams({
+      grant_type:    'refresh_token',
+      refresh_token: this.#refreshToken,
+      client_id:     this.#clientId,
+    });
+
+    const res = await globalThis.fetch(tokenEndpoint, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept:         'application/json',
+      },
+      body: body.toString(),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw Object.assign(
+        new Error(`refresh: ${res.status} ${json.error ?? ''} — ${json.error_description ?? ''}`),
+        { code: 'REFRESH_REJECTED', status: res.status, body: json },
+      );
+    }
+    if (typeof json.access_token !== 'string' || json.access_token.length === 0) {
+      throw Object.assign(new Error('refresh: response missing access_token'), { code: 'INVALID_RESPONSE' });
+    }
+
+    // Adopt the new tokens.  Some issuers rotate refresh tokens; honour
+    // that (a missing one means "keep the old refresh token").
+    this.#accessToken = json.access_token;
+    if (typeof json.refresh_token === 'string' && json.refresh_token.length > 0) {
+      this.#refreshToken = json.refresh_token;
+    }
+    this.#expiresAt = typeof json.expires_in === 'number'
+      ? Date.now() + json.expires_in * 1000
+      : null;
+
+    // Persist back to secure-store.
+    await this.#store.setItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN,  this.#accessToken);
+    if (json.refresh_token) {
+      await this.#store.setItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN, this.#refreshToken);
+    }
+    if (this.#expiresAt) {
+      await this.#store.setItemAsync(SECURE_STORE_KEYS.EXPIRES_AT, String(this.#expiresAt));
+    }
   }
 
   /**

@@ -13,9 +13,23 @@ import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 if (typeof globalThis !== 'undefined') {
   const prev = globalThis.onunhandledrejection;
   globalThis.onunhandledrejection = (event) => {
-    console.error('[unhandledRejection]', event?.reason ?? event);
+    const err = event?.reason ?? event;
+    console.error('[unhandledRejection]', err?.message ?? err);
+    if (err?.stack) console.error('[unhandledRejection stack]', err.stack);
     prev?.(event);
   };
+}
+
+// Hook into RN's global error utils so synchronous uncaught errors AND
+// unhandled-promise reasons print their stacks to logcat.  Hermes's
+// default printer drops stack frames; this surfaces them.
+if (typeof globalThis.ErrorUtils?.setGlobalHandler === 'function') {
+  const prev = globalThis.ErrorUtils.getGlobalHandler?.();
+  globalThis.ErrorUtils.setGlobalHandler((err, isFatal) => {
+    console.error('[globalError]', isFatal ? 'FATAL' : 'non-fatal', err?.message ?? err);
+    if (err?.stack) console.error('[globalError stack]', err.stack);
+    prev?.(err, isFatal);
+  });
 }
 
 import { NavigationContainer }        from '@react-navigation/native';

@@ -16,7 +16,7 @@ import {
 
 import { useFolioAuth, DEFAULT_INRUPT_ISSUER } from '../auth/folioAuth.js';
 import { useService } from '../ServiceContext.js';
-import { suggestPodRoot, normalizePodRoot } from '../lib/podRootHelpers.js';
+import { suggestPodRoot, normalizePodRoot, discoverPodRoot } from '../lib/podRootHelpers.js';
 
 export { suggestPodRoot, normalizePodRoot };
 
@@ -41,8 +41,15 @@ export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
     try {
       const tokens = await signIn();
       setPendingTokens(tokens);
-      // If the WebID resolves to a pod-friendly URL, pre-fill the input.
-      if (tokens.webid) setPodRootInput(suggestPodRoot(tokens.webid));
+      // Pre-fill: instant heuristic (origin + /folio/) so the input is
+      // never empty, then async WebID-profile discovery to replace with
+      // the actual pim:storage URL (Inrupt separates id.* from storage.*).
+      if (tokens.webid) {
+        setPodRootInput(suggestPodRoot(tokens.webid));
+        discoverPodRoot(tokens.webid, { accessToken: tokens.accessToken })
+          .then((real) => { if (real) setPodRootInput(real + 'folio/'); })
+          .catch(() => { /* keep heuristic */ });
+      }
       setStage('got-tokens');
     } catch (err) {
       setError(err);
@@ -132,9 +139,20 @@ export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
 
         {(error || lastError) && (
           <View style={s.errorBox}>
-            <Text style={s.errorText}>
-              {error?.message ?? lastError?.message ?? String(error ?? lastError)}
-            </Text>
+            <TextInput
+              style={s.errorInput}
+              multiline
+              scrollEnabled
+              selectTextOnFocus
+              autoCorrect={false}
+              autoCapitalize="none"
+              value={
+                `${error ? '[onPress] ' : '[hook] '}` +
+                `${error?.message ?? lastError?.message ?? String(error ?? lastError)}\n` +
+                `${String(error?.stack ?? lastError?.stack ?? '').split('\n').slice(0, 12).join('\n')}`
+              }
+              onChangeText={() => {}}
+            />
           </View>
         )}
 
@@ -176,6 +194,16 @@ const s = StyleSheet.create({
   primaryBtnLabel:{ color: '#0f1117', fontSize: 16, fontWeight: '700' },
   errorBox:       { backgroundColor: '#3a1f23', padding: 12, borderRadius: 6, marginBottom: 12 },
   errorText:      { color: '#f0a8a8', fontSize: 12, fontFamily: 'monospace' },
+  errorInput:     {
+    color:           '#f0a8a8',
+    fontSize:        11,
+    fontFamily:      Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    backgroundColor: 'transparent',
+    padding:         0,
+    margin:          0,
+    minHeight:       120,
+    textAlignVertical: 'top',
+  },
   statusBox:      { marginTop: 24, alignItems: 'center' },
   statusLabel:    { color: '#5c6377', fontSize: 12 },
   statusValue:    { color: '#9aa0c4', fontFamily: 'monospace' },
