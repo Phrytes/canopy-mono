@@ -42,7 +42,7 @@ describe('skills/nudgeCompletion', () => {
     expect(reply.replies[0].text).toContain('bread');
     expect(reply.replies[0].text).toContain('(shopping)');
     expect(reply.replies[0].buttons).toHaveLength(1);
-    expect(reply.replies[0].buttons[0].id).toBe(item.id);
+    expect(reply.replies[0].buttons[0].id).toBe(`done ${item.id}`);
     expect(reply.replies[0].buttons[0].label).toBe('✓ done');
     expect(reply.stateUpdates).toEqual([]);
   });
@@ -111,7 +111,7 @@ describe('skills/nudgeCompletion', () => {
     expect(reply.replies[0].text).toContain('milk');
     expect(reply.replies[0].text).not.toContain('eggs');
     expect(reply.replies[0].buttons).toHaveLength(2);
-    expect(reply.replies[0].buttons.map((b) => b.id).sort()).toEqual([a.id, b.id].sort());
+    expect(reply.replies[0].buttons.map((b) => b.id).sort()).toEqual([`done ${a.id}`, `done ${b.id}`].sort());
   });
 
   it('items completed since the trigger fired are excluded even when supplied via itemIds', async () => {
@@ -128,7 +128,7 @@ describe('skills/nudgeCompletion', () => {
     expect(reply.replies[0].text).not.toContain('bread');
     expect(reply.replies[0].text).toContain('milk');
     expect(reply.replies[0].buttons).toHaveLength(1);
-    expect(reply.replies[0].buttons[0].id).toBe(b.id);
+    expect(reply.replies[0].buttons[0].id).toBe(`done ${b.id}`);
   });
 
   it('all supplied itemIds completed → empty reply (caller skips posting)', async () => {

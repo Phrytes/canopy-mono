@@ -51,8 +51,12 @@ export async function listOpen(args, ctx) {
   const message = { text };
 
   if (items.length <= BUTTON_THRESHOLD) {
+    // Button id MUST be a parsable command — when the user taps,
+    // Telegram fires a callback_query whose `data` becomes the
+    // synthesised IncomingMessage's `text`.  `done <ULID>` routes
+    // cleanly through the regex parser → markComplete skill.
     message.buttons = items.map((it) => ({
-      id: it.id,
+      id: `done ${it.id}`,
       label: `mark done — ${it.id.slice(0, ID_PREFIX_LEN)}`,
     }));
   }

@@ -77,8 +77,10 @@ export async function nudgeCompletion(args, ctx) {
   const message = { text };
 
   if (sorted.length <= BUTTON_THRESHOLD) {
+    // Button id MUST be a parsable command (regex → markComplete).
+    // See listOpen.js for the same pattern.
     message.buttons = sorted.map((it) => ({
-      id: it.id,
+      id: `done ${it.id}`,
       label: '✓ done',
     }));
   }
