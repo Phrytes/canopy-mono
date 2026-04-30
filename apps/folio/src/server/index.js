@@ -143,7 +143,19 @@ export function createServer({ engine, podClient, vault, identity, oidc, oidcCal
     if (!errorBuffer) {
       try { errBuf.close(); } catch { /* ignore */ }
     }
-    await new Promise((resolve) => server.close(() => resolve()));
+    // Node's `server.close()` only stops accepting NEW connections — it
+    // waits for existing keep-alive sockets to drain naturally, which
+    // can be never (long-lived browser tabs hold connections open).
+    // `closeAllConnections()` (Node 18.2+) drops them so close() resolves.
+    await new Promise((resolve) => {
+      server.close(() => resolve());
+      if (typeof server.closeAllConnections === 'function') {
+        try { server.closeAllConnections(); } catch { /* ignore */ }
+      }
+      if (typeof server.closeIdleConnections === 'function') {
+        try { server.closeIdleConnections(); } catch { /* ignore */ }
+      }
+    });
     // Best-effort engine teardown.  Don't throw — the caller may still want to
     // re-create another server immediately.
     if (engine.__watching) {
