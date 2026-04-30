@@ -113,10 +113,12 @@ export function parseOpenAIChatResponse(resp) {
   if (loose) {
     return { toolCall: loose, classification: 'actionable', replyText: null, raw: resp };
   }
-  // Heuristic: if the model wrote `"noise"` or `"classification": "noise"`,
+  // Heuristic: if the model wrote `"noise"` (with any casing /
+  // punctuation / surrounding quotes) or `"classification": "noise"`,
   // treat as noise.  Otherwise it's a free reply.
-  const lower = text.toLowerCase();
-  if (lower === 'noise' || /["']?classification["']?\s*:\s*["']noise["']/.test(lower)) {
+  const lower      = text.toLowerCase();
+  const normalised = lower.replace(/^[\s'"`]+|[\s.!?'"`]+$/g, '');  // strip trailing punctuation + quotes
+  if (normalised === 'noise' || /["']?classification["']?\s*:\s*["']noise["']/.test(lower)) {
     return { toolCall: null, classification: 'noise', replyText: null, raw: resp };
   }
   return { toolCall: null, classification: null, replyText: text || null, raw: resp };
