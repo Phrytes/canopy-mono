@@ -33,6 +33,7 @@ Branch `track-H-folio` at `c4fcd60`.  390 Folio tests green.
 - v2.11 (per-file delete buttons) — merged 724cab0 → c4fcd60
 - C1 plan committed (d665758 + 2ba5e25)
 - **Folio.C1 (RN sync engine adapter)** — merged 96aa3d7 → f500b37 (62 new tests; 452 total)
+- **Folio.C2 (RN screens + auth + editor, mobile v0)** — merged bcda197 → 9ce0c51 (79 new tests; apps/folio-mobile/ workspace)
 
 Folio v2 is **complete** — v2.1 through v2.11 minus dropped v2.4
 (markdown preview).  See `coding-plans/track-H-app-folio.md` for the
