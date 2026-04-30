@@ -4,7 +4,16 @@ This file is the rolling TODO for whoever opens the next Claude session
 on this repo (often Claude itself, sometimes you).  Keep it short.
 Update as items land or new ones appear.
 
-Last updated: 2026-04-30 — Folio v2 + Folio.C1 + Folio.C2 ALL LANDED.
+Last updated: 2026-04-30 — Folio v2 + C1 + C2 all shipped; **mobile work is now on hold** — focus pivots back to web apps + stressing the existing codebase.  See "Strategic note" below.
+
+## Strategic note (2026-04-30)
+
+User flagged that the laptop isn't great for emulator-based RN dev (slow first-bundle parse; 30+ s blank white on cold start) and they're in a "stress the codebase" phase, not a "ship mobile" phase.  **Decision: stay with web apps for now; defer heavy mobile development.**
+
+What this means:
+- **C1 + C2 are shipped but on hold.**  The library-portability slice (C1) and the v0 RN screens (C2) compile to a real artifact and the architecture is layered (engine + adapters + drivers) so picking it back up later is straightforward.  Don't develop mobile features further without an explicit ask.
+- **Track K (lightweight bundles) is deferred.**  Bundle weight is only painful on mobile; web build is fine.  Re-prioritise when mobile work resumes.
+- **The next priority is web-side stress-testing or new web apps.**  See "Queued" below; H4 Tasks / H6 Import bridge / Track-J Inrupt sharing become the candidates.
 
 ---
 
@@ -34,9 +43,13 @@ full scoreboard.
 
 ## Queued (ordered by priority)
 
-### Tier 1 — small + high value
+### Tier 1 — web-side, near-term (mobile is on hold)
 
-0. **Track K — lightweight bundles** ([`./track-K-lightweight-bundles.md`](./track-K-lightweight-bundles.md)).  Folio-mobile's first run on the emulator stalls 30+s on a blank screen because the bundle drags in the entire @canopy/core agent surface (BLE, mesh, A2A, skills, WebRTC) even though Folio only uses Identity / Vault / PodClient.  Plan has 3 options ranked; user prefers measurement-first.  ~1 day for Option 1 (sideEffects + deep imports), ~2 days for Option 2 (new `pod-lite` package).  **Highest user-visible payoff after C2.**
+1. **H4 Tasks (multi-member web app)** — first multi-member H app.  Exercises Track D's role-aware groups + merge contracts on real product code.  Web-only for v0.  Fresh launch prompt needed.
+2. **H6 Import bridge (Google Docs OAuth + LiveSync)** — turns the migration use case real.  F1's OAuthVault + F2's LiveSyncSkill on real data.  Web-only.  Fresh launch prompt needed.
+3. **Track-J Inrupt sharing migration plan** — user flagged bespoke `PodCapabilityToken` UX as error-prone.  Plan only for now (no code).  Memory note at `~/.claude/projects/.../memory/project_capability_tokens_to_inrupt.md`.
+4. **Stress-test existing Folio web** — pick a real workflow, push edge cases.  No agent slice; user-attended.
+
 
 
 1. **GNOME tray ship-blocker** — already logged in `TODO-GENERAL.md` §"Folio tray — GNOME ship blocker".  Two paths: document the workaround, or add a runtime detect-and-warn at `folio serve` startup.  ~half-day agent slice.
@@ -45,19 +58,18 @@ full scoreboard.
 
 3. **Two-device smoke runs** — `apps/sdk-smoke/` is scaffolded.  Hands-on bring-up: emulator + real Android, scenario by scenario, log results in `coding-plans/sdk-two-device-smoke-results.md`.  User-attended; not an agent task.
 
-### Tier 2 — medium
+### Tier 2 — codebase health
 
-4. **Track-J / Inrupt sharing migration plan** — user has flagged the bespoke `PodCapabilityToken` / `with-<webid>/` UX as error-prone.  Plan a migration to Inrupt's ACP/WAC.  Pure planning doc; no code yet.  Memory note at `~/.claude/projects/.../memory/project_capability_tokens_to_inrupt.md`.
-
-5. **Clock-injection refactor** — HIGH priority in `TODO-GENERAL.md`.  Big slice (~1–2 weeks).  Required before T.6 (chaos / property tests).  Audit already mapped 100+ `Date.now()` call sites.
-
+5. **Clock-injection refactor** — HIGH priority in `TODO-GENERAL.md`.  Big slice (~1–2 weeks).  Required before T.6.  Audit already mapped 100+ `Date.now()` call sites.
 6. **T.6 — chaos / property tests** — gated on the clock-injection refactor.
+7. **GNOME tray ship-blocker** — logged in `TODO-GENERAL.md` §"Folio tray — GNOME ship blocker".  Document workaround + detect-and-warn at `folio serve` startup.  ~half-day agent slice.
 
-### Tier 3 — exploratory
+### Tier 3 — on hold (resume when conditions change)
 
-7. **H4 Tasks (Tier-2 H app)** — first multi-member app.  Fresh launch prompt needed.
-8. **H6 Import bridge** — Google Docs OAuth + LiveSync.  Fresh launch prompt needed.
-9. **H3 Household V1 (LLM)** — blocked on parked LLM-choice decision.
+8. **Folio mobile real-device validation** — C1 + C2 shipped; bring-up paused per user's "mobile on hold" decision.  When resumed, see `apps/folio-mobile/README.md`.
+9. **Track K — lightweight bundles** ([`./track-K-lightweight-bundles.md`](./track-K-lightweight-bundles.md)).  Mobile-only payoff.  Resume when mobile resumes.
+10. **Two-device smoke runs** — `apps/sdk-smoke/` scaffolded.  User-attended; gates Folio Phase C real-device runs.
+11. **H3 Household V1 (LLM)** — blocked on parked LLM-choice decision.
 
 ---
 
