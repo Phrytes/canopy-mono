@@ -4,6 +4,13 @@
   "description": "Folio — your markdown notes, mirrored into your Solid pod",
   "type":        "module",
   "main":        "src/index.js",
+  "exports": {
+    ".":                  "./src/index.js",
+    "./rn/serviceFactory": "./src/rn/serviceFactory.js",
+    "./rn/backgroundTasks": "./src/rn/backgroundTasks.js",
+    "./adapters":         "./src/adapters/index.js",
+    "./adapters/*":       "./src/adapters/*.js"
+  },
   "bin":         { "folio": "src/cli.js" },
   "scripts": {
     "test":       "vitest run",
