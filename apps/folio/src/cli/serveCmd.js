@@ -134,13 +134,25 @@ export async function serveCmd(args) {
     if (stopping) return;
     stopping = true;
     process.stdout.write(`\nfolio serve: ${sig} received, stopping…\n`);
+    // Safety net: if graceful shutdown takes more than 4s, force-exit.
+    // The fix in server/index.js (closeAllConnections) should make this
+    // unreachable in practice, but a stuck plugin (tray, watcher) must
+    // never be able to wedge the terminal.
+    const hardExit = setTimeout(() => {
+      process.stdout.write(`folio serve: shutdown hung past 4s — hard exit\n`);
+      process.exit(1);
+    }, 4000);
+    hardExit.unref?.();
     try {
       if (trayHandle) {
         try { await trayHandle.stop(); } catch { /* ignore */ }
       }
       try { errorBuffer.close(); } catch { /* ignore */ }
       await close();
-    } finally { process.exit(0); }
+    } finally {
+      clearTimeout(hardExit);
+      process.exit(0);
+    }
   };
   process.on('SIGINT',  () => stop('SIGINT'));
   process.on('SIGTERM', () => stop('SIGTERM'));
