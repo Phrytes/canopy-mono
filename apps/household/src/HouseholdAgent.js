@@ -24,6 +24,7 @@
 
 import { regexParse } from './parsers/regexCommands.js';
 import * as Skills from './skills/index.js';
+import { classifyAndExtract } from './skills/classifyAndExtract.js';
 
 /**
  * Map skillId strings → skill handlers.  Built once at module load
@@ -32,11 +33,14 @@ import * as Skills from './skills/index.js';
  * @type {Record<string, import('./types.js').SkillHandler>}
  */
 const SKILL_REGISTRY = {
-  addItem:       Skills.addItem,
-  listOpen:      Skills.listOpen,
-  markComplete:  Skills.markComplete,
-  removeItem:    Skills.removeItem,
-  help:          Skills.help,
+  addItem:             Skills.addItem,
+  listOpen:            Skills.listOpen,
+  markComplete:        Skills.markComplete,
+  removeItem:          Skills.removeItem,
+  help:                Skills.help,
+  classifyAndExtract:  classifyAndExtract,
+  // nudgeCompletion + composeDigest are NOT in the agent's user-facing
+  // dispatch — the scheduler invokes them directly.
 };
 
 /**
@@ -99,6 +103,31 @@ export class HouseholdAgent {
     this.#bridges   = bridges;
     this.#llm       = llm;
     this.#scheduler = scheduler;
+  }
+
+  /**
+   * Live LLM client (Phase 3) — exposed so classifyAndExtract can
+   * call it via ctx.agent.llm.  Null when no LLM is configured.
+   */
+  get llm() { return this.#llm; }
+
+  /**
+   * Invoke a skill by id — used by classifyAndExtract to dispatch
+   * to the LLM-chosen tool.  Returns the skill's Reply.
+   *
+   * @param {string} skillId
+   * @param {object} args
+   * @param {import('./types.js').SkillContext|import('./types.js').IncomingMessage} msgOrCtx
+   *   Either an IncomingMessage (rebuild the context) or a pre-built
+   *   SkillContext (reuse).  When classifyAndExtract calls back here,
+   *   it passes its own SkillContext through unchanged.
+   * @returns {Promise<import('./types.js').Reply>}
+   */
+  async invokeSkill(skillId, args, msgOrCtx) {
+    const ctx = msgOrCtx?.store
+      ? msgOrCtx              // looks like a SkillContext
+      : buildSkillContext({ store: this.#store, msg: msgOrCtx, agent: this });
+    return this.#dispatchSkill(skillId, args, ctx);
   }
 
   /**
@@ -219,7 +248,7 @@ export class HouseholdAgent {
    * @param {import('./types.js').IncomingMessage} msg
    * @returns {Promise<import('./types.js').Reply>}
    */
-  async #dispatchSkill(skillId, args, msg) {
+  async #dispatchSkill(skillId, args, msgOrCtx) {
     const handler = SKILL_REGISTRY[skillId];
     if (!handler) {
       return {
@@ -227,7 +256,12 @@ export class HouseholdAgent {
         stateUpdates: [],
       };
     }
-    const ctx = buildSkillContext({ store: this.#store, msg, agent: this });
+    // Accept either a SkillContext (has `store`) or an IncomingMessage
+    // (has `bridgeId`).  Lets callers like invokeSkill pass the ctx
+    // through unchanged when chaining skills.
+    const ctx = msgOrCtx?.store
+      ? msgOrCtx
+      : buildSkillContext({ store: this.#store, msg: msgOrCtx, agent: this });
     try {
       return await handler(args, ctx);
     } catch (err) {
