@@ -69,6 +69,13 @@ config.resolver = {
     '@canopy/react-native': path.resolve(repoRoot, 'packages/react-native'),
     '@canopy-app/folio':    path.resolve(repoRoot, 'apps/folio'),
 
+    // Explicit subpath maps for the Folio engine adapters used by this app.
+    // unstable_enablePackageExports is OFF (see comment above), so folio's
+    // package.json `exports` field is ignored; we map the public API
+    // surface here instead.
+    '@canopy-app/folio/rn/serviceFactory':  path.resolve(repoRoot, 'apps/folio/src/rn/serviceFactory.js'),
+    '@canopy-app/folio/rn/backgroundTasks': path.resolve(repoRoot, 'apps/folio/src/rn/backgroundTasks.js'),
+
     // ws is Node.js-only; RN has globalThis.WebSocket built in.
     'ws': path.resolve(__dirname, 'shims/ws.js'),
 
