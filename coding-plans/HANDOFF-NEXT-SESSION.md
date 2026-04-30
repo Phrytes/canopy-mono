@@ -4,7 +4,7 @@ This file is the rolling TODO for whoever opens the next Claude session
 on this repo (often Claude itself, sometimes you).  Keep it short.
 Update as items land or new ones appear.
 
-Last updated: 2026-04-29 — Folio v2 fully shipped + Folio.C1 LANDED.
+Last updated: 2026-04-30 — Folio v2 + Folio.C1 + Folio.C2 ALL LANDED.
 
 ---
 
@@ -12,16 +12,7 @@ Last updated: 2026-04-29 — Folio v2 fully shipped + Folio.C1 LANDED.
 
 | Agent | Slice | Plan doc | Notes |
 |---|---|---|---|
-| `ae26d2ceba448e4b5` | **Folio.C2** — RN screens + auth + editor (mobile v0) — RE-SPAWN | locks below; full prompt in conversation history | First attempt (`a7e959d3f2482b5ec`) hit rate limit before commit; nothing landed.  This is the re-fire.  Real-device validation still gated on two-device smoke. |
-
-C2 locks (in case you need to re-spawn):
-- Q-C1.3 = **separate `apps/folio-mobile/` workspace** (not folded into mesh-demo)
-- Pinned versions: Expo 52 / RN 0.76.9 / React 18.3.1 — match `apps/mesh-demo/package.json` exactly
-- Auth: `expo-auth-session` + custom URL scheme `folio://auth/callback`; refresh token to `expo-secure-store`
-- Editor v0: plain `<TextInput>` (no markdown preview, no syntax highlighting)
-- Tests: vitest with mocked Expo modules; NOT expo-test or jest
-
-If the agent's notification reports `You've hit your limit · resets <time>`, re-spawn after the reset using the launch prompt at the bottom of `coding-plans/track-H-folio-C1.md` (the §"DoD" + §"Out of scope" sections cover the contract).
+(none — C2 has landed; no agents in flight)
 
 ---
 
@@ -45,9 +36,12 @@ full scoreboard.
 
 ### Tier 1 — small + high value
 
+0. **Track K — lightweight bundles** ([`./track-K-lightweight-bundles.md`](./track-K-lightweight-bundles.md)).  Folio-mobile's first run on the emulator stalls 30+s on a blank screen because the bundle drags in the entire @canopy/core agent surface (BLE, mesh, A2A, skills, WebRTC) even though Folio only uses Identity / Vault / PodClient.  Plan has 3 options ranked; user prefers measurement-first.  ~1 day for Option 1 (sideEffects + deep imports), ~2 days for Option 2 (new `pod-lite` package).  **Highest user-visible payoff after C2.**
+
+
 1. **GNOME tray ship-blocker** — already logged in `TODO-GENERAL.md` §"Folio tray — GNOME ship blocker".  Two paths: document the workaround, or add a runtime detect-and-warn at `folio serve` startup.  ~half-day agent slice.
 
-2. **Folio.C2** — RN screens + editor integration.  Gated on **C1 landing** AND **two-device smoke** (S1–S10 from `coding-plans/sdk-two-device-smoke.md`).  Don't spawn until both prerequisites are met.  See "Mobile auth flow" in `track-H-folio-C1.md` for the C2 auth scope.
+2. **Folio mobile real-device validation** — C1 + C2 are both shipped (`apps/folio-mobile/` exists, 79 RN tests).  Real-device run is user-attended: emulator first, real Android second.  Bring-up steps in `apps/folio-mobile/README.md`.
 
 3. **Two-device smoke runs** — `apps/sdk-smoke/` is scaffolded.  Hands-on bring-up: emulator + real Android, scenario by scenario, log results in `coding-plans/sdk-two-device-smoke-results.md`.  User-attended; not an agent task.
 
