@@ -33,6 +33,22 @@ npx react-native@0.76 init MeshDemo --skip-install --directory .
 npm install
 ```
 
+> **⚠ Heads-up: fresh `npm install` may fail with `ERESOLVE`.**
+> `react-native-get-random-values@2.0.0` (latest at time of writing)
+> declares a peer dep on `react-native@>=0.81`, but mesh-demo is pinned
+> to RN 0.76.9 (the costly Expo 52 downgrade — don't bump without an
+> explicit ask, per CLAUDE.md).  The existing `node_modules/` from an
+> older install resolved to v1.x and still works.
+>
+> If you wipe `node_modules/` and re-install fresh, either:
+>
+> 1. Pin `react-native-get-random-values` to `^1.11.0` in this
+>    `package.json` (matches what `apps/folio-mobile` does), or
+> 2. Run `npm install --legacy-peer-deps` once.
+>
+> The phone's already-installed dev build is unaffected — it's compiled
+> from a working snapshot.  This caveat only bites a fresh dev env.
+
 ### 3. Link native modules
 
 React Native 0.60+ auto-links most modules, but BLE and mDNS need explicit Android setup.
