@@ -112,6 +112,7 @@
     <button id="tab-status"    class="tab tab--active" role="tab" aria-controls="pane-status"    aria-selected="true">Status</button>
     <button id="tab-conflicts" class="tab"             role="tab" aria-controls="pane-conflicts" aria-selected="false">Conflicts <span id="tab-conflicts-count" class="badge badge--zero"></span></button>
     <button id="tab-share"     class="tab"             role="tab" aria-controls="pane-share"     aria-selected="false">Share</button>
+    <button id="tab-history"   class="tab"             role="tab" aria-controls="pane-history"   aria-selected="false">History <span id="tab-history-count" class="badge badge--zero"></span></button>
   </nav>
 
   <main>
@@ -301,6 +302,22 @@
         <div id="share-log" class="log" aria-live="polite"></div>
         <h3>Recent shares</h3>
         <ul id="share-recent" class="share-recent"><li class="empty">No recent shares.</li></ul>
+      </div>
+    </section>
+
+    <!-- History pane ------------------------------------------------------ -->
+    <!-- Top-level browse over every file that has at least one snapshot.
+         Click a row to open the per-file popover (versions.js) for restore /
+         view.  Refreshes on `ws.version.new` and on tab activation. -->
+    <section id="pane-history" class="pane" role="tabpanel" aria-labelledby="tab-history" hidden>
+      <div class="card">
+        <h2>History</h2>
+        <p class="muted">Files with snapshot history.  Click a row to view or restore a previous version.</p>
+        <div class="actions" style="margin-bottom:8px;">
+          <button id="btn-history-refresh" class="btn btn--ghost" type="button">Refresh</button>
+          <span id="history-count" class="muted"></span>
+        </div>
+        <ul id="history-list" class="history-pane-list"><li class="empty">Loading…</li></ul>
       </div>
     </section>
   </main>
