@@ -102,6 +102,32 @@ export class HouseholdAgent {
   }
 
   /**
+   * Dispatch outbound replies — invoked by the scheduler when a nudge
+   * or daily digest fires.  Posts to the first bridge that's started.
+   * v0 simplification: assumes a single primary bridge per chat.
+   *
+   * @param {string} chatId
+   * @param {Array<import('./types.js').ReplyMessage>} replies
+   */
+  async dispatch(chatId, replies) {
+    if (!Array.isArray(replies) || replies.length === 0) return;
+    // For v0, blast to every bridge; in practice only one is registered.
+    for (const bridge of this.#bridges) {
+      for (const r of replies) {
+        try {
+          await bridge.sendReply({
+            chatId,
+            text:    r.text,
+            buttons: r.buttons,
+          });
+        } catch (err) {
+          console.error('[HouseholdAgent.dispatch]', err?.message ?? err);
+        }
+      }
+    }
+  }
+
+  /**
    * Wire each bridge's onMessage to this agent's onMessage, then
    * start every bridge.  Idempotent.
    */
@@ -137,6 +163,13 @@ export class HouseholdAgent {
     // Defence: bridges should already have filtered.
     if (!msg.isAddressed) return EMPTY_REPLY;
 
+    const reply = await this.#routeMessage(msg);
+    this.#forwardStateUpdates(reply);
+    return reply;
+  }
+
+  /** @returns {Promise<import('./types.js').Reply>} */
+  async #routeMessage(msg) {
     // ── Fast path: regex ────────────────────────────────────────
     const parsed = regexParse(msg.text);
 
@@ -162,6 +195,18 @@ export class HouseholdAgent {
     }
 
     return this.#dispatchSkill(parsed.skillId, parsed.args, msg);
+  }
+
+  /** Forward state updates to the scheduler (Phase 4). */
+  #forwardStateUpdates(reply) {
+    if (!this.#scheduler) return;
+    if (typeof this.#scheduler.onStateUpdate !== 'function') return;
+    for (const u of reply.stateUpdates ?? []) {
+      try { this.#scheduler.onStateUpdate(u); }
+      catch (err) {
+        console.error('[HouseholdAgent] scheduler.onStateUpdate threw:', err?.message ?? err);
+      }
+    }
   }
 
   /**

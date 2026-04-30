@@ -5,8 +5,10 @@
  * (see `../types.js`).  The agent looks them up by id.
  */
 
-export { addItem }      from './addItem.js';
-export { listOpen }     from './listOpen.js';
-export { markComplete } from './markComplete.js';
-export { removeItem }   from './removeItem.js';
-export { help }         from './help.js';
+export { addItem }          from './addItem.js';
+export { listOpen }         from './listOpen.js';
+export { markComplete }     from './markComplete.js';
+export { removeItem }       from './removeItem.js';
+export { help }             from './help.js';
+export { nudgeCompletion }  from './nudgeCompletion.js';
+export { composeDigest }    from './composeDigest.js';
