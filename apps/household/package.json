@@ -9,7 +9,8 @@
   "scripts": {
     "test":       "vitest run",
     "test:watch": "vitest",
-    "llm-smoke":  "node scripts/llm-smoke.js"
+    "llm-smoke":  "node scripts/llm-smoke.js",
+    "tg-smoke":   "node scripts/tg-smoke.js"
   },
   "dependencies": {
     "@canopy/core":       "file:../../packages/core",
