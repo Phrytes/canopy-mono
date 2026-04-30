@@ -82,7 +82,7 @@ export function createFsRN({ FileSystem }) {
         // expo-file-system surfaces missing files as throws on iOS but
         // resolves with empty / errors with various messages.  Normalize.
         const msg = (err && err.message) || '';
-        if (/no such file|does not exist|not found|enoent/i.test(msg)) {
+        if (/no such file|does(?:n['’]?t| not) exist|isn['’]?t a directory|not found|enoent/i.test(msg)) {
           throw enoent(absPath, 'readFile');
         }
         throw err;
@@ -95,7 +95,7 @@ export function createFsRN({ FileSystem }) {
         });
       } catch (err) {
         const msg = (err && err.message) || '';
-        if (/no such file|does not exist|not found|enoent/i.test(msg)) {
+        if (/no such file|does(?:n['’]?t| not) exist|isn['’]?t a directory|not found|enoent/i.test(msg)) {
           throw enoent(absPath, 'readFileText');
         }
         throw err;
@@ -137,7 +137,7 @@ export function createFsRN({ FileSystem }) {
         names = await FileSystem.readDirectoryAsync(absPath);
       } catch (err) {
         const msg = (err && err.message) || '';
-        if (/no such file|does not exist|not found|enoent/i.test(msg)) {
+        if (/no such file|does(?:n['’]?t| not) exist|isn['’]?t a directory|not found|enoent/i.test(msg)) {
           throw enoent(absPath, 'readdir');
         }
         throw err;
