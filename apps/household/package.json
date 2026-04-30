@@ -1,0 +1,21 @@
+{
+  "name":        "@canopy-app/household",
+  "version":     "0.0.1",
+  "description": "Household app — Telegram-driven, optionally LLM-mediated household state on a Solid pod (H2)",
+  "type":        "module",
+  "private":     true,
+  "main":        "src/index.js",
+  "bin":         { "household": "src/cli.js" },
+  "scripts": {
+    "test":       "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/core":       "file:../../packages/core",
+    "@canopy/pod-client": "file:../../packages/pod-client",
+    "telegraf":             "^4.16.3"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}
