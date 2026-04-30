@@ -11,6 +11,14 @@
  */
 
 const ID_PREFIX_LEN = 8;
+const LABEL_MAX = 24;          // Telegram inline buttons clip past ~30 chars on narrow screens
+
+function shortLabel(text, fallback) {
+  const t = String(text ?? '').trim();
+  if (t.length === 0) return fallback;
+  if (t.length <= LABEL_MAX) return t;
+  return t.slice(0, LABEL_MAX - 1) + '…';
+}
 const BUTTON_THRESHOLD = 10;
 const KNOWN_TYPES = new Set(['shopping', 'errand', 'repair', 'schedule']);
 
@@ -55,9 +63,13 @@ export async function listOpen(args, ctx) {
     // Telegram fires a callback_query whose `data` becomes the
     // synthesised IncomingMessage's `text`.  `done <ULID>` routes
     // cleanly through the regex parser → markComplete skill.
+    //
+    // Label uses the item TEXT (truncated) — much more recognisable
+    // than a ULID prefix.  Falls back to the prefix only if text is
+    // empty (shouldn't happen, but defensive).
     message.buttons = items.map((it) => ({
       id: `done ${it.id}`,
-      label: `mark done — ${it.id.slice(0, ID_PREFIX_LEN)}`,
+      label: `✓ ${shortLabel(it.text, it.id.slice(0, ID_PREFIX_LEN))}`,
     }));
   }
 

@@ -30,7 +30,9 @@ describe('skills/listOpen', () => {
     expect(reply.replies).toHaveLength(1);
     expect(reply.replies[0].text).toMatch(/^shopping:\n1\. bread\n2\. milk$/);
     expect(reply.replies[0].buttons).toHaveLength(2);
-    expect(reply.replies[0].buttons[0].label).toMatch(/^mark done — /);
+    expect(reply.replies[0].buttons[0].label).toBe('✓ bread');
+    expect(reply.replies[0].buttons[1].label).toBe('✓ milk');
+    expect(reply.replies[0].buttons[0].id).toMatch(/^done /);
     expect(reply.stateUpdates).toEqual([]);
   });
 
