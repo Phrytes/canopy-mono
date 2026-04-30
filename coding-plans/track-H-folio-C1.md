@@ -411,3 +411,150 @@ C2 (mobile screens) imports `createSyncEngine` from
 engine to a thin React component tree.  No engine refactoring needed.
 The mobile-auth flow remains as documented above (system browser sheet,
 PKCE, custom URL scheme `folio://`).
+
+---
+
+## §Folio.C2 — implementation scratchpad
+
+**Landed:** 2026-04-30.  Worktree-isolated; orchestrator merges.
+Built on top of the C1 RN engine adapters (zero engine changes).
+
+### What shipped
+
+```
+apps/folio-mobile/                         — NEW workspace (Q-C1.3 lock)
+  package.json                             — Expo 52 / RN 0.76.9 / React 18.3.1
+  app.json                                 — scheme: 'folio'
+  babel.config.js                          — babel-preset-expo
+  metro.config.js                          — node-builtins shims, blockList
+                                              for folio + RN-pkg node_modules
+  index.js                                 — registerRootComponent
+  App.js                                   — navigation stack + ServiceProvider
+  vitest.config.js                         — aliases @canopy/* + scure +
+                                              inrupt + chokidar stubs
+  shims/{node-builtins.js, ws.js}
+  src/
+    ServiceContext.js                      — SyncEngine + OidcSessionRN context
+    auth/
+      folioAuth.js                         — expo-auth-session + PKCE (Inrupt)
+      OidcSessionRN.js                     — expo-secure-store-backed session
+    screens/
+      SignInScreen.js
+      StatusScreen.js
+      NotesListScreen.js
+      NoteEditScreen.js                    — plain TextInput, save on blur
+      ConflictsScreen.js                   — three-pane keep-mine/theirs/merge
+      ShareScreen.js                       — PodCapabilityToken.issue UI
+      SettingsScreen.js                    — diagnostics + sign-out
+    components/
+      SyncStatusPill.js
+      FileRow.js
+    lib/
+      config.js                            — pod-root persistence (AsyncStorage)
+      conflictText.js                      — splitConflictText / hasMarkers
+      diagnostics.js                       — runMobileDiagnostics (subset of
+                                              the desktop's 16-step engine)
+      format.js                            — formatRelativeAgo / formatBytes
+      notesList.js                         — engine.fs walker (RN-friendly)
+      podRootHelpers.js                    — suggestPodRoot / normalizePodRoot
+      serviceBuilder.js                    — defaultPodFactory + buildEngineForRN
+      useEngineEvents.js
+  test/
+    setup.js                               — vitest mocks for Expo + RN
+    auth.test.js                           — 26 tests
+    ServiceContext.test.js                 —  9 tests
+    screens/
+      StatusScreen.test.js                 — 14 tests
+      NotesListScreen.test.js              — 13 tests
+      NoteEditScreen.test.js               — 17 tests
+    stubs/
+      chokidar.js
+      inrupt.js
+  README.md
+```
+
+**Total tests:** 79 (>= 15 DoD bullet).
+
+### Auth flow
+
+1. Boot → `OidcSessionRN.restoreFromVault()` reads tokens from
+   `expo-secure-store`.
+2. If no session → `<SignInScreen>` renders.
+3. User taps "Sign in with Solid" → `useFolioAuth({issuer: 'https://login.inrupt.com'})`
+   prompts the system browser sheet (Safari View Controller / Chrome
+   Custom Tab) at the discovered authorize endpoint.
+4. Inrupt redirects to `folio://auth/callback?code=...`.  PKCE exchange
+   yields `{ accessToken, refreshToken, idToken, expiresIn }` plus a
+   best-effort WebID extracted from the id-token.
+5. User confirms / edits the pod-root URL on the same screen.
+6. `ServiceContext.adoptTokens(tokens, { podRoot })` persists tokens
+   to SecureStore + the pod root to AsyncStorage, builds a real
+   `PodClient` via `defaultPodFactory(cfg, oidc)` and a fresh engine
+   via the C1 `createSyncEngine(...)`.
+7. UI flips to the navigation stack rooted at `<StatusScreen>`.
+
+### Deviations from the plan
+
+1. **Helpers are co-located in `lib/` rather than living on the screen
+   modules.**  Moving `splitConflictText`, `formatRelativeAgo`,
+   `runMobileDiagnostics`, `suggestPodRoot`, `normalizePodRoot`,
+   `formatMtime`, `formatBytes` into `lib/{conflictText,format,
+   diagnostics,podRootHelpers}.js` lets the unit tests load them
+   without dragging React + JSX through Vite's transformer.  The
+   screens re-export the helpers so callers + future tests have a
+   stable surface.
+
+2. **`ServiceContext` doesn't ship a full React-renderer test.**
+   Vitest in `node` doesn't render RN; the screens themselves are
+   exercised via their pure-helper exports.  The provider's contract
+   is verified at the lib level (`config.js`, `serviceBuilder.js`).
+
+3. **`@inrupt/solid-client*` and `chokidar` aliased to stubs under
+   vitest.**  Vite's resolver follows the static graph through
+   `apps/folio/src/rn/serviceFactory.js → SyncEngine → core barrel →
+   SolidPodSource`, which static-imports `@inrupt/solid-client`.
+   Production RN runtime never reaches it (metro shims it via
+   `shims/node-builtins.js`); the test alias just makes the import
+   succeed.
+
+4. **DPoP / token-binding is not implemented.**  Bearer-token auth
+   suffices against `storage.inrupt.com` for v0.  Documented in
+   `apps/folio-mobile/README.md`.
+
+5. **`apps/folio-mobile/package.json` uses `^2.1.0` for vitest** to
+   match the rest of the Folio workspace (peer-version consistency).
+   The C2 brief said "vitest" generically; aligning with the existing
+   apps/folio version locks expectations.
+
+### Risk follow-ups
+
+- The `expo-auth-session` discovery / hook path uses `usePKCE: true`
+  and `responseType: 'code'`.  Inrupt accepts the redirect URI itself
+  as the client identifier (Solid's "anonymous client" pattern), but
+  some IdPs may refuse — a follow-up can wire dynamic client
+  registration via `RegistrationDocument.openidConnect.client_uri` if
+  needed.
+- The pod write probe in `runMobileDiagnostics` is a SKIP at v0 — a
+  follow-up should add a real probe analogous to the desktop's step 12.
+- `setPodRoot` triggers a `sigRef.current++` to force a fresh boot;
+  this works but the React-hooks lint rule warns about
+  `[sigRef.current]` in the deps array.  Suppressed with a comment;
+  refactor to `useReducer` if we find the warning annoying.
+
+### Hand-off pointers for the next slice
+
+- **iOS Keychain entitlement on the dev build.** `expo-secure-store`
+  uses iOS Keychain by default; the dev build inherits `keychain-access-groups`
+  from the bundle id.  No additional entitlements are needed for the v0
+  flow, but App-Store packaging will need a keychain group declaration.
+- **Custom URL scheme on Expo Go is flaky** — must use a dev build
+  (`npx expo run:android`) to test the auth round-trip.  README
+  documents the workflow.
+- **Background sync wiring is parked.** `apps/folio/src/rn/backgroundTasks.js`
+  (C1) is ready to plug in; C2.v0 doesn't register the task.
+  Follow-up: call `defineBackgroundTask({ TaskManager, taskName, runOnce })`
+  + `registerBackgroundFetch({ ... })` once the user is signed in.
+- **Real-device validation is gated on the two-device smoke (S1–S10
+  in `coding-plans/sdk-two-device-smoke.md`).**  The C2 brief
+  acknowledged the smoke gate was waived for a code-only spawn; users
+  should NOT install this on a phone for daily use until S1–S10 land.
