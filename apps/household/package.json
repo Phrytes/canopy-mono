@@ -8,7 +8,8 @@
   "bin":         { "household": "src/cli.js" },
   "scripts": {
     "test":       "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "llm-smoke":  "node scripts/llm-smoke.js"
   },
   "dependencies": {
     "@canopy/core":       "file:../../packages/core",
