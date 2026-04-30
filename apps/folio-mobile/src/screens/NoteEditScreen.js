@@ -60,8 +60,15 @@ export function NoteEditScreen() {
     try {
       await engine.fs.writeFile(absPath, content, { encoding: 'utf8' });
       setOrig(content);
-      // Schedule a sync.  We don't await so the UI stays responsive.
-      engine.runOnce?.().catch(() => {});
+      // Schedule a sync.  We don't await so the UI stays responsive,
+      // but errors are surfaced via console (logcat) and the screen's
+      // error state — silently swallowing has been costly during the
+      // RN bring-up.
+      engine.runOnce?.().catch((err) => {
+        console.error('[NoteEdit save → runOnce]', err?.message ?? err);
+        if (err?.stack) console.error('[NoteEdit save → runOnce stack]', err.stack);
+        setError(err);
+      });
     } catch (err) {
       setError(err);
     } finally {

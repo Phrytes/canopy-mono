@@ -251,7 +251,17 @@ async function buildAndAttachEngine({
   engine.on('sync.force.done',  bump);
   engine.on('sync.delete.done', bump);
   engine.on('error', (e) => {
-    setError(new Error(`[${e?.phase ?? 'engine'}] ${e?.err?.message ?? e?.message ?? 'unknown'}`));
+    const phase   = e?.phase   ?? 'engine';
+    const relPath = e?.relPath ?? e?.uri ?? '';
+    const inner   = e?.err     ?? e;
+    const msg     = inner?.message ?? String(inner);
+    // Surface to logcat so per-file failures during force-push / runOnce
+    // don't get swallowed — the upper layer only counts them.
+    console.error(`[engine.error ${phase}${relPath ? ' ' + relPath : ''}]`, msg);
+    if (inner?.stack)  console.error('[engine.error stack]',  inner.stack);
+    if (inner?.status) console.error('[engine.error status]', inner.status);
+    if (inner?.code)   console.error('[engine.error code]',   inner.code);
+    setError(new Error(`[${phase}${relPath ? ' ' + relPath : ''}] ${msg}`));
     bump();
   });
 
