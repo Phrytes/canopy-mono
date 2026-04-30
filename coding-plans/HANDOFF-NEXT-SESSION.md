@@ -12,7 +12,7 @@ Last updated: 2026-04-29 — Folio v2 fully shipped + Folio.C1 LANDED.
 
 | Agent | Slice | Plan doc | Notes |
 |---|---|---|---|
-| `a7e959d3f2482b5ec` | **Folio.C2** — RN screens + auth + editor (mobile v0) | inline launch prompt — see this session's history; key locks below | User explicitly OK'd spawning C2 even though smoke gate not satisfied (PoC-tight timeline).  Real-device validation is still gated on two-device smoke. |
+| `ae26d2ceba448e4b5` | **Folio.C2** — RN screens + auth + editor (mobile v0) — RE-SPAWN | locks below; full prompt in conversation history | First attempt (`a7e959d3f2482b5ec`) hit rate limit before commit; nothing landed.  This is the re-fire.  Real-device validation still gated on two-device smoke. |
 
 C2 locks (in case you need to re-spawn):
 - Q-C1.3 = **separate `apps/folio-mobile/` workspace** (not folded into mesh-demo)
