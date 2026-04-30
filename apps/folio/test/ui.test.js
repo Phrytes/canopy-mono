@@ -800,27 +800,27 @@ describe('Folio v2.2 — banner end-to-end against the server', () => {
 
 // ── 13. Folio v2.9 — Web UI re-shape (Dropbox-shaped) ────────────────────
 
-describe('Folio v2.9 — three primary tabs + per-file history popover', () => {
-  it('index.html exposes exactly three primary tabs (Status / Conflicts / Share); History is gone', async () => {
+describe('Folio v2.9 + History tab — four primary tabs + per-file history popover', () => {
+  // 2026-04-30: v2.9 originally demoted History from a primary tab into
+  // the per-file popover only.  Reverted partially per user request —
+  // the tab is back AND the popover stays.  Two complementary surfaces:
+  // tab for browse-everything; popover for drill-into-one-file.
+  it('index.html exposes the four primary tabs (Status / Conflicts / Share / History)', async () => {
     const r = await fetch(`${baseUrl}/`);
     expect(r.status).toBe(200);
     const html = await r.text();
 
-    // Tabs nav block: only the three primary tabs.
+    // Tabs nav block: the four primary tabs.
     const tabsBlock = html.match(/<nav class="tabs"[\s\S]*?<\/nav>/);
     expect(tabsBlock).toBeTruthy();
     expect(tabsBlock[0]).toMatch(/id="tab-status"/);
     expect(tabsBlock[0]).toMatch(/id="tab-conflicts"/);
     expect(tabsBlock[0]).toMatch(/id="tab-share"/);
-    // History is no longer a primary tab.
-    expect(tabsBlock[0]).not.toMatch(/id="tab-history"/);
-    expect(tabsBlock[0]).not.toMatch(/>History</);
+    expect(tabsBlock[0]).toMatch(/id="tab-history"/);
 
-    // The History pane wrapper has been removed too — versioning lives in
-    // the per-file popover now.
-    expect(html).not.toMatch(/id="pane-history"/);
-    expect(html).not.toMatch(/id="history-file-list"/);
-    expect(html).not.toMatch(/id="history-version-list"/);
+    // The History pane is rendered with its list container.
+    expect(html).toMatch(/id="pane-history"/);
+    expect(html).toMatch(/id="history-list"/);
 
     // Settings link in the header survives v2.9 (it predates this slice
     // — landed in v2.3 — but v2.9 must keep it intact).

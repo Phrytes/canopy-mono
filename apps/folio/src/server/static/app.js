@@ -22,6 +22,7 @@ import { initConflicts } from '/conflicts.js';
 import { initShare }     from '/share.js';
 import { initAuth }      from '/auth.js';
 import { initVersions }  from '/versions.js';
+import { initHistory }   from '/history.js';
 import { initSettings }  from '/settings.js';
 
 // ── Tiny event bus ────────────────────────────────────────────────────────
@@ -379,6 +380,9 @@ window.addEventListener('DOMContentLoaded', () => {
   initConflicts({ bus, getJson, postJson });
   initShare({ bus, postJson });
   initVersions({ bus, getJson, postJson });
+  // Folio: top-level History tab — list of files-with-versions.  Click
+  // a row to open the per-file popover (versions.js) for view / restore.
+  initHistory({ bus, getJson });
   try { initAuth({ bus, getJson, postJson }); } catch (err) { console.error('auth init failed', err); }
   // Folio v2.3 — Settings panel (houses Diagnostics; NOT a primary tab).
   try { settings = initSettings({ bus, postJson }); } catch (err) { console.error('settings init failed', err); }
