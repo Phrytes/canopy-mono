@@ -22,9 +22,10 @@ import React, {
   createContext, useCallback, useContext, useEffect,
   useMemo, useRef, useState,
 } from 'react';
-import * as FileSystem  from 'expo-file-system';
-import * as SecureStore from 'expo-secure-store';
-import * as Crypto      from 'expo-crypto';
+import * as FileSystem     from 'expo-file-system';
+import * as SecureStore    from 'expo-secure-store';
+import * as Crypto         from 'expo-crypto';
+import * as BackgroundFetch from 'expo-background-fetch';
 
 import { OidcSessionRN } from './auth/OidcSessionRN.js';
 import {
@@ -34,6 +35,12 @@ import {
   buildEngineForRN,
   defaultPodFactory,
 } from './lib/serviceBuilder.js';
+import { setBgRunOnce, clearBgRunOnce, BG_TASK_NAME } from './lib/bgRunOnce.js';
+import {
+  registerBackgroundFetch,
+  unregisterBackgroundFetch,
+  DEFAULT_BACKGROUND_FETCH_INTERVAL_S,
+} from '@canopy-app/folio/rn/backgroundTasks';
 
 /** @type {React.Context<ServiceContextValue|null>} */
 const Ctx = createContext(null);
@@ -171,6 +178,14 @@ export function ServiceProvider({ children, deps = {} }) {
   }, [cfgStore]);
 
   const signOut = useCallback(async () => {
+    // Tear down the bg task FIRST so an in-flight OS-driven fire
+    // doesn't try to use a stopped engine.
+    clearBgRunOnce();
+    try {
+      await unregisterBackgroundFetch({ BackgroundFetch, taskName: BG_TASK_NAME });
+    } catch (err) {
+      console.error('[ServiceContext] unregisterBackgroundFetch failed:', err?.message ?? err);
+    }
     const e = engineRef.current;
     if (e) {
       try { await e.stop?.(); } catch { /* swallow */ }
@@ -268,5 +283,17 @@ async function buildAndAttachEngine({
   engineRef.current = engine;
   setEngine(engine);
   setStatus('ready');
+
+  // Wire the background-fetch task to this engine.  Best-effort —
+  // failures shouldn't block sign-in, just log and continue.
+  setBgRunOnce(() => engine.runOnce());
+  registerBackgroundFetch({
+    BackgroundFetch,
+    taskName: BG_TASK_NAME,
+    intervalSeconds: DEFAULT_BACKGROUND_FETCH_INTERVAL_S,
+  }).catch((err) => {
+    console.error('[ServiceContext] registerBackgroundFetch failed:', err?.message ?? err);
+  });
+
   return engine;
 }

@@ -70,6 +70,24 @@ if (typeof Blob !== 'undefined') {
 }
 
 import 'expo-dev-client';
+
+// Background-fetch task definition.  Must run at JS-load time (Expo's
+// requirement — the OS may cold-wake the app to fire the task, and
+// `TaskManager.defineTask` is what the OS looks for).  Registration is
+// in ServiceContext after sign-in; teardown on sign-out.
+import * as TaskManager from 'expo-task-manager';
+import { defineBackgroundTask } from '@canopy-app/folio/rn/backgroundTasks';
+import { bgRunOnce, BG_TASK_NAME } from './src/lib/bgRunOnce.js';
+
+defineBackgroundTask({
+  TaskManager,
+  taskName: BG_TASK_NAME,
+  runOnce: async () => {
+    const r = await bgRunOnce();
+    return r ?? { uploads: 0, downloads: 0, deletes: 0, conflicts: 0 };
+  },
+});
+
 import { registerRootComponent } from 'expo';
 import App from './App';
 
