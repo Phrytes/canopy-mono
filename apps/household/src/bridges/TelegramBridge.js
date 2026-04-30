@@ -258,7 +258,8 @@ export class TelegramBridge {
       sender:      this.#mapSender(ctx),
       isAddressed: true,
     };
-    await this.#handler(msg);
+    const reply = await this.#handler(msg);
+    await this.#postReply(msg.chatId, msg.messageId, reply);
   }
 
   /**
@@ -292,9 +293,38 @@ export class TelegramBridge {
     };
 
     try {
-      await this.#handler(msg);
+      const reply = await this.#handler(msg);
+      await this.#postReply(msg.chatId, msg.messageId, reply);
     } finally {
       try { await ctx.answerCbQuery?.(); } catch { /* ignore */ }
+    }
+  }
+
+  /**
+   * Walk a Reply and post each message back to Telegram.  Errors on
+   * individual sends are logged but don't break the loop — best-effort
+   * delivery (matches Folio's pattern).
+   *
+   * @param {string} chatId
+   * @param {string} replyTo  message-id this is replying to
+   * @param {import('../types.js').Reply | null | undefined} reply
+   */
+  async #postReply(chatId, replyTo, reply) {
+    if (!reply || !Array.isArray(reply.replies)) return;
+    for (const r of reply.replies) {
+      if (!r?.text) continue;
+      try {
+        await this.sendReply({
+          chatId,
+          replyTo,
+          text:    r.text,
+          buttons: r.buttons,
+        });
+      } catch (err) {
+        // Don't crash the bridge on a single failed send.
+        // eslint-disable-next-line no-console
+        console.error('[TelegramBridge.#postReply]', err?.message ?? err);
+      }
     }
   }
 
