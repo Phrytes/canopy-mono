@@ -317,6 +317,11 @@ export class SyncEngine extends Emitter {
             await podClient.createContainer(c);
           }
         } catch (err) {
+          // 412 / CONFLICT means the container already exists — that's
+          // exactly what `ensure-container` wants.  Inrupt's
+          // createContainerAt sends `If-None-Match: *` and returns 412
+          // for existing containers; treat as success.
+          if (err?.code === 'CONFLICT' || err?.status === 412) continue;
           this.emit('error', { phase: 'ensure-container', uri: c, err });
         }
       }

@@ -24,13 +24,52 @@ export { suggestPodRoot, normalizePodRoot };
  * @param {object} [props]
  * @param {string} [props.issuer]   Override the Inrupt issuer (tests / staging).
  */
+/**
+ * Default folder name inside the pod for Folio's notes.  Kept as a
+ * named constant so the SignInScreen + tests share the value.
+ */
+export const DEFAULT_POD_FOLDER = 'notes';
+
+/**
+ * Origin-only fallback when WebID-profile discovery fails — extracts
+ * `<scheme>://<host>/` from a WebID URL.  Used before / instead of
+ * `discoverPodRoot()` so the form is never empty during the brief
+ * window between sign-in and discovery completing.
+ *
+ * @param {string} webid
+ * @returns {string}
+ */
+function deriveBaseFromWebId(webid) {
+  if (typeof webid !== 'string' || webid.length === 0) return '';
+  try {
+    return `${new URL(webid).origin}/`;
+  } catch { return ''; }
+}
+
+/**
+ * Combine a pod base URL and a folder name into a normalised pod-root.
+ * Trims duplicate slashes.  Folder may be empty (root-of-pod) or a
+ * deep path like `notes/work`.
+ *
+ * @param {string} base
+ * @param {string} folder
+ * @returns {string}
+ */
+function combinePodRoot(base, folder) {
+  const cleanBase   = String(base   ?? '').trim().replace(/\/+$/, '');
+  const cleanFolder = String(folder ?? '').trim().replace(/^\/+|\/+$/g, '');
+  if (cleanBase.length === 0) return '';
+  return cleanFolder.length === 0 ? cleanBase + '/' : `${cleanBase}/${cleanFolder}/`;
+}
+
 export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
   const { adoptTokens, status } = useService();
   const [stage, setStage]       = useState('idle');     // idle | signing-in | got-tokens | configuring
   const [busy, setBusy]         = useState(false);
   const [error, setError]       = useState(null);
   const [pendingTokens, setPendingTokens] = useState(null);
-  const [podRootInput, setPodRootInput]   = useState('');
+  const [podBaseInput, setPodBaseInput]   = useState('');
+  const [podFolderInput, setPodFolderInput] = useState(DEFAULT_POD_FOLDER);
 
   const { ready, signIn, lastError } = useFolioAuth({ issuer });
 
@@ -41,14 +80,16 @@ export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
     try {
       const tokens = await signIn();
       setPendingTokens(tokens);
-      // Pre-fill: instant heuristic (origin + /folio/) so the input is
-      // never empty, then async WebID-profile discovery to replace with
-      // the actual pim:storage URL (Inrupt separates id.* from storage.*).
+      // Pre-fill the BASE input (the "id/key thingy" — pod storage host
+      // + UUID).  Folder defaults to `notes`.  Two-step:
+      //   1. instant origin-only fallback so the field is never blank,
+      //   2. async WebID-profile discovery to replace with the real
+      //      pim:storage URL (Inrupt separates id.* from storage.*).
       if (tokens.webid) {
-        setPodRootInput(suggestPodRoot(tokens.webid));
+        setPodBaseInput(deriveBaseFromWebId(tokens.webid));
         discoverPodRoot(tokens.webid, { accessToken: tokens.accessToken })
-          .then((real) => { if (real) setPodRootInput(real + 'folio/'); })
-          .catch(() => { /* keep heuristic */ });
+          .then((real) => { if (real) setPodBaseInput(real); })
+          .catch(() => { /* keep fallback */ });
       }
       setStage('got-tokens');
     } catch (err) {
@@ -61,14 +102,15 @@ export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
   const onContinuePress = useCallback(async () => {
     if (busy) return;
     if (!pendingTokens) return;
-    if (!podRootInput || podRootInput.length === 0) {
-      setError(new Error('Pod root URL is required'));
+    const combined = combinePodRoot(podBaseInput, podFolderInput);
+    if (combined.length === 0) {
+      setError(new Error('Pod base URL is required'));
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      await adoptTokens(pendingTokens, { podRoot: normalizePodRoot(podRootInput) });
+      await adoptTokens(pendingTokens, { podRoot: normalizePodRoot(combined) });
       setStage('configuring');
     } catch (err) {
       setError(err);
@@ -106,11 +148,11 @@ export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
 
         {stage === 'got-tokens' && (
           <View style={s.section}>
-            <Text style={s.label}>Pod root URL</Text>
+            <Text style={s.label}>Pod base URL</Text>
             <TextInput
-              value={podRootInput}
-              onChangeText={setPodRootInput}
-              placeholder="https://you.solidcommunity.net/folio/"
+              value={podBaseInput}
+              onChangeText={setPodBaseInput}
+              placeholder="https://storage.inrupt.com/<uuid>/"
               placeholderTextColor="#5c6377"
               autoCapitalize="none"
               autoCorrect={false}
@@ -118,15 +160,33 @@ export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
               style={s.input}
             />
             <Text style={s.hintSmall}>
+              Auto-detected from your WebID profile.  Edit only if your
+              storage server lives somewhere other than the auto-detected URL.
+            </Text>
+
+            <View style={{ height: 16 }} />
+
+            <Text style={s.label}>Folder</Text>
+            <TextInput
+              value={podFolderInput}
+              onChangeText={setPodFolderInput}
+              placeholder="notes"
+              placeholderTextColor="#5c6377"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={s.input}
+            />
+            <Text style={s.hintSmall}>
               The container in your pod where Folio will read + write notes.
-              Trailing slash will be added automatically.
+              Default: <Text style={s.hintInline}>notes</Text>.
+              {'\n'}Combined: <Text style={s.hintInline}>{combinePodRoot(podBaseInput, podFolderInput) || '—'}</Text>
             </Text>
             <Pressable
               onPress={onContinuePress}
-              disabled={busy || podRootInput.length === 0}
+              disabled={busy || podBaseInput.length === 0}
               style={({ pressed }) => [
                 s.primaryBtn,
-                (busy || podRootInput.length === 0) && { opacity: 0.6 },
+                (busy || podBaseInput.length === 0) && { opacity: 0.6 },
                 pressed && { opacity: 0.8 },
               ]}
             >
@@ -184,6 +244,7 @@ const s = StyleSheet.create({
   },
   hint:           { color: '#6b7094', fontSize: 12, marginTop: 16, lineHeight: 18 },
   hintSmall:      { color: '#6b7094', fontSize: 11, marginTop: 8, marginBottom: 16, lineHeight: 16 },
+  hintInline:     { color: '#9aa0c4', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   primaryBtn:     {
     backgroundColor: '#9bcfff',
     paddingVertical: 14,
