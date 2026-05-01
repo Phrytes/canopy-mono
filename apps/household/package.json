@@ -10,7 +10,8 @@
     "test":       "vitest run",
     "test:watch": "vitest",
     "llm-smoke":  "node scripts/llm-smoke.js",
-    "tg-smoke":   "node scripts/tg-smoke.js"
+    "tg-smoke":   "node scripts/tg-smoke.js",
+    "tg-pod-smoke": "node scripts/tg-pod-smoke.js"
   },
   "dependencies": {
     "@canopy/core":       "file:../../packages/core",
