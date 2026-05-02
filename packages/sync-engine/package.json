@@ -1,0 +1,44 @@
+{
+  "name": "@canopy/sync-engine",
+  "version": "0.3.0",
+  "description": "Pod ↔ external-source sync engine with pluggable source adapters + storage convention.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./BidirectionalSyncEngine": "./src/BidirectionalSyncEngine.js",
+    "./sources/ingest-queue": "./src/sources/IngestQueueSource.js",
+    "./sources/local-folder": "./src/sources/LocalFolderSource.js",
+    "./backends/in-memory": "./src/backends/InMemoryBackend.js",
+    "./adapters": "./src/adapters/index.js",
+    "./adapters/*": "./src/adapters/*.js",
+    "./versions": "./src/versions.js",
+    "./PathMap":   "./src/PathMap.js",
+    "./scanLocal": "./src/scanLocal.js",
+    "./scanPod":   "./src/scanPod.js",
+    "./diff":      "./src/diff.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/core": "file:../core",
+    "chokidar":       "^3.6.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  },
+  "peerDependencies": {
+    "expo-crypto": "*",
+    "expo-file-system": "*"
+  },
+  "peerDependenciesMeta": {
+    "expo-crypto": {
+      "optional": true
+    },
+    "expo-file-system": {
+      "optional": true
+    }
+  }
+}
