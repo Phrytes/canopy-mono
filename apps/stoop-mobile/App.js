@@ -31,9 +31,15 @@ if (typeof globalThis.ErrorUtils?.setGlobalHandler === 'function') {
   });
 }
 
-import { NavigationContainer }        from '@react-navigation/native';
+import { Linking }                    from 'react-native';
+import {
+  NavigationContainer,
+  useNavigation,
+}                                     from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider }           from 'react-native-safe-area-context';
+
+import { parseDeepLink, actionToNavigation } from './src/lib/deepLinks.js';
 
 import { ROUTES, ROUTE_ORDER }        from './src/navigation.js';
 import { PlaceholderScreen }          from './src/screens/PlaceholderScreen.js';
@@ -110,6 +116,45 @@ class ErrorBoundary extends React.Component {
 
 const Stack = createNativeStackNavigator();
 
+/**
+ * DeepLinkHandler — listens for `stoop://...` URLs, parses them via
+ * `parseDeepLink`, and navigates accordingly.
+ *
+ * Mounted INSIDE the NavigationContainer so `useNavigation()` works.
+ * Pulls the cold-start URL via `Linking.getInitialURL()` once, then
+ * subscribes to subsequent `'url'` events for the warm path.
+ *
+ * Renders nothing.
+ */
+function DeepLinkHandler() {
+  const nav = useNavigation();
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const dispatch = (url) => {
+      if (cancelled || typeof url !== 'string' || url.length === 0) return;
+      const action = parseDeepLink(url);
+      if (action.kind === 'unknown') {
+        console.warn('[deepLink] unrecognised URL:', url);
+        return;
+      }
+      const target = actionToNavigation(action);
+      if (target) nav.navigate(target.name, target.params);
+    };
+
+    Linking.getInitialURL?.().then((url) => { if (url) dispatch(url); }).catch(() => { /* ignore */ });
+    const sub = Linking.addEventListener?.('url', (event) => dispatch(event?.url));
+
+    return () => {
+      cancelled = true;
+      sub?.remove?.();
+    };
+  }, [nav]);
+
+  return null;
+}
+
 // Kick off i18n once at module-load. Default to English; settings
 // will swap to Dutch (or whatever) after first hydration.
 initI18n({ lng: 'en' }).catch((err) => {
@@ -122,6 +167,7 @@ export default function App() {
       <SafeAreaProvider>
         <StatusBar barStyle="default" />
         <NavigationContainer>
+          <DeepLinkHandler />
           <Stack.Navigator
             initialRouteName={ROUTES.Welcome}
             screenOptions={{ headerShown: false }}

@@ -42,6 +42,15 @@ Pending phases (per
 - 40.9 ✅ Native push via Expo — `src/lib/push.js` (`setupPush`,
   `requestPushPermission`); deep-imports `MobilePushBridge` +
   `ExpoNotificationsAdapter` from `@canopy/react-native`.
+- 40.10 ✅ UI screens — all 20 routes have real screens; assembled in
+  eight sub-phases (40.10-A through -H). Pure helpers extracted to
+  `src/lib/{i18n,theme,avatar,post,mnemonic,onboardScanRouting,handle,
+  compose,feedFilter,chat,contacts,settings}.js`.
+- 40.11 ✅ Deep-link handling for `stoop://...` — `src/lib/deepLinks.js`
+  + `DeepLinkHandler` mounted inside `NavigationContainer`. Routes:
+  invite / contact / chat / post / group / auth-callback / welcome / feed.
+- 40.12 — Real-device pass + closed-beta build (Android-primary).
+- 40.13 — Documentation + handoff.
 - 40.9 — Native push via Expo.
 - 40.10 — UI screens (the biggest single phase).
 - 40.11 — Deep-link handling for `stoop://...` URLs.
