@@ -49,6 +49,14 @@ import { ChatThreadsScreen }          from './src/screens/ChatThreadsScreen.js';
 import { ChatThreadScreen }           from './src/screens/ChatThreadScreen.js';
 import { ContactsScreen }             from './src/screens/ContactsScreen.js';
 import { ContactScreen }              from './src/screens/ContactScreen.js';
+import { GroupScreen }                from './src/screens/GroupScreen.js';
+import { SettingsScreen }             from './src/screens/SettingsScreen.js';
+import { PrivacyScreen }              from './src/screens/PrivacyScreen.js';
+import { PushScreen }                 from './src/screens/PushScreen.js';
+import { SignInScreen }               from './src/screens/SignInScreen.js';
+import { OnboardIssueScreen }         from './src/screens/OnboardIssueScreen.js';
+import { MineScreen }                 from './src/screens/MineScreen.js';
+import { MetricsScreen }              from './src/screens/MetricsScreen.js';
 import { initI18n }                   from './src/lib/i18n.js';
 
 // Per-route screen components. As real screens land they replace
@@ -70,6 +78,14 @@ export const SCREEN_COMPONENTS = Object.freeze({
   [ROUTES.ChatThread]:     ChatThreadScreen,
   [ROUTES.Contacts]:       ContactsScreen,
   [ROUTES.Contact]:        ContactScreen,
+  [ROUTES.Group]:          GroupScreen,
+  [ROUTES.Settings]:       SettingsScreen,
+  [ROUTES.Privacy]:        PrivacyScreen,
+  [ROUTES.Push]:           PushScreen,
+  [ROUTES.SignIn]:         SignInScreen,
+  [ROUTES.OnboardIssue]:   OnboardIssueScreen,
+  [ROUTES.Mine]:           MineScreen,
+  [ROUTES.Metrics]:        MetricsScreen,
 });
 
 class ErrorBoundary extends React.Component {
