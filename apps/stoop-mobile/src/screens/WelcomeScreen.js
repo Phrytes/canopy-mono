@@ -34,7 +34,7 @@ export function WelcomeScreen() {
       <View style={styles.actions}>
         <PrimaryButton
           label={t('welcome.cta_new', 'Beginnen')}
-          onPress={() => nav.navigate(ROUTES.Feed, { firstRun: true })}
+          onPress={() => nav.navigate(ROUTES.Shell, { screen: ROUTES.Feed, params: { firstRun: true } })}
           accessibilityLabel="welcome-new"
         />
         <SecondaryButton

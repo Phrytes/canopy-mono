@@ -18,17 +18,19 @@ export function routeForKind(navigation, classified, routeParams = {}) {
   if (!navigation || typeof navigation.navigate !== 'function') return null;
   switch (classified?.kind) {
     case 'invite':
-      navigation.navigate(ROUTES.Feed, {
-        ...routeParams,
-        pendingInvite: classified.payload,
+      // Land in the Feed tab inside the shell with the invite stashed
+      // for the redeem flow.
+      navigation.navigate(ROUTES.Shell, {
+        screen: ROUTES.Feed,
+        params: { ...routeParams, pendingInvite: classified.payload },
       });
-      return ROUTES.Feed;
+      return ROUTES.Shell;
     case 'contact':
-      navigation.navigate(ROUTES.Contacts, {
-        ...routeParams,
-        pendingContact: classified.payload,
+      navigation.navigate(ROUTES.Shell, {
+        screen: ROUTES.Contacts,
+        params: { ...routeParams, pendingContact: classified.payload },
       });
-      return ROUTES.Contacts;
+      return ROUTES.Shell;
     case 'recovery':
       navigation.navigate(ROUTES.OnboardRestore, {
         ...routeParams,

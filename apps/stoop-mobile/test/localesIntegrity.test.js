@@ -37,9 +37,14 @@ const REQUIRED_KEYS = [
 
   // feed / compose / item_detail
   'feed.heading', 'feed.empty_no_items', 'feed.empty_filtered',
+  'feed.kind_vraag', 'feed.kind_aanbod',
   'compose.heading', 'compose.placeholder_vraag', 'compose.placeholder_aanbod',
+  'compose.kind_vraag', 'compose.kind_aanbod',
   'compose.skills_label', 'compose.submit', 'compose.submitting',
   'compose.too_many_attachments', 'compose.permission_denied',
+
+  // tabs
+  'tabs.feed', 'tabs.mine', 'tabs.chat', 'tabs.contacts', 'tabs.profile', 'tabs.settings',
   'item_detail.unknown_item', 'item_detail.chat', 'item_detail.claim',
   'item_detail.hide', 'item_detail.report',
 

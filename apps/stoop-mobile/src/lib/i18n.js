@@ -33,12 +33,29 @@ let _initialised = false;
 
 /**
  * @param {object} [opts]
- * @param {'en'|'nl'} [opts.lng='en']
+ * @param {'en'|'nl'} [opts.lng]   when omitted, auto-detects from
+ *   the device locale (Dutch → 'nl', everything else → 'en').
  * @returns {Promise<void>}  resolves when the locale switch completes
  */
-export async function initI18n({ lng = DEFAULT_LANG } = {}) {
-  await setLang(lng);
+export async function initI18n({ lng } = {}) {
+  await setLang(lng ?? detectDeviceLang());
   _initialised = true;
+}
+
+/**
+ * Best-effort detect the device's preferred Stoop locale.
+ *   - Returns `'nl'` when the system locale starts with `nl-`.
+ *   - Returns `'en'` otherwise.
+ *
+ * Uses pure-JS `Intl` (always present on Hermes / RN ≥ 0.71). No
+ * native module, no `expo-localization` dep.
+ */
+export function detectDeviceLang() {
+  try {
+    const tag = new Intl.DateTimeFormat().resolvedOptions().locale;
+    if (typeof tag === 'string' && tag.toLowerCase().startsWith('nl')) return 'nl';
+  } catch { /* fall through */ }
+  return DEFAULT_LANG;
 }
 
 export async function setLang(lang) {

@@ -109,17 +109,22 @@ export function parseDeepLink(input) {
 export function actionToNavigation(action) {
   if (!action || typeof action !== 'object') return null;
   switch (action.kind) {
+    // Pre-shell entry stack
     case 'welcome':       return { name: ROUTES.Welcome,        params: action.params };
-    case 'feed':          return { name: ROUTES.Feed,           params: action.params };
     case 'invite':        return { name: ROUTES.OnboardScan,    params: { pendingInvite:  action.params?.token } };
-    case 'contact':       return { name: ROUTES.Contacts,       params: { pendingContact: action.params?.uri } };
+    case 'auth_callback': return { name: ROUTES.SignIn,         params: action.params };
+
+    // Tab shell — drop directly into a tab via nested-navigation params.
+    case 'feed':          return { name: ROUTES.Shell, params: { screen: ROUTES.Feed,        params: action.params } };
+    case 'contact':       return { name: ROUTES.Shell, params: { screen: ROUTES.Contacts,    params: { pendingContact: action.params?.uri } } };
+
+    // Detail screens — push over the shell.
     case 'chat':          return {
       name: ROUTES.ChatThread,
       params: { threadId: action.params?.thread, peerId: action.params?.peer },
     };
     case 'post':          return { name: ROUTES.ItemDetail,     params: { itemId:  action.params?.id } };
     case 'group':         return { name: ROUTES.Group,          params: { groupId: action.params?.id } };
-    case 'auth_callback': return { name: ROUTES.SignIn,         params: action.params };
     default:              return null;
   }
 }

@@ -22,10 +22,12 @@ import { filterFeed }                        from '../lib/feedFilter.js';
 import { ChipRow }                           from '../components/ChipRow.js';
 import { PostCard }                          from '../components/PostCard.js';
 
-const KIND_FILTERS = [
-  { id: 'vraag',  label: 'Vragen' },
-  { id: 'aanbod', label: 'Aanbod' },
-];
+function _kindFilters() {
+  return [
+    { id: 'vraag',  label: t('feed.kind_vraag',  'Asks') },
+    { id: 'aanbod', label: t('feed.kind_aanbod', 'Offers') },
+  ];
+}
 
 /**
  * @param {object} props
@@ -72,7 +74,7 @@ export function FeedScreen({
       <View style={styles.header}>
         <Text style={styles.title}>{t('feed.heading', 'Prikbord')}</Text>
         <ChipRow
-          items={KIND_FILTERS}
+          items={_kindFilters()}
           selected={activeKinds}
           onToggle={toggleKind}
         />
