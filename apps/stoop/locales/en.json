@@ -151,6 +151,16 @@
     "status_malformed_word": { "text": "A word looks off — only lowercase letters please.", "doc": "Inline status when one of the words isn't BIP-39-shaped." },
     "status_looks_ok":    { "text": "Looks good ✓", "doc": "Inline status when the structural check passes." }
   },
+  "profile_other": {
+    "unknown_member":  { "text": "Unknown member.", "doc": "Empty state on ProfileOtherScreen when the route was opened without a member to render." },
+    "skills":          { "text": "Skills", "doc": "Section heading on ProfileOtherScreen." },
+    "holiday":         { "text": "On holiday", "doc": "Heading shown when the member has holiday-mode on." },
+    "holiday_body":    { "text": "This member is on holiday.", "doc": "Body text under the holiday heading." },
+    "location":        { "text": "Location", "doc": "Section heading for the member's coarse location." },
+    "request_reveal":  { "text": "Request real name", "doc": "CTA on ProfileOtherScreen — opens the bilateral-reveal flow." },
+    "add_contact":     { "text": "Add as contact", "doc": "CTA on ProfileOtherScreen." },
+    "open_chat":       { "text": "Send a message", "doc": "CTA on ProfileOtherScreen — opens a 1:1 chat." }
+  },
   "profile": {
     "page_title":             { "text": "Stoop — My profile", "doc": "Browser tab title for /profile.html." },
     "heading":                { "text": "My profile", "doc": "Main page heading on /profile.html." },

@@ -151,6 +151,16 @@
     "status_malformed_word": { "text": "Een woord lijkt niet kloppen — alleen kleine letters.", "doc": "Inline status when one of the words isn't BIP-39-shaped." },
     "status_looks_ok":    { "text": "Ziet er goed uit ✓", "doc": "Inline status when the structural check passes." }
   },
+  "profile_other": {
+    "unknown_member":  { "text": "Onbekend lid.", "doc": "Empty state on ProfileOtherScreen when the route was opened without a member to render." },
+    "skills":          { "text": "Skills", "doc": "Section heading on ProfileOtherScreen." },
+    "holiday":         { "text": "Vakantie", "doc": "Heading shown when the member has holiday-mode on." },
+    "holiday_body":    { "text": "Dit lid is op vakantie.", "doc": "Body text under the holiday heading." },
+    "location":        { "text": "Locatie", "doc": "Section heading for the member's coarse location." },
+    "request_reveal":  { "text": "Vraag echte naam", "doc": "CTA on ProfileOtherScreen — opens the bilateral-reveal flow." },
+    "add_contact":     { "text": "Voeg toe als contact", "doc": "CTA on ProfileOtherScreen." },
+    "open_chat":       { "text": "Stuur bericht", "doc": "CTA on ProfileOtherScreen — opens a 1:1 chat." }
+  },
   "profile": {
     "page_title":             { "text": "Stoop — Mijn profiel", "doc": "Browser tab title for /profile.html." },
     "heading":                { "text": "Mijn profiel", "doc": "Main page heading on /profile.html." },
