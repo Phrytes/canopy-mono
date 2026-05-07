@@ -124,6 +124,33 @@
     "scan_recognised_recovery":     { "text": "Herstelzin herkend.", "doc": "Inline status when a 12/24-word recovery phrase QR is decoded." },
     "scan_unrecognised":            { "text": "Onbekende QR-code.", "doc": "Inline status when a scanned QR doesn't match any known Stoop payload." }
   },
+  "welcome": {
+    "brand":         { "text": "Stoop", "doc": "Brand wordmark on the welcome screen. Stoop V3 Phase 40.10." },
+    "tagline":       { "text": "Buurt-skill-app — vraag je buren om hulp.", "doc": "Sub-headline under the brand on the welcome screen." },
+    "cta_new":       { "text": "Beginnen", "doc": "Primary CTA on the welcome screen — generates a fresh local identity." },
+    "cta_scan":      { "text": "Scan QR-code", "doc": "Secondary CTA — opens the camera scanner." },
+    "cta_restore":   { "text": "Herstel met herstelzin", "doc": "Secondary CTA — opens OnboardRestoreScreen." },
+    "privacy_link":  { "text": "Privacy & veiligheid", "doc": "Footer link on the welcome screen." }
+  },
+  "onboard_scan": {
+    "heading":       { "text": "Scan een QR-code", "doc": "Heading on the OnboardScanScreen." },
+    "subheading":    { "text": "Richt de camera op een Stoop-QR. Je kan ook plakken in plaats daarvan.", "doc": "Sub-heading underneath the camera surface." },
+    "grant_camera":  { "text": "Geef toegang", "doc": "Button shown when the OS hasn't granted camera permission yet." },
+    "paste_link":    { "text": "Plak in plaats daarvan", "doc": "Link below the camera surface that reveals the paste box." },
+    "paste_placeholder": { "text": "Plak een Stoop-uitnodiging, contact-link of herstelzin", "doc": "Placeholder of the paste-fallback textarea." },
+    "paste_submit":  { "text": "Doorgaan", "doc": "Submit button for the paste-fallback textarea." }
+  },
+  "onboard_restore": {
+    "heading":            { "text": "Herstel je identiteit", "doc": "Heading on the OnboardRestoreScreen." },
+    "subheading":         { "text": "Voer je herstelzin in (12 of 24 woorden, gescheiden door spaties).", "doc": "Sub-heading on the restore screen." },
+    "placeholder":        { "text": "twaalf … woorden …", "doc": "Placeholder for the mnemonic textarea." },
+    "submit":             { "text": "Herstel", "doc": "Submit button on OnboardRestoreScreen." },
+    "submitting":         { "text": "Bezig…", "doc": "Submit button label while the restore call is in flight." },
+    "status_too_short":   { "text": "Voer meer woorden in.", "doc": "Inline status when the user has typed only a few words." },
+    "status_wrong_count": { "text": "Een herstelzin is 12, 15, 18, 21 of 24 woorden.", "doc": "Inline status when the word count is wrong." },
+    "status_malformed_word": { "text": "Een woord lijkt niet kloppen — alleen kleine letters.", "doc": "Inline status when one of the words isn't BIP-39-shaped." },
+    "status_looks_ok":    { "text": "Ziet er goed uit ✓", "doc": "Inline status when the structural check passes." }
+  },
   "profile": {
     "page_title":             { "text": "Stoop — Mijn profiel", "doc": "Browser tab title for /profile.html." },
     "heading":                { "text": "Mijn profiel", "doc": "Main page heading on /profile.html." },
