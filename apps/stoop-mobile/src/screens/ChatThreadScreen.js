@@ -1,21 +1,20 @@
 /**
  * ChatThreadScreen — single 1:1 chat thread.
  *
- * Stoop V3 mobile.  Inverted FlatList so newest message anchors at
- * the bottom; tap-to-fullscreen on a photo attachment opens the
- * AttachmentModal.  A "Reveal real name" CTA in the header surfaces
- * the bilateral-reveal flow when the names aren't yet shared.
+ * Stoop V3 mobile.  Phase 40.17 (2026-05-08): wired to the live
+ * agent.  Reveal handshake header CTA calls `requestReveal`; the
+ * peer's reveal-back lands as a `chat-message-arrive` with
+ * `subtype: 'reveal-request'` which the agent processes via
+ * Reveals.setPeerReveal — the screen re-renders on the next refresh.
  *
- * Pure UI: bring-up code in 40.10-H injects:
- *   - `messages`, `peer`, `revealed` (live-updated by chat-p2p).
- *   - `onSend({ text, attachment? })`.
- *   - `onRequestReveal()`.
- *   - `onCapturePhoto()` / `onPickPhoto()` from imagePicker.
+ * route.params: `{ threadId, peerId }`.  When threadId is missing
+ * but peerId is set, derives a deterministic threadId from the two
+ * pubKeys (sorted-pair). Stoop's chat substrate uses this convention.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, FlatList, Image, StyleSheet, Alert,
+  View, Text, TextInput, Pressable, FlatList, Image, StyleSheet,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
@@ -24,97 +23,152 @@ import { t }                                  from '../lib/i18n.js';
 import { validateChatDraft, groupConsecutive, CHAT_MAX_BODY_LEN }
                                               from '../lib/chat.js';
 import { attachmentUri }                      from '../lib/post.js';
+import { pickChatImage }                      from '../lib/imagePicker.js';
 import { AvatarCircle }                       from '../components/AvatarCircle.js';
 import { AttachmentModal }                    from '../components/AttachmentModal.js';
+import { useService }                         from '../ServiceContext.js';
+import { useSkill }                           from '../lib/useSkill.js';
+import { useSkillResult }                     from '../lib/useSkillResult.js';
+import { useAgentEvent }                      from '../lib/useAgentEvent.js';
 
-/**
- * @param {object} props
- * @param {object} [props.peer]   `{handle, avatarUri, displayName?}`
- * @param {boolean} [props.revealed]
- * @param {string}  [props.selfId]
- * @param {Array<{from: string, ts?: number, text?: string, attachment?: object}>} [props.messages]
- * @param {(draft: object) => Promise<unknown>} [props.onSend]
- * @param {() => Promise<void>}                [props.onRequestReveal]
- * @param {() => Promise<object|null>}         [props.onCapturePhoto]
- * @param {() => Promise<object|null>}         [props.onPickPhoto]
- */
-export function ChatThreadScreen({
-  peer, revealed = false, selfId,
-  messages = [],
-  onSend, onRequestReveal, onCapturePhoto, onPickPhoto,
-} = {}) {
-  // Kept for future header overflow (back button + reveal CTA).
+export function ChatThreadScreen() {
   useNavigation();
-  useRoute();
+  const route = useRoute();
+  const svc = useService();
+
+  const peerId   = route?.params?.peerId   ?? null;
+  const threadIdRouted = route?.params?.threadId ?? null;
+  const threadId = threadIdRouted ?? _deriveThreadId(svc, peerId);
 
   const [text, setText]             = useState('');
   const [attachment, setAttachment] = useState(null);
-  const [busy, setBusy]             = useState(false);
   const [error, setError]           = useState(null);
   const [modalView, setModalView]   = useState(null);
+
+  const sendCall    = useSkill('sendChatMessage');
+  const revealCall  = useSkill('requestReveal');
+  const { data, loading, refresh } = useSkillResult(
+    'getChatThread', threadId ? { threadId } : null, [threadId],
+  );
+
+  // Re-fetch on inbound messages (the agent emits on receive).
+  const arrived = useAgentEvent('chat-message-arrive');
+  useEffect(() => {
+    if (arrived != null) refresh().catch(() => { /* swallow */ });
+  }, [arrived, refresh]);
+
+  if (!svc?.activeBundle) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>
+          {t('chat_thread.no_active_group',
+             'Sluit eerst aan bij een groep om gesprekken te zien.')}
+        </Text>
+      </View>
+    );
+  }
+  if (!peerId) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>
+          {t('chat_thread.no_peer', 'Geen gesprekspartner.')}
+        </Text>
+      </View>
+    );
+  }
+
+  // Resolve peer details from MemberMap.
+  const members = svc.activeBundle.members;
+  const peer = (() => {
+    try {
+      return members?.resolveByStableId?.(peerId)
+          ?? members?.resolveByWebid?.(peerId)
+          ?? members?.resolveByPubKey?.(peerId)
+          ?? null;
+    } catch { return null; }
+  })();
+  const reveals  = svc.activeBundle.reveals;
+  const revealedFromMe = peer && reveals?.hasRevealed?.(peer.stableId ?? peer.webid ?? peer.pubKey);
+  const revealed = !!(peer?.revealed || revealedFromMe);
+  const peerName = (revealed && peer?.displayName) ? peer.displayName : `@${peer?.handle ?? 'unknown'}`;
+
+  const messages = Array.isArray(data?.messages) ? data.messages : [];
+  const groups   = groupConsecutive(messages.map((m) => ({
+    from:       m.source?.fromWebid ?? m.addedBy,
+    ts:         m.source?.sentAt ?? m.addedAt,
+    text:       m.text,
+    attachment: m.source?.extras?.attachment,
+  })));
+
+  const selfAddr = svc.activeBundle.agent.address ?? svc.activeBundle.agent.identity?.pubKey;
 
   const draft = { text, attachment };
   const v = validateChatDraft(draft);
 
   const send = useCallback(async () => {
-    if (!v.ok || busy) return;
-    setBusy(true);
+    if (!v.ok || sendCall.loading) return;
     setError(null);
     try {
-      if (onSend) await onSend({ text: text.trim(), attachment });
+      await sendCall.call({
+        threadId,
+        toPubKey:    peer?.pubKey ?? peerId,
+        toStableId:  peer?.stableId,
+        toWebid:     peer?.webid,
+        body:        text.trim() || undefined,
+        attachment:  attachment ?? undefined,
+      });
       setText('');
       setAttachment(null);
+      await refresh();
     } catch (err) {
       setError(err?.message ?? String(err));
-    } finally {
-      setBusy(false);
     }
-  }, [busy, v.ok, text, attachment, onSend]);
+  }, [v.ok, sendCall, threadId, peer, peerId, text, attachment, refresh]);
 
-  const pickPhoto = useCallback(async (which) => {
+  const requestReveal = useCallback(async () => {
     setError(null);
     try {
-      const fn = which === 'capture' ? onCapturePhoto : onPickPhoto;
-      if (!fn) return;
-      const r = await fn();
-      if (!r) return;
-      setAttachment(r);
+      await revealCall.call({
+        threadId,
+        peerStableId: peer?.stableId,
+        peerWebid:    peer?.webid,
+      });
+      await refresh();
+    } catch (err) {
+      setError(err?.message ?? String(err));
+    }
+  }, [revealCall, threadId, peer, refresh]);
+
+  const pickPhoto = useCallback(async (mode) => {
+    setError(null);
+    try {
+      const blob = await pickChatImage({ mode });
+      if (!blob) return;
+      setAttachment(blob);
     } catch (err) {
       if (err?.code === 'PERMISSION_DENIED') {
         setError(t('compose.permission_denied',
                    'Stoop heeft geen toestemming voor camera/galerij.'));
-      } else {
-        setError(err?.message ?? String(err));
-      }
+      } else setError(err?.message ?? String(err));
     }
-  }, [onCapturePhoto, onPickPhoto]);
-
-  const groups = groupConsecutive(messages);
+  }, []);
 
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <AvatarCircle uri={peer?.avatarUri} name={peer?.handle ?? '·'} size={36} />
+        <AvatarCircle uri={peer?.avatarUrl ?? peer?.avatarUri} name={peerName} size={36} />
         <View style={styles.headerText}>
-          <Text style={styles.peerName} numberOfLines={1}>
-            {revealed && peer?.displayName ? peer.displayName : `@${peer?.handle ?? 'unknown'}`}
-          </Text>
-          {!revealed && peer?.handle ? (
+          <Text style={styles.peerName} numberOfLines={1}>{peerName}</Text>
+          {!revealed ? (
             <Pressable
-              onPress={async () => {
-                if (!onRequestReveal) {
-                  Alert.alert(t('chat_thread.reveal_unavailable',
-                                'Reveal-flow is not available in this build.'));
-                  return;
-                }
-                try { await onRequestReveal(); }
-                catch (err) { setError(err?.message ?? String(err)); }
-              }}
+              onPress={requestReveal}
               accessibilityRole="button"
               accessibilityLabel="chat-request-reveal"
             >
               <Text style={styles.revealLink}>
-                {t('chat_thread.request_reveal', 'Vraag echte naam')}
+                {revealCall.loading
+                  ? t('chat_thread.revealing', 'Versturen…')
+                  : t('chat_thread.request_reveal', 'Vraag echte naam')}
               </Text>
             </Pressable>
           ) : null}
@@ -127,11 +181,13 @@ export function ChatThreadScreen({
         renderItem={({ item }) => (
           <BubbleGroup
             group={item}
-            isSelf={item.from === selfId}
+            isSelf={item.from === selfAddr}
             onPressAttachment={(att) => setModalView(att)}
           />
         )}
         contentContainerStyle={styles.listContent}
+        refreshing={loading}
+        onRefresh={refresh}
         ListEmptyComponent={(
           <View style={styles.empty}>
             <Text style={styles.emptyText}>
@@ -161,7 +217,7 @@ export function ChatThreadScreen({
 
       <View style={styles.composer}>
         <Pressable
-          onPress={() => pickPhoto('capture')}
+          onPress={() => pickPhoto('camera')}
           style={styles.composerBtn}
           accessibilityRole="button"
           accessibilityLabel="chat-capture-photo"
@@ -179,12 +235,12 @@ export function ChatThreadScreen({
         />
         <Pressable
           onPress={send}
-          disabled={!v.ok || busy}
-          style={[styles.sendBtn, (!v.ok || busy) && styles.sendBtnDisabled]}
+          disabled={!v.ok || sendCall.loading}
+          style={[styles.sendBtn, (!v.ok || sendCall.loading) && styles.sendBtnDisabled]}
           accessibilityRole="button"
           accessibilityLabel="chat-send"
         >
-          <Text style={styles.sendBtnLabel}>{busy ? '…' : '➤'}</Text>
+          <Text style={styles.sendBtnLabel}>{sendCall.loading ? '…' : '➤'}</Text>
         </Pressable>
       </View>
 
@@ -196,6 +252,20 @@ export function ChatThreadScreen({
       />
     </View>
   );
+}
+
+/**
+ * Derive the deterministic threadId from a self-pubKey + peer-pubKey
+ * sorted pair. Matches the Stoop chat substrate's convention so two
+ * sides of the same conversation arrive at the same threadId
+ * independently.
+ */
+function _deriveThreadId(svc, peerId) {
+  if (!peerId || !svc?.activeBundle) return null;
+  const self = svc.activeBundle.agent.address ?? svc.activeBundle.agent.identity?.pubKey;
+  if (!self) return null;
+  const [a, b] = [self, peerId].sort();
+  return `${a}~${b}`;
 }
 
 function BubbleGroup({ group, isSelf, onPressAttachment }) {
