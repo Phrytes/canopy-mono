@@ -43,6 +43,11 @@ export function WelcomeScreen() {
           accessibilityLabel="welcome-scan"
         />
         <SecondaryButton
+          label={t('welcome.cta_create_group', 'Maak een nieuwe groep')}
+          onPress={() => nav.navigate(ROUTES.CreateGroup)}
+          accessibilityLabel="welcome-create-group"
+        />
+        <SecondaryButton
           label={t('welcome.cta_restore', 'Herstel met herstelzin')}
           onPress={() => nav.navigate(ROUTES.OnboardRestore)}
           accessibilityLabel="welcome-restore"

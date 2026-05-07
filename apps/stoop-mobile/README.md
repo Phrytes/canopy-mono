@@ -66,6 +66,31 @@ Pending phases (per
   `setHolidayMode`, `addMySkill`, `removeMySkill`, `listSkillCategories`,
   `getMnemonicOnce` + `markMnemonicShown`. Optimistic updates in the
   hook so UI doesn't flash.
+- 40.16 ✅ Posts + items wiring + new compose-controls —
+  `src/lib/{useSkillResult,audience}.js`,
+  `src/components/AudiencePicker.js`. Feed wires `listOpen` +
+  `agent.on('item-arrive')`; PostCompose wires `postRequest` with
+  attachments via `pickPrikbordImages` + new distance / audience
+  picker controls (WhatsApp-style scroll-list per §8a Q4); ItemDetail
+  wires `respondToItem` / `cancelRequest` / `markReturned` / inline
+  `acceptResponder`; Mine filters listOpen by self.
+- 40.17 ✅ Chat + reveal handshake wiring — ChatThreadsScreen +
+  ChatThreadScreen wired to `listChatThreads` / `getChatThread` /
+  `sendChatMessage` / `requestReveal` with auto-refresh on
+  `chat-message-arrive`. Photo attachments via `pickChatImage`
+  (CHAT_PRESET 800px). Reveal CTA is reactive to the active bundle's
+  Reveals store.
+- 40.18 ✅ Contacts + groups + CreateGroupScreen — Contacts wires
+  `listContacts` + `addContactFromQr` (auto-redeems
+  `route.params.pendingContact`). Contact wires `setContactTrust` +
+  `setContactFlag` + `mutePeer`/`unmutePeer` + `removeContact` +
+  `getContactShareQr` (lazy on QR-toggle). Group wires
+  `getCurrentMembershipCode` + `rotateMyGroupCode` + `leaveGroup` +
+  `issueInvite`. New CreateGroupScreen — minimal 2-question wizard
+  (groupId + name; purpose optional) calling `createGroupV2` +
+  registering the bundle in ServiceContext + landing on
+  OnboardIssueScreen with the freshly-issued admin invite QR.
+  Welcome gains a "Maak een nieuwe groep" CTA.
 - ⚙️ 2026-05-08 follow-up — bottom-tab shell wraps the six main
   destinations (Feed / Mine / Chat / Contacts / Profile / Settings)
   via `@react-navigation/bottom-tabs`. Detail screens push over the

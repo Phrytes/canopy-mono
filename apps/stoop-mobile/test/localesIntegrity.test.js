@@ -21,7 +21,7 @@ const REQUIRED_KEYS = [
 
   // welcome.*
   'welcome.brand', 'welcome.tagline',
-  'welcome.cta_new', 'welcome.cta_scan', 'welcome.cta_restore',
+  'welcome.cta_new', 'welcome.cta_scan', 'welcome.cta_restore', 'welcome.cta_create_group',
   'welcome.privacy_link',
 
   // onboard_scan.* / onboard_restore.* / onboard_issue.*
@@ -63,12 +63,15 @@ const REQUIRED_KEYS = [
   // contacts / contact
   'contacts.search_placeholder', 'contacts.muted',
   'contacts.empty_no_contacts', 'contacts.empty_filtered',
+  'contacts.no_active_group',
   'contact.unknown', 'contact.open_chat', 'contact.show_qr', 'contact.hide_qr',
   'contact.qr_caption', 'contact.mute', 'contact.unmute', 'contact.block',
   'contact.confirm_yes', 'contact.confirm_no',
   'contact.confirm_mute_title', 'contact.confirm_mute_body',
   'contact.confirm_unmute_title', 'contact.confirm_unmute_body',
   'contact.confirm_block_title', 'contact.confirm_block_body',
+  'contact.no_active_group', 'contact.trust_label', 'contact.flags_label',
+  'contact.remove', 'contact.confirm_remove_title', 'contact.confirm_remove_body',
 
   // profile (mobile additions for ProfileMineScreen)
   'profile.no_group', 'profile.saving',
@@ -108,6 +111,14 @@ const REQUIRED_KEYS = [
   'group.member_count', 'group.admin_code', 'group.admin_code_hint',
   'group.issue_invite', 'group.issuing', 'group.leave',
   'group.confirm_leave_title', 'group.confirm_leave_body', 'group.confirm_leave_yes',
+  'group.no_active_group', 'group.rotate_code', 'group.rotating', 'group.admin_code_expires',
+
+  // create_group (mobile only — desktop already has the 6-question wizard)
+  'create_group.intro_mobile',
+  'create_group.id_label', 'create_group.id_placeholder',
+  'create_group.name_label', 'create_group.name_placeholder',
+  'create_group.purpose_label', 'create_group.purpose_placeholder',
+  'create_group.submit', 'create_group.creating',
 
   'metrics.heading', 'metrics.unavailable',
 
