@@ -301,6 +301,7 @@ export async function createNeighborhoodAgent({
   // into `buildSkills` and finalise it just before returning.
   const bundle = {
     agent,
+    deviceId: id?.deviceId ?? null,    // Phase 33.1 — per-install id for device-scoped settings
     itemStore,
     members,
     skillMatch,
@@ -322,8 +323,8 @@ export async function createNeighborhoodAgent({
     interestProfileDetach: null,    // populated below when cache wires
     memberMapDetach,                   // call on shutdown to stop persisting member mutations
     revealsDetach,                     // Phase 29.1 — call on shutdown to stop persisting reveals
-    settings: cache                    // Phase 23.5 — cadence / hop / broadcastable / defaultShareLocation
-      ? await loadSettings({ dataSource: cache })
+    settings: cache                    // Phase 23.5 + 33 — split across shared + device blobs
+      ? await loadSettings({ dataSource: cache, deviceId: id?.deviceId ?? null })
       : { ...DEFAULT_SETTINGS },
     contacts: cache                    // Phase 24.1 — 1:1 contact graph + lists
       ? createContactBook({ members, dataSource: cache })
