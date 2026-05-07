@@ -98,10 +98,44 @@ engine.on('synced',   (s)            => console.log('synced:', s));
 await engine.stop();
 ```
 
+## Settings layout
+
+When Folio introduces user-tunable settings, the layout MUST follow
+the project-wide convention in
+[`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md):
+
+```
+<pod>/folio/settings/shared.json              user-portable
+<pod>/folio/settings/devices/<deviceId>.json  per-install (local-only)
+```
+
+`shared.json` follows the user across every install of Folio (and is
+the blob a sibling app — Stoop, Archive — may read on its first run
+to seed defaults per Rule 3 of the convention).
+`devices/<deviceId>.json` stays local to each install (poll cadence,
+mobile online-window, hop-relay decisions). The `deviceId` is
+[`core.AgentIdentity.deviceId`](../../packages/core/src/identity/AgentIdentity.js).
+
+**Cross-app shared-defaults (Rule 3):** when Folio runs on a pod
+that already has a `<pod>/stoop/settings/shared.json`, Folio MAY
+seed its own first-run defaults from those values for fields that
+mean the same thing (e.g. `defaultShareLocation`,
+`preferredLocale`). Document the field-mapping table in this section
+once Folio implements it. **Don't slave to siblings continuously**
+— the rule is "defaults at first start, divergence allowed thereafter."
+
+Per-device blobs MUST NOT be pushed to the pod via bulk-sync (see
+the [Stoop pod-layout doc](../../Project%20Files/Stoop/pod-layout-2026-05-06.md)
+for the canonical implementation).
+
+**Status (2026-05-07):** Folio doesn't ship persisted settings yet;
+this section is forward-looking. Update it when settings land.
+
 ## Reference
 
 - Plan: [`../../coding-plans/track-H-app-folio.md`](../../coding-plans/track-H-app-folio.md) — phased implementation plan (A: CLI, B: web, C: mobile).
 - Design sketch: [`../../coding-plans/track-H-design-sketches.md`](../../coding-plans/track-H-design-sketches.md) §H1 — the user-facing experience.
+- Settings convention: [`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md).
 
 ## Folder-name conventions
 

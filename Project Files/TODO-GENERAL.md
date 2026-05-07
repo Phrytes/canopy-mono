@@ -15,8 +15,8 @@ must use the `{ "text": ..., "doc": ... }` leaf shape: `text` is
 the translatable string, `doc` is a context note for translators.
 
 This rule is set in
-[`Project Files/conventions/i18n.md`](./conventions/i18n.md) (locked
-2026-05-06) and applies to **every subproject**.
+[`Project Files/conventions/localisation.md`](./conventions/localisation.md)
+(locked 2026-05-06) and applies to **every subproject**.
 
 **Action:** for each app under `apps/`, audit:
 

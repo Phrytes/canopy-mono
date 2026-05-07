@@ -1,7 +1,7 @@
 /**
  * Stoop V1 — i18next wrapper.
  *
- * Per `Project Files/conventions/i18n.md`: every user-facing string
+ * Per `Project Files/conventions/localisation.md`: every user-facing string
  * lives in `locales/<lang>.json`; substrates emit error codes,
  * apps localise them.  `i18next` is the chosen library.
  *

@@ -192,7 +192,7 @@ disclaimer surfaces; recovery phrase saved.
 
 | # | Task | Files |
 |---|---|---|
-| 8.1 | Wire `i18next` per `Project Files/conventions/i18n.md`; `lib/i18n.js`. | `apps/stoop/src/lib/i18n.js` |
+| 8.1 | Wire `i18next` per `Project Files/conventions/localisation.md`; `lib/i18n.js`. | `apps/stoop/src/lib/i18n.js` |
 | 8.2 | Populate `locales/en.json` + `locales/nl.json` with every user-facing string. | `apps/stoop/locales/*.json` |
 | 8.3 | Hook in `expo-localization` for RN auto-detect. | `apps/stoop/src/lib/i18n.js` |
 

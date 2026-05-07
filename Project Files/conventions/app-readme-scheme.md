@@ -214,7 +214,7 @@ follows it top to bottom, they end with a working app.
 
 If the app has a user-facing surface, the **Bring it up** section
 must also include a short **Localisation** subsection per the
-project i18n convention ([`./i18n.md`](./i18n.md)) — listing
+project localisation convention ([`./localisation.md`](./localisation.md)) — listing
 supported locales and how to add a new one. Apps without a
 user-facing surface (pure libraries, headless smoke harnesses) may
 omit this.

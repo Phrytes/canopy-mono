@@ -87,6 +87,9 @@ preconditions (the SDK's `If-Match` story), not by Stoop.
 > when its settings include both user-portable preferences and
 > device-specific knobs.  Apps that only have user-portable
 > settings keep just `shared.json`.
+>
+> **Full convention with the cross-app shared-defaults rule:**
+> [`../conventions/cross-app-settings.md`](../conventions/cross-app-settings.md).
 
 The user has a single Solid pod but multiple installs (phone +
 laptop + …).  Some preferences are about *the user* (broadcastable,

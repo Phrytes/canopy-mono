@@ -130,6 +130,43 @@ The tests do NOT touch a real device, real Inrupt issuer, or real
 filesystem — they exercise the auth state machine, ServiceContext
 wiring, screen logic, and conflict-merge helpers in isolation.
 
+## Settings layout
+
+Folio-mobile shares its settings namespace with the desktop Folio
+app — both write to `<pod>/folio/...`, NOT separate per-platform
+containers. The layout follows the project-wide convention in
+[`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md):
+
+```
+<pod>/folio/settings/shared.json              user-portable; shared with desktop Folio
+<pod>/folio/settings/devices/<deviceId>.json  per-install (this phone, local-only)
+```
+
+The `deviceId`
+([`core.AgentIdentity.deviceId`](../../packages/core/src/identity/AgentIdentity.js))
+is fresh on every install — re-installing the mobile app gets a new
+`devices/...` blob and starts from defaults. `shared.json` carries
+over (it's pod-side and follows the user).
+
+**Mobile-specific concerns** that belong in the per-device blob:
+
+- Battery / online-window cadence (mobile-only; desktop Folio
+  ignores these fields).
+- Push-notification preferences (per device).
+- "Allow background sync on cellular" — per device.
+
+User preferences (display name, default sharing, locale) live in
+`shared.json` and SHOULD be set the same way on both desktop and
+mobile.
+
+**Cross-app shared-defaults (Rule 3):** see the desktop Folio
+README's Settings layout section. Mobile inherits the same
+sibling-app seeding behaviour automatically since it reads the
+same `shared.json`.
+
+**Status (2026-05-07):** folio-mobile doesn't ship persisted
+settings yet. Update this section when they land.
+
 ## What's in here
 
 ```

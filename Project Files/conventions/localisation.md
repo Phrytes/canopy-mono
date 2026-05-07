@@ -1,6 +1,7 @@
-# i18n convention — every app ships translatable
+# Localisation convention — every app ships translatable
 
-> **Status:** locked 2026-05-05. Project-wide convention.
+> **Status:** locked 2026-05-05; renamed from `i18n.md` 2026-05-07
+> for clarity (the "i18n" numeronym is jargon).
 > **Companion:** [`./app-readme-scheme.md`](./app-readme-scheme.md).
 > **Applies to:** every directory under `apps/` that has a user-facing surface (UI, CLI prompts, push-notification copy).
 
