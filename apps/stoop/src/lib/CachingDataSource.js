@@ -38,7 +38,22 @@
  * `pullFromInner(prefix)` on the app's chosen cadence (typically
  * tied to foreground state via `SyncCadence`).
  *
- * Events (Emitter): `online`, `offline`, `queued`, `flushed`, `pulled`, `error`.
+ * Events (Emitter): `online`, `offline`, `queued`, `flushed`, `pulled`, `error`,
+ * `bulk-sync-started`, `bulk-sync-progress`, `bulk-sync-finished`.
+ *
+ * **Phase 34 (V2.5, 2026-05-06):** when `attachInner(pod)` is called
+ * and the cache already holds locally-written data (the user posted
+ * items / wrote settings before signing in), we walk the local Map
+ * and enqueue a `write` for every non-local-only path before the
+ * normal post-attach flush.  Without this step, pre-attach writes
+ * would never reach the pod.
+ *
+ * **Phase 33+34 (2026-05-06):** the constructor now accepts
+ * `localOnlyPrefixes: string[]` — write/delete to a path matching
+ * any prefix mutates only the local Map, never queues for the
+ * inner.  Bulk-sync also skips those paths.  Stoop uses this for:
+ *   - `mem://stoop/settings/devices/`         (per-install settings)
+ *   - `mem://stoop/settings/.migrated-from-v2` (one-shot marker)
  */
 
 import { Emitter } from '@canopy/core';
@@ -59,6 +74,8 @@ export class CachingDataSource extends DataSource {
   #emitter = new Emitter();
   /** Optional persistence hook fired after every local mutation. */
   #onLocalChange = null;
+  /** @type {string[]} — Phase 34: paths matching a prefix never sync to inner. */
+  #localOnlyPrefixes = [];
 
   /**
    * @param {object} [opts]
@@ -75,13 +92,33 @@ export class CachingDataSource extends DataSource {
    *       inner, localStore: await persist.load(),
    *       onLocalChange: (m) => persist.scheduleSave(m),
    *     });
+   * @param {string[]} [opts.localOnlyPrefixes]
+   *   Paths matching ANY of these prefixes are never enqueued for
+   *   the inner DataSource and are skipped during bulk-sync.  Used
+   *   by Stoop to keep per-device settings + the migration marker
+   *   off the pod.
    */
-  constructor({ inner = null, localStore, online = true, onLocalChange } = {}) {
+  constructor({
+    inner = null, localStore, online = true, onLocalChange,
+    localOnlyPrefixes = [],
+  } = {}) {
     super();
     this.#inner          = inner;
     this.#local          = localStore ?? new Map();
     this.#online         = online;
     this.#onLocalChange  = typeof onLocalChange === 'function' ? onLocalChange : null;
+    this.#localOnlyPrefixes = Array.isArray(localOnlyPrefixes)
+      ? localOnlyPrefixes.filter((p) => typeof p === 'string' && p.length > 0)
+      : [];
+  }
+
+  /** True when the path matches any local-only prefix. */
+  #isLocalOnly(path) {
+    if (typeof path !== 'string' || this.#localOnlyPrefixes.length === 0) return false;
+    for (const prefix of this.#localOnlyPrefixes) {
+      if (path.startsWith(prefix)) return true;
+    }
+    return false;
   }
 
   /** Fire the persistence hook (best-effort). */
@@ -113,14 +150,73 @@ export class CachingDataSource extends DataSource {
   // ── Lifecycle controls ───────────────────────────────────────────────────
 
   /**
-   * Attach (or swap) the inner DataSource. If the new inner is non-null
-   * and we're online, the queue flushes immediately.
+   * Attach (or swap) the inner DataSource.  Phase 34 (V2.5): when an
+   * inner is attached AND the local cache already holds entries that
+   * weren't queued (e.g. writes that happened before any inner was
+   * present, or after a previous detach), walk the Map and enqueue a
+   * `write` op for every non-local-only path that isn't already in
+   * the queue.  Then run the normal flush so the queue lands on the
+   * pod.
+   *
+   * Emits:
+   *   - `bulk-sync-started` { total }      before the first push
+   *   - `bulk-sync-progress` { done, total } after each batch
+   *   - `bulk-sync-finished` { count, errored }  when done
+   *
+   * No-op when `inner` is null (detach) or already-attached and
+   * already-flushed.  Local-only paths are skipped entirely.
    */
   async attachInner(inner) {
+    const previous = this.#inner;
     this.#inner = inner ?? null;
-    if (this.#inner && this.#online) {
-      await this.flush();
+    if (!this.#inner) return; // detach — nothing to do
+
+    // Build the set of paths already in the queue so we don't double-
+    // enqueue if attachInner is called twice in a row.
+    const enqueued = new Set();
+    for (const e of this.#queue) enqueued.add(`${e.op}:${e.path}`);
+
+    // Walk the local Map for entries that should bulk-sync.
+    const candidates = [];
+    for (const [path, data] of this.#local) {
+      if (this.#isLocalOnly(path)) continue;
+      if (enqueued.has(`write:${path}`)) continue;
+      candidates.push({ path, data });
     }
+
+    if (candidates.length > 0) {
+      this.#emitter.emit('bulk-sync-started', { total: candidates.length });
+      for (const { path, data } of candidates) {
+        this.#queue.push({ op: 'write', path, data });
+      }
+    }
+
+    // Standard flush handles the queue (both pre-existing entries
+    // and the new bulk-sync ones).  Stops on first error and flips
+    // online → false; we report progress after either outcome.
+    let replayed = 0;
+    let errored = false;
+    if (this.#online) {
+      try {
+        replayed = await this.flush();
+      } catch (err) {
+        errored = true;
+        this.#emitter.emit('error', { error: err, op: { op: 'bulk-sync' } });
+      }
+      // flush() doesn't throw; it flips offline + emits 'error'.  If
+      // the queue is non-empty after flush, we know it errored mid-
+      // way through.
+      if (this.#queue.length > 0) errored = true;
+    }
+
+    if (candidates.length > 0) {
+      this.#emitter.emit('bulk-sync-progress', { done: replayed, total: candidates.length });
+      this.#emitter.emit('bulk-sync-finished', { count: replayed, errored });
+    }
+
+    // Re-emit a transition signal so listeners can chain (e.g. UI
+    // hides the progress bar even when previous === inner).
+    if (previous !== inner) this.#emitter.emit('inner-attached', {});
   }
 
   /**
@@ -222,6 +318,7 @@ export class CachingDataSource extends DataSource {
     this.#local.set(path, data);
     this.#notifyLocalChange();
     if (!this.#inner) return;
+    if (this.#isLocalOnly(path)) return;     // Phase 34: skip pod sync for local-only paths
     this.#queue.push({ op: 'write', path, data });
     this.#emitter.emit('queued', { op: 'write', path, depth: this.#queue.length });
     if (this.#online) await this.flush();
@@ -231,6 +328,7 @@ export class CachingDataSource extends DataSource {
     this.#local.delete(path);
     this.#notifyLocalChange();
     if (!this.#inner) return;
+    if (this.#isLocalOnly(path)) return;     // Phase 34: skip pod sync for local-only paths
     this.#queue.push({ op: 'delete', path });
     this.#emitter.emit('queued', { op: 'delete', path, depth: this.#queue.length });
     if (this.#online) await this.flush();

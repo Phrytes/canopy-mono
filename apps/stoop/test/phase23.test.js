@@ -167,9 +167,10 @@ describe('Stoop V2 Phase 23.6 — settings flush to pod on attach', () => {
     await bundle.cache.attachInner(stubPod);
     expect(bundle.cache.hasInner).toBe(true);
 
-    // Update settings AFTER attach — should write through.  Phase 33
-    // splits the blob into shared (broadcastable lives here) + per-device
-    // (allowHopThrough lives here); both writes hit the inner.
+    // Update settings AFTER attach.  Phase 33 splits the blob into
+    // shared (broadcastable) + per-device (allowHopThrough); Phase 34
+    // marks the device blob as localOnly so it stays off the pod.
+    // Therefore: shared.json hits the inner; device blob does NOT.
     await callSkill(bundle.agent, 'updateSettings', {
       patch: { allowHopThrough: true, broadcastable: false },
     });
@@ -178,11 +179,12 @@ describe('Stoop V2 Phase 23.6 — settings flush to pod on attach', () => {
     const devicePath   = `mem://stoop/settings/devices/${bundle.deviceId}.json`;
     const deviceWrites = writes.filter(w => w.path === devicePath);
     expect(sharedWrites.length).toBeGreaterThan(0);
-    expect(deviceWrites.length).toBeGreaterThan(0);
+    expect(deviceWrites.length).toBe(0);    // Phase 34: localOnly, never crosses to pod
 
     const sharedParsed = JSON.parse(sharedWrites[sharedWrites.length - 1].data);
-    const deviceParsed = JSON.parse(deviceWrites[deviceWrites.length - 1].data);
-    expect(deviceParsed.allowHopThrough).toBe(true);
     expect(sharedParsed.broadcastable).toBe(false);
+    // Device blob is still readable locally — sanity check.
+    const deviceLocal = JSON.parse(await bundle.cache.read(devicePath));
+    expect(deviceLocal.allowHopThrough).toBe(true);
   });
 });

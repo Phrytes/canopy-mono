@@ -2081,6 +2081,41 @@ export function buildSkills({
       visibility:  'authenticated',
     }),
 
+    /**
+     * listEvictedMembers()
+     *   — Phase 35 (V2.5, 2026-05-06).  Returns the webids whose
+     *   most-recent membership-redemption has expired (past
+     *   `expiresAt + GRACE_MS`).  Posts from these members are
+     *   silently dropped on the receive side; the UI uses this
+     *   skill to render a banner on /group.html.
+     */
+    defineSkill('listEvictedMembers', async () => ({
+      evicted: bundle?.evictionRoster?.listEvicted() ?? [],
+    }), {
+      description: 'List webids whose membership has expired past the grace window.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * getBulkSyncStatus()
+     *   — Phase 34 (V2.5, 2026-05-06).  Reports the latest snapshot
+     *   of the cache's bulk-sync state during attachInner.  Phases:
+     *     - 'idle'     before any attach (or no cache).
+     *     - 'running'  bulk-sync in flight; `done` and `total` move.
+     *     - 'finished' last attach completed cleanly.
+     *     - 'error'    last attach errored mid-flush.
+     *   The UI on /auth-callback.html polls this while
+     *   `completePodSignIn` is in flight to render a progress bar.
+     */
+    defineSkill('getBulkSyncStatus', async () => ({
+      bulkSync: bundle?.bulkSyncState ?? {
+        phase: 'idle', done: 0, total: 0, errored: false, updatedAt: null,
+      },
+    }), {
+      description: 'Read-only snapshot of the CachingDataSource bulk-sync progress.',
+      visibility:  'authenticated',
+    }),
+
     /* ── Phase 26: Geo (location + geocoding + distance) ────── */
 
     /**

@@ -27,6 +27,10 @@
  * @param {import('@canopy/item-store').ItemStore} args.itemStore
  * @param {string} args.group
  * @param {Array<{pubKey: string}>} [args.peers]
+ * @param {import('./lib/EvictionRoster.js').EvictionRoster} [args.evictionRoster]
+ *   Optional Phase 35 (V2.5) auto-evict filter — when supplied, posts
+ *   whose `from` webid is past `expiresAt + GRACE_MS` are dropped
+ *   silently before the local mirror.
  * @returns {Promise<{
  *   addPeer:  (pubKey: string) => Promise<void>,
  *   stop:     () => Promise<void>,
@@ -35,7 +39,9 @@
  */
 import { subscribe } from '@canopy/core';
 
-export async function wireGroupBroadcastMirror({ agent, itemStore, group, peers = [] }) {
+export async function wireGroupBroadcastMirror({
+  agent, itemStore, group, peers = [], evictionRoster = null,
+}) {
   const requestsTopic = `${group}/requests`;
   const offs = new Map();   // pubKey → off-fn
 
@@ -43,6 +49,13 @@ export async function wireGroupBroadcastMirror({ agent, itemStore, group, peers 
     if (!request) return;
     const requestId = request.requestId;
     if (!requestId) return;
+    // Phase 35 (V2.5) — silently drop posts from evicted members.
+    // The "from" field is the post-author's webid; check it against
+    // the roster before doing any other work.
+    if (evictionRoster) {
+      const fromWebid = request.from ?? request.payload?.from ?? null;
+      if (fromWebid && evictionRoster.isEvicted(fromWebid)) return;
+    }
     // Dedupe — if we've already mirrored this requestId, skip. Cheap
     // O(N) scan; H5's open-request volume is small (tens at most).
     const open = await itemStore.listOpen();
