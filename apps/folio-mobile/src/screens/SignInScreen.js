@@ -14,7 +14,8 @@ import {
   Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 
-import { useFolioAuth, DEFAULT_INRUPT_ISSUER } from '../auth/folioAuth.js';
+import { useFolioAuth }            from '../auth/folioAuthHook.js';
+import { DEFAULT_INRUPT_ISSUER }   from '../auth/folioAuth.js';
 import { useService } from '../ServiceContext.js';
 import { suggestPodRoot, normalizePodRoot, discoverPodRoot } from '../lib/podRootHelpers.js';
 

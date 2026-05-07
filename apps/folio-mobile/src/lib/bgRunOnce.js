@@ -1,10 +1,16 @@
 /**
- * bgRunOnce — tiny module-level bridge between the OS-driven background
+ * bgRunOnce — module-level bridge between the OS-driven background
  * task (defined at app-load via TaskManager.defineTask, see index.js)
  * and the live Folio sync engine (built inside ServiceContext after
  * sign-in).
  *
- * Why a module-level singleton:
+ * **2026-05-08:** the underlying `setBgRunOnce` / `clearBgRunOnce` /
+ * `bgRunOnce` helpers were lifted into the
+ * `@canopy/sync-engine-rn` substrate (Stoop V3 Phase 40.2,
+ * rule-of-two satisfied). This file re-exports them and keeps the
+ * folio-specific `BG_TASK_NAME` constant.
+ *
+ * Why a module-level singleton (still applies):
  * - `TaskManager.defineTask` MUST be called at JS-bundle load time —
  *   the OS needs the registration whether or not a user has signed in.
  *   At that moment the engine doesn't exist yet.
@@ -15,47 +21,20 @@
  *
  * If the OS fires the task while the engine isn't ready (cold wake,
  * during boot, after sign-out), `bgRunOnce()` resolves with `null` and
- * the task returns `noData` to the OS.  No headless engine boot is
- * attempted in this v0 — that's a follow-up (see SOLID-RN-NOTES if a
- * trap surfaces during cold-wake testing).
+ * the task returns `noData` to the OS.
  */
 
-let _runOnce = null;
-
-/**
- * Wire the bg task to the current engine's `runOnce`.  Idempotent.
- *
- * @param {() => Promise<{ uploads:number, downloads:number, deletes:number, conflicts:number }>} fn
- */
-export function setBgRunOnce(fn) {
-  if (typeof fn !== 'function') {
-    throw new Error('setBgRunOnce: function required');
-  }
-  _runOnce = fn;
-}
-
-/**
- * Disconnect the bg task from any prior engine.
- */
-export function clearBgRunOnce() {
-  _runOnce = null;
-}
-
-/**
- * Called by the OS-driven background task.  Resolves with the runOnce
- * result if a live engine is wired, or `null` if not (task returns
- * `noData`).
- *
- * @returns {Promise<null | { uploads:number, downloads:number, deletes:number, conflicts:number }>}
- */
-export async function bgRunOnce() {
-  if (typeof _runOnce !== 'function') return null;
-  return _runOnce();
-}
+export {
+  setBgRunOnce,
+  clearBgRunOnce,
+  bgRunOnce,
+} from '@canopy/sync-engine-rn';
 
 /**
  * Stable task name used by both `defineBackgroundTask` (at index.js
  * load) and `registerBackgroundFetch` / `unregisterBackgroundFetch`
  * (in ServiceContext).  Keep them in sync via this constant.
+ *
+ * Folio-specific (Stoop V3 will pick its own task name).
  */
 export const BG_TASK_NAME = 'folio-mobile-sync-background';
