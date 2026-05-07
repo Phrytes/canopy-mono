@@ -1,0 +1,28 @@
+{
+  "name": "@canopy/sync-engine-rn",
+  "version": "0.1.0",
+  "description": "React Native bootstrap helpers for the canopy sync-engine + pod-client. Lifted from apps/folio-mobile 2026-05-08 (Stoop V3 Phase 40.2). Cross-platform sync logic stays in @canopy/sync-engine; this package is the RN-only wiring (background-fetch task bridge, pod-client factory off OidcSessionRN, optional engine builder pass-through).",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@canopy/core": "^0.1.0",
+    "@canopy/pod-client": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@canopy/pod-client": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@canopy/core": "file:../core",
+    "@canopy/pod-client": "file:../pod-client",
+    "vitest": "^2.1.9"
+  }
+}

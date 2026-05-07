@@ -2,51 +2,27 @@
  * serviceBuilder — bridges the C2 ServiceContext to the C1 RN
  * serviceFactory + a real PodClient.
  *
- * Two responsibilities:
+ * **2026-05-08:** `defaultPodFactory` was lifted into the
+ * `@canopy/sync-engine-rn` substrate (Stoop V3 Phase 40.2,
+ * rule-of-two satisfied by Stoop V3 mobile being the second
+ * consumer). This file is now a thin re-export shim plus the
+ * folio-specific engine builder that imports
+ * `@canopy-app/folio/rn/serviceFactory`.
  *
- *   1. `defaultPodFactory(cfg, oidc)` — build an authenticated
- *      `PodClient` from `OidcSessionRN`.  Mirrors the desktop
- *      `apps/folio/src/cli/_podFactory.js` `buildRealPodClient` shim
- *      but uses `OidcSessionRN.getAuthenticatedFetch()` instead of the
- *      Inrupt Node session.
+ * Two responsibilities (same as before):
+ *
+ *   1. `defaultPodFactory(cfg, oidc)` — re-exported from
+ *      `@canopy/sync-engine-rn`. Builds an authenticated
+ *      `PodClient` from `OidcSessionRN`.
  *
  *   2. `buildEngineForRN({ podClient, ... })` — thin pass-through to
- *      `@canopy-app/folio/rn/serviceFactory.createSyncEngine`.  Kept
- *      as its own export so tests can stub C1 without re-implementing
- *      the entire ServiceContext.
- *
- * Why we don't import directly from `@inrupt/solid-client-authn-node`
- * --------------------------------------------------------------------
- * That lib is Node-only.  See `OidcSessionRN.js` header for the
- * rationale — we run the OIDC dance via expo-auth-session and inject
- * a bearer-token fetch manually.
+ *      `@canopy-app/folio/rn/serviceFactory.createSyncEngine`.
+ *      Stays here because it's folio-specific (the Folio mobile
+ *      RN service factory is a known cross-app import flagged in
+ *      TODO-GENERAL).
  */
 
-/**
- * Build a real `PodClient` from `OidcSessionRN`.
- *
- * @param {{ podRoot: string }} cfg
- * @param {import('../auth/OidcSessionRN.js').OidcSessionRN} oidc
- * @returns {Promise<object>}  PodClient instance
- */
-export async function defaultPodFactory(cfg, oidc) {
-  if (!cfg?.podRoot) throw new Error('defaultPodFactory: cfg.podRoot required');
-  if (!oidc)         throw new Error('defaultPodFactory: oidc session required');
-
-  // Lazy-load the pod-client package so unit tests that mock this
-  // factory entirely never need to resolve it.
-  const { PodClient, SolidOidcAuth } = await import('@canopy/pod-client');
-
-  const authVault = {
-    getAuthenticatedFetch: () => oidc.getAuthenticatedFetch(),
-    get webid() { return oidc.webid; },
-    refresh: async () => { /* v0: no token refresh on mobile */ },
-    logout:  async () => { await oidc.logout(); },
-  };
-  const auth = new SolidOidcAuth({ vault: authVault });
-
-  return new PodClient({ podRoot: cfg.podRoot, auth });
-}
+export { defaultPodFactory } from '@canopy/sync-engine-rn';
 
 /**
  * Pass-through to the C1 RN serviceFactory.  Exported as a separate
