@@ -1,10 +1,18 @@
 /**
- * AgentIdentity — Ed25519 keypair + nacl.box encryption.
+ * AgentIdentity — Ed25519 keypair + nacl.box encryption + a separate
+ * `stableId` (Stoop V1 Phase 11, 2026-05-06).
  *
- * The agent's stable identity is its Ed25519 public key. The same 32-byte
- * seed drives both signing (Ed25519 via tweetnacl) and encryption (Curve25519
- * via ed2curve). The private key stays in the Vault; operations are synchronous
- * once the identity is constructed.
+ * The agent's *network* identity is its Ed25519 public key (rotates
+ * via `Agent.rotateIdentity()`).  The agent's *stable* identity is
+ * `stableId` — opaque base64url, generated once at first construction,
+ * persisted in the vault under `'agent-stable-id'`, **untouched by
+ * rotation**.  Apps use it as the "this person" key for mute / ban /
+ * report / peer-cache.  Existing vaults that pre-date this field
+ * lazy-init on first load.
+ *
+ * The same 32-byte seed drives both signing (Ed25519 via tweetnacl)
+ * and encryption (Curve25519 via ed2curve). The private key stays in
+ * the Vault; operations are synchronous once the identity is constructed.
  *
  * Key conversion: ed2curve maps Ed25519 → Curve25519 so that the single
  * Ed25519 keypair is enough for both signing and nacl.box encryption. Both
@@ -18,18 +26,39 @@ import { mnemonicToSeed, seedToMnemonic } from './Mnemonic.js';
 
 const { convertPublicKey, convertKeyPair } = ed2curve;
 
+/** Vault key for the per-agent stableId (Stoop V1 Phase 11). */
+const STABLE_ID_KEY = 'agent-stable-id';
+
+/**
+ * Load (or lazy-init) the stableId for this vault.  Returns null for
+ * detached identities (vault === null), e.g. the `previous` identity
+ * handed back by `restoreWithPrevious` — those intentionally don't
+ * persist anywhere.
+ */
+async function _loadOrInitStableId(vault) {
+  if (!vault) return null;
+  const existing = await vault.get(STABLE_ID_KEY);
+  if (existing && typeof existing === 'string' && existing.length > 0) return existing;
+  const fresh = b64encode(nacl.randomBytes(16));
+  await vault.set(STABLE_ID_KEY, fresh);
+  return fresh;
+}
+
 export class AgentIdentity {
   /** @type {{ publicKey: Uint8Array, secretKey: Uint8Array }} */
   #signKP;
   /** @type {{ publicKey: Uint8Array, secretKey: Uint8Array }} */
   #boxKP;
   #vault;
+  /** @type {string | null} — the stable opaque user id (Stoop V1 Phase 11). */
+  #stableId = null;
 
-  constructor({ seed, vault }) {
+  constructor({ seed, vault, stableId = null }) {
     this.#vault  = vault;
     this.#signKP = nacl.sign.keyPair.fromSeed(seed);
     this.#boxKP  = convertKeyPair(this.#signKP);
     if (!this.#boxKP) throw new Error('Failed to derive Curve25519 keypair from seed');
+    this.#stableId = stableId;
   }
 
   // ── Factory methods ────────────────────────────────────────────────────────
@@ -38,7 +67,8 @@ export class AgentIdentity {
   static async generate(vault) {
     const seed = nacl.randomBytes(32);
     await vault.set('agent-privkey', _writeEntry(seed, null));
-    return new AgentIdentity({ seed, vault });
+    const stableId = await _loadOrInitStableId(vault);
+    return new AgentIdentity({ seed, vault, stableId });
   }
 
   /** Restore an existing keypair from the vault. */
@@ -46,7 +76,8 @@ export class AgentIdentity {
     const raw = await vault.get('agent-privkey');
     if (!raw) throw new Error('No agent key found in vault');
     const parsed = _parseEntry(raw);
-    return new AgentIdentity({ seed: b64decode(parsed.current), vault });
+    const stableId = await _loadOrInitStableId(vault);
+    return new AgentIdentity({ seed: b64decode(parsed.current), vault, stableId });
   }
 
   /**
@@ -62,16 +93,18 @@ export class AgentIdentity {
   static async restoreWithPrevious(vault) {
     const raw = await vault.get('agent-privkey');
     if (!raw) throw new Error('No agent key found in vault');
-    const parsed  = _parseEntry(raw);
-    const current = new AgentIdentity({ seed: b64decode(parsed.current), vault });
-    let previous  = null;
+    const parsed   = _parseEntry(raw);
+    const stableId = await _loadOrInitStableId(vault);
+    const current  = new AgentIdentity({ seed: b64decode(parsed.current), vault, stableId });
+    let previous   = null;
     if (parsed.previous?.seed
         && typeof parsed.previous.graceUntil === 'number'
         && parsed.previous.graceUntil > Date.now()) {
       // Previous identity is NOT given the vault (we don't want it to
       // overwrite the current-identity blob via any future writes).
+      // It carries the same stableId — rotation never changes it.
       previous = {
-        identity:   new AgentIdentity({ seed: b64decode(parsed.previous.seed), vault: null }),
+        identity:   new AgentIdentity({ seed: b64decode(parsed.previous.seed), vault: null, stableId }),
         graceUntil: parsed.previous.graceUntil,
       };
     }
@@ -85,7 +118,8 @@ export class AgentIdentity {
   static async fromMnemonic(mnemonic, vault) {
     const seed = mnemonicToSeed(mnemonic);
     await vault.set('agent-privkey', _writeEntry(seed, null));
-    return new AgentIdentity({ seed, vault });
+    const stableId = await _loadOrInitStableId(vault);
+    return new AgentIdentity({ seed, vault, stableId });
   }
 
   /**
@@ -108,7 +142,9 @@ export class AgentIdentity {
     const parsed = _parseEntry(raw);
 
     const oldSeed     = b64decode(parsed.current);
-    const oldIdentity = new AgentIdentity({ seed: oldSeed, vault });
+    /** stableId survives rotation — load (or lazy-init for legacy vaults). */
+    const stableId    = await _loadOrInitStableId(vault);
+    const oldIdentity = new AgentIdentity({ seed: oldSeed, vault, stableId });
 
     const newSeed     = nacl.randomBytes(32);
     const graceUntil  = Date.now() + gracePeriodSeconds * 1_000;
@@ -123,15 +159,31 @@ export class AgentIdentity {
     };
     await vault.set('agent-privkey', JSON.stringify(blob));
 
-    const newIdentity = new AgentIdentity({ seed: newSeed, vault });
+    const newIdentity = new AgentIdentity({ seed: newSeed, vault, stableId });
     return { oldIdentity, newIdentity, graceUntil };
   }
 
   // ── Identity ───────────────────────────────────────────────────────────────
 
-  /** Ed25519 public key as base64url string — the agent's stable identity. */
+  /** Ed25519 public key as base64url string — rotates via `Agent.rotateIdentity()`. */
   get pubKey() {
     return b64encode(this.#signKP.publicKey);
+  }
+
+  /**
+   * Stable opaque user identifier (Stoop V1 Phase 11).  Generated once
+   * at first construction (or lazy-init on legacy vaults), persisted
+   * under `agent-stable-id`, **untouched by rotation**.  Apps use it
+   * for the "this person" key (mute / ban / report / peer-cache).
+   *
+   * Survives `Agent.rotateIdentity()`: the new keypair carries the
+   * same `stableId` because the rotation path doesn't touch the
+   * `agent-stable-id` vault key.  The detached `previous` identity
+   * handed back by `restoreWithPrevious()` carries the same value
+   * too — it's the same person under an older keypair.
+   */
+  get stableId() {
+    return this.#stableId;
   }
 
   /**

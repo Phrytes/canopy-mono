@@ -1,13 +1,22 @@
+/**
+ * @canopy/sync-engine — pod ↔ external-source sync engine.
+ *
+ * Post-Phase 5.1 (2026-05-04): the V0 `SyncEngine` + `IngestQueueSource` +
+ * `LocalFolderSource` + `InMemoryBackend` + `storageConvention` were
+ * deleted as a parallel implementation of `core.DataSource` /
+ * `core.PodStorageConvention`. The substrate now ships only the
+ * Folio-lifted `SyncEngine` (formerly `BidirectionalSyncEngine`) +
+ * the lifted helpers (`PathMap`, `scanLocal`, `scanPod`, `diff`,
+ * `versions`, adapters).
+ *
+ * For one-shot ingest patterns (e.g. `apps/import-bridge-v0`), apps
+ * write directly through any `core.DataSource` (e.g. `MemorySource` for
+ * tests, `pod-client.PodClient`-wrapped for production). For
+ * bidirectional sync (`apps/folio`), this `SyncEngine` is the engine.
+ * For one-way live sync from a peer, use `core.protocol.LiveSyncSkill`.
+ */
+
 export { SyncEngine } from './SyncEngine.js';
-export { BidirectionalSyncEngine } from './BidirectionalSyncEngine.js';
-export { IngestQueueSource } from './sources/IngestQueueSource.js';
-export { LocalFolderSource } from './sources/LocalFolderSource.js';
-export { InMemoryBackend } from './backends/InMemoryBackend.js';
-export {
-  classifyStorage,
-  buildReferenceManifest,
-  DEFAULT_SMALL_THRESHOLD_BYTES,
-} from './storageConvention.js';
 
 // Folio-lifted helpers (V0.3+).  PathMap accepts an injected
 // `parseSharePath` hook; consumers that don't care about share folders

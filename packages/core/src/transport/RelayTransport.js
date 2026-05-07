@@ -11,12 +11,19 @@
  *   Relay  → Client: { type: 'message', envelope: { ... } }
  *   Relay  → Client: { type: 'error', message: '<reason>' }
  *
+ * Push wake-up (E2c, opt-in on relay):
+ *   Client → Relay: { type: 'register-push-token',   token, platform }
+ *   Relay  → Client: { type: 'push-token-registered' }
+ *   Client → Relay: { type: 'unregister-push-token' }
+ *   Relay  → Client: { type: 'push-token-unregistered' }
+ *
  * Reconnect: automatically reconnects with exponential backoff on close/error.
  * Uses `ws` in Node.js; falls back to globalThis.WebSocket in browsers.
  */
 import { Transport } from './Transport.js';
 
 const MAX_BACKOFF_MS = 30_000;
+const PUSH_ACK_TIMEOUT_MS = 5_000;
 
 export class RelayTransport extends Transport {
   #ws        = null;
@@ -26,6 +33,8 @@ export class RelayTransport extends Transport {
   #connectPromise = Promise.resolve();  // starts resolved; reset on close
   #connectResolve = null;               // resolve fn for the current connect promise
   #knownPeers = new Set();              // addresses already emitted as peer-discovered
+  /** Pending push-control acks: [{ackType, resolve, reject, timer}, ...]. FIFO. */
+  #pendingPushAcks = [];
 
   /**
    * @param {object} opts
@@ -63,6 +72,11 @@ export class RelayTransport extends Transport {
   async disconnect() {
     this.#stopped = true;
     this.#knownPeers.clear();
+    // Reject any in-flight push-control acks; their reply will never arrive.
+    while (this.#pendingPushAcks.length > 0) {
+      const h = this.#pendingPushAcks[0];
+      h.reject(new Error('Relay: transport disconnected before ack'));
+    }
     this.#ws?.close();
     this.#ws = null;
     this.emit('disconnect');
@@ -76,10 +90,85 @@ export class RelayTransport extends Transport {
         setTimeout(() => reject(new Error('Relay: not connected')), 5_000)
       ),
     ]);
-    this.#ws.send(JSON.stringify({ type: 'send', to, envelope }));
+    // Topic-aware offline queueing (Phase 7 step 4): if the envelope was
+    // built via `publishOneWay`, lift its `_topic` into the wire frame so
+    // the relay can bucket the offline buffer per-(addr, topic). Other
+    // envelopes go through the legacy per-addr FIFO bucket.
+    const frame = { type: 'send', to, envelope };
+    if (envelope._topic) frame.topic = envelope._topic;
+    this.#ws.send(JSON.stringify(frame));
+  }
+
+  /**
+   * Register a device push token with the relay so the relay can wake the
+   * device when an envelope is queued for this address while offline.
+   * Requires the relay to have been started with `pushSender` configured.
+   *
+   * @param {object} args
+   * @param {string} args.token        Expo / APNs / FCM token from `MobilePushBridge.register()`.
+   * @param {string} [args.platform]   'ios' | 'android' | 'web' (informational).
+   * @returns {Promise<void>}          resolves on `push-token-registered` ack;
+   *                                   rejects on timeout (5s) or transport error.
+   */
+  async registerPushToken({ token, platform } = {}) {
+    if (!token || typeof token !== 'string') {
+      throw new TypeError('RelayTransport.registerPushToken: token required');
+    }
+    await this.#awaitConnected();
+    return this.#sendAndAwaitAck(
+      { type: 'register-push-token', token, platform },
+      'push-token-registered',
+    );
+  }
+
+  /**
+   * Unregister this address's push token.  Idempotent.
+   *
+   * @returns {Promise<void>}
+   */
+  async unregisterPushToken() {
+    await this.#awaitConnected();
+    return this.#sendAndAwaitAck(
+      { type: 'unregister-push-token' },
+      'push-token-unregistered',
+    );
   }
 
   // ── Private ───────────────────────────────────────────────────────────────
+
+  /** Block until registered with the relay, or fail fast if unreachable. */
+  async #awaitConnected() {
+    await Promise.race([
+      this.#connectPromise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Relay: not connected')), 5_000)
+      ),
+    ]);
+  }
+
+  /** Send a control frame and resolve when the matching ack lands (or timeout). */
+  #sendAndAwaitAck(frame, ackType) {
+    return new Promise((resolve, reject) => {
+      const handler = { ackType };
+      const cleanup = () => {
+        const idx = this.#pendingPushAcks.indexOf(handler);
+        if (idx >= 0) this.#pendingPushAcks.splice(idx, 1);
+        clearTimeout(handler.timer);
+      };
+      handler.resolve = () => { cleanup(); resolve(); };
+      handler.reject  = (e) => { cleanup(); reject(e); };
+      handler.timer   = setTimeout(
+        () => handler.reject(new Error(`${frame.type}: relay did not acknowledge within ${PUSH_ACK_TIMEOUT_MS}ms`)),
+        PUSH_ACK_TIMEOUT_MS,
+      );
+      this.#pendingPushAcks.push(handler);
+      try {
+        this.#ws.send(JSON.stringify(frame));
+      } catch (err) {
+        handler.reject(err);
+      }
+    });
+  }
 
   /** Emit peer-discovered once per address (skip self and duplicates). */
   #discoverPeer(addr) {
@@ -155,7 +244,22 @@ export class RelayTransport extends Transport {
         this._receive(msg.envelope);
         return;
       }
+      // Push-control acks (E2c).  Resolve the oldest pending handler whose
+      // ackType matches; non-matching handlers stay in the queue.
+      if (msg.type === 'push-token-registered' || msg.type === 'push-token-unregistered') {
+        const idx = this.#pendingPushAcks.findIndex((h) => h.ackType === msg.type);
+        if (idx >= 0) this.#pendingPushAcks[idx].resolve();
+        return;
+      }
       if (msg.type === 'error') {
+        // If a push-control call is in flight, reject it with the relay's
+        // message — that gives clear feedback to register/unregisterPushToken
+        // callers.  Otherwise surface as a generic transport error.
+        const pendingPush = this.#pendingPushAcks[0];
+        if (pendingPush && /push|register/i.test(msg.message ?? '')) {
+          pendingPush.reject(new Error(`Relay: ${msg.message}`));
+          return;
+        }
         this.emit('error', new Error(`Relay: ${msg.message}`));
       }
     };

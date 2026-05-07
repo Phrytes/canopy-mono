@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>H4 — My tasks</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">All open</a>
+      <a href="/mine.html" class="active">My tasks</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section id="mine">
+      <h2>Assigned to me</h2>
+      <ul id="mine-list"><li class="empty">Loading…</li></ul>
+    </section>
+
+    <section id="claimable">
+      <h2>Claimable (unassigned)</h2>
+      <ul id="claimable-list"><li class="empty">Loading…</li></ul>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      callSkill, renderTasks, getActor, mountLive,
+    } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    const me = await getActor();
+    const role = await fetchRole(me);
+
+    async function fetchRole(actor) {
+      try {
+        const res = await fetch('/tasks-config.json');
+        if (!res.ok) return 'member';
+        const cfg = await res.json();
+        return cfg?.roles?.[actor] ?? 'member';
+      } catch { return 'member'; }
+    }
+
+    async function refresh() {
+      const mine      = await callSkill('listMine', {});
+      const claimable = await callSkill('listClaimable', {});
+      const ctx = {
+        me, role,
+        onClaim:    async (id)      => { await callSkill('claimTask',    {id}); await refresh(); },
+        onComplete: async (id)      => { await callSkill('completeTask', {id}); await refresh(); },
+        onReassign: async (id, who) => { await callSkill('reassignTask', {id, newAssignee: who}); await refresh(); },
+        onRemove:   async (id)      => { await callSkill('removeTask',   {id}); await refresh(); },
+      };
+      renderTasks(document.getElementById('mine-list'),      mine.items      ?? [], ctx);
+      renderTasks(document.getElementById('claimable-list'), claimable.items ?? [], ctx);
+    }
+    await refresh();
+    mountLive(['item-added', 'item-completed', 'item-removed', 'item-claimed'], refresh);
+  </script>
+</body>
+</html>

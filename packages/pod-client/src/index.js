@@ -1,9 +1,16 @@
 /**
- * @canopy/pod-client — public API.
+ * @canopy/pod-client — high-level pod read/write/list + conflict
+ * detection + tombstone-backed delete-scope. Public API.
  *
- * Scaffolded by A5a.  A5b1 will add `CapabilityAuth` + `SolidOidcAuth`
- * concretes; A5b2 will add `PodClient`.  Until those land, this package
- * exposes only the error taxonomy and the `Auth` interface.
+ * **Layer: SDK foundation.** Substrates and apps compose primitives from this
+ * package; substrates MUST NOT reinvent them (no parallel HTTP fetch, no
+ * homebrew tombstone store, no in-substrate merge contracts), apps MUST
+ * justify direct use in their README. See
+ * `Project Files/conventions/architectural-layering.md`.
+ *
+ * Scaffolded by A5a; A5b1 added `CapabilityAuth` + `SolidOidcAuth`;
+ * A5b2 added `PodClient`. A6 added `TombstoneStore` + per-platform adapters.
+ * A7 added `ConflictResolver`.
  */
 
 export {

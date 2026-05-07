@@ -2,17 +2,15 @@
  * ScenarioRow — one row per scenario stub.
  *
  *   ┌─────────────────────────────────────────────────────────┐
- *   │ S1 — Bootstrap & recover         [pending]   Run | Log │
- *   ├─────────────────────────────────────────────────────────┤
- *   │ (LogPane appears here when "Log" is toggled on)         │
+ *   │ S1 — Bootstrap & recover         [pending]   Run        │
  *   └─────────────────────────────────────────────────────────┘
  *
- * Owns the log buffer + status pill for its scenario; calls back into
- * the scenario's `run({ log, sdk })` and reflects the returned status.
+ * The row owns its status pill + Run button.  Log output is forwarded
+ * to a shared LogPane at the bottom of the screen via the `log` prop —
+ * scenarios call `log(line)` and the pane prefixes with the scenario id.
  */
 import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { LogPane } from './LogPane.js';
 
 const STATUS_COLOR = {
   pending:   '#6b7094',
@@ -22,23 +20,16 @@ const STATUS_COLOR = {
   degraded:  '#e0c45c',
 };
 
-export function ScenarioRow({ scenario, sdk }) {
+export function ScenarioRow({ scenario, sdk, log }) {
   const [status, setStatus] = useState('pending');
   const [detail, setDetail] = useState('not run yet');
-  const [entries, setEntries] = useState([]);
-  const [showLog, setShowLog] = useState(false);
   const [running, setRunning] = useState(false);
-
-  const log = useCallback((line) => {
-    setEntries((prev) => [...prev, { ts: Date.now(), line }]);
-  }, []);
 
   const onRun = useCallback(async () => {
     if (running) return;
     setRunning(true);
     setStatus('running');
     setDetail('running…');
-    setShowLog(true);
     log(`> run() starting`);
     const t0 = Date.now();
     try {
@@ -80,15 +71,7 @@ export function ScenarioRow({ scenario, sdk }) {
         >
           <Text style={styles.btnText}>{running ? 'Running…' : 'Run'}</Text>
         </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.btn, styles.btnLog, pressed && styles.btnPressed]}
-          onPress={() => setShowLog((v) => !v)}
-        >
-          <Text style={styles.btnText}>{showLog ? 'Hide log' : 'Show log'}</Text>
-        </Pressable>
       </View>
-
-      {showLog && <LogPane entries={entries} />}
     </View>
   );
 }
@@ -105,7 +88,6 @@ const styles = StyleSheet.create({
   actions:     { flexDirection: 'row', gap: 8, marginTop: 8 },
   btn:         { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   btnRun:      { backgroundColor: '#3b4670' },
-  btnLog:      { backgroundColor: '#262a36' },
   btnPressed:  { opacity: 0.7 },
   btnDisabled: { opacity: 0.5 },
   btnText:     { color: '#d4d8f0', fontSize: 13, fontWeight: '600' },

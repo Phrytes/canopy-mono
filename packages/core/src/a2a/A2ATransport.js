@@ -23,27 +23,52 @@ import { genId, P }         from '../Envelope.js';
 
 const isAsyncGen = x => x && typeof x[Symbol.asyncIterator] === 'function';
 
+// Minimal MIME table for the optional staticDir fallback (Phase 7).
+const STATIC_MIME = Object.freeze({
+  '.html': 'text/html; charset=utf-8',
+  '.htm':  'text/html; charset=utf-8',
+  '.js':   'application/javascript; charset=utf-8',
+  '.mjs':  'application/javascript; charset=utf-8',
+  '.css':  'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg':  'image/svg+xml',
+  '.ico':  'image/x-icon',
+  '.png':  'image/png',
+});
+
 export class A2ATransport extends Transport {
   #agent;
   #port;
+  #host;
   #baseUrl;
   #a2aTLSLayer;
+  #staticDir;
+  #indexFile;
+  #extraStaticFiles;
   #server = null;
 
   /**
    * @param {object} opts
    * @param {import('../Agent.js').Agent}        opts.agent
    * @param {number}                             [opts.port]     — HTTP server port
+   * @param {string}                             [opts.host]     — bind interface (e.g. '127.0.0.1' to listen on localhost only). Default: undefined → Node binds on all interfaces.
    * @param {string}                             [opts.baseUrl]  — public base URL
    * @param {import('./A2ATLSLayer.js').A2ATLSLayer} [opts.a2aTLSLayer]
+   * @param {string}                             [opts.staticDir] — Optional directory served over HTTP for any path that is NOT an A2A endpoint. Used by the agent-ui substrate's `mountLocalUi` to ship a per-app web UI alongside the agent's A2A surface (Phase 7 H5 V2 product items).
+   * @param {string}                             [opts.indexFile='index.html'] — File served when the requested path is `/` (only when `staticDir` is set).
+   * @param {Record<string, string|Uint8Array>}  [opts.extraStaticFiles] — Optional in-memory virtual files served alongside `staticDir`. Keys are URL paths (e.g. `/groups.json`); values are the content. Checked BEFORE `staticDir` so virtual files override disk files at the same path. Used to surface runtime-generated state (e.g. multi-group launcher's group index) without writing to the source tree.
    */
-  constructor({ agent, port = null, baseUrl = null, a2aTLSLayer = null }) {
-    const address = baseUrl ?? (port ? `http://localhost:${port}` : 'a2a:no-server');
+  constructor({ agent, port = null, host = null, baseUrl = null, a2aTLSLayer = null, staticDir = null, indexFile = 'index.html', extraStaticFiles = null }) {
+    const address = baseUrl ?? (port ? `http://${host ?? 'localhost'}:${port}` : 'a2a:no-server');
     super({ address });
-    this.#agent       = agent;
-    this.#port        = port;
-    this.#baseUrl     = baseUrl;
-    this.#a2aTLSLayer = a2aTLSLayer;
+    this.#agent            = agent;
+    this.#port             = port;
+    this.#host             = host;
+    this.#baseUrl          = baseUrl;
+    this.#a2aTLSLayer      = a2aTLSLayer;
+    this.#staticDir        = staticDir;
+    this.#indexFile        = indexFile;
+    this.#extraStaticFiles = extraStaticFiles ?? null;
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -63,14 +88,18 @@ export class A2ATransport extends Transport {
     });
 
     await new Promise((resolve, reject) => {
-      this.#server.listen(this.#port, resolve);
+      // When host is null, Node binds on all interfaces (legacy behavior).
+      // When host is set (e.g. '127.0.0.1'), the server is reachable only
+      // on that interface.
+      if (this.#host) this.#server.listen(this.#port, this.#host, resolve);
+      else            this.#server.listen(this.#port, resolve);
       this.#server.once('error', reject);
     });
 
     // Update address with the actual port when OS assigned one (port 0).
     const actualPort = this.#server.address().port;
     if (!this.#baseUrl) {
-      this._setAddress(`http://localhost:${actualPort}`);
+      this._setAddress(`http://${this.#host ?? 'localhost'}:${actualPort}`);
     }
   }
 
@@ -131,8 +160,74 @@ export class A2ATransport extends Transport {
       return this.#handleTaskStatus(req, res, taskMatch[1]);
     }
 
+    // Static-file fallback (additive Phase 7 — used by agent-ui's
+    // `mountLocalUi({staticDir})` to ship a per-app web UI alongside the
+    // A2A surface). Restricted to GET; same path-traversal hardening
+    // pattern as the relay's static server. In-memory `extraStaticFiles`
+    // are checked first so the launcher can overlay runtime-generated
+    // resources (e.g. /groups.json) without writing to the source tree.
+    if (method === 'GET') {
+      if (this.#extraStaticFiles) {
+        const served = this.#tryServeExtra(pathname, res);
+        if (served) return;
+      }
+      if (this.#staticDir) {
+        const served = await this.#tryServeStatic(pathname, res);
+        if (served) return;
+      }
+    }
+
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not Found');
+  }
+
+  #tryServeExtra(pathname, res) {
+    const v = this.#extraStaticFiles[pathname];
+    if (v == null) return false;
+    let body, mime;
+    if (typeof v === 'string') {
+      body = v;
+      mime = pathname.endsWith('.json') ? 'application/json; charset=utf-8'
+           : pathname.endsWith('.html') ? 'text/html; charset=utf-8'
+           : pathname.endsWith('.js')   ? 'application/javascript; charset=utf-8'
+           : pathname.endsWith('.css')  ? 'text/css; charset=utf-8'
+           : 'text/plain; charset=utf-8';
+    } else {
+      body = v;
+      mime = 'application/octet-stream';
+    }
+    res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-cache' });
+    res.end(body);
+    return true;
+  }
+
+  async #tryServeStatic(pathname, res) {
+    const { readFile, stat } = await import('node:fs/promises');
+    const { extname, join, resolve: resolvePath } = await import('node:path');
+
+    let p = pathname;
+    if (p === '/' || p === '') p = '/' + this.#indexFile;
+    const rootAbs = resolvePath(this.#staticDir);
+    const filePath = resolvePath(join(rootAbs, p));
+    if (!filePath.startsWith(rootAbs)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      res.end('Forbidden');
+      return true;
+    }
+    try {
+      const s = await stat(filePath);
+      if (s.isDirectory()) return false;   // fall through to 404
+      const data = await readFile(filePath);
+      const mime = STATIC_MIME[extname(filePath)] ?? 'application/octet-stream';
+      res.writeHead(200, {
+        'Content-Type':  mime,
+        'Cache-Control': 'no-cache',
+      });
+      res.end(data);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   // ── Server handlers ───────────────────────────────────────────────────────

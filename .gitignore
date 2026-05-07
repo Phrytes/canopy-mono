@@ -26,5 +26,32 @@ apps/*/android/local.properties
 apps/*/ios/build/
 apps/*/ios/Pods/
 
+# Same for SDK packages that ship native modules (currently react-native).
+packages/*/android/build/
+packages/*/android/app/build/
+packages/*/android/.gradle/
+packages/*/android/.idea/
+packages/*/android/local.properties
+packages/*/ios/build/
+packages/*/ios/Pods/
+
+# Vitest / vite / test runner artifacts
+**/.vitest-cache/
+**/coverage/
+
+# Common log / temp files
+*.log
+*.tmp
+.DS_Store
+
 # Whole android/ tree under folio-mobile is generated on first run
 apps/folio-mobile/android/
+# sdk-smoke android/ is also generated on first `expo run:android`
+apps/sdk-smoke/android/
+
+# Firebase credentials — required for expo-notifications on Android dev builds
+# (see packages/react-native/docs/BRING-UP-NOTES.md Trap 18).  google-services.json
+# is per-app + per-Firebase-project; the service-account JSON unlocks FCM v1 send.
+apps/*/google-services.json
+apps/*/firebase-service-account.json
+apps/*/firebase-credentials.json

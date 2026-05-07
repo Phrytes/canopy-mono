@@ -9,7 +9,15 @@
  * Relay configuration shape:
  *   {
  *     acceptedGroups: [
- *       { groupId: '<id>', adminPubKey: '<base64url>', requiredRole?: 'member' },
+ *       {
+ *         groupId:        '<id>',
+ *         adminPubKey:    '<base64url>',
+ *         requiredRole?:  'member',
+ *
+ *         // Phase 2 (Stoop V1 — 2026-05-05) additions; all optional.
+ *         quotas?:        { msgsPerDay?: number, maxConnections?: number },
+ *         revokedMembers?: ['<memberPubKey>', ...],
+ *       },
  *       ...
  *     ]
  *   }
@@ -24,8 +32,26 @@
  * the five standard role ranks are used (admin > coordinator > member >
  * observer > external); deployments using custom roles can pass a
  * `roleRanks` map at construction time.
+ *
+ * Phase 2 (Stoop V1, 2026-05-05) additions, all opt-in:
+ *
+ *   - `verifyBound({ proof, connectingPubKey, rotationProof? })` is the
+ *     strict counterpart to `verify(proof)`.  It also checks that the
+ *     proof was issued for the connecting key (closing the spoofing
+ *     loophole) — UNLESS a valid `KeyRotationProof` is presented that
+ *     links the proof's `memberPubKey` to the connecting `newPubKey`
+ *     and is still within its grace period.  Composes
+ *     `core.KeyRotation.verify` and `isWithinGracePeriod`.
+ *   - `revokedMembers: ['<pubKey>']` per accepted-group entry: members
+ *     whose proofs are rejected even when otherwise valid.  Static
+ *     config; dynamic admin-signed revocation messages are deferred
+ *     to V2 (Stoop Relay Kit).
+ *   - `quotas: { msgsPerDay?, maxConnections? }` per accepted-group
+ *     entry.  The verifier exposes the configured quota on `verify`'s
+ *     return value; the *enforcement* (per-group counters) lives in
+ *     the relay server, not here.  See `server.js` for the integration.
  */
-import { verifyGroupProof } from '@canopy/core';
+import { verifyGroupProof, KeyRotation } from '@canopy/core';
 
 /** Default rank table — mirrors `packages/core/src/permissions/Roles.js`. */
 const DEFAULT_ROLE_RANKS = Object.freeze({
@@ -75,6 +101,7 @@ export class GroupAuthVerifier {
    *   - 'GROUP_NOT_ACCEPTED'   — proof's groupId is not in the accepted list
    *   - 'INVALID_PROOF'        — sig invalid, expired, or wrong admin pubkey
    *   - 'INSUFFICIENT_ROLE'    — proof's role rank below the group's requiredRole
+   *   - 'MEMBER_REVOKED'       — proof's memberPubKey is on the group's revokedMembers list
    *
    * @param {object|undefined} proof
    * @returns {{ ok: true, group: object|null } | { ok: false, reason: string }}
@@ -102,6 +129,79 @@ export class GroupAuthVerifier {
       }
     }
 
+    if (Array.isArray(cfg.revokedMembers)
+        && cfg.revokedMembers.includes(proof.memberPubKey)) {
+      return { ok: false, reason: 'MEMBER_REVOKED' };
+    }
+
     return { ok: true, group: cfg };
+  }
+
+  /**
+   * Strict counterpart to `verify()`.  Adds a binding check: the
+   * `proof.memberPubKey` must equal the `connectingPubKey` (the address
+   * the client is trying to register with) UNLESS a valid
+   * `KeyRotationProof` is presented that links them.
+   *
+   * Without this check, anyone holding any valid groupProof could
+   * register at any address — the relay's `clients` map is keyed by
+   * address, so every subsequent message would route to the spoofing
+   * connection.  Apps that want this tightening (Stoop V1 does) call
+   * `verifyBound`; existing relays that prefer the looser legacy
+   * behaviour keep using `verify()`.
+   *
+   * Reasons (in addition to those of `verify`):
+   *   - 'BINDING_MISMATCH'     — proof.memberPubKey ≠ connectingPubKey and no valid rotationProof
+   *   - 'INVALID_ROTATION'     — rotationProof signature/shape invalid, or links the wrong keys
+   *   - 'ROTATION_EXPIRED'     — rotationProof outside its grace period
+   *
+   * @param {object} args
+   * @param {object} args.proof              — the GroupProof being presented
+   * @param {string} args.connectingPubKey   — the address the client is registering with
+   * @param {object} [args.rotationProof]    — optional KeyRotationProof bridging old → new
+   * @param {() => number} [args.now]        — clock injection for tests; defaults to Date.now
+   * @returns {{ ok: true, group: object|null } | { ok: false, reason: string }}
+   */
+  verifyBound({ proof, connectingPubKey, rotationProof, now } = {}) {
+    if (typeof connectingPubKey !== 'string' || !connectingPubKey) {
+      throw new TypeError('verifyBound: connectingPubKey required');
+    }
+
+    // Run the standard verify first; if it fails, fail with the same reason.
+    const base = this.verify(proof);
+    if (!base.ok) return base;
+
+    // Open mode → no binding to enforce.
+    if (this.isOpen) return base;
+
+    // Fast path: proof is already issued for the connecting key.
+    if (proof.memberPubKey === connectingPubKey) return base;
+
+    // Slow path: must present a rotation chain.
+    if (!rotationProof) {
+      return { ok: false, reason: 'BINDING_MISMATCH' };
+    }
+
+    const linksOldToNew =
+      rotationProof.oldPubKey === proof.memberPubKey
+      && rotationProof.newPubKey === connectingPubKey;
+    if (!linksOldToNew) {
+      return { ok: false, reason: 'INVALID_ROTATION' };
+    }
+
+    if (!KeyRotation.verify(rotationProof, proof.memberPubKey)) {
+      return { ok: false, reason: 'INVALID_ROTATION' };
+    }
+
+    // Grace-period check uses Date.now() inside KeyRotation by default;
+    // accept a `now` injection for deterministic tests.
+    const within = typeof now === 'function'
+      ? now() < rotationProof.issuedAt + rotationProof.gracePeriod * 1_000
+      : KeyRotation.isWithinGracePeriod(rotationProof);
+    if (!within) {
+      return { ok: false, reason: 'ROTATION_EXPIRED' };
+    }
+
+    return base;
   }
 }

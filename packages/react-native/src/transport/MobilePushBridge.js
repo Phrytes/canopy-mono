@@ -104,22 +104,24 @@ export class MobilePushBridge {
     this.#agent.emit?.('push', { data, foreground });
 
     // Convention: when payload carries a skillId that matches a registered
-    // skill, invoke it locally — wake-and-process.
+    // skill, run its handler locally — wake-and-process.
     const skillId = data.skillId;
     if (!skillId) return;
 
     const skills = this.#agent.skills;
-    const hasSkill = typeof skills?.get === 'function' && skills.get(skillId);
-    if (!hasSkill) return;
+    const skill  = typeof skills?.get === 'function' ? skills.get(skillId) : null;
+    if (!skill || typeof skill.handler !== 'function') return;
 
+    // Push wakes the agent locally; running through Agent.invoke would
+    // ship the call out to a peer/relay and back to ourselves. Call the
+    // handler directly. envelope is null because the push payload didn't
+    // arrive over the A2A wire — handlers that need an envelope should
+    // not be wired to a push entry point.
     const parts = Array.isArray(data.parts) ? data.parts : [];
-    const selfTarget =
-      this.#agent.address ?? this.#agent.identity?.pubKey ?? null;
+    const from  = this.#agent.address ?? this.#agent.identity?.pubKey ?? null;
 
     try {
-      // Best-effort fire-and-forget; errors surface via 'error' event.
-      const result = this.#agent.invoke?.(selfTarget, skillId, parts);
-      // If invoke returns a Promise / Task, attach error handling.
+      const result = skill.handler({ parts, from, envelope: null });
       if (result && typeof result.catch === 'function') {
         result.catch((err) => this.#agent.emit?.('error', err));
       }

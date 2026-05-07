@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>Stoop — Account herstellen</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .step-card {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .step-card.active { border-color: var(--accent, #1d6e56); }
+    .step-card.done   { opacity: 0.7; }
+    .step-num {
+      display: inline-block;
+      width: 1.6rem; height: 1.6rem;
+      border-radius: 50%;
+      background: var(--accent, #1d6e56);
+      color: var(--bg);
+      text-align: center;
+      line-height: 1.6rem;
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .pubkey-preview {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.85rem;
+      word-break: break-all;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+    .warn-box {
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+      padding: 0.6rem 0.9rem;
+      border-radius: var(--radius);
+      margin: 0.6rem 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/welcome.html">← Terug</a>
+      <a href="/">Buurt</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <h2>Account herstellen op dit apparaat</h2>
+      <p class="hint">
+        Heb je je herstelzin (12 of 24 woorden) van een ander apparaat?
+        Voer hem hieronder in. Daarna logt je app in op je pod en
+        haalt al je oude posts, contacten en instellingen op.
+      </p>
+
+      <div id="step-1" class="step-card active">
+        <h3><span class="step-num">1</span>Herstelzin invoeren</h3>
+        <p class="hint">De zin verlaat dit apparaat niet. We checken eerst of hij geldig is.</p>
+        <form id="mnemonic-form" style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <textarea id="mnemonic-input" rows="3" required
+                    placeholder="bv. abandon ability able about ..." autocomplete="off"></textarea>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button type="submit">Valideer</button>
+            <span id="step-1-status" class="hint"></span>
+          </div>
+        </form>
+      </div>
+
+      <div id="step-2" class="step-card" hidden>
+        <h3><span class="step-num">2</span>Bevestigen</h3>
+        <p>Dit zou je publieke sleutel worden:</p>
+        <pre id="pubkey-display" class="pubkey-preview"></pre>
+        <div class="warn-box">
+          ⚠️ Bevestigen overschrijft de huidige identiteit op dit
+          apparaat. Posts / contacten / instellingen die nu lokaal
+          staan worden vervangen zodra Stoop opnieuw start.
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button id="confirm-restore" type="button">Bevestig en herstel</button>
+          <button id="cancel-restore" type="button" class="ghost">Annuleren</button>
+          <span id="step-2-status" class="hint"></span>
+        </div>
+      </div>
+
+      <div id="step-3" class="step-card" hidden>
+        <h3><span class="step-num">3</span>Klaar — herstart Stoop</h3>
+        <p>De nieuwe identiteit is opgeslagen. Sluit deze tab + start
+        het Stoop-proces opnieuw op:</p>
+        <pre style="background: var(--bg); border: 1px solid var(--border); padding: 0.5rem; border-radius: 4px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem;">node bin/stoop-ui.js --actor &lt;jouw-webid&gt; --group &lt;groep&gt; --persist-dir &lt;dezelfde-dir&gt;</pre>
+        <p class="hint">
+          Na de herstart logt Stoop in op je pod — dat trekt automatisch
+          al je posts, contacten en instellingen op. Je hoeft verder
+          niets te doen.
+        </p>
+        <p>
+          <a href="/sign-in.html">Pod-aanmelding voorbereiden →</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { callSkill } from '/app.js';
+
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+    const step3 = document.getElementById('step-3');
+    const s1 = document.getElementById('step-1-status');
+    const s2 = document.getElementById('step-2-status');
+    let validatedMnemonic = null;
+
+    document.getElementById('mnemonic-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const m = document.getElementById('mnemonic-input').value.trim();
+      if (!m) return;
+      s1.textContent = 'Valideren…';
+      try {
+        const r = await callSkill('validateMnemonicPhrase', { mnemonic: m });
+        if (r.error) { s1.textContent = `Fout: ${r.error}`; return; }
+        s1.textContent = 'Geldig.';
+        validatedMnemonic = m;
+        document.getElementById('pubkey-display').textContent = r.pubKey;
+        step1.classList.remove('active');
+        step1.classList.add('done');
+        step2.hidden = false;
+        step2.classList.add('active');
+      } catch (err) {
+        s1.textContent = `Fout: ${err.message ?? err}`;
+      }
+    });
+
+    document.getElementById('confirm-restore').addEventListener('click', async () => {
+      if (!validatedMnemonic) return;
+      if (!confirm('Weet je het zeker? De huidige identiteit op dit apparaat wordt overschreven.')) return;
+      s2.textContent = 'Bezig…';
+      try {
+        const r = await callSkill('restoreFromMnemonic', {
+          mnemonic: validatedMnemonic, confirm: true,
+        });
+        if (r.error) { s2.textContent = `Fout: ${r.error}`; return; }
+        step2.classList.remove('active');
+        step2.classList.add('done');
+        step3.hidden = false;
+        step3.classList.add('active');
+      } catch (err) {
+        s2.textContent = `Fout: ${err.message ?? err}`;
+      }
+    });
+
+    document.getElementById('cancel-restore').addEventListener('click', () => {
+      validatedMnemonic = null;
+      step2.hidden = true;
+      step2.classList.remove('active');
+      step1.classList.add('active');
+      step1.classList.remove('done');
+      document.getElementById('mnemonic-input').value = '';
+      s1.textContent = '';
+      s2.textContent = '';
+    });
+  </script>
+</body>
+</html>

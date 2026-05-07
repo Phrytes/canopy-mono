@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>H4 — Open tasks</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="active">All open</a>
+      <a href="/mine.html">My tasks</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section id="add">
+      <h2>Add a task</h2>
+      <form id="add-form">
+        <label>
+          <span>Title</span>
+          <input id="add-text" type="text" required placeholder="e.g. Mow the lawn">
+        </label>
+        <details>
+          <summary>Optional details</summary>
+          <label>
+            <span>Required skills (comma-separated)</span>
+            <input id="add-skills" type="text" placeholder="e.g. lawnmower, garden">
+          </label>
+          <label>
+            <span>Dependencies (task IDs, comma-separated)</span>
+            <input id="add-deps" type="text" placeholder="ulid1, ulid2">
+          </label>
+          <label>
+            <span>Due date (YYYY-MM-DD)</span>
+            <input id="add-due" type="date">
+          </label>
+        </details>
+        <button type="submit">Add task</button>
+      </form>
+      <pre id="add-result" hidden></pre>
+    </section>
+
+    <section id="filter">
+      <h2>Open</h2>
+      <label class="inline">
+        Status filter:
+        <select id="status-filter">
+          <option value="">all</option>
+          <option value="ready">ready</option>
+          <option value="waiting">waiting</option>
+          <option value="blocked">blocked</option>
+        </select>
+      </label>
+      <ul id="task-list"><li class="empty">Loading…</li></ul>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      callSkill, renderTasks, getActor, mountLive,
+    } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+
+    // Read the agent card to derive `me` (the LocalUiAuth-configured webid)
+    // and a role label. The agent card doesn't expose role; for V0 we
+    // surface the actor URL only and let the role-policy gate report
+    // permission errors when a forbidden action is attempted.
+    const me = await getActor();
+    // Role inference: read tasks-config.json (an extraStaticFiles overlay
+    // surfaced by the launcher) for {actor: webid, role: 'admin' | …}.
+    const role = await fetchRole(me);
+
+    async function fetchRole(actor) {
+      try {
+        const res = await fetch('/tasks-config.json');
+        if (!res.ok) return 'member';
+        const cfg = await res.json();
+        return cfg?.roles?.[actor] ?? 'member';
+      } catch { return 'member'; }
+    }
+
+    async function refresh() {
+      const status = document.getElementById('status-filter').value;
+      const args = status ? { status } : {};
+      const result = await callSkill('listOpen', args);
+      const ul = document.getElementById('task-list');
+      renderTasks(ul, result.items ?? [], {
+        me, role,
+        onClaim:    async (id)        => { await callSkill('claimTask', {id});         await refresh(); },
+        onComplete: async (id)        => { await callSkill('completeTask', {id});      await refresh(); },
+        onReassign: async (id, who)   => { await callSkill('reassignTask', {id, newAssignee: who}); await refresh(); },
+        onRemove:   async (id)        => { await callSkill('removeTask', {id});        await refresh(); },
+      });
+    }
+
+    document.getElementById('status-filter').addEventListener('change', refresh);
+
+    document.getElementById('add-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text   = document.getElementById('add-text').value.trim();
+      const sk     = document.getElementById('add-skills').value.trim();
+      const deps   = document.getElementById('add-deps').value.trim();
+      const dueStr = document.getElementById('add-due').value;
+      const args = { type: 'task', text };
+      if (sk)   args.requiredSkills = sk.split(',').map(s => s.trim()).filter(Boolean);
+      if (deps) args.dependencies   = deps.split(',').map(s => s.trim()).filter(Boolean);
+      if (dueStr) args.dueAt = new Date(dueStr).getTime();
+
+      const out = document.getElementById('add-result');
+      out.hidden = false;
+      out.textContent = 'Adding…';
+      try {
+        const r = await callSkill('addTask', args);
+        out.textContent = `Added: ${r.task.id}`;
+        document.getElementById('add-form').reset();
+        await refresh();
+      } catch (err) {
+        out.textContent = `Error: ${err.message}`;
+      }
+    });
+
+    await refresh();
+    mountLive(['item-added', 'item-completed', 'item-removed', 'item-claimed'], refresh);
+  </script>
+</body>
+</html>

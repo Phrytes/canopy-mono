@@ -3,13 +3,149 @@
 Portable decentralized agent SDK.  Web and mobile apps that exchange
 messages, data, and tasks **without a required central server**.
 
-Three packages:
+## Architecture — read this first
 
-- **`@canopy/core`** — pure JS.  Runs in browser, Node, and React Native.
-- **`@canopy/react-native`** — RN-specific bits: BLE, mDNS, KeychainVault,
-  the `createMeshAgent` factory.
-- **`@canopy/relay`** — Node-only WebSocket relay server (rendezvous +
-  proxy fallback).
+> **The codebase has three layers — apps depend on substrates, substrates
+> depend on the agent SDK.  This is a project-wide invariant. Any AI or
+> human working on this repo MUST keep it top-of-mind.**
+
+```
+apps/                       ←  thin compositions; per-app glue + UI
+  ↓
+packages/{item-store,        ← substrates (L1a–L1j); reusable building blocks
+  agent-ui, skill-match,
+  notifier, identity-resolver,
+  sync-engine, chat-agent,
+  llm-client, oauth-vault,
+  pod-search}
+  ↓
+packages/{core, relay,       ← agent SDK; the foundation
+  pod-client, react-native}
+```
+
+**The agent SDK is four packages — `@canopy/core`, `@canopy/relay`,
+`@canopy/pod-client`, `@canopy/react-native`** (described below).
+Substrates compose these; substrates MUST NOT reinvent SDK primitives.
+Apps compose substrates; apps MAY use the SDK directly **only with an
+explicit justification** in the app's README.
+
+**Required reading before authoring code in this repo:**
+
+- [`Project Files/conventions/architectural-layering.md`](./Project%20Files/conventions/architectural-layering.md) — the layering rule, what each layer owns, what's NOT acceptable.
+- [`Project Files/conventions/app-readme-scheme.md`](./Project%20Files/conventions/app-readme-scheme.md) — every app under `apps/` MUST follow this README scheme. New apps ship with it from the first commit.
+- [`Project Files/Substrates/policies.md`](./Project%20Files/Substrates/policies.md) — rule-of-two extraction policy.
+- [`Project Files/Substrates/refactor/00-Overview.md`](./Project%20Files/Substrates/refactor/00-Overview.md) — substrate-vs-SDK audit (active refactor, 2026-05-04).
+- [`Project Files/AgentHub/agent-hub-design-2026-05-05.md`](./Project%20Files/AgentHub/agent-hub-design-2026-05-05.md) — the per-device Agent Hub design. **Any new app that uses the Agent SDK (directly or via substrates) must be designed to be compatible with the hub** — at minimum, spawn / extend agents under the user's root identity via capability tokens, and avoid design choices that would preclude a future "lite mode" where heavy work (relay connection, pod credentials, peer/hop tables) is delegated to the hub. The hub itself is still a design exploration; current apps may run standalone, but new apps must declare their hub-attachment plan in their README (see the scheme). The same rule applies to project-level designs under `Project Files/projects/` — see [`Project Files/projects/README.md`](./Project%20Files/projects/README.md#agent-hub-compatibility--applies-to-every-agentic-project-here).
+- [`Project Files/conventions/i18n.md`](./Project%20Files/conventions/i18n.md) — every app with a user-facing surface ships translatable from the first commit; substrates emit error codes, not user-facing strings.
+
+> **Coding-plan location policy (2026-05-05):** new coding plans
+> live next to the project they belong to (e.g.
+> `Project Files/Stoop/coding-plan-v1-2026-05-05.md` for Stoop V1).
+> The old `Project Files/coding-plans/` directory is **deprecated
+> for new plans** and kept read-only for ongoing tracks (track-H,
+> H5-V2, etc.). Don't add new files to that directory.
+
+### Project-wide engineering practices
+
+Three patterns apply across every agentic project in this repo and
+are worth knowing before authoring any of them:
+
+- **Local-only mode is the floor; pod is portability.** Every app
+  must work fully without an authenticated pod. The pod is the
+  cross-device / cross-install portability layer, not a runtime
+  dependency. Apps that need *shared state across users* (household,
+  closed-group archives) and don't have a pod fall back to SDK
+  `MergeContracts` + `@canopy/relay`'s `group-publish` for P2P
+  state replication, or to a designated state-keeper peer. Full
+  pattern in
+  [`Project Files/projects/README.md`](./Project%20Files/projects/README.md#local-only-mode-is-the-floor--applies-to-every-agentic-project-here).
+- **Pod is truth, local cache is reality.** When a pod *is*
+  configured, it is authoritative — but slow / sometimes flaky. Apps
+  must read from local cache for UI rendering and sync to / from the
+  pod separately on a cadence. Writes are queued + optimistic; pod
+  outages must not break the app. Full pattern in
+  [`Project Files/projects/README.md`](./Project%20Files/projects/README.md#pod-is-truth-local-cache-is-reality--applies-to-every-agentic-project-here).
+- **Network identity rotation by default.** `Agent.rotateIdentity()`
+  in `@canopy/core` (Group FF) rotates the agent's Ed25519 keypair
+  with grace-period broadcasts. Pod WebID stays stable; network
+  pubKey rotates. Default cadence: 30 days. Reduces long-term
+  relay-traffic correlation. Full pattern in
+  [`Project Files/projects/README.md`](./Project%20Files/projects/README.md#network-identity-rotation--applies-to-every-agentic-project-here).
+
+### Decentralised disclaimer — applies to every agentic project
+
+There is no central support desk, no abuse team, no trust authority
+that can resolve problems for users — this is a structural property
+of the SDK, not a bug. Every agentic project must ship a clear
+disclaimer in onboarding (named operator, group-admin moderation,
+how-conflict-is-handled, why-this-is-the-deal) and treat
+"create-group" as a governance step, not a technical one. Full
+guidance: [`Project Files/projects/README.md`](./Project%20Files/projects/README.md#decentralised-disclaimer--every-agentic-project-ships-with-one).
+
+### Engineering practice — feedback loops on UX-load-bearing parameters
+
+Some user-facing parameters cannot be pre-tuned from a spec — push
+notification cadence is the canonical example: too aggressive →
+spam + churn; too cautious → matches die unanswered. The right
+setting depends on group size, time of day, message kind, and
+individual preference. **Plan a feedback loop instead of a guess.**
+Concretely:
+
+- Ship sensible defaults (Stoop V1: push only for `humanInTheLoop` matches, ≤ 3 / day, batched into digests beyond that).
+- Provide per-user and per-group dials.
+- Instrument metrics from day 1 (notifications received vs. dismissed, vragen answered after push vs. without).
+- Adjust defaults in V1.5 / V2 from real data.
+
+Apply the same loop pattern to: lend-return reminder cadence,
+proximity-ping rate, group-membership re-key TTL, prikbord fetch
+cadence, and any other parameter sitting in the UX-load-bearing
+critical path. See `Project Files/Stoop/advice-2026-05-05.md` §
+"Engineering practice — feedback loop" for the worked example.
+
+---
+
+## Pinned versions — DO NOT bump without explicit approval
+
+> **Expo 52 is the ceiling.** `expo@^52.0.0` + the SDK-52-compatible
+> `expo-asset@~11.0.5`, `expo-constants@~17.0.8`, `expo-dev-client@~5.0.20`,
+> `expo-file-system@~18.0.12`, `expo-font@~13.0.4`, `expo-keep-awake@~14.0.3`,
+> `expo-notifications@~0.29.14`, `expo-status-bar@~2.0.1`,
+> `expo-modules-autolinking@^2.0.8`. **React Native 0.76.9. React 18.3.1.**
+>
+> `npm audit fix --force` will try to bump Expo past 52 — **do not run it**.
+> The bring-up traps in
+> [`packages/react-native/docs/BRING-UP-NOTES.md`](./packages/react-native/docs/BRING-UP-NOTES.md)
+> are calibrated against this matrix; any Expo bump invalidates the
+> trap fixes and re-opens problems that took weeks to land.
+>
+> If a fresh `npm install` hits `ERESOLVE` on `react-native-get-random-values`,
+> use `--legacy-peer-deps` (matches `apps/mesh-demo`) or pin to `^1.11.0`
+> (matches `apps/folio-mobile`).
+
+The full version matrix lives at
+[`packages/react-native/docs/VERSION-MATRIX.md`](./packages/react-native/docs/VERSION-MATRIX.md).
+
+---
+
+## The agent SDK — four packages
+
+- **`@canopy/core`** — pure JS, runs in browser, Node, and React Native.
+  Identity + vault, security, transports (Relay / Local / Mqtt / Nkn /
+  Rendezvous / Offline / Internal), routing, agent class, skill registry +
+  `defineSkill`, protocols (pubSub / SkillsPubSub / taskExchange / messaging /
+  …), permissions (PolicyEngine, CapabilityToken, GroupManager), storage
+  primitives (SolidPodSource, MergeContracts, FederatedReader,
+  PodStorageConvention), A2A.
+- **`@canopy/relay`** — Node-only WebSocket relay server. Rendezvous +
+  proxy fallback + multi-recipient fan-out + group auth + push wake (E2c).
+- **`@canopy/pod-client`** — high-level Solid pod client: read, write,
+  list, conflict resolution, tombstone tracking.
+- **`@canopy/react-native`** — RN platform layer: BLE, mDNS,
+  KeychainVault, MobilePushBridge, `createMeshAgent` factory, polyfill
+  + Metro preset (see `packages/react-native/docs/BRING-UP-NOTES.md`).
+
+The full surface — every public symbol with its file:line — is mapped in
+[`Project Files/Substrates/refactor/SDK-surface-map.md`](./Project%20Files/Substrates/refactor/SDK-surface-map.md).
 
 Hands-on minimal agent: see [`QUICKSTART.md`](./QUICKSTART.md).
 Code map: see [`ARCHITECTURE.md`](./ARCHITECTURE.md).

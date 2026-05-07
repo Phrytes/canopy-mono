@@ -17,3 +17,9 @@ export { InMemoryStore }  from './storage/InMemoryStore.js';
 
 // Phase 1 convergence:
 export { HouseholdAgent } from './HouseholdAgent.js';
+
+// V2 prototype — additive coexistence with the legacy HouseholdAgent.
+// See `apps/household/docs/EXPERIMENT-RESULTS.md` § "Future work" for
+// the V2 architecture pivot plan.  Phase 1: this class ships in src/
+// alongside the legacy agent; Phase 2 retires the legacy.
+export { HouseholdAgentFreeform } from './HouseholdAgentFreeform.js';

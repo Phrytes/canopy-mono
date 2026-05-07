@@ -374,8 +374,16 @@ export class SolidPodSource extends DataSource {
    * List the contents of a container.  `containerUri` should typically end
    * with a `/` per LDP convention; if it doesn't, one is appended.
    *
+   * When `opts.recursive` is true, descends into child containers and
+   * returns a flat entry list covering every resource and container at
+   * or below `containerUri`.  Nested containers appear once each (in the
+   * `entries` list of their parent).  Mid-walk 404s are skipped silently
+   * (a child container deleted between the parent listing and the
+   * recursive descent is a normal race; other errors propagate).
+   *
    * @param {string} containerUri
    * @param {object} [opts]
+   * @param {boolean} [opts.recursive=false]
    * @returns {Promise<{ container: string, entries: Array<{
    *   uri:           string,
    *   type:          'resource'|'container',
@@ -384,24 +392,48 @@ export class SolidPodSource extends DataSource {
    *   size?:         number,
    * }>}>}
    */
-  async list(containerUri = '', _opts = {}) {   // eslint-disable-line no-unused-vars
+  async list(containerUri = '', opts = {}) {
     let resolved = this.#resolve(containerUri);
     if (!resolved.endsWith('/')) resolved += '/';
 
+    const entries = await this.#listOne(resolved);
+
+    if (!opts.recursive) {
+      return { container: resolved, entries };
+    }
+
+    // BFS through child containers; flat result list per the contract above.
+    const all   = [...entries];
+    const queue = entries.filter((e) => e.type === 'container').map((e) => e.uri);
+    while (queue.length > 0) {
+      const childContainer = queue.shift();
+      let subEntries;
+      try {
+        subEntries = await this.#listOne(childContainer);
+      } catch (err) {
+        if (err?.code === 'NOT_FOUND') continue;   // race with concurrent delete
+        throw err;
+      }
+      all.push(...subEntries);
+      for (const e of subEntries) {
+        if (e.type === 'container') queue.push(e.uri);
+      }
+    }
+    return { container: resolved, entries: all };
+  }
+
+  async #listOne(resolved) {
     let dataset;
     try {
       dataset = await getSolidDataset(resolved, { fetch: this.#fetch });
     } catch (err) {
       rethrow(err, resolved);
     }
-
     const urls = getContainedResourceUrlAll(dataset);
-    const entries = urls.map((uri) => ({
+    return urls.map((uri) => ({
       uri,
       type: uri.endsWith('/') ? 'container' : 'resource',
     }));
-
-    return { container: resolved, entries };
   }
 
   /**

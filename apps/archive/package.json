@@ -12,9 +12,13 @@
   "dependencies": {
     "@canopy/core":       "file:../../packages/core",
     "@canopy/pod-client": "file:../../packages/pod-client",
-    "better-sqlite3":       "^11.9.0"
+    "@canopy/agent-ui":   "file:../../packages/agent-ui",
+    "@canopy/pod-search": "file:../../packages/pod-search",
+    "better-sqlite3":       "^11.9.0",
+    "express":              "^4.21.0"
   },
   "devDependencies": {
+    "supertest": "^7.0.0",
     "vitest": "^2.1.0"
   }
 }

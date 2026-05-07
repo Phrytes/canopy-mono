@@ -1,3 +1,13 @@
+/**
+ * @canopy/react-native — RN platform layer (polyfills, Metro preset,
+ * BLE/mDNS/Keychain adapters, MobilePushBridge, push adapters, mesh agent
+ * factory).
+ *
+ * **Layer: SDK foundation.** Substrates and apps compose primitives from this
+ * package; substrates MUST NOT reinvent them, apps MUST justify direct use in
+ * their README. See `Project Files/conventions/architectural-layering.md`.
+ */
+
 export { KeychainVault }          from './src/identity/KeychainVault.js';
 export { attachIdentityToAgent }  from './src/identity/IdentityWiring.js';
 export { AsyncStorageAdapter }    from './src/storage/AsyncStorageAdapter.js';

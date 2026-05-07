@@ -22,9 +22,17 @@
  * each via `sendReply`.
  */
 
+import { ChatAgent } from '@canopy/chat-agent';
+
 import { regexParse } from './parsers/regexCommands.js';
 import * as Skills from './skills/index.js';
 import { classifyAndExtract } from './skills/classifyAndExtract.js';
+import {
+  buildHouseholdToolHandlers,
+  noopContextBuilder,
+  V0_TOOL_CATALOG,
+  SYSTEM_PROMPT_CLASSIFY,
+} from './llm/chatAgentBridge.js';
 
 /**
  * Map skillId strings → skill handlers.  Built once at module load
@@ -84,6 +92,8 @@ export class HouseholdAgent {
   #llm;
   /** @type {object|null} */
   #scheduler;
+  /** @type {ChatAgent|null} */
+  #chatAgent = null;
   /** @type {boolean} */
   #started = false;
 
@@ -103,6 +113,26 @@ export class HouseholdAgent {
     this.#bridges   = bridges;
     this.#llm       = llm;
     this.#scheduler = scheduler;
+
+    // When an LLM is configured, the slow path delegates to a
+    // headless @canopy/chat-agent ChatAgent: substrate handles
+    // session state + tool dispatch; HouseholdAgent owns the
+    // bridge/regex layers above it.  Skills are wrapped as tool
+    // handlers (see ./llm/chatAgentBridge.js).
+    if (this.#llm) {
+      this.#chatAgent = new ChatAgent({
+        bridges:        [],          // headless — Household sends replies itself
+        llm:            this.#llm,
+        toolCatalog:    V0_TOOL_CATALOG,
+        toolHandlers:   buildHouseholdToolHandlers({
+          agent:     this,
+          store:     this.#store,
+          scheduler: this.#scheduler,
+        }),
+        systemPrompt:   SYSTEM_PROMPT_CLASSIFY,
+        contextBuilder: noopContextBuilder,
+      });
+    }
   }
 
   /**
@@ -203,9 +233,9 @@ export class HouseholdAgent {
     const parsed = regexParse(msg.text);
 
     if (parsed === null) {
-      // ── Slow path: LLM (Phase 3) ───────────────────────────────
-      if (this.#llm) {
-        return this.#dispatchSkill('classifyAndExtract', { text: msg.text }, msg);
+      // ── Slow path: LLM via @canopy/chat-agent (B.4) ────────
+      if (this.#chatAgent) {
+        return this.#runChatAgent(msg);
       }
       // No LLM, no parse → help hint
       return HELP_HINT_REPLY;
@@ -224,6 +254,46 @@ export class HouseholdAgent {
     }
 
     return this.#dispatchSkill(parsed.skillId, parsed.args, msg);
+  }
+
+  /**
+   * Delegate the LLM slow path to the embedded @canopy/chat-agent
+   * ChatAgent.  ChatAgent handles session state + tool dispatch; tool
+   * handlers (built in ./llm/chatAgentBridge.js) wrap the existing
+   * skills and forward stateUpdates to the scheduler.  We collect the
+   * substrate's `replies` and turn them back into Household's Reply
+   * shape so the rest of the agent's flow is unchanged.
+   *
+   * @param {import('./types.js').IncomingMessage} msg
+   * @returns {Promise<import('./types.js').Reply>}
+   */
+  async #runChatAgent(msg) {
+    // Synthesise the IncomingMessage shape the substrate expects.
+    // Most fields already match; ensure isAddressed is true (the
+    // outer onMessage already filtered, so the substrate would
+    // otherwise no-op).
+    const subMsg = { ...msg, isAddressed: true };
+    let result;
+    try {
+      result = await this.#chatAgent.processMessage(subMsg);
+    } catch (err) {
+      return {
+        replies: [{ text: `Sorry, that didn't work — ${err?.message ?? 'unknown error'}.` }],
+        stateUpdates: [],
+      };
+    }
+    // Aggregate stateUpdates that the tool handlers stashed into
+    // toolResults[].data.stateUpdates (chatAgentBridge.js puts them
+    // there for downstream forwarding).
+    const stateUpdates = [];
+    for (const tr of result.toolResults ?? []) {
+      const ups = tr?.data?.stateUpdates;
+      if (Array.isArray(ups)) stateUpdates.push(...ups);
+    }
+    return {
+      replies:      result.replies ?? [],
+      stateUpdates,
+    };
   }
 
   /** Forward state updates to the scheduler (Phase 4). */

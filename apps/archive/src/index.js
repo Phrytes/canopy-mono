@@ -10,3 +10,6 @@ export { indexSource, indexOne, isTextContentType } from './Indexer.js';
 export {
   addSource, normalizePodRoot, defaultNameFor, resolveSource,
 } from './Sources.js';
+export { PodSearchAdapter }                        from './PodSearchAdapter.js';
+export { createArchiveAgent }                      from './server/agent.js';
+export { createArchiveWebServer }                  from './server/index.js';

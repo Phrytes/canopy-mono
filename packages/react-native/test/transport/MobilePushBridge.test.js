@@ -33,8 +33,9 @@ function mockAdapter({ token = 'tok-1', platform = 'ios', failPermission = false
   return adapter;
 }
 
-function mockAgent({ skillIds = ['wake'] } = {}) {
+function mockAgent({ skillIds = ['wake'], handler } = {}) {
   const events = new Map();
+  const handlerFn = handler ?? vi.fn(() => undefined);  // sync stub by default
   return {
     address:  'agent-self',
     identity: { pubKey: 'agent-pk' },
@@ -44,11 +45,11 @@ function mockAgent({ skillIds = ['wake'] } = {}) {
       events.set(event, arr);
     }),
     on: vi.fn(),
-    invoke: vi.fn(() => undefined),     // sync stub
     skills: {
-      get: vi.fn((id) => (skillIds.includes(id) ? { id } : null)),
+      get: vi.fn((id) => (skillIds.includes(id) ? { id, handler: handlerFn } : null)),
     },
-    _events: events,
+    _events:  events,
+    _handler: handlerFn,
   };
 }
 
@@ -97,7 +98,7 @@ describe('MobilePushBridge', () => {
   });
 
   describe('notification dispatch', () => {
-    it('invokes a matching skill with (selfAddress, skillId, parts)', async () => {
+    it('runs the matching skill handler locally with {parts, from, envelope}', async () => {
       const adapter = mockAdapter();
       const agent   = mockAgent({ skillIds: ['wake'] });
       const bridge  = new MobilePushBridge({ agent, adapter });
@@ -106,8 +107,12 @@ describe('MobilePushBridge', () => {
       const parts = [{ kind: 'text', text: 'go' }];
       adapter._fire({ skillId: 'wake', parts });
 
-      expect(agent.invoke).toHaveBeenCalledTimes(1);
-      expect(agent.invoke).toHaveBeenCalledWith('agent-self', 'wake', parts);
+      expect(agent._handler).toHaveBeenCalledTimes(1);
+      expect(agent._handler).toHaveBeenCalledWith({
+        parts,
+        from:     'agent-self',
+        envelope: null,
+      });
     });
 
     it('always emits a generic "push" event with { data, foreground }', async () => {
@@ -132,7 +137,7 @@ describe('MobilePushBridge', () => {
       });
     });
 
-    it('emits "push" but does NOT invoke when skillId is unknown', async () => {
+    it('emits "push" but does NOT run a handler when skillId is unknown', async () => {
       const adapter = mockAdapter();
       const agent   = mockAgent({ skillIds: ['wake'] });
       const bridge  = new MobilePushBridge({ agent, adapter });
@@ -140,12 +145,12 @@ describe('MobilePushBridge', () => {
 
       adapter._fire({ skillId: 'unknown-skill', parts: [] });
 
-      expect(agent.invoke).not.toHaveBeenCalled();
+      expect(agent._handler).not.toHaveBeenCalled();
       const pushEvents = agent._events.get('push') ?? [];
       expect(pushEvents).toHaveLength(1);
     });
 
-    it('emits "push" without invoking when skillId is absent', async () => {
+    it('emits "push" without running a handler when skillId is absent', async () => {
       const adapter = mockAdapter();
       const agent   = mockAgent();
       const bridge  = new MobilePushBridge({ agent, adapter });
@@ -153,11 +158,11 @@ describe('MobilePushBridge', () => {
 
       adapter._fire({ payload: 'opaque' });
 
-      expect(agent.invoke).not.toHaveBeenCalled();
+      expect(agent._handler).not.toHaveBeenCalled();
       expect(agent._events.get('push') ?? []).toHaveLength(1);
     });
 
-    it('falls back to identity.pubKey when address is missing', async () => {
+    it('falls back to identity.pubKey for `from` when address is missing', async () => {
       const adapter = mockAdapter();
       const agent   = mockAgent();
       agent.address = undefined;            // simulate not-yet-started agent
@@ -166,14 +171,17 @@ describe('MobilePushBridge', () => {
 
       adapter._fire({ skillId: 'wake', parts: [] });
 
-      expect(agent.invoke).toHaveBeenCalledWith('agent-pk', 'wake', []);
+      expect(agent._handler).toHaveBeenCalledWith({
+        parts:    [],
+        from:     'agent-pk',
+        envelope: null,
+      });
     });
 
-    it('forwards invoke rejection to agent "error" event', async () => {
+    it('forwards handler rejection to agent "error" event', async () => {
       const adapter = mockAdapter();
-      const agent   = mockAgent();
       const boom    = new Error('boom');
-      agent.invoke  = vi.fn(() => Promise.reject(boom));
+      const agent   = mockAgent({ handler: vi.fn(() => Promise.reject(boom)) });
       const bridge  = new MobilePushBridge({ agent, adapter });
       await bridge.register();
 
@@ -187,11 +195,10 @@ describe('MobilePushBridge', () => {
       expect(errorEvents).toContain(boom);
     });
 
-    it('forwards synchronous invoke throw to agent "error" event', async () => {
+    it('forwards synchronous handler throw to agent "error" event', async () => {
       const adapter = mockAdapter();
-      const agent   = mockAgent();
       const boom    = new Error('sync-boom');
-      agent.invoke  = vi.fn(() => { throw boom; });
+      const agent   = mockAgent({ handler: vi.fn(() => { throw boom; }) });
       const bridge  = new MobilePushBridge({ agent, adapter });
       await bridge.register();
 
@@ -209,7 +216,27 @@ describe('MobilePushBridge', () => {
 
       adapter._fire({ skillId: 'wake', parts: 'not-an-array' });
 
-      expect(agent.invoke).toHaveBeenCalledWith('agent-self', 'wake', []);
+      expect(agent._handler).toHaveBeenCalledWith({
+        parts:    [],
+        from:     'agent-self',
+        envelope: null,
+      });
+    });
+
+    it('skips dispatch when the skill record has no handler function', async () => {
+      const adapter = mockAdapter();
+      const agent   = mockAgent({ skillIds: ['wake'] });
+      // Override skills.get to return a skill record without a handler —
+      // happens when callers register only a definition stub.
+      agent.skills.get = vi.fn((id) => (id === 'wake' ? { id } : null));
+      const bridge = new MobilePushBridge({ agent, adapter });
+      await bridge.register();
+
+      adapter._fire({ skillId: 'wake', parts: [] });
+
+      // No handler was on the skill record; the bridge must not throw,
+      // but should still emit the generic 'push' event.
+      expect(agent._events.get('push') ?? []).toHaveLength(1);
     });
   });
 
