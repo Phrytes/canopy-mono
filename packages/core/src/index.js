@@ -7,7 +7,7 @@
  */
 
 // ── Envelope ────────────────────────────────────────────────────────────────
-export { P, REPLY_CODES, mkEnvelope, canonicalize, isEnvelope } from './Envelope.js';
+export { P, REPLY_CODES, mkEnvelope, canonicalize, isEnvelope, genId } from './Envelope.js';
 
 // ── Parts ───────────────────────────────────────────────────────────────────
 export {
@@ -60,6 +60,11 @@ export {
   openSealed,
   SEALED_VERSION,
 }                                            from './security/sealedForward.js';
+export {
+  tokenGate,
+  groupGate,
+  anyOf,
+}                                            from './security/helloGates.js';
 
 // ── Transport ────────────────────────────────────────────────────────────────
 export { Transport }                      from './transport/Transport.js';

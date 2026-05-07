@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>Stoop — Privacy</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Buurt</a>
+      <a href="/profile.html">Profiel</a>
+      <a href="/privacy.html" class="active">Privacy</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Privacy — wat je moet weten</h2>
+      <p class="hint">
+        Stoop is een onderzoeks-preview. Onderstaande punten zijn
+        nooit verstopt; ze gelden voor iedereen die meedoet.
+      </p>
+      <div id="notice"></div>
+
+      <h3 style="margin-top: 2rem;">Waar je data staat</h3>
+      <ul id="data-location"></ul>
+    </section>
+  </main>
+
+  <script type="module">
+    import { callSkill, getActor } from '/app.js';
+    document.getElementById('actor').textContent = await getActor();
+
+    const { sections } = await callSkill('getPrivacyNotice', { lang: 'nl' });
+    const wrap = document.getElementById('notice');
+    for (const s of sections) {
+      const h = document.createElement('h3');
+      h.textContent = s.heading;
+      const p = document.createElement('p');
+      p.textContent = s.body;
+      wrap.appendChild(h); wrap.appendChild(p);
+    }
+
+    const loc = await callSkill('getDataLocation', {});
+    const list = document.getElementById('data-location');
+    const rows = [
+      ['Relay-operator', loc.relayOperator],
+      ['Relay-server',   loc.relayUrl],
+      ['Pod-aanbieder',  loc.podIssuer],
+      ['Pod-locatie',    loc.podRoot],
+    ];
+    for (const [k, v] of rows) {
+      const li = document.createElement('li');
+      li.innerHTML = `<strong>${k}:</strong> ${v ?? '— niet ingesteld —'}`;
+      list.appendChild(li);
+    }
+  </script>
+</body>
+</html>

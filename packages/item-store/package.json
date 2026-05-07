@@ -1,0 +1,20 @@
+{
+  "name": "@canopy/item-store",
+  "version": "0.2.0",
+  "description": "Open/closed items in a hybrid pod — attribution, audit, per-field merge contracts, pluggable role policy. Composes core.DataSource (no synthetic Backend).",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test":       "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/core": "file:../core"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

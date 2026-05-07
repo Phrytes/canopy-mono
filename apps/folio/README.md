@@ -1,5 +1,7 @@
 # Folio
 
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+
 Your markdown notes, mirrored into your Solid pod.
 
 A markdown folder that quietly mirrors itself into your pod.  Any markdown
@@ -7,6 +9,67 @@ editor (Obsidian, iA Writer, VSCode, vim) sees a normal folder.  Other
 agents (the household app, the archive, the import bridge) write to the
 same pod over the network.  No editor lock-in, no proprietary sync layer
 — your existing tools just work.
+
+## Substrates
+
+This app composes the following substrate packages
+(see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
+
+| Package | Used for | Why a substrate, not direct SDK |
+|---|---|---|
+| `@canopy/sync-engine` (L1a) | Bidirectional pod ↔ local-folder sync — `SyncEngine` (Folio is the pattern source for this substrate, post-Phase 5.1), `PathMap`, `scanLocal` / `scanPod` / `diff`, version helpers, fs/hash/watcher adapters (Node + RN). | The substrate exists *because* of Folio — Folio's V0.3 BidirectionalSyncEngine was lifted into the substrate in Phase 5.1. App-side `src/SyncEngine.js` is a thin subclass adding markdown-specific glue. |
+
+## Direct SDK use
+
+| SDK package | Primitive | Used for | Justification |
+|---|---|---|---|
+| `@canopy/pod-client` | `PodClient` | Solid pod read/write/list with `If-Match`/conflict detection — the production target the SyncEngine writes into. | Folio is one of the canonical PodClient consumers; no substrate wraps "construct a PodClient" because the credential plumbing is per-app (mnemonic → `Bootstrap` → token). |
+| `@canopy/core` | `Bootstrap` | Mnemonic-driven identity bring-up + Solid pod credential issuance for the CLI. | Foundation primitive; substrate-of-substrates over `Bootstrap` would be over-abstraction at this stage. |
+| `@canopy/core` | `VaultNodeFs` | Node-side encrypted vault for the CLI's keypair. | Platform-specific vault concrete; the CLI is Node-only, so the matching SDK concrete is the right level. |
+| `@canopy/core` | `PodCapabilityToken` | Folio's `share` flow — issue capability tokens to other agents. | Capability-token semantics are SDK-foundational; substrates compose them, they don't wrap them. |
+| `@canopy/core` | `validateMnemonic` | CLI `init` — sanity-check user-typed mnemonics. | One-line helper; pulling a substrate around it would be silly. |
+
+## Bring it up
+
+```bash
+# Install + test
+cd apps/folio
+npm install
+npm test            # 451/452 pass (1 pre-existing flaky FS-cleanup race)
+
+# Initialise a pod identity (interactive — prompts for mnemonic + pod URL)
+node bin/folio init
+
+# Sync a local notes folder ↔ pod
+node bin/folio sync   --folder ~/notes
+node bin/folio watch  --folder ~/notes      # continuous mirror
+node bin/folio status --folder ~/notes      # diff + conflict count
+
+# Run the localhost web server (Folio.B1.server) for the upcoming web UI
+node bin/folio serve --folder ~/notes
+```
+
+Detailed sign-in / service / troubleshooting runbooks live in their own sections below ("How to sign in to your Solid pod", "Run Folio as a service", "Troubleshooting").
+
+## What's in here
+
+```
+apps/folio/
+├── README.md                  ← this file
+├── package.json               ← @canopy-app/folio
+├── bin/folio                  ← CLI entry
+├── src/
+│   ├── SyncEngine.js          ← thin subclass of @canopy/sync-engine's engine
+│   ├── PathMap.js             ← re-exports substrate's PathMap with ACL helpers
+│   ├── scanLocal.js / scanPod.js / diff.js / versions.js
+│   ├── adapters/              ← fs/hash/watcher (Node + RN re-exports from substrate)
+│   ├── autoShare.js           ← issues PodCapabilityToken on .shared/ folders
+│   ├── cli/                   ← initCmd / syncCmd / watchCmd / serveCmd / shareCmd / …
+│   ├── server/                ← Express + WebSocket (B1.server)
+│   ├── rn/                    ← serviceFactory + backgroundTasks (consumed by folio-mobile)
+│   └── diagnostics.js
+└── test/                      ← unit + integration; vitest
+```
 
 ## v1 scope
 

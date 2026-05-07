@@ -102,6 +102,18 @@ export class Transport extends Emitter {
   }
 
   /**
+   * OW with a wire-level topic hint — fire-and-forget pubsub publish.
+   * The topic is stamped on the outer envelope (`_topic`), survives
+   * SecurityLayer (signed-but-not-encrypted), and is exposed to the
+   * underlying transport for per-(recipient, topic) routing decisions
+   * (e.g. relay's topic-aware offline queue).  Equivalent to
+   * `sendOneWay(to, payload)` for transports that don't use the hint.
+   */
+  async publishOneWay(to, topic, payload) {
+    await this._send(to, mkEnvelope(P.OW, this.#address, to, payload, { topic }));
+  }
+
+  /**
    * AS — deliver and wait for AK (delivery confirmation).
    * Resolves with the AK envelope on success, rejects on timeout.
    */

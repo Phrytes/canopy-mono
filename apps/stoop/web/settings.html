@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>Stoop — Instellingen</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .settings-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.8rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row .lbl { display: flex; flex-direction: column; gap: 0.2rem; }
+    .settings-row .lbl strong { font-weight: 500; }
+    .settings-row .lbl small { color: var(--muted); font-size: 0.85rem; }
+    .settings-row select, .settings-row input[type="number"] {
+      min-width: 6rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Buurt</a>
+      <a href="/mine.html">Mijn posts</a>
+      <a href="/chat.html">Chat</a>
+      <a href="/contacts.html">Contacten</a>
+      <a href="/metrics.html">Metrics</a>
+      <a href="/profile.html">Profiel</a>
+      <a href="/sign-in.html">Pod</a>
+      <a href="/push.html">Push</a>
+      <a href="/onboard.html">Onboarden</a>
+      <a href="/settings.html" class="active">Instellingen</a>
+    </nav>
+    <select id="group-switcher" hidden aria-label="Switch group"></select>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Instellingen</h2>
+      <p class="hint">
+        Deze instellingen synchroniseren met je pod (als je bent
+        aangemeld), zodat je ze niet opnieuw hoeft op te geven op
+        een ander apparaat.
+      </p>
+
+      <div id="settings-form">
+        <div class="settings-row">
+          <div class="lbl">
+            <strong>Hoe vaak het prikbord ververst</strong>
+            <small>Lager = sneller nieuwe posts zien; hoger = zuiniger met data en accu.</small>
+          </div>
+          <select id="poll-interval">
+            <option value="2000">elke 2 sec (live)</option>
+            <option value="10000">elke 10 sec</option>
+            <option value="60000">elke minuut</option>
+            <option value="300000">elke 5 min</option>
+          </select>
+        </div>
+
+        <div class="settings-row">
+          <div class="lbl">
+            <strong>Auto-skill-match</strong>
+            <small>Mag een onbekend contact mij een skill-match-suggestie sturen die door mijn agent gefilterd wordt? Bij een match krijg je een melding; geen match = stilte.</small>
+          </div>
+          <label class="toggle">
+            <input id="broadcastable" type="checkbox">
+            <span>Aan</span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <div class="lbl">
+            <strong>Hop-relay (globaal)</strong>
+            <small>Mag mijn apparaat berichten doorrelay'en voor andere mensen? Standaard <em>uit</em>: dan doet niemand dat via jou. Per-contact-instelling staat op de contacten-pagina.</small>
+          </div>
+          <label class="toggle">
+            <input id="hop-through" type="checkbox">
+            <span>Aan</span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <div class="lbl">
+            <strong>Standaard locatie delen met nieuwe contacten?</strong>
+            <small>Bepaalt of <code>shareLocation</code> default aan staat als je iemand toevoegt. Per-contact altijd handmatig aan/uit te zetten.</small>
+          </div>
+          <label class="toggle">
+            <input id="default-share-location" type="checkbox">
+            <span>Aan</span>
+          </label>
+        </div>
+
+        <h3 style="margin-top: 1.5rem;">Online-window (mobiel)</h3>
+        <p class="hint">
+          Op telefoon (V3): hoe vaak en hoe lang mag mijn agent zich
+          tijdelijk verbinden met de relay? Op desktop genegeerd —
+          daar is de agent altijd online.
+        </p>
+
+        <div class="settings-row">
+          <div class="lbl">
+            <strong>Window-frequentie</strong>
+            <small>Eens per X minuten verbinden. Leeg = altijd verbonden (V2 desktop default).</small>
+          </div>
+          <input id="online-every" type="number" min="1" placeholder="leeg">
+        </div>
+
+        <div class="settings-row">
+          <div class="lbl">
+            <strong>Window-duur</strong>
+            <small>Aantal seconden online per window.</small>
+          </div>
+          <input id="online-duration" type="number" min="1" placeholder="leeg">
+        </div>
+      </div>
+
+      <span id="settings-feedback" class="hint" style="margin-top: 1rem; display: block;"></span>
+    </section>
+  </main>
+
+  <script type="module">
+    import { callSkill, getActor, mountGroupSwitcher } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    mountGroupSwitcher(document.getElementById('group-switcher'));
+
+    const fb = document.getElementById('settings-feedback');
+
+    async function refresh() {
+      const r = await callSkill('getSettings', {});
+      const s = r?.settings ?? {};
+      document.getElementById('poll-interval').value = String(s.pollIntervalMs ?? 2000);
+      document.getElementById('broadcastable').checked = s.broadcastable !== false;
+      document.getElementById('hop-through').checked = s.allowHopThrough === true;
+      document.getElementById('default-share-location').checked = s.defaultShareLocation === true;
+      document.getElementById('online-every').value    = s.onlineWindow?.everyMinutes ?? '';
+      document.getElementById('online-duration').value = s.onlineWindow?.durationSec ?? '';
+    }
+    await refresh();
+
+    async function save(patch) {
+      fb.textContent = 'Opslaan…';
+      try {
+        await callSkill('updateSettings', { patch });
+        fb.textContent = 'Opgeslagen.';
+      } catch (err) {
+        fb.textContent = `Fout: ${err.message ?? err}`;
+      }
+    }
+
+    document.getElementById('poll-interval').addEventListener('change', (e) => {
+      save({ pollIntervalMs: Number(e.target.value) });
+    });
+    document.getElementById('broadcastable').addEventListener('change', (e) => {
+      save({ broadcastable: e.target.checked });
+    });
+    document.getElementById('hop-through').addEventListener('change', async (e) => {
+      // Phase 28.1 — go through setHopMode so the core relay-forward
+      // skill is registered/policy-flipped on top of the settings save.
+      fb.textContent = 'Opslaan…';
+      try {
+        const r = await callSkill('setHopMode', { global: e.target.checked });
+        if (r.error) { fb.textContent = `Fout: ${r.error}`; return; }
+        fb.textContent = 'Opgeslagen.';
+      } catch (err) {
+        fb.textContent = `Fout: ${err.message ?? err}`;
+      }
+    });
+    document.getElementById('default-share-location').addEventListener('change', (e) => {
+      save({ defaultShareLocation: e.target.checked });
+    });
+    document.getElementById('online-every').addEventListener('blur', (e) => {
+      const v = e.target.value === '' ? null : Number(e.target.value);
+      save({ onlineWindow: { everyMinutes: v } });
+    });
+    document.getElementById('online-duration').addEventListener('blur', (e) => {
+      const v = e.target.value === '' ? null : Number(e.target.value);
+      save({ onlineWindow: { durationSec: v } });
+    });
+  </script>
+</body>
+</html>

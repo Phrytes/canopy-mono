@@ -32,7 +32,26 @@
           ],
           "bluetoothAlwaysPermission": "Allow SDK Smoke to use Bluetooth to discover nearby agents"
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#1f2235"
+        }
       ]
-    ]
+    ],
+    "ios": {
+      "bundleIdentifier": "ag.canopy.sdksmoke",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
   }
 }

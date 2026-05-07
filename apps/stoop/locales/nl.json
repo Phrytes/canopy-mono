@@ -1,0 +1,75 @@
+{
+  "common": {
+    "app_name":  "Stoop",
+    "loading":   "Bezig met laden…",
+    "save":      "Opslaan",
+    "cancel":    "Annuleren",
+    "ok":        "OK",
+    "back":      "Terug"
+  },
+  "errors": {
+    "groupId_required":     "Kies eerst een groep.",
+    "name_required":        "Geef de groep een naam.",
+    "rules_object_required": "De groepsregels ontbreken.",
+    "peer_required":        "Kies eerst iemand om te muten.",
+    "itemId_required":      "Kies eerst een post om te rapporteren.",
+    "displayName_required": "Naam mag niet leeg zijn.",
+    "invalid_handle.too-short":     "Handle is te kort (minimaal 3 tekens).",
+    "invalid_handle.too-long":      "Handle is te lang (maximaal 32 tekens).",
+    "invalid_handle.invalid-chars": "Alleen kleine letters, cijfers, - en _.",
+    "invalid_handle.contains-whitespace": "Handle mag geen spaties bevatten.",
+    "invalid_handle.not-a-string":  "Handle is verplicht.",
+    "no_member_map":   "Lidmaatschapskaart is niet geconfigureerd.",
+    "no_reveals":      "Reveal-store is niet geconfigureerd."
+  },
+  "prikbord": {
+    "title":          "Op het prikbord",
+    "empty":          "Niets op het prikbord.",
+    "post_button":    "+ Iets posten",
+    "filter_all":     "Alles",
+    "filter_ask":     "Vragen",
+    "filter_offer":   "Aanbod",
+    "filter_lend":    "Te leen"
+  },
+  "post_form": {
+    "kind":           "Soort",
+    "kind_ask":       "Vraag",
+    "kind_offer":     "Aanbod",
+    "kind_lend":      "Te leen",
+    "what":           "Wat?",
+    "skills":         "Skills (komma-gescheiden, optioneel)",
+    "due":            "Terugbrengen vóór (datum)",
+    "advanced":       "Meer opties",
+    "wait_claims":    "Wachten op claims (ms)",
+    "hide_name":      "Naam verbergen tot connectie",
+    "hide_name_hint": "Andere leden zien je handle (@…), niet je echte naam. Niet anoniem voor de server — de relay-operator ziet wel dat jij iets hebt gepost."
+  },
+  "menu": {
+    "mute":     "Mute deze persoon",
+    "report":   "Rapporteer post"
+  },
+  "profile": {
+    "title":              "Mijn profiel",
+    "handle_label":       "Handle (kleine letters, 3–32 tekens)",
+    "handle_save":        "Handle opslaan",
+    "displayname_label":  "Echte / weergavenaam (optioneel)",
+    "displayname_save":   "Naam opslaan",
+    "default_render":     "Anderen zien: {{render}}",
+    "is_revealed":        "echte naam zichtbaar voor deze groep",
+    "handle_default":     "handle by default"
+  },
+  "create_group": {
+    "intro": "Een groep starten is geen technische ingreep. Het is een afspraak tussen leden. Beantwoord de zes vragen hieronder; ze worden samen het reglement van de groep, zichtbaar voor iedereen die later lid wordt.",
+    "q1_name":    "1. Wat heet deze groep?",
+    "q1_purpose": "1b. Wat is hij voor (twee zinnen)?",
+    "q2_admins":  "2. Wie is admin? (WebID's, één per regel)",
+    "q3_rules":   "3. Huisregels — wat hoort er wel/niet bij? (één per regel)",
+    "q4_conflict": "4. Conflictbeslechting",
+    "q5_access":   "5. Toegangsbeleid",
+    "q6_leave":    "6. Vertrek-beleid"
+  },
+  "privacy": {
+    "title":   "Privacy — wat je moet weten",
+    "intro":   "Stoop is een onderzoeks-preview. Onderstaande punten zijn nooit verstopt; ze gelden voor iedereen die meedoet."
+  }
+}

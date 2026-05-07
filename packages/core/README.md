@@ -1,5 +1,7 @@
 # @canopy/core
 
+> **Layer: SDK foundation.** This is part of the agent SDK that substrates build on. Substrates and apps compose primitives from here — they MUST NOT reinvent transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, or ULID; apps MUST justify any direct dependency in their README's `## Direct SDK use` section. See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+
 Pure-JS core of the @canopy SDK.  Runs in browser, Node, and React
 Native (no native deps in this package).  Provides:
 

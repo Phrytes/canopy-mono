@@ -320,6 +320,76 @@ describe('SolidPodSource — list', () => {
     const source = new SolidPodSource({ podUrl: POD, fetch: fetchFn });
     await expect(source.list('/missing/')).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
+
+  it('recursive: true descends into child containers and flattens', async () => {
+    const root = `
+      @prefix ldp: <http://www.w3.org/ns/ldp#> .
+      <${POD}notes/> a ldp:Container, ldp:BasicContainer ;
+        ldp:contains <${POD}notes/a.md>, <${POD}notes/sub/> .
+    `;
+    const sub = `
+      @prefix ldp: <http://www.w3.org/ns/ldp#> .
+      <${POD}notes/sub/> a ldp:Container, ldp:BasicContainer ;
+        ldp:contains <${POD}notes/sub/c.md>, <${POD}notes/sub/deep/> .
+    `;
+    const deep = `
+      @prefix ldp: <http://www.w3.org/ns/ldp#> .
+      <${POD}notes/sub/deep/> a ldp:Container, ldp:BasicContainer ;
+        ldp:contains <${POD}notes/sub/deep/d.md> .
+    `;
+    const fetchFn = makeFetch({
+      [`GET ${POD}notes/`]:          makeRes({ body: root, contentType: 'text/turtle', url: `${POD}notes/` }),
+      [`GET ${POD}notes/sub/`]:      makeRes({ body: sub,  contentType: 'text/turtle', url: `${POD}notes/sub/` }),
+      [`GET ${POD}notes/sub/deep/`]: makeRes({ body: deep, contentType: 'text/turtle', url: `${POD}notes/sub/deep/` }),
+    });
+    const source = new SolidPodSource({ podUrl: POD, fetch: fetchFn });
+
+    const result = await source.list('/notes/', { recursive: true });
+    const uris = result.entries.map((e) => e.uri).sort();
+    expect(uris).toEqual([
+      `${POD}notes/a.md`,
+      `${POD}notes/sub/`,
+      `${POD}notes/sub/c.md`,
+      `${POD}notes/sub/deep/`,
+      `${POD}notes/sub/deep/d.md`,
+    ]);
+  });
+
+  it('recursive: skips mid-walk 404s on child containers', async () => {
+    const root = `
+      @prefix ldp: <http://www.w3.org/ns/ldp#> .
+      <${POD}notes/> a ldp:Container ;
+        ldp:contains <${POD}notes/a.md>, <${POD}notes/gone/> .
+    `;
+    const fetchFn = makeFetch({
+      [`GET ${POD}notes/`]:     makeRes({ body: root, contentType: 'text/turtle', url: `${POD}notes/` }),
+      [`GET ${POD}notes/gone/`]: makeRes({ status: 404, statusText: 'Not Found' }),
+    });
+    const source = new SolidPodSource({ podUrl: POD, fetch: fetchFn });
+
+    const result = await source.list('/notes/', { recursive: true });
+    const uris = result.entries.map((e) => e.uri).sort();
+    // Race-deleted child container's contents are absent; the container
+    // itself remains in the parent listing.
+    expect(uris).toEqual([`${POD}notes/a.md`, `${POD}notes/gone/`]);
+  });
+
+  it('recursive: false (default) returns one level only', async () => {
+    const root = `
+      @prefix ldp: <http://www.w3.org/ns/ldp#> .
+      <${POD}notes/> a ldp:Container ;
+        ldp:contains <${POD}notes/a.md>, <${POD}notes/sub/> .
+    `;
+    // Note: NO handler for /notes/sub/ — verifies we don't recurse.
+    const fetchFn = makeFetch({
+      [`GET ${POD}notes/`]: makeRes({ body: root, contentType: 'text/turtle', url: `${POD}notes/` }),
+    });
+    const source = new SolidPodSource({ podUrl: POD, fetch: fetchFn });
+
+    const result = await source.list('/notes/');   // no opts
+    const uris = result.entries.map((e) => e.uri).sort();
+    expect(uris).toEqual([`${POD}notes/a.md`, `${POD}notes/sub/`]);
+  });
 });
 
 /* ─────────────────────────────────────────────────────────────────────────── */

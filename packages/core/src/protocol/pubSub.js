@@ -22,11 +22,22 @@ import { Parts } from '../Parts.js';
 export async function subscribe(agent, publisherAddress, topic, callback) {
   // Register listener BEFORE sending the subscribe OW so history replay
   // messages (fired as microtasks by the publisher) are not missed.
-  agent.on('publish', ({ from, topic: t, parts }) => {
+  const listener = ({ from, topic: t, parts }) => {
     if (from === publisherAddress && t === topic) callback(parts);
-  });
+  };
+  agent.on('publish', listener);
 
   await agent.transport.sendOneWay(publisherAddress, { type: 'subscribe', topic });
+
+  // Return a cleanup function that fully tears down the subscription:
+  // both the local listener AND the publisher-side registration. This
+  // is additive — callers that ignore the return value get the same
+  // behavior as before (the listener stays registered).
+  return async () => {
+    agent.off('publish', listener);
+    try { await unsubscribe(agent, publisherAddress, topic); }
+    catch { /* publisher may already be gone; local listener removal is what matters */ }
+  };
 }
 
 /**
@@ -65,7 +76,7 @@ export async function publish(agent, topic, partsOrValue) {
   if (!subs || subs.size === 0) return;
 
   await Promise.all([...subs].map(addr =>
-    agent.transport.sendOneWay(addr, { type: 'publish', topic, parts })
+    agent.transport.publishOneWay(addr, topic, { type: 'publish', topic, parts })
       .catch(err => agent.emit('error', err)),
   ));
 }
@@ -89,7 +100,7 @@ export function handlePubSub(agent, envelope) {
       const history = agent._pubSubHistory?.get(topic);
       if (history?.length) {
         for (const parts of history) {
-          agent.transport.sendOneWay(envelope._from, { type: 'publish', topic, parts })
+          agent.transport.publishOneWay(envelope._from, topic, { type: 'publish', topic, parts })
             .catch(err => agent.emit('error', err));
         }
       }

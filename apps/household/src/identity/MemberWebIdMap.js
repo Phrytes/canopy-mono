@@ -1,6 +1,17 @@
 /**
  * MemberWebIdMap — read-only lookup helper over a `HouseholdConfig`.
  *
+ * TODO (2026-05-04, Phase 4.1 of substrate refactor): when we return to
+ * H2 for V0 ship, replace this in-app helper with a thin wrapper over
+ * `MemberMap.fromPodConfig({podClient, configUri})` from
+ * `@canopy/identity-resolver`. The substrate factory now reads pod
+ * config + populates a webid-keyed roster — the same pattern this
+ * helper implements over `HouseholdConfig`. The H2 schema stays
+ * (`HouseholdConfig.members[]`); only the read path moves to the
+ * substrate. See `Project Files/Substrates/refactor/01-Execution-Checklist.md`
+ * § Phase 4.1 + the "Migration policy for existing apps" section in
+ * `Project Files/conventions/app-readme-scheme.md`.
+ *
  * Three jobs, one tiny class:
  *
  *   1. `resolve(bridgeId, bridgeUid)` — `('telegram', '1234567')` →

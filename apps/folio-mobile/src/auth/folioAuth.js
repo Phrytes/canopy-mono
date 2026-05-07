@@ -29,7 +29,7 @@ import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser  from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
 
-import { loadOrRegisterClient } from './dcr.js';
+import { loadOrRegisterClient, clearStoredClient } from './dcr.js';
 
 // Required on Android Chrome Custom Tabs to dismiss the browser sheet
 // after the redirect lands; safe to call multiple times.  iOS no-ops.
@@ -209,6 +209,30 @@ export function useFolioAuth({
     });
   }, [discovery, request, promptAsync, redirectUri, resolvedClientId, issuer]);
 
+  /**
+   * Clear the cached client_id for this issuer and re-register fresh.
+   *
+   * Use when Inrupt rejects the cached client_id (server-side
+   * revocation / TTL expiry).  Symptom: tap Sign In, browser sheet
+   * shows "Invalid client_id" or similar, you close it, the app
+   * reports `code: AUTH_DISMISSED`.
+   *
+   * The hook re-runs DCR automatically because resolvedClientId is
+   * cleared back to null.
+   *
+   * @returns {Promise<void>}
+   */
+  const resetClient = useCallback(async () => {
+    setLastError(null);
+    try {
+      await clearStoredClient(issuer, SecureStore);
+    } catch (err) {
+      onWarning?.(`useFolioAuth.resetClient: clear failed: ${err?.message ?? err}`);
+    }
+    // Drop the in-memory id; the DCR effect re-runs and re-registers.
+    setResolvedClientId(null);
+  }, [issuer, onWarning]);
+
   return {
     ready: !!(discovery && request && resolvedClientId),
     discovery,
@@ -216,6 +240,7 @@ export function useFolioAuth({
     request,
     redirectUri,
     signIn,
+    resetClient,
     lastError,
   };
 }

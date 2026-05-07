@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>Stoop — Nieuwe groep</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Buurt</a>
+      <a href="/profile.html">Profiel</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Nieuwe groep starten</h2>
+      <p class="hint">
+        Een groep starten is geen technische ingreep. Het is een
+        <strong>afspraak tussen leden</strong>. Beantwoord de zes
+        vragen hieronder; ze worden samen het reglement van de groep,
+        zichtbaar voor iedereen die later lid wordt.
+      </p>
+
+      <form id="create-form">
+        <label>
+          <span>1. Wat heet deze groep?</span>
+          <input id="g-name" type="text" required placeholder="bv. Oosterpoort skills">
+        </label>
+
+        <label>
+          <span>1b. Wat is hij voor (twee zinnen)?</span>
+          <textarea id="g-purpose" required rows="3"
+                    placeholder="bv. Buurtgenoten in Groningen-Oosterpoort die elkaar willen helpen met klusjes, lenen en weten wat er speelt."></textarea>
+        </label>
+
+        <label>
+          <span>2. Wie is admin? (WebID's, één per regel)</span>
+          <textarea id="g-admins" required rows="3" placeholder="https://id.example/anne&#10;https://id.example/bob"></textarea>
+          <small class="hint">We raden minstens twee admins aan.</small>
+        </label>
+
+        <label>
+          <span>3. Huisregels — wat hoort er wel/niet bij? (één per regel)</span>
+          <textarea id="g-rules" rows="4"
+                    placeholder="Vragen, aanbod, lenen.&#10;Voertaal: Nederlands.&#10;Geen reclame, geen politiek."></textarea>
+        </label>
+
+        <label>
+          <span>4. Conflictbeslechting</span>
+          <select id="g-conflict">
+            <option value="admin">Admin beslist</option>
+            <option value="mediation">Gesprek tussen betrokkenen, admin als getuige</option>
+            <option value="vote">Stemmen onder de leden</option>
+          </select>
+        </label>
+
+        <label>
+          <span>5. Toegangsbeleid</span>
+          <select id="g-access">
+            <option value="invite-only">Op uitnodiging — admin geeft QR persoonlijk</option>
+            <option value="shared-link">Via doorgegeven link — leden mogen anderen toevoegen</option>
+            <option value="approval">Op aanvraag — admin keurt goed</option>
+          </select>
+        </label>
+
+        <label>
+          <span>6. Vertrek-beleid</span>
+          <select id="g-leave">
+            <option value="keep-posts">Posts blijven, naam verdwijnt (default — bewaart context)</option>
+            <option value="remove-all">Alles van die persoon verdwijnt (clean break)</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Group-id (intern; lowercase)</span>
+          <input id="g-id" type="text" required pattern="^[a-z0-9_-]+$"
+                 placeholder="bv. oosterpoort-skills">
+        </label>
+
+        <fieldset style="margin-top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem 1rem;">
+          <legend>Hoe wordt deze groep "vers" gehouden?</legend>
+          <p class="hint" style="margin-top: 0;">
+            De groep gebruikt elke <em>X</em> dagen een nieuwe code. Wie de code niet
+            meer krijgt, valt automatisch uit de groep. De code wissel je
+            <strong>buiten de app om</strong> uit — bv. via WhatsApp, in een
+            briefje, of in persoon. Dat houdt de groep lokaal.
+          </p>
+
+          <label>
+            <input type="radio" name="key-rotation" value="admin-only" checked>
+            <strong>Alleen admins delen de code uit.</strong>
+            <small class="hint" style="display: block; margin-left: 1.5rem;">Admins genereren elke X dagen een nieuwe code en geven die persoonlijk door aan leden.</small>
+          </label>
+          <label style="margin-top: 0.5rem;">
+            <input type="radio" name="key-rotation" value="peer-distributable">
+            <strong>Iedereen mag de code doorgeven.</strong>
+            <small class="hint" style="display: block; margin-left: 1.5rem;">Elk lid kan de code aan iemand nieuw geven. Decentraler — admin is geen single point of failure.</small>
+          </label>
+
+          <label style="margin-top: 0.8rem;">
+            <span>Code wisselt elke … dagen</span>
+            <input id="g-rotation-days" type="number" min="7" max="365" value="30">
+          </label>
+        </fieldset>
+
+        <button type="submit">Groep aanmaken</button>
+        <span id="create-feedback" class="hint"></span>
+      </form>
+
+      <div id="create-result" hidden style="margin-top: 1.5rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+        <h3>Groep aangemaakt</h3>
+        <p>De eerste membership-code is hieronder — geef 'm <strong>buiten Stoop om</strong> aan de eerste leden:</p>
+        <pre id="create-code" style="font-family: ui-monospace, Menlo, monospace; font-size: 1.1rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem;"></pre>
+        <p class="hint" id="create-expiry"></p>
+        <p class="hint">Je kunt 'm later opnieuw bekijken op de groep-pagina.</p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { callSkill, getActor } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+
+    document.getElementById('create-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fb = document.getElementById('create-feedback');
+      fb.textContent = 'Aan het opslaan…';
+      const rules = {
+        purpose:        document.getElementById('g-purpose').value.trim(),
+        admins:         document.getElementById('g-admins').value.split('\n').map(s => s.trim()).filter(Boolean),
+        houseRules:     document.getElementById('g-rules').value.split('\n').map(s => s.trim()).filter(Boolean),
+        conflictPolicy: document.getElementById('g-conflict').value,
+        accessPolicy:   document.getElementById('g-access').value,
+        leavePolicy:    document.getElementById('g-leave').value,
+      };
+      const keyRotationMode = document.querySelector('input[name="key-rotation"]:checked')?.value || 'admin-only';
+      const rotationDays = Number(document.getElementById('g-rotation-days').value) || 30;
+      try {
+        const r = await callSkill('createGroupV2', {
+          groupId: document.getElementById('g-id').value.trim(),
+          name:    document.getElementById('g-name').value.trim(),
+          rules,
+          keyRotationMode,
+          rotationDays,
+        });
+        if (r.error) {
+          fb.textContent = `Fout: ${r.error}`;
+        } else {
+          fb.textContent = `Groep aangemaakt — id ${r.groupId}.`;
+          document.getElementById('create-result').hidden = false;
+          document.getElementById('create-code').textContent = r.code;
+          document.getElementById('create-expiry').textContent =
+            `Geldig tot ${new Date(r.expiresAt).toLocaleString()} (${rotationDays} dagen). Modus: ${keyRotationMode === 'admin-only' ? 'alleen admins delen de code uit' : 'iedereen mag de code doorgeven'}.`;
+          document.getElementById('create-form').reset();
+        }
+      } catch (err) {
+        fb.textContent = `Fout: ${err.message}`;
+      }
+    });
+  </script>
+</body>
+</html>

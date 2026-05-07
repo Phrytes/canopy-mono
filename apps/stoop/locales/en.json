@@ -1,0 +1,75 @@
+{
+  "common": {
+    "app_name":  "Stoop",
+    "loading":   "Loading…",
+    "save":      "Save",
+    "cancel":    "Cancel",
+    "ok":        "OK",
+    "back":      "Back"
+  },
+  "errors": {
+    "groupId_required":     "Please choose a group.",
+    "name_required":        "Please give the group a name.",
+    "rules_object_required": "Group rules are missing.",
+    "peer_required":        "Pick someone to mute first.",
+    "itemId_required":      "Pick a post to report first.",
+    "displayName_required": "Display name can't be empty.",
+    "invalid_handle.too-short":     "Handle is too short (min 3).",
+    "invalid_handle.too-long":      "Handle is too long (max 32).",
+    "invalid_handle.invalid-chars": "Use lowercase letters, digits, - or _.",
+    "invalid_handle.contains-whitespace": "Handle can't contain spaces.",
+    "invalid_handle.not-a-string":  "Handle is required.",
+    "no_member_map":   "Member map is not configured.",
+    "no_reveals":      "Reveal store is not configured."
+  },
+  "prikbord": {
+    "title":          "On the prikbord",
+    "empty":          "Nothing on the prikbord yet.",
+    "post_button":    "+ Post something",
+    "filter_all":     "All",
+    "filter_ask":     "Asks",
+    "filter_offer":   "Offers",
+    "filter_lend":    "Lend"
+  },
+  "post_form": {
+    "kind":           "Kind",
+    "kind_ask":       "Ask",
+    "kind_offer":     "Offer",
+    "kind_lend":      "Lend",
+    "what":           "What?",
+    "skills":         "Skills (comma-separated, optional)",
+    "due":            "Return by (date)",
+    "advanced":       "More options",
+    "wait_claims":    "Wait for claims (ms)",
+    "hide_name":      "Hide my name until connected",
+    "hide_name_hint": "Other members see your handle (@…), not your real name. Not anonymous against the server — the relay operator can still see that you posted."
+  },
+  "menu": {
+    "mute":     "Mute this person",
+    "report":   "Report post"
+  },
+  "profile": {
+    "title":              "My profile",
+    "handle_label":       "Handle (lowercase, 3–32 chars)",
+    "handle_save":        "Save handle",
+    "displayname_label":  "Real / chosen name (optional)",
+    "displayname_save":   "Save name",
+    "default_render":     "Others see: {{render}}",
+    "is_revealed":        "real name visible to this group",
+    "handle_default":     "handle by default"
+  },
+  "create_group": {
+    "intro": "Starting a group is not just a click. It is an agreement between members. Answer the six questions below; they become the group's rules, visible to everyone who joins later.",
+    "q1_name":    "1. Group name",
+    "q1_purpose": "1b. What is it for? (two sentences)",
+    "q2_admins":  "2. Who is admin? (WebIDs, one per line)",
+    "q3_rules":   "3. House rules — what fits / does not fit (one per line)",
+    "q4_conflict": "4. Conflict resolution",
+    "q5_access":   "5. Access policy",
+    "q6_leave":    "6. Leave policy"
+  },
+  "privacy": {
+    "title":   "Privacy — what to know",
+    "intro":   "Stoop is a research preview. The points below are never hidden — they apply to everyone who joins."
+  }
+}

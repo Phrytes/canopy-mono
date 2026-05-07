@@ -1,7 +1,8 @@
 /**
  * Scenario registry — App.js imports this single list and renders one
  * ScenarioRow per entry.  Keep the order matching the smoke plan
- * (S1 → S10) so the user can run them top-to-bottom.
+ * (S1 → S10) plus the E2c push-wake scenario S11 so the user can run
+ * them top-to-bottom.
  */
 import * as S1  from './S1-bootstrap.js';
 import * as S2  from './S2-vault-migration.js';
@@ -13,6 +14,7 @@ import * as S7  from './S7-governance-demote.js';
 import * as S8  from './S8-skills-pubsub.js';
 import * as S9  from './S9-a2a-sealed.js';
 import * as S10 from './S10-battery-sleep.js';
+import * as S11 from './S11-push-wake.js';
 
 export const SCENARIOS = [
   { id: S1.id,  title: S1.title,  run: S1.run  },
@@ -25,4 +27,5 @@ export const SCENARIOS = [
   { id: S8.id,  title: S8.title,  run: S8.run  },
   { id: S9.id,  title: S9.title,  run: S9.run  },
   { id: S10.id, title: S10.title, run: S10.run },
+  { id: S11.id, title: S11.title, run: S11.run },
 ];

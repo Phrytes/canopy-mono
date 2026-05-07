@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>Stoop — Mijn posts</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Buurt</a>
+      <a href="/mine.html" class="active">Mijn posts</a>
+      <a href="/chat.html">Chat</a>
+      <a href="/contacts.html">Contacten</a>
+      <a href="/metrics.html">Metrics</a>
+      <a href="/profile.html">Profiel</a>
+      <a href="/sign-in.html">Pod</a>
+      <a href="/push.html">Push</a>
+      <a href="/onboard.html">Onboarden</a>
+      <a href="/settings.html">Instellingen</a>
+    </nav>
+    <select id="group-switcher" hidden aria-label="Switch group"></select>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section id="mine">
+      <h2>Mijn posts</h2>
+      <ul id="mine-list"><li class="empty">Aan het laden…</li></ul>
+    </section>
+  </main>
+
+  <script type="module">
+    import { callSkill, renderMyItems, getActor, mountLive, mountGroupSwitcher } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    mountGroupSwitcher(document.getElementById('group-switcher'));
+
+    async function refresh() {
+      const result = await callSkill('listMyRequests', {});
+      renderMyItems(document.getElementById('mine-list'), result.items ?? [], {
+        onAccept: async (requestId, responderWebid) => {
+          await callSkill('acceptResponder', { requestId, responderWebid });
+          await refresh();
+        },
+        onCancel: async (requestId) => {
+          await callSkill('cancelRequest', { requestId });
+          await refresh();
+        },
+      });
+    }
+    await refresh();
+
+    mountLive(['item-added', 'item-completed', 'item-removed', 'item-claimed'], refresh);
+  </script>
+</body>
+</html>

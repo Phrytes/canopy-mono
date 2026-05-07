@@ -12,7 +12,7 @@
 // Replace `192.168.1.10` with the laptop's LAN IP that both phones can
 // reach.  10.0.2.2 is the Android-emulator-to-host loopback alias if
 // you'd rather hard-code one address for the emulator path.
-export const RELAY_URL = 'ws://192.168.1.10:8787';
+export const RELAY_URL = 'ws://192.168.2.20:8787';
 
 // Identity label that the agent advertises to peers.  Override per-device
 // (e.g. `'sdk-smoke-A'` vs `'sdk-smoke-B'`) when running pair-wise scenarios.

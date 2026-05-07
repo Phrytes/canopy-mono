@@ -163,3 +163,67 @@ describe('secretbox / secretunbox', () => {
     expect(AgentIdentity.secretunbox(ct, nonce, key)).toBeNull();
   });
 });
+
+// ── stableId (Stoop V1 Phase 11, 2026-05-06) ──────────────────────────────
+
+describe('AgentIdentity.stableId', () => {
+  it('is set on first generate()', async () => {
+    const id = await AgentIdentity.generate(makeVault());
+    expect(typeof id.stableId).toBe('string');
+    expect(id.stableId.length).toBeGreaterThan(0);
+  });
+
+  it('persists across restore()', async () => {
+    const vault = makeVault();
+    const a = await AgentIdentity.generate(vault);
+    const b = await AgentIdentity.restore(vault);
+    expect(b.stableId).toBe(a.stableId);
+  });
+
+  it('is unique across separate identities', async () => {
+    const a = await AgentIdentity.generate(makeVault());
+    const b = await AgentIdentity.generate(makeVault());
+    expect(a.stableId).not.toBe(b.stableId);
+  });
+
+  it('survives rotation (new keypair, same stableId)', async () => {
+    const vault = makeVault();
+    const a = await AgentIdentity.generate(vault);
+    const oldStable = a.stableId;
+    const oldPubKey = a.pubKey;
+
+    const { newIdentity } = await AgentIdentity.rotate(vault);
+    expect(newIdentity.stableId).toBe(oldStable);
+    expect(newIdentity.pubKey).not.toBe(oldPubKey);
+  });
+
+  it('previous identity in restoreWithPrevious carries same stableId', async () => {
+    const vault = makeVault();
+    const a = await AgentIdentity.generate(vault);
+    const stable = a.stableId;
+    await AgentIdentity.rotate(vault);
+
+    const { current, previous } = await AgentIdentity.restoreWithPrevious(vault);
+    expect(current.stableId).toBe(stable);
+    expect(previous?.identity.stableId).toBe(stable);
+  });
+
+  it('lazy-inits on legacy vaults (privkey present, no agent-stable-id)', async () => {
+    const vault = makeVault();
+    await AgentIdentity.generate(vault);
+    // Simulate a pre-Phase-11 vault by clearing the stable-id key.
+    if (typeof vault.remove === 'function') await vault.remove('agent-stable-id');
+    else                                    await vault.set('agent-stable-id', '');
+
+    const restored = await AgentIdentity.restore(vault);
+    expect(typeof restored.stableId).toBe('string');
+    expect(restored.stableId.length).toBeGreaterThan(0);
+  });
+
+  it('fromMnemonic also sets a stableId', async () => {
+    const mnemonic = generateMnemonic();
+    const id = await AgentIdentity.fromMnemonic(mnemonic, makeVault());
+    expect(typeof id.stableId).toBe('string');
+    expect(id.stableId.length).toBeGreaterThan(0);
+  });
+});
