@@ -80,6 +80,21 @@ Pending phases (per
   `chat-message-arrive`. Photo attachments via `pickChatImage`
   (CHAT_PRESET 800px). Reveal CTA is reactive to the active bundle's
   Reveals store.
+- 40.19 ✅ Settings + Push + SignIn + AuthCallback wiring —
+  `src/lib/useSettings.js` for `getSettings`/`updateSettings`
+  (shared + per-device scopes); SettingsScreen exposes the full
+  set (broadcastable, defaultShareLocation, pollIntervalMs,
+  onlineWindow.{everyMinutes,durationSec}, allowHopThrough);
+  PushScreen drives `setupPush` → `subscribeWebPush({subscription:
+  {endpoint: 'expo://<token>'}})` + test push button;
+  SignInScreen drives `startPodSignIn` + `WebBrowser.openAuthSessionAsync`
+  + `Linking` listener for `stoop://auth/callback` →
+  `completePodSignIn`; new AuthCallbackScreen polls `getBulkSyncStatus`.
+- 40.21 ✅ AppState bridge + background-fetch — `defineBackgroundTask`
+  at module-load (`index.js`); ServiceContext registers the OS-level
+  fetch when `onlineWindow.everyMinutes` is set + sets the runOnce
+  callback (live-tick → bundle.skillMatch.tick), unregisters on
+  group-removed.
 - 40.18 ✅ Contacts + groups + CreateGroupScreen — Contacts wires
   `listContacts` + `addContactFromQr` (auto-redeems
   `route.params.pendingContact`). Contact wires `setContactTrust` +

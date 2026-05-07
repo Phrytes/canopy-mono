@@ -1,20 +1,27 @@
 /**
- * SettingsScreen — two-section split per V3 functional design § 4g:
+ * SettingsScreen — two-section split per V3 functional design § 4g.
  *
- *   ── Shared (cross-device) ──
- *     handle, displayName, location.  Read-only here; edits land on
- *     ProfileMineScreen via the "Edit profile" link.
+ * Stoop V3 Phase 40.19 (2026-05-08): wired to live agent via
+ * `useSettings`. Sections:
  *
- *   ── This device ──
- *     pollIntervalMs (default 5000 — battery-aware), onlineWindow.
+ *   Shared (cross-device):
+ *     - broadcastable
+ *     - defaultShareLocation
  *
- * Stoop V3 mobile.  Pure UI: receives the two snapshots from
- * bring-up code; submits patches via `onUpdateDevice`.
+ *   This device:
+ *     - pollIntervalMs
+ *     - onlineWindow.everyMinutes
+ *     - onlineWindow.durationSec
+ *     - allowHopThrough
+ *
+ * Profile lives elsewhere (ProfileMineScreen). Edits go through
+ * updateSettings with the right `scope` so the value lands in the
+ * right pod blob (devices/<deviceId>.json or shared.json).
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TextInput, Pressable, StyleSheet,
+  View, Text, ScrollView, TextInput, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -25,55 +32,126 @@ import {
   coercePollInterval, MOBILE_DEFAULTS,
   POLL_INTERVAL_MIN_MS, POLL_INTERVAL_MAX_MS,
 } from '../lib/settings.js';
+import { useService }                        from '../ServiceContext.js';
+import { useSettings }                       from '../lib/useSettings.js';
 
-/**
- * @param {object} props
- * @param {object} [props.shared]   `{handle, displayName, location}`
- * @param {object} [props.device]   `{pollIntervalMs, onlineWindow}`
- * @param {(patch: object) => Promise<void>} [props.onUpdateDevice]
- */
-export function SettingsScreen({
-  shared = {}, device = {}, onUpdateDevice,
-} = {}) {
+export function SettingsScreen() {
   const nav = useNavigation();
-  const [pollInput, setPollInput] = useState(
-    String(device.pollIntervalMs ?? MOBILE_DEFAULTS.pollIntervalMs),
-  );
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const svc = useService();
+  const { settings, loading, error: hookError, update } = useSettings();
 
-  const submit = async () => {
-    setBusy(true); setError(null);
+  const [pollInput,  setPollInput]  = useState('');
+  const [everyInput, setEveryInput] = useState('');
+  const [durInput,   setDurInput]   = useState('');
+  const [busyKey,    setBusyKey]    = useState(null);
+  const [error,      setError]      = useState(null);
+
+  // Hydrate inputs when settings load.
+  useEffect(() => {
+    if (!settings) return;
+    setPollInput(String(settings.pollIntervalMs ?? MOBILE_DEFAULTS.pollIntervalMs));
+    setEveryInput(settings.onlineWindow?.everyMinutes != null
+      ? String(settings.onlineWindow.everyMinutes) : '');
+    setDurInput(settings.onlineWindow?.durationSec != null
+      ? String(settings.onlineWindow.durationSec) : '');
+  }, [settings]);
+
+  if (!svc?.activeBundle) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>
+          {t('settings.no_active_group',
+             'Sluit eerst aan bij een groep om instellingen te beheren.')}
+        </Text>
+      </View>
+    );
+  }
+
+  const savePoll = async () => {
+    setError(null); setBusyKey('poll');
     try {
       const next = coercePollInterval(pollInput);
-      if (onUpdateDevice) await onUpdateDevice({ pollIntervalMs: next });
+      await update({ pollIntervalMs: next }, 'device');
       setPollInput(String(next));
-    } catch (err) {
-      setError(err?.message ?? String(err));
-    } finally {
-      setBusy(false);
-    }
+    } catch (err) { setError(err?.message ?? String(err)); }
+    finally { setBusyKey(null); }
+  };
+
+  const saveOnlineWindow = async () => {
+    setError(null); setBusyKey('window');
+    try {
+      const everyMinutes = everyInput.trim() === '' ? null : Number.parseInt(everyInput, 10);
+      const durationSec  = durInput.trim()   === '' ? null : Number.parseInt(durInput,   10);
+      if (everyMinutes != null && (!Number.isFinite(everyMinutes) || everyMinutes < 1)) {
+        throw new Error(t('settings.error_every',  'Frequentie moet ≥ 1 minuut zijn.'));
+      }
+      if (durationSec != null && (!Number.isFinite(durationSec) || durationSec < 5)) {
+        throw new Error(t('settings.error_duration', 'Duur moet ≥ 5 seconden zijn.'));
+      }
+      await update({ onlineWindow: { everyMinutes, durationSec } }, 'device');
+    } catch (err) { setError(err?.message ?? String(err)); }
+    finally { setBusyKey(null); }
+  };
+
+  const toggleHop = async () => {
+    setError(null); setBusyKey('hop');
+    try {
+      await update({ allowHopThrough: !settings?.allowHopThrough }, 'device');
+    } catch (err) { setError(err?.message ?? String(err)); }
+    finally { setBusyKey(null); }
+  };
+
+  const toggleBroadcastable = async () => {
+    setError(null); setBusyKey('broadcastable');
+    try {
+      await update({ broadcastable: !settings?.broadcastable }, 'shared');
+    } catch (err) { setError(err?.message ?? String(err)); }
+    finally { setBusyKey(null); }
+  };
+
+  const toggleDefaultShareLocation = async () => {
+    setError(null); setBusyKey('defaultShareLocation');
+    try {
+      await update({ defaultShareLocation: !settings?.defaultShareLocation }, 'shared');
+    } catch (err) { setError(err?.message ?? String(err)); }
+    finally { setBusyKey(null); }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.root}>
       <Text style={styles.heading}>{t('settings.heading', 'Instellingen')}</Text>
+      {loading ? <ActivityIndicator style={{ marginVertical: SPACING.md }} /> : null}
+      {hookError ? <Text style={styles.errorText}>{hookError.message}</Text> : null}
 
+      {/* ── Shared (cross-device) ─────────────────────────────── */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
           {t('settings.shared_heading', 'Gedeeld (alle toestellen)')}
         </Text>
-        <KeyValue label={t('settings.handle', 'Handle')} value={shared.handle ? `@${shared.handle}` : '—'} />
-        <KeyValue label={t('settings.display_name', 'Naam')} value={shared.displayName ?? '—'} />
-        <KeyValue
-          label={t('settings.location', 'Locatie')}
-          value={shared.location?.cell ?? t('settings.location_unset', '—')}
+
+        <ToggleRow
+          label={t('settings.broadcastable',
+                   'Anderen mogen me skill-match-suggesties sturen')}
+          hint={t('settings.broadcastable_hint',
+                  'Aan = je krijgt voorgestelde matches uit de bredere connectielijst (groepen + contacten + hops). Uit = stilte.')}
+          on={!!settings?.broadcastable}
+          busy={busyKey === 'broadcastable'}
+          onToggle={toggleBroadcastable}
+        />
+
+        <ToggleRow
+          label={t('settings.default_share_location',
+                   'Locatie standaard delen met nieuwe contacten')}
+          hint={t('settings.default_share_location_hint',
+                  'Per-contact altijd handmatig aan/uit te zetten.')}
+          on={!!settings?.defaultShareLocation}
+          busy={busyKey === 'defaultShareLocation'}
+          onToggle={toggleDefaultShareLocation}
         />
 
         <Pressable
           onPress={() => nav.navigate(ROUTES.ProfileMine)}
           style={styles.btnSecondary}
-          accessibilityRole="button"
         >
           <Text style={styles.btnSecondaryLabel}>
             {t('settings.edit_profile', 'Bewerk profiel')}
@@ -81,10 +159,12 @@ export function SettingsScreen({
         </Pressable>
       </View>
 
+      {/* ── This device ──────────────────────────────────────── */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
           {t('settings.device_heading', 'Dit toestel')}
         </Text>
+
         <Text style={styles.label}>{t('settings.poll_interval', 'Pollinterval (ms)')}</Text>
         <TextInput
           value={pollInput}
@@ -95,45 +175,92 @@ export function SettingsScreen({
         />
         <Text style={styles.hint}>
           {t('settings.poll_hint',
-             `Tussen {min}-{max} ms. Mobiel-default: {def} ms (batterijbewust).`)
-            .replace('{min}', POLL_INTERVAL_MIN_MS.toString())
-            .replace('{max}', POLL_INTERVAL_MAX_MS.toString())
-            .replace('{def}', MOBILE_DEFAULTS.pollIntervalMs.toString())}
+             'Tussen {min}-{max} ms. Mobiel-default: {def} ms (batterijbewust).')
+            .replace('{min}', String(POLL_INTERVAL_MIN_MS))
+            .replace('{max}', String(POLL_INTERVAL_MAX_MS))
+            .replace('{def}', String(MOBILE_DEFAULTS.pollIntervalMs))}
         </Text>
-
         <Pressable
-          onPress={submit}
-          disabled={busy}
+          onPress={savePoll}
+          disabled={busyKey === 'poll'}
           style={styles.btnPrimary}
           accessibilityRole="button"
-          accessibilityLabel="settings-save"
+          accessibilityLabel="settings-save-poll"
         >
           <Text style={styles.btnPrimaryLabel}>
-            {busy
+            {busyKey === 'poll'
               ? t('settings.saving', 'Opslaan…')
               : t('settings.save',   'Opslaan')}
           </Text>
         </Pressable>
+
+        <Text style={[styles.label, { marginTop: SPACING.lg }]}>
+          {t('settings.online_window_heading', 'Online-venster (achtergrond)')}
+        </Text>
+        <Text style={styles.hint}>
+          {t('settings.online_window_hint',
+             'Hoe vaak en hoe lang verbindt je telefoon op de achtergrond? Leeg = altijd via push.')}
+        </Text>
+        <View style={styles.row}>
+          <View style={{ flex: 1, marginRight: SPACING.sm }}>
+            <Text style={styles.subLabel}>{t('settings.every_minutes', 'elke X min')}</Text>
+            <TextInput
+              value={everyInput}
+              onChangeText={setEveryInput}
+              keyboardType="numeric"
+              style={styles.input}
+              placeholder=""
+              accessibilityLabel="settings-every-input"
+            />
+          </View>
+          <View style={{ flex: 1, marginLeft: SPACING.sm }}>
+            <Text style={styles.subLabel}>{t('settings.duration_sec', 'duur (sec)')}</Text>
+            <TextInput
+              value={durInput}
+              onChangeText={setDurInput}
+              keyboardType="numeric"
+              style={styles.input}
+              placeholder=""
+              accessibilityLabel="settings-duration-input"
+            />
+          </View>
+        </View>
+        <Pressable
+          onPress={saveOnlineWindow}
+          disabled={busyKey === 'window'}
+          style={styles.btnPrimary}
+        >
+          <Text style={styles.btnPrimaryLabel}>
+            {busyKey === 'window'
+              ? t('settings.saving', 'Opslaan…')
+              : t('settings.save',   'Opslaan')}
+          </Text>
+        </Pressable>
+
+        <ToggleRow
+          label={t('settings.hop_label', 'Sta hop-relay door mijn toestel toe')}
+          hint={t('settings.hop_hint',
+                  'Mag mijn toestel berichten voor anderen doorgeven? Default uit (zuinig met batterij).')}
+          on={!!settings?.allowHopThrough}
+          busy={busyKey === 'hop'}
+          onToggle={toggleHop}
+        />
       </View>
 
+      {/* ── Privacy & meldingen links ─────────────────────────── */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
           {t('settings.privacy_heading', 'Privacy & meldingen')}
         </Text>
-        <Pressable
-          onPress={() => nav.navigate(ROUTES.Push)}
-          style={styles.btnSecondary}
-        >
-          <Text style={styles.btnSecondaryLabel}>
-            {t('settings.push_link', 'Meldingen')}
-          </Text>
+        <Pressable onPress={() => nav.navigate(ROUTES.Push)} style={styles.btnSecondary}>
+          <Text style={styles.btnSecondaryLabel}>{t('settings.push_link', 'Meldingen')}</Text>
         </Pressable>
-        <Pressable
-          onPress={() => nav.navigate(ROUTES.Privacy)}
-          style={styles.btnSecondary}
-        >
+        <Pressable onPress={() => nav.navigate(ROUTES.Privacy)} style={styles.btnSecondary}>
+          <Text style={styles.btnSecondaryLabel}>{t('settings.privacy_link', 'Privacy & veiligheid')}</Text>
+        </Pressable>
+        <Pressable onPress={() => nav.navigate(ROUTES.SignIn)} style={styles.btnSecondary}>
           <Text style={styles.btnSecondaryLabel}>
-            {t('settings.privacy_link', 'Privacy & veiligheid')}
+            {t('settings.signin_link', 'Solid pod-aanmelding')}
           </Text>
         </Pressable>
       </View>
@@ -143,11 +270,23 @@ export function SettingsScreen({
   );
 }
 
-function KeyValue({ label, value }) {
+function ToggleRow({ label, hint, on, busy, onToggle }) {
   return (
-    <View style={styles.kv}>
-      <Text style={styles.kvLabel}>{label}</Text>
-      <Text style={styles.kvValue}>{value}</Text>
+    <View style={styles.toggleRow}>
+      <View style={{ flex: 1, marginRight: SPACING.md }}>
+        <Text style={styles.toggleLabel}>{label}</Text>
+        {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      </View>
+      <Pressable
+        onPress={() => { if (!busy) onToggle(); }}
+        style={[styles.toggle, on && styles.toggleActive]}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: on, busy }}
+      >
+        <Text style={styles.toggleSwitchLabel}>
+          {busy ? '…' : on ? t('profile.holiday_on', 'Aan') : t('profile.holiday_off', 'Uit')}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -157,6 +296,8 @@ export default SettingsScreen;
 const styles = StyleSheet.create({
   root: { padding: SPACING.lg, backgroundColor: COLORS.background, paddingBottom: SPACING.xxl },
   heading: { fontSize: FONT_SIZES.xl, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.md },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACING.xl },
+  emptyText: { color: COLORS.textMuted, textAlign: 'center', fontSize: FONT_SIZES.md },
   section: {
     marginBottom: SPACING.lg, padding: SPACING.lg,
     backgroundColor: COLORS.surface, borderRadius: RADII.md,
@@ -166,10 +307,9 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md, fontWeight: '600',
     color: COLORS.text, marginBottom: SPACING.md,
   },
-  kv: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm },
-  kvLabel: { flex: 1, fontSize: FONT_SIZES.sm, color: COLORS.textMuted },
-  kvValue: { flex: 1, fontSize: FONT_SIZES.sm, color: COLORS.text, textAlign: 'right' },
-  label: { fontSize: FONT_SIZES.sm, fontWeight: '500', color: COLORS.text, marginBottom: SPACING.xs },
+  label:    { fontSize: FONT_SIZES.sm, fontWeight: '500', color: COLORS.text, marginBottom: SPACING.xs },
+  subLabel: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginBottom: SPACING.xs },
+  row:      { flexDirection: 'row' },
   input: {
     borderWidth: 1, borderColor: COLORS.border, borderRadius: RADII.sm,
     padding: SPACING.md, fontSize: FONT_SIZES.md, color: COLORS.text,
@@ -185,5 +325,16 @@ const styles = StyleSheet.create({
     borderRadius: RADII.sm, alignItems: 'center', marginTop: SPACING.sm,
   },
   btnSecondaryLabel: { color: COLORS.text, fontSize: FONT_SIZES.md, fontWeight: '500' },
+  toggleRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: SPACING.sm, marginTop: SPACING.sm,
+  },
+  toggleLabel: { fontSize: FONT_SIZES.md, color: COLORS.text, fontWeight: '500' },
+  toggle: {
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
+    borderRadius: RADII.pill, backgroundColor: COLORS.surfaceMuted,
+  },
+  toggleActive: { backgroundColor: COLORS.primary },
+  toggleSwitchLabel: { color: COLORS.text, fontSize: FONT_SIZES.sm, fontWeight: '600' },
   errorText: { color: COLORS.danger, fontSize: FONT_SIZES.sm, marginTop: SPACING.md },
 });

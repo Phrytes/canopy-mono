@@ -37,6 +37,12 @@ import {
   getActiveGroupId, setActiveGroupId,
 } from './lib/groupRegistry.js';
 import { buildBundleForGroup, defaultLocalActor } from './lib/agentBundle.js';
+import { attachAppStateBridge }                  from './lib/appStateBridge.js';
+import {
+  setBgRunOnce, clearBgRunOnce, BG_TASK_NAME,
+  registerBackgroundFetch, unregisterBackgroundFetch,
+} from './lib/bgRunOnce.js';
+import * as BackgroundFetch                      from 'expo-background-fetch';
 
 const Ctx = createContext(null);
 
@@ -145,6 +151,70 @@ export function ServiceProvider({ children, deps = {} }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── AppState bridge — Phase 40.21 (2026-05-08). ─────────────────
+  //
+  // Each time the active bundle changes, attach an AppState.change
+  // listener that drives the bundle's online state + foreground
+  // poll cadence. Detach on unmount or when the active bundle
+  // changes to a different one.
+  const activeBundleForBridge = activeGroupId ? groups.get(activeGroupId)?.bundle : null;
+  useEffect(() => {
+    if (!activeBundleForBridge) return undefined;
+    const detach = attachAppStateBridge({
+      bundle: activeBundleForBridge,
+      // The bundle's settings live on `bundle.settings`; the active
+      // cadence helper reads it lazily on each tick.
+      getPollIntervalMs: () => activeBundleForBridge.settings?.pollIntervalMs ?? 5000,
+      onError: (err) => console.warn('[AppState] error:', err?.message ?? err),
+    });
+    return () => { try { detach(); } catch { /* swallow */ } };
+  }, [activeBundleForBridge]);
+
+  // ── Background-fetch task — Phase 40.21 (2026-05-08). ───────────
+  //
+  // The OS-driven task is *defined* once at module-load time
+  // (`index.js`). Here we (a) wire the live-tick callback so a
+  // firing reaches the active bundle, and (b) register / unregister
+  // the OS-level fetch when the user has set
+  // `onlineWindow.everyMinutes`.
+  useEffect(() => {
+    if (!activeBundleForBridge) {
+      clearBgRunOnce();
+      unregisterBackgroundFetch({ BackgroundFetch, taskName: BG_TASK_NAME }).catch(() => { /* swallow */ });
+      return undefined;
+    }
+
+    setBgRunOnce(async () => {
+      try {
+        if (typeof activeBundleForBridge.skillMatch?.tick === 'function') {
+          await activeBundleForBridge.skillMatch.tick();
+        }
+        return { uploads: 0, downloads: 0, deletes: 0 }; // shape the task expects
+      } catch {
+        return null;
+      }
+    });
+
+    const everyMinutes = activeBundleForBridge.settings?.onlineWindow?.everyMinutes;
+    if (typeof everyMinutes === 'number' && everyMinutes >= 1) {
+      registerBackgroundFetch({
+        BackgroundFetch,
+        taskName: BG_TASK_NAME,
+        intervalSeconds: Math.max(60, everyMinutes * 60),
+      }).catch((err) => {
+        console.warn('[bg-fetch] register failed:', err?.message ?? err);
+      });
+    } else {
+      unregisterBackgroundFetch({ BackgroundFetch, taskName: BG_TASK_NAME }).catch(() => { /* swallow */ });
+    }
+
+    return () => {
+      clearBgRunOnce();
+      // Don't unregister on every effect run — only on group-removed
+      // (handled by the next effect run with `activeBundleForBridge=null`).
+    };
+  }, [activeBundleForBridge, activeBundleForBridge?.settings?.onlineWindow?.everyMinutes]);
 
   // ── Public actions ─────────────────────────────────────────────────────────
 

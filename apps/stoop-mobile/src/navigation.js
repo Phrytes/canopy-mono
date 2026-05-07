@@ -18,6 +18,7 @@ export const ROUTES = Object.freeze({
   OnboardIssue:   'OnboardIssue',     // admin generates QR
   SignIn:         'SignIn',           // pod sign-in
   CreateGroup:    'CreateGroup',      // 40.18 — minimal "make a new group" wizard
+  AuthCallback:   'AuthCallback',     // 40.19 — bulk-sync progress after pod sign-in
 
   // Main shell tabs (bottom-tab navigator).
   Shell:          'Shell',            // wraps the tabs; the route name we
@@ -66,6 +67,7 @@ export const STACK_ONLY_ROUTES = Object.freeze([
   ROUTES.OnboardIssue,
   ROUTES.SignIn,
   ROUTES.CreateGroup,
+  ROUTES.AuthCallback,
   ROUTES.PostCompose,
   ROUTES.ItemDetail,
   ROUTES.ChatThread,
