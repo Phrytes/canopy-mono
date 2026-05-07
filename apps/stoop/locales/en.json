@@ -166,6 +166,30 @@
     "too_many_attachments":  { "text": "Max {n} attachments.", "doc": "Inline alert when the user exceeds MAX_ATTACHMENTS." },
     "permission_denied":     { "text": "Stoop doesn't have camera/library permission.", "doc": "Inline error when the OS rejected the permission prompt." }
   },
+  "contacts": {
+    "search_placeholder":   { "text": "Search by name or @handle", "doc": "Placeholder of the ContactsScreen search box." },
+    "muted":                { "text": "muted", "doc": "Inline tag next to a contact's name when muted." },
+    "empty_no_contacts":    { "text": "No contacts yet.", "doc": "Empty state when the contact list is empty." },
+    "empty_filtered":       { "text": "No contacts match this search.", "doc": "Empty state when the search filter excludes everything." }
+  },
+  "contact": {
+    "unknown":              { "text": "Contact not found.", "doc": "Empty state on ContactScreen when the route was opened without a resolved contact." },
+    "open_chat":            { "text": "Open chat", "doc": "Primary CTA on ContactScreen — navigates to a 1:1 thread." },
+    "show_qr":              { "text": "Show my QR", "doc": "CTA — reveals the user's stoop-contact:// share QR." },
+    "hide_qr":              { "text": "Hide QR", "doc": "Hide the user's share QR (toggle)." },
+    "qr_caption":           { "text": "Show this to your contact so you can mark each other as known.", "doc": "Caption under the share QR." },
+    "mute":                 { "text": "Mute", "doc": "Mute action on ContactScreen — silences notifications." },
+    "unmute":               { "text": "Unmute", "doc": "Reverse of mute." },
+    "block":                { "text": "Block", "doc": "Destructive action on ContactScreen." },
+    "confirm_yes":          { "text": "Confirm", "doc": "Generic confirm label on ConfirmModal." },
+    "confirm_no":           { "text": "Cancel", "doc": "Generic cancel label on ConfirmModal." },
+    "confirm_mute_title":   { "text": "Mute contact?", "doc": "ConfirmModal title before muting." },
+    "confirm_mute_body":    { "text": "You won't get notifications from this contact.", "doc": "ConfirmModal body before muting." },
+    "confirm_unmute_title": { "text": "Unmute contact?", "doc": "ConfirmModal title before unmuting." },
+    "confirm_unmute_body":  { "text": "Notifications will resume.", "doc": "ConfirmModal body before unmuting." },
+    "confirm_block_title":  { "text": "Block contact?", "doc": "ConfirmModal title before blocking." },
+    "confirm_block_body":   { "text": "Blocked contacts can no longer message you.", "doc": "ConfirmModal body before blocking." }
+  },
   "chat_threads": {
     "empty": { "text": "No conversations yet.", "doc": "Empty state on ChatThreadsScreen." }
   },

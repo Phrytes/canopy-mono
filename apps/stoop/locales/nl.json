@@ -166,6 +166,30 @@
     "too_many_attachments":  { "text": "Max {n} bijlagen.", "doc": "Inline alert when the user exceeds MAX_ATTACHMENTS." },
     "permission_denied":     { "text": "Stoop heeft geen toestemming voor camera/galerij.", "doc": "Inline error when the OS rejected the permission prompt." }
   },
+  "contacts": {
+    "search_placeholder":   { "text": "Zoek op naam of @handle", "doc": "Placeholder of the ContactsScreen search box." },
+    "muted":                { "text": "gedempt", "doc": "Inline tag next to a contact's name when muted." },
+    "empty_no_contacts":    { "text": "Nog geen contacten.", "doc": "Empty state when the contact list is empty." },
+    "empty_filtered":       { "text": "Geen contacten voor deze zoekopdracht.", "doc": "Empty state when the search filter excludes everything." }
+  },
+  "contact": {
+    "unknown":              { "text": "Contact niet gevonden.", "doc": "Empty state on ContactScreen when the route was opened without a resolved contact." },
+    "open_chat":            { "text": "Open gesprek", "doc": "Primary CTA on ContactScreen — navigates to a 1:1 thread." },
+    "show_qr":              { "text": "Toon mijn QR", "doc": "CTA — reveals the user's stoop-contact:// share QR." },
+    "hide_qr":              { "text": "Verberg QR", "doc": "Hide the user's share QR (toggle)." },
+    "qr_caption":           { "text": "Laat dit zien aan je contact om elkaar als bekend te markeren.", "doc": "Caption under the share QR." },
+    "mute":                 { "text": "Demp", "doc": "Mute action on ContactScreen — silences notifications." },
+    "unmute":               { "text": "Demp opheffen", "doc": "Reverse of mute." },
+    "block":                { "text": "Blokkeer", "doc": "Destructive action on ContactScreen." },
+    "confirm_yes":          { "text": "Bevestig", "doc": "Generic confirm label on ConfirmModal." },
+    "confirm_no":           { "text": "Annuleer", "doc": "Generic cancel label on ConfirmModal." },
+    "confirm_mute_title":   { "text": "Contact dempen?", "doc": "ConfirmModal title before muting." },
+    "confirm_mute_body":    { "text": "Je krijgt geen meldingen meer van dit contact.", "doc": "ConfirmModal body before muting." },
+    "confirm_unmute_title": { "text": "Demp opheffen?", "doc": "ConfirmModal title before unmuting." },
+    "confirm_unmute_body":  { "text": "Meldingen weer aanzetten.", "doc": "ConfirmModal body before unmuting." },
+    "confirm_block_title":  { "text": "Contact blokkeren?", "doc": "ConfirmModal title before blocking." },
+    "confirm_block_body":   { "text": "Geblokkeerde contacten kunnen je geen berichten meer sturen.", "doc": "ConfirmModal body before blocking." }
+  },
   "chat_threads": {
     "empty": { "text": "Nog geen gesprekken.", "doc": "Empty state on ChatThreadsScreen." }
   },
