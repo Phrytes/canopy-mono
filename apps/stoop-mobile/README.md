@@ -103,6 +103,13 @@ Pending phases (per
   inbound suggestions with origin chip (group / contact / hop) +
   Help/Negeer CTAs. PostComposeScreen gains scope tickboxes
   ("Also auto-match across my contacts / hop-peers").
+- 40.22 ✅ Privacy polish — new `rotateMyAddress` skill (wraps
+  `core.Agent.rotateIdentity()`); SettingsScreen privacy section
+  gets a "Rotate my address now" CTA gated by ConfirmModal.
+  New `MetadataWarningScreen` shown on first launch (gated via
+  AsyncStorage `stoop:privacy:metadata-warning-seen`); explains
+  what the relay can/can't see + actions the user can take.
+  Tests: 832/832 across 28 files.
 - 40.21 ✅ AppState bridge + background-fetch — `defineBackgroundTask`
   at module-load (`index.js`); ServiceContext registers the OS-level
   fetch when `onlineWindow.everyMinutes` is set + sets the runOnce

@@ -47,6 +47,7 @@ import { ROUTES, SHELL_TAB_ROUTES, STACK_ONLY_ROUTES } from './src/navigation.js
 import { t, initI18n }                from './src/lib/i18n.js';
 import { COLORS }                     from './src/lib/theme.js';
 import { ServiceProvider }            from './src/ServiceContext.js';
+import { hasSeenMetadataWarning }     from './src/lib/metadataWarning.js';
 
 // PlaceholderScreen is unused now that every route has a real screen,
 // but we keep the import path stable for future regression scaffolds.
@@ -73,6 +74,7 @@ import { OnboardIssueScreen }         from './src/screens/OnboardIssueScreen.js'
 import { CreateGroupScreen }          from './src/screens/CreateGroupScreen.js';
 import { AuthCallbackScreen }         from './src/screens/AuthCallbackScreen.js';
 import { SkillMatchInboxScreen }      from './src/screens/SkillMatchInboxScreen.js';
+import { MetadataWarningScreen }      from './src/screens/MetadataWarningScreen.js';
 import { MineScreen }                 from './src/screens/MineScreen.js';
 import { MetricsScreen }              from './src/screens/MetricsScreen.js';
 
@@ -81,6 +83,7 @@ import { MetricsScreen }              from './src/screens/MetricsScreen.js';
 // app (including the synthetic `Shell` route).
 export const SCREEN_COMPONENTS = Object.freeze({
   // Stack-only routes
+  [ROUTES.MetadataWarning]: MetadataWarningScreen,
   [ROUTES.Welcome]:        WelcomeScreen,
   [ROUTES.OnboardScan]:    OnboardScanScreen,
   [ROUTES.OnboardRestore]: OnboardRestoreScreen,
@@ -231,6 +234,17 @@ initI18n().catch((err) => {
 });
 
 export default function App() {
+  // Phase 40.22: gate the initial route on whether the user has
+  // acknowledged the metadata-public privacy warning.  First launch
+  // → MetadataWarning; subsequent launches → Welcome.
+  const [initialRoute, setInitialRoute] = React.useState(null);
+  React.useEffect(() => {
+    hasSeenMetadataWarning()
+      .then((seen) => setInitialRoute(seen ? ROUTES.Welcome : ROUTES.MetadataWarning))
+      .catch(() => setInitialRoute(ROUTES.Welcome));
+  }, []);
+  if (initialRoute == null) return null; // brief splash; AsyncStorage round-trip is ~ms
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
@@ -239,10 +253,11 @@ export default function App() {
         <NavigationContainer>
           <DeepLinkHandler />
           <Stack.Navigator
-            initialRouteName={ROUTES.Welcome}
+            initialRouteName={initialRoute}
             screenOptions={{ headerShown: false }}
           >
             {/* Entry stack — pre-shell screens. */}
+            <Stack.Screen name={ROUTES.MetadataWarning} component={MetadataWarningScreen} />
             <Stack.Screen name={ROUTES.Welcome}        component={WelcomeScreen} />
             <Stack.Screen name={ROUTES.OnboardScan}    component={OnboardScanScreen} />
             <Stack.Screen name={ROUTES.OnboardRestore} component={OnboardRestoreScreen} />
