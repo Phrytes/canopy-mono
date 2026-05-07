@@ -138,11 +138,48 @@ in
 remaining V1 product-item scope is in
 [`Project Files/Stoop/coding-plan-v1-2026-05-05.md`](../../Project%20Files/Stoop/coding-plan-v1-2026-05-05.md).
 
+### Settings layout
+
+Stoop V2.5 splits its persisted settings into two pod blobs per the
+project-wide convention
+([`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md)):
+
+```
+<pod>/stoop/settings/shared.json              user-portable
+<pod>/stoop/settings/devices/<deviceId>.json  per-install (local-only)
+```
+
+**Field partition** (this app's authoritative table):
+
+| Field | Scope | Why |
+|---|---|---|
+| `pollIntervalMs` | device | Per-machine UI cadence. |
+| `onlineWindow` | device | Mobile-only battery-aware schedule. |
+| `allowHopThrough` | device | Hardware decision to relay for others. |
+| `broadcastable` | shared | User policy: accept inbound auto-skill-match? |
+| `defaultShareLocation` | shared | User preference for new-contact defaults. |
+
+`devices/<deviceId>.json` is local-only — never pushed to the pod
+via bulk-sync (Phase 34). The `deviceId` is
+[`core.AgentIdentity.deviceId`](../../packages/core/src/identity/AgentIdentity.js).
+
+**Cross-app shared-defaults (Rule 3 of the convention):** Stoop is
+the canonical example for the layout but is currently the only app
+with persisted settings. When a sibling app (Folio, Archive,
+Household) ships its own settings, it MAY read
+`<pod>/stoop/settings/shared.json` to seed first-run defaults for
+matching fields. Stoop in turn doesn't currently read sibling apps'
+blobs (it predates them) — when it eventually does, the field-mapping
+table goes here.
+
+**Pod-layout doc:** [`Project Files/Stoop/pod-layout-2026-05-06.md`](../../Project%20Files/Stoop/pod-layout-2026-05-06.md)
+has the cross-app pod-layout convention text in full.
+
 ### Localisation
 
 Strings live in `locales/<lang>.json`. Default is `en`; `nl` ships
-from V1 per the project i18n convention
-([`Project Files/conventions/i18n.md`](../../Project%20Files/conventions/i18n.md)).
+from V1 per the project localisation convention
+([`Project Files/conventions/localisation.md`](../../Project%20Files/conventions/localisation.md)).
 Add a locale by creating `locales/<xx>.json` and mirroring the keys
 from `en.json`.
 
