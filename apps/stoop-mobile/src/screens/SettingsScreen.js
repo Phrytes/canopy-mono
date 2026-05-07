@@ -34,6 +34,8 @@ import {
 } from '../lib/settings.js';
 import { useService }                        from '../ServiceContext.js';
 import { useSettings }                       from '../lib/useSettings.js';
+import { useSkill }                          from '../lib/useSkill.js';
+import { ConfirmModal }                      from '../components/ConfirmModal.js';
 
 export function SettingsScreen() {
   const nav = useNavigation();
@@ -45,6 +47,9 @@ export function SettingsScreen() {
   const [durInput,   setDurInput]   = useState('');
   const [busyKey,    setBusyKey]    = useState(null);
   const [error,      setError]      = useState(null);
+  const [showRotateConfirm, setShowRotateConfirm] = useState(false);
+  const [rotateResult,      setRotateResult]      = useState(null);
+  const rotateAddress = useSkill('rotateMyAddress');
 
   // Hydrate inputs when settings load.
   useEffect(() => {
@@ -268,7 +273,55 @@ export function SettingsScreen() {
             {t('settings.skillmatch_link', 'Voorgestelde matches')}
           </Text>
         </Pressable>
+
+        {/* Phase 40.22: rotate identity address */}
+        <Text style={[styles.label, { marginTop: SPACING.md }]}>
+          {t('settings.rotate_identity_label', 'Netwerk-adres rotatie')}
+        </Text>
+        <Text style={styles.hint}>
+          {t('settings.rotate_identity_hint',
+             'Vervangt je publieke sleutel met een verse. Je stableId blijft gelijk — contacten en mute-lijsten volgen je. 7 dagen genade-periode voor in-flight berichten.')}
+        </Text>
+        <Pressable
+          onPress={() => setShowRotateConfirm(true)}
+          disabled={busyKey === 'rotate'}
+          style={styles.btnSecondary}
+          accessibilityRole="button"
+          accessibilityLabel="settings-rotate-identity"
+        >
+          <Text style={styles.btnSecondaryLabel}>
+            {busyKey === 'rotate'
+              ? t('settings.rotating_identity', 'Roteren…')
+              : t('settings.rotate_identity', 'Roteer mijn adres nu')}
+          </Text>
+        </Pressable>
+        {rotateResult ? (
+          <Text style={styles.successText}>
+            {t('settings.rotate_done', 'Geroteerd. Nieuw adres: {pk}')
+              .replace('{pk}', String(rotateResult.newPubKey ?? '').slice(0, 12) + '…')}
+          </Text>
+        ) : null}
       </View>
+
+      <ConfirmModal
+        visible={showRotateConfirm}
+        title={t('settings.confirm_rotate_title', 'Roteer netwerk-adres?')}
+        body={t('settings.confirm_rotate_body',
+                'Je publieke sleutel wordt vervangen. Berichten van peers die de rotatie nog niet kennen worden 7 dagen lang met je oude sleutel ontsleuteld (genade-periode). Dit is een privacy-maatregel — niet ongedaan te maken.')}
+        confirmLabel={t('settings.confirm_rotate_yes', 'Roteer')}
+        cancelLabel={t('contact.confirm_no', 'Annuleer')}
+        onConfirm={async () => {
+          setShowRotateConfirm(false);
+          setError(null); setBusyKey('rotate');
+          try {
+            const r = await rotateAddress.call({});
+            if (r?.error) throw new Error(r.error);
+            setRotateResult(r);
+          } catch (err) { setError(err?.message ?? String(err)); }
+          finally { setBusyKey(null); }
+        }}
+        onCancel={() => setShowRotateConfirm(false)}
+      />
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </ScrollView>
@@ -342,4 +395,5 @@ const styles = StyleSheet.create({
   toggleActive: { backgroundColor: COLORS.primary },
   toggleSwitchLabel: { color: COLORS.text, fontSize: FONT_SIZES.sm, fontWeight: '600' },
   errorText: { color: COLORS.danger, fontSize: FONT_SIZES.sm, marginTop: SPACING.md },
+  successText: { color: COLORS.success, fontSize: FONT_SIZES.sm, fontWeight: '600', marginTop: SPACING.sm },
 });
