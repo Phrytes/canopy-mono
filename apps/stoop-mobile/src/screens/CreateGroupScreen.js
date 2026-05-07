@@ -129,7 +129,20 @@ export function CreateGroupScreen() {
         />
       </View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <View>
+          <Text style={styles.errorText}>{error}</Text>
+          {/* Diagnostic strip — phase 40.23 follow-up. Stays visible
+              while we're stabilising the no-groups → first-group
+              transition; helps surface root cause when an error
+              appears. */}
+          <Text style={styles.debugText}>
+            status={String(svc?.status)} · identity={svc?.identity ? 'ok' : 'null'}
+            {' '}· activeBundle={svc?.activeBundle ? 'ok' : 'null'}
+            {svc?.error ? ` · svcError=${svc.error.message}` : ''}
+          </Text>
+        </View>
+      ) : null}
 
       <Pressable
         onPress={submit}
@@ -168,4 +181,5 @@ const styles = StyleSheet.create({
   btnDisabled: { backgroundColor: COLORS.surfaceMuted },
   btnPrimaryLabel: { color: COLORS.textInverse, fontSize: FONT_SIZES.md, fontWeight: '600' },
   errorText: { color: COLORS.danger, fontSize: FONT_SIZES.sm, marginTop: SPACING.md },
+  debugText: { color: COLORS.textMuted, fontSize: FONT_SIZES.xs, marginTop: SPACING.sm, fontFamily: 'monospace' },
 });
