@@ -1,14 +1,14 @@
 /**
- * ChatThreadsScreen — list of chat threads, most-recently-active
- * first. Tapping a row opens ChatThreadScreen.
+ * ChatThreadsScreen — list of 1:1 chat threads.
  *
- * Stoop V3 mobile.  Pure UI: bring-up code provides the threads
- * array; this screen sorts + renders.
+ * Stoop V3 mobile.  Phase 40.17 (2026-05-08): wired to live agent
+ * via `listChatThreads` + auto-refresh on `chat-message-arrive`
+ * events.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
-  View, Text, FlatList, Pressable, StyleSheet,
+  View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -18,37 +18,79 @@ import { t }                                 from '../lib/i18n.js';
 import { sortThreadsByActivity, formatUnreadBadge } from '../lib/chat.js';
 import { timeAgo }                           from '../lib/post.js';
 import { AvatarCircle }                      from '../components/AvatarCircle.js';
+import { useService }                        from '../ServiceContext.js';
+import { useSkillResult }                    from '../lib/useSkillResult.js';
+import { useAgentEvent }                     from '../lib/useAgentEvent.js';
 
-/**
- * @param {object} props
- * @param {Array<{id: string, peerId: string, lastActivity?: number,
- *                unreadCount?: number, lastMessagePreview?: string}>} [props.threads]
- * @param {Map<string, object>|object} [props.peerIndex]
- *   `{ [peerId]: {handle, avatarUri} }`
- */
-export function ChatThreadsScreen({ threads = [], peerIndex } = {}) {
-  const nav  = useNavigation();
-  const data = sortThreadsByActivity(threads);
+export function ChatThreadsScreen() {
+  const nav = useNavigation();
+  const svc = useService();
+  const { data, loading, refresh } = useSkillResult('listChatThreads', {}, []);
+
+  const arrived = useAgentEvent('chat-message-arrive');
+  useEffect(() => {
+    if (arrived != null) refresh().catch(() => { /* swallow */ });
+  }, [arrived, refresh]);
+
+  if (!svc?.activeBundle) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>
+          {t('chat_threads.no_active_group',
+             'Sluit eerst aan bij een groep om je gesprekken te zien.')}
+        </Text>
+      </View>
+    );
+  }
+
+  // listChatThreads returns `threads` shaped {threadId, lastBody,
+  // lastSentAt, lastFrom, counterparty}. Map to the
+  // ChatThreadsScreen shape (peerId, lastActivity, etc.).
+  const rawThreads  = Array.isArray(data?.threads) ? data.threads : [];
+  const threads = rawThreads.map((tt) => ({
+    id:                  tt.threadId,
+    threadId:            tt.threadId,
+    peerId:              tt.counterparty,
+    lastActivity:        tt.lastSentAt,
+    lastMessagePreview:  tt.lastBody,
+  }));
+  const sorted = sortThreadsByActivity(threads);
+
+  // Resolve peer details from MemberMap.
+  const members = svc.activeBundle.members;
+  const lookupPeer = (peerId) => {
+    if (!peerId || !members) return null;
+    try {
+      const m = members.resolveByStableId?.(peerId)
+             ?? members.resolveByWebid?.(peerId)
+             ?? members.resolveByPubKey?.(peerId);
+      if (!m) return null;
+      return { handle: m.handle, avatarUri: m.avatarUrl ?? m.avatarUri };
+    } catch { return null; }
+  };
 
   return (
     <View style={styles.root}>
+      {loading && sorted.length === 0 ? <ActivityIndicator style={{ marginTop: SPACING.lg }} /> : null}
       <FlatList
-        data={data}
+        data={sorted}
         keyExtractor={(it) => String(it.id ?? it.peerId)}
+        refreshing={loading}
+        onRefresh={refresh}
         renderItem={({ item }) => {
-          const peer = _lookup(peerIndex, item.peerId);
+          const peer = lookupPeer(item.peerId) ?? {};
           return (
             <Pressable
-              onPress={() => nav.navigate(ROUTES.ChatThread, { threadId: item.id, peerId: item.peerId })}
+              onPress={() => nav.navigate(ROUTES.ChatThread, { threadId: item.threadId, peerId: item.peerId })}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
               accessibilityRole="button"
               accessibilityLabel={`chat-thread-${item.id}`}
             >
-              <AvatarCircle uri={peer?.avatarUri} name={peer?.handle ?? '·'} size={48} />
+              <AvatarCircle uri={peer.avatarUri} name={peer.handle ?? '·'} size={48} />
               <View style={styles.rowText}>
                 <View style={styles.rowTitle}>
                   <Text style={styles.handle} numberOfLines={1}>
-                    {peer?.handle ?? '@unknown'}
+                    {peer.handle ? `@${peer.handle}` : '@unknown'}
                   </Text>
                   <Text style={styles.time}>
                     {timeAgo(item.lastActivity) ?? ''}
@@ -79,13 +121,6 @@ export function ChatThreadsScreen({ threads = [], peerIndex } = {}) {
       />
     </View>
   );
-}
-
-function _lookup(idx, id) {
-  if (!idx || !id) return null;
-  if (idx instanceof Map) return idx.get(id) ?? null;
-  if (typeof idx === 'object') return idx[id] ?? null;
-  return null;
 }
 
 export default ChatThreadsScreen;
