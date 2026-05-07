@@ -270,7 +270,18 @@ export function ServiceProvider({ children, deps = {} }) {
     if (slotBundle) return slotBundle;
     if (bootstrap)  return bootstrap;
 
-    const id = identityRef.current;
+    // Identity is set inside the boot effect's async block; the user
+    // can reach Welcome and tap a CTA before that promise resolves.
+    // Poll the ref for up to 8s so we don't surface a misleading
+    // "no agent" error during normal first-launch keychain access.
+    let id = identityRef.current;
+    if (!id) {
+      const deadline = Date.now() + 8000;
+      while (!id && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 50));
+        id = identityRef.current;
+      }
+    }
     if (!id) {
       const e = new Error('Identity not ready yet — try again in a moment.');
       e.code = 'NO_IDENTITY';
