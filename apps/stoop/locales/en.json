@@ -1,12 +1,62 @@
 {
   "common": {
     "app_name":  "Stoop",
-    "loading":   "Loading…",
+    "loading":   { "text": "Loading…", "doc": "Generic loading placeholder used in lists / panes that haven't received data yet." },
     "save":      "Save",
     "cancel":    "Cancel",
     "ok":        "OK",
     "back":      "Back",
+    "busy":      { "text": "Working…", "doc": "Generic in-flight status text shown while a skill call is running." },
     "error":     { "text": "Error", "doc": "Generic error prefix shown before any API error message, e.g. 'Error: invalid-mnemonic'." }
+  },
+  "welcome": {
+    "page_title":     { "text": "Stoop — Welcome", "doc": "Browser tab title for /welcome.html." },
+    "hero_title":     { "text": "Welcome to Stoop", "doc": "Hero heading on /welcome.html — first thing a brand-new user sees." },
+    "hero_intro":     { "text": "A neighbourhood pinboard that runs locally on your device. No feed, no ads, your data stays yours.", "doc": "Hero subtitle. Three-line value prop." },
+    "new_title":      { "text": "New account", "doc": "Title of the left-hand choice card on /welcome.html — link to /onboard.html." },
+    "new_body":       { "text": "I have an invite link or code and want to join a group for the first time.", "doc": "Description of the new-account choice." },
+    "restore_title":  { "text": "Restore an existing account", "doc": "Title of the right-hand choice card on /welcome.html — link to /restore.html." },
+    "restore_body":   { "text": "I have my recovery phrase (12 or 24 words) from another device. I want to use it here.", "doc": "Description of the restore-account choice." },
+    "footer_hint":    { "text": "No prior knowledge needed — the steps take a few minutes. You can switch devices later by re-using your recovery phrase.", "doc": "Reassurance footer at the bottom of /welcome.html." }
+  },
+  "privacy": {
+    "page_title":             { "text": "Stoop — Privacy", "doc": "Browser tab title for /privacy.html." },
+    "heading":                { "text": "Privacy — what to know", "doc": "Main page heading on /privacy.html." },
+    "intro":                  { "text": "Stoop is a research preview. The points below are never hidden — they apply to everyone who joins.", "doc": "Lead paragraph on /privacy.html." },
+    "data_location_heading":  { "text": "Where your data lives", "doc": "H3 above the data-location list on /privacy.html: which provider hosts what." },
+    "unset_value":            { "text": "— not configured —", "doc": "Placeholder shown next to a privacy-row label when no value is configured." },
+    "row_relay_operator":     { "text": "Relay operator", "doc": "Label for the relay operator row." },
+    "row_relay_url":          { "text": "Relay server", "doc": "Label for the relay server URL row." },
+    "row_pod_issuer":         { "text": "Pod provider", "doc": "Label for the pod provider (Solid OIDC issuer) row." },
+    "row_pod_root":           { "text": "Pod location", "doc": "Label for the pod root URL row." }
+  },
+  "mine": {
+    "page_title": { "text": "Stoop — My posts", "doc": "Browser tab title for /mine.html." },
+    "heading":    { "text": "My posts", "doc": "Main page heading on /mine.html." }
+  },
+  "sign_in": {
+    "page_title":          { "text": "Stoop — Pod sign-in", "doc": "Browser tab title for /sign-in.html." },
+    "heading":             { "text": "Solid pod connection", "doc": "Main page heading on /sign-in.html." },
+    "intro":               { "text": "Stoop works fully <strong>locally</strong> out of the box. A Solid pod is optional: it makes your posts and profile portable across devices and gives you control over storage. You can sign in or out later without losing data.", "doc": "Lead paragraph. Contains <strong> tag — keep it." },
+    "issuer_label":        { "text": "Solid OIDC issuer", "doc": "Label above the issuer URL input." },
+    "submit":              { "text": "Sign in to pod", "doc": "Submit button on the sign-in form." },
+    "sign_out":            { "text": "Sign out of pod", "doc": "Submit button on the sign-out form." },
+    "pod_attached":        { "text": "attached", "doc": "Status word shown when the pod is currently attached." },
+    "pod_not_attached":    { "text": "not attached", "doc": "Status word shown when sign-in succeeded but pod-attach failed." },
+    "signed_in_html":      { "text": "Signed in as <strong>{webid}</strong> — pod {podLabel}.", "doc": "Status line shown when signed in. Contains <strong> + two placeholders." },
+    "not_signed_in":       { "text": "Not signed in to a pod. Stoop is running locally.", "doc": "Status line shown when no pod is attached." },
+    "signed_out":          { "text": "Signed out.", "doc": "Confirmation shown after a successful sign-out." }
+  },
+  "metrics": {
+    "page_title":   { "text": "Stoop — Metrics", "doc": "Browser tab title for /metrics.html." },
+    "heading":      { "text": "Usage counters (local)", "doc": "Main heading on /metrics.html." },
+    "intro":        { "text": "Counters of actions this agent has seen in this process. In-memory — reset on restart. Supports the beta runbook § \"Operational metrics\".", "doc": "Lead paragraph on /metrics.html." },
+    "refresh":      { "text": "Refresh", "doc": "Refresh button on /metrics.html — triggers an immediate reload of counters." },
+    "empty":        { "text": "No counters yet — nothing has happened in this session.", "doc": "Empty-state shown when the metrics map is empty." },
+    "col_event":    { "text": "Event", "doc": "Header of the first column in the metrics grid." },
+    "col_count":    { "text": "Count", "doc": "Header of the second column — number of times the event fired." },
+    "col_last":     { "text": "Last", "doc": "Header of the third column — timestamp of the most recent firing." },
+    "snapshot_at":  { "text": "Snapshot: {ts}", "doc": "Footer line under the metrics grid. {ts} is a locale-formatted timestamp." }
   },
   "errors": {
     "groupId_required":     "Please choose a group.",
@@ -80,10 +130,6 @@
     "q4_conflict": "4. Conflict resolution",
     "q5_access":   "5. Access policy",
     "q6_leave":    "6. Leave policy"
-  },
-  "privacy": {
-    "title":   "Privacy — what to know",
-    "intro":   "Stoop is a research preview. The points below are never hidden — they apply to everyone who joins."
   },
   "nav": {
     "feed":     { "text": "Feed",      "doc": "Top-nav link to the main feed page (/)." },

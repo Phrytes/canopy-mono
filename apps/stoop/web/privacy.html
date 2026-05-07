@@ -2,38 +2,42 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8">
-  <title>Stoop — Privacy</title>
+  <title data-i18n="privacy.page_title">Stoop — Privacy</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <header>
     <nav>
-      <a href="/">Buurt</a>
-      <a href="/profile.html">Profiel</a>
-      <a href="/privacy.html" class="active">Privacy</a>
+      <a href="/" data-i18n="nav.feed">Buurt</a>
+      <a href="/profile.html" data-i18n="nav.profile">Profiel</a>
+      <a href="/privacy.html" class="active" data-i18n="nav.privacy">Privacy</a>
     </nav>
     <div id="actor"></div>
   </header>
 
   <main>
     <section>
-      <h2>Privacy — wat je moet weten</h2>
-      <p class="hint">
+      <h2 data-i18n="privacy.heading">Privacy — wat je moet weten</h2>
+      <p class="hint" data-i18n="privacy.intro">
         Stoop is een onderzoeks-preview. Onderstaande punten zijn
         nooit verstopt; ze gelden voor iedereen die meedoet.
       </p>
       <div id="notice"></div>
 
-      <h3 style="margin-top: 2rem;">Waar je data staat</h3>
+      <h3 style="margin-top: 2rem;" data-i18n="privacy.data_location_heading">Waar je data staat</h3>
       <ul id="data-location"></ul>
     </section>
   </main>
 
   <script type="module">
-    import { callSkill, getActor } from '/app.js';
+    import { callSkill, getActor, initI18n, applyI18n, t, currentLang } from '/app.js';
+
+    await initI18n();
+    applyI18n();
+    document.title = t('privacy.page_title', 'Stoop — Privacy');
     document.getElementById('actor').textContent = await getActor();
 
-    const { sections } = await callSkill('getPrivacyNotice', { lang: 'nl' });
+    const { sections } = await callSkill('getPrivacyNotice', { lang: currentLang() });
     const wrap = document.getElementById('notice');
     for (const s of sections) {
       const h = document.createElement('h3');
@@ -45,15 +49,16 @@
 
     const loc = await callSkill('getDataLocation', {});
     const list = document.getElementById('data-location');
+    const unset = t('privacy.unset_value', '— niet ingesteld —');
     const rows = [
-      ['Relay-operator', loc.relayOperator],
-      ['Relay-server',   loc.relayUrl],
-      ['Pod-aanbieder',  loc.podIssuer],
-      ['Pod-locatie',    loc.podRoot],
+      [t('privacy.row_relay_operator', 'Relay-operator'), loc.relayOperator],
+      [t('privacy.row_relay_url',      'Relay-server'),   loc.relayUrl],
+      [t('privacy.row_pod_issuer',     'Pod-aanbieder'),  loc.podIssuer],
+      [t('privacy.row_pod_root',       'Pod-locatie'),    loc.podRoot],
     ];
     for (const [k, v] of rows) {
       const li = document.createElement('li');
-      li.innerHTML = `<strong>${k}:</strong> ${v ?? '— niet ingesteld —'}`;
+      li.innerHTML = `<strong>${k}:</strong> ${v ?? unset}`;
       list.appendChild(li);
     }
   </script>

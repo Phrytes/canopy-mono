@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8">
-  <title>Stoop — Metrics</title>
+  <title data-i18n="metrics.page_title">Stoop — Metrics</title>
   <link rel="stylesheet" href="/style.css">
   <style>
     .metrics-grid {
@@ -38,16 +38,16 @@
 <body>
   <header>
     <nav>
-      <a href="/">Buurt</a>
-      <a href="/mine.html">Mijn posts</a>
-      <a href="/chat.html">Chat</a>
-      <a href="/contacts.html">Contacten</a>
-      <a href="/metrics.html" class="active">Metrics</a>
-      <a href="/profile.html">Profiel</a>
-      <a href="/sign-in.html">Pod</a>
-      <a href="/push.html">Push</a>
-      <a href="/onboard.html">Onboarden</a>
-      <a href="/settings.html">Instellingen</a>
+      <a href="/"               data-i18n="nav.feed">Buurt</a>
+      <a href="/mine.html"      data-i18n="nav.my_posts">Mijn posts</a>
+      <a href="/chat.html"      data-i18n="nav.chat">Chat</a>
+      <a href="/contacts.html"  data-i18n="nav.contacts">Contacten</a>
+      <a href="/metrics.html"   class="active" data-i18n="nav.metrics">Metrics</a>
+      <a href="/profile.html"   data-i18n="nav.profile">Profiel</a>
+      <a href="/sign-in.html"   data-i18n="nav.pod">Pod</a>
+      <a href="/push.html"      data-i18n="nav.push">Push</a>
+      <a href="/onboard.html"   data-i18n="nav.onboard">Onboarden</a>
+      <a href="/settings.html"  data-i18n="nav.settings">Instellingen</a>
     </nav>
     <select id="group-switcher" hidden aria-label="Switch group"></select>
     <div id="actor"></div>
@@ -55,22 +55,26 @@
 
   <main>
     <section>
-      <h2>Gebruiks-tellers (lokaal)</h2>
-      <p class="hint">
+      <h2 data-i18n="metrics.heading">Gebruiks-tellers (lokaal)</h2>
+      <p class="hint" data-i18n="metrics.intro">
         Tellers van acties die deze agent in dit proces heeft gezien.
         In-memory — opnieuw nul bij herstart.  Faciliteert beta-runbook §
         "Operational metrics".
       </p>
-      <div id="metrics-out"><div class="empty-metrics">Aan het laden…</div></div>
+      <div id="metrics-out"><div class="empty-metrics" data-i18n="common.loading">Aan het laden…</div></div>
       <div style="margin-top: 1rem; display: flex; gap: 0.6rem; align-items: center;">
-        <button id="refresh">Vernieuw</button>
+        <button id="refresh" data-i18n="metrics.refresh">Vernieuw</button>
         <span id="captured-at" class="hint"></span>
       </div>
     </section>
   </main>
 
   <script type="module">
-    import { callSkill, getActor, mountGroupSwitcher } from '/app.js';
+    import { callSkill, getActor, mountGroupSwitcher, initI18n, applyI18n, t } from '/app.js';
+
+    await initI18n();
+    applyI18n();
+    document.title = t('metrics.page_title', 'Stoop — Metrics');
 
     document.getElementById('actor').textContent = await getActor();
     mountGroupSwitcher(document.getElementById('group-switcher'));
@@ -88,10 +92,15 @@
         const entries = Object.entries(r.snapshot ?? {})
           .sort((a, b) => (b[1].count ?? 0) - (a[1].count ?? 0));
         if (entries.length === 0) {
-          out.innerHTML = '<div class="empty-metrics">Nog geen tellers — er is nog niets gebeurd in deze sessie.</div>';
+          out.innerHTML = `<div class="empty-metrics">${escapeHtml(t('metrics.empty', 'Nog geen tellers — er is nog niets gebeurd in deze sessie.'))}</div>`;
         } else {
+          const headers = {
+            event:  t('metrics.col_event',  'Event'),
+            count:  t('metrics.col_count',  'Aantal'),
+            last:   t('metrics.col_last',   'Laatste'),
+          };
           let html = '<div class="metrics-grid">';
-          html += '<div class="h">Event</div><div class="h count">Aantal</div><div class="h last">Laatste</div>';
+          html += `<div class="h">${escapeHtml(headers.event)}</div><div class="h count">${escapeHtml(headers.count)}</div><div class="h last">${escapeHtml(headers.last)}</div>`;
           for (const [k, v] of entries) {
             const last = v.lastAt ? new Date(v.lastAt).toLocaleString() : '—';
             html += `<div>${escapeHtml(k)}</div><div class="count">${v.count ?? 0}</div><div class="last">${escapeHtml(last)}</div>`;
@@ -99,9 +108,10 @@
           html += '</div>';
           out.innerHTML = html;
         }
-        at.textContent = `Snapshot: ${new Date(r.capturedAt ?? Date.now()).toLocaleString()}`;
+        at.textContent = t('metrics.snapshot_at', 'Snapshot: {ts}')
+          .replace('{ts}', new Date(r.capturedAt ?? Date.now()).toLocaleString());
       } catch (err) {
-        out.innerHTML = `<div class="empty-metrics">Fout: ${escapeHtml(err.message ?? String(err))}</div>`;
+        out.innerHTML = `<div class="empty-metrics">${escapeHtml(t('common.error', 'Fout'))}: ${escapeHtml(err.message ?? String(err))}</div>`;
       }
     }
     document.getElementById('refresh').addEventListener('click', refresh);
