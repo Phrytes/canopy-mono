@@ -121,15 +121,72 @@
     "is_revealed":        "real name visible to this group",
     "handle_default":     "handle by default"
   },
+  "push": {
+    "page_title":               { "text": "Stoop — Push notifications", "doc": "Browser tab title for /push.html." },
+    "heading":                  { "text": "Push notifications", "doc": "Main page heading on /push.html." },
+    "intro":                    { "text": "Get notified on this device when something happens — even when Stoop is in the background. Runs through your browser; you can revoke permission anytime in browser settings.", "doc": "Lead paragraph on /push.html." },
+    "subscribe":                { "text": "Enable push", "doc": "Button label to enable push notifications." },
+    "unsubscribe":              { "text": "Disable push", "doc": "Button label to disable push notifications." },
+    "test":                     { "text": "Test notification", "doc": "Button label that fires a self-test push." },
+    "unsupported":              { "text": "This browser does not support Web Push.", "doc": "Status line shown when Service Worker / PushManager is missing." },
+    "no_vapid":                 { "text": "Push is disabled on this server — ask the admin to configure a VAPID key.", "doc": "Status line shown when the relay operator hasn't configured a VAPID key." },
+    "status_subscribed_html":   { "text": "Subscribed to push notifications (perm: <code>{perm}</code>).", "doc": "Status line shown when a push subscription exists. Contains <code> + {perm} placeholder." },
+    "status_not_subscribed_html": { "text": "Not yet subscribed to push notifications (perm: <code>{perm}</code>).", "doc": "Status line shown when no push subscription exists. Contains <code> + {perm} placeholder." },
+    "subscribed_ok":            { "text": "Subscribed.", "doc": "Inline confirmation after a successful subscribe." },
+    "unsubscribed_ok":          { "text": "Unsubscribed.", "doc": "Inline confirmation after a successful unsubscribe." },
+    "test_sending":             { "text": "Test push sent…", "doc": "Inline status while a test push is in flight." },
+    "test_body":                { "text": "A test notification", "doc": "Body of the test push notification." },
+    "test_result":              { "text": "Result: {delivered} delivered, {failed} failed.", "doc": "Inline status after the test push." }
+  },
   "create_group": {
-    "intro": "Starting a group is not just a click. It is an agreement between members. Answer the six questions below; they become the group's rules, visible to everyone who joins later.",
-    "q1_name":    "1. Group name",
-    "q1_purpose": "1b. What is it for? (two sentences)",
-    "q2_admins":  "2. Who is admin? (WebIDs, one per line)",
-    "q3_rules":   "3. House rules — what fits / does not fit (one per line)",
-    "q4_conflict": "4. Conflict resolution",
-    "q5_access":   "5. Access policy",
-    "q6_leave":    "6. Leave policy"
+    "page_title":     { "text": "Stoop — New group", "doc": "Browser tab title for /create-group.html." },
+    "heading":        { "text": "Start a new group", "doc": "Main page heading on /create-group.html." },
+    "intro":          { "text": "Starting a group is not just a click. It is an <strong>agreement between members</strong>. Answer the six questions below; they become the group's rules, visible to everyone who joins later.", "doc": "Lead paragraph on /create-group.html. Frames group creation as a social agreement. Contains <strong> tag." },
+
+    "q1_name":        { "text": "1. Group name", "doc": "Field label for the group's display name." },
+    "q1_name_ph":     { "text": "e.g. Oosterpoort skills", "doc": "Placeholder for the group-name input." },
+    "q1_purpose":     { "text": "1b. What is it for? (two sentences)", "doc": "Field label for the two-sentence purpose statement." },
+    "q1_purpose_ph":  { "text": "e.g. Neighbours in Groningen-Oosterpoort who want to help each other with chores, lending, and staying in the loop.", "doc": "Placeholder for the purpose textarea." },
+    "q2_admins":      { "text": "2. Who is admin? (WebIDs, one per line)", "doc": "Field label for the admins-list textarea." },
+    "q2_admins_hint": { "text": "We recommend at least two admins.", "doc": "Hint under the admins textarea recommending two admins." },
+    "q3_rules":       { "text": "3. House rules — what fits / does not fit (one per line)", "doc": "Field label for the house-rules textarea." },
+    "q3_rules_ph":    { "text": "Asks, offers, lending.\nDefault language: English.\nNo ads, no politics.", "doc": "Placeholder for the house-rules textarea, multi-line example." },
+
+    "q4_conflict":    { "text": "4. Conflict resolution", "doc": "Field label for the conflict-resolution policy select." },
+    "q4_conflict_admin":     { "text": "Admin decides", "doc": "Conflict policy option." },
+    "q4_conflict_mediation": { "text": "Conversation between parties, admin as witness", "doc": "Conflict policy option." },
+    "q4_conflict_vote":      { "text": "Vote among members", "doc": "Conflict policy option." },
+
+    "q5_access":      { "text": "5. Access policy", "doc": "Field label for the access-policy select." },
+    "q5_invite_only": { "text": "By invitation — admin hands out the QR personally", "doc": "Access policy option." },
+    "q5_shared_link": { "text": "Via shared link — members can add others", "doc": "Access policy option." },
+    "q5_approval":    { "text": "By request — admin approves", "doc": "Access policy option." },
+
+    "q6_leave":       { "text": "6. Leave policy", "doc": "Field label for the leave-policy select." },
+    "q6_keep_posts":  { "text": "Posts stay, name disappears (default — preserves context)", "doc": "Leave policy option." },
+    "q6_remove_all":  { "text": "Everything from that person disappears (clean break)", "doc": "Leave policy option." },
+
+    "group_id_label": { "text": "Group-id (internal; lowercase)", "doc": "Field label for the technical group-id input." },
+    "group_id_ph":    { "text": "e.g. oosterpoort-skills", "doc": "Placeholder for the group-id input." },
+
+    "rotation_legend":     { "text": "How is this group kept \"fresh\"?", "doc": "Legend of the key-rotation fieldset." },
+    "rotation_intro":      { "text": "The group uses a new code every <em>X</em> days. Anyone who no longer receives the code automatically falls out of the group. You exchange the code <strong>outside the app</strong> — e.g. via WhatsApp, on a slip of paper, or in person. That keeps the group local.", "doc": "Hint under the rotation legend. Contains <em> + <strong> tags AND deliberately mentions the in-person / out-of-band channel." },
+    "rotation_admin_only_label":  { "text": "Only admins distribute the code.", "doc": "Bold label for the admin-only rotation radio." },
+    "rotation_admin_only_hint":   { "text": "Admins generate a fresh code every X days and hand it to members personally.", "doc": "Hint under the admin-only rotation radio." },
+    "rotation_peer_label":        { "text": "Anyone may pass on the code.", "doc": "Bold label for the peer-distributable rotation radio." },
+    "rotation_peer_hint":         { "text": "Any member can give the code to a newcomer. More decentralised — admin is not a single point of failure.", "doc": "Hint under the peer-distributable rotation radio." },
+    "rotation_days_label":        { "text": "Code rotates every … days", "doc": "Label above the rotation-period number input." },
+
+    "submit":         { "text": "Create group", "doc": "Submit button on /create-group.html." },
+    "saving":         { "text": "Saving…", "doc": "Inline status while createGroupV2 is running." },
+    "created_msg":    { "text": "Group created — id {groupId}.", "doc": "Inline success status. {groupId} is the new group's id." },
+
+    "result_heading": { "text": "Group created", "doc": "Heading of the success card." },
+    "result_intro":   { "text": "The first membership code is below — give it <strong>outside Stoop</strong> to the first members:", "doc": "Lead text above the first membership code. Reinforces out-of-band distribution." },
+    "result_expiry":  { "text": "Valid until {date} ({days} days). Mode: {mode}.", "doc": "Expiry line under the membership code." },
+    "result_footer":  { "text": "You can view it again later on the group page.", "doc": "Footer hint under the result card." },
+    "mode_admin_only": { "text": "only admins distribute the code", "doc": "Lower-case description of admin-only rotation, plugged into result_expiry's {mode}." },
+    "mode_peer":      { "text": "anyone may pass on the code", "doc": "Lower-case description of peer-distributable rotation, plugged into result_expiry's {mode}." }
   },
   "nav": {
     "feed":     { "text": "Feed",      "doc": "Top-nav link to the main feed page (/)." },
