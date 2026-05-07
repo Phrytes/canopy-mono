@@ -24,7 +24,10 @@
  *   - Predicate: `dw:bootstrapKeyFingerprint` in §Vocabulary.
  */
 import nacl from 'tweetnacl';
-import crypto from 'node:crypto';
+// `node:crypto` is shimmed on React Native — use the pure-JS HKDF
+// from `@noble/hashes` (already a core dep).
+import { hkdf } from '@noble/hashes/hkdf.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 
 import { Emitter } from '../Emitter.js';
 import {
@@ -160,10 +163,9 @@ export class Bootstrap {
       throw new Error(`deriveResourceKey: salt must be a ${SALT_LEN}-byte Uint8Array`);
     }
     const info = new TextEncoder().encode(HKDF_INFO_NS + relativePath);
-    // Node's hkdfSync returns an ArrayBuffer; wrap it in a Uint8Array view
-    // (copying so callers cannot reach back into the buffer).
-    const out = crypto.hkdfSync('sha256', this.#secret, salt, info, HKDF_LEN);
-    return new Uint8Array(out);
+    // `@noble/hashes/hkdf` returns a fresh Uint8Array — no aliasing,
+    // so callers cannot reach back into the source buffer.
+    return hkdf(sha256, this.#secret, salt, info, HKDF_LEN);
   }
 
   /**
@@ -229,8 +231,10 @@ export class Bootstrap {
     if (!(key instanceof Uint8Array) || key.length !== 32) {
       throw new Error('fingerprint: pubKey must be a 32-byte Uint8Array');
     }
-    const hash = crypto.createHash('sha256').update(key).digest('hex');
-    return hash.slice(0, 16);
+    const digest = sha256(key);
+    let hex = '';
+    for (let i = 0; i < digest.length; i++) hex += digest[i].toString(16).padStart(2, '0');
+    return hex.slice(0, 16);
   }
 
   // ── Key-rotation hook (B1 step 6) ───────────────────────────────────────

@@ -21,7 +21,11 @@
  */
 import nacl       from 'tweetnacl';
 import ed2curve   from 'ed2curve';
-import { hkdfSync } from 'node:crypto';
+// `node:crypto` is shimmed on React Native — use the pure-JS HKDF
+// from `@noble/hashes` (already a core dep). Output is byte-identical
+// to Node's `crypto.hkdfSync('sha256', seed, salt, info, len)`.
+import { hkdf }   from '@noble/hashes/hkdf.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import { encode as b64encode, decode as b64decode } from '../crypto/b64.js';
 import { mnemonicToSeed, seedToMnemonic } from './Mnemonic.js';
 
@@ -56,9 +60,12 @@ const STABLE_ID_BYTES = 16;
  * vault is fresh (no existing stableId) AND a seed is available
  * (i.e. caller is `generate`, `restore`, or `fromMnemonic`).
  */
+const _STABLE_ID_SALT_BYTES = new TextEncoder().encode(STABLE_ID_HKDF_SALT);
+const _EMPTY_INFO            = new Uint8Array(0);
+
 function _deriveStableIdFromSeed(seed) {
-  const out = hkdfSync('sha256', seed, STABLE_ID_HKDF_SALT, '', STABLE_ID_BYTES);
-  return b64encode(new Uint8Array(out));
+  const out = hkdf(sha256, seed, _STABLE_ID_SALT_BYTES, _EMPTY_INFO, STABLE_ID_BYTES);
+  return b64encode(out);
 }
 
 /**
