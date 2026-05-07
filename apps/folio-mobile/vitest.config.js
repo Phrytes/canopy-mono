@@ -17,6 +17,9 @@ export default defineConfig({
       '@canopy/core':                        path.resolve(repoRoot, 'packages/core/src/index.js'),
       '@canopy/pod-client':                  path.resolve(repoRoot, 'packages/pod-client/src/index.js'),
       '@canopy/react-native':                path.resolve(repoRoot, 'packages/react-native/index.js'),
+      '@canopy/sync-engine-rn':              path.resolve(repoRoot, 'packages/sync-engine-rn/index.js'),
+      '@canopy/oidc-session-rn/hook':        path.resolve(repoRoot, 'packages/oidc-session-rn/hook.js'),
+      '@canopy/oidc-session-rn':             path.resolve(repoRoot, 'packages/oidc-session-rn/index.js'),
       // @scure/bip39 ESM exports not auto-resolved by Vitest's Node
       // resolver — same fix applied in mesh-demo's metro.config.js.
       '@scure/bip39/wordlists/english': path.resolve(__dirname, 'node_modules/@scure/bip39/wordlists/english.js'),

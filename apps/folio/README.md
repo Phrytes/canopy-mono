@@ -98,6 +98,33 @@ engine.on('synced',   (s)            => console.log('synced:', s));
 await engine.stop();
 ```
 
+## TODO — Inrupt-cleanup convergence (2026-05-08)
+
+Folio's authentication surface is touched by two ongoing tracks:
+
+1. **Mobile (`apps/folio-mobile`)** uses
+   [`@canopy/oidc-session-rn`](../../packages/oidc-session-rn/) —
+   newly extracted 2026-05-08 from folio-mobile's own `src/auth/`
+   directory as the rule-of-two consumer with Stoop V3 Phase 40.3.
+   Folio-mobile is unchanged behaviourally; its `src/auth/{OidcSessionRN,
+   folioAuth, dcr}.js` are now thin re-export shims around the
+   substrate.
+2. **Desktop (`apps/folio`, this app)** still uses
+   `@inrupt/solid-client-authn-node` directly via its own
+   [`src/auth/OidcSession.js`](src/auth/OidcSession.js). When the
+   Inrupt-cleanup TODO
+   ([`Project Files/TODO-GENERAL.md`](../../Project%20Files/TODO-GENERAL.md))
+   extracts a single shared "sign in / share via Inrupt"
+   component across Stoop V1 / Folio / Folio-mobile / Tasks V1 /
+   Stoop V3, this desktop OIDC surface migrates with the rest. The
+   `@canopy/oidc-session-rn` substrate is the V3-mobile entry
+   point for that migration; once cleanup lands the desktop will
+   have its parallel substrate, and the two converge.
+
+**Action when:** wait for the Inrupt-cleanup decisions in
+TODO-GENERAL. No Folio-side action required ahead of that — the
+mobile substrate extraction did not change Folio's behaviour.
+
 ## Settings layout
 
 When Folio introduces user-tunable settings, the layout MUST follow
@@ -304,3 +331,31 @@ for machine-parseable output, `--verbose` for raw error text per step.
 ```bash
 cd apps/folio && npm test
 ```
+
+## Cross-app substrate compatibility (added 2026-05-07, revised)
+
+Tasks V1 (`Project Files/Tasks App/advice-2026-05-07.md`)
+flags two cross-app patterns relevant to Folio:
+
+- **Read `*.ics` calendar files from the pod.** When Folio's UI
+  needs to display calendar data (a future "calendar" view, or
+  to attach a calendar event reference to a note), it reads
+  `<user-pod>/calendar/*.ics` directly. Read-only; Folio is not
+  responsible for getting the events into the pod in the first
+  place. **The OAuth + change-listener work for Google /
+  Outlook / iCloud sources lives in `apps/import-bridge-v0`**
+  per the revised plan (2026-05-07) — it's "yet another import
+  source", which is exactly what import-bridge is for. *(The
+  earlier draft of this section recommended Folio host the
+  sync; that recommendation has been moved.)*
+- **Canonical user-skills profile at `<user-pod>/profile/skills.json`.**
+  Tasks / Stoop / Household all import the user's skills from
+  this canonical profile via a prefilled-form-edit-before-submit
+  pattern. **Folio is the natural app for editing the canonical
+  profile** (it already owns "your stuff on your pod" UX) — when
+  Folio's UI gets a "skills" tab, it edits this file directly,
+  and other apps prefill from it. Substrate-candidate for
+  `@canopy/identity-resolver` once a 2nd consumer lands.
+
+Both items are forward-compat heads-up; no immediate code
+changes required.

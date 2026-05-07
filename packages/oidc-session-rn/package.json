@@ -1,0 +1,30 @@
+{
+  "name": "@canopy/oidc-session-rn",
+  "version": "0.1.0",
+  "description": "Solid OIDC sign-in for React Native — OidcSessionRN (token persistence + bearer fetch + refresh), runOidcSignIn (expo-auth-session + PKCE), and DCR helpers. Lifted from apps/folio-mobile 2026-05-08 (Stoop V3 Phase 40.3). Slated to migrate to the unified Inrupt-cleanup substrate when that lands.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".":      "./index.js",
+    "./hook": "./hook.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "expo-auth-session": "*",
+    "expo-secure-store": "*",
+    "expo-web-browser": "*",
+    "react": "*"
+  },
+  "peerDependenciesMeta": {
+    "expo-auth-session":  { "optional": false },
+    "expo-secure-store":  { "optional": false },
+    "expo-web-browser":   { "optional": false },
+    "react":              { "optional": false }
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
+}

@@ -18,6 +18,8 @@
     "@canopy/pod-client": "file:../../packages/pod-client",
     "@canopy/react-native": "file:../../packages/react-native",
     "@canopy/sync-engine": "file:../../packages/sync-engine",
+    "@canopy/sync-engine-rn": "file:../../packages/sync-engine-rn",
+    "@canopy/oidc-session-rn": "file:../../packages/oidc-session-rn",
     "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",
