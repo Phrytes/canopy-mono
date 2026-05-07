@@ -1,0 +1,21 @@
+{
+  "name": "@canopy/local-store",
+  "version": "0.1.0",
+  "description": "Local-first DataSource (Map-cached, queue-based pod write-through, bulk-sync on attach) + foreground-only sync cadence + per-app Settings factory. Lifted from apps/stoop 2026-05-08 (Tasks V1 = rule-of-two consumer).",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@canopy/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@canopy/core": "file:../core",
+    "vitest": "^2.1.9"
+  }
+}
