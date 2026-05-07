@@ -404,3 +404,177 @@ describe('startRelay — group auth (Q-E.2)', () => {
     }
   });
 });
+
+// ── Phase 2 (Stoop V1, 2026-05-05) — quotas + revocation + rotation ────────
+
+describe('startRelay — Phase 2: per-group revocation', () => {
+  let admin, member, gm, proof, relay;
+
+  beforeAll(async () => {
+    admin  = await AgentIdentity.generate(new VaultMemory());
+    member = await AgentIdentity.generate(new VaultMemory());
+    gm     = new GroupManager({ identity: admin, vault: new VaultMemory() });
+    proof  = await gm.issueProof(member.pubKey, 'my-block');
+  });
+
+  afterEach(async () => { if (relay) await relay.stop(); });
+
+  it('rejects a member listed in revokedMembers with MEMBER_REVOKED', async () => {
+    relay = await startRelay({
+      port: 0,
+      acceptedGroups: [{
+        groupId:        'my-block',
+        adminPubKey:    admin.pubKey,
+        revokedMembers: [member.pubKey],
+      }],
+    });
+    const ws = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(ws, { type: 'register', address: member.pubKey, groupProof: proof });
+    await waitFor(() => ws.messages.some(m => m.type === 'error'));
+    expect(ws.messages.find(m => m.type === 'error').message).toBe('MEMBER_REVOKED');
+    try { ws.close(); } catch {}
+  });
+});
+
+describe('startRelay — Phase 2: per-group connection quota', () => {
+  let admin, m1, m2, m3, gm, p1, p2, p3, relay;
+
+  beforeAll(async () => {
+    admin = await AgentIdentity.generate(new VaultMemory());
+    m1    = await AgentIdentity.generate(new VaultMemory());
+    m2    = await AgentIdentity.generate(new VaultMemory());
+    m3    = await AgentIdentity.generate(new VaultMemory());
+    gm    = new GroupManager({ identity: admin, vault: new VaultMemory() });
+    p1    = await gm.issueProof(m1.pubKey, 'my-block');
+    p2    = await gm.issueProof(m2.pubKey, 'my-block');
+    p3    = await gm.issueProof(m3.pubKey, 'my-block');
+  });
+
+  afterEach(async () => { if (relay) await relay.stop(); });
+
+  it('accepts up to maxConnections; rejects further with OVER_QUOTA_CONNECTIONS', async () => {
+    relay = await startRelay({
+      port: 0,
+      acceptedGroups: [{
+        groupId:     'my-block',
+        adminPubKey: admin.pubKey,
+        quotas:      { maxConnections: 2 },
+      }],
+    });
+
+    const ws1 = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(ws1, { type: 'register', address: m1.pubKey, groupProof: p1 });
+    await waitFor(() => ws1.messages.some(m => m.type === 'registered'));
+
+    const ws2 = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(ws2, { type: 'register', address: m2.pubKey, groupProof: p2 });
+    await waitFor(() => ws2.messages.some(m => m.type === 'registered'));
+
+    const ws3 = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(ws3, { type: 'register', address: m3.pubKey, groupProof: p3 });
+    await waitFor(() => ws3.messages.some(m => m.type === 'error'));
+    expect(ws3.messages.find(m => m.type === 'error').message).toBe('OVER_QUOTA_CONNECTIONS');
+
+    try { ws1.close(); ws2.close(); ws3.close(); } catch {}
+  });
+});
+
+describe('startRelay — Phase 2: per-group msgsPerDay quota', () => {
+  let admin, m1, m2, gm, p1, p2, relay;
+
+  beforeAll(async () => {
+    admin = await AgentIdentity.generate(new VaultMemory());
+    m1    = await AgentIdentity.generate(new VaultMemory());
+    m2    = await AgentIdentity.generate(new VaultMemory());
+    gm    = new GroupManager({ identity: admin, vault: new VaultMemory() });
+    p1    = await gm.issueProof(m1.pubKey, 'my-block');
+    p2    = await gm.issueProof(m2.pubKey, 'my-block');
+  });
+
+  afterEach(async () => { if (relay) await relay.stop(); });
+
+  it('blocks send with OVER_QUOTA_MSGS_PER_DAY past the cap', async () => {
+    relay = await startRelay({
+      port: 0,
+      acceptedGroups: [{
+        groupId:     'my-block',
+        adminPubKey: admin.pubKey,
+        quotas:      { msgsPerDay: 2 },
+      }],
+    });
+
+    const ws1 = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(ws1, { type: 'register', address: m1.pubKey, groupProof: p1 });
+    await waitFor(() => ws1.messages.some(m => m.type === 'registered'));
+
+    const ws2 = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(ws2, { type: 'register', address: m2.pubKey, groupProof: p2 });
+    await waitFor(() => ws2.messages.some(m => m.type === 'registered'));
+
+    // First two sends from m1 — fine.
+    send(ws1, { type: 'send', to: m2.pubKey, envelope: { _p: 'a' } });
+    send(ws1, { type: 'send', to: m2.pubKey, envelope: { _p: 'b' } });
+    // Third — over cap (m1 + m2 share the per-group counter).
+    send(ws1, { type: 'send', to: m2.pubKey, envelope: { _p: 'c' } });
+
+    await waitFor(() => ws1.messages.some(m => m.type === 'error'));
+    expect(ws1.messages.find(m => m.type === 'error').message).toBe('OVER_QUOTA_MSGS_PER_DAY');
+
+    try { ws1.close(); ws2.close(); } catch {}
+  });
+});
+
+describe('startRelay — Phase 2: rotation chain at register', () => {
+  let admin, oldId, newId, otherId, gm, oldProof, relay;
+
+  beforeAll(async () => {
+    admin   = await AgentIdentity.generate(new VaultMemory());
+    oldId   = await AgentIdentity.generate(new VaultMemory());
+    newId   = await AgentIdentity.generate(new VaultMemory());
+    otherId = await AgentIdentity.generate(new VaultMemory());
+    gm      = new GroupManager({ identity: admin, vault: new VaultMemory() });
+    oldProof = await gm.issueProof(oldId.pubKey, 'my-block');
+  });
+
+  afterEach(async () => { if (relay) await relay.stop(); });
+
+  it('accepts the new pubKey when a valid rotation chain is presented', async () => {
+    const { KeyRotation } = await import('@canopy/core');
+    const rotationProof = await KeyRotation.buildProof(oldId, newId.pubKey, 86_400);
+
+    relay = await startRelay({
+      port: 0,
+      acceptedGroups: [{ groupId: 'my-block', adminPubKey: admin.pubKey }],
+    });
+
+    const ws = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(ws, {
+      type:          'register',
+      address:       newId.pubKey,        // CONNECTING with the NEW key
+      groupProof:    oldProof,            // proof was for OLD key
+      rotationProof,                       // chains old → new
+    });
+
+    await waitFor(() => ws.messages.some(m => m.type === 'registered'));
+    expect(ws.messages.some(m => m.type === 'error')).toBe(false);
+    try { ws.close(); } catch {}
+  });
+
+  it('rejects mismatched address without a rotation chain (BINDING_MISMATCH)', async () => {
+    relay = await startRelay({
+      port: 0,
+      acceptedGroups: [{ groupId: 'my-block', adminPubKey: admin.pubKey }],
+    });
+
+    const ws = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(ws, {
+      type:       'register',
+      address:    otherId.pubKey,        // NOT the proof's memberPubKey
+      groupProof: oldProof,
+    });
+
+    await waitFor(() => ws.messages.some(m => m.type === 'error'));
+    expect(ws.messages.find(m => m.type === 'error').message).toBe('BINDING_MISMATCH');
+    try { ws.close(); } catch {}
+  });
+});

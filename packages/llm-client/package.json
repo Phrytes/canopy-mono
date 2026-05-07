@@ -1,0 +1,19 @@
+{
+  "name": "@canopy/llm-client",
+  "version": "0.2.0",
+  "description": "Provider-agnostic OpenAI-style tool-calling LLM client (Ollama + cloud providers).",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".":                       "./src/index.js",
+    "./providers/ollama":      "./src/providers/ollama.js",
+    "./providers/mock":        "./src/providers/mock.js"
+  },
+  "scripts": {
+    "test":       "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

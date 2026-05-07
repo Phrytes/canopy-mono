@@ -71,7 +71,7 @@ export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
   const [podBaseInput, setPodBaseInput]   = useState('');
   const [podFolderInput, setPodFolderInput] = useState(DEFAULT_POD_FOLDER);
 
-  const { ready, signIn, lastError } = useFolioAuth({ issuer });
+  const { ready, signIn, resetClient, lastError } = useFolioAuth({ issuer });
 
   const onSignInPress = useCallback(async () => {
     if (!ready || busy) return;
@@ -117,7 +117,7 @@ export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
     } finally {
       setBusy(false);
     }
-  }, [busy, pendingTokens, podRootInput, adoptTokens]);
+  }, [busy, pendingTokens, podBaseInput, podFolderInput, adoptTokens]);
 
   return (
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -213,6 +213,22 @@ export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
               }
               onChangeText={() => {}}
             />
+            {/*
+             * Recovery affordance for stale-cached-client_id issues.
+             * Symptom: Sign In opens browser, Inrupt shows "Invalid
+             * client_id", you close it, the app reports AUTH_DISMISSED.
+             * Tap this button to clear the cached client_id; DCR
+             * re-registers fresh on the next Sign In.
+             */}
+            <Pressable
+              style={s.resetBtn}
+              onPress={async () => {
+                setError(null);
+                if (typeof resetClient === 'function') await resetClient();
+              }}
+            >
+              <Text style={s.resetBtnLabel}>Reset auth & retry</Text>
+            </Pressable>
           </View>
         )}
 
@@ -265,6 +281,15 @@ const s = StyleSheet.create({
     minHeight:       120,
     textAlignVertical: 'top',
   },
+  resetBtn:       {
+    marginTop:       10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius:    6,
+    backgroundColor: '#5a3035',
+    alignSelf:       'flex-start',
+  },
+  resetBtnLabel:  { color: '#f0a8a8', fontSize: 12, fontWeight: '600' },
   statusBox:      { marginTop: 24, alignItems: 'center' },
   statusLabel:    { color: '#5c6377', fontSize: 12 },
   statusValue:    { color: '#9aa0c4', fontFamily: 'monospace' },

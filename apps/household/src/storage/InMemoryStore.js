@@ -1,86 +1,96 @@
 /**
- * InMemoryStore — Map-backed `Store` implementation for Phase 1.
+ * InMemoryStore — adapter over @canopy/item-store (L1b substrate).
  *
- * Implements the interface jsdoc'd in `./Store.js`.  Phase 2 swaps in
- * `HybridPodStore` (same shape).  No persistence here: every restart
- * is a fresh state.
+ * As of 2026-05-02 (Plan B sub-task B.1) the implementation is the
+ * substrate's ItemStore + InMemoryBackend.  This file is a thin
+ * adapter that exposes the legacy `{addItem, listOpen, markComplete,
+ * remove, getById}` interface H2's existing skill handlers + tests
+ * expect, translating into L1b's bulk + actor-context API.
  *
- * Defensive copies: every read returns a clone so callers can't
- * mutate the store by holding the returned reference.
+ * Why an adapter and not a direct port: keeps every existing import
+ * site + test unchanged; the substrate is the source of truth.  Future
+ * cleanup can update skill handlers to call L1b directly and retire
+ * this adapter.
  *
- * IDs are ULIDs — Crockford-base32 of (48-bit ms timestamp + 80 bits
- * of crypto randomness).  ~26 chars, lexicographically sortable by
- * creation time, collision-resistant.  We roll our own (~30 LOC) to
- * avoid a top-level dep per CLAUDE.md; only `globalThis.crypto` is
- * required (Node ≥19 + browsers + RN have it).
+ * Translation summary:
+ *   - addItem(args)         → itemStore.addItems([args], {actor})
+ *   - listOpen(filter)      → itemStore.listOpen(filter)
+ *   - markComplete(id)      → itemStore.markComplete([{id}], {actor})
+ *   - remove(id)            → itemStore.removeItems([{id}], {actor})
+ *   - getById(id)           → itemStore.getById(id)
+ *
+ * Result shape: L1b uses `assignee` + absent fields where H2 used
+ * `claimedBy` + explicit-null.  `legacyShape()` below normalises so
+ * existing tests that check `item.completedAt === null` still pass.
+ *
+ * The `ulid` export is preserved for any caller that imports it
+ * directly (one test does); re-exported from L1b's ULID helper.
  */
 
-// Crockford base32 alphabet — excludes I, L, O, U for human legibility.
-const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+import { ItemStore } from '@canopy/item-store';
+import { MemorySource } from '@canopy/core';
+import { ulid as l1bUlid }             from '@canopy/item-store';
+
+export const ulid = l1bUlid;
+
+const SYSTEM_ACTOR = '__household-store__';
 
 /**
- * Generate a ULID.  Time prefix (10 chars) + randomness (16 chars).
- * https://github.com/ulid/spec
+ * Adapter — exposes L1b's ItemStore through H2's legacy Store
+ * interface.  Constructor takes no args (matches existing tests).
  *
- * @returns {string} 26-char ULID
- */
-export function ulid() {
-  const now = Date.now();
-  // Encode 48-bit timestamp into 10 base32 chars, MSB first.
-  let timeStr = '';
-  let t = now;
-  for (let i = 9; i >= 0; i--) {
-    timeStr = CROCKFORD[t % 32] + timeStr;
-    t = Math.floor(t / 32);
-  }
-  // 16 chars of randomness ≈ 80 bits; we draw 10 bytes and mod each.
-  const rand = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(rand);
-  let randStr = '';
-  for (let i = 0; i < 16; i++) {
-    randStr += CROCKFORD[rand[i] % 32];
-  }
-  return timeStr + randStr;
-}
-
-/**
  * @implements {import('./Store.js').Store}
  */
 export class InMemoryStore {
-  /** @type {Map<string, import('../types.js').Item>} */
-  #items = new Map();
+  /** @type {ItemStore} */
+  #store;
+  /** @type {Map<string, number>}  itemId → insertion sequence */
+  #insertionOrder = new Map();
+  #seq = 0;
+
+  constructor() {
+    this.#store = new ItemStore({
+      dataSource:    new MemorySource(),
+      rootContainer: 'mem://household/',
+    });
+  }
 
   /**
    * @param {import('./Store.js').AddItemArgs} args
    * @returns {Promise<import('../types.js').Item>}
    */
   async addItem({ type, text, addedBy, source, dueAt }) {
-    /** @type {import('../types.js').Item} */
-    const item = {
-      id: ulid(),
+    const partial = {
       type,
       text,
-      addedBy,
-      addedAt: Date.now(),
-      claimedBy: null,
-      completedAt: null,
-      source,
-      ...(dueAt !== undefined ? { dueAt } : {}),
+      ...(source !== undefined ? { source } : {}),
+      ...(dueAt  !== undefined ? { dueAt }  : {}),
     };
-    this.#items.set(item.id, item);
-    return { ...item };
+    const [item] = await this.#store.addItems([partial], {
+      actor: addedBy ?? SYSTEM_ACTOR,
+    });
+    this.#insertionOrder.set(item.id, ++this.#seq);
+    return legacyShape(item, addedBy);
   }
 
   /**
    * @param {import('./Store.js').ListFilter} [filter]
    * @returns {Promise<Array<import('../types.js').Item>>}
    */
-  async listOpen({ type, since } = {}) {
-    return [...this.#items.values()]
-      .filter((i) => i.completedAt === null)
-      .filter((i) => !type || i.type === type)
-      .filter((i) => since === undefined || i.addedAt >= since)
-      .map((i) => ({ ...i }));
+  async listOpen(filter) {
+    const items = await this.#store.listOpen({
+      ...(filter?.type  !== undefined ? { type:  filter.type  } : {}),
+      ...(filter?.since !== undefined ? { since: filter.since } : {}),
+    });
+    // L1b returns newest-first; H2's legacy contract is insertion order
+    // (oldest-first).  Sort by our own insertion-sequence counter —
+    // ULID's random component within the same millisecond doesn't
+    // preserve insertion order, so id-as-tiebreak is wrong.
+    const order = this.#insertionOrder;
+    return items
+      .slice()
+      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+      .map((it) => legacyShape(it));
   }
 
   /**
@@ -88,13 +98,11 @@ export class InMemoryStore {
    * @returns {Promise<import('../types.js').Item>}
    */
   async markComplete(itemId) {
-    const existing = this.#items.get(itemId);
-    if (!existing) {
-      throw new Error(`InMemoryStore.markComplete: id not found: ${itemId}`);
-    }
-    const updated = { ...existing, completedAt: Date.now() };
-    this.#items.set(itemId, updated);
-    return { ...updated };
+    const [item] = await this.#store.markComplete(
+      [{ id: itemId }],
+      { actor: SYSTEM_ACTOR },
+    );
+    return legacyShape(item);
   }
 
   /**
@@ -102,7 +110,10 @@ export class InMemoryStore {
    * @returns {Promise<void>}
    */
   async remove(itemId) {
-    this.#items.delete(itemId);
+    await this.#store.removeItems(
+      [{ id: itemId }],
+      { actor: SYSTEM_ACTOR },
+    );
   }
 
   /**
@@ -110,7 +121,40 @@ export class InMemoryStore {
    * @returns {Promise<import('../types.js').Item|null>}
    */
   async getById(itemId) {
-    const found = this.#items.get(itemId);
-    return found ? { ...found } : null;
+    const item = await this.#store.getById(itemId);
+    return item ? legacyShape(item) : null;
   }
+}
+
+/**
+ * Normalise L1b's Item shape into H2's legacy shape:
+ *   - completedAt: undefined (absent) → null
+ *   - assignee → claimedBy (renamed); undefined → null
+ *   - addedBy: respect the constructor-supplied value when L1b returned the
+ *     SYSTEM_ACTOR (legacy tests pass any string as addedBy).
+ *   - _etag: stripped (substrate-internal)
+ *
+ * @param {object} item
+ * @param {string} [addedByOverride]   re-attribute SYSTEM_ACTOR-shaped writes
+ * @returns {object}
+ */
+function legacyShape(item, addedByOverride) {
+  const {
+    _etag, addedByDisplayName, completedByDisplayName, claimedAt,
+    completedBy, assignee, completedAt,
+    addedBy,
+    dependencies, requiredSkills, visibility,
+    ...rest
+  } = item;
+  // Drop H4-extension fields that H2 doesn't use.
+  void dependencies; void requiredSkills; void visibility;
+  void completedBy; void completedByDisplayName; void claimedAt;
+  void addedByDisplayName; void _etag;
+
+  return {
+    ...rest,
+    addedBy:    addedByOverride && addedBy === SYSTEM_ACTOR ? addedByOverride : addedBy,
+    completedAt: completedAt ?? null,
+    claimedBy:   assignee ?? null,
+  };
 }

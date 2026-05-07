@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>Stoop — Pod-aanmelding voltooien</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Buurt</a>
+      <a href="/sign-in.html">Pod</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <h2>Pod-aanmelding voltooien</h2>
+      <div id="result" style="background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+        Bezig met afronden van de OIDC-flow…
+      </div>
+      <p style="margin-top: 1rem;">
+        <a href="/sign-in.html">Terug naar pod-instellingen →</a>
+      </p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { callSkill } from '/app.js';
+
+    const out = document.getElementById('result');
+    const callbackUrl = location.href;
+
+    try {
+      const r = await callSkill('completePodSignIn', { callbackUrl });
+      if (r.ok) {
+        out.innerHTML = `Aangemeld als <strong>${r.webid}</strong>. Pod gekoppeld op <code>${r.podRoot}</code>.`;
+        setTimeout(() => { location.href = '/sign-in.html'; }, 1500);
+      } else {
+        out.innerHTML = `Fout: ${r.error}`;
+      }
+    } catch (err) {
+      out.innerHTML = `Fout: ${err.message ?? err}`;
+    }
+  </script>
+</body>
+</html>

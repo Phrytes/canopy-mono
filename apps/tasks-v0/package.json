@@ -1,0 +1,24 @@
+{
+  "name": "@canopy-app/tasks-v0",
+  "version": "0.1.0",
+  "private": true,
+  "description": "H4 tasks-v0 — single-household task ledger with DAG dependencies + skill-based dispatch + role-aware governance.  Phase C V0; thin composition of L1b/L1d/L1e/L1f/L1h substrates.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "bin": { "tasks-ui": "bin/tasks-ui.js" },
+  "scripts": {
+    "test":       "vitest run",
+    "test:watch": "vitest",
+    "ui":         "node bin/tasks-ui.js"
+  },
+  "dependencies": {
+    "@canopy/core":             "file:../../packages/core",
+    "@canopy/item-store":       "file:../../packages/item-store",
+    "@canopy/agent-ui":         "file:../../packages/agent-ui",
+    "@canopy/skill-match":      "file:../../packages/skill-match",
+    "@canopy/notifier":         "file:../../packages/notifier",
+    "@canopy/identity-resolver":"file:../../packages/identity-resolver"
+  },
+  "devDependencies": { "vitest": "^2.1.0" }
+}

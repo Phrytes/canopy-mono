@@ -24,7 +24,16 @@
  *   nextFireMsFn.  stop() cancels the pending timer.  Both are
  *   idempotent.  fireNow() invokes onFire immediately without
  *   touching the schedule (the pending timer keeps its arming).
+ *
+ * As of Plan B sub-task B.3 (2026-05-02), the TZ-aware "next fire"
+ * math is consumed from @canopy/notifier (L1f).  The substrate
+ * gained TZ-aware cadence specifically because household demanded
+ * it — first rule-of-two pull on L1f.  This file's `nextFireMsFn`
+ * test seam still works (tests can inject deterministic times); the
+ * production default uses the substrate helper.
  */
+
+import { nextDailyFireInTz } from '@canopy/notifier';
 
 const DEFAULT_TZ        = 'UTC';
 const DEFAULT_AT_LOCAL  = '20:00';
@@ -126,19 +135,13 @@ export class DailyDigest {
 /**
  * Compute the next instant whose local time in `tz` is `atLocal`.
  *
- * Approach (no extra deps):
- *   1. Use Intl.DateTimeFormat with the target timezone to read
- *      `now`'s wall-clock components in tz (year/month/day/hour/min).
- *   2. Decide whether the next fire is today or tomorrow.
- *   3. Convert the target wall-clock back to a UTC instant by
- *      computing the tz offset for the candidate instant via the
- *      same Intl formatter (one-shot inversion — accurate to the
- *      nearest minute, drifts only across DST boundaries by at
- *      most ~1 h, which is fine for v0 per Q-H2.7).
+ * Wraps @canopy/notifier's `nextDailyFireInTz` (substrate-level
+ * helper, ported from this file's earlier Intl-based implementation).
+ * Substrate gained TZ-aware cadence for L1f V0.1 specifically because
+ * household demanded it — first rule-of-two pull on L1f.
  *
- * Precision: target "fire" lands within ±1 minute of the configured
- * local time on normal days.  On DST transition days the realized
- * fire may be off by up to one hour — acceptable for a daily digest.
+ * Re-exported here so existing test imports
+ * (`from '.../DailyDigest.js'`) keep working.
  *
  * @param {number} nowMs
  * @param {string} tz
@@ -146,106 +149,5 @@ export class DailyDigest {
  * @returns {number}        unix-ms instant of the next fire
  */
 export function defaultNextFireMs(nowMs, tz, atLocal) {
-  const [hh, mm] = parseHHMM(atLocal);
-  const nowParts = wallClockInTz(nowMs, tz);
-
-  // Build a "today at HH:MM in tz" candidate.  Start from the same
-  // calendar day as `now` in the target tz.
-  let target = utcInstantForWallClock({
-    year:   nowParts.year,
-    month:  nowParts.month,
-    day:    nowParts.day,
-    hour:   hh,
-    minute: mm,
-    tz,
-  });
-
-  // If that candidate is at or before now, push to tomorrow.
-  if (target <= nowMs) {
-    const tomorrow = addDaysUtc(nowParts, 1);
-    target = utcInstantForWallClock({
-      year:   tomorrow.year,
-      month:  tomorrow.month,
-      day:    tomorrow.day,
-      hour:   hh,
-      minute: mm,
-      tz,
-    });
-  }
-
-  return target;
-}
-
-function parseHHMM(s) {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(String(s).trim());
-  if (!m) throw new Error(`DailyDigest: bad atLocal: ${s}`);
-  const hh = Number(m[1]);
-  const mm = Number(m[2]);
-  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) {
-    throw new Error(`DailyDigest: out-of-range atLocal: ${s}`);
-  }
-  return [hh, mm];
-}
-
-/**
- * Read the wall-clock parts (Y/M/D/h/m/s) of `instantMs` as seen in
- * the named IANA timezone.
- */
-function wallClockInTz(instantMs, tz) {
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    year:    'numeric',
-    month:   '2-digit',
-    day:     '2-digit',
-    hour:    '2-digit',
-    minute:  '2-digit',
-    second:  '2-digit',
-    hour12:  false,
-  });
-  const parts = fmt.formatToParts(new Date(instantMs));
-  const out = {};
-  for (const p of parts) {
-    if (p.type === 'year')   out.year   = Number(p.value);
-    if (p.type === 'month')  out.month  = Number(p.value);
-    if (p.type === 'day')    out.day    = Number(p.value);
-    if (p.type === 'hour')   out.hour   = Number(p.value);
-    if (p.type === 'minute') out.minute = Number(p.value);
-    if (p.type === 'second') out.second = Number(p.value);
-  }
-  // Some ICU builds emit "24" for midnight under hour12:false.
-  if (out.hour === 24) out.hour = 0;
-  return out;
-}
-
-/**
- * Given a desired wall-clock {year,month,day,hour,minute} in `tz`,
- * return the UTC instant in ms.
- *
- * Strategy: take the wall-clock as if it were UTC, then ask
- * "what does the tz call that UTC instant?"  The diff between the
- * two is the offset; subtract it.  One iteration is enough for our
- * precision target (drift only at DST transitions).
- */
-function utcInstantForWallClock({ year, month, day, hour, minute, tz }) {
-  const naiveUtcMs = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
-  const wall       = wallClockInTz(naiveUtcMs, tz);
-  // wall is what `tz` calls `naiveUtcMs`.  We wanted `tz` to call it
-  // {year, month, day, hour, minute}.  The delta between the two
-  // (in UTC ms) is the tz offset that we need to undo.
-  const wallAsUtcMs = Date.UTC(
-    wall.year, wall.month - 1, wall.day,
-    wall.hour, wall.minute, wall.second || 0, 0,
-  );
-  const offsetMs = wallAsUtcMs - naiveUtcMs;
-  return naiveUtcMs - offsetMs;
-}
-
-function addDaysUtc({ year, month, day }, n) {
-  const ms = Date.UTC(year, month - 1, day) + n * MS_PER_DAY;
-  const d  = new Date(ms);
-  return {
-    year:  d.getUTCFullYear(),
-    month: d.getUTCMonth() + 1,
-    day:   d.getUTCDate(),
-  };
+  return nextDailyFireInTz(nowMs, tz, atLocal);
 }

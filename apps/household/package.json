@@ -9,13 +9,24 @@
   "scripts": {
     "test":       "vitest run",
     "test:watch": "vitest",
-    "llm-smoke":  "node scripts/llm-smoke.js",
-    "tg-smoke":   "node scripts/tg-smoke.js",
-    "tg-pod-smoke": "node scripts/tg-pod-smoke.js"
+    "llm-smoke":   "node scripts/llm-smoke.js",
+    "tg-smoke":    "node scripts/tg-smoke.js",
+    "tg-pod-smoke": "node scripts/tg-pod-smoke.js",
+    "tg-freetext":   "node scripts/tg-freetext.js",
+    "cli-freetext":  "node scripts/cli-freetext.js",
+    "freetext-smoke":        "node scripts/freetext-smoke.js",
+    "freetext-smoke-lite":   "HOUSEHOLD_SMOKE_LITE=1 node scripts/freetext-smoke.js",
+    "freetext-smoke-lite-3":         "HOUSEHOLD_SMOKE_LITE=1 HOUSEHOLD_LLM_MODELS=qwen2.5:7b-instruct,mistral:7b-instruct,bramvanroy/geitje-7b-ultra:Q4_K_M node scripts/freetext-smoke.js",
+    "freetext-smoke-lite-3-tuned":   "HOUSEHOLD_SMOKE_LITE=1 HOUSEHOLD_LLM_MODELS=qwen2.5:7b-instruct,mistral:7b-instruct,bramvanroy/geitje-7b-ultra:Q4_K_M HOUSEHOLD_PROMPT=trimmed HOUSEHOLD_LLM_TEMPERATURE=0.1 HOUSEHOLD_LLM_STOP='\\nUser:,\\nReply:' node scripts/freetext-smoke.js",
+    "tool-probe":                    "node scripts/ollama-tool-probe.js"
   },
   "dependencies": {
     "@canopy/core":       "file:../../packages/core",
     "@canopy/pod-client": "file:../../packages/pod-client",
+    "@canopy/chat-agent": "file:../../packages/chat-agent",
+    "@canopy/item-store": "file:../../packages/item-store",
+    "@canopy/llm-client": "file:../../packages/llm-client",
+    "@canopy/notifier":   "file:../../packages/notifier",
     "telegraf":             "^4.16.3"
   },
   "devDependencies": {

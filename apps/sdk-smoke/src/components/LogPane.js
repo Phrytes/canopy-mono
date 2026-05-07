@@ -1,15 +1,15 @@
 /**
- * LogPane — scrollable, monospace log buffer for one scenario.
+ * LogPane — unified scrollable log for ALL scenarios.
  *
- * Receives an array of `{ ts, line }` entries from the parent ScenarioRow.
- * Auto-scrolls to the bottom whenever new lines arrive.  Toggle visible
- * via the parent's "log" button so the harness stays compact when
- * everything is `pending`.
+ * Receives an array of `{ ts, scenarioId, line }` entries from App.js
+ * (the parent owns the buffer; rows just append to it).  Auto-scrolls
+ * to the bottom whenever new lines arrive.  Has a Clear button so the
+ * user can reset the buffer between runs.
  */
 import React, { useEffect, useRef } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-export function LogPane({ entries }) {
+export function LogPane({ entries, onClear }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -19,23 +19,34 @@ export function LogPane({ entries }) {
     }
   }, [entries.length]);
 
-  if (entries.length === 0) {
-    return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyText}>(no log entries yet)</Text>
-      </View>
-    );
-  }
-
   return (
-    <ScrollView ref={ref} style={styles.root} contentContainerStyle={styles.content}>
-      {entries.map((e, i) => (
-        <Text key={i} style={styles.line} selectable>
-          <Text style={styles.ts}>{formatTs(e.ts)}</Text>
-          {' '}{e.line}
+    <View style={styles.wrapper}>
+      <View style={styles.header}>
+        <Text style={styles.headerText}>
+          Logs ({entries.length})
         </Text>
-      ))}
-    </ScrollView>
+        <Pressable
+          style={({ pressed }) => [styles.clearBtn, pressed && { opacity: 0.7 }]}
+          onPress={onClear}
+        >
+          <Text style={styles.clearBtnText}>Clear</Text>
+        </Pressable>
+      </View>
+      <ScrollView ref={ref} style={styles.root} contentContainerStyle={styles.content}>
+        {entries.length === 0 ? (
+          <Text style={styles.emptyText}>(no log entries yet — press Run on a scenario)</Text>
+        ) : (
+          entries.map((e, i) => (
+            <Text key={i} style={styles.line} selectable>
+              <Text style={styles.ts}>{formatTs(e.ts)}</Text>
+              {' '}
+              <Text style={styles.id}>[{e.scenarioId}]</Text>
+              {' '}{e.line}
+            </Text>
+          ))
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -48,10 +59,21 @@ function formatTs(ts) {
 }
 
 const styles = StyleSheet.create({
-  root:      { backgroundColor: '#0b0d13', borderRadius: 6, maxHeight: 200, marginTop: 6 },
-  content:   { padding: 8 },
-  line:      { color: '#d4d8f0', fontFamily: 'monospace', fontSize: 11, lineHeight: 16 },
-  ts:        { color: '#6b7094' },
-  empty:     { backgroundColor: '#0b0d13', borderRadius: 6, padding: 12, marginTop: 6 },
-  emptyText: { color: '#6b7094', fontSize: 12, fontStyle: 'italic' },
+  wrapper:       { flex: 1, marginTop: 8 },
+  header:        {
+    flexDirection: 'row',
+    alignItems:    'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingBottom: 6,
+  },
+  headerText:    { color: '#8c93b8', fontSize: 12, fontWeight: '600', letterSpacing: 0.3 },
+  clearBtn:      { backgroundColor: '#262a36', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  clearBtnText:  { color: '#d4d8f0', fontSize: 12, fontWeight: '600' },
+  root:          { flex: 1, backgroundColor: '#0b0d13', borderRadius: 6 },
+  content:       { padding: 8 },
+  line:          { color: '#d4d8f0', fontFamily: 'monospace', fontSize: 11, lineHeight: 16 },
+  ts:            { color: '#6b7094' },
+  id:            { color: '#7a86c0', fontWeight: '700' },
+  emptyText:     { color: '#6b7094', fontSize: 12, fontStyle: 'italic', textAlign: 'center', marginTop: 8 },
 });

@@ -1,10 +1,31 @@
 # @canopy-app/folio-mobile
 
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md). **Known direct SDK use:** `pod-client.PodClient` + `core.Bootstrap` — the canonical "no substrate fits yet" example called out in the layering doc.
+
 Folio.C2 — React Native mobile client for [Folio](../folio/), the
 Solid-pod-backed markdown notes app built on the @canopy SDK.
 
 This is a separate workspace from `apps/mesh-demo` (per Q-C1.3); the two
 apps share `packages/*` but maintain independent Expo configurations.
+
+## Substrates
+
+This app composes the following substrate packages
+(see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
+
+| Package | Used for | Why a substrate, not direct SDK |
+|---|---|---|
+| `@canopy/sync-engine` (L1a) | Bidirectional pod ↔ local-folder sync (RN side: `expo-file-system` + RN watcher adapter). Pulled in via the `@canopy-app/folio` app library. | Folio shipped this substrate; mobile reuses the engine + RN adapters via Folio's app-side service factory. |
+
+The `@canopy-app/folio` workspace is **not** a substrate — it's a sibling app that exports its `SyncEngine` subclass + RN service factory for Folio Mobile to consume. This is the Folio C1 pluggable-engine pattern.
+
+## Direct SDK use
+
+| SDK package | Primitive | Used for | Justification |
+|---|---|---|---|
+| `@canopy/pod-client` | `PodClient`, `SolidOidcAuth` | Solid pod read/write/list + OIDC auth flow (mobile-side, `expo-auth-session`). | Folio is one of the canonical PodClient consumers; no substrate currently wraps "construct an authenticated PodClient from an OIDC flow on RN." Layering doc lists this as the canonical "no substrate fits yet" example. |
+| `@canopy/core` | `PodCapabilityToken` | Share screen — accept incoming capability tokens from another agent. | Capability-token primitive is SDK-foundational; substrates compose it, they don't wrap it. |
+| `@canopy/react-native` | `platform/polyfills` (entry-point side-effect import) | RN bring-up: `react-native-get-random-values` + `nacl-util` polyfills before any crypto runs. | Platform layer — RN-specific bring-up lives in `@canopy/react-native` by design; no substrate wraps it. |
 
 ## Status
 
@@ -22,7 +43,7 @@ Out of scope for this slice:
   present but not yet auto-registered — manual sync only)
 - Multi-account support
 
-## Quick start
+## Bring it up
 
 ### Install
 
@@ -92,6 +113,11 @@ Keystore).  See `src/auth/OidcSessionRN.js` for the storage keys.
 - **DPoP / token-binding is not implemented** at v0.  Bearer-token
   auth is sufficient against `storage.inrupt.com`; pods that REQUIRE
   DPoP will reject our writes with 401.  Track via the follow-up plan.
+- **iOS filesystem model (sandbox, document picker, security-scoped
+  bookmarks, no folder watcher).**  Folio mobile is Android-only at
+  this stage; iOS is not on the roadmap.  Design notes for the iOS
+  filesystem story (so the work isn't lost) live in
+  [`docs/IOS-FILESYSTEM-NOTES.md`](docs/IOS-FILESYSTEM-NOTES.md).
 
 ## Tests
 
@@ -104,7 +130,7 @@ The tests do NOT touch a real device, real Inrupt issuer, or real
 filesystem — they exercise the auth state machine, ServiceContext
 wiring, screen logic, and conflict-merge helpers in isolation.
 
-## Layout
+## What's in here
 
 ```
 src/

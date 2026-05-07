@@ -1,10 +1,30 @@
 # Archive — read-side validator + SQLite FTS5 search over pod content
 
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+
 **Status:** v0 (lib + CLI; web UI + real-pod auth deferred).
 
 Archive walks any pod root it's been granted access to, downloads
 everything, indexes it into a local SQLite FTS5 database, and exposes
 search.  It's the read-heavy companion to Folio (which is write-heavy).
+
+## Substrates
+
+This app composes the following substrate packages
+(see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
+
+| Package | Used for | Why a substrate, not direct SDK |
+|---|---|---|
+| `@canopy/agent-ui` (L1d) | `mountLocalUi(agent)` — exposes the archive's skills (`search`, `addSource`, `index`, …) over A2A's standard wire shape on `127.0.0.1`. | Localhost-A2A bring-up is shared across H4 / H5 / H7 (archive); the substrate owns the dispatch + agent-card path. |
+| `@canopy/pod-search` (L1i) | SQLite FTS5 indexer + faceted search. | The pod-walker + index schema are reused by future search UIs; this app drives the substrate's V1 contract (compose `pod-client.PodClient.list/read` + tombstone eviction via `'delete-local'` event). |
+
+## Direct SDK use
+
+| SDK package | Primitive | Used for | Justification |
+|---|---|---|---|
+| `@canopy/core` | `Agent`, `AgentIdentity`, `VaultMemory`, `InternalBus`, `InternalTransport` | Constructing the archive's local agent that `mountLocalUi` exposes over A2A. | No substrate wraps "construct an agent" — that's the SDK foundation. The CLI runs the agent in-process, no relay needed. |
+| `@canopy/core` | `defineSkill` | Registering the archive's skill handlers (search / addSource / index / status / show). | Skill-registry primitive is SDK-foundational; every consumer's skill set differs, so no substrate wraps the registry call site. |
+| `@canopy/pod-client` | (Future, real-pod path) `PodClient` | The walker today goes through `FsBackedMockPodClient`; real Solid OIDC plugs in `pod-client.PodClient`. | Same justification as folio: `PodClient` is the canonical pod read/write primitive; substrates compose it, apps construct it. Tracked in the "What v0 deliberately doesn't ship" list. |
 
 ## What v0 ships
 
@@ -70,7 +90,26 @@ in `archive search`.
 Individual FTS rows are capped at 5 MB; oversized text bodies are
 truncated for indexing (the full size + sha256 are still recorded).
 
-## Running it
+## What's in here
+
+```
+apps/archive/
+├── README.md             ← this file
+├── package.json          ← @canopy-app/archive
+├── bin/archive           ← CLI entry (init / add-source / index / search / status / show)
+├── src/
+│   ├── server/
+│   │   ├── agent.js      ← creates the archive's core.Agent + registers skills
+│   │   └── index.js      ← createArchiveWebServer(...) wraps agent in mountLocalUi
+│   ├── walker/           ← pod-walker (currently FsBackedMockPodClient)
+│   ├── indexer/          ← SQLite FTS5 schema + writer
+│   ├── search/           ← query parser + result shaping
+│   ├── skills/           ← search / addSource / index / status / show
+│   └── config/           ← XDG config + db location resolver
+└── test/                 ← 96 tests
+```
+
+## Bring it up
 
 ```bash
 # install + test

@@ -1,0 +1,30 @@
+{
+  "name": "@canopy/chat-agent",
+  "version": "0.3.3",
+  "description": "Conversational LLM-mediated chat surface — MessagingBridge interface, per-chat session manager, narrow tool dispatcher.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".":                              "./src/index.js",
+    "./bridges/in-memory":            "./src/bridges/InMemoryBridge.js",
+    "./bridges/telegram":             "./src/bridges/TelegramBridge.js"
+  },
+  "peerDependencies": {
+    "telegraf": "^4.16.0"
+  },
+  "peerDependenciesMeta": {
+    "telegraf": { "optional": true }
+  },
+  "scripts": {
+    "test":       "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/core": "file:../core"
+  },
+  "devDependencies": {
+    "@canopy/llm-client": "file:../llm-client",
+    "telegraf":             "^4.16.3",
+    "vitest":               "^2.1.0"
+  }
+}

@@ -1,11 +1,21 @@
 {
   "name": "@canopy/react-native",
-  "version": "0.1.0",
-  "description": "React Native extras for the canopy agent SDK",
+  "version": "0.2.0",
+  "description": "React Native platform layer + adapters for the canopy agent SDK",
   "type": "module",
   "main": "index.js",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./metro-preset": "./metro-preset.cjs",
+    "./platform/polyfills": {
+      "react-native": "./src/platform/polyfills.rn.js",
+      "default":      "./src/platform/polyfills.js"
+    },
+    "./platform/service-factory": "./src/platform/service-factory.js",
+    "./platform/shims/node-builtins": "./src/platform/shims/node-builtins.js",
+    "./platform/shims/path":          "./src/platform/shims/path.js",
+    "./platform/shims/util":          "./src/platform/shims/util.js",
+    "./platform/shims/ws":            "./src/platform/shims/ws.js"
   },
   "scripts": {
     "test": "vitest run",
@@ -15,12 +25,16 @@
     "@canopy/core": "^0.1.0",
     "@react-native-async-storage/async-storage": "*",
     "react-native-ble-plx": "*",
-    "react-native-keychain": "*"
+    "react-native-keychain": "*",
+    "react-native-get-random-values": "*",
+    "buffer": "*"
   },
   "peerDependenciesMeta": {
     "@react-native-async-storage/async-storage": { "optional": false },
     "react-native-ble-plx": { "optional": false },
-    "react-native-keychain": { "optional": false }
+    "react-native-keychain": { "optional": false },
+    "react-native-get-random-values": { "optional": false },
+    "buffer": { "optional": false }
   },
   "devDependencies": {
     "@canopy/core": "file:../core",

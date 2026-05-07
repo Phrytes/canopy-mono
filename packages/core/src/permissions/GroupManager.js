@@ -126,6 +126,117 @@ export class GroupManager {
     await this.#vault.set(key, JSON.stringify(filtered));
   }
 
+  // ── Invite tokens (Phase 7 onboarding) ────────────────────────────────────
+
+  /**
+   * Issue an unbound invite token. Any holder can present this token within
+   * its TTL to redeem a real `groupProof` for a specific member pubKey
+   * (`redeemInvite` below). Single-use: the redemption marks the invite's
+   * `nonce` as consumed in the admin's vault.
+   *
+   * Wire format mirrors a proof minus `memberPubKey`, plus a random `nonce`:
+   * {
+   *   kind:        'invite',
+   *   groupId, adminPubKey, role, nonce,
+   *   issuedAt, expiresAt, sig
+   * }
+   *
+   * @param {string} groupId
+   * @param {object} [opts]
+   * @param {string} [opts.role='member']      role granted on redemption
+   * @param {number} [opts.expiresIn=3600000]  ms; default 1 hour
+   * @returns {Promise<object>}
+   */
+  async issueInvite(groupId, opts = {}) {
+    const role      = opts.role     ?? ROLES.MEMBER;
+    const expiresIn = opts.expiresIn ?? 3_600_000;
+    if (!isKnownRole(role)) {
+      throw new Error(`GroupManager.issueInvite: unknown role "${role}"`);
+    }
+    const now   = Date.now();
+    const nonce = b64encode(_randomBytes(16));
+    const body  = {
+      kind:        'invite',
+      groupId,
+      adminPubKey: this.#identity.pubKey,
+      role,
+      nonce,
+      issuedAt:    now,
+      expiresAt:   now + expiresIn,
+    };
+    const sig    = this.#identity.sign(_canonical(body));
+    const invite = { ...body, sig: b64encode(sig) };
+
+    // Persist under admin registry of issued (but not-yet-redeemed) invites.
+    const key      = `group-invites:${groupId}`;
+    const existing = JSON.parse((await this.#vault.get(key)) ?? '[]');
+    existing.push(invite);
+    await this.#vault.set(key, JSON.stringify(existing));
+
+    return invite;
+  }
+
+  /**
+   * Verify an invite's signature + expiry. Does NOT check single-use status
+   * (that's `redeemInvite`'s job — only the issuing admin can know which
+   * nonces have been redeemed).
+   *
+   * @param {object} invite
+   * @returns {Promise<boolean>}
+   */
+  async verifyInvite(invite) {
+    if (!invite?.sig)              return false;
+    if (invite.kind !== 'invite')  return false;
+    if (Date.now() >= invite.expiresAt) return false;
+    const { sig, ...body } = invite;
+    return AgentIdentity.verify(_canonical(body), b64decode(sig), invite.adminPubKey);
+  }
+
+  /**
+   * Redeem an invite for a specific member pubKey. Verifies signature +
+   * expiry, checks the nonce hasn't been redeemed before, mints a fresh
+   * `GroupProof` for the member, marks the nonce as consumed.
+   *
+   * Only the issuing admin can call this — `verifyInvite` confirms the
+   * invite is signed by *this* admin's identity (mismatch → throws).
+   *
+   * @param {object} invite
+   * @param {string} memberPubKey
+   * @param {object} [opts]
+   * @param {number} [opts.expiresIn=86400000]  ms for the issued proof
+   * @returns {Promise<object>} the new GroupProof
+   */
+  async redeemInvite(invite, memberPubKey, opts = {}) {
+    if (!(await this.verifyInvite(invite))) {
+      throw new Error('GroupManager.redeemInvite: invalid or expired invite');
+    }
+    if (invite.adminPubKey !== this.#identity.pubKey) {
+      throw new Error('GroupManager.redeemInvite: invite was issued by a different admin');
+    }
+    if (typeof memberPubKey !== 'string' || !memberPubKey) {
+      throw new TypeError('GroupManager.redeemInvite: memberPubKey required');
+    }
+
+    const redeemedKey      = `group-invites-redeemed:${invite.groupId}`;
+    const redeemedNonces   = JSON.parse((await this.#vault.get(redeemedKey)) ?? '[]');
+    if (redeemedNonces.includes(invite.nonce)) {
+      throw new Error('GroupManager.redeemInvite: invite already redeemed');
+    }
+
+    // Mint the proof (reuses the issueProof path so persistence + role
+    // semantics stay in sync).
+    const proof = await this.issueProof(memberPubKey, invite.groupId, {
+      role:      invite.role,
+      expiresIn: opts.expiresIn ?? 86_400_000,
+    });
+
+    // Mark the invite's nonce consumed AFTER the proof is in the registry.
+    redeemedNonces.push(invite.nonce);
+    await this.#vault.set(redeemedKey, JSON.stringify(redeemedNonces));
+
+    return proof;
+  }
+
   /**
    * Look up the current role of a member in a group, by reading the admin
    * registry.  Returns null if not a member.  Backward-compat: legacy
@@ -220,4 +331,15 @@ export class GroupManager {
 
 function _canonical(obj) {
   return JSON.stringify(obj, Object.keys(obj).sort());
+}
+
+function _randomBytes(n) {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    return crypto.getRandomValues(new Uint8Array(n));
+  }
+  // Last-resort fallback — Math.random isn't cryptographic but we only
+  // need uniqueness, not unpredictability, for the redemption nonce.
+  const b = new Uint8Array(n);
+  for (let i = 0; i < n; i++) b[i] = Math.floor(Math.random() * 256);
+  return b;
 }

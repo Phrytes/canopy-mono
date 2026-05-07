@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>Stoop — Mijn profiel</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Buurt</a>
+      <a href="/mine.html">Mijn posts</a>
+      <a href="/chat.html">Chat</a>
+      <a href="/contacts.html">Contacten</a>
+      <a href="/metrics.html">Metrics</a>
+      <a href="/profile.html" class="active">Profiel</a>
+      <a href="/sign-in.html">Pod</a>
+      <a href="/push.html">Push</a>
+      <a href="/onboard.html">Onboarden</a>
+      <a href="/settings.html">Instellingen</a>
+    </nav>
+    <select id="group-switcher" hidden aria-label="Switch group"></select>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section id="profile">
+      <h2>Mijn profiel</h2>
+
+      <p class="hint">
+        Je <strong>handle</strong> is wat anderen standaard zien — bv.
+        <code>@oosterpoort-bird-23</code>. Je <strong>echte naam</strong> is
+        optioneel en alleen zichtbaar voor wie je daar toestemming voor
+        geeft.
+      </p>
+
+      <div id="avatar-section" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+        <span id="avatar-preview"></span>
+        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+          <input id="avatar-input" type="file" accept="image/*" style="font-size: 0.85rem;">
+          <div style="display: flex; gap: 0.4rem;">
+            <button id="avatar-clear" class="ghost" type="button">Verwijderen</button>
+            <span id="avatar-feedback" class="hint"></span>
+          </div>
+        </div>
+      </div>
+
+      <form id="handle-form">
+        <label>
+          <span>Handle (kleine letters, 3–32 tekens)</span>
+          <input id="handle-input" type="text" required minlength="3" maxlength="32"
+                 pattern="^@?[a-zA-Z0-9_-]+$"
+                 placeholder="bv. oosterpoort-bird-23">
+        </label>
+        <button type="submit">Handle opslaan</button>
+        <span id="handle-feedback" class="hint"></span>
+      </form>
+
+      <form id="display-name-form" style="margin-top: 1rem;">
+        <label>
+          <span>Echte / weergavenaam (optioneel)</span>
+          <input id="display-name-input" type="text" maxlength="64" placeholder="bv. Anne van Dijk">
+        </label>
+        <button type="submit">Naam opslaan</button>
+        <span id="display-feedback" class="hint"></span>
+      </form>
+
+      <h3 style="margin-top: 1.5rem;">Hoe anderen je standaard zien</h3>
+      <pre id="default-render" class="profile-render">…</pre>
+    </section>
+
+    <section id="skills">
+      <h2>Mijn skills</h2>
+
+      <div id="holiday-card" style="background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem 1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.8rem;">
+        <button id="holiday-toggle" type="button">Vakantie aan</button>
+        <span id="holiday-status" class="hint" style="flex: 1;">Status laden…</span>
+      </div>
+
+      <p class="hint">
+        Vink aan waar je in helpt — anderen zien dit in jouw profiel én
+        het bepaalt welke vragen automatisch bij jou terechtkomen. Je
+        kunt per skill optioneel trefwoorden toevoegen (bv. <em>fiets,
+        plak</em>) en de status zetten op gepauzeerd of gearchiveerd.
+      </p>
+      <div id="skills-list">Aan het laden…</div>
+      <span id="skills-feedback" class="hint"></span>
+    </section>
+
+    <section id="location">
+      <h2>Locatie (optioneel)</h2>
+      <p class="hint">
+        Een grof-gerasterde locatie (op 500m) maakt het mogelijk om
+        posts te beperken tot een straal om jou heen, of om afstand
+        te delen met vertrouwde contacten. Zonder locatie werkt
+        Stoop gewoon door, maar zonder afstand-filter.
+      </p>
+      <p class="hint" style="background: var(--bg-soft); border-left: 3px solid var(--accent, #1d6e56); padding: 0.5rem 0.8rem; border-radius: 4px;">
+        ⚠️ Je zoekopdracht wordt naar OpenStreetMap (Nominatim) gestuurd
+        om coördinaten op te halen. Je naam of WebID gaat <em>niet</em>
+        mee.
+      </p>
+
+      <div id="location-card" style="background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem 1rem; margin-bottom: 0.8rem;">
+        <div id="location-current" class="hint">Aan het laden…</div>
+        <button id="clear-location" type="button" class="ghost" hidden style="margin-top: 0.5rem;">Locatie wissen</button>
+      </div>
+
+      <form id="location-form" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-end;">
+        <label style="flex: 1; min-width: 14rem;">
+          <span>Plaatsnaam, postcode, of adres</span>
+          <input id="location-query" type="text" placeholder="bv. Oosterpoort, Groningen">
+        </label>
+        <button type="submit">Zoek op kaart</button>
+        <span id="location-feedback" class="hint"></span>
+      </form>
+
+      <div id="location-preview" hidden style="background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem 1rem; margin-top: 0.8rem;">
+        <div id="location-preview-body"></div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.6rem;">
+          <button id="location-confirm" type="button">Opslaan</button>
+          <button id="location-cancel" type="button" class="ghost">Annuleren</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="recovery">
+      <h2>Herstel &amp; back-up</h2>
+      <p class="hint">
+        Je <strong>herstelzin</strong> is de enige manier om je account terug te krijgen
+        op een nieuw apparaat. We tonen hem <em>één keer</em> — schrijf hem op en
+        bewaar hem ergens veilig (geen schermafbeelding).
+      </p>
+      <div class="recovery-row">
+        <button id="reveal-mnemonic">Toon herstelzin</button>
+        <span id="mnemonic-status" class="hint"></span>
+      </div>
+      <pre id="mnemonic-card" class="mnemonic-card" hidden></pre>
+
+      <h3 style="margin-top: 1.5rem;">Versleutelde back-up</h3>
+      <p class="hint">
+        Maak een back-upbestand dat alleen jij met je wachtwoord kunt openen.
+        Het wachtwoord verlaat dit apparaat niet.
+      </p>
+      <form id="backup-form">
+        <label>
+          <span>Wachtwoord (min. 8 tekens)</span>
+          <input id="backup-pass" type="password" required minlength="8"
+                 autocomplete="new-password">
+        </label>
+        <button type="submit">Download back-up</button>
+        <span id="backup-status" class="hint"></span>
+      </form>
+    </section>
+  </main>
+
+  <script type="module">
+    import { callSkill, getActor, mountGroupSwitcher, renderAvatar } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    mountGroupSwitcher(document.getElementById('group-switcher'));
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    async function refresh() {
+      const r = await callSkill('getMyProfile', {});
+      const handle = r?.entry?.handle ?? '';
+      const display = r?.entry?.displayName ?? '';
+      const avatarUrl = r?.entry?.avatarUrl ?? null;
+      document.getElementById('handle-input').value      = handle;
+      document.getElementById('display-name-input').value = display;
+      const peek = r?.renderForCurrentGroup;
+      document.getElementById('default-render').textContent =
+        peek
+          ? `Anderen zien: ${peek.render}` +
+            (peek.isRevealed ? ' (echte naam zichtbaar voor deze groep)' : ' (handle by default)')
+          : '— geen groep geconfigureerd —';
+
+      // Render avatar preview at large size.  Wraps the existing
+      // renderAvatar helper in a sized container.
+      const preview = document.getElementById('avatar-preview');
+      const label   = handle ? `@${handle}` : (display || 'Ik');
+      preview.innerHTML = renderAvatar({ avatarUrl }, label);
+      // Promote whichever element renderAvatar created to the larger size class.
+      const el = preview.firstElementChild;
+      if (el) el.classList.add('avatar-large');
+    }
+    await refresh();
+
+    /**
+     * Resize an image File to a 256×256 JPEG data URL via canvas
+     * — keeps avatar bytes ~50 KB so MemberMap pod-sync stays
+     * tractable.
+     */
+    async function fileToResizedDataUrl(file, maxSide = 256, quality = 0.85) {
+      const bitmap = await createImageBitmap(file);
+      const ratio = Math.min(maxSide / bitmap.width, maxSide / bitmap.height, 1);
+      const w = Math.round(bitmap.width  * ratio);
+      const h = Math.round(bitmap.height * ratio);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0, w, h);
+      return canvas.toDataURL('image/jpeg', quality);
+    }
+
+    document.getElementById('avatar-input').addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      const fb = document.getElementById('avatar-feedback');
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        fb.textContent = 'Kies een afbeelding (jpg / png / webp).';
+        return;
+      }
+      fb.textContent = 'Bezig met verkleinen…';
+      try {
+        const url = await fileToResizedDataUrl(file);
+        const r = await callSkill('setMyAvatarUrl', { url });
+        if (r.error) { fb.textContent = `Fout: ${r.error}`; return; }
+        fb.textContent = `Opgeslagen (${Math.round(url.length / 1024)} KB).`;
+        e.target.value = '';
+        await refresh();
+      } catch (err) {
+        fb.textContent = `Fout: ${err.message ?? err}`;
+      }
+    });
+
+    document.getElementById('avatar-clear').addEventListener('click', async () => {
+      const fb = document.getElementById('avatar-feedback');
+      fb.textContent = 'Bezig…';
+      try {
+        await callSkill('clearMyAvatar', {});
+        fb.textContent = 'Verwijderd.';
+        await refresh();
+      } catch (err) {
+        fb.textContent = `Fout: ${err.message ?? err}`;
+      }
+    });
+
+    /* ── Holiday-mode card ─────────────────────────────────────── */
+
+    const holidayBtn = document.getElementById('holiday-toggle');
+    const holidayStatus = document.getElementById('holiday-status');
+
+    async function refreshHoliday() {
+      const r = await callSkill('getHolidayMode', {});
+      const on = !!r?.holidayMode;
+      holidayBtn.textContent = on ? 'Vakantie uit' : 'Vakantie aan';
+      holidayStatus.innerHTML = on
+        ? '<strong>Je staat op vakantie.</strong> Nieuwe vragen / aanbod stromen niet automatisch bij jou langs.'
+        : 'Je bent beschikbaar voor automatische skill-matches.';
+      holidayBtn.classList.toggle('ghost', on);
+    }
+    await refreshHoliday();
+
+    holidayBtn.addEventListener('click', async () => {
+      const cur = (await callSkill('getHolidayMode', {})).holidayMode;
+      try {
+        await callSkill('setHolidayMode', { on: !cur });
+        await refreshHoliday();
+      } catch (err) {
+        holidayStatus.textContent = `Fout: ${err.message ?? err}`;
+      }
+    });
+
+    /* ── Skills section ────────────────────────────────────────── */
+
+    const skillsListEl = document.getElementById('skills-list');
+    const skillsFb     = document.getElementById('skills-feedback');
+
+    async function refreshSkills() {
+      const [cats, mine] = await Promise.all([
+        callSkill('listSkillCategories', { lang: 'nl' }),
+        callSkill('listMySkills', {}),
+      ]);
+      const myByCat = new Map((mine?.skills ?? []).map(s => [s.categoryId, s]));
+      const rows = (cats?.categories ?? []).map((c) => {
+        const own = myByCat.get(c.id);
+        const checked = own ? 'checked' : '';
+        const status = own?.status ?? 'actief';
+        const tags = (own?.freeTags ?? []).join(', ');
+        return `
+          <label style="display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; padding: 0.4rem; border-bottom: 1px solid var(--border);">
+            <input type="checkbox" data-cat="${escapeHtml(c.id)}" ${checked}>
+            <div>
+              <div style="font-weight: 500;">${escapeHtml(c.label)}</div>
+              ${c.hint ? `<div class="hint" style="font-size: 0.78rem;">${escapeHtml(c.hint)}</div>` : ''}
+              ${own ? `<input type="text" data-cat="${escapeHtml(c.id)}" data-role="tags" value="${escapeHtml(tags)}" placeholder="tags (komma-gescheiden)" style="margin-top: 0.3rem; font-size: 0.85rem; width: 100%;">` : ''}
+            </div>
+            <select data-cat="${escapeHtml(c.id)}" data-role="status" ${own ? '' : 'disabled'}>
+              <option value="actief" ${status === 'actief' ? 'selected' : ''}>actief</option>
+              <option value="gepauzeerd" ${status === 'gepauzeerd' ? 'selected' : ''}>gepauzeerd</option>
+              <option value="gearchiveerd" ${status === 'gearchiveerd' ? 'selected' : ''}>gearchiveerd</option>
+            </select>
+          </label>`;
+      }).join('');
+      skillsListEl.innerHTML = rows || '<p class="hint">Geen categorieën beschikbaar.</p>';
+    }
+    await refreshSkills();
+
+    skillsListEl.addEventListener('change', async (e) => {
+      const cat = e.target?.dataset?.cat;
+      if (!cat) return;
+      const role = e.target.dataset.role;
+      skillsFb.textContent = 'Bezig met opslaan…';
+      try {
+        if (e.target.type === 'checkbox') {
+          if (e.target.checked) {
+            await callSkill('addMySkill', { categoryId: cat });
+          } else {
+            await callSkill('removeMySkill', { categoryId: cat });
+          }
+        } else if (role === 'status') {
+          await callSkill('addMySkill', { categoryId: cat, status: e.target.value });
+        }
+        skillsFb.textContent = 'Opgeslagen.';
+        await refreshSkills();
+      } catch (err) {
+        skillsFb.textContent = `Fout: ${err.message ?? err}`;
+      }
+    });
+
+    // Tags get saved on blur (to avoid spamming the cache on every keystroke).
+    skillsListEl.addEventListener('blur', async (e) => {
+      if (e.target.dataset?.role !== 'tags') return;
+      const cat = e.target.dataset.cat;
+      const freeTags = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+      skillsFb.textContent = 'Bezig met opslaan…';
+      try {
+        await callSkill('addMySkill', { categoryId: cat, freeTags });
+        skillsFb.textContent = 'Tags opgeslagen.';
+      } catch (err) {
+        skillsFb.textContent = `Fout: ${err.message ?? err}`;
+      }
+    }, true);
+
+    /* ── Location section (Phase 26.4) ─────────────────────────── */
+
+    let _pendingGeocode = null;
+
+    async function refreshLocation() {
+      const r = await callSkill('getMyLocation', {});
+      const cur = document.getElementById('location-current');
+      const clr = document.getElementById('clear-location');
+      if (r.location?.cell) {
+        cur.innerHTML = `Huidige locatie: <strong>${escapeHtml(r.location.label ?? r.location.cell)}</strong> <span class="hint">(${escapeHtml(r.location.cell)} via ${escapeHtml(r.location.source ?? '?')})</span>`;
+        clr.hidden = false;
+      } else {
+        cur.textContent = 'Geen locatie ingesteld.';
+        clr.hidden = true;
+      }
+    }
+    await refreshLocation();
+
+    document.getElementById('location-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fb = document.getElementById('location-feedback');
+      const query = document.getElementById('location-query').value.trim();
+      if (!query) return;
+      fb.textContent = 'Zoeken…';
+      try {
+        const r = await callSkill('geocode', { query });
+        if (r.error) { fb.textContent = `Fout: ${r.error}`; return; }
+        _pendingGeocode = r;
+        document.getElementById('location-preview').hidden = false;
+        document.getElementById('location-preview-body').innerHTML =
+          `<strong>${escapeHtml(r.label)}</strong><br>` +
+          `<span class="hint">Cel: ${escapeHtml(r.cell)} (afgerond op 500m)</span>`;
+        fb.textContent = '';
+      } catch (err) {
+        fb.textContent = `Fout: ${err.message ?? err}`;
+      }
+    });
+
+    document.getElementById('location-confirm').addEventListener('click', async () => {
+      if (!_pendingGeocode) return;
+      const fb = document.getElementById('location-feedback');
+      try {
+        await callSkill('setMyLocation', _pendingGeocode);
+        document.getElementById('location-preview').hidden = true;
+        document.getElementById('location-query').value = '';
+        _pendingGeocode = null;
+        fb.textContent = 'Locatie opgeslagen.';
+        await refreshLocation();
+      } catch (err) {
+        fb.textContent = `Fout: ${err.message ?? err}`;
+      }
+    });
+
+    document.getElementById('location-cancel').addEventListener('click', () => {
+      _pendingGeocode = null;
+      document.getElementById('location-preview').hidden = true;
+    });
+
+    document.getElementById('clear-location').addEventListener('click', async () => {
+      const fb = document.getElementById('location-feedback');
+      try {
+        await callSkill('clearMyLocation', {});
+        fb.textContent = 'Locatie gewist.';
+        await refreshLocation();
+      } catch (err) {
+        fb.textContent = `Fout: ${err.message ?? err}`;
+      }
+    });
+
+    document.getElementById('handle-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const handle = document.getElementById('handle-input').value.trim();
+      const fb = document.getElementById('handle-feedback');
+      fb.textContent = 'Aan het opslaan…';
+      try {
+        const r = await callSkill('setMyHandle', { handle });
+        if (r.error) {
+          fb.textContent = `Fout: ${r.error}${r.reason ? ' (' + r.reason + ')' : ''}`;
+        } else {
+          fb.textContent = `Opgeslagen — @${r.handle}`;
+          await refresh();
+        }
+      } catch (err) {
+        fb.textContent = `Fout: ${err.message}`;
+      }
+    });
+
+    document.getElementById('display-name-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const displayName = document.getElementById('display-name-input').value.trim();
+      const fb = document.getElementById('display-feedback');
+      fb.textContent = 'Aan het opslaan…';
+      try {
+        const r = await callSkill('setMyDisplayName', { displayName });
+        if (r.error) {
+          fb.textContent = `Fout: ${r.error}`;
+        } else {
+          fb.textContent = `Opgeslagen.`;
+          await refresh();
+        }
+      } catch (err) {
+        fb.textContent = `Fout: ${err.message}`;
+      }
+    });
+
+    document.getElementById('reveal-mnemonic').addEventListener('click', async () => {
+      const status = document.getElementById('mnemonic-status');
+      const card   = document.getElementById('mnemonic-card');
+      try {
+        const r = await callSkill('getMnemonicOnce', {});
+        if (r.shown) {
+          status.textContent = 'Herstelzin is al eerder getoond — uit veiligheid kan dat niet opnieuw.';
+          card.hidden = true;
+        } else if (r.mnemonic) {
+          card.hidden = false;
+          card.textContent = r.mnemonic;
+          status.textContent = 'Schrijf deze 12 woorden nu over. Hij wordt niet opnieuw getoond.';
+        } else {
+          status.textContent = 'Onbekend resultaat.';
+        }
+      } catch (err) {
+        status.textContent = `Fout: ${err.message}`;
+      }
+    });
+
+    document.getElementById('backup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pass   = document.getElementById('backup-pass').value;
+      const status = document.getElementById('backup-status');
+      status.textContent = 'Versleutelen…';
+      try {
+        const r = await callSkill('encryptedBackup', { passphrase: pass });
+        if (r.error) { status.textContent = `Fout: ${r.error}`; return; }
+        const blob = new Blob([JSON.stringify(r.blob)], { type: 'application/json' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        const stamp = new Date().toISOString().slice(0, 10);
+        a.href = url;
+        a.download = `stoop-backup-${stamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        status.textContent = 'Back-up gedownload. Bewaar het bestand én je wachtwoord apart.';
+        document.getElementById('backup-pass').value = '';
+      } catch (err) {
+        status.textContent = `Fout: ${err.message}`;
+      }
+    });
+  </script>
+</body>
+</html>

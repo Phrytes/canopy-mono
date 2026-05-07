@@ -1,5 +1,9 @@
 # mesh-demo
 
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+>
+> **Scheme rollout deferred to Phase 8 (2026-05-04).** The full app-readme-scheme.md sections (`## Substrates` / `## Direct SDK use` / `## Bring it up` / `## What's in here`) are filled in as part of the substrate migration that ships with Phase 8 (originally Phase 6.6, rescoped because the regression check is a real-device run on the same hardware as push-wake validation). Today the app constructs a `core.Agent` directly + wires every transport — that's the right shape for an SDK demo, and the substrate migration audit will preserve the working patterns. Until then, the existing manual-bring-up + scenario docs below carry the load.
+
 React Native app demonstrating cooperative mesh routing across BLE, WiFi/mDNS,
 a relay server, and WebRTC DataChannel rendezvous.
 

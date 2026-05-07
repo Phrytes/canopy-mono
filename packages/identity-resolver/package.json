@@ -1,0 +1,16 @@
+{
+  "name": "@canopy/identity-resolver",
+  "version": "0.1.0",
+  "description": "Member-webid map + cross-source Person graph for identity reconciliation.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".":              "./src/index.js",
+    "./person-graph": "./src/PersonGraph.js"
+  },
+  "scripts": { "test": "vitest run", "test:watch": "vitest" },
+  "dependencies": {
+    "@canopy/core": "file:../core"
+  },
+  "devDependencies": { "vitest": "^2.1.0" }
+}

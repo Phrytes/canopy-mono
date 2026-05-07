@@ -191,3 +191,142 @@ describe('GroupAuthVerifier — requiredRole (D3 composition)', () => {
     expect(v.verify(proof).ok).toBe(true);
   });
 });
+
+// ── Phase 2 (Stoop V1, 2026-05-05) — revoked members ──────────────────────
+
+describe('GroupAuthVerifier — revokedMembers (Phase 2C)', () => {
+  it('rejects a proof whose memberPubKey is on revokedMembers', async () => {
+    const proof = await mintProof({ groupId: 'my-block' });
+    const v = new GroupAuthVerifier({
+      acceptedGroups: [{
+        groupId:        'my-block',
+        adminPubKey:    admin.pubKey,
+        revokedMembers: [member.pubKey],
+      }],
+    });
+    expect(v.verify(proof)).toEqual({ ok: false, reason: 'MEMBER_REVOKED' });
+  });
+
+  it('accepts when revokedMembers is empty / absent (back-compat)', async () => {
+    const proof = await mintProof({ groupId: 'my-block' });
+    const v = new GroupAuthVerifier({
+      acceptedGroups: [{ groupId: 'my-block', adminPubKey: admin.pubKey }],
+    });
+    expect(v.verify(proof).ok).toBe(true);
+  });
+
+  it('only rejects matching memberPubKey, not other members of the same group', async () => {
+    const proof = await mintProof({ groupId: 'my-block' });
+    const otherKey = 'someoneelse-pubkey-base64url';
+    const v = new GroupAuthVerifier({
+      acceptedGroups: [{
+        groupId:        'my-block',
+        adminPubKey:    admin.pubKey,
+        revokedMembers: [otherKey],
+      }],
+    });
+    expect(v.verify(proof).ok).toBe(true);
+  });
+});
+
+// ── Phase 2 (Stoop V1, 2026-05-05) — verifyBound + rotation chain ─────────
+
+describe('GroupAuthVerifier — verifyBound + rotation chain (Phase 2B)', () => {
+  it('accepts when proof.memberPubKey === connectingPubKey (no rotation needed)', async () => {
+    const proof = await mintProof({ groupId: 'my-block' });
+    const v = new GroupAuthVerifier({
+      acceptedGroups: [{ groupId: 'my-block', adminPubKey: admin.pubKey }],
+    });
+    expect(v.verifyBound({ proof, connectingPubKey: member.pubKey }).ok).toBe(true);
+  });
+
+  it('rejects BINDING_MISMATCH when no rotation chain is presented', async () => {
+    const proof = await mintProof({ groupId: 'my-block' });
+    const v = new GroupAuthVerifier({
+      acceptedGroups: [{ groupId: 'my-block', adminPubKey: admin.pubKey }],
+    });
+    expect(v.verifyBound({ proof, connectingPubKey: 'someone-elses-key' }))
+      .toEqual({ ok: false, reason: 'BINDING_MISMATCH' });
+  });
+
+  it('accepts a valid rotation chain linking old groupProof to new connecting key', async () => {
+    const { KeyRotation, AgentIdentity, VaultMemory } = await import('@canopy/core');
+    const proof = await mintProof({ groupId: 'my-block' });
+    const newIdentity = await AgentIdentity.generate(new VaultMemory());
+    const rotationProof = await KeyRotation.buildProof(member, newIdentity.pubKey, 86_400);
+
+    const v = new GroupAuthVerifier({
+      acceptedGroups: [{ groupId: 'my-block', adminPubKey: admin.pubKey }],
+    });
+    expect(v.verifyBound({ proof, connectingPubKey: newIdentity.pubKey, rotationProof }).ok).toBe(true);
+  });
+
+  it('rejects rotation chain with wrong newPubKey link', async () => {
+    const { KeyRotation, AgentIdentity, VaultMemory } = await import('@canopy/core');
+    const proof = await mintProof({ groupId: 'my-block' });
+    const newIdentity   = await AgentIdentity.generate(new VaultMemory());
+    const otherIdentity = await AgentIdentity.generate(new VaultMemory());
+    const rotationProof = await KeyRotation.buildProof(member, newIdentity.pubKey, 86_400);
+
+    const v = new GroupAuthVerifier({
+      acceptedGroups: [{ groupId: 'my-block', adminPubKey: admin.pubKey }],
+    });
+    // connecting with a key OTHER than rotation.newPubKey
+    expect(v.verifyBound({ proof, connectingPubKey: otherIdentity.pubKey, rotationProof }))
+      .toEqual({ ok: false, reason: 'INVALID_ROTATION' });
+  });
+
+  it('rejects rotation chain with tampered signature', async () => {
+    const { KeyRotation, AgentIdentity, VaultMemory } = await import('@canopy/core');
+    const proof = await mintProof({ groupId: 'my-block' });
+    const newIdentity = await AgentIdentity.generate(new VaultMemory());
+    const rotationProof = await KeyRotation.buildProof(member, newIdentity.pubKey, 86_400);
+    rotationProof.sig = rotationProof.sig.slice(0, -2) + 'xx';
+
+    const v = new GroupAuthVerifier({
+      acceptedGroups: [{ groupId: 'my-block', adminPubKey: admin.pubKey }],
+    });
+    expect(v.verifyBound({ proof, connectingPubKey: newIdentity.pubKey, rotationProof }))
+      .toEqual({ ok: false, reason: 'INVALID_ROTATION' });
+  });
+
+  it('rejects rotation chain past its grace period', async () => {
+    const { KeyRotation, AgentIdentity, VaultMemory } = await import('@canopy/core');
+    const proof = await mintProof({ groupId: 'my-block' });
+    const newIdentity = await AgentIdentity.generate(new VaultMemory());
+    const rotationProof = await KeyRotation.buildProof(member, newIdentity.pubKey, 60); // 60 seconds
+    // simulate "now" 10 minutes later via the now injection
+    const tenMinLater = rotationProof.issuedAt + 600_000;
+
+    const v = new GroupAuthVerifier({
+      acceptedGroups: [{ groupId: 'my-block', adminPubKey: admin.pubKey }],
+    });
+    expect(v.verifyBound({ proof, connectingPubKey: newIdentity.pubKey, rotationProof, now: () => tenMinLater }))
+      .toEqual({ ok: false, reason: 'ROTATION_EXPIRED' });
+  });
+
+  it('open mode: verifyBound returns ok even with mismatching keys', async () => {
+    const v = new GroupAuthVerifier();   // no acceptedGroups
+    expect(v.verifyBound({ proof: undefined, connectingPubKey: 'anything' }).ok).toBe(true);
+  });
+
+  it('verifyBound throws if connectingPubKey is missing', async () => {
+    const v = new GroupAuthVerifier({
+      acceptedGroups: [{ groupId: 'g', adminPubKey: admin.pubKey }],
+    });
+    expect(() => v.verifyBound({ proof: undefined })).toThrow(/connectingPubKey/);
+  });
+
+  it('verifyBound surfaces the same MEMBER_REVOKED reason when applicable', async () => {
+    const proof = await mintProof({ groupId: 'my-block' });
+    const v = new GroupAuthVerifier({
+      acceptedGroups: [{
+        groupId:        'my-block',
+        adminPubKey:    admin.pubKey,
+        revokedMembers: [member.pubKey],
+      }],
+    });
+    expect(v.verifyBound({ proof, connectingPubKey: member.pubKey }))
+      .toEqual({ ok: false, reason: 'MEMBER_REVOKED' });
+  });
+});

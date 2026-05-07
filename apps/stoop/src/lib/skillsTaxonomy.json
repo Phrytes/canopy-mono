@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id":     "klusjes",
+      "label":  { "nl": "Klusjes",                "en": "DIY / odd jobs" },
+      "hint":   { "nl": "reparaties, doe-het-zelf, kleine onderhoudswerkzaamheden",
+                  "en": "repairs, DIY, small maintenance" }
+    },
+    {
+      "id":     "tuin",
+      "label":  { "nl": "Tuin",                   "en": "Garden" },
+      "hint":   { "nl": "planten, snoeien, hovenierswerk, gras maaien",
+                  "en": "plants, pruning, garden work, mowing" }
+    },
+    {
+      "id":     "vervoer",
+      "label":  { "nl": "Vervoer",                "en": "Transport" },
+      "hint":   { "nl": "rijden, bezorgen, fietsreparatie, autohulp",
+                  "en": "driving, delivery, bicycle repair, car help" }
+    },
+    {
+      "id":     "kinderopvang",
+      "label":  { "nl": "Kinderopvang",           "en": "Childcare" },
+      "hint":   { "nl": "oppassen, huiswerk, lessen, halen-en-brengen",
+                  "en": "babysitting, homework, lessons, pickup-dropoff" }
+    },
+    {
+      "id":     "eten-en-koken",
+      "label":  { "nl": "Eten & koken",           "en": "Food & cooking" },
+      "hint":   { "nl": "samen koken, maaltijden, recepten, taarten",
+                  "en": "cooking together, meals, recipes, baking" }
+    },
+    {
+      "id":     "tech",
+      "label":  { "nl": "Tech",                   "en": "Tech" },
+      "hint":   { "nl": "computer, telefoon, internet, slimme apparaten",
+                  "en": "computer, phone, internet, smart devices" }
+    },
+    {
+      "id":     "administratie",
+      "label":  { "nl": "Administratie",          "en": "Admin / paperwork" },
+      "hint":   { "nl": "belasting, brieven, formulieren, instanties",
+                  "en": "tax, letters, forms, government paperwork" }
+    },
+    {
+      "id":     "lichaam-en-zorg",
+      "label":  { "nl": "Lichaam & zorg",         "en": "Body & care" },
+      "hint":   { "nl": "boodschappen voor zieken, gezelschap, vervoer naar arts",
+                  "en": "shopping for the ill, company, transport to doctors" }
+    },
+    {
+      "id":     "creatief-en-handvaardig",
+      "label":  { "nl": "Creatief & handvaardig", "en": "Creative & crafts" },
+      "hint":   { "nl": "naaien, breien, lijmen, knutselen, schilderen",
+                  "en": "sewing, knitting, crafts, painting" }
+    },
+    {
+      "id":     "anders",
+      "label":  { "nl": "Anders",                 "en": "Other" },
+      "hint":   { "nl": "alles wat hierboven niet past",
+                  "en": "anything that does not fit above" }
+    }
+  ]
+}

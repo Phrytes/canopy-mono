@@ -1,0 +1,38 @@
+{
+  "name": "@canopy-app/stoop",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Stoop — buurt-skill-app. V2 of the H5 / neighborhood-v0 closed-group skill-matchmaking app, renamed 2026-05-06.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "bin": {
+    "stoop-ui":      "bin/stoop-ui.js",
+    "stoop-testbed": "bin/stoop-testbed.js"
+  },
+  "scripts": {
+    "test":       "vitest run",
+    "test:watch": "vitest",
+    "ui":         "node bin/stoop-ui.js",
+    "testbed":    "node bin/stoop-testbed.js"
+  },
+  "dependencies": {
+    "@canopy/core":              "file:../../packages/core",
+    "@canopy/relay":             "file:../../packages/relay",
+    "@canopy/agent-ui":          "file:../../packages/agent-ui",
+    "@canopy/chat-agent":        "file:../../packages/chat-agent",
+    "@canopy/identity-resolver": "file:../../packages/identity-resolver",
+    "@canopy/item-store":        "file:../../packages/item-store",
+    "@canopy/notifier":          "file:../../packages/notifier",
+    "@canopy/skill-match":       "file:../../packages/skill-match",
+    "i18next":                     "^23.15.0",
+    "tweetnacl":                   "^1.0.3"
+  },
+  "optionalDependencies": {
+    "@inrupt/solid-client-authn-node": "4.0.0",
+    "web-push":                        "^3.6.7"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}
