@@ -389,6 +389,19 @@ export function buildSkills({
       // DON'T await broadcast results — posts go up immediately
       // and claims (if any) flow back via groupMirror + the chat-
       // based reply path (Phase 14).
+      // Phase 40.20 (2026-05-08): caller can request a wider
+      // broadcast audience via `scope: 'group+contacts' |
+      // 'group+contacts+hops'`.  When the scope is wider than
+      // 'group', the SkillMatch substrate also subscribes to the
+      // user's `extraAudience` peers (resolved from ContactBook
+      // entries / MemberMap hop-flags by the bundle bring-up).  The
+      // `scope` field is published in the request payload so
+      // receivers can apply a different sensitivity.
+      const broadcastScope = (typeof a.scope === 'string'
+        && ['group', 'group+contacts', 'group+contacts+hops'].includes(a.scope))
+        ? a.scope
+        : 'group';
+
       const broadcastP = hasGroupTarget
         ? skillMatch.broadcast({
             requiredSkills: a.requiredSkills ?? [],
@@ -411,6 +424,7 @@ export function buildSkills({
             },
             timeoutMs:      a.timeoutMs ?? DEFAULT_TIMEOUT_MS,
             expectClaims:   a.expectClaims ?? 0,
+            scope:          broadcastScope,
           }).catch(() => ({ claims: [] }))
         : Promise.resolve({ claims: [] });
 

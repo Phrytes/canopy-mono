@@ -56,6 +56,17 @@ export class SkillMatch {
   #peers = new Map();
 
   /**
+   * Phase 40.20 (2026-05-08): peers beyond the closed group whose
+   * broadcasts we still want to receive (contacts + hop-discovered).
+   * Inbound requests from these pubKeys are dispatched with
+   * `request.extraAudience: true` so the appHandler can apply a
+   * different sensitivity (rate-limit, opt-in, etc.).
+   *
+   * @type {Map<string, {pubKey: string}>}
+   */
+  #extraAudience = new Map();
+
+  /**
    * Active inbound subscriptions to peers' broadcasts.
    * pubKey → off-fn (returned by core's pubSub.subscribe).
    * @type {Map<string, () => Promise<void>>}
@@ -82,8 +93,15 @@ export class SkillMatch {
    *   Used as the `from` field in broadcasts/claims; opaque to the substrate.
    * @param {Array<string>} [args.skills]                This agent's local skill list.
    * @param {Object<string, 'always'|'negotiable'|'never'>} [args.posture]
+   *
+   * Phase 40.20 (2026-05-08, Stoop V3 mobile broadcast-scope locked):
+   * @param {Array<{pubKey: string}>} [args.extraAudience=[]]
+   *   Additional peers (beyond the closed group) to subscribe to.
+   *   Inbound requests from these peers carry an `extraAudience` flag
+   *   that the receiver's `appHandler` can use to apply different
+   *   sensitivity (e.g. dampen hop-discovered sends per Phase 40.20 §8a Q3).
    */
-  constructor({ agent, peers = [], group, localActor, skills, posture }) {
+  constructor({ agent, peers = [], group, localActor, skills, posture, extraAudience = [] }) {
     if (!agent || typeof agent.on !== 'function') {
       throw new TypeError('SkillMatch: agent (a core.Agent instance) required');
     }
@@ -95,6 +113,7 @@ export class SkillMatch {
     this.#localActor = localActor ?? agent.address ?? null;
 
     for (const p of peers) this.addPeer(p);
+    for (const p of extraAudience) this.addExtraAudiencePeer(p);
 
     if (skills || posture) {
       this.setLocalProfile({ skills: skills ?? [], posture: posture ?? {} });
@@ -149,6 +168,28 @@ export class SkillMatch {
   /** @returns {string[]} */
   listPeers() { return [...this.#peers.keys()]; }
 
+  /**
+   * Phase 40.20 — add a peer to the **extraAudience** roster (contacts
+   * / hop-discovered). Subscribes to their broadcast topic so we
+   * receive their requests, but tags them with `extraAudience: true`
+   * on inbound dispatch so the appHandler knows the source.
+   *
+   * @param {{pubKey: string}} peer
+   */
+  addExtraAudiencePeer(peer) {
+    if (!peer?.pubKey || typeof peer.pubKey !== 'string') {
+      throw new TypeError('SkillMatch.addExtraAudiencePeer: peer.pubKey (string) required');
+    }
+    if (peer.pubKey === this.#agent.address) return;
+    if (this.#peers.has(peer.pubKey)) return;          // group peers shadow extras
+    if (this.#extraAudience.has(peer.pubKey)) return;
+    this.#extraAudience.set(peer.pubKey, { pubKey: peer.pubKey });
+    if (this.#started) this.#subscribeToPeer(peer.pubKey).catch(() => {});
+  }
+
+  /** @returns {string[]} */
+  listExtraAudience() { return [...this.#extraAudience.keys()]; }
+
   // ── Lifecycle ──────────────────────────────────────────────────
 
   /**
@@ -160,6 +201,11 @@ export class SkillMatch {
     if (this.#started) return;
     this.#started = true;
     for (const pubKey of this.#peers.keys()) {
+      await this.#subscribeToPeer(pubKey);
+    }
+    // Phase 40.20: also subscribe to extra-audience peers so their
+    // broadcasts reach us. Inbound requests from them are tagged.
+    for (const pubKey of this.#extraAudience.keys()) {
       await this.#subscribeToPeer(pubKey);
     }
   }
@@ -186,12 +232,19 @@ export class SkillMatch {
    * @param {number} [args.expectClaims]
    * @returns {Promise<{claims: Array<{actor: string, payload: object, at: number}>}>}
    */
-  async broadcast({ requiredSkills, payload, timeoutMs = DEFAULT_TIMEOUT_MS, expectClaims = 1 }) {
+  async broadcast({
+    requiredSkills, payload,
+    timeoutMs = DEFAULT_TIMEOUT_MS, expectClaims = 1,
+    scope = 'group',
+  }) {
     if (!Array.isArray(requiredSkills)) {
       throw new TypeError('broadcast: requiredSkills (array) required');
     }
     if (!this.#started) {
       throw new Error('SkillMatch.broadcast: call start() first');
+    }
+    if (typeof scope !== 'string' || !['group', 'group+contacts', 'group+contacts+hops'].includes(scope)) {
+      throw new TypeError(`broadcast: scope must be one of 'group' | 'group+contacts' | 'group+contacts+hops' (got ${scope})`);
     }
     const requestId   = ulid();
     const requestsTopic = this.#topic('requests');
@@ -201,11 +254,15 @@ export class SkillMatch {
     let resolveClaims;
     const claimsPromise = new Promise((r) => { resolveClaims = r; });
 
-    // Subscribe to each peer for the claims topic. Each peer that
-    // chooses to claim will publish its claim on its OWN claims topic;
-    // we subscribe per-peer so we receive every potential claimer.
+    // Subscribe to each peer (group + extraAudience when scope is wider)
+    // for the claims topic. Each peer that chooses to claim will
+    // publish its claim on its OWN claims topic; we subscribe per-peer
+    // so we receive every potential claimer.
     const claimOffs = [];
-    for (const pubKey of this.#peers.keys()) {
+    const claimAudience = scope === 'group'
+      ? [...this.#peers.keys()]
+      : [...this.#peers.keys(), ...this.#extraAudience.keys()];
+    for (const pubKey of claimAudience) {
       const off = await subscribe(this.#agent, pubKey, claimsTopic, (parts) => {
         const claim = parts?.find?.((p) => p?.type === 'DataPart')?.data;
         if (!claim) return;
@@ -217,12 +274,16 @@ export class SkillMatch {
 
     // Publish the request on our own requestsTopic. Peers pre-subscribed
     // (via their start() against us) receive it via core's pubSub.
+    // The `scope` field tells the receiver whether we asked for a
+    // group-only broadcast (no extra-audience filter on their side)
+    // or a wider one.
     await publish(this.#agent, requestsTopic, {
       requestId,
       from:           this.#localActor,
       requiredSkills,
       payload,
       claimsTopic,
+      scope,
     });
 
     let timeoutHandle;
@@ -264,10 +325,13 @@ export class SkillMatch {
   async #subscribeToPeer(pubKey) {
     if (this.#inboundOffs.has(pubKey)) return;
     const requestsTopic = this.#topic('requests');
+    // Phase 40.20: tag inbound from extra-audience peers so the
+    // appHandler / receive-side filter can apply different sensitivity.
+    const isExtraAudience = !this.#peers.has(pubKey) && this.#extraAudience.has(pubKey);
     const off = await subscribe(this.#agent, pubKey, requestsTopic, (parts) => {
       const request = parts?.find?.((p) => p?.type === 'DataPart')?.data;
       if (!request) return;
-      this.#dispatchInbound(request).catch(() => {});
+      this.#dispatchInbound({ ...request, fromExtraAudience: isExtraAudience }).catch(() => {});
     });
     this.#inboundOffs.set(pubKey, off);
   }
@@ -290,7 +354,11 @@ export class SkillMatch {
       });
     };
 
-    if (postureLevels.every((p) => p === 'always')) {
+    // Phase 40.20: extra-audience requests NEVER auto-claim — even
+    // when posture is 'always' for a group context, contacts/hops
+    // are by definition lower-trust. The user must explicitly opt in
+    // via the appHandler.
+    if (!request.fromExtraAudience && postureLevels.every((p) => p === 'always')) {
       await decide('claim');
       return;
     }

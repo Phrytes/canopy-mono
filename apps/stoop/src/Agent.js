@@ -444,5 +444,21 @@ export async function createNeighborhoodAgent({
   //
   // For single-agent setups (no peers), `bundle.skillMatch.start()` is
   // a no-op and can be skipped.
+
+  // Phase 40.20 (Stoop V3 mobile, 2026-05-08): bridge the SkillMatch
+  // appHandler to a regular `agent.on('skill-match-suggestion', ...)`
+  // event so consumers (the mobile SkillMatchInboxScreen, future
+  // notifier hooks, etc.) can subscribe via the standard event
+  // surface instead of hand-rolling `skillMatch.subscribe(...)`.
+  //
+  // The substrate's auto-claim path is unchanged: extra-audience
+  // requests (contacts / hops) NEVER auto-claim — they always reach
+  // the appHandler so the user can opt in.
+  skillMatch.subscribe(async ({ request, decide }) => {
+    try {
+      agent.emit?.('skill-match-suggestion', { request, decide });
+    } catch { /* swallow — emit failures shouldn't block the substrate */ }
+  });
+
   return bundle;
 }

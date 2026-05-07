@@ -263,6 +263,11 @@ export function SettingsScreen() {
             {t('settings.signin_link', 'Solid pod-aanmelding')}
           </Text>
         </Pressable>
+        <Pressable onPress={() => nav.navigate(ROUTES.SkillMatchInbox)} style={styles.btnSecondary}>
+          <Text style={styles.btnSecondaryLabel}>
+            {t('settings.skillmatch_link', 'Voorgestelde matches')}
+          </Text>
+        </Pressable>
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}

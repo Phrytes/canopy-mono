@@ -19,6 +19,7 @@ export const ROUTES = Object.freeze({
   SignIn:         'SignIn',           // pod sign-in
   CreateGroup:    'CreateGroup',      // 40.18 — minimal "make a new group" wizard
   AuthCallback:   'AuthCallback',     // 40.19 — bulk-sync progress after pod sign-in
+  SkillMatchInbox:'SkillMatchInbox',  // 40.20 — auto-skill-match suggestion inbox
 
   // Main shell tabs (bottom-tab navigator).
   Shell:          'Shell',            // wraps the tabs; the route name we
@@ -68,6 +69,7 @@ export const STACK_ONLY_ROUTES = Object.freeze([
   ROUTES.SignIn,
   ROUTES.CreateGroup,
   ROUTES.AuthCallback,
+  ROUTES.SkillMatchInbox,
   ROUTES.PostCompose,
   ROUTES.ItemDetail,
   ROUTES.ChatThread,

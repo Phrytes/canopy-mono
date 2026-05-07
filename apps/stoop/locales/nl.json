@@ -186,6 +186,8 @@
     "audience_hint_default": { "text": "Standaard: je actieve groep.", "doc": "Hint when no audience is selected." },
     "audience_hint_n":       { "text": "{n} doelen geselecteerd", "doc": "Hint when one or more targets are selected." },
     "no_group":              { "text": "Sluit eerst aan bij een groep om te kunnen posten.", "doc": "Empty-state when no agent is active." },
+    "scope_contacts":        { "text": "Ook auto-matchen bij mijn contacten (skill-match-suggesties).", "doc": "Tickbox label on PostComposeScreen for the broader-scope option (Phase 40.20)." },
+    "scope_hops":            { "text": "Ook auto-matchen bij hop-buren (verder weg).", "doc": "Tickbox label on PostComposeScreen for the widest-scope option (Phase 40.20)." },
     "skills_label":          { "text": "Skills", "doc": "Section label above the skill chips." },
     "submit":                { "text": "Plaats", "doc": "Submit CTA on PostComposeScreen." },
     "submitting":            { "text": "Bezig…", "doc": "Submit CTA label while the call is in flight." },
@@ -233,6 +235,21 @@
   "metrics": {
     "heading":     { "text": "Statistieken", "doc": "Heading on MetricsScreen." },
     "unavailable": { "text": "Statistieken zijn niet aangesloten in deze build.", "doc": "Empty state when bring-up code didn't pass a snapshot." }
+  },
+  "skillmatch": {
+    "heading":         { "text": "Voorgestelde matches", "doc": "Heading on SkillMatchInboxScreen (Phase 40.20)." },
+    "intro":           { "text": "Anderen vragen om hulp die past bij jouw skills. Tik \"Help\" om te claimen.", "doc": "Body intro on SkillMatchInboxScreen." },
+    "anon":            { "text": "@onbekend", "doc": "Fallback handle when the requester isn't in the local roster." },
+    "help":            { "text": "Help", "doc": "Per-row CTA — calls decide('claim')." },
+    "ignore":          { "text": "Negeer", "doc": "Per-row CTA — calls decide('decline')." },
+    "claimed":         { "text": "geholpen ✓", "doc": "Status badge after the user claimed." },
+    "declined":        { "text": "genegeerd", "doc": "Status badge after the user declined." },
+    "errored":         { "text": "mislukt", "doc": "Status badge after a failed decide call." },
+    "empty":           { "text": "Geen openstaande voorstellen.", "doc": "Empty state on SkillMatchInboxScreen." },
+    "no_active_group": { "text": "Sluit eerst aan bij een groep om voorgestelde matches te zien.", "doc": "Empty state when no bundle is active." },
+    "origin_group":    { "text": "groep", "doc": "Origin chip — group roster." },
+    "origin_contact":  { "text": "contact", "doc": "Origin chip — contact extra-audience." },
+    "origin_hop":      { "text": "hop", "doc": "Origin chip — hop-discovered extra-audience." }
   },
   "contact": {
     "unknown":              { "text": "Contact niet gevonden.", "doc": "Empty state on ContactScreen when the route was opened without a resolved contact." },
@@ -681,6 +698,7 @@
     "privacy_link":           { "text": "Privacy & veiligheid", "doc": "Link to PrivacyScreen from mobile SettingsScreen." },
     "no_active_group":        { "text": "Sluit eerst aan bij een groep om instellingen te beheren.", "doc": "Empty state on mobile SettingsScreen when no bundle is active." },
     "signin_link":            { "text": "Solid pod-aanmelding", "doc": "Link from SettingsScreen to SignInScreen." },
+    "skillmatch_link":        { "text": "Voorgestelde matches", "doc": "Link from SettingsScreen to SkillMatchInboxScreen (Phase 40.20)." },
     "broadcastable":          { "text": "Anderen mogen me skill-match-suggesties sturen", "doc": "Shared toggle." },
     "broadcastable_hint":     { "text": "Aan = je krijgt voorgestelde matches uit de bredere connectielijst (groepen + contacten + hops). Uit = stilte.", "doc": "Hint under the broadcastable toggle." },
     "default_share_location": { "text": "Locatie standaard delen met nieuwe contacten", "doc": "Shared toggle." },
