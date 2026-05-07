@@ -1,15 +1,16 @@
 /**
  * FeedScreen — Prikbord (the feed of vraag / aanbod posts).
  *
- * Stoop V3 mobile.  Vertical FlatList of PostCard rows, with a
- * sticky filter ChipRow above and a primary FAB to compose a new
- * post.  Pull-to-refresh re-syncs items from the agent.
+ * Stoop V3 mobile.  Phase 40.16 (2026-05-08): wired to the live agent
+ * via `useSkillResult('listOpen', ...)` + an `agent.on('item-arrive', ...)`
+ * subscription so the list refreshes when new items land.
  *
- * Pure UI: items + filters live in props supplied by bring-up code
- * (Phase 40.10-H wires them to the live agent).
+ * Filter chips drive the server-side `listOpen({kind})` filter; the
+ * client-side `filterFeed` still post-filters by skills + distance
+ * for things the server doesn't yet support.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View, Text, FlatList, RefreshControl, Pressable, StyleSheet,
 } from 'react-native';
@@ -21,6 +22,9 @@ import { t }                                 from '../lib/i18n.js';
 import { filterFeed }                        from '../lib/feedFilter.js';
 import { ChipRow }                           from '../components/ChipRow.js';
 import { PostCard }                          from '../components/PostCard.js';
+import { useService }                        from '../ServiceContext.js';
+import { useSkillResult }                    from '../lib/useSkillResult.js';
+import { useAgentEvent }                     from '../lib/useAgentEvent.js';
 
 function _kindFilters() {
   return [
@@ -29,30 +33,31 @@ function _kindFilters() {
   ];
 }
 
-/**
- * @param {object} props
- * @param {Array<object>} [props.items]
- * @param {Map<string,object>|object} [props.authorIndex]
- *   `{ [authorId]: {handle, avatarUri} }`
- * @param {(item: object) => void} [props.onOpenItem]
- * @param {() => Promise<void>} [props.onRefresh]
- * @param {boolean} [props.refreshing]
- * @param {{cell: string}} [props.viewerLocation]
- */
-export function FeedScreen({
-  items = [],
-  authorIndex,
-  onOpenItem,
-  onRefresh,
-  refreshing = false,
-  viewerLocation,
-} = {}) {
+export function FeedScreen() {
   const nav = useNavigation();
-  const [activeKinds, setActiveKinds] = useState(new Set());
+  const svc = useService();
 
-  const filtered = filterFeed(items, {
-    kinds: activeKinds,
-    viewerCell: viewerLocation?.cell ?? null,
+  const [activeKinds, setActiveKinds] = useState(new Set());
+  const kindFilter = activeKinds.size === 1 ? [...activeKinds][0] : null;
+
+  // Server-side filter via listOpen — re-runs when the kind chip
+  // changes. Client-side filterFeed handles distance / skill filters
+  // (server doesn't yet take them).
+  const { data, loading, refresh } = useSkillResult(
+    'listOpen', kindFilter ? { kind: kindFilter } : {}, [kindFilter],
+  );
+
+  // When a new item arrives via skill-match broadcast, re-run listOpen.
+  const arrivedItem = useAgentEvent('item-arrive');
+  useEffect(() => {
+    if (arrivedItem != null) refresh().catch(() => { /* swallow */ });
+  }, [arrivedItem, refresh]);
+
+  const items     = Array.isArray(data?.items) ? data.items : [];
+  // Client-side filter for the case where the user has multiple
+  // kinds active (server only takes one).
+  const filtered  = filterFeed(items, {
+    kinds: activeKinds.size > 1 ? activeKinds : null,
   });
 
   const toggleKind = useCallback((id) => {
@@ -65,9 +70,20 @@ export function FeedScreen({
   }, []);
 
   const handleOpen = useCallback((item) => {
-    if (onOpenItem) onOpenItem(item);
-    nav.navigate(ROUTES.ItemDetail, { itemId: item?.id });
-  }, [onOpenItem, nav]);
+    nav.navigate(ROUTES.ItemDetail, { itemId: item?.id, item });
+  }, [nav]);
+
+  // ── Empty state — no agent yet (no group joined). ────────────────
+  if (!svc?.activeBundle) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>
+          {t('feed.no_group',
+             'Sluit eerst aan bij een groep om het prikbord te zien.')}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -86,13 +102,13 @@ export function FeedScreen({
         renderItem={({ item }) => (
           <PostCard
             item={item}
-            author={_lookupAuthor(authorIndex, item.authorId)}
+            author={_lookupAuthor(item)}
             onPress={handleOpen}
           />
         )}
-        refreshControl={onRefresh ? (
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        ) : undefined}
+        refreshControl={(
+          <RefreshControl refreshing={loading} onRefresh={refresh} />
+        )}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={(
           <View style={styles.empty}>
@@ -117,11 +133,19 @@ export function FeedScreen({
   );
 }
 
-function _lookupAuthor(idx, authorId) {
-  if (!idx || !authorId) return null;
-  if (idx instanceof Map) return idx.get(authorId) ?? null;
-  if (typeof idx === 'object') return idx[authorId] ?? null;
-  return null;
+/**
+ * `listOpen` already hydrates each item's author into a `{handle,
+ * displayName?, isRevealed, render}` block (per Stoop's
+ * `hydrateItems`). The PostCard takes `{handle, avatarUri}` — just
+ * unpack the right slot.
+ */
+function _lookupAuthor(item) {
+  const a = item?.authorRender ?? item?.author;
+  if (!a) return null;
+  return {
+    handle:    a.handle ?? null,
+    avatarUri: a.avatarUrl ?? a.avatarUri ?? null,
+  };
 }
 
 export default FeedScreen;

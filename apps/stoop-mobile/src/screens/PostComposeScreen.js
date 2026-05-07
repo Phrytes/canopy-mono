@@ -1,17 +1,13 @@
 /**
  * PostComposeScreen — compose a new vraag / aanbod post.
  *
- * Stoop V3 mobile.  Camera-first per the V3 functional design § 4d:
- * the post-form's primary CTA is "Photo" rather than "Pick from
- * library."  Up to 4 attachments (compose.MAX_ATTACHMENTS); per-
- * attachment thumb strip with a remove button.
- *
- * Pure UI: bring-up code injects:
- *   - `onPickPhoto` / `onCapturePhoto` (Phase 40.5 imagePicker)
- *   - `onSubmit({text, kind, skills, attachments})`
+ * Stoop V3 mobile.  Phase 40.16 (2026-05-08): wired to live agent
+ * (`postRequest` skill) + new compose-controls (distance presets,
+ * audience picker for groups + contacts).  Camera-first per the V3
+ * functional design § 4d: primary CTA is "Foto maken."
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, Image, StyleSheet, Alert,
 } from 'react-native';
@@ -23,8 +19,14 @@ import {
   validateDraft, remainingChars, removeAttachmentAt, capAttachments,
   MAX_ATTACHMENTS, MAX_BODY_LEN,
 } from '../lib/compose.js';
+import { DISTANCE_PRESETS }                   from '../lib/audience.js';
 import { ChipRow }                            from '../components/ChipRow.js';
+import { AudiencePicker }                     from '../components/AudiencePicker.js';
 import { attachmentUri }                      from '../lib/post.js';
+import { pickPrikbordImages }                 from '../lib/imagePicker.js';
+import { useService }                         from '../ServiceContext.js';
+import { useSkill }                           from '../lib/useSkill.js';
+import { useSkillResult }                     from '../lib/useSkillResult.js';
 
 function _kindOptions() {
   return [
@@ -33,30 +35,49 @@ function _kindOptions() {
   ];
 }
 
-/**
- * @param {object} props
- * @param {Array<{id: string, label: string}>} [props.taxonomy]
- * @param {() => Promise<object|null>} [props.onCapturePhoto]
- * @param {() => Promise<object|null>} [props.onPickPhoto]
- * @param {(draft: object) => Promise<unknown>} [props.onSubmit]
- */
-export function PostComposeScreen({
-  taxonomy = [],
-  onCapturePhoto,
-  onPickPhoto,
-  onSubmit,
-} = {}) {
+function _distanceOptions() {
+  return [
+    { id: 'any', label: t('compose.distance_any', 'Geen limiet') },
+    ...DISTANCE_PRESETS.map((km) => ({
+      id: String(km),
+      label: t('compose.distance_km', '{n} km').replace('{n}', String(km)),
+    })),
+  ];
+}
+
+export function PostComposeScreen() {
   const nav = useNavigation();
+  const svc = useService();
+
   const [text, setText]               = useState('');
   const [kind, setKind]               = useState('vraag');
   const [skills, setSkills]           = useState(new Set());
   const [attachments, setAttachments] = useState([]);
+  const [audience, setAudience]       = useState([]); // []=just the active group
+  const [maxDistance, setMaxDistance] = useState('any'); // 'any' | '1' | '2' | ...
   const [busy, setBusy]               = useState(false);
   const [error, setError]             = useState(null);
+
+  // Pull the user's groups + contacts so the AudiencePicker has data.
+  const groups = [...(svc?.groups?.values?.() ?? [])].map(({ entry }) => ({
+    groupId:     entry.groupId,
+    displayName: entry.displayName,
+  }));
+  const { data: contactsData } = useSkillResult('listContacts', {}, []);
+  const contacts = Array.isArray(contactsData?.contacts) ? contactsData.contacts : [];
+
+  // Skills taxonomy (for the chip multi-select).
+  const { data: taxonomyData } = useSkillResult('listSkillCategories', { lang: 'nl' }, []);
+  const taxonomyChips = (taxonomyData?.categories ?? []).map((c) => ({
+    id:    c.id,
+    label: typeof c.label === 'string' ? c.label : (c.label?.nl ?? c.label?.en ?? c.id),
+  }));
 
   const draft = { text, kind, skills: [...skills], attachments };
   const v = validateDraft(draft);
   const remaining = remainingChars(text);
+
+  const post = useSkill('postRequest');
 
   const toggleSkill = useCallback((id) => {
     setSkills((prev) => {
@@ -67,42 +88,59 @@ export function PostComposeScreen({
     });
   }, []);
 
-  const addAttachment = useCallback(async (which) => {
+  const addAttachment = useCallback(async (mode) => {
     setError(null);
     if (attachments.length >= MAX_ATTACHMENTS) {
       Alert.alert(t('compose.too_many_attachments',
-                    `Max {n} bijlagen.`).replace('{n}', String(MAX_ATTACHMENTS)));
+                    'Max {n} bijlagen.').replace('{n}', String(MAX_ATTACHMENTS)));
       return;
     }
     try {
-      const fn = which === 'capture' ? onCapturePhoto : onPickPhoto;
-      if (!fn) return;
-      const r = await fn();
-      if (!r) return;
-      setAttachments((prev) => capAttachments([...prev, r]));
+      const list = await pickPrikbordImages({ mode, max: MAX_ATTACHMENTS - attachments.length });
+      if (!list || list.length === 0) return;
+      setAttachments((prev) => capAttachments([...prev, ...list]));
     } catch (err) {
       if (err?.code === 'PERMISSION_DENIED') {
         setError(t('compose.permission_denied',
                    'Stoop heeft geen toestemming voor camera/galerij.'));
-      } else {
-        setError(err?.message ?? String(err));
-      }
+      } else setError(err?.message ?? String(err));
     }
-  }, [attachments.length, onCapturePhoto, onPickPhoto]);
+  }, [attachments.length]);
 
   const submit = useCallback(async () => {
     if (!v.ok) return;
     setBusy(true);
     setError(null);
     try {
-      if (onSubmit) await onSubmit(draft);
+      const targets = audience.length > 0 ? audience : null; // null → server falls back to active group
+      const maxDistanceKm = maxDistance === 'any' ? null : Number(maxDistance);
+      await post.call({
+        kind,
+        text: text.trim(),
+        requiredSkills: [...skills],
+        attachments: attachments.length > 0 ? attachments : undefined,
+        targets,
+        maxDistanceKm,
+      });
       nav.goBack();
     } catch (err) {
       setError(err?.message ?? String(err));
     } finally {
       setBusy(false);
     }
-  }, [draft, onSubmit, nav, v.ok]);
+  }, [audience, maxDistance, kind, text, skills, attachments, post, v.ok, nav]);
+
+  // ── Empty state — no agent yet (no group joined). ────────────────
+  if (!svc?.activeBundle) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>
+          {t('compose.no_group',
+             'Sluit eerst aan bij een groep om te kunnen posten.')}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.root}>
@@ -130,7 +168,7 @@ export function PostComposeScreen({
 
       <View style={styles.photoRow}>
         <Pressable
-          onPress={() => addAttachment('capture')}
+          onPress={() => addAttachment('camera')}
           style={styles.btnSecondary}
           accessibilityRole="button"
           accessibilityLabel="compose-capture-photo"
@@ -172,12 +210,46 @@ export function PostComposeScreen({
         </View>
       ) : null}
 
-      {taxonomy.length > 0 ? (
+      {/* Skills */}
+      {taxonomyChips.length > 0 ? (
         <View style={styles.section}>
           <Text style={styles.label}>{t('compose.skills_label', 'Skills')}</Text>
-          <ChipRow items={taxonomy} selected={skills} onToggle={toggleSkill} />
+          <ChipRow items={taxonomyChips} selected={skills} onToggle={toggleSkill} />
         </View>
       ) : null}
+
+      {/* Distance */}
+      <View style={styles.section}>
+        <Text style={styles.label}>
+          {t('compose.distance_label', 'Maximale afstand')}
+        </Text>
+        <ChipRow
+          items={_distanceOptions()}
+          selected={[maxDistance]}
+          onToggle={setMaxDistance}
+          singleSelect
+        />
+      </View>
+
+      {/* Audience */}
+      <View style={styles.section}>
+        <Text style={styles.label}>
+          {t('compose.audience_label', 'Naar wie wil je posten?')}
+        </Text>
+        <Text style={styles.hint}>
+          {audience.length === 0
+            ? t('compose.audience_hint_default',
+                'Standaard: je actieve groep.')
+            : t('compose.audience_hint_n', '{n} doelen geselecteerd')
+                .replace('{n}', String(audience.length))}
+        </Text>
+        <AudiencePicker
+          groups={groups}
+          contacts={contacts}
+          selected={audience}
+          onChange={setAudience}
+        />
+      </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -207,6 +279,8 @@ export default PostComposeScreen;
 const styles = StyleSheet.create({
   root:    { padding: SPACING.lg, backgroundColor: COLORS.background, paddingBottom: SPACING.xxl },
   heading: { fontSize: FONT_SIZES.xl, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.md },
+  empty:   { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACING.xl, backgroundColor: COLORS.background },
+  emptyText: { color: COLORS.textMuted, textAlign: 'center', fontSize: FONT_SIZES.md },
   input: {
     minHeight: 120, borderWidth: 1, borderColor: COLORS.border,
     borderRadius: RADII.sm, padding: SPACING.md, fontSize: FONT_SIZES.md,
@@ -226,10 +300,7 @@ const styles = StyleSheet.create({
     width: 72, height: 72, marginRight: SPACING.sm, marginBottom: SPACING.sm,
     position: 'relative',
   },
-  thumb: {
-    width: '100%', height: '100%', borderRadius: RADII.sm,
-    backgroundColor: COLORS.surfaceMuted,
-  },
+  thumb: { width: '100%', height: '100%', borderRadius: RADII.sm, backgroundColor: COLORS.surfaceMuted },
   thumbRemove: {
     position: 'absolute', top: -8, right: -8,
     width: 24, height: 24, borderRadius: 12,
@@ -239,6 +310,7 @@ const styles = StyleSheet.create({
   thumbRemoveLabel: { color: COLORS.textInverse, fontSize: FONT_SIZES.md, fontWeight: '600' },
   section:    { marginTop: SPACING.lg },
   label:      { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.sm },
+  hint:       { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginBottom: SPACING.sm },
   errorText:  { color: COLORS.danger, fontSize: FONT_SIZES.sm, marginTop: SPACING.md },
   btnPrimary: {
     marginTop: SPACING.lg, backgroundColor: COLORS.primary,
