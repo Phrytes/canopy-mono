@@ -71,6 +71,7 @@ import { PushScreen }                 from './src/screens/PushScreen.js';
 import { SignInScreen }               from './src/screens/SignInScreen.js';
 import { OnboardIssueScreen }         from './src/screens/OnboardIssueScreen.js';
 import { CreateGroupScreen }          from './src/screens/CreateGroupScreen.js';
+import { AuthCallbackScreen }         from './src/screens/AuthCallbackScreen.js';
 import { MineScreen }                 from './src/screens/MineScreen.js';
 import { MetricsScreen }              from './src/screens/MetricsScreen.js';
 
@@ -85,6 +86,7 @@ export const SCREEN_COMPONENTS = Object.freeze({
   [ROUTES.OnboardIssue]:   OnboardIssueScreen,
   [ROUTES.SignIn]:         SignInScreen,
   [ROUTES.CreateGroup]:    CreateGroupScreen,
+  [ROUTES.AuthCallback]:   AuthCallbackScreen,
   [ROUTES.PostCompose]:    PostComposeScreen,
   [ROUTES.ItemDetail]:     ItemDetailScreen,
   [ROUTES.ChatThread]:     ChatThreadScreen,
@@ -245,6 +247,7 @@ export default function App() {
             <Stack.Screen name={ROUTES.OnboardIssue}   component={OnboardIssueScreen} />
             <Stack.Screen name={ROUTES.SignIn}         component={SignInScreen} />
             <Stack.Screen name={ROUTES.CreateGroup}    component={CreateGroupScreen} />
+            <Stack.Screen name={ROUTES.AuthCallback}   component={AuthCallbackScreen} />
 
             {/* The shell — bottom-tabs.  Welcome's "Beginnen" CTA
                 navigates here; deep links drop straight into a tab. */}

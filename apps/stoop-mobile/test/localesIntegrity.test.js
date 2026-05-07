@@ -96,6 +96,13 @@ const REQUIRED_KEYS = [
   'settings.poll_interval', 'settings.poll_hint',
   'settings.save', 'settings.saving',
   'settings.push_link', 'settings.privacy_link',
+  'settings.no_active_group', 'settings.signin_link',
+  'settings.broadcastable', 'settings.broadcastable_hint',
+  'settings.default_share_location', 'settings.default_share_location_hint',
+  'settings.online_window_heading', 'settings.online_window_hint',
+  'settings.every_minutes', 'settings.duration_sec',
+  'settings.hop_label', 'settings.hop_hint',
+  'settings.error_every', 'settings.error_duration',
 
   'privacy.heading', 'privacy.section_local', 'privacy.section_pod',
   'privacy.section_handles', 'privacy.section_location', 'privacy.section_no_thirdparty',
@@ -106,6 +113,13 @@ const REQUIRED_KEYS = [
 
   'signin.heading', 'signin.body', 'signin.go',
   'signin.signed_in', 'signin.signout', 'signin.placeholder',
+  'signin.issuer_label', 'signin.no_active_group', 'signin.no_auth_url',
+  'signin.pod_attached', 'signin.pod_not_attached',
+
+  // auth_callback
+  'auth_callback.heading', 'auth_callback.busy', 'auth_callback.uploading',
+  'auth_callback.done', 'auth_callback.error', 'auth_callback.progress',
+  'auth_callback.go_feed', 'auth_callback.skip', 'auth_callback.no_active_group',
 
   'group.unnamed', 'group.evicted_title', 'group.evicted_body',
   'group.member_count', 'group.admin_code', 'group.admin_code_hint',

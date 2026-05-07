@@ -201,12 +201,28 @@
     "section_no_thirdparty": { "text": "No analytics, no ad-trackers, no third-party cloud providers.", "doc": "Privacy section: third-parties." }
   },
   "signin": {
-    "heading":     { "text": "Pod sign-in", "doc": "Heading on SignInScreen." },
-    "body":        { "text": "Connect your Solid pod to sync your profile + posts across devices.", "doc": "Body on SignInScreen." },
-    "go":          { "text": "Sign in with Inrupt", "doc": "Primary CTA on SignInScreen." },
-    "signed_in":   { "text": "Signed in as {webid}", "doc": "Status when a session exists." },
-    "signout":     { "text": "Sign out", "doc": "CTA when signed in." },
-    "placeholder": { "text": "Pod sign-in is not wired in this build. V3 ships local-only by default; pod connection lands in a follow-up build.", "doc": "Placeholder body shown until bring-up code wires useSignInHook." }
+    "heading":          { "text": "Pod sign-in", "doc": "Heading on SignInScreen." },
+    "body":             { "text": "Connect your Solid pod to sync your profile + posts across devices.", "doc": "Body on SignInScreen." },
+    "go":               { "text": "Sign in with Inrupt", "doc": "Primary CTA on SignInScreen." },
+    "signed_in":        { "text": "Signed in as {webid}", "doc": "Status when a session exists." },
+    "signout":          { "text": "Sign out", "doc": "CTA when signed in." },
+    "placeholder":      { "text": "Pod sign-in is not wired in this build. V3 ships local-only by default; pod connection lands in a follow-up build.", "doc": "Placeholder body shown until bring-up code wires useSignInHook." },
+    "issuer_label":     { "text": "Solid OIDC issuer", "doc": "Label above the issuer URL input on mobile SignInScreen." },
+    "no_active_group":  { "text": "Join a group first before connecting a pod.", "doc": "Empty state when SignInScreen is opened with no active bundle." },
+    "no_auth_url":      { "text": "Sign-in didn't return an auth URL — try again.", "doc": "Inline error when startPodSignIn returned no URL." },
+    "pod_attached":     { "text": "Pod is attached.", "doc": "Status under the signed-in line when the pod is fully attached." },
+    "pod_not_attached": { "text": "Pod is not attached yet.", "doc": "Status under the signed-in line when sign-in succeeded but pod-attach hasn't completed." }
+  },
+  "auth_callback": {
+    "heading":         { "text": "Completing pod sign-in", "doc": "Heading on AuthCallbackScreen." },
+    "busy":            { "text": "Finishing the OIDC flow…", "doc": "Body shown while sign-in is wrapping up." },
+    "uploading":       { "text": "Uploading local data to your pod…", "doc": "Body shown while bulk-sync is running." },
+    "done":            { "text": "Done.", "doc": "Body shown when bulk-sync finished cleanly." },
+    "error":           { "text": "Something went wrong during the first sync.", "doc": "Body shown when bulk-sync failed." },
+    "progress":        { "text": "{done} of {total} ({pct}%)", "doc": "Progress label under the bar. {done}, {total}, {pct} are integers." },
+    "go_feed":         { "text": "Go to pinboard", "doc": "CTA after sync completes." },
+    "skip":            { "text": "Skip and go to pinboard", "doc": "CTA before sync completes — lets the user dismiss the screen." },
+    "no_active_group": { "text": "No active bundle.", "doc": "Defensive empty state." }
   },
   "onboard_issue": {
     "heading":      { "text": "Show this QR to your neighbour", "doc": "Heading on OnboardIssueScreen." },
@@ -600,7 +616,13 @@
     "signed_in_html":  { "text": "Signed in as <strong>{webid}</strong>. Pod attached at <code>{podRoot}</code>.", "doc": "Success line after sign-in. Contains <strong> + <code> tags AND two placeholders: {webid} (URL) and {podRoot} (URL); preserve both." },
     "synced_summary":  { "text": "{count} entries uploaded to your pod.", "doc": "Single-line summary shown after a clean bulk-sync finish. {count} is an integer." },
     "sync_partial":    { "text": "Sign-in succeeded; some local data could not upload yet — Stoop will retry in the background.", "doc": "Warning line shown when bulk-sync ends with phase 'error'." },
-    "back_link":       { "text": "Back to pod settings →", "doc": "Bottom-of-page link back to /sign-in.html. Trailing arrow is intentional." }
+    "back_link":       { "text": "Back to pod settings →", "doc": "Bottom-of-page link back to /sign-in.html. Trailing arrow is intentional." },
+
+    "done":            { "text": "Done.", "doc": "Body shown when bulk-sync finished cleanly (mobile)." },
+    "error":           { "text": "Something went wrong during the first sync.", "doc": "Body shown when bulk-sync failed (mobile)." },
+    "go_feed":         { "text": "Go to pinboard", "doc": "CTA after sync completes (mobile)." },
+    "skip":            { "text": "Skip and go to pinboard", "doc": "CTA before sync completes (mobile)." },
+    "no_active_group": { "text": "No active bundle.", "doc": "Defensive empty state (mobile)." }
   },
   "settings": {
     "page_title":             { "text": "Stoop — Settings", "doc": "Browser tab title for /settings.html." },
@@ -656,7 +678,21 @@
     "save":                   { "text": "Save", "doc": "Submit button on mobile SettingsScreen." },
     "saving":                 { "text": "Saving…", "doc": "Submit button label while in flight on mobile." },
     "push_link":              { "text": "Notifications", "doc": "Link to PushScreen from mobile SettingsScreen." },
-    "privacy_link":           { "text": "Privacy & safety", "doc": "Link to PrivacyScreen from mobile SettingsScreen." }
+    "privacy_link":           { "text": "Privacy & safety", "doc": "Link to PrivacyScreen from mobile SettingsScreen." },
+    "no_active_group":        { "text": "Join a group first to manage settings.", "doc": "Empty state on mobile SettingsScreen when no bundle is active." },
+    "signin_link":            { "text": "Solid pod sign-in", "doc": "Link from SettingsScreen to SignInScreen." },
+    "broadcastable":          { "text": "Allow others to send me skill-match suggestions", "doc": "Shared toggle on mobile SettingsScreen." },
+    "broadcastable_hint":     { "text": "On = you receive auto-match suggestions from your wider connection list (groups + contacts + hops). Off = silence.", "doc": "Hint under the broadcastable toggle." },
+    "default_share_location": { "text": "Share location with new contacts by default", "doc": "Shared toggle on mobile SettingsScreen." },
+    "default_share_location_hint": { "text": "You can always toggle per-contact later.", "doc": "Hint under the default-share-location toggle." },
+    "online_window_heading":  { "text": "Online window (background)", "doc": "Sub-section heading on mobile SettingsScreen." },
+    "online_window_hint":     { "text": "How often + how long does your phone connect in the background? Empty = always-via-push.", "doc": "Hint above the online-window inputs." },
+    "every_minutes":          { "text": "every X min", "doc": "Sub-label for the everyMinutes input." },
+    "duration_sec":           { "text": "duration (sec)", "doc": "Sub-label for the durationSec input." },
+    "hop_label":              { "text": "Allow hop-relay through my device", "doc": "Toggle on mobile SettingsScreen." },
+    "hop_hint":               { "text": "May my device relay messages on behalf of others? Default off (battery-friendly).", "doc": "Hint under the hop toggle." },
+    "error_every":            { "text": "Frequency must be ≥ 1 minute.", "doc": "Inline error for invalid everyMinutes." },
+    "error_duration":         { "text": "Duration must be ≥ 5 seconds.", "doc": "Inline error for invalid durationSec." }
   },
   "restore": {
     "page_title":           { "text": "Restore account on this device", "doc": "Browser tab title + main page heading on /restore.html — the recovery-from-mnemonic flow." },
