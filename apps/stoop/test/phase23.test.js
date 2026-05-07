@@ -167,16 +167,22 @@ describe('Stoop V2 Phase 23.6 — settings flush to pod on attach', () => {
     await bundle.cache.attachInner(stubPod);
     expect(bundle.cache.hasInner).toBe(true);
 
-    // Update settings AFTER attach — should write through.
+    // Update settings AFTER attach — should write through.  Phase 33
+    // splits the blob into shared (broadcastable lives here) + per-device
+    // (allowHopThrough lives here); both writes hit the inner.
     await callSkill(bundle.agent, 'updateSettings', {
       patch: { allowHopThrough: true, broadcastable: false },
     });
 
-    const settingsWrites = writes.filter(w => w.path === 'mem://stoop/settings.json');
-    expect(settingsWrites.length).toBeGreaterThan(0);
-    const last = settingsWrites[settingsWrites.length - 1];
-    const parsed = JSON.parse(last.data);
-    expect(parsed.allowHopThrough).toBe(true);
-    expect(parsed.broadcastable).toBe(false);
+    const sharedWrites = writes.filter(w => w.path === 'mem://stoop/settings/shared.json');
+    const devicePath   = `mem://stoop/settings/devices/${bundle.deviceId}.json`;
+    const deviceWrites = writes.filter(w => w.path === devicePath);
+    expect(sharedWrites.length).toBeGreaterThan(0);
+    expect(deviceWrites.length).toBeGreaterThan(0);
+
+    const sharedParsed = JSON.parse(sharedWrites[sharedWrites.length - 1].data);
+    const deviceParsed = JSON.parse(deviceWrites[deviceWrites.length - 1].data);
+    expect(deviceParsed.allowHopThrough).toBe(true);
+    expect(sharedParsed.broadcastable).toBe(false);
   });
 });

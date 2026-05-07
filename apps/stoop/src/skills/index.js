@@ -2498,7 +2498,8 @@ export function buildSkills({
 
       const next = await updateSettingsLib({
         dataSource: bundle.cache,
-        patch: { allowHopThrough: a.global },
+        deviceId:   bundle?.deviceId ?? null,
+        patch:      { allowHopThrough: a.global },
       });
       bundle.settings = next;
 
@@ -2526,7 +2527,10 @@ export function buildSkills({
     defineSkill('getSettings', async ({ parts }) => {
       const a = dataArgs(parts);
       if (a._reload && bundle?.cache) {
-        bundle.settings = await loadSettings({ dataSource: bundle.cache });
+        bundle.settings = await loadSettings({
+          dataSource: bundle.cache,
+          deviceId:   bundle?.deviceId ?? null,
+        });
       }
       return { settings: bundle?.settings ?? null };
     }, {
@@ -2544,7 +2548,12 @@ export function buildSkills({
       const a = dataArgs(parts);
       if (!a.patch || typeof a.patch !== 'object') return { error: 'patch (object) required' };
       if (!bundle?.cache) return { error: 'no-cache (was cache: false?)' };
-      const next = await updateSettingsLib({ dataSource: bundle.cache, patch: a.patch });
+      const next = await updateSettingsLib({
+        dataSource: bundle.cache,
+        deviceId:   bundle?.deviceId ?? null,
+        patch:      a.patch,
+        scope:      a.scope === 'device' || a.scope === 'shared' ? a.scope : null,
+      });
       bundle.settings = next;
       metrics?.record?.('settings-updated');
       return { settings: next };
