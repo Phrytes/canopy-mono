@@ -6,8 +6,10 @@
   "type": "module",
   "main": "src/index.js",
   "exports": {
-    ".":         "./src/index.js",
-    "./lib/geo": "./src/lib/geo.js"
+    ".":             "./src/index.js",
+    "./lib/geo":     "./src/lib/geo.js",
+    "./locales/en":  "./locales/en.json",
+    "./locales/nl":  "./locales/nl.json"
   },
   "bin": {
     "stoop-ui":      "bin/stoop-ui.js",
