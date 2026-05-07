@@ -13,11 +13,17 @@ export default defineConfig({
       // factory + Agent.js + groupMirror — same platform-shell pattern as
       // folio + folio-mobile, documented in
       // Project Files/conventions/architectural-layering.md.
+      '@canopy-app/stoop/lib/geo':           path.resolve(repoRoot, 'apps/stoop/src/lib/geo.js'),
       '@canopy-app/stoop':                   path.resolve(repoRoot, 'apps/stoop/src/index.js'),
 
       // SDK packages — point at sources, not node_modules.
       '@canopy/core':                        path.resolve(repoRoot, 'packages/core/src/index.js'),
       '@canopy/pod-client':                  path.resolve(repoRoot, 'packages/pod-client/src/index.js'),
+      // Deep-path aliases (must come BEFORE the package-root mapping
+      // so vite picks the longer prefix).  We deep-import the push
+      // bridge bits in `src/lib/push.js` to avoid pulling the barrel
+      // (which transitively imports `react-native-keychain` — a TS file).
+      '@canopy/react-native/src':            path.resolve(repoRoot, 'packages/react-native/src'),
       '@canopy/react-native':                path.resolve(repoRoot, 'packages/react-native/index.js'),
       '@canopy/sync-engine-rn':              path.resolve(repoRoot, 'packages/sync-engine-rn/index.js'),
       '@canopy/oidc-session-rn/hook':        path.resolve(repoRoot, 'packages/oidc-session-rn/hook.js'),

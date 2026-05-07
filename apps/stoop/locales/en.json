@@ -111,6 +111,19 @@
   "chat": {
     "attach_picture": { "text": "Attach picture", "doc": "Tooltip on the camera icon next to the chat input. Phase 39 — V2.5 picture attachments. Used as the title attribute on the picker label." }
   },
+  "mobile": {
+    "permission_camera_rationale":  { "text": "Stoop wants to use the camera to scan QR codes and add photos to posts.", "doc": "Permission rationale string shown when first asking for camera access on Android. Used by expo-camera + expo-image-picker. Stoop V3 Phase 40.5/40.6." },
+    "permission_gallery_rationale": { "text": "Stoop wants access to your photos so you can add one to a post.", "doc": "Permission rationale shown when first asking for media-library access on Android." },
+    "permission_location_rationale": { "text": "Stoop wants to read your location to show distance-filtered posts.", "doc": "Permission rationale shown when first asking for location access." },
+    "permission_push_rationale":    { "text": "Stoop wants to notify you when someone replies to your post or sends a new message.", "doc": "Permission rationale shown right before the OS push prompt. Phase 40.9." },
+    "take_photo":                   { "text": "Take photo", "doc": "Camera-CTA on the post-form / chat input." },
+    "pick_from_library":            { "text": "Pick from library", "doc": "Library-CTA next to the camera-CTA on the post-form." },
+    "scan_qr":                      { "text": "Scan QR", "doc": "Primary CTA on the welcome / onboard screen — opens the camera to a barcode scanner." },
+    "scan_recognised_invite":       { "text": "Invite link recognised.", "doc": "Inline status when an invite QR is decoded." },
+    "scan_recognised_contact":      { "text": "Contact link recognised.", "doc": "Inline status when a stoop-contact:// QR is decoded." },
+    "scan_recognised_recovery":     { "text": "Recovery phrase recognised.", "doc": "Inline status when a 12/24-word recovery phrase QR is decoded." },
+    "scan_unrecognised":            { "text": "Unknown QR code.", "doc": "Inline status when a scanned QR doesn't match any known Stoop payload." }
+  },
   "profile": {
     "page_title":             { "text": "Stoop — My profile", "doc": "Browser tab title for /profile.html." },
     "heading":                { "text": "My profile", "doc": "Main page heading on /profile.html." },

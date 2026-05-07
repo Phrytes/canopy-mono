@@ -111,6 +111,19 @@
   "chat": {
     "attach_picture": { "text": "Foto bijvoegen", "doc": "Tooltip on the camera icon next to the chat input. Phase 39 — V2.5 picture attachments. Used as the title attribute on the picker label." }
   },
+  "mobile": {
+    "permission_camera_rationale":  { "text": "Stoop wil de camera gebruiken om QR-codes te scannen en foto's bij posts te plaatsen.", "doc": "Permission rationale string shown when first asking for camera access on Android. Used by expo-camera + expo-image-picker. Stoop V3 Phase 40.5/40.6." },
+    "permission_gallery_rationale": { "text": "Stoop wil toegang tot je foto's om er een aan een post toe te voegen.", "doc": "Permission rationale shown when first asking for media-library access on Android. Used by expo-image-picker." },
+    "permission_location_rationale": { "text": "Stoop wil je locatie ophalen om afstand-gefilterde posts te tonen.", "doc": "Permission rationale shown when first asking for location access. Used by expo-location during the GPS-set flow on /profile." },
+    "permission_push_rationale":    { "text": "Stoop wil je een melding sturen wanneer iemand reageert op je post of een nieuw bericht stuurt.", "doc": "Permission rationale shown right before the OS push prompt. Phase 40.9. Used after first group join, not at install (premature)." },
+    "take_photo":                   { "text": "Foto maken", "doc": "Camera-CTA on the post-form / chat input. Stoop V3 Phase 40.5." },
+    "pick_from_library":            { "text": "Kies uit galerij", "doc": "Library-CTA next to the camera-CTA on the post-form. Stoop V3 Phase 40.5." },
+    "scan_qr":                      { "text": "Scan QR", "doc": "Primary CTA on the welcome / onboard screen — opens the camera to a barcode scanner. Stoop V3 Phase 40.6." },
+    "scan_recognised_invite":       { "text": "Uitnodigings-link herkend.", "doc": "Inline status under the scanner camera preview when an invite QR is decoded." },
+    "scan_recognised_contact":      { "text": "Contact-link herkend.", "doc": "Inline status when a stoop-contact:// QR is decoded." },
+    "scan_recognised_recovery":     { "text": "Herstelzin herkend.", "doc": "Inline status when a 12/24-word recovery phrase QR is decoded." },
+    "scan_unrecognised":            { "text": "Onbekende QR-code.", "doc": "Inline status when a scanned QR doesn't match any known Stoop payload." }
+  },
   "profile": {
     "page_title":             { "text": "Stoop — Mijn profiel", "doc": "Browser tab title for /profile.html." },
     "heading":                { "text": "Mijn profiel", "doc": "Main page heading on /profile.html." },
