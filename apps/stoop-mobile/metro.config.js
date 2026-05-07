@@ -69,7 +69,9 @@ module.exports = withCanopyPreset({
     // Stoop's `./lib/geo` subpath export — used by stoop-mobile's
     // `getCoarseLocationFromGps`.  Metro resolves this manually
     // because the preset disables `unstable_enablePackageExports`.
-    '@canopy-app/stoop/lib/geo': path.resolve(repoRoot, 'apps/stoop/src/lib/geo.js'),
+    '@canopy-app/stoop/lib/geo':    path.resolve(repoRoot, 'apps/stoop/src/lib/geo.js'),
+    '@canopy-app/stoop/locales/en': path.resolve(repoRoot, 'apps/stoop/locales/en.json'),
+    '@canopy-app/stoop/locales/nl': path.resolve(repoRoot, 'apps/stoop/locales/nl.json'),
 
     // SDK packages lifted from Stoop in the 2026-05-08 substrate sweep.
     '@canopy/chat-p2p':          path.resolve(repoRoot, 'packages/chat-p2p'),

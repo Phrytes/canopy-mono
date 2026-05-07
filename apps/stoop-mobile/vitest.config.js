@@ -14,6 +14,8 @@ export default defineConfig({
       // folio + folio-mobile, documented in
       // Project Files/conventions/architectural-layering.md.
       '@canopy-app/stoop/lib/geo':           path.resolve(repoRoot, 'apps/stoop/src/lib/geo.js'),
+      '@canopy-app/stoop/locales/en':        path.resolve(repoRoot, 'apps/stoop/locales/en.json'),
+      '@canopy-app/stoop/locales/nl':        path.resolve(repoRoot, 'apps/stoop/locales/nl.json'),
       '@canopy-app/stoop':                   path.resolve(repoRoot, 'apps/stoop/src/index.js'),
 
       // SDK packages — point at sources, not node_modules.

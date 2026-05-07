@@ -1,16 +1,16 @@
 /**
  * App.js — stoop-mobile root component.
  *
- * Phase 40.1 (V3 mobile, 2026-05-08): scaffold only.  A welcome
- * placeholder; real navigation + screens land in Phase 40.10.
- *
- * Stack navigation is wired but only Welcome is implemented; the
- * other screens are stubbed as `<Text>placeholder</Text>` so the
- * stack compiles and dev-client builds without errors.
+ * Phase 40.10 (V3 mobile, 2026-05-08): full route table wired into a
+ * react-navigation native-stack. Most screens still render the
+ * `PlaceholderScreen` until their dedicated screen file is shipped
+ * — see `src/screens/<Name>Screen.js`. The route table itself lives
+ * in `src/navigation.js` (single source of truth shared with the
+ * future deep-link handler in Phase 40.11).
  */
 
 import React from 'react';
-import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StatusBar, StyleSheet, Text } from 'react-native';
 
 if (typeof globalThis !== 'undefined') {
   const prev = globalThis.onunhandledrejection;
@@ -35,6 +35,18 @@ import { NavigationContainer }        from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider }           from 'react-native-safe-area-context';
 
+import { ROUTES, ROUTE_ORDER }       from './src/navigation.js';
+import { PlaceholderScreen }         from './src/screens/PlaceholderScreen.js';
+import { initI18n }                  from './src/lib/i18n.js';
+
+// Per-route screen components. As real screens land they replace
+// `PlaceholderScreen` in this map. Keeping the map here (rather than
+// inside `<Stack>`) means tests can introspect the route → component
+// wiring without rendering.
+export const SCREEN_COMPONENTS = Object.freeze(
+  Object.fromEntries(ROUTE_ORDER.map((r) => [r, PlaceholderScreen])),
+);
+
 class ErrorBoundary extends React.Component {
   state = { error: null };
   static getDerivedStateFromError(error) { return { error }; }
@@ -55,20 +67,13 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-function WelcomeScreen() {
-  return (
-    <View style={styles.welcomeRoot}>
-      <Text style={styles.welcomeTitle}>Stoop</Text>
-      <Text style={styles.welcomeBody}>
-        Buurt-skill-app voor mobiel — V3 scaffold.{'\n\n'}
-        Phase 40.1 ✓: workspace exists.{'\n'}
-        Phase 40.10 will land the real screens.
-      </Text>
-    </View>
-  );
-}
-
 const Stack = createNativeStackNavigator();
+
+// Kick off i18n once at module-load. Default to English; settings
+// will swap to Dutch (or whatever) after first hydration.
+initI18n({ lng: 'en' }).catch((err) => {
+  console.warn('[i18n] init failed (falling back to keys):', err?.message ?? err);
+});
 
 export default function App() {
   return (
@@ -77,10 +82,16 @@ export default function App() {
         <StatusBar barStyle="default" />
         <NavigationContainer>
           <Stack.Navigator
-            initialRouteName="Welcome"
+            initialRouteName={ROUTES.Welcome}
             screenOptions={{ headerShown: false }}
           >
-            <Stack.Screen name="Welcome" component={WelcomeScreen} />
+            {ROUTE_ORDER.map((name) => (
+              <Stack.Screen
+                key={name}
+                name={name}
+                component={SCREEN_COMPONENTS[name]}
+              />
+            ))}
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>
@@ -89,12 +100,6 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  welcomeRoot: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    padding: 24, backgroundColor: '#fdf8ec',
-  },
-  welcomeTitle: { fontSize: 36, fontWeight: '600', marginBottom: 12 },
-  welcomeBody:  { fontSize: 16, textAlign: 'center', color: '#3a3325' },
   errorRoot:  { flex: 1, padding: 24, backgroundColor: '#fee' },
   errorTitle: { fontSize: 22, fontWeight: '600', marginBottom: 8 },
   errorBody:  { fontFamily: 'monospace', fontSize: 14 },
