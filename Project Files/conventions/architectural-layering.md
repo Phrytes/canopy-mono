@@ -188,19 +188,44 @@ Reasoning:
 - An app importing from another app reads as "this *is* a substrate
   pretending not to be one"; the right move is to extract.
 
-**Existing legacy exception:** `apps/folio-mobile` imports from
-`apps/folio` for the RN-side `serviceFactory` + `SyncEngine`
-subclass. This predates the rule. Tracked under `Project Files/
-TODO-GENERAL.md` for extraction; the long-term fix is a substrate
-(or a re-shape of `@canopy/sync-engine`'s RN adapter surface)
-that both apps consume.
+**Platform-shell exception (locked 2026-05-08).** When two apps in
+`apps/` are **platform-shells of the same product** (e.g. `apps/folio`
++ `apps/folio-mobile`, or future `apps/stoop` + `apps/stoop-mobile`),
+the mobile shell MAY import the SyncEngine / Agent subclass +
+app-specific hook implementations from the desktop / shared shell.
+This is acknowledged as a single-product dependency, not a
+cross-app coupling. Three constraints apply:
 
-**No new cross-app imports are acceptable.** New apps that feel
-the pull to import from a sibling should treat it as a
-substrate-extraction signal, not a green light.
+1. **The two packages name-relate.** `apps/folio-mobile` ↔ `apps/folio`;
+   `apps/stoop-mobile` ↔ `apps/stoop`. Same product, separate
+   platform shells.
+2. **The dep is on the shared shell only, never the reverse.** Mobile
+   imports from desktop; desktop never imports from mobile.
+3. **All genuinely-platform-agnostic code is still substrate-shaped.**
+   The mobile shell's package.json should show ONE
+   `@canopy-app/<sibling>` dep + N `@canopy/...` substrates, not
+   a sprawl of cross-app subpath imports.
 
-Verification: `grep -r "@canopy-app/" apps/*/src apps/*/package.json`
-catches all cases. As of 2026-05-06 only `apps/folio-mobile` matches.
+When `apps/folio-mobile` was scoped before 2026-05-08 it had THREE
+cross-app subpath imports (`/rn/serviceFactory`, `/rn/backgroundTasks`,
+implicit barrel). Phases 40.2-40.3 + the 2026-05-08 follow-up
+collapsed them to ONE: `import { SyncEngine } from '@canopy-app/folio'`
+for the SyncEngine subclass. The remaining import is the legitimate
+single-product dependency this exception covers.
+
+**Substrate-of-substrates / share substrates between apps**: still
+requires rule-of-two and substrate extraction (see Stoop V3 Phases
+40.2-40.3 for the canonical lift).
+
+**Verification:** `grep -r "@canopy-app/" apps/*/src apps/*/package.json`
+should return zero matches **other than**:
+- self-references in comments / package.json `name` fields,
+- platform-shell deps from `<app>-mobile` to `<app>` (above).
+
+As of 2026-05-08:
+- `apps/folio-mobile` matches the platform-shell exception once
+  (`SyncEngine` from `@canopy-app/folio`).
+- No other cross-app imports exist.
 
 ---
 

@@ -108,29 +108,37 @@ plus a manual spot-check. Lint rule TBD.
 
 ---
 
-## 🟡 MEDIUM — Extract folio-mobile → folio shared code into a substrate (2026-05-06)
+## ✅ RESOLVED — Extract folio-mobile → folio shared code into a substrate (2026-05-06 → 2026-05-08)
 
-**What:** `apps/folio-mobile` imports `serviceFactory` and a `SyncEngine`
-subclass from `apps/folio` — the only remaining cross-app import in
-the repo. The convention finalised 2026-05-06
-([`Project Files/conventions/architectural-layering.md`](./conventions/architectural-layering.md#apps-must-not-import-from-other-apps-locked-2026-05-06))
-declares no new cross-app imports are acceptable; this is the legacy
-exception.
+**Outcome:** **The genuinely-shared RN code is in a substrate now.**
+Stoop V3 Phases 40.2-40.3 + the 2026-05-08 follow-up:
 
-**Action:** extract the shared code into a substrate (or extend
-`@canopy/sync-engine`'s RN adapter surface so both apps consume
-it directly without an intermediate hop). Likely candidates:
+- `@canopy/sync-engine-rn` (new) owns `bgRunOnce`,
+  `defaultPodFactory`, `createMobileBootstrap`, `createSyncEngine`,
+  `defineBackgroundTask` + the BackgroundFetch helpers. **34 tests.**
+- `@canopy/oidc-session-rn` (new) owns `OidcSessionRN`,
+  `useOidcSignIn` (at `/hook` subpath), DCR helpers. **37 tests.**
+- folio-mobile's `src/auth/{OidcSessionRN, folioAuth, dcr}.js` and
+  `src/lib/{serviceBuilder, bgRunOnce}.js` are now thin re-export
+  shims. Behaviour preserved (legacy `folio-oidc-*` and
+  `folio-dcr-client-id-*` storage keys unchanged via `appId: 'folio'`).
+- folio-mobile's three `/rn/*` cross-app subpath imports are gone.
+  The remaining single dep `import { SyncEngine } from '@canopy-app/folio'`
+  is the SyncEngine subclass and falls under the new
+  **platform-shell exception** documented in
+  [`conventions/architectural-layering.md`](./conventions/architectural-layering.md#apps-must-not-import-from-other-apps-locked-2026-05-06)
+  (locked 2026-05-08).
 
-- A new `@canopy/sync-engine-rn` substrate that owns the RN-side
-  service factory + Folio's RN engine subclass.
-- Or extend the existing `@canopy/sync-engine` with an `rn`
-  sub-export (`@canopy/sync-engine/rn`).
+**Verification (2026-05-08):**
+`grep -r "@canopy-app/" apps/*/src apps/*/package.json` returns:
+- self-references in package.json `name` fields and barrel-comment
+  headers.
+- `apps/folio-mobile/src/lib/serviceBuilder.js` — single platform-shell
+  import of `SyncEngine` from `@canopy-app/folio`.
+- `apps/folio-mobile/package.json` — the platform-shell `file:../folio` dep.
 
-**Action when:** before any new app would need similar plumbing;
-not urgent while only Folio + Folio-mobile are involved.
-
-**Verification:** `grep -r "@canopy-app/" apps/*/src apps/*/package.json`
-must return zero matches once this lands.
+**No other cross-app imports exist.** The platform-shell exception
+covers the remaining one. Item closed.
 
 ---
 

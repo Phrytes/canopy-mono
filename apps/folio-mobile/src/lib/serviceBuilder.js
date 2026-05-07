@@ -1,38 +1,43 @@
 /**
- * serviceBuilder — bridges the C2 ServiceContext to the C1 RN
- * serviceFactory + a real PodClient.
+ * serviceBuilder — bridges the C2 ServiceContext to the substrate
+ * sync-engine + a real PodClient.
  *
- * **2026-05-08:** `defaultPodFactory` was lifted into the
- * `@canopy/sync-engine-rn` substrate (Stoop V3 Phase 40.2,
- * rule-of-two satisfied by Stoop V3 mobile being the second
- * consumer). This file is now a thin re-export shim plus the
- * folio-specific engine builder that imports
- * `@canopy-app/folio/rn/serviceFactory`.
+ * **2026-05-08 (Phase 40.2):** `defaultPodFactory` was lifted into
+ * `@canopy/sync-engine-rn`. The engine builder also goes through
+ * the substrate (`createSyncEngine`) with Folio's `SyncEngine`
+ * subclass passed in. No cross-app subpath imports remain.
  *
- * Two responsibilities (same as before):
+ * Two responsibilities (same shape as before):
  *
  *   1. `defaultPodFactory(cfg, oidc)` — re-exported from
- *      `@canopy/sync-engine-rn`. Builds an authenticated
- *      `PodClient` from `OidcSessionRN`.
+ *      `@canopy/sync-engine-rn`.
  *
- *   2. `buildEngineForRN({ podClient, ... })` — thin pass-through to
- *      `@canopy-app/folio/rn/serviceFactory.createSyncEngine`.
- *      Stays here because it's folio-specific (the Folio mobile
- *      RN service factory is a known cross-app import flagged in
- *      TODO-GENERAL).
+ *   2. `buildEngineForRN({ podClient, ... })` — calls the substrate's
+ *      `createSyncEngine` with `SyncEngineClass: FolioSyncEngine`.
  */
 
-export { defaultPodFactory } from '@canopy/sync-engine-rn';
+import {
+  createSyncEngine as substrateCreateSyncEngine,
+  defaultPodFactory as substrateDefaultPodFactory,
+} from '@canopy/sync-engine-rn';
+import { SyncEngine as FolioSyncEngine } from '@canopy-app/folio';
+
+export const defaultPodFactory = substrateDefaultPodFactory;
 
 /**
- * Pass-through to the C1 RN serviceFactory.  Exported as a separate
- * function so tests can mock it via `vi.mock(.../serviceBuilder)` without
- * having to mock a deep import.
+ * Build a folio-flavoured SyncEngine for RN.  Same args as the
+ * substrate's `createSyncEngine`; this shim pre-binds
+ * `SyncEngineClass: FolioSyncEngine`.
  *
- * @param {object} args   Forwarded to `createSyncEngine` verbatim.
- * @returns {Promise<object>} SyncEngine instance
+ * NOTE: still imports `SyncEngine` from `@canopy-app/folio` —
+ * folio-mobile is folio's mobile platform-shell, so the dependency
+ * on folio's SyncEngine subclass is intentional. Tracked in
+ * `Project Files/conventions/architectural-layering.md` as the
+ * platform-shell exception (added 2026-05-08).
  */
 export async function buildEngineForRN(args) {
-  const mod = await import('@canopy-app/folio/rn/serviceFactory');
-  return mod.createSyncEngine(args);
+  return substrateCreateSyncEngine({
+    ...args,
+    SyncEngineClass: FolioSyncEngine,
+  });
 }

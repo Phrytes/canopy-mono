@@ -40,7 +40,7 @@ import {
   registerBackgroundFetch,
   unregisterBackgroundFetch,
   DEFAULT_BACKGROUND_FETCH_INTERVAL_S,
-} from '@canopy-app/folio/rn/backgroundTasks';
+} from '@canopy/sync-engine-rn';
 
 /** @type {React.Context<ServiceContextValue|null>} */
 const Ctx = createContext(null);
@@ -247,8 +247,11 @@ async function buildAndAttachEngine({
   const cfg = { podRoot };
   const podClient = await podFactoryFn(cfg, session);
 
-  const engineModule = await import('@canopy-app/folio/rn/serviceFactory');
-  const engine = engineModule.createSyncEngine({
+  // Phase 40.2 (2026-05-08): use the local `buildEngineForRN` shim
+  // which now goes through `apps/folio/src/rn/serviceFactory.js` (a
+  // shim itself, around `@canopy/sync-engine-rn` with Folio's
+  // SyncEngine subclass pre-bound).  No more dynamic cross-app import.
+  const engine = await buildEngineForRN({
     podClient,
     localRoot,
     podRoot,
