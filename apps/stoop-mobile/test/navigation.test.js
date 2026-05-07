@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { ROUTES, ROUTE_ORDER } from '../src/navigation.js';
+import { ROUTES, ROUTE_ORDER, SHELL_TAB_ROUTES, STACK_ONLY_ROUTES } from '../src/navigation.js';
 
 describe('navigation route table', () => {
   it('every named route appears in the order array', () => {
@@ -37,6 +37,20 @@ describe('navigation route table', () => {
     for (const name of expected) {
       expect(ROUTE_ORDER).toContain(name);
     }
+  });
+
+  it('SHELL_TAB_ROUTES + STACK_ONLY_ROUTES + Shell tile up to ROUTE_ORDER', () => {
+    const expected = new Set([...SHELL_TAB_ROUTES, ...STACK_ONLY_ROUTES, ROUTES.Shell]);
+    expect(new Set(ROUTE_ORDER)).toEqual(expected);
+  });
+
+  it('SHELL_TAB_ROUTES contains the user-facing main destinations', () => {
+    expect(SHELL_TAB_ROUTES).toContain(ROUTES.Feed);
+    expect(SHELL_TAB_ROUTES).toContain(ROUTES.Mine);
+    expect(SHELL_TAB_ROUTES).toContain(ROUTES.ChatThreads);
+    expect(SHELL_TAB_ROUTES).toContain(ROUTES.Contacts);
+    expect(SHELL_TAB_ROUTES).toContain(ROUTES.ProfileMine);
+    expect(SHELL_TAB_ROUTES).toContain(ROUTES.Settings);
   });
 
   it('ROUTE_ORDER and ROUTES expose the same set of names', () => {

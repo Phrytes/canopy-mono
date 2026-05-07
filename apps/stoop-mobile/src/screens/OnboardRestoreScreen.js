@@ -52,7 +52,7 @@ export function OnboardRestoreScreen({ onSubmitMnemonic } = {}) {
       if (typeof onSubmitMnemonic === 'function') {
         await onSubmitMnemonic(norm);
       }
-      nav.navigate(ROUTES.Feed, { firstRun: true });
+      nav.navigate(ROUTES.Shell, { screen: ROUTES.Feed, params: { firstRun: true } });
     } catch (err) {
       setError(err?.message ?? String(err));
     } finally {

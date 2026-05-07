@@ -104,10 +104,11 @@ describe('actionToNavigation', () => {
     });
   });
 
-  it('maps contact → Contacts with pendingContact', () => {
+  it('maps contact → Shell/Contacts with pendingContact', () => {
     const t = actionToNavigation({ kind: 'contact', params: { uri: 'stoop-contact://x' } });
-    expect(t.name).toBe(ROUTES.Contacts);
-    expect(t.params.pendingContact).toBe('stoop-contact://x');
+    expect(t.name).toBe(ROUTES.Shell);
+    expect(t.params.screen).toBe(ROUTES.Contacts);
+    expect(t.params.params.pendingContact).toBe('stoop-contact://x');
   });
 
   it('maps chat → ChatThread with thread + peer ids', () => {
@@ -133,9 +134,13 @@ describe('actionToNavigation', () => {
     expect(t).toEqual({ name: ROUTES.SignIn, params: { code: 'abc' } });
   });
 
-  it('maps welcome / feed pass-throughs', () => {
+  it('maps welcome → Welcome (pre-shell)', () => {
     expect(actionToNavigation({ kind: 'welcome' })).toEqual({ name: ROUTES.Welcome, params: undefined });
-    expect(actionToNavigation({ kind: 'feed' })).toEqual({ name: ROUTES.Feed, params: undefined });
+  });
+  it('maps feed → Shell/Feed', () => {
+    const t = actionToNavigation({ kind: 'feed' });
+    expect(t.name).toBe(ROUTES.Shell);
+    expect(t.params.screen).toBe(ROUTES.Feed);
   });
 
   it('returns null for unknown', () => {

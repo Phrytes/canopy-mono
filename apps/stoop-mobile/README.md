@@ -49,6 +49,14 @@ Pending phases (per
 - 40.11 ✅ Deep-link handling for `stoop://...` — `src/lib/deepLinks.js`
   + `DeepLinkHandler` mounted inside `NavigationContainer`. Routes:
   invite / contact / chat / post / group / auth-callback / welcome / feed.
+- ⚙️ 2026-05-08 follow-up — bottom-tab shell wraps the six main
+  destinations (Feed / Mine / Chat / Contacts / Profile / Settings)
+  via `@react-navigation/bottom-tabs`. Detail screens push over the
+  shell from the outer native stack. Welcome's "Beginnen" CTA navigates
+  to `Shell` with `screen: Feed` nested params; deep links do the
+  same for feed / contact landings. Locale auto-detected from the
+  device locale at boot (`Intl.DateTimeFormat().resolvedOptions().locale`
+  → 'nl' if Dutch, else 'en').
 - 40.12 — Real-device pass + closed-beta build (Android-primary).
 - 40.13 — Documentation + handoff.
 - 40.9 — Native push via Expo.

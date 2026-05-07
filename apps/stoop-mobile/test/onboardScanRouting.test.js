@@ -12,21 +12,23 @@ function makeNav() {
 }
 
 describe('routeForKind', () => {
-  it('invite → Feed with pendingInvite', () => {
+  it('invite → Shell/Feed with pendingInvite', () => {
     const nav = makeNav();
     const res = routeForKind(nav, { kind: 'invite', payload: { groupId: 'g1', signature: 's' } });
-    expect(res).toBe(ROUTES.Feed);
-    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.Feed, expect.objectContaining({
-      pendingInvite: { groupId: 'g1', signature: 's' },
+    expect(res).toBe(ROUTES.Shell);
+    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.Shell, expect.objectContaining({
+      screen: ROUTES.Feed,
+      params: expect.objectContaining({ pendingInvite: { groupId: 'g1', signature: 's' } }),
     }));
   });
 
-  it('contact → Contacts with pendingContact', () => {
+  it('contact → Shell/Contacts with pendingContact', () => {
     const nav = makeNav();
     const r = routeForKind(nav, { kind: 'contact', payload: 'stoop-contact://x' });
-    expect(r).toBe(ROUTES.Contacts);
-    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.Contacts, expect.objectContaining({
-      pendingContact: 'stoop-contact://x',
+    expect(r).toBe(ROUTES.Shell);
+    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.Shell, expect.objectContaining({
+      screen: ROUTES.Contacts,
+      params: expect.objectContaining({ pendingContact: 'stoop-contact://x' }),
     }));
   });
 
@@ -49,9 +51,12 @@ describe('routeForKind', () => {
   it('passes routeParams through', () => {
     const nav = makeNav();
     routeForKind(nav, { kind: 'invite', payload: { groupId: 'g', signature: 's' } }, { from: 'deeplink' });
-    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.Feed, expect.objectContaining({
-      from: 'deeplink',
-      pendingInvite: { groupId: 'g', signature: 's' },
+    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.Shell, expect.objectContaining({
+      screen: ROUTES.Feed,
+      params: expect.objectContaining({
+        from: 'deeplink',
+        pendingInvite: { groupId: 'g', signature: 's' },
+      }),
     }));
   });
 
