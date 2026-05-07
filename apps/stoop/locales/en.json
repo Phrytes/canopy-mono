@@ -124,6 +124,33 @@
     "scan_recognised_recovery":     { "text": "Recovery phrase recognised.", "doc": "Inline status when a 12/24-word recovery phrase QR is decoded." },
     "scan_unrecognised":            { "text": "Unknown QR code.", "doc": "Inline status when a scanned QR doesn't match any known Stoop payload." }
   },
+  "welcome": {
+    "brand":         { "text": "Stoop", "doc": "Brand wordmark on the welcome screen. Stoop V3 Phase 40.10." },
+    "tagline":       { "text": "Neighbourhood skill-app — ask your neighbours for help.", "doc": "Sub-headline under the brand on the welcome screen." },
+    "cta_new":       { "text": "Get started", "doc": "Primary CTA on the welcome screen — generates a fresh local identity. (Mobile fresh-installs default to local-only; pod sign-in is opt-in later.)" },
+    "cta_scan":      { "text": "Scan a QR code", "doc": "Secondary CTA on the welcome screen — opens the camera scanner (OnboardScanScreen)." },
+    "cta_restore":   { "text": "Restore with recovery phrase", "doc": "Secondary CTA — opens OnboardRestoreScreen." },
+    "privacy_link":  { "text": "Privacy & safety", "doc": "Footer link on the welcome screen." }
+  },
+  "onboard_scan": {
+    "heading":       { "text": "Scan a QR code", "doc": "Heading on the OnboardScanScreen." },
+    "subheading":    { "text": "Point the camera at a Stoop QR. You can also paste it.", "doc": "Sub-heading underneath the camera surface." },
+    "grant_camera":  { "text": "Allow camera access", "doc": "Button shown when the OS hasn't granted camera permission yet." },
+    "paste_link":    { "text": "Paste it instead", "doc": "Link below the camera surface that reveals the paste box." },
+    "paste_placeholder": { "text": "Paste a Stoop invite, contact link, or recovery phrase", "doc": "Placeholder of the paste-fallback textarea." },
+    "paste_submit":  { "text": "Continue", "doc": "Submit button for the paste-fallback textarea." }
+  },
+  "onboard_restore": {
+    "heading":            { "text": "Restore your identity", "doc": "Heading on the OnboardRestoreScreen." },
+    "subheading":         { "text": "Enter your recovery phrase (12 or 24 words, separated by spaces).", "doc": "Sub-heading on the restore screen." },
+    "placeholder":        { "text": "twelve … words …", "doc": "Placeholder for the mnemonic textarea." },
+    "submit":             { "text": "Restore", "doc": "Submit button on OnboardRestoreScreen." },
+    "submitting":         { "text": "Working…", "doc": "Submit button label while the restore call is in flight." },
+    "status_too_short":   { "text": "Add more words.", "doc": "Inline status when the user has typed only a few words." },
+    "status_wrong_count": { "text": "A recovery phrase is 12, 15, 18, 21 or 24 words.", "doc": "Inline status when the word count is wrong." },
+    "status_malformed_word": { "text": "A word looks off — only lowercase letters please.", "doc": "Inline status when one of the words isn't BIP-39-shaped." },
+    "status_looks_ok":    { "text": "Looks good ✓", "doc": "Inline status when the structural check passes." }
+  },
   "profile": {
     "page_title":             { "text": "Stoop — My profile", "doc": "Browser tab title for /profile.html." },
     "heading":                { "text": "My profile", "doc": "Main page heading on /profile.html." },

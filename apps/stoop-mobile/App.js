@@ -35,17 +35,24 @@ import { NavigationContainer }        from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider }           from 'react-native-safe-area-context';
 
-import { ROUTES, ROUTE_ORDER }       from './src/navigation.js';
-import { PlaceholderScreen }         from './src/screens/PlaceholderScreen.js';
-import { initI18n }                  from './src/lib/i18n.js';
+import { ROUTES, ROUTE_ORDER }        from './src/navigation.js';
+import { PlaceholderScreen }          from './src/screens/PlaceholderScreen.js';
+import { WelcomeScreen }              from './src/screens/WelcomeScreen.js';
+import { OnboardScanScreen }          from './src/screens/OnboardScanScreen.js';
+import { OnboardRestoreScreen }       from './src/screens/OnboardRestoreScreen.js';
+import { initI18n }                   from './src/lib/i18n.js';
 
 // Per-route screen components. As real screens land they replace
 // `PlaceholderScreen` in this map. Keeping the map here (rather than
 // inside `<Stack>`) means tests can introspect the route → component
 // wiring without rendering.
-export const SCREEN_COMPONENTS = Object.freeze(
-  Object.fromEntries(ROUTE_ORDER.map((r) => [r, PlaceholderScreen])),
-);
+const _initialMap = Object.fromEntries(ROUTE_ORDER.map((r) => [r, PlaceholderScreen]));
+export const SCREEN_COMPONENTS = Object.freeze({
+  ..._initialMap,
+  [ROUTES.Welcome]:        WelcomeScreen,
+  [ROUTES.OnboardScan]:    OnboardScanScreen,
+  [ROUTES.OnboardRestore]: OnboardRestoreScreen,
+});
 
 class ErrorBoundary extends React.Component {
   state = { error: null };
