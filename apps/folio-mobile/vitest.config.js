@@ -9,10 +9,9 @@ export default defineConfig({
   resolve: {
     alias: {
       // Point imports at the local sources so tests run without npm install.
-      // Folio is consumed via its barrel + a couple of subpath imports
-      // (rn/serviceFactory, rn/backgroundTasks); we point each at source.
-      '@canopy-app/folio/rn/serviceFactory': path.resolve(repoRoot, 'apps/folio/src/rn/serviceFactory.js'),
-      '@canopy-app/folio/rn/backgroundTasks': path.resolve(repoRoot, 'apps/folio/src/rn/backgroundTasks.js'),
+      // Folio is consumed for the SyncEngine subclass only — the
+      // RN serviceFactory + backgroundTasks moved to
+      // @canopy/sync-engine-rn 2026-05-08 (Phase 40.2 follow-up).
       '@canopy-app/folio':                   path.resolve(repoRoot, 'apps/folio/src/index.js'),
       '@canopy/core':                        path.resolve(repoRoot, 'packages/core/src/index.js'),
       '@canopy/pod-client':                  path.resolve(repoRoot, 'packages/pod-client/src/index.js'),
