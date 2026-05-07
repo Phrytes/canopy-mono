@@ -90,9 +90,11 @@ describe('Stoop V2 Phase 28.1 — factory honours persisted hop-mode on boot', (
     await callSkill(bundle1.agent, 'setHopMode', { global: true });
 
     // Verify the settings live on the cache so a 2nd factory call
-    // with the same persistPath would pick them up.  Inspect the
-    // settings blob path directly.
-    const raw = await bundle1.cache.read('mem://stoop/settings.json');
+    // with the same persistPath would pick them up.  Phase 33 moved
+    // device-scoped fields (allowHopThrough included) to the per-device
+    // blob; read THAT.
+    const devicePath = `mem://stoop/settings/devices/${bundle1.deviceId}.json`;
+    const raw = await bundle1.cache.read(devicePath);
     expect(raw).toBeTruthy();
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
     expect(parsed.allowHopThrough).toBe(true);

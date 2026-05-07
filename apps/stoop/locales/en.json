@@ -73,6 +73,59 @@
     "title":   "Privacy — what to know",
     "intro":   "Stoop is a research preview. The points below are never hidden — they apply to everyone who joins."
   },
+  "nav": {
+    "feed":     { "text": "Feed",      "doc": "Top-nav link to the main feed page (/)." },
+    "my_posts": { "text": "My posts",  "doc": "Top-nav link to /mine.html — the user's own posts." },
+    "chat":     { "text": "Chat",      "doc": "Top-nav link to /chat.html — peer-to-peer chat threads." },
+    "contacts": { "text": "Contacts",  "doc": "Top-nav link to /contacts.html — the user's contact book." },
+    "metrics":  { "text": "Metrics",   "doc": "Top-nav link to /metrics.html — diagnostic metrics page." },
+    "profile":  { "text": "Profile",   "doc": "Top-nav link to /profile.html — user's own profile + handle." },
+    "pod":      { "text": "Pod",       "doc": "Top-nav link to /sign-in.html — Solid pod sign-in / status." },
+    "push":     { "text": "Push",      "doc": "Top-nav link to /push.html — Web-Push subscription management." },
+    "onboard":  { "text": "Onboard",   "doc": "Top-nav link to /onboard.html — admin invite / onboarding tools." },
+    "settings": { "text": "Settings",  "doc": "Top-nav link to /settings.html — user-tunable settings." }
+  },
+  "settings": {
+    "page_title":             { "text": "Stoop — Settings", "doc": "Browser tab title for /settings.html." },
+    "heading":                { "text": "Settings", "doc": "Main page heading on /settings.html." },
+    "intro":                  { "text": "Stoop keeps your settings in two places: things that belong to <em>this device</em> (like how often your phone refreshes) stay local; <em>my preferences</em> follow you across all your devices via your pod.", "doc": "Lead paragraph explaining the device/shared split. Contains <em> tags — keep them so the emphasis is preserved." },
+
+    "section_device_title":   { "text": "On this device", "doc": "Section heading for device-scoped settings (V2.5 Phase 33). Stays local to this install." },
+    "badge_device":           { "text": "device", "doc": "Small badge next to the device-section heading. Single word; should signal 'this device only'." },
+    "section_device_hint":    { "text": "These settings belong to this device. They can differ between your phone and your laptop.", "doc": "Subtitle under the device-section heading. Reassures the user the values can differ across their installs." },
+
+    "section_shared_title":   { "text": "My preferences", "doc": "Section heading for shared / pod-portable settings (V2.5 Phase 33). Travels with the user." },
+    "badge_shared":           { "text": "syncs across all your devices", "doc": "Small badge next to the shared-section heading. Should signal 'syncs across devices'." },
+    "section_shared_hint":    { "text": "These preferences belong to you — not to this device. When you sign in to your pod, they automatically follow you to your other devices.", "doc": "Subtitle under the shared-section heading. Tells the user pod-sign-in is what enables cross-device sync." },
+
+    "poll_interval_label":    { "text": "How often the feed refreshes", "doc": "Label for the polling-interval select. Device-scoped." },
+    "poll_interval_hint":     { "text": "Lower = see new posts faster; higher = lighter on data and battery.", "doc": "Hint under the polling-interval label. Trade-off summary: faster vs. battery." },
+    "poll_2s":                { "text": "every 2 sec (live)", "doc": "Polling option: 2 seconds. The '(live)' annotation marks it as the always-on default." },
+    "poll_10s":               { "text": "every 10 sec", "doc": "Polling option: 10 seconds." },
+    "poll_1m":                { "text": "every minute", "doc": "Polling option: 1 minute." },
+    "poll_5m":                { "text": "every 5 min", "doc": "Polling option: 5 minutes (mobile-friendly)." },
+
+    "hop_label":              { "text": "Hop-relay (global)", "doc": "Label for the global hop-relay toggle. Device-scoped because it's a per-machine routing decision." },
+    "hop_hint":               { "text": "May my device relay messages on behalf of others? Default <em>off</em>: nobody passes through you. Per-contact setting lives on the contacts page.", "doc": "Hint under the hop-relay toggle. Default-off explanation + cross-link to /contacts.html. Contains <em> tags." },
+    "toggle_on":              { "text": "On", "doc": "Generic 'on' label next to a toggle. Reused across multiple toggles on /settings.html." },
+
+    "online_window_heading":  { "text": "Online window (mobile)", "doc": "Sub-heading inside the device section for the mobile-only online-window controls." },
+    "online_window_hint":     { "text": "On phone (V3): how often and how long can my agent connect to the relay? Ignored on desktop — there the agent is always online.", "doc": "Hint paragraph under the online-window heading. Mobile-only feature description." },
+    "online_every_label":     { "text": "Window frequency", "doc": "Label for the online-window 'every X minutes' field. Device-scoped." },
+    "online_every_hint":      { "text": "Connect once every X minutes. Empty = always connected (V2 desktop default).", "doc": "Hint under the window-frequency input. Explains empty-means-always." },
+    "online_duration_label":  { "text": "Window duration", "doc": "Label for the online-window 'duration in seconds' field. Device-scoped." },
+    "online_duration_hint":   { "text": "Number of seconds online per window.", "doc": "Hint under the window-duration input." },
+    "online_empty_placeholder":{ "text": "empty", "doc": "Placeholder text in the online-window number inputs when no value is set. Should signal 'optional / unset'." },
+
+    "broadcastable_label":    { "text": "Auto skill-match", "doc": "Label for the broadcastable toggle. Shared-scoped." },
+    "broadcastable_hint":     { "text": "May an unknown contact send me a skill-match suggestion that my agent filters? You only get notified on a match; no match = silence.", "doc": "Hint under the auto-skill-match toggle. Explains the filtering + match-only-notification semantics." },
+
+    "default_share_location_label": { "text": "Share location with new contacts by default?", "doc": "Label for the default-share-location toggle. Shared-scoped." },
+    "default_share_location_hint":  { "text": "Decides whether <code>shareLocation</code> defaults to on when you add someone. You can always override per-contact later.", "doc": "Hint under the default-share-location toggle. Contains <code> tag for the field name." },
+
+    "feedback_saving":        { "text": "Saving…", "doc": "Inline feedback text shown while a settings save is in flight." },
+    "feedback_saved":         { "text": "Saved.", "doc": "Inline feedback text shown after a successful settings save." }
+  },
   "restore": {
     "page_title":           { "text": "Restore account on this device", "doc": "Browser tab title + main page heading on /restore.html — the recovery-from-mnemonic flow." },
     "intro":                { "text": "Have your recovery phrase (12 or 24 words) from another device? Enter it below. Stoop will then sign in to your pod and pull all your posts, contacts and settings.", "doc": "Lead paragraph on /restore.html. Sets expectations: (1) you need a recovery phrase from another device, (2) the app will pull state from your pod after restoring." },

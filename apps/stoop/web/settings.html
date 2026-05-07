@@ -2,9 +2,37 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8">
-  <title>Stoop — Instellingen</title>
+  <title data-i18n="settings.page_title">Stoop — Instellingen</title>
   <link rel="stylesheet" href="/style.css">
   <style>
+    .settings-section {
+      margin-top: 2rem;
+      padding: 1rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .settings-section:first-of-type { margin-top: 1rem; }
+    .settings-section > h3 {
+      margin: 0 0 0.25rem 0;
+      font-size: 1.05rem;
+    }
+    .settings-section > .scope-hint {
+      margin: 0 0 0.75rem 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .scope-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      vertical-align: middle;
+      margin-left: 0.5rem;
+    }
+    .scope-badge.device  { background: #fef3e2; color: #8a4b00; }
+    .scope-badge.shared  { background: #e3f2fd; color: #0a527d; }
     .settings-row {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -25,16 +53,16 @@
 <body>
   <header>
     <nav>
-      <a href="/">Buurt</a>
-      <a href="/mine.html">Mijn posts</a>
-      <a href="/chat.html">Chat</a>
-      <a href="/contacts.html">Contacten</a>
-      <a href="/metrics.html">Metrics</a>
-      <a href="/profile.html">Profiel</a>
-      <a href="/sign-in.html">Pod</a>
-      <a href="/push.html">Push</a>
-      <a href="/onboard.html">Onboarden</a>
-      <a href="/settings.html" class="active">Instellingen</a>
+      <a href="/"            data-i18n="nav.feed">Buurt</a>
+      <a href="/mine.html"   data-i18n="nav.my_posts">Mijn posts</a>
+      <a href="/chat.html"   data-i18n="nav.chat">Chat</a>
+      <a href="/contacts.html" data-i18n="nav.contacts">Contacten</a>
+      <a href="/metrics.html" data-i18n="nav.metrics">Metrics</a>
+      <a href="/profile.html" data-i18n="nav.profile">Profiel</a>
+      <a href="/sign-in.html" data-i18n="nav.pod">Pod</a>
+      <a href="/push.html"   data-i18n="nav.push">Push</a>
+      <a href="/onboard.html" data-i18n="nav.onboard">Onboarden</a>
+      <a href="/settings.html" class="active" data-i18n="nav.settings">Instellingen</a>
     </nav>
     <select id="group-switcher" hidden aria-label="Switch group"></select>
     <div id="actor"></div>
@@ -42,62 +70,51 @@
 
   <main>
     <section>
-      <h2>Instellingen</h2>
-      <p class="hint">
-        Deze instellingen synchroniseren met je pod (als je bent
-        aangemeld), zodat je ze niet opnieuw hoeft op te geven op
-        een ander apparaat.
+      <h2 data-i18n="settings.heading">Instellingen</h2>
+      <p class="hint" data-i18n="settings.intro">
+        Stoop bewaart je instellingen op twee plekken: dingen die <em>op dit
+        apparaat</em> horen (zoals hoe vaak je telefoon ververst) blijven
+        lokaal; <em>mijn voorkeuren</em> reizen via je pod mee naar al je
+        apparaten.
       </p>
 
-      <div id="settings-form">
+      <!-- ─ Per-device section ─ -->
+      <div class="settings-section">
+        <h3>
+          <span data-i18n="settings.section_device_title">Op dit apparaat</span>
+          <span class="scope-badge device" data-i18n="settings.badge_device">apparaat</span>
+        </h3>
+        <p class="scope-hint" data-i18n="settings.section_device_hint">
+          Deze instellingen horen bij dít apparaat. Op je telefoon en
+          je laptop kunnen ze verschillen.
+        </p>
+
         <div class="settings-row">
           <div class="lbl">
-            <strong>Hoe vaak het prikbord ververst</strong>
-            <small>Lager = sneller nieuwe posts zien; hoger = zuiniger met data en accu.</small>
+            <strong data-i18n="settings.poll_interval_label">Hoe vaak het prikbord ververst</strong>
+            <small data-i18n="settings.poll_interval_hint">Lager = sneller nieuwe posts zien; hoger = zuiniger met data en accu.</small>
           </div>
           <select id="poll-interval">
-            <option value="2000">elke 2 sec (live)</option>
-            <option value="10000">elke 10 sec</option>
-            <option value="60000">elke minuut</option>
-            <option value="300000">elke 5 min</option>
+            <option value="2000"   data-i18n="settings.poll_2s">elke 2 sec (live)</option>
+            <option value="10000"  data-i18n="settings.poll_10s">elke 10 sec</option>
+            <option value="60000"  data-i18n="settings.poll_1m">elke minuut</option>
+            <option value="300000" data-i18n="settings.poll_5m">elke 5 min</option>
           </select>
         </div>
 
         <div class="settings-row">
           <div class="lbl">
-            <strong>Auto-skill-match</strong>
-            <small>Mag een onbekend contact mij een skill-match-suggestie sturen die door mijn agent gefilterd wordt? Bij een match krijg je een melding; geen match = stilte.</small>
-          </div>
-          <label class="toggle">
-            <input id="broadcastable" type="checkbox">
-            <span>Aan</span>
-          </label>
-        </div>
-
-        <div class="settings-row">
-          <div class="lbl">
-            <strong>Hop-relay (globaal)</strong>
-            <small>Mag mijn apparaat berichten doorrelay'en voor andere mensen? Standaard <em>uit</em>: dan doet niemand dat via jou. Per-contact-instelling staat op de contacten-pagina.</small>
+            <strong data-i18n="settings.hop_label">Hop-relay (globaal)</strong>
+            <small data-i18n="settings.hop_hint">Mag mijn apparaat berichten doorrelay'en voor andere mensen? Standaard <em>uit</em>: dan doet niemand dat via jou. Per-contact-instelling staat op de contacten-pagina.</small>
           </div>
           <label class="toggle">
             <input id="hop-through" type="checkbox">
-            <span>Aan</span>
+            <span data-i18n="settings.toggle_on">Aan</span>
           </label>
         </div>
 
-        <div class="settings-row">
-          <div class="lbl">
-            <strong>Standaard locatie delen met nieuwe contacten?</strong>
-            <small>Bepaalt of <code>shareLocation</code> default aan staat als je iemand toevoegt. Per-contact altijd handmatig aan/uit te zetten.</small>
-          </div>
-          <label class="toggle">
-            <input id="default-share-location" type="checkbox">
-            <span>Aan</span>
-          </label>
-        </div>
-
-        <h3 style="margin-top: 1.5rem;">Online-window (mobiel)</h3>
-        <p class="hint">
+        <h4 style="margin-top: 1rem;" data-i18n="settings.online_window_heading">Online-window (mobiel)</h4>
+        <p class="hint" data-i18n="settings.online_window_hint">
           Op telefoon (V3): hoe vaak en hoe lang mag mijn agent zich
           tijdelijk verbinden met de relay? Op desktop genegeerd —
           daar is de agent altijd online.
@@ -105,18 +122,57 @@
 
         <div class="settings-row">
           <div class="lbl">
-            <strong>Window-frequentie</strong>
-            <small>Eens per X minuten verbinden. Leeg = altijd verbonden (V2 desktop default).</small>
+            <strong data-i18n="settings.online_every_label">Window-frequentie</strong>
+            <small data-i18n="settings.online_every_hint">Eens per X minuten verbinden. Leeg = altijd verbonden (V2 desktop default).</small>
           </div>
-          <input id="online-every" type="number" min="1" placeholder="leeg">
+          <input id="online-every"   type="number" min="1"
+                 data-i18n="settings.online_empty_placeholder" data-i18n-attr="placeholder"
+                 placeholder="leeg">
         </div>
 
         <div class="settings-row">
           <div class="lbl">
-            <strong>Window-duur</strong>
-            <small>Aantal seconden online per window.</small>
+            <strong data-i18n="settings.online_duration_label">Window-duur</strong>
+            <small data-i18n="settings.online_duration_hint">Aantal seconden online per window.</small>
           </div>
-          <input id="online-duration" type="number" min="1" placeholder="leeg">
+          <input id="online-duration" type="number" min="1"
+                 data-i18n="settings.online_empty_placeholder" data-i18n-attr="placeholder"
+                 placeholder="leeg">
+        </div>
+      </div>
+
+      <!-- ─ Shared section ─ -->
+      <div class="settings-section">
+        <h3>
+          <span data-i18n="settings.section_shared_title">Mijn voorkeuren</span>
+          <span class="scope-badge shared" data-i18n="settings.badge_shared">synct met al je apparaten</span>
+        </h3>
+        <p class="scope-hint" data-i18n="settings.section_shared_hint">
+          Deze voorkeuren horen bij jou — niet bij dit apparaat. Als
+          je inlogt op je pod, reizen ze automatisch mee naar je
+          andere apparaten.
+        </p>
+
+        <div class="settings-row">
+          <div class="lbl">
+            <strong data-i18n="settings.broadcastable_label">Auto-skill-match</strong>
+            <small data-i18n="settings.broadcastable_hint">Mag een onbekend contact mij een skill-match-suggestie sturen die door mijn agent gefilterd wordt? Bij een match krijg je een melding; geen match = stilte.</small>
+          </div>
+          <label class="toggle">
+            <input id="broadcastable" type="checkbox">
+            <span data-i18n="settings.toggle_on">Aan</span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <div class="lbl">
+            <strong data-i18n="settings.default_share_location_label">Standaard locatie delen met nieuwe contacten?</strong>
+            <small data-i18n="settings.default_share_location_hint">Bepaalt of <code>shareLocation</code> default aan staat als je iemand toevoegt. Per-contact altijd handmatig aan/uit te zetten.</small>
+          </div>
+          <label class="toggle">
+            <input id="default-share-location" type="checkbox">
+            <span data-i18n="settings.toggle_on">Aan</span>
+          </label>
         </div>
       </div>
 
@@ -125,7 +181,11 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, mountGroupSwitcher } from '/app.js';
+    import { callSkill, getActor, mountGroupSwitcher, initI18n, applyI18n, t } from '/app.js';
+
+    await initI18n();
+    applyI18n();
+    document.title = t('settings.page_title', 'Stoop — Settings');
 
     document.getElementById('actor').textContent = await getActor();
     mountGroupSwitcher(document.getElementById('group-switcher'));
@@ -145,12 +205,12 @@
     await refresh();
 
     async function save(patch) {
-      fb.textContent = 'Opslaan…';
+      fb.textContent = t('settings.feedback_saving', 'Saving…');
       try {
         await callSkill('updateSettings', { patch });
-        fb.textContent = 'Opgeslagen.';
+        fb.textContent = t('settings.feedback_saved', 'Saved.');
       } catch (err) {
-        fb.textContent = `Fout: ${err.message ?? err}`;
+        fb.textContent = `${t('common.error', 'Error')}: ${err.message ?? err}`;
       }
     }
 
@@ -163,13 +223,13 @@
     document.getElementById('hop-through').addEventListener('change', async (e) => {
       // Phase 28.1 — go through setHopMode so the core relay-forward
       // skill is registered/policy-flipped on top of the settings save.
-      fb.textContent = 'Opslaan…';
+      fb.textContent = t('settings.feedback_saving', 'Saving…');
       try {
         const r = await callSkill('setHopMode', { global: e.target.checked });
-        if (r.error) { fb.textContent = `Fout: ${r.error}`; return; }
-        fb.textContent = 'Opgeslagen.';
+        if (r.error) { fb.textContent = `${t('common.error', 'Error')}: ${r.error}`; return; }
+        fb.textContent = t('settings.feedback_saved', 'Saved.');
       } catch (err) {
-        fb.textContent = `Fout: ${err.message ?? err}`;
+        fb.textContent = `${t('common.error', 'Error')}: ${err.message ?? err}`;
       }
     });
     document.getElementById('default-share-location').addEventListener('change', (e) => {

@@ -31,6 +31,18 @@ const { convertPublicKey, convertKeyPair } = ed2curve;
 const STABLE_ID_KEY = 'agent-stable-id';
 
 /**
+ * Vault key for the per-install deviceId (Stoop V2.5 Phase 33.1, 2026-05-06).
+ *
+ * Unlike `stableId`, `deviceId` is **install-scoped**: a fresh random UUID
+ * generated once per install, persisted in the vault, NEVER derived from
+ * the seed.  Restoring a mnemonic onto a different install produces the
+ * SAME stableId (cross-device user identity) but a DIFFERENT deviceId
+ * (fresh per-install hardware identity).  Apps use it to scope
+ * device-specific settings on the pod.
+ */
+const DEVICE_ID_KEY = 'agent-device-id';
+
+/**
  * HKDF salt for deterministic stableId derivation (V2.5+ Phase 32,
  * 2026-05-07).  **Permanent** — never change.  Changing it would
  * invalidate every restored identity's stableId across all apps.
@@ -74,6 +86,28 @@ async function _loadOrInitStableId(vault, seed = null) {
   return fresh;
 }
 
+/**
+ * Load (or lazy-init) the per-install deviceId.  Returns null for
+ * detached identities (vault === null).  Always random — never derived
+ * from the seed; that's the whole point of the split.  UUIDv4 (36-char
+ * canonical form) so it's recognisable in logs and pod paths.
+ */
+function _randomUuidV4() {
+  const b = nacl.randomBytes(16);
+  b[6] = (b[6] & 0x0f) | 0x40;       // version 4
+  b[8] = (b[8] & 0x3f) | 0x80;       // RFC 4122 variant
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0'));
+  return `${h.slice(0, 4).join('')}-${h.slice(4, 6).join('')}-${h.slice(6, 8).join('')}-${h.slice(8, 10).join('')}-${h.slice(10, 16).join('')}`;
+}
+async function _loadOrInitDeviceId(vault) {
+  if (!vault) return null;
+  const existing = await vault.get(DEVICE_ID_KEY);
+  if (existing && typeof existing === 'string' && existing.length > 0) return existing;
+  const fresh = _randomUuidV4();
+  await vault.set(DEVICE_ID_KEY, fresh);
+  return fresh;
+}
+
 export class AgentIdentity {
   /** @type {{ publicKey: Uint8Array, secretKey: Uint8Array }} */
   #signKP;
@@ -82,13 +116,16 @@ export class AgentIdentity {
   #vault;
   /** @type {string | null} — the stable opaque user id (Stoop V1 Phase 11). */
   #stableId = null;
+  /** @type {string | null} — per-install device id (Stoop V2.5 Phase 33.1). */
+  #deviceId = null;
 
-  constructor({ seed, vault, stableId = null }) {
+  constructor({ seed, vault, stableId = null, deviceId = null }) {
     this.#vault  = vault;
     this.#signKP = nacl.sign.keyPair.fromSeed(seed);
     this.#boxKP  = convertKeyPair(this.#signKP);
     if (!this.#boxKP) throw new Error('Failed to derive Curve25519 keypair from seed');
     this.#stableId = stableId;
+    this.#deviceId = deviceId;
   }
 
   // ── Factory methods ────────────────────────────────────────────────────────
@@ -98,7 +135,8 @@ export class AgentIdentity {
     const seed = nacl.randomBytes(32);
     await vault.set('agent-privkey', _writeEntry(seed, null));
     const stableId = await _loadOrInitStableId(vault, seed);
-    return new AgentIdentity({ seed, vault, stableId });
+    const deviceId = await _loadOrInitDeviceId(vault);
+    return new AgentIdentity({ seed, vault, stableId, deviceId });
   }
 
   /** Restore an existing keypair from the vault. */
@@ -108,7 +146,8 @@ export class AgentIdentity {
     const parsed = _parseEntry(raw);
     const seed = b64decode(parsed.current);
     const stableId = await _loadOrInitStableId(vault, seed);
-    return new AgentIdentity({ seed, vault, stableId });
+    const deviceId = await _loadOrInitDeviceId(vault);
+    return new AgentIdentity({ seed, vault, stableId, deviceId });
   }
 
   /**
@@ -127,7 +166,8 @@ export class AgentIdentity {
     const parsed   = _parseEntry(raw);
     const currentSeed = b64decode(parsed.current);
     const stableId = await _loadOrInitStableId(vault, currentSeed);
-    const current  = new AgentIdentity({ seed: currentSeed, vault, stableId });
+    const deviceId = await _loadOrInitDeviceId(vault);
+    const current  = new AgentIdentity({ seed: currentSeed, vault, stableId, deviceId });
     let previous   = null;
     if (parsed.previous?.seed
         && typeof parsed.previous.graceUntil === 'number'
@@ -135,8 +175,10 @@ export class AgentIdentity {
       // Previous identity is NOT given the vault (we don't want it to
       // overwrite the current-identity blob via any future writes).
       // It carries the same stableId — rotation never changes it.
+      // deviceId is install-scoped: the previous keypair lived on the
+      // same install, so it carries the same deviceId too.
       previous = {
-        identity:   new AgentIdentity({ seed: b64decode(parsed.previous.seed), vault: null, stableId }),
+        identity:   new AgentIdentity({ seed: b64decode(parsed.previous.seed), vault: null, stableId, deviceId }),
         graceUntil: parsed.previous.graceUntil,
       };
     }
@@ -151,7 +193,8 @@ export class AgentIdentity {
     const seed = mnemonicToSeed(mnemonic);
     await vault.set('agent-privkey', _writeEntry(seed, null));
     const stableId = await _loadOrInitStableId(vault, seed);
-    return new AgentIdentity({ seed, vault, stableId });
+    const deviceId = await _loadOrInitDeviceId(vault);
+    return new AgentIdentity({ seed, vault, stableId, deviceId });
   }
 
   /**
@@ -174,9 +217,10 @@ export class AgentIdentity {
     const parsed = _parseEntry(raw);
 
     const oldSeed     = b64decode(parsed.current);
-    /** stableId survives rotation — load (or lazy-init for legacy vaults). */
+    /** stableId + deviceId both survive rotation — load (or lazy-init). */
     const stableId    = await _loadOrInitStableId(vault, oldSeed);
-    const oldIdentity = new AgentIdentity({ seed: oldSeed, vault, stableId });
+    const deviceId    = await _loadOrInitDeviceId(vault);
+    const oldIdentity = new AgentIdentity({ seed: oldSeed, vault, stableId, deviceId });
 
     const newSeed     = nacl.randomBytes(32);
     const graceUntil  = Date.now() + gracePeriodSeconds * 1_000;
@@ -191,7 +235,7 @@ export class AgentIdentity {
     };
     await vault.set('agent-privkey', JSON.stringify(blob));
 
-    const newIdentity = new AgentIdentity({ seed: newSeed, vault, stableId });
+    const newIdentity = new AgentIdentity({ seed: newSeed, vault, stableId, deviceId });
     return { oldIdentity, newIdentity, graceUntil };
   }
 
@@ -216,6 +260,22 @@ export class AgentIdentity {
    */
   get stableId() {
     return this.#stableId;
+  }
+
+  /**
+   * Per-install device identifier (Stoop V2.5 Phase 33.1, 2026-05-06).
+   *
+   * UUIDv4 string, generated once at first construction (or lazy-init
+   * on legacy vaults), persisted under `agent-device-id`, **untouched
+   * by rotation** (still the same install) but **fresh on every new
+   * install** (mnemonic-restore on a fresh device gets a fresh value).
+   *
+   * Apps use it to scope device-specific settings on the pod —
+   * e.g. `<pod>/<app>/settings/devices/<deviceId>.json`.  Returns null
+   * for detached identities (vault === null).
+   */
+  get deviceId() {
+    return this.#deviceId;
   }
 
   /**
