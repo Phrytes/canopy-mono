@@ -24,7 +24,11 @@ vi.mock('react-native', () => {
     Platform,
     StyleSheet: { create: (s) => s, hairlineWidth: 1, flatten: (s) => s },
     Alert:       { alert: vi.fn() },
-    Linking:     { openURL: vi.fn() },
+    Linking: {
+      openURL:          vi.fn(),
+      getInitialURL:    vi.fn(async () => null),
+      addEventListener: vi.fn(() => ({ remove: vi.fn() })),
+    },
     // Component stubs — the tests mostly poke at logic, not rendered output.
     View:                 'View',
     Text:                 'Text',
