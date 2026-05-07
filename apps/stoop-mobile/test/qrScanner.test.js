@@ -34,9 +34,22 @@ describe('classifyQrPayload — invite', () => {
     expect(classifyQrPayload(url).kind).toBe('unknown');
   });
 
-  it('rejects JSON without groupId + signature', () => {
+  it('rejects JSON without groupId + (signature|code)', () => {
     expect(classifyQrPayload(JSON.stringify({ groupId: 'x' })).kind).toBe('unknown');
     expect(classifyQrPayload(JSON.stringify({ signature: 'x' })).kind).toBe('unknown');
+    expect(classifyQrPayload(JSON.stringify({ code: 'x' })).kind).toBe('unknown');
+  });
+
+  it('accepts the Stoop membership-code shape — `{groupId, code, expiresAt}`', () => {
+    const payload = JSON.stringify({
+      groupId:   'oosterpoort',
+      code:      'P3LK9-X4QM7',
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    });
+    const r = classifyQrPayload(payload);
+    expect(r.kind).toBe('invite');
+    expect(r.payload.groupId).toBe('oosterpoort');
+    expect(r.payload.code).toBe('P3LK9-X4QM7');
   });
 });
 

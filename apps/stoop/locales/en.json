@@ -237,7 +237,8 @@
     "heading":      { "text": "Show this QR to your neighbour", "doc": "Heading on OnboardIssueScreen." },
     "body":         { "text": "Have the other device scan this QR from the Stoop welcome screen.", "doc": "Body on OnboardIssueScreen." },
     "expires_at":   { "text": "Valid until {ts}", "doc": "Expiration hint on OnboardIssueScreen." },
-    "no_invite":    { "text": "No invite available. Open this screen via Group → Issue invite.", "doc": "Empty state when route opened without an invite param." }
+    "no_invite":    { "text": "No invite available. Open this screen via Group → Issue invite.", "doc": "Empty state when route opened without an invite param." },
+    "code_label":   { "text": "Or share this code:", "doc": "Label above the membership code shown as text on OnboardIssueScreen — for users who can't scan the QR." }
   },
   "metrics": {
     "heading":    { "text": "Stats", "doc": "Heading on MetricsScreen." },
@@ -641,7 +642,8 @@
     "no_active_group":        { "text": "Join a group first.", "doc": "Empty state on mobile GroupScreen when there's no active bundle." },
     "rotate_code":            { "text": "Rotate code now", "doc": "Admin CTA on mobile GroupScreen — calls rotateMyGroupCode." },
     "rotating":               { "text": "Rotating…", "doc": "CTA label while rotateMyGroupCode is in flight." },
-    "admin_code_expires":     { "text": "Expires on {ts} ({n} days)", "doc": "Hint under the admin code showing the expiry + rotation cadence." }
+    "admin_code_expires":     { "text": "Expires on {ts} ({n} days)", "doc": "Hint under the admin code showing the expiry + rotation cadence." },
+    "no_code":                { "text": "No active code found. Try \"Rotate code now\" to mint a new one.", "doc": "Inline error on mobile GroupScreen when both getCurrentMembershipCode and rotateMyGroupCode failed to surface a code." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Completing pod sign-in", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },

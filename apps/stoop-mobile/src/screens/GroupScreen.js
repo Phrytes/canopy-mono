@@ -34,7 +34,6 @@ export function GroupScreen() {
     groupId ? { groupId } : null, [groupId]);
   const rotate = useSkill('rotateMyGroupCode');
   const leave  = useSkill('leaveGroup');
-  const issue  = useSkill('issueInvite');
 
   const [showLeave, setShowLeave] = useState(false);
   const [busy,  setBusy]  = useState(false);
@@ -71,8 +70,33 @@ export function GroupScreen() {
   const onIssueInvite = async () => {
     setBusy(true); setError(null);
     try {
-      const r = await issue.call({});
-      if (r?.invite) nav.navigate(ROUTES.OnboardIssue, { invite: r.invite });
+      // Stoop's invite is the current membership code wrapped as
+      // `{groupId, code, expiresAt}`.  `code` is loaded above via
+      // `useSkillResult('getCurrentMembershipCode', {groupId})`.
+      // If it's missing (admin gate failed, code expired) refresh
+      // first; if still missing, mint a fresh one via rotate.
+      let codeData = code.data;
+      if (!codeData?.code) {
+        await code.refresh();
+        codeData = code.data;
+      }
+      if (!codeData?.code) {
+        await rotate.call({ groupId });
+        await code.refresh();
+        codeData = code.data;
+      }
+      if (!codeData?.code) {
+        setError(t('group.no_code',
+                   'Geen actieve code gevonden. Probeer "Roteer code nu" om een nieuwe te maken.'));
+        return;
+      }
+      nav.navigate(ROUTES.OnboardIssue, {
+        invite: {
+          groupId,
+          code:      codeData.code,
+          expiresAt: codeData.expiresAt,
+        },
+      });
     } catch (err) { setError(err?.message ?? String(err)); }
     finally { setBusy(false); }
   };

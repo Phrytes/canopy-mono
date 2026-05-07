@@ -237,7 +237,8 @@
     "heading":      { "text": "Toon deze QR aan je buurman", "doc": "Heading on OnboardIssueScreen." },
     "body":         { "text": "Laat het andere toestel deze QR scannen via het Stoop-welkomstscherm.", "doc": "Body on OnboardIssueScreen." },
     "expires_at":   { "text": "Geldig tot {ts}", "doc": "Expiration hint on OnboardIssueScreen." },
-    "no_invite":    { "text": "Geen uitnodiging beschikbaar. Open dit scherm vanuit Groep → Maak uitnodiging.", "doc": "Empty state when route opened without an invite param." }
+    "no_invite":    { "text": "Geen uitnodiging beschikbaar. Open dit scherm vanuit Groep → Maak uitnodiging.", "doc": "Empty state when route opened without an invite param." },
+    "code_label":   { "text": "Of deel deze code:", "doc": "Label above the membership code shown as text on OnboardIssueScreen — for users who can't scan the QR." }
   },
   "metrics": {
     "heading":     { "text": "Statistieken", "doc": "Heading on MetricsScreen." },
@@ -641,7 +642,8 @@
     "no_active_group":        { "text": "Sluit eerst aan bij een groep.", "doc": "Empty state on mobile GroupScreen when there's no active bundle." },
     "rotate_code":            { "text": "Roteer code nu", "doc": "Admin CTA on mobile GroupScreen — calls rotateMyGroupCode." },
     "rotating":               { "text": "Roteren…", "doc": "CTA label while rotateMyGroupCode is in flight." },
-    "admin_code_expires":     { "text": "Verloopt op {ts} ({n} dagen)", "doc": "Hint under the admin code showing the expiry + rotation cadence." }
+    "admin_code_expires":     { "text": "Verloopt op {ts} ({n} dagen)", "doc": "Hint under the admin code showing the expiry + rotation cadence." },
+    "no_code":                { "text": "Geen actieve code gevonden. Probeer \"Roteer code nu\" om een nieuwe te maken.", "doc": "Inline error on mobile GroupScreen when both getCurrentMembershipCode and rotateMyGroupCode failed to surface a code." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Pod-aanmelding voltooien", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },

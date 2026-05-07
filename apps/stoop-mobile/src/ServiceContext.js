@@ -153,6 +153,7 @@ export function ServiceProvider({ children, deps = {} }) {
               members:    entry.members ?? [],
               skills:     entry.skills  ?? [],
               posture:    entry.posture ?? {},
+              localRole:  entry.role,
               label:      `stoop-mobile:${entry.groupId}`,
             });
             built.set(entry.groupId, { entry, bundle });
@@ -324,6 +325,7 @@ export function ServiceProvider({ children, deps = {} }) {
     // MemberMap (all written DURING createGroupV2 against the
     // bootstrap bundle's agent + itemStore) carry forward.
     let bundle;
+    const role = opts.role ?? 'member';
     if (bootstrap && groups.size === 0) {
       bundle = await relabelBundleGroup({
         bundle:     bootstrap,
@@ -332,6 +334,7 @@ export function ServiceProvider({ children, deps = {} }) {
         peers:      opts.members ?? [],
         skills:     opts.skills  ?? [],
         posture:    opts.posture ?? {},
+        localRole:  role,
       });
       delete bundle.isBootstrap;
       setBootstrap(null);
@@ -340,9 +343,10 @@ export function ServiceProvider({ children, deps = {} }) {
         identity,
         groupId,
         localActor,
-        members: opts.members ?? [],
-        skills:  opts.skills  ?? [],
-        posture: opts.posture ?? {},
+        members:   opts.members ?? [],
+        skills:    opts.skills  ?? [],
+        posture:   opts.posture ?? {},
+        localRole: role,
       });
       _wireBundleEvents(bundle, () => setLastEvent((n) => n + 1));
     }
@@ -351,7 +355,7 @@ export function ServiceProvider({ children, deps = {} }) {
       groupId,
       displayName: opts.displayName,
       actorWebid:  opts.actorWebid ?? localActor,
-      role:        opts.role ?? 'member',
+      role,
       joinedAt:    Date.now(),
     };
     await registryAddGroup({ entry, storage: deps.storage });

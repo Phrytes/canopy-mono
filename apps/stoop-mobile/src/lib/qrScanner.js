@@ -96,12 +96,16 @@ function _tryClassifyInvite(text) {
 
 function _looksLikeInvite(obj) {
   if (!obj || typeof obj !== 'object') return false;
-  // Stoop invite tokens come from core.GroupManager.issueInvite —
-  // they have `groupId`, `nonce`, `expiresAt`, `signature`, etc.
-  // We accept anything with at least groupId + a signature-shaped field.
   if (typeof obj.groupId !== 'string' || obj.groupId.length === 0) return false;
-  if (typeof obj.signature !== 'string') return false;
-  return true;
+  // Stoop's design uses **membership codes** (`{groupId, code,
+  // expiresAt}`) — share-secret semantics, no signature.  We also
+  // accept the legacy GroupManager-issued shape (`{groupId,
+  // signature, ...}`) so QR codes from non-Stoop apps that ride the
+  // identity-resolver onboarding skills still classify; the scan
+  // routing decides which redeem flow each shape goes to.
+  if (typeof obj.code      === 'string') return true;
+  if (typeof obj.signature === 'string') return true;
+  return false;
 }
 
 function _tryClassifyRecovery(text) {

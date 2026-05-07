@@ -36,6 +36,11 @@ export function OnboardIssueScreen() {
     );
   }
 
+  // Stoop's invite is `{groupId, code, expiresAt}`. Show the code as
+  // text too — for users who can't / won't scan (paste flow, copy
+  // into WhatsApp, read aloud over the phone).
+  const codeText = typeof invite?.code === 'string' ? invite.code : null;
+
   return (
     <ScrollView contentContainerStyle={styles.root}>
       <Text style={styles.heading}>
@@ -48,6 +53,14 @@ export function OnboardIssueScreen() {
       <View style={styles.qrWrap}>
         <QrCode value={payload} size={280} />
       </View>
+      {codeText ? (
+        <View style={styles.codeBlock}>
+          <Text style={styles.codeLabel}>
+            {t('onboard_issue.code_label', 'Of deel deze code:')}
+          </Text>
+          <Text style={styles.codeValue} selectable>{codeText}</Text>
+        </View>
+      ) : null}
       <Text style={styles.expiresHint}>
         {invite?.expiresAt
           ? t('onboard_issue.expires_at', 'Geldig tot {ts}')
@@ -77,6 +90,14 @@ const styles = StyleSheet.create({
     padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border,
   },
   expiresHint: { fontSize: FONT_SIZES.sm, color: COLORS.textMuted },
+  codeBlock: {
+    alignItems: 'center', marginBottom: SPACING.md,
+  },
+  codeLabel: { fontSize: FONT_SIZES.sm, color: COLORS.textMuted, marginBottom: SPACING.xs },
+  codeValue: {
+    fontFamily: 'monospace', fontSize: FONT_SIZES.lg,
+    color: COLORS.text, letterSpacing: 1,
+  },
   empty:   { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACING.xl },
   emptyText: { color: COLORS.textMuted, fontSize: FONT_SIZES.md, textAlign: 'center' },
 });
