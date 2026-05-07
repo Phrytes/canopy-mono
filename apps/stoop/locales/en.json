@@ -31,8 +31,12 @@
     "row_pod_root":           { "text": "Pod location", "doc": "Label for the pod root URL row." }
   },
   "mine": {
-    "page_title": { "text": "Stoop — My posts", "doc": "Browser tab title for /mine.html." },
-    "heading":    { "text": "My posts", "doc": "Main page heading on /mine.html." }
+    "page_title":     { "text": "Stoop — My posts", "doc": "Browser tab title for /mine.html." },
+    "heading":        { "text": "My posts", "doc": "Main page heading on /mine.html." },
+    "claims_heading": { "text": "Replies", "doc": "Section heading above the per-item claim list on MineScreen (mobile)." },
+    "accept_claim":   { "text": "Accept", "doc": "Action: accept a claim (mobile)." },
+    "reject_claim":   { "text": "Reject", "doc": "Action: reject a claim (mobile)." },
+    "empty":          { "text": "You haven't posted anything yet.", "doc": "Empty state on MineScreen (mobile)." }
   },
   "sign_in": {
     "page_title":          { "text": "Stoop — Pod sign-in", "doc": "Browser tab title for /sign-in.html." },
@@ -166,11 +170,31 @@
     "too_many_attachments":  { "text": "Max {n} attachments.", "doc": "Inline alert when the user exceeds MAX_ATTACHMENTS." },
     "permission_denied":     { "text": "Stoop doesn't have camera/library permission.", "doc": "Inline error when the OS rejected the permission prompt." }
   },
-  "contacts": {
-    "search_placeholder":   { "text": "Search by name or @handle", "doc": "Placeholder of the ContactsScreen search box." },
-    "muted":                { "text": "muted", "doc": "Inline tag next to a contact's name when muted." },
-    "empty_no_contacts":    { "text": "No contacts yet.", "doc": "Empty state when the contact list is empty." },
-    "empty_filtered":       { "text": "No contacts match this search.", "doc": "Empty state when the search filter excludes everything." }
+  "privacy": {
+    "heading":               { "text": "Privacy & safety", "doc": "Heading on PrivacyScreen." },
+    "section_local":         { "text": "Stoop runs on your device — there's no central server in the middle.", "doc": "Privacy section: local-first." },
+    "section_pod":           { "text": "If you connect a Solid pod, you control your own data and who can read it.", "doc": "Privacy section: pod ownership." },
+    "section_handles":       { "text": "Others see your @handle by default. You can reveal a real name to specific people.", "doc": "Privacy section: handles." },
+    "section_location":      { "text": "Your location is rounded to a 500m grid and only shared if you opt in.", "doc": "Privacy section: location." },
+    "section_no_thirdparty": { "text": "No analytics, no ad-trackers, no third-party cloud providers.", "doc": "Privacy section: third-parties." }
+  },
+  "signin": {
+    "heading":     { "text": "Pod sign-in", "doc": "Heading on SignInScreen." },
+    "body":        { "text": "Connect your Solid pod to sync your profile + posts across devices.", "doc": "Body on SignInScreen." },
+    "go":          { "text": "Sign in with Inrupt", "doc": "Primary CTA on SignInScreen." },
+    "signed_in":   { "text": "Signed in as {webid}", "doc": "Status when a session exists." },
+    "signout":     { "text": "Sign out", "doc": "CTA when signed in." },
+    "placeholder": { "text": "Pod sign-in is not wired in this build. V3 ships local-only by default; pod connection lands in a follow-up build.", "doc": "Placeholder body shown until bring-up code wires useSignInHook." }
+  },
+  "onboard_issue": {
+    "heading":      { "text": "Show this QR to your neighbour", "doc": "Heading on OnboardIssueScreen." },
+    "body":         { "text": "Have the other device scan this QR from the Stoop welcome screen.", "doc": "Body on OnboardIssueScreen." },
+    "expires_at":   { "text": "Valid until {ts}", "doc": "Expiration hint on OnboardIssueScreen." },
+    "no_invite":    { "text": "No invite available. Open this screen via Group → Issue invite.", "doc": "Empty state when route opened without an invite param." }
+  },
+  "metrics": {
+    "heading":    { "text": "Stats", "doc": "Heading on MetricsScreen." },
+    "unavailable": { "text": "Stats are not wired in this build.", "doc": "Empty state when bring-up code didn't pass a snapshot." }
   },
   "contact": {
     "unknown":              { "text": "Contact not found.", "doc": "Empty state on ContactScreen when the route was opened without a resolved contact." },
@@ -381,7 +405,12 @@
     "list_delete_confirm":     { "text": "Delete this list?", "doc": "JS confirm() before deleting a contact list." },
     "list_empty_inline":       { "text": "— empty —", "doc": "Inline placeholder when a contact list has no members." },
     "contact_count_one":       { "text": "{n} contact", "doc": "Singular form of the per-list contact-count chip." },
-    "contact_count_many":      { "text": "{n} contacts", "doc": "Plural form of the per-list contact-count chip." }
+    "contact_count_many":      { "text": "{n} contacts", "doc": "Plural form of the per-list contact-count chip." },
+
+    "search_placeholder":      { "text": "Search by name or @handle", "doc": "Placeholder of the mobile ContactsScreen search box. Stoop V3 mobile." },
+    "muted":                   { "text": "muted", "doc": "Inline tag next to a contact's name when muted (mobile)." },
+    "empty_no_contacts":       { "text": "No contacts yet.", "doc": "Empty state on mobile ContactsScreen when the list is empty." },
+    "empty_filtered":          { "text": "No contacts match this search.", "doc": "Empty state on mobile ContactsScreen when the search filter excludes everything." }
   },
   "push": {
     "page_title":               { "text": "Stoop — Push notifications", "doc": "Browser tab title for /push.html." },
@@ -398,7 +427,16 @@
     "unsubscribed_ok":          { "text": "Unsubscribed.", "doc": "Inline confirmation after a successful unsubscribe." },
     "test_sending":             { "text": "Test push sent…", "doc": "Inline status while a test push is in flight." },
     "test_body":                { "text": "A test notification", "doc": "Body of the test push notification." },
-    "test_result":              { "text": "Result: {delivered} delivered, {failed} failed.", "doc": "Inline status after the test push." }
+    "test_result":              { "text": "Result: {delivered} delivered, {failed} failed.", "doc": "Inline status after the test push." },
+
+    "enable":                   { "text": "Enable notifications", "doc": "CTA on mobile PushScreen — kicks off requestPushPermission + setupPush. Stoop V3 mobile." },
+    "enabling":                 { "text": "Enabling…", "doc": "CTA label while in flight on mobile PushScreen." },
+    "enabled":                  { "text": "On", "doc": "Idle CTA label after enable succeeded on mobile PushScreen." },
+    "status_unknown":           { "text": "Not enabled yet.", "doc": "Status panel on mobile PushScreen when push hasn't been turned on yet." },
+    "status_denied":            { "text": "Permission denied. Enable notifications via Settings.", "doc": "Status panel on mobile when permission was denied." },
+    "status_granted_no_agent":  { "text": "Permission OK. Waiting for agent bring-up.", "doc": "Status panel when perm is granted but the agent isn't running yet on mobile." },
+    "status_no_token":          { "text": "No token received. Try again.", "doc": "Status panel when expo didn't return a token on mobile." },
+    "status_enabled":           { "text": "Notifications are on ✓", "doc": "Success status panel on mobile PushScreen." }
   },
   "create_group": {
     "page_title":     { "text": "Stoop — New group", "doc": "Browser tab title for /create-group.html." },
@@ -465,7 +503,20 @@
   "group": {
     "eviction_banner_title":  { "text": "Expired memberships", "doc": "Heading of the orange banner on /group.html shown when one or more members' codes have expired past the grace window." },
     "eviction_banner_intro":  { "text": "One or more members' membership code has expired — their posts are hidden until they redeem the new code.", "doc": "Lead paragraph in the eviction banner. Explains the auto-evict behaviour from Phase 35 (V2.5)." },
-    "eviction_member_html":   { "text": "<strong>{webid}</strong> — expired on {date}", "doc": "Single list item inside the eviction banner. Contains a <strong> tag and two placeholders: {webid} (URL) and {date} (locale-formatted timestamp). Preserve both." }
+    "eviction_member_html":   { "text": "<strong>{webid}</strong> — expired on {date}", "doc": "Single list item inside the eviction banner. Contains a <strong> tag and two placeholders: {webid} (URL) and {date} (locale-formatted timestamp). Preserve both." },
+
+    "unnamed":                { "text": "Unknown group", "doc": "Heading fallback when group.name is missing on mobile GroupScreen." },
+    "evicted_title":          { "text": "You have been removed from this group.", "doc": "Eviction banner title on mobile GroupScreen." },
+    "evicted_body":           { "text": "You can no longer see posts or messages in this group. Ask the admin to invite you again.", "doc": "Eviction banner body on mobile GroupScreen." },
+    "member_count":           { "text": "Members", "doc": "Label for the member-count row on mobile GroupScreen." },
+    "admin_code":             { "text": "Admin code", "doc": "Label for the admin-code row on mobile GroupScreen (admin only)." },
+    "admin_code_hint":        { "text": "Only share this code with other admins.", "doc": "Hint under the admin code on mobile GroupScreen." },
+    "issue_invite":           { "text": "Issue invite", "doc": "Admin CTA on mobile GroupScreen — generates a fresh invite token + opens OnboardIssue." },
+    "issuing":                { "text": "Generating…", "doc": "CTA label while issuing on mobile." },
+    "leave":                  { "text": "Leave group", "doc": "Destructive CTA on mobile GroupScreen." },
+    "confirm_leave_title":    { "text": "Leave this group?", "doc": "ConfirmModal title on mobile GroupScreen." },
+    "confirm_leave_body":     { "text": "You will lose access to all posts and messages in this group.", "doc": "ConfirmModal body on mobile GroupScreen." },
+    "confirm_leave_yes":      { "text": "Leave", "doc": "Destructive confirm label on mobile GroupScreen." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Completing pod sign-in", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },
@@ -517,7 +568,22 @@
     "default_share_location_hint":  { "text": "Decides whether <code>shareLocation</code> defaults to on when you add someone. You can always override per-contact later.", "doc": "Hint under the default-share-location toggle. Contains <code> tag for the field name." },
 
     "feedback_saving":        { "text": "Saving…", "doc": "Inline feedback text shown while a settings save is in flight." },
-    "feedback_saved":         { "text": "Saved.", "doc": "Inline feedback text shown after a successful settings save." }
+    "feedback_saved":         { "text": "Saved.", "doc": "Inline feedback text shown after a successful settings save." },
+
+    "shared_heading":         { "text": "Shared (all devices)", "doc": "Mobile section heading for the cross-device portion of settings (Stoop V3 mobile)." },
+    "device_heading":         { "text": "This device", "doc": "Mobile section heading for the per-device portion (Stoop V3 mobile)." },
+    "privacy_heading":        { "text": "Privacy & notifications", "doc": "Mobile section heading on SettingsScreen (Stoop V3 mobile)." },
+    "handle":                 { "text": "Handle", "doc": "Label for the user handle row on mobile SettingsScreen." },
+    "display_name":           { "text": "Name", "doc": "Label for the displayName row on mobile SettingsScreen." },
+    "location":               { "text": "Location", "doc": "Label for the location row on mobile SettingsScreen." },
+    "location_unset":         { "text": "—", "doc": "Empty marker when no location is set on mobile SettingsScreen." },
+    "edit_profile":           { "text": "Edit profile", "doc": "CTA on mobile SettingsScreen — navigates to ProfileMine." },
+    "poll_interval":          { "text": "Poll interval (ms)", "doc": "Label for the pollIntervalMs input on mobile SettingsScreen." },
+    "poll_hint":              { "text": "Between {min}-{max} ms. Mobile default: {def} ms (battery-aware).", "doc": "Inline hint under the poll-interval input on mobile." },
+    "save":                   { "text": "Save", "doc": "Submit button on mobile SettingsScreen." },
+    "saving":                 { "text": "Saving…", "doc": "Submit button label while in flight on mobile." },
+    "push_link":              { "text": "Notifications", "doc": "Link to PushScreen from mobile SettingsScreen." },
+    "privacy_link":           { "text": "Privacy & safety", "doc": "Link to PrivacyScreen from mobile SettingsScreen." }
   },
   "restore": {
     "page_title":           { "text": "Restore account on this device", "doc": "Browser tab title + main page heading on /restore.html — the recovery-from-mnemonic flow." },

@@ -31,8 +31,12 @@
     "row_pod_root":           { "text": "Pod-locatie", "doc": "Label for the pod root URL row." }
   },
   "mine": {
-    "page_title": { "text": "Stoop — Mijn posts", "doc": "Browser tab title for /mine.html." },
-    "heading":    { "text": "Mijn posts", "doc": "Main page heading on /mine.html." }
+    "page_title":     { "text": "Stoop — Mijn posts", "doc": "Browser tab title for /mine.html." },
+    "heading":        { "text": "Mijn posts", "doc": "Main page heading on /mine.html." },
+    "claims_heading": { "text": "Reacties", "doc": "Section heading above the per-item claim list on MineScreen (mobile)." },
+    "accept_claim":   { "text": "Accepteer", "doc": "Action: accept a claim (mobile)." },
+    "reject_claim":   { "text": "Wijs af", "doc": "Action: reject a claim (mobile)." },
+    "empty":          { "text": "Je hebt nog geen posts.", "doc": "Empty state on MineScreen (mobile)." }
   },
   "sign_in": {
     "page_title":          { "text": "Stoop — Pod sign-in", "doc": "Browser tab title for /sign-in.html." },
@@ -166,11 +170,31 @@
     "too_many_attachments":  { "text": "Max {n} bijlagen.", "doc": "Inline alert when the user exceeds MAX_ATTACHMENTS." },
     "permission_denied":     { "text": "Stoop heeft geen toestemming voor camera/galerij.", "doc": "Inline error when the OS rejected the permission prompt." }
   },
-  "contacts": {
-    "search_placeholder":   { "text": "Zoek op naam of @handle", "doc": "Placeholder of the ContactsScreen search box." },
-    "muted":                { "text": "gedempt", "doc": "Inline tag next to a contact's name when muted." },
-    "empty_no_contacts":    { "text": "Nog geen contacten.", "doc": "Empty state when the contact list is empty." },
-    "empty_filtered":       { "text": "Geen contacten voor deze zoekopdracht.", "doc": "Empty state when the search filter excludes everything." }
+  "privacy": {
+    "heading":               { "text": "Privacy & veiligheid", "doc": "Heading on PrivacyScreen." },
+    "section_local":         { "text": "Stoop draait op je toestel — er staat geen centrale server tussen.", "doc": "Privacy section: local-first." },
+    "section_pod":           { "text": "Als je een Solid-pod koppelt, beheer je je eigen data en wie er toegang heeft.", "doc": "Privacy section: pod ownership." },
+    "section_handles":       { "text": "Anderen zien standaard alleen je @handle. Je kan een echte naam laten zien aan wie jij wilt.", "doc": "Privacy section: handles." },
+    "section_location":      { "text": "Je locatie wordt afgerond naar een 500m grid en alleen gedeeld als je dat aanzet.", "doc": "Privacy section: location." },
+    "section_no_thirdparty": { "text": "Geen analytics, geen ad-trackers, geen cloud-providers behalve degene die jij kiest.", "doc": "Privacy section: third-parties." }
+  },
+  "signin": {
+    "heading":     { "text": "Pod-aanmelding", "doc": "Heading on SignInScreen." },
+    "body":        { "text": "Koppel je Solid-pod om profiel + posts cross-device te synchroniseren.", "doc": "Body on SignInScreen." },
+    "go":          { "text": "Aanmelden met Inrupt", "doc": "Primary CTA on SignInScreen." },
+    "signed_in":   { "text": "Aangemeld als {webid}", "doc": "Status when a session exists." },
+    "signout":     { "text": "Afmelden", "doc": "CTA when signed in." },
+    "placeholder": { "text": "Pod-sign-in is in deze build niet aangesloten. V3 draait standaard lokaal; pod-koppeling komt in een volgende build.", "doc": "Placeholder body shown until bring-up code wires useSignInHook." }
+  },
+  "onboard_issue": {
+    "heading":      { "text": "Toon deze QR aan je buurman", "doc": "Heading on OnboardIssueScreen." },
+    "body":         { "text": "Laat het andere toestel deze QR scannen via het Stoop-welkomstscherm.", "doc": "Body on OnboardIssueScreen." },
+    "expires_at":   { "text": "Geldig tot {ts}", "doc": "Expiration hint on OnboardIssueScreen." },
+    "no_invite":    { "text": "Geen uitnodiging beschikbaar. Open dit scherm vanuit Groep → Maak uitnodiging.", "doc": "Empty state when route opened without an invite param." }
+  },
+  "metrics": {
+    "heading":     { "text": "Statistieken", "doc": "Heading on MetricsScreen." },
+    "unavailable": { "text": "Statistieken zijn niet aangesloten in deze build.", "doc": "Empty state when bring-up code didn't pass a snapshot." }
   },
   "contact": {
     "unknown":              { "text": "Contact niet gevonden.", "doc": "Empty state on ContactScreen when the route was opened without a resolved contact." },
@@ -381,7 +405,12 @@
     "list_delete_confirm":     { "text": "Lijst verwijderen?", "doc": "JS confirm() before deleting a contact list." },
     "list_empty_inline":       { "text": "— leeg —", "doc": "Inline placeholder when a contact list has no members." },
     "contact_count_one":       { "text": "{n} contact", "doc": "Singular form of the per-list contact-count chip. {n} = 1." },
-    "contact_count_many":      { "text": "{n} contacten", "doc": "Plural form of the per-list contact-count chip. {n} = 0 or >=2." }
+    "contact_count_many":      { "text": "{n} contacten", "doc": "Plural form of the per-list contact-count chip. {n} = 0 or >=2." },
+
+    "search_placeholder":      { "text": "Zoek op naam of @handle", "doc": "Placeholder of the mobile ContactsScreen search box. Stoop V3 mobile." },
+    "muted":                   { "text": "gedempt", "doc": "Inline tag next to a contact's name when muted (mobile)." },
+    "empty_no_contacts":       { "text": "Nog geen contacten.", "doc": "Empty state on mobile ContactsScreen when the list is empty." },
+    "empty_filtered":          { "text": "Geen contacten voor deze zoekopdracht.", "doc": "Empty state on mobile ContactsScreen when the search filter excludes everything." }
   },
   "push": {
     "page_title":               { "text": "Stoop — Push-meldingen", "doc": "Browser tab title for /push.html." },
@@ -398,7 +427,16 @@
     "unsubscribed_ok":          { "text": "Afgemeld.", "doc": "Inline confirmation after a successful unsubscribe." },
     "test_sending":             { "text": "Test-push verstuurd…", "doc": "Inline status while a test push is in flight." },
     "test_body":                { "text": "Een test-melding", "doc": "Body of the test push notification (visible in the OS notification UI)." },
-    "test_result":              { "text": "Resultaat: {delivered} bezorgd, {failed} mislukt.", "doc": "Inline status after the test push. {delivered} and {failed} are integer counts." }
+    "test_result":              { "text": "Resultaat: {delivered} bezorgd, {failed} mislukt.", "doc": "Inline status after the test push. {delivered} and {failed} are integer counts." },
+
+    "enable":                   { "text": "Schakel meldingen in", "doc": "CTA on mobile PushScreen — kicks off requestPushPermission + setupPush. Stoop V3 mobile." },
+    "enabling":                 { "text": "Inschakelen…", "doc": "CTA label while in flight on mobile PushScreen." },
+    "enabled":                  { "text": "Aan", "doc": "Idle CTA label after enable succeeded on mobile PushScreen." },
+    "status_unknown":           { "text": "Nog niet ingeschakeld.", "doc": "Status panel on mobile PushScreen when push hasn't been turned on yet." },
+    "status_denied":            { "text": "Toestemming geweigerd. Schakel meldingen in via Instellingen.", "doc": "Status panel on mobile when permission was denied." },
+    "status_granted_no_agent":  { "text": "Toestemming OK. Wacht op agent-bringup.", "doc": "Status panel when perm is granted but the agent isn't running yet on mobile." },
+    "status_no_token":          { "text": "Geen token ontvangen. Probeer opnieuw.", "doc": "Status panel when expo didn't return a token on mobile." },
+    "status_enabled":           { "text": "Meldingen staan aan ✓", "doc": "Success status panel on mobile PushScreen." }
   },
   "create_group": {
     "page_title":     { "text": "Stoop — Nieuwe groep", "doc": "Browser tab title for /create-group.html." },
@@ -465,7 +503,20 @@
   "group": {
     "eviction_banner_title":  { "text": "Verlopen lidmaatschappen", "doc": "Heading of the orange banner on /group.html shown when one or more members' codes have expired past the grace window." },
     "eviction_banner_intro":  { "text": "Voor één of meer leden is de membership-code verlopen — hun posts worden verborgen totdat ze de nieuwe code inwisselen.", "doc": "Lead paragraph in the eviction banner. Explains the auto-evict behaviour from Phase 35 (V2.5)." },
-    "eviction_member_html":   { "text": "<strong>{webid}</strong> — verlopen op {date}", "doc": "Single list item inside the eviction banner. Contains a <strong> tag and two placeholders: {webid} (URL) and {date} (locale-formatted timestamp). Preserve both." }
+    "eviction_member_html":   { "text": "<strong>{webid}</strong> — verlopen op {date}", "doc": "Single list item inside the eviction banner. Contains a <strong> tag and two placeholders: {webid} (URL) and {date} (locale-formatted timestamp). Preserve both." },
+
+    "unnamed":                { "text": "Onbekende groep", "doc": "Heading fallback when group.name is missing on mobile GroupScreen." },
+    "evicted_title":          { "text": "Je bent uit deze groep verwijderd.", "doc": "Eviction banner title on mobile GroupScreen." },
+    "evicted_body":           { "text": "Je kan posts en berichten in deze groep niet meer zien. Vraag de admin opnieuw uitgenodigd te worden.", "doc": "Eviction banner body on mobile GroupScreen." },
+    "member_count":           { "text": "Aantal leden", "doc": "Label for the member-count row on mobile GroupScreen." },
+    "admin_code":             { "text": "Admin-code", "doc": "Label for the admin-code row on mobile GroupScreen (admin only)." },
+    "admin_code_hint":        { "text": "Deel deze code alleen met andere admins.", "doc": "Hint under the admin code on mobile GroupScreen." },
+    "issue_invite":           { "text": "Maak uitnodiging", "doc": "Admin CTA on mobile GroupScreen — generates a fresh invite token + opens OnboardIssue." },
+    "issuing":                { "text": "Maken…", "doc": "CTA label while issuing on mobile." },
+    "leave":                  { "text": "Verlaat groep", "doc": "Destructive CTA on mobile GroupScreen." },
+    "confirm_leave_title":    { "text": "Verlaat deze groep?", "doc": "ConfirmModal title on mobile GroupScreen." },
+    "confirm_leave_body":     { "text": "Je verliest de toegang tot alle posts en berichten in deze groep.", "doc": "ConfirmModal body on mobile GroupScreen." },
+    "confirm_leave_yes":      { "text": "Verlaat", "doc": "Destructive confirm label on mobile GroupScreen." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Pod-aanmelding voltooien", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },
@@ -517,7 +568,22 @@
     "default_share_location_hint":  { "text": "Bepaalt of <code>shareLocation</code> default aan staat als je iemand toevoegt. Per-contact altijd handmatig aan/uit te zetten.", "doc": "Hint under the default-share-location toggle. Contains <code> tag for the field name." },
 
     "feedback_saving":        { "text": "Opslaan…", "doc": "Inline feedback text shown while a settings save is in flight." },
-    "feedback_saved":         { "text": "Opgeslagen.", "doc": "Inline feedback text shown after a successful settings save." }
+    "feedback_saved":         { "text": "Opgeslagen.", "doc": "Inline feedback text shown after a successful settings save." },
+
+    "shared_heading":         { "text": "Gedeeld (alle toestellen)", "doc": "Mobile section heading for the cross-device portion of settings (Stoop V3 mobile)." },
+    "device_heading":         { "text": "Dit toestel", "doc": "Mobile section heading for the per-device portion (Stoop V3 mobile)." },
+    "privacy_heading":        { "text": "Privacy & meldingen", "doc": "Mobile section heading on SettingsScreen (Stoop V3 mobile)." },
+    "handle":                 { "text": "Handle", "doc": "Label for the user handle row on mobile SettingsScreen." },
+    "display_name":           { "text": "Naam", "doc": "Label for the displayName row on mobile SettingsScreen." },
+    "location":               { "text": "Locatie", "doc": "Label for the location row on mobile SettingsScreen." },
+    "location_unset":         { "text": "—", "doc": "Empty marker when no location is set on mobile SettingsScreen." },
+    "edit_profile":           { "text": "Bewerk profiel", "doc": "CTA on mobile SettingsScreen — navigates to ProfileMine." },
+    "poll_interval":          { "text": "Pollinterval (ms)", "doc": "Label for the pollIntervalMs input on mobile SettingsScreen." },
+    "poll_hint":              { "text": "Tussen {min}-{max} ms. Mobiel-default: {def} ms (batterijbewust).", "doc": "Inline hint under the poll-interval input on mobile." },
+    "save":                   { "text": "Opslaan", "doc": "Submit button on mobile SettingsScreen." },
+    "saving":                 { "text": "Opslaan…", "doc": "Submit button label while in flight on mobile." },
+    "push_link":              { "text": "Meldingen", "doc": "Link to PushScreen from mobile SettingsScreen." },
+    "privacy_link":           { "text": "Privacy & veiligheid", "doc": "Link to PrivacyScreen from mobile SettingsScreen." }
   },
   "restore": {
     "page_title":           { "text": "Account herstellen op dit apparaat", "doc": "Browser tab title + main page heading on /restore.html — the recovery-from-mnemonic flow." },
