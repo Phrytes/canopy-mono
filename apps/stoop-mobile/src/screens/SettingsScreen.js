@@ -164,6 +164,37 @@ export function SettingsScreen() {
         </Pressable>
       </View>
 
+      {/* ── Group ─────────────────────────────────────────────── */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>
+          {t('settings.group_heading', 'Groep')}
+        </Text>
+        <Text style={styles.hint}>
+          {t('settings.group_link_hint',
+             'Bekijk leden, maak een uitnodiging-QR, verlaat de groep.')}
+        </Text>
+        <Pressable
+          onPress={() => nav.navigate(ROUTES.Group)}
+          style={styles.btnSecondary}
+          accessibilityRole="button"
+          accessibilityLabel="settings-manage-group"
+        >
+          <Text style={styles.btnSecondaryLabel}>
+            {t('settings.group_link', 'Beheer groep')}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => nav.navigate(ROUTES.CreateGroup)}
+          style={styles.btnSecondary}
+          accessibilityRole="button"
+          accessibilityLabel="settings-create-another-group"
+        >
+          <Text style={styles.btnSecondaryLabel}>
+            {t('settings.create_another_group', 'Maak een nieuwe groep')}
+          </Text>
+        </Pressable>
+      </View>
+
       {/* ── This device ──────────────────────────────────────── */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
