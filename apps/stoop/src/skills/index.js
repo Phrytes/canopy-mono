@@ -466,7 +466,7 @@ export function buildSkills({
     /**
      * listOpen({skill?, kind?})  — open requests, optionally filtered.
      *
-     * Stoop V1: `kind` filter selects on `Item.type` so the prikbord
+     * Stoop V1: `kind` filter selects on `Item.type` so the board
      * can render ask / offer / lend tabs.
      */
     defineSkill('listOpen', async ({ parts, from }) => {
@@ -499,7 +499,7 @@ export function buildSkills({
      * Different shape from `acceptResponder` (which marks the item
      * complete — appropriate for a one-shot ask/offer).  A lend
      * stays *open* until `markReturned`; assignLend just stamps the
-     * `assignee` + `claimedAt` so the prikbord can show "uitgeleend
+     * `assignee` + `claimedAt` so the board can show "uitgeleend
      * aan Bob" without closing the listing.
      *
      * Composes `item-store.claim`'s CAS — race-safe between two
@@ -724,7 +724,7 @@ export function buildSkills({
     /**
      * setHolidayMode({on})  — Phase 23.4.
      *   Cross-device holiday-mode flag.  When `on: true`, skill-match
-     *   routes around me + the prikbord shows a top banner.  Persists
+     *   routes around me + the board shows a top banner.  Persists
      *   via MemberMapCache (so it sticks across restart and syncs to
      *   a connected pod).  Doesn't touch per-skill `status` — those
      *   stay where the user left them.
@@ -1688,7 +1688,7 @@ export function buildSkills({
     /**
      * postAnnouncement({text, groupId?})
      *   — admin-only.  Persists a `kind: 'announcement'` item that
-     *   the prikbord pins at the top.  Visibility / pinning is a
+     *   the board pins at the top.  Visibility / pinning is a
      *   client-side rendering choice; the storage shape is what
      *   makes it discoverable.
      */
@@ -1712,7 +1712,7 @@ export function buildSkills({
       }], { actor: from });
       return { announcementId: item.id };
     }, {
-      description: 'Admin-only: post a group-wide announcement pinned to the prikbord.',
+      description: 'Admin-only: post a group-wide announcement pinned to the board.',
       visibility:  'authenticated',
     }),
 
