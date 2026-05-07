@@ -13,16 +13,17 @@
   },
   "peerDependencies": {
     "@canopy/core": "^0.1.0",
-    "@canopy/pod-client": "^0.1.0"
+    "@canopy/pod-client": "^0.1.0",
+    "@canopy/sync-engine": "^0.1.0"
   },
   "peerDependenciesMeta": {
-    "@canopy/pod-client": {
-      "optional": true
-    }
+    "@canopy/pod-client":  { "optional": true },
+    "@canopy/sync-engine": { "optional": true }
   },
   "devDependencies": {
     "@canopy/core": "file:../core",
     "@canopy/pod-client": "file:../pod-client",
+    "@canopy/sync-engine": "file:../sync-engine",
     "vitest": "^2.1.9"
   }
 }

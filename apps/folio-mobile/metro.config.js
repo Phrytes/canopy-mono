@@ -54,15 +54,13 @@ module.exports = withCanopyPreset({
   // Folio-specific module aliases (the preset already maps the @canopy/*
   // SDK packages).
   extraNodeModules: {
-    // Folio app package (CLI/server-side code; mobile only consumes
-    // the rn/* subpaths via extraSubpathResolvers below).
+    // Folio app package — folio-mobile's only remaining cross-app
+    // dep (the `SyncEngine` subclass, used in src/lib/serviceBuilder.js).
+    // The /rn/* subpath imports moved to @canopy/sync-engine-rn
+    // 2026-05-08 (Phase 40.2 follow-up); see Phase 40.2's substrate
+    // and the platform-shell exception in
+    // Project Files/conventions/architectural-layering.md.
     '@canopy-app/folio': path.resolve(repoRoot, 'apps/folio'),
-
-    // unstable_enablePackageExports is OFF (preset enforces), so
-    // folio's package.json `exports` is ignored — pin subpath
-    // resolution explicitly here for predictability.
-    '@canopy-app/folio/rn/serviceFactory':  path.resolve(repoRoot, 'apps/folio/src/rn/serviceFactory.js'),
-    '@canopy-app/folio/rn/backgroundTasks': path.resolve(repoRoot, 'apps/folio/src/rn/backgroundTasks.js'),
 
     // @scure/bip39 wordlist (subpath; same exports-OFF reason).
     '@scure/bip39/wordlists/english': path.resolve(
@@ -73,21 +71,4 @@ module.exports = withCanopyPreset({
     '@noble/hashes/crypto':    path.resolve(repoRoot, 'packages/core/node_modules/@noble/hashes/crypto.js'),
     '@noble/hashes/crypto.js': path.resolve(repoRoot, 'packages/core/node_modules/@noble/hashes/crypto.js'),
   },
-
-  // The shorter `@canopy-app/folio` prefix in extraNodeModules can
-  // silently override the longer `@canopy-app/folio/rn/*` subpath
-  // keys — so we also resolve the rn/* prefix explicitly via a
-  // resolver function (preset's first-priority hook).
-  extraSubpathResolvers: [
-    (moduleName, repoRootArg) => {
-      if (moduleName.startsWith('@canopy-app/folio/rn/')) {
-        const sub = moduleName.slice('@canopy-app/folio/rn/'.length);
-        return {
-          filePath: path.resolve(repoRootArg, 'apps/folio/src/rn', sub + '.js'),
-          type: 'sourceFile',
-        };
-      }
-      return null;
-    },
-  ],
 });

@@ -29,3 +29,15 @@ export {
 export {
   createMobileBootstrap,
 } from './src/createMobileBootstrap.js';
+
+export {
+  createSyncEngine,
+} from './src/createSyncEngine.js';
+
+export {
+  defineBackgroundTask,
+  registerBackgroundFetch,
+  unregisterBackgroundFetch,
+  statusBackgroundFetch,
+  DEFAULT_BACKGROUND_FETCH_INTERVAL_S,
+} from './src/backgroundTasks.js';

@@ -13,7 +13,7 @@ import 'expo-dev-client';
 // `TaskManager.defineTask` is what the OS looks for).  Registration is
 // in ServiceContext after sign-in; teardown on sign-out.
 import * as TaskManager from 'expo-task-manager';
-import { defineBackgroundTask } from '@canopy-app/folio/rn/backgroundTasks';
+import { defineBackgroundTask } from '@canopy/sync-engine-rn';
 import { bgRunOnce, BG_TASK_NAME } from './src/lib/bgRunOnce.js';
 
 defineBackgroundTask({
