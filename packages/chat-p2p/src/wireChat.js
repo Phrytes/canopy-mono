@@ -224,9 +224,7 @@ export function wireChat({
           const myCell     = me?.location?.cell;
           const senderCell = sender?.location?.cell;
           if (myCell && senderCell) {
-            // Lazy-import distanceKm to keep top-level lean.
-            const { distanceKm } = await import('../lib/geo.js');
-            const d = distanceKm(myCell, senderCell);
+            const d = _distanceKm(myCell, senderCell);
             if (d > data.maxDistanceKm) return;
           }
         } catch { /* tolerate failure — better to deliver than to drop */ }
@@ -545,4 +543,47 @@ export function wireChat({
   }
 
   return { send, detach };
+}
+
+// ── Private helpers ─────────────────────────────────────────────────────────
+//
+// Pre-lift, the distance filter above did
+//   `const { distanceKm } = await import('../lib/geo.js');`
+// which worked when wireChat lived at `apps/stoop/src/chat/wireChat.js`.
+// After the substrate lift the `'../lib/geo.js'` path resolves to a
+// non-existent file inside `packages/chat-p2p/`, breaking RN bundling
+// (Metro statically follows dynamic `import()` chains).
+//
+// Inlined here as a private helper so chat-p2p stays self-contained.
+// Canonical implementation lives in `apps/stoop/src/lib/geo.js` —
+// keep the two in sync (or lift this trio into a tiny `@canopy/cell-grid`
+// substrate when a third consumer surfaces; rule-of-two not yet
+// triggered, the third caller is mobile's own `lib/geo.js`).
+
+const EARTH_R_KM = 6371;
+
+function _cellCenter(cell) {
+  if (typeof cell !== 'string') return null;
+  const parts = cell.split(':');
+  if (parts.length !== 3) return null;
+  const [gridM, row, col] = parts.map(Number);
+  if (!Number.isFinite(gridM) || !Number.isFinite(row) || !Number.isFinite(col)) return null;
+  const lat = (row * gridM) / 111_000;
+  const cosLat = Math.cos(lat * Math.PI / 180);
+  const lng = cosLat === 0 ? 0 : (col * gridM) / (111_000 * cosLat);
+  return { lat, lng };
+}
+
+function _distanceKm(cellA, cellB) {
+  if (cellA === cellB) return 0;
+  const a = _cellCenter(cellA);
+  const b = _cellCenter(cellB);
+  if (!a || !b) return Infinity;
+  const φ1 = a.lat * Math.PI / 180;
+  const φ2 = b.lat * Math.PI / 180;
+  const Δφ = (b.lat - a.lat) * Math.PI / 180;
+  const Δλ = (b.lng - a.lng) * Math.PI / 180;
+  const h = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+  return Math.round(EARTH_R_KM * c * 10) / 10;
 }
