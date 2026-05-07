@@ -40,6 +40,8 @@ import { PlaceholderScreen }          from './src/screens/PlaceholderScreen.js';
 import { WelcomeScreen }              from './src/screens/WelcomeScreen.js';
 import { OnboardScanScreen }          from './src/screens/OnboardScanScreen.js';
 import { OnboardRestoreScreen }       from './src/screens/OnboardRestoreScreen.js';
+import { ProfileMineScreen }          from './src/screens/ProfileMineScreen.js';
+import { ProfileOtherScreen }         from './src/screens/ProfileOtherScreen.js';
 import { initI18n }                   from './src/lib/i18n.js';
 
 // Per-route screen components. As real screens land they replace
@@ -52,6 +54,8 @@ export const SCREEN_COMPONENTS = Object.freeze({
   [ROUTES.Welcome]:        WelcomeScreen,
   [ROUTES.OnboardScan]:    OnboardScanScreen,
   [ROUTES.OnboardRestore]: OnboardRestoreScreen,
+  [ROUTES.ProfileMine]:    ProfileMineScreen,
+  [ROUTES.ProfileOther]:   ProfileOtherScreen,
 });
 
 class ErrorBoundary extends React.Component {
