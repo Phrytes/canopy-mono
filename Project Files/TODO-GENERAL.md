@@ -5,6 +5,61 @@
 
 ---
 
+## 🔴 HIGH — Solid pod / cap-token UX cleanup (Inrupt migration) (2026-05-07)
+
+**What:** the bespoke Solid pod sign-in and capability-token share
+UX surfaces in Stoop V1, Folio, and (designed) Tasks V1 are
+error-prone and inconsistent. Across these apps users encounter:
+issuer-selection screens, OIDC redirect dances, cap-token QR-share
+flows, mismatched session lifetimes, and varying terminology for
+"the pod" / "your data" / "your account".
+
+**Decision direction (memory: `project_capability_tokens_to_inrupt.md`):**
+migrate share/auth UX onto the Inrupt stack. Until that lands,
+every new app design that introduces pod-share UX (Tasks V1 has
+2-3 new cross-pod flows) repeats the same UX pain in another
+place.
+
+**Action — three connected decisions:**
+
+1. **Lock the migration timeline.** If imminent (< 4 weeks),
+   coding plans for new apps wait until after the cutover so we
+   don't build three more bespoke UXes that need rewriting.
+2. **Inventory all current bespoke pod-share / cap-token UX
+   surfaces** across `apps/stoop`, `apps/folio`, `apps/tasks-v0`,
+   `apps/household` so the migration scope is concrete.
+3. **Define a single shared "sign in / share via Inrupt"
+   component** (or substrate) that all four apps adopt
+   simultaneously rather than each rolling their own next
+   iteration.
+
+**Why high priority:** delaying this means every new feature in
+the four apps either accumulates bespoke UX debt or stalls on
+"should we really build this now?". Tasks V1 design is currently
+acknowledging the inheritance rather than fixing it (per
+`Project Files/Tasks App/advice-2026-05-07.md` § "Open TODO:
+Solid pod UX cleanup").
+
+**Status (2026-05-07):** undecided. Migration timeline not yet
+set; no inventory yet. Tasks V1 implementation plan should not
+ship before this is at least scoped.
+
+**2026-05-08 cross-link — Stoop V3 mobile.** Stoop V3 Phase 40.3
+plans to lift folio-mobile's `OidcSessionRN` + `folioAuth` + `dcr`
+into a new `@canopy/oidc-session-rn` substrate (per the RN-substrate
+separation rule in
+[`conventions/architectural-layering.md`](./conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08)).
+**That extraction is the second consumer (rule of two) of the
+RN-side OIDC pattern but DOES NOT pre-empt the Inrupt-cleanup
+decision** — when the cleanup happens, the new substrate is one of
+the surfaces it migrates. Stoop V3 mobile ships **local-only by
+default** (per the project's local-only-mode-is-the-floor rule);
+pod sign-in lands when the substrate is extracted, and survives
+the eventual Inrupt-cleanup as a self-contained surface to
+re-implement.
+
+---
+
 ## 🟡 MEDIUM — Translatable-by-design back-fill across all apps (2026-05-06)
 
 **What:** every user-facing string in every app under `apps/` must

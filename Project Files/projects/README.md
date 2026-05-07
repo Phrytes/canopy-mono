@@ -41,6 +41,13 @@ folder here holds:
 ## Agent Hub compatibility — applies to every agentic project here
 
 > **Required reading:** [`../AgentHub/agent-hub-design-2026-05-05.md`](../AgentHub/agent-hub-design-2026-05-05.md).
+>
+> **2026-05-08 update.** The Hub will be a **separate phone app**,
+> not a desktop daemon. The earlier design doc explored a
+> desktop-service framing (launchd / systemd-user / Task Scheduler);
+> that's superseded. Lite-mode (hub-attached) is **deferred** for
+> all current apps — ship `standalone`. The compatibility constraints
+> below still bind, just with a phone-side hub in mind.
 
 Every project in this folder that uses the Agent SDK (directly or via
 substrates) **must be designed so it does not fight a future

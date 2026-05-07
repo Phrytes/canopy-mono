@@ -204,6 +204,53 @@ catches all cases. As of 2026-05-06 only `apps/folio-mobile` matches.
 
 ---
 
+## Mobile substrates live in their own packages (locked 2026-05-08)
+
+**RN-specific code MUST NOT be added to cross-platform substrates.**
+When a substrate gains a React-Native-only adapter, helper, or
+runtime, that work goes into a separate package.
+
+The canonical pattern:
+
+| Cross-platform substrate | RN-specific sibling |
+|---|---|
+| `@canopy/sync-engine` | `@canopy/sync-engine-rn` (planned, lifts folio-mobile's `serviceFactory`) |
+| `@canopy/pod-client` | `@canopy/oidc-session-rn` (planned, lifts folio-mobile's `OidcSessionRN`) |
+| `@canopy/core` | `@canopy/react-native` (already shipped — KeychainVault, AsyncStorageAdapter, BLE/mDNS transports, MobilePushBridge) |
+
+Reasons:
+
+1. **Bundle hygiene.** Pulling `expo-secure-store` or
+   `react-native-keychain` into a Node-only build via a transitive
+   import is the kind of breakage that's hard to debug. Separation
+   prevents it.
+2. **Peer-dependency surface.** RN substrates carry RN peer deps;
+   web/Node substrates don't. Mixing them inflates every consumer's
+   peer-dep list.
+3. **Test isolation.** RN substrate tests need RN polyfills; the
+   cross-platform tests don't. Keeping them separate keeps each
+   substrate's vitest config narrow.
+4. **Fork-friendliness.** A user who wants to swap our RN adapter
+   for their own (Capacitor, Tauri-mobile, …) can replace one
+   `*-rn` package without touching the cross-platform layer.
+
+**Naming:** `*-rn` suffix is preferred. The existing
+`@canopy/react-native` predates this rule and stays as the
+RN platform layer (polyfills + Metro preset + canonical
+KeychainVault / AsyncStorageAdapter / transport bridges); new
+RN-specific substrates follow the suffix pattern instead of
+piling onto `@canopy/react-native`.
+
+**When a substrate gets an RN sibling**: add the `*-rn` package
+under `packages/`, mark the cross-platform substrate as the
+"shared core" in its README, and cross-link.
+
+**Verification:** any new file under `packages/<not-rn>/` that
+imports from `react-native`, `expo-*`, or `@react-native-*` is a
+violation. Lint rule TBD.
+
+---
+
 ## Verification
 
 Two ongoing checks for the layering invariant:

@@ -136,6 +136,10 @@ be designed to be compatible with the per-device Agent Hub**. See
 [`Project Files/AgentHub/agent-hub-design-2026-05-05.md`](../AgentHub/agent-hub-design-2026-05-05.md)
 for the design.
 
+> **2026-05-08 update.** Hub will be a **separate phone app**,
+> not a desktop daemon. Lite-mode is **deferred** for all current
+> apps; ship `standalone` and stay hub-compatible.
+
 The hub itself is still a design exploration — apps may run
 standalone today — but new apps must not bake in choices that
 preclude future hub-attachment. Concretely that means:

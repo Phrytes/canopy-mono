@@ -79,12 +79,12 @@ Phase 38  Capability manifest + per-app pod namespaces
 later     Hobby-fork template (apps/stoop-hobby/)
    │
    ▼
-V3 / 39+  Mobile (Expo, RN 0.76)
+V3 / 40+  Mobile (Expo, RN 0.76)
 ```
 
 Total estimate for V2 (Phases 23-30): **~14-19 days** end-to-end (shipped).
-V2.5 (Phases 31-38): **~13-17 days**.
-V3 mobile (Phase 39+): 5-7 days on top.
+V2.5 (Phases 31-39): **~14-19 days** (including Phase 39 picture attachments).
+V3 mobile (Phase 40+): see [`v3-mobile-coding-plan-2026-05-08.md`](v3-mobile-coding-plan-2026-05-08.md).
 
 ## Phase 23 — Profile photo + skills/holiday UI + Settings + pod-sync
 
@@ -289,20 +289,32 @@ Out of scope for V2; on the TODO. Sketch:
 
 No coding-plan tasks; just a doc deliverable when a hobby-app is requested.
 
-## V3 / 39+ — Mobile (Expo, RN 0.76)
+## V3 / 40+ — Mobile (Expo, RN 0.76)
 
-| Phase | Topic | Substrate-touch |
-|---|---|---|
-| 39.1 | New `apps/stoop-mobile/` workspace (mirrors `apps/folio-mobile`'s Expo 52 + RN 0.76.9 setup; per-app convention compliance). | **App-local.** |
-| 39.2 | Reuse all Stoop substrates + skills.  RN-side adapters: `KeychainVault` for identity vault, `MdnsTransport` + `BleTransport` for local-magic discovery (functional design § F). | reuses mesh-demo's wiring. |
-| 39.3 | `expo-camera` for QR scanning (contacts + group invites + recovery code). | **App-local.** |
-| 39.4 | `expo-location` GPS → `geo.js`'s `getCoarseLocationFromGps()` shape. | **App-local.** |
-| 39.5 | `expo-task-manager` binding for the `onlineWindow` cadence (Phase 28).  Allows the agent to schedule wake-ups every X minutes for Y seconds.  Reads from the device-specific settings blob (Phase 33). | **App-local.** |
-| 39.6 | `MobilePushBridge` (already in `@canopy/react-native`) wired to the `notifier.PushChannel` (Phase 21 web infrastructure already hooks the same channel). | reuses SDK. |
-| 39.7 | UI screens mirroring the web shell. | **App-local.** |
-| 39.8 | Real-device pass + tests. | — |
-
-**Estimate:** 5–7 days.
+> **Renumbered 2026-05-08** (was Phase 39+; collided with V2.5
+> Phase 39 picture attachments).
+>
+> The full V3 mobile plan moved to a dedicated doc:
+> [`v3-mobile-coding-plan-2026-05-08.md`](v3-mobile-coding-plan-2026-05-08.md).
+> Functional shape (what mobile does, journeys, locked decisions):
+> [`v3-mobile-functional-design-2026-05-08.md`](v3-mobile-functional-design-2026-05-08.md).
+>
+> High-level outline preserved here for the dependency graph below:
+>
+> | Phase | Topic | Substrate-touch |
+> |---|---|---|
+> | 40.1 | `apps/stoop-mobile/` scaffold (mirrors folio-mobile). | **App-local.** |
+> | 40.2 | Mobile-bootstrap substrate — lifts folio-mobile's `serviceFactory` pattern out. | **NEW** `@canopy/sync-engine-rn` or `@canopy/mobile-bootstrap`. |
+> | 40.3 | OIDC-RN substrate — lifts folio-mobile's `OidcSessionRN` + `expo-auth-session` flow out. | **NEW** `@canopy/oidc-session-rn`. |
+> | 40.4 | RN-side `FileSystemAdapter` for `CachingDataSource`. | **EXTEND** `@canopy/react-native`. |
+> | 40.5 | Native picker glue for Phase 39 attachments (`expo-image-picker` + `expo-image-manipulator`). | **App-local.** |
+> | 40.6 | `expo-camera` (built-in barcode scanning) for QR scan: invite + contacts. | **App-local.** |
+> | 40.7 | `expo-location` GPS → `geo.js`'s `getCoarseLocationFromGps()`. | **App-local.** |
+> | 40.8 | `expo-task-manager` background-fetch + active/background-aware cadence for `onlineWindow`. | **App-local.** |
+> | 40.9 | `MobilePushBridge` wired to `notifier.PushChannel`. | reuses SDK. |
+> | 40.10 | RN screens parallel to the web shell. | **App-local.** |
+> | 40.11 | Deep-link handling for `stoop://...` URLs. | **App-local.** |
+> | 40.12 | Real-device pass (Android primary; iOS noted as out-of-scope per project README). | — |
 
 ## Order + dependencies
 
