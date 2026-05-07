@@ -14,6 +14,107 @@
 
 const SUBSCRIBE_SKILL = 'subscribe';   // core.protocol.subscribe — agent's event stream
 
+/* ────────────────────────────────────────────────────────────
+ * Browser-side i18n bridge
+ *
+ * GUI strings MUST live in `apps/stoop/locales/<lang>.json` —
+ * never hardcoded in HTML or JS.  See
+ * `Project Files/conventions/translatable-by-design.md`.
+ *
+ * Pages call `await initI18n()` once at boot, then either:
+ *   (a) tag DOM nodes with `data-i18n="key.path"` (textContent) or
+ *       `data-i18n-attr="placeholder"` / `title` etc., and call
+ *       `applyI18n()` after page paint;
+ *   (b) call `t('key.path', fallback)` from JS for dynamic strings.
+ * ──────────────────────────────────────────────────────────── */
+
+let _i18nBundle = null;
+let _i18nLang   = 'nl';
+
+/**
+ * Load the locale bundle for `lang` (defaults to navigator.language
+ * → 'nl').  Idempotent; subsequent calls return the cached bundle.
+ */
+export async function initI18n(lang) {
+  if (_i18nBundle) return _i18nBundle;
+  const target = lang
+    ?? (typeof navigator !== 'undefined' && navigator.language?.startsWith('en') ? 'en' : 'nl');
+  _i18nLang = target;
+  try {
+    const res = await fetch(`/locales/${target}.json`);
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    _i18nBundle = await res.json();
+  } catch {
+    _i18nBundle = {};   // fall through to fallbacks
+  }
+  return _i18nBundle;
+}
+
+/**
+ * Resolve a dotted key path against the loaded bundle.  Leaves
+ * follow the translatable-by-design convention
+ * (`Project Files/conventions/translatable-by-design.md`) and come
+ * in two shapes:
+ *
+ *   - **`{text, doc}`** (preferred — `doc` documents the string
+ *         for translators).
+ *   - **Plain string** (legacy; new entries SHOULD use the object
+ *         form).
+ *
+ * Returns the rendered string only; `doc` is metadata for
+ * translators / linters.
+ */
+function _lookupKey(bundle, key) {
+  if (!bundle || typeof key !== 'string') return undefined;
+  let cur = bundle;
+  for (const part of key.split('.')) {
+    if (cur && typeof cur === 'object' && part in cur) cur = cur[part];
+    else return undefined;
+  }
+  if (typeof cur === 'string') return cur;
+  if (cur && typeof cur === 'object' && typeof cur.text === 'string') return cur.text;
+  return undefined;
+}
+
+/**
+ * Translate `key` to the loaded locale.  Returns `fallback` (or the
+ * key itself) when the lookup misses or i18n hasn't been initialised
+ * yet.  Synchronous; pages should `await initI18n()` first to avoid
+ * fallback flashes.
+ */
+export function t(key, fallback) {
+  const hit = _lookupKey(_i18nBundle, key);
+  if (typeof hit === 'string') return hit;
+  return fallback ?? key;
+}
+
+/**
+ * Walk the document for `[data-i18n]` / `[data-i18n-attr]` nodes
+ * and fill them from the loaded bundle.  Call after `initI18n()`.
+ *
+ * - `data-i18n="some.key"` sets `textContent`.
+ * - `data-i18n-attr="placeholder"` (in addition to `data-i18n`) sets
+ *   the named attribute instead.  Multiple attrs comma-separated.
+ */
+export function applyI18n(root = document) {
+  for (const el of root.querySelectorAll('[data-i18n]')) {
+    const key = el.getAttribute('data-i18n');
+    const val = _lookupKey(_i18nBundle, key);
+    if (typeof val !== 'string') continue;
+    const attrs = el.getAttribute('data-i18n-attr');
+    if (attrs) {
+      for (const a of attrs.split(',').map(s => s.trim()).filter(Boolean)) {
+        el.setAttribute(a, val);
+      }
+    } else {
+      el.textContent = val;
+    }
+  }
+}
+
+/** Current locale code (set by initI18n). */
+export function currentLang() { return _i18nLang; }
+
 /**
  * Call a skill via A2A's POST /tasks/send.
  *

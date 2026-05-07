@@ -5,7 +5,8 @@
     "save":      "Opslaan",
     "cancel":    "Annuleren",
     "ok":        "OK",
-    "back":      "Terug"
+    "back":      "Terug",
+    "error":     { "text": "Fout", "doc": "Generic error prefix shown before any API error message, e.g. 'Fout: invalid-mnemonic'." }
   },
   "errors": {
     "groupId_required":     "Kies eerst een groep.",
@@ -71,5 +72,28 @@
   "privacy": {
     "title":   "Privacy — wat je moet weten",
     "intro":   "Stoop is een onderzoeks-preview. Onderstaande punten zijn nooit verstopt; ze gelden voor iedereen die meedoet."
+  },
+  "restore": {
+    "page_title":           { "text": "Account herstellen op dit apparaat", "doc": "Browser tab title + main page heading on /restore.html — the recovery-from-mnemonic flow." },
+    "intro":                { "text": "Heb je je herstelzin (12 of 24 woorden) van een ander apparaat? Voer hem hieronder in. Daarna logt je app in op je pod en haalt al je oude posts, contacten en instellingen op.", "doc": "Lead paragraph on /restore.html. Sets expectations: (1) you need a recovery phrase from another device, (2) the app will pull state from your pod after restoring." },
+    "step1_heading":        { "text": "Herstelzin invoeren", "doc": "Heading of step 1 of /restore.html: the user types their 12-or-24-word BIP-39 phrase." },
+    "step1_hint":           { "text": "De zin verlaat dit apparaat niet. We checken eerst of hij geldig is.", "doc": "Reassurance subtext under step 1: phrase is processed locally, validated before any state change." },
+    "step1_placeholder":    { "text": "bv. abandon ability able about ...", "doc": "Placeholder inside the textarea where the user types the recovery phrase. 'bv.' is short for 'bijvoorbeeld' (e.g.). Does NOT need to be a real BIP-39 phrase." },
+    "step1_button":         { "text": "Valideer", "doc": "Submit button on step 1 — runs validateMnemonicPhrase skill." },
+    "step1_status_busy":    { "text": "Valideren…", "doc": "Inline status text shown while the validation skill is running." },
+    "step1_status_ok":      { "text": "Geldig.", "doc": "Inline status text shown after successful mnemonic validation; advances to step 2." },
+    "step2_heading":        { "text": "Bevestigen", "doc": "Heading of step 2 of /restore.html: user reviews the derived pubKey and confirms the destructive swap." },
+    "step2_body":           { "text": "Dit zou je publieke sleutel worden:", "doc": "Lead text in step 2 above the pubKey preview block." },
+    "step2_warning":        { "text": "⚠️ Bevestigen overschrijft de huidige identiteit op dit apparaat. Posts / contacten / instellingen die nu lokaal staan worden vervangen zodra Stoop opnieuw start.", "doc": "Warning box in step 2 — explains the destructive nature of restoring. The 'als Stoop opnieuw start' hint is legacy V2 wording (Phase 31 made this immediate); revisit when re-translating." },
+    "step2_confirm":        { "text": "Bevestig en herstel", "doc": "Primary action button in step 2 — triggers restoreFromMnemonic skill with confirm:true." },
+    "step2_cancel":         { "text": "Annuleren", "doc": "Secondary button in step 2 — cancels the restore + returns to step 1." },
+    "step2_status_busy":    { "text": "Bezig…", "doc": "Inline status text while the restore skill is running." },
+    "step2_confirm_prompt": { "text": "Weet je het zeker? De huidige identiteit op dit apparaat wordt overschreven.", "doc": "Browser confirm() prompt shown when the user clicks Confirm. Last chance to back out." },
+    "step3_heading":        { "text": "Klaar — je bent ingelogd", "doc": "Heading of step 3 of /restore.html: success screen. Tells the user the swap completed and they're under the recovered identity." },
+    "step3_body":           { "text": "De herstelde identiteit is direct actief. Geen herstart nodig.", "doc": "Lead text in step 3. Phase 31 removed the manual restart step." },
+    "step3_hint":           { "text": "Wil je je oude posts, contacten en instellingen op dit apparaat terughalen? Log in op je pod — dat trekt automatisch alles op. Anders kun je gewoon doorgaan.", "doc": "Hint paragraph in step 3 explaining the optional pod-sign-in for full state restore." },
+    "step3_pod_button":     { "text": "Inloggen op pod", "doc": "Button in step 3 linking to /sign-in.html for the optional pod sync." },
+    "step3_home_button":    { "text": "Naar de buurt", "doc": "Secondary button in step 3 linking to / (the buurt-prikbord) for users who don't need pod sync." },
+    "nav_back":             { "text": "← Terug", "doc": "Back link in the page header — returns to /welcome.html." }
   }
 }

@@ -146,6 +146,24 @@ from V1 per the project i18n convention
 Add a locale by creating `locales/<xx>.json` and mirroring the keys
 from `en.json`.
 
+**Leaf shape (locked 2026-05-06):** every entry is
+`{ "text": "...", "doc": "..." }`. `text` is the translatable string;
+`doc` is a context note for translators (where it appears, what tone,
+what `{{placeholder}}` means). The runtime `t(key)` returns only the
+`.text` field; `doc` is metadata for the translation pipeline. Plain
+strings still resolve (back-compat), but new entries must include a
+`doc`.
+
+**Browser bridge:** `web/app.js` exports `initI18n()`, `t(key, fallback)`,
+and `applyI18n(root)`. Pages declare strings via `data-i18n="key"` (or
+`data-i18n-attr="placeholder"` for attributes); the bridge walks the
+DOM and substitutes on load.
+
+**No Dutch in code.** Domain terms (`prikbord`, `actief`, `gepauzeerd`,
+`gearchiveerd`) belong only in `nl.json` UI strings. Code identifiers,
+status enums, function names, comments, log messages, and skill
+return codes are English-only.
+
 ### Local-only mode
 
 Per the project-wide rule

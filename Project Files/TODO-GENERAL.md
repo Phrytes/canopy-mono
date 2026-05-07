@@ -5,6 +5,54 @@
 
 ---
 
+## 🟡 MEDIUM — Translatable-by-design back-fill across all apps (2026-05-06)
+
+**What:** every user-facing string in every app under `apps/` must
+live in a centralized locale file (`apps/<name>/locales/<lang>.json`)
+and be looked up by key — no hardcoded UI strings in templates,
+JSX, HTML, or skill return messages. **And** every locale entry
+must use the `{ "text": ..., "doc": ... }` leaf shape: `text` is
+the translatable string, `doc` is a context note for translators.
+
+This rule is set in
+[`Project Files/conventions/i18n.md`](./conventions/i18n.md) (locked
+2026-05-06) and applies to **every subproject**.
+
+**Action:** for each app under `apps/`, audit:
+
+1. Are all visible strings sourced from `locales/<lang>.json`? (No
+   hardcoded copy in HTML / JSX / skill messages.)
+2. Does every locale entry carry a `doc` field describing where it
+   appears, what tone, and what any `{{placeholder}}` means?
+
+When a string fails (1), move it into the locale file in the same
+change. When an entry fails (2), add the `doc` field opportunistically
+as you touch the entry — back-compat means plain-string leaves still
+resolve, but they are known-incomplete.
+
+**Status by app (2026-05-06):**
+
+- **stoop/web**: `restore.html` migrated (Phase 31). `app.js`,
+  `index.html`, `welcome.html`, `sign-in.html`, `settings.html`,
+  group/profile/post pages — most still hardcoded. Back-fill as
+  pages are touched.
+- **stoop/skills**: skill return `message`s are largely English
+  literals. Convert to error/status codes (or `t('errors.xyz')`
+  on the UI side). Treat as opportunistic until V2.5 closes.
+- **folio / folio-mobile / archive / household**: full audit not
+  done yet. Block: each app needs a small `lib/i18n.js` and a
+  `locales/en.json`; do that before the first refactor lands in
+  the app.
+
+**Why later (not blocking):** Stoop V2.5 is the active codebase.
+Other apps don't yet have user-visible Dutch surfaces; back-fill
+ahead of localisation is acceptable churn but not urgent.
+
+**Verification:** `grep -rE "(\\<h[1-6]\\>|<button|<label|<p\\>)[A-Z]" apps/<name>/web/`
+plus a manual spot-check. Lint rule TBD.
+
+---
+
 ## 🟡 MEDIUM — Extract folio-mobile → folio shared code into a substrate (2026-05-06)
 
 **What:** `apps/folio-mobile` imports `serviceFactory` and a `SyncEngine`
