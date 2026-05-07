@@ -62,6 +62,28 @@ The on-disk db default is `~/.local/share/archive/archive.db` (XDG).
 Config is at `~/.config/archive/config.json` (overridable via
 `ARCHIVE_CONFIG_DIR`).
 
+### Pod-side settings layout (when Archive grows web/cross-device support)
+
+Archive v0 is single-machine and stores its state on disk (not in a
+pod), so the pod-side settings layout below is forward-looking. When
+Archive starts persisting user settings to a pod, it MUST follow the
+project-wide convention in
+[`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md):
+
+```
+<pod>/archive/settings/shared.json              user-portable
+<pod>/archive/settings/devices/<deviceId>.json  per-install (local-only)
+```
+
+Likely device-scoped fields when this lands: index cadence, FTS
+include/exclude paths, max-bytes-per-file. Likely shared-scoped:
+preferred locale, display preferences, default `Content-Type` filter.
+
+**Cross-app shared-defaults (Rule 3):** Archive MAY seed first-run
+defaults from a pre-existing `<pod>/folio/settings/shared.json` —
+both apps care about Solid pod sources, so things like default
+issuer, preferred locale, and last-known pod root translate cleanly.
+
 Schema:
 
 ```sql

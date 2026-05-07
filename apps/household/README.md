@@ -74,3 +74,28 @@ shape from Folio (notes-folder ↔ pod sync) and Archive (FTS5 over
 pod content).  Shares `@canopy/core` + `@canopy/pod-client` with
 the others; adds `telegraf` (Q-H2.1 lock) for Telegram, and an
 optional Ollama / cloud LLM provider (Q-H2.12 lock).
+
+## Settings layout
+
+Household will store user-tunable settings under its own pod
+namespace, following the project-wide convention in
+[`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md):
+
+```
+<pod>/household/settings/shared.json              user-portable
+<pod>/household/settings/devices/<deviceId>.json  per-install (local-only)
+```
+
+**Likely device-scoped (per-install):** which Telegram bot token to
+use (machine-specific secret), Ollama endpoint URL (per machine),
+LLM provider preference when multiple are wired (CPU vs. cloud).
+**Likely shared:** preferred LLM persona / system prompt, default
+quiet-hours, language preference, conversation-summary frequency.
+
+**Cross-app shared-defaults (Rule 3):** Household MAY seed defaults
+from a pre-existing `<pod>/stoop/settings/shared.json` for fields
+like locale and default-share-location — the user has already made
+those decisions in Stoop and shouldn't re-make them here.
+
+**Status (2026-05-07):** household is in design / DD-stage; no
+persisted settings yet. Update this section when they land.
