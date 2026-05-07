@@ -46,6 +46,7 @@ import { parseDeepLink, actionToNavigation } from './src/lib/deepLinks.js';
 import { ROUTES, SHELL_TAB_ROUTES, STACK_ONLY_ROUTES } from './src/navigation.js';
 import { t, initI18n }                from './src/lib/i18n.js';
 import { COLORS }                     from './src/lib/theme.js';
+import { ServiceProvider }            from './src/ServiceContext.js';
 
 // PlaceholderScreen is unused now that every route has a real screen,
 // but we keep the import path stable for future regression scaffolds.
@@ -228,6 +229,7 @@ export default function App() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <StatusBar barStyle="default" />
+        <ServiceProvider>
         <NavigationContainer>
           <DeepLinkHandler />
           <Stack.Navigator
@@ -259,6 +261,7 @@ export default function App() {
             <Stack.Screen name={ROUTES.Metrics}        component={MetricsScreen} />
           </Stack.Navigator>
         </NavigationContainer>
+        </ServiceProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   );

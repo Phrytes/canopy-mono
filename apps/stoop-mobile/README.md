@@ -49,6 +49,13 @@ Pending phases (per
 - 40.11 ✅ Deep-link handling for `stoop://...` — `src/lib/deepLinks.js`
   + `DeepLinkHandler` mounted inside `NavigationContainer`. Routes:
   invite / contact / chat / post / group / auth-callback / welcome / feed.
+- 40.14 ✅ ServiceContext + agent bring-up + `useSkill` hook —
+  `src/ServiceContext.js`, `src/lib/{identityBootstrap,groupRegistry,
+  agentBundle,useSkill,useAgentEvent,appStateBridge,skillParts}.js`.
+  Identity load-or-generate via KeychainVault; per-group bundles
+  built via Stoop's `createNeighborhoodAgent`; status state machine
+  (`loading` / `no-groups` / `ready` / `error`); `useSkill('postRequest').call({...})`
+  dispatches against the active bundle.
 - ⚙️ 2026-05-08 follow-up — bottom-tab shell wraps the six main
   destinations (Feed / Mine / Chat / Contacts / Profile / Settings)
   via `@react-navigation/bottom-tabs`. Detail screens push over the

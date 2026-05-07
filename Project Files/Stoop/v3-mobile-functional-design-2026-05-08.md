@@ -486,52 +486,55 @@ they're tracked in the coding plan, not here:
 
 ## 8a. Open design questions surfaced by the 2026-05-08 audit
 
-These are net-new design questions, separate from the Phase-time
-decisions in §8. They block the Phase 40.20 + 40.22 work.
+> **Re-audited 2026-05-08 after user feedback:** the original list
+> was conservative — most of these are already SOLVED in the desktop
+> SDK and only need mobile UI wiring. The list below distinguishes
+> "✅ SDK ready, mobile UI to wire" from "🟡 small open Q" from
+> "🔴 genuine open design."
 
-1. **Rotating group keys (30-day cadence, external channel).**
-   The brainstorm asks: admins generate a fresh key every N days,
-   distribute it through an out-of-band channel (WhatsApp group,
-   physical handover). Members who don't get the new key auto-evict.
-   Open: (a) what's the SDK skill set — `rotateGroupSecret`,
-   `redeemGroupSecret`? (b) does the user pick the cadence per group,
-   or is it a project-wide constant? (c) what's the UX when the
-   user misses a rotation — silent eviction, or a warning push N
-   days in advance? Phase 35 already auto-evicts on expiry; the
-   missing piece is the periodic-rotation cadence + the external-
-   channel flow.
+1. **Rotating group keys (30-day cadence).** ✅ **Already in the SDK.**
+   `createGroupV2({rotationDays, keyRotationMode})` in
+   `apps/stoop/src/skills/index.js` (line 981) defaults to a 30-day
+   rotation + Phase 35 auto-evict on expiry. The external-channel
+   flow is just admins handing out the new code via WhatsApp /
+   in-person — no SDK work needed. **No new design.** Mobile work:
+   "Rotate code now" CTA on GroupScreen + "rotation in N days" hint
+   on the membership-code panel. Lives in **Phase 40.18**, not 40.22.
 
-2. **Rotating identity addresses.** The brainstorm asks for "rotating
-   addresses" as a metadata-privacy measure on the relay. The agent
-   currently uses a long-lived `pubKey` as its address. Open:
-   (a) does the address rotate per-session, per-day, per-message?
-   (b) how do contacts re-discover the user after a rotation —
-   pubsub-of-rendezvous-keys? a directory in the user's pod?
-   (c) what's the metadata trade-off — full anonymity-set rotation
-   is heavy. Needs a separate design sketch before implementation.
+2. **Rotating identity addresses.** 🟡 **Mostly in the SDK.**
+   `Agent.rotateIdentity()` + `stableId` (in
+   `packages/core/src/identity/AgentIdentity.js` lines 6-9, 252-256)
+   already provide the primitive — `stableId` survives rotation, so
+   contact / mute / ban entries follow the user across rotations.
+   **The only open Q is the cadence policy:** per-session?
+   per-day? user-triggered? Default proposed: **opt-in,
+   user-triggered for V3** ("Rotate my address now" button on
+   SettingsScreen → privacy section); auto-rotation deferred. Goes
+   in **Phase 40.22** with a short cadence-policy decision.
 
-3. **Auto-skill-match privacy gate.** The brainstorm asks: a user's
-   request gets broadcast to the wider connection list (groups +
-   hop-discovered + contacts), the receiving agent first checks
-   internally if it matches the user's skills, and only notifies
-   the user on a match. Open: (a) what's the privacy guarantee for
-   the requester — does the receiver's agent reveal the request to
-   the user even on a no-match? (b) what's the rate-limit per
-   sender per receiver (don't spam)? (c) does the notification
-   require the receiver to opt-in per-sender or globally? The
-   Phase 22 `notifyWorthy` predicate is a starting point — needs
-   extension for the broader audience.
+3. **Auto-skill-match privacy gate.** 🟡 **SDK has the substrate.**
+   `packages/skill-match/src/SkillMatch.js` does the broadcast +
+   per-peer subscription; Phase 22's `notifyWorthy` predicate is
+   the per-receive privacy gate. **The open Q is broadcast scope:**
+   the SDK currently broadcasts to the joined-group's roster; the
+   brainstorm asks for broader (groups + hop-discovered + contacts).
+   That's an SDK extension, not a design Q on its own. Default
+   proposed: **per-group only for V3 (today's SDK behaviour);
+   broader scope deferred** to a follow-up. Goes in **Phase 40.20**
+   with the broader-scope piece flagged as a stretch.
 
-4. **Audience picker UX.** What's the right control on a phone for
-   "post to: my groups [G1, G2] + my trusted contacts"? A multi-
-   select chip row scales poorly past ~5 audiences. Considered:
-   audience-templates (e.g. "all my groups", "trusted only",
-   "everyone in 5 km"). Pick the simplest approach that covers the
-   user's brainstorm; iterate from real use.
+4. **Audience picker UX.** ✅ **Locked: WhatsApp-style scroll-list.**
+   User feedback 2026-05-08: just scroll through groups + contacts
+   with multi-select, nothing fancy. `targetResolver.js` already
+   exists in `apps/stoop/src/lib/` to handle the resolution.
+   `<AudiencePicker>` component on PostCompose mirrors the
+   conversation-picker pattern from chat apps. Picked up in
+   **Phase 40.16**.
 
-5. **Pod attach / detach UX.** Sign-in lands in Phase 40.19; the
-   bulk-sync progress (`/auth-callback.html` equivalent) needs a
-   mobile design — modal? full-screen? cancellable?
+5. **Pod attach / detach UX.** 🟡 **One small Q open:** modal vs.
+   full-screen for the bulk-sync progress. Default proposed:
+   full-screen `AuthCallbackScreen` (mirrors `/auth-callback.html`)
+   with a cancel button. Picked up in **Phase 40.19**.
 
 ## 9. Non-goals
 
