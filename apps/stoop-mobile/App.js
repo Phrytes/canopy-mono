@@ -47,6 +47,8 @@ import { PostComposeScreen }          from './src/screens/PostComposeScreen.js';
 import { ItemDetailScreen }           from './src/screens/ItemDetailScreen.js';
 import { ChatThreadsScreen }          from './src/screens/ChatThreadsScreen.js';
 import { ChatThreadScreen }           from './src/screens/ChatThreadScreen.js';
+import { ContactsScreen }             from './src/screens/ContactsScreen.js';
+import { ContactScreen }              from './src/screens/ContactScreen.js';
 import { initI18n }                   from './src/lib/i18n.js';
 
 // Per-route screen components. As real screens land they replace
@@ -66,6 +68,8 @@ export const SCREEN_COMPONENTS = Object.freeze({
   [ROUTES.ItemDetail]:     ItemDetailScreen,
   [ROUTES.ChatThreads]:    ChatThreadsScreen,
   [ROUTES.ChatThread]:     ChatThreadScreen,
+  [ROUTES.Contacts]:       ContactsScreen,
+  [ROUTES.Contact]:        ContactScreen,
 });
 
 class ErrorBoundary extends React.Component {
