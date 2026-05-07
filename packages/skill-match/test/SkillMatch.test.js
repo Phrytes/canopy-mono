@@ -278,3 +278,102 @@ describe('SkillMatch — constructor + roster', () => {
     await tearDown([a, b]);
   });
 });
+
+describe('SkillMatch — Phase 40.20 broadcast scope + extraAudience', () => {
+  it('extraAudience peer receives a `group+contacts` broadcast with fromExtraAudience=true', async () => {
+    const bus = new InternalBus();
+    // Broadcaster is in group g. Receiver is also in group g — but
+    // we register them as extraAudience-of-each-other to mimic
+    // "contact outside the group" behaviour without leaving the
+    // single-group test fixture.
+    const a = await makeSkillMatch({ bus, label: 'A', group: 'g', actor: ANNE });
+    const b = await makeSkillMatch({
+      bus, label: 'B', group: 'g', actor: FRITS,
+      skills: ['paint'], posture: { paint: 'always' },
+    });
+    a.agent.addPeer(b.agent.address, b.agent.pubKey);
+    b.agent.addPeer(a.agent.address, a.agent.pubKey);
+    a.sm.addExtraAudiencePeer({ pubKey: b.agent.address });
+    b.sm.addExtraAudiencePeer({ pubKey: a.agent.address });
+    await a.sm.start();
+    await b.sm.start();
+
+    let receivedRequest = null;
+    b.sm.subscribe(async ({ request, decide }) => {
+      receivedRequest = request;
+      // Extra-audience never auto-claims (Phase 40.20 §8a Q3 lock):
+      // the receiver MUST opt in explicitly. Simulate the "user
+      // tapped Help" path here.
+      await decide('claim');
+    });
+
+    const r = await a.sm.broadcast({
+      requiredSkills: ['paint'],
+      payload:        { text: 'help' },
+      scope:          'group+contacts',
+      timeoutMs:      300,
+    });
+
+    expect(receivedRequest).not.toBeNull();
+    expect(receivedRequest.fromExtraAudience).toBe(true);
+    expect(receivedRequest.scope).toBe('group+contacts');
+    expect(r.claims).toHaveLength(1);
+    await tearDown([a, b]);
+  });
+
+  it('extra-audience peers do NOT auto-claim even when posture is always', async () => {
+    const bus = new InternalBus();
+    const a = await makeSkillMatch({ bus, label: 'A', group: 'g', actor: ANNE });
+    const b = await makeSkillMatch({
+      bus, label: 'B', group: 'g', actor: FRITS,
+      skills: ['paint'], posture: { paint: 'always' },
+    });
+    a.agent.addPeer(b.agent.address, b.agent.pubKey);
+    b.agent.addPeer(a.agent.address, a.agent.pubKey);
+    a.sm.addExtraAudiencePeer({ pubKey: b.agent.address });
+    b.sm.addExtraAudiencePeer({ pubKey: a.agent.address });
+    await a.sm.start();
+    await b.sm.start();
+
+    // No subscriber — the substrate's auto-claim path would normally
+    // fire on posture='always'. With fromExtraAudience=true it must
+    // skip auto-claim and wait for an explicit handler.
+    const r = await a.sm.broadcast({
+      requiredSkills: ['paint'], payload: {},
+      scope: 'group+contacts',
+      timeoutMs: 200,
+    });
+    expect(r.claims).toHaveLength(0);
+    await tearDown([a, b]);
+  });
+
+  it('rejects an unknown scope', async () => {
+    const bus = new InternalBus();
+    const a = await makeSkillMatch({ bus, label: 'A', group: 'g', actor: ANNE });
+    await a.sm.start();
+    await expect(
+      a.sm.broadcast({ requiredSkills: ['x'], payload: {}, scope: 'world' }),
+    ).rejects.toThrow(/scope must be one of/);
+    await tearDown([a]);
+  });
+
+  it('group-scope broadcast keeps today\'s auto-claim behaviour intact', async () => {
+    const bus = new InternalBus();
+    const a = await makeSkillMatch({ bus, label: 'A', group: 'g', actor: ANNE });
+    const b = await makeSkillMatch({
+      bus, label: 'B', group: 'g', actor: FRITS,
+      skills: ['paint'], posture: { paint: 'always' },
+    });
+    wirePeers([a, b]);
+    await a.sm.start();
+    await b.sm.start();
+    // No b.sm.subscribe — relies on the auto-claim path.
+    const r = await a.sm.broadcast({
+      requiredSkills: ['paint'], payload: {},
+      timeoutMs: 300,
+      // scope omitted → defaults to 'group'
+    });
+    expect(r.claims).toHaveLength(1);
+    await tearDown([a, b]);
+  });
+});

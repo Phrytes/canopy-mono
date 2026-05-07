@@ -43,6 +43,7 @@ const REQUIRED_KEYS = [
   'compose.distance_label', 'compose.distance_any', 'compose.distance_km',
   'compose.audience_label', 'compose.audience_hint_default', 'compose.audience_hint_n',
   'compose.no_group',
+  'compose.scope_contacts', 'compose.scope_hops',
   'compose.skills_label', 'compose.submit', 'compose.submitting',
   'compose.too_many_attachments', 'compose.permission_denied',
 
@@ -135,6 +136,14 @@ const REQUIRED_KEYS = [
   'create_group.submit', 'create_group.creating',
 
   'metrics.heading', 'metrics.unavailable',
+
+  // skillmatch (Phase 40.20)
+  'skillmatch.heading', 'skillmatch.intro', 'skillmatch.anon',
+  'skillmatch.help', 'skillmatch.ignore',
+  'skillmatch.claimed', 'skillmatch.declined', 'skillmatch.errored',
+  'skillmatch.empty', 'skillmatch.no_active_group',
+  'skillmatch.origin_group', 'skillmatch.origin_contact', 'skillmatch.origin_hop',
+  'settings.skillmatch_link',
 
   'mine.claims_heading', 'mine.accept_claim', 'mine.reject_claim', 'mine.empty',
 ];

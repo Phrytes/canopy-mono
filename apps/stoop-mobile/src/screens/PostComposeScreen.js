@@ -55,6 +55,8 @@ export function PostComposeScreen() {
   const [attachments, setAttachments] = useState([]);
   const [audience, setAudience]       = useState([]); // []=just the active group
   const [maxDistance, setMaxDistance] = useState('any'); // 'any' | '1' | '2' | ...
+  const [alsoContacts, setAlsoContacts] = useState(false); // 40.20 — broaden scope to contacts
+  const [alsoHops,     setAlsoHops]     = useState(false); // 40.20 — broaden scope to hop-discovered peers
   const [busy, setBusy]               = useState(false);
   const [error, setError]             = useState(null);
 
@@ -114,6 +116,12 @@ export function PostComposeScreen() {
     try {
       const targets = audience.length > 0 ? audience : null; // null → server falls back to active group
       const maxDistanceKm = maxDistance === 'any' ? null : Number(maxDistance);
+      // 40.20 — broadcast-scope locking. Default 'group';
+      // contacts/hops broaden the receive audience.
+      const scope =
+        alsoHops     ? 'group+contacts+hops'
+      : alsoContacts ? 'group+contacts'
+      : 'group';
       await post.call({
         kind,
         text: text.trim(),
@@ -121,6 +129,7 @@ export function PostComposeScreen() {
         attachments: attachments.length > 0 ? attachments : undefined,
         targets,
         maxDistanceKm,
+        scope,
       });
       nav.goBack();
     } catch (err) {
@@ -128,7 +137,7 @@ export function PostComposeScreen() {
     } finally {
       setBusy(false);
     }
-  }, [audience, maxDistance, kind, text, skills, attachments, post, v.ok, nav]);
+  }, [audience, maxDistance, alsoContacts, alsoHops, kind, text, skills, attachments, post, v.ok, nav]);
 
   // ── Empty state — no agent yet (no group joined). ────────────────
   if (!svc?.activeBundle) {
@@ -249,6 +258,43 @@ export function PostComposeScreen() {
           selected={audience}
           onChange={setAudience}
         />
+
+        {/* Phase 40.20: broadcast-scope tickboxes — also broadcast to
+            contacts / hop-peers beyond the closed group. Receivers
+            run a local skills filter so non-matching peers stay
+            silent. */}
+        <View style={styles.scopeBlock}>
+          <Pressable
+            onPress={() => setAlsoContacts((v) => !v)}
+            style={styles.scopeRow}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: alsoContacts }}
+            accessibilityLabel="compose-scope-contacts"
+          >
+            <View style={[styles.checkbox, alsoContacts && styles.checkboxActive]}>
+              {alsoContacts ? <Text style={styles.checkmark}>✓</Text> : null}
+            </View>
+            <Text style={styles.scopeLabel}>
+              {t('compose.scope_contacts',
+                 'Ook auto-matchen bij mijn contacten (skill-match-suggesties).')}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setAlsoHops((v) => !v)}
+            style={styles.scopeRow}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: alsoHops }}
+            accessibilityLabel="compose-scope-hops"
+          >
+            <View style={[styles.checkbox, alsoHops && styles.checkboxActive]}>
+              {alsoHops ? <Text style={styles.checkmark}>✓</Text> : null}
+            </View>
+            <Text style={styles.scopeLabel}>
+              {t('compose.scope_hops',
+                 'Ook auto-matchen bij hop-buren (verder weg).')}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -311,6 +357,16 @@ const styles = StyleSheet.create({
   section:    { marginTop: SPACING.lg },
   label:      { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.sm },
   hint:       { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginBottom: SPACING.sm },
+  scopeBlock: { marginTop: SPACING.md },
+  scopeRow:   { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.xs },
+  scopeLabel: { flex: 1, fontSize: FONT_SIZES.sm, color: COLORS.text, marginLeft: SPACING.sm },
+  checkbox: {
+    width: 22, height: 22, borderRadius: RADII.sm,
+    borderWidth: 2, borderColor: COLORS.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary },
+  checkmark: { color: COLORS.textInverse, fontSize: FONT_SIZES.sm, fontWeight: '600' },
   errorText:  { color: COLORS.danger, fontSize: FONT_SIZES.sm, marginTop: SPACING.md },
   btnPrimary: {
     marginTop: SPACING.lg, backgroundColor: COLORS.primary,
