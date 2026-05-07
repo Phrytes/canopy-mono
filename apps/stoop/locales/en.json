@@ -186,6 +186,8 @@
     "audience_hint_default": { "text": "Default: your active group.", "doc": "Hint when no audience is explicitly selected." },
     "audience_hint_n":       { "text": "{n} target(s) selected", "doc": "Hint when one or more targets are selected. {n} is the count." },
     "no_group":              { "text": "Join a group first so you can post.", "doc": "Empty-state on mobile PostComposeScreen when no agent is active." },
+    "scope_contacts":        { "text": "Also auto-match across my contacts (skill-match suggestions).", "doc": "Tickbox label on PostComposeScreen for the broader-scope option (Phase 40.20)." },
+    "scope_hops":            { "text": "Also auto-match across hop-discovered peers (further away).", "doc": "Tickbox label on PostComposeScreen for the widest-scope option (Phase 40.20)." },
     "skills_label":          { "text": "Skills", "doc": "Section label above the skill chips." },
     "submit":                { "text": "Post", "doc": "Submit CTA on PostComposeScreen." },
     "submitting":            { "text": "Posting…", "doc": "Submit CTA label while the call is in flight." },
@@ -233,6 +235,21 @@
   "metrics": {
     "heading":    { "text": "Stats", "doc": "Heading on MetricsScreen." },
     "unavailable": { "text": "Stats are not wired in this build.", "doc": "Empty state when bring-up code didn't pass a snapshot." }
+  },
+  "skillmatch": {
+    "heading":         { "text": "Skill-match suggestions", "doc": "Heading on SkillMatchInboxScreen (Phase 40.20)." },
+    "intro":           { "text": "Others are asking for help that matches your skills. Tap \"Help\" to claim.", "doc": "Body intro on SkillMatchInboxScreen." },
+    "anon":            { "text": "@unknown", "doc": "Fallback handle when the requester isn't in the local roster (common for hop-discovered peers)." },
+    "help":            { "text": "Help", "doc": "Per-row CTA — calls decide('claim')." },
+    "ignore":          { "text": "Ignore", "doc": "Per-row CTA — calls decide('decline')." },
+    "claimed":         { "text": "helped ✓", "doc": "Status badge after the user claimed." },
+    "declined":        { "text": "ignored", "doc": "Status badge after the user declined." },
+    "errored":         { "text": "failed", "doc": "Status badge after a failed decide call." },
+    "empty":           { "text": "No open suggestions.", "doc": "Empty state on SkillMatchInboxScreen." },
+    "no_active_group": { "text": "Join a group first to see suggested matches.", "doc": "Empty state when no bundle is active." },
+    "origin_group":    { "text": "group", "doc": "Origin chip — request came from the closed-group roster." },
+    "origin_contact":  { "text": "contact", "doc": "Origin chip — request came from a per-contact extra-audience peer." },
+    "origin_hop":      { "text": "hop", "doc": "Origin chip — request came from a hop-discovered extra-audience peer." }
   },
   "contact": {
     "unknown":              { "text": "Contact not found.", "doc": "Empty state on ContactScreen when the route was opened without a resolved contact." },
@@ -681,6 +698,7 @@
     "privacy_link":           { "text": "Privacy & safety", "doc": "Link to PrivacyScreen from mobile SettingsScreen." },
     "no_active_group":        { "text": "Join a group first to manage settings.", "doc": "Empty state on mobile SettingsScreen when no bundle is active." },
     "signin_link":            { "text": "Solid pod sign-in", "doc": "Link from SettingsScreen to SignInScreen." },
+    "skillmatch_link":        { "text": "Skill-match suggestions", "doc": "Link from SettingsScreen to SkillMatchInboxScreen (Phase 40.20)." },
     "broadcastable":          { "text": "Allow others to send me skill-match suggestions", "doc": "Shared toggle on mobile SettingsScreen." },
     "broadcastable_hint":     { "text": "On = you receive auto-match suggestions from your wider connection list (groups + contacts + hops). Off = silence.", "doc": "Hint under the broadcastable toggle." },
     "default_share_location": { "text": "Share location with new contacts by default", "doc": "Shared toggle on mobile SettingsScreen." },

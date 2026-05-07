@@ -90,6 +90,19 @@ Pending phases (per
   SignInScreen drives `startPodSignIn` + `WebBrowser.openAuthSessionAsync`
   + `Linking` listener for `stoop://auth/callback` →
   `completePodSignIn`; new AuthCallbackScreen polls `getBulkSyncStatus`.
+- 40.20 ✅ SkillMatch broadcast-scope + SkillMatchInbox —
+  `packages/skill-match`'s `broadcast()` gains a `scope` arg
+  (`'group' | 'group+contacts' | 'group+contacts+hops'`); a new
+  `extraAudience` constructor option lets the caller register
+  contacts / hop-discovered peers whose broadcasts we receive
+  (tagged `fromExtraAudience: true` on inbound dispatch).
+  Extra-audience requests **never** auto-claim — they always reach
+  the appHandler so the user can opt in. Stoop's bundle bridges
+  the appHandler to a regular `agent.on('skill-match-suggestion',
+  ...)` event. New `src/screens/SkillMatchInboxScreen.js` lists
+  inbound suggestions with origin chip (group / contact / hop) +
+  Help/Negeer CTAs. PostComposeScreen gains scope tickboxes
+  ("Also auto-match across my contacts / hop-peers").
 - 40.21 ✅ AppState bridge + background-fetch — `defineBackgroundTask`
   at module-load (`index.js`); ServiceContext registers the OS-level
   fetch when `onlineWindow.everyMinutes` is set + sets the runOnce
