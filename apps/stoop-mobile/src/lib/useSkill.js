@@ -44,11 +44,24 @@ export function useSkill(skillId) {
     if (typeof skillId !== 'string' || !skillId) {
       throw new Error('useSkill: skillId required');
     }
-    const bundle = svc?.activeBundle;
+    // Phase 40.23 follow-up: tolerate the boot-race between Welcome
+    // (fast tap) and the bootstrap bundle becoming available — fall
+    // back to ensureActiveBundle, which lazily builds the bootstrap
+    // when needed.  Throws only when identity itself isn't ready yet.
+    let bundle = svc?.activeBundle;
     if (!bundle?.agent?.invoke) {
-      const e = new Error('No active agent — user has no joined group yet.');
-      e.code = 'NO_AGENT';
-      throw e;
+      try {
+        bundle = await svc?.ensureActiveBundle?.();
+      } catch (err) {
+        const e = new Error('No active agent — user has no joined group yet.');
+        e.code = err?.code === 'NO_IDENTITY' ? 'NO_IDENTITY' : 'NO_AGENT';
+        throw e;
+      }
+      if (!bundle?.agent?.invoke) {
+        const e = new Error('No active agent — user has no joined group yet.');
+        e.code = 'NO_AGENT';
+        throw e;
+      }
     }
 
     setLoading(true);
