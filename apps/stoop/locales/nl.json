@@ -158,12 +158,24 @@
   "feed": {
     "heading":           { "text": "Prikbord", "doc": "Heading on the FeedScreen (Prikbord)." },
     "empty_no_items":    { "text": "Nog geen posts in deze buurt.", "doc": "Empty state when the feed has no items at all." },
-    "empty_filtered":    { "text": "Geen posts voor deze filter.", "doc": "Empty state when items exist but the active filter excludes them all." }
+    "empty_filtered":    { "text": "Geen posts voor deze filter.", "doc": "Empty state when items exist but the active filter excludes them all." },
+    "kind_vraag":        { "text": "Vragen", "doc": "Filter chip label for kind=vraag (asks/help-needed posts)." },
+    "kind_aanbod":       { "text": "Aanbod", "doc": "Filter chip label for kind=aanbod (offer/help-available posts)." }
+  },
+  "tabs": {
+    "feed":     { "text": "Prikbord", "doc": "Bottom-tab label for the FeedScreen." },
+    "mine":     { "text": "Mijn",     "doc": "Bottom-tab label for the MineScreen (own posts)." },
+    "chat":     { "text": "Chat",     "doc": "Bottom-tab label for the ChatThreadsScreen." },
+    "contacts": { "text": "Contacten","doc": "Bottom-tab label for the ContactsScreen." },
+    "profile":  { "text": "Profiel",  "doc": "Bottom-tab label for the ProfileMineScreen." },
+    "settings": { "text": "Instellingen", "doc": "Bottom-tab label for the SettingsScreen." }
   },
   "compose": {
     "heading":               { "text": "Nieuwe post", "doc": "Heading on PostComposeScreen." },
     "placeholder_vraag":     { "text": "Wat heb je nodig?", "doc": "Multiline input placeholder when kind=vraag." },
     "placeholder_aanbod":    { "text": "Wat bied je aan?", "doc": "Multiline input placeholder when kind=aanbod." },
+    "kind_vraag":            { "text": "Vraag", "doc": "Kind-toggle chip label for kind=vraag on PostComposeScreen." },
+    "kind_aanbod":           { "text": "Aanbod", "doc": "Kind-toggle chip label for kind=aanbod on PostComposeScreen." },
     "skills_label":          { "text": "Skills", "doc": "Section label above the skill chips." },
     "submit":                { "text": "Plaats", "doc": "Submit CTA on PostComposeScreen." },
     "submitting":            { "text": "Bezig…", "doc": "Submit CTA label while the call is in flight." },

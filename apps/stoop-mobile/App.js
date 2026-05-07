@@ -37,12 +37,19 @@ import {
   useNavigation,
 }                                     from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator }   from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider }           from 'react-native-safe-area-context';
 
 import { parseDeepLink, actionToNavigation } from './src/lib/deepLinks.js';
 
-import { ROUTES, ROUTE_ORDER }        from './src/navigation.js';
-import { PlaceholderScreen }          from './src/screens/PlaceholderScreen.js';
+import { ROUTES, SHELL_TAB_ROUTES, STACK_ONLY_ROUTES } from './src/navigation.js';
+import { t, initI18n }                from './src/lib/i18n.js';
+import { COLORS }                     from './src/lib/theme.js';
+
+// PlaceholderScreen is unused now that every route has a real screen,
+// but we keep the import path stable for future regression scaffolds.
+// eslint-disable-next-line no-unused-vars
+import { PlaceholderScreen as _PlaceholderScreen } from './src/screens/PlaceholderScreen.js';
 import { WelcomeScreen }              from './src/screens/WelcomeScreen.js';
 import { OnboardScanScreen }          from './src/screens/OnboardScanScreen.js';
 import { OnboardRestoreScreen }       from './src/screens/OnboardRestoreScreen.js';
@@ -63,35 +70,37 @@ import { SignInScreen }               from './src/screens/SignInScreen.js';
 import { OnboardIssueScreen }         from './src/screens/OnboardIssueScreen.js';
 import { MineScreen }                 from './src/screens/MineScreen.js';
 import { MetricsScreen }              from './src/screens/MetricsScreen.js';
-import { initI18n }                   from './src/lib/i18n.js';
 
-// Per-route screen components. As real screens land they replace
-// `PlaceholderScreen` in this map. Keeping the map here (rather than
-// inside `<Stack>`) means tests can introspect the route → component
-// wiring without rendering.
-const _initialMap = Object.fromEntries(ROUTE_ORDER.map((r) => [r, PlaceholderScreen]));
+// Route → screen component map.  Tests introspect this without
+// rendering, so it has to cover every route that's reachable in the
+// app (including the synthetic `Shell` route).
 export const SCREEN_COMPONENTS = Object.freeze({
-  ..._initialMap,
+  // Stack-only routes
   [ROUTES.Welcome]:        WelcomeScreen,
   [ROUTES.OnboardScan]:    OnboardScanScreen,
   [ROUTES.OnboardRestore]: OnboardRestoreScreen,
-  [ROUTES.ProfileMine]:    ProfileMineScreen,
-  [ROUTES.ProfileOther]:   ProfileOtherScreen,
-  [ROUTES.Feed]:           FeedScreen,
+  [ROUTES.OnboardIssue]:   OnboardIssueScreen,
+  [ROUTES.SignIn]:         SignInScreen,
   [ROUTES.PostCompose]:    PostComposeScreen,
   [ROUTES.ItemDetail]:     ItemDetailScreen,
-  [ROUTES.ChatThreads]:    ChatThreadsScreen,
   [ROUTES.ChatThread]:     ChatThreadScreen,
-  [ROUTES.Contacts]:       ContactsScreen,
+  [ROUTES.ProfileOther]:   ProfileOtherScreen,
   [ROUTES.Contact]:        ContactScreen,
   [ROUTES.Group]:          GroupScreen,
-  [ROUTES.Settings]:       SettingsScreen,
   [ROUTES.Privacy]:        PrivacyScreen,
   [ROUTES.Push]:           PushScreen,
-  [ROUTES.SignIn]:         SignInScreen,
-  [ROUTES.OnboardIssue]:   OnboardIssueScreen,
-  [ROUTES.Mine]:           MineScreen,
   [ROUTES.Metrics]:        MetricsScreen,
+
+  // Shell tab routes
+  [ROUTES.Feed]:           FeedScreen,
+  [ROUTES.Mine]:           MineScreen,
+  [ROUTES.ChatThreads]:    ChatThreadsScreen,
+  [ROUTES.Contacts]:       ContactsScreen,
+  [ROUTES.ProfileMine]:    ProfileMineScreen,
+  [ROUTES.Settings]:       SettingsScreen,
+
+  // Synthetic — wraps the tabs.  Defined below.
+  [ROUTES.Shell]:          ShellTabs,
 });
 
 class ErrorBoundary extends React.Component {
@@ -115,6 +124,37 @@ class ErrorBoundary extends React.Component {
 }
 
 const Stack = createNativeStackNavigator();
+const Tabs  = createBottomTabNavigator();
+
+/**
+ * ShellTabs — the bottom-tab shell containing the user's main
+ * destinations: Feed / Mine / Chat / Contacts / Profile / Settings.
+ * Detail routes (ItemDetail / ChatThread / Contact / Group / etc.)
+ * push OVER this shell from the outer stack and hide the tab bar.
+ *
+ * Function declaration so it can be referenced from `SCREEN_COMPONENTS`
+ * before the textual definition (function declarations are hoisted).
+ */
+function ShellTabs() {
+  return (
+    <Tabs.Navigator
+      screenOptions={{
+        headerShown:        true,
+        tabBarActiveTintColor:   COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarStyle:        { backgroundColor: COLORS.surface, borderTopColor: COLORS.border },
+        tabBarLabelStyle:   { fontSize: 11 },
+      }}
+    >
+      <Tabs.Screen name={ROUTES.Feed}        component={FeedScreen}        options={{ title: t('tabs.feed',     'Feed') }} />
+      <Tabs.Screen name={ROUTES.Mine}        component={MineScreen}        options={{ title: t('tabs.mine',     'Mine') }} />
+      <Tabs.Screen name={ROUTES.ChatThreads} component={ChatThreadsScreen} options={{ title: t('tabs.chat',     'Chat') }} />
+      <Tabs.Screen name={ROUTES.Contacts}    component={ContactsScreen}    options={{ title: t('tabs.contacts', 'Contacts') }} />
+      <Tabs.Screen name={ROUTES.ProfileMine} component={ProfileMineScreen} options={{ title: t('tabs.profile',  'Profile') }} />
+      <Tabs.Screen name={ROUTES.Settings}    component={SettingsScreen}    options={{ title: t('tabs.settings', 'Settings') }} />
+    </Tabs.Navigator>
+  );
+}
 
 /**
  * DeepLinkHandler — listens for `stoop://...` URLs, parses them via
@@ -155,9 +195,10 @@ function DeepLinkHandler() {
   return null;
 }
 
-// Kick off i18n once at module-load. Default to English; settings
-// will swap to Dutch (or whatever) after first hydration.
-initI18n({ lng: 'en' }).catch((err) => {
+// Kick off i18n once at module-load.  No `lng` → auto-detect from
+// the device locale (Dutch → 'nl', everything else → 'en').
+// Settings can swap it later.
+initI18n().catch((err) => {
   console.warn('[i18n] init failed (falling back to keys):', err?.message ?? err);
 });
 
@@ -172,13 +213,29 @@ export default function App() {
             initialRouteName={ROUTES.Welcome}
             screenOptions={{ headerShown: false }}
           >
-            {ROUTE_ORDER.map((name) => (
-              <Stack.Screen
-                key={name}
-                name={name}
-                component={SCREEN_COMPONENTS[name]}
-              />
-            ))}
+            {/* Entry stack — pre-shell screens. */}
+            <Stack.Screen name={ROUTES.Welcome}        component={WelcomeScreen} />
+            <Stack.Screen name={ROUTES.OnboardScan}    component={OnboardScanScreen} />
+            <Stack.Screen name={ROUTES.OnboardRestore} component={OnboardRestoreScreen} />
+            <Stack.Screen name={ROUTES.OnboardIssue}   component={OnboardIssueScreen} />
+            <Stack.Screen name={ROUTES.SignIn}         component={SignInScreen} />
+
+            {/* The shell — bottom-tabs.  Welcome's "Beginnen" CTA
+                navigates here; deep links drop straight into a tab. */}
+            <Stack.Screen name={ROUTES.Shell}          component={ShellTabs} />
+
+            {/* Detail screens — pushed over the shell, hide the tab
+                bar (native-stack hides the parent tab bar by default
+                because it covers the whole screen). */}
+            <Stack.Screen name={ROUTES.PostCompose}    component={PostComposeScreen} />
+            <Stack.Screen name={ROUTES.ItemDetail}     component={ItemDetailScreen} />
+            <Stack.Screen name={ROUTES.ChatThread}     component={ChatThreadScreen} />
+            <Stack.Screen name={ROUTES.ProfileOther}   component={ProfileOtherScreen} />
+            <Stack.Screen name={ROUTES.Contact}        component={ContactScreen} />
+            <Stack.Screen name={ROUTES.Group}          component={GroupScreen} />
+            <Stack.Screen name={ROUTES.Privacy}        component={PrivacyScreen} />
+            <Stack.Screen name={ROUTES.Push}           component={PushScreen} />
+            <Stack.Screen name={ROUTES.Metrics}        component={MetricsScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>

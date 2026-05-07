@@ -26,10 +26,12 @@ import {
 import { ChipRow }                            from '../components/ChipRow.js';
 import { attachmentUri }                      from '../lib/post.js';
 
-const KIND_OPTIONS = [
-  { id: 'vraag',  label: 'Vraag' },
-  { id: 'aanbod', label: 'Aanbod' },
-];
+function _kindOptions() {
+  return [
+    { id: 'vraag',  label: t('compose.kind_vraag',  'Ask') },
+    { id: 'aanbod', label: t('compose.kind_aanbod', 'Offer') },
+  ];
+}
 
 /**
  * @param {object} props
@@ -107,7 +109,7 @@ export function PostComposeScreen({
       <Text style={styles.heading}>{t('compose.heading', 'Nieuwe post')}</Text>
 
       <ChipRow
-        items={KIND_OPTIONS}
+        items={_kindOptions()}
         selected={[kind]}
         onToggle={setKind}
         singleSelect
