@@ -215,7 +215,223 @@ functional design; every visible string is i18n-resolvable.
 **Acceptance:** clicking a `stoop://invite?...` link from another
 app opens the redeem flow.
 
-## Phase 40.12 — Real-device pass + closed-beta build
+## 2026-05-08 mid-build audit — what 40.1-40.13 actually delivered
+
+> Phases 40.1-40.13 shipped on schedule but on a narrower scope than
+> the original goal "ship all web capabilities to phone." The audit
+> below is honest: lots of pretty UI, none of it wired to a live
+> agent. The new Phases 40.14-40.24 fix that.
+
+**What 40.1-40.13 actually shipped:**
+- Phase 40.1 ✅ — workspace scaffold + smoke test.
+- Phase 40.2 ✅ — `@canopy/sync-engine-rn` substrate; folio-mobile
+  consumes it.
+- Phase 40.3 ✅ — `@canopy/oidc-session-rn` substrate; folio-mobile
+  consumes it. Stoop V3 has the `useSignInHook` slot but doesn't yet
+  call it.
+- Phase 40.4 ✅ — `FileSystemAdapter` in `@canopy/react-native`.
+  Not yet consumed by Stoop V3 (no `CachingDataSource` wired).
+- Phase 40.5 ✅ — `imagePicker.js` with `pickPrikbordImages` +
+  `pickChatImage` matching the Phase 39 byte shape. Not yet wired
+  to PostComposeScreen / ChatThreadScreen (passed in via callback).
+- Phase 40.6 ✅ — `qrScanner.js` payload classifier + `QrCode`
+  component + OnboardScanScreen with `expo-camera`'s `CameraView`.
+  Real camera, real classifier — but the routing to the redeem
+  flow is still callback-driven (no live agent to redeem against).
+- Phase 40.7 ✅ — `geo.js` mobile-side `getCoarseLocationFromGps`
+  via `expo-location`. ProfileMineScreen has a "use my location"
+  prop; the prop is unwired.
+- Phase 40.8 ✅ — `bgRunOnce.js` + `activeCadence.js` modules.
+  AppState listener exists; **not yet attached** to a live
+  `bundle.cache.setOnline(...)`. Background-fetch task **not yet
+  registered** with `expo-task-manager`.
+- Phase 40.9 ✅ — `push.js` with `setupPush` + `requestPushPermission`.
+  PushScreen has the opt-in CTA; **not yet ships the token to
+  the relay**, no test-push button.
+- Phase 40.10 🟡 — all 20 screens implemented as UI shells with
+  `prop`-based data + callback inputs. **No `ServiceContext` boots
+  an agent**; every prop is unwired. Tab-shell + locale auto-detect
+  was a 2026-05-08 follow-up after a real-device test.
+- Phase 40.11 ✅ — deep-link parser (`deepLinks.js`) + DeepLinkHandler
+  inside the NavigationContainer. Routes registered in `app.json`.
+- Phase 40.12 ⏸ — deferred (real-device pass; nothing works
+  end-to-end yet).
+- Phase 40.13 ⏸ — deferred (no shipped behaviour to document).
+
+**What was missed entirely** (not in any phase but should be):
+- ServiceContext + agent bring-up (folio-mobile pattern not
+  duplicated for Stoop).
+- `useSkill` hook for screens to invoke skills.
+- Trust-level + per-contact-flag UI on ContactScreen.
+- Distance / group-multi-select / audience picker on PostCompose.
+- Hop-through toggle + onlineWindow inputs on SettingsScreen.
+- Avatar picker wiring on ProfileMineScreen.
+- Skills add/remove (chip multi-select with categories) on
+  ProfileMineScreen.
+- Recovery-phrase reveal on ProfileMineScreen.
+- Member-list + role chips + assign-role on GroupScreen.
+- CreateGroupScreen (the 6-question wizard equivalent of
+  `/create-group.html`) — entire screen.
+- AuthCallbackScreen (bulk-sync progress after pod sign-in) —
+  entire screen.
+- Skill-match inbox / suggestions surface — entire screen.
+- ContactRequests list (incoming-add approval) — sub-flow.
+- ContactList management (create / rename / delete + drag-into-list).
+- Brainstorm features past V1 web: rotating group keys,
+  rotating addresses, auto-skill-match privacy gate.
+
+The new Phases 40.14-40.24 close these gaps.
+
+## Phase 40.14 — ServiceContext + agent bring-up + `useSkill` hook
+
+> **Critical path** — every other new phase needs this first. Mirrors
+> `apps/folio-mobile/src/ServiceContext.js`'s pattern. Once this
+> ships, the existing UI shells flip to "live" with one prop binding
+> per screen.
+
+| # | Task | Files |
+|---|---|---|
+| 40.14.1 | `apps/stoop-mobile/src/ServiceContext.js` — boots an `Agent` via `createMobileBootstrap` from `@canopy/sync-engine-rn`, attaches Stoop's `buildSkills` + `buildOnboardingSkills` + `wireGroupBroadcastMirror` from `@canopy-app/stoop`, wires `KeychainVault`, `AsyncStorageAdapter`, `FileSystemAdapter`, `MdnsTransport`, `BleTransport`, `MobilePushBridge`. Exposes via `<ServiceProvider>` React context. | `apps/stoop-mobile/src/ServiceContext.js` |
+| 40.14.2 | `apps/stoop-mobile/src/lib/useSkill.js` — `useSkill(skillId)` returns `{call, loading, error}`. Wraps `agent.invoke(localPeer, skillId, parts)` with React state for loading + error. Auto-cancels on unmount. | `apps/stoop-mobile/src/lib/useSkill.js` |
+| 40.14.3 | `apps/stoop-mobile/src/lib/useAgentEvent.js` — subscribes to a named `agent.on(eventName, ...)` and re-renders the consumer when new events arrive. Used by Feed (item arrive), ChatThread (message arrive), Push (push handler). | `apps/stoop-mobile/src/lib/useAgentEvent.js` |
+| 40.14.4 | `App.js` wraps the navigator in `<ServiceProvider>`. The provider blocks rendering until the agent is identity-bootstrapped (returns a small splash for the first ~200 ms). | `apps/stoop-mobile/App.js` |
+| 40.14.5 | `apps/stoop-mobile/src/lib/AppState.js` — wires `AppState.change` to `bundle.cache.setOnline(...)`. Foreground = poll at `pollIntervalMs`; background = disconnect, drain, sleep. (The pure helpers are already in `lib/activeCadence.js`; this glues them to live state.) | `apps/stoop-mobile/src/lib/AppState.js` |
+| 40.14.6 | Tests: ServiceContext renders, agent boots, `useSkill` invokes a stub skill end-to-end. | `apps/stoop-mobile/test/ServiceContext.test.js`, `useSkill.test.js` |
+
+**Estimate:** 2 days.
+**Acceptance:** ServiceContext mounts; FeedScreen receives a non-
+empty `items` array on a test-fixture agent; tapping a button on a
+test screen invokes a stub skill and re-renders.
+
+## Phase 40.15 — Profile + identity wiring
+
+| # | Task | Files |
+|---|---|---|
+| 40.15.1 | ProfileMineScreen wires `setMyHandle`, `setMyProfile`, `setMyAvatarUrl`, `clearMyAvatar`, `getCoarseLocationFromGps`, `setLocation`, `clearLocation`, `setHolidayMode`, `addMySkill`, `removeMySkill`, `listMySkills`. Avatar picker via `imagePicker.pickChatImage` (single image, AVATAR_PRESET 256px). | `apps/stoop-mobile/src/screens/ProfileMineScreen.js` |
+| 40.15.2 | Skills sub-flow: add a categorised skill picker (mirror Phase 23 categories from `apps/stoop/src/lib/skillsMatch.js`'s `TAXONOMY`). New component `<SkillPicker categories={...} selected={...} onChange={...}>` reused on Profile + PostCompose. | `apps/stoop-mobile/src/components/SkillPicker.js` |
+| 40.15.3 | Recovery phrase reveal: wires `getMnemonicOnce` + `markMnemonicShown`. Renders the 12 / 24 words in a copy-to-clipboard layout inside a confirm modal; warns about screenshot risk in the body. | `apps/stoop-mobile/src/screens/ProfileMineScreen.js` |
+| 40.15.4 | ProfileOtherScreen wires `getMemberProfile(memberId)` + `requestReveal`. | `apps/stoop-mobile/src/screens/ProfileOtherScreen.js` |
+| 40.15.5 | Tests: skill calls, error handling, sad paths. | `apps/stoop-mobile/test/screens/ProfileMineScreen.test.js` |
+
+**Estimate:** 1.5 days.
+**Acceptance:** Real-device test — set handle, set name, take a
+photo for avatar, set location via GPS, add 3 skills, toggle
+holiday on/off, see recovery phrase. All values survive app
+restart.
+
+## Phase 40.16 — Posts + items wiring + new compose controls
+
+| # | Task | Files |
+|---|---|---|
+| 40.16.1 | FeedScreen wires `listOpen` + subscribes to `agent.on('item-arrive', ...)`. Pull-to-refresh calls `refresh`. Filter chips drive a server-side filter on the listOpen call (kind / skill / distance). | `apps/stoop-mobile/src/screens/FeedScreen.js` |
+| 40.16.2 | PostComposeScreen wires `postRequest` with attachments via `imagePicker.pickPrikbordImages`. New compose-controls: **distance slider** (max-km, snaps to {1, 2, 5, 10, 25} per `lib/geo.js`'s `DISTANCE_PRESETS`), **group multi-select** (lists user's joined groups), **audience picker** (open / contacts-only / trusted-only / all-broadcastable). | `apps/stoop-mobile/src/screens/PostComposeScreen.js`, `apps/stoop-mobile/src/components/AudiencePicker.js` |
+| 40.16.3 | ItemDetailScreen wires `getItem(id)`, `respondToItem`, `claimItem`, `cancelClaim`. Claim list inline; accept/reject buttons call `acceptResponder` / `rejectResponder`. | `apps/stoop-mobile/src/screens/ItemDetailScreen.js` |
+| 40.16.4 | MineScreen wires `listMine` + the cancel/accept/reject claim actions. | `apps/stoop-mobile/src/screens/MineScreen.js` |
+| 40.16.5 | Tests. | `apps/stoop-mobile/test/screens/{FeedScreen,PostComposeScreen,ItemDetailScreen,MineScreen}.test.js` |
+
+**Estimate:** 2 days.
+**Acceptance:** Real-device — post a vraag with photo + distance +
+group + audience, see it on Feed, tap to detail, accept a claim
+on MineScreen.
+
+## Phase 40.17 — Chat + reveal handshake wiring
+
+| # | Task | Files |
+|---|---|---|
+| 40.17.1 | ChatThreadsScreen wires `listChatThreads` + `agent.on('chat-message-arrive', ...)` (refreshes the list on activity). | `apps/stoop-mobile/src/screens/ChatThreadsScreen.js` |
+| 40.17.2 | ChatThreadScreen wires `getChatThread(id)`, `sendChatMessage`, `requestReveal`, `acceptReveal`, `declineReveal`. Photo attachments via `imagePicker.pickChatImage` (single, CHAT_PRESET 800px). | `apps/stoop-mobile/src/screens/ChatThreadScreen.js` |
+| 40.17.3 | Reveal-handshake UI: header CTA changes state machine: `not_revealed` → `request_pending` → `revealed` (with both displayName and handle visible) OR `request_declined`. | `apps/stoop-mobile/src/screens/ChatThreadScreen.js` |
+| 40.17.4 | Tests. | `apps/stoop-mobile/test/screens/Chat*.test.js` |
+
+**Estimate:** 1.5 days.
+**Acceptance:** Two test devices: A sends a message + photo; B
+receives + replies; A taps "Connect" → B sees a prompt → both see
+each other's real names afterward.
+
+## Phase 40.18 — Contacts + groups + new screens
+
+| # | Task | Files |
+|---|---|---|
+| 40.18.1 | ContactsScreen wires `listContacts`, `addContact`, `removeContact`, `addContactFromQr`. Plus a header section for **incoming requests** (`listIncomingContactRequests`, `acceptContactRequest`, `declineContactRequest`). | `apps/stoop-mobile/src/screens/ContactsScreen.js` |
+| 40.18.2 | ContactScreen wires `setContactTrust` (bekend / vertrouwd), `setContactFlag` (shareLocation / hopThrough / autoMatch), `setContactTags`. New TrustPicker + FlagToggleRow components. | `apps/stoop-mobile/src/screens/ContactScreen.js`, `apps/stoop-mobile/src/components/{TrustPicker,FlagToggleRow}.js` |
+| 40.18.3 | New ContactListsSection on ContactsScreen — lists user's contact-lists (`listContactLists`, `createContactList`, `renameContactList`, `deleteContactList`, `addContactToList`, `removeContactFromList`). | `apps/stoop-mobile/src/screens/ContactsScreen.js` |
+| 40.18.4 | GroupScreen wires `getGroup`, `getMembers`, `rotateMyGroupCode`, `getCurrentMembershipCode`, `leaveGroup`, `listEvictedMembers`, `removeMember`. New MemberRow with role chip; assign-role sub-flow (`setMemberRole(memberId, 'admin' | 'coordinator' | 'member')`). | `apps/stoop-mobile/src/screens/GroupScreen.js`, `apps/stoop-mobile/src/components/MemberRow.js` |
+| 40.18.5 | **New CreateGroupScreen** — multi-step wizard mirroring `/create-group.html`'s 6 questions: name + purpose, admins, house rules, conflict resolution, location anchor, distance defaults. Wires `createGroupWithRules`. On success, navigates to OnboardIssueScreen with the freshly-issued admin invite token. | `apps/stoop-mobile/src/screens/CreateGroupScreen.js` (NEW) + `src/navigation.js` (route entry) |
+| 40.18.6 | Tests. | `apps/stoop-mobile/test/screens/{ContactsScreen,ContactScreen,GroupScreen,CreateGroupScreen}.test.js` |
+
+**Estimate:** 2.5 days.
+**Acceptance:** Real-device — create a group, share QR via
+OnboardIssueScreen, second device scans + redeems, both see each
+other in the member list, set per-contact trust + flags.
+
+## Phase 40.19 — Settings + push + sign-in wiring
+
+| # | Task | Files |
+|---|---|---|
+| 40.19.1 | SettingsScreen wires `getSettings` / `updateSettings` for both shared (`broadcastable`, `defaultShareLocation`) and per-device (`pollIntervalMs`, `onlineWindow.everyMinutes`, `onlineWindow.durationSec`, `allowHopThrough`). Two inputs for online-window; a toggle for hop-through; a slider for poll-interval. | `apps/stoop-mobile/src/screens/SettingsScreen.js` |
+| 40.19.2 | PushScreen wires `subscribePushChannel(token, platform)` → ships the Expo token to the relay. Adds a "Test push" button (`triggerSelfPush`). Subscription-status pill pulls from `getPushSubscriptionStatus`. | `apps/stoop-mobile/src/screens/PushScreen.js` |
+| 40.19.3 | SignInScreen wires `useOidcSignIn` from `@canopy/oidc-session-rn/hook` with `appId: 'stoop'`. On success, the agent re-keys to the pod identity (Phase 33 mid-flight swap). | `apps/stoop-mobile/src/screens/SignInScreen.js` |
+| 40.19.4 | **New AuthCallbackScreen** — bulk-sync progress polling after pod sign-in. Polls `getBulkSyncStatus` every 500 ms; renders a progress bar + "uploading {done}/{total}" + a finish state. Mirrors `/auth-callback.html`. | `apps/stoop-mobile/src/screens/AuthCallbackScreen.js` (NEW) + `src/navigation.js` |
+| 40.19.5 | Tests. | `apps/stoop-mobile/test/screens/{SettingsScreen,PushScreen,SignInScreen,AuthCallbackScreen}.test.js` |
+
+**Estimate:** 1.5 days.
+**Acceptance:** Sign-in to a test pod, watch bulk-sync progress,
+see settings synchronise across devices.
+
+## Phase 40.20 — Skill-match suggestion inbox + privacy-aware notify
+
+> Implements the brainstorm's auto-match flow. **Design-blocked** on
+> `§8a.3` of the functional design — needs a few questions answered
+> first. The phase is here so the work isn't lost; pull it forward
+> when the design lands.
+
+| # | Task | Files |
+|---|---|---|
+| 40.20.1 | Resolve the open privacy questions in `§8a.3` (rate limits, opt-in scope, notify-on-no-match policy). | (design doc) |
+| 40.20.2 | New SkillMatchInboxScreen — list of incoming skill-match suggestions. Each row shows the requester's handle (or anonymised if not yet revealed), the skill / category, and a "Help" / "Ignore" CTA. | `apps/stoop-mobile/src/screens/SkillMatchInboxScreen.js` (NEW) |
+| 40.20.3 | Wire `subscribeSkillMatchOffers` (or whatever the substrate names it) — receives broadcasts from the user's wider connection list (groups + hop-discovered + contacts), runs the local skills filter, surfaces matches as inbox entries + push notifications. | `apps/stoop-mobile/src/screens/SkillMatchInboxScreen.js`, `apps/stoop-mobile/src/lib/skillMatchListener.js` (NEW) |
+| 40.20.4 | Add a per-contact `flag_auto_match` toggle (already in `apps/stoop/locales/{nl,en}.json`'s `contacts.flag_auto_match`; the per-contact UI lives on ContactScreen from Phase 40.18). | `apps/stoop-mobile/src/screens/ContactScreen.js` |
+| 40.20.5 | Tests. | `apps/stoop-mobile/test/screens/SkillMatchInboxScreen.test.js` |
+
+**Estimate:** 1.5 days (after design unblocks).
+**Acceptance:** Two devices: A posts a request, B's agent
+auto-evaluates against B's skills, B sees the suggestion in the
+inbox + a push.
+
+## Phase 40.21 — AppState bridge + background-fetch task
+
+| # | Task | Files |
+|---|---|---|
+| 40.21.1 | `apps/stoop-mobile/src/state/backgroundFetch.js` — registers `expo-task-manager` task on app boot when `onlineWindow.everyMinutes` is set; handler boots the agent via `bgRunOnce` for `onlineWindow.durationSec`, runs one sync, tears down. (`bgRunOnce` already exists in `@canopy/sync-engine-rn` as of Phase 40.2.) | `apps/stoop-mobile/src/state/backgroundFetch.js` |
+| 40.21.2 | Settings UI exposes a "test background fetch" button that simulates the OS firing the task; on real devices that's the only way to verify pre-OS-eligibility. | `apps/stoop-mobile/src/screens/SettingsScreen.js` |
+| 40.21.3 | Battery profile doc with empirical numbers per cadence preset. | `apps/stoop-mobile/docs/battery.md` |
+| 40.21.4 | Tests with mocked `expo-task-manager`. | `apps/stoop-mobile/test/state/backgroundFetch.test.js` |
+
+**Estimate:** 0.5 day.
+**Acceptance:** Phone in background fires the task at the
+configured cadence; cadence is clamped to OS minimum (15 min on
+Android Doze) with a hint surfaced in Settings.
+
+## Phase 40.22 — Privacy / safety polish
+
+> Design-blocked on `§8a.1`, `§8a.2` of the functional design.
+> Captures rotating group keys, rotating addresses, and metadata-
+> public warnings.
+
+| # | Task | Files |
+|---|---|---|
+| 40.22.1 | Resolve open questions in `§8a.1` + `§8a.2`. Draft a separate sketch for the rotating-key flow (cadence config, external-channel UX, missed-rotation behaviour). | (design doc) |
+| 40.22.2 | Rotating group keys — wire `rotateGroupSecret` (admin) + `redeemGroupSecret` (member). New "Rotate code" CTA on GroupScreen with a 30-day cadence default. Member-side: a banner appears 3 days before rotation reminding the user to get the new code through the external channel. | `apps/stoop-mobile/src/screens/GroupScreen.js`, `packages/skill-match` or wherever the cadence-config lives |
+| 40.22.3 | Rotating addresses — implement per-day pubKey rotation (or whatever cadence the design picks), with rendezvous via the user's pod. UI: a "Rotate identity address" toggle in Settings (privacy section). | `apps/stoop-mobile/src/screens/SettingsScreen.js`, plus SDK-level work in `@canopy/core` |
+| 40.22.4 | Metadata-public warning — first-launch onboarding adds a slide explaining that **traffic metadata** (when you talk to whom, even if content is encrypted) is visible to relay operators. Accept-or-decline with a "use local-only" path. | `apps/stoop-mobile/src/screens/WelcomeScreen.js` (or a new MetadataWarningScreen) |
+| 40.22.5 | Trust enforcement — verify per-contact flags (`shareLocation`, `hopThrough`) actually gate the relevant data flows in the SDK. Add SDK-level tests. | `packages/identity-resolver` or `@canopy-app/stoop` |
+
+**Estimate:** unknown until the §8a.1 + §8a.2 designs land. Expect
+2-4 days plus design time.
+**Acceptance:** Brainstorm requirements (rotating keys, rotating
+addresses, metadata warning) demonstrably wired end-to-end.
+
+## Phase 40.23 — Real-device pass + closed-beta build (was 40.12)
 
 | # | Task |
 |---|---|
@@ -228,30 +444,48 @@ app opens the redeem flow.
 **Acceptance:** APK installable on a real device; documented
 known issues + battery numbers.
 
-## Phase 40.13 — Documentation + handoff
+## Phase 40.24 — Documentation + handoff (was 40.13)
 
 | # | Task |
 |---|---|
-| 40.13.1 | Update `apps/stoop-mobile/README.md` with: Status (Phase 40.12 complete), Bring it up (dev build), Substrates, Direct SDK use, Authentication, Settings layout (per Phase 33), Hub-attachment plan (`standalone`), Known limitations. |
-| 40.13.2 | Cross-link from `apps/stoop/README.md` to the mobile README. |
-| 40.13.3 | Update `Project Files/conventions/architectural-layering.md` with the new `*-rn` substrates added (sync-engine-rn, oidc-session-rn). |
-| 40.13.4 | Add a memory entry summarising what V3 mobile shipped. |
+| 40.24.1 | Update `apps/stoop-mobile/README.md` with: Status (Phase 40.23 complete), Bring it up (dev build), Substrates, Direct SDK use, Authentication, Settings layout (per Phase 33), Hub-attachment plan (`standalone`), Known limitations. |
+| 40.24.2 | Cross-link from `apps/stoop/README.md` to the mobile README. |
+| 40.24.3 | Update `Project Files/conventions/architectural-layering.md` with the new `*-rn` substrates added (sync-engine-rn, oidc-session-rn). |
+| 40.24.4 | Add a memory entry summarising what V3 mobile shipped. |
 
 **Estimate:** half a day.
 
 ## Total estimate
 
-12-14 days of focused work, give or take real-device friction.
-This is heavier than the original "5-7 days" estimate in the V2.5
-plan because that estimate assumed Stoop V3 would just glue
-existing pieces together; this plan also extracts two new
-substrates (Phases 40.2 + 40.3) which are the rule-of-two
-investments that pay off across folio-mobile + Stoop V3 + future
-mobile apps.
+**Original Phases 40.1-40.13 (UI + scaffolding):** ~12-14 days,
+already shipped.
+
+**New Phases 40.14-40.24 (wiring + missing screens + brainstorm
+features):** ~15 days plus the design time needed to unblock 40.20
+and 40.22.
+
+| Phase | Theme | Estimate |
+|---|---|---|
+| 40.14 | ServiceContext + agent bring-up + `useSkill` hook | 2 d |
+| 40.15 | Profile + identity wiring | 1.5 d |
+| 40.16 | Posts + items wiring + new compose controls | 2 d |
+| 40.17 | Chat + reveal handshake wiring | 1.5 d |
+| 40.18 | Contacts + groups wiring + new screens (CreateGroup, etc.) | 2.5 d |
+| 40.19 | Settings + push + sign-in wiring (incl. AuthCallback) | 1.5 d |
+| 40.20 | Skill-match suggestion inbox (design-blocked) | 1.5 d |
+| 40.21 | AppState bridge + background-fetch task | 0.5 d |
+| 40.22 | Privacy / safety polish (rotating keys + addresses) (design-blocked) | 2-4 d + design |
+| 40.23 | Real-device pass + closed-beta build | 1-2 d |
+| 40.24 | Documentation + handoff | 0.5 d |
+
+Phase 40.20 + 40.22 are design-blocked on §8a.1/2/3 of the
+functional design. The other phases can start as soon as 40.14
+ships.
 
 ## Order + dependencies
 
 ```
+[Original phases — done]
 40.1 (scaffold) ─────────────────────────────────────┐
                                                      │
 40.2 (sync-engine-rn) ←─ extracts folio-mobile       │
@@ -260,16 +494,28 @@ mobile apps.
                                                      │
 40.5 (image picker) ──┐                              │
 40.6 (qr scanner) ─────┤                             │
-40.7 (gps location) ───┤   parallelisable            │
-40.8 (background) ─────┤   after 40.4                │
+40.7 (gps location) ───┤                             │
+40.8 (background) ─────┤                             │
 40.9 (push) ───────────┤                             │
                        │                             │
-40.10 (screens) ←──────┘   needs 40.5-40.9 wired     │
-                           AND 40.2-40.3 substrates  │
+40.10 (screens shells)─┘                             │
+40.11 (deep links) ──────────────────────────────────┤
                                                      │
-40.11 (deep links) ─ overlaps with 40.10              │
-40.12 (real-device pass) ─ after 40.11                │
-40.13 (docs / handoff) ─ last                         │
+[New phases — wiring + gaps]                         │
+40.14 (ServiceContext + useSkill) ←──── BLOCKER for the rest
+        │                                            │
+        ├─ 40.15 (profile)                          │
+        ├─ 40.16 (posts + items + compose-controls) │
+        ├─ 40.17 (chat + reveal)                    │
+        ├─ 40.18 (contacts + groups + CreateGroup)  │
+        ├─ 40.19 (settings + push + signin + bulk-sync UI)
+        ├─ 40.21 (AppState + background)            │
+        │                                            │
+        ├─ 40.20 (skill-match inbox) ←── design-blocked
+        ├─ 40.22 (privacy polish)     ←── design-blocked
+                                                     │
+40.23 (real-device pass) ─ after 40.14-40.21         │
+40.24 (docs / handoff)   ─ last                      │
 ```
 
 ## Open questions (resolved at phase-time, not now)

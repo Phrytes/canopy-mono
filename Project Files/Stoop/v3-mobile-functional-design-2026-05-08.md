@@ -356,7 +356,101 @@ V3 ships these screens (parallel to web pages; per
 | Metrics | `/metrics.html` | Optional (admin / debug only on mobile) |
 | Onboard (Issue) | `/onboard.html` (issue mode) | Admin generates QR, shows it for someone to scan |
 
-## 7. Localisation
+## 6a. Implementation status (2026-05-08 audit)
+
+> The original Phases 40.1–40.13 (in
+> [`v3-mobile-coding-plan-2026-05-08.md`](v3-mobile-coding-plan-2026-05-08.md))
+> shipped the screen *shells* but deferred the agent bring-up that
+> connects them to the SDK. Every screen takes data + callbacks via
+> props; nothing supplies those props yet. The user-visible effect is
+> that the app navigates fine but no button does anything.
+>
+> The plan was always to wire the agent in afterwards (folio-mobile
+> uses the same pattern via its `ServiceContext`), but it didn't get
+> a phase number. This audit fixes that — Phases 40.14-40.24 in the
+> coding plan pick up the bring-up + the gaps documented below.
+
+### Per-screen coverage
+
+UI shell quality is high; agent wiring is uniformly missing. Specific
+sub-flows that need additional UI are in **bold**.
+
+| Screen | UI shell | Agent wiring | Notable sub-flows still missing |
+|---|---|---|---|
+| Welcome              | ✅ | n/a — pre-agent  | — |
+| Onboard (Scan)       | ✅ | ❌ — `redeemInviteWithGate` not wired; QR classifier OK | Privacy + house-rules gates after redeem |
+| Onboard (Restore)    | ✅ | ❌ — `restoreFromMnemonic` + `validateMnemonicPhrase` not wired | Post-restore identity-confirmation step |
+| Onboard (Issue)      | ✅ | ❌ — `getInviteQrPayload` not wired | Token expiry refresh |
+| Prikbord (Feed)      | 🟡 | ❌ — `listOpen` doesn't populate items | **Distance filter + group filter chips**; pull-to-refresh hooked but no-op |
+| Post compose         | 🟡 | ❌ — `postRequest` not wired | **Distance max-km slider; group multi-select; audience picker (which contacts beyond groups); hide-name option; expiry picker** |
+| Item detail          | 🟡 | ❌ — `respondToItem`, `cancelRequest` not wired | **Claim list + accept/reject inline**; reveal-status indicator |
+| Chat threads         | 🟡 | ❌ — `listChatThreads` not wired | — |
+| Chat thread          | 🟡 | ❌ — `sendChatMessage`, `requestReveal` not wired | **Reveal handshake** (CTA exists but unwired); typing-indicator |
+| My posts             | 🟡 | ❌ — `cancelRequest`, `acceptResponder` not wired | Claim-state machine UI |
+| Contacts             | 🟡 | ❌ — `listContacts`, `addContact`, `removeContact` not wired | **Incoming-contact-request approval list**; **trust-level picker (bekend / vertrouwd) per contact**; **per-contact flag toggles (shareLocation, hopThrough, autoMatch)**; **contact-list management (create / rename / delete + drag-into-list)** |
+| Contact detail       | 🟡 | ❌ — `setContactTrust`, `setContactFlag`, `setContactTags` not wired | **Trust-level + flags UI**; tags input |
+| Profile (mine)       | 🟡 | ❌ — `setMyHandle`, `setMyProfile`, `setMyAvatarUrl`, `addMySkill`, `removeMySkill`, `setHolidayMode` not wired | **Avatar picker + clear**; **location via GPS button** + place-name search + clear; **skills add/remove (multi-select with categories)**; **recovery phrase show / regenerate** |
+| Profile (other)      | 🟡 | ❌ — read of remote profile not wired | — |
+| Group                | 🟡 | ❌ — `getGroup`, `rotateMyGroupCode`, `getCurrentMembershipCode`, `leaveGroup` not wired | **Member list + per-member role chips (admin / coordinator / member)**; **rotate code + display next-rotation hint**; **list evicted members + reinvite**; edit-rules sub-screen |
+| **Create group**     | ❌ | ❌ — `createGroupWithRules` not wired | **Entire screen missing** — 6-question wizard equivalent of `/create-group.html` |
+| Settings             | 🟡 | ❌ — `updateSettings` not wired | **`onlineWindow.everyMinutes` + `durationSec`**; **`allowHopThrough`**; **`broadcastable`** (shared); **`defaultShareLocation`** (shared); **export-my-data** action |
+| Sign-in (Pod)        | 🟡 | ❌ — `useSignInHook` not bound; OIDC flow not driven | **Bulk-sync progress** (auth-callback.html equivalent — separate screen needed) |
+| Push                 | 🟡 | ❌ — `subscribeWebPush` / token-ship not wired | **Test-push button**; subscription status pull-from-relay |
+| Privacy              | ✅ | static — no agent needed | mobile-only sections (camera/location/BLE rationale recap) |
+| Metrics              | 🟡 | ❌ — `getMetrics` not wired | — |
+| **Auth callback**    | ❌ | ❌ | **Entire screen missing** — bulk-sync progress polling after pod sign-in |
+| **Skill-match inbox**| ❌ | ❌ — `skill-match` substrate exists | **Entire screen missing** — auto-match suggestion stream + privacy-aware notify |
+
+### Cross-cutting gaps
+
+1. **No `ServiceContext`** — there's no agent bring-up at all. Screens
+   render but receive no data and have no skill dispatcher.
+   `apps/folio-mobile/src/ServiceContext.js` is the canonical pattern;
+   Stoop V3 needs its own.
+2. **No `useSkill` hook** — even if the agent existed, the screens have
+   no documented way to invoke skills with loading / error states.
+3. **No `bundle.cache` writes** — `FileSystemAdapter` lands in 40.4 but
+   nothing persists to it yet. Photos taken in compose are lost on
+   close.
+4. **AppState bridge unwired** — `lib/activeCadence.js` is built but
+   never gets attached to a live `bundle.cache.setOnline(...)`.
+5. **Background-fetch task not registered** — `lib/bgRunOnce.js` is a
+   stub; the OS-level `expo-task-manager` registration is missing.
+6. **Push not subscribed** — `lib/push.js` defines `setupPush` and
+   `requestPushPermission` but the screen doesn't drive them and the
+   token never reaches the relay.
+7. **Locale parity on freshly-mobile keys** — `mobile.*` is in the
+   bundles, plus `welcome.*`, `onboard_*`, `tabs.*`, `feed.kind_*`,
+   `compose.kind_*` — but there are still hard-coded strings in
+   sub-components flagged by the audit (PlaceholderScreen, some
+   button labels).
+
+## 6b. Brainstorm features past V1 web
+
+The user's "next-phase" brainstorm (
+[`projects/02-neighborhood-app/README.md`](../projects/02-neighborhood-app/README.md)
+or wherever it lands) added requirements that aren't on the desktop
+either — they're net-new design work that needs a home in the plan:
+
+| Brainstorm requirement | Status | Notes |
+|---|---|---|
+| **Trust level (bekend / vertrouwd) per contact** | SDK has it (Phase 24); no mobile UI | Picker on ContactScreen + per-flag toggles |
+| **Distance sharing only with trusted contacts** | SDK has `flag_share_location`; not in mobile UI | Per-contact toggle on ContactScreen |
+| **Post: max distance + group multi-select + audience picker** | Partially in SDK (`postRequest` accepts targets); compose UI omits | New compose-screen sub-controls (distance slider, group multi-select, audience selector by openness level) |
+| **Anyone can create a group + share via QR + auto-admin** | SDK has `createGroupWithRules`; no mobile screen | New CreateGroupScreen — multi-step like `/create-group.html` |
+| **Mede-admin / coordinator roles** | Partial in SDK; UI missing | New role chip + assign-role sub-flow on GroupScreen |
+| **Rotating group key (30 d, external channel)** | Phase 35 evict-on-expiry exists; rotation cadence + external-channel UX is **new design work** | Needs a separate sketch + skill — see §11 below |
+| **Avatar upload from camera/library** | SDK has `setMyAvatarUrl`; mobile UI exists, unwired | Wires up in Phase 40.15 |
+| **Skills + holiday-mode in profile** | SDK has it; mobile UI exists, unwired | Wires up in Phase 40.15 |
+| **Profile sync with Solid pod (and test it)** | Substrate ready (`oidc-session-rn`); not wired in app | Wires up in Phase 40.19 |
+| **Hop-relay through-me toggle (battery-aware)** | SDK has `allowHopThrough`; mobile UI omits | New row on SettingsScreen — Phase 40.19 |
+| **Time-window relay polling (`onlineWindow.{everyMinutes,durationSec}`)** | SDK has it; mobile UI omits | Two number inputs on SettingsScreen — Phase 40.19 |
+| **Posts outside groups, audience by trust level** | Partial in SDK (per-contact flags); audience picker UI missing | New audience picker on PostCompose — Phase 40.16 |
+| **Auto-skillmatch broadcasts to non-contacts (privacy-aware)** | `skill-match` substrate exists; client-side privacy gate + notify UX is **new design** | New SkillMatchInbox screen + per-receive privacy gate — Phase 40.20 |
+| **Rotating addresses + metadata-public warning** | Privacy concern; partial in SDK (`AddressRotation` ?) | **New design** — see §11 below |
+| **Activities / hobbies variant of the app** | Future product fork | Out of scope for V3; tracked separately |
+
+
 
 Stoop V3 mobile reuses `apps/stoop/locales/{nl,en}.json`. The
 locale resolver becomes a small RN-friendly module — no DOM
@@ -390,6 +484,55 @@ they're tracked in the coding plan, not here:
   (no), contacts (no)" addendum specifically for the app-store
   listing. Track separately when listing prep happens.
 
+## 8a. Open design questions surfaced by the 2026-05-08 audit
+
+These are net-new design questions, separate from the Phase-time
+decisions in §8. They block the Phase 40.20 + 40.22 work.
+
+1. **Rotating group keys (30-day cadence, external channel).**
+   The brainstorm asks: admins generate a fresh key every N days,
+   distribute it through an out-of-band channel (WhatsApp group,
+   physical handover). Members who don't get the new key auto-evict.
+   Open: (a) what's the SDK skill set — `rotateGroupSecret`,
+   `redeemGroupSecret`? (b) does the user pick the cadence per group,
+   or is it a project-wide constant? (c) what's the UX when the
+   user misses a rotation — silent eviction, or a warning push N
+   days in advance? Phase 35 already auto-evicts on expiry; the
+   missing piece is the periodic-rotation cadence + the external-
+   channel flow.
+
+2. **Rotating identity addresses.** The brainstorm asks for "rotating
+   addresses" as a metadata-privacy measure on the relay. The agent
+   currently uses a long-lived `pubKey` as its address. Open:
+   (a) does the address rotate per-session, per-day, per-message?
+   (b) how do contacts re-discover the user after a rotation —
+   pubsub-of-rendezvous-keys? a directory in the user's pod?
+   (c) what's the metadata trade-off — full anonymity-set rotation
+   is heavy. Needs a separate design sketch before implementation.
+
+3. **Auto-skill-match privacy gate.** The brainstorm asks: a user's
+   request gets broadcast to the wider connection list (groups +
+   hop-discovered + contacts), the receiving agent first checks
+   internally if it matches the user's skills, and only notifies
+   the user on a match. Open: (a) what's the privacy guarantee for
+   the requester — does the receiver's agent reveal the request to
+   the user even on a no-match? (b) what's the rate-limit per
+   sender per receiver (don't spam)? (c) does the notification
+   require the receiver to opt-in per-sender or globally? The
+   Phase 22 `notifyWorthy` predicate is a starting point — needs
+   extension for the broader audience.
+
+4. **Audience picker UX.** What's the right control on a phone for
+   "post to: my groups [G1, G2] + my trusted contacts"? A multi-
+   select chip row scales poorly past ~5 audiences. Considered:
+   audience-templates (e.g. "all my groups", "trusted only",
+   "everyone in 5 km"). Pick the simplest approach that covers the
+   user's brainstorm; iterate from real use.
+
+5. **Pod attach / detach UX.** Sign-in lands in Phase 40.19; the
+   bulk-sync progress (`/auth-callback.html` equivalent) needs a
+   mobile design — modal? full-screen? cancellable?
+
 ## 9. Non-goals
 
 - **iOS-specific code paths** (locked in main README).
@@ -400,7 +543,32 @@ they're tracked in the coding plan, not here:
 - **Capacitor / Tauri / other RN alternatives** — Expo is the
   picked path, single-runtime is a feature.
 
-## 10. References
+## 10. Coverage-pass phases (40.14 — 40.24)
+
+Phases 40.1–40.13 shipped UI + scaffolding. The 2026-05-08 audit
+(§ 6a, § 6b above) re-scoped what's left into ten new phases driven
+by feature-completeness:
+
+| Phase | Theme | Estimate |
+|---|---|---|
+| 40.14 | ServiceContext + agent bring-up + `useSkill` hook | 2 d |
+| 40.15 | Profile + identity wiring (avatar / skills / holiday / location / recovery) | 1.5 d |
+| 40.16 | Posts + items wiring (Feed / Compose / Detail / Mine) + new compose-controls (distance / groups / audience) | 2 d |
+| 40.17 | Chat + reveal handshake wiring (threads list, photos, request-reveal flow) | 1.5 d |
+| 40.18 | Contacts + groups wiring + new screens (CreateGroup, ContactRequests, role mgmt) | 2.5 d |
+| 40.19 | Settings + push + sign-in wiring (full Settings + AuthCallback bulk-sync) | 1.5 d |
+| 40.20 | Skill-match suggestion inbox + privacy-aware notify | 1.5 d |
+| 40.21 | AppState bridge + background-fetch task registration | 0.5 d |
+| 40.22 | Privacy/safety polish (rotating addresses + metadata warning + trust enforcement) | needs design first |
+| 40.23 | Real-device pass + closed-beta build (was 40.12) | 1-2 d |
+| 40.24 | Documentation + handoff (was 40.13) | 0.5 d |
+
+Total ~15 days of focused work past the existing scaffolding. Phase
+40.22 is design-blocked on the open questions in § 8a. The
+authoritative phase plan with task tables lives in
+[`v3-mobile-coding-plan-2026-05-08.md`](v3-mobile-coding-plan-2026-05-08.md).
+
+## 11. References
 
 - V1 functional design: [`functional-design-2026-05-06.md`](functional-design-2026-05-06.md).
 - V2.5 phases (the substrate work mobile inherits): [`coding-plan-v2-2026-05-07.md`](coding-plan-v2-2026-05-07.md).
