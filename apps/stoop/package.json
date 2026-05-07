@@ -5,7 +5,10 @@
   "description": "Stoop — buurt-skill-app. V2 of the H5 / neighborhood-v0 closed-group skill-matchmaking app, renamed 2026-05-06.",
   "type": "module",
   "main": "src/index.js",
-  "exports": { ".": "./src/index.js" },
+  "exports": {
+    ".":         "./src/index.js",
+    "./lib/geo": "./src/lib/geo.js"
+  },
   "bin": {
     "stoop-ui":      "bin/stoop-ui.js",
     "stoop-testbed": "bin/stoop-testbed.js"
