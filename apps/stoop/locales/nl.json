@@ -33,10 +33,11 @@
   "mine": {
     "page_title":     { "text": "Stoop — Mijn posts", "doc": "Browser tab title for /mine.html." },
     "heading":        { "text": "Mijn posts", "doc": "Main page heading on /mine.html." },
-    "claims_heading": { "text": "Reacties", "doc": "Section heading above the per-item claim list on MineScreen (mobile)." },
-    "accept_claim":   { "text": "Accepteer", "doc": "Action: accept a claim (mobile)." },
-    "reject_claim":   { "text": "Wijs af", "doc": "Action: reject a claim (mobile)." },
-    "empty":          { "text": "Je hebt nog geen posts.", "doc": "Empty state on MineScreen (mobile)." }
+    "claims_heading":   { "text": "Reacties", "doc": "Section heading above the per-item claim list on MineScreen (mobile)." },
+    "accept_claim":     { "text": "Accepteer", "doc": "Action: accept a claim (mobile)." },
+    "reject_claim":     { "text": "Wijs af", "doc": "Action: reject a claim (mobile)." },
+    "empty":            { "text": "Je hebt nog geen posts.", "doc": "Empty state on MineScreen (mobile)." },
+    "no_active_group":  { "text": "Sluit eerst aan bij een groep.", "doc": "Empty state when no bundle is active." }
   },
   "sign_in": {
     "page_title":          { "text": "Stoop — Pod sign-in", "doc": "Browser tab title for /sign-in.html." },
@@ -160,7 +161,8 @@
     "empty_no_items":    { "text": "Nog geen posts in deze buurt.", "doc": "Empty state when the feed has no items at all." },
     "empty_filtered":    { "text": "Geen posts voor deze filter.", "doc": "Empty state when items exist but the active filter excludes them all." },
     "kind_vraag":        { "text": "Vragen", "doc": "Filter chip label for kind=vraag (asks/help-needed posts)." },
-    "kind_aanbod":       { "text": "Aanbod", "doc": "Filter chip label for kind=aanbod (offer/help-available posts)." }
+    "kind_aanbod":       { "text": "Aanbod", "doc": "Filter chip label for kind=aanbod (offer/help-available posts)." },
+    "no_group":          { "text": "Sluit eerst aan bij een groep om het prikbord te zien.", "doc": "Empty-state on mobile FeedScreen when no agent is active." }
   },
   "tabs": {
     "feed":     { "text": "Prikbord", "doc": "Bottom-tab label for the FeedScreen." },
@@ -176,6 +178,13 @@
     "placeholder_aanbod":    { "text": "Wat bied je aan?", "doc": "Multiline input placeholder when kind=aanbod." },
     "kind_vraag":            { "text": "Vraag", "doc": "Kind-toggle chip label for kind=vraag on PostComposeScreen." },
     "kind_aanbod":           { "text": "Aanbod", "doc": "Kind-toggle chip label for kind=aanbod on PostComposeScreen." },
+    "distance_label":        { "text": "Maximale afstand", "doc": "Section heading above the distance ChipRow." },
+    "distance_any":          { "text": "Geen limiet", "doc": "Distance preset 'any' — no max." },
+    "distance_km":           { "text": "{n} km", "doc": "Distance preset format." },
+    "audience_label":        { "text": "Naar wie wil je posten?", "doc": "Section heading above the AudiencePicker." },
+    "audience_hint_default": { "text": "Standaard: je actieve groep.", "doc": "Hint when no audience is selected." },
+    "audience_hint_n":       { "text": "{n} doelen geselecteerd", "doc": "Hint when one or more targets are selected." },
+    "no_group":              { "text": "Sluit eerst aan bij een groep om te kunnen posten.", "doc": "Empty-state when no agent is active." },
     "skills_label":          { "text": "Skills", "doc": "Section label above the skill chips." },
     "submit":                { "text": "Plaats", "doc": "Submit CTA on PostComposeScreen." },
     "submitting":            { "text": "Bezig…", "doc": "Submit CTA label while the call is in flight." },
@@ -236,11 +245,16 @@
     "reveal_unavailable":  { "text": "Reveal-flow niet beschikbaar in deze build.", "doc": "Alert shown when onRequestReveal is missing (placeholder-only build)." }
   },
   "item_detail": {
-    "unknown_item": { "text": "Post niet gevonden.", "doc": "Empty state on ItemDetailScreen when route was opened without a resolved item." },
-    "chat":         { "text": "Reageer met chat", "doc": "Primary CTA — opens / creates a 1:1 thread with the author." },
-    "claim":        { "text": "Help aanbieden", "doc": "Secondary CTA — bring-up code wires this to the claim flow." },
-    "hide":         { "text": "Verberg", "doc": "Overflow CTA — soft-mutes the item for this user." },
-    "report":       { "text": "Meld", "doc": "Overflow CTA — surfaces the report flow." }
+    "unknown_item":     { "text": "Post niet gevonden.", "doc": "Empty state when ItemDetailScreen has no resolved item." },
+    "chat":             { "text": "Reageer met chat", "doc": "CTA — opens a 1:1 thread with the author." },
+    "claim":            { "text": "Help aanbieden", "doc": "Secondary CTA." },
+    "hide":             { "text": "Verberg", "doc": "Overflow CTA." },
+    "report":           { "text": "Meld", "doc": "Overflow CTA." },
+    "respond":          { "text": "Ik help", "doc": "Primary CTA on a non-self item — calls respondToItem." },
+    "responding":       { "text": "Bezig…", "doc": "Primary CTA label while in flight." },
+    "cancel":           { "text": "Annuleer post", "doc": "Destructive CTA visible to the post author — cancelRequest." },
+    "mark_returned":    { "text": "Markeer als teruggebracht", "doc": "Lend-only CTA — markReturned." },
+    "no_active_group":  { "text": "Sluit eerst aan bij een groep om posts te bekijken.", "doc": "Empty-state when no active bundle." }
   },
   "profile_other": {
     "unknown_member":  { "text": "Onbekend lid.", "doc": "Empty state on ProfileOtherScreen when the route was opened without a member to render." },

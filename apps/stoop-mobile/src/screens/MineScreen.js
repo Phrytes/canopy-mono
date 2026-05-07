@@ -1,14 +1,14 @@
 /**
- * MineScreen — own posts + claim management (mirrors `/mine.html`).
+ * MineScreen — own posts + claim management.
  *
- * Stoop V3 mobile.  Vertical list of the user's own items, with
- * inline claim list per item.  Pure UI: bring-up code provides the
- * data + per-claim accept/reject callbacks.
+ * Stoop V3 mobile.  Phase 40.16 (2026-05-08): wired to live agent.
+ * No `listMine` skill exists today — we filter `listOpen` by `from`
+ * matching the local agent's address.
  */
 
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
-  View, Text, FlatList, Pressable, StyleSheet,
+  View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -16,24 +16,59 @@ import { ROUTES }                            from '../navigation.js';
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
 import { t }                                 from '../lib/i18n.js';
 import { PostCard }                          from '../components/PostCard.js';
+import { useService }                        from '../ServiceContext.js';
+import { useSkill }                          from '../lib/useSkill.js';
+import { useSkillResult }                    from '../lib/useSkillResult.js';
+import { useAgentEvent }                     from '../lib/useAgentEvent.js';
 
-/**
- * @param {object} props
- * @param {Array<object>} [props.items]
- *   Items where `authorId === selfId`. Each item may have a
- *   `claims: Array<{id, claimerId, claimerHandle, status}>` field.
- * @param {object} [props.selfAuthor]
- * @param {(item: object, claim: object) => Promise<void>} [props.onAcceptClaim]
- * @param {(item: object, claim: object) => Promise<void>} [props.onRejectClaim]
- */
-export function MineScreen({
-  items = [], selfAuthor,
-  onAcceptClaim, onRejectClaim,
-} = {}) {
+export function MineScreen() {
   const nav = useNavigation();
+  const svc = useService();
+
+  const { data, loading, refresh } = useSkillResult('listOpen', {}, []);
+  const accept = useSkill('acceptResponder');
+  const cancel = useSkill('cancelRequest');
+
+  // Refresh on broadcast events.
+  const arrived = useAgentEvent('item-arrive');
+  useEffect(() => {
+    if (arrived != null) refresh().catch(() => { /* swallow */ });
+  }, [arrived, refresh]);
+
+  if (!svc?.activeBundle) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>
+          {t('mine.no_active_group', 'Sluit eerst aan bij een groep.')}
+        </Text>
+      </View>
+    );
+  }
+
+  const selfAddr = svc.activeBundle.agent.address ?? svc.activeBundle.agent.identity?.pubKey;
+
+  const items = useMemo(() => {
+    const all = Array.isArray(data?.items) ? data.items : [];
+    return all.filter((it) => it.from === selfAddr || it.authorWebid === selfAddr);
+  }, [data, selfAddr]);
+
+  const acceptResponder = async (item, claim) => {
+    try {
+      await accept.call({ requestId: item.id, responder: claim.responderWebid ?? claim.from });
+      await refresh();
+    } catch { /* surfaced in claim row's accept.error if needed */ }
+  };
+
+  const cancelMine = async (item) => {
+    try {
+      await cancel.call({ requestId: item.id });
+      await refresh();
+    } catch { /* swallow */ }
+  };
 
   return (
     <View style={styles.root}>
+      {loading && items.length === 0 ? <ActivityIndicator style={{ marginTop: SPACING.lg }} /> : null}
       <FlatList
         data={items}
         keyExtractor={(it) => String(it?.id ?? Math.random())}
@@ -41,41 +76,39 @@ export function MineScreen({
           <View style={styles.card}>
             <PostCard
               item={item}
-              author={selfAuthor}
-              onPress={() => nav.navigate(ROUTES.ItemDetail, { itemId: item.id })}
+              author={null}
+              onPress={() => nav.navigate(ROUTES.ItemDetail, { itemId: item.id, item })}
             />
-
+            <View style={styles.cardActions}>
+              <Pressable
+                onPress={() => cancelMine(item)}
+                style={styles.btnGhost}
+                accessibilityRole="button"
+              >
+                <Text style={styles.btnGhostLabel}>
+                  {t('item_detail.cancel', 'Annuleer post')}
+                </Text>
+              </Pressable>
+            </View>
             {Array.isArray(item.claims) && item.claims.length > 0 ? (
               <View style={styles.claimsBlock}>
                 <Text style={styles.claimsHeading}>
                   {t('mine.claims_heading', 'Reacties')}
                 </Text>
                 {item.claims.map((c) => (
-                  <View key={c.id} style={styles.claimRow}>
+                  <View key={c.id ?? c.responderWebid} style={styles.claimRow}>
                     <Text style={styles.claimLabel}>
-                      @{c.claimerHandle ?? '?'} · {c.status ?? 'open'}
+                      @{c.responderHandle ?? c.responderRender?.handle ?? '?'} · {c.status ?? 'open'}
                     </Text>
                     {(c.status === 'open' || c.status == null) ? (
-                      <View style={styles.claimActions}>
-                        <Pressable
-                          onPress={() => onAcceptClaim?.(item, c)}
-                          style={styles.btnAccept}
-                          accessibilityRole="button"
-                        >
-                          <Text style={styles.btnAcceptLabel}>
-                            {t('mine.accept_claim', 'Accepteer')}
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={() => onRejectClaim?.(item, c)}
-                          style={styles.btnReject}
-                          accessibilityRole="button"
-                        >
-                          <Text style={styles.btnRejectLabel}>
-                            {t('mine.reject_claim', 'Wijs af')}
-                          </Text>
-                        </Pressable>
-                      </View>
+                      <Pressable
+                        onPress={() => acceptResponder(item, c)}
+                        style={styles.btnAccept}
+                      >
+                        <Text style={styles.btnAcceptLabel}>
+                          {t('mine.accept_claim', 'Accepteer')}
+                        </Text>
+                      </Pressable>
                     ) : null}
                   </View>
                 ))}
@@ -90,6 +123,8 @@ export function MineScreen({
             </Text>
           </View>
         )}
+        refreshing={loading}
+        onRefresh={refresh}
       />
     </View>
   );
@@ -100,8 +135,11 @@ export default MineScreen;
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
   card: { marginBottom: SPACING.md },
+  cardActions: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: SPACING.md },
+  btnGhost: { paddingVertical: SPACING.xs, paddingHorizontal: SPACING.md },
+  btnGhostLabel: { color: COLORS.danger, fontSize: FONT_SIZES.xs, fontWeight: '500' },
   claimsBlock: {
-    marginHorizontal: SPACING.md, marginTop: -SPACING.sm,
+    marginHorizontal: SPACING.md, marginTop: SPACING.xs,
     padding: SPACING.lg, backgroundColor: COLORS.surface,
     borderTopWidth: 1, borderColor: COLORS.border,
     borderBottomLeftRadius: RADII.md, borderBottomRightRadius: RADII.md,
@@ -113,19 +151,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: COLORS.border,
   },
   claimLabel: { flex: 1, fontSize: FONT_SIZES.sm, color: COLORS.text },
-  claimActions: { flexDirection: 'row' },
   btnAccept: {
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.xs, paddingHorizontal: SPACING.md,
     borderRadius: RADII.sm, marginLeft: SPACING.sm,
   },
   btnAcceptLabel: { color: COLORS.textInverse, fontSize: FONT_SIZES.xs, fontWeight: '600' },
-  btnReject: {
-    backgroundColor: COLORS.surfaceMuted,
-    paddingVertical: SPACING.xs, paddingHorizontal: SPACING.md,
-    borderRadius: RADII.sm, marginLeft: SPACING.sm,
-  },
-  btnRejectLabel: { color: COLORS.text, fontSize: FONT_SIZES.xs, fontWeight: '500' },
-  empty:     { padding: SPACING.xxl, alignItems: 'center' },
-  emptyText: { fontSize: FONT_SIZES.md, color: COLORS.textMuted },
+  empty: { padding: SPACING.xxl, alignItems: 'center' },
+  emptyText: { fontSize: FONT_SIZES.md, color: COLORS.textMuted, textAlign: 'center' },
 });
