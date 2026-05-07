@@ -50,6 +50,16 @@ import { loadSettings, updateSettings as updateSettingsLib } from '../lib/Settin
 import { geocode } from '../lib/geocode.js';
 import { cellFor, distanceKm, snapToGrid, DISTANCE_PRESETS } from '../lib/geo.js';
 import { resolve as resolveTargets, validateTarget, filterByDistance, filterMuted } from '../lib/targetResolver.js';
+import {
+  validateInboundAttachment,
+  persistInboundAttachment,
+  readAttachmentBytesB64,
+  attachmentPath,
+  toBroadcastShape,
+  MAX_ATTACHMENTS_PER_POST,
+  MAX_PRIKBORD_BYTES_PER_ATT,
+  MAX_CHAT_BYTES_PER_ATT,
+} from '../lib/Attachments.js';
 import { update as updateInterest, score as scoreInterest, combinedRelevance } from '../lib/InterestProfile.js';
 import { matchesProfile } from '../lib/skillsMatch.js';
 
@@ -296,6 +306,40 @@ export function buildSkills({
 
       const [item] = await store.addItems([itemDraft], { actor: from });
 
+      // Phase 39 — attachments.  When the client supplies one or
+      // more inline-base64 image attachments, validate + persist
+      // the bytes at `mem://stoop/items/<itemId>/attachments/...`,
+      // and embed metadata (without the bytes) in the item's
+      // `source.attachments` for both local rendering and the
+      // broadcast payload.  Bytes never travel in the broadcast —
+      // recipients see the thumbnail and click-to-fetch.
+      const inboundAttachments = Array.isArray(a.attachments) ? a.attachments : [];
+      const persistedAttachments = [];
+      if (inboundAttachments.length > 0) {
+        if (inboundAttachments.length > MAX_ATTACHMENTS_PER_POST) {
+          return { error: `attachments-too-many:${inboundAttachments.length}` };
+        }
+        if (!bundle?.cache) {
+          return { error: 'attachments-need-cache' };
+        }
+        for (const inbound of inboundAttachments) {
+          const err = validateInboundAttachment(inbound, { maxBytes: MAX_PRIKBORD_BYTES_PER_ATT });
+          if (err) return { error: err };
+          const persisted = await persistInboundAttachment({
+            dataSource: bundle.cache,
+            itemId:     item.id,
+            att:        inbound,
+          });
+          persistedAttachments.push(persisted);
+        }
+        // Patch the just-stored item record with the attachment
+        // metadata.  ItemStore writes via `bundle.cache` under the
+        // `mem://neighborhood/items/<id>.json` path; rewrite the
+        // same key with the augmented source.
+        item.source = { ...(item.source ?? {}), attachments: persistedAttachments };
+        await bundle.cache.write(`mem://neighborhood/items/${item.id}.json`, JSON.stringify(item));
+      }
+
       // Lend lifecycle: schedule a return reminder when applicable.
       if (notifier
           && item.type === 'lend'
@@ -360,6 +404,10 @@ export function buildSkills({
               // receivers can re-check (functional design § 4f).
               targets,
               maxDistanceKm,
+              // Phase 39 — attachment metadata + thumbnails (no
+              // full bytes).  Recipients render the thumbnails and
+              // request the full bytes on demand via `requestAttachment`.
+              attachments: toBroadcastShape(persistedAttachments),
             },
             timeoutMs:      a.timeoutMs ?? DEFAULT_TIMEOUT_MS,
             expectClaims:   a.expectClaims ?? 0,
@@ -377,6 +425,7 @@ export function buildSkills({
             subtype:  'broadcast-post',
             extras: {
               postId:        item.id,
+              attachments:   toBroadcastShape(persistedAttachments),
               text:          item.text,
               kind:          item.type,
               dueAt:         item.dueAt ?? null,
@@ -1509,18 +1558,29 @@ export function buildSkills({
       if (!chat) return { error: 'chat-not-wired' };
       const a = dataArgs(parts);
       if (typeof a.threadId !== 'string' || !a.threadId) return { error: 'threadId required' };
-      if (typeof a.body !== 'string' || !a.body) return { error: 'body required' };
+      // Phase 39 — body OR attachment is required (or both).
+      const hasBody       = typeof a.body === 'string' && a.body.length > 0;
+      const hasAttachment = a.attachment && typeof a.attachment === 'object';
+      if (!hasBody && !hasAttachment) return { error: 'body-or-attachment-required' };
+
+      // Validate attachment shape + size cap if provided.
+      if (hasAttachment) {
+        const err = validateInboundAttachment(a.attachment, { maxBytes: MAX_CHAT_BYTES_PER_ATT });
+        if (err) return { error: err };
+      }
+
       const r = await chat.send({
         toStableId: a.toStableId,
         toWebid:    a.toWebid,
         toPubKey:   a.toPubKey,
         threadId:   a.threadId,
-        body:       a.body,
+        body:       a.body ?? '',
         subtype:    'chat-message',
+        extras:     hasAttachment ? { attachment: a.attachment } : undefined,
       });
       return r.ok ? { ok: true, itemId: r.itemId } : { error: r.reason };
     }, {
-      description: 'Send a 1-on-1 chat message to a peer in the current group.',
+      description: 'Send a 1-on-1 chat message (with optional inline image attachment) to a peer.',
       visibility:  'authenticated',
     }),
 
@@ -2093,6 +2153,91 @@ export function buildSkills({
       evicted: bundle?.evictionRoster?.listEvicted() ?? [],
     }), {
       description: 'List webids whose membership has expired past the grace window.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * getAttachmentDataUrl({itemId, attId})  — Phase 39 (V2.5).
+     *   Read the locally-cached bytes for an attachment and return
+     *   a `data:<mime>;base64,...` URL the browser can drop straight
+     *   into an <img> tag.  Returns `{error: 'no-bytes'}` when the
+     *   bytes aren't on this machine yet (caller should call
+     *   `requestAttachment` first and re-poll).
+     */
+    defineSkill('getAttachmentDataUrl', async ({ parts }) => {
+      const a = dataArgs(parts);
+      if (typeof a.itemId !== 'string' || !a.itemId) return { error: 'itemId required' };
+      if (typeof a.attId  !== 'string' || !a.attId)  return { error: 'attId required' };
+      if (!bundle?.cache) return { error: 'no-cache' };
+
+      const item = await store.getById(a.itemId);
+      if (!item) return { error: 'item-not-found' };
+      const attachments = Array.isArray(item.source?.attachments) ? item.source.attachments : [];
+      const att = attachments.find(x => x?.id === a.attId);
+      if (!att) return { error: 'attachment-not-found' };
+      if (!att.ref) return { error: 'no-bytes' };
+
+      const dataB64 = await readAttachmentBytesB64({ dataSource: bundle.cache, ref: att.ref })
+        .catch(() => null);
+      if (!dataB64) return { error: 'no-bytes' };
+      return { ok: true, dataUrl: `data:${att.mime};base64,${dataB64}` };
+    }, {
+      description: 'Return a data: URL for a locally-cached attachment.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * requestAttachment({itemId, attId})  — Phase 39 (V2.5).
+     *   Fetch the full bytes for an attachment that we currently
+     *   only have a thumbnail for.  Looks up the item's
+     *   `source.fromPubKey` (the original author), sends a
+     *   `subtype: 'attachment-request'` chat envelope, and returns
+     *   immediately.  When the response lands, `wireChat` writes
+     *   the bytes locally + patches the item with the local `ref`
+     *   AND emits `agent.on('stoop:attachment-fetched', ...)`.
+     *   The UI listens for that event to refresh.
+     *
+     *   Returns `{ok: true}` when the request was dispatched; does
+     *   NOT block on the response.  When the bytes are already
+     *   local (we authored the post, or already fetched), returns
+     *   `{ok: true, ref}` immediately.
+     */
+    defineSkill('requestAttachment', async ({ parts }) => {
+      const a = dataArgs(parts);
+      if (typeof a.itemId !== 'string' || !a.itemId) return { error: 'itemId required' };
+      if (typeof a.attId  !== 'string' || !a.attId)  return { error: 'attId required' };
+
+      const item = await store.getById(a.itemId);
+      if (!item) return { error: 'item-not-found' };
+      const attachments = Array.isArray(item.source?.attachments) ? item.source.attachments : [];
+      const att = attachments.find(x => x?.id === a.attId);
+      if (!att) return { error: 'attachment-not-found' };
+      if (att.ref) return { ok: true, ref: att.ref };  // already local
+
+      const fromPubKey = item.source?.fromPubKey;
+      if (!fromPubKey) return { error: 'no-author-pubkey' };
+      if (!agent?.transport?.sendOneWay) return { error: 'no-transport' };
+
+      try {
+        await agent.transport.sendOneWay(fromPubKey, {
+          type:  'message',
+          parts: [{ type: 'DataPart', data: {
+            type:         'stoop-chat',
+            subtype:      'attachment-request',
+            itemId:       a.itemId,
+            attId:        a.attId,
+            fromWebid:    bundle?.agent?.identity ? from : null,
+            fromStableId: bundle?.agent?.identity?.stableId ?? null,
+            sentAt:       Date.now(),
+          }}],
+        });
+      } catch (err) {
+        return { error: `transport: ${err?.message ?? err}` };
+      }
+      metrics?.record?.('attachment-requested');
+      return { ok: true, pending: true };
+    }, {
+      description: 'Request the full bytes for an attachment from its original author.',
       visibility:  'authenticated',
     }),
 

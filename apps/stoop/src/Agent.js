@@ -310,6 +310,7 @@ export async function createNeighborhoodAgent({
     localActor:    skillMatchOpts.localActor,
     localStableId: id?.stableId ?? null,
     evictionRoster,                  // Phase 35 — drop broadcast-posts from evicted members
+    dataSource:    cache,            // Phase 39 — read/write attachment bytes from the cache
   });
 
   // Phase 20 (Stoop V1.5, 2026-05-06): the bundle object is built

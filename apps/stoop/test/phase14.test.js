@@ -145,8 +145,10 @@ describe('Stoop V1 Phase 14 — peer chat round-trip', () => {
 
   it('rejects missing args', async () => {
     const { anne } = await buildPair();
+    // Phase 39 — sendChatMessage now accepts body OR attachment;
+    // the "neither" case yields a clearer error.
     expect(await callSkill(anne.agent, 'sendChatMessage', { threadId: 'x' }, ANNE))
-      .toEqual({ error: 'body required' });
+      .toEqual({ error: 'body-or-attachment-required' });
     expect(await callSkill(anne.agent, 'sendChatMessage', { body: 'x' }, ANNE))
       .toEqual({ error: 'threadId required' });
     expect(await callSkill(anne.agent, 'getChatThread', {}, ANNE))
