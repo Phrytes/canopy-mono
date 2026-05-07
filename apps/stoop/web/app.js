@@ -255,11 +255,15 @@ export function renderItems(ul, items, handlers = {}) {
       : '';
     const targetsHtml = renderTargets(item.source?.targets, item.source?.maxDistanceKm);
 
+    // Phase 39 — render thumbnails for any source.attachments.
+    const attachmentsHtml = renderAttachmentThumbs(item);
+
     li.innerHTML = `
       <div class="row">
         <div class="text">${escapeHtml(item.text ?? '')}</div>
         ${kindChip}
       </div>
+      ${attachmentsHtml}
       <div class="meta">
         <span class="actor" title="${escapeHtml(actorTitle)}">${avatarHtml}${escapeHtml(actorLabel)}</span>
         ${(item.requiredSkills ?? []).map(s => `<span class="skill">${escapeHtml(s)}</span>`).join('')}
@@ -267,6 +271,15 @@ export function renderItems(ul, items, handlers = {}) {
         ${targetsHtml}
         <span class="ts">${new Date(item.addedAt ?? Date.now()).toLocaleString()}</span>
       </div>`;
+
+    // Wire click-to-open on each thumbnail.
+    for (const thumb of li.querySelectorAll('.attachment-thumb')) {
+      thumb.addEventListener('click', () => openAttachmentModal({
+        itemId: thumb.dataset.itemId,
+        attId:  thumb.dataset.attId,
+        thumb:  thumb.dataset.thumb,
+      }));
+    }
 
     if (onMute || onReport || handlers.onAddContact) {
       const menu = renderPostMenu(item, { onMute, onReport, onAddContact: handlers.onAddContact });
@@ -589,3 +602,102 @@ export function mountNotifyBanner({ pollIntervalMs = 4_000 } = {}) {
 }
 
 function truncate(s, n) { return (s ?? '').length > n ? s.slice(0, n - 1) + '…' : (s ?? ''); }
+
+/* ── Phase 39 — Attachment rendering ─────────────────────────── */
+
+/**
+ * Render the thumbnail strip for an item's source.attachments.
+ * Each thumb carries data-{item-id, att-id, thumb} so the click
+ * handler in renderItems can open the modal with the right ids.
+ */
+export function renderAttachmentThumbs(item) {
+  const atts = Array.isArray(item?.source?.attachments) ? item.source.attachments : [];
+  if (atts.length === 0) return '';
+  const thumbs = atts.filter(a => a && typeof a.thumbnail === 'string').map(a => `
+    <button type="button" class="attachment-thumb" tabindex="0"
+            data-item-id="${escapeHtml(item.id)}"
+            data-att-id="${escapeHtml(a.id)}"
+            data-thumb="${escapeHtml(a.thumbnail)}"
+            aria-label="${escapeHtml(t('post_form.open_picture', 'Open foto'))}">
+      <img src="${escapeHtml(a.thumbnail)}" alt="" loading="lazy">
+    </button>`).join('');
+  if (!thumbs) return '';
+  return `<div class="attachments">${thumbs}</div>`;
+}
+
+/**
+ * Open the full-size attachment modal.  When the local cache
+ * already has the bytes (item.source.attachments[i].ref present),
+ * just render them.  Otherwise call requestAttachment + listen
+ * for `stoop:attachment-fetched` to flip from spinner to image.
+ */
+export async function openAttachmentModal({ itemId, attId, thumb }) {
+  let modal = document.getElementById('attachment-modal');
+  if (!modal) {
+    modal = document.createElement('dialog');
+    modal.id = 'attachment-modal';
+    modal.className = 'attachment-modal';
+    modal.innerHTML = `
+      <button type="button" class="modal-close" aria-label="${escapeHtml(t('post_form.close', 'Sluiten'))}">×</button>
+      <div class="modal-body">
+        <img class="modal-thumb" src="" alt="">
+        <div class="modal-status hint"></div>
+        <img class="modal-full" src="" alt="" hidden>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('.modal-close').addEventListener('click', () => modal.close());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
+  }
+  modal.querySelector('.modal-thumb').src = thumb;
+  modal.querySelector('.modal-full').hidden = true;
+  modal.querySelector('.modal-full').src = '';
+  modal.querySelector('.modal-status').textContent = t('post_form.picture_loading', 'Foto ophalen…');
+  if (!modal.open) modal.showModal();
+
+  // Try the in-memory item first; fall back to listOpen lookup.
+  const r = await callSkill('requestAttachment', { itemId, attId });
+  if (r.error) {
+    modal.querySelector('.modal-status').textContent =
+      `${t('common.error', 'Fout')}: ${r.error}`;
+    return;
+  }
+  if (r.ref) {
+    await renderAttachmentBytes(modal, itemId, attId);
+    return;
+  }
+  // Pending — bytes were requested over chat.  Poll the local
+  // cache periodically until we have them (or the user closes).
+  modal.querySelector('.modal-status').textContent =
+    t('post_form.picture_pending',
+      'Foto wordt opgehaald — kan even duren als de afzender offline is.');
+  const stop = pollForAttachment(modal, itemId, attId);
+  modal.addEventListener('close', stop, { once: true });
+}
+
+async function renderAttachmentBytes(modal, itemId, attId) {
+  if (!modal.open) return false;
+  const status = modal.querySelector('.modal-status');
+  const full   = modal.querySelector('.modal-full');
+  const r = await callSkill('getAttachmentDataUrl', { itemId, attId });
+  if (r.error) {
+    if (r.error === 'no-bytes') return false;
+    status.textContent = `${t('common.error', 'Fout')}: ${r.error}`;
+    return true;
+  }
+  full.src = r.dataUrl;
+  full.hidden = false;
+  status.textContent = '';
+  return true;
+}
+
+function pollForAttachment(modal, itemId, attId) {
+  let stopped = false;
+  const tick = async () => {
+    if (stopped || !modal.open) return;
+    const done = await renderAttachmentBytes(modal, itemId, attId);
+    if (done || stopped || !modal.open) return;
+    setTimeout(tick, 1500);
+  };
+  setTimeout(tick, 1200);
+  return () => { stopped = true; };
+}

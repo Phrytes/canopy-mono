@@ -33,8 +33,25 @@
  */
 
 import nacl from 'tweetnacl';
+import {
+  attachmentPath,
+  readAttachmentBytesB64,
+  MAX_CHAT_BYTES_PER_ATT,
+} from '../lib/Attachments.js';
 
 const STOOP_CHAT_TYPE = 'stoop-chat';
+
+/** Tiny base64 helper — same shape as Attachments.js so we don't
+ *  drag a dependency. */
+function _b64decode(s) {
+  if (typeof atob === 'function') {
+    const bin = atob(s);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  return new Uint8Array(Buffer.from(s, 'base64'));
+}
 
 function dataArgsOf(parts) {
   if (!Array.isArray(parts)) return null;
@@ -65,7 +82,7 @@ function freshNonce() {
  * @param {string} args.localActor             my webid
  * @param {string | null} args.localStableId   my stableId (from agent.identity.stableId)
  */
-export function wireChat({ agent, itemStore, members, muted, metrics, localActor, localStableId, evictionRoster = null }) {
+export function wireChat({ agent, itemStore, members, muted, metrics, localActor, localStableId, evictionRoster = null, dataSource = null }) {
   /** Track recently-seen nonces so resends don't duplicate items. */
   const seenNonces = new Set();
 
@@ -85,6 +102,36 @@ export function wireChat({ agent, itemStore, members, muted, metrics, localActor
     if (data.nonce) seenNonces.add(data.nonce);
 
     if (data.subtype === 'chat-message') {
+      // Phase 39 — chat-message may carry an inline attachment with
+      // full bytes.  Persist the bytes to a freshly-allocated path
+      // BEFORE storing the chat-message item, so the item carries
+      // a `ref` from the start (no fetch round-trip needed).
+      let storedAttachment = null;
+      if (dataSource && data.attachment && typeof data.attachment === 'object'
+          && typeof data.attachment.dataB64 === 'string') {
+        const att = data.attachment;
+        // Generate an attId locally on the receiver side — chat
+        // attachments are 1:1 and the sender doesn't need to know
+        // our path.
+        const time = Date.now().toString(36).padStart(9, '0');
+        const rand = Math.random().toString(36).slice(2, 10);
+        const attId = `att-${time}-${rand}`;
+        const itemIdStub = data.nonce ?? attId;   // chat items don't pre-exist; use nonce as group key
+        const ref = attachmentPath(itemIdStub, attId, att.mime ?? 'image/jpeg');
+        try {
+          await dataSource.write(ref, _b64decode(att.dataB64));
+          storedAttachment = {
+            id:        attId,
+            mime:      att.mime,
+            bytes:     att.bytes ?? Math.floor(att.dataB64.length * 0.75),
+            width:     att.width  ?? 0,
+            height:    att.height ?? 0,
+            thumbnail: att.thumbnail ?? null,
+            ref,
+          };
+        } catch { /* drop attachment, keep message body */ }
+      }
+
       await itemStore.addItems([{
         type:       'chat-message',
         text:       data.body ?? '',
@@ -96,10 +143,12 @@ export function wireChat({ agent, itemStore, members, muted, metrics, localActor
           fromPubKey,
           sentAt:       data.sentAt ?? Date.now(),
           nonce:        data.nonce ?? null,
+          ...(storedAttachment ? { attachments: [storedAttachment] } : {}),
         },
       }], { actor: data.fromWebid ?? `pubkey:${fromPubKey?.slice?.(0, 12) ?? '?'}` });
       agent.emit('stoop:chat-message', {
         threadId: data.threadId, fromWebid: data.fromWebid, body: data.body,
+        hasAttachment: !!storedAttachment,
       });
       metrics?.record?.('chat-received');
       return;
@@ -203,6 +252,8 @@ export function wireChat({ agent, itemStore, members, muted, metrics, localActor
           skillTags:    Array.isArray(data.skillTags) ? data.skillTags : [],
           viaAutoMatch: !isContact,    // sender wasn't in my contacts → loose-contact path
           notifyWorthy,
+          // Phase 39 — attachment metadata (no `ref` until fetched).
+          attachments:  Array.isArray(data.attachments) ? data.attachments : [],
         },
         ...(typeof data.dueAt === 'number' ? { dueAt: data.dueAt } : {}),
       }], { actor: data.fromWebid ?? `pubkey:${fromPubKey?.slice?.(0, 12) ?? '?'}` });
@@ -212,6 +263,101 @@ export function wireChat({ agent, itemStore, members, muted, metrics, localActor
       metrics?.record?.(notifyWorthy
         ? 'contact-broadcast-received-notify'
         : 'contact-broadcast-received-silent');
+      return;
+    }
+
+    if (data.subtype === 'attachment-request') {
+      // Phase 39 — recipient wants the full bytes for an attachment
+      // they only have the thumbnail of.  Look up the ORIGINATING
+      // item in our local store; if we're the original author and
+      // the bytes are local, ship them back via attachment-response.
+      // Other actors silently ignore — only the author serves bytes.
+      if (!dataSource || muted && (
+        (data.fromStableId && muted.has(data.fromStableId)) ||
+        (data.fromWebid    && muted.has(data.fromWebid))
+      )) return;
+
+      const itemId = data.itemId;
+      const attId  = data.attId;
+      if (typeof itemId !== 'string' || typeof attId !== 'string') return;
+
+      const ours = await itemStore.getById(itemId).catch(() => null);
+      // Author check: addedBy must equal localActor (we're the
+      // sender of the post).  Mirrored items don't pass.
+      if (!ours || ours.addedBy !== localActor) return;
+      const attachments = Array.isArray(ours.source?.attachments) ? ours.source.attachments : [];
+      const att = attachments.find(a => a?.id === attId);
+      if (!att || !att.ref) return;
+
+      const dataB64 = await readAttachmentBytesB64({ dataSource, ref: att.ref }).catch(() => null);
+      if (!dataB64) return;
+
+      try {
+        await agent.transport.sendOneWay(fromPubKey, {
+          type:  'message',
+          parts: [{ type: 'DataPart', data: {
+            type:         STOOP_CHAT_TYPE,
+            subtype:      'attachment-response',
+            itemId,
+            attId,
+            mime:         att.mime,
+            width:        att.width,
+            height:       att.height,
+            bytes:        att.bytes,
+            dataB64,
+            fromWebid:    localActor,
+            fromStableId: localStableId ?? null,
+            sentAt:       Date.now(),
+          }}],
+        });
+      } catch { /* swallow — recipient retries */ }
+      metrics?.record?.('attachment-served');
+      return;
+    }
+
+    if (data.subtype === 'attachment-response') {
+      // Phase 39 — we asked for bytes; the author shipped them.
+      // Validate, write to OUR local cache, emit an event the UI
+      // listens to so the modal flips from "loading…" to the image.
+      if (!dataSource) return;
+      const itemId = data.itemId;
+      const attId  = data.attId;
+      const dataB64 = data.dataB64;
+      if (typeof itemId !== 'string' || typeof attId !== 'string'
+          || typeof dataB64 !== 'string') return;
+      // Defensive size cap on inbound bytes (defense in depth — the
+      // sender is supposed to honour the post's max).
+      const approxBytes = Math.floor(dataB64.length * 0.75);
+      if (approxBytes > MAX_CHAT_BYTES_PER_ATT * 4) return;     // 1MB hard cap
+
+      const mime = data.mime ?? 'image/jpeg';
+      const ref  = attachmentPath(itemId, attId, mime);
+      try {
+        const bytes = _b64decode(dataB64);
+        await dataSource.write(ref, bytes);
+      } catch { return; }
+
+      // Patch the local item (mirrored or own) with the ref so the
+      // next render shows the full image.
+      const ours = await itemStore.getById(itemId).catch(() => null);
+      if (ours) {
+        const attachments = Array.isArray(ours.source?.attachments) ? ours.source.attachments : [];
+        const idx = attachments.findIndex(a => a?.id === attId);
+        if (idx >= 0) {
+          const updated = {
+            ...ours,
+            source: {
+              ...(ours.source ?? {}),
+              attachments: attachments.map((a, i) => i === idx ? { ...a, ref } : a),
+            },
+          };
+          // Same write-trick as postRequest: rewrite at the item-store path.
+          await dataSource.write(`mem://neighborhood/items/${itemId}.json`, JSON.stringify(updated))
+            .catch(() => { /* best-effort */ });
+        }
+      }
+      agent.emit('stoop:attachment-fetched', { itemId, attId, ref });
+      metrics?.record?.('attachment-fetched');
       return;
     }
 
@@ -293,6 +439,9 @@ export function wireChat({ agent, itemStore, members, muted, metrics, localActor
       sentAt:       Date.now(),
       nonce:        freshNonce(),
       // Phase 24.6 — extra fields for contact-add-request envelopes.
+      // Phase 39 — `extras.attachment` carries an inline-bytes
+      // chat-image; `extras.attachments` carries metadata-only on
+      // a `broadcast-post` fanout envelope.
       ...(args.extras && typeof args.extras === 'object' ? args.extras : {}),
     };
 
@@ -311,6 +460,30 @@ export function wireChat({ agent, itemStore, members, muted, metrics, localActor
     // outgoing message immediately.
     let localId = null;
     if (subtype === 'chat-message') {
+      // Phase 39 — sender stores its own copy of any inline
+      // attachment so its thread render shows the image immediately.
+      let senderAttachment = null;
+      if (dataSource && args.extras?.attachment
+          && typeof args.extras.attachment.dataB64 === 'string') {
+        const att = args.extras.attachment;
+        const time = Date.now().toString(36).padStart(9, '0');
+        const rand = Math.random().toString(36).slice(2, 10);
+        const attId = `att-${time}-${rand}`;
+        const ref = attachmentPath(payload.nonce, attId, att.mime ?? 'image/jpeg');
+        try {
+          await dataSource.write(ref, _b64decode(att.dataB64));
+          senderAttachment = {
+            id:        attId,
+            mime:      att.mime,
+            bytes:     att.bytes ?? Math.floor(att.dataB64.length * 0.75),
+            width:     att.width  ?? 0,
+            height:    att.height ?? 0,
+            thumbnail: att.thumbnail ?? null,
+            ref,
+          };
+        } catch { /* keep the message body even if attachment fails */ }
+      }
+
       const [item] = await itemStore.addItems([{
         type:       'chat-message',
         text:       args.body,
@@ -323,6 +496,7 @@ export function wireChat({ agent, itemStore, members, muted, metrics, localActor
           toPubKey,
           sentAt:       payload.sentAt,
           nonce:        payload.nonce,
+          ...(senderAttachment ? { attachments: [senderAttachment] } : {}),
         },
       }], { actor: localActor });
       localId = item.id;

@@ -82,6 +82,10 @@ export async function wireGroupBroadcastMirror({
         // their own skills profile.
         categoryId:   payload.categoryId ?? null,
         skillTags:    Array.isArray(payload.skillTags) ? payload.skillTags : [],
+        // Phase 39 — copy the attachment metadata (thumbnail + size
+        // info, no full bytes).  No `ref` field yet — the recipient
+        // populates it after a `requestAttachment` round-trip.
+        attachments:  Array.isArray(payload.attachments) ? payload.attachments : [],
       },
     };
     if (typeof payload.dueAt === 'number') draft.dueAt = payload.dueAt;
@@ -137,6 +141,9 @@ export async function wireGroupBroadcastMirror({
           dueAt:      it.dueAt,
           categoryId: it.source?.categoryId ?? null,
           skillTags:  it.source?.skillTags  ?? [],
+          // Phase 39 — backfill carries attachment metadata too,
+          // already in broadcast shape (no `ref`, no `dataB64`).
+          attachments: Array.isArray(it.source?.attachments) ? it.source.attachments : [],
         },
         claimsTopic: null,
       };

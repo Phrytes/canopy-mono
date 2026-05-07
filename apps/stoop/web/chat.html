@@ -33,9 +33,15 @@
         <div class="chat-empty">Nog geen berichten.</div>
       </div>
       <form id="chat-form" class="chat-form">
-        <input id="chat-input" type="text" required placeholder="Schrijf je bericht…" autocomplete="off">
+        <input id="chat-input" type="text" placeholder="Schrijf je bericht…" autocomplete="off">
+        <label class="chat-pic-label" title="Foto bijvoegen" data-i18n="chat.attach_picture" data-i18n-attr="title">
+          <input id="chat-picture" type="file" accept="image/*" capture="environment" hidden>
+          <span aria-hidden="true">📷</span>
+        </label>
         <button type="submit">Stuur</button>
       </form>
+      <div id="chat-pic-preview" class="picker-preview"></div>
+      <span id="chat-pic-status" class="hint"></span>
     </section>
 
     <section id="threads-section">
@@ -47,7 +53,11 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, mountGroupSwitcher, mountNotifyBanner } from '/app.js';
+    import { callSkill, getActor, mountGroupSwitcher, mountNotifyBanner, initI18n, applyI18n, t, renderAttachmentThumbs, openAttachmentModal } from '/app.js';
+    import { resizeImage, CHAT_PRESET } from '/lib/imageResize.js';
+
+    await initI18n();
+    applyI18n();
 
     document.getElementById('actor').textContent = await getActor();
     mountGroupSwitcher(document.getElementById('group-switcher'));
@@ -81,7 +91,18 @@
           div.className = `msg ${isMine ? 'mine' : 'theirs'}`;
           const who = isMine ? 'Jij' : (m.source?.fromWebid ?? '?');
           const when = new Date(m.source?.sentAt ?? m.addedAt ?? Date.now()).toLocaleTimeString();
-          div.innerHTML = `<span class="meta-line">${escapeHtml(who)} · ${escapeHtml(when)}</span>${escapeHtml(m.text)}`;
+          // Phase 39 — chat-message attachments render inline.  We
+          // hand the message to renderAttachmentThumbs which expects
+          // {id, source.attachments}; clicking a thumb opens the same
+          // modal as on the prikbord (bytes already local).
+          const thumbs = renderAttachmentThumbs(m);
+          div.innerHTML = `<span class="meta-line">${escapeHtml(who)} · ${escapeHtml(when)}</span>${escapeHtml(m.text)}${thumbs}`;
+          // Wire click → modal on each thumb.
+          for (const thumb of div.querySelectorAll('.attachment-thumb')) {
+            thumb.addEventListener('click', () => openAttachmentModal({
+              itemId: thumb.dataset.itemId, attId: thumb.dataset.attId, thumb: thumb.dataset.thumb,
+            }));
+          }
           ul.appendChild(div);
         }
         ul.scrollTop = ul.scrollHeight;
@@ -95,18 +116,50 @@
       await refresh();
       setInterval(refresh, 2000);
 
+      /* ── Phase 39 — chat picture picker ─────────────────── */
+      let chatPicked = null;
+      const chatPicker  = document.getElementById('chat-picture');
+      const chatPicBox  = document.getElementById('chat-pic-preview');
+      const chatPicStat = document.getElementById('chat-pic-status');
+      chatPicker.addEventListener('change', async () => {
+        const file = chatPicker.files?.[0];
+        chatPicked = null;
+        chatPicBox.innerHTML = '';
+        chatPicStat.textContent = '';
+        if (!file) return;
+        chatPicStat.textContent = t('post_form.pictures_resizing', 'Foto verkleinen…');
+        try {
+          chatPicked = await resizeImage(file, CHAT_PRESET);
+          const img = document.createElement('img');
+          img.src = chatPicked.thumbnail;
+          img.alt = '';
+          img.className = 'picker-thumb';
+          chatPicBox.appendChild(img);
+          chatPicStat.textContent = t('post_form.pictures_ready', '{count} foto\'s klaar.').replace('{count}', 1);
+        } catch (e) {
+          chatPicStat.textContent = `${t('common.error', 'Fout')}: ${e?.message ?? e}`;
+        }
+      });
+
       document.getElementById('chat-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const input = document.getElementById('chat-input');
         const body  = input.value.trim();
-        if (!body) return;
+        if (!body && !chatPicked) return;
         // Find the recipient's WebID from the thread (the other party).
         const t = await callSkill('getChatThread', { threadId });
         const other = t.messages.find((m) => m.source?.fromWebid !== myActor)?.source?.fromWebid;
         if (!other) { alert('Kan ontvanger niet vinden — wacht op het eerste bericht van de andere kant.'); return; }
-        const r = await callSkill('sendChatMessage', { toWebid: other, threadId, body });
+        const args = { toWebid: other, threadId };
+        if (body) args.body = body;
+        if (chatPicked) args.attachment = chatPicked;
+        const r = await callSkill('sendChatMessage', args);
         if (r.error) { alert(`Fout: ${r.error}`); return; }
         input.value = '';
+        chatPicked = null;
+        chatPicBox.innerHTML = '';
+        chatPicStat.textContent = '';
+        chatPicker.value = '';
         await refresh();
       });
 
