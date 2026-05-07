@@ -488,6 +488,43 @@ the same week — otherwise independent.
 
 **Estimate:** 3-4 days.  Cornerstone for the Hub + browser projects.
 
+### Phase 39 — Picture attachments in posts and chat (V2.5)
+
+> Decided 2026-05-07. Stoop posts and chat messages can include
+> images. Privacy rule
+> [`../projects/README.md`](../projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here)
+> applies: bytes ship in-message (resized client-side), no
+> personal-pod URLs. Storage shape is "separate-blob with inline
+> thumbnail" — the prikbord renders thumbnails immediately and
+> fetches full bytes on demand.
+
+| # | Task | Files | Substrate-touch |
+|---|---|---|---|
+| 39.1 | New `apps/stoop/src/lib/Attachments.js` — server-side helpers: validate metadata, write/read bytes from `CachingDataSource` at `mem://stoop/items/<itemId>/attachments/<attId>.<ext>`, build the broadcast-payload shape (metadata + thumbnail, no full bytes). | `apps/stoop/src/lib/Attachments.js` (new) | **App-local.** Substrate candidate when the 2nd app needs it. |
+| 39.2 | Extend `postRequest` skill: accept `attachments: [{mime, dataB64, width, height, thumbnail, bytes}]`; server stores each blob, embeds metadata (without `dataB64`) in `source.attachments`, broadcast carries `payload.attachments` (thumbnail + metadata, no full bytes). | `apps/stoop/src/skills/index.js` | — |
+| 39.3 | Extend `groupMirror.mirror()` + `wireChat.broadcast-post` handler: copy `payload.attachments` into the mirrored item's `source.attachments` (no `ref` field — recipient hasn't fetched bytes yet). | `apps/stoop/src/groupMirror.js`, `apps/stoop/src/chat/wireChat.js` | — |
+| 39.4 | New `requestAttachment({itemId, attId})` skill: looks up item.source.fromPubKey, sends `subtype: 'attachment-request'` chat envelope to that pubKey; on `subtype: 'attachment-response'` receipt, writes bytes locally + updates item's attachment with a local `ref`. New chat subtypes wired in `wireChat`. | `apps/stoop/src/skills/index.js`, `apps/stoop/src/chat/wireChat.js` | — |
+| 39.5 | Extend `sendChatMessage` skill: accept `attachment: {mime, dataB64, width, height, thumbnail, bytes}` (single inline attachment per message; tighter size cap than prikbord). On receive, recipient writes bytes to local cache + stores `ref` on the chat-message item. | `apps/stoop/src/skills/index.js`, `apps/stoop/src/chat/wireChat.js` | — |
+| 39.6 | Browser-side resize helper `apps/stoop/web/lib/imageResize.js`: File → Image → canvas resize to max-edge → JPEG @ q=0.82 → produce {full bytes, thumbnail base64, width, height}. Defaults: prikbord 1280px+120px thumb, chat 800px+120px thumb. | `apps/stoop/web/lib/imageResize.js` (new) | — |
+| 39.7 | Post-form picker UI (`<input type="file" accept="image/*" capture="environment" multiple>`, max 4) on `/`. Drives the resize helper, calls `postRequest` with attachment metadata. | `apps/stoop/web/index.html` | — |
+| 39.8 | Feed renderer: render thumbnails from `source.attachments[*].thumbnail`. Click → modal that calls `requestAttachment` if no local `ref` yet, then renders the full image. | `apps/stoop/web/app.js` (renderItems), `apps/stoop/web/index.html` | — |
+| 39.9 | Chat picker UI on `/chat.html`: single-image cap, lighter resize. Inline rendering on receive (already-fetched bytes; no fetch step needed). | `apps/stoop/web/chat.html`, `apps/stoop/web/app.js` | — |
+| 39.10 | Locale keys for picker, modal, "loading…" states, error states. `{text, doc}` shape. | `apps/stoop/locales/{nl,en}.json` | — |
+| 39.11 | Tests: postRequest with attachment writes the blob; mirror copies metadata; requestAttachment round-trips; sendChatMessage with attachment round-trips; groupMirror filters evicted-author attachments (Phase 35 interaction). Image-resize helper has its own browser-only test that's skipped in node. | `apps/stoop/test/phase39.test.js` (new) | — |
+
+**Estimate:** 2-3 days. Mobile pickers are explicitly NOT in this
+phase — folio-mobile / stoop-mobile is V3 territory. The skills
+(39.1-39.5) are platform-agnostic; mobile picks them up unchanged
+when V3 mobile lands.
+
+**Non-goals:**
+
+- URL-mode attachments (deferred until a shared / group-pod
+  namespace exists; see the privacy rule).
+- Server-side image processing / thumbnail regeneration. The
+  client is authoritative; the server stores what it gets.
+- Animated images / video (cap to still images for V1).
+
 ### Phase 38 — Capability-manifest + per-app pod namespaces
 
 > Companion to the agent-SDK browser

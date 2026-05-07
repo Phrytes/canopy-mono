@@ -43,11 +43,23 @@
     "advanced":       "More options",
     "wait_claims":    "Wait for claims (ms)",
     "hide_name":      "Hide my name until connected",
-    "hide_name_hint": "Other members see your handle (@…), not your real name. Not anonymous against the server — the relay operator can still see that you posted."
+    "hide_name_hint": "Other members see your handle (@…), not your real name. Not anonymous against the server — the relay operator can still see that you posted.",
+    "pictures_label":     { "text": "Pictures (optional)", "doc": "Label of the picker on the post-form. Phase 39 — V2.5 picture attachments." },
+    "pictures_hint":      { "text": "Up to 4 pictures; resized locally (max 1280px) before posting. Other members see a thumbnail; the full image is loaded on click.", "doc": "Hint under the picker. Explains the 4-picture cap, the client-side resize, and the on-request loading." },
+    "pictures_resizing":  { "text": "Resizing pictures…", "doc": "Inline status while images are being resized in the browser." },
+    "pictures_ready":     { "text": "{count} pictures ready.", "doc": "Inline status after a successful resize. {count} is an integer." },
+    "pictures_error":     { "text": "{count} pictures could not be processed.", "doc": "Inline status when one or more images failed to resize. {count} is an integer." },
+    "open_picture":       { "text": "Open picture", "doc": "ARIA label on a thumbnail in the feed. Triggers the modal that loads the full image." },
+    "close":              { "text": "Close", "doc": "Close button label on the attachment modal." },
+    "picture_loading":    { "text": "Loading picture…", "doc": "Modal status text shown while the full bytes are being fetched." },
+    "picture_pending":    { "text": "Loading picture — may take a moment if the sender is offline.", "doc": "Modal status text shown when the requestAttachment skill returned `pending: true`. The fetch continues in the background." }
   },
   "menu": {
     "mute":     "Mute this person",
     "report":   "Report post"
+  },
+  "chat": {
+    "attach_picture": { "text": "Attach picture", "doc": "Tooltip on the camera icon next to the chat input. Phase 39 — V2.5 picture attachments. Used as the title attribute on the picker label." }
   },
   "profile": {
     "title":              "My profile",

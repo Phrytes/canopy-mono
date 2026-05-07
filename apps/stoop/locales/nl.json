@@ -43,11 +43,23 @@
     "advanced":       "Meer opties",
     "wait_claims":    "Wachten op claims (ms)",
     "hide_name":      "Naam verbergen tot connectie",
-    "hide_name_hint": "Andere leden zien je handle (@…), niet je echte naam. Niet anoniem voor de server — de relay-operator ziet wel dat jij iets hebt gepost."
+    "hide_name_hint": "Andere leden zien je handle (@…), niet je echte naam. Niet anoniem voor de server — de relay-operator ziet wel dat jij iets hebt gepost.",
+    "pictures_label":     { "text": "Foto's (optioneel)", "doc": "Label of the picker on the post-form. Phase 39 — V2.5 picture attachments." },
+    "pictures_hint":      { "text": "Maximaal 4 foto's; ze worden lokaal kleiner gemaakt (max 1280px) voordat ze worden geplaatst. Andere leden zien een voorbeeld; de volledige foto wordt pas geladen wanneer iemand erop klikt.", "doc": "Hint under the picker. Explains the 4-picture cap, the client-side resize, and the on-request loading." },
+    "pictures_resizing":  { "text": "Foto's verkleinen…", "doc": "Inline status while images are being resized in the browser." },
+    "pictures_ready":     { "text": "{count} foto's klaar.", "doc": "Inline status after a successful resize. {count} is an integer." },
+    "pictures_error":     { "text": "{count} foto's konden niet verwerkt worden.", "doc": "Inline status when one or more images failed to resize. {count} is an integer." },
+    "open_picture":       { "text": "Open foto", "doc": "ARIA label on a thumbnail in the feed. Triggers the modal that loads the full image." },
+    "close":              { "text": "Sluiten", "doc": "Close button label on the attachment modal." },
+    "picture_loading":    { "text": "Foto ophalen…", "doc": "Modal status text shown while the full bytes are being fetched." },
+    "picture_pending":    { "text": "Foto wordt opgehaald — kan even duren als de afzender offline is.", "doc": "Modal status text shown when the requestAttachment skill returned `pending: true`. The fetch continues in the background." }
   },
   "menu": {
     "mute":     "Mute deze persoon",
     "report":   "Rapporteer post"
+  },
+  "chat": {
+    "attach_picture": { "text": "Foto bijvoegen", "doc": "Tooltip on the camera icon next to the chat input. Phase 39 — V2.5 picture attachments. Used as the title attribute on the picker label." }
   },
   "profile": {
     "title":              "Mijn profiel",

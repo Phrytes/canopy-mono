@@ -70,6 +70,19 @@
           </select>
         </label>
 
+        <label class="post-pictures">
+          <span data-i18n="post_form.pictures_label">Foto's (optioneel)</span>
+          <input id="post-pictures" type="file" accept="image/*" capture="environment" multiple>
+          <small class="hint" data-i18n="post_form.pictures_hint">
+            Maximaal 4 foto's; ze worden lokaal kleiner gemaakt
+            (max 1280px) voordat ze worden geplaatst. Andere leden
+            zien een voorbeeld; de volledige foto wordt pas geladen
+            wanneer iemand erop klikt.
+          </small>
+          <div id="post-pictures-preview" class="picker-preview"></div>
+          <span id="post-pictures-status" class="hint"></span>
+        </label>
+
         <details class="advanced">
           <summary>Meer opties</summary>
           <label>
@@ -106,7 +119,11 @@
 
   <script type="module" src="/app.js"></script>
   <script type="module">
-    import { callSkill, renderItems, getActor, mountLive, mountGroupSwitcher, mountNotifyBanner } from '/app.js';
+    import { callSkill, renderItems, getActor, mountLive, mountGroupSwitcher, mountNotifyBanner, initI18n, applyI18n, t } from '/app.js';
+    import { resizeBatch, PRIKBORD_PRESET } from '/lib/imageResize.js';
+
+    await initI18n();
+    applyI18n();
 
     document.getElementById('actor').textContent = await getActor();
     mountGroupSwitcher(document.getElementById('group-switcher'));
@@ -281,6 +298,41 @@
 
     /* ── Form submit ─────────────────────────────────────── */
 
+    /* ── Phase 39 — picture picker ───────────────────────── */
+
+    /** Holds the resize results between picker-change and submit. */
+    let pickedAttachments = [];
+    const MAX_PIC = 4;
+
+    const picker        = document.getElementById('post-pictures');
+    const picStatus     = document.getElementById('post-pictures-status');
+    const picPreviewBox = document.getElementById('post-pictures-preview');
+
+    picker.addEventListener('change', async () => {
+      const files = Array.from(picker.files || []).slice(0, MAX_PIC);
+      pickedAttachments = [];
+      picPreviewBox.innerHTML = '';
+      if (files.length === 0) { picStatus.textContent = ''; return; }
+      picStatus.textContent = t('post_form.pictures_resizing', 'Foto\'s verkleinen…');
+      const { ok, errors } = await resizeBatch(files, PRIKBORD_PRESET);
+      pickedAttachments = ok;
+      for (const att of ok) {
+        const img = document.createElement('img');
+        img.src = att.thumbnail;
+        img.alt = '';
+        img.className = 'picker-thumb';
+        picPreviewBox.appendChild(img);
+      }
+      if (errors.length > 0) {
+        picStatus.textContent = t('post_form.pictures_error',
+          '{count} foto\'s konden niet verwerkt worden.')
+          .replace('{count}', errors.length);
+      } else {
+        picStatus.textContent = t('post_form.pictures_ready',
+          '{count} foto\'s klaar.').replace('{count}', ok.length);
+      }
+    });
+
     document.getElementById('post-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const text   = document.getElementById('post-text').value.trim();
@@ -312,10 +364,15 @@
         // can match cross-language without re-running the dictionary.
         if (suggestedCategory) args.categoryId = suggestedCategory;
         if (suggestedTags.length) args.skillTags = suggestedTags;
+        // Phase 39 — attach pre-resized images.
+        if (pickedAttachments.length > 0) args.attachments = pickedAttachments;
         const r = await callSkill('postRequest', args);
         out.textContent = JSON.stringify(r, null, 2);
         document.getElementById('post-form').reset();
         document.getElementById('post-timeout').value = 30000;
+        pickedAttachments = [];
+        picPreviewBox.innerHTML = '';
+        picStatus.textContent = '';
         syncLendVisible();
         await refresh();
       } catch (err) {
