@@ -58,8 +58,15 @@ export function GroupScreen() {
   const me = (typeof members?.resolveByPubKey === 'function')
     ? members.resolveByPubKey(selfAddr)
     : null;
-  const isAdmin    = me?.role === 'admin' || me?.role === 'coordinator';
-  const evicted    = !!activeEntry?.evicted;
+  // Source of truth for "am I admin": the persisted groupRegistry
+  // entry.  MemberMap can be empty after a cold start (in-memory
+  // cache, no persistPath on mobile) — fall back to it only when the
+  // registry doesn't have a role.
+  const registryRole = activeEntry?.role ?? null;
+  const memberRole   = me?.role ?? null;
+  const role         = registryRole ?? memberRole;
+  const isAdmin      = role === 'admin' || role === 'coordinator';
+  const evicted      = !!activeEntry?.evicted;
 
   const onIssueInvite = async () => {
     setBusy(true); setError(null);
