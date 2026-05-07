@@ -36,7 +36,8 @@ import {
   listGroups, addGroup as registryAddGroup, removeGroup as registryRemoveGroup,
   getActiveGroupId, setActiveGroupId,
 } from './lib/groupRegistry.js';
-import { buildBundleForGroup, defaultLocalActor } from './lib/agentBundle.js';
+import { buildBundleForGroup, defaultLocalActor, relabelBundleGroup } from './lib/agentBundle.js';
+import { buildBootstrapBundle }              from './lib/bootstrapBundle.js';
 import { attachAppStateBridge }                  from './lib/appStateBridge.js';
 import {
   setBgRunOnce, clearBgRunOnce, BG_TASK_NAME,
@@ -78,9 +79,24 @@ export function ServiceProvider({ children, deps = {} }) {
   const [groups,        setGroups]        = useState(() => new Map());
   const [activeGroupId, setActiveGroupIdState] = useState(null);
   const [lastEvent,     setLastEvent]     = useState(0);
+  // Phase 40.23 follow-up: bootstrap bundle keeps the "no-groups"
+  // state functional — the user can dispatch onboarding skills
+  // (createGroupV2, redeemInvite, restoreFromMnemonic) against it
+  // before any real group exists.  When the first group lands, the
+  // bootstrap is RELABELED in place onto that groupId so its
+  // itemStore + members carry forward.
+  const [bootstrap, setBootstrap] = useState(null);
 
-  const cancelledRef = useRef(false);
-  const mountedRef   = useRef(false);
+  const cancelledRef    = useRef(false);
+  const mountedRef      = useRef(false);
+  // In-flight bootstrap promise — `ensureActiveBundle` returns the
+  // same promise for concurrent callers so we don't build twice when
+  // the user mashes buttons before the boot effect finishes.
+  const bootstrapPromiseRef = useRef(null);
+  // Latest identity ref — `ensureActiveBundle` may be called from a
+  // useCallback closure that captured an older `identity` value.
+  const identityRef = useRef(null);
+  useEffect(() => { identityRef.current = identity; }, [identity]);
 
   // ── Boot path ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -99,6 +115,21 @@ export function ServiceProvider({ children, deps = {} }) {
         if (cancelledRef.current) return;
 
         if (entries.length === 0) {
+          // Phase 40.23 follow-up: build a bootstrap bundle so the
+          // user can dispatch onboarding skills before any real
+          // group exists. CreateGroupScreen / OnboardScan /
+          // OnboardRestore route their useSkill() calls through it.
+          try {
+            const bs = await buildBootstrapBundle({ identity: id });
+            if (cancelledRef.current) {
+              try { await bs.stop?.(); } catch { /* swallow */ }
+              return;
+            }
+            _wireBundleEvents(bs, () => setLastEvent((n) => n + 1));
+            setBootstrap(bs);
+          } catch (err) {
+            console.error('[ServiceContext] failed to build bootstrap bundle:', err?.message ?? err);
+          }
           setStatus('no-groups');
           return;
         }
@@ -147,6 +178,10 @@ export function ServiceProvider({ children, deps = {} }) {
           try { bundle.stop?.(); } catch { /* swallow */ }
         }
         return new Map();
+      });
+      setBootstrap((bs) => {
+        if (bs) { try { bs.stop?.(); } catch { /* swallow */ } }
+        return null;
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -218,21 +253,80 @@ export function ServiceProvider({ children, deps = {} }) {
 
   // ── Public actions ─────────────────────────────────────────────────────────
 
+  /**
+   * Resolve to a usable bundle the caller can dispatch skills against.
+   *
+   * Returns the active group's bundle when one is selected. In the
+   * no-groups state, awaits / lazily builds the bootstrap bundle so
+   * the user can fire `createGroupV2` / `redeemInvite` /
+   * `restoreFromMnemonic` even if the boot effect hasn't yet
+   * resolved + applied `setBootstrap`.
+   *
+   * Throws when there is no identity yet (the boot effect hasn't
+   * gotten that far) — useSkill catches this with `code: 'NO_AGENT'`.
+   */
+  const ensureActiveBundle = useCallback(async () => {
+    const slotBundle = activeGroupId ? groups.get(activeGroupId)?.bundle : null;
+    if (slotBundle) return slotBundle;
+    if (bootstrap)  return bootstrap;
+
+    const id = identityRef.current;
+    if (!id) {
+      const e = new Error('Identity not ready yet — try again in a moment.');
+      e.code = 'NO_IDENTITY';
+      throw e;
+    }
+    if (bootstrapPromiseRef.current) return bootstrapPromiseRef.current;
+
+    const p = (async () => {
+      try {
+        const bs = await buildBootstrapBundle({ identity: id });
+        _wireBundleEvents(bs, () => setLastEvent((n) => n + 1));
+        setBootstrap(bs);
+        return bs;
+      } finally {
+        bootstrapPromiseRef.current = null;
+      }
+    })();
+    bootstrapPromiseRef.current = p;
+    return p;
+  }, [activeGroupId, groups, bootstrap]);
+
   const addGroup = useCallback(async (opts) => {
     if (!identity) throw new Error('addGroup: identity not ready');
     const { groupId } = opts;
     if (typeof groupId !== 'string' || !groupId) throw new Error('addGroup: groupId required');
 
     const localActor = opts.actorWebid ?? defaultLocalActor(identity);
-    const bundle = await buildBundle({
-      identity,
-      groupId,
-      localActor,
-      members: opts.members ?? [],
-      skills:  opts.skills  ?? [],
-      posture: opts.posture ?? {},
-    });
-    _wireBundleEvents(bundle, () => setLastEvent((n) => n + 1));
+
+    // First-group transition: relabel the bootstrap bundle in place
+    // instead of building a fresh one, so the user's just-written
+    // group-rules + membership-code items + the admin promotion in
+    // MemberMap (all written DURING createGroupV2 against the
+    // bootstrap bundle's agent + itemStore) carry forward.
+    let bundle;
+    if (bootstrap && groups.size === 0) {
+      bundle = await relabelBundleGroup({
+        bundle:     bootstrap,
+        newGroupId: groupId,
+        localActor,
+        peers:      opts.members ?? [],
+        skills:     opts.skills  ?? [],
+        posture:    opts.posture ?? {},
+      });
+      delete bundle.isBootstrap;
+      setBootstrap(null);
+    } else {
+      bundle = await buildBundle({
+        identity,
+        groupId,
+        localActor,
+        members: opts.members ?? [],
+        skills:  opts.skills  ?? [],
+        posture: opts.posture ?? {},
+      });
+      _wireBundleEvents(bundle, () => setLastEvent((n) => n + 1));
+    }
 
     const entry = {
       groupId,
@@ -246,7 +340,7 @@ export function ServiceProvider({ children, deps = {} }) {
     setGroups((cur) => {
       const next = new Map(cur);
       const prev = next.get(groupId);
-      if (prev) {
+      if (prev && prev.bundle !== bundle) {
         try { prev.bundle.stop?.(); } catch { /* swallow */ }
       }
       next.set(groupId, { entry, bundle });
@@ -256,10 +350,11 @@ export function ServiceProvider({ children, deps = {} }) {
     await setActiveGroupId({ groupId, storage: deps.storage });
     setStatus('ready');
     return bundle;
-  }, [identity, buildBundle, deps.storage]);
+  }, [identity, buildBundle, deps.storage, bootstrap, groups]);
 
   const removeGroup = useCallback(async (groupId) => {
     if (typeof groupId !== 'string' || !groupId) throw new Error('removeGroup: groupId required');
+    let droppedToZero = false;
     setGroups((cur) => {
       const next = new Map(cur);
       const slot = next.get(groupId);
@@ -273,11 +368,26 @@ export function ServiceProvider({ children, deps = {} }) {
         setActiveGroupIdState(fallback);
         setActiveGroupId({ groupId: fallback, storage: deps.storage }).catch(() => { /* swallow */ });
       }
-      if (next.size === 0) setStatus('no-groups');
+      if (next.size === 0) {
+        setStatus('no-groups');
+        droppedToZero = true;
+      }
       return next;
     });
     await registryRemoveGroup({ groupId, storage: deps.storage });
-  }, [activeGroupId, deps.storage]);
+
+    // Last group removed → rebuild a bootstrap so the user can
+    // create another group from the no-groups state.
+    if (droppedToZero && identity) {
+      try {
+        const bs = await buildBootstrapBundle({ identity });
+        _wireBundleEvents(bs, () => setLastEvent((n) => n + 1));
+        setBootstrap(bs);
+      } catch (err) {
+        console.error('[ServiceContext] failed to rebuild bootstrap after last-group removal:', err?.message ?? err);
+      }
+    }
+  }, [activeGroupId, deps.storage, identity]);
 
   const switchActiveGroup = useCallback(async (groupId) => {
     if (!groups.has(groupId)) {
@@ -294,6 +404,10 @@ export function ServiceProvider({ children, deps = {} }) {
       }
       return new Map();
     });
+    setBootstrap((bs) => {
+      if (bs) { try { bs.stop?.(); } catch { /* swallow */ } }
+      return null;
+    });
     setActiveGroupIdState(null);
     await setActiveGroupId({ groupId: null, storage: deps.storage });
     if (vault) await clearIdentity({ vault });
@@ -305,17 +419,24 @@ export function ServiceProvider({ children, deps = {} }) {
 
   const value = useMemo(() => {
     const slot = activeGroupId ? groups.get(activeGroupId) : null;
+    // When the user has no groups yet, expose the bootstrap bundle as
+    // `activeBundle` so onboarding screens (Welcome → CreateGroup,
+    // OnboardScan, OnboardRestore) have somewhere to dispatch their
+    // useSkill() calls.  `activeGroupId` stays null → screens that
+    // gate on it (Feed, Mine, ChatThreads…) keep their empty states.
+    const activeBundle = slot?.bundle ?? bootstrap ?? null;
     return {
       status, error, identity, vault,
       groups,
       activeGroupId,
-      activeBundle:  slot?.bundle ?? null,
+      activeBundle,
       activeEntry:   slot?.entry  ?? null,
       addGroup, removeGroup, switchActiveGroup, signOut,
+      ensureActiveBundle,
       lastEvent,
     };
-  }, [status, error, identity, vault, groups, activeGroupId,
-      addGroup, removeGroup, switchActiveGroup, signOut, lastEvent]);
+  }, [status, error, identity, vault, groups, activeGroupId, bootstrap,
+      addGroup, removeGroup, switchActiveGroup, signOut, ensureActiveBundle, lastEvent]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
