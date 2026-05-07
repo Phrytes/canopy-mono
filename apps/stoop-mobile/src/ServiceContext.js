@@ -44,6 +44,9 @@ import {
   registerBackgroundFetch, unregisterBackgroundFetch,
 } from './lib/bgRunOnce.js';
 import * as BackgroundFetch                      from 'expo-background-fetch';
+import * as SecureStore                           from 'expo-secure-store';
+import { OidcSessionRN }                          from '@canopy/oidc-session-rn';
+import { SolidPodSource }                         from '@canopy/core';
 
 const Ctx = createContext(null);
 
@@ -86,6 +89,11 @@ export function ServiceProvider({ children, deps = {} }) {
   // bootstrap is RELABELED in place onto that groupId so its
   // itemStore + members carry forward.
   const [bootstrap, setBootstrap] = useState(null);
+  // Phase 40.23 follow-up — pod sign-in (RN flow). Mirror of folio's
+  // adoptTokens path but plumbed into the bundle's CachingDataSource
+  // via attachInner(SolidPodSource) instead of folio's SyncEngine.
+  const [podSession, setPodSession] = useState(null);   // OidcSessionRN
+  const [podStatus,  setPodStatus]  = useState({ signedIn: false, podAttached: false, webid: null, podRoot: null });
 
   const cancelledRef    = useRef(false);
   const mountedRef      = useRef(false);
@@ -408,6 +416,62 @@ export function ServiceProvider({ children, deps = {} }) {
     await setActiveGroupId({ groupId, storage: deps.storage });
   }, [groups, deps.storage]);
 
+  /**
+   * Adopt tokens from a successful `useStoopAuth().signIn()` flow,
+   * build a SolidPodSource over the authenticated fetch, and attach
+   * it to the active bundle's CachingDataSource.
+   *
+   * After this resolves the bundle reads-through + writes-through
+   * the user's pod for new items.  Existing local items remain
+   * available offline; they sync up on the next CachingDataSource
+   * flush.
+   *
+   * @param {object} args
+   * @param {object} args.tokens   from `useStoopAuth().signIn()`
+   * @param {string} args.podRoot  e.g. `https://storage.inrupt.com/<uuid>/`
+   */
+  const attachPod = useCallback(async ({ tokens, podRoot }) => {
+    if (!tokens || typeof tokens !== 'object') {
+      throw new Error('attachPod: tokens required');
+    }
+    if (typeof podRoot !== 'string' || !podRoot) {
+      throw new Error('attachPod: podRoot required');
+    }
+
+    const slotBundle = activeGroupId ? groups.get(activeGroupId)?.bundle : null;
+    const bundle = slotBundle ?? bootstrap;
+    if (!bundle?.cache?.attachInner) {
+      throw new Error('attachPod: bundle missing cache.attachInner — was cache: false?');
+    }
+
+    const session = podSession ?? new OidcSessionRN({ store: SecureStore, appId: 'stoop' });
+    await session.adoptTokens(tokens);
+
+    const fetchFn = session.getAuthenticatedFetch();
+    const source  = new SolidPodSource({ podUrl: podRoot, fetch: fetchFn });
+
+    await bundle.cache.attachInner(source);
+
+    setPodSession(session);
+    setPodStatus({
+      signedIn:    true,
+      podAttached: true,
+      webid:       session.webid ?? tokens.webid ?? null,
+      podRoot,
+    });
+  }, [activeGroupId, groups, bootstrap, podSession]);
+
+  const detachPod = useCallback(async () => {
+    const slotBundle = activeGroupId ? groups.get(activeGroupId)?.bundle : null;
+    const bundle = slotBundle ?? bootstrap;
+    try { await bundle?.cache?.attachInner?.(null); } catch { /* swallow */ }
+    if (podSession) {
+      try { await podSession.logout(); } catch { /* swallow */ }
+    }
+    setPodStatus({ signedIn: false, podAttached: false, webid: null, podRoot: null });
+    setPodSession(null);
+  }, [activeGroupId, groups, bootstrap, podSession]);
+
   const signOut = useCallback(async () => {
     setGroups((cur) => {
       for (const { bundle } of cur.values()) {
@@ -444,10 +508,12 @@ export function ServiceProvider({ children, deps = {} }) {
       activeEntry:   slot?.entry  ?? null,
       addGroup, removeGroup, switchActiveGroup, signOut,
       ensureActiveBundle,
+      attachPod, detachPod, podSession, podStatus,
       lastEvent,
     };
   }, [status, error, identity, vault, groups, activeGroupId, bootstrap,
-      addGroup, removeGroup, switchActiveGroup, signOut, ensureActiveBundle, lastEvent]);
+      addGroup, removeGroup, switchActiveGroup, signOut, ensureActiveBundle,
+      attachPod, detachPod, podSession, podStatus, lastEvent]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
