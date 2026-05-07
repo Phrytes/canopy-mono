@@ -6,6 +6,19 @@ Buurt-skill-app: vragen, aanbod, en lenen tussen buurtgenoten —
 prikbord-not-feed, mens en machine-agents naast elkaar, decentraal
 via de @canopy agent SDK.
 
+**Mobile companion:** Stoop V3 native React-Native client lives at
+[`apps/stoop-mobile/`](../stoop-mobile/) — same SDK, same skills,
+parallel UI in JSX. Wiring complete (Phases 40.14–40.22, 2026-05-08);
+real-device pass + closed-beta APK pending Phase 40.23.
+
+**Heads-up (2026-05-08):** Tasks V1 implementation lifts seven
+of Stoop's `lib/` files into shared substrates (rule of two
+satisfied by Tasks V1 as the second consumer). Per-PR migration
+work is detailed in
+[`Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`](../../Project%20Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md).
+Stoop's user-visible behaviour does not change; the `lib/` files
+become re-export shims around the new substrate copies.
+
 **Status:** V1.5 demo-ready (2026-05-06). This package was
 H5 / `apps/neighborhood-v0` until 2026-05-06; renamed in place.
 Phases 0–22 of the coding plan have landed:
