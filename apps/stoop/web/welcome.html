@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8">
-  <title>Stoop — Welkom</title>
+  <title data-i18n="welcome.page_title">Stoop — Welkom</title>
   <link rel="stylesheet" href="/style.css">
   <style>
     .choice-card {
@@ -32,37 +32,44 @@
 </head>
 <body>
   <header>
-    <nav><a href="/">Buurt</a></nav>
+    <nav><a href="/" data-i18n="nav.feed">Buurt</a></nav>
   </header>
 
   <main>
     <section>
       <div class="welcome-hero">
-        <h1>Welkom bij Stoop</h1>
-        <p>Een buurt-prikbord dat lokaal op jouw apparaat draait.
+        <h1 data-i18n="welcome.hero_title">Welkom bij Stoop</h1>
+        <p data-i18n="welcome.hero_intro">Een buurt-prikbord dat lokaal op jouw apparaat draait.
            Geen feed, geen reclame, jouw data blijft van jou.</p>
       </div>
 
       <div class="choices">
         <a href="/onboard.html" class="choice-card">
-          <h3>Nieuwe account</h3>
-          <p>Ik heb een uitnodigings-link of -code en wil voor het
+          <h3 data-i18n="welcome.new_title">Nieuwe account</h3>
+          <p data-i18n="welcome.new_body">Ik heb een uitnodigings-link of -code en wil voor het
              eerst lid worden van een groep.</p>
         </a>
 
         <a href="/restore.html" class="choice-card">
-          <h3>Bestaande account herstellen</h3>
-          <p>Ik heb mijn herstelzin (12 of 24 woorden) van een ander
+          <h3 data-i18n="welcome.restore_title">Bestaande account herstellen</h3>
+          <p data-i18n="welcome.restore_body">Ik heb mijn herstelzin (12 of 24 woorden) van een ander
              apparaat. Ik wil hem hier opnieuw gebruiken.</p>
         </a>
       </div>
 
-      <p class="hint" style="margin-top: 2rem;">
+      <p class="hint" style="margin-top: 2rem;" data-i18n="welcome.footer_hint">
         Geen voorkennis nodig — je doorloopt de stappen in een paar
         minuten. Je kunt later van apparaat wisselen door je
         herstelzin opnieuw te gebruiken.
       </p>
     </section>
   </main>
+
+  <script type="module">
+    import { initI18n, applyI18n, t } from '/app.js';
+    await initI18n();
+    applyI18n();
+    document.title = t('welcome.page_title', 'Stoop — Welcome');
+  </script>
 </body>
 </html>
