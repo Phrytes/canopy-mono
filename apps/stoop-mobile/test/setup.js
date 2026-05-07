@@ -152,6 +152,7 @@ vi.mock('expo-linking', () => ({
 }));
 
 vi.mock('expo-notifications', () => ({
+  getPermissionsAsync:     vi.fn(async () => ({ granted: true, status: 'granted' })),
   requestPermissionsAsync: vi.fn(async () => ({ granted: true, status: 'granted' })),
   getExpoPushTokenAsync:   vi.fn(async () => ({ data: 'ExponentPushToken[mock]' })),
   setNotificationHandler:  vi.fn(),
