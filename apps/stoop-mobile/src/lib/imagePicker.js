@@ -34,6 +34,16 @@ export const CHAT_PRESET = Object.freeze({
   thumbQuality: 0.7,
 });
 
+// Avatar preset — small square (the desktop side resizes to 256px
+// in `apps/stoop/web/lib/imageResize.js`).  No separate thumbnail
+// needed; the avatar IS the thumbnail.
+export const AVATAR_PRESET = Object.freeze({
+  maxEdgePx:    256,
+  thumbEdgePx:  64,
+  quality:      0.85,
+  thumbQuality: 0.7,
+});
+
 const MIME_OUT = 'image/jpeg';
 
 /**
@@ -132,6 +142,15 @@ export async function pickPrikbordImages({ mode, max = 4 } = {}) {
  * @param {'camera' | 'library'} [args.mode='camera']
  * @returns {Promise<PickedImage | null>}
  */
+export async function pickAvatarImage({ mode = 'library' } = {}) {
+  if (mode === 'camera') return captureWithCamera(AVATAR_PRESET);
+  if (mode === 'library') {
+    const list = await pickFromLibrary(AVATAR_PRESET, 1);
+    return list[0] ?? null;
+  }
+  return null;
+}
+
 export async function pickChatImage({ mode = 'camera' } = {}) {
   if (mode === 'camera') return captureWithCamera(CHAT_PRESET);
   if (mode === 'library') {

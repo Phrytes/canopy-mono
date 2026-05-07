@@ -378,25 +378,29 @@ other in the member list, set per-contact trust + flags.
 **Acceptance:** Sign-in to a test pod, watch bulk-sync progress,
 see settings synchronise across devices.
 
-## Phase 40.20 — Skill-match suggestion inbox + privacy-aware notify
+## Phase 40.20 — Skill-match suggestion inbox + broader broadcast scope
 
-> Implements the brainstorm's auto-match flow. **Design-blocked** on
-> `§8a.3` of the functional design — needs a few questions answered
-> first. The phase is here so the work isn't lost; pull it forward
-> when the design lands.
+> Implements the brainstorm's auto-match flow. **Locked 2026-05-08
+> (§8a.3):** broadcast scope extends from "joined-group only"
+> (today's SDK) to "groups + hop-discovered peers + contacts."
+> Receive-side privacy stays via Phase 22's `notifyWorthy` — the
+> receiver's agent silently filters, only surfacing on a match.
 
 | # | Task | Files |
 |---|---|---|
-| 40.20.1 | Resolve the open privacy questions in `§8a.3` (rate limits, opt-in scope, notify-on-no-match policy). | (design doc) |
-| 40.20.2 | New SkillMatchInboxScreen — list of incoming skill-match suggestions. Each row shows the requester's handle (or anonymised if not yet revealed), the skill / category, and a "Help" / "Ignore" CTA. | `apps/stoop-mobile/src/screens/SkillMatchInboxScreen.js` (NEW) |
-| 40.20.3 | Wire `subscribeSkillMatchOffers` (or whatever the substrate names it) — receives broadcasts from the user's wider connection list (groups + hop-discovered + contacts), runs the local skills filter, surfaces matches as inbox entries + push notifications. | `apps/stoop-mobile/src/screens/SkillMatchInboxScreen.js`, `apps/stoop-mobile/src/lib/skillMatchListener.js` (NEW) |
-| 40.20.4 | Add a per-contact `flag_auto_match` toggle (already in `apps/stoop/locales/{nl,en}.json`'s `contacts.flag_auto_match`; the per-contact UI lives on ContactScreen from Phase 40.18). | `apps/stoop-mobile/src/screens/ContactScreen.js` |
-| 40.20.5 | Tests. | `apps/stoop-mobile/test/screens/SkillMatchInboxScreen.test.js` |
+| 40.20.1 | **SDK extension** — `packages/skill-match/src/SkillMatch.js` gains a `broadcastScope: 'group' | 'group+contacts' | 'group+contacts+hops'` knob on `broadcast()`. Default: `'group'` (today's behaviour, no regressions). When the caller sets a wider scope, `SkillMatch` resolves the additional audience via `targetResolver.js` (groups → group rosters; contacts → ContactBook entries; hops → MemberMap's hop-through entries) and unions them. | `packages/skill-match/src/SkillMatch.js`, `apps/stoop/src/lib/targetResolver.js` |
+| 40.20.2 | **SDK extension** — `notifyWorthy` predicate (Phase 22) gains a `from-scope` arg so the receiver can apply different sensitivity per source (e.g. allow group sends through quickly, dampen hop-discovered sends). Stays a pure predicate; no behavioural change for the default scope. | `apps/stoop/src/skills/index.js` (notifyWorthy + downstream skill calls) |
+| 40.20.3 | **New SkillMatchInboxScreen** — list of incoming skill-match suggestions. Each row shows requester's handle (or anonymised when not yet revealed), the skill / category, the source scope (group / contact / hop) chip, and "Help" / "Ignore" CTAs. | `apps/stoop-mobile/src/screens/SkillMatchInboxScreen.js` (NEW) + `src/navigation.js` route entry |
+| 40.20.4 | Wire `subscribeSkillMatchOffers` from the substrate — runs the local `notifyWorthy` filter on each inbound, surfaces matches as inbox entries + push notifications. | `apps/stoop-mobile/src/lib/skillMatchListener.js` (NEW), `apps/stoop-mobile/src/screens/SkillMatchInboxScreen.js` |
+| 40.20.5 | Add a per-contact `flag_auto_match` toggle (already in `apps/stoop/locales/{nl,en}.json`'s `contacts.flag_auto_match`; per-contact UI lives on ContactScreen from Phase 40.18). | `apps/stoop-mobile/src/screens/ContactScreen.js` |
+| 40.20.6 | PostCompose audience-picker (Phase 40.16) gets the broader-scope option as a row of tickboxes ("Also broadcast to: contacts / hop-peers"). | `apps/stoop-mobile/src/screens/PostComposeScreen.js`, `src/components/AudiencePicker.js` |
+| 40.20.7 | Tests — SDK-side broadcast-scope unit tests + mobile inbox screen helper tests. | `packages/skill-match/test/broadcastScope.test.js`, `apps/stoop-mobile/test/screens/SkillMatchInboxScreen.test.js` |
 
-**Estimate:** 1.5 days (after design unblocks).
-**Acceptance:** Two devices: A posts a request, B's agent
+**Estimate:** 2 days (slightly more than the original 1.5 because of the SDK extension).
+**Acceptance:** Two devices on different groups but same contact
+list: A posts a request with `scope: 'group+contacts'`, B's agent
 auto-evaluates against B's skills, B sees the suggestion in the
-inbox + a push.
+inbox + a push (matching) OR silence (non-matching).
 
 ## Phase 40.21 — AppState bridge + background-fetch task
 
@@ -472,9 +476,9 @@ and 40.22.
 | 40.17 | Chat + reveal handshake wiring | 1.5 d |
 | 40.18 | Contacts + groups wiring + new screens (CreateGroup, etc.) | 2.5 d |
 | 40.19 | Settings + push + sign-in wiring (incl. AuthCallback) | 1.5 d |
-| 40.20 | Skill-match suggestion inbox (design-blocked) | 1.5 d |
+| 40.20 | Skill-match inbox + SDK broadcast-scope extension | 2 d |
 | 40.21 | AppState bridge + background-fetch task | 0.5 d |
-| 40.22 | Privacy / safety polish (rotating keys + addresses) (design-blocked) | 2-4 d + design |
+| 40.22 | Privacy / safety polish (rotating-address cadence + metadata warning) | 1-2 d |
 | 40.23 | Real-device pass + closed-beta build | 1-2 d |
 | 40.24 | Documentation + handoff | 0.5 d |
 
@@ -511,8 +515,8 @@ ships.
         ├─ 40.19 (settings + push + signin + bulk-sync UI)
         ├─ 40.21 (AppState + background)            │
         │                                            │
-        ├─ 40.20 (skill-match inbox) ←── design-blocked
-        ├─ 40.22 (privacy polish)     ←── design-blocked
+        ├─ 40.20 (skill-match inbox + broadcast-scope SDK ext)
+        ├─ 40.22 (rotating-address opt-in + metadata warning)
                                                      │
 40.23 (real-device pass) ─ after 40.14-40.21         │
 40.24 (docs / handoff)   ─ last                      │

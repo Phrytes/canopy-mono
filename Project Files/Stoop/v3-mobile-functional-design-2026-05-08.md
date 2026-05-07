@@ -512,16 +512,18 @@ they're tracked in the coding plan, not here:
    SettingsScreen → privacy section); auto-rotation deferred. Goes
    in **Phase 40.22** with a short cadence-policy decision.
 
-3. **Auto-skill-match privacy gate.** 🟡 **SDK has the substrate.**
-   `packages/skill-match/src/SkillMatch.js` does the broadcast +
-   per-peer subscription; Phase 22's `notifyWorthy` predicate is
-   the per-receive privacy gate. **The open Q is broadcast scope:**
-   the SDK currently broadcasts to the joined-group's roster; the
-   brainstorm asks for broader (groups + hop-discovered + contacts).
-   That's an SDK extension, not a design Q on its own. Default
-   proposed: **per-group only for V3 (today's SDK behaviour);
-   broader scope deferred** to a follow-up. Goes in **Phase 40.20**
-   with the broader-scope piece flagged as a stretch.
+3. **Auto-skill-match privacy gate.** ✅ **Locked 2026-05-08:**
+   broadcast scope extends to **groups + hop-discovered peers +
+   contacts** (per user feedback). The SDK
+   (`packages/skill-match/src/SkillMatch.js`) does per-group
+   broadcast + per-peer subscription today; Phase 22's
+   `notifyWorthy` predicate is the per-receive privacy gate.
+   Phase 40.20 lands the SDK extension (broader broadcast
+   audience) + the mobile inbox UI. The receive-side privacy gate
+   stays as today: the receiver's agent runs the local
+   `notifyWorthy` filter and only surfaces the request to the user
+   on a match — no-match silence keeps the requester from spamming
+   wider audiences.
 
 4. **Audience picker UX.** ✅ **Locked: WhatsApp-style scroll-list.**
    User feedback 2026-05-08: just scroll through groups + contacts
