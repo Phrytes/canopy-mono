@@ -101,6 +101,9 @@ migration to `hub-attached (lite)` is possible (see
 [`Project Files/AgentHub/agent-hub-design-2026-05-05.md`](../../Project%20Files/AgentHub/agent-hub-design-2026-05-05.md)
 and the three rules in
 [`Project Files/conventions/app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md#template--the--agent-hub-compatibility-section)).
+The Hub is now planned as a **separate phone app** (not a desktop
+daemon — superseded direction, 2026-05-08); lite-mode is **deferred**
+for V1 / V2.5 / V3.
 
 **Agent topology:** spawns one agent per user, per group (Shape A).
 Group switcher lets a user belong to N groups (`--groups <gid1>,<gid2>`).

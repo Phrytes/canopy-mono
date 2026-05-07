@@ -36,6 +36,18 @@ explicit justification** in the app's README.
 - [`Project Files/Substrates/policies.md`](./Project%20Files/Substrates/policies.md) — rule-of-two extraction policy.
 - [`Project Files/Substrates/refactor/00-Overview.md`](./Project%20Files/Substrates/refactor/00-Overview.md) — substrate-vs-SDK audit (active refactor, 2026-05-04).
 - [`Project Files/AgentHub/agent-hub-design-2026-05-05.md`](./Project%20Files/AgentHub/agent-hub-design-2026-05-05.md) — the per-device Agent Hub design. **Any new app that uses the Agent SDK (directly or via substrates) must be designed to be compatible with the hub** — at minimum, spawn / extend agents under the user's root identity via capability tokens, and avoid design choices that would preclude a future "lite mode" where heavy work (relay connection, pod credentials, peer/hop tables) is delegated to the hub. The hub itself is still a design exploration; current apps may run standalone, but new apps must declare their hub-attachment plan in their README (see the scheme). The same rule applies to project-level designs under `Project Files/projects/` — see [`Project Files/projects/README.md`](./Project%20Files/projects/README.md#agent-hub-compatibility--applies-to-every-agentic-project-here).
+  - **2026-05-08 update.** The Hub will be a **separate phone app**, not a desktop daemon. The earlier design doc framed Hub as a desktop service (launchd / systemd-user / Task Scheduler patterns); that framing is superseded — Hub-on-phone is the direction. The hub-attachment / lite-mode rule still applies, just with a phone-side hub implied. **Lite mode is deferred** for current apps; ship `standalone` and stay hub-compatible.
+
+### Platform support — iOS deliberately out of scope (locked 2026-05-08)
+
+This project targets **Android + Web** for V1. iOS support is
+acknowledged as out-of-scope: Apple's restrictions on background
+tasks, Web Push (PWA-installed-only on Safari), peer-to-peer
+networking (no MdnsTransport, restricted BLE), and the App Store
+review process compound to make iOS V1 economics not worthwhile
+for a research-preview / closed-beta. Apps that happen to run on
+iOS via Expo are welcome to; the project does not add iOS-specific
+code paths, does not test on iOS, and does not block on iOS bugs.
 - [`Project Files/conventions/localisation.md`](./Project%20Files/conventions/localisation.md) — every app with a user-facing surface ships translatable from the first commit; substrates emit error codes, not user-facing strings.
 - [`Project Files/conventions/cross-app-settings.md`](./Project%20Files/conventions/cross-app-settings.md) — every app's pod-side settings split into `shared.json` (user-portable) + `devices/<deviceId>.json` (per-install, local-only). Sibling apps may seed first-run defaults from each other's `shared.json`. Stoop V2.5 is the canonical example.
 

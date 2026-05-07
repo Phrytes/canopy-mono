@@ -102,6 +102,18 @@ Custom URL scheme: `folio://auth/callback` (declared in `app.json`).
 Refresh tokens go to `expo-secure-store` (iOS Keychain / Android
 Keystore).  See `src/auth/OidcSessionRN.js` for the storage keys.
 
+> **2026-05-08 — extraction note.** The `src/auth/{OidcSessionRN,
+> folioAuth, dcr}.js` trio is the canonical RN-side OIDC + Solid
+> auth pattern. Stoop V3 mobile (planned) needs the same plumbing.
+> Per the project rule on RN substrates living in their own packages
+> ([`architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08))
+> and the rule-of-two trigger from the Inrupt-cleanup TODO
+> ([`../Project Files/TODO-GENERAL.md`](../../Project%20Files/TODO-GENERAL.md)),
+> these three files are scheduled to lift into a new
+> `@canopy/oidc-session-rn` substrate as Stoop V3 Phase 40.3.
+> The eventual Inrupt-cleanup pass may further consolidate this with
+> the desktop OIDC plumbing under `apps/folio/src/auth/`.
+
 ## Known iOS limitations
 
 - **Custom URL scheme on Android Expo Go is flaky** — use a dev build
