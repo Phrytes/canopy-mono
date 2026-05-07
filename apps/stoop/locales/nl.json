@@ -166,6 +166,15 @@
     "too_many_attachments":  { "text": "Max {n} bijlagen.", "doc": "Inline alert when the user exceeds MAX_ATTACHMENTS." },
     "permission_denied":     { "text": "Stoop heeft geen toestemming voor camera/galerij.", "doc": "Inline error when the OS rejected the permission prompt." }
   },
+  "chat_threads": {
+    "empty": { "text": "Nog geen gesprekken.", "doc": "Empty state on ChatThreadsScreen." }
+  },
+  "chat_thread": {
+    "placeholder":         { "text": "Schrijf een bericht…", "doc": "Placeholder of the message composer in ChatThreadScreen." },
+    "empty":               { "text": "Nog geen berichten.", "doc": "Empty state inside an open thread." },
+    "request_reveal":      { "text": "Vraag echte naam", "doc": "CTA in the thread header that opens the bilateral-reveal flow." },
+    "reveal_unavailable":  { "text": "Reveal-flow niet beschikbaar in deze build.", "doc": "Alert shown when onRequestReveal is missing (placeholder-only build)." }
+  },
   "item_detail": {
     "unknown_item": { "text": "Post niet gevonden.", "doc": "Empty state on ItemDetailScreen when route was opened without a resolved item." },
     "chat":         { "text": "Reageer met chat", "doc": "Primary CTA — opens / creates a 1:1 thread with the author." },

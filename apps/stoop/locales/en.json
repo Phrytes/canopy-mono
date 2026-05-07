@@ -166,6 +166,15 @@
     "too_many_attachments":  { "text": "Max {n} attachments.", "doc": "Inline alert when the user exceeds MAX_ATTACHMENTS." },
     "permission_denied":     { "text": "Stoop doesn't have camera/library permission.", "doc": "Inline error when the OS rejected the permission prompt." }
   },
+  "chat_threads": {
+    "empty": { "text": "No conversations yet.", "doc": "Empty state on ChatThreadsScreen." }
+  },
+  "chat_thread": {
+    "placeholder":         { "text": "Write a message…", "doc": "Placeholder of the message composer in ChatThreadScreen." },
+    "empty":               { "text": "No messages yet.", "doc": "Empty state inside an open thread." },
+    "request_reveal":      { "text": "Request real name", "doc": "CTA in the thread header that opens the bilateral-reveal flow." },
+    "reveal_unavailable":  { "text": "Reveal flow not available in this build.", "doc": "Alert shown when onRequestReveal is missing (placeholder-only build)." }
+  },
   "item_detail": {
     "unknown_item": { "text": "Post not found.", "doc": "Empty state on ItemDetailScreen when route was opened without a resolved item." },
     "chat":         { "text": "Reply with chat", "doc": "Primary CTA — opens / creates a 1:1 thread with the author." },
