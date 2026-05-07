@@ -488,6 +488,47 @@ export class Agent extends Emitter {
   }
 
   /**
+   * Mid-flight identity swap — replace the running agent's keypair
+   * with a freshly-supplied AgentIdentity (V2.5+ Phase 31).
+   *
+   * Unlike `rotateIdentity` (which rotates for unlinkability + emits
+   * a signed proof so peers heal smoothly), `swapIdentity` is the
+   * **restore** path: a new device has just decoded the user's
+   * mnemonic into a different keypair than the one this Agent
+   * happens to be running with, and we want to adopt the
+   * mnemonic-derived identity NOW without restarting the process.
+   *
+   * No proof is broadcast (peers haven't heard from this device
+   * yet; first envelope they see will carry the new pubKey via the
+   * normal HI-ACK).  No grace window (we're abandoning the random
+   * keypair we briefly held).
+   *
+   * Caller is responsible for any app-level resubscription that
+   * depends on the agent's address (e.g. `SkillMatch.start` should
+   * be called again to re-bind topics keyed by `agent.address`).
+   *
+   * @param {AgentIdentity} newIdentity  freshly constructed identity
+   * @returns {{oldPubKey: string, newPubKey: string}}
+   */
+  swapIdentity(newIdentity) {
+    if (!newIdentity || !newIdentity.pubKey) {
+      throw new TypeError('swapIdentity: newIdentity (AgentIdentity) required');
+    }
+    const oldPubKey = this.#identity.pubKey;
+    const newPubKey = newIdentity.pubKey;
+    if (oldPubKey === newPubKey) return { oldPubKey, newPubKey };   // no-op
+
+    // SecurityLayer swap (mirrors what rotateIdentity does, minus
+    // the grace-period / inline-proof bookkeeping — this is a
+    // wholesale replace, not a rotation with linkability).
+    this.#security.swapIdentity(newIdentity);
+    this.#identity = newIdentity;
+
+    this.emit('self-swapped', { oldPubKey, newPubKey });
+    return { oldPubKey, newPubKey };
+  }
+
+  /**
    * Opt-in: register the 'relay-forward' skill so trusted peers can ask us
    * to forward their messages to third parties we can reach directly.
    * Idempotent — calling twice does nothing the second time.
