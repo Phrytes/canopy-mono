@@ -2409,9 +2409,12 @@ export function buildSkills({
       } catch (err) {
         return { error: `vault-set: ${err?.message ?? err}` };
       }
-      // Drop any persisted stableId so the new identity gets a fresh
-      // one (since the mnemonic doesn't carry the original stableId).
-      // V2.5+: derive stableId from the seed too, then this hack goes.
+      // V2.5 Phase 32: stableId is now derived deterministically from
+      // the seed via HKDF in `core.AgentIdentity._loadOrInitStableId`.
+      // We DROP any prior stableId so the next process boot re-derives
+      // the same stableId from the new mnemonic-seed — restoring on a
+      // 2nd device produces the same stableId as the original device,
+      // so mute / report / contact-cache state survives.
       try { await vault.delete?.('agent-stable-id'); } catch {}
 
       metrics?.record?.('identity-restored');

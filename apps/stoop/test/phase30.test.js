@@ -134,9 +134,30 @@ describe('Stoop V2 Phase 30.4 — restored bundle adopts the mnemonic identity',
     const restoredId = await AgentIdentity.restore(vault);
     expect(restoredId.pubKey).toBe(pubKeyFromMnemonic(phrase));
 
-    // 3. New stableId issued on first read post-restore (clearing
-    //    is intentional in V2; V2.5 will derive deterministic).
+    // 3. V2.5 Phase 32: stableId is now derived deterministically
+    //    from the mnemonic-seed.  Restoring on a separate device
+    //    (= a fresh vault) produces the SAME stableId.
     expect(restoredId.stableId).toBeTruthy();
     expect(typeof restoredId.stableId).toBe('string');
+  });
+
+  it('Phase 32: same mnemonic → same stableId on a separate fresh vault', async () => {
+    const phrase = generateMnemonic();
+
+    // Device A: write the mnemonic into a fresh vault.
+    const vaultA = new VaultMemory();
+    const { bundle: bundleA } = await buildBundle(vaultA);
+    await callSkill(bundleA.agent, 'restoreFromMnemonic',
+      { mnemonic: phrase, confirm: true });
+    const idA = await AgentIdentity.restore(vaultA);
+
+    // Device B: SEPARATE fresh vault, same mnemonic.
+    const vaultB = new VaultMemory();
+    const idB = await AgentIdentity.fromMnemonic(phrase, vaultB);
+
+    // Same pubKey AND same stableId — the user is the same person
+    // across devices for app-level state (mute / report / cache).
+    expect(idB.pubKey).toBe(idA.pubKey);
+    expect(idB.stableId).toBe(idA.stableId);
   });
 });
