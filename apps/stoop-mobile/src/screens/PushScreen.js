@@ -1,10 +1,16 @@
 /**
  * PushScreen — opt-in flow for native push.
  *
- * Stoop V3 mobile.  Wraps the `lib/push.js` helpers — caller wires
- * the agent + EAS projectId; the screen drives `requestPushPermission`
- * + `setupPush` on tap and surfaces the resulting token / permission
- * status to the user.
+ * Stoop V3 Phase 40.19 (2026-05-08): wired to the live agent.
+ *
+ *   1. requestPushPermission → ask the OS for permission.
+ *   2. setupPush(agent, projectId) → register an `ExpoNotificationsAdapter`
+ *      via the substrate's `MobilePushBridge`, get the device token.
+ *   3. subscribeWebPush({subscription}) → ship the token to the
+ *      relay so it can wake this device. The substrate accepts an
+ *      Expo-shaped subscription `{endpoint: 'expo://<token>',
+ *      keys: {...}}`.
+ *   4. triggerSelfPush — convenience "test push" CTA.
  */
 
 import React, { useState, useCallback } from 'react';
@@ -15,15 +21,14 @@ import {
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
 import { t }                                  from '../lib/i18n.js';
 import { requestPushPermission, setupPush }   from '../lib/push.js';
+import { useService }                         from '../ServiceContext.js';
+import { useSkill }                           from '../lib/useSkill.js';
 
-/**
- * @param {object} props
- * @param {object} [props.agent]       live `Agent` (from bring-up code).
- * @param {string} [props.projectId]
- * @param {(token: string) => Promise<void>} [props.onTokenReady]
- *   Bring-up code uses this to ship the token to a relay/backend.
- */
-export function PushScreen({ agent, projectId, onTokenReady } = {}) {
+export function PushScreen() {
+  const svc = useService();
+  const subscribe = useSkill('subscribeWebPush');
+  const testPush  = useSkill('triggerSelfPush');
+
   const [status, setStatus] = useState({ kind: 'unknown' });
   const [busy, setBusy]     = useState(false);
 
@@ -35,25 +40,50 @@ export function PushScreen({ agent, projectId, onTokenReady } = {}) {
         setStatus({ kind: 'denied' });
         return;
       }
+      const agent = svc?.activeBundle?.agent;
       if (!agent) {
         setStatus({ kind: 'granted_no_agent' });
         return;
       }
-      const r = await setupPush({ agent, projectId, onError: (err) => {
+      const r = await setupPush({ agent, onError: (err) => {
         setStatus({ kind: 'error', message: err?.message ?? String(err) });
       } });
       if (!r.token) {
         setStatus((cur) => cur.kind === 'error' ? cur : { kind: 'no_token' });
         return;
       }
+
+      // Ship the token to the relay via subscribeWebPush.  The
+      // substrate-side relay accepts the Expo-shaped subscription
+      // (endpoint = `expo://<token>`); the desktop side ships
+      // `https://<vapid-endpoint>` instead.
+      try {
+        await subscribe.call({
+          subscription: {
+            endpoint: `expo://${r.token}`,
+            platform: r.platform,
+            keys:     {},
+          },
+        });
+      } catch (err) {
+        // Token still got captured locally; user can retry by
+        // tapping the test-push button.
+        console.warn('[PushScreen] subscribeWebPush failed:', err?.message ?? err);
+      }
+
       setStatus({ kind: 'enabled', token: r.token, platform: r.platform });
-      if (onTokenReady) await onTokenReady(r.token);
     } catch (err) {
       setStatus({ kind: 'error', message: err?.message ?? String(err) });
     } finally {
       setBusy(false);
     }
-  }, [agent, projectId, onTokenReady]);
+  }, [svc, subscribe]);
+
+  const sendTest = useCallback(async () => {
+    try {
+      await testPush.call({ title: 'Stoop', body: t('push.test_body', 'Test-melding') });
+    } catch { /* surfaced by testPush.error if needed */ }
+  }, [testPush]);
 
   return (
     <ScrollView contentContainerStyle={styles.root}>
@@ -85,6 +115,22 @@ export function PushScreen({ agent, projectId, onTokenReady } = {}) {
         </Text>
       </Pressable>
 
+      {status.kind === 'enabled' ? (
+        <Pressable
+          onPress={sendTest}
+          disabled={testPush.loading}
+          style={styles.btnSecondary}
+          accessibilityRole="button"
+          accessibilityLabel="push-send-test"
+        >
+          <Text style={styles.btnSecondaryLabel}>
+            {testPush.loading
+              ? t('push.test_sending', 'Test-push verstuurd…')
+              : t('push.test',         'Test-melding sturen')}
+          </Text>
+        </Pressable>
+      ) : null}
+
       <View style={styles.statusBlock}>
         <Status status={status} />
       </View>
@@ -114,9 +160,7 @@ function Status({ status }) {
       return (
         <View>
           <Text style={styles.statusOk}>{t('push.status_enabled', 'Meldingen staan aan ✓')}</Text>
-          <Text style={styles.tokenText} numberOfLines={1} selectable>
-            {status.token}
-          </Text>
+          <Text style={styles.tokenText} numberOfLines={1} selectable>{status.token}</Text>
         </View>
       );
     case 'error':
@@ -138,6 +182,11 @@ const styles = StyleSheet.create({
   },
   btnDisabled:     { backgroundColor: COLORS.surfaceMuted },
   btnPrimaryLabel: { color: COLORS.textInverse, fontSize: FONT_SIZES.md, fontWeight: '600' },
+  btnSecondary: {
+    backgroundColor: COLORS.surfaceMuted, paddingVertical: SPACING.md,
+    borderRadius: RADII.sm, alignItems: 'center', marginTop: SPACING.md,
+  },
+  btnSecondaryLabel: { color: COLORS.text, fontSize: FONT_SIZES.md, fontWeight: '500' },
   pressed: { opacity: 0.85 },
   statusBlock: {
     marginTop: SPACING.lg, padding: SPACING.lg,
