@@ -121,15 +121,72 @@
     "is_revealed":        "echte naam zichtbaar voor deze groep",
     "handle_default":     "handle by default"
   },
+  "push": {
+    "page_title":               { "text": "Stoop — Push-meldingen", "doc": "Browser tab title for /push.html." },
+    "heading":                  { "text": "Push-meldingen", "doc": "Main page heading on /push.html." },
+    "intro":                    { "text": "Ontvang een melding op dit apparaat als er iets gebeurt — ook als Stoop op de achtergrond staat. Werkt via je browser; je kunt de toestemming altijd intrekken via de browser-instellingen.", "doc": "Lead paragraph on /push.html. Explains background-aware notifications + that the user can always revoke from browser settings." },
+    "subscribe":                { "text": "Push aanzetten", "doc": "Button label to enable push notifications. Triggers Web-Push subscribe + permission prompt." },
+    "unsubscribe":              { "text": "Push uitzetten", "doc": "Button label to disable push notifications." },
+    "test":                     { "text": "Test-melding", "doc": "Button label that fires a self-test push so the user can verify delivery." },
+    "unsupported":              { "text": "Deze browser ondersteunt geen Web Push.", "doc": "Status line shown when Service Worker / PushManager is missing (older browsers, some embedded WebViews)." },
+    "no_vapid":                 { "text": "Push is op deze server uitgeschakeld — vraag de admin om een VAPID-sleutel te configureren.", "doc": "Status line shown when the relay operator hasn't configured a VAPID key, so push isn't possible." },
+    "status_subscribed_html":   { "text": "Aangemeld voor push-meldingen (perm: <code>{perm}</code>).", "doc": "Status line shown when a push subscription exists. Contains <code> tag and {perm} placeholder (browser Notification.permission value, e.g. 'granted')." },
+    "status_not_subscribed_html": { "text": "Nog niet aangemeld voor push-meldingen (perm: <code>{perm}</code>).", "doc": "Status line shown when no push subscription exists yet. Contains <code> tag and {perm} placeholder." },
+    "subscribed_ok":            { "text": "Aangemeld.", "doc": "Inline confirmation after a successful subscribe." },
+    "unsubscribed_ok":          { "text": "Afgemeld.", "doc": "Inline confirmation after a successful unsubscribe." },
+    "test_sending":             { "text": "Test-push verstuurd…", "doc": "Inline status while a test push is in flight." },
+    "test_body":                { "text": "Een test-melding", "doc": "Body of the test push notification (visible in the OS notification UI)." },
+    "test_result":              { "text": "Resultaat: {delivered} bezorgd, {failed} mislukt.", "doc": "Inline status after the test push. {delivered} and {failed} are integer counts." }
+  },
   "create_group": {
-    "intro": "Een groep starten is geen technische ingreep. Het is een afspraak tussen leden. Beantwoord de zes vragen hieronder; ze worden samen het reglement van de groep, zichtbaar voor iedereen die later lid wordt.",
-    "q1_name":    "1. Wat heet deze groep?",
-    "q1_purpose": "1b. Wat is hij voor (twee zinnen)?",
-    "q2_admins":  "2. Wie is admin? (WebID's, één per regel)",
-    "q3_rules":   "3. Huisregels — wat hoort er wel/niet bij? (één per regel)",
-    "q4_conflict": "4. Conflictbeslechting",
-    "q5_access":   "5. Toegangsbeleid",
-    "q6_leave":    "6. Vertrek-beleid"
+    "page_title":     { "text": "Stoop — Nieuwe groep", "doc": "Browser tab title for /create-group.html." },
+    "heading":        { "text": "Nieuwe groep starten", "doc": "Main page heading on /create-group.html." },
+    "intro":          { "text": "Een groep starten is geen technische ingreep. Het is een <strong>afspraak tussen leden</strong>. Beantwoord de zes vragen hieronder; ze worden samen het reglement van de groep, zichtbaar voor iedereen die later lid wordt.", "doc": "Lead paragraph on /create-group.html. Frames group creation as a social agreement, not a technical setup. Contains <strong> tag." },
+
+    "q1_name":        { "text": "1. Wat heet deze groep?", "doc": "Field label for the group's display name. Numbered question." },
+    "q1_name_ph":     { "text": "bv. Oosterpoort skills", "doc": "Placeholder for the group-name input. 'bv.' = 'bijvoorbeeld' (e.g.)." },
+    "q1_purpose":     { "text": "1b. Wat is hij voor (twee zinnen)?", "doc": "Field label for the two-sentence purpose statement." },
+    "q1_purpose_ph":  { "text": "bv. Buurtgenoten in Groningen-Oosterpoort die elkaar willen helpen met klusjes, lenen en weten wat er speelt.", "doc": "Placeholder for the purpose textarea. Example for a Groningen-Oosterpoort buurt." },
+    "q2_admins":      { "text": "2. Wie is admin? (WebID's, één per regel)", "doc": "Field label for the admins-list textarea." },
+    "q2_admins_hint": { "text": "We raden minstens twee admins aan.", "doc": "Hint under the admins textarea recommending two admins." },
+    "q3_rules":       { "text": "3. Huisregels — wat hoort er wel/niet bij? (één per regel)", "doc": "Field label for the house-rules textarea." },
+    "q3_rules_ph":    { "text": "Vragen, aanbod, lenen.\nVoertaal: Nederlands.\nGeen reclame, geen politiek.", "doc": "Placeholder for the house-rules textarea, multi-line example." },
+
+    "q4_conflict":    { "text": "4. Conflictbeslechting", "doc": "Field label for the conflict-resolution policy select." },
+    "q4_conflict_admin":     { "text": "Admin beslist", "doc": "Conflict policy option: admin makes the call." },
+    "q4_conflict_mediation": { "text": "Gesprek tussen betrokkenen, admin als getuige", "doc": "Conflict policy option: mediated conversation, admin observes." },
+    "q4_conflict_vote":      { "text": "Stemmen onder de leden", "doc": "Conflict policy option: members vote." },
+
+    "q5_access":      { "text": "5. Toegangsbeleid", "doc": "Field label for the access-policy select." },
+    "q5_invite_only": { "text": "Op uitnodiging — admin geeft QR persoonlijk", "doc": "Access policy option: invite-only via admin-issued QR." },
+    "q5_shared_link": { "text": "Via doorgegeven link — leden mogen anderen toevoegen", "doc": "Access policy option: members may forward the invite." },
+    "q5_approval":    { "text": "Op aanvraag — admin keurt goed", "doc": "Access policy option: admin approves each join request." },
+
+    "q6_leave":       { "text": "6. Vertrek-beleid", "doc": "Field label for the leave-policy select." },
+    "q6_keep_posts":  { "text": "Posts blijven, naam verdwijnt (default — bewaart context)", "doc": "Leave policy option: posts kept, attribution stripped on leave." },
+    "q6_remove_all":  { "text": "Alles van die persoon verdwijnt (clean break)", "doc": "Leave policy option: all of the leaving member's content removed." },
+
+    "group_id_label": { "text": "Group-id (intern; lowercase)", "doc": "Field label for the technical group-id input. Lowercase only — used in pod paths." },
+    "group_id_ph":    { "text": "bv. oosterpoort-skills", "doc": "Placeholder for the group-id input." },
+
+    "rotation_legend":     { "text": "Hoe wordt deze groep \"vers\" gehouden?", "doc": "Legend of the key-rotation fieldset. Frames rotation as 'keeping the group fresh'." },
+    "rotation_intro":      { "text": "De groep gebruikt elke <em>X</em> dagen een nieuwe code. Wie de code niet meer krijgt, valt automatisch uit de groep. De code wissel je <strong>buiten de app om</strong> uit — bv. via WhatsApp, in een briefje, of in persoon. Dat houdt de groep lokaal.", "doc": "Hint under the rotation legend. Contains <em> + <strong> tags AND mentions the in-person / out-of-band channel deliberately." },
+    "rotation_admin_only_label":  { "text": "Alleen admins delen de code uit.", "doc": "Bold label for the admin-only rotation radio." },
+    "rotation_admin_only_hint":   { "text": "Admins genereren elke X dagen een nieuwe code en geven die persoonlijk door aan leden.", "doc": "Hint under the admin-only rotation radio." },
+    "rotation_peer_label":        { "text": "Iedereen mag de code doorgeven.", "doc": "Bold label for the peer-distributable rotation radio." },
+    "rotation_peer_hint":         { "text": "Elk lid kan de code aan iemand nieuw geven. Decentraler — admin is geen single point of failure.", "doc": "Hint under the peer-distributable rotation radio." },
+    "rotation_days_label":        { "text": "Code wisselt elke … dagen", "doc": "Label above the rotation-period number input. Trailing ellipsis is intentional." },
+
+    "submit":         { "text": "Groep aanmaken", "doc": "Submit button on /create-group.html." },
+    "saving":         { "text": "Aan het opslaan…", "doc": "Inline status while createGroupV2 is running." },
+    "created_msg":    { "text": "Groep aangemaakt — id {groupId}.", "doc": "Inline success status. {groupId} is the new group's id." },
+
+    "result_heading": { "text": "Groep aangemaakt", "doc": "Heading of the success card shown after group creation." },
+    "result_intro":   { "text": "De eerste membership-code is hieronder — geef 'm <strong>buiten Stoop om</strong> aan de eerste leden:", "doc": "Lead text above the first membership code. Reinforces the out-of-band-distribution rule." },
+    "result_expiry":  { "text": "Geldig tot {date} ({days} dagen). Modus: {mode}.", "doc": "Expiry line under the membership code. {date} is locale-formatted, {days} is the rotation period in days, {mode} is the human-readable rotation mode (see mode_admin_only / mode_peer)." },
+    "result_footer":  { "text": "Je kunt 'm later opnieuw bekijken op de groep-pagina.", "doc": "Footer hint under the result card." },
+    "mode_admin_only": { "text": "alleen admins delen de code uit", "doc": "Lower-case description of admin-only rotation, plugged into result_expiry's {mode}." },
+    "mode_peer":      { "text": "iedereen mag de code doorgeven", "doc": "Lower-case description of peer-distributable rotation, plugged into result_expiry's {mode}." }
   },
   "nav": {
     "feed":     { "text": "Buurt",         "doc": "Top-nav link to the main feed page (/)." },
