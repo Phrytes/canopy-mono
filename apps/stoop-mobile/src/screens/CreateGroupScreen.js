@@ -37,7 +37,6 @@ export function CreateGroupScreen() {
   const [error, setError]       = useState(null);
 
   const create = useSkill('createGroupV2');
-  const issue  = useSkill('issueInvite');
 
   const validId = GROUP_ID_RE.test(groupId);
   const ok      = validId && name.trim().length > 0;
@@ -61,22 +60,23 @@ export function CreateGroupScreen() {
         role: 'admin',
       });
 
-      // Issue an invite straight away so the user can hand a QR
-      // to the next member.
-      try {
-        const inv = await issue.call({});
-        if (inv?.invite) {
-          nav.replace(ROUTES.OnboardIssue, { invite: inv.invite });
-          return;
-        }
-      } catch { /* invite issuance optional; happy path drops to Feed */ }
+      // Stoop's invite is a `{groupId, code, expiresAt}` membership
+      // code (NOT the signed-token `issueInvite` design).  Forward
+      // createGroupV2's return straight to OnboardIssueScreen so the
+      // admin can show the QR + code to the next member.
+      if (r?.code) {
+        nav.replace(ROUTES.OnboardIssue, {
+          invite: { groupId, code: r.code, expiresAt: r.expiresAt },
+        });
+        return;
+      }
       nav.navigate(ROUTES.Shell, { screen: ROUTES.Feed });
     } catch (err) {
       setError(err?.message ?? String(err));
     } finally {
       setBusy(false);
     }
-  }, [ok, busy, create, issue, svc, nav, groupId, name, purpose]);
+  }, [ok, busy, create, svc, nav, groupId, name, purpose]);
 
   return (
     <ScrollView contentContainerStyle={styles.root}>

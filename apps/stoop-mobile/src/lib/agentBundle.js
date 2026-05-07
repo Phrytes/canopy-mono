@@ -55,6 +55,16 @@ export async function buildBundleForGroup({
   members  = [],
   skills   = [],
   posture  = {},
+  /**
+   * Local-only role hint from the persisted groupRegistry entry.
+   * When set (e.g. `'admin'`), seeded into the bundle's MemberMap
+   * after construction so server-side admin gates (in skills like
+   * `getCurrentMembershipCode`, `rotateMyGroupCode`) clear after a
+   * cold start.  The bundle's MemberMap is in-memory on mobile (no
+   * persistPath wired) so each restart wipes role info — without
+   * this seed, the user "loses admin" on relaunch.
+   */
+  localRole,
   notifier,
   reveals,
   itemBackend,
@@ -87,6 +97,19 @@ export async function buildBundleForGroup({
     reveals,
     itemBackend,
   });
+
+  // Seed the local actor's role into MemberMap when the registry
+  // entry says we're admin/coordinator. The bundle factory only sets
+  // pubKey + stableId on the local actor, never role — that arrives
+  // via createGroupV2's `addMember(..., role: 'admin')`, but on a
+  // cold start (mobile cache is in-memory) the addMember call has
+  // already been "lost" to the empty cache so we need to replay it.
+  if (localRole === 'admin' || localRole === 'coordinator') {
+    try {
+      const me = await bundle.members?.resolveByWebid?.(localActor);
+      if (me) await bundle.members.addMember({ ...me, role: localRole });
+    } catch { /* best effort — admin gate skills will surface a clearer error if this matters */ }
+  }
 
   // Start broadcasting / receiving on the skill-match channel.
   await bundle.skillMatch.start();
@@ -136,6 +159,8 @@ export function defaultLocalActor(identity) {
 export async function relabelBundleGroup({
   bundle, newGroupId, localActor,
   peers = [], skills = [], posture = {},
+  /** Same role-seed as buildBundleForGroup — see its JSDoc. */
+  localRole,
 } = {}) {
   if (!bundle?.agent) throw new Error('relabelBundleGroup: bundle.agent required');
   if (typeof newGroupId !== 'string' || !newGroupId) {
@@ -160,5 +185,14 @@ export async function relabelBundleGroup({
   await skillMatch.start();
 
   bundle.skillMatch = skillMatch;
+
+  // Seed admin role on the relabel path (mirror of buildBundleForGroup).
+  if (localRole === 'admin' || localRole === 'coordinator') {
+    try {
+      const me = await bundle.members?.resolveByWebid?.(localActor);
+      if (me) await bundle.members.addMember({ ...me, role: localRole });
+    } catch { /* best effort */ }
+  }
+
   return bundle;
 }
