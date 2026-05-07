@@ -17,7 +17,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useService } from '../ServiceContext.js';
-import { toParts }    from './skillParts.js';
+import { toParts, unwrapParts } from './skillParts.js';
 
 /**
  * @template T
@@ -50,7 +50,10 @@ export function useSkillResult(skillId, args, deps = []) {
     setError(null);
     try {
       const localPeer = bundle.agent.address ?? bundle.agent.identity?.pubKey ?? null;
-      const r = await bundle.agent.invoke(localPeer, skillId, toParts(args));
+      // `agent.invoke` resolves to the A2A parts array — unwrap to
+      // the skill's return value (mirror of web's callSkill).
+      const rawParts = await bundle.agent.invoke(localPeer, skillId, toParts(args));
+      const r = unwrapParts(rawParts);
       if (cancelledRef.current) return;
       setData(r);
     } catch (err) {
