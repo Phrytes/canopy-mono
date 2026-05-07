@@ -85,6 +85,22 @@
     "onboard":  { "text": "Onboard",   "doc": "Top-nav link to /onboard.html — admin invite / onboarding tools." },
     "settings": { "text": "Settings",  "doc": "Top-nav link to /settings.html — user-tunable settings." }
   },
+  "group": {
+    "eviction_banner_title":  { "text": "Expired memberships", "doc": "Heading of the orange banner on /group.html shown when one or more members' codes have expired past the grace window." },
+    "eviction_banner_intro":  { "text": "One or more members' membership code has expired — their posts are hidden until they redeem the new code.", "doc": "Lead paragraph in the eviction banner. Explains the auto-evict behaviour from Phase 35 (V2.5)." },
+    "eviction_member_html":   { "text": "<strong>{webid}</strong> — expired on {date}", "doc": "Single list item inside the eviction banner. Contains a <strong> tag and two placeholders: {webid} (URL) and {date} (locale-formatted timestamp). Preserve both." }
+  },
+  "auth_callback": {
+    "page_title":      { "text": "Stoop — Completing pod sign-in", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },
+    "heading":         { "text": "Completing pod sign-in", "doc": "Main heading on /auth-callback.html." },
+    "busy":            { "text": "Finishing the OIDC flow…", "doc": "Initial status line shown while completePodSignIn is running, before bulk-sync starts." },
+    "uploading":       { "text": "Uploading your local data to your pod…", "doc": "Status line shown when bulk-sync transitions to 'running' (Phase 34, V2.5)." },
+    "progress":        { "text": "Uploading {done} of {total}…", "doc": "Progress label under the bar. {done} and {total} are integer counts of bulk-sync paths; do not localise the placeholders." },
+    "signed_in_html":  { "text": "Signed in as <strong>{webid}</strong>. Pod attached at <code>{podRoot}</code>.", "doc": "Success line after sign-in. Contains <strong> + <code> tags AND two placeholders: {webid} (URL) and {podRoot} (URL); preserve both." },
+    "synced_summary":  { "text": "{count} entries uploaded to your pod.", "doc": "Single-line summary shown after a clean bulk-sync finish. {count} is an integer." },
+    "sync_partial":    { "text": "Sign-in succeeded; some local data could not upload yet — Stoop will retry in the background.", "doc": "Warning line shown when bulk-sync ends with phase 'error'." },
+    "back_link":       { "text": "Back to pod settings →", "doc": "Bottom-of-page link back to /sign-in.html. Trailing arrow is intentional." }
+  },
   "settings": {
     "page_title":             { "text": "Stoop — Settings", "doc": "Browser tab title for /settings.html." },
     "heading":                { "text": "Settings", "doc": "Main page heading on /settings.html." },

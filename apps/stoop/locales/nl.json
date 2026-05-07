@@ -85,6 +85,22 @@
     "onboard":  { "text": "Onboarden",     "doc": "Top-nav link to /onboard.html — admin invite / onboarding tools." },
     "settings": { "text": "Instellingen",  "doc": "Top-nav link to /settings.html — user-tunable settings." }
   },
+  "group": {
+    "eviction_banner_title":  { "text": "Verlopen lidmaatschappen", "doc": "Heading of the orange banner on /group.html shown when one or more members' codes have expired past the grace window." },
+    "eviction_banner_intro":  { "text": "Voor één of meer leden is de membership-code verlopen — hun posts worden verborgen totdat ze de nieuwe code inwisselen.", "doc": "Lead paragraph in the eviction banner. Explains the auto-evict behaviour from Phase 35 (V2.5)." },
+    "eviction_member_html":   { "text": "<strong>{webid}</strong> — verlopen op {date}", "doc": "Single list item inside the eviction banner. Contains a <strong> tag and two placeholders: {webid} (URL) and {date} (locale-formatted timestamp). Preserve both." }
+  },
+  "auth_callback": {
+    "page_title":      { "text": "Stoop — Pod-aanmelding voltooien", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },
+    "heading":         { "text": "Pod-aanmelding voltooien", "doc": "Main heading on /auth-callback.html." },
+    "busy":            { "text": "Bezig met afronden van de OIDC-flow…", "doc": "Initial status line shown while completePodSignIn is running, before bulk-sync starts." },
+    "uploading":       { "text": "Bezig met uploaden van je lokale data naar je pod…", "doc": "Status line shown when bulk-sync transitions to 'running' (Phase 34, V2.5)." },
+    "progress":        { "text": "Bezig met uploaden van {done} van {total}…", "doc": "Progress label under the bar. {done} and {total} are integer counts of bulk-sync paths; do not localise the placeholders." },
+    "signed_in_html":  { "text": "Aangemeld als <strong>{webid}</strong>. Pod gekoppeld op <code>{podRoot}</code>.", "doc": "Success line after sign-in. Contains <strong> + <code> tags AND two placeholders: {webid} (URL) and {podRoot} (URL); preserve both." },
+    "synced_summary":  { "text": "{count} items naar je pod geüpload.", "doc": "Single-line summary shown after a clean bulk-sync finish. {count} is an integer." },
+    "sync_partial":    { "text": "Aangemeld; sommige data kon nog niet geüpload worden — Stoop probeert het op de achtergrond opnieuw.", "doc": "Warning line shown when bulk-sync ends with phase 'error'." },
+    "back_link":       { "text": "Terug naar pod-instellingen →", "doc": "Bottom-of-page link back to /sign-in.html. Trailing arrow is intentional." }
+  },
   "settings": {
     "page_title":             { "text": "Stoop — Instellingen", "doc": "Browser tab title for /settings.html." },
     "heading":                { "text": "Instellingen", "doc": "Main page heading on /settings.html." },
