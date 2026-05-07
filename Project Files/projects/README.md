@@ -179,6 +179,65 @@ Projects that *don't* rotate need a written justification (e.g. an
 IoT device that sets up once and never changes — the rotation cost
 exceeds the benefit). Default is rotate.
 
+## Personal-pod URLs stay out of peer-to-peer messages — applies to every agentic project here
+
+> **Locked 2026-05-07.** A user's pod URL (or any URL under their
+> personal pod root) MUST NOT appear inside content broadcast or
+> sent peer-to-peer through the relay or any agent transport.
+
+The reason is the same as the network-identity-rotation rule: pod
+WebIDs are durable and personally identifying, while everything we
+ship over the wire is supposed to be either rotatable (pubKey),
+revocable (membership), or short-lived (chat envelope). A URL like
+`https://annes-pod.example/public/photo.jpg` embedded in a post
+defeats every privacy primitive the SDK provides:
+
+- **Identity:** the pod URL is effectively the user's WebID. Putting
+  it in a broadcast bypasses the `Reveals` / hide-name-until-connected
+  story.
+- **Eviction:** Phase-35-style auto-eviction can hide the post but
+  the URL keeps working — anyone who saw the broadcast retains
+  access until ACPs change. URLs aren't capability tokens.
+- **Metadata leakage:** the pod operator (and any caching
+  intermediary) sees who fetches when, including IPs.
+- **Relay-operator exposure:** the relay sees broadcast bytes —
+  group-encrypted, but it sees that the post happened and (when
+  group keys leak / are compromised) the URL.
+
+### Concrete rules
+
+1. **Apps MUST NOT include the user's pod URL — or any sub-URL
+   under it — in the body of any peer-to-peer message** (broadcast
+   post, chat envelope, claim, reveal, contact-add request, etc.).
+   That includes attachment references, profile-photo URLs, "see
+   more" links — any user content.
+2. **In-message attachments MUST ship as bytes** (with size caps and
+   client-side resize), not as URLs into the sender's pod.
+3. If a future feature genuinely needs URL-based sharing — e.g.
+   large-file transfer where bytes-in-band is impractical — it
+   MUST use a **shared / group-owned namespace** (a future
+   group-pod or relay-side blob store), not the sender's personal
+   pod. That feature has not shipped yet; until it does, the
+   URL-mode path is closed.
+4. Apps reading their own pod from the same agent (e.g. fetching a
+   post the user themselves authored) ARE allowed to use pod URLs —
+   the privacy rule is about content that *travels to peers*, not
+   about local-side storage references.
+
+### Self-checks
+
+- Search for `pod-root`, `webid`, or `https://` in any DataPart
+  payload your app emits. If a personal-pod URL appears, redesign.
+- Profile photos: ship the bytes (or a resized thumbnail) inside
+  the MemberMap entry, not a URL into your pod.
+- "Click to see full image" on a feed post: the recipient must be
+  able to fetch the bytes from their own local cache (or a
+  group-owned source), never from the sender's pod.
+
+The Stoop V2.5 attachments design (separate-blob with inline
+thumbnail, full bytes shipped in-message and stored locally per
+recipient) is the canonical example.
+
 ## Decentralised disclaimer — every agentic project ships with one
 
 > **There is no central support desk, no abuse team, no trust

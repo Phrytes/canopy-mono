@@ -112,6 +112,28 @@ their data lives. **Mitigation:** in the privacy notice and the
 "Profile" screen, a one-tap "Where is my data?" explainer that names
 the pod provider and links to the pod URL.
 
+## Personal-pod URLs do not travel in peer-to-peer messages (locked 2026-05-07)
+
+Stoop honours the project-wide rule in
+[`../projects/README.md`](../projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here):
+no user pod URL — and no URL under it — appears inside any broadcast
+post, chat message, claim, reveal, contact-add hint, or other
+peer-to-peer envelope. Concretely for V2.5 attachments:
+
+- Image / file attachments ship as **bytes inside the envelope**,
+  shrunk client-side. The sender stores the full blob locally; the
+  recipient stores a copy locally on receive. Neither side ever
+  references the other side's pod by URL.
+- Profile photos are sent as resized thumbnails on the MemberMap
+  entry (bytes, not URLs).
+- The "click for full image" interaction reads from the recipient's
+  own local cache — never re-fetches from the sender's pod.
+
+When a shared / group-owned storage namespace ships in a future
+phase, URL-mode attachments may be reconsidered for that namespace
+specifically. The user's personal pod stays out of the peer-broadcast
+path either way.
+
 ## Closed-beta privacy notice — required content
 
 Any user signing up for a Stoop closed beta must see, in plain
