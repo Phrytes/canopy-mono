@@ -20,7 +20,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useService } from '../ServiceContext.js';
-import { toParts }    from './skillParts.js';
+import { toParts, unwrapParts } from './skillParts.js';
 import {
   unpackProfile, mergeSkillUpdate, removeSkill, avatarToUri,
 } from './profileSync.js';
@@ -58,7 +58,10 @@ export function useProfile() {
       throw err;
     }
     const localPeer = bundle.agent.address ?? bundle.agent.identity?.pubKey ?? null;
-    return bundle.agent.invoke(localPeer, skillId, toParts(args));
+    // Unwrap the A2A parts array to the skill's return value (mirror
+    // of web's callSkill).
+    const rawParts = await bundle.agent.invoke(localPeer, skillId, toParts(args));
+    return unwrapParts(rawParts);
   }, [svc]);
 
   const refresh = useCallback(async () => {

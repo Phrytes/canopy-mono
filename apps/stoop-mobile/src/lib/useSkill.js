@@ -19,7 +19,7 @@
 
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { useService } from '../ServiceContext.js';
-import { toParts }    from './skillParts.js';
+import { toParts, unwrapParts } from './skillParts.js';
 
 /**
  * @param {string} skillId
@@ -78,7 +78,12 @@ export function useSkill(skillId) {
     try {
       const parts = toParts(args);
       const localPeer = bundle.agent.address ?? bundle.agent.identity?.pubKey ?? null;
-      const r = await bundle.agent.invoke(localPeer, skillId, parts);
+      // `agent.invoke` resolves to the A2A parts array, not the
+      // skill's return value.  Unwrap the first DataPart so callers
+      // see the same shape as `apps/stoop/web/app.js#callSkill` —
+      // i.e. the object the skill `return`-ed.
+      const rawParts = await bundle.agent.invoke(localPeer, skillId, parts);
+      const r = unwrapParts(rawParts);
       if (cancelledRef.current) return r;
       setResult(r);
       return r;

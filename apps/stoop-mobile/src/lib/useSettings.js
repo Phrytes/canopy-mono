@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useService } from '../ServiceContext.js';
-import { toParts }    from './skillParts.js';
+import { toParts, unwrapParts } from './skillParts.js';
 
 export function useSettings() {
   const svc = useService();
@@ -31,7 +31,8 @@ export function useSettings() {
       throw err;
     }
     const localPeer = bundle.agent.address ?? bundle.agent.identity?.pubKey ?? null;
-    return bundle.agent.invoke(localPeer, skillId, toParts(args));
+    const rawParts = await bundle.agent.invoke(localPeer, skillId, toParts(args));
+    return unwrapParts(rawParts);
   }, [svc]);
 
   const refresh = useCallback(async () => {
