@@ -26,7 +26,7 @@ export const ITEM_TYPES = Object.freeze({
   REQUEST:       'request',
 });
 
-/** All Stoop kinds the prikbord renders alongside one another. */
+/** All Stoop kinds the board renders alongside one another. */
 export const PRIKBORD_KINDS = Object.freeze([
   ITEM_TYPES.ASK,
   ITEM_TYPES.OFFER,

@@ -132,7 +132,7 @@ export function wireChat({ agent, itemStore, members, muted, metrics, localActor
       // (sent via the contact graph rather than the group pubsub).
       // Drop muted senders; drop posts beyond my maxDistanceKm if I
       // know my own location.  Otherwise, mirror as a regular item
-      // so the prikbord renders it.
+      // so the board renders it.
       if (muted && (
         (data.fromStableId && muted.has(data.fromStableId)) ||
         (data.fromWebid    && muted.has(data.fromWebid))
@@ -155,7 +155,7 @@ export function wireChat({ agent, itemStore, members, muted, metrics, localActor
       }
 
       // Mirror the post into the local item store as a regular
-      // typed item with `source.broadcast: true` so the prikbord
+      // typed item with `source.broadcast: true` so the board
       // surfaces it.  Dedupe on data.postId.
       const open = await itemStore.listOpen({});
       if (open.some((i) => i?.source?.requestId === data.postId)) return;

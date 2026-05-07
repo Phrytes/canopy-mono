@@ -49,7 +49,7 @@ export async function wireGroupBroadcastMirror({ agent, itemStore, group, peers 
     if (open.some((i) => i?.source?.requestId === requestId)) return;
     const payload = request.payload ?? {};
     /** Stoop V1 (2026-05-06): use the broadcast payload's `kind` when
-     *  present so the prikbord renders the right chip on every member's
+     *  present so the board renders the right chip on every member's
      *  view (legacy H5 broadcasts didn't include `kind`; default to
      *  the legacy 'request'). */
     const kind = typeof payload.kind === 'string' && payload.kind ? payload.kind : 'request';
@@ -99,7 +99,7 @@ export async function wireGroupBroadcastMirror({ agent, itemStore, group, peers 
    * Backfill — replay an array of items from `pubKey` through the
    * same mirror() path live broadcasts use, so a member who joins
    * AFTER the publisher's posts went out still sees them on the
-   * prikbord.  The dedupe inside mirror() makes this idempotent.
+   * board.  The dedupe inside mirror() makes this idempotent.
    *
    * @param {string} pubKey                publisher's pubKey
    * @param {Array<object>} items          items as stored in the publisher's itemStore
