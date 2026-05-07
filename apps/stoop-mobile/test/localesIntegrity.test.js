@@ -37,9 +37,12 @@ const REQUIRED_KEYS = [
 
   // feed / compose / item_detail
   'feed.heading', 'feed.empty_no_items', 'feed.empty_filtered',
-  'feed.kind_vraag', 'feed.kind_aanbod',
+  'feed.kind_vraag', 'feed.kind_aanbod', 'feed.no_group',
   'compose.heading', 'compose.placeholder_vraag', 'compose.placeholder_aanbod',
   'compose.kind_vraag', 'compose.kind_aanbod',
+  'compose.distance_label', 'compose.distance_any', 'compose.distance_km',
+  'compose.audience_label', 'compose.audience_hint_default', 'compose.audience_hint_n',
+  'compose.no_group',
   'compose.skills_label', 'compose.submit', 'compose.submitting',
   'compose.too_many_attachments', 'compose.permission_denied',
 
@@ -47,6 +50,9 @@ const REQUIRED_KEYS = [
   'tabs.feed', 'tabs.mine', 'tabs.chat', 'tabs.contacts', 'tabs.profile', 'tabs.settings',
   'item_detail.unknown_item', 'item_detail.chat', 'item_detail.claim',
   'item_detail.hide', 'item_detail.report',
+  'item_detail.respond', 'item_detail.responding',
+  'item_detail.cancel', 'item_detail.mark_returned', 'item_detail.no_active_group',
+  'mine.no_active_group',
 
   // chat
   'chat_threads.empty',
