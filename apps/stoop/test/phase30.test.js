@@ -96,7 +96,7 @@ describe('Stoop V2 Phase 30.1 — restoreFromMnemonic', () => {
     expect(r.error).toBe('invalid-mnemonic');
   });
 
-  it('writes seed to vault + clears stableId; returns the new pubKey', async () => {
+  it('writes seed to vault + re-derives stableId from new seed; returns the new pubKey', async () => {
     const vault = new VaultMemory();
     const { bundle } = await buildBundle(vault);
     const phrase = generateMnemonic();
@@ -110,12 +110,22 @@ describe('Stoop V2 Phase 30.1 — restoreFromMnemonic', () => {
     expect(r.ok).toBe(true);
     expect(r.newPubKey).toBe(pubKeyFromMnemonic(phrase));
 
-    // Vault carries the new mnemonic-derived seed; stableId is cleared.
+    // Vault carries the new mnemonic-derived seed.
     const afterKey = await vault.get('agent-privkey');
     expect(afterKey).toBeTruthy();
     expect(afterKey).not.toBe(beforeKey);
+
+    // Phase 31 + 32: restoreFromMnemonic immediately re-derives the
+    // stableId from the new seed via AgentIdentity.restore (called
+    // inside the swap path).  The vault now carries the
+    // deterministic-from-seed stableId; it equals what
+    // AgentIdentity.fromMnemonic(phrase) would produce on a fresh
+    // device.
     const afterStableId = await vault.get('agent-stable-id');
-    expect(afterStableId).toBeFalsy();   // cleared (or undefined)
+    expect(afterStableId).toBeTruthy();
+    const peerVault = new VaultMemory();
+    const peerId = await AgentIdentity.fromMnemonic(phrase, peerVault);
+    expect(afterStableId).toBe(peerId.stableId);
   });
 });
 

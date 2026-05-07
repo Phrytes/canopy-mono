@@ -36,7 +36,7 @@
  *     a reveals store get the raw item shape unchanged.
  */
 
-import { defineSkill, validateMnemonic, mnemonicToSeed } from '@canopy/core';
+import { defineSkill, validateMnemonic, mnemonicToSeed, AgentIdentity } from '@canopy/core';
 import nacl from 'tweetnacl';
 import { resolve as resolveMember } from '@canopy/identity-resolver';
 
@@ -2370,16 +2370,21 @@ export function buildSkills({
 
     /**
      * restoreFromMnemonic({mnemonic, confirm})
-     *   — Phase 30.1.  Persists the mnemonic-derived seed into the
-     *   bundle's vault under `agent-privkey`, OVERWRITING the
-     *   existing keypair.  Caller MUST pass `confirm: true` — this
-     *   is destructive: the previously-running identity is replaced
-     *   on the next process start.  Until restart, the bundle keeps
-     *   running with its old identity.
+     *   — Phase 30 + V2.5 Phase 31 (mid-flight identity swap).
      *
-     *   Returns the new pubKey + a hint to restart.  After restart,
-     *   the bundle boots from the mnemonic-derived seed; pod-sync
-     *   pulls all state via `cache.attachInner(podSource)`.
+     *   Validates the mnemonic, persists the derived seed into the
+     *   bundle's vault under `agent-privkey`, then SWAPS the running
+     *   agent's identity in-place via `agent.swapIdentity`.  No
+     *   restart needed; subsequent skills run under the restored
+     *   identity immediately.
+     *
+     *   Caller MUST pass `confirm: true` — this is destructive: the
+     *   previously-running identity is replaced.
+     *
+     *   The Phase 32 deterministic-stableId derivation means the
+     *   restored bundle produces the SAME stableId as the original
+     *   device, so mute / report / contact-cache state survives the
+     *   restore.
      */
     defineSkill('restoreFromMnemonic', async ({ parts, agent }) => {
       const a = dataArgs(parts);
@@ -2394,11 +2399,10 @@ export function buildSkills({
       const newPubKey = Buffer.from(kp.publicKey).toString('base64')
         .replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
 
-      // Persist into the vault that the agent uses; on next start,
-      // AgentIdentity.restore reads this seed.
       const vault = agent?.identity?.vault ?? null;
       if (!vault) return { error: 'no-vault' };
-      // Mirror AgentIdentity._writeEntry shape: {current, previous}.
+
+      // Persist the new seed into the vault.
       const entry = JSON.stringify({
         current: Buffer.from(seed).toString('base64')
           .replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, ''),
@@ -2409,22 +2413,60 @@ export function buildSkills({
       } catch (err) {
         return { error: `vault-set: ${err?.message ?? err}` };
       }
-      // V2.5 Phase 32: stableId is now derived deterministically from
-      // the seed via HKDF in `core.AgentIdentity._loadOrInitStableId`.
-      // We DROP any prior stableId so the next process boot re-derives
-      // the same stableId from the new mnemonic-seed — restoring on a
-      // 2nd device produces the same stableId as the original device,
-      // so mute / report / contact-cache state survives.
+      // Drop any prior stableId so the new identity re-derives via
+      // Phase 32's HKDF path.  Result: same mnemonic → same stableId
+      // across devices.
       try { await vault.delete?.('agent-stable-id'); } catch {}
+
+      // V2.5 Phase 31 — mid-flight identity swap.  Build a fresh
+      // AgentIdentity (which loads the new seed + new stableId from
+      // the vault) and hand it to the running agent.
+      let newIdentity;
+      try {
+        newIdentity = await AgentIdentity.restore(vault);
+      } catch (err) {
+        return { error: `restore-identity: ${err?.message ?? err}` };
+      }
+      try {
+        agent.swapIdentity(newIdentity);
+      } catch (err) {
+        return { error: `swap-identity: ${err?.message ?? err}` };
+      }
+
+      // Update the local actor's MemberMap entry so `whoAmI` and any
+      // resolveByWebid(localActor) callers report the new pubKey +
+      // stableId immediately.  Skip silently if no map.
+      if (members) {
+        try {
+          const me = (await members.resolveByWebid(localActor)) ?? { webid: localActor };
+          await members.addMember({
+            ...me,
+            pubKey:   newIdentity.pubKey,
+            stableId: newIdentity.stableId,
+          });
+        } catch { /* best-effort */ }
+      }
+
+      // V2.5 Phase 31 scope: a fresh device's bundle has no peers
+      // yet (restore flow runs before any group-rejoin), so there's
+      // no peer-rebind to do at this point.  The agent's outbound
+      // envelopes are now signed by the new key (handled inside
+      // swapIdentity → SecurityLayer.swapIdentity).
+      //
+      // V3 mobile note: when the restore flow lands on a device with
+      // pre-existing peer subscriptions (rejoining a buurt), this is
+      // where we'd `await skillMatch.stop(); await skillMatch.start()`
+      // to re-bind topic listeners.  Today it's a no-op.
 
       metrics?.record?.('identity-restored');
       return {
         ok: true,
         newPubKey,
-        message: 'Restart Stoop to apply the restored identity.',
+        newStableId: newIdentity.stableId,
+        message: 'Restored. You\'re signed in under the recovered identity.',
       };
     }, {
-      description: 'Restore the agent identity from a BIP-39 mnemonic; takes effect on next process start.',
+      description: 'Restore the agent identity from a BIP-39 mnemonic; takes effect immediately (Phase 31 mid-flight swap).',
       visibility:  'authenticated',
     }),
 
