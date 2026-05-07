@@ -30,7 +30,7 @@ const SETTINGS_PATH = 'mem://stoop/settings.json';
 
 /** Default settings.  Conservative — opt-in for everything privacy/battery-relevant. */
 export const DEFAULT_SETTINGS = Object.freeze({
-  // How often the prikbord pulls open posts (web honoured; mobile
+  // How often the board pulls open posts (web honoured; mobile
   // V3 will overlay 300_000 = 5 min via the same skill).
   pollIntervalMs: 2_000,
   // Mobile-only (V3 binds to expo-task-manager).  Web ignores both fields.
