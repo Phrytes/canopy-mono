@@ -206,6 +206,18 @@ function withCanopyPreset(options) {
       'chokidar':                         SHIM_PATHS.nodeBuiltins,
       'express':                          SHIM_PATHS.nodeBuiltins,
       'systray2':                         SHIM_PATHS.nodeBuiltins,
+      // `@canopy/relay` is the Node-side relay server (Web Push
+      // sender, mDNS discovery, the local-UI HTTP shim).  Stoop's
+      // `apps/stoop/src/lib/WebPushSender.js` does a dynamic import
+      // of `@canopy/relay` when VAPID keys are configured — Metro
+      // statically follows the dynamic `import()` and would fail
+      // without this shim.  Mobile uses native Expo push instead;
+      // the dynamic-import branch never fires at runtime.
+      // Stoop V3 mobile Phase 40.23 trap (2026-05-08).
+      '@canopy/relay':                  SHIM_PATHS.nodeBuiltins,
+      // Same trap class: `web-push` is the Node Web-Push library
+      // pulled by `WebPushSender`.  Mobile never reaches it.
+      'web-push':                         SHIM_PATHS.nodeBuiltins,
 
       // Pin core React / RN packages to the app's node_modules to
       // avoid conflicting copies pulled in via monorepo hoisting.
