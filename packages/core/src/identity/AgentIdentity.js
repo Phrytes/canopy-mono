@@ -21,6 +21,7 @@
  */
 import nacl       from 'tweetnacl';
 import ed2curve   from 'ed2curve';
+import { hkdfSync } from 'node:crypto';
 import { encode as b64encode, decode as b64decode } from '../crypto/b64.js';
 import { mnemonicToSeed, seedToMnemonic } from './Mnemonic.js';
 
@@ -30,16 +31,45 @@ const { convertPublicKey, convertKeyPair } = ed2curve;
 const STABLE_ID_KEY = 'agent-stable-id';
 
 /**
+ * HKDF salt for deterministic stableId derivation (V2.5+ Phase 32,
+ * 2026-05-07).  **Permanent** — never change.  Changing it would
+ * invalidate every restored identity's stableId across all apps.
+ */
+const STABLE_ID_HKDF_SALT = 'stoop-stableId-v1';
+const STABLE_ID_BYTES = 16;
+
+/**
+ * Derive a deterministic stableId from a seed using HKDF-SHA256.
+ * Same seed → same stableId, on any device, always.  Used when a
+ * vault is fresh (no existing stableId) AND a seed is available
+ * (i.e. caller is `generate`, `restore`, or `fromMnemonic`).
+ */
+function _deriveStableIdFromSeed(seed) {
+  const out = hkdfSync('sha256', seed, STABLE_ID_HKDF_SALT, '', STABLE_ID_BYTES);
+  return b64encode(new Uint8Array(out));
+}
+
+/**
  * Load (or lazy-init) the stableId for this vault.  Returns null for
  * detached identities (vault === null), e.g. the `previous` identity
  * handed back by `restoreWithPrevious` — those intentionally don't
  * persist anywhere.
+ *
+ * V2.5+ (Phase 32, 2026-05-07): when the vault has nothing AND a
+ * `seed` is supplied, derive the stableId deterministically via
+ * HKDF-SHA256(seed, salt='stoop-stableId-v1').  This makes
+ * `restoreFromMnemonic` produce the SAME stableId across devices —
+ * mute / report / contact-cache state survives the restore.
+ *
+ * Existing vaults with a random stableId keep theirs (back-compat).
  */
-async function _loadOrInitStableId(vault) {
+async function _loadOrInitStableId(vault, seed = null) {
   if (!vault) return null;
   const existing = await vault.get(STABLE_ID_KEY);
   if (existing && typeof existing === 'string' && existing.length > 0) return existing;
-  const fresh = b64encode(nacl.randomBytes(16));
+  const fresh = (seed instanceof Uint8Array && seed.length === 32)
+    ? _deriveStableIdFromSeed(seed)
+    : b64encode(nacl.randomBytes(16));
   await vault.set(STABLE_ID_KEY, fresh);
   return fresh;
 }
@@ -67,7 +97,7 @@ export class AgentIdentity {
   static async generate(vault) {
     const seed = nacl.randomBytes(32);
     await vault.set('agent-privkey', _writeEntry(seed, null));
-    const stableId = await _loadOrInitStableId(vault);
+    const stableId = await _loadOrInitStableId(vault, seed);
     return new AgentIdentity({ seed, vault, stableId });
   }
 
@@ -76,8 +106,9 @@ export class AgentIdentity {
     const raw = await vault.get('agent-privkey');
     if (!raw) throw new Error('No agent key found in vault');
     const parsed = _parseEntry(raw);
-    const stableId = await _loadOrInitStableId(vault);
-    return new AgentIdentity({ seed: b64decode(parsed.current), vault, stableId });
+    const seed = b64decode(parsed.current);
+    const stableId = await _loadOrInitStableId(vault, seed);
+    return new AgentIdentity({ seed, vault, stableId });
   }
 
   /**
@@ -94,8 +125,9 @@ export class AgentIdentity {
     const raw = await vault.get('agent-privkey');
     if (!raw) throw new Error('No agent key found in vault');
     const parsed   = _parseEntry(raw);
-    const stableId = await _loadOrInitStableId(vault);
-    const current  = new AgentIdentity({ seed: b64decode(parsed.current), vault, stableId });
+    const currentSeed = b64decode(parsed.current);
+    const stableId = await _loadOrInitStableId(vault, currentSeed);
+    const current  = new AgentIdentity({ seed: currentSeed, vault, stableId });
     let previous   = null;
     if (parsed.previous?.seed
         && typeof parsed.previous.graceUntil === 'number'
@@ -118,7 +150,7 @@ export class AgentIdentity {
   static async fromMnemonic(mnemonic, vault) {
     const seed = mnemonicToSeed(mnemonic);
     await vault.set('agent-privkey', _writeEntry(seed, null));
-    const stableId = await _loadOrInitStableId(vault);
+    const stableId = await _loadOrInitStableId(vault, seed);
     return new AgentIdentity({ seed, vault, stableId });
   }
 
@@ -143,7 +175,7 @@ export class AgentIdentity {
 
     const oldSeed     = b64decode(parsed.current);
     /** stableId survives rotation — load (or lazy-init for legacy vaults). */
-    const stableId    = await _loadOrInitStableId(vault);
+    const stableId    = await _loadOrInitStableId(vault, oldSeed);
     const oldIdentity = new AgentIdentity({ seed: oldSeed, vault, stableId });
 
     const newSeed     = nacl.randomBytes(32);
