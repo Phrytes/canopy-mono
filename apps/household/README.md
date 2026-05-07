@@ -99,3 +99,14 @@ those decisions in Stoop and shouldn't re-make them here.
 
 **Status (2026-05-07):** household is in design / DD-stage; no
 persisted settings yet. Update this section when they land.
+
+### Personal-pod URLs do not travel peer-to-peer
+
+Per
+[`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here):
+when household forwards a message between Telegram and the user's
+agent (or to another household member's agent), no pod URL appears
+in the payload. If the message contains an image, the bytes ship
+inline (with resize). LLM-generated content that references "your
+file at <pod-url>" must be rewritten to drop the URL before peer
+transmission.

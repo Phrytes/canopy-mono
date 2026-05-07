@@ -167,6 +167,14 @@ same `shared.json`.
 **Status (2026-05-07):** folio-mobile doesn't ship persisted
 settings yet. Update this section when they land.
 
+### Personal-pod URLs do not travel peer-to-peer
+
+When mobile-Folio gains a "share this note" surface (likely V2),
+the project-wide rule in
+[`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here)
+applies: outgoing share envelopes carry the note bytes (and resized
+attachments) inline, never a `<pod>/folio/notes/...` URL.
+
 ## What's in here
 
 ```
