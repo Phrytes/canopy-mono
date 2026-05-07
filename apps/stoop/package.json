@@ -21,6 +21,7 @@
     "@canopy/relay":             "file:../../packages/relay",
     "@canopy/agent-ui":          "file:../../packages/agent-ui",
     "@canopy/chat-agent":        "file:../../packages/chat-agent",
+    "@canopy/chat-p2p":          "file:../../packages/chat-p2p",
     "@canopy/identity-resolver": "file:../../packages/identity-resolver",
     "@canopy/item-store":        "file:../../packages/item-store",
     "@canopy/local-store":       "file:../../packages/local-store",
