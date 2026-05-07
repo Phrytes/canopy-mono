@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8">
-  <title>Stoop — Onboarden</title>
+  <title data-i18n="onboard.page_title">Stoop — Onboarden</title>
   <link rel="stylesheet" href="/style.css">
   <style>
     .invite-link {
@@ -28,16 +28,16 @@
 <body>
   <header>
     <nav>
-      <a href="/">Buurt</a>
-      <a href="/mine.html">Mijn posts</a>
-      <a href="/chat.html">Chat</a>
-      <a href="/contacts.html">Contacten</a>
-      <a href="/metrics.html">Metrics</a>
-      <a href="/profile.html">Profiel</a>
-      <a href="/sign-in.html">Pod</a>
-      <a href="/push.html">Push</a>
-      <a href="/onboard.html" class="active">Onboarden</a>
-      <a href="/settings.html">Instellingen</a>
+      <a href="/"               data-i18n="nav.feed">Buurt</a>
+      <a href="/mine.html"      data-i18n="nav.my_posts">Mijn posts</a>
+      <a href="/chat.html"      data-i18n="nav.chat">Chat</a>
+      <a href="/contacts.html"  data-i18n="nav.contacts">Contacten</a>
+      <a href="/metrics.html"   data-i18n="nav.metrics">Metrics</a>
+      <a href="/profile.html"   data-i18n="nav.profile">Profiel</a>
+      <a href="/sign-in.html"   data-i18n="nav.pod">Pod</a>
+      <a href="/push.html"      data-i18n="nav.push">Push</a>
+      <a href="/onboard.html"   class="active" data-i18n="nav.onboard">Onboarden</a>
+      <a href="/settings.html"  data-i18n="nav.settings">Instellingen</a>
     </nav>
     <select id="group-switcher" hidden aria-label="Switch group"></select>
     <div id="actor"></div>
@@ -47,20 +47,20 @@
     <!-- ── Redeem mode (loaded via ?invite=...) ─────────────────────────── -->
     <section id="redeem-mode" hidden>
       <div class="welcome-hero">
-        <h1>Welkom bij Stoop</h1>
-        <p>Je bent uitgenodigd voor een buurt-groep. Stoop draait
+        <h1 data-i18n="onboard.redeem_hero_title">Welkom bij Stoop</h1>
+        <p data-i18n="onboard.redeem_hero_intro">Je bent uitgenodigd voor een buurt-groep. Stoop draait
            op je eigen apparaat — er is geen centrale server. Je
            kunt later je gegevens meenemen of weer verwijderen.</p>
       </div>
 
-      <h2 style="margin-top: 1.5rem;">Akkoord met de spelregels</h2>
-      <div id="rules-block" class="hint" style="margin-bottom: 0.5rem;">
+      <h2 style="margin-top: 1.5rem;" data-i18n="onboard.gates_heading">Akkoord met de spelregels</h2>
+      <div id="rules-block" class="hint" style="margin-bottom: 0.5rem;" data-i18n="common.loading">
         Aan het laden…
       </div>
 
       <div class="gate-row">
         <input type="checkbox" id="gate-privacy">
-        <label for="gate-privacy">
+        <label for="gate-privacy" data-i18n="onboard.gate_privacy_html">
           Ik ga akkoord met de <strong>privacy-toelichting</strong>:
           mijn posts en chats blijven binnen de groep, en ik kan ze
           later exporteren of verwijderen.
@@ -68,41 +68,42 @@
       </div>
       <div class="gate-row">
         <input type="checkbox" id="gate-rules">
-        <label for="gate-rules">
+        <label for="gate-rules" data-i18n="onboard.gate_rules_html">
           Ik heb de <strong>huisregels</strong> van de groep gelezen
           en ben ermee akkoord.
         </label>
       </div>
 
-      <h3 style="margin-top: 1.5rem;">Kies je handle voor deze groep</h3>
-      <p class="hint">
+      <h3 style="margin-top: 1.5rem;" data-i18n="onboard.handle_heading">Kies je handle voor deze groep</h3>
+      <p class="hint" data-i18n="onboard.handle_intro_html">
         Anderen zien standaard alleen je handle (bv.
         <code>@oosterpoort-vogel-12</code>) — niet je echte naam.
         Je kunt later per chat een wederzijdse onthulling doen.
       </p>
       <form id="redeem-form">
         <label>
-          <span>Handle</span>
+          <span data-i18n="onboard.handle_label">Handle</span>
           <input id="redeem-handle" type="text" required minlength="3" maxlength="32"
                  pattern="^@?[a-zA-Z0-9_-]+$"
+                 data-i18n="onboard.handle_placeholder" data-i18n-attr="placeholder"
                  placeholder="bv. oosterpoort-vogel-12">
         </label>
-        <button type="submit">Sluit aan bij de groep</button>
+        <button type="submit" data-i18n="onboard.redeem_submit">Sluit aan bij de groep</button>
         <span id="redeem-status" class="hint"></span>
       </form>
 
       <pre id="redeem-result" hidden style="margin-top: 1rem;"></pre>
 
       <p class="small-link" style="margin-top: 1rem;">
-        Eenmaal aangesloten?
-        <a href="/profile.html">Bewaar je herstelzin →</a>
+        <span data-i18n="onboard.after_join_label">Eenmaal aangesloten?</span>
+        <a href="/profile.html" data-i18n="onboard.save_phrase_link">Bewaar je herstelzin →</a>
       </p>
     </section>
 
     <!-- ── Issue mode (admin generates invite link) ─────────────────────── -->
     <section id="issue-mode" hidden>
-      <h2>Uitnodiging maken</h2>
-      <p class="hint">
+      <h2 data-i18n="onboard.issue_heading">Uitnodiging maken</h2>
+      <p class="hint" data-i18n="onboard.issue_intro">
         Genereer een link voor één nieuwe member. Stuur 'm
         out-of-band: appje, mail, papieren briefje.  De link is
         eenmalig en verloopt na de TTL.
@@ -110,7 +111,7 @@
 
       <form id="issue-form">
         <label>
-          <span>Rol van de nieuwe member</span>
+          <span data-i18n="onboard.role_label">Rol van de nieuwe member</span>
           <select id="role">
             <option value="member" selected>member</option>
             <option value="coordinator">coordinator</option>
@@ -118,20 +119,20 @@
           </select>
         </label>
         <label>
-          <span>Geldig tot (minuten)</span>
+          <span data-i18n="onboard.ttl_label">Geldig tot (minuten)</span>
           <input id="ttl" type="number" min="1" value="60">
         </label>
-        <button type="submit">Uitnodiging genereren</button>
+        <button type="submit" data-i18n="onboard.issue_submit">Uitnodiging genereren</button>
         <span id="issue-status" class="hint"></span>
       </form>
 
       <div id="invite-result" hidden style="margin-top: 1.5rem;">
-        <h3>Stuur deze link naar de nieuwe member</h3>
+        <h3 data-i18n="onboard.invite_result_heading">Stuur deze link naar de nieuwe member</h3>
         <div class="copy-row">
           <span class="invite-link" id="invite-link"></span>
-          <button id="copy" type="button">Kopieer</button>
+          <button id="copy" type="button" data-i18n="onboard.copy">Kopieer</button>
         </div>
-        <p class="hint">
+        <p class="hint" data-i18n="onboard.invite_result_hint">
           Eenmalig bruikbaar; verloopt zodra de TTL voorbij is.
         </p>
       </div>
@@ -139,7 +140,11 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, mountGroupSwitcher } from '/app.js';
+    import { callSkill, getActor, mountGroupSwitcher, initI18n, applyI18n, t } from '/app.js';
+
+    await initI18n();
+    applyI18n();
+    document.title = t('onboard.page_title', 'Stoop — Onboard');
 
     document.getElementById('actor').textContent = await getActor();
     mountGroupSwitcher(document.getElementById('group-switcher'));
@@ -156,7 +161,7 @@
         parsedInvite = JSON.parse(decodeURIComponent(invite));
       } catch {
         document.getElementById('redeem-mode').innerHTML =
-          '<section><h2 class="err">Onleesbare uitnodigingslink.</h2></section>';
+          `<section><h2 class="err">${t('onboard.invite_unreadable', 'Onleesbare uitnodigingslink.')}</h2></section>`;
       }
 
       // Show group rules (if the agent knows them).
@@ -168,11 +173,12 @@
             `<li>${String(h).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</li>`
           ).join('') + '</ul>';
         } else {
-          rb.textContent = 'Deze groep heeft (nog) geen huisregels gepubliceerd.';
+          rb.textContent = t('onboard.no_rules_yet',
+            'Deze groep heeft (nog) geen huisregels gepubliceerd.');
         }
       } catch {
-        document.getElementById('rules-block').textContent =
-          '(Huisregels niet opgehaald — vraag de admin om de regels per chat door te geven.)';
+        document.getElementById('rules-block').textContent = t('onboard.rules_fetch_failed',
+          '(Huisregels niet opgehaald — vraag de admin om de regels per chat door te geven.)');
       }
 
       document.getElementById('redeem-form').addEventListener('submit', async (e) => {
@@ -184,11 +190,11 @@
         const rulesAccepted   = document.getElementById('gate-rules').checked;
 
         if (!privacyAccepted || !rulesAccepted) {
-          status.innerHTML = '<span class="err">Vink beide vakjes aan om door te gaan.</span>';
+          status.innerHTML = `<span class="err">${t('onboard.gate_required', 'Vink beide vakjes aan om door te gaan.')}</span>`;
           return;
         }
 
-        status.textContent = 'Bezig met aansluiten…';
+        status.textContent = t('onboard.joining', 'Bezig met aansluiten…');
         out.hidden = true;
 
         // Step 1: gate (Phase 17).  Records the acceptance audit item;
@@ -198,7 +204,7 @@
           privacyAccepted, rulesAccepted,
         });
         if (gate?.error) {
-          status.innerHTML = `<span class="err">Afgewezen: ${gate.error}</span>`;
+          status.innerHTML = `<span class="err">${t('onboard.refused', 'Afgewezen')}: ${gate.error}</span>`;
           return;
         }
 
@@ -211,15 +217,16 @@
             displayName: handle,
           });
         } catch (err) {
-          status.innerHTML = `<span class="err">Fout: ${err.message}</span>`;
+          status.innerHTML = `<span class="err">${t('common.error', 'Fout')}: ${err.message}</span>`;
           return;
         }
         if (result?.error) {
-          status.innerHTML = `<span class="err">Fout: ${result.error}</span>`;
+          status.innerHTML = `<span class="err">${t('common.error', 'Fout')}: ${result.error}</span>`;
           return;
         }
 
-        status.innerHTML = `<span class="ok">Aangesloten als ${result.displayName ?? handle}.</span>`;
+        status.innerHTML = `<span class="ok">${t('onboard.joined_as', 'Aangesloten als {handle}.')
+          .replace('{handle}', result.displayName ?? handle)}</span>`;
         out.hidden = false;
         out.textContent = JSON.stringify({ handle, joined: true, groupId: parsedInvite.groupId }, null, 2);
 
@@ -240,17 +247,18 @@
         const role  = document.getElementById('role').value;
         const ttlMs = Number(document.getElementById('ttl').value) * 60 * 1000;
         const status = document.getElementById('issue-status');
-        status.textContent = 'Bezig…';
+        status.textContent = t('common.busy', 'Bezig…');
         let invite;
         try {
           const r = await callSkill('issueInvite', { role, ttlMs });
           invite = r.invite;
         } catch (err) {
-          status.innerHTML = `<span class="err">Fout: ${err.message}</span>`;
+          status.innerHTML = `<span class="err">${t('common.error', 'Fout')}: ${err.message}</span>`;
           return;
         }
         if (!invite) {
-          status.innerHTML = '<span class="err">Geen uitnodiging ontvangen — ben je admin van deze groep?</span>';
+          status.innerHTML = `<span class="err">${t('onboard.no_invite_admin_only',
+            'Geen uitnodiging ontvangen — ben je admin van deze groep?')}</span>`;
           return;
         }
         const link = `${location.origin}/onboard.html?invite=${encodeURIComponent(JSON.stringify(invite))}`;
@@ -263,8 +271,8 @@
         const link = document.getElementById('invite-link').textContent;
         try {
           await navigator.clipboard.writeText(link);
-          e.target.textContent = 'Gekopieerd ✓';
-          setTimeout(() => { e.target.textContent = 'Kopieer'; }, 1200);
+          e.target.textContent = t('onboard.copied', 'Gekopieerd ✓');
+          setTimeout(() => { e.target.textContent = t('onboard.copy', 'Kopieer'); }, 1200);
         } catch {
           const r = document.createRange();
           r.selectNode(document.getElementById('invite-link'));
