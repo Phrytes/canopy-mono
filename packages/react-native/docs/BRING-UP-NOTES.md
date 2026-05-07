@@ -188,18 +188,46 @@ Adding `'@canopy-app/folio/rn/serviceFactory'` as a separate
 key in `extraNodeModules` doesn't help — Metro silently picks the
 shorter prefix when both are present.
 
-**Fix:** intercept in `resolveRequest` (called BEFORE Metro's
-default name-prefix resolution):
+**Fix:** use the preset's `extraSubpathResolvers` hook (called BEFORE
+Metro's default name-prefix resolution).  Each resolver is a
+`(moduleName, repoRoot, projectRoot) → null | {filePath, type}`
+function; return `null` to fall through to the next.
 
 ```js
-if (moduleName.startsWith('@canopy-app/folio/rn/')) {
-  const sub = moduleName.slice('@canopy-app/folio/rn/'.length);
-  return {
-    filePath: path.resolve(repoRoot, 'apps/folio/src/rn', sub + '.js'),
-    type: 'sourceFile',
-  };
-}
+module.exports = withCanopyPreset({
+  // ...
+  extraSubpathResolvers: [
+    (moduleName, repoRoot) => {
+      if (moduleName.startsWith('@canopy-app/folio/rn/')) {
+        const sub = moduleName.slice('@canopy-app/folio/rn/'.length);
+        return {
+          filePath: path.resolve(repoRoot, 'apps/folio/src/rn', sub + '.js'),
+          type:     'sourceFile',
+        };
+      }
+      return null;
+    },
+  ],
+});
 ```
+
+**Recurrence (2026-05-08, stoop-mobile Phase 40.7 / 40.10):** the
+same trap bit `apps/stoop-mobile/metro.config.js` for two subpaths:
+
+| Bare import                          | What we wanted                              | What Metro tried                        |
+|--------------------------------------|---------------------------------------------|-----------------------------------------|
+| `@canopy-app/stoop/lib/geo`        | `apps/stoop/src/lib/geo.js`                 | `apps/stoop/lib/geo` (404)              |
+| `@canopy-app/stoop/locales/en`     | `apps/stoop/locales/en.json`                | `apps/stoop/locales/en` (404 — no .js)  |
+
+Adding `@canopy-app/stoop/lib/geo` to `extraNodeModules` looked
+correct but was silently shadowed by the parent-prefix
+`@canopy-app/stoop` entry. Vitest didn't catch it (Vite's alias
+engine respects exact-match keys); only the on-device Metro bundle
+failed.
+
+The `extraSubpathResolvers` hook in `apps/stoop-mobile/metro.config.js`
+is the canonical fix; reuse the same pattern for any future
+workspace-sibling subpath import.
 
 ### Trap 3 — `node:`-prefix imports
 
@@ -801,6 +829,48 @@ Every custom dev build (and every production build) of every app that
 uses `expo-notifications` MUST provide its own.  This is per-app, not
 per-monorepo — sibling apps need their own Firebase apps + JSON files
 since each one's package id is distinct.
+
+---
+
+### Trap 19 — `Unable to resolve "@canopy/relay" / "web-push"` from Stoop barrel
+
+**Symptom (Stoop V3 mobile Phase 40.23, 2026-05-08):**
+
+```
+Android Bundling failed 8041ms index.js (2063 modules)
+Unable to resolve "@canopy/relay" from "../stoop/src/lib/WebPushSender.js"
+```
+
+**Cause:** `apps/stoop/src/Agent.js` does a **dynamic** `import()` of
+`./lib/WebPushSender.js` only when VAPID keys are configured.  At
+runtime the branch never fires on mobile (we use native Expo push).
+But Metro's static analyser walks dynamic `import()` calls during
+bundling and follows the chain into `WebPushSender.js` →
+`@canopy/relay` → `web-push`.  Both are Node-only server packages.
+
+**Fix:** add the two packages to the preset's `extraNodeModules`
+shim list (alongside `@inrupt/solid-client-authn-node`, `chokidar`,
+`express`, `systray2`).
+
+```js
+// packages/react-native/metro-preset.cjs (already applied)
+extraNodeModules: {
+  // ...
+  '@canopy/relay': SHIM_PATHS.nodeBuiltins,
+  'web-push':        SHIM_PATHS.nodeBuiltins,
+}
+```
+
+Mobile apps that compose `@canopy-app/stoop` (the platform-shell
+exception per the layering rule) inherit this fix automatically — no
+per-app metro config needed.
+
+**Pattern recap:** when a desktop app dynamically imports a
+Node-only server package gated by config (push keys, VAPID keys,
+relay creds, ...), Metro still has to *resolve* the import even
+though it'll never *run*.  Shim every such transitive Node-only
+package in the preset's `extraNodeModules`.  Same fix as Traps 11
+(Inrupt) + the chokidar / express / systray2 cluster.
 
 ---
 
