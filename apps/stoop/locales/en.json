@@ -151,6 +151,28 @@
     "status_malformed_word": { "text": "A word looks off — only lowercase letters please.", "doc": "Inline status when one of the words isn't BIP-39-shaped." },
     "status_looks_ok":    { "text": "Looks good ✓", "doc": "Inline status when the structural check passes." }
   },
+  "feed": {
+    "heading":           { "text": "Pinboard", "doc": "Heading on the FeedScreen (Prikbord)." },
+    "empty_no_items":    { "text": "No posts in this neighbourhood yet.", "doc": "Empty state when the feed has no items at all." },
+    "empty_filtered":    { "text": "No posts for this filter.", "doc": "Empty state when items exist but the active filter excludes them all." }
+  },
+  "compose": {
+    "heading":               { "text": "New post", "doc": "Heading on PostComposeScreen." },
+    "placeholder_vraag":     { "text": "What do you need?", "doc": "Multiline input placeholder when kind=vraag." },
+    "placeholder_aanbod":    { "text": "What are you offering?", "doc": "Multiline input placeholder when kind=aanbod." },
+    "skills_label":          { "text": "Skills", "doc": "Section label above the skill chips." },
+    "submit":                { "text": "Post", "doc": "Submit CTA on PostComposeScreen." },
+    "submitting":            { "text": "Posting…", "doc": "Submit CTA label while the call is in flight." },
+    "too_many_attachments":  { "text": "Max {n} attachments.", "doc": "Inline alert when the user exceeds MAX_ATTACHMENTS." },
+    "permission_denied":     { "text": "Stoop doesn't have camera/library permission.", "doc": "Inline error when the OS rejected the permission prompt." }
+  },
+  "item_detail": {
+    "unknown_item": { "text": "Post not found.", "doc": "Empty state on ItemDetailScreen when route was opened without a resolved item." },
+    "chat":         { "text": "Reply with chat", "doc": "Primary CTA — opens / creates a 1:1 thread with the author." },
+    "claim":        { "text": "Offer to help", "doc": "Secondary CTA — bring-up code wires this to the claim flow." },
+    "hide":         { "text": "Hide", "doc": "Overflow CTA — soft-mutes the item for this user." },
+    "report":       { "text": "Report", "doc": "Overflow CTA — surfaces the report flow." }
+  },
   "profile_other": {
     "unknown_member":  { "text": "Unknown member.", "doc": "Empty state on ProfileOtherScreen when the route was opened without a member to render." },
     "skills":          { "text": "Skills", "doc": "Section heading on ProfileOtherScreen." },
