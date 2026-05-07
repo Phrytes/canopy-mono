@@ -12,6 +12,7 @@
 
 export const ROUTES = Object.freeze({
   // First-run / onboarding
+  MetadataWarning:'MetadataWarning',  // 40.22 — first-launch privacy notice
   Welcome:        'Welcome',
   OnboardScan:    'OnboardScan',
   OnboardRestore: 'OnboardRestore',
@@ -62,6 +63,7 @@ export const SHELL_TAB_ROUTES = Object.freeze([
  * detail screens.
  */
 export const STACK_ONLY_ROUTES = Object.freeze([
+  ROUTES.MetadataWarning,
   ROUTES.Welcome,
   ROUTES.OnboardScan,
   ROUTES.OnboardRestore,

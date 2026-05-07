@@ -21,8 +21,13 @@ describe('navigation route table', () => {
     expect(new Set(ROUTE_ORDER).size).toBe(ROUTE_ORDER.length);
   });
 
-  it('Welcome is first (initial route)', () => {
-    expect(ROUTE_ORDER[0]).toBe(ROUTES.Welcome);
+  it('MetadataWarning is first (covers first launch)', () => {
+    // Phase 40.22 (2026-05-08): the first-launch privacy notice
+    // gates Welcome.  Subsequent launches navigate straight to
+    // Welcome (App.js resolves the initial route via
+    // hasSeenMetadataWarning).
+    expect(ROUTE_ORDER[0]).toBe(ROUTES.MetadataWarning);
+    expect(ROUTE_ORDER[1]).toBe(ROUTES.Welcome);
   });
 
   it('all expected web-mirror routes are present', () => {

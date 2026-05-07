@@ -137,6 +137,20 @@ const REQUIRED_KEYS = [
 
   'metrics.heading', 'metrics.unavailable',
 
+  // metadata_warning (Phase 40.22 — first-launch privacy notice)
+  'metadata_warning.heading', 'metadata_warning.intro',
+  'metadata_warning.what_relay_sees', 'metadata_warning.what_relay_sees_body',
+  'metadata_warning.what_relay_does_not', 'metadata_warning.what_relay_does_not_body',
+  'metadata_warning.what_you_can_do', 'metadata_warning.what_you_can_do_body',
+  'metadata_warning.acknowledge', 'metadata_warning.busy',
+
+  // settings — Phase 40.22 rotate-identity
+  'settings.rotate_identity_label', 'settings.rotate_identity_hint',
+  'settings.rotate_identity', 'settings.rotating_identity',
+  'settings.rotate_done',
+  'settings.confirm_rotate_title', 'settings.confirm_rotate_body',
+  'settings.confirm_rotate_yes',
+
   // skillmatch (Phase 40.20)
   'skillmatch.heading', 'skillmatch.intro', 'skillmatch.anon',
   'skillmatch.help', 'skillmatch.ignore',

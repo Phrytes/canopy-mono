@@ -236,6 +236,18 @@
     "heading":    { "text": "Stats", "doc": "Heading on MetricsScreen." },
     "unavailable": { "text": "Stats are not wired in this build.", "doc": "Empty state when bring-up code didn't pass a snapshot." }
   },
+  "metadata_warning": {
+    "heading":              { "text": "One thing before you begin", "doc": "Heading on MetadataWarningScreen (first launch). Phase 40.22." },
+    "intro":                { "text": "Stoop runs locally on your device — there's no central server in the middle of your posts or messages. But messages still travel through a relay to reach each other.", "doc": "Lead paragraph." },
+    "what_relay_sees":      { "text": "What the relay sees", "doc": "Section heading." },
+    "what_relay_sees_body": { "text": "Message contents are encrypted — the relay can't read them. But it can see:\n• who's talking to whom (metadata),\n• how often, and when.\n\nThink of it like the outside of an envelope: the address and sender are visible even though the letter is sealed.", "doc": "Section body." },
+    "what_relay_does_not":  { "text": "What the relay does NOT see", "doc": "Section heading." },
+    "what_relay_does_not_body": { "text": "• Your posts, photos, chat content — encrypted.\n• Your location unless you explicitly share it.\n• Your real name unless you reveal it yourself.\n\nNo analytics, no ad-trackers, no cloud providers other than the one you choose.", "doc": "Section body." },
+    "what_you_can_do":      { "text": "What you can do", "doc": "Section heading." },
+    "what_you_can_do_body": { "text": "• Rotate your network address regularly (Settings → Privacy).\n• Use per-contact agreements to limit what you share.\n• Local-only mode (mDNS / BLE only) — you reach neighbours on the same Wi-Fi but not beyond.", "doc": "Section body." },
+    "acknowledge":          { "text": "I understand — let's get started", "doc": "Primary CTA — sets the seen flag and proceeds to Welcome." },
+    "busy":                 { "text": "Working…", "doc": "CTA label while the AsyncStorage write is in flight." }
+  },
   "skillmatch": {
     "heading":         { "text": "Skill-match suggestions", "doc": "Heading on SkillMatchInboxScreen (Phase 40.20)." },
     "intro":           { "text": "Others are asking for help that matches your skills. Tap \"Help\" to claim.", "doc": "Body intro on SkillMatchInboxScreen." },
@@ -699,6 +711,14 @@
     "no_active_group":        { "text": "Join a group first to manage settings.", "doc": "Empty state on mobile SettingsScreen when no bundle is active." },
     "signin_link":            { "text": "Solid pod sign-in", "doc": "Link from SettingsScreen to SignInScreen." },
     "skillmatch_link":        { "text": "Skill-match suggestions", "doc": "Link from SettingsScreen to SkillMatchInboxScreen (Phase 40.20)." },
+    "rotate_identity_label":  { "text": "Network-address rotation", "doc": "Section label for the rotate-identity CTA (Phase 40.22)." },
+    "rotate_identity_hint":   { "text": "Replaces your public key with a fresh one. Your stableId stays the same — contacts and mute lists follow you. 7-day grace period for in-flight messages.", "doc": "Hint under the rotate-identity CTA." },
+    "rotate_identity":        { "text": "Rotate my address now", "doc": "CTA — calls rotateMyAddress skill." },
+    "rotating_identity":      { "text": "Rotating…", "doc": "CTA label while rotation is in flight." },
+    "rotate_done":            { "text": "Rotated. New address: {pk}", "doc": "Success line after rotation. {pk} is the truncated new pubKey." },
+    "confirm_rotate_title":   { "text": "Rotate network address?", "doc": "ConfirmModal title before identity rotation." },
+    "confirm_rotate_body":    { "text": "Your public key will be replaced. Messages from peers who haven't heard about the rotation will still decrypt with your old key for 7 days (grace period). This is a privacy step — cannot be undone.", "doc": "ConfirmModal body before identity rotation." },
+    "confirm_rotate_yes":     { "text": "Rotate", "doc": "Destructive confirm label." },
     "broadcastable":          { "text": "Allow others to send me skill-match suggestions", "doc": "Shared toggle on mobile SettingsScreen." },
     "broadcastable_hint":     { "text": "On = you receive auto-match suggestions from your wider connection list (groups + contacts + hops). Off = silence.", "doc": "Hint under the broadcastable toggle." },
     "default_share_location": { "text": "Share location with new contacts by default", "doc": "Shared toggle on mobile SettingsScreen." },
