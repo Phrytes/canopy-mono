@@ -134,8 +134,9 @@
     "tagline":       { "text": "Buurt-skill-app — vraag je buren om hulp.", "doc": "Sub-headline under the brand on the welcome screen." },
     "cta_new":       { "text": "Beginnen", "doc": "Primary CTA on the welcome screen — generates a fresh local identity." },
     "cta_scan":      { "text": "Scan QR-code", "doc": "Secondary CTA — opens the camera scanner." },
-    "cta_restore":   { "text": "Herstel met herstelzin", "doc": "Secondary CTA — opens OnboardRestoreScreen." },
-    "privacy_link":  { "text": "Privacy & veiligheid", "doc": "Footer link on the welcome screen." }
+    "cta_restore":      { "text": "Herstel met herstelzin", "doc": "Secondary CTA — opens OnboardRestoreScreen." },
+    "cta_create_group": { "text": "Maak een nieuwe groep", "doc": "Secondary CTA on WelcomeScreen — opens the CreateGroupScreen wizard." },
+    "privacy_link":     { "text": "Privacy & veiligheid", "doc": "Footer link on the welcome screen." }
   },
   "onboard_scan": {
     "heading":       { "text": "Scan een QR-code", "doc": "Heading on the OnboardScanScreen." },
@@ -233,7 +234,13 @@
     "confirm_unmute_title": { "text": "Demp opheffen?", "doc": "ConfirmModal title before unmuting." },
     "confirm_unmute_body":  { "text": "Meldingen weer aanzetten.", "doc": "ConfirmModal body before unmuting." },
     "confirm_block_title":  { "text": "Contact blokkeren?", "doc": "ConfirmModal title before blocking." },
-    "confirm_block_body":   { "text": "Geblokkeerde contacten kunnen je geen berichten meer sturen.", "doc": "ConfirmModal body before blocking." }
+    "confirm_block_body":   { "text": "Geblokkeerde contacten kunnen je geen berichten meer sturen.", "doc": "ConfirmModal body before blocking." },
+    "no_active_group":      { "text": "Sluit eerst aan bij een groep.", "doc": "Empty state when no active bundle." },
+    "trust_label":          { "text": "Vertrouwen", "doc": "Section label above the trust-level chip pair." },
+    "flags_label":          { "text": "Per-contact opties", "doc": "Section label above the flag-toggle rows." },
+    "remove":               { "text": "Verwijder", "doc": "Destructive: drop this contact from the list." },
+    "confirm_remove_title": { "text": "Contact verwijderen?", "doc": "ConfirmModal title before removing." },
+    "confirm_remove_body":  { "text": "Dit contact wordt uit je lijst verwijderd.", "doc": "ConfirmModal body before removing." }
   },
   "chat_threads": {
     "empty":              { "text": "Nog geen gesprekken.", "doc": "Empty state on ChatThreadsScreen." },
@@ -461,7 +468,8 @@
     "search_placeholder":      { "text": "Zoek op naam of @handle", "doc": "Placeholder of the mobile ContactsScreen search box. Stoop V3 mobile." },
     "muted":                   { "text": "gedempt", "doc": "Inline tag next to a contact's name when muted (mobile)." },
     "empty_no_contacts":       { "text": "Nog geen contacten.", "doc": "Empty state on mobile ContactsScreen when the list is empty." },
-    "empty_filtered":          { "text": "Geen contacten voor deze zoekopdracht.", "doc": "Empty state on mobile ContactsScreen when the search filter excludes everything." }
+    "empty_filtered":          { "text": "Geen contacten voor deze zoekopdracht.", "doc": "Empty state on mobile ContactsScreen when the search filter excludes everything." },
+    "no_active_group":         { "text": "Sluit eerst aan bij een groep om je contacten te zien.", "doc": "Empty state when no bundle is active." }
   },
   "push": {
     "page_title":               { "text": "Stoop — Push-meldingen", "doc": "Browser tab title for /push.html." },
@@ -517,6 +525,16 @@
     "q6_keep_posts":  { "text": "Posts blijven, naam verdwijnt (default — bewaart context)", "doc": "Leave policy option: posts kept, attribution stripped on leave." },
     "q6_remove_all":  { "text": "Alles van die persoon verdwijnt (clean break)", "doc": "Leave policy option: all of the leaving member's content removed." },
 
+    "intro_mobile":         { "text": "Een groep is een afspraak tussen leden. Je wordt automatisch admin van de groep die je aanmaakt; daarna kun je een uitnodiging sturen.", "doc": "Short mobile-friendly intro for CreateGroupScreen." },
+    "id_label":             { "text": "Groep-id (kleine letters, cijfers, - of _)", "doc": "Label for the group-id input on mobile CreateGroupScreen." },
+    "id_placeholder":       { "text": "bv. oosterpoort-skills", "doc": "Placeholder for the group-id input on mobile." },
+    "name_label":           { "text": "Groep-naam", "doc": "Label for the display-name input on mobile." },
+    "name_placeholder":     { "text": "bv. Oosterpoort Skills", "doc": "Placeholder for the display-name input on mobile." },
+    "purpose_label":        { "text": "Waar is de groep voor? (optioneel)", "doc": "Label for the purpose textarea on mobile." },
+    "purpose_placeholder":  { "text": "bv. Buurtgenoten in Oosterpoort die elkaar willen helpen.", "doc": "Placeholder for the purpose textarea on mobile." },
+    "submit":               { "text": "Maak groep", "doc": "Submit CTA on mobile CreateGroupScreen." },
+    "creating":             { "text": "Maken…", "doc": "CTA label while createGroupV2 is in flight." },
+
     "group_id_label": { "text": "Group-id (intern; lowercase)", "doc": "Field label for the technical group-id input. Lowercase only — used in pod paths." },
     "group_id_ph":    { "text": "bv. oosterpoort-skills", "doc": "Placeholder for the group-id input." },
 
@@ -567,7 +585,11 @@
     "leave":                  { "text": "Verlaat groep", "doc": "Destructive CTA on mobile GroupScreen." },
     "confirm_leave_title":    { "text": "Verlaat deze groep?", "doc": "ConfirmModal title on mobile GroupScreen." },
     "confirm_leave_body":     { "text": "Je verliest de toegang tot alle posts en berichten in deze groep.", "doc": "ConfirmModal body on mobile GroupScreen." },
-    "confirm_leave_yes":      { "text": "Verlaat", "doc": "Destructive confirm label on mobile GroupScreen." }
+    "confirm_leave_yes":      { "text": "Verlaat", "doc": "Destructive confirm label on mobile GroupScreen." },
+    "no_active_group":        { "text": "Sluit eerst aan bij een groep.", "doc": "Empty state on mobile GroupScreen when there's no active bundle." },
+    "rotate_code":            { "text": "Roteer code nu", "doc": "Admin CTA on mobile GroupScreen — calls rotateMyGroupCode." },
+    "rotating":               { "text": "Roteren…", "doc": "CTA label while rotateMyGroupCode is in flight." },
+    "admin_code_expires":     { "text": "Verloopt op {ts} ({n} dagen)", "doc": "Hint under the admin code showing the expiry + rotation cadence." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Pod-aanmelding voltooien", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },

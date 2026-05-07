@@ -134,8 +134,9 @@
     "tagline":       { "text": "Neighbourhood skill-app — ask your neighbours for help.", "doc": "Sub-headline under the brand on the welcome screen." },
     "cta_new":       { "text": "Get started", "doc": "Primary CTA on the welcome screen — generates a fresh local identity. (Mobile fresh-installs default to local-only; pod sign-in is opt-in later.)" },
     "cta_scan":      { "text": "Scan a QR code", "doc": "Secondary CTA on the welcome screen — opens the camera scanner (OnboardScanScreen)." },
-    "cta_restore":   { "text": "Restore with recovery phrase", "doc": "Secondary CTA — opens OnboardRestoreScreen." },
-    "privacy_link":  { "text": "Privacy & safety", "doc": "Footer link on the welcome screen." }
+    "cta_restore":      { "text": "Restore with recovery phrase", "doc": "Secondary CTA — opens OnboardRestoreScreen." },
+    "cta_create_group": { "text": "Create a new group", "doc": "Secondary CTA on WelcomeScreen — opens the CreateGroupScreen wizard." },
+    "privacy_link":     { "text": "Privacy & safety", "doc": "Footer link on the welcome screen." }
   },
   "onboard_scan": {
     "heading":       { "text": "Scan a QR code", "doc": "Heading on the OnboardScanScreen." },
@@ -233,7 +234,13 @@
     "confirm_unmute_title": { "text": "Unmute contact?", "doc": "ConfirmModal title before unmuting." },
     "confirm_unmute_body":  { "text": "Notifications will resume.", "doc": "ConfirmModal body before unmuting." },
     "confirm_block_title":  { "text": "Block contact?", "doc": "ConfirmModal title before blocking." },
-    "confirm_block_body":   { "text": "Blocked contacts can no longer message you.", "doc": "ConfirmModal body before blocking." }
+    "confirm_block_body":   { "text": "Blocked contacts can no longer message you.", "doc": "ConfirmModal body before blocking." },
+    "no_active_group":      { "text": "Join a group first.", "doc": "Empty state when no active bundle." },
+    "trust_label":          { "text": "Trust level", "doc": "Section label above the trust-level chip pair." },
+    "flags_label":          { "text": "Per-contact options", "doc": "Section label above the flag-toggle rows." },
+    "remove":               { "text": "Remove", "doc": "Destructive: drop this contact from the list (calls removeContact)." },
+    "confirm_remove_title": { "text": "Remove contact?", "doc": "ConfirmModal title before removing." },
+    "confirm_remove_body":  { "text": "This contact will be removed from your list.", "doc": "ConfirmModal body before removing." }
   },
   "chat_threads": {
     "empty":              { "text": "No conversations yet.", "doc": "Empty state on ChatThreadsScreen." },
@@ -461,7 +468,8 @@
     "search_placeholder":      { "text": "Search by name or @handle", "doc": "Placeholder of the mobile ContactsScreen search box. Stoop V3 mobile." },
     "muted":                   { "text": "muted", "doc": "Inline tag next to a contact's name when muted (mobile)." },
     "empty_no_contacts":       { "text": "No contacts yet.", "doc": "Empty state on mobile ContactsScreen when the list is empty." },
-    "empty_filtered":          { "text": "No contacts match this search.", "doc": "Empty state on mobile ContactsScreen when the search filter excludes everything." }
+    "empty_filtered":          { "text": "No contacts match this search.", "doc": "Empty state on mobile ContactsScreen when the search filter excludes everything." },
+    "no_active_group":         { "text": "Join a group first to see your contacts.", "doc": "Empty state when no bundle is active." }
   },
   "push": {
     "page_title":               { "text": "Stoop — Push notifications", "doc": "Browser tab title for /push.html." },
@@ -517,6 +525,16 @@
     "q6_keep_posts":  { "text": "Posts stay, name disappears (default — preserves context)", "doc": "Leave policy option." },
     "q6_remove_all":  { "text": "Everything from that person disappears (clean break)", "doc": "Leave policy option." },
 
+    "intro_mobile":         { "text": "A group is an agreement between members. You are automatically admin of the group you create; then you can send an invite.", "doc": "Short mobile-friendly intro for CreateGroupScreen (the desktop intro mentions the 6-question wizard which doesn't apply on mobile yet)." },
+    "id_label":             { "text": "Group id (lowercase, digits, - or _)", "doc": "Label for the group-id input on mobile CreateGroupScreen." },
+    "id_placeholder":       { "text": "e.g. oosterpoort-skills", "doc": "Placeholder for the group-id input on mobile." },
+    "name_label":           { "text": "Group name", "doc": "Label for the display-name input on mobile CreateGroupScreen." },
+    "name_placeholder":     { "text": "e.g. Oosterpoort Skills", "doc": "Placeholder for the display-name input on mobile." },
+    "purpose_label":        { "text": "What's the group for? (optional)", "doc": "Label for the purpose textarea on mobile CreateGroupScreen." },
+    "purpose_placeholder":  { "text": "e.g. Neighbours in Oosterpoort who want to help each other.", "doc": "Placeholder for the purpose textarea on mobile." },
+    "submit":               { "text": "Create group", "doc": "Submit CTA on mobile CreateGroupScreen." },
+    "creating":             { "text": "Creating…", "doc": "CTA label while createGroupV2 is in flight." },
+
     "group_id_label": { "text": "Group-id (internal; lowercase)", "doc": "Field label for the technical group-id input." },
     "group_id_ph":    { "text": "e.g. oosterpoort-skills", "doc": "Placeholder for the group-id input." },
 
@@ -567,7 +585,11 @@
     "leave":                  { "text": "Leave group", "doc": "Destructive CTA on mobile GroupScreen." },
     "confirm_leave_title":    { "text": "Leave this group?", "doc": "ConfirmModal title on mobile GroupScreen." },
     "confirm_leave_body":     { "text": "You will lose access to all posts and messages in this group.", "doc": "ConfirmModal body on mobile GroupScreen." },
-    "confirm_leave_yes":      { "text": "Leave", "doc": "Destructive confirm label on mobile GroupScreen." }
+    "confirm_leave_yes":      { "text": "Leave", "doc": "Destructive confirm label on mobile GroupScreen." },
+    "no_active_group":        { "text": "Join a group first.", "doc": "Empty state on mobile GroupScreen when there's no active bundle." },
+    "rotate_code":            { "text": "Rotate code now", "doc": "Admin CTA on mobile GroupScreen — calls rotateMyGroupCode." },
+    "rotating":               { "text": "Rotating…", "doc": "CTA label while rotateMyGroupCode is in flight." },
+    "admin_code_expires":     { "text": "Expires on {ts} ({n} days)", "doc": "Hint under the admin code showing the expiry + rotation cadence." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Completing pod sign-in", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },

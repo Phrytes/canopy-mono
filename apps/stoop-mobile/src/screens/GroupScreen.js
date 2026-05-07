@@ -1,18 +1,17 @@
 /**
  * GroupScreen — group / governance view.
  *
- * Stoop V3 mobile.  Shows:
- *   - Group display name + member count.
- *   - Admin code (admin-only).
- *   - "Issue invite" CTA → OnboardIssueScreen with the freshly-issued
- *     invite token (admin only).
- *   - Eviction-banner state (when the user has been evicted).
- *   - "Leave group" destructive action.
+ * Stoop V3 mobile.  Phase 40.18 (2026-05-08): wired to live agent.
+ * Reads:
+ *   - getCurrentMembershipCode(groupId)  — admin code visibility
+ *   - rotateMyGroupCode(groupId)         — admin only
+ *   - leaveGroup({groupId})              — destructive
+ *   - issueInvite({...})                 — admin generates QR
  */
 
 import React, { useState } from 'react';
 import {
-  View, Text, Pressable, ScrollView, StyleSheet,
+  View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -20,51 +19,88 @@ import { ROUTES }                            from '../navigation.js';
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
 import { t }                                 from '../lib/i18n.js';
 import { ConfirmModal }                      from '../components/ConfirmModal.js';
+import { useService }                        from '../ServiceContext.js';
+import { useSkill }                          from '../lib/useSkill.js';
+import { useSkillResult }                    from '../lib/useSkillResult.js';
 
-/**
- * @param {object} props
- * @param {object} [props.group]  `{id, name, memberCount, isAdmin, adminCode, evicted}`
- * @param {() => Promise<object>} [props.onIssueInvite]   returns invite token
- * @param {() => Promise<void>}   [props.onLeaveGroup]
- */
-export function GroupScreen({ group = {}, onIssueInvite, onLeaveGroup } = {}) {
+export function GroupScreen() {
   const nav = useNavigation();
-  const [showLeave, setShowLeave] = useState(false);
-  const [busy, setBusy]           = useState(false);
-  const [error, setError]         = useState(null);
+  const svc = useService();
 
-  const issue = async () => {
+  const activeEntry = svc?.activeEntry ?? null;
+  const groupId = activeEntry?.groupId ?? null;
+
+  const code = useSkillResult('getCurrentMembershipCode',
+    groupId ? { groupId } : null, [groupId]);
+  const rotate = useSkill('rotateMyGroupCode');
+  const leave  = useSkill('leaveGroup');
+  const issue  = useSkill('issueInvite');
+
+  const [showLeave, setShowLeave] = useState(false);
+  const [busy,  setBusy]  = useState(false);
+  const [error, setError] = useState(null);
+
+  if (!svc?.activeBundle) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>
+          {t('group.no_active_group',
+             'Sluit eerst aan bij een groep om de groep-info te zien.')}
+        </Text>
+      </View>
+    );
+  }
+
+  // Membership snapshot from MemberMap.
+  const members = svc.activeBundle.members;
+  const memberList = members?.list?.() ?? [];
+  const selfAddr   = svc.activeBundle.agent.address ?? svc.activeBundle.agent.identity?.pubKey;
+  const me = (typeof members?.resolveByPubKey === 'function')
+    ? members.resolveByPubKey(selfAddr)
+    : null;
+  const isAdmin    = me?.role === 'admin' || me?.role === 'coordinator';
+  const evicted    = !!activeEntry?.evicted;
+
+  const onIssueInvite = async () => {
     setBusy(true); setError(null);
     try {
-      const tok = onIssueInvite ? await onIssueInvite() : null;
-      if (tok) nav.navigate(ROUTES.OnboardIssue, { invite: tok });
-    } catch (err) {
-      setError(err?.message ?? String(err));
-    } finally {
-      setBusy(false);
-    }
+      const r = await issue.call({});
+      if (r?.invite) nav.navigate(ROUTES.OnboardIssue, { invite: r.invite });
+    } catch (err) { setError(err?.message ?? String(err)); }
+    finally { setBusy(false); }
   };
 
-  const leave = async () => {
+  const onRotate = async () => {
+    setBusy(true); setError(null);
+    try {
+      await rotate.call({ groupId });
+      await code.refresh();
+    } catch (err) { setError(err?.message ?? String(err)); }
+    finally { setBusy(false); }
+  };
+
+  const onLeave = async () => {
     setShowLeave(false);
     setBusy(true); setError(null);
     try {
-      if (onLeaveGroup) await onLeaveGroup();
+      await leave.call({ groupId });
+      await svc.removeGroup(groupId);
       nav.navigate(ROUTES.Welcome);
-    } catch (err) {
-      setError(err?.message ?? String(err));
-    } finally {
-      setBusy(false);
-    }
+    } catch (err) { setError(err?.message ?? String(err)); }
+    finally { setBusy(false); }
   };
+
+  const codeData    = code.data ?? {};
+  const expiresAt   = codeData.expiresAt;
+  const rotationDays= codeData.rotationDays;
 
   return (
     <ScrollView contentContainerStyle={styles.root}>
       <Text style={styles.heading}>
-        {group.name ?? t('group.unnamed', 'Onbekende groep')}
+        {activeEntry?.displayName ?? groupId ?? t('group.unnamed', 'Onbekende groep')}
       </Text>
 
-      {group.evicted ? (
+      {evicted ? (
         <View style={styles.evictionBanner}>
           <Text style={styles.evictionTitle}>
             {t('group.evicted_title', 'Je bent uit deze groep verwijderd.')}
@@ -78,25 +114,42 @@ export function GroupScreen({ group = {}, onIssueInvite, onLeaveGroup } = {}) {
 
       <View style={styles.section}>
         <Text style={styles.label}>{t('group.member_count', 'Aantal leden')}</Text>
-        <Text style={styles.value}>{group.memberCount ?? '—'}</Text>
+        <Text style={styles.value}>{memberList.length}</Text>
       </View>
 
-      {group.isAdmin && group.adminCode ? (
+      {isAdmin && codeData.code ? (
         <View style={styles.section}>
           <Text style={styles.label}>{t('group.admin_code', 'Admin-code')}</Text>
-          <Text style={[styles.value, styles.mono]} selectable>
-            {group.adminCode}
-          </Text>
+          <Text style={[styles.value, styles.mono]} selectable>{codeData.code}</Text>
           <Text style={styles.hint}>
             {t('group.admin_code_hint',
                'Deel deze code alleen met andere admins.')}
           </Text>
+          {expiresAt ? (
+            <Text style={styles.hint}>
+              {t('group.admin_code_expires', 'Verloopt op {ts} ({n} dagen)')
+                .replace('{ts}', new Date(expiresAt).toLocaleDateString())
+                .replace('{n}', String(rotationDays ?? 30))}
+            </Text>
+          ) : null}
+          <Pressable
+            onPress={onRotate}
+            disabled={busy}
+            style={styles.btnSecondary}
+            accessibilityRole="button"
+            accessibilityLabel="group-rotate-code"
+          >
+            <Text style={styles.btnSecondaryLabel}>
+              {busy ? t('group.rotating', 'Roteren…')
+                    : t('group.rotate_code', 'Roteer code nu')}
+            </Text>
+          </Pressable>
         </View>
       ) : null}
 
-      {group.isAdmin ? (
+      {isAdmin ? (
         <Pressable
-          onPress={issue}
+          onPress={onIssueInvite}
           disabled={busy}
           style={styles.btnPrimary}
           accessibilityRole="button"
@@ -122,6 +175,7 @@ export function GroupScreen({ group = {}, onIssueInvite, onLeaveGroup } = {}) {
       </Pressable>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {code.loading ? <ActivityIndicator /> : null}
 
       <ConfirmModal
         visible={showLeave}
@@ -131,7 +185,7 @@ export function GroupScreen({ group = {}, onIssueInvite, onLeaveGroup } = {}) {
                 'Je verliest de toegang tot alle posts en berichten in deze groep.')}
         confirmLabel={t('group.confirm_leave_yes', 'Verlaat')}
         cancelLabel={t('contact.confirm_no', 'Annuleer')}
-        onConfirm={leave}
+        onConfirm={onLeave}
         onCancel={() => setShowLeave(false)}
       />
     </ScrollView>
@@ -143,6 +197,8 @@ export default GroupScreen;
 const styles = StyleSheet.create({
   root: { padding: SPACING.lg, backgroundColor: COLORS.background, paddingBottom: SPACING.xxl },
   heading: { fontSize: FONT_SIZES.xl, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.md },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACING.xl },
+  emptyText: { color: COLORS.textMuted, fontSize: FONT_SIZES.md, textAlign: 'center' },
   evictionBanner: {
     backgroundColor: '#ffebee', borderColor: COLORS.danger, borderWidth: 1,
     borderRadius: RADII.md, padding: SPACING.lg, marginBottom: SPACING.lg,
@@ -163,6 +219,12 @@ const styles = StyleSheet.create({
     borderRadius: RADII.md, alignItems: 'center', marginTop: SPACING.md,
   },
   btnPrimaryLabel: { color: COLORS.textInverse, fontSize: FONT_SIZES.md, fontWeight: '600' },
+  btnSecondary: {
+    backgroundColor: COLORS.surfaceMuted, paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg, borderRadius: RADII.sm,
+    alignItems: 'center', marginTop: SPACING.md,
+  },
+  btnSecondaryLabel: { color: COLORS.text, fontSize: FONT_SIZES.md, fontWeight: '500' },
   btnDanger: {
     backgroundColor: COLORS.danger, paddingVertical: SPACING.lg,
     borderRadius: RADII.md, alignItems: 'center', marginTop: SPACING.lg,
