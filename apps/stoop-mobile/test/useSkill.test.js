@@ -7,7 +7,32 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { toParts } from '../src/lib/skillParts.js';
+import { toParts, unwrapParts } from '../src/lib/skillParts.js';
+
+describe('skillParts.unwrapParts', () => {
+  it('returns the first DataPart\'s data', () => {
+    const parts = [
+      { type: 'TextPart', text: 'hi' },
+      { type: 'DataPart', data: { items: [1, 2, 3] } },
+    ];
+    expect(unwrapParts(parts)).toEqual({ items: [1, 2, 3] });
+  });
+
+  it('returns {} when no DataPart is present', () => {
+    expect(unwrapParts([{ type: 'TextPart', text: 'hi' }])).toEqual({});
+  });
+
+  it('returns {} for empty / null input', () => {
+    expect(unwrapParts([])).toEqual({});
+    expect(unwrapParts(null)).toEqual({});
+    expect(unwrapParts(undefined)).toEqual({});
+  });
+
+  it('passes through non-array inputs (forward-compat)', () => {
+    const obj = { items: [] };
+    expect(unwrapParts(obj)).toBe(obj);
+  });
+});
 
 describe('skillParts.toParts', () => {
   it('wraps an object in a single DataPart', () => {
