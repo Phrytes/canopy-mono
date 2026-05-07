@@ -84,6 +84,16 @@ defaults from a pre-existing `<pod>/folio/settings/shared.json` —
 both apps care about Solid pod sources, so things like default
 issuer, preferred locale, and last-known pod root translate cleanly.
 
+### Personal-pod URLs do not travel peer-to-peer
+
+Archive is single-machine / read-only against pods today; the rule
+in
+[`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here)
+becomes relevant the moment Archive grows a sharing / export feature
+that fans content out to peers (search-result-sharing, RSS-style
+fan-out, etc.). When that lands: no pod URL crosses peer transports;
+the indexed bytes / snippets ship in-message instead.
+
 Schema:
 
 ```sql

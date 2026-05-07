@@ -201,6 +201,20 @@ DOM and substitutes on load.
 status enums, function names, comments, log messages, and skill
 return codes are English-only.
 
+### Personal-pod URLs do not travel peer-to-peer
+
+Per the project-wide rule
+([`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here)),
+no user pod URL appears inside any Stoop broadcast or chat envelope.
+Image / file attachments ship as bytes (resized client-side). The
+recipient stores a local copy on receive. There is no
+"click → fetch from sender's pod" path; doing that would expose the
+sender's pod root and undermine `Reveals` + Phase-35 eviction.
+
+When the SDK gains a shared / group-owned storage namespace,
+URL-mode attachments may become possible against THAT namespace —
+never against personal pods.
+
 ### Local-only mode
 
 Per the project-wide rule

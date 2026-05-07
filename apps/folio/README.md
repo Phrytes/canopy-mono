@@ -131,6 +131,16 @@ for the canonical implementation).
 **Status (2026-05-07):** Folio doesn't ship persisted settings yet;
 this section is forward-looking. Update it when settings land.
 
+### Personal-pod URLs do not travel peer-to-peer
+
+Folio is currently single-user / single-pod and doesn't fan content
+out to peers, so this rule mostly bites Folio's mobile companion
+when notes are shared. The project-wide rule in
+[`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here)
+applies the moment Folio adds any peer-broadcast surface (e.g.
+sharing a note with a buurt-member): no pod URL ever crosses the
+wire — bytes only.
+
 ## Reference
 
 - Plan: [`../../coding-plans/track-H-app-folio.md`](../../coding-plans/track-H-app-folio.md) — phased implementation plan (A: CLI, B: web, C: mobile).
