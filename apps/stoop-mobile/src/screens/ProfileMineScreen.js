@@ -5,18 +5,20 @@
  *   - Avatar (camera/library picker).
  *   - Handle (lowercase, 3-32 chars).
  *   - Real / chosen name (optional).
- *   - Skills (chip multi-select from the taxonomy).
+ *   - Skills (categorised chip multi-select via SkillPicker).
  *   - Holiday toggle.
  *   - Location (GPS-fetched cell, clearable).
  *   - Recovery phrase export (View / Copy).
  *
- * Pure UI: callers wire skill calls via the props below. The screen
- * itself doesn't import the SDK.
+ * Wires every action to the live agent via `useProfile`. Renders a
+ * "first onboard a group" placeholder when there's no active bundle
+ * yet (Stoop's agent is per-group; before the user joins or creates
+ * a group, none of the profile skills can run).
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Alert,
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -24,126 +26,171 @@ import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
 import { t }                                  from '../lib/i18n.js';
 import { validateHandle, normaliseHandle, HANDLE_LIMITS }
                                               from '../lib/handle.js';
+import { formatLocationLine }                 from '../lib/profileSync.js';
+import { pickAvatarImage }                    from '../lib/imagePicker.js';
+import { getCoarseLocationFromGps }           from '../lib/geo.js';
+import { useService }                         from '../ServiceContext.js';
+import { useProfile }                         from '../lib/useProfile.js';
 import { AvatarCircle }                       from '../components/AvatarCircle.js';
-import { ChipRow }                            from '../components/ChipRow.js';
 import { ConfirmModal }                       from '../components/ConfirmModal.js';
+import { SkillPicker }                        from '../components/SkillPicker.js';
 
-/**
- * @param {object} props
- * @param {object} [props.profile]         current profile snapshot
- * @param {Array<{id: string, label: string}>} [props.taxonomy]
- * @param {boolean} [props.holiday]
- * @param {{cell: string, label: string|null}} [props.location]
- * @param {(patch: object) => Promise<void>} [props.onUpdateProfile]
- * @param {() => Promise<void>} [props.onPickAvatar]
- * @param {() => Promise<void>} [props.onClearAvatar]
- * @param {(skillId: string) => void}  [props.onToggleSkill]
- * @param {(next: boolean) => Promise<void>} [props.onSetHoliday]
- * @param {() => Promise<void>} [props.onCaptureLocation]
- * @param {() => Promise<void>} [props.onClearLocation]
- * @param {() => Promise<string>} [props.onExportRecovery]   returns the phrase
- */
-export function ProfileMineScreen({
-  profile = {},
-  taxonomy = [],
-  holiday = false,
-  location,
-  onUpdateProfile,
-  onPickAvatar,
-  onClearAvatar,
-  onToggleSkill,
-  onSetHoliday,
-  onCaptureLocation,
-  onClearLocation,
-  onExportRecovery,
-} = {}) {
-  // useNavigation may be unused here; kept so screens can do `nav.goBack()`
-  // when added in 40.10-H polish.
-  useNavigation();
+export function ProfileMineScreen() {
+  useNavigation(); // reserved for future header-button work
 
-  const [handleInput, setHandleInput] = useState(profile.handle ?? '');
-  const [displayName, setDisplayName] = useState(profile.displayName ?? '');
-  const [busyKey, setBusyKey]         = useState(null);
-  const [savedKey, setSavedKey]       = useState(null);
-  const [error, setError]             = useState(null);
+  const svc = useService();
+  const {
+    profile, loading, error: hookError,
+    setHandle, setDisplayName,
+    setAvatar, clearAvatar,
+    setLocation, clearLocation,
+    setHolidayMode,
+    addSkill, removeSkill,
+    listSkillCategories,
+    getMnemonicOnce,
+  } = useProfile();
 
-  const [showRecovery, setShowRecovery] = useState(false);
+  // Local UI state — input drafts, busy flags, modal toggles.
+  const [handleInput, setHandleInput]       = useState('');
+  const [displayInput, setDisplayInput]     = useState('');
+  const [busyKey, setBusyKey]               = useState(null);
+  const [savedKey, setSavedKey]             = useState(null);
+  const [error, setError]                   = useState(null);
+  const [categories, setCategories]         = useState([]);
+  const [showRecovery, setShowRecovery]     = useState(false);
   const [recoveryPhrase, setRecoveryPhrase] = useState(null);
 
-  const skillSet = new Set(profile.skills ?? []);
+  // Hydrate input drafts when the profile finishes loading.
+  useEffect(() => {
+    if (profile?.handle      != null) setHandleInput(profile.handle);
+    if (profile?.displayName != null) setDisplayInput(profile.displayName);
+  }, [profile?.handle, profile?.displayName]);
+
+  // Load taxonomy once we have an active agent.
+  useEffect(() => {
+    if (!svc?.activeBundle) return;
+    listSkillCategories('nl').then(setCategories).catch(() => { /* swallow */ });
+  }, [svc?.activeBundle, listSkillCategories]);
+
+  // ── Empty state — no agent yet (no group joined). ────────────────
+  if (!svc?.activeBundle) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyTitle}>{t('profile.heading', 'Mijn profiel')}</Text>
+        <Text style={styles.emptyBody}>
+          {t('profile.no_group',
+             'Sluit eerst aan bij een groep — dan kan je je profiel invullen.')}
+        </Text>
+      </View>
+    );
+  }
+
+  // ── Action wrappers ──────────────────────────────────────────────
 
   const submitHandle = useCallback(async () => {
     const tidy = normaliseHandle(handleInput);
     const v = validateHandle(tidy);
     if (!v.ok) {
-      setError(t(`profile.handle_${v.reason}`,
-                 _handleErrorFallback(v.reason)));
+      setError(t(`profile.handle_${v.reason}`, _handleErrorFallback(v.reason)));
       return;
     }
     setError(null);
     setBusyKey('handle');
     try {
-      if (onUpdateProfile) await onUpdateProfile({ handle: tidy });
+      await setHandle(tidy);
       setHandleInput(tidy);
       setSavedKey('handle');
     } catch (err) {
       setError(err?.message ?? String(err));
-    } finally {
-      setBusyKey(null);
-    }
-  }, [handleInput, onUpdateProfile]);
+    } finally { setBusyKey(null); }
+  }, [handleInput, setHandle]);
 
   const submitDisplayName = useCallback(async () => {
     setError(null);
     setBusyKey('displayName');
     try {
-      if (onUpdateProfile) await onUpdateProfile({ displayName });
+      await setDisplayName(displayInput);
       setSavedKey('displayName');
     } catch (err) {
       setError(err?.message ?? String(err));
-    } finally {
-      setBusyKey(null);
+    } finally { setBusyKey(null); }
+  }, [displayInput, setDisplayName]);
+
+  const onPickAvatar = useCallback(async (mode) => {
+    setError(null);
+    try {
+      const blob = await pickAvatarImage({ mode });
+      if (!blob) return; // user cancelled
+      await setAvatar(blob);
+    } catch (err) {
+      if (err?.code === 'PERMISSION_DENIED') {
+        setError(t('compose.permission_denied',
+                   'Stoop heeft geen toestemming voor camera/galerij.'));
+      } else setError(err?.message ?? String(err));
     }
-  }, [displayName, onUpdateProfile]);
+  }, [setAvatar]);
+
+  const onCaptureLocation = useCallback(async () => {
+    setError(null); setBusyKey('location');
+    try {
+      const { cell, lat, lng } = await getCoarseLocationFromGps();
+      await setLocation({ cell, label: null, source: 'gps', lat, lng });
+    } catch (err) {
+      if (err?.code === 'PERMISSION_DENIED') {
+        setError(t('mobile.permission_location_rationale',
+                   'Stoop wil je locatie ophalen om afstand-gefilterde posts te tonen.'));
+      } else setError(err?.message ?? String(err));
+    } finally { setBusyKey(null); }
+  }, [setLocation]);
 
   const exportRecovery = useCallback(async () => {
-    if (!onExportRecovery) {
-      Alert.alert(t('profile.recovery_unavailable',
-                    'Recovery export not available in this build.'));
-      return;
-    }
+    setError(null);
     try {
-      const phrase = await onExportRecovery();
+      const phrase = await getMnemonicOnce();
+      if (!phrase) {
+        setError(t('profile.recovery_unavailable',
+                   'Recovery export not available in this build.'));
+        return;
+      }
       setRecoveryPhrase(phrase);
       setShowRecovery(true);
     } catch (err) {
       setError(err?.message ?? String(err));
     }
-  }, [onExportRecovery]);
+  }, [getMnemonicOnce]);
+
+  // ── Render ───────────────────────────────────────────────────────
 
   return (
     <ScrollView contentContainerStyle={styles.root}>
       <Text style={styles.heading}>{t('profile.heading', 'Mijn profiel')}</Text>
+      {loading ? <ActivityIndicator style={{ marginVertical: SPACING.md }} /> : null}
+      {hookError ? <Text style={styles.errorText}>{hookError.message}</Text> : null}
 
       {/* Avatar */}
       <View style={styles.section}>
         <View style={styles.avatarRow}>
-          <AvatarCircle uri={profile.avatarUri} name={profile.displayName ?? profile.handle ?? ''} size={72} />
+          <AvatarCircle uri={profile?.avatarUri} name={profile?.displayName ?? profile?.handle ?? ''} size={72} />
           <View style={styles.avatarActions}>
             <Pressable
-              onPress={onPickAvatar}
+              onPress={() => onPickAvatar('camera')}
               style={styles.btnSecondary}
               accessibilityRole="button"
+              accessibilityLabel="profile-avatar-camera"
             >
-              <Text style={styles.btnSecondaryLabel}>
-                {t('mobile.take_photo', 'Foto maken')}
-              </Text>
+              <Text style={styles.btnSecondaryLabel}>{t('mobile.take_photo', 'Foto maken')}</Text>
             </Pressable>
-            {profile.avatarUri ? (
-              <Pressable onPress={onClearAvatar} style={styles.btnGhost}>
-                <Text style={styles.btnGhostLabel}>
-                  {t('profile.avatar_clear', 'Verwijderen')}
-                </Text>
+            <Pressable
+              onPress={() => onPickAvatar('library')}
+              style={styles.btnSecondary}
+              accessibilityRole="button"
+              accessibilityLabel="profile-avatar-library"
+            >
+              <Text style={styles.btnSecondaryLabel}>{t('mobile.pick_from_library', 'Kies uit galerij')}</Text>
+            </Pressable>
+            {profile?.avatarUri ? (
+              <Pressable onPress={clearAvatar} style={styles.btnGhost}>
+                <Text style={styles.btnGhostLabel}>{t('profile.avatar_clear', 'Verwijderen')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -153,7 +200,8 @@ export function ProfileMineScreen({
       {/* Handle */}
       <View style={styles.section}>
         <Text style={styles.label}>
-          {t('profile.handle_label', `Handle (lowercase, ${HANDLE_LIMITS.minLen}-${HANDLE_LIMITS.maxLen} chars)`)}
+          {t('profile.handle_label',
+             `Handle (lowercase, ${HANDLE_LIMITS.minLen}-${HANDLE_LIMITS.maxLen} chars)`)}
         </Text>
         <TextInput
           value={handleInput}
@@ -190,8 +238,8 @@ export function ProfileMineScreen({
           {t('profile.display_name_label', 'Real / chosen name (optional)')}
         </Text>
         <TextInput
-          value={displayName}
-          onChangeText={setDisplayName}
+          value={displayInput}
+          onChangeText={setDisplayInput}
           maxLength={64}
           placeholder={t('profile.display_name_placeholder', 'e.g. Anne van Dijk')}
           style={styles.input}
@@ -211,18 +259,17 @@ export function ProfileMineScreen({
       </View>
 
       {/* Skills */}
-      {taxonomy.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.label}>
-            {t('profile.skills_heading', 'Mijn skills')}
-          </Text>
-          <ChipRow
-            items={taxonomy}
-            selected={skillSet}
-            onToggle={(id) => { if (onToggleSkill) onToggleSkill(id); }}
-          />
-        </View>
-      ) : null}
+      <View style={styles.section}>
+        <Text style={styles.label}>
+          {t('profile.skills_heading', 'Mijn skills')}
+        </Text>
+        <SkillPicker
+          categories={categories}
+          selected={profile?.skills ?? []}
+          onAdd={(entry)   => addSkill(entry).catch((e) => setError(e?.message ?? String(e)))}
+          onRemove={(id)   => removeSkill(id).catch((e) => setError(e?.message ?? String(e)))}
+        />
+      </View>
 
       {/* Holiday */}
       <View style={styles.section}>
@@ -231,13 +278,13 @@ export function ProfileMineScreen({
             {t('profile.holiday_label', 'Vakantie-modus')}
           </Text>
           <Pressable
-            onPress={() => { if (onSetHoliday) onSetHoliday(!holiday); }}
-            style={[styles.toggle, holiday && styles.toggleActive]}
+            onPress={() => setHolidayMode(!profile?.holidayMode).catch((e) => setError(e?.message ?? String(e)))}
+            style={[styles.toggle, profile?.holidayMode && styles.toggleActive]}
             accessibilityRole="switch"
-            accessibilityState={{ checked: holiday }}
+            accessibilityState={{ checked: !!profile?.holidayMode }}
           >
             <Text style={styles.toggleLabel}>
-              {holiday
+              {profile?.holidayMode
                 ? t('profile.holiday_on', 'Aan')
                 : t('profile.holiday_off', 'Uit')}
             </Text>
@@ -249,18 +296,26 @@ export function ProfileMineScreen({
       <View style={styles.section}>
         <Text style={styles.label}>{t('profile.location_heading', 'Locatie')}</Text>
         <Text style={styles.body}>
-          {location?.cell
-            ? t('profile.location_current', 'Cell {cell}').replace('{cell}', location.cell)
-            : t('profile.location_unset', 'Geen locatie ingesteld.')}
+          {formatLocationLine(profile?.location)
+            ?? t('profile.location_unset', 'Geen locatie ingesteld.')}
         </Text>
         <View style={styles.row}>
-          <Pressable onPress={onCaptureLocation} style={styles.btnSecondary}>
+          <Pressable
+            onPress={onCaptureLocation}
+            disabled={busyKey === 'location'}
+            style={styles.btnSecondary}
+          >
             <Text style={styles.btnSecondaryLabel}>
-              {t('profile.location_capture', 'Locatie ophalen')}
+              {busyKey === 'location'
+                ? t('profile.location_busy', 'Ophalen…')
+                : t('profile.location_capture', 'Locatie ophalen')}
             </Text>
           </Pressable>
-          {location?.cell ? (
-            <Pressable onPress={onClearLocation} style={[styles.btnGhost, { marginLeft: SPACING.sm }]}>
+          {profile?.location?.cell ? (
+            <Pressable
+              onPress={() => clearLocation().catch((e) => setError(e?.message ?? String(e)))}
+              style={[styles.btnGhost, { marginLeft: SPACING.sm }]}
+            >
               <Text style={styles.btnGhostLabel}>
                 {t('profile.location_clear', 'Wissen')}
               </Text>
@@ -315,21 +370,27 @@ export default ProfileMineScreen;
 const styles = StyleSheet.create({
   root: { padding: SPACING.lg, backgroundColor: COLORS.background, paddingBottom: SPACING.xxl },
   heading: { fontSize: FONT_SIZES.xl, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.md },
+  empty: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    padding: SPACING.xl, backgroundColor: COLORS.background,
+  },
+  emptyTitle: { fontSize: FONT_SIZES.xl, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.md },
+  emptyBody:  { fontSize: FONT_SIZES.md, color: COLORS.textMuted, textAlign: 'center' },
   section: {
     marginBottom: SPACING.lg, padding: SPACING.lg,
     backgroundColor: COLORS.surface, borderRadius: RADII.md,
     borderWidth: 1, borderColor: COLORS.border,
   },
-  avatarRow: { flexDirection: 'row', alignItems: 'center' },
-  avatarActions: { marginLeft: SPACING.lg, flex: 1 },
-  label: { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.sm },
-  body:  { fontSize: FONT_SIZES.sm, color: COLORS.textMuted, marginBottom: SPACING.sm, lineHeight: 20 },
+  avatarRow:    { flexDirection: 'row', alignItems: 'center' },
+  avatarActions:{ marginLeft: SPACING.lg, flex: 1 },
+  label:        { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.sm },
+  body:         { fontSize: FONT_SIZES.sm, color: COLORS.textMuted, marginBottom: SPACING.sm, lineHeight: 20 },
   input: {
     borderWidth: 1, borderColor: COLORS.border, borderRadius: RADII.sm,
     padding: SPACING.md, fontSize: FONT_SIZES.md, color: COLORS.text,
     marginBottom: SPACING.sm,
   },
-  row:   { flexDirection: 'row', alignItems: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center' },
   btnPrimary: {
     backgroundColor: COLORS.primary, paddingVertical: SPACING.md,
     borderRadius: RADII.sm, alignItems: 'center',
@@ -349,6 +410,9 @@ const styles = StyleSheet.create({
   },
   toggleActive: { backgroundColor: COLORS.primary },
   toggleLabel:  { color: COLORS.text, fontSize: FONT_SIZES.sm, fontWeight: '600' },
-  success:  { color: COLORS.success, fontSize: FONT_SIZES.sm, marginTop: SPACING.sm },
-  errorText: { color: COLORS.danger, fontSize: FONT_SIZES.sm, marginVertical: SPACING.md, paddingHorizontal: SPACING.lg },
+  success:    { color: COLORS.success, fontSize: FONT_SIZES.sm, marginTop: SPACING.sm },
+  errorText:  {
+    color: COLORS.danger, fontSize: FONT_SIZES.sm,
+    marginVertical: SPACING.md, paddingHorizontal: SPACING.lg,
+  },
 });

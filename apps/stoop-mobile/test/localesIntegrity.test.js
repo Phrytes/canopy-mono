@@ -63,11 +63,21 @@ const REQUIRED_KEYS = [
   'contact.confirm_unmute_title', 'contact.confirm_unmute_body',
   'contact.confirm_block_title', 'contact.confirm_block_body',
 
+  // profile (mobile additions for ProfileMineScreen)
+  'profile.no_group', 'profile.saving',
+  'profile.holiday_label', 'profile.holiday_on', 'profile.holiday_off',
+  'profile.location_heading', 'profile.location_unset',
+  'profile.location_capture', 'profile.location_busy', 'profile.location_clear',
+  'profile.recovery_heading', 'profile.recovery_intro',
+  'profile.recovery_show', 'profile.recovery_close', 'profile.recovery_unavailable',
+  'profile.handle_empty', 'profile.handle_too_short', 'profile.handle_too_long', 'profile.handle_bad_chars',
+
   // profile_other
   'profile_other.unknown_member', 'profile_other.skills',
   'profile_other.holiday', 'profile_other.holiday_body',
   'profile_other.location', 'profile_other.request_reveal',
   'profile_other.add_contact', 'profile_other.open_chat',
+  'profile_other.no_active_group', 'profile_other.contact_detail',
 
   // settings / privacy / push / signin / group / metrics / mine
   'settings.heading', 'settings.shared_heading', 'settings.device_heading',

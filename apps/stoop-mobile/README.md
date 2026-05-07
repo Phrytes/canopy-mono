@@ -56,6 +56,16 @@ Pending phases (per
   built via Stoop's `createNeighborhoodAgent`; status state machine
   (`loading` / `no-groups` / `ready` / `error`); `useSkill('postRequest').call({...})`
   dispatches against the active bundle.
+- 40.15 ✅ Profile + identity wiring — `src/lib/{useProfile,
+  useMemberProfile,profileSync,skillPicker}.js`,
+  `src/components/SkillPicker.js`, `src/lib/imagePicker.js`'s new
+  `pickAvatarImage` + AVATAR_PRESET (256px). ProfileMineScreen
+  + ProfileOtherScreen now talk to the live agent: `setMyHandle`,
+  `setMyDisplayName`, `setMyAvatarUrl`, `clearMyAvatar`,
+  `setMyLocation` (via `getCoarseLocationFromGps`), `clearMyLocation`,
+  `setHolidayMode`, `addMySkill`, `removeMySkill`, `listSkillCategories`,
+  `getMnemonicOnce` + `markMnemonicShown`. Optimistic updates in the
+  hook so UI doesn't flash.
 - ⚙️ 2026-05-08 follow-up — bottom-tab shell wraps the six main
   destinations (Feed / Mine / Chat / Contacts / Profile / Settings)
   via `@react-navigation/bottom-tabs`. Detail screens push over the
