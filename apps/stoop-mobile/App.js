@@ -39,6 +39,7 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator }   from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider }           from 'react-native-safe-area-context';
+import { Ionicons }                   from '@expo/vector-icons';
 
 import { parseDeepLink, actionToNavigation } from './src/lib/deepLinks.js';
 
@@ -135,16 +136,36 @@ const Tabs  = createBottomTabNavigator();
  * Function declaration so it can be referenced from `SCREEN_COMPONENTS`
  * before the textual definition (function declarations are hoisted).
  */
+// Tab → Ionicon name (filled when focused, outline otherwise).
+// Ionicons is bundled with Expo; no separate install needed.
+const TAB_ICONS = {
+  [ROUTES.Feed]:        { active: 'home',        inactive: 'home-outline' },
+  [ROUTES.Mine]:        { active: 'list',        inactive: 'list-outline' },
+  [ROUTES.ChatThreads]: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
+  [ROUTES.Contacts]:    { active: 'people',      inactive: 'people-outline' },
+  [ROUTES.ProfileMine]: { active: 'person',      inactive: 'person-outline' },
+  [ROUTES.Settings]:    { active: 'settings',    inactive: 'settings-outline' },
+};
+
+function _tabIcon(routeName) {
+  return ({ focused, color, size }) => {
+    const spec = TAB_ICONS[routeName];
+    const name = spec ? (focused ? spec.active : spec.inactive) : 'ellipse-outline';
+    return <Ionicons name={name} size={size} color={color} />;
+  };
+}
+
 function ShellTabs() {
   return (
     <Tabs.Navigator
-      screenOptions={{
-        headerShown:        true,
+      screenOptions={({ route }) => ({
+        headerShown:             true,
         tabBarActiveTintColor:   COLORS.primary,
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle:        { backgroundColor: COLORS.surface, borderTopColor: COLORS.border },
         tabBarLabelStyle:   { fontSize: 11 },
-      }}
+        tabBarIcon:         _tabIcon(route.name),
+      })}
     >
       <Tabs.Screen name={ROUTES.Feed}        component={FeedScreen}        options={{ title: t('tabs.feed',     'Feed') }} />
       <Tabs.Screen name={ROUTES.Mine}        component={MineScreen}        options={{ title: t('tabs.mine',     'Mine') }} />
