@@ -55,9 +55,10 @@ const REQUIRED_KEYS = [
   'mine.no_active_group',
 
   // chat
-  'chat_threads.empty',
+  'chat_threads.empty', 'chat_threads.no_active_group',
   'chat_thread.placeholder', 'chat_thread.empty',
-  'chat_thread.request_reveal', 'chat_thread.reveal_unavailable',
+  'chat_thread.request_reveal', 'chat_thread.revealing', 'chat_thread.reveal_unavailable',
+  'chat_thread.no_active_group', 'chat_thread.no_peer',
 
   // contacts / contact
   'contacts.search_placeholder', 'contacts.muted',

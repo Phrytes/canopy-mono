@@ -236,13 +236,17 @@
     "confirm_block_body":   { "text": "Geblokkeerde contacten kunnen je geen berichten meer sturen.", "doc": "ConfirmModal body before blocking." }
   },
   "chat_threads": {
-    "empty": { "text": "Nog geen gesprekken.", "doc": "Empty state on ChatThreadsScreen." }
+    "empty":              { "text": "Nog geen gesprekken.", "doc": "Empty state on ChatThreadsScreen." },
+    "no_active_group":    { "text": "Sluit eerst aan bij een groep om je gesprekken te zien.", "doc": "Empty state when no bundle is active." }
   },
   "chat_thread": {
     "placeholder":         { "text": "Schrijf een bericht…", "doc": "Placeholder of the message composer in ChatThreadScreen." },
     "empty":               { "text": "Nog geen berichten.", "doc": "Empty state inside an open thread." },
     "request_reveal":      { "text": "Vraag echte naam", "doc": "CTA in the thread header that opens the bilateral-reveal flow." },
-    "reveal_unavailable":  { "text": "Reveal-flow niet beschikbaar in deze build.", "doc": "Alert shown when onRequestReveal is missing (placeholder-only build)." }
+    "revealing":           { "text": "Versturen…", "doc": "CTA label while the requestReveal call is in flight." },
+    "reveal_unavailable":  { "text": "Reveal-flow niet beschikbaar in deze build.", "doc": "Alert shown when onRequestReveal is missing." },
+    "no_active_group":     { "text": "Sluit eerst aan bij een groep om gesprekken te zien.", "doc": "Empty state when no bundle is active." },
+    "no_peer":             { "text": "Geen gesprekspartner.", "doc": "Empty state when ChatThreadScreen is opened without a peerId." }
   },
   "item_detail": {
     "unknown_item":     { "text": "Post niet gevonden.", "doc": "Empty state when ItemDetailScreen has no resolved item." },
