@@ -50,15 +50,24 @@ export function useSkill(skillId) {
     // when needed.  Throws only when identity itself isn't ready yet.
     let bundle = svc?.activeBundle;
     if (!bundle?.agent?.invoke) {
+      if (typeof svc?.ensureActiveBundle !== 'function') {
+        const e = new Error('No active agent yet — please reload the app (the JS bundle is stale).');
+        e.code = 'STALE_BUNDLE';
+        throw e;
+      }
       try {
-        bundle = await svc?.ensureActiveBundle?.();
+        bundle = await svc.ensureActiveBundle();
       } catch (err) {
-        const e = new Error('No active agent — user has no joined group yet.');
-        e.code = err?.code === 'NO_IDENTITY' ? 'NO_IDENTITY' : 'NO_AGENT';
+        // Propagate the underlying cause so the UI shows it instead
+        // of the generic "no joined group yet" message — this is how
+        // we surface buildBootstrapBundle failures during onboarding.
+        const e = new Error(`Could not initialise agent: ${err?.message ?? err}`);
+        e.code  = err?.code ?? 'NO_AGENT';
+        e.cause = err;
         throw e;
       }
       if (!bundle?.agent?.invoke) {
-        const e = new Error('No active agent — user has no joined group yet.');
+        const e = new Error('No active agent — bootstrap returned an invalid bundle.');
         e.code = 'NO_AGENT';
         throw e;
       }
