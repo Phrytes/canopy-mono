@@ -2,22 +2,22 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8">
-  <title>Stoop — Mijn posts</title>
+  <title data-i18n="mine.page_title">Stoop — Mijn posts</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <header>
     <nav>
-      <a href="/">Buurt</a>
-      <a href="/mine.html" class="active">Mijn posts</a>
-      <a href="/chat.html">Chat</a>
-      <a href="/contacts.html">Contacten</a>
-      <a href="/metrics.html">Metrics</a>
-      <a href="/profile.html">Profiel</a>
-      <a href="/sign-in.html">Pod</a>
-      <a href="/push.html">Push</a>
-      <a href="/onboard.html">Onboarden</a>
-      <a href="/settings.html">Instellingen</a>
+      <a href="/"               data-i18n="nav.feed">Buurt</a>
+      <a href="/mine.html" class="active" data-i18n="nav.my_posts">Mijn posts</a>
+      <a href="/chat.html"      data-i18n="nav.chat">Chat</a>
+      <a href="/contacts.html"  data-i18n="nav.contacts">Contacten</a>
+      <a href="/metrics.html"   data-i18n="nav.metrics">Metrics</a>
+      <a href="/profile.html"   data-i18n="nav.profile">Profiel</a>
+      <a href="/sign-in.html"   data-i18n="nav.pod">Pod</a>
+      <a href="/push.html"      data-i18n="nav.push">Push</a>
+      <a href="/onboard.html"   data-i18n="nav.onboard">Onboarden</a>
+      <a href="/settings.html"  data-i18n="nav.settings">Instellingen</a>
     </nav>
     <select id="group-switcher" hidden aria-label="Switch group"></select>
     <div id="actor"></div>
@@ -25,13 +25,17 @@
 
   <main>
     <section id="mine">
-      <h2>Mijn posts</h2>
-      <ul id="mine-list"><li class="empty">Aan het laden…</li></ul>
+      <h2 data-i18n="mine.heading">Mijn posts</h2>
+      <ul id="mine-list"><li class="empty" data-i18n="common.loading">Aan het laden…</li></ul>
     </section>
   </main>
 
   <script type="module">
-    import { callSkill, renderMyItems, getActor, mountLive, mountGroupSwitcher } from '/app.js';
+    import { callSkill, renderMyItems, getActor, mountLive, mountGroupSwitcher, initI18n, applyI18n, t } from '/app.js';
+
+    await initI18n();
+    applyI18n();
+    document.title = t('mine.page_title', 'Stoop — My posts');
 
     document.getElementById('actor').textContent = await getActor();
     mountGroupSwitcher(document.getElementById('group-switcher'));

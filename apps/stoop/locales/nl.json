@@ -1,12 +1,62 @@
 {
   "common": {
     "app_name":  "Stoop",
-    "loading":   "Bezig met laden…",
+    "loading":   { "text": "Bezig met laden…", "doc": "Generic loading placeholder used in lists / panes that haven't received data yet." },
     "save":      "Opslaan",
     "cancel":    "Annuleren",
     "ok":        "OK",
     "back":      "Terug",
+    "busy":      { "text": "Bezig…", "doc": "Generic in-flight status text shown while a skill call is running." },
     "error":     { "text": "Fout", "doc": "Generic error prefix shown before any API error message, e.g. 'Fout: invalid-mnemonic'." }
+  },
+  "welcome": {
+    "page_title":     { "text": "Stoop — Welkom", "doc": "Browser tab title for /welcome.html." },
+    "hero_title":     { "text": "Welkom bij Stoop", "doc": "Hero heading on /welcome.html — first thing a brand-new user sees." },
+    "hero_intro":     { "text": "Een buurt-prikbord dat lokaal op jouw apparaat draait. Geen feed, geen reclame, jouw data blijft van jou.", "doc": "Hero subtitle. Three-line value prop." },
+    "new_title":      { "text": "Nieuwe account", "doc": "Title of the left-hand choice card on /welcome.html — link to /onboard.html." },
+    "new_body":       { "text": "Ik heb een uitnodigings-link of -code en wil voor het eerst lid worden van een groep.", "doc": "Description of the new-account choice." },
+    "restore_title":  { "text": "Bestaande account herstellen", "doc": "Title of the right-hand choice card on /welcome.html — link to /restore.html." },
+    "restore_body":   { "text": "Ik heb mijn herstelzin (12 of 24 woorden) van een ander apparaat. Ik wil hem hier opnieuw gebruiken.", "doc": "Description of the restore-account choice." },
+    "footer_hint":    { "text": "Geen voorkennis nodig — je doorloopt de stappen in een paar minuten. Je kunt later van apparaat wisselen door je herstelzin opnieuw te gebruiken.", "doc": "Reassurance footer at the bottom of /welcome.html." }
+  },
+  "privacy": {
+    "page_title":             { "text": "Stoop — Privacy", "doc": "Browser tab title for /privacy.html." },
+    "heading":                { "text": "Privacy — wat je moet weten", "doc": "Main page heading on /privacy.html. (Renamed from 'title' 2026-05-07 to match the page-pattern convention.)" },
+    "intro":                  { "text": "Stoop is een onderzoeks-preview. Onderstaande punten zijn nooit verstopt; ze gelden voor iedereen die meedoet.", "doc": "Lead paragraph on /privacy.html. Sets the 'this is a research preview' framing." },
+    "data_location_heading":  { "text": "Waar je data staat", "doc": "H3 above the data-location list on /privacy.html: which provider hosts what." },
+    "unset_value":            { "text": "— niet ingesteld —", "doc": "Placeholder shown next to a privacy-row label when no value is configured (e.g. no pod attached)." },
+    "row_relay_operator":     { "text": "Relay-operator", "doc": "Label for the relay operator row in the data-location list." },
+    "row_relay_url":          { "text": "Relay-server", "doc": "Label for the relay server URL row." },
+    "row_pod_issuer":         { "text": "Pod-aanbieder", "doc": "Label for the pod provider (Solid OIDC issuer) row." },
+    "row_pod_root":           { "text": "Pod-locatie", "doc": "Label for the pod root URL row." }
+  },
+  "mine": {
+    "page_title": { "text": "Stoop — Mijn posts", "doc": "Browser tab title for /mine.html." },
+    "heading":    { "text": "Mijn posts", "doc": "Main page heading on /mine.html." }
+  },
+  "sign_in": {
+    "page_title":          { "text": "Stoop — Pod sign-in", "doc": "Browser tab title for /sign-in.html." },
+    "heading":             { "text": "Solid-pod-koppeling", "doc": "Main page heading on /sign-in.html." },
+    "intro":               { "text": "Stoop werkt out-of-the-box volledig <strong>lokaal</strong>. Een Solid-pod is optioneel: het maakt je posts en profiel portable tussen apparaten en geeft je controle over de opslag. Je kunt later aan- of afmelden zonder data te verliezen.", "doc": "Lead paragraph on /sign-in.html. Contains <strong> tag — keep it." },
+    "issuer_label":        { "text": "Solid OIDC issuer", "doc": "Label above the issuer URL input. Technical term — no translation strictly required." },
+    "submit":              { "text": "Aanmelden bij pod", "doc": "Submit button on the sign-in form." },
+    "sign_out":            { "text": "Afmelden bij pod", "doc": "Submit button on the sign-out form." },
+    "pod_attached":        { "text": "gekoppeld", "doc": "Status word shown when the pod is currently attached. Plugged into signed_in_html via {podLabel}." },
+    "pod_not_attached":    { "text": "niet gekoppeld", "doc": "Status word shown when sign-in succeeded but pod-attach failed. Plugged into signed_in_html via {podLabel}." },
+    "signed_in_html":      { "text": "Aangemeld als <strong>{webid}</strong> — pod {podLabel}.", "doc": "Status line shown when signed in. Contains <strong> tag and two placeholders: {webid} (URL) and {podLabel} (status word from pod_attached / pod_not_attached). Preserve all." },
+    "not_signed_in":       { "text": "Niet aangemeld bij een pod. Stoop draait lokaal.", "doc": "Status line shown when no pod is attached." },
+    "signed_out":          { "text": "Afgemeld.", "doc": "Confirmation shown after a successful sign-out." }
+  },
+  "metrics": {
+    "page_title":   { "text": "Stoop — Metrics", "doc": "Browser tab title for /metrics.html." },
+    "heading":      { "text": "Gebruiks-tellers (lokaal)", "doc": "Main heading on /metrics.html. 'Gebruiks-tellers' = usage counters." },
+    "intro":        { "text": "Tellers van acties die deze agent in dit proces heeft gezien. In-memory — opnieuw nul bij herstart. Faciliteert beta-runbook § \"Operational metrics\".", "doc": "Lead paragraph on /metrics.html. Mentions the beta runbook and the in-memory nature of counters." },
+    "refresh":      { "text": "Vernieuw", "doc": "Refresh button on /metrics.html — triggers an immediate reload of counters." },
+    "empty":        { "text": "Nog geen tellers — er is nog niets gebeurd in deze sessie.", "doc": "Empty-state shown when the metrics map is empty (fresh process, no skill calls yet)." },
+    "col_event":    { "text": "Event", "doc": "Header of the first column in the metrics grid. The technical name of the counted event." },
+    "col_count":    { "text": "Aantal", "doc": "Header of the second column — number of times the event fired." },
+    "col_last":     { "text": "Laatste", "doc": "Header of the third column — timestamp of the most recent firing." },
+    "snapshot_at":  { "text": "Snapshot: {ts}", "doc": "Footer line under the metrics grid. {ts} is a locale-formatted timestamp." }
   },
   "errors": {
     "groupId_required":     "Kies eerst een groep.",
@@ -80,10 +130,6 @@
     "q4_conflict": "4. Conflictbeslechting",
     "q5_access":   "5. Toegangsbeleid",
     "q6_leave":    "6. Vertrek-beleid"
-  },
-  "privacy": {
-    "title":   "Privacy — wat je moet weten",
-    "intro":   "Stoop is een onderzoeks-preview. Onderstaande punten zijn nooit verstopt; ze gelden voor iedereen die meedoet."
   },
   "nav": {
     "feed":     { "text": "Buurt",         "doc": "Top-nav link to the main feed page (/)." },
