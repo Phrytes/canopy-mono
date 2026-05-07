@@ -41,6 +41,7 @@ import { PushRegistryCache } from './lib/PushRegistryCache.js';
 import { loadSettings, DEFAULT_SETTINGS } from './lib/Settings.js';
 import { createContactBook } from './lib/ContactBook.js';
 import { wireChat }          from './chat/wireChat.js';
+import { EvictionRoster }    from './lib/EvictionRoster.js';
 
 /**
  * @param {object} args
@@ -162,6 +163,13 @@ export async function createNeighborhoodAgent({
       inner:         itemBackend ?? null,
       localStore:    initialMap,
       onLocalChange: persist ? (m) => persist.scheduleSave(m) : undefined,
+      // Phase 33+34 (V2.5): per-device settings + the migration marker
+      // are local-only — they must never reach the pod (the pod is
+      // shared by other installs of the same user).
+      localOnlyPrefixes: [
+        'mem://stoop/settings/devices/',
+        'mem://stoop/settings/.migrated',
+      ],
     });
     dataSource = cache;
     // When no itemBackend is supplied we boot in pure local-only mode
@@ -279,6 +287,15 @@ export async function createNeighborhoodAgent({
     pushSender = new WebPushSender(webPush);
   }
 
+  // Stoop V2.5 Phase 35 (2026-05-06): build the eviction roster
+  // BEFORE wiring chat (chat consumes it) and BEFORE skills register
+  // (so the bundle exposes it).  Hydrate from any existing
+  // `membership-redemption` items, then attach so future redemptions
+  // mutate the roster live.
+  const evictionRoster = new EvictionRoster();
+  await evictionRoster.hydrateFrom(itemStore);
+  const evictionRosterDetach = evictionRoster.attach({ itemStore });
+
   // Stoop V1 Phase 14 (2026-05-06): wire peer-chat handler BEFORE
   // skills register, so `chat` is in scope for buildSkills.  Listens
   // for `agent.on('message', ...)` envelopes whose first DataPart
@@ -292,6 +309,7 @@ export async function createNeighborhoodAgent({
     metrics,
     localActor:    skillMatchOpts.localActor,
     localStableId: id?.stableId ?? null,
+    evictionRoster,                  // Phase 35 — drop broadcast-posts from evicted members
   });
 
   // Phase 20 (Stoop V1.5, 2026-05-06): the bundle object is built
@@ -302,6 +320,8 @@ export async function createNeighborhoodAgent({
   const bundle = {
     agent,
     deviceId: id?.deviceId ?? null,    // Phase 33.1 — per-install id for device-scoped settings
+    evictionRoster,                    // Phase 35 — auto-evict filter for stale memberships
+    evictionRosterDetach,              // call on shutdown to detach the item-added listener
     itemStore,
     members,
     skillMatch,
@@ -339,6 +359,40 @@ export async function createNeighborhoodAgent({
     });
     bundle.interestProfileDetach = ipDetach.detach;
     bundle.interestProfileFlushNow = ipDetach.flushNow;
+  }
+
+  // Phase 34 (V2.5) — track bulk-sync state on the bundle so the UI
+  // can poll it via the `getBulkSyncStatus` skill.  Phase: 'idle'
+  // before any attach, 'running' while a bulk-sync is active,
+  // 'finished' after, 'error' on flush failure.
+  bundle.bulkSyncState = {
+    phase:   'idle',
+    done:    0,
+    total:   0,
+    errored: false,
+    updatedAt: null,
+  };
+  if (cache) {
+    cache.on('bulk-sync-started', ({ total }) => {
+      bundle.bulkSyncState = {
+        phase: 'running', done: 0, total, errored: false, updatedAt: Date.now(),
+      };
+    });
+    cache.on('bulk-sync-progress', ({ done, total }) => {
+      bundle.bulkSyncState = {
+        ...bundle.bulkSyncState,
+        phase: 'running', done, total, updatedAt: Date.now(),
+      };
+    });
+    cache.on('bulk-sync-finished', ({ count, errored }) => {
+      bundle.bulkSyncState = {
+        ...bundle.bulkSyncState,
+        phase: errored ? 'error' : 'finished',
+        done:  count,
+        errored: !!errored,
+        updatedAt: Date.now(),
+      };
+    });
   }
 
   // ── Skill registration ────────────────────────────────────────────────────

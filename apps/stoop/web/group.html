@@ -38,6 +38,17 @@
       padding: 1rem;
       margin-top: 1rem;
     }
+    .eviction-banner {
+      background: #fef3e2;
+      border: 1px solid #f4c074;
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      margin-bottom: 1rem;
+      color: #6b3a00;
+    }
+    .eviction-banner h3 { margin: 0 0 0.4rem 0; font-size: 1rem; }
+    .eviction-banner ul { margin: 0.4rem 0 0 1.2rem; padding: 0; }
+    .eviction-banner li { font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -61,6 +72,15 @@
   <main>
     <section>
       <h2 id="group-title">Groep</h2>
+
+      <div id="eviction-banner" class="eviction-banner" hidden>
+        <h3 data-i18n="group.eviction_banner_title">Verlopen lidmaatschappen</h3>
+        <p id="eviction-intro" data-i18n="group.eviction_banner_intro">
+          Voor één of meer leden is de membership-code verlopen — hun
+          posts worden verborgen totdat ze de nieuwe code inwisselen.
+        </p>
+        <ul id="eviction-list"></ul>
+      </div>
 
       <div id="rules-card" class="code-card">
         <h3 style="margin-top: 0;">Spelregels</h3>
@@ -95,10 +115,39 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, mountGroupSwitcher } from '/app.js';
+    import { callSkill, getActor, mountGroupSwitcher, initI18n, applyI18n, t } from '/app.js';
+
+    await initI18n();
+    applyI18n();
 
     document.getElementById('actor').textContent = await getActor();
     mountGroupSwitcher(document.getElementById('group-switcher'));
+
+    /* ── Phase 35 (V2.5) — eviction banner ───────────────────── */
+
+    function escapeText(s) {
+      return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    async function refreshEvictionBanner() {
+      try {
+        const r = await callSkill('listEvictedMembers', {});
+        const list = Array.isArray(r?.evicted) ? r.evicted : [];
+        const banner = document.getElementById('eviction-banner');
+        if (list.length === 0) { banner.hidden = true; return; }
+        banner.hidden = false;
+        const ul = document.getElementById('eviction-list');
+        ul.innerHTML = list.map(({ webid, expiresAt }) => {
+          const tpl = t('group.eviction_member_html',
+            '<strong>{webid}</strong> — verlopen op {date}');
+          const row = tpl
+            .replace('{webid}', escapeText(webid))
+            .replace('{date}',  escapeText(new Date(expiresAt).toLocaleString()));
+          return `<li>${row}</li>`;
+        }).join('');
+      } catch { /* swallow — banner just stays hidden */ }
+    }
 
     function escapeHtml(s) {
       return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -232,8 +281,9 @@
       }
     });
 
-    await Promise.all([refreshRules(), refreshCode()]);
+    await Promise.all([refreshRules(), refreshCode(), refreshEvictionBanner()]);
     setInterval(refreshCode, 30_000);
+    setInterval(refreshEvictionBanner, 60_000);
   </script>
 </body>
 </html>

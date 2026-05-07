@@ -65,7 +65,7 @@ function freshNonce() {
  * @param {string} args.localActor             my webid
  * @param {string | null} args.localStableId   my stableId (from agent.identity.stableId)
  */
-export function wireChat({ agent, itemStore, members, muted, metrics, localActor, localStableId }) {
+export function wireChat({ agent, itemStore, members, muted, metrics, localActor, localStableId, evictionRoster = null }) {
   /** Track recently-seen nonces so resends don't duplicate items. */
   const seenNonces = new Set();
 
@@ -137,6 +137,9 @@ export function wireChat({ agent, itemStore, members, muted, metrics, localActor
         (data.fromStableId && muted.has(data.fromStableId)) ||
         (data.fromWebid    && muted.has(data.fromWebid))
       )) return;
+
+      // Phase 35 (V2.5) — silently drop posts from evicted members.
+      if (evictionRoster && data.fromWebid && evictionRoster.isEvicted(data.fromWebid)) return;
 
       // Distance filter: receiver checks against own location.
       if (typeof data.maxDistanceKm === 'number' && members) {
