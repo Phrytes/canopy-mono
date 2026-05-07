@@ -450,11 +450,19 @@ the same week — otherwise independent.
 
 **Estimate:** 1.5 days.
 
-### Phase 36 — Real OIDC against a live Solid Pod (CSS fixture)
+### Phase 36 — Real OIDC against a live Solid Pod (CSS fixture) — **DEFERRED 2026-05-07**
 
+> **Status:** deferred indefinitely. Decision 2026-05-07: the
+> Docker + CSS integration-test approach is too heavy for the
+> value at this scale; existing stub-based tests remain the
+> coverage of record. Reconsider if/when a Solid-server-specific
+> bug actually bites in production. Phase numbering preserved so
+> later phases keep their references.
+>
 > Phase 20 ships the OIDC flow against a stubbed Inrupt Session.
-> V2.5 brings up a real Community Solid Server (CSS) in CI + an
-> integration test that completes the redirect dance.
+> V2.5 was originally going to bring up a real Community Solid Server
+> (CSS) in CI + an integration test that completes the redirect
+> dance.
 
 | # | Task | Files | Substrate-touch |
 |---|---|---|---|
@@ -506,7 +514,7 @@ Phase 33 (device-specific settings split) ←── cross-app convention; founda
 Phase 34 (bulk-sync on attach)            ←── needs 33 to know which blobs to skip
 Phase 35 (auto-eviction in groupMirror)   ←── independent
 ─── pause for Hub/browser project decisions ───
-Phase 36 (real OIDC integration)          ←── needs Phase 20 (already shipped)
+Phase 36 (real OIDC integration)          ←── DEFERRED 2026-05-07 (stub tests remain the coverage of record)
 Phase 37 (audit substrate)                ←── enables Hub Layers 2-4
 Phase 38 (capability manifest)            ←── needs Phase 37
 ```
