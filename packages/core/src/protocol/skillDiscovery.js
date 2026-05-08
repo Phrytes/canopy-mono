@@ -18,7 +18,10 @@ const TYPE = 'skill-discovery';
  * @returns {Promise<Array<{id, description, inputModes, outputModes, tags, streaming}>>}
  */
 export async function requestSkills(agent, peerId, timeout = 10_000) {
-  const rs = await agent.transport.request(peerId, { type: TYPE }, timeout);
+  // Per-peer routing — `agent.transport` is the primary slot (e.g.
+  // InternalTransport on mobile) and only handles self-loop.
+  const t = await agent.transportFor(peerId);
+  const rs = await t.request(peerId, { type: TYPE }, timeout);
   return rs.payload?.skills ?? [];
 }
 
@@ -53,6 +56,10 @@ export async function handleSkillDiscovery(agent, envelope) {
     streaming:   s.streaming,
   }));
 
-  await agent.transport.respond(envelope._from, envelope._id, { type: TYPE, skills });
+  // Reply over the same transport per-peer routing as the request
+  // came in on (or routing's pick if it differs); same primary-slot
+  // gotcha as `requestSkills` above.
+  const t = await agent.transportFor(envelope._from);
+  await t.respond(envelope._from, envelope._id, { type: TYPE, skills });
   return true;
 }

@@ -91,7 +91,16 @@ export function ItemDetailScreen() {
   const atts = Array.isArray(item.attachments) ? item.attachments : [];
   const author = item.authorRender ?? item.author ?? {};
   const selfAddr = svc.activeBundle.agent.address ?? svc.activeBundle.agent.identity?.pubKey;
-  const isMine = item.from === selfAddr || item.authorWebid === selfAddr;
+  // Locally-authored items only set `addedBy` (the actor passed to
+  // ItemStore.addItems, which the skills set to the agent's pubkey).
+  // `item.from` / `item.authorWebid` are undefined on local posts —
+  // they're only populated by the broadcast mirror. Without
+  // `addedBy` in this check, isMine was false for own posts and the
+  // "Ik help" button showed → user "responded" to their own post →
+  // self-chat with two copies.
+  const isMine = item.from       === selfAddr
+              || item.authorWebid === selfAddr
+              || item.addedBy     === selfAddr;
   const claims = Array.isArray(item.claims) ? item.claims : [];
 
   const respond = async () => {
