@@ -5,20 +5,32 @@
   "description": "H4 tasks-v0 — single-household task ledger with DAG dependencies + skill-based dispatch + role-aware governance.  Phase C V0; thin composition of L1b/L1d/L1e/L1f/L1h substrates.",
   "type": "module",
   "main": "src/index.js",
-  "exports": { ".": "./src/index.js" },
-  "bin": { "tasks-ui": "bin/tasks-ui.js" },
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "tasks-ui": "bin/tasks-ui.js"
+  },
   "scripts": {
-    "test":       "vitest run",
+    "test": "vitest run",
     "test:watch": "vitest",
-    "ui":         "node bin/tasks-ui.js"
+    "ui": "node bin/tasks-ui.js"
   },
   "dependencies": {
-    "@canopy/core":             "file:../../packages/core",
-    "@canopy/item-store":       "file:../../packages/item-store",
-    "@canopy/agent-ui":         "file:../../packages/agent-ui",
-    "@canopy/skill-match":      "file:../../packages/skill-match",
-    "@canopy/notifier":         "file:../../packages/notifier",
-    "@canopy/identity-resolver":"file:../../packages/identity-resolver"
+    "@canopy/agent-ui": "file:../../packages/agent-ui",
+    "@canopy/chat-agent": "file:../../packages/chat-agent",
+    "@canopy/chat-p2p": "file:../../packages/chat-p2p",
+    "@canopy/core": "file:../../packages/core",
+    "@canopy/identity-resolver": "file:../../packages/identity-resolver",
+    "@canopy/item-store": "file:../../packages/item-store",
+    "@canopy/local-store": "file:../../packages/local-store",
+    "@canopy/notifier": "file:../../packages/notifier",
+    "@canopy/relay": "file:../../packages/relay",
+    "@canopy/skill-match": "file:../../packages/skill-match",
+    "i18next": "^26.0.10",
+    "ical.js": "^2.2.1"
   },
-  "devDependencies": { "vitest": "^2.1.0" }
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
 }

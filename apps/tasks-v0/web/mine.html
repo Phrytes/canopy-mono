@@ -2,63 +2,224 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>H4 — My tasks</title>
+  <title>Tasks — My work</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <header>
     <nav>
-      <a href="/">All open</a>
-      <a href="/mine.html" class="active">My tasks</a>
+      <a href="/">Workspace</a>
+      <a href="/mine.html" class="active">My work</a>
+      <a href="/review.html">Review</a>
+      <a href="/dag.html">DAG</a>
+      <a href="/availability.html">Availability</a>
+      <a href="/crew.html">Crew</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/inbox.html" id="nav-inbox">Inbox</a>
     </nav>
     <div id="actor"></div>
   </header>
 
   <main>
-    <section id="mine">
+    <section id="assigned">
       <h2>Assigned to me</h2>
-      <ul id="mine-list"><li class="empty">Loading…</li></ul>
+      <ul id="assigned-list"><li class="empty">Loading…</li></ul>
+    </section>
+
+    <section id="mastered">
+      <h2>I'm master of</h2>
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Tasks where you can <code>revoke</code> the assignment, change approval mode,
+        or spawn sub-tasks (in addition to assignee + admin/coord).
+      </p>
+      <ul id="mastered-list"><li class="empty">Loading…</li></ul>
     </section>
 
     <section id="claimable">
-      <h2>Claimable (unassigned)</h2>
+      <h2>Ready to claim</h2>
       <ul id="claimable-list"><li class="empty">Loading…</li></ul>
+    </section>
+
+    <section id="planner">
+      <h3 data-i18n="planner.section_heading">Suggested plan</h3>
+      <p style="font-size:0.85rem;color:var(--muted)" data-i18n="planner.section_intro">
+        Suggestions only — every slot needs a click.
+      </p>
+      <button id="planner-suggest" data-i18n="planner.button_suggest">Suggest a plan</button>
+      <ul id="planner-suggestions" style="margin-top:0.6rem"></ul>
+    </section>
+
+    <section id="my-cadence">
+      <h3>My notification preferences</h3>
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Per-event overrides. Falls back to the crew default (then the
+        app baseline) when an entry is left blank. Suppressed events
+        are dropped silently — useful for "stop pinging me about
+        completed tasks".
+      </p>
+      <table id="my-cadence-table" style="width:100%;font-size:0.9rem;border-collapse:collapse">
+        <thead><tr><th style="text-align:left">Event</th><th>Channel</th><th>Suppressed</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="actions" style="margin-top:0.5rem">
+        <button id="save-overrides">Save my overrides</button>
+      </div>
     </section>
   </main>
 
   <script type="module">
     import {
-      callSkill, renderTasks, getActor, mountLive,
+      callSkill, renderTasks, getActor, getConfig, mountLive, mountInboxBadge,
     } from '/app.js';
 
     document.getElementById('actor').textContent = await getActor();
-    const me = await getActor();
-    const role = await fetchRole(me);
+    const cfg  = await getConfig();
+    const me   = cfg.actor ?? await getActor();
+    const role = cfg.roles?.[me] ?? 'member';
 
-    async function fetchRole(actor) {
-      try {
-        const res = await fetch('/tasks-config.json');
-        if (!res.ok) return 'member';
-        const cfg = await res.json();
-        return cfg?.roles?.[actor] ?? 'member';
-      } catch { return 'member'; }
-    }
+    mountInboxBadge(document.getElementById('nav-inbox'));
+
+    const ctx = {
+      me, role,
+      onClaim:    async (id)       => { await callSkill('claimTask',   {id}); await refresh(); },
+      onComplete: async (id)       => {
+        const r = await callSkill('completeTask', { id });
+        if (r?.error === 'has-open-dependencies') {
+          alert(`Can't close — ${r.openDeps.length} open sub-task(s): ${r.openDeps.map((x) => x.slice(0, 8)).join(', ')}`);
+        }
+        await refresh();
+      },
+      onSubmit:   async (id, args) => { await callSkill('submitTask',  {id, ...args}); await refresh(); },
+      onApprove:  async (id)       => {
+        const r = await callSkill('approveTask', { id });
+        if (r?.error === 'has-open-dependencies') {
+          alert(`Can't approve — ${r.openDeps.length} open sub-task(s): ${r.openDeps.map((x) => x.slice(0, 8)).join(', ')}`);
+        }
+        await refresh();
+      },
+      onReject:   async (id, note) => { await callSkill('rejectTask',  {id, note}); await refresh(); },
+      onRevoke:   async (id, reason) => { await callSkill('revokeTask',{id, reason}); await refresh(); },
+      onReassign: async (id, who)  => { await callSkill('reassignTask',{id, newAssignee: who}); await refresh(); },
+      onAddSubtask: async (parentTaskId, text) => {
+        const r = await callSkill('addSubtask', { parentTaskId, text });
+        if (r.queued) {
+          alert(`Sub-task queued for admin approval (depth ${r.newDepth} > threshold ${r.threshold}).`);
+        } else if (r?.error === 'parent-submitted') {
+          alert('Parent is submitted — use "Propose sub-task" instead.');
+        }
+        await refresh();
+      },
+      onForceComplete: async (id, reason) => {
+        const r = await callSkill('forceCompleteTask', { id, reason });
+        if (r?.error) alert(`Force-complete error: ${r.error}`);
+        await refresh();
+      },
+      onProposeSubtask: async (parentTaskId, text) => {
+        const r = await callSkill('proposeSubtask', { parentTaskId, text });
+        if (r?.error) alert(`Couldn't propose: ${r.error}`);
+        else if (r?.queued) alert(`Proposal sent to ${r.assignee.split('/').pop()} — they\'ll see it in their inbox.`);
+        await refresh();
+      },
+    };
 
     async function refresh() {
-      const mine      = await callSkill('listMine', {});
-      const claimable = await callSkill('listClaimable', {});
-      const ctx = {
-        me, role,
-        onClaim:    async (id)      => { await callSkill('claimTask',    {id}); await refresh(); },
-        onComplete: async (id)      => { await callSkill('completeTask', {id}); await refresh(); },
-        onReassign: async (id, who) => { await callSkill('reassignTask', {id, newAssignee: who}); await refresh(); },
-        onRemove:   async (id)      => { await callSkill('removeTask',   {id}); await refresh(); },
-      };
-      renderTasks(document.getElementById('mine-list'),      mine.items      ?? [], ctx);
+      const [mine, mastered, claimable] = await Promise.all([
+        callSkill('listMine', {}),
+        callSkill('listMyMasteredTasks').catch(() => ({ items: [] })),
+        callSkill('listClaimable', {}),
+      ]);
+      renderTasks(document.getElementById('assigned-list'),  mine.items      ?? [], ctx);
+      renderTasks(document.getElementById('mastered-list'),  (mastered.items ?? []).filter((i) => i.type !== 'subtask-request'), ctx);
       renderTasks(document.getElementById('claimable-list'), claimable.items ?? [], ctx);
     }
+
+    async function refreshCadence() {
+      const r = await callSkill('getMyCadenceOverrides').catch(() => ({ overrides: {} }));
+      const overrides = r.overrides ?? {};
+      const tbody = document.querySelector('#my-cadence-table tbody');
+      tbody.innerHTML = '';
+      const events = ['missed-deadline', 'task-completed', 'task-submitted', 'task-rejected', 'task-revoked', 'subtask-request'];
+      for (const ev of events) {
+        const cur = overrides[ev] ?? {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${ev}</td>
+          <td>
+            <select data-ev="${ev}" data-key="channel">
+              <option value="" ${!cur.channel ? 'selected' : ''}>(crew default)</option>
+              <option value="inbox" ${cur.channel === 'inbox' ? 'selected' : ''}>inbox</option>
+              <option value="silent" ${cur.channel === 'silent' ? 'selected' : ''}>silent</option>
+            </select>
+          </td>
+          <td><input type="checkbox" data-ev="${ev}" data-key="suppressed" ${cur.suppressed ? 'checked' : ''}></td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    document.getElementById('save-overrides').addEventListener('click', async () => {
+      const tbody = document.querySelector('#my-cadence-table tbody');
+      const next = {};
+      tbody.querySelectorAll('select[data-ev], input[data-ev]').forEach((el) => {
+        const ev = el.dataset.ev;
+        const key = el.dataset.key;
+        if (key === 'channel' && el.value) {
+          next[ev] = { ...(next[ev] ?? {}), channel: el.value };
+        }
+        if (key === 'suppressed' && el.checked) {
+          next[ev] = { ...(next[ev] ?? {}), suppressed: true };
+        }
+      });
+      await callSkill('setMyCadenceOverrides', { overrides: next });
+      await refreshCadence();
+    });
+
     await refresh();
-    mountLive(['item-added', 'item-completed', 'item-removed', 'item-claimed'], refresh);
+    await refreshCadence();
+    mountLive([
+      'item-added', 'item-completed', 'item-removed', 'item-claimed',
+      'item-submitted', 'item-rejected', 'item-revoked',
+    ], refresh);
+
+    // V2.4 — planner suggestions panel.
+    const plannerBtn  = document.getElementById('planner-suggest');
+    const plannerList = document.getElementById('planner-suggestions');
+    plannerBtn.addEventListener('click', async () => {
+      plannerList.innerHTML = '<li class="empty">Computing…</li>';
+      const r = await callSkill('suggestSchedule', { lookaheadDays: 7 }).catch(() => ({ suggestions: [] }));
+      const sugg = r?.suggestions ?? [];
+      if (sugg.length === 0) {
+        plannerList.innerHTML = '<li class="empty">No suggestions — nothing in your queue with a deadline.</li>';
+        return;
+      }
+      plannerList.innerHTML = '';
+      const fmt = (ms) => new Date(ms).toLocaleString();
+      for (const s of sugg) {
+        const li = document.createElement('li');
+        li.className = 'item';
+        const span = s.fits ? `${escapeHtml(fmt(s.slotStart))} → ${escapeHtml(fmt(s.slotEnd))}` : '<em>no slot</em>';
+        li.innerHTML = `
+          <div class="head">
+            <span class="text">${escapeHtml(s.taskId.slice(0, 8))} — ${span}</span>
+            <span class="role-chip">${escapeHtml(s.reason)}</span>
+          </div>
+          <div class="actions">
+            ${s.fits ? '<button data-act="accept">Accept</button>' : ''}
+            <button class="secondary" data-act="skip">Skip</button>
+          </div>`;
+        const aBtn = li.querySelector('button[data-act="accept"]');
+        if (aBtn) aBtn.addEventListener('click', async () => {
+          const ar = await callSkill('acceptSchedule', {
+            taskId: s.taskId, slotStart: s.slotStart, slotEnd: s.slotEnd,
+          });
+          if (ar?.error) { alert(`Error: ${ar.error}`); return; }
+          li.remove();
+          await refresh();
+        });
+        const sBtn = li.querySelector('button[data-act="skip"]');
+        sBtn.addEventListener('click', () => li.remove());
+        plannerList.appendChild(li);
+      }
+    });
   </script>
 </body>
 </html>

@@ -1,0 +1,10 @@
+{
+  "crewId": "book-club",
+  "name": "Book Club",
+  "kind": "friends",
+  "members": [
+    { "webid": "https://id.example/zoe",  "displayName": "Zoe",  "role": "admin" },
+    { "webid": "https://id.example/anne", "displayName": "Anne", "role": "member" }
+  ],
+  "subtasksAdminApprovalDepth": 2
+}

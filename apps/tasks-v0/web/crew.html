@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tasks — Crew + members + settings</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/mine.html">My work</a>
+      <a href="/review.html">Review</a>
+      <a href="/dag.html">DAG</a>
+      <a href="/availability.html">Availability</a>
+      <a href="/crew.html" class="active">Crew</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/inbox.html" id="nav-inbox">Inbox</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section id="info">
+      <h2 id="crew-name">…</h2>
+      <p id="crew-meta" style="font-size:0.85rem;color:var(--muted)"></p>
+    </section>
+
+    <section id="members">
+      <h3>Members</h3>
+      <ul id="members-list"><li class="empty">Loading…</li></ul>
+    </section>
+
+    <section id="requests" hidden>
+      <h3>Pending sub-task requests</h3>
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Requests filed past the crew's <code>subtasksAdminApprovalDepth</code>
+        threshold. Admin / coordinator approves or declines.
+      </p>
+      <ul id="requests-list"></ul>
+    </section>
+
+    <section id="settings">
+      <h3>Settings</h3>
+      <dl id="settings-list" style="display:grid;grid-template-columns:max-content 1fr;gap:0.4rem 1rem;font-size:0.9rem"></dl>
+    </section>
+
+    <section id="stats">
+      <h3>Stats</h3>
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Local-only metrics from this device. Counts since the agent
+        started; latency reservoirs hold the last 200 samples per
+        name.
+      </p>
+      <table id="counters-table" style="width:100%;font-size:0.9rem;border-collapse:collapse">
+        <thead><tr><th style="text-align:left">Counter</th><th style="text-align:right">Count</th><th style="text-align:right">Last</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <h4 style="margin-top:1rem;font-size:0.9rem;color:var(--muted)">Latencies (ms)</h4>
+      <table id="latencies-table" style="width:100%;font-size:0.9rem;border-collapse:collapse">
+        <thead><tr><th style="text-align:left">Metric</th><th style="text-align:right">N</th><th style="text-align:right">p50</th><th style="text-align:right">p90</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section id="customroles" hidden>
+      <h3>Custom roles (admin only)</h3>
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Custom roles extend the standard 5 (admin / coordinator /
+        member / observer / external). Numeric <code>rank</code>
+        slots them into the hierarchy; promotions are gated by
+        rank order. The role is registered in the
+        <code>core.Roles</code> process-global registry on boot
+        (so V1 add-task / claim / role checks honour it) and
+        persisted in <code>crew.customRoles</code>.
+      </p>
+      <table id="customroles-table" style="width:100%;font-size:0.9rem;border-collapse:collapse">
+        <thead><tr><th style="text-align:left">Role</th><th style="text-align:right">Rank</th><th>Source</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <form id="customrole-add" style="display:flex;gap:0.5rem;align-items:flex-end;margin-top:0.6rem">
+        <label style="flex:1">
+          <span>New role id</span>
+          <input id="customrole-id" type="text" placeholder="e.g. kitchen-crew" required>
+        </label>
+        <label>
+          <span>Rank (1-99)</span>
+          <input id="customrole-rank" type="number" min="1" max="99" step="1" required>
+        </label>
+        <button type="submit">Add custom role</button>
+      </form>
+    </section>
+
+    <section id="botbindings" hidden>
+      <h3>Bot bindings (admin only)</h3>
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Maps Telegram chatIds to crew member webids. When a bound
+        chatId messages the bot, commands dispatch as that webid
+        (role policy, audit log etc. apply). Unbound chatIds get a
+        friendly hint reply with their chatId — admin pastes it here
+        to bind. To find a chatId: have the new member DM the bot,
+        then hit
+        <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code>
+        and look for <code>"chat":{"id":...}</code>.
+      </p>
+      <table id="botbindings-table" style="width:100%;font-size:0.9rem;border-collapse:collapse">
+        <thead><tr>
+          <th style="text-align:left">Chat ID</th>
+          <th>Webid</th>
+          <th>Mode</th>
+          <th>Expires</th>
+          <th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <form id="botbinding-add" style="display:flex;gap:0.5rem;align-items:flex-end;margin-top:0.6rem">
+        <label style="flex:1">
+          <span>Chat ID</span>
+          <input id="botbinding-chatid" type="text" placeholder="e.g. 123456789" required>
+        </label>
+        <label style="flex:2">
+          <span>Crew member</span>
+          <select id="botbinding-webid" required></select>
+        </label>
+        <button type="submit">Bind</button>
+      </form>
+    </section>
+
+    <section id="compensation" hidden>
+      <h3 data-i18n="compensation.section_heading">Compensation</h3>
+      <p style="font-size:0.85rem;color:var(--muted)" data-i18n="compensation.section_intro">
+        Compensated members get one invoice line per completed task. Per-month totals here are informational.
+      </p>
+      <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.4rem">
+        <label>
+          <input id="compensation-toggle" type="checkbox">
+          <span data-i18n="compensation.toggle_label">Track compensation for paid-pro members</span>
+        </label>
+        <span id="compensation-toggle-hint" style="font-size:0.8rem;color:var(--muted)" hidden></span>
+      </div>
+      <div id="compensation-body" style="margin-top:0.6rem" hidden>
+        <label style="font-size:0.85rem">
+          <span data-i18n="compensation.month_label">Month</span>
+          <input id="compensation-month" type="month" style="margin-left:0.4rem">
+        </label>
+        <table id="compensation-table" style="width:100%;font-size:0.9rem;border-collapse:collapse;margin-top:0.4rem">
+          <thead><tr><th style="text-align:left">Member</th><th style="text-align:right">Tasks</th><th style="text-align:right">Hours</th><th style="text-align:right">Amount</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem" data-i18n="compensation.informational">
+          Amounts are informational, not authoritative.
+        </p>
+      </div>
+    </section>
+
+    <section id="calendar-emission" hidden>
+      <h3 data-i18n="calendar.section_heading">Calendar sync</h3>
+      <p style="font-size:0.85rem;color:var(--muted)" data-i18n="calendar.section_intro">
+        When on, each member's pod gets a `.ics` file containing their assigned + mastered tasks.
+      </p>
+      <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.4rem">
+        <label>
+          <input id="calendar-emission-toggle" type="checkbox">
+          <span data-i18n="calendar.toggle_label">Sync deadlines to calendars</span>
+        </label>
+        <span id="calendar-emission-toggle-hint" style="font-size:0.8rem;color:var(--muted)" hidden></span>
+      </div>
+      <div id="calendar-emission-url-row" style="margin-top:0.6rem" hidden>
+        <label style="display:block;font-size:0.85rem">
+          <span data-i18n="calendar.url_label">Your subscribe URL:</span>
+          <input id="calendar-emission-url" type="text" readonly style="width:100%;font-family:monospace;font-size:0.85rem">
+        </label>
+        <p style="font-size:0.8rem;color:var(--muted);margin-top:0.2rem" data-i18n="calendar.url_copy_hint">
+          Copy + paste into your phone calendar app's 'Subscribe' / 'Add by URL' option.
+        </p>
+      </div>
+      <p id="calendar-emission-off-state" style="font-size:0.85rem;color:var(--muted)" data-i18n="calendar.off_state" hidden>
+        Calendar sync is off. An admin can turn it on above.
+      </p>
+    </section>
+
+    <section id="cadences" hidden>
+      <h3>Cadence config (admin / coordinator)</h3>
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Per-event delivery channel + suppression. User-side overrides
+        layer on top (User &gt; Crew &gt; Baseline).
+      </p>
+      <table id="cadences-table" style="width:100%;font-size:0.9rem;border-collapse:collapse">
+        <thead><tr><th style="text-align:left">Event</th><th>Channel</th><th>Suppressed</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      callSkill, getActor, getConfig, mountLive, mountInboxBadge, escapeHtml,
+      renderV1NotAvailable,
+    } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    const cfg  = await getConfig();
+    const me   = cfg.actor ?? await getActor();
+    const role = cfg.roles?.[me] ?? 'member';
+
+    mountInboxBadge(document.getElementById('nav-inbox'));
+
+    function shortWebid(w) { return (w ?? '').split('/').pop() || w; }
+
+    async function refresh() {
+      let cfgRes;
+      try {
+        cfgRes = await callSkill('getCrewConfig');
+      } catch (err) {
+        // Surface the V0-mode hint into the members section (the most
+        // prominent block on the page) and bail.
+        renderV1NotAvailable(
+          document.getElementById('members-list'),
+          err,
+          'Crew + settings + stats are V1 features.',
+        );
+        document.getElementById('crew-name').textContent = '(V1 mode required)';
+        document.getElementById('crew-meta').textContent = '';
+        return;
+      }
+      const crew = cfgRes.crew ?? {};
+      document.getElementById('crew-name').textContent = crew.name ?? crew.crewId ?? '(no crew)';
+      document.getElementById('crew-meta').textContent =
+        `kind: ${crew.kind ?? 'household'} · sub-task admin-approval depth: ${crew.subtasksAdminApprovalDepth ?? 3}`;
+
+      const ml = document.getElementById('members-list');
+      ml.innerHTML = '';
+      const members = crew.members ?? [];
+      if (members.length === 0) {
+        ml.innerHTML = '<li class="empty">No members.</li>';
+      } else {
+        for (const m of members) {
+          const li = document.createElement('li');
+          li.className = 'item';
+          const compChip = m.compensated ? '<span class="role-chip">paid-pro</span>' : '';
+          const youChip  = m.webid === me ? '<span class="role-chip" title="you">you</span>' : '';
+          li.innerHTML = `
+            <div class="head">
+              <span class="text">${escapeHtml(m.displayName ?? shortWebid(m.webid))}</span>
+              <span class="role-chip">${escapeHtml(m.role ?? 'member')}</span>
+            </div>
+            <div class="meta">
+              <span class="assignee">${escapeHtml(m.webid)}</span>
+              ${compChip}${youChip}
+            </div>`;
+          ml.appendChild(li);
+        }
+      }
+
+      // Pending sub-task requests (admin/coord only).
+      if (role === 'admin' || role === 'coordinator') {
+        const reqRes = await callSkill('listSubtaskRequests').catch(() => ({ items: [] }));
+        const requests = reqRes.items ?? [];
+        const sec = document.getElementById('requests');
+        sec.hidden = false;
+        const rl = document.getElementById('requests-list');
+        rl.innerHTML = '';
+        if (requests.length === 0) {
+          rl.innerHTML = '<li class="empty">No pending requests.</li>';
+        } else {
+          for (const r of requests) {
+            const li = document.createElement('li');
+            li.className = 'item';
+            const requested = r.source?.requestedBy ?? '?';
+            li.innerHTML = `
+              <div class="head">
+                <span class="text">${escapeHtml(r.text)}</span>
+                <span class="role-chip">depth ${r.source?.requestedDepth ?? '?'}</span>
+              </div>
+              <div class="meta">
+                <span class="assignee">requested by ${escapeHtml(shortWebid(requested))}</span>
+              </div>
+              <div class="actions">
+                <button data-act="approve">Approve</button>
+                <button class="secondary" data-act="decline">Decline</button>
+              </div>`;
+            li.querySelector('[data-act="approve"]').addEventListener('click', async () => {
+              await callSkill('approveSubtaskRequest', { requestId: r.id });
+              await refresh();
+            });
+            li.querySelector('[data-act="decline"]').addEventListener('click', async () => {
+              const note = prompt('Decline reason (optional):', '');
+              await callSkill('declineSubtaskRequest', { requestId: r.id, note: note ?? undefined });
+              await refresh();
+            });
+            rl.appendChild(li);
+          }
+        }
+      }
+
+      // Settings dump.
+      const sl = document.getElementById('settings-list');
+      sl.innerHTML = '';
+      function row(k, v) {
+        const dt = document.createElement('dt');
+        const dd = document.createElement('dd');
+        dt.textContent = k;
+        dd.textContent = v;
+        sl.append(dt, dd);
+      }
+      row('crewId',       crew.crewId);
+      row('kind',         crew.kind);
+      row('default approval', crew.dodPolicy?.defaultApproval ?? 'self-mark');
+      row('subtasksAdminApprovalDepth', String(crew.subtasksAdminApprovalDepth ?? 3));
+      row('member count', String((crew.members ?? []).length));
+
+      // Stats — counters + latencies.
+      const stats = await callSkill('getMetrics').catch(() => ({ snapshot: {} }));
+      const counters = stats.snapshot?.counters ?? {};
+      const latencies = stats.snapshot?.latencies ?? {};
+      const cb = document.querySelector('#counters-table tbody');
+      cb.innerHTML = '';
+      const counterNames = Object.keys(counters).sort();
+      if (counterNames.length === 0) {
+        cb.innerHTML = '<tr><td colspan="3" class="empty" style="color:var(--muted);font-style:italic">No events recorded yet.</td></tr>';
+      }
+      for (const name of counterNames) {
+        const tr = document.createElement('tr');
+        const c = counters[name];
+        const last = c.lastAt ? new Date(c.lastAt).toLocaleTimeString() : '—';
+        tr.innerHTML = `<td>${escapeHtml(name)}</td><td style="text-align:right">${c.count}</td><td style="text-align:right;color:var(--muted)">${escapeHtml(last)}</td>`;
+        cb.appendChild(tr);
+      }
+      const lb = document.querySelector('#latencies-table tbody');
+      lb.innerHTML = '';
+      const latencyNames = Object.keys(latencies).sort();
+      if (latencyNames.length === 0) {
+        lb.innerHTML = '<tr><td colspan="4" class="empty" style="color:var(--muted);font-style:italic">No latency samples yet.</td></tr>';
+      }
+      for (const name of latencyNames) {
+        const l = latencies[name];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(name)}</td><td style="text-align:right">${l.count}</td><td style="text-align:right">${l.p50}</td><td style="text-align:right">${l.p90}</td>`;
+        lb.appendChild(tr);
+      }
+
+      // V1.5 — custom roles (admin only).
+      if (role === 'admin') {
+        const sec = document.getElementById('customroles');
+        sec.hidden = false;
+        const rolesRes = await callSkill('listKnownRoles').catch(() => ({ roles: [] }));
+        const tbody = document.querySelector('#customroles-table tbody');
+        tbody.innerHTML = '';
+        for (const r of rolesRes.roles ?? []) {
+          const tr = document.createElement('tr');
+          const isStd = r.source === 'standard';
+          const removeBtn = isStd ? '<span class="role-chip">standard</span>' :
+            '<button class="secondary" data-act="remove" data-id="' + escapeHtml(r.id) + '">Remove</button>';
+          tr.innerHTML = `
+            <td>${escapeHtml(r.id)}</td>
+            <td style="text-align:right">${r.rank ?? '?'}</td>
+            <td><span class="role-chip">${escapeHtml(r.source ?? 'unknown')}</span></td>
+            <td style="text-align:right">${removeBtn}</td>`;
+          const rmBtn = tr.querySelector('button[data-act="remove"]');
+          if (rmBtn) {
+            rmBtn.addEventListener('click', async () => {
+              if (!confirm(`Remove custom role "${r.id}"? Members holding it will need to be re-assigned a different role.`)) return;
+              const res = await callSkill('unregisterCrewCustomRole', { roleId: r.id });
+              if (res.error) alert(`Error: ${res.error}`);
+              await refresh();
+            });
+          }
+          tbody.appendChild(tr);
+        }
+
+        const form = document.getElementById('customrole-add');
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          const id   = document.getElementById('customrole-id').value.trim();
+          const rank = Number(document.getElementById('customrole-rank').value);
+          if (!id || !Number.isFinite(rank)) return;
+          const res = await callSkill('registerCrewCustomRole', { roleId: id, rank });
+          if (res.error) {
+            alert(`Error: ${res.error}`);
+            return;
+          }
+          form.reset();
+          await refresh();
+        };
+      }
+
+      // V1.5 — bot bindings (admin only).
+      if (role === 'admin') {
+        const sec = document.getElementById('botbindings');
+        sec.hidden = false;
+        const bbRes = await callSkill('getBotChatBindings').catch(() => ({ items: [] }));
+        const tbody = document.querySelector('#botbindings-table tbody');
+        tbody.innerHTML = '';
+        const items = bbRes.items ?? [];
+        const capTokenAvailable = !!bbRes.capTokenAvailable;
+        if (items.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty" style="color:var(--muted);font-style:italic">No bindings yet. Add one below.</td></tr>';
+        }
+        for (const b of items) {
+          const tr = document.createElement('tr');
+          const expires = b.expiresAt
+            ? new Date(b.expiresAt).toLocaleDateString() + ' (' +
+              Math.max(0, Math.round((b.expiresAt - Date.now()) / 86_400_000)) + ' d)'
+            : '—';
+          let modeChip;
+          if (b.mode === 'cap-token') modeChip = '<span class="role-chip" title="Cap-token mode (cryptographically verified)">cap-token</span>';
+          else if (b.mode === 'expired') modeChip = '<span class="role-chip" style="background:#fdd" title="Token expired — re-issue">expired</span>';
+          else modeChip = '<span class="role-chip" title="Trust-map mode (admin assertion only)">trust</span>';
+
+          let actions = '';
+          if (capTokenAvailable && (b.mode === 'trust' || b.mode === 'expired')) {
+            actions += `<button data-act="issue" data-chatid="${escapeHtml(b.chatId)}" title="Issue cap-token (30 d)">Issue token</button> `;
+          }
+          if (b.mode === 'cap-token' || b.mode === 'expired') {
+            actions += `<button class="secondary" data-act="revoke" data-chatid="${escapeHtml(b.chatId)}">Revoke</button> `;
+          }
+          actions += `<button class="secondary" data-act="remove" data-chatid="${escapeHtml(b.chatId)}">Remove</button>`;
+
+          tr.innerHTML = `
+            <td><code>${escapeHtml(b.chatId)}</code></td>
+            <td>${escapeHtml(b.webid)}</td>
+            <td>${modeChip}</td>
+            <td style="color:var(--muted);font-size:0.85rem">${escapeHtml(expires)}</td>
+            <td style="text-align:right">${actions}</td>`;
+
+          tr.querySelector('button[data-act="remove"]').addEventListener('click', async () => {
+            if (!confirm(`Remove binding for chatId ${b.chatId}?`)) return;
+            const res = await callSkill('removeBotChatBinding', { chatId: b.chatId });
+            if (res.error) alert(`Error: ${res.error}`);
+            await refresh();
+          });
+          const issueBtn = tr.querySelector('button[data-act="issue"]');
+          if (issueBtn) {
+            issueBtn.addEventListener('click', async () => {
+              const ttl = prompt('Token lifetime in days (default 30):', '30');
+              const ttlDays = ttl == null ? 30 : Number(ttl);
+              if (!Number.isFinite(ttlDays) || ttlDays <= 0) return;
+              const res = await callSkill('issueBotToken', { chatId: b.chatId, ttlDays });
+              if (res.error) alert(`Error: ${res.error}`);
+              await refresh();
+            });
+          }
+          const revokeBtn = tr.querySelector('button[data-act="revoke"]');
+          if (revokeBtn) {
+            revokeBtn.addEventListener('click', async () => {
+              if (!confirm(`Revoke cap-token for chatId ${b.chatId}? Binding falls back to trust-map mode.`)) return;
+              const res = await callSkill('revokeBotToken', { chatId: b.chatId });
+              if (res.error) alert(`Error: ${res.error}`);
+              await refresh();
+            });
+          }
+          tbody.appendChild(tr);
+        }
+
+        // Populate the member dropdown.
+        const sel = document.getElementById('botbinding-webid');
+        sel.innerHTML = '';
+        for (const m of crew.members ?? []) {
+          const opt = document.createElement('option');
+          opt.value = m.webid;
+          opt.textContent = `${m.displayName ?? shortWebid(m.webid)} — ${m.webid}`;
+          sel.appendChild(opt);
+        }
+
+        const form = document.getElementById('botbinding-add');
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          const chatId = document.getElementById('botbinding-chatid').value.trim();
+          const webid  = sel.value;
+          if (!chatId || !webid) return;
+          const res = await callSkill('setBotChatBinding', { chatId, webid });
+          if (res.error) {
+            alert(`Error: ${res.error}`);
+            return;
+          }
+          form.reset();
+          await refresh();
+        };
+      }
+
+      // V2.2 — compensation panel (admin OR any paid-pro for own self).
+      {
+        const sec    = document.getElementById('compensation');
+        const toggle = document.getElementById('compensation-toggle');
+        const hint   = document.getElementById('compensation-toggle-hint');
+        const body   = document.getElementById('compensation-body');
+        const monthIn = document.getElementById('compensation-month');
+        const tbody  = document.querySelector('#compensation-table tbody');
+
+        const isAdmin = role === 'admin';
+        const myMember = (crew.members ?? []).find((m) => m?.webid === me);
+        const amPaidPro = !!myMember?.compensated;
+        const enabled  = !!crew.compensation?.enabled;
+
+        if (!isAdmin && !amPaidPro) {
+          // Hide entirely; nothing to show.
+        } else {
+          sec.hidden = false;
+          toggle.checked  = enabled;
+          toggle.disabled = !isAdmin;
+          if (!isAdmin) {
+            hint.hidden = false;
+            hint.textContent = '(Only admins can change this.)';
+          } else hint.hidden = true;
+
+          if (enabled) {
+            body.hidden = false;
+            const today = new Date();
+            const ym = monthIn.value || `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+            monthIn.value = ym;
+            tbody.innerHTML = '';
+            const targets = isAdmin
+              ? (crew.members ?? []).filter((m) => m?.compensated)
+              : [myMember];
+            for (const m of targets) {
+              const r = await callSkill('getCompensation', { memberWebid: m.webid, month: ym }).catch(() => ({ totals: {} }));
+              const t = r?.totals ?? {};
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${escapeHtml(m.displayName ?? shortWebid(m.webid))}</td>
+                <td style="text-align:right">${t.count ?? 0}</td>
+                <td style="text-align:right">${(t.hours ?? 0).toFixed(2)}</td>
+                <td style="text-align:right">${typeof t.amount === 'number' ? t.amount.toFixed(2) + ' ' + (r.currency ?? '') : '—'}</td>`;
+              tbody.appendChild(tr);
+            }
+          } else {
+            body.hidden = true;
+          }
+
+          toggle.onchange = async () => {
+            const want = toggle.checked;
+            const r = await callSkill('setCompensationEnabled', { enabled: want });
+            if (r?.error) { alert(`Error: ${r.error}`); toggle.checked = !want; return; }
+            await refresh();
+          };
+          monthIn.onchange = () => refresh();
+        }
+      }
+
+      // V2.1 — calendar emission panel.
+      {
+        const sec    = document.getElementById('calendar-emission');
+        const toggle = document.getElementById('calendar-emission-toggle');
+        const hint   = document.getElementById('calendar-emission-toggle-hint');
+        const urlRow = document.getElementById('calendar-emission-url-row');
+        const urlIn  = document.getElementById('calendar-emission-url');
+        const offMsg = document.getElementById('calendar-emission-off-state');
+        sec.hidden = false;
+
+        const stat = await callSkill('getCalendarEmissionStatus').catch(() => ({ enabled: false, canToggle: false }));
+        toggle.checked  = !!stat.enabled;
+        toggle.disabled = !stat.canToggle;
+        if (!stat.canToggle) {
+          hint.hidden = false;
+          hint.textContent = '(Only admins or coordinators can change this.)';
+        } else {
+          hint.hidden = true;
+        }
+        if (stat.enabled) {
+          const r = await callSkill('getCalendarEmissionUrl').catch(() => ({ enabled: false }));
+          urlRow.hidden = !r?.url;
+          offMsg.hidden = true;
+          urlIn.value = r?.url ?? '';
+        } else {
+          urlRow.hidden = true;
+          offMsg.hidden = false;
+        }
+
+        toggle.onchange = async () => {
+          const want = toggle.checked;
+          const r = await callSkill('setCalendarEmission', { enabled: want });
+          if (r?.error) {
+            alert(`Error: ${r.error}`);
+            toggle.checked = !want;
+            return;
+          }
+          await refresh();
+        };
+      }
+
+      // Cadence editor (admin/coord only).
+      if (role === 'admin' || role === 'coordinator') {
+        const sec = document.getElementById('cadences');
+        sec.hidden = false;
+        const tbody = document.querySelector('#cadences-table tbody');
+        tbody.innerHTML = '';
+        const events = ['missed-deadline', 'task-completed', 'task-submitted', 'task-rejected', 'task-revoked', 'subtask-request'];
+        const cadRes = await callSkill('getCrewCadences');
+        const cadences = cadRes.cadences ?? {};
+        for (const ev of events) {
+          const cur = cadences[ev] ?? {};
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${escapeHtml(ev)}</td>
+            <td>
+              <select data-ev="${escapeHtml(ev)}" data-key="channel">
+                <option value="inbox" ${cur.channel === 'inbox' || !cur.channel ? 'selected' : ''}>inbox</option>
+                <option value="silent" ${cur.channel === 'silent' ? 'selected' : ''}>silent</option>
+              </select>
+            </td>
+            <td><input type="checkbox" data-ev="${escapeHtml(ev)}" data-key="suppressed" ${cur.suppressed ? 'checked' : ''}></td>
+            <td></td>`;
+          tbody.appendChild(tr);
+        }
+        const save = document.createElement('button');
+        save.textContent = 'Save cadence config';
+        save.addEventListener('click', async () => {
+          const next = {};
+          tbody.querySelectorAll('select[data-ev], input[data-ev]').forEach((el) => {
+            const ev = el.dataset.ev;
+            if (!next[ev]) next[ev] = {};
+            const key = el.dataset.key;
+            if (key === 'channel') next[ev].channel = el.value;
+            if (key === 'suppressed') next[ev].suppressed = el.checked;
+          });
+          await callSkill('setCrewCadences', { cadences: next });
+          await refresh();
+        });
+        sec.appendChild(save);
+      }
+    }
+
+    await refresh();
+    mountLive([
+      'item-added', 'item-completed', 'item-removed',
+    ], refresh);
+  </script>
+</body>
+</html>

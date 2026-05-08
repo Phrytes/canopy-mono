@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tasks — Review queue</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/mine.html">My work</a>
+      <a href="/review.html" class="active">Review</a>
+      <a href="/dag.html">DAG</a>
+      <a href="/availability.html">Availability</a>
+      <a href="/crew.html">Crew</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/inbox.html" id="nav-inbox">Inbox</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section id="awaiting">
+      <h2>Awaiting your approval</h2>
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Submitted tasks where you are the designated approver
+        (per the task's <code>approval</code> mode), plus everything
+        if you are admin / coordinator.
+      </p>
+      <ul id="awaiting-list"><li class="empty">Loading…</li></ul>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      callSkill, renderTasks, getActor, getConfig, mountLive, mountInboxBadge,
+      renderV1NotAvailable,
+    } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    const cfg  = await getConfig();
+    const me   = cfg.actor ?? await getActor();
+    const role = cfg.roles?.[me] ?? 'member';
+
+    mountInboxBadge(document.getElementById('nav-inbox'));
+
+    function isApprover(item) {
+      const approval = item.approval ?? 'self-mark';
+      if (role === 'admin' || role === 'coordinator') return true;
+      if (approval === 'creator') return (item.master ?? item.addedBy) === me;
+      if (typeof approval === 'string' && approval.startsWith('webid:')) {
+        return approval.slice('webid:'.length) === me;
+      }
+      return false;
+    }
+
+    const ctx = {
+      me, role,
+      onApprove:  async (id)       => {
+        const r = await callSkill('approveTask', { id });
+        if (r?.error === 'has-open-dependencies') {
+          alert(`Can't approve — ${r.openDeps.length} open sub-task(s): ${r.openDeps.map((x) => x.slice(0, 8)).join(', ')}`);
+        }
+        await refresh();
+      },
+      onReject:   async (id, note) => { await callSkill('rejectTask',  {id, note}); await refresh(); },
+      onRevoke:   async (id, reason) => { await callSkill('revokeTask',{id, reason}); await refresh(); },
+      // V2.7 — admin force-complete on submitted-but-blocked tasks.
+      onForceComplete: async (id, reason) => {
+        const r = await callSkill('forceCompleteTask', { id, reason });
+        if (r?.error) alert(`Force-complete error: ${r.error}`);
+        await refresh();
+      },
+      onProposeSubtask: async (parentTaskId, text) => {
+        const r = await callSkill('proposeSubtask', { parentTaskId, text });
+        if (r?.error) alert(`Couldn't propose: ${r.error}`);
+        else if (r?.queued) alert(`Proposal sent to ${r.assignee.split('/').pop()} — they\'ll see it in their inbox.`);
+        await refresh();
+      },
+    };
+
+    async function refresh() {
+      try {
+        const r = await callSkill('listAwaitingApproval');
+        const items = (r.items ?? []).filter(isApprover);
+        renderTasks(document.getElementById('awaiting-list'), items, ctx);
+      } catch (err) {
+        renderV1NotAvailable(
+          document.getElementById('awaiting-list'),
+          err,
+          'Approver inbox is a V1 feature.',
+        );
+      }
+    }
+
+    await refresh();
+    mountLive([
+      'item-submitted', 'item-completed', 'item-rejected', 'item-revoked',
+    ], refresh);
+  </script>
+</body>
+</html>

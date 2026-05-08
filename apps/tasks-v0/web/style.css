@@ -1,5 +1,6 @@
-/* H4 V0 web UI — minimal styling. Mirrors H5's visual language with
-   task-specific status pills + role-aware controls. */
+/* Tasks V1 web UI — minimal calmness-language styling.
+   V0 baseline + Phase 8 additions: extra status pills, sub-task
+   indentation in DAG view, inbox sheet, crew settings layout. */
 
 :root {
   --fg: #1f2937;
@@ -9,13 +10,23 @@
   --bg: #f9fafb;
   --skill-bg: #e0e7ff;
   --skill-fg: #3730a3;
-  --status-ready-bg:   #d1fae5;
-  --status-ready-fg:   #065f46;
-  --status-waiting-bg: #fef3c7;
-  --status-waiting-fg: #92400e;
-  --status-blocked-bg: #fee2e2;
-  --status-blocked-fg: #991b1b;
+  --status-ready-bg:     #d1fae5;
+  --status-ready-fg:     #065f46;
+  --status-waiting-bg:   #fef3c7;
+  --status-waiting-fg:   #92400e;
+  --status-blocked-bg:   #fee2e2;
+  --status-blocked-fg:   #991b1b;
+  --status-claimed-bg:   #dbeafe;
+  --status-claimed-fg:   #1e40af;
+  --status-submitted-bg: #ede9fe;
+  --status-submitted-fg: #5b21b6;
+  --status-rejected-bg:  #fee2e2;
+  --status-rejected-fg:  #991b1b;
+  --status-complete-bg:  #e5e7eb;
+  --status-complete-fg:  #374151;
   --danger: #dc2626;
+  --badge-bg: #ef4444;
+  --badge-fg: #ffffff;
 }
 
 * { box-sizing: border-box; }
@@ -39,15 +50,25 @@ header {
   top: 0;
   z-index: 10;
 }
-header nav { display: flex; gap: 1rem; flex-grow: 1; }
+header nav { display: flex; gap: 1rem; flex-grow: 1; align-items: center; }
 header nav a {
   color: var(--muted);
   text-decoration: none;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
+  position: relative;
 }
 header nav a.active,
 header nav a:hover { color: var(--accent); background: var(--bg); }
+header nav a .badge {
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  font-size: 0.7rem;
+  border-radius: 999px;
+  padding: 0 0.4rem;
+  margin-left: 0.3rem;
+  font-weight: 600;
+}
 #actor {
   font-size: 0.85rem;
   color: var(--muted);
@@ -76,6 +97,13 @@ section h2 {
   margin: 0 0 0.75rem;
   font-size: 1.1rem;
 }
+section h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 
 form { display: grid; gap: 0.75rem; }
 label { display: grid; gap: 0.25rem; }
@@ -84,6 +112,8 @@ label > span { font-size: 0.85rem; color: var(--muted); }
 input[type="text"],
 input[type="date"],
 input[type="number"],
+input[type="datetime-local"],
+textarea,
 select {
   font: inherit;
   padding: 0.4rem 0.55rem;
@@ -91,7 +121,8 @@ select {
   border-radius: 4px;
   background: white;
 }
-input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+textarea { font-family: inherit; min-height: 4rem; resize: vertical; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
 details {
   border: 1px solid var(--border);
@@ -111,7 +142,9 @@ button {
   cursor: pointer;
 }
 button:hover { filter: brightness(1.05); }
-button.danger { background: var(--danger); }
+button.danger    { background: var(--danger); }
+button.secondary { background: white; color: var(--fg); border: 1px solid var(--border); }
+button.secondary:hover { background: var(--bg); }
 
 ul { list-style: none; padding: 0; margin: 0; }
 li.empty {
@@ -143,9 +176,13 @@ li.item:first-child { border-top: 0; padding-top: 0.25rem; }
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.status-ready   .pill { background: var(--status-ready-bg);   color: var(--status-ready-fg); }
-.status-waiting .pill { background: var(--status-waiting-bg); color: var(--status-waiting-fg); }
-.status-blocked .pill { background: var(--status-blocked-bg); color: var(--status-blocked-fg); }
+.status-ready     .pill { background: var(--status-ready-bg);     color: var(--status-ready-fg); }
+.status-waiting   .pill { background: var(--status-waiting-bg);   color: var(--status-waiting-fg); }
+.status-blocked   .pill { background: var(--status-blocked-bg);   color: var(--status-blocked-fg); }
+.status-claimed   .pill { background: var(--status-claimed-bg);   color: var(--status-claimed-fg); }
+.status-submitted .pill { background: var(--status-submitted-bg); color: var(--status-submitted-fg); }
+.status-rejected  .pill { background: var(--status-rejected-bg);  color: var(--status-rejected-fg); }
+.status-complete  .pill { background: var(--status-complete-bg);  color: var(--status-complete-fg); }
 
 .meta {
   display: flex;
@@ -164,11 +201,22 @@ li.item:first-child { border-top: 0; padding-top: 0.25rem; }
 }
 .assignee { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.78rem; }
 .assignee.unclaimed { font-style: italic; }
-.due { margin-left: auto; }
+.due       { margin-left: auto; }
+.master    { font-size: 0.75rem; color: var(--muted); font-family: ui-monospace, monospace; }
+.role-chip { font-size: 0.7rem; padding: 0 0.4rem; border-radius: 4px; background: var(--skill-bg); color: var(--skill-fg); }
+.dod-block {
+  font-size: 0.85rem;
+  background: var(--bg);
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  border-left: 3px solid var(--accent);
+  white-space: pre-wrap;
+}
 
 .actions {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 .actions button { padding: 0.25rem 0.7rem; font-size: 0.85rem; }
 
@@ -180,3 +228,44 @@ pre {
   overflow-x: auto;
   font-size: 0.85rem;
 }
+
+/* DAG indented tree */
+.tree-node { padding: 0.3rem 0; }
+.tree-node .label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.tree-node .label .text { flex: 1; }
+.tree-children {
+  margin: 0.25rem 0 0.25rem 1rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--border);
+}
+
+/* Inbox entries */
+.inbox-entry {
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 0.3rem;
+}
+.inbox-entry:first-child { border-top: 0; padding-top: 0.25rem; }
+.inbox-entry .when { font-size: 0.75rem; color: var(--muted); }
+.inbox-entry .ev   { font-size: 0.7rem; padding: 0.05rem 0.4rem; border-radius: 4px; background: var(--bg); color: var(--muted); }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
