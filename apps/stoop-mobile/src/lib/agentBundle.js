@@ -20,7 +20,10 @@
  *   { agent, itemStore, members, skillMatch, notifier?, reveals?, muted }
  */
 
-import { createNeighborhoodAgent } from '@canopy-app/stoop';
+import {
+  createNeighborhoodAgent,
+  wireGroupBroadcastMirror,
+} from '@canopy-app/stoop';
 import {
   Agent, AgentConfig, FallbackTable, InternalBus, InternalTransport,
   PeerGraph, RelayTransport, RoutingStrategy,
@@ -116,17 +119,46 @@ export async function buildBundleForGroup({
     itemBackend,
   });
 
-  // Bridge mDNS peer-discovered → SkillMatch.addPeer so when the
-  // other phone advertises itself the SkillMatch subscribes to it
-  // and broadcasts reach.  We add only stable pubkeys (skip BLE MAC
-  // shaped strings — colon-containing — to match createMeshAgent's
-  // convention) and skip self.
+  // FeedScreen / MineScreen / ChatThreadsScreen listen on
+  // `agent.on('item-arrive')` to know when to refresh — but nothing
+  // in the substrate actually emits that event.  Bridge ItemStore's
+  // `item-added` (fired both for local writes and for items the
+  // mirror writes from inbound broadcasts) up to the agent so the
+  // UI re-renders without pull-to-refresh.
+  const _bridgeItemArrive = (item) => {
+    try { bundle.agent.emit?.('item-arrive', item); } catch { /* swallow */ }
+  };
+  bundle.itemStore.on?.('item-added',     _bridgeItemArrive);
+  bundle.itemStore.on?.('item-updated',   _bridgeItemArrive);
+  bundle.itemStore.on?.('item-completed', _bridgeItemArrive);
+
+  // Cross-device post replication.  SkillMatch.broadcast publishes
+  // on the sender's `<group>/requests` pubsub topic; without a
+  // matching subscriber, posts evaporate at the receiver.
+  // wireGroupBroadcastMirror subscribes to each peer's topic and
+  // mirrors inbound broadcasts into our local ItemStore so the Feed
+  // shows them.  Mirror of `apps/stoop/bin/stoop-testbed.js`.
+  const mirror = await wireGroupBroadcastMirror({
+    agent:          bundle.agent,
+    itemStore:      bundle.itemStore,
+    group:          groupId,
+    peers:          (members ?? []).filter(m => m?.pubKey).map(m => ({ pubKey: m.pubKey })),
+    evictionRoster: bundle.evictionRoster ?? null,
+  });
+  bundle.mirror = mirror;
+
+  // Bridge mDNS peer-discovered → SkillMatch.addPeer + mirror.addPeer
+  // so when the other phone advertises itself, both the matchmaking
+  // path AND the broadcast-mirror subscribe to it.  We add only
+  // stable pubkeys (skip BLE MAC shaped strings — colon-containing
+  // — to match createMeshAgent's convention) and skip self.
   const _onAgentPeer = ({ address, pubKey }) => {
     const pk = pubKey ?? address;
     if (!pk || typeof pk !== 'string') return;
     if (pk.includes(':')) return;          // BLE MAC, not a pubkey
     if (pk === meshAgent.address) return;  // self
     try { bundle.skillMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
+    mirror?.addPeer?.(pk).catch(() => { /* swallow — already-added etc. */ });
   };
   meshAgent.on('peer', _onAgentPeer);
 
@@ -165,6 +197,7 @@ export async function buildBundleForGroup({
   // is held inside the InternalTransport instance and goes away with it.
   const stop = async () => {
     try { meshAgent.off('peer', _onAgentPeer);   } catch { /* swallow */ }
+    try { await bundle.mirror?.stop?.();         } catch { /* swallow */ }
     try { await bundle.skillMatch.stop?.();      } catch { /* swallow */ }
     try { await bundle.agent.stop?.();           } catch { /* swallow */ }
   };
@@ -374,9 +407,11 @@ export async function relabelBundleGroup({
     throw new Error('relabelBundleGroup: localActor required');
   }
 
-  // Stop the existing SkillMatch (on `_bootstrap` or whatever the old
-  // group was). Best-effort — failures shouldn't block the transition.
+  // Stop the existing SkillMatch + mirror (on `_bootstrap` or
+  // whatever the old group was). Best-effort — failures shouldn't
+  // block the transition.
   try { await bundle.skillMatch?.stop?.(); } catch { /* swallow */ }
+  try { await bundle.mirror?.stop?.();      } catch { /* swallow */ }
 
   const skillMatch = new SkillMatch({
     agent:      bundle.agent,
@@ -388,7 +423,19 @@ export async function relabelBundleGroup({
   });
   await skillMatch.start();
 
+  // Fresh broadcast-mirror on the new group's `<group>/requests`
+  // topic. Without this, posts continue broadcasting on the new
+  // group but no peer mirrors them locally → empty Feed on phone B.
+  const mirror = await wireGroupBroadcastMirror({
+    agent:          bundle.agent,
+    itemStore:      bundle.itemStore,
+    group:          newGroupId,
+    peers:          peers.filter(p => p?.pubKey).map(p => ({ pubKey: p.pubKey })),
+    evictionRoster: bundle.evictionRoster ?? null,
+  });
+
   bundle.skillMatch = skillMatch;
+  bundle.mirror     = mirror;
 
   // Seed admin role on the relabel path (mirror of buildBundleForGroup).
   // See the JSDoc on the seed in buildBundleForGroup for the keying
