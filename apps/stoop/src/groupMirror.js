@@ -95,17 +95,37 @@ export async function wireGroupBroadcastMirror({
 
   async function addPeer(pubKey) {
     if (!pubKey || pubKey === agent.address) return;
+    // Race-safe dedup: stash an in-flight Promise SYNCHRONOUSLY before
+    // awaiting subscribe. Concurrent callers (e.g. initial-peers loop +
+    // PeerGraph seed + agent.on('peer') listener — all triggered around
+    // bundle bring-up) hit `offs.has(pubKey)` and return immediately,
+    // sharing the original subscription. Without this, each path
+    // raced into `subscribe()` and TWO `agent.on('publish', listener)`
+    // registrations landed; every inbound broadcast fired the mirror
+    // handler twice, racing the open-listOpen dedup → duplicate items.
     if (offs.has(pubKey)) return;
-    const off = await subscribe(agent, pubKey, requestsTopic, (parts) => {
+    const subPromise = subscribe(agent, pubKey, requestsTopic, (parts) => {
       const dp = parts?.find?.((p) => p?.type === 'DataPart');
-      mirror(dp?.data, pubKey).catch(() => { /* swallow — UI will reflect on next post */ });
+      mirror(dp?.data, pubKey).catch(() => { /* swallow — UI reflects on next post */ });
     });
-    offs.set(pubKey, off);
+    offs.set(pubKey, subPromise);
+    try {
+      const off = await subPromise;
+      offs.set(pubKey, off);
+    } catch (err) {
+      offs.delete(pubKey);
+      throw err;
+    }
   }
 
   async function stop() {
     for (const [, off] of offs) {
-      try { await off(); } catch { /* ignore */ }
+      // `off` is either an unsubscribe-fn (resolved) or an in-flight
+      // Promise that resolves to one. Await first; tolerate both.
+      try {
+        const fn = (typeof off === 'function') ? off : await off;
+        if (typeof fn === 'function') await fn();
+      } catch { /* ignore */ }
     }
     offs.clear();
   }
