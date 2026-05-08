@@ -28,8 +28,11 @@ import { attachmentUri, timeAgo } from '../lib/post.js';
 export function PostCard({ item, author, onPress, onPressAttachment }) {
   if (!item) return null;
   const text  = item.text  ?? '';
-  const kind  = item.kind  ?? 'vraag';
+  // Mirrored items only carry `type` (not `kind`) — fall back so
+  // posts coming back via wireGroupBroadcastMirror still tag.
+  const kind  = item.kind ?? item.type ?? 'request';
   const time  = timeAgo(item.createdAt);
+  const badge = _kindBadge(kind);
 
   return (
     <Pressable
@@ -47,7 +50,12 @@ export function PostCard({ item, author, onPress, onPressAttachment }) {
         <View style={styles.headerText}>
           <Text style={styles.handle}>{author?.handle ?? 'anon'}</Text>
           <Text style={styles.meta}>
-            {kind}{time ? ` • ${time}` : ''}
+            {time ?? ''}
+          </Text>
+        </View>
+        <View style={[styles.kindBadge, { backgroundColor: badge.bg }]}>
+          <Text style={[styles.kindBadgeLabel, { color: badge.fg }]}>
+            {badge.label}
           </Text>
         </View>
       </View>
@@ -87,6 +95,21 @@ export function PostCard({ item, author, onPress, onPressAttachment }) {
   );
 }
 
+function _kindBadge(kind) {
+  switch (kind) {
+    case 'vraag': case 'ask':
+      return { label: 'Vraag',  bg: '#FFE6CC', fg: '#A04A00' };
+    case 'aanbod': case 'offer':
+      return { label: 'Aanbod', bg: '#D6F0DC', fg: '#1E6B2B' };
+    case 'lend':
+      return { label: 'Lenen',  bg: '#E0E5FF', fg: '#2E3F90' };
+    case 'report':
+      return { label: 'Melding', bg: '#FFE0E0', fg: '#90262E' };
+    default:
+      return { label: kind ?? '—', bg: COLORS.surfaceMuted, fg: COLORS.textMuted };
+  }
+}
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: COLORS.surface,
@@ -96,9 +119,26 @@ const styles = StyleSheet.create({
     marginVertical:   SPACING.sm,
     borderWidth:     1,
     borderColor:     COLORS.border,
+    // Subtle elevation so cards "lift" — matches modern card UI.
+    shadowColor:   COLORS.shadow ?? '#000',
+    shadowOpacity: 0.05,
+    shadowRadius:  4,
+    shadowOffset:  { width: 0, height: 1 },
+    elevation:     1,
   },
   header: { flexDirection: 'row', alignItems: 'center' },
   headerText: { marginLeft: SPACING.md, flex: 1 },
+  kindBadge: {
+    paddingVertical:   2,
+    paddingHorizontal: SPACING.sm,
+    borderRadius:      RADII.pill,
+    marginLeft:        SPACING.sm,
+  },
+  kindBadgeLabel: {
+    fontSize:   FONT_SIZES.xs,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
   handle: { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.text },
   meta:   { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginTop: 2 },
   body: {
