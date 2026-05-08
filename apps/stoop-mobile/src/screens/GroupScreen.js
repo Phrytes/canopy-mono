@@ -163,15 +163,36 @@ export function GroupScreen() {
     //   2. explicit hello to every PeerGraph entry. mDNS may have
     //      surfaced an addr but the auto-hello never landed; this
     //      re-tries the handshake.
+    //
+    // **Retry loop**: right after app-launch the PeerGraph is empty
+    // because mDNS service-discovery hasn't fired yet (Android NSD
+    // can take 10-30s).  Wait + retry instead of bailing out
+    // immediately — most "0 peers said hello" reports are just
+    // tapping too soon.
     setBusy(true); setError(null); setReprobeReport(null);
     try {
       const a = svc.activeBundle.agent;
-      try { a?.discovery?.gossip?.(); } catch { /* swallow */ }
-      // PeerGraph's enumerator is `all()` — `list()` doesn't exist.
-      const peerEntries = (await a?.peers?.all?.().catch(() => [])) ?? [];
+      const deadlineMs = 15_000;
+      const start = Date.now();
+      let peerEntries = [];
+      while (Date.now() - start < deadlineMs) {
+        try { a?.discovery?.gossip?.(); } catch { /* swallow */ }
+        peerEntries = (await a?.peers?.all?.().catch(() => [])) ?? [];
+        peerEntries = peerEntries.filter(p => p?.pubKey && p.pubKey !== a.address);
+        if (peerEntries.length > 0) break;
+        // Tell the user we're waiting so the screen doesn't look frozen.
+        setReprobeReport(t('group.reprobe_waiting',
+                           'Wachten op mDNS-ontdekking… ({s}s)')
+                         .replace('{s}', String(Math.round((Date.now() - start) / 1000))));
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      if (peerEntries.length === 0) {
+        setReprobeReport(t('group.reprobe_no_peers',
+                           'Geen peers ontdekt na 15s. mDNS bereikt het andere toestel niet — probeer de relay (Settings → Relay-server).'));
+        return;
+      }
       let hellos = 0;
       for (const p of peerEntries) {
-        if (!p?.pubKey || p.pubKey === a.address) continue;
         try { await a.hello?.(p.pubKey); hellos += 1; } catch { /* swallow */ }
       }
       setReprobeReport(t('group.reprobe_done',
