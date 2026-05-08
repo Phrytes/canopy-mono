@@ -13,7 +13,7 @@
  * Throws PolicyDeniedError on any denial; returns { tier, allowed: true } otherwise.
  */
 import { TIER_LEVEL }    from './TrustRegistry.js';
-import { CapabilityToken } from './CapabilityToken.js';
+import { CapabilityToken, skillMatches } from './CapabilityToken.js';
 import { roleRank }        from './Roles.js';
 
 export class PolicyDeniedError extends Error {
@@ -30,6 +30,7 @@ export class PolicyEngine {
   #agentPubKey;   // this agent's pubKey, used to verify token.agentId binding
 
   #groupManager;
+  #isRevoked;
 
   /**
    * @param {object} opts
@@ -37,12 +38,29 @@ export class PolicyEngine {
    * @param {import('../skills/SkillRegistry.js').SkillRegistry} opts.skillRegistry
    * @param {string} [opts.agentPubKey]  — this agent's Ed25519 pubKey (base64url)
    * @param {import('./GroupManager.js').GroupManager} [opts.groupManager]  — D3: enables `requiredRole` checks
+   * @param {(tokenId: string) => boolean | Promise<boolean>} [opts.isRevoked]
+   *   Optional issuer-side revocation check (V1.5). When supplied,
+   *   `checkInbound` calls it after the token's signature/expiry/
+   *   subject/skill/issuer-trust checks pass; if it returns truthy
+   *   the token is rejected as `INVALID_TOKEN: revoked`. Lets agents
+   *   maintain a local revocation list independent of the holder's
+   *   `TokenRegistry.revoke` (which only protects the holder side).
    */
-  constructor({ trustRegistry, skillRegistry, agentPubKey = null, groupManager = null }) {
+  constructor({ trustRegistry, skillRegistry, agentPubKey = null, groupManager = null, isRevoked = null }) {
     this.#trustRegistry = trustRegistry;
     this.#skillRegistry = skillRegistry;
     this.#agentPubKey   = agentPubKey;
     this.#groupManager  = groupManager;
+    this.#isRevoked     = typeof isRevoked === 'function' ? isRevoked : null;
+  }
+
+  /**
+   * Replace the revocation-check callback at runtime. Pass `null` to
+   * remove. Useful when the registry that owns the revocation list is
+   * built after the PolicyEngine itself.
+   */
+  setRevocationCheck(fn) {
+    this.#isRevoked = typeof fn === 'function' ? fn : null;
   }
 
   /**
@@ -161,8 +179,9 @@ export class PolicyEngine {
         );
       }
 
-      // Skill must match (or the token grants the wildcard '*').
-      if (parsed.skill !== '*' && parsed.skill !== skillId) {
+      // Skill must match: exact, wildcard '*', or `prefix.*` pattern.
+      // See `CapabilityToken.skillMatches` for the rules.
+      if (!skillMatches(parsed.skill, skillId)) {
         throw new PolicyDeniedError(
           'INVALID_TOKEN',
           `Token grants skill "${parsed.skill}", not "${skillId}"`,
@@ -177,6 +196,17 @@ export class PolicyEngine {
           'INVALID_TOKEN',
           `Token issuer "${parsed.issuer.slice(0, 12)}…" is not trusted (tier: ${issuerTier})`,
         );
+      }
+
+      // V1.5 — issuer-side revocation list (optional). Catches "I
+      // revoked this token I issued" before the handler runs, even
+      // when the holder still has it stored locally.
+      if (this.#isRevoked) {
+        let revoked = false;
+        try { revoked = await this.#isRevoked(parsed.id); } catch { revoked = false; }
+        if (revoked) {
+          throw new PolicyDeniedError('INVALID_TOKEN', 'Token has been revoked');
+        }
       }
 
       return { tier, allowed: true };

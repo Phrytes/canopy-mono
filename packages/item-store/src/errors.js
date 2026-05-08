@@ -61,3 +61,40 @@ export class InvalidLifecycleError extends Error {
     this.attemptedAction = attemptedAction;
   }
 }
+
+/**
+ * Thrown when a DoD-lifecycle transition is missing a required argument
+ * (e.g. `revoke` without a reason, `reject` without a note).
+ */
+export class MissingArgumentError extends Error {
+  constructor({ itemId, action, argument }) {
+    super(`item-store: ${action} on ${itemId} requires '${argument}'`);
+    this.name = 'MissingArgumentError';
+    this.code = 'MISSING_ARGUMENT';
+    this.itemId = itemId;
+    this.action = action;
+    this.argument = argument;
+  }
+}
+
+/**
+ * V2.7 — thrown by `markComplete` and `approve` when the substrate's
+ * `enforceDependencies` flag is on and the item being closed has at
+ * least one open dependency. Carries the open-dep ids so callers can
+ * render a useful error message ("Can't close — 2 open sub-tasks: …").
+ *
+ * The gate doesn't fire when `enforceDependencies` is off (default,
+ * back-compat). Removed-or-missing deps are treated as satisfied
+ * (don't block forever).
+ */
+export class DependenciesOpenError extends Error {
+  constructor({ itemId, openDeps }) {
+    super(
+      `item-store: cannot close item ${itemId} — ${openDeps.length} open dependencies: ${openDeps.join(', ')}`,
+    );
+    this.name = 'DependenciesOpenError';
+    this.code = 'DEPENDENCIES_OPEN';
+    this.itemId = itemId;
+    this.openDeps = [...openDeps];
+  }
+}

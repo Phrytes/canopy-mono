@@ -7,11 +7,13 @@
  * `ItemStore` constructor JSDoc.
  */
 
-export { ItemStore } from './ItemStore.js';
+export { ItemStore, computeStatus } from './ItemStore.js';
 export {
   ItemNotFoundError,
   PermissionDeniedError,
   ClaimRaceError,
   InvalidLifecycleError,
+  MissingArgumentError,
+  DependenciesOpenError,
 } from './errors.js';
 export { ulid } from './ulid.js';

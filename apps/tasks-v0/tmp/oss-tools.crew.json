@@ -1,0 +1,16 @@
+{
+  "crewId": "oss-tools",
+  "name": "OSS Tools NL",
+  "kind": "project",
+  "members": [
+    { "webid": "https://id.example/anne",  "displayName": "Anne",  "role": "admin" },
+    { "webid": "https://id.example/frits", "displayName": "the author", "role": "coordinator" },
+    { "webid": "https://id.example/kid",   "displayName": "Kid",   "role": "member" }
+  ],
+  "subtasksAdminApprovalDepth": 4,
+  "bot": {
+    "chatBindings": {
+      "<TELEGRAM_BOT_TOKEN>": "https://id.example/anne"
+    }
+  }
+}

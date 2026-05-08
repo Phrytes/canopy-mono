@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tasks — DAG view</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/mine.html">My work</a>
+      <a href="/review.html">Review</a>
+      <a href="/dag.html" class="active">DAG</a>
+      <a href="/availability.html">Availability</a>
+      <a href="/crew.html">Crew</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/inbox.html" id="nav-inbox">Inbox</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section id="dag">
+      <h2>Sub-task hierarchy</h2>
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Read-only tree of every top-level task and its sub-tasks. Click
+        a node to jump to its detail (V1.5 — currently logs the id).
+      </p>
+      <div id="trees"><p class="empty">Loading…</p></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      callSkill, getActor, getConfig, mountLive, mountInboxBadge,
+      lifecycleStatus, escapeHtml, renderV1NotAvailable,
+    } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    const cfg  = await getConfig();
+    mountInboxBadge(document.getElementById('nav-inbox'));
+
+    function statusOf(item) {
+      const life = lifecycleStatus(item);
+      if (life === 'open' || life === 'claimed') return item.status ?? 'ready';
+      return life;
+    }
+
+    function renderNode(node) {
+      const div = document.createElement('div');
+      div.className = `tree-node status-${statusOf(node.item)}`;
+      div.dataset.id = node.item.id;
+
+      const label = document.createElement('div');
+      label.className = 'label';
+      label.innerHTML = `
+        <span class="text">${escapeHtml(node.item.text ?? '')}</span>
+        <span class="status pill">${escapeHtml(statusOf(node.item))}</span>`;
+      label.addEventListener('click', () => {
+        // V1.5 will route to the task detail modal; for now log the id.
+        console.log('clicked task', node.item.id);
+      });
+      div.appendChild(label);
+
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        const wrap = document.createElement('div');
+        wrap.className = 'tree-children';
+        for (const c of node.children) wrap.appendChild(renderNode(c));
+        div.appendChild(wrap);
+      }
+      return div;
+    }
+
+    async function refresh() {
+      try {
+        const r = await callSkill('getDagTree', {});
+        const root = document.getElementById('trees');
+        root.innerHTML = '';
+        const trees = r.trees ?? [];
+        if (trees.length === 0) {
+          root.innerHTML = '<p class="empty">No tasks yet.</p>';
+          return;
+        }
+        for (const t of trees) root.appendChild(renderNode(t));
+      } catch (err) {
+        renderV1NotAvailable(
+          document.getElementById('trees'),
+          err,
+          'DAG view is a V1 feature.',
+        );
+      }
+    }
+
+    await refresh();
+    mountLive([
+      'item-added', 'item-completed', 'item-removed', 'item-claimed',
+      'item-submitted', 'item-rejected', 'item-revoked',
+    ], refresh);
+  </script>
+</body>
+</html>

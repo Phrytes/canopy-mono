@@ -120,12 +120,22 @@ export { StateManager } from './state/StateManager.js';
 // ── Permissions ───────────────────────────────────────────────────────────────
 export { TrustRegistry, TIER_LEVEL } from './permissions/TrustRegistry.js';
 export { PolicyEngine }     from './permissions/PolicyEngine.js';
-export { CapabilityToken }  from './permissions/CapabilityToken.js';
+export { CapabilityToken, skillMatches, skillAttenuates } from './permissions/CapabilityToken.js';
 export { PodCapabilityToken } from './permissions/PodCapabilityToken.js';
 export { TokenRegistry }    from './permissions/TokenRegistry.js';
 export { GroupManager }     from './permissions/GroupManager.js';
 export { verifyGroupProof } from './permissions/groupProofVerify.js';
 export { DataSourcePolicy, DataSourceAccessDeniedError } from './permissions/DataSourcePolicy.js';
+export {
+  ROLES,
+  isStandardRole,
+  roleRank,
+  isKnownRole,
+  registerCustomRole,
+  unregisterCustomRole,
+  canPromote,
+  listKnownRoles,
+} from './permissions/Roles.js';
 
 // ── Routing (Group G) ────────────────────────────────────────────────────────
 export { FallbackTable }                       from './routing/FallbackTable.js';

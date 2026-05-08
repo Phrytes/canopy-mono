@@ -221,6 +221,52 @@ describe('CapabilityToken', () => {
   });
 });
 
+// ── skillMatches / skillAttenuates (V1.5 follow-up A) ────────────────────────
+
+import { skillMatches, skillAttenuates } from '../src/permissions/CapabilityToken.js';
+
+describe('skillMatches', () => {
+  it('exact match', () => {
+    expect(skillMatches('bot.listOpen', 'bot.listOpen')).toBe(true);
+    expect(skillMatches('bot.listOpen', 'bot.claim')).toBe(false);
+  });
+  it('wildcard matches anything', () => {
+    expect(skillMatches('*', 'literally.anything')).toBe(true);
+    expect(skillMatches('*', '')).toBe(true);
+  });
+  it('prefix-star matches its namespace', () => {
+    expect(skillMatches('bot.*', 'bot.listOpen')).toBe(true);
+    expect(skillMatches('bot.*', 'bot.x')).toBe(true);
+    expect(skillMatches('bot.*', 'botanist')).toBe(false);     // no dot
+    expect(skillMatches('bot.*', 'addTask')).toBe(false);
+    expect(skillMatches('bot.*', 'bot.')).toBe(false);          // empty tail
+  });
+  it('rejects malformed patterns/skills', () => {
+    expect(skillMatches(undefined, 'bot.x')).toBe(false);
+    expect(skillMatches('bot.*', undefined)).toBe(false);
+    expect(skillMatches(123, 'bot.x')).toBe(false);
+  });
+});
+
+describe('skillAttenuates', () => {
+  it('wildcard parent allows any child', () => {
+    expect(skillAttenuates('*', '*')).toBe(true);
+    expect(skillAttenuates('*', 'bot.*')).toBe(true);
+    expect(skillAttenuates('*', 'bot.listOpen')).toBe(true);
+  });
+  it('prefix parent allows narrower or equal', () => {
+    expect(skillAttenuates('bot.*', 'bot.*')).toBe(true);
+    expect(skillAttenuates('bot.*', 'bot.listOpen')).toBe(true);
+    expect(skillAttenuates('bot.*', 'addTask')).toBe(false);     // outside namespace
+    expect(skillAttenuates('bot.*', '*')).toBe(false);            // child wider
+  });
+  it('exact parent only matches identical child', () => {
+    expect(skillAttenuates('bot.listOpen', 'bot.listOpen')).toBe(true);
+    expect(skillAttenuates('bot.listOpen', 'bot.claim')).toBe(false);
+    expect(skillAttenuates('bot.listOpen', '*')).toBe(false);
+  });
+});
+
 // ── TokenRegistry ─────────────────────────────────────────────────────────────
 
 describe('TokenRegistry', () => {

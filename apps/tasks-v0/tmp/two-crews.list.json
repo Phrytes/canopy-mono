@@ -1,0 +1,6 @@
+{
+  "crews": [
+    "./oss-tools.crew.json",
+    "./book-club.crew.json"
+  ]
+}

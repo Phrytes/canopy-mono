@@ -32,6 +32,14 @@ export class InternalTransport extends Transport {
     this.#listener = (envelope) => this._receive(envelope);
   }
 
+  /**
+   * Expose the shared bus so callers that want to spin up additional
+   * in-process agents (e.g. cap-token-bound bot agents in Tasks V1.5)
+   * can attach a fresh InternalTransport without threading the bus
+   * through multiple call layers.
+   */
+  get bus() { return this.#bus; }
+
   async connect() {
     this.#bus.on(`msg:${this.address}`, this.#listener);
     this.emit('connect', { address: this.address });

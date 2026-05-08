@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title data-i18n="dashboard.page_title">Tasks — Crews</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/mine.html">My work</a>
+      <a href="/review.html">Review</a>
+      <a href="/dag.html">DAG</a>
+      <a href="/availability.html">Availability</a>
+      <a href="/crew.html">Crew</a>
+      <a href="/crews.html" class="active">Crews</a>
+      <a href="/inbox.html" id="nav-inbox">Inbox</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section>
+      <h2 data-i18n="dashboard.heading">Your crews</h2>
+      <p style="font-size:0.85rem;color:var(--muted)" data-i18n="dashboard.intro">
+        One row per crew you belong to. Counters refresh as tasks change.
+      </p>
+      <table id="crews-table" style="width:100%;border-collapse:collapse;font-size:0.95rem;margin-top:0.6rem">
+        <thead>
+          <tr>
+            <th style="text-align:left">Crew</th>
+            <th style="text-align:right">Open</th>
+            <th style="text-align:right">Overdue</th>
+            <th style="text-align:right">Review</th>
+            <th style="text-align:right">Mine</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="6" class="empty" style="color:var(--muted);font-style:italic">Loading…</td></tr></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      callSkill, getActor, mountLive, mountInboxBadge, escapeHtml, renderV1NotAvailable,
+    } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    mountInboxBadge(document.getElementById('nav-inbox'));
+
+    async function refresh() {
+      const tbody = document.querySelector('#crews-table tbody');
+      let r;
+      try { r = await callSkill('getMyCrews'); }
+      catch (err) {
+        renderV1NotAvailable(tbody, err, 'Cross-crew dashboard is a V2.5 feature.');
+        return;
+      }
+      const crews = r?.crews ?? [];
+      tbody.innerHTML = '';
+      if (crews.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:var(--muted);font-style:italic">You don\'t belong to any crews yet.</td></tr>';
+        return;
+      }
+      for (const c of crews) {
+        const tr = document.createElement('tr');
+        const c1 = c.counts ?? {};
+        tr.innerHTML = `
+          <td>
+            <strong>${escapeHtml(c.name)}</strong>
+            <span class="role-chip" style="margin-left:0.4rem">${escapeHtml(c.kind)}</span>
+          </td>
+          <td style="text-align:right">${c1.open ?? 0}</td>
+          <td style="text-align:right;${(c1.overdue ?? 0) > 0 ? 'color:#c33;font-weight:bold' : ''}">${c1.overdue ?? 0}</td>
+          <td style="text-align:right">${c1.awaitingApproval ?? 0}</td>
+          <td style="text-align:right">${c1.mine ?? 0}</td>
+          <td style="text-align:right">
+            <a href="/?crew=${encodeURIComponent(c.crewId)}" target="_blank" class="role-chip" style="text-decoration:none">Jump in</a>
+          </td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    await refresh();
+    mountLive([
+      'item-added', 'item-completed', 'item-removed',
+    ], refresh);
+  </script>
+</body>
+</html>

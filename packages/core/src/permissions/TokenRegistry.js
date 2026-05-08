@@ -8,7 +8,7 @@
  *   'token:<tokenId>'   → JSON-serialised token
  *   'revoked:<tokenId>' → '1'
  */
-import { CapabilityToken } from './CapabilityToken.js';
+import { CapabilityToken, skillMatches } from './CapabilityToken.js';
 
 export class TokenRegistry {
   #vault;
@@ -39,7 +39,7 @@ export class TokenRegistry {
       if (t.isExpired) continue;
       if (await this.isRevoked(t.id)) continue;
       if (t.agentId !== agentId) continue;
-      if (t.skill !== '*' && t.skill !== skill) continue;
+      if (!skillMatches(t.skill, skill)) continue;
       if (!best || t.expiresAt > best.expiresAt) best = t;
     }
     return best;
