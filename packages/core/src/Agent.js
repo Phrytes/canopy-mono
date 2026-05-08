@@ -274,6 +274,16 @@ export class Agent extends Emitter {
    * @returns {Promise<import('./transport/Transport.js').Transport>}
    */
   async transportFor(peerId, opts = {}) {
+    // Self-loopback: never route a self-addressed envelope through
+    // a remote transport (mDNS / relay / NKN / etc.).  Without this,
+    // RoutingStrategy can pick the relay (its default canReach()
+    // returns true) and `agent.invoke(self, ...)` makes a wire
+    // round-trip just to call its own skill — visibly slow + prone
+    // to timeouts when the relay is congested.  The primary slot is
+    // always self-loop-capable (InternalTransport on mobile,
+    // OfflineTransport in mesh-demo's mDNS-only path, etc.).
+    if (peerId === this.#transport.address) return this.#transport;
+
     if (this.#routing && this.#transports.size > 1) {
       const result = await this.#routing.selectTransport(peerId, opts);
       if (result?.transport) return result.transport;
@@ -291,6 +301,11 @@ export class Agent extends Emitter {
    * @returns {Promise<{ name: string, transport: import('./transport/Transport.js').Transport }>}
    */
   async routeFor(peerId, opts = {}) {
+    // Same self-loopback short-circuit as transportFor().
+    if (peerId === this.#transport.address) {
+      return { name: 'default', transport: this.#transport };
+    }
+
     if (this.#routing && this.#transports.size > 1) {
       const result = await this.#routing.selectTransport(peerId, opts);
       if (result?.transport) return result;
