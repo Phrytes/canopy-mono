@@ -150,8 +150,15 @@ export class SkillMatch {
       throw new TypeError('SkillMatch.addPeer: peer.pubKey (string) required');
     }
     if (peer.pubKey === this.#agent.address) return;     // never subscribe to self
-    if (this.#peers.has(peer.pubKey)) return;
-    this.#peers.set(peer.pubKey, { pubKey: peer.pubKey });
+    // Roster — idempotent.
+    if (!this.#peers.has(peer.pubKey)) {
+      this.#peers.set(peer.pubKey, { pubKey: peer.pubKey });
+    }
+    // Subscribe attempt — fire on EVERY addPeer (not only the first)
+    // so a re-add via agent.on('peer') after hello completes retries
+    // a subscribe that failed during start() because the peer wasn't
+    // hello'd yet.  `#subscribeToPeer` is idempotent via the
+    // `#inboundOffs.has` gate inside.
     if (this.#started) this.#subscribeToPeer(peer.pubKey).catch(() => {});
   }
 
@@ -182,8 +189,10 @@ export class SkillMatch {
     }
     if (peer.pubKey === this.#agent.address) return;
     if (this.#peers.has(peer.pubKey)) return;          // group peers shadow extras
-    if (this.#extraAudience.has(peer.pubKey)) return;
-    this.#extraAudience.set(peer.pubKey, { pubKey: peer.pubKey });
+    if (!this.#extraAudience.has(peer.pubKey)) {
+      this.#extraAudience.set(peer.pubKey, { pubKey: peer.pubKey });
+    }
+    // Same retry-aware re-subscribe as addPeer — see its comment.
     if (this.#started) this.#subscribeToPeer(peer.pubKey).catch(() => {});
   }
 
@@ -200,13 +209,21 @@ export class SkillMatch {
   async start() {
     if (this.#started) return;
     this.#started = true;
+    // Per-peer subscribe is best-effort: a peer in the roster whose
+    // pubKey hasn't been hello'd yet (common after PeerGraph-seeded
+    // bundle bring-up — entries are addresses we've SEEN advertise
+    // via mDNS / relay, but the hello handshake may not have
+    // completed) will be rejected by the SecurityLayer with
+    // "no pubkey registered for recipient … send hi first".  We
+    // swallow per-peer; agent.on('peer') will re-add + subscribe
+    // them once hello lands.  Without this, one un-hello'd peer
+    // aborts the entire start() → buildGroupState fails → Stoop's
+    // ServiceContext can't bring the bundle up.
     for (const pubKey of this.#peers.keys()) {
-      await this.#subscribeToPeer(pubKey);
+      try { await this.#subscribeToPeer(pubKey); } catch { /* swallow per-peer */ }
     }
-    // Phase 40.20: also subscribe to extra-audience peers so their
-    // broadcasts reach us. Inbound requests from them are tagged.
     for (const pubKey of this.#extraAudience.keys()) {
-      await this.#subscribeToPeer(pubKey);
+      try { await this.#subscribeToPeer(pubKey); } catch { /* swallow per-peer */ }
     }
   }
 
