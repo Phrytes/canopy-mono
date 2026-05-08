@@ -27,6 +27,10 @@ import { genId }  from '../Envelope.js';
  * @param {AbortSignal} [signal]   — abort mid-stream gracefully
  */
 export async function streamOut(agent, peerId, taskId, generator, signal) {
+  // Per-peer routing — `agent.transport` is the primary slot
+  // (InternalTransport on mobile, self-loop only); resolve once
+  // before the loop so every chunk travels via the same transport.
+  const t = await agent.transportFor(peerId);
   try {
     for await (const chunk of generator) {
       if (signal?.aborted) { await generator.return?.(); break; }
@@ -35,11 +39,11 @@ export async function streamOut(agent, peerId, taskId, generator, signal) {
                   : Array.isArray(chunk) ? chunk
                   : Parts.wrap(chunk);
 
-      await agent.transport.sendOneWay(peerId, { type: 'stream-chunk', taskId, parts });
+      await t.sendOneWay(peerId, { type: 'stream-chunk', taskId, parts });
     }
   } finally {
     if (!signal?.aborted) {
-      await agent.transport.sendOneWay(peerId, {
+      await t.sendOneWay(peerId, {
         type: 'stream-end', taskId, parts: [],
       }).catch(() => {});
     }
@@ -128,8 +132,10 @@ export async function streamBidi(agent, peerId, taskId, handler) {
   };
   agent.on('message', onMsg);
 
-  // Notify peer we're starting a bidi stream.
-  await agent.transport.sendOneWay(peerId, {
+  // Notify peer we're starting a bidi stream.  Per-peer routing
+  // (primary slot is self-loop on mobile).
+  const startT = await agent.transportFor(peerId);
+  await startT.sendOneWay(peerId, {
     type: 'bidi-start', taskId: streamId,
   });
 

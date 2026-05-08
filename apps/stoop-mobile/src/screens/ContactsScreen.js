@@ -38,8 +38,13 @@ export function ContactsScreen() {
   useEffect(() => {
     if (!pendingContact || pendingHandled) return;
     setPendingHandled(true);
-    addFromQr.call({ uri: pendingContact })
-      .then(() => refresh())
+    // Skill expects `payload`, not `uri` — it validates
+    // `payload.startsWith('stoop-contact://')` and decodes the rest.
+    addFromQr.call({ payload: pendingContact })
+      .then((r) => {
+        if (r?.error) throw new Error(r.error);
+        return refresh();
+      })
       .catch((err) => setPendingError(err?.message ?? String(err)));
   }, [pendingContact, pendingHandled, addFromQr, refresh]);
 
