@@ -256,6 +256,11 @@ export function ProfileMineScreen() {
               : t('profile.display_name_save', 'Naam opslaan')}
           </Text>
         </Pressable>
+        {savedKey === 'displayName' ? (
+          <Text style={styles.success}>
+            {t('profile.display_name_saved', 'Opgeslagen')}
+          </Text>
+        ) : null}
       </View>
 
       {/* Skills */}
@@ -290,6 +295,10 @@ export function ProfileMineScreen() {
             </Text>
           </Pressable>
         </View>
+        <Text style={styles.hint}>
+          {t('profile.holiday_hint',
+             'Verberg je profiel tijdelijk: buren zien je niet als beschikbare match en push-meldingen pauzeren tot je het weer uitzet.')}
+        </Text>
       </View>
 
       {/* Location */}
