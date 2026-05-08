@@ -70,7 +70,8 @@ describe('H4 V0 web UI smoke', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toMatch(/text\/html/);
     const html = await res.text();
-    expect(html).toContain('H4 — Open tasks');
+    // Phase 8 retitled the V0 page to "Tasks — Workspace".
+    expect(html).toMatch(/Tasks — Workspace|H4 — Open tasks/);
     expect(html).toContain('add-form');
     expect(html).toContain('status-filter');
   });
@@ -78,7 +79,9 @@ describe('H4 V0 web UI smoke', () => {
   it('serves /mine.html', async () => {
     const res = await fetch(`${baseUrl}/mine.html`);
     expect(res.status).toBe(200);
-    expect((await res.text())).toContain('My tasks');
+    // Phase 8 renamed the V0 "My tasks" nav label to "My work" and
+    // added 5 new pages alongside.
+    expect((await res.text())).toContain('My work');
   });
 
   it('serves /app.js', async () => {

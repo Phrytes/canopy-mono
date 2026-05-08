@@ -1,0 +1,159 @@
+/**
+ * Closed-beta privacy-notice content (Tasks V1+V2).
+ *
+ * Mirrors Stoop's `apps/stoop/src/lib/privacyNotice.js` shape:
+ * `{lang: [{heading, body}, ...]}` — apps render each item as a
+ * heading + paragraph block on a /privacy.html page (or in an
+ * onboarding modal).
+ *
+ * Authoring rule: the SAME items appear in every supported
+ * language, in the same order. Translations are hand-authored;
+ * this is the source of truth for both nl + en. When adding an
+ * item, update both.
+ *
+ * Items 1-4 are inherited from Stoop's notice (encryption, relay
+ * surface, abuse-tracing, group governance) — Tasks's network
+ * footprint mostly mirrors Stoop's, so the user-facing language
+ * doesn't need to diverge for those.
+ *
+ * Items 5-6 cover V1-era Tasks-specific pod-data flows:
+ *   - Calendar read stays local (no network freebusy).
+ *   - Pod-data-sharing caution principles (skills, deliverables) —
+ *     defaults explicitly opt-in per crew.
+ *
+ * Items 7-9 added 2026-05-08 for the V2 pod paths:
+ *   - Calendar emission (V2.1) — VEVENT files written to your own pod.
+ *   - Invoicing (V2.2) — paid-pro lines on the crew pod.
+ *   - Availability hints (V2.3) — coarse half-day chips on the crew pod.
+ */
+
+export const PRIVACY_NOTICE = Object.freeze({
+  nl: Object.freeze([
+    {
+      heading: 'Wat is versleuteld',
+      body:    'De inhoud van je berichten wordt versleuteld voordat ze het apparaat verlaten. ' +
+               'De relay-operator (de server die berichten doorgeeft) kan ze niet lezen.',
+    },
+    {
+      heading: 'Wat de relay wel ziet',
+      body:    'De relay weet welke leden online zijn en hoe vaak ze berichten verzenden. ' +
+               'Verkeer-metadata (timing, volume, ontvangers) is niet versleuteld.',
+    },
+    {
+      heading: 'Misbruik en aansprakelijkheid',
+      body:    'Iedere admin van een crew is verantwoordelijk voor wie er lid is. ' +
+               'Bij ernstig misbruik kan een admin een lid verwijderen (of laten verwijderen door de relay-operator). ' +
+               'Tasks heeft geen centrale moderator.',
+    },
+    {
+      heading: 'Hoe groepen beheerd worden',
+      body:    'Een crew is een gesloten groep met expliciete uitnodigingen. ' +
+               'De admin van de crew bepaalt wie lid wordt en welke rol iemand krijgt. ' +
+               'Lidmaatschap kan verlopen of worden ingetrokken.',
+    },
+    {
+      heading: 'Je agenda blijft op je apparaat',
+      body:    'Tasks leest jouw agenda lokaal — een externe import-bridge schrijft .ics-bestanden naar je pod, ' +
+               'maar Tasks deelt die agenda nooit met andere crew-leden. ' +
+               'Je krijgt alleen zelf je conflicten te zien wanneer je een taak claimt.',
+    },
+    {
+      heading: 'Voorzichtig met pod-data delen',
+      body:    'Skills, deliverables en agenda-data zitten op je eigen pod. ' +
+               'Tasks deelt geen van die items automatisch met andere crews; je kiest per crew expliciet wat je deelt. ' +
+               'De ACP\'s van je pod zijn de uiteindelijke verdedigingslinie.',
+    },
+    {
+      heading: 'Agenda-uitvoer (V2.1) — alleen op je eigen pod',
+      body:    'Wanneer een admin "Agenda-koppeling" aanzet, schrijft Tasks een per-lid `.ics`-bestand naar ' +
+               '`<jouw-pod>/tasks/calendars/<crewId>.ics` met je toegewezen + master-taken. ' +
+               'Andere leden zien dit bestand niet — alleen jij abonneert er met je telefoonagenda op. ' +
+               'De URL is niet versleuteld; iedereen die de URL achterhaalt kan meelezen, ' +
+               'dus deel hem alleen met agenda-apps die je vertrouwt.',
+    },
+    {
+      heading: 'Vergoeding-regels (V2.2) — alleen voor admins en de paid-pro',
+      body:    'In crews met "Vergoeding bijhouden" aan, krijgt elke afgeronde taak van een paid-pro-lid ' +
+               'een regel in `<crew-pod>/tasks/invoicing/<webid>/<jaarmaand>.json`. ' +
+               'De rol-policy beperkt het lezen tot admins en de paid-pro zelf; ' +
+               'andere leden krijgen 403. Het bedrag (uren × tarief) is informatief — Tasks is geen factureerapp.',
+    },
+    {
+      heading: 'Beschikbaarheid-hints (V2.3) — grof, opt-in per crew',
+      body:    'Hints zijn één van vier waarden (`open` / `tight` / `unavailable` / `unknown`) ' +
+               'per (lid, ISO-week, halve dag), opgeslagen in `<crew-pod>/tasks/availability/<webid>.json`. ' +
+               'Coördinatoren zien jouw chips wanneer ze een toewijzing kiezen — alleen wanneer je per-crew opt-in hebt aangezet. ' +
+               'Niet-opted-in leden zijn niet te onderscheiden van opted-in-maar-leeg (beide tonen `unknown`).',
+    },
+  ]),
+
+  en: Object.freeze([
+    {
+      heading: 'What is encrypted',
+      body:    'Message content is encrypted before it leaves your device. ' +
+               'The relay operator (the server that forwards messages) cannot read it.',
+    },
+    {
+      heading: 'What the relay does see',
+      body:    'The relay knows which members are online and how often they send messages. ' +
+               'Traffic metadata (timing, volume, recipients) is not encrypted.',
+    },
+    {
+      heading: 'Abuse and accountability',
+      body:    'Each crew admin is responsible for who is a member. ' +
+               'In serious abuse cases, an admin can remove a member (or have the relay operator do so). ' +
+               'Tasks has no central moderator.',
+    },
+    {
+      heading: 'How groups are managed',
+      body:    'A crew is a closed group with explicit invitations. ' +
+               'The admin chooses who joins and what role they get. ' +
+               'Memberships can expire or be revoked.',
+    },
+    {
+      heading: 'Your calendar stays on your device',
+      body:    'Tasks reads your calendar locally — an external import-bridge writes .ics files to your pod, ' +
+               'but Tasks never shares that calendar with other crew members. ' +
+               'You only see your own conflicts when claiming a task.',
+    },
+    {
+      heading: 'Be careful sharing pod data',
+      body:    'Skills, deliverables, and calendar data live on your own pod. ' +
+               'Tasks does not automatically share any of those items with other crews; you opt-in per crew. ' +
+               'Your pod\'s ACPs are the ultimate line of defence.',
+    },
+    {
+      heading: 'Calendar emission (V2.1) — only on your own pod',
+      body:    'When an admin enables "Calendar sync", Tasks writes a per-member `.ics` file to ' +
+               '`<your-pod>/tasks/calendars/<crewId>.ics` containing your assigned + mastered tasks. ' +
+               'Other members never see this file — only you subscribe to it from your phone calendar. ' +
+               'The URL is not authenticated; anyone who learns the URL can read along, ' +
+               'so share it only with calendar apps you trust.',
+    },
+    {
+      heading: 'Invoicing lines (V2.2) — admins and the paid-pro only',
+      body:    'In crews with "Track compensation" enabled, every task a paid-pro member completes ' +
+               'gets a row in `<crew-pod>/tasks/invoicing/<webid>/<isoMonth>.json`. ' +
+               'The role policy restricts reads to admins and the paid-pro themselves; ' +
+               'other members get a 403. The amount (hours × rate) is informational — Tasks is not a billing app.',
+    },
+    {
+      heading: 'Availability hints (V2.3) — coarse, per-crew opt-in',
+      body:    'Hints are one of four values (`open` / `tight` / `unavailable` / `unknown`) ' +
+               'per (member, ISO-week, half-day), stored at `<crew-pod>/tasks/availability/<webid>.json`. ' +
+               'Coordinators see your chips when picking an assignee — only when you\'ve opted in for that crew. ' +
+               'Members who haven\'t opted in are indistinguishable from opted-in-but-empty (both show `unknown`).',
+    },
+  ]),
+});
+
+/**
+ * Return the localised privacy notice. Falls back to `en` when an
+ * unknown language is requested.
+ *
+ * @param {string} [lang='en']
+ * @returns {Array<{heading: string, body: string}>}
+ */
+export function privacyNoticeFor(lang = 'en') {
+  return PRIVACY_NOTICE[lang] ?? PRIVACY_NOTICE.en;
+}

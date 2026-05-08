@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title data-i18n="availability.page_title">Tasks — Availability</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .week-grid {
+      display: grid;
+      grid-template-columns: 4rem repeat(2, 1fr);
+      gap: 0.4rem;
+      margin-top: 0.8rem;
+      max-width: 28rem;
+    }
+    .week-grid .lbl {
+      font-size: 0.85rem;
+      align-self: center;
+    }
+    .week-grid button.cell {
+      padding: 0.6rem;
+      border: 1px solid var(--muted, #ccc);
+      border-radius: 4px;
+      background: var(--card, #fff);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .cell.s-open         { background: #c4f7c0; }
+    .cell.s-tight        { background: #fff3a3; }
+    .cell.s-unavailable  { background: #f7c0c0; }
+    .cell.s-unknown      { background: var(--card, #fff); color: var(--muted); font-weight: normal; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/mine.html">My work</a>
+      <a href="/review.html">Review</a>
+      <a href="/dag.html">DAG</a>
+      <a href="/availability.html" class="active">Availability</a>
+      <a href="/crew.html">Crew</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/inbox.html" id="nav-inbox">Inbox</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section>
+      <h2 data-i18n="availability.heading">My week</h2>
+      <p style="font-size:0.85rem;color:var(--muted)" data-i18n="availability.intro">
+        Tap a half-day cell to rotate states. Coordinators see your chips when picking who to assign a task to.
+      </p>
+
+      <div id="opt-in-row" style="margin-top:0.6rem">
+        <label>
+          <input id="opt-in-toggle" type="checkbox">
+          <span data-i18n="availability.opt_in_label">Share my availability with crew coordinators</span>
+        </label>
+      </div>
+
+      <div id="off-state" style="margin-top:0.6rem;font-size:0.9rem;color:var(--muted)" hidden data-i18n="availability.disabled_state">
+        Availability hints are turned off for this crew. An admin can enable them on the Crew page.
+      </div>
+
+      <div id="grid-host" hidden>
+        <label style="font-size:0.85rem;display:block;margin-top:0.6rem">
+          Week:
+          <input id="week-input" type="week" style="margin-left:0.4rem">
+        </label>
+        <div id="grid" class="week-grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      callSkill, getActor, mountInboxBadge, escapeHtml, renderV1NotAvailable,
+    } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    mountInboxBadge(document.getElementById('nav-inbox'));
+
+    const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    const states = ['unknown', 'open', 'tight', 'unavailable'];
+
+    function nextState(s) {
+      const i = states.indexOf(s);
+      return states[(i + 1) % states.length];
+    }
+
+    function isoWeekNow() {
+      const d = new Date();
+      const u = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      const dn = (u.getUTCDay() + 6) % 7;
+      u.setUTCDate(u.getUTCDate() - dn + 3);
+      const yr = new Date(Date.UTC(u.getUTCFullYear(), 0, 4));
+      const wn = Math.ceil(((u - yr) / 86_400_000 + 1) / 7);
+      return `${u.getUTCFullYear()}-W${String(wn).padStart(2, '0')}`;
+    }
+
+    async function refresh() {
+      let r;
+      try {
+        const wk = document.getElementById('week-input').value || isoWeekNow();
+        document.getElementById('week-input').value = wk;
+        r = await callSkill('getMyAvailability', { week: wk });
+      } catch (err) {
+        renderV1NotAvailable(document.getElementById('grid'), err, 'Availability is a V1.5+ feature.');
+        return;
+      }
+      const enabled = !!r?.enabled;
+      const optedIn = !!r?.optedIn;
+      const week = r?.week ?? isoWeekNow();
+
+      document.getElementById('off-state').hidden = enabled;
+      document.getElementById('opt-in-row').hidden = !enabled;
+      document.getElementById('grid-host').hidden = !(enabled && optedIn);
+
+      document.getElementById('opt-in-toggle').checked = optedIn;
+
+      if (!enabled) return;
+
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+      // Header row
+      const blank = document.createElement('div');
+      grid.appendChild(blank);
+      const am = document.createElement('div');
+      am.className = 'lbl';
+      am.textContent = 'AM';
+      grid.appendChild(am);
+      const pm = document.createElement('div');
+      pm.className = 'lbl';
+      pm.textContent = 'PM';
+      grid.appendChild(pm);
+      // Day rows
+      for (const d of days) {
+        const lbl = document.createElement('div');
+        lbl.className = 'lbl';
+        lbl.textContent = d.toUpperCase();
+        grid.appendChild(lbl);
+        for (const half of ['am', 'pm']) {
+          const cell = document.createElement('button');
+          cell.className = 'cell s-' + (r.grid?.[`${d}-${half}`] ?? 'unknown');
+          cell.textContent = (r.grid?.[`${d}-${half}`] ?? 'unknown').slice(0, 1).toUpperCase();
+          cell.title = `${d} ${half}: ${r.grid?.[`${d}-${half}`] ?? 'unknown'}`;
+          cell.addEventListener('click', async () => {
+            const cur = r.grid?.[`${d}-${half}`] ?? 'unknown';
+            const next = nextState(cur);
+            const res = await callSkill('setMyAvailability', { week, day: d, half, state: next });
+            if (res?.error) { alert(`Error: ${res.error}`); return; }
+            await refresh();
+          });
+          grid.appendChild(cell);
+        }
+      }
+    }
+
+    document.getElementById('opt-in-toggle').addEventListener('change', async (e) => {
+      const want = e.target.checked;
+      const res = await callSkill('setAvailabilityOptIn', { optedIn: want });
+      if (res?.error) { alert(`Error: ${res.error}`); e.target.checked = !want; return; }
+      await refresh();
+    });
+    document.getElementById('week-input').addEventListener('change', refresh);
+
+    await refresh();
+  </script>
+</body>
+</html>

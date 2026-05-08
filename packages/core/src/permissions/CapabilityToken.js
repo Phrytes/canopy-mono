@@ -108,7 +108,7 @@ export class CapabilityToken {
     for (let i = 1; i < tokens.length; i++) {
       const parent = tokens[i - 1] instanceof CapabilityToken ? tokens[i-1].toJSON() : tokens[i-1];
       const child  = tokens[i]     instanceof CapabilityToken ? tokens[i].toJSON()   : tokens[i];
-      if (parent.skill !== '*' && child.skill !== parent.skill) return false;
+      if (!skillAttenuates(parent.skill, child.skill)) return false;
       if (child.expiresAt > parent.expiresAt)                   return false;
     }
     return true;
@@ -119,6 +119,53 @@ export class CapabilityToken {
   static fromJSON(obj) {
     return new CapabilityToken(typeof obj === 'string' ? JSON.parse(obj) : obj);
   }
+}
+
+/**
+ * Match a token's `skill` field against a concrete skill id.
+ *
+ * Three pattern shapes are supported:
+ *   - `'*'`           — wildcard, matches every skill
+ *   - `'<exact-id>'`  — must equal the skill id
+ *   - `'<prefix>.*'`  — matches any skill id that starts with `<prefix>.`
+ *                      (V1.5 follow-up A — added to scope cap-token-bound
+ *                       bot agents to the `bot.*` surface only).
+ *
+ * Returns `false` for any other shape; callers should treat unknown
+ * patterns as "no match" so a malformed token can never widen access.
+ */
+export function skillMatches(pattern, skillId) {
+  if (typeof pattern !== 'string' || typeof skillId !== 'string') return false;
+  if (pattern === '*') return true;
+  if (pattern === skillId) return true;
+  if (pattern.endsWith('.*')) {
+    const prefix = pattern.slice(0, -1);          // 'bot.' from 'bot.*'
+    return skillId.startsWith(prefix) && skillId.length > prefix.length;
+  }
+  return false;
+}
+
+/**
+ * Test whether `child` is equal-or-narrower than `parent` for chain
+ * attenuation. Used by `verifyChain`. Rules:
+ *   - parent `'*'`        → any child
+ *   - parent `'p.*'`      → child `'p.*'` OR child `'p.x'`
+ *   - parent `'p.x'`      → child must equal `'p.x'`
+ */
+export function skillAttenuates(parent, child) {
+  if (parent === '*') return true;
+  if (parent === child) return true;
+  if (typeof parent !== 'string' || typeof child !== 'string') return false;
+  if (parent.endsWith('.*')) {
+    const prefix = parent.slice(0, -1);
+    if (child === parent) return true;             // identical prefixes
+    if (child.endsWith('.*')) {
+      const childPrefix = child.slice(0, -1);
+      return childPrefix.startsWith(prefix);       // narrower or equal prefix
+    }
+    return child.startsWith(prefix) && child.length > prefix.length;
+  }
+  return false;
 }
 
 function _canonical(obj) {

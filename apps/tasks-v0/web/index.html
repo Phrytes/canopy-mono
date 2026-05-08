@@ -2,14 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>H4 — Open tasks</title>
+  <title>Tasks — Workspace</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <header>
     <nav>
-      <a href="/" class="active">All open</a>
-      <a href="/mine.html">My tasks</a>
+      <a href="/" class="active">Workspace</a>
+      <a href="/mine.html">My work</a>
+      <a href="/review.html">Review</a>
+      <a href="/dag.html">DAG</a>
+      <a href="/availability.html">Availability</a>
+      <a href="/crew.html">Crew</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/inbox.html" id="nav-inbox">Inbox</a>
     </nav>
     <div id="actor"></div>
   </header>
@@ -25,6 +31,22 @@
         <details>
           <summary>Optional details</summary>
           <label>
+            <span>Definition of done (markdown OK)</span>
+            <textarea id="add-dod" placeholder="What does &quot;done&quot; look like?"></textarea>
+          </label>
+          <label>
+            <span>Approval mode</span>
+            <select id="add-approval">
+              <option value="self-mark">self-mark (V0 default — assignee marks complete)</option>
+              <option value="creator">creator (the issuer signs off)</option>
+              <option value="webid">designated webid…</option>
+            </select>
+          </label>
+          <label id="add-approver-row" hidden>
+            <span>Approver webid</span>
+            <input id="add-approver" type="text" placeholder="https://id.example/...">
+          </label>
+          <label>
             <span>Required skills (comma-separated)</span>
             <input id="add-skills" type="text" placeholder="e.g. lawnmower, garden">
           </label>
@@ -33,7 +55,7 @@
             <input id="add-deps" type="text" placeholder="ulid1, ulid2">
           </label>
           <label>
-            <span>Due date (YYYY-MM-DD)</span>
+            <span>Due date</span>
             <input id="add-due" type="date">
           </label>
         </details>
@@ -51,6 +73,9 @@
           <option value="ready">ready</option>
           <option value="waiting">waiting</option>
           <option value="blocked">blocked</option>
+          <option value="claimed">claimed</option>
+          <option value="submitted">submitted</option>
+          <option value="rejected">rejected</option>
         </select>
       </label>
       <ul id="task-list"><li class="empty">Loading…</li></ul>
@@ -59,42 +84,91 @@
 
   <script type="module">
     import {
-      callSkill, renderTasks, getActor, mountLive,
+      callSkill, renderTasks, getActor, getConfig, mountLive, mountInboxBadge,
+      lifecycleStatus,
     } from '/app.js';
 
     document.getElementById('actor').textContent = await getActor();
+    const cfg  = await getConfig();
+    const me   = cfg.actor ?? await getActor();
+    const role = cfg.roles?.[me] ?? 'member';
 
-    // Read the agent card to derive `me` (the LocalUiAuth-configured webid)
-    // and a role label. The agent card doesn't expose role; for V0 we
-    // surface the actor URL only and let the role-policy gate report
-    // permission errors when a forbidden action is attempted.
-    const me = await getActor();
-    // Role inference: read tasks-config.json (an extraStaticFiles overlay
-    // surfaced by the launcher) for {actor: webid, role: 'admin' | …}.
-    const role = await fetchRole(me);
+    mountInboxBadge(document.getElementById('nav-inbox'));
 
-    async function fetchRole(actor) {
-      try {
-        const res = await fetch('/tasks-config.json');
-        if (!res.ok) return 'member';
-        const cfg = await res.json();
-        return cfg?.roles?.[actor] ?? 'member';
-      } catch { return 'member'; }
-    }
+    // Wire the approval-mode picker so the webid input shows only
+    // when the user picks "designated webid".
+    const approvalSel = document.getElementById('add-approval');
+    const approverRow = document.getElementById('add-approver-row');
+    approvalSel.addEventListener('change', () => {
+      approverRow.hidden = approvalSel.value !== 'webid';
+    });
 
     async function refresh() {
-      const status = document.getElementById('status-filter').value;
-      const args = status ? { status } : {};
-      const result = await callSkill('listOpen', args);
-      const ul = document.getElementById('task-list');
-      renderTasks(ul, result.items ?? [], {
-        me, role,
-        onClaim:    async (id)        => { await callSkill('claimTask', {id});         await refresh(); },
-        onComplete: async (id)        => { await callSkill('completeTask', {id});      await refresh(); },
-        onReassign: async (id, who)   => { await callSkill('reassignTask', {id, newAssignee: who}); await refresh(); },
-        onRemove:   async (id)        => { await callSkill('removeTask', {id});        await refresh(); },
-      });
+      const wantStatus = document.getElementById('status-filter').value;
+      // listOpen returns DAG status only; filter in client when wantStatus
+      // is a lifecycle one (claimed/submitted/rejected).
+      const result = await callSkill('listOpen', {});
+      let items = (result.items ?? []).filter((it) => it.type !== 'subtask-request');
+      if (wantStatus) {
+        items = items.filter((it) => {
+          const life = lifecycleStatus(it);
+          if (life === wantStatus) return true;
+          // life === 'open' means we should fall back to DAG status
+          if (life === 'open' || life === 'claimed') return it.status === wantStatus || life === wantStatus;
+          return false;
+        });
+      }
+      renderTasks(document.getElementById('task-list'), items, ctx);
     }
+
+    const ctx = {
+      me, role,
+      onClaim:    async (id)       => { await callSkill('claimTask',   {id}); await refresh(); },
+      onComplete: async (id)       => {
+        const r = await callSkill('completeTask', { id });
+        if (r?.error === 'has-open-dependencies') {
+          alert(`Can't close — ${r.openDeps.length} open sub-task(s): ${r.openDeps.map((x) => x.slice(0, 8)).join(', ')}`);
+        }
+        await refresh();
+      },
+      onSubmit:   async (id, args) => { await callSkill('submitTask',  {id, ...args}); await refresh(); },
+      onApprove:  async (id)       => {
+        const r = await callSkill('approveTask', { id });
+        if (r?.error === 'has-open-dependencies') {
+          alert(`Can't approve — ${r.openDeps.length} open sub-task(s): ${r.openDeps.map((x) => x.slice(0, 8)).join(', ')}`);
+        }
+        await refresh();
+      },
+      onReject:   async (id, note) => { await callSkill('rejectTask',  {id, note}); await refresh(); },
+      onRevoke:   async (id, reason) => { await callSkill('revokeTask',{id, reason}); await refresh(); },
+      onReassign: async (id, who)  => { await callSkill('reassignTask',{id, newAssignee: who}); await refresh(); },
+      onRemove:   async (id)       => { await callSkill('removeTask',  {id}); await refresh(); },
+      onAddSubtask: async (parentTaskId, text) => {
+        const r = await callSkill('addSubtask', { parentTaskId, text });
+        if (r.queued) {
+          alert(`Sub-task queued for admin approval (depth ${r.newDepth} > threshold ${r.threshold}).`);
+        } else if (r?.error === 'parent-submitted') {
+          alert(`Parent is in submitted state — use "Propose sub-task" instead (the assignee must consent).`);
+        }
+        await refresh();
+      },
+      // V2.7 — admin force-complete override (audit-logged with mandatory reason).
+      onForceComplete: async (id, reason) => {
+        const r = await callSkill('forceCompleteTask', { id, reason });
+        if (r?.error) alert(`Force-complete error: ${r.error}`);
+        await refresh();
+      },
+      // V2.7 — propose-mode for sub-task add on a submitted parent.
+      onProposeSubtask: async (parentTaskId, text) => {
+        const r = await callSkill('proposeSubtask', { parentTaskId, text });
+        if (r?.error) {
+          alert(`Couldn't propose: ${r.error}`);
+        } else if (r?.queued) {
+          alert(`Proposal sent to ${r.assignee.split('/').pop()} — they\'ll see it in their inbox.`);
+        }
+        await refresh();
+      },
+    };
 
     document.getElementById('status-filter').addEventListener('change', refresh);
 
@@ -104,10 +178,17 @@
       const sk     = document.getElementById('add-skills').value.trim();
       const deps   = document.getElementById('add-deps').value.trim();
       const dueStr = document.getElementById('add-due').value;
+      const dod    = document.getElementById('add-dod').value.trim();
+      const mode   = approvalSel.value;
+      const approverWebid = document.getElementById('add-approver').value.trim();
+
       const args = { type: 'task', text };
       if (sk)   args.requiredSkills = sk.split(',').map(s => s.trim()).filter(Boolean);
       if (deps) args.dependencies   = deps.split(',').map(s => s.trim()).filter(Boolean);
       if (dueStr) args.dueAt = new Date(dueStr).getTime();
+      if (dod) args.definitionOfDone = dod;
+      if (mode === 'creator') args.approval = 'creator';
+      if (mode === 'webid' && approverWebid) args.approval = `webid:${approverWebid}`;
 
       const out = document.getElementById('add-result');
       out.hidden = false;
@@ -116,6 +197,7 @@
         const r = await callSkill('addTask', args);
         out.textContent = `Added: ${r.task.id}`;
         document.getElementById('add-form').reset();
+        approverRow.hidden = true;
         await refresh();
       } catch (err) {
         out.textContent = `Error: ${err.message}`;
@@ -123,7 +205,10 @@
     });
 
     await refresh();
-    mountLive(['item-added', 'item-completed', 'item-removed', 'item-claimed'], refresh);
+    mountLive([
+      'item-added', 'item-completed', 'item-removed', 'item-claimed',
+      'item-submitted', 'item-rejected', 'item-revoked',
+    ], refresh);
   </script>
 </body>
 </html>

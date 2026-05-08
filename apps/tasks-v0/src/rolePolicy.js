@@ -43,6 +43,12 @@ export function buildStandardRolePolicy(roles) {
       const r = get(actor);
       if (r === undefined || r === 'observer') return false;
       if (r === 'admin' || r === 'coordinator') return true;
+      // V2.7 narrow exception: the targetAssignee on a subtask-proposal
+      // closes their own proposal via approve/decline.
+      if (item?.type === 'subtask-proposal'
+          && item?.source?.targetAssignee === actor) {
+        return true;
+      }
       // member + external-volunteer: only complete tasks they're assigned to.
       return item?.assignee === actor;
     },
@@ -60,12 +66,41 @@ export function buildStandardRolePolicy(roles) {
       return r === 'admin' || r === 'coordinator';
     },
 
-    canEditBody: (actor, item) => {
+    canEditBody: (actor, item, patch) => {
       const r = get(actor);
       if (r === undefined || r === 'observer') return false;
       if (r === 'admin' || r === 'coordinator') return true;
       // member: only tasks they added.
-      if (r === 'member') return item?.addedBy === actor;
+      if (r === 'member' && item?.addedBy === actor) return true;
+      // Phase 7 narrow exception: the parent's assignee OR master may
+      // append to `dependencies` ONLY (not edit anything else). This
+      // unblocks the sub-task spawn flow without granting full body-
+      // edit rights. The patch must touch ONLY `dependencies`.
+      if (patch && typeof patch === 'object'
+          && Object.keys(patch).length === 1
+          && Array.isArray(patch.dependencies)) {
+        if (item?.assignee === actor) return true;
+        if ((item?.master ?? item?.addedBy) === actor) return true;
+      }
+      // V2.4 narrow exception: the assignee may set `scheduledAt`
+      // (and `estimateMinutes` if absent) on their own assignment via
+      // the planner's `acceptSchedule` skill. Patch must touch ONLY
+      // these planner fields — keeps the gate tight.
+      if (patch && typeof patch === 'object' && item?.assignee === actor) {
+        const keys = Object.keys(patch);
+        const planner = ['scheduledAt', 'estimateMinutes'];
+        if (keys.length > 0 && keys.every((k) => planner.includes(k))) return true;
+      }
+      // V2.7 narrow exception: the targetAssignee on a subtask-proposal
+      // can edit the proposal's notes (used by declineSubtaskProposal
+      // to record the optional decline note).
+      if (item?.type === 'subtask-proposal'
+          && item?.source?.targetAssignee === actor
+          && patch && typeof patch === 'object'
+          && Object.keys(patch).length === 1
+          && 'notes' in patch) {
+        return true;
+      }
       return false;
     },
 
@@ -82,6 +117,72 @@ export function buildStandardRolePolicy(roles) {
         return r === 'admin' || r === requiredRole;
       }
       return true;
+    },
+
+    // ── DoD-lifecycle gates (Tasks V1, Phase 5) ────────────────────────────
+
+    /**
+     * Submit a claimed item for approval. Default: the assignee
+     * submits. Admins / coordinators can submit on someone's behalf
+     * (rare, but handy for automation-by-coordinator flows).
+     */
+    canSubmit: (actor, item) => {
+      const r = get(actor);
+      if (r === undefined || r === 'observer') return false;
+      if (r === 'admin' || r === 'coordinator') return true;
+      return item?.assignee === actor;
+    },
+
+    /**
+     * Approve a submitted item. Resolves the designated approver from
+     * `item.approval`:
+     *   - `'self-mark'` → no approval needed; admin/coord can still
+     *     force-approve (rarely needed since markComplete works
+     *     directly).
+     *   - `'creator'`   → `addedBy` (or `master`) approves.
+     *   - `'webid:X'`   → X approves.
+     * Admin/coord override regardless of mode.
+     */
+    canApprove: (actor, item) => {
+      const r = get(actor);
+      if (r === undefined || r === 'observer') return false;
+      if (r === 'admin' || r === 'coordinator') return true;
+      const mode = item?.approval ?? 'self-mark';
+      if (mode === 'self-mark') return item?.assignee === actor;
+      if (mode === 'creator') {
+        return item?.master === actor || item?.addedBy === actor;
+      }
+      if (typeof mode === 'string' && mode.startsWith('webid:')) {
+        return mode.slice('webid:'.length) === actor;
+      }
+      return false;
+    },
+
+    /** Reject mirrors approve — same actors are allowed to push back. */
+    canReject: (actor, item) => {
+      const r = get(actor);
+      if (r === undefined || r === 'observer') return false;
+      if (r === 'admin' || r === 'coordinator') return true;
+      const mode = item?.approval ?? 'self-mark';
+      if (mode === 'creator') {
+        return item?.master === actor || item?.addedBy === actor;
+      }
+      if (typeof mode === 'string' && mode.startsWith('webid:')) {
+        return mode.slice('webid:'.length) === actor;
+      }
+      return false;
+    },
+
+    /**
+     * Revoke (yank assignment, reason mandatory). Master-only,
+     * admin/coord override. Members + external-volunteers can ONLY
+     * revoke tasks they themselves master (sub-tasks they spawned).
+     */
+    canRevoke: (actor, item) => {
+      const r = get(actor);
+      if (r === undefined || r === 'observer') return false;
+      if (r === 'admin' || r === 'coordinator') return true;
+      return item?.master === actor;
     },
   };
 }

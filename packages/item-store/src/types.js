@@ -76,6 +76,65 @@
  * @property {string} [_etag]
  *   Per-item version tag for optimistic concurrency.  Substrate sets
  *   on every write; consumers pass it back on `update` for CAS.
+ *
+ * **DoD-lifecycle extension (Tasks V1, 2026-05-08):** the following
+ * fields drive the optional submit/approve/reject/revoke flow.
+ * Items written by V0 callers leave them all absent; their lifecycle
+ * stays the legacy `open → claimed → complete` path.
+ *
+ * @property {string} [definitionOfDone]
+ *   Free text (Markdown OK).  What "done" means for this item.
+ *
+ * @property {ApprovalMode} [approval]
+ *   Default `'self-mark'` (legacy V0 behaviour: `markComplete` flips
+ *   the item to complete).  `'creator'` requires the item author
+ *   (`addedBy`) to approve a `submit`.  ``webid:`${string}` `` names a
+ *   third-party approver.  Substrate stores the value verbatim and
+ *   gates approve/reject on it.
+ *
+ * @property {Deliverable} [deliverable]
+ *   Reference to the artifact submitted on `submit`.  Set by the
+ *   substrate; carries `submittedAt`.
+ *
+ * @property {Array<ReviewLogEntry>} [reviewLog]
+ *   Append-only log of submit / approve / reject / revoke decisions.
+ *   The merge contract is append-only; new entries are concatenated
+ *   in-place during the writing transition.
+ *
+ * @property {string} [master]
+ *   Webid of the task's "master" — the actor allowed to revoke.
+ *   Defaults to `addedBy` on add; defaults to the spawner on
+ *   `addSubtask`.  Admins / coordinators bypass via the role policy.
+ *
+ * @property {string} [parentTaskId]
+ *   When this item is a sub-task, the parent's id.  Apps maintain
+ *   the parent's `dependencies` array in sync — adding a sub-task
+ *   appends to the parent.
+ */
+
+/**
+ * @typedef {'self-mark' | 'creator' | `webid:${string}`} ApprovalMode
+ *
+ * - `'self-mark'`: assignee marks complete via `markComplete`; same
+ *   as V0.  No `submit`/`approve` needed.
+ * - `'creator'`: the item's `addedBy` (or `master`) approves the
+ *   submission.
+ * - `'webid:<who>'`: a designated webid approves.
+ */
+
+/**
+ * @typedef {object} Deliverable
+ * @property {'pod-resource' | 'url' | 'note'} kind
+ * @property {string} ref
+ * @property {number} [submittedAt]
+ */
+
+/**
+ * @typedef {object} ReviewLogEntry
+ * @property {number} at
+ * @property {string} by                                — webid
+ * @property {'submit' | 'approve' | 'reject' | 'revoke'} decision
+ * @property {string} [note]
  */
 
 /**
@@ -149,7 +208,7 @@
  */
 
 /**
- * @typedef {'add' | 'complete' | 'remove' | 'claim' | 'reassign' | 'update'} AuditAction
+ * @typedef {'add' | 'complete' | 'remove' | 'claim' | 'reassign' | 'update' | 'submit' | 'approve' | 'reject' | 'revoke'} AuditAction
  */
 
 /**
@@ -171,6 +230,19 @@
  * @property {(actor: string, item: Item) => boolean}          [canReassign]
  * @property {(actor: string, item: Item, patch: Partial<Item>) => boolean} [canEditBody]
  * @property {(actor: string, item: Item) => boolean}          [canRead]
+ * @property {(actor: string, item: Item) => boolean}          [canSubmit]
+ *   DoD-lifecycle: who may transition `claimed → submitted`.
+ *   Default: assignee.
+ * @property {(actor: string, item: Item) => boolean}          [canApprove]
+ *   DoD-lifecycle: who may transition `submitted → complete`.
+ *   Default: the actor designated by `item.approval` ('creator' →
+ *   `addedBy`/`master`; 'webid:X' → X).
+ * @property {(actor: string, item: Item) => boolean}          [canReject]
+ *   DoD-lifecycle: who may transition `submitted → rejected → claimed`.
+ *   Default: same as canApprove.
+ * @property {(actor: string, item: Item) => boolean}          [canRevoke]
+ *   DoD-lifecycle: who may transition `claimed → open` (master-only,
+ *   with mandatory reason).  Default: `master` or admin/coordinator.
  */
 
 /**
