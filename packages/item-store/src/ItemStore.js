@@ -32,6 +32,8 @@ import {
   ItemNotFoundError,
   PermissionDeniedError,
   InvalidLifecycleError,
+  MissingArgumentError,
+  DependenciesOpenError,
 } from './errors.js';
 
 const NOOP_POLICY = Object.freeze({});
@@ -52,6 +54,9 @@ export class ItemStore extends Emitter {
   /** @type {import('./types.js').RolePolicy} */
   #policy;
 
+  /** @type {boolean} V2.7 — gate close-transitions on open dependencies. */
+  #enforceDependencies;
+
   /**
    * @param {object} args
    * @param {import('@canopy/core').DataSource} args.dataSource
@@ -62,8 +67,16 @@ export class ItemStore extends Emitter {
    *   Trailing '/' is normalised.
    * @param {import('./types.js').RolePolicy} [args.rolePolicy]
    *   Optional gate; default is no-op (everything allowed).
+   * @param {boolean} [args.enforceDependencies=false]
+   *   V2.7 — when `true`, `markComplete` and `approve` reject with
+   *   `DependenciesOpenError` if `item.dependencies[]` contains any
+   *   open (uncompleted, present) entries. Removed-or-missing deps
+   *   are treated as satisfied. Off by default for back-compat;
+   *   apps with DAG semantics opt in (Tasks does, Stoop doesn't).
+   *   The gate is bypassed when `ctx.actionOverride` is supplied
+   *   (force-complete admin path).
    */
-  constructor({ dataSource, rootContainer, rolePolicy }) {
+  constructor({ dataSource, rootContainer, rolePolicy, enforceDependencies = false }) {
     super();
     if (!dataSource || typeof dataSource.read !== 'function') {
       throw new Error('ItemStore: dataSource (core.DataSource) required');
@@ -74,6 +87,7 @@ export class ItemStore extends Emitter {
     this.#source = dataSource;
     this.#root   = rootContainer.endsWith('/') ? rootContainer : rootContainer + '/';
     this.#policy = rolePolicy ?? NOOP_POLICY;
+    this.#enforceDependencies = !!enforceDependencies;
   }
 
   // ── Public API ──────────────────────────────────────────────────────────
@@ -95,9 +109,11 @@ export class ItemStore extends Emitter {
       this.#gate('canAdd', actor, item);
       await this.#writeItem(item);
       await this.#appendAudit({
-        id: ulid(), itemId: item.id, action: 'add',
+        id: ulid(), itemId: item.id,
+        action: ctx.actionOverride ?? 'add',
         actor, actorDisplayName: ctx.actorDisplayName,
         at: item.addedAt,
+        ...(ctx.reason ? { details: { reason: ctx.reason } } : {}),
       });
       persisted.push(item);
       this.emit('item-added', item);
@@ -163,6 +179,11 @@ export class ItemStore extends Emitter {
         continue;
       }
       this.#gate('canComplete', actor, item);
+      // V2.7 — enforce dependencies unless caller supplied an
+      // explicit `actionOverride` (force-complete admin path).
+      if (this.#enforceDependencies && !ctx.actionOverride) {
+        await this._assertDepsClosed(item);
+      }
       const at = Date.now();
       const updated = {
         ...item,
@@ -173,8 +194,10 @@ export class ItemStore extends Emitter {
       };
       await this.#writeItem(updated);
       await this.#appendAudit({
-        id: ulid(), itemId: item.id, action: 'complete',
+        id: ulid(), itemId: item.id,
+        action: ctx.actionOverride ?? 'complete',
         actor, actorDisplayName: ctx.actorDisplayName, at,
+        ...(ctx.reason ? { details: { reason: ctx.reason } } : {}),
       });
       completed.push(updated);
       this.emit('item-completed', updated);
@@ -328,6 +351,278 @@ export class ItemStore extends Emitter {
     return this.#listAudit(filter);
   }
 
+  // ── DoD lifecycle (Tasks V1) ───────────────────────────────────────────────
+
+  /**
+   * Submit a claimed item for approval. The assignee marks it
+   * "klaar wat mij betreft"; the deliverable (optional) carries the
+   * artifact reference. State goes `claimed → submitted`.
+   *
+   * Idempotent on `submitted` only when the same actor re-submits
+   * an updated deliverable; the second submission overwrites the
+   * deliverable + appends another `'submit'` reviewLog entry.
+   *
+   * @param {string} id
+   * @param {{deliverable?: import('./types.js').Deliverable, note?: string}} args
+   * @param {import('./types.js').ActorContext} ctx
+   * @returns {Promise<import('./types.js').Item>}
+   * @fires ItemStore#item-submitted
+   */
+  async submit(id, args, ctx) {
+    const actor = this.#requireActor(ctx);
+    const current = await this.#readItem(id);
+    if (!current) throw new ItemNotFoundError(id);
+    if (current.completedAt) {
+      throw new InvalidLifecycleError({
+        itemId: id, currentState: 'completed', attemptedAction: 'submit',
+      });
+    }
+    const status = computeStatus(current);
+    // Allow:
+    //   - claimed   (first-time submission)
+    //   - submitted (re-submit with an updated deliverable)
+    //   - rejected  (assignee re-works after approver pushed back)
+    if (status !== 'claimed' && status !== 'submitted' && status !== 'rejected') {
+      throw new InvalidLifecycleError({
+        itemId: id, currentState: status, attemptedAction: 'submit',
+      });
+    }
+    this.#gate('canSubmit', actor, current);
+
+    const at = Date.now();
+    const reviewLog = _appendReview(current.reviewLog, {
+      at, by: actor, decision: 'submit', note: args?.note,
+    });
+    const deliverable = args?.deliverable
+      ? { ...args.deliverable, submittedAt: at }
+      : current.deliverable;
+
+    const updated = {
+      ...current,
+      reviewLog,
+      ...(deliverable ? { deliverable } : {}),
+      _etag: ulid(),
+    };
+    await this.#writeItem(updated);
+    await this.#appendAudit({
+      id: ulid(), itemId: id, action: 'submit',
+      actor, actorDisplayName: ctx.actorDisplayName, at,
+      details: args?.note ? { note: args.note } : undefined,
+    });
+    this.emit('item-submitted', updated);
+    return updated;
+  }
+
+  /**
+   * Approve a submitted item. The approver designated by
+   * `item.approval` (or `master` / `addedBy` for `'creator'` mode)
+   * signs off. State goes `submitted → complete` and dependents
+   * become `ready`.
+   *
+   * For `approval: 'self-mark'` items this method is rarely called
+   * — apps use `markComplete` directly. It still works (treats the
+   * item as already-approved-by-its-assignee).
+   *
+   * @param {string} id
+   * @param {{note?: string}} args
+   * @param {import('./types.js').ActorContext} ctx
+   * @returns {Promise<import('./types.js').Item>}
+   * @fires ItemStore#item-completed
+   */
+  async approve(id, args, ctx) {
+    const actor = this.#requireActor(ctx);
+    const current = await this.#readItem(id);
+    if (!current) throw new ItemNotFoundError(id);
+    if (current.completedAt) {
+      throw new InvalidLifecycleError({
+        itemId: id, currentState: 'completed', attemptedAction: 'approve',
+      });
+    }
+    const status = computeStatus(current);
+    if (status !== 'submitted') {
+      throw new InvalidLifecycleError({
+        itemId: id, currentState: status, attemptedAction: 'approve',
+      });
+    }
+    this.#gate('canApprove', actor, current);
+    // V2.7 — enforce dependencies on the approve close-transition too.
+    if (this.#enforceDependencies && !ctx.actionOverride) {
+      await this._assertDepsClosed(current);
+    }
+
+    const at = Date.now();
+    const reviewLog = _appendReview(current.reviewLog, {
+      at, by: actor, decision: 'approve', note: args?.note,
+    });
+    const updated = {
+      ...current,
+      reviewLog,
+      completedAt: at,
+      completedBy: actor,
+      ...(ctx.actorDisplayName ? { completedByDisplayName: ctx.actorDisplayName } : {}),
+      _etag: ulid(),
+    };
+    await this.#writeItem(updated);
+    const auditDetails = {
+      ...(args?.note ? { note: args.note } : {}),
+      ...(ctx.reason ? { reason: ctx.reason } : {}),
+    };
+    await this.#appendAudit({
+      id: ulid(), itemId: id,
+      action: ctx.actionOverride ?? 'approve',
+      actor, actorDisplayName: ctx.actorDisplayName, at,
+      ...(Object.keys(auditDetails).length > 0 ? { details: auditDetails } : {}),
+    });
+    this.emit('item-completed', updated);
+    return updated;
+  }
+
+  /**
+   * Reject a submitted item with a mandatory note. State goes
+   * `submitted → rejected` (which `computeStatus` reports
+   * distinctly from `claimed`); the assignee can re-work and
+   * `submit` again.
+   *
+   * @param {string} id
+   * @param {{note: string}} args
+   * @param {import('./types.js').ActorContext} ctx
+   * @returns {Promise<import('./types.js').Item>}
+   * @fires ItemStore#item-rejected
+   */
+  async reject(id, args, ctx) {
+    const actor = this.#requireActor(ctx);
+    if (!args?.note || typeof args.note !== 'string' || !args.note.trim()) {
+      throw new MissingArgumentError({ itemId: id, action: 'reject', argument: 'note' });
+    }
+    const current = await this.#readItem(id);
+    if (!current) throw new ItemNotFoundError(id);
+    if (current.completedAt) {
+      throw new InvalidLifecycleError({
+        itemId: id, currentState: 'completed', attemptedAction: 'reject',
+      });
+    }
+    const status = computeStatus(current);
+    if (status !== 'submitted') {
+      throw new InvalidLifecycleError({
+        itemId: id, currentState: status, attemptedAction: 'reject',
+      });
+    }
+    this.#gate('canReject', actor, current);
+
+    const at = Date.now();
+    const reviewLog = _appendReview(current.reviewLog, {
+      at, by: actor, decision: 'reject', note: args.note,
+    });
+    const updated = {
+      ...current,
+      reviewLog,
+      _etag: ulid(),
+    };
+    await this.#writeItem(updated);
+    await this.#appendAudit({
+      id: ulid(), itemId: id, action: 'reject',
+      actor, actorDisplayName: ctx.actorDisplayName, at,
+      details: { note: args.note },
+    });
+    this.emit('item-rejected', updated);
+    return updated;
+  }
+
+  /**
+   * Revoke the assignee. Master-only; reason is mandatory. State
+   * goes `claimed → open`. The previous assignee's webid is recorded
+   * in the reviewLog so they can `appeal` (an app-level chat-thread
+   * skill) if surprised.
+   *
+   * `master` is preserved across the revoke.
+   *
+   * @param {string} id
+   * @param {{reason: string}} args
+   * @param {import('./types.js').ActorContext} ctx
+   * @returns {Promise<import('./types.js').Item>}
+   * @fires ItemStore#item-revoked
+   */
+  async revoke(id, args, ctx) {
+    const actor = this.#requireActor(ctx);
+    if (!args?.reason || typeof args.reason !== 'string' || !args.reason.trim()) {
+      throw new MissingArgumentError({ itemId: id, action: 'revoke', argument: 'reason' });
+    }
+    const current = await this.#readItem(id);
+    if (!current) throw new ItemNotFoundError(id);
+    if (current.completedAt) {
+      throw new InvalidLifecycleError({
+        itemId: id, currentState: 'completed', attemptedAction: 'revoke',
+      });
+    }
+    if (!current.assignee) {
+      throw new InvalidLifecycleError({
+        itemId: id, currentState: 'open', attemptedAction: 'revoke',
+      });
+    }
+    this.#gate('canRevoke', actor, current);
+
+    const at = Date.now();
+    const previousAssignee = current.assignee;
+    const reviewLog = _appendReview(current.reviewLog, {
+      at, by: actor, decision: 'revoke', note: args.reason,
+    });
+    const updated = {
+      ...current,
+      reviewLog,
+      _etag: ulid(),
+    };
+    delete updated.assignee;
+    delete updated.claimedAt;
+    // Submitted state is implicitly cleared because computeStatus reads
+    // from reviewLog tail — but a 'revoke' AFTER 'submit' should leave
+    // the item in `open`, not `submitted`. The reviewLog tail is now
+    // 'revoke', so computeStatus returns 'open' as expected.
+    await this.#writeItem(updated);
+    await this.#appendAudit({
+      id: ulid(), itemId: id, action: 'revoke',
+      actor, actorDisplayName: ctx.actorDisplayName, at,
+      details: { reason: args.reason, previousAssignee },
+    });
+    this.emit('item-revoked', { item: updated, previousAssignee, reason: args.reason });
+    return updated;
+  }
+
+  /**
+   * Set or change the approval mode of an existing item. App-level
+   * role-policy gates this (admin / coordinator / addedBy only by
+   * convention). Substrate just enforces value-shape.
+   *
+   * @param {string} id
+   * @param {import('./types.js').ApprovalMode} mode
+   * @param {import('./types.js').ActorContext} ctx
+   * @returns {Promise<import('./types.js').Item>}
+   */
+  async setApprovalMode(id, mode, ctx) {
+    const actor = this.#requireActor(ctx);
+    if (!_isApprovalMode(mode)) {
+      throw new TypeError(`setApprovalMode: invalid mode ${JSON.stringify(mode)}`);
+    }
+    const current = await this.#readItem(id);
+    if (!current) throw new ItemNotFoundError(id);
+    if (current.completedAt) {
+      throw new InvalidLifecycleError({
+        itemId: id, currentState: 'completed', attemptedAction: 'setApprovalMode',
+      });
+    }
+    // Reuse canEditBody for the gate — apps that want a stricter
+    // gate on approval-mode flips can subclass / wrap.
+    this.#gate('canEditBody', actor, current, { approval: mode });
+    const updated = { ...current, approval: mode, _etag: ulid() };
+    await this.#writeItem(updated);
+    await this.#appendAudit({
+      id: ulid(), itemId: id, action: 'update',
+      actor, actorDisplayName: ctx.actorDisplayName, at: Date.now(),
+      details: { fields: ['approval'], approval: mode },
+    });
+    this.emit('item-updated', updated);
+    return updated;
+  }
+
   // ── Storage helpers (DataSource-backed) ─────────────────────────────────
 
   #itemUri(id)  { return `${this.#root}${ITEMS_DIR}/${id}.json`; }
@@ -402,8 +697,14 @@ export class ItemStore extends Emitter {
   // ── Internal helpers ────────────────────────────────────────────────────
 
   #materialise(partial, ctx) {
+    // DoD-lifecycle defaults (Tasks V1):
+    //   - approval defaults to 'self-mark' (same as V0).
+    //   - master defaults to addedBy on top-level adds; an explicit
+    //     `master` in the partial wins (sub-tasks pre-set the spawner).
+    //   - parentTaskId is preserved when supplied.
+    const id = ulid();
     return {
-      id:                   ulid(),
+      id,
       type:                 partial.type,
       text:                 partial.text,
       ...(partial.notes ? { notes: partial.notes } : {}),
@@ -415,6 +716,16 @@ export class ItemStore extends Emitter {
       ...(partial.dueAt !== undefined ? { dueAt: partial.dueAt } : {}),
       ...(partial.visibility ? { visibility: partial.visibility } : {}),
       ...(partial.source ? { source: partial.source } : {}),
+      // DoD-lifecycle additions (all optional, all backward-compatible):
+      ...(partial.definitionOfDone ? { definitionOfDone: partial.definitionOfDone } : {}),
+      ...(partial.approval ? { approval: partial.approval } : {}),
+      ...(partial.parentTaskId ? { parentTaskId: partial.parentTaskId } : {}),
+      // V2 — auto-scheduling slot + estimate. Both optional. Substrate
+      // doesn't interpret them; consumer apps (Tasks V2) read them
+      // for calendar emission, planner, and invoicing rollups.
+      ...(partial.scheduledAt     !== undefined ? { scheduledAt:     partial.scheduledAt }     : {}),
+      ...(partial.estimateMinutes !== undefined ? { estimateMinutes: partial.estimateMinutes } : {}),
+      master: partial.master ?? ctx.actor,
       _etag: ulid(),
     };
   }
@@ -438,6 +749,27 @@ export class ItemStore extends Emitter {
     return ctx.actor;
   }
 
+  /**
+   * V2.7 — walk `item.dependencies[]`, look each up, and throw
+   * `DependenciesOpenError` if any are open (uncompleted).
+   * Removed-or-missing entries are treated as satisfied (don't
+   * block forever).
+   */
+  async _assertDepsClosed(item) {
+    const deps = Array.isArray(item?.dependencies) ? item.dependencies : [];
+    if (deps.length === 0) return;
+    const open = [];
+    for (const depId of deps) {
+      if (typeof depId !== 'string' || !depId) continue;
+      const dep = await this.#readItem(depId);
+      if (!dep) continue;                            // missing → treat as satisfied
+      if (!dep.completedAt) open.push(depId);
+    }
+    if (open.length > 0) {
+      throw new DependenciesOpenError({ itemId: item.id, openDeps: open });
+    }
+  }
+
   #gate(method, actor, item, patch) {
     const fn = this.#policy[method];
     if (typeof fn !== 'function') return;
@@ -456,6 +788,12 @@ export class ItemStore extends Emitter {
       'id', 'addedBy', 'addedByDisplayName', 'addedAt',
       'completedAt', 'completedBy', 'completedByDisplayName',
       'assignee', 'claimedAt',
+      // DoD-lifecycle fields with their own dedicated transitions:
+      'reviewLog',      // append-only via submit/approve/reject/revoke
+      'deliverable',    // set via submit
+      'approval',       // change via setApprovalMode
+      'master',         // (V1: not user-editable; admin override is a future op)
+      'parentTaskId',   // immutable after add
     ];
     for (const f of forbidden) {
       if (f in patch) {
@@ -517,6 +855,60 @@ function resolveFuzzy(items, match) {
   const lower = m.toLowerCase();
   const textHit = items.find((i) => i.text.toLowerCase().includes(lower));
   return textHit ?? null;
+}
+
+// ── DoD-lifecycle helpers (Tasks V1) ────────────────────────────────────────
+
+/**
+ * Compute the lifecycle status of an item from its persisted state.
+ *
+ * Returns one of: `'open' | 'claimed' | 'submitted' | 'rejected' | 'complete'`.
+ *
+ * This is the substrate-level status — it considers only the item's
+ * own fields (no DAG dependency walk; apps layer that on top, e.g.
+ * `apps/tasks-v0/src/dag.js#computeStatus(task, openItems, closedItems)`
+ * which returns `'ready' | 'waiting' | 'blocked'`).
+ *
+ * Rules (in order):
+ *   1. `completedAt` set        → `'complete'`
+ *   2. last reviewLog == submit → `'submitted'`
+ *   3. last reviewLog == reject → `'rejected'`
+ *   4. `assignee` set           → `'claimed'`
+ *   5. otherwise                → `'open'`
+ *
+ * Pure function; no I/O.
+ *
+ * @param {import('./types.js').Item} item
+ * @returns {'open' | 'claimed' | 'submitted' | 'rejected' | 'complete'}
+ */
+export function computeStatus(item) {
+  if (!item || typeof item !== 'object') return 'open';
+  if (item.completedAt) return 'complete';
+  const last = _lastReviewDecision(item.reviewLog);
+  if (last === 'submit') return 'submitted';
+  if (last === 'reject') return 'rejected';
+  if (item.assignee)    return 'claimed';
+  return 'open';
+}
+
+/** Append-only `reviewLog` writer. Returns a NEW array. */
+function _appendReview(prev, entry) {
+  const arr = Array.isArray(prev) ? [...prev] : [];
+  arr.push(entry);
+  return arr;
+}
+
+/** Last decision in the review log, or null. */
+function _lastReviewDecision(reviewLog) {
+  if (!Array.isArray(reviewLog) || reviewLog.length === 0) return null;
+  return reviewLog[reviewLog.length - 1]?.decision ?? null;
+}
+
+/** Validate ApprovalMode shape. */
+function _isApprovalMode(m) {
+  if (typeof m !== 'string') return false;
+  if (m === 'self-mark' || m === 'creator') return true;
+  return m.startsWith('webid:') && m.length > 'webid:'.length;
 }
 
 export { ID_PREFIX_LEN, MIN_PREFIX_LEN };
