@@ -1,19 +1,68 @@
 # H4 — tasks-v0
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, local-store, chat-p2p, identity-resolver, notifier, skill-match}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
 
-Single-household task ledger with DAG dependencies + skill-based
-dispatch + role-aware governance.  Phase C V0 of the substrate-first
-plan; thin composition of L1b/L1d/L1e/L1f/L1h substrates.
+Multi-tenant task ledger with DAG dependencies + skill-based
+dispatch + role-aware governance + DoD-with-approver lifecycle +
+sub-task spawning + in-app inbox + local calendar conflict view +
+per-event observability.
+
+**Status:** V1 (`0.2.0`) shipped 2026-05-08 — `~1100 LOC` of app
+glue + 7-screen workspace UI on top of 7 substrate packages.
+**176/176 tests passing.**
+
+V0 (single-household, no Crew envelope) ships unchanged; V1 is
+additive — `createCrewAgent` wires the V1 surface; the legacy
+`createTasksAgent` keeps working for V0 callers.
 
 ## What's in here
 
-- **`src/Agent.js`** — the composition.  `createTasksAgent({roles, members | pod, ...})` returns `{agent, itemStore, members, notifier, skillMatch}` — apps register the agent's skills via `agent.skills.register(defineSkill(...))` and expose them over A2A via `mountLocalUi(agent)` from `@canopy/agent-ui`. The factory accepts either a hand-built `members: Array` (tests) or a pod-config-backed `pod: {client, configUri, fallback?}` (production — uses `MemberMap.fromPodConfig`).
-- **`src/rolePolicy.js`** — H4's standard 5-role permission table (admin / coordinator / member / observer / external-volunteer).  Plugs into L1b's `RolePolicy` interface.
-- **`src/dag.js`** — DAG resolver.  `computeStatus(task, openItems, closedItems)` returns `'ready' | 'waiting' | 'blocked'`; `detectCycle(task, allTasks)` returns the cycle path or null.
-- **`src/skills/index.js`** — skill handlers (returned as `defineSkill` shapes ready for `agent.skills.register`): `addTask`, `claimTask`, `completeTask`, `reassignTask`, `removeTask`, `listOpen`, `listMine`, `listClaimable`, `resolveMember`.
-- **`web/`** — static HTML/JS for the V0 web UI (`index.html` open-tasks browse + add form with status filter; `mine.html` assigned-to-me + claimable; `app.js` `fetch()`-based A2A client with role-aware controls; `style.css` includes status pills). Served by `mountLocalUi({staticDir})` over the same origin as the A2A endpoints.
-- **`bin/tasks-ui.js`** — CLI launcher: `npm run ui -- --actor <webid> --role <role>` (single-member quick-start) or `npm run ui -- --actor <webid> --config <household.json>` (multi-member). Surfaces `tasks-config.json` to the frontend so the UI knows the actor's role.
+### Composition + envelope
+- **`src/Agent.js`** — V0 factory `createTasksAgent({roles, members | pod, ...})`. Returns `{agent, itemStore, members, notifier, skillMatch, localStore}`. V1 callers usually go through `createCrewAgent` instead.
+- **`src/Crew.js`** — V1 factory `createCrewAgent({crewConfig, localStoreBundle, ...})`. Wires Crew envelope + `MemberMapCache` (auto-persist roster) + `buildOnboardingSkills` (issueInvite/redeemInvite) + `wireChat` (peer chat for the appeal flow) + `Notifier` + `wireIssuerNotifications` + `MetricsTracker`. `crew.kind ∈ household | project | team | friends | maintenance` drives per-kind defaults; `crew.paused` / `crew.archived` flip via `pauseCrew`/`archiveCrew` skills. Exposes `bundle.close()` for clean shutdown.
+
+### Storage + lifecycle helpers
+- **`src/storage/buildBundle.js`** — wraps `local-store.CachingDataSource` for offline-first reads + write-through-on-pod-attach.
+- **`src/storage/settings.js`** — `local-store.createSettingsModule({appId: 'tasks', ...})` bound with the V1 schema (shared: `pushPreferences`/`cadenceOverrides`/`defaultCalendarShared`; device: `pollIntervalMs`/`localModeRoot`).
+- **`src/rolePolicy.js`** — standard 5 roles + Phase 5 DoD gates (`canSubmit`/`canApprove`/`canReject`/`canRevoke`) + Phase 7 narrow exception (assignee/master may append to `dependencies`).
+- **`src/dag.js`** — `computeStatus(task, open, closed) → 'ready' | 'waiting' | 'blocked'` + `detectCycle`.
+- **`src/dag-tree.js`** — `childrenOf` / `treeOf` / `ancestorChain` / `depthOf` / `wouldCreateParentCycle` (sub-task hierarchy).
+
+### Skills (auto-registered per phase)
+- **`src/skills/index.js`** — `addTask` (with paused/archived gate) + `claimTask` / `completeTask` / `reassignTask` / `removeTask` / `listOpen` / `listMine` / `listClaimable` + Phase 5 `submitTask` / `approveTask` / `rejectTask` / `revokeTask` / `setApprovalMode`.
+- **`src/skills/profile.js`** — Phase 3 canonical profile + crew vocab (`getMySkillsFormShape` / `editMySkillsForCrew`).
+- **`src/skills/subtasks.js`** — Phase 7 `addSubtask` + `approveSubtaskRequest` / `declineSubtaskRequest`.
+- **`src/skills/appeal.js`** — Phase 6 `appealTask` (opens chat-p2p thread to master).
+- **`src/skills/inbox.js`** — Phase 8 `listMyInbox` / `inboxBadgeCount` / `clearInboxItem` / `clearInbox`.
+- **`src/skills/workspace.js`** — Phase 8 UI helpers (`getCrewConfig` / `listAwaitingApproval` / `listSubtaskRequests` / `getDagTree` / `listMyMasteredTasks`).
+- **`src/skills/observability.js`** — Phase 9 `getMetrics` / cadence config skills.
+- **`src/skills/crewControls.js`** — Phase 10 `pauseCrew` / `unpauseCrew` / `archiveCrew` / `unarchiveCrew` / `getPrivacyNotice`.
+
+### Notifications + observability
+- **`src/bridges/InAppInboxBridge.js`** — `MessagingBridge` that writes per-recipient notifications to `mem://user/inbox/<id>.json`. Substrate-candidate flagged.
+- **`src/notifications/wireIssuerNotifications.js`** — subscribes itemStore events; routes to per-recipient inbox bridges.
+- **`src/observability/metrics.js`** — `MetricsTracker` over notifier's `UsageMetrics` + bounded latency reservoirs (time-to-claim / submit-to-approval).
+- **`src/observability/cadence.js`** — `resolveCadence({eventType, baseline, crew, user})` (user > crew > baseline).
+- **`src/calendar/iCalReader.js`** — Phase 4 local-only `parseIcsToBusy` + `readMyCalendar`. **No network freebusy skill** — calendar data stays on the user's device.
+
+### Localisation + privacy
+- **`locales/{en,nl}.json`** — `{text, doc}` leaf shape (project convention); ~60 keys per language covering nav, status pills, actions, composer, crew labels, inbox event chips, error codes.
+- **`src/lib/i18n.js`** — `i18next` wrapper with `unwrapLeaves` so callers write `t('common.save')` directly.
+- **`src/lib/privacyNotice.js`** — closed-beta notice content; 6 items in nl + en; surfaced via `getPrivacyNotice` skill + `/privacy.html`.
+
+### Web UI (`web/`)
+Seven screens served by `mountLocalUi({staticDir})` from `@canopy/agent-ui` on `127.0.0.1`:
+- `index.html` — workspace home + V1 add-task composer (DoD + approval-mode picker)
+- `mine.html` — Assigned / I'm master of / Ready to claim + per-user cadence overrides
+- `review.html` — approver inbox
+- `dag.html` — sub-task tree
+- `crew.html` — members + settings + stats + admin cadence config + pending sub-task requests
+- `inbox.html` — notifications with action-button routing (approve/decline/appeal)
+- `privacy.html` — closed-beta privacy notice (en/nl picker)
+Plus shared `app.js` (skill client + `lifecycleStatus` + `mountInboxBadge` + `renderTasks`) and `style.css`.
+
+### CLI
+- **`bin/tasks-ui.js`** — V0 (`--role` / `--config`) and V1 (`--crew <crewconfig.json>`) modes. `--storage-root <path>` enables `core.FileSystemSource`-backed restart-survival.
 
 ## Usage
 
@@ -52,15 +101,41 @@ await ui.close();
 This app composes the following substrate packages
 (see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
 
-| Package | Used for | Why a substrate, not direct SDK |
+| Package | Used for | Notes |
 |---|---|---|
-| `@canopy/item-store` (L1b) | Open/closed tasks with attribution + audit + per-field merge contracts; H4 plugs `buildStandardRolePolicy(roles)` into the substrate's role-policy gate. | Pod write paths + per-field merge are shared with H2/H5/H8. |
-| `@canopy/skill-match` (L1e) | Pubsub-of-skills claim flow when a skill-tagged task is added (post-Phase 4.2: composes a real `core.Agent` + `core.protocol.pubSub`). | Pubsub-of-skills + posture flag is the H5/H4/H8 shared primitive; deleting the per-substrate fork was the entire reason for the refactor. |
-| `@canopy/identity-resolver` (L1h) | webid ↔ Telegram-uid ↔ display-name resolution via `MemberMap`. | Cross-app identity reconciliation. |
-| `@canopy/notifier` (L1f) | Deadline reminders, daily digest (apps wire the cadence). | Scheduling + push channel shared with H2/H5/H8. |
-| `@canopy/agent-ui` (L1d) | `mountLocalUi(bundle.agent)` exposes skills over A2A's standard wire shape on `127.0.0.1`; the post-Phase 3 path replaces the legacy `SkillRouter` + `EventBroadcaster` shown in the Usage example below. | Localhost-A2A dispatch is shared across H4/H5/H7. |
+| `@canopy/item-store` (L1b) | Open/closed tasks with attribution + audit + per-field merge contracts + DoD lifecycle (`submitted`/`rejected` states); plugs `buildStandardRolePolicy(roles)` into the substrate's role-policy gate. | Phase 5 extended the substrate with the DoD lifecycle (used by Tasks V1; Stoop's lend-flow is the second consumer). |
+| `@canopy/skill-match` (L1e) | Pubsub-of-skills claim flow when a skill-tagged task is added; composes a real `core.Agent` + `core.protocol.pubSub`. | Optional in V1 (skillMatch parameter to `createTasksAgent`). |
+| `@canopy/identity-resolver` (L1h) | `MemberMap` + `MemberMapCache` (auto-persist roster) + `buildOnboardingSkills` (issueInvite/redeemInvite) + `TAXONOMY` / `normaliseTag` / `matchesProfile` (skill canonicalisation). | Lifted from Stoop 2026-05-08 (rule of two). |
+| `@canopy/notifier` (L1f) | `Notifier` for scheduled jobs (missed-deadline) + `InMemoryScheduleStore` + `NoopChannel`/`PushChannel` + `UsageMetrics` (Phase 9 counters). | Per-recipient `InAppInboxBridge` channels added at runtime via the shared `channels` map. |
+| `@canopy/agent-ui` (L1d) | `mountLocalUi(bundle.agent)` exposes skills over A2A's standard wire shape on `127.0.0.1`. | Web UI pages are static files in `web/`. |
+| `@canopy/local-store` (NEW) | `CachingDataSource` + `SyncCadence` (offline-first) + `createSettingsModule` (shared/per-device split). | Lifted from Stoop 2026-05-08; `LocalFileSource` is `core.FileSystemSource` reused. |
+| `@canopy/chat-p2p` (NEW) | `wireChat({...})` for the Phase 6 appeal flow (peer-to-peer chat thread between assignee and master). | Lifted from Stoop's `wireChat.js` 2026-05-08. |
 
-H4-specific glue is `src/{rolePolicy,dag,skills,Agent}.js` — ~600 LOC total.
+App-level glue is `~1100 LOC` of skills + bridges + observability +
+crew envelope, none of which duplicate substrate functionality.
+
+## Architecture: ONE `core.Agent` per service-context
+
+Tasks-v0's `createCrewAgent` is currently CLI-shaped (one process =
+one crew). When Tasks gains a mobile / multi-crew shell:
+
+- **Don't** call `createCrewAgent` once per crew — that creates N
+  agents with N transport stacks (mDNS / relay / etc.) under one
+  identity, which is the anti-pattern the project-wide single-agent
+  rule was written to prevent.
+- **Do** build ONE `core.Agent` at the service-context level and
+  layer per-crew state (ItemStore + MemberMap + SkillMatch + bot +
+  bridges, …) onto it via a `buildCrewState({meshAgent, crewConfig,
+  ...})` factory. Skills register on the agent ONCE with a
+  `getBundle` resolver picking the crew from `args.crewId` /
+  topic.
+- Reference implementation: `apps/stoop-mobile`'s `ServiceContext`
+  + `buildGroupState`. Mirror the pattern.
+
+Full propagation plan (file-level deltas Tasks will need):
+[`Project Files/Stoop/single-agent-refactor-2026-05-08.md`](../../Project%20Files/Stoop/single-agent-refactor-2026-05-08.md)
+§ "Tasks-app fix propagation". Project-wide convention:
+[`Project Files/conventions/single-agent.md`](../../Project%20Files/conventions/single-agent.md).
 
 ## Direct SDK use
 
@@ -73,14 +148,14 @@ H4-specific glue is `src/{rolePolicy,dag,skills,Agent}.js` — ~600 LOC total.
 ```bash
 cd apps/tasks-v0
 npm install
-npm test          # 34 tests (24 integration + 10 web smoke)
+npm test          # 176 tests across 13 files
 
 # Run the V0 web UI (single-member admin — fastest to play with):
 npm run ui -- --actor https://id.example/anne --role admin
-# H4 UI ready at http://127.0.0.1:<port>
-# Add a task; it appears with status 'ready'. Claim it from /mine.html.
+# UI ready at http://127.0.0.1:<port>
+# Add a task; claim it from /mine.html.
 
-# Multi-member household via config file:
+# V0 multi-member household via config file:
 cat > household.json <<'EOF'
 {
   "roles":   {
@@ -96,43 +171,119 @@ cat > household.json <<'EOF'
 }
 EOF
 npm run ui -- --actor https://id.example/anne --config ./household.json
+
+# V1 Crew mode (full envelope: DoD lifecycle + sub-tasks + inbox + …):
+cat > oss-tools.crew.json <<'EOF'
+{
+  "crewId": "oss-tools",
+  "name":   "OSS Tools NL",
+  "kind":   "project",
+  "members": [
+    {"webid": "https://id.example/anne",  "displayName": "Anne",  "role": "admin"},
+    {"webid": "https://id.example/frits", "displayName": "the author", "role": "coordinator"},
+    {"webid": "https://id.example/kid",   "displayName": "Kid",   "role": "member"}
+  ],
+  "subtasksAdminApprovalDepth": 4,
+  "dodPolicy": {"defaultApproval": "self-mark"}
+}
+EOF
+npm run ui -- --actor https://id.example/anne --crew ./oss-tools.crew.json
+
+# V1 Crew mode WITH restart-survival via a local FS-backed bundle:
+npm run ui -- \
+  --actor https://id.example/anne \
+  --crew  ./oss-tools.crew.json \
+  --storage-root ./.tasks-data
+# Now the inbox + crew roster + tasks survive `Ctrl-C` + relaunch.
 ```
 
-Skill exposure over A2A is via `mountLocalUi` (post-Phase 3) — see Usage above.
+## V1 design + plan documents
 
-## V0 vs V1+
+- [`Project Files/Tasks App/advice-2026-05-07.md`](../../Project%20Files/Tasks%20App/advice-2026-05-07.md) — design + recommendations.
+- [`Project Files/Tasks App/critique-2026-05-07.md`](../../Project%20Files/Tasks%20App/critique-2026-05-07.md) — honest design pushback (some items folded into V1; rest accepted as trade-offs).
+- [`Project Files/Tasks App/coding-plan-2026-05-07.md`](../../Project%20Files/Tasks%20App/coding-plan-2026-05-07.md) — phased build plan.
+- [`Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`](../../Project%20Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md) — Stoop-side migration for the lifted substrates.
+- [`apps/tasks-v0/CHANGELOG.md`](./CHANGELOG.md) — per-phase shipping log.
 
-V0 (this package):
+## Local-only mode (V0 + V1)
+
+**The app works locally without a Solid pod.** Connecting a pod
+adds cross-device sync; it is never required. The boot path,
+all skills, the inbox, calendar conflict view, and the workspace
+UI all work against local storage. `core.MemorySource` covers
+in-process; `LocalFileSource` (V1, in `@canopy/local-store`)
+persists across restarts. Pod-mode wraps the same `core.DataSource`
+interface — no code path differences from the app's perspective.
+
+This is a hard rule for V1, not a V1.5 improvement. See
+`Project Files/Tasks App/advice-2026-05-07.md` § *Local-only
+operation*.
+
+## V0 vs V1 vs V1.5+
+
+V0 (`createTasksAgent`, no Crew envelope):
 - Single household, 4-6 members, high trust.
 - Standard 5-role policy.
 - DAG dependencies + cycle detection.
 - Compare-and-swap claim flow.
 - Skill-tagged tasks (via L1e).
-- All skills exposed through L1d's REST + SSE.
 
-V1+:
-- Mobile RN client.
-- Multi-tenant (friend groups, businesses, neighborhood).
-- DAG editor UI.
-- Custom-roles UI.
+V1 (`createCrewAgent`, shipped 2026-05-08):
+- **Crew envelope** (multi-tenant, role-aware, decentralised; `crew.kind ∈ household | project | team | friends | maintenance`).
+- **DoD lifecycle** on item-store (`submitted` + `rejected` states + `approval` modes `self-mark` / `creator` / `webid:X`).
+- **Sub-tasks by the accepter** with admin-approval threshold (`crew.subtasksAdminApprovalDepth`, default 3; spawns past it queue admin approval).
+- **Master per task** + `revoke` (mandatory reason) + `appeal` (chat thread to master, 7-day window).
+- **Local calendar conflict view** — `parseIcsToBusy` reads pod-mirrored `*.ics`; no network freebusy skill.
+- **In-app inbox** via `InAppInboxBridge` (per-recipient `MessagingBridge`); routes inbox button taps for approve/decline/appeal.
+- **Skill-import** from canonical `<user-pod>/profile/skills.json` with prefilled-edit-before-submit form.
+- **Per-event observability** — `MetricsTracker` over notifier's `UsageMetrics` + bounded latency reservoirs; admin/coord cadence config + per-user overrides (user > crew > baseline).
+- **Crew lifecycle** — `pauseCrew` (blocks new tasks) / `archiveCrew` (read-only ledger).
+- **Closed-beta privacy notice** in nl + en, surfaced via `getPrivacyNotice` + `/privacy.html`.
+- **Local-only mode** is a hard rule — works without a Solid pod connection.
+
+V1.5 (deferred, ~7 dev-days):
+- Push notification channel (`PushChannel` + `PushPolicy` promotion from Stoop).
+- Custom-role management UI (`core.Roles.registerCustomRole` already in core; UI is the missing piece).
+- Chat-bot bridge (Telegram via `chat-agent.TelegramBridge` already in core; ~2-3 days of `bot.*` skill wiring).
+- Calendar import-bridge (Google + Outlook listener; iCloud + CalDAV poll) in `apps/import-bridge-v0`.
+
+V2+ (demand-driven):
+- Auto-scheduling planner.
+- Cross-crew dashboard.
+- Real-time collaboration on a deliverable doc (waits for project #1 OSS-doc-tool integration).
+- Compensated-role flag + invoicing primitives.
+- Cryptographic anonymity (waits for Stoop V2's Q-H5 unpark).
 - Recurring tasks.
 - Multi-claim / co-assignment.
-- Notifier wiring with concrete deadline-reminder cadences.
 
 ## Test coverage
 
-21 integration tests in `test/integration.test.js` cover:
-- Role-policy enforcement on add / claim / complete / reassign / remove.
-- DAG dependency resolution (ready / waiting / blocked).
-- Cycle detection.
-- Compare-and-swap claim races.
-- Skill-tagged task filtering (`listClaimable`).
-- Member-webid resolution via Telegram uid.
-- SkillRouter integration.
-- Broadcaster event emission.
+**176 tests across 13 files** (V0 baseline + V1 phases 1-10):
+
+| File | Tests | What it covers |
+|---|---|---|
+| `test/integration.test.js`        | 24 | V0 role-policy + DAG + claim races + skill-tagged filtering + member resolution. |
+| `test/web.test.js`                | 10 | V0 web UI smoke (static serving, agent card, `/tasks-config.json`, role-policy via HTTP). |
+| `test/phase1-local-store.test.js` |  6 | `buildBundle` + `localStoreBundle` integration with `createTasksAgent`; V0 zero-config preserved. |
+| `test/phase1-settings.test.js`    |  6 | Tasks-bound `createSettingsModule`; defaults + validators + round-trip. |
+| `test/phase2-crew.test.js`        |  9 | CrewConfig load/save + missing-config fallback + per-kind defaults + onboardingSkills + MemberMapCache auto-persist. |
+| `test/phase3-profile.test.js`     | 18 | Canonical profile + crew vocab + posture round-trips; tag canonicalisation; `prefilledFormShape`; live skills. |
+| `test/phase4-calendar.test.js`    | 14 | `parseIcsToBusy` (one-shot, RRULE, all-day, VTIMEZONE, range edges) + `readMyCalendar`. |
+| `test/phase5-dod.test.js`         | 15 | App-side DoD lifecycle through `submitTask`/`approveTask`/`rejectTask`/`revokeTask`/`setApprovalMode` + role-policy gates. |
+| `test/phase6-inbox.test.js`       | 14 | `InAppInboxBridge` + issuer-notification routing + `appealTask` authz + 7-day window. |
+| `test/phase7-subtasks.test.js`    | 16 | dag-tree helpers + addSubtask + admin-approval queuing + approve/decline + status integration. |
+| `test/phase8-ui.test.js`          | 11 | All 6 UI pages serve + nav skeleton + workspace + inbox + creator-approval cycle end-to-end. |
+| `test/phase9-observability.test.js` | 16 | MetricsTracker + cadence resolution + setCrewCadences (admin-gated) + setMyCadenceOverrides. |
+| `test/phase10-lifecycle.test.js`  | 17 | i18n init/translate/interpolate; locale `{text, doc}` schema validation; en+nl key-set parity; pause/archive flow + addTask gate; privacy notice content. |
+
+Plus the substrate-level item-store tests (`packages/item-store/test/ItemStore.dod.test.js` — 24 substrate tests) cover the DoD lifecycle at the substrate layer.
 
 ## See also
 
-- `Project Files/Substrates/apps/H4-tasks.md` — the app sketch.
+- `Project Files/Tasks App/advice-2026-05-07.md` — V1 design.
+- `Project Files/Tasks App/critique-2026-05-07.md` — design review.
+- `Project Files/Tasks App/coding-plan-2026-05-07.md` — phased plan.
+- `Project Files/Substrates/apps/H4-tasks.md` — substrate-composition sketch (V1 update).
 - `Project Files/Substrates/L1b-item-store.md` — primary substrate.
 - `Project Files/Substrates/policies.md` — rule-of-two methodology.
+- `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md` — Stoop-side migration log for the lifted substrates.
