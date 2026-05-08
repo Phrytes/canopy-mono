@@ -180,7 +180,13 @@ export function ServiceProvider({ children, deps = {} }) {
           return groupsRef.current.get(groupId)?.bundle ?? null;
         };
         const getBundle = (args, ctx) => {
-          let g = args?.groupId;
+          // `_scope` is the dispatch hint set by useSkill (in stoop-mobile)
+          // — it identifies WHICH bundle the call is targeting, regardless
+          // of any `groupId` passed as data. createGroupV2 is the
+          // motivating case: args.groupId is the NEW group's id, but
+          // dispatch must land on the bootstrap bundle that's writing the
+          // initial group-rules.
+          let g = args?._scope ?? args?.groupId;
           if (!g && typeof ctx?.envelope?.payload?.topic === 'string') {
             g = ctx.envelope.payload.topic.split('/')[0];
           }
