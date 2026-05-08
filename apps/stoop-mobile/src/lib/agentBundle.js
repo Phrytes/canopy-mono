@@ -206,6 +206,164 @@ export async function buildBundleForGroup({
 }
 
 /**
+ * Per-group state factory — single-agent refactor (2026-05-08).
+ *
+ * Like `buildBundleForGroup` but does NOT create a new `core.Agent`
+ * or its own transport stack. Instead, the caller passes a pre-built
+ * `meshAgent` (one for the whole app process, see `buildMeshAgent`)
+ * and this factory layers a per-group `{ itemStore, members,
+ * skillMatch, mirror, … }` on top of it.
+ *
+ * The returned bundle's `stop()` tears down the per-group wiring
+ * (skillMatch, mirror, listeners) but DOES NOT stop the agent — the
+ * shared agent's lifecycle is owned by the caller (ServiceContext).
+ *
+ * Skills are NOT registered on the agent here; ServiceContext
+ * registers Stoop's full skill set ONCE, group-aware, via
+ * `buildSkills({ getBundle })`.
+ *
+ * @param {object} args
+ * @param {import('@canopy/core').Agent} args.meshAgent  — shared
+ * @param {object} args.identity
+ * @param {string} args.groupId
+ * @param {string} args.localActor
+ * @param {Array<{pubKey: string}>} [args.members]
+ * @param {string[]} [args.skills]
+ * @param {Object<string, 'always'|'negotiable'|'never'>} [args.posture]
+ * @param {string}  [args.localRole]
+ * @param {object}  [args.notifier]
+ * @param {object}  [args.reveals]
+ * @param {object}  [args.itemBackend]
+ * @param {string}  [args.label]
+ */
+export async function buildGroupState({
+  meshAgent,
+  identity,
+  groupId,
+  localActor,
+  members  = [],
+  skills   = [],
+  posture  = {},
+  localRole,
+  notifier,
+  reveals,
+  itemBackend,
+  label,
+} = {}) {
+  if (!meshAgent) throw new Error('buildGroupState: meshAgent required');
+  if (!identity)  throw new Error('buildGroupState: identity required');
+  if (typeof groupId !== 'string' || !groupId) {
+    throw new Error('buildGroupState: groupId required');
+  }
+  if (typeof localActor !== 'string' || !localActor) {
+    throw new Error('buildGroupState: localActor required');
+  }
+
+  // Build the per-group state (ItemStore + MemberMap + SkillMatch +
+  // chat etc.) on the SHARED agent. `registerSkills: false` tells
+  // the factory to skip skill registration + agent.start — those are
+  // ServiceContext's responsibility now.
+  const bundle = await createNeighborhoodAgent({
+    identity,
+    agent: meshAgent,
+    registerSkills: false,
+    label: label ?? `stoop-mobile:${groupId}`,
+    skillMatch: {
+      group:      groupId,
+      localActor,
+      peers:      members,
+      skills,
+      posture,
+    },
+    members,
+    notifier,
+    reveals,
+    itemBackend,
+  });
+
+  // ItemStore → 'item-arrive' bridge (per-bundle; the shared agent
+  // emits one 'item-arrive' per write across all groups but listeners
+  // typically filter by groupId via the item's source).
+  const _bridgeItemArrive = (item) => {
+    try { meshAgent.emit?.('item-arrive', item); } catch { /* swallow */ }
+  };
+  bundle.itemStore.on?.('item-added',     _bridgeItemArrive);
+  bundle.itemStore.on?.('item-updated',   _bridgeItemArrive);
+  bundle.itemStore.on?.('item-completed', _bridgeItemArrive);
+
+  // Cross-device post replication (per-group: each mirror subscribes
+  // to its own `<groupId>/requests` topic).
+  const mirror = await wireGroupBroadcastMirror({
+    agent:          meshAgent,
+    itemStore:      bundle.itemStore,
+    group:          groupId,
+    peers:          (members ?? []).filter(m => m?.pubKey).map(m => ({ pubKey: m.pubKey })),
+    evictionRoster: bundle.evictionRoster ?? null,
+  });
+  bundle.mirror = mirror;
+
+  // Bridge agent.peer → this bundle's skillMatch + mirror addPeer.
+  // Multiple bundles each register their own listener on the shared
+  // agent; when a peer is discovered, every group's skillMatch and
+  // mirror gets the addPeer call so cross-group reach works without
+  // needing membership intersection logic.
+  const _onAgentPeer = ({ address, pubKey }) => {
+    const pk = pubKey ?? address;
+    if (!pk || typeof pk !== 'string') return;
+    if (pk.includes(':')) return;          // BLE MAC, not a pubkey
+    if (pk === meshAgent.address) return;  // self
+    try { bundle.skillMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
+    mirror?.addPeer?.(pk).catch(() => { /* swallow */ });
+  };
+  meshAgent.on('peer', _onAgentPeer);
+
+  // Seed the local actor's admin role keyed by pubkey (matches what
+  // createGroupV2 does at registration time).  See buildBundleForGroup
+  // for the keying rationale.
+  if (localRole === 'admin' || localRole === 'coordinator') {
+    try {
+      const pubKey = meshAgent.address ?? identity.pubKey;
+      if (pubKey && bundle.members?.addMember) {
+        const existing = await bundle.members.resolveByWebid(pubKey);
+        await bundle.members.addMember({
+          ...(existing ?? { webid: pubKey }),
+          pubKey,
+          role: localRole,
+        });
+      }
+    } catch { /* best effort */ }
+  }
+
+  // Seed PeerGraph entries the agent already discovered before this
+  // bundle existed (e.g. because another bundle came up first +
+  // populated the shared PeerGraph). Same pattern as
+  // relabelBundleGroup's seed.
+  try {
+    const known = (await meshAgent.peers?.all?.().catch(() => [])) ?? [];
+    for (const p of known) {
+      if (!p?.pubKey || p.pubKey === meshAgent.address) continue;
+      try { bundle.skillMatch.addPeer({ pubKey: p.pubKey }); } catch { /* best effort */ }
+      try { await mirror.addPeer(p.pubKey);                  } catch { /* best effort */ }
+    }
+  } catch { /* swallow */ }
+
+  await bundle.skillMatch.start();
+
+  // Per-bundle stop — does NOT stop the agent (ServiceContext owns it).
+  const stop = async () => {
+    try { meshAgent.off('peer', _onAgentPeer);   } catch { /* swallow */ }
+    try { await bundle.mirror?.stop?.();         } catch { /* swallow */ }
+    try { await bundle.skillMatch.stop?.();      } catch { /* swallow */ }
+    // Detach itemStore bridge listeners.
+    try { bundle.itemStore.off?.('item-added',     _bridgeItemArrive); } catch { /* swallow */ }
+    try { bundle.itemStore.off?.('item-updated',   _bridgeItemArrive); } catch { /* swallow */ }
+    try { bundle.itemStore.off?.('item-completed', _bridgeItemArrive); } catch { /* swallow */ }
+  };
+
+  return { ...bundle, groupId, localActor, stop };
+}
+
+/**
  * Build a multi-transport `core.Agent` for one Stoop bundle.
  *
  * Phase 40.23 follow-up (2026-05-08): wires mDNS so two phones on the
