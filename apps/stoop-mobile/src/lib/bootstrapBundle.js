@@ -45,7 +45,7 @@ export const BOOTSTRAP_GROUP_ID = '_bootstrap';
  *   stop: () => Promise<void>,
  * }>}
  */
-export async function buildBootstrapBundle({ identity, label } = {}) {
+export async function buildBootstrapBundle({ identity, label, relayUrl } = {}) {
   if (!identity) throw new Error('buildBootstrapBundle: identity required');
 
   const localActor = defaultLocalActor(identity);
@@ -57,6 +57,7 @@ export async function buildBootstrapBundle({ identity, label } = {}) {
     identity,
     label: label ?? 'stoop-mobile:_bootstrap',
     peerGraphPrefix: 'stoop:peers:_bootstrap:',
+    relayUrl,
   });
 
   const bundle = await createNeighborhoodAgent({
