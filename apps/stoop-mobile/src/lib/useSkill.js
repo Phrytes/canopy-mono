@@ -76,17 +76,22 @@ export function useSkill(skillId) {
     setLoading(true);
     setError(null);
     try {
-      // Single-agent refactor (2026-05-08): inject `groupId` into
-      // every direct UI call so the agent's group-aware skill
-      // dispatch can resolve the right bundle. Active group wins;
-      // explicit `args.groupId` (if the caller already supplied it)
-      // is respected and overrides.
+      // Single-agent refactor (2026-05-08): inject `_scope` (NOT
+      // `groupId`) into every direct UI call so the agent's
+      // group-aware skill dispatch can resolve the right bundle
+      // regardless of what `groupId` the user passes as data.
+      //
+      // Why a separate field: many skills take `args.groupId` as a
+      // DATA argument (e.g. `createGroupV2({groupId: 'oosterpoort'})`
+      // creates a NEW group; the dispatch scope is the bootstrap,
+      // not the new group). If we overrode `args.groupId` we'd
+      // either clobber the user's data or fail to resolve.  `_scope`
+      // is consulted FIRST by getBundle, then `groupId` as fallback.
       const baseArgs = (args && typeof args === 'object' && !Array.isArray(args)) ? args : {};
-      const enrichedArgs = {
-        groupId: bundle.groupId ?? svc?.activeGroupId ?? null,
-        ...baseArgs,
-      };
-      const parts = toParts(Array.isArray(args) ? args : enrichedArgs);
+      const enrichedArgs = Array.isArray(args)
+        ? args
+        : { ...baseArgs, _scope: bundle.groupId ?? svc?.activeGroupId ?? null };
+      const parts = toParts(enrichedArgs);
       const localPeer = bundle.agent.address ?? bundle.agent.identity?.pubKey ?? null;
       // `agent.invoke` resolves to the A2A parts array, not the
       // skill's return value.  Unwrap the first DataPart so callers
