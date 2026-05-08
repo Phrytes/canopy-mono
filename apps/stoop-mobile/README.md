@@ -292,6 +292,19 @@ green, including the four Phase 40.20 cases).
   preview on join, attachment download progress, failed-push
   retry — these are SDK behaviours that work but the mobile UI
   doesn't yet surface them prominently.
+- **mDNS reliability on real Wi-Fi** — bring-up testing
+  2026-05-08: same-Wi-Fi peer discovery works in some sessions,
+  fails in others (one phone discovers the other but not vice
+  versa, or both stop discovering after a few JS reloads).
+  The relay path is the reliable fallback (`./scripts/start-relay.sh`
+  + `Settings → Relay-server`). Likely contributors:
+  Android NSD's native-module state surviving JS reloads in dev,
+  multicast throttling on consumer routers, NSD's
+  announce-on-startup model missing already-running services.
+  Worth investigating: explicit `mdns.disconnect()` cycle on
+  Re-probe, exposing `MdnsTransport.connectionCount` in the
+  diagnostic, raising `FRESHNESS_MS` past the gossip cadence so
+  routing doesn't go stale between rounds. **Filed 2026-05-08.**
 
 ## File layout
 

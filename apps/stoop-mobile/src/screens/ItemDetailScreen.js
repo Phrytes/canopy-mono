@@ -96,9 +96,20 @@ export function ItemDetailScreen() {
 
   const respond = async () => {
     try {
-      await respondCall.call({ itemId: item.id });
+      // `respondToItem` is "open a chat thread + send the first
+      // message + soft-claim" all in one — it REQUIRES a `body`.
+      // Send a default opener and then navigate the user into the
+      // chat thread so they can continue the conversation.
+      const body = t('item_detail.respond_default_body',
+                     'Ik wil je graag helpen.');
+      const r = await respondCall.call({ itemId: item.id, body });
+      if (r?.error) throw new Error(r.error);
       await refresh();
-    } catch (err) { setError(err); }
+      const peerId = _resolveItemAuthor(item);
+      if (peerId) {
+        nav.navigate(ROUTES.ChatThread, { threadId: r?.threadId ?? item.id, peerId });
+      }
+    } catch (err) { setError(err?.message ?? String(err)); }
   };
   const cancel = async () => {
     try {
@@ -196,7 +207,18 @@ export function ItemDetailScreen() {
           </>
         )}
         <Pressable
-          onPress={() => nav.navigate(ROUTES.ChatThread, { itemId: item.id, peerId: item.from ?? item.authorWebid })}
+          onPress={() => {
+            const peerId = _resolveItemAuthor(item);
+            if (!peerId) {
+              setError(t('item_detail.no_author',
+                         'Auteur onbekend — kan geen chat openen.'));
+              return;
+            }
+            nav.navigate(ROUTES.ChatThread, {
+              threadId: item.id,
+              peerId,
+            });
+          }}
           style={styles.btnSecondary}
         >
           <Text style={styles.btnSecondaryLabel}>
@@ -246,6 +268,25 @@ export function ItemDetailScreen() {
 }
 
 export default ItemDetailScreen;
+
+/**
+ * Resolve the post author's identifier — broadcast-mirrored items
+ * (the cross-device case) carry author info under `item.source` (the
+ * groupMirror writes `source.from` + `source.fromPubKey`); locally-
+ * authored items carry it at the top level (`addedBy` / `from`).
+ *
+ * The chat skill resolves by stableId / webid / pubKey in order, so
+ * pubKey is the most precise hint — prefer it.  Falls back through
+ * webid + the top-level legacy fields.
+ */
+function _resolveItemAuthor(item) {
+  return item?.source?.fromPubKey
+      ?? item?.source?.from
+      ?? item?.from
+      ?? item?.authorWebid
+      ?? item?.addedBy
+      ?? null;
+}
 
 const styles = StyleSheet.create({
   root: { padding: SPACING.lg, backgroundColor: COLORS.background, paddingBottom: SPACING.xxl },
