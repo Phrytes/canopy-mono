@@ -58,9 +58,16 @@ export function useSkillResult(skillId, args, deps = []) {
     setError(null);
     try {
       const localPeer = bundle.agent.address ?? bundle.agent.identity?.pubKey ?? null;
+      // Single-agent refactor: inject groupId so the shared agent's
+      // group-aware skill dispatch can resolve the bundle.
+      const baseArgs = (args && typeof args === 'object' && !Array.isArray(args)) ? args : {};
+      const enriched = Array.isArray(args) ? args : {
+        groupId: bundle.groupId ?? svc?.activeGroupId ?? null,
+        ...baseArgs,
+      };
       // `agent.invoke` resolves to the A2A parts array — unwrap to
       // the skill's return value (mirror of web's callSkill).
-      const rawParts = await bundle.agent.invoke(localPeer, skillId, toParts(args));
+      const rawParts = await bundle.agent.invoke(localPeer, skillId, toParts(enriched));
       const r = unwrapParts(rawParts);
       if (cancelledRef.current) return r;
       setData(r);
