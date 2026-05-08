@@ -141,6 +141,16 @@ export async function createNeighborhoodAgent({
    * started it.  `identity` is read from `agent.identity` when omitted.
    */
   agent: providedAgent,
+  /**
+   * Single-agent refactor (2026-05-08): when `false`, skip skill
+   * registration on the agent, skip `agent.start()`, skip
+   * enableSealedForwardFor / enableRelayForward. The caller (e.g.
+   * stoop-mobile's ServiceContext) registers skills ONCE via the
+   * group-aware `buildSkills({getBundle})` mode and starts the agent
+   * itself. Defaults to `true` so existing single-bundle callers
+   * (testbed, web Stoop) keep working unchanged.
+   */
+  registerSkills = true,
   label = 'NeighborhoodAgent',
 }) {
   if (!skillMatchOpts?.group || !skillMatchOpts?.localActor) {
@@ -420,23 +430,31 @@ export async function createNeighborhoodAgent({
   }
 
   // ── Skill registration ────────────────────────────────────────────────────
-  for (const def of buildIdentitySkills({ members })) agent.skills.register(def);
-  for (const def of buildSkills({
-    store:    itemStore,
-    skillMatch,
-    notifier: providedNotifier,
-    reveals,
-    members,
-    muted,
-    localActor: skillMatchOpts.localActor,
-    groupId:    skillMatchOpts.group,
-    dataLocationConfig,
-    chat,           // Phase 14 — used by sendChatMessage / respondToItem
-    metrics,        // Phase 18 — record() called from key handlers
-    bundle,         // Phase 20 — sign-in skills mutate bundle.oidcSession + cache
-  })) agent.skills.register(def);
+  // Single-agent refactor (2026-05-08): when `registerSkills: false`
+  // is passed, the caller is wiring multiple per-group bundles onto a
+  // shared `core.Agent` and registers skills ONCE at the
+  // service-context level via `buildSkills({getBundle})`. We skip
+  // registration here, skip agent.start(), and skip the per-group
+  // sealed-forward / relay-forward enables (caller's responsibility).
+  if (registerSkills) {
+    for (const def of buildIdentitySkills({ members })) agent.skills.register(def);
+    for (const def of buildSkills({
+      store:    itemStore,
+      skillMatch,
+      notifier: providedNotifier,
+      reveals,
+      members,
+      muted,
+      localActor: skillMatchOpts.localActor,
+      groupId:    skillMatchOpts.group,
+      dataLocationConfig,
+      chat,           // Phase 14 — used by sendChatMessage / respondToItem
+      metrics,        // Phase 18 — record() called from key handlers
+      bundle,         // Phase 20 — sign-in skills mutate bundle.oidcSession + cache
+    })) agent.skills.register(def);
 
-  await agent.start();
+    await agent.start();
+  }
 
   // Stoop V1 Phase 13.3 (2026-05-06): hop routing — opt the agent in
   // to content-blind sealed-forward for the configured group, so any

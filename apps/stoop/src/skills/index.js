@@ -260,7 +260,22 @@ export function buildSkills({
   chat,           // Phase 14: wireChat controller (chat.send / chat.detach)
   metrics,        // Phase 18: UsageMetrics; record() called from key handlers
   bundle,         // Phase 20: factory hands itself in for sign-in skills
+  // ── Group-aware dispatch (single-agent refactor 2026-05-08) ────────────
+  // When `getBundle` is supplied, every skill is wrapped: at dispatch
+  // time the wrapper resolves the right per-group bundle from
+  // `args.groupId` (or the envelope's pubsub topic) via getBundle, then
+  // delegates to a per-group cached skill array built with that bundle's
+  // store/members/skillMatch/etc.  Apps with multiple groups (Stoop
+  // mobile, future Tasks-mobile) pass `getBundle`; single-bundle callers
+  // (testbed, web Stoop) keep using the bundle args above.
+  //
+  // See `Project Files/Stoop/single-agent-refactor-2026-05-08.md`.
+  getBundle,
 }) {
+  if (typeof getBundle === 'function') {
+    return _buildScopedSkills({ getBundle, dataLocationConfig });
+  }
+
   // SkillMatch's #group is private; Agent.js passes the configured
   // groupId through here so list-shaped skills can scope reveal lookups.
   const groupId = explicitGroupId ?? skillMatch?.group ?? null;
@@ -2977,4 +2992,97 @@ export function buildSkills({
       visibility:  'authenticated',
     }),
   ];
+}
+
+// ── Group-aware skill dispatch wrapper ─────────────────────────────────────
+
+/**
+ * Sentinel bundle used to introspect the canonical skill-id list +
+ * metadata at registration time. Skill bodies are closures that don't
+ * fire until the first dispatch — passing harmless placeholders here
+ * is safe; the real per-group bundle resolves at dispatch.
+ */
+const _SENTINEL_BUNDLE = Object.freeze({
+  store:      null,
+  skillMatch: null,
+  notifier:   null,
+  reveals:    null,
+  members:    null,
+  muted:      new Set(),
+  localActor: null,
+  groupId:    null,
+  chat:       null,
+  metrics:    null,
+  bundle:     null,
+});
+
+/**
+ * Wrap each skill with a group-aware dispatch prelude.
+ *
+ * For each skill defined by buildSkills, we register a shim that:
+ *   1. Reads `args.groupId` (or derives it from the pubsub topic).
+ *   2. Calls `getBundle(args, ctx)` to fetch the per-group bundle.
+ *   3. Reuses (cached per-groupId) a real skill array built against
+ *      that bundle, and delegates to the matching skill's handler.
+ *
+ * The cache is the user-managed `Map<groupId, Map<skillId, def>>`.
+ * Apps invalidate via the returned `_invalidateGroup(groupId)` when a
+ * bundle is torn down (group removed).
+ */
+function _buildScopedSkills({ getBundle, dataLocationConfig }) {
+  // Build templates once with the sentinel — gives us the canonical
+  // skill IDs + metadata for registration.
+  const templates = buildSkills({ ..._SENTINEL_BUNDLE, dataLocationConfig });
+
+  /** @type {Map<string, Map<string, object>>} */
+  const cache = new Map();
+
+  function _resolveSkill(bundleCtx, skillId) {
+    const groupId = bundleCtx.groupId;
+    let group = cache.get(groupId);
+    if (!group) {
+      const arr = buildSkills({ ...bundleCtx, dataLocationConfig });
+      group = new Map(arr.map(s => [s.id, s]));
+      cache.set(groupId, group);
+    }
+    return group.get(skillId) ?? null;
+  }
+
+  const wrapped = templates.map((tmpl) => {
+    const handler = async (skillCtx) => {
+      let args = {};
+      try {
+        args = dataArgs(skillCtx.parts);
+      } catch { /* malformed parts → still let getBundle handle */ }
+
+      const bundleCtx = getBundle(args, skillCtx);
+      if (!bundleCtx) return { error: 'groupId required' };
+
+      const skill = _resolveSkill(bundleCtx, tmpl.id);
+      if (!skill) return { error: `skill-not-built: ${tmpl.id}` };
+
+      return skill.handler(skillCtx);
+    };
+    // Preserve template metadata so SkillRegistry's tier/posture
+    // filtering still works correctly.
+    return defineSkill(tmpl.id, handler, {
+      description:    tmpl.description,
+      visibility:     tmpl.visibility,
+      inputModes:     tmpl.inputModes,
+      outputModes:    tmpl.outputModes,
+      tags:           tmpl.tags,
+      streaming:      tmpl.streaming,
+      humanInTheLoop: tmpl.humanInTheLoop,
+      posture:        tmpl.posture,
+    });
+  });
+
+  // Stash the cache invalidator on the array (out-of-band; non-enumerable
+  // so it doesn't end up serialised by accident).
+  Object.defineProperty(wrapped, '_invalidateGroup', {
+    value: (groupId) => cache.delete(groupId),
+    enumerable: false,
+  });
+
+  return wrapped;
 }
