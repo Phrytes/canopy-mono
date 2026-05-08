@@ -43,9 +43,16 @@ export function OnboardJoinScreen() {
   const svc   = useService();
 
   const invite = route?.params?.invite ?? null;
-  const groupId  = invite?.groupId ?? null;
-  const code     = invite?.code    ?? null;
+  const groupId   = invite?.groupId ?? null;
+  const code      = invite?.code    ?? null;
   const expiresAt = invite?.expiresAt ?? null;
+  // Display name from the QR payload — falls back to groupId for
+  // older QRs that pre-date the name field.  Without this, the two
+  // phones disagree on the group's name (admin sees the friendly
+  // name, joiner sees the slug).
+  const displayName = (typeof invite?.name === 'string' && invite.name.trim().length > 0)
+    ? invite.name.trim()
+    : groupId;
 
   const redeem = useSkill('redeemMembershipCode');
 
@@ -108,7 +115,7 @@ export function OnboardJoinScreen() {
       // 3. Register the group locally.
       await svc.addGroup({
         groupId,
-        displayName: groupId,
+        displayName,
         role:        'member',
       });
 
@@ -119,7 +126,7 @@ export function OnboardJoinScreen() {
     } finally {
       setBusy(false);
     }
-  }, [invite, groupId, code, expiresAt, busy, svc, redeem]);
+  }, [invite, groupId, code, expiresAt, displayName, busy, svc, redeem]);
 
   // Auto-start the join attempt on mount if the invite is well-formed.
   useEffect(() => {
@@ -153,6 +160,11 @@ export function OnboardJoinScreen() {
       <Text style={styles.heading}>
         {t('onboard_join.heading', 'Aansluiten bij groep')}
       </Text>
+      {displayName !== groupId ? (
+        <Text style={styles.body}>
+          {displayName}
+        </Text>
+      ) : null}
       <Text style={styles.body}>
         {t('onboard_join.body', 'Groep-id:')}
         {' '}<Text style={styles.mono}>{groupId}</Text>

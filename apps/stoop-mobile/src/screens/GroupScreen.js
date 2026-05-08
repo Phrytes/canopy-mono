@@ -94,6 +94,7 @@ export function GroupScreen() {
       nav.navigate(ROUTES.OnboardIssue, {
         invite: {
           groupId,
+          name:      activeEntry?.displayName ?? groupId,
           code:      codeData.code,
           expiresAt: codeData.expiresAt,
         },
