@@ -444,6 +444,23 @@ export async function relabelBundleGroup({
   bundle.skillMatch = skillMatch;
   bundle.mirror     = mirror;
 
+  // Seed the new SkillMatch + mirror with peers the agent has
+  // ALREADY discovered before the relabel.  The bootstrap bundle's
+  // `agent.on('peer')` handler called addPeer on the OLD instances;
+  // those events don't re-fire after relabel, so without this
+  // seeding the new mirror starts empty and nobody subscribes to
+  // the publisher's `<group>/requests` topic — broadcasts go to
+  // zero subscribers, posts never replicate.
+  try {
+    const known = (await bundle.agent.peers?.all?.().catch(() => [])) ?? [];
+    const selfAddr = bundle.agent.address ?? bundle.agent.identity?.pubKey;
+    for (const p of known) {
+      if (!p?.pubKey || p.pubKey === selfAddr) continue;
+      try { skillMatch.addPeer({ pubKey: p.pubKey }); } catch { /* best effort */ }
+      try { await mirror.addPeer(p.pubKey);          } catch { /* best effort */ }
+    }
+  } catch { /* swallow — peer-graph is best-effort hint here */ }
+
   // Seed admin role on the relabel path (mirror of buildBundleForGroup).
   // See the JSDoc on the seed in buildBundleForGroup for the keying
   // rationale — entry MUST be under webid=pubKey to match `from` in
