@@ -362,6 +362,7 @@
     "no_group":               { "text": "Sluit eerst aan bij een groep — dan kan je je profiel invullen.", "doc": "Empty-state body on mobile ProfileMineScreen when the user hasn't joined a group yet. Stoop V3 mobile." },
     "saving":                 { "text": "Opslaan…", "doc": "Generic in-flight label on mobile ProfileMineScreen submit buttons." },
     "holiday_label":          { "text": "Vakantie-modus", "doc": "Label next to the holiday-mode toggle on mobile ProfileMineScreen." },
+    "holiday_hint":           { "text": "Verberg je profiel tijdelijk: buren zien je niet als beschikbare match en push-meldingen pauzeren tot je het weer uitzet.", "doc": "Hint under the holiday-mode toggle on ProfileMineScreen explaining what the toggle does." },
     "holiday_on":             { "text": "Aan", "doc": "Holiday-mode toggle label when the flag is set." },
     "holiday_off":            { "text": "Uit", "doc": "Holiday-mode toggle label when the flag is unset." },
     "location_heading":       { "text": "Locatie", "doc": "H2 above the location section on mobile ProfileMineScreen." },

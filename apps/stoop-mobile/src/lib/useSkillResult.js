@@ -28,7 +28,7 @@ import { toParts, unwrapParts } from './skillParts.js';
  *   data: T | null,
  *   loading: boolean,
  *   error: Error | null,
- *   refresh: () => Promise<void>,
+ *   refresh: () => Promise<T | null>,
  * }}
  */
 export function useSkillResult(skillId, args, deps = []) {
@@ -40,11 +40,19 @@ export function useSkillResult(skillId, args, deps = []) {
   const cancelledRef = useRef(false);
   useEffect(() => () => { cancelledRef.current = true; }, []);
 
+  /**
+   * Re-run the skill. Returns the freshly-fetched data so callers
+   * that need it inside an async sequence can read it directly
+   * without waiting for React's setState round-trip:
+   *
+   *     const fresh = await someSkill.refresh();
+   *     if (!fresh?.foo) ...   // safe — no stale-closure trap
+   */
   const refresh = useCallback(async () => {
     const bundle = svc?.activeBundle;
     if (!bundle?.agent?.invoke) {
       setData(null);
-      return;
+      return null;
     }
     setLoading(true);
     setError(null);
@@ -54,10 +62,12 @@ export function useSkillResult(skillId, args, deps = []) {
       // the skill's return value (mirror of web's callSkill).
       const rawParts = await bundle.agent.invoke(localPeer, skillId, toParts(args));
       const r = unwrapParts(rawParts);
-      if (cancelledRef.current) return;
+      if (cancelledRef.current) return r;
       setData(r);
+      return r;
     } catch (err) {
       if (!cancelledRef.current) setError(err);
+      return null;
     } finally {
       if (!cancelledRef.current) setLoading(false);
     }
