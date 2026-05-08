@@ -38,6 +38,7 @@ import {
 } from './lib/groupRegistry.js';
 import { buildBundleForGroup, defaultLocalActor, relabelBundleGroup } from './lib/agentBundle.js';
 import { buildBootstrapBundle }              from './lib/bootstrapBundle.js';
+import { getRelayUrl }                       from './lib/relayUrl.js';
 import { attachAppStateBridge }                  from './lib/appStateBridge.js';
 import {
   setBgRunOnce, clearBgRunOnce, BG_TASK_NAME,
@@ -119,6 +120,12 @@ export function ServiceProvider({ children, deps = {} }) {
         setIdentity(id);
         setVault(vlt);
 
+        // Phase 40.23 follow-up Path B: pick up the user-configured
+        // relay URL (if any) before bundles are built so the
+        // RelayTransport is wired alongside mDNS.
+        const relayUrl = await getRelayUrl({ storage: deps.storage });
+        if (cancelledRef.current) return;
+
         const entries = await listGroups({ storage: deps.storage });
         if (cancelledRef.current) return;
 
@@ -128,7 +135,7 @@ export function ServiceProvider({ children, deps = {} }) {
           // group exists. CreateGroupScreen / OnboardScan /
           // OnboardRestore route their useSkill() calls through it.
           try {
-            const bs = await buildBootstrapBundle({ identity: id });
+            const bs = await buildBootstrapBundle({ identity: id, relayUrl });
             if (cancelledRef.current) {
               try { await bs.stop?.(); } catch { /* swallow */ }
               return;
@@ -155,6 +162,7 @@ export function ServiceProvider({ children, deps = {} }) {
               posture:    entry.posture ?? {},
               localRole:  entry.role,
               label:      `stoop-mobile:${entry.groupId}`,
+              relayUrl,
             });
             built.set(entry.groupId, { entry, bundle });
             _wireBundleEvents(bundle, () => setLastEvent((n) => n + 1));
@@ -300,7 +308,8 @@ export function ServiceProvider({ children, deps = {} }) {
 
     const p = (async () => {
       try {
-        const bs = await buildBootstrapBundle({ identity: id });
+        const relayUrl = await getRelayUrl({ storage: deps.storage });
+        const bs = await buildBootstrapBundle({ identity: id, relayUrl });
         _wireBundleEvents(bs, () => setLastEvent((n) => n + 1));
         setBootstrap(bs);
         return bs;
@@ -339,6 +348,7 @@ export function ServiceProvider({ children, deps = {} }) {
       delete bundle.isBootstrap;
       setBootstrap(null);
     } else {
+      const relayUrl = await getRelayUrl({ storage: deps.storage });
       bundle = await buildBundle({
         identity,
         groupId,
@@ -347,6 +357,7 @@ export function ServiceProvider({ children, deps = {} }) {
         skills:    opts.skills  ?? [],
         posture:   opts.posture ?? {},
         localRole: role,
+        relayUrl,
       });
       _wireBundleEvents(bundle, () => setLastEvent((n) => n + 1));
     }
@@ -403,7 +414,8 @@ export function ServiceProvider({ children, deps = {} }) {
     // create another group from the no-groups state.
     if (droppedToZero && identity) {
       try {
-        const bs = await buildBootstrapBundle({ identity });
+        const relayUrl = await getRelayUrl({ storage: deps.storage });
+        const bs = await buildBootstrapBundle({ identity, relayUrl });
         _wireBundleEvents(bs, () => setLastEvent((n) => n + 1));
         setBootstrap(bs);
       } catch (err) {

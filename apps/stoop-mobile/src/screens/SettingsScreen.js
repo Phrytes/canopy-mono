@@ -35,6 +35,7 @@ import {
 import { useService }                        from '../ServiceContext.js';
 import { useSettings }                       from '../lib/useSettings.js';
 import { useSkill }                          from '../lib/useSkill.js';
+import { getRelayUrl, setRelayUrl }          from '../lib/relayUrl.js';
 import { ConfirmModal }                      from '../components/ConfirmModal.js';
 
 export function SettingsScreen() {
@@ -45,11 +46,22 @@ export function SettingsScreen() {
   const [pollInput,  setPollInput]  = useState('');
   const [everyInput, setEveryInput] = useState('');
   const [durInput,   setDurInput]   = useState('');
+  const [relayInput, setRelayInput] = useState('');
+  const [relaySaved, setRelaySaved] = useState(false);
   const [busyKey,    setBusyKey]    = useState(null);
   const [error,      setError]      = useState(null);
   const [showRotateConfirm, setShowRotateConfirm] = useState(false);
   const [rotateResult,      setRotateResult]      = useState(null);
   const rotateAddress = useSkill('rotateMyAddress');
+
+  // Hydrate the relay-URL input from AsyncStorage on mount.
+  useEffect(() => {
+    let cancelled = false;
+    getRelayUrl().then((url) => {
+      if (!cancelled && typeof url === 'string') setRelayInput(url);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Hydrate inputs when settings load.
   useEffect(() => {
@@ -291,6 +303,49 @@ export function SettingsScreen() {
           busy={busyKey === 'hop'}
           onToggle={toggleHop}
         />
+
+        {/* ── Relay URL (Path B for cross-device discovery) ────── */}
+        <Text style={[styles.label, { marginTop: SPACING.md }]}>
+          {t('settings.relay_url_label', 'Relay-server (optioneel)')}
+        </Text>
+        <Text style={styles.hint}>
+          {t('settings.relay_url_hint',
+             'Voor toestellen die elkaar niet over het lokale Wi-Fi-netwerk vinden. Vul ws://<host>:8787 in. Wijzigingen treden pas op na herstart van de app.')}
+        </Text>
+        <TextInput
+          value={relayInput}
+          onChangeText={(s) => { setRelayInput(s); setRelaySaved(false); }}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          placeholder="ws://192.168.1.10:8787"
+          style={styles.input}
+          accessibilityLabel="settings-relay-url-input"
+        />
+        <Pressable
+          onPress={async () => {
+            setError(null);
+            try {
+              await setRelayUrl(relayInput.trim().length === 0 ? null : relayInput.trim());
+              setRelaySaved(true);
+            } catch (err) {
+              setError(err?.message ?? String(err));
+            }
+          }}
+          style={styles.btnPrimary}
+          accessibilityRole="button"
+          accessibilityLabel="settings-save-relay"
+        >
+          <Text style={styles.btnPrimaryLabel}>
+            {t('settings.relay_url_save', 'Relay-URL opslaan')}
+          </Text>
+        </Pressable>
+        {relaySaved ? (
+          <Text style={styles.successText}>
+            {t('settings.relay_url_saved',
+               'Opgeslagen. Herstart de app om te activeren.')}
+          </Text>
+        ) : null}
       </View>
 
       {/* ── Privacy & meldingen links ─────────────────────────── */}
