@@ -17,6 +17,23 @@ describe('matchesFilter', () => {
     for (const it of ITEMS) expect(matchesFilter(it, {})).toBe(true);
   });
 
+  // Bring-up regression 2026-05-08: chat-messages, group-rules,
+  // membership-codes, etc. were leaking into the Feed because
+  // listOpen() returns every uncompleted item regardless of type.
+  it('drops non-Feed types (chat-message, group-rules, membership-code, …)', () => {
+    expect(matchesFilter({ id: 'c1', type: 'chat-message',         text: 'hi' }, {})).toBe(false);
+    expect(matchesFilter({ id: 'g1', type: 'group-rules',          text: 'rules' }, {})).toBe(false);
+    expect(matchesFilter({ id: 'm1', type: 'membership-code',      text: 'code' }, {})).toBe(false);
+    expect(matchesFilter({ id: 'r1', type: 'membership-redemption',text: 'red' }, {})).toBe(false);
+    expect(matchesFilter({ id: 'a1', type: 'rules-accept',         text: 'ack' }, {})).toBe(false);
+  });
+
+  it('keeps the post types — ask / offer / lend / request / vraag / aanbod', () => {
+    for (const t of ['ask', 'offer', 'lend', 'request', 'vraag', 'aanbod']) {
+      expect(matchesFilter({ id: 'x', type: t, text: 'p' }, {})).toBe(true);
+    }
+  });
+
   it('kinds filter', () => {
     expect(matchesFilter(ITEMS[0], { kinds: new Set(['vraag']) })).toBe(true);
     expect(matchesFilter(ITEMS[1], { kinds: new Set(['vraag']) })).toBe(false);
