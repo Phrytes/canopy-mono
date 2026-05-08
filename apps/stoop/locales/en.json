@@ -329,7 +329,9 @@
     "responding":       { "text": "Working…", "doc": "Primary CTA label while the respond call is in flight." },
     "cancel":           { "text": "Cancel post", "doc": "Destructive CTA visible to the post author — calls cancelRequest." },
     "mark_returned":    { "text": "Mark as returned", "doc": "Lend-only CTA visible to the post author — calls markReturned." },
-    "no_active_group":  { "text": "Join a group first to view posts.", "doc": "Empty-state when ItemDetailScreen is opened without an active bundle." }
+    "no_active_group":  { "text": "Join a group first to view posts.", "doc": "Empty-state when ItemDetailScreen is opened without an active bundle." },
+    "respond_default_body": { "text": "I'd like to help.", "doc": "Default opener message sent to the post author when the user taps \"Offer to help\" — respondToItem requires a body." },
+    "no_author":        { "text": "Author unknown — can't open chat.", "doc": "Inline error on \"Reply with chat\" when neither item.source.fromPubKey nor item.source.from nor any top-level author field resolves." }
   },
   "profile_other": {
     "unknown_member":  { "text": "Unknown member.", "doc": "Empty state on ProfileOtherScreen when the route was opened without a member to render." },
