@@ -223,7 +223,13 @@ export async function buildMeshAgent({ identity, label, peerGraphPrefix }) {
   // (e.g. running in Expo Go on iOS) skip it and continue with the
   // internal-only setup — the bundle still works for in-process use.
   try {
-    if (MdnsTransport?.isAvailable?.()) {
+    const mdnsAvailable = !!MdnsTransport?.isAvailable?.();
+    if (!mdnsAvailable) {
+      console.warn('[agentBundle] MdnsTransport native module unavailable — running internal-only. ' +
+        'If you expected cross-device discovery: run `npx expo run:android` to rebuild the dev client ' +
+        'with @canopy/react-native\'s autolinked MdnsPackage.');
+    }
+    if (mdnsAvailable) {
       const mdns = new MdnsTransport({
         identity,
         hostname: `stoop-${identity.pubKey.slice(0, 8)}`,
