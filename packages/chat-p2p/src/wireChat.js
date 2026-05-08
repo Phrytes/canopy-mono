@@ -322,7 +322,11 @@ export function wireChat({
       if (!dataB64) return;
 
       try {
-        await agent.transport.sendOneWay(fromPubKey, {
+        // Same per-peer routing as the main send() path — without
+        // this, the attachment-response goes via the primary slot
+        // and never reaches the requesting peer.
+        const t = await agent.transportFor(fromPubKey);
+        await t.sendOneWay(fromPubKey, {
           type:  'message',
           parts: [{ type: 'DataPart', data: {
             type:         emitEnvelopeType,
@@ -476,9 +480,12 @@ export function wireChat({
     };
 
     try {
-      // Use sendOneWay directly (best-effort); chat tolerates dropped
-      // messages via UI resend; ack-based delivery is V1.5.
-      await agent.transport.sendOneWay(toPubKey, {
+      // Route per-peer (mDNS / relay / WebRTC / etc.) — using
+      // `agent.transport` directly would always pick the primary slot
+      // (InternalTransport on mobile, self-loop only) and chat
+      // messages would never cross processes.
+      const t = await agent.transportFor(toPubKey);
+      await t.sendOneWay(toPubKey, {
         type:  'message',
         parts: [{ type: 'DataPart', data: payload }],
       });

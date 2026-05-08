@@ -14,6 +14,9 @@ function buildHarness({ acceptedEnvelopeTypes, emitEnvelopeType }) {
   const messageHandlers = [];
   const oneWayCalls = [];
   const items = [];
+  const transport = {
+    sendOneWay: vi.fn(async (toPubKey, env) => { oneWayCalls.push({ toPubKey, env }); }),
+  };
   const agent = {
     on: (name, fn) => { if (name === 'message') messageHandlers.push(fn); },
     off: (name, fn) => {
@@ -23,9 +26,11 @@ function buildHarness({ acceptedEnvelopeTypes, emitEnvelopeType }) {
       }
     },
     emit: vi.fn(),
-    transport: {
-      sendOneWay: vi.fn(async (toPubKey, env) => { oneWayCalls.push({ toPubKey, env }); }),
-    },
+    transport,
+    // wireChat now routes per-peer via agent.transportFor — the stub
+    // returns the same single transport for any peer (the substrate
+    // doesn't care which transport it gets, only that one comes back).
+    transportFor: vi.fn(async () => transport),
   };
   const itemStore = {
     addItems: vi.fn(async (drafts) => {

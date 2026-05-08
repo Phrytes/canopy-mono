@@ -90,7 +90,20 @@ export function ChatThreadScreen() {
   const reveals  = svc.activeBundle.reveals;
   const revealedFromMe = peer && reveals?.hasRevealed?.(peer.stableId ?? peer.webid ?? peer.pubKey);
   const revealed = !!(peer?.revealed || revealedFromMe);
-  const peerName = (revealed && peer?.displayName) ? peer.displayName : `@${peer?.handle ?? 'unknown'}`;
+  // Prefer revealed display name → handle → short pubKey prefix
+  // (so two handle-less peers don't both render as "@unknown" and
+  // become indistinguishable from a self-chat). Falls back to
+  // `unknown` only when literally nothing is known.
+  const peerPkPrefix = (typeof peerId === 'string' && peerId.length > 8)
+    ? peerId.slice(0, 8) + '…'
+    : null;
+  const peerName = (revealed && peer?.displayName)
+    ? peer.displayName
+    : peer?.handle
+        ? `@${peer.handle}`
+        : peerPkPrefix
+            ? `@${peerPkPrefix}`
+            : '@unknown';
 
   const messages = Array.isArray(data?.messages) ? data.messages : [];
   const groups   = groupConsecutive(messages.map((m) => ({
