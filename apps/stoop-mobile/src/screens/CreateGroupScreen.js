@@ -60,13 +60,19 @@ export function CreateGroupScreen() {
         role: 'admin',
       });
 
-      // Stoop's invite is a `{groupId, code, expiresAt}` membership
-      // code (NOT the signed-token `issueInvite` design).  Forward
-      // createGroupV2's return straight to OnboardIssueScreen so the
-      // admin can show the QR + code to the next member.
+      // Stoop's invite is a `{groupId, name, code, expiresAt}`
+      // membership code (NOT the signed-token `issueInvite` design).
+      // `name` is the user-friendly display name — without it, the
+      // receiver falls back to the groupId slug and the two phones
+      // show different things in their group manager.
       if (r?.code) {
         nav.replace(ROUTES.OnboardIssue, {
-          invite: { groupId, code: r.code, expiresAt: r.expiresAt },
+          invite: {
+            groupId,
+            name:      name.trim(),
+            code:      r.code,
+            expiresAt: r.expiresAt,
+          },
         });
         return;
       }
