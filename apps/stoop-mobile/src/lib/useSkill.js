@@ -76,7 +76,17 @@ export function useSkill(skillId) {
     setLoading(true);
     setError(null);
     try {
-      const parts = toParts(args);
+      // Single-agent refactor (2026-05-08): inject `groupId` into
+      // every direct UI call so the agent's group-aware skill
+      // dispatch can resolve the right bundle. Active group wins;
+      // explicit `args.groupId` (if the caller already supplied it)
+      // is respected and overrides.
+      const baseArgs = (args && typeof args === 'object' && !Array.isArray(args)) ? args : {};
+      const enrichedArgs = {
+        groupId: bundle.groupId ?? svc?.activeGroupId ?? null,
+        ...baseArgs,
+      };
+      const parts = toParts(Array.isArray(args) ? args : enrichedArgs);
       const localPeer = bundle.agent.address ?? bundle.agent.identity?.pubKey ?? null;
       // `agent.invoke` resolves to the A2A parts array, not the
       // skill's return value.  Unwrap the first DataPart so callers
