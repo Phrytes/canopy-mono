@@ -547,7 +547,7 @@ function _wireBundleEvents(bundle, bump) {
   if (!bundle?.agent?.on) return;
   // Bump the lastEvent counter on any agent activity so screens that
   // hang a `useEffect` on `lastEvent` re-render. Cheap, no payload.
-  for (const evt of ['skill-call', 'skill-result', 'item-arrive', 'message-arrive', 'push']) {
+  for (const evt of ['skill-call', 'skill-result', 'item-arrive', 'message-arrive', 'push', 'peer']) {
     try { bundle.agent.on(evt, bump); } catch { /* not all events on every agent */ }
   }
 }

@@ -89,6 +89,11 @@ export function FeedScreen() {
     <View style={styles.root}>
       <View style={styles.header}>
         <Text style={styles.title}>{t('feed.heading', 'Prikbord')}</Text>
+        {svc?.activeEntry?.displayName ? (
+          <Text style={styles.groupLabel} numberOfLines={1}>
+            {svc.activeEntry.displayName}
+          </Text>
+        ) : null}
         <ChipRow
           items={_kindFilters()}
           selected={activeKinds}
@@ -160,6 +165,10 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FONT_SIZES.xl, fontWeight: '700', color: COLORS.text,
+    paddingHorizontal: SPACING.sm, marginBottom: SPACING.xs,
+  },
+  groupLabel: {
+    fontSize: FONT_SIZES.sm, color: COLORS.textMuted,
     paddingHorizontal: SPACING.sm, marginBottom: SPACING.sm,
   },
   listContent: { paddingVertical: SPACING.sm },

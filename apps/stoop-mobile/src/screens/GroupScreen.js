@@ -127,6 +127,25 @@ export function GroupScreen() {
   const expiresAt   = codeData.expiresAt;
   const rotationDays= codeData.rotationDays;
 
+  // Live peer connectivity — drives the diagnostic line under the
+  // member count so the user can see whether mDNS / relay actually
+  // found the other phone before scratching their head about why
+  // posts haven't replicated.
+  const skillMatchPeers = (() => {
+    try { return svc.activeBundle.skillMatch?.listPeers?.() ?? []; }
+    catch { return []; }
+  })();
+  const mirrorPeers = (() => {
+    try { return svc.activeBundle.mirror?.listPeers?.() ?? []; }
+    catch { return []; }
+  })();
+  const transportNames = (() => {
+    try {
+      const v = svc.activeBundle.agent?.transportNames;
+      return Array.isArray(v) ? v : [];
+    } catch { return []; }
+  })();
+
   return (
     <ScrollView contentContainerStyle={styles.root}>
       <Text style={styles.heading}>
@@ -148,6 +167,27 @@ export function GroupScreen() {
       <View style={styles.section}>
         <Text style={styles.label}>{t('group.member_count', 'Aantal leden')}</Text>
         <Text style={styles.value}>{memberList.length}</Text>
+      </View>
+
+      {/* Diagnostic: peer connectivity. If mDNS or relay is wired
+          but skillMatchPeers / mirrorPeers stays at 0, the other
+          phone hasn't been discovered yet — explains an empty Feed
+          before you start blaming replication. */}
+      <View style={styles.section}>
+        <Text style={styles.label}>
+          {t('group.peers_label', 'Verbindingen')}
+        </Text>
+        <Text style={styles.value}>
+          {t('group.peers_value',
+             '{sm} match · {mr} mirror · transports: {tx}')
+            .replace('{sm}', String(skillMatchPeers.length))
+            .replace('{mr}', String(mirrorPeers.length))
+            .replace('{tx}', transportNames.length > 0 ? transportNames.join(', ') : '—')}
+        </Text>
+        <Text style={styles.hint}>
+          {t('group.peers_hint',
+             'Match: peers waarvan we matchmaking-broadcasts ontvangen. Mirror: peers waarvan we posts in het prikbord mirrorren. 0 = ontdek-laag bereikt het andere toestel niet (zelfde Wi-Fi? dev client opnieuw gebouwd na permissie-fix? relay-URL ingesteld?).')}
+        </Text>
       </View>
 
       {isAdmin && codeData.code ? (
