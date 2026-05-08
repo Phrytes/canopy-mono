@@ -44,6 +44,7 @@ import { buildBootstrapBundle }              from './lib/bootstrapBundle.js';
 import { getRelayUrl }                       from './lib/relayUrl.js';
 import { buildSkills }                       from '@canopy-app/stoop';
 import { buildIdentitySkills }               from '@canopy/identity-resolver';
+import { migrateOrphanedPeers }              from './lib/migrateOrphanedPeers.js';
 import { attachAppStateBridge }                  from './lib/appStateBridge.js';
 import {
   setBgRunOnce, clearBgRunOnce, BG_TASK_NAME,
@@ -141,6 +142,16 @@ export function ServiceProvider({ children, deps = {} }) {
         setVault(vlt);
 
         const relayUrl = await getRelayUrl({ storage: deps.storage });
+        if (cancelledRef.current) return;
+
+        // ── One-time cleanup of orphaned per-group PeerGraph keys
+        // from the pre-single-agent layout. Idempotent across boots.
+        try {
+          const r = await migrateOrphanedPeers({ storage: deps.storage });
+          if (r.ranNow && r.removed > 0) {
+            console.log('[ServiceContext] migrated orphaned peers:', r.removed);
+          }
+        } catch { /* swallow — migration is best-effort */ }
         if (cancelledRef.current) return;
 
         // ── Single-agent build (one for the whole app process) ──────────
