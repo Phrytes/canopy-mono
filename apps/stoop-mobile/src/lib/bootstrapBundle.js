@@ -24,7 +24,10 @@
  * + cache + roster carry forward.
  */
 
-import { createNeighborhoodAgent } from '@canopy-app/stoop';
+import {
+  createNeighborhoodAgent,
+  wireGroupBroadcastMirror,
+} from '@canopy-app/stoop';
 import { defaultLocalActor, buildMeshAgent } from './agentBundle.js';
 
 export const BOOTSTRAP_GROUP_ID = '_bootstrap';
@@ -74,18 +77,43 @@ export async function buildBootstrapBundle({ identity, label, relayUrl } = {}) {
     members: [],
   });
 
-  // Bridge mDNS → SkillMatch (mirror of buildBundleForGroup).
+  // ItemStore → agent event bridge (mirror of buildBundleForGroup):
+  // FeedScreen et al. listen on agent.on('item-arrive') to know
+  // when to refresh.  Without this bridge, items written by the
+  // mirror or local skill calls don't trigger any UI update.
+  const _bridgeItemArrive = (item) => {
+    try { bundle.agent.emit?.('item-arrive', item); } catch { /* swallow */ }
+  };
+  bundle.itemStore.on?.('item-added',     _bridgeItemArrive);
+  bundle.itemStore.on?.('item-updated',   _bridgeItemArrive);
+  bundle.itemStore.on?.('item-completed', _bridgeItemArrive);
+
+  // Cross-device post replication mirror — same as a real group
+  // bundle.  On `_bootstrap` it's a no-op (no peers post there),
+  // but the relabel path swaps it onto the real groupId where it
+  // actually does work.
+  const mirror = await wireGroupBroadcastMirror({
+    agent:          bundle.agent,
+    itemStore:      bundle.itemStore,
+    group:          BOOTSTRAP_GROUP_ID,
+    peers:          [],
+    evictionRoster: bundle.evictionRoster ?? null,
+  });
+  bundle.mirror = mirror;
+
+  // Bridge mDNS → SkillMatch + mirror (mirror of buildBundleForGroup).
   // Bootstrap's SkillMatch is on the `_bootstrap` topic; cross-device
   // discovery still happens, but broadcasts on `_bootstrap` reach
   // nobody (peers only subscribe once they share a real group).
   // After relabel to a real group, the same agent + peers carry
-  // forward and the new group's SkillMatch picks them up.
+  // forward and the new group's SkillMatch + mirror pick them up.
   const _onAgentPeer = ({ address, pubKey }) => {
     const pk = pubKey ?? address;
     if (!pk || typeof pk !== 'string') return;
     if (pk.includes(':')) return;
     if (pk === meshAgent.address) return;
     try { bundle.skillMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
+    bundle.mirror?.addPeer?.(pk).catch(() => { /* swallow */ });
   };
   meshAgent.on('peer', _onAgentPeer);
 
@@ -95,6 +123,7 @@ export async function buildBootstrapBundle({ identity, label, relayUrl } = {}) {
 
   const stop = async () => {
     try { meshAgent.off('peer', _onAgentPeer);   } catch { /* swallow */ }
+    try { await bundle.mirror?.stop?.();         } catch { /* swallow */ }
     try { await bundle.skillMatch.stop?.();      } catch { /* swallow */ }
     try { await bundle.agent.stop?.();           } catch { /* swallow */ }
   };
