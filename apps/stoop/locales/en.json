@@ -665,7 +665,9 @@
     "mirror_peers":           { "text": "mirror: {pks}", "doc": "Comma-separated pubkey prefixes of peers the broadcast-mirror is subscribed to." },
     "reprobe":                { "text": "Retry connection", "doc": "Manual re-discover button on GroupScreen — triggers gossip + hello to all PeerGraph entries to break out of asymmetric mDNS state." },
     "reprobe_busy":           { "text": "Busy…", "doc": "Re-probe button label while the gossip + hellos run." },
-    "reprobe_done":           { "text": "{n} peers said hello", "doc": "Inline confirmation after Re-probe finishes — {n} = number of hellos sent." }
+    "reprobe_done":           { "text": "{n} peers said hello", "doc": "Inline confirmation after Re-probe finishes — {n} = number of hellos sent." },
+    "reprobe_waiting":        { "text": "Waiting for mDNS discovery… ({s}s)", "doc": "Inline progress text on Re-probe while we wait for PeerGraph entries to appear (Android NSD discovery is slow on app start). {s} = elapsed seconds." },
+    "reprobe_no_peers":       { "text": "No peers discovered after 15s. mDNS isn't reaching the other device — try the relay (Settings → Relay-server).", "doc": "Surfaced after the Re-probe deadline expires with no PeerGraph entries — mDNS isn't propagating, suggest the relay fallback." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Completing pod sign-in", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },
