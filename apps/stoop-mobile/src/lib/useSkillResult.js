@@ -58,12 +58,13 @@ export function useSkillResult(skillId, args, deps = []) {
     setError(null);
     try {
       const localPeer = bundle.agent.address ?? bundle.agent.identity?.pubKey ?? null;
-      // Single-agent refactor: inject groupId so the shared agent's
-      // group-aware skill dispatch can resolve the bundle.
+      // Single-agent refactor: inject `_scope` so the shared agent's
+      // group-aware dispatch can resolve regardless of args.groupId
+      // semantics (see useSkill.js for full rationale).
       const baseArgs = (args && typeof args === 'object' && !Array.isArray(args)) ? args : {};
       const enriched = Array.isArray(args) ? args : {
-        groupId: bundle.groupId ?? svc?.activeGroupId ?? null,
         ...baseArgs,
+        _scope: bundle.groupId ?? svc?.activeGroupId ?? null,
       };
       // `agent.invoke` resolves to the A2A parts array — unwrap to
       // the skill's return value (mirror of web's callSkill).
