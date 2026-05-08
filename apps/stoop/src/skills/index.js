@@ -2230,10 +2230,15 @@ export function buildSkills({
 
       const fromPubKey = item.source?.fromPubKey;
       if (!fromPubKey) return { error: 'no-author-pubkey' };
-      if (!agent?.transport?.sendOneWay) return { error: 'no-transport' };
+      if (typeof agent?.transportFor !== 'function') return { error: 'no-transport' };
 
       try {
-        await agent.transport.sendOneWay(fromPubKey, {
+        // Per-peer routing — `agent.transport` is the primary slot
+        // (InternalTransport on mobile, self-loop only).  Without
+        // this, the attachment-request envelope never reaches the
+        // remote post author.
+        const t = await agent.transportFor(fromPubKey);
+        await t.sendOneWay(fromPubKey, {
           type:  'message',
           parts: [{ type: 'DataPart', data: {
             type:         'stoop-chat',
