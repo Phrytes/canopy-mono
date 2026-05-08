@@ -29,6 +29,35 @@ export class SkillRegistry {
     return this;
   }
 
+  /**
+   * Replace an existing registration atomically.  Unlike `register()`
+   * (which is silent last-write-wins), `replace()` asserts the id is
+   * already registered — useful when an app rebinds a skill's
+   * closure on context change (e.g. group switch) and wants a typo
+   * to fail loudly rather than create a parallel definition.
+   *
+   * @param {import('./defineSkill.js').SkillDefinition} def
+   */
+  replace(def) {
+    if (!def?.id) throw new Error('SkillRegistry.replace: definition must have an id');
+    if (!this.#skills.has(def.id)) {
+      throw new Error(`SkillRegistry.replace: skill "${def.id}" is not registered`);
+    }
+    this.#skills.set(def.id, def);
+    return this;
+  }
+
+  /**
+   * Remove a registration.  Idempotent — calling on an unknown id is
+   * a no-op.  Returns true if a registration was removed.
+   *
+   * @param {string} id
+   * @returns {boolean}
+   */
+  unregister(id) {
+    return this.#skills.delete(id);
+  }
+
   /** @returns {import('./defineSkill.js').SkillDefinition|null} */
   get(id) { return this.#skills.get(id) ?? null; }
 
