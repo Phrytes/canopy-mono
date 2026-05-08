@@ -117,6 +117,31 @@ critical path. See `Project Files/Stoop/advice-2026-05-05.md` §
 
 ---
 
+## Single-agent rule — apps own ONE `core.Agent`
+
+> **Every app builds one `core.Agent` per service-context. Transports
+> are routes plugged into that agent, not parallel agent instances.**
+
+A `core.Agent` owns identity, the `RoutingStrategy`, the `PeerGraph`,
+the SecurityLayer, the skill registry, and one mDNS service
+registration / one relay WebSocket per registered transport. Apps
+that need multi-scope semantics (multiple groups, crews, accounts,
+…) keep per-scope state — `ItemStore` / `MemberMap` / `SkillMatch` /
+mirror — outside the agent and dispatch to the right scope at the
+**skill** level via a `getBundle(args, ctx)` resolver. Skills
+register on the shared agent **once**.
+
+Spinning up N agents to model N scopes is an anti-pattern: it
+creates duplicate mDNS registrations under the same identity,
+ambiguous relay routing, fragmented `PeerGraph`s, and confusing
+transport-level logs. Concrete reference implementation:
+`apps/stoop-mobile`'s `ServiceContext` + `buildGroupState`.
+
+Full rationale + correct/anti-pattern code sketches:
+[`Project Files/conventions/single-agent.md`](Project%20Files/conventions/single-agent.md).
+
+---
+
 ## Pinned versions — DO NOT bump without explicit approval
 
 > **Expo 52 is the ceiling.** `expo@^52.0.0` + the SDK-52-compatible

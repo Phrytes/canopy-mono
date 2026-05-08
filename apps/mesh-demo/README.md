@@ -97,6 +97,11 @@ src/hooks/usePeers.js       (live peer list from PeerGraph)
 src/screens/PeersScreen.js  (Group B stub UI)
 ```
 
+**Single-agent rule.** mesh-demo correctly builds ONE
+`core.Agent` via `createMeshAgent` and plugs mDNS / BLE / relay
+into it as routes. Project-wide convention:
+[`Project Files/conventions/single-agent.md`](../../Project%20Files/conventions/single-agent.md).
+
 ## What Group A gives you
 
 When two phones running this app are on the same WiFi network, they should

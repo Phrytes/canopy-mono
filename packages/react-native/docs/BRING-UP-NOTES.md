@@ -69,6 +69,7 @@ Specifically, apps that hand-roll typically miss:
 | Trap 11 | `buffer` real polyfill + `globalThis.Buffer` | `Cannot read property 'from' of undefined` in `@inrupt/solid-client` |
 | Trap 11.5 | `path` POSIX shim | `Cannot read property 'join' of undefined` at module-load time |
 | Trap 4 | Real `events` polyfill | `class X extends EventEmitter {}` crashes |
+| Trap 20 | Per-bundle `core.Agent` in a multi-scope app | Duplicate mDNS / relay registrations under one identity |
 
 If you see any of those, **stop fixing the hand-rolled config** — you
 will keep finding new traps. Migrate to the preset; the preset
@@ -871,6 +872,54 @@ relay creds, ...), Metro still has to *resolve* the import even
 though it'll never *run*.  Shim every such transitive Node-only
 package in the preset's `extraNodeModules`.  Same fix as Traps 11
 (Inrupt) + the chokidar / express / systray2 cluster.
+
+### Trap 20 — Per-bundle `core.Agent` (multi-group RN apps)
+
+**Symptom (Stoop V3 mobile, 2026-05-08):**
+
+When the user has N joined groups, the relay broker logs:
+
+```
+[relay] registered   <pubkey>…
+[relay] registered   <pubkey>…
+[relay] registered   <pubkey>…    (× N)
+```
+
+…all under the same identity. Mobile logs show duplicate `inbound
+connection: out_1` from MdnsTransport, multiple `peer-discovered`
+events for the same peer, and skill calls round-tripping through
+the relay because routing thinks self is a remote peer (one of the
+N agents).
+
+**Cause:** the app's bundle factory calls `buildMeshAgent()` (or
+equivalent) **once per joined group**. Each call constructs a fresh
+`core.Agent` with its own InternalTransport / MdnsTransport /
+RelayTransport stack. N groups → N agents under one identity → N
+mDNS service registrations / N WebSocket connections to the relay.
+
+**Fix:** project-wide single-agent rule —
+[`Project Files/conventions/single-agent.md`](../../../Project%20Files/conventions/single-agent.md).
+The service-context owns ONE `core.Agent`. Per-group state
+(`ItemStore`, `MemberMap`, `SkillMatch`, mirror) lives in a
+group-scoped factory (`buildGroupState({meshAgent, ...})` for
+Stoop) on top of the shared agent. Skills register on the agent
+ONCE with a `getBundle(args, ctx)` resolver that picks the right
+group from `args.groupId` / pubsub topic.
+
+Reference implementation:
+- `apps/stoop-mobile/src/lib/agentBundle.js` —
+  `buildMeshAgent()` (one) + `buildGroupState({meshAgent, ...})`
+  (per-group, no agent inside).
+- `apps/stoop-mobile/src/ServiceContext.js` — boots one agent,
+  registers `buildSkills({getBundle})` once, builds GroupStates
+  for each joined group.
+- `apps/stoop/src/Agent.js`'s `createNeighborhoodAgent({
+  registerSkills: false })` opt-out for the per-group registration
+  path.
+
+Tasks-mobile (when it lands) inherits this pattern — see the
+"Tasks-app fix propagation" section in
+[`Project Files/Stoop/single-agent-refactor-2026-05-08.md`](../../../Project%20Files/Stoop/single-agent-refactor-2026-05-08.md).
 
 ---
 

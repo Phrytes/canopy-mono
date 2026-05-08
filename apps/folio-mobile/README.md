@@ -27,6 +27,15 @@ The `@canopy-app/folio` workspace is **not** a substrate — it's a sibling app 
 | `@canopy/core` | `PodCapabilityToken` | Share screen — accept incoming capability tokens from another agent. | Capability-token primitive is SDK-foundational; substrates compose it, they don't wrap it. |
 | `@canopy/react-native` | `platform/polyfills` (entry-point side-effect import) | RN bring-up: `react-native-get-random-values` + `nacl-util` polyfills before any crypto runs. | Platform layer — RN-specific bring-up lives in `@canopy/react-native` by design; no substrate wraps it. |
 
+## Architecture: ONE `core.Agent` (when mesh transports are wired)
+
+Folio-mobile is currently pod-only — no mesh transports today, so
+the single-agent rule is satisfied trivially. **If/when** Folio
+adds mDNS / BLE / relay (e.g. for direct cross-device note sync
+without a pod hop), build them onto ONE `core.Agent` per
+service-context, not per-account. Project-wide convention:
+[`Project Files/conventions/single-agent.md`](../../Project%20Files/conventions/single-agent.md).
+
 ## Status
 
 **v0** — Phase C deliverable.  Screens + auth + plain-TextInput editor.
