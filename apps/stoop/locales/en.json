@@ -655,7 +655,10 @@
     "rotate_code":            { "text": "Rotate code now", "doc": "Admin CTA on mobile GroupScreen — calls rotateMyGroupCode." },
     "rotating":               { "text": "Rotating…", "doc": "CTA label while rotateMyGroupCode is in flight." },
     "admin_code_expires":     { "text": "Expires on {ts} ({n} days)", "doc": "Hint under the admin code showing the expiry + rotation cadence." },
-    "no_code":                { "text": "No active code found. Try \"Rotate code now\" to mint a new one.", "doc": "Inline error on mobile GroupScreen when both getCurrentMembershipCode and rotateMyGroupCode failed to surface a code." }
+    "no_code":                { "text": "No active code found. Try \"Rotate code now\" to mint a new one.", "doc": "Inline error on mobile GroupScreen when both getCurrentMembershipCode and rotateMyGroupCode failed to surface a code." },
+    "peers_label":            { "text": "Connections", "doc": "Section label on mobile GroupScreen showing live peer connectivity (skillMatch + mirror + transport names)." },
+    "peers_value":            { "text": "{sm} match · {mr} mirror · transports: {tx}", "doc": "Connectivity counts on mobile GroupScreen. {sm}=number of peers in SkillMatch, {mr}=number of peers in the broadcast mirror, {tx}=registered transport names (mdns, relay, etc.)." },
+    "peers_hint":             { "text": "Match: peers we receive matchmaking broadcasts from. Mirror: peers whose posts we mirror into our local feed. 0 = the discovery layer can't reach the other device (same Wi-Fi? dev client rebuilt after the permission fix? relay URL set?).", "doc": "Hint under the connectivity counts explaining what 0/0 means." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Completing pod sign-in", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },

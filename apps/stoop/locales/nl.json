@@ -655,7 +655,10 @@
     "rotate_code":            { "text": "Roteer code nu", "doc": "Admin CTA on mobile GroupScreen — calls rotateMyGroupCode." },
     "rotating":               { "text": "Roteren…", "doc": "CTA label while rotateMyGroupCode is in flight." },
     "admin_code_expires":     { "text": "Verloopt op {ts} ({n} dagen)", "doc": "Hint under the admin code showing the expiry + rotation cadence." },
-    "no_code":                { "text": "Geen actieve code gevonden. Probeer \"Roteer code nu\" om een nieuwe te maken.", "doc": "Inline error on mobile GroupScreen when both getCurrentMembershipCode and rotateMyGroupCode failed to surface a code." }
+    "no_code":                { "text": "Geen actieve code gevonden. Probeer \"Roteer code nu\" om een nieuwe te maken.", "doc": "Inline error on mobile GroupScreen when both getCurrentMembershipCode and rotateMyGroupCode failed to surface a code." },
+    "peers_label":            { "text": "Verbindingen", "doc": "Section label on mobile GroupScreen showing live peer connectivity (skillMatch + mirror + transport names)." },
+    "peers_value":            { "text": "{sm} match · {mr} mirror · transports: {tx}", "doc": "Connectivity counts on mobile GroupScreen. {sm}=number of peers in SkillMatch, {mr}=number of peers in the broadcast mirror, {tx}=registered transport names (mdns, relay, etc.)." },
+    "peers_hint":             { "text": "Match: peers waarvan we matchmaking-broadcasts ontvangen. Mirror: peers waarvan we posts in het prikbord mirrorren. 0 = ontdek-laag bereikt het andere toestel niet (zelfde Wi-Fi? dev client opnieuw gebouwd na permissie-fix? relay-URL ingesteld?).", "doc": "Hint under the connectivity counts explaining what 0/0 means." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Pod-aanmelding voltooien", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },
