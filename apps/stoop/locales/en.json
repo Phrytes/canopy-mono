@@ -362,6 +362,7 @@
     "no_group":               { "text": "Join a group first — then you can fill in your profile.", "doc": "Empty-state body on mobile ProfileMineScreen when the user hasn't joined a group yet (Stoop's agent is per-group). Stoop V3 mobile." },
     "saving":                 { "text": "Saving…", "doc": "Generic in-flight label on mobile ProfileMineScreen submit buttons." },
     "holiday_label":          { "text": "Holiday mode", "doc": "Label next to the holiday-mode toggle on mobile ProfileMineScreen." },
+    "holiday_hint":           { "text": "Temporarily hide your profile: neighbours won't see you as an available match and push notifications pause until you turn it off again.", "doc": "Hint under the holiday-mode toggle on ProfileMineScreen explaining what the toggle does." },
     "holiday_on":             { "text": "On", "doc": "Holiday-mode toggle label when the flag is set." },
     "holiday_off":            { "text": "Off", "doc": "Holiday-mode toggle label when the flag is unset." },
     "location_heading":       { "text": "Location", "doc": "H2 above the location section on mobile ProfileMineScreen." },

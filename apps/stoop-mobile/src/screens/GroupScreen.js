@@ -71,23 +71,24 @@ export function GroupScreen() {
     setBusy(true); setError(null);
     try {
       // Stoop's invite is the current membership code wrapped as
-      // `{groupId, code, expiresAt}`.  `code` is loaded above via
-      // `useSkillResult('getCurrentMembershipCode', {groupId})`.
-      // If it's missing (admin gate failed, code expired) refresh
-      // first; if still missing, mint a fresh one via rotate.
-      let codeData = code.data;
-      if (!codeData?.code) {
-        await code.refresh();
-        codeData = code.data;
+      // `{groupId, code, expiresAt}`.  Read fresh data directly from
+      // `refresh()` / `call()` returns instead of `code.data` — the
+      // hook's state-setter writes don't land synchronously, so the
+      // closure-captured `code.data` would be stale.
+      let codeData = await code.refresh();
+      if (!codeData?.code || codeData?.error) {
+        // `getCurrentMembershipCode` returns {error: 'admin-only'}
+        // for non-admins, OR {error: 'no-code'} when no active code
+        // exists for this group.  Mint one and retry.
+        const r = await rotate.call({ groupId });
+        if (r?.error) throw new Error(`rotateMyGroupCode: ${r.error}`);
+        codeData = await code.refresh();
       }
-      if (!codeData?.code) {
-        await rotate.call({ groupId });
-        await code.refresh();
-        codeData = code.data;
-      }
-      if (!codeData?.code) {
+      if (!codeData?.code || codeData?.error) {
+        const why = codeData?.error ?? 'no-code';
         setError(t('group.no_code',
-                   'Geen actieve code gevonden. Probeer "Roteer code nu" om een nieuwe te maken.'));
+                   'Geen actieve code gevonden. Probeer "Roteer code nu" om een nieuwe te maken.')
+                 + ` (${why})`);
         return;
       }
       nav.navigate(ROUTES.OnboardIssue, {
