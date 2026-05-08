@@ -104,10 +104,23 @@ export async function buildBundleForGroup({
   // via createGroupV2's `addMember(..., role: 'admin')`, but on a
   // cold start (mobile cache is in-memory) the addMember call has
   // already been "lost" to the empty cache so we need to replay it.
+  //
+  // **Keying:** stoop skills receive `from = envelope._from = pubKey`
+  // (the agent's address, NOT the localActor webid). createGroupV2
+  // matches that by indexing the admin entry under `webid = from`
+  // (i.e. webid = pubKey). For the admin gate to clear after cold
+  // start, the seeded entry MUST live under the same key.
   if (localRole === 'admin' || localRole === 'coordinator') {
     try {
-      const me = await bundle.members?.resolveByWebid?.(localActor);
-      if (me) await bundle.members.addMember({ ...me, role: localRole });
+      const pubKey = bundle.agent?.address ?? identity.pubKey;
+      if (pubKey && bundle.members?.addMember) {
+        const existing = await bundle.members.resolveByWebid(pubKey);
+        await bundle.members.addMember({
+          ...(existing ?? { webid: pubKey }),
+          pubKey,
+          role: localRole,
+        });
+      }
     } catch { /* best effort — admin gate skills will surface a clearer error if this matters */ }
   }
 
@@ -187,10 +200,20 @@ export async function relabelBundleGroup({
   bundle.skillMatch = skillMatch;
 
   // Seed admin role on the relabel path (mirror of buildBundleForGroup).
+  // See the JSDoc on the seed in buildBundleForGroup for the keying
+  // rationale — entry MUST be under webid=pubKey to match `from` in
+  // the skill handler.
   if (localRole === 'admin' || localRole === 'coordinator') {
     try {
-      const me = await bundle.members?.resolveByWebid?.(localActor);
-      if (me) await bundle.members.addMember({ ...me, role: localRole });
+      const pubKey = bundle.agent?.address ?? bundle.agent?.identity?.pubKey;
+      if (pubKey && bundle.members?.addMember) {
+        const existing = await bundle.members.resolveByWebid(pubKey);
+        await bundle.members.addMember({
+          ...(existing ?? { webid: pubKey }),
+          pubKey,
+          role: localRole,
+        });
+      }
     } catch { /* best effort */ }
   }
 
