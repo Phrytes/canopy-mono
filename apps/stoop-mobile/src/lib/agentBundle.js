@@ -23,7 +23,7 @@
 import { createNeighborhoodAgent } from '@canopy-app/stoop';
 import {
   Agent, AgentConfig, FallbackTable, InternalBus, InternalTransport,
-  PeerGraph, RoutingStrategy,
+  PeerGraph, RelayTransport, RoutingStrategy,
 } from '@canopy/core';
 import { SkillMatch }                      from '@canopy/skill-match';
 // Subpath imports — pulling from `@canopy/react-native`'s barrel
@@ -77,6 +77,8 @@ export async function buildBundleForGroup({
   reveals,
   itemBackend,
   label,
+  /** Optional ws://… or wss://… URL for the broker transport. */
+  relayUrl,
 } = {}) {
   if (!identity) throw new Error('buildBundleForGroup: identity required');
   if (typeof groupId !== 'string' || !groupId) {
@@ -94,6 +96,7 @@ export async function buildBundleForGroup({
     identity,
     label: label ?? `stoop-mobile:${groupId}`,
     peerGraphPrefix: `stoop:peers:${groupId}:`,
+    relayUrl,
   });
 
   const bundle = await createNeighborhoodAgent({
@@ -192,7 +195,7 @@ export async function buildBundleForGroup({
  * complexity for the simple PoC and relay needs a server URL.
  * Plumbed-in extension points are obvious if we want them later.
  */
-export async function buildMeshAgent({ identity, label, peerGraphPrefix }) {
+export async function buildMeshAgent({ identity, label, peerGraphPrefix, relayUrl }) {
   const bus       = new InternalBus();
   const internal  = new InternalTransport(bus, identity.pubKey);
 
@@ -268,6 +271,35 @@ export async function buildMeshAgent({ identity, label, peerGraphPrefix }) {
     }
   } catch (err) {
     console.warn('[agentBundle] mDNS init failed; using internal-only:', err?.message ?? err);
+  }
+
+  // Relay (Path B): when a relay URL is configured, plumb a
+  // `RelayTransport` so two devices that can't see each other on
+  // the LAN (different Wi-Fi, cellular, mDNS-blocked router) can
+  // still reach each other through a shared broker.  Pure WebSocket,
+  // no native module — works in Expo Go.  Run a local relay with
+  // `npx @canopy/relay` (port 8787 by default).
+  if (typeof relayUrl === 'string' && relayUrl.length > 0) {
+    try {
+      const relay = new RelayTransport({ relayUrl, identity });
+      agent.addTransport('relay', relay);
+
+      relay.on('peer-discovered', (peerAddress) => {
+        if (!peerAddress || typeof peerAddress !== 'string') return;
+        if (peerAddress === identity.pubKey) return;
+        peers.upsert({
+          type:          'native',
+          pubKey:        peerAddress,
+          reachable:     true,
+          hops:          0,
+          via:           null,
+          lastSeen:      Date.now(),
+          discoveredVia: 'relay-peer-discovered',
+        }).catch(() => { /* swallow */ });
+      });
+    } catch (err) {
+      console.warn('[agentBundle] RelayTransport init failed:', err?.message ?? err);
+    }
   }
 
   // Auto-hello + discovery so peers exchange HI handshakes after
