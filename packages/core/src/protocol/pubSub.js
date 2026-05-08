@@ -27,7 +27,11 @@ export async function subscribe(agent, publisherAddress, topic, callback) {
   };
   agent.on('publish', listener);
 
-  await agent.transport.sendOneWay(publisherAddress, { type: 'subscribe', topic });
+  // Use `transportFor(peer)` so cross-device routing (mDNS / relay /
+  // BLE / etc.) wins; `agent.transport` is the primary slot which on
+  // mobile is the InternalTransport (self-loop only).
+  const t = await agent.transportFor(publisherAddress);
+  await t.sendOneWay(publisherAddress, { type: 'subscribe', topic });
 
   // Return a cleanup function that fully tears down the subscription:
   // both the local listener AND the publisher-side registration. This
@@ -48,7 +52,10 @@ export async function subscribe(agent, publisherAddress, topic, callback) {
  * @param {string} topic
  */
 export async function unsubscribe(agent, publisherAddress, topic) {
-  await agent.transport.sendOneWay(publisherAddress, { type: 'unsubscribe', topic });
+  // Same routing rationale as subscribe(): pick the right transport
+  // for the publisher peer.
+  const t = await agent.transportFor(publisherAddress);
+  await t.sendOneWay(publisherAddress, { type: 'unsubscribe', topic });
 }
 
 /**
@@ -75,10 +82,19 @@ export async function publish(agent, topic, partsOrValue) {
   const subs = agent._pubSubSubscribers?.get(topic);
   if (!subs || subs.size === 0) return;
 
-  await Promise.all([...subs].map(addr =>
-    agent.transport.publishOneWay(addr, topic, { type: 'publish', topic, parts })
-      .catch(err => agent.emit('error', err)),
-  ));
+  // Per-subscriber routing — each subscriber may be reachable via a
+  // different transport (mDNS for the LAN peer, relay for the
+  // off-network one, etc.). The previous code used `agent.transport`
+  // (primary slot) which on mobile is the InternalTransport — never
+  // crosses processes, silently dropped every cross-device fan-out.
+  await Promise.all([...subs].map(async (addr) => {
+    try {
+      const t = await agent.transportFor(addr);
+      await t.publishOneWay(addr, topic, { type: 'publish', topic, parts });
+    } catch (err) {
+      agent.emit('error', err);
+    }
+  }));
 }
 
 /**
@@ -96,12 +112,20 @@ export function handlePubSub(agent, envelope) {
       if (!agent._pubSubSubscribers) agent._pubSubSubscribers = new Map();
       if (!agent._pubSubSubscribers.has(topic)) agent._pubSubSubscribers.set(topic, new Set());
       agent._pubSubSubscribers.get(topic).add(envelope._from);
-      // Replay history to new subscriber.
+      // Replay history to new subscriber.  Same per-peer routing
+      // fix as publish() — pick the right transport for the
+      // subscriber rather than blindly using the primary slot.
       const history = agent._pubSubHistory?.get(topic);
       if (history?.length) {
         for (const parts of history) {
-          agent.transport.publishOneWay(envelope._from, topic, { type: 'publish', topic, parts })
-            .catch(err => agent.emit('error', err));
+          (async () => {
+            try {
+              const t = await agent.transportFor(envelope._from);
+              await t.publishOneWay(envelope._from, topic, { type: 'publish', topic, parts });
+            } catch (err) {
+              agent.emit('error', err);
+            }
+          })();
         }
       }
       return true;
