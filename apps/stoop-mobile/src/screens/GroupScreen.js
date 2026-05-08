@@ -32,6 +32,7 @@ export function GroupScreen() {
 
   const code = useSkillResult('getCurrentMembershipCode',
     groupId ? { groupId } : null, [groupId]);
+  const open = useSkillResult('listOpen', {}, [groupId, svc?.lastEvent]);
   const rotate = useSkill('rotateMyGroupCode');
   const leave  = useSkill('leaveGroup');
 
@@ -169,10 +170,13 @@ export function GroupScreen() {
         <Text style={styles.value}>{memberList.length}</Text>
       </View>
 
-      {/* Diagnostic: peer connectivity. If mDNS or relay is wired
-          but skillMatchPeers / mirrorPeers stays at 0, the other
-          phone hasn't been discovered yet — explains an empty Feed
-          before you start blaming replication. */}
+      {/* Diagnostic: peer connectivity + local-store volume.
+          Lets you separate three failure modes:
+            1. transports = "default" only → mDNS/relay never wired.
+            2. transports include mdns/relay but match=0/mirror=0 →
+               discovery isn't reaching the other phone.
+            3. mirror>0 but items=0 → discovery worked, replication
+               didn't (broadcasts not delivered or filtered out). */}
       <View style={styles.section}>
         <Text style={styles.label}>
           {t('group.peers_label', 'Verbindingen')}
@@ -183,6 +187,11 @@ export function GroupScreen() {
             .replace('{sm}', String(skillMatchPeers.length))
             .replace('{mr}', String(mirrorPeers.length))
             .replace('{tx}', transportNames.length > 0 ? transportNames.join(', ') : '—')}
+        </Text>
+        <Text style={[styles.value, { marginTop: SPACING.xs }]}>
+          {t('group.items_value',
+             '{n} posts in deze groep')
+            .replace('{n}', String(Array.isArray(open.data?.items) ? open.data.items.length : 0))}
         </Text>
         <Text style={styles.hint}>
           {t('group.peers_hint',
