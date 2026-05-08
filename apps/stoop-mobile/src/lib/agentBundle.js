@@ -340,7 +340,14 @@ export async function buildMeshAgent({ identity, label, peerGraphPrefix, relayUr
   // other phone's address but the SecurityLayer would still reject
   // sends with UNKNOWN_RECIPIENT.
   try { agent.enableAutoHello?.({ pullPeers: true }); } catch { /* non-fatal */ }
-  try { agent.startDiscovery?.({ gossipIntervalMs: 60_000 }); } catch { /* non-fatal */ }
+  // Gossip cadence has to stay UNDER MdnsTransport.FRESHNESS_MS
+  // (currently 30s in @canopy/react-native): canReach() returns
+  // false if there's been no envelope activity within that window,
+  // and RoutingStrategy then falls through to the primary slot
+  // (which is InternalTransport, self-loop only) — so a broadcast
+  // 31s after the last gossip round silently drops on mobile.
+  // 20s leaves a comfortable margin without burning battery.
+  try { agent.startDiscovery?.({ gossipIntervalMs: 20_000 }); } catch { /* non-fatal */ }
 
   // PeerGraph upgrades on direct hello — keep it accurate.
   agent.on('peer', ({ address, pubKey, label: peerLabel, ack }) => {
