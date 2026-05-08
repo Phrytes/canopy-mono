@@ -58,9 +58,15 @@ export function useProfile() {
       throw err;
     }
     const localPeer = bundle.agent.address ?? bundle.agent.identity?.pubKey ?? null;
+    // Single-agent refactor: inject groupId for group-aware dispatch.
+    const baseArgs = (args && typeof args === 'object' && !Array.isArray(args)) ? args : {};
+    const enriched = Array.isArray(args) ? args : {
+      groupId: bundle.groupId ?? svc?.activeGroupId ?? null,
+      ...baseArgs,
+    };
     // Unwrap the A2A parts array to the skill's return value (mirror
     // of web's callSkill).
-    const rawParts = await bundle.agent.invoke(localPeer, skillId, toParts(args));
+    const rawParts = await bundle.agent.invoke(localPeer, skillId, toParts(enriched));
     return unwrapParts(rawParts);
   }, [svc]);
 
