@@ -185,16 +185,37 @@ export function SettingsScreen() {
           {t('settings.group_link_hint',
              'Bekijk leden, maak een uitnodiging-QR, verlaat de groep.')}
         </Text>
-        <Pressable
-          onPress={() => nav.navigate(ROUTES.Group)}
-          style={styles.btnSecondary}
-          accessibilityRole="button"
-          accessibilityLabel="settings-manage-group"
-        >
-          <Text style={styles.btnSecondaryLabel}>
-            {t('settings.group_link', 'Beheer groep')}
-          </Text>
-        </Pressable>
+
+        {/* List EVERY joined group so multi-group users can switch
+            focus.  The active one is marked + tapping a non-active
+            row both switches activeGroup AND nav's to GroupScreen. */}
+        {[...(svc.groups?.values?.() ?? [])].map(({ entry }) => {
+          const isActive = entry.groupId === svc.activeGroupId;
+          return (
+            <Pressable
+              key={entry.groupId}
+              onPress={async () => {
+                if (!isActive) {
+                  try { await svc.switchActiveGroup?.(entry.groupId); }
+                  catch (err) { setError(err?.message ?? String(err)); return; }
+                }
+                nav.navigate(ROUTES.Group);
+              }}
+              style={styles.btnSecondary}
+              accessibilityRole="button"
+              accessibilityLabel={`settings-manage-group-${entry.groupId}`}
+            >
+              <Text style={styles.btnSecondaryLabel}>
+                {entry.displayName ?? entry.groupId}
+                {isActive
+                  ? ' '
+                    + t('settings.group_active_marker', '· actief')
+                  : ''}
+              </Text>
+            </Pressable>
+          );
+        })}
+
         <Pressable
           onPress={() => nav.navigate(ROUTES.OnboardScan)}
           style={styles.btnSecondary}
