@@ -21,8 +21,16 @@
  */
 
 import { createNeighborhoodAgent } from '@canopy-app/stoop';
-import { InternalBus, InternalTransport } from '@canopy/core';
+import {
+  Agent, AgentConfig, FallbackTable, InternalBus, InternalTransport,
+  PeerGraph, RoutingStrategy,
+} from '@canopy/core';
 import { SkillMatch }                      from '@canopy/skill-match';
+// Subpath imports — pulling from `@canopy/react-native`'s barrel
+// would re-evaluate KeychainVault, whose `react-native-keychain` TS
+// import vitest can't parse.  Subpath bypass.
+import { MdnsTransport }       from '@canopy/react-native/src/transport/MdnsTransport.js';
+import { AsyncStorageAdapter } from '@canopy/react-native/src/storage/AsyncStorageAdapter.js';
 
 /**
  * @param {object} args
@@ -78,12 +86,19 @@ export async function buildBundleForGroup({
     throw new Error('buildBundleForGroup: localActor required');
   }
 
-  const bus       = new InternalBus();
-  const transport = new InternalTransport(bus, identity.pubKey);
+  // Build a multi-transport agent: InternalTransport as the primary
+  // (handles self-loop for `agent.invoke(self, ...)` — Stoop's whole
+  // UI dispatches that way) plus mDNS as a named transport so two
+  // phones on the same Wi-Fi can discover + reach each other.
+  const meshAgent = await buildMeshAgent({
+    identity,
+    label: label ?? `stoop-mobile:${groupId}`,
+    peerGraphPrefix: `stoop:peers:${groupId}:`,
+  });
 
   const bundle = await createNeighborhoodAgent({
     identity,
-    transport,
+    agent: meshAgent,
     label: label ?? `stoop-mobile:${groupId}`,
     skillMatch: {
       group:      groupId,
@@ -97,6 +112,20 @@ export async function buildBundleForGroup({
     reveals,
     itemBackend,
   });
+
+  // Bridge mDNS peer-discovered → SkillMatch.addPeer so when the
+  // other phone advertises itself the SkillMatch subscribes to it
+  // and broadcasts reach.  We add only stable pubkeys (skip BLE MAC
+  // shaped strings — colon-containing — to match createMeshAgent's
+  // convention) and skip self.
+  const _onAgentPeer = ({ address, pubKey }) => {
+    const pk = pubKey ?? address;
+    if (!pk || typeof pk !== 'string') return;
+    if (pk.includes(':')) return;          // BLE MAC, not a pubkey
+    if (pk === meshAgent.address) return;  // self
+    try { bundle.skillMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
+  };
+  meshAgent.on('peer', _onAgentPeer);
 
   // Seed the local actor's role into MemberMap when the registry
   // entry says we're admin/coordinator. The bundle factory only sets
@@ -128,13 +157,137 @@ export async function buildBundleForGroup({
   await bundle.skillMatch.start();
 
   // Compose a `stop()` that tears down the bundle in the right order.
+  // agent.stop() disconnects every named transport (mDNS, internal),
+  // so we don't need a separate bus.close() here — the InternalBus
+  // is held inside the InternalTransport instance and goes away with it.
   const stop = async () => {
-    try { await bundle.skillMatch.stop?.(); } catch { /* swallow */ }
-    try { await bundle.agent.stop?.();      } catch { /* swallow */ }
-    try { bus.close?.();                     } catch { /* swallow */ }
+    try { meshAgent.off('peer', _onAgentPeer);   } catch { /* swallow */ }
+    try { await bundle.skillMatch.stop?.();      } catch { /* swallow */ }
+    try { await bundle.agent.stop?.();           } catch { /* swallow */ }
   };
 
   return { ...bundle, stop };
+}
+
+/**
+ * Build a multi-transport `core.Agent` for one Stoop bundle.
+ *
+ * Phase 40.23 follow-up (2026-05-08): wires mDNS so two phones on the
+ * same Wi-Fi can discover each other.  Architecture:
+ *
+ *   - **Primary** (default slot): `InternalTransport` over a private
+ *     `InternalBus`.  Required for self-loop — Stoop's UI dispatches
+ *     skills via `agent.invoke(self, ...)` and the InternalBus is the
+ *     only transport that delivers `to === from`.
+ *   - **Named** (mdns slot): `MdnsTransport`.  Routing prefers it for
+ *     any peer it can reach (`canReach()` returns true for peers
+ *     advertised on the LAN).  When mDNS doesn't know the peer,
+ *     RoutingStrategy returns null, Agent falls back to the primary
+ *     InternalTransport — which silently drops sends to non-self
+ *     peers (the right behaviour: SkillMatch only addPeer's known
+ *     peers, so a fall-through to internal means the broadcast is a
+ *     no-op rather than an error).
+ *
+ * BLE + relay are deliberately omitted for now — BLE adds permission
+ * complexity for the simple PoC and relay needs a server URL.
+ * Plumbed-in extension points are obvious if we want them later.
+ */
+export async function buildMeshAgent({ identity, label, peerGraphPrefix }) {
+  const bus       = new InternalBus();
+  const internal  = new InternalTransport(bus, identity.pubKey);
+
+  const peers = new PeerGraph({
+    storageBackend: new AsyncStorageAdapter({ prefix: peerGraphPrefix }),
+  });
+
+  const fallbackTable = new FallbackTable();
+  const routing = new RoutingStrategy({
+    transports:    new Map(),
+    peerGraph:     peers,
+    fallbackTable,
+  });
+
+  const config = new AgentConfig({
+    overrides: {
+      discovery: { discoverable: true, acceptHelloFromTier0: true },
+      policy:    { allowRelayFor: 'authenticated' },
+    },
+  });
+
+  const agent = new Agent({
+    identity, transport: internal, peers, config, routing,
+    label: label ?? null,
+  });
+
+  // mDNS: best-effort. If the native module isn't available
+  // (e.g. running in Expo Go on iOS) skip it and continue with the
+  // internal-only setup — the bundle still works for in-process use.
+  try {
+    if (MdnsTransport?.isAvailable?.()) {
+      const mdns = new MdnsTransport({
+        identity,
+        hostname: `stoop-${identity.pubKey.slice(0, 8)}`,
+      });
+      // Pre-connect with a short timeout so a Wi-Fi-off install
+      // doesn't make the first bundle build wait forever.
+      await Promise.race([
+        mdns.connect(),
+        new Promise((_, reject) => setTimeout(
+          () => reject(new Error('mdns pre-connect timeout')),
+          6000,
+        )),
+      ]).catch((err) => {
+        console.warn('[agentBundle] mDNS pre-connect failed:', err?.message ?? err);
+        throw err;
+      });
+      agent.addTransport('mdns', mdns);
+
+      // mDNS surfaces a peer-discovered event with the raw pubkey.
+      // Mirror createMeshAgent's pattern: upsert hops:0/via:null so
+      // a stale gossip-cached indirect record can't survive and
+      // bridge through a non-existent relay.
+      mdns.on('peer-discovered', (peerAddress) => {
+        if (!peerAddress || typeof peerAddress !== 'string') return;
+        if (peerAddress === identity.pubKey) return;
+        peers.upsert({
+          type:          'native',
+          pubKey:        peerAddress,
+          reachable:     true,
+          hops:          0,
+          via:           null,
+          lastSeen:      Date.now(),
+          discoveredVia: 'mdns-peer-discovered',
+        }).catch(() => { /* swallow */ });
+      });
+    }
+  } catch (err) {
+    console.warn('[agentBundle] mDNS init failed; using internal-only:', err?.message ?? err);
+  }
+
+  // Auto-hello + discovery so peers exchange HI handshakes after
+  // mDNS announces them. Without this, mDNS would discover the
+  // other phone's address but the SecurityLayer would still reject
+  // sends with UNKNOWN_RECIPIENT.
+  try { agent.enableAutoHello?.({ pullPeers: true }); } catch { /* non-fatal */ }
+  try { agent.startDiscovery?.({ gossipIntervalMs: 60_000 }); } catch { /* non-fatal */ }
+
+  // PeerGraph upgrades on direct hello — keep it accurate.
+  agent.on('peer', ({ address, pubKey, label: peerLabel, ack }) => {
+    if (!pubKey) return;
+    peers.upsert({
+      type:          'native',
+      pubKey,
+      label:         peerLabel ?? null,
+      reachable:     true,
+      hops:          0,
+      via:           null,
+      lastSeen:      Date.now(),
+      discoveredVia: ack ? 'hello-ack' : 'hello-inbound',
+      transports:    { default: { address, lastSeen: Date.now() } },
+    }).catch(() => { /* swallow */ });
+  });
+
+  return agent;
 }
 
 /**

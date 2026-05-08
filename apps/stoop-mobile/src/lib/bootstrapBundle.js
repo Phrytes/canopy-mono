@@ -25,8 +25,7 @@
  */
 
 import { createNeighborhoodAgent } from '@canopy-app/stoop';
-import { InternalBus, InternalTransport } from '@canopy/core';
-import { defaultLocalActor }       from './agentBundle.js';
+import { defaultLocalActor, buildMeshAgent } from './agentBundle.js';
 
 export const BOOTSTRAP_GROUP_ID = '_bootstrap';
 
@@ -50,12 +49,19 @@ export async function buildBootstrapBundle({ identity, label } = {}) {
   if (!identity) throw new Error('buildBootstrapBundle: identity required');
 
   const localActor = defaultLocalActor(identity);
-  const bus        = new InternalBus();
-  const transport  = new InternalTransport(bus, identity.pubKey);
+
+  // Use the same mesh-capable agent as a real group bundle. The
+  // user can scan / be scanned during onboarding (relabel keeps the
+  // SAME agent), so peer-discovery has to be live from boot.
+  const meshAgent = await buildMeshAgent({
+    identity,
+    label: label ?? 'stoop-mobile:_bootstrap',
+    peerGraphPrefix: 'stoop:peers:_bootstrap:',
+  });
 
   const bundle = await createNeighborhoodAgent({
     identity,
-    transport,
+    agent: meshAgent,
     label: label ?? 'stoop-mobile:_bootstrap',
     skillMatch: {
       group:      BOOTSTRAP_GROUP_ID,
@@ -67,14 +73,29 @@ export async function buildBootstrapBundle({ identity, label } = {}) {
     members: [],
   });
 
+  // Bridge mDNS → SkillMatch (mirror of buildBundleForGroup).
+  // Bootstrap's SkillMatch is on the `_bootstrap` topic; cross-device
+  // discovery still happens, but broadcasts on `_bootstrap` reach
+  // nobody (peers only subscribe once they share a real group).
+  // After relabel to a real group, the same agent + peers carry
+  // forward and the new group's SkillMatch picks them up.
+  const _onAgentPeer = ({ address, pubKey }) => {
+    const pk = pubKey ?? address;
+    if (!pk || typeof pk !== 'string') return;
+    if (pk.includes(':')) return;
+    if (pk === meshAgent.address) return;
+    try { bundle.skillMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
+  };
+  meshAgent.on('peer', _onAgentPeer);
+
   // SkillMatch.start() with zero peers does no subscribe work but
   // still flips the `started` flag so broadcasts don't throw.
   await bundle.skillMatch.start();
 
   const stop = async () => {
-    try { await bundle.skillMatch.stop?.(); } catch { /* swallow */ }
-    try { await bundle.agent.stop?.();      } catch { /* swallow */ }
-    try { bus.close?.();                     } catch { /* swallow */ }
+    try { meshAgent.off('peer', _onAgentPeer);   } catch { /* swallow */ }
+    try { await bundle.skillMatch.stop?.();      } catch { /* swallow */ }
+    try { await bundle.agent.stop?.();           } catch { /* swallow */ }
   };
 
   return { ...bundle, isBootstrap: true, stop };
