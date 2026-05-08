@@ -184,6 +184,16 @@ export function SettingsScreen() {
           </Text>
         </Pressable>
         <Pressable
+          onPress={() => nav.navigate(ROUTES.OnboardScan)}
+          style={styles.btnSecondary}
+          accessibilityRole="button"
+          accessibilityLabel="settings-scan-invite"
+        >
+          <Text style={styles.btnSecondaryLabel}>
+            {t('settings.scan_invite_link', 'Sluit aan via QR')}
+          </Text>
+        </Pressable>
+        <Pressable
           onPress={() => nav.navigate(ROUTES.CreateGroup)}
           style={styles.btnSecondary}
           accessibilityRole="button"

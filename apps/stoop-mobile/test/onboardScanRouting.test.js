@@ -12,13 +12,15 @@ function makeNav() {
 }
 
 describe('routeForKind', () => {
-  it('invite → Shell/Feed with pendingInvite', () => {
+  it('invite → OnboardJoin with the invite payload', () => {
     const nav = makeNav();
-    const res = routeForKind(nav, { kind: 'invite', payload: { groupId: 'g1', signature: 's' } });
-    expect(res).toBe(ROUTES.Shell);
-    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.Shell, expect.objectContaining({
-      screen: ROUTES.Feed,
-      params: expect.objectContaining({ pendingInvite: { groupId: 'g1', signature: 's' } }),
+    const res = routeForKind(nav, {
+      kind: 'invite',
+      payload: { groupId: 'g1', code: 'P3LK9-X4QM7', expiresAt: 123 },
+    });
+    expect(res).toBe(ROUTES.OnboardJoin);
+    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.OnboardJoin, expect.objectContaining({
+      invite: { groupId: 'g1', code: 'P3LK9-X4QM7', expiresAt: 123 },
     }));
   });
 
@@ -50,13 +52,10 @@ describe('routeForKind', () => {
 
   it('passes routeParams through', () => {
     const nav = makeNav();
-    routeForKind(nav, { kind: 'invite', payload: { groupId: 'g', signature: 's' } }, { from: 'deeplink' });
-    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.Shell, expect.objectContaining({
-      screen: ROUTES.Feed,
-      params: expect.objectContaining({
-        from: 'deeplink',
-        pendingInvite: { groupId: 'g', signature: 's' },
-      }),
+    routeForKind(nav, { kind: 'invite', payload: { groupId: 'g', code: 'C', expiresAt: 1 } }, { from: 'deeplink' });
+    expect(nav.navigate).toHaveBeenCalledWith(ROUTES.OnboardJoin, expect.objectContaining({
+      from: 'deeplink',
+      invite: { groupId: 'g', code: 'C', expiresAt: 1 },
     }));
   });
 

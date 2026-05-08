@@ -233,6 +233,17 @@
     "skip":            { "text": "Sluit en ga naar Prikbord", "doc": "CTA before sync completes." },
     "no_active_group": { "text": "Geen actieve bundle.", "doc": "Defensive empty state." }
   },
+  "onboard_join": {
+    "heading":             { "text": "Aansluiten bij groep", "doc": "Heading on OnboardJoinScreen — receiver-side of the QR-scan flow." },
+    "body":                { "text": "Groep-id:", "doc": "Body line on OnboardJoinScreen, followed by the groupId value." },
+    "working":             { "text": "Bezig met aansluiten…", "doc": "Spinner label while addGroup + redeemMembershipCode run." },
+    "success":             { "text": "Aangesloten!", "doc": "Success line after the join completes." },
+    "peer_discovery_hint": { "text": "Je toestel is nu lid van de groep. Posts van anderen verschijnen pas als de toestellen elkaar kunnen vinden — over hetzelfde Wi-Fi (mDNS) of via een relay.", "doc": "Hint after a successful join, explaining that visible posts depend on peer-discovery (which is a separate substrate concern)." },
+    "go_feed":             { "text": "Naar prikbord", "doc": "CTA after success — opens Feed." },
+    "retry":               { "text": "Opnieuw proberen", "doc": "Retry CTA after a failed join attempt." },
+    "scan_again":          { "text": "Scan opnieuw", "doc": "Recovery CTA — opens OnboardScan again." },
+    "no_invite":           { "text": "Geen geldige uitnodiging. Scan de QR opnieuw of laat de admin een nieuwe maken.", "doc": "Empty state when route opened without an invite param." }
+  },
   "onboard_issue": {
     "heading":      { "text": "Toon deze QR aan je buurman", "doc": "Heading on OnboardIssueScreen." },
     "body":         { "text": "Laat het andere toestel deze QR scannen via het Stoop-welkomstscherm.", "doc": "Body on OnboardIssueScreen." },
@@ -722,6 +733,7 @@
     "group_link":             { "text": "Beheer groep", "doc": "Link from SettingsScreen to GroupScreen — opens group QR, member list, leave-group." },
     "group_link_hint":        { "text": "Bekijk leden, maak een uitnodiging-QR, verlaat de groep.", "doc": "Hint under the group-management link." },
     "create_another_group":   { "text": "Maak een nieuwe groep", "doc": "Link from SettingsScreen to CreateGroupScreen — for users who want to create a second/additional group." },
+    "scan_invite_link":       { "text": "Sluit aan via QR", "doc": "Link from SettingsScreen to OnboardScanScreen — for users who want to join an existing group via QR scan." },
     "no_active_group":        { "text": "Sluit eerst aan bij een groep om instellingen te beheren.", "doc": "Empty state on mobile SettingsScreen when no bundle is active." },
     "signin_link":            { "text": "Solid pod-aanmelding", "doc": "Link from SettingsScreen to SignInScreen." },
     "skillmatch_link":        { "text": "Voorgestelde matches", "doc": "Link from SettingsScreen to SkillMatchInboxScreen (Phase 40.20)." },

@@ -233,6 +233,17 @@
     "skip":            { "text": "Skip and go to pinboard", "doc": "CTA before sync completes — lets the user dismiss the screen." },
     "no_active_group": { "text": "No active bundle.", "doc": "Defensive empty state." }
   },
+  "onboard_join": {
+    "heading":             { "text": "Joining group", "doc": "Heading on OnboardJoinScreen — receiver-side of the QR-scan flow." },
+    "body":                { "text": "Group id:", "doc": "Body line on OnboardJoinScreen, followed by the groupId value." },
+    "working":             { "text": "Joining…", "doc": "Spinner label while addGroup + redeemMembershipCode run." },
+    "success":             { "text": "Joined!", "doc": "Success line after the join completes." },
+    "peer_discovery_hint": { "text": "Your device is now a member of the group. Posts from others only appear once the devices can find each other — over the same Wi-Fi (mDNS) or via a relay.", "doc": "Hint after a successful join, explaining that visible posts depend on peer-discovery." },
+    "go_feed":             { "text": "Go to feed", "doc": "CTA after success — opens Feed." },
+    "retry":               { "text": "Try again", "doc": "Retry CTA after a failed join attempt." },
+    "scan_again":          { "text": "Scan again", "doc": "Recovery CTA — opens OnboardScan again." },
+    "no_invite":           { "text": "No valid invite. Scan the QR again or ask the admin for a fresh one.", "doc": "Empty state when route opened without an invite param." }
+  },
   "onboard_issue": {
     "heading":      { "text": "Show this QR to your neighbour", "doc": "Heading on OnboardIssueScreen." },
     "body":         { "text": "Have the other device scan this QR from the Stoop welcome screen.", "doc": "Body on OnboardIssueScreen." },
@@ -722,6 +733,7 @@
     "group_link":             { "text": "Manage group", "doc": "Link from SettingsScreen to GroupScreen — opens group QR, member list, leave-group." },
     "group_link_hint":        { "text": "View members, create an invite QR, leave the group.", "doc": "Hint under the group-management link." },
     "create_another_group":   { "text": "Create another group", "doc": "Link from SettingsScreen to CreateGroupScreen — for users who want to create a second/additional group." },
+    "scan_invite_link":       { "text": "Join via QR", "doc": "Link from SettingsScreen to OnboardScanScreen — for users who want to join an existing group via QR scan." },
     "no_active_group":        { "text": "Join a group first to manage settings.", "doc": "Empty state on mobile SettingsScreen when no bundle is active." },
     "signin_link":            { "text": "Solid pod sign-in", "doc": "Link from SettingsScreen to SignInScreen." },
     "skillmatch_link":        { "text": "Skill-match suggestions", "doc": "Link from SettingsScreen to SkillMatchInboxScreen (Phase 40.20)." },
