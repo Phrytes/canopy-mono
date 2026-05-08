@@ -659,7 +659,12 @@
     "peers_label":            { "text": "Connections", "doc": "Section label on mobile GroupScreen showing live peer connectivity (skillMatch + mirror + transport names)." },
     "peers_value":            { "text": "{sm} match · {mr} mirror · transports: {tx}", "doc": "Connectivity counts on mobile GroupScreen. {sm}=number of peers in SkillMatch, {mr}=number of peers in the broadcast mirror, {tx}=registered transport names (mdns, relay, etc.)." },
     "peers_hint":             { "text": "Match: peers we receive matchmaking broadcasts from. Mirror: peers whose posts we mirror into our local feed. 0 = the discovery layer can't reach the other device (same Wi-Fi? dev client rebuilt after the permission fix? relay URL set?).", "doc": "Hint under the connectivity counts explaining what 0/0 means." },
-    "items_value":            { "text": "{n} posts in this group", "doc": "Item count line on GroupScreen — counts open items in the local store. Helps separate \"discovery works but replication doesn't\" from \"discovery itself is broken\"." }
+    "items_value":            { "text": "{n} posts in this group", "doc": "Item count line on GroupScreen — counts open items in the local store. Helps separate \"discovery works but replication doesn't\" from \"discovery itself is broken\"." },
+    "self_pk":                { "text": "Me: {pk}", "doc": "Self-pubkey prefix shown above the connectivity counts so the user can verify which side is which when comparing two phones." },
+    "match_peers":            { "text": "match: {pks}", "doc": "Comma-separated pubkey prefixes of peers in the SkillMatch routing table." },
+    "mirror_peers":           { "text": "mirror: {pks}", "doc": "Comma-separated pubkey prefixes of peers the broadcast-mirror is subscribed to." },
+    "reprobe":                { "text": "Retry connection", "doc": "Manual re-discover button on GroupScreen — triggers gossip + hello to all PeerGraph entries to break out of asymmetric mDNS state." },
+    "reprobe_busy":           { "text": "Busy…", "doc": "Re-probe button label while the gossip + hellos run." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Completing pod sign-in", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },

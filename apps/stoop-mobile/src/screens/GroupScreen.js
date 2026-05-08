@@ -146,6 +146,34 @@ export function GroupScreen() {
       return Array.isArray(v) ? v : [];
     } catch { return []; }
   })();
+  const selfPk = (() => {
+    try {
+      return svc.activeBundle.agent?.address
+        ?? svc.activeBundle.agent?.identity?.pubKey
+        ?? '';
+    } catch { return ''; }
+  })();
+  const _shortPk = (pk) => (typeof pk === 'string' && pk.length > 8) ? pk.slice(0, 8) + '…' : (pk ?? '?');
+
+  const reprobe = async () => {
+    // Two cheap nudges to break out of asymmetric mDNS hello state:
+    //   1. agent.startDiscovery's gossip — pings each known peer
+    //      with our peer-list so they backfill ours into theirs.
+    //   2. explicit hello to every PeerGraph entry. mDNS may have
+    //      surfaced an addr but the auto-hello never landed; this
+    //      re-tries the handshake.
+    setBusy(true); setError(null);
+    try {
+      const a = svc.activeBundle.agent;
+      try { a?.discovery?.gossip?.(); } catch { /* swallow */ }
+      const peerEntries = await a?.peers?.list?.().catch(() => []) ?? [];
+      for (const p of peerEntries) {
+        if (!p?.pubKey || p.pubKey === a.address) continue;
+        try { await a.hello?.(p.pubKey); } catch { /* swallow */ }
+      }
+    } catch (err) { setError(err?.message ?? String(err)); }
+    finally { setBusy(false); }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.root}>
@@ -181,6 +209,10 @@ export function GroupScreen() {
         <Text style={styles.label}>
           {t('group.peers_label', 'Verbindingen')}
         </Text>
+        <Text style={[styles.value, styles.mono]} selectable>
+          {t('group.self_pk', 'Ik: {pk}')
+            .replace('{pk}', _shortPk(selfPk))}
+        </Text>
         <Text style={styles.value}>
           {t('group.peers_value',
              '{sm} match · {mr} mirror · transports: {tx}')
@@ -188,6 +220,18 @@ export function GroupScreen() {
             .replace('{mr}', String(mirrorPeers.length))
             .replace('{tx}', transportNames.length > 0 ? transportNames.join(', ') : '—')}
         </Text>
+        {skillMatchPeers.length > 0 ? (
+          <Text style={[styles.hint, styles.mono]} selectable>
+            {t('group.match_peers', 'match: {pks}')
+              .replace('{pks}', skillMatchPeers.map(_shortPk).join(', '))}
+          </Text>
+        ) : null}
+        {mirrorPeers.length > 0 ? (
+          <Text style={[styles.hint, styles.mono]} selectable>
+            {t('group.mirror_peers', 'mirror: {pks}')
+              .replace('{pks}', mirrorPeers.map(_shortPk).join(', '))}
+          </Text>
+        ) : null}
         <Text style={[styles.value, { marginTop: SPACING.xs }]}>
           {t('group.items_value',
              '{n} posts in deze groep')
@@ -197,6 +241,19 @@ export function GroupScreen() {
           {t('group.peers_hint',
              'Match: peers waarvan we matchmaking-broadcasts ontvangen. Mirror: peers waarvan we posts in het prikbord mirrorren. 0 = ontdek-laag bereikt het andere toestel niet (zelfde Wi-Fi? dev client opnieuw gebouwd na permissie-fix? relay-URL ingesteld?).')}
         </Text>
+        <Pressable
+          onPress={reprobe}
+          disabled={busy}
+          style={styles.btnSecondary}
+          accessibilityRole="button"
+          accessibilityLabel="group-reprobe-peers"
+        >
+          <Text style={styles.btnSecondaryLabel}>
+            {busy
+              ? t('group.reprobe_busy', 'Bezig…')
+              : t('group.reprobe', 'Verbinding opnieuw proberen')}
+          </Text>
+        </Pressable>
       </View>
 
       {isAdmin && codeData.code ? (
