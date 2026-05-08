@@ -329,7 +329,9 @@
     "responding":       { "text": "Bezig…", "doc": "Primary CTA label while in flight." },
     "cancel":           { "text": "Annuleer post", "doc": "Destructive CTA visible to the post author — cancelRequest." },
     "mark_returned":    { "text": "Markeer als teruggebracht", "doc": "Lend-only CTA — markReturned." },
-    "no_active_group":  { "text": "Sluit eerst aan bij een groep om posts te bekijken.", "doc": "Empty-state when no active bundle." }
+    "no_active_group":  { "text": "Sluit eerst aan bij een groep om posts te bekijken.", "doc": "Empty-state when no active bundle." },
+    "respond_default_body": { "text": "Ik wil je graag helpen.", "doc": "Default opener message sent to the post author when the user taps \"Ik help\" — respondToItem requires a body." },
+    "no_author":        { "text": "Auteur onbekend — kan geen chat openen.", "doc": "Inline error on \"Reageer met chat\" when neither item.source.fromPubKey nor item.source.from nor any top-level author field resolves." }
   },
   "profile_other": {
     "unknown_member":  { "text": "Onbekend lid.", "doc": "Empty state on ProfileOtherScreen when the route was opened without a member to render." },
