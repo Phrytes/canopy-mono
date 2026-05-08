@@ -155,6 +155,22 @@ Out-of-scope per the project-wide rule (see [main `README.md`](../../README.md#p
 The app may run on iOS via Expo, but no iOS code paths, tests, or
 release process.
 
+## Architecture: ONE `core.Agent` for the app
+
+ServiceContext owns a single `meshAgent` for the whole RN process.
+mDNS, relay, internal-loopback, etc. are routes attached to that
+agent via `addTransport()` + `RoutingStrategy`. Per-group state
+(`ItemStore`, `MemberMap`, `SkillMatch`, mirror) lives in
+`buildGroupState({meshAgent, ...})` and references the shared agent.
+Stoop's full skill set registers on the shared agent ONCE, with a
+group-aware `getBundle` resolver that picks the right group from
+`args.groupId` / pubsub topic.
+
+This is a project-wide convention — see
+[`Project Files/conventions/single-agent.md`](../../Project%20Files/conventions/single-agent.md).
+Don't introduce a per-group Agent. Concrete plan + rationale:
+[`Project Files/Stoop/single-agent-refactor-2026-05-08.md`](../../Project%20Files/Stoop/single-agent-refactor-2026-05-08.md).
+
 ## Substrates
 
 | Package | Used for |
