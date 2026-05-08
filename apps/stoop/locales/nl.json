@@ -659,7 +659,12 @@
     "peers_label":            { "text": "Verbindingen", "doc": "Section label on mobile GroupScreen showing live peer connectivity (skillMatch + mirror + transport names)." },
     "peers_value":            { "text": "{sm} match · {mr} mirror · transports: {tx}", "doc": "Connectivity counts on mobile GroupScreen. {sm}=number of peers in SkillMatch, {mr}=number of peers in the broadcast mirror, {tx}=registered transport names (mdns, relay, etc.)." },
     "peers_hint":             { "text": "Match: peers waarvan we matchmaking-broadcasts ontvangen. Mirror: peers waarvan we posts in het prikbord mirrorren. 0 = ontdek-laag bereikt het andere toestel niet (zelfde Wi-Fi? dev client opnieuw gebouwd na permissie-fix? relay-URL ingesteld?).", "doc": "Hint under the connectivity counts explaining what 0/0 means." },
-    "items_value":            { "text": "{n} posts in deze groep", "doc": "Item count line on GroupScreen — counts open items in the local store. Helps separate \"discovery works but replication doesn't\" from \"discovery itself is broken\"." }
+    "items_value":            { "text": "{n} posts in deze groep", "doc": "Item count line on GroupScreen — counts open items in the local store. Helps separate \"discovery works but replication doesn't\" from \"discovery itself is broken\"." },
+    "self_pk":                { "text": "Ik: {pk}", "doc": "Self-pubkey prefix shown above the connectivity counts so the user can verify which side is which when comparing two phones." },
+    "match_peers":            { "text": "match: {pks}", "doc": "Comma-separated pubkey prefixes of peers in the SkillMatch routing table." },
+    "mirror_peers":           { "text": "mirror: {pks}", "doc": "Comma-separated pubkey prefixes of peers the broadcast-mirror is subscribed to." },
+    "reprobe":                { "text": "Verbinding opnieuw proberen", "doc": "Manual re-discover button on GroupScreen — triggers gossip + hello to all PeerGraph entries to break out of asymmetric mDNS state." },
+    "reprobe_busy":           { "text": "Bezig…", "doc": "Re-probe button label while the gossip + hellos run." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Pod-aanmelding voltooien", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },
