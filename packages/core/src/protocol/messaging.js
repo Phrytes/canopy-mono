@@ -19,12 +19,15 @@ import { Parts } from '../Parts.js';
 export async function sendMessage(agent, peerId, partsOrValue, opts = {}) {
   const parts = Parts.wrap(partsOrValue);
   const { ackTimeout = 5_000, requireAck = false } = opts;
+  // Per-peer routing — `agent.transport` is the primary slot which on
+  // mobile is the InternalTransport (self-loop only).
+  const t = await agent.transportFor(peerId);
   try {
-    await agent.transport.sendAck(peerId, { type: 'message', parts }, ackTimeout);
+    await t.sendAck(peerId, { type: 'message', parts }, ackTimeout);
   } catch (err) {
     if (requireAck) throw err;
-    // Fall back to fire-and-forget.
-    await agent.transport.sendOneWay(peerId, { type: 'message', parts });
+    // Fall back to fire-and-forget over the same transport.
+    await t.sendOneWay(peerId, { type: 'message', parts });
   }
 }
 

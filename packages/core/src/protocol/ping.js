@@ -14,7 +14,11 @@
 export async function ping(agent, peerId, timeout = 5_000) {
   const t0 = Date.now();
   try {
-    await agent.transport.sendAck(peerId, { type: 'ping' }, timeout);
+    // Per-peer routing — `agent.transport` is the primary slot
+    // (InternalTransport on mobile) and only handles self-loop;
+    // ping'ing a remote peer through it would silently drop.
+    const t = await agent.transportFor(peerId);
+    await t.sendAck(peerId, { type: 'ping' }, timeout);
     return Date.now() - t0;
   } catch {
     return null;

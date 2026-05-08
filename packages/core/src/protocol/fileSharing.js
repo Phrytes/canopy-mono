@@ -41,8 +41,10 @@ export async function sendFile(agent, peerId, filePart, opts = {}) {
   const byteLen   = data ? Math.ceil(data.length * 0.75) : 0;  // base64 → bytes approx
 
   if (!data || byteLen < threshold) {
-    // Small file or URL-only: send inline as OW message.
-    await agent.transport.sendOneWay(peerId, {
+    // Small file or URL-only: send inline as OW message.  Per-peer
+    // routing — `agent.transport` is the primary slot.
+    const t = await agent.transportFor(peerId);
+    await t.sendOneWay(peerId, {
       type:     'file',
       filePart,
       from:     agent.address,
@@ -71,9 +73,14 @@ export async function bulkTransferSend(agent, peerId, transferId, data, meta = {
   const id     = transferId ?? genId();
   const chunks = _splitBase64(data, CHUNK_SIZE);
 
+  // Per-peer routing — resolve once before the chunk loop so every
+  // chunk goes via the same transport (and isn't re-routed if
+  // FallbackTable changes mid-transfer).
+  const t = await agent.transportFor(peerId);
+
   for (let seq = 0; seq < chunks.length; seq++) {
     const final = seq === chunks.length - 1;
-    await agent.transport.sendAck(peerId, {
+    await t.sendAck(peerId, {
       type:       'bulk-chunk',
       transferId: id,
       seq,

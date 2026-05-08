@@ -100,8 +100,10 @@ export class Task extends Emitter {
     if (this.#isTerminal()) return;
     this._transition('cancelled');
     if (this.#agent && this.#peerId) {
-      await this.#agent.transport
-        .sendOneWay(this.#peerId, { type: 'cancel', taskId: this.#taskId })
+      // Per-peer routing — `agent.transport` is the self-loop primary
+      // slot on mobile.
+      const t = await this.#agent.transportFor(this.#peerId).catch(() => null);
+      await t?.sendOneWay(this.#peerId, { type: 'cancel', taskId: this.#taskId })
         .catch(() => {});
     }
   }
@@ -116,7 +118,8 @@ export class Task extends Emitter {
     }
     this._transition('working');
     if (this.#agent && this.#peerId) {
-      await this.#agent.transport.sendOneWay(this.#peerId, {
+      const t = await this.#agent.transportFor(this.#peerId);
+      await t.sendOneWay(this.#peerId, {
         type: 'task-input',
         taskId: this.#taskId,
         parts,
