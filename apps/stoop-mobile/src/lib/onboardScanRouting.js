@@ -18,13 +18,15 @@ export function routeForKind(navigation, classified, routeParams = {}) {
   if (!navigation || typeof navigation.navigate !== 'function') return null;
   switch (classified?.kind) {
     case 'invite':
-      // Land in the Feed tab inside the shell with the invite stashed
-      // for the redeem flow.
-      navigation.navigate(ROUTES.Shell, {
-        screen: ROUTES.Feed,
-        params: { ...routeParams, pendingInvite: classified.payload },
+      // Route to OnboardJoinScreen which self-seeds the local
+      // membership-code item, calls redeemMembershipCode, and
+      // registers the group via svc.addGroup. The screen auto-runs
+      // the join attempt on mount + handles error / retry inline.
+      navigation.navigate(ROUTES.OnboardJoin, {
+        ...routeParams,
+        invite: classified.payload,
       });
-      return ROUTES.Shell;
+      return ROUTES.OnboardJoin;
     case 'contact':
       navigation.navigate(ROUTES.Shell, {
         screen: ROUTES.Contacts,

@@ -21,7 +21,7 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, Pressable, TextInput, StyleSheet, Alert, ScrollView,
 } from 'react-native';
-import { useNavigation, useRoute }       from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
@@ -38,6 +38,18 @@ export function OnboardScanScreen() {
   const [showPaste, setShowPaste] = useState(false);
   const [scanLock, setScanLock] = useState(false);
   const [hint,    setHint]    = useState(null);
+
+  // Reset scanLock + hint each time the screen regains focus.
+  // React-navigation keeps the screen mounted in the stack, so without
+  // this the second visit sees a stale `scanLock=true` from the prior
+  // successful scan and silently ignores every subsequent barcode.
+  useFocusEffect(
+    useCallback(() => {
+      setScanLock(false);
+      setHint(null);
+      return () => { /* no teardown */ };
+    }, []),
+  );
 
   const handleClassified = useCallback((res) => {
     if (res.kind === 'unknown') {

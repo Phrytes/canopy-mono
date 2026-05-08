@@ -19,6 +19,7 @@ export const ROUTES = Object.freeze({
   OnboardIssue:   'OnboardIssue',     // admin generates QR
   SignIn:         'SignIn',           // pod sign-in
   CreateGroup:    'CreateGroup',      // 40.18 — minimal "make a new group" wizard
+  OnboardJoin:    'OnboardJoin',      // post-scan: redeem membership code + addGroup
   AuthCallback:   'AuthCallback',     // 40.19 — bulk-sync progress after pod sign-in
   SkillMatchInbox:'SkillMatchInbox',  // 40.20 — auto-skill-match suggestion inbox
 
@@ -70,6 +71,7 @@ export const STACK_ONLY_ROUTES = Object.freeze([
   ROUTES.OnboardIssue,
   ROUTES.SignIn,
   ROUTES.CreateGroup,
+  ROUTES.OnboardJoin,
   ROUTES.AuthCallback,
   ROUTES.SkillMatchInbox,
   ROUTES.PostCompose,
