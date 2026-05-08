@@ -155,6 +155,7 @@ export function GroupScreen() {
   })();
   const _shortPk = (pk) => (typeof pk === 'string' && pk.length > 8) ? pk.slice(0, 8) + '…' : (pk ?? '?');
 
+  const [reprobeReport, setReprobeReport] = useState(null);
   const reprobe = async () => {
     // Two cheap nudges to break out of asymmetric mDNS hello state:
     //   1. agent.startDiscovery's gossip — pings each known peer
@@ -162,15 +163,20 @@ export function GroupScreen() {
     //   2. explicit hello to every PeerGraph entry. mDNS may have
     //      surfaced an addr but the auto-hello never landed; this
     //      re-tries the handshake.
-    setBusy(true); setError(null);
+    setBusy(true); setError(null); setReprobeReport(null);
     try {
       const a = svc.activeBundle.agent;
       try { a?.discovery?.gossip?.(); } catch { /* swallow */ }
-      const peerEntries = await a?.peers?.list?.().catch(() => []) ?? [];
+      // PeerGraph's enumerator is `all()` — `list()` doesn't exist.
+      const peerEntries = (await a?.peers?.all?.().catch(() => [])) ?? [];
+      let hellos = 0;
       for (const p of peerEntries) {
         if (!p?.pubKey || p.pubKey === a.address) continue;
-        try { await a.hello?.(p.pubKey); } catch { /* swallow */ }
+        try { await a.hello?.(p.pubKey); hellos += 1; } catch { /* swallow */ }
       }
+      setReprobeReport(t('group.reprobe_done',
+                         '{n} peers gegroet')
+                       .replace('{n}', String(hellos)));
     } catch (err) { setError(err?.message ?? String(err)); }
     finally { setBusy(false); }
   };
@@ -244,16 +250,19 @@ export function GroupScreen() {
         <Pressable
           onPress={reprobe}
           disabled={busy}
-          style={styles.btnSecondary}
+          style={[styles.btnPrimary, busy && styles.btnDisabled]}
           accessibilityRole="button"
           accessibilityLabel="group-reprobe-peers"
         >
-          <Text style={styles.btnSecondaryLabel}>
+          <Text style={styles.btnPrimaryLabel}>
             {busy
               ? t('group.reprobe_busy', 'Bezig…')
               : t('group.reprobe', 'Verbinding opnieuw proberen')}
           </Text>
         </Pressable>
+        {reprobeReport ? (
+          <Text style={styles.successText}>{reprobeReport}</Text>
+        ) : null}
       </View>
 
       {isAdmin && codeData.code ? (
@@ -358,6 +367,8 @@ const styles = StyleSheet.create({
     borderRadius: RADII.md, alignItems: 'center', marginTop: SPACING.md,
   },
   btnPrimaryLabel: { color: COLORS.textInverse, fontSize: FONT_SIZES.md, fontWeight: '600' },
+  btnDisabled:     { opacity: 0.5 },
+  successText:     { color: COLORS.success, fontSize: FONT_SIZES.sm, fontWeight: '600', marginTop: SPACING.sm },
   btnSecondary: {
     backgroundColor: COLORS.surfaceMuted, paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg, borderRadius: RADII.sm,
