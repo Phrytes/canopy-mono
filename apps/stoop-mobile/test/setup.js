@@ -184,6 +184,32 @@ vi.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+// Mesh transport stubs — agentBundle.js pulls these via the
+// @canopy/react-native subpath so the vitest config alias can
+// resolve to the real source files, but those files import
+// `react-native` (Flow-typed) at module load.  Vitest's mock above
+// short-circuits the import; we still need a placeholder for the
+// classes so `MdnsTransport.isAvailable()` (called from
+// buildMeshAgent) returns false in node and skips the mDNS branch.
+vi.mock('@canopy/react-native/src/transport/MdnsTransport.js', () => ({
+  MdnsTransport: class {
+    static isAvailable() { return false; }
+  },
+}));
+
+vi.mock('@canopy/react-native/src/storage/AsyncStorageAdapter.js', () => ({
+  // Minimal stub — buildMeshAgent passes one to PeerGraph.
+  // PeerGraph's interaction with the backend is async and exercised
+  // elsewhere; for the bundle-build test we just need a no-op.
+  AsyncStorageAdapter: class {
+    constructor() {}
+    async get()    { return null; }
+    async set()    { /* swallow */ }
+    async delete() { /* swallow */ }
+    async list()   { return []; }
+  },
+}));
+
 vi.mock('@react-native-async-storage/async-storage', () => {
   const store = new Map();
   return {

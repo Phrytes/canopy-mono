@@ -130,6 +130,17 @@ export async function createNeighborhoodAgent({
   dataLocationConfig,
   identity,
   transport,
+  /**
+   * Optional pre-built `core.Agent` to wrap.  When provided, the
+   * factory uses it directly instead of constructing a new Agent
+   * from `identity` + `transport` + `label`.  The caller is expected
+   * to have wired any routing strategy / secondary transports it
+   * needs (e.g. mDNS / BLE / relay via `@canopy/react-native`'s
+   * `createMeshAgent` pattern); the factory will still call
+   * `agent.start()`, which is idempotent if the caller already
+   * started it.  `identity` is read from `agent.identity` when omitted.
+   */
+  agent: providedAgent,
   label = 'NeighborhoodAgent',
 }) {
   if (!skillMatchOpts?.group || !skillMatchOpts?.localActor) {
@@ -214,9 +225,21 @@ export async function createNeighborhoodAgent({
   }
 
   // ── Real core.Agent ────────────────────────────────────────────────────────
-  const id  = identity ?? await AgentIdentity.generate(new VaultMemory());
-  const tx  = transport ?? new InternalTransport(new InternalBus(), id.pubKey);
-  const agent = new Agent({ identity: id, transport: tx, label });
+  // Either reuse a pre-built agent (callers that need a routing
+  // strategy + secondary transports build it themselves and hand it
+  // in; e.g. mobile uses createMeshAgent's wiring) or construct the
+  // default single-transport agent from the factory's args.
+  let agent;
+  let id;
+  if (providedAgent) {
+    agent = providedAgent;
+    id = identity ?? agent.identity;
+    if (!id) throw new TypeError('createNeighborhoodAgent: providedAgent missing identity');
+  } else {
+    id = identity ?? await AgentIdentity.generate(new VaultMemory());
+    const tx = transport ?? new InternalTransport(new InternalBus(), id.pubKey);
+    agent = new Agent({ identity: id, transport: tx, label });
+  }
 
   // Phase 14 fix (2026-05-06): ensure the local actor has a MemberMap
   // entry with THIS agent's pubKey + stableId, so chat.send /
