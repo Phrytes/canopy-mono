@@ -1,13 +1,15 @@
 /**
  * App.js — tasks-mobile root component.
  *
- * Phase 41.2 (2026-05-09): wraps the navigator in
- * `<ServiceProvider>` + `<I18nProvider>` + `<ThemeProvider>`. The
- * placeholder screen reads boot status from `useService()` and shows
- * a small splash while the agent identity is bootstrapped (~200 ms).
+ * Phase 41.3 (2026-05-09): wires the onboarding stack into the
+ * navigator. Initial route depends on boot state — Welcome when the
+ * user has no crews yet, Workspace (placeholder for 41.4) when they
+ * have at least one. The booting / error states render a small splash
+ * directly, BEFORE the navigator mounts (so we don't show the route
+ * table mid-bootstrap).
  *
- * Real screens land in Phase 41.3 onwards; the route table is only
- * one entry today.
+ * Provider tree: ThemeProvider → I18nProvider → ServiceProvider →
+ * NavigationContainer.
  */
 
 import React from 'react';
@@ -19,11 +21,17 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@canopy/react-native/theme';
 import { ServiceProvider, useService } from './src/ServiceContext.js';
 import { I18nProvider, useI18n } from './src/I18nProvider.js';
+import { ROUTES } from './src/navigation.js';
+
+import { WelcomeScreen }        from './src/screens/WelcomeScreen.jsx';
+import { OnboardScanScreen }    from './src/screens/OnboardScanScreen.jsx';
+import { OnboardRestoreScreen } from './src/screens/OnboardRestoreScreen.jsx';
+import { OnboardIssueScreen }   from './src/screens/OnboardIssueScreen.jsx';
 
 const Stack = createNativeStackNavigator();
 
-// Tasks-mobile palette — neutral teal/blue (Tasks brand). Falls
-// back to substrate DEFAULT_TOKENS for anything not specified.
+// Tasks-mobile palette — teal brand (overrides substrate
+// DEFAULT_TOKENS only where it diverges).
 const TASKS_TOKENS = {
   COLORS: {
     primary:      '#0d9488',
@@ -32,7 +40,21 @@ const TASKS_TOKENS = {
   },
 };
 
-function PlaceholderScreen() {
+/** Phase 41.4 placeholder; replaced by WorkspaceScreen later. */
+function WorkspacePlaceholder() {
+  const svc = useService();
+  return (
+    <View style={styles.center}>
+      <Text style={styles.title}>Tasks Mobile</Text>
+      <Text style={styles.subtitle}>
+        {svc.crews.size} crew{svc.crews.size === 1 ? '' : 's'} · active: {svc.activeCrewId ?? '—'}
+      </Text>
+      <Text style={styles.hint}>Phase 41.3 ✅. Workspace lands in 41.4.</Text>
+    </View>
+  );
+}
+
+function BootGate() {
   const svc = useService();
   const { t } = useI18n();
 
@@ -53,28 +75,21 @@ function PlaceholderScreen() {
     );
   }
 
-  // status === 'ready' — show either the no-crews empty state or a
-  // brief acknowledgement that the agent is up + identity surfaced.
-  if (svc.crews.size === 0) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.title}>{t('mobile.no_crews.title', 'No crews yet')}</Text>
-        <Text style={styles.hint}>{t('mobile.no_crews.body', 'Scan an invite QR to join a crew.')}</Text>
-        <Text style={styles.subtitle}>
-          {svc.identity?.pubKey?.slice(0, 12) ?? '(no pubkey)'}…
-        </Text>
-      </View>
-    );
-  }
+  const initialRoute = svc.crews.size > 0 ? ROUTES.Workspace : ROUTES.Welcome;
 
   return (
-    <View style={styles.center}>
-      <Text style={styles.title}>Tasks Mobile</Text>
-      <Text style={styles.subtitle}>
-        {svc.crews.size} crew{svc.crews.size === 1 ? '' : 's'} · active: {svc.activeCrewId ?? '—'}
-      </Text>
-      <Text style={styles.hint}>Phase 41.2 — workspace screens land in 41.4.</Text>
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName={initialRoute}
+        screenOptions={{ headerShown: false }}
+      >
+        <Stack.Screen name={ROUTES.Welcome}        component={WelcomeScreen} />
+        <Stack.Screen name={ROUTES.OnboardScan}    component={OnboardScanScreen} />
+        <Stack.Screen name={ROUTES.OnboardRestore} component={OnboardRestoreScreen} />
+        <Stack.Screen name={ROUTES.OnboardIssue}   component={OnboardIssueScreen} />
+        <Stack.Screen name={ROUTES.Workspace}      component={WorkspacePlaceholder} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
@@ -85,15 +100,7 @@ export default function App({ boot } = {}) {
       <ThemeProvider value={TASKS_TOKENS}>
         <I18nProvider>
           <ServiceProvider boot={boot}>
-            <NavigationContainer>
-              <Stack.Navigator>
-                <Stack.Screen
-                  name="Placeholder"
-                  component={PlaceholderScreen}
-                  options={{ title: 'Tasks' }}
-                />
-              </Stack.Navigator>
-            </NavigationContainer>
+            <BootGate />
           </ServiceProvider>
         </I18nProvider>
       </ThemeProvider>

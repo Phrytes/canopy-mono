@@ -11,6 +11,55 @@
       "scan_qr": { "text": "Scan QR",                     "doc": "Empty-state primary action." },
       "restore": { "text": "Herstel met zin",             "doc": "Empty-state secondary action." }
     },
+    "welcome": {
+      "title":      { "text": "Welkom bij Tasks",         "doc": "Welcome screen title." },
+      "subtitle":   { "text": "Takenlijsten per crew, offline-first.", "doc": "Welcome screen subtitle." },
+      "scan_cta":   { "text": "Scan een uitnodigings-QR", "doc": "Primary action — join an existing crew." },
+      "restore_cta": { "text": "Herstel met je herstelzin","doc": "Secondary action — restore an identity from a mnemonic." }
+    },
+    "scan": {
+      "title":          { "text": "Scan een QR-code",     "doc": "Scan screen title." },
+      "subtitle":       { "text": "Richt de camera op een Tasks-QR. Je kunt ook plakken in plaats daarvan.", "doc": "Scan screen subtitle." },
+      "unrecognised":   { "text": "Onbekende QR-code.",   "doc": "Hint shown when no classifier matches." },
+      "redeeming":      { "text": "Crew aan het toevoegen…","doc": "Status while invite redeem is in flight." },
+      "redeem_failed":  { "text": "Toevoegen mislukt: {reason}", "doc": "Error after invite redeem fails." },
+      "paste_link":     { "text": "Plak in plaats daarvan", "doc": "Toggle to reveal the paste textarea." },
+      "paste_placeholder": { "text": "Plak een Tasks-uitnodiging, contact-link of herstelzin", "doc": "Paste textarea placeholder." },
+      "paste_submit":   { "text": "Doorgaan",             "doc": "Paste-submit button." },
+      "grant_camera":   { "text": "Geef toegang tot camera", "doc": "Permission-prompt CTA." },
+      "permission_denied": { "text": "Camera-toegang geweigerd. Je kunt een uitnodiging plakken in plaats daarvan.", "doc": "Permission-denied body copy." }
+    },
+    "restore": {
+      "title":     { "text": "Herstellen met herstelzin", "doc": "Restore screen title." },
+      "subtitle":  { "text": "Typ of plak je 12 of 24 BIP-39-woorden. Iedereen met deze woorden heeft toegang tot je account.", "doc": "Restore screen subtitle + warning." },
+      "input_label": { "text": "Herstelzin",              "doc": "Mnemonic textarea label." },
+      "submit":    { "text": "Herstel",                    "doc": "Restore-submit button." },
+      "status_empty":         { "text": "Typ je zin.",                                 "doc": "Status: nothing typed yet." },
+      "status_too_short":     { "text": "Doorgaan — 12 of 24 woorden.",                  "doc": "Status: too few words." },
+      "status_wrong_count":   { "text": "De zin moet exact 12 of 24 woorden zijn.",       "doc": "Status: wrong word count." },
+      "status_malformed_word": { "text": "Een van de woorden klopt niet.",                "doc": "Status: a word is malformed." },
+      "status_looks_ok":      { "text": "Ziet er goed uit — tik op Herstel.",             "doc": "Status: passes the structural check." },
+      "restore_failed":       { "text": "Herstellen mislukt: {reason}",                   "doc": "Error after AgentIdentity.fromMnemonic throws." }
+    },
+    "issue": {
+      "title":     { "text": "Nodig iemand uit",         "doc": "Issue screen title." },
+      "subtitle":  { "text": "Toon deze QR aan een nieuw lid. Eenmalig bruikbaar en verloopt snel.", "doc": "Issue screen subtitle." },
+      "ttl_short": { "text": "Verloopt over 1 uur",       "doc": "Default TTL chip." },
+      "ttl_long":  { "text": "Verloopt over 24 uur",      "doc": "Longer TTL chip." },
+      "role_member": { "text": "Lid",                     "doc": "Role chip — default new-member role." },
+      "role_admin":  { "text": "Beheerder",               "doc": "Role chip — co-admin." },
+      "regenerate":  { "text": "Nieuwe code",             "doc": "Regenerate-invite button." },
+      "issue_failed": { "text": "Uitnodigen mislukt: {reason}", "doc": "Error after issueInvite fails." }
+    },
+    "permissions": {
+      "title":      { "text": "Toestemming nodig",        "doc": "Modal title for permission rationale." },
+      "camera":     { "text": "Tasks heeft de camera nodig om uitnodigings-QR's te scannen en deliverable-foto's te maken.", "doc": "Camera rationale." },
+      "notifications": { "text": "Tasks gebruikt meldingen voor deadlines en goedkeuringen.", "doc": "Notifications rationale." },
+      "calendar":   { "text": "Tasks leest je agenda om planningsconflicten te tonen. Optioneel — je kunt het later instellen.", "doc": "Calendar rationale." },
+      "location":   { "text": "Tasks heeft locatietoegang nodig voor Bluetooth-Low-Energy peer-detectie op Android. De app slaat je locatie niet op.", "doc": "Location rationale (Android BLE prereq)." },
+      "grant":      { "text": "Doorgaan",                 "doc": "Grant-permission action." },
+      "skip":       { "text": "Niet nu",                  "doc": "Skip-permission action." }
+    },
     "common": {
       "back":   { "text": "Terug",     "doc": "Back-button label." },
       "cancel": { "text": "Annuleer",  "doc": "Cancel-button label." },
