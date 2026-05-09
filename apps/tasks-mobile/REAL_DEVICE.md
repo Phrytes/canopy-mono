@@ -7,6 +7,26 @@
 > (the 13 user journeys to walk through) is in
 > [`README.md`](./README.md#real-device-test-plan-phase-4116-runbook).
 
+## Linux: bump `fs.inotify.max_user_watches` BEFORE first build
+
+On Linux the default kernel limit (`fs.inotify.max_user_watches=8192`)
+is far below what Metro + Gradle need together. First `expo
+run:android` will throw `ENOSPC: System limit for number of file
+watchers reached`. Fix once per machine:
+
+```bash
+sudo sysctl -w fs.inotify.max_user_watches=524288 fs.inotify.max_user_instances=512
+echo -e 'fs.inotify.max_user_watches=524288\nfs.inotify.max_user_instances=512' | \
+  sudo tee -a /etc/sysctl.d/90-watchers.conf
+sudo sysctl --system
+```
+
+The metro.config.js also blocks the per-package Gradle build dirs
+(`node_modules/<pkg>/android/build/...`) and the app-level
+`android/app/build/`, `android/.gradle/`, `ios/build/`, `ios/Pods/`
+trees — those regenerate on every build and shouldn't drive HMR
+anyway. Together with the kernel bump, ENOSPC should not return.
+
 ## Pre-flight
 
 1. **Reuse stoop-mobile's dev client when you can.** Same Expo 52 +
