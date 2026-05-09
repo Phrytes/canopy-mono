@@ -7,10 +7,26 @@ import '@canopy/react-native/platform/polyfills';
 import 'expo-dev-client';
 import { registerRootComponent } from 'expo';
 
+import * as TaskManager from 'expo-task-manager';
+import {
+  defineBackgroundTask, bgRunOnce,
+} from '@canopy/sync-engine-rn';
+
 import App from './App.js';
 
-// Phase 41.1 (2026-05-09) — placeholder boot. The bg-fetch task wiring
-// (defineBackgroundTask + bgRunOnce) lands in Phase 41.14 once the
-// agent + cadence are live.
+// Phase 41.14 (2026-05-09) — bg-fetch task definition.
+// MUST be at JS-bundle load time per Expo's TaskManager API. The
+// task body calls `bgRunOnce()` from the substrate's module-level
+// singleton; ServiceContext later wires the actual runOnce via
+// `setBgRunOnce(...)` once the meshAgent + localStoreBundle are
+// ready. When the OS fires this before that point, `bgRunOnce`
+// resolves to null and the task returns NoData.
+export const TASKS_BG_TASK_NAME = 'tasks-mobile-sync-background';
+
+defineBackgroundTask({
+  TaskManager,
+  taskName: TASKS_BG_TASK_NAME,
+  runOnce:  bgRunOnce,
+});
 
 registerRootComponent(App);

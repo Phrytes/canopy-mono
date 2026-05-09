@@ -287,6 +287,14 @@
       "calendar_event_count":    { "text": "{count} item(s) in feed",                             "doc": "Event-count footnote." },
       "availability_admin_label": { "text": "Beschikbaarheidshints",                             "doc": "Toggle label." },
       "availability_admin_hint":  { "text": "Aan: leden kunnen een grof weekoverzicht delen.",    "doc": "Hint." }
+    },
+    "issue_bot": {
+      "title":          { "text": "Bot-token QR",                                                "doc": "IssueBotTokenScreen title." },
+      "subtitle":       { "text": "Toon deze QR aan het apparaat dat de bot draait. Het cap-token is eenmalig; trek hem in via crew-instellingen als je hem kwijt bent.", "doc": "Subtitle." },
+      "generating":     { "text": "Token uitgeven…",                                             "doc": "Body before the QR is ready." },
+      "missing_params": { "text": "Geen koppeling geselecteerd.",                                "doc": "Error when navigated without params." },
+      "empty_token":    { "text": "Server gaf geen token terug.",                                "doc": "Error after issueBotToken empty." },
+      "admin_only":     { "text": "Alleen beheerders kunnen tokens uitgeven.",                   "doc": "Error for non-admin caller." }
     }
   }
 }

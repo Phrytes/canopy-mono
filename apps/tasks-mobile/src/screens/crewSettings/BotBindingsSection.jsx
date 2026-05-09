@@ -11,14 +11,17 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import { View, Text, TextInput, Pressable, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@canopy/react-native/theme';
 import { useSkill, useSkillResult } from '../../lib/useSkill.js';
 import { useI18n }    from '../../I18nProvider.js';
 import { useActiveRole } from '../../lib/useActiveRole.js';
+import { ROUTES }     from '../../navigation.js';
 
 export function BotBindingsSection() {
+  const nav = useNavigation();
   const { isAdmin } = useActiveRole();
   const { t } = useI18n();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
@@ -85,20 +88,34 @@ export function BotBindingsSection() {
           <Text numberOfLines={1} style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs }}>
             → @{_suffix(String(wid))}
           </Text>
-          <Pressable
-            onPress={() => onRemove(cid)}
-            accessibilityRole="button"
-            accessibilityLabel={`bot-binding-remove-${cid}`}
-            style={{
-              alignSelf: 'flex-start', marginTop: SPACING.sm,
-              paddingVertical: 4, paddingHorizontal: SPACING.sm,
-              borderRadius: RADII.pill, backgroundColor: COLORS.danger,
-            }}
-          >
-            <Text style={{ color: COLORS.textInverse, fontSize: FONT_SIZES.xs }}>
-              {t('mobile.common.delete')}
-            </Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', marginTop: SPACING.sm, gap: SPACING.sm }}>
+            <Pressable
+              onPress={() => nav.navigate(ROUTES.IssueBotToken, { chatId: cid, webid: wid })}
+              accessibilityRole="button"
+              accessibilityLabel={`bot-binding-issue-${cid}`}
+              style={{
+                paddingVertical: 4, paddingHorizontal: SPACING.sm,
+                borderRadius: RADII.pill, backgroundColor: COLORS.primary,
+              }}
+            >
+              <Text style={{ color: COLORS.textInverse, fontSize: FONT_SIZES.xs }}>
+                {t('mobile.crew_settings.issue_token_cta')}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onRemove(cid)}
+              accessibilityRole="button"
+              accessibilityLabel={`bot-binding-remove-${cid}`}
+              style={{
+                paddingVertical: 4, paddingHorizontal: SPACING.sm,
+                borderRadius: RADII.pill, backgroundColor: COLORS.danger,
+              }}
+            >
+              <Text style={{ color: COLORS.textInverse, fontSize: FONT_SIZES.xs }}>
+                {t('mobile.common.delete')}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       ))}
 
@@ -137,22 +154,6 @@ export function BotBindingsSection() {
           </Text>
         </Pressable>
 
-        <Pressable
-          onPress={() => Alert.alert(t('mobile.crew_settings.issue_token_todo'))}
-          accessibilityRole="button"
-          accessibilityLabel="bot-issue-token"
-          style={{
-            marginTop: SPACING.sm,
-            alignSelf: 'flex-start',
-            paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md,
-            borderRadius: RADII.pill,
-            borderWidth: 1, borderColor: COLORS.border,
-          }}
-        >
-          <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm }}>
-            {t('mobile.crew_settings.issue_token_cta')}
-          </Text>
-        </Pressable>
       </View>
 
       {error ? (
