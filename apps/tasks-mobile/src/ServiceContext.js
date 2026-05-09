@@ -51,6 +51,8 @@ import {
 } from '@canopy/react-native/storage';
 import {
   attachAppStateBridge,
+  setBgRunOnce, clearBgRunOnce,
+  registerBackgroundFetch, unregisterBackgroundFetch,
 } from '@canopy/online-cadence';
 
 import {
@@ -258,6 +260,34 @@ export function ServiceProvider({ children, boot = {} }) {
           }
         }
 
+        // Phase 41.14 — wire the bg-fetch task body to the live cache.
+        // index.js registered the task at JS-bundle load via
+        // defineBackgroundTask(...); setBgRunOnce points its runOnce
+        // closure at the active bundle. registerBackgroundFetch
+        // schedules the OS to fire at the configured cadence.
+        setBgRunOnce(async () => {
+          try {
+            if (typeof bundle?.cache?.pullFromInner === 'function') {
+              await bundle.cache.pullFromInner();
+            }
+          } catch (err) {
+            console.warn('[bgRunOnce] pullFromInner failed:', err?.message ?? err);
+          }
+        });
+        try {
+          // BackgroundFetch may be unavailable under tests / non-Expo
+          // node envs; load lazily.
+          const BackgroundFetch = await _loadBackgroundFetch();
+          if (BackgroundFetch) {
+            await registerBackgroundFetch({
+              BackgroundFetch,
+              taskName: 'tasks-mobile-sync-background',
+            });
+          }
+        } catch (err) {
+          console.warn('[bg-fetch] not registered:', err?.message ?? err);
+        }
+
         // Set initial active crew.
         const stored = await registry.getActiveId().catch(() => null);
         if (cancelled) return;
@@ -280,9 +310,24 @@ export function ServiceProvider({ children, boot = {} }) {
       cancelled = true;
       try { appStateDetachRef.current?.(); } catch { /* noop */ }
       appStateDetachRef.current = null;
+      try { clearBgRunOnce(); } catch { /* noop */ }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Lazy-load expo-background-fetch — same shape as the AppState lazy
+  // require: under vitest the module isn't installed, so we swallow
+  // the import error and skip registration.
+  // (defined inside the component so the closure stays test-injectable)
+  // eslint-disable-next-line no-inner-declarations
+  async function _loadBackgroundFetch() {
+    try {
+      const mod = await import('expo-background-fetch');
+      return mod ?? null;
+    } catch {
+      return null;
+    }
+  }
 
   // We need a ref that mirrors activeCrewId for the wireSkills
   // closure (which captures values at registration time).
