@@ -45,7 +45,10 @@ import { parseDeepLink, actionToNavigation } from './src/lib/deepLinks.js';
 
 import { ROUTES, SHELL_TAB_ROUTES, STACK_ONLY_ROUTES } from './src/navigation.js';
 import { t, initI18n }                from './src/lib/i18n.js';
-import { COLORS }                     from './src/lib/theme.js';
+import { COLORS, SPACING, RADII, FONT_SIZES } from './src/lib/theme.js';
+import { ThemeProvider }              from '@canopy/react-native/theme';
+
+const STOOP_TOKENS = { COLORS, SPACING, RADII, FONT_SIZES };
 import { ServiceProvider }            from './src/ServiceContext.js';
 import { hasSeenMetadataWarning }     from './src/lib/metadataWarning.js';
 
@@ -250,6 +253,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
+        <ThemeProvider value={STOOP_TOKENS}>
         <StatusBar barStyle="default" />
         <ServiceProvider>
         <NavigationContainer>
@@ -289,6 +293,7 @@ export default function App() {
           </Stack.Navigator>
         </NavigationContainer>
         </ServiceProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   );

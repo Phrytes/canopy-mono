@@ -1,44 +1,21 @@
 /**
- * metadataWarning — pure helpers + AsyncStorage wrappers for the
- * first-launch privacy warning.
+ * metadataWarning — Stoop's binding of the lifted first-launch flag
+ * helper.
  *
- * Stoop V3 Phase 40.22 (2026-05-08).
- *
- * Stoop's relay sees who you talk to (metadata) even though contents
- * are encrypted. The first launch shows a one-screen acknowledgement;
- * `markMetadataWarningSeen` flips the flag in AsyncStorage so the
- * screen doesn't gate every subsequent boot.
- *
- * Storage key namespace `stoop:privacy:*` (separate from
- * `stoop:groups:*`).
+ * Lifted to `@canopy/react-native/storage` 2026-05-09 (Phase 41.0.b
+ * A4).
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { firstLaunchFlag } from '@canopy/react-native/storage';
 
 export const KEY_METADATA_SEEN = 'stoop:privacy:metadata-warning-seen';
 
-/**
- * @param {object} [args]
- * @param {object} [args.storage]   inject for tests; defaults to AsyncStorage
- * @returns {Promise<boolean>}
- */
-export async function hasSeenMetadataWarning({ storage = AsyncStorage } = {}) {
-  const v = await storage.getItem(KEY_METADATA_SEEN);
-  return v === '1' || v === 'true' || v === 'yes';
+export function hasSeenMetadataWarning({ storage } = {}) {
+  return firstLaunchFlag({ key: KEY_METADATA_SEEN, storage }).has();
 }
-
-/**
- * @param {object} [args]
- * @param {object} [args.storage]
- */
-export async function markMetadataWarningSeen({ storage = AsyncStorage } = {}) {
-  await storage.setItem(KEY_METADATA_SEEN, '1');
+export function markMetadataWarningSeen({ storage } = {}) {
+  return firstLaunchFlag({ key: KEY_METADATA_SEEN, storage }).mark();
 }
-
-/**
- * @param {object} [args]
- * @param {object} [args.storage]
- */
-export async function resetMetadataWarning({ storage = AsyncStorage } = {}) {
-  await storage.removeItem(KEY_METADATA_SEEN);
+export function resetMetadataWarning({ storage } = {}) {
+  return firstLaunchFlag({ key: KEY_METADATA_SEEN, storage }).reset();
 }

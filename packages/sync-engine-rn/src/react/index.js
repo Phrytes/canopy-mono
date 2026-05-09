@@ -14,5 +14,7 @@
  * hooks (e.g. a `useEffect` that fires once on mount).
  */
 
-export { createReactBindings } from './createReactBindings.js';
-export { toParts, unwrapParts } from './skillParts.js';
+export { createReactBindings }    from './createReactBindings.js';
+export { createSettingsHook }      from './createSettingsHook.js';
+export { createMemberProfileHook } from './createMemberProfileHook.js';
+export { toParts, unwrapParts }    from './skillParts.js';
