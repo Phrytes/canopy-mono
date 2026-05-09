@@ -37,4 +37,7 @@ export const ROUTES = Object.freeze({
   ProfileMine:    'ProfileMine',
   ProfileOther:   'ProfileOther',
   Settings:       'Settings',
+
+  // Phase 41.8 — Crew settings (six sections).
+  CrewSettings:   'CrewSettings',
 });
