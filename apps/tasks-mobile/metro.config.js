@@ -47,6 +47,44 @@ module.exports = withCanopyPreset({
     new RegExp(
       `^${path.resolve(repoRoot, 'apps/tasks-v0/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
     ),
+    // packages/sync-engine-rn/node_modules holds a stray `react`
+    // devDep (added so the substrate's vitest suite can run); the
+    // preset's default block list misses it, and Metro picks the
+    // stray up — causing "Two copies of React" / `useState of null`
+    // crashes on first render. Block it here.
+    new RegExp(
+      `^${path.resolve(repoRoot, 'packages/sync-engine-rn/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
+    ),
+    // packages/online-cadence/node_modules — same shape, same risk
+    // (vitest devDep hoisting).
+    new RegExp(
+      `^${path.resolve(repoRoot, 'packages/online-cadence/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
+    ),
+    // packages/identity-resolver / item-store / notifier / chat-p2p /
+    // local-store / skill-match — none have a stray react today, but
+    // the same hazard exists if a vitest devDep ever lands. Belt-and-
+    // braces so we don't fight this again.
+    new RegExp(
+      `^${path.resolve(repoRoot, 'packages/identity-resolver/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
+    ),
+    new RegExp(
+      `^${path.resolve(repoRoot, 'packages/item-store/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
+    ),
+    new RegExp(
+      `^${path.resolve(repoRoot, 'packages/notifier/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
+    ),
+    new RegExp(
+      `^${path.resolve(repoRoot, 'packages/chat-p2p/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
+    ),
+    new RegExp(
+      `^${path.resolve(repoRoot, 'packages/local-store/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
+    ),
+    new RegExp(
+      `^${path.resolve(repoRoot, 'packages/skill-match/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
+    ),
+    new RegExp(
+      `^${path.resolve(repoRoot, 'packages/oidc-session-rn/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
+    ),
     // Per-package Gradle build artifacts (the actual ENOSPC source
     // — node_modules/<pkg>/android/build/intermediates emit thousands
     // of files during a debug build).
