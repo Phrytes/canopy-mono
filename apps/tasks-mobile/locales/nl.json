@@ -1,0 +1,21 @@
+{
+  "mobile": {
+    "boot": {
+      "splash":  { "text": "Tasks",                       "doc": "Splash text shown while the agent boots." },
+      "loading": { "text": "Aan het opstarten…",           "doc": "Boot-progress label." },
+      "error":   { "text": "Opstarten mislukt. Tik om opnieuw te proberen.", "doc": "Boot-error label." }
+    },
+    "no_crews": {
+      "title":   { "text": "Nog geen crews",              "doc": "Empty-state title when the user hasn't joined any crew." },
+      "body":    { "text": "Scan een uitnodigings-QR of herstel met je herstelzin.", "doc": "Empty-state body." },
+      "scan_qr": { "text": "Scan QR",                     "doc": "Empty-state primary action." },
+      "restore": { "text": "Herstel met zin",             "doc": "Empty-state secondary action." }
+    },
+    "common": {
+      "back":   { "text": "Terug",     "doc": "Back-button label." },
+      "cancel": { "text": "Annuleer",  "doc": "Cancel-button label." },
+      "save":   { "text": "Opslaan",   "doc": "Save-button label." },
+      "delete": { "text": "Verwijder", "doc": "Destructive action label." }
+    }
+  }
+}
