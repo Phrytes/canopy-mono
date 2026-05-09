@@ -181,6 +181,20 @@
       "label":   { "text": "Actieve crew",                           "doc": "Crew-switcher label." },
       "switch":  { "text": "Wissel",                                 "doc": "Crew-switcher CTA." },
       "no_crews": { "text": "(geen crews)",                          "doc": "Crew-switcher empty placeholder." }
+    },
+    "crews": {
+      "title":           { "text": "Crews",                           "doc": "CrewsDashboard title." },
+      "empty":           { "text": "Je hebt nog geen crews gejoind.",  "doc": "Empty state." },
+      "counter_open":    { "text": "{count} open",                     "doc": "Counter label." },
+      "counter_overdue": { "text": "{count} te laat",                  "doc": "Counter label." },
+      "counter_review":  { "text": "{count} te beoordelen",            "doc": "Counter label." },
+      "counter_mine":    { "text": "{count} van mij",                  "doc": "Counter label." },
+      "jump_in":         { "text": "Spring erin",                      "doc": "CTA on a crew row." },
+      "kind_household":  { "text": "huishouden",                       "doc": "Crew-kind chip." },
+      "kind_project":    { "text": "project",                          "doc": "Crew-kind chip." },
+      "kind_team":       { "text": "team",                             "doc": "Crew-kind chip." },
+      "kind_friends":    { "text": "vrienden",                         "doc": "Crew-kind chip." },
+      "kind_maintenance": { "text": "onderhoud",                       "doc": "Crew-kind chip." }
     }
   }
 }
