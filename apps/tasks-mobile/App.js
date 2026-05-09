@@ -30,6 +30,8 @@ import { OnboardIssueScreen }   from './src/screens/OnboardIssueScreen.jsx';
 import { WorkspaceScreen }      from './src/screens/WorkspaceScreen.jsx';
 import { TaskDetailScreen }     from './src/screens/TaskDetailScreen.jsx';
 import { ComposeScreen }        from './src/screens/ComposeScreen.jsx';
+import { MyWorkScreen }         from './src/screens/MyWorkScreen.jsx';
+import { SubmitScreen }         from './src/screens/SubmitScreen.jsx';
 
 const Stack = createNativeStackNavigator();
 
@@ -82,6 +84,10 @@ function BootGate() {
                       options={{ headerShown: true, title: '' }} />
         <Stack.Screen name={ROUTES.Compose}        component={ComposeScreen}
                       options={{ presentation: 'modal' }} />
+        <Stack.Screen name={ROUTES.MyWork}         component={MyWorkScreen}
+                      options={{ headerShown: true, title: 'My work' }} />
+        <Stack.Screen name={ROUTES.Submit}         component={SubmitScreen}
+                      options={{ headerShown: true, title: 'Submit' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

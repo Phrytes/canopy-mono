@@ -116,6 +116,39 @@
       "submit":          { "text": "Add task",                         "doc": "Compose-submit CTA." },
       "submit_failed":   { "text": "Couldn't add: {reason}",            "doc": "Error after addTask fails." }
     },
+    "my_work": {
+      "title":         { "text": "My work",                         "doc": "MyWorkScreen title." },
+      "section_assigned":  { "text": "Assigned to me",               "doc": "Assigned section header." },
+      "section_mastered":  { "text": "I'm reviewing",                "doc": "Mastered section header." },
+      "section_claimable": { "text": "Open for grabs",               "doc": "Claimable section header." },
+      "empty_assigned":    { "text": "Nothing assigned. Pick something from \"Open for grabs\".", "doc": "Empty state." },
+      "empty_mastered":    { "text": "No tasks waiting on your review.", "doc": "Empty state." },
+      "empty_claimable":   { "text": "No open claimable tasks right now.", "doc": "Empty state." }
+    },
+    "planner": {
+      "panel_title":      { "text": "Suggested plan",                 "doc": "Planner panel header." },
+      "suggest_cta":      { "text": "Suggest a plan",                 "doc": "Trigger suggestSchedule." },
+      "loading":          { "text": "Thinking…",                       "doc": "Loading state while suggestSchedule runs." },
+      "empty":            { "text": "No suggestions — your assignments fit.", "doc": "Empty state." },
+      "accept":           { "text": "Accept",                          "doc": "Accept a suggestion." },
+      "skip":             { "text": "Skip",                            "doc": "Skip a suggestion." },
+      "reason_overdue":   { "text": "overdue",                         "doc": "Reason chip — task is overdue." },
+      "reason_last_chance": { "text": "last chance",                   "doc": "Reason chip — last slot before deadline." },
+      "reason_fits":      { "text": "fits before deadline",            "doc": "Reason chip — fits comfortably." },
+      "reason_no_slot":   { "text": "no slot found",                   "doc": "Reason chip — couldn't find a slot." },
+      "slot_label":       { "text": "{date} {start}–{end}",            "doc": "Slot label — date + start–end times." }
+    },
+    "deliverable_photo": {
+      "title":         { "text": "Submit deliverable",                 "doc": "SubmitScreen title for photo DoD." },
+      "title_text":    { "text": "Submit your work",                    "doc": "SubmitScreen title for text DoD." },
+      "note_label":    { "text": "Note for the reviewer (optional)",    "doc": "Free-text note label." },
+      "take_photo":    { "text": "Take photo",                          "doc": "Open camera CTA." },
+      "pick_library":  { "text": "Pick from library",                   "doc": "Pick from library CTA." },
+      "retake":        { "text": "Retake",                              "doc": "Discard preview + open camera again." },
+      "submit":        { "text": "Submit",                              "doc": "Submit CTA." },
+      "submitting":    { "text": "Submitting…",                          "doc": "Submit-in-flight label." },
+      "submit_failed": { "text": "Couldn't submit: {reason}",           "doc": "Submit-error toast." }
+    },
     "common": {
       "back":   { "text": "Back",   "doc": "Back-button label." },
       "cancel": { "text": "Cancel", "doc": "Cancel-button label." },
