@@ -1,27 +1,56 @@
 /**
  * App.js — tasks-mobile root component.
  *
- * Phase 41.3 (2026-05-09): wires the onboarding stack into the
- * navigator. Initial route depends on boot state — Welcome when the
- * user has no crews yet, Workspace (placeholder for 41.4) when they
- * have at least one. The booting / error states render a small splash
- * directly, BEFORE the navigator mounts (so we don't show the route
- * table mid-bootstrap).
+ * Phase 41.16 (2026-05-09): real-device polish — installed
+ * unhandledRejection + global error handler + ErrorBoundary
+ * (mirrors stoop-mobile's pattern), plus the deep-link handler
+ * that consumes `tasks://...` URLs through the substrate's
+ * parseDeepLink dispatcher (Phase 41.15.3).
  *
  * Provider tree: ThemeProvider → I18nProvider → ServiceProvider →
- * NavigationContainer.
+ * NavigationContainer (with DeepLinkHandler mounted INSIDE so
+ * useNavigation works).
  */
 
 import React from 'react';
-import { StatusBar, StyleSheet, Text, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  Linking, ScrollView, StatusBar, StyleSheet, Text, View,
+} from 'react-native';
+import {
+  NavigationContainer, useNavigation,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+// ── Global error filtering — installed once at module-load. ──
+// Mirrors apps/stoop-mobile/App.js + apps/tasks-v0/bin/tasks-ui.js.
+// Catches the kind of background promise rejections that otherwise
+// turn into RedBox crashes on a real device (e.g. transient
+// network failures from the relay during foreground/background
+// transitions).
+if (typeof globalThis !== 'undefined') {
+  const prev = globalThis.onunhandledrejection;
+  globalThis.onunhandledrejection = (event) => {
+    const err = event?.reason ?? event;
+    console.error('[unhandledRejection]', err?.message ?? err);
+    if (err?.stack) console.error('[unhandledRejection stack]', err.stack);
+    prev?.(event);
+  };
+}
+if (typeof globalThis.ErrorUtils?.setGlobalHandler === 'function') {
+  const prev = globalThis.ErrorUtils.getGlobalHandler?.();
+  globalThis.ErrorUtils.setGlobalHandler((err, isFatal) => {
+    console.error('[globalError]', isFatal ? 'FATAL' : 'non-fatal', err?.message ?? err);
+    if (err?.stack) console.error('[globalError stack]', err.stack);
+    prev?.(err, isFatal);
+  });
+}
 
 import { ThemeProvider } from '@canopy/react-native/theme';
 import { ServiceProvider, useService } from './src/ServiceContext.js';
 import { I18nProvider, useI18n } from './src/I18nProvider.js';
 import { ROUTES } from './src/navigation.js';
+import { parseDeepLink, actionToNavigation } from './src/lib/deepLinks.js';
 
 import { WelcomeScreen }        from './src/screens/WelcomeScreen.jsx';
 import { OnboardScanScreen }    from './src/screens/OnboardScanScreen.jsx';
@@ -57,6 +86,66 @@ const TASKS_TOKENS = {
   },
 };
 
+/**
+ * ErrorBoundary — last-line defence against a crashing component
+ * tree on a real device. The screen-level error states
+ * (BootGate.error, per-screen error props) handle the expected
+ * cases; this catches anything that escapes those.
+ */
+class ErrorBoundary extends React.Component {
+  state = { error: null };
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) {
+    console.error('[ErrorBoundary]', error?.message ?? error);
+    if (info?.componentStack) console.error(info.componentStack);
+  }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <ScrollView style={styles.errorRoot}>
+        <Text style={styles.errorTitle}>Something went wrong.</Text>
+        <Text style={styles.errorBody}>
+          {String(this.state.error?.message ?? this.state.error)}
+        </Text>
+      </ScrollView>
+    );
+  }
+}
+
+/**
+ * DeepLinkHandler — listens for `tasks://...` URLs, parses them via
+ * `parseDeepLink`, and navigates accordingly. Mounted INSIDE the
+ * NavigationContainer so `useNavigation()` works.
+ */
+function DeepLinkHandler() {
+  const nav = useNavigation();
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const dispatch = (url) => {
+      if (cancelled || typeof url !== 'string' || url.length === 0) return;
+      const action = parseDeepLink(url);
+      if (action.kind === 'unknown') {
+        console.warn('[deepLink] unrecognised URL:', url);
+        return;
+      }
+      const target = actionToNavigation(action);
+      if (target) nav.navigate(target.name, target.params);
+    };
+
+    Linking.getInitialURL?.().then((url) => { if (url) dispatch(url); }).catch(() => { /* ignore */ });
+    const sub = Linking.addEventListener?.('url', (event) => dispatch(event?.url));
+
+    return () => {
+      cancelled = true;
+      sub?.remove?.();
+    };
+  }, [nav]);
+
+  return null;
+}
+
 function BootGate() {
   const svc = useService();
   const { t } = useI18n();
@@ -82,6 +171,7 @@ function BootGate() {
 
   return (
     <NavigationContainer>
+      <DeepLinkHandler />
       <Stack.Navigator
         initialRouteName={initialRoute}
         screenOptions={{ headerShown: false }}
@@ -131,16 +221,18 @@ function BootGate() {
 
 export default function App({ boot } = {}) {
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" />
-      <ThemeProvider value={TASKS_TOKENS}>
-        <I18nProvider>
-          <ServiceProvider boot={boot}>
-            <BootGate />
-          </ServiceProvider>
-        </I18nProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <StatusBar barStyle="dark-content" />
+        <ThemeProvider value={TASKS_TOKENS}>
+          <I18nProvider>
+            <ServiceProvider boot={boot}>
+              <BootGate />
+            </ServiceProvider>
+          </I18nProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
@@ -169,5 +261,21 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     textAlign: 'center',
     maxWidth: 320,
+  },
+  errorRoot: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 24,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#b91c1c',
+    marginBottom: 12,
+  },
+  errorBody: {
+    fontSize: 14,
+    color: '#374151',
+    fontFamily: 'monospace',
   },
 });
