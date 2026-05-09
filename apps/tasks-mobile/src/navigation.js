@@ -31,4 +31,10 @@ export const ROUTES = Object.freeze({
 
   // Phase 41.7 — Cross-crew dashboard.
   Crews:          'Crews',
+
+  // Phase 41.9–41.11 — User-side admin: availability / profile / settings.
+  Availability:   'Availability',
+  ProfileMine:    'ProfileMine',
+  ProfileOther:   'ProfileOther',
+  Settings:       'Settings',
 });
