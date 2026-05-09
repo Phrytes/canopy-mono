@@ -287,6 +287,14 @@
       "calendar_event_count":    { "text": "{count} event(s) in feed",                            "doc": "Event-count footnote." },
       "availability_admin_label": { "text": "Availability hints",                                "doc": "Toggle label." },
       "availability_admin_hint":  { "text": "When on, members can opt in to share a coarse weekly view.", "doc": "Hint." }
+    },
+    "issue_bot": {
+      "title":          { "text": "Bot token QR",                                                "doc": "IssueBotTokenScreen title." },
+      "subtitle":       { "text": "Show this QR to the device that runs the bot. The cap-token is single-use; revoke from Crew settings if you misplace it.", "doc": "Subtitle." },
+      "generating":     { "text": "Issuing token…",                                              "doc": "Body before the QR is ready." },
+      "missing_params": { "text": "No binding selected.",                                        "doc": "Error when navigated without {chatId, webid}." },
+      "empty_token":    { "text": "Server returned no token.",                                   "doc": "Error after issueBotToken returns nothing." },
+      "admin_only":     { "text": "Only admins can issue tokens.",                               "doc": "Error for non-admin caller." }
     }
   }
 }
