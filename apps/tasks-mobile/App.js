@@ -40,6 +40,7 @@ import { AvailabilityScreen }   from './src/screens/AvailabilityScreen.jsx';
 import { ProfileMineScreen }    from './src/screens/ProfileMineScreen.jsx';
 import { ProfileOtherScreen }   from './src/screens/ProfileOtherScreen.jsx';
 import { SettingsScreen }       from './src/screens/SettingsScreen.jsx';
+import { CrewSettingsScreen }   from './src/screens/CrewSettingsScreen.jsx';
 
 const Stack = createNativeStackNavigator();
 
@@ -112,6 +113,8 @@ function BootGate() {
                       options={{ headerShown: true, title: 'Profile' }} />
         <Stack.Screen name={ROUTES.Settings}       component={SettingsScreen}
                       options={{ headerShown: true, title: 'Settings' }} />
+        <Stack.Screen name={ROUTES.CrewSettings}   component={CrewSettingsScreen}
+                      options={{ headerShown: true, title: 'Crew settings' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
