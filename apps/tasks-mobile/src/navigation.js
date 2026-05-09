@@ -15,6 +15,8 @@ export const ROUTES = Object.freeze({
   OnboardRestore: 'OnboardRestore',
   OnboardIssue:   'OnboardIssue',
 
-  // Post-onboarding placeholder (Phase 41.4 wires the real Workspace).
+  // Post-onboarding — main task surface (Phase 41.4).
   Workspace:      'Workspace',
+  TaskDetail:     'TaskDetail',
+  Compose:        'Compose',
 });
