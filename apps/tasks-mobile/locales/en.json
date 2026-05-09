@@ -1,0 +1,21 @@
+{
+  "mobile": {
+    "boot": {
+      "splash":  { "text": "Tasks",                     "doc": "Splash text shown while the agent boots." },
+      "loading": { "text": "Booting…",                   "doc": "Boot-progress label." },
+      "error":   { "text": "Couldn’t start. Tap to retry.", "doc": "Boot-error label." }
+    },
+    "no_crews": {
+      "title":   { "text": "No crews yet",              "doc": "Empty-state title when the user hasn't joined any crew." },
+      "body":    { "text": "Scan an invite QR or restore from a recovery phrase.", "doc": "Empty-state body." },
+      "scan_qr": { "text": "Scan QR",                   "doc": "Empty-state primary action." },
+      "restore": { "text": "Restore from phrase",       "doc": "Empty-state secondary action." }
+    },
+    "common": {
+      "back":   { "text": "Back",   "doc": "Back-button label." },
+      "cancel": { "text": "Cancel", "doc": "Cancel-button label." },
+      "save":   { "text": "Save",   "doc": "Save-button label." },
+      "delete": { "text": "Delete", "doc": "Destructive action label." }
+    }
+  }
+}
