@@ -40,4 +40,11 @@ export const ROUTES = Object.freeze({
 
   // Phase 41.8 — Crew settings (six sections).
   CrewSettings:   'CrewSettings',
+
+  // Phase 41.13 — Bot binding QR.
+  IssueBotToken:  'IssueBotToken',
+
+  // Phase 41.15 — Pod sign-in + bulk sync.
+  PodSignIn:      'PodSignIn',
+  AuthCallback:   'AuthCallback',
 });
