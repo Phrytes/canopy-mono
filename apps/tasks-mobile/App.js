@@ -27,6 +27,9 @@ import { WelcomeScreen }        from './src/screens/WelcomeScreen.jsx';
 import { OnboardScanScreen }    from './src/screens/OnboardScanScreen.jsx';
 import { OnboardRestoreScreen } from './src/screens/OnboardRestoreScreen.jsx';
 import { OnboardIssueScreen }   from './src/screens/OnboardIssueScreen.jsx';
+import { WorkspaceScreen }      from './src/screens/WorkspaceScreen.jsx';
+import { TaskDetailScreen }     from './src/screens/TaskDetailScreen.jsx';
+import { ComposeScreen }        from './src/screens/ComposeScreen.jsx';
 
 const Stack = createNativeStackNavigator();
 
@@ -39,20 +42,6 @@ const TASKS_TOKENS = {
     primaryLight: '#99f6e4',
   },
 };
-
-/** Phase 41.4 placeholder; replaced by WorkspaceScreen later. */
-function WorkspacePlaceholder() {
-  const svc = useService();
-  return (
-    <View style={styles.center}>
-      <Text style={styles.title}>Tasks Mobile</Text>
-      <Text style={styles.subtitle}>
-        {svc.crews.size} crew{svc.crews.size === 1 ? '' : 's'} · active: {svc.activeCrewId ?? '—'}
-      </Text>
-      <Text style={styles.hint}>Phase 41.3 ✅. Workspace lands in 41.4.</Text>
-    </View>
-  );
-}
 
 function BootGate() {
   const svc = useService();
@@ -87,7 +76,12 @@ function BootGate() {
         <Stack.Screen name={ROUTES.OnboardScan}    component={OnboardScanScreen} />
         <Stack.Screen name={ROUTES.OnboardRestore} component={OnboardRestoreScreen} />
         <Stack.Screen name={ROUTES.OnboardIssue}   component={OnboardIssueScreen} />
-        <Stack.Screen name={ROUTES.Workspace}      component={WorkspacePlaceholder} />
+        <Stack.Screen name={ROUTES.Workspace}      component={WorkspaceScreen}
+                      options={{ headerShown: true, title: 'Tasks' }} />
+        <Stack.Screen name={ROUTES.TaskDetail}     component={TaskDetailScreen}
+                      options={{ headerShown: true, title: '' }} />
+        <Stack.Screen name={ROUTES.Compose}        component={ComposeScreen}
+                      options={{ presentation: 'modal' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
