@@ -6,7 +6,9 @@
   "main": "src/index.js",
   "exports": {
     ".":              "./src/index.js",
-    "./person-graph": "./src/PersonGraph.js"
+    "./person-graph": "./src/PersonGraph.js",
+    "./display":      "./src/display.js",
+    "./skills":       "./src/skills.js"
   },
   "scripts": { "test": "vitest run", "test:watch": "vitest" },
   "dependencies": {
