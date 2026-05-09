@@ -154,6 +154,33 @@
       "cancel": { "text": "Annuleer",  "doc": "Cancel-button label." },
       "save":   { "text": "Opslaan",   "doc": "Save-button label." },
       "delete": { "text": "Verwijder", "doc": "Destructive action label." }
+    },
+    "review": {
+      "title":         { "text": "Beoordelen",                       "doc": "ReviewScreen title." },
+      "empty":         { "text": "Niets wacht op jouw beoordeling.", "doc": "Empty state." },
+      "approve":       { "text": "Goedkeuren",                       "doc": "Approve CTA on the card." },
+      "reject":        { "text": "Afwijzen",                         "doc": "Reject CTA on the card." },
+      "blocked_hint":  { "text": "Heeft open afhankelijkheden — open de taak om Forceer-voltooid te gebruiken.", "doc": "V2.7 disabled-Approve hint." }
+    },
+    "dag": {
+      "title":         { "text": "Sub-taken",                        "doc": "DagScreen title." },
+      "empty":         { "text": "Nog geen sub-taken.",               "doc": "Empty state." },
+      "indent":        { "text": "↳ ",                                 "doc": "Indent prefix per depth level." }
+    },
+    "inbox": {
+      "title":              { "text": "Inbox",                               "doc": "InboxScreen title." },
+      "empty":              { "text": "Inbox is leeg.",                      "doc": "Empty state." },
+      "subtask_proposal_label": { "text": "Sub-taak voorgesteld door @{by}: \"{text}\"", "doc": "Subtask-proposal card title." },
+      "subtask_proposal_approve": { "text": "Goedkeuren",                    "doc": "V2.7 propose-approve CTA." },
+      "subtask_proposal_decline": { "text": "Afwijzen",                      "doc": "V2.7 propose-decline CTA." },
+      "subtask_proposal_warning": { "text": "Bij goedkeuren rolt jouw indiening terug naar geclaimd.", "doc": "Warning shown on Approve confirm modal." },
+      "decline_note":       { "text": "Reden (optioneel)",                   "doc": "Decline reason input label." },
+      "generic_label":      { "text": "{kind}",                              "doc": "Fallback label for unknown inbox event kinds." }
+    },
+    "crew_switch": {
+      "label":   { "text": "Actieve crew",                           "doc": "Crew-switcher label." },
+      "switch":  { "text": "Wissel",                                 "doc": "Crew-switcher CTA." },
+      "no_crews": { "text": "(geen crews)",                          "doc": "Crew-switcher empty placeholder." }
     }
   }
 }

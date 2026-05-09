@@ -154,6 +154,33 @@
       "cancel": { "text": "Cancel", "doc": "Cancel-button label." },
       "save":   { "text": "Save",   "doc": "Save-button label." },
       "delete": { "text": "Delete", "doc": "Destructive action label." }
+    },
+    "review": {
+      "title":         { "text": "Review",                          "doc": "ReviewScreen title." },
+      "empty":         { "text": "Nothing waiting for your review.", "doc": "Empty state." },
+      "approve":       { "text": "Approve",                          "doc": "Approve CTA on the card." },
+      "reject":        { "text": "Reject",                           "doc": "Reject CTA on the card." },
+      "blocked_hint":  { "text": "Has open dependencies — open the task to use Force-complete.", "doc": "V2.7 disabled-Approve hint." }
+    },
+    "dag": {
+      "title":         { "text": "Sub-tasks",                       "doc": "DagScreen title." },
+      "empty":         { "text": "No sub-tasks yet.",                "doc": "Empty state." },
+      "indent":        { "text": "↳ ",                                "doc": "Indent prefix per depth level." }
+    },
+    "inbox": {
+      "title":              { "text": "Inbox",                              "doc": "InboxScreen title." },
+      "empty":              { "text": "Inbox is empty.",                     "doc": "Empty state." },
+      "subtask_proposal_label": { "text": "Sub-task proposed by @{by}: \"{text}\"", "doc": "Subtask-proposal card title." },
+      "subtask_proposal_approve": { "text": "Approve",                       "doc": "V2.7 propose-approve CTA." },
+      "subtask_proposal_decline": { "text": "Decline",                       "doc": "V2.7 propose-decline CTA." },
+      "subtask_proposal_warning": { "text": "Approving rolls your submission back to claimed.", "doc": "Warning shown on Approve confirm modal." },
+      "decline_note":       { "text": "Reason (optional)",                   "doc": "Decline reason input label." },
+      "generic_label":      { "text": "{kind}",                              "doc": "Fallback label for unknown inbox event kinds." }
+    },
+    "crew_switch": {
+      "label":   { "text": "Active crew",                            "doc": "Crew-switcher label." },
+      "switch":  { "text": "Switch",                                  "doc": "Crew-switcher CTA." },
+      "no_crews": { "text": "(no crews)",                             "doc": "Crew-switcher empty placeholder." }
     }
   }
 }

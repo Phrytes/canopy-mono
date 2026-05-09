@@ -23,4 +23,9 @@ export const ROUTES = Object.freeze({
   // Phase 41.5 — My work + planner + photo deliverable submit.
   MyWork:         'MyWork',
   Submit:         'Submit',
+
+  // Phase 41.6 — Review / DAG / Inbox.
+  Review:         'Review',
+  Dag:            'Dag',
+  Inbox:          'Inbox',
 });
