@@ -1,109 +1,43 @@
 /**
- * groupRegistry — persists the user's joined-group list locally.
+ * groupRegistry — Stoop's binding of the lifted bundle-registry helper.
  *
- * Stoop V3 Phase 40.14 (2026-05-08).
- *
- * The mobile app re-builds a `NeighborhoodAgent` bundle per joined
- * group on every cold launch. The registry tells us which groups
- * those are + which is currently active (last-tab-the-user-saw).
- *
- * Backed by AsyncStorage so the list survives app restarts; the
- * agent itself is rebuilt fresh each launch from the user's
- * identity + the cached members list.
- *
- * Keys live under the `stoop:groups:*` AsyncStorage namespace:
- *   - `stoop:groups:list`            JSON array of GroupEntry
- *   - `stoop:groups:active`          string groupId | empty
+ * Lifted to `@canopy/react-native/storage` 2026-05-09 (Phase 41.0.b
+ * A5). Tasks-mobile uses the same factory with
+ * `{keyNamespace: 'tasks:crews', idField: 'crewId'}` in Phase 41.7.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createBundleRegistry } from '@canopy/react-native/storage';
 
-const KEY_LIST   = 'stoop:groups:list';
-const KEY_ACTIVE = 'stoop:groups:active';
-
-/**
- * @typedef {object} GroupEntry
- * @property {string} groupId
- * @property {string} [displayName]   user-facing label (optional, falls back to groupId)
- * @property {string} [actorWebid]    the user's webid in this group (for skill-match localActor)
- * @property {string} [role]          'admin' | 'coordinator' | 'member'
- * @property {number} [joinedAt]      epoch-ms
- */
-
-/**
- * @param {object} [args]
- * @param {object} [args.storage]  inject for tests; defaults to `AsyncStorage`.
- * @returns {Promise<GroupEntry[]>}
- */
-export async function listGroups({ storage = AsyncStorage } = {}) {
-  const raw = await storage.getItem(KEY_LIST);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(_isEntry) : [];
-  } catch {
-    return [];
-  }
+function _registry(storage) {
+  return createBundleRegistry({
+    keyNamespace: 'stoop:groups',
+    idField:      'groupId',
+    storage,
+  });
 }
 
-/**
- * @param {object} args
- * @param {GroupEntry} args.entry
- * @param {object} [args.storage]
- * @returns {Promise<GroupEntry[]>}
- */
-export async function addGroup({ entry, storage = AsyncStorage } = {}) {
-  if (!_isEntry(entry)) throw new Error('addGroup: invalid entry');
-  const list = await listGroups({ storage });
-  const filtered = list.filter((g) => g.groupId !== entry.groupId);
-  const next = [...filtered, { joinedAt: Date.now(), ...entry }];
-  await storage.setItem(KEY_LIST, JSON.stringify(next));
-  return next;
+export async function listGroups({ storage } = {}) {
+  return _registry(storage).list();
+}
+export async function addGroup({ entry, storage } = {}) {
+  return _registry(storage).add(entry);
+}
+export async function removeGroup({ groupId, storage } = {}) {
+  return _registry(storage).remove(groupId);
+}
+export async function getActiveGroupId({ storage } = {}) {
+  return _registry(storage).getActiveId();
+}
+export async function setActiveGroupId({ groupId, storage } = {}) {
+  return _registry(storage).setActiveId(groupId);
 }
 
-/**
- * @param {object} args
- * @param {string} args.groupId
- * @param {object} [args.storage]
- */
-export async function removeGroup({ groupId, storage = AsyncStorage } = {}) {
-  if (typeof groupId !== 'string' || !groupId) throw new Error('removeGroup: groupId required');
-  const list = await listGroups({ storage });
-  const next = list.filter((g) => g.groupId !== groupId);
-  await storage.setItem(KEY_LIST, JSON.stringify(next));
-  // If the removed group was active, clear the active marker.
-  const active = await getActiveGroupId({ storage });
-  if (active === groupId) await setActiveGroupId({ groupId: null, storage });
-  return next;
-}
-
-/**
- * @param {object} [args]
- * @param {object} [args.storage]
- * @returns {Promise<string|null>}
- */
-export async function getActiveGroupId({ storage = AsyncStorage } = {}) {
-  const v = await storage.getItem(KEY_ACTIVE);
-  return (typeof v === 'string' && v.length > 0) ? v : null;
-}
-
-/**
- * @param {object} args
- * @param {string|null} args.groupId
- * @param {object} [args.storage]
- */
-export async function setActiveGroupId({ groupId, storage = AsyncStorage } = {}) {
-  if (groupId == null || groupId === '') {
-    await storage.removeItem(KEY_ACTIVE);
-    return null;
-  }
-  if (typeof groupId !== 'string') throw new Error('setActiveGroupId: groupId must be a string');
-  await storage.setItem(KEY_ACTIVE, groupId);
-  return groupId;
-}
-
-function _isEntry(e) {
-  return e && typeof e === 'object' && typeof e.groupId === 'string' && e.groupId.length > 0;
-}
-
-export const _internal = { KEY_LIST, KEY_ACTIVE };
+// Back-compat: expose the original `KEY_LIST` / `KEY_ACTIVE` shape
+// (UPPERCASE, the names this module always exported) alongside the
+// substrate's lowercase fields.
+const _ri = _registry()._internal;
+export const _internal = {
+  ..._ri,
+  KEY_LIST:   _ri.keyList,
+  KEY_ACTIVE: _ri.keyActive,
+};
