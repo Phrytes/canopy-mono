@@ -14,7 +14,7 @@ export default defineConfig({
     loader: 'jsx',
     include: [
       /apps\/tasks-mobile\/.*\.jsx?$/,
-      /packages\/react-native\/src\/(qr|mnemonic)\/.*\.jsx?$/,
+      /packages\/react-native\/src\/(qr|mnemonic|components)\/.*\.jsx?$/,
     ],
     exclude: [],
   },
@@ -73,6 +73,15 @@ export default defineConfig({
       '@inrupt/solid-client':              path.resolve(__dirname, 'test/stubs/inrupt.js'),
       '@inrupt/solid-client-authn-node':   path.resolve(__dirname, 'test/stubs/inrupt.js'),
       'chokidar':                          path.resolve(__dirname, 'test/stubs/chokidar.js'),
+      // react-native-keychain ships TypeScript; vite's pre-resolve
+      // hits it via the substrate's dynamic KeychainVault import even
+      // when the runtime test path never reaches there. Stub with
+      // parseable JS so the import-graph analysis succeeds.
+      'react-native-keychain':             path.resolve(__dirname, 'test/stubs/keychain.js'),
+      // expo-camera + react-native-qrcode-svg ship TypeScript; same
+      // pre-resolve trap as react-native-keychain.
+      'expo-camera':                       path.resolve(__dirname, 'test/stubs/expo-camera.js'),
+      'react-native-qrcode-svg':           path.resolve(__dirname, 'test/stubs/qrcode-svg.js'),
     },
   },
   test: {

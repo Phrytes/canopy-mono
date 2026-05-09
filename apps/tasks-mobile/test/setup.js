@@ -100,3 +100,27 @@ vi.mock('@canopy/react-native/src/storage/FileSystemAdapter.js', () => ({
     async list()   { return []; }
   },
 }));
+
+// expo-camera ships TS sources vite's pre-bundle can't parse; stub
+// the surface OnboardScanScreen uses.
+vi.mock('expo-camera', () => ({
+  CameraView: 'CameraView',
+  useCameraPermissions: () => [{ granted: true }, vi.fn(async () => ({ granted: true }))],
+}));
+
+// react-native-qrcode-svg pulls in TS too; stub.
+vi.mock('react-native-qrcode-svg', () => ({
+  default: 'QRCode',
+}));
+
+// react-native-keychain ships TS — vite's pre-resolve hits it via
+// the substrate's KeychainVault dynamic-import path even when the
+// runtime never reaches there. Mock with a no-op shape.
+vi.mock('react-native-keychain', () => ({
+  setGenericPassword: vi.fn(async () => ({ service: 'tasks' })),
+  getGenericPassword: vi.fn(async () => false),
+  resetGenericPassword: vi.fn(async () => true),
+  ACCESSIBLE: { WHEN_UNLOCKED: 'WHEN_UNLOCKED' },
+  ACCESS_CONTROL: { BIOMETRY_CURRENT_SET: 'BIOMETRY_CURRENT_SET' },
+  default: {},
+}));
