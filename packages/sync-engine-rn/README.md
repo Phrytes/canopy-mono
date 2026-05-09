@@ -22,6 +22,23 @@ package is the RN-only wiring:
   tokens → build PodClient if signed in → hand control to a
   caller-supplied `buildEngine` → wire `setBgRunOnce`.
 
+### `./react` — React hooks for skill invocation
+
+Lifted from `apps/stoop-mobile/src/lib/{useSkill, useAgentEvent, useSkillResult, skillParts}.js`
+on **2026-05-09** (Tasks-mobile is the second consumer — Phase 41.0 L1).
+The hooks are produced by a factory so the consumer's app-specific
+ServiceContext shape stays app-local:
+
+```js
+import { createReactBindings } from '@canopy/sync-engine-rn/react';
+import { useService } from './ServiceContext.js';
+export const { useSkill, useAgentEvent, useSkillResult } =
+  createReactBindings({ useService });
+```
+
+`toParts` / `unwrapParts` (the A2A parts shape helpers) are also
+re-exported.
+
 ## Origins
 
 Lifted from `apps/folio-mobile/src/lib/{serviceBuilder, bgRunOnce}.js`
