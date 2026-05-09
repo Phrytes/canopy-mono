@@ -11,6 +11,55 @@
       "scan_qr": { "text": "Scan QR",                   "doc": "Empty-state primary action." },
       "restore": { "text": "Restore from phrase",       "doc": "Empty-state secondary action." }
     },
+    "welcome": {
+      "title":     { "text": "Welcome to Tasks",        "doc": "Welcome screen title." },
+      "subtitle":  { "text": "Per-crew task lists, offline-first.", "doc": "Welcome screen subtitle." },
+      "scan_cta":  { "text": "Scan an invite QR",        "doc": "Primary action — join an existing crew." },
+      "restore_cta": { "text": "Restore from recovery phrase", "doc": "Secondary action — restore an identity from a mnemonic." }
+    },
+    "scan": {
+      "title":          { "text": "Scan a QR code",     "doc": "Scan screen title." },
+      "subtitle":       { "text": "Point the camera at a Tasks QR. You can also paste instead.", "doc": "Scan screen subtitle." },
+      "unrecognised":   { "text": "QR not recognised.", "doc": "Hint shown when no classifier matches." },
+      "redeeming":      { "text": "Joining the crew…",   "doc": "Status while invite redeem is in flight." },
+      "redeem_failed":  { "text": "Couldn’t join: {reason}", "doc": "Error after invite redeem fails." },
+      "paste_link":     { "text": "Paste instead",      "doc": "Toggle to reveal the paste textarea." },
+      "paste_placeholder": { "text": "Paste a Tasks invite, contact link, or recovery phrase", "doc": "Paste textarea placeholder." },
+      "paste_submit":   { "text": "Continue",           "doc": "Paste-submit button." },
+      "grant_camera":   { "text": "Grant camera access", "doc": "Permission-prompt CTA." },
+      "permission_denied": { "text": "Camera permission denied. You can paste an invite instead.", "doc": "Permission-denied body copy." }
+    },
+    "restore": {
+      "title":     { "text": "Restore from recovery phrase", "doc": "Restore screen title." },
+      "subtitle":  { "text": "Type or paste your 12 or 24 BIP-39 words. Anyone with these words controls your account.", "doc": "Restore screen subtitle + warning." },
+      "input_label": { "text": "Recovery phrase",       "doc": "Mnemonic textarea label." },
+      "submit":    { "text": "Restore",                  "doc": "Restore-submit button." },
+      "status_empty":         { "text": "Type your phrase.",                        "doc": "Status: nothing typed yet." },
+      "status_too_short":     { "text": "Keep going — 12 or 24 words.",              "doc": "Status: too few words." },
+      "status_wrong_count":   { "text": "Phrase must be exactly 12 or 24 words.",     "doc": "Status: wrong word count." },
+      "status_malformed_word": { "text": "One of the words doesn’t look right.",      "doc": "Status: a word is malformed." },
+      "status_looks_ok":      { "text": "Looks good — tap Restore to load it.",       "doc": "Status: passes the structural check." },
+      "restore_failed":       { "text": "Restore failed: {reason}",                   "doc": "Error after AgentIdentity.fromMnemonic throws." }
+    },
+    "issue": {
+      "title":     { "text": "Invite a member",         "doc": "Issue screen title." },
+      "subtitle":  { "text": "Show this QR to a new crew member. The invite is single-use and expires soon.", "doc": "Issue screen subtitle." },
+      "ttl_short": { "text": "Expires in 1 hour",       "doc": "Default TTL chip." },
+      "ttl_long":  { "text": "Expires in 24 hours",     "doc": "Longer TTL chip." },
+      "role_member": { "text": "Member",                "doc": "Role chip — default new-member role." },
+      "role_admin":  { "text": "Admin",                 "doc": "Role chip — co-admin." },
+      "regenerate":  { "text": "New code",              "doc": "Regenerate-invite button." },
+      "issue_failed": { "text": "Couldn’t issue invite: {reason}", "doc": "Error after issueInvite fails." }
+    },
+    "permissions": {
+      "title":      { "text": "Permission needed",       "doc": "Modal title for permission rationale." },
+      "camera":     { "text": "Tasks needs the camera to scan invite QR codes and take deliverable photos.", "doc": "Camera rationale." },
+      "notifications": { "text": "Tasks uses notifications to remind you about deadlines and approvals.", "doc": "Notifications rationale." },
+      "calendar":   { "text": "Tasks reads your calendar to flag scheduling conflicts. Optional — you can skip and configure later.", "doc": "Calendar rationale." },
+      "location":   { "text": "Tasks needs location access for Bluetooth-Low-Energy peer discovery on Android. The app does not record your location.", "doc": "Location rationale (Android BLE prereq)." },
+      "grant":      { "text": "Continue",                "doc": "Grant-permission action." },
+      "skip":       { "text": "Not now",                 "doc": "Skip-permission action." }
+    },
     "common": {
       "back":   { "text": "Back",   "doc": "Back-button label." },
       "cancel": { "text": "Cancel", "doc": "Cancel-button label." },
