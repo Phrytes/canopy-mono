@@ -21,6 +21,7 @@
     "@canopy/local-store": "file:../../packages/local-store",
     "@canopy/notifier": "file:../../packages/notifier",
     "@canopy/oidc-session-rn": "file:../../packages/oidc-session-rn",
+    "@canopy/online-cadence": "file:../../packages/online-cadence",
     "@canopy/pod-client": "file:../../packages/pod-client",
     "@canopy/react-native": "file:../../packages/react-native",
     "@canopy/skill-match": "file:../../packages/skill-match",

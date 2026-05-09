@@ -1,0 +1,27 @@
+{
+  "name": "@canopy/online-cadence",
+  "version": "0.1.0",
+  "description": "Foreground/background cadence helpers for React Native agents — pure-JS ticker + AppState bridge + bg-task convenience re-exports. Lifted from apps/stoop-mobile/src/lib/{activeCadence,appStateBridge,bgRunOnce}.js 2026-05-09; Tasks-mobile is the second consumer (rule of two).",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".":         "./index.js",
+    "./cadence": "./src/cadence.js",
+    "./appStateBridge": "./src/appStateBridge.js",
+    "./bgTask":  "./src/bgTask.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@canopy/sync-engine-rn": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@canopy/sync-engine-rn": { "optional": true }
+  },
+  "devDependencies": {
+    "@canopy/sync-engine-rn": "file:../sync-engine-rn",
+    "vitest": "^2.1.9"
+  }
+}
