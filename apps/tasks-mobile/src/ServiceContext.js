@@ -105,6 +105,11 @@ export function ServiceProvider({ children, boot = {} }) {
   // The crews Map mutates in place across joinCrew/leaveCrew. We bump
   // a version counter to force rerenders that read its contents.
   const [crewsVersion,  setCrewsVersion]  = useState(0);
+  // Phase 41.15 — pod-attached state.
+  const [podStatus,     setPodStatus]     = useState({
+    signedIn: false, podAttached: false, webid: null, podRoot: null,
+  });
+  const podSessionRef  = useRef(null);
 
   // Refs hold mutable state that doesn't drive renders by itself.
   const crewsRef           = useRef(new Map());
@@ -175,6 +180,62 @@ export function ServiceProvider({ children, boot = {} }) {
   const setActiveCrew = useCallback((crewId) => {
     setActiveCrewId(crewId);
     registryRef.current?.setActiveId(crewId).catch(() => {});
+  }, []);
+
+  // ── Pod attachment (Phase 41.15) ──────────────────────────────────
+  const attachPod = useCallback(async ({ tokens, podRoot } = {}) => {
+    if (!tokens || typeof tokens !== 'object') {
+      throw new Error('attachPod: tokens required');
+    }
+    if (typeof podRoot !== 'string' || !podRoot) {
+      throw new Error('attachPod: podRoot required');
+    }
+    const bundle = localStoreBundleRef.current;
+    if (!bundle?.cache?.attachInner) {
+      throw new Error('attachPod: bundle missing cache.attachInner');
+    }
+    // Lazy-load OidcSessionRN + SolidPodSource so vitest doesn't pull
+    // expo-secure-store / @inrupt/* modules at module-load time.
+    const { OidcSessionRN } = await import('@canopy/oidc-session-rn');
+    const SecureStore = await import('expo-secure-store');
+    const { SolidPodSource } = await import('@canopy/pod-client');
+
+    const session = podSessionRef.current
+      ?? new OidcSessionRN({ store: SecureStore, appId: 'tasks' });
+    await session.adoptTokens(tokens);
+
+    const fetchFn = session.getAuthenticatedFetch();
+    const source  = new SolidPodSource({ podUrl: podRoot, fetch: fetchFn });
+    await bundle.cache.attachInner(source);
+
+    podSessionRef.current = session;
+    setPodStatus({
+      signedIn: true, podAttached: true,
+      webid: session.webid ?? tokens.webid ?? null,
+      podRoot,
+    });
+  }, []);
+
+  const detachPod = useCallback(async () => {
+    const bundle = localStoreBundleRef.current;
+    try { await bundle?.cache?.attachInner?.(null); } catch { /* swallow */ }
+    if (podSessionRef.current) {
+      try { await podSessionRef.current.logout(); } catch { /* swallow */ }
+    }
+    podSessionRef.current = null;
+    setPodStatus({ signedIn: false, podAttached: false, webid: null, podRoot: null });
+  }, []);
+
+  const bulkSync = useCallback(async (onProgress) => {
+    const bundle = localStoreBundleRef.current;
+    if (typeof bundle?.cache?.bulkSync !== 'function') {
+      // No bulkSync surface — pullFromInner is the V1 fallback.
+      if (typeof bundle?.cache?.pullFromInner === 'function') {
+        await bundle.cache.pullFromInner();
+      }
+      return;
+    }
+    await bundle.cache.bulkSync({ onProgress });
   }, []);
 
   // ── Boot ────────────────────────────────────────────────────────────
@@ -363,9 +424,14 @@ export function ServiceProvider({ children, boot = {} }) {
       joinCrew,
       leaveCrew,
       setActiveCrew,
+      podStatus,
+      attachPod,
+      detachPod,
+      bulkSync,
     };
   // crewsVersion ensures consumers re-render when crews mutate.
-  }, [status, error, identity, meshAgent, activeCrewId, crewsVersion, joinCrew, leaveCrew, setActiveCrew]);
+  }, [status, error, identity, meshAgent, activeCrewId, crewsVersion,
+      joinCrew, leaveCrew, setActiveCrew, podStatus, attachPod, detachPod, bulkSync]);
 
   return (
     <ServiceContext.Provider value={value}>

@@ -295,6 +295,25 @@
       "missing_params": { "text": "No binding selected.",                                        "doc": "Error when navigated without {chatId, webid}." },
       "empty_token":    { "text": "Server returned no token.",                                   "doc": "Error after issueBotToken returns nothing." },
       "admin_only":     { "text": "Only admins can issue tokens.",                               "doc": "Error for non-admin caller." }
+    },
+    "sign_in": {
+      "title":          { "text": "Sign in to Solid pod",                                          "doc": "PodSignInScreen title." },
+      "subtitle":       { "text": "Optional. Tasks works fully offline; signing in lets your tasks sync to your pod.", "doc": "Subtitle." },
+      "issuer_label":   { "text": "OIDC issuer",                                                  "doc": "Issuer field label." },
+      "cta":            { "text": "Sign in with Solid",                                           "doc": "Sign-in CTA." },
+      "cancelled":      { "text": "Sign-in was cancelled.",                                       "doc": "Body when the user backs out of the OIDC flow." },
+      "tokens_received": { "text": "Signed in as {webid}",                                        "doc": "Body after PKCE flow returns." },
+      "pod_root_label": { "text": "Pod base URL",                                                 "doc": "Pod-root field label." },
+      "attach_cta":     { "text": "Continue",                                                     "doc": "Pod-attach CTA." },
+      "attach_unavailable": { "text": "Pod attachment is unavailable in this build.",              "doc": "Error if attachPod isn't wired." }
+    },
+    "auth_callback": {
+      "syncing":               { "text": "Pulling your pod data…",                                "doc": "Body during bulkSync." },
+      "done":                  { "text": "All set!",                                              "doc": "Body when bulkSync finishes." },
+      "error":                 { "text": "Couldn't sync.",                                       "doc": "Body when bulkSync throws." },
+      "progress_count":        { "text": "{done} item(s) so far",                                 "doc": "Progress without total." },
+      "progress_with_total":   { "text": "{done} of {total} items",                               "doc": "Progress with total." },
+      "continue":              { "text": "Continue",                                              "doc": "Continue CTA." }
     }
   }
 }

@@ -42,6 +42,8 @@ import { ProfileOtherScreen }   from './src/screens/ProfileOtherScreen.jsx';
 import { SettingsScreen }       from './src/screens/SettingsScreen.jsx';
 import { CrewSettingsScreen }   from './src/screens/CrewSettingsScreen.jsx';
 import { IssueBotTokenScreen }  from './src/screens/IssueBotTokenScreen.jsx';
+import { PodSignInScreen }      from './src/screens/PodSignInScreen.jsx';
+import { AuthCallbackScreen }   from './src/screens/AuthCallbackScreen.jsx';
 
 const Stack = createNativeStackNavigator();
 
@@ -118,6 +120,10 @@ function BootGate() {
                       options={{ headerShown: true, title: 'Crew settings' }} />
         <Stack.Screen name={ROUTES.IssueBotToken}  component={IssueBotTokenScreen}
                       options={{ headerShown: true, title: 'Bot token QR' }} />
+        <Stack.Screen name={ROUTES.PodSignIn}      component={PodSignInScreen}
+                      options={{ headerShown: true, title: 'Sign in' }} />
+        <Stack.Screen name={ROUTES.AuthCallback}   component={AuthCallbackScreen}
+                      options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
