@@ -132,6 +132,77 @@ module.exports = withCanopyPreset({
           type:     'sourceFile',
         };
       }
+
+      // ── Phase 41.0 + 41.0.b substrate subpaths ────────────────────
+      // The preset only auto-handles `@canopy/react-native/platform/*`
+      // and `@canopy/sync-engine/*`. Everything we lifted in Phase 41.0
+      // (picker, qr, mnemonic, push, i18n) + 41.0.b (identity, storage,
+      // deepLinks, theme, components) needs explicit resolvers because
+      // unstable_enablePackageExports stays off.
+
+      // @canopy/react-native/qr/view — JSX file, separate from the
+      // package's pure-JS index (so test envs that don't load
+      // react-native-qrcode-svg still parse the index).
+      if (moduleName === '@canopy/react-native/qr/view') {
+        return {
+          filePath: path.resolve(repoRoot, 'packages/react-native/src/qr/QrCodeView.jsx'),
+          type:     'sourceFile',
+        };
+      }
+      // @canopy/react-native/mnemonic/view — same JSX-split pattern.
+      if (moduleName === '@canopy/react-native/mnemonic/view') {
+        return {
+          filePath: path.resolve(repoRoot, 'packages/react-native/src/mnemonic/MnemonicView.jsx'),
+          type:     'sourceFile',
+        };
+      }
+      // @canopy/react-native/identity/bootstrap — deep subpath for
+      // the bootstrap helper (avoids loading KeychainVault.js eagerly).
+      if (moduleName === '@canopy/react-native/identity/bootstrap') {
+        return {
+          filePath: path.resolve(repoRoot, 'packages/react-native/src/identity/bootstrapIdentity.js'),
+          type:     'sourceFile',
+        };
+      }
+      // @canopy/react-native/<sub> → packages/react-native/src/<sub>/index.js
+      // for every remaining substrate submodule.
+      const RN_SUBS = new Set([
+        'identity', 'storage', 'picker', 'qr', 'mnemonic',
+        'push', 'i18n', 'deepLinks', 'theme', 'components',
+      ]);
+      if (moduleName.startsWith('@canopy/react-native/')) {
+        const sub = moduleName.slice('@canopy/react-native/'.length);
+        if (RN_SUBS.has(sub)) {
+          return {
+            filePath: path.resolve(repoRoot, `packages/react-native/src/${sub}/index.js`),
+            type:     'sourceFile',
+          };
+        }
+      }
+
+      // @canopy/sync-engine-rn/react — the Phase 41.0 L1 lift target.
+      // Distinct from `@canopy/sync-engine/...` (preset handles that).
+      if (moduleName === '@canopy/sync-engine-rn/react') {
+        return {
+          filePath: path.resolve(repoRoot, 'packages/sync-engine-rn/src/react/index.js'),
+          type:     'sourceFile',
+        };
+      }
+
+      // @canopy/identity-resolver/{display,skills} — Phase 41.0.b A1+A2 lifts.
+      if (moduleName === '@canopy/identity-resolver/display') {
+        return {
+          filePath: path.resolve(repoRoot, 'packages/identity-resolver/src/display.js'),
+          type:     'sourceFile',
+        };
+      }
+      if (moduleName === '@canopy/identity-resolver/skills') {
+        return {
+          filePath: path.resolve(repoRoot, 'packages/identity-resolver/src/skills.js'),
+          type:     'sourceFile',
+        };
+      }
+
       return null;
     },
   ],
