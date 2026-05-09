@@ -22,30 +22,31 @@ Phase 41 of the [Tasks-mobile coding plan](../../Project%20Files/Tasks%20App/mob
 
 ## Status (2026-05-09)
 
-Phase 41.1 scaffold landed. The placeholder screen renders inside a
-`<NavigationContainer>`; the agent + ServiceContext + screens land in
-Phase 41.2 and onwards.
+V1 functional surface **complete** — see [CHANGELOG.md](./CHANGELOG.md)
+for the full release-summary entry. 19 screens + 6 crew-settings
+sub-sections + 5 cross-cutting library helpers. 106/106 tests green.
 
 | Phase | Theme | State |
 |---|---|---|
 | 41.0  | Substrate lifts (L1–L7 from stoop-mobile/src/lib) | ✅ |
-| **41.1** | **Workspace scaffold (this commit)** | **✅** |
-| 41.2  | ServiceContext + agent bring-up + useSkill hooks | ⏳ |
-| 41.3  | Onboarding (Welcome / Scan / Restore / Issue) | ⏳ |
-| 41.4  | Workspace + task detail + V2.7 gate UI | ⏳ |
-| 41.5  | My work + planner + photo deliverable submit | ⏳ |
-| 41.6  | Review + DAG + Inbox + crew context switch | ⏳ |
-| 41.7  | Crews dashboard + multi-crew management | ⏳ |
-| 41.8  | Crew settings panels | ⏳ |
-| 41.9  | Availability grid | ⏳ |
-| 41.10 | Profile (avatar, handle, skills, recovery) | ⏳ |
-| 41.11 | Settings + push opt-in + per-event toggles | ⏳ |
-| 41.12 | Native calendar integration | ⏳ |
-| 41.13 | Bot-binding QR | ⏳ |
-| 41.14 | AppState bridge + bg-fetch task | ⏳ |
-| 41.15 | Sign-in (pod) + bulk sync | ⏳ |
-| 41.16 | Real-device pass + closed-beta APK | ⏳ |
-| 41.17 | Documentation + handoff | ⏳ |
+| 41.0.b | Round-2 substrate lifts (A1–A7 + B0–B4) | ✅ |
+| 41.1  | Workspace scaffold | ✅ |
+| 41.2  | ServiceContext + agent bring-up + useSkill hooks | ✅ |
+| 41.3  | Onboarding (Welcome / Scan / Restore / Issue) | ✅ |
+| 41.4  | Workspace + task detail + V2.7 gate UI | ✅ |
+| 41.5  | My work + planner + photo deliverable submit | ✅ |
+| 41.6  | Review + DAG + Inbox + crew context switch | ✅ |
+| 41.7  | Crews dashboard + multi-crew management | ✅ |
+| 41.8  | Crew settings panels (6 sections) | ✅ |
+| 41.9  | Availability grid | ✅ |
+| 41.10 | Profile (avatar, handle, skills, recovery) | ✅ |
+| 41.11 | Settings + push opt-in + per-event toggles | ✅ |
+| 41.12 | Native calendar integration | ✅ |
+| 41.13 | Bot-binding QR | ✅ |
+| 41.14 | AppState bridge + bg-fetch task | ✅ |
+| 41.15 | Sign-in (pod) + bulk sync | ✅ |
+| **41.16** | **Real-device pass + closed-beta APK** | ⏳ **Hardware pending** |
+| 41.17 | Documentation + handoff | ✅ |
 
 ## Substrates
 
@@ -105,7 +106,7 @@ meshAgent's bus.
 ```bash
 cd apps/tasks-mobile
 npm install
-npm test                           # scaffold smoke (Phase 41.1) + future per-phase tests
+npm test                           # 106 tests across 17 files
 ```
 
 Real-device bring-up (Android — iOS is out of scope):
@@ -118,6 +119,59 @@ expo run:android --device          # sideloads on a real phone
 The dev client must be built once with the full @canopy/react-native
 autolinking (mDNS + BLE + push). Reuse stoop-mobile's dev client when
 you can — same Expo 52 / RN 0.76.9 pin.
+
+### Real-device test plan (Phase 41.16 runbook)
+
+Walk through the full V1 user journey on a clean Android phone:
+
+1. **Onboarding (Phase 41.3)** — install fresh, tap "Scan invite QR",
+   scan a `tasks://invite?token=...` payload generated from the
+   desktop CLI (`bin/tasks-ui.js --crew-list <path>`) or from another
+   admin's IssueScreen. Land on Workspace.
+2. **Workspace (41.4)** — see the open-tasks list. Tap +, compose a
+   task with `text` + `dueAt` + DoD `text`. Submit. Card appears.
+3. **TaskDetail (41.4)** — tap the card. Claim. Mark complete (when
+   DoD is text + status is `claimed`). Verify the V2.7 gate by
+   creating a parent + child where the child is open: parent's
+   "Mark complete" should be disabled with the open-deps tooltip;
+   admin should see "Force complete" red CTA.
+4. **MyWork + Planner (41.5)** — navigate to MyWork (push a route
+   manually until the bottom-tab shell lands). Tap "Suggest a plan";
+   Accept a suggestion → `task.scheduledAt` updates → V2.1 calendar
+   emission picks it up.
+5. **Photo deliverable (41.5)** — for a task with DoD `photo`, tap
+   Submit → camera opens → snap → confirm. Approver should see the
+   inline thumbnail in Review.
+6. **Review + Inbox (41.6)** — as approver, see the awaiting-approval
+   row + tap to open. Approve. Test V2.7 propose-subtask: parent in
+   `submitted`, second member proposes a sub-task → original
+   assignee's Inbox shows the proposal card → Approve rolls parent
+   back to `claimed`.
+7. **Crews dashboard (41.7)** — install with two crews; both rows
+   render. Tap "Jump in" to switch active crew + navigate Workspace.
+   Counters refresh on `item-added`.
+8. **Crew settings (41.8)** — open CrewSettings; verify the six
+   sections respect role gates (KID-as-member sees only Members;
+   admin sees all six). Issue a bot-token QR, scan from another
+   device, verify the cap-token loads.
+9. **Profile (41.10)** — set a handle, take an avatar photo, add
+   skills. Reveal the recovery phrase + copy. Restart the app —
+   identity persists.
+10. **Push (41.11)** — toggle a per-event preference, send a test
+    push from the relay, notification appears.
+11. **Native calendar (41.12)** — flip Settings.calendarSyncMethod
+    to `native`. A task with `dueAt` produces an event in the
+    system calendar's "Tasks" calendar within 60s.
+12. **Pod sign-in (41.15)** — tap "Sign in to Solid pod". OIDC flow
+    completes; AuthCallback shows bulk-sync progress; pod-side
+    `<pod>/tasks/...` paths populate.
+13. **Offline mode** — toggle airplane mode; the app continues
+    working (local-only mode), and a queued addTask survives the
+    next online window.
+
+Crash-free target: 0 unhandled rejections + 0 native crashes during
+the walkthrough. Performance: cold-start to first Workspace render
+< 3s on a Pixel 5.
 
 ### Localisation
 

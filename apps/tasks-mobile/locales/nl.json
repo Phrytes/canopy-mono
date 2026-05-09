@@ -295,6 +295,25 @@
       "missing_params": { "text": "Geen koppeling geselecteerd.",                                "doc": "Error when navigated without params." },
       "empty_token":    { "text": "Server gaf geen token terug.",                                "doc": "Error after issueBotToken empty." },
       "admin_only":     { "text": "Alleen beheerders kunnen tokens uitgeven.",                   "doc": "Error for non-admin caller." }
+    },
+    "sign_in": {
+      "title":          { "text": "Aanmelden bij Solid-pod",                                      "doc": "PodSignInScreen title." },
+      "subtitle":       { "text": "Optioneel. Tasks werkt volledig offline; aanmelden synchroniseert je taken met je pod.", "doc": "Subtitle." },
+      "issuer_label":   { "text": "OIDC-issuer",                                                  "doc": "Issuer field label." },
+      "cta":            { "text": "Aanmelden met Solid",                                          "doc": "Sign-in CTA." },
+      "cancelled":      { "text": "Aanmelden geannuleerd.",                                       "doc": "Cancel body." },
+      "tokens_received": { "text": "Aangemeld als {webid}",                                       "doc": "Tokens-received body." },
+      "pod_root_label": { "text": "Pod-basis-URL",                                                 "doc": "Pod-root field label." },
+      "attach_cta":     { "text": "Doorgaan",                                                     "doc": "Pod-attach CTA." },
+      "attach_unavailable": { "text": "Pod-koppeling is niet beschikbaar in deze build.",          "doc": "Error if attachPod isn't wired." }
+    },
+    "auth_callback": {
+      "syncing":               { "text": "Pod-data ophalen…",                                     "doc": "Body during bulkSync." },
+      "done":                  { "text": "Klaar!",                                                "doc": "Body when bulkSync finishes." },
+      "error":                 { "text": "Synchronisatie mislukt.",                               "doc": "Body when bulkSync throws." },
+      "progress_count":        { "text": "{done} item(s) tot nu toe",                              "doc": "Progress without total." },
+      "progress_with_total":   { "text": "{done} van {total} items",                               "doc": "Progress with total." },
+      "continue":              { "text": "Doorgaan",                                              "doc": "Continue CTA." }
     }
   }
 }
