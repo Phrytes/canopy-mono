@@ -28,4 +28,7 @@ export const ROUTES = Object.freeze({
   Review:         'Review',
   Dag:            'Dag',
   Inbox:          'Inbox',
+
+  // Phase 41.7 — Cross-crew dashboard.
+  Crews:          'Crews',
 });

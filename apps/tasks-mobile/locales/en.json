@@ -181,6 +181,20 @@
       "label":   { "text": "Active crew",                            "doc": "Crew-switcher label." },
       "switch":  { "text": "Switch",                                  "doc": "Crew-switcher CTA." },
       "no_crews": { "text": "(no crews)",                             "doc": "Crew-switcher empty placeholder." }
+    },
+    "crews": {
+      "title":           { "text": "Crews",                           "doc": "CrewsDashboard title." },
+      "empty":           { "text": "You haven't joined any crews yet.", "doc": "Empty state — user belongs to zero crews." },
+      "counter_open":    { "text": "{count} open",                     "doc": "Counter label — open tasks in the crew." },
+      "counter_overdue": { "text": "{count} overdue",                  "doc": "Counter label — overdue tasks." },
+      "counter_review":  { "text": "{count} for review",               "doc": "Counter label — tasks awaiting approval." },
+      "counter_mine":    { "text": "{count} mine",                     "doc": "Counter label — tasks assigned to me." },
+      "jump_in":         { "text": "Jump in",                          "doc": "CTA on a crew row that switches active + navigates Workspace." },
+      "kind_household":  { "text": "household",                        "doc": "Crew-kind chip — household." },
+      "kind_project":    { "text": "project",                          "doc": "Crew-kind chip — project." },
+      "kind_team":       { "text": "team",                             "doc": "Crew-kind chip — team." },
+      "kind_friends":    { "text": "friends",                          "doc": "Crew-kind chip — friends." },
+      "kind_maintenance": { "text": "maintenance",                     "doc": "Crew-kind chip — maintenance." }
     }
   }
 }
