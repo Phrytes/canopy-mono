@@ -37,11 +37,25 @@ module.exports = withCanopyPreset({
   ],
 
   // Block apps/tasks-v0/node_modules (server / CLI / web-only deps
-  // mobile never reaches).
+  // mobile never reaches) + every per-package Gradle build dir.
+  // Without the build-dir exclusions Metro's file-watcher tries to
+  // walk every `node_modules/expo-*/android/build/intermediates/...`
+  // tree as Gradle generates them, which blows past Linux's default
+  // `fs.inotify.max_user_watches` ceiling (8192) on the very first
+  // `expo run:android`.
   extraBlockListRegExps: [
     new RegExp(
       `^${path.resolve(repoRoot, 'apps/tasks-v0/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
     ),
+    // Per-package Gradle build artifacts (the actual ENOSPC source
+    // — node_modules/<pkg>/android/build/intermediates emit thousands
+    // of files during a debug build).
+    /[/\\]node_modules[/\\][^/\\]+[/\\]android[/\\]build[/\\].*/,
+    // App-level Android build dir + iOS build dir.
+    /[/\\]android[/\\]app[/\\]build[/\\].*/,
+    /[/\\]android[/\\]\.gradle[/\\].*/,
+    /[/\\]ios[/\\]build[/\\].*/,
+    /[/\\]ios[/\\]Pods[/\\].*/,
   ],
 
   // Pin React/RN/native modules to this app's node_modules so monorepo
