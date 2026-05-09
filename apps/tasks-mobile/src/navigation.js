@@ -19,4 +19,8 @@ export const ROUTES = Object.freeze({
   Workspace:      'Workspace',
   TaskDetail:     'TaskDetail',
   Compose:        'Compose',
+
+  // Phase 41.5 — My work + planner + photo deliverable submit.
+  MyWork:         'MyWork',
+  Submit:         'Submit',
 });

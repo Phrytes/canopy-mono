@@ -116,6 +116,39 @@
       "submit":          { "text": "Voeg toe",                           "doc": "Compose-submit CTA." },
       "submit_failed":   { "text": "Toevoegen mislukt: {reason}",         "doc": "Error after addTask fails." }
     },
+    "my_work": {
+      "title":         { "text": "Mijn werk",                       "doc": "MyWorkScreen title." },
+      "section_assigned":  { "text": "Aan mij toegewezen",            "doc": "Assigned section header." },
+      "section_mastered":  { "text": "Ik beoordeel",                  "doc": "Mastered section header." },
+      "section_claimable": { "text": "Vrij te claimen",               "doc": "Claimable section header." },
+      "empty_assigned":    { "text": "Niets toegewezen. Pak iets uit \"Vrij te claimen\".", "doc": "Empty state." },
+      "empty_mastered":    { "text": "Geen taken die op jouw beoordeling wachten.",  "doc": "Empty state." },
+      "empty_claimable":   { "text": "Geen vrije taken nu.",          "doc": "Empty state." }
+    },
+    "planner": {
+      "panel_title":      { "text": "Voorgestelde planning",          "doc": "Planner panel header." },
+      "suggest_cta":      { "text": "Stel een planning voor",         "doc": "Trigger suggestSchedule." },
+      "loading":          { "text": "Aan het denken…",                 "doc": "Loading state." },
+      "empty":            { "text": "Geen suggesties — je taken passen.", "doc": "Empty state." },
+      "accept":           { "text": "Accepteer",                      "doc": "Accept a suggestion." },
+      "skip":             { "text": "Sla over",                       "doc": "Skip a suggestion." },
+      "reason_overdue":   { "text": "te laat",                        "doc": "Reason chip — overdue." },
+      "reason_last_chance": { "text": "laatste kans",                 "doc": "Reason chip — last slot." },
+      "reason_fits":      { "text": "past voor de deadline",          "doc": "Reason chip — fits comfortably." },
+      "reason_no_slot":   { "text": "geen plek gevonden",             "doc": "Reason chip — no slot." },
+      "slot_label":       { "text": "{date} {start}–{end}",           "doc": "Slot label." }
+    },
+    "deliverable_photo": {
+      "title":         { "text": "Deliverable indienen",                "doc": "SubmitScreen title for photo DoD." },
+      "title_text":    { "text": "Werk indienen",                       "doc": "SubmitScreen title for text DoD." },
+      "note_label":    { "text": "Notitie voor de beoordelaar (optioneel)", "doc": "Free-text note label." },
+      "take_photo":    { "text": "Maak foto",                           "doc": "Open camera CTA." },
+      "pick_library":  { "text": "Kies uit bibliotheek",                "doc": "Pick from library CTA." },
+      "retake":        { "text": "Opnieuw",                             "doc": "Retake CTA." },
+      "submit":        { "text": "Indienen",                            "doc": "Submit CTA." },
+      "submitting":    { "text": "Bezig met indienen…",                  "doc": "Submit-in-flight label." },
+      "submit_failed": { "text": "Indienen mislukt: {reason}",          "doc": "Submit-error toast." }
+    },
     "common": {
       "back":   { "text": "Terug",     "doc": "Back-button label." },
       "cancel": { "text": "Annuleer",  "doc": "Cancel-button label." },
