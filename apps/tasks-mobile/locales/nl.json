@@ -195,6 +195,58 @@
       "kind_team":       { "text": "team",                             "doc": "Crew-kind chip." },
       "kind_friends":    { "text": "vrienden",                         "doc": "Crew-kind chip." },
       "kind_maintenance": { "text": "onderhoud",                       "doc": "Crew-kind chip." }
+    },
+    "availability": {
+      "opt_in_label":    { "text": "Beschikbaarheid delen met de crew",   "doc": "Opt-in toggle label." },
+      "not_opted_in":    { "text": "Niet gedeeld — je cellen blijven verborgen.", "doc": "Body when opt-in is off." },
+      "crew_disabled":   { "text": "Beschikbaarheidshints staan uit voor deze crew.", "doc": "Disabled-by-admin banner." },
+      "tap_hint":        { "text": "Tik op een cel om door de statussen te gaan.", "doc": "Below-grid hint." },
+      "state_unknown":     { "text": "—",            "doc": "State chip — unknown." },
+      "state_open":        { "text": "open",         "doc": "State chip — open." },
+      "state_tight":       { "text": "krap",         "doc": "State chip — tight." },
+      "state_unavailable": { "text": "niet beschikbaar", "doc": "State chip — unavailable." },
+      "day_mon": { "text": "Ma", "doc": "" }, "day_tue": { "text": "Di", "doc": "" },
+      "day_wed": { "text": "Wo", "doc": "" }, "day_thu": { "text": "Do", "doc": "" },
+      "day_fri": { "text": "Vr", "doc": "" }, "day_sat": { "text": "Za", "doc": "" },
+      "day_sun": { "text": "Zo", "doc": "" },
+      "half_am":  { "text": "Och", "doc": "" }, "half_pm":  { "text": "Mid", "doc": "" }
+    },
+    "profile": {
+      "handle":              { "text": "Handle",                              "doc": "Handle field label." },
+      "display_name":        { "text": "Naam",                                "doc": "DisplayName field label." },
+      "avatar_camera":       { "text": "Maak foto",                           "doc": "Avatar camera CTA." },
+      "avatar_library":      { "text": "Kies uit bibliotheek",                "doc": "Avatar library CTA." },
+      "skills":              { "text": "Vaardigheden",                        "doc": "Skills section header." },
+      "holiday_mode":        { "text": "Vakantie-modus",                      "doc": "Toggle label." },
+      "handle_empty":        { "text": "Handle mag niet leeg zijn.",          "doc": "Handle validation — empty." },
+      "handle_too_short":    { "text": "Handle is te kort.",                  "doc": "Handle validation — short." },
+      "handle_too_long":     { "text": "Handle is te lang.",                  "doc": "Handle validation — long." },
+      "handle_bad_chars":    { "text": "Handle mag alleen a-z, 0-9, - en _.", "doc": "Handle validation — bad chars." },
+      "recovery_title":      { "text": "Herstelzin",                          "doc": "Recovery section header." },
+      "recovery_body":       { "text": "Gebruik deze 12-woorden zin om je account op een ander apparaat te herstellen. Iedereen met de woorden heeft volledige toegang — bewaar ze veilig.", "doc": "Recovery body copy." },
+      "recovery_reveal_cta": { "text": "Toon me",                             "doc": "Reveal CTA." },
+      "recovery_warning":    { "text": "Maak geen screenshot. Iedereen met deze woorden heeft toegang tot je account.", "doc": "Warning above the grid." },
+      "recovery_copy":       { "text": "Kopieer",                             "doc": "Copy button label." },
+      "unknown_member":      { "text": "Lid niet gevonden in deze crew.",     "doc": "ProfileOther empty state." }
+    },
+    "settings": {
+      "section_device":         { "text": "Dit apparaat",                     "doc": "Per-device section header." },
+      "section_push":           { "text": "Meldingen",                        "doc": "Push section header." },
+      "poll_interval":          { "text": "Voorgrond-poll-interval",          "doc": "Poll-interval field label." },
+      "allow_hop_through":      { "text": "Sta hop-through (relay-routing) toe", "doc": "Hop-through toggle label." },
+      "calendar_sync_method":   { "text": "Agenda-sync",                      "doc": "Calendar-method field label." },
+      "calendar_ics":           { "text": "Alleen ICS",                       "doc": "Calendar-method chip." },
+      "calendar_native":        { "text": "Native agenda",                    "doc": "Calendar-method chip." },
+      "calendar_both":          { "text": "Beide",                            "doc": "Calendar-method chip." },
+      "push_subscribed":        { "text": "Geabonneerd ({platform})",          "doc": "Subscribed-state body." },
+      "push_not_subscribed":    { "text": "Niet geabonneerd",                  "doc": "Not-subscribed body." },
+      "push_denied":            { "text": "Geweigerd — wijzig in systeeminstellingen.", "doc": "Permission-denied body." },
+      "push_subscribe":         { "text": "Abonneer",                         "doc": "Subscribe CTA." },
+      "push_unsubscribe":       { "text": "Afmelden",                         "doc": "Unsubscribe CTA." },
+      "push_event_deadlineApproaching": { "text": "Deadline nadert",          "doc": "Per-event toggle." },
+      "push_event_taskClaimed":         { "text": "Iemand claimde een taak",  "doc": "Per-event toggle." },
+      "push_event_taskRejected":        { "text": "Indiening afgewezen",      "doc": "Per-event toggle." },
+      "push_event_subtaskProposal":     { "text": "Sub-taakvoorstel",         "doc": "Per-event toggle." }
     }
   }
 }

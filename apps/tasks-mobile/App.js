@@ -36,6 +36,10 @@ import { ReviewScreen }         from './src/screens/ReviewScreen.jsx';
 import { DagScreen }            from './src/screens/DagScreen.jsx';
 import { InboxScreen }          from './src/screens/InboxScreen.jsx';
 import { CrewsDashboardScreen } from './src/screens/CrewsDashboardScreen.jsx';
+import { AvailabilityScreen }   from './src/screens/AvailabilityScreen.jsx';
+import { ProfileMineScreen }    from './src/screens/ProfileMineScreen.jsx';
+import { ProfileOtherScreen }   from './src/screens/ProfileOtherScreen.jsx';
+import { SettingsScreen }       from './src/screens/SettingsScreen.jsx';
 
 const Stack = createNativeStackNavigator();
 
@@ -100,6 +104,14 @@ function BootGate() {
                       options={{ headerShown: true, title: 'Inbox' }} />
         <Stack.Screen name={ROUTES.Crews}          component={CrewsDashboardScreen}
                       options={{ headerShown: true, title: 'Crews' }} />
+        <Stack.Screen name={ROUTES.Availability}   component={AvailabilityScreen}
+                      options={{ headerShown: true, title: 'Availability' }} />
+        <Stack.Screen name={ROUTES.ProfileMine}    component={ProfileMineScreen}
+                      options={{ headerShown: true, title: 'Profile' }} />
+        <Stack.Screen name={ROUTES.ProfileOther}   component={ProfileOtherScreen}
+                      options={{ headerShown: true, title: 'Profile' }} />
+        <Stack.Screen name={ROUTES.Settings}       component={SettingsScreen}
+                      options={{ headerShown: true, title: 'Settings' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

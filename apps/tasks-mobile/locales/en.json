@@ -195,6 +195,58 @@
       "kind_team":       { "text": "team",                             "doc": "Crew-kind chip — team." },
       "kind_friends":    { "text": "friends",                          "doc": "Crew-kind chip — friends." },
       "kind_maintenance": { "text": "maintenance",                     "doc": "Crew-kind chip — maintenance." }
+    },
+    "availability": {
+      "opt_in_label":    { "text": "Share availability with the crew",  "doc": "Opt-in toggle label." },
+      "not_opted_in":    { "text": "Opted out — your cells stay hidden.", "doc": "Body when opt-in is off." },
+      "crew_disabled":   { "text": "This crew has availability hints turned off.", "doc": "Disabled-by-admin banner." },
+      "tap_hint":        { "text": "Tap a cell to cycle through states.", "doc": "Below-grid hint." },
+      "state_unknown":     { "text": "—",            "doc": "State chip — unknown." },
+      "state_open":        { "text": "open",         "doc": "State chip — open." },
+      "state_tight":       { "text": "tight",        "doc": "State chip — tight." },
+      "state_unavailable": { "text": "unavailable",  "doc": "State chip — unavailable." },
+      "day_mon": { "text": "Mon", "doc": "" }, "day_tue": { "text": "Tue", "doc": "" },
+      "day_wed": { "text": "Wed", "doc": "" }, "day_thu": { "text": "Thu", "doc": "" },
+      "day_fri": { "text": "Fri", "doc": "" }, "day_sat": { "text": "Sat", "doc": "" },
+      "day_sun": { "text": "Sun", "doc": "" },
+      "half_am":  { "text": "AM", "doc": "" }, "half_pm":  { "text": "PM", "doc": "" }
+    },
+    "profile": {
+      "handle":              { "text": "Handle",                              "doc": "Handle field label." },
+      "display_name":        { "text": "Display name",                        "doc": "DisplayName field label." },
+      "avatar_camera":       { "text": "Take photo",                          "doc": "Avatar camera CTA." },
+      "avatar_library":      { "text": "Pick from library",                   "doc": "Avatar library CTA." },
+      "skills":              { "text": "Skills",                              "doc": "Skills section header." },
+      "holiday_mode":        { "text": "Holiday mode",                        "doc": "Toggle label." },
+      "handle_empty":        { "text": "Handle can't be empty.",              "doc": "Handle validation — empty." },
+      "handle_too_short":    { "text": "Handle is too short.",                "doc": "Handle validation — short." },
+      "handle_too_long":     { "text": "Handle is too long.",                 "doc": "Handle validation — long." },
+      "handle_bad_chars":    { "text": "Handle can only use a–z, 0–9, - and _.", "doc": "Handle validation — bad chars." },
+      "recovery_title":      { "text": "Recovery phrase",                     "doc": "Recovery section header." },
+      "recovery_body":       { "text": "Use this 12-word phrase to restore your account on another device. Anyone with the words has full access — keep them somewhere safe.", "doc": "Recovery body copy." },
+      "recovery_reveal_cta": { "text": "Show me",                             "doc": "Reveal CTA." },
+      "recovery_warning":    { "text": "Don't screenshot. Anyone with these words controls your account.", "doc": "Warning above the grid." },
+      "recovery_copy":       { "text": "Copy",                                "doc": "Copy button label." },
+      "unknown_member":      { "text": "Member not found in this crew.",      "doc": "ProfileOther empty state." }
+    },
+    "settings": {
+      "section_device":         { "text": "This device",                      "doc": "Per-device section header." },
+      "section_push":           { "text": "Notifications",                    "doc": "Push section header." },
+      "poll_interval":          { "text": "Foreground poll interval",         "doc": "Poll-interval field label." },
+      "allow_hop_through":      { "text": "Allow hop-through (relay routing)", "doc": "Hop-through toggle label." },
+      "calendar_sync_method":   { "text": "Calendar sync",                    "doc": "Calendar-method field label." },
+      "calendar_ics":           { "text": "ICS only",                         "doc": "Calendar-method chip." },
+      "calendar_native":        { "text": "Native calendar",                  "doc": "Calendar-method chip." },
+      "calendar_both":          { "text": "Both",                             "doc": "Calendar-method chip." },
+      "push_subscribed":        { "text": "Subscribed ({platform})",          "doc": "Subscribed-state body." },
+      "push_not_subscribed":    { "text": "Not subscribed",                   "doc": "Not-subscribed body." },
+      "push_denied":            { "text": "Denied — change in system settings.", "doc": "Permission-denied body." },
+      "push_subscribe":         { "text": "Subscribe",                        "doc": "Subscribe CTA." },
+      "push_unsubscribe":       { "text": "Unsubscribe",                      "doc": "Unsubscribe CTA." },
+      "push_event_deadlineApproaching": { "text": "Deadline approaching",     "doc": "Per-event toggle." },
+      "push_event_taskClaimed":         { "text": "Task claimed by someone",  "doc": "Per-event toggle." },
+      "push_event_taskRejected":        { "text": "Submission rejected",      "doc": "Per-event toggle." },
+      "push_event_subtaskProposal":     { "text": "Sub-task proposal",        "doc": "Per-event toggle." }
     }
   }
 }
