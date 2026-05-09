@@ -32,6 +32,9 @@ import { TaskDetailScreen }     from './src/screens/TaskDetailScreen.jsx';
 import { ComposeScreen }        from './src/screens/ComposeScreen.jsx';
 import { MyWorkScreen }         from './src/screens/MyWorkScreen.jsx';
 import { SubmitScreen }         from './src/screens/SubmitScreen.jsx';
+import { ReviewScreen }         from './src/screens/ReviewScreen.jsx';
+import { DagScreen }            from './src/screens/DagScreen.jsx';
+import { InboxScreen }          from './src/screens/InboxScreen.jsx';
 
 const Stack = createNativeStackNavigator();
 
@@ -88,6 +91,12 @@ function BootGate() {
                       options={{ headerShown: true, title: 'My work' }} />
         <Stack.Screen name={ROUTES.Submit}         component={SubmitScreen}
                       options={{ headerShown: true, title: 'Submit' }} />
+        <Stack.Screen name={ROUTES.Review}         component={ReviewScreen}
+                      options={{ headerShown: true, title: 'Review' }} />
+        <Stack.Screen name={ROUTES.Dag}            component={DagScreen}
+                      options={{ headerShown: true, title: 'Sub-tasks' }} />
+        <Stack.Screen name={ROUTES.Inbox}          component={InboxScreen}
+                      options={{ headerShown: true, title: 'Inbox' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
