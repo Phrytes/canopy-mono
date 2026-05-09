@@ -247,5 +247,3 @@ function _inputStyle(COLORS, SPACING, FONT_SIZES, RADII) {
   };
 }
 
-// Re-export for the recovery section's hook prop binding.
-import { useSkill } from '../lib/useSkill.js';
