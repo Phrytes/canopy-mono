@@ -67,6 +67,7 @@ export class Agent extends Emitter {
   #pubSubHistory = 0;
   #started       = false;
   #label         = null;
+  #webid         = null;   // optional WebIdCache (or any object) — standardisation Phase 50.2
   #helloGate     = null;   // optional (envelope) => boolean gate; see Group W
   #sealedConfigs = null;   // Map<groupId, { enabled, ... }> — Group BB
   #rotationInlineSeen = new Set();  // Group FF+1 — newPubKey seen via inline proof (dedup)
@@ -89,7 +90,7 @@ export class Agent extends Emitter {
   constructor({ identity, transport, security, policyEngine, trustRegistry,
                 tokenRegistry, peers, storage, config, routing,
                 maxTaskTtl, pubSubHistory,
-                skills = [], label } = {}) {
+                skills = [], label, webid } = {}) {
     super();
     if (!identity)  throw new Error('Agent requires an identity');
     if (!transport) throw new Error('Agent requires a transport');
@@ -110,6 +111,7 @@ export class Agent extends Emitter {
     this.#maxTaskTtl    = maxTaskTtl    ?? null;
     this.#pubSubHistory = pubSubHistory ?? 0;
     this.#label         = label         ?? null;
+    this.#webid         = webid         ?? null;
 
     for (const s of skills) this.#skills.register(s);
   }
@@ -132,6 +134,9 @@ export class Agent extends Emitter {
   get peers()    { return this.#peers; }
   /** StorageManager — optional. */
   get storage()  { return this.#storage; }
+  /** WebIdCache (or any object) — optional. Populated by Bootstrap for pod-having users
+   *  (standardisation Phase 50.2). `null` for no-pod users. */
+  get webid()    { return this.#webid; }
   /** AgentConfig — optional. */
   get config()   { return this.#config; }
   /** RoutingStrategy — optional. Used by call() when multiple transports are present. */
