@@ -1,0 +1,29 @@
+{
+  "name": "@canopy/pod-onboarding",
+  "version": "0.1.0",
+  "description": "One-tap pod provisioning + mnemonic-restore. Orchestration layer; provider-specific pod-server calls are injected via a podProvisioner. Standardisation Phase 52.5.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@canopy/core":            "*",
+    "@canopy/pod-routing":     "*",
+    "@canopy/pseudo-pod":      "*",
+    "@canopy/vault":           "*",
+    "@canopy/webid-discovery": "*"
+  },
+  "devDependencies": {
+    "@canopy/core":            "file:../core",
+    "@canopy/pod-routing":     "file:../pod-routing",
+    "@canopy/pseudo-pod":      "file:../pseudo-pod",
+    "@canopy/vault":           "file:../vault",
+    "@canopy/webid-discovery": "file:../webid-discovery",
+    "vitest": "^2.1.9"
+  }
+}
