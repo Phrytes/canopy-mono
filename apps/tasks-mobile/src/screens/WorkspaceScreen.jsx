@@ -82,10 +82,41 @@ export function WorkspaceScreen() {
           <RefreshControl refreshing={!!list?.loading} onRefresh={onRefresh} />
         }
         ListEmptyComponent={
-          <View style={{ padding: SPACING.xl, alignItems: 'center' }}>
-            <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.md, textAlign: 'center' }}>
+          <View style={{
+            padding: SPACING.xl, alignItems: 'center',
+            flexGrow: 1, justifyContent: 'center',
+          }}>
+            <Text style={{
+              color: COLORS.text, fontSize: FONT_SIZES.lg, fontWeight: '600',
+              marginBottom: SPACING.sm, textAlign: 'center',
+            }}>
+              {t('mobile.workspace.empty_title')}
+            </Text>
+            <Text style={{
+              color: COLORS.textMuted, fontSize: FONT_SIZES.sm,
+              textAlign: 'center', marginBottom: SPACING.lg, maxWidth: 320,
+            }}>
               {t('mobile.workspace.empty')}
             </Text>
+            <Pressable
+              onPress={() => nav.navigate(ROUTES.Compose)}
+              accessibilityRole="button"
+              accessibilityLabel="workspace-empty-add"
+              style={({ pressed }) => [
+                {
+                  paddingVertical: SPACING.md, paddingHorizontal: SPACING.xl,
+                  borderRadius: RADII.pill,
+                  backgroundColor: COLORS.primary,
+                },
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <Text style={{
+                color: COLORS.textInverse, fontSize: FONT_SIZES.md, fontWeight: '600',
+              }}>
+                {t('mobile.workspace.empty_add')}
+              </Text>
+            </Pressable>
           </View>
         }
       />

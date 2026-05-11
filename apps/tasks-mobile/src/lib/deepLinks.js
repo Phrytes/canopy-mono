@@ -43,6 +43,26 @@ const TASKS_PARSERS = {
     if (!query.id) return null;
     return { kind: 'crew', params: { id: query.id } };
   },
+
+  // Phase 41.18.4 — appeal deep-link:
+  //   tasks://appeal?taskId=<taskId>[&crewId=<crewId>]
+  appeal: (query) => {
+    if (!query.taskId) return null;
+    return { kind: 'appeal', params: {
+      taskId: query.taskId,
+      crewId: query.crewId ?? null,
+    } };
+  },
+
+  // Phase 41.18.4 — generic chat-thread deep-link:
+  //   tasks://chat?threadId=<id>[&counterparty=<webid>]
+  chat: (query) => {
+    if (!query.threadId) return null;
+    return { kind: 'chat', params: {
+      threadId:     query.threadId,
+      counterparty: query.counterparty ?? null,
+    } };
+  },
 };
 
 /**
@@ -76,6 +96,14 @@ export function actionToNavigation(action) {
     case 'auth_callback': return { name: ROUTES.AuthCallback,   params: action.params };
     case 'post':          return { name: ROUTES.TaskDetail,     params: { id: action.params?.id } };
     case 'crew':          return { name: ROUTES.Workspace,      params: { crewId: action.params?.id } };
+    case 'appeal':        return { name: ROUTES.ChatThread,     params: {
+      threadId:        `appeal:${action.params?.taskId}`,
+      appealForTaskId: action.params?.taskId,
+    } };
+    case 'chat':          return { name: ROUTES.ChatThread,     params: {
+      threadId:     action.params?.threadId,
+      counterparty: action.params?.counterparty,
+    } };
     default:              return null;
   }
 }

@@ -2,22 +2,26 @@
  * WelcomeScreen — empty-state landing for first launch + after a
  * sign-out / leave-all-crews. Shows three onboarding paths:
  *
- *   1. Scan an invite QR  (→ ROUTES.OnboardScan)
- *   2. Restore from recovery phrase  (→ ROUTES.OnboardRestore)
- *   3. Create a solo crew (testing affordance)  — local-only;
- *      the user becomes admin of a single-member crew. Matches the
- *      V0 desktop default (`bin/tasks-ui.js --role admin`). Useful
- *      while a real invite-QR-issuing flow isn't reachable.
+ *   1. Create a new crew  (→ creates the crew + jumps to OnboardIssue
+ *      so the admin can issue invites for the rest of the household /
+ *      project / team. The first-run path most users want.)
+ *   2. Scan an invite QR  (→ ROUTES.OnboardScan)
+ *   3. Restore from recovery phrase  (→ ROUTES.OnboardRestore)
  *
- * Phase 41.3.1 (2026-05-09); 41.16 follow-up adds the solo-crew
- * affordance.
+ * Phase 41.3.1 (2026-05-09).
+ * 41.16 follow-up — added a solo-crew affordance.
+ * 41.18 follow-up — promoted "solo crew (testing)" to a first-class
+ *                   "Create a new crew" flow with kind picker + a
+ *                   handoff into OnboardIssue (the existing invite-
+ *                   QR screen). This makes the mobile bring-up path
+ *                   match the desktop's `--crew` + invite flow.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, Pressable, Modal, TextInput, ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { useTheme } from '@canopy/react-native/theme';
 import { useService } from '../ServiceContext.js';
@@ -25,17 +29,25 @@ import { useI18n } from '../I18nProvider.js';
 import { ROUTES } from '../navigation.js';
 
 export function WelcomeScreen() {
-  const nav = useNavigation();
-  const svc = useService();
+  const nav   = useNavigation();
+  const route = useRoute();
+  const svc   = useService();
   const { t } = useI18n();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const [showSolo, setShowSolo] = useState(false);
-  const [crewName, setCrewName] = useState('My household');
-  const [busy, setBusy]         = useState(false);
-  const [error, setError]       = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [crewName,   setCrewName]   = useState('My household');
+  const [crewKind,   setCrewKind]   = useState('household');
+  const [busy,       setBusy]       = useState(false);
+  const [error,      setError]      = useState(null);
 
-  const onCreateSolo = useCallback(async () => {
+  // 41.18 follow-up — CrewsDashboard's "+ New crew" FAB navigates
+  // here with `{openCreate: true}`. Open the modal automatically.
+  useEffect(() => {
+    if (route?.params?.openCreate) setShowCreate(true);
+  }, [route?.params?.openCreate]);
+
+  const onCreateCrew = useCallback(async () => {
     if (!svc?.joinCrew || busy) return;
     setBusy(true);
     setError(null);
@@ -46,7 +58,7 @@ export function WelcomeScreen() {
       await svc.joinCrew({
         crewId,
         name: crewName.trim() || 'My household',
-        kind: 'household',
+        kind: crewKind,
         members: [
           {
             webid:       actor,
@@ -57,14 +69,24 @@ export function WelcomeScreen() {
         ],
         customRoles: [],
       }, { setActive: true });
-      setShowSolo(false);
-      nav.navigate(ROUTES.Workspace);
+      setShowCreate(false);
+      // Land on the invite-issue screen so the admin can immediately
+      // share a QR with the rest of the household / project / team.
+      // We `reset` so a back-tap from OnboardIssue lands on the Main
+      // tab shell (the user's home base), not the now-stale Welcome.
+      nav.reset({
+        index: 1,
+        routes: [
+          { name: ROUTES.Main },
+          { name: ROUTES.OnboardIssue, params: { freshlyCreated: true } },
+        ],
+      });
     } catch (err) {
       setError(err?.message ?? String(err));
     } finally {
       setBusy(false);
     }
-  }, [svc, busy, crewName, nav]);
+  }, [svc, busy, crewName, crewKind, nav]);
 
   return (
     <View
@@ -97,9 +119,9 @@ export function WelcomeScreen() {
       </Text>
 
       <Pressable
-        onPress={() => nav.navigate(ROUTES.OnboardScan)}
+        onPress={() => setShowCreate(true)}
         accessibilityRole="button"
-        accessibilityLabel="welcome-scan-cta"
+        accessibilityLabel="welcome-create-cta"
         style={({ pressed }) => [
           {
             backgroundColor: COLORS.primary,
@@ -119,14 +141,14 @@ export function WelcomeScreen() {
             fontWeight: '600',
           }}
         >
-          {t('mobile.welcome.scan_cta')}
+          {t('mobile.welcome.create_cta', 'Create a new crew')}
         </Text>
       </Pressable>
 
       <Pressable
-        onPress={() => nav.navigate(ROUTES.OnboardRestore)}
+        onPress={() => nav.navigate(ROUTES.OnboardScan)}
         accessibilityRole="button"
-        accessibilityLabel="welcome-restore-cta"
+        accessibilityLabel="welcome-scan-cta"
         style={({ pressed }) => [
           {
             paddingVertical: SPACING.lg,
@@ -148,33 +170,33 @@ export function WelcomeScreen() {
             fontWeight: '500',
           }}
         >
-          {t('mobile.welcome.restore_cta')}
+          {t('mobile.welcome.scan_cta')}
         </Text>
       </Pressable>
 
       <Pressable
-        onPress={() => setShowSolo(true)}
+        onPress={() => nav.navigate(ROUTES.OnboardRestore)}
         accessibilityRole="button"
-        accessibilityLabel="welcome-solo-cta"
+        accessibilityLabel="welcome-restore-cta"
         style={({ pressed }) => [
           {
             paddingVertical: SPACING.md,
             alignItems: 'center',
-            marginTop: SPACING.lg,
+            marginTop: SPACING.sm,
           },
           pressed && { opacity: 0.6 },
         ]}
       >
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
-          {t('mobile.welcome.solo_cta', 'Create a solo crew (testing)')}
+          {t('mobile.welcome.restore_cta')}
         </Text>
       </Pressable>
 
       <Modal
         transparent
-        visible={showSolo}
+        visible={showCreate}
         animationType="fade"
-        onRequestClose={() => setShowSolo(false)}
+        onRequestClose={() => setShowCreate(false)}
       >
         <View style={{
           flex: 1, alignItems: 'center', justifyContent: 'center',
@@ -189,27 +211,75 @@ export function WelcomeScreen() {
               fontSize: FONT_SIZES.lg, fontWeight: '600',
               color: COLORS.text, marginBottom: SPACING.sm,
             }}>
-              {t('mobile.welcome.solo_modal_title', 'Create a solo crew')}
+              {t('mobile.welcome.create_modal_title', 'Create a new crew')}
             </Text>
             <Text style={{
               fontSize: FONT_SIZES.sm, color: COLORS.textMuted,
               marginBottom: SPACING.md, lineHeight: 20,
             }}>
-              {t('mobile.welcome.solo_modal_body',
-                 'You\'ll be the admin of a single-member crew. Local-only — no relay, no pod. Useful for testing the V0/V1 flow.')}
+              {t('mobile.welcome.create_modal_body',
+                 'You become the admin. Invite the rest with a QR after creation.')}
+            </Text>
+
+            <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm, marginBottom: SPACING.xs }}>
+              {t('mobile.welcome.create_name_label', 'Crew name')}
             </Text>
             <TextInput
               value={crewName}
               onChangeText={setCrewName}
               placeholder="My household"
               placeholderTextColor={COLORS.textMuted}
-              accessibilityLabel="solo-crew-name-input"
+              accessibilityLabel="create-crew-name-input"
               style={{
                 borderWidth: 1, borderColor: COLORS.border, borderRadius: RADII.sm,
                 padding: SPACING.md, fontSize: FONT_SIZES.md, color: COLORS.text,
                 backgroundColor: COLORS.surface,
+                marginBottom: SPACING.md,
               }}
             />
+
+            <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm, marginBottom: SPACING.xs }}>
+              {t('mobile.welcome.create_kind_label', 'Crew type')}
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+              {[
+                { id: 'household',   label: t('mobile.crews.kind_household')   },
+                { id: 'project',     label: t('mobile.crews.kind_project')     },
+                { id: 'team',        label: t('mobile.crews.kind_team')        },
+                { id: 'friends',     label: t('mobile.crews.kind_friends')     },
+                { id: 'maintenance', label: t('mobile.crews.kind_maintenance') },
+              ].map((c) => {
+                const active = crewKind === c.id;
+                return (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => setCrewKind(c.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`create-crew-kind-${c.id}`}
+                    style={{
+                      paddingVertical: SPACING.xs,
+                      paddingHorizontal: SPACING.sm,
+                      borderRadius: RADII.pill,
+                      borderWidth: 1,
+                      borderColor: active ? COLORS.primaryDark : COLORS.border,
+                      backgroundColor: active ? COLORS.primary : COLORS.surface,
+                      marginRight: SPACING.xs,
+                      marginBottom: SPACING.xs,
+                    }}
+                  >
+                    <Text style={{
+                      color: active ? COLORS.textInverse : COLORS.text,
+                      fontSize: FONT_SIZES.xs,
+                      fontWeight: active ? '600' : '500',
+                    }}>
+                      {c.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
             {error ? (
               <Text style={{ color: COLORS.danger, fontSize: FONT_SIZES.sm, marginTop: SPACING.sm }}>
                 {error}
@@ -217,7 +287,7 @@ export function WelcomeScreen() {
             ) : null}
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: SPACING.lg }}>
               <Pressable
-                onPress={() => setShowSolo(false)}
+                onPress={() => setShowCreate(false)}
                 accessibilityRole="button"
                 style={{
                   paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
@@ -230,10 +300,10 @@ export function WelcomeScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={onCreateSolo}
+                onPress={onCreateCrew}
                 disabled={busy || !crewName.trim()}
                 accessibilityRole="button"
-                accessibilityLabel="solo-crew-create"
+                accessibilityLabel="create-crew-submit"
                 style={{
                   paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
                   borderRadius: RADII.sm, marginLeft: SPACING.sm,
@@ -247,7 +317,7 @@ export function WelcomeScreen() {
                     color: (!crewName.trim()) ? COLORS.textMuted : COLORS.textInverse,
                     fontSize: FONT_SIZES.md, fontWeight: '600',
                   }}>
-                    {t('mobile.welcome.solo_create', 'Create')}
+                    {t('mobile.welcome.create_submit', 'Create + invite')}
                   </Text>
                 )}
               </Pressable>

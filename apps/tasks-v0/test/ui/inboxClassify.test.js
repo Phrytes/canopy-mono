@@ -5,12 +5,15 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { kindOf, proposalIdOf } from '../../src/lib/inboxClassify.js';
+import { kindOf, proposalIdOf, requestIdOf } from '../../src/ui/inboxClassify.js';
 
 describe('kindOf', () => {
   it('classifies subtask-proposal events', () => {
     expect(kindOf({ kind: 'subtask-proposal' })).toBe('subtask-proposal');
     expect(kindOf({ eventKind: 'subtask-proposal' })).toBe('subtask-proposal');
+  });
+  it('classifies V1 subtask-request events', () => {
+    expect(kindOf({ kind: 'subtask-request' })).toBe('subtask-request');
   });
   it('classifies known task events', () => {
     expect(kindOf({ kind: 'task-rejected' })).toBe('task-rejected');
@@ -33,5 +36,17 @@ describe('proposalIdOf', () => {
     expect(proposalIdOf(null)).toBeNull();
     expect(proposalIdOf({})).toBeNull();
     expect(proposalIdOf({ proposalId: '' })).toBeNull();
+  });
+});
+
+describe('requestIdOf', () => {
+  it('prefers requestId, falls back to id', () => {
+    expect(requestIdOf({ requestId: 'r1', id: 'i1' })).toBe('r1');
+    expect(requestIdOf({ id: 'i1' })).toBe('i1');
+  });
+  it('returns null for empty/missing inputs', () => {
+    expect(requestIdOf(null)).toBeNull();
+    expect(requestIdOf({})).toBeNull();
+    expect(requestIdOf({ requestId: '' })).toBeNull();
   });
 });

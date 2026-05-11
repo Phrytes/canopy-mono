@@ -26,6 +26,7 @@
 import { ItemStore } from '@canopy/item-store';
 import { MemberMap } from '@canopy/identity-resolver';
 import { buildStandardRolePolicy } from '@canopy-app/tasks-v0';
+import { buildActorAliases } from '@canopy-app/tasks-v0/ui/effectiveActor';
 
 const KIND_DEFAULTS = Object.freeze({
   household:    { subtasksAdminApprovalDepth: 3 },
@@ -87,13 +88,22 @@ export async function buildCrewState({ crewConfig, localStoreBundle } = {}) {
     crew.members.map((m) => [m.webid, m.role ?? 'member']),
   );
 
+  // Phase 41.18 follow-up — on mobile the agent dispatches with
+  // `from = agent.pubKey` (no LocalUiAuth in the React path). Build
+  // a pubKey → webid alias map so the role policy can resolve both
+  // identifiers to the same role. The shared
+  // `buildActorAliases(members)` helper handles the same shape the
+  // desktop will need on relay-forwarded calls (Project Files/
+  // conventions/architectural-layering.md § shared UI helpers).
+  const aliases = buildActorAliases(crew.members);
+
   const dataSource = localStoreBundle?.cache
     ?? (await _memorySource());
 
   const itemStore = new ItemStore({
     dataSource,
     rootContainer:        `mem://tasks/crews/${crew.crewId}/`,
-    rolePolicy:           buildStandardRolePolicy(roles),
+    rolePolicy:           buildStandardRolePolicy(roles, { aliases }),
     enforceDependencies:  true,
   });
 
@@ -107,6 +117,12 @@ export async function buildCrewState({ crewConfig, localStoreBundle } = {}) {
       liveCrew = Object.freeze({ ...liveCrew, ...patch });
     },
     roles,
+    // Phase 41.18 follow-up — pubKey → webid map for the role
+    // resolver + UI consumers (`useActiveRole`). Mobile's dispatch
+    // path's `from` is the agent's pubKey; this lets a single
+    // identifier resolve to a role regardless of whether the caller
+    // has the webid or the pubKey.
+    actorAliases: aliases,
     itemStore,
     dataSource,
     members,

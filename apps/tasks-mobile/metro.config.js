@@ -139,6 +139,16 @@ module.exports = withCanopyPreset({
   // stoop-mobile's `@canopy-app/stoop/{lib,locales}/*` resolvers.
   extraSubpathResolvers: [
     (moduleName, repoRoot) => {
+      if (moduleName.startsWith('@canopy-app/tasks-v0/locales/shared/')) {
+        // Shared locale bundle (Phase 41.18 follow-up — see
+        // Project Files/conventions/architectural-layering.md §
+        // "Shared UI-glue helpers between platform shells").
+        const sub = moduleName.slice('@canopy-app/tasks-v0/locales/shared/'.length);
+        return {
+          filePath: path.resolve(repoRoot, 'apps/tasks-v0/locales/shared', sub + '.json'),
+          type:     'sourceFile',
+        };
+      }
       if (moduleName.startsWith('@canopy-app/tasks-v0/locales/')) {
         const sub = moduleName.slice('@canopy-app/tasks-v0/locales/'.length);
         return {
@@ -167,6 +177,18 @@ module.exports = withCanopyPreset({
       if (moduleName.startsWith('@canopy-app/tasks-v0/Crew')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/Crew.js'),
+          type:     'sourceFile',
+        };
+      }
+
+      // 41.18 follow-up — shared UI helpers live in apps/tasks-v0/src/ui/
+      // per `Project Files/conventions/architectural-layering.md` §
+      // "Shared UI-glue helpers between platform shells". Both the
+      // desktop's web/app.js AND the mobile screens import from here.
+      if (moduleName.startsWith('@canopy-app/tasks-v0/ui/')) {
+        const sub = moduleName.slice('@canopy-app/tasks-v0/ui/'.length);
+        return {
+          filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/ui', sub + '.js'),
           type:     'sourceFile',
         };
       }

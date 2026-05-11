@@ -15,6 +15,11 @@ export const ROUTES = Object.freeze({
   OnboardRestore: 'OnboardRestore',
   OnboardIssue:   'OnboardIssue',
 
+  // Phase 41.18 follow-up — bottom-tab shell. Outer-stack route
+  // that hosts Workspace / MyWork / Review / Inbox / Crews as
+  // tabs. Detail screens push OVER this shell.
+  Main:           'Main',
+
   // Post-onboarding — main task surface (Phase 41.4).
   Workspace:      'Workspace',
   TaskDetail:     'TaskDetail',
@@ -47,4 +52,15 @@ export const ROUTES = Object.freeze({
   // Phase 41.15 — Pod sign-in + bulk sync.
   PodSignIn:      'PodSignIn',
   AuthCallback:   'AuthCallback',
+
+  // Phase 41.18.2 — Diagnostics + privacy notice (parity completion).
+  Metrics:        'Metrics',
+  Privacy:        'Privacy',
+
+  // Phase 41.18.3 — Skills editor + cadence overrides (parity completion).
+  EditSkills:        'EditSkills',
+  CadenceOverrides:  'CadenceOverrides',
+
+  // Phase 41.18.4 — Appeal flow + chat-thread surface (parity completion).
+  ChatThread:        'ChatThread',
 });

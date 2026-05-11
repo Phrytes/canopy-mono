@@ -28,8 +28,16 @@ export default defineConfig({
       '@canopy-app/tasks-v0/wireSkills':      path.resolve(repoRoot, 'apps/tasks-v0/src/wireSkills.js'),
       '@canopy-app/tasks-v0/bundleResolver':  path.resolve(repoRoot, 'apps/tasks-v0/src/bundleResolver.js'),
       '@canopy-app/tasks-v0/Crew':            path.resolve(repoRoot, 'apps/tasks-v0/src/Crew.js'),
-      '@canopy-app/tasks-v0/locales/en':      path.resolve(repoRoot, 'apps/tasks-v0/locales/en.json'),
-      '@canopy-app/tasks-v0/locales/nl':      path.resolve(repoRoot, 'apps/tasks-v0/locales/nl.json'),
+      '@canopy-app/tasks-v0/locales/en':            path.resolve(repoRoot, 'apps/tasks-v0/locales/en.json'),
+      '@canopy-app/tasks-v0/locales/nl':            path.resolve(repoRoot, 'apps/tasks-v0/locales/nl.json'),
+      '@canopy-app/tasks-v0/locales/shared/en':     path.resolve(repoRoot, 'apps/tasks-v0/locales/shared/en.json'),
+      '@canopy-app/tasks-v0/locales/shared/nl':     path.resolve(repoRoot, 'apps/tasks-v0/locales/shared/nl.json'),
+      // Shared UI helpers (lifted 2026-05-10 per
+      // Project Files/conventions/architectural-layering.md §
+      // "Shared UI-glue helpers between platform shells"). Mirrors
+      // the metro.config.js subpath resolver. Vite's prefix matcher
+      // is greedy-longest so `/ui/<sub>` resolves before `/ui` alone.
+      '@canopy-app/tasks-v0/ui':              path.resolve(repoRoot, 'apps/tasks-v0/src/ui'),
       '@canopy-app/tasks-v0':                 path.resolve(repoRoot, 'apps/tasks-v0/src/index.js'),
 
       // SDK packages — point at sources, not node_modules.

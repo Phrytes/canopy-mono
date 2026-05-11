@@ -2,17 +2,23 @@
  * Tasks V1 web UI client — speaks A2A's wire shape directly via fetch().
  *
  * Surface:
- *   - Status pills cover both DAG status (ready/waiting/blocked) AND
- *     lifecycle status (claimed/submitted/rejected/complete). The
- *     server's `listOpen` annotates each item with `status` (DAG-side);
- *     this client computes lifecycle status from `reviewLog`/`assignee`/
- *     `completedAt` and prefers it when the item is in a non-ready
- *     lifecycle state.
+ *   - Status pills + V2.7 deps gate use `describeTaskStatus` from
+ *     `../src/ui/taskStatus.js` (shared with the mobile shell per
+ *     `Project Files/conventions/architectural-layering.md` §
+ *     "Shared UI-glue helpers between platform shells"). The skill
+ *     returns `item.status` (effective: lifecycle ∪ DAG) and
+ *     `item.openDeps[]` (unmet dep IDs); the helper unifies both
+ *     into a `{kind, depsBlocked, canClose, openDepIds, …}` shape.
  *   - Role-aware controls: claim/complete/submit/approve/reject/revoke/
  *     reassign/remove.
  *   - Sub-task hint: tasks with `parentTaskId` show a small label.
  *   - Inbox badge is mounted in nav by `mountInboxBadge`.
  */
+
+import {
+  describeTaskStatus,
+  shouldOfferForceComplete,
+} from '../src/ui/taskStatus.js';
 
 /**
  * Call a skill via A2A's POST /tasks/send.
@@ -64,7 +70,11 @@ export async function getConfig() {
   } catch { return {}; }
 }
 
-/** Lifecycle status from item state (mirrors substrate's computeStatus). */
+/**
+ * Lifecycle status — kept exported for back-compat with any external
+ * consumer; the canonical shape now comes from
+ * `describeTaskStatus(item).kind` in `../src/ui/taskStatus.js`.
+ */
 export function lifecycleStatus(item) {
   if (!item) return 'open';
   if (item.completedAt) return 'complete';
@@ -74,18 +84,6 @@ export function lifecycleStatus(item) {
   if (last === 'reject') return 'rejected';
   if (item.assignee)    return 'claimed';
   return 'open';
-}
-
-/**
- * Pick a single status string per item: lifecycle state if it's
- * past 'open' / 'claimed', else the DAG status (ready/waiting/blocked).
- */
-function effectiveStatus(item) {
-  const life = lifecycleStatus(item);
-  if (life === 'submitted' || life === 'rejected' || life === 'complete') return life;
-  if (life === 'claimed') return 'claimed';
-  // life === 'open' → use the DAG status if present
-  return item.status ?? 'ready';
 }
 
 /**
@@ -103,18 +101,47 @@ export function renderTasks(ul, items, ctx) {
     ul.innerHTML = '<li class="empty">No tasks here.</li>';
     return;
   }
+  // 41.18 follow-up — index for parent ↔ child cross-references.
+  // A row that has a parent shows "↳ sub-task of: <parent text>".
+  // A row that has children shows "↓ N sub-task(s)" chip + (when
+  // items[]'s status is 'waiting' / 'blocked') the count of open
+  // children. Same data the mobile TaskDetail uses.
+  const byId = new Map(items.map((it) => [it.id, it]));
+  const childrenByParent = new Map();
+  for (const it of items) {
+    const pid = it?.parentTaskId;
+    if (typeof pid !== 'string' || !pid) continue;
+    if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
+    childrenByParent.get(pid).push(it);
+  }
+
   for (const item of items) {
-    const status = effectiveStatus(item);
+    // The skill returns item.status as effectiveStatus already (lifecycle
+    // ∪ DAG, post-41.18). describeTaskStatus normalises + adds the V2.7
+    // deps-gate signals; same helper the mobile screens consume.
+    const desc = describeTaskStatus(item);
+    const status = desc.kind;
     const li = document.createElement('li');
     li.className = `item status-${status}`;
     li.dataset.id = item.id;
 
     const head = document.createElement('div');
     head.className = 'head';
+
+    const parent = item.parentTaskId ? byId.get(item.parentTaskId) ?? null : null;
     const subHint = item.parentTaskId
-      ? `<span class="role-chip" title="sub-task">↳ sub-task</span>` : '';
+      ? `<span class="role-chip parent-link" title="${escapeHtml(parent?.text ?? item.parentTaskId)}" data-parent="${escapeHtml(item.parentTaskId)}">↳ ${escapeHtml(parent ? `sub-task of: ${parent.text ?? '(untitled)'}` : `sub-task of #${String(item.parentTaskId).slice(-6)}`)}</span>`
+      : '';
+
+    const myKids = childrenByParent.get(item.id) ?? [];
+    const openKids = myKids.filter((k) => !k.completedAt).length;
+    const subCount = myKids.length > 0
+      ? `<span class="role-chip subtasks-count" title="${myKids.length} sub-task(s); ${openKids} still open">↓ ${myKids.length} sub-task${myKids.length === 1 ? '' : 's'}${openKids > 0 ? ` (${openKids} open)` : ''}</span>`
+      : '';
+
     head.innerHTML = `
       ${subHint}
+      ${subCount}
       <span class="text">${escapeHtml(item.text ?? '')}</span>
       <span class="status pill">${escapeHtml(status)}</span>`;
 
@@ -190,12 +217,12 @@ export function renderTasks(ul, items, ctx) {
       li.appendChild(blk);
     }
 
-    li.appendChild(buildActions(item, status, ctx));
+    li.appendChild(buildActions(item, status, desc, ctx));
     ul.appendChild(li);
   }
 }
 
-function buildActions(item, status, ctx) {
+function buildActions(item, status, desc, ctx) {
   const actions = document.createElement('div');
   actions.className = 'actions';
   const me   = ctx.me;
@@ -223,16 +250,15 @@ function buildActions(item, status, ctx) {
   const canRemove   = role === 'admin';
   const canAddSub   = isAssignee || isMaster || isAdminish;
 
-  // V2.7 — DAG status (open/waiting/blocked) lives on `item.status`
-  // independent of the lifecycle status this function passes around.
-  // The substrate's gate fires on close-transitions when any dep is
-  // open, so the "Mark complete" / "Approve" buttons should reflect
-  // that.
-  const dagStatus = item.status;
-  const depsBlocking = dagStatus === 'waiting' || dagStatus === 'blocked';
-  const openDeps = Array.isArray(item.dependencies) ? item.dependencies : [];
+  // V2.7 — `describeTaskStatus` rolls up the lifecycle status AND
+  // the unmet-deps signal (item.openDeps[] from the listOpen skill).
+  // A claimed-but-deps-blocked task returns kind='claimed' AND
+  // depsBlocked=true; the "Mark complete" / "Approve" buttons gate
+  // on depsBlocked, mirroring the substrate's enforceDependencies
+  // throw post-tap. Same logic the mobile shell uses verbatim.
+  const depsBlocking = desc.depsBlocked;
   const depTooltip = depsBlocking
-    ? `${openDeps.length} open sub-task(s): ${openDeps.map((d) => String(d).slice(0, 8)).join(', ')}`
+    ? `${desc.openDepIds.length} open sub-task(s): ${desc.openDepIds.join(', ')}`
     : '';
 
   if (canClaim && ctx.onClaim)
@@ -270,11 +296,12 @@ function buildActions(item, status, ctx) {
       ctx.onReject(item.id, note);
     }));
   }
-  // V2.7 — admin-only force-complete override on a parent that's
-  // dependency-blocked. Bypasses the gate; mandatory reason; audit
-  // log records `force-complete`. Only shown to admins, only when
-  // the gate is the reason for the disabled close button.
-  if (isAdmin && depsBlocking && status !== 'complete' && ctx.onForceComplete) {
+  // V2.7 — admin-only force-complete override. Same gate as
+  // mobile's `shouldOfferForceComplete(item, actor, role)` — see
+  // `src/ui/taskStatus.js`. Admins / coordinators see the CTA when
+  // a non-complete task has open deps; tap → mandatory reason →
+  // bypasses the substrate's enforceDependencies gate.
+  if (shouldOfferForceComplete(item, me, role) && ctx.onForceComplete) {
     actions.appendChild(makeButton('Force complete', () => {
       const reason = prompt(
         'Reason for force-completing (mandatory; recorded in the audit log):',

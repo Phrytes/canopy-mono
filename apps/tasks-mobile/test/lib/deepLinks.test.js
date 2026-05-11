@@ -81,4 +81,41 @@ describe('actionToNavigation', () => {
     expect(actionToNavigation({ kind: 'unknown' })).toBeNull();
     expect(actionToNavigation(null)).toBeNull();
   });
+
+  it('maps appeal deep-link → ChatThread with appeal:<taskId>', () => {
+    const r = actionToNavigation({ kind: 'appeal', params: { taskId: 't-42' } });
+    expect(r.name).toBe(ROUTES.ChatThread);
+    expect(r.params.threadId).toBe('appeal:t-42');
+    expect(r.params.appealForTaskId).toBe('t-42');
+  });
+
+  it('maps chat deep-link → ChatThread', () => {
+    const r = actionToNavigation({
+      kind:   'chat',
+      params: { threadId: 'tid', counterparty: 'webid://x' },
+    });
+    expect(r.name).toBe(ROUTES.ChatThread);
+    expect(r.params.threadId).toBe('tid');
+    expect(r.params.counterparty).toBe('webid://x');
+  });
+});
+
+describe('parseDeepLink — appeal/chat (Phase 41.18.4)', () => {
+  it('parses tasks://appeal?taskId=t-42 → kind appeal', () => {
+    expect(parseDeepLink('tasks://appeal?taskId=t-42').kind).toBe('appeal');
+    expect(parseDeepLink('tasks://appeal?taskId=t-42').params.taskId).toBe('t-42');
+  });
+
+  it('parses tasks://chat?threadId=foo → kind chat', () => {
+    expect(parseDeepLink('tasks://chat?threadId=foo').kind).toBe('chat');
+    expect(parseDeepLink('tasks://chat?threadId=foo').params.threadId).toBe('foo');
+  });
+
+  it('appeal without taskId returns unknown', () => {
+    expect(parseDeepLink('tasks://appeal').kind).toBe('unknown');
+  });
+
+  it('chat without threadId returns unknown', () => {
+    expect(parseDeepLink('tasks://chat').kind).toBe('unknown');
+  });
 });
