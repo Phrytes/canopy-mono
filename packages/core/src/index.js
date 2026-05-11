@@ -77,6 +77,7 @@ export {
 // ── Transport ────────────────────────────────────────────────────────────────
 export { Transport }                      from './transport/Transport.js';
 export { InternalBus, InternalTransport } from './transport/InternalTransport.js';
+export { HubDelegateTransport }           from './transport/HubDelegateTransport.js';
 export { RelayTransport }                 from './transport/RelayTransport.js';
 export { MqttTransport }                  from './transport/MqttTransport.js';
 export { NknTransport }                   from './transport/NknTransport.js';

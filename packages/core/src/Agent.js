@@ -251,6 +251,95 @@ export class Agent extends Emitter {
     return this;
   }
 
+  // ── Hub binding (Phase 50.12) ─────────────────────────────────────────────
+
+  /**
+   * Notify the agent's opaque substrate slots that we're now bound to a
+   * Hub. Each slot decides for itself how to honour the binding — core
+   * just **fans out** the notification via a duck-typed
+   * `setHost('hub', binder)` call. Slots that don't implement `setHost`
+   * are silently skipped.
+   *
+   * Strict layering: core has no knowledge of what the Hub binder
+   * actually is (AIDL, IPC, whatever) — it's opaque. The substrate
+   * (typically `@canopy/pseudo-pod` for the storage slot,
+   * `@canopy/agent-registry` for the registry slot) handles the
+   * actual delegation.
+   *
+   * Typical use, from `@canopy/agent-provisioning` or a bundle's
+   * own bring-up code:
+   *
+   *   const hubInfo = await hubDiscovery.check();
+   *   if (hubInfo.hubInstalled) {
+   *     const binder = await hubBinding.bind({hubVersion: hubInfo.hubVersion});
+   *     agent.bindToHub(binder);
+   *     // ↑ pseudo-pod + agent-registry round-trip through the Hub now.
+   *   }
+   *
+   * Phase 50.12 — see
+   * `Project Files/SDK/core-v2-coding-plan-2026-05-11.md`.
+   *
+   * @param {object} binder  — opaque Hub binder
+   * @returns {{ notified: string[] }} list of slot names that received
+   *          the binding (for diagnostics / tests).
+   */
+  bindToHub(binder) {
+    if (binder == null) {
+      throw Object.assign(
+        new Error('bindToHub: `binder` is required'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+    const notified = [];
+    for (const [slotName, slot] of [
+      ['pseudoPod',     this.#pseudoPod],
+      ['agentRegistry', this.#agentRegistry],
+      ['webid',         this.#webid],
+    ]) {
+      if (slot && typeof slot.setHost === 'function') {
+        try {
+          slot.setHost('hub', binder);
+          notified.push(slotName);
+        } catch (err) {
+          this.emit('error', Object.assign(err, { slot: slotName }));
+        }
+      }
+    }
+    this.emit('hub-bound', { binder, notified });
+    return { notified };
+  }
+
+  /**
+   * Inverse of `bindToHub`: notify substrate slots that the Hub binding
+   * is gone (e.g. user uninstalled the Hub mid-session, or the Hub
+   * service crashed). Each slot's `setHost(null)` (when implemented)
+   * reverts to local handling.
+   *
+   * Symmetric duck-typing rules: slots without `setHost` are silently
+   * skipped; per-slot errors are emitted but don't abort the fan-out.
+   *
+   * @returns {{ notified: string[] }}
+   */
+  unbindFromHub() {
+    const notified = [];
+    for (const [slotName, slot] of [
+      ['pseudoPod',     this.#pseudoPod],
+      ['agentRegistry', this.#agentRegistry],
+      ['webid',         this.#webid],
+    ]) {
+      if (slot && typeof slot.setHost === 'function') {
+        try {
+          slot.setHost(null);
+          notified.push(slotName);
+        } catch (err) {
+          this.emit('error', Object.assign(err, { slot: slotName }));
+        }
+      }
+    }
+    this.emit('hub-unbound', { notified });
+    return { notified };
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   async start() {
