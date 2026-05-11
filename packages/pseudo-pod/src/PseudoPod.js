@@ -83,9 +83,16 @@ export function createPseudoPod({
   const uriPrefix = `pseudo-pod://${deviceId}/`;
 
   /**
-   * Translate a `pseudo-pod://<deviceId>/<path>` URI to the backend
-   * key (the URI itself — keeps semantics simple) and validate the
-   * scheme + device-match.
+   * Translate a URI to the backend key (the URI itself — keeps
+   * semantics simple). Validates that the input is a non-empty
+   * string. Scheme enforcement is split per operation:
+   *
+   *   - read / list / writeFromPeer  → accept any scheme (the
+   *     pseudo-pod is a local cache for peer-replicated resources
+   *     regardless of their canonical URI scheme).
+   *   - write / delete               → the caller is the owner;
+   *     enforced separately to be a local `pseudo-pod://<deviceId>/`
+   *     URI via `_assertLocalWrite`.
    */
   function _keyForUri(uri) {
     if (typeof uri !== 'string') {
@@ -94,13 +101,32 @@ export function createPseudoPod({
         { code: 'INVALID_ARGUMENT' },
       );
     }
+    if (uri.length === 0) {
+      throw Object.assign(
+        new Error('pseudo-pod: uri must be non-empty'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+    return uri;
+  }
+
+  /**
+   * Enforce that an outbound write/delete targets THIS device's
+   * pseudo-pod namespace. Used by `write` and `delete`.
+   */
+  function _assertLocalWrite(uri) {
     if (!uri.startsWith('pseudo-pod://')) {
       throw Object.assign(
-        new Error(`pseudo-pod: unsupported scheme in "${uri}" — only pseudo-pod:// in V0`),
+        new Error(`pseudo-pod: cannot write to non-pseudo-pod URI "${uri}" — V0 only writes to pseudo-pod://`),
         { code: 'UNSUPPORTED_SCHEME' },
       );
     }
-    return uri;   // use the URI directly as the storage key
+    if (!_isLocalUri(uri)) {
+      throw Object.assign(
+        new Error(`pseudo-pod: cannot write to non-local URI "${uri}" (deviceId mismatch)`),
+        { code: 'NOT_LOCAL' },
+      );
+    }
   }
 
   /** Is this URI local to *this* device? */
@@ -117,12 +143,7 @@ export function createPseudoPod({
 
   async function write(uri, bytes, etag) {
     const key = _keyForUri(uri);
-    if (!_isLocalUri(uri)) {
-      throw Object.assign(
-        new Error(`pseudo-pod: cannot write to non-local URI "${uri}" (deviceId mismatch)`),
-        { code: 'NOT_LOCAL' },
-      );
-    }
+    _assertLocalWrite(uri);
     const newEtag = await backend.put(key, bytes, etag);
 
     if (mode === 'replication-ring') {
@@ -149,26 +170,15 @@ export function createPseudoPod({
 
   async function deleteResource(uri) {
     const key = _keyForUri(uri);
-    if (!_isLocalUri(uri)) {
-      throw Object.assign(
-        new Error(`pseudo-pod: cannot delete non-local URI "${uri}"`),
-        { code: 'NOT_LOCAL' },
-      );
-    }
+    _assertLocalWrite(uri);
     await backend.delete(key);
   }
 
   async function list(containerUri) {
-    if (typeof containerUri !== 'string') {
+    if (typeof containerUri !== 'string' || containerUri.length === 0) {
       throw Object.assign(
-        new Error('pseudo-pod.list: containerUri must be a string'),
+        new Error('pseudo-pod.list: containerUri must be a non-empty string'),
         { code: 'INVALID_ARGUMENT' },
-      );
-    }
-    if (!containerUri.startsWith('pseudo-pod://')) {
-      throw Object.assign(
-        new Error('pseudo-pod.list: V0 only supports pseudo-pod:// URIs'),
-        { code: 'UNSUPPORTED_SCHEME' },
       );
     }
     const prefix = containerUri.endsWith('/') ? containerUri : containerUri + '/';

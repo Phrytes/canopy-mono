@@ -71,10 +71,15 @@ describe('PseudoPod — URI scheme', () => {
       .rejects.toMatchObject({ code: 'NOT_LOCAL' });
   });
 
-  it('read rejects non-pseudo-pod URIs', async () => {
+  it('read of an unknown non-pseudo-pod URI returns null (cache miss)', async () => {
     const pod = mkPod();
-    await expect(pod.read('https://anne.pod/x'))
-      .rejects.toMatchObject({ code: 'UNSUPPORTED_SCHEME' });
+    expect(await pod.read('https://anne.pod/x')).toBe(null);
+  });
+
+  it('writeFromPeer accepts any URI scheme (cache from peer)', async () => {
+    const pod = mkPod();
+    await pod.writeFromPeer('https://anne.pod/x', { value: 1 }, '"e"');
+    expect((await pod.read('https://anne.pod/x'))?.bytes).toEqual({ value: 1 });
   });
 });
 
