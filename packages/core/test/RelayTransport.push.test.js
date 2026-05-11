@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { WebSocketServer } from 'ws';
 import { AgentIdentity }   from '../src/identity/AgentIdentity.js';
-import { VaultMemory }     from '../src/identity/VaultMemory.js';
+import { VaultMemory }     from '@canopy/vault';
 import { RelayTransport }  from '../src/transport/RelayTransport.js';
 
 function startPushFixture({ rejectRegister = false, dropAcks = false } = {}) {

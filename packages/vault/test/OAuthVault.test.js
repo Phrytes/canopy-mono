@@ -6,11 +6,11 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { VaultMemory } from '../../src/identity/VaultMemory.js';
+import { VaultMemory } from '../src/VaultMemory.js';
 import {
   OAuthVault,
   makeAuthorizedFetch,
-} from '../../src/identity/OAuthVault.js';
+} from '../src/OAuthVault.js';
 
 // Helper: build a fresh OAuthVault on top of a memory vault.
 function makeVault() {

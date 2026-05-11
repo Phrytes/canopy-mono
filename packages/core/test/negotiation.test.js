@@ -19,7 +19,7 @@
 import { describe, it, expect } from 'vitest';
 import { Agent }         from '../src/Agent.js';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
-import { VaultMemory }   from '../src/identity/VaultMemory.js';
+import { VaultMemory }   from '@canopy/vault';
 import { InternalBus, InternalTransport } from '../src/transport/InternalTransport.js';
 import { TextPart, DataPart, Parts } from '../src/Parts.js';
 import { Task }          from '../src/protocol/Task.js';

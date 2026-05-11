@@ -17,7 +17,7 @@ import {
   SEALED_VERSION,
 }                              from '../src/security/sealedForward.js';
 import { AgentIdentity }       from '../src/identity/AgentIdentity.js';
-import { VaultMemory }         from '../src/identity/VaultMemory.js';
+import { VaultMemory }         from '@canopy/vault';
 import { TextPart }            from '../src/Parts.js';
 import { signOrigin }          from '../src/security/originSignature.js';
 

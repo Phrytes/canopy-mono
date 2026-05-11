@@ -10,7 +10,7 @@ import {
   DEFAULT_ORIGIN_WINDOW_MS,
 }                          from '../src/security/originSignature.js';
 import { AgentIdentity }   from '../src/identity/AgentIdentity.js';
-import { VaultMemory }     from '../src/identity/VaultMemory.js';
+import { VaultMemory }     from '@canopy/vault';
 import { TextPart }         from '../src/Parts.js';
 
 async function ids() {
