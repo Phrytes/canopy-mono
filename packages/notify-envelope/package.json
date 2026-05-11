@@ -1,0 +1,25 @@
+{
+  "name": "@canopy/notify-envelope",
+  "version": "0.1.0",
+  "description": "Mediates persistent-content writes — per-write mode picker (envelope-only vs full-payload + queue) backed by pseudo-pod + pod-routing. Owns the pending-pod-upload queue that powers graceful degradation. Standardisation Phase 52.4.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@canopy/core":        "*",
+    "@canopy/pod-routing": "*",
+    "@canopy/pseudo-pod":  "*"
+  },
+  "devDependencies": {
+    "@canopy/core":        "file:../core",
+    "@canopy/pod-routing": "file:../pod-routing",
+    "@canopy/pseudo-pod":  "file:../pseudo-pod",
+    "vitest": "^2.1.9"
+  }
+}

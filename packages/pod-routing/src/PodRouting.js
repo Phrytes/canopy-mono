@@ -127,13 +127,13 @@ export function createPodRouting({
   }
 
   function isPodReachable(uri) {
-    const target = uri ?? anchorPodUri;
+    const target = _normalizePodKey(uri ?? anchorPodUri);
     if (!target) return false;
     return reach.isReachable(target);
   }
 
-  function markPodReachable(uri)   { reach.markReachable(uri ?? anchorPodUri); }
-  function markPodUnreachable(uri) { reach.markUnreachable(uri ?? anchorPodUri); }
+  function markPodReachable(uri)   { reach.markReachable(_normalizePodKey(uri ?? anchorPodUri)); }
+  function markPodUnreachable(uri) { reach.markUnreachable(_normalizePodKey(uri ?? anchorPodUri)); }
 
   async function reload() {
     try {
@@ -229,4 +229,21 @@ export function createPodRouting({
 
 function _stripTrailingSlash(s) {
   return s.endsWith('/') ? s.slice(0, -1) : s;
+}
+
+/**
+ * Normalize a URI to its pod-key for reachability tracking. https://
+ * URIs collapse to `protocol//host` (so cache hits on the anchor pod
+ * URI cover all resources under it). pseudo-pod:// URIs pass through
+ * untouched. Returns `null` for unusable input.
+ */
+function _normalizePodKey(uri) {
+  if (typeof uri !== 'string' || uri.length === 0) return null;
+  if (uri.startsWith('pseudo-pod://')) return uri;
+  try {
+    const u = new URL(uri);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return uri;
+  }
 }
