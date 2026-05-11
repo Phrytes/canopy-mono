@@ -21,6 +21,7 @@
     "./identity/bootstrap":           "./src/identity/bootstrapIdentity.js",
 
     "./storage":                      "./src/storage/index.js",
+    "./pseudo-pod-adapter":           "./src/pseudo-pod-adapter/index.js",
 
     "./picker":                       "./src/picker/index.js",
     "./qr":                           "./src/qr/index.js",
