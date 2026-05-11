@@ -23,9 +23,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { SolidVault } from '../../src/storage/SolidVault.js';
-import { SolidPodSource } from '../../src/storage/SolidPodSource.js';
-import { VaultMemory } from '../../src/identity/VaultMemory.js';
+import { SolidVault } from '../src/SolidVault.js';
+import { SolidPodSource, VaultMemory } from '@canopy/core';
 
 const CSS_URL          = process.env.CSS_URL;
 const CSS_WEBID        = process.env.CSS_WEBID;

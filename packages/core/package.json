@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@canopy/oidc-session": "file:../oidc-session",
     "@inrupt/solid-client": "3.0.0",
     "@inrupt/solid-client-authn-node": "4.0.0",
     "@noble/hashes": "^2.2.0",

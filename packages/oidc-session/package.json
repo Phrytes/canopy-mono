@@ -1,0 +1,21 @@
+{
+  "name": "@canopy/oidc-session",
+  "version": "0.1.0",
+  "description": "Solid OIDC session manager for Node — SolidVault. Peer of @canopy/oidc-session-rn (the React Native variant). Extracted from @canopy/core/storage 2026-05-11 as part of the standardisation P1 work (Phase 50.1).",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@inrupt/solid-client-authn-node": "4.0.0"
+  },
+  "devDependencies": {
+    "@canopy/core": "file:../core",
+    "vitest": "^2.1.9"
+  }
+}
