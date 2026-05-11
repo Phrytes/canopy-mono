@@ -22,6 +22,8 @@
 
     "./storage":                      "./src/storage/index.js",
     "./pseudo-pod-adapter":           "./src/pseudo-pod-adapter/index.js",
+    "./hub-discovery":                "./src/hub-discovery/index.js",
+    "./hub-binding":                  "./src/hub-binding/index.js",
 
     "./picker":                       "./src/picker/index.js",
     "./qr":                           "./src/qr/index.js",

@@ -8,6 +8,31 @@ major for breaking changes.
 
 ### Added
 
+- **hub-discovery** sub-path (Phase 51.6). Android Hub install
+  detection via `createHubDiscovery({nativeModule})`. Surface:
+  `check()` (cached `PackageManager.queryIntentServices` query) +
+  `watch(cb)` (broadcast subscription for `ACTION_PACKAGE_ADDED` /
+  `ACTION_PACKAGE_REMOVED`) + `invalidate()`. JS-side complete; the
+  Kotlin native module ships in a follow-up. 19 tests.
+
+- **hub-binding** sub-path (Phases 51.7 – 51.9). Promise-based
+  wrapper around the Hub AIDL binder.
+  - `bind({nativeModule, manifest, intentAction?, clientVersions?})`
+    runs the full bind → version-negotiate → register flow; returns
+    an `IHubBinding`.
+  - `IHubBinding` exposes the V1 method surface (`fetchResource`,
+    `writeResource`, `publishEnvelope`, `declareCapabilities`,
+    `onIncomingEnvelope`, `close`) plus V2-gated methods
+    (`registerInterface`, `lookupInterface`, `orchestrateProtocol`)
+    that throw `VERSION_UNSUPPORTED` on V1 bindings.
+  - `negotiateVersion({clientVersions, hubVersions})` exposed as a
+    pure helper.
+  - AIDL interface files committed at `android/aidl/com/canopy/hub/`:
+    `IHub_V1.aidl`, `IHub_V2.aidl` (direction-only), `IIncomingCallback.aidl`.
+  - Native module + build integration documented in
+    `android/HUB-BINDING-BUILD.md`.
+  - 34 tests pass.
+
 - **pseudo-pod-adapter** sub-path (Phases 51.1 – 51.4). RN-side
   `StorageBackend` implementations for `@canopy/pseudo-pod`:
   - `createAsBackend({AsyncStorage, scope})` — AsyncStorage-backed.
