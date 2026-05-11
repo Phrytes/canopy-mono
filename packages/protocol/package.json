@@ -1,0 +1,21 @@
+{
+  "name": "@canopy/protocol",
+  "version": "0.1.0",
+  "description": "State-machine substrate. Multi-step processes (negotiation, propose-subtask, calendar accept) modelled as state machines over items. Direction-only. Standardisation Phase 52.13.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@canopy/pseudo-pod": "*"
+  },
+  "devDependencies": {
+    "@canopy/pseudo-pod": "file:../pseudo-pod",
+    "vitest": "^2.1.9"
+  }
+}

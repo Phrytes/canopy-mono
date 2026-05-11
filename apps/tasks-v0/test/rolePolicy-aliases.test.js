@@ -73,3 +73,79 @@ describe('buildStandardRolePolicy — alias resolution', () => {
     expect(policy.canClaim(undefined, {})).toBe(false);
   });
 });
+
+describe('buildStandardRolePolicy — actorResolver (Phase 52.11)', () => {
+  /**
+   * Build a tiny in-process resolver shaped like the agent-registry
+   * sync cache: `resolveSync(id) → { webid }`.
+   */
+  function syncResolver(records) {
+    const byId = new Map();
+    for (const r of records) {
+      if (r.pubKey)   byId.set(r.pubKey,   r);
+      if (r.webid)    byId.set(r.webid,    r);
+      if (r.agentUri) byId.set(r.agentUri, r);
+    }
+    return {
+      resolveSync(id) {
+        if (typeof id !== 'string') return null;
+        return byId.get(id) ?? null;
+      },
+    };
+  }
+
+  it('resolves a pubKey actor through the resolver', () => {
+    const policy = buildStandardRolePolicy(
+      { [ANNE_WEBID]: 'admin' },
+      { actorResolver: syncResolver([{ pubKey: ANNE_PUBKEY, webid: ANNE_WEBID }]) },
+    );
+    expect(policy.canClaim(ANNE_PUBKEY, {})).toBe(true);
+    expect(policy.canRemove(ANNE_PUBKEY, {})).toBe(true);
+  });
+
+  it('resolver miss → aliases fallback still works', () => {
+    const policy = buildStandardRolePolicy(
+      { [ANNE_WEBID]: 'admin' },
+      {
+        actorResolver: syncResolver([]),          // empty resolver
+        aliases:       { [ANNE_PUBKEY]: ANNE_WEBID },
+      },
+    );
+    expect(policy.canClaim(ANNE_PUBKEY, {})).toBe(true);
+  });
+
+  it('resolver hit wins over alias map', () => {
+    // Resolver says pubKey → ANNE_WEBID (admin); aliases say → BOB_WEBID (member).
+    // Resolver should win and yield admin permissions.
+    const policy = buildStandardRolePolicy(
+      { [ANNE_WEBID]: 'admin', [BOB_WEBID]: 'member' },
+      {
+        actorResolver: syncResolver([{ pubKey: ANNE_PUBKEY, webid: ANNE_WEBID }]),
+        aliases:       { [ANNE_PUBKEY]: BOB_WEBID },
+      },
+    );
+    expect(policy.canRemove(ANNE_PUBKEY, {})).toBe(true);   // admin can remove
+  });
+
+  it('agentUri identifier path resolves to the same webid', () => {
+    const agentUri = 'agent://anne/laptop';
+    const policy = buildStandardRolePolicy(
+      { [ANNE_WEBID]: 'coordinator' },
+      { actorResolver: syncResolver([{ agentUri, webid: ANNE_WEBID }]) },
+    );
+    expect(policy.canReassign(agentUri, {})).toBe(true);
+  });
+
+  it('non-sync resolver shape is silently ignored', () => {
+    // The resolver interface intentionally requires resolveSync.
+    // An async-only resolver shouldn't blow up; it's just inert.
+    const asyncOnly = { resolve: async () => ({ webid: ANNE_WEBID }) };
+    const policy = buildStandardRolePolicy(
+      { [ANNE_WEBID]: 'admin' },
+      { actorResolver: asyncOnly },
+    );
+    expect(policy.canClaim(ANNE_PUBKEY, {})).toBe(false);
+    // Direct webid still works.
+    expect(policy.canClaim(ANNE_WEBID, {})).toBe(true);
+  });
+});
