@@ -2,7 +2,7 @@
  * PseudoPod — the Solid-shaped local store at the heart of the
  * substrate-layer V2 work.
  *
- * V0 ships two modes:
+ * V0 (Phase 52.2) ships two modes:
  *   - `standalone`        — single-device, no fan-out. Local store
  *                           is the canonical source of truth.
  *   - `replication-ring`  — every write is eagerly fanned out to
@@ -10,34 +10,59 @@
  *                           Local store is still canonical; peers
  *                           reconcile via `writeFromPeer`.
  *
- * Cache mode (with a real pod attached) ships in V1 — Phase 52.8.
+ * V1 (Phase 52.8) adds:
+ *   - `cache`             — local-immediate writes are queued for
+ *                           write-through to a real pod via the
+ *                           injected `podUploader`. Reads fall through
+ *                           to `podFetcher` on local miss + cache the
+ *                           result. Graceful degradation: when
+ *                           `isPodReachable(uri)` returns false, the
+ *                           write stays queued until `drainWriteThroughQueue()`
+ *                           is invoked.
+ *   - **Per-URI mode override** (`setMode(uri, mode)`): a single
+ *                           PseudoPod can run different modes for
+ *                           different resources (e.g. notes in cache;
+ *                           buurt items in replication-ring).
  *
  * URI scheme:
- *   `pseudo-pod://<deviceId>/<path>` — V0 only handles these.
- *   `https://...` URIs route via `pod-client` once Phase 52.6 lands.
+ *   `pseudo-pod://<deviceId>/<path>` — local namespace.
+ *   `https://...` URIs — cache-mode only.
  *
- * Standardisation Phase 52.2 — see
+ * Standardisation Phase 52.2 + 52.8 — see
  * `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`
  * and the functional design §4.1.
  *
  * @typedef {import('./StorageBackend.js').StorageBackend} StorageBackend
- * @typedef {'standalone'|'replication-ring'} PseudoPodMode
+ * @typedef {'standalone'|'replication-ring'|'cache'} PseudoPodMode
  */
 
-import { makeFetchResourceSkill } from '@canopy/core';
+import { makeFetchResourceSkill }    from '@canopy/core';
+import { createWriteThroughQueue }   from './writeThroughQueue.js';
 
 /** Envelope kind used for replication-ring fan-out in V0.
  *  Phase 52.4 (`notify-envelope`) will own this string. */
 const REPLICATION_KIND = 'pseudo-pod.write';
 
+const VALID_MODES = new Set(['standalone', 'replication-ring', 'cache']);
+
 /**
  * @param {object} opts
  * @param {StorageBackend} opts.backend           — required.
- * @param {PseudoPodMode}  opts.mode              — 'standalone' or 'replication-ring'.
+ * @param {'standalone'|'replication-ring'|'cache'} opts.mode  — global default mode.
  * @param {string}         opts.deviceId          — short id used in URIs (e.g. 'laptop-xyz').
  * @param {object}         [opts.transport]       — required iff mode is 'replication-ring'.
  * @param {() => string[]} [opts.getPeers]        — required iff mode is 'replication-ring'.
  * @param {string}         [opts.fromActor]       — agent-uri tagged on outbound envelopes.
+ *
+ * V1 (cache mode) opts:
+ * @param {(uri: string) => Promise<{bytes: *, etag?: string} | null>} [opts.podFetcher]
+ *   — required for cache reads when local has a miss. Wires to pod-client.read.
+ * @param {(uri: string, bytes: *, etag?: string) => Promise<{etag?: string} | void>} [opts.podUploader]
+ *   — required for cache writes' write-through to the real pod. Wires to pod-client.write.
+ * @param {(uri: string) => boolean} [opts.isPodReachable]
+ *   — graceful-degradation gate. When supplied, cache-mode writes that find
+ *   the pod unreachable stay in the write-through queue until
+ *   `drainWriteThroughQueue()` is called on reconnect.
  */
 export function createPseudoPod({
   backend,
@@ -46,6 +71,9 @@ export function createPseudoPod({
   transport,
   getPeers,
   fromActor,
+  podFetcher,
+  podUploader,
+  isPodReachable,
 } = {}) {
   if (!backend || typeof backend.get !== 'function') {
     throw Object.assign(
@@ -53,9 +81,9 @@ export function createPseudoPod({
       { code: 'INVALID_ARGUMENT' },
     );
   }
-  if (mode !== 'standalone' && mode !== 'replication-ring') {
+  if (!VALID_MODES.has(mode)) {
     throw Object.assign(
-      new Error('createPseudoPod: `mode` must be "standalone" or "replication-ring"'),
+      new Error('createPseudoPod: `mode` must be "standalone", "replication-ring", or "cache"'),
       { code: 'INVALID_ARGUMENT' },
     );
   }
@@ -79,6 +107,29 @@ export function createPseudoPod({
       );
     }
   }
+  if (mode === 'cache') {
+    if (typeof podUploader !== 'function') {
+      throw Object.assign(
+        new Error('createPseudoPod: cache mode requires `podUploader`'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+    if (typeof podFetcher !== 'function') {
+      throw Object.assign(
+        new Error('createPseudoPod: cache mode requires `podFetcher`'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+  }
+
+  /** @type {Map<string, 'standalone'|'replication-ring'|'cache'>} */
+  const perUriMode = new Map();
+
+  function _modeFor(uri) {
+    return perUriMode.get(uri) ?? mode;
+  }
+
+  const writeThroughQueue = createWriteThroughQueue({ backend });
 
   const uriPrefix = `pseudo-pod://${deviceId}/`;
 
@@ -137,16 +188,36 @@ export function createPseudoPod({
   async function read(uri) {
     const key = _keyForUri(uri);
     const rec = await backend.get(key);
-    if (!rec) return null;
-    return { uri, bytes: rec.bytes, ...(rec.etag != null ? { etag: rec.etag } : {}) };
+    if (rec) {
+      return { uri, bytes: rec.bytes, ...(rec.etag != null ? { etag: rec.etag } : {}) };
+    }
+
+    // Cache mode: fall through to the pod on local miss.
+    if (_modeFor(uri) === 'cache' && typeof podFetcher === 'function') {
+      try {
+        const remote = await podFetcher(uri);
+        if (remote && remote.bytes !== undefined) {
+          await backend.put(key, remote.bytes, remote.etag);
+          return { uri, bytes: remote.bytes, ...(remote.etag != null ? { etag: remote.etag } : {}) };
+        }
+      } catch (_err) {
+        // Network errors → treat as a miss. Caller can retry later.
+      }
+    }
+    return null;
   }
 
   async function write(uri, bytes, etag) {
     const key = _keyForUri(uri);
-    _assertLocalWrite(uri);
+    const effectiveMode = _modeFor(uri);
+
+    // Standalone + replication-ring writes must be device-local.
+    // Cache writes accept https:// (the pod's own URI scheme).
+    if (effectiveMode !== 'cache') _assertLocalWrite(uri);
+
     const newEtag = await backend.put(key, bytes, etag);
 
-    if (mode === 'replication-ring') {
+    if (effectiveMode === 'replication-ring') {
       const recipients = getPeers().filter(p => typeof p === 'string' && p.length > 0);
       if (recipients.length > 0) {
         try {
@@ -165,12 +236,35 @@ export function createPseudoPod({
       }
     }
 
+    if (effectiveMode === 'cache') {
+      const reachable = typeof isPodReachable === 'function' ? !!isPodReachable(uri) : true;
+      if (reachable) {
+        try {
+          const result = await podUploader(uri, bytes, newEtag);
+          if (result && result.etag) {
+            // Pod assigned its own etag — replace our local etag with theirs.
+            await backend.put(key, bytes, result.etag);
+            return { uri, etag: result.etag };
+          }
+          return { uri, etag: newEtag };
+        } catch (_err) {
+          // Upload failed → queue for retry. Caller drains on reconnect.
+          await writeThroughQueue.enqueue({ uri, bytes, etag: newEtag });
+          return { uri, etag: newEtag, queued: true };
+        }
+      } else {
+        // Pod unreachable up-front → queue immediately (graceful degradation).
+        await writeThroughQueue.enqueue({ uri, bytes, etag: newEtag });
+        return { uri, etag: newEtag, queued: true };
+      }
+    }
+
     return { uri, etag: newEtag };
   }
 
   async function deleteResource(uri) {
     const key = _keyForUri(uri);
-    _assertLocalWrite(uri);
+    if (_modeFor(uri) !== 'cache') _assertLocalWrite(uri);
     await backend.delete(key);
   }
 
@@ -219,19 +313,92 @@ export function createPseudoPod({
   }
 
   /**
-   * V0 stub for cache-mode flush (no-op). V1 will write through to
-   * the real pod here.
+   * Force a write-through to the pod for a single URI (cache mode).
+   * For non-cache modes this is a no-op. Useful for "flush now"
+   * paths (e.g. before close, or when the user explicitly hits "sync").
    */
-  async function flush(_uri) {
-    return;
+  async function flush(uri) {
+    if (typeof uri !== 'string' || _modeFor(uri) !== 'cache') return;
+    if (typeof podUploader !== 'function') return;
+    const rec = await backend.get(uri);
+    if (!rec) return;
+    try {
+      const result = await podUploader(uri, rec.bytes, rec.etag);
+      if (result && result.etag) await backend.put(uri, rec.bytes, result.etag);
+    } catch (_err) {
+      // Leave the entry in the queue (or enqueue it) for later drain.
+      await writeThroughQueue.enqueue({ uri, bytes: rec.bytes, etag: rec.etag });
+    }
   }
 
   /**
-   * V0 has a single global mode. Per-URI overrides ship with cache
-   * mode in V1; until then this returns the global setting.
+   * Resolve the effective mode for a URI — per-URI override wins,
+   * else the global default.
    */
-  function modeForUri(_uri) {
-    return mode;
+  function modeForUri(uri) {
+    return _modeFor(uri);
+  }
+
+  /**
+   * Pin a URI's effective mode. Passing `null` clears the override
+   * (the global default takes over).
+   *
+   * @param {string} uri
+   * @param {'standalone'|'replication-ring'|'cache'|null} m
+   */
+  function setMode(uri, m) {
+    if (typeof uri !== 'string' || uri.length === 0) {
+      throw Object.assign(
+        new Error('setMode: uri is required'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+    if (m === null) { perUriMode.delete(uri); return; }
+    if (!VALID_MODES.has(m)) {
+      throw Object.assign(
+        new Error(`setMode: invalid mode "${m}"`),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+    perUriMode.set(uri, m);
+  }
+
+  /**
+   * Drain pending write-through entries (cache-mode V1). Called by
+   * the caller when they observe a "pod reachable again" event. The
+   * substrate doesn't auto-poll — higher-level code wires
+   * reachability detection.
+   *
+   * @param {object} [opts]
+   * @param {(entry: {uri: string, etag?: string, result: {etag?: string} | void}) => Promise<void>} [opts.onSuccess]
+   *   — fires per drained entry. Useful for cross-substrate signalling
+   *   (e.g. notify-envelope's "ring → pod-canonical" envelope re-emit).
+   *
+   * @returns {Promise<{drained: number, remaining: number, error?: Error}>}
+   */
+  async function drainWriteThroughQueue({ onSuccess } = {}) {
+    if (typeof podUploader !== 'function') return { drained: 0, remaining: await writeThroughQueue.size() };
+    return writeThroughQueue.drain({
+      uploadFn: async (entry) => {
+        const result = await podUploader(entry.uri, entry.bytes, entry.etag);
+        // Pod-assigned etag wins; update the local copy.
+        if (result && result.etag) {
+          await backend.put(entry.uri, entry.bytes, result.etag);
+        }
+        return result;
+      },
+      onSuccess: typeof onSuccess === 'function'
+        ? async (entry, result) => onSuccess({ uri: entry.uri, etag: entry.etag, result })
+        : undefined,
+    });
+  }
+
+  async function listWriteThroughPending() {
+    return writeThroughQueue.list();
+  }
+
+  async function writeThroughPendingCount() {
+    return writeThroughQueue.size();
   }
 
   /**
@@ -264,11 +431,19 @@ export function createPseudoPod({
     writeFromPeer,
     flush,
     mode: modeForUri,
+    setMode,
     fetchResourceSkill,
 
+    // Cache-mode V1 surface (Phase 52.8).
+    drainWriteThroughQueue,
+    listWriteThroughPending,
+    writeThroughPendingCount,
+
     // Introspection
-    get deviceId() { return deviceId; },
-    get backend()  { return backend; },
-    get currentMode() { return mode; },
+    get deviceId()      { return deviceId; },
+    get backend()       { return backend; },
+    get currentMode()   { return mode; },
+    get _perUriMode()   { return new Map(perUriMode); },
+    get _writeThroughQueue() { return writeThroughQueue; },
   };
 }

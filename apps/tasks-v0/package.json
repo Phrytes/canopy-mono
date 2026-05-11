@@ -23,6 +23,7 @@
     "@canopy/core": "file:../../packages/core",
     "@canopy/identity-resolver": "file:../../packages/identity-resolver",
     "@canopy/item-store": "file:../../packages/item-store",
+    "@canopy/item-types": "file:../../packages/item-types",
     "@canopy/local-store": "file:../../packages/local-store",
     "@canopy/notifier": "file:../../packages/notifier",
     "@canopy/relay": "file:../../packages/relay",

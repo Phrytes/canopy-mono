@@ -35,3 +35,33 @@ export { registerCanonicalTypes } from './src/canonical.js';
 export { CANONICAL_TYPES }        from './src/canonical.js';
 export { NAMESPACE }              from './src/baseSchema.js';
 export { EMBEDS_SCHEMA }          from './src/embedsSchema.js';
+
+// App-adoption helpers (Phase 52.7) — adapt item-store-style items
+// (addedAt/addedBy) to the canonical schema shape before validation.
+export { adaptForCanonical, makeValidateCanonical } from './src/adapter.js';
+
+/** Adapt + validate via the default registry. Returns `{ok, errors?}`. */
+export const validateCanonical = (item) => {
+  const adapted = (function adapt(it) {
+    if (!it || typeof it !== 'object') return it;
+    const out = { ...it };
+    if (out.createdAt === undefined && out.addedAt !== undefined) {
+      out.createdAt = typeof out.addedAt === 'number'
+        ? new Date(out.addedAt).toISOString()
+        : String(out.addedAt);
+    }
+    if (out.createdBy === undefined && out.addedBy !== undefined) {
+      out.createdBy = out.addedBy;
+    }
+    if (out.updatedAt === undefined && out.completedAt !== undefined) {
+      out.updatedAt = typeof out.completedAt === 'number'
+        ? new Date(out.completedAt).toISOString()
+        : String(out.completedAt);
+    }
+    if (out.updatedBy === undefined && out.completedBy !== undefined) {
+      out.updatedBy = out.completedBy;
+    }
+    return out;
+  })(item);
+  return _defaultRegistry.validate(adapted);
+};
