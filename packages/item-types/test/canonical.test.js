@@ -1,0 +1,157 @@
+/**
+ * Canonical types — validation per-type.
+ *
+ * Sanity-checks that every shipped canonical type:
+ *   - Registers cleanly via registerCanonicalTypes().
+ *   - Accepts a minimal valid item.
+ *   - Rejects missing-required-field cases.
+ *   - Exposes its iri metadata.
+ *
+ * Sweep test — one minimal positive + one negative per type.
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  createRegistry,
+  registerCanonicalTypes,
+  CANONICAL_TYPES,
+  list,
+  validate,
+  metadata,
+  NAMESPACE,
+} from '../index.js';
+
+const NOW = '2026-05-11T10:00:00.000Z';
+const AGENT = 'https://anne.example/profile#me/agent/laptop';
+
+/** Build a baseline item with the common required fields populated. */
+function baseItem(type, extra = {}) {
+  return {
+    type,
+    id:        `dec:item/${type}/abc`,
+    createdAt: NOW,
+    createdBy: AGENT,
+    ...extra,
+  };
+}
+
+describe('Canonical types — registration via default registry', () => {
+  it('the default registry has all 11 canonical types', () => {
+    expect(list().sort()).toEqual([
+      'announcement',
+      'calendar-event',
+      'chat-message',
+      'contact',
+      'demand-offer',
+      'lend-request',
+      'neighbourhood-job',
+      'note',
+      'reveal-request',
+      'supply-offer',
+      'task',
+    ]);
+  });
+
+  it('every canonical type exposes a `dec:` IRI', () => {
+    for (const name of list()) {
+      const m = metadata(name);
+      expect(m).toBeTruthy();
+      expect(m.iri).toMatch(new RegExp(`^${NAMESPACE.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`));
+    }
+  });
+
+  it('registerCanonicalTypes works on a fresh registry too', () => {
+    const r = createRegistry();
+    registerCanonicalTypes(r);
+    expect(r.list()).toHaveLength(11);
+  });
+
+  it('CANONICAL_TYPES exports the schema map', () => {
+    expect(Object.keys(CANONICAL_TYPES)).toHaveLength(11);
+    expect(CANONICAL_TYPES.task).toBeTruthy();
+    expect(CANONICAL_TYPES.note).toBeTruthy();
+  });
+});
+
+describe('Canonical types — minimal valid + missing-required-field sweep', () => {
+  // Per-type minimal-valid extras to satisfy each schema's required fields.
+  const MINIMAL = {
+    'task':              { text:        'paint the fence' },
+    'note':              { body:        'hello world' },
+    'chat-message':      { body:        'hi!' },
+    'supply-offer':      { body:        'ladder lenen' },
+    'demand-offer':      { body:        'looking for a drill' },
+    'lend-request':      { itemRef:     'pseudo-pod://x/y/z' },
+    'contact':           { displayName: 'Anne' },
+    'calendar-event':    { title:       'Coffee', startsAt: NOW },
+    'announcement':      { body:        'Heads up: code rotates Friday' },
+    'reveal-request':    { requester:   'pk-a', target: 'pk-b' },
+    'neighbourhood-job': { body:        'paint the wall' },
+  };
+
+  for (const [name, extra] of Object.entries(MINIMAL)) {
+    it(`'${name}' validates a minimal item`, () => {
+      const result = validate(baseItem(name, extra));
+      if (!result.ok) {
+        console.error(`unexpected fail for '${name}':`, result.errors);
+      }
+      expect(result.ok).toBe(true);
+    });
+
+    it(`'${name}' fails when a base required field is missing`, () => {
+      const item = baseItem(name, extra);
+      delete item.createdAt;
+      const result = validate(item);
+      expect(result.ok).toBe(false);
+    });
+
+    it(`'${name}' fails when an item-specific required field is missing`, () => {
+      // Drop one required type-specific field per type.
+      const dropKey = Object.keys(extra)[0];
+      const item = baseItem(name, extra);
+      delete item[dropKey];
+      const result = validate(item);
+      expect(result.ok).toBe(false);
+    });
+  }
+});
+
+describe('Canonical types — embeds field shape', () => {
+  it('accepts a well-formed embeds array', () => {
+    const result = validate(baseItem('task', {
+      text:   'paint the fence',
+      embeds: [
+        { type: 'note',         ref: 'https://anne.pod/notes/x' },
+        { type: 'supply-offer', ref: 'pseudo-pod://anne-device/offers/abc' },
+      ],
+    }));
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects an embed missing the ref field', () => {
+    const result = validate(baseItem('task', {
+      text:   'x',
+      embeds: [{ type: 'note' }],
+    }));
+    expect(result.ok).toBe(false);
+  });
+
+  it('accepts an embed with extra forward-compat fields', () => {
+    const result = validate(baseItem('task', {
+      text:   'x',
+      embeds: [{ type: 'note', ref: 'https://x/y', sourceVersion: 'v3', cachedAt: NOW }],
+    }));
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe('Canonical types — extra-fields tolerance (forward-compat)', () => {
+  it('allows undeclared fields on a task', () => {
+    const result = validate(baseItem('task', {
+      text: 'x',
+      futureField:    'tomorrow this might be canonical',
+      anotherFuture:  { nested: 'shape' },
+    }));
+    expect(result.ok).toBe(true);
+  });
+});
