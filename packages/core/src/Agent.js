@@ -69,6 +69,7 @@ export class Agent extends Emitter {
   #label         = null;
   #webid         = null;   // optional WebIdCache (or any object) — standardisation Phase 50.2
   #pseudoPod     = null;   // optional pseudo-pod (or any object) — standardisation Phase 50.3
+  #agentRegistry = null;   // optional agent-registry (or any object) — standardisation Phase 50.8
   #helloGate     = null;   // optional (envelope) => boolean gate; see Group W
   #sealedConfigs = null;   // Map<groupId, { enabled, ... }> — Group BB
   #rotationInlineSeen = new Set();  // Group FF+1 — newPubKey seen via inline proof (dedup)
@@ -91,7 +92,7 @@ export class Agent extends Emitter {
   constructor({ identity, transport, security, policyEngine, trustRegistry,
                 tokenRegistry, peers, storage, config, routing,
                 maxTaskTtl, pubSubHistory,
-                skills = [], label, webid, pseudoPod } = {}) {
+                skills = [], label, webid, pseudoPod, agentRegistry } = {}) {
     super();
     if (!identity)  throw new Error('Agent requires an identity');
     if (!transport) throw new Error('Agent requires a transport');
@@ -114,6 +115,7 @@ export class Agent extends Emitter {
     this.#label         = label         ?? null;
     this.#webid         = webid         ?? null;
     this.#pseudoPod     = pseudoPod     ?? null;
+    this.#agentRegistry = agentRegistry ?? null;
 
     for (const s of skills) this.#skills.register(s);
   }
@@ -144,6 +146,11 @@ export class Agent extends Emitter {
    *  an opaque slot the caller fills with whatever it wants. `null` when no pseudo-pod
    *  is wired (e.g. tests that don't need storage). */
   get pseudoPod() { return this.#pseudoPod; }
+  /** Agent-registry handle (or any object) — optional. Populated by the provisioning
+   *  facade (standardisation Phase 50.8). Core never imports `@canopy/agent-registry`;
+   *  this is an opaque slot the caller fills with whatever it wants. `null` when no
+   *  registry is wired (e.g. no-pod users, tests, single-agent setups). */
+  get agentRegistry() { return this.#agentRegistry; }
   /** AgentConfig — optional. */
   get config()   { return this.#config; }
   /** RoutingStrategy — optional. Used by call() when multiple transports are present. */
