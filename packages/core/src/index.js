@@ -87,6 +87,11 @@ export { OfflineTransport }               from './transport/OfflineTransport.js'
 // ── Skills ────────────────────────────────────────────────────────────────────
 export { defineSkill }         from './skills/defineSkill.js';
 export { makeFetchResourceSkill } from './skills/fetchResource.js';
+
+// Phase 50.9 — ActorResolver interface (a contract; the substrate
+// `@canopy/agent-registry` implements it). The in-memory helper is
+// for tests + minimal apps.
+export { createInMemoryActorResolver } from './permissions/ActorResolver.js';
 export { SkillRegistry }       from './skills/SkillRegistry.js';
 export { registerRelayForward }        from './skills/relayForward.js';
 export { registerRelayReceiveSealed }  from './skills/relayReceiveSealed.js';
