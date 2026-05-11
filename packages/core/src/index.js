@@ -40,15 +40,6 @@ export {
   validateMnemonic,
 } from './identity/Mnemonic.js';
 
-// WebID-discovery wrapper — small re-export over @canopy/webid-discovery
-// (standardisation Phase 50.2).
-export {
-  discoverPointers,
-  resolvePointers,
-  WebIdCache,
-  WEBID_PREDICATES,
-} from './identity/webid.js';
-
 // ── Security ─────────────────────────────────────────────────────────────────
 export { SecurityLayer, SecurityError, SEC } from './security/SecurityLayer.js';
 export {
