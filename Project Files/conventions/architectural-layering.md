@@ -354,6 +354,109 @@ violation. Lint rule TBD.
 
 ---
 
+## Strict layering: core MUST NOT import substrates (locked 2026-05-11)
+
+> **Project-wide invariant.** The dependency direction is one-way:
+> **apps → substrates → core**. `@canopy/core` (and the
+> substrate-adjacent foundation packages `@canopy/relay`,
+> `@canopy/pod-client`, `@canopy/react-native`) never imports
+> from a substrate package. Anything that requires substrate-side
+> knowledge belongs in the substrate's plan, not core's.
+
+This rule formalises a pattern surfaced during the 2026-05-11
+standardisation work: a doc revision had core re-exporting a
+substrate's API as a "convenience wrapper" (see the reverted
+`packages/core/src/identity/webid.js` shim and the deprecation
+re-exports of `Vault*` / `SolidVault`). Each such re-export
+flips the dependency arrow and shrinks the substrate boundary
+into noise. After 2026-05-11 we make a deliberate choice
+whenever the pull is tempting.
+
+### Why one-way
+
+- Substrates depend on **stable** primitives. Core moves slowly;
+  substrates iterate. If core re-exports from a substrate, core's
+  stability claim is gone — every substrate change becomes a
+  core change.
+- A substrate that can be deleted without touching core is a
+  substrate. A substrate that can't is core's problem.
+- Tests stay focused: core's tests use minimal fakes; substrate
+  tests use real substrate code. No circular setup.
+
+### What "core needs from substrates" becomes instead
+
+Where core's logic needs substrate-supplied capabilities, core
+provides one of four mechanisms — none of which import any
+substrate:
+
+| Mechanism | Used for | Examples |
+|---|---|---|
+| **Opaque slot on `Agent`** | Substrate hands core an object; core stores + exposes via a getter; the substrate decides the shape. | `agent.webid` (Phase 50.2), `agent.pseudoPod` (50.3), `agent.agentRegistry` (50.8) |
+| **Interface / contract** (JSDoc-defined type) | Substrate implements; core consumes via injection. Core ships the interface definition + an in-memory test helper. | `ActorResolver` (Phase 50.9) — implemented by `@canopy/agent-registry`; injected into `PolicyEngine` + `CapabilityToken.verify` |
+| **Skill-shape factory** | Core ships the wire contract (input shape, error codes, output shape) as a `defineSkill`-returning factory; substrate supplies the storage backing via a callback. | `makeFetchResourceSkill({read})` (Phase 50.3) — the pseudo-pod substrate registers the skill on the agent with its own `read` |
+| **Duck-typed binding method** | Core invokes a well-known method (`setHost('hub', binder)`) on each opaque slot that implements it. Slots without the method are silently skipped. | `agent.bindToHub(binder)` (Phase 50.12) — fan-out to pseudo-pod / agent-registry / webid slots |
+
+Every one of these patterns lets the substrate stay invisible
+to core while letting apps + facades wire things up cleanly.
+
+### Transitional compat shims
+
+The Phase 50.1 and 50.1.A migrations needed time-limited
+deprecation re-exports in core (`SolidVault` re-exporting from
+`@canopy/oidc-session`; `Vault*` re-exporting from
+`@canopy/vault`). These **are layering violations** — but
+they're deliberate, documented, and removable. Each has a
+follow-up phase that drops the shim after callers migrate.
+**New compat shims must be approved by the same explicit
+process** (a follow-up phase that removes them).
+
+### Where "consume substrate X" work lives
+
+When the coding plan describes a phase as "core consumes the
+\<substrate\>", the actual code lives in the **substrate's**
+coding plan, not core's. Core's coding plan may ship one of:
+
+- A new opaque slot on `Agent` (small, e.g. Phase 50.8.1).
+- An interface definition + injection point (e.g. Phase 50.9).
+- A skill-shape factory (e.g. Phase 50.3's
+  `makeFetchResourceSkill`).
+- A duck-typed binding fan-out (e.g. Phase 50.12's
+  `bindToHub`).
+
+The substrate's plan ships the substrate itself + the
+implementation that plugs into core's slot / interface /
+factory / binder.
+
+**Phases lifted out of core's coding plan 2026-05-11** as a
+result of this rule:
+
+- Phase 50.4 (VaultMemory pod write-through) → `@canopy/vault`
+  substrate plan.
+- Phase 50.6 (pseudo-pod V1 write-through queue) →
+  `@canopy/pseudo-pod` substrate plan (forthcoming).
+- Phase 50.13 (consume interface-registry) →
+  `@canopy/interface-registry` substrate plan (forthcoming);
+  core may add a slot + duck-typed binding fan-out if useful.
+- Phase 50.14 (consume protocol) → `@canopy/protocol`
+  substrate plan (forthcoming).
+- Phase 50.15 (AIDL surface V2 plumbing) →
+  `@canopy/react-native` Phase 51.11.
+
+### Verification
+
+- Grep `packages/core/src/**/*.js` for imports from any
+  `@canopy/<substrate>` package. The only acceptable matches
+  are the deprecation re-exports in `packages/core/src/index.js`
+  (and they're explicitly marked as such with a comment).
+- Grep `packages/core/package.json` `dependencies` for any
+  `@canopy/<substrate>`. The only acceptable entries are
+  those backing the deprecation re-exports.
+- Grep substrate package.json files for circular references
+  to `@canopy/core` in `dependencies` (devDeps for tests are
+  fine).
+
+---
+
 ## Verification
 
 Two ongoing checks for the layering invariant:

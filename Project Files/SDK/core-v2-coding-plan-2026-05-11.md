@@ -247,23 +247,22 @@ restored vault as an injected arg (see 50.5).
 
 # Part II — P3 phases
 
-## Phase 50.6 — Pseudo-pod V1 write-through-queue client
+## Phase 50.6 — Pseudo-pod V1 write-through-queue (MOVED to substrate plan)
 
-> **Purpose:** P3 ships pseudo-pod V1 (substrate work
-> separate). Core's responsibility is the queue + retry +
-> failure-event surface.
-
-| # | Task | Files |
-|---|---|---|
-| 50.6.1 | Extend `agent.pseudoPod` to support write-through queue: queued writes drain async to `pod-client`; on conflict (412) the substrate retries; on persistent failure, surfaces a `pseudoPod.write-through-failed` event. | `packages/core/src/Agent.js` |
-| 50.6.2 | Backpressure: queue size cap + LRU eviction for pure caches (read-only items can be re-fetched). Persistent writes don't get evicted. | `packages/core/src/Agent.js` |
-| 50.6.3 | Reconnect drain semantics: when transport reconnects, kick off queue drain in the background. | `packages/core/src/Agent.js` |
-| 50.6.4 | Tests: simulate write while offline → reconnect → queue drains; simulate 412 conflict → substrate retries → success after re-fetch. | `packages/core/test/Agent.writeThrough.test.js` |
-
-**Estimate:** 1.5 days.
-**Acceptance:** Folio's existing sync-engine drain semantics
-match parity against the new write-through queue;
-integration tests at the pseudo-pod V1 boundary pass.
+> **MOVED 2026-05-11** to the `@canopy/pseudo-pod` substrate
+> coding plan (forthcoming) per the strict-layering rule
+> ([`../conventions/architectural-layering.md`](../conventions/architectural-layering.md#strict-layering-core-must-not-import-substrates-locked-2026-05-11)).
+>
+> The original plan framed this as "extend `agent.pseudoPod`
+> to support write-through queue" — but `agent.pseudoPod` is
+> **opaque** to core. Core doesn't know what's in the slot.
+> The whole write-through-queue feature lives in the
+> pseudo-pod substrate; core is uninvolved.
+>
+> Core's residual role: zero. The `Agent.pseudoPod` slot
+> (Phase 50.3) already supports any substrate-supplied
+> object; the V1 write-through queue is just a richer object
+> the substrate ships.
 
 ## Phase 50.7 — `TransportManager` envelope-emit path
 
@@ -388,41 +387,32 @@ the in-process pseudo-pod is dormant.
 
 # Part V — P6 phases (Hub track, direction)
 
-## Phase 50.13 — Consume `interface-registry` substrate
+## Phase 50.13 — Consume `interface-registry` substrate (MOVED to substrate plan)
 
-| # | Task | Files |
-|---|---|---|
-| 50.13.1 | Add `agent.interfaceRegistry` field exposing the substrate's lookup + register API. | `packages/core/src/Agent.js` |
-| 50.13.2 | Bundle manifest declaration: bundles register their types + renderers via the Hub binding (`hub-binding.registerBundle`). | `packages/core/src/Agent.js` |
-| 50.13.3 | Tests with mocked substrate. | `packages/core/test/Agent.interfaceRegistry.test.js` |
+> **MOVED 2026-05-11** to the `@canopy/interface-registry`
+> substrate coding plan (forthcoming) per the strict-layering
+> rule. The substrate ships the registry; core may add a
+> trivial opaque `Agent.interfaceRegistry` slot (mirroring
+> Phase 50.8.1 for agent-registry) **if useful**, but the
+> actual interface-registry implementation lives in the
+> substrate. P6 direction-only.
 
-**Estimate:** 0.5 day.
-**Acceptance:** Tasks-bundle can register its `task` type's
-compact + full renderers through the agent's binding to the
-Hub.
+## Phase 50.14 — Consume `protocol` substrate (MOVED to substrate plan)
 
-## Phase 50.14 — Consume `protocol` substrate
+> **MOVED 2026-05-11** to the `@canopy/protocol` substrate
+> coding plan (forthcoming) per the strict-layering rule. Same
+> shape as 50.13: substrate ships the orchestration; core may
+> add a trivial slot if useful. P6 direction-only.
 
-| # | Task | Files |
-|---|---|---|
-| 50.14.1 | Add `agent.protocol` field exposing protocol state-machine orchestration. | `packages/core/src/Agent.js` |
-| 50.14.2 | Wire the propose-subtask flow (Tasks's canonical first protocol) as the integration test case. | `packages/core/test/Agent.protocol.test.js` |
+## Phase 50.15 — AIDL surface V2 plumbing (MOVED to RN plan)
 
-**Estimate:** 0.5 day.
-**Acceptance:** A declared protocol (propose-subtask) runs
-end-to-end with state on the pod / pseudo-pod.
-
-## Phase 50.15 — AIDL surface V2 plumbing
-
-| # | Task | Files |
-|---|---|---|
-| 50.15.1 | Extend `hub-binding` plumbing (in core's transport mode flag) to recognise V2 method additions: `registerInterface`, `orchestrateProtocol`. | `packages/core/src/transport/TransportManager.js` |
-| 50.15.2 | Version negotiation: core knows the highest AIDL version it understands; bundles request V2 only when the Hub exposes it. | `packages/core/src/transport/TransportManager.js` |
-| 50.15.3 | Tests. | `packages/core/test/TransportManager.aidlV2.test.js` |
-
-**Estimate:** 0.5 day.
-**Acceptance:** A V2 Hub + V2-capable agent successfully
-negotiate V2 features; V1 agents on V2 Hubs still work.
+> **MOVED 2026-05-11** to the
+> [`react-native-v2-coding-plan-2026-05-11.md`](react-native-v2-coding-plan-2026-05-11.md)
+> Phase 51.11 per the strict-layering rule. AIDL is RN-platform-
+> specific; the binder is duck-typed in core's
+> `HubDelegateTransport` (Phase 50.11), so V2 method additions
+> are entirely a `@canopy/react-native/hub-binding` concern.
+> Core is uninvolved.
 
 ---
 
@@ -430,20 +420,24 @@ negotiate V2 features; V1 agents on V2 Hubs still work.
 
 | Phase range | Standardisation P-phase | Estimate | Notes |
 |---|---|---|---|
-| 50.1, 50.1.A, 50.2, 50.3, 50.5 | P1 (Hub-free) | ≈6 days | 50.4 moved to the vault substrate's plan; 50.5 split into core-side `Bootstrap` + new `@canopy/agent-provisioning` facade |
-| 50.6 – 50.7 | P3 (Hub-free) | ≈2 days | Transport envelope-emit (core-only) + pseudo-pod V1 client (substrate-side, but core may need a write-through queue helper) |
-| 50.8 – 50.10 | P5 (Hub-free, breaking-with-shim) | ≈2.5 days | All use injected `ActorResolver` interface — no substrate import in core |
-| 50.11 – 50.12 | P4 (Hub track) | ≈1.5 days | Same opaque-slot + injection pattern for Hub-delegate mode |
-| 50.13 – 50.15 | P6 (Hub track, direction) | ≈1.5 days | interface-registry + protocol consumption via injection |
+| 50.1, 50.1.A, 50.2, 50.3, 50.5 | P1 (Hub-free) | ≈6 days | 50.4 moved to the vault substrate's plan; 50.5 split into core-side `Bootstrap` (a no-op — already identity-only) + new `@canopy/agent-provisioning` facade (50.5.b) |
+| 50.7 | P3 (Hub-free) | ≈0.5 day | Transport envelope-emit (core-only). 50.6 moved out to the pseudo-pod substrate plan (core is uninvolved — `agent.pseudoPod` is opaque to core). |
+| 50.8 – 50.10 | P5 (Hub-free, breaking-with-shim) | ≈2 days | All use injected `ActorResolver` interface — no substrate import in core |
+| 50.11 – 50.12 | P4 (Hub track) | ≈1.5 days | Duck-typed `binder` + `Agent.bindToHub` fan-out; no substrate import |
+| (none) | P6 (Hub track, direction) | 0 days | 50.13 / 50.14 / 50.15 all moved out — substrate plans + react-native plan own them |
 
-Total ≈13.5 days of core-side work across the standardisation
-arc. The Hub-track phases are direction-only until timing is
-committed.
+Total ≈10 days of core-side work across the standardisation
+arc (down from the original 13.5d after 50.6 / 50.13–50.15
+lifted to substrate plans per the strict-layering rule).
 
 **The layering invariant (locked 2026-05-11)**: every phase
 above respects `apps → substrates → core`. Core never imports
 from substrates; substrate composition happens in the facade
 (`@canopy/agent-provisioning`, 50.5.b) or in apps directly.
+See
+[`../conventions/architectural-layering.md`](../conventions/architectural-layering.md#strict-layering-core-must-not-import-substrates-locked-2026-05-11)
+for the rule + the four mechanisms (opaque slots, interfaces,
+skill factories, duck-typed binding methods).
 
 ## Acceptance gates per P-phase
 
@@ -453,9 +447,10 @@ from substrates; substrate composition happens in the facade
   substrate imports; the `Vault*` and `SolidVault` re-exports
   are gone from core; `Agent.webid` / `Agent.pseudoPod` /
   `Agent.agentRegistry` opaque slots populated by the facade.
-- **P3 (50.6–50.7) gate:** pseudo-pod V1 round-trips writes
-  via the queue (substrate-side); envelopes emit + receive
-  via core's transport per the wire shape contract.
+- **P3 (50.7) gate:** envelopes emit + receive via core's
+  transport per the wire shape contract. (Pseudo-pod V1
+  write-through is substrate-side; see the pseudo-pod
+  substrate's plan.)
 - **P5 (50.8–50.10) gate:** all three apps run with the
   injected-`ActorResolver` `PolicyEngine`; deprecation
   warnings appear at the expected call sites; cap-tokens
@@ -464,10 +459,14 @@ from substrates; substrate composition happens in the facade
 - **P4 (50.11–50.12) gate:** when the Hub is installed,
   agents detect + delegate transport + pseudo-pod hosting via
   injected binders; battery + memory profile drops measurably.
-- **P6 (50.13–50.15) gate:** Tasks-bundle registers its
-  `task` interface through the registry (substrate-side) via
-  the injected handle on `Agent`; propose-subtask runs as a
-  declared protocol with pod-side state.
+- **P6 gate (substrate-side):** Tasks-bundle registers its
+  `task` interface through the interface-registry substrate
+  (substrate's plan); propose-subtask runs as a declared
+  protocol with pod-side state (protocol substrate's plan);
+  AIDL V2 methods plumbed through
+  `@canopy/react-native/hub-binding` (Phase 51.11). Core
+  is uninvolved in P6 — the design completed in P4 (50.11 +
+  50.12) is sufficient.
 
 ## References
 
