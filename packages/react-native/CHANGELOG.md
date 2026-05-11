@@ -4,6 +4,21 @@ All notable changes to the package.  Versioning per
 `Project Files/Substrates/policies.md`: minor for additive changes,
 major for breaking changes.
 
+## [Unreleased]
+
+### Added
+
+- **pseudo-pod-adapter** sub-path (Phases 51.1 – 51.4). RN-side
+  `StorageBackend` implementations for `@canopy/pseudo-pod`:
+  - `createAsBackend({AsyncStorage, scope})` — AsyncStorage-backed.
+  - `createFsBackend({FileSystem, rootDir, scope})` —
+    expo-file-system-backed; atomic writes via `.tmp` + moveAsync.
+  - `createBackend({...})` — composite that picks AS for small
+    payloads, FS for large (default threshold 4 KB); supports
+    cross-backend migration on update.
+  Importable as `@canopy/react-native/pseudo-pod-adapter`. 35 new
+  tests with mocked native modules.
+
 ## [0.2.0] — 2026-05-02
 
 ### Added
