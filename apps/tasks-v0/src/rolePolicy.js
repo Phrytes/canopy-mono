@@ -17,10 +17,26 @@
  * Build a RolePolicy from a `webid → role` map.
  *
  * @param {Object<string, StandardRole>} roles
+ * @param {object} [opts]
+ * @param {Object<string, string>} [opts.aliases]
+ *   Optional `actorAlias → webid` map (typically `pubKey → webid`).
+ *   At skill-dispatch time the `from` field carries whatever the
+ *   transport surfaces — on the desktop's HTTP path that's the
+ *   localActor webid (via `LocalUiAuth`); on the mobile React path
+ *   it's the agent's pubKey. The alias map lets a single roles
+ *   table handle both.
+ *
  * @returns {import('@canopy/item-store').RolePolicy}
  */
-export function buildStandardRolePolicy(roles) {
-  const get = (actor) => roles[actor];
+export function buildStandardRolePolicy(roles, opts = {}) {
+  const aliases = opts.aliases ?? {};
+  const get = (actor) => {
+    if (actor == null) return undefined;
+    const direct = roles[actor];
+    if (direct !== undefined) return direct;
+    const aliased = aliases[actor];
+    return aliased ? roles[aliased] : undefined;
+  };
   return {
     canAdd: (actor) => {
       const r = get(actor);

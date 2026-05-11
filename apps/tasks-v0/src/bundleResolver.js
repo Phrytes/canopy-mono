@@ -14,8 +14,12 @@
  *   - `multiCrewResolver(crews)` — picks the right CrewState from a
  *     `Map<crewId, CrewState>`. Strict resolution order:
  *       1. `args.crewId` from the first DataPart
- *       2. `<crewId>/...` prefix on `envelope.topic`
- *       3. strict `null` (no silent fallback to "first crew")
+ *       2. `args._scope` from the first DataPart (mobile React
+ *          bindings inject `_scope: activeBundle.groupId` — same
+ *          value as the crewId; see
+ *          `packages/sync-engine-rn/src/react/createReactBindings.js`)
+ *       3. `<crewId>/...` prefix on `envelope.topic`
+ *       4. strict `null` (no silent fallback to "first crew")
  *
  *     Strict-null-on-miss is intentional. Silent fallback would
  *     route a multi-crew leak as a successful single-crew op.
@@ -55,6 +59,15 @@ export function multiCrewResolver(crews) {
     const args = _argsFromParts(parts);
     if (typeof args.crewId === 'string' && args.crewId) {
       return crews.get(args.crewId) ?? null;
+    }
+    // Phase 41.18 follow-up: mobile React bindings inject
+    // `_scope: activeBundle.groupId` (which equals the crewId) on
+    // every skill call. Honour it so the multi-crew resolver
+    // dispatches correctly without each screen having to plumb
+    // crewId through manually.
+    if (typeof args._scope === 'string' && args._scope) {
+      const cs = crews.get(args._scope);
+      if (cs) return cs;
     }
     const topic = ctx?.envelope?.topic;
     if (typeof topic === 'string' && topic) {

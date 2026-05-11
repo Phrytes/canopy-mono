@@ -1,9 +1,11 @@
 /**
  * MineScreen — own posts + claim management.
  *
- * Stoop V3 mobile.  Phase 40.16 (2026-05-08): wired to live agent.
- * No `listMine` skill exists today — we filter `listOpen` by `from`
- * matching the local agent's address.
+ * Stoop V3 mobile.  Calls Stoop's `listMyRequests` skill, which
+ * filters by `addedBy === from` server-side, then drops non-board
+ * item types via `filterFeed` (same whitelist the Feed uses, since
+ * `listMyRequests` returns every uncompleted item — including
+ * chat-messages authored by the user — regardless of `type`).
  */
 
 import React, { useEffect, useMemo } from 'react';
@@ -15,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { ROUTES }                            from '../navigation.js';
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
 import { t }                                 from '../lib/i18n.js';
+import { filterFeed }                        from '../lib/feedFilter.js';
 import { PostCard }                          from '../components/PostCard.js';
 import { useService }                        from '../ServiceContext.js';
 import { useSkill }                          from '../lib/useSkill.js';
@@ -25,7 +28,7 @@ export function MineScreen() {
   const nav = useNavigation();
   const svc = useService();
 
-  const { data, loading, refresh } = useSkillResult('listOpen', {}, []);
+  const { data, loading, refresh } = useSkillResult('listMyRequests', {}, []);
   const accept = useSkill('acceptResponder');
   const cancel = useSkill('cancelRequest');
 
@@ -34,6 +37,11 @@ export function MineScreen() {
   useEffect(() => {
     if (arrived != null) refresh().catch(() => { /* swallow */ });
   }, [arrived, refresh]);
+
+  const items = useMemo(
+    () => filterFeed(Array.isArray(data?.items) ? data.items : [], {}),
+    [data],
+  );
 
   if (!svc?.activeBundle) {
     return (
@@ -44,13 +52,6 @@ export function MineScreen() {
       </View>
     );
   }
-
-  const selfAddr = svc.activeBundle.agent.address ?? svc.activeBundle.agent.identity?.pubKey;
-
-  const items = useMemo(() => {
-    const all = Array.isArray(data?.items) ? data.items : [];
-    return all.filter((it) => it.from === selfAddr || it.authorWebid === selfAddr);
-  }, [data, selfAddr]);
 
   const acceptResponder = async (item, claim) => {
     try {

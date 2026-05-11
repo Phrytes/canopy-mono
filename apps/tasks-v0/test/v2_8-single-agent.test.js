@@ -131,6 +131,68 @@ describe('V2.8 — single meshAgent, multi-crew via bundleResolver', () => {
     expect(r.error).toBe('crewId required');
   });
 
+  it('mobile React-bindings _scope path resolves to the right crew', async () => {
+    // Reproduces the Phase 41.18 follow-up bug:
+    // `packages/sync-engine-rn/src/react/createReactBindings.js`
+    // injects `_scope: activeBundle.groupId` into every skill call.
+    // The multiCrewResolver must read `_scope` (in addition to
+    // `args.crewId`) so mobile dispatches succeed without each
+    // screen having to plumb crewId through manually.
+    const { meshAgent } = await buildMeshAgent({ label: 'TestMeshScope' });
+    const crewA = buildCrewState('crew-a', [ANNE], { [ANNE]: 'admin' });
+    const crewB = buildCrewState('crew-b', [BOB],  { [BOB]: 'admin' });
+    const crews = new Map([['crew-a', crewA], ['crew-b', crewB]]);
+    const allMembers = new MemberMap({ initial: [{ webid: ANNE }, { webid: BOB }] });
+
+    wireSkills({
+      meshAgent,
+      bundleResolver: multiCrewResolver(crews),
+      crewsProvider:  () => crews.values(),
+      members:        allMembers,
+    });
+    await meshAgent.start();
+
+    // _scope alone is enough — no explicit crewId arg.
+    const rA = await callSkill(meshAgent, 'addTask', { text: 'A-via-scope', _scope: 'crew-a' }, ANNE);
+    expect(rA.task.text).toBe('A-via-scope');
+
+    const rB = await callSkill(meshAgent, 'addTask', { text: 'B-via-scope', _scope: 'crew-b' }, BOB);
+    expect(rB.task.text).toBe('B-via-scope');
+
+    // Cross-crew check: tasks from crew-a stay in crew-a's listing.
+    const listA = await callSkill(meshAgent, 'listOpen', { _scope: 'crew-a' }, ANNE);
+    expect(listA.items.map((it) => it.text)).toContain('A-via-scope');
+    expect(listA.items.map((it) => it.text)).not.toContain('B-via-scope');
+  });
+
+  it('explicit crewId wins over _scope when both are present', async () => {
+    const { meshAgent } = await buildMeshAgent({ label: 'TestMeshScopeWin' });
+    const crewA = buildCrewState('crew-a', [ANNE, BOB], { [ANNE]: 'admin', [BOB]: 'admin' });
+    const crewB = buildCrewState('crew-b', [ANNE, BOB], { [ANNE]: 'admin', [BOB]: 'admin' });
+    const crews = new Map([['crew-a', crewA], ['crew-b', crewB]]);
+    const allMembers = new MemberMap({ initial: [{ webid: ANNE }, { webid: BOB }] });
+
+    wireSkills({
+      meshAgent,
+      bundleResolver: multiCrewResolver(crews),
+      crewsProvider:  () => crews.values(),
+      members:        allMembers,
+    });
+    await meshAgent.start();
+
+    // crewId='crew-b' + _scope='crew-a' → crewId wins; the task
+    // lands in crew-b's store.
+    const r = await callSkill(meshAgent, 'addTask', {
+      text: 'override', crewId: 'crew-b', _scope: 'crew-a',
+    }, ANNE);
+    expect(r.task.text).toBe('override');
+
+    const listA = await callSkill(meshAgent, 'listOpen', { _scope: 'crew-a' }, ANNE);
+    const listB = await callSkill(meshAgent, 'listOpen', { _scope: 'crew-b' }, ANNE);
+    expect(listA.items.map((it) => it.text)).not.toContain('override');
+    expect(listB.items.map((it) => it.text)).toContain('override');
+  });
+
   it('singleCrewResolver always returns its crew (back-compat for single-crew launches)', async () => {
     const { meshAgent } = await buildMeshAgent({ label: 'TestMeshSingle' });
     const crewA = buildCrewState('crew-a', [ANNE], { [ANNE]: 'admin' });

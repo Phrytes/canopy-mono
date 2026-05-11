@@ -1,0 +1,34 @@
+{
+  "shared": {
+    "status": {
+      "ready":     { "text": "ready",     "doc": "Status pill — task is ready to claim." },
+      "waiting":   { "text": "waiting",   "doc": "Status pill — task is waiting on open dependencies (V2.7 hard-deps)." },
+      "blocked":   { "text": "blocked",   "doc": "Status pill — task is blocked (a dep was removed/cancelled)." },
+      "claimed":   { "text": "claimed",   "doc": "Status pill — task has an assignee." },
+      "submitted": { "text": "submitted", "doc": "Status pill — task has been submitted for review." },
+      "rejected":  { "text": "rejected",  "doc": "Status pill — submission was rejected; assignee can re-work + resubmit." },
+      "complete":  { "text": "complete",  "doc": "Status pill — task is fully done (substrate flag completedAt set)." },
+      "unknown":   { "text": "—",         "doc": "Status pill — status is missing/garbage; rendered as a dash." }
+    },
+    "roles": {
+      "admin":              { "text": "admin",              "doc": "Crew role — admin (full powers)." },
+      "coordinator":        { "text": "coordinator",        "doc": "Crew role — coordinator (manage tasks + members; no remove)." },
+      "member":             { "text": "member",             "doc": "Crew role — regular member." },
+      "observer":           { "text": "observer",           "doc": "Crew role — read-only." },
+      "external-volunteer": { "text": "external volunteer", "doc": "Crew role — external; can claim tagged tasks only." }
+    },
+    "crew_kinds": {
+      "household":   { "text": "household",   "doc": "Crew kind chip — a household." },
+      "project":     { "text": "project",     "doc": "Crew kind chip — a time-bound project." },
+      "team":        { "text": "team",        "doc": "Crew kind chip — a standing team." },
+      "friends":     { "text": "friends",     "doc": "Crew kind chip — a circle of friends." },
+      "maintenance": { "text": "maintenance", "doc": "Crew kind chip — a maintenance crew." }
+    },
+    "approval_modes": {
+      "self-mark":     { "text": "self-mark when done",     "doc": "Approval mode — assignee marks complete; no review." },
+      "auto":          { "text": "auto-approve",            "doc": "Approval mode — submission auto-approves." },
+      "approval":      { "text": "single approval",         "doc": "Approval mode — one master/admin approves." },
+      "dual-approval": { "text": "dual approval",           "doc": "Approval mode — two approvers required." }
+    }
+  }
+}

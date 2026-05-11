@@ -12,6 +12,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, Switch } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 import { useTheme }      from '@canopy/react-native/theme';
 import { AvatarCircle }  from '@canopy/react-native/components';
@@ -24,9 +25,11 @@ import { useService }     from '../ServiceContext.js';
 import { useSkill, useSkillResult } from '../lib/useSkill.js';
 import { useI18n }        from '../I18nProvider.js';
 import { AVATAR_PRESET }  from '../lib/photoPresets.js';
+import { ROUTES }         from '../navigation.js';
 
 export function ProfileMineScreen() {
   const svc = useService();
+  const nav = useNavigation();
   const { t } = useI18n();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
@@ -162,6 +165,31 @@ export function ProfileMineScreen() {
         </Text>
         <Switch value={holidayMode} onValueChange={onToggleHoliday} accessibilityLabel="profile-holiday-toggle" />
       </View>
+
+      {/* 41.18.3 — Edit my skills CTA */}
+      <Pressable
+        onPress={() => nav.navigate(ROUTES.EditSkills)}
+        accessibilityRole="button"
+        accessibilityLabel="profile-edit-skills"
+        style={({ pressed }) => [
+          {
+            marginTop: SPACING.md, marginBottom: SPACING.sm,
+            paddingVertical: SPACING.md,
+            paddingHorizontal: SPACING.md,
+            borderRadius: RADII.sm,
+            borderWidth: 1, borderColor: COLORS.border,
+            backgroundColor: COLORS.surface,
+          },
+          pressed && { opacity: 0.85 },
+        ]}
+      >
+        <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.md, fontWeight: '500' }}>
+          {t('mobile.profile.edit_skills_cta')}
+        </Text>
+        <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs, marginTop: 2 }}>
+          {t('mobile.profile.edit_skills_hint')}
+        </Text>
+      </Pressable>
 
       <RecoverySection />
     </ScrollView>

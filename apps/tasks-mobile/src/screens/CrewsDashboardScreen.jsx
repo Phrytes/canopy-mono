@@ -36,25 +36,53 @@ export function CrewsDashboardScreen() {
   }, [svc, nav]);
 
   return (
-    <FlatList
-      style={{ flex: 1, backgroundColor: COLORS.background }}
-      contentContainerStyle={{ padding: SPACING.md, flexGrow: 1 }}
-      data={items}
-      keyExtractor={(c) => String(c.crewId)}
-      refreshControl={
-        <RefreshControl refreshing={!!list?.loading} onRefresh={() => list.refresh().catch(() => {})} />
-      }
-      ListEmptyComponent={
-        <View style={{ padding: SPACING.xl, alignItems: 'center' }}>
-          <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.md, textAlign: 'center' }}>
-            {t('mobile.crews.empty')}
-          </Text>
-        </View>
-      }
-      renderItem={({ item }) => (
-        <CrewRow crew={item} onJumpIn={() => onJumpIn(item.crewId)} />
-      )}
-    />
+    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <FlatList
+        contentContainerStyle={{ padding: SPACING.md, flexGrow: 1 }}
+        data={items}
+        keyExtractor={(c) => String(c.crewId)}
+        refreshControl={
+          <RefreshControl refreshing={!!list?.loading} onRefresh={() => list.refresh().catch(() => {})} />
+        }
+        ListEmptyComponent={
+          <View style={{ padding: SPACING.xl, alignItems: 'center' }}>
+            <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.md, textAlign: 'center' }}>
+              {t('mobile.crews.empty')}
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <CrewRow crew={item} onJumpIn={() => onJumpIn(item.crewId)} />
+        )}
+      />
+
+      {/* 41.18 follow-up — let users create another crew without
+          having to leave-all-then-onboard. Routes to Welcome's
+          create-modal via a flag the screen could honour, or
+          most simply just sends them to Welcome which already
+          owns the modal. */}
+      <Pressable
+        onPress={() => nav.navigate(ROUTES.Welcome, { openCreate: true })}
+        accessibilityRole="button"
+        accessibilityLabel="crews-new-crew"
+        style={({ pressed }) => [
+          {
+            position: 'absolute',
+            right: SPACING.lg, bottom: SPACING.lg,
+            paddingVertical: SPACING.md, paddingHorizontal: SPACING.lg,
+            borderRadius: RADII.pill,
+            backgroundColor: COLORS.primary,
+            shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4,
+            elevation: 4,
+          },
+          pressed && { opacity: 0.85 },
+        ]}
+      >
+        <Text style={{ color: COLORS.textInverse, fontSize: FONT_SIZES.md, fontWeight: '600' }}>
+          {t('mobile.crews.new_crew', '+ New crew')}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 

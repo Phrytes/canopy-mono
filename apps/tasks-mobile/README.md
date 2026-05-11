@@ -101,6 +101,25 @@ writes go through `item-store` (no direct pod-client use).
 Cap-token-bound bot agents (V1.5) spin up per binding and share the
 meshAgent's bus.
 
+## Shared UI helpers
+
+UI-glue helpers (`taskStatus`, `composeArgs`, `inboxClassify`,
+`effectiveActor`, `i18nMerge`) come from
+`@canopy-app/tasks-v0/ui/*` — the desktop shell's `src/ui/`
+directory. Both shells consume the same code so the V2.7 deps
+gate, the addTask payload shape, the inbox event classifier, and
+the pubKey↔webid resolver stay in step. See the desktop shell's
+[`README.md`](../tasks-v0/README.md#shared-ui-helpers) for the
+surface table + the project rule
+[`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md#shared-ui-glue-helpers-between-platform-shells-locked-2026-05-10)
+for the policy.
+
+The genuinely-shared locale strings (status pills, role labels,
+crew-kind chips, approval modes) live in
+`apps/tasks-v0/locales/shared/{en,nl}.json` and merge under both
+`@canopy-app/tasks-v0/locales/<lang>` and `apps/tasks-mobile/locales/<lang>`
+in `I18nProvider.js` — shell-local keys win on collision.
+
 ## Bring it up
 
 ```bash

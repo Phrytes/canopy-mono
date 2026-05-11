@@ -15,31 +15,67 @@
 
 import React, { useCallback, useState } from 'react';
 import { View, Text, Switch, TextInput, ScrollView, Pressable } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@canopy/react-native/theme';
 import { usePushOptIn } from '@canopy/react-native/push';
 
 import { useService } from '../ServiceContext.js';
-import { useSettings } from '../lib/useSkill.js';
+import { useSettings, useSkill } from '../lib/useSkill.js';
 import { useI18n }     from '../I18nProvider.js';
+import { ROUTES }      from '../navigation.js';
+import { useNativeCalendarLiveSync } from '../lib/useNativeCalendarLiveSync.js';
+
+const APP_KEY = 'tasks';
+
+// expo-calendar is loaded lazily so vitest (which runs in a Node
+// env without the native module) doesn't choke on the import. The
+// hook gracefully degrades when CalendarModule is null.
+let _CalendarModule = null;
+try { _CalendarModule = require('expo-calendar'); } catch { /* test env */ }
+let _Storage = null;
+try { _Storage = require('@react-native-async-storage/async-storage')?.default ?? null; }
+catch { /* test env */ }
 
 const POLL_PRESETS = [2000, 5000, 10000, 30000];
 
 export function SettingsScreen() {
   const svc = useService();
+  const nav = useNavigation();
   const { t } = useI18n();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const settingsHook = useSettings();
   const settings = settingsHook?.settings ?? null;
 
+  // 41.18.5 — register the Expo push token on the active crew via
+  // the new `setMyPushToken` skill. Token rotation re-fires this
+  // callback; an empty token unregisters this app's entry.
+  const setMyPushToken = useSkill('setMyPushToken');
+
+  // 41.18.5 — native calendar live diff. Fires whenever listMine
+  // emits a change; only enabled when the user has chosen native or
+  // both as the calendar sync method.
+  const calendarSyncMethod = settings?.calendarSyncMethod ?? 'ics';
+  const liveCal = useNativeCalendarLiveSync({
+    enabled:        calendarSyncMethod === 'native' || calendarSyncMethod === 'both',
+    CalendarModule: _CalendarModule,
+    storage:        _Storage,
+  });
+
   const push = usePushOptIn({
     agent: svc?.meshAgent,
     onTokenChange: (token, platform) => {
-      // V1: log only. Real relay-side registration lands when the
-      // push-registry pod path is wired.
       // eslint-disable-next-line no-console
       console.log('[push] token registered', platform, token?.slice(0, 12) ?? '?');
+      setMyPushToken.call({
+        pushToken: token ?? '',
+        platform:  platform ?? 'expo',
+        appKey:    APP_KEY,
+      }).catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn('[push] register-skill failed', err?.message ?? err);
+      });
     },
     onError: (err) => {
       // eslint-disable-next-line no-console
@@ -97,6 +133,21 @@ export function SettingsScreen() {
           accessibilityLabel="settings-hop-through"
           colors={COLORS} sp={SPACING} fz={FONT_SIZES}
         />
+
+        {(calendarSyncMethod === 'native' || calendarSyncMethod === 'both') ? (
+          <View style={{ marginBottom: SPACING.md }}>
+            <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs }}>
+              {liveCal.error ? (
+                t('mobile.settings.calendar_live_error', null).replace('{err}', liveCal.error)
+              ) : liveCal.lastSyncMs ? (
+                t('mobile.settings.calendar_live_last_sync', null)
+                  .replace('{when}', new Date(liveCal.lastSyncMs).toLocaleTimeString())
+              ) : (
+                t('mobile.settings.calendar_live_pending')
+              )}
+            </Text>
+          </View>
+        ) : null}
 
         <Field label={t('mobile.settings.calendar_sync_method')} colors={COLORS} sp={SPACING} fz={FONT_SIZES}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm }}>
@@ -192,7 +243,58 @@ export function SettingsScreen() {
           {String(push.error?.message ?? push.error)}
         </Text>
       ) : null}
+
+      <Section title={t('mobile.settings.section_more')} colors={COLORS} sp={SPACING} fz={FONT_SIZES}>
+        <NavRow
+          label={t('mobile.settings.cadence_link')}
+          hint={t('mobile.settings.cadence_hint')}
+          onPress={() => nav.navigate(ROUTES.CadenceOverrides)}
+          colors={COLORS} sp={SPACING} fz={FONT_SIZES} radii={RADII}
+        />
+        <NavRow
+          label={t('mobile.settings.diagnostics_link')}
+          hint={t('mobile.settings.diagnostics_hint')}
+          onPress={() => nav.navigate(ROUTES.Metrics)}
+          colors={COLORS} sp={SPACING} fz={FONT_SIZES} radii={RADII}
+        />
+        <NavRow
+          label={t('mobile.settings.privacy_link')}
+          hint={t('mobile.settings.privacy_hint')}
+          onPress={() => nav.navigate(ROUTES.Privacy)}
+          colors={COLORS} sp={SPACING} fz={FONT_SIZES} radii={RADII}
+        />
+      </Section>
     </ScrollView>
+  );
+}
+
+function NavRow({ label, hint, onPress, colors, sp, fz, radii }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`settings-nav-${label}`}
+      style={({ pressed }) => [
+        {
+          paddingVertical: sp.md,
+          paddingHorizontal: sp.md,
+          borderRadius: radii.sm,
+          borderWidth: 1, borderColor: colors.border,
+          backgroundColor: colors.surface,
+          marginBottom: sp.sm,
+        },
+        pressed && { opacity: 0.85 },
+      ]}
+    >
+      <Text style={{ color: colors.text, fontSize: fz.md, fontWeight: '500' }}>
+        {label}
+      </Text>
+      {hint ? (
+        <Text style={{ color: colors.textMuted, fontSize: fz.xs, marginTop: 4 }}>
+          {hint}
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }
 

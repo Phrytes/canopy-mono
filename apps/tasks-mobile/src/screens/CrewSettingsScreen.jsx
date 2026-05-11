@@ -23,6 +23,9 @@ import { BotBindingsSection }        from './crewSettings/BotBindingsSection.jsx
 import { CompensationSection }       from './crewSettings/CompensationSection.jsx';
 import { CalendarSyncSection }       from './crewSettings/CalendarSyncSection.jsx';
 import { AvailabilityAdminSection }  from './crewSettings/AvailabilityAdminSection.jsx';
+import { LifecycleSection }          from './crewSettings/LifecycleSection.jsx';
+import { CrewConfigSection }         from './crewSettings/CrewConfigSection.jsx';
+import { CadenceSection }            from './crewSettings/CadenceSection.jsx';
 
 export function CrewSettingsScreen() {
   const svc = useService();
@@ -44,6 +47,9 @@ export function CrewSettingsScreen() {
       style={{ flex: 1, backgroundColor: COLORS.background }}
       contentContainerStyle={{ padding: SPACING.lg }}
     >
+      <Section title={t('mobile.crew_settings.section_lifecycle')}>
+        <LifecycleSection />
+      </Section>
       <Section title={t('mobile.crew_settings.section_members')}>
         <MembersSection />
       </Section>
@@ -61,6 +67,12 @@ export function CrewSettingsScreen() {
       </Section>
       <Section title={t('mobile.crew_settings.section_availability_admin')}>
         <AvailabilityAdminSection />
+      </Section>
+      <Section title={t('mobile.crew_settings.section_cadence')}>
+        <CadenceSection />
+      </Section>
+      <Section title={t('mobile.crew_settings.section_crew_config')}>
+        <CrewConfigSection />
       </Section>
     </ScrollView>
   );
