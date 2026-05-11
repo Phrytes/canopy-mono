@@ -24,7 +24,7 @@ import {
   VAULT_CACHE_PREFIX,
   DEFAULT_RESOURCES,
 }                           from '../../src/identity/IdentitySync.js';
-import { VaultMemory }      from '../../src/identity/VaultMemory.js';
+import { VaultMemory }      from '@canopy/vault';
 
 // ── MockPodClient ──────────────────────────────────────────────────────────
 

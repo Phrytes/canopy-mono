@@ -1,7 +1,7 @@
 import { describe, it, expect }      from 'vitest';
 import { PodCapabilityToken }        from '../../src/permissions/PodCapabilityToken.js';
 import { AgentIdentity }             from '../../src/identity/AgentIdentity.js';
-import { VaultMemory }                from '../../src/identity/VaultMemory.js';
+import { VaultMemory }                from '@canopy/vault';
 
 const POD = 'https://alice.example/';
 

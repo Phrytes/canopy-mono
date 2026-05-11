@@ -19,12 +19,20 @@ export {
 } from './Parts.js';
 
 // ── Identity ────────────────────────────────────────────────────────────────
-export { Vault }              from './identity/Vault.js';
-export { VaultMemory }        from './identity/VaultMemory.js';
-export { OAuthVault, makeAuthorizedFetch } from './identity/OAuthVault.js';
-export { VaultLocalStorage }  from './identity/VaultLocalStorage.js';
-export { VaultIndexedDB }     from './identity/VaultIndexedDB.js';
-export { VaultNodeFs }        from './identity/VaultNodeFs.js';
+// Deprecated re-exports: the Vault family lives in `@canopy/vault`
+// since 2026-05-11 (standardisation Phase 50.1.A). The re-exports here
+// keep existing `import { VaultMemory } from '@canopy/core'` callers
+// working during the deprecation window; new code should import from
+// `@canopy/vault` directly.
+export {
+  Vault,
+  VaultMemory,
+  VaultLocalStorage,
+  VaultIndexedDB,
+  VaultNodeFs,
+  OAuthVault,
+  makeAuthorizedFetch,
+} from '@canopy/vault';
 export { AgentIdentity }      from './identity/AgentIdentity.js';
 export { KeyRotation }        from './identity/KeyRotation.js';
 export { Bootstrap }          from './identity/Bootstrap.js';

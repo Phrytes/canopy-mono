@@ -10,7 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { NknTransport }  from '../src/transport/NknTransport.js';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
-import { VaultMemory }   from '../src/identity/VaultMemory.js';
+import { VaultMemory }   from '@canopy/vault';
 
 const RUN_INTEGRATION = !!process.env.RUN_NKN_TESTS;
 

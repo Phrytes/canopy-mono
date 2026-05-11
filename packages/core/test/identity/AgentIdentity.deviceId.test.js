@@ -16,7 +16,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { AgentIdentity } from '../../src/identity/AgentIdentity.js';
-import { VaultMemory } from '../../src/identity/VaultMemory.js';
+import { VaultMemory } from '@canopy/vault';
 import { generateMnemonic } from '../../src/identity/Mnemonic.js';
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;

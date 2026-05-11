@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { LiveSyncSkill } from '../../src/protocol/LiveSyncSkill.js';
-import { VaultMemory }   from '../../src/identity/VaultMemory.js';
+import { VaultMemory }   from '@canopy/vault';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

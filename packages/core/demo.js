@@ -9,7 +9,7 @@
  *  5. Tampered ciphertext rejected
  */
 import { AgentIdentity }                     from './src/identity/AgentIdentity.js';
-import { VaultMemory }                        from './src/identity/VaultMemory.js';
+import { VaultMemory }                        from '@canopy/vault';
 import { InternalBus, InternalTransport }     from './src/transport/InternalTransport.js';
 import { SecurityLayer }                      from './src/security/SecurityLayer.js';
 import { mkEnvelope, P }                      from './src/Envelope.js';

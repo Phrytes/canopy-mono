@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { LocalTransport } from '../src/transport/LocalTransport.js';
 import { Agent }          from '../src/Agent.js';
 import { AgentIdentity }  from '../src/identity/AgentIdentity.js';
-import { VaultMemory }    from '../src/identity/VaultMemory.js';
+import { VaultMemory }    from '@canopy/vault';
 import { TextPart, Parts } from '../src/Parts.js';
 
 // ── Inline relay server fixture ───────────────────────────────────────────────

@@ -18,7 +18,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { Emitter }                  from '../../src/Emitter.js';
 import { DataPart }                  from '../../src/Parts.js';
 import { AgentIdentity }             from '../../src/identity/AgentIdentity.js';
-import { VaultMemory }               from '../../src/identity/VaultMemory.js';
+import { VaultMemory }               from '@canopy/vault';
 import { signReachabilityClaim }     from '../../src/security/reachabilityClaim.js';
 import {
   ReachabilityOracle,
