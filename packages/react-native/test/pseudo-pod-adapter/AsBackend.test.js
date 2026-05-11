@@ -118,11 +118,11 @@ describe('AsBackend — dirty surface', () => {
     const b = createAsBackend({ AsyncStorage });
     const seen = [];
     b.subscribeDirty(e => seen.push(e));
-    b._markDirty('a');
-    b._markDirty('a');   // idempotent
+    await b._markDirty('a');
+    await b._markDirty('a');   // idempotent
     expect(await b.listDirty()).toEqual(['a']);
     expect(seen).toEqual([{ op: 'dirty', key: 'a' }]);
-    b._markClean('a');
+    await b._markClean('a');
     expect(await b.listDirty()).toEqual([]);
   });
 
@@ -130,8 +130,29 @@ describe('AsBackend — dirty surface', () => {
     const AsyncStorage = makeAsyncStorageMock();
     const b = createAsBackend({ AsyncStorage });
     await b.put('a', 1);
-    b._markDirty('a');
+    await b._markDirty('a');
     await b.delete('a');
     expect(await b.listDirty()).toEqual([]);
+  });
+
+  it('dirty entries persist across backend recreation (Phase 51.5)', async () => {
+    const AsyncStorage = makeAsyncStorageMock();
+    const b1 = createAsBackend({ AsyncStorage, scope: 'pp' });
+    await b1.put('x', 1);
+    await b1._markDirty('x');
+    expect(await b1.listDirty()).toEqual(['x']);
+
+    // "Restart" — fresh backend over the same storage.
+    const b2 = createAsBackend({ AsyncStorage, scope: 'pp' });
+    expect(await b2.listDirty()).toEqual(['x']);
+  });
+
+  it('dirty entries hide from list()', async () => {
+    const AsyncStorage = makeAsyncStorageMock();
+    const b = createAsBackend({ AsyncStorage, scope: 'pp' });
+    await b.put('x', 1);
+    await b._markDirty('x');
+    // The __dirty__ marker must NOT appear in list().
+    expect(await b.list('')).toEqual(['x']);
   });
 });

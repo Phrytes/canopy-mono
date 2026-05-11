@@ -50,18 +50,21 @@ export function createFsBackend({
   const scopeDir = rootDir.endsWith('/')
     ? `${rootDir}${scope}/`
     : `${rootDir}/${scope}/`;
+  // Phase 51.5: dirty markers persisted as empty files. Lives in a
+  // sibling sub-directory so list() of the main scope doesn't see them.
+  const dirtyDir = `${scopeDir}__dirty__/`;
   const nextEtag = makeEtagCounter(etagPrefix);
 
   const generalSubscribers = new Set();
   const prefixSubscribers  = new Map();
   const dirtySubscribers   = new Set();
-  const dirty              = new Set();
 
   let pollHandle = null;
   /** @type {Set<string>} */
   const knownKeys = new Set();
 
-  function _filePath(key) { return scopeDir + encodeKey(key); }
+  function _filePath(key)      { return scopeDir + encodeKey(key); }
+  function _dirtyMarkerPath(k) { return dirtyDir + encodeKey(k); }
 
   async function _ensureScopeDir() {
     if (typeof FileSystem.makeDirectoryAsync !== 'function') return;
@@ -70,6 +73,13 @@ export function createFsBackend({
     } catch {
       // Already exists / not supported by mock — ignore.
     }
+  }
+
+  async function _ensureDirtyDir() {
+    if (typeof FileSystem.makeDirectoryAsync !== 'function') return;
+    try {
+      await FileSystem.makeDirectoryAsync(dirtyDir, { intermediates: true });
+    } catch { /* swallow */ }
   }
 
   function _fanOut(event) {
@@ -140,9 +150,16 @@ export function createFsBackend({
     }
     knownKeys.delete(key);
     _fanOut({ op: 'delete', key });
-    if (dirty.has(key)) {
-      dirty.delete(key);
-      _fanOutDirty({ op: 'clean', key });
+    // Best-effort clean of any associated dirty marker.
+    const dirtyPath = _dirtyMarkerPath(key);
+    if (typeof FileSystem.getInfoAsync === 'function') {
+      try {
+        const info = await FileSystem.getInfoAsync(dirtyPath);
+        if (info?.exists) {
+          await FileSystem.deleteAsync(dirtyPath, { idempotent: true });
+          _fanOutDirty({ op: 'clean', key });
+        }
+      } catch { /* swallow */ }
     }
   }
 
@@ -153,7 +170,8 @@ export function createFsBackend({
     catch { return []; }
     const out = [];
     for (const name of entries) {
-      if (name.endsWith('.tmp')) continue;
+      if (name.endsWith('.tmp'))       continue;
+      if (name === '__dirty__')        continue;   // sibling sub-dir, not a key
       const key = decodeKey(name);
       if (key.startsWith(prefix)) out.push(key);
       knownKeys.add(key);
@@ -217,7 +235,14 @@ export function createFsBackend({
   }
 
   async function listDirty() {
-    return [...dirty].sort();
+    if (typeof FileSystem.readDirectoryAsync !== 'function') return [];
+    let entries;
+    try { entries = await FileSystem.readDirectoryAsync(dirtyDir); }
+    catch { return []; }
+    const out = [];
+    for (const name of entries) out.push(decodeKey(name));
+    out.sort();
+    return out;
   }
 
   function subscribeDirty(cb) {
@@ -231,6 +256,36 @@ export function createFsBackend({
     return () => { dirtySubscribers.delete(cb); };
   }
 
+  /** Persist dirty flag. Idempotent. */
+  async function _markDirty(key) {
+    const path = _dirtyMarkerPath(key);
+    if (typeof FileSystem.getInfoAsync === 'function') {
+      const info = await FileSystem.getInfoAsync(path);
+      if (info?.exists) return;
+    }
+    await _ensureDirtyDir();
+    await FileSystem.writeAsStringAsync(path, '1', {
+      encoding: FileSystem.EncodingType?.UTF8 ?? 'utf8',
+    });
+    _fanOutDirty({ op: 'dirty', key });
+  }
+
+  /** Clear dirty flag. Idempotent. */
+  async function _markClean(key) {
+    const path = _dirtyMarkerPath(key);
+    let exists = false;
+    if (typeof FileSystem.getInfoAsync === 'function') {
+      const info = await FileSystem.getInfoAsync(path);
+      exists = !!info?.exists;
+    }
+    if (!exists) return;
+    if (typeof FileSystem.deleteAsync === 'function') {
+      try { await FileSystem.deleteAsync(path, { idempotent: true }); }
+      catch { /* swallow */ }
+    }
+    _fanOutDirty({ op: 'clean', key });
+  }
+
   return {
     get,
     put,
@@ -240,15 +295,12 @@ export function createFsBackend({
     listDirty,
     subscribeDirty,
 
-    _markDirty(key)  {
-      if (!dirty.has(key)) { dirty.add(key); _fanOutDirty({ op: 'dirty', key }); }
-    },
-    _markClean(key)  {
-      if (dirty.has(key)) { dirty.delete(key); _fanOutDirty({ op: 'clean', key }); }
-    },
+    _markDirty,
+    _markClean,
     _close() { _stopPolling(); },
-    get _scope() { return scope; },
-    get _kind()  { return 'FsBackend'; },
+    get _scope()    { return scope; },
+    get _kind()     { return 'FsBackend'; },
     get _scopeDir() { return scopeDir; },
+    get _dirtyDir() { return dirtyDir; },
   };
 }

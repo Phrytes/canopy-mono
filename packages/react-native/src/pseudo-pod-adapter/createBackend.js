@@ -197,14 +197,28 @@ export function createBackend({
     listDirty,
     subscribeDirty,
 
-    // V1-ready hooks delegate to whichever backend holds the key.
-    _markDirty(key) {
-      const loc = locations.get(key);
-      if (loc) _backendFor(loc)._markDirty(key);
+    // V1 hooks delegate to whichever backend holds the key. After a
+    // restart `locations` may be empty — `list()` repopulates it
+    // lazily; for an unknown key we mark on AS (it's the safer
+    // default for small flag-only metadata) and the backend persists
+    // the marker.
+    async _markDirty(key) {
+      let loc = locations.get(key);
+      if (!loc) loc = 'as';
+      await _backendFor(loc)._markDirty(key);
     },
-    _markClean(key) {
+    async _markClean(key) {
+      // Clean on BOTH if location unknown — survives the rare case
+      // where the marker outlived the resource.
       const loc = locations.get(key);
-      if (loc) _backendFor(loc)._markClean(key);
+      if (loc) {
+        await _backendFor(loc)._markClean(key);
+      } else {
+        await Promise.all([
+          asBackend._markClean(key).catch(() => {}),
+          fsBackend._markClean(key).catch(() => {}),
+        ]);
+      }
     },
 
     _close() { fsBackend._close?.(); },

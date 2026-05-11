@@ -16,8 +16,16 @@ major for breaking changes.
   - `createBackend({...})` — composite that picks AS for small
     payloads, FS for large (default threshold 4 KB); supports
     cross-backend migration on update.
-  Importable as `@canopy/react-native/pseudo-pod-adapter`. 35 new
-  tests with mocked native modules.
+  Importable as `@canopy/react-native/pseudo-pod-adapter`.
+- **Persistent dirty-set** (Phase 51.5) on all three adapters.
+  `_markDirty(key)` / `_markClean(key)` / `listDirty()` now write
+  through to backend storage, so pseudo-pod V1's write-through queue
+  re-discovers pending entries on agent boot.
+  - AsBackend: dirty markers under `<scope>:__dirty__:<key>`.
+  - FsBackend: marker files under `<scopeDir>__dirty__/<encoded-key>`.
+  - createBackend: delegates to the holding backend for known keys;
+    routes unknown keys to AS.
+  44 tests pass (35 from 51.1–51.4 + 9 new for Phase 51.5).
 
 ## [0.2.0] — 2026-05-02
 
