@@ -10,7 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { MqttTransport } from '../src/transport/MqttTransport.js';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
-import { VaultMemory }   from '../src/identity/VaultMemory.js';
+import { VaultMemory }   from '@canopy/vault';
 
 const RUN_INTEGRATION = !!process.env.RUN_MQTT_TESTS;
 const BROKER          = process.env.MQTT_BROKER ?? 'wss://broker.hivemq.com:8884/mqtt';

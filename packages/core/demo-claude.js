@@ -9,7 +9,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 import { AgentIdentity }                     from './src/identity/AgentIdentity.js';
-import { VaultMemory }                        from './src/identity/VaultMemory.js';
+import { VaultMemory }                        from '@canopy/vault';
 import { InternalBus, InternalTransport }     from './src/transport/InternalTransport.js';
 import { Agent }                              from './src/Agent.js';
 import { TextPart, DataPart, Parts }          from './src/Parts.js';

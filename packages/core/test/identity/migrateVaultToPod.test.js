@@ -17,7 +17,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import nacl from 'tweetnacl';
 
-import { VaultMemory }      from '../../src/identity/VaultMemory.js';
+import { VaultMemory }      from '@canopy/vault';
 import { Bootstrap }        from '../../src/identity/Bootstrap.js';
 import { AgentIdentity }    from '../../src/identity/AgentIdentity.js';
 import { IdentityPodStore } from '../../src/identity/IdentityPodStore.js';

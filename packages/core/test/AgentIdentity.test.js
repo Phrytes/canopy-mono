@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AgentIdentity }   from '../src/identity/AgentIdentity.js';
-import { VaultMemory }     from '../src/identity/VaultMemory.js';
+import { VaultMemory }     from '@canopy/vault';
 import { generateMnemonic } from '../src/identity/Mnemonic.js';
 
 function makeVault() { return new VaultMemory(); }

@@ -14,7 +14,7 @@ import { defineSkill, normaliseVisibility }  from '../src/skills/defineSkill.js'
 import { SkillRegistry }                     from '../src/skills/SkillRegistry.js';
 import { Agent }                             from '../src/Agent.js';
 import { AgentIdentity }                     from '../src/identity/AgentIdentity.js';
-import { VaultMemory }                       from '../src/identity/VaultMemory.js';
+import { VaultMemory }                       from '@canopy/vault';
 import { SecurityLayer }                     from '../src/security/SecurityLayer.js';
 import { InternalBus, InternalTransport }    from '../src/transport/InternalTransport.js';
 import { requestSkills }                     from '../src/protocol/skillDiscovery.js';

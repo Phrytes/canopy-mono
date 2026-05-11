@@ -7,7 +7,7 @@ import { GroupManager }     from '../src/permissions/GroupManager.js';
 import { SkillRegistry }    from '../src/skills/SkillRegistry.js';
 import { defineSkill }      from '../src/skills/defineSkill.js';
 import { AgentIdentity }    from '../src/identity/AgentIdentity.js';
-import { VaultMemory }      from '../src/identity/VaultMemory.js';
+import { VaultMemory }      from '@canopy/vault';
 
 const noop = async () => [];
 
