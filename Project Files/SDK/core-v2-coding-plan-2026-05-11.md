@@ -28,20 +28,33 @@
 6. **No iOS-specific code.** Per the main project lock.
 7. **Substrate-first applies inside core too.** When core
    logic becomes pure-of-platform, it lifts to a substrate.
+8. **Strict layering: core MUST NOT import from substrates**
+   (locked 2026-05-11). The dependency direction is one-way:
+   `apps → substrates → core`. Core exposes opaque slots
+   (`Agent.webid`, `Agent.pseudoPod`, etc.) that callers
+   populate; core's own internal logic (Bootstrap, identity)
+   uses **dependency injection** — substrate objects come in
+   as constructor args, never imported. Substrates compose
+   onto core in a higher layer (apps, or a facade package).
 
 ## Substrate touches (overview)
 
-Three substrate-level changes that fall out of core's V2 work:
+Substrates spun out of core during V2 work:
 
 | Substrate | Action | Phase |
 |---|---|---|
-| `@canopy/oidc-session` | NEW — extract from `core.identity.SolidOidcAuth`; peer of `oidc-session-rn`. | 50.1 |
-| `@canopy/webid-discovery` | NEW — pure-of-platform WebID-profile pointer-walk + cache. Lifted from the in-core `core.identity.webid` module. | 50.2 |
-| `@canopy/agent-registry` | NEW — consumed by core, separately authored in the substrate coding plan. Core just wires it. | 50.8 |
+| `@canopy/oidc-session` | NEW — extract Node SolidVault out of `core.storage`; peer of `oidc-session-rn`. | 50.1 |
+| `@canopy/vault` | NEW — extract the entire `Vault` family (`Vault`, `VaultMemory`, `VaultLocalStorage`, `VaultIndexedDB`, `VaultNodeFs`, `OAuthVault`) out of `core.identity`. Resolves the SolidVault compat re-export by also moving Vault out of core. Locked 2026-05-11 to fix the layering inversion. | 50.1.A |
+| `@canopy/webid-discovery` | NEW — pure-of-platform WebID-profile pointer-walk + cache. **Lives as a substrate** (no core re-export). Apps import directly. | 50.2 |
+| `@canopy/agent-registry` | NEW — substrate; **core does NOT import it**. Composition via Agent's opaque slot + dependency injection in higher-layer provisioning. | 50.8 |
+| `@canopy/pseudo-pod` | NEW — substrate; same composition story (Agent has an opaque `pseudoPod` slot; the substrate package itself owns the construction). | 50.3 |
 
-Core's residual scope is the Agent wiring + the lifecycle hooks
-+ Bootstrap; the substrates above are spun out where the API
-crystallises early.
+After the V2 work, core's residual scope is: Agent + transport
+stack + skill registry + security + permissions (cap-tokens) +
+Bootstrap (identity-only). Bootstrap takes vault, oidc, and
+webid as **injected** args; it never imports those substrates.
+The "Bootstrap profile walk" lives outside core (in a facade
+package or in apps) so it can import substrates safely.
 
 ---
 
@@ -71,89 +84,164 @@ work; Folio's `bin/folio init` continues to work; both now
 import from `@canopy/oidc-session`. Mobile shells continue
 to use `oidc-session-rn` unchanged.
 
-## Phase 50.2 — New module `core.identity.webid` + substrate extraction
+## Phase 50.1.A — Extract `@canopy/vault` substrate
 
-> **Purpose:** the WebID-discovery pointer-walk is the same
-> on desktop and mobile (both fetch from the user's WebID
-> profile via the pseudo-pod). Pure-of-platform from day one
-> → lift directly to a substrate.
+> **Purpose:** the entire `Vault` family (`Vault`, `VaultMemory`,
+> `VaultLocalStorage`, `VaultIndexedDB`, `VaultNodeFs`,
+> `OAuthVault`) is a data-store primitive that **substrates**
+> need (oidc-session, agent-registry, pseudo-pod). Moving it
+> out of `core` into a sibling substrate package fixes the
+> layering inversion that the Phase 50.1 deprecation re-export
+> introduced: with Vault gone from core, the re-export of
+> `SolidVault` (which lives in `oidc-session`) is also dropped
+> — core has nothing left to re-export from.
+>
+> Locked 2026-05-11 to enforce the **strict layering**: core
+> never imports from substrates.
 
 | # | Task | Files |
 |---|---|---|
-| 50.2.1 | Create `packages/webid-discovery/` package. Peer deps: `@canopy/pod-client` (for the actual fetch). | `packages/webid-discovery/**` |
-| 50.2.2 | Implement `discoverPointers(webidUri, podClient)` — fetches the WebID profile, parses `storage-mapping-uri`, `agent-registry-uri`, `audit-log-uri` predicates. Returns `{pointers, raw}`. | `packages/webid-discovery/src/discoverPointers.js` |
-| 50.2.3 | Implement `resolvePointers(pointers, pseudoPod)` — for each pointer, fetches the resource via the pseudo-pod (cache-or-fetch). Returns `{storageMapping?, agentRegistry?, auditLog?}`. | `packages/webid-discovery/src/resolvePointers.js` |
-| 50.2.4 | In-memory cache with a default 60s heartbeat refresh + explicit `refresh()`. | `packages/webid-discovery/src/cache.js` |
-| 50.2.5 | Wire into `core.Agent` lifecycle: on agent start (post-OIDC), call `discoverPointers` + `resolvePointers`; cache results on `agent.webid`. | `packages/core/src/Agent.js`, `packages/core/src/identity/webid.js` (small wrapper) |
-| 50.2.6 | Tests: mocked pod-client; verify pointer parsing, resolution, cache invalidation, heartbeat refresh. | `packages/webid-discovery/test/*.test.js` |
+| 50.1.A.1 | Create `packages/vault/` package with the standard layout. No runtime deps (the Vault family is platform-portable; persistence variants use Node's `fs` or the platform's storage APIs which are runtime-provided). | `packages/vault/**` |
+| 50.1.A.2 | Move `Vault.js`, `VaultMemory.js`, `VaultLocalStorage.js`, `VaultIndexedDB.js`, `VaultNodeFs.js`, `OAuthVault.js` (with `makeAuthorizedFetch`) into the new package. | `packages/vault/src/`, `packages/core/src/identity/` (deletions) |
+| 50.1.A.3 | Update internal callers inside `packages/core/` to import from `@canopy/vault` — `AgentIdentity`, `Bootstrap`, `IdentityPodStore`, `IdentitySync`, `KeyRotation`, `migrateVaultToPod`. These are core modules that **consume** a vault; that's fine — core's package.json gains a `@canopy/vault` dep, but only because core itself uses Vault internals, **not** because core re-exports a substrate. Conceptually: Vault is a substrate dependency of core (like `@inrupt/solid-client-authn-node`), not a substrate re-export. | `packages/core/src/identity/**` |
+| 50.1.A.4 | **Update core's `src/index.js`**: remove the direct vault exports (`Vault`, `VaultMemory`, `OAuthVault`, `makeAuthorizedFetch`, `VaultLocalStorage`, `VaultIndexedDB`, `VaultNodeFs`). Also remove the `SolidVault` deprecation re-export — its purpose was to bridge the Phase 50.1 move, but with Vault itself no longer in core, the re-export no longer makes sense. Callers update their imports to `@canopy/vault` and `@canopy/oidc-session` respectively. | `packages/core/src/index.js` |
+| 50.1.A.5 | Update `@canopy/oidc-session` to import `VaultMemory` from `@canopy/vault` in tests (replacing the devDep on `@canopy/core`). Drop the inline `InMemoryTokenStore` if it's no longer needed (or keep as a tiny default; either way). | `packages/oidc-session/test/**`, `packages/oidc-session/package.json` |
+| 50.1.A.6 | Update **all callers across the monorepo** that import a Vault class from `@canopy/core` to import from `@canopy/vault` instead. Grep + replace; verify each app's tests. Apps affected: `apps/tasks-v0`, `apps/tasks-mobile`, `apps/stoop`, `apps/stoop-mobile`, `apps/folio`, `apps/folio-mobile`. Substrate consumers: `packages/pod-client` (tests), `packages/agent-ui` if applicable. Each consumer adds `@canopy/vault` to its `dependencies`. | `apps/**`, `packages/**` |
+| 50.1.A.7 | Vault tests move with the implementation (or are written fresh against the substrate boundary). | `packages/vault/test/**` |
+| 50.1.A.8 | Substrate README + CHANGELOG entry. Document the migration; note that the Vault family is **platform-portable** (Node, browser via IndexedDB / LocalStorage, RN via the storage adapters in `@canopy/react-native`). | `packages/vault/README.md` |
+
+**Estimate:** 1.5 days (the heavy lift is the mechanical
+import migration across consumers; the substrate itself is
+mostly a file move).
+
+**Acceptance:**
+- `@canopy/vault` tests pass.
+- `@canopy/core` tests pass with no `Vault*` imports left in
+  `src/index.js`.
+- All apps continue to start; mnemonic-flows + identity vault
+  bring-up still work.
+- `import { VaultMemory } from '@canopy/core'` now fails
+  (intentional breaking change; callers updated to import from
+  `@canopy/vault`).
+- The Phase 50.1 `SolidVault` deprecation re-export is **gone**
+  from core (callers import from `@canopy/oidc-session`).
+
+## Phase 50.2 — `@canopy/webid-discovery` substrate (substrate only)
+
+> **Purpose:** the WebID-discovery pointer-walk is the same on
+> desktop and mobile. Pure-of-platform from day one → lift
+> directly to a substrate. **Strict layering: core never
+> imports this substrate; the `Agent.webid` slot is opaque.**
+>
+> Status: shipped 2026-05-11 (commit 1826af4 + revert b7f7389
+> that dropped the inadvertent core wrapper). The tasks below
+> reflect the as-shipped scope after the wrapper revert.
+
+| # | Task | Files |
+|---|---|---|
+| 50.2.1 | Create `packages/webid-discovery/` package. No core dep; `fetch` + `read` are injected by callers. | `packages/webid-discovery/**` |
+| 50.2.2 | Implement `discoverPointers(webidUri, { fetch })` — fetch the WebID profile, parse `storage-mapping-uri`, `agent-registry-uri`, `audit-log-uri` predicates (Turtle + JSON-LD). Returns `{pointers, raw}`. | `packages/webid-discovery/src/discoverPointers.js` |
+| 50.2.3 | Implement `resolvePointers(pointers, { read, onError? })` — for each pointer, fetch the pointed-at resource via the supplied reader (typically the pseudo-pod's `read`). | `packages/webid-discovery/src/resolvePointers.js` |
+| 50.2.4 | `WebIdCache` class — in-memory cache + heartbeat refresh + EventEmitter ('refresh', 'error'). | `packages/webid-discovery/src/WebIdCache.js` |
+| 50.2.5 | Add **opaque `Agent.webid` slot** (just a property bag; no substrate import in core). Bootstrap populates it later via injection (Phase 50.5); apps populate it directly today. | `packages/core/src/Agent.js` |
+| 50.2.6 | Tests: pointer parsing (Turtle + JSON-LD + edge cases), resolution, cache invalidation, heartbeat with fake timers, idempotent start, disappearing-pointer semantics. | `packages/webid-discovery/test/*.test.js` |
 | 50.2.7 | Substrate README. | `packages/webid-discovery/README.md` |
 
-**Estimate:** 2 days.
-**Acceptance:** a `core.Agent` started with a pod-having user
-exposes `agent.webid.pointers` + `agent.webid.storageMapping`
-+ `agent.webid.agentRegistry` reflecting the user's pod
-state. For no-pod users, `agent.webid` is `null`.
+**Estimate:** 1.5 days (shipped).
+**Acceptance:** `@canopy/webid-discovery` ships as a standalone
+substrate. Apps can construct a `WebIdCache` and pass it to
+`Agent` via the constructor's `webid` option. Core has **zero
+imports from this substrate**; `core/src/index.js` does not
+re-export anything from `@canopy/webid-discovery`.
 
-## Phase 50.3 — Pseudo-pod V0 client wiring
+## Phase 50.3 — `Agent.pseudoPod` opaque slot + peer-fetch skill helper
 
-> **Purpose:** `core.Agent` exposes a `pseudoPod` handle
-> that calls the new substrate (separately built per the
-> substrates coding plan). Core's responsibility is the
-> wiring + the mode-detection.
-
-| # | Task | Files |
-|---|---|---|
-| 50.3.1 | Add `agent.pseudoPod` field. Constructed by `Bootstrap` per the `pseudoPodMode` arg: `'cache'` (pod-having), `'standalone'` (no-pod single user), or `'replication-ring'` (no-pod crew). | `packages/core/src/Agent.js` |
-| 50.3.2 | When `pseudoPodMode === 'cache'`, wire the pseudo-pod to use `pod-client` for the upstream. When `'standalone'` or `'replication-ring'`, no upstream. | `packages/core/src/Agent.js` |
-| 50.3.3 | `core.skills.fetchResource` — declares the peer-fetch skill the pseudo-pod uses for replication-ring + peer reads. Routes resource fetches to the local pseudo-pod's read API. | `packages/core/src/skills/fetchResource.js` |
-| 50.3.4 | Tests with a mocked pseudo-pod substrate; verify the right mode binding happens per Bootstrap args. | `packages/core/test/Agent.pseudoPod.test.js` |
-
-**Estimate:** 1 day.
-**Acceptance:** `Bootstrap.startAgent({pseudoPodMode: 'standalone'})`
-returns an agent with a standalone pseudo-pod; a peer's
-`agent.callSkill('fetchResource', {uri})` returns the
-resource.
-
-## Phase 50.4 — `VaultMemory` pod write-through
-
-> **Purpose:** the encrypted vault blob lives at
-> `<anchor-pod>/private/identity-vault` for pod-having users,
-> via the pseudo-pod's cache mode. Mnemonic-restore walks
-> the WebID profile + fetches the blob from the pod.
+> **Purpose:** core does **not** import the pseudo-pod
+> substrate. Core adds an opaque `Agent.pseudoPod` slot the
+> caller populates, plus a generic `peer-fetch` skill helper
+> that the pseudo-pod substrate can register on the agent
+> (skills are core's API — the substrate uses it from above).
+> The substrate itself (`@canopy/pseudo-pod`) ships
+> separately in the substrates coding plan.
 
 | # | Task | Files |
 |---|---|---|
-| 50.4.1 | Extend `VaultMemory` to accept a `podClient + storageFn` config. When set, every keypair / refresh-token mutation writes through to the pod (encrypted with the seed-derived key). | `packages/core/src/identity/VaultMemory.js` |
-| 50.4.2 | Failure mode: pod unreachable → local write succeeds + queues for retry; vault read prefers local. Failure surface: an event `vault.write-through-failed` for the agent to observe. | `packages/core/src/identity/VaultMemory.js` |
-| 50.4.3 | Mnemonic-restore path: when `Bootstrap.startAgent({mnemonic})` resolves, fetches `<anchor-pod>/private/identity-vault` from the pod, decrypts with seed, populates the vault. | `packages/core/src/Bootstrap.js` |
-| 50.4.4 | For no-pod users: vault writes go to the local pseudo-pod (which replicates across the user's own devices in ring mode). No pod write-through. | `packages/core/src/identity/VaultMemory.js` |
-| 50.4.5 | Tests: write to pod-having vault → restart agent → keypair reconstitutes; write to no-pod vault → identical local-only path. | `packages/core/test/VaultMemory.test.js` |
+| 50.3.1 | Add an opaque `Agent.pseudoPod` slot (constructor arg + getter). Like `Agent.webid`, just a property bag; no substrate import. | `packages/core/src/Agent.js` |
+| 50.3.2 | Add `core.skills.makeFetchResourceSkill({read})` — a factory that returns a skill definition the pseudo-pod substrate (or anyone else) can register on the agent. Core ships the skill **shape**; the substrate ships the storage backing. | `packages/core/src/skills/fetchResource.js` |
+| 50.3.3 | Tests: agent accepts a `pseudoPod` constructor arg + exposes the getter; the fetch-resource skill helper registers cleanly + dispatches reads through the supplied `read` callback. | `packages/core/test/Agent.pseudoPod.test.js` |
 
-**Estimate:** 1 day.
-**Acceptance:** Tasks V1 desktop's existing vault flows
-continue to work; mnemonic-restore from a new device fetches
-the encrypted blob correctly.
+**Estimate:** 0.5 day (smaller than the original plan since
+the substrate-side work moved out).
 
-## Phase 50.5 — `Bootstrap` profile walk
+**Acceptance:**
+- `new Agent({ ..., pseudoPod })` exposes `agent.pseudoPod`
+  for the caller.
+- An app that imports the (forthcoming) `@canopy/pseudo-pod`
+  substrate can construct a pseudo-pod, register the
+  fetch-resource skill, and pass it to `Agent` — without any
+  core import of the substrate.
 
-> **Purpose:** wire the full pod-having bring-up sequence
-> together: OIDC → discoverPointers → resolvePointers →
-> register in agent-registry (P5; placeholder pre-P5) →
-> agent ready.
+## Phase 50.4 — VaultMemory pod write-through (moves into `@canopy/vault`)
+
+> **Purpose:** the original 50.4 wired pod write-through into
+> `core.identity.VaultMemory`. Under the new layering, the
+> `Vault` family lives in `@canopy/vault` (Phase 50.1.A) —
+> so the write-through extension belongs in the **vault
+> substrate's coding plan**, not core's.
+>
+> **Status:** moved out of core's plan. See the vault
+> substrate's coding plan (forthcoming, part of the
+> substrates coding plan effort).
+
+Core's residual responsibility for vault-pod-write-through is
+**nil** — `Vault*` classes are no longer in core. The
+mnemonic-restore path inside `core.Bootstrap` accepts a
+restored vault as an injected arg (see 50.5).
+
+## Phase 50.5 — `core.Bootstrap` stays identity-only; provisioning facade lives outside core
+
+> **Purpose:** the original 50.5 imagined `core.Bootstrap`
+> orchestrating OIDC + WebID-discovery + agent-registry.
+> Under the new layering, **`Bootstrap` in core can only
+> import core**. Cross-substrate provisioning lives in a
+> higher-layer facade.
+
+### 50.5.a — Keep `core.Bootstrap` identity-only
 
 | # | Task | Files |
 |---|---|---|
-| 50.5.1 | `Bootstrap.startAgent({mnemonic, oidcProvider, vaultMode})` — full sequence orchestrated. Branches early on `oidcProvider: null` for no-pod path. | `packages/core/src/Bootstrap.js` |
-| 50.5.2 | First-run provisioning: if the WebID profile has no `storage-mapping-uri` pointer, kick off `pod-onboarding.provisionDefault` (P1 substrate; assumed available). | `packages/core/src/Bootstrap.js` |
-| 50.5.3 | Pre-P5 placeholder: agent-registry registration is a no-op (the substrate doesn't exist yet). Add a structured stub that records the intent locally so the P5 phase can drain it. | `packages/core/src/Bootstrap.js` |
-| 50.5.4 | Tests: full Bootstrap end-to-end (mocked OIDC + pod-client + pseudo-pod); verifies pointer-walk + vault init + pseudo-pod bring-up. | `packages/core/test/Bootstrap.test.js` |
-| 50.5.5 | Update `core.identity.Bootstrap` README + CHANGELOG entries. | `packages/core/{README.md,CHANGELOG.md}` |
+| 50.5.a.1 | `Bootstrap.startAgent({ mnemonic | newIdentity, vault, oidc?, webid?, pseudoPod?, agentRegistry? })` — accepts **all substrate-supplied objects as injected args**. Bootstrap composes them onto `Agent` (sets opaque slots) but does not import them. | `packages/core/src/Bootstrap.js` |
+| 50.5.a.2 | Branches: if `oidc` is provided + has tokens, the agent is pod-attached; otherwise local-only. Bootstrap calls injected functions (`oidc.login()`, `webid.refresh()`, etc.) but never constructs them. | `packages/core/src/Bootstrap.js` |
+| 50.5.a.3 | Mnemonic-restore: Bootstrap reconstitutes the keypair from the seed and asks the injected `vault` to load any encrypted vault blob (the vault knows where to find it; core doesn't). | `packages/core/src/Bootstrap.js` |
+| 50.5.a.4 | Tests: Bootstrap-startAgent with mocked vault / oidc / webid / pseudoPod / agentRegistry; verify Agent gets all the right slots populated. | `packages/core/test/Bootstrap.test.js` |
 
-**Estimate:** 1 day.
-**Acceptance:** Tasks V1 desktop + Folio's `bin/folio init`
-+ Stoop V1.5 desktop continue to start their agents
-unchanged; first-run pod provisioning works against a real
-pod.
+### 50.5.b — New facade package: `@canopy/agent-provisioning`
+
+> Higher-layer "compose all the substrates" function. **Imports
+> core + every relevant substrate**; provides a one-call
+> `provisionAgent(opts)` for apps that want the canonical flow.
+> Apps can use this OR compose substrates themselves.
+
+| # | Task | Files |
+|---|---|---|
+| 50.5.b.1 | Create `packages/agent-provisioning/` package. Imports: `@canopy/core`, `@canopy/vault`, `@canopy/oidc-session`, `@canopy/webid-discovery`, and (forthcoming) `@canopy/pseudo-pod`, `@canopy/agent-registry`, `@canopy/pod-onboarding`. | `packages/agent-provisioning/**` |
+| 50.5.b.2 | Implement `provisionAgent({ mnemonic, oidcProvider?, pseudoPodMode })` → constructs vault, oidc (if pod-having), webid cache, pseudo-pod, agent-registry registration, calls core's `Bootstrap.startAgent` with all of them as injected args. | `packages/agent-provisioning/src/provisionAgent.js` |
+| 50.5.b.3 | First-run pod provisioning: when the WebID profile has no `storage-mapping-uri` pointer, kick off `pod-onboarding.provisionDefault`. This composition is in the facade, not in core. | `packages/agent-provisioning/src/firstRun.js` |
+| 50.5.b.4 | Tests: full provisioning flow with mocked substrates. | `packages/agent-provisioning/test/**` |
+| 50.5.b.5 | Update Tasks V1 desktop + Folio's `bin/folio init` + Stoop V1.5 desktop to use `provisionAgent` from the facade (instead of importing pieces from core). | `apps/**` |
+
+**Estimate:** 1.5 days (50.5.a is mostly editing Bootstrap;
+50.5.b is new but bounded since it's just composition glue).
+
+**Acceptance:**
+- `core.Bootstrap` has **zero imports** from `@canopy/vault`,
+  `@canopy/oidc-session`, `@canopy/webid-discovery`,
+  `@canopy/pseudo-pod`, `@canopy/agent-registry`. All come
+  in as injected args.
+- `@canopy/agent-provisioning` ships; existing apps migrate
+  to it as the canonical bring-up path.
+- All three apps continue to start unchanged from the user's
+  perspective.
 
 ---
 
@@ -198,52 +286,60 @@ core's transport; receive-side fires reliably.
 
 # Part III — P5 phases (breaking with shims)
 
-## Phase 50.8 — `agent-registry` consumption
+## Phase 50.8 — `Agent.agentRegistry` opaque slot + Bootstrap injection
 
-> **Purpose:** core consumes the `agent-registry` substrate
-> (separately authored). Wires up the lookup paths + the
-> registration on first run.
+> **Purpose:** like `Agent.pseudoPod` (50.3), core adds an
+> opaque slot. The `@canopy/agent-registry` substrate itself
+> is built in the substrates coding plan; the facade
+> (`@canopy/agent-provisioning`, 50.5.b) constructs it and
+> hands it to core's `Bootstrap`.
 
 | # | Task | Files |
 |---|---|---|
-| 50.8.1 | Add `agent.agentRegistry` field exposing the substrate's lookup + register API. Constructed by Bootstrap. | `packages/core/src/Agent.js` |
-| 50.8.2 | Replace the pre-P5 placeholder agent-registration stub from 50.5.3 with a real call to `agent-registry.register({...capabilities})`. | `packages/core/src/Bootstrap.js` |
-| 50.8.3 | Tests with mocked `agent-registry`. | `packages/core/test/Bootstrap.agentRegistry.test.js` |
+| 50.8.1 | Add `Agent.agentRegistry` opaque slot (constructor arg + getter). | `packages/core/src/Agent.js` |
+| 50.8.2 | `core.Bootstrap` accepts the injected `agentRegistry` arg (already covered by 50.5.a.1; this task is the migration: the facade now passes a real registry instead of `null`). | `packages/core/src/Bootstrap.js`, `packages/agent-provisioning/src/provisionAgent.js` |
+| 50.8.3 | Tests: Bootstrap-startAgent with mocked agentRegistry; verify slot is populated; first-run registration call fires via the injected substrate. | `packages/core/test/Bootstrap.agentRegistry.test.js` |
 
 **Estimate:** 0.5 day.
-**Acceptance:** Bootstrap-started agents register in the
-user's agent-registry; lookup by pubKey returns the right
-agent entry.
+**Acceptance:** Bootstrap-started agents (via the facade) get
+the agent-registry slot populated; lookup by pubKey returns
+the right agent entry. Core has **zero imports** from
+`@canopy/agent-registry`.
 
-## Phase 50.9 — `PolicyEngine` actor-resolution rewrite
+## Phase 50.9 — `PolicyEngine` accepts injected `actorResolver`
 
-> **Purpose:** swap the alias-table backend for
-> agent-registry lookups. Breaking change with shim during
-> deprecation window.
+> **Purpose:** the original 50.9 had `PolicyEngine` reading
+> from `agent-registry` (a substrate) directly. Under the new
+> layering, `PolicyEngine` defines an `ActorResolver`
+> **interface** in core; the substrate implements it; the
+> caller injects the implementation. Breaking change with
+> shim during deprecation window.
 
 | # | Task | Files |
 |---|---|---|
-| 50.9.1 | New backend: `PolicyEngine.resolveActor(pubKey | webid | agentUri)` reads from `agent-registry` (via the substrate). | `packages/core/src/permissions/PolicyEngine.js` |
-| 50.9.2 | Shim: legacy `aliases` arg accepted + ignored if `agent-registry` is available; logs a deprecation warning. Removed in P5+1. | `packages/core/src/permissions/PolicyEngine.js` |
-| 50.9.3 | Update Tasks-v0's `buildStandardRolePolicy` consumers to stop passing `aliases` once the migration confirms parity. | `apps/tasks-v0/src/rolePolicy.js` |
-| 50.9.4 | Tests: verify shim path + new path produce equivalent role resolutions; verify deprecation warning. | `packages/core/test/PolicyEngine.test.js` |
+| 50.9.1 | Define an `ActorResolver` interface in core: `{ resolve(identifier) → {pubKey, webid, role} \| null }`. Add to `PolicyEngine`'s constructor options. | `packages/core/src/permissions/PolicyEngine.js` |
+| 50.9.2 | Shim: legacy `aliases` arg accepted + wrapped into an `ActorResolver` automatically. Logs a deprecation warning. Removed in P5+1. | `packages/core/src/permissions/PolicyEngine.js` |
+| 50.9.3 | `@canopy/agent-registry` substrate exports a `makeActorResolver(registry)` factory implementing the interface. (Lives in the substrate, not core.) | `packages/agent-registry/src/makeActorResolver.js` |
+| 50.9.4 | Update Tasks-v0's `buildStandardRolePolicy` consumers to construct a resolver via the substrate + pass it to `PolicyEngine`. Stop passing `aliases` once parity confirms. | `apps/tasks-v0/src/rolePolicy.js` |
+| 50.9.5 | Tests: verify shim path + injected-resolver path produce equivalent role resolutions; verify deprecation warning. Core's tests use a fake in-memory resolver — no substrate import in core's tests. | `packages/core/test/PolicyEngine.test.js` |
 
 **Estimate:** 1 day.
-**Acceptance:** Tasks V1 + Tasks V2 tests pass with the new
-backend; role enforcement equivalence is verified across the
-shim transition.
+**Acceptance:** Tasks V1 + Tasks V2 tests pass with the
+injected-resolver backend. Core has **no import** from
+`@canopy/agent-registry`.
 
-## Phase 50.10 — `CapabilityToken` URI-shaped agent IDs
+## Phase 50.10 — `CapabilityToken` URI-shaped agent IDs (via injected resolver)
 
 > **Purpose:** P5 changes cap-tokens to embed agent-URIs
-> instead of pubKeys. Migration is dual-resolve during a
-> deprecation window.
+> instead of pubKeys. `TokenRegistry`'s verify path uses the
+> same `ActorResolver` interface from 50.9 — not a direct
+> import of `agent-registry`.
 
 | # | Task | Files |
 |---|---|---|
-| 50.10.1 | `CapabilityToken.issue` emits the new URI-shaped form (still includes pubKey internally as a fallback verification path). | `packages/core/src/permissions/CapabilityToken.js` |
-| 50.10.2 | `TokenRegistry.verify` accepts both shapes during the deprecation window; for new tokens, looks up agents by URI via `agent-registry`. | `packages/core/src/permissions/TokenRegistry.js` |
-| 50.10.3 | One-off shim that translates legacy pubKey-tokens to URI-tokens lazily on first use via `agent-registry`. | `packages/core/src/permissions/shim.js` |
+| 50.10.1 | `CapabilityToken.issue` emits the new URI-shaped form (still includes pubKey internally as a fallback verification path). Format-only change; no substrate dep. | `packages/core/src/permissions/CapabilityToken.js` |
+| 50.10.2 | `TokenRegistry.verify` accepts both shapes during the deprecation window. For URI-shaped tokens, calls the injected `actorResolver` (same one PolicyEngine uses, 50.9.1) to look up the agent's pubKey. | `packages/core/src/permissions/TokenRegistry.js` |
+| 50.10.3 | One-off shim that translates legacy pubKey-tokens to URI-tokens lazily on first use via the resolver. | `packages/core/src/permissions/shim.js` |
 | 50.10.4 | Tests: round-trip an issued token; verify legacy pubKey-shaped tokens still verify; deprecation window respected. | `packages/core/test/CapabilityToken.test.js` |
 
 **Estimate:** 1 day.
@@ -332,38 +428,46 @@ negotiate V2 features; V1 agents on V2 Hubs still work.
 
 ## Phasing summary
 
-| Phase range | Standardisation P-phase | Estimate |
-|---|---|---|
-| 50.1 – 50.5 | P1 (Hub-free) | ≈7 days |
-| 50.6 – 50.7 | P3 (Hub-free) | ≈2 days |
-| 50.8 – 50.10 | P5 (Hub-free, breaking-with-shim) | ≈2.5 days |
-| 50.11 – 50.12 | P4 (Hub track) | ≈1.5 days |
-| 50.13 – 50.15 | P6 (Hub track, direction) | ≈1.5 days |
+| Phase range | Standardisation P-phase | Estimate | Notes |
+|---|---|---|---|
+| 50.1, 50.1.A, 50.2, 50.3, 50.5 | P1 (Hub-free) | ≈6 days | 50.4 moved to the vault substrate's plan; 50.5 split into core-side `Bootstrap` + new `@canopy/agent-provisioning` facade |
+| 50.6 – 50.7 | P3 (Hub-free) | ≈2 days | Transport envelope-emit (core-only) + pseudo-pod V1 client (substrate-side, but core may need a write-through queue helper) |
+| 50.8 – 50.10 | P5 (Hub-free, breaking-with-shim) | ≈2.5 days | All use injected `ActorResolver` interface — no substrate import in core |
+| 50.11 – 50.12 | P4 (Hub track) | ≈1.5 days | Same opaque-slot + injection pattern for Hub-delegate mode |
+| 50.13 – 50.15 | P6 (Hub track, direction) | ≈1.5 days | interface-registry + protocol consumption via injection |
 
-Total ≈14.5 days of core-side work across the standardisation
+Total ≈13.5 days of core-side work across the standardisation
 arc. The Hub-track phases are direction-only until timing is
 committed.
 
+**The layering invariant (locked 2026-05-11)**: every phase
+above respects `apps → substrates → core`. Core never imports
+from substrates; substrate composition happens in the facade
+(`@canopy/agent-provisioning`, 50.5.b) or in apps directly.
+
 ## Acceptance gates per P-phase
 
-- **P1 (50.1–50.5) gate:** all three apps' desktop shells
-  continue to start unchanged; new agents created via
-  `Bootstrap` register their intent locally (pre-P5
-  placeholder); WebID-discovery resolves pointers when
-  present; vault writes through to the pod.
+- **P1 (50.1, 50.1.A, 50.2, 50.3, 50.5) gate:** all three apps'
+  desktop shells continue to start unchanged (via the new
+  `@canopy/agent-provisioning` facade); core has zero
+  substrate imports; the `Vault*` and `SolidVault` re-exports
+  are gone from core; `Agent.webid` / `Agent.pseudoPod` /
+  `Agent.agentRegistry` opaque slots populated by the facade.
 - **P3 (50.6–50.7) gate:** pseudo-pod V1 round-trips writes
-  via the queue; envelopes emit + receive via the transport
-  per the wire shape contract.
+  via the queue (substrate-side); envelopes emit + receive
+  via core's transport per the wire shape contract.
 - **P5 (50.8–50.10) gate:** all three apps run with the
-  agent-registry-backed PolicyEngine; deprecation warnings
-  appear at the expected call sites; cap-tokens issue +
-  verify in both shapes during the deprecation window.
+  injected-`ActorResolver` `PolicyEngine`; deprecation
+  warnings appear at the expected call sites; cap-tokens
+  issue + verify in both shapes during the deprecation
+  window. Core has no `agent-registry` import.
 - **P4 (50.11–50.12) gate:** when the Hub is installed,
-  agents detect + delegate transport + pseudo-pod hosting;
-  battery + memory profile drops measurably.
+  agents detect + delegate transport + pseudo-pod hosting via
+  injected binders; battery + memory profile drops measurably.
 - **P6 (50.13–50.15) gate:** Tasks-bundle registers its
-  `task` interface through the registry; propose-subtask
-  runs as a declared protocol with pod-side state.
+  `task` interface through the registry (substrate-side) via
+  the injected handle on `Agent`; propose-subtask runs as a
+  declared protocol with pod-side state.
 
 ## References
 
