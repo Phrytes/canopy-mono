@@ -129,3 +129,46 @@ describe('FsBackend — subscribe', () => {
     expect(events.map(e => e.key)).toEqual(['x/1']);
   });
 });
+
+describe('FsBackend — dirty surface (Phase 51.5)', () => {
+  it('markDirty + markClean fire subscribers', async () => {
+    const FileSystem = makeFileSystemMock();
+    const b = createFsBackend({ FileSystem, rootDir: '/d/' });
+    const seen = [];
+    b.subscribeDirty(e => seen.push(e));
+    await b._markDirty('x');
+    await b._markDirty('x');   // idempotent
+    expect(await b.listDirty()).toEqual(['x']);
+    expect(seen).toEqual([{ op: 'dirty', key: 'x' }]);
+    await b._markClean('x');
+    expect(await b.listDirty()).toEqual([]);
+  });
+
+  it('persists across backend recreation', async () => {
+    const FileSystem = makeFileSystemMock();
+    const b1 = createFsBackend({ FileSystem, rootDir: '/d/', scope: 'pp' });
+    await b1.put('x', 1);
+    await b1._markDirty('x');
+    expect(await b1.listDirty()).toEqual(['x']);
+
+    const b2 = createFsBackend({ FileSystem, rootDir: '/d/', scope: 'pp' });
+    expect(await b2.listDirty()).toEqual(['x']);
+  });
+
+  it('delete clears the dirty marker too', async () => {
+    const FileSystem = makeFileSystemMock();
+    const b = createFsBackend({ FileSystem, rootDir: '/d/' });
+    await b.put('x', 1);
+    await b._markDirty('x');
+    await b.delete('x');
+    expect(await b.listDirty()).toEqual([]);
+  });
+
+  it('__dirty__ sub-directory does NOT show up in list()', async () => {
+    const FileSystem = makeFileSystemMock();
+    const b = createFsBackend({ FileSystem, rootDir: '/d/', scope: 'pp' });
+    await b.put('x', 1);
+    await b._markDirty('x');
+    expect(await b.list('')).toEqual(['x']);
+  });
+});

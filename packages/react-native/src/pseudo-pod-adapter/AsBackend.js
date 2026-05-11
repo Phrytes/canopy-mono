@@ -35,15 +35,21 @@ export function createAsBackend({
     );
   }
   const _scopePrefix = scope.endsWith(':') ? scope : `${scope}:`;
+  // Phase 51.5: persistent dirty-set under a dedicated sub-namespace.
+  // Surviving restarts lets pseudo-pod V1's write-through queue
+  // re-discover pending entries on agent boot.
+  const _dirtyPrefix = `${_scopePrefix}__dirty__:`;
   const nextEtag = makeEtagCounter(etagPrefix);
 
   const generalSubscribers = new Set();
   const prefixSubscribers  = new Map();   // string → Set<cb>
   const dirtySubscribers   = new Set();
-  const dirty              = new Set();
 
   function _scopeKey(key)  { return _scopePrefix + key; }
+  function _dirtyKey(key)  { return _dirtyPrefix + key; }
   function _stripScope(k)  { return k.startsWith(_scopePrefix) ? k.slice(_scopePrefix.length) : k; }
+  function _isDirtyKey(k)  { return k.startsWith(_dirtyPrefix); }
+  function _stripDirty(k)  { return k.slice(_dirtyPrefix.length); }
 
   function _fanOut(event) {
     for (const cb of generalSubscribers) { try { cb(event); } catch { /* swallow */ } }
@@ -84,8 +90,11 @@ export function createAsBackend({
   async function del(key) {
     await AsyncStorage.removeItem(_scopeKey(key));
     _fanOut({ op: 'delete', key });
-    if (dirty.has(key)) {
-      dirty.delete(key);
+    // Best-effort clean of any associated dirty marker.
+    const dirtyKey = _dirtyKey(key);
+    const dirtyRaw = await AsyncStorage.getItem(dirtyKey);
+    if (dirtyRaw != null) {
+      await AsyncStorage.removeItem(dirtyKey);
       _fanOutDirty({ op: 'clean', key });
     }
   }
@@ -95,6 +104,7 @@ export function createAsBackend({
     const out = [];
     for (const k of all) {
       if (!k.startsWith(_scopePrefix)) continue;
+      if (_isDirtyKey(k))               continue;   // hide the __dirty__ namespace
       const unscoped = _stripScope(k);
       if (unscoped.startsWith(prefix)) out.push(unscoped);
     }
@@ -124,7 +134,13 @@ export function createAsBackend({
   }
 
   async function listDirty() {
-    return [...dirty].sort();
+    const all = await AsyncStorage.getAllKeys();
+    const out = [];
+    for (const k of all) {
+      if (_isDirtyKey(k)) out.push(_stripDirty(k));
+    }
+    out.sort();
+    return out;
   }
 
   function subscribeDirty(cb) {
@@ -138,6 +154,27 @@ export function createAsBackend({
     return () => { dirtySubscribers.delete(cb); };
   }
 
+  /**
+   * Mark a key dirty. Persistent: survives backend recreation.
+   * Idempotent — re-marking a dirty key is a no-op (no second event).
+   */
+  async function _markDirty(key) {
+    const dirtyKey = _dirtyKey(key);
+    const existing = await AsyncStorage.getItem(dirtyKey);
+    if (existing != null) return;
+    await AsyncStorage.setItem(dirtyKey, '1');
+    _fanOutDirty({ op: 'dirty', key });
+  }
+
+  /** Clear the dirty flag for a key. Idempotent. */
+  async function _markClean(key) {
+    const dirtyKey = _dirtyKey(key);
+    const existing = await AsyncStorage.getItem(dirtyKey);
+    if (existing == null) return;
+    await AsyncStorage.removeItem(dirtyKey);
+    _fanOutDirty({ op: 'clean', key });
+  }
+
   return {
     get,
     put,
@@ -147,13 +184,9 @@ export function createAsBackend({
     listDirty,
     subscribeDirty,
 
-    // Phase 51.5 V1-ready hooks (no-op in V0 — apps wire them later).
-    _markDirty(key) {
-      if (!dirty.has(key)) { dirty.add(key); _fanOutDirty({ op: 'dirty', key }); }
-    },
-    _markClean(key) {
-      if (dirty.has(key)) { dirty.delete(key); _fanOutDirty({ op: 'clean', key }); }
-    },
+    _markDirty,
+    _markClean,
+
     get _scope() { return scope; },
     get _kind()  { return 'AsBackend'; },
   };

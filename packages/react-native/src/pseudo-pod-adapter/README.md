@@ -102,10 +102,11 @@ break siblings or block writers.
 
 ## What V0 (51.1 – 51.4) deliberately does not do
 
-- **Cache-mode write-through.** Dirty tracking exists as a
-  V1-ready hook (`_markDirty` / `_markClean`) but ships empty.
-  Phase 51.5 wires real dirty handling against pseudo-pod V1's
-  pending-pod-upload queue.
+- **Cache-mode write-through orchestration.** The dirty-set is
+  persistent (Phase 51.5 — markers survive restart) but the
+  substrate-side queue + drain logic lives in `@canopy/pseudo-pod`
+  V1 (Phase 52.8). Wire `pseudoPod.drainWriteThroughQueue()` to a
+  connectivity event for the full graceful-degradation flow.
 - **iOS-specific code.** Android-primary, per the main project
   lock.
 - **Encryption at rest.** AsyncStorage and `expo-file-system`
