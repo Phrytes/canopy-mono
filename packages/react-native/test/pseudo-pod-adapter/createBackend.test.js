@@ -144,6 +144,47 @@ describe('createBackend — migration on cross-threshold update', () => {
   });
 });
 
+describe('createBackend — dirty persistence (Phase 51.5)', () => {
+  it('listDirty merges entries from both inner backends', async () => {
+    const { b } = rig({ fsThresholdBytes: 10 });
+    await b.put('small', 'hi');
+    await b.put('big', 'a much larger payload of content');
+    await b._markDirty('small');
+    await b._markDirty('big');
+    expect((await b.listDirty()).sort()).toEqual(['big', 'small']);
+  });
+
+  it('survives backend recreation', async () => {
+    const AsyncStorage = makeAsyncStorageMock();
+    const FileSystem  = makeFileSystemMock();
+    const b1 = createBackend({
+      AsyncStorage, FileSystem, rootDir: '/doc/', scope: 'pp',
+      fsThresholdBytes: 10,
+    });
+    await b1.put('small', 'hi');
+    await b1.put('big', 'a much larger payload of content');
+    await b1._markDirty('small');
+    await b1._markDirty('big');
+
+    const b2 = createBackend({
+      AsyncStorage, FileSystem, rootDir: '/doc/', scope: 'pp',
+      fsThresholdBytes: 10,
+    });
+    expect((await b2.listDirty()).sort()).toEqual(['big', 'small']);
+  });
+
+  it('subscribeDirty fires for both inner backends', async () => {
+    const { b } = rig({ fsThresholdBytes: 10 });
+    const events = [];
+    b.subscribeDirty(e => events.push(e));
+    await b.put('s', 'hi');
+    await b.put('big', 'a much larger payload of content');
+    await b._markDirty('s');
+    await b._markDirty('big');
+    expect(events.map(e => `${e.op}:${e.key}`).sort()).toEqual(['dirty:big', 'dirty:s']);
+  });
+});
+
 describe('createBackend — list + delete + subscribe', () => {
   it('list merges keys from both backends', async () => {
     const { b } = rig({ fsThresholdBytes: 10 });
