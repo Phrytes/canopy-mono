@@ -82,13 +82,71 @@ export class CapabilityToken {
 
   /**
    * Verify signature and expiry.
+   *
+   * `agentId` may be either pubKey-shaped (legacy) or URI-shaped
+   * (post-Phase 50.10: WebID-rooted agent URI, or
+   * `pseudo-pod://<deviceId>/agent` for no-pod users). When
+   * `expectedAgentId` doesn't match `token.agentId` literally **and** an
+   * `actorResolver` is supplied, the resolver is consulted to bridge
+   * the two shapes (e.g. expected=pubKey, token=URI → resolve URI →
+   * compare its pubKey).
+   *
    * @param {CapabilityToken|object} token
    * @param {string} [expectedAgentId]  — if set, verify token.agentId matches
+   * @param {object} [opts]
+   * @param {import('./ActorResolver.js').ActorResolver} [opts.actorResolver]
+   *   Phase 50.10.2 — bridge pubKey ↔ URI-shaped agent IDs by resolving
+   *   either side and comparing the resulting `ActorRecord`. Note: this
+   *   verify path is **synchronous** when the resolver returns
+   *   synchronously; async resolvers should use `verifyAsync`.
    */
-  static verify(token, expectedAgentId) {
+  static verify(token, expectedAgentId, { actorResolver = null } = {}) {
     const raw = token instanceof CapabilityToken ? token.toJSON() : token;
     if (Date.now() >= raw.expiresAt) return false;
-    if (expectedAgentId && raw.agentId !== expectedAgentId) return false;
+
+    if (expectedAgentId && raw.agentId !== expectedAgentId) {
+      // Phase 50.10.2 — fall back to resolver-bridged comparison.
+      if (!actorResolver || typeof actorResolver.resolve !== 'function') return false;
+      const expectedRec = actorResolver.resolve(expectedAgentId);
+      const tokenRec    = actorResolver.resolve(raw.agentId);
+      // Both must resolve to the same record (or at least the same
+      // pubKey, which is the canonical identity field).
+      if (
+        !expectedRec || !tokenRec ||
+        (expectedRec.pubKey ?? '__a') !== (tokenRec.pubKey ?? '__b')
+      ) return false;
+    }
+
+    const { sig, ...unsigned } = raw;
+    unsigned.sig = null;
+    return AgentIdentity.verify(_canonical(unsigned), b64decode(sig), raw.issuer);
+  }
+
+  /**
+   * Async variant of `verify` for resolvers whose `resolve(...)` returns
+   * a Promise. Verifies signature + expiry first (sync), then awaits
+   * the resolver for the URI ↔ pubKey bridge if needed.
+   *
+   * @param {CapabilityToken|object} token
+   * @param {string} [expectedAgentId]
+   * @param {object} [opts]
+   * @param {import('./ActorResolver.js').ActorResolver} [opts.actorResolver]
+   * @returns {Promise<boolean>}
+   */
+  static async verifyAsync(token, expectedAgentId, { actorResolver = null } = {}) {
+    const raw = token instanceof CapabilityToken ? token.toJSON() : token;
+    if (Date.now() >= raw.expiresAt) return false;
+
+    if (expectedAgentId && raw.agentId !== expectedAgentId) {
+      if (!actorResolver || typeof actorResolver.resolve !== 'function') return false;
+      const expectedRec = await actorResolver.resolve(expectedAgentId);
+      const tokenRec    = await actorResolver.resolve(raw.agentId);
+      if (
+        !expectedRec || !tokenRec ||
+        (expectedRec.pubKey ?? '__a') !== (tokenRec.pubKey ?? '__b')
+      ) return false;
+    }
+
     const { sig, ...unsigned } = raw;
     unsigned.sig = null;
     return AgentIdentity.verify(_canonical(unsigned), b64decode(sig), raw.issuer);

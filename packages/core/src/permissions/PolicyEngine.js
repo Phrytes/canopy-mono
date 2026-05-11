@@ -31,6 +31,7 @@ export class PolicyEngine {
 
   #groupManager;
   #isRevoked;
+  #actorResolver;  // Phase 50.9.1 — optional ActorResolver (pubKey ↔ webid ↔ agentUri)
 
   /**
    * @param {object} opts
@@ -45,14 +46,54 @@ export class PolicyEngine {
    *   the token is rejected as `INVALID_TOKEN: revoked`. Lets agents
    *   maintain a local revocation list independent of the holder's
    *   `TokenRegistry.revoke` (which only protects the holder side).
+   * @param {import('./ActorResolver.js').ActorResolver} [opts.actorResolver]
+   *   Phase 50.9.1 — optional resolver mapping any of pubKey / webid /
+   *   agentUri to an `ActorRecord`. Core defines the interface but never
+   *   imports `@canopy/agent-registry`; the resolver is supplied by
+   *   the caller (typically via the `@canopy/agent-provisioning`
+   *   facade). When set, `resolveActor(identifier)` becomes available
+   *   to callers + the token-verification path can accept URI-shaped
+   *   agent IDs (Phase 50.10).
    */
-  constructor({ trustRegistry, skillRegistry, agentPubKey = null, groupManager = null, isRevoked = null }) {
+  constructor({
+    trustRegistry,
+    skillRegistry,
+    agentPubKey   = null,
+    groupManager  = null,
+    isRevoked     = null,
+    actorResolver = null,
+  }) {
     this.#trustRegistry = trustRegistry;
     this.#skillRegistry = skillRegistry;
     this.#agentPubKey   = agentPubKey;
     this.#groupManager  = groupManager;
     this.#isRevoked     = typeof isRevoked === 'function' ? isRevoked : null;
+    this.#actorResolver = (actorResolver && typeof actorResolver.resolve === 'function')
+      ? actorResolver
+      : null;
   }
+
+  /**
+   * Phase 50.9.1 — resolve an identifier (any of pubKey / webid /
+   * agentUri) to an `ActorRecord` via the injected `ActorResolver`.
+   *
+   * Returns `null` when no resolver is wired (or the identifier doesn't
+   * resolve). Callers that need the actor record should treat `null`
+   * as "unknown" and fall back to whatever they did before — typically
+   * pubKey-only lookups.
+   *
+   * @param {string} identifier
+   * @returns {Promise<import('./ActorResolver.js').ActorRecord|null>}
+   */
+  async resolveActor(identifier) {
+    if (!this.#actorResolver) return null;
+    const v = this.#actorResolver.resolve(identifier);
+    // Support both sync and async resolvers.
+    return (v && typeof v.then === 'function') ? await v : v;
+  }
+
+  /** Phase 50.9.1 — read-only access to the injected resolver (or null). */
+  get actorResolver() { return this.#actorResolver; }
 
   /**
    * Replace the revocation-check callback at runtime. Pass `null` to
