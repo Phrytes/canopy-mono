@@ -1,0 +1,21 @@
+{
+  "name": "@canopy/pseudo-pod",
+  "version": "0.1.0",
+  "description": "Solid-shaped local store with three operating modes (standalone, replication-ring, cache — V0 ships the first two). Substrate-layer companion to @canopy/core's fetch-resource skill. Standardisation Phase 52.2.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@canopy/core": "*"
+  },
+  "devDependencies": {
+    "@canopy/core": "file:../core",
+    "vitest": "^2.1.9"
+  }
+}
