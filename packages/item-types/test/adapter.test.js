@@ -55,6 +55,22 @@ describe('adaptForCanonical', () => {
     expect(out).not.toBe(input);
     expect(input.createdAt).toBeUndefined();
   });
+
+  it('maps text → body (for Stoop / Folio / message-shaped types)', () => {
+    const out = adaptForCanonical({ type: 'announcement', text: 'hello buurt' });
+    expect(out.body).toBe('hello buurt');
+    expect(out.text).toBe('hello buurt');     // input field preserved
+  });
+
+  it('does NOT clobber body when both are set', () => {
+    const out = adaptForCanonical({ type: 'note', text: 'short', body: 'authoritative' });
+    expect(out.body).toBe('authoritative');
+  });
+
+  it('skips text→body when text is not a string', () => {
+    const out = adaptForCanonical({ type: 'note', text: 42 });
+    expect(out.body).toBeUndefined();
+  });
 });
 
 describe('validateCanonical', () => {

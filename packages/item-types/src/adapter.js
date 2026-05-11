@@ -28,6 +28,20 @@ import { validate as validateRaw } from './registry.js'; // not used — re-expo
 /**
  * Adapt an item-store-shaped item to the canonical schema's wire
  * shape. Returns a NEW object — never mutates the input.
+ *
+ * Field mappings (apply only when the canonical target field is
+ * absent — item-store data wins when both are set):
+ *   - `addedAt`     (number, ms epoch) → `createdAt` (ISO string)
+ *   - `addedBy`     (webid / agentUri) → `createdBy`
+ *   - `completedAt` (number)           → `updatedAt`
+ *   - `completedBy`                     → `updatedBy`
+ *   - `text`        (any string)       → `body`
+ *
+ * `text → body` covers Stoop / Folio / generic-message item types
+ * whose canonical schemas require `body` (announcement, note,
+ * chat-message, supply-offer, demand-offer, neighbourhood-job). The
+ * `task` schema requires `text` natively, so the copy is harmless
+ * (forward-additive: extra `body` on a task is tolerated).
  */
 export function adaptForCanonical(item) {
   if (!item || typeof item !== 'object') return item;
@@ -48,6 +62,9 @@ export function adaptForCanonical(item) {
   }
   if (out.updatedBy === undefined && out.completedBy !== undefined) {
     out.updatedBy = out.completedBy;
+  }
+  if (out.body === undefined && typeof out.text === 'string') {
+    out.body = out.text;
   }
   return out;
 }
