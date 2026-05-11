@@ -175,7 +175,11 @@ export { MemorySource }      from './storage/MemorySource.js';
 export { IndexedDBSource }   from './storage/IndexedDBSource.js';
 export { FileSystemSource }  from './storage/FileSystemSource.js';
 export { SolidPodSource }    from './storage/SolidPodSource.js';
-export { SolidVault }        from './storage/SolidVault.js';
+// Deprecated re-export: `SolidVault` lives in `@canopy/oidc-session` since
+// 2026-05-11 (standardisation Phase 50.1). The re-export here keeps existing
+// `import { SolidVault } from '@canopy/core'` callers working during the
+// deprecation window; new code should import from `@canopy/oidc-session`.
+export { SolidVault }        from '@canopy/oidc-session';
 export { StorageManager }    from './storage/StorageManager.js';
 export { PodExporter }       from './storage/PodExporter.js';
 export { PodImporter }       from './storage/PodImporter.js';

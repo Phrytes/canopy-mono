@@ -2,18 +2,25 @@
  * SolidVault — Solid OIDC session manager.
  *
  * Despite the name, **SolidVault is not itself a `Vault`** in the
- * `packages/core/src/identity/Vault.js` sense.  It's the Solid-OIDC session
- * manager that *uses* a user-supplied `Vault` to persist its tokens.  The
- * name is inherited from the design docs (where "vault" refers loosely to
- * "the thing that holds your Solid credentials").
+ * `@canopy/core` Vault sense.  It's the Solid-OIDC session manager
+ * that *uses* a Vault-shaped store (`get` / `set` / `delete` / `list`)
+ * to persist its tokens.  The name is inherited from the design docs
+ * (where "vault" refers loosely to "the thing that holds your Solid
+ * credentials").
  *
- * Public API (per `coding-plans/track-A-pod-substrate.md` §A2):
+ * Originally lived at `packages/core/src/storage/SolidVault.js`;
+ * extracted to its own package 2026-05-11 (standardisation Phase 50.1)
+ * as a peer to `@canopy/oidc-session-rn`.  No code changes other
+ * than inlining a minimal default in-memory token store (was
+ * `core.VaultMemory`) to break the package cycle.
+ *
+ * Public API:
  *
  *   const sv = new SolidVault({
  *     webid:        'https://alice.example/profile/card#me',
  *     oidcIssuer:  'https://login.inrupt.com',
  *     redirectUrl: 'https://app.example/callback',  // browser only
- *     vault:       userVault,                        // Vault for token storage
+ *     vault:       userVault,                        // optional; defaults to in-memory
  *   });
  *
  *   await sv.login({ clientId, clientSecret, refreshToken? });
@@ -24,9 +31,8 @@
  *   await sv.logout();           // clears tokens + vault entries
  *
  * The Solid OIDC interaction is delegated to `@inrupt/solid-client-authn-node`'s
- * `Session` (Node-only).  Browser/RN redirect-based flows are out of scope
- * for A2 — they'll land in Track B with a parallel implementation that uses
- * `@inrupt/solid-client-authn-browser`.
+ * `Session` (Node-only).  Browser/RN redirect-based flows are handled by
+ * `@canopy/oidc-session-rn` (uses `expo-auth-session` for the dance).
  *
  * Token storage: under namespace `solid-oidc:<webid>` in the supplied vault.
  *   solid-oidc:<webid>:access_token
@@ -47,12 +53,25 @@
  */
 
 import { EventEmitter } from 'node:events';
-import { VaultMemory } from '../identity/VaultMemory.js';
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
 /** Refresh when within this many ms of expiry. */
 const REFRESH_LEEWAY_MS = 60_000;
+
+/**
+ * Minimal in-memory Vault-shaped store used as the default when no vault is
+ * supplied.  Exposes the same `get` / `set` / `delete` / `list` surface
+ * `@canopy/core`'s `VaultMemory` provides for our purposes here.  Callers
+ * who want richer vault behaviour (persistence, encryption) supply their own.
+ */
+class InMemoryTokenStore {
+  #m = new Map();
+  async get(key)    { return this.#m.has(key) ? this.#m.get(key) : null; }
+  async set(key, v) { this.#m.set(key, v); }
+  async delete(key) { this.#m.delete(key); }
+  async list()      { return Array.from(this.#m.keys()); }
+}
 
 /**
  * Map our `Vault` interface onto the Inrupt `IStorage` interface (a subset:
@@ -134,7 +153,7 @@ export class SolidVault extends EventEmitter {
    * @param {string}   opts.webid        — the user's WebID URI
    * @param {string}   [opts.oidcIssuer] — OIDC issuer; if omitted, derived from WebID profile or supplied at login()
    * @param {string}   [opts.redirectUrl] — for browser/RN flow (unused in Node)
-   * @param {Vault}    [opts.vault]      — token storage; defaults to an in-memory vault (tests only)
+   * @param {object}   [opts.vault]      — token storage (Vault-shaped: `get`/`set`/`delete`/`list`); defaults to an in-memory store (tests only)
    */
   constructor({ webid, oidcIssuer, redirectUrl, vault } = {}) {
     super();
@@ -147,7 +166,7 @@ export class SolidVault extends EventEmitter {
     this.#webid       = webid;
     this.#oidcIssuer  = oidcIssuer ?? null;
     this.#redirectUrl = redirectUrl ?? null;
-    this.#vault       = vault ?? new VaultMemory();
+    this.#vault       = vault ?? new InMemoryTokenStore();
   }
 
   /* ── Public getters ────────────────────────────────────────────────────── */
