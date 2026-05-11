@@ -1,5 +1,6 @@
 export { MemberMap } from './MemberMap.js';
 export { MemberMapCache } from './MemberMapCache.js';
+export { createAgentRegistryMemberMap } from './AgentRegistryMemberMap.js';
 export { Reveals } from './Reveals.js';
 export { resolve } from './Resolver.js';
 export { PersonGraph } from './PersonGraph.js';
