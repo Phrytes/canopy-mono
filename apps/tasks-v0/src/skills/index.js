@@ -23,6 +23,7 @@
 import { defineSkill } from '@canopy/core';
 import { computeStatus, effectiveStatus, unmetDeps, detectCycle } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';
+import { validateCanonical } from '@canopy/item-types';
 
 /**
  * @param {object} args
@@ -77,6 +78,15 @@ export function buildSkills({ bundleResolver } = {}) {
         }
       }
       const [task] = await crew.itemStore.addItems([partial], { actor: from, actorDisplayName });
+
+      // Phase 52.7 — warn-only canonical-shape validation. Adoption is
+      // observational at first: the substrate flags drift but never blocks
+      // a write (existing data + forward-additive policy).
+      try {
+        const v = validateCanonical(task);
+        if (!v.ok) console.warn('item-types[task]:', JSON.stringify(v.errors));
+      } catch { /* validator outage must not break writes */ }
+
       return { task };
     }, {
       description: 'Create a task; rejects on dependency cycles. Blocked when crew is paused/archived.',
