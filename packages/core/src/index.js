@@ -86,6 +86,7 @@ export { OfflineTransport }               from './transport/OfflineTransport.js'
 
 // ── Skills ────────────────────────────────────────────────────────────────────
 export { defineSkill }         from './skills/defineSkill.js';
+export { makeFetchResourceSkill } from './skills/fetchResource.js';
 export { SkillRegistry }       from './skills/SkillRegistry.js';
 export { registerRelayForward }        from './skills/relayForward.js';
 export { registerRelayReceiveSealed }  from './skills/relayReceiveSealed.js';
