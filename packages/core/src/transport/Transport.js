@@ -20,9 +20,10 @@ const REQ_TIMEOUT = 30_000;  // ms
 export class Transport extends Emitter {
   #address;
   #identity;
-  #securityLayer  = null;
-  #receiveHandler = null;
-  #pending        = new Map();  // envelopeId → { resolve, reject, timer }
+  #securityLayer        = null;
+  #receiveHandler       = null;
+  #pending              = new Map();  // envelopeId → { resolve, reject, timer }
+  #envelopeSubscribers  = null;       // Set<(payload, rawEnvelope) => void> — Phase 50.7
 
   /**
    * @param {object} opts
@@ -147,6 +148,90 @@ export class Transport extends Emitter {
     await this._send(to, mkEnvelope(P.HI, this.#address, to, payload));
   }
 
+  // ── Notification envelopes (Phase 50.7) ────────────────────────────────────
+
+  /**
+   * Publish a **notification envelope** to multiple recipients.
+   *
+   * The wire format is the standardisation §II.6 envelope shape:
+   *   `{ v: 1, kind, ref, etag, fromActor, timestamp, payload? }`.
+   *
+   * Each recipient receives the envelope as a OW message tagged with
+   * topic `envelope:<kind>` (so receivers can subscribe by kind).
+   * The transport doesn't know what `kind` means; that's the
+   * substrate's domain (typically `@canopy/notify-envelope`).
+   *
+   * @param {object} opts
+   * @param {string} opts.kind        — the envelope kind (item-types name).
+   * @param {string} [opts.ref]       — URI of the referenced resource (for pod-primary mode).
+   * @param {string} [opts.etag]      — etag of the referenced resource.
+   * @param {string} [opts.fromActor] — agent-URI of the author.
+   * @param {string[]} opts.recipients — recipient addresses.
+   * @param {*} [opts.payload]        — inline payload (for pseudo-pod-replicated mode).
+   * @param {string} [opts.timestamp] — ISO timestamp; default: now.
+   * @returns {Promise<void>}
+   */
+  async publishEnvelope({ kind, ref, etag, fromActor, recipients, payload, timestamp } = {}) {
+    if (typeof kind !== 'string' || kind.length === 0) {
+      throw Object.assign(
+        new Error('publishEnvelope: `kind` is required'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+    if (!Array.isArray(recipients) || recipients.length === 0) {
+      throw Object.assign(
+        new Error('publishEnvelope: `recipients` must be a non-empty array'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+
+    const wire = {
+      v: 1,
+      kind,
+      timestamp: timestamp ?? new Date().toISOString(),
+      ...(ref       !== undefined ? { ref } : {}),
+      ...(etag      !== undefined ? { etag } : {}),
+      ...(fromActor !== undefined ? { fromActor } : {}),
+      ...(payload   !== undefined ? { payload } : {}),
+    };
+
+    const topic = `envelope:${kind}`;
+    await Promise.all(recipients.map(to => this.publishOneWay(to, topic, wire)));
+  }
+
+  /**
+   * Subscribe to inbound **notification envelopes**.
+   *
+   * Returns an unsubscribe function.
+   *
+   * The callback fires for every inbound envelope whose `_topic`
+   * starts with `envelope:` — invoked with
+   * `(payload, rawEnvelope)`:
+   *   - `payload`: the envelope wire shape `{ v, kind, ref, etag,
+   *                fromActor, timestamp, payload? }`.
+   *   - `rawEnvelope`: the raw transport envelope (with `_from`,
+   *                    `_topic`, etc.).
+   *
+   * Subscribers fire **alongside** the Agent's normal receive
+   * dispatch — they don't suppress it. Designed for the
+   * notify-envelope substrate to tap inbound traffic without
+   * conflicting with the Agent's skill-routing.
+   *
+   * @param {(payload: object, rawEnvelope: object) => void} callback
+   * @returns {() => void} unsubscribe
+   */
+  subscribeEnvelopes(callback) {
+    if (typeof callback !== 'function') {
+      throw Object.assign(
+        new Error('subscribeEnvelopes: callback must be a function'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+    if (!this.#envelopeSubscribers) this.#envelopeSubscribers = new Set();
+    this.#envelopeSubscribers.add(callback);
+    return () => { this.#envelopeSubscribers?.delete(callback); };
+  }
+
   // ── Wire primitive — subclasses MUST implement ──────────────────────────────
 
   /**
@@ -200,6 +285,14 @@ export class Transport extends Emitter {
         this.#pending.delete(envelope._re);
         pending.resolve(envelope);
         return; // don't dispatch reply envelopes to the application
+      }
+    }
+
+    // Fan envelope-topic'd messages out to envelope subscribers (Phase 50.7).
+    // Fires *alongside* the Agent's normal receive dispatch — doesn't suppress.
+    if (this.#envelopeSubscribers && typeof envelope._topic === 'string' && envelope._topic.startsWith('envelope:')) {
+      for (const cb of this.#envelopeSubscribers) {
+        try { cb(envelope.payload, envelope); } catch (err) { this.emit('error', err); }
       }
     }
 
