@@ -20,6 +20,21 @@
 > Substrate boundaries are preserved throughout — no app imports
 > from another app, and shared concepts get rule-of-two flags
 > before extraction.
+>
+> **Cross-app migration TODO (added 2026-05-08).** Tasks V1
+> implementation lifts seven Stoop `lib/` files into shared
+> substrates (rule of two satisfied by Tasks V1 as the second
+> consumer). The migration work happens *inside the Tasks V1
+> PRs* — no separate Stoop sprint required, but Stoop tests must
+> stay green after each Tasks V1 PR merges. Per-PR scope +
+> envelope-rename back-compat detail in
+> [`migration-tasks-v1-lifts-2026-05-08.md`](./migration-tasks-v1-lifts-2026-05-08.md).
+> Affected files: `lib/CachingDataSource.js`, `lib/SyncCadence.js`,
+> `lib/Settings.js`, `lib/MemberMapCache.js`, `onboarding.js` (the
+> invite/redeem skill helpers), `lib/skillsTaxonomy.json` +
+> `lib/tagNormalisation.json` + `lib/skillsMatch.js`,
+> `chat/wireChat.js`, `lib/UsageMetrics.js`. Stoop's user-visible
+> behaviour does not change.
 
 ## Conventions
 

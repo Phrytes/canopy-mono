@@ -299,6 +299,45 @@ feedback, both inform the rest of the project.
   for household-grade tasks.  Recommendation: used Mac mini M2
   for production, anything-you-already-have for testing.
 
+## Cross-app substrate compatibility (added 2026-05-07)
+
+Tasks V1 (see [`../../Tasks App/advice-2026-05-07.md`](../../Tasks%20App/advice-2026-05-07.md))
+introduced patterns the household app should adopt or track
+forward-compat for:
+
+- **Canonical user-skills profile at `<user-pod>/profile/skills.json`.**
+  When the household app asks "what can you help with?" or builds
+  a per-housemate skill view, **prefill from the canonical
+  profile and let the user edit before submitting**. New skills
+  added in the household app can be saved back to the canonical
+  profile so Tasks / Stoop see them too. Same pattern as Tasks
+  V1 + Stoop V2.
+- **Approval / DoD lifecycle on `item-store`.** Tasks V1 adds
+  `submitted` + `rejected` + `definitionOfDone` + `approval` +
+  `deliverable` + `master` + `parentTaskId` fields. The
+  household chore flow can opt in for "kid marks done; parent
+  approves" without further substrate work.
+- **`InAppInboxChannel`** — additive notifier channel from
+  Tasks V1; available for household digest items / nudges that
+  shouldn't push.
+- **Calendar read adapter + Folio calendar sync.** Same iCal-
+  on-pod convention. The household app's "what window are we
+  going to the supermarket" question maps cleanly onto
+  `getFreeBusy` once V1.5 lifts the read adapter into a
+  substrate.
+- **Chat-bot pattern source.** Tasks V1's forward-compat note
+  for Telegram-bot access lifts directly from the household
+  app's existing `TelegramBridge` work — that is the canonical
+  reference.
+
+## Pod-data sharing — caution principles (added 2026-05-07)
+
+Inherited from
+[`../04-tasks-app/README.md`](../04-tasks-app/README.md). Each
+cross-pod read needs an explicit per-context opt-in; each new
+cross-pod flow in a future coding plan gets explicit sign-off
+from the author before it ships.
+
 ## Related work in the repo
 
 - `packages/core/src/skills/SkillRegistry.js` — needs a

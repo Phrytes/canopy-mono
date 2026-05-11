@@ -70,36 +70,61 @@ export function MyWorkScreen() {
     },
   ];
 
+  // Phase 41.18 follow-up — when all three sections are empty,
+  // collapse to a single "all clear" message instead of three
+  // stacked empties. Less noise on a fresh crew.
+  const allEmpty = sections.every((s) => s.items.length === 0);
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: COLORS.background }}
-      contentContainerStyle={{ padding: SPACING.md }}
+      contentContainerStyle={{ padding: SPACING.md, flexGrow: 1 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
     >
       <PlannerCards />
 
-      {sections.map((section) => (
-        <View key={section.key} style={{ marginBottom: SPACING.lg }}>
+      {allEmpty ? (
+        <View style={{
+          paddingVertical: SPACING.xl, alignItems: 'center',
+          flex: 1, justifyContent: 'center',
+        }}>
           <Text style={{
-            fontSize:    FONT_SIZES.md,
-            fontWeight:  '600',
-            color:       COLORS.text,
-            marginBottom: SPACING.sm,
+            fontSize: FONT_SIZES.lg, fontWeight: '600',
+            color: COLORS.text, marginBottom: SPACING.sm,
           }}>
-            {section.title}
+            {t('mobile.my_work.all_clear_title')}
           </Text>
-
-          {section.items.length === 0 ? (
-            <Text style={{ fontSize: FONT_SIZES.sm, color: COLORS.textMuted, marginBottom: SPACING.md }}>
-              {section.empty}
-            </Text>
-          ) : (
-            section.items.map((item) => (
-              <TaskCard key={item.id} task={item} onPress={onPressTask} />
-            ))
-          )}
+          <Text style={{
+            fontSize: FONT_SIZES.sm, color: COLORS.textMuted,
+            textAlign: 'center', maxWidth: 320,
+          }}>
+            {t('mobile.my_work.all_clear_body')}
+          </Text>
         </View>
-      ))}
+      ) : (
+        sections.map((section) => (
+          <View key={section.key} style={{ marginBottom: SPACING.lg }}>
+            <Text style={{
+              fontSize:    FONT_SIZES.md,
+              fontWeight:  '600',
+              color:       COLORS.text,
+              marginBottom: SPACING.sm,
+            }}>
+              {section.title}
+            </Text>
+
+            {section.items.length === 0 ? (
+              <Text style={{ fontSize: FONT_SIZES.sm, color: COLORS.textMuted, marginBottom: SPACING.md }}>
+                {section.empty}
+              </Text>
+            ) : (
+              section.items.map((item) => (
+                <TaskCard key={item.id} task={item} onPress={onPressTask} />
+              ))
+            )}
+          </View>
+        ))
+      )}
     </ScrollView>
   );
 }

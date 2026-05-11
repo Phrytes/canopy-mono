@@ -20,7 +20,9 @@ import {
   NavigationContainer, useNavigation,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator }   from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 // ── Global error filtering — installed once at module-load. ──
 // Mirrors apps/stoop-mobile/App.js + apps/tasks-v0/bin/tasks-ui.js.
@@ -73,8 +75,107 @@ import { CrewSettingsScreen }   from './src/screens/CrewSettingsScreen.jsx';
 import { IssueBotTokenScreen }  from './src/screens/IssueBotTokenScreen.jsx';
 import { PodSignInScreen }      from './src/screens/PodSignInScreen.jsx';
 import { AuthCallbackScreen }   from './src/screens/AuthCallbackScreen.jsx';
+import { MetricsScreen }        from './src/screens/MetricsScreen.jsx';
+import { PrivacyScreen }        from './src/screens/PrivacyScreen.jsx';
+import { EditSkillsScreen }     from './src/screens/EditSkillsScreen.jsx';
+import { CadenceOverridesScreen } from './src/screens/CadenceOverridesScreen.jsx';
+import { ChatThreadScreen }     from './src/screens/ChatThreadScreen.jsx';
+import { CrewSwitcher }         from './src/components/CrewSwitcher.jsx';
+import { MainMenuProvider, MainMenuButton } from './src/components/MainMenu.jsx';
+import { useInboxBadge }        from './src/lib/useInboxBadge.js';
 
 const Stack = createNativeStackNavigator();
+const Tabs  = createBottomTabNavigator();
+
+// Phase 41.18 follow-up — bottom-tab shell over the five main
+// destinations (Workspace / MyWork / Review / Inbox / Crews). The
+// outer stack pushes detail + modal screens OVER the tab shell and
+// hides the tab bar via `screenOptions`. Mirrors stoop-mobile's
+// pattern (App.js's `ShellTabs`).
+const TAB_ICONS = {
+  Workspace: { active: 'home',         inactive: 'home-outline' },
+  MyWork:    { active: 'list',         inactive: 'list-outline' },
+  Review:    { active: 'checkmark-done', inactive: 'checkmark-done-outline' },
+  Inbox:     { active: 'notifications', inactive: 'notifications-outline' },
+  Crews:     { active: 'people',       inactive: 'people-outline' },
+};
+
+function _tabIcon(routeName) {
+  return ({ focused, color, size }) => {
+    const spec = TAB_ICONS[routeName] ?? { active: 'ellipse', inactive: 'ellipse-outline' };
+    return <Ionicons
+      name={focused ? spec.active : spec.inactive}
+      size={size}
+      color={color}
+    />;
+  };
+}
+
+/**
+ * InboxTabIcon — small wrapper that surfaces the live badge count
+ * on the Inbox tab via `navigation.setOptions`. The hook polls every
+ * 30 s and refreshes on the agent's `inboxChanged` event.
+ *
+ * Note: `tabBarBadge` accepts a number or null; passing a falsy
+ * value hides the badge.
+ */
+function InboxTabBadgeBinder() {
+  const nav = useNavigation();
+  const badge = useInboxBadge();
+  React.useEffect(() => {
+    nav.setOptions({
+      tabBarBadge: badge.count > 0 ? badge.count : undefined,
+    });
+  }, [nav, badge.count]);
+  return null;
+}
+
+/**
+ * Tab-screen wrappers — needed because @react-navigation/bottom-tabs
+ * doesn't pass the navigation prop to a non-screen component cleanly,
+ * and we want the InboxTabBadgeBinder to share the screen tree.
+ */
+function InboxTabScreen() {
+  return (
+    <>
+      <InboxTabBadgeBinder />
+      <InboxScreen />
+    </>
+  );
+}
+
+function MainTabs() {
+  // The MainMenuProvider wraps the tab navigator so any tab screen
+  // (and any pushed detail) can call `useMainMenu().show()` to open
+  // the drawer. The drawer itself renders inside the provider —
+  // mounted once, regardless of which tab is active.
+  return (
+    <MainMenuProvider>
+      <Tabs.Navigator
+        screenOptions={({ route }) => ({
+          headerShown:             true,
+          headerLeft:              () => <MainMenuButton />,
+          headerRight:             () => (
+            <View style={{ paddingRight: 12 }}>
+              <CrewSwitcher />
+            </View>
+          ),
+          tabBarActiveTintColor:   TASKS_TOKENS.COLORS.primary,
+          tabBarInactiveTintColor: '#6b7280',
+          tabBarStyle:        { backgroundColor: '#fff', borderTopColor: '#e5e7eb' },
+          tabBarLabelStyle:   { fontSize: 11 },
+          tabBarIcon:         _tabIcon(route.name),
+        })}
+      >
+        <Tabs.Screen name={ROUTES.Workspace} component={WorkspaceScreen}      options={{ title: 'Tasks' }} />
+        <Tabs.Screen name={ROUTES.MyWork}    component={MyWorkScreen}         options={{ title: 'Mine' }} />
+        <Tabs.Screen name={ROUTES.Review}    component={ReviewScreen}         options={{ title: 'Review' }} />
+        <Tabs.Screen name={ROUTES.Inbox}     component={InboxTabScreen}       options={{ title: 'Inbox' }} />
+        <Tabs.Screen name={ROUTES.Crews}     component={CrewsDashboardScreen} options={{ title: 'Crews' }} />
+      </Tabs.Navigator>
+    </MainMenuProvider>
+  );
+}
 
 // Tasks-mobile palette — teal brand (overrides substrate
 // DEFAULT_TOKENS only where it diverges).
@@ -167,7 +268,9 @@ function BootGate() {
     );
   }
 
-  const initialRoute = svc.crews.size > 0 ? ROUTES.Workspace : ROUTES.Welcome;
+  // Once a crew exists, the user lands inside the bottom-tab shell
+  // (Main). Otherwise we boot into the Welcome onboarding stack.
+  const initialRoute = svc.crews.size > 0 ? ROUTES.Main : ROUTES.Welcome;
 
   return (
     <NavigationContainer>
@@ -180,24 +283,17 @@ function BootGate() {
         <Stack.Screen name={ROUTES.OnboardScan}    component={OnboardScanScreen} />
         <Stack.Screen name={ROUTES.OnboardRestore} component={OnboardRestoreScreen} />
         <Stack.Screen name={ROUTES.OnboardIssue}   component={OnboardIssueScreen} />
-        <Stack.Screen name={ROUTES.Workspace}      component={WorkspaceScreen}
-                      options={{ headerShown: true, title: 'Tasks' }} />
+        {/* Main = the bottom-tab shell (Workspace + MyWork + Review +
+            Inbox + Crews). Detail / modal routes push OVER this. */}
+        <Stack.Screen name={ROUTES.Main}           component={MainTabs} />
         <Stack.Screen name={ROUTES.TaskDetail}     component={TaskDetailScreen}
                       options={{ headerShown: true, title: '' }} />
         <Stack.Screen name={ROUTES.Compose}        component={ComposeScreen}
                       options={{ presentation: 'modal' }} />
-        <Stack.Screen name={ROUTES.MyWork}         component={MyWorkScreen}
-                      options={{ headerShown: true, title: 'My work' }} />
         <Stack.Screen name={ROUTES.Submit}         component={SubmitScreen}
                       options={{ headerShown: true, title: 'Submit' }} />
-        <Stack.Screen name={ROUTES.Review}         component={ReviewScreen}
-                      options={{ headerShown: true, title: 'Review' }} />
         <Stack.Screen name={ROUTES.Dag}            component={DagScreen}
                       options={{ headerShown: true, title: 'Sub-tasks' }} />
-        <Stack.Screen name={ROUTES.Inbox}          component={InboxScreen}
-                      options={{ headerShown: true, title: 'Inbox' }} />
-        <Stack.Screen name={ROUTES.Crews}          component={CrewsDashboardScreen}
-                      options={{ headerShown: true, title: 'Crews' }} />
         <Stack.Screen name={ROUTES.Availability}   component={AvailabilityScreen}
                       options={{ headerShown: true, title: 'Availability' }} />
         <Stack.Screen name={ROUTES.ProfileMine}    component={ProfileMineScreen}
@@ -214,6 +310,16 @@ function BootGate() {
                       options={{ headerShown: true, title: 'Sign in' }} />
         <Stack.Screen name={ROUTES.AuthCallback}   component={AuthCallbackScreen}
                       options={{ headerShown: false }} />
+        <Stack.Screen name={ROUTES.Metrics}        component={MetricsScreen}
+                      options={{ headerShown: true, title: 'Diagnostics' }} />
+        <Stack.Screen name={ROUTES.Privacy}        component={PrivacyScreen}
+                      options={{ headerShown: true, title: 'Privacy' }} />
+        <Stack.Screen name={ROUTES.EditSkills}     component={EditSkillsScreen}
+                      options={{ headerShown: true, title: 'Edit my skills' }} />
+        <Stack.Screen name={ROUTES.CadenceOverrides} component={CadenceOverridesScreen}
+                      options={{ headerShown: true, title: 'Cadence overrides' }} />
+        <Stack.Screen name={ROUTES.ChatThread}     component={ChatThreadScreen}
+                      options={{ headerShown: true, title: 'Chat' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -55,6 +55,50 @@ and forwards them; one-shot import is the simpler subset.
    in pod (mark archived) seems safe default.
 5. **Conversion fidelity tradeoffs** — see `google-docs-api.md`.
 
+## Calendar sources — added scope (2026-05-07)
+
+Per the Tasks V1 advice
+([`../../Tasks App/advice-2026-05-07.md`](../../Tasks%20App/advice-2026-05-07.md)),
+calendar-to-pod sync is now part of import-bridge's scope, not
+Folio's. The Tasks app reads `<user-pod>/calendar/*.ics`
+locally for its own conflict view; getting those `.ics` files
+into the pod (or kept in sync) is a calendar source connector
+just like Google Docs.
+
+**Sources to support (in priority order):**
+
+| Source | Mechanism | Listener? | V1 effort |
+|---|---|---|---|
+| Generic iCal subscription URL (`webcal://...`, `https://.../*.ics`) | poll the URL | no — poll only | low (~1 day) |
+| Google Calendar | Google Calendar API + OAuth | **yes** — push notifications via `events.watch` | medium (~3-4 days) |
+| Microsoft 365 / Outlook | Microsoft Graph + OAuth | **yes** — `/subscriptions` resource | medium (~3-4 days) |
+| iCloud / generic CalDAV | CalDAV client over the user's URL + creds | no — poll only (~10 min default) | medium (~2-3 days) |
+
+**Storage convention** — one `.ics` file per source under
+`<user-pod>/calendar/<sourceId>.ics`, with a sibling
+`<sourceId>.manifest.json` recording last-fetched / next-fetch /
+sync state / source kind.
+
+**Conflict policy** — pod is a read-only mirror of the upstream
+calendar; if the user edits in their calendar app, the next
+sync wins. Tasks V1 does not write back; V2 might (see Tasks
+advice § Phase 3).
+
+**Dependencies on import-bridge primitives already in the
+project sketch:**
+
+- OAuth credential management in `Vault` (already in this
+  project's L0 list).
+- Live-sync skill pattern (already in this project's L0 list).
+- Pod-storage convention (small/structured = direct) —
+  `*.ics` files are direct-stored.
+
+**Tasks V1 ships with mockup `.ics` fixtures** under
+`apps/tasks-v0/test/fixtures/calendar/` and a pod-mock loader so
+testing + dev work without depending on this connector being
+built. Real connectors land in import-bridge as users actually
+need them.
+
 ## Investigation notes
 
 - **[`migration-scope.md`](./migration-scope.md)** — broader

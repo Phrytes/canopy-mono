@@ -138,6 +138,24 @@ What this app needs that's purely app-level:
 - Sharing flow: "publish this note to my-friends-group" / "this
   blog post is public."
 
+## Cross-app substrate compatibility (added 2026-05-07)
+
+Tasks V1 (see [`../../Tasks App/advice-2026-05-07.md`](../../Tasks%20App/advice-2026-05-07.md))
+flags one pattern relevant to the notes app:
+
+- **Pod-data-sharing caution principles.** Whenever the notes
+  app is asked to share a note with another agent (collaborator
+  via the OSS-doc-tool, blog publication, fork-and-share), the
+  same caution principles apply: explicit per-recipient opt-in,
+  smallest derivative shared (link by reference, not by copy),
+  audit trail of cross-pod reads, sign-off from the author before any
+  *new* cross-pod flow ships. Same discipline as Tasks /
+  Stoop / Household.
+
+(The notes app is unlikely to consume the `getFreeBusy` /
+`InAppInboxChannel` / DoD-lifecycle substrates Tasks V1
+introduces; flagged here only for the pod-sharing discipline.)
+
 ## Related work in the repo
 
 - `packages/core/src/storage/SolidPodSource.js` — pod read/write

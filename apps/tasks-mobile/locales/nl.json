@@ -14,8 +14,14 @@
     "welcome": {
       "title":      { "text": "Welkom bij Tasks",         "doc": "Welcome screen title." },
       "subtitle":   { "text": "Takenlijsten per crew, offline-first.", "doc": "Welcome screen subtitle." },
-      "scan_cta":   { "text": "Scan een uitnodigings-QR", "doc": "Primary action — join an existing crew." },
-      "restore_cta": { "text": "Herstel met je herstelzin","doc": "Secondary action — restore an identity from a mnemonic." }
+      "create_cta":  { "text": "Maak een nieuwe crew",     "doc": "Primary action — admin creates a fresh crew." },
+      "scan_cta":   { "text": "Scan een uitnodigings-QR", "doc": "Secondary — join an existing crew." },
+      "restore_cta": { "text": "Herstel met je herstelzin","doc": "Tertiary — restore an identity from a mnemonic." },
+      "create_modal_title":  { "text": "Maak een nieuwe crew", "doc": "Modal title." },
+      "create_modal_body":   { "text": "Jij wordt de admin. Nodig daarna anderen uit met een QR.", "doc": "Modal body." },
+      "create_name_label":   { "text": "Crew-naam",            "doc": "Crew name field label." },
+      "create_kind_label":   { "text": "Type crew",            "doc": "Crew kind picker label." },
+      "create_submit":       { "text": "Maak + uitnodigen",    "doc": "Submit-button label." }
     },
     "scan": {
       "title":          { "text": "Scan een QR-code",     "doc": "Scan screen title." },
@@ -62,7 +68,9 @@
     },
     "workspace": {
       "title":          { "text": "Werkplek",                    "doc": "Workspace screen title." },
-      "empty":          { "text": "Geen open taken. Tik op + om er één toe te voegen.", "doc": "Empty-state body." },
+      "empty_title":    { "text": "Nog niets op de lijst",       "doc": "Empty-state title (Phase 41.18 follow-up)." },
+      "empty":          { "text": "Voeg een taak toe — of wacht tot iemand uit de crew dat doet.", "doc": "Empty-state body." },
+      "empty_add":      { "text": "+ Voeg taak toe",             "doc": "Empty-state CTA — opens Compose." },
       "filter_all":     { "text": "Alle",                         "doc": "Filter chip — no status filter." },
       "filter_ready":   { "text": "Klaar",                        "doc": "Filter chip — status=ready." },
       "filter_waiting": { "text": "Wachtend",                     "doc": "Filter chip — status=waiting (V2.7 deps-blocked)." },
@@ -100,20 +108,58 @@
       "reviewLog_rejected": { "text": "Afgewezen door @{by}: {note}",      "doc": "ReviewLog — reject with note." },
       "reviewLog_approved": { "text": "Goedgekeurd door @{by}",            "doc": "ReviewLog — approve." },
       "deliverable_link":   { "text": "Deliverable",                      "doc": "Section header for deliverable.ref." },
-      "no_open_tasks":      { "text": "Kon deze taak niet laden.",         "doc": "Detail-load error." }
+      "no_open_tasks":      { "text": "Kon deze taak niet laden.",         "doc": "Detail-load error." },
+      "admin_section":      { "text": "Admin-acties",                      "doc": "Section header above the 41.18.1 admin/master CTAs." },
+      "revoke":             { "text": "Toewijzing intrekken",              "doc": "Revoke CTA — claimed → ready." },
+      "revoke_body":        { "text": "De huidige assignee krijgt een notificatie en kan in beroep gaan.", "doc": "Revoke confirm-modal body copy." },
+      "revoke_reason":      { "text": "Reden (verplicht)",                 "doc": "Revoke reason input label." },
+      "reassign":           { "text": "Opnieuw toewijzen…",                "doc": "Reassign CTA — opens member picker." },
+      "reassign_picker_title": { "text": "Toewijzen aan",                  "doc": "Member-picker title for reassign." },
+      "reassign_clear":     { "text": "Niet toewijzen (leeg)",             "doc": "Picker row — clear the assignee." },
+      "remove":             { "text": "Taak verwijderen",                  "doc": "Remove (admin only) CTA." },
+      "remove_confirm_title": { "text": "Deze taak verwijderen?",          "doc": "Remove confirm-modal title." },
+      "remove_confirm_body": { "text": "Sub-taken blijven bestaan (verwijder die apart). De auditlog bewaart de historie.", "doc": "Remove confirm-modal body." },
+      "set_approval_mode":  { "text": "Goedkeuringsmodus: {mode}",         "doc": "Approval-mode CTA — shows current value." },
+      "approval_mode_title": { "text": "Stel goedkeuringsmodus in",        "doc": "Approval-mode picker title." },
+      "force_spawn_subtask": { "text": "Sub-taak forceren (admin)",        "doc": "Force-spawn CTA — opens Compose with reason field." },
+      "appeal":             { "text": "Beroep aantekenen",                   "doc": "Appeal CTA — only when last reviewLog entry is revoke." },
+      "subtask_of":         { "text": "Sub-taak van: {text}",                "doc": "Parent reference chip on a sub-task — when the parent is in listOpen." },
+      "subtask_of_id":      { "text": "Sub-taak van #{id}",                  "doc": "Parent reference chip on a sub-task — when the parent isn't in listOpen (e.g. completed)." },
+      "subtasks_label":     { "text": "{count} sub-taak/taken",              "doc": "Section header above the sub-tasks list." }
     },
     "compose": {
       "title":           { "text": "Nieuwe taak",                       "doc": "ComposeScreen title." },
+      "title_subtask":   { "text": "Nieuwe sub-taak",                   "doc": "Title when parent is set (sub-task shortcut)." },
+      "title_force_spawn": { "text": "Sub-taak forceren",               "doc": "Title when forceSpawn route param is set." },
+      "subtask_of":      { "text": "Sub-taak van {id}",                 "doc": "Subtitle banner when parent is set." },
       "text_label":      { "text": "Wat moet er gebeuren?",              "doc": "Task text label." },
       "text_placeholder": { "text": "bijv. Maak de lekkende kraan",       "doc": "Task text placeholder." },
       "due_label":       { "text": "Deadline",                          "doc": "Due-date label." },
       "due_placeholder": { "text": "JJJJ-MM-DD (optioneel)",             "doc": "Due-date placeholder." },
-      "skill_label":     { "text": "Vereiste vaardigheid (optioneel)",   "doc": "Skill label." },
+      "skill_label":     { "text": "Vereiste vaardigheden (optioneel)",  "doc": "Skill label." },
       "skill_placeholder": { "text": "bijv. loodgieten",                 "doc": "Skill placeholder." },
+      "skill_placeholder_multi": { "text": "bijv. loodgieten, elektra",  "doc": "Skill placeholder hinting comma-separated list." },
       "dod_label":       { "text": "Definition of done",                 "doc": "DoD label." },
       "dod_text":        { "text": "Zelf afvinken",                      "doc": "DoD chip — text deliverable." },
       "dod_photo":       { "text": "Foto-bewijs",                        "doc": "DoD chip — photo deliverable." },
+      "dependencies_label": { "text": "Hangt af van",                    "doc": "Dependencies field label." },
+      "dependencies_placeholder": { "text": "Kies taken die eerst klaar moeten zijn…", "doc": "Dependencies field placeholder." },
+      "dependencies_count": { "text": "{count} taak/taken geselecteerd", "doc": "Dependencies field display when selection is non-empty." },
+      "dependencies_picker_title": { "text": "Kies voorwaarden",         "doc": "Member-picker title (used for tasks here)." },
+      "dependencies_search": { "text": "Zoek open taken…",               "doc": "Search box placeholder in the deps picker." },
+      "master_label":    { "text": "Master (reviewer)",                  "doc": "Master picker label." },
+      "master_placeholder": { "text": "Standaard ik",                    "doc": "Master picker placeholder when unset." },
+      "master_picker_title": { "text": "Kies een master",                "doc": "Master picker title." },
+      "master_clear":    { "text": "(standaard — ik)",                   "doc": "Master picker first row — clear selection." },
+      "approval_label":  { "text": "Goedkeuringsmodus",                  "doc": "Approval mode field label." },
+      "approval_default": { "text": "standaard",                         "doc": "Approval chip — leave at substrate default." },
+      "approval_auto":   { "text": "auto-goedkeuren",                    "doc": "Approval chip — auto." },
+      "approval_single": { "text": "enkele goedkeuring",                 "doc": "Approval chip — approval." },
+      "approval_dual":   { "text": "dubbele goedkeuring",                "doc": "Approval chip — dual-approval." },
+      "force_spawn_reason_label": { "text": "Reden (verplicht voor forceren)", "doc": "Force-spawn reason field label." },
+      "force_spawn_reason_placeholder": { "text": "bijv. assignee op vakantie; deadline in gevaar", "doc": "Force-spawn reason placeholder." },
       "submit":          { "text": "Voeg toe",                           "doc": "Compose-submit CTA." },
+      "submit_force_spawn": { "text": "Forceer",                         "doc": "Compose-submit CTA when forceSpawn=true." },
       "submit_failed":   { "text": "Toevoegen mislukt: {reason}",         "doc": "Error after addTask fails." }
     },
     "my_work": {
@@ -123,7 +169,9 @@
       "section_claimable": { "text": "Vrij te claimen",               "doc": "Claimable section header." },
       "empty_assigned":    { "text": "Niets toegewezen. Pak iets uit \"Vrij te claimen\".", "doc": "Empty state." },
       "empty_mastered":    { "text": "Geen taken die op jouw beoordeling wachten.",  "doc": "Empty state." },
-      "empty_claimable":   { "text": "Geen vrije taken nu.",          "doc": "Empty state." }
+      "empty_claimable":   { "text": "Geen vrije taken nu.",          "doc": "Empty state." },
+      "all_clear_title":   { "text": "Alles op orde",                 "doc": "All-empty state title (Phase 41.18 follow-up)." },
+      "all_clear_body":    { "text": "Niets toegewezen, niets te beoordelen, niets vrij te claimen. Of je bent klaar — of de rest van de crew zit op vakantie.", "doc": "All-empty state body." }
     },
     "planner": {
       "panel_title":      { "text": "Voorgestelde planning",          "doc": "Planner panel header." },
@@ -175,7 +223,14 @@
       "subtask_proposal_decline": { "text": "Afwijzen",                      "doc": "V2.7 propose-decline CTA." },
       "subtask_proposal_warning": { "text": "Bij goedkeuren rolt jouw indiening terug naar geclaimd.", "doc": "Warning shown on Approve confirm modal." },
       "decline_note":       { "text": "Reden (optioneel)",                   "doc": "Decline reason input label." },
-      "generic_label":      { "text": "{kind}",                              "doc": "Fallback label for unknown inbox event kinds." }
+      "generic_label":      { "text": "{kind}",                              "doc": "Fallback label for unknown inbox event kinds." },
+      "badge_summary":      { "text": "{recent} nieuw in 24u · {total} totaal", "doc": "Header summary line above the list." },
+      "clear_all":          { "text": "Alles wissen",                        "doc": "Header CTA — destructive clear-everything." },
+      "clear_all_confirm_title": { "text": "Alle inbox-items wissen?",       "doc": "Clear-all confirm-modal title." },
+      "clear_all_confirm_body":  { "text": "Hiermee verwijder je alle notificaties uit je inbox. De gebeurtenissen op de bijbehorende taken blijven bestaan; alleen de inbox-kopieën verdwijnen.", "doc": "Clear-all confirm-modal body." },
+      "subtask_request_label":   { "text": "Sub-taak aangevraagd door @{by}: \"{text}\"",            "doc": "V1 subtask-request inbox card title." },
+      "subtask_request_approve": { "text": "Aanvraag goedkeuren",                                    "doc": "Approve V1 subtask-request CTA." },
+      "subtask_request_decline": { "text": "Afwijzen",                                               "doc": "Decline V1 subtask-request CTA." }
     },
     "crew_switch": {
       "label":   { "text": "Actieve crew",                           "doc": "Crew-switcher label." },
@@ -194,7 +249,8 @@
       "kind_project":    { "text": "project",                          "doc": "Crew-kind chip." },
       "kind_team":       { "text": "team",                             "doc": "Crew-kind chip." },
       "kind_friends":    { "text": "vrienden",                         "doc": "Crew-kind chip." },
-      "kind_maintenance": { "text": "onderhoud",                       "doc": "Crew-kind chip." }
+      "kind_maintenance": { "text": "onderhoud",                       "doc": "Crew-kind chip." },
+      "new_crew":        { "text": "+ Nieuwe crew",                    "doc": "FAB on the dashboard for creating another crew." }
     },
     "availability": {
       "opt_in_label":    { "text": "Beschikbaarheid delen met de crew",   "doc": "Opt-in toggle label." },
@@ -227,7 +283,9 @@
       "recovery_reveal_cta": { "text": "Toon me",                             "doc": "Reveal CTA." },
       "recovery_warning":    { "text": "Maak geen screenshot. Iedereen met deze woorden heeft toegang tot je account.", "doc": "Warning above the grid." },
       "recovery_copy":       { "text": "Kopieer",                             "doc": "Copy button label." },
-      "unknown_member":      { "text": "Lid niet gevonden in deze crew.",     "doc": "ProfileOther empty state." }
+      "unknown_member":      { "text": "Lid niet gevonden in deze crew.",     "doc": "ProfileOther empty state." },
+      "edit_skills_cta":     { "text": "Bewerk mijn vaardigheden voor deze crew", "doc": "CTA opening EditSkillsScreen." },
+      "edit_skills_hint":    { "text": "Kies uit de crew-vocab of voeg eigen tags toe.", "doc": "Hint under the CTA." }
     },
     "settings": {
       "section_device":         { "text": "Dit apparaat",                     "doc": "Per-device section header." },
@@ -246,7 +304,17 @@
       "push_event_deadlineApproaching": { "text": "Deadline nadert",          "doc": "Per-event toggle." },
       "push_event_taskClaimed":         { "text": "Iemand claimde een taak",  "doc": "Per-event toggle." },
       "push_event_taskRejected":        { "text": "Indiening afgewezen",      "doc": "Per-event toggle." },
-      "push_event_subtaskProposal":     { "text": "Sub-taakvoorstel",         "doc": "Per-event toggle." }
+      "push_event_subtaskProposal":     { "text": "Sub-taakvoorstel",         "doc": "Per-event toggle." },
+      "calendar_live_pending":     { "text": "Live native-sync — wacht op eerste gebeurtenis.", "doc": "Status line under calendarSyncMethod when native+live is enabled but hasn't fired yet." },
+      "calendar_live_last_sync":   { "text": "Live sync · laatst ververst om {when}.",          "doc": "Status line after a successful live diff." },
+      "calendar_live_error":       { "text": "Live-sync-fout: {err}",                            "doc": "Status line on hook error." },
+      "section_more":              { "text": "Meer",                          "doc": "Section header for diagnostics + privacy entry-points." },
+      "cadence_link":              { "text": "Mijn meld-frequentie",          "doc": "Nav row — opens CadenceOverridesScreen." },
+      "cadence_hint":              { "text": "Stel per gebeurtenis-type in hoe vaak je een seintje wilt.", "doc": "Hint under the Cadence row." },
+      "diagnostics_link":          { "text": "Diagnostiek",                   "doc": "Nav row — opens MetricsScreen." },
+      "diagnostics_hint":          { "text": "Relay-rtt, queue-diepte, skill-tellers.", "doc": "Hint under the Diagnostics row." },
+      "privacy_link":              { "text": "Privacyverklaring",             "doc": "Nav row — opens PrivacyScreen." },
+      "privacy_hint":              { "text": "Wat is versleuteld, wat de relay ziet, mobiel-specifieke items.", "doc": "Hint under the Privacy row." }
     },
     "crew_settings": {
       "no_active_crew":          { "text": "Kies eerst een crew.",                              "doc": "Empty state." },
@@ -286,7 +354,31 @@
       "calendar_last_emitted":   { "text": "Laatst ververst om {when}",                          "doc": "Footnote." },
       "calendar_event_count":    { "text": "{count} item(s) in feed",                             "doc": "Event-count footnote." },
       "availability_admin_label": { "text": "Beschikbaarheidshints",                             "doc": "Toggle label." },
-      "availability_admin_hint":  { "text": "Aan: leden kunnen een grof weekoverzicht delen.",    "doc": "Hint." }
+      "availability_admin_hint":  { "text": "Aan: leden kunnen een grof weekoverzicht delen.",    "doc": "Hint." },
+      "section_lifecycle":       { "text": "Crew-status",                                         "doc": "Section header — pause/archive controls." },
+      "section_cadence":         { "text": "Meld-frequentie",                                     "doc": "Section header — crew-wide cadence config." },
+      "section_crew_config":     { "text": "Crew-config (debug)",                                 "doc": "Section header — read-only crew config dump." },
+      "cadence_intro":           { "text": "Hoe vaak de crew leden pingt per gebeurtenis. Leeg = standaard. ms.", "doc": "Cadence-section intro." },
+      "lifecycle_state_active":  { "text": "Actief",                                              "doc": "Lifecycle state pill — active." },
+      "lifecycle_state_paused":  { "text": "Gepauzeerd",                                          "doc": "Lifecycle state pill — paused." },
+      "lifecycle_state_archived": { "text": "Gearchiveerd",                                       "doc": "Lifecycle state pill — archived." },
+      "lifecycle_hint_active":   { "text": "Taken stromen normaal door.",                         "doc": "Hint when state is active." },
+      "lifecycle_hint_paused":   { "text": "addTask is geblokkeerd. Bestaande taken lopen door.", "doc": "Hint when state is paused." },
+      "lifecycle_hint_archived": { "text": "Alleen-lezen. Geen nieuwe taken; leden zien wel de historie.", "doc": "Hint when state is archived." },
+      "lifecycle_state_active_member":   { "text": "Deze crew is actief.",                        "doc": "Member-side hint." },
+      "lifecycle_state_paused_member":   { "text": "Deze crew is gepauzeerd — admins hebben nieuwe taken uitgeschakeld.", "doc": "Member-side hint." },
+      "lifecycle_state_archived_member": { "text": "Deze crew is gearchiveerd — alleen-lezen.",   "doc": "Member-side hint." },
+      "lifecycle_pause":         { "text": "Crew pauzeren",                                       "doc": "Pause CTA." },
+      "lifecycle_unpause":       { "text": "Hervatten",                                           "doc": "Unpause CTA." },
+      "lifecycle_archive":       { "text": "Archiveren",                                          "doc": "Archive CTA." },
+      "lifecycle_unarchive":     { "text": "De-archiveren",                                       "doc": "Unarchive CTA." },
+      "lifecycle_archive_confirm_title":    { "text": "Deze crew archiveren?",                    "doc": "Archive confirm-modal title." },
+      "lifecycle_archive_confirm_body":     { "text": "Leden zien de crew als alleen-lezen. Je kunt later weer de-archiveren. De pod-data blijft.", "doc": "Archive confirm-modal body." },
+      "lifecycle_unarchive_confirm_title":  { "text": "Deze crew de-archiveren?",                 "doc": "Unarchive confirm-modal title." },
+      "lifecycle_unarchive_confirm_body":   { "text": "addTask + dispatch hervatten; leden gaan terug naar actieve modus.", "doc": "Unarchive confirm-modal body." },
+      "crew_config_reveal":      { "text": "Crew-config tonen (debug)",                           "doc": "CrewConfig disclosure CTA." },
+      "crew_config_hide":        { "text": "Verbergen",                                           "doc": "CrewConfig hide CTA." },
+      "crew_config_hint":        { "text": "Alleen-lezen JSON. Handig voor support-tickets.",     "doc": "CrewConfig hint." }
     },
     "issue_bot": {
       "title":          { "text": "Bot-token QR",                                                "doc": "IssueBotTokenScreen title." },
@@ -314,6 +406,66 @@
       "progress_count":        { "text": "{done} item(s) tot nu toe",                              "doc": "Progress without total." },
       "progress_with_total":   { "text": "{done} van {total} items",                               "doc": "Progress with total." },
       "continue":              { "text": "Doorgaan",                                              "doc": "Continue CTA." }
+    },
+    "main_menu": {
+      "section_me":        { "text": "Ik",                                                          "doc": "Section header for the personal-area links." },
+      "section_crew":      { "text": "Crew",                                                        "doc": "Section header for crew-area links." },
+      "section_app":       { "text": "App",                                                         "doc": "Section header for app-wide links." },
+      "profile":           { "text": "Profiel",                                                     "doc": "Link to ProfileMine." },
+      "availability":      { "text": "Mijn beschikbaarheid",                                        "doc": "Link to Availability." },
+      "edit_skills":       { "text": "Mijn vaardigheden (deze crew)",                               "doc": "Link to EditSkills." },
+      "crew_settings":     { "text": "Crew-instellingen",                                           "doc": "Link to CrewSettings." },
+      "dag":               { "text": "Sub-taak-boom",                                               "doc": "Link to DAG." },
+      "settings":          { "text": "Instellingen",                                                "doc": "Link to Settings." },
+      "diagnostics":       { "text": "Diagnostiek",                                                 "doc": "Link to Metrics." },
+      "privacy":           { "text": "Privacy",                                                     "doc": "Link to Privacy." },
+      "pod_sign_in":       { "text": "Inloggen op Solid-pod",                                       "doc": "Link to PodSignIn (signed-out state)." },
+      "pod_signed_in":     { "text": "Pod-login (ingelogd)",                                        "doc": "Link to PodSignIn (signed-in state)." },
+      "signed_out_title":  { "text": "Tasks",                                                       "doc": "Header label when no identity has loaded yet." },
+      "in_crew":           { "text": "In: {name}",                                                  "doc": "Header subtitle showing the active crew." },
+      "no_active_crew":    { "text": "Geen actieve crew",                                           "doc": "Header subtitle when no crew is active." }
+    },
+    "metrics": {
+      "title":  { "text": "Diagnostiek",                                                            "doc": "MetricsScreen title." },
+      "hint":   { "text": "Alleen-lezen tellers van getMetrics. Trek omlaag om te verversen.",      "doc": "MetricsScreen hint." },
+      "empty":  { "text": "Nog geen metrics.",                                                      "doc": "Empty state." }
+    },
+    "chat": {
+      "no_thread":        { "text": "Geen thread om te tonen.",                                    "doc": "Empty state — threadId missing from route params." },
+      "unknown_peer":     { "text": "@onbekend",                                                   "doc": "Header label when we can't resolve the counterparty." },
+      "empty":            { "text": "Nog geen berichten. Stuur het eerste.",                       "doc": "Empty thread body." },
+      "appeal_empty":     { "text": "Stuur je eerste bericht om beroep aan te tekenen. De master krijgt een seintje.", "doc": "Empty thread body when route carries appealForTaskId." },
+      "input_placeholder": { "text": "Typ een bericht…",                                          "doc": "Chat input placeholder." },
+      "send":             { "text": "Verzend",                                                     "doc": "Send-button label." }
+    },
+    "edit_skills": {
+      "title":              { "text": "Bewerk mijn vaardigheden",                                    "doc": "EditSkillsScreen title." },
+      "intro":              { "text": "Schakel bestaande tags in/uit + voeg nieuwe toe. Keuzes blijven binnen deze crew, tenzij je ze ook op je canonieke profiel laat verschijnen.", "doc": "EditSkillsScreen intro." },
+      "section_prefilled":  { "text": "Huidig geclaimd",                                             "doc": "Section header for skills already on my profile." },
+      "section_suggestions": { "text": "Voorgesteld door de crew-vocab",                             "doc": "Section header for unclaimed crew vocabulary entries." },
+      "section_freeform":   { "text": "Eigen tags toevoegen (komma-gescheiden)",                     "doc": "Section header for the freeform input." },
+      "freeform_placeholder": { "text": "bijv. metselen, elektra",                                   "doc": "Freeform input placeholder." },
+      "persist_label":      { "text": "Spiegelen naar mijn canonieke profiel",                       "doc": "Toggle for persistToCanonicalProfile." },
+      "persist_hint":       { "text": "Uit (standaard): alleen deze crew ziet ze. Aan: toekomstige crews krijgen deze lijst voorgevuld.", "doc": "Hint under the persist toggle." },
+      "hints_label":        { "text": "Andere categorieën die je kunt toevoegen"                     ,"doc": "Inline hint label." }
+    },
+    "cadence": {
+      "title":  { "text": "Mijn meld-frequentie",                                                   "doc": "CadenceOverridesScreen title." },
+      "intro":  { "text": "Overschrijf de crew-frequentie per gebeurtenis (in milliseconden). Leeg = erven. De 'effectief'-kolom toont wat er werkelijk afgaat.", "doc": "Intro text." },
+      "placeholder_override": { "text": "ms (jouw override)",                                       "doc": "Override input placeholder." },
+      "placeholder_crew":     { "text": "ms (crew-standaard)",                                      "doc": "Crew-side input placeholder." },
+      "effective":            { "text": "= {ms} ms",                                                "doc": "Effective-cadence indicator." },
+      "event_deadlineApproaching": { "text": "Deadline nadert",                                     "doc": "Event label." },
+      "event_taskClaimed":         { "text": "Taak geclaimd door iemand",                           "doc": "Event label." },
+      "event_taskRejected":        { "text": "Indiening afgewezen",                                 "doc": "Event label." },
+      "event_subtaskProposal":     { "text": "Sub-taakvoorstel",                                    "doc": "Event label." },
+      "event_subtaskRequested":    { "text": "Sub-taak aangevraagd (admin-wachtrij)",                "doc": "Event label." },
+      "event_inboxBadge":          { "text": "Inbox-badge verversen",                               "doc": "Event label." }
+    },
+    "privacy": {
+      "title":  { "text": "Privacyverklaring",                                                      "doc": "PrivacyScreen title." },
+      "intro":  { "text": "Closed-beta privacyverklaring. Dezelfde items als de desktop /privacy.html, plus mobiel-specifieke items voor camera, push, native agenda en BLE.", "doc": "PrivacyScreen intro." },
+      "empty":  { "text": "Geen privacyverklaring-items.",                                          "doc": "Empty state — getPrivacyNotice returned nothing." }
     }
   }
 }

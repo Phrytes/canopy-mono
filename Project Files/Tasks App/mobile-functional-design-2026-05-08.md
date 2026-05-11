@@ -271,13 +271,39 @@ V1 ships these screens (parallel to web pages):
 | Sign-in (Pod) | (none) | Lands when OIDC-RN wires |
 | Push | (none) | Subscribe + test + per-event toggle |
 | Settings | (none) | Two-section layout (per-device / shared) |
-| Privacy | `/privacy.html` | Same notice + mobile-only sections |
+| Privacy | `/privacy.html` | Same notice + mobile-only sections (mounted from the Settings screen as `getPrivacyNotice` consumer in Phase 41.18) |
+| Edit my skills | (panel on `/profile.html`) | Hierarchical multi-select rendered from `getMySkillsFormShape` (Phase 41.18 Batch 3) |
+| Cadence overrides | (panel on `/settings.html`) | Per-event interval + effective-cadence display (Phase 41.18 Batch 3) |
+| Metrics / Diagnostics | (none — desktop has CLI flags) | Read-only relay rtt + queue depth + skill-call counts (Phase 41.18 Batch 2) |
+| Chat thread (appeal) | (none — desktop renders inline) | Standalone screen wrapping `chat-p2p`'s `<ChatThread>` (Phase 41.18 Batch 4) |
 
-(20 screens. Subset of Stoop V3's 22 — Tasks doesn't have the contacts / location-pin surfaces.)
+(24 screens after Phase 41.18 — added 4 to the original 20.)
 
-## 6a. Implementation status (none yet — pre-build)
+## 6a. Implementation status
 
-Nothing built yet. The 2026-05-08 audit Stoop V3 went through after Phases 40.1-40.13 is the cautionary tale: don't ship UI shells without agent wiring. Tasks-mobile's coding plan (deferred to a separate doc) bakes wiring into each phase from the start.
+**Phase 41.1 – 41.17 — shipped 2026-05-09.** All 17 phases landed; the build passes 106/106 tests + boots on a real Android phone. The screen list above is the V1 surface; every screen renders + the underlying skill calls work.
+
+**Phase 41.18 — desktop-parity completion (in flight, 2026-05-09).** A real-device hands-on revealed that the 41.1–41.17 build covered the *first-order* skills (claim / submit / approve / reject / etc.) but not the *second-order* admin / lifecycle / maintenance skills. The desktop registers 67 skills today; mobile only used 30 of them after 41.17. Phase 41.18 closes the gap — see the coding-plan doc for the per-tier breakdown.
+
+The 11 tiers in scope:
+
+| # | Tier | Why it was missed in 41.1–41.17 | Lands in |
+|---|---|---|---|
+| 1 | Task lifecycle (revoke / reassign / remove / force-spawn-subtask / setApprovalMode) | TaskDetail focused on the assignee path; admin/master CTAs were not in scope | Batch 1 |
+| 2 | Compose expansion (dependencies[] / master / approvalMode + sub-task shortcut + skill picker) | Compose started minimal; `<SkillPicker>` substrate existed but wasn't wired | Batch 1 |
+| 3 | Inbox housekeeping (clearInbox / clearInboxItem / inboxBadgeCount tab badge) | Inbox shipped read-only | Batch 2 |
+| 4 | Crew lifecycle (pause / unpause / archive / unarchive) | Admin-tier crew config wasn't surfaced | Batch 2 |
+| 5 | Skills editor (editMySkillsForCrew + getMySkillsFormShape) | Profile (mine) showed skills as a read-only list | Batch 3 |
+| 6 | Appeal flow (appealTask + ChatThreadScreen) | `chat-p2p` was wired into the metro config but no screen consumed it | Batch 4 |
+| 7 | Cadence config (getCrewCadences/setCrewCadences/get+setMyCadenceOverrides/resolveMyCadence) | Settings carried defaults; per-crew + per-user override surface absent | Batch 3 |
+| 8 | V1 Subtask-request flow (listSubtaskRequests + approve/decline) | V2.7 propose-mode shipped but the V1 admin pre-approval path didn't | Batch 3 |
+| 9 | Push relay registration (per-app pushTokens map + setMyPushToken skill) | Mobile registered local opt-in but never registered its Expo token with the relay (substrate touch) | Batch 5 |
+| 10 | Native calendar live-diff (wireCalendarEmission listener) | Calendar sync ran on Settings → "Sync now" only; live-diff on agent events absent | Batch 5 |
+| 11 | Misc admin/diagnostic surfaces (getMetrics, getPrivacyNotice, getCrewAvailability admin view, getCrewConfig) | Cut for V1 minimal | Batch 2 |
+
+**Out of mobile scope (item 12 of scope locks, unchanged)** — hosting the Telegram bot. On mobile, the user uses the Telegram client itself. The bot bindings + cap-token issuance flow (already on phone via Phase 41.13) is the integration surface.
+
+After Phase 41.18 lands the phone reaches **functional parity with the desktop** for every capability that's reasonable to put on a phone — every skill in `apps/tasks-v0/src/skills/index.js` has at least one CTA reachable from a mobile screen, with the documented Telegram-bot exception.
 
 ## 7. Locale + i18n
 

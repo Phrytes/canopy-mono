@@ -14,8 +14,14 @@
     "welcome": {
       "title":     { "text": "Welcome to Tasks",        "doc": "Welcome screen title." },
       "subtitle":  { "text": "Per-crew task lists, offline-first.", "doc": "Welcome screen subtitle." },
-      "scan_cta":  { "text": "Scan an invite QR",        "doc": "Primary action — join an existing crew." },
-      "restore_cta": { "text": "Restore from recovery phrase", "doc": "Secondary action — restore an identity from a mnemonic." }
+      "create_cta":  { "text": "Create a new crew",     "doc": "Primary action — admin creates a fresh crew." },
+      "scan_cta":  { "text": "Scan an invite QR",        "doc": "Secondary — join an existing crew." },
+      "restore_cta": { "text": "Restore from recovery phrase", "doc": "Tertiary — restore an identity from a mnemonic." },
+      "create_modal_title":  { "text": "Create a new crew",  "doc": "Modal title." },
+      "create_modal_body":   { "text": "You become the admin. Invite the rest with a QR after creation.", "doc": "Modal body." },
+      "create_name_label":   { "text": "Crew name",           "doc": "Crew name field label." },
+      "create_kind_label":   { "text": "Crew type",           "doc": "Crew kind picker label." },
+      "create_submit":       { "text": "Create + invite",     "doc": "Submit-button label." }
     },
     "scan": {
       "title":          { "text": "Scan a QR code",     "doc": "Scan screen title." },
@@ -62,7 +68,9 @@
     },
     "workspace": {
       "title":          { "text": "Workspace",                  "doc": "Workspace screen title." },
-      "empty":          { "text": "No open tasks. Tap + to add one.", "doc": "Empty-state body." },
+      "empty_title":    { "text": "Nothing on the list yet",    "doc": "Empty-state title (Phase 41.18 follow-up)." },
+      "empty":          { "text": "Add a task or wait for someone in the crew to.",  "doc": "Empty-state body." },
+      "empty_add":      { "text": "+ Add a task",               "doc": "Empty-state CTA — opens Compose." },
       "filter_all":     { "text": "All",                         "doc": "Filter chip — no status filter." },
       "filter_ready":   { "text": "Ready",                       "doc": "Filter chip — status=ready." },
       "filter_waiting": { "text": "Waiting",                     "doc": "Filter chip — status=waiting (V2.7 deps-blocked)." },
@@ -100,20 +108,58 @@
       "reviewLog_rejected": { "text": "Rejected by @{by}: {note}",       "doc": "ReviewLog entry — reject with note." },
       "reviewLog_approved": { "text": "Approved by @{by}",               "doc": "ReviewLog entry — approve." },
       "deliverable_link":   { "text": "Deliverable",                    "doc": "Section header for deliverable.ref." },
-      "no_open_tasks":      { "text": "Couldn't load this task.",        "doc": "Detail-load error." }
+      "no_open_tasks":      { "text": "Couldn't load this task.",        "doc": "Detail-load error." },
+      "admin_section":      { "text": "Admin actions",                   "doc": "Section header above the 41.18.1 admin/master CTAs." },
+      "revoke":             { "text": "Revoke assignment",               "doc": "Revoke CTA — claimed → ready." },
+      "revoke_body":        { "text": "The assignee will be notified and can appeal.", "doc": "Revoke confirm-modal body copy." },
+      "revoke_reason":      { "text": "Reason (required)",               "doc": "Revoke reason input label." },
+      "reassign":           { "text": "Reassign…",                       "doc": "Reassign CTA — opens member picker." },
+      "reassign_picker_title": { "text": "Reassign to",                  "doc": "Member-picker title for reassign." },
+      "reassign_clear":     { "text": "Unassign (clear)",                "doc": "Picker row — clear the assignee." },
+      "remove":             { "text": "Remove task",                     "doc": "Remove (admin only) CTA." },
+      "remove_confirm_title": { "text": "Remove this task?",             "doc": "Remove confirm-modal title." },
+      "remove_confirm_body": { "text": "Sub-tasks stay (you can remove them separately). Audit log keeps the history.", "doc": "Remove confirm-modal body." },
+      "set_approval_mode":  { "text": "Approval-mode: {mode}",           "doc": "Approval-mode CTA — shows current value." },
+      "approval_mode_title": { "text": "Set approval mode",              "doc": "Approval-mode picker title." },
+      "force_spawn_subtask": { "text": "Force-spawn sub-task (admin override)", "doc": "Force-spawn CTA — opens Compose with reason field." },
+      "appeal":             { "text": "Appeal this revoke",                   "doc": "Appeal CTA — only when last reviewLog entry is revoke." },
+      "subtask_of":         { "text": "Sub-task of: {text}",                  "doc": "Parent reference chip on a sub-task — when the parent is in listOpen." },
+      "subtask_of_id":      { "text": "Sub-task of #{id}",                    "doc": "Parent reference chip on a sub-task — when the parent isn't in listOpen (e.g. completed)." },
+      "subtasks_label":     { "text": "{count} sub-task(s)",                  "doc": "Section header above the sub-tasks list." }
     },
     "compose": {
       "title":           { "text": "New task",                        "doc": "ComposeScreen title." },
+      "title_subtask":   { "text": "New sub-task",                    "doc": "Title when parent is set (sub-task shortcut)." },
+      "title_force_spawn": { "text": "Force-spawn sub-task",           "doc": "Title when forceSpawn route param is set." },
+      "subtask_of":      { "text": "Sub-task of {id}",                "doc": "Subtitle banner when parent is set." },
       "text_label":      { "text": "What needs doing?",               "doc": "Task text label." },
       "text_placeholder": { "text": "e.g. Fix the leaky faucet",       "doc": "Task text placeholder." },
       "due_label":       { "text": "Due date",                         "doc": "Due-date label." },
       "due_placeholder": { "text": "YYYY-MM-DD (optional)",            "doc": "Due-date placeholder." },
-      "skill_label":     { "text": "Required skill (optional)",        "doc": "Skill label." },
+      "skill_label":     { "text": "Required skills (optional)",       "doc": "Skill label." },
       "skill_placeholder": { "text": "e.g. plumbing",                  "doc": "Skill placeholder." },
+      "skill_placeholder_multi": { "text": "e.g. plumbing, electrics", "doc": "Skill placeholder hinting comma-separated list." },
       "dod_label":       { "text": "Definition of done",               "doc": "DoD label." },
       "dod_text":        { "text": "Self-mark when done",              "doc": "DoD chip — text deliverable." },
       "dod_photo":       { "text": "Photo proof",                      "doc": "DoD chip — photo deliverable (Phase 41.5)." },
+      "dependencies_label": { "text": "Depends on",                    "doc": "Dependencies field label." },
+      "dependencies_placeholder": { "text": "Pick tasks that must finish first…", "doc": "Dependencies field placeholder." },
+      "dependencies_count": { "text": "{count} task(s) selected",      "doc": "Dependencies field display when selection is non-empty." },
+      "dependencies_picker_title": { "text": "Pick prerequisites",      "doc": "Member-picker title (used for tasks here)." },
+      "dependencies_search": { "text": "Search open tasks…",           "doc": "Search box placeholder in the deps picker." },
+      "master_label":    { "text": "Master (reviewer)",                 "doc": "Master picker label." },
+      "master_placeholder": { "text": "Defaults to me",                 "doc": "Master picker placeholder when unset." },
+      "master_picker_title": { "text": "Pick a master",                 "doc": "Master picker title." },
+      "master_clear":    { "text": "(default — me)",                    "doc": "Master picker first row — clear selection." },
+      "approval_label":  { "text": "Approval mode",                     "doc": "Approval mode field label." },
+      "approval_default": { "text": "default",                          "doc": "Approval chip — leave at substrate default." },
+      "approval_auto":   { "text": "auto-approve",                      "doc": "Approval chip — auto." },
+      "approval_single": { "text": "single approval",                   "doc": "Approval chip — approval." },
+      "approval_dual":   { "text": "dual approval",                     "doc": "Approval chip — dual-approval." },
+      "force_spawn_reason_label": { "text": "Reason (required for force-spawn)", "doc": "Force-spawn reason field label." },
+      "force_spawn_reason_placeholder": { "text": "e.g. assignee is on leave; deadline at risk", "doc": "Force-spawn reason placeholder." },
       "submit":          { "text": "Add task",                         "doc": "Compose-submit CTA." },
+      "submit_force_spawn": { "text": "Force-spawn",                   "doc": "Compose-submit CTA when forceSpawn=true." },
       "submit_failed":   { "text": "Couldn't add: {reason}",            "doc": "Error after addTask fails." }
     },
     "my_work": {
@@ -123,7 +169,9 @@
       "section_claimable": { "text": "Open for grabs",               "doc": "Claimable section header." },
       "empty_assigned":    { "text": "Nothing assigned. Pick something from \"Open for grabs\".", "doc": "Empty state." },
       "empty_mastered":    { "text": "No tasks waiting on your review.", "doc": "Empty state." },
-      "empty_claimable":   { "text": "No open claimable tasks right now.", "doc": "Empty state." }
+      "empty_claimable":   { "text": "No open claimable tasks right now.", "doc": "Empty state." },
+      "all_clear_title":   { "text": "All clear",                    "doc": "All-empty state title (Phase 41.18 follow-up)." },
+      "all_clear_body":    { "text": "Nothing assigned, nothing to review, nothing claimable. Either you're caught up — or the rest of the crew is on holiday.", "doc": "All-empty state body." }
     },
     "planner": {
       "panel_title":      { "text": "Suggested plan",                 "doc": "Planner panel header." },
@@ -175,7 +223,14 @@
       "subtask_proposal_decline": { "text": "Decline",                       "doc": "V2.7 propose-decline CTA." },
       "subtask_proposal_warning": { "text": "Approving rolls your submission back to claimed.", "doc": "Warning shown on Approve confirm modal." },
       "decline_note":       { "text": "Reason (optional)",                   "doc": "Decline reason input label." },
-      "generic_label":      { "text": "{kind}",                              "doc": "Fallback label for unknown inbox event kinds." }
+      "generic_label":      { "text": "{kind}",                              "doc": "Fallback label for unknown inbox event kinds." },
+      "badge_summary":      { "text": "{recent} new in 24h · {total} total", "doc": "Header summary line above the list." },
+      "clear_all":          { "text": "Clear all",                           "doc": "Header CTA — destructive clear-everything." },
+      "clear_all_confirm_title": { "text": "Clear all inbox items?",         "doc": "Clear-all confirm-modal title." },
+      "clear_all_confirm_body":  { "text": "This removes every notification from your inbox. The events in question stay on their parent tasks; only the inbox copies go away.", "doc": "Clear-all confirm-modal body." },
+      "subtask_request_label":   { "text": "Sub-task requested by @{by}: \"{text}\"",        "doc": "V1 subtask-request inbox card title." },
+      "subtask_request_approve": { "text": "Approve request",                                "doc": "Approve V1 subtask-request CTA." },
+      "subtask_request_decline": { "text": "Decline",                                        "doc": "Decline V1 subtask-request CTA." }
     },
     "crew_switch": {
       "label":   { "text": "Active crew",                            "doc": "Crew-switcher label." },
@@ -194,7 +249,8 @@
       "kind_project":    { "text": "project",                          "doc": "Crew-kind chip — project." },
       "kind_team":       { "text": "team",                             "doc": "Crew-kind chip — team." },
       "kind_friends":    { "text": "friends",                          "doc": "Crew-kind chip — friends." },
-      "kind_maintenance": { "text": "maintenance",                     "doc": "Crew-kind chip — maintenance." }
+      "kind_maintenance": { "text": "maintenance",                     "doc": "Crew-kind chip — maintenance." },
+      "new_crew":        { "text": "+ New crew",                       "doc": "FAB on the dashboard for creating another crew." }
     },
     "availability": {
       "opt_in_label":    { "text": "Share availability with the crew",  "doc": "Opt-in toggle label." },
@@ -227,7 +283,9 @@
       "recovery_reveal_cta": { "text": "Show me",                             "doc": "Reveal CTA." },
       "recovery_warning":    { "text": "Don't screenshot. Anyone with these words controls your account.", "doc": "Warning above the grid." },
       "recovery_copy":       { "text": "Copy",                                "doc": "Copy button label." },
-      "unknown_member":      { "text": "Member not found in this crew.",      "doc": "ProfileOther empty state." }
+      "unknown_member":      { "text": "Member not found in this crew.",      "doc": "ProfileOther empty state." },
+      "edit_skills_cta":     { "text": "Edit my skills for this crew",        "doc": "CTA opening EditSkillsScreen." },
+      "edit_skills_hint":    { "text": "Pick from the crew's vocabulary or add free-form tags.", "doc": "Hint under the CTA." }
     },
     "settings": {
       "section_device":         { "text": "This device",                      "doc": "Per-device section header." },
@@ -246,7 +304,17 @@
       "push_event_deadlineApproaching": { "text": "Deadline approaching",     "doc": "Per-event toggle." },
       "push_event_taskClaimed":         { "text": "Task claimed by someone",  "doc": "Per-event toggle." },
       "push_event_taskRejected":        { "text": "Submission rejected",      "doc": "Per-event toggle." },
-      "push_event_subtaskProposal":     { "text": "Sub-task proposal",        "doc": "Per-event toggle." }
+      "push_event_subtaskProposal":     { "text": "Sub-task proposal",        "doc": "Per-event toggle." },
+      "calendar_live_pending":     { "text": "Live native sync — waiting for first event.", "doc": "Status line under calendarSyncMethod when native+live is enabled but hasn't fired yet." },
+      "calendar_live_last_sync":   { "text": "Live sync · last refreshed at {when}.",       "doc": "Status line after a successful live diff." },
+      "calendar_live_error":       { "text": "Live sync error: {err}",                       "doc": "Status line on hook error." },
+      "section_more":              { "text": "More",                          "doc": "Section header for diagnostics + privacy entry-points." },
+      "cadence_link":              { "text": "My notification cadence",       "doc": "Nav row — opens CadenceOverridesScreen." },
+      "cadence_hint":              { "text": "Override how often you get pinged for each event type.", "doc": "Hint under the Cadence row." },
+      "diagnostics_link":          { "text": "Diagnostics",                   "doc": "Nav row — opens MetricsScreen." },
+      "diagnostics_hint":          { "text": "Relay rtt, queue depth, skill counters.", "doc": "Hint under the Diagnostics row." },
+      "privacy_link":              { "text": "Privacy notice",                "doc": "Nav row — opens PrivacyScreen." },
+      "privacy_hint":              { "text": "What's encrypted, what the relay sees, mobile-specific items.", "doc": "Hint under the Privacy row." }
     },
     "crew_settings": {
       "no_active_crew":          { "text": "Pick a crew first.",                                "doc": "Empty state." },
@@ -286,7 +354,31 @@
       "calendar_last_emitted":   { "text": "Last refreshed {when}",                              "doc": "Footnote." },
       "calendar_event_count":    { "text": "{count} event(s) in feed",                            "doc": "Event-count footnote." },
       "availability_admin_label": { "text": "Availability hints",                                "doc": "Toggle label." },
-      "availability_admin_hint":  { "text": "When on, members can opt in to share a coarse weekly view.", "doc": "Hint." }
+      "availability_admin_hint":  { "text": "When on, members can opt in to share a coarse weekly view.", "doc": "Hint." },
+      "section_lifecycle":       { "text": "Crew lifecycle",                                     "doc": "Section header — pause/archive controls." },
+      "section_cadence":         { "text": "Notification cadence",                                "doc": "Section header — crew-wide cadence config." },
+      "section_crew_config":     { "text": "Crew config (debug)",                                "doc": "Section header — read-only crew config dump." },
+      "cadence_intro":           { "text": "How often the crew pings members for each event. Empty = baseline. ms.", "doc": "Cadence-section intro." },
+      "lifecycle_state_active":  { "text": "Active",                                              "doc": "Lifecycle state pill — active." },
+      "lifecycle_state_paused":  { "text": "Paused",                                              "doc": "Lifecycle state pill — paused." },
+      "lifecycle_state_archived": { "text": "Archived",                                           "doc": "Lifecycle state pill — archived." },
+      "lifecycle_hint_active":   { "text": "Tasks flow normally.",                                "doc": "Hint when state is active." },
+      "lifecycle_hint_paused":   { "text": "addTask is blocked. Existing tasks still progress.",  "doc": "Hint when state is paused." },
+      "lifecycle_hint_archived": { "text": "Read-only. No new tasks. Members can still see history.", "doc": "Hint when state is archived." },
+      "lifecycle_state_active_member":   { "text": "This crew is active.",                        "doc": "Member-side hint." },
+      "lifecycle_state_paused_member":   { "text": "This crew is paused — admins disabled new tasks.", "doc": "Member-side hint." },
+      "lifecycle_state_archived_member": { "text": "This crew is archived — read-only.",          "doc": "Member-side hint." },
+      "lifecycle_pause":         { "text": "Pause crew",                                          "doc": "Pause CTA." },
+      "lifecycle_unpause":       { "text": "Unpause",                                             "doc": "Unpause CTA." },
+      "lifecycle_archive":       { "text": "Archive crew",                                        "doc": "Archive CTA." },
+      "lifecycle_unarchive":     { "text": "Unarchive",                                           "doc": "Unarchive CTA." },
+      "lifecycle_archive_confirm_title":    { "text": "Archive this crew?",                       "doc": "Archive confirm-modal title." },
+      "lifecycle_archive_confirm_body":     { "text": "Members will see the crew as read-only. You can unarchive later. The pod data stays.", "doc": "Archive confirm-modal body." },
+      "lifecycle_unarchive_confirm_title":  { "text": "Unarchive this crew?",                     "doc": "Unarchive confirm-modal title." },
+      "lifecycle_unarchive_confirm_body":   { "text": "addTask + dispatch resume; members go back to active mode.", "doc": "Unarchive confirm-modal body." },
+      "crew_config_reveal":      { "text": "Show crew config (debug)",                            "doc": "CrewConfig disclosure CTA." },
+      "crew_config_hide":        { "text": "Hide",                                                "doc": "CrewConfig hide CTA." },
+      "crew_config_hint":        { "text": "Read-only JSON. Useful when filing a support ticket.", "doc": "CrewConfig hint." }
     },
     "issue_bot": {
       "title":          { "text": "Bot token QR",                                                "doc": "IssueBotTokenScreen title." },
@@ -314,6 +406,66 @@
       "progress_count":        { "text": "{done} item(s) so far",                                 "doc": "Progress without total." },
       "progress_with_total":   { "text": "{done} of {total} items",                               "doc": "Progress with total." },
       "continue":              { "text": "Continue",                                              "doc": "Continue CTA." }
+    },
+    "main_menu": {
+      "section_me":        { "text": "Me",                                                          "doc": "Section header for the personal-area links." },
+      "section_crew":      { "text": "Crew",                                                        "doc": "Section header for crew-area links." },
+      "section_app":       { "text": "App",                                                         "doc": "Section header for app-wide links." },
+      "profile":           { "text": "Profile",                                                     "doc": "Link to ProfileMine." },
+      "availability":      { "text": "My availability",                                             "doc": "Link to Availability." },
+      "edit_skills":       { "text": "My skills (this crew)",                                       "doc": "Link to EditSkills." },
+      "crew_settings":     { "text": "Crew settings",                                               "doc": "Link to CrewSettings." },
+      "dag":               { "text": "Sub-task tree",                                               "doc": "Link to DAG." },
+      "settings":          { "text": "Settings",                                                    "doc": "Link to Settings." },
+      "diagnostics":       { "text": "Diagnostics",                                                 "doc": "Link to Metrics." },
+      "privacy":           { "text": "Privacy",                                                     "doc": "Link to Privacy." },
+      "pod_sign_in":       { "text": "Sign in to Solid pod",                                        "doc": "Link to PodSignIn (signed-out state)." },
+      "pod_signed_in":     { "text": "Pod sign-in (signed in)",                                     "doc": "Link to PodSignIn (signed-in state — re-enter to manage)." },
+      "signed_out_title":  { "text": "Tasks",                                                       "doc": "Header label when no identity has loaded yet." },
+      "in_crew":           { "text": "In: {name}",                                                  "doc": "Header subtitle showing the active crew." },
+      "no_active_crew":    { "text": "No active crew",                                              "doc": "Header subtitle when no crew is active." }
+    },
+    "metrics": {
+      "title":  { "text": "Diagnostics",                                                            "doc": "MetricsScreen title." },
+      "hint":   { "text": "Read-only counters from getMetrics. Pull to refresh.",                   "doc": "MetricsScreen hint." },
+      "empty":  { "text": "No metrics yet.",                                                        "doc": "Empty state." }
+    },
+    "chat": {
+      "no_thread":        { "text": "No thread to display.",                                       "doc": "Empty state — threadId missing from route params." },
+      "unknown_peer":     { "text": "@unknown",                                                    "doc": "Header label when we can't resolve the counterparty." },
+      "empty":            { "text": "No messages yet. Send the first one.",                         "doc": "Empty thread body." },
+      "appeal_empty":     { "text": "Send your first message to open the appeal. The master will be notified.", "doc": "Empty thread body when route carries appealForTaskId." },
+      "input_placeholder": { "text": "Type a message…",                                            "doc": "Chat input placeholder." },
+      "send":             { "text": "Send",                                                         "doc": "Send-button label." }
+    },
+    "edit_skills": {
+      "title":              { "text": "Edit my skills",                                              "doc": "EditSkillsScreen title." },
+      "intro":              { "text": "Toggle existing tags + add new ones. Choices stay in this crew unless you opt to mirror them on your canonical profile.", "doc": "EditSkillsScreen intro." },
+      "section_prefilled":  { "text": "Currently claimed",                                           "doc": "Section header for skills already on my profile." },
+      "section_suggestions": { "text": "Suggested by the crew vocabulary",                           "doc": "Section header for unclaimed crew vocabulary entries." },
+      "section_freeform":   { "text": "Add custom tags (comma-separated)",                           "doc": "Section header for the freeform input." },
+      "freeform_placeholder": { "text": "e.g. masonry, electrics",                                   "doc": "Freeform input placeholder." },
+      "persist_label":      { "text": "Mirror to my canonical profile",                              "doc": "Toggle for persistToCanonicalProfile." },
+      "persist_hint":       { "text": "Off (default): only this crew sees these. On: future crews prefill from this list too.", "doc": "Hint under the persist toggle." },
+      "hints_label":        { "text": "Other categories you could add"                                ,"doc": "Inline hint label." }
+    },
+    "cadence": {
+      "title":  { "text": "My notification cadence",                                                "doc": "CadenceOverridesScreen title." },
+      "intro":  { "text": "Override the crew's per-event cadence (in milliseconds). Empty = inherit. The 'effective' column shows what'll actually fire.", "doc": "Intro text." },
+      "placeholder_override": { "text": "ms (override)",                                            "doc": "Override input placeholder." },
+      "placeholder_crew":     { "text": "ms (crew default)",                                        "doc": "Crew-side input placeholder." },
+      "effective":            { "text": "= {ms} ms",                                                "doc": "Effective-cadence indicator." },
+      "event_deadlineApproaching": { "text": "Deadline approaching",                                "doc": "Event label." },
+      "event_taskClaimed":         { "text": "Task claimed by someone",                             "doc": "Event label." },
+      "event_taskRejected":        { "text": "Submission rejected",                                 "doc": "Event label." },
+      "event_subtaskProposal":     { "text": "Sub-task proposal",                                   "doc": "Event label." },
+      "event_subtaskRequested":    { "text": "Sub-task requested (admin queue)",                    "doc": "Event label." },
+      "event_inboxBadge":          { "text": "Inbox badge refresh",                                 "doc": "Event label." }
+    },
+    "privacy": {
+      "title":  { "text": "Privacy notice",                                                         "doc": "PrivacyScreen title." },
+      "intro":  { "text": "Closed-beta privacy notice. Same items as the desktop /privacy.html, plus mobile-only items for camera, push, native calendar, and BLE.", "doc": "PrivacyScreen intro." },
+      "empty":  { "text": "No privacy notice items.",                                               "doc": "Empty state — getPrivacyNotice returned nothing." }
     }
   }
 }

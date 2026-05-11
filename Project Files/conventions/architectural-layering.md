@@ -229,6 +229,84 @@ As of 2026-05-08:
 
 ---
 
+## Shared UI-glue helpers between platform shells (locked 2026-05-10)
+
+> **Project-wide invariant.** When the same product has both a
+> desktop shell (`apps/<product>`) and a mobile shell
+> (`apps/<product>-mobile`), every pure-fn helper that shapes UI
+> behaviour from the substrate's data — display-status mappers,
+> form-shape builders, event-kind classifiers, role/actor resolvers
+> — lives **once** in the desktop shell under `apps/<product>/src/ui/`.
+> Both shells import from there. Neither shell may keep a local copy
+> with diverging behaviour.
+
+This rule formalises a regression pattern we hit during 2026-05
+mobile bring-up: each shell ended up with its own version of "is
+this task ready to mark complete?" / "what's the effective status
+of this item?" / "what payload does the addTask form build?" — and
+the two copies drifted. Bug fixes landed on one side and not the
+other, leading to silent UX divergence.
+
+**What goes into `apps/<product>/src/ui/`:**
+
+- Pure-fn helpers that take substrate-shape data and return UI-shape
+  data (status pills, role labels, button-disabled gates, error
+  classifiers, form-payload builders).
+- Lookup tables / taxonomies that drive UI rendering decisions
+  (status → colour-token, kind → label key, role → permission map).
+- Inbox/notification event classifiers (`kindOf`, `proposalIdOf`).
+- Effective-actor / alias resolvers (when the dispatch layer's
+  `from` differs from the role-table's keying — desktop's relay
+  path + mobile's pubKey path both hit this).
+
+**What does NOT go in `src/ui/`:**
+
+- Anything that imports from `react-native`, `expo-*`, or DOM/`window`
+  globals — those belong in the per-platform shell.
+- React components, JSX, hooks. Components stay platform-local.
+- Network / I/O. Helpers must be deterministic pure functions.
+
+**Test discipline:**
+
+- Tests for `apps/<product>/src/ui/*.js` live in
+  `apps/<product>/test/ui-*.test.js` and run on the desktop's
+  vitest config (Node only, no RN polyfills required).
+- The mobile shell does not duplicate these tests; it imports
+  the helper and trusts the shared coverage.
+
+**Re-export shims:** when the mobile shell keeps a local module as
+a stable import path (`apps/<product>-mobile/src/lib/<name>.js`)
+that re-exports the shared helper, use `export * from
+'@canopy-app/<product>/ui/<name>'` rather than an explicit named
+list. Explicit lists silently drop new exports (we hit this with
+`buildAddSubtaskArgs` on 2026-05-10 — added in the shared module,
+missed on the shim, surfaced as a runtime "is not a function" on
+the device). `export *` is identical at runtime and tree-shakes
+the same.
+
+**Locale parallel.** Strings that both shells render (status labels,
+role labels, privacy-notice items) live in
+`apps/<product>/locales/shared/{en,nl}.json` and are imported by
+both shells. Each shell keeps its own
+`{mobile,desktop}.<keys>.json` for platform-specific copy
+(camera-permission rationale, "Tap + to add a task", …).
+
+**Verification:** `grep -r "@canopy-app/<product>/ui/" apps/<product>-mobile`
+should return ≥ 1 match per shared helper. A new helper that lives
+in only one shell is a smell — extract before merging.
+
+**Examples (Tasks, locked 2026-05-10):**
+
+- `apps/tasks-v0/src/ui/taskStatus.js` — `describeTaskStatus`,
+  `shouldOfferForceComplete`, `shouldProposeSubtask`. Imported by
+  `apps/tasks-mobile/src/screens/*.jsx` AND `apps/tasks-v0/web/app.js`.
+- `apps/tasks-v0/src/ui/composeArgs.js` — addTask payload builder.
+- `apps/tasks-v0/src/ui/inboxClassify.js` — inbox event taxonomy.
+- `apps/tasks-v0/src/ui/effectiveActor.js` — pubKey ↔ webid
+  resolution against the alias map.
+
+---
+
 ## Mobile substrates live in their own packages (locked 2026-05-08)
 
 **RN-specific code MUST NOT be added to cross-platform substrates.**

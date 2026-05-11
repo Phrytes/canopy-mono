@@ -395,6 +395,138 @@ Before any phase starts:
 **Substrate touch:** none.
 **Acceptance:** new contributor can read the README + run the app on a real phone in 30 minutes.
 
+## Phase 41.18 — Desktop-parity completion (post-real-device audit)
+
+> **Why this exists** — the 41.1–41.17 build shipped a working mobile app on a real phone (2026-05-09). On first hands-on use, the user observed that several desktop capabilities were missing: only the *first-order* skills landed (claim/submit/approve/reject/etc.), and the second-order admin/lifecycle/maintenance skills (`revokeTask`, `pauseCrew`, `editMySkillsForCrew`, `appealTask`, …) were absent from the UI even though the underlying skills already exist on the desktop and are exposed by the same single-agent topology mobile uses. The desktop registers 67 skills today; mobile only used 30 of them. Phase 41.18 closes the gap.
+>
+> **Audit method**: per-skill grep over `apps/tasks-v0/src/skills/index.js` vs the mobile screens. Eleven tiers of missing surface emerged. Telegram bot remains intentionally server-side (item 12 of scope locks); on mobile, users use the Telegram client itself rather than hosting the bot.
+
+### Batch 1 — Task-detail expansion + Compose expansion (Tier 1 + Tier 2)
+
+| # | Task | Files |
+|---|---|---|
+| 41.18.1.1 | TaskDetail: revoke (admin/coordinator/master) — confirm sheet + reason field. Calls `revokeTask({taskId, reason})`. | `apps/tasks-mobile/src/screens/TaskDetailScreen.jsx` |
+| 41.18.1.2 | TaskDetail: reassign (admin/coordinator/master). Member-picker bottom-sheet (skills + availability chips). Calls `reassignTask({taskId, assignee})`. | `apps/tasks-mobile/src/screens/TaskDetailScreen.jsx` + new `MemberPickerSheet.jsx` (or reuse compose flow's helper if already there) |
+| 41.18.1.3 | TaskDetail: remove (admin only) — destructive confirm. Calls `removeTask({taskId})`. | `apps/tasks-mobile/src/screens/TaskDetailScreen.jsx` |
+| 41.18.1.4 | TaskDetail: change approval-mode (master, when applicable). Single-select "auto / approval / dual-approval". Calls `setApprovalMode({taskId, approvalMode})`. | `apps/tasks-mobile/src/screens/TaskDetailScreen.jsx` |
+| 41.18.1.5 | TaskDetail: force-spawn-subtask (admin override). Re-uses Compose with `master`/`approvalMode` pre-filled and parent set; calls `forceSpawnSubtask({parentId, ...payload})`. | `apps/tasks-mobile/src/screens/TaskDetailScreen.jsx` (CTA) + `ComposeScreen.jsx` (accept the override flag) |
+| 41.18.1.6 | Compose: add `dependencies[]` field — multi-select against the crew's open tasks. Persist into `composeTask`. | `apps/tasks-mobile/src/screens/ComposeScreen.jsx` |
+| 41.18.1.7 | Compose: add `master` selector (defaults to caller). Member-picker against the crew. | `apps/tasks-mobile/src/screens/ComposeScreen.jsx` |
+| 41.18.1.8 | Compose: add `approvalMode` selector (`auto` / `approval` / `dual-approval`). | `apps/tasks-mobile/src/screens/ComposeScreen.jsx` |
+| 41.18.1.9 | Compose: "Sub-task of <parent>" shortcut. From a TaskDetail's "Add sub-task" CTA, route to Compose with `parentId` pre-set; route the submit through `proposeSubtask` when V2.7 propose-mode applies, otherwise `composeTask` with `parent: <id>`. | `apps/tasks-mobile/src/screens/{TaskDetailScreen,ComposeScreen}.jsx` |
+| 41.18.1.10 | Compose: surface skills via the substrate's `<SkillPicker>` (lifted from `@canopy/identity-resolver/skills`) — replaces the current free-text input. | `apps/tasks-mobile/src/screens/ComposeScreen.jsx` |
+| 41.18.1.11 | Locale: ~25 new keys in `mobile.taskDetail.*` and `mobile.compose.*` (en + nl). | `apps/tasks-mobile/locales/{en,nl}.json` |
+| 41.18.1.12 | Tests for the new TaskDetail/Compose helpers + tier-1 flows. | `apps/tasks-mobile/test/lib/*.test.js` |
+
+**Estimate:** 0.5 day.
+**Substrate touch:** none — `<SkillPicker>` already lifted in Phase 41.0.b.
+**Acceptance:** admin can revoke / reassign / remove / change approval-mode from a phone; coordinator can compose a task with dependencies + master + approvalMode; user can tap "Add sub-task" from a parent and reach Compose pre-populated.
+
+### Batch 2 — Inbox housekeeping + crew lifecycle + misc (Tier 3 + Tier 4 + Tier 11)
+
+| # | Task | Files |
+|---|---|---|
+| 41.18.2.1 | Inbox: pull-to-mark-read on a row → `clearInboxItem({inboxId})`. | `apps/tasks-mobile/src/screens/InboxScreen.jsx` |
+| 41.18.2.2 | Inbox: "Clear all read" CTA → `clearInbox({onlyRead: true})` (+ "Clear all" with destructive confirm). | `apps/tasks-mobile/src/screens/InboxScreen.jsx` |
+| 41.18.2.3 | Tab badges: bottom-tab bar's Inbox icon shows unread count via `inboxBadgeCount` (5-second poll while foreground; refreshed by `useAgentEvent('inboxChanged')`). | `apps/tasks-mobile/src/navigation.js` (tab options) |
+| 41.18.2.4 | CrewSettings → Lifecycle panel (admin only): pause / unpause / archive / unarchive. Each is a confirm-sheet → matching skill (`pauseCrew` / `unpauseCrew` / `archiveCrew` / `unarchiveCrew`). | `apps/tasks-mobile/src/screens/crewSettings/Lifecycle.jsx` (new) |
+| 41.18.2.5 | CrewsDashboard: visually distinguish paused/archived crews (greyed row + "Paused" / "Archived" chip). | `apps/tasks-mobile/src/screens/CrewsDashboardScreen.jsx` |
+| 41.18.2.6 | Settings: add a "Metrics" sub-page surfacing `getMetrics({crewId})` — relay rtt, queue depth, last-sync, skill-call counts. Read-only, hidden behind a "Diagnostics" disclosure. | `apps/tasks-mobile/src/screens/SettingsScreen.jsx` (extend) + `apps/tasks-mobile/src/screens/MetricsScreen.jsx` (new) |
+| 41.18.2.7 | Privacy notice screen: render `getPrivacyNotice({lang})` (uses `apps/tasks-v0/src/lib/privacyNotice.js`'s extended list with the four mobile items). | `apps/tasks-mobile/src/screens/PrivacyScreen.jsx` (new) + locale entry "settings.privacy_link" |
+| 41.18.2.8 | CrewSettings → Availability panel (admin): "see all crew availability" view via `getCrewAvailability({crewId, weekStart})`. Matrix of (member × half-day chips). | `apps/tasks-mobile/src/screens/crewSettings/AvailabilityAdmin.jsx` (extend) |
+| 41.18.2.9 | CrewSettings → Crew config (admin): show `getCrewConfig({crewId})` raw — read-only debug view; useful for support flows. | `apps/tasks-mobile/src/screens/crewSettings/CrewConfig.jsx` (new) |
+| 41.18.2.10 | Locale: ~20 new keys (`mobile.inbox.*`, `mobile.crewSettings.lifecycle.*`, `mobile.metrics.*`, `mobile.privacy.*`, `mobile.crewSettings.availabilityAdmin.*`). | `apps/tasks-mobile/locales/{en,nl}.json` |
+
+**Estimate:** 0.5 day.
+**Substrate touch:** none.
+**Acceptance:** unread badge appears on the Inbox tab; admin can pause/unpause/archive/unarchive a crew; the Settings → Diagnostics page renders metrics; the Privacy screen renders the closed-beta notice including the four mobile items.
+
+### Batch 3 — Skills editor + cadence config + V1 subtask-requests (Tier 5 + Tier 7 + Tier 8)
+
+| # | Task | Files |
+|---|---|---|
+| 41.18.3.1 | Profile (mine) → "Edit my skills for this crew" CTA. Reads form shape via `getMySkillsFormShape({crewId})` → renders a hierarchical multi-select. Save calls `editMySkillsForCrew({crewId, skills})`. | `apps/tasks-mobile/src/screens/ProfileMineScreen.jsx` (extend) + `apps/tasks-mobile/src/screens/EditSkillsScreen.jsx` (new) |
+| 41.18.3.2 | Substrate use: re-use the `<SkillTaxonomyForm>` component from `@canopy/identity-resolver/skills` if it ships one; otherwise inline a small form (lift to substrate when stoop-mobile needs the same shape — i.e. **don't lift now**, prior-art rule). | as above |
+| 41.18.3.3 | CrewSettings → Cadence panel (admin). Reads `getCrewCadences({crewId})` + writes via `setCrewCadences({crewId, cadences})`. Per-event-kind toggle + interval. | `apps/tasks-mobile/src/screens/crewSettings/Cadence.jsx` (new) |
+| 41.18.3.4 | Settings → "My cadence overrides" sub-page. `getMyCadenceOverrides({crewId})` + `setMyCadenceOverrides({crewId, overrides})`. Surfaces effective cadence via `resolveMyCadence({crewId})` so user sees what'll actually fire. | `apps/tasks-mobile/src/screens/SettingsScreen.jsx` (extend) + `apps/tasks-mobile/src/screens/CadenceOverridesScreen.jsx` (new) |
+| 41.18.3.5 | TaskDetail (admin): when `task.parent` is set + status `subtask-requested`, surface the V1-style approve/decline pair via `approveSubtaskRequest` / `declineSubtaskRequest`. (Distinct from V2.7 propose-mode — V1 has its own request-flow used when an admin pre-approval is required.) | `apps/tasks-mobile/src/screens/TaskDetailScreen.jsx` |
+| 41.18.3.6 | Inbox: add a "Subtask requests" filter chip; renders `listSubtaskRequests({crewId})` rows. (Already partially covered by V2.7's `subtask-proposal` cards — this completes the V1 path.) | `apps/tasks-mobile/src/screens/InboxScreen.jsx` |
+| 41.18.3.7 | Locale: ~30 new keys across the three sub-tiers (en + nl). | `apps/tasks-mobile/locales/{en,nl}.json` |
+| 41.18.3.8 | Tests: skills editor form shape, cadence override resolver, V1 subtask-request flow. | `apps/tasks-mobile/test/lib/*.test.js` |
+
+**Estimate:** 1 day.
+**Substrate touch:** none required for V1; if `<SkillTaxonomyForm>` isn't yet exported from `@canopy/identity-resolver/skills`, we add it to the substrate (Stoop will be the second consumer when it lands its own profile-skills screen).
+**Acceptance:** I can edit my own skills from a phone; admin can configure crew-wide cadences + I can override per-event from settings; admin can approve/decline V1 subtask-requests from the Inbox.
+
+### Batch 4 — Appeal flow with chat thread (Tier 6)
+
+> Single tier in its own batch because of the chat-thread component's size — about half a day on its own.
+
+| # | Task | Files |
+|---|---|---|
+| 41.18.4.1 | TaskDetail: when `task.status === 'rejected'` and the caller is the previous assignee, surface "Appeal this rejection" CTA. Calls `appealTask({taskId, note})` and routes to ChatThreadScreen. | `apps/tasks-mobile/src/screens/TaskDetailScreen.jsx` |
+| 41.18.4.2 | New ChatThreadScreen (RN — mirrors stoop-mobile's chat surface). Wraps `chat-p2p`'s `<ChatThread>` substrate hook + bubble component (already in `@canopy/chat-p2p` per the Stoop V3 build). Threads keyed by `{crewId, taskId}`. | `apps/tasks-mobile/src/screens/ChatThreadScreen.jsx` (new — ~200 LOC JSX) |
+| 41.18.4.3 | Inbox: render `appeal` events as cards with deep-link back into ChatThreadScreen. | `apps/tasks-mobile/src/screens/InboxScreen.jsx` |
+| 41.18.4.4 | Deep-link: `tasks://appeal?crewId=&taskId=` opens the right thread directly (mirrors Stoop's `stoop://chat?...` deep-link). Wire via `apps/tasks-mobile/src/lib/deepLinks.js`. | `apps/tasks-mobile/src/lib/deepLinks.js` |
+| 41.18.4.5 | Push: when an appeal posts a message, the existing `chat-p2p` notifier event already fires through PushChannel — verify the mobile receiver renders it (no skill change). | (verification only) |
+| 41.18.4.6 | Locale: ~12 new keys (`mobile.appeal.*`, `mobile.chat.*`). | `apps/tasks-mobile/locales/{en,nl}.json` |
+| 41.18.4.7 | Tests: appeal-skill smoke test + ChatThreadScreen render. | `apps/tasks-mobile/test/lib/*.test.js` |
+
+**Estimate:** 0.5 day.
+**Substrate touch:** none — `chat-p2p` already shipped to mobile via Phase 41.0 (it's already a watch-folder + extraNodeModules entry in the metro config).
+**Acceptance:** rejected assignee can tap "Appeal" → lands in a chat thread; thread persists in `chat-p2p`'s store; admin sees the appeal in Inbox + can deep-link in.
+
+### Batch 5 — Push relay registration + native calendar live diff (Tier 9 + Tier 10)
+
+> Substrate touch: this batch carries the only substrate-level change of Phase 41.18 — the per-app push-token map.
+
+| # | Task | Files |
+|---|---|---|
+| 41.18.5.1 | New skill `setMyPushToken({pushToken, platform})` on tasks-v0. Writes to `crew.config.pushTokens[webid]` (already exists in Stoop's pattern) — adds the `tasks` app key under a per-app map: `pushTokens[webid] = {tasks: {expo: token}, stoop: {expo: token}}`. | `apps/tasks-v0/src/skills/index.js` (new skill) + `apps/tasks-v0/src/lib/pushTokens.js` (new helper if needed) |
+| 41.18.5.2 | Substrate touch: `@canopy/notifier`'s `PushChannel` learns the per-app key shape. Today it accepts `{webid → token}`; extend to `{webid → {appKey → {transport → token}}}`. Stoop's existing reads stay green via a fallback path (read `pushTokens[webid].stoop?.expo ?? pushTokens[webid]`). | `packages/notifier/src/PushChannel.js` (or wherever the lookup lives) |
+| 41.18.5.3 | Mobile wiring: at boot (after permission grant), tasks-mobile registers its token via the new skill. Settings shows the registration status. Token rotates on Expo's notification + we re-register. | `apps/tasks-mobile/src/ServiceContext.js` (boot hook) + `apps/tasks-mobile/src/screens/SettingsScreen.jsx` (status row) |
+| 41.18.5.4 | Substrate test: `packages/notifier/test/PushChannel.test.js` — extend to cover both the legacy single-token and new per-app shape. | `packages/notifier/test/PushChannel.test.js` |
+| 41.18.5.5 | Mobile: `wireCalendarEmission` listener — when the calendarSyncMethod is `native` (or `both`) and the agent emits a calendar-changed event, run `nativeCalendar.diffEvents` + `applyDiff` immediately rather than only on Settings → "Sync now". | `apps/tasks-mobile/src/ServiceContext.js` (listener wire-up) + `apps/tasks-mobile/src/lib/nativeCalendar.js` (consume-loop) |
+| 41.18.5.6 | Locale: ~6 new keys (`mobile.settings.push_status_*`, `mobile.calendar.live_sync_*`). | `apps/tasks-mobile/locales/{en,nl}.json` |
+| 41.18.5.7 | Tests: per-app push token registry shape; live-diff listener end-to-end. | `apps/tasks-mobile/test/lib/*.test.js` + `packages/notifier/test/*` |
+
+**Estimate:** 0.5 day.
+**Substrate touch:** ⭐ `@canopy/notifier` learns per-app push-token map shape (with legacy fallback). The `setMyPushToken` skill is app-local on `tasks-v0`.
+**Acceptance:** mobile push survives a Stoop-mobile install on the same device (different app keys, different tokens); native calendar updates within 5 seconds of a task being claimed/rescheduled; legacy Stoop push path still green.
+
+### Phase 41.18 acceptance gates
+
+A mobile-V1 phone APK is parity-complete when ALL of:
+
+1. The 11 tiers above have at least one CTA reachable on the phone for each missing skill.
+2. The desktop's full skill suite passes — proves no regression from the new `setMyPushToken` skill or per-app pushTokens shape.
+3. The `chat-p2p` substrate suite passes — Batch 4's appeal-thread reuse hasn't regressed it.
+4. Locale parity: every new key has both `en` + `nl` `{text, doc}` leaves.
+5. Privacy notice unchanged (no new pod-data path or device permission introduced — the appeal-thread reuses chat-p2p; native calendar is already covered by the V1 mobile-only items).
+6. Real-device run: each batch's acceptance criterion verified on a physical Android phone.
+
+### Phase 41.18 estimate (rolled up)
+
+**~3 dev-days sequential** (0.5 + 0.5 + 1 + 0.5 + 0.5).
+**~1.5–2 dev-days wall-clock** if Batches 2 + 3 + 5 run in parallel after Batch 1 lands.
+
+### Phase 41.18 dependencies
+
+```
+[41.17 shipped + real-device pass green]
+              │
+              ▼
+   Batch 1 (TaskDetail + Compose) ─┐
+                                   ▼
+              Batch 2 (Inbox + lifecycle + misc) ─┐
+              Batch 3 (Skills + cadence + V1) ────┤
+              Batch 5 (push relay + cal-diff) ────┤
+                                                  ▼
+                                         Batch 4 (Appeal + chat thread)
+```
+
+Batch 4 lands last because the chat-thread component is the heaviest single surface and benefits from the inbox / deep-link work in Batches 2 + 5 already being settled.
+
 ## V1 acceptance gates
 
 A mobile-V1 PR is mergeable when ALL of:

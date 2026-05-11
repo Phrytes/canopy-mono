@@ -143,6 +143,31 @@ Full propagation plan (file-level deltas Tasks will need):
 |---|---|---|---|
 | `@canopy/core` | `Agent`, `AgentIdentity`, `VaultMemory`, `InternalBus`, `InternalTransport`, `MemorySource` | Constructing the per-household agent that the substrates compose; `MemorySource` is the default DataSource for `ItemStore`. | No substrate wraps "construct an agent"; `MemorySource` is the in-memory `core.DataSource` concrete (apps swap in a `pod-client.PodClient` adapter for production). |
 
+## Shared UI helpers
+
+This app exposes the following pure-fn helpers under `src/ui/` for
+its sibling platform shell (`apps/tasks-mobile`) to consume — per the
+project rule
+[`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md#shared-ui-glue-helpers-between-platform-shells-locked-2026-05-10):
+
+| Helper | Purpose | Consumed by |
+|---|---|---|
+| `taskStatus`     | `describeTaskStatus(item)` rolls up the lifecycle ∪ DAG status + V2.7 deps gate (`depsBlocked`, `canClose`, `openDepIds`); `shouldOfferForceComplete` / `shouldProposeSubtask` for admin/master overrides. | `web/app.js`, `apps/tasks-mobile/src/screens/*.jsx` |
+| `composeArgs`    | `buildAddTaskArgs(form)` / `buildForceSpawnArgs(form)` — pure-fn translators from compose-form state to the `addTask` / `forceSpawnSubtask` skill payloads. | both shells |
+| `inboxClassify`  | `kindOf(event)` + `proposalIdOf(event)` + `requestIdOf(event)` — inbox event-kind taxonomy used to pick the right card layout. | both shells |
+| `effectiveActor` | `resolveActorWebid({from, envelope, crewState})` + `resolveActorRole({...})` + `buildActorAliases(members)` — pubKey ↔ webid resolution against the crew's role table. Mobile's React-bindings dispatch carries `from = pubKey`; the desktop's relay path will hit the same shape. | both shells (mobile via `useActiveRole`; desktop's role policy via `buildStandardRolePolicy(roles, {aliases})`) |
+| `i18nMerge`      | `mergeLocales(shared, shellLocal)` + `lookupKey(bundle, path, fallback)` — deep-merge helpers for the shared locale namespace. | both shells |
+
+Tests live in `test/ui/*.test.js` and run on this app's vitest config
+(Node only, no RN polyfills). The mobile shell does not duplicate
+these tests; it imports the helper and trusts the shared coverage.
+
+**Locale parallel.** The genuinely-shared strings (status pills,
+role labels, crew kinds, approval modes) live in
+`apps/tasks-v0/locales/shared/{en,nl}.json`. Both shells merge that
+bundle on top of their own — see
+`apps/tasks-mobile/src/I18nProvider.js` for the consumer pattern.
+
 ## Bring it up
 
 ```bash

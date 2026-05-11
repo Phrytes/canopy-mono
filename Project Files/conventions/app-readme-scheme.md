@@ -51,6 +51,12 @@ order, with these headings:
 
 <declared hub-attachment plan — see template below; "N/A — this app does not use the Agent SDK" is a valid value>
 
+## Shared UI helpers
+
+<for products with both a desktop + mobile shell, the helpers in
+`src/ui/` that the sibling shell consumes; "N/A — single-shell app"
+is a valid value. See template below.>
+
 ## Bring it up
 
 <setup, dependencies, scripts to run>
@@ -62,7 +68,7 @@ order, with these headings:
 
 Apps may add additional sections (testing, troubleshooting, CHANGELOG
 links, related apps, design pointers) — those are unconstrained. The
-five sections above are the **required spine**.
+six sections above are the **required spine**.
 
 ---
 
@@ -200,6 +206,49 @@ For an app that does not use the SDK at all:
 
 N/A — this app does not use the Agent SDK.
 ```
+
+---
+
+## Template — the `## Shared UI helpers` section
+
+For products that ship both a desktop shell (`apps/<product>`) and
+a mobile shell (`apps/<product>-mobile`), every pure-fn UI helper
+shared between them lives once in the desktop shell under
+`apps/<product>/src/ui/` (per
+[`./architectural-layering.md`](./architectural-layering.md#shared-ui-glue-helpers-between-platform-shells-locked-2026-05-10)).
+
+The desktop shell's README lists the surface; the mobile shell's
+README points back to it.
+
+```markdown
+## Shared UI helpers
+
+This app exposes the following pure-fn helpers under `src/ui/` for
+its sibling platform shell to consume (per
+[`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md#shared-ui-glue-helpers-between-platform-shells-locked-2026-05-10)):
+
+| Helper | Purpose | Consumed by |
+|---|---|---|
+| `taskStatus` | display-status mapping + V2.7 deps gates | `web/app.js`, `apps/<product>-mobile/src/screens/*.jsx` |
+| `composeArgs` | addTask form-payload builder | both shells |
+| `inboxClassify` | inbox event-kind taxonomy | both shells |
+| `effectiveActor` | pubKey ↔ webid alias resolver | both shells |
+
+Tests live in `test/ui-*.test.js` and run on the desktop's vitest
+config (Node only). The mobile shell does not duplicate them.
+```
+
+The mobile shell's README simply notes:
+
+```markdown
+## Shared UI helpers
+
+UI-glue helpers come from `@canopy-app/<product>/ui/*` (the
+desktop shell). See its README for the surface.
+```
+
+Single-shell apps may write `## Shared UI helpers` followed by
+`N/A — single-shell app.`
 
 ---
 

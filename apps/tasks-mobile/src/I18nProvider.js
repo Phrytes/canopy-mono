@@ -3,21 +3,27 @@
  * tasks-mobile's locale bundles + exposes a stable `useI18n` hook.
  *
  * Phase 41.2 (2026-05-09).
+ * 41.18 follow-up — adds `apps/tasks-v0/locales/shared/{en,nl}.json`
+ *                   to the merge stack so `shared.status.*` /
+ *                   `shared.roles.*` keys resolve from a single
+ *                   source on both shells (Project Files/conventions/
+ *                   architectural-layering.md § shared UI helpers).
  *
- * Locale bundles are merged from two sources:
- *   - `apps/tasks-v0/locales/{en,nl}.json` — desktop strings reused
- *     by mobile (crew/role/DoD/skill-taxonomy/dependencies/…)
+ * Locale bundles are merged from three sources, shell-local wins:
+ *   - `apps/tasks-v0/locales/shared/{en,nl}.json` — strings rendered
+ *     by both desktop + mobile (status pills, role labels, crew
+ *     kinds, approval modes).
+ *   - `apps/tasks-v0/locales/{en,nl}.json` — desktop-only strings
+ *     reused by mobile via the platform-shell exception.
  *   - `apps/tasks-mobile/locales/{en,nl}.json` — mobile-only screen
- *     strings (mobile.boot.*, mobile.no_crews.*, …)
- *
- * The merge is shallow-with-deep on the `mobile` namespace — the
- * desktop bundle has no `mobile.*` keys, so the mobile overrides
- * win cleanly.
+ *     strings (mobile.boot.*, mobile.welcome.*, …).
  */
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { loadLocale } from '@canopy/react-native/i18n';
 
+import enShared  from '@canopy-app/tasks-v0/locales/shared/en';
+import nlShared  from '@canopy-app/tasks-v0/locales/shared/nl';
 import enDesktop from '@canopy-app/tasks-v0/locales/en';
 import nlDesktop from '@canopy-app/tasks-v0/locales/nl';
 import enMobile  from '../locales/en.json';
@@ -47,9 +53,10 @@ function _deepMerge(a, b) {
   return out;
 }
 
+// Shell-local wins on collision: shared (base) → desktop → mobile.
 const BUNDLES = {
-  en: _deepMerge(enDesktop, enMobile),
-  nl: _deepMerge(nlDesktop, nlMobile),
+  en: _deepMerge(_deepMerge(enShared, enDesktop), enMobile),
+  nl: _deepMerge(_deepMerge(nlShared, nlDesktop), nlMobile),
 };
 
 export function I18nProvider({ children, defaultLang = 'en' }) {

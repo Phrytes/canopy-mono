@@ -31,6 +31,8 @@ import { buildIdentitySkills } from '@canopy/identity-resolver';
 import { buildSkills } from './skills/index.js';
 import { buildProfileSkills } from './skills/profile.js';
 import { buildAppealSkill } from './skills/appeal.js';
+import { buildChatSkills } from './skills/chat.js';
+import { buildPushTokenSkills } from './skills/pushTokens.js';
 import { buildSubtaskSkills } from './skills/subtasks.js';
 import { buildInboxSkills } from './skills/inbox.js';
 import { buildWorkspaceSkills } from './skills/workspace.js';
@@ -100,6 +102,8 @@ export function wireSkills({
     buildSkills({ bundleResolver }),
     buildProfileSkills({ bundleResolver }),
     buildAppealSkill({ bundleResolver }),
+    buildChatSkills({ bundleResolver }),
+    buildPushTokenSkills({ bundleResolver }),
     buildSubtaskSkills({ bundleResolver }),
     buildInboxSkills({ bundleResolver }),
     buildWorkspaceSkills({ bundleResolver }),

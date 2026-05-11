@@ -101,6 +101,62 @@ L2 (purely app-level for the tasks app):
   group with a mix of company agents and volunteer agents
   needs UX for showing "this is a paid pro vs. a volunteer").
 
+## V1 design (2026-05-07)
+
+Active design captured in
+[`../../Tasks App/advice-2026-05-07.md`](../../Tasks%20App/advice-2026-05-07.md).
+Highlights: **Crew** envelope (working name; replaces "Project"
+since a household isn't a project), DoD lifecycle + approver,
+sub-tasks-by-the-accepter with master-by-dep-graph, in-app inbox
+first (push later), calendar-via-Folio-sync.
+
+## Cross-app substrate compatibility (added 2026-05-07)
+
+These patterns affect more than just this app and are tracked
+across project READMEs:
+
+- **Canonical user-skills profile at `<user-pod>/profile/skills.json`.**
+  When asking the user for their skills (per crew, per group),
+  apps should **prefill from the canonical profile and let the
+  user edit before submitting**. Adding new skills offers an
+  optional "save to my profile" checkbox so future apps can
+  reuse them. Same pattern across Tasks / Stoop / Household /
+  Folio. Substrate-candidate for `@canopy/identity-resolver`
+  once a 2nd consumer lands.
+- **Approval / DoD lifecycle on `item-store`.** Tasks V1 adds
+  `submitted` + `rejected` states + `definitionOfDone` /
+  `approval` / `deliverable` / `master` / `parentTaskId` fields.
+  Available to Stoop (lend-return flow) and Household (chore
+  approval) without further substrate work.
+- **`InAppInboxChannel`** on `@canopy/notifier` — additive
+  channel that writes to a per-user pod inbox, no push needed.
+  Used for V1 issuer notifications; co-consumable by Stoop /
+  Household.
+- **Calendar read adapter + Folio calendar sync.** Folio is the
+  natural home for calendar-to-pod sync (Google + Outlook
+  listener; iCloud + CalDAV poll); Tasks reads `*.ics` from the
+  pod via `getFreeBusy`. Same iCal-on-pod convention is
+  consumable from Stoop V2's "share my agenda" toggle.
+
+## Pod-data sharing — caution principles (added 2026-05-07)
+
+Several V1 features reach into a *member's own pod* (calendar,
+skill profile, deliverables, posture). The discipline:
+
+1. **Default opt-in per crew, not per-app.** Granting Tasks
+   permission once doesn't grant permission in every crew the
+   user joins.
+2. **Smallest derivative wins.** `getFreeBusy` returns busy
+   intervals, not events; deliverables are referenced by URL
+   (revocable via one ACL change).
+3. **Audit cross-pod reads.** Each goes through the role-policy
+   gate; the audit log records who-read-what.
+4. **New cross-pod flows need explicit sign-off from the author**
+   before a coding plan ships.
+
+This applies across all apps that read other users' pods —
+**inherited by Stoop / Household / Folio per-app READMEs**.
+
 ## Related work in the repo
 
 - `packages/core/src/permissions/GroupManager.js` — Group X

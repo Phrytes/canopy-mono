@@ -93,6 +93,49 @@ L2 (purely app-level for the neighborhood app):
 - Negotiation flow for negotiable skills.
 - Group switcher for users in multiple groups.
 
+## Cross-app substrate compatibility (added 2026-05-07)
+
+Tasks V1 introduced or flagged several substrate movements that
+Stoop should track for forward-compat. None require code changes
+in Stoop today; all are heads-up so the next Stoop pass picks
+them up cleanly.
+
+- **Canonical user-skills profile at `<user-pod>/profile/skills.json`.**
+  Stoop V2 already lets a user list skills per group. Tasks V1
+  expects to **import the user's skills from their canonical
+  profile via a prefilled, editable form** (instead of typing
+  fresh per app). Stoop should adopt the same pattern: when a
+  user adds skills to a Stoop group, prefill from
+  `<user-pod>/profile/skills.json` with an "edit before submit"
+  step, and offer to write new skills back to the canonical
+  profile (default OFF for added, ON for edits). The intersection
+  with the *group* skill vocabulary is the rendered list. Same
+  shape across Tasks / Stoop / Household / future skill-shaped
+  apps.
+- **Approval / DoD lifecycle on `item-store`.** Stoop's lend-
+  return flow (V1.5+) likely wants a "lender confirms returned
+  intact" approval step. Tasks V1 lands `submitted` + `rejected`
+  states + `definitionOfDone` / `approval` / `deliverable` /
+  `master` / `parentTaskId` fields on `item-store` — Stoop can
+  reuse these without further substrate work.
+- **`InAppInboxChannel`.** Tasks V1 ships an in-app inbox channel
+  on `@canopy/notifier` (notifications without push). Stoop
+  can adopt it as a non-push surface where the calmness story
+  matters.
+- **`PushPolicy` promotion.** Stoop authored `PushPolicy` (≤ 3
+  per day, batching, quiet hours). Tasks is the second consumer;
+  the candidate gets promoted into `@canopy/notifier` once the
+  relay-side push lands as production-grade. No action for Stoop
+  beyond accepting the eventual API location change.
+- **Calendar adapter (V1.5).** Tasks V1 ships an iCal read +
+  `getFreeBusy` skill. Stoop V2's "share my agenda" Settings
+  toggle is the natural second consumer.
+- **Pod-data-sharing caution.** Each cross-pod read needs an
+  explicit per-context opt-in; carry the same caution principles
+  documented in
+  [`../04-tasks-app/README.md`](../04-tasks-app/README.md) §
+  *Pod-data sharing*.
+
 ## Related work in the repo
 
 - `packages/core/src/protocol/pubSub.js` — existing pub/sub;

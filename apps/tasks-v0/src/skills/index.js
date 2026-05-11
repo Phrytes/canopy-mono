@@ -21,7 +21,7 @@
  */
 
 import { defineSkill } from '@canopy/core';
-import { computeStatus, detectCycle } from '../dag.js';
+import { computeStatus, effectiveStatus, unmetDeps, detectCycle } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';
 
 /**
@@ -168,7 +168,19 @@ export function buildSkills({ bundleResolver } = {}) {
       if ('assignee' in a) filter.assignee      = a.assignee;
       const open   = await crew.itemStore.listOpen(filter);
       const closed = await crew.itemStore.listClosed();
-      const items  = open.map((t) => ({ ...t, status: computeStatus(t, open, closed) }));
+      // 41.18 follow-up — every item carries:
+      //   status   — lifecycle ∪ DAG (effectiveStatus)
+      //   openDeps — unmet dependency IDs (unmetDeps); empty array
+      //              when all deps satisfied. UI gates Mark-complete
+      //              / Approve on `openDeps.length === 0` so a
+      //              claimed-but-deps-blocked task pre-disables the
+      //              CTA instead of waiting for the substrate's
+      //              DependenciesOpenError post-tap (V2.7 hard-deps).
+      const items = open.map((t) => ({
+        ...t,
+        status:   effectiveStatus(t, open, closed),
+        openDeps: unmetDeps(t, open, closed),
+      }));
       const filtered = a.status ? items.filter((t) => t.status === a.status) : items;
       return { items: filtered };
     }, {
@@ -188,7 +200,11 @@ export function buildSkills({ bundleResolver } = {}) {
       const closed = await crew.itemStore.listClosed();
       const items  = open
         .filter((t) => t.assignee === from)
-        .map((t) => ({ ...t, status: computeStatus(t, open, closed) }));
+        .map((t) => ({
+          ...t,
+          status:   effectiveStatus(t, open, closed),
+          openDeps: unmetDeps(t, open, closed),
+        }));
       return { items };
     }, {
       description: 'List open tasks assigned to the calling actor.',

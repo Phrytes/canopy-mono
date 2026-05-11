@@ -2,45 +2,66 @@
 
 | | |
 |---|---|
-| **Status** | V0 shipped as `apps/tasks-v0`. Substrates fully wired post-Phase 7. Headless API + integration tests done; web UI tracked below. |
-| **Code** | `apps/tasks-v0` |
-| **Tests** | 24 (21 integration + 3 pod-backed-roster) |
-| **Source notes** | `projects/04-tasks-app/README.md`, `coding-plans/track-H-app-tasks.md`, `coding-plans/track-H-app-tasks-questions.md` |
-| **App name** | TBD — placeholder: Klus / Beurt / Spar / Ledger |
+| **Status** | **V1 shipped 2026-05-08** as `apps/tasks-v0` (`0.2.0`). Crew envelope + DoD lifecycle + sub-tasks + in-app inbox + local calendar + observability + i18n + lifecycle controls. 7-screen workspace UI. **176/176 tests passing.** |
+| **Code** | `apps/tasks-v0` (~1100 LOC of app glue on top of 7 substrate packages) |
+| **Tests** | 176 across 13 files (V0 baseline 34 + V1 phases 1-10 add 142) |
+| **Source notes** | `projects/04-tasks-app/README.md`, `Tasks App/advice-2026-05-07.md`, `Tasks App/critique-2026-05-07.md`, `Tasks App/coding-plan-2026-05-07.md`, `apps/tasks-v0/CHANGELOG.md` |
+| **App name** | **Tasks** (locked 2026-05-07; Crew is the working term for the tenant envelope) |
 
 ---
 
 ## Current state
 
-**V0 shipped + post-refactor migrated** — `createTasksAgent({roles, members | pod, ...})` factory wires 4 substrates + the SDK directly into a working ledger. Standard 5-role permission table, DAG resolver (`computeStatus`, `detectCycle`), skill-tagged tasks with auto-claim posture. The factory accepts either a hand-built `members: Array` (tests) or a pod-config-backed `pod: {client, configUri, fallback?}` for production deployments — the second path uses `MemberMap.fromPodConfig` (Phase 4.1 contract).
+**V1 shipped 2026-05-08** — `createCrewAgent({crewConfig, localStoreBundle, ...})` is the V1 entry point; `createTasksAgent` keeps working for V0 callers (zero-config single-household path). Both wire into the same item-store / role-policy / DAG; V1 adds the Crew envelope + DoD lifecycle + sub-tasks + in-app inbox + local calendar + per-event observability + i18n + lifecycle controls (pause/archive) on top.
 
-**Substrate consumption (rule-of-two validation pass — post-Phase 7 reality)**:
+**Substrate consumption (V1 reality)**:
 
-| Layer | What H4 uses |
+| Layer | What Tasks V1 uses |
 |---|---|
-| **L1b (item-store)** | Tasks with full schema (DAG deps, skills, due, assignee, visibility); compare-and-swap merge on `assignee`; full role-policy gate. Now `core.DataSource`-shaped (post-Phase 5.2): tests pass `MemorySource`, production wraps `pod-client.PodClient` in a small DataSource adapter. |
-| **L1d (agent-ui)** | `mountLocalUi(bundle.agent, {staticDir, a2aTLSLayer})` exposes skills over A2A on `127.0.0.1`. Pre-refactor `SkillRouter` + `EventBroadcaster` were deleted Phase 3.1 — apps subscribe to `bundle.itemStore` directly for events (it extends `core.Emitter`). |
-| **L1e (skill-match)** | Pubsub-of-skills; auto-claim on `posture: always`; human prompt on `negotiable`. Composes a real `core.Agent` + `core.protocol.pubSub` directly (Phase 4.2 — synthetic transport deleted). Optional in `createTasksAgent`. |
-| **L1f (notifier)** | Deadline reminders; stalled-claim nudges. **Currently optional and not yet auto-wired** — `bundle.notifier` defaults to `null`. Apps that want fires construct a `Notifier` with `PodScheduleStore` (notifier v0.4) and pass via `notifier:`. ~10 lines of glue once an H4 user genuinely wants persistent reminders. |
-| **L1h (identity-resolver)** | Member-webid map via `new MemberMap({initial: members})` OR `MemberMap.fromPodConfig({podClient, configUri, fallback?})` (post-Phase 7 — pod-config path wired 2026-05-04). `buildIdentitySkills({members})` registers `resolveMember`. |
+| **L1b (item-store)** | Tasks + DoD lifecycle (Phase 5 substrate extension: `submitted`/`rejected` states; `definitionOfDone` / `approval` / `deliverable` / `master` / `parentTaskId` / `reviewLog` fields; `submit` / `approve` / `reject` / `revoke` / `setApprovalMode` methods + `computeStatus` helper). Role-policy gate extended with `canSubmit` / `canApprove` / `canReject` / `canRevoke`. |
+| **L1d (agent-ui)** | `mountLocalUi(bundle.agent, {staticDir, a2aTLSLayer, extraStaticFiles})` exposes the workspace UI's 7 pages on `127.0.0.1`. |
+| **L1e (skill-match)** | Optional in V1; `createTasksAgent({skillMatch})` parameter still works. |
+| **L1f (notifier)** | `Notifier` + `InMemoryScheduleStore` + `NoopChannel` for the in-app inbox routing; `UsageMetrics` for Phase 9 counters. Per-recipient `InAppInboxBridge` channels added at runtime via the shared `channels` map. |
+| **L1h (identity-resolver)** | `MemberMap` + `MemberMapCache` (Phase 11 lift; auto-persist roster) + `buildOnboardingSkills` (`issueInvite`/`redeemInvite` skill helpers; lifted from Stoop's `onboarding.js`) + `TAXONOMY` / `normaliseTag` / `matchesProfile` (Phase 11 lift; cross-language skill canonicalisation). |
+| **`@canopy/local-store`** (NEW substrate, lifted from Stoop 2026-05-08) | `CachingDataSource` + `SyncCadence` + `createSettingsModule` factory bound with Tasks's field schema. |
+| **`@canopy/chat-p2p`** (NEW substrate, lifted from Stoop 2026-05-08) | `wireChat({...})` for the Phase 6 appeal flow — peer-to-peer chat thread between previous-assignee and master. |
 
-**SDK direct use** (per `apps/tasks-v0/README.md` "Direct SDK use" section): `core.{Agent, AgentIdentity, VaultMemory, InternalBus, InternalTransport, MemorySource}` — all foundational primitives, no substrate currently wraps "construct an agent". `mountLocalUi` from `@canopy/agent-ui` exposes the per-app HTTP host.
+**SDK direct use** (per `apps/tasks-v0/README.md` "Direct SDK use" section): `core.{Agent, AgentIdentity, VaultMemory, InternalBus, InternalTransport, MemorySource, FileSystemSource, GroupManager, defineSkill, DataPart}`. `GroupManager` is composed by Crew envelope for invite issuance.
 
-**App-side glue:**
-- DAG resolver (`computeStatus`, `detectCycle`) in `src/dag.js` — pure functions; correctly app-shaped.
-- Standard 5-role permission table in `src/rolePolicy.js` — H4 owns the canonical version; ItemStore consumes it via the role-policy gate.
-- Skill registry in `src/skills/index.js`: `addTask`, `claimTask`, `completeTask`, `reassignTask`, `removeTask`, `listOpen`, `listMine`, `listClaimable` (+ `resolveMember` from L1h).
+**App-side glue (~1100 LOC):**
+- `src/Agent.js` — V0 factory.
+- `src/Crew.js` — V1 factory wires Crew envelope + every Phase 1-10 substrate composition.
+- `src/dag.js` — `computeStatus(task, open, closed)` + `detectCycle`.
+- `src/dag-tree.js` — `childrenOf` / `treeOf` / `ancestorChain` / `depthOf` / `wouldCreateParentCycle`.
+- `src/rolePolicy.js` — standard 5 roles + Phase 5 DoD gates + Phase 7 narrow exception.
+- `src/skills/{index, profile, subtasks, appeal, inbox, workspace, observability, crewControls}.js` — V1 skill set.
+- `src/storage/{buildBundle, settings}.js` — local-store + Tasks-bound Settings.
+- `src/calendar/iCalReader.js` — local-only calendar conflict view.
+- `src/notifications/wireIssuerNotifications.js` — itemStore-event-to-inbox routing.
+- `src/observability/{metrics, cadence}.js` — UsageMetrics + cadence resolution.
+- `src/bridges/InAppInboxBridge.js` — per-recipient `MessagingBridge` (substrate-candidate flagged).
+- `src/lib/{i18n, privacyNotice}.js` — localisation + privacy notice.
 
-**Locked Q-H4.x decisions** (all in V0):
+**Locked Q-H4.x decisions:**
 - Q-H4.1 hybrid pod with per-field merge ✓
 - Q-H4.2 optimistic + compare-and-swap claim ✓
-- Q-H4.3 push primitive shared with H5 ✓ (E2c push send-half shipped Phase 0; receive-half in `@canopy/react-native`)
+- Q-H4.3 push primitive shared with H5 ✓ (push send-half shipped; V1.5 wires the bridge in Tasks)
 - Q-H4.4 human-vs-device same primitive ✓
-- Q-H4.5 minimal lifecycle (open/claimed/complete/cancelled) ✓
+- Q-H4.5 minimal lifecycle (open/claimed/complete/cancelled) ✓ V0; V1 added `submitted` + `rejected` (Phase 5)
 - Q-H4.6 per-task `visibility` field ✓
-- Q-H4.7 standard 5-role set ✓
+- Q-H4.7 standard 5-role set ✓ (V1.5 adds custom-role UI)
 - Q-H4.8 DAG cycle detection at write time ✓
-- Q-H4.9 recurring tasks → V1+
+- Q-H4.9 recurring tasks → V1.5+
+
+**V1 design locks (Tasks App/advice-2026-05-07.md):**
+- Calendar matching is local-only (no network freebusy skill).
+- Calendar sync (Google / Outlook / iCloud) lives in `apps/import-bridge-v0`, not Tasks.
+- DoD-with-approver lifecycle landed at the substrate (item-store) layer.
+- Sub-task spawn past `crew.subtasksAdminApprovalDepth` queues admin approval.
+- Master per task; revoke requires reason; assignee can appeal (7-day window) via chat-p2p.
+- In-app inbox first; push behind a feature flag until V1.5 relay-side push lands.
+- Local-only mode is a hard rule (works without a Solid pod).
+- Crew name "Crew" picked as the working envelope term; app name is "Tasks".
 
 ---
 

@@ -30,7 +30,7 @@ import { defineSkill } from '@canopy/core';
 
 import { computeStatus as itemStoreComputeStatus } from '@canopy/item-store';
 import { treeOf } from '../dag-tree.js';
-import { computeStatus as dagStatus } from '../dag.js';
+import { effectiveStatus, unmetDeps } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';
 
 /**
@@ -62,7 +62,11 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
         // V2.7 — include DAG `status` so the Review UI can disable the
         // Approve button + show open-deps tooltip when the parent
         // can't actually be closed yet.
-        .map((it) => ({ ...it, status: dagStatus(it, open, closed) }));
+        .map((it) => ({
+          ...it,
+          status:   effectiveStatus(it, open, closed),
+          openDeps: unmetDeps(it, open, closed),
+        }));
       return { items: pending, viewer: from ?? null };
     }, {
       description: 'List items in the submitted state (awaiting approval).',
@@ -110,7 +114,11 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
       const closed = await crew.itemStore.listClosed();
       const mastered = open
         .filter((it) => (it.master ?? it.addedBy) === from)
-        .map((it) => ({ ...it, status: dagStatus(it, open, closed) }));
+        .map((it) => ({
+          ...it,
+          status:   effectiveStatus(it, open, closed),
+          openDeps: unmetDeps(it, open, closed),
+        }));
       return { items: mastered };
     }, {
       description: 'Open tasks where the caller is the master.',

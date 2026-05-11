@@ -26,8 +26,16 @@ export function DagScreen() {
   const { t } = useI18n();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const rootId = route?.params?.id;
-  const tree = useSkillResult('getDagTree', rootId ? { id: rootId } : {}, [svc?.activeCrewId, rootId]);
+  // Accept either `rootId` (preferred) or `id` (legacy nav callers
+  // that haven't migrated). The skill expects `rootId`; passing the
+  // wrong field name made the screen fall through to the all-roots
+  // branch — see Phase 41.18 follow-up.
+  const rootId = route?.params?.rootId ?? route?.params?.id ?? null;
+  const tree = useSkillResult(
+    'getDagTree',
+    rootId ? { rootId } : {},
+    [svc?.activeCrewId, rootId],
+  );
 
   const rows = useMemo(() => flattenDagTree(tree?.data), [tree?.data]);
 
