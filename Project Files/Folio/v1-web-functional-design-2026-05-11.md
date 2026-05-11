@@ -55,6 +55,18 @@ These are decided 2026-05-11 and shape the rest of the doc:
    `apps/folio-mobile`'s RN adapters become pseudo-pod-V1
    adapters. The user-facing behaviour (notes sync, conflicts
    detected, watcher fires on file changes) stays identical.
+3a. **Offline-while-pod-attached works (locked 2026-05-11).** Even
+   though Folio requires a pod, "offline" doesn't mean "broken."
+   The pseudo-pod's cache mode + write-through queue (Phase 50.4
+   of the vault substrate plan + pseudo-pod V1) keeps Folio
+   functional when the user's pod is temporarily unreachable: the
+   note write goes to the local pseudo-pod immediately, queues
+   for pod upload, and drains on reconnect. From the user's
+   perspective the editor never blocks on connectivity. See plan
+   §II.6 graceful-degradation block. Upload-on-behalf is **open
+   V2 work** — relevant for Folio's sharing flow when the
+   recipient's pod is unreachable; tracked in plan §II.6 +
+   substrates §4.4.6.
 4. **`pluggable-engine` pattern.** Folio.C1's engine adapter
    pattern (separate FS / hash / watcher adapters per
    platform) carries forward and is the reference for how

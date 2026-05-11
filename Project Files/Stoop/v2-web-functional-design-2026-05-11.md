@@ -43,6 +43,20 @@ These are decided 2026-05-11 and shape the rest of the doc:
 2. **No-pod crews keep working unchanged.** The substrate's
    pseudo-pod replication-ring mode reproduces `groupMirror`'s
    user-perceived latency + durability.
+2a. **Connectivity-loss is first-class (locked 2026-05-11).** Crew
+   policies are *preferences* with graceful degradation. Even
+   pod-having buurts keep functioning when individual members are
+   offline (no internet, pod provider down): the substrate falls
+   back to pseudo-pod-replicated eager fan-out for that write, and
+   the writer's pending-pod-upload queue drains to the buurt's pod
+   on reconnect. Stoop doesn't branch on connectivity; the
+   substrate handles it per-write. See plan §II.6 graceful-
+   degradation block + substrates §4.4.5a. Upload-on-behalf
+   (another buurt member uploading an offline writer's content)
+   is **open V2 work** — particularly relevant for Stoop because
+   buurts often include tech-shy members who never provision pods;
+   questions documented in plan §II.6 + substrates §4.4.6 for
+   later resolution.
 3. **Web shell stays the desktop reference codebase.** Pages
    at `web/` (prikbord, chat, contacts, group settings,
    profile, push, privacy, metrics). Mobile mirrors via

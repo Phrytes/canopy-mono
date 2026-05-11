@@ -43,6 +43,16 @@ These are decided 2026-05-11 and shape the rest of the doc:
 2. **Pod-attached is required.** Same scope lock as web V1:
    no no-pod mode. Mobile starts with sign-in (OIDC via
    `oidc-session-rn`) before any note browsing.
+2a. **Offline-while-pod-attached is first-class (locked 2026-05-11).**
+   Mobile is the canonical "offline happens often" case
+   (commuting, basement, abroad, weak signal). The pseudo-pod's
+   cache mode + write-through queue (pseudo-pod V1) keeps the
+   editor functional: every note save writes to the local
+   `expo-file-system`-backed pseudo-pod immediately, queues for
+   pod upload, and drains on reconnect. The Quick-capture flow
+   (§4c) was designed around this. See plan §II.6 graceful-
+   degradation block. Upload-on-behalf is **open V2 work** — see
+   plan §II.6 + substrates §4.4.6.
 3. **Identity vault:** `KeychainVault` on iOS would be the
    path; on Android, the `@canopy/react-native` keychain
    wrapper. Same as Folio.C2 today.

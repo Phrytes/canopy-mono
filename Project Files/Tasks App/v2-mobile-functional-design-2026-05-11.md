@@ -35,6 +35,19 @@ These are decided 2026-05-11 and shape the rest of the doc:
    only (no pod). Pod sign-in lands when the user picks a
    pod-having crew policy or upgrades from no-pod. Mobile uses
    `@canopy/oidc-session-rn`.
+2a. **Connectivity-loss is first-class (locked 2026-05-11).** Crew
+   policies are *preferences* with graceful degradation. Even a
+   pod-having crew member who's offline (BLE-only, no internet,
+   train tunnel, pod provider down) keeps writing: the substrate
+   falls back to pseudo-pod-replicated eager fan-out (over BLE /
+   mDNS / queued relay) for that write, and the writer's
+   pending-pod-upload queue drains to the pod on reconnect. Tasks-
+   mobile doesn't branch on connectivity; the substrate handles it
+   per-write. Mobile is the canonical "offline happens often" case
+   — `MdnsTransport` + `BleTransport` carry the fan-out when the
+   relay is unreachable. See plan §II.6 graceful-degradation
+   block + substrates §4.4.5a. Upload-on-behalf is **open V2
+   work** — see plan §II.6 + substrates §4.4.6.
 3. **Identity vault:** `@canopy/react-native`'s
    `KeychainVault` for the agent keypair. Auxiliary OIDC
    tokens piggyback on `oidc-session-rn` storage.

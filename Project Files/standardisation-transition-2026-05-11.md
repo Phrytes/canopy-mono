@@ -863,21 +863,67 @@ constrained by this principle.
 
 **The substrate-side mechanism:**
 
-- The crew's §II.2 policy is set at crew creation; can be
-  upgraded later via the storage-mapping editor.
+- The crew's §II.2 policy is a **preference** set at crew
+  creation; can be upgraded later via the storage-mapping
+  editor.
 - App code calls `substrate.writeItem(...)` without knowing
   the policy.
 - The substrate picks the wire format and persistence target
-  based on the policy: pod-having → pod-primary + envelope;
-  no-pod → pseudo-pod-replicated eager fan-out.
-- Receiver-side: both modes deposit items into the local
+  per-write based on **three inputs**: content nature, crew
+  preference, **current pod reachability**.
+- Receiver-side: every mode deposits items into the local
   pseudo-pod. Apps read uniformly.
+
+**Graceful degradation simplifies the migration** (locked
+2026-05-11). Because the §II.2 policies are preferences with
+graceful degradation (plan §II.6 §4.4.5a), pod-having crews
+**don't lose offline capability** when they migrate from
+pre-standardisation app behaviour (groupMirror /
+relay-fan-out). The substrate's replication-ring mode is
+the universal baseline; the pod is a promotable ring member
+whose participation is gated by reachability. Apps that
+attached a pod to a crew during the transition keep working
+offline; the data syncs when connectivity returns.
 
 **Audit trigger:** any future plan revision that proposes
 retiring a substrate must explicitly state whether the
 substrate's capability was already pod-independent today, and
 if so, how the new design preserves that capability. See
 §IV.2 (Stoop) for the worked example.
+
+### §V.7 — Open V2 question: upload-on-behalf
+
+Documented 2026-05-11 for later resolution. **Not blocking
+V1.** V1's graceful degradation drains the writer's *own*
+pending-upload queue to the writer's *own* pod on
+reconnect. V2 considers letting a different member upload
+the writer's content on the writer's behalf — closing the
+durability gap when the writer themselves stays offline for
+extended periods.
+
+The hard design questions (carried across plan §II.2 + §II.6
++ substrates §4.4.6):
+
+1. **Authority model.** Who has the right to write to another
+   member's pod? Options: a "pod-shepherd" role per crew;
+   per-resource grant cap-tokens; opt-in flag per member.
+2. **Conflict resolution.** Member A writes offline; member B
+   writes online; both touch the same logical resource at
+   different times. Last-write-wins by timestamp? Surface a
+   conflict?
+3. **ACP semantics for proxy uploads.** When B uploads A's
+   content, whose ACPs apply — A's intent (the substrate
+   knows what A wanted) or B's authorisation (B is the actual
+   writer)?
+4. **Product fit.** Is upload-on-behalf desirable in the
+   project's value system? Or is "everyone manages their own
+   pod" the durable answer? Likely *yes* for buurt-style
+   crews where some members are tech-shy and never provision
+   a pod; pin during V2 design with stakeholder input.
+
+These questions should be revisited once V1 has been running
+long enough to surface real "this person's content is stuck
+on their phone for two weeks" scenarios in the field.
 
 ---
 
@@ -894,6 +940,21 @@ state of `apps/tasks-v0/`, `apps/tasks-mobile/`, `apps/stoop/`,
 of 2026-05-11.
 
 ## Part VII — Changelog
+
+### 2026-05-11 — graceful degradation across pod / no-pod modes
+
+- §V.6 mechanism reframed: the §II.2 policies are
+  **preferences with graceful degradation**, not hard runtime
+  rules. The per-write reachability check makes pod-having
+  crews keep functioning offline (writes go to the ring +
+  queue for pod-upload on reconnect).
+- Pseudo-pod's replication-ring mode locked as the **universal
+  baseline** — pods are promotable ring members whose
+  participation is gated by reachability.
+- New §V.7 — open V2 question: upload-on-behalf (a different
+  member uploading an offline writer's content). Four design
+  questions documented for later resolution (authority,
+  conflict resolution, ACP, product fit).
 
 ### 2026-05-11 — initial
 

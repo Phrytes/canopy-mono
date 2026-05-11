@@ -63,6 +63,22 @@ unless explicitly overridden.
     no-pod. Pod-having crews use the substrate's pod-primary
     + envelope path; no-pod crews use pseudo-pod-replicated
     eager fan-out.
+13. **Connectivity-loss is first-class (locked 2026-05-11).** Crew
+    policies are *preferences* with graceful degradation. Even
+    pod-having buurts keep functioning when individual members
+    are offline (BLE-only, no internet, train tunnel, pod
+    provider down): the substrate falls back to pseudo-pod-
+    replicated eager fan-out (over BLE / mDNS / queued relay) for
+    that write, and the writer's pending-pod-upload queue drains
+    to the buurt's pod on reconnect. Mobile is the canonical
+    "offline happens often" case — `MdnsTransport` +
+    `BleTransport` carry the fan-out when the relay is
+    unreachable, preserving the "campsite buurt" use case across
+    pod-having crews too. See plan §II.6 graceful-degradation
+    block + substrates §4.4.5a. Upload-on-behalf is **open V2
+    work** — particularly relevant for buurts with tech-shy
+    members who never provision pods; questions documented in
+    plan §II.6 + substrates §4.4.6 for later resolution.
 
 ## 2a. Composition (what we import from the web workspace)
 

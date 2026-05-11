@@ -362,19 +362,67 @@ members have pods and others don't — pod-having members write
 to their pods + emit envelopes; pod-less members eagerly mirror
 into their pseudo-pods. App code is identical in either mode.
 
+**Policies are preferences with graceful degradation (locked
+2026-05-11).** The four policies above are **preferences**, not
+hard runtime rules. Even a centralised crew member loses
+internet sometimes (BLE-only field trip, campsite, train
+tunnel). When that happens, the substrate falls back to
+pseudo-pod-replicated eager fan-out for that write — the
+writer's own pod-write queue holds the resource until the
+network returns, then drains. The crew "is" still centralised;
+the runtime adapts per-write based on current pod reachability.
+
+The conceptual baseline is **always replication-ring**. Pods
+are *promotable members* of the ring that add durability +
+ACPs when reachable. This collapses the "what happens when
+my pod is unreachable" question — the answer is "the same
+thing that happens for a no-pod crew, plus you owe a pod
+upload when you're back online." See §II.6 for the wire
+shape + queue semantics, §II.7 for the pseudo-pod's mode
+semantics.
+
 **Why.** Real teams already work in different patterns
 (centralised household ledger vs decentralised neighbourhood
 collaboration). Some teams legitimately want the no-pod
 experience — try-before-pod, privacy from pod providers,
-campsite mode. The substrate has to support all four cleanly.
+campsite mode. **And every team needs to work offline
+sometimes.** The substrate has to support all four
+preferences cleanly + degrade gracefully when connectivity
+drops.
 
-**Locked.** Four patterns supported by `pod-routing` +
+**Locked.** Four preferences supported by `pod-routing` +
 `notify-envelope` together. Group pod URI is just a URI; can
-point at any pod. No group private side-pod.
+point at any pod. No group private side-pod. **Graceful
+degradation** between pod-mode and replication-ring-mode is
+substrate-side, not per-app.
 
 **Open.** Cross-pod ref ACP edge cases (a reader without
 permission to fetch a referenced parent — accept the failure,
 show a placeholder).
+
+**Open (V2, deferred 2026-05-11) — upload-on-behalf.** When
+member A writes a resource offline (BLE-only), the resource
+fan-outs through the replication ring. Member B receives it,
+is online, and could in principle upload it to A's pod on
+A's behalf — closing the gap immediately. V1 doesn't do
+this; A's own queue drains when A comes back online. V2 is
+where this gets designed. The hard questions:
+
+- **Authority model.** Who has the right to write to A's pod?
+  A "pod-shepherd" role per crew? A per-resource grant
+  (A signed-off-by-B-on-A's-behalf cap-token)?
+- **Conflict resolution.** A writes offline; B writes
+  online; both touch the same logical resource at different
+  times. When A comes online, whose version wins, and how
+  does the loser's content surface?
+- **ACP semantics for proxy uploads.** When B uploads A's
+  content, whose ACPs apply — A's intent, or B's
+  authorisation?
+- **Product question.** Is upload-on-behalf even desirable
+  in the project's value system? Or is "everyone manages
+  their own pod" the durable answer? Probably yes for
+  buurt-style crews where some members never get a pod; pin
+  during V2 design with stakeholder input.
 
 **Phase.** P1 ships the layout + the routing substrate; P2
 extends the cross-pod ref shape on `item-store`.
@@ -516,10 +564,17 @@ Hub-web-console (P5) consume it.
 ## §II.6 — Persistent-write patterns (committed)
 
 **What.** Three patterns coexist for moving content between
-agents, picked per-write based on the content's nature and the
-crew's §II.2 policy. App code is identical in all three; the
-substrate (`notify-envelope` + `pod-routing`) picks the wire
-shape.
+agents, picked **per-write** by the substrate (`notify-envelope`
++ `pod-routing`) based on **three inputs**:
+
+1. The content's nature (ephemeral vs persistent).
+2. The crew's §II.2 policy *preference* (centralised /
+   decentralised / hybrid / no-pod).
+3. **Current pod reachability for this writer + their
+   recipients** (added 2026-05-11).
+
+App code is identical in all three; the substrate handles
+the picking + graceful degradation.
 
 - **Relay-fan-out of full content** — for ephemeral,
   latency-critical, online-only content: live chat messages,
@@ -537,16 +592,46 @@ shape.
   (`{kind, ref, etag, timestamp, fromActor}`) via the relay;
   recipients fetch by ref when they want to.
 - **Pseudo-pod-replicated eager fan-out** — for persistent
-  content in no-pod crews (§II.2 policy 4). The writer writes
-  to their own pseudo-pod; the relay fan-outs the full payload
-  eagerly to every member; recipients store it in their own
-  pseudo-pod and write an envelope into their local store.
-  Durability is the union of online member devices;
-  recoverable as long as at least one member has a copy.
+  content in no-pod crews (§II.2 policy 4) **AND** for any
+  write where the writer's pod (or the crew's group pod) is
+  currently unreachable. The writer writes to their own
+  pseudo-pod; the relay (or BLE / mDNS in fully-local mode)
+  fan-outs the full payload eagerly to every reachable
+  member; recipients store it in their own pseudo-pod and
+  write an envelope into their local store. Durability is
+  the union of online member devices; recoverable as long as
+  at least one member has a copy.
 
 The envelope wire format and item shape are the **same** across
 the pod-primary and pseudo-pod-replicated modes; the difference
 is the canonical store and the eagerness of the transfer.
+
+### Graceful degradation across pod / no-pod modes
+
+When a pod-having crew's writer can't reach the pod
+(offline; BLE-only; train tunnel; pod provider down), the
+substrate falls back to **pseudo-pod-replicated eager
+fan-out for that write** and the writer's own
+*pending-pod-upload queue* keeps the resource until the
+network returns. On reconnect, the queue drains: each
+pending resource is written to the pod, and a fresh
+envelope is emitted to crew members so they can switch
+their local cache entry from "ring-replicated" to
+"pod-canonical."
+
+Recipients receiving a ring-replicated payload don't know
+or care whether the writer was offline by choice (no-pod
+crew) or by circumstance (pod-having crew, momentarily
+offline) — the wire shape and the receiver-side behaviour
+are identical. Pseudo-pod's replication-ring mode is
+therefore the **universal baseline**; the pod is a
+*promotable ring member* whose participation is gated by
+reachability.
+
+This makes the four §II.2 policies **runtime-soft**: a
+pod-having crew never loses offline capability. The pod is
+where durability + ACPs come from when it's reachable; the
+ring is what keeps the crew functioning otherwise.
 
 **Why pod-primary (when a pod exists).** The wins aren't
 bandwidth-shaped:
@@ -575,13 +660,31 @@ the union of member devices. The trade-off — eager fan-out
 costs more bandwidth, durability is bounded by member uptime —
 is the cost of pod-independence.
 
-**Locked.** Three patterns; substrate picks based on the
-crew's §II.2 policy. App code is the same across modes.
+**Locked.** Three patterns; substrate picks per-write based
+on (content-nature, crew policy preference, current
+reachability). Graceful degradation between pod-primary and
+ring-replicated is substrate-side, not per-app. App code is
+the same across modes.
 
 **Open.** Latency tuning on real devices, especially the
 envelope-to-fetch round trip for users who genuinely want
 zero-deferred reading. Bandwidth tuning for no-pod crews at
 scale (eager fan-out is O(N) per member device).
+Reachability-check heuristics — how does the substrate decide
+"my pod is unreachable" cheaply enough to gate every write?
+Pin during P1 implementation; default proposed is "last
+successful pod request within N seconds + currently no
+transport-level disconnect event since."
+
+**Open (V2, deferred 2026-05-11) — upload-on-behalf.** V1's
+graceful degradation drains the writer's *own* pending queue
+to the writer's *own* pod on reconnect. V2 considers letting
+**a different member** upload the writer's content on the
+writer's behalf — closing the durability gap when the writer
+themselves stays offline for an extended period. See §II.2's
+"Open (V2)" block for the design questions (authority model,
+conflict resolution, ACP semantics for proxy uploads,
+product fit).
 
 **Phase.** P1 ships the three patterns under `notify-envelope`
 + `pod-routing`. P3 retires the legacy app-specific
@@ -1391,6 +1494,26 @@ covers consequences + transition for `sdk/core`, the existing
 substrates, and the three apps (Tasks, Stoop, Folio).
 
 ## §C — Changelog
+
+### 2026-05-11 — graceful degradation between pod / no-pod modes
+
+- §II.2 reframed: the four crew policies are **preferences,
+  not hard runtime rules**. Even pod-having crews lose
+  connectivity sometimes; the substrate falls back to
+  pseudo-pod-replicated eager fan-out for that write, and the
+  writer's pending-pod-upload queue drains on reconnect.
+  Replication-ring is the **universal baseline**; pods are
+  *promotable ring members* whose participation is gated by
+  reachability.
+- §II.6 reframed: per-write mode picking now considers three
+  inputs (content nature, crew preference, current pod
+  reachability). New "Graceful degradation across pod /
+  no-pod modes" subsection. Pending-upload queue + envelope
+  re-emission on reconnect locked.
+- **Open question (V2, deferred):** upload-on-behalf —
+  another member uploading an offline writer's content to
+  the writer's pod. Authority / conflict / ACP / product-fit
+  questions documented in §II.2 + §II.6.
 
 ### 2026-05-11 — consolidated revision
 

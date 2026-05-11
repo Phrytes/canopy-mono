@@ -37,6 +37,18 @@ These are decided 2026-05-11 and shape the rest of the doc:
    anyone provisioning a pod; the substrate's pseudo-pod
    replication-ring mode persists state across the union of
    member devices. This is the only mode pre-V2.
+2a. **Connectivity-loss is first-class (locked 2026-05-11).** Crew
+   policies are *preferences* with graceful degradation. Even a
+   pod-having crew member who's offline (no internet, pod provider
+   down) keeps writing: the substrate falls back to pseudo-pod-
+   replicated eager fan-out for that write, and the writer's
+   pending-pod-upload queue drains to the pod on reconnect. Tasks
+   doesn't branch on connectivity; the substrate handles it
+   per-write. See plan §II.6 graceful-degradation block +
+   substrates §4.4.5a. Upload-on-behalf (another member uploading
+   an offline writer's content) is **open V2 work** — questions
+   documented in plan §II.6 + substrates §4.4.6 for later
+   resolution.
 3. **Web shell is the desktop reference codebase.** The web
    app at `web/` is the canonical app skeleton (Express + static
    site on `127.0.0.1`). Mobile mirrors it via `src/ui/`

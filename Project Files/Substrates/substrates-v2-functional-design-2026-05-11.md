@@ -306,22 +306,52 @@ CachingDataSource → Solid pod` with one substrate.
 
 - **Cache-for-real-pod.** Write-through queue against the
   user's pod when attached; transparent caching of reads.
-  This is the pod-having user's default.
+  This is the pod-having user's default — when the pod is
+  reachable.
 - **Standalone.** No upstream pod; pseudo-pod is the
   canonical store for one user on one device.
   Try-before-pod; single-user testing.
 - **Replication-ring-with-peer-pseudo-pods.** For no-pod
-  crews (§II.2 policy 4 of the plan). Pseudo-pod is the
-  canonical store for content authored on this device, and
-  the cache for content authored on peer devices. Inbound
-  full-payload eager fan-out from `notify-envelope` writes
-  resources into the local pseudo-pod; outbound writes
-  fan-out.
+  crews (§II.2 policy 4 of the plan) **and** as the
+  graceful-degradation fallback for pod-having crews when
+  the pod is unreachable. Pseudo-pod is the canonical store
+  for content authored on this device, and the cache for
+  content authored on peer devices. Inbound full-payload
+  eager fan-out from `notify-envelope` writes resources into
+  the local pseudo-pod; outbound writes fan-out.
 
 Mode is per-resource: a user with both a personal pod and
 membership in a no-pod crew runs `cache` for their personal
 content + `replication-ring` for the no-pod crew's content,
 on the same pseudo-pod instance.
+
+### 4.1.2a The replication ring is the universal baseline (locked 2026-05-11)
+
+The three modes above look like alternatives, but they
+share **one runtime story**: every pseudo-pod instance is
+fundamentally a **replication-ring participant**. The pod
+(when reachable) is just a *promotable ring member* with
+extra durability + ACPs. This unifies what used to look
+like a binary {pod, no-pod} choice into a single mechanism
+with graceful degradation:
+
+- **Pod reachable → write goes to local pseudo-pod, queues
+  for pod write-through, AND emits an envelope** (no full
+  payload — recipients fetch the now-pod-canonical ref).
+- **Pod unreachable → write goes to local pseudo-pod, stays
+  in the pending-pod-upload queue, AND emits a full-payload
+  ring fan-out** so the crew keeps functioning. When the
+  pod is reachable again, the queue drains + a fresh
+  envelope re-announces the now-pod-canonical version.
+- **Recipients don't care which mode the sender was in** —
+  they receive either an envelope (fetch lazily) or a
+  full-payload (write into local ring store). The downstream
+  effect is identical.
+
+This is why the `Agent.pseudoPod` slot can hold a single
+substrate instance regardless of crew policy — the substrate
+is doing the same job every time, just with different
+participation from the pod node.
 
 ### 4.1.3 Public API
 
@@ -406,6 +436,23 @@ notify-envelope.recv({kind, ref, payload, etag, ...})
   members write to the "same" logical resource. Today's
   `groupMirror` uses last-write-wins; pseudo-pod
   replication-ring inherits that. Pin during P3.
+- **Pending-pod-upload queue durability (locked 2026-05-11).**
+  When a pod-having writer is offline and the substrate
+  falls back to ring-mode for that write, the resource sits
+  in a pending-upload queue until the pod is reachable. Open:
+  the queue's own persistence (must survive process restart;
+  uses the local pseudo-pod's storage backing). Pin during
+  P3.
+- **Reachability-check cadence.** The substrate has to decide
+  "is my pod reachable right now?" cheaply enough to gate
+  every write. Default proposed: track last successful pod
+  request + transport-level connectivity events; cache "pod
+  reachable" for N seconds. Pin during P1.
+- **Open (V2, deferred) — upload-on-behalf.** Other members
+  uploading an offline writer's content to the writer's pod.
+  Authority model, conflict resolution, ACP semantics, and
+  product fit are all open. See plan §II.2 + §II.6 for the
+  V2 design block.
 
 ### 4.1.7 Phase
 
@@ -619,17 +666,34 @@ portion) + each app's pod-settings screen.
 ### 4.4.1 Pitch
 
 The substrate that mediates **persistent-content writes**.
-Picks the wire format per crew's §II.2 policy:
+Picks the wire format **per-write** based on three inputs
+(locked 2026-05-11, replacing the earlier static
+per-crew-policy model):
 
-- **Envelope-only** for pod-having crews: `{kind, ref, etag,
-  timestamp, fromActor}` over the relay; recipients fetch
-  by ref.
-- **Full-payload eager fan-out** for no-pod crews: the whole
-  resource over the relay; recipients write to their
-  pseudo-pod replication ring.
+1. **Content nature** — persistent (handled here) vs
+   ephemeral (handled by `notifier`, see §4.4.5).
+2. **Crew preference** — the §II.2 policy on the crew
+   (centralised / decentralised / hybrid / no-pod).
+3. **Current reachability** — can THIS writer reach the
+   pod right now (consulted before every persistent write).
+
+Two wire formats:
+
+- **Envelope-only** for pod-having writes when the writer
+  CAN reach the pod: `{kind, ref, etag, timestamp,
+  fromActor}` over the relay; recipients fetch by ref.
+- **Full-payload eager fan-out** for either (a) no-pod
+  crews, or (b) pod-having crews where the writer is
+  momentarily offline. The whole resource over the relay
+  / BLE / mDNS; recipients write to their pseudo-pod
+  replication ring. In case (b), the writer's own
+  pending-pod-upload queue holds the resource until the
+  pod is reachable; on reconnect, the queue drains AND a
+  fresh envelope re-announces the now-pod-canonical
+  version.
 
 App code is identical across modes — apps don't know the
-crew's policy.
+crew's policy or the writer's current reachability.
 
 ### 4.4.2 Public API
 
@@ -648,8 +712,9 @@ notifyEnvelope.subscribe({
 })
 ```
 
-The substrate consults `pod-routing.crewPolicy(crewId)`
-internally to decide the wire shape.
+The substrate consults `pod-routing.crewPolicy(crewId)` AND
+`pod-routing.isPodReachable(uri)` internally to decide the
+wire shape per-write.
 
 ### 4.4.3 Wire shape
 
@@ -726,6 +791,41 @@ messages, presence, audio/video, skill-match races). Those
 keep using `notifier` directly for full-payload relay
 fan-out, with optional archive-to-pod for durability.
 
+### 4.4.5a Graceful degradation: per-write reachability check
+
+Locked 2026-05-11. The per-write reachability check makes
+the four §II.2 crew policies **runtime-soft**: a pod-having
+crew never loses offline capability. Concretely, for each
+persistent write:
+
+1. App calls `substrate.writeItem({crewId, type, body, ...})`.
+2. `pod-routing` resolves the URI (e.g.
+   `<group-pod>/sharing/tasks/<id>` for centralised crews).
+3. **`pod-routing.isPodReachable(uri)` is consulted.** Cheap
+   check: did the last pod request within N seconds succeed,
+   AND has there been no transport-level disconnect event
+   since? Default N = 30 seconds.
+4. **If reachable:** pseudo-pod writes locally (cache-mode);
+   queues a write-through to the pod via `pod-client`;
+   notify-envelope publishes the small envelope.
+5. **If unreachable:** pseudo-pod writes locally (now in
+   ring-mode for this resource); the write goes into the
+   writer's **pending-pod-upload queue** (persistent — survives
+   process restart); notify-envelope publishes a full-payload
+   fan-out. When the pod becomes reachable again, the queue
+   drains: each pending resource is uploaded to the pod, and
+   a fresh envelope is emitted to the crew so receivers can
+   update their local entry from "ring-cached" to
+   "pod-canonical."
+
+Recipients of a full-payload fan-out (case 5) **don't know
+or care** whether the writer was offline by choice (no-pod
+crew) or by circumstance (pod-having crew, momentarily
+offline). The wire shape and receiver-side behaviour are
+identical: write the resource into the local ring, emit a
+subscriber callback. The pseudo-pod's replication-ring mode
+is the universal baseline.
+
 ### 4.4.6 Open questions
 
 - Bandwidth tuning for no-pod crews at scale. Eager fan-out
@@ -733,6 +833,41 @@ fan-out, with optional archive-to-pod for durability.
 - Envelope ordering guarantees. Today's relay is best-effort;
   reorders are possible. Pin during P1 — the substrate may
   need a per-actor sequence counter.
+- **Reachability-check cadence** (locked 2026-05-11 as open).
+  How exactly does `pod-routing.isPodReachable(uri)` work?
+  Default proposed: "last successful pod request within N
+  seconds AND no transport disconnect since." Tunable per
+  app; pinned during P1 implementation.
+- **Pending-pod-upload queue semantics** (locked 2026-05-11
+  as open). Where does the queue persist (local pseudo-pod
+  store under a reserved namespace)? When does it drain
+  (reconnect event + opportunistic retries on next pod
+  read)? Pin during P3 alongside pseudo-pod V1's
+  write-through-queue.
+- **Re-emit on drain** — when a pending resource is uploaded
+  to the pod, the substrate emits a fresh envelope with the
+  now-pod-canonical ref. Receivers must accept the second
+  envelope as a "ring → pod" promotion of the same logical
+  resource (not as a new resource). Pin during P3.
+- **Open (V2, deferred 2026-05-11) — upload-on-behalf.** V1
+  drains the writer's *own* queue to the writer's *own*
+  pod on reconnect. V2 considers letting **a different
+  member** upload the writer's content on their behalf —
+  closing the durability gap when the writer themselves
+  stays offline for extended periods. The hard design
+  questions (carried from plan §II.2 + §II.6):
+    1. **Authority model.** Who has the right to write to
+       another member's pod? A "pod-shepherd" role per
+       crew? A per-resource grant cap-token?
+    2. **Conflict resolution.** Offline + online writes
+       arrive in different orders; how reconcile?
+    3. **ACP semantics for proxy uploads.** When member B
+       uploads member A's content, whose ACPs apply?
+    4. **Product fit.** Is upload-on-behalf desirable for
+       the project's value system, or is "everyone manages
+       their own pod" the durable answer? Likely yes for
+       buurt-style crews where some members never get a
+       pod. Pin during V2 design with stakeholder input.
 
 ### 4.4.7 Phase
 
