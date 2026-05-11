@@ -14,7 +14,14 @@
   "dependencies": {
     "@canopy/core": "file:../core"
   },
+  "peerDependencies": {
+    "@canopy/pseudo-pod": "*"
+  },
+  "peerDependenciesMeta": {
+    "@canopy/pseudo-pod": { "optional": true }
+  },
   "devDependencies": {
+    "@canopy/pseudo-pod": "file:../pseudo-pod",
     "vitest": "^2.1.0"
   }
 }

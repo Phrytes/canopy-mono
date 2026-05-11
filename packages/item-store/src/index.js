@@ -17,3 +17,16 @@ export {
   DependenciesOpenError,
 } from './errors.js';
 export { ulid } from './ulid.js';
+
+// DAG helpers (lifted from apps/tasks-v0/src/dag.js in Phase 52.6.2).
+// `computeStatus(item)` above is the substrate's LIFECYCLE status;
+// `computeDagStatus` here is the DAG-aware status (ready/waiting/blocked).
+export {
+  computeDagStatus,
+  effectiveStatus,
+  unmetDeps,
+  detectCycle,
+} from './dag.js';
+
+// Cross-app embeds traversal (Phase 52.6.1).
+export { treeOf } from './embeds.js';
