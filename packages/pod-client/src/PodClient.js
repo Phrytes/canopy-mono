@@ -70,6 +70,7 @@ const TEXT_CONTENT_TYPE_RE           = /^(text\/|application\/json\b|application
 export class PodClient extends Emitter {
   #podSource;
   #auth;
+  #pseudoPod;
   #etagMap = new Map(); // uri → { etag, lastModified }
   #tombstoneStore;
   #closed = false;
@@ -93,13 +94,19 @@ export class PodClient extends Emitter {
    *   process restarts.
    * @param {Function} [opts.podSourceFactory] — escape hatch for tests; receives
    *   `({ podUrl, fetch })` and returns a SolidPodSource-shaped object.
+   * @param {object} [opts.pseudoPod]
+   *   Optional `@canopy/pseudo-pod`-shaped object. When supplied, any URI
+   *   passed to `read`/`write`/`list`/`delete` starting with `pseudo-pod://`
+   *   is routed to this object instead of the real-pod backend. Standardisation
+   *   Phase 52.6.3.
    */
-  constructor({ podRoot, auth, options, tombstoneStore, podSourceFactory } = {}) {
+  constructor({ podRoot, auth, options, tombstoneStore, podSourceFactory, pseudoPod } = {}) {
     super();
     if (!podRoot) throw mapSourceCode('INVALID_ARGUMENT', { message: 'PodClient: podRoot is required' });
     if (!auth)    throw mapSourceCode('INVALID_ARGUMENT', { message: 'PodClient: auth is required' });
     this.#auth          = auth;
     this.#tombstoneStore = tombstoneStore ?? new MemoryTombstones();
+    this.#pseudoPod     = pseudoPod ?? null;
     const fetchFn  = this.#buildFetch();
     const factory  = podSourceFactory ?? ((init) => new SolidPodSource(init));
     this.#podSource = factory({ podUrl: podRoot, fetch: fetchFn });
@@ -207,6 +214,53 @@ export class PodClient extends Emitter {
     if (this.#closed) throw mapSourceCode('INVALID_ARGUMENT', { message: 'PodClient: client is closed' });
   }
 
+  /**
+   * URI-scheme dispatch helper. Returns the pseudoPod object if the
+   * URI is a `pseudo-pod://` ref AND a pseudoPod was injected; null
+   * otherwise (caller falls through to the real-pod backend).
+   *
+   * Phase 52.6.3 — see substrates-v2-coding-plan §52.6.
+   */
+  #pseudoPodFor(uri) {
+    if (!this.#pseudoPod) return null;
+    if (typeof uri !== 'string') return null;
+    if (!uri.startsWith('pseudo-pod://')) return null;
+    return this.#pseudoPod;
+  }
+
+  /**
+   * Translate a pseudo-pod read record into the PodClient.read shape.
+   * pseudoPod returns `{uri, bytes, etag?}`; PodClient.read returns
+   * `{content, contentType, lastModified, etag, size}`.
+   */
+  #pseudoPodReadShape(rec, opts) {
+    if (!rec) return null;
+    const bytes = rec.bytes;
+    let contentType;
+    let content = bytes;
+    if (bytes instanceof Uint8Array || bytes instanceof ArrayBuffer) {
+      contentType = 'application/octet-stream';
+      if (opts?.decode === 'string') content = new TextDecoder().decode(bytes);
+      else if (opts?.decode === 'json') content = JSON.parse(new TextDecoder().decode(bytes));
+    } else if (typeof bytes === 'string') {
+      contentType = 'text/plain';
+      if (opts?.decode === 'json') content = JSON.parse(bytes);
+    } else if (bytes && typeof bytes === 'object') {
+      contentType = 'application/json';
+      // `auto` / `string` / `bytes`: leave as object. `json`: already an object.
+    } else {
+      contentType = 'application/octet-stream';
+    }
+    return {
+      uri:          rec.uri,
+      content,
+      contentType,
+      lastModified: null,
+      etag:         rec.etag ?? null,
+      size:         null,
+    };
+  }
+
   // ── public API ────────────────────────────────────────────────────────────
 
   /**
@@ -219,6 +273,13 @@ export class PodClient extends Emitter {
    */
   async read(uri, opts = {}) {
     this.#ensureOpen();
+    const pp = this.#pseudoPodFor(uri);
+    if (pp) {
+      const rec = await pp.read(uri);
+      const shaped = this.#pseudoPodReadShape(rec, opts);
+      if (!shaped) throw mapSourceCode('NOT_FOUND', { uri });
+      return shaped;
+    }
     let res;
     try {
       res = await this.#podSource.read(uri, opts);
@@ -253,6 +314,13 @@ export class PodClient extends Emitter {
    */
   async list(containerUri, opts = {}) {
     this.#ensureOpen();
+    const pp = this.#pseudoPodFor(containerUri);
+    if (pp) {
+      const keys = await pp.list(containerUri);
+      let entries = keys.map((uri) => ({ uri }));
+      if (opts.filter) entries = entries.filter((e) => opts.filter(e.uri));
+      return { container: containerUri, entries };
+    }
     // Strip pod-client-specific opts before forwarding to the pod source.
     const sourceOpts = { ...opts };
     delete sourceOpts.includeTombstoned;
@@ -309,6 +377,17 @@ export class PodClient extends Emitter {
    */
   async write(uri, content, opts = {}) {
     this.#ensureOpen();
+    const pp = this.#pseudoPodFor(uri);
+    if (pp) {
+      const { etag } = await pp.write(uri, content, opts.ifMatch);
+      return {
+        uri,
+        contentType:  opts.contentType ?? null,
+        lastModified: null,
+        etag,
+        size:         null,
+      };
+    }
     const policy = opts.conflictPolicy ?? DEFAULT_CONFLICT_POLICY;
     if (policy !== 'reject' && policy !== 'lww' && policy !== 'remote-wins') {
       throw mapSourceCode('INVALID_ARGUMENT', {
@@ -624,6 +703,12 @@ export class PodClient extends Emitter {
 
   async delete(uri, opts = {}) {
     this.#ensureOpen();
+    const pp = this.#pseudoPodFor(uri);
+    if (pp) {
+      await pp.delete(uri);
+      this.#etagMap.delete(uri);
+      return { uri };
+    }
     const delOpts = { ...opts };
     if (!opts.force && !opts.ifMatch) {
       const known = this.#etagMap.get(uri);
