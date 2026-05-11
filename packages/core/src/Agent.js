@@ -68,8 +68,10 @@ export class Agent extends Emitter {
   #started       = false;
   #label         = null;
   #webid         = null;   // optional WebIdCache (or any object) — standardisation Phase 50.2
-  #pseudoPod     = null;   // optional pseudo-pod (or any object) — standardisation Phase 50.3
-  #agentRegistry = null;   // optional agent-registry (or any object) — standardisation Phase 50.8
+  #pseudoPod         = null;   // optional pseudo-pod (or any object) — standardisation Phase 50.3
+  #agentRegistry     = null;   // optional agent-registry (or any object) — standardisation Phase 50.8
+  #interfaceRegistry = null;   // optional interface-registry (or any object) — standardisation Phase 50.13 (P6 direction)
+  #protocol          = null;   // optional protocol substrate (or any object) — standardisation Phase 50.14 (P6 direction)
   #helloGate     = null;   // optional (envelope) => boolean gate; see Group W
   #sealedConfigs = null;   // Map<groupId, { enabled, ... }> — Group BB
   #rotationInlineSeen = new Set();  // Group FF+1 — newPubKey seen via inline proof (dedup)
@@ -92,7 +94,8 @@ export class Agent extends Emitter {
   constructor({ identity, transport, security, policyEngine, trustRegistry,
                 tokenRegistry, peers, storage, config, routing,
                 maxTaskTtl, pubSubHistory,
-                skills = [], label, webid, pseudoPod, agentRegistry } = {}) {
+                skills = [], label, webid, pseudoPod, agentRegistry,
+                interfaceRegistry, protocol } = {}) {
     super();
     if (!identity)  throw new Error('Agent requires an identity');
     if (!transport) throw new Error('Agent requires a transport');
@@ -113,9 +116,11 @@ export class Agent extends Emitter {
     this.#maxTaskTtl    = maxTaskTtl    ?? null;
     this.#pubSubHistory = pubSubHistory ?? 0;
     this.#label         = label         ?? null;
-    this.#webid         = webid         ?? null;
-    this.#pseudoPod     = pseudoPod     ?? null;
-    this.#agentRegistry = agentRegistry ?? null;
+    this.#webid             = webid             ?? null;
+    this.#pseudoPod         = pseudoPod         ?? null;
+    this.#agentRegistry     = agentRegistry     ?? null;
+    this.#interfaceRegistry = interfaceRegistry ?? null;
+    this.#protocol          = protocol          ?? null;
 
     for (const s of skills) this.#skills.register(s);
   }
@@ -151,6 +156,17 @@ export class Agent extends Emitter {
    *  this is an opaque slot the caller fills with whatever it wants. `null` when no
    *  registry is wired (e.g. no-pod users, tests, single-agent setups). */
   get agentRegistry() { return this.#agentRegistry; }
+  /** Interface-registry handle (or any object) — optional. Populated by the provisioning
+   *  facade once the destination shape (§II.13) ships (standardisation Phase 50.13, P6
+   *  direction). Core never imports `@canopy/interface-registry`; this is an opaque
+   *  slot for the per-type renderer registry that Hub V2 introduces. `null` pre-P6. */
+  get interfaceRegistry() { return this.#interfaceRegistry; }
+  /** Protocol substrate handle (or any object) — optional. Populated by the provisioning
+   *  facade once the destination shape (§II.13) ships (standardisation Phase 50.14, P6
+   *  direction). Core never imports `@canopy/protocol`; this is an opaque slot for the
+   *  state-machine orchestrator (Tasks's propose-subtask is the canonical first
+   *  consumer). `null` pre-P6. */
+  get protocol() { return this.#protocol; }
   /** AgentConfig — optional. */
   get config()   { return this.#config; }
   /** RoutingStrategy — optional. Used by call() when multiple transports are present. */
@@ -292,9 +308,11 @@ export class Agent extends Emitter {
     }
     const notified = [];
     for (const [slotName, slot] of [
-      ['pseudoPod',     this.#pseudoPod],
-      ['agentRegistry', this.#agentRegistry],
-      ['webid',         this.#webid],
+      ['pseudoPod',         this.#pseudoPod],
+      ['agentRegistry',     this.#agentRegistry],
+      ['interfaceRegistry', this.#interfaceRegistry],
+      ['protocol',          this.#protocol],
+      ['webid',             this.#webid],
     ]) {
       if (slot && typeof slot.setHost === 'function') {
         try {
@@ -323,9 +341,11 @@ export class Agent extends Emitter {
   unbindFromHub() {
     const notified = [];
     for (const [slotName, slot] of [
-      ['pseudoPod',     this.#pseudoPod],
-      ['agentRegistry', this.#agentRegistry],
-      ['webid',         this.#webid],
+      ['pseudoPod',         this.#pseudoPod],
+      ['agentRegistry',     this.#agentRegistry],
+      ['interfaceRegistry', this.#interfaceRegistry],
+      ['protocol',          this.#protocol],
+      ['webid',             this.#webid],
     ]) {
       if (slot && typeof slot.setHost === 'function') {
         try {
