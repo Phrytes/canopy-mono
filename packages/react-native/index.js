@@ -24,3 +24,9 @@ export { PushAdapter }            from './src/transport/pushAdapters/PushAdapter
 // that don't use push shouldn't be forced to install it.  Use the subpath:
 //   import { ExpoNotificationsAdapter }
 //     from '@canopy/react-native/src/transport/pushAdapters/ExpoNotificationsAdapter.js';
+
+// pseudo-pod-adapter (Phases 51.1 – 51.4). NOT re-exported here on
+// purpose — its factories take namespace imports of `expo-file-system`
+// and `@react-native-async-storage/async-storage`, which the substrate
+// shouldn't force on every consumer of this barrel. Use the subpath:
+//   import { createBackend } from '@canopy/react-native/pseudo-pod-adapter';
