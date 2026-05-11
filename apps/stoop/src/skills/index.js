@@ -39,6 +39,7 @@
 import { defineSkill, validateMnemonic, mnemonicToSeed, AgentIdentity } from '@canopy/core';
 import nacl from 'tweetnacl';
 import { resolve as resolveMember } from '@canopy/identity-resolver';
+import { validateCanonical } from '@canopy/item-types';
 
 import { validateHandle } from '../lib/handle.js';
 import { getPrivacyNotice } from '../lib/privacyNotice.js';
@@ -1799,6 +1800,14 @@ export function buildSkills({
         visibility: 'household',
         source:     { groupId: _groupId, postedBy: from, postedAt: Date.now() },
       }], { actor: from });
+
+      // Phase 52.7 — warn-only canonical-shape validation. Adoption is
+      // observational: log drift but never block a write.
+      try {
+        const v = validateCanonical(item);
+        if (!v.ok) console.warn('item-types[announcement]:', JSON.stringify(v.errors));
+      } catch { /* validator outage must not break writes */ }
+
       return { announcementId: item.id };
     }, {
       description: 'Admin-only: post a group-wide announcement pinned to the board.',
