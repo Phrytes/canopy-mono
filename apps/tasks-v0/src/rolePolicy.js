@@ -26,14 +26,43 @@
  *   it's the agent's pubKey. The alias map lets a single roles
  *   table handle both.
  *
+ *   **Deprecation (Phase 52.11):** when `actorResolver` is supplied,
+ *   `aliases` is consulted only as a fallback if the resolver misses.
+ *   A one-shot console warning fires the first time both are passed.
+ *
+ * @param {{ resolveSync?: (id: string) => {webid?: string}|null }} [opts.actorResolver]
+ *   Phase 52.11 — agent-registry-backed bridge. When supplied, an
+ *   incoming `actor` that isn't a direct webid is resolved through
+ *   the registry to find its canonical webid before role lookup.
+ *   The interface is intentionally narrow + **sync** — role policies
+ *   gate every read/write, so the lookup must be cheap and
+ *   non-promise. Wrap the agent-registry as a small in-process cache
+ *   + sync accessor at app boot.
+ *
  * @returns {import('@canopy/item-store').RolePolicy}
  */
 export function buildStandardRolePolicy(roles, opts = {}) {
-  const aliases = opts.aliases ?? {};
+  const aliases       = opts.aliases ?? {};
+  const actorResolver = opts.actorResolver ?? null;
+
+  if (actorResolver && opts.aliases && !buildStandardRolePolicy._warnedAlias) {
+    console.warn(
+      '[buildStandardRolePolicy] both `actorResolver` and `aliases` supplied; ' +
+      'resolver takes precedence. Drop the static alias map once the ' +
+      'agent-registry migration is verified (Phase 52.11).',
+    );
+    buildStandardRolePolicy._warnedAlias = true;
+  }
+
   const get = (actor) => {
     if (actor == null) return undefined;
     const direct = roles[actor];
     if (direct !== undefined) return direct;
+    if (actorResolver && typeof actorResolver.resolveSync === 'function') {
+      const record = actorResolver.resolveSync(actor);
+      const webid  = record?.webid;
+      if (typeof webid === 'string' && roles[webid] !== undefined) return roles[webid];
+    }
     const aliased = aliases[actor];
     return aliased ? roles[aliased] : undefined;
   };
