@@ -68,6 +68,7 @@ export class Agent extends Emitter {
   #started       = false;
   #label         = null;
   #webid         = null;   // optional WebIdCache (or any object) — standardisation Phase 50.2
+  #pseudoPod     = null;   // optional pseudo-pod (or any object) — standardisation Phase 50.3
   #helloGate     = null;   // optional (envelope) => boolean gate; see Group W
   #sealedConfigs = null;   // Map<groupId, { enabled, ... }> — Group BB
   #rotationInlineSeen = new Set();  // Group FF+1 — newPubKey seen via inline proof (dedup)
@@ -90,7 +91,7 @@ export class Agent extends Emitter {
   constructor({ identity, transport, security, policyEngine, trustRegistry,
                 tokenRegistry, peers, storage, config, routing,
                 maxTaskTtl, pubSubHistory,
-                skills = [], label, webid } = {}) {
+                skills = [], label, webid, pseudoPod } = {}) {
     super();
     if (!identity)  throw new Error('Agent requires an identity');
     if (!transport) throw new Error('Agent requires a transport');
@@ -112,6 +113,7 @@ export class Agent extends Emitter {
     this.#pubSubHistory = pubSubHistory ?? 0;
     this.#label         = label         ?? null;
     this.#webid         = webid         ?? null;
+    this.#pseudoPod     = pseudoPod     ?? null;
 
     for (const s of skills) this.#skills.register(s);
   }
@@ -137,6 +139,11 @@ export class Agent extends Emitter {
   /** WebIdCache (or any object) — optional. Populated by Bootstrap for pod-having users
    *  (standardisation Phase 50.2). `null` for no-pod users. */
   get webid()    { return this.#webid; }
+  /** Pseudo-pod handle (or any object) — optional. Populated by the provisioning facade
+   *  (standardisation Phase 50.3). Core never imports `@canopy/pseudo-pod`; this is
+   *  an opaque slot the caller fills with whatever it wants. `null` when no pseudo-pod
+   *  is wired (e.g. tests that don't need storage). */
+  get pseudoPod() { return this.#pseudoPod; }
   /** AgentConfig — optional. */
   get config()   { return this.#config; }
   /** RoutingStrategy — optional. Used by call() when multiple transports are present. */
