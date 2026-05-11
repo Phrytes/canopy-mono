@@ -30,3 +30,9 @@ export { PushAdapter }            from './src/transport/pushAdapters/PushAdapter
 // and `@react-native-async-storage/async-storage`, which the substrate
 // shouldn't force on every consumer of this barrel. Use the subpath:
 //   import { createBackend } from '@canopy/react-native/pseudo-pod-adapter';
+//
+// hub-discovery + hub-binding (Phases 51.6 – 51.9). Also NOT re-exported —
+// they take a native-module injection that production wires via
+// `NativeModules.HubDiscovery` / `NativeModules.HubBinding`. Use the subpaths:
+//   import { createHubDiscovery } from '@canopy/react-native/hub-discovery';
+//   import { bind }               from '@canopy/react-native/hub-binding';
