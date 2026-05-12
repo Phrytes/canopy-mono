@@ -141,10 +141,10 @@ describe('Integration — no-pod crew (full-payload always)', () => {
     const bob  = makePeer({ bus, address: 'bob',  deviceId: 'bob'  });
 
     const got = [];
-    bob.ne.subscribe({ kind: 'supply-offer', callback: (env) => got.push(env) });
+    bob.ne.subscribe({ kind: 'offer', callback: (env) => got.push(env) });
 
     await anne.ne.publish({
-      type:       'supply-offer',
+      type:       'offer',
       ref:        'pseudo-pod://anne/sharing/offers/abc',
       etag:       '"hash-1"',
       payload:    { body: 'ladder lenen' },

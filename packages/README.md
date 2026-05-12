@@ -75,7 +75,7 @@ peer deps; apps compose freely.
 | `@canopy/pod-client` | High-level Solid pod read/write with capability + OIDC auth. V2 hook: optional `pseudoPod` injection routes `pseudo-pod://` URIs locally. | 52.6.3 |
 | `@canopy/pod-onboarding` | Provisioning orchestration. `provisionDefault`, `restoreFromMnemonic`, `signOut`. Provider-agnostic via injected `podProvisioner`. | 52.5 |
 | `@canopy/item-store` | Item-shaped state with role-policy gates. V2 hooks: lifted DAG helpers + `treeOf` cross-pod embed walk. | 52.6.1 + 52.6.2 |
-| `@canopy/item-types` | Cross-app canonical type taxonomy (`task`, `note`, `chat-message`, …). JSON-Schema validator + `validateCanonical` adapter for item-store-shaped items. | 52.1 + 52.7 |
+| `@canopy/item-types` | Cross-app canonical type taxonomy (`task`, `note`, `chat-message`, `offer`, `request`, `claim`, `contact`, `calendar-event`, `announcement`, `reveal-request`, `neighbourhood-job`). JSON-Schema validator + `validateCanonical` adapter for item-store-shaped items. Vocabulary refresh 2026-05-12 — `offer` / `request` / `claim` replace the earlier `supply-offer` / `demand-offer` / `lend-request` (legacy names persist as aliases). | 52.1 + 52.7 |
 | `@canopy/sync-engine` | Pre-V2 pod-sync. Absorbed by pseudo-pod cache mode in V1 (Phase 52.8 acceptance work; legacy callers still work). | (pre-V2) |
 | `@canopy/local-store` | In-memory/disk store used by tasks/household. Pre-V2; pseudo-pod V0 covers the same surface. | (pre-V2) |
 | `@canopy/pod-search` | Pod-side search index. Unchanged in V2. | (pre-V2) |
@@ -286,15 +286,20 @@ formal version + the rationale per mechanism.
 JS-side substrate V2 work is complete. Remaining items are app-side
 integration, native Android, or major new projects:
 
-- **App adoption** — Stoop `postRequest` shorthand → canonical-type
-  vocab mapping. Tasks-mobile `actorResolver` wiring at boot.
+- **App adoption** — Stoop `postRequest` mapping onto `offer` / `request` /
+  `claim` (needs a UX disambiguation step at post time — the `kind`
+  subfield's verb (`lend` / `borrow` / `give` / etc.) decides direction).
   Stoop `groupMirror` retirement (2-week dual-runtime per plan).
+  Tasks-mobile `actorResolver` ↑ swap data source from crew.members
+  to an agent-registry sync cache when wired.
 - **Native Android** — `HubDiscoveryModule.kt` + `HubBindingModule.kt`
   implementations alongside Hub-Android's own Android build pipeline.
 - **Hub-Android service** — new project; consumes the AIDL surface
   this directory ships under `react-native/android/aidl/`.
-- **Folio frontmatter validation** — wires `item-types.note` schema
-  into a markdown frontmatter pipeline (Folio doesn't have one yet).
+- **Folio metadata-in-data-object** — (revised 2026-05-12) metadata
+  lives on the `note` data object in the pseudo-pod, not in markdown
+  frontmatter. Adoption only meaningful once Folio grows a
+  notes-with-metadata feature; current file-sync V0 is no-op.
 
 ---
 
