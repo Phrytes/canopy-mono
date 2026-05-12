@@ -333,6 +333,29 @@ The smallest Hub that proves the model:
 5. Local IPC binding protocol (AIDL) implementing `host.identity`,
    `host.pod`, `host.agent`, `host.storage`, `host.audit`,
    `host.hardware.{notification, gps, camera}`, `host.bg`.
+
+   **Update 2026-05-12 — AIDL surface authored.** The substrate-side
+   client (`@canopy/react-native/hub-binding` + its AIDL files) shipped
+   under standardisation Phases 51.6–51.9. The committed interfaces live at
+   `packages/react-native/android/aidl/com/canopy/hub/`:
+
+   - `IHub_V1.aidl` — `registerBundle`, `declareCapabilities`,
+     `fetchResource`, `writeResource`, `publishEnvelope`,
+     `registerIncomingCallback`, `unregister`, `getSupportedVersion`.
+   - `IHub_V2.aidl` — additive (interface-registry + protocol orchestration).
+   - `IIncomingCallback.aidl` — Hub → bundle oneway envelope delivery.
+
+   Permission + build wiring is documented in
+   `packages/react-native/android/HUB-BINDING-BUILD.md` (custom
+   signature-level `com.canopy.hub.PERMISSION_BIND`, gradle AIDL
+   integration, native-module shape contract for the JS-side wrapper).
+
+   What's **not** yet implemented: the Kotlin native modules
+   (`HubDiscoveryModule.kt`, `HubBindingModule.kt`) that wrap the AIDL
+   stubs for the bundle side, and the Hub service itself that
+   implements `IHub_V1`. The names in this list still map 1:1 to the
+   AIDL methods, so when the Hub Service ships it can be built against
+   the existing client surface without further interface design.
 6. Permission-card UI + capability-token issuance.
 7. Audit timeline as home (uses L1-L2 of the monitoring substrate
    in [`./monitoring-design-2026-05-07.md`](./monitoring-design-2026-05-07.md)).
