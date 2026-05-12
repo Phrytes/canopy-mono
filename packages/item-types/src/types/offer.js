@@ -23,11 +23,20 @@ export const OFFER_SCHEMA = {
     /**
      * Verb-direction subfield. Strongly recommended in practice;
      * absence is tolerated so apps can post under-specified offers
-     * during early UX flows.
+     * during early UX flows. Distinguishes three transfer flavours:
+     *
+     *   - `lend`  — durable; return expected (ladder, drill, kruiwagen).
+     *   - `share` — small / consumable / courtesy ("kopje suiker",
+     *               "appels over"); no return.
+     *   - `give`  — full ownership transfer ("oude jas", "fiets weg
+     *               te geven"); no return.
+     *   - `sell`  — for-money transfer.
+     *   - `help`  — service / time, not a thing.
+     *   - `other` — escape hatch; UI should narrow when possible.
      */
     kind: {
       type: 'string',
-      enum: ['lend', 'give', 'sell', 'help', 'other'],
+      enum: ['lend', 'share', 'give', 'sell', 'help', 'other'],
     },
     audience:    { type: 'array', items: { type: 'string' } },
     expiresAt:   { type: 'string', format: 'date-time' },

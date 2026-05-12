@@ -40,6 +40,7 @@ import { defineSkill, validateMnemonic, mnemonicToSeed, AgentIdentity } from '@c
 import nacl from 'tweetnacl';
 import { resolve as resolveMember } from '@canopy/identity-resolver';
 import { validateCanonical } from '@canopy/item-types';
+import { validateStoopItem } from '../lib/canonicalAdapter.js';
 
 import { validateHandle } from '../lib/handle.js';
 import { getPrivacyNotice } from '../lib/privacyNotice.js';
@@ -321,6 +322,18 @@ export function buildSkills({
       if (typeof a.dueAt === 'number') itemDraft.dueAt = a.dueAt;
 
       const [item] = await store.addItems([itemDraft], { actor: from });
+
+      // Phase 52.7.2 — warn-only canonical-shape validation. Stoop's
+      // legacy `type` values ('ask'/'offer'/'lend'/'request') route
+      // through a translator to the canonical taxonomy + kind enum;
+      // bespoke types ('report' / 'membership-code' / etc.) skip.
+      // Adoption is observational — never blocks a write.
+      try {
+        const v = validateStoopItem(item);
+        if (v && v.ok === false) {
+          console.warn(`item-types[${item.type}]:`, JSON.stringify(v.errors));
+        }
+      } catch { /* validator outage must not break writes */ }
 
       // Phase 39 — attachments.  When the client supplies one or
       // more inline-base64 image attachments, validate + persist
