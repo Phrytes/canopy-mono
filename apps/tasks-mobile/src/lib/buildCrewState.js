@@ -26,7 +26,10 @@
 import { ItemStore } from '@canopy/item-store';
 import { MemberMap } from '@canopy/identity-resolver';
 import { buildStandardRolePolicy } from '@canopy-app/tasks-v0';
-import { buildActorAliases } from '@canopy-app/tasks-v0/ui/effectiveActor';
+import {
+  buildActorAliases,
+  buildActorResolverFromMembers,
+} from '@canopy-app/tasks-v0/ui/effectiveActor';
 
 const KIND_DEFAULTS = Object.freeze({
   household:    { subtasksAdminApprovalDepth: 3 },
@@ -90,12 +93,21 @@ export async function buildCrewState({ crewConfig, localStoreBundle } = {}) {
 
   // Phase 41.18 follow-up — on mobile the agent dispatches with
   // `from = agent.pubKey` (no LocalUiAuth in the React path). Build
-  // a pubKey → webid alias map so the role policy can resolve both
-  // identifiers to the same role. The shared
-  // `buildActorAliases(members)` helper handles the same shape the
-  // desktop will need on relay-forwarded calls (Project Files/
-  // conventions/architectural-layering.md § shared UI helpers).
-  const aliases = buildActorAliases(crew.members);
+  // a pubKey → webid bridge so the role policy can resolve both
+  // identifiers to the same role.
+  //
+  // Phase 52.11 migration — switched from the static `aliases` map
+  // to an `actorResolver` (sync). Same data source (crew.members)
+  // for V0; when `@canopy/agent-registry` is wired into mobile,
+  // swap the resolver's data source for a sync cache over the
+  // registry without touching `buildStandardRolePolicy`.
+  //
+  // `actorAliases` is still surfaced on the CrewState because
+  // `resolveActorWebid` (relay-forwarded `_origin` resolution) +
+  // `useActiveRole` hook consume it directly — those paths don't go
+  // through `buildStandardRolePolicy`.
+  const aliases       = buildActorAliases(crew.members);
+  const actorResolver = buildActorResolverFromMembers(crew.members);
 
   const dataSource = localStoreBundle?.cache
     ?? (await _memorySource());
@@ -103,7 +115,7 @@ export async function buildCrewState({ crewConfig, localStoreBundle } = {}) {
   const itemStore = new ItemStore({
     dataSource,
     rootContainer:        `mem://tasks/crews/${crew.crewId}/`,
-    rolePolicy:           buildStandardRolePolicy(roles, { aliases }),
+    rolePolicy:           buildStandardRolePolicy(roles, { actorResolver }),
     enforceDependencies:  true,
   });
 
