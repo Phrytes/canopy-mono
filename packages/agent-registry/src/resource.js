@@ -25,19 +25,35 @@ export const RESOURCE_VERSION = 1;
 
 /**
  * Default registry-resource path for a given pod / device.
+ *
+ * **V0 default — pseudo-pod-authoritative.** Per the Phase 52.10
+ * lock the registry lives on the *pseudo-pod*: `pod-onboarding`
+ * seeds it there during provisioning, and the underlying
+ * pseudo-pod V0 (Phase 52.2) can only write to `pseudo-pod://`
+ * URIs. Pod-side mirroring at `<anchorPodUri>/private/agent-registry`
+ * is V1+ work — wired through cache-mode pseudo-pod (Phase 52.8) once
+ * the consuming app composes the registry's pseudo-pod in cache mode.
+ *
+ * Callers that want the pod-side path today can pass `preferPodUri: true`
+ * (forces the https:// path; the pseudo-pod must accept it, i.e. be
+ * cache-mode or wrap a pod-client).
  */
-export function registryResourceUri({ anchorPodUri, deviceId }) {
+export function registryResourceUri({ anchorPodUri, deviceId, preferPodUri = false }) {
+  if (preferPodUri && typeof anchorPodUri === 'string' && anchorPodUri.length > 0) {
+    const base = anchorPodUri.endsWith('/') ? anchorPodUri.slice(0, -1) : anchorPodUri;
+    return `${base}/private/agent-registry`;
+  }
+  if (typeof deviceId === 'string' && deviceId.length > 0) {
+    return `pseudo-pod://${deviceId}/private/agent-registry`;
+  }
   if (typeof anchorPodUri === 'string' && anchorPodUri.length > 0) {
     const base = anchorPodUri.endsWith('/') ? anchorPodUri.slice(0, -1) : anchorPodUri;
     return `${base}/private/agent-registry`;
   }
-  if (typeof deviceId !== 'string' || deviceId.length === 0) {
-    throw Object.assign(
-      new Error('registryResourceUri: anchorPodUri or deviceId is required'),
-      { code: 'INVALID_ARGUMENT' },
-    );
-  }
-  return `pseudo-pod://${deviceId}/private/agent-registry`;
+  throw Object.assign(
+    new Error('registryResourceUri: deviceId (preferred) or anchorPodUri is required'),
+    { code: 'INVALID_ARGUMENT' },
+  );
 }
 
 /**

@@ -53,14 +53,19 @@ describe('buildInitialAgentRegistry', () => {
     expect(reg.version).toBe(1);
     expect(reg.podUri).toBe(ANNE_POD);
     expect(reg.agents).toHaveLength(1);
+    // Seed shape matches @canopy/agent-registry expectations
+    // (agentId, name, signedAt) — substrate composition fix Phase 52.10.
     expect(reg.agents[0]).toMatchObject({
+      agentId:     DEVICE,
       deviceId:    DEVICE,
       agentUri:    'agent://anne/laptop',
       pubKey:      'base64-pubkey-blob',
-      displayName: 'Anne',
+      name:        'Anne',
+      role:        'device',
       capabilities: ['stoop', 'tasks'],
+      revokedAt:   null,
     });
-    expect(typeof reg.agents[0].addedAt).toBe('string');
+    expect(typeof reg.agents[0].signedAt).toBe('string');
   });
 
   it('tolerates missing displayName + capabilities', () => {
@@ -68,7 +73,7 @@ describe('buildInitialAgentRegistry', () => {
       agentInfo: { deviceId: 'd', agentUri: 'a', pubKey: 'k' },
       podUri:    ANNE_POD,
     });
-    expect(reg.agents[0].displayName).toBe(null);
+    expect(reg.agents[0].name).toBe(null);
     expect(reg.agents[0].capabilities).toEqual([]);
   });
 

@@ -11,16 +11,28 @@ import {
 } from '../src/resource.js';
 
 describe('registryResourceUri', () => {
-  it('returns the pod path for pod-having users', () => {
+  it('prefers the pseudo-pod path when deviceId is supplied (V0 default)', () => {
+    // V0: pseudo-pod is the authoritative store; pod-side mirroring is V1
+    // cache-mode work. deviceId wins even when anchorPodUri is also present.
+    expect(registryResourceUri({ deviceId: 'laptop-anne' }))
+      .toBe('pseudo-pod://laptop-anne/private/agent-registry');
+    expect(registryResourceUri({ anchorPodUri: 'https://anne.pod', deviceId: 'laptop-anne' }))
+      .toBe('pseudo-pod://laptop-anne/private/agent-registry');
+  });
+
+  it('falls back to the anchor-pod path when only anchorPodUri is supplied', () => {
     expect(registryResourceUri({ anchorPodUri: 'https://anne.pod' }))
       .toBe('https://anne.pod/private/agent-registry');
     expect(registryResourceUri({ anchorPodUri: 'https://anne.pod/' }))
       .toBe('https://anne.pod/private/agent-registry');
   });
 
-  it('returns the pseudo-pod path for no-pod users', () => {
-    expect(registryResourceUri({ deviceId: 'laptop-anne' }))
-      .toBe('pseudo-pod://laptop-anne/private/agent-registry');
+  it('preferPodUri forces the https:// path when both are given', () => {
+    expect(registryResourceUri({
+      anchorPodUri:  'https://anne.pod',
+      deviceId:      'laptop-anne',
+      preferPodUri:  true,
+    })).toBe('https://anne.pod/private/agent-registry');
   });
 
   it('throws when neither pod nor device is supplied', () => {
