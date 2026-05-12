@@ -76,8 +76,8 @@ reg.registerType('my-app/widget', WIDGET_SCHEMA);
 | `task`              | `text`                 | Tasks app + cross-app: TODO with lifecycle. |
 | `note`              | `body`                 | Markdown / frontmatter blob.                |
 | `chat-message`      | `body`                 | Threaded chat line.                         |
-| `offer`             | `body`                 | "I have X available." Author's stance: providing. Inner `kind`: `lend` / `give` / `sell` / `help` / `other`. |
-| `request`           | `body`                 | "I want X." Author's stance: looking for something. Inner `kind`: `borrow` / `receive` / `buy` / `help` / `other`. |
+| `offer`             | `body`                 | "I have X available." Author's stance: providing. Inner `kind`: `lend` / `share` / `give` / `sell` / `help` / `other`. |
+| `request`           | `body`                 | "I want X." Author's stance: looking for something. Inner `kind`: `borrow` / `share` / `receive` / `buy` / `help` / `other`. |
 | `claim`             | `itemRef`              | A specific claim against an offer or request. Coordination lifecycle (requested → agreed → in-progress → completed | cancelled). |
 | `contact`           | `displayName`          | Address-book entry with `trustLevel`.       |
 | `calendar-event`    | `title`, `startsAt`    | Shared agenda event.                        |
@@ -94,12 +94,25 @@ Every type ships under the **`dec:`** namespace
 > `claim` triple replaces the earlier `supply-offer` / `demand-offer`
 > / `lend-request` names. Each type is anchored on the **author's
 > action** (I'm offering; I want; I'm claiming a specific post);
-> direction-bearing verbs (`lend`, `borrow`, `give`, `receive`, `sell`,
-> `buy`, `help`) live on the inner `kind` field. The legacy names are
-> still registered as **aliases** — `validate({type: 'supply-offer'})`
-> routes to the `offer` schema — so existing data + apps in
-> transition keep working. Adopters can drop the legacy names on their
-> own schedule.
+> direction-bearing verbs live on the inner `kind` field.
+>
+> The `kind` enum captures **three transfer flavours** on each side
+> so apps can express the consumable-vs-durable distinction:
+>
+> - **Return expected:** `lend` (offer) / `borrow` (request) —
+>   durable goods like ladder, drill, kruiwagen.
+> - **Share, no return:** `share` (both sides) — small / consumable /
+>   courtesy: "kopje suiker", "appels over", "kan ik wat zout komen
+>   halen". The Dutch "lenen" of consumables maps here.
+> - **Outright transfer, no return:** `give` (offer) / `receive`
+>   (request) — gifts, hand-me-downs, "oude jas weg te geven".
+>
+> Plus `sell`/`buy` for paid transfers and `help` for service / time.
+>
+> Legacy names are still registered as **aliases** — `validate({type:
+> 'supply-offer'})` routes to the `offer` schema — so existing data +
+> apps in transition keep working. Adopters can drop the legacy names
+> on their own schedule.
 
 ### Base fields (all types)
 

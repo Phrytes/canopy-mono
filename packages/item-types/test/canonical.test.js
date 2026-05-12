@@ -157,6 +157,40 @@ describe('Canonical types — extra-fields tolerance (forward-compat)', () => {
   });
 });
 
+describe('offer / request kind enum (2026-05-12 vocab refresh)', () => {
+  const SHIPPING_OFFER_KINDS  = ['lend', 'share', 'give', 'sell', 'help', 'other'];
+  const SHIPPING_REQUEST_KINDS = ['borrow', 'share', 'receive', 'buy', 'help', 'other'];
+
+  for (const kind of SHIPPING_OFFER_KINDS) {
+    it(`offer accepts kind="${kind}"`, () => {
+      const result = validate(baseItem('offer', { body: 'something', kind }));
+      expect(result.ok).toBe(true);
+    });
+  }
+
+  for (const kind of SHIPPING_REQUEST_KINDS) {
+    it(`request accepts kind="${kind}"`, () => {
+      const result = validate(baseItem('request', { body: 'something', kind }));
+      expect(result.ok).toBe(true);
+    });
+  }
+
+  it('offer rejects an unknown kind', () => {
+    const result = validate(baseItem('offer', { body: 'x', kind: 'launder' }));
+    expect(result.ok).toBe(false);
+  });
+
+  it('request rejects an unknown kind', () => {
+    const result = validate(baseItem('request', { body: 'x', kind: 'launder' }));
+    expect(result.ok).toBe(false);
+  });
+
+  it('kind is optional — UI may post under-specified items', () => {
+    expect(validate(baseItem('offer',   { body: 'x' })).ok).toBe(true);
+    expect(validate(baseItem('request', { body: 'x' })).ok).toBe(true);
+  });
+});
+
 describe('Legacy vocabulary aliases (2026-05-12 vocab refresh)', () => {
   it('supply-offer routes to offer schema', () => {
     const result = validate(baseItem('supply-offer', { body: 'ladder' }));
