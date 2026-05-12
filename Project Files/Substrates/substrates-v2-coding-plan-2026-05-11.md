@@ -222,7 +222,7 @@ returns bytes from the local pseudo-pod.
 |---|---|---|
 | 52.7.1 | Tasks adopts `task` type — calls `itemTypes.validate(item)` before write; stops using its implicit schema. | `apps/tasks-v0/src/skills/**`, `apps/tasks-v0/src/Crew.js` |
 | 52.7.2 | Stoop adopts `supply-offer`, `demand-offer`, `lend-request`, `chat-message`, `announcement`, `reveal-request`, `neighbourhood-job` types. | `apps/stoop/src/skills/**` |
-| 52.7.3 | Folio adopts `note` type. Note frontmatter validates against the schema. | `apps/folio/src/**` |
+| 52.7.3 | Folio adopts `note` type. **Revised 2026-05-12.** Metadata (title, tags, etc.) lives on the `note` data object in the pseudo-pod, NOT in markdown frontmatter — the data object is the authoritative source of truth, the `.md` file syncs the body verbatim. Validation runs at the substrate boundary when the data object is written to the pseudo-pod, not at file-read time. Adoption is contingent on Folio growing a notes-with-metadata feature; pure file-sync V0 has nothing structured to validate and the task is effectively no-op. | `apps/folio/src/**` |
 | 52.7.4 | Per-app inbox uses canonical type strings. | each app |
 
 **Estimate:** 2 days (1 per app, parallel).

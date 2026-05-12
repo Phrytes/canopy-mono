@@ -170,6 +170,52 @@ flow.
   requires a persistent notification (OS rule) — small UX cost.
   Tailscale, WireGuard, KDE Connect all do this. Distribution
   friction: users have to install the hub app first.
+
+  > **Tooling note (2026-05-12).** The bundle-side AIDL surface +
+  > JS-side wrapper shipped under Phases 51.6–51.9 lives in
+  > `@canopy/react-native/hub-binding`. **What's NOT yet built**
+  > is the **Kotlin native modules** that wrap the AIDL stubs
+  > (`HubDiscoveryModule.kt`, `HubBindingModule.kt`). These are a
+  > genuinely new tool category for the stack:
+  >
+  > - Everything we've shipped to date is **JavaScript that runs in
+  >   the RN bundle's JS process** — Expo modules, AsyncStorage
+  >   wrappers, BLE bridges, etc.
+  > - The Kotlin native modules are **Java/Kotlin code that runs as
+  >   part of the Android app**, exposed to JS via React Native's
+  >   bridge (`ReactContextBaseJavaModule`). The SDK has not yet
+  >   reached into native Android.
+  > - With Expo's **managed workflow** you normally avoid this; for
+  >   `PackageManager.queryIntentServices` + `Context.bindService` +
+  >   AIDL binders we can't, because these aren't exposed by any
+  >   existing Expo module.
+  >
+  > **Practical paths to land it:**
+  >
+  > 1. **Expo config plugin** — a build-time plugin that copies the
+  >    Kotlin source + `.aidl` files into the host app's `android/`
+  >    tree during `expo prebuild`. Each consuming app stays on the
+  >    managed workflow; the plugin handles the Android-Studio-level
+  >    integration. Recommended path for shipping to multiple apps.
+  > 2. **Expo development build** — apps switch from managed to
+  >    "development build" (bare workflow with an Expo wrapper). The
+  >    Kotlin code lives directly in the app's `android/` tree. Higher
+  >    per-app integration cost; loses some managed-workflow
+  >    conveniences (EAS Build's bundled snapshots, OTA via Expo).
+  > 3. **A standalone Android module** — published as a separate
+  >    `react-native-hub-binding` npm package that ships pre-built
+  >    Android binaries. Highest distribution-friction; benefits from
+  >    a clean dependency boundary. Probably overkill for a project
+  >    of this scope.
+  >
+  > Recommendation: **option 1 (config plugin)** when the Hub Service
+  > itself is ready to ship, since it preserves the managed-workflow
+  > experience for bundles while landing the native bits.
+  >
+  > Effort estimate: 3–5 days of Kotlin work for someone with Android
+  > Studio fluency. Real risk surface lives in AIDL chunking semantics
+  > for large `byte[]` payloads, `onServiceDisconnected` recovery, and
+  > signature-level permission verification at bind time.
 - **iOS:** impractical short of going down the Network Extension
   route (what Tailscale does on iOS). Out of scope per current
   decisions.

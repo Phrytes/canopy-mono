@@ -72,6 +72,27 @@ real to test with.
   key.
 - **Pod-storage convention** binding: markdown direct, big
   attachments as references.
+- **Metadata lives in the data object, not in the file**
+  (locked 2026-05-12). When a note carries structured metadata
+  (title, tags, dueAt, …), it sits on the `note` data object in
+  the pseudo-pod / pod — NOT in YAML frontmatter at the top of
+  the `.md` file. The `.md` body is just the prose; metadata is
+  carried alongside it on the canonical `note` item-type from
+  `@canopy/item-types`. Reasons:
+  - file operations stay simple (no frontmatter parser);
+  - metadata can include rich types (arrays, refs, nested
+    objects) without YAML's quirks;
+  - cross-app embeds (Tasks pinning a note, Archive collecting
+    notes) read structured metadata from the item-type schema
+    without parsing markdown;
+  - editors that don't understand frontmatter (or strip it on
+    save) don't silently lose state.
+  Editors that prefer frontmatter as an *authoring* affordance
+  can still write it; the sync layer treats it as body — round-
+  trip is byte-equivalent. If/when a use case actually needs
+  frontmatter as the canonical metadata source, we revisit. See
+  also `Project Files/Substrates/substrates-v2-coding-plan-
+  2026-05-11.md` §52.7.3.
 
 ### V1 — real-time collab via OSS doc tool
 

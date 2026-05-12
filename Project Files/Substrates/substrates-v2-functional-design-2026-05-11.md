@@ -648,11 +648,13 @@ await pseudoPod.write(taskUri, bytes);
 - Migration semantics when a user upgrades from one-pod to
   two-pod, or adds a new pod. Per-user redirect map shape;
   pin during P1.
+	> you can just map a new place for storage/retrieval. The user must take care of proper migration themselves 
 - Substrate-vs-app authority on storage-function names. The
   substrate ships a canonical list; can apps register new
   ones? Default proposed: yes, with a registry that the
   substrate ships defaults for and apps extend. Pin during
   P1.
+	> yeah why not
 
 ### 4.3.7 Phase
 
