@@ -18,6 +18,7 @@ import {
   list,
   validate,
   metadata,
+  schema,
   NAMESPACE,
 } from '../index.js';
 
@@ -41,13 +42,13 @@ describe('Canonical types — registration via default registry', () => {
       'announcement',
       'calendar-event',
       'chat-message',
+      'claim',
       'contact',
-      'demand-offer',
-      'lend-request',
       'neighbourhood-job',
       'note',
+      'offer',
+      'request',
       'reveal-request',
-      'supply-offer',
       'task',
     ]);
   });
@@ -79,9 +80,9 @@ describe('Canonical types — minimal valid + missing-required-field sweep', () 
     'task':              { text:        'paint the fence' },
     'note':              { body:        'hello world' },
     'chat-message':      { body:        'hi!' },
-    'supply-offer':      { body:        'ladder lenen' },
-    'demand-offer':      { body:        'looking for a drill' },
-    'lend-request':      { itemRef:     'pseudo-pod://x/y/z' },
+    'offer':             { body:        'ladder available, lend it to whoever needs it' },
+    'request':           { body:        'looking to borrow a drill this weekend' },
+    'claim':             { itemRef:     'pseudo-pod://x/y/z' },
     'contact':           { displayName: 'Anne' },
     'calendar-event':    { title:       'Coffee', startsAt: NOW },
     'announcement':      { body:        'Heads up: code rotates Friday' },
@@ -121,8 +122,8 @@ describe('Canonical types — embeds field shape', () => {
     const result = validate(baseItem('task', {
       text:   'paint the fence',
       embeds: [
-        { type: 'note',         ref: 'https://anne.pod/notes/x' },
-        { type: 'supply-offer', ref: 'pseudo-pod://anne-device/offers/abc' },
+        { type: 'note',  ref: 'https://anne.pod/notes/x' },
+        { type: 'offer', ref: 'pseudo-pod://anne-device/offers/abc' },
       ],
     }));
     expect(result.ok).toBe(true);
@@ -153,5 +154,31 @@ describe('Canonical types — extra-fields tolerance (forward-compat)', () => {
       anotherFuture:  { nested: 'shape' },
     }));
     expect(result.ok).toBe(true);
+  });
+});
+
+describe('Legacy vocabulary aliases (2026-05-12 vocab refresh)', () => {
+  it('supply-offer routes to offer schema', () => {
+    const result = validate(baseItem('supply-offer', { body: 'ladder' }));
+    expect(result.ok).toBe(true);
+    expect(metadata('supply-offer')?.name).toBe('offer');
+  });
+
+  it('demand-offer routes to request schema', () => {
+    const result = validate(baseItem('demand-offer', { body: 'drill?' }));
+    expect(result.ok).toBe(true);
+    expect(metadata('demand-offer')?.name).toBe('request');
+  });
+
+  it('lend-request routes to claim schema', () => {
+    const result = validate(baseItem('lend-request', { itemRef: 'pseudo-pod://x/y' }));
+    expect(result.ok).toBe(true);
+    expect(metadata('lend-request')?.name).toBe('claim');
+  });
+
+  it('schema() lookup via legacy name returns the canonical schema', () => {
+    const direct = schema('offer');
+    const viaAlias = schema('supply-offer');
+    expect(viaAlias).toBe(direct);
   });
 });

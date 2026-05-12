@@ -160,13 +160,13 @@ describe('treeOf — embeds walk', () => {
       {
         id: 'parent',
         dependencies: ['child'],
-        embeds: [{ type: 'supply-offer', ref: 'pseudo-pod://bob/offer-1' }],
+        embeds: [{ type: 'offer', ref: 'pseudo-pod://bob/offer-1' }],
       },
       { id: 'child', type: 'task' },
     ]);
     const resolveExternalRef = async (ref) => {
       if (ref === 'pseudo-pod://bob/offer-1') {
-        return { item: { id: 'offer-1', type: 'supply-offer', body: 'ladder' } };
+        return { item: { id: 'offer-1', type: 'offer', body: 'ladder' } };
       }
       return null;
     };

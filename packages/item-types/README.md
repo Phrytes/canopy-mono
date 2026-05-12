@@ -17,7 +17,7 @@ This package is a **substrate** — it has no runtime dependency on
 
 Three apps (Tasks, Stoop, Folio) all want to refer to the same kinds of
 things and embed each other's items inside their own (a task can pin a
-supply-offer; a chat-message can quote a note). If every app coined its
+offer; a chat-message can quote a note). If every app coined its
 own type names, cross-references would silently break.
 
 This substrate ships the common vocabulary plus a validator so the apps
@@ -76,9 +76,9 @@ reg.registerType('my-app/widget', WIDGET_SCHEMA);
 | `task`              | `text`                 | Tasks app + cross-app: TODO with lifecycle. |
 | `note`              | `body`                 | Markdown / frontmatter blob.                |
 | `chat-message`      | `body`                 | Threaded chat line.                         |
-| `supply-offer`      | `body`                 | Stoop: ladder offered to the buurt.         |
-| `demand-offer`      | `body`                 | Stoop: drill wanted by the buurt.           |
-| `lend-request`      | `itemRef`              | A demand against a specific supply.         |
+| `offer`             | `body`                 | "I have X available." Author's stance: providing. Inner `kind`: `lend` / `give` / `sell` / `help` / `other`. |
+| `request`           | `body`                 | "I want X." Author's stance: looking for something. Inner `kind`: `borrow` / `receive` / `buy` / `help` / `other`. |
+| `claim`             | `itemRef`              | A specific claim against an offer or request. Coordination lifecycle (requested → agreed → in-progress → completed | cancelled). |
 | `contact`           | `displayName`          | Address-book entry with `trustLevel`.       |
 | `calendar-event`    | `title`, `startsAt`    | Shared agenda event.                        |
 | `announcement`      | `body`                 | One-way buurt-broadcast.                    |
@@ -89,6 +89,17 @@ Every type ships under the **`dec:`** namespace
 (`https://canopy.org/ns#<TypeName>`). The substrate intentionally does
 **not** alias to `schema.org` or other external vocabularies — see the
 "vocabulary stance" note below.
+
+> **Vocabulary refresh — 2026-05-12.** The `offer` / `request` /
+> `claim` triple replaces the earlier `supply-offer` / `demand-offer`
+> / `lend-request` names. Each type is anchored on the **author's
+> action** (I'm offering; I want; I'm claiming a specific post);
+> direction-bearing verbs (`lend`, `borrow`, `give`, `receive`, `sell`,
+> `buy`, `help`) live on the inner `kind` field. The legacy names are
+> still registered as **aliases** — `validate({type: 'supply-offer'})`
+> routes to the `offer` schema — so existing data + apps in
+> transition keep working. Adopters can drop the legacy names on their
+> own schedule.
 
 ### Base fields (all types)
 
@@ -111,7 +122,7 @@ exists or has the claimed type:
 ```js
 {
   embeds: [
-    { type: 'supply-offer', ref: 'pseudo-pod://anne-device/offers/abc' },
+    { type: 'offer', ref: 'pseudo-pod://anne-device/offers/abc' },
     { type: 'note',         ref: 'https://anne.pod/notes/x' },
   ]
 }
