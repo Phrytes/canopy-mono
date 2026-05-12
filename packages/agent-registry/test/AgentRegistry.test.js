@@ -46,7 +46,16 @@ describe('createAgentRegistry — construction', () => {
     expect(() => createAgentRegistry({})).toThrow(/pseudoPod/);
   });
 
-  it('uses anchorPodUri when supplied', () => {
+  it('defaults to pseudo-pod path when deviceId is supplied (V0)', () => {
+    const reg = createAgentRegistry({
+      pseudoPod:    mkPod('laptop-anne'),
+      anchorPodUri: 'https://anne.pod',
+      deviceId:     'laptop-anne',
+    });
+    expect(reg.resourceUri).toBe('pseudo-pod://laptop-anne/private/agent-registry');
+  });
+
+  it('falls back to anchorPodUri when only anchorPodUri is supplied', () => {
     const reg = createAgentRegistry({
       pseudoPod:    mkPod(),
       anchorPodUri: 'https://anne.pod',
@@ -54,12 +63,14 @@ describe('createAgentRegistry — construction', () => {
     expect(reg.resourceUri).toBe('https://anne.pod/private/agent-registry');
   });
 
-  it('falls back to deviceId path for no-pod users', () => {
+  it('preferPodUri forces the https:// path', () => {
     const reg = createAgentRegistry({
-      pseudoPod: mkPod('laptop-anne'),
-      deviceId:  'laptop-anne',
+      pseudoPod:    mkPod('laptop-anne'),
+      anchorPodUri: 'https://anne.pod',
+      deviceId:     'laptop-anne',
+      preferPodUri: true,
     });
-    expect(reg.resourceUri).toBe('pseudo-pod://laptop-anne/private/agent-registry');
+    expect(reg.resourceUri).toBe('https://anne.pod/private/agent-registry');
   });
 });
 

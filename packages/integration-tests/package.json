@@ -10,9 +10,20 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core":       "file:../core",
-    "@canopy/pod-client": "file:../pod-client",
-    "@canopy/relay":      "file:../relay"
+    "@canopy/core":              "file:../core",
+    "@canopy/pod-client":        "file:../pod-client",
+    "@canopy/relay":             "file:../relay",
+
+    "@canopy/agent-provisioning": "file:../agent-provisioning",
+    "@canopy/agent-registry":     "file:../agent-registry",
+    "@canopy/identity-resolver":  "file:../identity-resolver",
+    "@canopy/item-store":         "file:../item-store",
+    "@canopy/item-types":         "file:../item-types",
+    "@canopy/notify-envelope":    "file:../notify-envelope",
+    "@canopy/pod-onboarding":     "file:../pod-onboarding",
+    "@canopy/pod-routing":        "file:../pod-routing",
+    "@canopy/pseudo-pod":         "file:../pseudo-pod",
+    "@canopy/vault":              "file:../vault"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

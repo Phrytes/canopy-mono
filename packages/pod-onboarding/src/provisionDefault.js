@@ -156,7 +156,9 @@ export async function provisionDefault({
   });
   const agentRegistryEntry = buildInitialAgentRegistry({
     podUri,
-    agentInfo: { ...agentInfo, pubKey },
+    // Carry the WebID into the seed so post-provision
+    // `agent-registry.lookup(webid)` matches without a re-register.
+    agentInfo: { ...agentInfo, pubKey, webid: agentInfo.webid ?? webidUri },
   });
   await podProvisioner.putResource({
     uri:         _stripTrailingSlash(podUri) + '/private/storage-mapping',
