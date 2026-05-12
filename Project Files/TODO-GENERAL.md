@@ -5,6 +5,35 @@
 
 ---
 
+## 🟡 MEDIUM — Stoop open questions (next-session pickup) (2026-05-12)
+
+**What:** Two substantive Stoop questions paused at end of session
+2026-05-12 — both need decisions before code lands.
+
+1. **Full canonical-vocabulary cut-over** (Option C). The
+   warn-only translator already shipped (commit `fb2d7a9`); user
+   wants the actual stored shape to be canonical. ~Full focused
+   session of test surgery + read-site updates. Two sub-decisions
+   needed: legacy-data handling (transitional bridge vs clean
+   break) and `postRequest` API shape (keep `kind` arg as UI
+   vocab vs. rename).
+2. **groupMirror retirement vs keep.** Substrates-v2 plan §52.9.2
+   substitutes groupMirror with `pseudo-pod` replication-ring +
+   `notify-envelope`. User pushed back: "people should be able to
+   use the apps without pods too." The substitution *should* keep
+   no-pod support — but worth verifying via a parity scenario
+   before deciding.
+
+**Full context** including scope estimates, mapping table, file
+pointers, suggested next steps, and resolved sub-decisions
+(`report` type, `ask` default, etc.) lives in
+[`Stoop/open-questions-2026-05-12.md`](./Stoop/open-questions-2026-05-12.md).
+
+**Read that doc first** when picking up Stoop work in a future
+session — it's the handoff designed to be useful cold.
+
+---
+
 ## 🔴 HIGH — Solid pod / cap-token UX cleanup (Inrupt migration) (2026-05-07)
 
 **What:** the bespoke Solid pod sign-in and capability-token share
