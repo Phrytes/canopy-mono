@@ -20,9 +20,12 @@ import { withCAS } from './concurrency.js';
 /**
  * @param {object} opts
  * @param {object}  opts.pseudoPod
- * @param {string}  [opts.anchorPodUri]   — for pod-having users
- * @param {string}  [opts.deviceId]       — required for no-pod users
- * @param {string}  [opts.resourceUri]    — explicit override
+ * @param {string}  [opts.anchorPodUri]   — pod URI (metadata; pod-side mirroring
+ *                                          lands with cache-mode pseudo-pod).
+ * @param {string}  [opts.deviceId]       — strongly recommended; V0 store path.
+ * @param {boolean} [opts.preferPodUri]   — force the https:// resource path
+ *                                          (caller's pseudo-pod must accept it).
+ * @param {string}  [opts.resourceUri]    — explicit override (wins over all defaults).
  * @param {number}  [opts.maxRetries=3]
  * @param {(err: Error) => void} [opts.onPersistentConflict]
  * @param {() => string} [opts.now]
@@ -31,6 +34,7 @@ export function createAgentRegistry({
   pseudoPod,
   anchorPodUri,
   deviceId,
+  preferPodUri = false,
   resourceUri,
   maxRetries,
   onPersistentConflict,
@@ -42,7 +46,7 @@ export function createAgentRegistry({
       { code: 'INVALID_ARGUMENT' },
     );
   }
-  const uri = resourceUri ?? registryResourceUri({ anchorPodUri, deviceId });
+  const uri = resourceUri ?? registryResourceUri({ anchorPodUri, deviceId, preferPodUri });
 
   async function _readCurrent() {
     const rec = await pseudoPod.read(uri);

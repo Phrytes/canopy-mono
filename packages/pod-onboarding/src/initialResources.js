@@ -75,18 +75,28 @@ export function buildInitialAgentRegistry({ agentInfo, podUri }) {
       );
     }
   }
+  // Shape matches @canopy/agent-registry's expected agent record so
+  // a subsequent registry.register({agentId}) read-modify-write
+  // matches + updates this seed entry rather than appending a duplicate
+  // (Phase 52.10 composition fix surfaced by the V2 smoke scenario).
+  const nowIso = new Date().toISOString();
   return {
-    version:    1,
+    v:          1,
+    version:    1,                       // legacy alias for forward-compat
     podUri,
     agents: [{
-      deviceId:     agentInfo.deviceId,
-      agentUri:     agentInfo.agentUri,
+      agentId:      agentInfo.agentId ?? agentInfo.deviceId,
       pubKey:       agentInfo.pubKey,
-      displayName:  agentInfo.displayName ?? null,
-      addedAt:      new Date().toISOString(),
+      webid:        agentInfo.webid ?? null,
+      agentUri:     agentInfo.agentUri,
+      role:         agentInfo.role ?? 'device',
+      name:         agentInfo.displayName ?? null,
+      deviceId:     agentInfo.deviceId,
       capabilities: Array.isArray(agentInfo.capabilities) ? [...agentInfo.capabilities] : [],
+      signedAt:     nowIso,
+      revokedAt:    null,
     }],
-    updatedAt: new Date().toISOString(),
+    updatedAt: nowIso,
   };
 }
 
