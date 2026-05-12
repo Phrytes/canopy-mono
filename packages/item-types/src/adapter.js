@@ -39,8 +39,8 @@ import { validate as validateRaw } from './registry.js'; // not used — re-expo
  *
  * `text → body` covers Stoop / Folio / generic-message item types
  * whose canonical schemas require `body` (announcement, note,
- * chat-message, supply-offer, demand-offer, neighbourhood-job). The
- * `task` schema requires `text` natively, so the copy is harmless
+ * chat-message, offer, request, neighbourhood-job). The `task`
+ * schema requires `text` natively, so the copy is harmless
  * (forward-additive: extra `body` on a task is tolerated).
  */
 export function adaptForCanonical(item) {
