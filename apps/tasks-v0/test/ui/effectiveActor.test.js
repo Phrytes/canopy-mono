@@ -17,6 +17,7 @@ import {
   resolveActorWebid,
   resolveActorRole,
   buildActorAliases,
+  buildActorResolverFromMembers,
 } from '../../src/ui/effectiveActor.js';
 
 const ANNE_WEBID  = 'webid://anne';
@@ -103,5 +104,74 @@ describe('buildActorAliases', () => {
   it('empty input → empty map', () => {
     expect(buildActorAliases([])).toEqual({});
     expect(buildActorAliases()).toEqual({});
+  });
+});
+
+describe('buildActorResolverFromMembers (Phase 52.11)', () => {
+  it('resolves by webid (identity lookup)', () => {
+    const r = buildActorResolverFromMembers([
+      { webid: ANNE_WEBID, pubKey: ANNE_PUBKEY, role: 'admin' },
+    ]);
+    expect(r.resolveSync(ANNE_WEBID)).toEqual({ webid: ANNE_WEBID });
+  });
+
+  it('resolves by pubKey', () => {
+    const r = buildActorResolverFromMembers([
+      { webid: ANNE_WEBID, pubKey: ANNE_PUBKEY, role: 'admin' },
+      { webid: BOB_WEBID,  pubKey: BOB_PUBKEY,  role: 'member' },
+    ]);
+    expect(r.resolveSync(ANNE_PUBKEY)).toEqual({ webid: ANNE_WEBID });
+    expect(r.resolveSync(BOB_PUBKEY)).toEqual({ webid: BOB_WEBID });
+  });
+
+  it('resolves by agentUri when present', () => {
+    const r = buildActorResolverFromMembers([
+      {
+        webid:    ANNE_WEBID,
+        pubKey:   ANNE_PUBKEY,
+        agentUri: 'agent://anne/laptop',
+      },
+    ]);
+    expect(r.resolveSync('agent://anne/laptop')).toEqual({ webid: ANNE_WEBID });
+  });
+
+  it('returns null for unknown identifiers + bad input', () => {
+    const r = buildActorResolverFromMembers([
+      { webid: ANNE_WEBID, pubKey: ANNE_PUBKEY },
+    ]);
+    expect(r.resolveSync('webid://unknown')).toBe(null);
+    expect(r.resolveSync('')).toBe(null);
+    expect(r.resolveSync(null)).toBe(null);
+    expect(r.resolveSync(undefined)).toBe(null);
+  });
+
+  it('skips members without a webid (no useful resolution)', () => {
+    const r = buildActorResolverFromMembers([
+      { pubKey: 'pk-orphan' },              // no webid
+      { webid: ANNE_WEBID, pubKey: ANNE_PUBKEY },
+    ]);
+    expect(r.resolveSync('pk-orphan')).toBe(null);
+    expect(r.resolveSync(ANNE_PUBKEY)).toEqual({ webid: ANNE_WEBID });
+  });
+
+  it('empty input → resolver that always misses', () => {
+    const r = buildActorResolverFromMembers([]);
+    expect(r.resolveSync('anything')).toBe(null);
+  });
+
+  it('integrates with buildStandardRolePolicy: pubKey actor → role gates pass', async () => {
+    // End-to-end: simulate mobile's dispatch where `from = agent.pubKey`.
+    const { buildStandardRolePolicy } = await import('../../src/rolePolicy.js');
+    const resolver = buildActorResolverFromMembers([
+      { webid: ANNE_WEBID, pubKey: ANNE_PUBKEY },
+      { webid: BOB_WEBID,  pubKey: BOB_PUBKEY },
+    ]);
+    const policy = buildStandardRolePolicy(
+      { [ANNE_WEBID]: 'admin', [BOB_WEBID]: 'observer' },
+      { actorResolver: resolver },
+    );
+    expect(policy.canClaim(ANNE_PUBKEY, {})).toBe(true);
+    expect(policy.canClaim(BOB_PUBKEY, {})).toBe(false);    // observer
+    expect(policy.canRemove(ANNE_PUBKEY, {})).toBe(true);   // admin
   });
 });

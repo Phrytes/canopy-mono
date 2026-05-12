@@ -123,3 +123,36 @@ export function buildActorAliases(members = []) {
   }
   return aliases;
 }
+
+/**
+ * Phase 52.11 migration helper — adapt a crew-members list to the
+ * `actorResolver` shape that `buildStandardRolePolicy` accepts.
+ *
+ * Returned object exposes a SYNC `resolveSync(id) → {webid?: string}`
+ * — role policies gate every read/write so the lookup must be
+ * non-promise. For V0 the resolver is just a wrapper around the
+ * crew's local member list (same data as `buildActorAliases`). When
+ * `@canopy/agent-registry` is wired into mobile (real PoC
+ * dogfooding), apps swap the data source from `crew.members` to a
+ * sync cache over the registry — interface stays identical so the
+ * substrate side doesn't move.
+ *
+ * @param {Array<{webid?: string, pubKey?: string, agentUri?: string}>} members
+ * @returns {{ resolveSync: (id: string) => {webid: string} | null }}
+ */
+export function buildActorResolverFromMembers(members = []) {
+  const byId = new Map();
+  for (const m of members) {
+    if (!m || typeof m.webid !== 'string' || m.webid.length === 0) continue;
+    byId.set(m.webid, m.webid);
+    if (typeof m.pubKey   === 'string' && m.pubKey.length > 0)   byId.set(m.pubKey,   m.webid);
+    if (typeof m.agentUri === 'string' && m.agentUri.length > 0) byId.set(m.agentUri, m.webid);
+  }
+  return {
+    resolveSync(id) {
+      if (typeof id !== 'string' || id.length === 0) return null;
+      const webid = byId.get(id);
+      return webid ? { webid } : null;
+    },
+  };
+}
