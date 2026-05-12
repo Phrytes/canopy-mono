@@ -19,9 +19,22 @@ export const REQUEST_SCHEMA = {
     ...BASE_PROPERTIES,
     type: { const: 'request' },
     body: { type: 'string' },
+    /**
+     * Verb-direction subfield. Mirrors `offer.kind` on the receiving
+     * side. Distinguishes three transfer flavours:
+     *
+     *   - `borrow`  — durable; will return ("een drill voor het
+     *                 weekend?").
+     *   - `share`   — small / consumable from a neighbour's surplus
+     *                 ("kan ik wat suiker komen halen?"); no return.
+     *   - `receive` — asking for an outright gift / hand-me-down.
+     *   - `buy`     — for-money transfer.
+     *   - `help`    — service / time, not a thing.
+     *   - `other`   — escape hatch; UI should narrow when possible.
+     */
     kind: {
       type: 'string',
-      enum: ['borrow', 'receive', 'buy', 'help', 'other'],
+      enum: ['borrow', 'share', 'receive', 'buy', 'help', 'other'],
     },
     audience:    { type: 'array', items: { type: 'string' } },
     expiresAt:   { type: 'string', format: 'date-time' },
