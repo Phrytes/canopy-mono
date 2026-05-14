@@ -19,6 +19,22 @@ work is detailed in
 Stoop's user-visible behaviour does not change; the `lib/` files
 become re-export shims around the new substrate copies.
 
+**V2 substrate adoption (2026-05-14, `0.3.0`):** Q-B `groupMirror`
+retirement (replaced by `notify-envelope` + `pseudo-pod`
+substrate path) + the full A-track UX surface from
+[`v2-web-functional-design-2026-05-11.md`](../../Project%20Files/Stoop/v2-web-functional-design-2026-05-11.md):
+
+- A1 `'stale-peer'` auto-heal • A2 `fetch-resource` + `groupCheck`
+- A3 storage-policy picker on `/create-group.html`
+- A4 `embeds:[{type,ref}]` on `postRequest` + chip rendering
+- A5 `/group.html` storage-policy section + upgrade row
+- A6 `/profile.html` "My Solid pods" section
+- A7 agent-registry on bundle bring-up (Phase 52.10)
+
+Mobile mirror (C-track) at
+[`apps/stoop-mobile/`](../stoop-mobile/) shipped same day. See
+[`CHANGELOG.md`](./CHANGELOG.md) for the per-slice breakdown.
+
 **Status:** V1.5 demo-ready (2026-05-06). This package was
 H5 / `apps/neighborhood-v0` until 2026-05-06; renamed in place.
 Phases 0–22 of the coding plan have landed:
@@ -103,7 +119,7 @@ apps need to share code, extract a substrate.
 | `@canopy/core` | `SolidVault`, `SolidPodSource` (lazy-loaded) | Solid OIDC session + pod-backed `DataSource` (Phase 20 sign-in). | Cross-app concern; will likely lift into `@canopy/oidc-session` once a 3rd consumer materialises. Stoop + Folio are the existing 2. |
 | `@canopy/core` | `Bootstrap`, `validateMnemonic`, `mnemonicToSeed` | Mnemonic validation + seed derivation for the Phase 30 device-restore flow. | Identity-bootstrap primitives; foundational. |
 | `@canopy/relay` | `RelayTransport`, group-publish, `GroupAuthVerifier` config (server-side), Phase-2 quotas + revocation list + bound verification, `PushSender` (extended by `WebPushSender` in Phase 21) | Network transport to the Stoop community relay; group registration; relay-side enforcement of Phase 2 additions; Web-Push delivery shape. | Transport wiring is per-app; the server-side relay extensions live in `@canopy/relay`, not in a substrate. `WebPushSender` is a candidate to lift back into relay alongside `ExpoPushSender` once a 2nd web-push consumer appears. |
-| `@inrupt/solid-client-authn-node` (optional dep) | `Session` | Inside `OidcSession`, called via the `_setSessionFactory` test seam. | No substrate wraps Solid OIDC at the right shape yet; Folio + Stoop both do this directly via lifted-`OidcSession.js`. Tracked in `Project Files/Substrates/substrate-candidates.md` as `@canopy/oidc-session`. |
+| `@inrupt/solid-client-authn-node` (transitive via `@canopy/oidc-session`) | `Session` | Inside `createSolidAuthNode`, called via the `_setSolidAuthNodeSessionFactory` test seam. | Substrate-promoted 2026-05-14 (Phase 52.15.2). Multi-issuer support (Inrupt + solidcommunity.net + solidweb.org) ships via `KNOWN_ISSUERS`. |
 | `web-push` (optional dep) | VAPID-signed Web Push delivery | Inside `WebPushSender`, called when VAPID keys are configured. | Currently the only Web-Push consumer; will lift into `@canopy/relay/push/` when a 2nd consumer materialises. |
 
 ## Agent Hub compatibility
