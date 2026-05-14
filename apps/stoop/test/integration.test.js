@@ -21,8 +21,7 @@ import {
   DataPart,
 } from '@canopy/core';
 
-import { createNeighborhoodAgent } from '../src/index.js';
-import { wireGroupBroadcastMirror } from '../src/groupMirror.js';
+import { createNeighborhoodAgent, attachSubstrateMirror } from '../src/index.js';
 
 const ALICE = 'https://id.example/alice';
 const BOB   = 'https://id.example/bob';
@@ -260,12 +259,7 @@ async function wireMirrors(bundles, group) {
     .filter((_, j) => j !== i)
     .map((b) => ({ pubKey: b.agent.address }));
   for (let i = 0; i < bundles.length; i++) {
-    await wireGroupBroadcastMirror({
-      agent:     bundles[i].agent,
-      itemStore: bundles[i].itemStore,
-      group,
-      peers:     peerKeysOf(i),
-    });
+    await attachSubstrateMirror(bundles[i], { group, peers: peerKeysOf(i) });
   }
 }
 

@@ -111,6 +111,41 @@
           </label>
         </fieldset>
 
+        <fieldset id="storage-fieldset" style="margin-top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem 1rem;">
+          <legend data-i18n="create_group.q7_storage">7. Waar staat de groepsstaat?</legend>
+          <p class="hint" style="margin-top: 0;" data-i18n="create_group.q7_storage_intro">
+            Standaard staat de groep <strong>op jullie eigen apparaten</strong>
+            (geen Solid-pod nodig). Je kunt later upgraden naar een gedeelde pod
+            voor betere persistentie. Eenmaal pod-having → niet meer terug.
+          </p>
+
+          <label>
+            <input type="radio" name="storage-policy" value="no-pod" checked>
+            <strong data-i18n="create_group.storage_no_pod_label">Op onze apparaten (no-pod, default).</strong>
+            <small class="hint" style="display: block; margin-left: 1.5rem;" data-i18n="create_group.storage_no_pod_hint">Geen pod nodig. Items repliceren naar alle leden's pseudo-pod.</small>
+          </label>
+          <label style="margin-top: 0.5rem;">
+            <input type="radio" name="storage-policy" value="centralised">
+            <strong data-i18n="create_group.storage_centralised_label">Op een gedeelde Solid-pod.</strong>
+            <small class="hint" style="display: block; margin-left: 1.5rem;" data-i18n="create_group.storage_centralised_hint">Eén pod als bron van waarheid. Beste voor kleinere groepen (huishouden / sportclub).</small>
+          </label>
+          <label style="margin-top: 0.5rem;">
+            <input type="radio" name="storage-policy" value="decentralised">
+            <strong data-i18n="create_group.storage_decentralised_label">Iedereen op z'n eigen pod (cross-pod refs).</strong>
+            <small class="hint" style="display: block; margin-left: 1.5rem;" data-i18n="create_group.storage_decentralised_hint">Geen centraal punt. Beste voor grote buurten (50+) waar centraliseren teveel vertrouwen vraagt.</small>
+          </label>
+          <label style="margin-top: 0.5rem;">
+            <input type="radio" name="storage-policy" value="hybrid">
+            <strong data-i18n="create_group.storage_hybrid_label">Gemengd — ledger op gedeelde pod, drafts lokaal.</strong>
+            <small class="hint" style="display: block; margin-left: 1.5rem;" data-i18n="create_group.storage_hybrid_hint">Voor groepen met af-en-toe-actieve leden die toch persistent willen zijn.</small>
+          </label>
+
+          <label id="group-pod-uri-row" style="margin-top: 0.8rem; display: none;">
+            <span data-i18n="create_group.storage_group_pod_label">Pod-URI van de gedeelde groepspod</span>
+            <input id="g-pod-uri" type="url" placeholder="https://buurt.pod/">
+          </label>
+        </fieldset>
+
         <button type="submit" data-i18n="create_group.submit">Groep aanmaken</button>
         <span id="create-feedback" class="hint"></span>
       </form>
@@ -134,6 +169,19 @@
 
     document.getElementById('actor').textContent = await getActor();
 
+    // A3 — toggle the groupPodUri row when a pod-having policy is picked.
+    const podUriRow = document.getElementById('group-pod-uri-row');
+    const podUriInput = document.getElementById('g-pod-uri');
+    for (const r of document.querySelectorAll('input[name="storage-policy"]')) {
+      r.addEventListener('change', () => {
+        const needsPod = r.value === 'centralised' || r.value === 'hybrid';
+        if (r.checked) {
+          podUriRow.style.display = needsPod ? '' : 'none';
+          podUriInput.required = needsPod;
+        }
+      });
+    }
+
     document.getElementById('create-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const fb = document.getElementById('create-feedback');
@@ -148,6 +196,8 @@
       };
       const keyRotationMode = document.querySelector('input[name="key-rotation"]:checked')?.value || 'admin-only';
       const rotationDays = Number(document.getElementById('g-rotation-days').value) || 30;
+      const storagePolicy = document.querySelector('input[name="storage-policy"]:checked')?.value || 'no-pod';
+      const groupPodUri = document.getElementById('g-pod-uri').value.trim();
       try {
         const r = await callSkill('createGroupV2', {
           groupId: document.getElementById('g-id').value.trim(),
@@ -155,6 +205,8 @@
           rules,
           keyRotationMode,
           rotationDays,
+          storagePolicy,
+          ...(groupPodUri ? { groupPodUri } : {}),
         });
         if (r.error) {
           fb.textContent = `${t('common.error', 'Fout')}: ${r.error}`;

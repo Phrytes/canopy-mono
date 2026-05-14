@@ -210,7 +210,7 @@
     "continue":         { "text": "Continue", "doc": "CTA on SignInScreen step 2 — adopts tokens + attaches pod." },
     "attaching":        { "text": "Attaching…", "doc": "CTA label while attachPod is in flight." },
     "pod_root_label":   { "text": "Pod base URL", "doc": "Label above pod-root input on SignInScreen step 2." },
-    "pod_root_hint":    { "text": "Auto-derived from your WebID origin. Only edit if your storage server lives elsewhere.", "doc": "Hint under pod-root input." },
+    "pod_root_hint":    { "text": "Auto-derived from your WebID origin. Only edit if your Pod lives elsewhere.", "doc": "Hint under pod-root input." },
     "error_pod_root_required": { "text": "Pod URL is required.", "doc": "Inline validation error when pod-root field is empty." },
     "reset":            { "text": "Reset auth & retry", "doc": "Recovery CTA when DCR/discovery cached a stale client_id." },
     "signed_in":        { "text": "Signed in as {webid}", "doc": "Status when a session exists." },
@@ -438,7 +438,20 @@
     "backup_password_label":  { "text": "Password (min. 8 chars)", "doc": "Label of the backup-password input." },
     "backup_download":        { "text": "Download backup", "doc": "Submit button for the encrypted-backup form." },
     "backup_encrypting":      { "text": "Encrypting…", "doc": "Inline status while the encryptedBackup skill is running." },
-    "backup_downloaded":      { "text": "Backup downloaded. Keep the file and your password separately.", "doc": "Inline confirmation after a successful backup download." }
+    "backup_downloaded":      { "text": "Backup downloaded. Keep the file and your password separately.", "doc": "Inline confirmation after a successful backup download." },
+
+    "my_pods_heading":            { "text": "My Solid pods", "doc": "A6 — heading of the My-Solid-pods section on /profile.html." },
+    "my_pods_loading":            { "text": "Loading…", "doc": "Initial placeholder under the My-Solid-pods heading." },
+    "my_pods_attached":           { "text": "Pod attached; writes go through to the pod.", "doc": "Status line shown when bundle.cache has an attached pod inner source." },
+    "my_pods_detached":           { "text": "Signed in but pod is not attached to this session.", "doc": "Status line shown when the user is OIDC-authenticated but bundle.cache.hasInner is false." },
+    "my_pods_two_pod_intro":      { "text": "For stronger privacy isolation you can split your daily use across two pods: a <strong>private pod</strong> for your own items and a <strong>sharing pod</strong> for what you share with neighbourhoods. The full editor lives in the Hub-web-console (post-P5); the one-click preset will land in V3.", "doc": "Lead paragraph for the two-pod preset block. Contains <strong>." },
+    "my_pods_two_pod_btn":        { "text": "Split into two pods (coming in V3)", "doc": "Disabled CTA placeholder for the two-pod preset." },
+    "my_pods_two_pod_deferred":   { "text": "Substrate parts planned; UI follows in V3.", "doc": "Hint next to the disabled two-pod button explaining the deferral." },
+    "my_pods_sign_out":           { "text": "Sign out of pod", "doc": "CTA that calls signOutOfPod." },
+    "my_pods_signing_out":        { "text": "Signing out…", "doc": "Inline status while signOutOfPod is in flight." },
+    "my_pods_signed_out_ok":      { "text": "Signed out.", "doc": "Inline confirmation after signOutOfPod succeeds." },
+    "my_pods_signed_out_intro":   { "text": "No pod linked to this account. Stoop works fine without one (no-pod mode); a pod on top is optional.", "doc": "Lead paragraph shown when signedIn === false." },
+    "my_pods_sign_in_link":       { "text": "Link a pod", "doc": "Link to /sign-in.html in the signed-out variant of the My-Solid-pods section." }
   },
   "onboard": {
     "page_title":              { "text": "Stoop — Onboard", "doc": "Browser tab title for /onboard.html." },
@@ -622,7 +635,19 @@
     "result_expiry":  { "text": "Valid until {date} ({days} days). Mode: {mode}.", "doc": "Expiry line under the membership code." },
     "result_footer":  { "text": "You can view it again later on the group page.", "doc": "Footer hint under the result card." },
     "mode_admin_only": { "text": "only admins distribute the code", "doc": "Lower-case description of admin-only rotation, plugged into result_expiry's {mode}." },
-    "mode_peer":      { "text": "anyone may pass on the code", "doc": "Lower-case description of peer-distributable rotation, plugged into result_expiry's {mode}." }
+    "mode_peer":      { "text": "anyone may pass on the code", "doc": "Lower-case description of peer-distributable rotation, plugged into result_expiry's {mode}." },
+
+    "q7_storage":                   { "text": "7. Where does the group state live?", "doc": "A3 — legend of the storage-policy fieldset (§II.2 of the standardisation plan)." },
+    "q7_storage_intro":             { "text": "By default the group lives <strong>on your own devices</strong> (no Solid pod needed). You can upgrade later to a shared pod for stronger persistence. Once pod-having → no way back.", "doc": "Hint under the storage-policy legend. Contains <strong>." },
+    "storage_no_pod_label":         { "text": "On our devices (no-pod, default).", "doc": "Bold label for the no-pod storage radio." },
+    "storage_no_pod_hint":          { "text": "No pod required. Items replicate across all members' pseudo-pods.", "doc": "Hint under the no-pod radio." },
+    "storage_centralised_label":    { "text": "On a shared Solid pod.", "doc": "Bold label for the centralised storage radio." },
+    "storage_centralised_hint":     { "text": "One pod as source of truth. Best for smaller groups (household / sports club).", "doc": "Hint under the centralised radio." },
+    "storage_decentralised_label":  { "text": "Each member on their own pod (cross-pod refs).", "doc": "Bold label for the decentralised storage radio." },
+    "storage_decentralised_hint":   { "text": "No central point. Best for large neighbourhoods (50+) where centralising costs too much trust.", "doc": "Hint under the decentralised radio." },
+    "storage_hybrid_label":         { "text": "Hybrid — ledger on a shared pod, drafts local.", "doc": "Bold label for the hybrid storage radio." },
+    "storage_hybrid_hint":          { "text": "For groups with occasionally-active members who still want persistence.", "doc": "Hint under the hybrid radio." },
+    "storage_group_pod_label":      { "text": "Pod URI of the shared group pod", "doc": "Label of the optional groupPodUri input (centralised / hybrid only)." }
   },
   "nav": {
     "feed":     { "text": "Feed",      "doc": "Top-nav link to the main feed page (/)." },
@@ -669,7 +694,23 @@
     "reprobe_busy":           { "text": "Busy…", "doc": "Re-probe button label while the gossip + hellos run." },
     "reprobe_done":           { "text": "{n} peers said hello", "doc": "Inline confirmation after Re-probe finishes — {n} = number of hellos sent." },
     "reprobe_waiting":        { "text": "Waiting for mDNS discovery… ({s}s)", "doc": "Inline progress text on Re-probe while we wait for PeerGraph entries to appear (Android NSD discovery is slow on app start). {s} = elapsed seconds." },
-    "reprobe_no_peers":       { "text": "No peers discovered after 15s. mDNS isn't reaching the other device — try the relay (Settings → Relay-server).", "doc": "Surfaced after the Re-probe deadline expires with no PeerGraph entries — mDNS isn't propagating, suggest the relay fallback." }
+    "reprobe_no_peers":       { "text": "No peers discovered after 15s. mDNS isn't reaching the other device — try the relay (Settings → Relay-server).", "doc": "Surfaced after the Re-probe deadline expires with no PeerGraph entries — mDNS isn't propagating, suggest the relay fallback." },
+
+    "storage_heading":              { "text": "Group state storage", "doc": "A5 — heading of the storage-policy section on /group.html." },
+    "storage_loading":              { "text": "Loading…", "doc": "Initial placeholder under the storage-policy heading." },
+    "storage_upgrade_oneway":       { "text": "Once pod-having → no way back to no-pod.", "doc": "Note shown above the disabled upgrade row when the crew is already pod-having." },
+    "storage_new_policy_label":     { "text": "New storage form", "doc": "Label for the upgrade-target select on /group.html." },
+    "storage_centralised_short":    { "text": "Centralised on a pod", "doc": "Short label for the centralised option in the upgrade select." },
+    "storage_decentralised_short":  { "text": "Each member on own pod", "doc": "Short label for the decentralised option in the upgrade select." },
+    "storage_hybrid_short":         { "text": "Hybrid", "doc": "Short label for the hybrid option in the upgrade select." },
+    "storage_pod_uri_label":        { "text": "Pod URI", "doc": "Label for the groupPodUri input on /group.html upgrade row." },
+    "storage_upgrade_btn":          { "text": "Upgrade", "doc": "CTA on /group.html that calls setCrewStoragePolicy." },
+    "storage_upgrading":            { "text": "Upgrading…", "doc": "Inline status while the upgrade is in flight." },
+    "storage_upgraded":             { "text": "Storage updated.", "doc": "Inline success status after the upgrade." },
+    "storage_no_pod_label":         { "text": "On your own devices (no-pod).", "doc": "Full label shown on /group.html when the crew is no-pod. Different from create-group's wizard label." },
+    "storage_centralised_label":    { "text": "On a shared Solid pod.", "doc": "Full label shown on /group.html when the crew is centralised." },
+    "storage_decentralised_label":  { "text": "Each member on their own pod (cross-pod refs).", "doc": "Full label shown on /group.html when the crew is decentralised." },
+    "storage_hybrid_label":         { "text": "Hybrid — ledger on shared pod, drafts local.", "doc": "Full label shown on /group.html when the crew is hybrid." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Completing pod sign-in", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },

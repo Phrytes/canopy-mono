@@ -35,7 +35,7 @@ import {
   MAX_CHAT_BYTES_PER_ATT,
   MAX_ATTACHMENTS_PER_POST,
 } from '../src/lib/Attachments.js';
-import { wireGroupBroadcastMirror } from '../src/groupMirror.js';
+import { attachSubstrateMirror } from '../src/substrateMirror.js';
 import { EVICTION_GRACE_MS } from '../src/lib/EvictionRoster.js';
 
 const ANNE = 'https://id.example/anne';
@@ -181,11 +181,9 @@ describe('Phase 39.2 — postRequest with attachments', () => {
 describe('Phase 39.3 — groupMirror copies attachment metadata', () => {
   it('mirror() carries attachments[] (no `ref` until fetched)', async () => {
     const bundle = await buildBundle();
-    const mirror = await wireGroupBroadcastMirror({
-      agent:     bundle.agent,
-      itemStore: bundle.itemStore,
-      group:     'oosterpoort',
-      peers:     [],
+    const mirror = await attachSubstrateMirror(bundle, {
+      group:          'oosterpoort',
+      peers:          [],
       evictionRoster: bundle.evictionRoster,
     });
 
@@ -271,11 +269,9 @@ describe('Phase 35 + 39 interaction — evicted authors still drop attachments',
       source: { redeemedBy: BOB, expiresAt: past },
     });
 
-    const mirror = await wireGroupBroadcastMirror({
-      agent:     bundle.agent,
-      itemStore: bundle.itemStore,
-      group:     'oosterpoort',
-      peers:     [],
+    const mirror = await attachSubstrateMirror(bundle, {
+      group:          'oosterpoort',
+      peers:          [],
       evictionRoster: bundle.evictionRoster,
     });
 

@@ -6,7 +6,7 @@
  * Used by:
  *   - Sender-side filter in `postRequest` (build the fan-out roster
  *     + drop muted + drop out-of-range).
- *   - Receiver-side check in `groupMirror` / `contactFanout`
+ *   - Receiver-side check in `substrateMirror` / `contactFanout`
  *     (is THIS post addressed to me?).
  *
  * Target shapes (functional design § 4f):

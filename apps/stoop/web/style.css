@@ -574,6 +574,34 @@ pre {
   gap: 6px;
   margin-top: 0.4rem;
 }
+
+/* A4 — cross-pod ref chips on post cards. */
+.embeds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 0.4rem;
+}
+.embed-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-alt, var(--bg));
+  font-size: 0.78rem;
+  color: var(--muted, #6c6c6c);
+  font-family: var(--mono, monospace);
+}
+.embed-chip .embed-type {
+  font-weight: 600;
+  text-transform: lowercase;
+  color: var(--accent, #4a90e2);
+}
+.embed-chip .embed-ref {
+  opacity: 0.85;
+}
 .attachment-thumb {
   display: inline-block;
   width: 96px;

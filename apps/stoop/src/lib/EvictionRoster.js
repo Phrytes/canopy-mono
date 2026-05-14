@@ -4,7 +4,7 @@
  * Tracks which webids are "evicted" — i.e. their last
  * `kind: 'membership-redemption'` item is past its `expiresAt + GRACE_MS`
  * window.  Posts from evicted members are dropped silently in the
- * `groupMirror` and `wireChat.broadcast-post` paths, so the UI no
+ * `substrateMirror` and `wireChat.broadcast-post` paths, so the UI no
  * longer surfaces stale members' content.
  *
  * Phase 25.7 already exposed `getMyMembershipStatus` — that's the

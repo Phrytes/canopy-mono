@@ -210,7 +210,7 @@
     "continue":         { "text": "Doorgaan", "doc": "CTA on SignInScreen step 2 — adopts tokens + attaches pod." },
     "attaching":        { "text": "Koppelen…", "doc": "CTA label while attachPod is in flight." },
     "pod_root_label":   { "text": "Pod-basis-URL", "doc": "Label above pod-root input on SignInScreen step 2." },
-    "pod_root_hint":    { "text": "Standaard afgeleid van je WebID-origin. Pas alleen aan als je opslag elders draait.", "doc": "Hint under pod-root input." },
+    "pod_root_hint":    { "text": "Standaard afgeleid van je WebID-origin. Pas alleen aan als je Pod elders draait.", "doc": "Hint under pod-root input." },
     "error_pod_root_required": { "text": "Pod-URL is verplicht.", "doc": "Inline validation error when pod-root field is empty." },
     "reset":            { "text": "Reset auth & opnieuw proberen", "doc": "Recovery CTA when DCR/discovery cached a stale client_id." },
     "signed_in":        { "text": "Aangemeld als {webid}", "doc": "Status when a session exists." },
@@ -438,7 +438,20 @@
     "backup_password_label":  { "text": "Wachtwoord (min. 8 tekens)", "doc": "Label of the backup-password input." },
     "backup_download":        { "text": "Download back-up", "doc": "Submit button for the encrypted-backup form." },
     "backup_encrypting":      { "text": "Versleutelen…", "doc": "Inline status while the encryptedBackup skill is running." },
-    "backup_downloaded":      { "text": "Back-up gedownload. Bewaar het bestand én je wachtwoord apart.", "doc": "Inline confirmation after a successful backup download. Reminds the user to keep file and passphrase separate." }
+    "backup_downloaded":      { "text": "Back-up gedownload. Bewaar het bestand én je wachtwoord apart.", "doc": "Inline confirmation after a successful backup download. Reminds the user to keep file and passphrase separate." },
+
+    "my_pods_heading":            { "text": "Mijn Solid-pods", "doc": "A6 — heading of the My-Solid-pods section on /profile.html." },
+    "my_pods_loading":            { "text": "Aan het laden…", "doc": "Initial placeholder under the My-Solid-pods heading." },
+    "my_pods_attached":           { "text": "Pod gekoppeld; schrijven gaan synchroon naar de pod.", "doc": "Status line shown when bundle.cache has an attached pod inner source." },
+    "my_pods_detached":           { "text": "Aangemeld, pod niet gekoppeld aan deze sessie.", "doc": "Status line shown when the user is OIDC-authenticated but bundle.cache.hasInner is false." },
+    "my_pods_two_pod_intro":      { "text": "Voor sterkere privacy-isolatie kun je je dagelijks gebruik opsplitsen in twee pods: een <strong>privé-pod</strong> voor je eigen items en een <strong>sharing-pod</strong> voor wat je met buurten deelt. De volledige editor leeft in de Hub-web-console (post-P5); de one-click preset komt in V3.", "doc": "Lead paragraph for the two-pod preset block. Contains <strong>." },
+    "my_pods_two_pod_btn":        { "text": "Splits in twee pods (komt in V3)", "doc": "Disabled CTA placeholder for the two-pod preset." },
+    "my_pods_two_pod_deferred":   { "text": "Substraat-onderdelen gepland; UI volgt in V3.", "doc": "Hint next to the disabled two-pod button explaining the deferral." },
+    "my_pods_sign_out":           { "text": "Uitloggen uit pod", "doc": "CTA that calls signOutOfPod." },
+    "my_pods_signing_out":        { "text": "Uitloggen…", "doc": "Inline status while signOutOfPod is in flight." },
+    "my_pods_signed_out_ok":      { "text": "Uitgelogd.", "doc": "Inline confirmation after signOutOfPod succeeds." },
+    "my_pods_signed_out_intro":   { "text": "Geen pod aan dit account gekoppeld. Stoop werkt prima zonder (no-pod modus); een pod erbij is optioneel.", "doc": "Lead paragraph shown when signedIn === false." },
+    "my_pods_sign_in_link":       { "text": "Aan pod koppelen", "doc": "Link to /sign-in.html in the signed-out variant of the My-Solid-pods section." }
   },
   "onboard": {
     "page_title":              { "text": "Stoop — Onboarden", "doc": "Browser tab title for /onboard.html. Used in both redeem and issue mode." },
@@ -622,7 +635,19 @@
     "result_expiry":  { "text": "Geldig tot {date} ({days} dagen). Modus: {mode}.", "doc": "Expiry line under the membership code. {date} is locale-formatted, {days} is the rotation period in days, {mode} is the human-readable rotation mode (see mode_admin_only / mode_peer)." },
     "result_footer":  { "text": "Je kunt 'm later opnieuw bekijken op de groep-pagina.", "doc": "Footer hint under the result card." },
     "mode_admin_only": { "text": "alleen admins delen de code uit", "doc": "Lower-case description of admin-only rotation, plugged into result_expiry's {mode}." },
-    "mode_peer":      { "text": "iedereen mag de code doorgeven", "doc": "Lower-case description of peer-distributable rotation, plugged into result_expiry's {mode}." }
+    "mode_peer":      { "text": "iedereen mag de code doorgeven", "doc": "Lower-case description of peer-distributable rotation, plugged into result_expiry's {mode}." },
+
+    "q7_storage":                   { "text": "7. Waar staat de groepsstaat?", "doc": "A3 — legend of the storage-policy fieldset." },
+    "q7_storage_intro":             { "text": "Standaard staat de groep <strong>op jullie eigen apparaten</strong> (geen Solid-pod nodig). Je kunt later upgraden naar een gedeelde pod voor betere persistentie. Eenmaal pod-having → niet meer terug.", "doc": "Hint under the storage-policy legend. Contains <strong>." },
+    "storage_no_pod_label":         { "text": "Op onze apparaten (no-pod, default).", "doc": "Bold label for the no-pod storage radio." },
+    "storage_no_pod_hint":          { "text": "Geen pod nodig. Items repliceren naar alle leden's pseudo-pod.", "doc": "Hint under the no-pod radio." },
+    "storage_centralised_label":    { "text": "Op een gedeelde Solid-pod.", "doc": "Bold label for the centralised storage radio." },
+    "storage_centralised_hint":     { "text": "Eén pod als bron van waarheid. Beste voor kleinere groepen (huishouden / sportclub).", "doc": "Hint under the centralised radio." },
+    "storage_decentralised_label":  { "text": "Iedereen op z'n eigen pod (cross-pod refs).", "doc": "Bold label for the decentralised storage radio." },
+    "storage_decentralised_hint":   { "text": "Geen centraal punt. Beste voor grote buurten (50+) waar centraliseren teveel vertrouwen vraagt.", "doc": "Hint under the decentralised radio." },
+    "storage_hybrid_label":         { "text": "Gemengd — ledger op gedeelde pod, drafts lokaal.", "doc": "Bold label for the hybrid storage radio." },
+    "storage_hybrid_hint":          { "text": "Voor groepen met af-en-toe-actieve leden die toch persistent willen zijn.", "doc": "Hint under the hybrid radio." },
+    "storage_group_pod_label":      { "text": "Pod-URI van de gedeelde groepspod", "doc": "Label of the optional groupPodUri input (centralised / hybrid only)." }
   },
   "nav": {
     "feed":     { "text": "Buurt",         "doc": "Top-nav link to the main feed page (/)." },
@@ -669,7 +694,23 @@
     "reprobe_busy":           { "text": "Bezig…", "doc": "Re-probe button label while the gossip + hellos run." },
     "reprobe_done":           { "text": "{n} peers gegroet", "doc": "Inline confirmation after Re-probe finishes — {n} = number of hellos sent." },
     "reprobe_waiting":        { "text": "Wachten op mDNS-ontdekking… ({s}s)", "doc": "Inline progress text on Re-probe while we wait for PeerGraph entries to appear (Android NSD discovery is slow on app start). {s} = elapsed seconds." },
-    "reprobe_no_peers":       { "text": "Geen peers ontdekt na 15s. mDNS bereikt het andere toestel niet — probeer de relay (Settings → Relay-server).", "doc": "Surfaced after the Re-probe deadline expires with no PeerGraph entries — mDNS isn't propagating, suggest the relay fallback." }
+    "reprobe_no_peers":       { "text": "Geen peers ontdekt na 15s. mDNS bereikt het andere toestel niet — probeer de relay (Settings → Relay-server).", "doc": "Surfaced after the Re-probe deadline expires with no PeerGraph entries — mDNS isn't propagating, suggest the relay fallback." },
+
+    "storage_heading":              { "text": "Opslag van de groepsstaat", "doc": "A5 — heading of the storage-policy section on /group.html." },
+    "storage_loading":              { "text": "Aan het laden…", "doc": "Initial placeholder under the storage-policy heading." },
+    "storage_upgrade_oneway":       { "text": "Eenmaal pod-having → niet meer terug naar no-pod.", "doc": "Note shown above the disabled upgrade row when the crew is already pod-having." },
+    "storage_new_policy_label":     { "text": "Nieuwe opslagvorm", "doc": "Label for the upgrade-target select on /group.html." },
+    "storage_centralised_short":    { "text": "Centraal op een pod", "doc": "Short label for the centralised option in the upgrade select." },
+    "storage_decentralised_short":  { "text": "Op ieders eigen pod", "doc": "Short label for the decentralised option in the upgrade select." },
+    "storage_hybrid_short":         { "text": "Gemengd", "doc": "Short label for the hybrid option in the upgrade select." },
+    "storage_pod_uri_label":        { "text": "Pod-URI", "doc": "Label for the groupPodUri input on /group.html upgrade row." },
+    "storage_upgrade_btn":          { "text": "Upgrade", "doc": "CTA on /group.html that calls setCrewStoragePolicy." },
+    "storage_upgrading":            { "text": "Aan het upgraden…", "doc": "Inline status while the upgrade is in flight." },
+    "storage_upgraded":             { "text": "Opslag bijgewerkt.", "doc": "Inline success status after the upgrade." },
+    "storage_no_pod_label":         { "text": "Op jullie eigen apparaten (no-pod).", "doc": "Full label shown on /group.html when the crew is no-pod." },
+    "storage_centralised_label":    { "text": "Op een gedeelde Solid-pod.", "doc": "Full label shown on /group.html when the crew is centralised." },
+    "storage_decentralised_label":  { "text": "Iedereen op z'n eigen pod (cross-pod refs).", "doc": "Full label shown on /group.html when the crew is decentralised." },
+    "storage_hybrid_label":         { "text": "Gemengd — ledger op gedeelde pod, drafts lokaal.", "doc": "Full label shown on /group.html when the crew is hybrid." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Pod-aanmelding voltooien", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },

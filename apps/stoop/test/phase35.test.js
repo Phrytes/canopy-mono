@@ -20,8 +20,7 @@ import {
 } from '@canopy/core';
 import { ItemStore } from '@canopy/item-store';
 import { MemorySource } from '@canopy/core';
-import { createNeighborhoodAgent } from '../src/index.js';
-import { wireGroupBroadcastMirror } from '../src/groupMirror.js';
+import { createNeighborhoodAgent, attachSubstrateMirror } from '../src/index.js';
 import { EvictionRoster, EVICTION_GRACE_MS } from '../src/lib/EvictionRoster.js';
 
 const ANNE = 'https://id.example/anne';
@@ -136,11 +135,9 @@ describe('Phase 35.2 — groupMirror filters evicted authors', () => {
 
     // Wire a mirror; we'll feed it directly via mirror() (the
     // test doesn't need a separate publishing agent).
-    const mirror = await wireGroupBroadcastMirror({
-      agent:     bundle.agent,
-      itemStore: bundle.itemStore,
-      group:     'oosterpoort',
-      peers:     [],
+    const mirror = await attachSubstrateMirror(bundle, {
+      group:          'oosterpoort',
+      peers:          [],
       evictionRoster,
     });
 

@@ -2,4 +2,12 @@ export { createNeighborhoodAgent }     from './Agent.js';
 export { createNeighborhoodCluster }   from './cluster.js';
 export { buildSkills }                 from './skills/index.js';
 export { buildOnboardingSkills }       from './onboarding.js';
-export { wireGroupBroadcastMirror }    from './groupMirror.js';
+/**
+ * Phase 52.9.2 / Q-B (2026-05-14) — groupMirror retired in favour of
+ * the `notify-envelope` + `pseudo-pod` substrate path.
+ * `wireGroupBroadcastMirror` is gone; use `wireSubstrateMirror` +
+ * `buildSubstrateStack` instead.
+ */
+export { wireSubstrateMirror,
+         attachSubstrateMirror }       from './substrateMirror.js';
+export { buildSubstrateStack }         from './lib/substrateStack.js';
