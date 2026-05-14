@@ -36,6 +36,9 @@ import { wireChat } from '@canopy/chat-p2p';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { registerAgentBundle } from '@canopy/agent-registry';
 
+import { buildTasksSubstrateStack } from './lib/substrateStack.js';
+import { wireTasksSubstrateMirror } from './substrateMirror.js';
+
 import { createTasksAgent } from './Agent.js';
 import { applyCustomRoles } from './skills/customRoles.js';
 import { REQUEST_TYPE as SUBTASK_REQUEST_TYPE, PROPOSAL_TYPE as SUBTASK_PROPOSAL_TYPE } from './skills/subtasks.js';
@@ -658,31 +661,67 @@ export async function createCrewAgent({
     }
   }
 
-  // Tasks V2 standardisation adoption (2026-05-14, P5 / Phase 52.10) —
-  // wire a standalone pseudoPod per crew bundle + register the agent
-  // in `<pseudo-pod>/private/agent-registry`. Soft-fail.
+  // Tasks V2 standardisation adoption (2026-05-14) —
+  //   • Phase 52.10 (P5): register the agent in
+  //     `<pseudo-pod>/private/agent-registry`.
+  //   • Phase 52.9.3 (Tasks V2 ninth slice): wire the substrate stack
+  //     (`pseudoPod` + `podRouting` + `notifyEnvelope`) + the
+  //     per-crew tasks-mirror so addTask writes fan-out cross-device.
   //
-  // Standalone-mode pseudoPod is enough for registry use today: Tasks
-  // doesn't yet do cross-device fan-out (Phase 52.9.3 substrate-mirror
-  // is the bigger follow-up). When that lands, this pseudoPod becomes
-  // the bundle's `pseudoPod` slot wired into substrate-mirror; for now
-  // it's local-only and just hosts the registry resource.
-  const tasksPseudoPod = createPseudoPod({
+  // Both pieces are best-effort: a failure to build any of them
+  // doesn't break bundle bring-up.
+  const substrateDeviceId = id?.pubKey ?? bundle.agent?.address ?? 'tasks-device';
+  let tasksSubstrate = null;
+  try {
+    tasksSubstrate = buildTasksSubstrateStack({
+      agent:    bundle.agent,
+      deviceId: substrateDeviceId,
+    });
+  } catch (_err) { /* fall through; agentRegistry still wires */ }
+  bundle.pseudoPod         = tasksSubstrate?.pseudoPod ?? createPseudoPod({
     backend:  createMemoryBackend(),
     mode:     'standalone',
-    deviceId: id?.pubKey ?? bundle.agent?.address ?? 'tasks-device',
+    deviceId: substrateDeviceId,
   });
-  bundle.pseudoPod        = tasksPseudoPod;
-  bundle.substrateDeviceId = id?.pubKey ?? bundle.agent?.address ?? 'tasks-device';
+  bundle.podRouting        = tasksSubstrate?.podRouting ?? null;
+  bundle.notifyEnvelope    = tasksSubstrate?.notifyEnvelope ?? null;
+  bundle.substrateDeviceId = substrateDeviceId;
+  bundle._substrateStop    = tasksSubstrate?.stop ?? null;
+  // Stash on CrewState so multi-crew skill bodies can access per-crew
+  // substrate handles via bundleResolver.
+  crewState.pseudoPod      = bundle.pseudoPod;
+  crewState.notifyEnvelope = bundle.notifyEnvelope;
+  crewState.substrateDeviceId = substrateDeviceId;
+
   bundle.agentRegistry = await registerAgentBundle({
-    pseudoPod:    tasksPseudoPod,
-    podDeviceId:  bundle.substrateDeviceId,
+    pseudoPod:    bundle.pseudoPod,
+    podDeviceId:  substrateDeviceId,
     agent:        bundle.agent,
     opts: {
       capabilities: ['tasks', 'tasks-v0', `crew:${crew.crewId}`],
       name:         crew.name,
     },
   });
+
+  // Per-crew substrate mirror — fans out addTask writes to peers
+  // and applies inbound task envelopes to the local itemStore. Only
+  // wired when the full substrate stack came up (notifyEnvelope is
+  // required). Selfless tests that don't need fan-out can still run.
+  let tasksMirror = null;
+  if (bundle.notifyEnvelope) {
+    try {
+      tasksMirror = await wireTasksSubstrateMirror({
+        itemStore:       bundle.itemStore,
+        notifyEnvelope:  bundle.notifyEnvelope,
+        pseudoPod:       bundle.pseudoPod,
+        crewId:          crew.crewId,
+        peers:           (crew.members ?? []).filter(m => m?.pubKey).map(m => ({ pubKey: m.pubKey })),
+        selfPubKey:      bundle.agent?.address ?? null,
+      });
+      crewState.tasksMirror = tasksMirror;
+      bundle.tasksMirror    = tasksMirror;
+    } catch (_err) { /* best-effort; addTask still works locally */ }
+  }
 
   return {
     ...bundle,

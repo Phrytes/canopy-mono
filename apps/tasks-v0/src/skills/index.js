@@ -188,6 +188,42 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
         if (!v.ok) console.warn('item-types[task]:', JSON.stringify(v.errors));
       } catch { /* validator outage must not break writes */ }
 
+      // Phase 52.9.3 (Tasks V2 ninth slice, 2026-05-14) — substrate
+      // fan-out. When the crew has a `tasksMirror` + `notifyEnvelope`
+      // wired (createCrewAgent path; not the V0 zero-config path),
+      // publish the new task to every peer in the mirror's roster.
+      // Best-effort (parity with Stoop's substrateMirror); failure
+      // doesn't block the local write.
+      const mirror    = crew?.tasksMirror;
+      const envelopeBus = crew?.notifyEnvelope;
+      const pseudoPod   = crew?.pseudoPod;
+      const crewId      = crew?.liveCrew?.crewId ?? null;
+      if (mirror && envelopeBus && pseudoPod && crewId) {
+        const recipientsRoster = mirror.getPeers?.() ?? [];
+        if (recipientsRoster.length > 0) {
+          const publisherPubKey = envelope?._toAgent ?? envelope?._fromAgent ?? null;
+          (async () => {
+            try {
+              const uri = mirror.urlFor?.(task.id)
+                ?? `pseudo-pod://${crew.substrateDeviceId}/tasks/crews/${crewId}/tasks/${task.id}`;
+              const { etag, _v } = await pseudoPod.write(uri, task);
+              await envelopeBus.publish({
+                type:       'task',
+                ref:        uri,
+                payload:    task,
+                etag,
+                _v,
+                recipients: recipientsRoster,
+                ...(publisherPubKey ? { fromActor: publisherPubKey } : {}),
+                crewId,
+              });
+            } catch (_err) {
+              /* best-effort fan-out — local write already succeeded */
+            }
+          })();
+        }
+      }
+
       return { task };
     }, {
       description: 'Create a task; rejects on dependency cycles. Blocked when crew is paused/archived.',
