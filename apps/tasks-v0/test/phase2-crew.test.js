@@ -112,14 +112,18 @@ describe('Phase 2 — Crew envelope', () => {
   describe('createCrewAgent — zero-config implicit household', () => {
     it('boots with no crewConfig + no localStoreBundle (V0 parity)', async () => {
       const result = await createCrewAgent({
-        wireOnboardingSkills: false,  // skip GroupManager wiring for this minimal test
+        wireOnboardingSkills: false,  // skip per-crew skill registration
       });
       expect(result.agent).toBeDefined();
       expect(result.itemStore).toBeDefined();
       expect(result.crew.crewId).toBe('household');
       expect(result.crew.kind).toBe('household');
       expect(result.localStore).toBeNull();
-      expect(result.groupManager).toBeNull();
+      // Contract update 2026-05-14 (Tasks V2 seventh slice): the
+      // GroupManager is always constructed + stashed on CrewState
+      // for multi-crew dispatch. `wireOnboardingSkills:false` only
+      // skips per-crew skill registration.
+      expect(result.groupManager).toBeTruthy();
     });
   });
 
@@ -170,12 +174,18 @@ describe('Phase 2 — Crew envelope', () => {
       expect(inviteRes.invite.groupId).toBe('oss-tools');
     });
 
-    it('skips skill registration when wireOnboardingSkills:false', async () => {
+    it('skips skill registration when wireOnboardingSkills:false (but still builds GroupManager for multi-crew dispatch)', async () => {
+      // Contract update 2026-05-14 (Tasks V2 seventh slice): the
+      // GroupManager is always constructed + stashed on the CrewState
+      // so the multi-crew onboarding wrapper can find it per call.
+      // Only the per-crew skill registration is skipped — the CLI's
+      // --multi-crew path registers the wrapper once instead.
       const result = await createCrewAgent({
         crewConfig:           SAMPLE_CONFIG,
         wireOnboardingSkills: false,
       });
-      expect(result.groupManager).toBeNull();
+      expect(result.groupManager).toBeTruthy();
+      expect(result._crewState.groupManager).toBe(result.groupManager);
       expect(result.agent.skills.has('issueInvite')).toBe(false);
       expect(result.agent.skills.has('redeemInvite')).toBe(false);
     });
