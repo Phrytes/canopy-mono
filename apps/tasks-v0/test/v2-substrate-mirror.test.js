@@ -279,6 +279,136 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
     expect(synced.completedAt).toBeTypeOf('number');
   });
 
+  it('submit → reject → submit → approve replicates the full lifecycle to the peer', async () => {
+    const { anneBundle, bobBundle } = await buildPeeredBundles();
+
+    // Anne adds, claims, and submits with `approval: 'creator'` so
+    // BOB is the approver (Anne created the task → master=Anne but
+    // approval=creator means the issuer signs off; in our 2-member
+    // crew, that's still Anne. To make Bob the approver, use
+    // explicit approval=<bob>). For this test we just exercise the
+    // state-machine replication on Anne's side and check Bob sees
+    // it: Anne is the assignee + approver.
+    const addRes = await callSkill(anneBundle.agent, 'addTask', {
+      crewId:   'fan-out-crew',
+      text:     'lifecycle task',
+      approval: 'creator',
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    await callSkill(anneBundle.agent, 'claimTask', {
+      crewId: 'fan-out-crew', id: addRes.task.id,
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    await callSkill(anneBundle.agent, 'submitTask', {
+      crewId:      'fan-out-crew',
+      id:          addRes.task.id,
+      deliverable: { kind: 'url', ref: 'https://example/proof' },
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    let bobOpen = await bobBundle.itemStore.listOpen();
+    let synced = bobOpen.find((i) => i.source?.syncedFromId === addRes.task.id);
+    expect(synced).toBeTruthy();
+    expect(synced.deliverable?.kind).toBe('url');
+    expect(synced.reviewLog?.some((r) => r.decision === 'submit')).toBe(true);
+
+    await callSkill(anneBundle.agent, 'rejectTask', {
+      crewId: 'fan-out-crew', id: addRes.task.id, note: 'try again',
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    bobOpen = await bobBundle.itemStore.listOpen();
+    synced = bobOpen.find((i) => i.source?.syncedFromId === addRes.task.id);
+    expect(synced.reviewLog?.some((r) => r.decision === 'reject')).toBe(true);
+
+    await callSkill(anneBundle.agent, 'submitTask', {
+      crewId: 'fan-out-crew', id: addRes.task.id,
+    }, ANNE);
+    await callSkill(anneBundle.agent, 'approveTask', {
+      crewId: 'fan-out-crew', id: addRes.task.id,
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const bobClosed = await bobBundle.itemStore.listClosed();
+    const finalSynced = bobClosed.find((i) => i.source?.syncedFromId === addRes.task.id);
+    expect(finalSynced).toBeTruthy();
+    expect(finalSynced.completedAt).toBeTypeOf('number');
+    expect(finalSynced.reviewLog?.some((r) => r.decision === 'approve')).toBe(true);
+  });
+
+  it('reassignTask replicates the new assignee', async () => {
+    // Reassign is admin/coordinator-gated. Build a config where Anne is
+    // admin so she can reassign; Bob still admin so the receive-side
+    // applySync doesn't get policy-checked.
+    const bus = new InternalBus();
+    const lsA = buildBundle(); const lsB = buildBundle();
+    const idA = await AgentIdentity.generate(new VaultMemory());
+    const idB = await AgentIdentity.generate(new VaultMemory());
+    const txA = new InternalTransport(bus, idA.pubKey);
+    const txB = new InternalTransport(bus, idB.pubKey);
+    const cfg = {
+      crewId:  'reassign-crew',
+      name:    'Reassign Test',
+      kind:    'project',
+      members: [
+        { webid: ANNE, role: 'admin' },
+        { webid: BOB,  role: 'admin' },
+      ],
+    };
+    const anneBundle = await createCrewAgent({ crewConfig: cfg, localStoreBundle: lsA, identity: idA, transport: txA });
+    const bobBundle  = await createCrewAgent({ crewConfig: cfg, localStoreBundle: lsB, identity: idB, transport: txB });
+    anneBundle.agent.addPeer(idB.pubKey, idB.pubKey);
+    bobBundle.agent.addPeer(idA.pubKey, idA.pubKey);
+    await anneBundle.tasksMirror?.addPeer(idB.pubKey);
+    await bobBundle.tasksMirror?.addPeer(idA.pubKey);
+
+    const addRes = await callSkill(anneBundle.agent, 'addTask', {
+      crewId: 'reassign-crew', text: 'reassignable',
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    await callSkill(anneBundle.agent, 'claimTask', {
+      crewId: 'reassign-crew', id: addRes.task.id,
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    await callSkill(anneBundle.agent, 'reassignTask', {
+      crewId: 'reassign-crew', id: addRes.task.id, newAssignee: BOB,
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const bobItems = await bobBundle.itemStore.listOpen();
+    const synced = bobItems.find((i) => i.source?.syncedFromId === addRes.task.id);
+    expect(synced).toBeTruthy();
+    expect(synced.assignee).toBe(BOB);
+  });
+
+  it('revokeTask clears the assignee on the peer', async () => {
+    const { anneBundle, bobBundle } = await buildPeeredBundles();
+
+    const addRes = await callSkill(anneBundle.agent, 'addTask', {
+      crewId: 'fan-out-crew', text: 'revokable',
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    await callSkill(anneBundle.agent, 'claimTask', {
+      crewId: 'fan-out-crew', id: addRes.task.id,
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    await callSkill(anneBundle.agent, 'revokeTask', {
+      crewId: 'fan-out-crew', id: addRes.task.id, reason: 'changed mind',
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const bobItems = await bobBundle.itemStore.listOpen();
+    const synced = bobItems.find((i) => i.source?.syncedFromId === addRes.task.id);
+    expect(synced).toBeTruthy();
+    expect(synced.assignee).toBeUndefined();
+  });
+
   it('removeTask hard-deletes the synced copy on the peer', async () => {
     // Need admin on both sides for removeTask. Use a config where
     // both ANNE and BOB are admins.

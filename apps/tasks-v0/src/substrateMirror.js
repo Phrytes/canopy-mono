@@ -285,10 +285,20 @@ export async function wireTasksSubstrateMirror({
  * the standard `item-<action>` event emission.
  */
 function _inferAction(local, next) {
+  // submit/approve/reject mutate the reviewLog rather than a
+  // dedicated `submittedAt`/`rejectedAt` field. The newest entry's
+  // `decision` gives us the action when reviewLog grew.
+  const localLen = Array.isArray(local.reviewLog) ? local.reviewLog.length : 0;
+  const nextLen  = Array.isArray(next.reviewLog)  ? next.reviewLog.length  : 0;
+  if (nextLen > localLen) {
+    const newest = next.reviewLog[nextLen - 1];
+    if (newest?.decision === 'submit')  return 'submit';
+    if (newest?.decision === 'reject')  return 'reject';
+    if (newest?.decision === 'approve') return 'approve';
+  }
+  // approve sets completedAt too — fall through to the
+  // completed-state check below if reviewLog didn't yield a hit.
   if (!local.completedAt && next.completedAt)        return 'complete';
-  if (!local.submittedAt && next.submittedAt)        return 'submit';
-  if (!local.approvedAt  && next.approvedAt)         return 'approve';
-  if (!local.rejectedAt  && next.rejectedAt)         return 'reject';
   if (local.assignee && !next.assignee)              return 'revoke';
   if (!local.assignee && next.assignee)              return 'claim';
   if (local.assignee && next.assignee && local.assignee !== next.assignee) return 'reassign';
