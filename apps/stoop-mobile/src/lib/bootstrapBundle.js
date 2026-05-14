@@ -26,7 +26,9 @@
 
 import {
   createNeighborhoodAgent,
-  wireGroupBroadcastMirror,
+  wireSubstrateMirror,
+  buildSubstrateStack,
+  registerAgentInRegistry,
 } from '@canopy-app/stoop';
 import { defaultLocalActor, buildMeshAgent } from './agentBundle.js';
 
@@ -88,18 +90,35 @@ export async function buildBootstrapBundle({ identity, label, relayUrl } = {}) {
   bundle.itemStore.on?.('item-updated',   _bridgeItemArrive);
   bundle.itemStore.on?.('item-completed', _bridgeItemArrive);
 
-  // Cross-device post replication mirror — same as a real group
-  // bundle.  On `_bootstrap` it's a no-op (no peers post there),
-  // but the relabel path swaps it onto the real groupId where it
-  // actually does work.
-  const mirror = await wireGroupBroadcastMirror({
-    agent:          bundle.agent,
+  // Cross-device post replication via the substrate path (Phase
+  // 52.9.2 / Q-B 2026-05-14). On `_bootstrap` it's a no-op (no
+  // peers post there), but the relabel path swaps the substrate
+  // stack + mirror onto the real groupId where it does work.
+  const substrate = buildSubstrateStack({ agent: bundle.agent });
+  bundle.pseudoPod         = substrate.pseudoPod;
+  bundle.podRouting        = substrate.podRouting;
+  bundle.notifyEnvelope    = substrate.notifyEnvelope;
+  bundle.substrateDeviceId = substrate.deviceId;
+  bundle._substrateStop    = substrate.stop;
+  const mirror = await wireSubstrateMirror({
     itemStore:      bundle.itemStore,
+    notifyEnvelope: substrate.notifyEnvelope,
+    pseudoPod:      substrate.pseudoPod,
     group:          BOOTSTRAP_GROUP_ID,
     peers:          [],
     evictionRoster: bundle.evictionRoster ?? null,
+    selfPubKey:     bundle.agent?.address ?? null,
   });
   bundle.mirror = mirror;
+
+  // C3 (substrate-adoption A7 mobile mirror, 2026-05-14): register this
+  // device in the agent-registry pod resource (Phase 52.10).
+  bundle.agentRegistry = await registerAgentInRegistry({
+    pseudoPod:   substrate.pseudoPod,
+    podDeviceId: substrate.deviceId,
+    agent:       bundle.agent,
+    opts:        { capabilities: ['stoop', 'stoop-mobile', 'bootstrap'] },
+  });
 
   // Bridge mDNS → SkillMatch + mirror (mirror of buildBundleForGroup).
   // Bootstrap's SkillMatch is on the `_bootstrap` topic; cross-device
@@ -124,6 +143,7 @@ export async function buildBootstrapBundle({ identity, label, relayUrl } = {}) {
   const stop = async () => {
     try { meshAgent.off('peer', _onAgentPeer);   } catch { /* swallow */ }
     try { await bundle.mirror?.stop?.();         } catch { /* swallow */ }
+    try { bundle._substrateStop?.();             } catch { /* swallow */ }
     try { await bundle.skillMatch.stop?.();      } catch { /* swallow */ }
     try { await bundle.agent.stop?.();           } catch { /* swallow */ }
   };
