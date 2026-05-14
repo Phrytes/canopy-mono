@@ -7,12 +7,33 @@ dispatch + role-aware governance + DoD-with-approver lifecycle +
 sub-task spawning + in-app inbox + local calendar conflict view +
 per-event observability.
 
-**Status:** V1 (`0.2.0`) shipped 2026-05-08 — `~1100 LOC` of app
-glue + 7-screen workspace UI on top of 7 substrate packages.
-**176/176 tests passing.**
+**Status:** **V2 (`0.4.0`) shipped 2026-05-14 — full standardisation
+adoption + multi-crew runtime + cross-device substrate-mirror.**
+V1 (`0.2.0`) shipped 2026-05-08. 122/122 tests across 7 test files.
+
+V2 brought:
+- `embeds:[{type,ref}]` on `addTask` + `crewConfig.storage` (§II.2:
+  no-pod / centralised / decentralised / hybrid).
+- `/welcome.html` create-crew wizard + `provisionMyCrew` skill.
+- agent-registry per crew bundle (Phase 52.10).
+- `/onboard.html` invite redemption + `/pod-settings.html` storage
+  policy + pod OIDC sign-in (Phase 52.15.3 via `createSolidAuthNode`).
+- `bin/tasks-ui.js --multi-crew` flag: shared meshAgent + crewsMap +
+  `spawnMyCrew` skill + multi-crew onboarding dispatch.
+- Phase 52.9.3 substrate-mirror: every mutation
+  (add/claim/complete/submit/approve/reject/revoke/reassign/remove)
+  fans out via `notifyEnvelope.publish`, applied on receivers via
+  the gate-bypass `ItemStore.applySync`/`removeSync` methods.
+- Stale-peer auto-heal, `fetch-resource` + `groupCheck`, live
+  peer-roster updates from invite redemption.
+
+See [`CHANGELOG.md`](./CHANGELOG.md) for the 12-slice breakdown +
+commit refs, and
+[`../../Project Files/Tasks App/v2-web-functional-design-2026-05-11.md`](../../Project%20Files/Tasks%20App/v2-web-functional-design-2026-05-11.md)
+for the design source.
 
 V0 (single-household, no Crew envelope) ships unchanged; V1 is
-additive — `createCrewAgent` wires the V1 surface; the legacy
+additive — `createCrewAgent` wires the V1+ surface; the legacy
 `createTasksAgent` keeps working for V0 callers.
 
 ## What's in here

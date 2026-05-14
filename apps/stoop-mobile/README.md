@@ -19,14 +19,36 @@
 Stoop V3 — React Native mobile client for the buurt-skill-app.
 Phase 40 of the [V3 mobile coding plan](../../Project%20Files/Stoop/v3-mobile-coding-plan-2026-05-08.md).
 
-## Status (2026-05-08)
+## Status (2026-05-14 — V4 C-track shipped)
 
-V3 mobile **wiring is complete**. All planned coding-plan phases
-have shipped except 40.23 (real-device pass — needs hardware) and
-this very 40.24 (handoff / docs). The app boots an in-process
-agent, drives every Stoop skill (post / chat / contacts / groups /
-profile / settings / push / sign-in / skill-match), and is ready
-for an end-to-end smoke test on a physical Android.
+V3 mobile wiring complete 2026-05-08. **V4 C-track (mobile mirror
+of Stoop V2 web's A-track) shipped 2026-05-14:**
+
+- **C2** stale-peer auto-heal inherits from `wireSubstrateMirror`
+  (no mobile-side code change).
+- **C3** agent-registry registration in all three bundle bring-up
+  paths (`bootstrapBundle.js` + `agentBundle.js` × 2). `bundle.podRouting`
+  exposed.
+- **C4** storage-policy picker step on
+  `CreateGroupScreen.js` (4-radio + conditional pod-URI input).
+- **C5a** "My Solid pods" section on `ProfileMineScreen.js`
+  (status display via `podSignInStatus` + sign-out). Two-pod
+  preset placeholder for V3+.
+- **C5b** embed-ref slot on `PostComposeScreen.js` (cap 8 +
+  inline validation).
+
+EN+NL locales added; `localesIntegrity` test expanded to 593
+keys (593/593 pass).
+
+All planned coding-plan phases have shipped except **40.23**
+(real-device pass — hardware-dependent) and **40.24** (this
+README / handoff). The app boots an in-process agent, drives
+every Stoop skill (post / chat / contacts / groups / profile /
+settings / push / sign-in / skill-match), and is ready for an
+end-to-end smoke test on a physical Android.
+
+See [`../stoop/CHANGELOG.md`](../stoop/CHANGELOG.md) `0.3.0` for
+the full Q-B retirement + A-track + C-track breakdown.
 
 | Phase | Theme | State |
 |---|---|---|
