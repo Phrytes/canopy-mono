@@ -46,6 +46,10 @@ const REQUIRED_KEYS = [
   'compose.scope_contacts', 'compose.scope_hops',
   'compose.skills_label', 'compose.submit', 'compose.submitting',
   'compose.too_many_attachments', 'compose.permission_denied',
+  // C5 (2026-05-14) — embed-ref slot on PostComposeScreen.
+  'compose.embeds_heading', 'compose.embeds_hint',
+  'compose.embed_type_ph', 'compose.embed_ref_ph', 'compose.embed_add',
+  'compose.embed_invalid', 'compose.embed_too_many',
 
   // tabs
   'tabs.feed', 'tabs.mine', 'tabs.chat', 'tabs.contacts', 'tabs.profile', 'tabs.settings',
@@ -82,6 +86,11 @@ const REQUIRED_KEYS = [
   'profile.recovery_heading', 'profile.recovery_intro',
   'profile.recovery_show', 'profile.recovery_close', 'profile.recovery_unavailable',
   'profile.handle_empty', 'profile.handle_too_short', 'profile.handle_too_long', 'profile.handle_bad_chars',
+  // C5 (2026-05-14) — My Solid pods section on mobile profile.
+  'profile.my_pods_heading', 'profile.my_pods_loading',
+  'profile.my_pods_attached', 'profile.my_pods_detached',
+  'profile.my_pods_sign_out', 'profile.my_pods_signing_out', 'profile.my_pods_signed_out_ok',
+  'profile.my_pods_two_pod_deferred_mobile', 'profile.my_pods_signed_out_intro_mobile',
 
   // profile_other
   'profile_other.unknown_member', 'profile_other.skills',
@@ -134,6 +143,14 @@ const REQUIRED_KEYS = [
   'create_group.name_label', 'create_group.name_placeholder',
   'create_group.purpose_label', 'create_group.purpose_placeholder',
   'create_group.submit', 'create_group.creating',
+  // C4 (2026-05-14) — storage-policy picker on mobile.
+  'create_group.q7_storage', 'create_group.q7_storage_intro_mobile',
+  'create_group.storage_no_pod_label', 'create_group.storage_no_pod_hint',
+  'create_group.storage_centralised_label', 'create_group.storage_centralised_hint',
+  'create_group.storage_decentralised_label', 'create_group.storage_decentralised_hint',
+  'create_group.storage_hybrid_label', 'create_group.storage_hybrid_hint',
+  'create_group.storage_group_pod_label',
+  'create_group.storage_pod_uri_required',
 
   'metrics.heading', 'metrics.unavailable',
 

@@ -192,7 +192,14 @@
     "submit":                { "text": "Plaats", "doc": "Submit CTA on PostComposeScreen." },
     "submitting":            { "text": "Bezig…", "doc": "Submit CTA label while the call is in flight." },
     "too_many_attachments":  { "text": "Max {n} bijlagen.", "doc": "Inline alert when the user exceeds MAX_ATTACHMENTS." },
-    "permission_denied":     { "text": "Stoop heeft geen toestemming voor camera/galerij.", "doc": "Inline error when the OS rejected the permission prompt." }
+    "permission_denied":     { "text": "Stoop heeft geen toestemming voor camera/galerij.", "doc": "Inline error when the OS rejected the permission prompt." },
+    "embeds_heading":        { "text": "Refs naar andere items (optioneel)", "doc": "C5 — section heading above the embed-ref slot on PostComposeScreen." },
+    "embeds_hint":           { "text": "Verwijs naar een taak, een notitie, of een ander item. Max 8.", "doc": "C5 — hint under the embeds heading." },
+    "embed_type_ph":         { "text": "type", "doc": "Placeholder for the embed-type input (e.g. 'task' / 'note')." },
+    "embed_ref_ph":          { "text": "pseudo-pod://… of https://…", "doc": "Placeholder for the embed-ref input." },
+    "embed_add":             { "text": "Toevoegen", "doc": "CTA that appends an embed to the post." },
+    "embed_invalid":         { "text": "Vul type en ref in voor een embed.", "doc": "Inline error when the user clicks Add without both fields." },
+    "embed_too_many":        { "text": "Max 8 embeds per post.", "doc": "Inline error when the user tries to add a 9th embed." }
   },
   "privacy": {
     "heading":               { "text": "Privacy & veiligheid", "doc": "Heading on PrivacyScreen." },
@@ -451,7 +458,9 @@
     "my_pods_signing_out":        { "text": "Uitloggen…", "doc": "Inline status while signOutOfPod is in flight." },
     "my_pods_signed_out_ok":      { "text": "Uitgelogd.", "doc": "Inline confirmation after signOutOfPod succeeds." },
     "my_pods_signed_out_intro":   { "text": "Geen pod aan dit account gekoppeld. Stoop werkt prima zonder (no-pod modus); een pod erbij is optioneel.", "doc": "Lead paragraph shown when signedIn === false." },
-    "my_pods_sign_in_link":       { "text": "Aan pod koppelen", "doc": "Link to /sign-in.html in the signed-out variant of the My-Solid-pods section." }
+    "my_pods_sign_in_link":       { "text": "Aan pod koppelen", "doc": "Link to /sign-in.html in the signed-out variant of the My-Solid-pods section." },
+    "my_pods_two_pod_deferred_mobile": { "text": "Twee-pods-preset komt in V3 (substraat gereed; UI volgt).", "doc": "C5 — mobile-only short variant of the deferred note." },
+    "my_pods_signed_out_intro_mobile": { "text": "Geen pod aan dit account gekoppeld. Stoop werkt prima zonder; pod-koppeling is optioneel.", "doc": "C5 — mobile-only short variant of the signed-out hint." }
   },
   "onboard": {
     "page_title":              { "text": "Stoop — Onboarden", "doc": "Browser tab title for /onboard.html. Used in both redeem and issue mode." },
@@ -647,7 +656,9 @@
     "storage_decentralised_hint":   { "text": "Geen centraal punt. Beste voor grote buurten (50+) waar centraliseren teveel vertrouwen vraagt.", "doc": "Hint under the decentralised radio." },
     "storage_hybrid_label":         { "text": "Gemengd — ledger op gedeelde pod, drafts lokaal.", "doc": "Bold label for the hybrid storage radio." },
     "storage_hybrid_hint":          { "text": "Voor groepen met af-en-toe-actieve leden die toch persistent willen zijn.", "doc": "Hint under the hybrid radio." },
-    "storage_group_pod_label":      { "text": "Pod-URI van de gedeelde groepspod", "doc": "Label of the optional groupPodUri input (centralised / hybrid only)." }
+    "storage_group_pod_label":      { "text": "Pod-URI van de gedeelde groepspod", "doc": "Label of the optional groupPodUri input (centralised / hybrid only)." },
+    "q7_storage_intro_mobile":      { "text": "Standaard op jullie eigen apparaten. Je kunt later upgraden naar een gedeelde pod. Eenmaal pod-having → niet meer terug.", "doc": "C4 (mobile) — shorter hint for the storage-policy section in the mobile CreateGroupScreen." },
+    "storage_pod_uri_required":     { "text": "Vul een pod-URI in voor deze opslagvorm.", "doc": "C4 (mobile) — inline error when centralised / hybrid is picked but groupPodUri is empty." }
   },
   "nav": {
     "feed":     { "text": "Buurt",         "doc": "Top-nav link to the main feed page (/)." },

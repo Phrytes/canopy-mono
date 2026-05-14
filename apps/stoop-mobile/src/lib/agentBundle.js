@@ -22,7 +22,9 @@
 
 import {
   createNeighborhoodAgent,
-  wireGroupBroadcastMirror,
+  wireSubstrateMirror,
+  buildSubstrateStack,
+  registerAgentInRegistry,
 } from '@canopy-app/stoop';
 import {
   Agent, AgentConfig, FallbackTable, InternalBus, InternalTransport,
@@ -132,20 +134,38 @@ export async function buildBundleForGroup({
   bundle.itemStore.on?.('item-updated',   _bridgeItemArrive);
   bundle.itemStore.on?.('item-completed', _bridgeItemArrive);
 
-  // Cross-device post replication.  SkillMatch.broadcast publishes
-  // on the sender's `<group>/requests` pubsub topic; without a
-  // matching subscriber, posts evaporate at the receiver.
-  // wireGroupBroadcastMirror subscribes to each peer's topic and
-  // mirrors inbound broadcasts into our local ItemStore so the Feed
-  // shows them.  Mirror of `apps/stoop/bin/stoop-testbed.js`.
-  const mirror = await wireGroupBroadcastMirror({
-    agent:          bundle.agent,
+  // Cross-device post replication (Phase 52.9.2 / Q-B 2026-05-14).
+  // Legacy `groupMirror` retired; the new substrate path is
+  // `pseudo-pod` (per-device local store) + `notify-envelope` (per-
+  // recipient fan-out with kind-based subscribers + the Q-D 3-way
+  // Lamport version compare on receive).
+  const substrate = buildSubstrateStack({ agent: bundle.agent });
+  bundle.pseudoPod      = substrate.pseudoPod;
+  bundle.podRouting     = substrate.podRouting;
+  bundle.notifyEnvelope = substrate.notifyEnvelope;
+  bundle.substrateDeviceId = substrate.deviceId;
+  bundle._substrateStop = substrate.stop;
+  const mirror = await wireSubstrateMirror({
     itemStore:      bundle.itemStore,
+    notifyEnvelope: substrate.notifyEnvelope,
+    pseudoPod:      substrate.pseudoPod,
     group:          groupId,
     peers:          (members ?? []).filter(m => m?.pubKey).map(m => ({ pubKey: m.pubKey })),
     evictionRoster: bundle.evictionRoster ?? null,
+    selfPubKey:     bundle.agent?.address ?? null,
   });
   bundle.mirror = mirror;
+
+  // C3 (substrate-adoption A7 mobile mirror, 2026-05-14): register
+  // this device in the agent-registry pod resource (Phase 52.10).
+  // Soft-fail — failures attach `null` instead of breaking bundle
+  // bring-up. Idempotent (CAS upsert keyed on pubKey).
+  bundle.agentRegistry = await registerAgentInRegistry({
+    pseudoPod:   substrate.pseudoPod,
+    podDeviceId: substrate.deviceId,
+    agent:       bundle.agent,
+    opts:        { capabilities: ['stoop', 'stoop-mobile', 'mdns', 'ble'] },
+  });
 
   // Bridge mDNS peer-discovered → SkillMatch.addPeer + mirror.addPeer
   // so when the other phone advertises itself, both the matchmaking
@@ -198,6 +218,7 @@ export async function buildBundleForGroup({
   const stop = async () => {
     try { meshAgent.off('peer', _onAgentPeer);   } catch { /* swallow */ }
     try { await bundle.mirror?.stop?.();         } catch { /* swallow */ }
+    try { bundle._substrateStop?.();             } catch { /* swallow */ }
     try { await bundle.skillMatch.stop?.();      } catch { /* swallow */ }
     try { await bundle.agent.stop?.();           } catch { /* swallow */ }
   };
@@ -291,16 +312,33 @@ export async function buildGroupState({
   bundle.itemStore.on?.('item-updated',   _bridgeItemArrive);
   bundle.itemStore.on?.('item-completed', _bridgeItemArrive);
 
-  // Cross-device post replication (per-group: each mirror subscribes
-  // to its own `<groupId>/requests` topic).
-  const mirror = await wireGroupBroadcastMirror({
-    agent:          meshAgent,
+  // Cross-device post replication via the substrate path (Phase 52.9.2
+  // / Q-B 2026-05-14). Per-group: each mirror filters envelopes whose
+  // ref includes /stoop/<groupId>/requests/.
+  const substrate = buildSubstrateStack({ agent: meshAgent });
+  bundle.pseudoPod         = substrate.pseudoPod;
+  bundle.podRouting        = substrate.podRouting;
+  bundle.notifyEnvelope    = substrate.notifyEnvelope;
+  bundle.substrateDeviceId = substrate.deviceId;
+  bundle._substrateStop    = substrate.stop;
+  const mirror = await wireSubstrateMirror({
     itemStore:      bundle.itemStore,
+    notifyEnvelope: substrate.notifyEnvelope,
+    pseudoPod:      substrate.pseudoPod,
     group:          groupId,
     peers:          (members ?? []).filter(m => m?.pubKey).map(m => ({ pubKey: m.pubKey })),
     evictionRoster: bundle.evictionRoster ?? null,
+    selfPubKey:     meshAgent.address ?? null,
   });
   bundle.mirror = mirror;
+
+  // C3 (substrate-adoption A7 mobile mirror, 2026-05-14).
+  bundle.agentRegistry = await registerAgentInRegistry({
+    pseudoPod:   substrate.pseudoPod,
+    podDeviceId: substrate.deviceId,
+    agent:       meshAgent,
+    opts:        { capabilities: ['stoop', 'stoop-mobile', 'mdns', 'ble'] },
+  });
 
   // Bridge agent.peer → this bundle's skillMatch + mirror addPeer.
   // Multiple bundles each register their own listener on the shared
@@ -353,6 +391,7 @@ export async function buildGroupState({
   const stop = async () => {
     try { meshAgent.off('peer', _onAgentPeer);   } catch { /* swallow */ }
     try { await bundle.mirror?.stop?.();         } catch { /* swallow */ }
+    try { bundle._substrateStop?.();             } catch { /* swallow */ }
     try { await bundle.skillMatch.stop?.();      } catch { /* swallow */ }
     // Detach itemStore bridge listeners.
     try { bundle.itemStore.off?.('item-added',     _bridgeItemArrive); } catch { /* swallow */ }
@@ -572,11 +611,12 @@ export async function relabelBundleGroup({
     throw new Error('relabelBundleGroup: localActor required');
   }
 
-  // Stop the existing SkillMatch + mirror (on `_bootstrap` or
-  // whatever the old group was). Best-effort — failures shouldn't
-  // block the transition.
+  // Stop the existing SkillMatch + mirror + substrate stack (on
+  // `_bootstrap` or whatever the old group was). Best-effort —
+  // failures shouldn't block the transition.
   try { await bundle.skillMatch?.stop?.(); } catch { /* swallow */ }
   try { await bundle.mirror?.stop?.();      } catch { /* swallow */ }
+  try { bundle._substrateStop?.();          } catch { /* swallow */ }
 
   const skillMatch = new SkillMatch({
     agent:      bundle.agent,
@@ -588,19 +628,35 @@ export async function relabelBundleGroup({
   });
   await skillMatch.start();
 
-  // Fresh broadcast-mirror on the new group's `<group>/requests`
-  // topic. Without this, posts continue broadcasting on the new
-  // group but no peer mirrors them locally → empty Feed on phone B.
-  const mirror = await wireGroupBroadcastMirror({
-    agent:          bundle.agent,
+  // Fresh substrate stack + substrate mirror on the new group. The
+  // mirror filters by URI prefix `/stoop/<newGroupId>/requests/`
+  // (Phase 52.9.2 / Q-B 2026-05-14).
+  const substrate = buildSubstrateStack({ agent: bundle.agent });
+  bundle.pseudoPod         = substrate.pseudoPod;
+  bundle.podRouting        = substrate.podRouting;
+  bundle.notifyEnvelope    = substrate.notifyEnvelope;
+  bundle.substrateDeviceId = substrate.deviceId;
+  bundle._substrateStop    = substrate.stop;
+  const mirror = await wireSubstrateMirror({
     itemStore:      bundle.itemStore,
+    notifyEnvelope: substrate.notifyEnvelope,
+    pseudoPod:      substrate.pseudoPod,
     group:          newGroupId,
     peers:          peers.filter(p => p?.pubKey).map(p => ({ pubKey: p.pubKey })),
     evictionRoster: bundle.evictionRoster ?? null,
+    selfPubKey:     bundle.agent?.address ?? null,
   });
 
   bundle.skillMatch = skillMatch;
   bundle.mirror     = mirror;
+
+  // C3 — re-register on the (potentially) new pseudoPod after relabel.
+  bundle.agentRegistry = await registerAgentInRegistry({
+    pseudoPod:   substrate.pseudoPod,
+    podDeviceId: substrate.deviceId,
+    agent:       bundle.agent,
+    opts:        { capabilities: ['stoop', 'stoop-mobile', 'mdns', 'ble'] },
+  });
 
   // Seed the new SkillMatch + mirror with peers the agent has
   // ALREADY discovered before the relabel.  The bootstrap bundle's
