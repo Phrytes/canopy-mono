@@ -484,13 +484,61 @@ web app.** 110/110 Tasks tests green across phase2-crew (contract
 update covered), phase5-dod, phase10-lifecycle, integration,
 v2-adoption, v2-multi-crew.
 
-**Remaining Tasks V2 web pickup:**
+**Ninth slice — Phase 52.9.3 substrate-mirror infrastructure +
+addTask fan-out, shipped 2026-05-14:**
 
-1. **Phase 52.9.3 substrate-mirror** (~3-5 days) — cross-device
-   fan-out for multi-device Tasks. Follow Stoop's
-   `apps/stoop/src/substrateMirror.js` template; can swap the
-   standalone-mode pseudoPod for a replication-ring one and add
-   a notifyEnvelope + mirror.
+- New `apps/tasks-v0/src/lib/substrateStack.js` mirrors Stoop's
+  pattern: `buildTasksSubstrateStack({agent})` returns
+  `{pseudoPod, podRouting, notifyEnvelope, transport, deviceId,
+  stop}` with per-recipient transport routing via
+  `agent.transportFor(addr)`.
+- New `apps/tasks-v0/src/substrateMirror.js` exports
+  `wireTasksSubstrateMirror({itemStore, notifyEnvelope, pseudoPod,
+  crewId, peers, selfPubKey})`. Surface mirrors Stoop's:
+  `{addPeer, removePeer, stop, listPeers, getPeers, urlFor}`.
+  Subscribes to `kind: 'task'` envelopes, URI-prefix filters by
+  `/tasks/crews/<crewId>/tasks/`, mirrors into local itemStore.
+  Dedupes via `source.syncedFromId` (item-store mints a fresh
+  ulid per addItems, so the sender's id is stashed on `source`).
+- `createCrewAgent` now builds the substrate stack + mirror per
+  crew (best-effort; falls back to standalone pseudoPod if
+  buildTasksSubstrateStack throws). Tasks's pseudoPod, podRouting,
+  notifyEnvelope, and tasksMirror are exposed on both `bundle`
+  and `crewState`.
+- `addTask` now publishes via `notifyEnvelope.publish({type:
+  'task', ref, payload: task, recipients})` when the crew has a
+  mirror + peers. Best-effort fan-out (parity with Stoop's
+  substrateMirror); the local write is the source of truth.
+- New `apps/tasks-v0/test/v2-substrate-mirror.test.js` (3 tests):
+  addTask on Anne replicates to Bob's itemStore via the substrate;
+  envelopes from a different crewId are silently dropped (URI-prefix
+  filter); re-publishing the same task is a no-op (dedupe).
+
+**113/113 Tasks tests green across all 7 test files.**
+
+**Scope of this slice — addTask fan-out only.** Updates (claim,
+complete, submit/approve/reject, removeTask) replicate locally to
+the pseudoPod's Lamport `_v` counter but are NOT yet mirrored into
+peers' itemStores. Follow-up slices will lift more itemStore
+mutations into the substrate.
+
+**Remaining Tasks V2 web pickups (sub-slices of 52.9.3):**
+
+1. **claim/complete/submit/approve/reject/revoke fan-out** — same
+   pattern as addTask, but the receiver applies state changes via
+   `itemStore.claim()` / `markComplete()` / etc. instead of
+   addItems. Per-mutation publish hooks land in each skill. Q-D
+   `_v` concurrency control on the pseudoPod side becomes the
+   conflict-resolution authority.
+2. **Stale-peer auto-heal** (mirror of Stoop's A1) — subscribe
+   to `pseudoPod.on('stale-peer')` + republish the local fresher
+   copy back to the stale peer.
+3. **groupCheck on fetch-resource** (mirror of Stoop's A2) —
+   register `fetch-resource` skill with
+   `groupCheck(uri, ctx) ⇒ mirror.getPeers().has(ctx.from)`.
+4. **substrate-aware peer roster** — currently `crew.members[].pubKey`
+   seeds the mirror's recipient set, but live peer additions
+   (post-invite redemption) need to call `mirror.addPeer(pubKey)`.
 
 **Larger deferrals** (each needs its own session):
 
