@@ -280,23 +280,80 @@ in **bold**):
 
 The seven V1 pages plus three new ones. No page is removed.
 
-## 6a. Implementation status (post-standardisation)
+## 6a. Implementation status (refreshed 2026-05-14)
 
 V1 ships today; V2 work is the standardisation transition. Per
 [`standardisation-transition-2026-05-11.md`](../standardisation-transition-2026-05-11.md)
 §IV.1, Tasks is the canonical first adopter of P1's substrate
-work and the canonical bundle reference for P7.
+work and the canonical bundle reference for P7. Multiple
+substrate pieces shipped 2026-05-14; the table is refreshed
+accordingly.
 
-| Phase from plan | Tasks work | Status (2026-05-11) |
+| Phase from plan | Tasks work | Status (2026-05-14) |
 |---|---|---|
-| P0 | plan-tracking convention; non-Tasks-specific | pending |
-| P1 | route writes through `notify-envelope` per crew policy; cross-pod refs; pseudo-pod V0; lift `dag.js` extension into `item-store`; new `/pod-settings.html` + `/welcome.html` + `/onboard.html` | pending |
-| P2 | adopt `item-types` for `task` type | pending |
-| P3 | pseudo-pod V1 migration | pending |
-| P5 | adopt `agent-registry`; drop `actorAliases` | pending |
-| P4 (Hub) | `hub-discovery` hook (no-op when Hub absent) | pending |
-| P6 (Hub) | register `task` interface (compact + full); `propose-subtask` as protocol | pending |
-| P7 (Hub) | bundle refactor — Tasks as the canonical reference bundle | pending |
+| P0 | plan-tracking convention; non-Tasks-specific | **shipped 2026-05-14** — `Project Files/conventions/plan-tracking.md` |
+| P1 | route writes through `notify-envelope` per crew policy; cross-pod refs; pseudo-pod V0; lift `dag.js` extension into `item-store`; new `/pod-settings.html` + `/welcome.html` + `/onboard.html` | **substrate ready; app wiring pending** — pseudoPod V0 (standalone + replication-ring + cache + write-through), pod-routing (policy resolver), notify-envelope (multi-mode publish), and `embeds` field on item-store all shipped 2026-05-14. `dag.js`'s `effectiveStatus` + `unmetDeps` + `openDeps[]` still live in `apps/tasks-v0/src/dag.js` — extraction into `item-store` pending. New three pages still to build |
+| P2 | adopt `item-types` for `task` type | **shipped 2026-05-14** — `task` canonical type lives in `packages/item-types/src/types/task.js` (Phase 52.1). `addTask` writes through `validateCanonical` (warn-only). `embeds:[]` field accepted + persisted via item-store. |
+| P3 | pseudo-pod V1 migration | **deferred to V2.x** — substrate-side P3 not yet shipped; Tasks's V1 in-memory itemStore keeps working |
+| 52.9.3 | tasks fan-out via substrateMirror | **deferred** — V1 is single-household / local-only; no fan-out exists yet. When multi-device lands, follow Stoop's `apps/stoop/src/substrateMirror.js` template. Estimate ~3-5 days |
+| 52.14 (Q-D) | Lamport `_v` on task writes via pseudoPod replication-ring | **substrate ready; no consumer yet** — auto-applies when Tasks adopts substrateMirror. `'stale-peer'` event handler would feed conflict UI |
+| 52.15 | Solid-auth consolidation — `createSolidAuthNode` adoption + multi-issuer support on `/pod-settings.html` provisioning | **substrate ready; app wiring pending** — when `/pod-settings.html` lands, the provision-pod flow uses `createSolidAuthNode({ vault, clientName: 'Tasks' })` + `KNOWN_ISSUERS` |
+| 52.16 | Sharing v2 — ACP/WAC grant via `createClientSharing` on crew-level resources | **substrate ready** — when Tasks moves to a pod-based crew policy (centralised / hybrid), `createClientSharing` grants member access. Cap-token fallback for non-ACP pods |
+| 52.2.x | peer-fetch gates | **substrate ready** — when Tasks adopts envelope-only mode (`ref + payload` ⇒ `ref` only), wire `groupCheck(uri, ctx) ⇒ crewRoster.has(ctx.from)` on the `fetch-resource` skill |
+| P5 | adopt `agent-registry`; drop `actorAliases` | **substrate ready; app wiring pending** — agent-registry shipped 2026-05-14 (Phase 52.10). Each browser session's agent should register at first boot; `actorAliases` cleanup follows |
+| P4 (Hub) | `hub-discovery` hook (no-op when Hub absent) | **deferred** (Hub track direction-only) |
+| P6 (Hub) | register `task` interface (compact + full); `propose-subtask` as protocol | **deferred** (Hub track direction-only) |
+| P7 (Hub) | bundle refactor — Tasks as the canonical reference bundle | **deferred** (Hub track direction-only) |
+
+**Tasks V2 substrate-adoption first slice — shipped 2026-05-14:**
+
+- `embeds: [{type, ref}, ...]` field on `addTask` (cap of 8;
+  validated; persisted via `item-store.#materialise`). 5/5 embed
+  tests in `apps/tasks-v0/test/v2-adoption.test.js`.
+- `crewConfig.storage` field (four §II.2 policies). Default
+  `'no-pod'`. Forward-additive: unknown policies fall back silently
+  for old saved configs. 3/3 storage tests.
+- `getCrewStoragePolicy` + `setCrewStoragePolicy` skills.
+  `setCrewStoragePolicy` is admin/coordinator-only and one-way
+  (rejects downgrade to no-pod). 4/4 set-policy tests.
+- `@canopy/item-store.#materialise` now propagates the optional
+  `embeds` field forward; no other call sites change.
+
+**Remaining Tasks V2 web pickups (in priority order):**
+
+1. **`/welcome.html` + crew-create wizard with storage-policy
+   picker UI** (~2 days) — wizard step that drives
+   `createCrewAgent`'s now-accepted `storage` field. Mirrors
+   Stoop's A3 picker.
+2. **Lift `dag.js`'s `effectiveStatus` + `unmetDeps` +
+   `openDeps[]` into `@canopy/item-store`** (~1 day) — P1
+   substrate-side extraction; `apps/tasks-v0` keeps consuming
+   from the same call sites.
+3. **Register the browser agent on `agent-registry` at first
+   boot** (~0.5 day) — Phase 52.10. Needs a per-bundle pseudoPod
+   first; either build a Tasks substrate stack (see Phase 52.9.3
+   below) or wire a standalone pseudoPod just for the registry.
+4. **`/pod-settings.html`** (~1-2 days) — pod provision +
+   sign-out + storage-policy display. Provision uses
+   `createSolidAuthNode` + `KNOWN_ISSUERS` (Phase 52.15).
+5. **`/onboard.html`** (~1 day) — invite redemption page.
+
+**Larger deferrals** (each needs its own session):
+
+- **Phase 52.9.3** — Tasks fan-out via substrateMirror.
+  Multi-device Tasks (e.g. desktop + mobile + bot agent all
+  concurrently) needs a substrate-mirror. Follow Stoop's
+  `apps/stoop/src/substrateMirror.js` template. ~3-5 days.
+- **`actorAliases` drop** — depends on agent-registry adoption
+  reaching all bundle bring-up paths.
+
+Cross-references:
+- Substrate-side phase list:
+  [`../Substrates/substrates-v2-coding-plan-2026-05-11.md`](../Substrates/substrates-v2-coding-plan-2026-05-11.md)
+- Cross-app residuals + priority:
+  [`../TODO-GENERAL.md`](../TODO-GENERAL.md) §"Standardisation residuals"
+- Stoop's substrateMirror (template for fan-out adoption):
+  `apps/stoop/src/substrateMirror.js`
 
 ## 7. Locales
 
@@ -312,6 +369,20 @@ through the locale resolver.
 
 ## 8. Open questions
 
+- **Peer-to-peer task replication via the substrate path** —
+  inherited from substrates-v2 §52.9.3 (deferred 2026-05-14).
+  Tasks-v0 is single-household / local-only today; no fan-out
+  helpers exist. When Tasks goes multi-device (this app's V2
+  mobile work or a future multi-admin-server scenario),
+  replication adopts the substrate path:
+  `notifyEnvelope.publish({type: 'task', ref, payload, _v,
+  recipients})` on every itemStore write, with peer-side
+  `pseudoPod.writeFromPeer` running the Q-D 3-way version
+  compare. **Substrate side is already shipped (Phase 52.14 +
+  52.16)**; Tasks's adoption follows Stoop's substrateMirror
+  pattern (`apps/stoop/src/substrateMirror.js` is the
+  template). Estimate ~3-5 days once a multi-device consumer
+  is real. Out of scope for V1 single-household.
 - **Storage-policy picker UX during crew create.** Default
   no-pod or default centralised? Recommendation defaults to
   no-pod (lowest friction for new users); the wizard shows a

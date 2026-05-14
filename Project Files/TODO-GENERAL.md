@@ -28,8 +28,8 @@
 
 | App | Pending work | Size |
 |---|---|---|
-| **Tasks (V1 mobile)** | (a) Adopt `createSolidAuthNode` + `<IssuerPicker>` from 52.15 substrate; (b) item-types adoption (Phase 52.7); (c) real-device pair test (P3 acceptance gate, pod-primary + queue drain on real device) | ~3-4 days (a), 1-2 days (b), 3-4 days (c) |
-| **Tasks-v0 (backend)** | Phase 52.9.3 + 52.9.4 (covered in substrate residuals above) | — |
+| **Tasks (V1 mobile)** | (a) Adopt `createSolidAuthNode` + `<IssuerPicker>` from 52.15 substrate; (b) item-types adoption (Phase 52.7) — `task` canonical type adopted on web 2026-05-14, mobile inherits via the shared workspace import; (c) real-device pair test (P3 acceptance gate, pod-primary + queue drain on real device) | ~3-4 days (a), ~done (b), 3-4 days (c) |
+| **Tasks-v0 (backend)** | First V2-adoption slice shipped 2026-05-14 (`embeds:[]` on `addTask`, `crewConfig.storage`, `getCrewStoragePolicy`/`setCrewStoragePolicy` skills). Phase 52.9.3 substrate-mirror deferred (~3-5 days). `/welcome.html` + `/pod-settings.html` + `/onboard.html` pending. See [`Tasks App/v2-web-functional-design-2026-05-11.md`](./Tasks%20App/v2-web-functional-design-2026-05-11.md) §6a. | ~5-7 days remaining |
 | **Folio (desktop)** | (a) Item-types adoption — note type into canonical taxonomy (Phase 52.7); (b) sync-engine → pseudo-pod V1 migration (P3, Folio as reference); (c) real-device cross-pod-ref fetch latency test | ~1-2 days (a), in-progress (b), 2-3 days (c) |
 | **Folio-mobile** | Real-device test (P3 acceptance gate) | ~2-3 days |
 | **Stoop (web)** | Unified TODO at [`Stoop/TODO-stoop-2026-05-14.md`](./Stoop/TODO-stoop-2026-05-14.md): **A-track** (substrate-adoption UX — storage-policy picker, embeds, /group + /profile sections, stale-peer, agent-registry, ~5-7 days). B-track Phases 31-35 + 39 audited 2026-05-14: **all shipped already**. | ~5-7 days |
