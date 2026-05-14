@@ -31,6 +31,7 @@ import { pickAvatarImage }                    from '../lib/imagePicker.js';
 import { getCoarseLocationFromGps }           from '../lib/geo.js';
 import { useService }                         from '../ServiceContext.js';
 import { useProfile }                         from '../lib/useProfile.js';
+import { useSkill }                           from '../lib/useSkill.js';
 import { AvatarCircle }                       from '../components/AvatarCircle.js';
 import { ConfirmModal }                       from '../components/ConfirmModal.js';
 import { SkillPicker }                        from '../components/SkillPicker.js';
@@ -58,6 +59,14 @@ export function ProfileMineScreen() {
   const [error, setError]                   = useState(null);
   const [categories, setCategories]         = useState([]);
   const [showRecovery, setShowRecovery]     = useState(false);
+
+  // C5 — "My Solid pods" section state.
+  const [podStatus, setPodStatus]           = useState(null);
+  const [podStatusLoading, setPodStatusLoading] = useState(true);
+  const [signOutBusy, setSignOutBusy]       = useState(false);
+  const [signOutMsg, setSignOutMsg]         = useState(null);
+  const podSignInStatus = useSkill('podSignInStatus');
+  const signOutOfPod    = useSkill('signOutOfPod');
   const [recoveryPhrase, setRecoveryPhrase] = useState(null);
 
   // Hydrate input drafts when the profile finishes loading.
@@ -142,6 +151,40 @@ export function ProfileMineScreen() {
       } else setError(err?.message ?? String(err));
     } finally { setBusyKey(null); }
   }, [setLocation]);
+
+  const refreshPodStatus = useCallback(async () => {
+    setPodStatusLoading(true);
+    try {
+      const r = await podSignInStatus.call({});
+      setPodStatus(r ?? { signedIn: false });
+    } catch (_err) {
+      setPodStatus({ signedIn: false });
+    } finally {
+      setPodStatusLoading(false);
+    }
+  }, [podSignInStatus]);
+
+  useEffect(() => {
+    refreshPodStatus().catch(() => {});
+  }, [refreshPodStatus]);
+
+  const handleSignOutOfPod = useCallback(async () => {
+    setSignOutBusy(true);
+    setSignOutMsg(null);
+    try {
+      const r = await signOutOfPod.call({});
+      if (r?.error) {
+        setSignOutMsg(`${t('common.error', 'Fout')}: ${r.error}`);
+      } else {
+        setSignOutMsg(t('profile.my_pods_signed_out_ok', 'Uitgelogd.'));
+        await refreshPodStatus();
+      }
+    } catch (err) {
+      setSignOutMsg(`${t('common.error', 'Fout')}: ${err?.message ?? err}`);
+    } finally {
+      setSignOutBusy(false);
+    }
+  }, [signOutOfPod, refreshPodStatus]);
 
   const exportRecovery = useCallback(async () => {
     setError(null);
@@ -331,6 +374,54 @@ export function ProfileMineScreen() {
             </Pressable>
           ) : null}
         </View>
+      </View>
+
+      {/* My Solid pods (C5 / A6 mobile mirror) */}
+      <View style={styles.section}>
+        <Text style={styles.label}>
+          {t('profile.my_pods_heading', 'Mijn Solid-pods')}
+        </Text>
+        {podStatusLoading ? (
+          <Text style={styles.body}>
+            {t('profile.my_pods_loading', 'Aan het laden…')}
+          </Text>
+        ) : podStatus?.signedIn ? (
+          <View>
+            {podStatus.webid ? (
+              <Text style={styles.body} accessibilityLabel="profile-pod-webid">
+                WebID: {podStatus.webid}
+              </Text>
+            ) : null}
+            <Text style={styles.body}>
+              {podStatus.podAttached
+                ? t('profile.my_pods_attached', 'Pod gekoppeld; schrijven gaan synchroon naar de pod.')
+                : t('profile.my_pods_detached', 'Aangemeld, pod niet gekoppeld aan deze sessie.')}
+            </Text>
+            <Pressable
+              onPress={handleSignOutOfPod}
+              disabled={signOutBusy}
+              style={[styles.btnSecondary, signOutBusy && styles.btnDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel="profile-pod-sign-out"
+            >
+              <Text style={styles.btnSecondaryLabel}>
+                {signOutBusy
+                  ? t('profile.my_pods_signing_out', 'Uitloggen…')
+                  : t('profile.my_pods_sign_out',   'Uitloggen uit pod')}
+              </Text>
+            </Pressable>
+            {signOutMsg ? <Text style={styles.body}>{signOutMsg}</Text> : null}
+            <Text style={styles.body}>
+              {t('profile.my_pods_two_pod_deferred_mobile',
+                 'Twee-pods-preset komt in V3 (substraat gereed; UI volgt).')}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.body}>
+            {t('profile.my_pods_signed_out_intro_mobile',
+               'Geen pod aan dit account gekoppeld. Stoop werkt prima zonder; pod-koppeling is optioneel.')}
+          </Text>
+        )}
       </View>
 
       {/* Recovery phrase */}

@@ -33,6 +33,8 @@ export function CreateGroupScreen() {
   const [groupId, setGroupId]   = useState('');
   const [name, setName]         = useState('');
   const [purpose, setPurpose]   = useState('');
+  const [storagePolicy, setStoragePolicy] = useState('no-pod');
+  const [groupPodUri, setGroupPodUri]     = useState('');
   const [busy, setBusy]         = useState(false);
   const [error, setError]       = useState(null);
 
@@ -44,11 +46,20 @@ export function CreateGroupScreen() {
   const submit = useCallback(async () => {
     if (!ok || busy) return;
     setBusy(true); setError(null);
+    const needsPod = storagePolicy === 'centralised' || storagePolicy === 'hybrid';
+    if (needsPod && groupPodUri.trim().length === 0) {
+      setError(t('create_group.storage_pod_uri_required',
+                 'Vul een pod-URI in voor deze opslagvorm.'));
+      setBusy(false);
+      return;
+    }
     try {
       const r = await create.call({
         groupId,
         name: name.trim(),
         rules: { purpose: purpose.trim() || null },
+        storagePolicy,
+        ...(needsPod ? { groupPodUri: groupPodUri.trim() } : {}),
       });
       if (r?.error) throw new Error(r.error);
 
@@ -82,7 +93,32 @@ export function CreateGroupScreen() {
     } finally {
       setBusy(false);
     }
-  }, [ok, busy, create, svc, nav, groupId, name, purpose]);
+  }, [ok, busy, create, svc, nav, groupId, name, purpose, storagePolicy, groupPodUri]);
+
+  // C4 — storage policies (§II.2). Localised on render.
+  const POLICY_OPTIONS = [
+    {
+      value:    'no-pod',
+      title:    t('create_group.storage_no_pod_label',        'Op onze apparaten (no-pod, default).'),
+      subtitle: t('create_group.storage_no_pod_hint',         'Geen pod nodig. Items repliceren naar alle leden\'s pseudo-pod.'),
+    },
+    {
+      value:    'centralised',
+      title:    t('create_group.storage_centralised_label',   'Op een gedeelde Solid-pod.'),
+      subtitle: t('create_group.storage_centralised_hint',    'Eén pod als bron van waarheid. Beste voor kleinere groepen.'),
+    },
+    {
+      value:    'decentralised',
+      title:    t('create_group.storage_decentralised_label', 'Iedereen op z\'n eigen pod (cross-pod refs).'),
+      subtitle: t('create_group.storage_decentralised_hint',  'Geen centraal punt. Beste voor grote buurten.'),
+    },
+    {
+      value:    'hybrid',
+      title:    t('create_group.storage_hybrid_label',        'Gemengd — ledger op gedeelde pod, drafts lokaal.'),
+      subtitle: t('create_group.storage_hybrid_hint',         'Voor groepen met af-en-toe-actieve leden.'),
+    },
+  ];
+  const needsPod = storagePolicy === 'centralised' || storagePolicy === 'hybrid';
 
   return (
     <ScrollView contentContainerStyle={styles.root}>
@@ -133,6 +169,52 @@ export function CreateGroupScreen() {
           multiline
           accessibilityLabel="create-group-purpose"
         />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.label}>
+          {t('create_group.q7_storage', '7. Waar staat de groepsstaat?')}
+        </Text>
+        <Text style={styles.hint}>
+          {t('create_group.q7_storage_intro_mobile',
+             'Standaard op jullie eigen apparaten. Je kunt later upgraden naar een gedeelde pod. Eenmaal pod-having → niet meer terug.')}
+        </Text>
+        {POLICY_OPTIONS.map((o) => {
+          const selected = storagePolicy === o.value;
+          return (
+            <Pressable
+              key={o.value}
+              onPress={() => setStoragePolicy(o.value)}
+              style={[styles.policyRow, selected && styles.policyRowSelected]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`storage-policy-${o.value}`}
+            >
+              <View style={[styles.radioDot, selected && styles.radioDotSelected]} />
+              <View style={styles.policyText}>
+                <Text style={styles.policyTitle}>{o.title}</Text>
+                <Text style={styles.policySubtitle}>{o.subtitle}</Text>
+              </View>
+            </Pressable>
+          );
+        })}
+        {needsPod ? (
+          <View style={styles.podUriRow}>
+            <Text style={styles.label}>
+              {t('create_group.storage_group_pod_label', 'Pod-URI van de gedeelde groepspod')}
+            </Text>
+            <TextInput
+              value={groupPodUri}
+              onChangeText={setGroupPodUri}
+              placeholder="https://buurt.pod/"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              style={styles.input}
+              accessibilityLabel="create-group-pod-uri"
+            />
+          </View>
+        ) : null}
       </View>
 
       {error ? (
@@ -188,4 +270,21 @@ const styles = StyleSheet.create({
   btnPrimaryLabel: { color: COLORS.textInverse, fontSize: FONT_SIZES.md, fontWeight: '600' },
   errorText: { color: COLORS.danger, fontSize: FONT_SIZES.sm, marginTop: SPACING.md },
   debugText: { color: COLORS.textMuted, fontSize: FONT_SIZES.xs, marginTop: SPACING.sm, fontFamily: 'monospace' },
+  hint:    { fontSize: FONT_SIZES.sm, color: COLORS.textMuted, marginBottom: SPACING.md, lineHeight: 18 },
+  policyRow: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    padding: SPACING.md, marginBottom: SPACING.sm,
+    borderWidth: 1, borderColor: COLORS.border, borderRadius: RADII.sm,
+    backgroundColor: COLORS.surface,
+  },
+  policyRowSelected: { borderColor: COLORS.primary, backgroundColor: COLORS.surfaceMuted },
+  radioDot: {
+    width: 16, height: 16, marginTop: 2, marginRight: SPACING.md,
+    borderRadius: 8, borderWidth: 2, borderColor: COLORS.border,
+  },
+  radioDotSelected: { borderColor: COLORS.primary, backgroundColor: COLORS.primary },
+  policyText: { flex: 1 },
+  policyTitle:    { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.text },
+  policySubtitle: { fontSize: FONT_SIZES.sm, color: COLORS.textMuted, marginTop: 2, lineHeight: 18 },
+  podUriRow: { marginTop: SPACING.sm },
 });

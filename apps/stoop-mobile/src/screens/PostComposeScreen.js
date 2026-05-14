@@ -57,6 +57,9 @@ export function PostComposeScreen() {
   const [maxDistance, setMaxDistance] = useState('any'); // 'any' | '1' | '2' | ...
   const [alsoContacts, setAlsoContacts] = useState(false); // 40.20 — broaden scope to contacts
   const [alsoHops,     setAlsoHops]     = useState(false); // 40.20 — broaden scope to hop-discovered peers
+  const [embeds, setEmbeds]             = useState([]); // C5 — cross-pod refs [{type, ref}]
+  const [embedTypeDraft, setEmbedTypeDraft] = useState('task');
+  const [embedRefDraft, setEmbedRefDraft]   = useState('');
   const [busy, setBusy]               = useState(false);
   const [error, setError]             = useState(null);
 
@@ -130,6 +133,7 @@ export function PostComposeScreen() {
         targets,
         maxDistanceKm,
         scope,
+        ...(embeds.length > 0 ? { embeds } : {}),
       });
       nav.goBack();
     } catch (err) {
@@ -137,7 +141,27 @@ export function PostComposeScreen() {
     } finally {
       setBusy(false);
     }
-  }, [audience, maxDistance, alsoContacts, alsoHops, kind, text, skills, attachments, post, v.ok, nav]);
+  }, [audience, maxDistance, alsoContacts, alsoHops, kind, text, skills, attachments, embeds, post, v.ok, nav]);
+
+  const addEmbed = useCallback(() => {
+    const type = embedTypeDraft.trim();
+    const ref  = embedRefDraft.trim();
+    if (!type || !ref) {
+      setError(t('compose.embed_invalid', 'Vul type en ref in voor een embed.'));
+      return;
+    }
+    if (embeds.length >= 8) {
+      setError(t('compose.embed_too_many', 'Max 8 embeds per post.'));
+      return;
+    }
+    setEmbeds((prev) => [...prev, { type, ref }]);
+    setEmbedRefDraft('');
+    setError(null);
+  }, [embedTypeDraft, embedRefDraft, embeds.length]);
+
+  const removeEmbed = useCallback((idx) => {
+    setEmbeds((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
 
   // ── Empty state — no agent yet (no group joined). ────────────────
   if (!svc?.activeBundle) {
@@ -297,6 +321,60 @@ export function PostComposeScreen() {
         </View>
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>
+          {t('compose.embeds_heading', 'Refs naar andere items (optioneel)')}
+        </Text>
+        <Text style={styles.sectionHint}>
+          {t('compose.embeds_hint',
+             'Verwijs naar een taak, een notitie, of een ander item. Max 8.')}
+        </Text>
+        {embeds.map((e, idx) => (
+          <View key={`${e.type}-${e.ref}-${idx}`} style={styles.embedChip}>
+            <Text style={styles.embedChipType}>{e.type}</Text>
+            <Text style={styles.embedChipRef} numberOfLines={1}>{e.ref}</Text>
+            <Pressable
+              onPress={() => removeEmbed(idx)}
+              style={styles.embedChipRemove}
+              accessibilityLabel={`compose-embed-remove-${idx}`}
+            >
+              <Text style={styles.embedChipRemoveLabel}>×</Text>
+            </Pressable>
+          </View>
+        ))}
+        {embeds.length < 8 ? (
+          <View style={styles.embedAddRow}>
+            <TextInput
+              value={embedTypeDraft}
+              onChangeText={setEmbedTypeDraft}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={[styles.input, styles.embedTypeInput]}
+              placeholder={t('compose.embed_type_ph', 'type')}
+              accessibilityLabel="compose-embed-type"
+            />
+            <TextInput
+              value={embedRefDraft}
+              onChangeText={setEmbedRefDraft}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={[styles.input, styles.embedRefInput]}
+              placeholder={t('compose.embed_ref_ph', 'pseudo-pod://… of https://…')}
+              accessibilityLabel="compose-embed-ref"
+            />
+            <Pressable
+              onPress={addEmbed}
+              style={styles.btnSecondary}
+              accessibilityLabel="compose-embed-add"
+            >
+              <Text style={styles.btnSecondaryLabel}>
+                {t('compose.embed_add', 'Toevoegen')}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <Pressable
@@ -375,4 +453,27 @@ const styles = StyleSheet.create({
   btnDisabled: { backgroundColor: COLORS.surfaceMuted },
   btnPrimaryLabel: { color: COLORS.textInverse, fontSize: FONT_SIZES.md, fontWeight: '600' },
   pressed: { opacity: 0.85 },
+
+  // C5 — embed-ref chips on PostComposeScreen.
+  sectionTitle: { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.xs },
+  sectionHint:  { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginBottom: SPACING.sm, lineHeight: 16 },
+  embedChip: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs,
+    borderWidth: 1, borderColor: COLORS.border, borderRadius: RADII.sm,
+    marginBottom: SPACING.xs,
+    backgroundColor: COLORS.surface,
+  },
+  embedChipType: { fontSize: FONT_SIZES.sm, fontWeight: '600', color: COLORS.primary, marginRight: SPACING.sm },
+  embedChipRef:  { flex: 1, fontSize: FONT_SIZES.sm, color: COLORS.textMuted, fontFamily: 'monospace' },
+  embedChipRemove: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: COLORS.danger,
+    alignItems: 'center', justifyContent: 'center',
+    marginLeft: SPACING.sm,
+  },
+  embedChipRemoveLabel: { color: COLORS.textInverse, fontSize: FONT_SIZES.md, fontWeight: '600' },
+  embedAddRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginTop: SPACING.xs },
+  embedTypeInput: { width: 80 },
+  embedRefInput:  { flex: 1 },
 });

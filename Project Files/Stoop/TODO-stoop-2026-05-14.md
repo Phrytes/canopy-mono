@@ -71,10 +71,10 @@ here for completeness; not started yet.
 | ID | Item | Source | Size | Status |
 |---|---|---|---|---|
 | C1 | Phase 40.23 real-device pass + closed-beta APK (Hardware test, independent of substrate work, can ship anytime — user holds for hardware availability) | v4-mobile §6a | ~2-3 days | pending (hardware) |
-| C2 | `'stale-peer'` event subscription on mobile (mirror of A1) | v4-mobile §6a | ~1 day | pending |
-| C3 | Agent-registry registration on mobile bundle bring-up (mirror of A7) | v4-mobile §6a | ~0.5 day | pending |
-| C4 | Crew-create wizard storage-policy step on mobile (mirror of A3) | v4-mobile §6a | ~1 day | pending |
-| C5 | "My Solid pods" profile section + embed-ref slot on compose (mirror of A4/A6) | v4-mobile §6a | ~1 day | pending |
+| C2 | `'stale-peer'` event subscription on mobile (mirror of A1) | v4-mobile §6a | ~1 day | ✅ inherited 2026-05-14 — the auto-heal subscriber lives inside `wireSubstrateMirror`, which all three mobile bundle paths already call. No mobile-side code change needed. |
+| C3 | Agent-registry registration on mobile bundle bring-up (mirror of A7) | v4-mobile §6a | ~0.5 day | ✅ shipped 2026-05-14 — extracted `registerAgentInRegistry` helper from `attachSubstrateMirror`; called from all three mobile bundle bring-up paths (`bootstrapBundle.js` + `agentBundle.js` × 2). Capability tag `['stoop', 'stoop-mobile', 'mdns', 'ble']`. `bundle.podRouting` also exposed on mobile. |
+| C4 | Crew-create wizard storage-policy step on mobile (mirror of A3) | v4-mobile §6a | ~1 day | ✅ shipped 2026-05-14 — `CreateGroupScreen.js` adds a 4-radio policy picker with conditional pod-URI input. Passes `storagePolicy`+`groupPodUri` to `createGroupV2` skill. EN+NL locales + 12 new keys in localesIntegrity test (593/593 pass). |
+| C5 | "My Solid pods" profile section + embed-ref slot on compose (mirror of A4/A6) | v4-mobile §6a | ~1 day | ✅ shipped 2026-05-14 — `ProfileMineScreen.js` adds My-Solid-pods section (`podSignInStatus` + `signOutOfPod` skills; sign-out flow; two-pod placeholder for V3). `PostComposeScreen.js` adds an embeds list + add-row (type + ref + remove-chip) that passes `embeds: [{type, ref}]` to `postRequest`. Cap of 8 + validation. EN+NL locales. |
 
 **Total estimate:** ~5-6 days. Picks up after A-track is mostly
 done.

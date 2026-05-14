@@ -355,19 +355,29 @@ accordingly.
 
 The P3 cliff cleared 2026-05-14 (Phase 52.9.2 shipped without a
 dual-run; user picked clean break since no production users).
-Next concrete pickups for Stoop-mobile V4 (in priority order):
+
+**C-track substrate-adoption UX (mobile mirror of Stoop V2 web
+A-track) — shipped 2026-05-14:**
+
+- C2 `'stale-peer'` auto-heal — inherited via `wireSubstrateMirror`
+  (no mobile-side code change required).
+- C3 agent-registry registration on bundle bring-up — shipped via
+  the extracted `registerAgentInRegistry` helper, called from all
+  three mobile bundle bring-up paths (`bootstrapBundle.js` +
+  `agentBundle.js` × 2). `bundle.podRouting` also exposed.
+- C4 crew-create wizard storage-policy step — shipped in
+  `CreateGroupScreen.js` (4-radio picker + conditional pod-URI input,
+  passing `storagePolicy`+`groupPodUri` to `createGroupV2`).
+- C5 "My Solid pods" profile section + embed-ref slot on compose —
+  shipped in `ProfileMineScreen.js` + `PostComposeScreen.js`.
+
+EN+NL locales updated (593/593 localesIntegrity tests pass;
+audit-locales clean).
+
+**Remaining concrete pickup:**
 
 1. **Phase 40.23 real-device pass** (~2-3 days) — hardware test;
-   independent of substrate work.
-2. **`'stale-peer'` event subscription** (~1 day) — surface
-   divergence to UI or auto-publish-back via notify-envelope.
-3. **Agent-registry registration on bundle bring-up** (~0.5 day) —
-   register the mobile agent in `<pod>/private/agent-registry`
-   so cross-device lookups resolve.
-4. **Crew-create wizard storage-policy step** (~1 day) — `(centralised
-   / decentralised / hybrid / no-pod)` per §II.2.
-5. **"My Solid pods" profile section + embed-ref slot on compose**
-   (~1 day) — V4 functional design §4.
+   the only open mobile work after the C-track ships.
 
 Cross-references:
 - Substrate-side phase list:

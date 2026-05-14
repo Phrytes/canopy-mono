@@ -49,34 +49,43 @@ export async function attachSubstrateMirror(bundle, { group, peers = [], evictio
   });
   bundle.mirror = mirror;
   if (agentRegistry !== false) {
-    bundle.agentRegistry = await _registerAgentInRegistry({
-      bundle,
-      substrate,
-      opts: typeof agentRegistry === 'object' && agentRegistry !== null ? agentRegistry : {},
+    bundle.agentRegistry = await registerAgentInRegistry({
+      pseudoPod:    substrate.pseudoPod,
+      podDeviceId:  substrate.deviceId,
+      agent:        bundle.agent,
+      opts:         typeof agentRegistry === 'object' && agentRegistry !== null ? agentRegistry : {},
     });
   }
   return mirror;
 }
 
 /**
- * Register this bundle's agent in the agent-registry pod resource
- * (Phase 52.10). Soft-fail: failures attach `null` to
- * `bundle.agentRegistry` instead of throwing, so bundle bring-up
- * stays robust against transient pseudo-pod issues. Re-registration
- * is idempotent (CAS upsert keyed on agentId).
+ * Register an agent in the agent-registry pod resource (Phase 52.10).
+ * Soft-fail: failures return `null` instead of throwing, so bundle
+ * bring-up stays robust against transient pseudo-pod issues.
+ * Re-registration is idempotent (CAS upsert keyed on `agentId`).
+ *
+ * Shared by web (`attachSubstrateMirror`) and mobile bundle bring-up
+ * (`apps/stoop-mobile/src/lib/{agentBundle,bootstrapBundle}.js`).
+ *
+ * @param {object} args
+ * @param {object} args.pseudoPod      — bundle's pseudoPod (write target)
+ * @param {string} args.podDeviceId    — pseudoPod's URI authority (= `agent.address` in
+ *                                       default buildSubstrateStack)
+ * @param {object} args.agent          — the live `core.Agent` instance
+ * @param {object} [args.opts]         — `{capabilities?, name?, role?, agentUri?, anchorPodUri?}`
+ * @returns {Promise<object|null>} the live registry handle, or `null` on failure
  */
-async function _registerAgentInRegistry({ bundle, substrate, opts }) {
+export async function registerAgentInRegistry({ pseudoPod, podDeviceId, agent, opts = {} } = {}) {
   try {
-    const pubKey = bundle.agent?.identity?.pubKey ?? bundle.agent?.address ?? null;
-    if (!pubKey) return null;
-    // The pseudoPod's local URI authority comes from `substrate.deviceId`
-    // (per `buildSubstrateStack`: `agent.address` unless overridden).
+    const pubKey = agent?.identity?.pubKey ?? agent?.address ?? null;
+    if (!pubKey || !pseudoPod || !podDeviceId) return null;
+    // The pseudoPod's local URI authority comes from `podDeviceId`.
     // The agent's *install-scoped* deviceId (Phase 33.1 UUIDv4) is what
     // the registry entry tracks as "which hardware install is this".
-    const podDeviceId    = substrate.deviceId;
-    const installDeviceId = bundle.agent?.identity?.deviceId ?? podDeviceId;
+    const installDeviceId = agent?.identity?.deviceId ?? podDeviceId;
     const registry = createAgentRegistry({
-      pseudoPod:    substrate.pseudoPod,
+      pseudoPod,
       deviceId:     podDeviceId,
       anchorPodUri: opts.anchorPodUri ?? null,
     });

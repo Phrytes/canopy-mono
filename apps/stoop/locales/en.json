@@ -192,7 +192,14 @@
     "submit":                { "text": "Post", "doc": "Submit CTA on PostComposeScreen." },
     "submitting":            { "text": "Posting…", "doc": "Submit CTA label while the call is in flight." },
     "too_many_attachments":  { "text": "Max {n} attachments.", "doc": "Inline alert when the user exceeds MAX_ATTACHMENTS." },
-    "permission_denied":     { "text": "Stoop doesn't have camera/library permission.", "doc": "Inline error when the OS rejected the permission prompt." }
+    "permission_denied":     { "text": "Stoop doesn't have camera/library permission.", "doc": "Inline error when the OS rejected the permission prompt." },
+    "embeds_heading":        { "text": "References to other items (optional)", "doc": "C5 — section heading above the embed-ref slot on PostComposeScreen." },
+    "embeds_hint":           { "text": "Reference a task, a note, or another item. Max 8.", "doc": "C5 — hint under the embeds heading." },
+    "embed_type_ph":         { "text": "type", "doc": "Placeholder for the embed-type input (e.g. 'task' / 'note')." },
+    "embed_ref_ph":          { "text": "pseudo-pod://… or https://…", "doc": "Placeholder for the embed-ref input." },
+    "embed_add":             { "text": "Add", "doc": "CTA that appends an embed to the post." },
+    "embed_invalid":         { "text": "Enter both type and ref for an embed.", "doc": "Inline error when the user clicks Add without both fields." },
+    "embed_too_many":        { "text": "Max 8 embeds per post.", "doc": "Inline error when the user tries to add a 9th embed." }
   },
   "privacy": {
     "heading":               { "text": "Privacy & safety", "doc": "Heading on PrivacyScreen." },
@@ -451,7 +458,9 @@
     "my_pods_signing_out":        { "text": "Signing out…", "doc": "Inline status while signOutOfPod is in flight." },
     "my_pods_signed_out_ok":      { "text": "Signed out.", "doc": "Inline confirmation after signOutOfPod succeeds." },
     "my_pods_signed_out_intro":   { "text": "No pod linked to this account. Stoop works fine without one (no-pod mode); a pod on top is optional.", "doc": "Lead paragraph shown when signedIn === false." },
-    "my_pods_sign_in_link":       { "text": "Link a pod", "doc": "Link to /sign-in.html in the signed-out variant of the My-Solid-pods section." }
+    "my_pods_sign_in_link":       { "text": "Link a pod", "doc": "Link to /sign-in.html in the signed-out variant of the My-Solid-pods section." },
+    "my_pods_two_pod_deferred_mobile": { "text": "Two-pod preset coming in V3 (substrate ready; UI follows).", "doc": "C5 — mobile-only short variant of the deferred note." },
+    "my_pods_signed_out_intro_mobile": { "text": "No pod linked to this account. Stoop works fine without one; linking is optional.", "doc": "C5 — mobile-only short variant of the signed-out hint." }
   },
   "onboard": {
     "page_title":              { "text": "Stoop — Onboard", "doc": "Browser tab title for /onboard.html." },
@@ -647,7 +656,9 @@
     "storage_decentralised_hint":   { "text": "No central point. Best for large neighbourhoods (50+) where centralising costs too much trust.", "doc": "Hint under the decentralised radio." },
     "storage_hybrid_label":         { "text": "Hybrid — ledger on a shared pod, drafts local.", "doc": "Bold label for the hybrid storage radio." },
     "storage_hybrid_hint":          { "text": "For groups with occasionally-active members who still want persistence.", "doc": "Hint under the hybrid radio." },
-    "storage_group_pod_label":      { "text": "Pod URI of the shared group pod", "doc": "Label of the optional groupPodUri input (centralised / hybrid only)." }
+    "storage_group_pod_label":      { "text": "Pod URI of the shared group pod", "doc": "Label of the optional groupPodUri input (centralised / hybrid only)." },
+    "q7_storage_intro_mobile":      { "text": "Default on your own devices. You can upgrade to a shared pod later. Once pod-having → no way back.", "doc": "C4 (mobile) — shorter hint for the storage-policy section in the mobile CreateGroupScreen." },
+    "storage_pod_uri_required":     { "text": "Enter a pod URI for this storage policy.", "doc": "C4 (mobile) — inline error when centralised / hybrid is picked but groupPodUri is empty." }
   },
   "nav": {
     "feed":     { "text": "Feed",      "doc": "Top-nav link to the main feed page (/)." },

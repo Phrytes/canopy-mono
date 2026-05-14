@@ -9,5 +9,6 @@ export { buildOnboardingSkills }       from './onboarding.js';
  * `buildSubstrateStack` instead.
  */
 export { wireSubstrateMirror,
-         attachSubstrateMirror }       from './substrateMirror.js';
+         attachSubstrateMirror,
+         registerAgentInRegistry }     from './substrateMirror.js';
 export { buildSubstrateStack }         from './lib/substrateStack.js';
