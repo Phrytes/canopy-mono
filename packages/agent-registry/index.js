@@ -14,3 +14,4 @@ export {
   RESOURCE_VERSION,
 } from './src/resource.js';
 export { withCAS } from './src/concurrency.js';
+export { registerAgentBundle } from './src/registerAgentBundle.js';
