@@ -90,3 +90,52 @@ export const STOOP_TYPE_MAPPING = Object.freeze({
   // until the UI splits this further.
   'request': { type: 'request', defaultKind: 'other' },
 });
+
+/**
+ * Translate a UI-vocab `intent` (and optional `kind` override) into
+ * the **canonical draft fields** for an item write. Used by
+ * postRequest's cut-over from `type: a.kind` (legacy) to
+ * `{type, kind}` (canonical). Phase 52.7.2 cut-over (2026-05-14).
+ *
+ * Behaviour:
+ *
+ *   - Canonical intents (`ask` / `offer` / `lend` / `request`) →
+ *     `{type, kind}` from STOOP_TYPE_MAPPING. Caller-supplied
+ *     `kindOverride` wins over `defaultKind` so a future UI
+ *     sub-choice (e.g. "Lenen / Iets klein om te delen / Iets
+ *     gratis krijgen") can pin the canonical kind directly.
+ *
+ *   - Bespoke intents (`report`, `membership-code`, `group-rules`,
+ *     etc.) → `{type: intent}` only, no `kind` field. The translator
+ *     mapping doesn't cover these; they stay in their legacy shape.
+ *     This is the same set that `toCanonicalShape` returns `null`
+ *     for during validation.
+ *
+ *   - Unknown / missing intent → `{type: 'request'}` (the historic
+ *     V0 default). Caller-supplied `kindOverride` is preserved.
+ *
+ * @param {string|undefined|null} intent
+ * @param {string|undefined|null} kindOverride
+ * @returns {{type: string, kind?: string}}
+ */
+export function intentToCanonicalDraft(intent, kindOverride) {
+  if (typeof intent !== 'string' || intent.length === 0) {
+    // Legacy V0 default — no intent supplied.
+    return typeof kindOverride === 'string' && kindOverride.length > 0
+      ? { type: 'request', kind: kindOverride }
+      : { type: 'request' };
+  }
+  const mapping = STOOP_TYPE_MAPPING[intent];
+  if (mapping) {
+    const kind = (typeof kindOverride === 'string' && kindOverride.length > 0)
+      ? kindOverride
+      : mapping.defaultKind;
+    return { type: mapping.type, kind };
+  }
+  // Bespoke intent — pass through verbatim. The translator's
+  // `toCanonicalShape` returns `null` for these, and `validateStoopItem`
+  // returns `{skipped: true}`.
+  return typeof kindOverride === 'string' && kindOverride.length > 0
+    ? { type: intent, kind: kindOverride }
+    : { type: intent };
+}

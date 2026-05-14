@@ -29,9 +29,9 @@
       <form id="post-form">
         <fieldset class="kind-radio" aria-label="Soort post">
           <legend>Soort</legend>
-          <label><input type="radio" name="kind" value="ask"   checked> Vraag</label>
-          <label><input type="radio" name="kind" value="offer">         Aanbod</label>
-          <label><input type="radio" name="kind" value="lend">          Te leen</label>
+          <label><input type="radio" name="intent" value="ask"   checked> Vraag</label>
+          <label><input type="radio" name="intent" value="offer">         Aanbod</label>
+          <label><input type="radio" name="intent" value="lend">          Te leen</label>
         </fieldset>
 
         <label>
@@ -107,10 +107,10 @@
       <header class="prikbord-head">
         <h2>Op het prikbord</h2>
         <nav class="kind-tabs" aria-label="Filter">
-          <button data-kind=""      class="active">Alles</button>
-          <button data-kind="ask">Vragen</button>
-          <button data-kind="offer">Aanbod</button>
-          <button data-kind="lend">Te leen</button>
+          <button data-intent=""      class="active">Alles</button>
+          <button data-intent="ask">Vragen</button>
+          <button data-intent="offer">Aanbod</button>
+          <button data-intent="lend">Te leen</button>
         </nav>
       </header>
       <ul id="open-list"><li class="empty">Aan het laden…</li></ul>
@@ -129,12 +129,12 @@
     mountGroupSwitcher(document.getElementById('group-switcher'));
     mountNotifyBanner();
 
-    /** Active kind filter (empty string = "Alles"). */
-    let activeKind = '';
+    /** Active intent filter (empty string = "Alles"). */
+    let activeIntent = '';
 
     const myActor = await getActor();
     async function refresh() {
-      const args = activeKind ? { kind: activeKind } : {};
+      const args = activeIntent ? { intent: activeIntent } : {};
       const result = await callSkill('listOpen', args);
       renderItems(document.getElementById('open-list'), result.items ?? [], {
         viewerWebid: myActor,
@@ -171,22 +171,22 @@
     }
     await refresh();
 
-    // Kind-tab wiring.
+    // Intent-tab wiring.
     for (const btn of document.querySelectorAll('.kind-tabs button')) {
       btn.addEventListener('click', async () => {
         for (const b of document.querySelectorAll('.kind-tabs button')) b.classList.remove('active');
         btn.classList.add('active');
-        activeKind = btn.dataset.kind || '';
+        activeIntent = btn.dataset.intent || '';
         await refresh();
       });
     }
 
-    // Show / hide the "Terugbrengen" date based on kind selection.
+    // Show / hide the "Terugbrengen" date based on intent selection.
     function syncLendVisible() {
-      const isLend = document.querySelector('input[name="kind"]:checked')?.value === 'lend';
+      const isLend = document.querySelector('input[name="intent"]:checked')?.value === 'lend';
       document.querySelector('.lend-only').hidden = !isLend;
     }
-    for (const r of document.querySelectorAll('input[name="kind"]')) {
+    for (const r of document.querySelectorAll('input[name="intent"]')) {
       r.addEventListener('change', syncLendVisible);
     }
     syncLendVisible();
@@ -339,7 +339,7 @@
       const raw    = document.getElementById('post-skills').value.trim();
       const skills = raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : [];
       const timeoutMs = Number(document.getElementById('post-timeout').value) || 30000;
-      const kind = document.querySelector('input[name="kind"]:checked')?.value || 'ask';
+      const intent = document.querySelector('input[name="intent"]:checked')?.value || 'ask';
       const dueRaw = document.getElementById('post-due').value;
       const dueAt = dueRaw ? new Date(dueRaw).getTime() : undefined;
       const hideName = document.getElementById('post-hide-name').checked;
@@ -355,7 +355,7 @@
       out.hidden = false;
       out.textContent = 'Aan het posten…';
       try {
-        const args = { text, kind, requiredSkills: skills, timeoutMs };
+        const args = { text, intent, requiredSkills: skills, timeoutMs };
         if (dueAt)    args.dueAt    = dueAt;
         if (hideName) args.hideName = true;       // V1: forwarded to skills; UI hint only for now
         if (targets.length) args.targets = targets;

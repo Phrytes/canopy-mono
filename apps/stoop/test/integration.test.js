@@ -282,8 +282,8 @@ describe('Stoop V1 — kind + dueAt propagate through the broadcast', () => {
     const dueAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
 
     await callSkill(alice.agent, 'postRequest', {
-      text:  'aanhanger',
-      kind:  'lend',
+      text:   'aanhanger',
+      intent: 'lend',
       dueAt,
       timeoutMs:    100,
       expectClaims: 0,
@@ -295,11 +295,13 @@ describe('Stoop V1 — kind + dueAt propagate through the broadcast', () => {
     const bobOpen = await bob.itemStore.listOpen();
     const broadcasted = bobOpen.find((i) => i?.source?.broadcast === true);
     expect(broadcasted).toBeTruthy();
-    expect(broadcasted.type).toBe('lend');     // was 'request' pre-fix
+    // Phase 52.7.2 cut-over (2026-05-14): canonical-shape mirror.
+    expect(broadcasted.type).toBe('offer');
+    expect(broadcasted.kind).toBe('lend');
     expect(broadcasted.dueAt).toBe(dueAt);
   });
 
-  it('legacy posts without `kind` still mirror as `type: "request"` (back-compat)', async () => {
+  it('posts without `intent` still mirror as `type: "request"` (V0 default)', async () => {
     const [alice, bob] = await buildCluster([
       { group: 'block-42', actor: ALICE,
         members: [{ webid: ALICE }, { webid: BOB }] },

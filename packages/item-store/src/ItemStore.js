@@ -706,6 +706,13 @@ export class ItemStore extends Emitter {
     return {
       id,
       type:                 partial.type,
+      // Phase 52.7.2 (2026-05-14): preserve `kind` if supplied —
+      // canonical @canopy/item-types schemas (offer / request /
+      // claim, etc.) carry the verb direction (`lend` / `borrow` /
+      // `share` / `give` / `receive` / `sell` / `buy` / `help` /
+      // `other`) on this field. Apps adopting the canonical shape
+      // (Stoop, Tasks) rely on it being persisted alongside `type`.
+      ...(partial.kind !== undefined ? { kind: partial.kind } : {}),
       text:                 partial.text,
       ...(partial.notes ? { notes: partial.notes } : {}),
       addedBy:              ctx.actor,

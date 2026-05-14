@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import {
   toCanonicalShape,
   validateStoopItem,
+  intentToCanonicalDraft,
   STOOP_TYPE_MAPPING,
 } from '../src/lib/canonicalAdapter.js';
 
@@ -116,6 +117,51 @@ describe('validateStoopItem — warn-only validation pipeline', () => {
     });
     expect(v.ok).toBe(false);
     expect(Array.isArray(v.errors)).toBe(true);
+  });
+});
+
+describe('intentToCanonicalDraft — write-side cut-over helper', () => {
+  it('Vragen button → {type: request, kind: borrow}', () => {
+    expect(intentToCanonicalDraft('ask')).toEqual({ type: 'request', kind: 'borrow' });
+  });
+
+  it('Aanbod button → {type: offer, kind: give}', () => {
+    expect(intentToCanonicalDraft('offer')).toEqual({ type: 'offer', kind: 'give' });
+  });
+
+  it('Te leen button → {type: offer, kind: lend}', () => {
+    expect(intentToCanonicalDraft('lend')).toEqual({ type: 'offer', kind: 'lend' });
+  });
+
+  it('legacy "request" fallback → {type: request, kind: other}', () => {
+    expect(intentToCanonicalDraft('request')).toEqual({ type: 'request', kind: 'other' });
+  });
+
+  it('caller-supplied kindOverride wins over defaultKind', () => {
+    // Vragen + UI sub-choice "Iets klein om te delen" → kind: share.
+    expect(intentToCanonicalDraft('ask', 'share')).toEqual({ type: 'request', kind: 'share' });
+    expect(intentToCanonicalDraft('ask', 'receive')).toEqual({ type: 'request', kind: 'receive' });
+  });
+
+  it('bespoke intents pass through as type only', () => {
+    expect(intentToCanonicalDraft('report')).toEqual({ type: 'report' });
+    expect(intentToCanonicalDraft('membership-code')).toEqual({ type: 'membership-code' });
+  });
+
+  it('bespoke intents preserve caller-supplied kindOverride', () => {
+    // Pathological — caller really wants to add a kind to a bespoke type.
+    expect(intentToCanonicalDraft('report', 'misc')).toEqual({ type: 'report', kind: 'misc' });
+  });
+
+  it('missing/empty intent → V0 default {type: request}', () => {
+    expect(intentToCanonicalDraft(undefined)).toEqual({ type: 'request' });
+    expect(intentToCanonicalDraft(null)).toEqual({ type: 'request' });
+    expect(intentToCanonicalDraft('')).toEqual({ type: 'request' });
+  });
+
+  it('missing intent + kindOverride is preserved', () => {
+    expect(intentToCanonicalDraft(undefined, 'borrow'))
+      .toEqual({ type: 'request', kind: 'borrow' });
   });
 });
 
