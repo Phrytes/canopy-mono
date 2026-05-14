@@ -102,6 +102,18 @@ const { values } = parseArgs({
     // `ExpoPushSender` lazily and Crew dispatches notifications to
     // the per-webid tokens declared in `crewConfig.pushTokens`.
     push: { type: 'boolean' },
+    // V2 standardisation adoption (2026-05-14, multi-crew runtime).
+    // `--multi-crew` opts the `--crew` path into the shared-agent
+    // architecture: one meshAgent + N crew bundles routed via
+    // `multiCrewResolver(crewsMap)`. Enables in-process spawning of
+    // saved CrewConfigs (the `spawnMyCrew` skill's _spawnCrewInProcess
+    // callback wires up). Default off — preserves V1 single-crew
+    // boot semantics. Limitation: onboarding skills (issueInvite /
+    // redeemInvite) are NOT registered in multi-crew mode yet; they
+    // currently register last-write-wins per createCrewAgent. Use the
+    // single-crew CLI for invite operations until a multi-crew
+    // dispatch lands.
+    'multi-crew': { type: 'boolean' },
   },
 });
 
@@ -310,14 +322,97 @@ if (values.crew) {
     }
   }
 
-  bundle = await createCrewAgent({
-    crewConfig,
-    localStoreBundle,
-    identity: id,
-    transport,
-    label:    `Crew(${crewConfig.crewId ?? 'unknown'})-${values.actor}`,
-    ...(pushSender ? { pushSender } : {}),
-  });
+  // V2 standardisation adoption (2026-05-14) — multi-crew runtime
+  // (`--multi-crew`) builds the meshAgent first and threads it
+  // through createCrewAgent. The primary crew gets `registerSkills:
+  // false + wireOnboardingSkills: false` so the CLI owns the single
+  // wireSkills call. `_spawnCrewInProcess` lives on the CrewState
+  // and the `spawnMyCrew` skill invokes it to add more bundles to
+  // `crewsMap`.
+  if (values['multi-crew']) {
+    const { buildMeshAgent } = await import('../src/MeshAgent.js');
+    const { wireSkills }     = await import('../src/wireSkills.js');
+    const { multiCrewResolver } = await import('../src/bundleResolver.js');
+
+    const { meshAgent } = await buildMeshAgent({
+      identity:        id,
+      transport,
+      localStoreBundle,
+      label:           `Tasks-MultiCrew-${values.actor}`,
+    });
+
+    bundle = await createCrewAgent({
+      crewConfig,
+      localStoreBundle,
+      identity:             id,
+      transport,
+      agent:                meshAgent,
+      registerSkills:       false,
+      wireOnboardingSkills: false,
+      label:                `Crew(${crewConfig.crewId ?? 'unknown'})-${values.actor}`,
+      ...(pushSender ? { pushSender } : {}),
+    });
+
+    const primaryCrewState = bundle._crewState;
+    const crewsMap = new Map([[primaryCrewState.crewId, primaryCrewState]]);
+
+    /**
+     * Closure-captured spawn callback the `spawnMyCrew` skill invokes
+     * to bring up a saved CrewConfig in-process. Adds the fresh
+     * CrewState to `crewsMap` so the multiCrewResolver routes future
+     * skill calls to it. Onboarding skills aren't wired per-crew;
+     * `issueInvite`/`redeemInvite` are not registered in multi-crew
+     * mode (multi-crew dispatch for them is a follow-up).
+     */
+    async function spawnCrewInProcess(crewId) {
+      if (typeof crewId !== 'string' || !crewId) {
+        throw new Error('spawnCrewInProcess: crewId required');
+      }
+      if (crewsMap.has(crewId)) return crewsMap.get(crewId);
+      const path = `mem://tasks/crews/${crewId}/config.json`;
+      const raw = await localStoreBundle.cache.read(path);
+      if (!raw) throw new Error(`spawnCrewInProcess: no saved config at ${path}`);
+      const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const spawned = await createCrewAgent({
+        crewConfig:           cfg,
+        localStoreBundle,
+        identity:             id,
+        transport,
+        agent:                meshAgent,
+        registerSkills:       false,
+        wireOnboardingSkills: false,
+        label:                `Crew(${cfg.crewId})-${values.actor}`,
+        ...(pushSender ? { pushSender } : {}),
+      });
+      const cs = spawned._crewState;
+      // Make the spawn callback visible on the new CrewState too, so
+      // subsequent spawnMyCrew calls routed to it can spawn further.
+      cs._spawnCrewInProcess = spawnCrewInProcess;
+      crewsMap.set(cfg.crewId, cs);
+      return cs;
+    }
+    primaryCrewState._spawnCrewInProcess = spawnCrewInProcess;
+
+    wireSkills({
+      meshAgent,
+      bundleResolver: multiCrewResolver(crewsMap),
+      crewsProvider:  () => crewsMap.values(),
+      members:        bundle.members,
+    });
+
+    await meshAgent.start();
+  } else {
+    // Default V1 Crew mode — single-crew, skills register inside
+    // createCrewAgent's createTasksAgent path.
+    bundle = await createCrewAgent({
+      crewConfig,
+      localStoreBundle,
+      identity: id,
+      transport,
+      label:    `Crew(${crewConfig.crewId ?? 'unknown'})-${values.actor}`,
+      ...(pushSender ? { pushSender } : {}),
+    });
+  }
   roles   = Object.fromEntries((crewConfig.members ?? []).map((m) => [m.webid, m.role]));
   members = crewConfig.members ?? [];
   if (!roles[values.actor]) {
