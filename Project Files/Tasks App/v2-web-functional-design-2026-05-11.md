@@ -455,22 +455,38 @@ routing, isolation, idempotent spawn, getMyCrews enumeration.
 Single-crew tests unaffected (106/106 across phase2/5/10/integration
 + v2-adoption + v2-multi-crew).
 
-**Known limitation in multi-crew mode:** onboarding skills
-(`issueInvite` / `redeemInvite`) are NOT registered — they live
-inside `createCrewAgent`'s `buildOnboardingSkills` call which
-would register last-write-wins per-crew. Multi-crew dispatch for
-them is a follow-up (~0.5 day). Until then, multi-crew users run a
-separate single-crew CLI for invite operations.
+**Eighth slice — multi-crew onboarding-skill dispatch, shipped
+2026-05-14:**
 
-**Remaining Tasks V2 web pickups:**
+- `createCrewAgent` now always builds the `GroupManager` and
+  stashes it on the CrewState (`crewState.groupManager`,
+  `.onSpawn`, `.crewIdForOnboarding`). `wireOnboardingSkills:
+  false` only skips per-crew skill registration — the
+  GroupManager is needed for multi-crew dispatch.
+- New `apps/tasks-v0/src/skills/multiCrewOnboarding.js` exports
+  `buildMultiCrewOnboardingSkills({bundleResolver})`. Registers
+  `issueInvite` + `redeemInvite` ONCE with per-call CrewState
+  resolution: each invocation reads the right groupManager /
+  members / groupId / onSpawn from the CrewState the
+  bundleResolver returned. `redeemInvite` falls back to
+  `invite.groupId` for routing when the caller doesn't pass
+  `crewId`.
+- `bin/tasks-ui.js --multi-crew` registers the multi-crew
+  onboarding wrapper after `wireSkills`.
+- 4 new tests in `apps/tasks-v0/test/v2-multi-crew.test.js`:
+  issueInvite routes to right GroupManager; redeemInvite adds new
+  member to right MemberMap (verified by negative assertion against
+  the other crew); redeemInvite rejects when no crew matches;
+  issueInvite errors on routing miss.
 
-1. **Multi-crew onboarding-skill dispatch** (~0.5 day) — register
-   `issueInvite`/`redeemInvite` once with a multi-crew dispatcher
-   that resolves `groupManager` + `members` from the CrewState
-   per call (stash `groupManager` on CrewState during
-   `createCrewAgent`; write a Tasks-side
-   `buildMultiCrewOnboardingSkills({bundleResolver})` wrapper).
-2. **Phase 52.9.3 substrate-mirror** (~3-5 days) — cross-device
+**Tasks V2 multi-crew runtime is now feature-complete for the
+web app.** 110/110 Tasks tests green across phase2-crew (contract
+update covered), phase5-dod, phase10-lifecycle, integration,
+v2-adoption, v2-multi-crew.
+
+**Remaining Tasks V2 web pickup:**
+
+1. **Phase 52.9.3 substrate-mirror** (~3-5 days) — cross-device
    fan-out for multi-device Tasks. Follow Stoop's
    `apps/stoop/src/substrateMirror.js` template; can swap the
    standalone-mode pseudoPod for a replication-ring one and add

@@ -21,6 +21,8 @@ import { createCrewAgent } from '../src/Crew.js';
 import { buildBundle } from '../src/storage/buildBundle.js';
 import { wireSkills } from '../src/wireSkills.js';
 import { multiCrewResolver } from '../src/bundleResolver.js';
+import { buildMultiCrewOnboardingSkills } from '../src/skills/multiCrewOnboarding.js';
+import { AgentIdentity, VaultMemory } from '@canopy/core';
 
 const ANNE = 'https://id.example/anne';
 const BOB  = 'https://id.example/bob';
@@ -90,6 +92,13 @@ async function buildMultiCrew() {
     crewsProvider:  () => crewsMap.values(),
     members:        primaryBundle.members,
   });
+
+  // Multi-crew onboarding dispatch (Tasks V2 seventh slice).
+  for (const def of buildMultiCrewOnboardingSkills({
+    bundleResolver: multiCrewResolver(crewsMap),
+  })) {
+    meshAgent.skills.register(def);
+  }
 
   await meshAgent.start();
 
@@ -193,5 +202,89 @@ describe('Tasks V2 multi-crew runtime', () => {
       expect(ids).toContain('primary-crew');
       expect(ids).toContain('extra-1');
     }
+  });
+});
+
+describe('Tasks V2 multi-crew — onboarding dispatch', () => {
+  it('issueInvite routes to the right crew\'s GroupManager', async () => {
+    const { meshAgent, crewsMap } = await buildMultiCrew();
+
+    // Provision + spawn a sibling crew first.
+    await meshAgent.skills.get('provisionMyCrew').handler({
+      parts: [{ type: 'DataPart', data: { crewId: 'second-crew', name: 'Second', kind: 'team' } }],
+      from: ANNE, agent: meshAgent, envelope: null,
+    });
+    await callSkill(meshAgent, 'spawnMyCrew', { crewId: 'second-crew' });
+    expect(crewsMap.size).toBe(2);
+
+    // Each crew has its own GroupManager.
+    const primaryInvite = await callSkill(meshAgent, 'issueInvite', {
+      crewId: 'primary-crew',
+      role:   'member',
+    });
+    expect(primaryInvite?.invite?.groupId).toBe('primary-crew');
+
+    const secondInvite = await callSkill(meshAgent, 'issueInvite', {
+      crewId: 'second-crew',
+      role:   'admin',
+    });
+    expect(secondInvite?.invite?.groupId).toBe('second-crew');
+    expect(secondInvite?.invite?.role).toBe('admin');
+  });
+
+  it('redeemInvite adds the new member to the right crew\'s MemberMap', async () => {
+    const { meshAgent, crewsMap } = await buildMultiCrew();
+
+    await meshAgent.skills.get('provisionMyCrew').handler({
+      parts: [{ type: 'DataPart', data: { crewId: 'redeem-crew', name: 'Redeem' } }],
+      from: ANNE, agent: meshAgent, envelope: null,
+    });
+    await callSkill(meshAgent, 'spawnMyCrew', { crewId: 'redeem-crew' });
+
+    // Issue invite for redeem-crew.
+    const { invite } = await callSkill(meshAgent, 'issueInvite', {
+      crewId: 'redeem-crew',
+      role:   'member',
+    });
+    expect(invite).toBeTruthy();
+
+    // Generate a new member identity (production-mode redemption —
+    // no spawn hook in the test setup).
+    const memberIdentity = await AgentIdentity.generate(new VaultMemory());
+
+    // Redeem without explicit crewId — the multi-crew wrapper infers
+    // it from `invite.groupId`.
+    const r = await callSkill(meshAgent, 'redeemInvite', {
+      invite,
+      webid:        'https://id.example/carol',
+      displayName:  'Carol',
+      memberPubKey: memberIdentity.pubKey,
+    });
+    expect(r?.groupProof).toBeTruthy();
+    expect(r?.memberPubKey).toBe(memberIdentity.pubKey);
+
+    // The new member landed in redeem-crew's MemberMap, NOT primary's.
+    const redeemState  = crewsMap.get('redeem-crew');
+    const primaryState = crewsMap.get('primary-crew');
+    const redeemMembers  = await redeemState.members.list();
+    const primaryMembers = await primaryState.members.list();
+    expect(redeemMembers.some(m => m.webid === 'https://id.example/carol')).toBe(true);
+    expect(primaryMembers.some(m => m.webid === 'https://id.example/carol')).toBe(false);
+  });
+
+  it('redeemInvite rejects when no crew matches the invite', async () => {
+    const { meshAgent } = await buildMultiCrew();
+    const memberIdentity = await AgentIdentity.generate(new VaultMemory());
+    const r = await callSkill(meshAgent, 'redeemInvite', {
+      invite: { groupId: 'nonexistent', token: 'x', role: 'member', expiresAt: Date.now() + 60_000 },
+      memberPubKey: memberIdentity.pubKey,
+    });
+    expect(r?.error).toMatch(/crewId required/);
+  });
+
+  it('issueInvite errors when crewId routing misses', async () => {
+    const { meshAgent } = await buildMultiCrew();
+    const r = await callSkill(meshAgent, 'issueInvite', { crewId: 'never-spawned', role: 'member' });
+    expect(r?.error).toMatch(/crewId required/);
   });
 });

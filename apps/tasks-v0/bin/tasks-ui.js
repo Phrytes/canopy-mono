@@ -333,6 +333,7 @@ if (values.crew) {
     const { buildMeshAgent } = await import('../src/MeshAgent.js');
     const { wireSkills }     = await import('../src/wireSkills.js');
     const { multiCrewResolver } = await import('../src/bundleResolver.js');
+    const { buildMultiCrewOnboardingSkills } = await import('../src/skills/multiCrewOnboarding.js');
 
     const { meshAgent } = await buildMeshAgent({
       identity:        id,
@@ -399,6 +400,16 @@ if (values.crew) {
       crewsProvider:  () => crewsMap.values(),
       members:        bundle.members,
     });
+
+    // Multi-crew onboarding dispatch — registers `issueInvite` +
+    // `redeemInvite` ONCE with per-call CrewState resolution. Closes
+    // the gap that V2 sixth slice flagged as "known limitation in
+    // --multi-crew mode" (per-crew onboarding skills last-write-wins).
+    for (const def of buildMultiCrewOnboardingSkills({
+      bundleResolver: multiCrewResolver(crewsMap),
+    })) {
+      meshAgent.skills.register(def);
+    }
 
     await meshAgent.start();
   } else {

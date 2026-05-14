@@ -360,9 +360,19 @@ export async function createCrewAgent({
   const crewState = bundle._crewState;
 
   // Optional GroupManager + onboarding skills.
-  let groupManager = providedGroupManager ?? null;
+  //
+  // Multi-crew runtime (2026-05-14, Tasks V2 seventh slice) — always
+  // build the GroupManager and stash it on `crewState` (plus the
+  // optional `onSpawn` hook). The CLI's `--multi-crew` path skips the
+  // per-crew skill registration (`wireOnboardingSkills: false`) and
+  // instead registers `buildMultiCrewOnboardingSkills` once against
+  // the meshAgent; that wrapper resolves the right groupManager from
+  // the CrewState per call via the multi-crew bundleResolver.
+  let groupManager = providedGroupManager ?? new GroupManager({ identity: id, vault: v });
+  crewState.groupManager = groupManager;
+  crewState.onSpawn      = onSpawn ?? null;
+  crewState.crewIdForOnboarding = crew.crewId;
   if (wireOnboardingSkills) {
-    groupManager = groupManager ?? new GroupManager({ identity: id, vault: v });
     for (const def of buildOnboardingSkills({
       groupManager,
       members: bundle.members,
