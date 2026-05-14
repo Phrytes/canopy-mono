@@ -59,7 +59,25 @@ export async function buildMeshAgent({
   localStoreBundle,
   identityVault = DEFAULT_IDENTITY_VAULT_PATH,
   label = 'TasksMeshAgent',
+  agent: existingAgent,
 } = {}) {
+  // Multi-crew runtime (2026-05-14, Tasks V2 sixth slice) — when a
+  // pre-built `core.Agent` is supplied, reuse it instead of creating
+  // a fresh one. The caller owns identity/transport/vault/policy/trust
+  // wiring. Used by `bin/tasks-ui.js` to share one agent across N
+  // crew bundles. Returns the same surface shape as the
+  // build-from-scratch path.
+  if (existingAgent) {
+    return {
+      meshAgent:     existingAgent,
+      vault:         existingAgent.vault ?? null,
+      identity:      existingAgent.identity,
+      identityVault,
+      policyEngine:  existingAgent.policyEngine ?? null,
+      trustRegistry: existingAgent.trustRegistry ?? null,
+    };
+  }
+
   // ── Vault + identity (V2.0 vault-snapshot persistence) ────────────────────
   let vault;
   let id;

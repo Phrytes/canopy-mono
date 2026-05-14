@@ -272,6 +272,13 @@ export async function createCrewAgent({
   pushSender,
   bus,
   crewBundlesProvider,
+  // Multi-crew runtime (2026-05-14, Tasks V2 sixth slice) — when
+  // supplied, share this `core.Agent` instead of building one per
+  // crew. `registerSkills: false` (default when `agent` is given)
+  // tells `createTasksAgent` to skip its single-crew wireSkills
+  // call — the CLI owns the wireSkills invocation.
+  agent: sharedAgent,
+  registerSkills,
 } = {}) {
   const crew = _normaliseConfig(crewConfig ?? { ...IMPLICIT_HOUSEHOLD_CONFIG });
 
@@ -339,6 +346,8 @@ export async function createCrewAgent({
     label:        label ?? `Crew(${crew.crewId})`,
     crewProvider,
     crewMutator,
+    agent:        sharedAgent,
+    registerSkills,
   });
 
   const crewState = bundle._crewState;
