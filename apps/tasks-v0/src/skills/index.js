@@ -262,6 +262,8 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       if (!crew) return { error: 'crewId required' };
       const a = argsFromParts(parts);
       const updated = await crew.itemStore.reassign(a.id, a.newAssignee ?? null, { actor: from, actorDisplayName });
+      // Phase 52.9.3 sub-slice 1 — fan-out the reassignment.
+      if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
       return { task: updated };
     }, {
       description: 'Reassign a task — admin/coordinator only via item-store role policy.',
@@ -380,6 +382,8 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
         ...(a.deliverable !== undefined ? { deliverable: a.deliverable } : {}),
         ...(a.note        !== undefined ? { note:        a.note        } : {}),
       }, { actor: from, actorDisplayName });
+      // Phase 52.9.3 sub-slice 1 — fan-out the submission.
+      if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
       return { task: updated };
     }, {
       description: 'Submit a claimed task for approval.',
@@ -398,6 +402,8 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
         const updated = await crew.itemStore.approve(a.id, {
           ...(a.note !== undefined ? { note: a.note } : {}),
         }, { actor: from, actorDisplayName });
+        // Phase 52.9.3 sub-slice 1 — fan-out the approval.
+        if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
         return { task: updated };
       } catch (err) {
         if (err?.code === 'DEPENDENCIES_OPEN') {
@@ -419,6 +425,8 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       if (!crew) return { error: 'crewId required' };
       const a = argsFromParts(parts);
       const updated = await crew.itemStore.reject(a.id, { note: a.note }, { actor: from, actorDisplayName });
+      // Phase 52.9.3 sub-slice 1 — fan-out the rejection.
+      if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
       return { task: updated };
     }, {
       description: 'Reject a submitted task with a mandatory note.',
@@ -435,6 +443,8 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       if (!crew) return { error: 'crewId required' };
       const a = argsFromParts(parts);
       const updated = await crew.itemStore.revoke(a.id, { reason: a.reason }, { actor: from, actorDisplayName });
+      // Phase 52.9.3 sub-slice 1 — fan-out the revocation.
+      if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
       return { task: updated, previousAssignee: a.previousAssignee };
     }, {
       description: 'Revoke an assignment with a mandatory reason (master only).',
