@@ -596,11 +596,39 @@ internal ungated path.
 
 **119/119 Tasks tests green** across 7 test files.
 
-**Tasks V2 substrate-mirror is now feature-complete for the
-common-path mutations** (add / claim / complete / remove). The
-remaining mutation fan-outs (submit / approve / reject / revoke /
-reassign) follow the same pattern — they're a clean follow-up:
-hook the skill's success path to `mirror.publishTask(updated)`.
+**Twelfth slice — final mutation fan-out mop-up, shipped
+2026-05-14:**
+
+The five remaining mutation skills now publish too — same
+`mirror.publishTask(updated)` pattern as slice 11:
+
+- `submitTask`, `approveTask`, `rejectTask`, `revokeTask`,
+  `reassignTask` — one-liner hook on each success path.
+- `_inferAction` upgraded to detect submit/approve/reject by
+  inspecting `reviewLog`'s newest entry (item-store stores those
+  decisions on the reviewLog, not in dedicated `submittedAt` /
+  `rejectedAt` fields).
+
+3 new integration tests (12 total in `v2-substrate-mirror.test.js`):
+- submit → reject → submit → approve lifecycle replicates fully
+  to the peer (reviewLog entries + final `completedAt`).
+- reassignTask replicates the new assignee (admin-on-both-sides
+  config since reassign is admin/coordinator-gated on the
+  sender).
+- revokeTask clears the assignee on the peer.
+
+**122/122 Tasks tests green.**
+
+**Tasks V2 substrate-mirror is now FEATURE-COMPLETE.** Every
+add/claim/complete/submit/approve/reject/revoke/reassign/remove
+mutation fans out to peers via `notifyEnvelope.publish` + applied
+on receivers via `itemStore.applySync` (gate-bypass, audit-aware,
+event-emitting) or `itemStore.removeSync` (hard-delete).
+
+**Tasks V2 web track is complete.** All 12 slices shipped; no
+remaining V2 web items. Cross-app residuals remain in
+[`../TODO-GENERAL.md`](../TODO-GENERAL.md) (per-app README sweep,
+real-device pair tests, Hub-track items, etc.).
 
 **Larger deferrals** (each needs its own session):
 
