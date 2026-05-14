@@ -78,6 +78,12 @@ export async function createTasksAgent({
   crewProvider,
   crewMutator: externalMutator,
   identityVault,
+  // Multi-crew runtime (2026-05-14, Tasks V2 sixth slice) —
+  // a pre-built `core.Agent` to reuse across crew bundles; when
+  // truthy, `registerSkills` defaults to false so the CLI owns the
+  // single wireSkills call.
+  agent: sharedAgent,
+  registerSkills,
 }) {
   if (!roles || typeof roles !== 'object') {
     throw new TypeError('createTasksAgent: roles map required');
@@ -118,6 +124,7 @@ export async function createTasksAgent({
     localStoreBundle,
     identityVault,
     label,
+    agent: sharedAgent,
   });
 
   // SkillMatch (Phase 4.2 — composes core.Agent + pubSub directly).
@@ -176,13 +183,25 @@ export async function createTasksAgent({
   };
 
   // ── Skills (V2.8 — single registration via wireSkills) ───────────────────
-  wireSkills({
-    meshAgent: agent,
-    bundleResolver: singleCrewResolver(crewState),
-    members,
-  });
+  // Default behaviour: register skills here (single-crew path).
+  // Multi-crew runtime (Tasks V2 sixth slice): when `registerSkills:
+  // false` or when a shared `agent` is supplied (and the caller didn't
+  // override), skip — the CLI calls wireSkills ONCE with a
+  // multi-crew bundleResolver.
+  const shouldRegisterSkills = typeof registerSkills === 'boolean'
+    ? registerSkills
+    : !sharedAgent;
+  if (shouldRegisterSkills) {
+    wireSkills({
+      meshAgent: agent,
+      bundleResolver: singleCrewResolver(crewState),
+      members,
+    });
+  }
 
-  await agent.start();
+  if (!sharedAgent) {
+    await agent.start();
+  }
 
   return {
     agent,

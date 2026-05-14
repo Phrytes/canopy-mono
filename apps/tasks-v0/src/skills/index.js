@@ -24,7 +24,7 @@ import { defineSkill } from '@canopy/core';
 import { computeStatus, effectiveStatus, unmetDeps, detectCycle } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';
 import { validateCanonical } from '@canopy/item-types';
-import { saveCrewConfig, KIND_DEFAULTS } from '../Crew.js';
+import { saveCrewConfig, loadCrewConfig, KIND_DEFAULTS } from '../Crew.js';
 import {
   startPodSignIn      as _startPodSignIn,
   completePodSignIn   as _completePodSignIn,
@@ -513,6 +513,80 @@ export function buildSkills({ bundleResolver } = {}) {
       return _podSignInStatus({ crew });
     }, {
       description: 'Read the current pod-sign-in state for this crew.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * spawnMyCrew({crewId})
+     *
+     * Tasks V2 substrate-adoption (2026-05-14, sixth slice). Loads a
+     * saved CrewConfig from the local store + (when the CLI is wired
+     * for multi-crew runtime) brings up a fresh crew bundle on the
+     * shared meshAgent + adds it to the runtime crewsMap.
+     *
+     * **In-process spawning** requires the host CLI to expose a
+     * `_spawnCrewInProcess(crewId)` callback on the resolved crew's
+     * `_crewState`. The `bin/tasks-ui.js` `--multi-crew` path wires
+     * this; the default single-crew path does NOT.
+     *
+     * When the callback is missing (single-crew mode), the skill
+     * returns a structured `{ok: true, ready: false, restartHint}`
+     * payload so the UI can show the user the right CLI command to
+     * restart with the new crew bound at boot.
+     */
+    defineSkill('spawnMyCrew', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew?.dataSource?.read) return { error: 'no-data-source' };
+      const a = argsFromParts(parts);
+      if (typeof a.crewId !== 'string' || !a.crewId) {
+        return { error: 'crewId required' };
+      }
+      if (a.crewId === crew?.liveCrew?.crewId) {
+        return { error: 'crew-already-active' };
+      }
+      // Load the saved config to confirm it exists + is well-formed.
+      // `loadCrewConfig` has a fallback for missing entries — we want a
+      // strict "exists?" check here so the UI can surface "no such crew".
+      const path = `mem://tasks/crews/${a.crewId}/config.json`;
+      let cfg;
+      try {
+        const raw = await crew.dataSource.read(path);
+        if (!raw) return { error: 'crew-not-found' };
+        cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      } catch (err) {
+        return { error: `load-failed:${err?.message ?? err}` };
+      }
+      if (!cfg || cfg.crewId !== a.crewId) {
+        return { error: 'crew-not-found' };
+      }
+
+      // In-process spawn path (multi-crew runtime).
+      if (typeof crew._spawnCrewInProcess === 'function') {
+        try {
+          const spawned = await crew._spawnCrewInProcess(a.crewId);
+          return {
+            ok:     true,
+            ready:  true,
+            crewId: spawned?.liveCrew?.crewId ?? a.crewId,
+            name:   spawned?.liveCrew?.name ?? cfg.name,
+            kind:   spawned?.liveCrew?.kind ?? cfg.kind,
+          };
+        } catch (err) {
+          return { error: `spawn-failed:${err?.message ?? err}` };
+        }
+      }
+
+      // Single-crew runtime: structured restart hint.
+      return {
+        ok:           true,
+        ready:        false,
+        crewId:       cfg.crewId,
+        name:         cfg.name,
+        kind:         cfg.kind,
+        restartHint:  `Restart the tasks UI bound to "${cfg.crewId}". The single-crew CLI takes \`--crew=<path-to-config.json>\`; the saved config lives at \`mem://tasks/crews/${cfg.crewId}/config.json\` in the local-store. Multi-crew in-process runtime is a follow-up (see Project Files/Tasks App/v2-web-functional-design-2026-05-11.md §6a).`,
+      };
+    }, {
+      description: 'Tasks V2: spawn a saved crew on the running agent (multi-crew runtime) OR return a restart hint when the CLI is single-crew mode.',
       visibility:  'authenticated',
     }),
 

@@ -203,6 +203,66 @@ describe('Tasks V2 — agent-registry on bundle bring-up', () => {
   });
 });
 
+describe('Tasks V2 — spawnMyCrew', () => {
+  it('rejects when crewId is missing', async () => {
+    const { crew } = await makeCrew();
+    const r = await callSkill(crew.agent, 'spawnMyCrew', {});
+    expect(r?.error).toMatch(/crewId required/);
+  });
+
+  it('rejects when the requested crewId is already active', async () => {
+    const { crew } = await makeCrew();
+    const r = await callSkill(crew.agent, 'spawnMyCrew', { crewId: 'oss-tools' });
+    expect(r?.error).toBe('crew-already-active');
+  });
+
+  it('rejects when no saved config exists', async () => {
+    const { crew } = await makeCrew();
+    const r = await callSkill(crew.agent, 'spawnMyCrew', { crewId: 'never-provisioned' });
+    expect(r?.error).toBe('crew-not-found');
+  });
+
+  it('returns a structured restart hint when no in-process spawner is wired', async () => {
+    const { crew } = await makeCrew();
+    await callSkill(crew.agent, 'provisionMyCrew', {
+      crewId: 'sibling-crew',
+      name:   'Sibling',
+      kind:   'team',
+    });
+    const r = await callSkill(crew.agent, 'spawnMyCrew', { crewId: 'sibling-crew' });
+    expect(r).toMatchObject({
+      ok:     true,
+      ready:  false,
+      crewId: 'sibling-crew',
+      name:   'Sibling',
+      kind:   'team',
+    });
+    expect(r.restartHint).toMatch(/sibling-crew/);
+  });
+
+  it('honours an in-process spawner when one is wired', async () => {
+    const { crew } = await makeCrew();
+    await callSkill(crew.agent, 'provisionMyCrew', {
+      crewId: 'inproc-crew',
+      name:   'In-Process',
+      kind:   'household',
+    });
+    // The bundleResolver returns the CrewState (not the bundle) per
+    // V2.8 single-agent semantics; attach the spawner there.
+    crew._crewState._spawnCrewInProcess = async (crewId) => ({
+      liveCrew: { crewId, name: 'In-Process', kind: 'household' },
+    });
+    const r = await callSkill(crew.agent, 'spawnMyCrew', { crewId: 'inproc-crew' });
+    expect(r).toEqual({
+      ok:     true,
+      ready:  true,
+      crewId: 'inproc-crew',
+      name:   'In-Process',
+      kind:   'household',
+    });
+  });
+});
+
 describe('Tasks V2 — listSavedCrewConfigs', () => {
   it('returns the running crew with running:true', async () => {
     const { crew } = await makeCrew();
