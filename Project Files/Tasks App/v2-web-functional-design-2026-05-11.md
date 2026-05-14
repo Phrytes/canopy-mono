@@ -377,18 +377,40 @@ is a thin re-export shim from `@canopy/item-store`.
 - EN + NL locales (`onboard.*` + `pod_settings.*` namespaces ~30
   keys each). audit-locales clean.
 
+**Fifth slice — pod OIDC sign-in + saved-crews surface, shipped
+2026-05-14:**
+
+- `apps/tasks-v0/src/lib/podSignIn.js` mirrors Stoop's Phase 52.15.3
+  pattern (`createSolidAuthNode` from `@canopy/oidc-session`).
+  Four new skills wired: `startPodSignIn`, `completePodSignIn`,
+  `signOutOfPod`, `podSignInStatus`.
+- `/pod-settings.html` placeholder unlocked: issuer input
+  (default `https://login.inrupt.com`), sign-in form that drives
+  the OIDC redirect, callback handler that detects
+  `?code=&state=` and calls `completePodSignIn`, sign-out button.
+- `listSavedCrewConfigs` skill scans `mem://tasks/crews/*/config.json`
+  in the local store and surfaces every saved CrewConfig with a
+  `running` flag so the user can see what `provisionMyCrew` saved.
+- `/crews.html` gets a second table "Saved crew configs (not
+  currently running)" that lists those crews with a
+  "restart needed" hint.
+
+**Multi-crew runtime — partially shipped (read-only view).** The
+saved-crews surface lets users see what they provisioned via
+`/welcome.html`, but switching to a saved crew still requires a
+restart with `--crew=<id>`. Full multi-crew runtime (in-process
+spawn + bundleResolver mutation) requires a `bin/tasks-ui.js`
+refactor to use `multiCrewResolver(crewsMap)` from boot; that's
+the largest pending V2 item.
+
 **Remaining Tasks V2 web pickups:**
 
-1. **Pod OIDC sign-in on `/pod-settings.html`** (~1-2 days) — wire
-   `startPodSignIn` / `completePodSignIn` / `signOutOfPod` skills
-   on Tasks via `createSolidAuthNode` from `@canopy/oidc-session`
-   (mirror of Stoop's Phase 20 + 52.15.3 work). Unlocks the
-   current pod-sign-in placeholder.
-2. **Multi-crew runtime** — `/welcome.html` saves a fresh
-   CrewConfig but Tasks-v0 only binds to one crew per process
-   today. V2.x should add hot-swap or multi-bundle runtime so the
-   wizard's output can be consumed without a restart.
-3. **Phase 52.9.3 substrate-mirror** (~3-5 days) — cross-device
+1. **In-process multi-crew runtime** — `bin/tasks-ui.js` refactor:
+   maintain `Map<crewId, bundle>`, wire `multiCrewResolver(map)`,
+   add a `spawnMyCrew({crewId})` skill that loads the saved
+   CrewConfig and pushes a new bundle onto the map. Estimate ~2-3
+   days; needs care with shared identity/transport across bundles.
+2. **Phase 52.9.3 substrate-mirror** (~3-5 days) — cross-device
    fan-out for multi-device Tasks. Follow Stoop's
    `apps/stoop/src/substrateMirror.js` template; can swap the
    standalone-mode pseudoPod for a replication-ring one and add

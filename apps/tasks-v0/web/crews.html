@@ -43,6 +43,28 @@
         <tbody><tr><td colspan="6" class="empty" style="color:var(--muted);font-style:italic">Loading…</td></tr></tbody>
       </table>
     </section>
+
+    <section id="saved-section" hidden style="margin-top: 1.5rem;">
+      <h2 data-i18n="dashboard.saved_heading">Saved crew configs (not currently running)</h2>
+      <p style="font-size: 0.85rem; color: var(--muted);" data-i18n="dashboard.saved_intro">
+        Crews you provisioned via <a href="/welcome.html">/welcome.html</a> but
+        aren't currently bound to the running process. Multi-crew runtime is a
+        follow-up; for now you can switch by restarting with the right crew at
+        boot.
+      </p>
+      <table id="saved-table" style="width:100%;border-collapse:collapse;font-size:0.95rem;margin-top:0.6rem">
+        <thead>
+          <tr>
+            <th style="text-align:left">Crew</th>
+            <th style="text-align:left">Kind</th>
+            <th style="text-align:left">Storage</th>
+            <th style="text-align:right">Members</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
   </main>
 
   <script type="module">
@@ -86,7 +108,41 @@
       }
     }
 
-    await refresh();
+    async function refreshSaved() {
+      let r;
+      try { r = await callSkill('listSavedCrewConfigs'); }
+      catch (err) {
+        // Skill missing on older builds — hide the section silently.
+        document.getElementById('saved-section').hidden = true;
+        return;
+      }
+      const saved = (r?.configs ?? []).filter(c => !c.running);
+      const section = document.getElementById('saved-section');
+      const tbody = document.querySelector('#saved-table tbody');
+      if (saved.length === 0) {
+        section.hidden = true;
+        return;
+      }
+      section.hidden = false;
+      tbody.innerHTML = '';
+      for (const c of saved) {
+        const tr = document.createElement('tr');
+        const podSuffix = c.storage?.groupPodUri
+          ? ` → <code>${escapeHtml(c.storage.groupPodUri)}</code>`
+          : '';
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(c.name)}</strong> <code style="color:var(--muted);font-size:0.85rem">(${escapeHtml(c.crewId)})</code></td>
+          <td>${escapeHtml(c.kind ?? '')}</td>
+          <td>${escapeHtml(c.storage?.policy ?? 'no-pod')}${podSuffix}</td>
+          <td style="text-align:right">${(c.members ?? []).length}</td>
+          <td style="text-align:right">
+            <span class="role-chip" style="color:var(--muted);font-style:italic">restart needed</span>
+          </td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    await Promise.all([refresh(), refreshSaved()]);
     mountLive([
       'item-added', 'item-completed', 'item-removed',
     ], refresh);

@@ -25,6 +25,12 @@ import { computeStatus, effectiveStatus, unmetDeps, detectCycle } from '../dag.j
 import { argsFromParts } from '../bundleResolver.js';
 import { validateCanonical } from '@canopy/item-types';
 import { saveCrewConfig, KIND_DEFAULTS } from '../Crew.js';
+import {
+  startPodSignIn      as _startPodSignIn,
+  completePodSignIn   as _completePodSignIn,
+  signOutOfPod        as _signOutOfPod,
+  podSignInStatus     as _podSignInStatus,
+} from '../lib/podSignIn.js';
 
 /**
  * Cross-pod ref soft cap on `addTask({embeds: [...]})`. Eight keeps
@@ -446,6 +452,114 @@ export function buildSkills({ bundleResolver } = {}) {
       return { crewId: crew.liveCrew?.crewId ?? a.crewId ?? null, storage: next };
     }, {
       description: 'Tasks V2: admin-only upgrade of the crew storage policy. One-way.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * startPodSignIn({issuer, redirectUrl, crewId?})
+     *   — Tasks V2 substrate-adoption (2026-05-14, Phase 52.15.3
+     *   mirror). Kicks off the OIDC redirect dance. Returns the IdP
+     *   authorize URL; the browser navigates there. The session is
+     *   stored on `crew.oidcSession` until the callback lands.
+     */
+    defineSkill('startPodSignIn', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew) return { error: 'crewId required' };
+      const a = argsFromParts(parts);
+      return _startPodSignIn({ crew, issuer: a.issuer, redirectUrl: a.redirectUrl });
+    }, {
+      description: 'Phase 1 of pod sign-in: returns the IdP authorize URL.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * completePodSignIn({callbackUrl, crewId?})
+     *   — Tasks V2 substrate-adoption. Phase 2: handles the OIDC
+     *   callback + attaches a SolidPodSource to the crew's
+     *   CachingDataSource.
+     */
+    defineSkill('completePodSignIn', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew) return { error: 'crewId required' };
+      const a = argsFromParts(parts);
+      return _completePodSignIn({ crew, callbackUrl: a.callbackUrl });
+    }, {
+      description: 'Phase 2 of pod sign-in: completes the OIDC dance + attaches the pod-backed DataSource.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * signOutOfPod({crewId?})
+     *   — Tasks V2 substrate-adoption. Detaches the inner DataSource
+     *   + clears the OIDC session. Local cache preserved.
+     */
+    defineSkill('signOutOfPod', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew) return { error: 'crewId required' };
+      return _signOutOfPod({ crew });
+    }, {
+      description: 'Sign out of the active pod; preserves local cache.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * podSignInStatus({crewId?})
+     *   — Tasks V2 substrate-adoption. Read-only `{signedIn, webid,
+     *   podAttached}`.
+     */
+    defineSkill('podSignInStatus', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew) return { error: 'crewId required' };
+      return _podSignInStatus({ crew });
+    }, {
+      description: 'Read the current pod-sign-in state for this crew.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * listSavedCrewConfigs()
+     *   — Tasks V2 substrate-adoption (2026-05-14). Scans the local
+     *   store for `mem://tasks/crews/<crewId>/config.json` entries and
+     *   returns the saved CrewConfigs. Includes a `running` flag per
+     *   entry: `true` iff the active bundle is bound to that crewId.
+     *   Used by `/crews.html` to surface saved-but-not-running crews
+     *   so users can see what `provisionMyCrew` persisted before
+     *   multi-crew runtime lands.
+     */
+    defineSkill('listSavedCrewConfigs', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew?.dataSource?.list) return { error: 'no-data-source' };
+      let paths;
+      try {
+        paths = await crew.dataSource.list('mem://tasks/crews/');
+      } catch (err) {
+        return { error: `list-failed:${err?.message ?? err}` };
+      }
+      const configs = [];
+      const runningId = crew?.liveCrew?.crewId ?? null;
+      for (const path of paths ?? []) {
+        if (!path.endsWith('/config.json')) continue;
+        try {
+          const raw = await crew.dataSource.read(path);
+          if (!raw) continue;
+          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (!cfg?.crewId) continue;
+          configs.push({
+            crewId:  cfg.crewId,
+            name:    cfg.name ?? cfg.crewId,
+            kind:    cfg.kind ?? 'household',
+            storage: cfg.storage ?? { policy: 'no-pod' },
+            members: Array.isArray(cfg.members)
+              ? cfg.members.map(m => ({ webid: m.webid, displayName: m.displayName ?? null, role: m.role ?? 'member' }))
+              : [],
+            running: cfg.crewId === runningId,
+          });
+        } catch { /* skip malformed config */ }
+      }
+      configs.sort((a, b) => a.crewId.localeCompare(b.crewId));
+      return { configs };
+    }, {
+      description: 'Tasks V2: list saved CrewConfigs in the local store with a running-flag per entry.',
       visibility:  'authenticated',
     }),
 
