@@ -359,17 +359,36 @@ in Phase 52.6.2** — audit 2026-05-14 confirms `apps/tasks-v0/src/dag.js`
 is a thin re-export shim from `@canopy/item-store`.
 24/24 item-store dag tests pass.
 
+**Fourth slice — `/onboard.html` + `/pod-settings.html`, shipped
+2026-05-14:**
+
+- `/onboard.html` — invite-redemption wizard. Paste-link textarea
+  (tolerates raw JSON or `stoop-invite://` / `tasks-invite://`
+  URLs), optional display-name + WebID inputs. Calls the existing
+  `redeemInvite` skill from `@canopy/identity-resolver`. Result
+  panel shows the membership proof as JSON.
+- `/pod-settings.html` — three cards: (a) crew storage-policy
+  display + upgrade row (driven by the `getCrewStoragePolicy` +
+  `setCrewStoragePolicy` skills from the first V2 slice); (b)
+  pod-sign-in placeholder (V2.x — `@canopy/oidc-session` is
+  ready; per-app OIDC wiring in Tasks deferred); (c) agent-registry
+  status surfacing the device's pubKey/role/deviceId.
+- Both pages wired into `/crews.html`'s nav (Join + Pod links).
+- EN + NL locales (`onboard.*` + `pod_settings.*` namespaces ~30
+  keys each). audit-locales clean.
+
 **Remaining Tasks V2 web pickups:**
 
-1. **`/pod-settings.html`** (~1-2 days) — pod provision +
-   sign-out + storage-policy display. Provision uses
-   `createSolidAuthNode` + `KNOWN_ISSUERS` (Phase 52.15).
-2. **`/onboard.html`** (~1 day) — invite redemption page.
-3. **Multi-crew runtime** — `/welcome.html` saves a fresh
+1. **Pod OIDC sign-in on `/pod-settings.html`** (~1-2 days) — wire
+   `startPodSignIn` / `completePodSignIn` / `signOutOfPod` skills
+   on Tasks via `createSolidAuthNode` from `@canopy/oidc-session`
+   (mirror of Stoop's Phase 20 + 52.15.3 work). Unlocks the
+   current pod-sign-in placeholder.
+2. **Multi-crew runtime** — `/welcome.html` saves a fresh
    CrewConfig but Tasks-v0 only binds to one crew per process
    today. V2.x should add hot-swap or multi-bundle runtime so the
    wizard's output can be consumed without a restart.
-4. **Phase 52.9.3 substrate-mirror** (~3-5 days) — cross-device
+3. **Phase 52.9.3 substrate-mirror** (~3-5 days) — cross-device
    fan-out for multi-device Tasks. Follow Stoop's
    `apps/stoop/src/substrateMirror.js` template; can swap the
    standalone-mode pseudoPod for a replication-ring one and add
