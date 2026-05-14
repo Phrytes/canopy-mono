@@ -19,7 +19,7 @@
 
 | Item | Size | Notes |
 |---|---|---|
-| ~~Phase 52.9.3 — Tasks relay-fan-out migration~~ | — | **Deferred to Tasks V2 (2026-05-14).** Tasks-v0 has no fan-out helpers to migrate; substrate side ready, adopts via Stoop's `substrateMirror` template when Tasks goes multi-device. Tracked in `Tasks App/v2-{web,mobile}-functional-design-2026-05-11.md` §8 Open questions. |
+| ~~Phase 52.9.3 — Tasks relay-fan-out migration~~ | — | **Shipped 2026-05-14.** Tasks V2 substrate-mirror + every mutation fan-out (add/claim/complete/submit/approve/reject/revoke/reassign/remove) via `notifyEnvelope.publish` + receive-side `ItemStore.applySync`/`removeSync` (gate-bypass; audit-aware; event-emitting). Stale-peer auto-heal + `fetch-resource` + `groupCheck` + live peer-roster updates also wired. 122/122 Tasks tests green. See `Tasks App/v2-web-functional-design-2026-05-11.md` §6a + `apps/tasks-v0/CHANGELOG.md` `[0.4.0]`. |
 | ~~Phase 52.9.4 — Integration test matrix~~ | — | **Shipped 2026-05-14.** Stoop coverage via Phase 52.9.2's substrate-mirror tests + integration-tests substrates-v2 scenarios. Graceful-degradation matrix (5 scenarios) at `packages/integration-tests/test/scenarios/graceful-degradation/cache-mode-edge-cases.scenario.test.js`. Integration suite 46/46. Tasks coverage waits on 52.9.3 (Tasks V2). |
 | ~~P3 graceful-degradation test matrix~~ | — | **Shipped 2026-05-14** — merged into 52.9.4 above. 5 scenarios: sequential offline writes; pending-queue persistence across substrate restart; partial drain failure with retry; online↔offline mid-batch; notify-envelope re-emit on drain. |
 | ~~P5 scaffolder CLI~~ | — | **Shipped 2026-05-14 (V0).** `scripts/scaffold-app.mjs <name> [--dir path]` generates a minimal `@canopy-app/<name>` skeleton: package.json + src/index.js (`createApp()` + hello skill) + bin/<name>.js + test/hello.test.js + locales/en.json (`{text, doc}` shape) + README.md + vitest.config.js. End-to-end verified: scaffolded app's `npm install && npm test && node bin/<name>.js` works. 10/10 scaffolder tests in `packages/integration-tests/test/scenarios/scaffolder/`. **Deferred (V1+):** per-substrate `SCAFFOLDER_META` exports (§II.12 metadata-driven ambition); RN/Expo + web templates; flag-driven substrate wiring (`--pseudo-pod`, `--item-types`, …). |
@@ -32,8 +32,8 @@
 | **Tasks-v0 (backend)** | **Tasks V2 web track complete (12 slices, 2026-05-14).** Slices 1-8: embeds + crew storage policy + provisionMyCrew + /welcome.html + agent-registry + /onboard.html + /pod-settings.html + pod OIDC sign-in + multi-crew substrate enablement + spawnMyCrew + `--multi-crew` CLI + multi-crew onboarding-skill dispatch. Slices 9-12: Phase 52.9.3 substrate-mirror — addTask fan-out + stale-peer auto-heal + groupCheck on fetch-resource + live peer-roster updates + mutation fan-out (`ItemStore.applySync`/`removeSync` gate-bypass) + all 9 mutation skills hooked (add/claim/complete/submit/approve/reject/revoke/reassign/remove). 122/122 Tasks tests green. See [`Tasks App/v2-web-functional-design-2026-05-11.md`](./Tasks%20App/v2-web-functional-design-2026-05-11.md) §6a. | ✅ done |
 | **Folio (desktop)** | (a) Item-types adoption — note type into canonical taxonomy (Phase 52.7); (b) sync-engine → pseudo-pod V1 migration (P3, Folio as reference); (c) real-device cross-pod-ref fetch latency test | ~1-2 days (a), in-progress (b), 2-3 days (c) |
 | **Folio-mobile** | Real-device test (P3 acceptance gate) | ~2-3 days |
-| **Stoop (web)** | Unified TODO at [`Stoop/TODO-stoop-2026-05-14.md`](./Stoop/TODO-stoop-2026-05-14.md): **A-track** (substrate-adoption UX — storage-policy picker, embeds, /group + /profile sections, stale-peer, agent-registry, ~5-7 days). B-track Phases 31-35 + 39 audited 2026-05-14: **all shipped already**. | ~5-7 days |
-| **Stoop-mobile** | C-track in [`Stoop/TODO-stoop-2026-05-14.md`](./Stoop/TODO-stoop-2026-05-14.md). Starts after web A-track is mostly done. Phase 40.23 real-device pass remains independent and can ship anytime. | ~5-6 days + 2-3 days (40.23) |
+| **Stoop (web)** | **A-track complete (2026-05-14)** — A1 stale-peer auto-heal, A2 fetch-resource + groupCheck, A3 storage-policy picker on `/create-group.html`, A4 `embeds:[]` on `postRequest` + chip rendering, A5 `/group.html` storage section + upgrade row, A6 `/profile.html` "My Solid pods" section, A7 agent-registry on bundle bring-up. Q-B groupMirror retirement same day. 47/47 A-track tests green. See [`apps/stoop/CHANGELOG.md`](../apps/stoop/CHANGELOG.md) `[0.3.0]`. B-track Phases 31-35 + 39 audited 2026-05-14: **all shipped already**. | ✅ done |
+| **Stoop-mobile** | **C-track complete (2026-05-14)** — C2 stale-peer auto-heal (inherits from `wireSubstrateMirror`), C3 agent-registry registration on all three bundle bring-up paths, C4 storage-policy picker on `CreateGroupScreen`, C5a "My Solid pods" section on `ProfileMineScreen`, C5b embed-ref slot on `PostComposeScreen`. 593/593 localesIntegrity tests green. Phase 40.23 real-device pass remains the only mobile work pending (hardware-dependent). | ✅ C-track done; Phase 40.23 still pending |
 | **Household V2** | Full design + implementation (separate product track; waiting for 52.15 — now available) | open |
 | **Archive** | No V1 action — pod-attached, lowest-impact app | — |
 
@@ -72,11 +72,11 @@
 - **Inrupt SDK ACP support against real CSS / NSS pods** — Phase 52.16 tests use a mocked Inrupt module; integration coverage against an actual ACP-supporting Solid server is unwritten.
 - **`@canopy/oidc-session-rn` DCR against non-Inrupt providers** — Phase 52.15 design said "tested against solidcommunity.net out-of-band"; not yet verified.
 
-### Recommended next-pickup priority (honest)
+### Recommended next-pickup priority (honest — refreshed 2026-05-14 end-of-day)
 
-1. **Tasks + Folio item-types adoption (Phase 52.7)** — ~2-3 days total. Unblocks clean P3 real-device parity testing across all three apps.
+1. **Folio item-types + createSolidAuthNode adoption** — ~1-2 days. Last small adoption residual; pattern is well-established from Stoop + Tasks. Tasks's V2 web track shipped today; Stoop A-track + Stoop-mobile C-track shipped today. Folio is the last app waiting.
 2. **P3 real-device pair tests** — ~10-15 days across Tasks + Stoop + Folio. Storage-layer transition is the highest-regression-risk piece; real hardware exposes radio / OS surprises. Stoop V3 mobile Phase 40.23 folds into this.
-3. **Per-app README sweep** — ~3-4 days. Documentation debt; cheap to clear before more phases land.
+3. **Per-app README sweep** — partially done 2026-05-14 (Tasks + Stoop READMEs refreshed). Remaining: Folio-mobile + Folio + tasks-mobile READMEs after their adoption ships.
 4. **Hub track kickoff (P4 Hub-Android V1)** — ~6 weeks. Only after items 1-2 above ship, since Hub depends on stable P1-P3 substrates.
 
 ---

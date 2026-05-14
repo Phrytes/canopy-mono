@@ -1,5 +1,91 @@
 # Changelog — @canopy-app/stoop
 
+## [0.3.0] — 2026-05-14 — V2 substrate adoption (Q-B retirement + A-track UX + A2 + C-track)
+
+The Stoop V2 web functional design's full substrate-adoption UX
+surface shipped today, plus the mobile mirror (C-track) and the
+Phase 52.9.2 `groupMirror` retirement.
+
+### Q-B groupMirror retirement (Phase 52.9.2)
+
+- `apps/stoop/src/groupMirror.js` deleted. The pubsub-tap mirror
+  ("subscribe to every peer's `<group>/requests` topic; copy
+  payloads to local itemStore") is replaced by the substrate path:
+  `@canopy/notify-envelope` + `@canopy/pseudo-pod` with the
+  Q-D Lamport version compare on receive. Clean break (no dual-run)
+  because Stoop V1 has no production users.
+- New `apps/stoop/src/substrateMirror.js` — `wireSubstrateMirror`
+  + `attachSubstrateMirror`. Surface preserved (`{addPeer, stop,
+  listPeers, backfillFrom, getPeers}`) so the testbed +
+  `stoop-mobile`'s agentBundle/bootstrapBundle drop in.
+- New `apps/stoop/src/lib/substrateStack.js` — per-bundle
+  pseudoPod + podRouting + notifyEnvelope, with per-recipient
+  transport routing via `agent.transportFor(addr)`.
+- `apps/stoop/test/groupMirror-addPeer-race.test.js` deleted —
+  the race it pinned is structurally impossible on the substrate
+  path (receive is one global subscription, not per-peer).
+
+### A-track UX surface (V2 web functional design §4)
+
+- **A1 — `'stale-peer'` auto-heal** in `wireSubstrateMirror`:
+  `pseudoPod.on('stale-peer')` → republish the local fresher copy
+  back to the stale peer via `notifyEnvelope.publish`. Silent
+  auto-heal (no UI affordance per the V2.5 lean).
+- **A2 — `fetch-resource` with `groupCheck`** registered on every
+  Stoop bundle (Phase 52.2.x). `groupCheck(uri, ctx) ⇒
+  mirror.getPeers().has(ctx.from)`. Defensive — closes the gap
+  forward of envelope-only mode + cross-app embed-fetches.
+- **A3 — storage-policy picker** in `/create-group.html`: four
+  §II.2 policies (`no-pod` default / `centralised` /
+  `decentralised` / `hybrid`). New `createGroupV2` opt
+  `storagePolicy` + `groupPodUri`; persists in the rules item
+  + pushes to `podRouting.setCrewPolicy`.
+- **A4 — `embeds:[{type, ref}]` on `postRequest`** with chip
+  rendering on prikbord cards (`renderEmbedChips` in `web/app.js`
+  + CSS). Cross-pod refs (V2 web functional design §4b).
+- **A5 — `/group.html` storage section + upgrade row**. New
+  `setCrewStoragePolicy` skill (admin/coordinator-only,
+  one-way: rejects downgrade to no-pod).
+- **A6 — `/profile.html` "My Solid pods" section**: display
+  pod-attach status via existing `podSignInStatus` + sign-out
+  via `signOutOfPod`. Two-pod preset placeholder for V3.
+- **A7 — agent-registry registration on bundle bring-up**
+  (Phase 52.10). `attachSubstrateMirror` calls the
+  `registerAgentBundle` helper (lifted into
+  `@canopy/agent-registry`); idempotent CAS upsert; soft-fail.
+
+### C-track — mobile mirror
+
+- `apps/stoop-mobile/src/lib/{agentBundle,bootstrapBundle}.js`
+  call `registerAgentBundle` at every bundle bring-up + expose
+  `bundle.podRouting`. C2 stale-peer auto-heal inherits from
+  `wireSubstrateMirror` (no mobile-side code change).
+- `apps/stoop-mobile/src/screens/CreateGroupScreen.js` adds a
+  storage-policy picker (4-radio + conditional pod-URI input).
+- `apps/stoop-mobile/src/screens/PostComposeScreen.js` adds an
+  embed-ref slot (type + ref + remove-chip; cap of 8).
+- `apps/stoop-mobile/src/screens/ProfileMineScreen.js` adds a
+  "My Solid pods" section + sign-out. Two-pod preset
+  placeholder.
+
+### Locales + tests
+
+- EN + NL locales updated across web + mobile (`{text, doc}`
+  shape preserved). audit-locales clean.
+- New test files: `staleAutoHeal.test.js` (9), `agentRegistryWiring.test.js`
+  (6), `embedsPost.test.js` (7), `storagePolicy.test.js` (12),
+  `fetchResourceGate.test.js` (6). Mobile localesIntegrity test
+  expanded to 593 keys.
+- **Stoop A-track tests: 47/47** in the focused sweep across
+  staleAutoHeal/agentRegistryWiring/embedsPost/storagePolicy/
+  fetchResourceGate/testbed.
+
+### Commits
+
+- `2fcd335` — V2 substrate-adoption: Q-B groupMirror retirement + A-track UX surface
+- `d14a6d5` — Stoop-mobile C-track (mobile mirror of A-track)
+- `3a40294` — A2 fetch-resource + groupCheck
+
 ## [0.2.0] — 2026-05-06
 
 V2 of what was H5 / neighborhood-v0. Renamed in place; the package

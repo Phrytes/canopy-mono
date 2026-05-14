@@ -1,12 +1,17 @@
 # Stoop — unified TODO (2026-05-14)
 
+> **End-of-day 2026-05-14 update.** The Stoop V2 web A-track AND
+> the Stoop-mobile V4 C-track both shipped today. The only
+> Stoop-related item still open is Phase 40.23 (mobile real-device
+> pass — hardware-dependent). Sections below preserved as a record
+> of what shipped.
+>
 > Single point of truth for what's left on Stoop after the
 > 2026-05-14 standardisation push. Consolidates:
 >
 > - V2 web functional-design §6a (substrate-adoption UX surface)
 > - Coding plan v2 §Phase 31+ (V2.5 internal hardening)
-> - V4 mobile functional-design §6a (mobile track, deferred until
->   web is further along)
+> - V4 mobile functional-design §6a (mobile track)
 >
 > Source docs stay authoritative for specifics; this file is the
 > sequencing + priority view. Update one item's status here AND in
@@ -31,7 +36,9 @@ capabilities to users.
 | A6 | `/profile.html` "My Solid pods" section + two-pod upgrade preset | functional-design §4c | ~1 day | ✅ shipped 2026-05-14 (partial scope) — section displays pod-attach status (WebID + attached/detached) using existing `podSignInStatus` skill + sign-out via `signOutOfPod`. **Two-pod preset deferred to V3**: the substrate-side storage-mapping migration is V2-design-only (see `Substrates/storage-migration-design-2026-05-14.md`); the full editor lives in the Hub-web-console (post-P5). UI shows a disabled placeholder with the deferral note. EN+NL locales. |
 | A7 | Agent-registry registration on bundle bring-up (Phase 52.10 / P5) — browser agent registers per-device under `pseudo-pod://<deviceId>/private/agent-registry` on first run | functional-design §6a | ~0.5 day | ✅ shipped 2026-05-14 — `attachSubstrateMirror` wires `createAgentRegistry({pseudoPod, deviceId: substrate.deviceId})` and registers the agent (idempotent CAS upsert). Opt-out via `agentRegistry: false`; capabilities/name customisable. Soft-fail: failures attach `null` rather than throwing. 6/6 tests in `apps/stoop/test/agentRegistryWiring.test.js`. |
 
-**Total estimate:** ~5-7 days (A2 trigger-driven, excluded).
+**Status: all A-track items shipped 2026-05-14.** A2 turned out
+to be useful immediately (forward-looking eviction protection per
+the live discussion) so it was implemented rather than deferred.
 
 **Suggested order:** A7 → A1 → A4 → A3 → A5 → A6 (small foundational
 pieces first; bigger UX surfaces second).
@@ -63,10 +70,10 @@ per 2026-05-07 decision; not in this list.
 
 ---
 
-## C. Mobile track — V4 web-mirror (deferred until web is further along)
+## C. Mobile track — V4 web-mirror (shipped 2026-05-14)
 
-Per user direction (2026-05-14): mobile work comes after web. Listed
-here for completeness; not started yet.
+Per user direction at start of day: mobile work comes after web.
+Both A-track (web) and C-track (mobile) shipped same-day.
 
 | ID | Item | Source | Size | Status |
 |---|---|---|---|---|
@@ -76,8 +83,8 @@ here for completeness; not started yet.
 | C4 | Crew-create wizard storage-policy step on mobile (mirror of A3) | v4-mobile §6a | ~1 day | ✅ shipped 2026-05-14 — `CreateGroupScreen.js` adds a 4-radio policy picker with conditional pod-URI input. Passes `storagePolicy`+`groupPodUri` to `createGroupV2` skill. EN+NL locales + 12 new keys in localesIntegrity test (593/593 pass). |
 | C5 | "My Solid pods" profile section + embed-ref slot on compose (mirror of A4/A6) | v4-mobile §6a | ~1 day | ✅ shipped 2026-05-14 — `ProfileMineScreen.js` adds My-Solid-pods section (`podSignInStatus` + `signOutOfPod` skills; sign-out flow; two-pod placeholder for V3). `PostComposeScreen.js` adds an embeds list + add-row (type + ref + remove-chip) that passes `embeds: [{type, ref}]` to `postRequest`. Cap of 8 + validation. EN+NL locales. |
 
-**Total estimate:** ~5-6 days. Picks up after A-track is mostly
-done.
+**Status: C2-C5 all shipped 2026-05-14.** Only C1 (Phase 40.23
+real-device pass) remains — hardware-dependent.
 
 ---
 

@@ -1,5 +1,137 @@
 # Changelog — @canopy-app/tasks-v0
 
+## [0.4.0] — 2026-05-14 — V2 substrate adoption (12 slices, full web track)
+
+The entire Tasks V2 web track shipped today across 12 slices.
+Substrate adoption (item-types canonical task + crew storage
+policy + agent-registry + pod OIDC), multi-crew runtime
+(`--multi-crew` CLI + `spawnMyCrew` + multi-crew onboarding
+dispatch), and substrate-mirror cross-device fan-out (every
+mutation: add/claim/complete/submit/approve/reject/revoke/
+reassign/remove).
+
+**122/122 Tasks tests green** across 7 test files.
+
+### Slices 1–4 — substrate-adoption first wave
+
+- **Slice 1** (`0e92e15`): `embeds:[{type, ref}]` field on
+  `addTask` (cap 8, validated, persisted via item-store);
+  `crewConfig.storage` field with four §II.2 policies (`no-pod`
+  default); `getCrewStoragePolicy` + `setCrewStoragePolicy`
+  skills. Item-store's `#materialise` now propagates `embeds`
+  through (was missing).
+- **Slice 2** (`ea5166c`): `/welcome.html` create-crew wizard
+  + `provisionMyCrew` skill. Validates crew-id slug + name +
+  kind + storage + optional additional members. Refuses to
+  overwrite an existing crewId. `/crews.html` empty-state links
+  to `/welcome.html`.
+- **Slice 3** (`203607c`): agent-registry on `createCrewAgent`.
+  Helper `registerAgentBundle` lifted from Stoop's app code into
+  `@canopy/agent-registry`. Tasks builds a standalone-mode
+  pseudoPod per crew + registers with capabilities `['tasks',
+  'tasks-v0', \`crew:<crewId>\`]`. `bundle.pseudoPod` +
+  `bundle.agentRegistry` exposed.
+- **Slice 4** (`cfe832c`): `/onboard.html` (invite-redemption,
+  paste-link with JSON or `tasks-invite://` URL scheme) +
+  `/pod-settings.html` (storage-policy display + upgrade row +
+  agent-registry status; pod-sign-in placeholder).
+
+### Slice 5 — pod OIDC sign-in
+
+- (`bab079b`) `apps/tasks-v0/src/lib/podSignIn.js` mirrors
+  Stoop's Phase 52.15.3. Four new skills: `startPodSignIn`,
+  `completePodSignIn`, `signOutOfPod`, `podSignInStatus`. Uses
+  `createSolidAuthNode` from `@canopy/oidc-session`.
+  `/pod-settings.html`'s sign-in card unlocked: issuer input
+  + redirect flow + callback handler + sign-out. New
+  `listSavedCrewConfigs` skill + `/crews.html`'s "Saved crew
+  configs" table for crews provisioned but not currently bound.
+
+### Slices 6–8 — multi-crew runtime
+
+- **Slice 6** (`2f4b31b`): multi-crew substrate enablement —
+  `buildMeshAgent({agent})` reuses existing core.Agent;
+  `createTasksAgent({agent, registerSkills})` + `createCrewAgent`
+  forward both opts. New `spawnMyCrew` skill (in-process when
+  the host CLI wires `_spawnCrewInProcess`; structured restart
+  hint otherwise) + `/crews.html` Spawn button.
+- **Slice 7** (`7ab7c98`): `bin/tasks-ui.js --multi-crew` flag.
+  Builds meshAgent once → primary crew with
+  `registerSkills: false + wireOnboardingSkills: false` →
+  `crewsMap = new Map` + `_spawnCrewInProcess` closure
+  → `wireSkills` ONCE with `multiCrewResolver`. New
+  `itemStoreRoot` opt on `createTasksAgent` for per-crew URI
+  prefix (`mem://tasks/crews/<crewId>/`) to prevent addTask
+  writes from leaking across crews. Platform-level skills
+  (`provisionMyCrew`, `listSavedCrewConfigs`, `spawnMyCrew`)
+  fall back to any crew when strict routing misses.
+- **Slice 8** (`c247401`): multi-crew onboarding-skill
+  dispatch. `createCrewAgent` always builds the GroupManager
+  and stashes on CrewState. New
+  `buildMultiCrewOnboardingSkills({bundleResolver})` registers
+  `issueInvite` + `redeemInvite` ONCE with per-call CrewState
+  resolution; `redeemInvite` routes by `args.crewId` OR
+  (when omitted) by `invite.groupId`.
+
+### Slices 9–12 — Phase 52.9.3 substrate-mirror
+
+- **Slice 9** (`5899ad2`): substrate-mirror infrastructure +
+  addTask fan-out. New `apps/tasks-v0/src/lib/substrateStack.js`
+  + `apps/tasks-v0/src/substrateMirror.js` mirror Stoop's
+  pattern. `wireTasksSubstrateMirror` subscribes to
+  `kind: 'task'` envelopes, URI-prefix filters by
+  `/tasks/crews/<crewId>/tasks/`, dedupes via
+  `source.syncedFromId`. `createCrewAgent` wires per-crew mirror.
+  `addTask` publishes via notifyEnvelope.
+- **Slice 10** (`26611a3`): sub-slices 2–4 — stale-peer
+  auto-heal in `wireTasksSubstrateMirror`; `fetch-resource` +
+  `groupCheck` registered per crew bundle; live peer-roster
+  updates from `redeemInvite` via `tasksMirror.addPeer`.
+- **Slice 11** (`530eea4`): substrate mutation fan-out (option
+  c from the slice-10 sketch). New
+  `ItemStore.applySync({syncedFromId, nextState, action}, ctx)`
+  and `removeSync({syncedFromId}, ctx)` — gate-bypass, preserve
+  audit + emit. Mirror's `mirror()` branches new-vs-update via
+  `syncedFromId` lookup. claim/complete/remove hooked.
+- **Slice 12** (`c21dd85`): final mutation fan-out mop-up.
+  submit/approve/reject/revoke/reassign each hooked with the
+  one-liner pattern. `_inferAction` upgraded to detect
+  submit/reject/approve via `reviewLog`'s newest decision.
+
+### Substrate touches (cross-app)
+
+- `@canopy/item-store`:
+  - `#materialise` now propagates the optional `embeds` field
+    forward.
+  - New `applySync` + `removeSync` methods (substrate-internal,
+    gate-bypass).
+  - New private `#findBySyncedFromId(id)` helper.
+- `@canopy/agent-registry`:
+  - New `registerAgentBundle` helper lifted from Stoop. Used by
+    Stoop + Tasks without a cross-app dep.
+
+### New deps on `apps/tasks-v0/package.json`
+
+- `@canopy/agent-registry`
+- `@canopy/pseudo-pod`
+- `@canopy/pod-routing`
+- `@canopy/notify-envelope`
+- `@canopy/oidc-session`
+
+### Tests
+
+122/122 Tasks tests across 7 test files:
+- `v2-adoption.test.js` (36) — slices 1–6
+- `v2-multi-crew.test.js` (9) — slices 7–8
+- `v2-substrate-mirror.test.js` (12) — slices 9–12
+- `phase2-crew.test.js` (9), `phase5-dod.test.js` (15),
+  `phase10-lifecycle.test.js` (17), `integration.test.js` (24)
+
+### Commits
+
+`0e92e15` `ea5166c` `203607c` `cfe832c` `bab079b` `2f4b31b`
+`7ab7c98` `c247401` `5899ad2` `26611a3` `530eea4` `c21dd85`
+
 ## [0.3.6] — 2026-05-08 — V2.7 — hard subtask dependencies (substrate gate + consent flow)
 
 Capability **U** from the V2 functional design. Closes the door on "I marked the project complete but the sub-tasks are still open" — a parent task can no longer transition to closed while any of its `dependencies[]` is still open. Spawning sub-tasks on a `submitted` parent is also blocked unless the assignee consents via a new propose/approve flow (mirrors V1 Phase 7's admin-approval pattern, gate flipped to the assignee).
