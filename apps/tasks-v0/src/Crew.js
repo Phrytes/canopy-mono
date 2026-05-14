@@ -723,6 +723,32 @@ export async function createCrewAgent({
     } catch (_err) { /* best-effort; addTask still works locally */ }
   }
 
+  // Phase 52.2.x (mirror of Stoop A2, 2026-05-14) — register
+  // `fetch-resource` skill with a `groupCheck` callback that admits
+  // only current crew peers. Defensive: nothing in Tasks calls
+  // fetch-resource against another Tasks peer today, but cross-app
+  // refs (e.g. a Stoop post embedding a Tasks task) + future
+  // envelope-only mode both want this gate in place. Multi-crew
+  // single-agent setups: first crew wins; subsequent attaches see
+  // the skill already registered and skip. The skill reads from
+  // THIS crew's pseudoPod only.
+  try {
+    if (bundle.agent?.skills && !bundle.agent.skills.get?.('fetch-resource') && bundle.pseudoPod?.fetchResourceSkill) {
+      const peersFor = () => {
+        try { return new Set(tasksMirror?.getPeers?.() ?? []); }
+        catch { return new Set(); }
+      };
+      const skill = bundle.pseudoPod.fetchResourceSkill({
+        groupCheck: (_uri, ctx) => {
+          if (typeof ctx?.from !== 'string' || !ctx.from) return false;
+          return peersFor().has(ctx.from);
+        },
+      });
+      bundle.agent.skills.register(skill);
+      bundle._fetchResourceRegistered = true;
+    }
+  } catch (_err) { /* best-effort — non-fatal */ }
+
   return {
     ...bundle,
     memberMapCacheDetach,

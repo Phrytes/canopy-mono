@@ -144,10 +144,40 @@ export async function wireTasksSubstrateMirror({
     },
   });
 
+  /**
+   * Q-D auto-heal (Phase 52.14, mirror of Stoop A1) — when a peer
+   * writes with an older `_v` than ours, `pseudoPod` emits
+   * `'stale-peer'` carrying our fresher local copy. Republish that
+   * back to the stale peer so they converge. Silent (no UI
+   * affordance); same lean as Stoop's V2.5 default.
+   */
+  function _onStalePeer(event) {
+    const uri = event?.uri;
+    if (typeof uri !== 'string' || !uri.includes(uriPrefix)) return;
+    const stalePeer = event.fromActor;
+    if (typeof stalePeer !== 'string' || stalePeer.length === 0) return;
+    const localBytes = event.localBytes;
+    if (typeof localBytes === 'undefined' || localBytes === null) return;
+    if (selfPubKey && stalePeer === selfPubKey) return;
+    notifyEnvelope.publish({
+      type:       'task',
+      ref:        uri,
+      payload:    localBytes,
+      etag:       event.localEtag ?? null,
+      _v:         event.localV,
+      recipients: [stalePeer],
+      ...(selfPubKey ? { fromActor: selfPubKey } : {}),
+    }).catch(() => { /* best-effort heal */ });
+  }
+  const unsubscribeStale = pseudoPod.on?.('stale-peer', _onStalePeer) ?? null;
+
   async function addPeer(pubKey) { addPeerSync(pubKey); }
   function removePeer(pubKey)   { if (typeof pubKey === 'string') recipients.delete(pubKey); }
   async function stop() {
     try { unsubscribe(); } catch { /* swallow */ }
+    if (typeof unsubscribeStale === 'function') {
+      try { unsubscribeStale(); } catch { /* swallow */ }
+    }
     recipients.clear();
   }
   function listPeers() { return [...recipients]; }

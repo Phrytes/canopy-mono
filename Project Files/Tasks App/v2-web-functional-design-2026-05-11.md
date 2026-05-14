@@ -516,29 +516,55 @@ addTask fan-out, shipped 2026-05-14:**
 
 **113/113 Tasks tests green across all 7 test files.**
 
-**Scope of this slice — addTask fan-out only.** Updates (claim,
-complete, submit/approve/reject, removeTask) replicate locally to
-the pseudoPod's Lamport `_v` counter but are NOT yet mirrored into
-peers' itemStores. Follow-up slices will lift more itemStore
-mutations into the substrate.
+**Scope of slice 9 — addTask fan-out only.** Sub-slices 2-4 followed
+later the same day (see below). Updates (claim/complete/etc.) remain
+local pending sub-slice 1.
 
-**Remaining Tasks V2 web pickups (sub-slices of 52.9.3):**
+**Tenth slice — Phase 52.9.3 sub-slices 2-4, shipped 2026-05-14:**
 
-1. **claim/complete/submit/approve/reject/revoke fan-out** — same
-   pattern as addTask, but the receiver applies state changes via
-   `itemStore.claim()` / `markComplete()` / etc. instead of
-   addItems. Per-mutation publish hooks land in each skill. Q-D
-   `_v` concurrency control on the pseudoPod side becomes the
-   conflict-resolution authority.
-2. **Stale-peer auto-heal** (mirror of Stoop's A1) — subscribe
-   to `pseudoPod.on('stale-peer')` + republish the local fresher
-   copy back to the stale peer.
-3. **groupCheck on fetch-resource** (mirror of Stoop's A2) —
-   register `fetch-resource` skill with
-   `groupCheck(uri, ctx) ⇒ mirror.getPeers().has(ctx.from)`.
-4. **substrate-aware peer roster** — currently `crew.members[].pubKey`
-   seeds the mirror's recipient set, but live peer additions
-   (post-invite redemption) need to call `mirror.addPeer(pubKey)`.
+- **Sub-slice 2 — stale-peer auto-heal** (mirror of Stoop A1):
+  `wireTasksSubstrateMirror` now subscribes to
+  `pseudoPod.on('stale-peer', ...)`. When a peer's
+  `writeFromPeer` lands with an older `_v` than ours, the handler
+  republishes the local fresher copy back to that one peer via
+  `notifyEnvelope.publish({type: 'task', payload: localBytes, _v:
+  localV, recipients: [stalePeer]})`. Silent auto-heal — no UI
+  affordance.
+- **Sub-slice 3 — groupCheck on fetch-resource** (mirror of Stoop
+  A2): `createCrewAgent` registers `fetch-resource` on every crew
+  bundle via `pseudoPod.fetchResourceSkill({groupCheck})`, with
+  `groupCheck(uri, ctx) ⇒ tasksMirror.getPeers().has(ctx.from)`.
+  Multi-bundle-on-same-agent: first crew wins; subsequent
+  registrations skip. Closes the gap forward of envelope-only
+  mode + cross-app embed-fetches.
+- **Sub-slice 4 — live peer-roster updates**: the multi-crew
+  `redeemInvite` wrapper (`buildMultiCrewOnboardingSkills`) now
+  calls `crew.tasksMirror?.addPeer(memberPubKey)` after persisting
+  the new member to the MemberMap. The fan-out roster grows
+  immediately so new members start receiving addTask broadcasts
+  without a restart.
+
+Three new tests in `apps/tasks-v0/test/v2-substrate-mirror.test.js`
+(6 total in that file):
+- groupCheck admits members, rejects strangers
+  (FORBIDDEN per the `@canopy/core/skills/fetchResource.js` shape).
+- Stale-peer auto-heal: write at `_v=2` locally, simulate Bob's
+  peer arriving at `_v=1`, verify republish to Bob with `_v=2`.
+- Live peer-roster: redeem invite for a new member's pubKey,
+  verify `tasksMirror.getPeers()` now includes them.
+
+**116/116 Tasks tests green** across 7 test files.
+
+**Remaining Tasks V2 web pickup (sub-slice 1):**
+
+1. **claim/complete/submit/approve/reject/revoke fan-out** —
+   needs design work around the role-policy gate (synced actors
+   shouldn't be policy-checked the way human actors are). Options:
+   (a) bypass `itemStore` and patch via `dataSource.delete` /
+   targeted writes; (b) introduce a "sync" actor role that the
+   gate permits; (c) split itemStore mutations into a public
+   gated path + a substrate-internal ungated path. Estimate ~1-2
+   days once a path is picked.
 
 **Larger deferrals** (each needs its own session):
 

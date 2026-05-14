@@ -138,6 +138,15 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
         pubKey:      memberPubKey,
       });
 
+      // Phase 52.9.3 sub-slice 4 (2026-05-14) — live peer-roster
+      // update. Tell the substrate-mirror about the new peer so the
+      // next addTask fan-out reaches them. Best-effort (the local
+      // member-map update above is the source of truth; the mirror
+      // roster is a downstream cache for fan-out routing).
+      if (typeof crew.tasksMirror?.addPeer === 'function') {
+        try { await crew.tasksMirror.addPeer(memberPubKey); } catch { /* swallow */ }
+      }
+
       const allMembers = await crew.members.list();
       return {
         groupProof: proof,
