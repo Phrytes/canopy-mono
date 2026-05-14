@@ -78,11 +78,39 @@ function _buildStoragePolicy(storagePolicy, groupPodUri) {
 /**
  * @param {object} args
  * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver
+ * @param {() => Iterable<object>} [args.crewsProvider]
+ *   Optional. Used by **platform-level** skills (`provisionMyCrew`,
+ *   `listSavedCrewConfigs`, `spawnMyCrew`) as a fallback when the
+ *   regular routing-via-args.crewId resolution misses. Those skills
+ *   write/read shared local-store state and don't care which crew
+ *   they're "associated" with, so they pick the first available crew
+ *   instead of returning a crewId-required error. Crew-strict skills
+ *   (addTask, claimTask, etc.) still strict-null on miss.
  * @returns {Array<object>} array of `defineSkill` definitions
  */
-export function buildSkills({ bundleResolver } = {}) {
+export function buildSkills({ bundleResolver, crewsProvider } = {}) {
   if (typeof bundleResolver !== 'function') {
     throw new TypeError('buildSkills: bundleResolver(parts, ctx) required');
+  }
+
+  /**
+   * Resolve a crew for a platform-level skill — try the strict
+   * routing first, fall back to the first crew in `crewsProvider()`
+   * when the lookup misses. Single-crew launches get the same
+   * behaviour as before (`bundleResolver` returns the single crew
+   * regardless of `args.crewId`).
+   */
+  function resolveAnyCrew(parts, ctx) {
+    const direct = bundleResolver(parts, ctx);
+    if (direct) return direct;
+    if (typeof crewsProvider === 'function') {
+      const iter = crewsProvider();
+      if (iter && typeof iter[Symbol.iterator] === 'function') {
+        const first = iter[Symbol.iterator]().next();
+        if (!first.done && first.value) return first.value;
+      }
+    }
+    return null;
   }
 
   return [
@@ -535,7 +563,7 @@ export function buildSkills({ bundleResolver } = {}) {
      * restart with the new crew bound at boot.
      */
     defineSkill('spawnMyCrew', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
+      const crew = resolveAnyCrew(parts, { envelope, from });
       if (!crew?.dataSource?.read) return { error: 'no-data-source' };
       const a = argsFromParts(parts);
       if (typeof a.crewId !== 'string' || !a.crewId) {
@@ -601,7 +629,7 @@ export function buildSkills({ bundleResolver } = {}) {
      *   multi-crew runtime lands.
      */
     defineSkill('listSavedCrewConfigs', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
+      const crew = resolveAnyCrew(parts, { envelope, from });
       if (!crew?.dataSource?.list) return { error: 'no-data-source' };
       let paths;
       try {
@@ -652,7 +680,7 @@ export function buildSkills({ bundleResolver } = {}) {
      * full bundle bring-up.
      */
     defineSkill('provisionMyCrew', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
+      const crew = resolveAnyCrew(parts, { envelope, from });
       if (!crew?.dataSource?.write) return { error: 'no-data-source' };
 
       const a = argsFromParts(parts);
