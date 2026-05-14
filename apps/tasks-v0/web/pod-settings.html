@@ -51,18 +51,25 @@
         </div>
       </div>
 
-      <!-- Pod sign-in (V2.x placeholder) ───────────────────────────── -->
+      <!-- Pod sign-in ─────────────────────────────────────────────── -->
       <div class="code-card" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
         <h3 style="margin-top: 0;" data-i18n="pod_settings.signin_heading">Solid pod sign-in</h3>
         <p class="hint" data-i18n="pod_settings.signin_intro">
           Pod sign-in lets the crew's state mirror through to your own
-          pod for stronger persistence. Tasks doesn't expose the OIDC
-          flow yet — the substrate is ready (`@canopy/oidc-session` +
-          `createSolidAuthNode`), but the per-app wiring lands in
-          V2.x. Track the cross-app residual at
-          <a href="https://github.com/the-author/canopy/blob/main/Project%20Files/TODO-GENERAL.md" target="_blank">TODO-GENERAL.md</a>.
+          pod for stronger persistence. Pick an issuer (the Solid
+          provider that holds your pod) and authorize the redirect.
         </p>
-        <button id="signin-btn" type="button" disabled data-i18n="pod_settings.signin_btn">Sign in to pod (V2.x)</button>
+        <div id="signin-status" class="hint"></div>
+        <form id="signin-form" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem; align-items: flex-end;">
+          <label style="flex: 1; min-width: 240px;">
+            <span data-i18n="pod_settings.signin_issuer_label">Issuer</span>
+            <input id="signin-issuer" type="url" required value="https://login.inrupt.com"
+                   placeholder="https://login.inrupt.com">
+          </label>
+          <button type="submit" data-i18n="pod_settings.signin_btn">Sign in to pod</button>
+          <button type="button" id="signout-btn" hidden data-i18n="pod_settings.signout_btn">Sign out</button>
+          <span id="signin-feedback" class="hint"></span>
+        </form>
       </div>
 
       <!-- Agent-registry status (Phase 52.10 / V2 adoption third slice) -->
@@ -144,6 +151,100 @@
       }
     }
 
+    async function refreshSignInStatus() {
+      const statusEl = document.getElementById('signin-status');
+      const form     = document.getElementById('signin-form');
+      const signoutBtn = document.getElementById('signout-btn');
+      const issuerInput = document.getElementById('signin-issuer');
+      const submitBtn   = form.querySelector('button[type="submit"]');
+      try {
+        const args = activeCrewId() ? { crewId: activeCrewId() } : {};
+        const r = await callSkill('podSignInStatus', args);
+        if (r?.signedIn) {
+          const webid = r.webid ?? '(unknown)';
+          const attached = r.podAttached ? 'pod attached' : 'pod not attached';
+          statusEl.innerHTML = `Signed in as <code>${escapeHtml(webid)}</code> (${escapeHtml(attached)}).`;
+          submitBtn.hidden = true;
+          issuerInput.disabled = true;
+          signoutBtn.hidden = false;
+        } else {
+          statusEl.textContent = 'Not signed in.';
+          submitBtn.hidden = false;
+          issuerInput.disabled = false;
+          signoutBtn.hidden = true;
+        }
+      } catch (err) {
+        statusEl.textContent = `Error: ${err.message ?? err}`;
+      }
+    }
+
+    // ── OIDC callback handler ─────────────────────────────────
+    // After the user authorizes at the IdP, they're redirected back
+    // here with `?code=...&state=...` in the query string. Detect it
+    // and call completePodSignIn before refreshing UI.
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get('code') && sp.get('state')) {
+      const fb = document.getElementById('signin-feedback');
+      fb.textContent = 'Completing sign-in…';
+      try {
+        const args = {
+          callbackUrl: window.location.href,
+          ...(activeCrewId() ? { crewId: activeCrewId() } : {}),
+        };
+        const r = await callSkill('completePodSignIn', args);
+        if (r?.error) {
+          fb.textContent = `Sign-in failed: ${r.error}`;
+        } else {
+          fb.textContent = `Signed in. WebID: ${r.webid ?? '(unknown)'}; pod root: ${r.podRoot ?? '(unknown)'}.`;
+          // Strip OIDC params from the URL.
+          const clean = new URL(window.location.href);
+          ['code', 'state', 'iss', 'session_state'].forEach((k) => clean.searchParams.delete(k));
+          window.history.replaceState({}, '', clean.toString());
+        }
+      } catch (err) {
+        fb.textContent = `Sign-in failed: ${err.message ?? err}`;
+      }
+    }
+
+    document.getElementById('signin-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fb = document.getElementById('signin-feedback');
+      const issuer = document.getElementById('signin-issuer').value.trim();
+      fb.textContent = 'Redirecting…';
+      try {
+        const args = {
+          issuer,
+          redirectUrl: window.location.origin + window.location.pathname,
+          ...(activeCrewId() ? { crewId: activeCrewId() } : {}),
+        };
+        const r = await callSkill('startPodSignIn', args);
+        if (!r?.ok) {
+          fb.textContent = `Error: ${r?.error ?? 'unknown failure'}`;
+          return;
+        }
+        window.location.assign(r.redirectUrl);
+      } catch (err) {
+        fb.textContent = `Error: ${err.message ?? err}`;
+      }
+    });
+
+    document.getElementById('signout-btn').addEventListener('click', async () => {
+      const fb = document.getElementById('signin-feedback');
+      fb.textContent = 'Signing out…';
+      try {
+        const args = activeCrewId() ? { crewId: activeCrewId() } : {};
+        const r = await callSkill('signOutOfPod', args);
+        if (r?.error) {
+          fb.textContent = `Error: ${r.error}`;
+          return;
+        }
+        fb.textContent = 'Signed out.';
+        await refreshSignInStatus();
+      } catch (err) {
+        fb.textContent = `Error: ${err.message ?? err}`;
+      }
+    });
+
     document.getElementById('storage-new-policy').addEventListener('change', updateNewPodUriRow);
     updateNewPodUriRow();
 
@@ -170,7 +271,7 @@
       }
     });
 
-    await Promise.all([refreshStorage(), refreshRegistry()]);
+    await Promise.all([refreshStorage(), refreshRegistry(), refreshSignInStatus()]);
   </script>
 </body>
 </html>
