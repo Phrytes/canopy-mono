@@ -189,40 +189,10 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       } catch { /* validator outage must not break writes */ }
 
       // Phase 52.9.3 (Tasks V2 ninth slice, 2026-05-14) — substrate
-      // fan-out. When the crew has a `tasksMirror` + `notifyEnvelope`
-      // wired (createCrewAgent path; not the V0 zero-config path),
-      // publish the new task to every peer in the mirror's roster.
-      // Best-effort (parity with Stoop's substrateMirror); failure
-      // doesn't block the local write.
-      const mirror    = crew?.tasksMirror;
-      const envelopeBus = crew?.notifyEnvelope;
-      const pseudoPod   = crew?.pseudoPod;
-      const crewId      = crew?.liveCrew?.crewId ?? null;
-      if (mirror && envelopeBus && pseudoPod && crewId) {
-        const recipientsRoster = mirror.getPeers?.() ?? [];
-        if (recipientsRoster.length > 0) {
-          const publisherPubKey = envelope?._toAgent ?? envelope?._fromAgent ?? null;
-          (async () => {
-            try {
-              const uri = mirror.urlFor?.(task.id)
-                ?? `pseudo-pod://${crew.substrateDeviceId}/tasks/crews/${crewId}/tasks/${task.id}`;
-              const { etag, _v } = await pseudoPod.write(uri, task);
-              await envelopeBus.publish({
-                type:       'task',
-                ref:        uri,
-                payload:    task,
-                etag,
-                _v,
-                recipients: recipientsRoster,
-                ...(publisherPubKey ? { fromActor: publisherPubKey } : {}),
-                crewId,
-              });
-            } catch (_err) {
-              /* best-effort fan-out — local write already succeeded */
-            }
-          })();
-        }
-      }
+      // fan-out. The mirror's publishTask helper handles the URI +
+      // pseudoPod.write + notifyEnvelope.publish + recipient roster
+      // all together; here we just kick it off.
+      crew?.tasksMirror?.publishTask?.(task).catch(() => {});
 
       return { task };
     }, {
@@ -239,6 +209,13 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       if (!crew) return { error: 'crewId required' };
       const a = argsFromParts(parts);
       const result = await crew.itemStore.claim(a.id, { actor: from, actorDisplayName });
+      // Phase 52.9.3 sub-slice 1 — publish the post-claim state. The
+      // substrate is the source of authorisation truth on the
+      // receiver side via applySync (gate-bypass); the receiver's
+      // local item-store doesn't re-check the claim policy.
+      if (result && !result.error) {
+        crew?.tasksMirror?.publishTask?.(result).catch(() => {});
+      }
       return { result };
     }, {
       description: 'Compare-and-swap claim a task.',
@@ -257,6 +234,10 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
           [{ id: a.id }],
           { actor: from, actorDisplayName },
         );
+        // Phase 52.9.3 sub-slice 1 — fan-out the completion.
+        if (completed) {
+          crew?.tasksMirror?.publishTask?.(completed).catch(() => {});
+        }
         return { task: completed };
       } catch (err) {
         // V2.7 — translate the substrate's DependenciesOpenError into
@@ -294,7 +275,17 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       const crew = bundleResolver(parts, { envelope, from });
       if (!crew) return { error: 'crewId required' };
       const a = argsFromParts(parts);
+      // Capture the item's syncedFromId BEFORE removal (the
+      // receiver-side mirror matches by the publishing device's id,
+      // which may differ from `a.id` if THIS device is itself a
+      // synced replica). We send the syncedFromId when present;
+      // otherwise our local id is the canonical one.
+      const localItem = (await crew.itemStore.listOpen()).find((i) => i.id === a.id)
+                     ?? (await crew.itemStore.listClosed()).find((i) => i.id === a.id);
+      const originalId = localItem?.source?.syncedFromId ?? a.id;
       const [id] = await crew.itemStore.removeItems([{ id: a.id }], { actor: from, actorDisplayName });
+      // Phase 52.9.3 sub-slice 1 — fan-out the removal.
+      crew?.tasksMirror?.publishTaskRemoved?.(originalId).catch(() => {});
       return { id };
     }, {
       description: 'Remove a task — admin only via item-store role policy.',

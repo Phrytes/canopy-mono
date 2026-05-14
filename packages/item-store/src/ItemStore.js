@@ -206,6 +206,107 @@ export class ItemStore extends Emitter {
   }
 
   /**
+   * Apply a sync from a peer — substrate-internal mutation.
+   *
+   * Phase 52.9.3 sub-slice 1 (2026-05-14). The substrate-mirror calls
+   * this when an inbound `kind: 'task'` envelope describes a state
+   * change for an item we already have locally (matched by
+   * `source.syncedFromId`). Unlike the public mutation methods
+   * (`claim`, `markComplete`, `reassign`, etc.), this path:
+   *   - Bypasses the role-policy gate. The sender already validated
+   *     authorization on their side; the substrate is trusted.
+   *   - Preserves the local item's `id`, `addedAt`, and audit chain.
+   *   - Updates everything else from `nextState`.
+   *   - Audits with `action: 'sync-<actionTag>'`, `synced: true`.
+   *   - Emits the matching standard event (`item-claimed`,
+   *     `item-completed`, etc.) so existing UI listeners react.
+   *
+   * Returns the merged local item, or `null` when no local item
+   * with the supplied `syncedFromId` exists (the caller can then
+   * fall back to `addItems` for a fresh local copy).
+   *
+   * @param {{ syncedFromId: string, nextState: object, action?: string }} args
+   * @param {{ remoteActor?: string, remoteActorDisplayName?: string }} ctx
+   * @returns {Promise<import('./types.js').Item|null>}
+   */
+  async applySync({ syncedFromId, nextState, action }, ctx = {}) {
+    if (typeof syncedFromId !== 'string' || !syncedFromId) {
+      throw new TypeError('applySync: syncedFromId required');
+    }
+    if (!nextState || typeof nextState !== 'object') {
+      throw new TypeError('applySync: nextState required');
+    }
+    const local = await this.#findBySyncedFromId(syncedFromId);
+    if (!local) return null;
+
+    // Merge: preserve local id / addedAt / audit identity; overwrite
+    // mutable state. The local `source.syncedFromId` marker stays so
+    // future syncs continue to find the item.
+    const localSource = local.source ?? {};
+    const nextSource  = nextState.source ?? {};
+    const merged = {
+      ...nextState,
+      id:           local.id,
+      addedAt:      local.addedAt,
+      addedBy:      local.addedBy,
+      ...(local.addedByDisplayName ? { addedByDisplayName: local.addedByDisplayName } : {}),
+      source: {
+        ...nextSource,
+        ...localSource,                  // local syncedFromId / synced flags win
+        syncedFromId,                    // belt + braces
+      },
+      _etag: ulid(),
+    };
+
+    await this.#writeItem(merged);
+    await this.#appendAudit({
+      id: ulid(),
+      itemId: local.id,
+      action: `sync-${action ?? 'update'}`,
+      actor:  ctx.remoteActor ?? 'substrate',
+      actorDisplayName: ctx.remoteActorDisplayName,
+      at: Date.now(),
+      synced: true,
+    });
+
+    const eventName =
+      action === 'claim'    ? 'item-claimed'   :
+      action === 'complete' ? 'item-completed' :
+      action === 'submit'   ? 'item-submitted' :
+      action === 'approve'  ? 'item-approved'  :
+      action === 'reject'   ? 'item-rejected'  :
+      action === 'revoke'   ? 'item-revoked'   :
+      action === 'reassign' ? 'item-reassigned' :
+      'item-updated';
+    this.emit(eventName, merged);
+    return merged;
+  }
+
+  /**
+   * Hard-delete a synced item by its peer-side id. Mirror of
+   * `applySync` for the removal case. Returns the deleted item, or
+   * `null` when no match.
+   *
+   * Phase 52.9.3 sub-slice 1 (2026-05-14).
+   */
+  async removeSync({ syncedFromId }, ctx = {}) {
+    if (typeof syncedFromId !== 'string' || !syncedFromId) {
+      throw new TypeError('removeSync: syncedFromId required');
+    }
+    const local = await this.#findBySyncedFromId(syncedFromId);
+    if (!local) return null;
+    await this.#deleteItem(local.id);
+    await this.#appendAudit({
+      id: ulid(), itemId: local.id, action: 'sync-remove',
+      actor: ctx.remoteActor ?? 'substrate',
+      at: Date.now(),
+      synced: true,
+    });
+    this.emit('item-removed', { id: local.id, item: local });
+    return local;
+  }
+
+  /**
    * Hard-delete items.
    * @param {Array<import('./types.js').ItemRef>} refs
    * @param {import('./types.js').ActorContext} ctx
@@ -830,6 +931,17 @@ export class ItemStore extends Emitter {
       return resolveFuzzy(open, ref.match);
     }
     return null;
+  }
+
+  /**
+   * Lookup helper for Phase 52.9.3 sub-slice 1 — find the local item
+   * whose `source.syncedFromId` matches the supplied peer-side id.
+   * Returns `null` on miss. O(N) scan; acceptable for V0 — replace
+   * with an index when item-store sizes start to matter.
+   */
+  async #findBySyncedFromId(syncedFromId) {
+    const all = await this.#listAllItems();
+    return all.find((i) => i?.source?.syncedFromId === syncedFromId) ?? null;
   }
 }
 

@@ -75,15 +75,36 @@ export async function wireTasksSubstrateMirror({
   async function mirror(payload, fromPubKey) {
     if (!payload || typeof payload.id !== 'string' || !payload.id) return;
 
-    // Dedupe via `source.syncedFromId` — the local item-store
-    // materialises a fresh `ulid()` for every addItems call, so the
-    // sender's `payload.id` doesn't match a local id directly. The
-    // mirror stashes the original id on `source.syncedFromId`; that's
-    // the field we check on subsequent receives.
+    // Look for an existing local item matched by syncedFromId. The
+    // local item-store mints a fresh `ulid()` per addItems, so the
+    // sender's `payload.id` doesn't match a local id directly — the
+    // syncedFromId marker stashed at first-receive is the join key.
     const open   = await itemStore.listOpen();
     const closed = await itemStore.listClosed();
     const matches = (i) => i?.source?.syncedFromId === payload.id;
-    if (open.some(matches) || closed.some(matches)) return;
+    const existing = open.find(matches) ?? closed.find(matches);
+
+    // Sub-slice 1 (Phase 52.9.3 mutation fan-out, 2026-05-14) —
+    // if we already have the item, apply the new state via
+    // applySync (gate-bypass; preserves audit + emit). Skill bodies
+    // publish full task state on every mutation; this branch handles
+    // the receive-side application.
+    if (existing) {
+      const action = _inferAction(existing, payload);
+      try {
+        await itemStore.applySync({
+          syncedFromId: payload.id,
+          nextState:    _stripIdentity(payload),
+          action,
+        }, {
+          remoteActor: payload.completedBy
+                    ?? payload.assignee
+                    ?? payload.addedBy
+                    ?? (fromPubKey ? `pubkey:${fromPubKey.slice(0, 12)}` : null),
+        });
+      } catch (_err) { /* swallow — best-effort sync */ }
+      return;
+    }
 
     // Reconstruct an addItems-shaped partial. We carry over the
     // ORIGINAL author (payload.addedBy) — not fromPubKey — because
@@ -144,6 +165,24 @@ export async function wireTasksSubstrateMirror({
     },
   });
 
+  // Sub-slice 1 (mutation fan-out) — `task-removed` envelopes signal
+  // a hard-delete. Payload carries `{originalId}` (the sender's
+  // task id); the receiver finds its local copy by syncedFromId and
+  // hard-deletes via itemStore.removeSync (gate-bypass).
+  const unsubscribeRemoved = notifyEnvelope.subscribe({
+    kind: 'task-removed',
+    callback: (envelope) => {
+      const ref = envelope?.ref;
+      if (typeof ref !== 'string' || !ref.includes(uriPrefix)) return;
+      const originalId = envelope?.payload?.originalId;
+      if (typeof originalId !== 'string' || !originalId) return;
+      const fromPubKey = envelope.fromActor ?? null;
+      itemStore.removeSync({ syncedFromId: originalId }, {
+        remoteActor: fromPubKey ? `pubkey:${fromPubKey.slice(0, 12)}` : null,
+      }).catch(() => { /* swallow */ });
+    },
+  });
+
   /**
    * Q-D auto-heal (Phase 52.14, mirror of Stoop A1) — when a peer
    * writes with an older `_v` than ours, `pseudoPod` emits
@@ -175,6 +214,7 @@ export async function wireTasksSubstrateMirror({
   function removePeer(pubKey)   { if (typeof pubKey === 'string') recipients.delete(pubKey); }
   async function stop() {
     try { unsubscribe(); } catch { /* swallow */ }
+    try { unsubscribeRemoved(); } catch { /* swallow */ }
     if (typeof unsubscribeStale === 'function') {
       try { unsubscribeStale(); } catch { /* swallow */ }
     }
@@ -183,5 +223,84 @@ export async function wireTasksSubstrateMirror({
   function listPeers() { return [...recipients]; }
   function getPeers()  { return [...recipients]; }
 
-  return { addPeer, removePeer, stop, listPeers, getPeers, urlFor };
+  /**
+   * Publish a task's full current state to every peer in the
+   * roster. Called by Tasks skills after every mutation (addTask,
+   * claim, complete, submit, approve, reject, revoke, reassign) so
+   * receivers can `applySync` the new state.
+   *
+   * Best-effort fan-out — local write is the source of truth.
+   * Returns silently when there are no peers or no notifyEnvelope.
+   */
+  async function publishTask(task, opts = {}) {
+    if (!task?.id || recipients.size === 0) return;
+    try {
+      const uri = urlFor(task.id);
+      const { etag, _v } = await pseudoPod.write(uri, task);
+      await notifyEnvelope.publish({
+        type:       'task',
+        ref:        uri,
+        payload:    task,
+        etag,
+        _v,
+        recipients: [...recipients],
+        ...(opts.fromActor ?? selfPubKey ? { fromActor: opts.fromActor ?? selfPubKey } : {}),
+        crewId,
+      });
+    } catch (_err) { /* best-effort */ }
+  }
+
+  /**
+   * Publish a hard-delete signal for a task to every peer. Receivers
+   * call `itemStore.removeSync({syncedFromId: originalId})`. Best-
+   * effort.
+   */
+  async function publishTaskRemoved(originalId, opts = {}) {
+    if (typeof originalId !== 'string' || !originalId) return;
+    if (recipients.size === 0) return;
+    try {
+      const uri = urlFor(originalId);
+      await notifyEnvelope.publish({
+        type:       'task-removed',
+        ref:        uri,
+        payload:    { originalId },
+        recipients: [...recipients],
+        ...(opts.fromActor ?? selfPubKey ? { fromActor: opts.fromActor ?? selfPubKey } : {}),
+        crewId,
+      });
+    } catch (_err) { /* best-effort */ }
+  }
+
+  return {
+    addPeer, removePeer, stop, listPeers, getPeers, urlFor,
+    publishTask, publishTaskRemoved,
+  };
+}
+
+// ── Internal helpers ──────────────────────────────────────────────
+
+/**
+ * Infer which sync action best describes the transition from `local`
+ * to `next`. The mirror uses the action tag for the audit shape +
+ * the standard `item-<action>` event emission.
+ */
+function _inferAction(local, next) {
+  if (!local.completedAt && next.completedAt)        return 'complete';
+  if (!local.submittedAt && next.submittedAt)        return 'submit';
+  if (!local.approvedAt  && next.approvedAt)         return 'approve';
+  if (!local.rejectedAt  && next.rejectedAt)         return 'reject';
+  if (local.assignee && !next.assignee)              return 'revoke';
+  if (!local.assignee && next.assignee)              return 'claim';
+  if (local.assignee && next.assignee && local.assignee !== next.assignee) return 'reassign';
+  return 'update';
+}
+
+/**
+ * Strip identity fields (id, _etag, addedAt, ...) from a payload
+ * before merging into the local item — `applySync` preserves
+ * local identity and overwrites the rest.
+ */
+function _stripIdentity(payload) {
+  const { id: _id, _etag: _etag, addedAt: _addedAt, ...rest } = payload;
+  return rest;
 }
