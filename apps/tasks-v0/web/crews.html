@@ -136,9 +136,33 @@
           <td>${escapeHtml(c.storage?.policy ?? 'no-pod')}${podSuffix}</td>
           <td style="text-align:right">${(c.members ?? []).length}</td>
           <td style="text-align:right">
-            <span class="role-chip" style="color:var(--muted);font-style:italic">restart needed</span>
+            <button class="role-chip spawn-btn" data-crew-id="${escapeHtml(c.crewId)}" style="cursor:pointer">Spawn</button>
+            <div class="spawn-result" style="font-size:0.8rem;color:var(--muted);margin-top:0.3rem;max-width:280px;word-break:break-word;text-align:left"></div>
           </td>`;
         tbody.appendChild(tr);
+      }
+
+      for (const btn of document.querySelectorAll('.spawn-btn')) {
+        btn.addEventListener('click', async () => {
+          const crewId = btn.dataset.crewId;
+          const resultEl = btn.parentElement.querySelector('.spawn-result');
+          resultEl.textContent = 'Spawning…';
+          try {
+            const r = await callSkill('spawnMyCrew', { crewId });
+            if (r?.error) {
+              resultEl.textContent = `Error: ${r.error}`;
+              return;
+            }
+            if (r.ready) {
+              resultEl.innerHTML = `Spawned. <a href="/?crew=${encodeURIComponent(crewId)}" target="_blank">Open workspace →</a>`;
+              await refreshSaved();
+            } else {
+              resultEl.innerHTML = `<strong>Restart needed.</strong> ${escapeHtml(r.restartHint ?? 'Multi-crew runtime is a follow-up.')}`;
+            }
+          } catch (err) {
+            resultEl.textContent = `Error: ${err.message ?? err}`;
+          }
+        });
       }
     }
 

@@ -403,13 +403,42 @@ spawn + bundleResolver mutation) requires a `bin/tasks-ui.js`
 refactor to use `multiCrewResolver(crewsMap)` from boot; that's
 the largest pending V2 item.
 
+**Sixth slice — multi-crew substrate enablement + spawnMyCrew skill,
+shipped 2026-05-14:**
+
+- `buildMeshAgent` accepts an existing `agent` opt (skip creation,
+  reuse the supplied one).
+- `createTasksAgent` + `createCrewAgent` accept an `agent` opt
+  (shared core.Agent) + a `registerSkills` opt (default `false`
+  when a shared agent is supplied). This unlocks the standard
+  "build meshAgent once, build N crews, wireSkills once" pattern
+  that `--crew-list` already used for the V2.8 smoke.
+- New `spawnMyCrew({crewId})` skill: validates inputs, reads the
+  saved `mem://tasks/crews/<crewId>/config.json`, then either
+  calls `crew._spawnCrewInProcess(crewId)` (when the host CLI
+  wired the multi-crew runtime callback) or returns
+  `{ok: true, ready: false, restartHint}` so the UI can surface
+  a clear "restart with this crew bound" hint.
+- `/crews.html`'s saved-crews table grows a **Spawn** button per
+  row that calls the skill. In-process success surfaces an
+  "Open workspace →" link to `/?crew=<id>`; restart mode surfaces
+  the structured hint.
+
+**In-process multi-crew runtime is the remaining piece.** The
+substrate is ready (shared-agent opts + skip-skills opts +
+`spawnMyCrew` plumbing). The `bin/tasks-ui.js` `--crew` path
+still uses the single-crew shape — refactoring it to build
+meshAgent first + use `multiCrewResolver` + wire
+`_spawnCrewInProcess` callback is ~2 days. Per-crew onboarding
+skills (`issueInvite` / `redeemInvite`) currently register
+last-write-wins per `createCrewAgent` call; the multi-crew
+refactor needs either to dispatch them by `args.crewId` or to
+register them only once with a multi-crew GroupManager dispatcher.
+
 **Remaining Tasks V2 web pickups:**
 
-1. **In-process multi-crew runtime** — `bin/tasks-ui.js` refactor:
-   maintain `Map<crewId, bundle>`, wire `multiCrewResolver(map)`,
-   add a `spawnMyCrew({crewId})` skill that loads the saved
-   CrewConfig and pushes a new bundle onto the map. Estimate ~2-3
-   days; needs care with shared identity/transport across bundles.
+1. **Finish in-process multi-crew runtime** — `bin/tasks-ui.js`
+   refactor + onboarding-skill multi-crew dispatch (~2 days).
 2. **Phase 52.9.3 substrate-mirror** (~3-5 days) — cross-device
    fan-out for multi-device Tasks. Follow Stoop's
    `apps/stoop/src/substrateMirror.js` template; can swap the
