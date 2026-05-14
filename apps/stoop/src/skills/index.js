@@ -40,7 +40,7 @@ import { defineSkill, validateMnemonic, mnemonicToSeed, AgentIdentity } from '@c
 import nacl from 'tweetnacl';
 import { resolve as resolveMember } from '@canopy/identity-resolver';
 import { validateCanonical } from '@canopy/item-types';
-import { validateStoopItem } from '../lib/canonicalAdapter.js';
+import { validateStoopItem, intentToCanonicalDraft } from '../lib/canonicalAdapter.js';
 
 import { validateHandle } from '../lib/handle.js';
 import { getPrivacyNotice } from '../lib/privacyNotice.js';
@@ -284,14 +284,22 @@ export function buildSkills({
 
   return [
     /**
-     * postRequest({text, kind?, requiredSkills?, dueAt?, timeoutMs?, expectClaims?})
+     * postRequest({text, intent?, kind?, requiredSkills?, dueAt?, timeoutMs?, expectClaims?})
      *
      * Records the post as an item, then broadcasts via L1e and waits for
-     * claims.  `kind` defaults to `'request'` (legacy V0 vocabulary);
-     * Stoop V1 callers pass `'ask' | 'offer' | 'lend' | 'report'`.
+     * claims.
      *
-     * For `kind: 'lend'` with `dueAt` set + a notifier wired into the
-     * bundle, schedules a return reminder via
+     * Phase 52.7.2 cut-over (2026-05-14): API input `intent` carries
+     * the Stoop UI vocab ('ask' | 'offer' | 'lend' | 'request' |
+     * 'report' | ...). Items are stored with the canonical
+     * `@canopy/item-types` shape — `type` + `kind` — via the
+     * translator in `lib/canonicalAdapter.js`. The optional `kind`
+     * arg lets a future UI sub-choice ("Lenen / Iets klein om te
+     * delen / Iets gratis krijgen") pin the canonical kind directly.
+     *
+     * For lend-shaped writes (`intent: 'lend'` / canonical
+     * `item.kind === 'lend'`) with `dueAt` set + a notifier wired
+     * into the bundle, schedules a return reminder via
      * `notifier.scheduleBefore({ cancelKey: 'due:<itemId>' })`.
      */
     defineSkill('postRequest', async ({ parts, from }) => {
@@ -307,8 +315,13 @@ export function buildSkills({
       const maxDistanceKm = (typeof a.maxDistanceKm === 'number' && a.maxDistanceKm > 0)
         ? a.maxDistanceKm : null;
 
+      // Phase 52.7.2 cut-over — translate UI-vocab `intent` to
+      // canonical {type, kind}. Bespoke intents (`report`, etc.)
+      // pass through as `{type}` only.
+      const canonicalDraft = intentToCanonicalDraft(a.intent, a.kind);
+
       const itemDraft = {
-        type:           a.kind ?? 'request',
+        ...canonicalDraft,
         text:           a.text,
         requiredSkills: a.requiredSkills ?? [],
         visibility:     'household',
@@ -370,8 +383,11 @@ export function buildSkills({
       }
 
       // Lend lifecycle: schedule a return reminder when applicable.
+      // Phase 52.7.2 cut-over — canonical lends are
+      // `{type: 'offer', kind: 'lend'}`; legacy `item.type === 'lend'`
+      // disappears with the cut-over.
       if (notifier
-          && item.type === 'lend'
+          && item.kind === 'lend'
           && typeof item.dueAt === 'number') {
         const leadMs = typeof a.leadMs === 'number' ? a.leadMs : DEFAULT_LEND_LEAD_MS;
         const recipient = a.reminderRecipient ?? localActor ?? from;
@@ -438,7 +454,11 @@ export function buildSkills({
               requestId: item.id,
               text:      item.text,
               from,
-              kind:      item.type,
+              // Phase 52.7.2 cut-over — send canonical `type` + `kind`
+              // (was `kind: item.type` in legacy shape; receivers
+              // reconstructed items with `type: kind`).
+              type:      item.type,
+              kind:      item.kind ?? null,
               dueAt:     item.dueAt,
               categoryId:  a.categoryId  ?? null,
               skillTags:   Array.isArray(a.skillTags) ? a.skillTags : [],
@@ -470,7 +490,9 @@ export function buildSkills({
               postId:        item.id,
               attachments:   toBroadcastShape(persistedAttachments),
               text:          item.text,
-              kind:          item.type,
+              // Phase 52.7.2 cut-over — canonical type + kind.
+              type:          item.type,
+              kind:          item.kind ?? null,
               dueAt:         item.dueAt ?? null,
               targets,
               maxDistanceKm,
@@ -482,7 +504,12 @@ export function buildSkills({
         }
       }
 
-      metrics?.record?.(`post-${item.type}`);
+      // Phase 52.7.2 cut-over (2026-05-14): tag by canonical `kind`
+      // when present (more informative than `type` alone — both
+      // 'offer'+'lend' intents collapse to type:'offer' after the
+      // cut-over). Bespoke types (report, etc.) carry no kind, so
+      // fall back to `type` for them.
+      metrics?.record?.(`post-${item.kind ?? item.type}`);
       if (recipients.size > 0) metrics?.record?.('post-fanned-out');
 
       if (typeof a.expectClaims === 'number' && a.expectClaims > 0) {
@@ -556,21 +583,47 @@ export function buildSkills({
     }),
 
     /**
-     * listOpen({skill?, kind?})  — open requests, optionally filtered.
+     * listOpen({skill?, intent?})  — open requests, optionally filtered.
      *
-     * Stoop V1: `kind` filter selects on `Item.type` so the board
-     * can render ask / offer / lend tabs.
+     * Phase 52.7.2 cut-over (2026-05-14): `intent` filter accepts the
+     * Stoop UI vocab ('ask' | 'offer' | 'lend' | 'request' | 'report'
+     * | …) and is mapped to a canonical `{type, kind?}` filter under
+     * the hood:
+     *
+     *   - 'ask'     → type=request (any kind)
+     *   - 'offer'   → type=offer, kind=give     (excludes lends)
+     *   - 'lend'    → type=offer, kind=lend
+     *   - 'request' → type=request (legacy fallback)
+     *   - 'report'  → type=report (bespoke; pass-through)
+     *   - other     → type=<intent>             (bespoke pass-through)
+     *
+     * Item-store's `listOpen` only filters by `type`; the `kind`
+     * post-filter happens in JS.
      */
     defineSkill('listOpen', async ({ parts, from }) => {
       const a = dataArgs(parts);
       const filter = {};
       if (a.skill) filter.requiredSkill = a.skill;
-      if (a.kind)  filter.type          = a.kind;
-      const open  = await store.listOpen(filter);
-      const items = await hydrateItems(open, { members, reveals, viewerWebid: from, groupId });
+      let kindPostFilter = null;
+      if (a.intent) {
+        const canon = intentToCanonicalDraft(a.intent);
+        filter.type = canon.type;
+        // For 'offer' intent we narrow to kind:give (the "Aanbod"
+        // tab); for 'lend' we narrow to kind:lend. Other intents
+        // ('ask', 'request', 'report', bespoke) match by `type`
+        // alone — no kind narrowing.
+        if (a.intent === 'offer' || a.intent === 'lend') {
+          kindPostFilter = canon.kind;
+        }
+      }
+      const open = await store.listOpen(filter);
+      const matched = kindPostFilter
+        ? open.filter((it) => it.kind === kindPostFilter)
+        : open;
+      const items = await hydrateItems(matched, { members, reveals, viewerWebid: from, groupId });
       return { items };
     }, {
-      description: 'List open requests; optional `skill` + `kind` filters.',
+      description: 'List open requests; optional `skill` + `intent` filters.',
       visibility:  'authenticated',
     }),
 

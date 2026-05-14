@@ -16,15 +16,21 @@ import { distanceKm } from './geo.js';
  * and were leaking into the Feed.  Whitelist what's actually a
  * board-visible post.
  *
- * Synced with `apps/stoop/src/skills/index.js`'s `postRequest` which
- * accepts `kind: 'ask' | 'offer' | 'lend' | 'request' | 'report'`
- * (legacy `request` kept for back-compat). Stoop V1 Phase 3 added
- * `vraag` / `aanbod` aliases coming back via the broadcast mirror;
- * include those too.
+ * Phase 52.7.2 cut-over (2026-05-14, clean break per Decision 1):
+ * after Stoop's `postRequest` started writing canonical
+ * `@canopy/item-types` shape, the whitelist switched to the
+ * canonical types. Pre-migration items (`type: 'ask'`/`'lend'`/etc.)
+ * are no longer visible — this is a deliberate clean break per the
+ * Stoop open-questions 2026-05-12 doc. The "Aanbod" / "Te leen" tab
+ * split is now expressed as `type: 'offer'` with `kind` narrowing on
+ * the server side (`listOpen({intent: 'lend'})` →
+ * `type: 'offer', kind: 'lend'`).
+ *
+ * `report` stays on the whitelist as a bespoke type (admin
+ * moderation; outside the canonical taxonomy by design).
  */
 const FEED_VISIBLE_TYPES = new Set([
-  'ask', 'offer', 'lend', 'report', 'request',
-  'vraag', 'aanbod',
+  'offer', 'request', 'claim', 'announcement', 'report',
 ]);
 
 /**

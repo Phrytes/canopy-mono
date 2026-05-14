@@ -207,17 +207,19 @@ async function callRest(skillId, data) {
   return (json.artifacts?.[0]?.parts ?? []).find(p => p?.type === 'DataPart')?.data ?? {};
 }
 
-describe('Stoop V1 web UI — Phase 5 (kind tabs + moderation)', () => {
-  it('listOpen({kind: "lend"}) returns only lends', async () => {
-    await callRest('postRequest', { text: 'aanhanger', kind: 'lend',  expectClaims: 0, timeoutMs: 1 });
-    await callRest('postRequest', { text: 'tax help',  kind: 'offer', expectClaims: 0, timeoutMs: 1 });
+describe('Stoop V1 web UI — Phase 5 (intent tabs + moderation)', () => {
+  it('listOpen({intent: "lend"}) returns only lends', async () => {
+    // Phase 52.7.2 cut-over (2026-05-14): API + stored shape both
+    // canonical. `lend` intent → type:offer + kind:lend.
+    await callRest('postRequest', { text: 'aanhanger', intent: 'lend',  expectClaims: 0, timeoutMs: 1 });
+    await callRest('postRequest', { text: 'tax help',  intent: 'offer', expectClaims: 0, timeoutMs: 1 });
 
-    const lends = await callRest('listOpen', { kind: 'lend' });
-    expect(lends.items.every(i => i.type === 'lend')).toBe(true);
+    const lends = await callRest('listOpen', { intent: 'lend' });
+    expect(lends.items.every(i => i.type === 'offer' && i.kind === 'lend')).toBe(true);
     expect(lends.items.some(i => i.text === 'aanhanger')).toBe(true);
 
-    const offers = await callRest('listOpen', { kind: 'offer' });
-    expect(offers.items.every(i => i.type === 'offer')).toBe(true);
+    const offers = await callRest('listOpen', { intent: 'offer' });
+    expect(offers.items.every(i => i.type === 'offer' && i.kind === 'give')).toBe(true);
   });
 
   it('mutePeer + listMutedPeers via REST', async () => {
@@ -232,17 +234,17 @@ describe('Stoop V1 web UI — Phase 5 (kind tabs + moderation)', () => {
     expect(list2.peers).not.toContain('https://id.example/marie');
   });
 
-  it('reportPost via REST creates a kind:"report" item', async () => {
+  it('reportPost via REST creates a type:"report" item', async () => {
     const post = await callRest('postRequest', {
       text: 'something problematic',
-      kind: 'ask',
+      intent: 'ask',
       expectClaims: 0,
       timeoutMs: 1,
     });
     const r = await callRest('reportPost', { itemId: post.requestId, reason: 'irrelevant' });
     expect(r.reportId).toBeTruthy();
 
-    const reports = await callRest('listOpen', { kind: 'report' });
+    const reports = await callRest('listOpen', { intent: 'report' });
     expect(reports.items.some(it => it.id === r.reportId)).toBe(true);
   });
 });

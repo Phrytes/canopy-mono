@@ -75,13 +75,15 @@ describe('Stoop V1 Phase 19 — closed-beta smoke', () => {
 
     // 4. Post an ask.
     const post = await callSkill(bundle.agent, 'postRequest', {
-      text: 'paint the fence', kind: 'ask', expectClaims: 0, timeoutMs: 1,
+      text: 'paint the fence', intent: 'ask', expectClaims: 0, timeoutMs: 1,
     });
     expect(post.requestId).toBeTruthy();
 
     // 5. Metrics snapshot reflects the actions just taken.
+    // Phase 52.7.2 cut-over: `intent: 'ask'` → kind: 'borrow' →
+    // metric tag 'post-borrow'.
     const m = await callSkill(bundle.agent, 'getMetrics');
-    expect(m.snapshot['post-ask']?.count).toBe(1);
+    expect(m.snapshot['post-borrow']?.count).toBe(1);
     expect(m.snapshot['backup-created']?.count).toBe(1);
     expect(typeof m.capturedAt).toBe('number');
   });
