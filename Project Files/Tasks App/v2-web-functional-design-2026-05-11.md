@@ -339,24 +339,41 @@ The wizard saves config; the runtime still binds to one crew per
 process per Tasks-v0's CLI model. Multi-crew runtime is a follow-up
 deferred to Tasks V2.x.
 
-**Remaining Tasks V2 web pickups (in priority order):**
+**Third slice — agent-registry on createCrewAgent, shipped 2026-05-14:**
 
-1. **Lift `dag.js`'s `effectiveStatus` + `unmetDeps` +
-   `openDeps[]` into `@canopy/item-store`** (~1 day) — P1
-   substrate-side extraction; `apps/tasks-v0` keeps consuming
-   from the same call sites.
-2. **Register the browser agent on `agent-registry` at first
-   boot** (~0.5 day) — Phase 52.10. Needs a per-bundle pseudoPod
-   first; either build a Tasks substrate stack (see Phase 52.9.3
-   below) or wire a standalone pseudoPod just for the registry.
-3. **`/pod-settings.html`** (~1-2 days) — pod provision +
+- `registerAgentBundle` helper lifted from Stoop's
+  `apps/stoop/src/substrateMirror.js` into
+  `@canopy/agent-registry` (where it belongs — Tasks now
+  consumes it directly without a cross-app dep on Stoop).
+- `createCrewAgent` wires a standalone-mode pseudoPod per crew
+  bundle and calls `registerAgentBundle` to land the agent under
+  `pseudo-pod://<deviceId>/private/agent-registry`. Capabilities
+  tag: `['tasks', 'tasks-v0', \`crew:<crewId>\`]`. `bundle.pseudoPod`
+  + `bundle.agentRegistry` + `bundle.substrateDeviceId` exposed
+  for consumers (forward-compat with Phase 52.9.3 substrate-mirror).
+- Soft-fail: registry write failures attach `null` rather than
+  blocking bundle bring-up.
+
+The dag.js lift (item 1 of the prior list) **was already shipped
+in Phase 52.6.2** — audit 2026-05-14 confirms `apps/tasks-v0/src/dag.js`
+is a thin re-export shim from `@canopy/item-store`.
+24/24 item-store dag tests pass.
+
+**Remaining Tasks V2 web pickups:**
+
+1. **`/pod-settings.html`** (~1-2 days) — pod provision +
    sign-out + storage-policy display. Provision uses
    `createSolidAuthNode` + `KNOWN_ISSUERS` (Phase 52.15).
-4. **`/onboard.html`** (~1 day) — invite redemption page.
-5. **Multi-crew runtime** — `/welcome.html` saves a fresh
+2. **`/onboard.html`** (~1 day) — invite redemption page.
+3. **Multi-crew runtime** — `/welcome.html` saves a fresh
    CrewConfig but Tasks-v0 only binds to one crew per process
    today. V2.x should add hot-swap or multi-bundle runtime so the
    wizard's output can be consumed without a restart.
+4. **Phase 52.9.3 substrate-mirror** (~3-5 days) — cross-device
+   fan-out for multi-device Tasks. Follow Stoop's
+   `apps/stoop/src/substrateMirror.js` template; can swap the
+   standalone-mode pseudoPod for a replication-ring one and add
+   a notifyEnvelope + mirror.
 
 **Larger deferrals** (each needs its own session):
 

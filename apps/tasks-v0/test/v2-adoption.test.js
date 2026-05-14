@@ -133,6 +133,48 @@ describe('Tasks V2 — crewConfig.storage', () => {
   });
 });
 
+describe('Tasks V2 — agent-registry on bundle bring-up', () => {
+  it('attaches bundle.agentRegistry with this agent registered', async () => {
+    const { crew } = await makeCrew();
+    expect(crew.agentRegistry).toBeTruthy();
+    expect(typeof crew.agentRegistry.list).toBe('function');
+    const agents = await crew.agentRegistry.list();
+    expect(agents.length).toBeGreaterThanOrEqual(1);
+    const pubKey = crew.agent?.identity?.pubKey ?? crew.agent?.address ?? null;
+    const me = agents.find(a => a.pubKey === pubKey);
+    expect(me).toBeTruthy();
+    expect(me.role).toBe('device');
+    expect(me.capabilities).toContain('tasks');
+    expect(me.capabilities).toContain('tasks-v0');
+  });
+
+  it('records crew context in the capabilities tag', async () => {
+    const { crew } = await makeCrew();
+    const agents = await crew.agentRegistry.list();
+    const me = agents.find(a => a.pubKey === (crew.agent?.identity?.pubKey ?? crew.agent?.address));
+    expect(me.capabilities).toContain('crew:oss-tools');
+  });
+
+  it('records the crew name on the entry', async () => {
+    const { crew } = await makeCrew();
+    const agents = await crew.agentRegistry.list();
+    const me = agents.find(a => a.pubKey === (crew.agent?.identity?.pubKey ?? crew.agent?.address));
+    expect(me.name).toBe('OSS Tools NL');
+  });
+
+  it('lookups work by pubKey, deviceId, and agentUri', async () => {
+    const { crew } = await makeCrew();
+    const pubKey = crew.agent?.identity?.pubKey ?? crew.agent?.address;
+    const deviceId = crew.agent?.identity?.deviceId ?? null;
+    expect((await crew.agentRegistry.lookup(pubKey))?.pubKey).toBe(pubKey);
+    if (deviceId) {
+      expect((await crew.agentRegistry.lookup(deviceId))?.pubKey).toBe(pubKey);
+    }
+    expect((await crew.agentRegistry.lookup(`agent://${pubKey}`))?.pubKey).toBe(pubKey);
+    expect(await crew.agentRegistry.lookup('unknown')).toBe(null);
+  });
+});
+
 describe('Tasks V2 — provisionMyCrew', () => {
   it('persists a fresh crew config with the caller as admin', async () => {
     const { crew, bundle } = await makeCrew();

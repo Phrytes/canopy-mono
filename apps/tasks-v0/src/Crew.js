@@ -33,6 +33,8 @@ import { GroupManager, AgentIdentity, VaultMemory } from '@canopy/core';
 import { MemberMap, MemberMapCache, buildOnboardingSkills } from '@canopy/identity-resolver';
 import { Notifier, InMemoryScheduleStore, NoopChannel, PushChannel, PushPolicy } from '@canopy/notifier';
 import { wireChat } from '@canopy/chat-p2p';
+import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { registerAgentBundle } from '@canopy/agent-registry';
 
 import { createTasksAgent } from './Agent.js';
 import { applyCustomRoles } from './skills/customRoles.js';
@@ -629,6 +631,32 @@ export async function createCrewAgent({
       };
     }
   }
+
+  // Tasks V2 standardisation adoption (2026-05-14, P5 / Phase 52.10) —
+  // wire a standalone pseudoPod per crew bundle + register the agent
+  // in `<pseudo-pod>/private/agent-registry`. Soft-fail.
+  //
+  // Standalone-mode pseudoPod is enough for registry use today: Tasks
+  // doesn't yet do cross-device fan-out (Phase 52.9.3 substrate-mirror
+  // is the bigger follow-up). When that lands, this pseudoPod becomes
+  // the bundle's `pseudoPod` slot wired into substrate-mirror; for now
+  // it's local-only and just hosts the registry resource.
+  const tasksPseudoPod = createPseudoPod({
+    backend:  createMemoryBackend(),
+    mode:     'standalone',
+    deviceId: id?.pubKey ?? bundle.agent?.address ?? 'tasks-device',
+  });
+  bundle.pseudoPod        = tasksPseudoPod;
+  bundle.substrateDeviceId = id?.pubKey ?? bundle.agent?.address ?? 'tasks-device';
+  bundle.agentRegistry = await registerAgentBundle({
+    pseudoPod:    tasksPseudoPod,
+    podDeviceId:  bundle.substrateDeviceId,
+    agent:        bundle.agent,
+    opts: {
+      capabilities: ['tasks', 'tasks-v0', `crew:${crew.crewId}`],
+      name:         crew.name,
+    },
+  });
 
   return {
     ...bundle,
