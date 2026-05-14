@@ -330,26 +330,52 @@ V4 screens (inherits V3's set; new in **bold**, modified in
 The V3 set carries forward intact; new affordances appear on
 existing screens. No screens are removed.
 
-## 6a. Implementation status (post-standardisation)
+## 6a. Implementation status (refreshed 2026-05-14)
 
-V3 (Phases 40.1–40.22) shipped 2026-05-08; Phase 40.23 real-
-device pass + closed-beta APK was pending. V4 work is the
-standardisation transition layered on top.
+V3 (Phases 40.1–40.22) shipped 2026-05-08. V4 work is the
+standardisation transition layered on top. Substantial substrate
+adoption shipped 2026-05-14; the table below is refreshed
+accordingly.
 
-| Phase from plan | Stoop-mobile work | Status (2026-05-11) |
+| Phase from plan | Stoop-mobile work | Status (2026-05-14) |
 |---|---|---|
-| V3 40.23 | real-device pass + closed-beta APK | hardware pending (carries forward into V4 baseline) |
-| P0 | n/a | pending |
-| P1 | route writes through `notify-envelope` per crew policy; storage-policy step in crew create wizard; "My Solid pods" section on profile; embed-ref slot on compose | pending |
-| P2 | adopt `item-types` for Stoop's types | pending |
-| P3 | **`groupMirror` substrate cut-over** — mobile is one of the test platforms for parity | pending |
-| P5 | adopt `agent-registry`; canonical app skeleton alignment (Stoop V3 already lifted `src/lib/` into shared substrates per the 2026-05-08 migration doc) | pending |
-| P4 (Hub) | `hub-discovery` + `hub-binding`; runtime-detect Hub | pending |
-| P6 (Hub) | register Stoop's renderers (compact + full) for `supply-offer`, `demand-offer`, `chat-message`, `neighbourhood-job`; neighbourhood-job as protocol | pending |
-| P7 (Hub) | bundle refactor (Stoop second; after Tasks) | pending |
+| V3 40.23 | real-device pass + closed-beta APK | **pending** — hardware test still open; independent of substrate work and can ship anytime |
+| P0 | n/a | n/a |
+| P1 | route writes through `notify-envelope` per crew policy; storage-policy step in crew create wizard; "My Solid pods" section on profile; embed-ref slot on compose | **partial** — notify-envelope wiring + pseudoPod + podRouting are in `agentBundle.js` + `bootstrapBundle.js` (Phase 52.9.2). Crew-create wizard + "My Solid pods" UI + embed-ref slot still pending |
+| P2 | adopt `item-types` for Stoop's types | **shipped 2026-05-14** — Q-A canonical-vocabulary cut-over; mobile uses the same `canonicalAdapter` as web |
+| P3 | **`groupMirror` substrate cut-over** — mobile is one of the test platforms for parity | **shipped 2026-05-14** — Phase 52.9.2 retired `wireGroupBroadcastMirror` cleanly. `substrateMirror` wired at all 5 call sites in mobile. No per-peer race; receive is one global subscription |
+| 52.14 (Q-D) | conflict resolution adoption on mobile — Lamport `_v` flows through pseudoPod backends (As + Fs) | **shipped 2026-05-14** (substrate side). `'stale-peer'` event subscription on mobile still pending |
+| 52.15 | Solid-auth consolidation — `<IssuerPicker>` RN component + `createSolidAuthNode` adoption | **shipped 2026-05-14** — `apps/stoop-mobile/src/screens/SignInScreen.js` adopts `<IssuerPicker>` from `@canopy/oidc-session-rn/picker` |
+| 52.16 | Sharing v2 | **not applicable today** — Stoop-mobile has no user-visible sharing UX. Adopt when needed |
+| 52.2.x | peer-fetch gates | **substrate ready; per-app wiring pending** when Stoop adopts envelope-only mode (currently full-payload) |
+| P5 | adopt `agent-registry`; canonical app skeleton alignment (Stoop V3 already lifted `src/lib/` into shared substrates per the 2026-05-08 migration doc) | **partial** — agent-registry substrate shipped 2026-05-14 (Phase 52.10); mobile bundle bring-up doesn't register agents yet (pending) |
+| P4 (Hub) | `hub-discovery` + `hub-binding`; runtime-detect Hub | **deferred** (Hub track direction-only) |
+| P6 (Hub) | register Stoop's renderers (compact + full) for `supply-offer`, `demand-offer`, `chat-message`, `neighbourhood-job`; neighbourhood-job as protocol | **deferred** (Hub track direction-only) |
+| P7 (Hub) | bundle refactor (Stoop second; after Tasks) | **deferred** (Hub track direction-only) |
 
-The cliff is P3 (groupMirror cut-over); see V2 web doc + the
-transition doc §IV.2 for the load-bearing test strategy.
+The P3 cliff cleared 2026-05-14 (Phase 52.9.2 shipped without a
+dual-run; user picked clean break since no production users).
+Next concrete pickups for Stoop-mobile V4 (in priority order):
+
+1. **Phase 40.23 real-device pass** (~2-3 days) — hardware test;
+   independent of substrate work.
+2. **`'stale-peer'` event subscription** (~1 day) — surface
+   divergence to UI or auto-publish-back via notify-envelope.
+3. **Agent-registry registration on bundle bring-up** (~0.5 day) —
+   register the mobile agent in `<pod>/private/agent-registry`
+   so cross-device lookups resolve.
+4. **Crew-create wizard storage-policy step** (~1 day) — `(centralised
+   / decentralised / hybrid / no-pod)` per §II.2.
+5. **"My Solid pods" profile section + embed-ref slot on compose**
+   (~1 day) — V4 functional design §4.
+
+Cross-references:
+- Substrate-side phase list:
+  [`../Substrates/substrates-v2-coding-plan-2026-05-11.md`](../Substrates/substrates-v2-coding-plan-2026-05-11.md)
+- Cross-app residuals + priority:
+  [`../TODO-GENERAL.md`](../TODO-GENERAL.md) §"Standardisation residuals"
+- Q-D design (conflict resolution):
+  [`./conflict-resolution-design-2026-05-14.md`](./conflict-resolution-design-2026-05-14.md)
 
 ## 7. Locales
 

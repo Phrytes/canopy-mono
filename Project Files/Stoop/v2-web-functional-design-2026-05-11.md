@@ -305,24 +305,43 @@ No page is removed. The new explicit affordances are on
 (My Solid pods section); the embed-ref chips appear inline on
 existing post cards.
 
-## 6a. Implementation status (post-standardisation)
+## 6a. Implementation status (refreshed 2026-05-14)
 
 V1 (Phases 0–22) ships today. V2 work is the standardisation
-transition.
+transition. Substantial substrate adoption shipped 2026-05-14;
+the table is refreshed accordingly.
 
-| Phase from plan | Stoop-specific work | Status (2026-05-11) |
+| Phase from plan | Stoop-specific work | Status (2026-05-14) |
 |---|---|---|
-| P0 | plan-tracking convention; n/a | pending |
-| P1 | crew creation gains storage-policy picker; route writes through `notify-envelope` per policy; embed-refs in `postRequest`; `/group.html` + `/profile.html` storage sections | pending |
-| P2 | adopt `item-types` for `supply-offer`, `demand-offer`, `lend-request`, `chat-message`, `announcement` | pending |
-| P3 | **`groupMirror` substrate cut-over** — dual-run for two weeks, parity tests, flip per-crew | pending |
-| P5 | adopt `agent-registry`; canonical app skeleton alignment (`src/lib/` shims) | pending |
-| P4 (Hub) | `hub-discovery` hook (no-op when Hub absent) | pending |
-| P6 (Hub) | register `chat-message` / `supply-offer` / `demand-offer` / `neighbourhood-job` interfaces; neighbourhood-job as protocol | pending |
-| P7 (Hub) | bundle refactor (Stoop second, after Tasks proves the pattern) | pending |
+| P0 | plan-tracking convention | **shipped 2026-05-14** — `Project Files/conventions/plan-tracking.md` |
+| P1 | crew creation gains storage-policy picker; route writes through `notify-envelope` per policy; embed-refs in `postRequest`; `/group.html` + `/profile.html` storage sections | **shipped 2026-05-14** — substrate side: pseudoPod V0 + pod-routing + notify-envelope + Q-A canonical vocabulary + Q-B substrateMirror. App side: A4 embeds + chip rendering, A3 storage-policy picker on `/create-group.html` (four §II.2 policies; default `'no-pod'`), A5 `/group.html` storage section with admin-only one-way upgrade (`setCrewStoragePolicy` skill), A6 `/profile.html` "My Solid pods" section (status + sign-out; two-pod preset placeholder for V3) |
+| P2 | adopt `item-types` for `supply-offer`, `demand-offer`, `lend-request`, `chat-message`, `announcement` | **shipped 2026-05-14** — Q-A canonical-vocabulary cut-over; Stoop posts now route through `canonicalAdapter` |
+| P3 | **`groupMirror` substrate cut-over** | **shipped 2026-05-14** — Phase 52.9.2 retired `wireGroupBroadcastMirror` cleanly (no dual-run; clean break since no production users). Substrate path is now load-bearing for Stoop posts |
+| 52.14 (Q-D) | Lamport `_v` conflict resolution on Stoop post writes | **shipped 2026-05-14** — substrate side + Stoop's `'stale-peer'` auto-heal subscriber in `wireSubstrateMirror` (publishes the local fresher copy back to the stale peer; silent auto-heal). `'concurrent-write'` UI affordance still pending (deferred to V3 unless real divergence shows up in field testing) |
+| 52.15 | Solid-auth consolidation (`createSolidAuthNode` + `KNOWN_ISSUERS` on `/sign-in.html`) | **shipped 2026-05-14** — Phase 52.15.1-52.15.8. Stoop web sign-in already uses the consolidated path |
+| 52.16 | Sharing v2 (ACP/WAC grant via `createClientSharing` when buurt moves to pod-having policy) | **substrate ready; app wiring pending** — when the storage-policy picker offers `centralised`/`hybrid`, the wizard should grant member access via `createClientSharing` (cap-token fallback for non-ACP pods) |
+| 52.2.x | peer-fetch gates (Q#2 hybrid `groupCheck` + `capCheck`) | **substrate ready; app wiring pending** — when Stoop adopts envelope-only mode (today: full-payload), wire `groupCheck(uri, ctx) ⇒ buurtRoster.has(ctx.from)` on `fetch-resource`. Ex-members are denied even if still connected to the relay |
+| P5 | adopt `agent-registry`; canonical app skeleton alignment (`src/lib/` shims) | **shipped 2026-05-14** — `attachSubstrateMirror` registers the agent via `createAgentRegistry({pseudoPod, deviceId})` (idempotent CAS upsert; soft-fail; opt-out via `agentRegistry: false`). 6/6 tests in `apps/stoop/test/agentRegistryWiring.test.js`. `src/lib/` shims already lifted per `migration-tasks-v1-lifts-2026-05-08.md` |
+| P4 (Hub) | `hub-discovery` hook (no-op when Hub absent) | **deferred** (Hub track direction-only) |
+| P6 (Hub) | register `chat-message` / `supply-offer` / `demand-offer` / `neighbourhood-job` interfaces; neighbourhood-job as protocol | **deferred** (Hub track direction-only) |
+| P7 (Hub) | bundle refactor (Stoop second, after Tasks proves the pattern) | **deferred** (Hub track direction-only) |
 
-The cliff is P3 (groupMirror cut-over). Both pod-having and
-no-pod parity tests must pass before flipping per-crew.
+The P3 cliff cleared 2026-05-14 (groupMirror retired). The
+remaining V2 web work is the **app-level UX surface** that
+exposes the now-shipped substrate capabilities to users:
+storage-policy picker, embed-refs, `/group.html` +
+`/profile.html` storage sections, `'stale-peer'` event handler,
+and the `groupCheck` wiring on `fetch-resource`.
+
+Cross-references:
+- Substrate-side phase list:
+  [`../Substrates/substrates-v2-coding-plan-2026-05-11.md`](../Substrates/substrates-v2-coding-plan-2026-05-11.md)
+- Cross-app residuals + priority:
+  [`../TODO-GENERAL.md`](../TODO-GENERAL.md) §"Standardisation residuals"
+- Coding plan with adoption track:
+  [`coding-plan-v2-2026-05-07.md`](coding-plan-v2-2026-05-07.md)
+- Q-D design (conflict resolution):
+  [`conflict-resolution-design-2026-05-14.md`](conflict-resolution-design-2026-05-14.md)
 
 ## 7. Locales
 

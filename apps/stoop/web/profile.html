@@ -129,6 +129,35 @@
       </div>
     </section>
 
+    <section id="my-pods">
+      <h2 data-i18n="profile.my_pods_heading">Mijn Solid-pods</h2>
+      <p class="hint" id="my-pods-status" data-i18n="profile.my_pods_loading">Aan het laden…</p>
+      <div id="my-pods-detail" hidden>
+        <ul id="my-pods-list" style="margin: 0; padding-left: 1.2rem;"></ul>
+        <p class="hint" data-i18n="profile.my_pods_two_pod_intro">
+          Voor sterkere privacy-isolatie kun je je dagelijks gebruik
+          opsplitsen in twee pods: een <strong>privé-pod</strong> voor je
+          eigen items en een <strong>sharing-pod</strong> voor wat je met
+          buurten deelt. De volledige editor leeft in de Hub-web-console
+          (post-P5); de one-click preset komt in V3.
+        </p>
+        <button id="two-pod-upgrade" type="button" disabled
+                data-i18n="profile.my_pods_two_pod_btn">Splits in twee pods (komt in V3)</button>
+        <span id="two-pod-status" class="hint" data-i18n="profile.my_pods_two_pod_deferred">Substraat-onderdelen gepland; UI volgt in V3.</span>
+        <div style="margin-top: 0.8rem;">
+          <button id="profile-sign-out" type="button" data-i18n="profile.my_pods_sign_out">Uitloggen uit pod</button>
+          <span id="profile-sign-out-status" class="hint"></span>
+        </div>
+      </div>
+      <div id="my-pods-signed-out" hidden>
+        <p class="hint" data-i18n="profile.my_pods_signed_out_intro">
+          Geen pod aan dit account gekoppeld. Stoop werkt prima zonder
+          (no-pod modus); een pod erbij is optioneel.
+        </p>
+        <a href="/sign-in.html" data-i18n="profile.my_pods_sign_in_link">Aan pod koppelen</a>
+      </div>
+    </section>
+
     <section id="recovery">
       <h2 data-i18n="profile.recovery_heading">Herstel &amp; back-up</h2>
       <p class="hint" data-i18n="profile.recovery_intro_html">
@@ -511,6 +540,52 @@
         status.textContent = `${t('common.error', 'Fout')}: ${err.message}`;
       }
     });
+
+    /* ── A6 — My Solid pods section ──────────────────────────── */
+
+    async function refreshMyPods() {
+      const statusEl = document.getElementById('my-pods-status');
+      const detail   = document.getElementById('my-pods-detail');
+      const signedOut = document.getElementById('my-pods-signed-out');
+      try {
+        const r = await callSkill('podSignInStatus', {});
+        if (!r?.signedIn) {
+          statusEl.hidden = true;
+          detail.hidden = true;
+          signedOut.hidden = false;
+          return;
+        }
+        statusEl.hidden = true;
+        detail.hidden = false;
+        signedOut.hidden = true;
+        const ul = document.getElementById('my-pods-list');
+        const webid = r.webid ? `WebID: <code>${escapeHtml(r.webid)}</code>` : '';
+        const attached = r.podAttached
+          ? t('profile.my_pods_attached', 'Pod gekoppeld; schrijven gaan synchroon naar de pod.')
+          : t('profile.my_pods_detached', 'Aangemeld, pod niet gekoppeld aan deze sessie.');
+        ul.innerHTML = `<li>${webid}</li><li>${escapeHtml(attached)}</li>`;
+      } catch (err) {
+        statusEl.textContent = `${t('common.error', 'Fout')}: ${err.message ?? err}`;
+      }
+    }
+
+    document.getElementById('profile-sign-out').addEventListener('click', async () => {
+      const status = document.getElementById('profile-sign-out-status');
+      status.textContent = t('profile.my_pods_signing_out', 'Uitloggen…');
+      try {
+        const r = await callSkill('signOutOfPod', {});
+        if (r?.error) {
+          status.textContent = `${t('common.error', 'Fout')}: ${r.error}`;
+          return;
+        }
+        status.textContent = t('profile.my_pods_signed_out_ok', 'Uitgelogd.');
+        await refreshMyPods();
+      } catch (err) {
+        status.textContent = `${t('common.error', 'Fout')}: ${err.message ?? err}`;
+      }
+    });
+
+    await refreshMyPods();
   </script>
 </body>
 </html>

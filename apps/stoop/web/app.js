@@ -258,12 +258,16 @@ export function renderItems(ul, items, handlers = {}) {
     // Phase 39 — render thumbnails for any source.attachments.
     const attachmentsHtml = renderAttachmentThumbs(item);
 
+    // A4 (2026-05-14) — cross-pod ref chips below the body.
+    const embedsHtml = renderEmbedChips(item);
+
     li.innerHTML = `
       <div class="row">
         <div class="text">${escapeHtml(item.text ?? '')}</div>
         ${kindChip}
       </div>
       ${attachmentsHtml}
+      ${embedsHtml}
       <div class="meta">
         <span class="actor" title="${escapeHtml(actorTitle)}">${avatarHtml}${escapeHtml(actorLabel)}</span>
         ${(item.requiredSkills ?? []).map(s => `<span class="skill">${escapeHtml(s)}</span>`).join('')}
@@ -602,6 +606,31 @@ export function mountNotifyBanner({ pollIntervalMs = 4_000 } = {}) {
 }
 
 function truncate(s, n) { return (s ?? '').length > n ? s.slice(0, n - 1) + '…' : (s ?? ''); }
+
+/* ── A4 (2026-05-14) — Cross-pod ref chip rendering ─────────── */
+
+/**
+ * Render the embed-ref chips for an item's `source.embeds: [{type,
+ * ref}, ...]`. Each chip shows the canonical type pill + a short
+ * tail of the ref. Click-through is a future affordance (Hub-
+ * mediated cross-app routing, P6 of the standardisation plan); for
+ * now the chip is informational.
+ */
+export function renderEmbedChips(item) {
+  const embeds = Array.isArray(item?.source?.embeds) ? item.source.embeds : [];
+  if (embeds.length === 0) return '';
+  const chips = embeds
+    .filter(e => e && typeof e.type === 'string' && typeof e.ref === 'string')
+    .map(e => {
+      const tail = e.ref.length > 28 ? `…${e.ref.slice(-26)}` : e.ref;
+      return `<span class="embed-chip" title="${escapeHtml(e.ref)}">`
+           + `<span class="embed-type embed-type-${escapeHtml(e.type)}">${escapeHtml(e.type)}</span>`
+           + `<span class="embed-ref">${escapeHtml(tail)}</span>`
+           + `</span>`;
+    }).join('');
+  if (!chips) return '';
+  return `<div class="embeds">${chips}</div>`;
+}
 
 /* ── Phase 39 — Attachment rendering ─────────────────────────── */
 

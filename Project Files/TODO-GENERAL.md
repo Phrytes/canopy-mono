@@ -5,6 +5,82 @@
 
 ---
 
+## 🔴 HIGH — Standardisation residuals (Phase 52.x + Hub track) (2026-05-14)
+
+> Comprehensive audit 2026-05-14 of both
+> [`standardisation-plan-restructured-2026-05-10.md`](./standardisation-plan-restructured-2026-05-10.md)
+> and [`standardisation-transition-2026-05-11.md`](./standardisation-transition-2026-05-11.md).
+> Most of the substrate work shipped 2026-05-08 / 2026-05-14. What
+> remains breaks down into substrate-side, app-side, decision-locked-
+> pending-implementation, V2-deferred, Hub track (direction-only), and
+> documentation. Recommended pickup order at the bottom.
+
+### Substrate-side V1 residuals
+
+| Item | Size | Notes |
+|---|---|---|
+| ~~Phase 52.9.3 — Tasks relay-fan-out migration~~ | — | **Deferred to Tasks V2 (2026-05-14).** Tasks-v0 has no fan-out helpers to migrate; substrate side ready, adopts via Stoop's `substrateMirror` template when Tasks goes multi-device. Tracked in `Tasks App/v2-{web,mobile}-functional-design-2026-05-11.md` §8 Open questions. |
+| ~~Phase 52.9.4 — Integration test matrix~~ | — | **Shipped 2026-05-14.** Stoop coverage via Phase 52.9.2's substrate-mirror tests + integration-tests substrates-v2 scenarios. Graceful-degradation matrix (5 scenarios) at `packages/integration-tests/test/scenarios/graceful-degradation/cache-mode-edge-cases.scenario.test.js`. Integration suite 46/46. Tasks coverage waits on 52.9.3 (Tasks V2). |
+| ~~P3 graceful-degradation test matrix~~ | — | **Shipped 2026-05-14** — merged into 52.9.4 above. 5 scenarios: sequential offline writes; pending-queue persistence across substrate restart; partial drain failure with retry; online↔offline mid-batch; notify-envelope re-emit on drain. |
+| ~~P5 scaffolder CLI~~ | — | **Shipped 2026-05-14 (V0).** `scripts/scaffold-app.mjs <name> [--dir path]` generates a minimal `@canopy-app/<name>` skeleton: package.json + src/index.js (`createApp()` + hello skill) + bin/<name>.js + test/hello.test.js + locales/en.json (`{text, doc}` shape) + README.md + vitest.config.js. End-to-end verified: scaffolded app's `npm install && npm test && node bin/<name>.js` works. 10/10 scaffolder tests in `packages/integration-tests/test/scenarios/scaffolder/`. **Deferred (V1+):** per-substrate `SCAFFOLDER_META` exports (§II.12 metadata-driven ambition); RN/Expo + web templates; flag-driven substrate wiring (`--pseudo-pod`, `--item-types`, …). |
+
+### App-side V1 residuals (per-app)
+
+| App | Pending work | Size |
+|---|---|---|
+| **Tasks (V1 mobile)** | (a) Adopt `createSolidAuthNode` + `<IssuerPicker>` from 52.15 substrate; (b) item-types adoption (Phase 52.7); (c) real-device pair test (P3 acceptance gate, pod-primary + queue drain on real device) | ~3-4 days (a), 1-2 days (b), 3-4 days (c) |
+| **Tasks-v0 (backend)** | Phase 52.9.3 + 52.9.4 (covered in substrate residuals above) | — |
+| **Folio (desktop)** | (a) Item-types adoption — note type into canonical taxonomy (Phase 52.7); (b) sync-engine → pseudo-pod V1 migration (P3, Folio as reference); (c) real-device cross-pod-ref fetch latency test | ~1-2 days (a), in-progress (b), 2-3 days (c) |
+| **Folio-mobile** | Real-device test (P3 acceptance gate) | ~2-3 days |
+| **Stoop (web)** | Unified TODO at [`Stoop/TODO-stoop-2026-05-14.md`](./Stoop/TODO-stoop-2026-05-14.md): **A-track** (substrate-adoption UX — storage-policy picker, embeds, /group + /profile sections, stale-peer, agent-registry, ~5-7 days). B-track Phases 31-35 + 39 audited 2026-05-14: **all shipped already**. | ~5-7 days |
+| **Stoop-mobile** | C-track in [`Stoop/TODO-stoop-2026-05-14.md`](./Stoop/TODO-stoop-2026-05-14.md). Starts after web A-track is mostly done. Phase 40.23 real-device pass remains independent and can ship anytime. | ~5-6 days + 2-3 days (40.23) |
+| **Household V2** | Full design + implementation (separate product track; waiting for 52.15 — now available) | open |
+| **Archive** | No V1 action — pod-attached, lowest-impact app | — |
+
+### Decision-locked, implementation pending (V1/V1.5)
+
+| Item | Status | Size | Trigger / priority |
+|---|---|---|---|
+| **Q#2 peer-fetch authentication gates** | **Substrate shipped 2026-05-14** — `core.makeFetchResourceSkill({groupCheck?, capCheck?})` + `pseudoPod.fetchResourceSkill` pass-through + 11 new tests in `packages/{core,pseudo-pod}/test/`. Per-app adoption pending: apps wire `groupCheck` from their MemberMap when they register `fetch-resource`. **Currently no app exposes the skill** — substrate-mirror still replicates payloads inline (full-payload envelopes), so the safety gap is forward-looking, not a current exploit. Adoption lands when apps switch to envelope-only mode or cross-app embeds. | substrate done; per-app ~0.5 day when adopted | Per-app wiring is opt-in; safety lands when `fetch-resource` is actually exposed. |
+| **Storage-mapping migration substrate** | Design sketched 2026-05-14 ([`storage-migration-design-2026-05-14.md`](./Substrates/storage-migration-design-2026-05-14.md)). Substrate handles config rewrite only; data migration is user's job. | ~4 days V2 | Trigger: user wants pod-provider switch, household upgrade, or path restructure. |
+| **Shared OIDC vault (multi-OIDC mitigation)** | Design sketched 2026-05-14 ([`oidc-vault-shared-design-2026-05-14.md`](./Substrates/oidc-vault-shared-design-2026-05-14.md)). Pseudo-pod-replicated; mnemonic-keyed. | ~6 days V1.5/V2 | Trigger: rate-limit thrashing in field, or Hub-track P4 starts. |
+
+### V2-deferred (waiting on real-world data)
+
+- **Upload-on-behalf** — 4 sub-questions (authority model, conflict resolution, ACP semantics, product fit). Documented as V2 work; revisit once V1 has been running long enough to surface real "this person's content is stuck on their phone for two weeks" scenarios.
+- **Envelope ordering guarantees** — per-actor sequence counter; deferred + documented as known limitation 2026-05-14. Revisit if real-world heavy-write loads surface visible reordering issues.
+
+### Hub track (direction-only; design-mature; timing-deferred)
+
+| Phase | Scope | Estimate | Trigger |
+|---|---|---|---|
+| **P4 — Hub-Android V1** | Auth + foreground-service slot + multiplexed sockets + BLE/mDNS scanners + unified inbox + AIDL V1 + Hub-side pseudo-pod hosting + pod-onboarding flow | ~6 wk | After P1 ships; realistically after P3 + non-Hub P5 |
+| **Phase 52.12 — interface-registry substrate** | Per-type registry; compact + full rendering contracts; OS-level conflict resolution; permission-denied fallback | ~5 days | P6 gate |
+| **Phase 52.13 — protocol substrate** | State-machine substrate; first canonical protocol = Tasks's propose-subtask | ~5 days | P6 gate; after 52.12 |
+| **P5 Hub portion — Hub-web-console V1** | Storage-mapping editor (incl. two-pod preset); agent registry view; recovery flow; audit log | ~2 wk | After P5 non-Hub complete |
+| **Hub V2 (P6)** | Extends Hub-Android + web-console with interface registry, protocol orchestration, bundle registrar, AIDL V2 | ~5 wk | After 52.12 + 52.13 |
+| **P7 — Apps-as-bundles refactor** | Bundle manifest + AIDL plumbing per app. Tasks first, then Stoop, then Folio. | ~12-18 wk total (rolling) | After P6 Hub V2 |
+
+### Documentation residuals
+
+- ✅ **Shipped 2026-05-14** — `conventions/plan-tracking.md`, `storage-layout.md`, `cross-pod-refs.md`, `pod-independence.md`.
+- **Per-app README updates** (~1-2 days per app) — Tasks (52.7 adoption, auth substrate), Stoop (52.9.2 retirement, mobile 40.23), Folio (52.15/52.16). Documentation debt accumulated as phases shipped without README sweeps.
+- **`architectural-layering.md` bundle-manifest section** (P6) — adds app-as-bundle shape + manifest declaration + AIDL surface structure. ~2-3 days, blocked on 52.12/52.13 stabilising.
+
+### Cross-cutting
+
+- **Inrupt SDK ACP support against real CSS / NSS pods** — Phase 52.16 tests use a mocked Inrupt module; integration coverage against an actual ACP-supporting Solid server is unwritten.
+- **`@canopy/oidc-session-rn` DCR against non-Inrupt providers** — Phase 52.15 design said "tested against solidcommunity.net out-of-band"; not yet verified.
+
+### Recommended next-pickup priority (honest)
+
+1. **Tasks + Folio item-types adoption (Phase 52.7)** — ~2-3 days total. Unblocks clean P3 real-device parity testing across all three apps.
+2. **P3 real-device pair tests** — ~10-15 days across Tasks + Stoop + Folio. Storage-layer transition is the highest-regression-risk piece; real hardware exposes radio / OS surprises. Stoop V3 mobile Phase 40.23 folds into this.
+3. **Per-app README sweep** — ~3-4 days. Documentation debt; cheap to clear before more phases land.
+4. **Hub track kickoff (P4 Hub-Android V1)** — ~6 weeks. Only after items 1-2 above ship, since Hub depends on stable P1-P3 substrates.
+
+---
+
 ## 🟡 MEDIUM — Stoop open questions (next-session pickup) (2026-05-12, refreshed 2026-05-14)
 
 **Live state** (see [`Stoop/open-questions-2026-05-12.md`](./Stoop/open-questions-2026-05-12.md)
@@ -14,81 +90,99 @@ for the full context; updated 2026-05-14):
   2026-05-14 in commit `8543a49`. Stored shape now uses canonical
   `type` + `kind`; API input renamed `kind` → `intent`. Stoop:
   461/461 tests pass.
-- 🟡 **Q-B groupMirror retirement** — decided 2026-05-14: proceed.
-  Retirement work itself **not yet started**; the 5-step phased
-  plan from substrates-v2 §52.9.2 still applies. Recommended to
-  land the Q-D design (below) as a prerequisite — the version-
-  vector work makes the substrate path strictly stronger than
-  groupMirror's current LWW.
+- ✅ **Q-B groupMirror retirement** — DONE 2026-05-14. Clean break
+  (Q-A style); the pubsub-tap `wireGroupBroadcastMirror` retired
+  in favour of the substrate path. New files:
+  `apps/stoop/src/substrateMirror.js` + `apps/stoop/src/lib/substrateStack.js`.
+  Publisher dual-publishes (skillMatch.broadcast keeps claim-flow;
+  `notifyEnvelope.publish({type:'request'})` replicates posts).
+  Receiver's notify-envelope auto-writes to local pseudo-pod via
+  the Q-D 3-way version compare. Tests: **460/460 stoop pass**
+  (was 461; deleted `groupMirror-addPeer-race.test.js` whose race
+  is impossible on the substrate path — receive is one global
+  subscription, not per-peer). Plan-side phase: substrates-v2
+  §52.9.2 (clean-break variant). Also propagated `_v` through
+  `core.Transport.publishEnvelope` (was being dropped in the
+  destructure — Q-D bugfix found during Q-B wiring).
 - 🟢 **Q-C `share` UX wording** — logged; no substrate action.
-- 🟡 **Q-D conflict resolution across substrates** — NEW 2026-05-14.
-  Design note shipped at
+- ✅ **Q-D conflict resolution across substrates** — DONE 2026-05-14
+  via Phase 52.14. Substrate side complete: Lamport `_v` on
+  pseudo-pod backends (Memory/As/Fs); 3-way version compare in
+  `writeFromPeer`; `'peer-update'`/`'stale-peer'`/
+  `'concurrent-write'` events; `freshness: 'fresh'` opt on `read`;
+  notify-envelope forwards `_v`. **73/73 pseudo-pod tests + 47/47
+  notify-envelope tests + 44/44 RN adapter tests + 461/461 stoop
+  tests pass.** Design note:
   [`Stoop/conflict-resolution-design-2026-05-14.md`](./Stoop/conflict-resolution-design-2026-05-14.md).
-  Implementation deferred per user choice. Covers: pod-canonical
-  CAS (already done), replication-ring version-vectors with
-  stale-peer events (NEW work), cache-vs-pod freshness opt (NEW
-  work). Estimate: 3–4 days substrate + 1 day Stoop wiring when
-  picked up.
+  Plan-side phase: substrates-v2 §52.14. **Deferred:** app-level
+  adoption of `'stale-peer'` event in Stoop/Tasks/Folio — pick
+  up when first divergence shows in field testing.
 
-**Suggested next pickup order:** Q-D implementation first (lands
-the version-vector + stale-peer events in pseudo-pod +
-notify-envelope), then Q-B retirement (groupMirror) flips to the
-now-strictly-stronger substrate path.
+**Suggested next pickup order:** App-level stale-peer / concurrent-
+write event adoption in Stoop / Tasks / Folio when a real
+divergence shows up in field testing. Until then, the substrate-
+side surface is complete and the apps benefit from the version-
+vector without any app-side wiring.
 
 ---
 
-## 🔴 HIGH — Solid pod / cap-token UX cleanup (Inrupt migration) (2026-05-07)
+## ✅ RESOLVED — Solid pod / cap-token UX cleanup (Phase 52.15 + 52.16 SHIPPED 2026-05-14)
 
-**What:** the bespoke Solid pod sign-in and capability-token share
-UX surfaces in Stoop V1, Folio, and (designed) Tasks V1 are
-error-prone and inconsistent. Across these apps users encounter:
-issuer-selection screens, OIDC redirect dances, cap-token QR-share
-flows, mismatched session lifetimes, and varying terminology for
-"the pod" / "your data" / "your account".
+> **Resolved 2026-05-14:** Both Phase 52.15 (auth consolidation) AND
+> Phase 52.16 (sharing v2 / ACP) shipped same day. ≈9 days of design
+> + impl compressed into one session. Three docs in
+> [`Inrupt-migration/`](./Inrupt-migration/):
+> [inventory](./Inrupt-migration/pod-auth-inventory-2026-05-14.md),
+> [substrate design](./Inrupt-migration/substrate-design-2026-05-14.md),
+> [Phase plan](./Inrupt-migration/phase-52-15-16-plan-2026-05-14.md).
+>
+> **52.15** — `KNOWN_ISSUERS` + `createSolidAuthNode` substrate
+> promotion + `getIssuerPickerHtml`/`<IssuerPicker>` components +
+> terminology audit. Folio + Stoop wrappers retired.
+>
+> **52.16** — `client.sharing.{grant,revoke,list,capabilities}` in
+> `@canopy/pod-client` via Inrupt `universalAccess` (lazy). Folio
+> CLI gets `--mode cap-token` flag; server `/share` accepts
+> `mode: 'auto'|'cap-token'|'acp'`. autoShare prefers ACP when pod
+> supports it. Browser pane + mobile ShareScreen surface the mode used.
+>
+> **What remains open:** the bot/admin cap-token surfaces in
+> `apps/tasks-mobile` (skill-scope) and `apps/household`
+> (`AdminCapability`) — different domains, out of scope for the
+> Inrupt consolidation. Revisit if a real consolidation reason
+> surfaces.
 
-**Decision direction (memory: `project_capability_tokens_to_inrupt.md`):**
-migrate share/auth UX onto the Inrupt stack. Until that lands,
-every new app design that introduces pod-share UX (Tasks V1 has
-2-3 new cross-pod flows) repeats the same UX pain in another
-place.
+**Two-phase implementation plan (≈9 days total):**
 
-**Action — three connected decisions:**
+- **Phase 52.15 — Auth consolidation** (≈4 days). Multi-issuer support
+  via `KNOWN_ISSUERS`, picker components (web + RN), substrate-promotion
+  of the copy-pasted `OidcSession.js` wrappers, terminology lock.
+- **Phase 52.16 — Sharing v2** (≈5 days). New
+  `client.sharing.{grant, revoke, list, capabilities}` API in
+  `@canopy/pod-client` using Inrupt's ACP primitives. Folio adopts;
+  cap-token fallback for non-ACP pods. `with-<webid>/` gets a mode
+  switch.
 
-1. **Lock the migration timeline.** If imminent (< 4 weeks),
-   coding plans for new apps wait until after the cutover so we
-   don't build three more bespoke UXes that need rewriting.
-2. **Inventory all current bespoke pod-share / cap-token UX
-   surfaces** across `apps/stoop`, `apps/folio`, `apps/tasks-v0`,
-   `apps/household` so the migration scope is concrete.
-3. **Define a single shared "sign in / share via Inrupt"
-   component** (or substrate) that all four apps adopt
-   simultaneously rather than each rolling their own next
-   iteration.
+**Critical path:** **52.15 should kick off before** any new sign-in UX
+work in Tasks V1 or Household V2 (avoids accumulating bespoke debt
+that needs rewriting). 52.16 can ship later.
 
-**Why high priority:** delaying this means every new feature in
-the four apps either accumulates bespoke UX debt or stalls on
-"should we really build this now?". Tasks V1 design is currently
-acknowledging the inheritance rather than fixing it (per
-`Project Files/Tasks App/advice-2026-05-07.md` § "Open TODO:
-Solid pod UX cleanup").
+**Decisions ratified 2026-05-14** (see plan doc §1 for the lock):
+- Two auth packages stay separate; sharing lives in pod-client.
+- Cap-token cryptography stays; only the *default user-facing UX*
+  flips to ACP.
+- Curated issuer list ships Inrupt + solidcommunity.net + solidweb.org.
+- DPoP deferred to V1.1; Bearer-only V1.
+- Stoop web's default issuer flips from `solidcommunity.net` to
+  `login.inrupt.com` (aligns with substrate default; picker still
+  offers community pods).
 
-**Status (2026-05-07):** undecided. Migration timeline not yet
-set; no inventory yet. Tasks V1 implementation plan should not
-ship before this is at least scoped.
-
-**2026-05-08 cross-link — Stoop V3 mobile.** Stoop V3 Phase 40.3
-plans to lift folio-mobile's `OidcSessionRN` + `folioAuth` + `dcr`
-into a new `@canopy/oidc-session-rn` substrate (per the RN-substrate
-separation rule in
-[`conventions/architectural-layering.md`](./conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08)).
-**That extraction is the second consumer (rule of two) of the
-RN-side OIDC pattern but DOES NOT pre-empt the Inrupt-cleanup
-decision** — when the cleanup happens, the new substrate is one of
-the surfaces it migrates. Stoop V3 mobile ships **local-only by
-default** (per the project's local-only-mode-is-the-floor rule);
-pod sign-in lands when the substrate is extracted, and survives
-the eventual Inrupt-cleanup as a self-contained surface to
-re-implement.
+**2026-05-08 cross-link — Stoop V3 mobile** (still applies). Stoop V3
+Phase 40.3 already lifted folio-mobile's RN OIDC into
+`@canopy/oidc-session-rn`. That substrate **is** the consolidation
+target on the RN side; 52.15 extends it (multi-issuer + picker) rather
+than re-extracting. Phase 40.23 (Stoop V3 mobile real-device pass)
+remains independent of 52.15 — can ship before, during, or after.
 
 ---
 
@@ -201,7 +295,13 @@ agentic app is about to deploy.  Tracked here so it isn't forgotten.
 
 ---
 
-## 🟡 MEDIUM — Default pod issuer flexibility (2026-05-05)
+## 🟡 MEDIUM — Default pod issuer flexibility (2026-05-05, **SUBSUMED by Phase 52.15** 2026-05-14)
+
+> **Status update 2026-05-14:** Subsumed by Phase 52.15 (auth
+> consolidation) under the 🔴 HIGH "Solid pod / cap-token UX cleanup"
+> entry above. The picker affordance + curated issuer list ship in
+> 52.15.1 + 52.15.4 + 52.15.5. **Follow-on items still open** below the
+> subsumption line (pod-to-pod migration, bring-your-own-WebID).
 
 **What:** today, apps that need a pod (Folio mobile, Stoop V1,
 household V2) default to `https://login.inrupt.com`. Fine for the

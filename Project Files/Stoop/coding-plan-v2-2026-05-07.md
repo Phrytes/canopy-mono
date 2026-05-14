@@ -592,6 +592,84 @@ diving in.
 **Recommended sprint order:** 32 → 31 → 33 → 34 → 35 (one-at-a-time,
 ship each with passing tests).  Estimated total: ~7-8 days.
 
+## Standardisation adoption (2026-05-14)
+
+Snapshot of Stoop V2's adoption of the Phase 52.x substrate work
+shipped 2026-05-08 + 2026-05-14. See
+[`../Substrates/substrates-v2-coding-plan-2026-05-11.md`](../Substrates/substrates-v2-coding-plan-2026-05-11.md)
+for the substrate-side phase list +
+[`../TODO-GENERAL.md`](../TODO-GENERAL.md) for cross-app residuals.
+
+### ✅ Shipped (Stoop V2 already adopts)
+
+- **Phase 52.1 — item-types.** Q-A canonical-vocabulary cut-over
+  shipped 2026-05-14 (commit `8543a49`). Stoop's stored items now
+  carry the canonical `@canopy/item-types` shape (`type` + `kind`);
+  UI keeps Stoop legacy vocab (`ask` / `offer` / `lend`) translated
+  via `apps/stoop/src/lib/canonicalAdapter.js`. Tests: 461/461 pass.
+- **Phase 52.9.2 — substrate-mirror (groupMirror retirement).**
+  Shipped 2026-05-14 as Q-B. `apps/stoop/src/substrateMirror.js`
+  + `apps/stoop/src/lib/substrateStack.js` replace the
+  `wireGroupBroadcastMirror` path. Dual-publish pattern:
+  `skillMatch.broadcast` keeps the pubsub claim-flow; substrate
+  mirror handles storage replication via
+  `notifyEnvelope.publish({type:'request'})`. `groupMirror.js`
+  deleted; 460/460 stoop tests pass post-retirement.
+- **Phase 52.14 — conflict resolution (substrate side + Stoop
+  auto-heal).** Substrate ships Q-D 3-way version compare via
+  `pseudoPod.writeFromPeer`. Stoop adds (2026-05-14) a
+  `'stale-peer'` subscriber in `wireSubstrateMirror`:
+  republishes the local fresher copy back via
+  `notifyEnvelope.publish({type:'request', ref, payload, _v, recipients:[stalePeer]})`.
+  Silent auto-heal (no UI affordance) — V2.5 lean per
+  `TODO-stoop-2026-05-14.md` §Open question A1. 9/9 tests in
+  `apps/stoop/test/staleAutoHeal.test.js`.
+  `'concurrent-write'` UI banner deferred to V3 if real
+  divergence is observed in field testing.
+- **Phase 52.15 — Solid-auth consolidation.** Stoop adopts:
+  - `apps/stoop/src/lib/podSignIn.js` calls
+    `createSolidAuthNode({vault, clientName: 'Stoop'})` (the
+    legacy `OidcSession.js` wrapper deleted in 52.15.3).
+  - `apps/stoop/web/sign-in.html` embeds the issuer-picker
+    fieldset (matches `getIssuerPickerHtml()` shape); JS submits
+    via `startPodSignIn` skill. Default issuer flipped from
+    `solidcommunity.net` to `login.inrupt.com`.
+  - Terminology audit (`scripts/audit-locales.mjs`) clean across
+    Stoop's EN + NL locales (2 violations fixed: `pod_root_hint`).
+- **Phase 52.2.x — peer-fetch gates (substrate side).**
+  `core.makeFetchResourceSkill` gained `groupCheck` + `capCheck`
+  hooks. Stoop hasn't registered `fetch-resource` yet
+  (substrate-mirror replicates payloads inline today). Per-app
+  wiring lands when Stoop adopts envelope-only mode — see pending.
+
+### 🔄 Pending Stoop V2.5 / V3
+
+- **`'concurrent-write'` UI affordance** — the `'stale-peer'`
+  auto-heal subscriber shipped 2026-05-14 (see above). The
+  `'concurrent-write'` event still has no subscriber; when two
+  devices write the same logical version with different bytes,
+  it fires silently today. Adding a UI banner ("Concurrent edit
+  detected — your version was kept") is deferred to V3 if real
+  divergence is observed in field testing. Size: ~0.5 day when
+  picked up. Trigger: a real concurrent-write surfaces.
+- **Per-app `groupCheck` wiring for `fetch-resource`** —
+  `substrateMirror` exposes `getPeers()`; wire that into a
+  `groupCheck` callback when Stoop's wire shape moves to
+  envelope-only (currently full-payload). Size: ~0.5 day. Trigger:
+  bandwidth-tuning or cross-group fetch becomes a real concern.
+
+### 📋 Deferred / not Stoop's concern
+
+- **Phase 52.16 — Sharing v2 (ACP/WAC).** Stoop has no
+  user-visible sharing surface today (posts go to crew members
+  implicitly via fan-out). When/if Stoop grows a "share post with
+  external user" flow, adopt `client.sharing.grant({...})` per
+  Folio's pattern.
+- **Phase 52.9.3 (Tasks fan-out)** — not Stoop's concern;
+  deferred to Tasks V2.
+- **Storage-mapping migration (V2 design)** — Stoop is single-pod
+  by default; migration is a household / multi-pod concern.
+
 ## Reference
 
 - Functional design (V2 sections 4e/4f/4g + delta's): [`functional-design-2026-05-06.md`](functional-design-2026-05-06.md)

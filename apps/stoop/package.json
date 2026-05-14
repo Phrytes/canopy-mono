@@ -24,6 +24,7 @@
   "dependencies": {
     "@canopy/core":              "file:../../packages/core",
     "@canopy/relay":             "file:../../packages/relay",
+    "@canopy/agent-registry":    "file:../../packages/agent-registry",
     "@canopy/agent-ui":          "file:../../packages/agent-ui",
     "@canopy/chat-agent":        "file:../../packages/chat-agent",
     "@canopy/chat-p2p":          "file:../../packages/chat-p2p",
@@ -32,6 +33,10 @@
     "@canopy/item-types":        "file:../../packages/item-types",
     "@canopy/local-store":       "file:../../packages/local-store",
     "@canopy/notifier":          "file:../../packages/notifier",
+    "@canopy/notify-envelope":   "file:../../packages/notify-envelope",
+    "@canopy/oidc-session":      "file:../../packages/oidc-session",
+    "@canopy/pod-routing":       "file:../../packages/pod-routing",
+    "@canopy/pseudo-pod":        "file:../../packages/pseudo-pod",
     "@canopy/skill-match":       "file:../../packages/skill-match",
     "i18next":                     "^23.15.0",
     "tweetnacl":                   "^1.0.3"
