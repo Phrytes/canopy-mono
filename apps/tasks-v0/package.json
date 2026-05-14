@@ -28,6 +28,7 @@
     "@canopy/item-types": "file:../../packages/item-types",
     "@canopy/local-store": "file:../../packages/local-store",
     "@canopy/notifier": "file:../../packages/notifier",
+    "@canopy/oidc-session": "file:../../packages/oidc-session",
     "@canopy/relay": "file:../../packages/relay",
     "@canopy/skill-match": "file:../../packages/skill-match",
     "i18next": "^26.0.10",

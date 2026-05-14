@@ -146,8 +146,10 @@
     "pod_uri_label":               { "text": "Pod-URI", "doc": "Label of the groupPodUri input on the upgrade row." },
     "upgrade_btn":                 { "text": "Upgrade", "doc": "CTA that calls setCrewStoragePolicy." },
     "signin_heading":              { "text": "Solid-pod-aanmelding", "doc": "H3 of the pod-sign-in card." },
-    "signin_intro":                { "text": "Pod-aanmelden laat de crew-staat doorlopen naar je eigen pod voor sterkere persistentie. Tasks ontsluit de OIDC-flow nog niet — het substraat is klaar (`@canopy/oidc-session` + `createSolidAuthNode`), maar de per-app-bedrading komt in V2.x. Volg de residuele crossapp-todo in <a href=\"https://github.com/the-author/canopy/blob/main/Project%20Files/TODO-GENERAL.md\" target=\"_blank\">TODO-GENERAL.md</a>.", "doc": "Lead paragraph under the pod-sign-in heading. Notes the V2.x deferral. Contains backticks and an external link." },
-    "signin_btn":                  { "text": "Aanmelden bij pod (V2.x)", "doc": "Disabled placeholder CTA for pod sign-in." },
+    "signin_intro":                { "text": "Pod-aanmelden laat de crew-staat doorlopen naar je eigen pod voor sterkere persistentie. Kies een issuer (de Solid-provider die je pod host) en bevestig de redirect.", "doc": "Lead paragraph under the pod-sign-in heading." },
+    "signin_issuer_label":         { "text": "Issuer", "doc": "Label of the issuer URL input on /pod-settings.html. Default value points at login.inrupt.com." },
+    "signin_btn":                  { "text": "Aanmelden bij pod", "doc": "CTA that calls startPodSignIn." },
+    "signout_btn":                 { "text": "Uitloggen", "doc": "CTA shown when already signed in; calls signOutOfPod." },
     "registry_heading":            { "text": "Agent-registry", "doc": "H3 of the agent-registry status card." },
     "registry_intro":              { "text": "Dit toestel is geregistreerd in de lokale agent-registry van de crew onder <code>pseudo-pod://&lt;deviceId&gt;/private/agent-registry</code>. Andere agents kunnen dit toestel opzoeken via pubKey, deviceId, of agentUri.", "doc": "Lead paragraph under the agent-registry heading." }
   },
@@ -162,7 +164,9 @@
     "col_mine":        { "text": "Van mij", "doc": "Teller-kop — taken aan mij toegewezen." },
     "col_action":      { "text": " ", "doc": "Kop boven 'Spring erin' knop-kolom. Eén spatie — de kolomkop is bewust leeg, maar de locale-conventie vereist non-empty text." },
     "button_jump_in":  { "text": "Spring erin", "doc": "Knop per crew-rij. Opent per-crew Workspace in nieuw tab." },
-    "empty_state":     { "text": "Je bent nog geen lid van een crew.", "doc": "Empty-state-tekst wanneer getMyCrews [] teruggeeft." }
+    "empty_state":     { "text": "Je bent nog geen lid van een crew.", "doc": "Empty-state-tekst wanneer getMyCrews [] teruggeeft." },
+    "saved_heading":   { "text": "Opgeslagen crew-configs (nu niet actief)", "doc": "H2 of the second table — saved CrewConfigs that aren't bound to the running process. Multi-crew runtime is a follow-up." },
+    "saved_intro":     { "text": "Crews die je via <a href=\"/welcome.html\">/welcome.html</a> hebt aangemaakt maar nu niet aan het draaiende proces zitten. Multi-crew runtime volgt nog; voor nu wissel je door te herstarten met de juiste crew aan boot.", "doc": "Lead paragraph above the saved-crews table." }
   },
   "planner": {
     "section_heading":   { "text": "Voorgesteld plan", "doc": "Sectiekop op /mine.html voor het planner-paneel." },

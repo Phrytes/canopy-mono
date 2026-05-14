@@ -146,8 +146,10 @@
     "pod_uri_label":               { "text": "Pod URI", "doc": "Label of the groupPodUri input on the upgrade row." },
     "upgrade_btn":                 { "text": "Upgrade", "doc": "CTA that calls setCrewStoragePolicy." },
     "signin_heading":              { "text": "Solid pod sign-in", "doc": "H3 of the pod-sign-in card." },
-    "signin_intro":                { "text": "Pod sign-in lets the crew's state mirror through to your own pod for stronger persistence. Tasks doesn't expose the OIDC flow yet — the substrate is ready (`@canopy/oidc-session` + `createSolidAuthNode`), but the per-app wiring lands in V2.x. Track the cross-app residual at <a href=\"https://github.com/the-author/canopy/blob/main/Project%20Files/TODO-GENERAL.md\" target=\"_blank\">TODO-GENERAL.md</a>.", "doc": "Lead paragraph under the pod-sign-in heading. Notes the V2.x deferral. Contains backticks and an external link." },
-    "signin_btn":                  { "text": "Sign in to pod (V2.x)", "doc": "Disabled placeholder CTA for pod sign-in." },
+    "signin_intro":                { "text": "Pod sign-in lets the crew's state mirror through to your own pod for stronger persistence. Pick an issuer (the Solid provider that holds your pod) and authorize the redirect.", "doc": "Lead paragraph under the pod-sign-in heading." },
+    "signin_issuer_label":         { "text": "Issuer", "doc": "Label of the issuer URL input on /pod-settings.html. Default value points at login.inrupt.com." },
+    "signin_btn":                  { "text": "Sign in to pod", "doc": "CTA that calls startPodSignIn." },
+    "signout_btn":                 { "text": "Sign out", "doc": "CTA shown when already signed in; calls signOutOfPod." },
     "registry_heading":            { "text": "Agent registry", "doc": "H3 of the agent-registry status card." },
     "registry_intro":              { "text": "This device is registered in the crew's local agent registry under <code>pseudo-pod://&lt;deviceId&gt;/private/agent-registry</code>. Other agents can look up this device by pubKey, deviceId, or agentUri.", "doc": "Lead paragraph under the agent-registry heading. Contains an inline <code> example URI." }
   },
@@ -162,7 +164,9 @@
     "col_mine":        { "text": "Mine", "doc": "Counter column header — tasks assigned to me." },
     "col_action":      { "text": " ", "doc": "Header above the 'Jump in' button column. Single space — the column header is intentionally blank but the locale convention requires non-empty text." },
     "button_jump_in":  { "text": "Jump in", "doc": "Button per crew row. Opens the per-crew Workspace in a new tab." },
-    "empty_state":     { "text": "You don't belong to any crews yet.", "doc": "Empty-state copy when getMyCrews returns []." }
+    "empty_state":     { "text": "You don't belong to any crews yet.", "doc": "Empty-state copy when getMyCrews returns []." },
+    "saved_heading":   { "text": "Saved crew configs (not currently running)", "doc": "H2 of the second table — saved CrewConfigs that aren't bound to the running process. Multi-crew runtime is a follow-up." },
+    "saved_intro":     { "text": "Crews you provisioned via <a href=\"/welcome.html\">/welcome.html</a> but aren't currently bound to the running process. Multi-crew runtime is a follow-up; for now you can switch by restarting with the right crew at boot.", "doc": "Lead paragraph above the saved-crews table. Notes the V2.x deferral. Contains an inline link." }
   },
   "planner": {
     "section_heading":   { "text": "Suggested plan", "doc": "Section heading on /mine.html for the planner panel." },
