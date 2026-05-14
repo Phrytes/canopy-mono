@@ -228,6 +228,105 @@ describe('Tasks V2 Phase 52.9.3 — substrate-mirror fan-out', () => {
   });
 });
 
+describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
+  it('claimTask state replicates to the peer', async () => {
+    const { anneBundle, bobBundle } = await buildPeeredBundles();
+
+    const addRes = await callSkill(anneBundle.agent, 'addTask', {
+      crewId: 'fan-out-crew',
+      text:   'task to claim',
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Bob has the task; Anne claims it. The claim should sync to Bob.
+    await callSkill(anneBundle.agent, 'claimTask', {
+      crewId: 'fan-out-crew',
+      id:     addRes.task.id,
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const bobItems = await bobBundle.itemStore.listOpen();
+    const synced = bobItems.find((i) => i.source?.syncedFromId === addRes.task.id);
+    expect(synced).toBeTruthy();
+    expect(synced.assignee).toBe(ANNE);
+    expect(synced.claimedAt).toBeTypeOf('number');
+  });
+
+  it('completeTask replicates and moves the item to closed on the peer', async () => {
+    const { anneBundle, bobBundle } = await buildPeeredBundles();
+
+    const addRes = await callSkill(anneBundle.agent, 'addTask', {
+      crewId: 'fan-out-crew',
+      text:   'task to complete',
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Claim then complete.
+    await callSkill(anneBundle.agent, 'claimTask', {
+      crewId: 'fan-out-crew', id: addRes.task.id,
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await callSkill(anneBundle.agent, 'completeTask', {
+      crewId: 'fan-out-crew', id: addRes.task.id,
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const bobOpen   = await bobBundle.itemStore.listOpen();
+    const bobClosed = await bobBundle.itemStore.listClosed();
+    expect(bobOpen.some((i) => i.source?.syncedFromId === addRes.task.id)).toBe(false);
+    const synced = bobClosed.find((i) => i.source?.syncedFromId === addRes.task.id);
+    expect(synced).toBeTruthy();
+    expect(synced.completedAt).toBeTypeOf('number');
+  });
+
+  it('removeTask hard-deletes the synced copy on the peer', async () => {
+    // Need admin on both sides for removeTask. Use a config where
+    // both ANNE and BOB are admins.
+    const bus = new InternalBus();
+    const lsA = buildBundle(); const lsB = buildBundle();
+    const idA = await AgentIdentity.generate(new VaultMemory());
+    const idB = await AgentIdentity.generate(new VaultMemory());
+    const txA = new InternalTransport(bus, idA.pubKey);
+    const txB = new InternalTransport(bus, idB.pubKey);
+    const adminConfig = {
+      crewId:  'remove-crew',
+      name:    'Removal Test',
+      kind:    'project',
+      members: [
+        { webid: ANNE, role: 'admin' },
+        { webid: BOB,  role: 'admin' },
+      ],
+    };
+    const anneBundle = await createCrewAgent({
+      crewConfig: adminConfig, localStoreBundle: lsA, identity: idA, transport: txA, label: 'Anne',
+    });
+    const bobBundle = await createCrewAgent({
+      crewConfig: adminConfig, localStoreBundle: lsB, identity: idB, transport: txB, label: 'Bob',
+    });
+    anneBundle.agent.addPeer(idB.pubKey, idB.pubKey);
+    bobBundle.agent.addPeer(idA.pubKey, idA.pubKey);
+    await anneBundle.tasksMirror?.addPeer(idB.pubKey);
+    await bobBundle.tasksMirror?.addPeer(idA.pubKey);
+
+    const addRes = await callSkill(anneBundle.agent, 'addTask', {
+      crewId: 'remove-crew',
+      text:   'task to delete',
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect((await bobBundle.itemStore.listOpen()).some((i) => i.text === 'task to delete')).toBe(true);
+
+    await callSkill(anneBundle.agent, 'removeTask', {
+      crewId: 'remove-crew', id: addRes.task.id,
+    }, ANNE);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const bobOpen   = await bobBundle.itemStore.listOpen();
+    const bobClosed = await bobBundle.itemStore.listClosed();
+    expect(bobOpen.some((i) => i.source?.syncedFromId === addRes.task.id)).toBe(false);
+    expect(bobClosed.some((i) => i.source?.syncedFromId === addRes.task.id)).toBe(false);
+  });
+});
+
 describe('Tasks V2 Phase 52.9.3 sub-slice 4 — live peer-roster updates', () => {
   it('redeemInvite adds the new member to the substrate-mirror roster', async () => {
     const { anneBundle } = await buildPeeredBundles();

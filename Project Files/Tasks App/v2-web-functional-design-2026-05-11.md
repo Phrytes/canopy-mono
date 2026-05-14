@@ -555,16 +555,52 @@ Three new tests in `apps/tasks-v0/test/v2-substrate-mirror.test.js`
 
 **116/116 Tasks tests green** across 7 test files.
 
-**Remaining Tasks V2 web pickup (sub-slice 1):**
+**Eleventh slice — Phase 52.9.3 sub-slice 1 (mutation fan-out),
+shipped 2026-05-14:**
 
-1. **claim/complete/submit/approve/reject/revoke fan-out** —
-   needs design work around the role-policy gate (synced actors
-   shouldn't be policy-checked the way human actors are). Options:
-   (a) bypass `itemStore` and patch via `dataSource.delete` /
-   targeted writes; (b) introduce a "sync" actor role that the
-   gate permits; (c) split itemStore mutations into a public
-   gated path + a substrate-internal ungated path. Estimate ~1-2
-   days once a path is picked.
+Picked option (c) from the three sketched in slice 10: split
+itemStore mutations into a public gated path + a substrate-
+internal ungated path.
+
+- **`ItemStore.applySync({syncedFromId, nextState, action}, ctx)`** —
+  finds the local item by `source.syncedFromId`, overwrites mutable
+  state from `nextState` while preserving local identity (id,
+  addedAt, addedBy, source.syncedFromId), audits with
+  `action: 'sync-<action>'` + `synced: true`, emits the standard
+  `item-<action>` event so existing UI listeners react. Bypasses
+  the role-policy gate (the sender already validated their
+  mutation; the substrate is trusted).
+- **`ItemStore.removeSync({syncedFromId}, ctx)`** — hard-delete by
+  syncedFromId. Same audit/emit pattern.
+- **`#findBySyncedFromId(id)`** — O(N) scan helper; acceptable for
+  V0 sizes.
+- **`wireTasksSubstrateMirror.mirror()`** now branches: if local
+  item with `source.syncedFromId === payload.id` exists →
+  `applySync` (with `_inferAction` deriving claim / complete /
+  submit / approve / reject / revoke / reassign from the diff);
+  else falls back to the slice 9 `addItems` path.
+- **New `kind: 'task-removed'` envelope** (`{originalId}`) →
+  `itemStore.removeSync` on receive.
+- **New `publishTask(task)` + `publishTaskRemoved(originalId)`**
+  helpers on the mirror — Tasks skills just call those.
+- **Tasks skills hooked**: `addTask`, `claimTask`, `completeTask`,
+  `removeTask` all publish on success. `submitTask`, `approveTask`,
+  `rejectTask`, `revokeTask`, `reassignTask` stay local-only for
+  now — same pattern when picked up; deferred so this slice stays
+  focused.
+
+3 new mutation fan-out tests (9 total in `v2-substrate-mirror.test.js`):
+- claimTask state replicates (Bob sees `assignee` + `claimedAt`).
+- completeTask replicates + moves the item to closed on Bob.
+- removeTask hard-deletes the synced copy on Bob.
+
+**119/119 Tasks tests green** across 7 test files.
+
+**Tasks V2 substrate-mirror is now feature-complete for the
+common-path mutations** (add / claim / complete / remove). The
+remaining mutation fan-outs (submit / approve / reject / revoke /
+reassign) follow the same pattern — they're a clean follow-up:
+hook the skill's success path to `mirror.publishTask(updated)`.
 
 **Larger deferrals** (each needs its own session):
 
