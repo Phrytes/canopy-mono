@@ -424,21 +424,52 @@ shipped 2026-05-14:**
   "Open workspace →" link to `/?crew=<id>`; restart mode surfaces
   the structured hint.
 
-**In-process multi-crew runtime is the remaining piece.** The
-substrate is ready (shared-agent opts + skip-skills opts +
-`spawnMyCrew` plumbing). The `bin/tasks-ui.js` `--crew` path
-still uses the single-crew shape — refactoring it to build
-meshAgent first + use `multiCrewResolver` + wire
-`_spawnCrewInProcess` callback is ~2 days. Per-crew onboarding
-skills (`issueInvite` / `redeemInvite`) currently register
-last-write-wins per `createCrewAgent` call; the multi-crew
-refactor needs either to dispatch them by `args.crewId` or to
-register them only once with a multi-crew GroupManager dispatcher.
+**Seventh slice — in-process multi-crew CLI, shipped 2026-05-14:**
+
+- `bin/tasks-ui.js` gains `--multi-crew` flag. When set with
+  `--crew=<config.json>`, the CLI: builds meshAgent once, brings
+  up the primary crew with `agent: meshAgent, registerSkills:
+  false, wireOnboardingSkills: false`, sets up
+  `crewsMap = new Map([[primaryId, primaryCrewState]])`, wires
+  `wireSkills` ONCE with `multiCrewResolver(crewsMap)` +
+  `crewsProvider: () => crewsMap.values()`, attaches the
+  `_spawnCrewInProcess` closure to the primary CrewState
+  (and to every spawned CrewState, so subsequent spawns can
+  recurse). `agent.start()` runs once.
+- `createTasksAgent` now accepts `itemStoreRoot` so multi-crew
+  bundles get per-crew URI prefixes
+  (`mem://tasks/crews/<crewId>/`) — prevents addTask writes from
+  leaking across crews on the shared localStoreBundle. Single-crew
+  path keeps the legacy `mem://tasks/` root.
+- `buildSkills` accepts an optional `crewsProvider` so
+  **platform-level skills** (`provisionMyCrew`,
+  `listSavedCrewConfigs`, `spawnMyCrew`) can fall back to "any
+  crew in the map" when the strict `multiCrewResolver` lookup
+  misses. They write/read shared local-store state and don't
+  need a routing-strict crew. Crew-strict skills (addTask,
+  claimTask, etc.) preserve the strict-null-on-miss behaviour.
+
+5 new tests in `apps/tasks-v0/test/v2-multi-crew.test.js`:
+end-to-end smoke (meshAgent + 2 crews on shared agent) → addTask
+routing, isolation, idempotent spawn, getMyCrews enumeration.
+Single-crew tests unaffected (106/106 across phase2/5/10/integration
++ v2-adoption + v2-multi-crew).
+
+**Known limitation in multi-crew mode:** onboarding skills
+(`issueInvite` / `redeemInvite`) are NOT registered — they live
+inside `createCrewAgent`'s `buildOnboardingSkills` call which
+would register last-write-wins per-crew. Multi-crew dispatch for
+them is a follow-up (~0.5 day). Until then, multi-crew users run a
+separate single-crew CLI for invite operations.
 
 **Remaining Tasks V2 web pickups:**
 
-1. **Finish in-process multi-crew runtime** — `bin/tasks-ui.js`
-   refactor + onboarding-skill multi-crew dispatch (~2 days).
+1. **Multi-crew onboarding-skill dispatch** (~0.5 day) — register
+   `issueInvite`/`redeemInvite` once with a multi-crew dispatcher
+   that resolves `groupManager` + `members` from the CrewState
+   per call (stash `groupManager` on CrewState during
+   `createCrewAgent`; write a Tasks-side
+   `buildMultiCrewOnboardingSkills({bundleResolver})` wrapper).
 2. **Phase 52.9.3 substrate-mirror** (~3-5 days) — cross-device
    fan-out for multi-device Tasks. Follow Stoop's
    `apps/stoop/src/substrateMirror.js` template; can swap the

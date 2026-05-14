@@ -348,6 +348,13 @@ export async function createCrewAgent({
     crewMutator,
     agent:        sharedAgent,
     registerSkills,
+    // Multi-crew runtime — when a shared agent is supplied (the CLI's
+    // multi-crew path), each crew bundle MUST use its own item-store
+    // root so writes don't leak across crews on the same localStore.
+    // Single-crew path preserves the legacy `mem://tasks/` root.
+    itemStoreRoot: sharedAgent
+      ? `mem://tasks/crews/${crew.crewId}/`
+      : undefined,
   });
 
   const crewState = bundle._crewState;

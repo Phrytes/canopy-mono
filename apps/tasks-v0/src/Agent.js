@@ -84,6 +84,12 @@ export async function createTasksAgent({
   // single wireSkills call.
   agent: sharedAgent,
   registerSkills,
+  // Multi-crew runtime — per-crew item-store rootContainer. When
+  // multiple crews share a single localStoreBundle, each needs its
+  // own URI prefix so addTask writes don't leak across crews. The
+  // legacy `'mem://tasks/'` is preserved as the default for the
+  // single-crew path.
+  itemStoreRoot,
 }) {
   if (!roles || typeof roles !== 'object') {
     throw new TypeError('createTasksAgent: roles map required');
@@ -102,7 +108,7 @@ export async function createTasksAgent({
   // any of its `dependencies[]` is still open.
   const itemStore = new ItemStore({
     dataSource,
-    rootContainer:        'mem://tasks/',
+    rootContainer:        itemStoreRoot ?? 'mem://tasks/',
     rolePolicy:           policy,
     enforceDependencies:  true,
   });

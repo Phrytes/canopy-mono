@@ -99,7 +99,7 @@ export function wireSkills({
 
   const allBuilders = [
     buildIdentitySkills(idsArgs),
-    buildSkills({ bundleResolver }),
+    buildSkills({ bundleResolver, crewsProvider: cp }),
     buildProfileSkills({ bundleResolver }),
     buildAppealSkill({ bundleResolver }),
     buildChatSkills({ bundleResolver }),
