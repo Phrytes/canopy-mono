@@ -24,6 +24,7 @@ import { defineSkill } from '@canopy/core';
 import { computeStatus, effectiveStatus, unmetDeps, detectCycle } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';
 import { validateCanonical } from '@canopy/item-types';
+import { saveCrewConfig, KIND_DEFAULTS } from '../Crew.js';
 
 /**
  * Cross-pod ref soft cap on `addTask({embeds: [...]})`. Eight keeps
@@ -445,6 +446,87 @@ export function buildSkills({ bundleResolver } = {}) {
       return { crewId: crew.liveCrew?.crewId ?? a.crewId ?? null, storage: next };
     }, {
       description: 'Tasks V2: admin-only upgrade of the crew storage policy. One-way.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * provisionMyCrew({crewId, name, kind, storagePolicy?, groupPodUri?,
+     *                  displayName?, additionalMembers?})
+     *
+     * Tasks V2 standardisation adoption (2026-05-14). Persists a fresh
+     * `CrewConfig` into the local-store at
+     * `mem://tasks/crews/<crewId>/config.json` with the caller as
+     * admin. Used by `/welcome.html`'s wizard for first-run
+     * crew provisioning. The caller still needs to restart Tasks with
+     * `--crew=...` (or supply the new crewId at boot) for the runtime
+     * to actually bind to the new crew — this skill is the V2 design's
+     * §4a "creator picks one of the four §II.2 policies" step, not the
+     * full bundle bring-up.
+     */
+    defineSkill('provisionMyCrew', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew?.dataSource?.write) return { error: 'no-data-source' };
+
+      const a = argsFromParts(parts);
+      if (typeof a.crewId !== 'string' || !/^[a-z0-9](?:[a-z0-9_-]{1,30}[a-z0-9])?$/.test(a.crewId)) {
+        return { error: 'crewId-invalid' };
+      }
+      if (typeof a.name !== 'string' || a.name.length === 0) {
+        return { error: 'name-required' };
+      }
+      const kind = (typeof a.kind === 'string' && KIND_DEFAULTS[a.kind]) ? a.kind : 'household';
+
+      const storageErr = _validateStoragePolicy(a.storagePolicy, a.groupPodUri);
+      if (storageErr) return { error: storageErr };
+      const storage = _buildStoragePolicy(a.storagePolicy, a.groupPodUri);
+
+      // Don't overwrite an existing crew with the same id (the wizard
+      // surfaces a clear error to the user).
+      const path = `mem://tasks/crews/${a.crewId}/config.json`;
+      try {
+        const existing = await crew.dataSource.read(path);
+        if (existing) return { error: 'crewId-already-exists' };
+      } catch { /* read-miss is the happy path */ }
+
+      // Build the member list. Caller becomes admin; optional
+      // `additionalMembers` lets the wizard seed admins + members.
+      const seenWebids = new Set([from]);
+      const members = [{
+        webid:       from,
+        displayName: typeof a.displayName === 'string' && a.displayName.length > 0
+          ? a.displayName
+          : null,
+        role:        'admin',
+      }];
+      if (Array.isArray(a.additionalMembers)) {
+        for (const m of a.additionalMembers) {
+          if (!m || typeof m.webid !== 'string' || m.webid.length === 0) continue;
+          if (seenWebids.has(m.webid)) continue;
+          seenWebids.add(m.webid);
+          members.push({
+            webid:       m.webid,
+            displayName: typeof m.displayName === 'string' ? m.displayName : null,
+            role:        m.role === 'admin' || m.role === 'coordinator' || m.role === 'observer'
+              ? m.role
+              : 'member',
+          });
+        }
+      }
+
+      const saved = await saveCrewConfig({
+        dataSource: crew.dataSource,
+        config:     { crewId: a.crewId, name: a.name, kind, members, storage },
+      });
+
+      return {
+        crewId:  saved.crewId,
+        name:    saved.name,
+        kind:    saved.kind,
+        storage: saved.storage,
+        members: saved.members,
+      };
+    }, {
+      description: 'Tasks V2: provision a fresh crew config (caller becomes admin).',
       visibility:  'authenticated',
     }),
   ];

@@ -133,6 +133,104 @@ describe('Tasks V2 — crewConfig.storage', () => {
   });
 });
 
+describe('Tasks V2 — provisionMyCrew', () => {
+  it('persists a fresh crew config with the caller as admin', async () => {
+    const { crew, bundle } = await makeCrew();
+    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+      crewId: 'fresh-crew',
+      name:   'A Fresh Crew',
+      kind:   'project',
+    });
+    expect(r.crewId).toBe('fresh-crew');
+    expect(r.kind).toBe('project');
+    expect(r.members[0]).toMatchObject({ webid: ANNE, role: 'admin' });
+    // Reload from the dataSource to confirm persistence.
+    const raw = await bundle.cache.read('mem://tasks/crews/fresh-crew/config.json');
+    expect(raw).toBeTruthy();
+    const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    expect(cfg.crewId).toBe('fresh-crew');
+    expect(cfg.storage).toEqual({ policy: 'no-pod' });
+  });
+
+  it('honours storagePolicy + groupPodUri', async () => {
+    const { crew } = await makeCrew();
+    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+      crewId:        'pod-crew',
+      name:          'Pod Crew',
+      kind:          'team',
+      storagePolicy: 'centralised',
+      groupPodUri:   'https://team.pod/',
+    });
+    expect(r.storage).toEqual({ policy: 'centralised', groupPodUri: 'https://team.pod/' });
+  });
+
+  it('rejects centralised without groupPodUri', async () => {
+    const { crew } = await makeCrew();
+    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+      crewId:        'no-uri',
+      name:          'X',
+      storagePolicy: 'centralised',
+    });
+    expect(r?.error).toMatch(/storage-policy-needs-groupPodUri:centralised/);
+  });
+
+  it('rejects malformed crewId', async () => {
+    const { crew } = await makeCrew();
+    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+      crewId: 'Bad ID with spaces',
+      name:   'X',
+    });
+    expect(r?.error).toBe('crewId-invalid');
+  });
+
+  it('rejects empty name', async () => {
+    const { crew } = await makeCrew();
+    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+      crewId: 'ok-id',
+      name:   '',
+    });
+    expect(r?.error).toBe('name-required');
+  });
+
+  it('refuses to overwrite an existing crewId', async () => {
+    const { crew } = await makeCrew();
+    await callSkill(crew.agent, 'provisionMyCrew', {
+      crewId: 'twin',
+      name:   'First Take',
+    });
+    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+      crewId: 'twin',
+      name:   'Second Take',
+    });
+    expect(r?.error).toBe('crewId-already-exists');
+  });
+
+  it('accepts additional members (de-duped on webid)', async () => {
+    const { crew } = await makeCrew();
+    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+      crewId: 'multi',
+      name:   'Multi-member',
+      additionalMembers: [
+        { webid: BOB,  displayName: 'Bob',  role: 'member' },
+        { webid: BOB,  displayName: 'dup',  role: 'admin'  }, // dup; ignored
+        { webid: ANNE, role: 'admin' },                       // caller; ignored
+      ],
+    });
+    expect(r.members.map(m => m.webid)).toEqual([ANNE, BOB]);
+    expect(r.members.find(m => m.webid === BOB).role).toBe('member');
+  });
+
+  it('falls back to household kind on unknown kind', async () => {
+    const { crew } = await makeCrew();
+    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+      crewId: 'unknown-kind',
+      name:   'X',
+      kind:   'not-a-real-kind',
+    });
+    expect(r.kind).toBe('household');
+  });
+});
+
 describe('Tasks V2 — setCrewStoragePolicy', () => {
   it('upgrades no-pod → centralised', async () => {
     const { crew } = await makeCrew();
