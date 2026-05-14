@@ -636,11 +636,18 @@ for the substrate-side phase list +
     `solidcommunity.net` to `login.inrupt.com`.
   - Terminology audit (`scripts/audit-locales.mjs`) clean across
     Stoop's EN + NL locales (2 violations fixed: `pod_root_hint`).
-- **Phase 52.2.x — peer-fetch gates (substrate side).**
-  `core.makeFetchResourceSkill` gained `groupCheck` + `capCheck`
-  hooks. Stoop hasn't registered `fetch-resource` yet
-  (substrate-mirror replicates payloads inline today). Per-app
-  wiring lands when Stoop adopts envelope-only mode — see pending.
+- **Phase 52.2.x — peer-fetch gates.** `core.makeFetchResourceSkill`
+  gained `groupCheck` + `capCheck` hooks (substrate side, 2026-05-14).
+  Stoop adopts (2026-05-14) — `attachSubstrateMirror` registers
+  `fetch-resource` on every bundle's agent with
+  `groupCheck(uri, ctx) ⇒ mirror.getPeers().has(ctx.from)`. Defensive
+  registration: nothing in Stoop currently calls `fetch-resource`
+  against another Stoop peer (substrate-mirror still replicates
+  payloads inline) but the gate is in place for envelope-only mode +
+  cross-app embed-fetches (e.g. Tasks pulling an embedded Stoop
+  post). Multi-bundle-on-same-agent: first wins. Eviction-aware
+  sub-filtering (cross-check against `evictionRoster`) is a V3
+  follow-up. 6/6 tests in `apps/stoop/test/fetchResourceGate.test.js`.
 
 ### 🔄 Pending Stoop V2.5 / V3
 
@@ -652,11 +659,15 @@ for the substrate-side phase list +
   detected — your version was kept") is deferred to V3 if real
   divergence is observed in field testing. Size: ~0.5 day when
   picked up. Trigger: a real concurrent-write surfaces.
-- **Per-app `groupCheck` wiring for `fetch-resource`** —
-  `substrateMirror` exposes `getPeers()`; wire that into a
-  `groupCheck` callback when Stoop's wire shape moves to
-  envelope-only (currently full-payload). Size: ~0.5 day. Trigger:
-  bandwidth-tuning or cross-group fetch becomes a real concern.
+- **Eviction-aware sub-filtering for `fetch-resource`** — A2's
+  `groupCheck` shipped 2026-05-14 admits anyone currently in
+  `mirror.getPeers()`. Because `addPeer` is monotonic, ex-members
+  who were once added can still pass the gate. A V3 follow-up
+  should either (a) make `substrateMirror.evictPeer(pubKey)` real
+  and call it from the eviction roster, or (b) cross-check
+  `groupCheck` against `evictionRoster` directly. Both need a
+  pubKey → webid lookup since the roster keys on webid. Size:
+  ~0.5 day. Trigger: real ex-member retention issue surfaces.
 
 ### 📋 Deferred / not Stoop's concern
 

@@ -56,6 +56,33 @@ export async function attachSubstrateMirror(bundle, { group, peers = [], evictio
       opts:         typeof agentRegistry === 'object' && agentRegistry !== null ? agentRegistry : {},
     });
   }
+
+  // A2 (substrate-adoption, 2026-05-14) — register `fetch-resource`
+  // with a `groupCheck` callback that admits only current peers of
+  // this group's substrate-mirror. Defensive: nothing in Stoop calls
+  // `fetch-resource` against another Stoop peer today (substrate-
+  // mirror replicates full payloads inline), but cross-app refs
+  // (Tasks/Folio pulling a Stoop post) + future envelope-only mode
+  // both want this gate in place. Multi-bundle-on-same-agent: first
+  // bundle wins; subsequent attaches see the skill already registered
+  // and skip. The skill reads from THIS bundle's pseudoPod only.
+  try {
+    if (bundle.agent?.skills && !bundle.agent.skills.get?.('fetch-resource')) {
+      const peersFor = () => {
+        try { return new Set(mirror?.getPeers?.() ?? []); }
+        catch { return new Set(); }
+      };
+      const skill = substrate.pseudoPod.fetchResourceSkill({
+        groupCheck: (_uri, ctx) => {
+          if (typeof ctx?.from !== 'string' || !ctx.from) return false;
+          return peersFor().has(ctx.from);
+        },
+      });
+      bundle.agent.skills.register(skill);
+      bundle._fetchResourceRegistered = true;
+    }
+  } catch (_err) { /* best-effort — non-fatal */ }
+
   return mirror;
 }
 
