@@ -65,6 +65,49 @@ import {
 import { update as updateInterest, score as scoreInterest, combinedRelevance } from '../lib/InterestProfile.js';
 import { matchesProfile } from '../lib/skillsMatch.js';
 
+/**
+ * Cross-pod ref soft cap on `postRequest({embeds: [...]})`. Eight
+ * keeps the prikbord card from overflowing while still allowing
+ * "this offer touches several other items" use cases. A4 / V2
+ * functional design §4b.
+ */
+const MAX_EMBEDS_PER_POST = 8;
+
+function validateEmbed(e) {
+  if (!e || typeof e !== 'object') return 'embed-not-object';
+  if (typeof e.type !== 'string' || e.type.length === 0) return 'embed-type-missing';
+  if (typeof e.ref  !== 'string' || e.ref.length  === 0) return 'embed-ref-missing';
+  return null;
+}
+
+/**
+ * A3 (2026-05-14) — storage policies (§II.2 of the standardisation plan).
+ * The four canonical choices. `no-pod` is the V1-parity default.
+ */
+const STORAGE_POLICIES = ['no-pod', 'centralised', 'decentralised', 'hybrid'];
+
+function _validateStoragePolicy(storagePolicy, groupPodUri) {
+  if (typeof storagePolicy === 'undefined' || storagePolicy === null) return null;
+  if (typeof storagePolicy !== 'string') return 'storage-policy-not-string';
+  if (!STORAGE_POLICIES.includes(storagePolicy)) return `storage-policy-unknown:${storagePolicy}`;
+  if (storagePolicy === 'centralised' || storagePolicy === 'hybrid') {
+    if (typeof groupPodUri !== 'string' || groupPodUri.length === 0) {
+      return `storage-policy-needs-groupPodUri:${storagePolicy}`;
+    }
+  }
+  return null;
+}
+
+function _buildStoragePolicy(storagePolicy, groupPodUri) {
+  const policy = (typeof storagePolicy === 'string' && STORAGE_POLICIES.includes(storagePolicy))
+    ? storagePolicy
+    : 'no-pod';
+  if (policy === 'centralised' || policy === 'hybrid') {
+    return { policy, groupPodUri };
+  }
+  return { policy };
+}
+
 const DEFAULT_TIMEOUT_MS = 30_000;
 /** Default lead time for lend return reminders: 24 hours before dueAt. */
 const DEFAULT_LEND_LEAD_MS = 24 * 60 * 60 * 1000;
@@ -320,6 +363,22 @@ export function buildSkills({
       // pass through as `{type}` only.
       const canonicalDraft = intentToCanonicalDraft(a.intent, a.kind);
 
+      // A4 (cross-pod refs, 2026-05-14) — `embeds: [{type, ref}, ...]`.
+      // Each entry references another item (a Tasks task, a Folio note,
+      // another Stoop post) — see V2 web functional design §4b.
+      // Validated minimally here; the receiving substrate carries the
+      // shape through. Max 8 entries to keep the UI sane.
+      const inboundEmbeds = Array.isArray(a.embeds) ? a.embeds : [];
+      if (inboundEmbeds.length > MAX_EMBEDS_PER_POST) {
+        return { error: `embeds-too-many:${inboundEmbeds.length}` };
+      }
+      const embeds = [];
+      for (const e of inboundEmbeds) {
+        const err = validateEmbed(e);
+        if (err) return { error: err };
+        embeds.push({ type: e.type, ref: e.ref });
+      }
+
       const itemDraft = {
         ...canonicalDraft,
         text:           a.text,
@@ -330,6 +389,7 @@ export function buildSkills({
         source: {
           targets,
           maxDistanceKm,
+          ...(embeds.length > 0 ? { embeds } : {}),
         },
       };
       if (typeof a.dueAt === 'number') itemDraft.dueAt = a.dueAt;
@@ -432,8 +492,8 @@ export function buildSkills({
       // The broadcast target (group pubsub) carries the targets +
       // maxDistanceKm so receivers can re-validate. By default we
       // DON'T await broadcast results — posts go up immediately
-      // and claims (if any) flow back via groupMirror + the chat-
-      // based reply path (Phase 14).
+      // and claims (if any) flow back via the substrate mirror +
+      // the chat-based reply path (Phase 14).
       // Phase 40.20 (2026-05-08): caller can request a wider
       // broadcast audience via `scope: 'group+contacts' |
       // 'group+contacts+hops'`.  When the scope is wider than
@@ -447,30 +507,78 @@ export function buildSkills({
         ? a.scope
         : 'group';
 
+      // The broadcast payload — shared between the legacy skill-match
+      // pubsub fan-out (claim-flow) and the new substrate-mirror path
+      // (Phase 52.9.2 / Q-B 2026-05-14).
+      const broadcastPayload = {
+        requestId: item.id,
+        text:      item.text,
+        from,
+        // Phase 52.7.2 cut-over — send canonical `type` + `kind`
+        // (was `kind: item.type` in legacy shape; receivers
+        // reconstructed items with `type: kind`).
+        type:      item.type,
+        kind:      item.kind ?? null,
+        dueAt:     item.dueAt,
+        categoryId:  a.categoryId  ?? null,
+        skillTags:   Array.isArray(a.skillTags) ? a.skillTags : [],
+        // Phase 27 — pass targets + distance through so
+        // receivers can re-check (functional design § 4f).
+        targets,
+        maxDistanceKm,
+        // Phase 39 — attachment metadata + thumbnails (no
+        // full bytes).  Recipients render the thumbnails and
+        // request the full bytes on demand via `requestAttachment`.
+        attachments: toBroadcastShape(persistedAttachments),
+        // A4 (2026-05-14) — cross-pod refs travel with the broadcast.
+        ...(embeds.length > 0 ? { embeds } : {}),
+        requiredSkills: a.requiredSkills ?? [],
+      };
+
+      // Phase 52.9.2 / Q-B (2026-05-14) — substrate-mirror fan-out.
+      // The legacy `groupMirror` pubsub-tap retired in favour of
+      // `notify-envelope` + `pseudo-pod` (kind=`request` envelopes).
+      // We dual-publish: `skillMatch.broadcast` still runs the
+      // claim-flow on the pubsub topic; the substrate path replicates
+      // the post into every group member's local pseudo-pod with the
+      // Q-D Lamport version compare on receive.
+      const substrateMirror   = bundle?.mirror;
+      const substratePseudo   = bundle?.pseudoPod;
+      const substrateEnvelope = bundle?.notifyEnvelope;
+      const substrateDeviceId = bundle?.substrateDeviceId;
+      if (hasGroupTarget && substratePseudo && substrateEnvelope && substrateDeviceId && groupId) {
+        const substrateRecipients = substrateMirror?.getPeers?.() ?? [];
+        if (substrateRecipients.length > 0) {
+          // `fromActor` carries the publisher's pubKey (agent address),
+          // not the webid. substrateMirror copies it into the mirrored
+          // item's `source.fromPubKey` — same shape legacy groupMirror
+          // produced (where pubKey came from the pubsub topic owner).
+          const publisherPubKey = bundle?.agent?.address ?? null;
+          (async () => {
+            try {
+              const uri = `pseudo-pod://${substrateDeviceId}/stoop/${groupId}/requests/${item.id}`;
+              const { etag, _v } = await substratePseudo.write(uri, broadcastPayload);
+              await substrateEnvelope.publish({
+                type:       'request',
+                ref:        uri,
+                payload:    broadcastPayload,
+                etag,
+                _v,
+                recipients: substrateRecipients,
+                ...(publisherPubKey ? { fromActor: publisherPubKey } : {}),
+                crewId:     groupId,
+              });
+            } catch (_err) {
+              // best-effort fan-out (parity with skillMatch.broadcast)
+            }
+          })();
+        }
+      }
+
       const broadcastP = hasGroupTarget
         ? skillMatch.broadcast({
             requiredSkills: a.requiredSkills ?? [],
-            payload:        {
-              requestId: item.id,
-              text:      item.text,
-              from,
-              // Phase 52.7.2 cut-over — send canonical `type` + `kind`
-              // (was `kind: item.type` in legacy shape; receivers
-              // reconstructed items with `type: kind`).
-              type:      item.type,
-              kind:      item.kind ?? null,
-              dueAt:     item.dueAt,
-              categoryId:  a.categoryId  ?? null,
-              skillTags:   Array.isArray(a.skillTags) ? a.skillTags : [],
-              // Phase 27 — pass targets + distance through so
-              // receivers can re-check (functional design § 4f).
-              targets,
-              maxDistanceKm,
-              // Phase 39 — attachment metadata + thumbnails (no
-              // full bytes).  Recipients render the thumbnails and
-              // request the full bytes on demand via `requestAttachment`.
-              attachments: toBroadcastShape(persistedAttachments),
-            },
+            payload:        broadcastPayload,
             timeoutMs:      a.timeoutMs ?? DEFAULT_TIMEOUT_MS,
             expectClaims:   a.expectClaims ?? 0,
             scope:          broadcastScope,
@@ -1096,7 +1204,15 @@ export function buildSkills({
       const rotationDays = (typeof a.rotationDays === 'number' && a.rotationDays >= 1 && a.rotationDays <= 365)
         ? a.rotationDays : 30;
 
-      const rulesWithRotation = { ...a.rules, keyRotationMode, rotationDays, version: 1 };
+      // A3 (2026-05-14) — storage policy (§II.2 of the standardisation
+      // plan). Default `'no-pod'` keeps V1 UX parity. Centralised /
+      // hybrid require a `groupPodUri` (otherwise the crew has nowhere
+      // to land its canonical state). Decentralised + no-pod ignore it.
+      const storageErr = _validateStoragePolicy(a.storagePolicy, a.groupPodUri);
+      if (storageErr) return { error: storageErr };
+      const storage = _buildStoragePolicy(a.storagePolicy, a.groupPodUri);
+
+      const rulesWithRotation = { ...a.rules, keyRotationMode, rotationDays, storage, version: 1 };
 
       // Persist the group rules.
       const [rulesItem] = await store.addItems(
@@ -1132,6 +1248,15 @@ export function buildSkills({
         await members.addMember({ ...me, role: 'admin' });
       }
 
+      // A3 — push the storage policy into pod-routing so substrate-mirror
+      // and notify-envelope honour it on subsequent writes. Best-effort:
+      // when the bundle has no podRouting (legacy / test setups), the
+      // rules item carries the policy + a future bundle bring-up can
+      // hydrate from there.
+      try {
+        await bundle?.podRouting?.setCrewPolicy?.(a.groupId, storage);
+      } catch { /* best-effort; rules-item is the source of truth */ }
+
       metrics?.record?.('group-create-v2');
       return {
         groupId: a.groupId,
@@ -1141,9 +1266,74 @@ export function buildSkills({
         expiresAt,
         keyRotationMode,
         rotationDays,
+        storage,
       };
     }, {
       description: 'V2: create a group + initial membership code; caller becomes admin.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * getCrewStoragePolicy({groupId})
+     *   — A3 (2026-05-14). Returns the crew's storage policy
+     *   `{policy, groupPodUri?}`. Pulls from `bundle.podRouting`
+     *   first (live config), falls back to the latest group-rules
+     *   item, then to the default `'no-pod'`. Used by /group.html
+     *   + /create-group.html UI.
+     */
+    defineSkill('getCrewStoragePolicy', async ({ parts }) => {
+      const a = dataArgs(parts);
+      if (typeof a.groupId !== 'string' || !a.groupId) return { error: 'groupId required' };
+      const live = bundle?.podRouting?.crewPolicy?.(a.groupId);
+      if (live && typeof live === 'object' && typeof live.policy === 'string') {
+        return { policy: live.policy, groupPodUri: live.groupPodUri ?? null };
+      }
+      const rulesItem = await _findLatestGroupRules(store, a.groupId);
+      const stored    = rulesItem?.source?.rules?.storage;
+      if (stored && typeof stored === 'object') {
+        return { policy: stored.policy ?? 'no-pod', groupPodUri: stored.groupPodUri ?? null };
+      }
+      return { policy: 'no-pod', groupPodUri: null };
+    }, {
+      description: "A3: read the crew's storage policy (§II.2: no-pod / centralised / decentralised / hybrid).",
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * setCrewStoragePolicy({groupId, storagePolicy, groupPodUri?})
+     *   — A3 / A5 (2026-05-14). Admin-only. Updates the crew's
+     *   storage policy. **One-way** by design (§4c of the V2 web
+     *   functional design): downgrade to `'no-pod'` is rejected
+     *   once a pod-having policy is active. Substrate data
+     *   migration is the user's concern (per the
+     *   `storage-migration-design-2026-05-14.md` decision).
+     */
+    defineSkill('setCrewStoragePolicy', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      if (typeof a.groupId !== 'string' || !a.groupId) return { error: 'groupId required' };
+      if (members) {
+        const me = await members.resolveByWebid(from);
+        const isAdmin = me?.role === 'admin' || me?.role === 'coordinator';
+        if (!isAdmin) return { error: 'admin-only' };
+      }
+      const err = _validateStoragePolicy(a.storagePolicy, a.groupPodUri);
+      if (err) return { error: err };
+      const next = _buildStoragePolicy(a.storagePolicy, a.groupPodUri);
+      const currentLive = bundle?.podRouting?.crewPolicy?.(a.groupId);
+      const currentRules = (await _findLatestGroupRules(store, a.groupId))?.source?.rules?.storage;
+      const current = (currentLive && currentLive.policy) ? currentLive : currentRules;
+      if (current && current.policy && current.policy !== 'no-pod' && next.policy === 'no-pod') {
+        return { error: 'storage-policy-downgrade-not-supported' };
+      }
+      try {
+        await bundle?.podRouting?.setCrewPolicy?.(a.groupId, next);
+      } catch (e) {
+        return { error: `storage-policy-write-failed:${e?.message ?? 'unknown'}` };
+      }
+      metrics?.record?.('group-storage-policy-update');
+      return { groupId: a.groupId, storage: next };
+    }, {
+      description: 'A3/A5: admin-only upgrade of the crew storage policy. One-way.',
       visibility:  'authenticated',
     }),
 
@@ -1743,8 +1933,9 @@ export function buildSkills({
       if (typeof a.body !== 'string' || !a.body) return { error: 'body required' };
 
       // Look up by direct id first (single-agent path), then fall
-      // back to the cross-agent path: groupMirror writes incoming
-      // broadcasts with a fresh ULID + `source.requestId === <broadcast-id>`.
+      // back to the cross-agent path: the substrate mirror writes
+      // incoming broadcasts with a fresh ULID +
+      // `source.requestId === <broadcast-id>`.
       let post = await store.getById(a.itemId);
       if (!post) {
         const open = await store.listOpen({});
@@ -1753,7 +1944,7 @@ export function buildSkills({
       if (!post) return { error: 'not-found' };
 
       // Resolve the post-author's pubKey from the broadcast metadata
-      // (groupMirror writes `source.fromPubKey`) or from MemberMap.
+      // (substrate mirror writes `source.fromPubKey`) or from MemberMap.
       let toPubKey = post.source?.fromPubKey ?? null;
       let toWebid  = post.source?.from ?? post.addedBy ?? null;
       let toStableId = null;
@@ -1764,7 +1955,7 @@ export function buildSkills({
       }
 
       // Soft-claim locally so it shows in the requester's listMyRequests
-      // when the broadcast loops back (groupMirror writes their copy).
+      // when the broadcast loops back (substrate mirror writes their copy).
       try { await store.claim(a.itemId, { actor: from }); } catch { /* race-OK */ }
 
       // Send the chat message.

@@ -111,6 +111,28 @@
           <span id="redeem-status" class="hint"></span>
         </form>
       </div>
+
+      <div class="code-card" id="storage-card">
+        <h3 style="margin-top: 0;" data-i18n="group.storage_heading">Opslag van de groepsstaat</h3>
+        <p class="hint" id="storage-status" data-i18n="group.storage_loading">Aan het laden…</p>
+        <p class="hint" id="storage-upgrade-note" hidden data-i18n="group.storage_upgrade_oneway">Eenmaal pod-having → niet meer terug naar no-pod.</p>
+        <div id="storage-upgrade-row" hidden style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem; align-items: flex-end;">
+          <label style="flex: 1; min-width: 200px;">
+            <span data-i18n="group.storage_new_policy_label">Nieuwe opslagvorm</span>
+            <select id="storage-new-policy">
+              <option value="centralised" data-i18n="group.storage_centralised_short">Centraal op een pod</option>
+              <option value="decentralised" data-i18n="group.storage_decentralised_short">Op ieders eigen pod</option>
+              <option value="hybrid" data-i18n="group.storage_hybrid_short">Gemengd</option>
+            </select>
+          </label>
+          <label id="storage-new-pod-uri-row" style="flex: 2; min-width: 240px;">
+            <span data-i18n="group.storage_pod_uri_label">Pod-URI</span>
+            <input id="storage-new-pod-uri" type="url" placeholder="https://buurt.pod/">
+          </label>
+          <button id="storage-upgrade-btn" type="button" data-i18n="group.storage_upgrade_btn">Upgrade</button>
+          <span id="storage-upgrade-status" class="hint"></span>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -281,7 +303,68 @@
       }
     });
 
-    await Promise.all([refreshRules(), refreshCode(), refreshEvictionBanner()]);
+    /* ── A5 — storage-policy section ─────────────────────────── */
+
+    const POLICY_LABELS = {
+      'no-pod':        () => t('group.storage_no_pod_label',        'Op jullie eigen apparaten (no-pod).'),
+      'centralised':   () => t('group.storage_centralised_label',   'Op een gedeelde Solid-pod.'),
+      'decentralised': () => t('group.storage_decentralised_label', 'Iedereen op z\'n eigen pod (cross-pod refs).'),
+      'hybrid':        () => t('group.storage_hybrid_label',        'Gemengd — ledger op gedeelde pod, drafts lokaal.'),
+    };
+
+    function updateStorageNewPodUriRow() {
+      const sel = document.getElementById('storage-new-policy');
+      const row = document.getElementById('storage-new-pod-uri-row');
+      const needsPod = sel.value === 'centralised' || sel.value === 'hybrid';
+      row.style.display = needsPod ? '' : 'none';
+      document.getElementById('storage-new-pod-uri').required = needsPod;
+    }
+
+    async function refreshStorage() {
+      try {
+        const r = await callSkill('getCrewStoragePolicy', { groupId });
+        const policy = r?.policy ?? 'no-pod';
+        const label = (POLICY_LABELS[policy] ?? POLICY_LABELS['no-pod'])();
+        const statusEl = document.getElementById('storage-status');
+        const podSuffix = r?.groupPodUri
+          ? ` <code>${escapeHtml(r.groupPodUri)}</code>`
+          : '';
+        statusEl.innerHTML = `${escapeHtml(label)}${podSuffix}`;
+        const isLocked = policy !== 'no-pod';
+        document.getElementById('storage-upgrade-note').hidden = !isLocked;
+        document.getElementById('storage-upgrade-row').hidden = isLocked;
+      } catch (err) {
+        const statusEl = document.getElementById('storage-status');
+        statusEl.textContent = `${t('common.error', 'Fout')}: ${err.message ?? err}`;
+      }
+    }
+
+    document.getElementById('storage-new-policy').addEventListener('change', updateStorageNewPodUriRow);
+    updateStorageNewPodUriRow();
+
+    document.getElementById('storage-upgrade-btn').addEventListener('click', async () => {
+      const status = document.getElementById('storage-upgrade-status');
+      const sel = document.getElementById('storage-new-policy');
+      const podUri = document.getElementById('storage-new-pod-uri').value.trim();
+      status.textContent = t('group.storage_upgrading', 'Aan het upgraden…');
+      try {
+        const r = await callSkill('setCrewStoragePolicy', {
+          groupId,
+          storagePolicy: sel.value,
+          ...(podUri ? { groupPodUri: podUri } : {}),
+        });
+        if (r?.error) {
+          status.textContent = `${t('common.error', 'Fout')}: ${r.error}`;
+          return;
+        }
+        status.textContent = t('group.storage_upgraded', 'Opslag bijgewerkt.');
+        await refreshStorage();
+      } catch (err) {
+        status.textContent = `${t('common.error', 'Fout')}: ${err.message ?? err}`;
+      }
+    });
+
+    await Promise.all([refreshRules(), refreshCode(), refreshEvictionBanner(), refreshStorage()]);
     setInterval(refreshCode, 30_000);
     setInterval(refreshEvictionBanner, 60_000);
   </script>

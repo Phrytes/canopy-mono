@@ -27,7 +27,7 @@ import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
 
 import { createNeighborhoodAgent }    from '../src/Agent.js';
 import { buildOnboardingSkills }      from '../src/onboarding.js';
-import { wireGroupBroadcastMirror }   from '../src/groupMirror.js';
+import { attachSubstrateMirror }      from '../src/substrateMirror.js';
 
 const ADMIN_WEBID = 'https://id.example/admin';
 const GROUP_ID    = 'block-42';
@@ -103,11 +103,9 @@ beforeAll(async () => {
     // encrypted OW envelope that requires the recipient pubKey to be
     // registered at the SecurityLayer.
     const peerPubKeys = peers.map((p) => p.pubKey);
-    const mirror = await wireGroupBroadcastMirror({
-      agent:     bundle.agent,
-      itemStore: bundle.itemStore,
-      group:     GROUP_ID,
-      peers:     peerPubKeys.map((pubKey) => ({ pubKey })),
+    const mirror = await attachSubstrateMirror(bundle, {
+      group: GROUP_ID,
+      peers: peerPubKeys.map((pubKey) => ({ pubKey })),
     });
     cluster.get(webid).mirror = mirror;
     await announceNewMember(webid, id, role, displayName);
