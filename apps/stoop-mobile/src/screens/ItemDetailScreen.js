@@ -202,7 +202,10 @@ export function ItemDetailScreen() {
                 {t('item_detail.cancel', 'Annuleer post')}
               </Text>
             </Pressable>
-            {(item.kind === 'lend' || item.type === 'lend') && !item.completedAt ? (
+            {/* Phase 52.7.2 cut-over — canonical lends are
+                `{type: 'offer', kind: 'lend'}`. Legacy
+                `type === 'lend'` no longer appears. */}
+            {(item.kind === 'lend') && !item.completedAt ? (
               <Pressable
                 onPress={markDone}
                 style={styles.btnSecondary}

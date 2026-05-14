@@ -62,21 +62,24 @@ describe('Stoop V1 Phase 18 — UsageMetrics on the bundle', () => {
 });
 
 describe('Stoop V1 Phase 18 — record() fires on key user actions', () => {
-  it('postRequest records post-<kind>', async () => {
+  it('postRequest records post-<canonical-kind>', async () => {
+    // Phase 52.7.2 cut-over (2026-05-14): metric tags reflect the
+    // canonical kind, not the legacy intent name. `ask` → kind:borrow
+    // → metric 'post-borrow'; `lend` → kind:lend → metric 'post-lend'.
     const bundle = await buildAgent();
     await callSkill(bundle.agent, 'postRequest',
-      { text: 'paint fence', kind: 'ask', expectClaims: 0, timeoutMs: 1 });
+      { text: 'paint fence', intent: 'ask',  expectClaims: 0, timeoutMs: 1 });
     await callSkill(bundle.agent, 'postRequest',
-      { text: 'lend ladder', kind: 'lend', expectClaims: 0, timeoutMs: 1 });
+      { text: 'lend ladder', intent: 'lend', expectClaims: 0, timeoutMs: 1 });
     const snap = bundle.metrics.snapshot();
-    expect(snap['post-ask']?.count).toBe(1);
+    expect(snap['post-borrow']?.count).toBe(1);
     expect(snap['post-lend']?.count).toBe(1);
   });
 
   it('reportPost + mutePeer + cancelRequest all record', async () => {
     const bundle = await buildAgent();
     const r = await callSkill(bundle.agent, 'postRequest',
-      { text: 'foo', kind: 'ask', expectClaims: 0, timeoutMs: 1 });
+      { text: 'foo', intent: 'ask', expectClaims: 0, timeoutMs: 1 });
     await callSkill(bundle.agent, 'reportPost',
       { itemId: r.requestId, reason: 'spam' });
     await callSkill(bundle.agent, 'mutePeer', { peerWebid: BOB });
@@ -96,21 +99,23 @@ describe('Stoop V1 Phase 18 — record() fires on key user actions', () => {
 
 describe('Stoop V1 Phase 18 — getMetrics skill', () => {
   it('returns the live snapshot', async () => {
+    // Phase 52.7.2 cut-over: `intent: 'offer'` → kind: 'give' →
+    // metric tag 'post-give'.
     const bundle = await buildAgent();
     await callSkill(bundle.agent, 'postRequest',
-      { text: 'x', kind: 'offer', expectClaims: 0, timeoutMs: 1 });
+      { text: 'x', intent: 'offer', expectClaims: 0, timeoutMs: 1 });
     const r = await callSkill(bundle.agent, 'getMetrics');
-    expect(r.snapshot['post-offer']?.count).toBe(1);
+    expect(r.snapshot['post-give']?.count).toBe(1);
     expect(typeof r.capturedAt).toBe('number');
   });
 
   it('snapshot is a read-only copy (mutating it doesnt affect counters)', async () => {
     const bundle = await buildAgent();
     await callSkill(bundle.agent, 'postRequest',
-      { text: 'y', kind: 'ask', expectClaims: 0, timeoutMs: 1 });
+      { text: 'y', intent: 'ask', expectClaims: 0, timeoutMs: 1 });
     const r = await callSkill(bundle.agent, 'getMetrics');
-    r.snapshot['post-ask'].count = 999;
+    r.snapshot['post-borrow'].count = 999;
     const r2 = await callSkill(bundle.agent, 'getMetrics');
-    expect(r2.snapshot['post-ask'].count).toBe(1);
+    expect(r2.snapshot['post-borrow'].count).toBe(1);
   });
 });

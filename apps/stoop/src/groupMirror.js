@@ -61,13 +61,19 @@ export async function wireGroupBroadcastMirror({
     const open = await itemStore.listOpen();
     if (open.some((i) => i?.source?.requestId === requestId)) return;
     const payload = request.payload ?? {};
-    /** Stoop V1 (2026-05-06): use the broadcast payload's `kind` when
-     *  present so the board renders the right chip on every member's
-     *  view (legacy H5 broadcasts didn't include `kind`; default to
-     *  the legacy 'request'). */
-    const kind = typeof payload.kind === 'string' && payload.kind ? payload.kind : 'request';
+    /** Phase 52.7.2 cut-over (2026-05-14): broadcasts now carry the
+     *  canonical `type` + `kind` fields directly. The legacy shape
+     *  encoded the UI intent in `payload.kind` and the receiver
+     *  reconstructed `type: payload.kind`. Post-cut-over both fields
+     *  flow verbatim — receivers' boards render the right chip from
+     *  the canonical kind. Missing fields fall back to the legacy V0
+     *  default ({type: 'request'}). */
+    const type = typeof payload.type === 'string' && payload.type
+      ? payload.type
+      : 'request';
     const draft = {
-      type:           kind,
+      type,
+      ...(typeof payload.kind === 'string' && payload.kind ? { kind: payload.kind } : {}),
       text:           payload.text ?? '(broadcast)',
       requiredSkills: request.requiredSkills ?? [],
       visibility:     'household',

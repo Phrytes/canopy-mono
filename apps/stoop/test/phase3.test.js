@@ -62,12 +62,22 @@ describe('Stoop V1 — postRequest kind vocabulary', () => {
     expect(item.type).toBe('request');
   });
 
-  it('accepts kind: "ask" / "offer" / "lend" / "report"', async () => {
-    for (const kind of ['ask', 'offer', 'lend', 'report']) {
+  it('accepts intent: "ask" / "offer" / "lend" / "report" + stores canonical shape', async () => {
+    // Phase 52.7.2 cut-over (2026-05-14): UI vocab `intent` → canonical
+    // `{type, kind}` shape via canonicalAdapter.intentToCanonicalDraft.
+    const EXPECTED = {
+      'ask':    { type: 'request', kind: 'borrow' },
+      'offer':  { type: 'offer',   kind: 'give' },
+      'lend':   { type: 'offer',   kind: 'lend' },
+      'report': { type: 'report' },                 // bespoke; no kind
+    };
+    for (const [intent, expected] of Object.entries(EXPECTED)) {
       const bundle = await buildAgent();
-      const res = await callSkill(bundle.agent, 'postRequest', { text: kind, kind, expectClaims: 0, timeoutMs: 1 });
+      const res = await callSkill(bundle.agent, 'postRequest',
+        { text: intent, intent, expectClaims: 0, timeoutMs: 1 });
       const item = await bundle.itemStore.getById(res.requestId);
-      expect(item.type).toBe(kind);
+      expect(item.type).toBe(expected.type);
+      if (expected.kind) expect(item.kind).toBe(expected.kind);
     }
   });
 
@@ -76,7 +86,7 @@ describe('Stoop V1 — postRequest kind vocabulary', () => {
     const due = Date.now() + 7 * 24 * 60 * 60 * 1000;
     const res = await callSkill(bundle.agent, 'postRequest', {
       text: 'aanhanger',
-      kind: 'lend',
+      intent: 'lend',
       dueAt: due,
       expectClaims: 0, timeoutMs: 1,
     });
@@ -122,7 +132,7 @@ describe('Stoop V1 — lend lifecycle (postRequest + markReturned + notifier)', 
     const dueAt = getNow() + 30 * 24 * 60 * 60 * 1000;     // 30 days from now
     const res = await callSkill(bundle.agent, 'postRequest', {
       text:  'aanhanger',
-      kind:  'lend',
+      intent:  'lend',
       dueAt,
       expectClaims: 0, timeoutMs: 1,
       // Default lead = 24h before dueAt → fires at dueAt - 24h.
@@ -144,7 +154,7 @@ describe('Stoop V1 — lend lifecycle (postRequest + markReturned + notifier)', 
 
     const dueAt = getNow() + 30 * 24 * 60 * 60 * 1000;
     const post = await callSkill(bundle.agent, 'postRequest', {
-      text: 'aanhanger', kind: 'lend', dueAt, expectClaims: 0, timeoutMs: 1,
+      text: 'aanhanger', intent: 'lend', dueAt, expectClaims: 0, timeoutMs: 1,
     });
 
     const ret = await callSkill(bundle.agent, 'markReturned', { requestId: post.requestId });
@@ -162,7 +172,7 @@ describe('Stoop V1 — lend lifecycle (postRequest + markReturned + notifier)', 
 
     const dueAt = getNow() + 30 * 24 * 60 * 60 * 1000;
     const post = await callSkill(bundle.agent, 'postRequest', {
-      text: 'borduurmachine', kind: 'lend', dueAt, expectClaims: 0, timeoutMs: 1,
+      text: 'borduurmachine', intent: 'lend', dueAt, expectClaims: 0, timeoutMs: 1,
     });
     await callSkill(bundle.agent, 'cancelRequest', { requestId: post.requestId });
 
@@ -173,7 +183,7 @@ describe('Stoop V1 — lend lifecycle (postRequest + markReturned + notifier)', 
   it('without a notifier configured, lend posts still work (no reminder)', async () => {
     const bundle = await buildAgent();
     const res = await callSkill(bundle.agent, 'postRequest', {
-      text: 'borduurmachine', kind: 'lend', dueAt: Date.now() + 86_400_000, expectClaims: 0, timeoutMs: 1,
+      text: 'borduurmachine', intent: 'lend', dueAt: Date.now() + 86_400_000, expectClaims: 0, timeoutMs: 1,
     });
     expect(res.requestId).toBeTruthy();
   });
@@ -202,11 +212,11 @@ describe('Stoop V1 — moderation skills (mute / report)', () => {
     expect(await callSkill(bundle.agent, 'unmutePeer', {})).toEqual({ error: 'peerStableId or peerWebid required' });
   });
 
-  it('reportPost creates a kind:"report" item referencing the original', async () => {
+  it('reportPost creates a type:"report" item referencing the original', async () => {
     const bundle = await buildAgent();
 
     // First, post something to report on.
-    const original = await callSkill(bundle.agent, 'postRequest', { text: 'spam', kind: 'ask', expectClaims: 0, timeoutMs: 1 });
+    const original = await callSkill(bundle.agent, 'postRequest', { text: 'spam', intent: 'ask', expectClaims: 0, timeoutMs: 1 });
 
     const r = await callSkill(bundle.agent, 'reportPost', {
       itemId: original.requestId,
@@ -236,7 +246,7 @@ describe('Stoop V1 — author hydration on listOpen / listMyRequests', () => {
     // without requiring setMyHandle.  As a side effect, listOpen
     // hydrates the author block on the local actor's own posts.
     const bundle = await buildAgent();
-    await callSkill(bundle.agent, 'postRequest', { text: 'paint', kind: 'ask', expectClaims: 0, timeoutMs: 1 });
+    await callSkill(bundle.agent, 'postRequest', { text: 'paint', intent: 'ask', expectClaims: 0, timeoutMs: 1 });
     const r = await callSkill(bundle.agent, 'listOpen');
     expect(r.items[0].addedBy).toBe(ANNE);
     expect(r.items[0].addedByDisplay).toBeTruthy();
@@ -253,7 +263,7 @@ describe('Stoop V1 — author hydration on listOpen / listMyRequests', () => {
     ];
     const bundle = await buildAgent({ reveals, members: initialMembers });
 
-    await callSkill(bundle.agent, 'postRequest', { text: 'paint', kind: 'ask', expectClaims: 0, timeoutMs: 1 });
+    await callSkill(bundle.agent, 'postRequest', { text: 'paint', intent: 'ask', expectClaims: 0, timeoutMs: 1 });
     const r = await callSkill(bundle.agent, 'listOpen');
 
     expect(r.items[0].addedByDisplay.render).toBe('@oosterpoort-bird-23');
@@ -270,7 +280,7 @@ describe('Stoop V1 — author hydration on listOpen / listMyRequests', () => {
     ];
     const bundle = await buildAgent({ reveals, members: initialMembers });
 
-    await callSkill(bundle.agent, 'postRequest', { text: 'paint', kind: 'ask', expectClaims: 0, timeoutMs: 1 });
+    await callSkill(bundle.agent, 'postRequest', { text: 'paint', intent: 'ask', expectClaims: 0, timeoutMs: 1 });
     const r = await callSkill(bundle.agent, 'listOpen');
     expect(r.items[0].addedByDisplay.render).toBe('Anne van Dijk');
     expect(r.items[0].addedByDisplay.isRevealed).toBe(true);
@@ -283,31 +293,31 @@ describe('Stoop V1 — author hydration on listOpen / listMyRequests', () => {
     ];
     const bundle = await buildAgent({ reveals, members: initialMembers });
 
-    await callSkill(bundle.agent, 'postRequest', { text: 'paint', kind: 'ask', expectClaims: 0, timeoutMs: 1 });
+    await callSkill(bundle.agent, 'postRequest', { text: 'paint', intent: 'ask', expectClaims: 0, timeoutMs: 1 });
     const r = await callSkill(bundle.agent, 'listMyRequests');
     expect(r.items).toHaveLength(1);
     expect(r.items[0].addedByDisplay.render).toBe('@oosterpoort-bird-23');
   });
 });
 
-// ── kind filter on listOpen ───────────────────────────────────────────────
+// ── intent filter on listOpen ─────────────────────────────────────────────
 
-describe('Stoop V1 — listOpen filters by kind', () => {
-  it('listOpen({kind: "lend"}) returns only lends', async () => {
+describe('Stoop V1 — listOpen filters by intent', () => {
+  it('listOpen({intent: "lend"}) returns only lends', async () => {
     const bundle = await buildAgent();
-    await callSkill(bundle.agent, 'postRequest', { text: 'aanhanger', kind: 'lend', expectClaims: 0, timeoutMs: 1 });
-    await callSkill(bundle.agent, 'postRequest', { text: 'fiets',     kind: 'ask', expectClaims: 0, timeoutMs: 1 });
-    await callSkill(bundle.agent, 'postRequest', { text: 'tuingoed',  kind: 'offer', expectClaims: 0, timeoutMs: 1 });
+    await callSkill(bundle.agent, 'postRequest', { text: 'aanhanger', intent: 'lend', expectClaims: 0, timeoutMs: 1 });
+    await callSkill(bundle.agent, 'postRequest', { text: 'fiets',     intent: 'ask', expectClaims: 0, timeoutMs: 1 });
+    await callSkill(bundle.agent, 'postRequest', { text: 'tuingoed',  intent: 'offer', expectClaims: 0, timeoutMs: 1 });
 
-    const r = await callSkill(bundle.agent, 'listOpen', { kind: 'lend' });
+    const r = await callSkill(bundle.agent, 'listOpen', { intent: 'lend' });
     expect(r.items).toHaveLength(1);
     expect(r.items[0].text).toBe('aanhanger');
   });
 
-  it('listOpen() without kind returns all items', async () => {
+  it('listOpen() without intent returns all items', async () => {
     const bundle = await buildAgent();
-    await callSkill(bundle.agent, 'postRequest', { text: 'aanhanger', kind: 'lend', expectClaims: 0, timeoutMs: 1 });
-    await callSkill(bundle.agent, 'postRequest', { text: 'fiets',     kind: 'ask', expectClaims: 0, timeoutMs: 1 });
+    await callSkill(bundle.agent, 'postRequest', { text: 'aanhanger', intent: 'lend', expectClaims: 0, timeoutMs: 1 });
+    await callSkill(bundle.agent, 'postRequest', { text: 'fiets',     intent: 'ask', expectClaims: 0, timeoutMs: 1 });
     const r = await callSkill(bundle.agent, 'listOpen');
     expect(r.items).toHaveLength(2);
   });
