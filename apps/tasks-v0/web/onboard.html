@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title data-i18n="onboard.page_title">Tasks — Join a crew</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/welcome.html">Welcome</a>
+      <a href="/onboard.html" class="active">Join</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section>
+      <h2 data-i18n="onboard.heading">Join a crew via invite</h2>
+      <p class="hint" data-i18n="onboard.intro">
+        Paste the invite payload you got from a crew admin. The invite
+        is a single-use token that proves you were vouched for and
+        carries the role the admin assigned.
+      </p>
+
+      <form id="invite-form" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+        <label>
+          <span data-i18n="onboard.invite_label">Invite payload</span>
+          <textarea id="invite-input" required rows="6"
+                    placeholder='{"groupId":"oss-tools","token":"…","role":"member","expiresAt":1740000000000}'
+                    style="font-family: ui-monospace, Menlo, monospace; font-size: 0.92rem;"></textarea>
+          <small class="hint" data-i18n="onboard.invite_hint">
+            Paste either the raw JSON or a stoop-invite:// link — both are accepted.
+          </small>
+        </label>
+
+        <label style="margin-top: 1rem;">
+          <span data-i18n="onboard.display_label">Your display name (optional)</span>
+          <input id="display-name" type="text" placeholder="e.g. Anne">
+        </label>
+
+        <label style="margin-top: 1rem;">
+          <span data-i18n="onboard.webid_label">Your WebID (optional)</span>
+          <input id="webid" type="url" placeholder="https://id.example/anne">
+          <small class="hint" data-i18n="onboard.webid_hint">
+            Leave blank to derive an opaque pubKey-based identifier.
+          </small>
+        </label>
+
+        <button type="submit" style="margin-top: 1rem;" data-i18n="onboard.submit">Redeem invite</button>
+        <span id="invite-feedback" class="hint"></span>
+      </form>
+
+      <div id="invite-result" hidden style="margin-top: 1.2rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+        <h3 data-i18n="onboard.result_heading">Joined!</h3>
+        <p data-i18n="onboard.result_intro">
+          You're now a member of the crew. The proof below is your
+          membership certificate; keep it as a record. The crew agent
+          has been notified of your membership.
+        </p>
+        <pre id="invite-summary" style="font-family: ui-monospace, Menlo, monospace; font-size: 0.88rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; white-space: pre-wrap; max-height: 280px; overflow-y: auto;"></pre>
+        <p class="hint" data-i18n="onboard.result_footer">
+          Open <a href="/">Workspace</a> to see the crew's tasks.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { callSkill, getActor } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+
+    function parseInvitePayload(raw) {
+      const text = raw.trim();
+      if (text.length === 0) return null;
+      // Tolerate stoop-invite:// / tasks-invite:// URL-encoded payloads:
+      // strip a scheme prefix + URI-decode the remainder.
+      const stripped = text.startsWith('stoop-invite://') || text.startsWith('tasks-invite://')
+        ? text.replace(/^[a-z-]+:\/\//, '')
+        : text;
+      const decoded = (() => {
+        try { return decodeURIComponent(stripped); }
+        catch { return stripped; }
+      })();
+      const parsable = decoded.startsWith('{') ? decoded : stripped;
+      try { return JSON.parse(parsable); }
+      catch { return null; }
+    }
+
+    document.getElementById('invite-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fb = document.getElementById('invite-feedback');
+      fb.textContent = 'Redeeming…';
+
+      const raw = document.getElementById('invite-input').value;
+      const invite = parseInvitePayload(raw);
+      if (!invite) {
+        fb.textContent = 'Could not parse the invite payload. Paste the JSON or the link verbatim.';
+        return;
+      }
+
+      const args = { invite };
+      const displayName = document.getElementById('display-name').value.trim();
+      if (displayName) args.displayName = displayName;
+      const webid = document.getElementById('webid').value.trim();
+      if (webid) args.webid = webid;
+
+      try {
+        const r = await callSkill('redeemInvite', args);
+        if (r?.error) {
+          fb.textContent = `Error: ${r.error}`;
+          return;
+        }
+        fb.textContent = `Joined as ${r.displayName ?? r.webid ?? '(anon)'}`;
+        document.getElementById('invite-result').hidden = false;
+        document.getElementById('invite-summary').textContent = JSON.stringify(r, null, 2);
+      } catch (err) {
+        fb.textContent = `Error: ${err.message ?? err}`;
+      }
+    });
+  </script>
+</body>
+</html>
