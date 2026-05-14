@@ -319,24 +319,44 @@ accordingly.
 - `@canopy/item-store.#materialise` now propagates the optional
   `embeds` field forward; no other call sites change.
 
+**Second slice — `/welcome.html` + provisionMyCrew skill, shipped
+2026-05-14:**
+
+- New `provisionMyCrew` skill validates inputs, persists a fresh
+  `CrewConfig` via `saveCrewConfig` at
+  `mem://tasks/crews/<crewId>/config.json` with the caller as
+  admin. Optional `additionalMembers`. Refuses to overwrite an
+  existing crewId.
+- `/welcome.html` page mirrors Stoop V2's `/create-group.html`
+  wizard shape: crew-id + name + kind + storage-policy picker
+  (four §II.2 options with conditional pod-URI input). On submit
+  shows the saved config + a restart-with-the-new-crewId hint.
+- `/crews.html` empty state now links to `/welcome.html` so a
+  user with zero crews has a clear entry point.
+- EN + NL locales added (`welcome.*` namespace).
+
+The wizard saves config; the runtime still binds to one crew per
+process per Tasks-v0's CLI model. Multi-crew runtime is a follow-up
+deferred to Tasks V2.x.
+
 **Remaining Tasks V2 web pickups (in priority order):**
 
-1. **`/welcome.html` + crew-create wizard with storage-policy
-   picker UI** (~2 days) — wizard step that drives
-   `createCrewAgent`'s now-accepted `storage` field. Mirrors
-   Stoop's A3 picker.
-2. **Lift `dag.js`'s `effectiveStatus` + `unmetDeps` +
+1. **Lift `dag.js`'s `effectiveStatus` + `unmetDeps` +
    `openDeps[]` into `@canopy/item-store`** (~1 day) — P1
    substrate-side extraction; `apps/tasks-v0` keeps consuming
    from the same call sites.
-3. **Register the browser agent on `agent-registry` at first
+2. **Register the browser agent on `agent-registry` at first
    boot** (~0.5 day) — Phase 52.10. Needs a per-bundle pseudoPod
    first; either build a Tasks substrate stack (see Phase 52.9.3
    below) or wire a standalone pseudoPod just for the registry.
-4. **`/pod-settings.html`** (~1-2 days) — pod provision +
+3. **`/pod-settings.html`** (~1-2 days) — pod provision +
    sign-out + storage-policy display. Provision uses
    `createSolidAuthNode` + `KNOWN_ISSUERS` (Phase 52.15).
-5. **`/onboard.html`** (~1 day) — invite redemption page.
+4. **`/onboard.html`** (~1 day) — invite redemption page.
+5. **Multi-crew runtime** — `/welcome.html` saves a fresh
+   CrewConfig but Tasks-v0 only binds to one crew per process
+   today. V2.x should add hot-swap or multi-bundle runtime so the
+   wizard's output can be consumed without a restart.
 
 **Larger deferrals** (each needs its own session):
 
