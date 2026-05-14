@@ -732,6 +732,13 @@ export class ItemStore extends Emitter {
       // for calendar emission, planner, and invoicing rollups.
       ...(partial.scheduledAt     !== undefined ? { scheduledAt:     partial.scheduledAt }     : {}),
       ...(partial.estimateMinutes !== undefined ? { estimateMinutes: partial.estimateMinutes } : {}),
+      // Standardisation adoption (2026-05-14, V2 §4b) — cross-pod
+      // refs. Propagated through verbatim; canonical @canopy/item-
+      // types schemas already declare the field on every type via
+      // BASE_PROPERTIES → EMBEDS_SCHEMA.
+      ...(Array.isArray(partial.embeds) && partial.embeds.length > 0
+        ? { embeds: partial.embeds.map(e => ({ type: e.type, ref: e.ref })) }
+        : {}),
       master: partial.master ?? ctx.actor,
       _etag: ulid(),
     };
