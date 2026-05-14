@@ -1,10 +1,28 @@
-# Stoop — open questions (2026-05-12)
+# Stoop — open questions (2026-05-12, refreshed 2026-05-14)
 
-> **Status:** Pause point at end of session 2026-05-12. The
-> canonical-taxonomy adoption + groupMirror future are the two
-> live questions; both have substantive context worth carrying
-> forward. This doc is the next-session handoff for whoever picks
-> them up — including a different agent in a different session.
+> **Status:** Live state of the open questions.
+>
+> - **Q-A (canonical-vocabulary cut-over):** ✅ **DONE 2026-05-14**
+>   in commit `8543a49`. Stoop's stored items now carry the
+>   canonical `@canopy/item-types` shape (`type` + `kind`); the
+>   UI keeps sending Stoop vocab (`ask` / `offer` / `lend`) and
+>   `postRequest` translates at the boundary. Tests: 461/461.
+> - **Q-B (groupMirror retirement vs keep):** Decision: **proceed
+>   with retirement** (the substitution argument is sound). Sub-
+>   question raised: how do we know which copy is most up-to-date
+>   when sources disagree? Spun out as Q-D below; design note
+>   sits in `conflict-resolution-design-2026-05-14.md`.
+>   **Retirement work itself is not yet started** — recommended
+>   reading order before picking it up: this doc → Q-B section
+>   below → the conflict-resolution design note.
+> - **Q-C (`share` UX wording):** Logged; no substrate action
+>   needed; the user will weigh in when the UI grows the
+>   direction-picker sub-choice.
+> - **Q-D (conflict-resolution across substrates):** NEW from
+>   2026-05-14. Design note shipped at
+>   `conflict-resolution-design-2026-05-14.md`. Implementation
+>   deferred — the user explicitly chose to land design now and
+>   code later.
 
 ## Background reading
 
@@ -43,7 +61,32 @@ What shipped in the 2026-05-12 session for Stoop:
   Tasks's `addTask` adoption (Phase 52.7.1).
 - **Test baseline:** 452/452 Stoop tests pass.
 
-## Open question A — full vocabulary cut-over (Option C)
+## Open question A — full vocabulary cut-over (Option C) — ✅ DONE 2026-05-14
+
+**Resolution:** shipped in commit `8543a49`. The two sub-decisions
+landed as:
+- Decision 1 → **(b) clean break** — `feedFilter.js`
+  `FEED_VISIBLE_TYPES` is now the canonical set; pre-migration
+  legacy items disappear from queries.
+- Decision 2 → **(b/ii) rename `kind` → `intent`** — `postRequest`
+  API input is now `intent` (UI vocab); stored shape uses
+  canonical `type` + `kind` fields.
+
+A `kind` whitelist entry was added to `@canopy/item-store`'s
+`#materialise` so canonical-shape fields persist alongside `type`.
+Metrics tags switched to `post-${item.kind ?? item.type}` so the
+collapsed `offer`/`lend` → `type:'offer'` mapping still surfaces
+direction in telemetry (`post-borrow` / `post-give` / `post-lend`).
+
+Test footprint: **Stoop 461/461** (was 452; +9 from canonical-shape
+assertions). substrates-v2 smoke 2/2. Item-store regression intact
+(90/91; pre-existing audit-log flake unrelated).
+
+The historical context below (scope tables, decision options,
+order of operations) is preserved as reference for future
+similar cut-overs — but the work itself is done.
+
+### Historical context (kept for reference)
 
 The 2026-05-12 session shipped **Option A** (validate-with-
 translator, warn-only). The user wanted **Option C** (full cut-
@@ -97,6 +140,8 @@ adoption isn't the goal — actual canonical-shape on the wire is.
 - **(b) Clean break** — only canonical types visible going forward.
   Pre-migration items disappear from queries. Simpler, more brutal.
 
+> F: We go for b, as this app is still only tested by me
+
 **Decision 2 — postRequest API shape.** The `kind` argument is
 overloaded:
 
@@ -119,6 +164,8 @@ Options:
 
 Recommended: **(i)** — keeps the API stable; the dual meaning of
 `kind` is purely a stored-shape internal detail.
+
+> F: as I am the only tester so far, I think b is the cleanest option for now:)
 
 ### Suggested order of operations
 
@@ -160,7 +207,29 @@ change, no translator update needed.
 
 ---
 
-## Open question B — groupMirror retirement vs. keep
+## Open question B — groupMirror retirement vs. keep — ✅ DECIDED 2026-05-14: **proceed with retirement**
+
+**Resolution:** the user confirmed (2026-05-14): the pushback was
+miscommunication — the substitution argument from a prior session
+holds. `pseudo-pod` replication-ring + `notify-envelope` together
+cover the no-pod buurt fan-out that groupMirror handles today, so
+retiring groupMirror keeps no-pod support intact.
+
+**Retirement work itself is not yet implemented.** The 5-step
+phased plan from §52.9.2 still applies (dual-write → parity-tap →
+flip → delete) — see "Three options for next session" → option (C)
+below for the steps. Estimate: 3–5 coding days spread over a
+2-week observation window in production.
+
+**New sub-question raised (Q-D below):** when sources disagree on
+the same logical resource — your local pseudo-pod replica vs the
+copy you just received from a peer vs the version on your pod —
+how do we decide which is the most up-to-date? Substantive design
+question that's load-bearing for groupMirror retirement (and more
+broadly for multi-source resources). Design note shipped; see
+`conflict-resolution-design-2026-05-14.md`.
+
+### Historical context (kept for reference)
 
 The 2026-05-12 session paused on this question. The substrates-v2
 plan §52.9.2 says: "Stoop's `groupMirror` substrate retires. Its
@@ -236,6 +305,10 @@ from the substrates-v2 plan:
 This is 3–5 coding days spread over a 2-week parallel-runtime
 observation window in production.
 
+
+> F: Yeah, so you actually already convinced me in last session that there was a miscommunication and that the functionality of the groupMirror is already taken care of by the pseudo-pod and notify envelopes. So please proceed with the retirement. 
+> However, right now I do have one new question: when information comes that is different from what is available in the pod, how do you know which option is the most up-to-date? Because that will define whether you need to update yourself or not (or even tell the other party that their info is outdated). What do you think?  
+
 ### Things to check before deciding
 
 - What does groupMirror do that `pseudo-pod` replication-ring +
@@ -292,6 +365,7 @@ question for Stoop's button labels.
 No action needed substrate-side. Log here so the question doesn't
 get lost.
 
+> F: interesting and fun point! Please tell me when you need more input on this
 ---
 
 ## Resolved (for the record)

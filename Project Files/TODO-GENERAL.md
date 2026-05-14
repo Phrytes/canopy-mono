@@ -5,32 +5,35 @@
 
 ---
 
-## 🟡 MEDIUM — Stoop open questions (next-session pickup) (2026-05-12)
+## 🟡 MEDIUM — Stoop open questions (next-session pickup) (2026-05-12, refreshed 2026-05-14)
 
-**What:** Two substantive Stoop questions paused at end of session
-2026-05-12 — both need decisions before code lands.
+**Live state** (see [`Stoop/open-questions-2026-05-12.md`](./Stoop/open-questions-2026-05-12.md)
+for the full context; updated 2026-05-14):
 
-1. **Full canonical-vocabulary cut-over** (Option C). The
-   warn-only translator already shipped (commit `fb2d7a9`); user
-   wants the actual stored shape to be canonical. ~Full focused
-   session of test surgery + read-site updates. Two sub-decisions
-   needed: legacy-data handling (transitional bridge vs clean
-   break) and `postRequest` API shape (keep `kind` arg as UI
-   vocab vs. rename).
-2. **groupMirror retirement vs keep.** Substrates-v2 plan §52.9.2
-   substitutes groupMirror with `pseudo-pod` replication-ring +
-   `notify-envelope`. User pushed back: "people should be able to
-   use the apps without pods too." The substitution *should* keep
-   no-pod support — but worth verifying via a parity scenario
-   before deciding.
+- ✅ **Q-A canonical-vocabulary cut-over (Option C)** — DONE
+  2026-05-14 in commit `8543a49`. Stored shape now uses canonical
+  `type` + `kind`; API input renamed `kind` → `intent`. Stoop:
+  461/461 tests pass.
+- 🟡 **Q-B groupMirror retirement** — decided 2026-05-14: proceed.
+  Retirement work itself **not yet started**; the 5-step phased
+  plan from substrates-v2 §52.9.2 still applies. Recommended to
+  land the Q-D design (below) as a prerequisite — the version-
+  vector work makes the substrate path strictly stronger than
+  groupMirror's current LWW.
+- 🟢 **Q-C `share` UX wording** — logged; no substrate action.
+- 🟡 **Q-D conflict resolution across substrates** — NEW 2026-05-14.
+  Design note shipped at
+  [`Stoop/conflict-resolution-design-2026-05-14.md`](./Stoop/conflict-resolution-design-2026-05-14.md).
+  Implementation deferred per user choice. Covers: pod-canonical
+  CAS (already done), replication-ring version-vectors with
+  stale-peer events (NEW work), cache-vs-pod freshness opt (NEW
+  work). Estimate: 3–4 days substrate + 1 day Stoop wiring when
+  picked up.
 
-**Full context** including scope estimates, mapping table, file
-pointers, suggested next steps, and resolved sub-decisions
-(`report` type, `ask` default, etc.) lives in
-[`Stoop/open-questions-2026-05-12.md`](./Stoop/open-questions-2026-05-12.md).
-
-**Read that doc first** when picking up Stoop work in a future
-session — it's the handoff designed to be useful cold.
+**Suggested next pickup order:** Q-D implementation first (lands
+the version-vector + stale-peer events in pseudo-pod +
+notify-envelope), then Q-B retirement (groupMirror) flips to the
+now-strictly-stronger substrate path.
 
 ---
 
