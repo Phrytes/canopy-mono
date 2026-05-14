@@ -26,6 +26,49 @@ import { argsFromParts } from '../bundleResolver.js';
 import { validateCanonical } from '@canopy/item-types';
 
 /**
+ * Cross-pod ref soft cap on `addTask({embeds: [...]})`. Eight keeps
+ * the task panel readable while still allowing "this task touches
+ * several other items" use cases. Tasks V2 substrate-adoption (the
+ * A4 equivalent from Stoop V2 web). V2 functional design §4b.
+ */
+const MAX_EMBEDS_PER_TASK = 8;
+
+function _validateEmbed(e) {
+  if (!e || typeof e !== 'object') return 'embed-not-object';
+  if (typeof e.type !== 'string' || e.type.length === 0) return 'embed-type-missing';
+  if (typeof e.ref  !== 'string' || e.ref.length  === 0) return 'embed-ref-missing';
+  return null;
+}
+
+/**
+ * Tasks V2 (2026-05-14) — crew storage policies (§II.2 of the
+ * standardisation plan). Mirror of Stoop's A3 picker.
+ */
+const CREW_STORAGE_POLICIES = ['no-pod', 'centralised', 'decentralised', 'hybrid'];
+
+function _validateStoragePolicy(storagePolicy, groupPodUri) {
+  if (typeof storagePolicy === 'undefined' || storagePolicy === null) return null;
+  if (typeof storagePolicy !== 'string') return 'storage-policy-not-string';
+  if (!CREW_STORAGE_POLICIES.includes(storagePolicy)) return `storage-policy-unknown:${storagePolicy}`;
+  if (storagePolicy === 'centralised' || storagePolicy === 'hybrid') {
+    if (typeof groupPodUri !== 'string' || groupPodUri.length === 0) {
+      return `storage-policy-needs-groupPodUri:${storagePolicy}`;
+    }
+  }
+  return null;
+}
+
+function _buildStoragePolicy(storagePolicy, groupPodUri) {
+  const policy = (typeof storagePolicy === 'string' && CREW_STORAGE_POLICIES.includes(storagePolicy))
+    ? storagePolicy
+    : 'no-pod';
+  if (policy === 'centralised' || policy === 'hybrid') {
+    return { policy, groupPodUri };
+  }
+  return { policy };
+}
+
+/**
  * @param {object} args
  * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver
  * @returns {Array<object>} array of `defineSkill` definitions
@@ -37,8 +80,16 @@ export function buildSkills({ bundleResolver } = {}) {
 
   return [
     /**
-     * addTask({type='task', text, notes?, dependencies?, requiredSkills?, dueAt?, visibility?})
+     * addTask({type='task', text, notes?, dependencies?, requiredSkills?,
+     *         dueAt?, visibility?, embeds?})
      * Validates DAG cycle-free.  Returns the persisted task.
+     *
+     * Tasks V2 substrate-adoption (2026-05-14) — accepts `embeds: [{type,
+     * ref}, ...]` for cross-pod refs (V2 web functional design §4b).
+     * Each entry references another item (a Folio note, a Stoop post,
+     * another task). Validated minimally; cap of 8. The receiving side
+     * (substrate-mirror, once Tasks adopts one) carries the shape
+     * through via the base canonical schema's `embeds` field.
      */
     defineSkill('addTask', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
@@ -49,6 +100,19 @@ export function buildSkills({ bundleResolver } = {}) {
       if (lc?.paused)   return { error: 'crew-paused' };
 
       const a = argsFromParts(parts);
+
+      // Validate optional embeds (cross-pod refs).
+      const inboundEmbeds = Array.isArray(a.embeds) ? a.embeds : [];
+      if (inboundEmbeds.length > MAX_EMBEDS_PER_TASK) {
+        return { error: `embeds-too-many:${inboundEmbeds.length}` };
+      }
+      const embeds = [];
+      for (const e of inboundEmbeds) {
+        const err = _validateEmbed(e);
+        if (err) return { error: err };
+        embeds.push({ type: e.type, ref: e.ref });
+      }
+
       const partial = {
         type:           a.type ?? 'task',
         text:           a.text,
@@ -65,6 +129,8 @@ export function buildSkills({ bundleResolver } = {}) {
         // V2 task fields (auto-scheduling V2.4 + invoicing V2.2).
         ...(a.scheduledAt      !== undefined ? { scheduledAt:      a.scheduledAt     } : {}),
         ...(a.estimateMinutes  !== undefined ? { estimateMinutes:  a.estimateMinutes } : {}),
+        // Tasks V2 standardisation adoption — cross-pod refs.
+        ...(embeds.length > 0  ? { embeds } : {}),
       };
       // DAG cycle detection (Q-H4.8).
       if (Array.isArray(partial.dependencies) && partial.dependencies.length > 0) {
@@ -325,6 +391,60 @@ export function buildSkills({ bundleResolver } = {}) {
       return { task: updated };
     }, {
       description: 'Change the approval mode of an existing task.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * getCrewStoragePolicy({crewId})
+     *   — Tasks V2 standardisation adoption (2026-05-14). Returns the
+     *   crew's storage policy `{policy, groupPodUri?}` from its
+     *   `crewConfig.storage`. Defaults to `'no-pod'`.
+     */
+    defineSkill('getCrewStoragePolicy', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew) return { error: 'crewId required' };
+      const storage = crew.liveCrew?.storage ?? { policy: 'no-pod' };
+      return {
+        policy:      storage.policy ?? 'no-pod',
+        groupPodUri: storage.groupPodUri ?? null,
+      };
+    }, {
+      description: "Tasks V2: read the crew's storage policy (§II.2: no-pod / centralised / decentralised / hybrid).",
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * setCrewStoragePolicy({crewId, storagePolicy, groupPodUri?})
+     *   — Tasks V2 standardisation adoption (2026-05-14). Admin /
+     *   coordinator only. **One-way**: rejects downgrade to
+     *   `'no-pod'` once a pod-having policy is active (substrate-
+     *   side data migration is the user's job, per
+     *   `Substrates/storage-migration-design-2026-05-14.md`).
+     */
+    defineSkill('setCrewStoragePolicy', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew) return { error: 'crewId required' };
+      const a = argsFromParts(parts);
+      // Admin / coordinator gate via the crew's role map.
+      const role = crew.liveCrew?.members?.find?.((m) => m.webid === from)?.role
+        ?? crew?.roles?.[from] ?? null;
+      if (role !== 'admin' && role !== 'coordinator') {
+        return { error: 'admin-only' };
+      }
+      const err = _validateStoragePolicy(a.storagePolicy, a.groupPodUri);
+      if (err) return { error: err };
+      const next = _buildStoragePolicy(a.storagePolicy, a.groupPodUri);
+      const current = crew.liveCrew?.storage ?? { policy: 'no-pod' };
+      if (current.policy && current.policy !== 'no-pod' && next.policy === 'no-pod') {
+        return { error: 'storage-policy-downgrade-not-supported' };
+      }
+      // Apply via the frozen-copy mutator (crewState.crewMutator).
+      if (typeof crew.crewMutator === 'function') {
+        crew.crewMutator({ storage: next });
+      }
+      return { crewId: crew.liveCrew?.crewId ?? a.crewId ?? null, storage: next };
+    }, {
+      description: 'Tasks V2: admin-only upgrade of the crew storage policy. One-way.',
       visibility:  'authenticated',
     }),
   ];

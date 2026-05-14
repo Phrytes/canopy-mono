@@ -84,7 +84,18 @@ export const IMPLICIT_HOUSEHOLD_CONFIG = Object.freeze({
   members:                      [],
   customRoles:                  [],
   subtasksAdminApprovalDepth:   3,
+  // Tasks V2 standardisation adoption (2026-05-14) — storage
+  // policy mirrors Stoop V2's A3 picker. `no-pod` keeps V1 UX
+  // parity. Centralised/hybrid need `groupPodUri` set on the crew
+  // (validated by the V2 createCrewAgent / setCrewStoragePolicy
+  // path). §II.2 of the standardisation plan.
+  storage:                      Object.freeze({ policy: 'no-pod' }),
 });
+
+/** Storage policies recognised on `crewConfig.storage`. */
+export const CREW_STORAGE_POLICIES = Object.freeze(
+  ['no-pod', 'centralised', 'decentralised', 'hybrid'],
+);
 
 /** Per-kind defaults for crew creation wizards. */
 export const KIND_DEFAULTS = Object.freeze({
@@ -154,10 +165,16 @@ function _normaliseConfig(raw) {
     throw new TypeError('CrewConfig: crewId required');
   }
   const kind = KIND_DEFAULTS[raw.kind] ? raw.kind : 'household';
+  // V2 standardisation adoption — `storage` carries one of four
+  // §II.2 policies. Default `'no-pod'`. Centralised/hybrid validate
+  // a `groupPodUri` (validation lives at the skill boundary so the
+  // config loader doesn't reject older saved files).
+  const storage = _normaliseStorage(raw.storage);
   return Object.freeze({
     crewId:                       raw.crewId,
     name:                         raw.name ?? raw.crewId,
     kind,
+    storage,
     members:                      Array.isArray(raw.members) ? raw.members : [],
     customRoles:                  Array.isArray(raw.customRoles) ? raw.customRoles : [],
     skills:                       Array.isArray(raw.skills) ? raw.skills : [],
@@ -199,6 +216,26 @@ function _normaliseConfig(raw) {
         }
       : { enabled: false, optedIn: [] },
   });
+}
+
+/**
+ * Normalise the optional `storage` field of a CrewConfig. Tasks V2
+ * standardisation adoption (2026-05-14). Pre-V2 configs that omit
+ * the field default to `'no-pod'`. Unknown / malformed policies fall
+ * back to `'no-pod'` (forward-additive policy).
+ */
+function _normaliseStorage(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return Object.freeze({ policy: 'no-pod' });
+  }
+  const policy = CREW_STORAGE_POLICIES.includes(raw.policy) ? raw.policy : 'no-pod';
+  if (policy === 'centralised' || policy === 'hybrid') {
+    const groupPodUri = typeof raw.groupPodUri === 'string' && raw.groupPodUri.length > 0
+      ? raw.groupPodUri
+      : null;
+    return Object.freeze({ policy, groupPodUri });
+  }
+  return Object.freeze({ policy });
 }
 
 // ── Crew agent factory ────────────────────────────────────────────────────
