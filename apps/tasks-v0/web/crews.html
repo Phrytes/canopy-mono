@@ -15,6 +15,7 @@
       <a href="/availability.html">Availability</a>
       <a href="/crew.html">Crew</a>
       <a href="/crews.html" class="active">Crews</a>
+      <a href="/welcome.html">Welcome</a>
       <a href="/inbox.html" id="nav-inbox">Inbox</a>
     </nav>
     <div id="actor"></div>
@@ -61,7 +62,7 @@
       const crews = r?.crews ?? [];
       tbody.innerHTML = '';
       if (crews.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:var(--muted);font-style:italic">You don\'t belong to any crews yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:var(--muted);font-style:italic">No crews yet. <a href="/welcome.html">Create one →</a></td></tr>';
         return;
       }
       for (const c of crews) {
