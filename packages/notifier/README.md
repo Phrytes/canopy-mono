@@ -35,7 +35,7 @@ await notifier.start();
 await notifier.schedule({
   id:         'household-digest',
   cadence:    { kind: 'daily', timeLocal: '20:00', tz: 'Europe/Amsterdam' },
-  recipients: ['chat-anne', 'chat-frits'],   // each gets their own digest
+  recipients: ['chat-anne', 'chat-bob'],     // each gets their own digest
   channel:    'chat',
   builder:    async (recipient) => ({ text: await composeDigestFor(recipient) }),
 });

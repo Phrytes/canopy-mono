@@ -36,7 +36,7 @@ eas login
 ### 4. Link this project to your Expo account
 
 ```bash
-cd /home/frits/expotest/nkn-test/apps/mesh-demo
+cd apps/mesh-demo   # from the repo root
 eas init
 # Accept the suggested project name "mesh-demo"
 # This writes your projectId into app.json — only needed once
@@ -47,7 +47,7 @@ eas init
 ## Building the APK
 
 ```bash
-cd /home/frits/expotest/nkn-test/apps/mesh-demo
+cd apps/mesh-demo   # from the repo root
 npm install          # install all dependencies first
 eas build -p android --profile preview
 ```

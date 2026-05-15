@@ -18,16 +18,16 @@ import { SkillMatch, InMemoryTransport } from '@canopy/skill-match';
 
 const transport = new InMemoryTransport();   // V0; swap for relay-backed in production
 
-// the author's agent — declares skills + posture
-const frits = new SkillMatch({
+// Bob's agent — declares skills + posture
+const bob = new SkillMatch({
   transport,
   group:      'household-1',
-  localActor: 'https://id.example/frits',
+  localActor: 'https://id.example/bob',
   skills:     ['paint', 'drive'],
   posture:    { paint: 'always', drive: 'negotiable' },
 });
-await frits.start();
-frits.subscribe(async ({ request, decide }) => {
+await bob.start();
+bob.subscribe(async ({ request, decide }) => {
   // For 'negotiable' skills, prompt the human and call decide()
   const ok = await promptUser(`Can you ${request.payload.text}?`);
   await decide(ok ? 'claim' : 'decline');
