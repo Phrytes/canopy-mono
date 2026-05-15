@@ -1,2 +1,7 @@
 .tg-token
 .tasks-data/
+
+# Local overrides of tracked tmp/ crew/list configs (real bot tokens etc.)
+# To use: copy tmp/<foo>.crew.json -> tmp/<foo>.crew.local.json, fill in secrets.
+# Code paths should prefer the .local.json variant when present.
+tmp/*.local.json
