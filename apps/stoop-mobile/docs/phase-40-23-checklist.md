@@ -7,6 +7,10 @@
 > J5). One device + a desktop Stoop install also works.
 >
 > Date: ___________  Tester: ___________  Device(s): ___________
+>
+> **For pair (two-device) scenarios** — see the cross-app pair-test
+> runbook: [`Project Files/pair-test-runbook-2026-05-15.md`](../../../Project%20Files/pair-test-runbook-2026-05-15.md)
+> §"Pair scenarios — Stoop V4 (substrate fan-out)" (S1–S5).
 
 ## Pre-flight
 
