@@ -163,6 +163,13 @@ you can — same Expo 52 / RN 0.76.9 pin.
 
 ### Real-device test plan (Phase 41.16 runbook)
 
+> **Pair-test scenarios** (Tasks-desktop ↔ Tasks-mobile, T1–T6) live
+> in the cross-app pair-test runbook:
+> [`Project Files/pair-test-runbook-2026-05-15.md`](../../Project%20Files/pair-test-runbook-2026-05-15.md).
+> The walkthrough below covers the single-device journeys; pair
+> the two when running 41.16 on hardware.
+
+
 Walk through the full V1 user journey on a clean Android phone:
 
 1. **Onboarding (Phase 41.3)** — install fresh, tap "Scan invite QR",
