@@ -6,10 +6,14 @@ import { describe, it, expect } from 'vitest';
 import { matchesFilter, filterFeed } from '../src/lib/feedFilter.js';
 import { cellFor }                   from '../src/lib/geo.js';
 
+// Phase 52.7.2 canonical-types cut-over (2026-05-14): board items now
+// carry a canonical `type` ('request'/'offer'/…); the human-facing
+// vraag/aanbod split is the narrowing `kind`. Fixtures keep both so the
+// type-whitelist gate and the `kinds` filter are exercised together.
 const ITEMS = [
-  { id: '1', kind: 'vraag',  skills: ['plumbing'],  cell: cellFor({ lat: 53.20, lng: 6.60 }) },
-  { id: '2', kind: 'aanbod', skills: ['gardening'], cell: cellFor({ lat: 53.21, lng: 6.61 }) },
-  { id: '3', kind: 'vraag',  skills: ['plumbing', 'electric'], cell: cellFor({ lat: 53.50, lng: 7.00 }) },
+  { id: '1', type: 'request', kind: 'vraag',  skills: ['plumbing'],  cell: cellFor({ lat: 53.20, lng: 6.60 }) },
+  { id: '2', type: 'offer',   kind: 'aanbod', skills: ['gardening'], cell: cellFor({ lat: 53.21, lng: 6.61 }) },
+  { id: '3', type: 'request', kind: 'vraag',  skills: ['plumbing', 'electric'], cell: cellFor({ lat: 53.50, lng: 7.00 }) },
 ];
 
 describe('matchesFilter', () => {
@@ -28,8 +32,11 @@ describe('matchesFilter', () => {
     expect(matchesFilter({ id: 'a1', type: 'rules-accept',         text: 'ack' }, {})).toBe(false);
   });
 
-  it('keeps the post types — ask / offer / lend / request / vraag / aanbod', () => {
-    for (const t of ['ask', 'offer', 'lend', 'request', 'vraag', 'aanbod']) {
+  // Phase 52.7.2 clean break: the board whitelist is the canonical
+  // @canopy/item-types set. Pre-migration types (ask/lend/vraag/aanbod)
+  // are deliberately no longer board-visible — see feedFilter.js header.
+  it('keeps the canonical post types — offer / request / claim / announcement / report', () => {
+    for (const t of ['offer', 'request', 'claim', 'announcement', 'report']) {
       expect(matchesFilter({ id: 'x', type: t, text: 'p' }, {})).toBe(true);
     }
   });

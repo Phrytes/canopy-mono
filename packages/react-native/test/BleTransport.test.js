@@ -4,13 +4,24 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// Mock react-native itself — without this, importing the transport pulls
+// the real RN package and rollup fails on its Flow-typed source.
+vi.mock('react-native', () => ({
+  NativeModules:      {},
+  NativeEventEmitter: class { addListener() { return { remove() {} }; } removeAllListeners() {} },
+}));
+
 // ── Mock react-native-ble-plx ─────────────────────────────────────────────────
 
+// BleTransport writes via writeWithoutResponse (primary path — keeps the
+// single GATT command slot free for the CCCD descriptor write); it only
+// falls back to writeWithResponse if the stack rejects "write without".
 const mockChar = {
-  uuid:              'b1c3e5a7-0002-4f8e-9d0b-2c3e4a5f6b7d',
-  writeWithResponse: vi.fn(async () => {}),
-  monitor:           vi.fn((cb) => { mockChar._monitorCb = cb; return { remove: () => {} }; }),
-  _monitorCb:        null,
+  uuid:                 'b1c3e5a7-0002-4f8e-9d0b-2c3e4a5f6b7d',
+  writeWithoutResponse: vi.fn(async () => {}),
+  writeWithResponse:    vi.fn(async () => {}),
+  monitor:              vi.fn((cb) => { mockChar._monitorCb = cb; return { remove: () => {} }; }),
+  _monitorCb:           null,
 };
 
 const mockSvc = {
@@ -23,7 +34,8 @@ const mockDevice = {
   connect:                             vi.fn(async function() { return this; }),
   discoverAllServicesAndCharacteristics: vi.fn(async function() { return this; }),
   services:                            vi.fn(async () => [mockSvc]),
-  requestMTU:                          vi.fn(async () => 512),
+  requestMTU:                          vi.fn(async () => ({ mtu: 512 })),
+  onDisconnected:                      vi.fn(() => ({ remove() {} })),
   cancelConnection:                    vi.fn(async () => {}),
 };
 
@@ -97,11 +109,13 @@ describe('BleTransport', () => {
     expect(discovered).toBe(mockDevice.id);
   });
 
-  it('_put throws when no connection to peer', async () => {
+  it('_put buffers (does not throw) when no connection to peer (Group V)', async () => {
     await transport.connect();
     const env = { _v: 1, _p: 'OW', _id: 'x', _from: identity.pubKey,
                   _to: 'no-such-peer', _ts: Date.now(), _sig: null, payload: null };
-    await expect(transport._put('no-such-peer', env)).rejects.toThrow('not connected');
+    const buffered = new Promise(resolve => transport.once('buffered', resolve));
+    await expect(transport._put('no-such-peer', env)).resolves.toBeUndefined();
+    expect(await buffered).toMatchObject({ to: 'no-such-peer', queueSize: 1 });
   });
 
   it('_put writes envelope in chunks after discovery', async () => {
@@ -114,7 +128,7 @@ describe('BleTransport', () => {
     const env = { _v: 1, _p: 'OW', _id: 'e1', _from: identity.pubKey,
                   _to: mockDevice.id, _ts: Date.now(), _sig: null, payload: 'hello' };
     await transport._put(mockDevice.id, env);
-    expect(mockChar.writeWithResponse).toHaveBeenCalled();
+    expect(mockChar.writeWithoutResponse).toHaveBeenCalled();
   });
 
   it('exported UUIDs have the right format', () => {
@@ -141,7 +155,7 @@ describe('BleTransport MTU chunking', () => {
     const env = { _v: 1, _p: 'OW', _id: 'e2', _from: identity.pubKey,
                   _to: mockDevice.id, _ts: Date.now(), _sig: null, payload: smallPayload };
     await transport._put(mockDevice.id, env);
-    expect(mockChar.writeWithResponse).toHaveBeenCalledTimes(1);
+    expect(mockChar.writeWithoutResponse).toHaveBeenCalledTimes(1);
     await transport.disconnect();
   });
 
@@ -152,7 +166,7 @@ describe('BleTransport MTU chunking', () => {
 
     await new Promise(resolve => {
       transport.once('peer-discovered', resolve);
-      scanCallback(null, { ...mockDevice, requestMTU: async () => 20 });
+      scanCallback(null, { ...mockDevice, requestMTU: async () => ({ mtu: 20 }) });
     });
 
     vi.clearAllMocks();
@@ -161,7 +175,7 @@ describe('BleTransport MTU chunking', () => {
                   _to: mockDevice.id, _ts: Date.now(), _sig: null,
                   payload: 'A'.repeat(200) };
     await transport._put(mockDevice.id, env);
-    expect(mockChar.writeWithResponse.mock.calls.length).toBeGreaterThan(1);
+    expect(mockChar.writeWithoutResponse.mock.calls.length).toBeGreaterThan(1);
     await transport.disconnect();
   });
 });
