@@ -41,6 +41,24 @@ service-context, not per-account. Project-wide convention:
 **v0** — Phase C deliverable.  Screens + auth + plain-TextInput editor.
 Built on top of Folio.C1's pluggable RN engine adapters.
 
+## Phase 52.x substrate adoption (2026-05-15)
+
+Folio-mobile's substrate adoption tracks alongside Folio desktop:
+
+| Phase | Surface | Adopted via |
+|---|---|---|
+| 52.15 | Multi-issuer auth substrate (RN flavour) | `src/auth/folioAuthHook.js` → `useOidcSignIn` from `@canopy/oidc-session-rn/hook` |
+| 52.15.5 | `<IssuerPicker>` on SignInScreen | `src/screens/SignInScreen.js` |
+| 52.16 | ACP/WAC sharing v2 (`client.sharing.*`) | `src/screens/ShareScreen.js` uses `podClient.sharing.grant({...})` with cap-token fallback |
+
+Deferred to Folio-mobile V2 (waits on the sync-engine → pseudoPod V1
+absorption — see [`Project Files/Folio/v1-mobile-functional-design-2026-05-11.md`](../../Project%20Files/Folio/v1-mobile-functional-design-2026-05-11.md)):
+
+- 52.10 agent-registry per-bundle — requires the engine to run through
+  pseudoPod.
+- 52.14 Q-D Lamport `_v` stale-peer auto-heal — same.
+- 52.2.x peer-fetch gates / `fetch-resource` skill — same.
+
 Out of scope for this slice:
 
 - Push notifications
@@ -111,17 +129,16 @@ Custom URL scheme: `folio://auth/callback` (declared in `app.json`).
 Refresh tokens go to `expo-secure-store` (iOS Keychain / Android
 Keystore).  See `src/auth/OidcSessionRN.js` for the storage keys.
 
-> **2026-05-08 — extraction note.** The `src/auth/{OidcSessionRN,
-> folioAuth, dcr}.js` trio is the canonical RN-side OIDC + Solid
-> auth pattern. Stoop V3 mobile (planned) needs the same plumbing.
-> Per the project rule on RN substrates living in their own packages
-> ([`architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08))
-> and the rule-of-two trigger from the Inrupt-cleanup TODO
-> ([`../Project Files/TODO-GENERAL.md`](../../Project%20Files/TODO-GENERAL.md)),
-> these three files are scheduled to lift into a new
-> `@canopy/oidc-session-rn` substrate as Stoop V3 Phase 40.3.
-> The eventual Inrupt-cleanup pass may further consolidate this with
-> the desktop OIDC plumbing under `apps/folio/src/auth/`.
+> **2026-05-15 — lift shipped.** The OIDC + Solid auth plumbing now
+> lives in `@canopy/oidc-session-rn`. Folio-mobile consumes it via
+> `src/auth/folioAuthHook.js` (which pre-binds `scheme: 'folio'` and
+> `clientName: 'Folio (mobile)'`) and `<IssuerPicker>` from
+> `@canopy/oidc-session-rn/picker`. The desktop counterpart is the
+> Phase 52.15 `createSolidAuthNode({vault, clientName})` factory in
+> `@canopy/oidc-session`; both shells route through the same
+> substrate-side DCR cache + multi-issuer state machine. The local
+> `src/auth/{OidcSessionRN, folioAuth, dcr}.js` files remain as thin
+> Folio-flavour wrappers / test seams; the substance has moved.
 
 ## Known iOS limitations
 
