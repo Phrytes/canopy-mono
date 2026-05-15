@@ -16,7 +16,7 @@ import {
 
 describe('@canopy/identity-resolver/display — initials', () => {
   it('returns up to two letters', () => {
-    expect(initials('the author')).toBe('FD');
+    expect(initials('Anne Doe')).toBe('AD');
     expect(initials('Anne')).toBe('A');
   });
   it('falls back to · for empty input', () => {
@@ -54,7 +54,7 @@ describe('@canopy/identity-resolver/display — validateHandle', () => {
     expect(validateHandle('a'.repeat(33))).toEqual({ ok: false, reason: 'too_long' });
   });
   it('rejects bad characters', () => {
-    expect(validateHandle('the author')).toEqual({ ok: false, reason: 'bad_chars' });
+    expect(validateHandle('Alice')).toEqual({ ok: false, reason: 'bad_chars' });
     expect(validateHandle('-leading')).toEqual({ ok: false, reason: 'bad_chars' });
     expect(validateHandle('trailing-')).toEqual({ ok: false, reason: 'bad_chars' });
     expect(validateHandle('has space')).toEqual({ ok: false, reason: 'bad_chars' });
@@ -70,7 +70,7 @@ describe('@canopy/identity-resolver/display — validateHandle', () => {
 
 describe('@canopy/identity-resolver/display — normaliseHandle', () => {
   it('lowercases + drops disallowed chars', () => {
-    expect(normaliseHandle('the author!')).toBe('theauthor');
+    expect(normaliseHandle('Anne Doe!')).toBe('annedoe');
     expect(normaliseHandle('a-b_c')).toBe('a-b_c');
   });
   it('returns "" for non-string input', () => {
