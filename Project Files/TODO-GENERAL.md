@@ -72,12 +72,22 @@
 - **Inrupt SDK ACP support against real CSS / NSS pods** — Phase 52.16 tests use a mocked Inrupt module; integration coverage against an actual ACP-supporting Solid server is unwritten.
 - **`@canopy/oidc-session-rn` DCR against non-Inrupt providers** — Phase 52.15 design said "tested against solidcommunity.net out-of-band"; not yet verified.
 
-### Recommended next-pickup priority (honest — refreshed 2026-05-14 end-of-day)
+### Recommended next-pickup priority (honest — refreshed 2026-05-15 end-of-day)
 
-1. **Folio item-types + createSolidAuthNode adoption** — ~1-2 days. Last small adoption residual; pattern is well-established from Stoop + Tasks. Tasks's V2 web track shipped today; Stoop A-track + Stoop-mobile C-track shipped today. Folio is the last app waiting.
-2. **P3 real-device pair tests** — ~10-15 days across Tasks + Stoop + Folio. Storage-layer transition is the highest-regression-risk piece; real hardware exposes radio / OS surprises. Stoop V3 mobile Phase 40.23 folds into this.
-3. **Per-app README sweep** — partially done 2026-05-14 (Tasks + Stoop READMEs refreshed). Remaining: Folio-mobile + Folio + tasks-mobile READMEs after their adoption ships.
-4. **Hub track kickoff (P4 Hub-Android V1)** — ~6 weeks. Only after items 1-2 above ship, since Hub depends on stable P1-P3 substrates.
+**Shipped 2026-05-15** (clears most of yesterday's top items):
+- ~~**Folio item-types + createSolidAuthNode adoption**~~ — Phase 52.15 + 52.16 shipped (desktop + mobile); 463/463 + 79/79 green. Phase 52.10 (agent-registry) + 52.14 (stale-peer) deferred to Folio V2 (need sync-engine → pseudoPod V1 absorption first).
+- ~~**Per-app README sweep**~~ — Folio + Folio-mobile + Tasks-mobile READMEs all refreshed with Phase 52.x adoption-status blocks.
+- ~~**Pair-test runbook (P3 prep)**~~ — [`pair-test-runbook-2026-05-15.md`](./pair-test-runbook-2026-05-15.md) lands as the cross-app real-device walkthrough doc (S1-S5 Stoop, T1-T6 Tasks, F1-F4 Folio, X1-X3 cross-app, D1-D4 deferred-to-P3). Cross-linked from each app's docs. Hardware execution still pending.
+- ~~**Phase 40.23 Stoop-mobile prep**~~ — [`apps/stoop-mobile/docs/phase-40-23-checklist.md`](../apps/stoop-mobile/docs/phase-40-23-checklist.md) + `battery.md` shipped. Hardware walk still pending.
+- ~~**Personal-info + repo rename**~~ — full `Frits`/`Phrytes`/test-bot-token scrub from history; `@decwebag` → `@canopy` rename; new public repo `Phrytes/canopy-mono`; `scripts/push-public.sh` strips `Project Files/` before each push. See [`coding-plans/HANDOFF-NEXT-SESSION.md`](./coding-plans/HANDOFF-NEXT-SESSION.md) for the full done-list + first-steps-after-restart checklist.
+
+**Remaining priority order:**
+
+1. **Hardware-pending real-device passes** — Phase 40.23 (Stoop-mobile), Phase 41.16 (Tasks-mobile), Folio-mobile smoke. Runbooks ready; needs physical Android + Solid accounts. ~3-5 days hands-on per app.
+2. **P3 sync-engine → pseudo-pod V1 absorption** — biggest remaining substrate piece. Unblocks Folio's deferred 52.10 + 52.14 + 52.2.x adoption. ~4 weeks.
+3. **Inrupt ACP integration tests against a real CSS/NSS pod** — Phase 52.16 currently uses a mocked Inrupt module; needs real-server validation.
+4. **`@canopy/oidc-session-rn` DCR against non-Inrupt providers** — solidcommunity.net + solidweb.org verification not yet done.
+5. **Hub track kickoff (P4 Hub-Android V1)** — design-complete, ~6 weeks. Waits on P3.
 
 ---
 
