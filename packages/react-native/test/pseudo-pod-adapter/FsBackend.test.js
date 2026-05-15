@@ -64,15 +64,17 @@ describe('FsBackend — get/put round-trip', () => {
   });
 
   it('round-trips a JSON-shaped payload + assigns etag', async () => {
-    const etag = await b.put('tasks/a', { text: 'paint' });
+    const { etag, _v } = await b.put('tasks/a', { text: 'paint' });
     expect(typeof etag).toBe('string');
+    expect(_v).toBe(1);
     const rec = await b.get('tasks/a');
     expect(rec?.bytes).toEqual({ text: 'paint' });
     expect(rec?.etag).toBe(etag);
+    expect(rec?._v).toBe(1);
   });
 
   it('preserves caller etag', async () => {
-    const etag = await b.put('a', 'hi', '"v9"');
+    const { etag } = await b.put('a', 'hi', '"v9"');
     expect(etag).toBe('"v9"');
     expect((await b.get('a'))?.etag).toBe('"v9"');
   });

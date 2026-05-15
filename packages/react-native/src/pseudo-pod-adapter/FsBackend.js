@@ -112,7 +112,11 @@ export function createFsBackend({
     try {
       const rec = JSON.parse(raw);
       if (rec && typeof rec === 'object' && 'bytes' in rec) {
-        return { bytes: rec.bytes, ...(rec.etag != null ? { etag: rec.etag } : {}) };
+        return {
+          bytes: rec.bytes,
+          ...(rec.etag != null ? { etag: rec.etag } : {}),
+          ...(typeof rec._v === 'number' ? { _v: rec._v } : {}),
+        };
       }
       return { bytes: raw };
     } catch {
@@ -120,11 +124,37 @@ export function createFsBackend({
     }
   }
 
-  async function put(key, bytes, etag) {
+  async function _readVersion(path) {
+    let raw;
+    try {
+      raw = await FileSystem.readAsStringAsync(path, {
+        encoding: FileSystem.EncodingType?.UTF8 ?? 'utf8',
+      });
+    } catch { return 0; }
+    try {
+      const rec = JSON.parse(raw);
+      if (rec && typeof rec === 'object' && typeof rec._v === 'number') return rec._v;
+    } catch { /* ignore */ }
+    return 0;
+  }
+
+  /**
+   * Phase 52.14 (Q-D 2026-05-14) — Lamport-style per-key version
+   * counter persisted alongside bytes + etag. Pin when caller supplies
+   * `_v` (accept-peer-write); otherwise increment by 1.
+   */
+  async function put(key, bytes, etag, _v) {
     await _ensureScopeDir();
     const finalEtag = etag ?? nextEtag();
-    const record = JSON.stringify({ bytes, etag: finalEtag });
     const path = _filePath(key);
+    let finalV;
+    if (typeof _v === 'number') {
+      finalV = _v;
+    } else {
+      const prevV = await _readVersion(path);
+      finalV = prevV + 1;
+    }
+    const record = JSON.stringify({ bytes, etag: finalEtag, _v: finalV });
     const tmpPath = path + '.tmp';
     await FileSystem.writeAsStringAsync(tmpPath, record, {
       encoding: FileSystem.EncodingType?.UTF8 ?? 'utf8',
@@ -138,8 +168,8 @@ export function createFsBackend({
       });
     }
     knownKeys.add(key);
-    _fanOut({ op: 'put', key, etag: finalEtag });
-    return finalEtag;
+    _fanOut({ op: 'put', key, etag: finalEtag, _v: finalV });
+    return { etag: finalEtag, _v: finalV };
   }
 
   async function del(key) {

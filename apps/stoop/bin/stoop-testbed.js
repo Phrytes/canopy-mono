@@ -41,7 +41,8 @@ import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
 
 import { createNeighborhoodAgent }   from '../src/Agent.js';
 import { buildOnboardingSkills }     from '../src/onboarding.js';
-import { wireGroupBroadcastMirror }  from '../src/groupMirror.js';
+import { wireSubstrateMirror }       from '../src/substrateMirror.js';
+import { buildSubstrateStack }       from '../src/lib/substrateStack.js';
 
 const { values } = parseArgs({
   options: {
@@ -156,11 +157,19 @@ async function spawnAgent({ webid, role, displayName }) {
   crossRegister();
 
   const peerPubKeys = peers.map((p) => p.pubKey);
-  const mirror = await wireGroupBroadcastMirror({
-    agent:     bundle.agent,
-    itemStore: bundle.itemStore,
-    group:     groupId,
-    peers:     peerPubKeys.map((pubKey) => ({ pubKey })),
+  // Phase 52.9.2 / Q-B (2026-05-14) — substrate path.
+  const substrate = buildSubstrateStack({ agent: bundle.agent });
+  bundle.pseudoPod         = substrate.pseudoPod;
+  bundle.notifyEnvelope    = substrate.notifyEnvelope;
+  bundle.substrateDeviceId = substrate.deviceId;
+  bundle._substrateStop    = substrate.stop;
+  const mirror = await wireSubstrateMirror({
+    itemStore:      bundle.itemStore,
+    notifyEnvelope: substrate.notifyEnvelope,
+    pseudoPod:      substrate.pseudoPod,
+    group:          groupId,
+    peers:          peerPubKeys.map((pubKey) => ({ pubKey })),
+    selfPubKey:     bundle.agent?.address ?? null,
   });
   cluster.get(webid).mirror = mirror;
 

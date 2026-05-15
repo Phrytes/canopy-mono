@@ -47,3 +47,12 @@ export {
   clearStoredClient,
   _internal as _dcrInternal,
 } from './src/dcr.js';
+
+// Phase 52.15.1 (2026-05-14) — multi-issuer support. Mirrored from
+// `@canopy/oidc-session/src/issuers.js`; keep both copies in sync.
+export {
+  KNOWN_ISSUERS,
+  DEFAULT_ISSUER_ID,
+  DEFAULT_ISSUER,
+  resolveIssuer,
+} from './src/issuers.js';

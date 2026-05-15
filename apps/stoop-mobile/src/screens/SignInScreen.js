@@ -29,6 +29,8 @@ import {
   TextInput,
 } from 'react-native';
 
+import { IssuerPicker } from '@canopy/oidc-session-rn/picker';
+
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
 import { t }                                  from '../lib/i18n.js';
 import { useService }                         from '../ServiceContext.js';
@@ -198,15 +200,11 @@ export function SignInScreen() {
         </View>
       ) : (
         <View style={styles.section}>
-          <Text style={styles.label}>{t('signin.issuer_label', 'Solid OIDC-issuer')}</Text>
-          <TextInput
+          <IssuerPicker
             value={issuer}
-            onChangeText={setIssuer}
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder={DEFAULT_ISSUER}
-            style={styles.input}
-            accessibilityLabel="signin-issuer-input"
+            onChange={setIssuer}
+            legendText={t('signin.issuer_label', 'Pod-aanbieder')}
+            customLabel={t('signin.issuer_custom', 'Andere')}
           />
           <Pressable
             onPress={onSignInPress}

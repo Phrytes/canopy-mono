@@ -85,12 +85,18 @@ export function createNotifyEnvelope({
    * @param {string} input.ref         — resource URI
    * @param {*}      [input.payload]   — required for full-payload mode
    * @param {string} [input.etag]
+   * @param {number} [input._v]        — Lamport version (Phase 52.14, Q-D
+   *                                      2026-05-14). Forwarded on full-
+   *                                      payload envelopes so receivers
+   *                                      can run the version compare.
+   *                                      Forward-additive: legacy
+   *                                      receivers ignore it.
    * @param {string[]} input.recipients
    * @param {string} [input.fromActor]
    * @param {string} [input.crewId]    — informational (queued in metadata)
    * @returns {Promise<{mode: 'envelope-only'|'full-payload', queued: boolean, decision: object}>}
    */
-  async function publish({ type, ref, payload, etag, recipients, fromActor, crewId } = {}) {
+  async function publish({ type, ref, payload, etag, _v, recipients, fromActor, crewId } = {}) {
     if (typeof type !== 'string' || type.length === 0) {
       throw Object.assign(
         new Error('publish: type is required'),
@@ -135,6 +141,7 @@ export function createNotifyEnvelope({
       kind: type,
       ref,
       ...(etag      != null ? { etag }      : {}),
+      ...(typeof _v === 'number' ? { _v } : {}),
       ...(fromActor != null ? { fromActor } : {}),
       recipients,
       payload,
@@ -146,6 +153,7 @@ export function createNotifyEnvelope({
         uri:        ref,
         payload,
         etag,
+        ...(typeof _v === 'number' ? { _v } : {}),
         type,
         recipients,
         fromActor,
@@ -207,9 +215,20 @@ export function createNotifyEnvelope({
       const ref  = payload.ref;
 
       // Full-payload eager fan-out: stash to local pseudo-pod first.
+      // Phase 52.14 (Q-D 2026-05-14) — pass `_v` + sender id through so
+      // writeFromPeer can run the 3-way version compare and fire
+      // 'peer-update' / 'stale-peer' / 'concurrent-write' events.
       if (payload.payload !== undefined && typeof ref === 'string') {
         try {
-          await pseudoPod.writeFromPeer(ref, payload.payload, payload.etag);
+          const peerV     = typeof payload._v === 'number' ? payload._v : undefined;
+          const fromActor = typeof payload.fromActor === 'string' ? payload.fromActor : undefined;
+          await pseudoPod.writeFromPeer(
+            ref,
+            payload.payload,
+            payload.etag,
+            peerV,
+            fromActor != null ? { fromActor } : undefined,
+          );
         } catch (err) {
           _log('writeFromPeer failed', { ref, err });
         }

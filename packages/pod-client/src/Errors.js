@@ -97,6 +97,19 @@ export class ConventionError extends PodClientError {
   }
 }
 
+/**
+ * The target pod does not support a sharing primitive the caller asked for.
+ * Typically thrown by `client.sharing.{grant,revoke,list}` when neither
+ * ACP nor WAC is available on the target resource.
+ *
+ * Phase 52.16 (2026-05-14).
+ */
+export class SharingUnsupportedError extends PodClientError {
+  constructor(message, opts = {}) {
+    super(message, { code: 'SHARING_NOT_SUPPORTED', ...opts });
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 
 /**

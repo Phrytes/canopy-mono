@@ -15,27 +15,52 @@ import { describe, it, expect } from 'vitest';
 import { createMemoryBackend } from '../src/MemoryBackend.js';
 
 describe('MemoryBackend.get/put', () => {
-  it('round-trips a record + assigns an etag', async () => {
+  it('round-trips a record + assigns etag + _v=1 on first put', async () => {
     const b = createMemoryBackend();
-    const etag = await b.put('a', { x: 1 });
+    const { etag, _v } = await b.put('a', { x: 1 });
     expect(typeof etag).toBe('string');
+    expect(_v).toBe(1);                            // Lamport starts at 1
     const rec = await b.get('a');
-    expect(rec).toEqual({ bytes: { x: 1 }, etag });
+    expect(rec).toEqual({ bytes: { x: 1 }, etag, _v: 1 });
   });
 
   it('preserves caller-supplied etag', async () => {
     const b = createMemoryBackend();
-    const etag = await b.put('a', 'hello', '"v3"');
+    const { etag } = await b.put('a', 'hello', '"v3"');
     expect(etag).toBe('"v3"');
     expect((await b.get('a'))?.etag).toBe('"v3"');
   });
 
-  it('overwrites on second put and yields a new etag', async () => {
+  it('overwrites on second put: new etag + _v increments', async () => {
     const b = createMemoryBackend();
-    const e1 = await b.put('a', 1);
-    const e2 = await b.put('a', 2);
-    expect(e2).not.toBe(e1);
+    const r1 = await b.put('a', 1);
+    const r2 = await b.put('a', 2);
+    expect(r2.etag).not.toBe(r1.etag);
+    expect(r1._v).toBe(1);
+    expect(r2._v).toBe(2);
     expect((await b.get('a'))?.bytes).toBe(2);
+  });
+
+  it('caller can pin _v (accept-peer-write case)', async () => {
+    const b = createMemoryBackend();
+    await b.put('a', 1);             // _v: 1
+    await b.put('a', 2);             // _v: 2
+    // Simulate accepting a peer's _v=7 write (peer was further ahead).
+    const r = await b.put('a', 'from-peer', undefined, 7);
+    expect(r._v).toBe(7);
+    expect((await b.get('a'))?._v).toBe(7);
+    // Next non-pinned put increments from the pinned value.
+    const r2 = await b.put('a', 'next');
+    expect(r2._v).toBe(8);
+  });
+
+  it('delete clears _v; next put restarts from 1', async () => {
+    const b = createMemoryBackend();
+    await b.put('a', 1);
+    await b.put('a', 2);
+    await b.delete('a');
+    const r = await b.put('a', 'fresh');
+    expect(r._v).toBe(1);
   });
 
   it('returns null for missing keys', async () => {

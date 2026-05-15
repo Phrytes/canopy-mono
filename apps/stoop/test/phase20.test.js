@@ -26,7 +26,7 @@ import {
   signOutOfPod,
   podSignInStatus,
 } from '../src/lib/podSignIn.js';
-import { _setSessionFactory } from '../src/lib/OidcSession.js';
+import { _setSolidAuthNodeSessionFactory } from '@canopy/oidc-session';
 
 const ANNE  = 'https://id.example/anne';
 const WEBID = 'https://alice.solidcommunity.net/profile/card#me';
@@ -88,10 +88,10 @@ let fakeSession;
 
 beforeEach(() => {
   fakeSession = makeFakeSession();
-  _setSessionFactory(() => fakeSession);
+  _setSolidAuthNodeSessionFactory(() => fakeSession);
 });
 
-afterEach(() => { _setSessionFactory(null); });
+afterEach(() => { _setSolidAuthNodeSessionFactory(null); });
 
 /* ── Tests ──────────────────────────────────────────────────────────── */
 

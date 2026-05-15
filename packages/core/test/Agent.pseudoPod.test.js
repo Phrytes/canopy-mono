@@ -201,3 +201,126 @@ describe('makeFetchResourceSkill — registers cleanly on an Agent', () => {
     expect(out[0].data).toEqual({ uri: 'q://1', bytes: 'served' });
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Phase 52.2.x (Q#2 2026-05-14) — peer-fetch gates.                         */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+describe('makeFetchResourceSkill — peer-fetch gates (Q#2 2026-05-14)', () => {
+  it('rejects invalid groupCheck / capCheck opts', () => {
+    expect(() => makeFetchResourceSkill({ read: async () => 'x', groupCheck: 'nope' }))
+      .toThrow(/groupCheck.*function/);
+    expect(() => makeFetchResourceSkill({ read: async () => 'x', capCheck: 42 }))
+      .toThrow(/capCheck.*function/);
+  });
+
+  it('back-compat: no gates → trust-the-transport; serves freely', async () => {
+    const skill = makeFetchResourceSkill({ read: async () => 'x' });
+    const out = await skill.handler({
+      parts: [{ type: 'DataPart', data: { uri: 'q://1' } }],
+      from:  'pubkey:anyone',
+    });
+    expect(out[0].data.bytes).toBe('x');
+  });
+
+  it('groupCheck truthy → allows the fetch', async () => {
+    let seenCtx;
+    const skill = makeFetchResourceSkill({
+      read:       async () => 'allowed-bytes',
+      groupCheck: async (uri, ctx) => { seenCtx = { uri, ...ctx }; return true; },
+    });
+    const out = await skill.handler({
+      parts:    [{ type: 'DataPart', data: { uri: 'q://r' } }],
+      from:     'pubkey:bob',
+      envelope: { _from: 'pubkey:bob' },
+    });
+    expect(out[0].data.bytes).toBe('allowed-bytes');
+    expect(seenCtx.uri).toBe('q://r');
+    expect(seenCtx.from).toBe('pubkey:bob');
+    expect(seenCtx.capToken).toBeUndefined();
+  });
+
+  it('groupCheck falsy + no capCheck → FORBIDDEN', async () => {
+    const skill = makeFetchResourceSkill({
+      read:       async () => 'should-not-be-read',
+      groupCheck: async () => false,
+    });
+    await expect(skill.handler({
+      parts: [{ type: 'DataPart', data: { uri: 'q://denied' } }],
+      from:  'pubkey:ex-member',
+    })).rejects.toMatchObject({ code: 'FORBIDDEN', uri: 'q://denied' });
+  });
+
+  it('groupCheck false + capCheck true → allows (either-gate semantics)', async () => {
+    const skill = makeFetchResourceSkill({
+      read:       async () => 'shared-via-cap',
+      groupCheck: async () => false,
+      capCheck:   async (uri, ctx) => ctx.capToken === 'valid-token',
+    });
+    const out = await skill.handler({
+      parts: [{ type: 'DataPart', data: { uri: 'q://r', capToken: 'valid-token' } }],
+      from:  'pubkey:external',
+    });
+    expect(out[0].data.bytes).toBe('shared-via-cap');
+  });
+
+  it('both gates false → FORBIDDEN', async () => {
+    const skill = makeFetchResourceSkill({
+      read:       async () => 'x',
+      groupCheck: async () => false,
+      capCheck:   async () => false,
+    });
+    await expect(skill.handler({
+      parts: [{ type: 'DataPart', data: { uri: 'q://denied', capToken: 'bad-token' } }],
+      from:  'pubkey:external',
+    })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('groupCheck throws → FORBIDDEN (with cause)', async () => {
+    const skill = makeFetchResourceSkill({
+      read:       async () => 'x',
+      groupCheck: async () => { throw new Error('membership lookup broke'); },
+    });
+    await expect(skill.handler({
+      parts: [{ type: 'DataPart', data: { uri: 'q://r' } }],
+      from:  'pubkey:caller',
+    })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('capCheck extracts capToken from the DataPart', async () => {
+    let capTokenSeen;
+    const skill = makeFetchResourceSkill({
+      read:     async () => 'served',
+      capCheck: async (uri, ctx) => { capTokenSeen = ctx.capToken; return true; },
+    });
+    await skill.handler({
+      parts: [{ type: 'DataPart', data: { uri: 'q://r', capToken: { id: 't-1', scope: 'read' } } }],
+    });
+    expect(capTokenSeen).toEqual({ id: 't-1', scope: 'read' });
+  });
+
+  it('groupCheck wins → capCheck is not invoked', async () => {
+    let capCalled = false;
+    const skill = makeFetchResourceSkill({
+      read:       async () => 'served',
+      groupCheck: async () => true,
+      capCheck:   async () => { capCalled = true; return false; },
+    });
+    await skill.handler({
+      parts: [{ type: 'DataPart', data: { uri: 'q://r' } }],
+    });
+    expect(capCalled).toBe(false);
+  });
+
+  it('gate result is per-request — not cached across calls', async () => {
+    let i = 0;
+    const skill = makeFetchResourceSkill({
+      read:       async () => 'x',
+      groupCheck: async () => (++i % 2 === 1),   // alternating: T, F, T, F …
+    });
+    const args = { parts: [{ type: 'DataPart', data: { uri: 'q://r' } }] };
+    await expect(skill.handler(args)).resolves.toBeTruthy();
+    await expect(skill.handler(args)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(skill.handler(args)).resolves.toBeTruthy();
+  });
+});

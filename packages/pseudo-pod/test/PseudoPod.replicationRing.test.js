@@ -30,13 +30,14 @@ function createFakeBus() {
       inboxes.set(address, inboundCb);
     },
     /** Transport-shaped publishEnvelope. */
-    async publishEnvelope({ kind, ref, etag, fromActor, recipients, payload, timestamp } = {}) {
+    async publishEnvelope({ kind, ref, etag, _v, fromActor, recipients, payload, timestamp } = {}) {
       const wire = {
         v: 1,
         kind,
         timestamp: timestamp ?? new Date().toISOString(),
         ...(ref       !== undefined ? { ref } : {}),
         ...(etag      !== undefined ? { etag } : {}),
+        ...(_v        !== undefined ? { _v } : {}),
         ...(fromActor !== undefined ? { fromActor } : {}),
         ...(payload   !== undefined ? { payload } : {}),
       };
@@ -77,12 +78,24 @@ function makePair() {
   // route it to writeFromPeer.
   bus.bind('bob', async (wire) => {
     if (wire.kind === 'pseudo-pod.write' && wire.payload) {
-      await bob.writeFromPeer(wire.payload.uri, wire.payload.bytes, wire.payload.etag);
+      await bob.writeFromPeer(
+        wire.payload.uri,
+        wire.payload.bytes,
+        wire.payload.etag,
+        wire.payload._v,
+        wire.fromActor != null ? { fromActor: wire.fromActor } : undefined,
+      );
     }
   });
   bus.bind('anne', async (wire) => {
     if (wire.kind === 'pseudo-pod.write' && wire.payload) {
-      await anne.writeFromPeer(wire.payload.uri, wire.payload.bytes, wire.payload.etag);
+      await anne.writeFromPeer(
+        wire.payload.uri,
+        wire.payload.bytes,
+        wire.payload.etag,
+        wire.payload._v,
+        wire.fromActor != null ? { fromActor: wire.fromActor } : undefined,
+      );
     }
   });
 
@@ -143,6 +156,119 @@ describe('PseudoPod.replication-ring — end-to-end', () => {
   });
 });
 
+describe('PseudoPod.replication-ring — Q-D version compare (Phase 52.14)', () => {
+  it('peer-update: inbound _v > local _v adopts and fires peer-update', async () => {
+    const { anne, bob } = makePair();
+    const uri = 'pseudo-pod://anne/notes/x';
+    const events = [];
+    bob.on('peer-update', (e) => events.push(e));
+    await anne.write(uri, 'v1');
+    await anne.write(uri, 'v2');
+    expect((await bob.read(uri))?.bytes).toBe('v2');
+    expect((await bob.read(uri))?._v).toBe(2);
+    // The first envelope produces a peer-update (no local copy yet);
+    // the second another peer-update (newer version).
+    expect(events.length).toBeGreaterThanOrEqual(2);
+    expect(events.at(-1)).toMatchObject({ uri, peerV: 2, fromActor: 'agent://anne/laptop' });
+  });
+
+  it('stale-peer: inbound _v < local _v is ignored and fires stale-peer', async () => {
+    const { anne, bob } = makePair();
+    const uri = 'pseudo-pod://shared/x';
+    // Seed: Bob writes locally to bump his _v past 0.
+    await bob.writeFromPeer(uri, 'newer', '"e2"', 5);
+    const stale = [];
+    bob.on('stale-peer', (e) => stale.push(e));
+    const status = await bob.writeFromPeer(uri, 'older', '"e1"', 3, { fromActor: 'agent://anne' });
+    expect(status.status).toBe('stale-peer');
+    expect((await bob.read(uri))?.bytes).toBe('newer');
+    expect(stale).toHaveLength(1);
+    expect(stale[0]).toMatchObject({
+      uri,
+      peerV: 3,
+      localV: 5,
+      localBytes: 'newer',
+      fromActor: 'agent://anne',
+    });
+  });
+
+  it('concurrent-write: same _v + different etag fires concurrent-write', async () => {
+    const backend = createMemoryBackend();
+    const pod = createPseudoPod({
+      backend,
+      mode: 'standalone',
+      deviceId: 'x',
+    });
+    await pod.write('pseudo-pod://x/r', 'local-bytes');     // _v=1, etag=mem-1
+    const events = [];
+    pod.on('concurrent-write', (e) => events.push(e));
+    const status = await pod.writeFromPeer(
+      'pseudo-pod://x/r', 'peer-bytes', '"different"', 1,
+      { fromActor: 'agent://other' },
+    );
+    expect(status.status).toBe('concurrent-write');
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      uri: 'pseudo-pod://x/r',
+      peerV: 1,
+      localV: 1,
+      peerBytes: 'peer-bytes',
+      localBytes: 'local-bytes',
+      fromActor: 'agent://other',
+    });
+  });
+
+  it('idempotent: same _v + same etag returns idempotent (no event)', async () => {
+    const pod = createPseudoPod({
+      backend: createMemoryBackend(),
+      mode: 'standalone',
+      deviceId: 'x',
+    });
+    const { etag, _v } = await pod.write('pseudo-pod://x/r', 'hi');
+    const ev = [];
+    pod.on('concurrent-write', (e) => ev.push(e));
+    pod.on('peer-update',      (e) => ev.push(e));
+    const status = await pod.writeFromPeer('pseudo-pod://x/r', 'hi', etag, _v);
+    expect(status.status).toBe('idempotent');
+    expect(ev).toHaveLength(0);
+  });
+
+  it('legacy peer (no _v): falls back to last-write-wins', async () => {
+    const { anne, bob } = makePair();
+    const uri = 'pseudo-pod://anne/x';
+    await anne.write(uri, 'v1');
+    // Pretend a legacy sender omits _v entirely.
+    const status = await bob.writeFromPeer(uri, 'legacy', '"e"');
+    expect(status.status).toBe('written-no-version');
+    expect((await bob.read(uri))?.bytes).toBe('legacy');
+  });
+
+  it('stale-peer reply round-trip: divergent peers converge in one round', async () => {
+    const { anne, bob } = makePair();
+    // Replication-ring writes have to be to the WRITER's namespace
+    // (the deviceId guard); each pod's copy lives under the same URI.
+    const uri = 'pseudo-pod://anne/r';
+    // Anne writes v1, replicates to Bob.
+    await anne.write(uri, 'v1');
+    expect((await bob.read(uri))?._v).toBe(1);
+    // Simulate Bob's "out-of-band" override that bumps his _v past 1
+    // (e.g. an app-level merge surfaced through writeFromPeer).
+    await bob.writeFromPeer(uri, 'bob-v2', '"b2"', 2, { fromActor: 'agent://bob' });
+    // Anne attempts to ship her stale v1 again (simulate a re-publish).
+    const stale = [];
+    bob.on('stale-peer', (e) => stale.push(e));
+    await bob.writeFromPeer(uri, 'v1', '"a1"', 1, { fromActor: 'agent://anne' });
+    expect(stale).toHaveLength(1);
+    // Bob's local copy is still v2.
+    expect((await bob.read(uri))?.bytes).toBe('bob-v2');
+    // App-level "reply" step: caller would publish the local copy
+    // back. Here we just simulate that Anne adopts it.
+    await anne.writeFromPeer(uri, stale[0].localBytes, stale[0].localEtag, stale[0].localV);
+    expect((await anne.read(uri))?.bytes).toBe('bob-v2');
+    expect((await anne.read(uri))?._v).toBe(2);
+  });
+});
+
 describe('PseudoPod.replication-ring — peer fetch via skill', () => {
   it("peer can read locally-replicated resource via Bob's fetch-resource skill", async () => {
     const { anne, bob } = makePair();
@@ -181,6 +307,23 @@ describe('PseudoPod.replication-ring — envelope shape', () => {
       uri:   'pseudo-pod://sender/x',
       bytes: { a: 1 },
     });
+  });
+
+  it('includes _v in the envelope (top-level + payload)', async () => {
+    const captured = [];
+    const pod = createPseudoPod({
+      backend:  createMemoryBackend(),
+      mode:     'replication-ring',
+      deviceId: 'sender',
+      transport: { publishEnvelope: async (env) => { captured.push(env); } },
+      getPeers:  () => ['peer-1'],
+    });
+    await pod.write('pseudo-pod://sender/x', { a: 1 });
+    await pod.write('pseudo-pod://sender/x', { a: 2 });
+    expect(captured[0]._v).toBe(1);
+    expect(captured[0].payload._v).toBe(1);
+    expect(captured[1]._v).toBe(2);
+    expect(captured[1].payload._v).toBe(2);
   });
 
   it('filters out empty / non-string recipients', async () => {

@@ -24,6 +24,7 @@ export {
   MalformedResourceError,
   EncryptionError,
   ConventionError,
+  SharingUnsupportedError,
   mapSourceCode,
 } from './Errors.js';
 
@@ -34,6 +35,14 @@ export { PodClient }      from './PodClient.js';
 
 // A7 — Conflict detection + resolution.
 export { ConflictResolver } from './ConflictResolver.js';
+
+// Phase 52.16 (2026-05-14) — ACP/WAC sharing primitives. The main
+// API is `client.sharing.{grant, revoke, list, capabilities}` on a
+// PodClient instance; the factory + test seam are exposed for
+// substrate consumers that want to wire sharing without a full
+// PodClient.
+export { createClientSharing, _setInruptModuleForTests } from './sharing/index.js';
+export { probeCapabilities, parseSharingLinkHeader }     from './sharing/capabilities.js';
 
 // A6 — Delete-scope primitive (TombstoneStore + per-platform adapters).
 export { TombstoneStore }         from './TombstoneStore.js';
