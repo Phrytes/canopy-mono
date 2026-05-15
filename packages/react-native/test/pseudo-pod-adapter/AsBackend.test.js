@@ -36,14 +36,16 @@ describe('AsBackend — get/put round-trip', () => {
   });
 
   it('round-trips an object payload + auto etag', async () => {
-    const etag = await b.put('a', { x: 1 });
+    const { etag, _v } = await b.put('a', { x: 1 });
     expect(typeof etag).toBe('string');
+    expect(_v).toBe(1);
     expect((await b.get('a'))?.bytes).toEqual({ x: 1 });
     expect((await b.get('a'))?.etag).toBe(etag);
+    expect((await b.get('a'))?._v).toBe(1);
   });
 
   it('preserves caller etag', async () => {
-    const etag = await b.put('a', 'hi', '"v3"');
+    const { etag } = await b.put('a', 'hi', '"v3"');
     expect(etag).toBe('"v3"');
     expect((await b.get('a'))?.etag).toBe('"v3"');
   });

@@ -70,7 +70,11 @@ export function createAsBackend({
     try {
       const rec = JSON.parse(raw);
       if (rec && typeof rec === 'object' && 'bytes' in rec) {
-        return { bytes: rec.bytes, ...(rec.etag != null ? { etag: rec.etag } : {}) };
+        return {
+          bytes: rec.bytes,
+          ...(rec.etag != null ? { etag: rec.etag } : {}),
+          ...(typeof rec._v === 'number' ? { _v: rec._v } : {}),
+        };
       }
       // Older string-only writes (compat).
       return { bytes: raw };
@@ -79,12 +83,32 @@ export function createAsBackend({
     }
   }
 
-  async function put(key, bytes, etag) {
+  /**
+   * Phase 52.14 (Q-D 2026-05-14) — Lamport-style per-key version
+   * counter for replication-ring conflict resolution. When the caller
+   * pins a specific `_v` we honour it (the "accept peer's write"
+   * path); otherwise we increment by 1 (new key starts at 1).
+   */
+  async function put(key, bytes, etag, _v) {
     const finalEtag = etag ?? nextEtag();
-    const record = { bytes, etag: finalEtag };
+    let finalV;
+    if (typeof _v === 'number') {
+      finalV = _v;
+    } else {
+      const prevRaw = await AsyncStorage.getItem(_scopeKey(key));
+      let prevV = 0;
+      if (prevRaw != null) {
+        try {
+          const prev = JSON.parse(prevRaw);
+          if (prev && typeof prev._v === 'number') prevV = prev._v;
+        } catch { /* ignore */ }
+      }
+      finalV = prevV + 1;
+    }
+    const record = { bytes, etag: finalEtag, _v: finalV };
     await AsyncStorage.setItem(_scopeKey(key), JSON.stringify(record));
-    _fanOut({ op: 'put', key, etag: finalEtag });
-    return finalEtag;
+    _fanOut({ op: 'put', key, etag: finalEtag, _v: finalV });
+    return { etag: finalEtag, _v: finalV };
   }
 
   async function del(key) {

@@ -95,15 +95,34 @@ const parts = await agent.callSkill({
 createPseudoPod({ backend, mode, deviceId, transport?, getPeers?, fromActor? })
   → pseudoPod
 
-pseudoPod.read(uri)                  → { uri, bytes, etag? } | null
-pseudoPod.write(uri, bytes, etag?)   → { uri, etag }
+pseudoPod.read(uri, {freshness}?)    → { uri, bytes, etag?, _v? } | null
+                                       //   freshness: 'cached' (default) | 'fresh'
+                                       //   'fresh' triggers a conditional-GET against
+                                       //   the pod (cache mode only).
+pseudoPod.write(uri, bytes, etag?)   → { uri, etag, _v }
 pseudoPod.delete(uri)                → void
 pseudoPod.list(containerUri)         → string[]   (URI keys)
 pseudoPod.subscribe(uri, cb)         → unsubscribe fn
-pseudoPod.writeFromPeer(uri, bytes, etag)  — replication-ring receive
+pseudoPod.writeFromPeer(uri, bytes, etag?, _v?, opts?)
+                                       → { status: 'peer-update' | 'stale-peer' |
+                                                   'concurrent-write' | 'idempotent' |
+                                                   'written-no-version' }
+                                       // replication-ring receive path; runs the
+                                       // 3-way version compare.
 pseudoPod.flush(uri)                 — no-op in V0 (V1: cache flush)
-pseudoPod.mode(uri)                  → 'standalone' | 'replication-ring'
-pseudoPod.fetchResourceSkill(opts?)  → skill definition (core)
+pseudoPod.mode(uri)                  → 'standalone' | 'replication-ring' | 'cache'
+pseudoPod.on(event, cb)              → unsubscribe fn
+pseudoPod.off(event, cb)             → void
+                                       // events (Phase 52.14): 'peer-update',
+                                       //                       'stale-peer',
+                                       //                       'concurrent-write'
+pseudoPod.fetchResourceSkill({groupCheck?, capCheck?}?)
+                                     → skill definition (core)
+                                     // Phase 52.2.x peer-fetch gates:
+                                     //   groupCheck(uri, {from, envelope, agent, parts, capToken}) → bool
+                                     //   capCheck(uri, {... + capToken from parts})              → bool
+                                     // When BOTH supplied → allow if EITHER returns truthy.
+                                     // When NEITHER supplied → trust-the-transport (back-compat).
 
 pseudoPod.deviceId
 pseudoPod.backend
@@ -129,6 +148,47 @@ URIs once replicated locally) but only **write** to its own
 - V0 does **not** enforce CAS (compare-and-swap) on writes. That
   ships with V1 cache mode and the pending-upload queue.
 
+### Conflict resolution — Lamport `_v` (Phase 52.14)
+
+Every record carries a per-key Lamport-style version counter `_v`.
+Local writes auto-increment it; replication-ring receivers run a
+three-way compare:
+
+| inbound `_v` vs local `_v` | etag match | outcome | event |
+|---|---|---|---|
+| `> local`                  | n/a        | adopt peer's write | `peer-update` |
+| `< local`                  | n/a        | ignore (peer is stale) | `stale-peer` |
+| `== local`                 | yes        | idempotent — no-op | — |
+| `== local`                 | no         | ignore (keep local) | `concurrent-write` |
+| no `_v` on inbound         | n/a        | last-write-wins fallback (legacy peers) | — |
+
+The `'stale-peer'` event carries `{localBytes, localEtag, localV}`
+so the app can publish the fresher local copy back via
+`notify-envelope.publish` — one round-trip is enough to converge.
+
+```js
+pod.on('stale-peer', async ({ uri, fromActor, localBytes, localEtag, localV }) => {
+  // Reply with the newer local copy.
+  await notifyEnvelope.publish({
+    type: 'task',
+    ref: uri,
+    payload: localBytes,
+    etag: localEtag,
+    _v: localV,
+    recipients: [fromActor],
+  });
+});
+```
+
+### Cache-vs-pod freshness (Phase 52.14)
+
+In cache mode, `read(uri, {freshness: 'fresh'})` runs a
+conditional-GET against the real pod via your `podFetcher`. The
+fetcher receives a second arg `{ifNoneMatch: <localEtag>}`; return
+`{notModified: true}` to keep the cached copy, or
+`{bytes, etag}` to refresh. The default `'cached'` returns the
+local copy as-is.
+
 ### Subscribe semantics
 
 - Fires only on **future** writes (no replay of existing state).
@@ -148,9 +208,10 @@ transport.publishEnvelope({
   kind:       'pseudo-pod.write',
   ref:        uri,
   etag,
+  _v,                                 // Phase 52.14 — Lamport counter at top level
   fromActor:  '<agent-uri>',
   recipients: getPeers(),
-  payload:    { uri, bytes, etag },
+  payload:    { uri, bytes, etag, _v },
 });
 ```
 
@@ -173,14 +234,18 @@ ships `MemoryBackend` (in-process Map). The RN-side adapter
 `@canopy/react-native` Phase 51.1.
 
 ```text
-get(key)                  → { bytes, etag? } | null
-put(key, bytes, etag?)    → newEtag
-delete(key)               → void
-list(prefix)              → string[]
-subscribe(prefix, cb)     → unsubscribe
-listDirty()               → string[]            (V1 cache mode)
-subscribeDirty(cb)        → unsubscribe         (V1 cache mode)
+get(key)                       → { bytes, etag?, _v? } | null
+put(key, bytes, etag?, _v?)    → { etag, _v }
+delete(key)                    → void
+list(prefix)                   → string[]
+subscribe(prefix, cb)          → unsubscribe
+listDirty()                    → string[]            (V1 cache mode)
+subscribeDirty(cb)             → unsubscribe         (V1 cache mode)
 ```
+
+The optional `_v` arg on `put` pins the version (the "accept
+peer's write" path); otherwise it auto-increments by 1 (new keys
+start at 1).
 
 The dirty-set surface exists on the V0 interface so V1's
 pod-upload retry queue can layer in without changing the API
@@ -191,8 +256,10 @@ shape. `MemoryBackend` exposes `_markDirty / _markClean` for tests
 
 ## What V0 deliberately does not do
 
-- **CAS / conflict resolution.** `groupMirror`'s last-write-wins
-  semantics carry through V0 untouched. Pinning happens in P3.
+- ~~**CAS / conflict resolution.** `groupMirror`'s last-write-wins
+  semantics carry through V0 untouched. Pinning happens in P3.~~
+  **Resolved 2026-05-14 via Phase 52.14** — see "Conflict
+  resolution — Lamport `_v`" above.
 - **Cache mode + pod attachment.** Real pods enter the picture in
   V1 (Phase 52.8) along with the reachability gate +
   pending-upload queue.

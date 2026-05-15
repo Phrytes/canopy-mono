@@ -171,7 +171,7 @@ export class Transport extends Emitter {
    * @param {string} [opts.timestamp] — ISO timestamp; default: now.
    * @returns {Promise<void>}
    */
-  async publishEnvelope({ kind, ref, etag, fromActor, recipients, payload, timestamp } = {}) {
+  async publishEnvelope({ kind, ref, etag, _v, fromActor, recipients, payload, timestamp } = {}) {
     if (typeof kind !== 'string' || kind.length === 0) {
       throw Object.assign(
         new Error('publishEnvelope: `kind` is required'),
@@ -185,14 +185,18 @@ export class Transport extends Emitter {
       );
     }
 
+    // `_v` (Phase 52.14, Q-D 2026-05-14) — Lamport-style per-key
+    // version counter from `pseudo-pod`. Forward-additive on the
+    // wire: legacy receivers ignore it.
     const wire = {
       v: 1,
       kind,
       timestamp: timestamp ?? new Date().toISOString(),
-      ...(ref       !== undefined ? { ref } : {}),
-      ...(etag      !== undefined ? { etag } : {}),
-      ...(fromActor !== undefined ? { fromActor } : {}),
-      ...(payload   !== undefined ? { payload } : {}),
+      ...(ref          !== undefined ? { ref }       : {}),
+      ...(etag         !== undefined ? { etag }      : {}),
+      ...(typeof _v === 'number'    ? { _v }        : {}),
+      ...(fromActor    !== undefined ? { fromActor } : {}),
+      ...(payload      !== undefined ? { payload }  : {}),
     };
 
     const topic = `envelope:${kind}`;

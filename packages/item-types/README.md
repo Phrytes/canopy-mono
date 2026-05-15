@@ -162,20 +162,40 @@ mutated**. Validation runs against the canonical schema.
 
 ---
 
-## Versioning policy — forward-additive only
+## Versioning policy — forward-additive + aliases
 
-Type schemas evolve **additively**:
+**Ratified 2026-05-14** (substrates-v2 coding plan §"Open questions"
+#6, resolved). Type schemas evolve under three rules:
+
+1. **Forward-additive types + kinds.** New entries are added freely
+   to the registry. Older apps that don't know the new value treat
+   it as `'other'` (for types) or skip it (for kinds). Senders can
+   add fields ahead of consumers; the validator allows **extra
+   unknown fields** for every type.
+2. **Aliases for renames.** When a type or kind is renamed, the
+   legacy name persists in the registry resolving to the canonical
+   name. Stoop's Q-A 2026-05-14 cutover demonstrated this with
+   `supply-offer` → `offer`. The registry's alias entries are
+   normative — readers MUST honour them.
+3. **No removals.** Types may be marked deprecated, but the
+   registry MUST keep recognising them. Apps MAY stop emitting
+   deprecated values; readers MUST keep accepting them.
+
+Additionally:
 
 - **OK** — add a new optional field; widen an enum.
-- **NOT OK** — remove a field, change a field's type, rename a type,
-  add a new required field.
+- **OK** — add a new required field IF the registry's alias /
+  defaulter ensures the field has a value when reading legacy data
+  (e.g., a synthetic default).
+- **NOT OK** — remove a field, change a field's type, narrow an
+  enum.
 
-For breaking changes, register a new type name (e.g. `task-v2`) and
-keep both running side-by-side. Apps migrate at their own pace.
+For genuinely breaking changes (not addressable via alias or
+default), register a new type name (e.g. `task-v2`) and keep both
+running side-by-side. Apps migrate at their own pace.
 
 The validator deliberately allows **extra unknown fields** for every
-type. Senders can add fields ahead of consumers (which simply ignore
-them) without breaking validation.
+type so senders can add fields ahead of consumers.
 
 ---
 

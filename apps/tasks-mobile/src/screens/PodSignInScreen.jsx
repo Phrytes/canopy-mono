@@ -21,6 +21,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@canopy/react-native/theme';
+import { IssuerPicker } from '@canopy/oidc-session-rn/picker';
 import { useService }   from '../ServiceContext.js';
 import { useI18n }      from '../I18nProvider.js';
 import { useTasksAuth, TASKS_OIDC_DEFAULT_ISSUER } from '../auth/useTasksAuth.js';
@@ -106,16 +107,10 @@ export function PodSignInScreen() {
 
       {stage === 'idle' ? (
         <View>
-          <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm, marginBottom: SPACING.sm }}>
-            {t('mobile.sign_in.issuer_label')}
-          </Text>
-          <TextInput
+          <IssuerPicker
             value={issuer}
-            onChangeText={setIssuer}
-            autoCapitalize="none"
-            autoCorrect={false}
-            accessibilityLabel="signin-issuer-input"
-            style={_inputStyle(COLORS, SPACING, FONT_SIZES, RADII)}
+            onChange={setIssuer}
+            legendText={t('mobile.sign_in.issuer_label')}
           />
           <Pressable
             onPress={onSignIn}

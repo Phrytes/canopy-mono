@@ -20,11 +20,20 @@
  * @typedef {object} StoredRecord
  * @property {*} bytes        — payload (any value)
  * @property {string} [etag]  — opaque etag string
+ * @property {number} [_v]    — Lamport-style per-key version counter.
+ *                              Used by `PseudoPod.writeFromPeer`'s three-way
+ *                              version compare for replication-ring conflict
+ *                              resolution. Phase 52.14 (Q-D 2026-05-14).
+ *                              Backends start at `_v=0` for unknown keys and
+ *                              increment on every put unless the caller pins a
+ *                              specific version.
  *
  * @typedef {object} StorageBackend
  * @property {(key: string) => Promise<StoredRecord|null>}  get
- * @property {(key: string, bytes: *, etag?: string) => Promise<string>} put
- *           — returns the new etag.
+ * @property {(key: string, bytes: *, etag?: string, _v?: number) => Promise<{etag: string, _v: number}>} put
+ *           — returns the new `{etag, _v}`. When the caller passes `_v`,
+ *             the backend pins that version (the "accept peer's write"
+ *             case); otherwise the version increments by 1.
  * @property {(key: string) => Promise<void>}               delete
  * @property {(prefix: string) => Promise<string[]>}        list
  *           — keys with the given prefix.

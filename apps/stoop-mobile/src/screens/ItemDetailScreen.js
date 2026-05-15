@@ -284,8 +284,8 @@ export default ItemDetailScreen;
 /**
  * Resolve the post author's identifier — broadcast-mirrored items
  * (the cross-device case) carry author info under `item.source` (the
- * groupMirror writes `source.from` + `source.fromPubKey`); locally-
- * authored items carry it at the top level (`addedBy` / `from`).
+ * substrate mirror writes `source.from` + `source.fromPubKey`);
+ * locally-authored items carry it at the top level (`addedBy` / `from`).
  *
  * The chat skill resolves by stableId / webid / pubKey in order, so
  * pubKey is the most precise hint — prefer it.  Falls back through

@@ -129,6 +129,51 @@ export function createPseudoPod({
     return perUriMode.get(uri) ?? mode;
   }
 
+  /** Phase 52.14 (Q-D 2026-05-14) — event subscribers for the
+   *  conflict-resolution surface. Events:
+   *    - 'peer-update'      → inbound _v > local _v, we adopted.
+   *    - 'stale-peer'       → inbound _v < local _v, we ignored.
+   *    - 'concurrent-write' → same _v, different bytes/etag.
+   *  Apps subscribe via `pseudoPod.on(event, cb)`. Errors thrown by
+   *  subscribers are swallowed so a faulty listener can't break the
+   *  receive path.
+   *  @type {Map<string, Set<(payload: object) => void>>} */
+  const eventSubscribers = new Map();
+
+  function _emitEvent(event, payload) {
+    const subs = eventSubscribers.get(event);
+    if (!subs) return;
+    for (const cb of subs) {
+      try { cb(payload); } catch (_err) { /* swallow — substrate-internal */ }
+    }
+  }
+
+  function on(event, cb) {
+    if (typeof event !== 'string' || event.length === 0) {
+      throw Object.assign(
+        new Error('pseudo-pod.on: event must be a non-empty string'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+    if (typeof cb !== 'function') {
+      throw Object.assign(
+        new Error('pseudo-pod.on: cb must be a function'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+    let subs = eventSubscribers.get(event);
+    if (!subs) { subs = new Set(); eventSubscribers.set(event, subs); }
+    subs.add(cb);
+    return () => off(event, cb);
+  }
+
+  function off(event, cb) {
+    const subs = eventSubscribers.get(event);
+    if (!subs) return;
+    subs.delete(cb);
+    if (subs.size === 0) eventSubscribers.delete(event);
+  }
+
   const writeThroughQueue = createWriteThroughQueue({ backend });
 
   const uriPrefix = `pseudo-pod://${deviceId}/`;
@@ -185,15 +230,80 @@ export function createPseudoPod({
     return uri.startsWith(uriPrefix);
   }
 
-  async function read(uri) {
+  /**
+   * Read a resource. Cache-mode V1 (Phase 52.8) falls through to the
+   * pod on local miss.
+   *
+   * Phase 52.14 (Q-D 2026-05-14) adds an optional `freshness` opt for
+   * cache mode:
+   *   - `'cached'` (default) — return the local copy if present (fast).
+   *   - `'fresh'`            — force a pod refresh. The local etag is
+   *                            sent as `If-None-Match`; the pod
+   *                            returns `null` / a `notModified` flag
+   *                            if unchanged, or the new payload
+   *                            otherwise. Wired via `podFetcher`'s
+   *                            optional second arg `{ ifNoneMatch }`.
+   *
+   * For non-cache modes the opt is a no-op.
+   *
+   * @param {string} uri
+   * @param {object} [opts]
+   * @param {'cached'|'fresh'} [opts.freshness='cached']
+   */
+  async function read(uri, opts = {}) {
     const key = _keyForUri(uri);
+    const freshness = opts && typeof opts.freshness === 'string'
+      ? opts.freshness
+      : 'cached';
+    const effectiveMode = _modeFor(uri);
     const rec = await backend.get(key);
+
+    // Force-fresh: hit the pod with If-None-Match to check.
+    if (freshness === 'fresh' && effectiveMode === 'cache' && typeof podFetcher === 'function') {
+      try {
+        const remote = await podFetcher(uri, {
+          ...(rec && rec.etag != null ? { ifNoneMatch: rec.etag } : {}),
+        });
+        // Conditional-GET: pod says "still current" → return cached copy.
+        if (remote && (remote.notModified === true || remote.bytes === undefined)) {
+          if (rec) {
+            return {
+              uri,
+              bytes: rec.bytes,
+              ...(rec.etag != null ? { etag: rec.etag } : {}),
+              ...(typeof rec._v === 'number' ? { _v: rec._v } : {}),
+            };
+          }
+          return null;
+        }
+        if (remote && remote.bytes !== undefined) {
+          // Pin _v if we had a local copy — a pod refresh is a content
+          // update from THIS device's perspective, so bump by one.
+          await backend.put(key, remote.bytes, remote.etag);
+          const fresh = await backend.get(key);
+          return {
+            uri,
+            bytes: fresh.bytes,
+            ...(fresh.etag != null ? { etag: fresh.etag } : {}),
+            ...(typeof fresh._v === 'number' ? { _v: fresh._v } : {}),
+          };
+        }
+      } catch (_err) {
+        // Network error → fall back to whatever is cached.
+      }
+    }
+
     if (rec) {
-      return { uri, bytes: rec.bytes, ...(rec.etag != null ? { etag: rec.etag } : {}) };
+      return {
+        uri,
+        bytes: rec.bytes,
+        ...(rec.etag != null ? { etag: rec.etag } : {}),
+        ...(typeof rec._v === 'number' ? { _v: rec._v } : {}),
+      };
     }
 
     // Cache mode: fall through to the pod on local miss.
-    if (_modeFor(uri) === 'cache' && typeof podFetcher === 'function') {
+    if (effectiveMode === 'cache' && typeof podFetcher === 'function') {
       try {
         const remote = await podFetcher(uri);
         if (remote && remote.bytes !== undefined) {
@@ -215,7 +325,7 @@ export function createPseudoPod({
     // Cache writes accept https:// (the pod's own URI scheme).
     if (effectiveMode !== 'cache') _assertLocalWrite(uri);
 
-    const newEtag = await backend.put(key, bytes, etag);
+    const { etag: newEtag, _v: newV } = await backend.put(key, bytes, etag);
 
     if (effectiveMode === 'replication-ring') {
       const recipients = getPeers().filter(p => typeof p === 'string' && p.length > 0);
@@ -225,9 +335,15 @@ export function createPseudoPod({
             kind: REPLICATION_KIND,
             ref:  uri,
             etag: newEtag,
+            // Phase 52.14 (Q-D 2026-05-14) — include the Lamport
+            // counter both at the envelope top level (for the standard
+            // notify-envelope receive path) and inside the payload
+            // (for direct readers). Forward-additive: legacy peers
+            // ignore the field.
+            _v:   newV,
             ...(fromActor != null ? { fromActor } : {}),
             recipients,
-            payload: { uri, bytes, etag: newEtag },
+            payload: { uri, bytes, etag: newEtag, _v: newV },
           });
         } catch (_err) {
           // Replication is best-effort in V0. V1 will queue retries
@@ -243,23 +359,24 @@ export function createPseudoPod({
           const result = await podUploader(uri, bytes, newEtag);
           if (result && result.etag) {
             // Pod assigned its own etag — replace our local etag with theirs.
-            await backend.put(key, bytes, result.etag);
-            return { uri, etag: result.etag };
+            // Pin _v so we don't double-increment from the etag swap.
+            await backend.put(key, bytes, result.etag, newV);
+            return { uri, etag: result.etag, _v: newV };
           }
-          return { uri, etag: newEtag };
+          return { uri, etag: newEtag, _v: newV };
         } catch (_err) {
           // Upload failed → queue for retry. Caller drains on reconnect.
           await writeThroughQueue.enqueue({ uri, bytes, etag: newEtag });
-          return { uri, etag: newEtag, queued: true };
+          return { uri, etag: newEtag, _v: newV, queued: true };
         }
       } else {
         // Pod unreachable up-front → queue immediately (graceful degradation).
         await writeThroughQueue.enqueue({ uri, bytes, etag: newEtag });
-        return { uri, etag: newEtag, queued: true };
+        return { uri, etag: newEtag, _v: newV, queued: true };
       }
     }
 
-    return { uri, etag: newEtag };
+    return { uri, etag: newEtag, _v: newV };
   }
 
   async function deleteResource(uri) {
@@ -302,14 +419,92 @@ export function createPseudoPod({
    *
    * V0 trust model: identity is already verified at the transport /
    * security-layer level. No additional ACL check here.
+   *
+   * Phase 52.14 (Q-D 2026-05-14) — three-way version compare:
+   *   - inbound `_v` > local `_v`  → adopt, fire `'peer-update'`.
+   *   - inbound `_v` < local `_v`  → ignore, fire `'stale-peer'`
+   *     (carries local snapshot so caller can reply with the newer
+   *     copy via `notify-envelope.publish`).
+   *   - inbound `_v` == local `_v` + same etag → idempotent ignore.
+   *   - inbound `_v` == local `_v` + different etag → fire
+   *     `'concurrent-write'`; caller decides (default: keep local).
+   *
+   * Backwards-compat: when `_v` is undefined (legacy peer pre-Phase
+   * 52.14), we fall back to last-write-wins so old senders still work.
+   *
+   * @param {string} uri
+   * @param {*}      bytes
+   * @param {string} [etag]
+   * @param {number} [_v]    Lamport counter from the sender.
+   * @param {object} [opts]
+   * @param {string} [opts.fromActor]  Sender identity (for events).
+   * @returns {Promise<{status: 'peer-update'|'stale-peer'|'concurrent-write'|'idempotent'|'written-no-version'}>}
    */
-  async function writeFromPeer(uri, bytes, etag) {
+  async function writeFromPeer(uri, bytes, etag, _v, opts = {}) {
     const key = _keyForUri(uri);
-    // Note: we deliberately accept writes to non-local URIs here —
-    // that's the whole point of replication-ring. Each device caches
-    // peers' resources locally under their own pseudo-pod://<peer>/...
-    // namespace.
-    await backend.put(key, bytes, etag);
+    const fromActor = opts && typeof opts.fromActor === 'string' ? opts.fromActor : undefined;
+
+    // Legacy peer — no version, fall back to LWW. Lets old senders
+    // remain interoperable while we roll out the new wire shape.
+    if (typeof _v !== 'number') {
+      await backend.put(key, bytes, etag);
+      return { status: 'written-no-version' };
+    }
+
+    const local = await backend.get(key);
+
+    // First-time write or local has no version → adopt peer's write.
+    if (!local || typeof local._v !== 'number') {
+      await backend.put(key, bytes, etag, _v);
+      _emitEvent('peer-update', {
+        uri,
+        ...(fromActor != null ? { fromActor } : {}),
+        peerV: _v,
+        localV: local && typeof local._v === 'number' ? local._v : null,
+      });
+      return { status: 'peer-update' };
+    }
+
+    if (_v > local._v) {
+      await backend.put(key, bytes, etag, _v);
+      _emitEvent('peer-update', {
+        uri,
+        ...(fromActor != null ? { fromActor } : {}),
+        peerV: _v,
+        localV: local._v,
+      });
+      return { status: 'peer-update' };
+    }
+
+    if (_v < local._v) {
+      _emitEvent('stale-peer', {
+        uri,
+        ...(fromActor != null ? { fromActor } : {}),
+        peerV: _v,
+        localV: local._v,
+        localBytes: local.bytes,
+        localEtag: local.etag ?? null,
+      });
+      return { status: 'stale-peer' };
+    }
+
+    // Same _v — idempotent replay if etag matches, otherwise a real
+    // concurrent write (two devices wrote at the same logical version).
+    if (etag != null && local.etag != null && etag === local.etag) {
+      return { status: 'idempotent' };
+    }
+
+    _emitEvent('concurrent-write', {
+      uri,
+      ...(fromActor != null ? { fromActor } : {}),
+      peerV: _v,
+      localV: local._v,
+      peerBytes: bytes,
+      peerEtag: etag ?? null,
+      localBytes: local.bytes,
+      localEtag: local.etag ?? null,
+    });
+    return { status: 'concurrent-write' };
   }
 
   /**
@@ -324,7 +519,10 @@ export function createPseudoPod({
     if (!rec) return;
     try {
       const result = await podUploader(uri, rec.bytes, rec.etag);
-      if (result && result.etag) await backend.put(uri, rec.bytes, result.etag);
+      if (result && result.etag) {
+        // Pin _v so the etag swap doesn't bump the version.
+        await backend.put(uri, rec.bytes, result.etag, rec._v);
+      }
     } catch (_err) {
       // Leave the entry in the queue (or enqueue it) for later drain.
       await writeThroughQueue.enqueue({ uri, bytes: rec.bytes, etag: rec.etag });
@@ -381,9 +579,12 @@ export function createPseudoPod({
     return writeThroughQueue.drain({
       uploadFn: async (entry) => {
         const result = await podUploader(entry.uri, entry.bytes, entry.etag);
-        // Pod-assigned etag wins; update the local copy.
+        // Pod-assigned etag wins; update the local copy. Pin _v so the
+        // etag swap doesn't bump the version unnecessarily.
         if (result && result.etag) {
-          await backend.put(entry.uri, entry.bytes, result.etag);
+          const current = await backend.get(entry.uri);
+          const pinnedV = current && typeof current._v === 'number' ? current._v : undefined;
+          await backend.put(entry.uri, entry.bytes, result.etag, pinnedV);
         }
         return result;
       },
@@ -411,12 +612,35 @@ export function createPseudoPod({
    * The skill itself lives in core (`makeFetchResourceSkill`);
    * pseudo-pod just supplies the storage-backed reader.
    */
+  /**
+   * Build the `fetch-resource` skill bound to this pseudo-pod's
+   * `read`. Apps register it on their agent so peers can fetch
+   * resources from this device:
+   *
+   *   agent.skills.register(pseudoPod.fetchResourceSkill({groupCheck, capCheck}));
+   *
+   * **Phase 52.2.x (Q#2 2026-05-14) — peer-fetch gates.** Pass
+   * through `groupCheck` + `capCheck` from `@canopy/core`'s
+   * `makeFetchResourceSkill`. When neither is supplied, the skill
+   * trust-the-transport's identity gate (back-compat).
+   *
+   * @param {object} [opts]
+   * @param {(uri: string, ctx: object) => boolean|Promise<boolean>} [opts.groupCheck]
+   * @param {(uri: string, ctx: object) => boolean|Promise<boolean>} [opts.capCheck]
+   * @param {string}   [opts.id]
+   * @param {'public'|'authenticated'|'trusted'|'private'} [opts.visibility]
+   * @param {string}   [opts.description]
+   */
   function fetchResourceSkill(opts = {}) {
     return makeFetchResourceSkill({
       read: async (uri) => {
         const rec = await read(uri);
         if (!rec) return null;
-        return { bytes: rec.bytes, ...(rec.etag != null ? { etag: rec.etag } : {}) };
+        return {
+          bytes: rec.bytes,
+          ...(rec.etag != null ? { etag: rec.etag } : {}),
+          ...(typeof rec._v === 'number' ? { _v: rec._v } : {}),
+        };
       },
       ...opts,
     });
@@ -433,6 +657,10 @@ export function createPseudoPod({
     mode: modeForUri,
     setMode,
     fetchResourceSkill,
+
+    // Phase 52.14 (Q-D) — event surface for conflict resolution.
+    on,
+    off,
 
     // Cache-mode V1 surface (Phase 52.8).
     drainWriteThroughQueue,

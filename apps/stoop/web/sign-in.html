@@ -39,12 +39,33 @@
       </div>
 
       <form id="sign-in-form">
-        <label>
-          <span data-i18n="sign_in.issuer_label">Solid OIDC issuer</span>
-          <input id="issuer" type="url" required
-                 placeholder="https://solidcommunity.net"
-                 value="https://solidcommunity.net">
-        </label>
+        <!-- Issuer picker — Phase 52.15.4 (2026-05-14). Mirrors the
+             canonical shape from `getIssuerPickerHtml()` in
+             `@canopy/oidc-session`. Update both if you add/remove
+             a provider. -->
+        <fieldset class="issuer-picker">
+          <legend data-i18n="sign_in.issuer_label">Pod-aanbieder</legend>
+          <label class="issuer-picker__option">
+            <input type="radio" name="issuer-choice" value="https://login.inrupt.com" checked data-issuer-id="inrupt">
+            <span class="issuer-picker__label">Inrupt Pod Spaces</span>
+            <span class="issuer-picker__hint">login.inrupt.com</span>
+          </label>
+          <label class="issuer-picker__option">
+            <input type="radio" name="issuer-choice" value="https://solidcommunity.net" data-issuer-id="solidcommunity">
+            <span class="issuer-picker__label">SolidCommunity.net</span>
+            <span class="issuer-picker__hint">solidcommunity.net</span>
+          </label>
+          <label class="issuer-picker__option">
+            <input type="radio" name="issuer-choice" value="https://solidweb.org" data-issuer-id="solidweb">
+            <span class="issuer-picker__label">SolidWeb.org</span>
+            <span class="issuer-picker__hint">solidweb.org</span>
+          </label>
+          <label class="issuer-picker__option issuer-picker__option--custom">
+            <input type="radio" name="issuer-choice" value="custom" data-issuer-id="custom">
+            <span class="issuer-picker__label" data-i18n="sign_in.issuer_custom">Andere</span>
+            <input type="url" name="issuer-custom" id="issuer" placeholder="https://my-pod.example/" autocomplete="off">
+          </label>
+        </fieldset>
         <button type="submit" data-i18n="sign_in.submit">Aanmelden bij pod</button>
         <span id="sign-in-status" class="hint"></span>
       </form>
@@ -97,8 +118,17 @@
 
     document.getElementById('sign-in-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const issuer = document.getElementById('issuer').value.trim();
+      const form   = e.currentTarget;
+      const choice = form.elements['issuer-choice'].value;
+      const issuer = choice === 'custom'
+        ? (form.elements['issuer-custom']?.value ?? '').trim()
+        : choice;
       const status = document.getElementById('sign-in-status');
+      if (!issuer || !/^https?:\/\//i.test(issuer)) {
+        status.textContent = t('sign_in.bad_issuer',
+          'Vul een geldige https:// pod-URL in.');
+        return;
+      }
       const redirectUrl = `${location.origin}/auth-callback.html`;
       status.textContent = t('common.busy', 'Bezig…');
       try {

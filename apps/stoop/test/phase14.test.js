@@ -16,8 +16,7 @@ import {
 } from '@canopy/core';
 import { Reveals } from '@canopy/identity-resolver';
 
-import { createNeighborhoodAgent } from '../src/index.js';
-import { wireGroupBroadcastMirror } from '../src/groupMirror.js';
+import { createNeighborhoodAgent, attachSubstrateMirror } from '../src/index.js';
 
 const ANNE = 'https://id.example/anne';
 const BOB  = 'https://id.example/bob';
@@ -70,17 +69,11 @@ async function buildPair() {
   anne.agent.addPeer(bobId.pubKey, bobId.pubKey);
   bob.agent.addPeer(anneId.pubKey, anneId.pubKey);
 
-  // Wire group-broadcast mirror BEFORE skillMatch.start so the
-  // subscription handshake settles in time for the first publish.
-  // (Matches `bin/stoop-testbed.js`'s init order.)
-  await wireGroupBroadcastMirror({
-    agent: anne.agent, itemStore: anne.itemStore,
-    group: 'oosterpoort', peers: [{ pubKey: bobId.pubKey }],
-  });
-  await wireGroupBroadcastMirror({
-    agent: bob.agent, itemStore: bob.itemStore,
-    group: 'oosterpoort', peers: [{ pubKey: anneId.pubKey }],
-  });
+  // Wire substrate mirror (Phase 52.9.2 / Q-B 2026-05-14 — replaces
+  // legacy groupMirror) BEFORE skillMatch.start so the substrate
+  // subscriber is live in time for the first publish.
+  await attachSubstrateMirror(anne, { group: 'oosterpoort', peers: [{ pubKey: bobId.pubKey }] });
+  await attachSubstrateMirror(bob,  { group: 'oosterpoort', peers: [{ pubKey: anneId.pubKey }] });
 
   await anne.skillMatch.start();
   await bob.skillMatch.start();
