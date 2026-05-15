@@ -45,8 +45,30 @@ sub-sections + 5 cross-cutting library helpers. 106/106 tests green.
 | 41.13 | Bot-binding QR | ✅ |
 | 41.14 | AppState bridge + bg-fetch task | ✅ |
 | 41.15 | Sign-in (pod) + bulk sync | ✅ |
-| **41.16** | **Real-device pass + closed-beta APK** | ⏳ **Hardware pending** |
+| **41.16** | **Real-device pass + closed-beta APK** | ⏳ **Hardware pending** (parallel to Stoop's 40.23) |
 | 41.17 | Documentation + handoff | ✅ |
+
+## Phase 52.x substrate adoption (2026-05-15)
+
+Tasks-mobile inherits the substrate-side restructure (Phase 52.x)
+through the **platform-shell exception** — `buildMeshAgent` from
+`@canopy-app/tasks-v0` wires the substrate primitives once for both
+shells, so mobile picks them up without app-side glue:
+
+| Phase | Surface | Adopted via |
+|---|---|---|
+| 52.1  | `item-types/note` + `task` canonical schemas | desktop barrel (`buildMeshAgent`) |
+| 52.9.3 | Tasks substrate-mirror (cross-device task fan-out) | desktop `Crew.js` → `wireTasksSubstrateMirror` |
+| 52.10 | agent-registry per-bundle | desktop `MeshAgent` (`buildMeshAgent`) |
+| 52.14 | Q-D Lamport `_v` stale-peer auto-heal | desktop `Crew.js` |
+| 52.15 | Multi-issuer auth substrate (RN flavour) | `src/auth/useTasksAuth.js` → `useOidcSignIn` from `@canopy/oidc-session-rn/hook` |
+| 52.15.5 | `<IssuerPicker>` in PodSignInScreen | `src/screens/PodSignInScreen.jsx` |
+| 52.16 | ACP/WAC sharing v2 (`client.sharing.*`) | desktop barrel (no mobile-only sharing flows in V1) |
+
+No mobile-specific changes are required for 52.9.3 / 52.10 / 52.14 —
+they're all process-wide primitives that ride on the desktop's
+`buildMeshAgent`. The mobile-specific Phase 52 work is 52.15 (the RN
+OIDC hook) + 52.15.5 (the picker component), both shipped.
 
 ## Substrates
 
