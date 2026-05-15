@@ -94,7 +94,7 @@ import { mountLocalUi }     from '@canopy/agent-ui';
 const bundle = await createTasksAgent({
   roles: {
     'https://id.example/anne':  'admin',
-    'https://id.example/frits': 'coordinator',
+    'https://id.example/bob':   'coordinator',
     'https://id.example/kid':   'member',
   },
   members: [
@@ -206,12 +206,12 @@ cat > household.json <<'EOF'
 {
   "roles":   {
     "https://id.example/anne":  "admin",
-    "https://id.example/frits": "coordinator",
+    "https://id.example/bob":   "coordinator",
     "https://id.example/kid":   "member"
   },
   "members": [
     {"webid": "https://id.example/anne",  "displayName": "Anne",  "role": "admin"},
-    {"webid": "https://id.example/frits", "displayName": "the author", "role": "coordinator"},
+    {"webid": "https://id.example/bob",   "displayName": "Bob",   "role": "coordinator"},
     {"webid": "https://id.example/kid",   "displayName": "Kid",   "role": "member"}
   ]
 }
@@ -226,7 +226,7 @@ cat > oss-tools.crew.json <<'EOF'
   "kind":   "project",
   "members": [
     {"webid": "https://id.example/anne",  "displayName": "Anne",  "role": "admin"},
-    {"webid": "https://id.example/frits", "displayName": "the author", "role": "coordinator"},
+    {"webid": "https://id.example/bob",   "displayName": "Bob",   "role": "coordinator"},
     {"webid": "https://id.example/kid",   "displayName": "Kid",   "role": "member"}
   ],
   "subtasksAdminApprovalDepth": 4,

@@ -448,7 +448,7 @@ text-rendered tool-shaped output.
 
 **✓ Real tool call (good):**
 ```
-[user the author] wat staat er op boodschappen
+[user anne] wat staat er op boodschappen
 [tool] showList(boodschappen) → 3 item(s)
 [reply chatId=…] 📋 boodschappen: …
 ```
@@ -458,7 +458,7 @@ buttons are listed under the reply.
 
 **✗ Faked tool call — text-rendered list (bad):**
 ```
-[user the author] wat staat er op boodschappen
+[user anne] wat staat er op boodschappen
 [reply chatId=…] 📋 boodschappen:
                   • melk
                   • brood
@@ -475,7 +475,7 @@ deterministic intent-router before the LLM.
 
 **✗ Tool call as text in reply (also bad):**
 ```
-[user the author] wat staat er op boodschappen
+[user anne] wat staat er op boodschappen
 [reply chatId=…] showList("boodschappen")
 ```
 or

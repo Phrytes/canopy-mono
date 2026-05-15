@@ -48,11 +48,11 @@ const shopping = await store.listOpen({ type: 'shopping' });
 // Mark complete by fuzzy match (chat UX) — silent skip if no match
 await store.markComplete(
   [{ match: 'brood' }, { match: 'melk' }],
-  { actor: fritsWebid },
+  { actor: bobWebid },
 );
 
 // Or by id (explicit)
-await store.markComplete([{ id: items[0].id }], { actor: fritsWebid });
+await store.markComplete([{ id: items[0].id }], { actor: bobWebid });
 
 // Audit log
 const log = await store.auditLog({ itemId: items[0].id });
@@ -97,7 +97,7 @@ const [task] = await store.addItems(
 );
 
 // Claim with compare-and-swap
-const result = await store.claim(task.id, { actor: fritsWebid });
+const result = await store.claim(task.id, { actor: bobWebid });
 if (result.error === 'already-claimed') {
   console.log('Lost race; current assignee:', result.current.assignee);
 }

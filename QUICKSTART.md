@@ -44,8 +44,8 @@ bob.register('greet', async ({ parts, from }) => {
 
 // Alice introduces herself, then calls Bob's skill.
 await alice.hello(bob.address);
-const reply = await alice.invoke(bob.address, 'greet', [TextPart('the author')]);
-console.log(Parts.text(reply));    // → "Hello, the author! (you are …)"
+const reply = await alice.invoke(bob.address, 'greet', [TextPart('world')]);
+console.log(Parts.text(reply));    // → "Hello, world! (you are …)"
 ```
 
 Run with `node quickstart-pair.js` after `npm install
@@ -99,7 +99,7 @@ await agent.start();
 console.log('my pubkey:', identity.pubKey);
 
 // To call another peer once you know its pubkey:
-//   const reply = await agent.invoke(otherPubKey, 'greet', [TextPart('the author')]);
+//   const reply = await agent.invoke(otherPubKey, 'greet', [TextPart('world')]);
 //   console.log(Parts.text(reply));
 ```
 
@@ -301,7 +301,7 @@ curl -X POST http://localhost:8080/tasks/send \
      -H 'Content-Type: application/json' \
      -d '{
        "skillId": "greet",
-       "parts": [{ "kind": "text", "text": "the author" }]
+       "parts": [{ "kind": "text", "text": "world" }]
      }'
 
 # Stream skill output (SSE):
