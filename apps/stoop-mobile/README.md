@@ -80,11 +80,22 @@ every key the screens reference; pure-helper coverage on every lib
 module; the JSX components themselves are render-tested in
 spirit-only since vitest doesn't run a JSX-in-`.js` transform here.
 
-## Real-device runbook (Phase 40.23 — TODO)
+## Real-device runbook (Phase 40.23 — hardware-dependent)
 
-Phase 40.23 is yours to run. The wiring all lands; what's left is
-to walk every journey on a connected Android, capture battery /
-push / background-fetch numbers, and produce a closed-beta APK.
+Phase 40.23 is yours to run. The wiring all lands (including the
+V4 C-track shipped 2026-05-14 — storage-policy picker, embed-ref
+slot, My-Solid-pods section); what's left is to walk every
+journey on a connected Android, capture battery / push /
+background-fetch numbers, and produce a closed-beta APK.
+
+**Structured checklist:** [`docs/phase-40-23-checklist.md`](docs/phase-40-23-checklist.md)
+— tick-off list for J1-J9 + V4 C-track checks + APK build.
+
+**Battery measurement template:** [`docs/battery.md`](docs/battery.md)
+— scenarios A/B/C + push latency capture.
+
+Use the runbook below for context; the checklist above is the
+authoritative sequence to follow on the device.
 
 ### Prerequisites
 
