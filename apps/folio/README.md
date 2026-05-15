@@ -109,21 +109,24 @@ Folio's authentication surface is touched by two ongoing tracks:
    Folio-mobile is unchanged behaviourally; its `src/auth/{OidcSessionRN,
    folioAuth, dcr}.js` are now thin re-export shims around the
    substrate.
-2. **Desktop (`apps/folio`, this app)** still uses
-   `@inrupt/solid-client-authn-node` directly via its own
-   [`src/auth/OidcSession.js`](src/auth/OidcSession.js). When the
-   Inrupt-cleanup TODO
-   ([`Project Files/TODO-GENERAL.md`](../../Project%20Files/TODO-GENERAL.md))
-   extracts a single shared "sign in / share via Inrupt"
-   component across Stoop V1 / Folio / Folio-mobile / Tasks V1 /
-   Stoop V3, this desktop OIDC surface migrates with the rest. The
-   `@canopy/oidc-session-rn` substrate is the V3-mobile entry
-   point for that migration; once cleanup lands the desktop will
-   have its parallel substrate, and the two converge.
+2. **Desktop (`apps/folio`, this app)** uses
+   [`@canopy/oidc-session`](../../packages/oidc-session/)'s
+   `createSolidAuthNode({vault, clientName})` factory (Phase 52.15.2
+   substrate promotion, 2026-05-14 — replaced the lifted-out
+   `src/auth/OidcSession.js` wrapper). Multi-issuer support
+   (Inrupt + solidcommunity.net + solidweb.org + custom URL) lands
+   via the `KNOWN_ISSUERS` / `getIssuerPickerHtml()` exports + the
+   updated sign-in modal. **Sharing v2 (Phase 52.16, ACP/WAC) is
+   implemented** via `createClientSharing` from
+   `@canopy/pod-client/sharing` in `src/autoShare.js`; ACP grant
+   is attempted first with cap-token fallback on non-ACP pods
+   (regression tests at `test/autoShare.acp.test.js`).
 
-**Action when:** wait for the Inrupt-cleanup decisions in
-TODO-GENERAL. No Folio-side action required ahead of that — the
-mobile substrate extraction did not change Folio's behaviour.
+**Adoption status (2026-05-15):** Phases 52.15 + 52.16 complete.
+Phase 52.10 agent-registry and Phase 52.14 stale-peer subscription
+remain deferred to Folio V2 (need sync-engine → pseudoPod V1
+absorption first). 463/463 desktop tests + 79/79 mobile tests
+green.
 
 ## Settings layout
 

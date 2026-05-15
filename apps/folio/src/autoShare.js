@@ -230,10 +230,54 @@ export async function mintShareToken(identity, { webid, sharePath, podRoot, shar
     webid,
     sharePath,
     podUri:    sharePodUri,
+    mode:      'cap-token',
     issuer:    json.issuer,
     token:     json,
     issuedAt:  json.issuedAt,
     expiresAt: json.expiresAt,
+  };
+}
+
+/**
+ * Phase 52.16.5 (2026-05-14) — mint an ACP grant for `webid` on the
+ * share folder. Used by `ensureShares` when the pod supports ACP and
+ * a `podClient` with `.sharing` is supplied.
+ *
+ * The resulting record has `mode: 'acp'` (or `'wac'`) and no
+ * `token` / `expiresAt` — ACP grants don't expire automatically. The
+ * `issuer` field carries the current identity's pubKey so
+ * `shouldRenew` can detect identity rotation (force a re-grant after
+ * a key change so the new identity is the one writing the ACR).
+ *
+ * @param {object} podClient    — PodClient with `.sharing` (Phase 52.16.1)
+ * @param {string} currentPubKey
+ * @param {object} args
+ * @param {string} args.webid
+ * @param {string} args.sharePath
+ * @param {string} args.sharePodUri  — pod URI of the share folder (trailing `/`)
+ * @returns {Promise<ShareRecord>}
+ */
+export async function mintShareViaAcp(podClient, currentPubKey, { webid, sharePath, sharePodUri }) {
+  if (!podClient?.sharing) {
+    throw new Error('mintShareViaAcp: podClient must expose .sharing');
+  }
+  const grant = await podClient.sharing.grant({
+    containerUri: sharePodUri,
+    agent:        webid,
+    modes:        ['read', 'write'],
+  });
+  return {
+    webid,
+    sharePath,
+    podUri:    sharePodUri,
+    mode:      grant.mode,    // 'acp' | 'wac'
+    issuer:    currentPubKey, // for rotation detection in shouldRenew
+    grant:     {
+      targetUri: grant.targetUri,
+      agent:     grant.agent,
+      modes:     grant.modes,
+    },
+    issuedAt:  Date.now(),
   };
 }
 
@@ -251,6 +295,12 @@ export async function mintShareToken(identity, { webid, sharePath, podRoot, shar
  */
 export function shouldRenew(record, currentPubKey, now = Date.now()) {
   if (!record) return true;
+  // Phase 52.16.5 — ACP grants don't carry an expiry. Renew on
+  // identity rotation only; the grant lives on the pod until
+  // someone (the user or admin) revokes it.
+  if (record.mode === 'acp' || record.mode === 'wac') {
+    return record.issuer !== currentPubKey;
+  }
   if (typeof record.expiresAt !== 'number') return true;
   if (record.expiresAt - now <= SHARE_RENEW_WINDOW_MS) return true;
   if (record.issuer !== currentPubKey) return true;
@@ -335,14 +385,38 @@ export async function ensureShares(engine, identity, opts = {}) {
   }
   const fs = opts.fs ?? engine.fs ?? fsNode;
 
+  // Phase 52.16.5 (2026-05-14) — when a `podClient` with `.sharing` is
+  // supplied AND the pod supports ACP/WAC, prefer ACP grants. Falls
+  // back to cap-token issuance per-folder if the grant call fails
+  // (e.g. probe says unsupported, network glitch).
+  const podClient = opts.podClient ?? engine.podClient ?? null;
+
   const { localRoot, podRoot, pathMap } = engine;
   const shares = await loadShares(localRoot, { fs });
   const { folders, errors } = await findShareFolders(localRoot, { fs });
 
   let minted  = 0;
   let renewed = 0;
+  let acpMinted = 0;
+  let capTokenMinted = 0;
   const seenKeys = new Set();
   let mutated = false;
+
+  // Probe pod sharing capabilities once. If `podClient` is absent or
+  // the probe says no support, every folder gets cap-token.
+  let canUseAcp = false;
+  if (podClient?.sharing && folders.length > 0) {
+    try {
+      const caps = await podClient.sharing.capabilities({ containerUri: podRoot });
+      canUseAcp = caps.acp || caps.wac;
+    } catch (err) {
+      errors.push({
+        name:    podRoot,
+        code:    'AUTO_SHARE_PROBE_FAILED',
+        message: `capabilities probe failed: ${err.message}`,
+      });
+    }
+  }
 
   for (const f of folders) {
     const key      = shareKey(f.webid, f.sharePath);
@@ -371,21 +445,42 @@ export async function ensureShares(engine, identity, opts = {}) {
     }
     if (!sharePodUri.endsWith('/')) sharePodUri = `${sharePodUri}/`;
 
-    let record;
-    try {
-      record = await mintShareToken(identity, {
-        webid:       f.webid,
-        sharePath:   f.sharePath,
-        podRoot,
-        sharePodUri,
-      });
-    } catch (err) {
-      errors.push({
-        name:    f.sharePath,
-        code:    'AUTO_SHARE_MINT_FAILED',
-        message: err.message,
-      });
-      continue;
+    let record = null;
+    // Phase 52.16.5 — ACP path first when available.
+    if (canUseAcp) {
+      try {
+        record = await mintShareViaAcp(podClient, identity.pubKey, {
+          webid:       f.webid,
+          sharePath:   f.sharePath,
+          sharePodUri,
+        });
+        acpMinted++;
+      } catch (err) {
+        errors.push({
+          name:    f.sharePath,
+          code:    'AUTO_SHARE_ACP_FAILED',
+          message: `ACP grant failed; falling back to cap-token: ${err.message}`,
+        });
+        // Fall through to cap-token path.
+      }
+    }
+    if (!record) {
+      try {
+        record = await mintShareToken(identity, {
+          webid:       f.webid,
+          sharePath:   f.sharePath,
+          podRoot,
+          sharePodUri,
+        });
+        capTokenMinted++;
+      } catch (err) {
+        errors.push({
+          name:    f.sharePath,
+          code:    'AUTO_SHARE_MINT_FAILED',
+          message: err.message,
+        });
+        continue;
+      }
     }
 
     if (existing) renewed++; else minted++;
@@ -397,7 +492,7 @@ export async function ensureShares(engine, identity, opts = {}) {
     await saveShares(localRoot, shares, { fs });
   }
 
-  return { shares, minted, renewed, errors };
+  return { shares, minted, renewed, acpMinted, capTokenMinted, errors };
 }
 
 /**

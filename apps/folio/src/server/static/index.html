@@ -49,18 +49,33 @@
       <h2>Sign in to your Solid pod</h2>
       <p>Pick your identity provider, or paste a custom one.</p>
       <form id="auth-issuer-form">
-        <label>
-          <input type="radio" name="issuer-choice" value="https://solidcommunity.net" checked>
-          solidcommunity.net
-        </label>
-        <label>
-          <input type="radio" name="issuer-choice" value="https://login.inrupt.com">
-          inrupt.com (login.inrupt.com)
-        </label>
-        <label>
-          <input type="radio" name="issuer-choice" value="custom">
-          Custom: <input type="url" id="auth-issuer-custom" placeholder="https://my-pod.example/" autocomplete="off">
-        </label>
+        <!-- Issuer picker — Phase 52.15.4 (2026-05-14). Mirrors the
+             canonical shape from `getIssuerPickerHtml()` in
+             `@canopy/oidc-session`. Update both if you add/remove
+             a provider. -->
+        <fieldset class="issuer-picker">
+          <legend>Pod provider</legend>
+          <label class="issuer-picker__option">
+            <input type="radio" name="issuer-choice" value="https://login.inrupt.com" checked data-issuer-id="inrupt">
+            <span class="issuer-picker__label">Inrupt Pod Spaces</span>
+            <span class="issuer-picker__hint">login.inrupt.com</span>
+          </label>
+          <label class="issuer-picker__option">
+            <input type="radio" name="issuer-choice" value="https://solidcommunity.net" data-issuer-id="solidcommunity">
+            <span class="issuer-picker__label">SolidCommunity.net</span>
+            <span class="issuer-picker__hint">solidcommunity.net</span>
+          </label>
+          <label class="issuer-picker__option">
+            <input type="radio" name="issuer-choice" value="https://solidweb.org" data-issuer-id="solidweb">
+            <span class="issuer-picker__label">SolidWeb.org</span>
+            <span class="issuer-picker__hint">solidweb.org</span>
+          </label>
+          <label class="issuer-picker__option issuer-picker__option--custom">
+            <input type="radio" name="issuer-choice" value="custom" data-issuer-id="custom">
+            <span class="issuer-picker__label">Custom URL</span>
+            <input type="url" name="issuer-custom" id="auth-issuer-custom" placeholder="https://my-pod.example/" autocomplete="off">
+          </label>
+        </fieldset>
         <div class="actions">
           <button type="submit" class="btn btn--primary">Continue</button>
           <button type="button" id="auth-cancel-btn" class="btn btn--ghost">Cancel</button>

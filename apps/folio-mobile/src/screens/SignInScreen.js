@@ -16,6 +16,7 @@ import {
 
 import { useFolioAuth }            from '../auth/folioAuthHook.js';
 import { DEFAULT_INRUPT_ISSUER }   from '../auth/folioAuth.js';
+import { IssuerPicker }            from '@canopy/oidc-session-rn/picker';
 import { useService } from '../ServiceContext.js';
 import { suggestPodRoot, normalizePodRoot, discoverPodRoot } from '../lib/podRootHelpers.js';
 
@@ -63,7 +64,7 @@ function combinePodRoot(base, folder) {
   return cleanFolder.length === 0 ? cleanBase + '/' : `${cleanBase}/${cleanFolder}/`;
 }
 
-export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
+export function SignInScreen({ issuer: initialIssuer = DEFAULT_INRUPT_ISSUER } = {}) {
   const { adoptTokens, status } = useService();
   const [stage, setStage]       = useState('idle');     // idle | signing-in | got-tokens | configuring
   const [busy, setBusy]         = useState(false);
@@ -71,6 +72,8 @@ export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
   const [pendingTokens, setPendingTokens] = useState(null);
   const [podBaseInput, setPodBaseInput]   = useState('');
   const [podFolderInput, setPodFolderInput] = useState(DEFAULT_POD_FOLDER);
+  // Phase 52.15.5 (2026-05-14) — issuer is now user-selectable.
+  const [issuer, setIssuer]     = useState(initialIssuer);
 
   const { ready, signIn, resetClient, lastError } = useFolioAuth({ issuer });
 
@@ -128,6 +131,8 @@ export function SignInScreen({ issuer = DEFAULT_INRUPT_ISSUER } = {}) {
 
         {stage !== 'got-tokens' && (
           <View style={s.section}>
+            <IssuerPicker value={issuer} onChange={setIssuer} />
+            <View style={{ height: 16 }} />
             <Pressable
               onPress={onSignInPress}
               disabled={!ready || busy}

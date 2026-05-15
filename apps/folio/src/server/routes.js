@@ -438,12 +438,19 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
   });
 
   // ── /share ────────────────────────────────────────────────────────────────
+  // Phase 52.16.3 (2026-05-14) — `mode` param:
+  //   'auto' (default): probe pod capabilities; ACP-mediated grant if
+  //                     supported, otherwise fall back to cap-token.
+  //   'acp':            force ACP/WAC grant via podClient.sharing.grant.
+  //                     Errors if pod doesn't support ACP or WAC.
+  //   'cap-token':      force PodCapabilityToken issuance (legacy).
   router.post('/share', async (req, res) => {
     const body = req.body ?? {};
     const webid    = body.webid;
     const scopes   = body.scopes;
     const expiresIn = body.expiresIn;
     const path     = body.path;
+    const mode     = body.mode ?? 'auto';
 
     if (typeof webid !== 'string' || webid.length === 0) {
       return sendError(res, 400, 'BAD_REQUEST', 'body.webid is required');
@@ -454,7 +461,37 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
     if (expiresIn !== undefined && (typeof expiresIn !== 'number' || expiresIn <= 0)) {
       return sendError(res, 400, 'BAD_REQUEST', 'body.expiresIn must be a positive number of milliseconds');
     }
+    if (!['auto', 'acp', 'cap-token'].includes(mode)) {
+      return sendError(res, 400, 'BAD_REQUEST',
+        `body.mode must be 'auto' | 'acp' | 'cap-token' (got "${mode}")`);
+    }
 
+    const podRoot = engine.podRoot;
+
+    // Try ACP first when requested. The `auto` path falls through to
+    // cap-token on any failure; `acp` surfaces the failure to the
+    // caller.
+    if (mode === 'acp' || mode === 'auto') {
+      const acpResult = await _tryAcpGrant({
+        podClient, podRoot, webid, scopes, path,
+      });
+      if (acpResult.ok) {
+        return res.json({
+          mode:  acpResult.acpMode,    // 'acp' | 'wac'
+          grant: acpResult.grant,
+        });
+      }
+      if (mode === 'acp') {
+        // 422 = pod can't satisfy the request (no sharing surface).
+        // 500 = something else broke (Inrupt SDK error, etc).
+        const status = (acpResult.code === 'SHARING_NOT_SUPPORTED'
+                     || acpResult.code === 'SHARING_UNAVAILABLE') ? 422 : 500;
+        return sendError(res, status, acpResult.code, acpResult.message);
+      }
+      // mode === 'auto' → fall through to cap-token.
+    }
+
+    // Cap-token path (legacy default).
     let id = identity;
     if (!id) {
       try {
@@ -464,9 +501,6 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
       }
     }
 
-    // Translate scope strings.  Accept either fully-qualified scope strings
-    // ("pod.read:/some/path") or short forms ("read", "write", "delete", "*").
-    const podRoot = engine.podRoot;
     let scopeStrings;
     try {
       scopeStrings = scopes.map((s) => normalizeScope(s, path));
@@ -481,7 +515,7 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
         scopes:    scopeStrings,
         expiresIn: expiresIn ?? 3_600_000,
       });
-      res.json({ token: token.toJSON() });
+      res.json({ mode: 'cap-token', token: token.toJSON() });
     } catch (err) {
       sendError(res, 500, 'ISSUE_FAILED', err?.message ?? String(err));
     }
@@ -891,4 +925,83 @@ function normalizeScope(scope, path) {
   const p = typeof path === 'string' && path.length > 0 ? path : '/';
   const normalized = p.startsWith('/') ? p : `/${p}`;
   return `pod.${verb}:${normalized}`;
+}
+
+/**
+ * Phase 52.16.3 (2026-05-14) — try the ACP/WAC grant path.
+ *
+ * Returns `{ok: true, acpMode: 'acp'|'wac', grant}` on success;
+ * `{ok: false, code, message}` on failure (so the caller can branch
+ * between "fall back to cap-token" and "surface the error").
+ *
+ * Requires `podClient.sharing` — present only when the server was
+ * booted with a SolidOidcAuth-backed podClient (i.e. the user signed
+ * in via the browser flow). Mock pods don't have it.
+ */
+async function _tryAcpGrant({ podClient, podRoot, webid, scopes, path }) {
+  if (!podClient || typeof podClient.sharing !== 'object') {
+    return {
+      ok: false,
+      code: 'SHARING_UNAVAILABLE',
+      message: 'pod client does not expose .sharing — sign in via /auth/login first',
+    };
+  }
+
+  // Derive the ACP modes from the cap-token-style scope verbs. The
+  // mapping is one-to-one for the standard four; '*' becomes
+  // 'control' (full grant).
+  const modesSet = new Set();
+  for (const s of scopes) {
+    let verb;
+    if (typeof s === 'string' && s.startsWith('pod.')) {
+      // 'pod.read:/x' → 'read'
+      verb = s.slice(4).split(':')[0];
+    } else if (typeof s === 'string') {
+      verb = s;
+    } else {
+      return { ok: false, code: 'BAD_REQUEST', message: `unsupported scope shape: ${JSON.stringify(s)}` };
+    }
+    switch (verb) {
+      case 'read':   modesSet.add('read'); break;
+      case 'write':  modesSet.add('write'); break;
+      case 'delete': modesSet.add('write'); break;   // delete needs write in ACP
+      case 'append': modesSet.add('append'); break;
+      case '*':      modesSet.add('control'); break;
+      default:
+        return { ok: false, code: 'BAD_REQUEST', message: `unknown scope verb "${verb}"` };
+    }
+  }
+  const modes = [...modesSet];
+
+  // Compute the target URI. `path` may be empty (= pod root), a
+  // relative path, or an absolute URI under podRoot.
+  let targetUri;
+  if (typeof path === 'string' && path.startsWith('http')) {
+    targetUri = path;
+  } else {
+    const rel = (path ?? '').replace(/^\/+/, '');
+    const root = podRoot.endsWith('/') ? podRoot : `${podRoot}/`;
+    targetUri = rel.length === 0 ? root : `${root}${rel}`;
+  }
+  const isContainer = targetUri.endsWith('/');
+  const targetField = isContainer ? { containerUri: targetUri } : { resourceUri: targetUri };
+
+  try {
+    const grant = await podClient.sharing.grant({
+      ...targetField,
+      agent: webid,
+      modes,
+    });
+    return {
+      ok: true,
+      acpMode: grant.mode,     // 'acp' or 'wac'
+      grant,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      code: err?.code ?? 'SHARING_GRANT_FAILED',
+      message: err?.message ?? String(err),
+    };
+  }
 }
