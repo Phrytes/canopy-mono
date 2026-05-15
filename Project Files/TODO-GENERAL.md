@@ -91,6 +91,38 @@
 
 ---
 
+## 🟡 MEDIUM — Full-suite test sweep failures (2026-05-15)
+
+> Ran `vitest run` across all 43 packages/apps after the
+> `nkn-test` → `canopy-mono` directory rename + workspace reinstall.
+> **37/43 green; ~7,000 tests pass** (core 1314, stoop 500, folio 463,
+> pod-client 188, identity-resolver 75, …). The 6 below are **all
+> pre-existing and rename-independent** — the directory move uses
+> relative symlinks and the `@decwebag` → `@canopy` change was string
+> substitution; neither can produce a parser error, a missing-dep
+> manifest, or an assertion mismatch. Verified the failing
+> `react-native` suite runs the *same* rollup 4.60.1 / vitest 2.1.9 as
+> the passing `core` suite, so it is not a reinstall version-skew
+> artifact. Logged here so they aren't lost; none block the rename fix.
+
+| Area | Symptom | Diagnosis | Fix size |
+|---|---|---|---|
+| **`apps/presence-v0`** | `src/HomeAgent.js` imports `@canopy/core`, but `package.json` declares only `@canopy/item-store`. Suite reports "no tests" because the lone source file fails to import. | Manifest bug in an old, low-traffic app — would have failed pre-rename too (as `@decwebag/core`). | One line: add `"@canopy/core": "file:../../packages/core"` to `dependencies`, then `npm install --prefix apps/presence-v0`. |
+| **`packages/react-native`** | 232/232 tests pass; `test/BleTransport.test.js` + `test/MdnsTransport.test.js` fail to **parse**: `Error: Expected 'from', got 'typeOf'` (rollup `parseAst` during SSR transform). | A transitively-imported module carries syntax the rollup native parser rejects. `typeOf` token is not in `packages/react-native/src/`, so it's in an imported dependency/fixture. Pre-existing (test files last touched in `7b1cc75`, pre-rename). | Investigate the import graph of those two test files; ~0.5 day. |
+| **`apps/tasks-v0`** | 470/470 tests pass; `test/v2_1-calendar-emission.test.js` fails to **parse**: `Error: 'const' declarations must be initialized`. | Syntax error in that one test file (or a module it imports). Committed in `c796ee4` (`land V0.2.0 → V0.3.7`), pre-rename. | Locate the uninitialised `const`; ~0.5–1 hr. |
+| **`apps/household`** | 463/465 pass. Two real assertion failures: (a) `test/bridges/TelegramBridge.test.js` — `inline_keyboard` built one level too shallow (`[ … ]` vs expected `[ [ … ] ]`); (b) `test/e2e/llm-roundtrip.test.js` "LLM picking a non-existent tool → polite message" → `TypeError: Cannot read properties of undefined (reading 'text')`. | App logic / test drift, unrelated to packaging. | (a) ~0.5 hr keyboard-shape fix; (b) needs a null-guard on the LLM fallback path, ~1–2 hr. |
+| **`apps/stoop-mobile`** | 902/908 pass. All 6 failures in `test/feedFilter.test.js`: `matchesFilter` returns `false` where `true` expected; `filterFeed` returns `[]` instead of `['1','3']`. | Logic regression or test drift in one filter module, unrelated to packaging. | Single-module bug; ~1–2 hr. |
+| **`apps/sdk-smoke`** | `vitest run` exits 1 — **no test files exist**. | Not a real failure; vitest's exit-code convention for an empty match. | Cosmetic: add a smoke test or set `passWithNoTests` in its vitest config; ~10 min. |
+
+**Suggested order if/when picked up:** `presence-v0` (trivial, unblocks
+that app's suite) → `apps/sdk-smoke` (cosmetic) → `tasks-v0` parse
+error → `household` ×2 → `stoop-mobile` feedFilter ×6 →
+`react-native` parse error (deepest — import-graph spelunking). None
+are on the critical path; the substrate priority queue above takes
+precedence.
+
+---
+
 ## 🟡 MEDIUM — Stoop open questions (next-session pickup) (2026-05-12, refreshed 2026-05-14)
 
 **Live state** (see [`Stoop/open-questions-2026-05-12.md`](./Stoop/open-questions-2026-05-12.md)
