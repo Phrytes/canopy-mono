@@ -91,35 +91,35 @@
 
 ---
 
-## 🟡 MEDIUM — Full-suite test sweep failures (2026-05-15)
+## ✅ RESOLVED — Full-suite test sweep failures (2026-05-15)
 
 > Ran `vitest run` across all 43 packages/apps after the
-> `nkn-test` → `canopy-mono` directory rename + workspace reinstall.
-> **37/43 green; ~7,000 tests pass** (core 1314, stoop 500, folio 463,
-> pod-client 188, identity-resolver 75, …). The 6 below are **all
-> pre-existing and rename-independent** — the directory move uses
-> relative symlinks and the `@decwebag` → `@canopy` change was string
-> substitution; neither can produce a parser error, a missing-dep
-> manifest, or an assertion mismatch. Verified the failing
-> `react-native` suite runs the *same* rollup 4.60.1 / vitest 2.1.9 as
-> the passing `core` suite, so it is not a reinstall version-skew
-> artifact. Logged here so they aren't lost; none block the rename fix.
+> `nkn-test` → `canopy-mono` rename + reinstall. Initial sweep: 37/43
+> green. All 7 failures (6 initially + 1 flake surfaced during
+> verification) were **pre-existing and rename-independent** — the
+> directory move uses relative symlinks and the `@decwebag` → `@canopy`
+> change was string substitution. **All fixed same session; full sweep
+> now green (~7,300 tests).**
 
-| Area | Symptom | Diagnosis | Fix size |
-|---|---|---|---|
-| **`apps/presence-v0`** | `src/HomeAgent.js` imports `@canopy/core`, but `package.json` declares only `@canopy/item-store`. Suite reports "no tests" because the lone source file fails to import. | Manifest bug in an old, low-traffic app — would have failed pre-rename too (as `@decwebag/core`). | One line: add `"@canopy/core": "file:../../packages/core"` to `dependencies`, then `npm install --prefix apps/presence-v0`. |
-| **`packages/react-native`** | 232/232 tests pass; `test/BleTransport.test.js` + `test/MdnsTransport.test.js` fail to **parse**: `Error: Expected 'from', got 'typeOf'` (rollup `parseAst` during SSR transform). | A transitively-imported module carries syntax the rollup native parser rejects. `typeOf` token is not in `packages/react-native/src/`, so it's in an imported dependency/fixture. Pre-existing (test files last touched in `7b1cc75`, pre-rename). | Investigate the import graph of those two test files; ~0.5 day. |
-| **`apps/tasks-v0`** | 470/470 tests pass; `test/v2_1-calendar-emission.test.js` fails to **parse**: `Error: 'const' declarations must be initialized`. | Syntax error in that one test file (or a module it imports). Committed in `c796ee4` (`land V0.2.0 → V0.3.7`), pre-rename. | Locate the uninitialised `const`; ~0.5–1 hr. |
-| **`apps/household`** | 463/465 pass. Two real assertion failures: (a) `test/bridges/TelegramBridge.test.js` — `inline_keyboard` built one level too shallow (`[ … ]` vs expected `[ [ … ] ]`); (b) `test/e2e/llm-roundtrip.test.js` "LLM picking a non-existent tool → polite message" → `TypeError: Cannot read properties of undefined (reading 'text')`. | App logic / test drift, unrelated to packaging. | (a) ~0.5 hr keyboard-shape fix; (b) needs a null-guard on the LLM fallback path, ~1–2 hr. |
-| **`apps/stoop-mobile`** | 902/908 pass. All 6 failures in `test/feedFilter.test.js`: `matchesFilter` returns `false` where `true` expected; `filterFeed` returns `[]` instead of `['1','3']`. | Logic regression or test drift in one filter module, unrelated to packaging. | Single-module bug; ~1–2 hr. |
-| **`apps/sdk-smoke`** | `vitest run` exits 1 — **no test files exist**. | Not a real failure; vitest's exit-code convention for an empty match. | Cosmetic: add a smoke test or set `passWithNoTests` in its vitest config; ~10 min. |
+| Area | Root cause | Fix |
+|---|---|---|
+| **`apps/presence-v0`** | `package.json` declared only `@canopy/item-store`; `HomeAgent.js` also imports `@canopy/core`. Old manifest bug. | Added the `@canopy/core` `file:` dep + reinstalled. 11/11. |
+| **`apps/sdk-smoke`** | Manual two-device Expo harness, no unit tests; `vitest run` exits 1 on no-match. | `--passWithNoTests` on the `test` script **and** a `vitest.config.js` with `passWithNoTests:true` (so a bare `vitest run` sweep is green too). |
+| **`apps/tasks-v0`** | `test/v2_1-calendar-emission.test.js` had identifier `onthe author` — the 2026-05-15 `Frits → the author` history scrub corrupted the JS identifier `onFrits` (space → invalid syntax). | Renamed → `onAuthor`. Repo-wide grep confirmed it was the only space-injected identifier in code (rest were prose). 481/481. |
+| **`apps/stoop-mobile`** | `feedFilter.test.js` stale vs the **deliberate** Phase 52.7.2 canonical-types clean break (whitelist now `{offer,request,claim,announcement,report}`); test still asserted pre-migration `kind:vraag/aanbod`. | Updated fixtures to canonical `type` (keeping `kind` for the kinds-filter) + the post-types test to the canonical whitelist, per the documented source contract. 908/908. |
+| **`apps/household` ×2** | Both from the 2026-05-02 Plan B substrate migration. (a) `@canopy/chat-agent` `layoutButtons` deliberately defaults to one-button-per-row; the test asserted the old all-in-one-row. (b) **Real regression**: the LLM path moved into the chat-agent substrate, whose `#dispatchToolCalls` silently dropped the turn on an unknown tool — the old app-local polite "unknown tool" message was lost. | (a) Updated the household keyboard test to the substrate's deliberate one-per-row contract. (b) **Substrate fix** — ChatAgent now surfaces a configurable `unknownToolReply` (module default on; constructor-overridable for i18n) instead of silent drop. 465/465. |
+| **`packages/react-native` ×2** | `BleTransport.test.js` + `MdnsTransport.test.js` mocked `react-native-ble-plx`/`-zeroconf` but not `react-native` itself → reinstall made the real Flow-typed RN package resolvable → rollup parse error. Underneath, both tests were stale vs source rewrites (BLE Group-V buffer + `writeWithoutResponse`; mDNS zeroconf → native `MdnsModule`). | Added `vi.mock('react-native')`. Fixed BleTransport's 4 stale assertions to the current buffer/`writeWithoutResponse` design. **Fully rewrote** `MdnsTransport.test.js` against the native `MdnsModule` + event-emitter API (tiebreaker, hello-frame ID, lifecycle). 254/254 (was 232 — +22 newly running). |
+| **`packages/item-store`** *(flake, surfaced during verification)* | `ItemStore.h2` audit-log test intermittently failed (`log[0].action` `add`↔`complete`). Root cause: `ulid()` non-monotonic — within the same ms the 80-bit suffix is fully random, so the audit sort's `(at, id)` tiebreaker is non-deterministic when add+complete land in the same ms. | Made `packages/item-store/src/ulid.js` **monotonic** (ULID-spec monotonic factory: same/backwards ms → reuse timestamp, increment suffix). Strictly safer (still unique + time-sortable). Verified 10/10 runs green; integration-tests + item-store consumers unaffected (each package has its own ulid.js copy). |
 
-**Suggested order if/when picked up:** `presence-v0` (trivial, unblocks
-that app's suite) → `apps/sdk-smoke` (cosmetic) → `tasks-v0` parse
-error → `household` ×2 → `stoop-mobile` feedFilter ×6 →
-`react-native` parse error (deepest — import-graph spelunking). None
-are on the critical path; the substrate priority queue above takes
-precedence.
+**Substrate behavior change (note for chat-agent consumers):**
+`@canopy/chat-agent` ChatAgent now emits `unknownToolReply` (default:
+*"Sorry — I tried to use an unknown tool and couldn't complete that.
+Could you rephrase?"*) when the LLM calls a non-registered tool with no
+arg-shape fallback, instead of silently dropping the turn. Affects
+Stoop / H2 V2 / H5 / household — restores user-visible feedback the
+Plan B migration had inadvertently removed. `error` event still emitted
+with the tool id for diagnostics. Constructor-overridable per app
+(i18n). chat-agent suite green (24/24).
 
 ---
 
