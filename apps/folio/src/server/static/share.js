@@ -61,7 +61,12 @@ export function initShare({ bus, postJson }) {
       const when = new Date(entry.mintedAt).toLocaleString();
       // textContent for every user-controlled field.
       const top = document.createElement('div');
-      top.textContent = `${when} → ${entry.webid}`;
+      // Phase 52.16.4 — label rows with the share mode (cap-token /
+      // ACP grant / WAC grant) so users can tell the kinds apart.
+      const modeLabel = entry.mode === 'acp'  ? '[ACP] '
+                      : entry.mode === 'wac'  ? '[WAC] '
+                      : '[cap-token] ';
+      top.textContent = `${modeLabel}${when} → ${entry.webid}`;
       const sub = document.createElement('div');
       const code = document.createElement('code');
       code.textContent = (entry.scopes || []).join(', ');
@@ -98,10 +103,21 @@ export function initShare({ bus, postJson }) {
 
     try {
       const r = await postJson('/share', payload);
-      // Render the token JSON — readonly textarea so HTML escapes naturally.
-      $tokenOut.value = JSON.stringify(r.token, null, 2);
-      $result.hidden = false;
-      logEntry(`token minted for ${webid}`);
+      // Phase 52.16.4 (2026-05-14) — server response carries `mode`
+      // so we can render the right copy. Two shapes:
+      //   { mode: 'cap-token', token: <PodCapabilityToken JSON> }
+      //   { mode: 'acp' | 'wac', grant: {targetUri, agent, modes, ...} }
+      if (r.mode === 'acp' || r.mode === 'wac') {
+        $tokenOut.value = JSON.stringify(r.grant, null, 2);
+        $result.hidden = false;
+        const label = r.mode === 'acp' ? 'ACP grant' : 'WAC grant';
+        logEntry(`${label} created on ${r.grant?.targetUri ?? '?'} for ${webid}`);
+      } else {
+        // Legacy cap-token shape (also the fall-back path).
+        $tokenOut.value = JSON.stringify(r.token, null, 2);
+        $result.hidden = false;
+        logEntry(`cap-token minted for ${webid}`);
+      }
 
       // Persist a redacted record (no signature/jwt) in localStorage.
       const list = loadRecent();
@@ -110,10 +126,18 @@ export function initShare({ bus, postJson }) {
         webid,
         scopes,
         path:     payload.path ?? null,
-        // Save the issuer + tokenId for traceability — not the signature.
-        issuer:   r.token?.issuer ?? null,
-        tokenId:  r.token?.tokenId ?? null,
-        expiresAt: r.token?.expiresAt ?? null,
+        mode:     r.mode ?? 'cap-token',
+        // For cap-token: issuer + tokenId for traceability.
+        ...(r.token ? {
+          issuer:    r.token.issuer ?? null,
+          tokenId:   r.token.tokenId ?? null,
+          expiresAt: r.token.expiresAt ?? null,
+        } : {}),
+        // For ACP/WAC: target URI + resolved modes.
+        ...(r.grant ? {
+          targetUri: r.grant.targetUri ?? null,
+          modes:     r.grant.modes ?? [],
+        } : {}),
       });
       saveRecent(list);
       renderRecent();

@@ -29,9 +29,9 @@ import WebSocket          from 'ws';
 import { SyncEngine }     from '../src/SyncEngine.js';
 import { createServer }   from '../src/server/index.js';
 import {
-  OidcSession,
-  _setSessionFactory,
-} from '../src/auth/OidcSession.js';
+  createSolidAuthNode,
+  _setSolidAuthNodeSessionFactory,
+} from '@canopy/oidc-session';
 import {
   buildPodClient,
   buildRealPodClient,
@@ -166,7 +166,7 @@ function fakeBuildPodClient(_cfg, _oidc) {
 }
 
 beforeEach(async () => {
-  _setSessionFactory(fakeFactory());
+  _setSolidAuthNodeSessionFactory(fakeFactory());
 
   lastBuiltPodClient = null;
   buildPodClientCalls = 0;
@@ -177,7 +177,7 @@ beforeEach(async () => {
   engine.__podClient = podClient;
 
   vault = new MemVault();
-  oidc  = new OidcSession({ vault });
+  oidc  = createSolidAuthNode({ vault, clientName: 'Folio' });
 
   srv = createServer({
     engine,
@@ -191,7 +191,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  _setSessionFactory(null);
+  _setSolidAuthNodeSessionFactory(null);
   try { await srv.close(); } catch { /* ignore */ }
   try { await fs.rm(localRoot, { recursive: true, force: true }); } catch { /* ignore */ }
 });
@@ -321,7 +321,7 @@ describe('OidcSession.restoreFromVault', () => {
     await vault.set('oidc-refresh-token', 'refresh-from-prior-run');
     await vault.set('oidc-issuer',        'https://solidcommunity.net');
 
-    const fresh = new OidcSession({ vault });
+    const fresh = createSolidAuthNode({ vault, clientName: 'Folio' });
     const ok = await fresh.restoreFromVault();
     expect(ok).toBe(true);
     expect(fresh.isAuthenticated()).toBe(true);
@@ -329,7 +329,7 @@ describe('OidcSession.restoreFromVault', () => {
   });
 
   it('returns false (no throw) when the refresh token is missing', async () => {
-    const fresh = new OidcSession({ vault });
+    const fresh = createSolidAuthNode({ vault, clientName: 'Folio' });
     const ok = await fresh.restoreFromVault();
     expect(ok).toBe(false);
   });
@@ -339,7 +339,7 @@ describe('OidcSession.restoreFromVault', () => {
     await vault.set('oidc-issuer',        'https://solidcommunity.net');
 
     // Override factory: this time, login() throws (simulates revoked token).
-    _setSessionFactory(() => ({
+    _setSolidAuthNodeSessionFactory(() => ({
       events: new EventEmitter(),
       info:   { isLoggedIn: false },
       async login() { throw new Error('refresh_token_invalid'); },
@@ -347,7 +347,7 @@ describe('OidcSession.restoreFromVault', () => {
       async fetch() { return new Response('', { status: 401 }); },
     }));
 
-    const fresh = new OidcSession({ vault });
+    const fresh = createSolidAuthNode({ vault, clientName: 'Folio' });
     const warnings = [];
     const ok = await fresh.restoreFromVault({ onWarning: (m) => warnings.push(m) });
     expect(ok).toBe(false);

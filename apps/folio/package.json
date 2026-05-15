@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@canopy/core":                    "file:../../packages/core",
+    "@canopy/oidc-session":            "file:../../packages/oidc-session",
     "@canopy/pod-client":              "file:../../packages/pod-client",
     "@canopy/sync-engine":             "file:../../packages/sync-engine",
     "@canopy/sync-engine-rn":          "file:../../packages/sync-engine-rn",

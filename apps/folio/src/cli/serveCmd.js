@@ -22,7 +22,7 @@ import { VaultNodeFs }     from '@canopy/core';
 import { SyncEngine }      from '../SyncEngine.js';
 import { requireConfig }   from './_config.js';
 import { buildPodClient }  from './_podFactory.js';
-import { OidcSession }     from '../auth/OidcSession.js';
+import { createSolidAuthNode } from '@canopy/oidc-session';
 
 import { createServer }      from '../server/index.js';
 import { SyncErrorBuffer }   from '../server/errorBuffer.js';
@@ -47,13 +47,13 @@ export async function serveCmd(args) {
   const vault = cfg.vaultPath ? new VaultNodeFs(cfg.vaultPath) : null;
 
   // Owners and order:
-  //   1. Wire the OidcSession + try to restore from the vault.
+  //   1. Wire the SolidAuth (Phase 52.15.2 substrate) + try to restore from the vault.
   //   2. Pick the right PodClient based on (env mock | OIDC | none).
   //   3. Build the SyncEngine on top.
   //   4. Hand all of it to createServer.
   let oidc = null;
   if (vault) {
-    oidc = new OidcSession({ vault });
+    oidc = createSolidAuthNode({ vault, clientName: 'Folio' });
     const restored = await oidc.restoreFromVault({
       onWarning: (msg) => process.stderr.write(`folio serve: oidc restore: ${msg}\n`),
     });
