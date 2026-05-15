@@ -120,7 +120,7 @@ Easiest if you're prototyping or evaluating: copy `apps/mesh-demo`
 and put your new app next to it.
 
 ```
-nkn-test/
+canopy-mono/
   packages/
     core/                          ← SDK (don't touch)
     react-native/                  ← SDK (don't touch)
@@ -156,14 +156,14 @@ edit `packages/core/src/...` and the app reloads.
 ### 3b. File layout — standalone (your own clone of the SDK elsewhere)
 
 If your app lives outside this repo (e.g. `~/projects/my-app`) and
-you cloned the SDK at `~/sdk/nkn-test/`, you need three things:
+you cloned the SDK at `~/sdk/canopy-mono/`, you need three things:
 
 1. **package.json** — point the file: links at the cloned SDK:
 
    ```json
    "dependencies": {
-     "@canopy/core":         "file:../../sdk/nkn-test/packages/core",
-     "@canopy/react-native": "file:../../sdk/nkn-test/packages/react-native"
+     "@canopy/core":         "file:../../sdk/canopy-mono/packages/core",
+     "@canopy/react-native": "file:../../sdk/canopy-mono/packages/react-native"
    }
    ```
 
@@ -178,7 +178,7 @@ you cloned the SDK at `~/sdk/nkn-test/`, you need three things:
    const path     = require('path');
    const { getDefaultConfig } = require('expo/metro-config');
 
-   const sdkRoot = path.resolve(__dirname, '../../sdk/nkn-test');
+   const sdkRoot = path.resolve(__dirname, '../../sdk/canopy-mono');
    const config  = getDefaultConfig(__dirname);
 
    config.watchFolders = [
@@ -204,7 +204,7 @@ you cloned the SDK at `~/sdk/nkn-test/`, you need three things:
    "duplicate native module" or "module not found" error from Metro.
 
 3. **Run the relay** from the SDK clone:
-   `node ~/sdk/nkn-test/packages/relay/src/server.js`.  Point your
+   `node ~/sdk/canopy-mono/packages/relay/src/server.js`.  Point your
    app's `relayUrl` at your laptop's LAN IP, e.g.
    `ws://192.168.2.20:8787`.
 
