@@ -411,7 +411,10 @@ describe('TelegramBridge — sendReply', () => {
     expect(sent[0].extra.reply_to_message_id).toBe('42');
   });
 
-  it('builds an inline_keyboard from buttons[]', async () => {
+  it('builds an inline_keyboard from buttons[] (one button per row — substrate default)', async () => {
+    // @canopy/chat-agent's layoutButtons() deliberately defaults to
+    // one-button-per-row for readability (long lists / label truncation).
+    // Callers opt into multi-button rows via a 2D array or `row` field.
     await bridge.sendReply({
       chatId:  'c-1',
       text:    'pick one',
@@ -422,10 +425,10 @@ describe('TelegramBridge — sendReply', () => {
     });
     const sent = h.getFake()._sentMessages;
     expect(sent[0].extra.reply_markup).toEqual({
-      inline_keyboard: [[
-        { text: 'Yes', callback_data: 'yes' },
-        { text: 'No',  callback_data: 'no'  },
-      ]],
+      inline_keyboard: [
+        [{ text: 'Yes', callback_data: 'yes' }],
+        [{ text: 'No',  callback_data: 'no'  }],
+      ],
     });
   });
 

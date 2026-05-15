@@ -170,12 +170,12 @@ describe('V2.1 — calendar emission skills (Crew-level)', () => {
     expect(tog.ok).toBe(true);
 
     const onAnne  = await call(crew, 'getCalendarEmissionUrl', {}, ANNE);
-    const onthe author = await call(crew, 'getCalendarEmissionUrl', {}, FRITS);
+    const onAuthor = await call(crew, 'getCalendarEmissionUrl', {}, FRITS);
     expect(onAnne.enabled).toBe(true);
     expect(onAnne.url).toContain('oss-tools');
     expect(onAnne.url).toContain(encodeURIComponent(ANNE));
-    expect(onthe author.url).toContain(encodeURIComponent(FRITS));
-    expect(onAnne.url).not.toBe(onthe author.url);
+    expect(onAuthor.url).toContain(encodeURIComponent(FRITS));
+    expect(onAnne.url).not.toBe(onAuthor.url);
 
     await crew.close();
   });
