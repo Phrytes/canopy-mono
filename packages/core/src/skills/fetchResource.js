@@ -13,8 +13,6 @@
  *     read: (uri) => pseudoPod.read(uri),     // pseudo-pod consumer
  *   });
  *   agent.skills.register(skill);
- *   //   or:
- *   //   agent.register(skill.id, skill.handler, skill.opts);
  *
  * Caller protocol (other side of the wire):
  *
@@ -25,12 +23,27 @@
  *   });
  *   // parts[0] is a DataPart with `{ uri, bytes, etag? }`
  *
- * The factory is intentionally minimal — it owns the wire contract
- * (input shape, error codes, output shape) but does not assume
- * anything about the storage layer.
+ * **Phase 52.2.x (2026-05-14, Q#2) — peer-fetch gates.** Two opt-in
+ * hooks gate outbound fetches:
  *
- * Standardisation Phase 50.3 — see
- * `Project Files/SDK/core-v2-coding-plan-2026-05-11.md`.
+ *   - `groupCheck(uri, ctx) → boolean | Promise<boolean>`
+ *     The caller is authorised if a shared group-membership exists.
+ *     `ctx = { from, envelope, agent, parts }`. Default behaviour
+ *     when omitted: no group check.
+ *   - `capCheck(uri, ctx) → boolean | Promise<boolean>`
+ *     Orthogonal cap-token verification. `ctx.capToken` is extracted
+ *     from `[DataPart({ uri, capToken })]` if present. Default
+ *     behaviour when omitted: no cap-token check.
+ *
+ * When BOTH gates are supplied, the fetch is allowed if EITHER
+ * returns truthy (group OR cap-token). When NEITHER is supplied,
+ * the skill falls back to **trust-the-transport** — the caller is
+ * already past the SecurityLayer's hello/identity gate; back-compat
+ * with apps that haven't migrated.
+ *
+ * Standardisation Phase 50.3 (skill shape) + Phase 52.2.x (gates) —
+ * see `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`
+ * §"Open questions" #2.
  */
 
 import { defineSkill } from './defineSkill.js';
@@ -41,26 +54,42 @@ import { DataPart }    from '../Parts.js';
  * @property {string} uri          — echoed back for the caller's convenience
  * @property {Uint8Array|string|object} bytes — the resource value
  * @property {string} [etag]       — optional etag if the storage layer tracks one
+ *
+ * @typedef {object} FetchResourceGateCtx
+ * @property {string}      [from]      — caller identity (webid / pubKey / agent URI)
+ * @property {object}      [envelope]  — raw envelope (with `_from` etc.)
+ * @property {object}      [agent]     — local agent
+ * @property {Array}       [parts]     — original request parts
+ * @property {*}           [capToken]  — cap-token extracted from parts (if any)
  */
 
 /**
  * @param {object} opts
  * @param {(uri: string) => Promise<*|null>} opts.read
- *   Storage-backed reader.  Returns the resource value (any shape) on hit,
- *   `null`/`undefined` on miss.  Errors propagate to the caller as a
+ *   Storage-backed reader. Returns the resource value (any shape) on hit,
+ *   `null`/`undefined` on miss. Errors propagate as a
  *   `NOT_READABLE` skill error.
- * @param {string}   [opts.id='fetch-resource'] — skill id; override to namespace.
+ * @param {(uri: string, ctx: FetchResourceGateCtx) => boolean|Promise<boolean>} [opts.groupCheck]
+ *   Phase 52.2.x peer-fetch gate (Q#2 2026-05-14). When supplied,
+ *   invoked per request — if truthy, the fetch is allowed. Used by
+ *   apps that track group-membership rosters (Stoop, etc.) to deny
+ *   ex-members.
+ * @param {(uri: string, ctx: FetchResourceGateCtx) => boolean|Promise<boolean>} [opts.capCheck]
+ *   Phase 52.2.x peer-fetch gate (Q#2 2026-05-14). Orthogonal
+ *   cap-token verification. When supplied, invoked per request with
+ *   `ctx.capToken` populated from the request parts. If truthy, the
+ *   fetch is allowed.
+ * @param {string}   [opts.id='fetch-resource']
  * @param {'public'|'authenticated'|'trusted'|'private'} [opts.visibility='authenticated']
- *   Standard skill-visibility tier.  Default matches the SDK's
- *   "only hello'd peers see this" posture.
- * @param {string}   [opts.description]   — human-readable override.
+ * @param {string}   [opts.description]
  *
  * @returns {ReturnType<typeof defineSkill>} a skill definition ready
- *          to register with `agent.skills.register(...)` (or to use
- *          via `agent.register(id, handler, opts)`).
+ *          to register with `agent.skills.register(...)`.
  */
 export function makeFetchResourceSkill({
   read,
+  groupCheck  = null,
+  capCheck    = null,
   id          = 'fetch-resource',
   visibility  = 'authenticated',
   description = "Fetch a local resource by URI via the agent's pseudo-pod backing",
@@ -71,14 +100,72 @@ export function makeFetchResourceSkill({
       { code: 'INVALID_ARGUMENT' },
     );
   }
+  if (groupCheck !== null && typeof groupCheck !== 'function') {
+    throw Object.assign(
+      new Error('makeFetchResourceSkill: `groupCheck` must be a function when supplied'),
+      { code: 'INVALID_ARGUMENT' },
+    );
+  }
+  if (capCheck !== null && typeof capCheck !== 'function') {
+    throw Object.assign(
+      new Error('makeFetchResourceSkill: `capCheck` must be a function when supplied'),
+      { code: 'INVALID_ARGUMENT' },
+    );
+  }
 
-  const handler = async ({ parts }) => {
+  const handler = async ({ parts, from, envelope, agent }) => {
     const uri = _extractUri(parts);
     if (!uri) {
       throw Object.assign(
         new Error(`${id}: requires { uri: string }`),
         { code: 'INVALID_ARGUMENT' },
       );
+    }
+
+    // Phase 52.2.x — peer-fetch gates. Both opt-in; when either is
+    // supplied, at least one must pass before the read happens.
+    // When neither is supplied, we fall back to trust-the-transport
+    // (the caller is past SecurityLayer's hello already).
+    if (groupCheck || capCheck) {
+      const ctx = {
+        from,
+        envelope,
+        agent,
+        parts,
+        capToken: _extractCapToken(parts),
+      };
+      let allowed = false;
+      let groupResult, capResult;
+      if (groupCheck) {
+        try {
+          groupResult = await groupCheck(uri, ctx);
+          if (groupResult) allowed = true;
+        } catch (err) {
+          // A check throwing is treated as a hard "deny" — apps that
+          // want soft-fail should catch internally.
+          throw Object.assign(
+            new Error(`${id}: groupCheck failed for ${uri}: ${err?.message ?? err}`),
+            { code: 'FORBIDDEN', uri, cause: err },
+          );
+        }
+      }
+      if (!allowed && capCheck) {
+        try {
+          capResult = await capCheck(uri, ctx);
+          if (capResult) allowed = true;
+        } catch (err) {
+          throw Object.assign(
+            new Error(`${id}: capCheck failed for ${uri}: ${err?.message ?? err}`),
+            { code: 'FORBIDDEN', uri, cause: err },
+          );
+        }
+      }
+      if (!allowed) {
+        throw Object.assign(
+          new Error(`${id}: caller is not authorised to fetch ${uri}`),
+          { code: 'FORBIDDEN', uri },
+        );
+      }
     }
 
     let value;
@@ -99,7 +186,7 @@ export function makeFetchResourceSkill({
     }
 
     // Allow callers to return either a raw value or `{ bytes, etag }`
-    // for storage layers that track etags.  Normalise to a uniform shape.
+    // for storage layers that track etags. Normalise to a uniform shape.
     let bytes, etag;
     if (value && typeof value === 'object' && 'bytes' in value) {
       bytes = value.bytes;
@@ -135,4 +222,19 @@ function _extractUri(parts) {
     if (p?.type === 'TextPart' && typeof p.text === 'string')      return p.text;
   }
   return null;
+}
+
+/**
+ * Pull an optional `capToken` out of skill input parts. Returns
+ * `undefined` if the caller didn't supply one. Phase 52.2.x.
+ *
+ * @param {Array} parts
+ * @returns {*|undefined}
+ */
+function _extractCapToken(parts) {
+  if (!Array.isArray(parts) || parts.length === 0) return undefined;
+  for (const p of parts) {
+    if (p?.type === 'DataPart' && p.data?.capToken !== undefined) return p.data.capToken;
+  }
+  return undefined;
 }

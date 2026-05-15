@@ -364,26 +364,59 @@ V2 ships these screens (mostly the V1 set; new in **bold**):
 Total: ~21 screens. The new explicit **Pod settings** screen
 materialises what V1 had as a deferred Phase 41.15 surface.
 
-## 6a. Implementation status (post-standardisation)
+## 6a. Implementation status (refreshed 2026-05-14)
 
 V1's 19 screens shipped through Phase 41.17. V2 work is the
 standardisation transition + the new Pod settings screen.
+Substantial substrate work shipped 2026-05-14; the table is
+refreshed accordingly.
 
-| Phase from plan | Mobile-specific work | Status |
+| Phase from plan | Mobile-specific work | Status (2026-05-14) |
 |---|---|---|
-| P0 | n/a | pending |
-| P1 | route writes via substrate; Pod settings screen; sign-in flow polished; pseudo-pod V0 client wiring | pending |
-| P2 | adopt `item-types` for `task` | pending |
-| P3 | pseudo-pod V1 + write-through queue | pending |
-| P5 | adopt `agent-registry`; drop `actorAliases`; canonical skeleton alignment | pending |
-| P4 (Hub) | `hub-discovery` + `hub-binding` wiring; standalone vs registered-bundle mode | pending |
-| P6 (Hub) | register `task` renderer (compact + full); propose-subtask protocol consumer | pending |
-| P7 (Hub) | bundle refactor (Tasks is the canonical first) | pending |
+| P0 | n/a | n/a |
+| P1 | route writes via substrate; Pod settings screen; sign-in flow polished; pseudo-pod V0 client wiring | **substrate ready; app wiring pending** — pseudoPod V0 + pod-routing + notify-envelope shipped 2026-05-14 (`packages/pseudo-pod`, `packages/pod-routing`, `packages/notify-envelope`). Mobile bring-up + Pod settings screen still need to be built |
+| P2 | adopt `item-types` for `task` | **substrate ready; app wiring pending** — Q-A canonical-vocabulary cut-over shipped; `task` adapter needs to land in `packages/item-types/src/task.js`. Mobile inherits via the web workspace shared deps |
+| P3 | pseudo-pod V1 + write-through queue | **deferred to V2.x** — write-through queue + drain semantics are already in pseudoPod V0; the V1 spec lifts sync-engine into the substrate, not yet shipped |
+| 52.9.3 | tasks fan-out via substrateMirror | **deferred** — V1 mobile is single-device-style today (one mobile + one bot backend, but no real concurrent writes). When multi-device fan-out is needed, follow `apps/stoop/src/substrateMirror.js` template. ~3-5 days |
+| 52.14 (Q-D) | Lamport `_v` on task writes via pseudoPod replication-ring | **substrate ready; no consumer yet** — auto-applies when Tasks-mobile adopts substrateMirror. `'stale-peer'` event handler should feed a conflict banner |
+| 52.15.5 | Multi-issuer pick on the (deferred-from-V1) Sign-in screen via `<IssuerPicker>` from `@canopy/oidc-session-rn/picker` | **substrate ready; app wiring pending** — when the Sign-in screen lands as part of the Pod settings flow, drop in `<IssuerPicker>`. Same pattern as Stoop-mobile's adoption |
+| 52.16 | Sharing v2 — ACP/WAC grant when crew moves to a pod-having policy | **substrate ready** — `createClientSharing({ fetch, podRoot })` from `@canopy/pod-client/sharing`. Mobile share UX deferred until multi-pod crews are exercised |
+| 52.2.x | peer-fetch gates | **substrate ready** — when Tasks-mobile adopts envelope-only mode, wire `groupCheck(uri, ctx) ⇒ crewRoster.has(ctx.from)` on `fetch-resource` |
+| P5 | adopt `agent-registry`; drop `actorAliases`; canonical skeleton alignment | **substrate ready; app wiring pending** — agent-registry shipped 2026-05-14 (Phase 52.10). Mobile bundle bring-up should register at first boot |
+| P4 (Hub) | `hub-discovery` + `hub-binding` wiring; standalone vs registered-bundle mode | **deferred** (Hub track direction-only) |
+| P6 (Hub) | register `task` renderer (compact + full); propose-subtask protocol consumer | **deferred** (Hub track direction-only) |
+| P7 (Hub) | bundle refactor (Tasks is the canonical first) | **deferred** (Hub track direction-only) |
 
 V1 still has one open phase: **41.16 — real-device pass +
 closed-beta APK** (hardware pending). That can ship before P1
 starts; V2's storage transition rebases on whatever 41.16
 landed.
+
+Concrete pickups for Tasks-mobile V2 (in priority order):
+
+1. **Phase 41.16 real-device pass** (~2-3 days) — hardware
+   test; pre-requisite for V2 work.
+2. **Pod settings screen + crew-upgrade wizard** (~2-3 days) —
+   uses pod-routing + pod-onboarding substrates. Adopts
+   `<IssuerPicker>` and `createSolidAuthNode` for the pod-
+   provisioning step (Phase 52.15).
+3. **Register on agent-registry at first bundle bring-up**
+   (~0.5 day) — Phase 52.10.
+4. **Storage-policy step in crew-create wizard** (~1 day) —
+   four policies; default `'no-pod'`.
+5. **`'stale-peer'` event handler + conflict banner** (~1 day) —
+   wires Phase 52.14 to a real UI; small first piece, ahead of
+   the larger substrateMirror adoption.
+
+Cross-references:
+- Substrate-side phase list:
+  [`../Substrates/substrates-v2-coding-plan-2026-05-11.md`](../Substrates/substrates-v2-coding-plan-2026-05-11.md)
+- Cross-app residuals + priority:
+  [`../TODO-GENERAL.md`](../TODO-GENERAL.md) §"Standardisation residuals"
+- Stoop-mobile's IssuerPicker adoption (reference example):
+  `apps/stoop-mobile/src/screens/SignInScreen.js`
+- Stoop's substrateMirror (template for fan-out adoption):
+  `apps/stoop/src/substrateMirror.js`
 
 ## 7. Locales
 
@@ -401,6 +434,21 @@ applies unchanged.
 
 ## 8. Open questions
 
+- **Peer-to-peer task replication via the substrate path** —
+  inherited from substrates-v2 §52.9.3 (deferred 2026-05-14).
+  When Tasks goes multi-device (this app, plus the desktop
+  workspace + bot-agent backend running concurrently),
+  replication adopts the substrate path:
+  `notifyEnvelope.publish({type: 'task', ref, payload, _v,
+  recipients})` on every itemStore write, with peer-side
+  `pseudoPod.writeFromPeer` running the Q-D 3-way version
+  compare (Phase 52.14). **Substrate side is already shipped**;
+  Tasks's adoption follows Stoop's substrateMirror template
+  (`apps/stoop/src/substrateMirror.js`). Estimate ~3-5 days
+  once the multi-device flow is real. Closely related to
+  the multi-OIDC interim risk: shared OIDC vault sketch lives
+  at `Project Files/Substrates/oidc-vault-shared-design-2026-05-14.md`
+  and is also V1.5/V2 work.
 - **Pod settings screen on a no-pod install.** Show the
   current pseudo-pod state, give a clear "you can attach a pod
   whenever" CTA, or hide the screen entirely? Default

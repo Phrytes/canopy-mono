@@ -779,6 +779,11 @@ refactor; Tasks first, then Stoop, then Folio).
   lives in the local pseudo-pod (replicated across the user's
   own devices via the pseudo-pod-replicated mode); restore is
   local-only and the pod-side failure mode doesn't apply.
+  **Resolved 2026-05-14:** accepted as known interim
+  limitation. Restore on a pod-having user with an unreachable
+  pod fails with a "retry when pod returns" affordance; once
+  the pod is reachable, restore completes normally. P5 web
+  console (Hub track) handles rare permanent-loss case later.
 - **Cross-app `actorAliases` arg removal.** Tasks-v0 ships
   this arg on the role policy substrate
   (`apps/tasks-v0/src/rolePolicy.js`'s
@@ -793,6 +798,12 @@ refactor; Tasks first, then Stoop, then Folio).
   on `agent-registry` has to consider whether to encourage
   one provider, one per app, or some other shape. No-pod
   users don't have this risk — no OIDC at all.
+  **Resolved 2026-05-14 — design sketched, V1.5/V2
+  implementation.** Pseudo-pod-replicated encrypted OIDC
+  vault, mnemonic-derived key. All apps on a device share
+  one token-set (no rate-limit thrashing); cross-device
+  sync as a bonus. Sketch:
+  [`Substrates/oidc-vault-shared-design-2026-05-14.md`](./Substrates/oidc-vault-shared-design-2026-05-14.md).
 - **Concurrent writes to the agent-registry + storage-mapping
   pod resources** during the Hub-free interim. The
   config-on-pod design means three apps may concurrently
@@ -815,20 +826,28 @@ refactor; Tasks first, then Stoop, then Folio).
   the WebID profile pointer is the canonical lookup so a
   third-party tool that knows the WebID can always find the
   resource.
+  **Resolved 2026-05-14.** [`conventions/storage-layout.md`](./conventions/storage-layout.md)
+  shipped (locks canonical sub-container layout + `dec:*`
+  predicate URIs). `pod-onboarding.provisionDefault()` is
+  verified to call `patchWebidProfile({pointers, predicates})`
+  on provisioning, so the WebID profile carries the
+  pointers as designed.
 
 ### §V.5 — Documentation deliverables
 
 Concrete docs that need to exist alongside the substrate work:
 
-- `conventions/plan-tracking.md` (P0).
-- `conventions/storage-layout.md` describing the one-pod
-  default + sub-containers + two-pod preset (P1).
-- `conventions/cross-pod-refs.md` describing the `embeds`
-  field + permission-failure rendering (P1).
-- `conventions/pod-independence.md` (P1) — pins the design
+- ✅ `conventions/plan-tracking.md` (P0). **Shipped 2026-05-14.**
+- ✅ `conventions/storage-layout.md` describing the one-pod
+  default + sub-containers + two-pod preset (P1). **Shipped
+  2026-05-14.**
+- ✅ `conventions/cross-pod-refs.md` describing the `embeds`
+  field + permission-failure rendering (P1). **Shipped
+  2026-05-14.**
+- ✅ `conventions/pod-independence.md` (P1) — pins the design
   principle from §V.6 below; documents which capabilities
   must work without pods + the substrate's mechanism for
-  delivering them.
+  delivering them. **Shipped 2026-05-14.**
 - Updates to existing convention docs:
   `architectural-layering.md` already has the shared-UI-glue
   section; add a section on bundle manifest shape during P6.

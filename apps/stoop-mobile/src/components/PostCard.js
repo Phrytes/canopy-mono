@@ -29,7 +29,7 @@ export function PostCard({ item, author, onPress, onPressAttachment }) {
   if (!item) return null;
   const text  = item.text  ?? '';
   // Mirrored items only carry `type` (not `kind`) — fall back so
-  // posts coming back via wireGroupBroadcastMirror still tag.
+  // posts coming back via the substrate mirror still tag.
   const kind  = item.kind ?? item.type ?? 'request';
   const time  = timeAgo(item.createdAt);
   const badge = _kindBadge(kind);

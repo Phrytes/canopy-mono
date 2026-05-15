@@ -10,11 +10,17 @@
 > > yourself or not (or even tell the other party that their info is
 > > outdated)."
 >
-> **Status.** Design note only. **Implementation deferred** per the
-> user's explicit choice. This doc surveys what each substrate does
-> today, names the semantic categories of "freshness", maps the
-> gaps, and proposes a unified policy when one fits — flagging where
-> a single policy can't.
+> **Status (updated 2026-05-14).** **Substrate-side implementation
+> SHIPPED** as Phase 52.14 (substrates-v2 coding plan). Lamport
+> `_v` on pseudo-pod backends (Memory/As/Fs), 3-way version
+> compare in `writeFromPeer`, `'peer-update'` / `'stale-peer'` /
+> `'concurrent-write'` events on the PseudoPod surface, `freshness:
+> 'fresh'` opt on `read`, notify-envelope forwards `_v` on the
+> wire. Tests: 73/73 pseudo-pod + 47/47 notify-envelope + 44/44
+> RN adapter pass. **App-level adoption of `'stale-peer'`** in
+> Stoop / Tasks / Folio remains deferred until field testing
+> shows a real divergence to surface. This doc stays authoritative
+> for the design rationale and "what stays out of scope."
 
 ## Why this matters
 
@@ -214,11 +220,12 @@ plan.
 
 ## How this relates to other open work
 
-- **groupMirror retirement (Q-B):** the version-vector design
-  here is the missing piece that makes the substrate path
-  feature-equivalent to groupMirror's current LWW-with-no-signal.
-  If we ship groupMirror retirement *with* this design, the
-  substrate path is strictly stronger.
+- **groupMirror retirement (Q-B):** ✅ **DONE 2026-05-14** — the
+  substrate path (notify-envelope + pseudo-pod with this design's
+  3-way version compare) replaced groupMirror cleanly. Q-D's
+  version-vector was the missing piece that made the cutover
+  strictly-stronger; with both shipped together, the new path
+  beats groupMirror's LWW-with-no-signal at every dimension.
 - **Substrates-v2 §52.9.2:** the plan named "envelope ordering
   guarantees under heavy multi-actor write loads — possibly needs
   per-actor sequence counter" as an open question. This design

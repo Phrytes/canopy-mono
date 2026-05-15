@@ -93,11 +93,16 @@ pod attached for this resource" and skips the reachability check.
   "kind": "task",
   "ref": "pseudo-pod://anne-device/tasks/abc",
   "etag": "<content-hash>",
+  "_v": 3,
   "fromActor": "pseudo-pod://anne-device/agent",
   "payload": { "text": "paint the fence", ... },
   "timestamp": "2026-05-11T10:00:00Z"
 }
 ```
+
+`_v` (Phase 52.14) is the sender's Lamport-style per-key version
+counter. Forward-additive: legacy receivers that don't know about
+`_v` simply ignore it and fall back to last-write-wins.
 
 ---
 
@@ -107,9 +112,12 @@ When the substrate is `start()`ed, it subscribes to
 `transport.subscribeEnvelopes` and:
 
 1. **Full-payload envelopes** — calls
-   `pseudoPod.writeFromPeer(ref, payload, etag)` to stash the
-   resource locally **before** firing any subscriber. By the time the
-   callback runs, `pseudoPod.read(env.ref)` returns the resource.
+   `pseudoPod.writeFromPeer(ref, payload, etag, _v, {fromActor})`
+   to stash the resource locally **before** firing any subscriber.
+   By the time the callback runs, `pseudoPod.read(env.ref)`
+   returns the resource (assuming the inbound write wasn't
+   rejected as stale by the 3-way version compare — see
+   `@canopy/pseudo-pod` README §"Conflict resolution").
 2. **Envelope-only envelopes** — no local-store side-effect;
    subscribers handle the ref themselves (typically lazy-fetch via
    `pod-client`).
@@ -152,8 +160,9 @@ reconnect retries the same entry.
 ```text
 createNotifyEnvelope({ transport, pseudoPod, podRouting, uploadFn?, queueBackend?, logger? })
 
-ne.publish({ type, ref, payload?, etag?, recipients, fromActor?, crewId? })
+ne.publish({ type, ref, payload?, etag?, _v?, recipients, fromActor?, crewId? })
   → { mode: 'envelope-only' | 'full-payload', queued: boolean, decision }
+  // _v (Phase 52.14): Lamport version forwarded on full-payload envelopes.
 
 ne.subscribe({ kind, callback })
   → unsubscribe fn        // kind: item-types name, or '*' for all

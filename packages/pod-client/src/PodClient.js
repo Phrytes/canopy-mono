@@ -45,6 +45,7 @@ import {
 import { ConflictError, mapSourceCode } from './Errors.js';
 import { ConflictResolver }             from './ConflictResolver.js';
 import { MemoryTombstones }             from './tombstones/MemoryTombstones.js';
+import { createClientSharing }          from './sharing/index.js';
 
 // Inrupt's RDF API is loaded lazily inside `patch()` — pod-client itself does
 // not declare `@inrupt/solid-client` as a direct dep; we resolve it via the
@@ -74,6 +75,10 @@ export class PodClient extends Emitter {
   #etagMap = new Map(); // uri → { etag, lastModified }
   #tombstoneStore;
   #closed = false;
+  // Phase 52.16 (2026-05-14) — lazy ACP/WAC sharing namespace.
+  #podRoot;
+  #fetch;
+  #sharing = null;
   /**
    * Per-event listener count, mirrored from `on`/`off`/`removeAllListeners`.
    * The base `Emitter` keeps its handler map private; we shadow the count so
@@ -105,9 +110,11 @@ export class PodClient extends Emitter {
     if (!podRoot) throw mapSourceCode('INVALID_ARGUMENT', { message: 'PodClient: podRoot is required' });
     if (!auth)    throw mapSourceCode('INVALID_ARGUMENT', { message: 'PodClient: auth is required' });
     this.#auth          = auth;
+    this.#podRoot       = podRoot;
     this.#tombstoneStore = tombstoneStore ?? new MemoryTombstones();
     this.#pseudoPod     = pseudoPod ?? null;
     const fetchFn  = this.#buildFetch();
+    this.#fetch     = fetchFn;
     const factory  = podSourceFactory ?? ((init) => new SolidPodSource(init));
     this.#podSource = factory({ podUrl: podRoot, fetch: fetchFn });
     this.options    = {
@@ -119,6 +126,22 @@ export class PodClient extends Emitter {
 
   /** Underlying SolidPodSource (or test-supplied stub).  Useful for advanced callers. */
   get source() { return this.#podSource; }
+
+  /**
+   * Lazy `client.sharing.*` namespace — Phase 52.16 (2026-05-14).
+   * ACP/WAC-mediated sharing via `@inrupt/solid-client`'s Universal
+   * Access API. First access builds the sharing instance bound to
+   * this client's authenticated fetch.
+   */
+  get sharing() {
+    if (!this.#sharing) {
+      this.#sharing = createClientSharing({
+        fetch:   this.#fetch,
+        podRoot: this.#podRoot,
+      });
+    }
+    return this.#sharing;
+  }
 
   /** Internal etag/lastModified map — exposed for A7 conflict-detection layer. */
   get _etagMap() { return this.#etagMap; }

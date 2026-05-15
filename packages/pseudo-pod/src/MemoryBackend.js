@@ -34,6 +34,13 @@ export function createMemoryBackend() {
   let etagCounter = 0;
   const nextEtag = () => `"mem-${++etagCounter}"`;
 
+  /** Phase 52.14 (2026-05-14) — per-key Lamport-style version counter
+   *  for replication-ring conflict resolution. Auto-increments on put
+   *  unless the caller pins a specific value (the "accept peer's
+   *  write" case). Persists alongside bytes + etag.
+   *  @type {Map<string, number>} */
+  const versionByKey = new Map();
+
   function _fanOut(event) {
     for (const cb of generalSubscribers) {
       try { cb(event); } catch (_err) { /* swallow — substrate-internal */ }
@@ -57,19 +64,31 @@ export function createMemoryBackend() {
     async get(key) {
       const rec = store.get(key);
       if (!rec) return null;
-      return { bytes: rec.bytes, ...(rec.etag != null ? { etag: rec.etag } : {}) };
+      const v = versionByKey.get(key);
+      return {
+        bytes: rec.bytes,
+        ...(rec.etag != null ? { etag: rec.etag } : {}),
+        ...(typeof v === 'number' ? { _v: v } : {}),
+      };
     },
 
-    async put(key, bytes, etag) {
+    async put(key, bytes, etag, _v) {
       const finalEtag = etag ?? nextEtag();
+      // Lamport: pin to caller's _v when supplied (accept-peer-write
+      // path), otherwise increment from local. New key starts at 1.
+      const finalV = typeof _v === 'number'
+        ? _v
+        : (versionByKey.get(key) ?? 0) + 1;
       store.set(key, { bytes, etag: finalEtag });
-      _fanOut({ op: 'put', key, etag: finalEtag });
-      return finalEtag;
+      versionByKey.set(key, finalV);
+      _fanOut({ op: 'put', key, etag: finalEtag, _v: finalV });
+      return { etag: finalEtag, _v: finalV };
     },
 
     async delete(key) {
       if (store.has(key)) {
         store.delete(key);
+        versionByKey.delete(key);
         _fanOut({ op: 'delete', key });
       }
       if (dirty.has(key)) {

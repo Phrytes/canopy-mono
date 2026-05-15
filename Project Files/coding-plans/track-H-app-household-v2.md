@@ -747,6 +747,115 @@ changes things:
 
 ---
 
+## Standardisation adoption (added 2026-05-14)
+
+H2 v2 is still in design and hasn't started implementation, so
+this is a **build-on-top-of-substrates** note rather than a
+"refactor existing code" plan. When v0 kicks off, it should
+adopt the already-shipped substrates from day one rather than
+roll its own equivalents.
+
+### ✅ Substrates available on day-one (use these from the start)
+
+- **`@canopy/pseudo-pod`** (Phase 52.x V0) — backs the bot's
+  shared household pod path. Use `mode: 'cache'` for the
+  shared pod (the bot has internet); `'standalone'` mode for
+  the bot's own keypair vault + cursor files; `'replication-
+  ring'` mode is **not** needed (bot writes are
+  single-process). Write-through queue handles "pod
+  unreachable" gracefully without v0 needing to branch.
+- **`@canopy/pod-routing`** — resolves the storage policy
+  for the shared household pod. The hybrid layout (one
+  household pod + N member private pods) is one of the §II.2
+  storage policies; encode the household-pod URI + the
+  per-member-pod map via pod-routing config rather than
+  hard-coding paths in the bot.
+- **`@canopy/notify-envelope`** — if/when H3 (proactive
+  household assistant) wants to push updates to members'
+  Folio/Tasks/Stoop instances, this is the wire. v0 doesn't
+  need it (the bot replies directly via Telegram).
+- **`@canopy/oidc-session`** — the bot's Solid sign-in
+  (admins onboarding the bot's identity to the household
+  pod). Use `createSolidAuthNode({ vault, clientName:
+  'Household bot' })` from Phase 52.15. `KNOWN_ISSUERS`
+  applies if the household runs on a non-Inrupt provider.
+- **`@canopy/pod-client/sharing`** — Phase 52.16's
+  `createClientSharing` is exactly what the household needs
+  to grant the bot read+write access to the shared pod
+  *without* a custom cap-token flow. Cap-tokens stay as the
+  fallback for non-ACP pods.
+- **`@canopy/item-types`** — the household-item schema
+  (Q-H2.x §"Item document shape (v2)") should land as
+  `packages/item-types/src/household-item.js` (or similar)
+  rather than as an app-private shape. Cross-app links from
+  Folio notes or Tasks tasks to a household item then work
+  through the canonical-vocabulary registry (Q-A).
+- **`@canopy/agent-registry`** (Phase 52.10) — the bot's
+  agent identity registers in the household pod's
+  `agent-registry` on first run. Members' Folio / Tasks /
+  Stoop installs see the household bot as a known agent
+  without manual exchange.
+
+### 🔄 Substrate adoptions specific to H2 v2
+
+- **`groupCheck` on `fetch-resource` skill** (Phase 52.2.x /
+  Q#2 peer-fetch gates) — if/when the bot exposes peer-fetch
+  to members' agents (e.g. Folio fetching a shared shopping
+  list as a note), wire `groupCheck(uri, ctx) ⇒
+  householdRoster.has(ctx.from)`. Ex-members (kicked out of
+  the household pod) are denied peer-fetch even if their
+  agent is still on the relay.
+- **`'stale-peer'` event on pseudoPod** (Phase 52.14) — the
+  bot subscribes to surface concurrent writes (e.g. Anne's
+  Folio writes a shopping list at the same moment the author's
+  bot adds an item via Telegram). Useful for v1+ when the
+  bot becomes a true multi-writer peer rather than the
+  single writer it is in v0.
+
+### 📋 Deferred / not this app's concern
+
+- **`@canopy/sync-engine` absorption into pseudo-pod V1**
+  (substrate-side P3) — H2 v0 doesn't sync FS-to-pod (no
+  local files); the bot is a server-side write-only client
+  against the shared pod. Pseudo-pod V0's cache mode is
+  enough.
+- **Hub track (P4-P7)** — H2's runtime is a Node service on
+  a household server, not an Android phone. The Hub-on-phone
+  bundle shape doesn't apply.
+- **`actorAliases`** — H2 v0 uses the bot's own keypair plus
+  the per-member webid map (`config.json`'s `members[]`);
+  there's no legacy alias structure to drop.
+
+### Concrete pre-kickoff additions to the implementation plan
+
+When v0 kicks off (after Q-H2.15–21 are locked and the
+conversational LLM benchmark settles Q-H2.19), the
+implementation slicing in the next section should add:
+
+- **Slice 0 — substrate wiring** (before Slice A):
+  `createPseudoPod` (cache mode) + `pod-routing` resolver +
+  `createSolidAuthNode` for the bot's pod sign-in +
+  `agent-registry` registration on first run.
+- **Slice B+ — item-types adoption**: define the household-
+  item canonical schema in `packages/item-types/src/` and
+  have `addItems` write canonical envelopes from the start.
+
+Estimated impact on the v0 effort: +1-2 days versus
+hand-rolling, but the result is multi-app-portable (Folio /
+Tasks / Stoop can read/write household items via canonical
+schemas) and inherits Q-D conflict resolution + Q#2
+peer-fetch gates for free.
+
+Cross-references:
+- Substrate-side phase list:
+  [`../Substrates/substrates-v2-coding-plan-2026-05-11.md`](../Substrates/substrates-v2-coding-plan-2026-05-11.md)
+- Cross-app residuals + priority:
+  [`../TODO-GENERAL.md`](../TODO-GENERAL.md) §"Standardisation residuals"
+- Storage-migration design (rewrite-config-only):
+  [`../Substrates/storage-migration-design-2026-05-14.md`](../Substrates/storage-migration-design-2026-05-14.md)
+
+---
+
 ## Implementation plan — DEFERRED
 
 This document is the design.  An implementation plan (week-by-week

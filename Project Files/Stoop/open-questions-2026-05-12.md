@@ -7,22 +7,28 @@
 >   canonical `@canopy/item-types` shape (`type` + `kind`); the
 >   UI keeps sending Stoop vocab (`ask` / `offer` / `lend`) and
 >   `postRequest` translates at the boundary. Tests: 461/461.
-> - **Q-B (groupMirror retirement vs keep):** Decision: **proceed
->   with retirement** (the substitution argument is sound). Sub-
->   question raised: how do we know which copy is most up-to-date
->   when sources disagree? Spun out as Q-D below; design note
->   sits in `conflict-resolution-design-2026-05-14.md`.
->   **Retirement work itself is not yet started** — recommended
->   reading order before picking it up: this doc → Q-B section
->   below → the conflict-resolution design note.
+> - **Q-B (groupMirror retirement vs keep):** ✅ **DONE 2026-05-14**.
+>   Clean break (Q-A style). `wireGroupBroadcastMirror` retired;
+>   replaced by `wireSubstrateMirror` over notify-envelope +
+>   pseudo-pod (with Q-D version-vector). Publisher dual-publishes
+>   so skill-match keeps doing claim-flow. Tests: **460/460 stoop
+>   pass** (baseline 461; removed groupMirror-addPeer-race because
+>   the new substrate path has no per-peer race — receive is one
+>   global subscription).
 > - **Q-C (`share` UX wording):** Logged; no substrate action
 >   needed; the user will weigh in when the UI grows the
 >   direction-picker sub-choice.
-> - **Q-D (conflict-resolution across substrates):** NEW from
->   2026-05-14. Design note shipped at
->   `conflict-resolution-design-2026-05-14.md`. Implementation
->   deferred — the user explicitly chose to land design now and
->   code later.
+> - **Q-D (conflict-resolution across substrates):** ✅ **DONE
+>   2026-05-14**. Substrate implementation shipped as Phase 52.14:
+>   Lamport `_v` on pseudo-pod backends, 3-way version compare in
+>   `writeFromPeer`, `'peer-update'` / `'stale-peer'` /
+>   `'concurrent-write'` events, `freshness: 'fresh'` opt on
+>   `read`, notify-envelope forwards `_v`. Tests: 73/73 pseudo-pod
+>   + 47/47 notify-envelope + 44/44 RN adapter + 461/461 stoop +
+>   41/41 integration. Design note still authoritative for
+>   rationale: `conflict-resolution-design-2026-05-14.md`.
+>   App-level adoption of `'stale-peer'` events deferred — pick
+>   up when an app needs it.
 
 ## Background reading
 

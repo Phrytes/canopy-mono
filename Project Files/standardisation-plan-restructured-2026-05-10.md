@@ -897,11 +897,18 @@ policy roll-out + Stoop/Folio align). Both are Hub-independent.
 
 **What.** Two parts:
 
-- **(committed, P5)** A scaffolder CLI that generates the
-  canonical app skeleton + wires standard substrates. Each
-  substrate ships a metadata module describing its public API
-  in a shape the scaffolder can read — doc-driven, but
-  immediately useful.
+- **(committed, P5 — V0 shipped 2026-05-14)** A scaffolder CLI
+  that generates the canonical app skeleton + wires standard
+  substrates. Each substrate ships a metadata module describing
+  its public API in a shape the scaffolder can read — doc-driven,
+  but immediately useful. **V0 shipped 2026-05-14** as
+  `scripts/scaffold-app.mjs` (hard-coded templates; Node-side
+  hello-world that boots `core.Agent` + InternalTransport + one
+  `hello` skill; the scaffolded app's `npm test` passes out of
+  the box; 10 scaffolder tests in
+  `packages/integration-tests/test/scenarios/scaffolder/`).
+  Per-substrate `SCAFFOLDER_META` exports + flag-driven substrate
+  wiring + RN/Expo + web templates remain V1+ work.
 - **(direction, post-P6)** A successor scaffolder for the
   bundle shape (§II.13). The longer arc — "developer sketches a
   functional surface in JS and the SDK generates web + RN

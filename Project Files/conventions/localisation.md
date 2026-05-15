@@ -184,6 +184,52 @@ including a useful `doc` note. Tracked in
 New apps must ship with locale files from the first commit, in
 `{text, doc}` shape.
 
+## Terminology contract — Solid pod concept (locked 2026-05-14)
+
+Phase 52.15.6 (Solid-auth consolidation). Across every app, the same
+underlying concepts MUST use the same word so the user UX feels
+unified.
+
+| Concept | Locked EN term | Locked NL term | Rule |
+|---|---|---|---|
+| Solid storage / OIDC-attached pod | **Pod** | **Pod** | Same word both languages — technical term, kept in English. |
+| Local identity / mnemonic recovery | **Account** | **Account** | Distinct from Pod; used only in onboarding / restore flows. |
+| Ownership / privacy framing | "your data" / "jouw data" | (only as marketing copy) | NOT a substitute for "Pod" in technical contexts. |
+| What we avoid (negative framing) | "third-party cloud" | "third-party cloud" | Only in privacy section, not as a synonym for Pod. |
+
+**Banned as Pod synonyms** (will trip the audit script):
+- EN: `storage`, `drive`, `cloud`, `your data` (in technical
+  contexts), `vault`, `bucket`.
+- NL: `opslag`, `schijf`, `cloud`, `jouw data` (in technical
+  contexts), `kluis`, `bak`.
+
+Exception: technical strings that *aren't* about the pod (e.g.
+"cloud provider" in a privacy-explainer paragraph; "vault" referring
+to the mnemonic vault) MAY use these words. Whether a string is
+"about the pod" is judged by reading the `doc` field on the locale
+entry — the audit only flags entries whose `doc` indicates a
+pod-related context.
+
+## Audit script
+
+`scripts/audit-locales.mjs` (at the repo root) scans every
+`apps/*/locales/*.json` for banned-substitution violations. Run via:
+
+```
+node scripts/audit-locales.mjs
+```
+
+Exit code 0 = clean, 1 = violations found. CI integration is open
+(repo doesn't have CI yet); developers run it before locale-touching
+PRs.
+
+The script is deliberately conservative: it only flags entries whose
+`text` field contains a banned synonym AND whose `doc` field
+indicates a pod-related context (matches `/pod/i` in `doc`). False
+positives can be silenced by editing the `doc` field to clarify the
+non-pod context (e.g. "cloud provider — privacy explainer paragraph,
+NOT about the Pod itself").
+
 ## Open questions
 
 - **Server-rendered emails / push bodies in substrates.** Currently

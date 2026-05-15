@@ -356,13 +356,26 @@ participation from the pod node.
 ### 4.1.3 Public API
 
 ```
-pseudoPod.read(uri)            // returns resource bytes + etag
-pseudoPod.write(uri, bytes)    // queues write per the URI's mode
-pseudoPod.list(containerUri)   // lists immediate children
-pseudoPod.subscribe(uri, cb)   // local watcher
-pseudoPod.flush(uri)           // force write-through (cache mode)
-pseudoPod.setHost('hub', binder) // P4 — Hub-delegate
+pseudoPod.read(uri, {freshness}?)        // returns resource bytes + etag + _v
+                                         //   freshness: 'cached' (default) | 'fresh'
+                                         //   ('fresh' triggers a conditional-GET against the pod)
+pseudoPod.write(uri, bytes)              // queues write per the URI's mode
+                                         //   returns {uri, etag, _v}
+pseudoPod.writeFromPeer(uri, bytes, etag?, _v?, opts?)
+                                         // replication-ring receive path; runs the 3-way
+                                         //   version compare and fires events as needed.
+pseudoPod.list(containerUri)             // lists immediate children
+pseudoPod.subscribe(uri, cb)             // local watcher
+pseudoPod.flush(uri)                     // force write-through (cache mode)
+pseudoPod.on(event, cb) / off(event, cb) // events: 'peer-update', 'stale-peer',
+                                         //         'concurrent-write'
+pseudoPod.setHost('hub', binder)         // P4 — Hub-delegate
 ```
+
+**Phase 52.14 (Q-D 2026-05-14)** added the Lamport-style
+per-key version counter `_v` for replication-ring conflict
+resolution. See §4.1.4a and the design note
+[`../Stoop/conflict-resolution-design-2026-05-14.md`](../Stoop/conflict-resolution-design-2026-05-14.md).
 
 URI scheme:
 
@@ -378,8 +391,9 @@ URIs to the pseudo-pod by scheme.
 
 - **In standalone / cache mode:** pseudo-pod stores resources
   in `local-store` (in-memory + persistent SQLite-ish
-  layer). For cache mode, also tracks `(uri, etag, dirty)`
-  for the write-through queue.
+  layer). Each record carries `(bytes, etag, _v)`. For cache
+  mode, also tracks `(uri, etag, dirty)` for the write-through
+  queue.
 - **In replication-ring mode:** same local store, plus an
   outbound queue for fan-out via `notify-envelope`. Inbound
   resources arrive via the receiver-side callback (see
@@ -389,6 +403,39 @@ URIs to the pseudo-pod by scheme.
   when a peer's envelope ref resolves to
   `pseudo-pod://<deviceId>/...`). Skill defined in core
   (`core.skills.fetchResource`); pseudo-pod consumes it.
+
+### 4.1.4a Conflict resolution (Phase 52.14, locked 2026-05-14)
+
+Pseudo-pod ships **Lamport-style per-key version counters**
+for replication-ring writes:
+
+- Every write to a `pseudo-pod://<deviceId>/...` key
+  auto-increments `_v` by 1 (device-local; no coordination).
+- The fan-out envelope carries `_v` (top-level + in the
+  payload).
+- `writeFromPeer` runs a **three-way version compare**:
+
+  | inbound `_v` vs local `_v` | etag match? | outcome | event |
+  |---|---|---|---|
+  | `> local`                  | n/a                   | adopt peer's write | `peer-update` |
+  | `< local`                  | n/a                   | ignore (peer is stale) | `stale-peer` |
+  | `== local`                 | yes                   | idempotent — nothing happens | — |
+  | `== local`                 | no                    | ignore (keep local) | `concurrent-write` |
+  | no `_v` on inbound         | n/a                   | last-write-wins fallback (legacy peers) | — |
+
+The `stale-peer` event carries the local snapshot
+(`localBytes`, `localEtag`, `localV`) so the app can publish
+it back to the sender via `notify-envelope.publish`. One
+round-trip is enough to converge divergent peers.
+
+The `freshness: 'fresh'` opt on `read` (cache mode) runs a
+conditional-GET against the real pod, so the local cache can
+detect "another device of mine wrote to the pod since".
+
+**What stays out of scope:** CRDTs, vector clocks across the
+whole stack, cross-pod consistency. See
+[`../Stoop/conflict-resolution-design-2026-05-14.md`](../Stoop/conflict-resolution-design-2026-05-14.md)
+for the full design rationale.
 
 ### 4.1.5 Consumer patterns
 
@@ -432,10 +479,12 @@ notify-envelope.recv({kind, ref, payload, etag, ...})
 - Peer fetch authentication when a third-party app
   requests a resource via the fetch skill. Cap-token shape;
   pin during P1.
-- Conflict resolution in replication-ring mode when two
+- ~~Conflict resolution in replication-ring mode when two
   members write to the "same" logical resource. Today's
   `groupMirror` uses last-write-wins; pseudo-pod
-  replication-ring inherits that. Pin during P3.
+  replication-ring inherits that. Pin during P3.~~ **Resolved
+  2026-05-14 via Phase 52.14** — Lamport-style `_v` counter
+  + 3-way version compare in `writeFromPeer`. See §4.1.4a.
 - **Pending-pod-upload queue durability (locked 2026-05-11).**
   When a pod-having writer is offline and the substrate
   falls back to ring-mode for that write, the resource sits
@@ -705,6 +754,8 @@ notifyEnvelope.publish({
   ref,            // resource URI (pod or pseudo-pod)
   payload,        // bytes — used for no-pod mode
   etag,           // pod etag (or pseudo-pod content hash)
+  _v,             // Phase 52.14 — Lamport version (optional,
+                  //   forward-additive; legacy receivers ignore)
   recipients,     // crew member URIs
   fromActor,      // agent URI
 })
@@ -743,11 +794,17 @@ Typically ~150 bytes; fits well in a single relay packet.
   "kind": "task",
   "ref": "pseudo-pod://anne-device-xyz/tasks/abc",
   "etag": "<content-hash>",
+  "_v": 3,
   "payload": "<base64-encoded bytes>",
   "timestamp": "2026-05-11T10:00:00Z",
   "fromActor": "pseudo-pod://anne-device-xyz/agent"
 }
 ```
+
+`_v` (Phase 52.14, locked 2026-05-14) is the Lamport-style
+per-key counter from the sender's `pseudo-pod`. Receivers
+compare it against their own local `_v` to detect
+stale-vs-fresh — see `pseudo-pod` §4.1.4a.
 
 Size depends on the resource being mirrored.
 

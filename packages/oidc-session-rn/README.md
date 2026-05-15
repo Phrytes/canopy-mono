@@ -2,8 +2,7 @@
 
 > **Layer:** SDK foundation (RN-specific).
 > **Cross-platform sibling:** desktop OIDC lives in
-> [`apps/folio/src/auth/OidcSession.js`](../../apps/folio/src/auth/OidcSession.js)
-> using `@inrupt/solid-client-authn-node`.
+> [`@canopy/oidc-session`](../oidc-session/) via `createSolidAuthNode()`.
 > **Convention:** RN-specific substrates live in their own packages
 > (locked 2026-05-08, see
 > [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08)).
@@ -22,6 +21,18 @@ Solid OIDC sign-in for React Native:
   `buildRegistrationBody`, `clearStoredClient`) for the RFC 7591
   bootstrap that Solid OIDC requires.
 
+**Phase 52.15 additions (2026-05-14):**
+
+- `KNOWN_ISSUERS`, `DEFAULT_ISSUER_ID`, `resolveIssuer()` — curated
+  multi-issuer list mirrored from `@canopy/oidc-session`. Lets RN
+  apps accept Inrupt + community + self-hosted Solid servers without
+  hardcoding URLs.
+- `<IssuerPicker>` at the `/picker` subpath
+  (`@canopy/oidc-session-rn/picker`) — drop-in component for
+  Sign-In screens. Renders the curated list as radio tiles +
+  expandable "Custom URL" option. Adopted by folio-mobile /
+  stoop-mobile / tasks-mobile.
+
 ## Origins
 
 Lifted from `apps/folio-mobile/src/auth/{OidcSessionRN, folioAuth, dcr}.js`
@@ -30,14 +41,22 @@ Folio-mobile pre-dated the substrate and was the pattern source;
 folio-mobile has been migrated to consume this package via re-export
 shims under `apps/folio-mobile/src/auth/`.
 
-## Future: Inrupt-cleanup convergence
+## Solid-auth consolidation status
 
-The Inrupt-cleanup TODO
-([`Project Files/TODO-GENERAL.md`](../../Project%20Files/TODO-GENERAL.md))
-plans to extract a single shared "sign in / share via Inrupt"
-component across Stoop V1, Folio, Tasks V1, household, and Stoop V3
-mobile. This substrate is the V3-mobile entry point that the cleanup
-will migrate. The public API stays — implementation may swap.
+**Phase 52.15 (scoped + landing 2026-05-14)** consolidates the
+Solid sign-in UX across all apps. Substrate-side: the auth surface
+in this package + `@canopy/oidc-session` (Node sibling) gains
+multi-issuer support and a shared picker component. App-side: the
+three RN apps (folio-mobile / stoop-mobile / tasks-mobile) and the
+two web apps (folio / stoop) all consume the shared exports.
+
+**Phase 52.16 — Sharing v2 (ACP/WAC)** is scoped but not yet
+implemented. It adds `client.sharing.{grant, revoke, list,
+capabilities}` to `@canopy/pod-client`; this substrate is
+unaffected.
+
+Full design + plan:
+[`Project Files/Inrupt-migration/`](../../Project%20Files/Inrupt-migration/).
 
 ## Installation
 

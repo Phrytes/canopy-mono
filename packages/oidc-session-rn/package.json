@@ -5,8 +5,9 @@
   "type": "module",
   "main": "index.js",
   "exports": {
-    ".":      "./index.js",
-    "./hook": "./hook.js"
+    ".":        "./index.js",
+    "./hook":   "./hook.js",
+    "./picker": "./picker.js"
   },
   "scripts": {
     "test": "vitest run",
@@ -16,13 +17,15 @@
     "expo-auth-session": "*",
     "expo-secure-store": "*",
     "expo-web-browser": "*",
-    "react": "*"
+    "react": "*",
+    "react-native": "*"
   },
   "peerDependenciesMeta": {
     "expo-auth-session":  { "optional": false },
     "expo-secure-store":  { "optional": false },
     "expo-web-browser":   { "optional": false },
-    "react":              { "optional": false }
+    "react":              { "optional": false },
+    "react-native":       { "optional": false }
   },
   "devDependencies": {
     "vitest": "^2.1.9"

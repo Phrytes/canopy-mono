@@ -11,8 +11,30 @@
 - **`SolidVault`** — Node-side Solid OIDC session manager. Delegates the
   actual OIDC dance to `@inrupt/solid-client-authn-node`; persists tokens
   into a caller-supplied Vault-shaped store; exposes a
-  `getAuthenticatedFetch()` suitable for `SolidPodSource`.
-- **`_setSessionFactory`** — test-only seam to inject a fake `Session`.
+  `getAuthenticatedFetch()` suitable for `SolidPodSource`. Used by
+  `agent-provisioning`. Lower-level: takes direct `clientId / clientSecret
+  / refreshToken` — no browser dance.
+- **`createSolidAuthNode({vault, clientName})`** — Phase 52.15.2
+  (2026-05-14). The browser-redirect Solid OIDC flow (`start` →
+  authorize URL → user OAuths → `handleCallback`) as a `SolidAuth`-shaped
+  factory. Lifted from the byte-identical wrappers Folio + Stoop
+  previously copy-pasted (`apps/folio/src/auth/OidcSession.js` +
+  `apps/stoop/src/lib/OidcSession.js`, both deleted in 52.15.3). The
+  rule-of-two substrate promotion.
+- **`KNOWN_ISSUERS`, `DEFAULT_ISSUER_ID`, `resolveIssuer(idOrUrl)`** —
+  Phase 52.15.1 (2026-05-14). Curated Solid pod provider list (Inrupt,
+  SolidCommunity, SolidWeb) + helper for converting between issuer
+  ids, URLs, and synthesised custom entries.
+- **`getIssuerPickerHtml({selectedId?, customAllowed?, ...})`** — Phase
+  52.15.4 (2026-05-14). Server-rendered HTML fragment for the issuer
+  picker. Apps embed it into their sign-in template; client-side JS
+  reads the form's selected radio.
+- **`OIDC_VAULT_KEYS`** — frozen object of the vault key names that
+  `createSolidAuthNode` uses for refresh-token / issuer / clientId /
+  clientSecret persistence.
+- **`_setSessionFactory` / `_setSolidAuthNodeSessionFactory`** —
+  test-only seams to inject a fake Inrupt `Session` (one each for
+  `SolidVault` and `createSolidAuthNode`).
 
 ## Public API
 
@@ -125,6 +147,26 @@ import { SolidVault } from '@canopy/core';
 import { SolidVault } from '@canopy/oidc-session';
 ```
 
+## Solid-auth consolidation status (Phase 52.15)
+
+Scoped + (largely) shipped 2026-05-14. Three docs in
+[`Project Files/Inrupt-migration/`](../../Project%20Files/Inrupt-migration/)
+capture the inventory, the substrate design, and the phase plan.
+
+- **52.15.1 / 52.15.2 / 52.15.3 shipped 2026-05-14** — multi-issuer
+  exports, `createSolidAuthNode` factory, Folio + Stoop wrappers
+  retired.
+- **52.15.4 / 52.15.5 shipped 2026-05-14** — web HTML picker +
+  React Native `<IssuerPicker>` (`@canopy/oidc-session-rn/picker`)
+  + adoption in all 5 apps.
+- **52.15.6 / 52.15.7 / 52.15.8 shipped 2026-05-14** — terminology
+  contract locked in
+  [`localisation.md`](../../Project%20Files/conventions/localisation.md);
+  audit script at `scripts/audit-locales.mjs`.
+
+Phase 52.16 (ACP/WAC sharing via `pod-client.sharing.*`) is scoped
+but not yet implemented.
+
 ## See also
 
 - [`@canopy/oidc-session-rn`](../oidc-session-rn/) — RN peer.
@@ -132,3 +174,5 @@ import { SolidVault } from '@canopy/oidc-session';
   `SolidVault` session and adapts it to the `PodClient` auth contract.
 - [`Project Files/SDK/core-v2-functional-design-2026-05-11.md`](../../Project%20Files/SDK/core-v2-functional-design-2026-05-11.md)
   — design context.
+- [`Project Files/Inrupt-migration/`](../../Project%20Files/Inrupt-migration/)
+  — Solid-auth consolidation (Phase 52.15 + 52.16).

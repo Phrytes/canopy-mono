@@ -87,10 +87,11 @@ describe('PseudoPod.standalone — round-trip', () => {
   it('writes and reads back', async () => {
     const pod = mkPod();
     const uri = 'pseudo-pod://laptop-anne/tasks/abc';
-    const { etag } = await pod.write(uri, { text: 'paint' });
+    const { etag, _v } = await pod.write(uri, { text: 'paint' });
     expect(typeof etag).toBe('string');
+    expect(_v).toBe(1);
     const rec = await pod.read(uri);
-    expect(rec).toEqual({ uri, bytes: { text: 'paint' }, etag });
+    expect(rec).toEqual({ uri, bytes: { text: 'paint' }, etag, _v: 1 });
   });
 
   it('preserves caller-supplied etag', async () => {
@@ -183,6 +184,62 @@ describe('PseudoPod — fetchResourceSkill', () => {
     await expect(skill.handler({
       parts: [{ type: 'DataPart', data: { uri: 'pseudo-pod://laptop-anne/missing' } }],
     })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  // Phase 52.2.x (Q#2 2026-05-14) — peer-fetch gates pass through.
+  it('groupCheck opt flows through to the underlying skill', async () => {
+    const pod = mkPod();
+    const uri = 'pseudo-pod://laptop-anne/secret';
+    await pod.write(uri, 'private-bytes');
+
+    const members = new Set(['pubkey:bob']);
+    const skill = pod.fetchResourceSkill({
+      groupCheck: (_uri, ctx) => members.has(ctx.from),
+    });
+
+    // Member: served.
+    const ok = await skill.handler({
+      parts: [{ type: 'DataPart', data: { uri } }],
+      from:  'pubkey:bob',
+    });
+    expect(ok[0].data.bytes).toBe('private-bytes');
+
+    // Ex-member (kicked out of the set): FORBIDDEN.
+    members.delete('pubkey:bob');
+    await expect(skill.handler({
+      parts: [{ type: 'DataPart', data: { uri } }],
+      from:  'pubkey:bob',
+    })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    // Non-member: FORBIDDEN.
+    await expect(skill.handler({
+      parts: [{ type: 'DataPart', data: { uri } }],
+      from:  'pubkey:carol',
+    })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('capCheck opt flows through (cap-token bypass for non-members)', async () => {
+    const pod = mkPod();
+    const uri = 'pseudo-pod://laptop-anne/shareable';
+    await pod.write(uri, 'shared-bytes');
+
+    const skill = pod.fetchResourceSkill({
+      groupCheck: () => false,        // no one is a member
+      capCheck:   (_uri, ctx) => ctx.capToken === 'valid',
+    });
+
+    // Non-member with valid cap-token: served.
+    const ok = await skill.handler({
+      parts: [{ type: 'DataPart', data: { uri, capToken: 'valid' } }],
+      from:  'pubkey:external',
+    });
+    expect(ok[0].data.bytes).toBe('shared-bytes');
+
+    // Non-member without cap-token: FORBIDDEN.
+    await expect(skill.handler({
+      parts: [{ type: 'DataPart', data: { uri } }],
+      from:  'pubkey:external',
+    })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });
 

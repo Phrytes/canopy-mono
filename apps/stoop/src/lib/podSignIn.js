@@ -22,13 +22,13 @@
  * The `OidcSession` instance lives on `bundle.oidcSession` (lazily
  * created on first sign-in attempt; reused across attempts).
  *
- * **Substrate candidate:** `OidcSession` is the substrate-grade
- * primitive (Folio + Stoop = 2 consumers).  The `attachInner`
- * orchestration is app-local — it composes existing primitives.
+ * Phase 52.15.3 (2026-05-14) — `OidcSession.js` retired in favour
+ * of `@canopy/oidc-session.createSolidAuthNode`. The `attachInner`
+ * orchestration stays app-local — it composes existing primitives.
  */
 
 import { SolidPodSource } from '@canopy/core';
-import { OidcSession } from './OidcSession.js';
+import { createSolidAuthNode } from '@canopy/oidc-session';
 
 /** Lazily build a vault for OIDC token storage.  In V1.5 we can
  *  swap this for `core.VaultMemory` or a fs-backed vault per
@@ -44,7 +44,10 @@ function defaultVault() {
 
 function ensureSession(bundle) {
   if (!bundle.oidcSession) {
-    bundle.oidcSession = new OidcSession({ vault: bundle.oidcVault ?? defaultVault() });
+    bundle.oidcSession = createSolidAuthNode({
+      vault: bundle.oidcVault ?? defaultVault(),
+      clientName: 'Stoop',
+    });
   }
   return bundle.oidcSession;
 }

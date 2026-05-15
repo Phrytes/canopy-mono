@@ -267,19 +267,21 @@ transitions without losing writes.
 | # | Task | Files |
 |---|---|---|
 | 52.9.1 | Notifier recognises envelope-shape payloads vs full-payload broadcasts. Envelope-shape: emit small wire; receivers fetch by ref via pseudo-pod. Full-payload: route through `notify-envelope`'s pseudo-pod-replicated path. | `packages/notifier/src/index.js` |
-| 52.9.2 | Stoop's `groupMirror` substrate retires. Its work moves into `notify-envelope` + `pseudo-pod` (ring mode). Dual-run during transition: groupMirror + new substrate emit in parallel; reads prefer the substrate side; flip per-crew once parity tests pass. | `apps/stoop/src/groupMirror.js` (deprecation shim), `packages/notify-envelope` |
-| 52.9.3 | Tasks's relay-fan-out helpers: route through `notify-envelope` instead of bespoke `groupMirror`-style code. | `apps/tasks-v0/src/skills/**` |
-| 52.9.4 | Test matrix: pod-having + no-pod crew round-trips for every legacy fan-out path that's now substrate-mediated. | `packages/integration-tests/notify-envelope-migration/**` |
+| 52.9.2 | **Stoop's `groupMirror` retired (clean break, 2026-05-14, Q-B).** No dual-run — the user picked clean-break matching Q-A's cutover style (no production users to disrupt). New files: `apps/stoop/src/substrateMirror.js` (substrate-shaped receive) + `apps/stoop/src/lib/substrateStack.js` (pseudoPod + podRouting + notifyEnvelope wiring with per-recipient transport routing). Publisher dual-publishes: `skillMatch.broadcast` keeps the claim-flow on the pubsub topic; `notifyEnvelope.publish({type:'request'})` replicates posts via the substrate path. Receiver-side notify-envelope auto-runs the Q-D 3-way version compare via `pseudoPod.writeFromPeer`. `groupMirror.js` + its addPeer-race test deleted (no per-peer race on the substrate path — receive is one global subscription). Tests: **460/460 stoop, 73/73 pseudo-pod, 47/47 notify-envelope, 41/41 integration**. Q-D bugfix found during wiring: `core.Transport.publishEnvelope` now forwards `_v` (was being dropped in the destructure). | `apps/stoop/src/{substrateMirror,index}.js`, `apps/stoop/src/lib/substrateStack.js`, `packages/core/src/transport/Transport.js`, `apps/stoop-mobile/src/lib/{agentBundle,bootstrapBundle}.js`, `apps/stoop/bin/stoop-testbed.js`, 5 stoop test files |
+| 52.9.3 | ~~Tasks's relay-fan-out helpers: route through `notify-envelope` instead of bespoke `groupMirror`-style code.~~ **Deferred to Tasks V2 (2026-05-14).** Survey 2026-05-14 found `apps/tasks-v0/src/skills/**` has NO existing fan-out helpers to migrate — Tasks-v0 is single-household / local-only today. The phase's premise was wrong about Tasks's current state. Adoption of the substrate path (notify-envelope + pseudo-pod) will happen when Tasks goes multi-device (V2 mobile + concurrent multi-instance crew servers). Substrate side is ready (Stoop's `apps/stoop/src/substrateMirror.js` is the template). Tracked in `Project Files/Tasks App/v2-{web,mobile}-functional-design-2026-05-11.md` §8 Open questions. | `apps/tasks-v0/src/skills/**` |
+| 52.9.4 | Test matrix: pod-having + no-pod crew round-trips for every legacy fan-out path that's now substrate-mediated. **Stoop coverage shipped 2026-05-14 via Phase 52.9.2's substrate-mirror tests + integration-tests substrates-v2 scenarios. Graceful-degradation matrix (third axis) shipped 2026-05-14** at `packages/integration-tests/test/scenarios/graceful-degradation/cache-mode-edge-cases.scenario.test.js` — 5 scenarios covering sequential offline writes, pending-queue persistence across substrate restart, partial drain failure with retry, online↔offline mid-batch, notify-envelope re-emit on drain. Integration suite now 46/46. Tasks coverage waits on 52.9.3 (deferred above). | `packages/integration-tests/test/scenarios/{substrates-v2,graceful-degradation}/**` |
 
-**Estimate:** 3 days (Stoop's `groupMirror` cut-over is the
-load-bearing piece; per the transition doc §IV.2, plan two
-weeks of dual-path runtime in production before the final
-flip).
+**Estimate:** 3 days (originally planned; **groupMirror
+retirement (52.9.2) shipped 2026-05-14 as a clean break**,
+not the dual-path approach the transition doc proposed —
+worked because there are no production users yet, and Q-D's
+substrate path was strictly stronger than groupMirror's LWW
+at flip time).
 **Acceptance:** Stoop crews on both pod-having and no-pod
 policies pass parity tests against the new substrate path;
 Tasks's relay-fan-out replaced with the substrate's
-notify-envelope path; legacy `groupMirror` substrate
-deletable after parity holds.
+notify-envelope path (still TODO — Stoop done first); legacy
+`groupMirror` substrate deleted.
 
 ---
 
@@ -378,6 +380,123 @@ observer can subscribe to state transitions.
 
 ---
 
+## Phase 52.14 — Conflict resolution (Q-D, 2026-05-14)
+
+> **Purpose:** answer the "whose copy wins?" question for
+> replication-ring resources, and surface stale-vs-fresh signals
+> apps can act on. Closes Q-D from
+> [`Project Files/Stoop/open-questions-2026-05-12.md`](../Stoop/open-questions-2026-05-12.md)
+> and pins open-question #3 above. Full design lives in
+> [`../Stoop/conflict-resolution-design-2026-05-14.md`](../Stoop/conflict-resolution-design-2026-05-14.md).
+>
+> **Scope.** Replication-ring (no-pod) and cache-mode (cache vs
+> pod) are the two situations we tackle. Single-author single-pod
+> stayed as-is (etag-CAS already in `pod-client` + `agent-registry`);
+> multi-author single-pod stayed as-is (`pod-client`'s `conflict`
+> event already wired — apps opt in).
+
+| # | Task | Files |
+|---|---|---|
+| 52.14.1 | `StorageBackend` typedef gains optional `_v: number` on `StoredRecord`. `put(key, bytes, etag?, _v?)` returns `{etag, _v}`; pinning `_v` is the "accept peer's write" path. | `packages/pseudo-pod/src/StorageBackend.js` |
+| 52.14.2 | `MemoryBackend` tracks a per-key Lamport-style counter; new keys start at 1, default puts increment by 1, caller-supplied `_v` pins. `delete` clears the counter. | `packages/pseudo-pod/src/MemoryBackend.js` |
+| 52.14.3 | RN persistent backends (`AsBackend`, `FsBackend`) persist `_v` alongside bytes + etag; same pin-or-increment semantics. | `packages/react-native/src/pseudo-pod-adapter/AsBackend.js`, `FsBackend.js` |
+| 52.14.4 | `PseudoPod.write` returns `{uri, etag, _v}`. Replication-ring publish includes `_v` at the envelope top level AND inside the payload (belt-and-braces). | `packages/pseudo-pod/src/PseudoPod.js` |
+| 52.14.5 | `PseudoPod.writeFromPeer(uri, bytes, etag, _v?, opts?)` runs the three-way version compare: inbound `_v` > local → adopt + `'peer-update'`; < local → ignore + `'stale-peer'` (carries local snapshot); == local → idempotent-or-`'concurrent-write'` depending on etag match. Legacy peers (no `_v`) fall back to LWW. | `packages/pseudo-pod/src/PseudoPod.js` |
+| 52.14.6 | Event-emitter surface on `PseudoPod` (`on(event, cb)` / `off(event, cb)`); events: `'peer-update'`, `'stale-peer'`, `'concurrent-write'`. Errors thrown by subscribers are swallowed. | `packages/pseudo-pod/src/PseudoPod.js` |
+| 52.14.7 | `PseudoPod.read(uri, {freshness})` opt — cache mode only. `'fresh'` runs a conditional GET (caller's `podFetcher` accepts `{ifNoneMatch}` second arg; `notModified: true` keeps cached copy, else refreshes). `'cached'` is the default. | `packages/pseudo-pod/src/PseudoPod.js` |
+| 52.14.8 | `notify-envelope.publish({..., _v})` forwards the counter (forward-additive — legacy receivers ignore). Receive path passes `payload._v` + `payload.fromActor` into `writeFromPeer`. Pending-queue entries also carry `_v`. | `packages/notify-envelope/src/NotifyEnvelope.js` |
+| 52.14.9 | Tests: peer-update / stale-peer / concurrent-write / idempotent / legacy fall-back; stale-peer reply round-trip (divergent peers converge in one round); envelope wire-shape carries `_v`. | `packages/pseudo-pod/test/PseudoPod.replicationRing.test.js`, `packages/react-native/test/pseudo-pod-adapter/*.test.js` |
+| 52.14.10 | App-level adoption (Stoop first; Tasks + Folio when they adopt replication-ring): subscribe to `'stale-peer'` and reply via `notify-envelope.publish`. **Deferred** — implementation lands once an app feels the need. | `apps/stoop/src/skills/index.js` |
+
+**Estimate:** ≈3 days (1.5 days substrate + 1 day tests + 0.5
+day docs; app-level adoption deferred).
+**Acceptance:** 73/73 pseudo-pod tests + 47/47 notify-envelope
+tests pass; the three-way version compare fires its events
+under the scenarios above; pseudoPod.read with `freshness:
+'fresh'` works against a mock pod.
+
+**Shipped 2026-05-14.** Substrate side complete; app-side hooks
+remain deferred until the first real divergence shows up in
+field testing.
+
+## Phase 52.15 — Solid-auth consolidation (Scoped 2026-05-14)
+
+> **Purpose:** consolidate the Solid OIDC sign-in UX across every
+> app + add multi-issuer support (Inrupt + community + self-hosted).
+> Subsumes the older "Default pod issuer flexibility" TODO. Full
+> design + plan: [`../Inrupt-migration/`](../Inrupt-migration/).
+>
+> **Status:** SCOPED 2026-05-14, implementation pending.
+>
+> **Critical path:** lands BEFORE any new sign-in UX in Tasks V1 or
+> Household V2 (per TODO-GENERAL).
+
+| # | Task | Files |
+|---|---|---|
+| 52.15.1 | `KNOWN_ISSUERS`, `DEFAULT_ISSUER_ID`, `resolveIssuer()` exports + shared `SolidAuth` typedef. | `packages/oidc-session/src/issuers.js`, `packages/oidc-session/index.js` |
+| 52.15.2 | `createSolidAuthNode({vault, clientName, redirectUrl})` — substrate-promote `OidcSession.js` from apps/folio + apps/stoop. | `packages/oidc-session/src/createSolidAuthNode.js` |
+| 52.15.3 | Drop `apps/folio/src/auth/OidcSession.js` + `apps/stoop/src/lib/OidcSession.js`; update call sites. | `apps/{folio,stoop}/**` |
+| 52.15.4 | `getIssuerPickerHtml()` web component + adoption in Folio + Stoop sign-in pages. | `packages/oidc-session/src/issuerPickerHtml.js`, `apps/folio/src/server/static/*.html`, `apps/stoop/web/sign-in.html` |
+| 52.15.5 | `<IssuerPicker>` RN component + adoption in folio-mobile + stoop-mobile + tasks-mobile SignInScreens. | `packages/oidc-session-rn/src/picker/`, `apps/{folio,stoop,tasks}-mobile/src/screens/SignInScreen.js` |
+| 52.15.6 | Terminology lock — per-app locale fixes + `locales-audit` CI hook. | `apps/*/locales/*.json`, `Project Files/conventions/localisation.md` |
+| 52.15.7 | Tests: exports shape; createSolidAuthNode round-trip; IssuerPicker renders provided list. | `packages/oidc-session/test/**`, `packages/oidc-session-rn/test/picker/**` |
+| 52.15.8 | README updates + cross-link to inventory + design + plan. | `packages/{oidc-session,oidc-session-rn}/README.md` |
+
+**Estimate:** ≈4 days.
+**Acceptance:** every app uses the same issuer-picker shape;
+defaults align on Inrupt; users can switch to solidcommunity.net /
+solidweb.org / custom; terminology audit passes CI.
+
+**Shipped 2026-05-14.** All 8 sub-phases landed in one session
+(2026-05-14). Folio + Stoop web embed the picker (manual mirror of
+`getIssuerPickerHtml()`); folio-mobile + stoop-mobile + tasks-mobile
+adopt `<IssuerPicker>` from `@canopy/oidc-session-rn/picker`. The
+copy-pasted `OidcSession.js` wrappers retired. Audit script reports
+clean (one EN + one NL terminology violation fixed during the
+adoption pass). Tests: 79 oidc-session, 44 oidc-session-rn, 452
+Folio, 460 Stoop.
+
+## Phase 52.16 — Sharing v2 (ACP-mediated, Scoped 2026-05-14)
+
+> **Purpose:** add real Solid ACP/WAC mutation to `pod-client`. Folio
+> adopts; non-ACP pods fall back to cap-token cleanly. The bespoke
+> cap-token surface stays for power-user CLI + bot/admin scope.
+> Full design: [`../Inrupt-migration/substrate-design-2026-05-14.md`](../Inrupt-migration/substrate-design-2026-05-14.md).
+>
+> **Status:** SCOPED 2026-05-14, implementation pending. Lands after
+> 52.15 ships; not blocking other Phase 52.x work.
+
+| # | Task | Files |
+|---|---|---|
+| 52.16.1 | `client.sharing.{grant, revoke, list, capabilities}` API. ACP-via-Inrupt-SDK impl. | `packages/pod-client/src/sharing/**` |
+| 52.16.2 | `SharingUnsupportedError` + capability probe. | `packages/pod-client/src/sharing/capabilities.js` |
+| 52.16.3 | Folio CLI + server `/share` adopt the new API. `--mode cap-token \| acp` flag. | `apps/folio/src/{cli,server}/**` |
+| 52.16.4 | Folio browser Share pane adopts the new API; UX shows mode used. | `apps/folio/src/server/static/share.{js,html}` |
+| 52.16.5 | Folio auto-share `with-<webid>/` gets `acp` mode (capability-detection at sync time). | `apps/folio/src/autoShare.js` |
+| 52.16.6 | folio-mobile ShareScreen adopts new API (falls back to cap-token when engine.identity absent). | `apps/folio-mobile/src/screens/ShareScreen.js` |
+| 52.16.7 | Tests: ACP grant/revoke/list round-trip; capability probe; fall-back paths. | `packages/pod-client/test/sharing/**` |
+| 52.16.8 | Integration: pod-having Folio test that creates a `with-<webid>/` folder + verifies the share is ACP-mediated. | `packages/integration-tests/test/scenarios/sharing-v2/**` |
+
+**Estimate:** ≈5 days.
+**Acceptance:** Folio's share UX defaults to ACP-mediated grants when
+the pod supports it; falls back to cap-token cleanly; already-issued
+cap-tokens remain valid via the unchanged consumer-side path.
+
+**Shipped 2026-05-14.** All 8 sub-phases landed (same session as
+52.15, ≈4 days of design + impl compressed). `client.sharing.*` in
+`pod-client` uses Inrupt's `universalAccess` API (lazy-loaded);
+`SharingUnsupportedError` + `parseSharingLinkHeader` /
+`probeCapabilities` ship as named exports. Folio CLI gets a
+`--mode cap-token|acp` flag (CLI stays cap-token-only; `--mode acp`
+points to the server). Folio server `/share` accepts `mode:
+'auto'|'cap-token'|'acp'` and returns `{mode, token? | grant?}`.
+Browser Share pane labels rows with the share mode. `autoShare`
+probes capabilities once per pod origin and prefers ACP when
+supported (with cap-token fall-back per-folder). folio-mobile
+ShareScreen tries ACP first when `engine.podClient` is wired,
+fall-back to cap-token. Tests: **188 pod-client** (+37 sharing),
+**463 folio** (+11 mode/ACP), **79 folio-mobile**.
+
 # Part VI — What stays unchanged
 
 These substrates are listed in the functional design §5.9
@@ -406,6 +525,9 @@ as "stays unchanged":
 | 52.8 – 52.9 | P3 (Hub-free) | ≈7 days | Pseudo-pod V1 + notifier extensions; **groupMirror cut-over is the cliff** |
 | 52.10 – 52.11 | P5 (Hub-free) | ≈4.5 days | agent-registry substrate + identity-resolver swap |
 | 52.12 – 52.13 | P6 (Hub track, direction) | ≈9 days | interface-registry + protocol substrates |
+| 52.14 | (out-of-band) | ≈3 days | **Shipped 2026-05-14** — conflict resolution (Q-D) |
+| 52.15 | (out-of-band) | ≈4 days | Scoped 2026-05-14 — Solid-auth consolidation (multi-issuer + picker + substrate-promote). Critical path for Tasks V1 / Household V2 sign-in UX. |
+| 52.16 | (out-of-band) | ≈5 days | Scoped 2026-05-14 — Sharing v2 (ACP/WAC via `client.sharing.*`). Lands after 52.15. |
 
 **Total ≈37 days of substrate-side work** across the
 standardisation arc — substantially larger than core (10
@@ -446,30 +568,150 @@ the Hub V2 timing is committed.
 
 Carried from the functional design + the 2026-05-11
 graceful-degradation work — these aren't blockers but need
-attention during implementation:
+attention during implementation. **Status traversal 2026-05-14:**
+of 10 questions, 5 are now resolved (#1, #3, #5, #8, #9), 4
+remain genuinely open (#2, #4, #6, #7), and 1 is Hub-track
+deferred (#10).
 
-1. **ACP defaults for `/sharing/public/`.** Pin during 52.5.
+1. ~~**ACP defaults for `/sharing/public/`.** Pin during 52.5.~~
+   **Resolved 2026-05-11 in code** — see
+   `packages/pod-onboarding/src/acpTemplates.js`:
+   `/private/` is agent-locked, `/sharing/` is default-deny
+   per-resource (owner-write, no-read), `/sharing/public/` is
+   world-readable + owner-write. The user / app explicitly
+   opts in to public placement by writing into the
+   `/sharing/public/` container.
+
 2. **Pseudo-pod peer-fetch authentication.** Cap-token shape
-   for third-party reads. Pin during 52.2.
-3. **Replication-ring conflict resolution.** Beyond
-   last-write-wins. Pin during 52.8.
+   for third-party reads. Pin during 52.2. **DECIDED
+   2026-05-14 (hybrid); IMPLEMENTATION PENDING.**
+   `pseudoPod.fetchResourceSkill({groupCheck?, capCheck?})`
+   ships TWO opt-in hooks:
+   - `groupCheck(uri, caller) → boolean | Promise<boolean>` —
+     default model: caller is authorised if a shared
+     group-membership exists for the resource. Substrate
+     ships a default that consults an app-provided membership
+     lookup; falls back to "allow" when no lookup is wired
+     (matches current behaviour, so adoption is opt-in).
+   - `capCheck(uri, caller, capToken?) → boolean` —
+     orthogonal cap-token verification path. When supplied,
+     callers can present a `PodCapabilityToken`-shaped
+     credential whose scope must match the requested URI.
+   When BOTH are supplied, the responder accepts the fetch
+   if EITHER returns truthy (group OR cap-token), so an
+   external (non-member) consumer can still read via an
+   issued cap-token. When NEITHER is supplied, default
+   trust-the-transport behaviour stays — back-compat for
+   apps that haven't migrated.
+
+   **SUBSTRATE SIDE SHIPPED 2026-05-14** as Phase 52.2.x.
+   `core.makeFetchResourceSkill({read, groupCheck?, capCheck?, …})`
+   gained the two opt-in gate hooks; `pseudoPod.fetchResourceSkill(opts)`
+   passes them through. When BOTH supplied → allow if EITHER
+   returns truthy (group OR cap-token). When NEITHER supplied →
+   trust-the-transport (back-compat for current callers). Tests:
+   **9 new gate tests in `packages/core/test/Agent.pseudoPod.test.js`
+   + 2 gate-flow tests in `packages/pseudo-pod/test/PseudoPod.standalone.test.js`.**
+   Per-app adoption pending — Stoop, Tasks, Folio register
+   `fetch-resource` with their group-membership lookup when
+   they start exposing it (current state: no app calls
+   `fetch-resource` yet; substrate-mirror replicates payloads
+   inline). When that changes (envelope-only mode adoption,
+   cross-app embeds), apps wire `groupCheck` from their
+   `MemberMap` / equivalent.
+
+   **Safety rationale (2026-05-14):** Stoop's existing
+   `EvictionRoster` filters INBOUND posts from evicted
+   members but does NOT gate OUTBOUND fetches. An ex-member
+   who retains the agent pubkey + URI structure can still
+   read group resources via `fetch-resource` once apps
+   expose that skill. The hybrid design is the V1 protection
+   against this; cap-token opt-in covers cross-group sharing
+   when that becomes a real product need.
+
+3. ~~**Replication-ring conflict resolution.** Beyond
+   last-write-wins. Pin during 52.8.~~ **Resolved 2026-05-14
+   via Phase 52.14** — Lamport-style per-key counter + 3-way
+   version compare in `writeFromPeer`; events fired for
+   `peer-update` / `stale-peer` / `concurrent-write`. See
+   §Phase 52.14 above + the design note.
+
 4. **Storage-mapping migration.** When a user upgrades from
    one-pod to two-pod, rewrite map shape + lifecycle. Pin
-   during 52.5.
-5. **Etag concurrency at scale** (multi-app + multi-device
-   writes to agent-registry). Pin during 52.10.
-6. **Type-schema versioning** across app releases. Forward-
-   additive only? Pin during 52.7.
-7. **Envelope ordering guarantees** (relay-side or
-   client-side sequence counter). Pin during 52.4.
-8. **Reachability-check cadence** in pod-routing. Default
+   during 52.5. **DESIGN SKETCHED 2026-05-14, IMPLEMENTATION
+   DEFERRED V2.** Locked scope: **changing the mapping only
+   affects future storage actions; data migration is the
+   user's responsibility, not the substrate's**. Substrate
+   ships ONE primitive — `podRouting.setStorageMapping(newMap)`
+   — an atomic CAS rewrite with `config-changed` event +
+   history array. Sketch lives at
+   [`storage-migration-design-2026-05-14.md`](./storage-migration-design-2026-05-14.md).
+   V2 phase: ≈4 days. Trigger conditions: real user wants to
+   switch pod providers, household upgrade, or app path
+   restructure.
+
+5. ~~**Etag concurrency at scale** (multi-app + multi-device
+   writes to agent-registry). Pin during 52.10.~~ **Resolved
+   2026-05-14 in code** —
+   `packages/agent-registry/src/concurrency.js` ships
+   `withCAS(...)`: read current resource (with etag), mutate,
+   write back with `If-Match: <etag>`, bounded retry on
+   CAS-failure (returns `{retries}`), throws persistent
+   `CONFLICT` after exhausting retries.
+
+6. ~~**Type-schema versioning** across app releases. Forward-
+   additive only? Pin during 52.7.~~ **Resolved 2026-05-14 —
+   ratified Stoop's de-facto pattern as the formal policy.**
+   - **Forward-additive types + kinds** — new values added
+     freely; older apps treat unknown values as `'other'` /
+     ignore.
+   - **Aliases for renames** — legacy names persist in the
+     registry resolving to canonical names
+     (`supply-offer` → `offer`).
+   - **No removals** — types may be marked deprecated, never
+     removed. Apps may stop emitting deprecated values, but
+     readers must keep recognising them.
+   Policy documented in `@canopy/item-types/README.md`.
+
+7. ~~**Envelope ordering guarantees** (relay-side or
+   client-side sequence counter). Pin during 52.4.~~
+   **Resolved 2026-05-14: deferred + documented as known
+   limitation.** Substrate ships current behaviour (each
+   envelope carries `timestamp`; UI components sort by
+   sender's wall clock). Cross-actor total ordering isn't
+   physically meaningful without a central authority; intra-
+   actor reorderings are bounded by transport latency.
+   Known limitation: **displayed order ≈ post time ± clock
+   skew**; multi-actor bursts may visibly reorder. Revisit
+   if real-world field testing surfaces visible reorderings
+   that confuse users. Phase 52.14's `_v` is per-resource
+   (Lamport), unrelated to envelope-level ordering.
+
+8. ~~**Reachability-check cadence** in pod-routing. Default
    proposed: last successful pod request within N seconds
-   AND no transport disconnect since. Pin during 52.3.
-9. **Pending-pod-upload queue semantics.** Where it persists,
-   when it drains, re-emit on drain. Pin during 52.4 + 52.8.
+   AND no transport disconnect since. Pin during 52.3.~~
+   **Resolved 2026-05-11 in code** —
+   `packages/pod-routing/src/PodRouting.js` ships
+   `createPodRouting({reachabilityTTLms: 30_000})` with
+   `markPodReachable(uri)` / `markPodUnreachable(uri)` /
+   `isPodReachable(uri)`. Default TTL is 30s; caller-driven
+   reachability marking (no auto-poll).
+
+9. ~~**Pending-pod-upload queue semantics.** Where it
+   persists, when it drains, re-emit on drain. Pin during
+   52.4 + 52.8.~~ **Resolved 2026-05-11 in code** — locked
+   per §Phase 52.4.4 above. Queue persists in the local
+   pseudo-pod under reserved namespace
+   `__pending-pod-uploads__`; drains on caller-driven
+   reconnect signal (`notifyEnvelope.drainQueue()` /
+   `pseudoPod.drainWriteThroughQueue()`); re-emit
+   envelope-only message per drained entry so peers can
+   promote their cached copy to pod-canonical.
+
 10. **AIDL surface versioning discipline** (for the future
     interface-registry + protocol delegation through the
-    Hub). Pin during P6 with the Hub team.
+    Hub). Pin during P6 with the Hub team. **DEFERRED** —
+    P6 is direction-only until Hub V1 timing commits.
 
 ## Open V2 questions (deferred to post-V1, documented for later)
 
