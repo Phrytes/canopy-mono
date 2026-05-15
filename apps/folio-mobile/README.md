@@ -140,6 +140,13 @@ Keystore).  See `src/auth/OidcSessionRN.js` for the storage keys.
 > `src/auth/{OidcSessionRN, folioAuth, dcr}.js` files remain as thin
 > Folio-flavour wrappers / test seams; the substance has moved.
 
+## Pair-test scenarios
+
+When running real-device tests against Folio-desktop, the F1–F4
+pair scenarios (ACP grant + fetch, cap-token fallback, revocation,
+conflict resolution) live in the cross-app pair-test runbook:
+[`Project Files/pair-test-runbook-2026-05-15.md`](../../Project%20Files/pair-test-runbook-2026-05-15.md).
+
 ## Known iOS limitations
 
 - **Custom URL scheme on Android Expo Go is flaky** — use a dev build
