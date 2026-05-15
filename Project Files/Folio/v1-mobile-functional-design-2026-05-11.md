@@ -323,26 +323,61 @@ Twelve screens — V0's set plus three new (Quick capture,
 Import token, Conflict resolver). All other V0 screens
 carry forward.
 
-## 6a. Implementation status (post-standardisation)
+## 6a. Implementation status (refreshed 2026-05-14)
 
 V0 ships today (Folio.C2 — Phase C deliverable). V1 work is
 the standardisation transition + the three new screens.
+Multiple substrate pieces shipped 2026-05-14; this table is
+refreshed accordingly.
 
-| Phase from plan | Mobile-specific work | Status (2026-05-11) |
+| Phase from plan | Mobile-specific work | Status (2026-05-14) |
 |---|---|---|
-| P0 | n/a | pending |
-| P1 | route through pseudo-pod V0 substrate (transparent); read storage-mapping from pod via pseudo-pod; cross-pod refs in note frontmatter | pending |
-| P2 | adopt `item-types` for `note` type | pending |
-| P3 | **first consumer of pseudo-pod V1** — Folio-mobile's C1 RN engine adapters become pseudo-pod V1 RN adapters; sync-engine retires into substrate | pending |
-| P5 | adopt `agent-registry`; canonical app skeleton alignment | pending |
-| P4 (Hub) | `hub-discovery` + `hub-binding`; runtime-detect Hub | pending |
-| P6 (Hub) | register `note` renderer (compact: tag chip + title; full: editor + preview); Folio-mobile-as-bundle for the Hub | pending |
-| P7 (Hub) | bundle refactor (Folio last; smallest; confidence test) | pending |
+| P0 | n/a | n/a |
+| P1 | route through pseudo-pod V0 substrate (transparent); read storage-mapping from pod via pseudo-pod; cross-pod refs in note frontmatter | **substrate ready; app wiring pending** — pseudoPod V0 + pod-routing + notify-envelope shipped 2026-05-14. Folio-mobile still uses `sync-engine-rn` directly today |
+| P2 | adopt `item-types` for `note` type | **substrate ready; app wiring pending** — Q-A shipped (`item-types` + canonical vocabulary). Folio note schema needs to land in `packages/item-types/src/note.js` |
+| P3 | **first consumer of pseudo-pod V1** — Folio-mobile's C1 RN engine adapters become pseudo-pod V1 RN adapters; sync-engine retires into substrate | **deferred to V2** — Folio-mobile's existing C1 pluggable engines + `sync-engine-rn` keep working unchanged until substrate-side P3 absorption lands |
+| 52.14 (Q-D) | Lamport `_v` on note writes via pseudoPod replication-ring | **substrate ready** — auto-applies once Folio-mobile writes via pseudoPod. `'stale-peer'` event would feed the new Conflict resolver screen |
+| 52.15.5 | Multi-issuer pick on Sign-in screen via `<IssuerPicker>` from `@canopy/oidc-session-rn/picker` | **shipped 2026-05-15** — `apps/folio-mobile/src/screens/SignInScreen.js` drops in `<IssuerPicker value={issuer} onChange={setIssuer} />`. 79/79 Folio-mobile tests green at adoption commit |
+| 52.16 | Sharing v2 — ACP/WAC grant on outbound share flow | **substrate ready** — `createClientSharing` from `@canopy/pod-client/sharing`. Mobile share screen can stay cap-token-only initially (cap-token via Stoop chat is the canonical flow); ACP grant is an additive future enhancement |
+| 52.2.x | peer-fetch gates | **substrate ready** — when Folio-mobile exposes its own `fetch-resource` skill (e.g. for serving a note to a Tasks-mobile cross-ref), wire `capCheck` for inbound cap-token presence |
+| P5 | adopt `agent-registry`; canonical app skeleton alignment | **substrate ready; app wiring pending** — agent-registry shipped 2026-05-14 (Phase 52.10). Mobile boot should `register({ kind: 'folio-mobile', deviceId, capabilities: ['fs-cache','push','background-sync'] })` once on first run |
+| P4 (Hub) | `hub-discovery` + `hub-binding`; runtime-detect Hub | **deferred** (Hub track direction-only) |
+| P6 (Hub) | register `note` renderer (compact: tag chip + title; full: editor + preview); Folio-mobile-as-bundle for the Hub | **deferred** (Hub track direction-only) |
+| P7 (Hub) | bundle refactor (Folio last; smallest; confidence test) | **deferred** (Hub track direction-only) |
 
-Plus new V1 screens:
+Plus new V1 screens — these are app-side UI work, independent
+of substrate adoption:
 - Quick capture
 - Import token (share-sheet integration)
-- Conflict resolver
+- Conflict resolver — should subscribe to pseudoPod's
+  `'stale-peer'` event (52.14) to surface conflicts as a banner
+
+**Folio-mobile V1 adoption — shipped 2026-05-15:**
+
+- ✅ **Phase 52.15.5** — `<IssuerPicker>` adopted in
+  `apps/folio-mobile/src/screens/SignInScreen.js`. Same drop-in
+  pattern as Stoop-mobile.
+
+**Deferred to Folio-mobile V2** (require sync-engine absorption /
+pseudoPod adoption first):
+
+- Phase 52.10 agent-registry on bundle bring-up
+- Phase 52.14 `'stale-peer'` subscription + conflict-resolver
+  screen
+- Sync-engine-rn → pseudo-pod V1 absorption
+
+**Independent V1 UI work** (not blocked by substrate adoption):
+
+- Quick capture screen
+- Import token + Android share-sheet handler
+
+Cross-references:
+- Substrate-side phase list:
+  [`../Substrates/substrates-v2-coding-plan-2026-05-11.md`](../Substrates/substrates-v2-coding-plan-2026-05-11.md)
+- Cross-app residuals + priority:
+  [`../TODO-GENERAL.md`](../TODO-GENERAL.md) §"Standardisation residuals"
+- Stoop-mobile's IssuerPicker adoption (reference example):
+  `apps/stoop-mobile/src/screens/SignInScreen.js`
 
 ## 7. Locales
 

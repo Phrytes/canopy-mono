@@ -283,21 +283,60 @@ Eight pages, all functional and focused. No "configure
 everything" mega-page; the Hub-web-console (P5 Hub portion)
 owns deep storage-mapping editing.
 
-## 6a. Implementation status (post-standardisation)
+## 6a. Implementation status (refreshed 2026-05-14)
 
 V0.3 ships today. V1 work is the standardisation transition +
-the web UI maturing into a working surface.
+the web UI maturing into a working surface. Several substrate
+pieces shipped 2026-05-14; the table is refreshed accordingly.
 
-| Phase from plan | Folio-specific work | Status (2026-05-11) |
+| Phase from plan | Folio-specific work | Status (2026-05-14) |
 |---|---|---|
-| P0 | n/a | pending |
-| P1 | route through pseudo-pod V0 substrate (transparent); read storage-mapping from pod; cross-pod refs in note frontmatter | pending |
-| P2 | adopt `item-types` for `note` type; canonical YAML frontmatter schema | pending |
-| P3 | **first consumer of pseudo-pod V1**; sync-engine retires into substrate; note watcher + write-through queue both inside pseudo-pod | pending |
-| P5 | adopt `agent-registry`; canonical app skeleton alignment (lift Folio-specific UI helpers to `apps/folio/src/ui/` if any emerge) | pending |
-| P4 (Hub) | `hub-discovery` for desktop (Folio can run inside the Hub-Android too via a bundle wrapper, but desktop daemon is the primary path) | pending |
-| P6 (Hub) | register `note` interface (compact: tag chip + title; full: editor + preview); Folio-as-bundle for the Hub | pending |
-| P7 (Hub) | bundle refactor (Folio last; smallest; confidence test) | pending |
+| P0 | n/a | n/a |
+| P1 | route through pseudo-pod V0 substrate (transparent); read storage-mapping from pod; cross-pod refs in note frontmatter | **substrate ready; app wiring pending** — pseudoPod V0 (standalone + replication-ring + cache + write-through) shipped 2026-05-14; pod-routing + notify-envelope likewise. Folio still uses `@canopy/sync-engine` directly today (deferred to V2 per P3 below) |
+| P2 | adopt `item-types` for `note` type; canonical YAML frontmatter schema | **substrate-side shipped 2026-05-14** — `packages/item-types/src/types/note.js` exists with the canonical `Note` schema (title, body, tags, frontmatter, base properties + embeds). **App-side wiring is V1 frontmatter work** — Folio V0.3 doesn't yet parse frontmatter; once Folio's notes adopt the YAML frontmatter shape, validation via `validateCanonical(note)` is a one-line addition |
+| P3 | **first consumer of pseudo-pod V1**; sync-engine retires into substrate; note watcher + write-through queue both inside pseudo-pod | **deferred to V2** — Folio's existing `SyncEngine` subclass keeps working unchanged until the substrate-side P3 absorption lands. See substrates §5.3 |
+| 52.14 (Q-D) | Lamport `_v` on note writes via pseudoPod replication-ring | **deferred** — requires P3 (Folio adopting pseudoPod). `'stale-peer'` event surfacing on Folio is unblocked once P3 lands |
+| 52.15 | Solid-auth consolidation — `createSolidAuthNode` adoption + multi-issuer support | **shipped 2026-05-15** — `apps/folio/src/cli/serveCmd.js` adopts `createSolidAuthNode({ vault, clientName: 'Folio' })`; the bespoke `apps/folio/src/auth/OidcSession.js` wrapper is retired. `KNOWN_ISSUERS` flows in through the same substrate. `apps/folio/test/auth.test.js` (regression tests for the auth surface) passes |
+| 52.16 | Sharing v2 — ACP/WAC grant on `folio share` for ACP pods; cap-token fallback otherwise | **shipped 2026-05-15** — `apps/folio/src/autoShare.js` adopts `createClientSharing` from `@canopy/pod-client/sharing`. ACP grant attempted first; cap-token fallback preserved for non-ACP pods. New `apps/folio/test/autoShare.acp.test.js` covers the ACP path |
+| 52.2.x | peer-fetch gates | **substrate ready; defer until pseudoPod adoption** — Folio doesn't expose `fetch-resource` today (no peer-fetch surface). When P3 lands and Folio peers query each other for note bytes, `capCheck` (cap-token presence) becomes useful. No group construct in Folio so `groupCheck` is N/A |
+| P5 | adopt `agent-registry`; canonical app skeleton alignment | **deferred** — Folio CLI doesn't yet host a long-running `core.Agent` with pseudoPod (it uses Bootstrap-derived identity per-command). Adoption is most natural after P3 when the daemon model has a clear bundle bring-up point |
+| P4 (Hub) | `hub-discovery` for desktop (Folio can run inside the Hub-Android too via a bundle wrapper, but desktop daemon is the primary path) | **deferred** (Hub track direction-only) |
+| P6 (Hub) | register `note` interface (compact: tag chip + title; full: editor + preview); Folio-as-bundle for the Hub | **deferred** (Hub track direction-only) |
+| P7 (Hub) | bundle refactor (Folio last; smallest; confidence test) | **deferred** (Hub track direction-only) |
+
+**Folio V1 adoption — shipped 2026-05-15:**
+
+- ✅ **Phase 52.15** — Solid-auth consolidation. `createSolidAuthNode`
+  adopted in `apps/folio/src/cli/serveCmd.js`. Bespoke
+  `OidcSession.js` wrapper deleted.
+- ✅ **Phase 52.16** — Sharing v2. `createClientSharing` adopted
+  in `apps/folio/src/autoShare.js`. ACP grant first, cap-token
+  fallback for non-ACP pods.
+- ✅ **`note` canonical type** in `packages/item-types/src/types/note.js`
+  — substrate-side ready; app-side validation hook lands when
+  Folio's frontmatter parser ships in V1.
+- ✅ **Folio-mobile `<IssuerPicker>` adoption** on
+  `apps/folio-mobile/src/screens/SignInScreen.js` —
+  multi-issuer pick via `@canopy/oidc-session-rn/picker`.
+
+**Test state at adoption commit:** 463/463 Folio desktop tests
++ 79/79 Folio-mobile tests green.
+
+**Deferred to Folio V2** (require sync-engine absorption /
+pseudoPod adoption first — substrates §5.3):
+
+- Phase 52.14 stale-peer subscription / conflict surfacing
+- Phase 52.10 agent-registry registration on bundle bring-up
+- Phase 52.2.x `fetch-resource` exposure with capCheck
+- Sync-engine → pseudo-pod V1 absorption (the big P3 piece)
+
+Cross-references:
+- Substrate-side phase list:
+  [`../Substrates/substrates-v2-coding-plan-2026-05-11.md`](../Substrates/substrates-v2-coding-plan-2026-05-11.md)
+- Cross-app residuals + priority:
+  [`../TODO-GENERAL.md`](../TODO-GENERAL.md) §"Standardisation residuals"
+- Storage-migration design (rewrite-config-only):
+  [`../Substrates/storage-migration-design-2026-05-14.md`](../Substrates/storage-migration-design-2026-05-14.md)
 
 ## 7. Locales
 

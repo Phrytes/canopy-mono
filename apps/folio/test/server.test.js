@@ -335,6 +335,54 @@ describe('POST /share', () => {
     expect(status).toBe(200);
     expect(body.token.issuer).toBe(id.pubKey);
   });
+
+  // Phase 52.16.3 (2026-05-14) — `mode` param.
+  it('tags cap-token responses with mode:"cap-token"', async () => {
+    const { status, body } = await postJson('/share', {
+      webid:  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      scopes: ['read'],
+      path:   '/note.md',
+      mode:   'cap-token',
+    });
+    expect(status).toBe(200);
+    expect(body.mode).toBe('cap-token');
+    expect(body.token).toBeDefined();
+  });
+
+  it('default mode "auto" falls back to cap-token when pod has no sharing', async () => {
+    // The test podClient is a MockPodClient without .sharing —
+    // ACP/WAC probe yields SHARING_UNAVAILABLE and we fall through.
+    const { status, body } = await postJson('/share', {
+      webid:  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      scopes: ['read'],
+      path:   '/note.md',
+    });
+    expect(status).toBe(200);
+    expect(body.mode).toBe('cap-token');
+    expect(body.token).toBeDefined();
+  });
+
+  it('mode "acp" surfaces 422 when the pod client has no .sharing', async () => {
+    const { status, body } = await postJson('/share', {
+      webid:  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      scopes: ['read'],
+      path:   '/note.md',
+      mode:   'acp',
+    });
+    expect(status).toBe(422);
+    expect(body.error.code).toBe('SHARING_UNAVAILABLE');
+  });
+
+  it('rejects an unknown mode value', async () => {
+    const { status, body } = await postJson('/share', {
+      webid:  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      scopes: ['read'],
+      mode:   'banana',
+    });
+    expect(status).toBe(400);
+    expect(body.error.code).toBe('BAD_REQUEST');
+    expect(body.error.message).toMatch(/mode/);
+  });
 });
 
 // ── /sync/now ──────────────────────────────────────────────────────────────

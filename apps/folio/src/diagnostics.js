@@ -14,7 +14,7 @@
  *
  *   runDiagnostics(reporter, deps)
  *     ↑   ↑
- *     │   └── { buildPodClient?, OidcSession?, configPath?, configDir?,
+ *     │   └── { buildPodClient?, createSolidAuth?, configPath?, configDir?,
  *     │       loadConfig?, vaultFactory?, randomBytes?, scanLocal?,
  *     │       scanPod?, PathMap? }   — every external dep is injectable
  *     │
@@ -60,9 +60,9 @@ import {
 } from './cli/_config.js';
 import { buildPodClient as defaultBuildPodClient } from './cli/_podFactory.js';
 import {
-  OidcSession as DefaultOidcSession,
+  createSolidAuthNode as defaultCreateSolidAuthNode,
   OIDC_VAULT_KEYS,
-} from './auth/OidcSession.js';
+} from '@canopy/oidc-session';
 
 import { PathMap as DefaultPathMap } from './PathMap.js';
 import { scanLocal as defaultScanLocal } from './scanLocal.js';
@@ -120,7 +120,7 @@ export const STEP_TOTAL = STEP_IDS.length;
 export async function runDiagnostics(reporter, deps = {}) {
   const fs = deps.fs ?? defaultFs;
   const buildPodClient = deps.buildPodClient ?? defaultBuildPodClient;
-  const OidcSession    = deps.OidcSession    ?? DefaultOidcSession;
+  const createSolidAuth = deps.createSolidAuth ?? defaultCreateSolidAuthNode;
   const VaultNodeFs    = deps.VaultNodeFs    ?? DefaultVaultNodeFs;
   const configDir      = deps.configDir      ?? defaultConfigDir;
   const configPath     = deps.configPath     ?? defaultConfigPath;
@@ -311,7 +311,7 @@ export async function runDiagnostics(reporter, deps = {}) {
     skip('oidc-restored', 'OIDC session restored from vault');
   } else {
     try {
-      oidc = new OidcSession({ vault });
+      oidc = createSolidAuth({ vault, clientName: 'Folio' });
       const restored = await oidc.restoreFromVault({
         onWarning: () => { /* swallow; reflected via the boolean return */ },
       });

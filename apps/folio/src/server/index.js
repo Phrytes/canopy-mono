@@ -170,5 +170,6 @@ export function createServer({ engine, podClient, vault, identity, oidc, oidcCal
 export { WsHub } from './wsHub.js';
 export { createRouter } from './routes.js';
 export { createAuthRouter } from '../auth/authRoutes.js';
-export { OidcSession } from '../auth/OidcSession.js';
+// Phase 52.15.3 (2026-05-14) — OidcSession class retired; consumers
+// import `createSolidAuthNode` from `@canopy/oidc-session` directly.
 export { SyncErrorBuffer, attachErrorBuffer } from './errorBuffer.js';

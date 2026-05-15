@@ -9,6 +9,13 @@
  *   --scope read|write|delete|*    (default: read)
  *   --for   <peer-pubkey-b64url>   (REQUIRED — the recipient)
  *   --expires <ms-from-now>        (default: 3_600_000)
+ *   --mode  cap-token|acp          (default: cap-token)
+ *                                  cap-token: mint a PodCapabilityToken (this CLI's only V1 path).
+ *                                  acp: NOT supported from the CLI — requires an authenticated
+ *                                  Pod session. Use the browser Share pane instead, or call
+ *                                  POST /share against `folio serve` with mode:'acp'.
+ *                                  See Phase 52.16 (2026-05-14) in
+ *                                  `Project Files/Inrupt-migration/`.
  *
  * Output: the serialized token JSON, one line, ready to paste/share.
  */
@@ -42,6 +49,21 @@ export async function shareCmd(args) {
   if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
     throw new Error('--expires must be a positive number of milliseconds');
   }
+  // Phase 52.16.3 (2026-05-14) — `--mode` flag exists for parity with
+  // the browser/server share pane. The CLI is cap-token-only: ACP
+  // grants require an authenticated Pod session, which the CLI
+  // doesn't have.
+  const mode = flags.mode ?? 'cap-token';
+  if (mode === 'acp') {
+    throw new Error(
+      'folio share --mode acp is not supported from the CLI (no authenticated Pod session). ' +
+      'Use the browser Share pane at http://127.0.0.1:8888 (after `folio serve` + sign-in), ' +
+      'or POST /share with mode:"acp" body field.',
+    );
+  }
+  if (mode !== 'cap-token') {
+    throw new Error(`invalid --mode "${mode}"; supported from CLI: cap-token`);
+  }
 
   const cfg = await requireConfig();
   if (!cfg.vaultPath) throw new Error('config has no vaultPath; re-run `folio init`');
@@ -73,6 +95,10 @@ export async function shareCmd(args) {
     expiresIn,
   });
 
+  // Output: bare token JSON, one line — back-compat with downstream
+  // pipelines (`folio share … | something`). The CLI mode is always
+  // cap-token in V1; the server `/share` endpoint is where the
+  // wrapped `{mode, token? | grant?}` envelope lives (Phase 52.16.3).
   console.log(JSON.stringify(token.toJSON()));
 }
 
