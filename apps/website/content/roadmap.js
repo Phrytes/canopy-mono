@@ -21,7 +21,8 @@ window.ONDERLING_PAGE = {
         "huisgenoten tegelijk. Dagelijks in gebruik; daar wordt nu " +
         "geleerd wat werkt en wat schuurt.",
         "De rest hieronder is grotendeels plan. Naast de chat wordt voor " +
-        "de buurt- en taken-kant ook aan een gewoon app-scherm gewerkt."
+        "de buurt- en taken-kant ook aan een app-weergave met lijstjes " +
+        "en een prikbord gewerkt."
       ]
     },
 

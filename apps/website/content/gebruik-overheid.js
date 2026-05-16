@@ -54,7 +54,7 @@ window.ONDERLING_PAGE = {
         {
           title: "Je reageert op een concreet plan",
           body:
-            "Op je eigen moment, via chat of scherm — genuanceerd, niet " +
+            "Op je eigen moment, via chat of de app — genuanceerd, niet " +
             "alleen voor of tegen."
         },
         {

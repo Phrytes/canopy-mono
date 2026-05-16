@@ -8,7 +8,10 @@ window.ONDERLING_SITE = {
   name: "Onderling",
   tagline: "Samen dingen regelen — wat je inbrengt blijft van jou.",
 
-  email: "fritsderoos@gmail.com",
+  // Licht afgeschermd tegen scrapers: base64 van het e-mailadres.
+  // Wijzigen? Draai:  printf '%s' 'nieuw@adres.nl' | base64
+  // en zet de uitkomst hieronder. (Of zet tijdelijk: email: "…".)
+  emailEnc: "ZnJpdHNkZXJvb3NAZ21haWwuY29t",
 
   nav: [
     { key: "home",    label: "Wat & waarom",        href: "index.html" },

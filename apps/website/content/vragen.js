@@ -22,10 +22,11 @@ window.ONDERLING_PAGE = {
              "volgende stap betrokken zijn, stuur dan een bericht."
         },
         {
-          q: "Hoe gebruik ik het — chat, scherm of app?",
-          a: "Zoals het uitkomt: een berichtje in een chat, een gewoon " +
-             "scherm, of automatisch op de achtergrond. Welke vorm er " +
-             "per situatie is, kan verschillen en ligt nog niet vast."
+          q: "Hoe gebruik ik het — via een chat of de app?",
+          a: "Zoals het uitkomt: een berichtje in een chat, lijstjes en " +
+             "knoppen in de app, of automatisch op de achtergrond. Welke " +
+             "vorm er per situatie is, kan verschillen en ligt nog niet " +
+             "vast."
         },
         {
           q: "Wat als er iets verkeerd wordt opgeschreven?",
@@ -48,8 +49,8 @@ window.ONDERLING_PAGE = {
              "een afgeschermde omgeving in de cloud, maar steeds zo dat " +
              "niemand anders erbij kan: ook het bedrijf of de hoster kan " +
              "je gesprekken niet meelezen. Anders dan bij veel bekende " +
-             "AI's, zoals ChatGPT. En het is optioneel — het kan ook via " +
-             "gewone schermen."
+             "AI's, zoals ChatGPT. En het is optioneel — het kan ook met " +
+             "lijstjes en knoppen in de app."
         },
         {
           q: "Doet de assistent iets uit zichzelf?",
