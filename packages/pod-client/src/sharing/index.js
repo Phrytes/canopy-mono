@@ -274,16 +274,28 @@ export function createClientSharing({ fetch: authFetch, podRoot } = {}) {
       );
     }
 
+    let applied;
     try {
-      if (subject === 'public') {
-        await setter(targetUri, access, { fetch: authFetch });
-      } else {
-        await setter(targetUri, agent, access, { fetch: authFetch });
-      }
+      applied = subject === 'public'
+        ? await setter(targetUri, access, { fetch: authFetch })
+        : await setter(targetUri, agent, access, { fetch: authFetch });
     } catch (err) {
       throw new PodClientError(
         `client.sharing.grant: failed for "${targetUri}": ${err?.message ?? err}`,
         { code: 'SHARING_GRANT_FAILED', uri: targetUri, cause: err },
+      );
+    }
+    // Inrupt `universalAccess.set*Access` returns the resulting Access
+    // object on success and `null` when it could not apply the change.
+    // Verified 2026-05-16: against CSS 7.1.9 ACP, @inrupt/solid-client
+    // 3.0.0 is a SILENT NO-OP here (returns null, never writes the
+    // `.acr`). Treating that as success tells the caller a grant landed
+    // when nothing did — surface it instead of papering over.
+    if (applied == null) {
+      throw new PodClientError(
+        `client.sharing.grant: the access SDK applied no change for "${targetUri}" `
+        + '(server/SDK incompatibility — e.g. @inrupt/solid-client vs this server\'s ACP)',
+        { code: 'SHARING_GRANT_NOOP', uri: targetUri },
       );
     }
 
@@ -325,16 +337,25 @@ export function createClientSharing({ fetch: authFetch, podRoot } = {}) {
     }
 
     const noAccess = { read: false, append: false, write: false, controlRead: false, controlWrite: false };
+    let applied;
     try {
-      if (subject === 'public') {
-        await setter(targetUri, noAccess, { fetch: authFetch });
-      } else {
-        await setter(targetUri, agent, noAccess, { fetch: authFetch });
-      }
+      applied = subject === 'public'
+        ? await setter(targetUri, noAccess, { fetch: authFetch })
+        : await setter(targetUri, agent, noAccess, { fetch: authFetch });
     } catch (err) {
       throw new PodClientError(
         `client.sharing.revoke: failed for "${targetUri}": ${err?.message ?? err}`,
         { code: 'SHARING_REVOKE_FAILED', uri: targetUri, cause: err },
+      );
+    }
+    // Same as grant: `null` ⇒ the SDK applied nothing (silent no-op,
+    // e.g. @inrupt/solid-client 3.0.0 vs CSS 7.1.9 ACP). Don't report a
+    // revoke that didn't happen.
+    if (applied == null) {
+      throw new PodClientError(
+        `client.sharing.revoke: the access SDK applied no change for "${targetUri}" `
+        + '(server/SDK incompatibility — e.g. @inrupt/solid-client vs this server\'s ACP)',
+        { code: 'SHARING_REVOKE_NOOP', uri: targetUri },
       );
     }
 

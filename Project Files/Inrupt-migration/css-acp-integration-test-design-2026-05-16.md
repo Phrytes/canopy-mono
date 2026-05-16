@@ -123,3 +123,81 @@ result. Highest-leverage first fix = the capability probe (#1); the
 grant round-trip (#2) is a deeper follow-up. The gated test correctly
 stays RED gate-ON (accurate coverage signal) and SKIPPED/ green
 gate-OFF (CI unaffected) — left red on purpose; not papered over.
+
+---
+
+## FOLLOW-UP (a) — capability probe fix — DONE 2026-05-16
+
+**FU-a1 (data captured).** Booted CSS 7.1.9 with `@css:config/file.json`
+vs `@css:config/file-acp.json`; HEAD a provisioned resource. Decisive
+result — CSS reuses `rel="acl"` for **both** models; only the target
+extension differs:
+- WAC: `<…/probe.txt.acl>; rel="acl"`
+- ACP: `<…/probe.txt.acr>; rel="acl"`  ← `.acr` = Access Control Resource
+
+CSS emits **no** Inrupt-style `acp#accessControl*` rel in either mode
+(that rel is Inrupt-hosted only — separate, untouched detection path).
+
+**FU-a2 (fix shipped).** `src/sharing/capabilities.js`
+`parseSharingLinkHeader`: for a `rel="acl"` entry, inspect the target
+URI — `.acr` ⇒ `acp:true`, otherwise ⇒ `wac:true` (HEAD-only, no extra
+request; conservative default to WAC). Inrupt `acp#accessControl*`
+path unchanged. Doc comment updated with the empirical basis.
+Verified: `test/sharing/capabilities.test.js` 17/17 incl. **verbatim
+captured** CSS-WAC + CSS-ACP headers (was-mis-detected case now
+`{acp:true,wac:false}`); all pre-existing Inrupt/WAC cases unchanged
+(no regression); full pod-client gate-OFF 192 pass / 5 skip. Finding #1
+is RESOLVED. (Live `capabilities()` is `HEAD + parseSharingLinkHeader`
+on that exact header → proven by the verbatim-header unit test;
+optional live reconfirm deferred — the gated test stays RED overall
+until #2.)
+
+---
+
+## FOLLOW-UP (b) — grant round-trip study — DONE 2026-05-16 (timeboxed)
+
+**Definitive root cause (instrumented run vs real CSS 7.1.9 ACP, raw
+`@inrupt/solid-client@3.0.0` calls):**
+- `<resource>.acr` → **404 before** the grant (no ACR yet — a fresh
+  resource inherits effective access from its container; normal).
+- `universalAccess.setAgentAccess(...)` → **returned `null`, did not
+  throw**.
+- `<resource>.acr` → **still 404 after** — i.e. the call **never wrote
+  the ACR**. Identical for `setPublicAccess`. `getAgent/PublicAccess`
+  → `null` (consistent — nothing was written).
+
+⇒ **`@inrupt/solid-client@3.0.0`'s `universalAccess.set{Agent,Public}
+Access` is a SILENT NO-OP against CSS 7.1.9 ACP** (returns `null`,
+writes nothing). This is an **Inrupt-SDK-version incompatibility with
+modern CSS ACP**, NOT a defect in `@canopy/pod-client`'s own logic. It
+is very likely fine against **Inrupt-hosted** pods (the real Phase
+52.16 target — SDK 3.0.0 and Inrupt-hosted ACP are version-aligned);
+CSS is the integration-test vehicle, not the production target.
+
+**Proportionate fix applied (honesty, NOT papering over):**
+`client.sharing.grant`/`revoke` previously treated the setter's return
+as success unconditionally. They now capture it and **throw
+`SHARING_GRANT_NOOP` / `SHARING_REVOKE_NOOP`** when it is `null` (the
+SDK applied nothing) — so a caller is never told a grant/revoke landed
+when it didn't. The mocked-test Inrupt fake was corrected to mirror the
+real contract (returns the Access object on success, `null` on no-op).
+pod-client gate-OFF 194 pass / 5 skip, no regression; +2 NOOP unit
+tests.
+
+**Recommendations (decisions for the user — NOT auto-applied):**
+1. *Real CSS support* requires upgrading `@inrupt/solid-client` from
+   3.0.0 to a current release. That is a **scoped dependency-upgrade
+   task with cross-package blast radius** (`@canopy/core` pins 3.0.0;
+   API/behaviour changes across the major bump) — deliberate, separate,
+   not reflexive. Recommend logging it as its own item.
+2. Until then: `client.sharing` is **functional only against
+   Inrupt-hosted (and ACP versions SDK 3.0.0 understands)**; against
+   modern CSS ACP it now **fails loudly** (NOOP error) instead of
+   silently. Document this as a known limitation.
+3. The gated `sharing.css.test.js` stays RED gate-ON by design (real
+   coverage signal that CSS+SDK-3.0.0 don't round-trip); skips clean
+   gate-OFF (CI unaffected). It will go green once the SDK is upgraded
+   — i.e. it is now a precise regression gate for that upgrade.
+
+FU-a + FU-b both closed. Open downstream: the scoped SDK-3.0.0→current
+upgrade (rec. #1) — tracked in TODO-GENERAL.

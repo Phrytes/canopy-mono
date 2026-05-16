@@ -78,6 +78,43 @@ describe('parseSharingLinkHeader', () => {
   });
 });
 
+describe('parseSharingLinkHeader — CSS rel="acl" ⇒ ACP via .acr (FU-a1)', () => {
+  // The rule, isolated: CSS reuses rel="acl" for ACP but points at a
+  // `.acr`. The target extension is the only discriminator.
+  it('rel="acl" → .acr target ⇒ ACP (not WAC)', () => {
+    const h = makeHeaders({ link: '<https://anne.pod/notes/x.txt.acr>; rel="acl"' });
+    expect(parseSharingLinkHeader(h)).toEqual({ acp: true, wac: false });
+  });
+  it('rel="acl" → .acl target ⇒ WAC (unchanged)', () => {
+    const h = makeHeaders({ link: '<https://anne.pod/notes/x.txt.acl>; rel="acl"' });
+    expect(parseSharingLinkHeader(h)).toEqual({ acp: false, wac: true });
+  });
+
+  // Verbatim Link headers captured from real CSS 7.1.9 (2026-05-16),
+  // file.json vs file-acp.json — the regression this fix exists for.
+  const CSS_WAC_RES =
+    '<http://www.w3.org/ns/ldp#Resource>; rel="type", ' +
+    '<http://localhost:38967/owner/probe-1778925330858.txt.meta>; rel="describedby", ' +
+    '<http://localhost:38967/.notifications/StreamingHTTPChannel2023/http%3A%2F%2Flocalhost%3A38967%2Fowner%2Fprobe-1778925330858.txt>; rel="http://www.w3.org/ns/solid/terms#updatesViaStreamingHttp2023", ' +
+    '<http://localhost:38967/owner/probe-1778925330858.txt.acl>; rel="acl", ' +
+    '<http://localhost:38967/owner/.well-known/solid>; rel="http://www.w3.org/ns/solid/terms#storageDescription"';
+  const CSS_ACP_RES =
+    '<http://www.w3.org/ns/ldp#Resource>; rel="type", ' +
+    '<http://localhost:35499/owner/probe-1778926087310.txt.meta>; rel="describedby", ' +
+    '<http://localhost:35499/.notifications/StreamingHTTPChannel2023/http%3A%2F%2Flocalhost%3A35499%2Fowner%2Fprobe-1778926087310.txt>; rel="http://www.w3.org/ns/solid/terms#updatesViaStreamingHttp2023", ' +
+    '<http://localhost:35499/owner/probe-1778926087310.txt.acr>; rel="acl", ' +
+    '<http://localhost:35499/owner/.well-known/solid>; rel="http://www.w3.org/ns/solid/terms#storageDescription"';
+
+  it('real CSS-WAC resource header ⇒ {acp:false, wac:true}', () => {
+    expect(parseSharingLinkHeader(makeHeaders({ link: CSS_WAC_RES })))
+      .toEqual({ acp: false, wac: true });
+  });
+  it('real CSS-ACP resource header ⇒ {acp:true, wac:false} (was mis-detected as WAC)', () => {
+    expect(parseSharingLinkHeader(makeHeaders({ link: CSS_ACP_RES })))
+      .toEqual({ acp: true, wac: false });
+  });
+});
+
 describe('probeCapabilities', () => {
   it('returns the parsed Link header when HEAD succeeds', async () => {
     const fakeFetch = async (uri, init) => {
