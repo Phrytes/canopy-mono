@@ -32,6 +32,21 @@
  * `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`
  * and the functional design §4.1.
  *
+ * ── Portability (Node vs web/RN) ──────────────────────────────────────
+ * This module has ZERO `node:` imports and is runtime-agnostic in EVERY
+ * mode. What decides portability is purely what the caller injects:
+ *   - `standalone` / `replication-ring`: need only a `backend`. With a
+ *     portable backend (`MemoryBackend` = pure JS, or a browser
+ *     IndexedDB backend) these modes are fully web-proof — no Node.
+ *   - `cache`: additionally needs `podUploader`/`podFetcher`, and for
+ *     its offline-durability guarantee the `backend` MUST persist
+ *     across process restarts. Node enters ONLY through the persistent
+ *     backend you pick on desktop (a Node FS backend); cache mode is
+ *     itself not Node-bound — a browser IndexedDB backend / an RN
+ *     AsyncStorage backend keep it web/mobile-proof.
+ * Invariant: never add a `node:` import to this file. Runtime-specific
+ * code belongs in the injected backend / pod functions, not here.
+ *
  * @typedef {import('./StorageBackend.js').StorageBackend} StorageBackend
  * @typedef {'standalone'|'replication-ring'|'cache'} PseudoPodMode
  */
@@ -55,6 +70,11 @@ const VALID_MODES = new Set(['standalone', 'replication-ring', 'cache']);
  * @param {string}         [opts.fromActor]       — agent-uri tagged on outbound envelopes.
  *
  * V1 (cache mode) opts:
+ * Portability note: cache mode's offline-durability guarantee only holds
+ * if `backend` persists across restarts (Node FS backend on desktop,
+ * IndexedDB in a browser, AsyncStorage/SQLite on RN). `MemoryBackend`
+ * works functionally but loses the write-through queue on restart — fine
+ * for tests, not for a real cache-mode deployment.
  * @param {(uri: string) => Promise<{bytes: *, etag?: string} | null>} [opts.podFetcher]
  *   — required for cache reads when local has a miss. Wires to pod-client.read.
  * @param {(uri: string, bytes: *, etag?: string) => Promise<{etag?: string} | void>} [opts.podUploader]
@@ -352,6 +372,12 @@ export function createPseudoPod({
       }
     }
 
+    // Cache mode: write-through to the real pod; on failure / pod
+    // unreachable the write parks in the write-through queue. That queue
+    // lives in `backend`, so its restart-durability == the backend's
+    // (persistent backend survives a restart; MemoryBackend does not).
+    // This branch stays Node-free — the only runtime coupling is the
+    // injected backend + podUploader, never this file.
     if (effectiveMode === 'cache') {
       const reachable = typeof isPodReachable === 'function' ? !!isPodReachable(uri) : true;
       if (reachable) {
