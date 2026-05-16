@@ -10,6 +10,9 @@
  */
 
 export { SyncEngine }                    from './SyncEngine.js';
+// P3 Phase B/C — platform-neutral cache-mode pseudo-pod wiring, shared
+// by the desktop CLI and the folio-mobile platform-shell.
+export { wrapWithPseudoPod, guessContentType } from './podCache.js';
 export { PathMap, joinRel }              from './PathMap.js';
 export { scanLocal }                     from './scanLocal.js';
 export { scanPod }                       from './scanPod.js';
