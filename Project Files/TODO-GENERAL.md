@@ -69,7 +69,7 @@
 
 ### Cross-cutting
 
-- **Inrupt SDK ACP support against real CSS / NSS pods** — Phase 52.16 tests use a mocked Inrupt module; integration coverage against an actual ACP-supporting Solid server is unwritten.
+- **Inrupt SDK ACP support against real CSS / NSS pods** — Phase 52.16 tests use a mocked Inrupt module; integration coverage against an actual ACP-supporting Solid server is unwritten. **2026-05-16: designed, not applied** — ready-to-apply recipe + ACP findings in [`Inrupt-migration/css-acp-integration-test-design-2026-05-16.md`](./Inrupt-migration/css-acp-integration-test-design-2026-05-16.md). Key finding: CSS defaults to **WAC, not ACP** — the harness must force an ACP config or only the WAC branch is exercised. Just needs the code applied + a gate-ON run (foreground; subagents can't write/exec in this env).
 - **`@canopy/oidc-session-rn` DCR against non-Inrupt providers** — Phase 52.15 design said "tested against solidcommunity.net out-of-band"; not yet verified.
 
 ### Recommended next-pickup priority (honest — refreshed 2026-05-15 end-of-day)
@@ -83,11 +83,63 @@
 
 **Remaining priority order:**
 
-1. **Hardware-pending real-device passes** — Phase 40.23 (Stoop-mobile), Phase 41.16 (Tasks-mobile), Folio-mobile smoke. Runbooks ready; needs physical Android + Solid accounts. ~3-5 days hands-on per app.
+1. **Hardware-pending real-device passes** — Phase 40.23 (Stoop-mobile), Phase 41.16 (Tasks-mobile), Folio-mobile smoke. Runbooks ready; needs physical Android + Solid accounts. ~3-5 days hands-on per app. **P3 follow-up (decided 2026-05-16, risk-averse):** the Folio-mobile pass MUST include flipping the folio-mobile pseudo-pod cache default ON (`FOLIO_PSEUDO_POD`/ServiceContext) and verifying offline→reconnect→drain on-device — it's deliberately kept opt-in until then (no vitest signal for RN engine bring-up). Until flipped, RN Folio runs the proven direct path.
 2. **P3 sync-engine → pseudo-pod V1 absorption** — biggest remaining substrate piece. Unblocks Folio's deferred 52.10 + 52.14 + 52.2.x adoption. ~4 weeks.
 3. **Inrupt ACP integration tests against a real CSS/NSS pod** — Phase 52.16 currently uses a mocked Inrupt module; needs real-server validation.
 4. **`@canopy/oidc-session-rn` DCR against non-Inrupt providers** — solidcommunity.net + solidweb.org verification not yet done.
 5. **Hub track kickoff (P4 Hub-Android V1)** — design-complete, ~6 weeks. Waits on P3.
+
+---
+
+## 🟠 ARCHITECTURE DECISION — Stoop is per-member-install today; target is browser-accessible (2026-05-16)
+
+> Surfaced during the P3 Node-portability review. **Flagged, not
+> scheduled** — user chose "log it, proceed to Phase B" 2026-05-16.
+
+**Finding.** Stoop's current model (per `apps/stoop/CLOSED-BETA-RUNBOOK.md`)
+is *"every member runs their own agent process; each member gets their
+own UI on a local port"* — i.e. a **per-member local Node install**.
+The `web/*.html` pages are served by that local Node process
+(`@canopy/agent-ui` `mountLocalUi` on `127.0.0.1`) and it uses
+`@inrupt/solid-client-authn-node`. This is decentralised *by design*
+(no central server holds buurt content; the relay carries only
+ciphertext — that privacy property exists *because* each member runs
+their own agent).
+
+**Desired model (user, 2026-05-16).** Stoop-class apps (Stoop, and the
+web surfaces generally) must be **openable in any browser from any
+machine with no install**. Household + Tasks already fit (members use
+Telegram / mobile; one Node agent per group, operator-run — the
+relay-deployment-kit shape). **Stoop is the outlier.**
+
+**Two paths (product decision, has a privacy tradeoff):**
+1. *Hosted shared agent* — easy to reach; **breaks** the
+   "no central server sees content" property unless redesigned.
+2. *Browser-side agent* (**recommended — preserves decentralisation**):
+   port Stoop so the browser itself runs the agent — keys in the
+   browser, IndexedDB-backed store, `@inrupt/solid-client-authn-browser`
+   instead of the Node lib, UI shipped as static files instead of
+   Node-served. Keeps "no central server" *and* gives "any machine, no
+   install". Scoped porting effort, not a tweak.
+
+**Same thread as the Stoop pseudo-pod migration + reuses P3.** Path 2's
+persistence layer would be **pseudo-pod cache mode + a browser
+IndexedDB backend** — the *exact substrate machinery P3 builds for
+Folio*, just a different backend (see
+[`Substrates/P3-sync-engine-pseudo-pod-absorption-2026-05-15.md`](./Substrates/P3-sync-engine-pseudo-pod-absorption-2026-05-15.md)).
+So "make Stoop a browser app" and "migrate Stoop's caching to
+pseudo-pod" are one piece of work, and both can land on P3's adapter +
+the OQ-2-style backend pattern (here: an IndexedDB backend sibling to
+the Node FS one).
+
+**Stoop's current `FilePersist` + `CachingDataSource` is fine as-is** —
+it works, it's correct for the *current* per-member-Node model, it is
+**not** a P3 concern, and it should **not** be touched until/unless the
+above decision is taken. Migrating it in isolation would be churn.
+
+**When picked up:** decide path 1 vs 2 first (privacy tradeoff is the
+crux); if path 2, draft a Stoop-browser-app plan analogous to the P3
+plan, explicitly reusing P3's pseudo-pod adapter + an IndexedDB backend.
 
 ---
 

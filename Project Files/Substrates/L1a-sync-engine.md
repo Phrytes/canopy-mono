@@ -11,6 +11,19 @@
 > write directly through any `core.DataSource` and don't compose this
 > substrate at all.
 
+> **P3 SHIPPED 2026-05-16.** sync-engine → pseudo-pod V1 absorption is
+> done (Phases A–D). sync-engine is unchanged in spirit — it now
+> receives a cache-mode pseudo-pod-backed pod client (via
+> `@canopy/pseudo-pod`'s `createSyncEnginePodClient` adapter +
+> `apps/folio/src/podCache.js`), gaining the offline write-through
+> queue + read cache; the only sync-engine code change is the additive
+> `opts.isTombstoned` predicate in `diff.js`. Desktop Folio defaults to
+> the cache path (opt out: `FOLIO_PSEUDO_POD=0`); folio-mobile wiring
+> is in place but opt-in pending an on-device pass. Persistent backends:
+> `@canopy/pseudo-pod/node` `NodeFsBackend` (desktop),
+> `@canopy/react-native/pseudo-pod-adapter` (mobile). Full design +
+> status: `Substrates/P3-sync-engine-pseudo-pod-absorption-2026-05-15.md`.
+
 | | |
 |---|---|
 | **Package** | `@canopy/sync-engine` (v0.4.0 post-refactor) |
