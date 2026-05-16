@@ -14,3 +14,11 @@ export { createPseudoPod }          from './src/PseudoPod.js';
 export { createMemoryBackend }      from './src/MemoryBackend.js';
 export { createWriteThroughQueue, QUEUE_PREFIX as WRITE_THROUGH_QUEUE_PREFIX }
                                     from './src/writeThroughQueue.js';
+// P3 (sync-engine → pseudo-pod absorption): adapt a cache-mode
+// PseudoPod into the podClient surface @canopy/sync-engine consumes.
+export { createSyncEnginePodClient } from './src/syncEngineAdapter.js';
+
+// NOTE: the persistent Node fs backend is deliberately NOT exported
+// here — it imports `node:fs` and would poison browser/RN bundles that
+// only want the portable surface. Import it from the dedicated subpath
+// instead:  import { createNodeFsBackend } from '@canopy/pseudo-pod/node'
