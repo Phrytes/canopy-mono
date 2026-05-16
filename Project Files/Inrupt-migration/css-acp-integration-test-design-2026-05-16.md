@@ -199,5 +199,46 @@ tests.
    gate-OFF (CI unaffected). It will go green once the SDK is upgraded
    — i.e. it is now a precise regression gate for that upgrade.
 
-FU-a + FU-b both closed. Open downstream: the scoped SDK-3.0.0→current
-upgrade (rec. #1) — tracked in TODO-GENERAL.
+FU-a + FU-b both closed.
+
+---
+
+## CORRECTION — "there is no SDK upgrade" (2026-05-16)
+
+FU-b rec #1 ("upgrade `@inrupt/solid-client` 3.0.0 → current") was based
+on a **wrong assumption that 3.0.0 was an old/stale pin**. Verified via
+the npm registry:
+- `@inrupt/solid-client` `latest` **= `3.0.0`**, published **2025-11-04**,
+  modified 2025-12-10 — the **current, recently-maintained** release.
+  There is no newer version; "upgrade the SDK" has no target.
+- `@inrupt/solid-client-access-grants@4.0.1` is maintained but is the
+  *Access Grants / VC-delegation* protocol — **not** a drop-in for
+  `client.sharing`'s resource ACP/WAC use case.
+
+So the CSS-ACP no-op is a **current-vs-current interop gap** (Inrupt
+solid-client 3.0.0 ↔ CSS 7.1.9 ACP), not an outdated dependency.
+
+### Real options (decision for the user — none auto-applied)
+
+1. **Accept + document (recommended now).** `client.sharing` works
+   against **Inrupt-hosted** pods (the actual Phase 52.16 product
+   target; SDK-aligned) and now **fails loudly** (`SHARING_*_NOOP`)
+   against modern CSS ACP instead of lying. CSS is our integration-test
+   vehicle, not a product target today. Lowest effort; honest; matches
+   product reality. Gated test stays the regression marker. **No code.**
+2. **Timeboxed spike: SDK gap vs our-usage-error.** Before declaring
+   "CSS-ACP unsupported" permanently, confirm whether solid-client
+   3.0.0 `universalAccess` is *meant* to work on CSS 7.1.9 ACP and we
+   call it wrong (e.g. the resource's ACR must be provisioned first, or
+   an ACP-v4-specific entrypoint is needed). If it's our usage → a
+   cheap real fix; if it's a genuine SDK/CSS gap → confirms option 1.
+   ~one instrumented CSS run.
+3. **Replace the sharing transport for CSS-class servers** (write ACP
+   directly / alternative lib). Large build; only justified if
+   CSS-hosted / self-hosted pods become a real product requirement
+   (ties to the Stoop-browser-app + pod-provider-flexibility threads).
+   Defer until that need is concrete.
+
+**Recommendation:** option 1 now (it's already the shipped behaviour —
+just document it) + offer option 2 as a cheap de-risking spike. Option
+3 only when CSS-hosted is a product need.
