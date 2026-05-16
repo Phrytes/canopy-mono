@@ -242,3 +242,41 @@ solid-client 3.0.0 ↔ CSS 7.1.9 ACP), not an outdated dependency.
 **Recommendation:** option 1 now (it's already the shipped behaviour —
 just document it) + offer option 2 as a cheap de-risking spike. Option
 3 only when CSS-hosted is a product need.
+
+### DECISION 2026-05-16 — option 1 (accept + document)
+
+User chose **accept + document, continue**. No transport replacement;
+no SDK chase (3.0.0 is `latest`). `client.sharing` is supported against
+**Inrupt-hosted** ACP (the Phase 52.16 target) and **fails loudly**
+(`SHARING_*_NOOP`) against modern CSS ACP. Option 2 (the SDK-gap vs
+our-usage spike) is NOT being run now — deferred; revisit only if
+CSS-hosted becomes a product need (then re-evaluate 2 → 3).
+
+### How to test `client.sharing` against a real server (the future-test answer)
+
+Three layers, all in place — so this can't silently rot:
+
+1. **Regression gate (automatic signal).** `test/sharing/
+   sharing.css.test.js` is gated on `CSS_URL` (skips ⇒ CI green). It
+   asserts the *desired* contract, so it is RED-on-gate-ON vs CSS **by
+   design today** and will flip **GREEN the day the Inrupt↔CSS interop
+   gap closes** — a precise "did CSS-ACP start working" detector.
+2. **Repeatable CSS harness (committed, one command).** The
+   previously-throwaway provisioning is now
+   `packages/pod-client/scripts/css-sharing-harness.mjs` +
+   `npm run test:css --prefix packages/pod-client`: boots an
+   ACP CSS via `npx` (no committed heavy dep), provisions owner+grantee
+   via the CSS 7.1 account API, runs the gated test, tears down. WAC
+   mode: `CSS_HARNESS_CONFIG=@css:config/file.json`. Manual/dev-only —
+   never default CI. Re-run periodically to catch the gap closing.
+3. **Supported-path test (Inrupt-hosted).** The *product* path. Point
+   the same gated test at a real Inrupt pod (NOT the harness):
+   `CSS_URL=https://<pod>/ CSS_CLIENT_ID=… CSS_CLIENT_SECRET=…
+   CSS_WEBID=… CSS_OIDC_ISSUER=https://login.inrupt.com/
+   npx vitest run test/sharing/sharing.css.test.js`. Needs real Inrupt
+   creds (user-supplied) — slots into the existing
+   `PodClient.css.test.js` real-server convention.
+
+So: keep #1 as the standing gate; `npm run test:css` (#2) is the cheap
+recurring CSS-ACP check; #3 is how the actually-supported path gets
+verified when real creds are available.
