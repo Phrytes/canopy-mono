@@ -12,8 +12,20 @@ INTERN=( "intern-planning.html" "content/intern-planning.js" )
 echo "Bron : $SRC"
 echo "Doel : $DEST"
 
+# Bewaar een bestaande Vercel-projectkoppeling (.vercel), zodat een
+# herhaalde deploy hetzelfde project bijwerkt i.p.v. een nieuw aan te maken.
+KEEP=""
+if [ -d "$DEST/.vercel" ]; then
+  KEEP="$(mktemp -d)"
+  cp -r "$DEST/.vercel" "$KEEP/.vercel"
+fi
 rm -rf "$DEST"
 mkdir -p "$DEST"
+if [ -n "$KEEP" ]; then
+  cp -r "$KEEP/.vercel" "$DEST/.vercel"
+  rm -rf "$KEEP"
+  echo "(Vercel-projectkoppeling behouden)"
+fi
 
 # Kopieer alles, sluit interne + meta-bestanden uit.
 ( cd "$SRC" && find . \
