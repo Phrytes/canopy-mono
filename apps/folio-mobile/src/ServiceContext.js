@@ -247,12 +247,50 @@ async function buildAndAttachEngine({
   const cfg = { podRoot };
   const podClient = await podFactoryFn(cfg, session);
 
+  // P3 Phase C: optionally route SyncEngine's pod I/O through a
+  // cache-mode pseudo-pod (offline write-through queue + read cache)
+  // backed by the RN persistent backend (AsyncStorage + expo-file-
+  // system). Dynamic imports keep the RN backend + shared wiring out
+  // of the parse graph on the default path (and out of vitest, which
+  // never reaches this fn).
+  //
+  // ⚠️ DELIBERATELY OPT-IN — DO NOT FLIP THIS DEFAULT HERE (P3 OQ-6,
+  // decided 2026-05-16, risk-averse). The desktop side made cache-mode
+  // the default because 469 tests verify that path. This RN path has
+  // NO automated coverage of engine bring-up — `buildAndAttachEngine`
+  // is never reached by vitest (RN bootstrap needs a real device /
+  // react-test-renderer; a pre-existing limitation, not P3's). So
+  // making cache-mode the RN default is unverifiable from code and
+  // must NOT be done by editing this `=== '1'` check. It is bound to
+  // the Folio-mobile real-device acceptance pass: the flip + an
+  // on-device offline→reconnect→drain verification happen together,
+  // never blind. Until then RN Folio runs the proven direct path; this
+  // block stays dormant unless a tester explicitly sets the env var.
+  // See TODO-GENERAL.md (hardware-pending Folio-mobile) + Project
+  // Files/Substrates/P3-…-2026-05-15.md (OQ-6).
+  let effectivePodClient = podClient;
+  if (process.env.FOLIO_PSEUDO_POD === '1') {
+    const [{ wrapWithPseudoPod }, { createBackend }, AsyncStorageMod] =
+      await Promise.all([
+        import('@canopy-app/folio'),
+        import('@canopy/react-native/pseudo-pod-adapter'),
+        import('@react-native-async-storage/async-storage'),
+      ]);
+    const backend = createBackend({
+      AsyncStorage: AsyncStorageMod.default ?? AsyncStorageMod,
+      FileSystem:   FS,
+      rootDir:      `${FS.documentDirectory ?? 'file:///doc/'}pseudo-pod/`,
+      scope:        'folio',
+    });
+    effectivePodClient = wrapWithPseudoPod({ realPodClient: podClient, backend });
+  }
+
   // Phase 40.2 (2026-05-08): use the local `buildEngineForRN` shim
   // which now goes through `apps/folio/src/rn/serviceFactory.js` (a
   // shim itself, around `@canopy/sync-engine-rn` with Folio's
   // SyncEngine subclass pre-bound).  No more dynamic cross-app import.
   const engine = await buildEngineForRN({
-    podClient,
+    podClient: effectivePodClient,
     localRoot,
     podRoot,
     FileSystem: FS,
