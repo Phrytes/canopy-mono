@@ -98,7 +98,7 @@ window.ONDERLING_PAGE = {
       variant: "plan",
       text:
         "Geen harde toezeggingen. Volgorde en tempo kunnen schuiven. " +
-        "Vragen of meedenken? Onderaan staat een mailknop."
+        "Meedenken kan straks; de site is nog in opbouw."
     }
   ]
 };
