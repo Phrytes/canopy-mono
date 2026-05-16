@@ -12,8 +12,8 @@ window.ONDERLING_PAGE = {
         "Een gedeelde digitale infrastructuur waarbinnen een groep — een " +
         "huishouden, een buurt, een paar collega's — samen dingen regelt " +
         "en jij de controle houdt over je eigen gegevens. Denk aan " +
-        "boodschappen, taken, afspraken, meningen. Soms via een " +
-        "app-scherm, soms via een slimme assistent die je helpt.",
+        "boodschappen, taken, afspraken, meningen. Soms via lijstjes en " +
+        "knoppen in de app, soms via een slimme assistent die je helpt.",
       sub:
         "Wat je inbrengt blijft van jou: je haalt het terug of weg " +
         "wanneer je wilt, en jij bepaalt wat je met de groep deelt. De " +
@@ -29,8 +29,8 @@ window.ONDERLING_PAGE = {
         "kookt vanavond? Staat dat op het lijstje? Wie ruimt de keuken " +
         "op? Het verdwijnt in honderden berichten.",
         "Hierbij raakt dat niet kwijt. Je voegt iets toe zoals het je " +
-        "uitkomt — een bericht (“melk halen”) of via een " +
-        "scherm — en het komt op een gedeelde lijst. Je vraagt iets " +
+        "uitkomt — een bericht (“melk halen”) of in de app " +
+        "— en het komt op een gedeelde lijst. Je vraagt iets " +
         "(“wie was er aan de beurt?”) en je krijgt antwoord. " +
         "Je geeft je mening en die wordt bewaard, zichtbaar voor de groep " +
         "als jij dat wilt."

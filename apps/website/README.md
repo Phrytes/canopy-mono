@@ -75,6 +75,41 @@ dat `intern-planning.html` daar **niet** in zit.
 > dan expliciet `intern-planning.html` en `content/intern-planning.js`
 > uit. De `maak-publieke-kopie.sh`-route is het minst foutgevoelig.
 
+## Tijdelijk gratis online zetten
+
+De site is platte HTML/CSS/JS, dus elke statische host werkt. Publiceer
+**altijd de schone kopie**, nooit deze map zelf (die bevat de interne
+pagina):
+
+```sh
+bash maak-publieke-kopie.sh        # maakt ../website-publiek/
+cd ../website-publiek
+```
+
+Daarna, kies één:
+
+- **Snelst, geen account/CLI:** ga naar `app.netlify.com/drop` en sleep
+  de map `website-publiek` erin. Je krijgt direct een URL.
+- **Vercel CLI:** `npx vercel@latest` (eenmalig inloggen via de browser;
+  framework: *Other*, geen build-command, output = huidige map). Daarna
+  `npx vercel@latest --prod` voor een vaste URL.
+- **Cloudflare Pages / GitHub Pages:** ook prima; wijs de host naar de
+  map `website-publiek`.
+
+Let op: het wordt een **openbare** URL (iedereen met de link kan kijken).
+De interne planning zit er niet in (het script breekt af als dat wel zo
+zou zijn). De `noindex` hieronder houdt 'm wel uit Google tot je dat
+weghaalt.
+
+## E-mailadres
+
+Het adres staat **licht afgeschermd** (base64 in `content/site.js`,
+`emailEnc`) en wordt pas in de browser samengesteld. Dat houdt simpele
+spam-scrapers tegen; een scraper die JavaScript draait kan het nog
+steeds lezen — een sluitende garantie is het niet. Adres wijzigen:
+`printf '%s' 'nieuw@adres.nl' | base64` en de uitkomst in `emailEnc`
+zetten.
+
 ## Voor het echt live gaat
 
 - In elke `*.html` staat nu `<meta name="robots" content="noindex">`

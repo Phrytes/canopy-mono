@@ -41,13 +41,14 @@ window.ONDERLING_PAGE = {
           "Daarvoor jij." }
       ],
       after:
-        "Zo gaat het in een chat; het kan ook via een scherm."
+        "Zo gaat het in een chat; het kan ook met lijstjes en knoppen " +
+        "in de app."
     },
 
     {
       type: "mockup",
       kind: "lijst",
-      heading: "En zo op het scherm",
+      heading: "En zo in de app",
       title: "Huishouden",
       groups: [
         {
@@ -75,8 +76,8 @@ window.ONDERLING_PAGE = {
         {
           title: "Je voegt iets toe",
           body:
-            "Een berichtje of via een scherm: “melk halen”, " +
-            "“klusje voor zaterdag”."
+            "Een berichtje, of tik het in de app: “melk " +
+            "halen”, “klusje voor zaterdag”."
         },
         {
           title: "De assistent zet het op z'n plek",

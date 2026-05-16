@@ -9,8 +9,9 @@ window.ONDERLING_PAGE = {
       type: "hero",
       heading: "Wat los je ermee op",
       lead:
-        "Je gebruikt het zoals het past — een chat, een gewoon scherm, " +
-        "of automatisch. Je merkt vooral de functie. Hieronder de " +
+        "Je gebruikt het zoals het past — een chat, lijstjes en knoppen " +
+        "in de app, of automatisch. Je merkt vooral de functie. " +
+        "Hieronder de " +
         "toepassingen — klik door voor wat je ermee kunt, een voorbeeld " +
         "uit gebruik, en hoe het ongeveer werkt."
     },

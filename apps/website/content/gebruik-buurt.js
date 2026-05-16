@@ -68,7 +68,7 @@ window.ONDERLING_PAGE = {
           title: "Je plaatst een vraag of aanbod",
           body:
             "“Wie kan helpen met X”, of iets dat je aanbiedt " +
-            "of uitleent — via een bericht of een scherm."
+            "of uitleent — via een bericht of in de app."
         },
         {
           title: "Buren zien wat je vrijgeeft",

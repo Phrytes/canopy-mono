@@ -38,14 +38,17 @@ window.ONDERLING_PAGE = {
       type: "dialog",
       heading: "Hoe het werkt in gebruik",
       turns: [
-        { who: "bot", text: "Hoe ging het deze week met de pijn 's " +
-          "nachts? Vorige keer schreef je dat het rond 3 uur erger werd." },
-        { who: "jij", text: "nog steeds, en ik maak me zorgen omdat " +
-          "niemand er iets mee lijkt te doen" },
-        { who: "bot", text: "Genoteerd in je eigen ruimte. Wil je het " +
-          "stuk over de nachtpijn meenemen in wat — geanonimiseerd — naar " +
-          "de patiëntenorganisatie gaat, zonder de zin over je zorgen?" },
-        { who: "jij", text: "ja, alleen dat eerste" }
+        { who: "jij", text: "ik wil iets kwijt over hoe m'n behandeling " +
+          "de afgelopen weken ging" },
+        { who: "bot", text: "Het komt in je eigen ruimte; alleen jij " +
+          "kunt erbij. Wil je dat er later — geanonimiseerd — iets van " +
+          "meegaat naar de patiëntenorganisatie, of houd je het voor " +
+          "jezelf?" },
+        { who: "jij", text: "meenemen mag, maar haal m'n naam en de " +
+          "afdeling eruit" },
+        { who: "bot", text: "Die haal ik weg. Je krijgt het eerst te " +
+          "zien voordat er iets meegaat — je kunt het dan nog aanpassen " +
+          "of terugtrekken." }
       ]
     },
 

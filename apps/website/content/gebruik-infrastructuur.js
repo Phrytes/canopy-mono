@@ -53,7 +53,7 @@ window.ONDERLING_PAGE = {
         {
           title: "Eigen voorkant",
           body:
-            "Je bouwt je eigen scherm en naam erbovenop; de jouw-gebruikers " +
+            "Je bouwt je eigen voorkant en naam erbovenop; de jouw-gebruikers " +
             "zien jouw merk."
         },
         {
