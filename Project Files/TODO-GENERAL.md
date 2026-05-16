@@ -440,7 +440,29 @@ ships V1 with Inrupt only; this TODO is the unblock for V1.5 / V2.
 
 ---
 
-## 🔴 HIGH PRIORITY — App-side SDK-bypass audit (2026-05-04)
+## ✅ DONE — App-side SDK-bypass audit (run 2026-05-16)
+
+**Audit CLOSED 2026-05-16 — codebase substantially COMPLIANT.** Full
+report: [`Substrates/refactor/app-sdk-bypass-audit-2026-05-16.md`](./Substrates/refactor/app-sdk-bypass-audit-2026-05-16.md).
+No SDK-bypass-where-a-substrate-exists violations; no undocumented
+cross-app imports; direct SDK use is to convention-permitted
+foundational primitives and is README-justified; mobile→desktop
+couplings are within the locked platform-shell exception. Two residuals
+only:
+- **F1 (substantive, not urgent):** `tasks-mobile` imports a wide body
+  of *platform-agnostic* Tasks domain logic from `@canopy-app/tasks-v0`
+  (`ui/composeArgs|dagFlatten|inboxClassify|taskStatus|effectiveActor`,
+  `buildStandardRolePolicy`, shared `locales/*`). Documented (so not a
+  rule breach) but violates platform-shell **condition #3** (platform-
+  agnostic code should be substrate-shaped). Rule-of-two met (tasks-v0
+  + tasks-mobile) → **substrate-extraction candidate**; medium, not
+  blocking — pick up at the next Tasks substrate pass.
+- **F2 (trivial doc) — DONE 2026-05-16.** `conventions/architectural-layering.md`
+  platform-shell exception now names the Tasks pair
+  (`tasks-v0`/`tasks-mobile`, incl. the `-v0` note) alongside
+  folio/stoop. Closed.
+
+<details><summary>Original audit brief (2026-05-04)</summary>
 
 **What:** the substrate-vs-SDK refactor audit currently underway
 (`Project Files/Substrates/refactor/`) deliberately scopes itself to
@@ -460,6 +482,8 @@ app legitimately bypasses an under-baked substrate.
 - `apps/*/src/` — find imports that reach into adjacent apps
   (`../../household/...`) — flagged in `track-H-apps.md` extraction
   rule §2 ("never reach into adjacent apps") but no audit has run.
+
+</details>
 
 ---
 

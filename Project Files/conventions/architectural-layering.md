@@ -190,15 +190,17 @@ Reasoning:
 
 **Platform-shell exception (locked 2026-05-08).** When two apps in
 `apps/` are **platform-shells of the same product** (e.g. `apps/folio`
-+ `apps/folio-mobile`, or future `apps/stoop` + `apps/stoop-mobile`),
++ `apps/folio-mobile`, `apps/stoop` + `apps/stoop-mobile`, or
+`apps/tasks-v0` + `apps/tasks-mobile` — the `-v0` desktop suffix still
+counts as the shared shell),
 the mobile shell MAY import the SyncEngine / Agent subclass +
 app-specific hook implementations from the desktop / shared shell.
 This is acknowledged as a single-product dependency, not a
 cross-app coupling. Three constraints apply:
 
 1. **The two packages name-relate.** `apps/folio-mobile` ↔ `apps/folio`;
-   `apps/stoop-mobile` ↔ `apps/stoop`. Same product, separate
-   platform shells.
+   `apps/stoop-mobile` ↔ `apps/stoop`; `apps/tasks-mobile` ↔
+   `apps/tasks-v0`. Same product, separate platform shells.
 2. **The dep is on the shared shell only, never the reverse.** Mobile
    imports from desktop; desktop never imports from mobile.
 3. **All genuinely-platform-agnostic code is still substrate-shaped.**
