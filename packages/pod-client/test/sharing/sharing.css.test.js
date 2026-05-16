@@ -21,6 +21,18 @@
  * ⚠️ To exercise the **ACP** branch the CSS instance MUST be booted
  * with an ACP authorization config — CSS defaults to WAC. The test
  * records which model the pod actually served (the open finding).
+ *
+ * ⚠️ EXPECTED-RED gate-ON (2026-05-16, by design — do NOT "fix" by
+ * weakening assertions). A real run vs CSS 7.1.9 + ACP config found:
+ * (1) `capabilities()` mis-detects CSS-ACP as WAC (rel-sniffing can't
+ * tell them apart on CSS); (2) `grant()` doesn't throw but the grant
+ * isn't observable via `list()` (Inrupt 3.0.0 ↔ CSS 7.1.9 round-trip).
+ * `capabilities()` passes; the grant/revoke + public cases are
+ * legitimately RED until the capability probe is fixed. This file
+ * asserts the DESIRED contract on purpose — its red is the coverage
+ * signal. Gate-OFF (no CSS_URL) skips cleanly, so CI stays green.
+ * Full analysis: Project Files/Inrupt-migration/
+ * css-acp-integration-test-design-2026-05-16.md §RUN RESULTS.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 
