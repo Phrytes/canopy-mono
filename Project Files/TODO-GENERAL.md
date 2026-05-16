@@ -69,7 +69,7 @@
 
 ### Cross-cutting
 
-- **Inrupt SDK ACP support against real CSS / NSS pods** — Phase 52.16 tests use a mocked Inrupt module; integration coverage against an actual ACP-supporting Solid server is unwritten. **2026-05-16: designed, not applied** — ready-to-apply recipe + ACP findings in [`Inrupt-migration/css-acp-integration-test-design-2026-05-16.md`](./Inrupt-migration/css-acp-integration-test-design-2026-05-16.md). Key finding: CSS defaults to **WAC, not ACP** — the harness must force an ACP config or only the WAC branch is exercised. Just needs the code applied + a gate-ON run (foreground; subagents can't write/exec in this env).
+- **Inrupt SDK ACP support against real CSS / NSS pods** — **RUN 2026-05-16; concrete NEGATIVE findings** (see [`Inrupt-migration/css-acp-integration-test-design-2026-05-16.md`](./Inrupt-migration/css-acp-integration-test-design-2026-05-16.md) §RUN RESULTS). The mocked tests gave false confidence: against real CSS 7.1.9 + ACP config, (1) `client.sharing.capabilities()` mis-detects CSS-ACP as WAC — `parseSharingLinkHeader` rel-sniffing can't tell them apart on CSS (CSS uses `rel="acl"` for both); (2) `grant()` doesn't throw but the grant is not observable via `list()` (Inrupt 3.0.0 ↔ CSS 7.1.9 round-trip). **Next:** fix the capability probe (#1, highest-leverage, pod-client-side); the grant round-trip (#2) is a deeper Inrupt/CSS-version follow-up. Gated test left RED-on-gate-ON intentionally (accurate signal; CI unaffected — skips gate-OFF).
 - **`@canopy/oidc-session-rn` DCR against non-Inrupt providers** — Phase 52.15 design said "tested against solidcommunity.net out-of-band"; not yet verified.
 
 ### Recommended next-pickup priority (honest — refreshed 2026-05-15 end-of-day)
@@ -84,8 +84,8 @@
 **Remaining priority order:**
 
 1. **Hardware-pending real-device passes** — Phase 40.23 (Stoop-mobile), Phase 41.16 (Tasks-mobile), Folio-mobile smoke. Runbooks ready; needs physical Android + Solid accounts. ~3-5 days hands-on per app. **P3 follow-up (decided 2026-05-16, risk-averse):** the Folio-mobile pass MUST include flipping the folio-mobile pseudo-pod cache default ON (`FOLIO_PSEUDO_POD`/ServiceContext) and verifying offline→reconnect→drain on-device — it's deliberately kept opt-in until then (no vitest signal for RN engine bring-up). Until flipped, RN Folio runs the proven direct path.
-2. **P3 sync-engine → pseudo-pod V1 absorption** — biggest remaining substrate piece. Unblocks Folio's deferred 52.10 + 52.14 + 52.2.x adoption. ~4 weeks.
-3. **Inrupt ACP integration tests against a real CSS/NSS pod** — Phase 52.16 currently uses a mocked Inrupt module; needs real-server validation.
+2. ~~**P3 sync-engine → pseudo-pod V1 absorption**~~ — **SHIPPED 2026-05-16** (Phases A–D; repo 43/43). Desktop cache-mode default ON; folio-mobile opt-in pending the device pass (OQ-6, see #1). Unblocks Folio 52.10 + 52.14 + 52.2.x (now app-level wiring only — Folio holds a `pseudoPod`). Two conditioned follow-ups remain: OQ-5 (remove the direct-path fallback only post-burn-in) + OQ-6 (mobile flip on the device pass). Plan: `Substrates/P3-sync-engine-pseudo-pod-absorption-2026-05-15.md`.
+3. **Inrupt ACP integration tests against a real CSS/NSS pod** — **DONE 2026-05-16: gated test shipped + live gate-ON run executed.** Concrete negative findings (capability probe mis-detects CSS-ACP as WAC; grant→list doesn't round-trip on CSS 7.1.9 + Inrupt 3.0.0). Follow-up work now scoped: **(a) fix the capability probe** (`src/sharing/capabilities.js` rel-sniffing — highest-leverage, pod-client-side); **(b)** deeper Inrupt-3.0.0↔CSS-7.1.9 grant-round-trip study. See `Inrupt-migration/css-acp-integration-test-design-2026-05-16.md` §RUN RESULTS.
 4. **`@canopy/oidc-session-rn` DCR against non-Inrupt providers** — solidcommunity.net + solidweb.org verification not yet done.
 5. **Hub track kickoff (P4 Hub-Android V1)** — design-complete, ~6 weeks. Waits on P3.
 

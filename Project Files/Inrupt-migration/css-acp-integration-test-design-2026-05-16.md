@@ -67,3 +67,59 @@ Solid server.
 ## Constraint
 Do **not** edit the pod-client sharing impl to make the test pass — if
 real CSS reveals a bug or ACP-shape mismatch, report it as a finding.
+
+---
+
+## RUN RESULTS — 2026-05-16 (gate-ON, real CSS 7.1.9 + ACP config)
+
+**Setup that worked.** CSS 7.1.9 booted with `@css:config/file-acp.json`;
+owner+grantee provisioned non-interactively via the CSS 7.1 account API
+(anon controls `["password","account","main","html"]`; `POST
+account.create` → `{authorization, controls}` + a session cookie;
+cookie-jar auth; then `password.create` / `account.pod` /
+`account.clientCredentials`, all `200`). The one real test-harness gap
+the prior agent predicted (**finding #4**) was confirmed and fixed:
+`@inrupt/solid-client` is only a *transitive* dep via `@canopy/core`, so
+the lazy `import('@inrupt/solid-client')` threw `SHARING_SDK_MISSING`
+under pod-client's own vitest. **Fix applied:** added
+`@inrupt/solid-client: "3.0.0"` (version-matched to core) as a
+**devDep of `packages/pod-client`** — NOT a heavy/divergent dep (it's
+the SDK the feature is built on, already in the tree). Gate-OFF stays
+green afterwards (188 pass / 5 skip).
+
+**Empirical findings (the actual answers):**
+
+1. **Capability probe mis-detects CSS-ACP as WAC.** `capabilities()`
+   returned `{acp:false, wac:true}` on a CSS booted *with the ACP
+   config*. Leading-cause mechanism (strong hypothesis, mechanism
+   identified, not byte-confirmed): CSS advertises its authorization
+   document via `Link: …; rel="acl"` for **both** WAC and ACP, but
+   `parseSharingLinkHeader` (`src/sharing/capabilities.js`) only sets
+   `acp:true` on the `acp#accessControl` / `acp#accessControlResource`
+   rels. So the probe **cannot distinguish CSS-ACP from CSS-WAC** and
+   always reports WAC on CSS-family servers. → **Actionable pod-client
+   item:** rel-sniffing is insufficient for CSS; the probe should
+   inspect the ACR (content-type / shape) or defer detection to
+   Inrupt's own `universalAccess` auto-detection rather than guess from
+   the `acl` rel.
+2. **`grant()` does not throw but the grant is not observable.**
+   `client.sharing.grant({agent,…})` and `grant({public:true,…})` both
+   completed without error, yet `client.sharing.list({…,
+   agentsToQuery:[grantee]})` / `list({…})` returned `[]` — i.e.
+   `universalAccess.getAgentAccess` / `getPublicAccess` read back empty
+   immediately after a successful-looking grant, on CSS 7.1.9 +
+   `@inrupt/solid-client@3.0.0`. Unresolved whether the write silently
+   no-ops, targets a doc the readback doesn't consult, or is an
+   Inrupt-3.0.0 ↔ CSS-7.1.9 ACP-vocab drift. Deliberately NOT
+   investigated deeper / NOT patched (per the constraint above): it
+   needs a focused Inrupt/CSS-version study and is verification of
+   already-shipped 52.16 code, not a blocker.
+
+**Bottom line.** The mocked tests gave false confidence: against a real
+modern CSS, `client.sharing` grant→list does **not** round-trip and the
+capability probe mis-classifies CSS-ACP as WAC. The TODO's "needs
+real-server validation" is now satisfied with a concrete negative
+result. Highest-leverage first fix = the capability probe (#1); the
+grant round-trip (#2) is a deeper follow-up. The gated test correctly
+stays RED gate-ON (accurate coverage signal) and SKIPPED/ green
+gate-OFF (CI unaffected) — left red on purpose; not papered over.
