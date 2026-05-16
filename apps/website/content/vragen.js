@@ -15,12 +15,6 @@ window.ONDERLING_PAGE = {
       type: "faq",
       items: [
         {
-          q: "Kost het iets?",
-          a: "Voor wie meedoet niet. Waar een onafhankelijke partij " +
-             "nodig is, betaalt die organisatie ervoor — de deelnemer " +
-             "niet."
-        },
-        {
           q: "Kan ik het nu gebruiken?",
           a: "Een eerste versie loopt in een huishouden; de rest is " +
              "gepland of in verkenning (zie de labels bij [de " +
@@ -40,18 +34,22 @@ window.ONDERLING_PAGE = {
         },
         {
           q: "Is mijn data veilig?",
-          a: "Wat je inbrengt staat in je eigen ruimte, niet in een " +
-             "centrale database; herleidbare details gaan eraf; en een " +
-             "patroon verschijnt pas als meerdere mensen hetzelfde " +
-             "inbrengen. Een sluitende garantie bestaat niet — daarom de " +
-             "bevestig-stap. Meer: [hoe het werkt](hoe-het-werkt.html)."
+          a: "Wat je inbrengt staat in een afgesloten ruimte waar alleen " +
+             "jij bij kunt — geen bedrijf, geen persoon, niemand anders. " +
+             "Er gaat alleen iets verder als jij het zelf vrijgeeft; dan " +
+             "gaan herleidbare details eraf en verschijnt een patroon pas " +
+             "als meerdere mensen hetzelfde inbrengen. Meer: [hoe het " +
+             "werkt](hoe-het-werkt.html)."
         },
         {
           q: "Gebruikt het AI?",
           a: "Soms — om gewone berichten te begrijpen of herleidbare " +
-             "details weg te halen. Het is optioneel (het kan ook via " +
-             "gewone schermen) en draait privé op je eigen apparaat; iets " +
-             "in de cloud gebeurt alleen als je dat zelf aanzet."
+             "details weg te halen. Dat kan op je eigen apparaat of in " +
+             "een afgeschermde omgeving in de cloud, maar steeds zo dat " +
+             "niemand anders erbij kan: ook het bedrijf of de hoster kan " +
+             "je gesprekken niet meelezen. Anders dan bij veel bekende " +
+             "AI's, zoals ChatGPT. En het is optioneel — het kan ook via " +
+             "gewone schermen."
         },
         {
           q: "Doet de assistent iets uit zichzelf?",

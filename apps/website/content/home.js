@@ -9,15 +9,16 @@ window.ONDERLING_PAGE = {
       name: "Onderling",
       heading: "Samen dingen regelen — en wat je inbrengt blijft van jou",
       lead:
-        "Een gezamenlijke plek waar een groep — een huishouden, een " +
-        "buurt, een paar collega's — samen dingen bijhoudt en regelt: " +
+        "Een gedeelde digitale infrastructuur waarbinnen een groep — een " +
+        "huishouden, een buurt, een paar collega's — samen dingen regelt " +
+        "en jij de controle houdt over je eigen gegevens. Denk aan " +
         "boodschappen, taken, afspraken, meningen. Soms via een " +
         "app-scherm, soms via een slimme assistent die je helpt.",
       sub:
-        "Zonder dat je de controle over je eigen gegevens kwijtraakt: " +
-        "wat je inbrengt blijft van jou, je haalt het terug of weg " +
+        "Wat je inbrengt blijft van jou: je haalt het terug of weg " +
         "wanneer je wilt, en jij bepaalt wat je met de groep deelt. De " +
-        "slimme hulp is optioneel en draait privé, op je eigen apparaat."
+        "slimme hulp is optioneel en zo opgezet dat niemand anders je " +
+        "gesprekken kan meelezen — ook de aanbieder niet."
     },
 
     {
@@ -25,8 +26,8 @@ window.ONDERLING_PAGE = {
       heading: "Het probleem",
       paragraphs: [
         "Een groepsapp met huisgenoten werkt, maar wordt rommelig. Wie " +
-        "kookt vanavond? Staat dat op het lijstje? Is die rekening " +
-        "betaald? Het verdwijnt in honderden berichten.",
+        "kookt vanavond? Staat dat op het lijstje? Wie ruimt de keuken " +
+        "op? Het verdwijnt in honderden berichten.",
         "Hierbij raakt dat niet kwijt. Je voegt iets toe zoals het je " +
         "uitkomt — een bericht (“melk halen”) of via een " +
         "scherm — en het komt op een gedeelde lijst. Je vraagt iets " +
@@ -54,9 +55,11 @@ window.ONDERLING_PAGE = {
       type: "note",
       variant: "info",
       text:
-        "Het **gedeelde** hier is de plek waar je samenkomt en elkaar " +
-        "helpt — niet je gegevens. Wat je inbrengt blijft van jou; alleen " +
-        "wat je zelf vrijgeeft telt mee voor de groep."
+        "Wat je inbrengt staat in een afgesloten ruimte waar alleen jij " +
+        "bij kunt — geen bedrijf, geen persoon, niemand anders. Het " +
+        "**gedeelde** hier is de plek waar je samenkomt en elkaar helpt, " +
+        "niet je gegevens; alleen wat je zelf vrijgeeft telt mee voor de " +
+        "groep."
     },
 
     {
@@ -92,9 +95,9 @@ window.ONDERLING_PAGE = {
       type: "note",
       variant: "plan",
       text:
-        "Volgorde en tempo kunnen nog veranderen; de richting niet — " +
-        "eerst dichtbij laten werken, dan verder. Wil je reageren of " +
-        "meedenken? Onderaan staat een mailknop."
+        "Volgorde en tempo kunnen nog veranderen — eerst dichtbij laten " +
+        "werken, dan verder. Wil je reageren of meedenken? Onderaan " +
+        "staat een mailknop."
     }
   ]
 };

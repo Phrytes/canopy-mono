@@ -48,14 +48,44 @@ window.ONDERLING_PAGE = {
     },
 
     {
-      type: "prose",
-      heading: "Hoe het ongeveer werkt",
-      paragraphs: [
-        "Vraag en aanbod staan in je eigen ruimte; de buurt ziet alleen " +
-        "wat je vrijgeeft. De match is een opening — daarna chat of bel " +
-        "je, of spreek je af.",
-        "Meer hierover: [hoe het werkt](hoe-het-werkt.html)."
+      type: "mockup",
+      kind: "prikbord",
+      heading: "En zo op het prikbord",
+      title: "Prikbord · jouw buurt",
+      items: [
+        { tag: "Vraag",  text: "Wie kan m'n fiets maken?", hint: "200 m" },
+        { tag: "Aanbod", text: "Ladder te leen",           hint: "3 buren" },
+        { tag: "Vraag",  text: "Oppas gezocht, donderdagavond" },
+        { tag: "Lenen",  text: "Boormachine — vrij dit weekend" }
       ]
+    },
+
+    {
+      type: "steps",
+      heading: "Hoe het werkt, stap voor stap",
+      items: [
+        {
+          title: "Je plaatst een vraag of aanbod",
+          body:
+            "“Wie kan helpen met X”, of iets dat je aanbiedt " +
+            "of uitleent — via een bericht of een scherm."
+        },
+        {
+          title: "Buren zien wat je vrijgeeft",
+          body:
+            "Je profiel toont aan de buurt alleen wat jij deelt; de rest " +
+            "blijft in je eigen ruimte."
+        },
+        {
+          title: "Reageert iemand, dan komen jullie in contact",
+          body:
+            "De match is een opening; verder regel je het samen — " +
+            "chatten, bellen, of afspreken."
+        }
+      ],
+      after:
+        "Wat de basis bijzonder maakt: [hoe het " +
+        "werkt](hoe-het-werkt.html)."
     }
   ]
 };

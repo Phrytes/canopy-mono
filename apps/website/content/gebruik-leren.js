@@ -51,14 +51,36 @@ window.ONDERLING_PAGE = {
     },
 
     {
-      type: "prose",
-      heading: "Hoe het ongeveer werkt",
-      paragraphs: [
-        "Eén opmerking is anekdote; meerdere los van elkaar is een " +
-        "patroon — en pas dan verschijnt het. Bron blijft volgbaar, " +
-        "zonder dat losse bijdragen herleidbaar zijn.",
-        "Meer hierover: [hoe het werkt](hoe-het-werkt.html)."
-      ]
+      type: "steps",
+      heading: "Hoe het werkt, stap voor stap",
+      items: [
+        {
+          title: "Je deelt een observatie",
+          body:
+            "Op het moment zelf, in een kanaal waar je al werkt. Het " +
+            "komt in je eigen ruimte."
+        },
+        {
+          title: "Herleidbare details eruit",
+          body: "Privé; niemand anders kan meelezen."
+        },
+        {
+          title: "Jij bevestigt",
+          body:
+            "Je ziet wat er geanonimiseerd meegaat en kunt je deel er " +
+            "nog uit halen."
+        },
+        {
+          title: "Patroon, geen scores",
+          body:
+            "Eén opmerking is anekdote; pas bij meerdere mensen wordt " +
+            "het een patroon. Het management ziet verbeterpunten, geen " +
+            "ranglijsten."
+        }
+      ],
+      after:
+        "Wat de basis bijzonder maakt: [hoe het " +
+        "werkt](hoe-het-werkt.html)."
     }
   ]
 };
