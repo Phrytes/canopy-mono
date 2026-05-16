@@ -13,13 +13,15 @@
   },
   "bin":         { "folio": "src/cli.js" },
   "scripts": {
-    "test":       "vitest run",
-    "test:watch": "vitest"
+    "test":        "vitest run",
+    "test:watch":  "vitest",
+    "test:parity": "FOLIO_PSEUDO_POD=0 vitest run && vitest run"
   },
   "dependencies": {
     "@canopy/core":                    "file:../../packages/core",
     "@canopy/oidc-session":            "file:../../packages/oidc-session",
     "@canopy/pod-client":              "file:../../packages/pod-client",
+    "@canopy/pseudo-pod":              "file:../../packages/pseudo-pod",
     "@canopy/sync-engine":             "file:../../packages/sync-engine",
     "@canopy/sync-engine-rn":          "file:../../packages/sync-engine-rn",
     "@inrupt/solid-client-authn-node":   "^4.0.0",

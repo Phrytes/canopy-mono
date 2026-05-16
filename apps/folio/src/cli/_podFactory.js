@@ -19,7 +19,14 @@
  * for one-shot sync; the v1 plan parks CLI sign-in on Phase C).
  */
 import { promises as fs }                from 'node:fs';
-import { dirname }                       from 'node:path';
+import { dirname, join }                 from 'node:path';
+
+import { createMemoryBackend }           from '@canopy/pseudo-pod';
+// Node-only persistent backend — separate subpath so it never poisons
+// portable bundles (this CLI file is already Node, so it's fine here).
+import { createNodeFsBackend }           from '@canopy/pseudo-pod/node';
+import { wrapWithPseudoPod }             from '../podCache.js';
+import { configDir }                     from './_config.js';
 
 /**
  * Construct a PodClient-shaped object for the given config.
@@ -30,19 +37,71 @@ import { dirname }                       from 'node:path';
  * @returns {Promise<object>}
  */
 export async function buildPodClient(cfg, deps = {}) {
+  let real;
   if (process.env.FOLIO_TEST_MOCK_POD === '1') {
-    return new FsBackedMockPodClient(cfg.podRoot, process.env.FOLIO_MOCK_POD_FILE ?? null);
+    real = new FsBackedMockPodClient(cfg.podRoot, process.env.FOLIO_MOCK_POD_FILE ?? null);
+  } else {
+    const oidc = deps.oidc ?? null;
+    if (oidc && typeof oidc.isAuthenticated === 'function' && oidc.isAuthenticated()) {
+      real = await buildRealPodClient(cfg, oidc);
+    } else {
+      throw new Error(
+        'pod authentication required — start `folio serve` and sign in via http://127.0.0.1:8888 '
+        + '(or set FOLIO_TEST_MOCK_POD=1 for the in-memory mock).',
+      );
+    }
   }
+  // P3 Phase D (2026-05-16): the cache-mode pseudo-pod path (offline
+  // write-through queue + read cache) is now the DEFAULT for the
+  // desktop CLI/daemon. Parity proven in Phases B–C (folio 469/469 on
+  // both paths).
+  //
+  // ⚠️ DELIBERATE DECISION — DO NOT "CLEAN UP" (P3 OQ-5, decided
+  // 2026-05-16, risk-averse). The direct PodClient path below is still
+  // reachable as an opt-out escape hatch (`pseudoPodEnabled` → false).
+  // It looks like dead/legacy code now that cache-mode is the default —
+  // it is NOT. It is the zero-cost rollback if a cache-mode bug that
+  // the 469-test suite didn't catch surfaces in real-world Folio use:
+  // a user flips one flag instead of waiting for a patched release.
+  // Removing this branch is irreversible in spirit (you lose that
+  // rollback) and is intentionally NOT done yet. Only remove it after
+  // cache-mode-default has burned in under real desktop usage AND on a
+  // fresh explicit decision — never as incidental tidy-up. The
+  // `test:parity` script still exercises this path so it can't rot.
+  // Full rationale: Project Files/Substrates/
+  // P3-sync-engine-pseudo-pod-absorption-2026-05-15.md (OQ-5).
+  return maybeWrapWithPseudoPod(real, cfg);
+}
 
-  const oidc = deps.oidc ?? null;
-  if (oidc && typeof oidc.isAuthenticated === 'function' && oidc.isAuthenticated()) {
-    return await buildRealPodClient(cfg, oidc);
-  }
+/**
+ * Phase D: cache-mode is the default. Opt OUT via `FOLIO_PSEUDO_POD=0`
+ * (the parity harness's direct-path leg) or `config.json`
+ * `{ "cacheMode": false }`. Any other state ⇒ enabled.
+ *
+ * The opt-out is the retained rollback escape hatch — see the
+ * DO-NOT-CLEAN-UP note in `buildPodClient` above (P3 OQ-5).
+ */
+function pseudoPodEnabled(cfg) {
+  if (process.env.FOLIO_PSEUDO_POD === '0') return false;
+  if (cfg?.cacheMode === false)             return false;
+  return true;
+}
 
-  throw new Error(
-    'pod authentication required — start `folio serve` and sign in via http://127.0.0.1:8888 '
-    + '(or set FOLIO_TEST_MOCK_POD=1 for the in-memory mock).',
-  );
+/**
+ * Wrap a real PodClient in a cache-mode pseudo-pod + the sync-engine
+ * adapter (shared wiring lives in `../podCache.js`). Returns the real
+ * client untouched when disabled.
+ *
+ * Desktop backend choice: in-memory for the test mock (per-process,
+ * fast); the persistent Node fs backend for a real daemon (the
+ * write-through queue must survive `folio serve` restarts).
+ */
+function maybeWrapWithPseudoPod(real, cfg) {
+  if (!pseudoPodEnabled(cfg)) return real;
+  const backend = process.env.FOLIO_TEST_MOCK_POD === '1'
+    ? createMemoryBackend()
+    : createNodeFsBackend({ dir: join(configDir(), 'pseudo-pod') });
+  return wrapWithPseudoPod({ realPodClient: real, backend });
 }
 
 /**
