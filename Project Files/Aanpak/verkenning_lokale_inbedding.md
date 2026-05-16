@@ -2,6 +2,11 @@
 
 *Een werknotitie over hoe een buurt-skill-app en een decentrale taken-app — beide gebouwd op een agent-/Solid-infrastructuur — financierbaar en ingebed kunnen worden in lokale initiatieven in Groningen.*
 
+*Onderdeel van de [Aanpak](index.md) — het **gesubsidieerde/lokale**
+spoor. Context: [leek-uitleg](uitleg_voor_leek.md) · plan:
+[intern werkplan](intern_werkplan_v2.md) · commercieel spoor:
+[commerciële verkenning](commerciele_verkenning.md).*
+
 ---
 
 ## 1. Wat dit document is

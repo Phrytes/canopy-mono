@@ -2,6 +2,11 @@
 
 *Werkdocument — synthese van technisch ontwerp + drie commerciële richtingen*
 
+*Onderdeel van de [Aanpak](index.md) — het **commerciële** spoor.
+Context: [leek-uitleg](uitleg_voor_leek.md) · plan:
+[intern werkplan](intern_werkplan_v2.md) · uitbreidingen:
+[vijf vervolg-richtingen](vijf_vervolg_richtingen.md).*
+
 ---
 
 ## Deel I — Technische synthese
