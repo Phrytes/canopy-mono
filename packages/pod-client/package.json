@@ -9,7 +9,8 @@
   },
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:css": "node scripts/css-sharing-harness.mjs"
   },
   "dependencies": {
     "@canopy/core": "file:../core"
