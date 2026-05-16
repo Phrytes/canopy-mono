@@ -1,5 +1,5 @@
-/* contact.js — "Contact". Concrete, bondige toon. De mailknop + het
-   adres komen uit de gedeelde contactband onder aan de pagina. */
+/* contact.js — "Contact". Site nog in opbouw: geen e-mail/formulier;
+   de gedeelde contactband toont een stub ("komt later"). */
 window.ONDERLING_PAGE = {
   key: "contact",
   title: "Contact",
@@ -8,8 +8,8 @@ window.ONDERLING_PAGE = {
       type: "hero",
       heading: "Contact",
       lead:
-        "Geen concreet voorstel of techniekkennis nodig — een vraag of " +
-        "een losse gedachte kan ook."
+        "De site is nog in opbouw. Een manier om contact op te nemen " +
+        "komt hier later."
     },
 
     {
@@ -25,14 +25,6 @@ window.ONDERLING_PAGE = {
         "organisaties met vragen rond vertrouwen, privacy en feedback;",
         "mensen die het herkennen, of er juist kritisch op zijn."
       ]
-    },
-
-    {
-      type: "note",
-      variant: "info",
-      text:
-        "Schrijf in een paar zinnen wie je bent en wat je opviel. Elk " +
-        "bericht krijgt antwoord."
     }
   ]
 };

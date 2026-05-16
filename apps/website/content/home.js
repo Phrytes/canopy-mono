@@ -96,8 +96,8 @@ window.ONDERLING_PAGE = {
       variant: "plan",
       text:
         "Volgorde en tempo kunnen nog veranderen — eerst dichtbij laten " +
-        "werken, dan verder. Wil je reageren of meedenken? Onderaan " +
-        "staat een mailknop."
+        "werken, dan verder. Meedenken kan straks; de site is nog in " +
+        "opbouw."
     }
   ]
 };

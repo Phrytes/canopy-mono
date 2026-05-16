@@ -101,14 +101,22 @@ De interne planning zit er niet in (het script breekt af als dat wel zo
 zou zijn). De `noindex` hieronder houdt 'm wel uit Google tot je dat
 weghaalt.
 
-## E-mailadres
+## Contact (nu een stub)
 
-Het adres staat **licht afgeschermd** (base64 in `content/site.js`,
-`emailEnc`) en wordt pas in de browser samengesteld. Dat houdt simpele
-spam-scrapers tegen; een scraper die JavaScript draait kan het nog
-steeds lezen — een sluitende garantie is het niet. Adres wijzigen:
-`printf '%s' 'nieuw@adres.nl' | base64` en de uitkomst in `emailEnc`
-zetten.
+Er staat **geen e-mailadres of formulier** op de site — die is nog in
+opbouw. De contactband toont `contact.stub` uit `content/site.js`.
+
+Later weer aanzetten, in `content/site.js`:
+
+- **mailto terug:** zet `email: "naam@adres.nl"` in `ONDERLING_SITE`
+  (of licht afgeschermd: `emailEnc: "<base64>"`, met
+  `printf '%s' 'naam@adres.nl' | base64`). De contactband maakt dan
+  vanzelf weer een mailknop + adres.
+- **formulier:** koppel een statische form-dienst (bv. Web3Forms);
+  het adres staat dan bij die dienst, niet in de site. Vergt een klein
+  extra `form`-blok in `assets/render.js` — niet nu gebouwd.
+
+Zolang er geen `email`/`emailEnc` is, blijft de stub staan.
 
 ## Voor het echt live gaat
 

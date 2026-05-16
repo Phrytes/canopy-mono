@@ -8,10 +8,11 @@ window.ONDERLING_SITE = {
   name: "Onderling",
   tagline: "Samen dingen regelen — wat je inbrengt blijft van jou.",
 
-  // Licht afgeschermd tegen scrapers: base64 van het e-mailadres.
-  // Wijzigen? Draai:  printf '%s' 'nieuw@adres.nl' | base64
-  // en zet de uitkomst hieronder. (Of zet tijdelijk: email: "…".)
-  emailEnc: "ZnJpdHNkZXJvb3NAZ21haWwuY29t",
+  // Geen e-mailadres op de site (nog in opbouw). Later weer aanzetten?
+  //  - mailto terug: zet hier   email: "naam@adres.nl"   (of emailEnc
+  //    met base64:  printf '%s' 'naam@adres.nl' | base64 )
+  //  - of een formulier: zie README.
+  // Zolang er geen email/form is, toont de contactband `contact.stub`.
 
   nav: [
     { key: "home",    label: "Wat & waarom",        href: "index.html" },
@@ -26,13 +27,11 @@ window.ONDERLING_SITE = {
   contact: {
     heading: "Contact",
     paragraphs: [
-      "Dit is werk in ontwikkeling, geen afgerond product. Reageren of " +
-      "meedenken kan ook als je alleen nieuwsgierig bent of iets herkent.",
-      "Wil je iets kwijt — een vraag, een idee, een buurt of organisatie " +
-      "die past, of een mening — dan kan dat hieronder."
+      "Dit is werk in ontwikkeling, geen afgerond product."
     ],
-    buttonLabel: "Stuur een bericht",
-    subject: "Naar aanleiding van de site"
+    stub:
+      "Een manier om contact op te nemen komt hier later — de site is " +
+      "nog in opbouw."
   },
 
   footer:
