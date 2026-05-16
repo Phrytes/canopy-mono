@@ -16,6 +16,7 @@
     "@canopy-app/folio": "file:../folio",
     "@canopy/core": "file:../../packages/core",
     "@canopy/pod-client": "file:../../packages/pod-client",
+    "@canopy/pseudo-pod": "file:../../packages/pseudo-pod",
     "@canopy/react-native": "file:../../packages/react-native",
     "@canopy/sync-engine": "file:../../packages/sync-engine",
     "@canopy/sync-engine-rn": "file:../../packages/sync-engine-rn",
