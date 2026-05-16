@@ -324,15 +324,21 @@
     var inner = el("div", { class: "inner" });
     inner.appendChild(el("h2", null, [c.heading || "Contact"]));
     paras(c.paragraphs, inner);
-    if (SITE.email) {
+    // E-mail licht afgeschermd: staat base64-versleuteld in de data en
+    // wordt hier pas samengesteld. Simpele scrapers (die geen JS draaien
+    // of alleen platte bestanden afzoeken) zien geen leesbaar adres.
+    var email = SITE.email ||
+      (SITE.emailEnc && typeof atob === "function"
+        ? atob(SITE.emailEnc) : "");
+    if (email) {
       inner.appendChild(el("a", {
         class: "btn",
-        href: "mailto:" + SITE.email +
+        href: "mailto:" + email +
           (c.subject ? "?subject=" + encodeURIComponent(c.subject) : "")
       }, [c.buttonLabel || "Stuur me een mailtje"]));
       inner.appendChild(el("p", { class: "email-plain" }, [
         "Of rechtstreeks: ",
-        el("a", { href: "mailto:" + SITE.email }, [SITE.email])
+        el("a", { href: "mailto:" + email }, [email])
       ]));
     }
     return el("section", { class: "contact-band" }, [inner]);

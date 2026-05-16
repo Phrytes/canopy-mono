@@ -58,7 +58,7 @@ window.ONDERLING_PAGE = {
         {
           title: "Je meldt iets",
           body:
-            "Wanneer het speelt, via chat of scherm. Het komt in je " +
+            "Wanneer het speelt, via chat of de app. Het komt in je " +
             "eigen ruimte, niet op een dashboard."
         },
         {
