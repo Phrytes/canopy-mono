@@ -328,7 +328,29 @@ export class SyncEngine extends Emitter {
 
     const localScan = await scanLocal(this.#localRoot, { pathMap: this.#pathMap, fs: this.#fs, hash: this.#hash });
     const podScan   = await scanPod(podClient, this.#podRoot, { pathMap: this.#pathMap, hash: this.#hash });
-    const d         = diff(localScan, podScan, this.#knownState);
+
+    // Phase D — pre-list pod-side tombstones into a sync predicate so a
+    // deliberately-deleted file isn't resurrected by the local-only
+    // re-upload branch. The tombstone store lives on the PodClient
+    // (`tombstoneStore` getter); when the client is the pseudo-pod
+    // adapter the real client is reachable via `_podClient`. Best-effort
+    // and non-fatal: any failure ⇒ no predicate ⇒ legacy behaviour.
+    let isTombstoned;
+    try {
+      const tombStore = podClient?.tombstoneStore ?? podClient?._podClient?.tombstoneStore ?? null;
+      if (tombStore && typeof tombStore.list === 'function') {
+        const entries = await tombStore.list();
+        const tombSet = new Set((entries ?? []).map((t) => (typeof t === 'string' ? t : t?.uri)).filter(Boolean));
+        if (tombSet.size > 0) {
+          // Mirror SyncEngine.deleteLocal's pod-URI derivation (the
+          // tombstone creator) so the keys line up.
+          isTombstoned = (rel) =>
+            tombSet.has(`${this.#podRoot}${rel.split('/').map(encodeURIComponent).join('/')}`);
+        }
+      }
+    } catch { /* no tombstone source / list failed → legacy behaviour */ }
+
+    const d = diff(localScan, podScan, this.#knownState, isTombstoned ? { isTombstoned } : {});
 
     let uploads = 0, downloads = 0, deletes = 0, conflicts = 0;
 

@@ -99,4 +99,46 @@ describe('diff', () => {
     expect(out.toDownload.map((f) => f.relPath).sort()).toEqual(['newRemote.md', 'remoteEdited.md']);
     expect(out.conflicts.map((f) => f.relPath)).toEqual(['conflict.md']);
   });
+
+  // ── Phase D — tombstone-aware diff (additive opts.isTombstoned) ──────────────
+
+  it('local-only file IS re-uploaded when no isTombstoned predicate is given (unchanged default)', () => {
+    const out = diff([L('note.md', 's')], [], { 'note.md': { sha256: 'old', syncedAt: 0 } });
+    expect(out.toUpload.map((f) => f.relPath)).toEqual(['note.md']);
+    expect(out.toDelete).toEqual([]);
+  });
+
+  it('local-only file is dropped (toDelete, not toUpload) when isTombstoned(rel) is true', () => {
+    const out = diff(
+      [L('note.md', 's')],
+      [],
+      { 'note.md': { sha256: 'old', syncedAt: 0 } },
+      { isTombstoned: (rel) => rel === 'note.md' },
+    );
+    expect(out.toUpload).toEqual([]);
+    expect(out.toDelete.map((f) => f.relPath)).toEqual(['note.md']);
+    expect(out.toDelete[0].tombstoned).toBe(true);
+  });
+
+  it('isTombstoned only affects local-only files (a tombstoned pod-side file still downloads)', () => {
+    const out = diff(
+      [],
+      [P('note.md', 's')],
+      {},
+      { isTombstoned: () => true },
+    );
+    expect(out.toDownload.map((f) => f.relPath)).toEqual(['note.md']);
+    expect(out.toDelete).toEqual([]);
+  });
+
+  it('isTombstoned is idempotent across runs (no knownState → still dropped, not uploaded)', () => {
+    const out = diff(
+      [L('note.md', 's')],
+      [],
+      {},                                            // state already evicted by a prior run
+      { isTombstoned: () => true },
+    );
+    expect(out.toUpload).toEqual([]);
+    expect(out.toDelete.map((f) => f.relPath)).toEqual(['note.md']);
+  });
 });

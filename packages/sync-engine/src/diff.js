@@ -54,12 +54,25 @@
  */
 
 /**
+ * Phase D (refactor-doc Finding 9): an optional `opts.isTombstoned`
+ * predicate closes the "deleted file resurrects" gap. A file present
+ * only locally is normally re-uploaded (safe default — no silent loss
+ * of an edit). But if the caller knows that relPath's pod URI carries
+ * a tombstone (the user deliberately `deleteLocal`'d it; PodClient.list
+ * then hides it, so it shows up local-only), re-uploading resurrects
+ * exactly what the user deleted. With the predicate supplied, such a
+ * file is surfaced in `toDelete` (state-eviction, non-destructive — the
+ * local orphan file is left untouched) instead of `toUpload`.
+ * Additive: with no `opts.isTombstoned`, behaviour is unchanged.
+ *
  * @param {Array<{relPath:string, absPath:string, mtimeMs:number, sha256:string, size:number}>} localScan
  * @param {Array<{relPath:string, podUri:string,  mtimeMs:number, sha256:string, size:number, etag?:string}>} podScan
  * @param {Record<string, { sha256: string, syncedAt: number }>} [knownState]
+ * @param {{ isTombstoned?: (relPath: string) => boolean }} [opts]
  * @returns {{ toUpload: DiffEntry[], toDownload: DiffEntry[], toDelete: DiffEntry[], conflicts: ConflictEntry[] }}
  */
-export function diff(localScan, podScan, knownState = {}) {
+export function diff(localScan, podScan, knownState = {}, opts = {}) {
+  const isTombstoned = typeof opts?.isTombstoned === 'function' ? opts.isTombstoned : null;
   const localByRel = indexBy(localScan, 'relPath');
   const podByRel   = indexBy(podScan,   'relPath');
 
@@ -107,12 +120,21 @@ export function diff(localScan, podScan, knownState = {}) {
 
     // Local-only.
     if (l && !p) {
-      // If state says we synced this file before, then pod-side disappeared
-      // → could mean another device deleted it (deleteCompletely).  v1 treats
-      // local-only with prior state as toUpload (we don't have a delete intent
-      // here without an explicit tombstone).  A future enhancement is to track
-      // pod-side tombstones; for v1 we re-upload, which is the safer default
-      // for note content (no silent loss of an edit).
+      // Phase D: a pod-side tombstone is an explicit "the user deleted
+      // this" signal (PodClient.list hides tombstoned URIs, so a
+      // deliberately-deleted file resurfaces here as local-only).
+      // Re-uploading would resurrect it. Surface it for state eviction
+      // instead — non-destructive: we do NOT unlink the local copy
+      // (no absPath ⇒ SyncEngine's toDelete handler only drops the
+      // knownState entry). Idempotent across runs.
+      if (isTombstoned && isTombstoned(rel)) {
+        toDelete.push({ relPath: rel, sha256: l.sha256, tombstoned: true });
+        continue;
+      }
+      // No tombstone: re-upload is the safe default for note content
+      // (state says we synced it before but the pod-side disappeared —
+      // we don't infer a delete intent without an explicit tombstone;
+      // no silent loss of an edit).
       toUpload.push({ ...l });
       continue;
     }
