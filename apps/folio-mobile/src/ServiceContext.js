@@ -265,11 +265,19 @@ async function buildAndAttachEngine({
   // the Folio-mobile real-device acceptance pass: the flip + an
   // on-device offline→reconnect→drain verification happen together,
   // never blind. Until then RN Folio runs the proven direct path; this
-  // block stays dormant unless a tester explicitly sets the env var.
+  // block stays dormant unless a tester explicitly opts in.
   // See TODO-GENERAL.md (hardware-pending Folio-mobile) + Project
   // Files/Substrates/P3-…-2026-05-15.md (OQ-6).
+  //
+  // Enablement: `FOLIO_PSEUDO_POD=1` works under vitest/Node, but RN
+  // (Metro) does NOT populate `process.env` at runtime — only
+  // `EXPO_PUBLIC_*` vars are inlined into the bundle at build time. So
+  // for the on-device OQ-6 pass the tester sets
+  // `EXPO_PUBLIC_FOLIO_PSEUDO_POD=1` on the `expo run:android` build.
+  // Both are accepted; default (neither) stays off.
   let effectivePodClient = podClient;
-  if (process.env.FOLIO_PSEUDO_POD === '1') {
+  if (process.env.FOLIO_PSEUDO_POD === '1'
+      || process.env.EXPO_PUBLIC_FOLIO_PSEUDO_POD === '1') {
     const [{ wrapWithPseudoPod }, { createBackend }, AsyncStorageMod] =
       await Promise.all([
         import('@canopy-app/folio'),
