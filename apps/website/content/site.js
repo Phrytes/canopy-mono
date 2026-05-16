@@ -12,9 +12,9 @@ window.ONDERLING_SITE = {
 
   nav: [
     { key: "home",    label: "Wat & waarom",        href: "index.html" },
+    { key: "techniek",label: "Hoe het werkt",       href: "hoe-het-werkt.html" },
     { key: "gebruik", label: "Wat los je ermee op", href: "wat-los-je-ermee-op.html" },
     { key: "aanpak",  label: "De aanpak",           href: "de-aanpak.html" },
-    { key: "techniek",label: "Hoe het werkt",       href: "hoe-het-werkt.html" },
     { key: "roadmap", label: "Stand van zaken",     href: "roadmap.html" },
     { key: "vragen",  label: "Vragen",              href: "vragen.html" },
     { key: "contact", label: "Contact",             href: "contact.html" }

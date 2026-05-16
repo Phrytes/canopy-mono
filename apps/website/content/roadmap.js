@@ -69,22 +69,25 @@ window.ONDERLING_PAGE = {
             "er anders loopt zodra de mensen elkaar niet kennen."
         },
         {
-          period: "Parallel",
+          period: "Parallel · op papier",
           status: "bezig",
-          heading: "Gesprekken met wie dit herkent",
+          heading: "Zakelijke toepassingen verkennen en uitwerken",
           body:
-            "Verkennen waar onafhankelijke verwerking nodig is, met " +
-            "mensen en organisaties die deze vragen kennen. Luisteren, " +
-            "nog niet aanbieden."
+            "De toepassingen met een onafhankelijke partij — meedenken " +
+            "over je werk, ervaringen in de zorg, misstanden melden, " +
+            "onderzoek, meepraten met de overheid — worden uitgewerkt: " +
+            "voor wie, hoe het onafhankelijk kan, wat het vraagt. Met " +
+            "gesprekken met mensen en organisaties die dit herkennen. " +
+            "Nog geen bouw."
         },
         {
           period: "Verderop · richting 2027",
           status: "later",
-          heading: "Bredere toepassingen",
+          heading: "Bredere toepassingen, gebouwd en getest",
           body:
-            "Toepassingen rond werk, zorg en meepraten met de overheid, " +
-            "en een vorm die de onafhankelijkheid borgt. Hangt af van wat " +
-            "de eerdere stappen laten zien."
+            "De uitgewerkte toepassingen daadwerkelijk bouwen en in de " +
+            "praktijk proberen, met een vorm die de onafhankelijkheid " +
+            "borgt. Hangt af van wat de eerdere stappen laten zien."
         }
       ]
     },
@@ -93,8 +96,8 @@ window.ONDERLING_PAGE = {
       type: "note",
       variant: "plan",
       text:
-        "Geen harde toezeggingen. Volgorde en tempo kunnen schuiven; de " +
-        "richting niet. Vragen of meedenken? Onderaan staat een mailknop."
+        "Geen harde toezeggingen. Volgorde en tempo kunnen schuiven. " +
+        "Vragen of meedenken? Onderaan staat een mailknop."
     }
   ]
 };

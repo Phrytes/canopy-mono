@@ -35,8 +35,7 @@ window.ONDERLING_PAGE = {
       type: "cards",
       heading: "Dichtbij, met elkaar",
       intro:
-        "Tussen mensen die elkaar (deels) kennen. Hier hoeft niemand " +
-        "voor te betalen.",
+        "Tussen mensen die elkaar (deels) kennen, zonder iets ertussen.",
       items: [
         {
           status: "loopt",

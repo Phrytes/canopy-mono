@@ -47,14 +47,37 @@ window.ONDERLING_PAGE = {
     },
 
     {
-      type: "prose",
-      heading: "Hoe het ongeveer werkt",
-      paragraphs: [
-        "Dezelfde stappen als overal: eigen opslag, lokaal opschonen, " +
-        "zelf bevestigen, een drempel, onafhankelijke verwerking. Alleen " +
-        "de voorkant verschilt per partij.",
-        "Meer hierover: [hoe het werkt](hoe-het-werkt.html)."
-      ]
+      type: "steps",
+      heading: "Hoe het werkt, stap voor stap",
+      items: [
+        {
+          title: "Eigen voorkant",
+          body:
+            "Je bouwt je eigen scherm en naam erbovenop; de jouw-gebruikers " +
+            "zien jouw merk."
+        },
+        {
+          title: "Dezelfde basis eronder",
+          body:
+            "Eigen ruimte per gebruiker, zelf bevestigen, een drempel — " +
+            "die eigenschappen komen mee."
+        },
+        {
+          title: "Gescheiden",
+          body:
+            "Geen toegang tot de gegevens van andere partijen die " +
+            "dezelfde basis gebruiken."
+        },
+        {
+          title: "Verwerking naar keuze",
+          body:
+            "De onafhankelijke verwerking doe je zelf of besteed je uit; " +
+            "de basis is open, dus geen vendor-lock-in."
+        }
+      ],
+      after:
+        "Wat de basis bijzonder maakt: [hoe het " +
+        "werkt](hoe-het-werkt.html)."
     }
   ]
 };

@@ -52,16 +52,41 @@ window.ONDERLING_PAGE = {
     },
 
     {
-      type: "prose",
-      heading: "Hoe het ongeveer werkt",
-      paragraphs: [
-        "De onderzoeker krijgt alleen goedgekeurde, opgeschoonde " +
-        "bijdragen, met een spoor van wie wat wanneer goedkeurde. " +
-        "Ethische toetsing hoeft daardoor minder aan te nemen. Tot " +
-        "wanneer je kunt aanpassen, en wat daarna geldt, spreek je " +
-        "vooraf met de onderzoeker af.",
-        "Meer hierover: [hoe het werkt](hoe-het-werkt.html)."
-      ]
+      type: "steps",
+      heading: "Hoe het werkt, stap voor stap",
+      items: [
+        {
+          title: "Je doet mee",
+          body:
+            "In tekst of spraak, gestructureerd of als open dagboek. Je " +
+            "bijdrage komt in je eigen ruimte."
+        },
+        {
+          title: "Herleidbare details eruit",
+          body: "Privé; niemand anders kan meelezen."
+        },
+        {
+          title: "Je leest na en bevestigt",
+          body:
+            "Je ziet wat de onderzoeker zou zien en past aan tot een " +
+            "vooraf afgesproken moment."
+        },
+        {
+          title: "Daarna ligt het vast",
+          body:
+            "Wat er na dat moment met je bijdrage kan, is vooraf met de " +
+            "onderzoeker afgesproken."
+        },
+        {
+          title: "Aantoonbaar goedgekeurd",
+          body:
+            "Er is een spoor van wie wat wanneer goedkeurde; ethische " +
+            "toetsing hoeft daardoor minder aan te nemen."
+        }
+      ],
+      after:
+        "Wat de basis bijzonder maakt: [hoe het " +
+        "werkt](hoe-het-werkt.html)."
     }
   ]
 };

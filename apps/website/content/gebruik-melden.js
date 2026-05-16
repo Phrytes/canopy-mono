@@ -49,14 +49,43 @@ window.ONDERLING_PAGE = {
     },
 
     {
-      type: "prose",
-      heading: "Hoe het ongeveer werkt",
-      paragraphs: [
-        "De behandelaar kan niet uitvogelen wie je bent, ook niet via " +
-        "vergelijking met andere meldingen. Komt het tot een geschil, " +
-        "dan heb jij zelf het bewijspad.",
-        "Meer hierover: [hoe het werkt](hoe-het-werkt.html)."
-      ]
+      type: "steps",
+      heading: "Hoe het werkt, stap voor stap",
+      items: [
+        {
+          title: "Je doet een melding",
+          body:
+            "Via een link of code — niet via een kanaal van de " +
+            "organisatie zelf. Het komt in je eigen ruimte."
+        },
+        {
+          title: "Herleidbare details eruit",
+          body: "Privé; niemand anders kan meelezen."
+        },
+        {
+          title: "Jij bevestigt of bewaart",
+          body:
+            "Je ziet wat de behandelaar krijgt voordat je indient; " +
+            "opslaan, aanpassen of weghalen kan, dat bepaal jij."
+        },
+        {
+          title: "Patroon zonder koppeling",
+          body:
+            "Meldingen over hetzelfde patroon worden zichtbaar, zonder " +
+            "dat de melders aan elkaar te koppelen zijn. De behandelaar " +
+            "kan niet achterhalen wie je bent."
+        },
+        {
+          title: "Je volgt het verloop",
+          body:
+            "Je ziet of het is opgepakt en kunt vragen stellen zonder " +
+            "dat je identiteit lekt. Komt het tot een geschil, dan heb " +
+            "jij zelf het bewijspad."
+        }
+      ],
+      after:
+        "Wat de basis bijzonder maakt: [hoe het " +
+        "werkt](hoe-het-werkt.html)."
     }
   ]
 };

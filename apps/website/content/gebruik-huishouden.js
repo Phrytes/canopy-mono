@@ -45,16 +45,56 @@ window.ONDERLING_PAGE = {
     },
 
     {
-      type: "prose",
-      heading: "Hoe het ongeveer werkt",
-      paragraphs: [
-        "Elke huisgenoot heeft een eigen opslagruimte, plus één gedeelde " +
-        "voor het huishouden. De assistent stelt iets voor, jij " +
-        "bevestigt of past aan voordat het op een gedeelde lijst komt. " +
-        "De slimme tekstverwerking erachter draait privé op je eigen " +
-        "apparaat, en gebruiken hoeft niet.",
-        "Meer hierover: [hoe het werkt](hoe-het-werkt.html)."
+      type: "mockup",
+      kind: "lijst",
+      heading: "En zo op het scherm",
+      title: "Huishouden",
+      groups: [
+        {
+          heading: "Boodschappen · gedeeld",
+          items: [
+            { done: false, text: "melk",    who: "jij" },
+            { done: false, text: "filters" },
+            { done: true,  text: "koffie",  who: "Sam" }
+          ]
+        },
+        {
+          heading: "Klusjes",
+          items: [
+            { done: false, text: "wasruimte — aan de beurt: jij" },
+            { done: true,  text: "vuilnis buiten", who: "Sam" }
+          ]
+        }
       ]
+    },
+
+    {
+      type: "steps",
+      heading: "Hoe het werkt, stap voor stap",
+      items: [
+        {
+          title: "Je voegt iets toe",
+          body:
+            "Een berichtje of via een scherm: “melk halen”, " +
+            "“klusje voor zaterdag”."
+        },
+        {
+          title: "De assistent zet het op z'n plek",
+          body:
+            "Op de gedeelde lijst van het huishouden; jij bevestigt of " +
+            "past aan als het niet klopt. De slimme hulp is optioneel; " +
+            "niemand anders kan je gesprekken meelezen."
+        },
+        {
+          title: "Iedereen ziet de lijst, jij houdt je eigen",
+          body:
+            "De huisgenoten zien de gedeelde lijst; wat jij inbrengt " +
+            "blijft in je eigen ruimte."
+        }
+      ],
+      after:
+        "Wat de basis bijzonder maakt: [hoe het " +
+        "werkt](hoe-het-werkt.html)."
     }
   ]
 };

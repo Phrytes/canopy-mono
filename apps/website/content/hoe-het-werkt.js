@@ -1,5 +1,6 @@
-/* hoe-het-werkt.js — techniek-pagina voor de nieuwsgierige. Gewone
-   taal, echte begrippen genoemd, eerlijk, zonder hype of pitch. */
+/* hoe-het-werkt.js — over de gedeelde basis onder alle toepassingen.
+   Hoofdtekst jargon-vrij; vaktermen staan los, mét uitleg, onder
+   "Voor wie benieuwd is naar de technische details". */
 window.ONDERLING_PAGE = {
   key: "techniek",
   title: "Hoe het werkt",
@@ -8,56 +9,52 @@ window.ONDERLING_PAGE = {
       type: "hero",
       heading: "Hoe het werkt",
       lead:
-        "Je gebruikt het via een chat, een scherm of automatisch. " +
-        "Daaronder zitten een paar vaste stappen, hetzelfde ongeacht hoe " +
-        "je het gebruikt. Hieronder in gewone taal, met de echte " +
-        "begrippen erbij voor wie ze wil opzoeken."
+        "Onder alle toepassingen op deze site ligt één gedeelde basis. " +
+        "Wat die basis bijzonder maakt staat hieronder. De stappen zélf " +
+        "verschillen per toepassing — van heel eenvoudig (een " +
+        "huishouden) tot uitgebreider (bijvoorbeeld meedenken via een " +
+        "ondernemingsraad)."
     },
 
     {
-      type: "steps",
-      heading: "De stappen",
-      items: [
-        {
-          title: "Eigen opslag",
-          body:
-            "Elke gebruiker heeft een eigen, persoonlijke ruimte " +
-            "(gebaseerd op de open standaard Solid — een “pod”). " +
-            "Wat je inbrengt staat daar, niet in een centrale database. " +
-            "Die ruimte kan bij een aanbieder naar keuze staan, en je " +
-            "kunt hem meenemen."
-        },
-        {
-          title: "Lokaal opschonen",
-          body:
-            "Voordat er iets de deur uit kan, worden herleidbare details " +
-            "(namen, evidente kenmerken) eruit gehaald. Dat gebeurt zo " +
-            "dicht mogelijk bij jou, niet op een centrale plek. De ruwe " +
-            "versie blijft van jou."
-        },
-        {
-          title: "Zelf bevestigen",
-          body:
-            "Je ziet wat er van jou zou meegaan en kunt het aanpassen of " +
-            "terugnemen. Verzenden is een tussenstap, geen eindpunt — " +
-            "niet de computer is eindredacteur, maar jij."
-        },
-        {
-          title: "Een drempel",
-          body:
-            "Een patroon, citaat of thema verschijnt pas als een " +
-            "minimaal aantal mensen er los van elkaar aan heeft " +
-            "bijgedragen (k-anonimiteit). Daaronder wordt het verwijderd; " +
-            "niemand ziet het ooit."
-        },
-        {
-          title: "Onafhankelijke verwerking",
-          body:
-            "Een onafhankelijke partij maakt er een overzicht van. " +
-            "Degene waar het over gaat zit daar niet tussen. Een zwaar, " +
-            "los signaal kan — met jouw expliciete akkoord — apart " +
-            "worden gehouden in plaats van te wachten op een patroon."
-        }
+      type: "prose",
+      heading: "Wat de basis bijzonder maakt",
+      list: [
+        "**Je eigen ruimte, geen centrale database.** Wat je inbrengt " +
+        "staat in een afgesloten ruimte waar alleen jij bij kunt — geen " +
+        "bedrijf, geen persoon, niemand anders. Geen grote pot om te " +
+        "hacken of op te vragen. Je kunt die ruimte meenemen.",
+        "**Jij bent eindredacteur.** Niets wordt gedeeld of samengevat " +
+        "zonder dat jij het eerst kunt aanpassen of terugnemen. " +
+        "Verzenden is een tussenstap, geen eindpunt.",
+        "**Een drempel.** Een patroon, citaat of thema verschijnt pas " +
+        "als meerdere mensen er los van elkaar aan hebben bijgedragen. " +
+        "Daaronder ziet niemand het.",
+        "**Een onafhankelijke partij waar dat nodig is.** Degene waar " +
+        "het over gaat is niet de aanbieder.",
+        "**Vorm-vrij.** Je gebruikt het via een chat, een gewoon scherm, " +
+        "of automatisch — wat past.",
+        "**Slimme hulp is optioneel en privé.** Zie hieronder."
+      ],
+      paragraphs: [
+        "Diezelfde basis maakt steeds nieuwe toepassingen mogelijk; een " +
+        "paar daarvan staan bij [wat los je ermee " +
+        "op](wat-los-je-ermee-op.html)."
+      ]
+    },
+
+    {
+      type: "prose",
+      heading: "De stappen verschillen per toepassing",
+      paragraphs: [
+        "Een huishouden heeft maar een paar stappen: je voegt iets toe, " +
+        "de assistent zet het op de gedeelde lijst, klaar. Bij " +
+        "gevoeliger toepassingen — bijvoorbeeld meedenken via een " +
+        "ondernemingsraad — komen er stappen bij: herleidbare details " +
+        "eruit, jij bevestigt, een drempel, en een onafhankelijke partij " +
+        "die er een overzicht van maakt.",
+        "Op elke [toepassing](wat-los-je-ermee-op.html) staat het " +
+        "bijbehorende stappenplan, afgestemd op wat daar nodig is."
       ]
     },
 
@@ -66,12 +63,15 @@ window.ONDERLING_PAGE = {
       heading: "Slimme hulp: optioneel en privé",
       paragraphs: [
         "Het begrijpen van gewone berichten en het weghalen van " +
-        "herleidbare details gebeurt met een taalmodel — een privé-AI; " +
-        "technisch een LLM. Dat draait lokaal, op je eigen apparaat, " +
-        "niet in de cloud van een bedrijf.",
-        "Het is optioneel: het kan ook via gewone schermen, zonder " +
-        "slimme hulp. En een model in de cloud gebeurt alleen als je dat " +
-        "zelf expliciet aanzet — nooit stilzwijgend."
+        "herleidbare details gebeurt met slimme tekstverwerking (een " +
+        "taalmodel). Die kan op je eigen apparaat draaien of in een " +
+        "afgeschermde omgeving in de cloud — in beide gevallen zo " +
+        "opgezet dat niemand anders je gesprekken kan meelezen, ook de " +
+        "aanbieder of hoster niet.",
+        "Dat is het verschil met veel bekende AI-assistenten (zoals " +
+        "ChatGPT), waar het bedrijf erachter wél bij je invoer kan. En " +
+        "het is optioneel: het kan ook via gewone schermen, zonder " +
+        "slimme hulp."
       ]
     },
 
@@ -86,7 +86,27 @@ window.ONDERLING_PAGE = {
 
     {
       type: "prose",
-      heading: "Voor wie nog dieper wil",
+      heading: "Voor wie benieuwd is naar de technische details",
+      paragraphs: [
+        "Een paar termen, voor wie ze wil opzoeken:"
+      ],
+      list: [
+        "**Eigen ruimte / pod** — je persoonlijke opslag, gebaseerd op " +
+        "de open standaard Solid. Geen centrale database; je kunt hem bij " +
+        "een aanbieder naar keuze zetten en meenemen.",
+        "**Drempel / k-anonimiteit** — een patroon verschijnt pas als " +
+        "minimaal een afgesproken aantal mensen er onafhankelijk aan " +
+        "bijdroeg; daaronder wordt het verwijderd.",
+        "**Taalmodel / LLM** — de slimme tekstverwerking die berichten " +
+        "begrijpt en herleidbare details weghaalt. Kan lokaal of in een " +
+        "afgeschermde cloud-omgeving draaien; zo opgezet dat niemand " +
+        "anders meeleest, ook de aanbieder niet — anders dan bij veel " +
+        "bekende AI-assistenten."
+      ]
+    },
+
+    {
+      type: "prose",
       paragraphs: [
         "Onder de motorkap is het een netwerk waarin kleine helpers " +
         "(programmaatjes) taken kunnen oppakken naast mensen. De " +
