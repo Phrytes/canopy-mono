@@ -43,11 +43,16 @@ function makeFakeInrupt() {
   return {
     log,
     universalAccess: {
+      // Real Inrupt `universalAccess.set*Access` returns the resulting
+      // Access object on success (and `null` on a no-op — see the
+      // SHARING_*_NOOP tests). Mirror that contract.
       setAgentAccess:  async (uri, agent, access, _opts) => {
         log.setAgent.push({ uri, agent, access });
+        return access;
       },
       setPublicAccess: async (uri, access, _opts) => {
         log.setPublic.push({ uri, access });
+        return access;
       },
       getAgentAccess:  async (uri, agent, _opts) => {
         return log.getAgent.find(g => g.uri === uri && g.agent === agent)?.access
@@ -183,6 +188,26 @@ describe('client.sharing.grant()', () => {
     expect(result.mode).toBe('wac');
   });
 
+  it('throws SHARING_GRANT_NOOP when the SDK setter applies nothing (returns null)', async () => {
+    // Real-world: @inrupt/solid-client 3.0.0 is a silent no-op vs CSS
+    // 7.1.9 ACP — returns null, never writes the ACR (verified
+    // 2026-05-16). Must surface, not report false success.
+    _setInruptModuleForTests({
+      universalAccess: {
+        setAgentAccess:  async () => null,
+        setPublicAccess: async () => null,
+        getAgentAccess:  async () => null,
+        getPublicAccess: async () => null,
+      },
+    });
+    const sharing = createClientSharing({ fetch: makeAuthFetch(ACP_LINK), podRoot: 'https://anne.pod/' });
+    await expect(sharing.grant({
+      resourceUri: 'https://anne.pod/notes/x.ttl',
+      agent:       'https://bob.pod/profile#me',
+      modes:       ['read'],
+    })).rejects.toMatchObject({ code: 'SHARING_GRANT_NOOP' });
+  });
+
   it('throws SharingUnsupportedError when neither ACP nor WAC available', async () => {
     const sharing = createClientSharing({ fetch: makeAuthFetch(null), podRoot: 'https://anne.pod/' });
     await expect(sharing.grant({
@@ -259,6 +284,22 @@ describe('client.sharing.revoke()', () => {
     });
     expect(inrupt.log.setPublic).toHaveLength(1);
     expect(r.subject).toBe('public');
+  });
+
+  it('throws SHARING_REVOKE_NOOP when the SDK setter applies nothing (returns null)', async () => {
+    _setInruptModuleForTests({
+      universalAccess: {
+        setAgentAccess:  async () => null,
+        setPublicAccess: async () => null,
+        getAgentAccess:  async () => null,
+        getPublicAccess: async () => null,
+      },
+    });
+    const sharing = createClientSharing({ fetch: makeAuthFetch(ACP_LINK), podRoot: 'https://anne.pod/' });
+    await expect(sharing.revoke({
+      resourceUri: 'https://anne.pod/notes/x.ttl',
+      agent:       'https://bob.pod/profile#me',
+    })).rejects.toMatchObject({ code: 'SHARING_REVOKE_NOOP' });
   });
 
   it('throws SharingUnsupportedError when pod has no ACP/WAC', async () => {
