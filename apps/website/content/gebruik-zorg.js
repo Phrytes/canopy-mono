@@ -50,17 +50,42 @@ window.ONDERLING_PAGE = {
     },
 
     {
-      type: "prose",
-      heading: "Hoe het ongeveer werkt",
-      paragraphs: [
-        "Je eigen ruimte zit niet vast aan één instelling; wat je " +
-        "bijhoudt blijft van jou, ook als je van zorgverlener wisselt. " +
-        "Voor een breder beeld bij een patiëntenorganisatie telt iets pas " +
-        "mee als meerdere mensen het los van elkaar inbrengen.",
-        "De assistent is geen hulpverlener en neemt niet uit zichzelf " +
-        "contact op met een zorgaanbieder of instantie. Meer hierover: " +
-        "[hoe het werkt](hoe-het-werkt.html)."
-      ]
+      type: "steps",
+      heading: "Hoe het werkt, stap voor stap",
+      items: [
+        {
+          title: "Je vertelt wat je meemaakte",
+          body:
+            "In tekst of spraak, op je eigen tempo. Het komt in je eigen " +
+            "ruimte, die niet vastzit aan één instelling."
+        },
+        {
+          title: "Herleidbare details eruit",
+          body: "Privé; niemand anders kan meelezen."
+        },
+        {
+          title: "Jij bevestigt",
+          body:
+            "Je beslist per keer wat er meegaat, en kunt het later " +
+            "intrekken."
+        },
+        {
+          title: "Een drempel",
+          body:
+            "Voor een breder beeld telt iets pas mee als meer mensen het " +
+            "los van elkaar inbrengen."
+        },
+        {
+          title: "Onafhankelijke patiëntenorganisatie",
+          body:
+            "Die maakt er een overzicht van — niet de zorgaanbieder. De " +
+            "assistent is geen hulpverlener en neemt niet uit zichzelf " +
+            "contact op met een zorgaanbieder of instantie."
+        }
+      ],
+      after:
+        "Wat de basis bijzonder maakt: [hoe het " +
+        "werkt](hoe-het-werkt.html)."
     }
   ]
 };

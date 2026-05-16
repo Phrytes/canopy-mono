@@ -180,6 +180,49 @@ a.card-link:hover {
   background: var(--paper-2); border-bottom-right-radius: 4px;
 }
 
+/* ---- Nagebouwd voorbeeld (prikbord / lijst) ---- */
+.mockup {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: #fff; overflow: hidden; margin: 1.1rem 0;
+  max-width: 30rem;
+}
+.mockup-bar {
+  background: var(--paper-2); border-bottom: 1px solid var(--line);
+  padding: .55rem .9rem; font-weight: 650; font-size: .92rem;
+  color: var(--ink-soft);
+}
+.mockup-body { padding: .5rem .9rem .7rem; }
+.pin {
+  display: flex; align-items: baseline; gap: .55rem;
+  padding: .55rem 0; border-bottom: 1px solid var(--line);
+}
+.pin:last-child { border-bottom: none; }
+.pin-tag {
+  flex: none; font-size: .68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .03em;
+  padding: .14em .5em; border-radius: 999px;
+  background: var(--paper-2); color: var(--ink-soft);
+}
+.pin-tag.vraag  { background: var(--betaald-bg); color: var(--betaald); }
+.pin-tag.aanbod { background: var(--lokaal-bg);  color: var(--lokaal); }
+.pin-tag.lenen  { background: #efe7d6; color: #866a2b; }
+.pin-text { flex: 1; }
+.pin-hint { flex: none; color: var(--ink-soft); font-size: .82rem; }
+.mock-grouphd {
+  font-weight: 650; font-size: .9rem; color: var(--ink-soft);
+  margin: .55rem 0 .2rem;
+}
+.mock-row {
+  display: flex; align-items: baseline; gap: .55rem; padding: .26rem 0;
+}
+.mock-box  { flex: none; }
+.mock-item { flex: 1; }
+.mock-row.done .mock-item {
+  text-decoration: line-through; color: var(--ink-soft);
+}
+.mock-who { flex: none; color: var(--ink-soft); font-size: .82rem; }
+@media (max-width: 480px) { .mockup { max-width: 100%; } }
+
 /* ---- Veelgestelde vragen ---- */
 .faq { margin: 1.2rem 0; }
 .faq .qa { padding: 1rem 0; border-bottom: 1px solid var(--line); }

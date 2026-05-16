@@ -48,7 +48,7 @@
 
   var TRACK_LABEL = {
     lokaal:  "Dichtbij & ondersteund",
-    betaald: "Als betaalde dienst"
+    betaald: "Via een onafhankelijke partij"
   };
   var STATUS_LABEL = {
     gedaan:   "loopt al",
@@ -210,6 +210,52 @@
         b.note ||
         "Voorbeeld. Dit laat zien hoe het zou kunnen werken; de chat kan " +
         "dit op dit moment nog niet."
+      ]));
+      return s;
+    },
+
+    mockup: function (b) {
+      var s = el("section");
+      if (b.heading) s.appendChild(el("h2", null, [b.heading]));
+      if (b.intro) paras([b.intro], s);
+      var panel = el("div", { class: "mockup", role: "img",
+        "aria-label": b.alt || b.title || "Voorbeeldweergave" });
+      panel.appendChild(el("div", { class: "mockup-bar" },
+        [b.title || ""]));
+      var body = el("div", { class: "mockup-body" });
+      if (b.kind === "prikbord") {
+        (b.items || []).forEach(function (it) {
+          var pin = el("div", { class: "pin" }, [
+            el("span", { class: "pin-tag " + (it.tag || "").toLowerCase() },
+              [it.tag || ""]),
+            el("span", { class: "pin-text" }, [it.text || ""])
+          ]);
+          if (it.hint) pin.appendChild(
+            el("span", { class: "pin-hint" }, [it.hint]));
+          body.appendChild(pin);
+        });
+      } else {
+        (b.groups || []).forEach(function (g) {
+          body.appendChild(el("div", { class: "mock-grouphd" },
+            [g.heading || ""]));
+          (g.items || []).forEach(function (it) {
+            var row = el("div",
+              { class: "mock-row" + (it.done ? " done" : "") }, [
+              el("span", { class: "mock-box" }, [it.done ? "☑" : "☐"]),
+              el("span", { class: "mock-item" }, [it.text || ""])
+            ]);
+            if (it.who) row.appendChild(
+              el("span", { class: "mock-who" }, [it.who]));
+            body.appendChild(row);
+          });
+        });
+      }
+      panel.appendChild(body);
+      s.appendChild(panel);
+      s.appendChild(el("p", { class: "dialog-note" }, [
+        b.note ||
+        "Voorbeeld. Dit laat zien hoe het eruit zou kunnen zien; zo " +
+        "werkt het op dit moment nog niet."
       ]));
       return s;
     },

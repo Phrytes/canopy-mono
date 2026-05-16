@@ -48,14 +48,39 @@ window.ONDERLING_PAGE = {
     },
 
     {
-      type: "prose",
-      heading: "Hoe het ongeveer werkt",
-      paragraphs: [
-        "Bijdragen blijven van de bewoner; de gemeente krijgt gecureerde " +
-        "patronen, terug te leiden naar wat er gezegd is, niet naar wie. " +
-        "Per onderwerp aan en weer uit, geen permanent platform.",
-        "Meer hierover: [hoe het werkt](hoe-het-werkt.html)."
-      ]
+      type: "steps",
+      heading: "Hoe het werkt, stap voor stap",
+      items: [
+        {
+          title: "Je reageert op een concreet plan",
+          body:
+            "Op je eigen moment, via chat of scherm — genuanceerd, niet " +
+            "alleen voor of tegen."
+        },
+        {
+          title: "Herleidbare details eruit",
+          body: "Privé; niemand anders kan meelezen."
+        },
+        {
+          title: "Jij bevestigt",
+          body:
+            "Je ziet wat er meegaat en kunt het bijstellen of intrekken."
+        },
+        {
+          title: "Een drempel",
+          body:
+            "Het telt mee als patroon, niet als losse, herleidbare zin."
+        },
+        {
+          title: "Gecureerde patronen naar de gemeente",
+          body:
+            "Terug te leiden naar wat er gezegd is, niet naar wie. Per " +
+            "onderwerp aan en weer uit — geen permanent platform."
+        }
+      ],
+      after:
+        "Wat de basis bijzonder maakt: [hoe het " +
+        "werkt](hoe-het-werkt.html)."
     }
   ]
 };

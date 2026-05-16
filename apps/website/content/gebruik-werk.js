@@ -52,14 +52,43 @@ window.ONDERLING_PAGE = {
     },
 
     {
-      type: "prose",
-      heading: "Hoe het ongeveer werkt",
-      paragraphs: [
-        "Een patroon verschijnt pas in het overzicht als meerdere mensen " +
-        "los van elkaar hetzelfde inbrengen; daaronder gaat niets door. " +
-        "Een onafhankelijke partij stelt het overzicht samen.",
-        "Meer hierover: [hoe het werkt](hoe-het-werkt.html)."
-      ]
+      type: "steps",
+      heading: "Hoe het werkt, stap voor stap",
+      items: [
+        {
+          title: "Je meldt iets",
+          body:
+            "Wanneer het speelt, via chat of scherm. Het komt in je " +
+            "eigen ruimte, niet op een dashboard."
+        },
+        {
+          title: "Herleidbare details eruit",
+          body:
+            "Privé; niemand anders kan meelezen. De ruwe versie blijft " +
+            "van jou."
+        },
+        {
+          title: "Jij bevestigt",
+          body:
+            "Je ziet wat er geanonimiseerd zou meegaan en past aan of " +
+            "trekt terug."
+        },
+        {
+          title: "Een drempel",
+          body:
+            "Het telt pas mee als meer mensen los van elkaar hetzelfde " +
+            "melden; daaronder gaat niets door."
+        },
+        {
+          title: "Onafhankelijke verwerking",
+          body:
+            "De ondernemingsraad of een onafhankelijke partij maakt er " +
+            "een overzicht van; de werkgever ziet geen losse berichten."
+        }
+      ],
+      after:
+        "Wat de basis bijzonder maakt: [hoe het " +
+        "werkt](hoe-het-werkt.html)."
     }
   ]
 };
