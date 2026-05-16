@@ -183,8 +183,7 @@ window.ONDERLING_PAGE = {
       variant: "info",
       text:
         "Dit is een schets op hoofdlijnen, geen technische documentatie. " +
-        "Wil je het naadje van de kous weten? Onderaan staat een " +
-        "mailknop."
+        "Dieper doorvragen kan later; de site is nog in opbouw."
     }
   ]
 };

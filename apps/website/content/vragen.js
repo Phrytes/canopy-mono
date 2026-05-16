@@ -18,8 +18,8 @@ window.ONDERLING_PAGE = {
           q: "Kan ik het nu gebruiken?",
           a: "Een eerste versie loopt in een huishouden; de rest is " +
              "gepland of in verkenning (zie de labels bij [de " +
-             "toepassingen](wat-los-je-ermee-op.html)). Wil je bij een " +
-             "volgende stap betrokken zijn, stuur dan een bericht."
+             "toepassingen](wat-los-je-ermee-op.html)). Meedoen aan een " +
+             "volgende stap kan later — de site is nog in opbouw."
         },
         {
           q: "Hoe gebruik ik het — via een chat of de app?",

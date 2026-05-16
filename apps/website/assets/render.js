@@ -324,9 +324,8 @@
     var inner = el("div", { class: "inner" });
     inner.appendChild(el("h2", null, [c.heading || "Contact"]));
     paras(c.paragraphs, inner);
-    // E-mail licht afgeschermd: staat base64-versleuteld in de data en
-    // wordt hier pas samengesteld. Simpele scrapers (die geen JS draaien
-    // of alleen platte bestanden afzoeken) zien geen leesbaar adres.
+    // E-mail kan licht afgeschermd via base64 (emailEnc) of als email.
+    // Is er geen adres, dan tonen we de stub (site nog in opbouw).
     var email = SITE.email ||
       (SITE.emailEnc && typeof atob === "function"
         ? atob(SITE.emailEnc) : "");
@@ -340,6 +339,8 @@
         "Of rechtstreeks: ",
         el("a", { href: "mailto:" + email }, [email])
       ]));
+    } else if (c.stub) {
+      inner.appendChild(el("p", { class: "stub-note" }, [c.stub]));
     }
     return el("section", { class: "contact-band" }, [inner]);
   }
