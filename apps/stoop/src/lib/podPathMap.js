@@ -25,13 +25,17 @@
  *   - anything unrecognised → caller skips it safely.
  */
 
-/** Percent-encode each path segment (keep `/` separators). */
-function encTail(p) {
-  return p.split('/').map(encodeURIComponent).join('/');
-}
-function decTail(p) {
-  return p.split('/').map(decodeURIComponent).join('/');
-}
+// `mem://` logical keys are ALREADY pod-path-safe by upstream
+// construction: MemberMapCache + ContactBook `encodeURIComponent`
+// their ids (so `webid:local:<peer>` arrives as
+// `webid%3Alocal%3A<peer>`), and items use URL-safe ULIDs. The
+// classifier must therefore pass segments through **verbatim** — an
+// extra encode double-encoded `%3A`→`%253A` on real roster keys
+// (device pass, 2026-05-17). Keeping these as identity makes the
+// logical↔pod mapping an exact, reversible transform of *only* the
+// prefix; segment encoding stays owned by the upstream writers.
+function encTail(p) { return p; }
+function decTail(p) { return p; }
 
 // Ordered rules. `prefix` = logical prefix; `family` = a stable,
 // injective key that `unclassify` maps back to `prefix`; `fn(crewId)`

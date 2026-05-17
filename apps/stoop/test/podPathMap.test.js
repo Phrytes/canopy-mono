@@ -20,10 +20,14 @@ describe('podPathMap.classify/unclassify', () => {
     expect(c).toEqual({ storageFn: 'group/C/items', tail: '01ABC.json' });
   });
 
-  it('roster member with colons → percent-encoded, round-trips (the original bug)', () => {
-    const c = roundtrip('mem://neighborhood/members/webid:local:OVUaJV0', { crewId: 'C' });
+  it('roster member key passes through verbatim — NOT double-encoded (the device-pass bug)', () => {
+    // Real runtime key: MemberMapCache already encodeURIComponent's
+    // the peer id, so the mem:// segment is ALREADY `webid%3Alocal%3A…`.
+    // The classifier must NOT re-encode it (that produced `%253A`).
+    const c = roundtrip('mem://neighborhood/members/webid%3Alocal%3AOVUaJV0', { crewId: 'C' });
     expect(c.storageFn).toBe('group/C/members');
-    expect(c.tail).toBe('webid%3Alocal%3AOVUaJV0');   // no raw colons in the pod path
+    expect(c.tail).toBe('webid%3Alocal%3AOVUaJV0');     // verbatim — no %253A
+    expect(c.tail).not.toContain('%253A');
   });
 
   it('item attachments → group/<crew>/item-attachments (distinct from items)', () => {
