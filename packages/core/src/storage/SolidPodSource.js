@@ -505,6 +505,21 @@ export class SolidPodSource extends DataSource {
       throw podError('SolidPodSource: uri is required', { code: 'INVALID_ARGUMENT' });
     }
     if (/^https?:\/\//i.test(input)) return input;
+    // Fail loud: a non-http(s) URI scheme (`mem://`, `pseudo-pod://`,
+    // …) is a LOGICAL key, not a pod path.  Concatenating it onto the
+    // pod root silently produced `…/mem://…` → 404 (the Stoop
+    // pod-write bug, 2026-05-16).  Callers MUST map logical keys to
+    // pod paths (via `@canopy/pod-routing`) before they reach a pod
+    // client.
+    const scheme = /^([a-z][a-z0-9+.-]*):\/\//i.exec(input);
+    if (scheme) {
+      throw podError(
+        `SolidPodSource: refusing to resolve non-pod URI '${input}' `
+        + `(scheme '${scheme[1]}://') against the pod root — map `
+        + `logical keys to pod paths before writing`,
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
     if (!this.#podUrl) {
       throw podError(`SolidPodSource: relative URI '${input}' but no podUrl configured`, {
         code: 'INVALID_ARGUMENT',

@@ -74,6 +74,10 @@ export class CachingDataSource extends DataSource {
   #onLocalChange = null;
   /** @type {string[]} — Phase 34: paths matching a prefix never sync to inner. */
   #localOnlyPrefixes = [];
+  /** @type {(logicalPath: string) => string} — Phase 1: map a logical key/prefix → the inner DataSource's URI. Identity by default. */
+  #toInner = (p) => p;
+  /** @type {(innerUri: string) => string} — inverse of #toInner (read-back / list). Identity by default. */
+  #fromInner = (u) => u;
 
   /**
    * @param {object} [opts]
@@ -95,10 +99,18 @@ export class CachingDataSource extends DataSource {
    *   the inner DataSource and are skipped during bulk-sync.  Used
    *   by Stoop to keep per-device settings + the migration marker
    *   off the pod.
+   * @param {{toInner:(p:string)=>string, fromInner:(u:string)=>string}} [opts.innerKeyMap]
+   *   Optional logical-key ↔ inner-URI mapper (Phase 1 pod-routing
+   *   seam).  Defaults to identity → behaviour-neutral for every
+   *   existing consumer.  When set, every call into the inner
+   *   DataSource (flush write/delete, read, pullFromInner list+read)
+   *   is translated; the local cache + queue stay keyed by the app's
+   *   LOGICAL keys.  `toInner` must also handle list prefixes;
+   *   `fromInner` is its inverse for read-back.
    */
   constructor({
     inner = null, localStore, online = true, onLocalChange,
-    localOnlyPrefixes = [],
+    localOnlyPrefixes = [], innerKeyMap = null,
   } = {}) {
     super();
     this.#inner          = inner;
@@ -108,6 +120,15 @@ export class CachingDataSource extends DataSource {
     this.#localOnlyPrefixes = Array.isArray(localOnlyPrefixes)
       ? localOnlyPrefixes.filter((p) => typeof p === 'string' && p.length > 0)
       : [];
+    // Phase 1 (pod-routing seam): translate ONLY at the #inner
+    // boundary.  Local cache + queue stay keyed by the app's logical
+    // keys.  Default identity keeps Tasks / Stoop-no-pod byte-identical.
+    if (innerKeyMap
+        && typeof innerKeyMap.toInner === 'function'
+        && typeof innerKeyMap.fromInner === 'function') {
+      this.#toInner   = (p) => innerKeyMap.toInner(p);
+      this.#fromInner = (u) => innerKeyMap.fromInner(u);
+    }
   }
 
   /** True when the path matches any local-only prefix. */
@@ -243,8 +264,8 @@ export class CachingDataSource extends DataSource {
     while (this.#queue.length > 0) {
       const entry = this.#queue[0];
       try {
-        if (entry.op === 'write')   await this.#inner.write(entry.path, entry.data);
-        if (entry.op === 'delete')  await this.#inner.delete(entry.path);
+        if (entry.op === 'write')   await this.#inner.write(this.#toInner(entry.path), entry.data);
+        if (entry.op === 'delete')  await this.#inner.delete(this.#toInner(entry.path));
         this.#queue.shift();
         replayed += 1;
       } catch (err) {
@@ -273,11 +294,11 @@ export class CachingDataSource extends DataSource {
     if (!this.#online) return 0;
     let count = 0;
     try {
-      const paths = await this.#inner.list(prefix);
-      for (const p of paths) {
-        const v = await this.#inner.read(p);
+      const innerPaths = await this.#inner.list(this.#toInner(prefix));
+      for (const ip of innerPaths) {
+        const v = await this.#inner.read(ip);
         if (v !== null) {
-          this.#local.set(p, v);
+          this.#local.set(this.#fromInner(ip), v);
           count += 1;
         }
       }
@@ -298,7 +319,7 @@ export class CachingDataSource extends DataSource {
     if (this.#local.has(path)) return this.#local.get(path);
     if (!this.#inner || !this.#online) return null;
     try {
-      const v = await this.#inner.read(path);
+      const v = await this.#inner.read(this.#toInner(path));
       if (v !== null) {
         this.#local.set(path, v);
         this.#notifyLocalChange();
