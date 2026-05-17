@@ -166,6 +166,34 @@ export async function createNeighborhoodAgent({
   // remote flush on a foreground-tied cadence.  Bundles that explicitly
   // opt out (`cache: false`) get the raw backend — used by pre-Phase-4
   // integration tests that drive a `MemorySource` directly.
+  // Phase 2.4 (pod-routing): a mutable pod-context the closure
+  // `innerKeyMap` reads.  `attachPod` (mobile ServiceContext /
+  // desktop) fills it after a pod is attached:
+  //   { active, classify, podRouting, crewId, vars }
+  // While inactive (the no-pod default) `toInner`/`fromInner` are
+  // pure identity → CachingDataSource stays byte-neutral
+  // (pod-independence.md).  See apps/stoop/src/lib/podPathMap.js.
+  const podCtx = {
+    active: false, classify: null, podRouting: null, crewId: null, vars: null,
+  };
+  const _podInnerKeyMap = {
+    toInner: (p) => {
+      if (!podCtx.active
+          || typeof podCtx.classify !== 'function'
+          || !podCtx.podRouting) return p;
+      const c = podCtx.classify(p, { crewId: podCtx.crewId });
+      if (!c) return p; // unroutable → SolidPodSource fail-loud surfaces the gap
+      const base = podCtx.podRouting.resolve(c.storageFn, podCtx.vars || {});
+      if (typeof base !== 'string' || base.length === 0) return p;
+      return base.endsWith('/') ? base + c.tail : `${base}/${c.tail}`;
+    },
+    // Inverse (pod-URI → logical) needs resolve-inversion — the
+    // cross-app type-index read-back — which is Phase 3. Identity for
+    // now: Stoop's Phase-2 win is write-through landing correctly;
+    // pull-back rides Phase 3.
+    fromInner: (u) => u,
+  };
+
   let cache = null;
   let dataSource;
   let persist = null;
@@ -191,6 +219,7 @@ export async function createNeighborhoodAgent({
         'mem://stoop/settings/devices/',
         'mem://stoop/settings/.migrated',
       ],
+      innerKeyMap: _podInnerKeyMap,
     });
     dataSource = cache;
     // When no itemBackend is supplied we boot in pure local-only mode
@@ -363,6 +392,7 @@ export async function createNeighborhoodAgent({
     reveals,
     muted,
     cache,
+    _podCtx: cache ? podCtx : null,   // Phase 2.4 — filled by attachPod
     persist,
     chat,
     metrics,
