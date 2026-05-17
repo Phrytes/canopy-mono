@@ -503,8 +503,16 @@ via `buildSubstrateStack`; `attachPod` can reach
   SolidPodSource)`. `detachPod` clears `_podCtx.active=false`.
   Keep the no-pod path explicitly tested unchanged.
 
-**STATUS: Phase 2 CODE-COMPLETE 2026-05-17 (local commits, UNPUSHED
-— user: don't push).** All five parts done + unit-green:
+**STATUS: Phase 2 DONE — DEVICE-VERIFIED 2026-05-17.** `centralised`
+pod writes land in the correct `pim:storage` pod (provisioning +
+items + members + audit), reproducible with a fresh group; `[pod-route]`
+diagnostics stripped; apps/stoop 524/524, stoop-mobile 908/908.
+Local commits, UNPUSHED (awaiting user go). **Scope note: Phase 2 =
+the mechanism + `centralised` only.** `no-pod` ✅ + `centralised` ✅;
+**`decentralised` + `hybrid` are STILL the `PodRouting.js:107-109`
+stubs (route to the pseudo-pod ring, NOT real per-member pods /
+cross-pod refs) → that IS Phase 3.** All five Phase-2 parts
+unit-green:
 - 2.1 pod-routing `setAnchor` (65/65)
 - 2.3 `apps/stoop/src/lib/podPathMap.js` classify/unclassify (8/8)
 - 2.4-core Agent.js closure `innerKeyMap` + `bundle._podCtx`
