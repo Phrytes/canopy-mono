@@ -138,6 +138,38 @@ describe('podRouting.resolve — group routing via crew policy', () => {
       .toBe('pseudo-pod://d/group/household-xyz/tasks/x');
   });
 
+  it('decentralised crew resolves to the user’s OWN anchor pod (crew-scoped)', async () => {
+    const r = createPodRouting({
+      pseudoPod:    mkPod('d'),
+      deviceId:     'd',
+      anchorPodUri: 'https://me.pod',
+    });
+    await r.setCrewPolicy('nb', { policy: 'decentralised' });
+    expect(r.resolve('group/nb/items/1.json'))
+      .toBe('https://me.pod/nb/items/1.json');
+  });
+
+  it('decentralised with NO anchor pod falls back to the replication ring', async () => {
+    const r = createPodRouting({ pseudoPod: mkPod('d'), deviceId: 'd' });
+    await r.setCrewPolicy('nb', { policy: 'decentralised' });
+    expect(r.resolve('group/nb/items/1.json'))
+      .toBe('pseudo-pod://d/group/nb/items/1.json');
+  });
+
+  it('hybrid ledger resolves to the shared group pod (== centralised for crew data)', async () => {
+    const r = createPodRouting({ pseudoPod: mkPod('d'), deviceId: 'd' });
+    await r.setCrewPolicy('hh', { policy: 'hybrid', groupPodUri: 'https://grp.pod' });
+    expect(r.resolve('group/hh/items/1.json'))
+      .toBe('https://grp.pod/hh/items/1.json');
+  });
+
+  it('hybrid with no groupPodUri falls back to the replication ring', async () => {
+    const r = createPodRouting({ pseudoPod: mkPod('d'), deviceId: 'd' });
+    await r.setCrewPolicy('hh', { policy: 'hybrid' });
+    expect(r.resolve('group/hh/items/1.json'))
+      .toBe('pseudo-pod://d/group/hh/items/1.json');
+  });
+
   it('explicit mapping overrides crew-policy resolution', async () => {
     const r = createPodRouting({
       pseudoPod:    mkPod('d'),
