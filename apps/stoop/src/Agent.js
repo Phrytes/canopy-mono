@@ -182,16 +182,10 @@ export async function createNeighborhoodAgent({
           || typeof podCtx.classify !== 'function'
           || !podCtx.podRouting) return p;
       const c = podCtx.classify(p, { crewId: podCtx.crewId });
-      // [pod-route] TEMP diagnostic — strip in Phase 4.
-      if (!c) { console.log('[pod-route] UNROUTED', p, '→ pass-through (fail-loud)'); return p; }
+      if (!c) return p; // unroutable → SolidPodSource fail-loud surfaces the gap
       const base = podCtx.podRouting.resolve(c.storageFn, podCtx.vars || {});
-      if (typeof base !== 'string' || base.length === 0) {
-        console.log('[pod-route] NO-RESOLVE', p, 'fn=', c.storageFn);
-        return p;
-      }
-      const out = base.endsWith('/') ? base + c.tail : `${base}/${c.tail}`;
-      console.log('[pod-route]', p, '→', out);
-      return out;
+      if (typeof base !== 'string' || base.length === 0) return p;
+      return base.endsWith('/') ? base + c.tail : `${base}/${c.tail}`;
     },
     // Inverse (pod-URI → logical) needs resolve-inversion — the
     // cross-app type-index read-back — which is Phase 3. Identity for
