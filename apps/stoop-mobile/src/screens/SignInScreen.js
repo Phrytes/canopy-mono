@@ -35,6 +35,7 @@ import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
 import { t }                                  from '../lib/i18n.js';
 import { useService }                         from '../ServiceContext.js';
 import { useStoopAuth }                       from '../auth/stoopAuthHook.js';
+import { derivePodRootFromWebId }             from '@canopy-app/stoop/lib/derivePodRoot';
 
 const DEFAULT_ISSUER = 'https://login.inrupt.com';
 
@@ -64,7 +65,20 @@ export function SignInScreen() {
     try {
       const tokens = await signIn();
       setPendingTokens(tokens);
-      if (tokens?.webid) setPodRootInput(deriveBaseFromWebId(tokens.webid));
+      if (tokens?.webid) {
+        // Pre-fill the writable Pod storage root from the WebID
+        // profile's `pim:storage` (NOT the WebID origin — that's the
+        // identity host; device-pass #1 404 root cause). Falls back
+        // to the origin internally; the field stays user-editable.
+        let podRoot = '';
+        try {
+          podRoot = await derivePodRootFromWebId({
+            webid: tokens.webid,
+            fetch: globalThis.fetch,
+          });
+        } catch { /* helper has its own fallback; ignore */ }
+        setPodRootInput(podRoot || deriveBaseFromWebId(tokens.webid));
+      }
       setStage('got-tokens');
     } catch (err) {
       setError(err);
