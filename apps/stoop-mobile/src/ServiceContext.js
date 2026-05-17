@@ -43,7 +43,7 @@ import {
 import { buildBootstrapBundle }              from './lib/bootstrapBundle.js';
 import { getRelayUrl }                       from './lib/relayUrl.js';
 import { buildSkills }                       from '@canopy-app/stoop';
-import { classify as _podClassify }          from '@canopy-app/stoop/lib/podPathMap';
+import { classify as _podClassify, reverseResolve as _podReverse } from '@canopy-app/stoop/lib/podPathMap';
 import { ensurePodProvisioned }              from '@canopy-app/stoop/lib/existingPodProvisioner';
 import { buildIdentitySkills }               from '@canopy/identity-resolver';
 import { migrateOrphanedPeers }              from './lib/migrateOrphanedPeers.js';
@@ -613,6 +613,7 @@ export function ServiceProvider({ children, deps = {} }) {
     } catch { /* ensurePodProvisioned never throws; defensive */ }
     if (bundle._podCtx) {
       bundle._podCtx.classify   = _podClassify;
+      bundle._podCtx.reverse    = _podReverse;   // Phase 3.3 — pull-back inverse
       bundle._podCtx.podRouting = bundle.podRouting ?? null;
       bundle._podCtx.crewId     = activeGroupId ?? null;
       bundle._podCtx.vars       = {};
