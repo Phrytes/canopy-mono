@@ -148,15 +148,21 @@ export async function loadOrRegisterClient({
   scopes,
   keyPrefix,
   fetchFn,
+  onResolve,
 }) {
   const prefix = resolveKeyPrefix(keyPrefix);
   const key = issuerKey(issuer, prefix);
 
   const cached = await store.getItemAsync(key);
-  if (typeof cached === 'string' && cached.length > 0) return cached;
+  const fromCache = typeof cached === 'string' && cached.length > 0;
+  if (fromCache) {
+    onResolve?.({ fromCache: true, clientId: cached });
+    return cached;
+  }
 
   const reg = await registerClient({ discovery, redirectUri, clientName, scopes, fetchFn });
   await store.setItemAsync(key, reg.client_id);
+  onResolve?.({ fromCache: false, clientId: reg.client_id });
   return reg.client_id;
 }
 
