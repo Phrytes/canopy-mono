@@ -70,9 +70,9 @@ const podRouting = createPodRouting({ ... });
 
 await podRouting.setStorageMapping(
   {
-    'stoop/items':  '<pod-B>/stoop/items/',
-    'stoop/photos': '<pod-B>/stoop/photos/',
-    // ...
+    'items':  '<pod-B>/sharing/items/',
+    'photos': '<pod-B>/sharing/photos/',
+    // type/domain-keyed, app-agnostic (storage-layout.md, AMENDED 2026-05-17)
   },
   {
     reason: 'switched-provider',   // free-text, persisted in config history

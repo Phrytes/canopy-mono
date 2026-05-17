@@ -704,6 +704,17 @@ await pseudoPod.write(taskUri, bytes);
   substrate ships defaults for and apps extend. Pin during
   P1.
 	> yeah why not
+	> **PINNED 2026-05-17.** Storage-function names are
+	> **type/domain-keyed and app-agnostic** (`<type>` /
+	> `<domain>/<type>`, e.g. `items`, `profile-public`,
+	> `group/<crewId>/items`) — NEVER `<app>/<function>`. The
+	> substrate ships the canonical list; apps extend it with
+	> further *type/domain* names (not app-scoped ones). App
+	> origin is an optional, non-enforced object field — never a
+	> path / routing / ACP / index key. This enables the
+	> cross-app type-indexable standard. Canonical:
+	> `conventions/storage-layout.md`; record: `TODO-GENERAL.md`
+	> 🔴 "Stoop pod-backed storage" (D3).
 
 ### 4.3.7 Phase
 

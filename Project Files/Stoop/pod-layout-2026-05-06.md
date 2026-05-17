@@ -1,5 +1,14 @@
 # Stoop pod layout (Phase 20, 2026-05-06; updated Phase 33, 2026-05-06)
 
+> **SUPERSEDED 2026-05-17 — historical.** The app-namespaced
+> `<pod-root>/stoop/...` scheme below is **no longer canonical**. The
+> authoritative layout is type/domain-keyed and app-agnostic — see
+> `conventions/storage-layout.md` (AMENDED 2026-05-17) + the
+> cross-app type-indexable standard there, and the decision record in
+> `TODO-GENERAL.md` 🔴 "Stoop pod-backed storage" (D3). Kept for
+> historical context + the ACP intent; treat the `stoop/<x>` paths
+> as illustrative of the *old* scheme only.
+
 How a Stoop bundle lays its data out under a Solid pod when
 `bundle.cache.attachInner(<SolidPodSource>)` is wired.  All paths
 are relative to the user's `pim:storage` (the pod root).
@@ -26,10 +35,13 @@ are relative to the user's `pim:storage` (the pod root).
         └── config.json       ← pubKey roster, role, joinedAt
 ```
 
-The `CachingDataSource` keys map directly: every item posted via
-`postRequest` becomes `mem://neighborhood/<ulid>` locally and
-`<pod-root>/stoop/items/<ulid>.json` remotely once a pod is
-attached.
+The `CachingDataSource` keys map: every item posted via
+`postRequest` is `mem://neighborhood/<ulid>` locally and, once a pod
+is attached, routes through `pod-routing` to the canonical
+type-keyed location (e.g. `<pod-root>/sharing/items/<ulid>.json`, or
+`<pod-root>/group/<crewId>/items/<ulid>.json` under a crew pod
+policy) — **not** an app-namespaced `stoop/` path. See
+`conventions/storage-layout.md`.
 
 ## ACPs (access policies)
 

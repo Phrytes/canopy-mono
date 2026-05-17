@@ -6,7 +6,13 @@
 > happens via the WebID profile; the layout below is what
 > third-party Solid-aware tools will find at the documented paths.
 >
-> **Locked 2026-05-14.**
+> **Locked 2026-05-14. AMENDED 2026-05-17** — storage-function names
+> are now **type/domain-keyed, app-agnostic** (the former
+> `<app>/<function>` rule is superseded); added the *cross-app
+> type-indexable layout* standard (new section below). Rationale +
+> full decision record: `TODO-GENERAL.md` 🔴 "Stoop pod-backed
+> storage" (D3). This resolves the open question in the substrates-v2
+> functional design §4.3.6.
 
 ## Discovery
 
@@ -47,12 +53,17 @@ expect them.
 │   ├── identity-vault       — encrypted vault blob (mnemonic-locked)
 │   ├── storage-mapping      — storage-mapping config (this doc)
 │   ├── agent-registry       — agent-registry resource
-│   └── notes/               — Folio's notes container (example)
+│   ├── state/               — per-user app state (NOT shareable; see standard)
+│   └── drafts/              — unsynced drafts
 ├── sharing/             — default-deny ACP; per-resource overrides
 │   ├── public/              — world-readable, owner-write ACP
-│   │   └── profile.ttl          — WebID profile shortcut
-│   ├── stoop/               — Stoop's items (example)
-│   └── with-<webid>/        — Folio auto-share folders (Phase 52.16)
+│   │   └── profile              — public profile object (handle, displayName, skills, avatar)
+│   ├── <type>/              — ONE container per canonical item-type
+│   │                          (items/, offers/, tasks/, notes/, photos/, …);
+│   │                          keyed by WHAT the object is — never by app
+│   └── with-<webid>/        — per-recipient auto-share folders (Phase 52.16)
+├── group/               — crew-scoped; location per the crew §II.2 policy
+│   └── <crewId>/<type>/     — e.g. group/<crewId>/items/
 └── inbox/               — public-write (LDP inbox convention)
 ```
 
@@ -74,17 +85,54 @@ that apps know to look up) and valued by **destination URI**.
   "@context":    { "dec": "https://w3id.org/canopy/vocab#" },
   "version":     1,
   "activeMap": {
-    "stoop/items":     "<pod>/sharing/stoop/items/",
-    "stoop/photos":    "<pod>/sharing/stoop/photos/",
-    "folio/notes":     "<pod>/private/notes/",
-    "tasks/ledger":    "<pod>/private/tasks/"
+    "items":           "<pod>/sharing/items/",
+    "photos":          "<pod>/sharing/photos/",
+    "profile-public":  "<pod>/sharing/public/profile",
+    "notes":           "<pod>/private/notes/",
+    "private/state":   "<pod>/private/state/"
   }
 }
 ```
 
-Storage-function names are app-namespaced (`<app>/<function>`).
-Apps register their function names when bootstrapping; users edit
-the mapping via app settings or (eventually) the Hub-web-console.
+Storage-function names are **type/domain-keyed and app-agnostic**
+(`<type>` or `<domain>/<type>` — e.g. `items`, `photos`,
+`profile-public`, `group/<crewId>/items`). They name **what the
+object is**, never **which app wrote it**. Apps register the
+function names they use when bootstrapping; users edit the mapping
+via app settings or (eventually) the Hub-web-console.
+
+> **Amended 2026-05-17.** The former `<app>/<function>` rule is
+> superseded. App identity is recorded as an *optional, non-enforced*
+> object metadata field (`origin`) — **never** a path segment, and
+> **never** consulted for routing, ACP, or indexing.
+
+## Cross-app type-indexable layout (the standard — all repo apps)
+
+**Mandatory practice for every app in this repo.** Because containers
+are keyed by canonical item-type (not by app), **any app can
+enumerate every object of a given type regardless of which app
+created it.** A `task` written by app X is listable/renderable by
+app Y (e.g. tasks-v0) as long as both speak the canonical
+`@canopy/item-types` schema for that type. Concretely:
+
+- One container per canonical type (`sharing/<type>/`, or
+  `group/<crewId>/<type>/` for crew-scoped data); the type name is
+  the `@canopy/item-types` taxonomy name.
+- Cross-app **reuse** rides the shared `item-types` schema; cross-app
+  **references** ride the `embeds: [{type, ref}]` field
+  (`conventions/cross-pod-refs.md`). No per-app vocabulary
+  translation.
+- An app discovers another app's objects of type `T` by resolving
+  the storage-function for `T` via `pod-routing` and `list()`-ing
+  that container — no knowledge of the authoring app required.
+- `origin` (optional object field) records the creating app for
+  debugging / attribution / migration only. Its absence is valid;
+  nothing may depend on it.
+- App-private, non-shareable plumbing (caches, device settings,
+  migration markers) lives under `private/state/` and MAY use an
+  app sub-key there — it is never reused, so it is out of scope of
+  this standard. App **settings** specifically follow the separate
+  locked `conventions/cross-app-settings.md` convention.
 
 Future-rewrite design: see
 [`../Substrates/storage-migration-design-2026-05-14.md`](../Substrates/storage-migration-design-2026-05-14.md).
@@ -129,13 +177,15 @@ substrate handles it.
 ## Constraints + non-goals
 
 - **No deep restructuring after V1.** Reorganising paths (e.g.,
-  `/sharing/stoop/` → `/apps/stoop/`) is a storage-mapping
+  renaming a `/sharing/<type>/` container) is a storage-mapping
   migration concern; see migration-design doc. The substrate's
   job is not to make path layouts negotiable per-installation.
-- **No automatic vocabulary translation across apps.** Apps that
-  want to read each other's containers must understand the
-  format (or use canonical item-types — see
-  `packages/item-types/README.md`).
+- **Cross-app reads go through canonical item-types, not vocabulary
+  translation.** An app reading another app's objects of a type
+  relies on the shared `@canopy/item-types` schema for that type
+  (see `packages/item-types/README.md`); there is no per-app format
+  translation layer. This is the mechanism that makes the
+  type-indexable standard above work.
 - **No path-versioning** ("v2" suffix on container names). The
   storage-mapping config IS the version layer; apps that bump
   their layout edit the mapping, not the path.

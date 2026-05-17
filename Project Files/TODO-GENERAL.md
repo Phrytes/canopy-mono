@@ -316,6 +316,55 @@ field). **Leave as-is (already consistent / deliberate exception):**
   vault straggler; ProfileMineScreen loop; this pod work). Nothing
   committed before explicit user go.
 
+### Phase 0 — STATUS: DONE (2026-05-17)
+
+**Convention amendments applied** (type/domain-keyed, app-agnostic +
+the cross-app type-indexable standard):
+- `conventions/storage-layout.md` — banner + canonical layout block
+  (app-named example containers → `<type>/` + `group/<crewId>/<type>/`)
+  + storage-mapping JSON example + the `<app>/<function>` rule replaced
+  by the type/domain rule + **new "Cross-app type-indexable layout
+  (the standard — all repo apps)" section** + constraints.
+- `Stoop/pod-layout-2026-05-06.md` — SUPERSEDED banner + the
+  CachingDataSource→pod mapping line (now type-keyed via pod-routing).
+- `Substrates/storage-migration-design-2026-05-14.md` —
+  `setStorageMapping` example de-app-namespaced.
+- `Substrates/substrates-v2-functional-design-2026-05-11.md §4.3.6` —
+  open question **PINNED**: type/domain-keyed, app-agnostic; app
+  origin = optional non-enforced object field.
+- Left as-is (already consistent / deliberate exception):
+  `conventions/cross-pod-refs.md`, `conventions/pod-independence.md`,
+  `packages/item-types/`, `conventions/cross-app-settings.md`.
+
+**Concrete Stoop `mem://` → storage-function spec** (Phase 1 implements
+the classifier from this; refine if a path is missed):
+
+| Stoop `mem://` key | storage-function | destination (per policy / kind) |
+|---|---|---|
+| `mem://stoop/settings/devices/*`, `…/settings/.migrated*` | (none — device-local) | stays in `CachingDataSource` `localOnlyPrefixes`; never routed |
+| `mem://stoop/settings/*` (shared) | *follows `cross-app-settings.md`* | `<pod>/stoop/settings/shared.json` (deliberate app-namespaced exception, D5 — NOT type-keyed) |
+| `mem://stoop/reveals.json` | `private/state` | `<pod>/private/state/stoop/reveals.json` (app sub-key OK — non-shareable plumbing, D4) |
+| `mem://stoop/push-subscriptions.json` | `private/state` | `<pod>/private/state/stoop/push-subscriptions.json` |
+| `mem://stoop/interest-profile.json` | `private/state` | `<pod>/private/state/stoop/interest-profile.json` |
+| `mem://stoop/lists/<id>.json` (ContactBook) | `private/state` | `<pod>/private/state/stoop/lists/<id>.json` |
+| `mem://stoop/avatars/<webid>.<ext>` (cached *others'* avatars) | `private/state` | `<pod>/private/state/stoop/avatars/…` |
+| profile handle/displayName/**offered skills** + own avatar (via MemberMap) | `profile-public` | `<pod>/sharing/public/profile` (world/contact-readable) |
+| `mem://neighborhood/items/<id>.json` (offers/requests) | `group/<crewId>/items` | crew §II.2 policy: centralised→`<groupPodUri>/<crewId>/items/`; decentralised→own `<pod>/sharing/items/`+`embeds`; no-pod→pseudo-pod ring |
+| `mem://neighborhood/members/<id>` (roster) | `group/<crewId>/members` | same policy resolution as items |
+| `mem://stoop/items/<id>/attachments/<a>.<ext>` | `group/<crewId>/items/<id>/attachments` | travels with the offer (same crew policy) |
+| `mem://neighborhood/groups/<gid>/{rules.md,config.json}` | `group/<crewId>/governance` | same crew policy |
+| `mem://stoop/threads/<tid>.json` (DMs) | `threads` (2-party ACP) | `<pod>/sharing/threads/<tid>.json` with per-resource 2-participant ACP |
+
+Notes: general objects (items/members/profile) are canonical
+`@canopy/item-types` types → cross-app type-indexable per the new
+standard. Settings are the deliberate `cross-app-settings.md`
+exception. Private plumbing keeps an app sub-key under
+`private/state/` (allowed, non-shareable). An optional `origin:'stoop'`
+object field is advisory only.
+
+**Next: Phase 1** (substrate code — classifier + pod-routing wiring +
+`SolidPodSource.#resolve` fail-loud). Not started.
+
 ### Test strategy + risks
 
 - Substrate unit: classifier round-trip (incl. colon-encoding) +
