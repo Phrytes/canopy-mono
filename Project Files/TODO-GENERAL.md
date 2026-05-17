@@ -442,8 +442,44 @@ attach-time innerKeyMap, call the idempotent adopt-existing-pod
 provisioner in `attachPod` (mobile `ServiceContext.js`) + desktop
 `Agent.js`, keep no-pod path explicitly tested unchanged.
 
-**STATUS: blocked on the P2-a/b/c calls. Phase 1 pushed
-(`origin/master` 4e53ea6).**
+**Decisions (user, 2026-05-17): P2-a = add `setAnchor`; P2-b =
+idempotent adopt-existing-pod provisioner (HEAD storage-mapping to
+skip); P2-c = closure-based innerKeyMap reading a mutable pod-ctx.**
+
+### Phase 2 — STATUS (2026-05-17): substrate/pure parts DONE; wiring next
+
+Done + tested (committed locally; not yet pushed):
+- **P2-a ✅ `@canopy/pod-routing` `setAnchor(anchorPodUri)`** —
+  rebuilds `defaults`+`configUri`, drops `loadedConfig`; `null`
+  reverts to no-pod. Additive (tasks-v0 unaffected; `configUri` is
+  intentionally anchor-independent in V0 — `configResource.js`
+  `void anchorPodUri`). **pod-routing 65/65** (+2 tests).
+- **2.3 ✅ `apps/stoop/src/lib/podPathMap.js`** — pure
+  `classify(memPath,{crewId}) → {storageFn,tail}` + `unclassify`
+  inverse, per-segment percent-encoding (the `webid:local:` colon
+  round-trip — the original 404 cause — is tested). Returns null for
+  `mem://stoop/settings/*` (D5 / cross-app-settings.md), crew keys
+  with no active crew, and unknowns. **podPathMap 8/8.**
+
+Remaining (the heavier, app-touching + device-verified parts — next
+focused chunk):
+- **2.2 — idempotent adopt-existing-pod provisioner.** Thin
+  `podProvisioner.createPod()` returns the already-authed
+  `{podUri:podRoot, webidUri, fetch}`; reuse `provisionDefault`
+  steps 3-7; skip when `HEAD <podRoot>/private/storage-mapping`
+  exists. Needs careful read of `provisionDefault.js` + the
+  provisioner README; **network / real-pod → device-verified** (like
+  P3 Phase C).
+- **2.4 — wire it.** Construct the Stoop bundle `CachingDataSource`
+  (`apps/stoop/src/Agent.js`) with a **closure innerKeyMap** over a
+  mutable pod-ctx ref (unset → identity → no-pod byte-neutral).
+  `attachPod` (mobile `ServiceContext.js` + desktop `Agent.js`):
+  `podRouting.setAnchor(podRoot)` → idempotent provision → fill
+  pod-ctx `{classify, podRouting, crewId}` → `attachInner`. Keep the
+  no-pod path explicitly tested unchanged (`pod-independence.md`).
+
+**Riskiest parts (2.2 real-pod provisioning, 2.4 attachPod) are
+device-verified — natural checkpoint before them.**
 
 ### Test strategy + risks
 
