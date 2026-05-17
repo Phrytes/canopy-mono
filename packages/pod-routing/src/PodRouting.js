@@ -104,9 +104,37 @@ export function createPodRouting({
           const base = _stripTrailingSlash(policy.groupPodUri) + `/${crewId}/`;
           return joinUriTail(base, tail);
         }
-        if (policy.policy === 'no-pod' || policy.policy === 'decentralised' || policy.policy === 'hybrid') {
-          // pseudo-pod replication-ring for the no-pod / decentralised
-          // cases. hybrid + decentralised V2-detail; same default for now.
+        if (policy.policy === 'decentralised') {
+          // Each member keeps the crew's data on THEIR OWN pod;
+          // cross-member reads ride cross-pod `embeds` refs (the
+          // read/index path — Phase 3.3, `conventions/
+          // cross-pod-refs.md`). No shared group pod → route to the
+          // user's anchor pod, crew-scoped (same shape as
+          // centralised, own pod instead of the group pod). A no-pod
+          // user (no anchor) falls back to the replication ring.
+          if (anchorPodUri) {
+            const base = _stripTrailingSlash(anchorPodUri) + `/${crewId}/`;
+            return joinUriTail(base, tail);
+          }
+          return `pseudo-pod://${deviceId}/group/${crewId}/${tail}`;
+        }
+        if (policy.policy === 'hybrid') {
+          // Canonical ledger (the crew's `group/*` data) lives on the
+          // shared group pod — identical to `centralised` for the
+          // data Stoop emits today. Members' personal drafts are the
+          // `personal-in-group/*` storage-function (resolved by the
+          // generic mapping → own pod) and stay off this path; that
+          // ledger-vs-draft split is all V1 models. No groupPodUri →
+          // replication ring.
+          if (policy.groupPodUri) {
+            const base = _stripTrailingSlash(policy.groupPodUri) + `/${crewId}/`;
+            return joinUriTail(base, tail);
+          }
+          return `pseudo-pod://${deviceId}/group/${crewId}/${tail}`;
+        }
+        if (policy.policy === 'no-pod') {
+          // Replication-ring (eager P2P fan-out; the groupMirror
+          // substitute). No pod involved by design.
           return `pseudo-pod://${deviceId}/group/${crewId}/${tail}`;
         }
         // Unknown policy → fall through to generic mapping.
