@@ -79,7 +79,7 @@ export class LiveSyncSkill {
    * @param {string}   opts.name              — stable identifier; namespaces state
    * @param {object}   opts.source            — adapter (see file head JSDoc)
    * @param {object}   opts.target            — adapter
-   * @param {import('../identity/Vault.js').Vault} opts.vault — for state persistence
+   * @param {import('@canopy/vault').Vault} opts.vault — for state persistence
    * @param {(event) => Promise<void>} [opts.onChange]   — fired AFTER each successful apply (observability hook)
    * @param {(local, remote) => Promise<'local'|'remote'|object>} [opts.onConflict]
    * @param {number}   [opts.pollIntervalMs=60_000]
