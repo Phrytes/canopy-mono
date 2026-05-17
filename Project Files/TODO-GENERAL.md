@@ -560,9 +560,26 @@ fixed**. Two precise bugs surfaced:
   construction). podPathMap 8/8 + provisioner 8/8 green. Committed
   local.
 
-**Next:** decide A — implement pim:storage auto-discovery (real
-fix) vs. manual pod-storage URL entry to unblock device-pass #2
-(validate provisioning + writes against a correct, writable pod).
+- **A — FIXED 2026-05-17 via pim:storage auto-discovery.** New
+  shared `apps/stoop/src/lib/derivePodRoot.js`
+  (`derivePodRootFromWebId({webid,fetch})` — parses Turtle prefixed
+  / full-IRI + JSON-LD `pim:storage`; origin fallback; trailing
+  slash). Ported from desktop `podSignIn.js derivePodRoot`. Mobile
+  `SignInScreen.onSignInPress` now pre-fills `podRootInput` from it
+  (public profile fetch via `globalThis.fetch`; `deriveBaseFromWebId`
+  retained as last-resort; field stays user-editable). `+./lib/
+  derivePodRoot` export. derivePodRoot 7/7, podPathMap 8/8,
+  provisioner 8/8, **stoop-mobile 908/908** (zero regression).
+  Committed local.
+
+**Next: device-pass #2** — rebuild → sign in (pod-root field now
+auto-fills the real `storage.*` URL) → "Doorgaan" → post in the
+centralised group. Expect `[pod-route] provision
+{"provisioned":true|skipped:true}` (no 404) + `mem://… → https://
+<storage-pod>/<crew>/…` + a clean pod PUT. Then verify in a pod
+browser. Remaining risk: if provisioning still 404s with the
+correct storage root, the Inrupt-ESS container-creation nuance
+(Risk #1) is the next fix.
 
 ### Test strategy + risks
 
