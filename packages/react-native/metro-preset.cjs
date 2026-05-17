@@ -33,6 +33,7 @@
 //   });
 
 const path = require('path');
+const fs = require('fs');
 
 // `expo/metro-config` is a peer-dep of the consuming app — resolve it
 // from the app's `projectRoot`, not from this preset's own location.
@@ -68,6 +69,61 @@ const SHIM_PATHS = {
 // off, subpath imports go through this preset's resolveRequest, so
 // we route them explicitly.  Add new RN-variant helpers here.
 const PLATFORM_RN_VARIANTS = new Set(['polyfills']);
+
+// ── Generic `exports`-map subpath resolver. ─────────────────────────
+//
+// `unstable_enablePackageExports: false` (set below) makes Metro
+// ignore every workspace package's `exports` map, so each declared
+// subpath import (`@canopy/<pkg>/<sub>`) must be hand-resolved in
+// resolveRequest.  Rather than maintain per-package hardcoded lists
+// that silently drift from package.json (the class of omission that
+// broke `@canopy/react-native/theme`, then `@canopy/sync-engine-rn/
+// react`, for stoop-mobile 2026-05-16 — one rebuild surfaced the next
+// each time), resolve through each package's own `exports` map: the
+// single source of truth.
+//
+// Supports exact subpath keys, Node `*` subpath patterns (e.g.
+// sync-engine's `"./adapters/*": "./src/adapters/*.js"`), and
+// conditional targets (`{ "react-native": …, "default": … }` — the
+// `.rn.js` variant is picked on non-web platforms).  Returns an
+// absolute file path, or null when the subpath isn't declared (the
+// caller then falls through to default Metro resolution).
+function resolveExportsSubpath(exportsMap, pkgDir, subpath, platform) {
+  if (!exportsMap || typeof exportsMap === 'string') return null;
+  const key = subpath === '' ? '.' : './' + subpath;
+  const pick = (val) => {
+    if (typeof val === 'string') return val;
+    if (val && typeof val === 'object') {
+      if (platform !== 'web' && typeof val['react-native'] === 'string') return val['react-native'];
+      if (typeof val.default === 'string') return val.default;
+      if (typeof val.node === 'string') return val.node;
+    }
+    return null;
+  };
+  // 1. Exact subpath key.
+  if (Object.prototype.hasOwnProperty.call(exportsMap, key)) {
+    const rel = pick(exportsMap[key]);
+    return rel ? path.resolve(pkgDir, rel) : null;
+  }
+  // 2. `*` subpath pattern — longest matching prefix wins (per Node).
+  let best = null;
+  for (const pat of Object.keys(exportsMap)) {
+    const star = pat.indexOf('*');
+    if (star === -1) continue;
+    const pre = pat.slice(0, star);
+    const post = pat.slice(star + 1);
+    if (key.length < pre.length + post.length) continue;
+    if (!key.startsWith(pre) || !key.endsWith(post)) continue;
+    if (!best || pre.length > best.pre.length) {
+      best = { pat, pre, post, cap: key.slice(pre.length, key.length - post.length) };
+    }
+  }
+  if (best) {
+    const rel = pick(exportsMap[best.pat]);
+    return rel ? path.resolve(pkgDir, rel.replace('*', best.cap)) : null;
+  }
+  return null;
+}
 
 // ── Node built-ins shimmed to a near-empty object. ──────────────────
 //
@@ -138,6 +194,44 @@ function withCanopyPreset(options) {
   const pinToApp = (names) =>
     Object.fromEntries(names.map((n) => [n, path.resolve(APP_MODULES, n)]));
 
+  // ── Auto-discover `@canopy/*` workspace packages. ─────────────────
+  //
+  // The repo has ~30 `file:` workspace packages and the standardisation
+  // work keeps extracting more out of `@canopy/core` (theme, vault,
+  // online-cadence, …).  A hand-maintained alias list silently drifts
+  // and breaks the RN bundle one package at a time (every device-pass
+  // rebuild surfaced the next missing one: 2026-05-16).  Derive the
+  // list from `packages/*/package.json` instead — the single source of
+  // truth — so newly-extracted packages just work.
+  //
+  // Each package needs BOTH an `extraNodeModules` alias (so Metro can
+  // resolve the bare `@canopy/<x>` import under
+  // `unstable_enablePackageExports: false`) AND a `watchFolders` entry
+  // (Metro rejects files outside projectRoot/watchFolders even when
+  // resolved).  Node-only canopy packages (e.g. `@canopy/relay`) stay
+  // shimmed: their explicit `SHIM_PATHS.nodeBuiltins` entries appear
+  // LATER in the `extraNodeModules` object literal below and therefore
+  // override the directory alias produced here.
+  const CANOPY_PACKAGES_DIR = path.resolve(repoRoot, 'packages');
+  const canopyWorkspaceAliases = {};
+  const canopyWorkspaceDirs = [];
+  const canopyPkgMeta = {}; // name -> { dir, exports } for subpath resolution
+  for (const entry of fs.readdirSync(CANOPY_PACKAGES_DIR, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const pkgDir = path.resolve(CANOPY_PACKAGES_DIR, entry.name);
+    let pkgJson;
+    try {
+      pkgJson = require(path.join(pkgDir, 'package.json'));
+    } catch {
+      continue; // no/invalid package.json — not a workspace package
+    }
+    const name = pkgJson.name;
+    if (typeof name !== 'string' || !name.startsWith('@canopy/')) continue;
+    canopyWorkspaceAliases[name] = pkgDir;
+    canopyWorkspaceDirs.push(pkgDir);
+    canopyPkgMeta[name] = { dir: pkgDir, exports: pkgJson.exports };
+  }
+
   // ── Start from Expo's default config. ─────────────────────────────
   const { getDefaultConfig } = loadExpoMetroConfig(projectRoot);
   const config = getDefaultConfig(projectRoot);
@@ -145,26 +239,67 @@ function withCanopyPreset(options) {
   // ── Watch folders (preset's monorepo defaults + app's extras). ────
   config.watchFolders = [
     ...(config.watchFolders ?? []),
-    path.resolve(repoRoot, 'packages/core'),
-    path.resolve(repoRoot, 'packages/pod-client'),
-    path.resolve(repoRoot, 'packages/react-native'),
-    path.resolve(repoRoot, 'packages/sync-engine'),
+    ...canopyWorkspaceDirs,
     ...watchFolders,
   ];
 
-  // ── Block list (preset blocks substrate-package node_modules to
-  //    avoid conflicting versions + Node-only deps walking into the
-  //    bundle.  In particular `packages/sync-engine/node_modules`
-  //    contains `chokidar`, which would otherwise be resolved by Metro
-  //    inside watchFolders even though we alias the `chokidar` bare
-  //    import to a shim — Metro walks the node_modules tree of every
-  //    watched package on startup, and chokidar's transitive deps
-  //    (e.g. readdirp) call `util.promisify(fs.readdir)`, which
-  //    throws under our empty `fs` shim.). ─────────────────────────
-  const blockedPkgNodeModules = [
-    path.resolve(repoRoot, 'packages/react-native/node_modules'),
-    path.resolve(repoRoot, 'packages/sync-engine/node_modules'),
-  ];
+  // ── Block list — surgical per-subtree block inside each watched
+  //    workspace package's `node_modules`.
+  //
+  //    `watchFolders` now spans all auto-discovered `@canopy/*`
+  //    packages and Metro crawls the node_modules tree of every
+  //    watched folder on startup.  This repo has NO root hoisting, so
+  //    each substrate package keeps its real npm deps in its OWN
+  //    `node_modules` — those MUST stay resolvable (e.g. `ajv-formats`
+  //    for `@canopy/item-types`, `@inrupt/solid-client` for core).
+  //    So we do NOT block whole package node_modules (an earlier
+  //    blanket block broke exactly those deps, 2026-05-16); instead we
+  //    block only the two concrete crash classes:
+  //
+  //      • Duplicate framework copies — `react`, `react-dom`,
+  //        `react-native`, `@react-native*`.  React/RN must be a
+  //        singleton from the app (pinned via `pinToApp`); a dup copy
+  //        either crashes at runtime ("Invalid hook call") or fails to
+  //        transform (`packages/oidc-session-rn/node_modules/
+  //        react-native/.../VirtualView.js`: newer `match (x){` syntax
+  //        the app's Babel can't parse — surfaced 2026-05-16).
+  //      • `chokidar` / `readdirp` — the documented fs-shim crawl
+  //        crash: Metro crawling them runs `util.promisify(
+  //        fs.readdir)` under the empty `fs` shim → throws.  The bare
+  //        `chokidar` import is separately aliased to the shim in
+  //        `extraNodeModules` below, so blocking the crawl is safe.
+  //      • The whole Expo / React-Native ecosystem (`react`,
+  //        `react-dom`, `react-native`, `react-native-*`, `expo`,
+  //        `expo-*`, `@expo/*`, `@react-native*`).  These carry the
+  //        native side that is autolinked into the app binary from the
+  //        APP's pinned copy and MUST be a single version shared by JS
+  //        and native.  Several `@canopy/*` packages declare them as
+  //        loose (`"*"` / `^`) peer/deps, so with no root hoisting npm
+  //        installed a whole LATEST Expo-SDK-55 / RN-0.85 tree into
+  //        `packages/oidc-session-rn` (+ `packages/react-native`)
+  //        while the app is on Expo-SDK-52 / RN-0.76.  JS then resolves
+  //        the dup and calls a native interface the binary doesn't
+  //        expose → runtime `Cannot find native module 'ExpoCryptoAES'`
+  //        / `native module is null cannot access legacy storage`
+  //        (surfaced 2026-05-16; a correct scan found 40 such split
+  //        dups).  Matched by PREFIX FAMILY (not a hand-list, which
+  //        drifts and needs an entry per package) so any current or
+  //        future Expo/RN dep is forced onto the app singleton.
+  //
+  //    Everything else in every package's node_modules resolves and
+  //    crawls normally (plain JS libs are harmless to index).  Built
+  //    from `canopyWorkspaceDirs` so it stays drift-proof alongside
+  //    the auto-discovery.  Substrate Expo/RN deps are peerDeps the
+  //    host app provides; the app (a full Expo app) carries the whole
+  //    SDK set, so forcing its copy is correct (a missing one would be
+  //    a real host-dep bug worth surfacing, not masking).
+  const ECOSYSTEM_ALT =
+    '@react-native[^/\\\\]*|@expo|expo(?:-[^/\\\\]+)?|' +
+    'react-native(?:-[^/\\\\]+)?|react-dom|react|chokidar|readdirp';
+  const blockedSubtreeRegExps = canopyWorkspaceDirs.map((d) => {
+    const esc = path.resolve(d, 'node_modules').replace(/[/\\]/g, '[/\\\\]');
+    return new RegExp(`^${esc}[/\\\\](?:${ECOSYSTEM_ALT})[/\\\\]`);
+  });
   const existingBlockList = config.resolver?.blockList;
   const blockListEntries = existingBlockList
     ? (Array.isArray(existingBlockList) ? existingBlockList : [existingBlockList])
@@ -172,9 +307,7 @@ function withCanopyPreset(options) {
   config.resolver = config.resolver ?? {};
   config.resolver.blockList = [
     ...blockListEntries,
-    ...blockedPkgNodeModules.map((p) =>
-      new RegExp(`^${p.replace(/[/\\]/g, '[/\\\\]')}.*`),
-    ),
+    ...blockedSubtreeRegExps,
     ...extraBlockListRegExps,
   ];
 
@@ -190,11 +323,11 @@ function withCanopyPreset(options) {
     extraNodeModules: {
       ...(config.resolver?.extraNodeModules ?? {}),
 
-      // Local SDK packages — always-on.
-      '@canopy/core':         path.resolve(repoRoot, 'packages/core'),
-      '@canopy/pod-client':   path.resolve(repoRoot, 'packages/pod-client'),
-      '@canopy/react-native': path.resolve(repoRoot, 'packages/react-native'),
-      '@canopy/sync-engine':  path.resolve(repoRoot, 'packages/sync-engine'),
+      // Local `@canopy/*` SDK packages — auto-discovered from
+      // `packages/*` above (drift-proof; Node-only ones like
+      // `@canopy/relay` are re-shimmed by the explicit entries below,
+      // which win as later keys in this object literal).
+      ...canopyWorkspaceAliases,
 
       // ws is Node-only; RN has globalThis.WebSocket built in.
       'ws': SHIM_PATHS.ws,
@@ -276,18 +409,33 @@ function withCanopyPreset(options) {
         };
       }
 
-      // 5b. `@canopy/sync-engine/*` — exports field is ignored
-      //     because of `unstable_enablePackageExports: false`, so
-      //     resolve subpaths directly against `packages/sync-engine/src/`.
-      //     `chokidar` (used by adapters/watcherNode) is aliased to the
-      //     empty Node-builtins shim above, so RN bundles that touch
-      //     watcherNode silently get a no-op chokidar.
-      if (moduleName.startsWith('@canopy/sync-engine/')) {
-        const sub = moduleName.slice('@canopy/sync-engine/'.length);
-        return {
-          filePath: path.resolve(repoRoot, 'packages/sync-engine/src', sub + '.js'),
-          type: 'sourceFile',
-        };
+      // 5b. Generalized `@canopy/<workspace-pkg>/<subpath>` resolution
+      //     via the target package's own `exports` map (drift-proof;
+      //     subsumes the former hand-rolled per-package sync-engine +
+      //     react-native subpath special-cases — every workspace
+      //     package's declared subpaths now resolve from the single
+      //     source of truth, so a newly-extracted package just works).
+      //     `@canopy/react-native/platform/*` keeps its dedicated
+      //     rule 5 above (authoritative for the platform `.rn.js`
+      //     selection) and is intercepted before it reaches here.
+      //     Node-only deps reached through these subpaths (e.g.
+      //     `chokidar` via sync-engine's adapters/watcherNode) stay
+      //     aliased to the empty shim in `extraNodeModules` above.
+      if (moduleName.startsWith('@canopy/')) {
+        const rest = moduleName.slice('@canopy/'.length);
+        const slash = rest.indexOf('/');
+        if (slash !== -1) {
+          const pkg = '@canopy/' + rest.slice(0, slash);
+          const meta = canopyPkgMeta[pkg];
+          if (meta) {
+            const resolved = resolveExportsSubpath(
+              meta.exports, meta.dir, rest.slice(slash + 1), platform,
+            );
+            if (resolved) return { filePath: resolved, type: 'sourceFile' };
+            // Declared workspace pkg but undeclared subpath → fall
+            // through to default resolution (matches Node behaviour).
+          }
+        }
       }
 
       // 6. App-defined custom subpath resolvers.
