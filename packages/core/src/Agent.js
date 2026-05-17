@@ -1176,14 +1176,14 @@ export class Agent extends Emitter {
    *
    * @param {object} opts
    * @param {import('./transport/Transport.js').Transport} opts.transport
-   * @param {import('./identity/Vault.js').Vault}          [opts.vault]    — defaults to VaultMemory
+   * @param {import('@canopy/vault').Vault}          [opts.vault]    — defaults to VaultMemory
    * @param {string}                                        [opts.label]
    * @param {object}                                        rest            — any other Agent constructor options
    * @returns {Promise<Agent>}
    */
   static async createNew({ transport, vault, label, ...rest } = {}) {
     if (!transport) throw new Error('Agent.createNew requires transport');
-    const { VaultMemory }    = await import('./identity/VaultMemory.js');
+    const { VaultMemory }    = await import('@canopy/vault');
     const { AgentIdentity }  = await import('./identity/AgentIdentity.js');
     const resolvedVault      = vault ?? new VaultMemory();
     const identity           = await AgentIdentity.generate(resolvedVault);
@@ -1195,7 +1195,7 @@ export class Agent extends Emitter {
    *
    * @param {object} opts
    * @param {import('./transport/Transport.js').Transport} opts.transport
-   * @param {import('./identity/Vault.js').Vault}          opts.vault
+   * @param {import('@canopy/vault').Vault}          opts.vault
    * @returns {Promise<Agent>}
    */
   static async restore({ transport, vault, ...rest } = {}) {
@@ -1213,12 +1213,12 @@ export class Agent extends Emitter {
    * @param {string} mnemonic
    * @param {object} opts
    * @param {import('./transport/Transport.js').Transport} opts.transport
-   * @param {import('./identity/Vault.js').Vault}          [opts.vault]
+   * @param {import('@canopy/vault').Vault}          [opts.vault]
    * @returns {Promise<Agent>}
    */
   static async restoreFromMnemonic(mnemonic, { transport, vault, ...rest } = {}) {
     if (!transport) throw new Error('Agent.restoreFromMnemonic requires transport');
-    const { VaultMemory }   = await import('./identity/VaultMemory.js');
+    const { VaultMemory }   = await import('@canopy/vault');
     const { AgentIdentity } = await import('./identity/AgentIdentity.js');
     const resolvedVault     = vault ?? new VaultMemory();
     const identity          = await AgentIdentity.fromMnemonic(mnemonic, resolvedVault);
@@ -1239,11 +1239,11 @@ export class Agent extends Emitter {
    * @param {object} obj
    * @param {object} opts
    * @param {import('./transport/Transport.js').Transport} [opts.transport]
-   * @param {import('./identity/Vault.js').Vault}          [opts.vault]
+   * @param {import('@canopy/vault').Vault}          [opts.vault]
    * @returns {Promise<Agent>}
    */
   static async fromPlainObject(obj, { transport, vault, ...rest } = {}) {
-    const { VaultMemory }   = await import('./identity/VaultMemory.js');
+    const { VaultMemory }   = await import('@canopy/vault');
     const { AgentIdentity } = await import('./identity/AgentIdentity.js');
     const { AgentConfig }   = await import('./config/AgentConfig.js');
 

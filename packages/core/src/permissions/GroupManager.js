@@ -34,7 +34,7 @@ export class GroupManager {
   /**
    * @param {object} opts
    * @param {import('../identity/AgentIdentity.js').AgentIdentity} opts.identity
-   * @param {import('../identity/Vault.js').Vault} opts.vault
+   * @param {import('@canopy/vault').Vault} opts.vault
    */
   constructor({ identity, vault }) {
     if (!identity) throw new Error('GroupManager requires identity');
