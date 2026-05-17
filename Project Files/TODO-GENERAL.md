@@ -503,9 +503,35 @@ via `buildSubstrateStack`; `attachPod` can reach
   SolidPodSource)`. `detachPod` clears `_podCtx.active=false`.
   Keep the no-pod path explicitly tested unchanged.
 
-**STATUS: 2.1 + 2.3 + 2.4-core DONE & committed (local, unpushed —
-user: don't push). 2.2 + 2.4-activation are the device-verified
-frontier (next focused chunk).**
+**STATUS: Phase 2 CODE-COMPLETE 2026-05-17 (local commits, UNPUSHED
+— user: don't push).** All five parts done + unit-green:
+- 2.1 pod-routing `setAnchor` (65/65)
+- 2.3 `apps/stoop/src/lib/podPathMap.js` classify/unclassify (8/8)
+- 2.4-core Agent.js closure `innerKeyMap` + `bundle._podCtx`
+- 2.2 `apps/stoop/src/lib/existingPodProvisioner.js`
+  (`createExistingPodProvisioner` + idempotent `ensurePodProvisioned`,
+  8/8; `@canopy/pod-onboarding` added as apps/stoop dep + linked;
+  `./lib/podPathMap` + `./lib/existingPodProvisioner` added to
+  apps/stoop exports; stoop-mobile metro.config already has a
+  wildcard `@canopy-app/stoop/lib/*` resolver — no Metro change)
+- 2.4-activation `ServiceContext.attachPod` →
+  `podRouting.setAnchor(podRoot)` → `ensurePodProvisioned` →
+  fill `bundle._podCtx{active,classify,podRouting,crewId}` →
+  `attachInner`; `detachPod` reverts. `apps/stoop` **516/516**,
+  `stoop-mobile` **908/908**, zero regressions, no-pod byte-neutral.
+
+Temp `[pod-route]` diagnostics added (toInner mapping + provision
+outcome + _podCtx activation) — **strip in Phase 4** with
+`[oidc-dx]`/`[pod-dx]`.
+
+**NOT yet verified: the real-pod end-to-end** — that is exactly the
+purpose of the upcoming device pass (centralised group → post →
+confirm it lands in the Inrupt pod). V1 limitations carried: no
+`setAcp` (Inrupt owner-private default) + no `patchWebidProfile`
+(Stoop reads its own config) — documented Phase-3 refinements.
+`decentralised`/`hybrid` group routing still the `PodRouting.js`
+stub (Phase 3). Device-pass runbook: see the chat handoff /
+`real-device-pass-master-checklist`.
 
 ### Test strategy + risks
 
