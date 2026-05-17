@@ -599,7 +599,7 @@ export function ServiceProvider({ children, deps = {} }) {
     // (conventions/pod-independence.md).
     try { bundle.podRouting?.setAnchor?.(podRoot); } catch { /* swallow */ }
     try {
-      const _prov = await ensurePodProvisioned({
+      await ensurePodProvisioned({
         podRoot,
         webid,
         fetch:     fetchFn,
@@ -610,12 +610,6 @@ export function ServiceProvider({ children, deps = {} }) {
           agentUri: defaultLocalActor(identityRef.current),
         },
       });
-      // [pod-route] TEMP diagnostic — strip in Phase 4.
-      console.log('[pod-route] provision', JSON.stringify({
-        skipped: _prov?.skipped ?? false,
-        provisioned: _prov?.provisioned ?? false,
-        error: _prov?.error?.message ?? null,
-      }));
     } catch { /* ensurePodProvisioned never throws; defensive */ }
     if (bundle._podCtx) {
       bundle._podCtx.classify   = _podClassify;
@@ -623,9 +617,6 @@ export function ServiceProvider({ children, deps = {} }) {
       bundle._podCtx.crewId     = activeGroupId ?? null;
       bundle._podCtx.vars       = {};
       bundle._podCtx.active     = !!(bundle.podRouting && _podClassify);
-      // [pod-route] TEMP diagnostic — strip in Phase 4.
-      console.log('[pod-route] _podCtx active=', bundle._podCtx.active,
-        'crew=', activeGroupId ?? null, 'anchor=', podRoot);
     }
 
     await bundle.cache.attachInner(source);
