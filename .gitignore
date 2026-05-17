@@ -55,3 +55,7 @@ apps/sdk-smoke/android/
 apps/*/google-services.json
 apps/*/firebase-service-account.json
 apps/*/firebase-credentials.json
+
+# Generated publish artifact: clean copy made by maak-publieke-kopie.sh.
+# Source of truth is outreach/site/; this dir is rebuilt on each publish.
+outreach/site-publiek/
