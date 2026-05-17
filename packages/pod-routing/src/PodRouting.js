@@ -53,9 +53,9 @@ export function createPodRouting({
     );
   }
 
-  const defaults = buildDefaultPolicy({ anchorPodUri, deviceId });
-  const reach    = createReachabilityCache({ ttlMs: reachabilityTTLms, now });
-  const configUri = configResourceUri({ deviceId, anchorPodUri });
+  let defaults = buildDefaultPolicy({ anchorPodUri, deviceId });
+  const reach  = createReachabilityCache({ ttlMs: reachabilityTTLms, now });
+  let configUri = configResourceUri({ deviceId, anchorPodUri });
 
   /** @type {import('./configResource.js').StorageMappingConfig | null} */
   let loadedConfig = null;
@@ -193,6 +193,37 @@ export function createPodRouting({
     await reload();
   }
 
+  /**
+   * Re-point routing at a (newly known) anchor pod.
+   *
+   * `createPodRouting` takes `anchorPodUri` at construction; an app
+   * that boots no-pod and later attaches a pod (Stoop's opt-in pod
+   * sign-in) needs to switch the default policy + config-resource
+   * location without rebuilding the whole stack (pod-routing is also
+   * wired into notify-envelope).  Rebuilds `defaults` + `configUri`
+   * and drops the loaded config (it was keyed to the OLD anchor's
+   * resource); the caller `reload()`s from the new location.
+   * Pass `null` to revert to no-pod.  Returns the new config URI.
+   *
+   * @param {string|null} newAnchorPodUri
+   * @returns {string} the new config-resource URI
+   */
+  function setAnchor(newAnchorPodUri) {
+    if (newAnchorPodUri != null && typeof newAnchorPodUri !== 'string') {
+      throw Object.assign(
+        new Error('setAnchor: anchorPodUri must be a string or null'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+    anchorPodUri = (typeof newAnchorPodUri === 'string' && newAnchorPodUri.length > 0)
+      ? newAnchorPodUri
+      : null;
+    defaults  = buildDefaultPolicy({ anchorPodUri, deviceId });
+    configUri = configResourceUri({ deviceId, anchorPodUri });
+    loadedConfig = null;
+    return configUri;
+  }
+
   function registerStorageFunction(name) {
     if (typeof name === 'string' && name.length > 0) extraStorageFns.add(name);
   }
@@ -217,6 +248,7 @@ export function createPodRouting({
     reload,
     updateMapping,
     setCrewPolicy,
+    setAnchor,
 
     // Introspection
     get configResourceUri() { return configUri; },

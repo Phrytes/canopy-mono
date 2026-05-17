@@ -54,6 +54,36 @@ describe('podRouting.resolve — defaults (no-pod)', () => {
   });
 });
 
+describe('podRouting.setAnchor — no-pod → pod and back', () => {
+  it('re-points defaults + config URI when an anchor is set, and reverts on null', () => {
+    const r = createPodRouting({ pseudoPod: mkPod(), deviceId: 'd' });
+    // starts no-pod
+    expect(r.resolve('private/identity-vault')).toBe('pseudo-pod://d/private/identity-vault');
+    expect(r.crewPolicy('c')).toEqual({ policy: 'no-pod' });
+
+    // attach a pod → defaults + crew policy re-point to the anchor.
+    // (configResourceUri is intentionally anchor-independent in V0 —
+    // the storage-mapping always lives in the local pseudo-pod mirror;
+    // setAnchor returns it for forward-compat.)
+    const cfg = r.setAnchor('https://anne.pod');
+    expect(r.resolve('private/identity-vault')).toBe('https://anne.pod/private/identity-vault');
+    expect(r.crewPolicy('c')).toEqual({ policy: 'centralised', groupPodUri: 'https://anne.pod' });
+    expect(r.anchorPodUri).toBe('https://anne.pod');
+    expect(cfg).toBe(r.configResourceUri);
+
+    // revert to no-pod
+    r.setAnchor(null);
+    expect(r.resolve('private/identity-vault')).toBe('pseudo-pod://d/private/identity-vault');
+    expect(r.crewPolicy('c')).toEqual({ policy: 'no-pod' });
+    expect(r.anchorPodUri).toBe(null);
+  });
+
+  it('rejects a non-string, non-null anchor', () => {
+    const r = createPodRouting({ pseudoPod: mkPod(), deviceId: 'd' });
+    expect(() => r.setAnchor(123)).toThrow(/anchorPodUri/);
+  });
+});
+
 describe('podRouting.resolve — defaults (pod-having)', () => {
   it('resolves private/* to anchor pod', () => {
     const r = createPodRouting({
