@@ -65,8 +65,14 @@ export function ProfileMineScreen() {
   const [podStatusLoading, setPodStatusLoading] = useState(true);
   const [signOutBusy, setSignOutBusy]       = useState(false);
   const [signOutMsg, setSignOutMsg]         = useState(null);
-  const podSignInStatus = useSkill('podSignInStatus');
-  const signOutOfPod    = useSkill('signOutOfPod');
+  // Depend on the stable `.call` (a useCallback keyed on [skillId,
+  // svc]; svc is memoized in ServiceContext) — NOT the whole skill
+  // object, which `useSkill` rebuilds every render.  Depending on the
+  // object made `refreshPodStatus` → its auto-running effect re-run on
+  // every render and re-invoke the skill unboundedly (the profile-page
+  // `podSignInStatus` flood, 2026-05-16).
+  const podSignInStatusCall = useSkill('podSignInStatus').call;
+  const signOutOfPodCall    = useSkill('signOutOfPod').call;
   const [recoveryPhrase, setRecoveryPhrase] = useState(null);
 
   // Hydrate input drafts when the profile finishes loading.
@@ -155,14 +161,14 @@ export function ProfileMineScreen() {
   const refreshPodStatus = useCallback(async () => {
     setPodStatusLoading(true);
     try {
-      const r = await podSignInStatus.call({});
+      const r = await podSignInStatusCall({});
       setPodStatus(r ?? { signedIn: false });
     } catch (_err) {
       setPodStatus({ signedIn: false });
     } finally {
       setPodStatusLoading(false);
     }
-  }, [podSignInStatus]);
+  }, [podSignInStatusCall]);
 
   useEffect(() => {
     refreshPodStatus().catch(() => {});
@@ -172,7 +178,7 @@ export function ProfileMineScreen() {
     setSignOutBusy(true);
     setSignOutMsg(null);
     try {
-      const r = await signOutOfPod.call({});
+      const r = await signOutOfPodCall({});
       if (r?.error) {
         setSignOutMsg(`${t('common.error', 'Fout')}: ${r.error}`);
       } else {
@@ -184,7 +190,7 @@ export function ProfileMineScreen() {
     } finally {
       setSignOutBusy(false);
     }
-  }, [signOutOfPod, refreshPodStatus]);
+  }, [signOutOfPodCall, refreshPodStatus]);
 
   const exportRecovery = useCallback(async () => {
     setError(null);
