@@ -40,6 +40,12 @@ describe('podPathMap.classify/unclassify', () => {
     expect(c.storageFn).toBe('group/C/governance');
   });
 
+  it('group audit log → group/<crew>/audit (device-pass #2 UNROUTED gap)', () => {
+    const c = roundtrip('mem://neighborhood/audit/01KRVSN68BDV6JA896N7N4RJBY.json', { crewId: 'C' });
+    expect(c.storageFn).toBe('group/C/audit');
+    expect(c.tail).toBe('01KRVSN68BDV6JA896N7N4RJBY.json');
+  });
+
   it('threads → sharing/threads', () => {
     const c = roundtrip('mem://stoop/threads/t1.json');
     expect(c.storageFn).toBe('sharing/threads');
