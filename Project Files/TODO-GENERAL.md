@@ -93,6 +93,275 @@
 
 ---
 
+## 🔴 HIGH — Stoop pod-backed storage is broken: `mem://` logical keys never persist to the Solid pod (2026-05-17)
+
+> **Self-contained for a future session — read this whole block; no
+> prior conversation context is needed.** Discovered during the
+> Stoop-mobile real-device co-pilot pass (2026-05-17).
+
+### Symptom & how it was found
+User completed Inrupt pod sign-in on Stoop-mobile (works — see the
+OIDC fix in "Related work" below), set a pod-backed group, posted an
+item. **Nothing appeared in the Solid pod** (checked independently via
+solid-file-manager / Inrupt PodBrowser). Temporary `[pod-dx]`
+instrumentation added to `SolidPodSource` proved the chain reaches a
+real authenticated pod write that then **404s every time**:
+
+```
+[pod-dx] SolidPodSource CONSTRUCT podUrl= https://id.inrupt.com/fritsderoos/
+[pod-dx] WRITE  https://id.inrupt.com/fritsderoos/mem://neighborhood/members/webid%3Alocal%3A… (overwriteFile)
+[pod-dx] WRITE FAIL (overwriteFile) …mem://neighborhood/members/webid%3Alocal%3A… 404 Not Found
+```
+
+So: pod auth + `attachPod` + write are all reached; the write fails
+because the **target URL is malformed**.
+
+### Root cause (precise, with file:line anchors)
+Stoop uses an app-level **logical scheme `mem://`** for *all* storage
+(`apps/stoop/src/Agent.js:201` `new ItemStore({ rootContainer:
+'mem://neighborhood/' })`; plus `mem://stoop/{settings,reveals,
+push-subscriptions,interest-profile,lists,avatars,items/<id>/
+attachments}`). Write path:
+
+```
+skill → ItemStore('mem://neighborhood/…')
+  → CachingDataSource  [@canopy/local-store; real impl
+       packages/local-store/src/CachingDataSource.js]
+       flush() L246-247 → this.#inner.write('mem://…')   (raw key!)
+       read()  L301      → this.#inner.read('mem://…')
+       #bulkSync L276-278 → this.#inner.list/read('mem://…')
+  → #inner = SolidPodSource  [packages/core/src/storage/SolidPodSource.js],
+       set via attachInner() in apps/stoop-mobile/src/ServiceContext.js:591
+       (attachPod) and desktop apps/stoop/src/Agent.js
+  → SolidPodSource.#resolve()  [SolidPodSource.js:528-541] blindly
+       string-concats any non-http(s) input onto podUrl
+  → PUT https://id.inrupt.com/fritsderoos/mem://neighborhood/… → 404
+```
+
+**No layer translates the `mem://` logical namespace into a pod
+path.** `CachingDataSource` already distinguishes local-only vs
+pod-bound subtrees (`#localOnlyPrefixes`, e.g.
+`mem://stoop/settings/devices/`) so `mem://neighborhood/*` *is*
+intended to reach the pod — there's just no key→pod-path mapping.
+
+### Why P3 doesn't cover this
+`Project Files/Substrates/P3-sync-engine-pseudo-pod-absorption-2026-05-15.md`
+is **Folio-scoped**; Folio is pod-primary with `https://` URIs
+end-to-end (OQ-3). P3's Node-audit table explicitly says cache mode is
+*"used by no app today — stoop + tasks-v0 use standalone"*. Stoop's
+`attachInner(SolidPodSource)` + `mem://` keys is a **new consumer P3
+never designed for** — this mapping is genuinely undesigned, not a P3
+regression.
+
+### The routing authority ALREADY EXISTS — `@canopy/pod-routing`
+`packages/pod-routing/` already defines the data-category × storage-
+policy → location design:
+- `src/storageFunctions.js` — `CANONICAL_STORAGE_FUNCTIONS`: the 7-name
+  taxonomy (`private/identity-vault`, `private/state`, `private/drafts`,
+  `sharing/profile-public`, `sharing/*`, `group/<crewId>/*`,
+  `personal-in-group/<crewId>`) + `matchMapping`/`substituteVars`/
+  `joinUriTail`.
+- `src/defaultPolicy.js` — `buildDefaultPolicy({anchorPodUri,deviceId})`
+  builds per-function default URIs (pod base vs `pseudo-pod://<device>`).
+- `src/PodRouting.js` — `createPodRouting().resolve(storageFn, vars)`,
+  crew-policy-aware.
+
+### Data taxonomy → where each goes, per storage policy
+(Stoop's 4 policies: `no-pod` (default), `centralised` (+`groupPodUri`),
+`decentralised`, `hybrid`.)
+
+| Stoop data (`mem://`) | storage-function | location by policy |
+|---|---|---|
+| `mem://stoop/settings/devices/`, `.migrated` | `private/state` device-local | never leaves device (already in `#localOnlyPrefixes`) ✓ |
+| `mem://stoop/{settings,reveals,push-subscriptions,interest-profile,lists}` | `private/state/stoop` | user's own (anchor) pod; local if no pod |
+| profile handle/displayName/**offered skills** (via MemberMap), `mem://stoop/avatars/<webid>` | `sharing/profile-public` | user's own pod, world/contact-readable share dir |
+| `mem://neighborhood/items/<id>.json` (offers/requests) | `group/<crewId>/items/…` | **policy-dependent** ⬇ |
+| `mem://neighborhood/members/<id>` (roster) | `group/<crewId>/members/…` | **policy-dependent** ⬇ |
+| `mem://stoop/items/<id>/attachments/…` | `group/<crewId>/items/<id>/attachments/…` | follows the offer (group policy) |
+
+`group/<crewId>/*` per policy (`PodRouting.js:103-109`):
+`no-pod` → `pseudo-pod://<device>/…` (local + P2P ring, never a Solid
+pod); `centralised` → `<groupPodUri>/<crewId>/…` (one shared crew pod);
+`decentralised` → *intended* each member's own pod + cross-pod refs;
+`hybrid` → *intended* ledger shared / drafts local. `private/*` &
+`sharing/*` always → the user's own anchor pod (or local if none).
+
+Note: "skills" the user *offers* = `sharing/profile-public` data; the
+skill-category **vocabulary** (`listSkillCategories`) is static code,
+not pod data.
+
+### ⚠️ Honest gap that also explains the failed test
+`PodRouting.js:107-109`: **`decentralised` and `hybrid` group routing
+are explicit V2 stubs** ("hybrid + decentralised V2-detail; same
+default for now") — they fall back to the **local pseudo-pod ring, NOT
+a Solid pod**. So **only `centralised` (with `groupPodUri`) actually
+routes group data to a Solid pod today.** The on-device test used a
+`decentralised` group → offers could not reach the pod even with the
+URL bug fixed. This is a *second, separate* gap from the URL-mangling
+bug.
+
+### Fix approach (reshaped — NOT a naive string mapper)
+1. Add a **`mem://` → storage-function classification** for Stoop's
+   paths (proposed table above is the spec, pending user confirm).
+2. Route writes/reads/list/delete through
+   `@canopy/pod-routing.resolve()` at the `CachingDataSource` ↔ inner
+   boundary — substrate-level, so **Stoop + Tasks both benefit** (both
+   consume `@canopy/local-store`). Symmetric reverse-map on reads/list
+   for round-trip; **reversibly percent-encode** unsafe path segments
+   (the `webid:local:<peer>` colons that contributed to the 404).
+3. Harden `SolidPodSource.#resolve` (`packages/core/src/storage/
+   SolidPodSource.js:528`) to **throw `INVALID_ARGUMENT` on a
+   foreign-scheme input** instead of silently concatenating — fail
+   loud, not a confusing 404; benefits every pod consumer.
+
+### Decisions — raw capture (user-annotated 2026-05-17; synthesized + plan below)
+1. **Scope:** (a) wire `centralised` only — smallest correct slice,
+   actually reaches a Solid pod, testable now; or (b) also implement
+   the `decentralised`/`hybrid` `group/*` routing (the V2 stub — its
+   own design effort)? - yes also decentralized
+2. **Confirm the `mem://`→storage-function classification table** above
+   as the spec (esp. `mem://neighborhood/*` → `group/<activeCrewId>/*`). 
+looks good I think - it would be nice to find a way to standardize this kind of storage, such that do something similar know what structure they should follow (for example another type of tasks or online offers). And then other apps should be able to index all objects of the same type (so, a task not made in tasks-v0 but by another app that follows the same standards, should be possible to show in tasks-v0 too || this must become standard practice for all the apps that are made in this repo) 
+3. **Test policy:** switch the device test to a **`centralised`** group
+   with the user's Inrupt pod as `groupPodUri` (only path that hits a
+   Solid pod today). --> i think er should test all the different setups:)
+
+### Decisions (LOCKED 2026-05-17 — synthesized from the raw capture above)
+
+- **D1 — pod-onboarding is facultative + Stoop-invocable.** No-pod must
+  keep working (already locked by `conventions/pod-independence.md`).
+  Additionally Stoop must be able to run
+  `@canopy/pod-onboarding.provisionDefault()` from its own opt-in pod
+  sign-in flow (today it never does — `apps/stoop/src/lib/
+  substrateStack.js:47` hard-pins `anchorPodUri:null`).
+- **D2 — all four policies must work** (`no-pod`, `centralised`,
+  `decentralised`, `hybrid`). Implement the stub at
+  `packages/pod-routing/src/PodRouting.js:107-109`. `decentralised` =
+  each member writes their own pod under canonical containers +
+  cross-pod `embeds` refs (`conventions/cross-pod-refs.md`); `hybrid` =
+  canonical ledger on group pod + drafts on own pod.
+- **D3 — type/domain-keyed, app-agnostic, CROSS-APP TYPE-INDEXABLE.**
+  General shareable objects stored by canonical **type/domain**, never
+  by app name. Reuse rides `@canopy/item-types` (shared schema) +
+  cross-pod-ref `embeds`. **First-class requirement (user 2026-05-17):**
+  the layout is a *standard every repo app follows* so **any app can
+  enumerate/index all objects of a given canonical type regardless of
+  which app created them** — e.g. tasks-v0 must list a `task` written
+  by another app; online-offers shared across apps. App origin =
+  optional, non-enforced object metadata field; never a path segment,
+  never used for routing/ACP/indexing. **Standard practice for ALL
+  apps in this repo.**
+- **D4 — truly app-private plumbing may use an app dir** (option B).
+  Not prohibited; just avoided for general/shareable data (Stoop
+  reveals / push-subs / device-settings / migration-marker).
+- **D5 — app *settings* are out of scope here.** Governed by the
+  separate locked `conventions/cross-app-settings.md`
+  (`<pod>/<app>/settings/{shared.json,devices/<id>.json}` —
+  deliberately app-namespaced + its Rule 3 cross-app default-seeding).
+  NOT amended. Cross-app *shared* settings → logged as a **future
+  Hub-track** idea (user's "manage in hub-app"); locked convention
+  untouched now.
+- **Test scope (user 2026-05-17):** test **all** setups, not just
+  centralised. (centralised = single-pod testable now;
+  decentralised/hybrid need ≥2 real pods.)
+
+### Convention amendments (consistency — Phase 0)
+
+**Amend → type/domain-keyed + add the cross-app type-indexing
+standard:** `conventions/storage-layout.md` (drop the `<app>/<function>`
+rule + `sharing/stoop/` & `activeMap` app-prefixed examples; add the
+type-indexable-layout standard), `Stoop/pod-layout-2026-05-06.md`
+(`/stoop/items/`→domain path), `Substrates/storage-migration-design-2026-05-14.md`
+(same example), and pin the open question in
+`Substrates/substrates-v2-functional-design-2026-05-11.md §4.3.6`
+(storage-function naming = type/domain; app-origin = optional object
+field). **Leave as-is (already consistent / deliberate exception):**
+`conventions/cross-pod-refs.md`, `conventions/pod-independence.md`,
+`packages/item-types/`, `conventions/cross-app-settings.md`.
+
+### Coding plan (phased; substrate-first; off-by-default; nothing irreversible until last)
+
+- **Phase 0 — convention amendments + canonical type-indexable layout
+  spec (docs only).** Amend the 4 docs above; write a precise
+  "canonical type-indexable pod layout" spec (per-type containers + how
+  any app enumerates objects of a type cross-app). Define the concrete
+  Stoop `mem://`→storage-function map. No code; reversible.
+- **Phase 1 — substrate: logical-key→storage-function classifier +
+  pod-routing wiring + fail-loud.** New mapper (in `@canopy/local-store`
+  or a `@canopy/pod-routing` helper): Stoop `mem://<path>` → canonical
+  type/domain storage-function (+ reversible inverse; percent-encode
+  unsafe segments like the `webid:local:` colons). `CachingDataSource`
+  resolves the concrete URI via `pod-routing.resolve(storageFn)` before
+  every `#inner.{write,read,list,delete}` (symmetric on read/list).
+  Harden `packages/core/src/storage/SolidPodSource.js:528` `#resolve`
+  to throw `INVALID_ARGUMENT` on foreign-scheme input (fail-loud, not
+  silent 404). Substrate-level → Stoop + Tasks both benefit.
+  Behaviour-neutral while no pod attached. Unit tests; repo green.
+- **Phase 2 — Stoop adopts pod-onboarding (facultative, opt-in).** Wire
+  idempotent `provisionDefault()` into `apps/stoop-mobile/src/
+  ServiceContext.js` `attachPod` + desktop `apps/stoop/src/Agent.js`;
+  un-pin `substrateStack.js` `anchorPodUri` (derive from attached pod).
+  No-pod path unchanged + explicitly tested (pod-independence
+  constraint). Provisions canonical containers + WebID pointers + ACP
+  + storage-mapping config.
+- **Phase 3 — implement all 4 policies + the cross-app type-index read
+  path.** Fill the `PodRouting.js:107-109` stub (`decentralised`,
+  `hybrid`); verify `centralised` end-to-end; `no-pod` unchanged. Add
+  the enumerate-objects-of-a-type-across-apps path (D3). Unit +
+  scenario tests; on-device acceptance per policy (RN parity
+  device-only, like P3 Phase C).
+- **Phase 4 — strip diagnostics, full verify, stage commits.** Remove
+  `[oidc-dx]`/`[pod-dx]`. Full `vitest` sweep. Stage the separate
+  commit units (OIDC fix already device-verified; Metro preset; core
+  vault straggler; ProfileMineScreen loop; this pod work). Nothing
+  committed before explicit user go.
+
+### Test strategy + risks
+
+- Substrate unit: classifier round-trip (incl. colon-encoding) +
+  per-policy `pod-routing.resolve` + `SolidPodSource` fail-loud +
+  cross-app type-index enumeration.
+- On-device: real Inrupt round-trip per policy. **centralised** =
+  single-pod testable now; **decentralised/hybrid** need ≥2 real pods
+  (two Inrupt accounts) — only way to truly verify cross-pod refs.
+- Risks: (1) does Inrupt `overwriteFile` auto-create intermediate LDP
+  containers? verify; if not, mapper/onboarding must `createContainer`
+  parents. (2) cross-pod-ref permission-failure rendering — already
+  specced in `cross-pod-refs.md` (3-tier fallback); reuse. (3) keep
+  `no-pod` byte-for-byte (pod-independence parity).
+
+### Related work from the same session (context for future-me)
+This surfaced during the long Stoop-mobile device-pass co-pilot session
+(2026-05-17). **Nothing is committed** (user's standing rule: no
+commits until they confirm). In-tree, uncommitted, staged as separate
+units:
+- `packages/react-native/metro-preset.cjs` — generalized: auto-discover
+  all `@canopy/*` workspace pkgs (alias + watchFolders); exports-map-
+  driven subpath resolver (subsumes old per-pkg rules); prefix-blocklist
+  the whole Expo/RN ecosystem dup copies in `packages/*/node_modules`
+  (40 version-split native dups were breaking the RN bundle).
+- `@canopy/core` vault-extraction straggler fix: `Agent.js` 3 dynamic
+  imports + 5 files' JSDoc `./identity/Vault*.js` → `@canopy/vault`.
+- `apps/stoop-mobile/src/screens/ProfileMineScreen.js` — infinite
+  `podSignInStatus` loop fixed (depend on stable `useSkill().call`, not
+  the per-render wrapper object).
+- **`@canopy/oidc-session-rn`** (`hook.js` + `src/dcr.js`) — OIDC
+  **stale-client auto-recovery** (provenance-based: a cached client_id
+  that yields a no-redirect dismiss → purge + re-register).
+  **VERIFIED WORKING on device** — fixed a hard 401 `invalid_client`
+  wedge; benefits folio/tasks too. This is a clean ready-to-commit unit.
+- **Temporary diagnostics still in tree — MUST be stripped before any
+  commit:** `[oidc-dx]` in `packages/oidc-session-rn/{hook.js,src/dcr.js}`;
+  `[pod-dx]` in `packages/core/src/storage/SolidPodSource.js`.
+
+### Resume pointer
+This entry + `Project Files/Substrates/P3-sync-engine-pseudo-pod-absorption-2026-05-15.md`
++ `packages/pod-routing/src/{storageFunctions,defaultPolicy,PodRouting}.js`.
+Bug locus: `packages/local-store/src/CachingDataSource.js` (the
+`#inner.*` boundary) + `packages/core/src/storage/SolidPodSource.js:528`.
+
+---
+
 ## 🟠 ARCHITECTURE DECISION — Stoop is per-member-install today; target is browser-accessible (2026-05-16)
 
 > Surfaced during the P3 Node-portability review. **Flagged, not
