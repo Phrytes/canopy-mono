@@ -533,6 +533,37 @@ confirm it lands in the Inrupt pod). V1 limitations carried: no
 stub (Phase 3). Device-pass runbook: see the chat handoff /
 `real-device-pass-master-checklist`.
 
+### Device-pass #1 (2026-05-17) — routing PROVEN; 2 bugs found
+
+`[pod-route]` logs confirmed the architecture works end-to-end:
+`_podCtx active=true crew=bliep`, and
+`mem://neighborhood/members/… → https://id.inrupt.com/fritsderoos/
+bliep/members/…` — **the `mem://`-leaks-into-URL root cause is
+fixed**. Two precise bugs surfaced:
+
+- **A — wrong pod root (NOT fixed yet).** `SignInScreen.js`
+  `deriveBaseFromWebId` = `new URL(webid).origin` → the Inrupt
+  **identity** host (`https://id.inrupt.com/…`), NOT the writable
+  Pod storage (`pim:storage` in the WebID profile, e.g.
+  `https://storage.inrupt.com/<uuid>/`). → `PUT …/private/
+  storage-mapping → 404` (provisioning + all writes fail). Desktop
+  `apps/stoop/src/lib/podSignIn.js derivePodRoot` does this
+  correctly (reads `pim:storage`); mobile must too. Fix options:
+  (i) port pim:storage discovery into mobile (proper, recommended);
+  (ii) immediate device-pass unblock = user manually enters the real
+  Pod storage URL into the editable pod-root field.
+- **B — classifier double-encoded (FIXED 2026-05-17).**
+  `MemberMapCache` already `encodeURIComponent`s the peer id, so the
+  `mem://` segment arrives as `webid%3Alocal%3A…`; `podPathMap`
+  re-encoded → `%253A`. Fix: `encTail`/`decTail` are now verbatim
+  (segment encoding is upstream-owned; mem:// keys are pod-safe by
+  construction). podPathMap 8/8 + provisioner 8/8 green. Committed
+  local.
+
+**Next:** decide A — implement pim:storage auto-discovery (real
+fix) vs. manual pod-storage URL entry to unblock device-pass #2
+(validate provisioning + writes against a correct, writable pod).
+
 ### Test strategy + risks
 
 - Substrate unit: classifier round-trip (incl. colon-encoding) +
