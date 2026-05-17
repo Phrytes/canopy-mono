@@ -461,25 +461,51 @@ Done + tested (committed locally; not yet pushed):
   `mem://stoop/settings/*` (D5 / cross-app-settings.md), crew keys
   with no active crew, and unknowns. **podPathMap 8/8.**
 
-Remaining (the heavier, app-touching + device-verified parts — next
-focused chunk):
-- **2.2 — idempotent adopt-existing-pod provisioner.** Thin
-  `podProvisioner.createPod()` returns the already-authed
-  `{podUri:podRoot, webidUri, fetch}`; reuse `provisionDefault`
-  steps 3-7; skip when `HEAD <podRoot>/private/storage-mapping`
-  exists. Needs careful read of `provisionDefault.js` + the
-  provisioner README; **network / real-pod → device-verified** (like
-  P3 Phase C).
-- **2.4 — wire it.** Construct the Stoop bundle `CachingDataSource`
-  (`apps/stoop/src/Agent.js`) with a **closure innerKeyMap** over a
-  mutable pod-ctx ref (unset → identity → no-pod byte-neutral).
-  `attachPod` (mobile `ServiceContext.js` + desktop `Agent.js`):
-  `podRouting.setAnchor(podRoot)` → idempotent provision → fill
-  pod-ctx `{classify, podRouting, crewId}` → `attachInner`. Keep the
-  no-pod path explicitly tested unchanged (`pod-independence.md`).
+- **2.4-core ✅ DONE (2026-05-17)** — `apps/stoop/src/Agent.js`:
+  closure `innerKeyMap` (`_podInnerKeyMap`) over a mutable
+  `bundle._podCtx` `{active,classify,podRouting,crewId,vars}`.
+  `toInner` = inactive→identity; active→`classify` +
+  `podRouting.resolve(storageFn,vars)` + join `tail`; unroutable →
+  passes through → `SolidPodSource` fail-loud surfaces the gap.
+  `fromInner` = identity (pull-back inverse = Phase 3 cross-app
+  read). **Byte-neutral while inactive** — Stoop cache consumers
+  (phase4/33/34/23/filePersist) **59/59** unchanged. Bundle now
+  exposes `_podCtx` for `attachPod` to fill.
 
-**Riskiest parts (2.2 real-pod provisioning, 2.4 attachPod) are
-device-verified — natural checkpoint before them.**
+Remaining (the heavier, app-touching + **device-verified** frontier
+— wiring is now traced: `bundle.podRouting` is set by
+`substrateMirror.js:37` / `bootstrapBundle.js:99` / `agentBundle.js`
+via `buildSubstrateStack`; `attachPod` can reach
+`bundle.podRouting` + `bundle._podCtx` + `bundle.agent`):
+- **2.2 — idempotent adopt-existing-pod provisioner** (new Stoop
+  module, e.g. `apps/stoop/src/lib/existingPodProvisioner.js`). A
+  `podProvisioner` whose `createPod()` returns
+  `{podUri:podRoot, webidUri:webid, fetch:authedFetch}` (no
+  creation); `createContainer` = idempotent PUT (treat 200/204/409
+  as OK); `putResource` = PUT (ensure parent container first);
+  `patchWebidProfile` = best-effort (skip-with-note acceptable V1 —
+  Inrupt pods are owner-private by default); `setAcp` = best-effort
+  (V1 limitation: `/sharing/public/` world-read ACP is a documented
+  refinement, owner containers already private). Wrap with
+  `ensurePodProvisioned()` that **HEADs `<podRoot>/private/
+  storage-mapping`** and skips if present (idempotency, P2-b). Feed
+  `provisionDefault({podProvisioner, pseudoPod, identity|mnemonic,
+  agentInfo:{deviceId,agentUri,pubKey,webid}})`. **network/real-pod
+  → device-verified** (P3-Phase-C-class gate). Unit-test the
+  provisioner contract + HEAD-skip with mocks.
+- **2.4-activation — `attachPod`** (mobile
+  `apps/stoop-mobile/src/ServiceContext.js` + desktop equivalent):
+  on attach → `bundle.podRouting.setAnchor(podRoot)` →
+  `ensurePodProvisioned(...)` (best-effort; failure must NOT block
+  local use — pod-independence) → fill `bundle._podCtx` `{active:true,
+  classify: podPathMap.classify, podRouting: bundle.podRouting,
+  crewId: <activeGroupId>}` → existing `bundle.cache.attachInner(
+  SolidPodSource)`. `detachPod` clears `_podCtx.active=false`.
+  Keep the no-pod path explicitly tested unchanged.
+
+**STATUS: 2.1 + 2.3 + 2.4-core DONE & committed (local, unpushed —
+user: don't push). 2.2 + 2.4-activation are the device-verified
+frontier (next focused chunk).**
 
 ### Test strategy + risks
 
