@@ -43,6 +43,8 @@ import {
 import { buildBootstrapBundle }              from './lib/bootstrapBundle.js';
 import { getRelayUrl }                       from './lib/relayUrl.js';
 import { buildSkills }                       from '@canopy-app/stoop';
+import { classify as _podClassify }          from '@canopy-app/stoop/lib/podPathMap';
+import { ensurePodProvisioned }              from '@canopy-app/stoop/lib/existingPodProvisioner';
 import { buildIdentitySkills }               from '@canopy/identity-resolver';
 import { migrateOrphanedPeers }              from './lib/migrateOrphanedPeers.js';
 import { attachAppStateBridge }                  from './lib/appStateBridge.js';
@@ -589,6 +591,42 @@ export function ServiceProvider({ children, deps = {} }) {
 
     const fetchFn = session.getAuthenticatedFetch();
     const source  = new SolidPodSource({ podUrl: podRoot, fetch: fetchFn });
+    const webid   = session.webid ?? tokens.webid ?? null;
+
+    // Phase 2.4-activation — route the bundle's `mem://` logical keys
+    // to real pod paths via pod-routing. Best-effort: anchor /
+    // provision failure must NOT block local-first use
+    // (conventions/pod-independence.md).
+    try { bundle.podRouting?.setAnchor?.(podRoot); } catch { /* swallow */ }
+    try {
+      const _prov = await ensurePodProvisioned({
+        podRoot,
+        webid,
+        fetch:     fetchFn,
+        pseudoPod: bundle.pseudoPod,
+        identity:  identityRef.current,
+        agentInfo: {
+          deviceId: bundle.substrateDeviceId ?? bundle.agent?.address ?? 'stoop-device',
+          agentUri: defaultLocalActor(identityRef.current),
+        },
+      });
+      // [pod-route] TEMP diagnostic — strip in Phase 4.
+      console.log('[pod-route] provision', JSON.stringify({
+        skipped: _prov?.skipped ?? false,
+        provisioned: _prov?.provisioned ?? false,
+        error: _prov?.error?.message ?? null,
+      }));
+    } catch { /* ensurePodProvisioned never throws; defensive */ }
+    if (bundle._podCtx) {
+      bundle._podCtx.classify   = _podClassify;
+      bundle._podCtx.podRouting = bundle.podRouting ?? null;
+      bundle._podCtx.crewId     = activeGroupId ?? null;
+      bundle._podCtx.vars       = {};
+      bundle._podCtx.active     = !!(bundle.podRouting && _podClassify);
+      // [pod-route] TEMP diagnostic — strip in Phase 4.
+      console.log('[pod-route] _podCtx active=', bundle._podCtx.active,
+        'crew=', activeGroupId ?? null, 'anchor=', podRoot);
+    }
 
     await bundle.cache.attachInner(source);
 
@@ -604,6 +642,8 @@ export function ServiceProvider({ children, deps = {} }) {
   const detachPod = useCallback(async () => {
     const slotBundle = activeGroupId ? groups.get(activeGroupId)?.bundle : null;
     const bundle = slotBundle ?? bootstrap;
+    if (bundle?._podCtx) bundle._podCtx.active = false;
+    try { bundle?.podRouting?.setAnchor?.(null); } catch { /* swallow */ }
     try { await bundle?.cache?.attachInner?.(null); } catch { /* swallow */ }
     if (podSession) {
       try { await podSession.logout(); } catch { /* swallow */ }

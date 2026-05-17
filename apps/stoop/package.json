@@ -6,10 +6,12 @@
   "type": "module",
   "main": "src/index.js",
   "exports": {
-    ".":             "./src/index.js",
-    "./lib/geo":     "./src/lib/geo.js",
-    "./locales/en":  "./locales/en.json",
-    "./locales/nl":  "./locales/nl.json"
+    ".":                            "./src/index.js",
+    "./lib/geo":                    "./src/lib/geo.js",
+    "./lib/podPathMap":             "./src/lib/podPathMap.js",
+    "./lib/existingPodProvisioner": "./src/lib/existingPodProvisioner.js",
+    "./locales/en":                 "./locales/en.json",
+    "./locales/nl":                 "./locales/nl.json"
   },
   "bin": {
     "stoop-ui":      "bin/stoop-ui.js",
@@ -35,6 +37,7 @@
     "@canopy/notifier":          "file:../../packages/notifier",
     "@canopy/notify-envelope":   "file:../../packages/notify-envelope",
     "@canopy/oidc-session":      "file:../../packages/oidc-session",
+    "@canopy/pod-onboarding":    "file:../../packages/pod-onboarding",
     "@canopy/pod-routing":       "file:../../packages/pod-routing",
     "@canopy/pseudo-pod":        "file:../../packages/pseudo-pod",
     "@canopy/skill-match":       "file:../../packages/skill-match",
