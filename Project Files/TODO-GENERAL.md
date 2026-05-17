@@ -362,8 +362,44 @@ exception. Private plumbing keeps an app sub-key under
 `private/state/` (allowed, non-shareable). An optional `origin:'stoop'`
 object field is advisory only.
 
-**Next: Phase 1** (substrate code — classifier + pod-routing wiring +
-`SolidPodSource.#resolve` fail-loud). Not started.
+### Phase 1 — STATUS: substrate seams DONE (2026-05-17)
+
+Shipped + tested (uncommitted-pushable; committed locally only —
+awaiting explicit push go):
+
+- **`packages/core/src/storage/SolidPodSource.js` `#resolve`
+  fail-loud.** A non-`http(s)` scheme input (`mem://`,
+  `pseudo-pod://`, …) now throws `INVALID_ARGUMENT` instead of
+  string-concatenating onto the pod root (the silent-404 cause).
+  Mid-segment colons (`webid:local:`) still resolve fine (only
+  `scheme://` is rejected). +1 regression test
+  (`test/storage/SolidPodSource.unit.test.js`). **Full core suite
+  1315/1324, zero regressions.**
+- **`packages/local-store/src/CachingDataSource.js` `innerKeyMap`
+  seam.** Optional `{toInner,fromInner}` translates ONLY at the
+  `#inner` boundary (flush write/delete, read, pullFromInner
+  list+read); local cache + queue stay logical. **Default identity
+  → byte-neutral** for every existing consumer (verified: Stoop
+  phase4/33/34/filePersist **47/47** unchanged; Tasks unaffected).
+  New focused substrate test `packages/local-store/test/
+  CachingDataSource.test.js` (**local-store 12/12**).
+
+**Piece-3 reframe (deliberate):** the Stoop `mem://`→storage-function
+**classifier moved into Phase 2.** Rationale: a correct classifier
+needs the live `pod-routing.resolve()` instance + the active
+crew-id / identity runtime context (own-profile→`profile-public`
+split, `group/<crewId>/…`), which is exactly what "Stoop adopts
+pod-onboarding + un-pin substrateStack" (Phase 2) provides. A
+context-free pure stub now would be throwaway. The 13-row spec
+table above is the classifier's spec; Phase 2 builds it against
+the `innerKeyMap` seam + `pod-routing`. Phase 1's substrate seams
+are the genuinely self-contained, behaviour-neutral, shippable
+slice.
+
+**Next: Phase 2** — Stoop adopts `@canopy/pod-onboarding`
+(facultative, opt-in) + un-pin `substrateStack.js` `anchorPodUri`
++ build the `mem://`→storage-function classifier and inject it as
+the `CachingDataSource` `innerKeyMap` at `attachPod`. Not started.
 
 ### Test strategy + risks
 
