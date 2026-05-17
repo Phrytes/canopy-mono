@@ -317,16 +317,28 @@ field). **Leave as-is (already consistent / deliberate exception):**
     groupPodUri → ring); `no-pod` unchanged. **pod-routing 69/69**
     (+4); no-pod byte-neutral; additive for tasks-v0. `centralised`
     already device-verified (Phase 2).
-  - **3.3 — REMAINING: cross-app type-index read path + `fromInner`
-    inverse.** The D3 standard (any app enumerates objects of a
-    canonical type regardless of which app/member wrote them) + the
-    `CachingDataSource` `fromInner` (pod-URI→logical) inverse
-    deferred from Phase 1/2 (currently identity). For
-    `decentralised` this also means following cross-pod `embeds`
-    refs (`conventions/cross-pod-refs.md`) to other members' pods.
-    Larger design piece; **decentralised/hybrid end-to-end needs ≥2
-    real pods to device-verify** (gated, like Phase 2 was). Next
-    focused chunk.
+  - **3.3a ✅ DONE 2026-05-18** (`ac677f1`): the `fromInner` inverse
+    deferred from Phase 1/2. `podPathMap.reverseResolve({resolve,
+    crewId,podUri})` — tries each distinct storage-function (crew
+    ones need crewId), longest base wins, `unclassify` → `mem://`
+    key; pure (resolve injected). `Agent.js` `fromInner` uses it via
+    injected `podCtx.reverse` (ServiceContext.attachPod wires it
+    next to `classify`); inactive/no-match → identity → no-pod
+    byte-neutral. Round-trips every family under real-pod AND
+    pseudo-pod-ring bases. apps/stoop 547/547, stoop-mobile 908/908,
+    pod-routing 69/69.
+  - **3.3b — REMAINING: cross-app type-index *enumeration*.** A read
+    helper: resolve a canonical type's container via `pod-routing` →
+    `SolidPodSource.list` → `reverseResolve` each entry → the D3
+    "any app enumerates all objects of a type regardless of
+    authoring app" path (works for centralised / own-pod;
+    substrate/pure-ish, unit-testable).
+  - **3.3c — REMAINING (device-gated): decentralised cross-pod
+    `embeds` traversal.** Follow `embeds:[{type,ref}]`
+    (`conventions/cross-pod-refs.md` + `@canopy/item-store/embeds`)
+    to OTHER members' pods. Biggest/most design-heavy;
+    **decentralised end-to-end needs ≥2 real pods to device-verify**
+    (gated, like Phase 2 was). Next focused chunk.
 - **Phase 4 — strip diagnostics, full verify, stage commits.** Remove
   `[oidc-dx]`/`[pod-dx]`. Full `vitest` sweep. Stage the separate
   commit units (OIDC fix already device-verified; Metro preset; core
