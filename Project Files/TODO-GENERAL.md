@@ -310,6 +310,23 @@ field). **Leave as-is (already consistent / deliberate exception):**
   the enumerate-objects-of-a-type-across-apps path (D3). Unit +
   scenario tests; on-device acceptance per policy (RN parity
   device-only, like P3 Phase C).
+  - **3.1+3.2 ✅ DONE 2026-05-18** (`069b6aa`): `decentralised` →
+    user's own anchor pod crew-scoped (no anchor → ring); `hybrid` →
+    shared group-pod ledger (== centralised for Stoop's crew data;
+    `personal-in-group/*` drafts ride the generic own-pod mapping; no
+    groupPodUri → ring); `no-pod` unchanged. **pod-routing 69/69**
+    (+4); no-pod byte-neutral; additive for tasks-v0. `centralised`
+    already device-verified (Phase 2).
+  - **3.3 — REMAINING: cross-app type-index read path + `fromInner`
+    inverse.** The D3 standard (any app enumerates objects of a
+    canonical type regardless of which app/member wrote them) + the
+    `CachingDataSource` `fromInner` (pod-URI→logical) inverse
+    deferred from Phase 1/2 (currently identity). For
+    `decentralised` this also means following cross-pod `embeds`
+    refs (`conventions/cross-pod-refs.md`) to other members' pods.
+    Larger design piece; **decentralised/hybrid end-to-end needs ≥2
+    real pods to device-verify** (gated, like Phase 2 was). Next
+    focused chunk.
 - **Phase 4 — strip diagnostics, full verify, stage commits.** Remove
   `[oidc-dx]`/`[pod-dx]`. Full `vitest` sweep. Stage the separate
   commit units (OIDC fix already device-verified; Metro preset; core
