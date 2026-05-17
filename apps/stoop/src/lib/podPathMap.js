@@ -124,4 +124,56 @@ export function unclassify(storageFn, tail) {
   return null;
 }
 
+/**
+ * Phase 3.3 — inverse of the attach-time `toInner`
+ * (`classify` + `podRouting.resolve` + join): given a concrete pod /
+ * pseudo-pod URI and the routing context, recover the `mem://`
+ * logical key. This is the `CachingDataSource.fromInner` that
+ * `pullFromInner` needs to re-key pod read-backs (and the basis of
+ * the cross-app type-index read path).
+ *
+ * Pure — the caller injects `resolve` (= `podRouting.resolve`).
+ * Tries every distinct storage-function (crew ones need `crewId`),
+ * longest matching base wins, then `unclassify`. Returns null when
+ * the URI is under no known base (caller falls back to identity).
+ *
+ * @param {object} a
+ * @param {(storageFn:string, vars?:object)=>string|null} a.resolve
+ * @param {string} [a.crewId]
+ * @param {string} a.podUri
+ * @param {object} [a.vars]
+ * @returns {string|null}
+ */
+export function reverseResolve({ resolve, crewId, podUri, vars } = {}) {
+  if (typeof resolve !== 'function' || typeof podUri !== 'string' || !podUri) {
+    return null;
+  }
+  const fns = new Set();
+  for (const r of RULES) {
+    if (r.crew) { if (crewId) fns.add(r.fn(crewId)); }
+    else fns.add(r.fn());
+  }
+  let best = null;
+  for (const storageFn of fns) {
+    let base;
+    try { base = resolve(storageFn, vars || {}); } catch { base = null; }
+    if (typeof base !== 'string' || base.length === 0) continue;
+    // `toInner` did: base.endsWith('/') ? base+tail : base+'/'+tail.
+    let rem = null;
+    if (base.endsWith('/')) {
+      if (podUri.startsWith(base)) rem = podUri.slice(base.length);
+    } else if (podUri === base) {
+      rem = '';
+    } else if (podUri.startsWith(base + '/')) {
+      rem = podUri.slice(base.length + 1);
+    }
+    if (rem === null) continue;
+    if (!best || base.length > best.baseLen) {
+      best = { storageFn, tail: rem, baseLen: base.length };
+    }
+  }
+  if (!best) return null;
+  return unclassify(best.storageFn, best.tail);
+}
+
 export const _internal = { encTail, decTail, RULES };

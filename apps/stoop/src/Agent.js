@@ -187,11 +187,23 @@ export async function createNeighborhoodAgent({
       if (typeof base !== 'string' || base.length === 0) return p;
       return base.endsWith('/') ? base + c.tail : `${base}/${c.tail}`;
     },
-    // Inverse (pod-URI → logical) needs resolve-inversion — the
-    // cross-app type-index read-back — which is Phase 3. Identity for
-    // now: Stoop's Phase-2 win is write-through landing correctly;
-    // pull-back rides Phase 3.
-    fromInner: (u) => u,
+    // Phase 3.3 — inverse of toInner so pull-back / cross-app reads
+    // re-key pod URIs to the logical `mem://` space. `podCtx.reverse`
+    // (podPathMap.reverseResolve) is injected by attachPod alongside
+    // `classify`. Inactive / no-match → identity (no-pod stays
+    // byte-neutral; an unknown URI passes through unchanged).
+    fromInner: (u) => {
+      if (!podCtx.active
+          || typeof podCtx.reverse !== 'function'
+          || !podCtx.podRouting) return u;
+      const logical = podCtx.reverse({
+        resolve: (fn, v) => podCtx.podRouting.resolve(fn, v),
+        crewId:  podCtx.crewId,
+        podUri:  u,
+        vars:    podCtx.vars || {},
+      });
+      return logical ?? u;
+    },
   };
 
   let cache = null;
