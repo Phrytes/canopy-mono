@@ -146,6 +146,24 @@ describe('SolidPodSource — read', () => {
     await expect(source.read('/x.txt'))
       .rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
   });
+
+  it('fail-loud: refuses a non-http(s) scheme (logical key) instead of concatenating', async () => {
+    // Regression: a `mem://` logical key was being string-joined onto
+    // the pod root → `…/mem://…` → silent 404. Must throw, not 404.
+    source = new SolidPodSource({ podUrl: POD, fetch: makeFetch({}) });
+    await expect(source.read('mem://neighborhood/items/x.json'))
+      .rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
+    await expect(source.write('pseudo-pod://dev/x', 'data'))
+      .rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
+    // A normal relative path (colons mid-segment, no scheme) still resolves.
+    const fetchFn = makeFetch({
+      [`GET ${POD}neighborhood/members/webid:local:abc`]: makeRes({ body: 'ok', contentType: 'text/plain' }),
+      [`HEAD ${POD}neighborhood/members/webid:local:abc`]: makeRes({ body: '', contentType: 'text/plain' }),
+    });
+    const s2 = new SolidPodSource({ podUrl: POD, fetch: fetchFn });
+    const r = await s2.read('neighborhood/members/webid:local:abc');
+    expect(new TextDecoder().decode(r.content)).toBe('ok');
+  });
 });
 
 /* ─────────────────────────────────────────────────────────────────────────── */
