@@ -47,6 +47,8 @@ const RULES = [
     fn: (c) => `group/${c}/members` },
   { family: 'g-gov',     prefix: 'mem://neighborhood/groups/',  crew: true,
     fn: (c) => `group/${c}/governance` },
+  { family: 'g-audit',   prefix: 'mem://neighborhood/audit/',   crew: true,
+    fn: (c) => `group/${c}/audit` },
   // Attachments live under `mem://stoop/items/<id>/attachments/…`;
   // distinct family so the round-trip stays bijective vs g-items.
   { family: 'g-att',     prefix: 'mem://stoop/items/',          crew: true,
@@ -116,6 +118,7 @@ export function unclassify(storageFn, tail) {
     if (sub === 'items')            return 'mem://neighborhood/items/'   + decoded;
     if (sub === 'members')          return 'mem://neighborhood/members/' + decoded;
     if (sub === 'governance')       return 'mem://neighborhood/groups/'  + decoded;
+    if (sub === 'audit')            return 'mem://neighborhood/audit/'   + decoded;
     if (sub === 'item-attachments') return 'mem://stoop/items/'          + decoded;
   }
   return null;
