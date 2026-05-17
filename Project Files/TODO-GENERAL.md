@@ -396,10 +396,54 @@ the `innerKeyMap` seam + `pod-routing`. Phase 1's substrate seams
 are the genuinely self-contained, behaviour-neutral, shippable
 slice.
 
-**Next: Phase 2** — Stoop adopts `@canopy/pod-onboarding`
-(facultative, opt-in) + un-pin `substrateStack.js` `anchorPodUri`
-+ build the `mem://`→storage-function classifier and inject it as
-the `CachingDataSource` `innerKeyMap` at `attachPod`. Not started.
+### Phase 2 — DESIGN + OPEN DECISIONS (2026-05-17; awaiting user calls)
+
+Code-grounded findings (3 real decisions before implementing — each
+touches shared substrate and/or the locked `pod-independence.md`
+no-pod guarantee, so not guessing):
+
+- **P2-a — pod-routing anchor un-pin.** `createPodRouting({anchorPodUri})`
+  takes the anchor **at construction**; `buildDefaultPolicy` +
+  `configResourceUri` bake it in. There is `reload()`/`setCrewPolicy()`
+  but **no `setAnchor`**. `substrateStack.js` hard-pins
+  `anchorPodUri:null` per-bundle, and podRouting is also wired into
+  `notifyEnvelope`. Options: **(i)** add a focused substrate
+  `podRouting.setAnchor(anchorPodUri)` that rebuilds internal
+  defaults/configUri (clean; tasks-v0 benefits too; small); **(ii)**
+  rebuild the whole substrate stack's podRouting on attach (heavy —
+  must re-wire notifyEnvelope; risky). **Recommend (i).**
+- **P2-b — provision onto an EXISTING pod.** `provisionDefault`
+  *creates* a pod via `podProvisioner.createPod`; Stoop users already
+  have an Inrupt pod (podRoot from WebID `pim:storage`). Steps 3-7
+  (containers / ACP / initial resources / local mirror / WebID-pointer
+  patch) are what we need. Options: **(i)** a thin "adopt-existing-pod"
+  provisioner whose `createPod()` returns the already-authed
+  `{podUri:podRoot, webidUri, fetch}`; reuse `provisionDefault`
+  steps 3-7; **idempotent** (skip if already provisioned — probe the
+  `dec:storage-mapping-uri` WebID pointer or HEAD the storage-mapping
+  resource). **(ii)** bespoke lighter "ensure canonical layout" in
+  Stoop (less substrate reuse). **Recommend (i)** + idempotency via
+  the storage-mapping-resource HEAD (more robust than trusting the
+  WebID patch landed).
+- **P2-c — innerKeyMap at attach time.** Phase 1 made `innerKeyMap`
+  **constructor-only**; `attachPod` swaps `#inner` at runtime. Options:
+  **(i)** construct the bundle `CachingDataSource` with a
+  **closure-based innerKeyMap** reading a shared mutable pod-context
+  ref that `attachPod` populates (classify + podRouting + crewId);
+  unset → identity → no-pod stays byte-neutral. No further
+  CachingDataSource API change. **(ii)** add
+  `CachingDataSource.setInnerKeyMap()` (small substrate addition).
+  **Recommend (i)** (keeps the Phase-1 seam API frozen).
+
+Once P2-a/b/c are chosen, the rest is mechanical: build the
+`mem://`→storage-function classifier from the 13-row spec above
+(pure, unit-tested), wire it + `podRouting.resolve()` into the
+attach-time innerKeyMap, call the idempotent adopt-existing-pod
+provisioner in `attachPod` (mobile `ServiceContext.js`) + desktop
+`Agent.js`, keep no-pod path explicitly tested unchanged.
+
+**STATUS: blocked on the P2-a/b/c calls. Phase 1 pushed
+(`origin/master` 4e53ea6).**
 
 ### Test strategy + risks
 
