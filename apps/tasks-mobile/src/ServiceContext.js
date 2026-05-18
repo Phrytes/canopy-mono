@@ -70,6 +70,7 @@ import {
 
 import { buildLocalStoreBundle } from './lib/buildLocalStoreBundle.js';
 import { buildCrewState }        from './lib/buildCrewState.js';
+import { buildPodSignInSkillsMobile } from './lib/podSignInSkillsMobile.js';
 
 const ServiceContext = createContext(null);
 
@@ -113,6 +114,14 @@ export function ServiceProvider({ children, boot = {} }) {
     signedIn: false, podAttached: false, webid: null, podRoot: null,
   });
   const podSessionRef  = useRef(null);
+  // M1-S5 — stable `crew`-shaped holder for the shared
+  // podSignIn.js orchestration. `.dataSource` points at the
+  // local-store bundle cache (set on boot); `.oidcSession` is the
+  // slot the shared module + attachPod both write so the
+  // podSignInStatus skill reflects hook-driven sign-ins too. One
+  // holder process-wide — Tasks attaches the pod at the bundle
+  // (device) level, not per-crew (mirrors attachPod's plumbing).
+  const podCrewRef     = useRef({ dataSource: null, oidcSession: null });
 
   // Refs hold mutable state that doesn't drive renders by itself.
   const crewsRef           = useRef(new Map());
@@ -218,6 +227,12 @@ export function ServiceProvider({ children, boot = {} }) {
     await bundle.cache.attachInner(source);
 
     podSessionRef.current = session;
+    // M1-S5: keep the shared podSignIn.js holder in sync so the
+    // `podSignInStatus` skill reflects this hook-driven sign-in.
+    podCrewRef.current.oidcSession = session;
+    if (!podCrewRef.current.dataSource) {
+      podCrewRef.current.dataSource = bundle.cache;
+    }
     setPodStatus({
       signedIn: true, podAttached: true,
       webid: session.webid ?? tokens.webid ?? null,
@@ -232,6 +247,8 @@ export function ServiceProvider({ children, boot = {} }) {
       try { await podSessionRef.current.logout(); } catch { /* swallow */ }
     }
     podSessionRef.current = null;
+    // M1-S5: clear the shared holder's session too.
+    podCrewRef.current.oidcSession = null;
     setPodStatus({ signedIn: false, podAttached: false, webid: null, podRoot: null });
   }, []);
 
@@ -264,6 +281,9 @@ export function ServiceProvider({ children, boot = {} }) {
         // 2. Local-store bundle.
         const bundle = injectedBundle ?? await buildLocalStoreBundle({ inner: innerDataSource });
         localStoreBundleRef.current = bundle;
+        // M1-S5: the shared podSignIn.js orchestration attaches the
+        // pod inner to THIS cache (same one attachPod uses).
+        podCrewRef.current.dataSource = bundle.cache ?? bundle;
         if (cancelled) return;
 
         // 3. meshAgent.
@@ -340,6 +360,44 @@ export function ServiceProvider({ children, boot = {} }) {
           }
         } catch (err) {
           console.warn('[ServiceContext] onboarding skills not registered:', err?.message ?? err);
+        }
+
+        // 5c. M1-S5 — pod OIDC sign-in. Register the four Slice-5
+        // skills ONCE, reusing the SHARED apps/tasks-v0
+        // src/lib/podSignIn.js orchestration with the device session
+        // injected via its additive sessionFactory seam. The PKCE
+        // flow itself is the useTasksAuth hook (proven stoop-mobile
+        // RN pattern); completePodSignIn({tokens}) adopts the
+        // hook-acquired tokens onto an OidcSessionRN. Same skill ids
+        // + return shapes as tasks-v0 so screens stay portable
+        // (stoop-mobile's ProfileMineScreen consumes
+        // podSignInStatus / signOutOfPod). expo-secure-store +
+        // @canopy/pod-client are lazily imported inside the
+        // factories so vitest never pulls them at module-load.
+        try {
+          const podSignInDefs = buildPodSignInSkillsMobile({
+            podCrewProvider: () =>
+              (podCrewRef.current.dataSource ? podCrewRef.current : null),
+            sessionFactory: () => {
+              if (podSessionRef.current) return podSessionRef.current;
+              // require() keeps the RN-only deps off the vitest graph
+              // (same lazy pattern attachPod uses).
+              const { OidcSessionRN } = require('@canopy/oidc-session-rn');
+              const SecureStore = require('expo-secure-store');
+              const s = new OidcSessionRN({ store: SecureStore, appId: 'tasks' });
+              podSessionRef.current = s;
+              return s;
+            },
+            dataSourceFactory: ({ podUrl, fetch: fetchFn }) => {
+              const { SolidPodSource } = require('@canopy/pod-client');
+              return new SolidPodSource({ podUrl, fetch: fetchFn });
+            },
+          });
+          for (const def of podSignInDefs) {
+            agent.skills.register(def);
+          }
+        } catch (err) {
+          console.warn('[ServiceContext] pod-sign-in skills not registered:', err?.message ?? err);
         }
 
         // 6. Start.

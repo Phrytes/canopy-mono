@@ -519,8 +519,11 @@
       "registry_no-crew":        { "text": "No active crew",                           "doc": "Registry status value." },
       "registry_hint":           { "text": "The agent-registry records which capabilities this device exposes (tasks, tasks-v0, crew:<id>). Registered when a meshAgent + substrate are both available.", "doc": "Registry hint." },
       "signin_body":             { "text": "Signing in to a Solid pod lets your tasks sync across devices via your personal data store. Optional — Tasks works fully offline.", "doc": "Sign-in section body." },
-      "signin_coming_soon":      { "text": "Pod sign-in (S5) is coming in the next slice.", "doc": "S5 coming-soon note." },
-      "signin_cta":              { "text": "Sign in to Solid pod",                      "doc": "Sign-in stub CTA (disabled)." }
+      "signin_cta":              { "text": "Sign in to Solid pod",                      "doc": "M1-S5: pod sign-in CTA." },
+      "signout_cta":             { "text": "Sign out of pod",                           "doc": "M1-S5: pod sign-out CTA (signed-in state)." },
+      "signin_webid":            { "text": "Signed in as",                              "doc": "M1-S5: WebID row label." },
+      "signin_webid_unknown":    { "text": "(unknown WebID)",                            "doc": "M1-S5: WebID fallback." },
+      "signin_cancelled":        { "text": "Sign-in was cancelled.",                     "doc": "M1-S5: cancelled-flow body." }
     }
   }
 }
