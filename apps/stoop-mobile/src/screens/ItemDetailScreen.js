@@ -39,11 +39,13 @@ export function ItemDetailScreen() {
   const [loading, setLoading]   = useState(!handFedItem);
   const [error, setError]       = useState(null);
   const [modalIdx, setModalIdx] = useState(-1);
+  const [embedTree, setEmbedTree] = useState(null);
 
   const respondCall    = useSkill('respondToItem');
   const cancelCall     = useSkill('cancelRequest');
   const acceptCall     = useSkill('acceptResponder');
   const markReturned   = useSkill('markReturned');
+  const treeCall       = useSkill('getItemTree');
 
   // Direct read from itemStore when we don't have an inline item.
   const refresh = useCallback(async () => {
@@ -63,6 +65,24 @@ export function ItemDetailScreen() {
   }, [handFedItem, itemId, svc]);
 
   useEffect(() => { refresh().catch(() => { /* swallow */ }); }, [refresh]);
+
+  // Phase 3.3c — walk cross-pod embeds via getItemTree (treeOf +
+  // cross-pod resolver, agent-side). Same skill the web UI calls —
+  // one device-independent path. Best-effort; the body still renders
+  // if the walk fails.
+  useEffect(() => {
+    let alive = true;
+    const embeds = item?.source?.embeds;
+    if (!item?.id || !Array.isArray(embeds) || embeds.length === 0) {
+      setEmbedTree(null);
+      return undefined;
+    }
+    treeCall.call({ itemId: item.id })
+      .then((r) => { if (alive) setEmbedTree(r?.tree ?? null); })
+      .catch(() => { if (alive) setEmbedTree(null); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id]);
 
   if (!svc?.activeBundle) {
     return (
@@ -172,6 +192,34 @@ export function ItemDetailScreen() {
               <Text style={styles.skillText}>{s}</Text>
             </View>
           ))}
+        </View>
+      ) : null}
+
+      {embedTree && Array.isArray(embedTree.embeds) && embedTree.embeds.length > 0 ? (
+        <View style={styles.embeds}>
+          {embedTree.embeds.map((n, i) => {
+            const type = n?.type ?? n?.item?.type ?? 'item';
+            if (n?.source === 'external' && n.item) {
+              const snippet = String(
+                n.item.text ?? n.item.title ?? n.item.body ?? n.item.id ?? '',
+              ).slice(0, 60);
+              return (
+                <View key={i} style={styles.embedChip}>
+                  <Text style={styles.embedType}>{type}</Text>
+                  <Text style={styles.embedText} numberOfLines={1}>{snippet}</Text>
+                </View>
+              );
+            }
+            if (n?.source === 'placeholder') {
+              return (
+                <View key={i} style={[styles.embedChip, styles.embedChipMissing]}>
+                  <Text style={styles.embedType}>{type}</Text>
+                  <Text style={styles.embedText} numberOfLines={1}>{_embedReason(n.reason)}</Text>
+                </View>
+              );
+            }
+            return null;
+          })}
         </View>
       ) : null}
 
@@ -300,8 +348,34 @@ function _resolveItemAuthor(item) {
       ?? null;
 }
 
+/** Phase 3.3c — human-readable reason for an unresolved embed
+ *  (the cross-pod-refs.md three-tier render fallback). */
+function _embedReason(reason) {
+  switch (reason) {
+    case 'PERMISSION_DENIED':
+      return t('item_detail.embed_forbidden', '🔒 op een andere pod — geen toegang');
+    case 'NOT_FOUND':
+      return t('item_detail.embed_missing', 'onvindbaar of verwijderd');
+    default:
+      return t('item_detail.embed_unavailable', 'niet beschikbaar');
+  }
+}
+
 const styles = StyleSheet.create({
   root: { padding: SPACING.lg, backgroundColor: COLORS.background, paddingBottom: SPACING.xxl },
+  embeds: { flexDirection: 'row', flexWrap: 'wrap', marginTop: SPACING.sm, marginBottom: SPACING.sm },
+  embedChip: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 4, paddingHorizontal: SPACING.sm,
+    backgroundColor: COLORS.surfaceMuted, borderRadius: RADII.pill,
+    marginRight: SPACING.sm, marginTop: SPACING.xs, maxWidth: '100%',
+  },
+  embedChipMissing: { opacity: 0.65 },
+  embedType: {
+    fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.primaryDark,
+    marginRight: SPACING.xs,
+  },
+  embedText: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, flexShrink: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACING.xl },
   emptyText: { color: COLORS.textMuted, textAlign: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md },
