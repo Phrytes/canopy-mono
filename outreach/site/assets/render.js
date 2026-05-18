@@ -346,10 +346,21 @@
   }
 
   function footer() {
-    return el("footer", { class: "site-footer" },
-      [el("div", { class: "inner" }, [
-        el("p", { html: inline(SITE.footer || "") })
-      ])]);
+    var inner = el("div", { class: "inner" });
+    // Secundaire navigatie (techniek/onafhankelijkheid/waarom/contact):
+    // aparte rij in de footer, minder prominent dan de hoofdnav.
+    var fnav = SITE.footerNav || [];
+    if (fnav.length && !isIntern) {
+      var fn = el("nav", { class: "footer-nav", "aria-label": "Meer" });
+      fnav.forEach(function (item) {
+        var a = el("a", { href: item.href }, [item.label]);
+        if (item.key === PAGE.key) a.setAttribute("aria-current", "page");
+        fn.appendChild(a);
+      });
+      inner.appendChild(fn);
+    }
+    inner.appendChild(el("p", { html: inline(SITE.footer || "") }));
+    return el("footer", { class: "site-footer" }, [inner]);
   }
 
   function build() {
