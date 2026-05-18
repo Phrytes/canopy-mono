@@ -519,8 +519,11 @@
       "registry_no-crew":        { "text": "Geen actieve crew",                        "doc": "Register statuswaarde." },
       "registry_hint":           { "text": "Het agent-register legt vast welke mogelijkheden dit apparaat biedt (tasks, tasks-v0, crew:<id>). Geregistreerd wanneer een meshAgent + substrate beschikbaar zijn.", "doc": "Registertoelichting." },
       "signin_body":             { "text": "Aanmelden bij een Solid-pod laat je taken synchroniseren via je persoonlijke dataopslag. Optioneel — Tasks werkt volledig offline.", "doc": "Aanmeldingsectie tekst." },
-      "signin_coming_soon":      { "text": "Pod-aanmelden (S5) volgt in de volgende slice.", "doc": "S5 aankondiging." },
-      "signin_cta":              { "text": "Aanmelden bij Solid-pod",                  "doc": "Aanmelden stub CTA (uitgeschakeld)." }
+      "signin_cta":              { "text": "Aanmelden bij Solid-pod",                  "doc": "M1-S5: pod-aanmeld CTA." },
+      "signout_cta":             { "text": "Afmelden bij pod",                          "doc": "M1-S5: pod-afmeld CTA (ingelogd)." },
+      "signin_webid":            { "text": "Aangemeld als",                             "doc": "M1-S5: WebID-rijlabel." },
+      "signin_webid_unknown":    { "text": "(onbekende WebID)",                          "doc": "M1-S5: WebID-fallback." },
+      "signin_cancelled":        { "text": "Aanmelden geannuleerd.",                     "doc": "M1-S5: geannuleerde flow." }
     }
   }
 }

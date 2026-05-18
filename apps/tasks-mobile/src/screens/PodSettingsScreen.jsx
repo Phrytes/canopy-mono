@@ -8,15 +8,19 @@
  *   1. Storage policy — current policy display + upgrade row
  *      (one-way, no downgrade). Calls `setCrewStoragePolicy`.
  *   2. Agent-registry status — reads `activeCs.agentRegistry`.
- *   3. Pod sign-in card — display-only stub. S5 will wire the
- *      4 OIDC skills. The button is disabled + a "coming soon" note
- *      is shown so the surface exists without a broken flow.
+ *   3. Pod sign-in card — M1-S5. PKCE via the useTasksAuth hook
+ *      (proven stoop-mobile RN pattern), then the completePodSignIn
+ *      skill adopts the tokens + attaches the pod (shared
+ *      apps/tasks-v0 podSignIn.js orchestration via the injected
+ *      session seam). Signed-in state shows the WebID + Sign out
+ *      (signOutOfPod skill). Status via the podSignInStatus skill.
  *
- * NOTE: S5 (pod OIDC sign-in) is deliberately NOT implemented here.
- * See PLAN-mobile-v2-substrate-parity.md §M1 table row "S5 — deferred".
+ * M1-S5 (2026-05-18). Skill ids/return shapes match tasks-v0
+ * Slice 5 so the screen stays portable (same surface stoop-mobile's
+ * ProfileMineScreen consumes).
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, Pressable, ScrollView, ActivityIndicator, TextInput,
 } from 'react-native';
@@ -26,6 +30,7 @@ import { useTheme } from '@canopy/react-native/theme';
 import { useService } from '../ServiceContext.js';
 import { useSkill }   from '../lib/useSkill.js';
 import { useI18n }    from '../I18nProvider.js';
+import { useTasksAuth, TASKS_OIDC_DEFAULT_ISSUER } from '../auth/useTasksAuth.js';
 
 const STORAGE_POLICIES    = ['no-pod', 'centralised', 'decentralised', 'hybrid'];
 const UPGRADEABLE_POLICIES = ['centralised', 'decentralised', 'hybrid'];
@@ -80,6 +85,82 @@ export function PodSettingsScreen() {
   const registryStatus = activeCs?.agentRegistry
     ? 'registered'
     : (activeCs ? 'not-registered' : 'no-crew');
+
+  // ── Section 3: pod OIDC sign-in (M1-S5) ───────────────────────────
+  const completePodSignIn = useSkill('completePodSignIn');
+  const signOutOfPod      = useSkill('signOutOfPod');
+  const podSignInStatusSk = useSkill('podSignInStatus');
+  const auth = useTasksAuth({ issuer: TASKS_OIDC_DEFAULT_ISSUER });
+
+  const [signInBusy, setSignInBusy]   = useState(false);
+  const [signInError, setSignInError] = useState(null);
+  const [signInState, setSignInState] = useState({ signedIn: false, webid: null });
+
+  const refreshSignInStatus = useCallback(async () => {
+    if (!podSignInStatusSk?.call) return;
+    try {
+      const r = await podSignInStatusSk.call({});
+      setSignInState({
+        signedIn: !!r?.signedIn,
+        webid:    r?.webid ?? null,
+      });
+    } catch { /* read-only; ignore transient errors */ }
+  }, [podSignInStatusSk]);
+
+  useEffect(() => {
+    // Reflect any existing pod attachment + the live ServiceContext
+    // podStatus (hook-driven attachPod path keeps the shared holder
+    // in sync, so the skill agrees).
+    if (svc?.podStatus?.signedIn) {
+      setSignInState({ signedIn: true, webid: svc.podStatus.webid ?? null });
+    } else {
+      refreshSignInStatus();
+    }
+  }, [svc?.podStatus?.signedIn, svc?.podStatus?.webid, refreshSignInStatus]);
+
+  const onPodSignIn = useCallback(async () => {
+    if (!auth?.ready || signInBusy) return;
+    setSignInBusy(true);
+    setSignInError(null);
+    try {
+      const tokens = await auth.signIn();
+      if (!tokens?.accessToken) {
+        setSignInError(t('mobile.pod_settings.signin_cancelled', 'Sign-in was cancelled.'));
+        return;
+      }
+      // The shared podSignIn.js orchestration (via the
+      // completePodSignIn skill) adopts the tokens onto the injected
+      // OidcSessionRN, derives the pod root, builds a SolidPodSource,
+      // and attaches it to the bundle cache.
+      const r = await completePodSignIn.call({ tokens });
+      if (r?.ok === false || r?.error) {
+        setSignInError(r?.error ?? 'sign-in failed');
+        return;
+      }
+      await refreshSignInStatus();
+    } catch (err) {
+      setSignInError(err?.message ?? String(err));
+    } finally {
+      setSignInBusy(false);
+    }
+  }, [auth, signInBusy, completePodSignIn, refreshSignInStatus, t]);
+
+  const onPodSignOut = useCallback(async () => {
+    if (signInBusy) return;
+    setSignInBusy(true);
+    setSignInError(null);
+    try {
+      await signOutOfPod.call({});
+      // Keep ServiceContext's pod plumbing in sync (detach inner +
+      // clear the OidcSessionRN it holds).
+      try { await svc?.detachPod?.(); } catch { /* best-effort */ }
+      setSignInState({ signedIn: false, webid: null });
+    } catch (err) {
+      setSignInError(err?.message ?? String(err));
+    } finally {
+      setSignInBusy(false);
+    }
+  }, [signInBusy, signOutOfPod, svc]);
 
   return (
     <ScrollView
@@ -256,32 +337,80 @@ export function PodSettingsScreen() {
           'are both available.')}
       </Text>
 
-      {/* ── Section 3: Pod sign-in (S5 stub) ─────────────────────── */}
+      {/* ── Section 3: Pod sign-in (M1-S5) ───────────────────────── */}
       <SectionHeader title={t('mobile.pod_settings.section_signin', 'Solid pod sign-in')} />
       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm, marginBottom: SPACING.md, lineHeight: 20 }}>
         {t('mobile.pod_settings.signin_body',
           'Signing in to a Solid pod lets your tasks sync across devices via your ' +
           'personal data store. Optional — Tasks works fully offline.')}
       </Text>
-      <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs, marginBottom: SPACING.md }}>
-        {t('mobile.pod_settings.signin_coming_soon',
-          'Pod sign-in (S5) is coming in the next slice.')}
-      </Text>
-      <Pressable
-        disabled
-        accessibilityRole="button"
-        accessibilityLabel="pod-settings-signin-stub"
-        style={{
-          paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
-          borderRadius: RADII.sm, borderWidth: 1, borderColor: COLORS.border,
-          backgroundColor: COLORS.surfaceMuted, alignSelf: 'flex-start',
-          opacity: 0.5,
-        }}
-      >
-        <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
-          {t('mobile.pod_settings.signin_cta', 'Sign in to Solid pod')}
+
+      {signInState.signedIn ? (
+        <>
+          <Row
+            label={t('mobile.pod_settings.signin_webid', 'Signed in as')}
+            value={signInState.webid ?? t('mobile.pod_settings.signin_webid_unknown', '(unknown WebID)')}
+          />
+          <Pressable
+            onPress={onPodSignOut}
+            disabled={signInBusy}
+            accessibilityRole="button"
+            accessibilityLabel="pod-settings-signout"
+            style={{
+              paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
+              borderRadius: RADII.sm, borderWidth: 1, borderColor: COLORS.border,
+              backgroundColor: COLORS.surface, alignSelf: 'flex-start',
+              marginTop: SPACING.md,
+            }}
+          >
+            {signInBusy ? (
+              <ActivityIndicator color={COLORS.text} />
+            ) : (
+              <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm }}>
+                {t('mobile.pod_settings.signout_cta', 'Sign out of pod')}
+              </Text>
+            )}
+          </Pressable>
+        </>
+      ) : (
+        <Pressable
+          onPress={onPodSignIn}
+          disabled={!auth?.ready || signInBusy}
+          accessibilityRole="button"
+          accessibilityLabel="pod-settings-signin"
+          style={({ pressed }) => [
+            {
+              paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
+              borderRadius: RADII.sm,
+              backgroundColor: (auth?.ready && !signInBusy) ? COLORS.primary : COLORS.surfaceMuted,
+              alignSelf: 'flex-start',
+            },
+            pressed && auth?.ready && !signInBusy && { opacity: 0.85 },
+          ]}
+        >
+          {signInBusy ? (
+            <ActivityIndicator color={COLORS.textInverse} />
+          ) : (
+            <Text style={{
+              color: (auth?.ready && !signInBusy) ? COLORS.textInverse : COLORS.textMuted,
+              fontSize: FONT_SIZES.sm, fontWeight: '600',
+            }}>
+              {t('mobile.pod_settings.signin_cta', 'Sign in to Solid pod')}
+            </Text>
+          )}
+        </Pressable>
+      )}
+
+      {signInError ? (
+        <Text style={{ color: COLORS.danger, fontSize: FONT_SIZES.sm, marginTop: SPACING.md }}>
+          {signInError}
         </Text>
-      </Pressable>
+      ) : null}
+      {auth?.lastError ? (
+        <Text style={{ color: COLORS.danger, fontSize: FONT_SIZES.xs, marginTop: SPACING.sm }}>
+          {String(auth.lastError?.message ?? auth.lastError)}
+        </Text>
+      ) : null}
     </ScrollView>
   );
 }
