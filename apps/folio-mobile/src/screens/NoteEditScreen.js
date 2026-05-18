@@ -123,6 +123,16 @@ export function NoteEditScreen() {
         placeholderTextColor="#5c6377"
         textAlignVertical="top"
       />
+      {relPath && (
+        <Pressable
+          onPress={() => navigation.navigate('Versions', { relPath })}
+          style={{ paddingVertical: 10, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#1c2030' }}
+          accessibilityRole="button"
+          accessibilityLabel="open-version-history"
+        >
+          <Text style={{ color: '#9bcfff', fontSize: 13, fontWeight: '600' }}>Version history</Text>
+        </Pressable>
+      )}
       {error && (
         <View style={s.errorBox}>
           <Text style={s.errorText}>{error?.message ?? String(error)}</Text>
