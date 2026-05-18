@@ -356,6 +356,32 @@ field). **Leave as-is (already consistent / deliberate exception):**
     decentralised end-to-end (member A's item on A's pod, member B
     follows the `embeds` ref, ACP/cap-token interplay) — gated, like
     Phase 2 (user arranging 2 pods).
+- **Platform parity (web ≡ mobile) — done + audited 2026-05-18.**
+  Principle (user): every app's web & mobile must be equally strong;
+  neither is "primitive" (saved memory `feedback-platform-parity`).
+  - **FIXED** (`4b95611`): the pod-attach activation was mobile-only
+    (`ServiceContext.attachPod`); web's `podSignIn.completePodSignIn`
+    just did `attachInner` → web never ran routing/provisioning.
+    Extracted ONE device-independent `apps/stoop/src/lib/
+    attachPodToBundle.js` (`attachPodToBundle`/`detachPodFromBundle`;
+    derives identity/agentInfo/crewId from the bundle) — BOTH mobile
+    `ServiceContext` and desktop `podSignIn`
+    (completePodSignIn/signOutOfPod) route through it. apps/stoop
+    556/556, stoop-mobile 908/908, no-pod byte-neutral. **⇒ the
+    2-pod decentralised / cross-pod test can run on PC web.**
+  - **Focused Stoop web⇄mobile scan (2026-05-18):** otherwise
+    strong parity — skills are shared code (`buildSkills` on both
+    web `cluster.js`/`bin` + mobile `ServiceContext`); UI maps ~1:1
+    (every mobile screen has a `web/*.html`); issuer picker on BOTH
+    (web sign-in.html Phase 52.15.4 + mobile `<IssuerPicker>`). No
+    other obvious asymmetry found. NOTE the 3.3c embed-walk
+    render-wiring is missing on **both** platforms (a both-sides
+    gap, not an asymmetry) — already tracked above.
+  - **Tracked follow-up (own initiative):** a thorough *per-feature
+    behavioural* web⇄mobile audit for every repo app (Stoop, Folio,
+    Tasks, Household) — enforce the parity principle going forward;
+    not done here (scoped Stoop pod-path + a surface scan only).
+
 - **Phase 4 — strip diagnostics, full verify, stage commits.** Remove
   `[oidc-dx]`/`[pod-dx]`. Full `vitest` sweep. Stage the separate
   commit units (OIDC fix already device-verified; Metro preset; core
