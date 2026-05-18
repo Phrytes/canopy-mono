@@ -25,6 +25,36 @@
         carries the role the admin assigned.
       </p>
 
+      <div id="issue-block" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+        <h3 style="margin-top: 0;" data-i18n="onboard.issue_heading">Invite someone (crew admin)</h3>
+        <p class="hint" data-i18n="onboard.issue_intro">
+          Generate a single-use invite for your crew, then share the payload below out-of-band. The recipient pastes it into the form underneath.
+        </p>
+        <label>
+          <span data-i18n="onboard.issue_ttl">Valid for</span>
+          <select id="issue-ttl">
+            <option value="3600000" data-i18n="onboard.issue_ttl_1h">1 hour</option>
+            <option value="86400000" selected data-i18n="onboard.issue_ttl_1d">1 day</option>
+            <option value="604800000" data-i18n="onboard.issue_ttl_7d">7 days</option>
+          </select>
+        </label>
+        <label style="margin-top: 0.6rem;">
+          <span data-i18n="onboard.issue_role">Role</span>
+          <select id="issue-role">
+            <option value="member" selected data-i18n="onboard.issue_role_member">Member</option>
+            <option value="admin" data-i18n="onboard.issue_role_admin">Admin</option>
+          </select>
+        </label>
+        <br>
+        <button id="issue-btn" type="button" style="margin-top: 1rem;" data-i18n="onboard.issue_btn">Generate invite</button>
+        <span id="issue-feedback" class="hint"></span>
+        <div id="issue-result" hidden style="margin-top: 1rem;">
+          <pre id="issue-payload" style="font-family: ui-monospace, Menlo, monospace; font-size: 0.88rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; white-space: pre-wrap; word-break: break-all;"></pre>
+          <button id="issue-copy" type="button" data-i18n="onboard.issue_copy">Copy</button>
+          <p class="hint" data-i18n="onboard.issue_share">Share this with the person joining — they paste it below.</p>
+        </div>
+      </div>
+
       <form id="invite-form" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
         <label>
           <span data-i18n="onboard.invite_label">Invite payload</span>
@@ -72,6 +102,32 @@
     import { callSkill, getActor } from '/app.js';
 
     document.getElementById('actor').textContent = await getActor();
+
+    // Parity with tasks-mobile OnboardIssueScreen: web admins can now
+    // generate a single-use invite (issueInvite skill already existed;
+    // web had no affordance for it). Payload is raw JSON — exactly
+    // what the redeem form below accepts.
+    document.getElementById('issue-btn').addEventListener('click', async () => {
+      const fb = document.getElementById('issue-feedback');
+      fb.textContent = 'Generating…';
+      const ttlMs = Number(document.getElementById('issue-ttl').value);
+      const role  = document.getElementById('issue-role').value;
+      try {
+        const r = await callSkill('issueInvite', { ttlMs, role });
+        if (r?.error) { fb.textContent = `Error: ${r.error}`; return; }
+        fb.textContent = 'Invite generated.';
+        document.getElementById('issue-result').hidden = false;
+        document.getElementById('issue-payload').textContent = JSON.stringify(r.invite);
+      } catch (err) {
+        fb.textContent = `Error: ${err.message ?? err}`;
+      }
+    });
+    document.getElementById('issue-copy').addEventListener('click', async () => {
+      const txt = document.getElementById('issue-payload').textContent;
+      const fb = document.getElementById('issue-feedback');
+      try { await navigator.clipboard.writeText(txt); fb.textContent = 'Copied.'; }
+      catch { fb.textContent = 'Copy failed — select + copy manually.'; }
+    });
 
     function parseInvitePayload(raw) {
       const text = raw.trim();
