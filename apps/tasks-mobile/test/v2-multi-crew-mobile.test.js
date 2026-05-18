@@ -292,6 +292,7 @@ describe('M2 — substrate-mirror fan-out is wired through shared skills', () =>
     }
     // Regardless: crew core state stays intact (best-effort contract).
     expect(cs.crewId).toBe('crew-alpha');
-    expect(cs._podCtx).toBeNull();
+    // M4: _podCtx is pre-populated (classify/reverse loaded; inactive).
+    expect(cs._podCtx?.active).toBe(false);
   });
 });

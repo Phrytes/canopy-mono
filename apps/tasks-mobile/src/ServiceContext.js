@@ -71,6 +71,7 @@ import {
 import { buildLocalStoreBundle } from './lib/buildLocalStoreBundle.js';
 import { buildCrewState }        from './lib/buildCrewState.js';
 import { buildPodSignInSkillsMobile } from './lib/podSignInSkillsMobile.js';
+import { attachTasksBundle, detachTasksBundle } from '@canopy-app/tasks-v0/lib/attachTasksBundle';
 
 const ServiceContext = createContext(null);
 
@@ -200,7 +201,7 @@ export function ServiceProvider({ children, boot = {} }) {
     registryRef.current?.setActiveId(crewId).catch(() => {});
   }, []);
 
-  // ── Pod attachment (Phase 41.15) ──────────────────────────────────
+  // ── Pod attachment (Phase 41.15 + M4 depth uplift) ────────────────
   const attachPod = useCallback(async ({ tokens, podRoot } = {}) => {
     if (!tokens || typeof tokens !== 'object') {
       throw new Error('attachPod: tokens required');
@@ -224,7 +225,29 @@ export function ServiceProvider({ children, boot = {} }) {
 
     const fetchFn = session.getAuthenticatedFetch();
     const source  = new SolidPodSource({ podUrl: podRoot, fetch: fetchFn });
-    await bundle.cache.attachInner(source);
+
+    // M4: device-independent pod-attach activation — the SAME helper
+    // tasks-v0's podSignIn.completePodSignIn calls. Wires setAnchor +
+    // _podCtx (classify/reverse) + cache.attachInner so routing/
+    // provisioning behave identically on web and mobile (platform-parity
+    // principle, mirror of stoop commit 11a269a). Best-effort inside;
+    // never blocks local-first use (pod-independence.md).
+    //
+    // The active crew's crewId is used for routing; when Tasks attaches
+    // the pod at the bundle (device) level, we pass the active crew id
+    // so _podCtx routes that crew's data. Multiple crews can re-attach
+    // if needed via the shared pathMap (crewId-parameterised rules).
+    const activeId = activeCrewId ?? crewsRef.current.keys().next()?.value ?? null;
+    await attachTasksBundle({
+      bundle:    { cache: bundle.cache, _podCtx: bundle._podCtx ?? null,
+                   podRouting: bundle.podRouting ?? null, pseudoPod: bundle.pseudoPod ?? null,
+                   substrateDeviceId: bundle.substrateDeviceId ?? null },
+      source,
+      podRoot,
+      webid:     session.webid ?? tokens.webid ?? null,
+      fetch:     fetchFn,
+      crewId:    activeId,
+    });
 
     podSessionRef.current = session;
     // M1-S5: keep the shared podSignIn.js holder in sync so the
@@ -238,10 +261,14 @@ export function ServiceProvider({ children, boot = {} }) {
       webid: session.webid ?? tokens.webid ?? null,
       podRoot,
     });
-  }, []);
+  }, [activeCrewId]);
 
   const detachPod = useCallback(async () => {
     const bundle = localStoreBundleRef.current;
+    // M4: deactivate routing (_podCtx.active = false + revert anchor).
+    try {
+      detachTasksBundle({ bundle: { _podCtx: bundle?._podCtx ?? null, podRouting: bundle?.podRouting ?? null } });
+    } catch { /* swallow */ }
     try { await bundle?.cache?.attachInner?.(null); } catch { /* swallow */ }
     if (podSessionRef.current) {
       try { await podSessionRef.current.logout(); } catch { /* swallow */ }

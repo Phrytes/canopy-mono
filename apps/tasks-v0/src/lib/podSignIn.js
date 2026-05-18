@@ -54,6 +54,7 @@
 
 import { SolidPodSource } from '@canopy/core';
 import { createSolidAuthNode } from '@canopy/oidc-session';
+import { attachTasksBundle, detachTasksBundle } from './attachTasksBundle.js';
 
 /** Lazily build a vault for OIDC token storage. */
 function defaultVault() {
@@ -178,13 +179,41 @@ export async function completePodSignIn({
   const inner = dataSourceFactory
     ? dataSourceFactory({ podUrl: podRoot, fetch: fetchFn })
     : new SolidPodSource({ podUrl: podRoot, fetch: fetchFn });
-  await crew.dataSource.attachInner(inner);
+
+  // M4: device-independent pod-attach activation — the SAME helper
+  // tasks-mobile's ServiceContext.attachPod calls. Wires setAnchor +
+  // _podCtx (classify/reverse) + cache.attachInner so routing/
+  // provisioning behave identically on web and mobile (platform-parity
+  // principle, mirror of stoop commit 11a269a).
+  //
+  // `crew` here is a `{dataSource: CachingDataSource, …}` shaped holder
+  // — it maps to `bundle.cache` in the attachTasksBundle contract.
+  // We adapt: pass `cache: crew.dataSource` as the bundle so the helper
+  // calls `crew.dataSource.attachInner(inner)`.
+  const bundleProxy = {
+    cache:             crew.dataSource,
+    _podCtx:           crew._podCtx     ?? null,
+    podRouting:        crew.podRouting  ?? null,
+    pseudoPod:         crew.pseudoPod   ?? null,
+    substrateDeviceId: crew.substrateDeviceId ?? null,
+    crewId:            crew.crewId      ?? null,
+  };
+  await attachTasksBundle({
+    bundle: bundleProxy,
+    source: inner,
+    podRoot,
+    webid:  info?.webid ?? oidc.webid ?? null,
+    fetch:  fetchFn,
+    crewId: crew.crewId ?? null,
+  });
 
   return { ok: true, webid: info?.webid ?? oidc.webid ?? null, podRoot };
 }
 
 /** Detach inner + clear OIDC session. Local cache is preserved. */
 export async function signOutOfPod({ crew }) {
+  // M4: deactivate routing (_podCtx.active = false + revert anchor).
+  detachTasksBundle({ bundle: { _podCtx: crew?._podCtx ?? null, podRouting: crew?.podRouting ?? null } });
   if (crew?.dataSource?.attachInner) await crew.dataSource.attachInner(null);
   if (crew?.oidcSession?.logout) {
     try { await crew.oidcSession.logout(); } catch { /* best-effort */ }

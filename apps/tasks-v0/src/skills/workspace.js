@@ -28,7 +28,7 @@
 
 import { defineSkill } from '@canopy/core';
 
-import { computeStatus as itemStoreComputeStatus } from '@canopy/item-store';
+import { computeStatus as itemStoreComputeStatus, treeOf as itemStoreTreeOf, createCrossPodRefResolver } from '@canopy/item-store';
 import { treeOf } from '../dag-tree.js';
 import { effectiveStatus, unmetDeps } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';
@@ -122,6 +122,70 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
       return { items: mastered };
     }, {
       description: 'Open tasks where the caller is the master.',
+    }),
+
+    /**
+     * getItemTree({itemId, crewId?}) — M4 Phase 3.3c decentralised
+     * cross-pod read path.
+     *
+     * Walks the task's `embeds`/`dependencies` graph via item-store's
+     * `treeOf`, resolving the 3 canonical cross-pod ref shapes
+     * (`urn:dec:item:` → local, `pseudo-pod://` → pseudo-pod ring,
+     * `http(s)://` → another member's pod) through
+     * `createCrossPodRefResolver`. Permission failures surface as
+     * `{source:'placeholder', reason:'PERMISSION_DENIED'}` nodes (the
+     * cross-pod-refs.md three-tier render fallback), never throwing.
+     *
+     * Agent-side by design: Tasks web + mobile are both thin A2A
+     * clients, so the walk lives here and serves BOTH equally — one
+     * device-independent path (the platform-parity principle). Mirror
+     * of Stoop's `getItemTree` skill (commit `a2685c6`).
+     *
+     * Tasks stores `embeds` at the top level on the task item (unlike
+     * Stoop's `source.embeds` shape). Both are bridged here for
+     * forward-compatibility.
+     */
+    defineSkill('getItemTree', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew) return { error: 'crewId required' };
+      const a = argsFromParts(parts);
+      if (typeof a.itemId !== 'string' || !a.itemId) return { error: 'itemId required' };
+
+      // Bridge both embeds shapes: top-level (Tasks canonical) and
+      // source.embeds (Stoop-originated items embedded by reference).
+      const getItem = async (id) => {
+        const it = await crew.itemStore.getById(id).catch(() => null);
+        if (!it) return null;
+        return {
+          ...it,
+          embeds:       it.embeds       ?? it.source?.embeds       ?? [],
+          dependencies: it.dependencies ?? it.source?.dependencies ?? [],
+        };
+      };
+
+      const pseudoPodRead = typeof crew.pseudoPod?.read === 'function'
+        ? (ref) => crew.pseudoPod.read(ref)
+        : undefined;
+
+      const resolveExternalRef = createCrossPodRefResolver({
+        getItem,
+        pseudoPodRead,
+        // V1 public fetch — ACP-protected refs return 401/403 →
+        // PERMISSION_DENIED placeholder (the designed 3-tier render).
+        podFetch: (url) => fetch(url, {
+          headers: { Accept: 'application/json, text/turtle;q=0.5' },
+        }),
+      });
+
+      try {
+        const tree = await itemStoreTreeOf({ rootId: a.itemId, getItem, resolveExternalRef });
+        return { tree };
+      } catch (err) {
+        return { error: err?.message ?? String(err) };
+      }
+    }, {
+      description: 'Walk a task\'s embeds/deps tree, materialising cross-pod refs (M4 Phase 3.3c decentralised read path).',
+      visibility:  'authenticated',
     }),
   ];
 }
