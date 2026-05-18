@@ -6,8 +6,12 @@ set -euo pipefail
 SRC="$(cd "$(dirname "$0")" && pwd)"
 DEST="$(dirname "$SRC")/site-publiek"
 
-# Bestanden die NOOIT publiek mogen.
-INTERN=( "intern-planning.html" "content/intern-planning.js" )
+# Bestanden/mappen die NOOIT publiek mogen. oud/ = de oude site (lokaal
+# behouden, niet online); content_alt*/ + instructie_inpluggen*.md zijn
+# interne auteurs-/bronartefacten.
+INTERN=( "intern-planning.html" "content/intern-planning.js" \
+         "oud" "content_alt" "content_alt_update" \
+         "instructie_inpluggen.md" "instructie_inpluggen_aanvulling.md" )
 
 echo "Bron : $SRC"
 echo "Doel : $DEST"
@@ -30,10 +34,15 @@ fi
 # Kopieer alles, sluit interne + meta-bestanden uit.
 ( cd "$SRC" && find . \
     -path ./.git -prune -o \
+    -path ./oud -prune -o \
+    -path ./content_alt -prune -o \
+    -path ./content_alt_update -prune -o \
     -name 'intern-planning.html' -prune -o \
     -name 'intern-planning.js' -prune -o \
+    -name 'instructie_inpluggen*.md' -prune -o \
     -name 'maak-publieke-kopie.sh' -prune -o \
     -name 'README.md' -prune -o \
+    -name '.verify.cjs' -prune -o \
     -type f -print ) | while read -r f; do
   mkdir -p "$DEST/$(dirname "$f")"
   cp "$SRC/$f" "$DEST/$f"
