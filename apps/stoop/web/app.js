@@ -450,7 +450,7 @@ export function renderPostMenu(item, { onMute, onReport, onAddContact } = {}) {
 }
 
 /** Render the requester's own requests + claim-accept controls. */
-export function renderMyItems(ul, items, { onAccept, onCancel }) {
+export function renderMyItems(ul, items, { onAccept, onCancel, onMarkReturned } = {}) {
   ul.innerHTML = '';
   if (items.length === 0) {
     ul.innerHTML = '<li class="empty">You haven\'t posted any open requests.</li>';
@@ -465,6 +465,16 @@ export function renderMyItems(ul, items, { onAccept, onCancel }) {
     cancel.textContent = 'Cancel';
     cancel.addEventListener('click', () => onCancel(item.id));
     actions.appendChild(cancel);
+
+    // Parity with stoop-mobile ItemDetailScreen: an open lend can be
+    // marked returned by its author (closes the lending loop on web).
+    if (item.kind === 'lend' && !item.completedAt && typeof onMarkReturned === 'function') {
+      const ret = document.createElement('button');
+      ret.className = 'ghost';
+      ret.textContent = t('mine.mark_returned', 'Markeer als teruggebracht');
+      ret.addEventListener('click', () => onMarkReturned(item.id));
+      actions.appendChild(ret);
+    }
 
     li.innerHTML = `
       <div class="text">${escapeHtml(item.text ?? '')}</div>
