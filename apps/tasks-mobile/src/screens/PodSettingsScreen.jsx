@@ -8,16 +8,24 @@
  *   1. Storage policy — current policy display + upgrade row
  *      (one-way, no downgrade). Calls `setCrewStoragePolicy`.
  *   2. Agent-registry status — reads `activeCs.agentRegistry`.
- *   3. Pod sign-in card — M1-S5. PKCE via the useTasksAuth hook
- *      (proven stoop-mobile RN pattern), then the completePodSignIn
- *      skill adopts the tokens + attaches the pod (shared
- *      apps/tasks-v0 podSignIn.js orchestration via the injected
- *      session seam). Signed-in state shows the WebID + Sign out
- *      (signOutOfPod skill). Status via the podSignInStatus skill.
+ *   3. Pod sign-in card — M1-S5. Status display + entry point.
+ *      The actual PKCE OAuth runs on the dedicated PodSignInScreen
+ *      (the proven stoop-mobile RN pattern — a separate screen owns
+ *      the `useTasksAuth` hook so the expo-auth-session TS chain
+ *      stays off this screen's module-parse graph, mirroring why
+ *      PodSignInScreen exists). This card NAVIGATES there to sign
+ *      in; status + sign-out use the registered skills
+ *      (`podSignInStatus` / `signOutOfPod`) whose ids/return shapes
+ *      match tasks-v0 Slice 5 (same surface stoop-mobile's
+ *      ProfileMineScreen consumes). Sign-in completion still flows
+ *      through the shared apps/tasks-v0 podSignIn.js orchestration
+ *      via the injected-session seam (PodSignInScreen →
+ *      svc.attachPod, which keeps the skill's status holder synced).
  *
- * M1-S5 (2026-05-18). Skill ids/return shapes match tasks-v0
- * Slice 5 so the screen stays portable (same surface stoop-mobile's
- * ProfileMineScreen consumes).
+ * M1-S5 (2026-05-18); S5 parse-fix (2026-05-18) — dropped the inline
+ * `useTasksAuth` import (it transitively pulls expo-auth-session's
+ * TypeScript, which rollup/vitest can't parse at module load);
+ * navigation to PodSignInScreen preserves identical behaviour.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -30,7 +38,7 @@ import { useTheme } from '@canopy/react-native/theme';
 import { useService } from '../ServiceContext.js';
 import { useSkill }   from '../lib/useSkill.js';
 import { useI18n }    from '../I18nProvider.js';
-import { useTasksAuth, TASKS_OIDC_DEFAULT_ISSUER } from '../auth/useTasksAuth.js';
+import { ROUTES }     from '../navigation.js';
 
 const STORAGE_POLICIES    = ['no-pod', 'centralised', 'decentralised', 'hybrid'];
 const UPGRADEABLE_POLICIES = ['centralised', 'decentralised', 'hybrid'];
@@ -87,10 +95,11 @@ export function PodSettingsScreen() {
     : (activeCs ? 'not-registered' : 'no-crew');
 
   // ── Section 3: pod OIDC sign-in (M1-S5) ───────────────────────────
-  const completePodSignIn = useSkill('completePodSignIn');
+  // The PKCE OAuth runs on the dedicated PodSignInScreen (it owns
+  // the `useTasksAuth` hook). This card shows status + routes there
+  // to sign in, and uses the registered skills for status/sign-out.
   const signOutOfPod      = useSkill('signOutOfPod');
   const podSignInStatusSk = useSkill('podSignInStatus');
-  const auth = useTasksAuth({ issuer: TASKS_OIDC_DEFAULT_ISSUER });
 
   const [signInBusy, setSignInBusy]   = useState(false);
   const [signInError, setSignInError] = useState(null);
@@ -109,8 +118,9 @@ export function PodSettingsScreen() {
 
   useEffect(() => {
     // Reflect any existing pod attachment + the live ServiceContext
-    // podStatus (hook-driven attachPod path keeps the shared holder
-    // in sync, so the skill agrees).
+    // podStatus (PodSignInScreen → svc.attachPod keeps the shared
+    // holder in sync, so the podSignInStatus skill agrees). Re-checks
+    // whenever podStatus changes (e.g. after returning from sign-in).
     if (svc?.podStatus?.signedIn) {
       setSignInState({ signedIn: true, webid: svc.podStatus.webid ?? null });
     } else {
@@ -118,32 +128,14 @@ export function PodSettingsScreen() {
     }
   }, [svc?.podStatus?.signedIn, svc?.podStatus?.webid, refreshSignInStatus]);
 
-  const onPodSignIn = useCallback(async () => {
-    if (!auth?.ready || signInBusy) return;
-    setSignInBusy(true);
-    setSignInError(null);
-    try {
-      const tokens = await auth.signIn();
-      if (!tokens?.accessToken) {
-        setSignInError(t('mobile.pod_settings.signin_cancelled', 'Sign-in was cancelled.'));
-        return;
-      }
-      // The shared podSignIn.js orchestration (via the
-      // completePodSignIn skill) adopts the tokens onto the injected
-      // OidcSessionRN, derives the pod root, builds a SolidPodSource,
-      // and attaches it to the bundle cache.
-      const r = await completePodSignIn.call({ tokens });
-      if (r?.ok === false || r?.error) {
-        setSignInError(r?.error ?? 'sign-in failed');
-        return;
-      }
-      await refreshSignInStatus();
-    } catch (err) {
-      setSignInError(err?.message ?? String(err));
-    } finally {
-      setSignInBusy(false);
-    }
-  }, [auth, signInBusy, completePodSignIn, refreshSignInStatus, t]);
+  const onPodSignIn = useCallback(() => {
+    // Navigate to the dedicated sign-in screen. It runs the PKCE
+    // flow via useTasksAuth + svc.attachPod (which syncs the shared
+    // podCrew holder so this screen's status skill reflects it on
+    // return). Same flow + shared podSignIn.js orchestration as
+    // before — just isolated to the screen that owns the hook.
+    nav.navigate(ROUTES.PodSignIn);
+  }, [nav]);
 
   const onPodSignOut = useCallback(async () => {
     if (signInBusy) return;
@@ -375,40 +367,30 @@ export function PodSettingsScreen() {
       ) : (
         <Pressable
           onPress={onPodSignIn}
-          disabled={!auth?.ready || signInBusy}
           accessibilityRole="button"
           accessibilityLabel="pod-settings-signin"
           style={({ pressed }) => [
             {
               paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
               borderRadius: RADII.sm,
-              backgroundColor: (auth?.ready && !signInBusy) ? COLORS.primary : COLORS.surfaceMuted,
+              backgroundColor: COLORS.primary,
               alignSelf: 'flex-start',
             },
-            pressed && auth?.ready && !signInBusy && { opacity: 0.85 },
+            pressed && { opacity: 0.85 },
           ]}
         >
-          {signInBusy ? (
-            <ActivityIndicator color={COLORS.textInverse} />
-          ) : (
-            <Text style={{
-              color: (auth?.ready && !signInBusy) ? COLORS.textInverse : COLORS.textMuted,
-              fontSize: FONT_SIZES.sm, fontWeight: '600',
-            }}>
-              {t('mobile.pod_settings.signin_cta', 'Sign in to Solid pod')}
-            </Text>
-          )}
+          <Text style={{
+            color: COLORS.textInverse,
+            fontSize: FONT_SIZES.sm, fontWeight: '600',
+          }}>
+            {t('mobile.pod_settings.signin_cta', 'Sign in to Solid pod')}
+          </Text>
         </Pressable>
       )}
 
       {signInError ? (
         <Text style={{ color: COLORS.danger, fontSize: FONT_SIZES.sm, marginTop: SPACING.md }}>
           {signInError}
-        </Text>
-      ) : null}
-      {auth?.lastError ? (
-        <Text style={{ color: COLORS.danger, fontSize: FONT_SIZES.xs, marginTop: SPACING.sm }}>
-          {String(auth.lastError?.message ?? auth.lastError)}
         </Text>
       ) : null}
     </ScrollView>
