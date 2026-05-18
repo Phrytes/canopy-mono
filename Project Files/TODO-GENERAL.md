@@ -327,12 +327,17 @@ field). **Leave as-is (already consistent / deliberate exception):**
     byte-neutral. Round-trips every family under real-pod AND
     pseudo-pod-ring bases. apps/stoop 547/547, stoop-mobile 908/908,
     pod-routing 69/69.
-  - **3.3b — REMAINING: cross-app type-index *enumeration*.** A read
-    helper: resolve a canonical type's container via `pod-routing` →
-    `SolidPodSource.list` → `reverseResolve` each entry → the D3
-    "any app enumerates all objects of a type regardless of
-    authoring app" path (works for centralised / own-pod;
-    substrate/pure-ish, unit-testable).
+  - **3.3b ✅ DONE 2026-05-18** — cross-app type-index enumeration.
+    **No new production code:** the Phase-1 `innerKeyMap` seam +
+    3.3a `fromInner` make `CachingDataSource.pullFromInner(
+    '<logical type prefix>')` already enumerate every object of a
+    type-keyed (app-agnostic) container regardless of authoring app,
+    re-keyed to logical `mem://` — the architecture composing as
+    designed. Locked by `apps/stoop/test/crossAppIndex.test.js`
+    (real `@canopy/local-store` CachingDataSource + real
+    classify/reverseResolve; an "other-app" item in the canonical
+    items container is listed/readable by Stoop; type isolation
+    holds). 2/2.
   - **3.3c — REMAINING (device-gated): decentralised cross-pod
     `embeds` traversal.** Follow `embeds:[{type,ref}]`
     (`conventions/cross-pod-refs.md` + `@canopy/item-store/embeds`)
