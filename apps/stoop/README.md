@@ -164,6 +164,32 @@ npm run testbed -- --admin https://id.example/admin \
                    --members https://id.example/anne,https://id.example/bob
 ```
 
+### Cross-device testing — Stoop web ⇄ phone (common step)
+
+The web launcher is **in-process only** unless you give it `--relay`.
+To test web ⇄ Android (or two machines) you need a relay both ends
+dial:
+
+```bash
+# 1. Start the relay (repo root). Prints a LAN URL to use elsewhere.
+node start-relay.js            # → ws://localhost:8787  +  ws://<LAN-IP>:8787
+#    (or: npm run relay:start)
+
+# 2. Run Stoop web pointed at the relay's LAN URL:
+cd apps/stoop
+npm run ui -- --actor https://id.example/you --group buurt-test \
+              --port 8080 --relay ws://<LAN-IP>:8787
+
+# 3. On the phone: Settings → "Relay-server" → enter the SAME
+#    ws://<LAN-IP>:8787, then create/join the group.
+```
+
+`--relay` attaches a `RelayTransport` alongside the in-process
+`InternalTransport` (same wiring mobile uses) so the two reach each
+other. Same-LAN phone↔phone also works over mDNS with no relay; web
+always needs `--relay` for cross-device. The relay is a dumb
+`nacl.box`-encrypted broker — it never sees plaintext.
+
 V2 multi-process bring-up (relay-backed, two devices) is documented
 in
 [`Project Files/coding-plans/H5-V2-resume.md`](../../Project%20Files/coding-plans/H5-V2-resume.md);
