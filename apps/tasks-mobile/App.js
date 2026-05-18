@@ -80,6 +80,8 @@ import { PrivacyScreen }        from './src/screens/PrivacyScreen.jsx';
 import { EditSkillsScreen }     from './src/screens/EditSkillsScreen.jsx';
 import { CadenceOverridesScreen } from './src/screens/CadenceOverridesScreen.jsx';
 import { ChatThreadScreen }     from './src/screens/ChatThreadScreen.jsx';
+import { CreateCrewScreen }     from './src/screens/CreateCrewScreen.jsx';   // M1-S2
+import { PodSettingsScreen }    from './src/screens/PodSettingsScreen.jsx';  // M1-S4
 import { CrewSwitcher }         from './src/components/CrewSwitcher.jsx';
 import { MainMenuProvider, MainMenuButton } from './src/components/MainMenu.jsx';
 import { useInboxBadge }        from './src/lib/useInboxBadge.js';
@@ -320,6 +322,12 @@ function BootGate() {
                       options={{ headerShown: true, title: 'Cadence overrides' }} />
         <Stack.Screen name={ROUTES.ChatThread}     component={ChatThreadScreen}
                       options={{ headerShown: true, title: 'Chat' }} />
+        {/* M1-S2 — full wizard with storage-policy picker */}
+        <Stack.Screen name={ROUTES.CreateCrew}    component={CreateCrewScreen}
+                      options={{ presentation: 'modal', headerShown: true, title: 'New crew' }} />
+        {/* M1-S4 — pod & storage settings */}
+        <Stack.Screen name={ROUTES.PodSettings}   component={PodSettingsScreen}
+                      options={{ headerShown: true, title: 'Pod & storage' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

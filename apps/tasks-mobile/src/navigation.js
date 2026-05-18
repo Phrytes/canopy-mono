@@ -63,4 +63,10 @@ export const ROUTES = Object.freeze({
 
   // Phase 41.18.4 — Appeal flow + chat-thread surface (parity completion).
   ChatThread:        'ChatThread',
+
+  // M1-S2 — full create-crew wizard (storage-policy picker).
+  CreateCrew:        'CreateCrew',
+
+  // M1-S4 — Pod & storage settings screen.
+  PodSettings:       'PodSettings',
 });
