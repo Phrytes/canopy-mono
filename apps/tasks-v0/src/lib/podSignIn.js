@@ -29,6 +29,27 @@
  * runs one crew per process today so per-crew session-state is fine;
  * when multi-crew runtime lands (TODO-GENERAL §"Tasks V2"), each
  * crew gets its own session slot.
+ *
+ * ── Session-injection seam (Tasks V2 Slice 5 / mobile S5, 2026-05-18) ──
+ *
+ * The default OIDC session is the Node browser-redirect
+ * `createSolidAuthNode` (web path — UNCHANGED). React Native cannot
+ * use it (`@inrupt/solid-client-authn-browser` needs `window`), and
+ * its RN equivalent (`@canopy/oidc-session-rn`) acquires tokens via a
+ * hook-driven PKCE flow + `adoptTokens(tokens)` rather than
+ * `start()`/`handleCallback()`. So an OPTIONAL `sessionFactory`
+ * argument may be threaded through all four operations to inject the
+ * device-specific session — mirrors the existing `dataSourceFactory`
+ * seam in `completePodSignIn`. When omitted, behaviour is
+ * byte-identical to before (lazy `createSolidAuthNode`).
+ *
+ * `completePodSignIn` additionally accepts an alternative `tokens`
+ * input: when the caller already holds OIDC tokens (the RN hook
+ * path), it adopts them onto the (injected) session instead of
+ * running `handleCallback(callbackUrl)`. The shareable post-auth
+ * orchestration — `derivePodRoot` → `SolidPodSource` →
+ * `dataSource.attachInner` → status/sign-out — stays common to both
+ * platforms. Web callers pass `callbackUrl` exactly as before.
  */
 
 import { SolidPodSource } from '@canopy/core';
@@ -44,9 +65,23 @@ function defaultVault() {
   };
 }
 
-function ensureSession(crew) {
+/**
+ * Ensure `crew.oidcSession` exists, building it via the default Node
+ * factory unless an injected `sessionFactory` is supplied.
+ *
+ * @param {object} crew
+ * @param {(opts: {vault: object, clientName: string}) => object} [sessionFactory]
+ *   Optional. When provided, used INSTEAD of `createSolidAuthNode`
+ *   to construct the per-crew session. The default (no factory) path
+ *   is unchanged — same lazy `createSolidAuthNode({vault, clientName})`
+ *   call the web app has always used.
+ */
+function ensureSession(crew, sessionFactory) {
   if (!crew.oidcSession) {
-    crew.oidcSession = createSolidAuthNode({
+    const make = typeof sessionFactory === 'function'
+      ? sessionFactory
+      : createSolidAuthNode;
+    crew.oidcSession = make({
       vault: crew.oidcVault ?? defaultVault(),
       clientName: 'Tasks',
     });
@@ -59,14 +94,14 @@ function ensureSession(crew) {
  * `redirectUrl` is the IdP authorize URL the browser should
  * navigate to.
  */
-export async function startPodSignIn({ crew, issuer, redirectUrl }) {
+export async function startPodSignIn({ crew, issuer, redirectUrl, sessionFactory }) {
   if (!crew?.dataSource || typeof crew.dataSource.attachInner !== 'function') {
     return { ok: false, error: 'crew missing CachingDataSource (was cache: false?)' };
   }
   if (!issuer)      return { ok: false, error: 'issuer required' };
   if (!redirectUrl) return { ok: false, error: 'redirectUrl required' };
 
-  const oidc = ensureSession(crew);
+  const oidc = ensureSession(crew, sessionFactory);
   try {
     const r = await oidc.start({ issuer, redirectUrl });
     return { ok: true, redirectUrl: r.redirectUrl };
@@ -78,20 +113,58 @@ export async function startPodSignIn({ crew, issuer, redirectUrl }) {
 /**
  * Phase 2 of sign-in. Completes the OIDC dance + attaches a
  * pod-backed DataSource to the crew's CachingDataSource.
+ *
+ * Two mutually-exclusive auth-completion inputs:
+ *   - `callbackUrl` (web / Node default): runs
+ *     `oidc.handleCallback(callbackUrl)` on the existing session
+ *     created by `startPodSignIn`. UNCHANGED behaviour.
+ *   - `tokens` (RN path): the caller already ran the PKCE flow (the
+ *     `@canopy/oidc-session-rn` hook) and holds tokens. We adopt
+ *     them onto the (optionally injected) session. `startPodSignIn`
+ *     need not have run first in this mode.
+ *
+ * @param {object}   args.crew
+ * @param {string}   [args.callbackUrl]        web path
+ * @param {object}   [args.tokens]             RN path (adoptTokens)
+ * @param {Function} [args.dataSourceFactory]  existing seam (unchanged)
+ * @param {Function} [args.sessionFactory]     session-injection seam
  */
-export async function completePodSignIn({ crew, callbackUrl, dataSourceFactory }) {
+export async function completePodSignIn({
+  crew, callbackUrl, tokens, dataSourceFactory, sessionFactory,
+}) {
   if (!crew?.dataSource || typeof crew.dataSource.attachInner !== 'function') {
     return { ok: false, error: 'crew missing CachingDataSource (was cache: false?)' };
   }
-  if (!crew?.oidcSession) {
-    return { ok: false, error: 'no sign-in in progress; call startPodSignIn first' };
-  }
-  const oidc = crew.oidcSession;
+
+  let oidc;
   let info;
-  try {
-    info = await oidc.handleCallback(callbackUrl);
-  } catch (err) {
-    return { ok: false, error: err?.message ?? String(err) };
+  if (tokens) {
+    // RN path — adopt pre-acquired tokens onto the (injected)
+    // session. ensureSession honours an injected sessionFactory; the
+    // RN caller injects an `OidcSessionRN`-shaped session whose
+    // `adoptTokens` persists the bearer token.
+    oidc = ensureSession(crew, sessionFactory);
+    if (typeof oidc.adoptTokens !== 'function') {
+      return { ok: false, error: 'session does not support adoptTokens (tokens path needs an RN-style session)' };
+    }
+    try {
+      await oidc.adoptTokens(tokens);
+    } catch (err) {
+      return { ok: false, error: err?.message ?? String(err) };
+    }
+    info = { webid: tokens.webid ?? oidc.webid ?? null };
+  } else {
+    // Web path — UNCHANGED. Requires a session started by
+    // startPodSignIn, then handleCallback(callbackUrl).
+    if (!crew?.oidcSession) {
+      return { ok: false, error: 'no sign-in in progress; call startPodSignIn first' };
+    }
+    oidc = crew.oidcSession;
+    try {
+      info = await oidc.handleCallback(callbackUrl);
+    } catch (err) {
+      return { ok: false, error: err?.message ?? String(err) };
+    }
   }
   if (!oidc.isAuthenticated()) {
     return { ok: false, error: 'callback succeeded but session not authenticated' };
