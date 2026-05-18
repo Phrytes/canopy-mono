@@ -730,3 +730,62 @@ function pollForAttachment(modal, itemId, attId) {
   setTimeout(tick, 1200);
   return () => { stopped = true; };
 }
+
+/* ────────────────────────────────────────────────────────────
+ * Structural nav links
+ *
+ * The web UI's `<nav>` is hardcoded + duplicated across ~16 static
+ * pages, so a per-page-only "create group / group" link drifts and
+ * re-opens the web⇄mobile parity gap (mobile reaches CreateGroup from
+ * Welcome + Settings). app.js is imported by every nav page, so
+ * augmenting the nav here once closes it structurally for all pages.
+ * Idempotent; no-op when there is no nav. Plain text to match the
+ * surrounding (pre-i18n) hardcoded nav, which has not been migrated.
+ * ──────────────────────────────────────────────────────────── */
+export async function ensureNavLinks() {
+  const nav = document.querySelector('header nav');
+  if (!nav) return;
+  const firstLink = nav.querySelector('a');
+  if (!firstLink) return;
+
+  let groupHref = '/group.html';
+  const cur = new URLSearchParams(location.search);
+  const curGid = cur.get('id') ?? cur.get('groupId');
+  if (curGid) {
+    groupHref = `/group.html?id=${encodeURIComponent(curGid)}`;
+  } else {
+    try {
+      const res = await fetch('/groups.json');
+      if (res.ok) {
+        const groups = await res.json();
+        if (Array.isArray(groups) && groups.length === 1 && groups[0]?.groupId) {
+          groupHref = `/group.html?id=${encodeURIComponent(groups[0].groupId)}`;
+        }
+      }
+    } catch { /* single-group launch has no groups.json — plain link */ }
+  }
+
+  // Insert in order so the nav reads: Buurt, Groep, Nieuwe groep, …
+  const want = [
+    { match: '/group.html',        href: groupHref,           label: 'Groep' },
+    { match: '/create-group.html', href: '/create-group.html', label: 'Nieuwe groep' },
+  ];
+  let anchor = firstLink;
+  for (const { match, href, label } of want) {
+    if (nav.querySelector(`a[href^="${match}"]`)) continue; // idempotent
+    const a = document.createElement('a');
+    a.href = href;
+    a.textContent = label;
+    if (location.pathname === match) a.className = 'active';
+    anchor.insertAdjacentElement('afterend', a);
+    anchor = a;
+  }
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { ensureNavLinks(); });
+  } else {
+    ensureNavLinks();
+  }
+}

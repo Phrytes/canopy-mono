@@ -91,6 +91,7 @@
         <h3 style="margin-top: 0;">Membership-code</h3>
         <div id="code-status" class="hint">Aan het laden…</div>
         <code id="code-display" hidden></code>
+        <div id="code-qr" style="margin: 0.6rem 0;"></div>
         <p id="expiry-line" class="hint" style="margin-top: 0.6rem;"></p>
 
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem;">
@@ -138,6 +139,7 @@
 
   <script type="module">
     import { callSkill, getActor, mountGroupSwitcher, initI18n, applyI18n, t } from '/app.js';
+    import { renderQrInto, inviteQrPayload } from '/lib/qr.js';
 
     await initI18n();
     applyI18n();
@@ -221,6 +223,8 @@
       const expiry   = document.getElementById('expiry-line');
       const copyBtn  = document.getElementById('copy-code');
       const rotateBtn= document.getElementById('rotate-now');
+      const qr       = document.getElementById('code-qr');
+      qr.innerHTML = '';
 
       try {
         const r = await callSkill('getCurrentMembershipCode', { groupId });
@@ -246,6 +250,13 @@
         status.textContent = `Modus: ${r.keyRotationMode ?? '?'}`;
         display.hidden = false;
         display.textContent = r.code;
+        try {
+          renderQrInto(
+            qr,
+            inviteQrPayload({ groupId, code: r.code, expiresAt: r.expiresAt }),
+            { ecc: 'M', scale: 5 },
+          );
+        } catch { /* QR is a convenience; the text code above still works */ }
         expiry.innerHTML = expiryLabel(r.expiresAt);
         copyBtn.hidden = false;
 

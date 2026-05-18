@@ -154,6 +154,8 @@
         <h3 data-i18n="create_group.result_heading">Groep aangemaakt</h3>
         <p data-i18n="create_group.result_intro">De eerste membership-code is hieronder — geef 'm <strong>buiten Stoop om</strong> aan de eerste leden:</p>
         <pre id="create-code" style="font-family: ui-monospace, Menlo, monospace; font-size: 1.1rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem;"></pre>
+        <div id="create-qr" style="margin: 0.8rem 0;"></div>
+        <p class="hint" id="create-qr-hint" data-i18n="create_group.qr_hint">Of laat een nieuw lid deze QR scannen met de Stoop-app.</p>
         <p class="hint" id="create-expiry"></p>
         <p class="hint" data-i18n="create_group.result_footer">Je kunt 'm later opnieuw bekijken op de groep-pagina.</p>
       </div>
@@ -162,6 +164,7 @@
 
   <script type="module">
     import { callSkill, getActor, initI18n, applyI18n, t } from '/app.js';
+    import { renderQrInto, inviteQrPayload } from '/lib/qr.js';
 
     await initI18n();
     applyI18n();
@@ -198,6 +201,7 @@
       const rotationDays = Number(document.getElementById('g-rotation-days').value) || 30;
       const storagePolicy = document.querySelector('input[name="storage-policy"]:checked')?.value || 'no-pod';
       const groupPodUri = document.getElementById('g-pod-uri').value.trim();
+      const groupName = document.getElementById('g-name').value.trim();
       try {
         const r = await callSkill('createGroupV2', {
           groupId: document.getElementById('g-id').value.trim(),
@@ -215,6 +219,13 @@
             .replace('{groupId}', r.groupId);
           document.getElementById('create-result').hidden = false;
           document.getElementById('create-code').textContent = r.code;
+          try {
+            renderQrInto(
+              document.getElementById('create-qr'),
+              inviteQrPayload({ groupId: r.groupId, name: groupName, code: r.code, expiresAt: r.expiresAt }),
+              { ecc: 'M', scale: 5 },
+            );
+          } catch { /* QR is a convenience; the text code above still works */ }
           const modeLabel = keyRotationMode === 'admin-only'
             ? t('create_group.mode_admin_only', 'alleen admins delen de code uit')
             : t('create_group.mode_peer',       'iedereen mag de code doorgeven');
