@@ -134,6 +134,19 @@
           <span id="storage-upgrade-status" class="hint"></span>
         </div>
       </div>
+
+      <div class="code-card" id="leave-card" style="border-color: var(--warn, #b91c1c);">
+        <h3 style="margin-top: 0;" data-i18n="group.leave_heading">Groep verlaten</h3>
+        <p class="hint" data-i18n="group.leave_intro">
+          Je stopt met deze groep. Je kunt later opnieuw toetreden met een nieuwe code.
+        </p>
+        <label style="display: flex; gap: 0.4rem; align-items: center; margin: 0.5rem 0;">
+          <input id="leave-delete-posts" type="checkbox">
+          <span data-i18n="group.leave_delete_posts">Ook mijn posts in deze groep verwijderen</span>
+        </label>
+        <button id="leave-btn" type="button" data-i18n="group.leave_btn">Verlaat groep</button>
+        <span id="leave-status" class="hint"></span>
+      </div>
     </section>
   </main>
 
@@ -370,6 +383,26 @@
         }
         status.textContent = t('group.storage_upgraded', 'Opslag bijgewerkt.');
         await refreshStorage();
+      } catch (err) {
+        status.textContent = `${t('common.error', 'Fout')}: ${err.message ?? err}`;
+      }
+    });
+
+    // Parity with stoop-mobile GroupScreen — leave the group (web
+    // previously had no affordance for this).
+    document.getElementById('leave-btn').addEventListener('click', async () => {
+      const status = document.getElementById('leave-status');
+      const deletePosts = document.getElementById('leave-delete-posts').checked;
+      const msg = deletePosts
+        ? t('group.leave_confirm_delete', 'Groep verlaten én je posts hier verwijderen? Dit kan niet ongedaan worden.')
+        : t('group.leave_confirm', 'Deze groep verlaten?');
+      if (!confirm(msg)) return;
+      status.textContent = t('group.leaving', 'Bezig…');
+      try {
+        const r = await callSkill('leaveGroup', { groupId, deletePosts });
+        if (r?.error) { status.textContent = `${t('common.error', 'Fout')}: ${r.error}`; return; }
+        status.textContent = t('group.left', 'Je hebt de groep verlaten.');
+        setTimeout(() => { location.href = '/'; }, 1200);
       } catch (err) {
         status.textContent = `${t('common.error', 'Fout')}: ${err.message ?? err}`;
       }

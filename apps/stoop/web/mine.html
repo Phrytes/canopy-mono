@@ -51,6 +51,10 @@
           await callSkill('cancelRequest', { requestId });
           await refresh();
         },
+        onMarkReturned: async (requestId) => {
+          await callSkill('markReturned', { requestId });
+          await refresh();
+        },
       });
     }
     await refresh();
