@@ -180,6 +180,35 @@ module.exports = withCanopyPreset({
           type:     'sourceFile',
         };
       }
+      // M1-S3 substrate helpers + M2-S8 multi-crew onboarding —
+      // shared device-independent paths (platform parity, NOT mobile
+      // forks). The deeper `/lib/substrateStack` MUST precede `/lib`
+      // so the longest prefix wins (same trap as the vitest aliases).
+      if (moduleName.startsWith('@canopy-app/tasks-v0/lib/substrateStack')) {
+        return {
+          filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/lib/substrateStack.js'),
+          type:     'sourceFile',
+        };
+      }
+      if (moduleName.startsWith('@canopy-app/tasks-v0/substrateMirror')) {
+        return {
+          filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/substrateMirror.js'),
+          type:     'sourceFile',
+        };
+      }
+      if (moduleName.startsWith('@canopy-app/tasks-v0/multiCrewOnboarding')) {
+        return {
+          filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/skills/multiCrewOnboarding.js'),
+          type:     'sourceFile',
+        };
+      }
+      if (moduleName.startsWith('@canopy-app/tasks-v0/lib/')) {
+        const sub = moduleName.slice('@canopy-app/tasks-v0/lib/'.length);
+        return {
+          filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/lib', sub + '.js'),
+          type:     'sourceFile',
+        };
+      }
 
       // 41.18 follow-up — shared UI helpers live in apps/tasks-v0/src/ui/
       // per `Project Files/conventions/architectural-layering.md` §
