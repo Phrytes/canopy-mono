@@ -145,6 +145,25 @@ export function WelcomeScreen() {
         </Text>
       </Pressable>
 
+      {/* M1-S2 — full wizard with storage-policy picker */}
+      <Pressable
+        onPress={() => nav.navigate(ROUTES.CreateCrew)}
+        accessibilityRole="button"
+        accessibilityLabel="welcome-create-crew-wizard-cta"
+        style={({ pressed }) => [
+          {
+            paddingVertical: SPACING.sm,
+            alignItems: 'center',
+            marginBottom: SPACING.xs,
+          },
+          pressed && { opacity: 0.6 },
+        ]}
+      >
+        <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs }}>
+          {t('mobile.welcome.create_crew_wizard_cta', 'Create with storage policy…')}
+        </Text>
+      </Pressable>
+
       <Pressable
         onPress={() => nav.navigate(ROUTES.OnboardScan)}
         accessibilityRole="button"
