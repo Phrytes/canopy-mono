@@ -21,7 +21,8 @@
       "create_modal_body":   { "text": "You become the admin. Invite the rest with a QR after creation.", "doc": "Modal body." },
       "create_name_label":   { "text": "Crew name",           "doc": "Crew name field label." },
       "create_kind_label":   { "text": "Crew type",           "doc": "Crew kind picker label." },
-      "create_submit":       { "text": "Create + invite",     "doc": "Submit-button label." }
+      "create_submit":       { "text": "Create + invite",     "doc": "Submit-button label." },
+      "create_crew_wizard_cta": { "text": "Create with storage policy…", "doc": "M1-S2: secondary CTA linking to CreateCrewScreen." }
     },
     "scan": {
       "title":          { "text": "Scan a QR code",     "doc": "Scan screen title." },
@@ -160,7 +161,11 @@
       "force_spawn_reason_placeholder": { "text": "e.g. assignee is on leave; deadline at risk", "doc": "Force-spawn reason placeholder." },
       "submit":          { "text": "Add task",                         "doc": "Compose-submit CTA." },
       "submit_force_spawn": { "text": "Force-spawn",                   "doc": "Compose-submit CTA when forceSpawn=true." },
-      "submit_failed":   { "text": "Couldn't add: {reason}",            "doc": "Error after addTask fails." }
+      "submit_failed":   { "text": "Couldn't add: {reason}",            "doc": "Error after addTask fails." },
+      "embeds_label":            { "text": "Linked references",         "doc": "M1-S1: embeds field label." },
+      "embeds_type_placeholder": { "text": "Type (e.g. note)",          "doc": "Embed type input placeholder." },
+      "embeds_ref_placeholder":  { "text": "URI / ref",                 "doc": "Embed ref input placeholder." },
+      "embeds_add":              { "text": "+",                         "doc": "Add-embed button label." }
     },
     "my_work": {
       "title":         { "text": "My work",                         "doc": "MyWorkScreen title." },
@@ -423,7 +428,8 @@
       "pod_signed_in":     { "text": "Pod sign-in (signed in)",                                     "doc": "Link to PodSignIn (signed-in state — re-enter to manage)." },
       "signed_out_title":  { "text": "Tasks",                                                       "doc": "Header label when no identity has loaded yet." },
       "in_crew":           { "text": "In: {name}",                                                  "doc": "Header subtitle showing the active crew." },
-      "no_active_crew":    { "text": "No active crew",                                              "doc": "Header subtitle when no crew is active." }
+      "no_active_crew":    { "text": "No active crew",                                              "doc": "Header subtitle when no crew is active." },
+      "pod_settings":      { "text": "Pod & storage settings",                                      "doc": "M1-S4: Link to PodSettings." }
     },
     "metrics": {
       "title":  { "text": "Diagnostics",                                                            "doc": "MetricsScreen title." },
@@ -466,6 +472,55 @@
       "title":  { "text": "Privacy notice",                                                         "doc": "PrivacyScreen title." },
       "intro":  { "text": "Closed-beta privacy notice. Same items as the desktop /privacy.html, plus mobile-only items for camera, push, native calendar, and BLE.", "doc": "PrivacyScreen intro." },
       "empty":  { "text": "No privacy notice items.",                                               "doc": "Empty state — getPrivacyNotice returned nothing." }
+    },
+    "create_crew": {
+      "title":                   { "text": "Create a new crew",                        "doc": "M1-S2: CreateCrewScreen title." },
+      "subtitle":                { "text": "Choose a storage policy before creating.", "doc": "CreateCrewScreen subtitle." },
+      "name_label":              { "text": "Crew name",                                "doc": "Name field label." },
+      "name_placeholder":        { "text": "My household",                             "doc": "Name field placeholder." },
+      "id_label":                { "text": "Crew ID (slug)",                           "doc": "ID field label." },
+      "id_error":                { "text": "Use lowercase letters, digits and hyphens only.", "doc": "ID validation error." },
+      "kind_label":              { "text": "Crew type",                                "doc": "Kind picker label." },
+      "policy_label":            { "text": "Storage policy",                           "doc": "Policy picker section label." },
+      "policy_no-pod":           { "text": "No pod (local only)",                      "doc": "Policy option label." },
+      "policy_centralised":      { "text": "Centralised",                              "doc": "Policy option label." },
+      "policy_decentralised":    { "text": "Decentralised",                            "doc": "Policy option label." },
+      "policy_hybrid":           { "text": "Hybrid",                                   "doc": "Policy option label." },
+      "policy_hint_no-pod":      { "text": "All tasks stay on-device. No Solid pod needed.", "doc": "Policy hint." },
+      "policy_hint_centralised": { "text": "All tasks go to a single group pod. Ideal for small households.", "doc": "Policy hint." },
+      "policy_hint_decentralised": { "text": "Each member's tasks stay on their own pod. Most private.", "doc": "Policy hint." },
+      "policy_hint_hybrid":      { "text": "Personal tasks on own pod; shared tasks on group pod.", "doc": "Policy hint." },
+      "pod_uri_label":           { "text": "Group pod URI",                            "doc": "Group pod URI field label." },
+      "submit":                  { "text": "Create + invite",                          "doc": "Submit button label." }
+    },
+    "pod_settings": {
+      "section_storage":         { "text": "Storage policy",                           "doc": "M1-S4: Section header." },
+      "section_registry":        { "text": "Agent registry",                           "doc": "Section header." },
+      "section_signin":          { "text": "Solid pod sign-in",                        "doc": "Section header." },
+      "no_crew":                 { "text": "No active crew.",                          "doc": "No-crew placeholder." },
+      "current_policy":          { "text": "Current policy",                           "doc": "Row label." },
+      "group_pod_uri":           { "text": "Group pod URI",                            "doc": "Row label." },
+      "policy_no-pod":           { "text": "No pod (local only)",                      "doc": "Policy display value." },
+      "policy_centralised":      { "text": "Centralised",                              "doc": "Policy display value." },
+      "policy_decentralised":    { "text": "Decentralised",                            "doc": "Policy display value." },
+      "policy_hybrid":           { "text": "Hybrid",                                   "doc": "Policy display value." },
+      "policy_hint_no-pod":      { "text": "All tasks stay on-device. No Solid pod needed.", "doc": "Policy hint." },
+      "policy_hint_centralised": { "text": "All tasks go to a single group pod.", "doc": "Policy hint." },
+      "policy_hint_decentralised": { "text": "Each member's tasks stay on their own pod.", "doc": "Policy hint." },
+      "policy_hint_hybrid":      { "text": "Personal tasks on own pod; shared tasks on group pod.", "doc": "Policy hint." },
+      "upgrade_cta":             { "text": "Upgrade storage policy…",                  "doc": "Upgrade CTA." },
+      "upgrade_title":           { "text": "Upgrade storage policy",                   "doc": "Upgrade form title." },
+      "upgrade_hint":            { "text": "This is one-way — you cannot downgrade once a pod is attached.", "doc": "Upgrade hint." },
+      "upgrade_submit":          { "text": "Upgrade",                                  "doc": "Upgrade submit button." },
+      "upgrade_ok":              { "text": "Storage policy updated.",                   "doc": "Success message." },
+      "registry_status":         { "text": "Status",                                   "doc": "Registry row label." },
+      "registry_registered":     { "text": "Registered",                               "doc": "Registry status value." },
+      "registry_not-registered": { "text": "Not registered",                           "doc": "Registry status value." },
+      "registry_no-crew":        { "text": "No active crew",                           "doc": "Registry status value." },
+      "registry_hint":           { "text": "The agent-registry records which capabilities this device exposes (tasks, tasks-v0, crew:<id>). Registered when a meshAgent + substrate are both available.", "doc": "Registry hint." },
+      "signin_body":             { "text": "Signing in to a Solid pod lets your tasks sync across devices via your personal data store. Optional — Tasks works fully offline.", "doc": "Sign-in section body." },
+      "signin_coming_soon":      { "text": "Pod sign-in (S5) is coming in the next slice.", "doc": "S5 coming-soon note." },
+      "signin_cta":              { "text": "Sign in to Solid pod",                      "doc": "Sign-in stub CTA (disabled)." }
     }
   }
 }

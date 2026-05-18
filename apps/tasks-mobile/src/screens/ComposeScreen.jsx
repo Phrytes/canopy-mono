@@ -65,6 +65,19 @@ export function ComposeScreen() {
   const [reason,       setReason]       = useState('');
   const [error,        setError]        = useState(null);
   const [busy,         setBusy]         = useState(false);
+  // M1-S1: embeds slot — [{type, ref}, ...]
+  const [embeds,         setEmbeds]         = useState([]);
+  const [embedTypeDraft, setEmbedTypeDraft] = useState('');
+  const [embedRefDraft,  setEmbedRefDraft]  = useState('');
+
+  const onAddEmbed = useCallback(() => {
+    const type = embedTypeDraft.trim();
+    const ref  = embedRefDraft.trim();
+    if (!type || !ref) return;
+    setEmbeds((prev) => [...prev, { type, ref }]);
+    setEmbedTypeDraft('');
+    setEmbedRefDraft('');
+  }, [embedTypeDraft, embedRefDraft]);
 
   const [showDeps,   setShowDeps]   = useState(false);
   const [showMaster, setShowMaster] = useState(false);
@@ -121,8 +134,12 @@ export function ComposeScreen() {
         });
         r = propose ? await proposeSubSk.call(args) : await addSubtaskSk.call(args);
       } else {
-        // Top-level task.
-        const args = buildAddTaskArgs({ ...formBase, dependencies: deps });
+        // Top-level task — include embeds if any.
+        const args = buildAddTaskArgs({
+          ...formBase,
+          dependencies: deps,
+          ...(embeds.length > 0 ? { embeds } : {}),
+        });
         r = await addTask.call(args);
       }
       if (r?.error) {
@@ -136,7 +153,7 @@ export function ComposeScreen() {
       setBusy(false);
     }
   }, [
-    canSubmit, text, dueAt, skill, dod, deps, master, approvalMode,
+    canSubmit, text, dueAt, skill, dod, deps, embeds, master, approvalMode,
     parentTaskIdParam, forceSpawn, reason,
     addTask, addSubtaskSk, proposeSubSk, forceSpawnSk,
     open?.data, svc, nav,
@@ -283,6 +300,75 @@ export function ComposeScreen() {
           ))}
         </View>
       </Field>
+
+      {/* M1-S1: embeds slot — only on top-level tasks */}
+      {!parentTaskIdParam && !forceSpawn ? (
+        <Field label={t('mobile.compose.embeds_label', 'Linked references')}>
+          <View style={{ flexDirection: 'row', marginBottom: SPACING.sm }}>
+            <TextInput
+              value={embedTypeDraft}
+              onChangeText={setEmbedTypeDraft}
+              placeholder={t('mobile.compose.embeds_type_placeholder', 'Type (e.g. note)')}
+              placeholderTextColor={COLORS.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessibilityLabel="compose-embed-type"
+              style={[_inputStyle(COLORS, SPACING, FONT_SIZES, RADII), { flex: 1, marginRight: SPACING.xs }]}
+            />
+            <TextInput
+              value={embedRefDraft}
+              onChangeText={setEmbedRefDraft}
+              placeholder={t('mobile.compose.embeds_ref_placeholder', 'URI / ref')}
+              placeholderTextColor={COLORS.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessibilityLabel="compose-embed-ref"
+              style={[_inputStyle(COLORS, SPACING, FONT_SIZES, RADII), { flex: 2, marginRight: SPACING.xs }]}
+            />
+            <Pressable
+              onPress={onAddEmbed}
+              disabled={!embedTypeDraft.trim() || !embedRefDraft.trim()}
+              accessibilityRole="button"
+              accessibilityLabel="compose-embed-add"
+              style={{
+                paddingHorizontal: SPACING.md,
+                justifyContent: 'center',
+                borderRadius: RADII.sm,
+                backgroundColor: (embedTypeDraft.trim() && embedRefDraft.trim())
+                  ? COLORS.primary : COLORS.surfaceMuted,
+              }}
+            >
+              <Text style={{
+                color: (embedTypeDraft.trim() && embedRefDraft.trim())
+                  ? COLORS.textInverse : COLORS.textMuted,
+                fontWeight: '600',
+              }}>
+                {t('mobile.compose.embeds_add', '+')}
+              </Text>
+            </Pressable>
+          </View>
+          {embeds.map((em, idx) => (
+            <View key={idx} style={{
+              flexDirection: 'row', alignItems: 'center',
+              backgroundColor: COLORS.surfaceMuted,
+              borderRadius: RADII.sm, paddingHorizontal: SPACING.sm,
+              paddingVertical: SPACING.xs, marginBottom: SPACING.xs,
+            }}>
+              <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.xs, flex: 1 }}>
+                {em.type}: {em.ref}
+              </Text>
+              <Pressable
+                onPress={() => setEmbeds((prev) => prev.filter((_, i) => i !== idx))}
+                accessibilityRole="button"
+                accessibilityLabel={`compose-embed-remove-${idx}`}
+                style={{ paddingLeft: SPACING.xs }}
+              >
+                <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>✕</Text>
+              </Pressable>
+            </View>
+          ))}
+        </Field>
+      ) : null}
 
       {forceSpawn ? (
         <Field label={t('mobile.compose.force_spawn_reason_label')} required>
