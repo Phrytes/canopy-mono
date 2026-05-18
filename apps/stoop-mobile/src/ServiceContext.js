@@ -43,8 +43,7 @@ import {
 import { buildBootstrapBundle }              from './lib/bootstrapBundle.js';
 import { getRelayUrl }                       from './lib/relayUrl.js';
 import { buildSkills }                       from '@canopy-app/stoop';
-import { classify as _podClassify, reverseResolve as _podReverse } from '@canopy-app/stoop/lib/podPathMap';
-import { ensurePodProvisioned }              from '@canopy-app/stoop/lib/existingPodProvisioner';
+import { attachPodToBundle, detachPodFromBundle } from '@canopy-app/stoop/lib/attachPodToBundle';
 import { buildIdentitySkills }               from '@canopy/identity-resolver';
 import { migrateOrphanedPeers }              from './lib/migrateOrphanedPeers.js';
 import { attachAppStateBridge }                  from './lib/appStateBridge.js';
@@ -593,34 +592,18 @@ export function ServiceProvider({ children, deps = {} }) {
     const source  = new SolidPodSource({ podUrl: podRoot, fetch: fetchFn });
     const webid   = session.webid ?? tokens.webid ?? null;
 
-    // Phase 2.4-activation — route the bundle's `mem://` logical keys
-    // to real pod paths via pod-routing. Best-effort: anchor /
-    // provision failure must NOT block local-first use
-    // (conventions/pod-independence.md).
-    try { bundle.podRouting?.setAnchor?.(podRoot); } catch { /* swallow */ }
-    try {
-      await ensurePodProvisioned({
-        podRoot,
-        webid,
-        fetch:     fetchFn,
-        pseudoPod: bundle.pseudoPod,
-        identity:  identityRef.current,
-        agentInfo: {
-          deviceId: bundle.substrateDeviceId ?? bundle.agent?.address ?? 'stoop-device',
-          agentUri: defaultLocalActor(identityRef.current),
-        },
-      });
-    } catch { /* ensurePodProvisioned never throws; defensive */ }
-    if (bundle._podCtx) {
-      bundle._podCtx.classify   = _podClassify;
-      bundle._podCtx.reverse    = _podReverse;   // Phase 3.3 — pull-back inverse
-      bundle._podCtx.podRouting = bundle.podRouting ?? null;
-      bundle._podCtx.crewId     = activeGroupId ?? null;
-      bundle._podCtx.vars       = {};
-      bundle._podCtx.active     = !!(bundle.podRouting && _podClassify);
-    }
-
-    await bundle.cache.attachInner(source);
+    // Device-independent pod-attach activation — the SAME helper Stoop
+    // web (`podSignIn.completePodSignIn`) calls. Best-effort inside;
+    // never blocks local-first use (conventions/pod-independence.md).
+    await attachPodToBundle({
+      bundle,
+      source,
+      podRoot,
+      webid,
+      fetch:    fetchFn,
+      identity: identityRef.current,
+      crewId:   activeGroupId ?? undefined,
+    });
 
     setPodSession(session);
     setPodStatus({
@@ -634,8 +617,7 @@ export function ServiceProvider({ children, deps = {} }) {
   const detachPod = useCallback(async () => {
     const slotBundle = activeGroupId ? groups.get(activeGroupId)?.bundle : null;
     const bundle = slotBundle ?? bootstrap;
-    if (bundle?._podCtx) bundle._podCtx.active = false;
-    try { bundle?.podRouting?.setAnchor?.(null); } catch { /* swallow */ }
+    detachPodFromBundle({ bundle });
     try { await bundle?.cache?.attachInner?.(null); } catch { /* swallow */ }
     if (podSession) {
       try { await podSession.logout(); } catch { /* swallow */ }
