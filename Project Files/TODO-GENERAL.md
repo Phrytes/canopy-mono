@@ -338,12 +338,24 @@ field). **Leave as-is (already consistent / deliberate exception):**
     classify/reverseResolve; an "other-app" item in the canonical
     items container is listed/readable by Stoop; type isolation
     holds). 2/2.
-  - **3.3c — REMAINING (device-gated): decentralised cross-pod
-    `embeds` traversal.** Follow `embeds:[{type,ref}]`
-    (`conventions/cross-pod-refs.md` + `@canopy/item-store/embeds`)
-    to OTHER members' pods. Biggest/most design-heavy;
-    **decentralised end-to-end needs ≥2 real pods to device-verify**
-    (gated, like Phase 2 was). Next focused chunk.
+  - **3.3c — substrate ✅ DONE 2026-05-18; wiring + device-verify
+    remaining.** `@canopy/item-store` `createCrossPodRefResolver(
+    {getItem,pseudoPodRead,podFetch})` — a ready-made
+    `resolveExternalRef` for `treeOf` dispatching the 3 canonical
+    `embeds` ref shapes (`urn:dec:item`→local; `pseudo-pod://`→
+    pseudoPodRead; `http(s)://`→podFetch). Pure; permission failure →
+    `{code:PERMISSION_DENIED}` → walker's 3-tier placeholder. Proven
+    composing with the real `treeOf` (external materialisation +
+    PERMISSION_DENIED). item-store 99/99, additive. Exported from the
+    barrel. **Remaining (next focused chunk):** (a) **app wiring** —
+    call `treeOf({…, resolveExternalRef: createCrossPodRefResolver({
+    getItem, pseudoPodRead: bundle.pseudoPod.read, podFetch:
+    <authed pod fetch> })})` at Stoop's item-render path (Stoop
+    *emits* embeds via PostComposeScreen but doesn't yet *walk* them
+    for cross-pod materialisation); (b) **≥2-pod device verify** —
+    decentralised end-to-end (member A's item on A's pod, member B
+    follows the `embeds` ref, ACP/cap-token interplay) — gated, like
+    Phase 2 (user arranging 2 pods).
 - **Phase 4 — strip diagnostics, full verify, stage commits.** Remove
   `[oidc-dx]`/`[pod-dx]`. Full `vitest` sweep. Stage the separate
   commit units (OIDC fix already device-verified; Metro preset; core
