@@ -11,7 +11,7 @@
  *        through `buildAddTaskArgs` (unchanged from tasks-v0)
  *   S2 — CreateCrewScreen uses `ROUTES.CreateCrew` (navigation key)
  *   S3 — `buildCrewState({ meshAgent })` wires substrate slots +
- *        sets `_podCtx: null` (M4 seam)
+ *        populates `_podCtx` with classify/reverse (M4 active seam)
  *   S4 — `ROUTES.PodSettings` exists; PodSettingsScreen exports correctly
  */
 
@@ -96,9 +96,14 @@ describe('M1-S3 — buildCrewState without meshAgent', () => {
     expect(cs.substrateDeviceId).toBeNull();
   });
 
-  it('_podCtx is null (M4 seam present from day-one)', async () => {
+  it('_podCtx is populated with classify/reverse from podPathMap (M4 seam)', async () => {
     const cs = await buildCrewState({ crewConfig: BASE_CREW });
-    expect(cs._podCtx).toBeNull();
+    expect(cs._podCtx).toBeTruthy();
+    expect(typeof cs._podCtx.classify).toBe('function');
+    expect(typeof cs._podCtx.reverse).toBe('function');
+    expect(cs._podCtx.active).toBe(false);   // inactive until pod attached
+    expect(cs._podCtx.podRouting).toBeNull(); // wired at attach time
+    expect(cs._podCtx.crewId).toBe('test-crew');
   });
 });
 
@@ -120,8 +125,8 @@ describe('M1-S3 — buildCrewState with stubbed meshAgent', () => {
     const cs = await buildCrewState({ crewConfig: BASE_CREW, meshAgent: agent });
     // Either it wired successfully or fell back gracefully.
     expect(cs.substrateDeviceId).toBe('pk-device-test');
-    // _podCtx remains null regardless (M4 seam).
-    expect(cs._podCtx).toBeNull();
+    // _podCtx is pre-populated with classify/reverse; inactive until pod attached.
+    expect(cs._podCtx?.active).toBe(false);
   });
 
   it('crew core state is intact regardless of substrate outcome', async () => {
@@ -133,8 +138,8 @@ describe('M1-S3 — buildCrewState with stubbed meshAgent', () => {
     // Core crew state is always present.
     expect(cs.crewId).toBe('test-crew');
     expect(cs.liveCrew.name).toBe('Test');
-    // _podCtx is always null at M1 (M4 seam).
-    expect(cs._podCtx).toBeNull();
+    // _podCtx is always populated at M4 (classify/reverse pre-loaded; inactive).
+    expect(cs._podCtx?.active).toBe(false);
     // substrateDeviceId is always set when meshAgent.address exists.
     expect(cs.substrateDeviceId).toBe('broken-test-agent');
   });

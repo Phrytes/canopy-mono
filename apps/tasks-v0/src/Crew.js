@@ -687,11 +687,24 @@ export async function createCrewAgent({
   bundle.notifyEnvelope    = tasksSubstrate?.notifyEnvelope ?? null;
   bundle.substrateDeviceId = substrateDeviceId;
   bundle._substrateStop    = tasksSubstrate?.stop ?? null;
+  // M4: wire podRouting into the localStoreBundle's _podCtx so that
+  // completePodSignIn → attachTasksBundle can activate routing at sign-in
+  // time without needing a separate ref. The classify/reverse functions
+  // are already on _podCtx from buildBundle; only podRouting is dynamic
+  // (it comes from the substrate stack, built here).
+  if (localStoreBundle?._podCtx && bundle.podRouting) {
+    localStoreBundle._podCtx.podRouting = bundle.podRouting;
+    localStoreBundle._podCtx.crewId     = localStoreBundle._podCtx.crewId ?? crew.crewId;
+  }
   // Stash on CrewState so multi-crew skill bodies can access per-crew
-  // substrate handles via bundleResolver.
+  // substrate handles via bundleResolver. M4: also stash _podCtx so
+  // completePodSignIn → attachTasksBundle can activate routing for
+  // the crew's dataSource (the shared local-store bundle's cache).
   crewState.pseudoPod      = bundle.pseudoPod;
   crewState.notifyEnvelope = bundle.notifyEnvelope;
   crewState.substrateDeviceId = substrateDeviceId;
+  crewState._podCtx        = localStoreBundle?._podCtx ?? null;
+  crewState.podRouting     = bundle.podRouting;
 
   bundle.agentRegistry = await registerAgentBundle({
     pseudoPod:    bundle.pseudoPod,

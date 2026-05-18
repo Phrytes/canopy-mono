@@ -41,6 +41,7 @@ import {
 import { buildTasksSubstrateStack }   from '@canopy-app/tasks-v0/lib/substrateStack';
 import { wireTasksSubstrateMirror }   from '@canopy-app/tasks-v0/substrateMirror';
 import { registerAgentBundle }        from '@canopy/agent-registry';
+import { classify, reverseResolve }   from '@canopy-app/tasks-v0/lib/podPathMap';
 
 /** All four §II.2 storage policies — V0 tier used here. */
 export const CREW_STORAGE_POLICIES = Object.freeze(
@@ -93,8 +94,10 @@ const KIND_DEFAULTS = Object.freeze({
  * @property {object|null} groupManager         M2-S8: per-crew GroupManager (issue/redeem invites)
  * @property {(() => Promise<object>)|null} onSpawn  M2-S8: server-side spawn hook (null on mobile)
  * @property {string} crewIdForOnboarding       M2-S8: crewId used as groupId for invites
- * @property {object|null} _podCtx              M4 seam — null until M4 fills
- *   {classify, reverse, podRouting, crewId, vars, active} (mirror of stoop c49c768)
+ * @property {object} _podCtx                   M4 — pod-routing context.
+ *   {classify, reverse, podRouting, crewId, vars, active}. classify +
+ *   reverse pre-populated from Tasks podPathMap; podRouting + active
+ *   filled by attachTasksBundle at sign-in (mirror of stoop c49c768).
  */
 
 /**
@@ -197,10 +200,21 @@ export async function buildCrewState({ crewConfig, localStoreBundle, meshAgent }
     groupManager:        null,
     onSpawn:             null,
     crewIdForOnboarding: crew.crewId,
-    // M4 forward-courtesy seam — null until M4 fills it with
-    // {classify, reverse, podRouting, crewId, vars, active}
-    // (same shape as stoop Phase 2.4-core commit c49c768).
-    _podCtx: null,
+    // M4: active pod-routing context. Populated with the Tasks
+    // podPathMap classify/reverse functions so the innerKeyMap on
+    // the shared local-store bundle can route logical keys to pod
+    // URIs when a pod is attached. Starts inactive (active:false)
+    // so no-pod operation is byte-neutral (pod-independence.md).
+    // `attachTasksBundle` (called by ServiceContext.attachPod) fills
+    // podRouting + crewId + sets active:true at sign-in time.
+    _podCtx: {
+      active:    false,
+      classify,
+      reverse:   reverseResolve,
+      podRouting: null,   // filled by attachTasksBundle at sign-in
+      crewId:    crew.crewId,
+      vars:      {},
+    },
   };
 
   // M2-S8: per-crew GroupManager for multi-crew onboarding dispatch.
@@ -237,6 +251,11 @@ export async function buildCrewState({ crewConfig, localStoreBundle, meshAgent }
       crewState.pseudoPod      = tasksSubstrate.pseudoPod;
       crewState.podRouting     = tasksSubstrate.podRouting;
       crewState.notifyEnvelope = tasksSubstrate.notifyEnvelope;
+      // M4: wire podRouting into _podCtx so attachTasksBundle can
+      // activate routing without a separate ref lookup at sign-in time.
+      if (crewState._podCtx && tasksSubstrate.podRouting) {
+        crewState._podCtx.podRouting = tasksSubstrate.podRouting;
+      }
     } catch (err) {
       console.warn('[buildCrewState] substrate stack failed:', err?.message ?? err);
     }
