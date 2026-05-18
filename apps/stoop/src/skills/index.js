@@ -40,6 +40,7 @@ import { defineSkill, validateMnemonic, mnemonicToSeed, AgentIdentity } from '@c
 import nacl from 'tweetnacl';
 import { resolve as resolveMember } from '@canopy/identity-resolver';
 import { validateCanonical } from '@canopy/item-types';
+import { treeOf, createCrossPodRefResolver } from '@canopy/item-store';
 import { validateStoopItem, intentToCanonicalDraft } from '../lib/canonicalAdapter.js';
 
 import { validateHandle } from '../lib/handle.js';
@@ -732,6 +733,63 @@ export function buildSkills({
       return { items };
     }, {
       description: 'List open requests; optional `skill` + `intent` filters.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * getItemTree({itemId})  — Phase 3.3c decentralised cross-pod read.
+     *
+     * Walks the item's `embeds`/`dependencies` graph via item-store's
+     * `treeOf`, resolving the 3 canonical cross-pod ref shapes
+     * (`urn:dec:item:` → local, `pseudo-pod://` → pseudo-pod ring,
+     * `http(s)://` → another member's pod) through
+     * `createCrossPodRefResolver`. Permission failures surface as
+     * `{source:'placeholder', reason:'PERMISSION_DENIED'}` nodes (the
+     * cross-pod-refs.md three-tier render fallback), never throwing.
+     *
+     * Agent-side by design: Stoop web + mobile are both thin A2A
+     * clients, so the walk lives here and serves BOTH equally — one
+     * device-independent path (the platform-parity principle). Stoop
+     * *emits* embeds (`postRequest`) but did not *walk* them until now.
+     */
+    defineSkill('getItemTree', async ({ parts }) => {
+      const a = dataArgs(parts);
+      if (typeof a.itemId !== 'string' || !a.itemId) return { error: 'itemId required' };
+
+      // `treeOf` reads top-level `embeds`/`dependencies`; Stoop
+      // persists them under `source.*`. Bridge both shapes.
+      const getItem = async (id) => {
+        const it = await store.getById(id);
+        if (!it) return null;
+        return {
+          ...it,
+          embeds:       it.embeds       ?? it.source?.embeds       ?? [],
+          dependencies: it.dependencies ?? it.source?.dependencies ?? [],
+        };
+      };
+
+      const pseudoPodRead = typeof bundle?.pseudoPod?.read === 'function'
+        ? (ref) => bundle.pseudoPod.read(ref)
+        : undefined;
+
+      const resolveExternalRef = createCrossPodRefResolver({
+        getItem,
+        pseudoPodRead,
+        // V1 public fetch — ACP-protected refs return 401/403 →
+        // PERMISSION_DENIED placeholder (the designed 3-tier render).
+        podFetch: (url) => fetch(url, {
+          headers: { Accept: 'application/json, text/turtle;q=0.5' },
+        }),
+      });
+
+      try {
+        const tree = await treeOf({ rootId: a.itemId, getItem, resolveExternalRef });
+        return { tree };
+      } catch (err) {
+        return { error: err?.message ?? String(err) };
+      }
+    }, {
+      description: 'Walk an item\'s embeds/deps tree, materialising cross-pod refs (Phase 3.3c decentralised read path).',
       visibility:  'authenticated',
     }),
 
