@@ -153,6 +153,12 @@ function MainMenu() {
             : t('mobile.main_menu.pod_sign_in', 'Sign in to Solid pod'),
           onPress: () => go(ROUTES.PodSignIn),
         },
+        {
+          // M1-S4 — pod & storage settings.
+          icon: 'settings-outline',
+          label: t('mobile.main_menu.pod_settings', 'Pod & storage settings'),
+          onPress: () => go(ROUTES.PodSettings),
+        },
       ],
     },
   ];
