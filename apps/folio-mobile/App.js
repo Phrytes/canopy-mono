@@ -44,6 +44,7 @@ import { NoteEditScreen }   from './src/screens/NoteEditScreen.js';
 import { ConflictsScreen }  from './src/screens/ConflictsScreen.js';
 import { ShareScreen }      from './src/screens/ShareScreen.js';
 import { SettingsScreen }   from './src/screens/SettingsScreen.js';
+import { VersionsScreen }   from './src/screens/VersionsScreen.js';
 
 class ErrorBoundary extends React.Component {
   state = { error: null };
@@ -104,6 +105,7 @@ function AppInner() {
         <Stack.Screen name="Status"    component={StatusScreen}    options={{ title: 'Folio' }} />
         <Stack.Screen name="Notes"     component={NotesListScreen} options={{ title: 'Notes' }} />
         <Stack.Screen name="NoteEdit"  component={NoteEditScreen}  options={{ title: 'Edit' }} />
+        <Stack.Screen name="Versions"  component={VersionsScreen}  options={{ title: 'History' }} />
         <Stack.Screen name="Conflicts" component={ConflictsScreen} options={{ title: 'Conflicts' }} />
         <Stack.Screen name="Share"     component={ShareScreen}     options={{ title: 'Share' }} />
         <Stack.Screen name="Settings"  component={SettingsScreen}  options={{ title: 'Settings' }} />
