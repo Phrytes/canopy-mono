@@ -51,6 +51,18 @@ export const OIDC_VAULT_KEYS = Object.freeze({
 let _sessionFactory = null;
 
 async function defaultSessionFactory() {
+  // openid-client (used internally by @inrupt/solid-client-authn-node for
+  // discovery/token/JWKS) defaults to a 3500ms HTTP timeout, which real
+  // self-hosted Solid IdPs (cold Community Solid Server) routinely exceed
+  // → "outgoing request timed out after 3500ms". Raise the global default
+  // on the same openid-client copy authn-node requires. Best-effort:
+  // never block sign-in if the knob shape changes across versions.
+  try {
+    const oc = await import('openid-client');
+    const custom = oc.custom ?? oc.default?.custom;
+    const ms = Number(process.env.OIDC_HTTP_TIMEOUT_MS) || 30000;
+    custom?.setHttpOptionsDefaults?.({ timeout: ms });
+  } catch { /* best-effort */ }
   const mod = await import('@inrupt/solid-client-authn-node');
   return new mod.Session();
 }
