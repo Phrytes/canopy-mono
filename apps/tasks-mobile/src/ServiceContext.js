@@ -117,6 +117,11 @@ export function ServiceProvider({ children, boot = {} }) {
   const localStoreBundleRef = useRef(null);
   const registryRef        = useRef(null);
   const appStateDetachRef  = useRef(null);
+  // M1-S3: keep a ref to the live meshAgent so joinCrew (called
+  // post-boot) can pass it to buildCrewState for substrate wiring.
+  // Forward-courtesy for M4: this is the same seam stoop c49c768
+  // opens to hook the per-bundle _podCtx closure.
+  const meshAgentRef        = useRef(null);
 
   const _bumpCrews = useCallback(() => setCrewsVersion((n) => n + 1), []);
 
@@ -143,6 +148,7 @@ export function ServiceProvider({ children, boot = {} }) {
     const cs = await buildCrewState({
       crewConfig,
       localStoreBundle: localStoreBundleRef.current,
+      meshAgent:        meshAgentRef.current,   // M1-S3: wire substrate
     });
     crewsRef.current.set(cs.crewId, cs);
     _rebuildAllMembers();
@@ -265,6 +271,9 @@ export function ServiceProvider({ children, boot = {} }) {
           label:            'TasksMobile',
         });
         if (cancelled) return;
+        // M1-S3: stash the agent ref so joinCrew (called post-boot)
+        // can pass it to buildCrewState for substrate wiring.
+        meshAgentRef.current = agent;
 
         // 4. Restore joined crews.
         const registry = createBundleRegistry({
@@ -277,7 +286,11 @@ export function ServiceProvider({ children, boot = {} }) {
         for (const entry of entries) {
           const cfg = entry.config ?? entry; // direct config or {crewId, config}
           if (!cfg?.crewId) continue;
-          const cs = await buildCrewState({ crewConfig: cfg, localStoreBundle: bundle });
+          const cs = await buildCrewState({
+            crewConfig:       cfg,
+            localStoreBundle: bundle,
+            meshAgent:        agent,   // M1-S3: wire substrate per crew
+          });
           crewsRef.current.set(cs.crewId, cs);
         }
         _rebuildAllMembers();
@@ -394,6 +407,10 @@ export function ServiceProvider({ children, boot = {} }) {
   // closure (which captures values at registration time).
   const activeCrewIdRef = useRef(activeCrewId);
   useEffect(() => { activeCrewIdRef.current = activeCrewId; }, [activeCrewId]);
+
+  // M1-S3: keep meshAgentRef in sync with the state value (set
+  // directly in the boot effect above; this handles hot reloads).
+  useEffect(() => { if (meshAgent) meshAgentRef.current = meshAgent; }, [meshAgent]);
 
   // ── Public value ────────────────────────────────────────────────────
   const value = useMemo(() => {
