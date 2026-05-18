@@ -153,6 +153,7 @@
 
   <script type="module">
     import { callSkill, getActor, mountGroupSwitcher, renderAvatar, initI18n, applyI18n, t } from '/app.js';
+    import { renderQrInto } from '/lib/qr.js';
 
     await initI18n();
     applyI18n();
@@ -304,9 +305,11 @@
       card.hidden = false;
       card.innerHTML = `
         <p style="margin-top: 0;">${escapeHtml(t('contacts.qr_card_intro', 'Stuur deze link / toon de QR:'))}</p>
-        <div>${escapeHtml(r.payload)}</div>
+        <div id="my-qr-svg" style="margin: 0.6rem 0;"></div>
+        <div style="word-break: break-all; font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem;">${escapeHtml(r.payload)}</div>
         <p class="hint" style="margin-top: 0.4rem;">${escapeHtml(t('contacts.qr_card_footer',
-          'Geldig tot je hem opnieuw genereert. Je kunt de link kopiëren of door een QR-renderer halen.'))}</p>`;
+          'Laat de ander deze QR scannen, of kopieer de link.'))}</p>`;
+      renderQrInto(document.getElementById('my-qr-svg'), r.payload, { ecc: 'M', scale: 5 });
     });
 
     /* ── Add via QR / paste ────────────────────────────────────── */
