@@ -23,8 +23,6 @@
  *      fields would itself be a breaking change.
  */
 
-import { validate as validateRaw } from './registry.js'; // not used — re-exported below via index.js
-
 /**
  * Adapt an item-store-shaped item to the canonical schema's wire
  * shape. Returns a NEW object — never mutates the input.
@@ -79,6 +77,3 @@ export function makeValidateCanonical(defaultRegistry) {
     return defaultRegistry.validate(adapted);
   };
 }
-
-// Re-export so deep-imports still work without us touching index.js.
-export { validateRaw };
