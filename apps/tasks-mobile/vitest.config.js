@@ -24,6 +24,11 @@ export default defineConfig({
       // + role policy. Same platform-shell pattern as folio-mobile +
       // stoop-mobile (locked 2026-05-08, see
       // Project Files/conventions/architectural-layering.md).
+      // M1-S3: substrate helpers shared via device-independent paths
+      // (platform parity — NOT mobile forks). Deep paths before barrel.
+      '@canopy-app/tasks-v0/lib/substrateStack': path.resolve(repoRoot, 'apps/tasks-v0/src/lib/substrateStack.js'),
+      '@canopy-app/tasks-v0/substrateMirror':    path.resolve(repoRoot, 'apps/tasks-v0/src/substrateMirror.js'),
+      '@canopy-app/tasks-v0/lib':                path.resolve(repoRoot, 'apps/tasks-v0/src/lib'),
       '@canopy-app/tasks-v0/MeshAgent':       path.resolve(repoRoot, 'apps/tasks-v0/src/MeshAgent.js'),
       '@canopy-app/tasks-v0/wireSkills':      path.resolve(repoRoot, 'apps/tasks-v0/src/wireSkills.js'),
       '@canopy-app/tasks-v0/bundleResolver':  path.resolve(repoRoot, 'apps/tasks-v0/src/bundleResolver.js'),
@@ -64,6 +69,10 @@ export default defineConfig({
 
       '@canopy/sync-engine-rn/react':         path.resolve(repoRoot, 'packages/sync-engine-rn/src/react/index.js'),
       '@canopy/sync-engine-rn':               path.resolve(repoRoot, 'packages/sync-engine-rn/index.js'),
+      '@canopy/agent-registry':               path.resolve(repoRoot, 'packages/agent-registry/index.js'),
+      '@canopy/pseudo-pod':                   path.resolve(repoRoot, 'packages/pseudo-pod/index.js'),
+      '@canopy/pod-routing':                  path.resolve(repoRoot, 'packages/pod-routing/index.js'),
+      '@canopy/notify-envelope':              path.resolve(repoRoot, 'packages/notify-envelope/index.js'),
       '@canopy/online-cadence':               path.resolve(repoRoot, 'packages/online-cadence/index.js'),
       '@canopy/oidc-session-rn/hook':         path.resolve(repoRoot, 'packages/oidc-session-rn/hook.js'),
       '@canopy/oidc-session-rn':              path.resolve(repoRoot, 'packages/oidc-session-rn/index.js'),

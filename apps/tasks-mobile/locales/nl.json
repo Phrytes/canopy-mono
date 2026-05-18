@@ -21,7 +21,8 @@
       "create_modal_body":   { "text": "Jij wordt de admin. Nodig daarna anderen uit met een QR.", "doc": "Modal body." },
       "create_name_label":   { "text": "Crew-naam",            "doc": "Crew name field label." },
       "create_kind_label":   { "text": "Type crew",            "doc": "Crew kind picker label." },
-      "create_submit":       { "text": "Maak + uitnodigen",    "doc": "Submit-button label." }
+      "create_submit":       { "text": "Maak + uitnodigen",    "doc": "Submit-button label." },
+      "create_crew_wizard_cta": { "text": "Aanmaken met opslagbeleid…", "doc": "M1-S2: secundaire CTA naar CreateCrewScreen." }
     },
     "scan": {
       "title":          { "text": "Scan een QR-code",     "doc": "Scan screen title." },
@@ -160,7 +161,11 @@
       "force_spawn_reason_placeholder": { "text": "bijv. assignee op vakantie; deadline in gevaar", "doc": "Force-spawn reason placeholder." },
       "submit":          { "text": "Voeg toe",                           "doc": "Compose-submit CTA." },
       "submit_force_spawn": { "text": "Forceer",                         "doc": "Compose-submit CTA when forceSpawn=true." },
-      "submit_failed":   { "text": "Toevoegen mislukt: {reason}",         "doc": "Error after addTask fails." }
+      "submit_failed":   { "text": "Toevoegen mislukt: {reason}",         "doc": "Error after addTask fails." },
+      "embeds_label":            { "text": "Gekoppelde verwijzingen",     "doc": "M1-S1: embeds veldlabel." },
+      "embeds_type_placeholder": { "text": "Type (bijv. notitie)",        "doc": "Embed type invoer placeholder." },
+      "embeds_ref_placeholder":  { "text": "URI / ref",                   "doc": "Embed ref invoer placeholder." },
+      "embeds_add":              { "text": "+",                           "doc": "Knoplabel voor embed toevoegen." }
     },
     "my_work": {
       "title":         { "text": "Mijn werk",                       "doc": "MyWorkScreen title." },
@@ -423,7 +428,8 @@
       "pod_signed_in":     { "text": "Pod-login (ingelogd)",                                        "doc": "Link to PodSignIn (signed-in state)." },
       "signed_out_title":  { "text": "Tasks",                                                       "doc": "Header label when no identity has loaded yet." },
       "in_crew":           { "text": "In: {name}",                                                  "doc": "Header subtitle showing the active crew." },
-      "no_active_crew":    { "text": "Geen actieve crew",                                           "doc": "Header subtitle when no crew is active." }
+      "no_active_crew":    { "text": "Geen actieve crew",                                           "doc": "Header subtitle when no crew is active." },
+      "pod_settings":      { "text": "Pod- en opslaginstellingen",                                  "doc": "M1-S4: Link to PodSettings." }
     },
     "metrics": {
       "title":  { "text": "Diagnostiek",                                                            "doc": "MetricsScreen title." },
@@ -466,6 +472,55 @@
       "title":  { "text": "Privacyverklaring",                                                      "doc": "PrivacyScreen title." },
       "intro":  { "text": "Closed-beta privacyverklaring. Dezelfde items als de desktop /privacy.html, plus mobiel-specifieke items voor camera, push, native agenda en BLE.", "doc": "PrivacyScreen intro." },
       "empty":  { "text": "Geen privacyverklaring-items.",                                          "doc": "Empty state — getPrivacyNotice returned nothing." }
+    },
+    "create_crew": {
+      "title":                   { "text": "Nieuwe crew aanmaken",                     "doc": "M1-S2: CreateCrewScreen titel." },
+      "subtitle":                { "text": "Kies een opslagbeleid voor aanmaken.",     "doc": "CreateCrewScreen subtitel." },
+      "name_label":              { "text": "Crewnaam",                                 "doc": "Naamveldlabel." },
+      "name_placeholder":        { "text": "Mijn huishouden",                          "doc": "Naamveld placeholder." },
+      "id_label":                { "text": "Crew-ID (slug)",                           "doc": "ID-veldlabel." },
+      "id_error":                { "text": "Gebruik alleen kleine letters, cijfers en koppeltekens.", "doc": "ID-validatiefout." },
+      "kind_label":              { "text": "Crew-type",                                "doc": "Soortkeuzerlabel." },
+      "policy_label":            { "text": "Opslagbeleid",                             "doc": "Beleidskeuzer sectielabel." },
+      "policy_no-pod":           { "text": "Geen pod (alleen lokaal)",                 "doc": "Beleidsoptie label." },
+      "policy_centralised":      { "text": "Gecentraliseerd",                          "doc": "Beleidsoptie label." },
+      "policy_decentralised":    { "text": "Gedecentraliseerd",                        "doc": "Beleidsoptie label." },
+      "policy_hybrid":           { "text": "Hybride",                                  "doc": "Beleidsoptie label." },
+      "policy_hint_no-pod":      { "text": "Alle taken blijven op het apparaat. Geen Solid-pod nodig.", "doc": "Beleidstoelichting." },
+      "policy_hint_centralised": { "text": "Alle taken gaan naar een gedeelde groepspod. Ideaal voor kleine huishoudens.", "doc": "Beleidstoelichting." },
+      "policy_hint_decentralised": { "text": "Ieders taken blijven op hun eigen pod. Meest privé.", "doc": "Beleidstoelichting." },
+      "policy_hint_hybrid":      { "text": "Persoonlijke taken op eigen pod; gedeelde taken op groepspod.", "doc": "Beleidstoelichting." },
+      "pod_uri_label":           { "text": "Groepspod-URI",                            "doc": "Groepspod-URI veldlabel." },
+      "submit":                  { "text": "Aanmaken + uitnodigen",                    "doc": "Verzendknoplabel." }
+    },
+    "pod_settings": {
+      "section_storage":         { "text": "Opslagbeleid",                             "doc": "M1-S4: Sectiekoptekst." },
+      "section_registry":        { "text": "Agent-register",                           "doc": "Sectiekoptekst." },
+      "section_signin":          { "text": "Solid-pod aanmelden",                      "doc": "Sectiekoptekst." },
+      "no_crew":                 { "text": "Geen actieve crew.",                       "doc": "Geen-crew placeholder." },
+      "current_policy":          { "text": "Huidig beleid",                            "doc": "Rijlabel." },
+      "group_pod_uri":           { "text": "Groepspod-URI",                            "doc": "Rijlabel." },
+      "policy_no-pod":           { "text": "Geen pod (alleen lokaal)",                 "doc": "Beleidsweergave waarde." },
+      "policy_centralised":      { "text": "Gecentraliseerd",                          "doc": "Beleidsweergave waarde." },
+      "policy_decentralised":    { "text": "Gedecentraliseerd",                        "doc": "Beleidsweergave waarde." },
+      "policy_hybrid":           { "text": "Hybride",                                  "doc": "Beleidsweergave waarde." },
+      "policy_hint_no-pod":      { "text": "Alle taken blijven op het apparaat. Geen Solid-pod nodig.", "doc": "Beleidstoelichting." },
+      "policy_hint_centralised": { "text": "Alle taken gaan naar een gedeelde groepspod.", "doc": "Beleidstoelichting." },
+      "policy_hint_decentralised": { "text": "Ieders taken blijven op hun eigen pod.", "doc": "Beleidstoelichting." },
+      "policy_hint_hybrid":      { "text": "Persoonlijke taken op eigen pod; gedeelde taken op groepspod.", "doc": "Beleidstoelichting." },
+      "upgrade_cta":             { "text": "Opslagbeleid upgraden…",                   "doc": "Upgrade CTA." },
+      "upgrade_title":           { "text": "Opslagbeleid upgraden",                    "doc": "Upgradeformulier titel." },
+      "upgrade_hint":            { "text": "Dit is eenrichtingsverkeer — je kunt niet downgraden als een pod is gekoppeld.", "doc": "Upgradetoelichting." },
+      "upgrade_submit":          { "text": "Upgraden",                                 "doc": "Upgrade verzendknop." },
+      "upgrade_ok":              { "text": "Opslagbeleid bijgewerkt.",                 "doc": "Succesbericht." },
+      "registry_status":         { "text": "Status",                                   "doc": "Register rijlabel." },
+      "registry_registered":     { "text": "Geregistreerd",                            "doc": "Register statuswaarde." },
+      "registry_not-registered": { "text": "Niet geregistreerd",                       "doc": "Register statuswaarde." },
+      "registry_no-crew":        { "text": "Geen actieve crew",                        "doc": "Register statuswaarde." },
+      "registry_hint":           { "text": "Het agent-register legt vast welke mogelijkheden dit apparaat biedt (tasks, tasks-v0, crew:<id>). Geregistreerd wanneer een meshAgent + substrate beschikbaar zijn.", "doc": "Registertoelichting." },
+      "signin_body":             { "text": "Aanmelden bij een Solid-pod laat je taken synchroniseren via je persoonlijke dataopslag. Optioneel — Tasks werkt volledig offline.", "doc": "Aanmeldingsectie tekst." },
+      "signin_coming_soon":      { "text": "Pod-aanmelden (S5) volgt in de volgende slice.", "doc": "S5 aankondiging." },
+      "signin_cta":              { "text": "Aanmelden bij Solid-pod",                  "doc": "Aanmelden stub CTA (uitgeschakeld)." }
     }
   }
 }

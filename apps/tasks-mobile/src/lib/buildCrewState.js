@@ -3,6 +3,13 @@
  * single-agent topology.
  *
  * Phase 41.2 (2026-05-09).
+ * M1-S1 (2026-05-18): `storage` field normalization — mirrors
+ *   `apps/tasks-v0/src/Crew.js#_normaliseStorage`. All four §II.2
+ *   policies accepted; V0 tier is the initial behaviour target.
+ * M1-S3 (2026-05-18): substrate wiring (best-effort) when a
+ *   `meshAgent` is supplied. Registers capabilities via
+ *   `@canopy/agent-registry` and wires the tasks substrate-mirror.
+ *   Forward-courtesy: `_podCtx: null` seam for M4.
  *
  * Mobile-local helper for now. The shape mirrors what
  * `apps/tasks-v0/test/v2_8-single-agent.test.js`'s test fixture
@@ -30,6 +37,14 @@ import {
   buildActorAliases,
   buildActorResolverFromMembers,
 } from '@canopy-app/tasks-v0/ui/effectiveActor';
+import { buildTasksSubstrateStack }   from '@canopy-app/tasks-v0/lib/substrateStack';
+import { wireTasksSubstrateMirror }   from '@canopy-app/tasks-v0/substrateMirror';
+import { registerAgentBundle }        from '@canopy/agent-registry';
+
+/** All four §II.2 storage policies — V0 tier used here. */
+export const CREW_STORAGE_POLICIES = Object.freeze(
+  ['no-pod', 'centralised', 'decentralised', 'hybrid'],
+);
 
 const KIND_DEFAULTS = Object.freeze({
   household:    { subtasksAdminApprovalDepth: 3 },
@@ -68,6 +83,14 @@ const KIND_DEFAULTS = Object.freeze({
  * @property {object|null} notifierChannels     wired in Phase 41.11
  * @property {(() => void)|null} onCalendarEmissionChange   wired in Phase 41.12
  * @property {(() => void)|null} onCompensationChange       wired in Phase 41.x
+ * @property {object|null} pseudoPod            M1-S3: per-crew pseudo-pod (best-effort)
+ * @property {object|null} podRouting           M1-S3: per-crew pod-routing (best-effort)
+ * @property {object|null} notifyEnvelope       M1-S3: per-crew notify-envelope (best-effort)
+ * @property {object|null} agentRegistry        M1-S3: agent-registry handle (best-effort)
+ * @property {object|null} tasksMirror          M1-S3: tasks substrate-mirror (best-effort)
+ * @property {string|null} substrateDeviceId    M1-S3: device identifier for the substrate
+ * @property {object|null} _podCtx              M4 seam — null until M4 fills
+ *   {classify, reverse, podRouting, crewId, vars, active} (mirror of stoop c49c768)
  */
 
 /**
@@ -79,13 +102,20 @@ const KIND_DEFAULTS = Object.freeze({
  *   ItemStore writes through `localStoreBundle.cache` so tasks
  *   survive restarts (per-crew rootContainer keeps isolation across
  *   crews). When omitted, an in-memory dataSource is used (tests).
+ * @param {object} [args.meshAgent]  M1-S3 — when supplied, wires the
+ *   substrate stack (pseudo-pod + pod-routing + notify-envelope) and
+ *   registers the bundle with the agent-registry. Failures are
+ *   swallowed so the crew remains functional even when the substrate
+ *   is unavailable. Forward-courtesy seam for M4 `_podCtx` closure.
  * @returns {Promise<CrewState>}
  */
-export async function buildCrewState({ crewConfig, localStoreBundle } = {}) {
+export async function buildCrewState({ crewConfig, localStoreBundle, meshAgent } = {}) {
   if (!crewConfig || typeof crewConfig.crewId !== 'string' || !crewConfig.crewId) {
     throw new TypeError('buildCrewState: crewConfig.crewId required');
   }
   const crew = _normaliseConfig(crewConfig);
+  // M1-S1: normalized storage is available on crew.storage.
+
 
   const roles = Object.fromEntries(
     crew.members.map((m) => [m.webid, m.role ?? 'member']),
@@ -145,7 +175,72 @@ export async function buildCrewState({ crewConfig, localStoreBundle } = {}) {
     notifierChannels:         null,
     onCalendarEmissionChange: null,
     onCompensationChange:     null,
+    // M1-S3: substrate slots (best-effort wiring below).
+    pseudoPod:         null,
+    podRouting:        null,
+    notifyEnvelope:    null,
+    agentRegistry:     null,
+    tasksMirror:       null,
+    substrateDeviceId: null,
+    // M4 forward-courtesy seam — null until M4 fills it with
+    // {classify, reverse, podRouting, crewId, vars, active}
+    // (same shape as stoop Phase 2.4-core commit c49c768).
+    _podCtx: null,
   };
+
+  // M1-S3: Wire the substrate stack when a meshAgent is available.
+  // Best-effort — any failure is swallowed so the crew works locally.
+  if (meshAgent) {
+    const substrateDeviceId = meshAgent.address ?? 'tasks-mobile-device';
+    crewState.substrateDeviceId = substrateDeviceId;
+
+    let tasksSubstrate = null;
+    try {
+      tasksSubstrate = buildTasksSubstrateStack({
+        agent:    meshAgent,
+        deviceId: substrateDeviceId,
+      });
+      crewState.pseudoPod      = tasksSubstrate.pseudoPod;
+      crewState.podRouting     = tasksSubstrate.podRouting;
+      crewState.notifyEnvelope = tasksSubstrate.notifyEnvelope;
+    } catch (err) {
+      console.warn('[buildCrewState] substrate stack failed:', err?.message ?? err);
+    }
+
+    // Register bundle capabilities with agent-registry.
+    if (tasksSubstrate) {
+      try {
+        const regResult = registerAgentBundle(meshAgent, {
+          capabilities: ['tasks', 'tasks-v0', `crew:${crew.crewId}`],
+          pseudoPod:    tasksSubstrate.pseudoPod,
+          podRouting:   tasksSubstrate.podRouting,
+        });
+        crewState.agentRegistry = regResult ?? true;
+      } catch (err) {
+        console.warn('[buildCrewState] registerAgentBundle failed:', err?.message ?? err);
+      }
+    }
+
+    // Wire tasks substrate-mirror for cross-device fan-out.
+    if (tasksSubstrate) {
+      try {
+        const peers = (crew.members ?? [])
+          .filter((m) => m.pubKey && m.pubKey !== (meshAgent.address ?? null))
+          .map((m) => ({ pubKey: m.pubKey }));
+        const mirror = await wireTasksSubstrateMirror({
+          itemStore:       crewState.itemStore,
+          notifyEnvelope:  tasksSubstrate.notifyEnvelope,
+          pseudoPod:       tasksSubstrate.pseudoPod,
+          crewId:          crew.crewId,
+          peers,
+          selfPubKey:      meshAgent.address ?? null,
+        });
+        crewState.tasksMirror = mirror;
+      } catch (err) {
+        console.warn('[buildCrewState] wireTasksSubstrateMirror failed:', err?.message ?? err);
+      }
+    }
+  }
 
   return crewState;
 }
@@ -161,15 +256,42 @@ function _normaliseConfig(c) {
     subtasksAdminApprovalDepth: c.subtasksAdminApprovalDepth
       ?? KIND_DEFAULTS[kind]?.subtasksAdminApprovalDepth
       ?? 3,
+    // M1-S1: §II.2 storage policy normalization. Mirrors
+    // apps/tasks-v0/src/Crew.js#_normaliseStorage.
+    storage: _normaliseStorage(c.storage),
     // Pass through other config fields so future-phase enrichment
     // sees them on liveCrew (calendarEmission, compensation,
     // availabilityHints, bot, pushPolicy, pushTokens, …).
     ...Object.fromEntries(
       Object.entries(c).filter(([k]) =>
-        !['crewId', 'name', 'kind', 'members', 'customRoles', 'subtasksAdminApprovalDepth'].includes(k),
+        !['crewId', 'name', 'kind', 'members', 'customRoles',
+          'subtasksAdminApprovalDepth', 'storage'].includes(k),
       ),
     ),
   };
+}
+
+/**
+ * Normalise the §II.2 storage field. Accepts string shorthand or
+ * structured `{policy, groupPodUri}`. Unknown policy strings fall
+ * back to `'no-pod'`.
+ *
+ * Mirrors `apps/tasks-v0/src/Crew.js#_normaliseStorage`.
+ */
+function _normaliseStorage(raw) {
+  if (raw == null) return { policy: 'no-pod', groupPodUri: null };
+  if (typeof raw === 'string') {
+    const policy = CREW_STORAGE_POLICIES.includes(raw) ? raw : 'no-pod';
+    return { policy, groupPodUri: null };
+  }
+  if (typeof raw === 'object') {
+    const policy = CREW_STORAGE_POLICIES.includes(raw.policy) ? raw.policy : 'no-pod';
+    const groupPodUri = (typeof raw.groupPodUri === 'string' && raw.groupPodUri)
+      ? raw.groupPodUri
+      : null;
+    return { policy, groupPodUri };
+  }
+  return { policy: 'no-pod', groupPodUri: null };
 }
 
 async function _memorySource() {
