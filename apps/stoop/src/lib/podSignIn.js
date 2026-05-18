@@ -29,6 +29,7 @@
 
 import { SolidPodSource } from '@canopy/core';
 import { createSolidAuthNode } from '@canopy/oidc-session';
+import { attachPodToBundle, detachPodFromBundle } from './attachPodToBundle.js';
 
 /** Lazily build a vault for OIDC token storage.  In V1.5 we can
  *  swap this for `core.VaultMemory` or a fs-backed vault per
@@ -103,13 +104,24 @@ export async function completePodSignIn({ bundle, callbackUrl, dataSourceFactory
   const inner = dataSourceFactory
     ? dataSourceFactory({ podUrl: podRoot, fetch: fetchFn })
     : new SolidPodSource({ podUrl: podRoot, fetch: fetchFn });
-  await bundle.cache.attachInner(inner);
+  // Device-independent activation — the SAME helper Stoop mobile
+  // (`ServiceContext.attachPod`) calls: setAnchor + idempotent
+  // provision + `_podCtx` (classify/reverse) + attachInner. So web ≡
+  // mobile for pod routing/provisioning (platform-parity principle).
+  await attachPodToBundle({
+    bundle,
+    source: inner,
+    podRoot,
+    webid:  info?.webid ?? oidc.webid ?? null,
+    fetch:  fetchFn,
+  });
 
   return { ok: true, webid: info?.webid ?? oidc.webid ?? null, podRoot };
 }
 
 /** Detach inner + clear OIDC session.  Local cache is preserved. */
 export async function signOutOfPod({ bundle }) {
+  detachPodFromBundle({ bundle });
   if (bundle?.cache?.attachInner) await bundle.cache.attachInner(null);
   if (bundle?.oidcSession?.logout) {
     try { await bundle.oidcSession.logout(); } catch { /* best-effort */ }
