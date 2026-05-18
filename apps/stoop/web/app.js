@@ -285,6 +285,20 @@ export function renderItems(ul, items, handlers = {}) {
       }));
     }
 
+    // Phase 3.3c — progressively materialise cross-pod embeds. The
+    // chips above are the instant + fallback view; when getItemTree
+    // (treeOf + cross-pod resolver) returns, swap in the walked tree.
+    if (item.id && Array.isArray(item.source?.embeds) && item.source.embeds.length > 0) {
+      callSkill('getItemTree', { itemId: item.id })
+        .then((r) => {
+          if (!r || !r.tree) return;
+          const walked = renderEmbedTree(r.tree);
+          const box = li.querySelector('.embeds');
+          if (box && walked) box.outerHTML = walked;
+        })
+        .catch(() => { /* keep the chips — best-effort */ });
+    }
+
     if (onMute || onReport || handlers.onAddContact) {
       const menu = renderPostMenu(item, { onMute, onReport, onAddContact: handlers.onAddContact });
       if (menu) li.appendChild(menu);
@@ -630,6 +644,48 @@ export function renderEmbedChips(item) {
     }).join('');
   if (!chips) return '';
   return `<div class="embeds">${chips}</div>`;
+}
+
+/**
+ * Phase 3.3c — render the *walked* embed tree from `getItemTree`
+ * (item-store `treeOf` + cross-pod resolver). Three-tier render
+ * (`conventions/cross-pod-refs.md`): a resolved external item shows
+ * its content; a placeholder shows a human reason (permission /
+ * missing); anything else falls back to the bare ref. Returns a
+ * `.embeds` div so it can replace the instant `renderEmbedChips`
+ * output in place.
+ */
+const _EMBED_REASON_NL = {
+  PERMISSION_DENIED: '🔒 op een andere pod — geen toegang',
+  NOT_FOUND:         'onvindbaar of verwijderd',
+  PARSE_ERROR:       'kon niet gelezen worden',
+  RESOLVE_FAILED:    'tijdelijk niet beschikbaar',
+  NO_RESOLVER:       'niet beschikbaar',
+  BAD_EMBED:         'ongeldige verwijzing',
+  CYCLE_OR_DEPTH:    'verwijzing te diep',
+};
+export function renderEmbedTree(tree) {
+  const nodes = Array.isArray(tree?.embeds) ? tree.embeds : [];
+  if (nodes.length === 0) return '';
+  const cells = nodes.map((n) => {
+    const type = escapeHtml(n?.type ?? n?.item?.type ?? 'item');
+    if (n?.source === 'external' && n.item) {
+      const snippet = truncate(
+        n.item.text ?? n.item.title ?? n.item.body ?? n.item.id ?? '', 60);
+      return `<span class="embed-chip embed-ok" title="${escapeHtml(n.ref ?? '')}">`
+           + `<span class="embed-type embed-type-${type}">${type}</span>`
+           + `<span class="embed-ref">${escapeHtml(snippet)}</span></span>`;
+    }
+    if (n?.source === 'placeholder') {
+      const why = _EMBED_REASON_NL[n.reason] ?? 'niet beschikbaar';
+      return `<span class="embed-chip embed-missing" title="${escapeHtml(n.ref ?? '')}">`
+           + `<span class="embed-type embed-type-${type}">${type}</span>`
+           + `<span class="embed-ref">${escapeHtml(why)}</span></span>`;
+    }
+    return '';
+  }).join('');
+  if (!cells) return '';
+  return `<div class="embeds">${cells}</div>`;
 }
 
 /* ── Phase 39 — Attachment rendering ─────────────────────────── */
