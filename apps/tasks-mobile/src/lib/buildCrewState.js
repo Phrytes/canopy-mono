@@ -31,6 +31,7 @@
  */
 
 import { ItemStore } from '@canopy/item-store';
+import { GroupManager } from '@canopy/core';
 import { MemberMap } from '@canopy/identity-resolver';
 import { buildStandardRolePolicy } from '@canopy-app/tasks-v0';
 import {
@@ -89,6 +90,9 @@ const KIND_DEFAULTS = Object.freeze({
  * @property {object|null} agentRegistry        M1-S3: agent-registry handle (best-effort)
  * @property {object|null} tasksMirror          M1-S3: tasks substrate-mirror (best-effort)
  * @property {string|null} substrateDeviceId    M1-S3: device identifier for the substrate
+ * @property {object|null} groupManager         M2-S8: per-crew GroupManager (issue/redeem invites)
+ * @property {(() => Promise<object>)|null} onSpawn  M2-S8: server-side spawn hook (null on mobile)
+ * @property {string} crewIdForOnboarding       M2-S8: crewId used as groupId for invites
  * @property {object|null} _podCtx              M4 seam — null until M4 fills
  *   {classify, reverse, podRouting, crewId, vars, active} (mirror of stoop c49c768)
  */
@@ -182,11 +186,41 @@ export async function buildCrewState({ crewConfig, localStoreBundle, meshAgent }
     agentRegistry:     null,
     tasksMirror:       null,
     substrateDeviceId: null,
+    // M2-S8: multi-crew onboarding-dispatch slots. Mirrors the
+    // CrewState enrichment apps/tasks-v0/src/Crew.js (lines 374–377)
+    // does for the web path. `buildMultiCrewOnboardingSkills`
+    // (registered once in ServiceContext) reads these per call to
+    // route issueInvite/redeemInvite to the right crew's GroupManager.
+    // `onSpawn` stays null on mobile — the joining device generates
+    // its own identity + passes `memberPubKey` to redeemInvite (no
+    // server-side spawn hook), same as the CLI member-join path.
+    groupManager:        null,
+    onSpawn:             null,
+    crewIdForOnboarding: crew.crewId,
     // M4 forward-courtesy seam — null until M4 fills it with
     // {classify, reverse, podRouting, crewId, vars, active}
     // (same shape as stoop Phase 2.4-core commit c49c768).
     _podCtx: null,
   };
+
+  // M2-S8: per-crew GroupManager for multi-crew onboarding dispatch.
+  // Mirrors apps/tasks-v0/src/Crew.js (line 374) — built from the
+  // same identity + vault that owns the meshAgent so issued invites
+  // are signed by the crew admin's stable key. Best-effort: a crew
+  // without a GroupManager simply can't issue/redeem invites (the
+  // onboarding skills return a structured error), but the crew is
+  // otherwise fully functional.
+  if (meshAgent) {
+    try {
+      const id    = meshAgent.identity ?? null;
+      const vault = id?.vault ?? id?._vault ?? null;
+      if (id && vault) {
+        crewState.groupManager = new GroupManager({ identity: id, vault });
+      }
+    } catch (err) {
+      console.warn('[buildCrewState] GroupManager build failed:', err?.message ?? err);
+    }
+  }
 
   // M1-S3: Wire the substrate stack when a meshAgent is available.
   // Best-effort — any failure is swallowed so the crew works locally.

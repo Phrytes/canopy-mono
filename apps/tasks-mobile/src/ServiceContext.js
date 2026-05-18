@@ -64,6 +64,9 @@ import {
 import {
   multiCrewResolver,
 } from '@canopy-app/tasks-v0/bundleResolver';
+import {
+  buildMultiCrewOnboardingSkills,
+} from '@canopy-app/tasks-v0/multiCrewOnboarding';
 
 import { buildLocalStoreBundle } from './lib/buildLocalStoreBundle.js';
 import { buildCrewState }        from './lib/buildCrewState.js';
@@ -316,6 +319,28 @@ export function ServiceProvider({ children, boot = {} }) {
             return { members: allMembersRef.current };
           },
         });
+
+        // 5b. M2-S8 — multi-crew onboarding dispatch. wireSkills
+        // does NOT register issueInvite/redeemInvite (the per-crew
+        // buildOnboardingSkills closure would last-write-wins the
+        // global registry across crews). Register the multi-crew
+        // wrapper ONCE here — same pattern as bin/tasks-ui.js's
+        // `--multi-crew` path: AFTER wireSkills, resolving the
+        // per-crew GroupManager from the CrewState (stashed by
+        // buildCrewState M2-S8) via the same multiCrewResolver.
+        // This also activates the Slice-10 live peer-roster update
+        // (redeemInvite → crew.tasksMirror.addPeer) for cross-device
+        // fan-out, since the mirror is wired in buildCrewState M1-S3.
+        try {
+          const onboardingDefs = buildMultiCrewOnboardingSkills({
+            bundleResolver: multiCrewResolver(crewsRef.current),
+          });
+          for (const def of onboardingDefs) {
+            agent.skills.register(def);
+          }
+        } catch (err) {
+          console.warn('[ServiceContext] onboarding skills not registered:', err?.message ?? err);
+        }
 
         // 6. Start.
         await agent.start();
