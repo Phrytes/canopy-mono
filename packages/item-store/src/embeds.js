@@ -149,3 +149,90 @@ function _placeholder({ id, type, ref, source, reason }) {
     embeds:   [],
   };
 }
+
+/**
+ * createCrossPodRefResolver — Phase 3.3c. A ready-made
+ * `resolveExternalRef` for {@link treeOf}, dispatching the three
+ * canonical `embeds` ref shapes (`conventions/cross-pod-refs.md`):
+ *
+ *   - `urn:dec:item:<ulid>`    → local `getItem(ulid)`
+ *   - `pseudo-pod://<dev>/…`   → injected `pseudoPodRead(ref)`
+ *   - `http(s)://…`            → injected `podFetch(ref)` (GET)
+ *
+ * This is the decentralised-crew read path: a member's item embeds
+ * a ref into ANOTHER member's pod; the walker resolves it through
+ * here. Pure — every I/O is injected. A permission failure throws
+ * `{code:'PERMISSION_DENIED'}` so the walker yields a precise
+ * placeholder (the cross-pod-refs.md three-tier render fallback);
+ * a missing ref → `null` → `NOT_FOUND` placeholder.
+ *
+ * @param {object} deps
+ * @param {(id:string)=>Promise<object|null>} [deps.getItem]
+ * @param {(ref:string)=>Promise<{bytes:*}|null>} [deps.pseudoPodRead]
+ * @param {(ref:string)=>Promise<{ok?:boolean,status?:number,text?:Function}>} [deps.podFetch]
+ * @returns {(ref:string)=>Promise<{item:object}|null>}
+ */
+export function createCrossPodRefResolver({ getItem, pseudoPodRead, podFetch } = {}) {
+  return async function resolveExternalRef(ref) {
+    if (typeof ref !== 'string' || ref.length === 0) return null;
+
+    if (ref.startsWith('urn:dec:item:')) {
+      if (typeof getItem !== 'function') return null;
+      const item = await getItem(ref.slice('urn:dec:item:'.length));
+      return item ? { item } : null;
+    }
+
+    if (ref.startsWith('pseudo-pod://')) {
+      if (typeof pseudoPodRead !== 'function') return null;
+      const rec  = await pseudoPodRead(ref);
+      const item = _parseItem(rec && rec.bytes);
+      return item ? { item } : null;
+    }
+
+    if (ref.startsWith('https://') || ref.startsWith('http://')) {
+      if (typeof podFetch !== 'function') return null;
+      const res = await podFetch(ref);
+      if (!res) return null;
+      if (res.ok === false) {
+        if (res.status === 401 || res.status === 403) {
+          throw Object.assign(new Error(`cross-pod ref forbidden: ${ref}`),
+            { code: 'PERMISSION_DENIED', status: res.status });
+        }
+        if (res.status === 404) return null;
+        throw Object.assign(new Error(`cross-pod ref failed: ${res.status}`),
+          { code: 'RESOLVE_FAILED', status: res.status });
+      }
+      const body = typeof res.text === 'function' ? await res.text() : null;
+      const item = _parseItem(body);
+      if (!item) {
+        throw Object.assign(new Error(`cross-pod ref not JSON: ${ref}`),
+          { code: 'PARSE_ERROR' });
+      }
+      return { item };
+    }
+
+    return null; // unknown scheme — NOT_FOUND placeholder
+  };
+}
+
+function _parseItem(bytes) {
+  if (bytes == null) return null;
+  let text;
+  if (typeof bytes === 'string') {
+    text = bytes;
+  } else if (typeof bytes === 'object') {
+    try { text = new TextDecoder().decode(bytes); }
+    catch {
+      try { text = Buffer.from(bytes).toString('utf8'); }
+      catch { return null; }
+    }
+  } else {
+    return null;
+  }
+  try {
+    const o = JSON.parse(text);
+    return (o && typeof o === 'object') ? o : null;
+  } catch {
+    return null;
+  }
+}
