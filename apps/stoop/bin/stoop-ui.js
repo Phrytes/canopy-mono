@@ -39,6 +39,10 @@ import {
   InternalBus,
   InternalTransport,
   RelayTransport,
+  Agent,
+  RoutingStrategy,
+  FallbackTable,
+  PeerGraph,
 } from '@canopy/core';
 import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
 import { fileURLToPath } from 'node:url';
@@ -167,9 +171,22 @@ if (isMultiGroup) {
 } else {
   const { createNeighborhoodAgent } = await import('../src/index.js');
   const bus = new InternalBus();
-  const bundle = await createNeighborhoodAgent({
+  // Build the agent WITH a RoutingStrategy (mirrors @canopy/react-native
+  // createMeshAgent). Root cause of "web never HIs the phone over the
+  // relay": without routing, Agent.transportFor() returns the
+  // in-process transport for EVERY peer (relay never selected), so
+  // hello()/sends to the phone went into the void and timed out.
+  const _peerGraph = new PeerGraph();
+  const _meshAgent = new Agent({
     identity:  id,
     transport: new InternalTransport(bus, id.pubKey),
+    peers:     _peerGraph,
+    routing:   new RoutingStrategy({ transports: new Map(), peerGraph: _peerGraph, fallbackTable: new FallbackTable() }),
+    label:     `H5-${values.actor}`,
+  });
+  const bundle = await createNeighborhoodAgent({
+    identity:  id,
+    agent:     _meshAgent,
     label:     `H5-${values.actor}`,
     skillMatch: {
       group:      values.group,
@@ -196,27 +213,29 @@ if (isMultiGroup) {
   if (relayUrl) {
     const relay = new RelayTransport({ relayUrl, identity: id });
     bundle.agent.addTransport('relay', relay);
-    // autoHello only fires on a transport `peer-discovered`, and the
-    // relay's spontaneous peer-list broadcast is easily missed here
-    // (web registers before the phone; socket flaps). RelayTransport
-    // has no 'connect' event, so periodically re-request the roster:
+    // Feed relay-discovered peers into the PeerGraph so
+    // RoutingStrategy.selectTransport resolves them to the relay
+    // (mirrors stoop-mobile agentBundle.js). enableAutoHello (below)
+    // listens on the same peer-discovered and HIs them.
+    relay.on('peer-discovered', (pk) => {
+      if (!pk || typeof pk !== 'string' || pk === id.pubKey || pk.includes(':')) return;
+      _peerGraph.upsert({ pubKey: pk, type: 'native', reachable: true }).catch(() => {});
+    });
+    // RelayTransport has no 'connect' event and the relay's spontaneous
+    // peer-list broadcast is easily missed (web registers before the
+    // phone; socket flaps). Periodically re-request the roster:
     // forgetPeer() sends {type:'peer-list'} when the socket is open
     // (no-op otherwise; '\0' drops no real peer) → relay re-emits
-    // peer-discovered → autoHello HIs the phone → handshake completes
-    // → agent.on('peer') → mirror.addPeer → postRequest fan-out fires.
-    // Also covers the phone joining late / reconnecting after a flap.
+    // peer-discovered. Also covers the phone joining late / reconnecting.
     const _pullRoster = () => { try { relay.forgetPeer('\0'); } catch { /* socket not up yet */ } };
     setTimeout(_pullRoster, 2_000).unref?.();
     setInterval(_pullRoster, 10_000).unref?.();
   }
 
-  // Auto-HI + relay peer-pull, then bridge a hello'd peer into
-  // skillMatch + the mirror's recipient set — the exact pattern
-  // stoop-mobile uses (agentBundle.js). redeemMembershipCode never
-  // announces over the network, so without this the web agent never
-  // learns the phone's key, the mirror stays empty, and no posts
-  // cross. `agent.on('peer')` fires AFTER the HI handshake, so the
-  // key is already SecurityLayer-registered (no UNKNOWN_RECIPIENT).
+  // Auto-HI on discovery (routes over the relay now that the agent has
+  // a RoutingStrategy), then bridge a hello'd peer into skillMatch +
+  // the mirror's recipient set so postRequest's fan-out reaches it —
+  // the stoop-mobile pattern (agentBundle.js).
   bundle.agent.enableAutoHello?.({ pullPeers: true });
   bundle.agent.on('peer', ({ address, pubKey }) => {
     const pk = pubKey ?? address;
