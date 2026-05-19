@@ -149,10 +149,16 @@ cd apps/stoop
 npm install
 npm test          # 378 tests across phases 3–30 + integration / web / multigroup / onboarding / testbed
 
-# Single-member quick-start (good for smoke testing the UI shell):
+# Single-group — ONE group, NO in-app switcher (smoke-testing the
+# shell only). You cannot switch or use a newly-created group without
+# relaunching. Prefer --groups below for anything beyond a smoke test.
 npm run ui -- --actor https://id.example/anne --group block-42
 
-# Multi-group dropdown:
+# Multi-group — RECOMMENDED. Header dropdown switches between the
+# listed groups (one server per group, shared identity). To use a
+# group you just created, add its id here and relaunch. (In-app
+# create/switch without relaunch — like mobile — is tracked as the
+# web⇄mobile single-agent port; not yet on web.)
 npm run ui -- --actor https://id.example/anne --groups block-42,book-club
 
 # Multi-user testbed — admin + onboarding + spawn-on-redemption.
@@ -171,11 +177,13 @@ To test web ⇄ Android (or two machines) you need a relay both ends
 dial:
 
 ```bash
-# 1. Start the relay (repo root). Prints a LAN URL to use elsewhere.
-node start-relay.js            # → ws://localhost:8787  +  ws://<LAN-IP>:8787
-#    (or: npm run relay:start)
+# 1. Start the relay (from repo root). Binds 0.0.0.0:8787 and prints
+#    its LAN URL (use that ws://<LAN-IP>:8787 in steps 2 & 3).
+node packages/relay/bin/relay.js
 
-# 2. Run Stoop web pointed at the relay's LAN URL:
+# 2. Run Stoop web pointed at the relay's LAN URL. (One group for
+#    this test → --group. The header dropdown only appears with 2+
+#    groups via --groups a,b — see "Bring it up" above.)
 cd apps/stoop
 npm run ui -- --actor https://id.example/you --group buurt-test \
               --port 8080 --relay ws://<LAN-IP>:8787

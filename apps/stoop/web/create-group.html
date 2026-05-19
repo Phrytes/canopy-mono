@@ -157,6 +157,7 @@
         <div id="create-qr" style="margin: 0.8rem 0;"></div>
         <p class="hint" id="create-qr-hint" data-i18n="create_group.qr_hint">Of laat een nieuw lid deze QR scannen met de Stoop-app.</p>
         <p class="hint" id="create-expiry"></p>
+        <p class="hint" id="create-relaunch" style="word-break: break-all;"></p>
         <p class="hint" data-i18n="create_group.result_footer">Je kunt 'm later opnieuw bekijken op de groep-pagina.</p>
       </div>
     </section>
@@ -226,6 +227,10 @@
               { ecc: 'M', scale: 5 },
             );
           } catch { /* QR is a convenience; the text code above still works */ }
+          document.getElementById('create-relaunch').textContent = t(
+            'create_group.relaunch_hint',
+            'Om deze groep nú op web te gebruiken: herstart met --groups …,{groupId} (single-group web kan een nieuwe groep niet live toevoegen — in-app create/switch zoals op de telefoon staat op de roadmap).',
+          ).replace('{groupId}', r.groupId);
           const modeLabel = keyRotationMode === 'admin-only'
             ? t('create_group.mode_admin_only', 'alleen admins delen de code uit')
             : t('create_group.mode_peer',       'iedereen mag de code doorgeven');
