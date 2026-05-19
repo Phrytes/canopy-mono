@@ -16,6 +16,8 @@ import { CALENDAR_EVENT_SCHEMA }    from './types/calendar-event.js';
 import { ANNOUNCEMENT_SCHEMA }      from './types/announcement.js';
 import { REVEAL_REQUEST_SCHEMA }    from './types/reveal-request.js';
 import { NEIGHBOURHOOD_JOB_SCHEMA } from './types/neighbourhood-job.js';
+import { VIEW_SCHEMA }              from './types/view.js';
+import { CIRCLE_SCHEMA }            from './types/circle.js';
 
 /**
  * Map of canonical name → schema. Useful for `Object.entries(...)`
@@ -38,6 +40,9 @@ export const CANONICAL_TYPES = Object.freeze({
   'announcement':       ANNOUNCEMENT_SCHEMA,
   'reveal-request':     REVEAL_REQUEST_SCHEMA,
   'neighbourhood-job':  NEIGHBOURHOOD_JOB_SCHEMA,
+  // SP-5 V0 additions (2026-05-20):
+  'view':               VIEW_SCHEMA,
+  'circle':             CIRCLE_SCHEMA,
 });
 
 /**
