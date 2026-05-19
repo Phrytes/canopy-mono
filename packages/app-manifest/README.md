@@ -70,6 +70,28 @@ interface-registry / protocol / the Hub are **P6 destination scaffolds**
 ("direction-only" today). Near-term this package stands alone; the
 composition materialises at the destination's pace.
 
+### When mounted alongside other manifests
+
+The runtime composition layer is `@canopy/manifest-host` (SP-4 V0).
+A manifest authored in isolation can collide with siblings once mounted
+into a multi-app host:
+
+- **Slash commands** declared by two apps (e.g. both mount a `/add`)
+  surface in `host.compose().collisions[]`.  The host **detects** but
+  does **not** resolve — the resolution policy is a host-level
+  decision, not a manifest concern.
+- **`systemPrompt`** is returned per-app by the host; the consumer
+  picks the composition strategy (concat / pick-primary / generic
+  preamble).  Don't write a manifest assuming yours is the only prompt
+  in the room.
+- **Inline-keyboard buttons** on items that ≥2 manifests both target
+  appear in mount-insertion order.  If your op's `surfaces.ui.label`
+  matters next to a sibling's, the host's `Potential conflicts` notes
+  document the (deferred) ordering controls.
+
+See `packages/manifest-host/README.md` § "Potential conflicts the host
+leaves to the consumer" for the full picture.
+
 ---
 
 ## Quick start
