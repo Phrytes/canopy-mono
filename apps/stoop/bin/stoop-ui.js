@@ -194,7 +194,20 @@ if (isMultiGroup) {
   // attaches a RelayTransport the same way (agentBundle.js). Without
   // this the web launcher is in-process only.
   if (relayUrl) {
-    bundle.agent.addTransport('relay', new RelayTransport({ relayUrl, identity: id }));
+    const relay = new RelayTransport({ relayUrl, identity: id });
+    bundle.agent.addTransport('relay', relay);
+    // autoHello only fires on a transport `peer-discovered`, and the
+    // relay's spontaneous peer-list broadcast is easily missed here
+    // (web registers before the phone; socket flaps). RelayTransport
+    // has no 'connect' event, so periodically re-request the roster:
+    // forgetPeer() sends {type:'peer-list'} when the socket is open
+    // (no-op otherwise; '\0' drops no real peer) → relay re-emits
+    // peer-discovered → autoHello HIs the phone → handshake completes
+    // → agent.on('peer') → mirror.addPeer → postRequest fan-out fires.
+    // Also covers the phone joining late / reconnecting after a flap.
+    const _pullRoster = () => { try { relay.forgetPeer('\0'); } catch { /* socket not up yet */ } };
+    setTimeout(_pullRoster, 2_000).unref?.();
+    setInterval(_pullRoster, 10_000).unref?.();
   }
 
   // Auto-HI + relay peer-pull, then bridge a hello'd peer into
