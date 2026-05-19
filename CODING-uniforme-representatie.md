@@ -401,60 +401,131 @@ host so any V0 contract refinements bake in first.
 
 ## SP-5 — Audience / circle substrate (one primitive, recursive)
 
-Prereq: SP-4 merged.
+> **Status: split into V0 + b (2026-05-20).**  The original recipe
+> bundled (a) canonical `view`/`circle` item types + the audience-
+> model substrate AND (b) the central pieces: `item.audience` field on
+> `@canopy/item-store`, host wiring for `defaultAudience` inheritance,
+> `ListFilter` extension for cross-circle queries, renderer audience
+> affordances.  (b) touches the central Item schema (550+ tests) and
+> needs renderWeb/renderMobile (SP-3b / SP-6) to land first for the
+> affordance work — same risk profile as SP-3b's web-UI replacement,
+> not a V0 chunk.  Split mirrors SP-3 / SP-4: **V0** = substrate +
+> canonical item types; **SP-5b** = item-store schema change + host
+> wiring + cross-circle query + renderer affordances.
 
-- **S5.1 Add `view` type to `@canopy/item-types`** (per PLAN flag #9 /
-  R6 — the `view` type does not exist yet). New file
-  `packages/item-types/src/types/view.js` registered in `canonical.js`.
-  Required fields: id, title, type (the items it lists), audience.
-  Forward-additive; legacy items not affected.
-- **S5.2 Audience field on items.** Generalise the current
-  `visibility: 'household' | role:* | 'private'` to
-  `audience: Audience = string | { kind: 'set', members: Webid[] } |
-  { kind: 'circle-ref', id: CircleId }`. The existing visibility values
-  are kept as canonical short-hands (forward-additive: existing items
-  still validate). Field lives in `@canopy/item-store` Item schema.
-- **S5.3 Circle = saved audience.** New package `@canopy/circles` (or
-  fold into agent-registry — decide during S5.3). API:
-  `circles.create({name, members}) → CircleId`, `circles.update`,
-  `circles.list`, `circles.get`. Storage: per
-  `conventions/cross-app-settings.md` + the type-keyed
-  `conventions/storage-layout.md`.
-- **S5.4 `view.defaultAudience` interpreted.** Items created via a view
-  inherit it (write-side); reads from the view are scoped to it
-  (read-side). Existing `defaultAudience` field on views (SP-0
-  accepted-not-interpreted) is now interpreted by host wiring.
-- **S5.5 Saved view = item of type `view` with its own audience.**
-  Circle-scoped view (shared with circle members), personal view
-  (audience = `{me}`), cross-circle view (scope = set of circles).
-- **S5.6 Cross-circle query.** Extend `ListFilter` (item-store) with an
-  audience/scope set; resolver walks circles + cross-pod (via the
-  already-merged Phase-3.3c cross-pod-ref resolver, R1).
-- **S5.7 Renderer additions (F-SP5-a, additive).** `renderChat` gets a
-  per-tool "shared with" hint; `renderWeb`/`renderMobile` NavModel gains
-  a per-section `defaultAudience` chip + per-item "shared with" control
-  (the §3g GUI affordance). Forward-only schema extension.
-- **S5.8 Group lifecycle as `@canopy/protocol` declaration** (optional in
-  SP-5; can be deferred to a follow-up). Membership lifecycle
-  (invite/accept/leave/role-change/revoke) defined via `defineProtocol`;
-  the data model + circles ship without it.
-- **S5.9 Gate.** Items carry an audience; `'household'/'private'`
-  regression preserved; defaultAudience inheritance works on chat + web;
-  saved-view-as-item resolves; cross-circle query returns union across
-  ≥2 circles (centralised store + decentralised cross-pod both work).
+Prereq: SP-4 V0 merged.
 
-**Possible refinements (revisable):**
-- **F-SP5-a** (above): renderer audience-affordance additions.
-- **F-SP5-b:** whether `circles` is a new package or absorbed into
-  `agent-registry` — decided during S5.3.
+### SP-5 V0 (this slice)
 
-Commit slices: S5.1 / S5.2+S5.3 / S5.4+S5.5 / S5.6 / S5.7+S5.9 / S5.8
-(optional follow-up).
-**DoD:** audience model live; saved-view-as-item works; cross-circle
-query works on the composed host (centralised + decentralised paths);
-renderer additions reflected.
-**Hand-off:** SP-11 composes SP-4 + SP-5 in the demo; SP-6 inherits the
-renderer additions.
+- **S5.1 Add `view` + `circle` canonical item types** to
+  `@canopy/item-types`.  Pure forward-additive; existing items
+  unaffected; canonical sweep test +6.
+  - `view.js`: `{id, title, itemType, filter?, audience?}` — the field
+    is `itemType` (NOT `type`, which is the discriminator); `audience`
+    is intentionally loose at the schema level (`oneOf: string |
+    object`) — `@canopy/circles` owns the normaliser.
+  - `circle.js`: `{id, name, members[], roles?}` — exports
+    `CIRCLE_ID_IS_CREW_ID_ALIAS = true` (greppable marker; see alias
+    note below).
+- **S5.2 New package `@canopy/circles`** — audience model + circles
+  substrate, one package.  F-SP5-b resolved → separate package
+  (NOT absorbed into `agent-registry`, which is correctly device-
+  focused).
+  - **Audience model** (pure helpers):
+    - `Audience = string | {kind:'set', members[]} | {kind:'circle-ref', id}
+      | {kind:'union', of[]} | {kind:'public'}` (the last is a
+      sentinel returned by `resolveAudience` rather than authored).
+    - String short-hands: `'public'` / `'private'`+`'me'` /
+      `'household'` / `'role:NAME'` / `'crew:ID'` / `'circle:ID'`.
+    - `normalizeAudience(a) → Audience` parses short-hands + validates
+      structure; unknown strings throw (silent no-op leads to
+      security-confusion bugs).
+    - `resolveAudience(a, ctx) → Promise<PUBLIC | Set<Webid>>` — ctx
+      supplies `me / householdMembers / roleMembers / getCircle(id)`.
+    - `inAudience(webid, a, ctx) → Promise<bool>`.
+  - **Circles substrate** — `createCirclesStore({itemStore})` →
+    `{create, get, list, update, addMember, removeMember}` over the
+    canonical `circle` item type.  `itemStore` is **duck-typed** (no
+    `@canopy/item-store` import); consumers inject whichever store.
+  - **Substrate-compat note:** `addItems` requires non-empty `text`;
+    `circlesStore.create` sets `text: name` for compat (a substrate
+    quirk to fix in SP-5b).
+- **S5.3 ALIAS — `circle.id ≡ task.crewId`** (recorded in three
+  places so it stays visible):
+  - JSDoc in `packages/item-types/src/types/circle.js` (greppable
+    constant `CIRCLE_ID_IS_CREW_ID_ALIAS`);
+  - "⚠ Alias note" front-matter in `packages/circles/README.md`;
+  - dedicated memory file
+    `memory/feedback-circleid-crewid-alias.md`.
+  - **Rationale:** today's tasks-v0 / pod-routing uses `crewId`; a
+    full rename is mechanical + big-blast-radius and not needed yet.
+    Aliasing the identifier space keeps V0 small while making the
+    target shape (one identifier) obvious.  Future rename = SP-5b or
+    later.
+- **S5.4 Discipline (V0):**
+  - **Zero changes** to `@canopy/item-store` schema (no
+    `item.audience` field migration yet — that's SP-5b).
+  - **Zero changes** to existing apps; no consumer wired yet (V0
+    publishes the substrate for SP-11 / first concrete consumer to
+    pick up).
+  - **Zero renderer changes** (`renderChat` / `renderWeb` /
+    `renderMobile` untouched; F-SP5-a defers to SP-5b).
+
+**Gate (V0):** new substrate ships with tests; F-SP5-b resolved
+(separate package); two canonical item types register cleanly; ZERO
+changes to `@canopy/item-store` schema; ZERO changes to existing apps.
+
+Commit slices: one slice (item-types additions + `@canopy/circles`
+package + alias notes).
+**DoD (V0):** audience model + circles substrate published with
+tests green; `view` + `circle` types registered; alias documented in
+three places.
+**Hand-off:** SP-5b lifts the model into `item-store` + apps when the
+first concrete consumer drives the schema change with real
+requirements (likely SP-11 demo).  SP-6 / SP-3b inherit renderer
+affordances when scheduled.
+
+### SP-5b — central schema + host wiring + cross-circle query (deferred)
+
+The original SP-5 recipe's central pieces, **deliberately deferred**
+on the same discipline that gated SP-3b / SP-4b:
+
+> `@canopy/item-store`'s Item schema is shared across every app
+> (household 544 tests, tasks-v0 542 tests, plus stoop / folio).  The
+> `visibility → audience` widening is forward-additive but central;
+> it deserves its own slice with explicit characterization, not a V0
+> chunk.
+
+What SP-5b would entail (when scheduled):
+- **S5b.1** — `item.audience: Audience` field on `@canopy/item-store`
+  Item schema; current `visibility: 'household' | 'private' | role:*`
+  values keep validating (string short-hands map 1:1).  Forward-
+  additive migration: old items without `audience` resolve via
+  `visibility` fallback.
+- **S5b.2** — `ListFilter.audience` accepted; resolver walks circles
+  + cross-pod via the already-merged Phase-3.3c cross-pod-ref
+  resolver.  Centralised + decentralised paths both work.
+- **S5b.3** — host wiring for `view.defaultAudience`: items created
+  through a view inherit it (write-side); reads scope to it
+  (read-side).  Saved-view-as-item resolution via the canonical
+  `view` type.
+- **S5b.4** — renderer audience affordances (F-SP5-a): `renderChat`
+  per-tool "shared with" hint; `renderWeb`/`renderMobile` NavModel
+  gains per-section `defaultAudience` chip + per-item "shared with"
+  control.  Needs SP-3b or SP-6 first for a real renderer surface to
+  add to.
+- **S5b.5 — optional follow-on:** `crewId → circleId` rename across
+  task / pod-routing code.  Mechanical; do it when the alias has
+  outlived its usefulness (probably never blocks anything, but
+  surface area cleanup).
+- **S5b.6 — optional follow-on:** group lifecycle as
+  `@canopy/protocol` declaration (S5.8 in the original recipe).
+  Membership lifecycle (invite/accept/leave/role-change/revoke).
+  Data model + circles ship without it; protocol layered on later.
+
+**Prereq for SP-5b:** SP-5 V0 merged + first concrete consumer
+(likely the SP-11 demo) so the schema change is informed by real
+requirements rather than speculation.
 
 ---
 
