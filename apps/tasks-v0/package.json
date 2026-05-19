@@ -37,6 +37,7 @@
   "dependencies": {
     "@canopy/agent-registry": "file:../../packages/agent-registry",
     "@canopy/agent-ui": "file:../../packages/agent-ui",
+    "@canopy/app-manifest": "file:../../packages/app-manifest",
     "@canopy/pseudo-pod": "file:../../packages/pseudo-pod",
     "@canopy/chat-agent": "file:../../packages/chat-agent",
     "@canopy/chat-p2p": "file:../../packages/chat-p2p",
