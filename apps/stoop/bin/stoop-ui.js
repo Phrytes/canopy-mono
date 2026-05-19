@@ -178,7 +178,11 @@ if (isMultiGroup) {
     bundle.agent.addTransport('relay', new RelayTransport({ relayUrl, identity: id }));
   }
 
-  const groupIndexJson = JSON.stringify([]);   // single-group hides the dropdown
+  // One entry: the switcher dropdown still hides (mountGroupSwitcher
+  // hides at length<=1) but the client now KNOWS the active group —
+  // so the header shows it and the "Groep" nav link auto-resolves
+  // (no manual ?id=). Closes the "which group am I in?" web gap.
+  const groupIndexJson = JSON.stringify([{ groupId: values.group }]);
 
   const ui = await mountLocalUi(bundle.agent, {
     port:             basePort,
