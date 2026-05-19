@@ -18,7 +18,23 @@
  * `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`.
  */
 
-import { validateCanonical } from '@canopy/item-types';
+import { validateCanonical, schema } from '@canopy/item-types';
+
+/**
+ * Is `kind` a valid canonical `kind` for `type`? Reads the canonical
+ * schema's enum (single source of truth — no duplicated lists).
+ * Defensive: an unknown type / missing enum → treat as valid so we
+ * never regress a write on a schema-shape surprise.
+ */
+function _canonicalKindOk(type, kind) {
+  try {
+    const en = schema?.(type)?.properties?.kind?.enum;
+    if (!Array.isArray(en)) return true;
+    return en.includes(kind);
+  } catch {
+    return true;
+  }
+}
 
 /**
  * Map a legacy Stoop item to the canonical shape. Returns `null`
@@ -120,16 +136,25 @@ export const STOOP_TYPE_MAPPING = Object.freeze({
  */
 export function intentToCanonicalDraft(intent, kindOverride) {
   if (typeof intent !== 'string' || intent.length === 0) {
-    // Legacy V0 default — no intent supplied.
-    return typeof kindOverride === 'string' && kindOverride.length > 0
+    // Legacy V0 default — no intent supplied. Only carry `kind` if it
+    // is a valid canonical request kind (else omit — a bad override
+    // must not produce a /kind enum violation).
+    return (typeof kindOverride === 'string' && kindOverride.length > 0
+            && _canonicalKindOk('request', kindOverride))
       ? { type: 'request', kind: kindOverride }
       : { type: 'request' };
   }
   const mapping = STOOP_TYPE_MAPPING[intent];
   if (mapping) {
-    const kind = (typeof kindOverride === 'string' && kindOverride.length > 0)
+    // A caller-supplied kind wins ONLY if it's valid for the mapped
+    // canonical type; otherwise fall back to the always-valid
+    // defaultKind. (Composers historically passed the UI verb as
+    // `kind`, e.g. 'ask', which is not a canonical request kind →
+    // the recurring `item-types[request]: /kind enum` warn.)
+    const wanted = (typeof kindOverride === 'string' && kindOverride.length > 0)
       ? kindOverride
       : mapping.defaultKind;
+    const kind = _canonicalKindOk(mapping.type, wanted) ? wanted : mapping.defaultKind;
     return { type: mapping.type, kind };
   }
   // Bespoke intent — pass through verbatim. The translator's
