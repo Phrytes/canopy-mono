@@ -848,10 +848,45 @@ export async function ensureNavLinks() {
   }
 }
 
+/**
+ * Show the active group in the header on every page — the web UI
+ * never surfaced "which group am I in?" (a real parity gap vs mobile,
+ * which always shows/lets you switch the group). Resolves from
+ * `?id=` or `/groups.json` (single- or multi-group launch). No-op
+ * when it can't be determined; idempotent.
+ */
+export async function ensureActiveGroupBadge() {
+  const header = document.querySelector('header');
+  if (!header || header.querySelector('.active-group')) return;
+  const cur = new URLSearchParams(location.search);
+  let gid = cur.get('id') ?? cur.get('groupId') ?? null;
+  if (!gid) {
+    try {
+      const res = await fetch('/groups.json');
+      if (res.ok) {
+        const groups = await res.json();
+        if (Array.isArray(groups) && groups.length) {
+          const active = groups.find((g) => g.url === location.origin) ?? groups[0];
+          gid = active?.groupId ?? null;
+        }
+      }
+    } catch { /* unknown — no badge */ }
+  }
+  if (!gid) return;
+  const badge = document.createElement('span');
+  badge.className = 'active-group';
+  badge.textContent = `groep: ${gid}`;
+  badge.style.cssText = 'font-size:0.85rem;color:var(--muted,#667);margin-right:0.6rem;align-self:center;';
+  const actor = header.querySelector('#actor');
+  if (actor) actor.insertAdjacentElement('beforebegin', badge);
+  else header.appendChild(badge);
+}
+
 if (typeof document !== 'undefined') {
+  const _bootHeader = () => { ensureNavLinks(); ensureActiveGroupBadge(); };
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => { ensureNavLinks(); });
+    document.addEventListener('DOMContentLoaded', _bootHeader);
   } else {
-    ensureNavLinks();
+    _bootHeader();
   }
 }
