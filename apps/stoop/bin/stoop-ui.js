@@ -35,7 +35,7 @@
 import { parseArgs } from 'node:util';
 import {
   AgentIdentity,
-  VaultMemory,
+  VaultNodeFs,
   InternalBus,
   InternalTransport,
   RelayTransport,
@@ -43,6 +43,9 @@ import {
 import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { homedir } from 'node:os';
+import { mkdir } from 'node:fs/promises';
 
 const { values } = parseArgs({
   options: {
@@ -87,9 +90,18 @@ if (relayUrl && !/^wss?:\/\//.test(relayUrl)) {
 
 const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
-// Shared identity across all groups (the "one identity, many groups" V0
-// model — see H5-V2-product-items.md item 3 decision).
-const id  = await AgentIdentity.generate(new VaultMemory());
+// Persistent identity, keyed by --actor: a STABLE pubKey across
+// `npm run ui` restarts. (Was `VaultMemory` = a fresh key every
+// launch, which broke cross-device — the phone's peer state kept
+// pointing at dead web identities.) Still one identity shared across
+// all groups (the "one identity, many groups" V0 model).
+const _idSlug  = createHash('sha256').update(values.actor).digest('hex').slice(0, 16);
+const _idDir   = join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'stoop');
+await mkdir(_idDir, { recursive: true });
+const _idVault = new VaultNodeFs(join(_idDir, `${_idSlug}.vault.json`));
+const id = (await _idVault.get('agent-privkey'))
+  ? await AgentIdentity.restore(_idVault)
+  : await AgentIdentity.generate(_idVault);
 
 if (isMultiGroup) {
   const { createNeighborhoodCluster } = await import('../src/cluster.js');
@@ -171,12 +183,34 @@ if (isMultiGroup) {
   // before invoking this script. SkillMatch.start() is fine without peers.
   await bundle.skillMatch.start();
 
+  // Cross-device parity with stoop-mobile. The single-group launcher
+  // was single-member with NO substrate mirror, so postRequest's
+  // fan-out had an empty recipient set and nothing crossed. Attach
+  // the mirror so it HAS a recipient set to fill.
+  const { attachSubstrateMirror } = await import('../src/substrateMirror.js');
+  await attachSubstrateMirror(bundle, { group: values.group, peers });
+
   // Cross-device transport (web ⇄ phone) — parity with mobile, which
   // attaches a RelayTransport the same way (agentBundle.js). Without
   // this the web launcher is in-process only.
   if (relayUrl) {
     bundle.agent.addTransport('relay', new RelayTransport({ relayUrl, identity: id }));
   }
+
+  // Auto-HI + relay peer-pull, then bridge a hello'd peer into
+  // skillMatch + the mirror's recipient set — the exact pattern
+  // stoop-mobile uses (agentBundle.js). redeemMembershipCode never
+  // announces over the network, so without this the web agent never
+  // learns the phone's key, the mirror stays empty, and no posts
+  // cross. `agent.on('peer')` fires AFTER the HI handshake, so the
+  // key is already SecurityLayer-registered (no UNKNOWN_RECIPIENT).
+  bundle.agent.enableAutoHello?.({ pullPeers: true });
+  bundle.agent.on('peer', ({ address, pubKey }) => {
+    const pk = pubKey ?? address;
+    if (!pk || typeof pk !== 'string' || pk.includes(':') || pk === bundle.agent.address) return;
+    try { bundle.skillMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
+    bundle.mirror?.addPeer?.(pk)?.catch?.(() => { /* swallow — already added */ });
+  });
 
   // One entry: the switcher dropdown still hides (mountGroupSwitcher
   // hides at length<=1) but the client now KNOWS the active group —
