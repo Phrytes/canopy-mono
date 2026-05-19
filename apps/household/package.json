@@ -21,12 +21,13 @@
     "tool-probe":                    "node scripts/ollama-tool-probe.js"
   },
   "dependencies": {
-    "@canopy/core":       "file:../../packages/core",
-    "@canopy/pod-client": "file:../../packages/pod-client",
-    "@canopy/chat-agent": "file:../../packages/chat-agent",
-    "@canopy/item-store": "file:../../packages/item-store",
-    "@canopy/llm-client": "file:../../packages/llm-client",
-    "@canopy/notifier":   "file:../../packages/notifier",
+    "@canopy/core":         "file:../../packages/core",
+    "@canopy/pod-client":   "file:../../packages/pod-client",
+    "@canopy/app-manifest": "file:../../packages/app-manifest",
+    "@canopy/chat-agent":   "file:../../packages/chat-agent",
+    "@canopy/item-store":   "file:../../packages/item-store",
+    "@canopy/llm-client":   "file:../../packages/llm-client",
+    "@canopy/notifier":     "file:../../packages/notifier",
     "telegraf":             "^4.16.3"
   },
   "devDependencies": {
