@@ -299,57 +299,103 @@ platform-shell exception).
 
 ---
 
-## SP-4 — C2 host: one process mounts N manifests
+## SP-4 — manifest-host: runtime composition of N manifests
 
-Prereq: SP-3 merged (≥2 real manifests exist: household, tasks). R1: stoop
-pod-routing depth is merged; this SP is **not gated**.
+> **Status: split into V0 + b (2026-05-20).** The original recipe
+> bundled (a) the new `@canopy/manifest-host` substrate AND
+> (b) generalising tasks-v0's V2.8 multi-crew machinery
+> (`bundleResolver` / `wireSkills` / `CrewState`) through the host.
+> (b) touches production tasks-v0 code with **542 passing tests**;
+> that risk profile matches SP-3b's web-UI replacement, not a V0
+> chunk.  SP-4 therefore split: **V0** = just the host substrate,
+> tested standalone; **SP-4b** = the multi-crew generalisation through
+> the host, as its own slice with its own characterization gate.
 
-- **S4.1 New package `@canopy/manifest-host`.** Separate from
-  `@canopy/app-manifest` (which stays pure data + projectors).
-  architectural-layering: substrate that composes `@canopy/core` +
-  `@canopy/app-manifest`. API:
+Prereq: SP-3 V0 merged.
+
+### SP-4 V0 (this slice)
+
+- **S4.1 New package `@canopy/manifest-host`.** Composes
+  `@canopy/app-manifest`; pure substrate, **no app dependencies, no
+  changes to existing apps**.  API:
 
   ```text
-  createManifestHost({ agent, scope }) →
-    mount(appId, manifest, { skillRegistry, toSkillCtx, onStateUpdates? })
-                                                       → MountedApp
-    unmount(appId) → void
-    list()         → string[]                     // mounted app ids
-    compose()      → { toolCatalog, toolHandlers, systemPrompt,
-                        commandMenu, inlineKeyboardFor, navModel }
+  createManifestHost()                                          → Host
+    host.mount(appId, manifest, { skillRegistry, toSkillCtx,
+                                  onStateUpdates? })            → MountedApp
+    host.unmount(appId)                                         → void
+    host.list()                                                 → string[]
+    host.compose()  → { toolCatalog,            // [{id:"appId.opId", description, schema}]
+                        toolHandlers,           // {"appId.opId": handler}
+                        commandMenu,            // [{command, description, appId}]
+                        collisions,             // [{command, appIds: string[]}]
+                        inlineKeyboardFor,      // (item) → buttons with
+                                                //   callbackData "appId.opId:itemId"
+                        perAppSystemPrompts     // {appId: string}
+                      }
   ```
-- **S4.2 Namespacing/collision rule.** Tool ids: `appId.opId`; toolHandlers
-  keyed the same. commandMenu: slash commands prefixed with `appId/` or
-  disambiguated via a manifest-level convention. Slash specials: collisions
-  resolved by mount-order (first-mounted wins) with an `error` event on
-  conflict. NavModel: one section-group per mounted app (the destination's
-  "apps as bundles" model — PLAN §0).
-- **S4.3 Per-scope enabled-set state.** A small persisted record
-  `enabledApps: Record<scope, string[]>`, stored via the
-  `conventions/cross-app-settings.md` mechanism (group/<scope>/settings/
-  enabled-apps.json or similar — verify the canonical path). Distinct from
-  the orthogonal "A" cross-device launcher concern.
-- **S4.4 Generalise tasks-v0 multi-crew (regression-gated).** Wrap the
-  existing `bundleResolver` so a *scope* = one kind of crew; existing
-  `CrewState` keys work unchanged. **Hard gate:** tasks-v0 multi-crew
-  characterization (before vs after) must be byte-identical for the test
-  corpus.
-- **S4.5 Runtime mount/unmount.** Enable/disable an app without host
-  restart; operations + nav sections appear/vanish. Tests cover dynamic
-  cycles + concurrent mounts.
-- **S4.6 Gate:** tasks-v0 multi-crew regression green; ≥2 manifests
-  (household + tasks) compose in one host with namespacing + runtime
-  cycles work.
+- **S4.2 Namespacing.** Tool ids prefixed `appId.opId`; toolHandlers
+  keyed the same; `callbackData` re-prefixed in `inlineKeyboardFor`.
+  `appId` may not contain `.` or `:` — `mount()` rejects otherwise.
+- **S4.3 Collision detection, NOT resolution.** When ≥2 apps register
+  the same slash command, the host emits a non-throwing `collisions[]`
+  entry per duplicate.  V0 does NOT pick a winner — that's a consumer
+  decision (chat-agent / UI shell / per-host config).  Same shape for
+  specials when added later.
+- **S4.4 Runtime mount/unmount.** Each `compose()` rebuilds from the
+  current mount set (no stale cache).  Tests cover dynamic
+  mount→compose→unmount→compose cycles.
+- **S4.5 No systemPrompt composition.** `perAppSystemPrompts` returns
+  them per-app; deciding "concat / pick primary / build a generic
+  preamble" is a consumer concern.  Cleaner than baking a default no
+  one wants.
+- **S4.6 No tasks-v0 / household / mobile changes.** V0 is purely
+  additive; the existing multi-crew machinery (`bundleResolver`,
+  `wireSkills`, `CrewState`) is untouched.  The host can mount
+  household + tasks-v0 manifests in a fresh meshAgent (synthetic-
+  manifest tests in the package; one cross-app smoke deferred).
+- **S4.7 Tests** (`packages/manifest-host/test/host.test.js`): mount
+  validation, list, unmount, compose, namespace prefixing, command-
+  collision detection, runtime mount/unmount cycles, dispatch-via-
+  namespaced-toolHandler.  Uses two synthetic manifests inline (no
+  cross-app coupling).
 
-**Possible refinements (revisable):** none anticipated; mostly mechanical
-generalisation of an existing pattern.
+**Gate:** host package builds; all unit tests green; **zero changes to
+existing apps** (no regression risk by construction).
 
-Commit slices: S4.1+S4.2 / S4.3 / S4.4 / S4.5+S4.6.
-**DoD:** `@canopy/manifest-host` shipped; tasks-v0 multi-crew regression
-green; ≥2 manifests compose in one host with namespacing + runtime
-mount/unmount.
-**Hand-off:** SP-5 builds the audience/circle substrate over the composed
-host; SP-11 runs the recombination demo on it.
+**DoD (V0):** `@canopy/manifest-host` shipped; mount/unmount/list/
+compose work; namespacing + collision detection verified.
+**Hand-off:** SP-5 audience/circle substrate uses the host as runtime
+composition; SP-11 recombination demo mounts manifests via this host.
+
+### SP-4b — tasks-v0 multi-crew generalisation (deferred)
+
+The original SP-4 recipe's tasks-v0 generalisation work, **deliberately
+deferred** on the discipline:
+
+> tasks-v0's V2.8 single-agent topology (one `core.Agent` + N crews via
+> `bundleResolver` / `wireSkills` / `CrewState`) is real production
+> code with 542 passing tests.  Generalising it through the manifest-
+> host requires a regression gate as careful as SP-3b's per-page
+> characterization.  That is its own slice, not a V0 chunk.
+
+What SP-4b would entail (when scheduled):
+- **Characterization corpus** for tasks-v0 multi-crew: byte-identical
+  before/after on the V2.8 single-agent fixture + the `--multi-crew`
+  CLI path + `--crew-list` smoke.
+- **Generalise `bundleResolver`** so a *scope* (manifest-host mount)
+  wraps a crew; per-scope state carries a CrewState alongside the
+  MountedApp.  Wrap, don't replace.
+- **Update `apps/tasks-v0/bin/tasks-ui.js`** so the multi-crew CLI
+  paths construct a manifest-host that mounts the tasks manifest +
+  the per-crew bundleResolver; existing flags (`--crew`,
+  `--multi-crew`, `--crew-list`) unchanged.
+- **Optional follow-on:** also re-wire household through a manifest-
+  host so household and tasks bots can share one process.  Not in
+  scope until there's a real need; the V0 host already supports it.
+
+**Prereq for SP-4b:** SP-4 V0 merged + 1–2 turns of real usage of the
+host so any V0 contract refinements bake in first.
 
 ---
 
