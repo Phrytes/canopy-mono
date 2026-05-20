@@ -1,4 +1,43 @@
 <!doctype html>
+<!--
+  settings.html — Slice E.3 (PLAN-gui-chat-uplift.md).
+
+  Third stoop web page consuming `renderWeb(stoopManifest)`.  Picked
+  over profile/contacts as the next-smallest-after-privacy page with
+  a clean V0.2 fit: `getSettings({})` is a param-free skill (perfect
+  Q7 `dataSource` declaration), and the per-field mutations
+  (`updateSettings({patch})`, `setHopMode({global})`) live outside the
+  D.1 manifest as profile/plumbing skills (same gap #4 territory as
+  privacy's `getDataLocation`).
+
+  Substrate sources of truth (V0.2):
+    - `section.title`         → drives the <h2> text.
+    - `section.dataSource`    → `fetchSectionItems` honours the Q7
+                                 declaration (`getSettings({})`),
+                                 replacing the prior hard-coded
+                                 `callSkill('getSettings', {})`.
+
+  ──── V0.2 substrate signals observed (logged for V0.3 follow-on) ───
+    5. NavModel sections assume `Array<item>` data.  Settings is a
+       SINGLETON record — `getSettings({})` returns `{settings: {...}}`
+       (one merged object: per-device + per-actor fields).  The page
+       extracts `.settings` directly; `fetchSectionItems`'s items-
+       extraction contract doesn't apply.  V0.3 candidate: a
+       `view.shape: 'record'` flag, or `dataSource.extract: 'settings'`
+       path that the helper honours, so adapters can render record
+       views without app-side special-casing.
+    6. Mutation paths for record-shaped views are per-field skills
+       (`updateSettings({patch})`, `setHopMode({global})`), not
+       add/remove of items.  The current Q10 creative-verb model
+       doesn't fit "patch a settings field" cleanly; a future
+       `verb: 'patch'` (non-canonical) or `view.fields[].opId` schema
+       would let the manifest drive per-field UIs.
+
+  Page falls back to the V0 hand-built behaviour when the NavModel
+  isn't reachable (legacy launchers `stoop-ui.js` / `stoop-testbed.js`
+  don't serve `/navmodel.json`) — keeps every existing launcher happy
+  while still proving the NavModel path when served by `stoop-web.js`.
+-->
 <html lang="nl">
 <head>
   <meta charset="utf-8">
@@ -69,8 +108,15 @@
   </header>
 
   <main>
-    <section>
-      <h2 data-i18n="settings.heading">Instellingen</h2>
+    <!-- The `data-navmodel-section` attribute marks the section as
+         NavModel-driven (Slice E.3).  When the NavModel is reachable,
+         the inline script overwrites the heading text with
+         `section.title` and fetches the settings record via
+         `fetchSectionItems` (honours `section.dataSource:
+         {skillId: 'getSettings'}`).  When NavModel isn't reachable,
+         the legacy hand-built behaviour takes over (V0 fallback). -->
+    <section data-navmodel-section="settings">
+      <h2 id="settings-heading" data-i18n="settings.heading">Instellingen</h2>
       <p class="hint" data-i18n="settings.intro">
         Stoop bewaart je instellingen op twee plekken: dingen die <em>op dit
         apparaat</em> horen (zoals hoe vaak je telefoon ververst) blijven
@@ -182,6 +228,11 @@
 
   <script type="module">
     import { callSkill, getActor, mountGroupSwitcher, initI18n, applyI18n, t } from '/app.js';
+    // V0.2 (2026-05-20) — shared @canopy/web-adapter helpers.  Overlaid
+    // at `/lib/web-adapter/*.js` by `bin/stoop-web.js`'s extraStaticFiles
+    // (same mechanism mine.html + privacy.html use).  Source-of-truth
+    // lives in `packages/web-adapter/src/`.
+    import { fetchSectionItems } from '/lib/web-adapter/fetchSectionItems.js';
 
     await initI18n();
     applyI18n();
@@ -190,10 +241,47 @@
     document.getElementById('actor').textContent = await getActor();
     mountGroupSwitcher(document.getElementById('group-switcher'));
 
+    // ── V0.2: consume the NavModel ───────────────────────────────────
+    // Fetch `/navmodel.json` (served by `apps/stoop/bin/stoop-web.js`'s
+    // `extraStaticFiles`).  When reachable, drive the heading from
+    // `section.title` + the read fetch from `section.dataSource`; when
+    // not, fall back to the V0 hand-built behaviour.  The per-field
+    // mutations (`updateSettings`, `setHopMode`) stay direct-called
+    // either way — they're not manifest ops, and even if they were
+    // the Q10 creative-verb model doesn't fit "patch a settings
+    // field" (V0.3 signal #6).
+    let navSection = null;
+    try {
+      const res = await fetch('/navmodel.json');
+      if (res.ok) {
+        const nav = await res.json();
+        navSection = (nav?.sections ?? []).find((s) => s.id === 'settings') ?? null;
+        if (navSection?.title) {
+          document.getElementById('settings-heading').textContent = navSection.title;
+        }
+      }
+    } catch { /* legacy launcher: no /navmodel.json — fall through */ }
+
     const fb = document.getElementById('settings-feedback');
 
     async function refresh() {
-      const r = await callSkill('getSettings', {});
+      // V0.2 — `fetchSectionItems` honours `section.dataSource` (Q7).
+      // For `settings`, the manifest declares
+      // `dataSource: {skillId: 'getSettings'}` so this dispatches
+      // `callSkill('getSettings', {})` — replacing the prior hard-
+      // coded skill call at this site.  When NavModel isn't reachable
+      // (legacy launcher), fall back to the same skill call directly
+      // so the page still works.
+      //
+      // V0.3 signal #5: settings is a SINGLETON record, not a list.
+      // `fetchSectionItems` returns the raw skill reply
+      // (`{settings: {...}}` here); we extract `.settings` directly.
+      let r;
+      if (navSection) {
+        r = await fetchSectionItems(navSection, { callSkill });
+      } else {
+        r = await callSkill('getSettings', {});
+      }
       const s = r?.settings ?? {};
       document.getElementById('poll-interval').value = String(s.pollIntervalMs ?? 2000);
       document.getElementById('broadcastable').checked = s.broadcastable !== false;

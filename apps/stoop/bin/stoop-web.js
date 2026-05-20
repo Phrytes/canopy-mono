@@ -8,14 +8,16 @@
  * `mountLocalUi` substrate, same `extraStaticFiles` carrying
  * `/navmodel.json` + `/stoop-config.json`.
  *
- * ──── Slice E.1 + E.2 scope (the two smallest stoop web pages) ──────
+ * ──── Slice E.1 + E.2 + E.3 scope (the three smallest stoop pages) ──
  *
  * Stoop has 16 web pages today (per `AUDIT-stoop-folio-surfaces.md`).
  * E.1 surfaced ONE — `mine.html` (my active posts + completions); E.2
  * (2026-05-20) added a second — `privacy.html` (closed-beta
- * disclosure + data-location).  Both pages prove the substrate-shape,
- * mirroring B.1's discipline for tasks-v0 (just `dag.html`).  14
- * pages remain hand-built and will land in follow-on E.x slices.
+ * disclosure + data-location); E.3 (2026-05-20) added a third —
+ * `settings.html` (per-device + per-actor preferences).  All three
+ * pages prove the substrate-shape, mirroring B.1's discipline for
+ * tasks-v0 (just `dag.html`).  13 pages remain hand-built and will
+ * land in follow-on E.x slices.
  *
  * Why `mine.html` (E.1)?
  *   - Single-list page (one `listMyRequests` skill, one `<ul>` of items)
@@ -36,9 +38,23 @@
  *     `dataSource.skillId` is a free string in validate.js so this
  *     is permitted and worth flagging
  *
+ * Why `settings.html` (E.3)?
+ *   - Next-smallest-after-privacy + a clean V0.2 fit: `getSettings({})`
+ *     is param-free (perfect Q7 `dataSource` declaration) and the
+ *     per-field mutations live outside the D.1 manifest as profile/
+ *     plumbing skills (same gap #4 territory as privacy)
+ *   - Surfaces NEW V0.3 signals: NavModel sections assume list-of-
+ *     items but settings is a SINGLETON record (one merged object);
+ *     and the per-field "patch a setting" mutation model doesn't
+ *     fit Q10's creative-verb add/register vocabulary.  Both
+ *     deferred to V0.3 — see manifest views[] inline notes
+ *   - Profile (591 lines — avatar resize / mnemonic / geocoding /
+ *     backup, many runtime-arg skills) defers to a later slice
+ *   - Contacts (417 lines, heavy mutations) defers to a later slice
+ *
  * Other pages (chat / contacts / group / create-group / profile /
- * settings / onboard / sign-in / auth-callback / push / restore /
- * welcome / metrics / index) DEFER to follow-on E.x slices.
+ * onboard / sign-in / auth-callback / push / restore / welcome /
+ * metrics / index) DEFER to follow-on E.x slices.
  *
  * ──── This bootstrap vs `stoop-ui.js` / `stoop-testbed.js` ──────────
  *
@@ -117,8 +133,9 @@ export async function startStoopWeb(opts = {}) {
   await bundle.skillMatch.start();
 
   // Pre-compute the NavModel from the manifest.  Static for the life
-  // of the server (manifest is module-scope const).  E.1 + E.2 ship
-  // TWO sections (`mine`, `privacy`); follow-on E.x will grow this.
+  // of the server (manifest is module-scope const).  E.1 + E.2 + E.3
+  // ship THREE sections (`mine`, `privacy`, `settings`); follow-on
+  // E.x will grow this.
   const navModel = renderWeb(stoopManifest);
 
   const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
@@ -205,14 +222,14 @@ if (isMain) {
   const group = values.group ?? DEFAULT_GROUP;
 
   const handle = await startStoopWeb({ port, actor, group });
-  console.log(`Stoop web UI (Slice E.1 + E.2) ready at ${handle.url}`);
+  console.log(`Stoop web UI (Slice E.1 + E.2 + E.3) ready at ${handle.url}`);
   console.log(`  actor:    ${actor}`);
   console.log(`  group:    ${group}`);
   console.log(`  app:      ${handle.navModel.app}`);
   console.log(`  sections: ${handle.navModel.sections.map((s) => s.id).join(', ')}`);
-  console.log(`  ⚠  E.1+E.2 surface /mine.html + /privacy.html via the NavModel.`);
+  console.log(`  ⚠  E.1+E.2+E.3 surface /mine.html + /privacy.html + /settings.html via the NavModel.`);
   console.log(`     Other pages still load (legacy hand-built); their migration`);
-  console.log(`     is follow-on E.x scope (14 pages remaining).`);
+  console.log(`     is follow-on E.x scope (13 pages remaining).`);
 
   process.on('SIGINT',  shutdown);
   process.on('SIGTERM', shutdown);

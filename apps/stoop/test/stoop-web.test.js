@@ -1,24 +1,28 @@
 /**
- * stoop-web smoke — Slice E.1 + E.2 (PLAN-gui-chat-uplift.md).
+ * stoop-web smoke — Slice E.1 + E.2 + E.3 (PLAN-gui-chat-uplift.md).
  *
  * E.1 — first stoop web page consuming `renderWeb(stoopManifest)`:
  *       `mine.html` (my active posts + completions).
  * E.2 — second stoop web page consuming the NavModel:
  *       `privacy.html` (closed-beta disclosure + data-location).
+ * E.3 — third stoop web page consuming the NavModel:
+ *       `settings.html` (per-device + per-actor preferences).
  *
  * Boots the `apps/stoop/bin/stoop-web.js` bootstrap programmatically,
  * then verifies:
- *   1. `/navmodel.json` is served + carries the `mine` + `privacy`
- *      sections (the TWO sections E.1+E.2 surface).
+ *   1. `/navmodel.json` is served + carries the `mine` + `privacy` +
+ *      `settings` sections (the THREE sections E.1+E.2+E.3 surface).
  *   2. `/stoop-config.json` carries the actor + group.
- *   3. `/mine.html` + `/privacy.html` are served + carry the
- *      `data-navmodel-section` marker proving each picks up its
- *      section.
+ *   3. `/mine.html` + `/privacy.html` + `/settings.html` are served
+ *      + each carries the `data-navmodel-section` marker proving it
+ *      picks up its section.
  *   4. The skill-dispatch path round-trips: `postRequest` then
  *      `listMyRequests` returns the freshly-added item filtered by
  *      LocalUiAuth-configured actor.
  *   5. The privacy page's two data-fetches (`getPrivacyNotice`,
  *      `getDataLocation`) round-trip cleanly.
+ *   6. The settings page's `getSettings` / `updateSettings` round-
+ *      trip cleanly (read → patch → read-back).
  *
  * Pattern mirrors `apps/household/test/web.test.js` — same shape
  * (programmatic startStoopWeb, same /tasks/send dispatch, same
@@ -56,17 +60,17 @@ async function callSkill(skillId, data) {
   return (json.artifacts?.[0]?.parts ?? []).find((p) => p?.type === 'DataPart')?.data ?? {};
 }
 
-describe('stoop-web smoke (Slice E.1 + E.2)', () => {
-  it('serves /navmodel.json with the `mine` + `privacy` sections', async () => {
+describe('stoop-web smoke (Slice E.1 + E.2 + E.3)', () => {
+  it('serves /navmodel.json with the `mine` + `privacy` + `settings` sections', async () => {
     const res = await fetch(`${baseUrl}/navmodel.json`);
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toMatch(/application\/json/);
     const nav = await res.json();
     expect(nav.app).toBe('stoop');
-    // E.1 + E.2 ship TWO sections.  Follow-on E.x slices will grow
-    // this (14 pages remaining).  Order = manifest.views[] order
+    // E.1 + E.2 + E.3 ship THREE sections.  Follow-on E.x slices will
+    // grow this (13 pages remaining).  Order = manifest.views[] order
     // (Q2: deterministic declaration order).
-    expect(nav.sections.map((s) => s.id)).toEqual(['mine', 'privacy']);
+    expect(nav.sections.map((s) => s.id)).toEqual(['mine', 'privacy', 'settings']);
 
     const mine = nav.sections[0];
     expect(mine.id).toBe('mine');
@@ -95,6 +99,23 @@ describe('stoop-web smoke (Slice E.1 + E.2)', () => {
     // V0.2 Q9 — readOnly: true suppresses creative-verb auto-surface
     // (Q10 affordances), so affordances[] is empty here.
     expect(privacy.affordances).toEqual([]);
+
+    // E.3 — settings section.
+    const settings = nav.sections[2];
+    expect(settings.id).toBe('settings');
+    expect(settings.title).toBe('Instellingen');
+    expect(settings.itemType).toBe('group-rules');  // placeholder; settings is
+                                                    // singleton-record (V0.3 #5)
+    // V0.2 Q7 — explicit dataSource declaration in the manifest
+    // (`getSettings({})` is param-free — perfect fit).
+    expect(settings.dataSource).toEqual({ skillId: 'getSettings' });
+    // E.3 deliberately does NOT set `readOnly: true` (settings mutates
+    // via per-field skills).  But because the per-field skills
+    // (`updateSettings`, `setHopMode`) aren't manifest ops, no Q10
+    // creative-verb affordances surface here — settings is V0.3 #6
+    // territory (record-shape patch mutations don't fit add/register).
+    expect(settings.readOnly).toBeUndefined();
+    expect(settings.affordances).toEqual([]);
   });
 
   it('serves /stoop-config.json with the actor + group', async () => {
@@ -199,6 +220,46 @@ describe('stoop-web smoke (Slice E.1 + E.2)', () => {
     // skill responds with an object.
     expect(typeof loc).toBe('object');
     expect(loc).not.toBeNull();
+  });
+
+  it('serves /settings.html with the data-navmodel-section marker (E.3)', async () => {
+    const res = await fetch(`${baseUrl}/settings.html`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toMatch(/text\/html/);
+    const html = await res.text();
+    expect(html.length).toBeGreaterThan(0);
+    // The marker that proves the migrated page picks up the section.
+    expect(html).toContain('data-navmodel-section="settings"');
+    // The migrated page fetches /navmodel.json (the consumption hook).
+    expect(html).toContain("fetch('/navmodel.json')");
+    // V0.2 — the page drives its read fetch via the shared
+    // `fetchSectionItems` helper (which honours the manifest's
+    // `section.dataSource: {skillId: 'getSettings'}` Q7 declaration),
+    // removing the prior hard-coded `callSkill('getSettings', {})`
+    // call.
+    expect(html).toContain('fetchSectionItems');
+  });
+
+  it('settings data-fetches round-trip (getSettings + updateSettings)', async () => {
+    // getSettings is param-free — it's the dataSource skillId declared
+    // in the manifest.  `fetchSectionItems` calls it with `{}`.
+    // V0.3 signal #5: settings is a SINGLETON record (`{settings: {...}}`),
+    // not a list of items — the page extracts `.settings` directly.
+    const r1 = await callSkill('getSettings', {});
+    expect(typeof r1).toBe('object');
+    expect(r1).not.toBeNull();
+    expect('settings' in r1).toBe(true);  // record-shape envelope
+
+    // updateSettings({patch}) — per-field mutation path (NOT a
+    // manifest op; this is V0.3 signal #6 — record-shape patch
+    // mutations don't fit Q10's add/register creative-verb model).
+    // Round-trip: patch broadcastable=false, then read it back.
+    const r2 = await callSkill('updateSettings', { patch: { broadcastable: false } });
+    expect(r2.settings).toBeDefined();
+    expect(r2.settings.broadcastable).toBe(false);
+
+    const r3 = await callSkill('getSettings', {});
+    expect(r3.settings.broadcastable).toBe(false);
   });
 
   it('postRequest → listMyRequests round-trips via LocalUiAuth', async () => {
