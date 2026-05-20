@@ -382,7 +382,20 @@ export const tasksManifest = {
         // V0.4 Q19 — section-level CTA.  Renders in
         // `section.sectionActions[]`, NOT in per-row itemActions[]
         // or app-shell globals[].
-        ui:   { control: 'button', label: 'Clear all', placement: 'section-header' },
+        ui:   {
+          control:   'button',
+          label:     'Clear all',
+          placement: 'section-header',
+          // V0.8 Q27 adoption (2026-05-20) — Tier C consent gate.
+          // Bulk-clearing the inbox is recoverable (notifications
+          // are re-fetchable from sources) but disruptive enough to
+          // confirm.  Severity 'warn' → adapter shows a confirm
+          // modal with yellow styling.
+          confirm:   {
+            severity: 'warn',
+            message:  'Clear all inbox notifications?  Cannot be undone for this device.',
+          },
+        },
       },
     },
 
@@ -583,9 +596,15 @@ export const tasksManifest = {
           name:  'groupPodUri',
           type:  'string',
           label: 'Pod URI',
-          // Conditional on policy ∈ {centralised, hybrid} per the
-          // page's UI logic.  The manifest declares the patch shape;
-          // the page enforces the conditional in its hand-coded UI.
+          // V0.7 Q26 (adopted 2026-05-20) — conditional-display gate:
+          // groupPodUri is only meaningful when policy ∈ {centralised,
+          // hybrid}.  Auto-rendered consumers hide the field for
+          // policy='decentralised' (own pod, no group URI).  The
+          // hand-coded page enforces the same rule via a separate
+          // show/hide branch; the manifest now declares it once.
+          // B.2.4 was the originating signal; V0.7 closed the
+          // substrate gap.
+          requiresField: { policy: ['centralised', 'hybrid'] },
           patch: { opId: 'setCrewStoragePolicy', argName: 'groupPodUri' },
         },
       ],

@@ -304,6 +304,39 @@
  * Forward-additive — adopting consumers extend their renderer-side
  * field switch to handle the two new type values.
  *
+ * ──── Q27 — `surfaces.ui.confirm` severity hint (locked 2026-05-20)
+ *
+ * Surfaced by the Tier C investigation (TIER-C-PROPOSALS.md):
+ * 14 destructive / side-effect-bearing surfaces across folio + tasks
+ * + stoop already have hand-rolled confirm modals (folio's 3 custom
+ * confirm modals + tasks-mobile's <ConfirmModal> + stoop's CLI
+ * confirm() prompts).  Severity hints are a tiny manifest-level
+ * field that unlocks consistent cross-platform UX.
+ *
+ * Shape:
+ *   op.surfaces.ui.confirm?: {
+ *     severity: 'info' | 'warn' | 'danger',
+ *     message?: string,
+ *   }
+ *
+ * Adapter styling:
+ *   - `danger`  → red button + irreversible-warning copy
+ *   - `warn`    → yellow button + side-effect-warning copy
+ *   - `info`    → neutral button + informational copy
+ *
+ * The projector propagates `confirm` onto affordances + itemActions +
+ * sectionActions (every surface where `label` flows).  Forward-
+ * additive — absent means today's behaviour (plain click → action).
+ *
+ * Out of scope:
+ *   - passphrase prompts (mnemonic / encryptedBackup) — auth flow
+ *   - one-shot reveals (mnemonic show-once) — business rule
+ *   - i18n on message (use a future Q22-style messageKey if needed)
+ *
+ * Adapters that don't understand `confirm` should fail the
+ * affordance (strict) rather than silently ignore — a `danger` gate
+ * dropped on the floor is a UX hazard.
+ *
  * ──── Q22 — `labelKey` i18n passthrough (locked 2026-05-20)
  *
  * Surfaced by C.3 closeout: manifest `label` strings are English while
@@ -584,6 +617,18 @@ function buildAffordance(op, manifest, placement, prefilledParams) {
       && op.surfaces.ui.labelKey !== '') {
     a.labelKey = op.surfaces.ui.labelKey;
   }
+  // Q27 (V0.8, 2026-05-20) — confirm-severity passthrough.  Pure
+  // defensive copy: adapters style the confirm modal on
+  // `severity` and render `message` if present.  Validator
+  // guarantees severity ∈ {info,warn,danger} when set.
+  const confirm = op?.surfaces?.ui?.confirm;
+  if (confirm && typeof confirm === 'object'
+      && ['info', 'warn', 'danger'].includes(confirm.severity)) {
+    a.confirm = { severity: confirm.severity };
+    if (typeof confirm.message === 'string' && confirm.message !== '') {
+      a.confirm.message = confirm.message;
+    }
+  }
   if (prefilledParams) a.prefilledParams = prefilledParams;
   return a;
 }
@@ -617,6 +662,15 @@ function buildItemAction(op, view, prefilledParams) {
   if (typeof op?.surfaces?.ui?.labelKey === 'string'
       && op.surfaces.ui.labelKey !== '') {
     action.labelKey = op.surfaces.ui.labelKey;
+  }
+  // Q27 (V0.8) — confirm-severity passthrough (see buildAffordance).
+  const confirm = op?.surfaces?.ui?.confirm;
+  if (confirm && typeof confirm === 'object'
+      && ['info', 'warn', 'danger'].includes(confirm.severity)) {
+    action.confirm = { severity: confirm.severity };
+    if (typeof confirm.message === 'string' && confirm.message !== '') {
+      action.confirm.message = confirm.message;
+    }
   }
   if (prefilledParams) action.prefilledParams = prefilledParams;
   return action;
