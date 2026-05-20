@@ -277,7 +277,25 @@ additive discipline as everything else in `@canopy/app-manifest`.
 
 ---
 
-## Open questions (for owner)
+## Owner decisions (locked 2026-05-20)
+
+| # | Question                             | Locked answer                                                                                  |
+| - | ------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| 1 | Detail-view in V0?                   | **Defer to V1.**  User tests after substrate ships will inform.  V0 NavModel = buttons-on-row. |
+| 2 | Section ordering                     | **Preserve `manifest.views[]` declaration order.**  Matches renderChat discipline; predictable for users. |
+| 3 | Globals source                       | **Infer from `op.surfaces.ui.placement === 'global'`.**  No new manifest schema.  Forward-additive. |
+| 4 | Adapter equivalence depth            | **Strict JSON equality default.**  Owner-approved exceptions only — note inline in `renderWeb.js`/`renderMobile.js` when added. |
+| 5 | Item ordering inside sections        | **`view.sort = {by, direction}` passed through to `section.sort`.**  Adapter performs the sort.  User-reordering (interactive) deferred to V1+ (needs item-store ordinal field). |
+
+Refinement surfaced in A.2 implementation (2026-05-20):
+
+| #' | Refinement                          | Locked answer                                                                                  |
+| -- | ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| 6  | Multi-type ops (e.g. household's `addItem(type, text)`) | **Type-enum param fallback.**  When an op has a `params: [{name:'type', kind:'enum', of:[...]}]` AND `view.type` is in that enum AND the op has no explicit `appliesTo`, the projector surfaces the op in that section.  An optional `prefilledParams: {type: view.type}` is added so the adapter knows to pre-fill the type param when calling the skill.  Keeps household's "one addItem op covers shopping/errand/repair/schedule" model intact AND exposes the four sections cleanly on web. |
+
+Original raw answers (kept for trace):
+
+## Original open questions (raw owner answers)
 
 1. **Detail-view: V0 or V1?**  Some pages today (e.g. tasks-v0's
    task-detail navigation) already do per-item drilldowns.  Should

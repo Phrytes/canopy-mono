@@ -63,18 +63,46 @@
  * @property {string}   label              from surfaces.ui.label or op.verb
  * @property {object}   paramsSchema       from paramsToJsonSchema(op.params)
  * @property {'section'|'global'} placement
+ * @property {object}   [prefilledParams]  Q6 (locked 2026-05-20) — when an
+ *                                         op surfaces in a section via the
+ *                                         type-enum fallback (params:
+ *                                         [{name:'type', kind:'enum',
+ *                                         of:[…]}]), the section's itemType
+ *                                         is recorded here so the adapter
+ *                                         pre-fills the `type` param when
+ *                                         calling the skill.
  *
  * @typedef {object} ItemAction
  * @property {string}   opId               matches manifest.operation.id
  * @property {string}   label              from surfaces.ui.label or op.verb
  * @property {{type?: string|string[], state?: string|string[]}} appliesTo
  *                                         passed through (F-SP3-a multi-state honoured)
+ * @property {object}   [prefilledParams]  same semantics as Affordance.prefilledParams
  *
  * Note on `callbackData`: the design sketch proposed a per-action
  * `callbackData` template (`"${opId}:${itemId}"`).  V0 stores just
  * `opId` here; the adapter constructs the dispatch key at render
  * time (`${opId}:${item.id}` for single-app, prefixed by manifest-
  * host when ≥2 apps composed).  Keeps NavModel pure-data.
+ *
+ * ──── Q6 — multi-type ops via type-enum fallback (locked 2026-05-20)
+ *
+ * Surfaced in A.2 by household's `addItem(type: shopping|errand|repair|
+ * schedule, text)` — one chat-side tool, four web sections.  Three
+ * surfacing rules:
+ *
+ *   (a) **`verb === 'add'` auto-surface.**  Add ops surface as section
+ *       affordances without needing `surfaces.ui` to be declared.
+ *       Rationale: every web section needs an "add new item"
+ *       affordance; the manifest shouldn't have to repeat
+ *       `surfaces.ui` for each.
+ *   (b) **`verb === 'list'` skip.**  List ops are the section's
+ *       implicit data source — adapter calls
+ *       `listOpen({type: section.itemType, ...filter})` to fetch
+ *       items.  Not a button.
+ *   (c) **Other verbs require `surfaces.ui`** to surface as
+ *       itemActions (state-gated per-item buttons).  Same as V0.
+ * ─────────────────────────────────────────────────────────────────
  */
 
 import { paramsToJsonSchema } from './paramsToJsonSchema.js';
@@ -130,15 +158,23 @@ function buildSection(view, ops, manifest) {
 
   for (const op of ops) {
     const ui = op?.surfaces?.ui;
-    if (!ui)                         continue;  // chat-only / LLM-only — omit
-    if (ui.placement === 'global')   continue;  // already pushed to globals
+    if (ui?.placement === 'global') continue;  // already pushed to globals
 
-    if (!opMatchesView(op, view))    continue;
+    const m = matchOp(op, view);
+    if (!m.matched) continue;
+
+    if (op.verb === 'list') continue;  // implicit data source — adapter fetches items
 
     if (op.verb === 'add') {
-      section.affordances.push(buildAffordance(op, manifest, 'section'));
-    } else {
-      section.itemActions.push(buildItemAction(op));
+      // (Q6 rule a) — add ops auto-surface without needing surfaces.ui.
+      section.affordances.push(
+        buildAffordance(op, manifest, 'section', m.viaTypeEnum ? { type: view.type } : null),
+      );
+    } else if (ui) {
+      // (Q6 rule c) — other verbs require surfaces.ui to surface as itemActions.
+      section.itemActions.push(
+        buildItemAction(op, view, m.viaTypeEnum ? { type: view.type } : null),
+      );
     }
   }
 
@@ -146,45 +182,70 @@ function buildSection(view, ops, manifest) {
 }
 
 /**
- * Does an op apply to this view's item-type?
+ * Does an op apply to this view's item-type?  Returns `{matched, viaTypeEnum}`.
  *
- *   - `appliesTo.type` may be a string OR array (F-SP3-a allows
- *     multi-type ops).
- *   - Op without `appliesTo` is treated as NOT matching any section
- *     — keeps section affordances scoped to ops that explicitly opt
- *     in.  Cross-section ops (e.g. household's `addItem` which
- *     accepts a type param) need a per-view counterpart in the
- *     manifest or a future cross-section affordance shape (V1+).
+ *   - **Explicit `appliesTo.type` wins** (string OR array, F-SP3-a).
+ *   - **Type-enum fallback (Q6, locked 2026-05-20):** op without
+ *     `appliesTo` but with a `params: [{name:'type', kind:'enum',
+ *     of:[…]}]` whose enum includes `view.type` matches that view.
+ *     The section's itemType is recorded in `prefilledParams.type`
+ *     downstream so the adapter pre-fills it.  Surfaced by
+ *     household's `addItem(type, text)` — one chat-side tool, four
+ *     web sections.
+ *   - Op with neither signal does NOT match.
  */
-function opMatchesView(op, view) {
-  if (!op.appliesTo)         return false;
-  if (op.appliesTo.type === undefined) return false;
-  const types = Array.isArray(op.appliesTo.type)
-    ? op.appliesTo.type
-    : [op.appliesTo.type];
-  return types.includes(view.type);
+function matchOp(op, view) {
+  if (op.appliesTo?.type !== undefined) {
+    const types = Array.isArray(op.appliesTo.type) ? op.appliesTo.type : [op.appliesTo.type];
+    return { matched: types.includes(view.type), viaTypeEnum: false };
+  }
+  const enumTypes = findTypeEnumParam(op);
+  if (enumTypes !== null && enumTypes.includes(view.type)) {
+    return { matched: true, viaTypeEnum: true };
+  }
+  return { matched: false, viaTypeEnum: false };
 }
 
-function buildAffordance(op, manifest, placement) {
-  return {
+/**
+ * Returns the enum-of values for an op's `type` enum param, or null
+ * if the op doesn't have one.  Only handles the inline-array form
+ * (`of: ['shopping', …]`); the string form (`of: 'itemTypes'`) is
+ * out of V0 scope (needs manifest-level resolution).
+ */
+function findTypeEnumParam(op) {
+  for (const p of op.params ?? []) {
+    if (p.name === 'type' && p.kind === 'enum' && Array.isArray(p.of)) {
+      return p.of;
+    }
+  }
+  return null;
+}
+
+function buildAffordance(op, manifest, placement, prefilledParams) {
+  const a = {
     opId:         op.id,
     label:        op?.surfaces?.ui?.label ?? op.verb ?? op.id,
     paramsSchema: paramsToJsonSchema(op.params ?? [], { manifest }),
     placement,
   };
+  if (prefilledParams) a.prefilledParams = prefilledParams;
+  return a;
 }
 
-function buildItemAction(op) {
+function buildItemAction(op, view, prefilledParams) {
+  // For explicit appliesTo: pass type + state verbatim.
+  // For type-enum fallback: scope to view.type only.
+  const appliesTo = op.appliesTo?.type !== undefined
+    ? { type: op.appliesTo.type }
+    : { type: view.type };
+  if (op.appliesTo?.state !== undefined) {
+    appliesTo.state = op.appliesTo.state;  // F-SP3-a passthrough
+  }
   const action = {
     opId:  op.id,
     label: op?.surfaces?.ui?.label ?? op.verb ?? op.id,
-    appliesTo: {
-      type: op.appliesTo.type,
-    },
+    appliesTo,
   };
-  // F-SP3-a — state may be string OR array; pass through verbatim.
-  if (op.appliesTo.state !== undefined) {
-    action.appliesTo.state = op.appliesTo.state;
-  }
+  if (prefilledParams) action.prefilledParams = prefilledParams;
   return action;
 }
