@@ -40,10 +40,19 @@ export function isCanonicalVerb(verb) { return VERB_SET.has(verb); }
  * Validate a manifest.
  *
  * @param {import('./schema.js').Manifest} manifest
+ * @param {object} [opts]
+ * @param {boolean} [opts.strict=false]
+ *   V0.4 Q16 (2026-05-21) — when `true`, every `view.dataSource.skillId`
+ *   AND every `view.fields[].patch.opId` must be either declared in
+ *   `manifest.operations[].id` OR in the new `manifest.externalSkills`
+ *   allow-list.  Catches typos (e.g. `'getMispelled'`) at manifest
+ *   level.  Default: non-strict (existing tolerant behaviour).
+ *
  * @returns {{ ok: boolean, errors: Array<{path: string, message: string}> }}
  */
-export function validateManifest(manifest) {
+export function validateManifest(manifest, opts = {}) {
   const errors = [];
+  const strict = !!opts.strict;
 
   if (!manifest || typeof manifest !== 'object') {
     return { ok: false, errors: [{ path: '/', message: 'manifest must be an object' }] };
@@ -84,12 +93,54 @@ export function validateManifest(manifest) {
     } else {
       const ids = new Set();
       manifest.views.forEach((v, i) => {
-        validateView(v, `/views/${i}`, manifest, errors, ids);
+        validateView(v, `/views/${i}`, manifest, errors, ids, strict);
+      });
+    }
+  }
+
+  // V0.4 Q16 (strict mode only) — `manifest.externalSkills` is the
+  // forward-additive allow-list for skill ids that live outside the
+  // manifest's `operations[]` (e.g. household's `listMine` from
+  // buildSkills).  Validated as a string array if present; missing
+  // is fine.
+  if (manifest.externalSkills !== undefined) {
+    if (!Array.isArray(manifest.externalSkills)) {
+      errors.push({
+        path:    '/externalSkills',
+        message: 'externalSkills must be an array if present',
+      });
+    } else {
+      manifest.externalSkills.forEach((s, i) => {
+        if (typeof s !== 'string' || s === '') {
+          errors.push({
+            path:    `/externalSkills/${i}`,
+            message: 'externalSkills entries must be non-empty strings',
+          });
+        }
       });
     }
   }
 
   return { ok: errors.length === 0, errors };
+}
+
+/**
+ * Build the set of skill ids that count as "known" for Q16 strict
+ * cross-check: operations[].id ∪ externalSkills[].
+ */
+function knownSkillIds(manifest) {
+  const set = new Set();
+  if (Array.isArray(manifest.operations)) {
+    for (const op of manifest.operations) {
+      if (typeof op?.id === 'string') set.add(op.id);
+    }
+  }
+  if (Array.isArray(manifest.externalSkills)) {
+    for (const s of manifest.externalSkills) {
+      if (typeof s === 'string') set.add(s);
+    }
+  }
+  return set;
 }
 
 function validateOperation(op, path, manifest, errors, idSet) {
@@ -178,7 +229,7 @@ function validateParam(p, path, errors) {
   }
 }
 
-function validateView(v, path, manifest, errors, idSet) {
+function validateView(v, path, manifest, errors, idSet, strict = false) {
   if (!v || typeof v !== 'object') {
     errors.push({ path, message: 'view must be an object' });
     return;
@@ -219,21 +270,17 @@ function validateView(v, path, manifest, errors, idSet) {
         path: `${path}/dataSource/skillId`,
         message: 'view.dataSource.skillId must be a non-empty string',
       });
-    } else {
-      // Q16 cross-check (advisory, not strict): warn-equivalent if
-      // skillId doesn't match an operation id in the manifest.
-      // Recorded as an error with `code: 'unknown-skillId'` so
-      // tooling can opt-into-strict / opt-into-warn.  Existing
-      // manifests with skillIds that reference external skills
-      // (e.g. tasks-v0's `listMine` lives in buildSkills,
-      // not the manifest) MUST be excused via a future allow-list.
-      // For V0.3 the cross-check is OFF BY DEFAULT — guarded behind
-      // an env flag so it doesn't break the chain.  Enabled tools
-      // can grep for the error `code` to surface typos.
-      //
-      // (Implementation TODO: env-flag gating + allow-list.  V0.3
-      // ships the SHAPE check above; the cross-check follows once
-      // a tooling consumer wants it.)
+    } else if (strict) {
+      // V0.4 Q16-strict — verify skillId is declared in operations[]
+      // OR in the externalSkills allow-list.  Surfaces typos.
+      const known = knownSkillIds(manifest);
+      if (!known.has(v.dataSource.skillId)) {
+        errors.push({
+          path:    `${path}/dataSource/skillId`,
+          message: `unknown skillId "${v.dataSource.skillId}" (not in operations[] or externalSkills[])`,
+          code:    'unknown-skillId',
+        });
+      }
     }
     if (v.dataSource.argsFromContext !== undefined) {
       if (v.dataSource.argsFromContext === null
@@ -244,6 +291,57 @@ function validateView(v, path, manifest, errors, idSet) {
           message: 'view.dataSource.argsFromContext must be an object if present',
         });
       }
+    }
+  }
+
+  // Q18 (V0.4) — view.fields[] for record-shape views.
+  if (v.fields !== undefined) {
+    if (!Array.isArray(v.fields)) {
+      errors.push({ path: `${path}/fields`, message: 'view.fields must be an array if present' });
+    } else if (v.shape !== 'record') {
+      errors.push({
+        path:    `${path}/fields`,
+        message: "view.fields only meaningful when view.shape === 'record'",
+      });
+    } else {
+      const knownIds = strict ? knownSkillIds(manifest) : null;
+      v.fields.forEach((f, j) => {
+        const fp = `${path}/fields/${j}`;
+        if (!f || typeof f !== 'object') {
+          errors.push({ path: fp, message: 'field must be an object' });
+          return;
+        }
+        if (typeof f.name !== 'string' || f.name === '') {
+          errors.push({
+            path:    `${fp}/name`,
+            message: 'field.name must be a non-empty string',
+          });
+        }
+        if (f.patch !== undefined) {
+          if (!f.patch || typeof f.patch !== 'object' || Array.isArray(f.patch)) {
+            errors.push({ path: `${fp}/patch`, message: 'field.patch must be an object if present' });
+          } else {
+            if (typeof f.patch.opId !== 'string' || f.patch.opId === '') {
+              errors.push({
+                path:    `${fp}/patch/opId`,
+                message: 'field.patch.opId must be a non-empty string',
+              });
+            } else if (strict && knownIds && !knownIds.has(f.patch.opId)) {
+              errors.push({
+                path:    `${fp}/patch/opId`,
+                message: `unknown opId "${f.patch.opId}" (not in operations[] or externalSkills[])`,
+                code:    'unknown-skillId',
+              });
+            }
+            if (typeof f.patch.argName !== 'string' || f.patch.argName === '') {
+              errors.push({
+                path:    `${fp}/patch/argName`,
+                message: 'field.patch.argName must be a non-empty string',
+              });
+            }
+          }
+        }
+      });
     }
   }
 }

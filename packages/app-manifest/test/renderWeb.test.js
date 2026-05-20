@@ -545,6 +545,133 @@ describe('renderWeb V0.2 — Q10 creative verbs (add + register)', () => {
   });
 });
 
+describe('renderWeb V0.4 — Q18 view.fields (record-shape patch fields)', () => {
+  const MANIFEST = {
+    app:       'rec',
+    itemTypes: ['settings-record'],
+    operations: [
+      {
+        id:   'updateSettings',
+        verb: 'update',
+        params: [
+          { name: 'language',    kind: 'string' },
+          { name: 'pushEnabled', kind: 'boolean' },
+        ],
+        surfaces: { chat: { hint: 'patch settings' } },
+      },
+    ],
+    views: [
+      {
+        id:    'settings',
+        title: 'Settings',
+        type:  'settings-record',
+        shape: 'record',
+        dataSource: { skillId: 'getSettings' },
+        fields: [
+          { name: 'language', type: 'enum', label: 'Language',
+            choices: ['en', 'nl'],
+            patch: { opId: 'updateSettings', argName: 'language' } },
+          { name: 'pushEnabled', type: 'boolean',
+            patch: { opId: 'updateSettings', argName: 'pushEnabled' } },
+          { name: 'displayName', type: 'string' /* no patch — read-only field */ },
+        ],
+      },
+      { id: 'no-fields', title: 'No fields', type: 'settings-record', shape: 'record' },
+    ],
+  };
+
+  it('section.fields is set when view.shape === record + view.fields declared', () => {
+    const nav = renderWeb(MANIFEST);
+    const settings = nav.sections.find((s) => s.id === 'settings');
+    expect(settings.fields).toHaveLength(3);
+    expect(settings.fields[0]).toMatchObject({
+      name: 'language', type: 'enum', label: 'Language',
+      choices: ['en', 'nl'],
+      patch: { opId: 'updateSettings', argName: 'language' },
+    });
+  });
+
+  it('section.fields[].patch is preserved verbatim per field', () => {
+    const nav = renderWeb(MANIFEST);
+    const settings = nav.sections.find((s) => s.id === 'settings');
+    const lang = settings.fields.find((f) => f.name === 'language');
+    expect(lang.patch).toEqual({ opId: 'updateSettings', argName: 'language' });
+  });
+
+  it('section.fields[] entry WITHOUT patch is read-only (no patch field)', () => {
+    const nav = renderWeb(MANIFEST);
+    const settings = nav.sections.find((s) => s.id === 'settings');
+    const dn = settings.fields.find((f) => f.name === 'displayName');
+    expect(dn).not.toHaveProperty('patch');
+  });
+
+  it('section.fields is ABSENT when view.fields not declared (forward-compat)', () => {
+    const nav = renderWeb(MANIFEST);
+    const noFields = nav.sections.find((s) => s.id === 'no-fields');
+    expect(noFields).not.toHaveProperty('fields');
+  });
+});
+
+describe("renderWeb V0.4 — Q19 surfaces.ui.placement: 'section-header'", () => {
+  const MANIFEST = {
+    app:       'cta',
+    itemTypes: ['inbox-item'],
+    operations: [
+      // Section-scope CTA (e.g. clear all).
+      {
+        id:        'clearInbox',
+        verb:      'remove',
+        appliesTo: { type: 'inbox-item' },
+        params:    [],
+        surfaces:  { ui: { control: 'button', label: 'Clear all', placement: 'section-header' } },
+      },
+      // Per-row item action — should still go to itemActions.
+      {
+        id:        'clearInboxItem',
+        verb:      'remove',
+        appliesTo: { type: 'inbox-item' },
+        params:    [{ name: 'id', kind: 'string', required: true }],
+        surfaces:  { ui: { control: 'button', label: 'Dismiss' } },
+      },
+    ],
+    views: [
+      { id: 'inbox', title: 'Inbox', type: 'inbox-item' },
+    ],
+  };
+
+  it("ops with placement === 'section-header' surface in section.sectionActions[]", () => {
+    const nav = renderWeb(MANIFEST);
+    const inbox = nav.sections.find((s) => s.id === 'inbox');
+    expect(inbox.sectionActions).toHaveLength(1);
+    expect(inbox.sectionActions[0]).toMatchObject({
+      opId: 'clearInbox', label: 'Clear all', placement: 'section-header',
+    });
+  });
+
+  it("ops with default placement still go to itemActions[]", () => {
+    const nav = renderWeb(MANIFEST);
+    const inbox = nav.sections.find((s) => s.id === 'inbox');
+    expect(inbox.itemActions.map((a) => a.opId)).toContain('clearInboxItem');
+    // Section-header op NOT in itemActions.
+    expect(inbox.itemActions.map((a) => a.opId)).not.toContain('clearInbox');
+  });
+
+  it("section.sectionActions is ABSENT when no section-header ops match", () => {
+    const nav = renderWeb({
+      app: 'noheader', itemTypes: ['task'], operations: [], views: [
+        { id: 'v', title: 'V', type: 'task' },
+      ],
+    });
+    const section = nav.sections.find((s) => s.id === 'v');
+    expect(section).not.toHaveProperty('sectionActions');
+  });
+
+  it("section-header op does NOT also land in globals[]", () => {
+    const nav = renderWeb(MANIFEST);
+    expect(nav.globals.map((g) => g.opId)).not.toContain('clearInbox');
+  });
+});
+
 describe("renderWeb V0.3 — Q17 view.shape: 'record'", () => {
   const MANIFEST = {
     app:       'rec',

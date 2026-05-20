@@ -199,6 +199,42 @@
  * iterate items[]; `'record'` → render the single returned record
  * with its fields.  Future Q18 (deferred) lets the record's fields
  * declare their own patch-op for per-field mutations.
+ *
+ * ──── Q18 — `view.fields[].patch` per-field mutations (locked 2026-05-21)
+ *
+ * Surfaced by E.3 (signal #6).  Record-shape views (settings, profile)
+ * have fields the user edits — but the current verb model has no slot
+ * for "patch this field via opId(argName=value)".
+ *
+ * Solution: `view.fields: [{name, type, label?, choices?, patch?:
+ * {opId, argName}}]`.  Only meaningful when `view.shape === 'record'`.
+ * NavModel passes through to `section.fields[]`.  Adapter renders each
+ * field as an input based on `type`; on change, dispatches
+ * `patch.opId({patch.argName: newValue})`.
+ *
+ * Forward-additive — absent means existing record-rendering (no
+ * editable fields).
+ *
+ * ──── Q19 — Section-scope CTAs via `surfaces.ui.placement: 'section-header'`
+ *
+ * Surfaced by B.2.3 deferral.  Inbox has a "Clear all" header CTA —
+ * not creative (doesn't add items), not per-item.  No slot in V0.3.
+ *
+ * Solution: ops with `surfaces.ui.placement: 'section-header'`
+ * surface in `section.sectionActions[]` (parallel to `affordances[]`
+ * and `itemActions[]`).  Same Affordance shape; the placement
+ * difference is purely semantic — header CTAs are adjacent to the
+ * section title.
+ *
+ * Forward-additive.
+ *
+ * ──── Q16-strict — opt-in skillId cross-check (locked 2026-05-21)
+ *
+ * `validateManifest(manifest, {strict: true})` walks every
+ * `view.dataSource.skillId` (V0.4 also `view.fields[].patch.opId`) and
+ * verifies it's either declared in `manifest.operations[].id` OR in
+ * the new `manifest.externalSkills?: string[]` allow-list.  Default
+ * (no `strict` opt) keeps the existing tolerant behaviour.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -234,6 +270,8 @@ export function renderWeb(manifest) {
   // (a) Globals — ops with surfaces.ui.placement === 'global'.  These
   //     surface at the app-shell level, NOT under any section.
   //     Inferred from existing surfaces.ui (Q3, no schema change).
+  //     Q19 (V0.4) — `placement === 'section-header'` is NOT global;
+  //     handled inside buildSection per-section.
   const globals = [];
   for (const op of ops) {
     const ui = op?.surfaces?.ui;
@@ -289,6 +327,22 @@ function buildSection(view, ops, manifest) {
   // implicitly list-shaped).
   if (view.shape === 'record')      section.shape      = 'record';
 
+  // Q18 (V0.4, 2026-05-21) — per-field declarations for record-shape
+  // views.  Pass through verbatim (defensive copy of each field +
+  // patch sub-object).
+  if (view.shape === 'record' && Array.isArray(view.fields)) {
+    section.fields = view.fields.map((f) => {
+      const out = { name: f.name };
+      if (f.type    !== undefined) out.type    = f.type;
+      if (f.label   !== undefined) out.label   = f.label;
+      if (Array.isArray(f.choices)) out.choices = f.choices.slice();
+      if (f.patch && typeof f.patch === 'object') {
+        out.patch = { opId: f.patch.opId, argName: f.patch.argName };
+      }
+      return out;
+    });
+  }
+
   for (const op of ops) {
     const ui = op?.surfaces?.ui;
     if (ui?.placement === 'global') continue;  // already pushed to globals
@@ -307,6 +361,14 @@ function buildSection(view, ops, manifest) {
       // shouldn't have to repeat `surfaces.ui` for each.
       section.affordances.push(
         buildAffordance(op, manifest, 'section', m.viaTypeEnum ? { type: view.type } : null),
+      );
+    } else if (ui?.placement === 'section-header') {
+      // Q19 (V0.4, 2026-05-21) — section-scope CTAs.  e.g. inbox's
+      // "Clear all" header CTA.  Adjacent to the section title; not
+      // per-item, not creative.  Shape matches Affordance.
+      if (!section.sectionActions) section.sectionActions = [];
+      section.sectionActions.push(
+        buildAffordance(op, manifest, 'section-header', m.viaTypeEnum ? { type: view.type } : null),
       );
     } else if (ui) {
       // (Q6 rule c) — other verbs require surfaces.ui to surface as itemActions.
