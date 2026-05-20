@@ -108,11 +108,16 @@ export async function buildCharacterizationFixture({
     'packages', 'web-adapter', 'src',
   );
   const webAdapterFiles = {};
+  // V0.2 (2026-05-20) — fetchSectionItems + schemaToFormFields join the
+  // overlay so page scripts (dag.html / mine.html) can ESM-import them
+  // through the same /lib/web-adapter/ namespace as B.2.0 helpers.
   for (const n of [
     'callSkill.js',
     'deriveItemState.js',
     'itemMatchesAppliesTo.js',
     'applyPrefilledParams.js',
+    'fetchSectionItems.js',
+    'schemaToFormFields.js',
     'index.js',
   ]) {
     webAdapterFiles[`/lib/web-adapter/${n}`] = await readFile(

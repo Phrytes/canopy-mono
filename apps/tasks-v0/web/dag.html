@@ -39,6 +39,14 @@
      * `dag` section + its `getDagTree` op declaration off the
      * NavModel rather than hand-coding the dispatch.
      *
+     * V0.2 (2026-05-20) — section data-fetch flows through the shared
+     * `fetchSectionItems(section, {callSkill})` helper which honours
+     * the manifest's Q7 `view.dataSource: {skillId: 'getDagTree'}`
+     * declaration. The previous hard-coded `callSkill('getDagTree', {})`
+     * was the load-bearing fallback path (no surfaces.ui ⇒ no
+     * itemAction to pull the op id from); V0.2 collapses that into the
+     * manifest.
+     *
      * Discipline:
      *   - Fetch `/navmodel.json` + `/tasks-config.json` (mirrors the
      *     household-web pattern).
@@ -46,7 +54,8 @@
      *     gracefully if the manifest drifted (the page renders a
      *     "DAG view unavailable" panel via the existing
      *     `renderV1NotAvailable` helper).
-     *   - Call `getDagTree({rootId?})` via the shared `callSkill`.
+     *   - Call the section's declared `dataSource.skillId` via the
+     *     shared `fetchSectionItems` (V0.2 helper, Q7).
      *   - Flatten the response through `flattenDagTree` (the shared
      *     UI-helper used by tasks-mobile's DagScreen too — per
      *     `docs/web-mobile-parity-workarounds.md` §A.4).
@@ -62,6 +71,9 @@
     // `/lib/dagFlatten.js` via `extraStaticFiles` — source-of-truth is
     // `apps/tasks-v0/src/ui/dagFlatten.js`.
     import { flattenDagTree } from '/lib/dagFlatten.js';
+    // V0.2 (2026-05-20) — section data-fetch through the manifest's
+    // Q7 view.dataSource declaration.
+    import { fetchSectionItems } from '/lib/web-adapter/fetchSectionItems.js';
 
     document.getElementById('actor').textContent = await getActor();
     mountInboxBadge(document.getElementById('nav-inbox'));
@@ -138,14 +150,14 @@
     async function refresh() {
       if (!dagSection) return;
       try {
-        // The NavModel's `dag` section declares the data source: a
-        // `getDagTree` op (op declaration is in tasksManifest).  We
-        // resolve the op id off the section's affordances/itemActions
-        // when one exists, else fall back to the canonical id —
-        // V0 doesn't surface getDagTree as a button (no surfaces.ui),
-        // so the fallback is the load-bearing path.
-        const opId = 'getDagTree';
-        const r = await callSkill(opId, {});
+        // V0.2 (Q7): `dagSection.dataSource = {skillId: 'getDagTree'}`
+        // declared in the manifest. `fetchSectionItems` reads that and
+        // dispatches the skill call through the supplied `callSkill`.
+        // Pre-V0.2 this page hard-coded the skill id because no
+        // itemAction surfaces `getDagTree` (no surfaces.ui in the
+        // manifest); the helper now lifts that into a substrate
+        // contract shared with mine.html + future renderMobile.
+        const r = await fetchSectionItems(dagSection, { callSkill });
         // Sanity-check the response via the shared `flattenDagTree`
         // helper (handles `{trees}` | `{tree}` | bare-node shapes).
         // Empty forest → render the empty-state message; otherwise
