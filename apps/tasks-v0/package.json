@@ -7,6 +7,7 @@
   "main": "src/index.js",
   "exports": {
     ".":                           "./src/index.js",
+    "./manifest":                  "./manifest.js",
     "./MeshAgent":                 "./src/MeshAgent.js",
     "./wireSkills":                "./src/wireSkills.js",
     "./bundleResolver":            "./src/bundleResolver.js",
@@ -37,6 +38,9 @@
   "dependencies": {
     "@canopy/agent-registry": "file:../../packages/agent-registry",
     "@canopy/agent-ui": "file:../../packages/agent-ui",
+    "@canopy/app-manifest": "file:../../packages/app-manifest",
+    "@canopy/web-adapter": "file:../../packages/web-adapter",
+    "@canopy/manifest-host": "file:../../packages/manifest-host",
     "@canopy/pseudo-pod": "file:../../packages/pseudo-pod",
     "@canopy/chat-agent": "file:../../packages/chat-agent",
     "@canopy/chat-p2p": "file:../../packages/chat-p2p",

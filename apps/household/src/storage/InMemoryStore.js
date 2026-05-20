@@ -117,6 +117,40 @@ export class InMemoryStore {
   }
 
   /**
+   * SP-2: claim a task (assignee := actor).  Returns the updated item
+   * via `legacyShape`, or — if the item is already claimed by someone
+   * else — the L1b ItemStore's `{error: 'already-claimed', current}`
+   * shape passed through (with `current` legacy-shaped).
+   *
+   * @param {string} itemId
+   * @param {string} [actor]
+   * @returns {Promise<import('../types.js').Item | {error: 'already-claimed', current: import('../types.js').Item}>}
+   */
+  async claim(itemId, actor) {
+    const result = await this.#store.claim(itemId, { actor: actor ?? SYSTEM_ACTOR });
+    if (result && result.error === 'already-claimed') {
+      return { error: 'already-claimed', current: legacyShape(result.current) };
+    }
+    return legacyShape(result);
+  }
+
+  /**
+   * SP-2: reassign a task to a different webid.
+   *
+   * @param {string} itemId
+   * @param {string} newAssignee   webid
+   * @param {string} [actor]
+   * @returns {Promise<import('../types.js').Item>}
+   */
+  async reassign(itemId, newAssignee, actor) {
+    const item = await this.#store.reassign(
+      itemId, newAssignee,
+      { actor: actor ?? SYSTEM_ACTOR },
+    );
+    return legacyShape(item);
+  }
+
+  /**
    * @param {string} itemId
    * @returns {Promise<import('../types.js').Item|null>}
    */

@@ -701,6 +701,28 @@ describe('SyncEngine — start/stop lifecycle', () => {
     await e.stop();
     expect(pod.store.has(`${POD_ROOT}init.md`)).toBe(true);
   });
+
+  // Slice G #6 (2026-05-20) — public observability getters.
+  it('isRunning toggles across start / stop', async () => {
+    const e = newEngine();
+    expect(e.isRunning).toBe(false);
+    e.start();
+    expect(e.isRunning).toBe(true);
+    await e.stop();
+    expect(e.isRunning).toBe(false);
+  });
+
+  it('isWatching reports the watcher-attached state (Slice G.3)', async () => {
+    const e = newEngine();
+    expect(e.isWatching).toBe(false);
+    e.start();
+    // start() is fire-and-forget; isWatching may be false initially.
+    // Give chokidar a tick to attach, then verify the flag flips true.
+    await new Promise((r) => setTimeout(r, 60));
+    expect(e.isWatching).toBe(true);
+    await e.stop();
+    expect(e.isWatching).toBe(false);
+  });
 });
 
 // ── Folio v2.6 — sha-stable watcher hardening ──────────────────────────────

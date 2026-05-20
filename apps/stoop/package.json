@@ -17,15 +17,18 @@
   },
   "bin": {
     "stoop-ui":      "bin/stoop-ui.js",
-    "stoop-testbed": "bin/stoop-testbed.js"
+    "stoop-testbed": "bin/stoop-testbed.js",
+    "stoop-web":     "bin/stoop-web.js"
   },
   "scripts": {
     "test":       "vitest run",
     "test:watch": "vitest",
     "ui":         "node bin/stoop-ui.js",
-    "testbed":    "node bin/stoop-testbed.js"
+    "testbed":    "node bin/stoop-testbed.js",
+    "web":        "node bin/stoop-web.js"
   },
   "dependencies": {
+    "@canopy/app-manifest":      "file:../../packages/app-manifest",
     "@canopy/core":              "file:../../packages/core",
     "@canopy/relay":             "file:../../packages/relay",
     "@canopy/agent-registry":    "file:../../packages/agent-registry",
@@ -35,6 +38,7 @@
     "@canopy/identity-resolver": "file:../../packages/identity-resolver",
     "@canopy/item-store":        "file:../../packages/item-store",
     "@canopy/item-types":        "file:../../packages/item-types",
+    "@canopy/llm-client":        "file:../../packages/llm-client",
     "@canopy/local-store":       "file:../../packages/local-store",
     "@canopy/notifier":          "file:../../packages/notifier",
     "@canopy/notify-envelope":   "file:../../packages/notify-envelope",

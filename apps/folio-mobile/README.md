@@ -26,6 +26,7 @@ The `@canopy-app/folio` workspace is **not** a substrate — it's a sibling app 
 | `@canopy/pod-client` | `PodClient`, `SolidOidcAuth` | Solid pod read/write/list + OIDC auth flow (mobile-side, `expo-auth-session`). | Folio is one of the canonical PodClient consumers; no substrate currently wraps "construct an authenticated PodClient from an OIDC flow on RN." Layering doc lists this as the canonical "no substrate fits yet" example. |
 | `@canopy/core` | `PodCapabilityToken` | Share screen — accept incoming capability tokens from another agent. | Capability-token primitive is SDK-foundational; substrates compose it, they don't wrap it. |
 | `@canopy/react-native` | `platform/polyfills` (entry-point side-effect import) | RN bring-up: `react-native-get-random-values` + `nacl-util` polyfills before any crypto runs. | Platform layer — RN-specific bring-up lives in `@canopy/react-native` by design; no substrate wraps it. |
+| `@canopy/react-native` | `pseudo-pod-adapter` (optional, feature-flagged) | Dynamic import in `ServiceContext.js:284`, gated on `FOLIO_PSEUDO_POD` / `EXPO_PUBLIC_FOLIO_PSEUDO_POD` env. Phase 3 OQ-6 optional caching layer: write-through queue + read cache backed by RN persistent store. | RN-specific concrete for the pseudo-pod abstraction; feature-flagged because Phase 3 is still validating the cache-mode default. Side-loaded so the bundle doesn't pull the cache layer when the flag is off. |
 
 ## Architecture: ONE `core.Agent` (when mesh transports are wired)
 
@@ -58,6 +59,19 @@ absorption — see [`Project Files/Folio/v1-mobile-functional-design-2026-05-11.
   pseudoPod.
 - 52.14 Q-D Lamport `_v` stale-peer auto-heal — same.
 - 52.2.x peer-fetch gates / `fetch-resource` skill — same.
+
+Surfaced by Slice G audit (`SLICE-G-AUDIT.md`, 2026-05-20) — both
+intentional v0 gaps in user-facing parity with folio desktop:
+
+- **Inbound cap-token receive UI.** Desktop's `/share` endpoint
+  accepts incoming capability tokens from another agent; mobile's
+  `ShareScreen` only issues outbound tokens.  When V2 lands the
+  receive flow, mirror the desktop endpoint's logic (decode + verify
+  + persist).  Documented in `src/screens/ShareScreen.js` header.
+- **File deletion UI.** Desktop has `/delete/:id` (Phase 2.11) plus a
+  CLI `rm` (local tombstone only).  Mobile notes-list shows files
+  but has no delete affordance.  Add either inline (swipe-to-delete)
+  or via the per-file edit screen when V2 starts.
 
 Out of scope for this slice:
 

@@ -1,5 +1,40 @@
 # Changelog — @canopy-app/tasks-v0
 
+## [Unreleased] — Slice B.1 (2026-05-20) — dag.html via renderWeb (view-only)
+
+First tasks-v0 web page migrated to the NavModel projector
+(`renderWeb` from `@canopy/app-manifest`) per
+`PLAN-gui-chat-uplift.md` § Slice B.1.  Read-only proof; no
+state-changing surfaces — `dag.html` reads `getDagTree` via the
+manifest's `dag` view and flattens through the existing shared
+helper.
+
+**569/569 tasks-v0 tests green** (was 565; +4 NavModel-shape
+assertions).
+
+- Manifest gains a `dag` view (`{id:'dag', title:'DAG', type:'task'}`)
+  and a `getDagTree` op declaration (`verb:'tree'`, optional
+  `rootId` param; `surfaces.chat.hint` only — no `slash`).
+- Bootstrap (`bin/tasks-ui.js`) surfaces the NavModel at
+  `/navmodel.json` via `extraStaticFiles`, mirroring the
+  `apps/household/bin/household-web.js` pattern.
+- `dag.html`'s inline script now fetches `/navmodel.json` +
+  `/tasks-config.json`, resolves the `dag` section, dispatches
+  `getDagTree` via `callSkill`, and renders through the shared
+  `flattenDagTree` helper (`src/ui/dagFlatten.js`, also consumed
+  by `apps/tasks-mobile/src/screens/DagScreen.jsx`).
+- The shared helper is served via an `/lib/dagFlatten.js`
+  overlay (the static-dir is path-traversal-hardened, so a bare
+  `import '../src/ui/...'` would 404 in the browser).  Source-of-
+  truth stays under `src/ui/`.
+- Characterization snapshot
+  (`test/characterization/__snapshots__/dag.test.js.snap`)
+  deliberately updated; row markup (the actually-rendered DOM)
+  is byte-equivalent — only the inline `<script>` body changed.
+- Drift canary (`test/sp3-manifest.test.js`) updated to include
+  `buildWorkspaceSkills` in its op-id ↔ skill-id cross-check
+  (matches what `wireSkills` registers).
+
 ## [0.4.0] — 2026-05-14 — V2 substrate adoption (12 slices, full web track)
 
 The entire Tasks V2 web track shipped today across 12 slices.

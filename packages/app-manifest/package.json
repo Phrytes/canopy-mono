@@ -1,0 +1,20 @@
+{
+  "name": "@canopy/app-manifest",
+  "version": "0.1.0",
+  "description": "Per-app declarative manifest + pure projectors (validateManifest, paramsToJsonSchema, renderChat, renderSlash). The bundle-declaration format feeding the §0 destination substrates (@canopy/interface-registry, @canopy/protocol) and shipping the chat/slash surface those substrates don't cover. Phase: SP-0 (greenfield).",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/item-types": "file:../item-types"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
+}

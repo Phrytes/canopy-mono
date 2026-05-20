@@ -5,7 +5,10 @@
   "type":        "module",
   "private":     true,
   "main":        "src/index.js",
-  "bin":         { "household": "src/cli.js" },
+  "bin":         {
+    "household":     "src/cli.js",
+    "household-web": "bin/household-web.js"
+  },
   "scripts": {
     "test":       "vitest run",
     "test:watch": "vitest",
@@ -18,15 +21,19 @@
     "freetext-smoke-lite":   "HOUSEHOLD_SMOKE_LITE=1 node scripts/freetext-smoke.js",
     "freetext-smoke-lite-3":         "HOUSEHOLD_SMOKE_LITE=1 HOUSEHOLD_LLM_MODELS=qwen2.5:7b-instruct,mistral:7b-instruct,bramvanroy/geitje-7b-ultra:Q4_K_M node scripts/freetext-smoke.js",
     "freetext-smoke-lite-3-tuned":   "HOUSEHOLD_SMOKE_LITE=1 HOUSEHOLD_LLM_MODELS=qwen2.5:7b-instruct,mistral:7b-instruct,bramvanroy/geitje-7b-ultra:Q4_K_M HOUSEHOLD_PROMPT=trimmed HOUSEHOLD_LLM_TEMPERATURE=0.1 HOUSEHOLD_LLM_STOP='\\nUser:,\\nReply:' node scripts/freetext-smoke.js",
-    "tool-probe":                    "node scripts/ollama-tool-probe.js"
+    "tool-probe":                    "node scripts/ollama-tool-probe.js",
+    "web":                           "node bin/household-web.js"
   },
   "dependencies": {
-    "@canopy/core":       "file:../../packages/core",
-    "@canopy/pod-client": "file:../../packages/pod-client",
-    "@canopy/chat-agent": "file:../../packages/chat-agent",
-    "@canopy/item-store": "file:../../packages/item-store",
-    "@canopy/llm-client": "file:../../packages/llm-client",
-    "@canopy/notifier":   "file:../../packages/notifier",
+    "@canopy/core":         "file:../../packages/core",
+    "@canopy/pod-client":   "file:../../packages/pod-client",
+    "@canopy/app-manifest": "file:../../packages/app-manifest",
+    "@canopy/agent-ui":     "file:../../packages/agent-ui",
+    "@canopy/web-adapter":  "file:../../packages/web-adapter",
+    "@canopy/chat-agent":   "file:../../packages/chat-agent",
+    "@canopy/item-store":   "file:../../packages/item-store",
+    "@canopy/llm-client":   "file:../../packages/llm-client",
+    "@canopy/notifier":     "file:../../packages/notifier",
     "telegraf":             "^4.16.3"
   },
   "devDependencies": {

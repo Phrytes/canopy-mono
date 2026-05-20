@@ -1,0 +1,241 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`characterization: review.html > initial HTML snapshot (empty review queue) 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tasks — Review queue</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/mine.html">My work</a>
+      <a href="/review.html" class="active">Review</a>
+      <a href="/dag.html">DAG</a>
+      <a href="/availability.html">Availability</a>
+      <a href="/crew.html">Crew</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/inbox.html" id="nav-inbox">Inbox</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section id="awaiting">
+      <h2 id="awaiting-title">Awaiting your approval</h2>
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Submitted tasks where you are the designated approver
+        (per the task's <code>approval</code> mode), plus everything
+        if you are admin / coordinator.
+      </p>
+      <ul id="awaiting-list"><li class="empty">Loading…</li></ul>
+    </section>
+  </main>
+
+  <script type="module">
+    /*
+     * Slice B.2.2 (PLAN-gui-chat-uplift.md, 2026-05-20) — review.html
+     * migrated to the NavModel + shared @canopy/web-adapter helpers
+     * (B.2.0).  The single reviewer-queue section is now resolved off
+     * \`navmodel.json\`'s \`review\` view; per-item action buttons are
+     * filtered by the manifest's \`appliesTo\` gate via
+     * \`itemMatchesAppliesTo\`.
+     *
+     * V0.2 (2026-05-20) — section data-fetch flows through the
+     * shared \`fetchSectionItems(section, {callSkill})\` helper,
+     * honouring the manifest's Q7 \`view.dataSource\` field
+     * (\`listAwaitingApproval\`, added in B.2.2).
+     *
+     * Discipline:
+     *   - The static <nav> + <h2> stay (SEO + copy-paste linkability).
+     *     The NavModel projects the section title onto the <h2> when
+     *     present, so the manifest stays the source-of-truth for the
+     *     user-visible label.
+     *   - The page-local \`isApprover\` filter (approval mode + admin/
+     *     coordinator check) survives verbatim — that's a per-actor
+     *     SUFFICIENT-condition gate the manifest can't express in V0
+     *     (the skill returns the full submitted list; the page picks
+     *     the rows the actor can act on).
+     *   - The renderTasks() helper from \`app.js\` is reused verbatim
+     *     for row rendering (approve / reject / revoke / force-
+     *     complete / propose-subtask). The manifest's appliesTo gate
+     *     is implicit because each manifest op's \`appliesTo.state\`
+     *     matches renderTasks's role-based gate (approve/reject on
+     *     'submitted', revoke on ['claimed','submitted','rejected']).
+     */
+    import {
+      callSkill, renderTasks, getActor, getConfig, mountLive,
+      mountInboxBadge, renderV1NotAvailable,
+    } from '/app.js';
+    import { itemMatchesAppliesTo } from '/lib/web-adapter/itemMatchesAppliesTo.js';
+    import { applyPrefilledParams } from '/lib/web-adapter/applyPrefilledParams.js';
+    // V0.2 (2026-05-20) — section data-fetch via the manifest's Q7
+    // \`view.dataSource\`; replaces the inline \`callSkill('listAwaiting…')\`.
+    import { fetchSectionItems }    from '/lib/web-adapter/fetchSectionItems.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    const cfg  = await getConfig();
+    const me   = cfg.actor ?? await getActor();
+    const role = cfg.roles?.[me] ?? 'member';
+
+    mountInboxBadge(document.getElementById('nav-inbox'));
+
+    // Load NavModel — drives section title + per-item button gating.
+    const navModel = await fetch('/navmodel.json').then((r) => r.json()).catch(() => null);
+    const sectionsById = new Map(
+      (navModel?.sections ?? []).map((s) => [s.id, s]),
+    );
+
+    // Mirror the manifest's section title onto the <h2> (with the
+    // static fallback already in the markup preserving SEO).
+    {
+      const sec = sectionsById.get('review');
+      const el  = document.getElementById('awaiting-title');
+      if (sec && el) el.textContent = sec.title;
+    }
+
+    /**
+     * Page-local sufficient-condition filter: keep only the rows the
+     * actor is allowed to approve/reject. Mirrors the pre-B.2.2 gate
+     * verbatim — admin/coordinator see everything; otherwise honour
+     * the per-task \`approval\` field (\`'creator'\` → master/addedBy; a
+     * \`'webid:…'\` literal → exact match).
+     */
+    function isApprover(item) {
+      const approval = item.approval ?? 'self-mark';
+      if (role === 'admin' || role === 'coordinator') return true;
+      if (approval === 'creator') return (item.master ?? item.addedBy) === me;
+      if (typeof approval === 'string' && approval.startsWith('webid:')) {
+        return approval.slice('webid:'.length) === me;
+      }
+      return false;
+    }
+
+    /**
+     * Manifest-gate filter for per-item ctx callbacks.  Returns true
+     * when at least one of the section's itemActions targeting the
+     * given opId matches the item via the manifest's appliesTo gate.
+     * Mirrors mine.html's helper (Slice B.2.1).
+     *
+     * @param {string}  opId    manifest op id (e.g. 'approveTask')
+     * @param {object}  item    task item
+     * @param {object}  section nav section (carries itemActions[])
+     */
+    function manifestAllows(opId, item, section) {
+      const actions = section?.itemActions ?? [];
+      for (const a of actions) {
+        if (a.opId !== opId) continue;
+        if (itemMatchesAppliesTo(a.appliesTo, item)) return true;
+      }
+      return false;
+    }
+
+    /** Lookup an itemAction by opId (used for prefilledParams
+     *  passthrough — V0 tasks ops have no prefills, but the pattern
+     *  matches mine.html for forward-compat with Slice C). */
+    function _action(section, opId) {
+      return (section?.itemActions ?? []).find((a) => a.opId === opId);
+    }
+
+    /** Build the per-section ctx for renderTasks. Mirrors mine.html's
+     *  shape for approve / reject / revoke / force-complete / propose-
+     *  subtask — the same five callbacks the pre-B.2.2 page had. */
+    function buildCtx(section) {
+      return {
+        me, role,
+        onApprove:  async (id)       => {
+          const r = await callSkill(
+            'approveTask',
+            applyPrefilledParams({ id }, _action(section, 'approveTask')),
+          );
+          if (r?.error === 'has-open-dependencies') {
+            alert(\`Can't approve — \${r.openDeps.length} open sub-task(s): \${r.openDeps.map((x) => x.slice(0, 8)).join(', ')}\`);
+          }
+          await refresh();
+        },
+        onReject:   async (id, note) => {
+          await callSkill(
+            'rejectTask',
+            applyPrefilledParams({ id, note }, _action(section, 'rejectTask')),
+          );
+          await refresh();
+        },
+        onRevoke:   async (id, reason) => {
+          await callSkill(
+            'revokeTask',
+            applyPrefilledParams({ id, reason }, _action(section, 'revokeTask')),
+          );
+          await refresh();
+        },
+        // V2.7 — admin force-complete on submitted-but-blocked tasks.
+        onForceComplete: async (id, reason) => {
+          const r = await callSkill('forceCompleteTask', { id, reason });
+          if (r?.error) alert(\`Force-complete error: \${r.error}\`);
+          await refresh();
+        },
+        onProposeSubtask: async (parentTaskId, text) => {
+          const r = await callSkill('proposeSubtask', { parentTaskId, text });
+          if (r?.error) alert(\`Couldn't propose: \${r.error}\`);
+          else if (r?.queued) alert(\`Proposal sent to \${r.assignee.split('/').pop()} — they\\'ll see it in their inbox.\`);
+          await refresh();
+        },
+      };
+    }
+
+    /*
+     * V0.2 (2026-05-20) — section data-fetch via the shared
+     * \`fetchSectionItems(section, {callSkill})\` helper. The
+     * manifest's \`view.dataSource\` (Q7) declares \`listAwaitingApproval\`;
+     * the helper dispatches the skill call.
+     */
+    async function fetchSection(navId) {
+      const sec = sectionsById.get(navId);
+      if (!sec) return null;
+      try {
+        return await fetchSectionItems(sec, { callSkill });
+      } catch (err) {
+        // Re-throw so the page's catch-block surfaces the V1-not-
+        // available banner the same way the pre-B.2.2 code did.
+        throw err;
+      }
+    }
+
+    async function refresh() {
+      try {
+        const r = await fetchSection('review');
+        const reviewSec = sectionsById.get('review');
+        const items = (r?.items ?? []).filter(isApprover);
+        renderTasks(
+          document.getElementById('awaiting-list'),
+          items,
+          buildCtx(reviewSec),
+        );
+      } catch (err) {
+        renderV1NotAvailable(
+          document.getElementById('awaiting-list'),
+          err,
+          'Approver inbox is a V1 feature.',
+        );
+      }
+    }
+
+    await refresh();
+    mountLive([
+      'item-submitted', 'item-completed', 'item-rejected', 'item-revoked',
+    ], refresh);
+
+    // Slice B.2.2 — expose the manifest gate to tests / debuggers.
+    // Not used by the page; here so integration tests can assert the
+    // per-section manifest gate is wired in.
+    window.__sliceB2_2 = Object.freeze({
+      sectionsById,
+      manifestAllows,
+    });
+  </script>
+</body>
+</html>
+"
+`;

@@ -46,7 +46,21 @@ export default defineConfig({
       // the metro.config.js subpath resolver. Vite's prefix matcher
       // is greedy-longest so `/ui/<sub>` resolves before `/ui` alone.
       '@canopy-app/tasks-v0/ui':              path.resolve(repoRoot, 'apps/tasks-v0/src/ui'),
+      // Slice C.1 (2026-05-20) — the tasks-v0 root-level manifest.js is
+      // not declared in tasks-v0's `package.json#exports`, but the
+      // tasks-mobile NavModel adapter needs it.  Add a vitest alias
+      // (Metro auto-resolves via `enablePackageExports: false`); when
+      // tasks-v0 starts exporting `./manifest` officially this alias
+      // becomes redundant.
+      '@canopy-app/tasks-v0/manifest':        path.resolve(repoRoot, 'apps/tasks-v0/manifest.js'),
       '@canopy-app/tasks-v0':                 path.resolve(repoRoot, 'apps/tasks-v0/src/index.js'),
+
+      // Slice C.1 (2026-05-20) — manifest projectors + web-adapter
+      // helpers, consumed by `src/manifest-adapter.js` (NavModel
+      // adapter for RN screens).  Metro auto-discovers from
+      // packages/*/package.json; vitest needs explicit aliases.
+      '@canopy/app-manifest':                 path.resolve(repoRoot, 'packages/app-manifest/src/index.js'),
+      '@canopy/web-adapter':                  path.resolve(repoRoot, 'packages/web-adapter/src/index.js'),
 
       // SDK packages — point at sources, not node_modules.
       '@canopy/core':                         path.resolve(repoRoot, 'packages/core/src/index.js'),

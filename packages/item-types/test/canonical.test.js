@@ -37,11 +37,12 @@ function baseItem(type, extra = {}) {
 }
 
 describe('Canonical types — registration via default registry', () => {
-  it('the default registry has all 11 canonical types', () => {
+  it('the default registry has all 13 canonical types', () => {
     expect(list().sort()).toEqual([
       'announcement',
       'calendar-event',
       'chat-message',
+      'circle',
       'claim',
       'contact',
       'neighbourhood-job',
@@ -50,6 +51,7 @@ describe('Canonical types — registration via default registry', () => {
       'request',
       'reveal-request',
       'task',
+      'view',
     ]);
   });
 
@@ -64,11 +66,11 @@ describe('Canonical types — registration via default registry', () => {
   it('registerCanonicalTypes works on a fresh registry too', () => {
     const r = createRegistry();
     registerCanonicalTypes(r);
-    expect(r.list()).toHaveLength(11);
+    expect(r.list()).toHaveLength(13);
   });
 
   it('CANONICAL_TYPES exports the schema map', () => {
-    expect(Object.keys(CANONICAL_TYPES)).toHaveLength(11);
+    expect(Object.keys(CANONICAL_TYPES)).toHaveLength(13);
     expect(CANONICAL_TYPES.task).toBeTruthy();
     expect(CANONICAL_TYPES.note).toBeTruthy();
   });
@@ -88,6 +90,9 @@ describe('Canonical types — minimal valid + missing-required-field sweep', () 
     'announcement':      { body:        'Heads up: code rotates Friday' },
     'reveal-request':    { requester:   'pk-a', target: 'pk-b' },
     'neighbourhood-job': { body:        'paint the wall' },
+    // SP-5 V0 additions (2026-05-20):
+    'view':              { title:       'Open tasks', itemType: 'task' },
+    'circle':            { name:        'Gardening crew' },
   };
 
   for (const [name, extra] of Object.entries(MINIMAL)) {

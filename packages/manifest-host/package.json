@@ -1,0 +1,20 @@
+{
+  "name": "@canopy/manifest-host",
+  "version": "0.1.0",
+  "description": "Runtime composition of N app-manifests in one process. mount/unmount + compose() into namespaced (appId.opId) toolCatalog / toolHandlers / commandMenu / inlineKeyboardFor / perAppSystemPrompts across all mounted apps. SP-4 V0 substrate; does not touch existing app multi-crew machinery (that is SP-4b).",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/app-manifest": "file:../app-manifest"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
+}
