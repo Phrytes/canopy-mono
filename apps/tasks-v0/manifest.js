@@ -188,6 +188,26 @@ export const tasksManifest = {
       },
     },
     /*
+     * Slice B.2.1 (2026-05-20) — added to surface the "I'm master of"
+     * data source on the `mastered` view (mine.html's middle section).
+     * Pre-B.2.1 mine.html called this skill directly (off-manifest);
+     * pulling it into the manifest restores the SP-3 invariant that
+     * every list-skill the web/mobile renders is declared here.
+     *
+     * No `surfaces.ui` (list ops don't surface as buttons — they are
+     * the implicit data source per renderWeb's Q6 rule b). The chat
+     * hint mirrors the JSDoc on workspace.js's defineSkill body.
+     */
+    {
+      id:        'listMyMasteredTasks',
+      verb:      'list',
+      appliesTo: { type: 'task' },
+      params:    [],
+      surfaces: {
+        chat: { hint: 'List open tasks where the caller is the master.' },
+      },
+    },
+    /*
      * Slice B.1 (2026-05-20) — DAG-tree projection of the task graph.
      *
      * Verb is the app-local `tree` (not in the canonical VERBS allow-
@@ -217,7 +237,14 @@ export const tasksManifest = {
   views: [
     { id: 'open',      title: 'Open',      type: 'task', filter: { open: true } },
     { id: 'mine',      title: 'My work',   type: 'task' },
-    { id: 'claimable', title: 'Claimable', type: 'task' },
+    /*
+     * Slice B.2.1 (2026-05-20) — middle section of mine.html.  Tasks
+     * the caller is master of (lets them revoke, change approval
+     * mode, spawn sub-tasks).  Data source: listMyMasteredTasks (V0
+     * skill, now manifest-declared).
+     */
+    { id: 'mastered',  title: "I'm master of", type: 'task' },
+    { id: 'claimable', title: 'Claimable',     type: 'task' },
     /*
      * Slice B.1 (2026-05-20) — read-only DAG view consumed by
      * `apps/tasks-v0/web/dag.html` through the NavModel projector.

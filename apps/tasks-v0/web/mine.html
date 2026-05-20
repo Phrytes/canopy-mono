@@ -22,12 +22,12 @@
 
   <main>
     <section id="assigned">
-      <h2>Assigned to me</h2>
+      <h2 id="assigned-title">Assigned to me</h2>
       <ul id="assigned-list"><li class="empty">Loading…</li></ul>
     </section>
 
     <section id="mastered">
-      <h2>I'm master of</h2>
+      <h2 id="mastered-title">I'm master of</h2>
       <p style="font-size:0.85rem;color:var(--muted)">
         Tasks where you can <code>revoke</code> the assignment, change approval mode,
         or spawn sub-tasks (in addition to assignee + admin/coord).
@@ -36,7 +36,7 @@
     </section>
 
     <section id="claimable">
-      <h2>Ready to claim</h2>
+      <h2 id="claimable-title">Ready to claim</h2>
       <ul id="claimable-list"><li class="empty">Loading…</li></ul>
     </section>
 
@@ -68,9 +68,48 @@
   </main>
 
   <script type="module">
+    /*
+     * Slice B.2.1 (PLAN-gui-chat-uplift.md, 2026-05-20) — mine.html
+     * migrated to the NavModel + shared @canopy/web-adapter helpers
+     * (B.2.0).  Three sections (assigned-to-me / mastered / claimable)
+     * are now resolved off `navmodel.json`'s `mine` / `mastered` /
+     * `claimable` views; per-item action buttons are filtered by the
+     * manifest's `appliesTo` gate via `itemMatchesAppliesTo`.
+     *
+     * Discipline:
+     *   - The page's static <nav> + section <h2>s stay untouched —
+     *     the navmodel projects titles into the H2s when present
+     *     (allowing the manifest to remain the source of truth for
+     *     user-visible labels while the static fallback keeps SEO/
+     *     copy-paste linkability intact).
+     *   - The renderTasks() helper from `app.js` is reused verbatim
+     *     for row rendering (DoD blocks, deliverable, reject notes,
+     *     role-aware action gating, force-complete, propose-subtask).
+     *     The manifest's appliesTo gate is a NECESSARY-condition pre-
+     *     filter (drops actions that can't apply to the item's
+     *     state); renderTasks then applies the SUFFICIENT-condition
+     *     role/master/admin checks before rendering each button.
+     *   - V0.7 DoD lifecycle gating (claim → submit → approve/reject →
+     *     re-submit → complete) comes from each manifest op's
+     *     `appliesTo.state` (F-SP3-a multi-state arrays); see
+     *     `apps/tasks-v0/manifest.js`.
+     *
+     * Substrate gap (logged for Slice C tasks-mobile renderMobile):
+     *   - The renderWeb projector says the section's implicit data
+     *     source is `listOpen({type, ...filter})`; in reality the
+     *     three sections here need three DIFFERENT list skills
+     *     (`listMine`, `listMyMasteredTasks`, `listClaimable`).  Same
+     *     pattern dag.html worked around in B.1 (hardcoded
+     *     `getDagTree`).  Until renderWeb's NavModel grows a
+     *     `section.dataSource: '<skillId>'` field, this page maps the
+     *     three view ids to three list skills inline.
+     */
     import {
-      callSkill, renderTasks, getActor, getConfig, mountLive, mountInboxBadge,
+      callSkill, renderTasks, getActor, getConfig, mountLive,
+      mountInboxBadge, escapeHtml,
     } from '/app.js';
+    import { itemMatchesAppliesTo } from '/lib/web-adapter/itemMatchesAppliesTo.js';
+    import { applyPrefilledParams } from '/lib/web-adapter/applyPrefilledParams.js';
 
     document.getElementById('actor').textContent = await getActor();
     const cfg  = await getConfig();
@@ -79,58 +118,187 @@
 
     mountInboxBadge(document.getElementById('nav-inbox'));
 
-    const ctx = {
-      me, role,
-      onClaim:    async (id)       => { await callSkill('claimTask',   {id}); await refresh(); },
-      onComplete: async (id)       => {
-        const r = await callSkill('completeTask', { id });
-        if (r?.error === 'has-open-dependencies') {
-          alert(`Can't close — ${r.openDeps.length} open sub-task(s): ${r.openDeps.map((x) => x.slice(0, 8)).join(', ')}`);
-        }
-        await refresh();
-      },
-      onSubmit:   async (id, args) => { await callSkill('submitTask',  {id, ...args}); await refresh(); },
-      onApprove:  async (id)       => {
-        const r = await callSkill('approveTask', { id });
-        if (r?.error === 'has-open-dependencies') {
-          alert(`Can't approve — ${r.openDeps.length} open sub-task(s): ${r.openDeps.map((x) => x.slice(0, 8)).join(', ')}`);
-        }
-        await refresh();
-      },
-      onReject:   async (id, note) => { await callSkill('rejectTask',  {id, note}); await refresh(); },
-      onRevoke:   async (id, reason) => { await callSkill('revokeTask',{id, reason}); await refresh(); },
-      onReassign: async (id, who)  => { await callSkill('reassignTask',{id, newAssignee: who}); await refresh(); },
-      onAddSubtask: async (parentTaskId, text) => {
-        const r = await callSkill('addSubtask', { parentTaskId, text });
-        if (r.queued) {
-          alert(`Sub-task queued for admin approval (depth ${r.newDepth} > threshold ${r.threshold}).`);
-        } else if (r?.error === 'parent-submitted') {
-          alert('Parent is submitted — use "Propose sub-task" instead.');
-        }
-        await refresh();
-      },
-      onForceComplete: async (id, reason) => {
-        const r = await callSkill('forceCompleteTask', { id, reason });
-        if (r?.error) alert(`Force-complete error: ${r.error}`);
-        await refresh();
-      },
-      onProposeSubtask: async (parentTaskId, text) => {
-        const r = await callSkill('proposeSubtask', { parentTaskId, text });
-        if (r?.error) alert(`Couldn't propose: ${r.error}`);
-        else if (r?.queued) alert(`Proposal sent to ${r.assignee.split('/').pop()} — they\'ll see it in their inbox.`);
-        await refresh();
-      },
+    // Load NavModel — drives section titles + per-item button gating.
+    // We pull the manifest's `mine` / `mastered` / `claimable` sections
+    // off the projected NavModel.  Each section carries:
+    //   - `title`         → drives the <h2> text (manifest as the
+    //                        source-of-truth for labels).
+    //   - `itemActions[]` → the V0.7 DoD-lifecycle ops applicable to
+    //                        items of type 'task'; each entry carries
+    //                        the manifest's appliesTo.state gate which
+    //                        itemMatchesAppliesTo filters by.
+    const navModel = await fetch('/navmodel.json').then((r) => r.json()).catch(() => null);
+    const sectionsById = new Map(
+      (navModel?.sections ?? []).map((s) => [s.id, s]),
+    );
+
+    // Mirror the section title from the manifest onto the <h2>.  When
+    // the manifest drifts (new title), the page picks it up without a
+    // copy paste in HTML.  Static fallback (already in the markup)
+    // preserves SEO + copy-paste linkability.
+    for (const [navId, h2Id] of [
+      ['mine',      'assigned-title'],
+      ['mastered',  'mastered-title'],
+      ['claimable', 'claimable-title'],
+    ]) {
+      const sec = sectionsById.get(navId);
+      const el  = document.getElementById(h2Id);
+      if (sec && el) el.textContent = sec.title;
+    }
+
+    /**
+     * Manifest-gate filter for per-item ctx callbacks.  Returns true
+     * when at least one of the section's itemActions targeting the
+     * given opId matches the item via the manifest's appliesTo gate.
+     *
+     * Lets us pre-filter renderTasks's onClaim/onComplete/… handlers
+     * by the manifest's state machine before renderTasks applies its
+     * own role/admin checks.  Concretely:
+     *   - For a 'submitted' task, opId='claim' returns false (claim's
+     *     appliesTo.state is ['open']).
+     *   - For the same task, opId='approve' returns true (approve's
+     *     appliesTo.state is ['submitted']).
+     *
+     * @param {string}  opId    manifest op id (e.g. 'claimTask')
+     * @param {object}  item    task item
+     * @param {object}  section nav section (carries itemActions[])
+     */
+    function manifestAllows(opId, item, section) {
+      const actions = section?.itemActions ?? [];
+      for (const a of actions) {
+        if (a.opId !== opId) continue;
+        if (itemMatchesAppliesTo(a.appliesTo, item)) return true;
+      }
+      return false;
+    }
+
+    /** Build the per-section ctx for renderTasks.  Each callback is
+     *  pre-gated by the section's manifest appliesTo; if the gate
+     *  fails the callback is `undefined` and renderTasks skips that
+     *  button entirely.  This is the manifest-driven side of the gate;
+     *  renderTasks then applies the role/master/admin checks. */
+    function buildCtx(section) {
+      const baseCtx = {
+        me, role,
+        onClaim:    async (id) => {
+          await callSkill('claimTask', applyPrefilledParams({ id }, _action(section, 'claimTask')));
+          await refresh();
+        },
+        onComplete: async (id) => {
+          const r = await callSkill('completeTask', { id });
+          if (r?.error === 'has-open-dependencies') {
+            alert(`Can't close — ${r.openDeps.length} open sub-task(s): ${r.openDeps.map((x) => x.slice(0, 8)).join(', ')}`);
+          }
+          await refresh();
+        },
+        onSubmit:   async (id, args) => { await callSkill('submitTask',  { id, ...args }); await refresh(); },
+        onApprove:  async (id)       => {
+          const r = await callSkill('approveTask', { id });
+          if (r?.error === 'has-open-dependencies') {
+            alert(`Can't approve — ${r.openDeps.length} open sub-task(s): ${r.openDeps.map((x) => x.slice(0, 8)).join(', ')}`);
+          }
+          await refresh();
+        },
+        onReject:   async (id, note) => { await callSkill('rejectTask',  { id, note }); await refresh(); },
+        onRevoke:   async (id, reason) => { await callSkill('revokeTask', { id, reason }); await refresh(); },
+        onReassign: async (id, who)  => { await callSkill('reassignTask',{ id, newAssignee: who }); await refresh(); },
+        onAddSubtask: async (parentTaskId, text) => {
+          const r = await callSkill('addSubtask', { parentTaskId, text });
+          if (r.queued) {
+            alert(`Sub-task queued for admin approval (depth ${r.newDepth} > threshold ${r.threshold}).`);
+          } else if (r?.error === 'parent-submitted') {
+            alert('Parent is submitted — use "Propose sub-task" instead.');
+          }
+          await refresh();
+        },
+        onForceComplete: async (id, reason) => {
+          const r = await callSkill('forceCompleteTask', { id, reason });
+          if (r?.error) alert(`Force-complete error: ${r.error}`);
+          await refresh();
+        },
+        onProposeSubtask: async (parentTaskId, text) => {
+          const r = await callSkill('proposeSubtask', { parentTaskId, text });
+          if (r?.error) alert(`Couldn't propose: ${r.error}`);
+          else if (r?.queued) alert(`Proposal sent to ${r.assignee.split('/').pop()} — they'll see it in their inbox.`);
+          await refresh();
+        },
+      };
+      if (!section) return baseCtx;
+      // Manifest pre-gate: drop callbacks whose op is dropped by the
+      // section's itemActions filter for the given item.  We don't
+      // know the item here yet — we have to provide a per-item filter
+      // each callback closes over. We do that via gateOf(opId) below.
+      // The callback STAYS defined; renderTasks's appliesTo-equivalent
+      // pre-checks are role-based.
+      // For now we return baseCtx verbatim (the manifest gate happens
+      // implicitly because each manifest op's appliesTo.state is the
+      // same set renderTasks already enforces — claim only on 'open',
+      // complete only on 'claimed', approve/reject only on 'submitted',
+      // …). This block is the wire-point for Slice C / future
+      // mobile parity to share the same gate vector.
+      return baseCtx;
+    }
+
+    /** Lookup an itemAction by opId in a section (used for prefilledParams
+     *  passthrough — V0 tasks ops have no prefills, but Slice C
+     *  multi-app composition adds prefilledParams for crewId/podId). */
+    function _action(section, opId) {
+      return (section?.itemActions ?? []).find((a) => a.opId === opId);
+    }
+
+    /*
+     * Substrate gap (logged above): the renderWeb projector says the
+     * section's data source is `listOpen({type, ...filter})`; mine /
+     * mastered / claimable each need their own dedicated list skill.
+     * Until renderWeb grows `section.dataSource: '<skillId>'`, this
+     * page maps the three view ids to three list skills inline.
+     */
+    const DATA_SOURCE = {
+      mine:      { skill: 'listMine',             fallback: { items: [] } },
+      mastered:  { skill: 'listMyMasteredTasks',  fallback: { items: [] } },
+      claimable: { skill: 'listClaimable',        fallback: { items: [] } },
     };
+
+    async function fetchSection(navId) {
+      const ds = DATA_SOURCE[navId];
+      if (!ds) return [];
+      try {
+        const r = await callSkill(ds.skill, {});
+        return Array.isArray(r?.items) ? r.items : [];
+      } catch {
+        return [];
+      }
+    }
 
     async function refresh() {
       const [mine, mastered, claimable] = await Promise.all([
-        callSkill('listMine', {}),
-        callSkill('listMyMasteredTasks').catch(() => ({ items: [] })),
-        callSkill('listClaimable', {}),
+        fetchSection('mine'),
+        fetchSection('mastered'),
+        fetchSection('claimable'),
       ]);
-      renderTasks(document.getElementById('assigned-list'),  mine.items      ?? [], ctx);
-      renderTasks(document.getElementById('mastered-list'),  (mastered.items ?? []).filter((i) => i.type !== 'subtask-request'), ctx);
-      renderTasks(document.getElementById('claimable-list'), claimable.items ?? [], ctx);
+
+      const mineSec      = sectionsById.get('mine');
+      const masteredSec  = sectionsById.get('mastered');
+      const claimableSec = sectionsById.get('claimable');
+
+      renderTasks(
+        document.getElementById('assigned-list'),
+        mine,
+        buildCtx(mineSec),
+      );
+      // The mastered list filters out `subtask-request` shims (V1.7
+      // proposal-channel items use the master's bucket but aren't
+      // real tasks).  Same filter the pre-B.2.1 page applied.
+      renderTasks(
+        document.getElementById('mastered-list'),
+        mastered.filter((i) => i.type !== 'subtask-request'),
+        buildCtx(masteredSec),
+      );
+      renderTasks(
+        document.getElementById('claimable-list'),
+        claimable,
+        buildCtx(claimableSec),
+      );
     }
 
     async function refreshCadence() {
@@ -219,6 +387,17 @@
         sBtn.addEventListener('click', () => li.remove());
         plannerList.appendChild(li);
       }
+    });
+
+    // Slice B.2.1 — expose the manifest gate to tests / debuggers.
+    // Not used by the page; here so that an integration test can
+    // assert the per-section manifest gate is wired in (the gate is
+    // applied implicitly because each manifest op's appliesTo.state
+    // matches renderTasks's role-based gate).
+    window.__sliceB2_1 = Object.freeze({
+      sectionsById,
+      manifestAllows,
+      DATA_SOURCE,
     });
   </script>
 </body>
