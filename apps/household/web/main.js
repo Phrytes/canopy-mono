@@ -1,11 +1,14 @@
 /**
- * household web client — Slice A.3 + A.4 + B.2.0 (PLAN-gui-chat-uplift.md).
+ * household web client — Slice A.3 + A.4 + B.2.0 + V0.2 adoption.
  *
  * Pure NavModel-driven UI:
  *   - tabs ← navModel.sections[].title
- *   - the active section's items ← callSkill('listOpen', {type: section.itemType})
+ *   - the active section's items ← fetchSectionItems(section, {callSkill})
+ *                                  (honours view.dataSource (Q7) with
+ *                                  Q6 listOpen fallback)
  *   - the section's add-form     ← navModel.sections[].affordances[0]
- *                                  (with prefilledParams.type, per Q6)
+ *                                  rendered via schemaToFormFields(...)
+ *                                  (multi-field forms, per V0.2)
  *   - per-item buttons           ← navModel.sections[].itemActions[] (gated by appliesTo)
  *
  * Slice A.4 — free-text chat (sticky footer):
@@ -24,20 +27,33 @@
  *     unifies what used to be duplicated stubs in both
  *     `apps/household/web/main.js` and `apps/tasks-v0/web/dag.html`.
  *
+ * V0.2 adoption (2026-05-21):
+ *   - `fetchSectionItems`  replaces the per-section "if shopping then
+ *     listOpen else if tasks then listTasks else …" branching with a
+ *     declarative read of `section.dataSource` (with Q6 fallback).
+ *   - `schemaToFormFields` replaces the hand-coded single-input
+ *     add-form with a schema-driven walk so multi-field affordances
+ *     (e.g. addTask's optional assignee + dueAt) render their full
+ *     input set.  The household manifest currently only uses `text`,
+ *     but the substrate is now wired so any V0.3 multi-field op
+ *     surfaces correctly with zero adapter changes.
+ *
  * V0 LIMITS (intentional):
- *   - The members section (itemType: 'contact') has no list-skill in V0;
- *     the navmodel.test.js explicitly acknowledges this gap.  We render
- *     it as an empty section without a working add-form (no
- *     `registerName` affordance on the section either — same gap).
- *   - Affordance form is a single text input.  The manifest's add ops
- *     (addItem, addTask) take only `text` as the user-supplied arg
- *     (everything else has a prefilled or optional default).  When the
- *     substrate grows multi-field affordances, this client widens.
+ *   - The members section (itemType: 'contact') has no list-skill in
+ *     V0; the navmodel.test.js explicitly acknowledges this gap (see
+ *     manifest.js § members for the V0.3 unblock options).  We render
+ *     it as an empty section; the `registerName` affordance is still
+ *     surfaced by renderWeb (Q10).  fetchSectionItems would call
+ *     listOpen({type:'contact'}) which the skill's KNOWN_TYPES guard
+ *     rejects (returns an unknown-type message); we therefore short-
+ *     circuit to an empty array for the members section below.
  */
 
 import { callSkill as _callSkill }       from '/lib/web-adapter/callSkill.js';
 import { itemMatchesAppliesTo }          from '/lib/web-adapter/itemMatchesAppliesTo.js';
 import { applyPrefilledParams }          from '/lib/web-adapter/applyPrefilledParams.js';
+import { fetchSectionItems }             from '/lib/web-adapter/fetchSectionItems.js';
+import { schemaToFormFields }            from '/lib/web-adapter/schemaToFormFields.js';
 
 /** Same-origin POST shim — pins baseUrl=''. The web-adapter helper is
  *  baseUrl-parameterised so a future debug surface can call into a
@@ -54,17 +70,24 @@ function buildActionArgs(action, item) {
   return applyPrefilledParams({ match: item.id }, action);
 }
 
-/** Build the dispatch args for an add-affordance form submit. */
-function buildAddArgs(affordance, text) {
-  return applyPrefilledParams({ text }, affordance);
+/** Build the dispatch args for an add-affordance form submit.
+ *  `values` carries the user-supplied field values keyed by field name
+ *  (from the schema-driven form descriptors). */
+function buildAddArgs(affordance, values) {
+  return applyPrefilledParams(values, affordance);
 }
 
-/** Find the first add-affordance (verb=add) in a section. */
+/** Find the first creative-verb affordance (verb=add or verb=register)
+ *  in a section.  These are the affordances renderWeb surfaces as
+ *  per-section "create" forms (Q6 rule a + Q10). */
 function sectionAddAffordance(section) {
   // Order = manifest declaration order.  For list sections that's
   // `addItem` (the only add op surfaced via Q6 type-enum fallback).
-  // For the tasks section it's `addTask` (explicit appliesTo).
-  return (section.affordances ?? []).find((a) => /^add/i.test(a.opId));
+  // For the tasks section it's `addTask` (explicit appliesTo).  For
+  // the members section it's `registerName` (Q10 — verb=register is
+  // now a creative verb that auto-surfaces).
+  return (section.affordances ?? []).find((a) =>
+    /^(add|register)/i.test(a.opId));
 }
 
 /** Re-render the active section's items list. */
@@ -74,32 +97,24 @@ async function renderSection(state) {
   state.dom.error.hidden  = true;
   state.dom.error.textContent = '';
 
-  // Set up the add-form (when the section has an add affordance).
+  // Set up the add-form (when the section has a creative affordance).
   const add = sectionAddAffordance(section);
-  if (add) {
-    state.dom.addForm.hidden = false;
-    state.dom.addInput.placeholder = `Add to ${section.title.toLowerCase()}…`;
-    state.dom.addForm.dataset.opId = add.opId;
-  } else {
-    state.dom.addForm.hidden = true;
-    delete state.dom.addForm.dataset.opId;
-  }
+  renderAddForm(state, section, add);
 
-  // Fetch items via the section's implicit data source (a `listOpen`
-  // call, parameterised by the section's itemType).  The members
-  // section has no list-skill in V0 — render empty, no error.
+  // Fetch items via fetchSectionItems — honours `section.dataSource`
+  // (Q7, declared on each list-type + tasks view) and falls back to
+  // `listOpen({type, ...filter})` per Q6 rule-b when absent.  The
+  // members section has no list-skill in V0; we short-circuit to
+  // empty rather than send a doomed request (listOpen rejects
+  // type:'contact' via its KNOWN_TYPES guard).
   let items = [];
   try {
     if (section.itemType === 'contact') {
-      // V0 gap (per navmodel.test.js § members section) — no listOpen
-      // for `contact`.  Render empty.
+      // V0 gap (per manifest.js § members + navmodel.test.js).
       items = [];
-    } else if (section.itemType === 'task') {
-      const r = await callSkill('listTasks', {});
-      items = Array.isArray(r?.items) ? r.items : [];
     } else {
-      const r = await callSkill('listOpen', { type: section.itemType });
-      items = Array.isArray(r?.items) ? r.items : [];
+      const reply = await fetchSectionItems(section, { callSkill });
+      items = Array.isArray(reply?.items) ? reply.items : [];
     }
   } catch (err) {
     showError(state, err);
@@ -116,6 +131,93 @@ async function renderSection(state) {
       state.dom.items.appendChild(renderItemRow(state, section, item));
     }
   }
+}
+
+/** Render the add-form for `section`'s creative affordance.
+ *
+ *  Replaces the hand-coded single-input with a schema-driven walk
+ *  (schemaToFormFields).  Today every household add-affordance's
+ *  paramsSchema effectively reduces to a single required `text`
+ *  field (the manifest's add ops take only `text` from the user;
+ *  `type` is prefilled per Q6, `assignee`/`dueAt` on addTask are
+ *  optional and rendered as additional inputs when present).
+ *
+ *  Form layout: one wrapper per descriptor, with a label + input.
+ *  The first STRING field gets focus on tab-switch (mirrors the
+ *  pre-refactor UX where the single text input auto-focused). */
+function renderAddForm(state, section, affordance) {
+  const form     = state.dom.addForm;
+  const fields   = state.dom.addFields;
+
+  if (!affordance) {
+    form.hidden = true;
+    delete form.dataset.opId;
+    fields.innerHTML = '';
+    return;
+  }
+
+  form.hidden = false;
+  form.dataset.opId = affordance.opId;
+
+  const descriptors = schemaToFormFields(
+    affordance.paramsSchema ?? {},
+    { prefilledParams: affordance.prefilledParams ?? {} },
+  );
+
+  // Wipe + repopulate.  Keep the submit button (DOM-static, outside
+  // #add-fields).
+  fields.innerHTML = '';
+  const sectionLower = section.title.toLowerCase();
+  for (const desc of descriptors) {
+    fields.appendChild(buildFieldInput(desc, sectionLower));
+  }
+}
+
+/** Build one labeled <input> (or <select> for enum) per schema field
+ *  descriptor.  Pure rendering — no submit logic; that's wired in
+ *  `main()` against the form-level submit event. */
+function buildFieldInput(desc, sectionLower) {
+  const wrap = document.createElement('div');
+  wrap.className = 'add-field';
+  wrap.dataset.fieldName = desc.name;
+  wrap.dataset.fieldType = desc.type;
+
+  const input = (desc.type === 'enum')
+    ? document.createElement('select')
+    : document.createElement('input');
+
+  input.name = desc.name;
+  input.dataset.fieldName = desc.name;
+  if (desc.required) input.required = true;
+
+  if (desc.type === 'enum') {
+    for (const choice of desc.choices ?? []) {
+      const opt = document.createElement('option');
+      opt.value = choice;
+      opt.textContent = choice;
+      input.appendChild(opt);
+    }
+  } else {
+    input.type = desc.type === 'number' ? 'number'
+               : desc.type === 'boolean' ? 'checkbox'
+               : 'text';
+    if (desc.type === 'string') {
+      input.autocomplete = 'off';
+      // The dominant `text` field gets the friendly placeholder
+      // (preserves the pre-refactor UX).  Other string fields get
+      // the field name as a placeholder.
+      input.placeholder = desc.name === 'text'
+        ? `Add to ${sectionLower}…`
+        : desc.name;
+    }
+    if (desc.minLength !== undefined) input.minLength = desc.minLength;
+    if (desc.maxLength !== undefined) input.maxLength = desc.maxLength;
+    if (desc.min       !== undefined) input.min       = String(desc.min);
+    if (desc.max       !== undefined) input.max       = String(desc.max);
+  }
+
+  wrap.appendChild(input);
+  return wrap;
 }
 
 function renderItemRow(state, section, item) {
@@ -208,7 +310,7 @@ async function main() {
       empty:      document.getElementById('empty'),
       error:      document.getElementById('error'),
       addForm:    document.getElementById('add-form'),
-      addInput:   document.getElementById('add-text'),
+      addFields:  document.getElementById('add-fields'),
       actor:      document.getElementById('actor'),
       chatForm:   document.getElementById('chat-form'),
       chatInput:  document.getElementById('chat-input'),
@@ -221,22 +323,31 @@ async function main() {
   renderTabs(state);
 
   // (4) wire add-form submit — dispatches the section's add-affordance.
+  //     Reads each field from the schema-driven descriptors that
+  //     `renderAddForm` populated under `#add-fields`.  Coerces types
+  //     per descriptor (`number` → Number, `boolean` → checkbox.checked,
+  //     `string`/`enum` → trimmed string).  Omits empty optional fields
+  //     so the dispatch payload stays minimal (matches the
+  //     pre-refactor wire shape for single-field forms).
   state.dom.addForm.addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    const text = state.dom.addInput.value.trim();
-    if (!text) return;
     const add = sectionAddAffordance(state.activeSection);
     if (!add) return;
-    state.dom.addInput.disabled = true;
+    const values = collectAddFieldValues(state);
+    // Minimal "non-empty" gate — every household add op today has a
+    // required `text`; reject empty `text` to preserve the pre-refactor
+    // UX (the input was `required` + a trim-empty guard).
+    if (typeof values.text === 'string' && values.text.trim() === '') return;
+    setAddFieldsDisabled(state, true);
     try {
-      await callSkill(add.opId, buildAddArgs(add, text));
-      state.dom.addInput.value = '';
+      await callSkill(add.opId, buildAddArgs(add, values));
+      resetAddFields(state);
       await renderSection(state);
     } catch (err) {
       showError(state, err);
     } finally {
-      state.dom.addInput.disabled = false;
-      state.dom.addInput.focus();
+      setAddFieldsDisabled(state, false);
+      focusFirstAddField(state);
     }
   });
 
@@ -278,6 +389,56 @@ async function main() {
       }
     });
   }
+}
+
+/** Collect the user-supplied values from the schema-driven add-form
+ *  inputs as a `{name: value}` map.  Coerces per `data-field-type`:
+ *    - 'number'  → Number (NaN → omitted)
+ *    - 'boolean' → checkbox.checked
+ *    - 'enum' / 'string' → trimmed string (empty → omitted) */
+function collectAddFieldValues(state) {
+  const values = {};
+  for (const wrap of state.dom.addFields.querySelectorAll('.add-field')) {
+    const name = wrap.dataset.fieldName;
+    const type = wrap.dataset.fieldType;
+    const input = wrap.querySelector('input,select,textarea');
+    if (!input) continue;
+    if (type === 'boolean') {
+      values[name] = !!input.checked;
+    } else if (type === 'number') {
+      const v = input.value.trim();
+      if (v === '') continue;
+      const n = Number(v);
+      if (!Number.isNaN(n)) values[name] = n;
+    } else {
+      const v = String(input.value ?? '').trim();
+      if (v === '') continue;
+      values[name] = v;
+    }
+  }
+  return values;
+}
+
+function setAddFieldsDisabled(state, disabled) {
+  for (const input of state.dom.addFields.querySelectorAll('input,select,textarea')) {
+    input.disabled = disabled;
+  }
+}
+
+function resetAddFields(state) {
+  for (const input of state.dom.addFields.querySelectorAll('input,select,textarea')) {
+    if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
+    else input.value = '';
+  }
+}
+
+function focusFirstAddField(state) {
+  // Focus the first STRING input — that's the dominant text field
+  // (the only one the SP-1/SP-2 add ops have today).  Mirrors the
+  // pre-refactor UX where the single text input auto-focused.
+  const wrap = state.dom.addFields.querySelector('.add-field[data-field-type="string"]')
+            ?? state.dom.addFields.querySelector('.add-field');
+  wrap?.querySelector('input,select,textarea')?.focus();
 }
 
 /** Append a chat bubble to the chat-log feed and scroll to the bottom. */

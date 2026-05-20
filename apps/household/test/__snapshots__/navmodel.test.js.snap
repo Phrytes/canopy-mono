@@ -38,6 +38,12 @@ exports[`household manifest → NavModel (Slice A.2) > determinism + structural 
           },
         },
       ],
+      "dataSource": {
+        "args": {
+          "type": "shopping",
+        },
+        "skillId": "listOpen",
+      },
       "filter": {
         "open": true,
       },
@@ -106,6 +112,12 @@ exports[`household manifest → NavModel (Slice A.2) > determinism + structural 
           },
         },
       ],
+      "dataSource": {
+        "args": {
+          "type": "errand",
+        },
+        "skillId": "listOpen",
+      },
       "filter": {
         "open": true,
       },
@@ -174,6 +186,12 @@ exports[`household manifest → NavModel (Slice A.2) > determinism + structural 
           },
         },
       ],
+      "dataSource": {
+        "args": {
+          "type": "repair",
+        },
+        "skillId": "listOpen",
+      },
       "filter": {
         "open": true,
       },
@@ -242,6 +260,12 @@ exports[`household manifest → NavModel (Slice A.2) > determinism + structural 
           },
         },
       ],
+      "dataSource": {
+        "args": {
+          "type": "schedule",
+        },
+        "skillId": "listOpen",
+      },
       "filter": {
         "open": true,
       },
@@ -303,6 +327,9 @@ exports[`household manifest → NavModel (Slice A.2) > determinism + structural 
           "placement": "section",
         },
       ],
+      "dataSource": {
+        "skillId": "listTasks",
+      },
       "filter": {
         "open": true,
       },

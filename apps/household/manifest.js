@@ -244,11 +244,60 @@ export const householdManifest = {
     // / `removeItem` surface in each section via renderWeb's Q6 type-
     // enum fallback (see DESIGN-navmodel-sketch.md § Q6).  No impact
     // on renderChat output (toolCatalog + systemPrompt unchanged).
-    { id: 'shopping', title: 'Shopping', type: 'shopping', filter: { open: true } },
-    { id: 'errand',   title: 'Errands',  type: 'errand',   filter: { open: true } },
-    { id: 'repair',   title: 'Repairs',  type: 'repair',   filter: { open: true } },
-    { id: 'schedule', title: 'Schedule', type: 'schedule', filter: { open: true } },
-    { id: 'tasks',    title: 'Tasks',    type: 'task',     filter: { open: true } },
+    //
+    // V0.2 adoption (2026-05-21, Q7) — `dataSource` makes the
+    // per-section list skill EXPLICIT.  The four list-types could
+    // rely on `fetchSectionItems`'s rule-b default
+    // (`listOpen({type, ...filter})`) but the manifest-author intent
+    // is to drive section→skill mapping declaratively; this also
+    // future-proofs against any default-fallback change.  `tasks`
+    // MUST declare `listTasks` because the fallback would call
+    // `listOpen({type:'task'})` which listOpen.js's KNOWN_TYPES
+    // guard rejects.
+    {
+      id: 'shopping', title: 'Shopping', type: 'shopping', filter: { open: true },
+      dataSource: { skillId: 'listOpen', args: { type: 'shopping' } },
+    },
+    {
+      id: 'errand',   title: 'Errands',  type: 'errand',   filter: { open: true },
+      dataSource: { skillId: 'listOpen', args: { type: 'errand'   } },
+    },
+    {
+      id: 'repair',   title: 'Repairs',  type: 'repair',   filter: { open: true },
+      dataSource: { skillId: 'listOpen', args: { type: 'repair'   } },
+    },
+    {
+      id: 'schedule', title: 'Schedule', type: 'schedule', filter: { open: true },
+      dataSource: { skillId: 'listOpen', args: { type: 'schedule' } },
+    },
+    {
+      id: 'tasks',    title: 'Tasks',    type: 'task',     filter: { open: true },
+      dataSource: { skillId: 'listTasks' },
+    },
+    // Members section — V0.2 LIMITATION (signal for V0.3):
+    //
+    //   Q9 introduced `readOnly: true` to suppress creative
+    //   affordances on sections without a list-skill.  Q10 then
+    //   made `register` a creative verb so `registerName` auto-
+    //   surfaces here.  These two collide: setting `readOnly: true`
+    //   here would suppress the `registerName` affordance (the
+    //   only way to populate a member from the UI), but leaving
+    //   `readOnly` off leaves the section's items list empty
+    //   (listOpen's KNOWN_TYPES guard rejects 'contact'; no
+    //   listMembers/listContacts skill exists yet).
+    //
+    //   Three V0.3 paths could unblock this cleanly:
+    //     (a) add a list-contacts skill + `dataSource: { skillId:
+    //         'listContacts' }` here;
+    //     (b) widen listOpen's KNOWN_TYPES to include 'contact';
+    //     (c) split Q9 so readOnly suppresses ONLY non-register
+    //         creative verbs (less coherent — the substrate would
+    //         need per-verb flags).
+    //
+    //   Until then we keep members as-is: registerName affordance
+    //   visible (Q10), items list empty (V0 gap acknowledged in
+    //   web/main.js).  `test/navmodel.test.js` § members section
+    //   pins the registerName-affordance expectation.
     { id: 'members',  title: 'Members',  type: 'contact' },
   ],
 

@@ -90,12 +90,35 @@ section h2 {
   gap:            0.5rem;
   margin-bottom:  1rem;
 }
-#add-form input[type="text"] {
+/* V0.2 adoption: `#add-fields` is a flex row containing per-descriptor
+ * `.add-field` wrappers produced by `schemaToFormFields`.  Each
+ * wrapper holds one <input>/<select>.  The first (and today only)
+ * text field grows to fill the row; secondary fields stay at their
+ * natural width so multi-field forms (e.g. addTask + assignee +
+ * dueAt) wrap cleanly.  Matches the pre-refactor look for the
+ * single-`text` case. */
+#add-fields {
+  display:        flex;
+  gap:            0.5rem;
+  flex-grow:      1;
+  flex-wrap:      wrap;
+}
+#add-fields .add-field {
+  display:        flex;
+  flex-grow:      1;
+  min-width:      0;
+}
+#add-fields .add-field input,
+#add-fields .add-field select {
   flex-grow: 1;
   padding:   0.4rem 0.6rem;
   border:    1px solid var(--border);
   border-radius: 4px;
   font-size: 0.95rem;
+  min-width: 0;
+}
+#add-fields .add-field input[type="checkbox"] {
+  flex-grow: 0;
 }
 #add-form button {
   padding:       0.4rem 0.9rem;

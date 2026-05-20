@@ -19,8 +19,11 @@
       <h2 id="active-title">Loading…</h2>
 
       <form id="add-form" hidden>
-        <!-- the affordance form; populated from section.affordances[] -->
-        <input id="add-text" type="text" required placeholder="Add an item…" autocomplete="off">
+        <!-- the affordance form; populated by main.js via
+             schemaToFormFields(affordance.paramsSchema).  One
+             `.add-field` wrapper per descriptor, with the input
+             inside.  Submit dispatches the affordance's opId. -->
+        <div id="add-fields"></div>
         <button type="submit">Add</button>
       </form>
 
