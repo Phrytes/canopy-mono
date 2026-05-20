@@ -710,6 +710,46 @@ describe('renderWeb V0.4 — Q18 view.fields (record-shape patch fields)', () =>
   });
 });
 
+describe('renderWeb V0.6 — Q23 field.type file / image', () => {
+  // Q23 documents the recognized field.type set + adds `'file'` and
+  // `'image'` for byte-shaped fields.  Substrate passes them through
+  // verbatim; the dispatch contract (consumer-side transform) is
+  // documented in JSDoc.
+  const MANIFEST = {
+    app:       'media-rec',
+    itemTypes: ['profile-record'],
+    operations: [
+      { id: 'setAvatar', verb: 'update',
+        params: [{ name: 'avatar', kind: 'object' }] },
+      { id: 'attachDoc', verb: 'update',
+        params: [{ name: 'doc', kind: 'object' }] },
+    ],
+    views: [{
+      id: 'profile', title: 'Profile', type: 'profile-record', shape: 'record',
+      fields: [
+        { name: 'avatar', type: 'image', label: 'Avatar',
+          patch: { opId: 'setAvatar', argName: 'avatar' } },
+        { name: 'doc',    type: 'file',  label: 'Document',
+          patch: { opId: 'attachDoc', argName: 'doc' } },
+      ],
+    }],
+  };
+
+  it("Q23 — field.type: 'image' is passed through verbatim", () => {
+    const profile = renderWeb(MANIFEST).sections.find((s) => s.id === 'profile');
+    const avatar  = profile.fields.find((f) => f.name === 'avatar');
+    expect(avatar.type).toBe('image');
+    expect(avatar.patch).toEqual({ opId: 'setAvatar', argName: 'avatar' });
+  });
+
+  it("Q23 — field.type: 'file' is passed through verbatim", () => {
+    const profile = renderWeb(MANIFEST).sections.find((s) => s.id === 'profile');
+    const doc     = profile.fields.find((f) => f.name === 'doc');
+    expect(doc.type).toBe('file');
+    expect(doc.patch).toEqual({ opId: 'attachDoc', argName: 'doc' });
+  });
+});
+
 describe('renderWeb V0.6 — Q22 labelKey i18n passthrough', () => {
   // Manifest with labelKey on every label-bearing surface: an op-level
   // affordance, an item-action op (state-gated), and a field on a

@@ -321,6 +321,36 @@ describe('validateManifest', () => {
       }));
       expect(e.some((x) => /field\.labelKey must be a non-empty string/.test(x.message))).toBe(true);
     });
+
+    /* ─── Q23 (V0.6, 2026-05-20) — field.type file / image ───────────── */
+
+    it("Q23 — accepts field.type: 'image'", () => {
+      expect(ok(base({
+        fields: [{ name: 'avatar', type: 'image' }],
+      }))).toBe(true);
+    });
+
+    it("Q23 — accepts field.type: 'file'", () => {
+      expect(ok(base({
+        fields: [{ name: 'doc', type: 'file' }],
+      }))).toBe(true);
+    });
+
+    it('Q23 — accepts unknown field.type strings (lax — projector passes through)', () => {
+      // Forward-additive: substrate doesn't gate-keep field types so
+      // consumers may experiment with new shapes before they're
+      // codified.  Unknown types still pass validation.
+      expect(ok(base({
+        fields: [{ name: 'x', type: 'experimental-rich-text' }],
+      }))).toBe(true);
+    });
+
+    it('Q23 — rejects non-string field.type', () => {
+      const e = errs(base({
+        fields: [{ name: 'x', type: 42 }],
+      }));
+      expect(e.some((x) => /field\.type must be a string/.test(x.message))).toBe(true);
+    });
   });
 
   describe('V0.6 Q22 surfaces.ui.labelKey on operations', () => {

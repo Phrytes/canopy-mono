@@ -338,6 +338,17 @@ function validateView(v, path, manifest, errors, idSet, strict = false) {
             message: 'field.labelKey must be a non-empty string if present',
           });
         }
+        // Q23 (V0.6, 2026-05-20) — `field.type` is documented in
+        // `renderWeb.js` (recognized set: string|number|boolean|enum|
+        // object|file|image).  Validator only insists on "string when
+        // present" — unknown types pass through (consumers may
+        // experiment with new shapes before they're codified).
+        if (f.type !== undefined && typeof f.type !== 'string') {
+          errors.push({
+            path:    `${fp}/type`,
+            message: 'field.type must be a string if present',
+          });
+        }
         if (f.patch !== undefined) {
           if (!f.patch || typeof f.patch !== 'object' || Array.isArray(f.patch)) {
             errors.push({ path: `${fp}/patch`, message: 'field.patch must be an object if present' });
