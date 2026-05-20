@@ -32,3 +32,6 @@ export { applyPrefilledParams } from './applyPrefilledParams.js';
 // V0.2 (2026-05-21) — section data-fetch helper.  Honours Q7
 // section.dataSource; falls back to Q6 rule-b default.
 export { fetchSectionItems }    from './fetchSectionItems.js';
+// V0.2 (2026-05-21) — paramsSchema → platform-neutral form-field
+// descriptors.  Resolves A.3 agent's multi-field-form signal.
+export { schemaToFormFields }   from './schemaToFormFields.js';

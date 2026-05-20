@@ -86,13 +86,14 @@ describe('household manifest → NavModel (Slice A.2)', () => {
   describe('members section', () => {
     const members = navModel.sections.find((s) => s.id === 'members');
 
-    it('has registerName? (it has no surfaces.ui in V0; defer membership-add to A.3 or owner)', () => {
-      // registerName has no surfaces.ui — per Q6 rule c, it does NOT
-      // surface.  Owner has acknowledged this gap: members section
-      // is read-only-by-substrate-default in V0; adding contacts via
-      // chat (LLM tool call) still works.
+    it('Q10 (2026-05-21): verb=register auto-surfaces registerName as affordance', () => {
+      // Resolved 2026-05-21 (NavModel V0.2 Q10): `register` is now a
+      // creative verb (alongside `add`).  household's `registerName`
+      // op (verb='register', non-canonical via F-SP1-e) auto-surfaces
+      // in the members section without needing `surfaces.ui`.
       const reg = members.affordances.find((a) => a.opId === 'registerName');
-      expect(reg).toBeUndefined();
+      expect(reg).toBeTruthy();
+      expect(reg.opId).toBe('registerName');
     });
   });
 
@@ -107,8 +108,10 @@ describe('household manifest → NavModel (Slice A.2)', () => {
       expect(allOpIds).not.toContain('listTasks');
       // classifyAndExtract: not in manifest, sanity-check.
       expect(allOpIds).not.toContain('classifyAndExtract');
-      // reassign: no surfaces.ui declared — chat-only.
+      // reassign: no surfaces.ui declared — chat-only (NOT a creative verb).
       expect(allOpIds).not.toContain('reassign');
+      // registerName IS a creative verb (Q10) so it DOES surface — moved
+      // out of the omission test.
     });
   });
 

@@ -28,6 +28,9 @@ status:
 | SP-5b V0b (`ListFilter.audience`)    | ✅ Done — equality match; webid-set resolution → V0c        |
 | SP-5b V0c (view.defaultAudience + cross-pod) | ⏸ When real consumer pressure surfaces             |
 | NavModel V0.2 (Q7 dataSource + Q8 wildcard) | ✅ Done — closes convergent B.2+E.1+B.1 gap          |
+| NavModel V0.2 (Q9 readOnly + Q10 creative verbs) | ✅ Done — A.3 signals a/b resolved              |
+| Web-adapter `schemaToFormFields` (Q11 multi-field forms) | ✅ Done — A.3 signal c resolved          |
+| NavModel V0.3 (d — structured list reply shape) | ⏸ Deferred until consumer pressure (task #11)      |
 | SP-4b + SP-11 V0 demo               | ✅ Done (`examples/manifest-host-demo/`)                    |
 | Slice A.1–A.4 (household web + LLM) | ✅ Done — **Slice A COMPLETE**                              |
 | Slice B.0 parity audit              | ✅ Done                                                    |
@@ -51,7 +54,8 @@ status:
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — NavModel V0.2: view.dataSource (Q7) + appliesTo.type='*' (Q8)
+- (next) — NavModel V0.2 (Q9 readOnly + Q10 register) + Q11 schemaToFormFields
+- `cfad0d2` — feat(app-manifest, web-adapter): NavModel V0.2 — view.dataSource + appliesTo wildcard
 - `cf43e96` — progress: 3-way parallel landed (B.2 + D.2 + E.1); CONVERGENT signal
 - `322fe03` — feat(tasks-v0): Slice B.2.1 — mine.html via renderWeb
 - `e1f5181` — feat(stoop): Slice E.1 — first stoop web page via renderWeb
@@ -93,12 +97,12 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 
 | Package / app                  | Tests        | Notes                                       |
 | ------------------------------ | ------------ | ------------------------------------------- |
-| `@canopy/app-manifest`         | **115**      | +8 V0.2 (Q7 dataSource + Q8 wildcard)       |
+| `@canopy/app-manifest`         | **123**      | +16 V0.2 (Q7/Q8/Q9/Q10)                     |
 | `@canopy/circles`              | **50**       | (unchanged)                                 |
 | `@canopy/manifest-host`        | **20**       | (unchanged)                                 |
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |
 | `@canopy/item-store`           | **118**      | +14 V0a + 8 V0b audience filter             |
-| `@canopy/web-adapter` (NEW)    | **48**       | +10 fetchSectionItems (V0.2 Q7 dataSource helper) |
+| `@canopy/web-adapter` (NEW)    | **66**       | +10 fetchSectionItems + +18 schemaToFormFields    |
 | `apps/stoop`                   | **585**      | +7 D.2 + +6 E.1                              |
 | `apps/tasks-v0`                | **578**      | +9 B.2.1 mine.html                           |
 | `apps/household`               | **575**      | +1 web-adapter overlay smoke (B.2.0)         |

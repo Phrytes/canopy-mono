@@ -134,6 +134,33 @@
  * pre-filled args.  Forward-additive: absent → existing behaviour
  * (adapter calls `listOpen({type, ...filter})`).
  *
+ * ──── Q9 — `view.readOnly: true` marker (locked 2026-05-21)
+ *
+ * Surfaced by A.3 agent's signal: household's `members` section is
+ * empty by substrate default (no listOpen for contact) and has no
+ * `registerName` affordance because `registerName` has no
+ * `surfaces.ui`.  Adapter renders an empty "Add"-less section.
+ *
+ * Solution: `view.readOnly: true` → section gets `readOnly: true` +
+ * affordances are skipped (creative verbs don't auto-surface in
+ * read-only sections).  itemActions still render (state-gated per-
+ * item buttons may still apply on read-only views — e.g. a "delete"
+ * button on a read-only audit log).  Adapter can also use the
+ * `section.readOnly` flag for visual cues.
+ *
+ * ──── Q10 — Creative verbs auto-surface (locked 2026-05-21)
+ *
+ * Q6 rule (a) said `verb === 'add'` auto-surfaces.  Generalised: any
+ * verb in the `CREATIVE_VERBS` set (`{add, register}`) auto-surfaces.
+ * Surfaced by A.3 agent: household's `registerName` op (verb=
+ * 'register', non-canonical via F-SP1-e) creates contact items but
+ * has no `surfaces.ui` — under Q6 rule (a) it was omitted from
+ * NavModel.  Now it auto-surfaces in the `members` section.
+ *
+ * Forward-additive: future creative verbs can be added to the
+ * CREATIVE_VERBS set.  Keep the set tight — each addition expands
+ * the auto-surface behaviour implicitly.
+ *
  * ──── Q8 — `appliesTo.type: '*'` wildcard (locked 2026-05-21)
  *
  * Surfaced by E.1: stoop's `cancelRequest` spans all 3 prikbord
@@ -151,6 +178,21 @@
  */
 
 import { paramsToJsonSchema } from './paramsToJsonSchema.js';
+
+/**
+ * Q10 (2026-05-21) — verbs that auto-surface as section affordances
+ * without requiring `surfaces.ui` (Q6 rule (a) generalised).
+ *
+ *   'add'      — the canonical creative verb.
+ *   'register' — household's `registerName` (non-canonical via F-SP1-e);
+ *                still creates a contact item, so it belongs on the
+ *                section's affordance row.
+ *
+ * Forward-additive: extend the set when new "creative" verbs appear in
+ * real manifests.  Keep the list small — every entry expands the
+ * adapter's affordance-rendering surface implicitly.
+ */
+const CREATIVE_VERBS = new Set(['add', 'register']);
 
 /**
  * @param {object} manifest
@@ -205,6 +247,12 @@ function buildSection(view, ops, manifest) {
   // heuristic.  Validate-loose: shape correctness is the adapter's
   // concern (forward-additive — V0.3 may tighten via JSDoc).
   if (view.dataSource !== undefined) section.dataSource = view.dataSource;
+  // Q9 (2026-05-21) — read-only marker.  Adapter skips Add forms /
+  // creative affordances; itemActions still render (state-gated
+  // buttons may still apply).  Section receives `readOnly: true`
+  // verbatim so adapter can also disable per-row interactivity if
+  // needed (e.g. dim the row).
+  if (view.readOnly === true)       section.readOnly   = true;
 
   for (const op of ops) {
     const ui = op?.surfaces?.ui;
@@ -215,8 +263,13 @@ function buildSection(view, ops, manifest) {
 
     if (op.verb === 'list') continue;  // implicit data source — adapter fetches items
 
-    if (op.verb === 'add') {
-      // (Q6 rule a) — add ops auto-surface without needing surfaces.ui.
+    if (CREATIVE_VERBS.has(op.verb)) {
+      // Q9: skip add/register affordances when the section is read-only.
+      if (view.readOnly === true) continue;
+      // (Q6 rule a) — creative verbs (Q10: add | register) auto-surface
+      // as section affordances without needing `surfaces.ui`.  Every
+      // web section needs an "add new item" path; the manifest
+      // shouldn't have to repeat `surfaces.ui` for each.
       section.affordances.push(
         buildAffordance(op, manifest, 'section', m.viaTypeEnum ? { type: view.type } : null),
       );
