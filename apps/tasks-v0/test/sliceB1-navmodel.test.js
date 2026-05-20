@@ -40,7 +40,8 @@ describe('Slice B.1: renderWeb(tasksManifest) NavModel', () => {
       'mine',
       'mastered',   // Slice B.2.1 (2026-05-20) — middle section of mine.html
       'claimable',
-      'dag',        // Slice B.1  (2026-05-20)
+      'review',     // Slice B.2.2 (2026-05-20) — review.html reviewer queue
+      'dag',        // Slice B.1   (2026-05-20)
     ]);
   });
 
