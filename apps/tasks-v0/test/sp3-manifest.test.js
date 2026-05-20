@@ -18,11 +18,12 @@ import { describe, it, expect } from 'vitest';
 
 import { renderChat, validateManifest } from '@canopy/app-manifest';
 
-import { tasksManifest }        from '../manifest.js';
-import { buildSkills }          from '../src/skills/index.js';
-import { buildWorkspaceSkills } from '../src/skills/workspace.js';
-import { buildInboxSkills }     from '../src/skills/inbox.js';
-import { buildSubtaskSkills }   from '../src/skills/subtasks.js';
+import { tasksManifest }          from '../manifest.js';
+import { buildSkills }            from '../src/skills/index.js';
+import { buildWorkspaceSkills }   from '../src/skills/workspace.js';
+import { buildInboxSkills }       from '../src/skills/inbox.js';
+import { buildSubtaskSkills }     from '../src/skills/subtasks.js';
+import { buildCrewControlSkills } from '../src/skills/crewControls.js';
 
 describe('SP-3 V0: tasks-v0 manifest', () => {
   it('validateManifest = ok', () => {
@@ -42,6 +43,10 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
       ...buildWorkspaceSkills({ bundleResolver: () => null }),
       ...buildInboxSkills({ bundleResolver: () => null }),
       ...buildSubtaskSkills({ bundleResolver: () => null }),
+      // Q27 adoption (2026-05-21) — archiveCrew + unarchiveCrew
+      // declared in the manifest; their defineSkill lives in
+      // buildCrewControlSkills.
+      ...buildCrewControlSkills({ bundleResolver: () => null }),
     ];
     const skillIds = new Set(defs.map((d) => d.id));
     for (const op of tasksManifest.operations) {
@@ -108,5 +113,34 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
     const openKeys = out.inlineKeyboardFor({ id: 't2', type: 'task', state: 'open' })
       .map((b) => b.callbackData.split(':')[0]);
     expect(openKeys).toEqual(['claimTask']);
+  });
+
+  // V0.8 Q27 adoption (2026-05-21) — crew lifecycle ops.
+  it('archiveCrew declares Q27 confirm with severity:warn + Dutch-friendly message', () => {
+    const op = tasksManifest.operations.find((o) => o.id === 'archiveCrew');
+    expect(op).toBeTruthy();
+    expect(op.appliesTo).toEqual({ type: 'crew' });
+    expect(op.surfaces.ui.confirm).toEqual({
+      severity: 'warn',
+      message:  'Archive this crew?  Items are kept; new tasks are blocked until you unarchive.',
+    });
+  });
+
+  it('unarchiveCrew has NO confirm (undo path; low-barrier)', () => {
+    const op = tasksManifest.operations.find((o) => o.id === 'unarchiveCrew');
+    expect(op).toBeTruthy();
+    expect(op.appliesTo).toEqual({ type: 'crew' });
+    expect(op.surfaces.ui).not.toHaveProperty('confirm');
+  });
+
+  it("archive ops do NOT surface on a task's inline keyboard (appliesTo: 'crew' scope)", () => {
+    const stub = Object.fromEntries(
+      tasksManifest.operations.map((op) => [op.id, async () => ({})]),
+    );
+    const out = renderChat(tasksManifest, { skillRegistry: stub, toSkillCtx: (c) => c });
+    const openKeys = out.inlineKeyboardFor({ id: 't', type: 'task', state: 'open' })
+      .map((b) => b.callbackData.split(':')[0]);
+    expect(openKeys).not.toContain('archiveCrew');
+    expect(openKeys).not.toContain('unarchiveCrew');
   });
 });

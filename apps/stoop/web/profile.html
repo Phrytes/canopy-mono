@@ -571,6 +571,16 @@
 
     document.getElementById('profile-sign-out').addEventListener('click', async () => {
       const status = document.getElementById('profile-sign-out-status');
+      // V0.8 Q27 (2026-05-21) — confirm gate mirrors the manifest's
+      // signOutOfPod.surfaces.ui.confirm.message.  Closes a foot-gun
+      // that existed pre-Q27: a single mis-click signed the user out
+      // mid-sync with no chance to cancel.  Manifest is the source-of-
+      // truth; the page mirrors the Dutch message verbatim.
+      const confirmMsg = t(
+        'profile.my_pods_sign_out_confirm',
+        'Uitloggen van je pod?  Lopende synchronisatie wordt afgebroken.',
+      );
+      if (!confirm(confirmMsg)) return;
       status.textContent = t('profile.my_pods_signing_out', 'Uitloggen…');
       try {
         const r = await callSkill('signOutOfPod', {});
