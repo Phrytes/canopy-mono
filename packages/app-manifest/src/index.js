@@ -27,6 +27,10 @@ export { renderSlash }         from './renderSlash.js';
 // See DESIGN-navmodel-sketch.md for the NavModel shape +
 // PLAN-gui-chat-uplift.md Slice A for the consumer roadmap.
 export { renderWeb }           from './renderWeb.js';
+// V0 alias: renderMobile === renderWeb (same NavModel, different adapter).
+// Cross-surface equivalence is locked by test/crossSurfaceEquivalence.test.js
+// per DESIGN-navmodel-sketch.md § Q4 (strict JSON equality default).
+export { renderMobile }        from './renderMobile.js';
 
 // JSDoc typedefs live here; importing the module forces it to be loaded
 // so tooling can resolve type-only references.
