@@ -1,4 +1,25 @@
 <!doctype html>
+<!--
+  mine.html — Slice E.1 (PLAN-gui-chat-uplift.md).
+
+  First stoop web page consuming `renderWeb(stoopManifest)`.  The page
+  fetches `/navmodel.json` (served by `apps/stoop/bin/stoop-web.js`'s
+  `extraStaticFiles`) and uses the NavModel's `mine` section to drive
+  the heading + data-source.  The remaining 15 stoop pages stay
+  hand-built and will land in follow-on E.x slices.
+
+  Special-case (documented in `manifest.js`'s view note):
+  the `mine` section's `itemType: 'request'` is a placeholder — the
+  page calls `listMyRequests({})` (which filters by addedBy=from and
+  spans ALL post types), not `listOpen({type: 'request'})`.  Same
+  shape as household's `tasks`/`task` special-case (listTasks vs
+  listOpen).  Substrate signal flagged in manifest comments.
+
+  Page falls back to the V0 hand-built behaviour when the NavModel
+  isn't reachable (legacy launchers `stoop-ui.js` / `stoop-testbed.js`
+  don't serve `/navmodel.json`) — keeps every existing launcher happy
+  while still proving the NavModel path when served by `stoop-web.js`.
+-->
 <html lang="nl">
 <head>
   <meta charset="utf-8">
@@ -24,8 +45,15 @@
   </header>
 
   <main>
-    <section id="mine">
-      <h2 data-i18n="mine.heading">Mijn posts</h2>
+    <!-- The `data-navmodel-section` attribute marks the section as
+         NavModel-driven (Slice E.1).  When the NavModel is reachable,
+         the inline script overwrites the heading text with
+         `section.title` and pre-checks that the section's
+         `itemType === 'request'` (the placeholder) before calling
+         listMyRequests.  When not, the legacy hand-built behaviour
+         takes over (V0 fallback). -->
+    <section id="mine" data-navmodel-section="mine">
+      <h2 id="mine-heading" data-i18n="mine.heading">Mijn posts</h2>
       <ul id="mine-list"><li class="empty" data-i18n="common.loading">Aan het laden…</li></ul>
     </section>
   </main>
@@ -40,7 +68,28 @@
     document.getElementById('actor').textContent = await getActor();
     mountGroupSwitcher(document.getElementById('group-switcher'));
 
+    // ── Slice E.1: consume the NavModel ──────────────────────────────
+    // Fetch `/navmodel.json` (served by `apps/stoop/bin/stoop-web.js`'s
+    // `extraStaticFiles`).  When reachable, drive the heading from
+    // `section.title`; when not, fall back to the V0 i18n string.
+    let navSection = null;
+    try {
+      const res = await fetch('/navmodel.json');
+      if (res.ok) {
+        const nav = await res.json();
+        navSection = (nav?.sections ?? []).find((s) => s.id === 'mine') ?? null;
+        if (navSection?.title) {
+          document.getElementById('mine-heading').textContent = navSection.title;
+        }
+      }
+    } catch { /* legacy launcher: no /navmodel.json — fall through */ }
+
     async function refresh() {
+      // `listMyRequests` is the section's implicit data source (see the
+      // `mine` view's manifest comment).  Special-cased because
+      // listMyRequests spans ALL post types (ask/offer/lend) — same
+      // pattern household uses for `tasks` (listTasks) and `members`
+      // (no list-skill at all).
       const result = await callSkill('listMyRequests', {});
       renderMyItems(document.getElementById('mine-list'), result.items ?? [], {
         onAccept: async (requestId, responderWebid) => {
@@ -48,10 +97,24 @@
           await refresh();
         },
         onCancel: async (requestId) => {
+          // The `cancelRequest` op is in the manifest (D.1 line 198) —
+          // calling it here keeps mine.html aligned with the
+          // manifest's op set.  Pure-NavModel item-action rendering
+          // would surface cancelRequest as an `itemActions[]` entry —
+          // but cancelRequest has no `appliesTo.type` AND no type-enum
+          // param, so renderWeb's Q6 logic doesn't match it to the
+          // `mine` section.  Substrate signal: ops that span all
+          // itemTypes (cancelRequest, markReturned via its lifecycle)
+          // need a `type: '*'` or `appliesTo.type: anyOfTypes` story.
+          // Flagged for follow-on E.x / Slice C.
           await callSkill('cancelRequest', { requestId });
           await refresh();
         },
         onMarkReturned: async (requestId) => {
+          // markReturned has `appliesTo.type: 'lend'` — renderWeb does
+          // match it on a `lend` view, but the `mine` view's type is
+          // `request` (the placeholder).  Renders via renderMyItems'
+          // built-in lend-only branch (item.kind === 'lend').
           await callSkill('markReturned', { requestId });
           await refresh();
         },

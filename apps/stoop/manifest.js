@@ -409,11 +409,46 @@ export const stoopManifest = {
     },
   ],
 
-  // No `views` in the D.1 DRAFT.  Stoop's web has 16 pages; the
-  // view-projection mapping is Slice E scope (renderWeb), not D.1.
-  // Adding bare `views` here without grounding in a renderWeb consumer
-  // would be presumptuous — the manifest stays projector-pure for
-  // chat + slash until E.
+  // Slice E.1 (2026-05-20) — first stoop web page via renderWeb.
+  //
+  // Stoop has 16 web pages today (per AUDIT-stoop-folio-surfaces.md).
+  // E.1 surfaces ONE page — `mine.html` (my active posts + completions)
+  // — to prove the substrate-shape.  The remaining 15 pages
+  // (`index.html` prikbord, `chat.html`, `contacts.html`,
+  // `create-group.html`, `group.html`, `profile.html`, `settings.html`,
+  // `onboard.html`, `sign-in.html`, `auth-callback.html`, `push.html`,
+  // `restore.html`, `welcome.html`, `metrics.html`, `privacy.html`)
+  // stay hand-built and will land in follow-on E.x slices.  Same
+  // discipline B.1 used for tasks-v0 (just `dag.html`).
+  //
+  // The `mine` view's `type: 'request'` is the broadest stoop itemType
+  // (legacy V0 — every kind of post canonicalises through it).  The
+  // adapter, however, special-cases the `mine` view to call
+  // `listMyRequests({})` rather than `listOpen({type: 'request'})`,
+  // because `listMyRequests` filters by addedBy=from (the calling
+  // actor) and spans ALL of the user's post types (ask/offer/lend) —
+  // not just `request`.  This is the same special-case pattern
+  // household uses for `tasks` (listTasks) and `members` (no list-skill
+  // at all).
+  //
+  // SUBSTRATE SIGNAL (flagged for Slice C / Slice E.x):
+  //   NavModel's `section.itemType` can't express "list-skill spans
+  //   multiple types".  household has the same gap with `tasks`/`task`
+  //   (single-type, no signal needed) and `members`/`contact` (V0 gap,
+  //   acknowledged in test).  Stoop's `mine` makes the gap structural:
+  //   the section is conceptually "items I posted", which is a
+  //   *predicate* over items, not a type.  A follow-on substrate
+  //   addition (e.g. `view.dataSource: {skillId, args}` or
+  //   `view.predicate`) would let `mine` declare its own data source
+  //   without the client special-case.  Out of E.1 scope; flagged here.
+  views: [
+    {
+      id:     'mine',
+      title:  'My posts',
+      type:   'request',     // broadest stoop itemType; see note above
+      filter: { open: true },
+    },
+  ],
 };
 
 export default stoopManifest;

@@ -17,13 +17,15 @@
   },
   "bin": {
     "stoop-ui":      "bin/stoop-ui.js",
-    "stoop-testbed": "bin/stoop-testbed.js"
+    "stoop-testbed": "bin/stoop-testbed.js",
+    "stoop-web":     "bin/stoop-web.js"
   },
   "scripts": {
     "test":       "vitest run",
     "test:watch": "vitest",
     "ui":         "node bin/stoop-ui.js",
-    "testbed":    "node bin/stoop-testbed.js"
+    "testbed":    "node bin/stoop-testbed.js",
+    "web":        "node bin/stoop-web.js"
   },
   "dependencies": {
     "@canopy/app-manifest":      "file:../../packages/app-manifest",

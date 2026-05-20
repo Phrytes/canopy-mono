@@ -1,5 +1,80 @@
 # Changelog — @canopy-app/stoop
 
+## [Unreleased] — Slice E.1 — first stoop web page via renderWeb
+
+Opens Slice E (stoop web → renderWeb) of `PLAN-gui-chat-uplift.md`.
+Migrates ONE web page (`mine.html`) to consume the NavModel computed by
+`renderWeb(stoopManifest)`.  Remaining 15 pages stay hand-built and
+will land in follow-on E.x slices — same discipline B.1 used for
+tasks-v0 (just `dag.html`).
+
+### Page migrated
+
+- `web/mine.html` — my active posts + completions.  Chosen as the
+  E.1 substrate-shape proof because (a) it's a single-list page (one
+  skill, one `<ul>`), (b) the skill it calls (`listMyRequests`) IS
+  in the D.1 manifest, and (c) it's strictly less risky than
+  `index.html` (prikbord has filters + multi-intent tabs) or
+  `privacy.html` (which calls `getPrivacyNotice` /
+  `getDataLocation`, neither in the D.1 chat/slash-callable core).
+
+### Pages deferred to follow-on E.x slices
+
+`index.html` (prikbord), `chat.html`, `contacts.html`,
+`create-group.html`, `group.html`, `profile.html`, `settings.html`,
+`onboard.html`, `sign-in.html`, `auth-callback.html`, `push.html`,
+`restore.html`, `welcome.html`, `metrics.html`, `privacy.html` — all
+15 stay hand-built (unchanged) and continue to serve via every
+launcher.
+
+### Manifest delta
+
+- Added ONE view `{id:'mine', title:'My posts', type:'request',
+  filter:{open:true}}`.  `validateManifest` stays green; renderWeb
+  emits a one-section NavModel for stoop.
+
+### New bootstrap
+
+- `bin/stoop-web.js` — minimal single-actor stoop bundle that
+  `renderWeb(stoopManifest)`'s the NavModel and serves it as
+  `/navmodel.json` + `/stoop-config.json` via
+  `mountLocalUi({extraStaticFiles})`.  Mirrors
+  `apps/household/bin/household-web.js` (Slice A.3 substrate).
+  Production launchers (`stoop-ui.js`, `stoop-testbed.js`) stay
+  unchanged.
+
+### New test
+
+- `test/stoop-web.test.js` — 6 tests, all passing.  Covers
+  `/navmodel.json` contents, `/stoop-config.json`, the
+  `data-navmodel-section` marker on `/mine.html`, the agent card,
+  legacy `/` still serves, and a `postRequest → listMyRequests`
+  round-trip via LocalUiAuth.
+
+### Substrate signals (flagged for Slice C / follow-on E.x)
+
+- **Multi-type list-skills can't declare their data source in the
+  NavModel.**  `listMyRequests` spans ALL post types
+  (ask/offer/lend), but `view.type` is single-valued.  The `mine`
+  view's `type: 'request'` is a placeholder; the adapter
+  special-cases the section to call `listMyRequests({})` rather
+  than `listOpen({type: 'request'})`.  Same special-case pattern
+  household uses for `tasks` (listTasks) and `members` (no
+  list-skill).  A follow-on substrate addition (e.g.
+  `view.dataSource: {skillId, args}` or `view.predicate`) would let
+  `mine` declare its own data source without the client special-case.
+- **All-itemTypes ops don't surface as itemActions.**
+  `cancelRequest` and `markReturned` (with lifecycle scope) span all
+  stoop post types, but renderWeb's Q6 logic only matches via
+  explicit `appliesTo.type` or a `type` enum param — neither of
+  which fits "act on any of my posts".  mine.html's per-row buttons
+  use the existing `renderMyItems` helper (kind-aware), not the
+  NavModel's `itemActions[]`.  A `type: '*'` or
+  `appliesTo.type: anyOfTypes` extension would close this.
+
+Touch boundary: `apps/stoop/web/` + `apps/stoop/bin/` + `manifest.js`
+only.  Concurrent agent (D.2) owns `apps/stoop/src/chat/`.
+
 ## [0.3.0] — 2026-05-14 — V2 substrate adoption (Q-B retirement + A-track UX + A2 + C-track)
 
 The Stoop V2 web functional design's full substrate-adoption UX
