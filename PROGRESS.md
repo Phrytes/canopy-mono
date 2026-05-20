@@ -25,7 +25,8 @@ status:
 | SP-4 V0 `@canopy/manifest-host`     | ✅ Done                                                    |
 | SP-5 V0 `@canopy/circles`           | ✅ Done                                                    |
 | SP-5b V0a (`item.audience` field)   | ✅ Done — locks audience model as real data                |
-| SP-5b V0b (ListFilter + host wiring)| ⏸ When concrete consumer needs cross-circle queries        |
+| SP-5b V0b (`ListFilter.audience`)    | ✅ Done — equality match; webid-set resolution → V0c        |
+| SP-5b V0c (view.defaultAudience + cross-pod) | ⏸ When real consumer pressure surfaces             |
 | SP-4b + SP-11 V0 demo               | ✅ Done (`examples/manifest-host-demo/`)                    |
 | Slice A.1–A.4 (household web + LLM) | ✅ Done — **Slice A COMPLETE**                              |
 | Slice B.0 parity audit              | ✅ Done                                                    |
@@ -44,7 +45,8 @@ status:
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — feat(item-store): SP-5b V0a — `item.audience` field + `audienceFromItem` bridge
+- (next) — feat(item-store): SP-5b V0b — `ListFilter.audience` equality match
+- `ef961dc` — feat(item-store): SP-5b V0a — `item.audience` field + `audienceFromItem` bridge
 - `41b140d` — feat(tasks-v0): Slice B.1 — dag.html via renderWeb (view-only)
 - `9dfff80` — feat(household): Slice A.4 — LLM passthrough on web
 - `f0d5ebb` — docs+progress: Slice C.0 recon (tasks-mobile screens) + PROGRESS.md tracker
@@ -82,7 +84,7 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 | `@canopy/circles`              | **50**       | (unchanged)                                 |
 | `@canopy/manifest-host`        | **20**       | (unchanged)                                 |
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |
-| `@canopy/item-store`           | **110**      | +14 SP-5b V0a audience field + bridge       |
+| `@canopy/item-store`           | **118**      | +14 V0a + 8 V0b audience filter             |
 | `apps/household`               | **574**      | +4 LLM-passthrough smoke (A.4)              |
 | `apps/tasks-v0`                | **569**      | +4 sliceB1-navmodel test (B.1)              |
 | `apps/stoop`                   | **572**      | +6 D.1 manifest-validation                  |

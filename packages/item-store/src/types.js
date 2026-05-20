@@ -209,6 +209,17 @@
  *   gate is configured, results are also filtered by what the
  *   actor is allowed to see.
  *
+ * @property {Audience} [audience]
+ *   SP-5b V0b (2026-05-21).  Match items whose effective audience
+ *   (via `audienceFromItem`) deep-equals this value.
+ *
+ *   V0b semantics are **strict equality**.  Known limitation: the
+ *   string short-hand `'crew:X'` and the structured form
+ *   `{kind:'circle-ref', id:'X'}` are NOT considered equivalent
+ *   (normalisation lives in `@canopy/circles`; item-store can't
+ *   depend on it for layering reasons).  V0c may lift
+ *   `normalizeAudience` to item-types OR take a callback.
+ *
  * @property {number} [since]
  *   ms epoch.  Match items with `addedAt >= since`.
  */
