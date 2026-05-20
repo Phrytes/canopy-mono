@@ -37,13 +37,17 @@ status:
 | Slice B.1 (dag.html via renderWeb)  | ✅ Done — first tasks-v0 page projector-driven              |
 | Slice B.2.0 (shared web-adapter)    | ✅ Done — `@canopy/web-adapter` package (4 helpers)         |
 | Slice B.2.1 (mine.html via renderWeb)| ✅ Done                                                    |
-| Slice B.2.2+ (review/inbox/avail/privacy)| ⏸ ahead — each is ~B.1-scope                          |
+| Slice B.2.2 (review.html via renderWeb) | ✅ Done                                                |
+| Slice B.2.3+ (inbox/avail)          | ⏸ ahead — each is ~B.1-scope                              |
 | Slice C.0 recon (tasks-mobile)      | ✅ Done                                                    |
 | Slice C.1+ (renderMobile migration) | ⏸ Awaiting Slice A sign-off + manifest extension          |
 | Slice D.1 (stoop manifest FINAL)    | ✅ Done — all 8 DECIDE markers resolved 2026-05-21          |
 | Slice D.2 (stoop LLM)               | ✅ Done — `createLlmChat` adapter; 13 ops 1:1 mapped         |
-| Slice E.1 (first stoop web page)    | ✅ Done — mine.html via renderWeb; 15 pages ahead in E.x     |
-| Slice E.2+ (remaining stoop web)    | ⏸ Per-page sub-slices ahead                                |
+| Slice C.1 (tasks-mobile RN adapter) | ✅ Done — `manifest-adapter.js` + WorkspaceScreen migrated  |
+| Slice C.2+ (more RN screens)        | ⏸ Per-screen sub-slices ahead (per C.0 phase plan)         |
+| Slice E.1 (first stoop web page)    | ✅ Done — mine.html via renderWeb                            |
+| Slice E.2 (privacy.html)            | ✅ Done — first stoop readOnly page; 14 ahead in E.x         |
+| Slice E.3+ (remaining stoop web)    | ⏸ Per-page sub-slices ahead                                |
 | Slice F (stoop-mobile)              | ⏸ After Slice C                                            |
 | Slice G (folio)                     | ⏸ Future                                                   |
 | Slice H (cross-cutting)             | ⏸ After ≥2 apps live                                      |
@@ -54,7 +58,11 @@ status:
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — fix(web-adapter): itemMatchesAppliesTo honours Q8 '*' wildcard
+- (next) — Three-way parallel: C.1 + B.2.2 + E.2
+- `5b11ed7` — feat(tasks-mobile): Slice C.1 — RN adapter scaffold (adapter-first)
+- `6c0aed2` — feat(stoop): Slice E.2 — privacy.html via renderWeb
+- `3020f45` — feat(tasks-v0): Slice B.2.2 — review.html via renderWeb
+- `542f9db` — fix(web-adapter): itemMatchesAppliesTo honours Q8 '*' wildcard
 - `9424c6d` — refactor(household): V0.2-adopt — use view.dataSource + helpers
 - `69876cd` — refactor(stoop): V0.2-adopt — view.dataSource + Q8 wildcard + helpers
 - `2328fad` — refactor(tasks-v0): V0.2-adopt — use view.dataSource + helpers
@@ -107,8 +115,9 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |
 | `@canopy/item-store`           | **118**      | +14 V0a + 8 V0b audience filter             |
 | `@canopy/web-adapter` (NEW)    | **70**       | +10 fetchSectionItems + +18 schemaToFormFields + +4 Q8 wildcard |
-| `apps/stoop`                   | **587**      | +2 V0.2-adopt overlay assertions                  |
-| `apps/tasks-v0`                | **578**      | +9 B.2.1 mine.html                           |
+| `apps/stoop`                   | **589**      | +2 V0.2-adopt + +2 E.2 privacy.html               |
+| `apps/tasks-v0`                | **585**      | +9 B.2.1 + +7 B.2.2 review.html              |
+| `apps/tasks-mobile`            | **146**      | +11 C.1 manifest-adapter                     |
 | `apps/household`               | **575**      | +1 web-adapter overlay smoke (B.2.0)         |
 | `apps/household`               | **574**      | +4 LLM-passthrough smoke (A.4)              |
 | `apps/tasks-v0`                | **569**      | +4 sliceB1-navmodel test (B.1)              |
