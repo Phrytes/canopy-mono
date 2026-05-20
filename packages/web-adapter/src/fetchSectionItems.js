@@ -1,10 +1,26 @@
 /**
- * `fetchSectionItems(section, {callSkill})` — V0.2 (2026-05-21).
+ * `fetchSectionItems(section, {callSkill, context?})` — V0.2 + V0.3.
  *
  * One-stop helper that adapters call to populate a NavModel section
  * with items.  Honours the V0.2 Q7 `section.dataSource` declaration
  * if present; otherwise falls back to the Q6 rule-b default
  * (`listOpen({type, ...filter})`).
+ *
+ * V0.3 (2026-05-21) — Q15 `dataSource.argsFromContext` recognised.
+ * Values of the form `"$<key>"` are substituted from the caller-
+ * supplied `context` object at call time:
+ *
+ *   dataSource: {
+ *     skillId: 'getPrivacyNotice',
+ *     argsFromContext: { lang: '$lang' },
+ *   }
+ *   fetchSectionItems(section, { callSkill, context: { lang: 'nl' } });
+ *   → callSkill('getPrivacyNotice', { lang: 'nl' })
+ *
+ * If a `$key` doesn't appear in `context`, the literal is passed
+ * through (so callers can detect-and-recover).  Static `args` +
+ * `argsFromContext` are merged (`args` first, context-substituted
+ * keys override).
  *
  * Removes adapter-side hard-coding of "this section calls listMine /
  * listMyRequests / getDagTree" that household + tasks-v0 + stoop web
@@ -29,6 +45,10 @@
  * @param {(skillId: string, args?: object) => Promise<*>} args.callSkill
  *   Adapter-supplied skill caller.  Same shape as @canopy/web-adapter's
  *   `callSkill(baseUrl, ...)` already-curried with baseUrl.
+ * @param {object} [args.context]
+ *   V0.3 (Q15) — context object whose keys back the `argsFromContext`
+ *   `$key` substitution.  Optional; if absent, `$key` literals pass
+ *   through unchanged so callers can detect missing values.
  * @param {string} [args.defaultListSkill='listOpen']
  *   Skill id to call when `section.dataSource` is absent.  Defaults to
  *   `'listOpen'`; apps with a different default (e.g. `'listAllOpen'`)
@@ -37,7 +57,7 @@
  * @returns {Promise<*>}   raw skill reply.  Adapters extract `items` per
  *                          their convention.
  */
-export async function fetchSectionItems(section, { callSkill, defaultListSkill = 'listOpen' } = {}) {
+export async function fetchSectionItems(section, { callSkill, context, defaultListSkill = 'listOpen' } = {}) {
   if (!section || typeof section !== 'object') {
     throw new TypeError('fetchSectionItems: section (NavModel section) required');
   }
@@ -47,8 +67,11 @@ export async function fetchSectionItems(section, { callSkill, defaultListSkill =
 
   // Q7 (V0.2) — explicit dataSource wins.
   if (section.dataSource && typeof section.dataSource.skillId === 'string') {
-    const args = section.dataSource.args ?? {};
-    return callSkill(section.dataSource.skillId, args);
+    // Q15 (V0.3) — merge static args + context-substituted args.
+    const staticArgs    = section.dataSource.args            ?? {};
+    const contextSubst  = substituteContext(section.dataSource.argsFromContext, context);
+    const finalArgs     = { ...staticArgs, ...contextSubst };
+    return callSkill(section.dataSource.skillId, finalArgs);
   }
 
   // Q6 rule-b fallback — `listOpen({type, ...filter})`.
@@ -57,4 +80,35 @@ export async function fetchSectionItems(section, { callSkill, defaultListSkill =
     ...(section.filter ?? {}),
   };
   return callSkill(defaultListSkill, args);
+}
+
+/**
+ * Q15 (V0.3) — recognise `"$key"` strings in `argsFromContext` and
+ * substitute from the caller-supplied `context` object.  Unknown keys
+ * pass through literally (caller can detect "still got `$lang`" and
+ * recover).  Non-string values pass through unchanged.
+ *
+ * @param {object|undefined} argsFromContext
+ * @param {object|undefined} context
+ * @returns {object}
+ */
+function substituteContext(argsFromContext, context) {
+  if (!argsFromContext || typeof argsFromContext !== 'object') return {};
+  const ctx = (context && typeof context === 'object') ? context : {};
+  const out = {};
+  for (const [k, v] of Object.entries(argsFromContext)) {
+    if (typeof v === 'string' && v.startsWith('$')) {
+      const key = v.slice(1);
+      if (key in ctx) {
+        out[k] = ctx[key];
+      } else {
+        // Unknown context key — pass through literally so consumer
+        // can detect + recover.
+        out[k] = v;
+      }
+    } else {
+      out[k] = v;  // non-substituted literal
+    }
+  }
+  return out;
 }

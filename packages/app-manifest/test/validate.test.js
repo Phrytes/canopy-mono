@@ -152,6 +152,70 @@ describe('validateManifest', () => {
       somethingNew: { foo: 'bar' },
     })).toBe(true);
   });
+
+  /* ─── V0.3 — Q15/Q17 view extensions ─────────────────────────── */
+
+  describe('V0.3 Q17 view.shape', () => {
+    const base = (overrides) => ({
+      app: 'a',
+      itemTypes: ['task'],
+      operations: [],
+      views: [{ id: 'v', title: 'V', type: 'task', ...overrides }],
+    });
+
+    it('accepts view.shape === "list" (explicit)', () => {
+      expect(ok(base({ shape: 'list' }))).toBe(true);
+    });
+
+    it('accepts view.shape === "record"', () => {
+      expect(ok(base({ shape: 'record' }))).toBe(true);
+    });
+
+    it('accepts view without shape (implicit "list")', () => {
+      expect(ok(base({}))).toBe(true);
+    });
+
+    it('rejects view.shape with an unknown value', () => {
+      const e = errs(base({ shape: 'grid' }));
+      expect(e.some((x) => /must be 'list' or 'record'/.test(x.message))).toBe(true);
+    });
+  });
+
+  describe('V0.3 Q15/Q16 dataSource sanity check', () => {
+    const base = (dataSource) => ({
+      app: 'a',
+      itemTypes: ['task'],
+      operations: [],
+      views: [{ id: 'v', title: 'V', type: 'task', dataSource }],
+    });
+
+    it('accepts dataSource with skillId', () => {
+      expect(ok(base({ skillId: 'listOpen' }))).toBe(true);
+    });
+
+    it('accepts dataSource with skillId + args + argsFromContext', () => {
+      expect(ok(base({
+        skillId: 'getPrivacyNotice',
+        args:            { limit: 10 },
+        argsFromContext: { lang: '$lang' },
+      }))).toBe(true);
+    });
+
+    it('rejects dataSource without skillId', () => {
+      const e = errs(base({ args: { x: 1 } }));
+      expect(e.some((x) => /skillId must be a non-empty string/.test(x.message))).toBe(true);
+    });
+
+    it('rejects dataSource that is not an object', () => {
+      const e = errs(base('listOpen'));
+      expect(e.some((x) => /must be an object/.test(x.message))).toBe(true);
+    });
+
+    it('rejects argsFromContext that is not an object', () => {
+      const e = errs(base({ skillId: 'x', argsFromContext: ['lang'] }));
+      expect(e.some((x) => /argsFromContext must be an object/.test(x.message))).toBe(true);
+    });
+  });
 });
 
 describe('VERBS / isCanonicalVerb', () => {

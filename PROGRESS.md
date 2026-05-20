@@ -30,7 +30,11 @@ status:
 | NavModel V0.2 (Q7 dataSource + Q8 wildcard) | ✅ Done — closes convergent B.2+E.1+B.1 gap          |
 | NavModel V0.2 (Q9 readOnly + Q10 creative verbs) | ✅ Done — A.3 signals a/b resolved              |
 | Web-adapter `schemaToFormFields` (Q11 multi-field forms) | ✅ Done — A.3 signal c resolved          |
+| NavModel V0.3 (Q15 argsFromContext + Q17 view.shape) | ✅ Done — E.2/E.3 signals resolved            |
+| Web-adapter argsFromContext substitution | ✅ Done — fetchSectionItems honours `$key`            |
+| useAdapterSection RN hook            | ✅ Done — apps/tasks-mobile/src/useAdapterSection.js |
 | NavModel V0.3 (d — structured list reply shape) | ⏸ Deferred until consumer pressure (task #11)      |
+| NavModel V0.x (Q18 patch mutations / per-event-kind / section CTAs) | ⏸ Deferred — needs more signal        |
 | SP-4b + SP-11 V0 demo               | ✅ Done (`examples/manifest-host-demo/`)                    |
 | Slice A.1–A.4 (household web + LLM) | ✅ Done — **Slice A COMPLETE**                              |
 | Slice B.0 parity audit              | ✅ Done                                                    |
@@ -61,7 +65,8 @@ status:
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — Three-way parallel: C.2 + B.2.3 + E.3
+- (next) — NavModel V0.3 substrate consolidation
+- `08c2929` — progress: 3-way parallel C.2 + B.2.3 + E.3 landed
 - `817fd5b` — feat(tasks-v0): Slice B.2.3 — inbox.html via renderWeb
 - `482ad22` — feat(stoop): Slice E.3 — settings.html via renderWeb
 - `80345b6` — feat(tasks-mobile): Slice C.2 — MyWorkScreen via adapter
@@ -116,15 +121,15 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 
 | Package / app                  | Tests        | Notes                                       |
 | ------------------------------ | ------------ | ------------------------------------------- |
-| `@canopy/app-manifest`         | **123**      | +16 V0.2 (Q7/Q8/Q9/Q10)                     |
+| `@canopy/app-manifest`         | **135**      | +16 V0.2 + 12 V0.3 (Q15/Q16/Q17)            |
 | `@canopy/circles`              | **50**       | (unchanged)                                 |
 | `@canopy/manifest-host`        | **20**       | (unchanged)                                 |
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |
 | `@canopy/item-store`           | **118**      | +14 V0a + 8 V0b audience filter             |
-| `@canopy/web-adapter` (NEW)    | **70**       | +10 fetchSectionItems + +18 schemaToFormFields + +4 Q8 wildcard |
+| `@canopy/web-adapter` (NEW)    | **75**       | +5 V0.3 Q15 argsFromContext substitution          |
 | `apps/stoop`                   | **591**      | +2 V0.2-adopt + 2 E.2 + 2 E.3 settings.html       |
 | `apps/tasks-v0`                | **594**      | +7 B.2.2 + 9 B.2.3 inbox.html                |
-| `apps/tasks-mobile`            | **151**      | +11 C.1 + 5 C.2 MyWorkScreen                 |
+| `apps/tasks-mobile`            | **159**      | +11 C.1 + 5 C.2 + 8 useAdapterSection V0.3   |
 | `apps/household`               | **575**      | +1 web-adapter overlay smoke (B.2.0)         |
 | `apps/household`               | **574**      | +4 LLM-passthrough smoke (A.4)              |
 | `apps/tasks-v0`                | **569**      | +4 sliceB1-navmodel test (B.1)              |
