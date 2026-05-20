@@ -58,7 +58,7 @@ export const tasksManifest = {
    * `{policy, groupPodUri?}`), not a list of items.  See V0.3 Q17
    * (`shape: 'record'`) — the view encodes that reality.
    */
-  itemTypes: ['task', 'inbox-item', 'crew-storage-policy'],
+  itemTypes: ['task', 'inbox-item', 'crew-storage-policy', 'crew'],
 
   operations: [
     {
@@ -422,6 +422,52 @@ export const tasksManifest = {
       ],
       surfaces: {
         chat: { hint: 'Return the sub-task tree rooted at rootId, or every top-level tree.' },
+      },
+    },
+
+    /*
+     * Q27 adoption (V0.8, 2026-05-21) — crew lifecycle ops.
+     *
+     * `archiveCrew` hides a crew from active workflows but does NOT
+     * delete items.  Reversible via `unarchiveCrew`.  Admin-only —
+     * the skill enforces the role check; the manifest declares the
+     * affordance + severity hint.
+     *
+     * No `appliesTo` — these are crew-scoped, not per-item.  No
+     * view surfaces them today (the crew dashboard is hand-coded);
+     * future slices can wire a `crews` view that surfaces them.
+     * Chat surface lets the chat agent dispatch them by name.
+     */
+    {
+      id:        'archiveCrew',
+      verb:      'archive',
+      params:    [],
+      // 'crew' itemType is the natural scope for crew-lifecycle ops.
+      // Crews aren't surfaced by any view today (the crew dashboard
+      // is hand-coded); appliesTo keeps the op off task-level inline
+      // keyboards while letting chat agents address it by name.
+      appliesTo: { type: 'crew' },
+      surfaces: {
+        chat: { hint: 'Archive this crew — admin only. Hides it from active workflows; items are kept.' },
+        ui: {
+          control: 'button',
+          label:   'Archive crew',
+          confirm: {
+            severity: 'warn',
+            message:  'Archive this crew?  Items are kept; new tasks are blocked until you unarchive.',
+          },
+        },
+      },
+    },
+    {
+      id:        'unarchiveCrew',
+      verb:      'unarchive',
+      params:    [],
+      appliesTo: { type: 'crew' },
+      surfaces: {
+        chat: { hint: 'Unarchive this crew — admin only.  Resumes new-task creation.' },
+        // No confirm — unarchive is the undo path; low-barrier reversal.
+        ui:   { control: 'button', label: 'Unarchive crew' },
       },
     },
   ],
