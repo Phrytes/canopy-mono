@@ -23,6 +23,10 @@ export {
 export { paramsToJsonSchema } from './paramsToJsonSchema.js';
 export { renderChat }          from './renderChat.js';
 export { renderSlash }         from './renderSlash.js';
+// Slice A.1 (2026-05-20) — web/mobile surface projection.
+// See DESIGN-navmodel-sketch.md for the NavModel shape +
+// PLAN-gui-chat-uplift.md Slice A for the consumer roadmap.
+export { renderWeb }           from './renderWeb.js';
 
 // JSDoc typedefs live here; importing the module forces it to be loaded
 // so tooling can resolve type-only references.
