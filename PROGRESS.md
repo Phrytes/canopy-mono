@@ -72,7 +72,10 @@ Branch `feat/app-manifest` carries 48 commits ahead of master; total
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — Tier B substrate (Q25 readSkill + Q26 requiresField) + bridge fix
+- (next) — Slice G follow-ups (#4-#7) cleared
+- `a4d298d` — docs(folio-mobile): Slice G #7 — track v0 parity gaps in V2 deferred section
+- `5018a0a` — fix(folio-mobile): Slice G #4 — wire pod-probe via engine.verifyPodState
+- `17fabc8` — feat(sync-engine): Slice G #5 + #6 — hook JSDoc + isRunning getter
 - `b37ceb2` — fix(tasks-v0): InAppInboxBridge stamps substrate-canonical shape at write time
 - `b7951ab` — feat(app-manifest): NavModel V0.7 — Q25 readSkill + Q26 requiresField
 - `30435db` — docs(folio, folio-mobile): close Slice G audit P1 README drift
