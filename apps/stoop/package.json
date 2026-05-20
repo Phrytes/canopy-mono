@@ -26,6 +26,7 @@
     "testbed":    "node bin/stoop-testbed.js"
   },
   "dependencies": {
+    "@canopy/app-manifest":      "file:../../packages/app-manifest",
     "@canopy/core":              "file:../../packages/core",
     "@canopy/relay":             "file:../../packages/relay",
     "@canopy/agent-registry":    "file:../../packages/agent-registry",
