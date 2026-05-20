@@ -72,7 +72,11 @@ Branch `feat/app-manifest` carries 48 commits ahead of master; total
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — 3-way parallel: B.2.4 + C.4 + E.4, then substrate fix
+- (next) — Tier A V0.6 substrate: Q22 labelKey + Q23 file/image + Q24 useAdapterAction
+- `ac8b1ab` — docs: NavModel V0.6 — Q22 + Q23 + Q24 design rows
+- `5364314` — feat(tasks-mobile): Q24 — useAdapterAction RN hook
+- `3801cc3` — feat(app-manifest): NavModel V0.6 — Q23 field.type 'file' | 'image'
+- `3b4c909` — feat(app-manifest): NavModel V0.6 — Q22 labelKey i18n passthrough
 - `442bc6a` — refactor(tasks-mobile): drop C.4 buildItemAction workaround (now in substrate)
 - `bcf4c16` — feat(tasks-mobile): Slice C.4 — InboxScreen via adapter + renderItemActions
 - `83ce267` — fix(app-manifest): buildItemAction preserves generic appliesTo fields (V0.4 per-kind gate)
@@ -141,7 +145,7 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 
 | Package / app                  | Tests        | Notes                                       |
 | ------------------------------ | ------------ | ------------------------------------------- |
-| `@canopy/app-manifest`         | **166**      | +5 V0.3 (d) + 6 V0.5 Q21 + 1 V0.4 gate regression |
+| `@canopy/app-manifest`         | **182**      | +166 baseline + 10 Q22 labelKey + 6 Q23 file/image |
 | `@canopy/circles`              | **50**       | (unchanged)                                 |
 | `@canopy/manifest-host`        | **20**       | (unchanged)                                 |
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |
@@ -149,7 +153,7 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 | `@canopy/web-adapter` (NEW)    | **80**       | +5 V0.3 Q15 + +5 V0.4 per-kind dispatch           |
 | `apps/stoop`                   | **591**      | +2 V0.2-adopt + 2 E.2 + 2 E.3 settings.html       |
 | `apps/tasks-v0`                | **599**      | +7 B.2.2 + 9 B.2.3 inbox + 5 B.2.4 pod-settings |
-| `apps/tasks-mobile`            | **171**      | +11 C.1 + 5 C.2 + 8 V0.3 + 5 C.3 + 7 C.4 inbox |
+| `apps/tasks-mobile`            | **177**      | +171 baseline + 6 Q24 useAdapterAction      |
 | `apps/household`               | **575**      | +1 web-adapter overlay smoke (B.2.0)         |
 | `apps/household`               | **574**      | +4 LLM-passthrough smoke (A.4)              |
 | `apps/tasks-v0`                | **569**      | +4 sliceB1-navmodel test (B.1)              |
