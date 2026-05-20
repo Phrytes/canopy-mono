@@ -414,6 +414,39 @@ export const stoopManifest = {
         },
       },
     },
+
+    // ── Pod session ─────────────────────────────────────────────────
+    // Q27 adoption (V0.8, 2026-05-21).  signOutOfPod disconnects the
+    // OIDC session from the user's Solid pod.  No appliesTo — same
+    // pattern as listMyRequests / mutePeer (session-scoped, not
+    // per-item).
+    {
+      id:   'signOutOfPod',
+      verb: 'remove',  // canonical — signing out is removal of session.
+      params: [],
+      surfaces: {
+        chat:  { hint: 'Sign out of the current Solid pod session.  Mid-sync state may be dropped; the user can sign back in any time.' },
+        slash: {
+          // Collision-free with household's /add /list /done /remove
+          // /help /task /tasks /claim /register.  Action verb at the
+          // session scope.
+          command: '/sign-out',
+          match: {
+            verbs:   ['sign-out', 'signout', 'uitloggen'],
+            body:    'reject',  // no body — session-scoped, no args
+            onEmpty: { skillId: 'signOutOfPod', args: {} },
+          },
+        },
+        ui: {
+          control: 'button',
+          label:   'Uitloggen',
+          confirm: {
+            severity: 'warn',
+            message:  'Uitloggen van je pod?  Lopende synchronisatie wordt afgebroken.',
+          },
+        },
+      },
+    },
   ],
 
   // Slice E.1 (2026-05-20) — first stoop web page via renderWeb.
