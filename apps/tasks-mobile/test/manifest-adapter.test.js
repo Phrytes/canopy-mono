@@ -142,6 +142,114 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
     });
   });
 
+  /*
+   * Slice C.3 (2026-05-20) — ReviewScreen consumer.  The reviewer
+   * queue is a single section (`review`) backed by
+   * `listAwaitingApproval` (B.2.2-declared); per-row Approve/Reject
+   * buttons come from `renderItemActions(section, item)` filtered by
+   * the manifest's V0.7 DoD-lifecycle `appliesTo.state: ['submitted']`
+   * gate.  Mirrors sliceB2_2-review.test.js's web-side coverage,
+   * extended for the RN adapter consumer so a regression in the
+   * `review` section's data source OR the action set's state gate is
+   * caught here (not at runtime via a missing button).
+   *
+   * This is the first RN consumer of `renderItemActions` end-to-end —
+   * Workspace + MyWork only exercise the dataSource path (sections
+   * carry itemActions[] but no RN screen rendered them pre-C.3).
+   */
+  describe('Slice C.3: ReviewScreen section + per-row actions (review)', () => {
+    it('getSection("review") resolves the listAwaitingApproval dataSource', () => {
+      const review = adapter.getSection('review');
+      expect(review).toBeTruthy();
+      expect(review.id).toBe('review');
+      expect(review.title).toBe('Awaiting approval');
+      expect(review.itemType).toBe('task');
+      // V0.2 Q7 dataSource — explicit listAwaitingApproval (no args).
+      expect(review.dataSource).toEqual({ skillId: 'listAwaitingApproval' });
+    });
+
+    it('fetchSection(review) dispatches listAwaitingApproval via callSkill', async () => {
+      callSkill.mockReset();
+      callSkill.mockResolvedValueOnce({ items: [] });
+
+      const review = adapter.getSection('review');
+      await adapter.fetchSection(review);
+
+      expect(callSkill).toHaveBeenCalledTimes(1);
+      expect(callSkill).toHaveBeenCalledWith('listAwaitingApproval', {});
+    });
+
+    it('renderItemActions(review, submitted) surfaces approve + reject + revoke', () => {
+      const review = adapter.getSection('review');
+      // V2.7 — listAwaitingApproval stamps `status: 'submitted'` on
+      // every returned item (server-side effectiveStatus); the
+      // adapter's deriveItemState honours the explicit status.
+      const submitted = {
+        id: 't-submitted',
+        type: 'task',
+        assignee: 'webid:#alice',
+        status: 'submitted',
+        reviewLog: [{ decision: 'submit', by: 'webid:#alice', at: 1717000000000 }],
+      };
+      const actions = adapter.renderItemActions(review, submitted);
+      const ids = actions.map((a) => a.opId).sort();
+
+      // Mandatory set — sliceB2_2-review.test.js's web-side assertion.
+      expect(ids).toEqual(expect.arrayContaining(['approveTask', 'rejectTask', 'revokeTask']));
+      // Negatives — state gate must reject lifecycle ops on submitted.
+      expect(ids).not.toContain('claimTask');     // state:['open']
+      expect(ids).not.toContain('submitTask');    // state:['claimed','rejected']
+      expect(ids).not.toContain('completeTask');  // state:['claimed']
+    });
+
+    it('renderItemActions(review, claimed) does NOT surface approve/reject (defensive)', () => {
+      // Defensive: listAwaitingApproval should only return submitted
+      // items, but if a stale/concurrent claimed item leaks through
+      // the adapter's state gate must still hide approve/reject (they
+      // would 4xx server-side).
+      const review = adapter.getSection('review');
+      const claimed = {
+        id: 't-claimed',
+        type: 'task',
+        assignee: 'webid:#alice',
+        status: 'claimed',
+      };
+      const actions = adapter.renderItemActions(review, claimed);
+      const ids = actions.map((a) => a.opId);
+      expect(ids).not.toContain('approveTask');
+      expect(ids).not.toContain('rejectTask');
+      // revokeTask still surfaces (its appliesTo.state covers
+      // claimed/submitted/rejected) — same gate the web review page
+      // honours.
+      expect(ids).toContain('revokeTask');
+    });
+
+    it('approve/reject actions carry {opId, label, args:{id}} ready for dispatch', () => {
+      const review = adapter.getSection('review');
+      const submitted = {
+        id: 't-99',
+        type: 'task',
+        assignee: 'webid:#alice',
+        status: 'submitted',
+        reviewLog: [{ decision: 'submit', by: 'webid:#alice', at: 1717000000000 }],
+      };
+      const actions = adapter.renderItemActions(review, submitted);
+      const approve = actions.find((a) => a.opId === 'approveTask');
+      const reject  = actions.find((a) => a.opId === 'rejectTask');
+
+      expect(approve).toBeTruthy();
+      expect(approve.label).toBe('Approve');
+      expect(approve.args).toEqual({ id: 't-99' });
+
+      expect(reject).toBeTruthy();
+      expect(reject.label).toBe('Reject');
+      // The note param is mandatory but the adapter prefills only
+      // {id}; the screen merges {note} before dispatch (see
+      // ReviewScreen.jsx — reject hand-off to TaskDetailScreen).
+      expect(reject.args).toEqual({ id: 't-99' });
+    });
+  });
+
   describe('renderItemActions(section, item) — state-gated buttons', () => {
     const open = adapter.getSection('open');
 
