@@ -38,11 +38,12 @@ describe('Slice B.1: renderWeb(tasksManifest) NavModel', () => {
     expect(navModel.sections.map((s) => s.id)).toEqual([
       'open',
       'mine',
-      'mastered',   // Slice B.2.1 (2026-05-20) — middle section of mine.html
+      'mastered',     // Slice B.2.1 (2026-05-20) — middle section of mine.html
       'claimable',
-      'review',     // Slice B.2.2 (2026-05-20) — review.html reviewer queue
-      'dag',        // Slice B.1   (2026-05-20)
-      'inbox',      // Slice B.2.3 (2026-05-20) — inbox.html notification feed
+      'review',       // Slice B.2.2 (2026-05-20) — review.html reviewer queue
+      'dag',          // Slice B.1   (2026-05-20)
+      'inbox',        // Slice B.2.3 (2026-05-20) — inbox.html notification feed
+      'pod-settings', // Slice B.2.4 (2026-05-20) — pod-settings.html V0.4-adopt
     ]);
   });
 

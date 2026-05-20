@@ -48,7 +48,17 @@ export const tasksManifest = {
    * NavModel category tag for routing the `inbox` view + the
    * `clearInboxItem` itemAction.
    */
-  itemTypes: ['task', 'inbox-item'],
+  /*
+   * Slice B.2.4 (2026-05-20) — `'crew-storage-policy'` joins as an
+   * app-local (non-canonical, F-SP1-a) item type so the `pod-settings`
+   * view can declare `view.type: 'crew-storage-policy'`
+   * (validateView pins `view.type` ∈ `manifest.itemTypes`).  Like
+   * stoop's `'group-rules'` placeholder for its settings view, the
+   * crew storage policy is a SINGLETON record (one merged object:
+   * `{policy, groupPodUri?}`), not a list of items.  See V0.3 Q17
+   * (`shape: 'record'`) — the view encodes that reality.
+   */
+  itemTypes: ['task', 'inbox-item', 'crew-storage-policy'],
 
   operations: [
     {
@@ -502,6 +512,83 @@ export const tasksManifest = {
       title:      'Notifications',
       type:       'inbox-item',
       dataSource: { skillId: 'listMyInbox', args: { limit: 200 } },
+    },
+    /*
+     * Slice B.2.4 (2026-05-20) — pod-settings view consumed by
+     * `apps/tasks-v0/web/pod-settings.html`.  Mirrors stoop's V0.4-
+     * adopt settings view (commit 9e7003b): the manifest models the
+     * data shape (record + per-field patch declarations); the page
+     * keeps its rich custom UI (pod-sign-in flow, conditional
+     * groupPodUri row, i18n labels — auto-rendering would regress).
+     *
+     * V0.3 Q17 (`shape: 'record'`) — `getCrewStoragePolicy` returns a
+     * singleton `{policy, groupPodUri?}` object, NOT a list.  Q15
+     * (`argsFromContext`) — `crewId` is a RUNTIME-derived arg
+     * (URL `?crew=...`), not static; the page (or its host) supplies
+     * `$crewId` via the fetch-section context.
+     *
+     * V0.4 Q18 (`view.fields[]`) — declares the two editable fields
+     * of the storage policy with their patch ops.  Both target
+     * `setCrewStoragePolicy({crewId, storagePolicy, groupPodUri?})`
+     * — a FLAT skill (no nested `{patch: {...}}` wrapper), so Q21
+     * `argWrapper` is NOT needed here (omitted).  Same flat shape
+     * as stoop's `setHopMode({global})` field.
+     *
+     * `setCrewStoragePolicy` and `getCrewStoragePolicy` are NOT
+     * declared in `operations[]` (same choice stoop made for
+     * `getSettings`/`updateSettings`/`setHopMode`).  They are
+     * pod-plumbing skills, not chat/slash-callable primary flows.
+     * Non-strict `validateManifest` permits `dataSource.skillId` and
+     * `field.patch.opId` to reference any string (Q16-strict would
+     * tighten this — opt-in only).  The SP-3 drift canary therefore
+     * doesn't need to know about them.
+     *
+     * The page's pod-sign-in surface (`startPodSignIn`,
+     * `completePodSignIn`, `signOutOfPod`, `podSignInStatus`,
+     * `whoAmI`) is an interactive OIDC flow — explicitly OUT OF
+     * SCOPE for B.2.4.  Modelling that as manifest ops would require
+     * a redirect-flow primitive the substrate doesn't yet have.
+     */
+    {
+      id:    'pod-settings',
+      title: 'Pod settings',
+      type:  'crew-storage-policy',
+      shape: 'record',                              // V0.3 Q17 — singleton
+      dataSource: {
+        skillId:         'getCrewStoragePolicy',
+        // V0.3 Q15 — `crewId` is runtime-derived (browser URL); the
+        // page supplies it via the fetch-section context.  Omitted
+        // when the host has no active crew (the skill itself replies
+        // `{error: 'crewId required'}` in that case).
+        argsFromContext: { crewId: '$crewId' },
+      },
+      // V0.4 Q18 — two representative editable fields of the storage
+      // policy.  Both dispatch through `setCrewStoragePolicy` (one-way
+      // upgrade; admin/coordinator gated server-side).
+      fields: [
+        {
+          name:    'policy',
+          type:    'enum',
+          label:   'Storage form',
+          // Mirrors the page's <select> options (no-pod intentionally
+          // omitted — the skill rejects downgrade once a pod-having
+          // policy is active).
+          choices: ['centralised', 'decentralised', 'hybrid'],
+          // Flat patch — dispatch is
+          // `setCrewStoragePolicy({crewId, storagePolicy: <value>})`.
+          // No `argWrapper` (skill takes flat args, not `{patch: ...}`).
+          patch:   { opId: 'setCrewStoragePolicy', argName: 'storagePolicy' },
+        },
+        {
+          name:  'groupPodUri',
+          type:  'string',
+          label: 'Pod URI',
+          // Conditional on policy ∈ {centralised, hybrid} per the
+          // page's UI logic.  The manifest declares the patch shape;
+          // the page enforces the conditional in its hand-coded UI.
+          patch: { opId: 'setCrewStoragePolicy', argName: 'groupPodUri' },
+        },
+      ],
     },
   ],
 };
