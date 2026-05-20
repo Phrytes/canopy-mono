@@ -134,6 +134,10 @@ function validateOperation(op, path, manifest, errors, idSet) {
         const p = `${path}/appliesTo/type${Array.isArray(op.appliesTo.type) ? `/${j}` : ''}`;
         if (typeof t !== 'string') {
           errors.push({ path: p, message: 'appliesTo.type must be a string or array of strings' });
+        } else if (t === '*') {
+          // NavModel V0.2 (2026-05-21) — wildcard: "any of manifest.
+          // itemTypes".  Permitted; rendered as itemAction in every
+          // section by renderWeb's wildcard rule.
         } else if (Array.isArray(manifest.itemTypes) && !manifest.itemTypes.includes(t)) {
           errors.push({ path: p, message: `appliesTo.type "${t}" is not in manifest.itemTypes` });
         }

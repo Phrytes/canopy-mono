@@ -29,3 +29,6 @@ export { callSkill }            from './callSkill.js';
 export { deriveItemState }      from './deriveItemState.js';
 export { itemMatchesAppliesTo } from './itemMatchesAppliesTo.js';
 export { applyPrefilledParams } from './applyPrefilledParams.js';
+// V0.2 (2026-05-21) — section data-fetch helper.  Honours Q7
+// section.dataSource; falls back to Q6 rule-b default.
+export { fetchSectionItems }    from './fetchSectionItems.js';

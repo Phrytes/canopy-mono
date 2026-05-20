@@ -27,6 +27,7 @@ status:
 | SP-5b V0a (`item.audience` field)   | ✅ Done — locks audience model as real data                |
 | SP-5b V0b (`ListFilter.audience`)    | ✅ Done — equality match; webid-set resolution → V0c        |
 | SP-5b V0c (view.defaultAudience + cross-pod) | ⏸ When real consumer pressure surfaces             |
+| NavModel V0.2 (Q7 dataSource + Q8 wildcard) | ✅ Done — closes convergent B.2+E.1+B.1 gap          |
 | SP-4b + SP-11 V0 demo               | ✅ Done (`examples/manifest-host-demo/`)                    |
 | Slice A.1–A.4 (household web + LLM) | ✅ Done — **Slice A COMPLETE**                              |
 | Slice B.0 parity audit              | ✅ Done                                                    |
@@ -50,7 +51,8 @@ status:
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — Slice B.2 + D.2 + E.1 (3 parallel agents) — see below
+- (next) — NavModel V0.2: view.dataSource (Q7) + appliesTo.type='*' (Q8)
+- `cf43e96` — progress: 3-way parallel landed (B.2 + D.2 + E.1); CONVERGENT signal
 - `322fe03` — feat(tasks-v0): Slice B.2.1 — mine.html via renderWeb
 - `e1f5181` — feat(stoop): Slice E.1 — first stoop web page via renderWeb
 - `42631d4` — refactor(web-adapter): Slice B.2.0 — extract shared web-adapter helpers
@@ -91,12 +93,12 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 
 | Package / app                  | Tests        | Notes                                       |
 | ------------------------------ | ------------ | ------------------------------------------- |
-| `@canopy/app-manifest`         | **107**      | +7 cross-surface equivalence                |
+| `@canopy/app-manifest`         | **115**      | +8 V0.2 (Q7 dataSource + Q8 wildcard)       |
 | `@canopy/circles`              | **50**       | (unchanged)                                 |
 | `@canopy/manifest-host`        | **20**       | (unchanged)                                 |
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |
 | `@canopy/item-store`           | **118**      | +14 V0a + 8 V0b audience filter             |
-| `@canopy/web-adapter` (NEW)    | **38**       | callSkill + itemMatchesAppliesTo + deriveItemState + applyPrefilledParams |
+| `@canopy/web-adapter` (NEW)    | **48**       | +10 fetchSectionItems (V0.2 Q7 dataSource helper) |
 | `apps/stoop`                   | **585**      | +7 D.2 + +6 E.1                              |
 | `apps/tasks-v0`                | **578**      | +9 B.2.1 mine.html                           |
 | `apps/household`               | **575**      | +1 web-adapter overlay smoke (B.2.0)         |
