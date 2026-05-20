@@ -4,27 +4,44 @@
  *
  * Phase 41.5.1 (2026-05-09).
  *
- * Wires `listMine`, `listMyMasteredTasks`, `listClaimable` via
- * `useSkillResult`. Reuses <TaskCard> for rendering. <PlannerCards>
- * sits at the top — V2.4 schedule suggestions for the calling actor's
- * open assignments.
+ * Slice C.2 (2026-05-20) — adapter-driven.  Each of the three
+ * sections now resolves its skill via the V0.2 NavModel's
+ * `dataSource` (Q7) through `createNavModelAdapter(tasksManifest)`:
+ *
+ *   - `mine`      → `listMine`
+ *   - `mastered`  → `listMyMasteredTasks`
+ *   - `claimable` → `listClaimable`
+ *
+ * Skill ids + args are no longer hand-coded — they come from
+ * `adapter.getSection(id).dataSource`, with `useSkillResult` keeping
+ * the mount/refresh/dep-tracking lifecycle (same pattern as
+ * WorkspaceScreen's Slice C.1 migration).
+ *
+ * What stays hand-built:
+ *   - <PlannerCards> header — V2.4 schedule suggestions, an RN-
+ *     specific mobile UI element not modelled in NavModel.
+ *   - Tap → TaskDetail navigation + pull-to-refresh — RN screen
+ *     lifecycle concerns the adapter intentionally doesn't model.
  *
  * V2.7-aware via TaskCard's status-driven UI: deps-blocked items
  * show the open-deps count chip; the disabled-close behaviour lives
  * in TaskDetailScreen (tap a card to act).
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
+import { tasksManifest } from '@canopy-app/tasks-v0/manifest';
+
 import { useTheme } from '@canopy/react-native/theme';
 import { useService }     from '../ServiceContext.js';
-import { useSkillResult } from '../lib/useSkill.js';
+import { useSkillResult, toParts, unwrapParts } from '../lib/useSkill.js';
 import { useI18n }        from '../I18nProvider.js';
 import { TaskCard }       from '../components/TaskCard.jsx';
 import { PlannerCards }   from '../components/PlannerCards.jsx';
 import { ROUTES }         from '../navigation.js';
+import { createNavModelAdapter } from '../manifest-adapter.js';
 
 export function MyWorkScreen() {
   const nav = useNavigation();
@@ -32,9 +49,43 @@ export function MyWorkScreen() {
   const { t } = useI18n();
   const { COLORS, SPACING, FONT_SIZES } = useTheme();
 
-  const mine      = useSkillResult('listMine',              {}, [svc?.activeCrewId]);
-  const mastered  = useSkillResult('listMyMasteredTasks',   {}, [svc?.activeCrewId]);
-  const claimable = useSkillResult('listClaimable',         {}, [svc?.activeCrewId]);
+  // Slice C.2 — build the NavModel adapter once per service-change,
+  // same shape as WorkspaceScreen's Slice C.1 wiring.  The adapter is
+  // platform-neutral; `callSkill` mirrors the imperative dispatcher
+  // useSkill's `.call` takes internally.  Used here to resolve the
+  // dataSource for each section; the screen still uses useSkillResult
+  // to keep mount/refresh/dep-tracking lifecycle ownership.
+  const adapter = useMemo(
+    () => createNavModelAdapter(tasksManifest, {
+      callSkill: async (skillId, args) => {
+        const agent = svc?.activeBundle?.agent;
+        if (!agent?.invoke) throw new Error('No active agent');
+        const peer  = agent.address ?? agent.identity?.pubKey ?? null;
+        const parts = toParts({
+          ...(args ?? {}),
+          _scope: svc?.activeBundle?.groupId ?? svc?.activeGroupId ?? null,
+        });
+        return unwrapParts(await agent.invoke(peer, skillId, parts));
+      },
+    }),
+    [svc],
+  );
+
+  const mineSection      = adapter.getSection('mine');
+  const masteredSection  = adapter.getSection('mastered');
+  const claimableSection = adapter.getSection('claimable');
+
+  const mineSkill      = mineSection?.dataSource?.skillId      ?? 'listMine';
+  const masteredSkill  = masteredSection?.dataSource?.skillId  ?? 'listMyMasteredTasks';
+  const claimableSkill = claimableSection?.dataSource?.skillId ?? 'listClaimable';
+
+  const mineArgs       = mineSection?.dataSource?.args      ?? {};
+  const masteredArgs   = masteredSection?.dataSource?.args  ?? {};
+  const claimableArgs  = claimableSection?.dataSource?.args ?? {};
+
+  const mine      = useSkillResult(mineSkill,      mineArgs,      [svc?.activeCrewId, mineSkill]);
+  const mastered  = useSkillResult(masteredSkill,  masteredArgs,  [svc?.activeCrewId, masteredSkill]);
+  const claimable = useSkillResult(claimableSkill, claimableArgs, [svc?.activeCrewId, claimableSkill]);
 
   const onPressTask = useCallback((id) => {
     nav.navigate(ROUTES.TaskDetail, { id });
