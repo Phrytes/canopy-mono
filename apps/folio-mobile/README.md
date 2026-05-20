@@ -60,6 +60,19 @@ absorption — see [`Project Files/Folio/v1-mobile-functional-design-2026-05-11.
 - 52.14 Q-D Lamport `_v` stale-peer auto-heal — same.
 - 52.2.x peer-fetch gates / `fetch-resource` skill — same.
 
+Surfaced by Slice G audit (`SLICE-G-AUDIT.md`, 2026-05-20) — both
+intentional v0 gaps in user-facing parity with folio desktop:
+
+- **Inbound cap-token receive UI.** Desktop's `/share` endpoint
+  accepts incoming capability tokens from another agent; mobile's
+  `ShareScreen` only issues outbound tokens.  When V2 lands the
+  receive flow, mirror the desktop endpoint's logic (decode + verify
+  + persist).  Documented in `src/screens/ShareScreen.js` header.
+- **File deletion UI.** Desktop has `/delete/:id` (Phase 2.11) plus a
+  CLI `rm` (local tombstone only).  Mobile notes-list shows files
+  but has no delete affordance.  Add either inline (swipe-to-delete)
+  or via the per-file edit screen when V2 starts.
+
 Out of scope for this slice:
 
 - Push notifications
