@@ -8,8 +8,9 @@
 > > *"De bestaande web-UI is rijk en goed-getest; vervangen vraagt
 > > zorgvuldige characterization van alle 14 pagina's."*
 >
-> **Current status (2026-05-20):** scaffold + first starter test
-> landed; remaining pages pending owner-driven schedule.  Corpus work
+> **Current status (2026-05-20):** scaffold + 5 stable-page starter
+> tests landed (review/dag/inbox/availability/privacy); snapshots
+> written but awaiting owner-acceptance tick.  Corpus work
 > is **strictly value-positive** — even if Slice B never ships, the
 > snapshots protect against accidental regression on pages with
 > little/no current test coverage.
@@ -75,10 +76,10 @@ Last updated: 2026-05-20.
 | `index.html`        | Stable     | web.test.js (rich)           | ⏸ TODO: add snapshot | —       |
 | `mine.html`         | Stable     | web.test.js (partial)        | ⏸ TODO: add snapshot | —       |
 | `review.html`       | Stable     | None                         | ✅ starter landed     | —       |
-| `dag.html`          | Stable     | None                         | ⏸ TODO                | —       |
-| `inbox.html`        | Stable     | None                         | ⏸ TODO                | —       |
-| `availability.html` | Stable     | None                         | ⏸ TODO                | —       |
-| `privacy.html`      | Stable     | Static HTML check only       | ⏸ TODO                | —       |
+| `dag.html`          | Stable     | None                         | ✅ landed 2026-05-20  | —       |
+| `inbox.html`        | Stable     | None                         | ✅ landed 2026-05-20  | —       |
+| `availability.html` | Stable     | None                         | ✅ landed 2026-05-20  | —       |
+| `privacy.html`      | Stable     | Static HTML check only       | ✅ landed 2026-05-20  | —       |
 | `crews.html`        | IN-FLIGHT  | phase8-ui.test.js (partial)  | ⏸ HOLD until V2 settles  | —       |
 | `crew.html`         | IN-FLIGHT  | phase8-ui.test.js (partial)  | ⏸ HOLD until V2 settles  | —       |
 | `onboard.html`      | IN-FLIGHT  | Active development (5 commits)| ⏸ HOLD until V2 settles  | —       |
