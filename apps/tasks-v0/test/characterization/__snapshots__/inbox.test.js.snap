@@ -1,0 +1,163 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`characterization: inbox.html > initial HTML snapshot (empty inbox) 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tasks — Inbox</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/mine.html">My work</a>
+      <a href="/review.html">Review</a>
+      <a href="/dag.html">DAG</a>
+      <a href="/availability.html">Availability</a>
+      <a href="/crew.html">Crew</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/inbox.html" class="active" id="nav-inbox">Inbox</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section id="inbox">
+      <div class="head" style="justify-content:space-between">
+        <h2 style="margin:0">Notifications</h2>
+        <button id="clear-all" class="secondary">Clear all</button>
+      </div>
+      <div id="inbox-list"><p class="empty">Loading…</p></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      callSkill, getActor, getConfig, mountLive, mountInboxBadge, escapeHtml,
+      renderV1NotAvailable,
+    } from '/app.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    const cfg  = await getConfig();
+    mountInboxBadge(document.getElementById('nav-inbox'));
+
+    function eventLabel(meta) {
+      switch (meta?.eventType) {
+        case 'missed-deadline':   return 'deadline missed';
+        case 'task-completed':    return 'task completed';
+        case 'task-submitted':    return 'review needed';
+        case 'task-rejected':     return 'submission rejected';
+        case 'task-revoked':      return 'assignment revoked';
+        case 'subtask-request':   return 'sub-task approval needed';
+        case 'subtask-proposal':  return 'sub-task proposal — your consent';
+        default:                  return meta?.eventType ?? 'notification';
+      }
+    }
+
+    async function refresh() {
+      let items;
+      try {
+        const r = await callSkill('listMyInbox', { limit: 200 });
+        items = r.items ?? [];
+      } catch (err) {
+        renderV1NotAvailable(
+          document.getElementById('inbox-list'),
+          err,
+          'In-app inbox is a V1 feature.',
+        );
+        return;
+      }
+      const root = document.getElementById('inbox-list');
+      root.innerHTML = '';
+      if (items.length === 0) {
+        root.innerHTML = '<p class="empty">Nothing here. ✓</p>';
+        return;
+      }
+      for (const it of items) {
+        const div = document.createElement('div');
+        div.className = 'inbox-entry';
+        const when = it.addedAt ? new Date(it.addedAt).toLocaleString() : '';
+        div.innerHTML = \`
+          <div style="display:flex;gap:0.5rem;align-items:center;justify-content:space-between">
+            <span class="text">\${escapeHtml(it.text ?? '')}</span>
+            <span class="ev">\${escapeHtml(eventLabel(it.source?.meta))}</span>
+          </div>
+          <div class="when">\${escapeHtml(when)}</div>\`;
+
+        const buttons = it.source?.buttons ?? [];
+        if (buttons.length > 0) {
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          for (const btn of buttons) {
+            const b = document.createElement('button');
+            b.textContent = btn.label ?? btn.id;
+            b.className = 'secondary';
+            b.addEventListener('click', () => routeButton(btn, it));
+            actions.appendChild(b);
+          }
+          div.appendChild(actions);
+        }
+
+        const dismiss = document.createElement('button');
+        dismiss.textContent = 'Dismiss';
+        dismiss.className = 'secondary';
+        dismiss.style.marginTop = '0.3rem';
+        dismiss.addEventListener('click', async () => {
+          await callSkill('clearInboxItem', { id: it.id });
+          await refresh();
+        });
+        div.appendChild(dismiss);
+
+        root.appendChild(div);
+      }
+    }
+
+    async function routeButton(btn, _entry) {
+      const id = String(btn.id ?? '');
+      if (id.startsWith('approveSubtaskRequest:')) {
+        const requestId = id.slice('approveSubtaskRequest:'.length);
+        await callSkill('approveSubtaskRequest', { requestId });
+        await refresh();
+      } else if (id.startsWith('declineSubtaskRequest:')) {
+        const requestId = id.slice('declineSubtaskRequest:'.length);
+        const note = prompt('Decline reason (optional):', '');
+        await callSkill('declineSubtaskRequest', { requestId, note: note ?? undefined });
+        await refresh();
+      } else if (id.startsWith('approveSubtaskProposal:')) {
+        const proposalId = id.slice('approveSubtaskProposal:'.length);
+        if (!confirm('Approving will roll your submission back to claimed. Continue?')) return;
+        const r = await callSkill('approveSubtaskProposal', { proposalId });
+        if (r?.error) alert(\`Approve: \${r.error}\`);
+        await refresh();
+      } else if (id.startsWith('declineSubtaskProposal:')) {
+        const proposalId = id.slice('declineSubtaskProposal:'.length);
+        const note = prompt('Why? (optional, shown to the proposer):', '');
+        const r = await callSkill('declineSubtaskProposal', { proposalId, note: note ?? undefined });
+        if (r?.error) alert(\`Decline: \${r.error}\`);
+        await refresh();
+      } else if (id.startsWith('appeal:')) {
+        const taskId = id.slice('appeal:'.length);
+        const body = prompt('Opening message for the appeal thread (optional):', '');
+        const r = await callSkill('appealTask', { taskId, body: body ?? undefined });
+        if (r.error) alert(\`Appeal: \${r.error}\`);
+        await refresh();
+      } else {
+        alert(\`Unknown button id: \${id}\`);
+      }
+    }
+
+    document.getElementById('clear-all').addEventListener('click', async () => {
+      if (!confirm('Clear ALL inbox notifications?')) return;
+      await callSkill('clearInbox', {});
+      await refresh();
+    });
+
+    await refresh();
+    mountLive(['item-added', 'item-removed'], refresh);
+  </script>
+</body>
+</html>
+"
+`;
