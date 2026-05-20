@@ -583,9 +583,15 @@ export const tasksManifest = {
           name:  'groupPodUri',
           type:  'string',
           label: 'Pod URI',
-          // Conditional on policy ∈ {centralised, hybrid} per the
-          // page's UI logic.  The manifest declares the patch shape;
-          // the page enforces the conditional in its hand-coded UI.
+          // V0.7 Q26 (adopted 2026-05-20) — conditional-display gate:
+          // groupPodUri is only meaningful when policy ∈ {centralised,
+          // hybrid}.  Auto-rendered consumers hide the field for
+          // policy='decentralised' (own pod, no group URI).  The
+          // hand-coded page enforces the same rule via a separate
+          // show/hide branch; the manifest now declares it once.
+          // B.2.4 was the originating signal; V0.7 closed the
+          // substrate gap.
+          requiresField: { policy: ['centralised', 'hybrid'] },
           patch: { opId: 'setCrewStoragePolicy', argName: 'groupPodUri' },
         },
       ],
