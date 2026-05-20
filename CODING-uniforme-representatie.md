@@ -737,45 +737,87 @@ model is reachable.
 
 ## SP-11 — Recombination demo (the explicitly requested showcase)
 
-Prereq: SP-4 + SP-5 + ≥2 mounted manifests (household lists+tasks from
-SP-1/SP-2 + tasks-v0 manifest from SP-3). stoop offer optional (if SP-8
-done). R1: the decentralised cross-pod read path is already merged
-(item-store `embeds.js` + `createCrossPodRefResolver`), so both
-centralised and decentralised variants work.
+> **Status: SP-11 V0 + SP-4b merged into one slice and SHIPPED 2026-05-20.**
+> The original SP-11 + the original SP-4b were both pointed at the
+> same artifact: prove the composed multi-app world works.  Merging
+> them avoided producing a thin SP-4b verification test that would
+> have been a side-effect of SP-11 anyway.  V0 shipped chat-only;
+> web/CLI surface (S11.2) deferred until renderWeb lands (SP-3b /
+> `PLAN-gui-chat-uplift.md` Slice A).
 
-- **S11.1 Scripted scenario** at `examples/recombination-demo/`. One
-  `@canopy/manifest-host`, one scope ("De Kleine Heerlyckheid"), three
-  manifests mounted (household lists, household tasks, tasks-v0). Create
-  items: a `task` ("paint the hallway"), a `list-item` ("buy paint"),
-  optionally a stoop `offer` ("lending a ladder"). Reproducible runbook
-  in the README + an automated `npm test` that runs it.
-- **S11.2 Cross-surface demo.** Same recombination via **chat** (mock
-  LLM driven by a fixture; ChatAgent in headless mode) AND **web/CLI**
-  surface — same result from the single composed host. The chat side
-  uses `composedRenderChat().toolHandlers`; the web side uses
-  `composedRenderWeb().navModel`.
-- **S11.3 `embeds` cross-app reference.** The `task` embeds the
-  `list-item` ("uses materials from"); the resolver walks the embed.
-  When the host's NavModel shows the task detail, the embedded
-  list-item's "chip" is rendered — forward-compat: today via a
-  placeholder, in the destination via
-  `interface-registry.renderCompact`.
-- **S11.4 Saved cross-circle view** (SP-5). A `view`-item with scope =
-  `[circleA, circleB]` lists items across both; the recombination is
-  rendered in both surfaces.
-- **S11.5 Honest scope** (explicit in the runbook): structural
-  recombination only (query/reference over one typed space); semantic
-  fusion is out (needs a declared operation, illustrated as a stub).
-- **S11.6 Gate.** Demo runs; recombination is *visible* (output shown,
-  not merely argued); chat + web yield identical recombined results
-  from the single store; runbook reproducible.
+Prereq: SP-4 V0 (`@canopy/manifest-host`) + SP-5 V0 (`@canopy/circles`
+substrate + canonical `view`/`circle` item types).  R1: the
+decentralised cross-pod read path is already merged (item-store
+`embeds.js` + `createCrossPodRefResolver`), so future SP-11b variants
+can layer cross-pod recombination.
 
-**Possible refinements:** none anticipated; composes already-built
-pieces.
+### SP-11 V0 + SP-4b proof (this slice — LANDED)
 
-Commit slices: S11.1+S11.2 / S11.3 / S11.4+S11.5+S11.6.
-**DoD:** the demo runs; structural recombination across apps + circles
-is visible in chat and web; reproducible runbook.
-**Hand-off:** closes the composition phase. P6 / Hub investment (the
-destination) is now the natural next track; the manifest layer is
-proven.
+What landed:
+
+- **`examples/manifest-host-demo/`** — runnable demo + integration
+  test (9/9 green) + README documenting the composition pattern + the
+  three policy decisions (collisions / `perAppSystemPrompts` /
+  inline-keyboard ordering) the V0 host explicitly left to consumers.
+- **One composed host with two mounts:** household (10 tools) + tasks-v0
+  multi-crew (12 tools), 22-tool composed toolCatalog with `appId.opId`
+  namespacing throughout, zero collisions detected.
+- **ChatAgent over composed view:** scripted LLM (`mockProvider`) drives
+  three turns through the merged toolCatalog; replies flow back via
+  `InMemoryBridge`.  Demonstrates the producer-side end-to-end.
+- **Multi-crew dispatch preserved through host** — the SP-4b proof:
+  tasks-v0's `bundleResolver` + `wireSkills` + `CrewState` machinery
+  is mounted via the new `apps/tasks-v0/src/mountable.js` SDK→renderChat
+  adapter.  The host doesn't know about crews; bundleResolver still
+  dispatches per-call inside the SDK skill.  Orthogonal layers,
+  preserved cleanly.
+- **System-prompt composition: generic preamble.**  Demo picks the
+  host README's recommended default for ≥2 apps.  Documented; consumer
+  policy decision recorded.
+- **`@canopy/circles` audience model present but not yet consumed.**
+  Substrate available; demo doesn't exercise it (no real cross-app
+  audience scenario yet — that's SP-5b's natural trigger).
+- **Tests:** demo 9/9 + tasks-v0 542→547 (SP-4b proof inside the
+  tasks-v0 suite) + household 544/544 + everything else unaffected.
+
+**Architectural correction recorded:** original SP-4b framing
+("generalise bundleResolver through the host") was scope-misshapen.
+The manifest-host operates on the chat surface; bundleResolver
+operates on the mesh skill graph.  They are orthogonal layers.  SP-4b
+became "prove tasks-v0 mounts cleanly into the host" — and that's
+what landed.
+
+Commit slices (atomic, in order):
+1. `apps/tasks-v0/src/buildMultiCrewRuntime.js` + `mountable.js`
+   + `test/manifest-host-mount.test.js` (the SP-4b proof, 5 tests).
+2. `apps/household/src/skillRegistry.js` extraction + `mountable.js`
+   (refactor; behaviour unchanged).
+3. `examples/manifest-host-demo/` (the demo + integration test).
+
+**DoD (V0):** ✅ demo runs; ✅ recombination *visible* across two
+apps from one chat process; ✅ structural recombination
+demonstrated (two stores populated from one LLM session); ✅ runbook
+reproducible (`npm start` + `npm test`).
+
+### Deferred (SP-11b / cross-cutting)
+
+- **S11.2 Cross-surface demo** — same recombination via web/CLI
+  surface using `renderWeb`.  Deferred to `PLAN-gui-chat-uplift.md`
+  Slice A (tasks-v0 web → renderWeb); not buildable until that
+  projector lands.
+- **S11.3 `embeds` cross-app reference** — the `task` embeds the
+  `list-item` ("uses materials from"); resolver walks the embed.
+  Forward-compat (interface-registry renderCompact); needs the demo
+  to grow to a richer scenario than V0's "two unrelated items".
+- **S11.4 Saved cross-circle view** — `view`-item with
+  `scope = [circleA, circleB]` listing items across both.  Needs
+  SP-5b (item-store `audience` field + ListFilter extension) +
+  renderWeb / renderMobile for the visual side.
+- **S11.5 stoop manifest in the demo** — add a third mounted manifest
+  once SP-8 lands; tests collision policies + system-prompt scaling
+  with ≥3 apps.
+
+**Hand-off:** with SP-11 V0 + SP-4b done, the manifest layer is
+proven end-to-end on chat.  The natural next track is
+`PLAN-gui-chat-uplift.md` Slice A (tasks-v0 web → renderWeb) — turns
+the manifest model loose on the project's largest hand-built UI.
