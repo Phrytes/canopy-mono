@@ -568,21 +568,26 @@ export const stoopManifest = {
       title:    'Privacy — wat je moet weten',
       type:     'group-rules',  // placeholder; see note above
       readOnly: true,           // V0.2 Q9 — read-only disclosure page
-      // V0.2 Q7 — declares the param-free fetch (getDataLocation).
-      // The companion lang-aware fetch (getPrivacyNotice) is direct-
-      // called in the page until V0.3 adds runtime-arg support.
-      dataSource: { skillId: 'getDataLocation' },
+      // V0.3 Q15 (adopted 2026-05-21) — `getPrivacyNotice` is now
+      // the explicit dataSource; lang arg substituted at call time
+      // from the browser-supplied context (`$lang`).  Replaces the
+      // V0.2 workaround that direct-called the skill.
+      dataSource: {
+        skillId:         'getPrivacyNotice',
+        argsFromContext: { lang: '$lang' },
+      },
     },
     {
       id:    'settings',
       title: 'Instellingen',
       type:  'group-rules',  // placeholder; settings is singleton-record,
-                             // not a list of group-rules items (see V0.3
-                             // signal #5).
-      // V0.2 Q7 — declares the param-free fetch.  Mutation paths
-      // (`updateSettings`, `setHopMode`) are per-field skills outside
-      // the D.1 manifest (gap #4 territory).
-      dataSource: { skillId: 'getSettings' },
+                             // not a list of group-rules items.
+      // V0.3 Q17 (adopted 2026-05-21) — shape: 'record' marks this
+      // section as a singleton.  Adapter expects ONE record from
+      // `getSettings`, not an array — matches the reality of the
+      // settings page.
+      shape:       'record',
+      dataSource:  { skillId: 'getSettings' },
     },
   ],
 };

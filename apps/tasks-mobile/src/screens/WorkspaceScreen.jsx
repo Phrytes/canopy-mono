@@ -35,11 +35,12 @@ import { useTheme } from '@canopy/react-native/theme';
 import { ChipRow }  from '@canopy/react-native/components';
 
 import { useService }     from '../ServiceContext.js';
-import { useSkillResult, toParts, unwrapParts } from '../lib/useSkill.js';
+import { toParts, unwrapParts } from '../lib/useSkill.js';
 import { useI18n }        from '../I18nProvider.js';
 import { TaskCard }       from '../components/TaskCard.jsx';
 import { ROUTES }         from '../navigation.js';
 import { createNavModelAdapter } from '../manifest-adapter.js';
+import { useAdapterSection }     from '../useAdapterSection.js';
 
 const FILTER_CHIPS = [
   { id: 'all',       labelKey: 'mobile.workspace.filter_all' },
@@ -78,15 +79,13 @@ export function WorkspaceScreen() {
     }),
     [svc],
   );
-  const section    = adapter.getSection('open');
-  const skillId    = section?.dataSource?.skillId ?? 'listOpen';
-  const skillArgs  = section?.dataSource?.args    ?? {};
-
-  // useSkillResult auto-runs on mount + when deps change. We re-run
-  // when the active crew changes so a crew-switch refreshes the list.
-  // Skill id + args now come from the manifest (Q7 dataSource) via
-  // the adapter — no hand-coded 'listOpen' string here.
-  const list = useSkillResult(skillId, skillArgs, [svc?.activeCrewId, filter, skillId]);
+  // V0.3-adopt (2026-05-21) — `useAdapterSection` replaces the
+  // per-section boilerplate (getSection + skillId resolution + args
+  // resolution + useSkillResult).  Same data + lifecycle; cleaner
+  // call site.
+  const { section, data, loading, refresh } =
+    useAdapterSection(adapter, 'open', [svc?.activeCrewId, filter]);
+  const list = { data, loading, refresh };  // shape compatibility
 
   const items = useMemo(() => {
     const all = Array.isArray(list?.data?.items) ? list.data.items : [];

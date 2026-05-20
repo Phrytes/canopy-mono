@@ -36,12 +36,13 @@ import { tasksManifest } from '@canopy-app/tasks-v0/manifest';
 
 import { useTheme } from '@canopy/react-native/theme';
 import { useService }     from '../ServiceContext.js';
-import { useSkillResult, toParts, unwrapParts } from '../lib/useSkill.js';
+import { toParts, unwrapParts } from '../lib/useSkill.js';
 import { useI18n }        from '../I18nProvider.js';
 import { TaskCard }       from '../components/TaskCard.jsx';
 import { PlannerCards }   from '../components/PlannerCards.jsx';
 import { ROUTES }         from '../navigation.js';
 import { createNavModelAdapter } from '../manifest-adapter.js';
+import { useAdapterSection }     from '../useAdapterSection.js';
 
 export function MyWorkScreen() {
   const nav = useNavigation();
@@ -71,21 +72,14 @@ export function MyWorkScreen() {
     [svc],
   );
 
-  const mineSection      = adapter.getSection('mine');
-  const masteredSection  = adapter.getSection('mastered');
-  const claimableSection = adapter.getSection('claimable');
-
-  const mineSkill      = mineSection?.dataSource?.skillId      ?? 'listMine';
-  const masteredSkill  = masteredSection?.dataSource?.skillId  ?? 'listMyMasteredTasks';
-  const claimableSkill = claimableSection?.dataSource?.skillId ?? 'listClaimable';
-
-  const mineArgs       = mineSection?.dataSource?.args      ?? {};
-  const masteredArgs   = masteredSection?.dataSource?.args  ?? {};
-  const claimableArgs  = claimableSection?.dataSource?.args ?? {};
-
-  const mine      = useSkillResult(mineSkill,      mineArgs,      [svc?.activeCrewId, mineSkill]);
-  const mastered  = useSkillResult(masteredSkill,  masteredArgs,  [svc?.activeCrewId, masteredSkill]);
-  const claimable = useSkillResult(claimableSkill, claimableArgs, [svc?.activeCrewId, claimableSkill]);
+  // V0.3-adopt (2026-05-21) — `useAdapterSection` collapses the
+  // per-section boilerplate (3 sections × 4 lines = 12 lines saved).
+  // Same data shape; same lifecycle.  Skill ids + args come from the
+  // manifest's Q7 dataSource declarations on the mine/mastered/
+  // claimable views.
+  const mine      = useAdapterSection(adapter, 'mine',      [svc?.activeCrewId]);
+  const mastered  = useAdapterSection(adapter, 'mastered',  [svc?.activeCrewId]);
+  const claimable = useAdapterSection(adapter, 'claimable', [svc?.activeCrewId]);
 
   const onPressTask = useCallback((id) => {
     nav.navigate(ROUTES.TaskDetail, { id });
