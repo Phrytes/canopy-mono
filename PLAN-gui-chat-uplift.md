@@ -89,22 +89,29 @@ called out below.
 - **Prereq:** SP-11 V0 demo merged (✅ done — `examples/manifest-host-
   demo/`) so the substrate's chat-side is proven before the web side
   starts.
-- **Scope:**
+- **Scope (owner-locked 2026-05-20):**
   - Add `renderWeb(manifest) → NavModel` to `@canopy/app-manifest`.
     NavModel shape is the killer cross-surface contract — designed
     here to be **identical** to what `renderMobile` will later
     consume (only platform adapters differ).
   - Ship `apps/household/web/` consuming `householdManifest` via
-    `renderWeb`.  Bare minimum: list/add/markComplete/remove for
-    each canonical list type; LLM passthrough optional.
+    `renderWeb`.  Feature set: list/add/markComplete/remove for each
+    canonical list type, **plus LLM passthrough** (chat-style free-
+    text input on the web surface — gives the substrate real signal
+    for "chat + web from one manifest" parity).
+  - Production status: incremental.  Start as substrate-forcing-
+    function; if usage emerges, harden into a real surface.  Adapters
+    are expected to be ~70%+ reusable across apps so the marginal
+    cost of household-web staying alive is small.
 - **Out of scope:** any visual polish beyond functional adequacy;
-  hooking the new web up to existing TG bot's state (those are
-  separate cross-cutting decisions later).
+  hooking the new web up to existing TG bot's state (cross-cutting
+  decision later).
 - **Risk:** **Low** (no existing UI to characterize against).  The
   substrate-design risk lives here — bad NavModel choices ripple to
   every later slice — so spend time on shape, not on visuals.
 - **Done:** household web is browsable; same manifest drives both
-  chat + web; the NavModel shape is ready to consume in Slices B+.
+  chat + web; LLM passthrough works on the web surface; the NavModel
+  shape is ready to consume in Slices B+.
 
 ### Slice B — `tasks-v0` web → `renderWeb` applied
 
@@ -113,10 +120,67 @@ called out below.
 > richest hand-built surface.  This slice **applies** the renderWeb
 > projector from Slice A to a real characterized UI.
 >
+> **Pre-split per owner direction 2026-05-20:** "view pages first,
+> make a plan, then ask questions."  Sub-slices below.
+>
 > Owner emphasis recorded verbatim
 > (`memory/project-app-manifest-convergence.md`):
 > *"De bestaande web-UI is rijk en goed-getest; vervangen vraagt
 > zorgvuldige characterization van alle 14 pagina's."*
+
+#### Slice B sub-plan (draft, awaiting owner sign-off)
+
+- **B.0 — Prep (REQUIRED before any sub-slice implementation):**
+  Sweep `apps/tasks-v0/web/`, `apps/tasks-v0/src/ui/`, and per-page
+  HTML/JS for **existing comments + readme notes about web ↔ mobile
+  parity workarounds**.  Owner flagged this: *"Probably, the code
+  already contains many fixes to make it work on both mobile and
+  web: maybe check for comments on that too (or readmes)."*  Output:
+  a written audit of every parity workaround found, with file:line
+  refs.  Drives B.1's NavModel design — workarounds either dissolve
+  into the projector or stay as adapter-level concerns.  Commit as
+  `apps/tasks-v0/docs/web-mobile-parity-workarounds.md`.
+
+- **B.1 — View-only pages.**  The read-only path through `renderWeb`,
+  proven on the smallest characterization surface.  Targets: `dag.html`
+  (pure read-only tree).  Optional: a stripped-down `mine.html` read-
+  view if owner wants a second proof.
+  - Output: NavModel + adapter for the read-only path; characterization
+    snapshot stays byte-equal.
+  - Locks the NavModel **list-section + per-item-read** shape.
+  - Owner sign-off gates moving to B.2.
+
+- **B.2 — Light-interaction pages.**  Read + simple state-transition
+  per item.  Targets: `mine.html` (read + light claim), `review.html`
+  (read + approve/reject), `inbox.html` (read + clear), `availability.html`
+  (read + toggle), `privacy.html` (read + toggle).
+  - Output: NavModel adds the `itemActions[]` shape from
+    `DESIGN-navmodel-sketch.md`; per-item state-gated buttons
+    proven against the 5 corpus snapshots already landed.
+  - Owner sign-off gates moving to B.3.
+
+- **B.3 — Heavy-write pages.**  Forms + multi-field interactions.
+  Targets: `index.html` (workspace — Add task + filter + status
+  changes — the richest single page), `crew.html` (read + settings
+  edit).
+  - Output: NavModel adds the `affordances[]` shape; form-rendering
+    proven.
+  - Slice B's substantive functional payoff lands here.
+
+- **B.4 — Multi-crew + V2 pages.**  HOLD until V2 multi-crew work
+  settles.  Targets: `crews.html`, `onboard.html`, `pod-settings.html`,
+  `welcome.html`.
+  - These pages have active development.  Adding their
+    characterization snapshots before that work settles locks in a
+    transient state.  Schedule B.4 after V2 multi-crew slice merges.
+
+**Per sub-slice acceptance gate:**
+1. characterization corpus for the targeted page(s) byte-stable
+   before/after;
+2. NavModel JSON for that page snapshot-locked + owner-confirmed;
+3. existing test suites (web.test.js, phase8-ui.test.js) green;
+4. owner walkthrough of the resulting page (functional fidelity
+   confirmed verbally).
 
 - **Prereq:** Slice A merged (renderWeb exists + NavModel shape
   locked) + characterization corpus largely populated (see
@@ -181,22 +245,43 @@ called out below.
 > **second hardest proving ground** after tasks-v0 — different domain
 > vocabulary (offers / requests / claims / contacts), different
 > audience model (broader-than-household).
+>
+> **Owner direction 2026-05-20:** stoop adopts **slash-only first**;
+> LLM tool-calling layered as a follow-on after slash works.  This
+> minimises Slice D's scope + makes the slash-collision-policy
+> decision concrete on day one of the migration.
+>
+> See `AUDIT-stoop-folio-surfaces.md` for stoop's surface inventory
+> (16 web pages, 110 skills, no manifest today, no slash today
+> either — chat is SDK-skill-dispatch via `@canopy/chat-p2p`).
 
 - **Prereq:** Uniform-representation SP-8 prerequisites (the pod-
   routing freeze, now lifted — see
   `memory/project-app-manifest-convergence.md`'s Reconciliation R1).
-- **Scope:**
-  - Author `apps/stoop/manifest.js` covering current TG bot + slash +
-    web ops.
-  - Adopt `renderChat` + `renderSlash` for the TG/slash surface (byte-
-    or behaviour-equivalence-gated).
-  - Decision-point: extend `SLASH_COMMAND_COVERAGE` memo's audit here
-    — stoop is the second app likely to declare slash, so this is
-    where the host-level collision-policy decision becomes real
-    (see `memory/project-slash-command-coverage.md`).
-- **Risk:** Medium-high (production app, broader surface than household).
-- **Done:** stoop's TG + slash + LLM surface is manifest-driven;
+- **Scope (D.1 — slash + manifest):**
+  - Author `apps/stoop/manifest.js` covering ~12–15 core ops
+    (postRequest, listOpen, listMyRequests, assignLend, markReturned,
+    setMySkills, createGroupV2, leaveGroup, reportPost, getItemTree,
+    mutePeer, setPeerReveal — per
+    `AUDIT-stoop-folio-surfaces.md`).
+  - Add `surfaces.slash` declarations to the manifest's ops; pick a
+    grammar that aligns with household's where it matches (e.g.
+    `/add` for postRequest may collide with household — forces the
+    host-level collision-policy decision per
+    `AUDIT-slash-coverage.md`).
+  - Adopt `renderChat` + `renderSlash` for stoop's existing chat
+    surface; behaviour-equivalence-gated against the current SDK
+    skill-dispatch path.
+- **Scope (D.2 — LLM tool-calling layered, follow-on):**
+  - After D.1 ships, add LLM passthrough on top.  Same pattern as
+    household.  Separate commit; sub-slice timeboxed independently.
+- **Risk:** Medium-high (production app, broader surface than
+  household).  Mitigation: per-op characterization for slash; LLM
+  layered in D.2 after slash works.
+- **Done (D.1):** stoop's TG + slash surface is manifest-driven;
+  collision-policy applied per `AUDIT-slash-coverage.md`;
   characterization corpus green.
+- **Done (D.2):** LLM tool-calling on the existing chat surface.
 
 ### Slice E — `stoop` web → `renderWeb`
 
@@ -376,25 +461,56 @@ Day-to-day:
 
 ---
 
-## Open questions (for owner to refine)
+## Owner decisions (2026-05-20)
 
-1. **Slice A scope** — household web with what feature set?  Bare
-   list/add/markComplete is the minimum; do we want LLM passthrough
-   too?  (Yes/no/later affects substrate signal.)
-2. **Slice B timeboxing** — 4–8 weeks acceptable, or pre-split per
-   page-group (view pages first, then editing, then admin)?  Per-page
-   suggests sub-slices B.1, B.2, B.3…
-3. **Slice D scope** — does stoop want LLM tool-calling (like
-   household) or stay slash-only?  Affects manifest shape + collision
-   surface.
-4. **Slice G boundary** — folio's restore + version-history domain may
-   need `@canopy/protocol` declarations.  When?
-5. **Slice H ordering** — does the audience affordance work block
-   on SP-5b (item-store schema change) or can it precede it via
-   client-only audience labels?
-6. **Visual-refresh slice** — separate later, or woven into Slice B's
-   characterization (some pages can't be byte-equal if visual changes
-   are intended)?
-7. **household web (Slice A)** — does household ACTUALLY want a web
-   UI as a real production surface, or is this purely a substrate-
-   forcing-function and we drop it after substrate ships?
+Each item: the question, the owner's answer, and what's now locked
+in the slice descriptions above.
+
+1. **Slice A scope:** household web with **LLM passthrough**
+   included.  *Locked in Slice A § Scope.*  Rationale: richer
+   substrate signal for "chat + web from one manifest" parity.
+
+2. **Slice B timeboxing:** **view pages first; make a plan, then ask
+   questions**.  Pre-split into B.0 (parity-workarounds audit) → B.1
+   (view-only) → B.2 (light interaction) → B.3 (heavy write) → B.4
+   (multi-crew V2 pages — held).  Also: *"the code already contains
+   many fixes to make it work on both mobile and web: maybe check
+   for comments on that too (or readmes)"* — captured as B.0's
+   explicit pre-implementation prep step.
+
+3. **Slice D scope:** **slash-only first**; LLM tool-calling layered
+   in D.2 after slash works.  *Locked in Slice D § Scope; the slice
+   is now split into D.1 + D.2.*
+
+4. **Slice G boundary (`@canopy/protocol` for folio):** *"Whenever
+   you think it fits."*  Recorded as my call; default is "fold in if
+   folio's manifest authoring surfaces a clean state-machine shape;
+   otherwise defer to a later slice."
+
+5. **Slice H ordering (audience affordances vs SP-5b):** *"do
+   whatever leads to the best functional, clean, readable code —
+   this is more important than rewriting or efficiency"*.  Recorded
+   as my call; default is "wait for SP-5b to land so audience
+   affordances use real item-store data, not client-only labels".
+
+6. **Visual-refresh slice:** same direction — my call, prioritise
+   clean code over byte-equality.  Default: visual changes that
+   can't be byte-equal get a separate "visual refresh" sub-slice
+   per page; characterization corpus remains the gold standard for
+   structural fidelity.
+
+7. **household web (Slice A) production status:** *"I think it is
+   relatively low effort after creating all the adapters and
+   manifests, right? Especially because adapters overlap quite a bit
+   between apps. What do you say?"* — **honest answer recorded in
+   Slice A § Scope above:** YES, the household-web SLICE is mostly
+   adapter glue (~100–200 lines) once renderWeb + the web adapter
+   exist.  The LLM-passthrough integration adds modest work (embed
+   a `ChatAgent` + a free-text input on the page).  Adapters are
+   expected to be ~70%+ reusable across apps — the marginal cost of
+   keeping household-web alive after substrate ships is small.
+   Recommendation: keep it.  Two surfaces (phone-chat + browser) is
+   strictly better than one if the per-surface cost is bounded.
+
+All 7 questions answered; slice descriptions updated to lock the
+decisions in.  No more open questions blocking implementation.
