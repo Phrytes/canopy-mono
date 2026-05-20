@@ -382,7 +382,20 @@ export const tasksManifest = {
         // V0.4 Q19 — section-level CTA.  Renders in
         // `section.sectionActions[]`, NOT in per-row itemActions[]
         // or app-shell globals[].
-        ui:   { control: 'button', label: 'Clear all', placement: 'section-header' },
+        ui:   {
+          control:   'button',
+          label:     'Clear all',
+          placement: 'section-header',
+          // V0.8 Q27 adoption (2026-05-20) — Tier C consent gate.
+          // Bulk-clearing the inbox is recoverable (notifications
+          // are re-fetchable from sources) but disruptive enough to
+          // confirm.  Severity 'warn' → adapter shows a confirm
+          // modal with yellow styling.
+          confirm:   {
+            severity: 'warn',
+            message:  'Clear all inbox notifications?  Cannot be undone for this device.',
+          },
+        },
       },
     },
 
