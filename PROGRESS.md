@@ -54,7 +54,11 @@ status:
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — NavModel V0.2 (Q9 readOnly + Q10 register) + Q11 schemaToFormFields
+- (next) — fix(web-adapter): itemMatchesAppliesTo honours Q8 '*' wildcard
+- `9424c6d` — refactor(household): V0.2-adopt — use view.dataSource + helpers
+- `69876cd` — refactor(stoop): V0.2-adopt — view.dataSource + Q8 wildcard + helpers
+- `2328fad` — refactor(tasks-v0): V0.2-adopt — use view.dataSource + helpers
+- `d0f2a7f` — feat(app-manifest, web-adapter): NavModel V0.2 — Q9 readOnly + Q10 register + Q11 form fields
 - `cfad0d2` — feat(app-manifest, web-adapter): NavModel V0.2 — view.dataSource + appliesTo wildcard
 - `cf43e96` — progress: 3-way parallel landed (B.2 + D.2 + E.1); CONVERGENT signal
 - `322fe03` — feat(tasks-v0): Slice B.2.1 — mine.html via renderWeb
@@ -102,8 +106,8 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 | `@canopy/manifest-host`        | **20**       | (unchanged)                                 |
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |
 | `@canopy/item-store`           | **118**      | +14 V0a + 8 V0b audience filter             |
-| `@canopy/web-adapter` (NEW)    | **66**       | +10 fetchSectionItems + +18 schemaToFormFields    |
-| `apps/stoop`                   | **585**      | +7 D.2 + +6 E.1                              |
+| `@canopy/web-adapter` (NEW)    | **70**       | +10 fetchSectionItems + +18 schemaToFormFields + +4 Q8 wildcard |
+| `apps/stoop`                   | **587**      | +2 V0.2-adopt overlay assertions                  |
 | `apps/tasks-v0`                | **578**      | +9 B.2.1 mine.html                           |
 | `apps/household`               | **575**      | +1 web-adapter overlay smoke (B.2.0)         |
 | `apps/household`               | **574**      | +4 LLM-passthrough smoke (A.4)              |

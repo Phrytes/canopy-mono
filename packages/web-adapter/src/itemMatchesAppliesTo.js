@@ -38,7 +38,14 @@ export function itemMatchesAppliesTo(appliesTo, item) {
 
   if (appliesTo.type !== undefined) {
     const types = Array.isArray(appliesTo.type) ? appliesTo.type : [appliesTo.type];
-    if (!types.includes(item.type)) return false;
+    // NavModel V0.2 Q8 (2026-05-21) — wildcard: `appliesTo.type === '*'`
+    // means "any of manifest.itemTypes".  Surfaced by stoop's
+    // `cancelRequest` (spans ask/offer/lend) — the stoop V0.2-adopt
+    // agent had to work around this inline in mine.html.  Fixed once
+    // in the substrate so every consumer shares one gate.  See
+    // `DESIGN-navmodel-sketch.md` § Q8 + `packages/app-manifest/src/
+    // renderWeb.js`'s matchOp wildcard branch.
+    if (!types.includes('*') && !types.includes(item.type)) return false;
   }
 
   if (appliesTo.state !== undefined) {
