@@ -24,7 +24,11 @@
     <section id="inbox">
       <div class="head" style="justify-content:space-between">
         <h2 id="inbox-title" style="margin:0">Notifications</h2>
-        <button id="clear-all" class="secondary">Clear all</button>
+        <!-- B.2.3b (2026-05-21) — section header CTAs (e.g. "Clear all")
+             render from `section.sectionActions[]` (V0.4 Q19).  The
+             static placeholder below is replaced by JS-driven buttons
+             after navmodel.json loads; kept for SEO + a non-JS read. -->
+        <div id="inbox-section-actions"></div>
       </div>
       <div id="inbox-list"><p class="empty">Loading…</p></div>
     </section>
@@ -55,11 +59,10 @@
      *     surface as itemActions.
      *
      *   - `clearInbox` (header "Clear all" CTA)
-     *     A section-level non-creative action; V0 only models per-row
-     *     itemActions + global-placement affordances.  An app-shell
-     *     `placement: 'global'` is the wrong fit semantically (the
-     *     CTA belongs on the section, not the app-shell); a "section-
-     *     scope affordance" pattern needs locking first.
+     *     Resolved 2026-05-21 (Slice B.2.3b) — V0.4 Q19 added
+     *     `surfaces.ui.placement: 'section-header'`, which surfaces
+     *     the op in `section.sectionActions[]`.  Inbox renders the
+     *     CTA from that array; no more hard-coded DOM button.
      *
      * Discipline:
      *   - Static <nav> + <h2> + "Clear all" button stay (SEO + copy-
@@ -279,15 +282,30 @@
       }
     }
 
-    // TODO B.2.3b — header "Clear all" CTA is a section-level non-
-    // creative action; renderWeb V0 has no manifest pattern for that
-    // (per-row itemAction vs app-shell global placement are the two
-    // available options, neither fits — see scope-split note above).
-    document.getElementById('clear-all').addEventListener('click', async () => {
-      if (!confirm('Clear ALL inbox notifications?')) return;
-      await callSkill('clearInbox', {});
-      await refresh();
-    });
+    // B.2.3b (2026-05-21) — section-level CTAs render from
+    // `section.sectionActions[]` (V0.4 Q19).  The manifest declares
+    // `clearInbox` with `surfaces.ui.placement: 'section-header'`;
+    // renderWeb surfaces it here.  Adapter renders one button per
+    // sectionAction, labelled from `a.label`.
+    function renderSectionActions() {
+      const inboxSec = sectionsById.get('inbox');
+      const host     = document.getElementById('inbox-section-actions');
+      host.innerHTML = '';
+      const actions = inboxSec?.sectionActions ?? [];
+      for (const a of actions) {
+        const b = document.createElement('button');
+        b.textContent = a.label ?? a.opId;
+        b.className   = 'secondary';
+        b.addEventListener('click', async () => {
+          // Friendly confirm for destructive bulk actions.
+          if (a.opId === 'clearInbox' && !confirm('Clear ALL inbox notifications?')) return;
+          await callSkill(a.opId, {});  // V0.4 sectionActions take no per-item args
+          await refresh();
+        });
+        host.appendChild(b);
+      }
+    }
+    renderSectionActions();
 
     await refresh();
     mountLive(['item-added', 'item-removed'], refresh);

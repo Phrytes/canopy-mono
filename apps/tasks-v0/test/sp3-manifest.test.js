@@ -22,6 +22,7 @@ import { tasksManifest }        from '../manifest.js';
 import { buildSkills }          from '../src/skills/index.js';
 import { buildWorkspaceSkills } from '../src/skills/workspace.js';
 import { buildInboxSkills }     from '../src/skills/inbox.js';
+import { buildSubtaskSkills }   from '../src/skills/subtasks.js';
 
 describe('SP-3 V0: tasks-v0 manifest', () => {
   it('validateManifest = ok', () => {
@@ -40,6 +41,7 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
       ...buildSkills({ bundleResolver: () => null }),
       ...buildWorkspaceSkills({ bundleResolver: () => null }),
       ...buildInboxSkills({ bundleResolver: () => null }),
+      ...buildSubtaskSkills({ bundleResolver: () => null }),
     ];
     const skillIds = new Set(defs.map((d) => d.id));
     for (const op of tasksManifest.operations) {
