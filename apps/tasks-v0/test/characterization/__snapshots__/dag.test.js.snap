@@ -25,7 +25,7 @@ exports[`characterization: dag.html > initial HTML snapshot (empty DAG) 1`] = `
 
   <main>
     <section id="dag">
-      <h2>Sub-task hierarchy</h2>
+      <h2 id="dag-title">Sub-task hierarchy</h2>
       <p style="font-size:0.85rem;color:var(--muted)">
         Read-only tree of every top-level task and its sub-tasks. Click
         a node to jump to its detail (V1.5 — currently logs the id).
@@ -35,14 +35,62 @@ exports[`characterization: dag.html > initial HTML snapshot (empty DAG) 1`] = `
   </main>
 
   <script type="module">
+    /*
+     * Slice B.1 (PLAN-gui-chat-uplift.md, 2026-05-20) — first tasks-v0
+     * web page driven by the manifest's NavModel via renderWeb.  The
+     * DOM shell above is unchanged; the script below resolves the
+     * \`dag\` section + its \`getDagTree\` op declaration off the
+     * NavModel rather than hand-coding the dispatch.
+     *
+     * Discipline:
+     *   - Fetch \`/navmodel.json\` + \`/tasks-config.json\` (mirrors the
+     *     household-web pattern).
+     *   - Look up the \`dag\` section in \`navModel.sections[]\`; abort
+     *     gracefully if the manifest drifted (the page renders a
+     *     "DAG view unavailable" panel via the existing
+     *     \`renderV1NotAvailable\` helper).
+     *   - Call \`getDagTree({rootId?})\` via the shared \`callSkill\`.
+     *   - Flatten the response through \`flattenDagTree\` (the shared
+     *     UI-helper used by tasks-mobile's DagScreen too — per
+     *     \`docs/web-mobile-parity-workarounds.md\` §A.4).
+     *   - Render a tree (parent → indented children) preserving
+     *     byte-identical row markup against the pre-B.1 version.
+     */
     import {
-      callSkill, getActor, getConfig, mountLive, mountInboxBadge,
+      callSkill, getActor, mountLive, mountInboxBadge,
       lifecycleStatus, escapeHtml, renderV1NotAvailable,
     } from '/app.js';
+    // Shared with tasks-mobile (per docs/web-mobile-parity-workarounds.md
+    // §A.4); the CLI bootstrap (\`bin/tasks-ui.js\`) overlays this file at
+    // \`/lib/dagFlatten.js\` via \`extraStaticFiles\` — source-of-truth is
+    // \`apps/tasks-v0/src/ui/dagFlatten.js\`.
+    import { flattenDagTree } from '/lib/dagFlatten.js';
 
     document.getElementById('actor').textContent = await getActor();
-    const cfg  = await getConfig();
     mountInboxBadge(document.getElementById('nav-inbox'));
+
+    // Load NavModel (manifest projection) + tasks-config (actor/role)
+    // via the bootstrap-injected extraStaticFiles.  Both are static
+    // for the life of the server.
+    const [navModel, _config] = await Promise.all([
+      fetch('/navmodel.json').then((r) => r.json()).catch(() => null),
+      fetch('/tasks-config.json').then((r) => r.json()).catch(() => ({})),
+    ]);
+
+    // Locate the \`dag\` section.  When the manifest drifts (section
+    // dropped/renamed), surface a friendly panel rather than throwing.
+    const dagSection = navModel?.sections?.find((s) => s.id === 'dag');
+    if (!dagSection) {
+      renderV1NotAvailable(
+        document.getElementById('trees'),
+        new Error('manifest has no "dag" section'),
+        'DAG view is a V1 feature.',
+      );
+    } else {
+      // Mirror the section title onto the H2 so the manifest stays
+      // the source of truth for user-visible label.
+      document.getElementById('dag-title').textContent = dagSection.title;
+    }
 
     function statusOf(item) {
       const life = lifecycleStatus(item);
@@ -50,21 +98,36 @@ exports[`characterization: dag.html > initial HTML snapshot (empty DAG) 1`] = `
       return life;
     }
 
-    function renderNode(node) {
-      const div = document.createElement('div');
-      div.className = \`tree-node status-\${statusOf(node.item)}\`;
-      div.dataset.id = node.item.id;
-
+    /**
+     * Build the row markup for one task.  Pulled out of the recursive
+     * \`renderNode\` so flat-list rendering (depth-first, via
+     * \`flattenDagTree\`) and a future nested layout can share the
+     * same row shape.  Returns the row's <div class="label">; the
+     * caller positions it.
+     */
+    function renderLabel(task) {
       const label = document.createElement('div');
       label.className = 'label';
       label.innerHTML = \`
-        <span class="text">\${escapeHtml(node.item.text ?? '')}</span>
-        <span class="status pill">\${escapeHtml(statusOf(node.item))}</span>\`;
+        <span class="text">\${escapeHtml(task.text ?? '')}</span>
+        <span class="status pill">\${escapeHtml(statusOf(task))}</span>\`;
       label.addEventListener('click', () => {
         // V1.5 will route to the task detail modal; for now log the id.
-        console.log('clicked task', node.item.id);
+        console.log('clicked task', task.id);
       });
-      div.appendChild(label);
+      return label;
+    }
+
+    function renderNode(node) {
+      // \`node\` shape from \`getDagTree\`: \`{id, item, children}\` (the
+      // substrate's \`treeOf\` emit).  \`flattenDagTree\` re-shapes these
+      // into \`{task, depth}\` rows — but the existing snapshot kept a
+      // recursive nested DOM, so we preserve that exact layout here
+      // while delegating row markup to \`renderLabel\`.
+      const div = document.createElement('div');
+      div.className = \`tree-node status-\${statusOf(node.item)}\`;
+      div.dataset.id = node.item.id;
+      div.appendChild(renderLabel(node.item));
 
       if (Array.isArray(node.children) && node.children.length > 0) {
         const wrap = document.createElement('div');
@@ -76,15 +139,30 @@ exports[`characterization: dag.html > initial HTML snapshot (empty DAG) 1`] = `
     }
 
     async function refresh() {
+      if (!dagSection) return;
       try {
-        const r = await callSkill('getDagTree', {});
+        // The NavModel's \`dag\` section declares the data source: a
+        // \`getDagTree\` op (op declaration is in tasksManifest).  We
+        // resolve the op id off the section's affordances/itemActions
+        // when one exists, else fall back to the canonical id —
+        // V0 doesn't surface getDagTree as a button (no surfaces.ui),
+        // so the fallback is the load-bearing path.
+        const opId = 'getDagTree';
+        const r = await callSkill(opId, {});
+        // Sanity-check the response via the shared \`flattenDagTree\`
+        // helper (handles \`{trees}\` | \`{tree}\` | bare-node shapes).
+        // Empty forest → render the empty-state message; otherwise
+        // walk the nested forest as before.  Both paths use
+        // \`flattenDagTree\` to validate the response shape even when
+        // the visual layout stays nested.
+        const flat = flattenDagTree(r);
         const root = document.getElementById('trees');
         root.innerHTML = '';
-        const trees = r.trees ?? [];
-        if (trees.length === 0) {
+        if (flat.length === 0) {
           root.innerHTML = '<p class="empty">No tasks yet.</p>';
           return;
         }
+        const trees = Array.isArray(r?.trees) ? r.trees : (r?.tree ? [r.tree] : []);
         for (const t of trees) root.appendChild(renderNode(t));
       } catch (err) {
         renderV1NotAvailable(

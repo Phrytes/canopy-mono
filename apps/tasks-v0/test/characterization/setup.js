@@ -9,6 +9,7 @@
  * methodology + per-page status table.
  */
 
+import { readFile }      from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -16,9 +17,11 @@ import {
   AgentIdentity, VaultMemory, InternalBus, InternalTransport,
 } from '@canopy/core';
 import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
+import { renderWeb }                 from '@canopy/app-manifest';
 
 import { buildBundle }       from '../../src/storage/buildBundle.js';
 import { createCrewAgent }   from '../../src/Crew.js';
+import { tasksManifest }     from '../../manifest.js';
 
 export const ANNE  = 'https://id.example/anne';
 export const FRITS = 'https://id.example/frits';
@@ -84,12 +87,26 @@ export async function buildCharacterizationFixture({
     crew:  { crewId: crewConfig.crewId, name: crewConfig.name, kind: crewConfig.kind },
   };
 
+  // Slice B.1 — `dag.html` (and future renderWeb pages) consume
+  // `/navmodel.json`; surface it from the manifest exactly like the
+  // CLI bootstrap (`bin/tasks-ui.js`).
+  const navModel = renderWeb(tasksManifest);
+
+  // Slice B.1 — overlay the shared `dagFlatten.js` helper so the
+  // dag.html page can ESM-import it.  Mirror of `bin/tasks-ui.js`.
+  const dagFlattenJs = await readFile(
+    join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'ui', 'dagFlatten.js'),
+    'utf8',
+  );
+
   const ui = await mountLocalUi(bundle.agent, {
     port:        0,
     staticDir:   WEB_DIR,
     a2aTLSLayer: new LocalUiAuth({ localActor: actor }),
     extraStaticFiles: {
       '/tasks-config.json': JSON.stringify(tasksConfig),
+      '/navmodel.json':     JSON.stringify(navModel),
+      '/lib/dagFlatten.js': dagFlattenJs,
       ...(extraStaticFiles ?? {}),
     },
   });

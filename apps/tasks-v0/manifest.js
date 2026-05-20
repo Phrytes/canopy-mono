@@ -187,12 +187,46 @@ export const tasksManifest = {
         chat: { hint: 'List unassigned tasks; optional `skill` filter.' },
       },
     },
+    /*
+     * Slice B.1 (2026-05-20) — DAG-tree projection of the task graph.
+     *
+     * Verb is the app-local `tree` (not in the canonical VERBS allow-
+     * list; validator permits app-specific verbs as long as the field
+     * is a non-empty string).  `rootId` is optional: when omitted the
+     * skill returns `{trees: [...]}` (one tree per top-level task);
+     * when given, `{tree: {...}}` for that subtree.
+     *
+     * Read-only structural query — no `surfaces.slash` (no slash
+     * grammar wired); `surfaces.chat.hint` lets the LLM tool-call it.
+     * The web `dag.html` page consumes this through the NavModel's
+     * `dag` view (no per-item buttons in V0 — itemActions[] is empty).
+     */
+    {
+      id:        'getDagTree',
+      verb:      'tree',
+      appliesTo: { type: 'task' },
+      params: [
+        { name: 'rootId', kind: 'string' },
+      ],
+      surfaces: {
+        chat: { hint: 'Return the sub-task tree rooted at rootId, or every top-level tree.' },
+      },
+    },
   ],
 
   views: [
     { id: 'open',      title: 'Open',      type: 'task', filter: { open: true } },
     { id: 'mine',      title: 'My work',   type: 'task' },
     { id: 'claimable', title: 'Claimable', type: 'task' },
+    /*
+     * Slice B.1 (2026-05-20) — read-only DAG view consumed by
+     * `apps/tasks-v0/web/dag.html` through the NavModel projector.
+     * No `filter` (the dag skill walks the whole forest); no `sort`
+     * (rendering preserves DAG order via `flattenDagTree`).  This is
+     * the first tasks-v0 web page wired to renderWeb — view-only path
+     * proof per `PLAN-gui-chat-uplift.md` § Slice B.1.
+     */
+    { id: 'dag',       title: 'DAG',       type: 'task' },
   ],
 };
 
