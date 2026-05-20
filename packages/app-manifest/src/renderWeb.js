@@ -476,6 +476,17 @@ function buildItemAction(op, view, prefilledParams) {
   if (op.appliesTo?.state !== undefined) {
     appliesTo.state = op.appliesTo.state;  // F-SP3-a passthrough
   }
+  // V0.4 — pass through any *other* appliesTo fields verbatim (e.g.
+  // `kind: 'subtask-proposal'` on inbox ops).  Without this, the
+  // adapter's `itemMatchesAppliesTo` generic gate sees no constraint
+  // and surfaces the action on every item.  Surfaced by C.4 — web
+  // inbox.html escaped notice because it dispatched via button-id
+  // strings, not the projected appliesTo.
+  for (const [field, gate] of Object.entries(op.appliesTo ?? {})) {
+    if (field === 'type' || field === 'state') continue;
+    if (gate === undefined) continue;
+    appliesTo[field] = gate;
+  }
   const action = {
     opId:  op.id,
     label: op?.surfaces?.ui?.label ?? op.verb ?? op.id,
