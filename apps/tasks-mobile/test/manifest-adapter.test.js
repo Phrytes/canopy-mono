@@ -75,6 +75,73 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
     expect(callSkill).toHaveBeenCalledWith('listMine', {});
   });
 
+  /*
+   * Slice C.2 (2026-05-20) — MyWorkScreen consumer.  Three sections
+   * resolve via the adapter; each must call the right skill id via
+   * its manifest dataSource (Q7).  Mirrors the WorkspaceScreen
+   * `open`-section gate above, extended for the three-section RN
+   * screen so a regression in any section's dataSource is caught
+   * here (not at runtime via a broken pull-to-refresh).
+   */
+  describe('Slice C.2: MyWorkScreen sections (mine / mastered / claimable)', () => {
+    it('getSection("mastered") resolves the listMyMasteredTasks dataSource', () => {
+      const mastered = adapter.getSection('mastered');
+      expect(mastered).toBeTruthy();
+      expect(mastered.id).toBe('mastered');
+      expect(mastered.itemType).toBe('task');
+      // V0.2 Q7 dataSource — explicit listMyMasteredTasks (no args).
+      expect(mastered.dataSource).toEqual({ skillId: 'listMyMasteredTasks' });
+    });
+
+    it('getSection("claimable") resolves the listClaimable dataSource', () => {
+      const claimable = adapter.getSection('claimable');
+      expect(claimable).toBeTruthy();
+      expect(claimable.id).toBe('claimable');
+      expect(claimable.itemType).toBe('task');
+      // V0.2 Q7 dataSource — explicit listClaimable (no args).
+      expect(claimable.dataSource).toEqual({ skillId: 'listClaimable' });
+    });
+
+    it('fetchSection(mastered) dispatches listMyMasteredTasks via callSkill', async () => {
+      callSkill.mockReset();
+      callSkill.mockResolvedValueOnce({ items: [] });
+
+      const mastered = adapter.getSection('mastered');
+      await adapter.fetchSection(mastered);
+
+      expect(callSkill).toHaveBeenCalledTimes(1);
+      expect(callSkill).toHaveBeenCalledWith('listMyMasteredTasks', {});
+    });
+
+    it('fetchSection(claimable) dispatches listClaimable via callSkill', async () => {
+      callSkill.mockReset();
+      callSkill.mockResolvedValueOnce({ items: [] });
+
+      const claimable = adapter.getSection('claimable');
+      await adapter.fetchSection(claimable);
+
+      expect(callSkill).toHaveBeenCalledTimes(1);
+      expect(callSkill).toHaveBeenCalledWith('listClaimable', {});
+    });
+
+    it('all three MyWork sections dispatch their own skill (no cross-talk)', async () => {
+      // Stronger gate than the per-section tests above — proves that
+      // resolving section A doesn't accidentally hand the screen
+      // section B's dataSource.  This is the regression the V0.2 Q7
+      // lift was designed to prevent (pre-V0.2 the mapping was
+      // inline per-page; one accidental refactor could swap them).
+      callSkill.mockReset();
+      callSkill.mockResolvedValue({ items: [] });
+
+      await adapter.fetchSection(adapter.getSection('mine'));
+      await adapter.fetchSection(adapter.getSection('mastered'));
+      await adapter.fetchSection(adapter.getSection('claimable'));
+
+      const calls = callSkill.mock.calls.map((c) => c[0]);
+      expect(calls).toEqual(['listMine', 'listMyMasteredTasks', 'listClaimable']);
+    });
+  });
+
   describe('renderItemActions(section, item) — state-gated buttons', () => {
     const open = adapter.getSection('open');
 
