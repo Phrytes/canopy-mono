@@ -823,6 +823,10 @@ export class ItemStore extends Emitter {
       ...(partial.requiredSkills ? { requiredSkills: [...partial.requiredSkills] } : {}),
       ...(partial.dueAt !== undefined ? { dueAt: partial.dueAt } : {}),
       ...(partial.visibility ? { visibility: partial.visibility } : {}),
+      // SP-5b V0a (2026-05-21) — store the richer `audience` field
+      // verbatim when supplied.  Forward-additive; items without it
+      // fall back to `visibility` via `audienceFromItem(item)`.
+      ...(partial.audience !== undefined ? { audience: partial.audience } : {}),
       ...(partial.source ? { source: partial.source } : {}),
       // DoD-lifecycle additions (all optional, all backward-compatible):
       ...(partial.definitionOfDone ? { definitionOfDone: partial.definitionOfDone } : {}),

@@ -69,6 +69,28 @@
  *   H4-extension.  Default: 'household'.  Filtered on read by the
  *   role-policy gate (when configured).
  *
+ *   **Legacy as of SP-5b V0a (2026-05-21).**  Superseded by
+ *   `audience` (see below).  Items with only `visibility` keep
+ *   working via the `audienceFromItem(item)` bridge helper.  New
+ *   items should prefer the richer `audience` field.
+ *
+ * @property {Audience} [audience]
+ *   SP-5b V0a (2026-05-21).  The audience a item is shared with.
+ *   Strictly richer than `visibility`: accepts arbitrary
+ *   `circle-ref` / `union` / `set` audiences in addition to the
+ *   legacy string short-hands (`'household'`, `'private'`,
+ *   `'role:*'`).
+ *
+ *   Forward-additive: items without `audience` fall back to
+ *   `visibility` (substrate default `'household'`) via the
+ *   `audienceFromItem(item)` helper.  Consumers should use the
+ *   helper rather than reading either field directly.
+ *
+ *   Audience resolution (string short-hands → member-sets,
+ *   circle-ref walks) lives in `@canopy/circles`'s
+ *   `resolveAudience(audience, ctx)`.  Item-store stores the
+ *   field as data; it does NOT resolve it.
+ *
  * @property {object} [source]
  *   App-specific opaque metadata.  H2 uses this for chat-source
  *   tracking ({tg: {chatId, messageId}}); other apps may not need it.
@@ -139,6 +161,35 @@
 
 /**
  * @typedef {'household' | `role:${string}` | 'private'} Visibility
+ *
+ * **Legacy** as of SP-5b V0a (2026-05-21).  See `Audience` below for
+ * the superseding field.
+ */
+
+/**
+ * @typedef {string
+ *   | { kind: 'set',         members: string[] }
+ *   | { kind: 'circle-ref',  id: string }
+ *   | { kind: 'union',       of: Audience[]    }
+ *   | { kind: 'public' }
+ * } Audience
+ *
+ * SP-5b V0a (2026-05-21).  Audience model — what set of webids an
+ * item is shared with.  Mirrors `@canopy/circles`' Audience model;
+ * defined as a typedef here so item-store can carry the field
+ * without depending on the higher-level circles package.
+ *
+ * Recognised string short-hands (case-sensitive):
+ *   'public'          — everyone (sentinel)
+ *   'private' / 'me'  — owner only
+ *   'household'       — household members (legacy Visibility's default)
+ *   'role:NAME'       — actors in the named role
+ *   'crew:ID'         — alias for circle-ref (per circle.id ≡ task.crewId)
+ *   'circle:ID'       — circle-ref by id
+ *
+ * Resolution helpers (`normalizeAudience` / `resolveAudience` /
+ * `inAudience`) live in `@canopy/circles`.  Item-store stores the
+ * field verbatim; consumers resolve at read time.
  */
 
 /**
