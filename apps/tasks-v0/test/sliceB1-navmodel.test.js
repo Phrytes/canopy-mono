@@ -38,8 +38,9 @@ describe('Slice B.1: renderWeb(tasksManifest) NavModel', () => {
     expect(navModel.sections.map((s) => s.id)).toEqual([
       'open',
       'mine',
+      'mastered',   // Slice B.2.1 (2026-05-20) — middle section of mine.html
       'claimable',
-      'dag',  // Slice B.1 (2026-05-20)
+      'dag',        // Slice B.1  (2026-05-20)
     ]);
   });
 
