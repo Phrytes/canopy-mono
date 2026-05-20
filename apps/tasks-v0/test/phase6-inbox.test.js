@@ -72,7 +72,10 @@ describe('Phase 6 — InAppInboxBridge', () => {
     await bridge.sendReply({ chatId: ANNE, text: 'hello' });
     const inbox = await listInbox(bundle.cache);
     expect(inbox).toHaveLength(1);
-    expect(inbox[0].type).toBe('notification');
+    // Tier B (2026-05-20) — bridge writes substrate-canonical shape:
+    // top-level `type: 'inbox-item'` (matches manifest gate) +
+    // `source.kind: 'inbox-entry'` (preserved sentinel).
+    expect(inbox[0].type).toBe('inbox-item');
     expect(inbox[0].text).toBe('hello');
     expect(inbox[0].source.kind).toBe('inbox-entry');
   });
@@ -104,6 +107,9 @@ describe('Phase 6 — InAppInboxBridge', () => {
     const [entry] = await listInbox(bundle.cache);
     expect(entry.source.buttons).toEqual([{ id: 'open', label: 'Open' }]);
     expect(entry.source.meta.eventType).toBe('task-submitted');
+    // Tier B — when meta.eventType is set, the bridge stamps it as a
+    // top-level `kind` for the V0.4 per-kind gate to match.
+    expect(entry.kind).toBe('task-submitted');
   });
 });
 

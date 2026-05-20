@@ -131,14 +131,11 @@
       const actions = section?.itemActions ?? [];
       for (const a of actions) {
         if (a.opId !== opId) continue;
-        // Inbox items don't carry a `type` field on the listMyInbox
-        // payload (they're cross-app notifications, not ItemStore
-        // items).  Synthesize one for the gate so the manifest's
-        // `appliesTo.type === 'inbox-item'` matches.  The Dismiss
-        // action has no `appliesTo.state` so the F-SP3-a state-gate
-        // returns true.
-        const tagged = { type: 'inbox-item', ...item };
-        if (itemMatchesAppliesTo(a.appliesTo, tagged)) return true;
+        // Tier B (2026-05-20) — InAppInboxBridge now writes
+        // type: 'inbox-item' + top-level kind at write time, so the
+        // raw item shape already matches the manifest's gate.  No
+        // synthesis needed.
+        if (itemMatchesAppliesTo(a.appliesTo, item)) return true;
       }
       return false;
     }
