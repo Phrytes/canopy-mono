@@ -29,6 +29,7 @@
     "@canopy/pod-client":   "file:../../packages/pod-client",
     "@canopy/app-manifest": "file:../../packages/app-manifest",
     "@canopy/agent-ui":     "file:../../packages/agent-ui",
+    "@canopy/web-adapter":  "file:../../packages/web-adapter",
     "@canopy/chat-agent":   "file:../../packages/chat-agent",
     "@canopy/item-store":   "file:../../packages/item-store",
     "@canopy/llm-client":   "file:../../packages/llm-client",

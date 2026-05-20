@@ -490,6 +490,11 @@ const dagFlattenJs = await readFile(
   'utf8',
 );
 
+// Slice B.2.0 (2026-05-20) — overlay the shared @canopy/web-adapter
+// helpers at `/lib/web-adapter/<basename>.js`. Same mechanism as
+// `/lib/dagFlatten.js`. Source-of-truth: `packages/web-adapter/src/`.
+const webAdapterFiles = await loadWebAdapterFiles();
+
 const ui = await mountLocalUi(bundle.agent, {
   port,
   staticDir:        webDir,
@@ -498,8 +503,29 @@ const ui = await mountLocalUi(bundle.agent, {
     '/tasks-config.json': tasksConfig,
     '/navmodel.json':     JSON.stringify(navModel),
     '/lib/dagFlatten.js': dagFlattenJs,
+    ...webAdapterFiles,
   },
 });
+
+async function loadWebAdapterFiles() {
+  const root = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..', '..', '..',
+    'packages', 'web-adapter', 'src',
+  );
+  const names = [
+    'callSkill.js',
+    'deriveItemState.js',
+    'itemMatchesAppliesTo.js',
+    'applyPrefilledParams.js',
+    'index.js',
+  ];
+  const out = {};
+  for (const n of names) {
+    out[`/lib/web-adapter/${n}`] = await readFile(join(root, n), 'utf8');
+  }
+  return out;
+}
 
 console.log(`H4 UI ready at ${ui.url}`);
 console.log(`  actor:  ${values.actor}`);

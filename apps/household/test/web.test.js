@@ -54,6 +54,23 @@ describe('household web UI smoke (Slice A.3)', () => {
     expect(js).toContain('/navmodel.json');
   });
 
+  // Slice B.2.0 — main.js imports the shared web-adapter helpers
+  // from the `/lib/web-adapter/*.js` overlay (the same mechanism
+  // tasks-ui.js uses for `/lib/dagFlatten.js`). Smoke-check that the
+  // overlay endpoints serve each helper file with ESM `export`.
+  it('serves /lib/web-adapter/* overlays (B.2.0 shared helpers)', async () => {
+    const names = [
+      'callSkill', 'deriveItemState', 'itemMatchesAppliesTo',
+      'applyPrefilledParams', 'index',
+    ];
+    for (const n of names) {
+      const res = await fetch(`${baseUrl}/lib/web-adapter/${n}.js`);
+      expect(res.status, `expected 200 for ${n}.js`).toBe(200);
+      const js = await res.text();
+      expect(js).toContain('export');
+    }
+  });
+
   it('serves /style.css', async () => {
     const res = await fetch(`${baseUrl}/style.css`);
     expect(res.status).toBe(200);
