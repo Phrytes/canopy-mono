@@ -710,6 +710,83 @@ describe('renderWeb V0.4 — Q18 view.fields (record-shape patch fields)', () =>
   });
 });
 
+describe('renderWeb V0.6 — Q22 labelKey i18n passthrough', () => {
+  // Manifest with labelKey on every label-bearing surface: an op-level
+  // affordance, an item-action op (state-gated), and a field on a
+  // record-shape view.  The projector must pass labelKey through
+  // unchanged on each surface; absent labelKey leaves NavModel
+  // identical to V0.5 (no extra key).
+  const MANIFEST = {
+    app:       'i18n-rec',
+    itemTypes: ['task', 'settings-record'],
+    operations: [
+      {
+        id:     'addTask',
+        verb:   'add',
+        params: [{ name: 'text', kind: 'string' }],
+        appliesTo: { type: 'task' },
+        surfaces: { ui: { label: 'Add task', labelKey: 'task.add' } },
+      },
+      {
+        id:        'claim',
+        verb:      'claim',
+        params:    [],
+        appliesTo: { type: 'task', state: 'open' },
+        surfaces:  { ui: { label: 'Claim', labelKey: 'task.claim' } },
+      },
+      {
+        id:     'updateSettings',
+        verb:   'update',
+        params: [{ name: 'language', kind: 'string' }],
+      },
+    ],
+    views: [
+      { id: 'tasks', title: 'Tasks', type: 'task' },
+      {
+        id: 'settings', title: 'Settings', type: 'settings-record', shape: 'record',
+        fields: [
+          {
+            name:     'language', type: 'enum', choices: ['nl', 'en'],
+            label:    'Taal',          // Dutch fallback
+            labelKey: 'settings.language',
+            patch:    { opId: 'updateSettings', argName: 'language' },
+          },
+          // No labelKey — fallback to label only.
+          { name: 'foo', type: 'string', label: 'Foo' },
+        ],
+      },
+    ],
+  };
+
+  it('Q22 — affordance carries labelKey alongside label', () => {
+    const tasks = renderWeb(MANIFEST).sections.find((s) => s.id === 'tasks');
+    const add = tasks.affordances.find((a) => a.opId === 'addTask');
+    expect(add.label).toBe('Add task');
+    expect(add.labelKey).toBe('task.add');
+  });
+
+  it('Q22 — itemAction carries labelKey alongside label', () => {
+    const tasks = renderWeb(MANIFEST).sections.find((s) => s.id === 'tasks');
+    const claim = tasks.itemActions.find((a) => a.opId === 'claim');
+    expect(claim.label).toBe('Claim');
+    expect(claim.labelKey).toBe('task.claim');
+  });
+
+  it('Q22 — record field carries labelKey alongside label', () => {
+    const settings = renderWeb(MANIFEST).sections.find((s) => s.id === 'settings');
+    const lang = settings.fields.find((f) => f.name === 'language');
+    expect(lang.label).toBe('Taal');
+    expect(lang.labelKey).toBe('settings.language');
+  });
+
+  it('Q22 — absent labelKey leaves no key on the projection', () => {
+    const settings = renderWeb(MANIFEST).sections.find((s) => s.id === 'settings');
+    const foo = settings.fields.find((f) => f.name === 'foo');
+    expect(foo.label).toBe('Foo');
+    expect(foo).not.toHaveProperty('labelKey');
+  });
+});
+
 describe("renderWeb V0.4 — Q19 surfaces.ui.placement: 'section-header'", () => {
   const MANIFEST = {
     app:       'cta',
