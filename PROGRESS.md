@@ -72,7 +72,8 @@ Branch `feat/app-manifest` carries 48 commits ahead of master; total
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — Tier A V0.6 substrate: Q22 labelKey + Q23 file/image + Q24 useAdapterAction
+- (next) — Slice G folio boundary audit (3 parallel agents)
+- `88b4b8f` — feat(sync-engine): Slice G — isWatching getter + audit report
 - `ac8b1ab` — docs: NavModel V0.6 — Q22 + Q23 + Q24 design rows
 - `5364314` — feat(tasks-mobile): Q24 — useAdapterAction RN hook
 - `3801cc3` — feat(app-manifest): NavModel V0.6 — Q23 field.type 'file' | 'image'
