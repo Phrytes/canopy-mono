@@ -116,6 +116,23 @@ describe('stoop-web smoke (Slice E.1 + E.2 + E.3)', () => {
     // V0.3 Q17 (adopted 2026-05-21) — shape: 'record' marks this
     // section as a singleton (matches getSettings's reality).
     expect(settings.shape).toBe('record');
+    // V0.4 Q18 (adopted 2026-05-22) — section.fields[] surfaces the
+    // editable settings fields declared in the manifest.  Subset
+    // adoption — declares 4 representative fields covering both the
+    // direct-arg op (setHopMode) and the wrapped-patch op
+    // (updateSettings).
+    expect(Array.isArray(settings.fields)).toBe(true);
+    expect(settings.fields.length).toBeGreaterThanOrEqual(4);
+    const byName = Object.fromEntries(settings.fields.map((f) => [f.name, f]));
+    // hopThrough — setHopMode direct-arg.
+    expect(byName.hopThrough.type).toBe('boolean');
+    expect(byName.hopThrough.patch).toEqual({ opId: 'setHopMode', argName: 'global' });
+    // pollIntervalMs — updateSettings wrapped-patch.
+    expect(byName.pollIntervalMs.type).toBe('enum');
+    expect(byName.pollIntervalMs.choices).toEqual([2000, 10000, 60000, 300000]);
+    expect(byName.pollIntervalMs.patch).toEqual({
+      opId: 'updateSettings', argName: 'pollIntervalMs',
+    });
     // E.3 deliberately does NOT set `readOnly: true` (settings mutates
     // via per-field skills).  But because the per-field skills
     // (`updateSettings`, `setHopMode`) aren't manifest ops, no Q10

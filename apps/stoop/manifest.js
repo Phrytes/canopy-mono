@@ -588,6 +588,54 @@ export const stoopManifest = {
       // settings page.
       shape:       'record',
       dataSource:  { skillId: 'getSettings' },
+      // V0.4 Q18 (adopted 2026-05-22) — declare a representative
+      // subset of editable fields with patch declarations.  The
+      // settings.html UI is rich (i18n + per-field custom UX); the
+      // manifest is the source-of-truth for WHICH fields exist +
+      // their patch ops, but UI rendering stays hand-coded.
+      //
+      // V0.5 signal — wrapped-patch convention: `updateSettings`
+      // takes `{patch: {<key>: <value>}}` (nested arg).  Q18's
+      // `{opId, argName}` model is FLAT — for updateSettings-backed
+      // fields, `argName` is the settings-key name (semantic);
+      // adapter wraps in `{patch: {...}}` on dispatch.  A future
+      // Q21 could add `patch.argWrapper: 'patch'` to make this
+      // explicit in the substrate.
+      fields: [
+        {
+          name:    'hopThrough',
+          type:    'boolean',
+          label:   'Hop-relay (globaal)',
+          // setHopMode takes `{global: <bool>}` directly — Q18 fits.
+          patch:   { opId: 'setHopMode', argName: 'global' },
+        },
+        {
+          name:    'pollIntervalMs',
+          type:    'enum',
+          label:   'Hoe vaak het prikbord ververst',
+          choices: [2000, 10000, 60000, 300000],
+          // Wrapped-patch convention: dispatch is
+          // `updateSettings({patch: {pollIntervalMs: <value>}})`.
+          // Adapter knows the convention; manifest stays semantic.
+          patch:   { opId: 'updateSettings', argName: 'pollIntervalMs' },
+        },
+        {
+          name:    'broadcastable',
+          type:    'boolean',
+          label:   'Auto-skill-match',
+          patch:   { opId: 'updateSettings', argName: 'broadcastable' },
+        },
+        {
+          name:    'defaultShareLocation',
+          type:    'boolean',
+          label:   'Standaard locatie delen met nieuwe contacten?',
+          patch:   { opId: 'updateSettings', argName: 'defaultShareLocation' },
+        },
+        // Other settings.html fields (online-every, online-duration,
+        // …) remain to be declared.  Pattern is the same; not
+        // surfacing all 8+ in this commit to keep the V0.4-adopt
+        // proof small.  Forward-additive extensions land per-field.
+      ],
     },
   ],
 };
