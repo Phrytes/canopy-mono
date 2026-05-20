@@ -176,6 +176,17 @@ function validateOperation(op, path, manifest, errors, idSet) {
     }
   }
 
+  // Q22 (V0.6, 2026-05-20) — optional `surfaces.ui.labelKey` for i18n.
+  // Validate shape only; the projector decides whether to surface it.
+  const uiLabelKey = op?.surfaces?.ui?.labelKey;
+  if (uiLabelKey !== undefined
+      && (typeof uiLabelKey !== 'string' || uiLabelKey === '')) {
+    errors.push({
+      path:    `${path}/surfaces/ui/labelKey`,
+      message: 'surfaces.ui.labelKey must be a non-empty string if present',
+    });
+  }
+
   if (op.appliesTo !== undefined) {
     if (op.appliesTo === null || typeof op.appliesTo !== 'object' || Array.isArray(op.appliesTo)) {
       errors.push({ path: `${path}/appliesTo`, message: 'appliesTo must be an object if present' });
@@ -315,6 +326,16 @@ function validateView(v, path, manifest, errors, idSet, strict = false) {
           errors.push({
             path:    `${fp}/name`,
             message: 'field.name must be a non-empty string',
+          });
+        }
+        // Q22 (V0.6, 2026-05-20) — optional `labelKey` for i18n
+        // resolution.  Must be a non-empty string when present;
+        // consumer-side lookup, no adapter wiring.
+        if (f.labelKey !== undefined
+            && (typeof f.labelKey !== 'string' || f.labelKey === '')) {
+          errors.push({
+            path:    `${fp}/labelKey`,
+            message: 'field.labelKey must be a non-empty string if present',
           });
         }
         if (f.patch !== undefined) {

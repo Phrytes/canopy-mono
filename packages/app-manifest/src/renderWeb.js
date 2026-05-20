@@ -236,6 +236,22 @@
  *
  * Forward-additive — absent means existing flat behaviour (V0.4).
  *
+ * ──── Q22 — `labelKey` i18n passthrough (locked 2026-05-20)
+ *
+ * Surfaced by C.3 closeout: manifest `label` strings are English while
+ * stoop is Dutch-first and tasks-mobile RN screens already use an i18n
+ * function (`t(key, fallback)`).  Auto-rendered substrate UIs would
+ * regress on localization.
+ *
+ * Solution: opt-in `surfaces.ui.labelKey?: string` on operations AND
+ * `view.fields[].labelKey?: string` on record fields.  When present
+ * (non-empty string), the projector passes it through alongside
+ * `label`.  Consumers with an `t()` function resolve via the key;
+ * consumers without one fall back to `label` (existing behaviour).
+ *
+ * Forward-additive — absent means existing English-label behaviour.
+ * No adapter changes — pure consumer-side resolution.
+ *
  * ──── Q19 — Section-scope CTAs via `surfaces.ui.placement: 'section-header'`
  *
  * Surfaced by B.2.3 deferral.  Inbox has a "Clear all" header CTA —
@@ -356,6 +372,10 @@ function buildSection(view, ops, manifest) {
       const out = { name: f.name };
       if (f.type    !== undefined) out.type    = f.type;
       if (f.label   !== undefined) out.label   = f.label;
+      // Q22 (V0.6, 2026-05-20) — i18n key passthrough on fields.
+      if (typeof f.labelKey === 'string' && f.labelKey !== '') {
+        out.labelKey = f.labelKey;
+      }
       if (Array.isArray(f.choices)) out.choices = f.choices.slice();
       if (f.patch && typeof f.patch === 'object') {
         out.patch = { opId: f.patch.opId, argName: f.patch.argName };
@@ -463,6 +483,15 @@ function buildAffordance(op, manifest, placement, prefilledParams) {
     paramsSchema: paramsToJsonSchema(op.params ?? [], { manifest }),
     placement,
   };
+  // Q22 (V0.6, 2026-05-20) — i18n key passthrough.  When the manifest
+  // declares `surfaces.ui.labelKey`, surface it alongside `label` so
+  // consumers with an i18n function look up the localized string;
+  // others fall back to `label`.  Forward-additive — absent means
+  // existing English-label behaviour.
+  if (typeof op?.surfaces?.ui?.labelKey === 'string'
+      && op.surfaces.ui.labelKey !== '') {
+    a.labelKey = op.surfaces.ui.labelKey;
+  }
   if (prefilledParams) a.prefilledParams = prefilledParams;
   return a;
 }
@@ -492,6 +521,11 @@ function buildItemAction(op, view, prefilledParams) {
     label: op?.surfaces?.ui?.label ?? op.verb ?? op.id,
     appliesTo,
   };
+  // Q22 (V0.6) — i18n key passthrough (see buildAffordance).
+  if (typeof op?.surfaces?.ui?.labelKey === 'string'
+      && op.surfaces.ui.labelKey !== '') {
+    action.labelKey = op.surfaces.ui.labelKey;
+  }
   if (prefilledParams) action.prefilledParams = prefilledParams;
   return action;
 }

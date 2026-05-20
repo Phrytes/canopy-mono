@@ -296,6 +296,63 @@ describe('validateManifest', () => {
       }));
       expect(e.some((x) => /field\.patch\.argWrapper must be a non-empty string/.test(x.message))).toBe(true);
     });
+
+    /* ─── Q22 (V0.6, 2026-05-20) — field.labelKey ────────────────────── */
+
+    it('Q22 — accepts field.labelKey as a non-empty string', () => {
+      expect(ok(base({
+        fields: [
+          { name: 'language', type: 'enum', label: 'Taal',
+            labelKey: 'settings.language' },
+        ],
+      }))).toBe(true);
+    });
+
+    it('Q22 — rejects empty-string field.labelKey', () => {
+      const e = errs(base({
+        fields: [{ name: 'x', labelKey: '' }],
+      }));
+      expect(e.some((x) => /field\.labelKey must be a non-empty string/.test(x.message))).toBe(true);
+    });
+
+    it('Q22 — rejects non-string field.labelKey', () => {
+      const e = errs(base({
+        fields: [{ name: 'x', labelKey: 42 }],
+      }));
+      expect(e.some((x) => /field\.labelKey must be a non-empty string/.test(x.message))).toBe(true);
+    });
+  });
+
+  describe('V0.6 Q22 surfaces.ui.labelKey on operations', () => {
+    const baseManifest = (op) => ({
+      app:        'i',
+      itemTypes:  ['t'],
+      operations: [op],
+      views:      [{ id: 'v', title: 'V', type: 't' }],
+    });
+
+    it('Q22 — accepts surfaces.ui.labelKey as a non-empty string', () => {
+      expect(ok(baseManifest({
+        id: 'doIt', verb: 'do', params: [],
+        surfaces: { ui: { label: 'Do it', labelKey: 'op.do' } },
+      }))).toBe(true);
+    });
+
+    it('Q22 — rejects empty-string surfaces.ui.labelKey', () => {
+      const e = errs(baseManifest({
+        id: 'doIt', verb: 'do', params: [],
+        surfaces: { ui: { label: 'Do it', labelKey: '' } },
+      }));
+      expect(e.some((x) => /surfaces\.ui\.labelKey must be a non-empty string/.test(x.message))).toBe(true);
+    });
+
+    it('Q22 — rejects non-string surfaces.ui.labelKey', () => {
+      const e = errs(baseManifest({
+        id: 'doIt', verb: 'do', params: [],
+        surfaces: { ui: { label: 'Do it', labelKey: 99 } },
+      }));
+      expect(e.some((x) => /surfaces\.ui\.labelKey must be a non-empty string/.test(x.message))).toBe(true);
+    });
   });
 
   describe('V0.4 Q16-strict mode', () => {
