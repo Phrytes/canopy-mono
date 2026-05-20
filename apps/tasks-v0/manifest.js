@@ -290,6 +290,93 @@ export const tasksManifest = {
     },
 
     /*
+     * Slice B.2.3b (2026-05-21) — the four subtask approve/decline
+     * ops + the section-level clearInbox CTA.  Deferred from B.2.3
+     * phase 1; landed now that V0.4 substrate provides:
+     *
+     *   - **Per-kind dispatch** — `appliesTo: { type: 'inbox-item',
+     *     kind: 'subtask-request' }` gates per-row buttons by event
+     *     kind (V0.4 generic field gating).
+     *   - **Section-scope CTAs** — `surfaces.ui.placement:
+     *     'section-header'` surfaces the bulk-clear CTA in
+     *     `section.sectionActions[]` (V0.4 Q19), not crammed into
+     *     per-item itemActions[] or app-shell globals[].
+     *
+     * The four subtask ops have `appliesTo.kind` so they ONLY
+     * surface on matching events.  inbox.html iterates
+     * `section.itemActions[]` filtered by `itemMatchesAppliesTo`
+     * against the per-event `kind` extracted from
+     * `event.source.meta.kind` (page-level normaliser; substrate-
+     * side flattening to a top-level `kind` field is a future
+     * slice).
+     */
+    {
+      id:        'approveSubtaskRequest',
+      verb:      'approve',
+      appliesTo: { type: 'inbox-item', kind: 'subtask-request' },
+      params: [
+        { name: 'requestId', kind: 'string', required: true, ...ID_NONEMPTY },
+      ],
+      surfaces: {
+        chat: { hint: 'Approve a queued sub-task request (admin/coordinator only).' },
+        ui:   { control: 'button', label: 'Approve' },
+      },
+    },
+    {
+      id:        'declineSubtaskRequest',
+      verb:      'reject',
+      appliesTo: { type: 'inbox-item', kind: 'subtask-request' },
+      params: [
+        { name: 'requestId', kind: 'string', required: true, ...ID_NONEMPTY },
+        { name: 'note',      kind: 'string' },               // optional reason
+      ],
+      surfaces: {
+        chat: { hint: 'Decline a queued sub-task request (admin/coordinator only).' },
+        ui:   { control: 'button', label: 'Decline' },
+      },
+    },
+    {
+      id:        'approveSubtaskProposal',
+      verb:      'approve',
+      appliesTo: { type: 'inbox-item', kind: 'subtask-proposal' },
+      params: [
+        { name: 'proposalId', kind: 'string', required: true, ...ID_NONEMPTY },
+      ],
+      surfaces: {
+        chat: { hint: 'Approve a sub-task proposal (parent assignee; rolls submission back to claimed).' },
+        ui:   { control: 'button', label: 'Approve' },
+      },
+    },
+    {
+      id:        'declineSubtaskProposal',
+      verb:      'reject',
+      appliesTo: { type: 'inbox-item', kind: 'subtask-proposal' },
+      params: [
+        { name: 'proposalId', kind: 'string', required: true, ...ID_NONEMPTY },
+        { name: 'note',       kind: 'string' },              // optional reason
+      ],
+      surfaces: {
+        chat: { hint: 'Decline a sub-task proposal (parent assignee; reason shown to proposer).' },
+        ui:   { control: 'button', label: 'Decline' },
+      },
+    },
+    {
+      id:        'clearInbox',
+      verb:      'remove',
+      appliesTo: { type: 'inbox-item' },          // matches every event in the section
+      params: [
+        { name: 'olderThanMs', kind: 'number' },  // optional age cutoff
+      ],
+      surfaces: {
+        chat: { hint: 'Bulk-delete inbox notifications (optionally older than a cutoff).' },
+        // V0.4 Q19 — section-level CTA.  Renders in
+        // `section.sectionActions[]`, NOT in per-row itemActions[]
+        // or app-shell globals[].
+        ui:   { control: 'button', label: 'Clear all', placement: 'section-header' },
+      },
+    },
+
+    /*
      * Slice B.1 (2026-05-20) — DAG-tree projection of the task graph.
      *
      * Verb is the app-local `tree` (not in the canonical VERBS allow-

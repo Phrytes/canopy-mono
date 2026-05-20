@@ -45,8 +45,9 @@ Branch `feat/app-manifest` carries 48 commits ahead of master; total
 | Slice B.2.0 (shared web-adapter)    | ✅ Done — `@canopy/web-adapter` package (4 helpers)         |
 | Slice B.2.1 (mine.html via renderWeb)| ✅ Done                                                    |
 | Slice B.2.2 (review.html via renderWeb) | ✅ Done                                                |
-| Slice B.2.3 (inbox.html — phase 1)  | ✅ Done — 5 subtask/clearInbox ops deferred to B.2.3b      |
-| Slice B.2.4+ (availability/B.2.3b)  | ⏸ ahead                                                   |
+| Slice B.2.3 (inbox.html — phase 1)  | ✅ Done                                                    |
+| Slice B.2.3b (5 subtask ops + clearInbox) | ✅ Done — V0.4 per-kind + section CTAs proven on real code |
+| Slice B.2.4+ (availability)         | ⏸ ahead                                                   |
 | Slice C.0 recon (tasks-mobile)      | ✅ Done                                                    |
 | Slice C.1+ (renderMobile migration) | ⏸ Awaiting Slice A sign-off + manifest extension          |
 | Slice D.1 (stoop manifest FINAL)    | ✅ Done — all 8 DECIDE markers resolved 2026-05-21          |
@@ -68,7 +69,8 @@ Branch `feat/app-manifest` carries 48 commits ahead of master; total
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — NavModel V0.4 substrate consolidation
+- (next) — B.2.3b inbox subtask ops + section CTA
+- `e66ffba` — feat(app-manifest, web-adapter): NavModel V0.4 substrate
 - `e36d6f5` — refactor(stoop, tasks-mobile): V0.3-adopt
 - `32cb903` — feat(app-manifest, web-adapter, tasks-mobile): NavModel V0.3 substrate
 - `08c2929` — progress: 3-way parallel C.2 + B.2.3 + E.3 landed
