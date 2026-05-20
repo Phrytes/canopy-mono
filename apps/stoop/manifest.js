@@ -197,7 +197,14 @@ export const stoopManifest = {
     {
       id:        'cancelRequest',
       verb:      'remove',  // canonical — cancelRequest removes the item.
-      // No `appliesTo.type` — cancelRequest works across post types.
+      // V0.2 Q8 wildcard (2026-05-21) — cancelRequest spans ALL post
+      // types (ask/offer/lend).  The wildcard `appliesTo: {type: '*'}`
+      // surfaces cancelRequest as `itemActions[]` in every section
+      // (renderWeb's Q8 rule).  Without this, cancelRequest had no
+      // `appliesTo` and didn't surface as an itemAction anywhere; the
+      // mine.html page had to hard-code the Cancel button.  The
+      // wildcard makes the manifest the source of truth.
+      appliesTo: { type: '*' },
       params: [
         { name: 'requestId', kind: 'string', required: true, ...ID_NONEMPTY },
       ],
@@ -410,6 +417,8 @@ export const stoopManifest = {
   ],
 
   // Slice E.1 (2026-05-20) — first stoop web page via renderWeb.
+  // V0.2 adopt (2026-05-21) — `dataSource` (Q7) declares the section's
+  // data-fetch skill in the manifest, removing the client special-case.
   //
   // Stoop has 16 web pages today (per AUDIT-stoop-folio-surfaces.md).
   // E.1 surfaces ONE page — `mine.html` (my active posts + completions)
@@ -423,30 +432,26 @@ export const stoopManifest = {
   //
   // The `mine` view's `type: 'request'` is the broadest stoop itemType
   // (legacy V0 — every kind of post canonicalises through it).  The
-  // adapter, however, special-cases the `mine` view to call
-  // `listMyRequests({})` rather than `listOpen({type: 'request'})`,
-  // because `listMyRequests` filters by addedBy=from (the calling
-  // actor) and spans ALL of the user's post types (ask/offer/lend) —
-  // not just `request`.  This is the same special-case pattern
-  // household uses for `tasks` (listTasks) and `members` (no list-skill
-  // at all).
+  // section is conceptually "items I posted", which is a *predicate*
+  // over items, not a type — `listMyRequests` filters by addedBy=from
+  // (the calling actor) and spans ALL of the user's post types
+  // (ask/offer/lend), not just `request`.
   //
-  // SUBSTRATE SIGNAL (flagged for Slice C / Slice E.x):
-  //   NavModel's `section.itemType` can't express "list-skill spans
-  //   multiple types".  household has the same gap with `tasks`/`task`
-  //   (single-type, no signal needed) and `members`/`contact` (V0 gap,
-  //   acknowledged in test).  Stoop's `mine` makes the gap structural:
-  //   the section is conceptually "items I posted", which is a
-  //   *predicate* over items, not a type.  A follow-on substrate
-  //   addition (e.g. `view.dataSource: {skillId, args}` or
-  //   `view.predicate`) would let `mine` declare its own data source
-  //   without the client special-case.  Out of E.1 scope; flagged here.
+  // V0.2 Q7 `dataSource` (locked 2026-05-21) declares this directly:
+  // adapters call `fetchSectionItems(section, {callSkill})` which
+  // honours `section.dataSource` and dispatches `listMyRequests({})`.
+  // Removes the previous client special-case ("if section.id === 'mine'
+  // then listMyRequests") — the manifest is now the source of truth.
   views: [
     {
       id:     'mine',
       title:  'My posts',
       type:   'request',     // broadest stoop itemType; see note above
       filter: { open: true },
+      // V0.2 Q7 — explicit dataSource; `fetchSectionItems` will pick
+      // this up and call `listMyRequests({})` instead of the rule-b
+      // fallback `listOpen({type: 'request', open: true})`.
+      dataSource: { skillId: 'listMyRequests' },
     },
   ],
 };

@@ -63,6 +63,13 @@ describe('stoop-web smoke (Slice E.1)', () => {
     expect(mine.title).toBe('My posts');
     expect(mine.itemType).toBe('request');
     expect(mine.filter).toEqual({ open: true });
+    // V0.2 Q7 — explicit dataSource declaration in the manifest.
+    expect(mine.dataSource).toEqual({ skillId: 'listMyRequests' });
+    // V0.2 Q8 — cancelRequest with `appliesTo: {type: '*'}` surfaces
+    // as an itemAction in EVERY section (renderWeb's wildcard rule).
+    const cancel = (mine.itemActions ?? []).find((a) => a.opId === 'cancelRequest');
+    expect(cancel).toBeDefined();
+    expect(cancel.appliesTo.type).toBe('*');
   });
 
   it('serves /stoop-config.json with the actor + group', async () => {
@@ -85,8 +92,31 @@ describe('stoop-web smoke (Slice E.1)', () => {
     // The migrated page still fetches /navmodel.json (the consumption
     // hook).
     expect(html).toContain("fetch('/navmodel.json')");
-    // The page still calls listMyRequests (the section's data source).
-    expect(html).toContain("callSkill('listMyRequests'");
+    // V0.2-adopt (2026-05-21) — the page now drives its data-fetch
+    // via the shared `fetchSectionItems` helper (which honours the
+    // manifest's `section.dataSource: {skillId: 'listMyRequests'}`
+    // Q7 declaration), removing the prior hard-coded skill call.
+    expect(html).toContain('fetchSectionItems');
+    // Per-row buttons come from `section.itemActions[]` gated by
+    // `itemMatchesAppliesTo` (with a local wildcard work-around).
+    expect(html).toContain('itemMatchesAppliesTo');
+  });
+
+  it('serves /lib/web-adapter/fetchSectionItems.js (V0.2 helper overlay)', async () => {
+    // The V0.2 helpers are overlaid by `bin/stoop-web.js`'s
+    // `extraStaticFiles` so `mine.html` can `import` them at runtime
+    // (same mechanism tasks-v0 uses).
+    const res = await fetch(`${baseUrl}/lib/web-adapter/fetchSectionItems.js`);
+    expect(res.status).toBe(200);
+    const js = await res.text();
+    expect(js).toContain('export async function fetchSectionItems');
+  });
+
+  it('serves /lib/web-adapter/itemMatchesAppliesTo.js (V0.2 helper overlay)', async () => {
+    const res = await fetch(`${baseUrl}/lib/web-adapter/itemMatchesAppliesTo.js`);
+    expect(res.status).toBe(200);
+    const js = await res.text();
+    expect(js).toContain('export function itemMatchesAppliesTo');
   });
 
   it('serves /index.html (legacy hand-built page still works)', async () => {

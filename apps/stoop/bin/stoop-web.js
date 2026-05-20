@@ -53,6 +53,7 @@
  *                         [--group block-42]
  */
 import { parseArgs }                              from 'node:util';
+import { readFile }                               from 'node:fs/promises';
 import { fileURLToPath }                          from 'node:url';
 import { dirname, join }                          from 'node:path';
 import {
@@ -113,6 +114,14 @@ export async function startStoopWeb(opts = {}) {
 
   const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
+  // V0.2-adopt (2026-05-21) — overlay the shared `@canopy/web-adapter`
+  // helpers at `/lib/web-adapter/<basename>.js`.  Same mechanism that
+  // tasks-v0's `bin/tasks-ui.js` uses (Slice B.2.0).  Source-of-truth
+  // lives in `packages/web-adapter/src/`; this overlay re-routes the
+  // helpers through `extraStaticFiles` so `mine.html`'s `<script
+  // type="module">` can `import` them at runtime without bundling.
+  const webAdapterFiles = await loadWebAdapterFiles();
+
   const ui = await mountLocalUi(bundle.agent, {
     port,
     staticDir:        webDir,
@@ -125,6 +134,7 @@ export async function startStoopWeb(opts = {}) {
       // mirrors stoop-ui.js's single-group `groups.json` shape so the
       // existing app.js helpers stay happy.
       '/groups.json':        JSON.stringify([{ groupId: group }]),
+      ...webAdapterFiles,
     },
   });
 
@@ -139,6 +149,35 @@ export async function startStoopWeb(opts = {}) {
       await ui.stop();
     },
   };
+}
+
+/**
+ * Read `packages/web-adapter/src/*.js` from disk and return them keyed
+ * by their `/lib/web-adapter/<basename>` overlay path.  Mirrors the
+ * helper in `apps/tasks-v0/bin/tasks-ui.js` (Slice B.2.0); kept inline
+ * here rather than refactored into a shared utility to keep stoop's
+ * bootstrap self-contained.
+ */
+async function loadWebAdapterFiles() {
+  const root = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..', '..', '..',
+    'packages', 'web-adapter', 'src',
+  );
+  const names = [
+    'callSkill.js',
+    'deriveItemState.js',
+    'itemMatchesAppliesTo.js',
+    'applyPrefilledParams.js',
+    'fetchSectionItems.js',
+    'schemaToFormFields.js',
+    'index.js',
+  ];
+  const out = {};
+  for (const n of names) {
+    out[`/lib/web-adapter/${n}`] = await readFile(join(root, n), 'utf8');
+  }
+  return out;
 }
 
 // ── CLI entry ─────────────────────────────────────────────────────────
