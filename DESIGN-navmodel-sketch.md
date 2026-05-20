@@ -283,21 +283,25 @@ additive discipline as everything else in `@canopy/app-manifest`.
    task-detail navigation) already do per-item drilldowns.  Should
    NavModel V0 carry detail-view declarations (`section.detail`)
    or defer?
+	> maybe either. Im going to do full user tests after completing everything anyway
 2. **Section ordering.**  Manifest's `views[]` order today; should
    NavModel preserve that or sort alphabetically / by activity?
    (Existing chat output preserves declaration order — same
    discipline here?)
+> does it bare consequences for the final GUI? In that case: sort as logical for a GUI. If it doesnt matter, then maybe activity first (sorted alphabetically) - and if there are sub-parts: also alphabetic. If you think it is useful: add an index to the code comments
 3. **Global affordances source.**  `globals[]` proposed above —
    should the projector infer (ops without `appliesTo` AND with
    `surfaces.ui.placement === 'global'`) or should the manifest
    declare a `navigation: { global: [opId, ...] }` block?
+> I have no idea. Whatever you think is best.
 4. **Adapter equivalence test depth.**  Strict NavModel JSON equality
    between renderWeb/renderMobile, or relaxed (compare structural
    fields, allow adapter-specific metadata to differ)?
+> would be nice to have equality as a goal, but exceptions can be made on request of the owner (me). Please write a note accordingly (in the comments?)
 5. **Item ordering / sorting inside sections.**  Manifest `view`
    could declare a `sort: { by: 'createdAt', direction: 'desc' }`
    block.  V0 hardcodes "newest first" or lets adapter decide?
-
+> sounds like different ways of sorting? multiple must be supported, so hardcoding is not a good idea. In some cases it makes sense to let the user reorder.
 ---
 
 ## Implementation order (Slice A internal)
