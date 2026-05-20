@@ -36,6 +36,7 @@
     "@canopy/identity-resolver": "file:../../packages/identity-resolver",
     "@canopy/item-store":        "file:../../packages/item-store",
     "@canopy/item-types":        "file:../../packages/item-types",
+    "@canopy/llm-client":        "file:../../packages/llm-client",
     "@canopy/local-store":       "file:../../packages/local-store",
     "@canopy/notifier":          "file:../../packages/notifier",
     "@canopy/notify-envelope":   "file:../../packages/notify-envelope",
