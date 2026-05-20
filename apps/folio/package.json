@@ -6,6 +6,7 @@
   "main":        "src/index.js",
   "exports": {
     ".":                  "./src/index.js",
+    "./manifest":         "./manifest.js",
     "./rn/serviceFactory": "./src/rn/serviceFactory.js",
     "./rn/backgroundTasks": "./src/rn/backgroundTasks.js",
     "./adapters":         "./src/adapters/index.js",
@@ -18,6 +19,7 @@
     "test:parity": "FOLIO_PSEUDO_POD=0 vitest run && vitest run"
   },
   "dependencies": {
+    "@canopy/app-manifest":            "file:../../packages/app-manifest",
     "@canopy/core":                    "file:../../packages/core",
     "@canopy/oidc-session":            "file:../../packages/oidc-session",
     "@canopy/pod-client":              "file:../../packages/pod-client",
