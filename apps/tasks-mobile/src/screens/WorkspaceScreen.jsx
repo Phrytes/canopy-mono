@@ -4,24 +4,43 @@
  *
  * Phase 41.4.1 (2026-05-09).
  *
- * Wires `listOpen` via `useSkillResult` (lifted in Phase 41.0 L1) and
- * pull-to-refresh. Filter chips live above the list — toggling re-runs
- * the skill with the matching args. Tap a card → TaskDetail. FAB →
- * ComposeScreen modal.
+ * Slice C.1 (2026-05-20) — adapter-driven.  The screen now resolves
+ * its data source through `createNavModelAdapter(tasksManifest)` —
+ * the NavModel's `open` section carries `dataSource: {skillId:
+ * 'listOpen', args: {type: 'task'}}` (manifest Q7).  The screen
+ * keeps its hand-built UI (RN filter chips, FlatList, FAB) and the
+ * existing `useSkillResult` reactive plumbing; only the skill-id +
+ * args come from the manifest.  This proves the adapter pattern on
+ * one screen; the remaining Phase-1 screens follow in Slice C.2+.
+ *
+ * Why keep `useSkillResult` instead of going imperative via the
+ * adapter's `fetchSection`?  The hook owns the
+ * mount/refresh/dep-tracking lifecycle that pull-to-refresh + crew-
+ * switch already work against.  Adapter-driven dispatch via the
+ * imperative path is a separate slice (web today uses imperative
+ * `callSkill` because it has no React lifecycle).
+ *
+ * Filter chips (ready/waiting/claimed/submitted) stay hand-built —
+ * they're RN-specific UI chrome not modelled in V0.2 NavModel.
+ * Tap a card → TaskDetail.  FAB → ComposeScreen modal.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, FlatList, RefreshControl, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
+import { tasksManifest } from '@canopy-app/tasks-v0/manifest';
+
 import { useTheme } from '@canopy/react-native/theme';
 import { ChipRow }  from '@canopy/react-native/components';
 
 import { useService }     from '../ServiceContext.js';
-import { useSkillResult } from '../lib/useSkill.js';
+import { toParts, unwrapParts } from '../lib/useSkill.js';
 import { useI18n }        from '../I18nProvider.js';
 import { TaskCard }       from '../components/TaskCard.jsx';
 import { ROUTES }         from '../navigation.js';
+import { createNavModelAdapter } from '../manifest-adapter.js';
+import { useAdapterSection }     from '../useAdapterSection.js';
 
 const FILTER_CHIPS = [
   { id: 'all',       labelKey: 'mobile.workspace.filter_all' },
@@ -39,9 +58,34 @@ export function WorkspaceScreen() {
 
   const [filter, setFilter] = useState('all');
 
-  // useSkillResult auto-runs on mount + when deps change. We re-run
-  // when the active crew changes so a crew-switch refreshes the list.
-  const list = useSkillResult('listOpen', {}, [svc?.activeCrewId, filter]);
+  // Slice C.1 — build the NavModel adapter once per service-change.
+  // The adapter is platform-neutral; `callSkill` is a tiny imperative
+  // dispatcher over the active bundle's agent.invoke (the same path
+  // useSkill's `.call` takes internally).  Used by `fetchSection` +
+  // `renderItemActions` consumers; the screen itself still uses
+  // useSkillResult to fetch the list (lifecycle ownership).
+  const adapter = useMemo(
+    () => createNavModelAdapter(tasksManifest, {
+      callSkill: async (skillId, args) => {
+        const agent = svc?.activeBundle?.agent;
+        if (!agent?.invoke) throw new Error('No active agent');
+        const peer  = agent.address ?? agent.identity?.pubKey ?? null;
+        const parts = toParts({
+          ...(args ?? {}),
+          _scope: svc?.activeBundle?.groupId ?? svc?.activeGroupId ?? null,
+        });
+        return unwrapParts(await agent.invoke(peer, skillId, parts));
+      },
+    }),
+    [svc],
+  );
+  // V0.3-adopt (2026-05-21) — `useAdapterSection` replaces the
+  // per-section boilerplate (getSection + skillId resolution + args
+  // resolution + useSkillResult).  Same data + lifecycle; cleaner
+  // call site.
+  const { section, data, loading, refresh } =
+    useAdapterSection(adapter, 'open', [svc?.activeCrewId, filter]);
+  const list = { data, loading, refresh };  // shape compatibility
 
   const items = useMemo(() => {
     const all = Array.isArray(list?.data?.items) ? list.data.items : [];

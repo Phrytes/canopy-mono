@@ -1,0 +1,325 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`characterization: inbox.html > initial HTML snapshot (empty inbox) 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tasks — Inbox</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/mine.html">My work</a>
+      <a href="/review.html">Review</a>
+      <a href="/dag.html">DAG</a>
+      <a href="/availability.html">Availability</a>
+      <a href="/crew.html">Crew</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/inbox.html" class="active" id="nav-inbox">Inbox</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section id="inbox">
+      <div class="head" style="justify-content:space-between">
+        <h2 id="inbox-title" style="margin:0">Notifications</h2>
+        <!-- B.2.3b (2026-05-21) — section header CTAs (e.g. "Clear all")
+             render from \`section.sectionActions[]\` (V0.4 Q19).  The
+             static placeholder below is replaced by JS-driven buttons
+             after navmodel.json loads; kept for SEO + a non-JS read. -->
+        <div id="inbox-section-actions"></div>
+      </div>
+      <div id="inbox-list"><p class="empty">Loading…</p></div>
+    </section>
+  </main>
+
+  <script type="module">
+    /*
+     * Slice B.2.3 (PLAN-gui-chat-uplift.md, 2026-05-20) — inbox.html
+     * migrated to the NavModel + shared @canopy/web-adapter helpers
+     * (B.2.0).  The single notification-feed section is now resolved
+     * off \`navmodel.json\`'s \`inbox\` view; the per-row Dismiss button
+     * is gated by the manifest's \`clearInboxItem\` itemAction via
+     * \`itemMatchesAppliesTo\`.
+     *
+     * V0.2 (2026-05-20) — section data-fetch flows through the shared
+     * \`fetchSectionItems(section, {callSkill})\` helper, honouring the
+     * manifest's Q7 \`view.dataSource\` field (\`listMyInbox\` with
+     * pre-filled \`{limit: 200}\`, added in B.2.3).
+     *
+     * ─── Scope split (B.2.3 phase-1) ────────────────────────────────
+     * Five OFF-manifest ops still live inline (deferred to B.2.3b):
+     *
+     *   - \`approveSubtaskRequest\`  /  \`declineSubtaskRequest\`
+     *   - \`approveSubtaskProposal\` /  \`declineSubtaskProposal\`
+     *     These four are per-event-kind handlers dispatched off
+     *     \`it.source.buttons\` (cross-app subtask flow); they need
+     *     event-kind discriminator in the manifest before they can
+     *     surface as itemActions.
+     *
+     *   - \`clearInbox\` (header "Clear all" CTA)
+     *     Resolved 2026-05-21 (Slice B.2.3b) — V0.4 Q19 added
+     *     \`surfaces.ui.placement: 'section-header'\`, which surfaces
+     *     the op in \`section.sectionActions[]\`.  Inbox renders the
+     *     CTA from that array; no more hard-coded DOM button.
+     *
+     * Discipline:
+     *   - Static <nav> + <h2> + "Clear all" button stay (SEO + copy-
+     *     paste linkability).  NavModel projects the section title
+     *     onto <h2> when present so the manifest stays the source-of-
+     *     truth for the user-visible label.
+     *   - The per-row Dismiss button now consults the section's
+     *     \`itemActions[]\` (manifest-declared \`clearInboxItem\`) +
+     *     \`applyPrefilledParams\` for forward-compat with Slice C
+     *     prefills (V0 inbox has no prefills).  Pre-B.2.3 code called
+     *     the skill directly; the new path goes through the manifest.
+     *   - The notification's per-row "buttons" (approve/decline) are
+     *     surfaced by \`it.source.buttons\` — that is a substrate-level
+     *     payload from \`InAppInboxBridge\`, NOT a NavModel itemAction.
+     *     \`routeButton(btn, it)\` still dispatches the four subtask ops
+     *     directly via callSkill (TODO B.2.3b: re-route through the
+     *     manifest once event-kind dispatch is modelled).
+     */
+    import {
+      callSkill, getActor, getConfig, mountLive, mountInboxBadge, escapeHtml,
+      renderV1NotAvailable,
+    } from '/app.js';
+    import { itemMatchesAppliesTo } from '/lib/web-adapter/itemMatchesAppliesTo.js';
+    import { applyPrefilledParams } from '/lib/web-adapter/applyPrefilledParams.js';
+    // V0.2 (2026-05-20) — section data-fetch via the manifest's Q7
+    // \`view.dataSource\`; replaces the inline \`callSkill('listMyInbox', …)\`.
+    import { fetchSectionItems }    from '/lib/web-adapter/fetchSectionItems.js';
+
+    document.getElementById('actor').textContent = await getActor();
+    const cfg  = await getConfig();
+    mountInboxBadge(document.getElementById('nav-inbox'));
+
+    // Load NavModel — drives section title + per-row Dismiss gating.
+    const navModel = await fetch('/navmodel.json').then((r) => r.json()).catch(() => null);
+    const sectionsById = new Map(
+      (navModel?.sections ?? []).map((s) => [s.id, s]),
+    );
+
+    // Mirror the manifest's section title onto the <h2> (with the
+    // static fallback already in the markup preserving SEO).
+    {
+      const sec = sectionsById.get('inbox');
+      const el  = document.getElementById('inbox-title');
+      if (sec && el) el.textContent = sec.title;
+    }
+
+    /** Lookup an itemAction by opId in a section (used for
+     *  prefilledParams passthrough — V0 inbox has no prefills, but
+     *  the pattern matches mine.html / review.html for forward-compat
+     *  with Slice C multi-app composition). */
+    function _action(section, opId) {
+      return (section?.itemActions ?? []).find((a) => a.opId === opId);
+    }
+
+    /**
+     * Manifest-gate filter for per-row actions.  Returns true when at
+     * least one of the section's itemActions targeting the given opId
+     * matches the item via the manifest's appliesTo gate.  Mirrors
+     * mine.html / review.html (Slices B.2.1 / B.2.2).
+     *
+     * @param {string}  opId    manifest op id (e.g. 'clearInboxItem')
+     * @param {object}  item    inbox item (shape from listMyInbox)
+     * @param {object}  section nav section (carries itemActions[])
+     */
+    function manifestAllows(opId, item, section) {
+      const actions = section?.itemActions ?? [];
+      for (const a of actions) {
+        if (a.opId !== opId) continue;
+        // Tier B (2026-05-20) — InAppInboxBridge now writes
+        // type: 'inbox-item' + top-level kind at write time, so the
+        // raw item shape already matches the manifest's gate.  No
+        // synthesis needed.
+        if (itemMatchesAppliesTo(a.appliesTo, item)) return true;
+      }
+      return false;
+    }
+
+    function eventLabel(meta) {
+      switch (meta?.eventType) {
+        case 'missed-deadline':   return 'deadline missed';
+        case 'task-completed':    return 'task completed';
+        case 'task-submitted':    return 'review needed';
+        case 'task-rejected':     return 'submission rejected';
+        case 'task-revoked':      return 'assignment revoked';
+        case 'subtask-request':   return 'sub-task approval needed';
+        case 'subtask-proposal':  return 'sub-task proposal — your consent';
+        default:                  return meta?.eventType ?? 'notification';
+      }
+    }
+
+    /*
+     * V0.2 (2026-05-20) — section data-fetch via the shared
+     * \`fetchSectionItems(section, {callSkill})\` helper.  The manifest's
+     * \`view.dataSource\` (Q7) declares \`listMyInbox\` with \`{limit: 200}\`;
+     * the helper dispatches the skill call.  Pre-B.2.3 the page called
+     * \`callSkill('listMyInbox', {limit: 200})\` directly.
+     */
+    async function fetchSection(navId) {
+      const sec = sectionsById.get(navId);
+      if (!sec) return null;
+      return fetchSectionItems(sec, { callSkill });
+    }
+
+    async function refresh() {
+      const inboxSec = sectionsById.get('inbox');
+      let items;
+      try {
+        const r = await fetchSection('inbox');
+        items = r?.items ?? [];
+      } catch (err) {
+        renderV1NotAvailable(
+          document.getElementById('inbox-list'),
+          err,
+          'In-app inbox is a V1 feature.',
+        );
+        return;
+      }
+      const root = document.getElementById('inbox-list');
+      root.innerHTML = '';
+      if (items.length === 0) {
+        root.innerHTML = '<p class="empty">Nothing here. ✓</p>';
+        return;
+      }
+      for (const it of items) {
+        const div = document.createElement('div');
+        div.className = 'inbox-entry';
+        const when = it.addedAt ? new Date(it.addedAt).toLocaleString() : '';
+        div.innerHTML = \`
+          <div style="display:flex;gap:0.5rem;align-items:center;justify-content:space-between">
+            <span class="text">\${escapeHtml(it.text ?? '')}</span>
+            <span class="ev">\${escapeHtml(eventLabel(it.source?.meta))}</span>
+          </div>
+          <div class="when">\${escapeHtml(when)}</div>\`;
+
+        const buttons = it.source?.buttons ?? [];
+        if (buttons.length > 0) {
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          for (const btn of buttons) {
+            const b = document.createElement('button');
+            b.textContent = btn.label ?? btn.id;
+            b.className = 'secondary';
+            b.addEventListener('click', () => routeButton(btn, it));
+            actions.appendChild(b);
+          }
+          div.appendChild(actions);
+        }
+
+        // Slice B.2.3 — Dismiss is the manifest-declared
+        // \`clearInboxItem\` itemAction.  Gated by \`manifestAllows\`
+        // (matches because the op's \`appliesTo.type === 'inbox-item'\`
+        // and there is no state gate).  applyPrefilledParams is a
+        // no-op for V0 (no prefills declared) but kept for parity
+        // with mine.html / review.html.
+        if (manifestAllows('clearInboxItem', it, inboxSec)) {
+          const action  = _action(inboxSec, 'clearInboxItem');
+          const dismiss = document.createElement('button');
+          dismiss.textContent = action?.label ?? 'Dismiss';
+          dismiss.className   = 'secondary';
+          dismiss.style.marginTop = '0.3rem';
+          dismiss.addEventListener('click', async () => {
+            await callSkill(
+              'clearInboxItem',
+              applyPrefilledParams({ id: it.id }, action),
+            );
+            await refresh();
+          });
+          div.appendChild(dismiss);
+        }
+
+        root.appendChild(div);
+      }
+    }
+
+    // TODO B.2.3b — per-event-kind dispatch (approveSubtaskRequest /
+    // declineSubtaskRequest / approveSubtaskProposal /
+    // declineSubtaskProposal / appealTask) needs a manifest pattern
+    // for "per-row button keyed by source.buttons[].id".  The four
+    // subtask ops carry per-actor consent semantics (parent assignee
+    // approve/decline) and aren't trivially modelled as type='inbox-
+    // item' itemActions; \`appealTask\` is parent-task-id keyed.  For
+    // now they stay off-manifest and dispatch directly via callSkill.
+    async function routeButton(btn, _entry) {
+      const id = String(btn.id ?? '');
+      if (id.startsWith('approveSubtaskRequest:')) {
+        const requestId = id.slice('approveSubtaskRequest:'.length);
+        await callSkill('approveSubtaskRequest', { requestId });
+        await refresh();
+      } else if (id.startsWith('declineSubtaskRequest:')) {
+        const requestId = id.slice('declineSubtaskRequest:'.length);
+        const note = prompt('Decline reason (optional):', '');
+        await callSkill('declineSubtaskRequest', { requestId, note: note ?? undefined });
+        await refresh();
+      } else if (id.startsWith('approveSubtaskProposal:')) {
+        const proposalId = id.slice('approveSubtaskProposal:'.length);
+        if (!confirm('Approving will roll your submission back to claimed. Continue?')) return;
+        const r = await callSkill('approveSubtaskProposal', { proposalId });
+        if (r?.error) alert(\`Approve: \${r.error}\`);
+        await refresh();
+      } else if (id.startsWith('declineSubtaskProposal:')) {
+        const proposalId = id.slice('declineSubtaskProposal:'.length);
+        const note = prompt('Why? (optional, shown to the proposer):', '');
+        const r = await callSkill('declineSubtaskProposal', { proposalId, note: note ?? undefined });
+        if (r?.error) alert(\`Decline: \${r.error}\`);
+        await refresh();
+      } else if (id.startsWith('appeal:')) {
+        const taskId = id.slice('appeal:'.length);
+        const body = prompt('Opening message for the appeal thread (optional):', '');
+        const r = await callSkill('appealTask', { taskId, body: body ?? undefined });
+        if (r.error) alert(\`Appeal: \${r.error}\`);
+        await refresh();
+      } else {
+        alert(\`Unknown button id: \${id}\`);
+      }
+    }
+
+    // B.2.3b (2026-05-21) — section-level CTAs render from
+    // \`section.sectionActions[]\` (V0.4 Q19).  The manifest declares
+    // \`clearInbox\` with \`surfaces.ui.placement: 'section-header'\`;
+    // renderWeb surfaces it here.  Adapter renders one button per
+    // sectionAction, labelled from \`a.label\`.
+    function renderSectionActions() {
+      const inboxSec = sectionsById.get('inbox');
+      const host     = document.getElementById('inbox-section-actions');
+      host.innerHTML = '';
+      const actions = inboxSec?.sectionActions ?? [];
+      for (const a of actions) {
+        const b = document.createElement('button');
+        b.textContent = a.label ?? a.opId;
+        b.className   = 'secondary';
+        b.addEventListener('click', async () => {
+          // Friendly confirm for destructive bulk actions.
+          if (a.opId === 'clearInbox' && !confirm('Clear ALL inbox notifications?')) return;
+          await callSkill(a.opId, {});  // V0.4 sectionActions take no per-item args
+          await refresh();
+        });
+        host.appendChild(b);
+      }
+    }
+    renderSectionActions();
+
+    await refresh();
+    mountLive(['item-added', 'item-removed'], refresh);
+
+    // Slice B.2.3 — expose the manifest gate to tests / debuggers.
+    // Not used by the page; here so integration tests can assert the
+    // per-section manifest gate is wired in (mirror of mine.html /
+    // review.html).
+    window.__sliceB2_3 = Object.freeze({
+      sectionsById,
+      manifestAllows,
+    });
+  </script>
+</body>
+</html>
+"
+`;

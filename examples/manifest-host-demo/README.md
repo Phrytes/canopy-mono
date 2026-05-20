@@ -1,0 +1,160 @@
+# manifest-host recombination demo
+
+> **SP-4b + SP-11 (merged 2026-05-20).**  Composes household +
+> tasks-v0 (with its real multi-crew runtime) in one process via
+> `@canopy/manifest-host`, drives a chat-agent over the merged tool
+> catalog with a scripted LLM, and shows state landing in both apps'
+> stores from one conversation.
+>
+> See `PLAN-uniforme-representatie.md` § SP-4b + § SP-11 (in the repo
+> root) for the design context.
+
+---
+
+## What this proves
+
+1. **Cross-app composition** — `@canopy/manifest-host`'s `compose()`
+   merges N manifests into one toolCatalog with `appId.opId`
+   namespacing.  The chat-agent uses that merged catalog directly,
+   one mount per app.
+2. **Multi-crew dispatch through the host** — tasks-v0's real
+   multi-crew machinery (`bundleResolver` / `wireSkills` /
+   `CrewState`, the same code `bin/tasks-ui.js --multi-crew`
+   constructs) is mounted via the host's `toSkillCtx` adapter.
+   bundleResolver still dispatches per-crew internally; the host
+   doesn't know or care about crews — orthogonal layers.
+3. **Zero changes to either app's production code** — household uses
+   its existing skills + manifest; tasks-v0 uses its existing
+   meshAgent + multi-crew runtime.  The host integrates additively
+   via new `mountable.js` shims (one per app).
+4. **Policy decisions made deliberately** — `perAppSystemPrompts`
+   composed via the **generic preamble** policy (the host README's
+   recommended default for ≥2 apps).  Collisions: zero in this
+   two-app combo (household has slash; tasks-v0 doesn't).
+
+---
+
+## Run it
+
+```bash
+cd examples/manifest-host-demo
+npm install
+npm start        # node index.js
+```
+
+You'll see something like:
+
+```
+@canopy manifest-host recombination demo
+— composing household + tasks-v0 in one chat surface
+
+mounted apps:        household, tasks
+composed toolCatalog: 22 tools
+  household tools:   10
+  tasks tools:       12
+command collisions:  0
+
+— conversation —
+  user[1]:  add bread to my shopping list
+  bot:        Toegevoegd …
+  user[2]:  add a task: paint the hallway
+  bot:        {"task":{"text":"paint the hallway",...}}
+  user[3]:  what's on my shopping list?
+  bot:        …
+
+— final state —
+household.lists:
+  shopping: [bread]
+tasks.primary-crew open items:
+  paint the hallway
+
+✓ done
+```
+
+The integration test runs the same scenario and asserts both stores
+ended up with the right items in the right places:
+
+```bash
+npm test
+```
+
+---
+
+## How it composes
+
+```text
+                     ┌─────────────────────────────────────┐
+                     │       ChatAgent (LLM-mediated)      │
+                     │ toolCatalog: [{id:"household.add…"} │
+                     │              {id:"tasks.addTask"}…] │
+                     └────────────────┬────────────────────┘
+                                      │ toolCall {id, args}
+                                      ▼
+                     ┌─────────────────────────────────────┐
+                     │  host.compose().toolHandlers[id]    │
+                     │  (namespaced dispatch by appId)     │
+                     └─────┬─────────────────────┬─────────┘
+                "household.*"                "tasks.*"
+                           │                     │
+                           ▼                     ▼
+           ┌──────────────────────┐  ┌──────────────────────┐
+           │  household mountable │  │  tasks mountable     │
+           │  • renderChat shape  │  │  • SDK→renderChat    │
+           │    skills (native)   │  │    adapter           │
+           │  • InMemoryStore     │  │  • bundleResolver    │
+           │                      │  │    dispatch via      │
+           │                      │  │    toSkillCtx        │
+           └──────────────────────┘  └──────────────────────┘
+                                                │
+                                                ▼
+                                     ┌────────────────────┐
+                                     │ multi-crew runtime │
+                                     │   crewsMap         │
+                                     │   ├ primary-crew   │
+                                     │   └ sibling-crew … │
+                                     └────────────────────┘
+```
+
+### Key design choices
+
+- **`bundleResolver` stays untouched.**  Multi-crew dispatch was never
+  meant to live in the host layer; the host operates on the chat
+  surface, bundleResolver operates on the mesh skill graph.  They are
+  orthogonal — which is exactly what SP-4b's framing correction made
+  explicit.
+
+- **System-prompt composition: generic preamble.**  Lists the mounted
+  apps; lets the merged tool catalog's per-tool descriptions carry
+  the rest.  Recommended for ≥2 apps in
+  `packages/manifest-host/README.md` § "Potential conflicts".
+  Alternatives ("concat", "pick primary") fit other scenarios — pick
+  per host.
+
+- **No `item.audience` field used yet.**  Demo runs against the SP-5
+  V0 substrate (audience model + circles substrate published, no
+  item-store schema change).  The audience model is wired up and
+  available; concrete consumption is SP-5b once a real cross-app
+  audience scenario surfaces.
+
+- **`text` substrate-compat note.**  `@canopy/item-store`'s `addItems`
+  requires a non-empty `text` field on every partial.  Household
+  skills already comply; tasks-v0 skills also do.  Documented in
+  `packages/circles/README.md` and the SP-5b backlog.
+
+---
+
+## What this demo does NOT do
+
+- **No real LLM.**  Tool calls are scripted via
+  `@canopy/llm-client`'s `mockProvider` for deterministic execution.
+  Wiring a real LLM (e.g. Ollama, OpenAI) is a one-line change in
+  `scenario.js`; the rest of the pipeline is provider-agnostic.
+- **No web / mobile surface.**  Chat-only.  Web + mobile surfaces
+  consuming the manifest are the
+  `PLAN-gui-chat-uplift.md` track (deferred, designed in parallel).
+- **No cross-app audience query.**  An LLM call from household
+  doesn't (yet) consult tasks-v0's data, or vice versa.  Cross-app
+  audience plumbing is SP-5b + a concrete consumer.
+- **No real network / TG bot wiring.**  Headless `InMemoryBridge`
+  for inputs + outputs.  Production deployments wire whichever
+  bridges are needed.

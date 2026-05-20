@@ -1,0 +1,22 @@
+{
+  "name":        "manifest-host-demo",
+  "version":     "0.1.0",
+  "private":     true,
+  "type":        "module",
+  "description": "SP-4b + SP-11 recombination demo — household + tasks-v0 (multi-crew) composed in one @canopy/manifest-host, driven by a chat-agent with a mocked LLM. Proves: cross-app tool dispatch, multi-crew isolation through the host, namespaced (appId.opId) routing.",
+  "scripts": {
+    "start": "node index.js",
+    "test":  "vitest run"
+  },
+  "dependencies": {
+    "@canopy/app-manifest":  "file:../../packages/app-manifest",
+    "@canopy/manifest-host": "file:../../packages/manifest-host",
+    "@canopy/chat-agent":    "file:../../packages/chat-agent",
+    "@canopy/llm-client":    "file:../../packages/llm-client",
+    "@canopy-app/household": "file:../../apps/household",
+    "@canopy-app/tasks-v0":  "file:../../apps/tasks-v0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
+}

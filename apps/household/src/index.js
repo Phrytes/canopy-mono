@@ -23,3 +23,12 @@ export { HouseholdAgent } from './HouseholdAgent.js';
 // the V2 architecture pivot plan.  Phase 1: this class ships in src/
 // alongside the legacy agent; Phase 2 retires the legacy.
 export { HouseholdAgentFreeform } from './HouseholdAgentFreeform.js';
+
+// SP-4b/SP-11 (2026-05-20) — household as a `@canopy/manifest-host`
+// mountable (consumed by `examples/manifest-host-demo/` + any future
+// multi-app host).  Also re-export the manifest so consumers don't
+// have to dig into the package layout.
+export { createHouseholdMountable }    from './mountable.js';
+export { HOUSEHOLD_SKILL_REGISTRY,
+         noopContextBuilder }          from './skillRegistry.js';
+export { householdManifest }           from '../manifest.js';

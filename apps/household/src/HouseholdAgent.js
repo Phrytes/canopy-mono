@@ -22,34 +22,20 @@
  * each via `sendReply`.
  */
 
-import { ChatAgent } from '@canopy/chat-agent';
+import { ChatAgent }               from '@canopy/chat-agent';
+import { renderChat, renderSlash } from '@canopy/app-manifest';
 
-import { regexParse } from './parsers/regexCommands.js';
-import * as Skills from './skills/index.js';
-import { classifyAndExtract } from './skills/classifyAndExtract.js';
+import { householdManifest }  from '../manifest.js';
 import {
-  buildHouseholdToolHandlers,
+  HOUSEHOLD_SKILL_REGISTRY as SKILL_REGISTRY,
   noopContextBuilder,
-  V0_TOOL_CATALOG,
-  SYSTEM_PROMPT_CLASSIFY,
-} from './llm/chatAgentBridge.js';
+} from './skillRegistry.js';
 
-/**
- * Map skillId strings → skill handlers.  Built once at module load
- * so the agent can dispatch in O(1).
- *
- * @type {Record<string, import('./types.js').SkillHandler>}
- */
-const SKILL_REGISTRY = {
-  addItem:             Skills.addItem,
-  listOpen:            Skills.listOpen,
-  markComplete:        Skills.markComplete,
-  removeItem:          Skills.removeItem,
-  help:                Skills.help,
-  classifyAndExtract:  classifyAndExtract,
-  // nudgeCompletion + composeDigest are NOT in the agent's user-facing
-  // dispatch — the scheduler invokes them directly.
-};
+// Compile the manifest's slash grammar once at module load so
+// `#routeMessage` stays cheap.  `renderSlash().parse` is drop-in for the
+// retired `regexParse` (byte-equal, proven by
+// `test/manifest-equivalence.test.js`).
+const slash = renderSlash(householdManifest);
 
 /**
  * Build the SkillContext for one incoming message.  Resolves a
@@ -115,21 +101,44 @@ export class HouseholdAgent {
     this.#scheduler = scheduler;
 
     // When an LLM is configured, the slow path delegates to a
-    // headless @canopy/chat-agent ChatAgent: substrate handles
+    // headless `@canopy/chat-agent` ChatAgent: substrate handles
     // session state + tool dispatch; HouseholdAgent owns the
-    // bridge/regex layers above it.  Skills are wrapped as tool
-    // handlers (see ./llm/chatAgentBridge.js).
+    // bridge/regex layers above it.  `renderChat` projects the manifest
+    // (`../manifest.js`) onto the ChatAgent ctor input — byte-equal to
+    // the retired hand-catalogues (V0_TOOL_CATALOG /
+    // SYSTEM_PROMPT_CLASSIFY / buildHouseholdToolHandlers), proven by
+    // `test/manifest-equivalence.test.js`.
     if (this.#llm) {
+      const { toolCatalog, toolHandlers, systemPrompt } = renderChat(
+        householdManifest,
+        {
+          skillRegistry: SKILL_REGISTRY,
+          toSkillCtx:    (toolCtx) => ({
+            store:       this.#store,
+            chatId:      toolCtx.chatId,
+            senderWebid: toolCtx.actorWebid,
+            bridgeId:    toolCtx.bridgeId,
+            agent:       this,
+          }),
+          onStateUpdates: (updates) => {
+            const sch = this.#scheduler;
+            if (!sch || typeof sch.onStateUpdate !== 'function') return;
+            for (const u of updates) {
+              try { sch.onStateUpdate(u); }
+              catch (err) {
+                // eslint-disable-next-line no-console
+                console.error('[HouseholdAgent] scheduler.onStateUpdate threw:', err?.message ?? err);
+              }
+            }
+          },
+        },
+      );
       this.#chatAgent = new ChatAgent({
         bridges:        [],          // headless — Household sends replies itself
         llm:            this.#llm,
-        toolCatalog:    V0_TOOL_CATALOG,
-        toolHandlers:   buildHouseholdToolHandlers({
-          agent:     this,
-          store:     this.#store,
-          scheduler: this.#scheduler,
-        }),
-        systemPrompt:   SYSTEM_PROMPT_CLASSIFY,
+        toolCatalog,
+        toolHandlers,
+        systemPrompt,
         contextBuilder: noopContextBuilder,
       });
     }
@@ -229,8 +238,10 @@ export class HouseholdAgent {
 
   /** @returns {Promise<import('./types.js').Reply>} */
   async #routeMessage(msg) {
-    // ── Fast path: regex ────────────────────────────────────────
-    const parsed = regexParse(msg.text);
+    // ── Fast path: manifest-projected slash grammar ─────────────
+    // `slash.parse` is the renderSlash projection of `householdManifest`
+    // — byte-equal to the retired `regexParse`.
+    const parsed = slash.parse(msg.text);
 
     if (parsed === null) {
       // ── Slow path: LLM via @canopy/chat-agent (B.4) ────────

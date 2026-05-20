@@ -187,6 +187,61 @@ export class SyncEngine extends Emitter {
    *        RN callers pass an interval-poll watcher.  This is a SEPARATE
    *        knob from the legacy `watcher` parameter (above) which
    *        configures stability / grace timings.
+   *
+   * ─── V0.4 hook surface (Folio app-side concerns) ────────────────
+   * Slice G #5 (2026-05-20) — substrate's app-glue seam.  Each hook
+   * defaults to a no-op so non-Folio consumers (stoop-mobile, tasks-
+   * mobile) work without configuration.  Folio's subclass pre-binds
+   * its own implementations via `super({ ...hooks })`.
+   *
+   * @param {(localRel: string) => {sharer: string} | null} [opts.parseSharePath]
+   *        Forwarded into the internal `PathMap`.  Recognizes a local
+   *        relative path as belonging to a shared folder (e.g. Folio's
+   *        `with-<webid>/<file>` convention) and returns `{sharer}` so
+   *        the PathMap can route the file to the sharer's pod root
+   *        rather than the local user's.  Returns `null` for paths
+   *        outside any share folder.  Default: no-op (treats all paths
+   *        as own-pod).
+   *
+   * @param {(args: {
+   *   relPath: string,
+   *   localBytes: Uint8Array,
+   *   podBytes: Uint8Array,
+   *   localEtag: string|null,
+   *   podEtag: string|null,
+   * }) => Promise<{merged: Uint8Array} | null>} [opts.applyConflictHook]
+   *        Called when `runOnce` detects a divergent edit (different
+   *        SHA on both sides since last sync).  Folio's hook writes
+   *        a git-style `<<<<<<< MINE / ======= / >>>>>>> THEIRS` merge
+   *        marker and returns the marked-up content as `merged`; the
+   *        engine then writes that as the resolved file.  Return
+   *        `null` to bypass merging (the substrate's default — emits
+   *        a `conflict` event and leaves both copies for the
+   *        caller).  Forward-additive: extra args may be added in
+   *        future minor versions.
+   *
+   * @param {(args: {
+   *   identity: import('./types.js').AgentIdentity | null,
+   *   pathMap: PathMap,
+   *   podClient: object,
+   *   shares: Array<{relPath: string, sharer: string}>,
+   * }) => Promise<{minted: number, renewed: number, errors: Error[]}>} [opts.ensureSharesHook]
+   *        Called once per `runOnce` AFTER the diff is applied.  Folio
+   *        uses this to mint / renew per-folder `PodCapabilityToken`s
+   *        for any `with-<webid>/` folder discovered in this sync —
+   *        the Q-Folio.3 auto-share convention.  Substrate's default
+   *        is a no-op (returns `{minted: 0, renewed: 0, errors: []}`).
+   *        Identity rotation: when `identity.pubKey` differs from a
+   *        token's `issuer`, the hook should re-issue (see Folio's
+   *        `autoShare.js`).
+   *
+   * @param {() => Promise<Array<{
+   *   relPath: string, sharer: string, token: string, issuer: string,
+   * }>>} [opts.listSharesHook]
+   *        Returns the current share-token state for observability
+   *        (the engine's `shares()` method delegates to this).  Folio
+   *        reads its `.folio/shares.json` sidecar.  Default: returns
+   *        `[]`.
    */
   constructor({
     podClient,
@@ -254,6 +309,40 @@ export class SyncEngine extends Emitter {
   get localRoot() { return this.#localRoot; }
   get podRoot()   { return this.#podRoot; }
   get identity()  { return this.#identity; }
+
+  /**
+   * Slice G.3 (2026-05-20) — public observability for watch state.
+   *
+   * Returns `true` once the watcher adapter has actually attached
+   * (async — `start()` is fire-and-forget, so there's a brief window
+   * where `#running` is set but `#watcher` is still being constructed).
+   *
+   * Distinct from app-level "intent" flags (e.g. folio's
+   * `engine.__watching`, set synchronously when `start()` is called):
+   *
+   *   - `isWatching` = the *fact* the watcher is attached.
+   *   - app-side intent flag = the *decision* to watch.
+   *
+   * Apps that want a UI signal that doesn't blink during the attach
+   * race should stay on their intent flag; apps that need to know the
+   * substrate is genuinely armed (e.g. to skip a redundant `start()`)
+   * should use `isWatching`.
+   */
+  get isWatching() { return !!this.#watcher; }
+
+  /**
+   * Slice G #6 (2026-05-20) — public observability for run state.
+   *
+   * Returns `true` while `start()` has been called and `stop()` hasn't,
+   * regardless of whether the watcher has actually attached.  Mirrors
+   * `isWatching` but for the synchronous decision rather than the
+   * async attach.
+   *
+   * UI usage: disable "Sync now" / "Force re-push" buttons while
+   * `isRunning` is true to prevent overlapping runs (the substrate's
+   * `#runChain` already serialises, but UI feedback matters too).
+   */
+  get isRunning() { return !!this.#running; }
 
   /**
    * Set or replace the signing identity used for the Q-Folio.3 auto-share

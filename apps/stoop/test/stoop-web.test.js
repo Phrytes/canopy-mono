@@ -1,0 +1,361 @@
+/**
+ * stoop-web smoke — Slice E.1 + E.2 + E.3 + E.4 (PLAN-gui-chat-uplift.md).
+ *
+ * E.1 — first stoop web page consuming `renderWeb(stoopManifest)`:
+ *       `mine.html` (my active posts + completions).
+ * E.2 — second stoop web page consuming the NavModel:
+ *       `privacy.html` (closed-beta disclosure + data-location).
+ * E.3 — third stoop web page consuming the NavModel:
+ *       `settings.html` (per-device + per-actor preferences).
+ * E.4 — V0.4-adopt for profile.html: manifest declares the
+ *       record-shape `profile` view + 3 representative identity
+ *       fields (handle / displayName / holidayMode) with their
+ *       patch ops.  Page is NOT migrated to renderWeb (591 lines,
+ *       5 sections, custom UX — auto-rendering would regress).
+ *
+ * Boots the `apps/stoop/bin/stoop-web.js` bootstrap programmatically,
+ * then verifies:
+ *   1. `/navmodel.json` is served + carries the `mine` + `privacy` +
+ *      `settings` + `profile` sections.
+ *   2. `/stoop-config.json` carries the actor + group.
+ *   3. `/mine.html` + `/privacy.html` + `/settings.html` are served
+ *      + each carries the `data-navmodel-section` marker proving it
+ *      picks up its section.  (profile.html intentionally NOT
+ *      migrated — see E.4 note above.)
+ *   4. The skill-dispatch path round-trips: `postRequest` then
+ *      `listMyRequests` returns the freshly-added item filtered by
+ *      LocalUiAuth-configured actor.
+ *   5. The privacy page's two data-fetches (`getPrivacyNotice`,
+ *      `getDataLocation`) round-trip cleanly.
+ *   6. The settings page's `getSettings` / `updateSettings` round-
+ *      trip cleanly (read → patch → read-back).
+ *
+ * Pattern mirrors `apps/household/test/web.test.js` — same shape
+ * (programmatic startStoopWeb, same /tasks/send dispatch, same
+ * LocalUiAuth-configured actor).  Note the existing `test/web.test.js`
+ * still covers the legacy `stoop-ui.js`-style mount (production
+ * launcher) — these two tests are complementary, not duplicate.
+ */
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+
+import { startStoopWeb } from '../bin/stoop-web.js';
+
+const ACTOR = 'https://id.example/anne';
+const GROUP = 'block-42';
+
+let handle, baseUrl;
+
+beforeAll(async () => {
+  handle  = await startStoopWeb({ port: 0, actor: ACTOR, group: GROUP });
+  baseUrl = handle.url;
+});
+
+afterAll(async () => {
+  await handle?.stop();
+});
+
+async function callSkill(skillId, data) {
+  const res = await fetch(`${baseUrl}/tasks/send`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ skillId, message: { parts: [{ type: 'DataPart', data }] } }),
+  });
+  expect(res.status).toBe(200);
+  const json = await res.json();
+  expect(json.status).toBe('completed');
+  return (json.artifacts?.[0]?.parts ?? []).find((p) => p?.type === 'DataPart')?.data ?? {};
+}
+
+describe('stoop-web smoke (Slice E.1 + E.2 + E.3 + E.4)', () => {
+  it('serves /navmodel.json with the `mine` + `privacy` + `settings` + `profile` sections', async () => {
+    const res = await fetch(`${baseUrl}/navmodel.json`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toMatch(/application\/json/);
+    const nav = await res.json();
+    expect(nav.app).toBe('stoop');
+    // E.1 + E.2 + E.3 + E.4 ship FOUR sections.  Follow-on E.x slices
+    // will grow this (12 pages remaining hand-built; E.4 adopts but
+    // does not migrate profile).  Order = manifest.views[] order (Q2:
+    // deterministic declaration order).
+    expect(nav.sections.map((s) => s.id)).toEqual(['mine', 'privacy', 'settings', 'profile']);
+
+    const mine = nav.sections[0];
+    expect(mine.id).toBe('mine');
+    expect(mine.title).toBe('My posts');
+    expect(mine.itemType).toBe('request');
+    expect(mine.filter).toEqual({ open: true });
+    // V0.2 Q7 — explicit dataSource declaration in the manifest.
+    expect(mine.dataSource).toEqual({ skillId: 'listMyRequests' });
+    // V0.2 Q8 — cancelRequest with `appliesTo: {type: '*'}` surfaces
+    // as an itemAction in EVERY section (renderWeb's wildcard rule).
+    const cancel = (mine.itemActions ?? []).find((a) => a.opId === 'cancelRequest');
+    expect(cancel).toBeDefined();
+    expect(cancel.appliesTo.type).toBe('*');
+
+    // E.2 — privacy section.
+    const privacy = nav.sections[1];
+    expect(privacy.id).toBe('privacy');
+    expect(privacy.title).toBe('Privacy — wat je moet weten');
+    expect(privacy.itemType).toBe('group-rules');  // placeholder; see manifest note
+    // V0.2 Q9 — read-only flag passed through verbatim.
+    expect(privacy.readOnly).toBe(true);
+    // V0.3 Q15 (adopted 2026-05-21) — explicit dataSource with
+    // argsFromContext.  Replaces the V0.2 workaround that
+    // direct-called getPrivacyNotice; `$lang` now substitutes from
+    // the browser-supplied context.
+    expect(privacy.dataSource).toEqual({
+      skillId:         'getPrivacyNotice',
+      argsFromContext: { lang: '$lang' },
+    });
+    // V0.2 Q9 — readOnly: true suppresses creative-verb auto-surface
+    // (Q10 affordances), so affordances[] is empty here.
+    expect(privacy.affordances).toEqual([]);
+
+    // E.3 — settings section.
+    const settings = nav.sections[2];
+    expect(settings.id).toBe('settings');
+    expect(settings.title).toBe('Instellingen');
+    expect(settings.itemType).toBe('group-rules');  // placeholder; settings is
+                                                    // singleton-record (V0.3 #5)
+    // V0.2 Q7 — explicit dataSource declaration in the manifest
+    // (`getSettings({})` is param-free — perfect fit).
+    expect(settings.dataSource).toEqual({ skillId: 'getSettings' });
+    // V0.3 Q17 (adopted 2026-05-21) — shape: 'record' marks this
+    // section as a singleton (matches getSettings's reality).
+    expect(settings.shape).toBe('record');
+    // V0.4 Q18 (adopted 2026-05-22) — section.fields[] surfaces the
+    // editable settings fields declared in the manifest.  Subset
+    // adoption — declares 4 representative fields covering both the
+    // direct-arg op (setHopMode) and the wrapped-patch op
+    // (updateSettings).
+    expect(Array.isArray(settings.fields)).toBe(true);
+    expect(settings.fields.length).toBeGreaterThanOrEqual(4);
+    const byName = Object.fromEntries(settings.fields.map((f) => [f.name, f]));
+    // hopThrough — setHopMode direct-arg.
+    expect(byName.hopThrough.type).toBe('boolean');
+    expect(byName.hopThrough.patch).toEqual({ opId: 'setHopMode', argName: 'global' });
+    // pollIntervalMs — updateSettings wrapped-patch.
+    expect(byName.pollIntervalMs.type).toBe('enum');
+    expect(byName.pollIntervalMs.choices).toEqual([2000, 10000, 60000, 300000]);
+    expect(byName.pollIntervalMs.patch).toEqual({
+      opId: 'updateSettings', argName: 'pollIntervalMs',
+    });
+    // E.3 deliberately does NOT set `readOnly: true` (settings mutates
+    // via per-field skills).  But because the per-field skills
+    // (`updateSettings`, `setHopMode`) aren't manifest ops, no Q10
+    // creative-verb affordances surface here — settings is V0.3 #6
+    // territory (record-shape patch mutations don't fit add/register).
+    expect(settings.readOnly).toBeUndefined();
+    expect(settings.affordances).toEqual([]);
+
+    // E.4 — profile section.  V0.4-adopt mirrors settings: manifest
+    // declares the record-shape view + fields[]; profile.html keeps
+    // its rich custom UI (591 lines, 5 sections — auto-rendering
+    // would regress UX).
+    const profile = nav.sections[3];
+    expect(profile.id).toBe('profile');
+    expect(profile.title).toBe('Mijn profiel');
+    expect(profile.itemType).toBe('group-rules');  // placeholder; profile is
+                                                   // singleton-record (same
+                                                   // pattern as settings + privacy)
+    // V0.3 Q17 — shape: 'record' marks this section as a singleton.
+    expect(profile.shape).toBe('record');
+    // V0.3 Q15 — explicit dataSource (`getMyProfile({})` is param-free).
+    expect(profile.dataSource).toEqual({ skillId: 'getMyProfile' });
+    // V0.4 Q18 (adopted 2026-05-22) — section.fields[] surfaces the
+    // editable identity fields declared in the manifest.  Subset
+    // adoption — declares 3 representative fields covering the
+    // primary identity dimensions (handle / displayName /
+    // holidayMode).  All FLAT dispatch (no Q21 argWrapper) —
+    // getMyProfile-backed mutations are single-arg skills.
+    expect(Array.isArray(profile.fields)).toBe(true);
+    expect(profile.fields.length).toBeGreaterThanOrEqual(3);
+    const profileByName = Object.fromEntries(profile.fields.map((f) => [f.name, f]));
+    // handle — setMyHandle direct-arg.
+    expect(profileByName.handle.type).toBe('string');
+    expect(profileByName.handle.patch).toEqual({ opId: 'setMyHandle', argName: 'handle' });
+    // displayName — setMyDisplayName direct-arg.
+    expect(profileByName.displayName.type).toBe('string');
+    expect(profileByName.displayName.patch).toEqual({
+      opId: 'setMyDisplayName', argName: 'displayName',
+    });
+    // holidayMode — setHolidayMode direct-arg; argName is the SKILL ARG
+    // (`on`), not the field-on-entry name (`holidayMode`).  Same
+    // semantic split settings's hopThrough → setHopMode({global}) uses.
+    expect(profileByName.holidayMode.type).toBe('boolean');
+    expect(profileByName.holidayMode.patch).toEqual({
+      opId: 'setHolidayMode', argName: 'on',
+    });
+    // E.4 deliberately does NOT set `readOnly: true` (profile mutates
+    // via per-field skills).  Like settings, the per-field skills
+    // (`setMyHandle`, `setMyDisplayName`, `setHolidayMode`) aren't
+    // manifest ops, so no Q10 creative-verb affordances surface here.
+    expect(profile.readOnly).toBeUndefined();
+    expect(profile.affordances).toEqual([]);
+  });
+
+  it('serves /stoop-config.json with the actor + group', async () => {
+    const res = await fetch(`${baseUrl}/stoop-config.json`);
+    expect(res.status).toBe(200);
+    const cfg = await res.json();
+    expect(cfg.actor).toBe(ACTOR);
+    expect(cfg.group).toBe(GROUP);
+    expect(cfg.app).toBe('stoop');
+  });
+
+  it('serves /mine.html with the data-navmodel-section marker', async () => {
+    const res = await fetch(`${baseUrl}/mine.html`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toMatch(/text\/html/);
+    const html = await res.text();
+    expect(html.length).toBeGreaterThan(0);
+    // The marker that proves the migrated page picks up the section.
+    expect(html).toContain('data-navmodel-section="mine"');
+    // The migrated page still fetches /navmodel.json (the consumption
+    // hook).
+    expect(html).toContain("fetch('/navmodel.json')");
+    // V0.2-adopt (2026-05-21) — the page now drives its data-fetch
+    // via the shared `fetchSectionItems` helper (which honours the
+    // manifest's `section.dataSource: {skillId: 'listMyRequests'}`
+    // Q7 declaration), removing the prior hard-coded skill call.
+    expect(html).toContain('fetchSectionItems');
+    // Per-row buttons come from `section.itemActions[]` gated by
+    // `itemMatchesAppliesTo` (with a local wildcard work-around).
+    expect(html).toContain('itemMatchesAppliesTo');
+  });
+
+  it('serves /lib/web-adapter/fetchSectionItems.js (V0.2 helper overlay)', async () => {
+    // The V0.2 helpers are overlaid by `bin/stoop-web.js`'s
+    // `extraStaticFiles` so `mine.html` can `import` them at runtime
+    // (same mechanism tasks-v0 uses).
+    const res = await fetch(`${baseUrl}/lib/web-adapter/fetchSectionItems.js`);
+    expect(res.status).toBe(200);
+    const js = await res.text();
+    expect(js).toContain('export async function fetchSectionItems');
+  });
+
+  it('serves /lib/web-adapter/itemMatchesAppliesTo.js (V0.2 helper overlay)', async () => {
+    const res = await fetch(`${baseUrl}/lib/web-adapter/itemMatchesAppliesTo.js`);
+    expect(res.status).toBe(200);
+    const js = await res.text();
+    expect(js).toContain('export function itemMatchesAppliesTo');
+  });
+
+  it('serves /index.html (legacy hand-built page still works)', async () => {
+    // Slice E.1 only migrates mine.html — the other 15 pages stay
+    // hand-built and serve fine.  Pinning this regression-catches a
+    // misconfigured staticDir that broke the non-migrated pages.
+    const res = await fetch(`${baseUrl}/`);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('Stoop');
+  });
+
+  it('exposes the agent card at /.well-known/agent.json', async () => {
+    const res = await fetch(`${baseUrl}/.well-known/agent.json`);
+    expect(res.status).toBe(200);
+    const card = await res.json();
+    expect(card).toHaveProperty('skills');
+  });
+
+  it('serves /privacy.html with the data-navmodel-section marker (E.2)', async () => {
+    const res = await fetch(`${baseUrl}/privacy.html`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toMatch(/text\/html/);
+    const html = await res.text();
+    expect(html.length).toBeGreaterThan(0);
+    // The marker that proves the migrated page picks up the section.
+    expect(html).toContain('data-navmodel-section="privacy"');
+    // The migrated page fetches /navmodel.json (the consumption hook).
+    expect(html).toContain("fetch('/navmodel.json')");
+    // V0.2 — the page drives its data-location fetch via the shared
+    // `fetchSectionItems` helper (which honours the manifest's
+    // `section.dataSource: {skillId: 'getDataLocation'}` Q7
+    // declaration), removing the prior hard-coded skill call.
+    expect(html).toContain('fetchSectionItems');
+  });
+
+  it('privacy data-fetches round-trip (getPrivacyNotice + getDataLocation)', async () => {
+    // getPrivacyNotice is lang-aware (V0.2 gap #3: dataSource.args is
+    // static; this fetch stays direct-called in the page).
+    const notice = await callSkill('getPrivacyNotice', { lang: 'nl' });
+    expect(notice.lang).toBe('nl');
+    expect(Array.isArray(notice.sections)).toBe(true);
+    expect(notice.sections.length).toBeGreaterThan(0);
+    for (const s of notice.sections) {
+      expect(typeof s.heading).toBe('string');
+      expect(typeof s.body).toBe('string');
+    }
+
+    // getDataLocation is param-free — the dataSource skillId declared
+    // in the manifest.  `fetchSectionItems` calls it with `{}`.
+    const loc = await callSkill('getDataLocation', {});
+    // Shape: relayOperator / relayUrl / podIssuer / podRoot (any may
+    // be unset in the smoke bundle; the page renders them with a
+    // localised "— niet ingesteld —" fallback).  Just verify the
+    // skill responds with an object.
+    expect(typeof loc).toBe('object');
+    expect(loc).not.toBeNull();
+  });
+
+  it('serves /settings.html with the data-navmodel-section marker (E.3)', async () => {
+    const res = await fetch(`${baseUrl}/settings.html`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toMatch(/text\/html/);
+    const html = await res.text();
+    expect(html.length).toBeGreaterThan(0);
+    // The marker that proves the migrated page picks up the section.
+    expect(html).toContain('data-navmodel-section="settings"');
+    // The migrated page fetches /navmodel.json (the consumption hook).
+    expect(html).toContain("fetch('/navmodel.json')");
+    // V0.2 — the page drives its read fetch via the shared
+    // `fetchSectionItems` helper (which honours the manifest's
+    // `section.dataSource: {skillId: 'getSettings'}` Q7 declaration),
+    // removing the prior hard-coded `callSkill('getSettings', {})`
+    // call.
+    expect(html).toContain('fetchSectionItems');
+  });
+
+  it('settings data-fetches round-trip (getSettings + updateSettings)', async () => {
+    // getSettings is param-free — it's the dataSource skillId declared
+    // in the manifest.  `fetchSectionItems` calls it with `{}`.
+    // V0.3 signal #5: settings is a SINGLETON record (`{settings: {...}}`),
+    // not a list of items — the page extracts `.settings` directly.
+    const r1 = await callSkill('getSettings', {});
+    expect(typeof r1).toBe('object');
+    expect(r1).not.toBeNull();
+    expect('settings' in r1).toBe(true);  // record-shape envelope
+
+    // updateSettings({patch}) — per-field mutation path (NOT a
+    // manifest op; this is V0.3 signal #6 — record-shape patch
+    // mutations don't fit Q10's add/register creative-verb model).
+    // Round-trip: patch broadcastable=false, then read it back.
+    const r2 = await callSkill('updateSettings', { patch: { broadcastable: false } });
+    expect(r2.settings).toBeDefined();
+    expect(r2.settings.broadcastable).toBe(false);
+
+    const r3 = await callSkill('getSettings', {});
+    expect(r3.settings.broadcastable).toBe(false);
+  });
+
+  it('postRequest → listMyRequests round-trips via LocalUiAuth', async () => {
+    // Post as ANNE (the LocalUiAuth-configured actor); listMyRequests
+    // filters by addedBy=from, so ANNE should see her own item.
+    const posted = await callSkill('postRequest', {
+      text:         'borrow a ladder',
+      intent:       'ask',
+      timeoutMs:    1,
+      expectClaims: 0,
+    });
+    expect(posted.requestId).toBeTruthy();
+
+    const mine = await callSkill('listMyRequests', {});
+    expect(Array.isArray(mine.items)).toBe(true);
+    expect(mine.items.length).toBeGreaterThanOrEqual(1);
+    expect(mine.items.some((i) => i.id === posted.requestId)).toBe(true);
+    // All returned items belong to the calling actor.
+    for (const item of mine.items) {
+      expect(item.addedBy).toBe(ACTOR);
+    }
+  });
+});

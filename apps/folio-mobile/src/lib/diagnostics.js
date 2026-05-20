@@ -47,12 +47,41 @@ export async function runMobileDiagnostics({ engine, oidc, podRoot }) {
     }
   }
 
-  // Pod write probe — defer on v0; surface as a manual hint.
+  // Pod write probe — invoke engine.verifyPodState on a representative
+  // local file.  Slice G #4 (2026-05-20): the method has always been
+  // available on the RN engine (substrate-side, packages/sync-engine/
+  // src/SyncEngine.js:607+), but pre-fix this step always skipped with
+  // a stale "not available" message.
   try {
-    if (typeof engine.verifyPodState === 'function') {
-      add('pod-probe', 'skip', 'Pod write probe', 'run a manual sync first');
+    if (typeof engine.verifyPodState !== 'function') {
+      add('pod-probe', 'fail', 'Pod write probe',
+          'engine.verifyPodState missing — substrate downgrade?');
     } else {
-      add('pod-probe', 'skip', 'Pod write probe', 'engine.verifyPodState not available');
+      // Pick the first local entry to probe.  If the local root is empty
+      // (pre-sync), report skip with a sync-first hint.
+      let probePath = null;
+      try {
+        const list = await engine.fs.readdir(engine.localRoot, { withFileTypes: false });
+        probePath = list.find((n) => typeof n === 'string' && !n.startsWith('.'))
+                 ?? null;
+      } catch { /* readdir already reported above */ }
+
+      if (!probePath) {
+        add('pod-probe', 'skip', 'Pod write probe',
+            'no local files to probe — sync some content first');
+      } else {
+        const r = await engine.verifyPodState(probePath);
+        if (r?.exists === true && r?.shaMatches === true) {
+          add('pod-probe', 'pass', 'Pod write probe',
+              `${probePath} matches pod (${r.podSize} bytes)`);
+        } else if (r?.exists === true) {
+          add('pod-probe', 'warn', 'Pod write probe',
+              `${probePath} on pod but content differs (sha mismatch — run sync)`);
+        } else {
+          add('pod-probe', 'warn', 'Pod write probe',
+              `${probePath} not yet on pod (initial sync pending)`);
+        }
+      }
     }
   } catch (err) {
     add('pod-probe', 'fail', 'Pod write probe', err?.message ?? String(err));

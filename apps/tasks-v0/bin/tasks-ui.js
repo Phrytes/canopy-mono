@@ -82,6 +82,9 @@ import {
 } from '@canopy/core';
 import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
 import { CachingDataSource } from '@canopy/local-store';
+import { renderWeb }         from '@canopy/app-manifest';
+
+import { tasksManifest } from '../manifest.js';
 
 const { values } = parseArgs({
   options: {
@@ -469,12 +472,67 @@ const tasksConfig = JSON.stringify({
   ...(bundle.crew ? { crew: { crewId: bundle.crew.crewId, name: bundle.crew.name, kind: bundle.crew.kind } } : {}),
 });
 
+// Slice B.1 (2026-05-20) — surface the NavModel for the renderWeb-
+// driven `dag.html` (and future pages).  Static for the life of the
+// process; the manifest is module-scope const.  Mirror of household-
+// web.js (`apps/household/bin/household-web.js`).
+const navModel = renderWeb(tasksManifest);
+
+// Slice B.1 — overlay `src/ui/dagFlatten.js` at `/lib/dagFlatten.js`
+// so dag.html can `import` it from the browser.  `staticDir` is
+// path-traversal-hardened so a relative `../src/...` import resolves
+// to 404; this overlay re-routes one shared helper through
+// `extraStaticFiles` (the same mechanism the navmodel/config use).
+// Source-of-truth stays under `src/ui/` (consumed by tasks-mobile too,
+// per `docs/web-mobile-parity-workarounds.md` §A.4).
+const dagFlattenJs = await readFile(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'ui', 'dagFlatten.js'),
+  'utf8',
+);
+
+// Slice B.2.0 (2026-05-20) — overlay the shared @canopy/web-adapter
+// helpers at `/lib/web-adapter/<basename>.js`. Same mechanism as
+// `/lib/dagFlatten.js`. Source-of-truth: `packages/web-adapter/src/`.
+const webAdapterFiles = await loadWebAdapterFiles();
+
 const ui = await mountLocalUi(bundle.agent, {
   port,
   staticDir:        webDir,
   a2aTLSLayer:      new LocalUiAuth({ localActor: values.actor }),
-  extraStaticFiles: { '/tasks-config.json': tasksConfig },
+  extraStaticFiles: {
+    '/tasks-config.json': tasksConfig,
+    '/navmodel.json':     JSON.stringify(navModel),
+    '/lib/dagFlatten.js': dagFlattenJs,
+    ...webAdapterFiles,
+  },
 });
+
+async function loadWebAdapterFiles() {
+  const root = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..', '..', '..',
+    'packages', 'web-adapter', 'src',
+  );
+  // V0.2 (2026-05-20) — fetchSectionItems + schemaToFormFields join the
+  // shared web-adapter overlay. `fetchSectionItems` honours the
+  // manifest's `view.dataSource` (Q7) so per-page section→skill dispatch
+  // collapses; `schemaToFormFields` turns an affordance's paramsSchema
+  // into a platform-neutral form-field descriptor list.
+  const names = [
+    'callSkill.js',
+    'deriveItemState.js',
+    'itemMatchesAppliesTo.js',
+    'applyPrefilledParams.js',
+    'fetchSectionItems.js',
+    'schemaToFormFields.js',
+    'index.js',
+  ];
+  const out = {};
+  for (const n of names) {
+    out[`/lib/web-adapter/${n}`] = await readFile(join(root, n), 'utf8');
+  }
+  return out;
+}
 
 console.log(`H4 UI ready at ${ui.url}`);
 console.log(`  actor:  ${values.actor}`);

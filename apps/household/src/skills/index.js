@@ -5,10 +5,20 @@
  * (see `../types.js`).  The agent looks them up by id.
  */
 
+// SP-1 skills (user-facing list / completion / removal / help)
 export { addItem }          from './addItem.js';
 export { listOpen }         from './listOpen.js';
 export { markComplete }     from './markComplete.js';
 export { removeItem }       from './removeItem.js';
 export { help }             from './help.js';
+
+// SP-2 skills (tasks + contacts)
+export { addTask }          from './addTask.js';
+export { listTasks }        from './listTasks.js';
+export { claim }            from './claim.js';
+export { reassign }         from './reassign.js';
+export { registerName }     from './registerName.js';
+
+// Scheduler-invoked (not user-facing dispatch)
 export { nudgeCompletion }  from './nudgeCompletion.js';
 export { composeDigest }    from './composeDigest.js';

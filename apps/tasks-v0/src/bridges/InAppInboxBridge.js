@@ -15,11 +15,28 @@
  * `notifier.channels.inbox`. Same shape as
  * `chat-agent.TelegramBridge`.
  *
- * **Storage shape.** Each entry is a `kind: 'notification'` item in
+ * **Storage shape.** Each entry is a `type: 'inbox-item'` item in
  * an `ItemStore` rooted at the recipient's inbox container (default
- * `mem://user/inbox/`). The item's `text` is the notification body;
- * `source` carries the structured payload (event-type-specific data,
- * action buttons, etc.).
+ * `mem://user/inbox/`).  Per Tier B substrate alignment (2026-05-20):
+ * the bridge stamps the substrate's `appliesTo` keys at write time
+ * so consumers don't have to synthesize them at read time:
+ *
+ *   - `type: 'inbox-item'`    — matches the manifest's `appliesTo.type`
+ *   - `kind: <eventType>`     — top-level mirror of `source.meta.eventType`
+ *                                when present (used by the V0.4 generic
+ *                                gate, e.g. `appliesTo: { kind:
+ *                                'subtask-proposal' }`)
+ *   - `source.kind: 'inbox-entry'` — preserved for back-compat; legacy
+ *                                consumers still recognize the sentinel
+ *
+ * The item's `text` is the notification body; `source` carries the
+ * structured payload (event-type-specific data, action buttons, etc.).
+ *
+ * Pre-Tier-B (before commit b7951ab) the bridge wrote `type:
+ * 'notification'` and `kind` was buried under `source.meta.eventType`;
+ * consumers (InboxScreen, inbox.html) synthesised the substrate shape
+ * at read time via `tagInboxItem` / `manifestAllows` helpers.  Those
+ * helpers are now redundant — bridge writes the canonical shape.
  *
  * **Local-only by design** — no push, no relay, no network. The
  * inbox is FOR the user, persisted to their local cache (and
@@ -96,9 +113,17 @@ export class InAppInboxBridge {
       );
     }
     const id = ulid();
+    // Tier B (2026-05-20) — stamp the substrate's appliesTo keys at
+    // write time.  `type: 'inbox-item'` matches the manifest's
+    // section gate; `kind` mirrors `meta.eventType` for the V0.4
+    // generic per-kind gate (subtask-proposal/request, etc.).
+    const eventKind = (meta && typeof meta === 'object' && typeof meta.eventType === 'string')
+      ? meta.eventType
+      : null;
     const item = {
       id,
-      type:    'notification',
+      type:    'inbox-item',
+      ...(eventKind ? { kind: eventKind } : {}),
       text:    typeof text === 'string' ? text : '',
       addedBy: 'system',          // notifier-system entries; UI hides the attribution
       addedAt: Date.now(),

@@ -27,7 +27,8 @@
 
 import { Emitter } from '@canopy/core';
 
-import { ulid } from './ulid.js';
+import { ulid }              from './ulid.js';
+import { audienceFromItem }  from './audience.js';
 import {
   ItemNotFoundError,
   PermissionDeniedError,
@@ -35,6 +36,19 @@ import {
   MissingArgumentError,
   DependenciesOpenError,
 } from './errors.js';
+
+/**
+ * Stable-JSON-stringify — sorts object keys so deep-equal-ish comparison
+ * works for plain audience objects.  Audiences are simple shapes
+ * (string short-hand OR object with {kind, members|id|of}); no nested
+ * arrays of objects needing deeper sorting.  Sufficient for SP-5b V0b.
+ */
+function jsonStable(v) {
+  if (v === undefined || v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(jsonStable).join(',') + ']';
+  const keys = Object.keys(v).sort();
+  return '{' + keys.map((k) => JSON.stringify(k) + ':' + jsonStable(v[k])).join(',') + '}';
+}
 
 const NOOP_POLICY = Object.freeze({});
 
@@ -792,6 +806,22 @@ export class ItemStore extends Emitter {
         out = out.filter((i) => i.assignee === filter.assignee);
       }
     }
+    // SP-5b V0b (2026-05-21) — equality match against item's effective
+    // audience (via the audienceFromItem bridge).  V0b semantics are
+    // STRICT EQUALITY: `filter.audience` is compared via JSON-stable
+    // deep equal to `audienceFromItem(item)`.
+    //
+    // Known limitation (deferred to V0c): the string short-hand
+    // `'crew:X'` and the structured form `{kind:'circle-ref', id:'X'}`
+    // are NOT considered equivalent here.  Normalisation needs the
+    // resolver from `@canopy/circles`, which item-store cannot depend
+    // on (layering).  V0c will either lift `normalizeAudience` to
+    // item-types or take a `normalizeAudience` callback at store
+    // construction.
+    if (filter.audience !== undefined) {
+      const targetJson = jsonStable(filter.audience);
+      out = out.filter((i) => jsonStable(audienceFromItem(i)) === targetJson);
+    }
     return out;
   }
 
@@ -823,6 +853,10 @@ export class ItemStore extends Emitter {
       ...(partial.requiredSkills ? { requiredSkills: [...partial.requiredSkills] } : {}),
       ...(partial.dueAt !== undefined ? { dueAt: partial.dueAt } : {}),
       ...(partial.visibility ? { visibility: partial.visibility } : {}),
+      // SP-5b V0a (2026-05-21) — store the richer `audience` field
+      // verbatim when supplied.  Forward-additive; items without it
+      // fall back to `visibility` via `audienceFromItem(item)`.
+      ...(partial.audience !== undefined ? { audience: partial.audience } : {}),
       ...(partial.source ? { source: partial.source } : {}),
       // DoD-lifecycle additions (all optional, all backward-compatible):
       ...(partial.definitionOfDone ? { definitionOfDone: partial.definitionOfDone } : {}),
