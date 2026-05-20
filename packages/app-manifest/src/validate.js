@@ -187,6 +187,35 @@ function validateOperation(op, path, manifest, errors, idSet) {
     });
   }
 
+  // Q27 (V0.8, 2026-05-20) — optional `surfaces.ui.confirm` severity
+  // hint for destructive / side-effect-bearing ops.  Adapters style
+  // the confirm button accordingly (red for danger, yellow for warn,
+  // neutral for info).  Closes Tier C #4 (consent-gated reads).
+  // Passphrase / one-shot reveals stay app-side — out of scope.
+  const uiConfirm = op?.surfaces?.ui?.confirm;
+  if (uiConfirm !== undefined) {
+    if (!uiConfirm || typeof uiConfirm !== 'object' || Array.isArray(uiConfirm)) {
+      errors.push({
+        path:    `${path}/surfaces/ui/confirm`,
+        message: 'surfaces.ui.confirm must be an object if present',
+      });
+    } else {
+      if (!['info', 'warn', 'danger'].includes(uiConfirm.severity)) {
+        errors.push({
+          path:    `${path}/surfaces/ui/confirm/severity`,
+          message: "surfaces.ui.confirm.severity must be 'info' | 'warn' | 'danger'",
+        });
+      }
+      if (uiConfirm.message !== undefined
+          && (typeof uiConfirm.message !== 'string' || uiConfirm.message === '')) {
+        errors.push({
+          path:    `${path}/surfaces/ui/confirm/message`,
+          message: 'surfaces.ui.confirm.message must be a non-empty string if present',
+        });
+      }
+    }
+  }
+
   if (op.appliesTo !== undefined) {
     if (op.appliesTo === null || typeof op.appliesTo !== 'object' || Array.isArray(op.appliesTo)) {
       errors.push({ path: `${path}/appliesTo`, message: 'appliesTo must be an object if present' });

@@ -109,6 +109,18 @@ describe('Slice B.2.3 — manifest delta (inbox.html data source + Dismiss)', ()
     // No state field on inbox items — inbox notifications are stateless.
     expect(dismiss.appliesTo?.state).toBeUndefined();
   });
+
+  // V0.8 Q27 adoption (2026-05-20) — Tier C consent gate on clearInbox.
+  it('clearInbox section-header CTA carries the Q27 confirm severity hint', () => {
+    const nav = renderWeb(tasksManifest);
+    const sec = nav.sections.find((s) => s.id === 'inbox');
+    const clearAll = sec.sectionActions?.find((a) => a.opId === 'clearInbox');
+    expect(clearAll).toBeTruthy();
+    expect(clearAll.confirm).toEqual({
+      severity: 'warn',
+      message:  'Clear all inbox notifications?  Cannot be undone for this device.',
+    });
+  });
 });
 
 describe('Slice B.2.3 — inbox.html page integration', () => {

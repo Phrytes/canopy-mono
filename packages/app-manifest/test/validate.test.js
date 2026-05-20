@@ -452,6 +452,60 @@ describe('validateManifest', () => {
     });
   });
 
+  describe('V0.8 Q27 surfaces.ui.confirm severity hint', () => {
+    const baseManifest = (op) => ({
+      app:        'c',
+      itemTypes:  ['t'],
+      operations: [op],
+      views:      [{ id: 'v', title: 'V', type: 't' }],
+    });
+
+    it("Q27 — accepts confirm with severity: 'danger' + message", () => {
+      expect(ok(baseManifest({
+        id: 'rm', verb: 'remove', params: [],
+        appliesTo: { type: 't' },
+        surfaces: { ui: { label: 'Delete',
+                          confirm: { severity: 'danger', message: 'Are you sure?' } } },
+      }))).toBe(true);
+    });
+
+    it('Q27 — accepts confirm with severity only (no message)', () => {
+      expect(ok(baseManifest({
+        id: 'arch', verb: 'archive', params: [],
+        appliesTo: { type: 't' },
+        surfaces: { ui: { label: 'Archive',
+                          confirm: { severity: 'warn' } } },
+      }))).toBe(true);
+    });
+
+    it("Q27 — rejects unknown severity value", () => {
+      const e = errs(baseManifest({
+        id: 'x', verb: 'do', params: [],
+        appliesTo: { type: 't' },
+        surfaces: { ui: { confirm: { severity: 'critical' } } },
+      }));
+      expect(e.some((x) => /severity must be 'info' \| 'warn' \| 'danger'/.test(x.message))).toBe(true);
+    });
+
+    it('Q27 — rejects confirm as non-object', () => {
+      const e = errs(baseManifest({
+        id: 'x', verb: 'do', params: [],
+        appliesTo: { type: 't' },
+        surfaces: { ui: { confirm: 'danger' } },
+      }));
+      expect(e.some((x) => /confirm must be an object/.test(x.message))).toBe(true);
+    });
+
+    it('Q27 — rejects empty-string confirm.message', () => {
+      const e = errs(baseManifest({
+        id: 'x', verb: 'do', params: [],
+        appliesTo: { type: 't' },
+        surfaces: { ui: { confirm: { severity: 'warn', message: '' } } },
+      }));
+      expect(e.some((x) => /confirm\.message must be a non-empty string/.test(x.message))).toBe(true);
+    });
+  });
+
   describe('V0.4 Q16-strict mode', () => {
     const strict = (m) => validateManifest(m, { strict: true });
     const lax    = (m) => validateManifest(m);
