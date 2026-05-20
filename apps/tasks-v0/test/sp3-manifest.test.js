@@ -18,8 +18,9 @@ import { describe, it, expect } from 'vitest';
 
 import { renderChat, validateManifest } from '@canopy/app-manifest';
 
-import { tasksManifest } from '../manifest.js';
-import { buildSkills }   from '../src/skills/index.js';
+import { tasksManifest }        from '../manifest.js';
+import { buildSkills }          from '../src/skills/index.js';
+import { buildWorkspaceSkills } from '../src/skills/workspace.js';
 
 describe('SP-3 V0: tasks-v0 manifest', () => {
   it('validateManifest = ok', () => {
@@ -27,18 +28,25 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
     expect(ok, JSON.stringify(errors, null, 2)).toBe(true);
   });
 
-  it('every manifest op id matches a defineSkill in src/skills/index.js', () => {
-    const defs = buildSkills({ bundleResolver: () => null });
+  it('every manifest op id matches a defineSkill across the registered builders', () => {
+    // SP-3 V0 ops live in `buildSkills`; Slice B.1 (2026-05-20) added
+    // `getDagTree`, which lives in `buildWorkspaceSkills`.  This is the
+    // same registration set that `wireSkills` wires onto the meshAgent —
+    // expand here when new builders surface manifest ops.
+    const defs = [
+      ...buildSkills({ bundleResolver: () => null }),
+      ...buildWorkspaceSkills({ bundleResolver: () => null }),
+    ];
     const skillIds = new Set(defs.map((d) => d.id));
     for (const op of tasksManifest.operations) {
       expect(
         skillIds,
-        `manifest op "${op.id}" must have a matching skill in buildSkills()`,
+        `manifest op "${op.id}" must have a matching skill in the registered builders`,
       ).toContain(op.id);
     }
   });
 
-  it('renderChat produces well-formed toolCatalog covering all 12 ops', () => {
+  it('renderChat produces well-formed toolCatalog covering every op', () => {
     const stub = Object.fromEntries(
       tasksManifest.operations.map((op) => [
         op.id,
