@@ -37,7 +37,18 @@ const STR_NONEMPTY = { schema: { minLength: 1 } };
 
 export const tasksManifest = {
   app:       'tasks',
-  itemTypes: ['task'],
+  /*
+   * Slice B.2.3 (2026-05-20) — `'inbox-item'` joins as an app-local
+   * (non-canonical, F-SP1-a) item type so the `inbox` view can declare
+   * `view.type: 'inbox-item'` (validateView pins `view.type` ∈
+   * `manifest.itemTypes`).  Inbox notifications are NOT real ItemStore
+   * items — they live at `mem://user/inbox/<id>.json` (cross-app,
+   * per-user), written by `InAppInboxBridge` (Phase 6) and read by
+   * `listMyInbox`.  The manifest uses `'inbox-item'` purely as a
+   * NavModel category tag for routing the `inbox` view + the
+   * `clearInboxItem` itemAction.
+   */
+  itemTypes: ['task', 'inbox-item'],
 
   operations: [
     {
@@ -228,6 +239,57 @@ export const tasksManifest = {
       },
     },
     /*
+     * Slice B.2.3 (2026-05-20) — inbox notifications surfaced on
+     * `apps/tasks-v0/web/inbox.html`.  Per-user feed of cross-app
+     * notifications stored at `mem://user/inbox/<id>.json` (Phase 6
+     * `InAppInboxBridge`); skill lives in `src/skills/inbox.js`.
+     *
+     * Phase-1 scope (this slice): the three ops needed to render +
+     * dismiss notifications.  Deferred to B.2.3b (per-event-kind
+     * dispatch + global "clear all" CTA):
+     *
+     *   - `approveSubtaskRequest`   — admin/coordinator approve a
+     *                                 sub-task-request notification.
+     *   - `declineSubtaskRequest`   — admin/coordinator decline (with
+     *                                 optional note).
+     *   - `approveSubtaskProposal`  — parent assignee approve a
+     *                                 sub-task-proposal notification.
+     *   - `declineSubtaskProposal`  — parent assignee decline (with
+     *                                 optional note).
+     *   - `clearInbox`              — bulk-delete header CTA.  Awaits a
+     *                                 manifest pattern for "section-
+     *                                 level non-creative action" (V0
+     *                                 only models per-row + global
+     *                                 placements; an app-shell global
+     *                                 op is wrong here because the CTA
+     *                                 belongs ON the section).
+     */
+    {
+      id:        'listMyInbox',
+      verb:      'list',
+      appliesTo: { type: 'inbox-item' },
+      params: [
+        { name: 'limit', kind: 'number' },
+        { name: 'since', kind: 'number' },
+      ],
+      surfaces: {
+        chat: { hint: 'List inbox notifications, newest first.' },
+      },
+    },
+    {
+      id:        'clearInboxItem',
+      verb:      'remove',
+      appliesTo: { type: 'inbox-item' },
+      params: [
+        { name: 'id', kind: 'string', required: true, ...ID_NONEMPTY },
+      ],
+      surfaces: {
+        chat: { hint: 'Delete one inbox notification by id.' },
+        ui:   { control: 'button', label: 'Dismiss' },
+      },
+    },
+
+    /*
      * Slice B.1 (2026-05-20) — DAG-tree projection of the task graph.
      *
      * Verb is the app-local `tree` (not in the canonical VERBS allow-
@@ -332,6 +394,27 @@ export const tasksManifest = {
       title:      'DAG',
       type:       'task',
       dataSource: { skillId: 'getDagTree' },
+    },
+    /*
+     * Slice B.2.3 (2026-05-20) — notification feed consumed by
+     * `apps/tasks-v0/web/inbox.html` through the NavModel projector.
+     * `type: 'inbox-item'` is an app-local (non-canonical) item-type
+     * tag — see itemTypes comment above; the inbox is not a real
+     * ItemStore, it lives at `mem://user/inbox/<id>.json` (cross-app,
+     * per-user).  `dataSource.args.limit: 200` mirrors the pre-B.2.3
+     * page's `callSkill('listMyInbox', {limit: 200})`.
+     *
+     * The page's per-row `clearInboxItem` button comes through
+     * `section.itemActions[]`; the per-event-kind subtask
+     * approve/decline buttons + the "Clear all" header CTA stay
+     * off-manifest in V0 (deferred to B.2.3b — see the ops block
+     * for the deferred list).
+     */
+    {
+      id:         'inbox',
+      title:      'Notifications',
+      type:       'inbox-item',
+      dataSource: { skillId: 'listMyInbox', args: { limit: 200 } },
     },
   ],
 };

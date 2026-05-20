@@ -21,6 +21,7 @@ import { renderChat, validateManifest } from '@canopy/app-manifest';
 import { tasksManifest }        from '../manifest.js';
 import { buildSkills }          from '../src/skills/index.js';
 import { buildWorkspaceSkills } from '../src/skills/workspace.js';
+import { buildInboxSkills }     from '../src/skills/inbox.js';
 
 describe('SP-3 V0: tasks-v0 manifest', () => {
   it('validateManifest = ok', () => {
@@ -30,12 +31,15 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
 
   it('every manifest op id matches a defineSkill across the registered builders', () => {
     // SP-3 V0 ops live in `buildSkills`; Slice B.1 (2026-05-20) added
-    // `getDagTree`, which lives in `buildWorkspaceSkills`.  This is the
-    // same registration set that `wireSkills` wires onto the meshAgent —
-    // expand here when new builders surface manifest ops.
+    // `getDagTree`, which lives in `buildWorkspaceSkills`.  Slice B.2.3
+    // (2026-05-20) added `listMyInbox` + `clearInboxItem`, which live
+    // in `buildInboxSkills`.  This is the same registration set that
+    // `wireSkills` wires onto the meshAgent — expand here when new
+    // builders surface manifest ops.
     const defs = [
       ...buildSkills({ bundleResolver: () => null }),
       ...buildWorkspaceSkills({ bundleResolver: () => null }),
+      ...buildInboxSkills({ bundleResolver: () => null }),
     ];
     const skillIds = new Set(defs.map((d) => d.id));
     for (const op of tasksManifest.operations) {

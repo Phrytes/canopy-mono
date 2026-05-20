@@ -42,6 +42,7 @@ describe('Slice B.1: renderWeb(tasksManifest) NavModel', () => {
       'claimable',
       'review',     // Slice B.2.2 (2026-05-20) — review.html reviewer queue
       'dag',        // Slice B.1   (2026-05-20)
+      'inbox',      // Slice B.2.3 (2026-05-20) — inbox.html notification feed
     ]);
   });
 
