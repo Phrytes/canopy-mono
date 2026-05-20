@@ -256,6 +256,26 @@ export class SyncEngine extends Emitter {
   get identity()  { return this.#identity; }
 
   /**
+   * Slice G.3 (2026-05-20) — public observability for watch state.
+   *
+   * Returns `true` once the watcher adapter has actually attached
+   * (async — `start()` is fire-and-forget, so there's a brief window
+   * where `#running` is set but `#watcher` is still being constructed).
+   *
+   * Distinct from app-level "intent" flags (e.g. folio's
+   * `engine.__watching`, set synchronously when `start()` is called):
+   *
+   *   - `isWatching` = the *fact* the watcher is attached.
+   *   - app-side intent flag = the *decision* to watch.
+   *
+   * Apps that want a UI signal that doesn't blink during the attach
+   * race should stay on their intent flag; apps that need to know the
+   * substrate is genuinely armed (e.g. to skip a redundant `start()`)
+   * should use `isWatching`.
+   */
+  get isWatching() { return !!this.#watcher; }
+
+  /**
    * Set or replace the signing identity used for the Q-Folio.3 auto-share
    * convention.  Pass `null` to disable auto-share until a new identity is set.
    * On the next `runOnce`, any token whose `issuer` differs from the new
