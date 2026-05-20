@@ -72,7 +72,10 @@ Branch `feat/app-manifest` carries 48 commits ahead of master; total
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — Slice G folio boundary audit (3 parallel agents)
+- (next) — Tier B substrate (Q25 readSkill + Q26 requiresField) + bridge fix
+- `b37ceb2` — fix(tasks-v0): InAppInboxBridge stamps substrate-canonical shape at write time
+- `b7951ab` — feat(app-manifest): NavModel V0.7 — Q25 readSkill + Q26 requiresField
+- `30435db` — docs(folio, folio-mobile): close Slice G audit P1 README drift
 - `88b4b8f` — feat(sync-engine): Slice G — isWatching getter + audit report
 - `ac8b1ab` — docs: NavModel V0.6 — Q22 + Q23 + Q24 design rows
 - `5364314` — feat(tasks-mobile): Q24 — useAdapterAction RN hook
@@ -146,7 +149,7 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 
 | Package / app                  | Tests        | Notes                                       |
 | ------------------------------ | ------------ | ------------------------------------------- |
-| `@canopy/app-manifest`         | **182**      | +166 baseline + 10 Q22 labelKey + 6 Q23 file/image |
+| `@canopy/app-manifest`         | **197**      | +182 baseline + 8 Q25 readSkill + 7 Q26 requiresField |
 | `@canopy/circles`              | **50**       | (unchanged)                                 |
 | `@canopy/manifest-host`        | **20**       | (unchanged)                                 |
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |
