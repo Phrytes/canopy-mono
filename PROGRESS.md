@@ -25,10 +25,10 @@ status:
 | SP-4 V0 `@canopy/manifest-host`     | ✅ Done                                                    |
 | SP-5 V0 `@canopy/circles`           | ✅ Done                                                    |
 | SP-4b + SP-11 V0 demo               | ✅ Done (`examples/manifest-host-demo/`)                    |
-| Slice A.1–A.3 (household web)       | ✅ Done                                                    |
-| Slice A.4 (LLM passthrough on web)  | ⏸ NEXT                                                    |
+| Slice A.1–A.4 (household web + LLM) | ✅ Done — **Slice A COMPLETE**                              |
 | Slice B.0 parity audit              | ✅ Done                                                    |
-| Slice B.1+ (tasks-v0 web migration) | ⏸ Awaiting Slice A.4 + owner sign-off                     |
+| Slice B.1 (dag.html via renderWeb)  | ✅ Done — first tasks-v0 page projector-driven              |
+| Slice B.2+ (tasks-v0 web migration) | ⏸ B.2/B.3/B.4 ahead                                       |
 | Slice C.0 recon (tasks-mobile)      | ✅ Done                                                    |
 | Slice C.1+ (renderMobile migration) | ⏸ Awaiting Slice A sign-off + manifest extension          |
 | Slice D.1 (stoop manifest draft)    | ✅ Done — **9 DECIDE markers** awaiting owner              |
@@ -42,6 +42,9 @@ status:
 
 Branch `feat/app-manifest` — substantive commits this session:
 
+- `41b140d` — feat(tasks-v0): Slice B.1 — dag.html via renderWeb (view-only)
+- `9dfff80` — feat(household): Slice A.4 — LLM passthrough on web
+- `f0d5ebb` — docs+progress: Slice C.0 recon (tasks-mobile screens) + PROGRESS.md tracker
 - `00eb102` — feat(app-manifest): renderMobile alias + cross-surface equivalence test
 - `c57221b` — feat(household): Slice A.3 — web adapter consuming NavModel
 - `4711dd4` — feat(app-manifest, household): Slice A.2 — household manifest → NavModel
@@ -76,8 +79,8 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 | `@canopy/circles`              | **50**       | (unchanged)                                 |
 | `@canopy/manifest-host`        | **20**       | (unchanged)                                 |
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |
-| `apps/household`               | **570**      | +18 NavModel test + 8 web smoke             |
-| `apps/tasks-v0`                | **551**      | +5 SP-4b proof + 4 corpus starter + 10 dag/inbox/availability/privacy |
+| `apps/household`               | **574**      | +4 LLM-passthrough smoke (A.4)              |
+| `apps/tasks-v0`                | **569**      | +4 sliceB1-navmodel test (B.1)              |
 | `apps/stoop`                   | **572**      | +6 D.1 manifest-validation                  |
 | `examples/manifest-host-demo`  | **9**        | (unchanged)                                 |
 
@@ -222,16 +225,96 @@ boilerplate.
 
 ---
 
-## Open question to owner (2026-05-20)
+## SP-track follow-up options (analysis 2026-05-20)
 
-What's next?
+Asked: which `PLAN-uniforme-representatie.md` SP makes sense as
+next-up?  Remaining open SPs (everything except SP-0…SP-4 V0, SP-5
+V0, SP-11 V0 already done):
 
-1. **A.4** — LLM passthrough on household web (1 commit, low risk, small)
-2. **D.1 DECIDE resolution** — owner picks 9 stylistic choices in stoop manifest
-3. **Slice C.1 start** — tasks-mobile renderMobile (substantial; ~38 ops to add)
-4. **Slice B.1** — dag.html migration (smallest tasks-v0 web page; the read-only path proof)
+| SP    | What it is                                        | Status  | Risk | Leverage |
+| ----- | ------------------------------------------------- | ------- | ---- | -------- |
+| SP-3b | tasks-v0 web migration                            | In flight (B.1 ✅, B.2+ ahead) | Med | High (active surface) |
+| SP-5b | item.audience + ListFilter + host wiring          | Deferred (waiting consumer) | Med (central schema) | High (unblocks Slice H + cross-app audience) |
+| SP-6  | renderMobile + tasks-mobile (= Slice C)           | Recon ✅; impl ahead | Med | High (38+ ops needed) |
+| SP-7  | folio boundary check (= Slice G)                  | Recon ✅; ahead | Low–med | Bounded (or documented "doesn't fit") |
+| SP-8  | stoop adoption (= Slice D)                        | D.1 ✅; D.2 ahead | Med | High (live surface) |
+| SP-9  | SDK decomposition (base / extensions / `requires`)| Ahead   | Med–high (shared SDK refactor) | Foundational |
+| SP-10 | Scaffolder (manifest → testable app skeleton)     | Blocked on SP-9 in PLAN; **could land V0 without** | Med | High per-new-app |
+| SP-11b| Cross-surface demo + embeds + saved cross-circle view | Blocked on SP-5b + interface-registry maturity | Low | Demo polish |
 
-My recommendation: **A.4 + B.1 in parallel**.  A.4 closes Slice A; B.1
-proves Slice B's first sub-slice.  Both small / bounded.  D.1 DECIDE
-markers wait on owner.  C.1 is the next BIG slice — schedule after A.4
-+ B.1 ship.
+Independent of the GUI/chat track (which owns SP-3b / SP-6 / SP-7 /
+SP-8 as Slices B / C / G / D), the **pure SP** options narrow to:
+**SP-5b**, **SP-9**, **SP-10 V0**, **SP-11b**.
+
+### My recommendation: **SP-5b** (item.audience field)
+
+**Why SP-5b wins over the alternatives:**
+
+- **Foundational** — gets the audience model into real data, not
+  theoretical.  Every downstream slice that touches audience
+  (Slice H, cross-app, stoop groups, folio sharing) needs this.
+- **Forward-additive** — `item.visibility` shorthands keep working;
+  `item.audience` is a new optional field that defaults to the
+  existing visibility's structured equivalent.  Existing items
+  validate unchanged.
+- **Multiple apps flagging it** — `AUDIT-stoop-folio-surfaces.md` §
+  "Shared concerns": both apps flagged audience semantics + cross-
+  pod member metadata as out-of-scope-but-needed substrate work.
+  SP-5b satisfies both.
+- **Locks the design before rewrite cost grows** — every new app
+  that ships hand-rolled visibility logic is more work to migrate
+  later.  Better to lock the shape now while the manifest model is
+  hot.
+- **Test surface is bounded** — `@canopy/item-store`'s schema test
+  + every consumer's listOpen/filter tests.  ~1100 tests across the
+  chain; forward-additive means most stay green by construction.
+
+**Why SP-5b over SP-9 / SP-10 / SP-11b:**
+
+- **SP-9** (SDK decomposition) is medium-high risk — touches shared
+  SDK across all apps.  Worth doing, but only when there's a concrete
+  reason a base/extension split unblocks something.  No acute pull
+  today.
+- **SP-10** scaffolder is high-leverage IF a new app is being
+  authored.  No new app on the horizon (stoop / folio / household /
+  tasks-v0 all exist).  SP-10 V0 (without SP-9) is possible but the
+  payoff is theoretical.
+- **SP-11b** demo extension is nice-to-have — adds polish to an
+  existing proof, doesn't unblock new work.
+
+**SP-5b proposed V0 scope** (matches the locked plan in CODING
+SP-5b):
+
+- `item.audience: Audience` field added to `@canopy/item-store`
+  Item schema.
+- Existing `visibility: 'household' | 'private' | 'role:*'` values
+  map 1:1 to audience short-hands (forward-additive).
+- `ListFilter.audience` accepted; resolver walks circles + cross-
+  pod via the already-merged Phase-3.3c resolver.
+- `view.defaultAudience` host wiring (items created through a view
+  inherit it).
+- Renderer audience affordances (F-SP5-a) explicitly DEFERRED to a
+  separate slice once renderWeb has at least one real audience
+  consumer — keeps SP-5b focused.
+
+### Alternative: split SP-5b into V0a / V0b
+
+If SP-5b feels too central in one slice, split:
+- **SP-5b-V0a** — just the `item.audience` field on item-store with
+  visibility-shorthand fallback.  Tests across all apps.  No
+  ListFilter changes; no host wiring.  Atomic, low risk.
+- **SP-5b-V0b** — ListFilter.audience + cross-circle resolver.
+  Needs V0a + a real audience consumer.
+
+Then `SP-5b-V0a` first; pause; user-test; `V0b` when consumer
+demand makes the shape obvious.
+
+---
+
+## Open question to owner (2026-05-21)
+
+Pick the next SP:
+1. **SP-5b** (V0a — `item.audience` field only) — my recommendation
+2. **SP-10 V0** (scaffolder without SP-9 dependency)
+3. **Slice C.1** (tasks-mobile renderMobile — biggest GUI slice next)
+4. Something else
