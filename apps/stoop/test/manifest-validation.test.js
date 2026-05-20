@@ -100,4 +100,17 @@ describe('stoop manifest — Slice D.1 structural invariants', () => {
       'request',
     ]);
   });
+
+  // V0.8 Q27 adoption (2026-05-21) — signOutOfPod gets a warn-level
+  // confirm.  Profile.html's sign-out button currently mirrors the
+  // message verbatim (manifest is source-of-truth; page hand-coded
+  // confirm references the same text).
+  it('signOutOfPod declares Q27 confirm with severity:warn (Dutch message)', () => {
+    const op = stoopManifest.operations.find((o) => o.id === 'signOutOfPod');
+    expect(op).toBeTruthy();
+    expect(op.surfaces.ui.confirm).toEqual({
+      severity: 'warn',
+      message:  'Uitloggen van je pod?  Lopende synchronisatie wordt afgebroken.',
+    });
+  });
 });

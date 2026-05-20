@@ -292,10 +292,19 @@
       for (const a of actions) {
         const b = document.createElement('button');
         b.textContent = a.label ?? a.opId;
-        b.className   = 'secondary';
+        // V0.8 Q27 (2026-05-21) — severity-aware styling.  'danger'
+        // gets a destructive button class; 'warn' + 'info' keep the
+        // default secondary.  Absent → secondary (today's behaviour).
+        b.className = a.confirm?.severity === 'danger' ? 'danger' : 'secondary';
         b.addEventListener('click', async () => {
-          // Friendly confirm for destructive bulk actions.
-          if (a.opId === 'clearInbox' && !confirm('Clear ALL inbox notifications?')) return;
+          // V0.8 Q27 — read confirm from manifest projection, not
+          // hard-coded.  Adapter behaviour: 'warn' + 'danger' prompt;
+          // 'info' fires through; absent confirm fires through.
+          const c = a.confirm;
+          if (c && (c.severity === 'warn' || c.severity === 'danger')) {
+            const msg = c.message ?? `${a.label ?? a.opId}?`;
+            if (!confirm(msg)) return;
+          }
           await callSkill(a.opId, {});  // V0.4 sectionActions take no per-item args
           await refresh();
         });
