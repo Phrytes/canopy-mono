@@ -78,25 +78,6 @@ import { ROUTES }         from '../navigation.js';
 import { createNavModelAdapter } from '../manifest-adapter.js';
 import { useAdapterSection }     from '../useAdapterSection.js';
 
-/**
- * Tag a raw inbox event with `{type: 'inbox-item', kind}` so the
- * manifest's `appliesTo` gate matches.  Raw items from `listMyInbox`
- * carry `type: 'notification'` (InAppInboxBridge convention); the
- * manifest declares per-row actions with `appliesTo.type === 'inbox-
- * item'` because `inbox-item` is the app-local NavModel itemType (see
- * tasksManifest.itemTypes).
- *
- * Mirrors the web shell's `const tagged = { type: 'inbox-item',
- * ...item }` in apps/tasks-v0/web/inbox.html (manifestAllows helper).
- * V0.4-substrate-side gap: the bridge could stamp `type: 'inbox-item'`
- * + `kind` at write-time so this normalisation is redundant; deferred
- * (forward-additive — both shapes will keep matching).
- */
-function tagInboxItem(item) {
-  if (!item || typeof item !== 'object') return item;
-  return { ...item, type: 'inbox-item', kind: kindOf(item) };
-}
-
 export function InboxScreen() {
   const nav = useNavigation();
   const svc = useService();
@@ -310,11 +291,11 @@ export function InboxScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          // Slice C.4 — tag the raw event so the manifest's
-          // appliesTo gate matches (type: 'inbox-item' + per-event
-          // kind).  See tagInboxItem docblock above.
-          const tagged = tagInboxItem(item);
-          const actions = section ? adapter.renderItemActions(section, tagged) : [];
+          // Tier B (2026-05-20) — InAppInboxBridge now stamps the
+          // substrate-canonical shape (type: 'inbox-item' + top-level
+          // kind) at write time, so items pass straight to
+          // renderItemActions without a per-render synthesis step.
+          const actions = section ? adapter.renderItemActions(section, item) : [];
           const kind = kindOf(item);
 
           if (kind === 'subtask-proposal') {
