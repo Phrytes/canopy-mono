@@ -25,45 +25,17 @@
 import { ChatAgent }               from '@canopy/chat-agent';
 import { renderChat, renderSlash } from '@canopy/app-manifest';
 
-import * as Skills           from './skills/index.js';
-import { classifyAndExtract } from './skills/classifyAndExtract.js';
 import { householdManifest }  from '../manifest.js';
+import {
+  HOUSEHOLD_SKILL_REGISTRY as SKILL_REGISTRY,
+  noopContextBuilder,
+} from './skillRegistry.js';
 
 // Compile the manifest's slash grammar once at module load so
 // `#routeMessage` stays cheap.  `renderSlash().parse` is drop-in for the
 // retired `regexParse` (byte-equal, proven by
 // `test/manifest-equivalence.test.js`).
 const slash = renderSlash(householdManifest);
-
-// No-op context builder for ChatAgent — V0 does not pre-load pod state
-// into the system prompt.  Inlined from the retired
-// `./llm/chatAgentBridge.js`.
-const noopContextBuilder = async () => '';
-
-/**
- * Map skillId strings → skill handlers.  Built once at module load
- * so the agent can dispatch in O(1).
- *
- * @type {Record<string, import('./types.js').SkillHandler>}
- */
-const SKILL_REGISTRY = {
-  // SP-1
-  addItem:             Skills.addItem,
-  listOpen:            Skills.listOpen,
-  markComplete:        Skills.markComplete,
-  removeItem:          Skills.removeItem,
-  help:                Skills.help,
-  // SP-2
-  addTask:             Skills.addTask,
-  listTasks:           Skills.listTasks,
-  claim:               Skills.claim,
-  reassign:            Skills.reassign,
-  registerName:        Skills.registerName,
-  // Slow-path internal
-  classifyAndExtract:  classifyAndExtract,
-  // nudgeCompletion + composeDigest are NOT in the agent's user-facing
-  // dispatch — the scheduler invokes them directly.
-};
 
 /**
  * Build the SkillContext for one incoming message.  Resolves a
