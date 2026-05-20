@@ -72,7 +72,10 @@ Branch `feat/app-manifest` carries 48 commits ahead of master; total
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — V0.4-adopt stoop settings + V0.3 (d) structured reply shape
+- (next) — V0.5 substrate (Q21) + C.3 ReviewScreen (parallel agents)
+- `f25a633` — feat(tasks-mobile): Slice C.3 — ReviewScreen via adapter
+- `79ef89b` — feat(app-manifest): NavModel V0.5 — Q21 patch.argWrapper + tasks-v0 manifest export
+- `9e7003b` — feat(stoop, app-manifest): V0.4-adopt settings.fields + V0.3 (d)
 - `538f9d2` — feat(tasks-v0): Slice B.2.3b
 - `e66ffba` — feat(app-manifest, web-adapter): NavModel V0.4 substrate
 - `e36d6f5` — refactor(stoop, tasks-mobile): V0.3-adopt
@@ -140,7 +143,7 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 | `@canopy/web-adapter` (NEW)    | **80**       | +5 V0.3 Q15 + +5 V0.4 per-kind dispatch           |
 | `apps/stoop`                   | **591**      | +2 V0.2-adopt + 2 E.2 + 2 E.3 settings.html       |
 | `apps/tasks-v0`                | **594**      | +7 B.2.2 + 9 B.2.3 inbox.html                |
-| `apps/tasks-mobile`            | **159**      | +11 C.1 + 5 C.2 + 8 useAdapterSection V0.3   |
+| `apps/tasks-mobile`            | **164**      | +11 C.1 + 5 C.2 + 8 V0.3 hook + 5 C.3 review  |
 | `apps/household`               | **575**      | +1 web-adapter overlay smoke (B.2.0)         |
 | `apps/household`               | **574**      | +4 LLM-passthrough smoke (A.4)              |
 | `apps/tasks-v0`                | **569**      | +4 sliceB1-navmodel test (B.1)              |
