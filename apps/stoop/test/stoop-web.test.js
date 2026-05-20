@@ -134,6 +134,11 @@ describe('stoop-web smoke (Slice E.1 + E.2 + E.3 + E.4)', () => {
     // hopThrough — setHopMode direct-arg.
     expect(byName.hopThrough.type).toBe('boolean');
     expect(byName.hopThrough.patch).toEqual({ opId: 'setHopMode', argName: 'global' });
+    // V0.6 Q22 adoption — labelKey passthrough on all 4 settings fields.
+    expect(byName.hopThrough.labelKey).toBe('settings.hop_label');
+    expect(byName.pollIntervalMs.labelKey).toBe('settings.poll_interval_label');
+    expect(byName.broadcastable.labelKey).toBe('settings.broadcastable_label');
+    expect(byName.defaultShareLocation.labelKey).toBe('settings.default_share_location_label');
     // pollIntervalMs — updateSettings wrapped-patch.
     expect(byName.pollIntervalMs.type).toBe('enum');
     expect(byName.pollIntervalMs.choices).toEqual([2000, 10000, 60000, 300000]);
@@ -186,6 +191,18 @@ describe('stoop-web smoke (Slice E.1 + E.2 + E.3 + E.4)', () => {
     expect(profileByName.holidayMode.patch).toEqual({
       opId: 'setHolidayMode', argName: 'on',
     });
+    // V0.6 Q22 adoption — labelKey passthrough on all 3 profile fields.
+    expect(profileByName.handle.labelKey).toBe('profile.handle_label');
+    expect(profileByName.displayName.labelKey).toBe('profile.display_name_label');
+    expect(profileByName.holidayMode.labelKey).toBe('profile.holiday_label');
+    // V0.7 Q25 adoption — holidayMode declares readSkill so adapters
+    // can do single-field refresh via getHolidayMode without re-
+    // fetching the whole profile.  E.4 was the originating signal.
+    expect(profileByName.holidayMode.readSkill).toEqual({ skillId: 'getHolidayMode' });
+    // handle + displayName have no dedicated single-field read skill;
+    // assert absence so accidental projections are caught.
+    expect(profileByName.handle).not.toHaveProperty('readSkill');
+    expect(profileByName.displayName).not.toHaveProperty('readSkill');
     // E.4 deliberately does NOT set `readOnly: true` (profile mutates
     // via per-field skills).  Like settings, the per-field skills
     // (`setMyHandle`, `setMyDisplayName`, `setHolidayMode`) aren't

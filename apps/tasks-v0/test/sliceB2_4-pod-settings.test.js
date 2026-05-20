@@ -84,6 +84,16 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     // accidental wrap doesn't slip in silently.
     expect(byName.policy.patch.argWrapper).toBeUndefined();
     expect(byName.groupPodUri.patch.argWrapper).toBeUndefined();
+
+    // V0.7 Q26 adoption (2026-05-20) — groupPodUri declares a
+    // conditional-display gate: only meaningful when policy is
+    // 'centralised' or 'hybrid'.  Auto-rendered consumers hide the
+    // field otherwise; hand-coded pages enforce the same rule.
+    expect(byName.groupPodUri.requiresField).toEqual({
+      policy: ['centralised', 'hybrid'],
+    });
+    // policy itself has no gate.
+    expect(byName.policy).not.toHaveProperty('requiresField');
   });
 
   it('renderWeb projects the section with shape + dataSource + fields verbatim', () => {
@@ -104,6 +114,11 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     expect(byName.policy.patch.argName).toBe('storagePolicy');
     expect(byName.groupPodUri.patch.opId).toBe('setCrewStoragePolicy');
     expect(byName.groupPodUri.patch.argName).toBe('groupPodUri');
+    // V0.7 Q26 — requiresField gate survives projection (defensive
+    // copy of the value array).
+    expect(byName.groupPodUri.requiresField).toEqual({
+      policy: ['centralised', 'hybrid'],
+    });
     // No creative-verb affordances surface here — getCrewStoragePolicy
     // and setCrewStoragePolicy are NOT in manifest.operations[] (they're
     // pod-plumbing skills, mirroring stoop's getSettings/updateSettings

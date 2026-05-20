@@ -872,6 +872,82 @@ describe('renderWeb V0.6 — Q23 field.type file / image', () => {
   });
 });
 
+describe('renderWeb V0.8 — Q27 confirm severity hint', () => {
+  // Manifest with confirm on each label-bearing surface: an affordance
+  // (creative verb, section placement), an item-action (state-gated),
+  // and a section-header CTA (Q19 placement).
+  const MANIFEST = {
+    app:       'destructive-rec',
+    itemTypes: ['note'],
+    operations: [
+      {
+        id:        'addNote',
+        verb:      'add',
+        params:    [{ name: 'text', kind: 'string' }],
+        appliesTo: { type: 'note' },
+        surfaces:  { ui: { label: 'Add note' } },
+      },
+      {
+        id:        'archiveNote',
+        verb:      'archive',
+        params:    [],
+        appliesTo: { type: 'note', state: 'open' },
+        surfaces:  { ui: { label: 'Archive',
+                           confirm: { severity: 'warn',
+                                      message: 'Archived notes hide from the list.' } } },
+      },
+      {
+        id:        'deleteNote',
+        verb:      'remove',
+        params:    [],
+        appliesTo: { type: 'note', state: ['open', 'archived'] },
+        surfaces:  { ui: { label: 'Delete',
+                           confirm: { severity: 'danger',
+                                      message: 'Permanently deletes the note.' } } },
+      },
+      {
+        id:        'clearAll',
+        verb:      'clear',
+        params:    [],
+        appliesTo: { type: 'note' },
+        surfaces:  { ui: { label: 'Clear all',
+                           placement: 'section-header',
+                           confirm: { severity: 'warn' } } },
+      },
+    ],
+    views: [{ id: 'notes', title: 'Notes', type: 'note' }],
+  };
+
+  it('Q27 — itemAction surfaces confirm with severity + message', () => {
+    const sec = renderWeb(MANIFEST).sections.find((s) => s.id === 'notes');
+    const archive = sec.itemActions.find((a) => a.opId === 'archiveNote');
+    expect(archive.confirm).toEqual({
+      severity: 'warn',
+      message:  'Archived notes hide from the list.',
+    });
+  });
+
+  it('Q27 — itemAction surfaces confirm with severity: danger', () => {
+    const sec = renderWeb(MANIFEST).sections.find((s) => s.id === 'notes');
+    const del = sec.itemActions.find((a) => a.opId === 'deleteNote');
+    expect(del.confirm.severity).toBe('danger');
+  });
+
+  it('Q27 — section-header CTA surfaces confirm (no message — severity only)', () => {
+    const sec = renderWeb(MANIFEST).sections.find((s) => s.id === 'notes');
+    const clear = sec.sectionActions.find((a) => a.opId === 'clearAll');
+    expect(clear.confirm).toEqual({ severity: 'warn' });
+    // No message — assert no spurious key.
+    expect(clear.confirm).not.toHaveProperty('message');
+  });
+
+  it('Q27 — absent confirm leaves no key on the projection', () => {
+    const sec = renderWeb(MANIFEST).sections.find((s) => s.id === 'notes');
+    const add = sec.affordances.find((a) => a.opId === 'addNote');
+    expect(add).not.toHaveProperty('confirm');
+  });
+});
+
 describe('renderWeb V0.6 — Q22 labelKey i18n passthrough', () => {
   // Manifest with labelKey on every label-bearing surface: an op-level
   // affordance, an item-action op (state-gated), and a field on a

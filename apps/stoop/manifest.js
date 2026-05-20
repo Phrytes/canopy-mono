@@ -603,33 +603,39 @@ export const stoopManifest = {
       // explicit in the substrate.
       fields: [
         {
-          name:    'hopThrough',
-          type:    'boolean',
-          label:   'Hop-relay (globaal)',
+          name:     'hopThrough',
+          type:     'boolean',
+          label:    'Hop-relay (globaal)',
+          // V0.6 Q22 — i18n key for Dutch-first surfaces.  Consumer-
+          // side resolution; falls back to `label` if unknown.
+          labelKey: 'settings.hop_label',
           // setHopMode takes `{global: <bool>}` directly — Q18 fits.
-          patch:   { opId: 'setHopMode', argName: 'global' },
+          patch:    { opId: 'setHopMode', argName: 'global' },
         },
         {
-          name:    'pollIntervalMs',
-          type:    'enum',
-          label:   'Hoe vaak het prikbord ververst',
-          choices: [2000, 10000, 60000, 300000],
+          name:     'pollIntervalMs',
+          type:     'enum',
+          label:    'Hoe vaak het prikbord ververst',
+          labelKey: 'settings.poll_interval_label',
+          choices:  [2000, 10000, 60000, 300000],
           // Wrapped-patch convention: dispatch is
           // `updateSettings({patch: {pollIntervalMs: <value>}})`.
           // Adapter knows the convention; manifest stays semantic.
-          patch:   { opId: 'updateSettings', argName: 'pollIntervalMs' },
+          patch:    { opId: 'updateSettings', argName: 'pollIntervalMs' },
         },
         {
-          name:    'broadcastable',
-          type:    'boolean',
-          label:   'Auto-skill-match',
-          patch:   { opId: 'updateSettings', argName: 'broadcastable' },
+          name:     'broadcastable',
+          type:     'boolean',
+          label:    'Auto-skill-match',
+          labelKey: 'settings.broadcastable_label',
+          patch:    { opId: 'updateSettings', argName: 'broadcastable' },
         },
         {
-          name:    'defaultShareLocation',
-          type:    'boolean',
-          label:   'Standaard locatie delen met nieuwe contacten?',
-          patch:   { opId: 'updateSettings', argName: 'defaultShareLocation' },
+          name:     'defaultShareLocation',
+          type:     'boolean',
+          label:    'Standaard locatie delen met nieuwe contacten?',
+          labelKey: 'settings.default_share_location_label',
+          patch:    { opId: 'updateSettings', argName: 'defaultShareLocation' },
         },
         // Other settings.html fields (online-every, online-duration,
         // …) remain to be declared.  Pattern is the same; not
@@ -725,28 +731,40 @@ export const stoopManifest = {
       // single-arg skills, not wrapped-patch like updateSettings.
       fields: [
         {
-          name:  'handle',
-          type:  'string',
-          label: 'Handle (kleine letters, 3–32 tekens)',
+          name:     'handle',
+          type:     'string',
+          label:    'Handle (kleine letters, 3–32 tekens)',
+          // V0.6 Q22 — i18n key for Dutch-first surfaces.
+          labelKey: 'profile.handle_label',
           // setMyHandle takes `{handle: <string>}` directly — flat fit.
-          patch: { opId: 'setMyHandle', argName: 'handle' },
+          patch:    { opId: 'setMyHandle', argName: 'handle' },
         },
         {
-          name:  'displayName',
-          type:  'string',
-          label: 'Echte / weergavenaam (optioneel)',
+          name:     'displayName',
+          type:     'string',
+          label:    'Echte / weergavenaam (optioneel)',
+          labelKey: 'profile.display_name_label',
           // setMyDisplayName takes `{displayName: <string>}` directly.
-          patch: { opId: 'setMyDisplayName', argName: 'displayName' },
+          patch:    { opId: 'setMyDisplayName', argName: 'displayName' },
         },
         {
-          name:  'holidayMode',
-          type:  'boolean',
-          label: 'Vakantiemodus (skill-match overslaat me)',
+          name:     'holidayMode',
+          type:     'boolean',
+          label:    'Vakantiemodus (skill-match overslaat me)',
+          labelKey: 'profile.holiday_label',
+          // V0.7 Q25 — `holidayMode` is reachable BOTH via the record's
+          // dataSource (`getMyProfile` returns it under `.entry.
+          // holidayMode`) AND via a dedicated `getHolidayMode` skill.
+          // Adapters that want a single-field refresh (e.g. after the
+          // user toggles it elsewhere) call this skill instead of
+          // re-fetching the whole profile.  E.4 was the originating
+          // signal; V0.7 closed the substrate gap.
+          readSkill: { skillId: 'getHolidayMode' },
           // setHolidayMode takes `{on: <bool>}` directly — argName
           // is the *skill arg* (`on`), not the field-on-entry name
           // (`holidayMode`).  Same semantic split settings's
           // hopThrough → setHopMode({global}) uses.
-          patch: { opId: 'setHolidayMode', argName: 'on' },
+          patch:    { opId: 'setHolidayMode', argName: 'on' },
         },
         // Other profile.html fields (avatar, skills[], location,
         // mnemonic, encryptedBackup, my-pods) stay hand-coded — see
