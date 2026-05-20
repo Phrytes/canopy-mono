@@ -188,6 +188,26 @@ export const tasksManifest = {
       },
     },
     /*
+     * Slice B.2.2 (2026-05-20) — surfaces the reviewer queue on
+     * `apps/tasks-v0/web/review.html`.  Same pattern as
+     * `listClaimable` / `listMyMasteredTasks`: read-only list op,
+     * no `surfaces.ui` (list ops are an implicit data source per
+     * renderWeb's Q6 rule b — not a button).  Pre-B.2.2 review.html
+     * called this skill directly (off-manifest); pulling it into
+     * the manifest restores the SP-3 invariant that every list-
+     * skill the web renders is declared here.  Skill lives in
+     * `src/skills/workspace.js` (registered via buildWorkspaceSkills).
+     */
+    {
+      id:        'listAwaitingApproval',
+      verb:      'list',
+      appliesTo: { type: 'task' },
+      params:    [],
+      surfaces: {
+        chat: { hint: 'List items in the submitted state (awaiting approval).' },
+      },
+    },
+    /*
      * Slice B.2.1 (2026-05-20) — added to surface the "I'm master of"
      * data source on the `mastered` view (mine.html's middle section).
      * Pre-B.2.1 mine.html called this skill directly (off-manifest);
@@ -277,6 +297,27 @@ export const tasksManifest = {
       title:      'Claimable',
       type:       'task',
       dataSource: { skillId: 'listClaimable' },
+    },
+    /*
+     * Slice B.2.2 (2026-05-20) — the reviewer queue, consumed by
+     * `apps/tasks-v0/web/review.html` through the NavModel
+     * projector.  Data source: `listAwaitingApproval` (V0 skill,
+     * manifest-declared in B.2.2).  The page applies an additional
+     * client-side `isApprover` filter (per-task `approval` mode +
+     * admin/coordinator role) on top of the skill's full submitted-
+     * state list — same gate the pre-B.2.2 page applied.
+     *
+     * itemActions[] are projected from the manifest's surfaces.ui
+     * ops on type='task' (approve / reject / revoke / etc.), gated
+     * by F-SP3-a `appliesTo.state`; renderTasks then applies the
+     * sufficient-condition role/approver checks before rendering
+     * each button.
+     */
+    {
+      id:         'review',
+      title:      'Awaiting approval',
+      type:       'task',
+      dataSource: { skillId: 'listAwaitingApproval' },
     },
     /*
      * Slice B.1 (2026-05-20) — read-only DAG view consumed by
