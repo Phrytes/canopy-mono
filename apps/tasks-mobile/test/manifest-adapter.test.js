@@ -250,6 +250,125 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
     });
   });
 
+  /*
+   * Slice C.4 (2026-05-20) — InboxScreen consumer.  The inbox queue
+   * (`inbox` section, V0.2 dataSource `listMyInbox`) is the first RN
+   * screen to consume BOTH the V0.4 generic appliesTo gate (per-kind
+   * dispatch via `appliesTo.kind`) AND the V0.4 Q19 section-header
+   * CTAs (`section.sectionActions[]` for clearInbox).  This block
+   * locks both substrate features end-to-end + a happy-path for the
+   * adapter's new `renderSectionActions` helper.
+   *
+   * Mirror of the web's sliceB2_3-inbox.test.js (B.2.3b coverage —
+   * 538f9d2) extended for the RN adapter consumer.  A regression in
+   * the inbox section's dataSource OR per-kind gate OR section CTA
+   * surfaces here, not via a broken Pressable at runtime.
+   */
+  describe('Slice C.4: InboxScreen section + per-kind actions + clearInbox CTA', () => {
+    it('getSection("inbox") resolves the listMyInbox dataSource with {limit:200}', () => {
+      const inbox = adapter.getSection('inbox');
+      expect(inbox).toBeTruthy();
+      expect(inbox.id).toBe('inbox');
+      expect(inbox.title).toBe('Notifications');
+      expect(inbox.itemType).toBe('inbox-item');
+      // V0.2 Q7 dataSource — explicit listMyInbox + limit pin.
+      expect(inbox.dataSource).toEqual({ skillId: 'listMyInbox', args: { limit: 200 } });
+    });
+
+    it('renderItemActions on a subtask-proposal event surfaces approve+decline+clear (per-kind gate)', () => {
+      const inbox = adapter.getSection('inbox');
+      // The screen tags raw inbox events with {type: 'inbox-item',
+      // kind}; pass a pre-tagged event here (mirrors what
+      // InboxScreen.tagInboxItem produces).  Without the tag the
+      // appliesTo.type === 'inbox-item' gate would fail — see the
+      // tagInboxItem docblock in InboxScreen.jsx.
+      const proposal = {
+        id: 'evt-prop-1',
+        type: 'inbox-item',
+        kind: 'subtask-proposal',
+      };
+      const ids = adapter.renderItemActions(inbox, proposal).map((a) => a.opId).sort();
+
+      // V0.4 generic appliesTo: kind:'subtask-proposal' gates these.
+      expect(ids).toContain('approveSubtaskProposal');
+      expect(ids).toContain('declineSubtaskProposal');
+      // clearInboxItem has no `kind` gate — surfaces on every event.
+      expect(ids).toContain('clearInboxItem');
+      // Negatives — the request-kind ops MUST NOT surface on a
+      // proposal-kind event (per-kind gate is the whole point of
+      // V0.4's generic appliesTo).
+      expect(ids).not.toContain('approveSubtaskRequest');
+      expect(ids).not.toContain('declineSubtaskRequest');
+      // clearInbox is a section-header CTA, NOT a per-row op.
+      expect(ids).not.toContain('clearInbox');
+    });
+
+    it('renderItemActions on a subtask-request event surfaces approve+decline+clear (per-kind gate)', () => {
+      const inbox = adapter.getSection('inbox');
+      const request = {
+        id: 'evt-req-1',
+        type: 'inbox-item',
+        kind: 'subtask-request',
+      };
+      const ids = adapter.renderItemActions(inbox, request).map((a) => a.opId).sort();
+
+      expect(ids).toContain('approveSubtaskRequest');
+      expect(ids).toContain('declineSubtaskRequest');
+      expect(ids).toContain('clearInboxItem');
+      // Negatives — the proposal-kind ops MUST NOT cross over.
+      expect(ids).not.toContain('approveSubtaskProposal');
+      expect(ids).not.toContain('declineSubtaskProposal');
+    });
+
+    it('renderItemActions on a generic (unknown-kind) event surfaces ONLY clearInboxItem', () => {
+      const inbox = adapter.getSection('inbox');
+      // E.g. a `task-completed` notification — has no `kind` in the
+      // four-subtask set; only the kind-agnostic clearInboxItem op
+      // should surface.
+      const generic = {
+        id: 'evt-gen-1',
+        type: 'inbox-item',
+        kind: 'task-completed',
+      };
+      const ids = adapter.renderItemActions(inbox, generic).map((a) => a.opId);
+
+      expect(ids).toEqual(['clearInboxItem']);
+    });
+
+    it('renderSectionActions(inbox) surfaces clearInbox (Q19 section-header CTA)', () => {
+      const inbox = adapter.getSection('inbox');
+      const actions = adapter.renderSectionActions(inbox);
+      const ids = actions.map((a) => a.opId);
+
+      // clearInbox declares `surfaces.ui.placement: 'section-header'`;
+      // renderWeb projects it into section.sectionActions[] (Q19).
+      expect(ids).toEqual(['clearInbox']);
+      expect(actions[0]).toMatchObject({
+        opId:  'clearInbox',
+        label: 'Clear all',
+      });
+      // V0 sectionActions take no per-item args — the screen
+      // dispatches `clearInbox({})`.  applyPrefilledParams produces
+      // an empty object when no prefills are declared.
+      expect(actions[0].args).toEqual({});
+    });
+
+    it('renderSectionActions returns [] for sections without section-header ops', () => {
+      // `open` is the workspace tab; none of its ops carry
+      // `placement: 'section-header'`.  renderWeb only sets
+      // section.sectionActions when at least one matched (forward-
+      // additive — keeps the NavModel JSON minimal); the adapter
+      // must tolerate the absent field.
+      const open = adapter.getSection('open');
+      expect(adapter.renderSectionActions(open)).toEqual([]);
+    });
+
+    it('renderSectionActions returns [] for a falsy section (no crash)', () => {
+      expect(adapter.renderSectionActions(undefined)).toEqual([]);
+      expect(adapter.renderSectionActions(null)).toEqual([]);
+    });
+  });
+
   describe('renderItemActions(section, item) — state-gated buttons', () => {
     const open = adapter.getSection('open');
 

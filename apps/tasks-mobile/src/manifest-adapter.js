@@ -71,11 +71,13 @@ import {
  *   web + mobile + tests can supply the right shape.
  *
  * @returns {{
- *   navModel:           object,
- *   getSection:         (id: string) => object | undefined,
- *   fetchSection:       (section: object) => Promise<*>,
- *   renderItemActions:  (section: object, item: object) =>
- *                         Array<{opId: string, label: string, args: object}>,
+ *   navModel:             object,
+ *   getSection:           (id: string) => object | undefined,
+ *   fetchSection:         (section: object) => Promise<*>,
+ *   renderItemActions:    (section: object, item: object) =>
+ *                           Array<{opId: string, label: string, args: object}>,
+ *   renderSectionActions: (section: object) =>
+ *                           Array<{opId: string, label: string, args: object}>,
  * }}
  */
 export function createNavModelAdapter(manifest, { callSkill } = {}) {
@@ -96,6 +98,21 @@ export function createNavModelAdapter(manifest, { callSkill } = {}) {
   // honours `manifest.views[]` declaration order via `navModel.sections`.
   const sectionsById = new Map(
     (navModel.sections ?? []).map((s) => [s.id, s]),
+  );
+
+  // Slice C.4 (2026-05-20) — index ops by id, keyed against the
+  // ORIGINAL manifest (not the NavModel projection).  Why: renderWeb's
+  // `buildItemAction` projects only `appliesTo.type` + `appliesTo.state`
+  // — V0.4 generic gate fields (e.g. `kind` for per-event-kind
+  // dispatch) are stripped on projection.  The adapter looks up the
+  // full appliesTo from this map for gate evaluation so the V0.4
+  // promise (substrate handles per-event-kind gating) holds end-to-
+  // end.  Substrate-side gap to lift up to `renderWeb` in a future
+  // slice (see signals in the C.4 commit message); for now the adapter
+  // bridges it.
+  const opsById = new Map(
+    (Array.isArray(manifest.operations) ? manifest.operations : [])
+      .map((o) => [o.id, o]),
   );
 
   function getSection(id) {
@@ -123,6 +140,14 @@ export function createNavModelAdapter(manifest, { callSkill } = {}) {
    * Mirrors the web shell's `_action(section, opId)` + inline
    * `applyPrefilledParams({ id }, _action(…))` pattern from
    * `apps/tasks-v0/web/mine.html` (DRY — same gate, same prefill).
+   *
+   * Slice C.4 (2026-05-20) — gate consults the ORIGINAL manifest's
+   * op-level `appliesTo` (not the projected section.itemAction's
+   * `appliesTo`) because `renderWeb.buildItemAction` strips V0.4
+   * generic-field gate entries (e.g. `kind: 'subtask-proposal'`).
+   * The adapter sidesteps that gap so consumers (InboxScreen) get
+   * the per-event-kind dispatch promised by V0.4.  Substrate fix
+   * (lift the pass-through into renderWeb) is forward-additive.
    */
   function renderItemActions(section, item) {
     if (!section || typeof section !== 'object') return [];
@@ -130,11 +155,53 @@ export function createNavModelAdapter(manifest, { callSkill } = {}) {
     const actions = Array.isArray(section.itemActions) ? section.itemActions : [];
     const out = [];
     for (const a of actions) {
-      if (!itemMatchesAppliesTo(a.appliesTo, item)) continue;
+      // Slice C.4 (2026-05-20) — gate against the ORIGINAL manifest
+      // op's appliesTo (with V0.4 generic fields intact), not the
+      // projected action's appliesTo (which only carries type+state).
+      // Fallback to the projected appliesTo when the op isn't in the
+      // map (defensive; shouldn't happen for manifest-declared ops).
+      const op   = opsById.get(a.opId);
+      const gate = op?.appliesTo ?? a.appliesTo;
+      if (!itemMatchesAppliesTo(gate, item)) continue;
       out.push({
         opId:  a.opId,
         label: a.label,
         args:  applyPrefilledParams({ id: item.id }, a),
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Slice C.4 (2026-05-20) — Q19 section-header CTAs.
+   *
+   * Mirrors `renderItemActions` for section-scope ops (ops with
+   * `surfaces.ui.placement: 'section-header'`).  The web shell pattern
+   * (apps/tasks-v0/web/inbox.html → renderSectionActions) iterates
+   * `section.sectionActions ?? []` directly; this method lifts the
+   * same logic into the adapter so RN screens (InboxScreen first) get
+   * a symmetric API to the per-row case.
+   *
+   * Decoration:
+   *   - `args` = `applyPrefilledParams({}, action)` — V0.4 section
+   *     actions take no per-item id (clearInbox is bulk).  Manifest-
+   *     declared prefills still apply (none declared in V0).
+   *   - `label` mirrors the NavModel's label (from `surfaces.ui.label`
+   *     or `op.verb`).
+   *
+   * Returns `[]` when the section is falsy OR carries no
+   * `sectionActions[]` (renderWeb only sets the field when at least
+   * one section-header op matched).
+   */
+  function renderSectionActions(section) {
+    if (!section || typeof section !== 'object') return [];
+    const actions = Array.isArray(section.sectionActions) ? section.sectionActions : [];
+    const out = [];
+    for (const a of actions) {
+      out.push({
+        opId:  a.opId,
+        label: a.label,
+        args:  applyPrefilledParams({}, a),
       });
     }
     return out;
@@ -145,5 +212,6 @@ export function createNavModelAdapter(manifest, { callSkill } = {}) {
     getSection,
     fetchSection,
     renderItemActions,
+    renderSectionActions,
   };
 }
