@@ -11,10 +11,11 @@
 
 ---
 
-## Headline (2026-05-20, end-of-day)
+## Headline (2026-05-21, end-of-day)
 
-**Substrate complete chat-side + first web-adapter shipped.**  Track
-status:
+**Substrate mature; surface migration in flight across 4 apps.**
+Branch `feat/app-manifest` carries 48 commits ahead of master; total
+2,423 tests passing across 11 packages.  Track status:
 
 | Track | Status                                                            |
 | ----- | ----------------------------------------------------------------- |
@@ -33,6 +34,8 @@ status:
 | NavModel V0.3 (Q15 argsFromContext + Q17 view.shape) | ✅ Done — E.2/E.3 signals resolved            |
 | Web-adapter argsFromContext substitution | ✅ Done — fetchSectionItems honours `$key`            |
 | useAdapterSection RN hook            | ✅ Done — apps/tasks-mobile/src/useAdapterSection.js |
+| V0.3-adopt stoop (privacy Q15 + settings Q17) | ✅ Done — argsFromContext + shape:'record' live      |
+| V0.3-adopt tasks-mobile (Workspace + MyWork → useAdapterSection) | ✅ Done — boilerplate collapsed       |
 | NavModel V0.3 (d — structured list reply shape) | ⏸ Deferred until consumer pressure (task #11)      |
 | NavModel V0.x (Q18 patch mutations / per-event-kind / section CTAs) | ⏸ Deferred — needs more signal        |
 | SP-4b + SP-11 V0 demo               | ✅ Done (`examples/manifest-host-demo/`)                    |
@@ -65,7 +68,8 @@ status:
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — NavModel V0.3 substrate consolidation
+- (next) — V0.3-adopt across stoop + tasks-mobile
+- `32cb903` — feat(app-manifest, web-adapter, tasks-mobile): NavModel V0.3 substrate
 - `08c2929` — progress: 3-way parallel C.2 + B.2.3 + E.3 landed
 - `817fd5b` — feat(tasks-v0): Slice B.2.3 — inbox.html via renderWeb
 - `482ad22` — feat(stoop): Slice E.3 — settings.html via renderWeb

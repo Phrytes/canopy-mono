@@ -92,10 +92,14 @@ describe('stoop-web smoke (Slice E.1 + E.2 + E.3)', () => {
     expect(privacy.itemType).toBe('group-rules');  // placeholder; see manifest note
     // V0.2 Q9 — read-only flag passed through verbatim.
     expect(privacy.readOnly).toBe(true);
-    // V0.2 Q7 — explicit dataSource (param-free; the lang-aware
-    // companion `getPrivacyNotice` is direct-called in the page —
-    // see manifest gap #3).
-    expect(privacy.dataSource).toEqual({ skillId: 'getDataLocation' });
+    // V0.3 Q15 (adopted 2026-05-21) — explicit dataSource with
+    // argsFromContext.  Replaces the V0.2 workaround that
+    // direct-called getPrivacyNotice; `$lang` now substitutes from
+    // the browser-supplied context.
+    expect(privacy.dataSource).toEqual({
+      skillId:         'getPrivacyNotice',
+      argsFromContext: { lang: '$lang' },
+    });
     // V0.2 Q9 — readOnly: true suppresses creative-verb auto-surface
     // (Q10 affordances), so affordances[] is empty here.
     expect(privacy.affordances).toEqual([]);
@@ -109,6 +113,9 @@ describe('stoop-web smoke (Slice E.1 + E.2 + E.3)', () => {
     // V0.2 Q7 — explicit dataSource declaration in the manifest
     // (`getSettings({})` is param-free — perfect fit).
     expect(settings.dataSource).toEqual({ skillId: 'getSettings' });
+    // V0.3 Q17 (adopted 2026-05-21) — shape: 'record' marks this
+    // section as a singleton (matches getSettings's reality).
+    expect(settings.shape).toBe('record');
     // E.3 deliberately does NOT set `readOnly: true` (settings mutates
     // via per-field skills).  But because the per-field skills
     // (`updateSettings`, `setHopMode`) aren't manifest ops, no Q10
