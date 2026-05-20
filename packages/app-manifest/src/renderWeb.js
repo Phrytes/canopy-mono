@@ -236,6 +236,47 @@
  *
  * Forward-additive — absent means existing flat behaviour (V0.4).
  *
+ * ──── Q26 — `field.requiresField` conditional display (locked 2026-05-20)
+ *
+ * Surfaced by B.2.4 (tasks-v0 pod-settings): `groupPodUri` is only
+ * meaningful when `policy ∈ {centralised, hybrid}` — the rich UI
+ * hides the input when the policy is `personal`.  Auto-rendered
+ * consumers would have no way to express that today; V0.5 Q21 covered
+ * the dispatch shape but not the visibility gate.
+ *
+ * Solution: `view.fields[].requiresField?: {<otherField>:
+ * <value | value[]>}` — same shape as `appliesTo.state`.  Adapter
+ * hides the field when the record's current value for any named gate
+ * key doesn't match.  Multiple keys are AND-combined; a single key
+ * with array-value is OR-combined within the key.
+ *
+ * Forward-additive — absent means "always show" (existing behaviour).
+ *
+ * ──── Q25 — `field.readSkill` for multi-skill records (locked 2026-05-20)
+ *
+ * Surfaced by E.4 (stoop profile): `holidayMode` is reachable two
+ * ways — bulk via `getMyProfile()` (record-level dataSource) AND
+ * dedicated `getHolidayMode()` skill.  V0.6 Q18 has no slot for "this
+ * field's current value comes from a different skill than the
+ * record's bulk read."  Real consequence: refresh granularity falls
+ * back to "re-fetch the whole record" even when a single-field skill
+ * exists.
+ *
+ * Solution: `view.fields[].readSkill?: {skillId, args?}` — same shape
+ * as `view.dataSource`.  When present, the adapter calls this skill
+ * to resolve the field's value instead of reading from the record
+ * payload.  Absent (default) → existing behaviour (read from
+ * `record[name]`).
+ *
+ * Args are static at projection time (no Q15 `argsFromContext`
+ * substitution yet; add when a real need surfaces).  Validator
+ * enforces non-empty skillId + optional args object.  Q16-strict
+ * mode cross-checks skillId against `operations[]` /
+ * `externalSkills[]`.
+ *
+ * Forward-additive — adopting consumers add the field; non-adopting
+ * consumers see absent readSkill and behave as before.
+ *
  * ──── Q23 — `field.type: 'file' | 'image'` byte-shaped fields (locked 2026-05-20)
  *
  * Q18's recognized `field.type` set was implicit — manifests today use
@@ -402,6 +443,30 @@ function buildSection(view, ops, manifest) {
       // Q22 (V0.6, 2026-05-20) — i18n key passthrough on fields.
       if (typeof f.labelKey === 'string' && f.labelKey !== '') {
         out.labelKey = f.labelKey;
+      }
+      // Q26 (V0.7, 2026-05-20) — conditional-display gate.  Same shape
+      // as appliesTo.state: { otherField: value | value[] }.  Adapter
+      // hides the field when the record's current value for any gate
+      // key doesn't match.
+      if (f.requiresField && typeof f.requiresField === 'object'
+          && !Array.isArray(f.requiresField)) {
+        const gate = {};
+        for (const [k, v] of Object.entries(f.requiresField)) {
+          gate[k] = Array.isArray(v) ? v.slice() : v;
+        }
+        if (Object.keys(gate).length > 0) out.requiresField = gate;
+      }
+      // Q25 (V0.7, 2026-05-20) — multi-skill records.  Per-field
+      // read skill replaces the record-level dataSource value when
+      // present.  Pass through as a defensive copy.
+      if (f.readSkill && typeof f.readSkill === 'object'
+          && typeof f.readSkill.skillId === 'string'
+          && f.readSkill.skillId !== '') {
+        out.readSkill = { skillId: f.readSkill.skillId };
+        if (f.readSkill.args && typeof f.readSkill.args === 'object'
+            && !Array.isArray(f.readSkill.args)) {
+          out.readSkill.args = { ...f.readSkill.args };
+        }
       }
       if (Array.isArray(f.choices)) out.choices = f.choices.slice();
       if (f.patch && typeof f.patch === 'object') {

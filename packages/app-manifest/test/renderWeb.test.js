@@ -710,6 +710,128 @@ describe('renderWeb V0.4 — Q18 view.fields (record-shape patch fields)', () =>
   });
 });
 
+describe('renderWeb V0.7 — Q26 field.requiresField conditional display', () => {
+  // B.2.4 signal: pod-settings groupPodUri only meaningful when
+  // policy ∈ {centralised, hybrid}.  Q26 declares the gate; adapter
+  // hides the field when policy is 'personal'.
+  const MANIFEST = {
+    app:       'cond-rec',
+    itemTypes: ['storage-rec'],
+    operations: [
+      { id: 'getPolicy',    verb: 'read', params: [] },
+      { id: 'updatePolicy', verb: 'update',
+        params: [{ name: 'policy', kind: 'string' },
+                 { name: 'groupPodUri', kind: 'string' }] },
+    ],
+    views: [{
+      id: 'pod-settings', title: 'Pod settings', type: 'storage-rec', shape: 'record',
+      dataSource: { skillId: 'getPolicy' },
+      fields: [
+        { name: 'policy', type: 'enum', choices: ['personal', 'centralised', 'hybrid'],
+          patch: { opId: 'updatePolicy', argName: 'policy' } },
+        // Single-value gate.
+        { name: 'groupPodUri', type: 'string', label: 'Group pod URI',
+          requiresField: { policy: 'centralised' },
+          patch: { opId: 'updatePolicy', argName: 'groupPodUri' } },
+        // Array-value gate (OR within the key).
+        { name: 'fallbackUri', type: 'string', label: 'Fallback URI',
+          requiresField: { policy: ['centralised', 'hybrid'] } },
+        // No gate — always shown.
+        { name: 'displayName', type: 'string', label: 'Display name' },
+      ],
+    }],
+  };
+
+  it('Q26 — single-value requiresField projected verbatim', () => {
+    const sec = renderWeb(MANIFEST).sections.find((s) => s.id === 'pod-settings');
+    const f = sec.fields.find((x) => x.name === 'groupPodUri');
+    expect(f.requiresField).toEqual({ policy: 'centralised' });
+  });
+
+  it('Q26 — array-value requiresField projected as defensive copy', () => {
+    const sec = renderWeb(MANIFEST).sections.find((s) => s.id === 'pod-settings');
+    const f = sec.fields.find((x) => x.name === 'fallbackUri');
+    expect(f.requiresField).toEqual({ policy: ['centralised', 'hybrid'] });
+    // Mutating projected gate must NOT touch the manifest.
+    f.requiresField.policy.push('personal');
+    expect(MANIFEST.views[0].fields[2].requiresField.policy).toEqual(['centralised', 'hybrid']);
+  });
+
+  it('Q26 — absent requiresField leaves no key on the projection', () => {
+    const sec = renderWeb(MANIFEST).sections.find((s) => s.id === 'pod-settings');
+    const f = sec.fields.find((x) => x.name === 'displayName');
+    expect(f).not.toHaveProperty('requiresField');
+  });
+});
+
+describe('renderWeb V0.7 — Q25 field.readSkill multi-skill records', () => {
+  // E.4 signal: stoop's holidayMode is reachable both via getMyProfile
+  // AND via dedicated getHolidayMode.  Q25 declares the dedicated skill
+  // so the adapter can refresh single fields without re-fetching the
+  // whole record.
+  const MANIFEST = {
+    app:       'multi-rec',
+    itemTypes: ['profile-record'],
+    operations: [
+      { id: 'getMyProfile',  verb: 'read', params: [] },
+      { id: 'getHolidayMode', verb: 'read', params: [] },
+      { id: 'updateProfile',  verb: 'update',
+        params: [{ name: 'holidayMode', kind: 'boolean' }] },
+    ],
+    views: [{
+      id: 'profile', title: 'Profile', type: 'profile-record', shape: 'record',
+      dataSource: { skillId: 'getMyProfile' },
+      fields: [
+        // Field with readSkill — adapter calls getHolidayMode for value.
+        { name:  'holidayMode', type: 'boolean', label: 'Vakantiemodus',
+          readSkill: { skillId: 'getHolidayMode' },
+          patch:     { opId: 'updateProfile', argName: 'holidayMode' } },
+        // Field WITHOUT readSkill — adapter reads from record value.
+        { name:  'handle', type: 'string', label: 'Handle' },
+      ],
+    }],
+  };
+
+  it('Q25 — readSkill projected verbatim onto section.fields[]', () => {
+    const profile = renderWeb(MANIFEST).sections.find((s) => s.id === 'profile');
+    const f = profile.fields.find((x) => x.name === 'holidayMode');
+    expect(f.readSkill).toEqual({ skillId: 'getHolidayMode' });
+  });
+
+  it('Q25 — absent readSkill leaves no key on the projection', () => {
+    const profile = renderWeb(MANIFEST).sections.find((s) => s.id === 'profile');
+    const f = profile.fields.find((x) => x.name === 'handle');
+    expect(f).not.toHaveProperty('readSkill');
+  });
+
+  it('Q25 — readSkill.args carried through as a defensive copy', () => {
+    const M = {
+      app:       'cx',
+      itemTypes: ['rec'],
+      operations: [
+        { id: 'getOne',     verb: 'read', params: [] },
+        { id: 'getRecord',  verb: 'read', params: [] },
+      ],
+      views: [{
+        id: 'r', title: 'R', type: 'rec', shape: 'record',
+        dataSource: { skillId: 'getRecord' },
+        fields: [
+          { name: 'lang', type: 'string',
+            readSkill: { skillId: 'getOne', args: { locale: 'nl' } } },
+        ],
+      }],
+    };
+    const r = renderWeb(M).sections.find((s) => s.id === 'r');
+    expect(r.fields[0].readSkill).toEqual({
+      skillId: 'getOne',
+      args:    { locale: 'nl' },
+    });
+    // Mutating projected args must NOT touch the manifest.
+    r.fields[0].readSkill.args.locale = 'en';
+    expect(M.views[0].fields[0].readSkill.args.locale).toBe('nl');
+  });
+});
+
 describe('renderWeb V0.6 — Q23 field.type file / image', () => {
   // Q23 documents the recognized field.type set + adds `'file'` and
   // `'image'` for byte-shaped fields.  Substrate passes them through
