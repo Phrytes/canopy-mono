@@ -1,5 +1,5 @@
 /**
- * stoop-web smoke — Slice E.1 + E.2 + E.3 (PLAN-gui-chat-uplift.md).
+ * stoop-web smoke — Slice E.1 + E.2 + E.3 + E.4 (PLAN-gui-chat-uplift.md).
  *
  * E.1 — first stoop web page consuming `renderWeb(stoopManifest)`:
  *       `mine.html` (my active posts + completions).
@@ -7,15 +7,21 @@
  *       `privacy.html` (closed-beta disclosure + data-location).
  * E.3 — third stoop web page consuming the NavModel:
  *       `settings.html` (per-device + per-actor preferences).
+ * E.4 — V0.4-adopt for profile.html: manifest declares the
+ *       record-shape `profile` view + 3 representative identity
+ *       fields (handle / displayName / holidayMode) with their
+ *       patch ops.  Page is NOT migrated to renderWeb (591 lines,
+ *       5 sections, custom UX — auto-rendering would regress).
  *
  * Boots the `apps/stoop/bin/stoop-web.js` bootstrap programmatically,
  * then verifies:
  *   1. `/navmodel.json` is served + carries the `mine` + `privacy` +
- *      `settings` sections (the THREE sections E.1+E.2+E.3 surface).
+ *      `settings` + `profile` sections.
  *   2. `/stoop-config.json` carries the actor + group.
  *   3. `/mine.html` + `/privacy.html` + `/settings.html` are served
  *      + each carries the `data-navmodel-section` marker proving it
- *      picks up its section.
+ *      picks up its section.  (profile.html intentionally NOT
+ *      migrated — see E.4 note above.)
  *   4. The skill-dispatch path round-trips: `postRequest` then
  *      `listMyRequests` returns the freshly-added item filtered by
  *      LocalUiAuth-configured actor.
@@ -60,17 +66,18 @@ async function callSkill(skillId, data) {
   return (json.artifacts?.[0]?.parts ?? []).find((p) => p?.type === 'DataPart')?.data ?? {};
 }
 
-describe('stoop-web smoke (Slice E.1 + E.2 + E.3)', () => {
-  it('serves /navmodel.json with the `mine` + `privacy` + `settings` sections', async () => {
+describe('stoop-web smoke (Slice E.1 + E.2 + E.3 + E.4)', () => {
+  it('serves /navmodel.json with the `mine` + `privacy` + `settings` + `profile` sections', async () => {
     const res = await fetch(`${baseUrl}/navmodel.json`);
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toMatch(/application\/json/);
     const nav = await res.json();
     expect(nav.app).toBe('stoop');
-    // E.1 + E.2 + E.3 ship THREE sections.  Follow-on E.x slices will
-    // grow this (13 pages remaining).  Order = manifest.views[] order
-    // (Q2: deterministic declaration order).
-    expect(nav.sections.map((s) => s.id)).toEqual(['mine', 'privacy', 'settings']);
+    // E.1 + E.2 + E.3 + E.4 ship FOUR sections.  Follow-on E.x slices
+    // will grow this (12 pages remaining hand-built; E.4 adopts but
+    // does not migrate profile).  Order = manifest.views[] order (Q2:
+    // deterministic declaration order).
+    expect(nav.sections.map((s) => s.id)).toEqual(['mine', 'privacy', 'settings', 'profile']);
 
     const mine = nav.sections[0];
     expect(mine.id).toBe('mine');
@@ -140,6 +147,51 @@ describe('stoop-web smoke (Slice E.1 + E.2 + E.3)', () => {
     // territory (record-shape patch mutations don't fit add/register).
     expect(settings.readOnly).toBeUndefined();
     expect(settings.affordances).toEqual([]);
+
+    // E.4 — profile section.  V0.4-adopt mirrors settings: manifest
+    // declares the record-shape view + fields[]; profile.html keeps
+    // its rich custom UI (591 lines, 5 sections — auto-rendering
+    // would regress UX).
+    const profile = nav.sections[3];
+    expect(profile.id).toBe('profile');
+    expect(profile.title).toBe('Mijn profiel');
+    expect(profile.itemType).toBe('group-rules');  // placeholder; profile is
+                                                   // singleton-record (same
+                                                   // pattern as settings + privacy)
+    // V0.3 Q17 — shape: 'record' marks this section as a singleton.
+    expect(profile.shape).toBe('record');
+    // V0.3 Q15 — explicit dataSource (`getMyProfile({})` is param-free).
+    expect(profile.dataSource).toEqual({ skillId: 'getMyProfile' });
+    // V0.4 Q18 (adopted 2026-05-22) — section.fields[] surfaces the
+    // editable identity fields declared in the manifest.  Subset
+    // adoption — declares 3 representative fields covering the
+    // primary identity dimensions (handle / displayName /
+    // holidayMode).  All FLAT dispatch (no Q21 argWrapper) —
+    // getMyProfile-backed mutations are single-arg skills.
+    expect(Array.isArray(profile.fields)).toBe(true);
+    expect(profile.fields.length).toBeGreaterThanOrEqual(3);
+    const profileByName = Object.fromEntries(profile.fields.map((f) => [f.name, f]));
+    // handle — setMyHandle direct-arg.
+    expect(profileByName.handle.type).toBe('string');
+    expect(profileByName.handle.patch).toEqual({ opId: 'setMyHandle', argName: 'handle' });
+    // displayName — setMyDisplayName direct-arg.
+    expect(profileByName.displayName.type).toBe('string');
+    expect(profileByName.displayName.patch).toEqual({
+      opId: 'setMyDisplayName', argName: 'displayName',
+    });
+    // holidayMode — setHolidayMode direct-arg; argName is the SKILL ARG
+    // (`on`), not the field-on-entry name (`holidayMode`).  Same
+    // semantic split settings's hopThrough → setHopMode({global}) uses.
+    expect(profileByName.holidayMode.type).toBe('boolean');
+    expect(profileByName.holidayMode.patch).toEqual({
+      opId: 'setHolidayMode', argName: 'on',
+    });
+    // E.4 deliberately does NOT set `readOnly: true` (profile mutates
+    // via per-field skills).  Like settings, the per-field skills
+    // (`setMyHandle`, `setMyDisplayName`, `setHolidayMode`) aren't
+    // manifest ops, so no Q10 creative-verb affordances surface here.
+    expect(profile.readOnly).toBeUndefined();
+    expect(profile.affordances).toEqual([]);
   });
 
   it('serves /stoop-config.json with the actor + group', async () => {

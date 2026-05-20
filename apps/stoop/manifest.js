@@ -637,6 +637,123 @@ export const stoopManifest = {
         // proof small.  Forward-additive extensions land per-field.
       ],
     },
+
+    // ──── E.4 — profile view (V0.4-adopt) ─────────────────────────────
+    //
+    // `profile.html` is stoop's account/identity surface: handle +
+    // displayName + holiday-mode + skills picker + location + recovery
+    // + my-pods.  591 lines, FIVE sections, heavy custom UX (avatar
+    // resize, mnemonic reveal-once, geocoding preview).  Like
+    // settings.html, auto-rendering would regress UX — the page keeps
+    // its rich hand-coded layout.
+    //
+    // Manifest's job here = source-of-truth for WHICH editable identity
+    // fields exist + their patch ops.  Mirrors settings's V0.4-adopt
+    // pattern (commit 9e7003b): record-shape view + fields[] with
+    // per-field {opId, argName}.  Page rendering stays unchanged.
+    //
+    // The `profile` view's `type: 'group-rules'` is a placeholder
+    // (same pattern privacy + settings use).  `validateView` pins
+    // type ∈ manifest.itemTypes, but the section's actual data is a
+    // SINGLETON record (the calling actor's MemberMap entry), not a
+    // list of group-rules items.  Adding 'profile' as a new itemType
+    // would change the frozen 8-type set (per manifest-validation test
+    // line 92-101); reusing the placeholder keeps the diff minimal +
+    // matches the established convention for record-shape views.
+    //
+    // `dataSource: { skillId: 'getMyProfile' }` — `getMyProfile()`
+    // returns `{entry, renderForCurrentGroup}`; the page already
+    // extracts `.entry` (line 208 of profile.html: `r?.entry?.handle`).
+    // Same "page extracts the record key from the envelope" pattern
+    // settings uses with `.settings`.
+    //
+    // Fields chosen: 3 representative identity fields, all FLAT
+    // dispatch (no argWrapper needed — getMyProfile-backed mutations
+    // are all single-arg skills, not wrapped-patch like
+    // updateSettings).  Avatar, mnemonic, backup, location, skills
+    // picker, and my-pods sections remain hand-coded (see V0.5+ signals
+    // below — none of them fit Q18 fields[] cleanly).
+    //
+    // ──── V0.5+ substrate signals surfaced by E.4 ─────────────────────
+    //   7. `holidayMode` lives on the MemberMap entry (`entry.holidayMode`)
+    //      — readable via `getMyProfile`.  But the dedicated reader
+    //      `getHolidayMode()` returns `{holidayMode}` directly (separate
+    //      skill).  Q18 today assumes ONE dataSource skill per view;
+    //      no slot for "field-specific read skill" alongside the
+    //      record-level read.  Adapter has to either trust the record
+    //      envelope or know to re-read per-field.  Out of scope here;
+    //      page already reads holiday-mode separately.
+    //   8. `avatarUrl` is bytes (data-URL after resize), not a primitive
+    //      that fits Q18's `type: 'boolean' | 'enum' | string`.  The
+    //      avatar input is a file-picker with client-side resize
+    //      (`fileToResizedDataUrl`) + dispatch to `setMyAvatarUrl({url})`
+    //      and clear via `clearMyAvatar({})`.  Q18 has no `'file'` or
+    //      `'image'` field type + no notion of "client-side transform
+    //      before dispatch".  Stays hand-coded.
+    //   9. `skills` section is a list-shape WITHIN a record-shape view
+    //      (the user has many skills, each editable in 3 dimensions:
+    //      checked/status/freeTags).  Q17 today is a flat `'record'`
+    //      vs `'list'` choice per view — no nested shape.  Splitting
+    //      profile into "profile-identity" (record) + "profile-skills"
+    //      (list) is possible but would change the page's mental model;
+    //      keeping it ONE view for now.
+    //  10. `location` is also list-/wizard-shape (search → preview →
+    //      confirm) with an intermediate geocode skill call.  No Q18
+    //      slot for "multi-step mutation".  Stays hand-coded.
+    //  11. `mnemonic` + `encryptedBackup` are SECURITY-sensitive
+    //      one-shot reveals (mnemonic shows once) + dangerous-action
+    //      flows (backup needs a passphrase).  Q18 has no notion of
+    //      "consent gate" or "one-shot read".  Stays hand-coded.
+    //
+    // None of these block E.4: the V0.4-adopt proof-point is the
+    // record + 3 flat fields.  The signals are forward-additive
+    // substrate work for later V0.x.
+    {
+      id:    'profile',
+      title: 'Mijn profiel',
+      type:  'group-rules',  // placeholder; profile is singleton-record,
+                             // not a list of group-rules items.
+      // V0.3 Q17 — shape: 'record' marks this section as a singleton.
+      // `getMyProfile` returns `{entry, renderForCurrentGroup}`; the
+      // page extracts `.entry` (mirrors settings's `.settings` envelope
+      // extraction).
+      shape:       'record',
+      dataSource:  { skillId: 'getMyProfile' },
+      // V0.4 Q18 (adopted 2026-05-22) — declare 3 representative
+      // identity fields with patch declarations.  All FLAT dispatch
+      // (no Q21 argWrapper) — getMyProfile-backed mutations are
+      // single-arg skills, not wrapped-patch like updateSettings.
+      fields: [
+        {
+          name:  'handle',
+          type:  'string',
+          label: 'Handle (kleine letters, 3–32 tekens)',
+          // setMyHandle takes `{handle: <string>}` directly — flat fit.
+          patch: { opId: 'setMyHandle', argName: 'handle' },
+        },
+        {
+          name:  'displayName',
+          type:  'string',
+          label: 'Echte / weergavenaam (optioneel)',
+          // setMyDisplayName takes `{displayName: <string>}` directly.
+          patch: { opId: 'setMyDisplayName', argName: 'displayName' },
+        },
+        {
+          name:  'holidayMode',
+          type:  'boolean',
+          label: 'Vakantiemodus (skill-match overslaat me)',
+          // setHolidayMode takes `{on: <bool>}` directly — argName
+          // is the *skill arg* (`on`), not the field-on-entry name
+          // (`holidayMode`).  Same semantic split settings's
+          // hopThrough → setHopMode({global}) uses.
+          patch: { opId: 'setHolidayMode', argName: 'on' },
+        },
+        // Other profile.html fields (avatar, skills[], location,
+        // mnemonic, encryptedBackup, my-pods) stay hand-coded — see
+        // V0.5+ signals (7–11) above.  Forward-additive: any of them
+        // can land per-field when the substrate has a fit.
+      ],
+    },
   ],
 };
 
