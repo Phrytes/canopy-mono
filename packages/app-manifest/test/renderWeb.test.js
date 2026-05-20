@@ -610,6 +610,64 @@ describe('renderWeb V0.4 — Q18 view.fields (record-shape patch fields)', () =>
     const noFields = nav.sections.find((s) => s.id === 'no-fields');
     expect(noFields).not.toHaveProperty('fields');
   });
+
+  /* ─── Q21 (V0.5, 2026-05-22) — patch.argWrapper pass-through ─────── */
+
+  it('Q21 — field.patch.argWrapper passes through verbatim when present', () => {
+    const nav = renderWeb({
+      app:       'rec',
+      itemTypes: ['settings-record'],
+      operations: [
+        { id: 'updateSettings', verb: 'update',
+          params: [{ name: 'pollIntervalMs', kind: 'number' }] },
+      ],
+      views: [{
+        id: 'settings', title: 'Settings', type: 'settings-record', shape: 'record',
+        fields: [
+          { name: 'pollIntervalMs', type: 'number',
+            patch: { opId: 'updateSettings', argName: 'pollIntervalMs',
+                     argWrapper: 'patch' } },
+        ],
+      }],
+    });
+    const settings = nav.sections.find((s) => s.id === 'settings');
+    expect(settings.fields[0].patch).toEqual({
+      opId: 'updateSettings', argName: 'pollIntervalMs', argWrapper: 'patch',
+    });
+  });
+
+  it('Q21 — flat patch (no argWrapper) preserves V0.4 behaviour', () => {
+    const nav = renderWeb(MANIFEST);
+    const settings = nav.sections.find((s) => s.id === 'settings');
+    const lang = settings.fields.find((f) => f.name === 'language');
+    // Q18 fields stayed flat — argWrapper key must NOT appear.
+    expect(lang.patch).toEqual({ opId: 'updateSettings', argName: 'language' });
+    expect(lang.patch).not.toHaveProperty('argWrapper');
+  });
+
+  it('Q21 — empty-string argWrapper is dropped (treated as absent)', () => {
+    const nav = renderWeb({
+      app:       'rec',
+      itemTypes: ['settings-record'],
+      operations: [
+        { id: 'updateSettings', verb: 'update',
+          params: [{ name: 'pollIntervalMs', kind: 'number' }] },
+      ],
+      views: [{
+        id: 'settings', title: 'Settings', type: 'settings-record', shape: 'record',
+        fields: [
+          { name: 'pollIntervalMs', type: 'number',
+            patch: { opId: 'updateSettings', argName: 'pollIntervalMs',
+                     argWrapper: '' } },
+        ],
+      }],
+    });
+    const settings = nav.sections.find((s) => s.id === 'settings');
+    expect(settings.fields[0].patch).toEqual({
+      opId: 'updateSettings', argName: 'pollIntervalMs',
+    });
+    expect(settings.fields[0].patch).not.toHaveProperty('argWrapper');
+  });
 });
 
 describe("renderWeb V0.4 — Q19 surfaces.ui.placement: 'section-header'", () => {
