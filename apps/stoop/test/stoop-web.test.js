@@ -1,17 +1,24 @@
 /**
- * stoop-web smoke — Slice E.1 (PLAN-gui-chat-uplift.md).
+ * stoop-web smoke — Slice E.1 + E.2 (PLAN-gui-chat-uplift.md).
  *
- * First stoop web page consuming `renderWeb(stoopManifest)`.  Boots
- * the `apps/stoop/bin/stoop-web.js` bootstrap programmatically, then
- * verifies:
- *   1. `/navmodel.json` is served + carries the `mine` section
- *      (the ONE section E.1 surfaces — see manifest.js's view note).
+ * E.1 — first stoop web page consuming `renderWeb(stoopManifest)`:
+ *       `mine.html` (my active posts + completions).
+ * E.2 — second stoop web page consuming the NavModel:
+ *       `privacy.html` (closed-beta disclosure + data-location).
+ *
+ * Boots the `apps/stoop/bin/stoop-web.js` bootstrap programmatically,
+ * then verifies:
+ *   1. `/navmodel.json` is served + carries the `mine` + `privacy`
+ *      sections (the TWO sections E.1+E.2 surface).
  *   2. `/stoop-config.json` carries the actor + group.
- *   3. `/mine.html` is served + has the `data-navmodel-section="mine"`
- *      marker that proves the migrated page picks up the section.
+ *   3. `/mine.html` + `/privacy.html` are served + carry the
+ *      `data-navmodel-section` marker proving each picks up its
+ *      section.
  *   4. The skill-dispatch path round-trips: `postRequest` then
  *      `listMyRequests` returns the freshly-added item filtered by
  *      LocalUiAuth-configured actor.
+ *   5. The privacy page's two data-fetches (`getPrivacyNotice`,
+ *      `getDataLocation`) round-trip cleanly.
  *
  * Pattern mirrors `apps/household/test/web.test.js` — same shape
  * (programmatic startStoopWeb, same /tasks/send dispatch, same
@@ -49,15 +56,18 @@ async function callSkill(skillId, data) {
   return (json.artifacts?.[0]?.parts ?? []).find((p) => p?.type === 'DataPart')?.data ?? {};
 }
 
-describe('stoop-web smoke (Slice E.1)', () => {
-  it('serves /navmodel.json with the `mine` section', async () => {
+describe('stoop-web smoke (Slice E.1 + E.2)', () => {
+  it('serves /navmodel.json with the `mine` + `privacy` sections', async () => {
     const res = await fetch(`${baseUrl}/navmodel.json`);
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toMatch(/application\/json/);
     const nav = await res.json();
     expect(nav.app).toBe('stoop');
-    // E.1 ships ONE section.  Follow-on E.x slices will grow this.
-    expect(nav.sections.map((s) => s.id)).toEqual(['mine']);
+    // E.1 + E.2 ship TWO sections.  Follow-on E.x slices will grow
+    // this (14 pages remaining).  Order = manifest.views[] order
+    // (Q2: deterministic declaration order).
+    expect(nav.sections.map((s) => s.id)).toEqual(['mine', 'privacy']);
+
     const mine = nav.sections[0];
     expect(mine.id).toBe('mine');
     expect(mine.title).toBe('My posts');
@@ -70,6 +80,21 @@ describe('stoop-web smoke (Slice E.1)', () => {
     const cancel = (mine.itemActions ?? []).find((a) => a.opId === 'cancelRequest');
     expect(cancel).toBeDefined();
     expect(cancel.appliesTo.type).toBe('*');
+
+    // E.2 — privacy section.
+    const privacy = nav.sections[1];
+    expect(privacy.id).toBe('privacy');
+    expect(privacy.title).toBe('Privacy — wat je moet weten');
+    expect(privacy.itemType).toBe('group-rules');  // placeholder; see manifest note
+    // V0.2 Q9 — read-only flag passed through verbatim.
+    expect(privacy.readOnly).toBe(true);
+    // V0.2 Q7 — explicit dataSource (param-free; the lang-aware
+    // companion `getPrivacyNotice` is direct-called in the page —
+    // see manifest gap #3).
+    expect(privacy.dataSource).toEqual({ skillId: 'getDataLocation' });
+    // V0.2 Q9 — readOnly: true suppresses creative-verb auto-surface
+    // (Q10 affordances), so affordances[] is empty here.
+    expect(privacy.affordances).toEqual([]);
   });
 
   it('serves /stoop-config.json with the actor + group', async () => {
@@ -134,6 +159,46 @@ describe('stoop-web smoke (Slice E.1)', () => {
     expect(res.status).toBe(200);
     const card = await res.json();
     expect(card).toHaveProperty('skills');
+  });
+
+  it('serves /privacy.html with the data-navmodel-section marker (E.2)', async () => {
+    const res = await fetch(`${baseUrl}/privacy.html`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toMatch(/text\/html/);
+    const html = await res.text();
+    expect(html.length).toBeGreaterThan(0);
+    // The marker that proves the migrated page picks up the section.
+    expect(html).toContain('data-navmodel-section="privacy"');
+    // The migrated page fetches /navmodel.json (the consumption hook).
+    expect(html).toContain("fetch('/navmodel.json')");
+    // V0.2 — the page drives its data-location fetch via the shared
+    // `fetchSectionItems` helper (which honours the manifest's
+    // `section.dataSource: {skillId: 'getDataLocation'}` Q7
+    // declaration), removing the prior hard-coded skill call.
+    expect(html).toContain('fetchSectionItems');
+  });
+
+  it('privacy data-fetches round-trip (getPrivacyNotice + getDataLocation)', async () => {
+    // getPrivacyNotice is lang-aware (V0.2 gap #3: dataSource.args is
+    // static; this fetch stays direct-called in the page).
+    const notice = await callSkill('getPrivacyNotice', { lang: 'nl' });
+    expect(notice.lang).toBe('nl');
+    expect(Array.isArray(notice.sections)).toBe(true);
+    expect(notice.sections.length).toBeGreaterThan(0);
+    for (const s of notice.sections) {
+      expect(typeof s.heading).toBe('string');
+      expect(typeof s.body).toBe('string');
+    }
+
+    // getDataLocation is param-free — the dataSource skillId declared
+    // in the manifest.  `fetchSectionItems` calls it with `{}`.
+    const loc = await callSkill('getDataLocation', {});
+    // Shape: relayOperator / relayUrl / podIssuer / podRoot (any may
+    // be unset in the smoke bundle; the page renders them with a
+    // localised "— niet ingesteld —" fallback).  Just verify the
+    // skill responds with an object.
+    expect(typeof loc).toBe('object');
+    expect(loc).not.toBeNull();
   });
 
   it('postRequest → listMyRequests round-trips via LocalUiAuth', async () => {
