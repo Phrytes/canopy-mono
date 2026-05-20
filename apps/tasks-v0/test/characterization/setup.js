@@ -99,6 +99,27 @@ export async function buildCharacterizationFixture({
     'utf8',
   );
 
+  // Slice B.2.0 — overlay @canopy/web-adapter helpers under
+  // `/lib/web-adapter/<basename>.js`. Same pattern as dagFlatten.js;
+  // mirror of `bin/tasks-ui.js`.
+  const webAdapterRoot = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..', '..', '..', '..',
+    'packages', 'web-adapter', 'src',
+  );
+  const webAdapterFiles = {};
+  for (const n of [
+    'callSkill.js',
+    'deriveItemState.js',
+    'itemMatchesAppliesTo.js',
+    'applyPrefilledParams.js',
+    'index.js',
+  ]) {
+    webAdapterFiles[`/lib/web-adapter/${n}`] = await readFile(
+      join(webAdapterRoot, n), 'utf8',
+    );
+  }
+
   const ui = await mountLocalUi(bundle.agent, {
     port:        0,
     staticDir:   WEB_DIR,
@@ -107,6 +128,7 @@ export async function buildCharacterizationFixture({
       '/tasks-config.json': JSON.stringify(tasksConfig),
       '/navmodel.json':     JSON.stringify(navModel),
       '/lib/dagFlatten.js': dagFlattenJs,
+      ...webAdapterFiles,
       ...(extraStaticFiles ?? {}),
     },
   });

@@ -1,5 +1,5 @@
 /**
- * household web client — Slice A.3 + A.4 (PLAN-gui-chat-uplift.md).
+ * household web client — Slice A.3 + A.4 + B.2.0 (PLAN-gui-chat-uplift.md).
  *
  * Pure NavModel-driven UI:
  *   - tabs ← navModel.sections[].title
@@ -16,6 +16,14 @@
  *     auto-refresh of section items — the user can switch tabs to see
  *     anything the LLM mutated.
  *
+ * Slice B.2.0 (2026-05-20) — shared @canopy/web-adapter helpers:
+ *   - callSkill / itemMatchesAppliesTo / deriveItemState /
+ *     applyPrefilledParams are now ONE source-of-truth in
+ *     `packages/web-adapter/`. Imported here via the overlay served
+ *     by `bin/household-web.js` at `/lib/web-adapter/<name>.js`. This
+ *     unifies what used to be duplicated stubs in both
+ *     `apps/household/web/main.js` and `apps/tasks-v0/web/dag.html`.
+ *
  * V0 LIMITS (intentional):
  *   - The members section (itemType: 'contact') has no list-skill in V0;
  *     the navmodel.test.js explicitly acknowledges this gap.  We render
@@ -27,50 +35,15 @@
  *     substrate grows multi-field affordances, this client widens.
  */
 
-/** Mirrors tasks-v0/web/app.js's callSkill — same `/tasks/send` shape. */
-async function callSkill(skillId, args = {}) {
-  const body = {
-    skillId,
-    message: { parts: [{ type: 'DataPart', data: args }] },
-  };
-  const res = await fetch('/tasks/send', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const err = await res.text().catch(() => res.statusText);
-    throw new Error(`${skillId}: ${res.status} ${err}`);
-  }
-  const json = await res.json();
-  if (json.status && json.status !== 'completed') {
-    throw new Error(`${skillId}: ${json.status} — ${JSON.stringify(json.error ?? {})}`);
-  }
-  const outParts = json.artifacts?.[0]?.parts ?? json.parts ?? [];
-  const dp = outParts.find((p) => p?.type === 'DataPart');
-  return dp?.data ?? {};
-}
+import { callSkill as _callSkill }       from '/lib/web-adapter/callSkill.js';
+import { itemMatchesAppliesTo }          from '/lib/web-adapter/itemMatchesAppliesTo.js';
+import { applyPrefilledParams }          from '/lib/web-adapter/applyPrefilledParams.js';
 
-/** Does this item match the action's appliesTo gate? */
-function itemMatchesAppliesTo(item, appliesTo) {
-  if (!appliesTo) return true;
-  if (appliesTo.type !== undefined) {
-    const types = Array.isArray(appliesTo.type) ? appliesTo.type : [appliesTo.type];
-    if (!types.includes(item.type)) return false;
-  }
-  if (appliesTo.state !== undefined) {
-    const states = Array.isArray(appliesTo.state) ? appliesTo.state : [appliesTo.state];
-    const itemState = deriveItemState(item);
-    if (!states.includes(itemState)) return false;
-  }
-  return true;
-}
-
-/** Minimal item-state derivation — enough for V0's `state: 'open'` gate. */
-function deriveItemState(item) {
-  if (item.completedAt) return 'complete';
-  if (item.removedAt)   return 'removed';
-  return 'open';
+/** Same-origin POST shim — pins baseUrl=''. The web-adapter helper is
+ *  baseUrl-parameterised so a future debug surface can call into a
+ *  cross-origin agent; same-origin is the only path this shell uses. */
+function callSkill(skillId, args = {}) {
+  return _callSkill('', skillId, args);
 }
 
 /** Build the dispatch args for an item action.  Per the manifest's
@@ -78,16 +51,12 @@ function deriveItemState(item) {
 function buildActionArgs(action, item) {
   // markComplete/removeItem/claim all take `match: <id>`.  reassign
   // takes two args — not surfaced in this slice (no surfaces.ui).
-  const args = { match: item.id };
-  if (action.prefilledParams) Object.assign(args, action.prefilledParams);
-  return args;
+  return applyPrefilledParams({ match: item.id }, action);
 }
 
 /** Build the dispatch args for an add-affordance form submit. */
 function buildAddArgs(affordance, text) {
-  const args = { text };
-  if (affordance.prefilledParams) Object.assign(args, affordance.prefilledParams);
-  return args;
+  return applyPrefilledParams({ text }, affordance);
 }
 
 /** Find the first add-affordance (verb=add) in a section. */
@@ -160,8 +129,11 @@ function renderItemRow(state, section, item) {
   li.appendChild(text);
 
   // Per-item buttons — itemActions[] filtered by appliesTo.
+  // B.2.0: argument order is `(appliesTo, item)` to mirror
+  // renderChat's internal matchesAppliesTo (same shape, same
+  // semantics — the platform-parity invariant).
   const actions = (section.itemActions ?? []).filter((a) =>
-    itemMatchesAppliesTo(item, a.appliesTo),
+    itemMatchesAppliesTo(a.appliesTo, item),
   );
   if (actions.length > 0) {
     const btns = document.createElement('div');

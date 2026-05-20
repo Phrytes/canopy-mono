@@ -19,35 +19,25 @@ import {
   describeTaskStatus,
   shouldOfferForceComplete,
 } from '../src/ui/taskStatus.js';
+// Slice B.2.0 (2026-05-20) — callSkill moved to @canopy/web-adapter
+// (shared with apps/household/web/main.js). The previous inline copy
+// was duplicated verbatim here AND in apps/household/web/main.js.
+// Overlay served by `bin/tasks-ui.js` at `/lib/web-adapter/callSkill.js`.
+import { callSkill as _callSkill } from '/lib/web-adapter/callSkill.js';
 
 /**
  * Call a skill via A2A's POST /tasks/send.
+ *
+ * Same-origin shim pinning baseUrl=''. The shared web-adapter helper
+ * is baseUrl-parameterised so a future cross-origin tool can dispatch
+ * into a remote agent; the in-tree pages always call same-origin.
  *
  * @param {string} skillId
  * @param {object} args
  * @returns {Promise<object>}   data of the first DataPart in the response
  */
 export async function callSkill(skillId, args = {}) {
-  const body = {
-    skillId,
-    message: { parts: [{ type: 'DataPart', data: args }] },
-  };
-  const res = await fetch('/tasks/send', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const err = await res.text().catch(() => res.statusText);
-    throw new Error(`${skillId}: ${res.status} ${err}`);
-  }
-  const json = await res.json();
-  if (json.status && json.status !== 'completed') {
-    throw new Error(`${skillId}: ${json.status} — ${JSON.stringify(json.error ?? {})}`);
-  }
-  const outParts = json.artifacts?.[0]?.parts ?? json.parts ?? [];
-  const dp = outParts.find(p => p?.type === 'DataPart');
-  return dp?.data ?? {};
+  return _callSkill('', skillId, args);
 }
 
 /** Read the configured local actor from the agent card. */

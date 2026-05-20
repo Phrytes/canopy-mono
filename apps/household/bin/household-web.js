@@ -37,6 +37,7 @@
  * directly so it can await + stop without shell-driven lifecycle.
  */
 import { parseArgs }                              from 'node:util';
+import { readFile }                               from 'node:fs/promises';
 import { fileURLToPath }                          from 'node:url';
 import { dirname, join }                          from 'node:path';
 import {
@@ -259,6 +260,13 @@ export async function startHouseholdWeb(opts = {}) {
 
   const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
+  // Slice B.2.0 (2026-05-20) — overlay the shared @canopy/web-adapter
+  // helpers at `/lib/web-adapter/<file>.js` so apps/household/web/main.js
+  // can ESM-import them from the browser. Same mechanism tasks-ui.js
+  // uses for `/lib/dagFlatten.js`. Source-of-truth stays under
+  // `packages/web-adapter/src/`; this overlay is the runtime hook.
+  const webAdapterFiles = await loadWebAdapterFiles();
+
   const ui = await mountLocalUi(agent, {
     port,
     staticDir:        webDir,
@@ -266,6 +274,7 @@ export async function startHouseholdWeb(opts = {}) {
     extraStaticFiles: {
       '/navmodel.json':         JSON.stringify(navModel),
       '/household-config.json': JSON.stringify({ actor, app: navModel.app }),
+      ...webAdapterFiles,
     },
   });
 
@@ -281,6 +290,35 @@ export async function startHouseholdWeb(opts = {}) {
       await ui.stop();
     },
   };
+}
+
+/**
+ * Read @canopy/web-adapter's per-helper source files into an
+ * extraStaticFiles map keyed by `/lib/web-adapter/<basename>`. Pure
+ * passthrough — no rewriting; the package's source IS the runtime
+ * artefact (ESM, no bundling). One overlay per file so the browser
+ * can `import { callSkill } from '/lib/web-adapter/callSkill.js'`
+ * just like it imports `/lib/dagFlatten.js` today.
+ *
+ * Resolved relative to `node_modules/@canopy/web-adapter/src/` via
+ * the workspace symlink. If the package ever ships a `dist/` build
+ * step, switch this to point at that.
+ */
+async function loadWebAdapterFiles() {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const root = join(here, '..', '..', '..', 'packages', 'web-adapter', 'src');
+  const names = [
+    'callSkill.js',
+    'deriveItemState.js',
+    'itemMatchesAppliesTo.js',
+    'applyPrefilledParams.js',
+    'index.js',
+  ];
+  const out = {};
+  for (const n of names) {
+    out[`/lib/web-adapter/${n}`] = await readFile(join(root, n), 'utf8');
+  }
+  return out;
 }
 
 // ── CLI entry ─────────────────────────────────────────────────────────
