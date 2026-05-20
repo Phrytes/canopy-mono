@@ -351,6 +351,73 @@ describe('validateManifest', () => {
       }));
       expect(e.some((x) => /field\.type must be a string/.test(x.message))).toBe(true);
     });
+
+    /* ─── Q25 (V0.7, 2026-05-20) — field.readSkill ───────────────────── */
+
+    it('Q25 — accepts field.readSkill with non-empty skillId', () => {
+      expect(ok(base({
+        fields: [{ name: 'holidayMode', type: 'boolean',
+                   readSkill: { skillId: 'getHolidayMode' } }],
+      }))).toBe(true);
+    });
+
+    it('Q25 — accepts field.readSkill with args object', () => {
+      expect(ok(base({
+        fields: [{ name: 'lang', type: 'string',
+                   readSkill: { skillId: 'getLang', args: { locale: 'nl' } } }],
+      }))).toBe(true);
+    });
+
+    it('Q25 — rejects field.readSkill as a non-object', () => {
+      const e = errs(base({
+        fields: [{ name: 'x', readSkill: 'getX' }],
+      }));
+      expect(e.some((x) => /field\.readSkill must be an object/.test(x.message))).toBe(true);
+    });
+
+    it('Q25 — rejects field.readSkill missing skillId', () => {
+      const e = errs(base({
+        fields: [{ name: 'x', readSkill: { args: {} } }],
+      }));
+      expect(e.some((x) => /field\.readSkill\.skillId must be a non-empty string/.test(x.message))).toBe(true);
+    });
+
+    it('Q25 — rejects field.readSkill.args as non-object', () => {
+      const e = errs(base({
+        fields: [{ name: 'x', readSkill: { skillId: 'getX', args: 'oops' } }],
+      }));
+      expect(e.some((x) => /field\.readSkill\.args must be an object/.test(x.message))).toBe(true);
+    });
+
+    /* ─── Q26 (V0.7, 2026-05-20) — field.requiresField ──────────────── */
+
+    it('Q26 — accepts single-value requiresField gate', () => {
+      expect(ok(base({
+        fields: [{ name: 'groupPodUri',
+                   requiresField: { policy: 'centralised' } }],
+      }))).toBe(true);
+    });
+
+    it('Q26 — accepts array-value requiresField gate', () => {
+      expect(ok(base({
+        fields: [{ name: 'groupPodUri',
+                   requiresField: { policy: ['centralised', 'hybrid'] } }],
+      }))).toBe(true);
+    });
+
+    it('Q26 — rejects requiresField as a non-object', () => {
+      const e = errs(base({
+        fields: [{ name: 'x', requiresField: 'policy' }],
+      }));
+      expect(e.some((x) => /field\.requiresField must be an object/.test(x.message))).toBe(true);
+    });
+
+    it('Q26 — rejects empty requiresField object', () => {
+      const e = errs(base({
+        fields: [{ name: 'x', requiresField: {} }],
+      }));
+      expect(e.some((x) => /field\.requiresField must have at least one key/.test(x.message))).toBe(true);
+    });
   });
 
   describe('V0.6 Q22 surfaces.ui.labelKey on operations', () => {

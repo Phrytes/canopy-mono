@@ -349,6 +349,64 @@ function validateView(v, path, manifest, errors, idSet, strict = false) {
             message: 'field.type must be a string if present',
           });
         }
+        // Q26 (V0.7, 2026-05-20) — conditional-display gate.
+        // `field.requiresField: {<otherField>: <value | value[]>}`
+        // hides this field unless every named field on the record
+        // matches one of the allowed values.  Same shape as
+        // appliesTo.state gate; consumer-side resolution.
+        if (f.requiresField !== undefined) {
+          if (!f.requiresField || typeof f.requiresField !== 'object'
+              || Array.isArray(f.requiresField)) {
+            errors.push({
+              path:    `${fp}/requiresField`,
+              message: 'field.requiresField must be an object if present',
+            });
+          } else {
+            const keys = Object.keys(f.requiresField);
+            if (keys.length === 0) {
+              errors.push({
+                path:    `${fp}/requiresField`,
+                message: 'field.requiresField must have at least one key',
+              });
+            }
+          }
+        }
+        // Q25 (V0.7, 2026-05-20) — optional per-field read skill for
+        // multi-skill records.  Same shape as `view.dataSource`: an
+        // object with non-empty `skillId` + optional `args` object.
+        // When present, adapter calls this skill to resolve the
+        // field's value instead of reading from the record's
+        // dataSource result.
+        if (f.readSkill !== undefined) {
+          if (!f.readSkill || typeof f.readSkill !== 'object' || Array.isArray(f.readSkill)) {
+            errors.push({
+              path:    `${fp}/readSkill`,
+              message: 'field.readSkill must be an object if present',
+            });
+          } else {
+            if (typeof f.readSkill.skillId !== 'string' || f.readSkill.skillId === '') {
+              errors.push({
+                path:    `${fp}/readSkill/skillId`,
+                message: 'field.readSkill.skillId must be a non-empty string',
+              });
+            } else if (strict && knownIds && !knownIds.has(f.readSkill.skillId)) {
+              errors.push({
+                path:    `${fp}/readSkill/skillId`,
+                message: `unknown skillId "${f.readSkill.skillId}" (not in operations[] or externalSkills[])`,
+                code:    'unknown-skillId',
+              });
+            }
+            if (f.readSkill.args !== undefined
+                && (typeof f.readSkill.args !== 'object'
+                    || f.readSkill.args === null
+                    || Array.isArray(f.readSkill.args))) {
+              errors.push({
+                path:    `${fp}/readSkill/args`,
+                message: 'field.readSkill.args must be an object if present',
+              });
+            }
+          }
+        }
         if (f.patch !== undefined) {
           if (!f.patch || typeof f.patch !== 'object' || Array.isArray(f.patch)) {
             errors.push({ path: `${fp}/patch`, message: 'field.patch must be an object if present' });
