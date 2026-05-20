@@ -1,0 +1,358 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`household manifest → NavModel (Slice A.2) > determinism + structural snapshot > structural baseline (snapshot) > household.NavModel.structural 1`] = `
+{
+  "app": "household",
+  "globals": [],
+  "sections": [
+    {
+      "affordances": [
+        {
+          "label": "add",
+          "opId": "addItem",
+          "paramsSchema": {
+            "properties": {
+              "text": {
+                "minLength": 1,
+                "type": "string",
+              },
+              "type": {
+                "enum": [
+                  "shopping",
+                  "errand",
+                  "repair",
+                  "schedule",
+                ],
+                "type": "string",
+              },
+            },
+            "required": [
+              "type",
+              "text",
+            ],
+            "type": "object",
+          },
+          "placement": "section",
+          "prefilledParams": {
+            "type": "shopping",
+          },
+        },
+      ],
+      "filter": {
+        "open": true,
+      },
+      "id": "shopping",
+      "itemActions": [
+        {
+          "appliesTo": {
+            "type": [
+              "shopping",
+              "errand",
+              "repair",
+              "schedule",
+              "task",
+            ],
+          },
+          "label": "Done",
+          "opId": "markComplete",
+        },
+        {
+          "appliesTo": {
+            "type": [
+              "shopping",
+              "errand",
+              "repair",
+              "schedule",
+              "task",
+            ],
+          },
+          "label": "Remove",
+          "opId": "removeItem",
+        },
+      ],
+      "itemType": "shopping",
+      "title": "Shopping",
+    },
+    {
+      "affordances": [
+        {
+          "label": "add",
+          "opId": "addItem",
+          "paramsSchema": {
+            "properties": {
+              "text": {
+                "minLength": 1,
+                "type": "string",
+              },
+              "type": {
+                "enum": [
+                  "shopping",
+                  "errand",
+                  "repair",
+                  "schedule",
+                ],
+                "type": "string",
+              },
+            },
+            "required": [
+              "type",
+              "text",
+            ],
+            "type": "object",
+          },
+          "placement": "section",
+          "prefilledParams": {
+            "type": "errand",
+          },
+        },
+      ],
+      "filter": {
+        "open": true,
+      },
+      "id": "errand",
+      "itemActions": [
+        {
+          "appliesTo": {
+            "type": [
+              "shopping",
+              "errand",
+              "repair",
+              "schedule",
+              "task",
+            ],
+          },
+          "label": "Done",
+          "opId": "markComplete",
+        },
+        {
+          "appliesTo": {
+            "type": [
+              "shopping",
+              "errand",
+              "repair",
+              "schedule",
+              "task",
+            ],
+          },
+          "label": "Remove",
+          "opId": "removeItem",
+        },
+      ],
+      "itemType": "errand",
+      "title": "Errands",
+    },
+    {
+      "affordances": [
+        {
+          "label": "add",
+          "opId": "addItem",
+          "paramsSchema": {
+            "properties": {
+              "text": {
+                "minLength": 1,
+                "type": "string",
+              },
+              "type": {
+                "enum": [
+                  "shopping",
+                  "errand",
+                  "repair",
+                  "schedule",
+                ],
+                "type": "string",
+              },
+            },
+            "required": [
+              "type",
+              "text",
+            ],
+            "type": "object",
+          },
+          "placement": "section",
+          "prefilledParams": {
+            "type": "repair",
+          },
+        },
+      ],
+      "filter": {
+        "open": true,
+      },
+      "id": "repair",
+      "itemActions": [
+        {
+          "appliesTo": {
+            "type": [
+              "shopping",
+              "errand",
+              "repair",
+              "schedule",
+              "task",
+            ],
+          },
+          "label": "Done",
+          "opId": "markComplete",
+        },
+        {
+          "appliesTo": {
+            "type": [
+              "shopping",
+              "errand",
+              "repair",
+              "schedule",
+              "task",
+            ],
+          },
+          "label": "Remove",
+          "opId": "removeItem",
+        },
+      ],
+      "itemType": "repair",
+      "title": "Repairs",
+    },
+    {
+      "affordances": [
+        {
+          "label": "add",
+          "opId": "addItem",
+          "paramsSchema": {
+            "properties": {
+              "text": {
+                "minLength": 1,
+                "type": "string",
+              },
+              "type": {
+                "enum": [
+                  "shopping",
+                  "errand",
+                  "repair",
+                  "schedule",
+                ],
+                "type": "string",
+              },
+            },
+            "required": [
+              "type",
+              "text",
+            ],
+            "type": "object",
+          },
+          "placement": "section",
+          "prefilledParams": {
+            "type": "schedule",
+          },
+        },
+      ],
+      "filter": {
+        "open": true,
+      },
+      "id": "schedule",
+      "itemActions": [
+        {
+          "appliesTo": {
+            "type": [
+              "shopping",
+              "errand",
+              "repair",
+              "schedule",
+              "task",
+            ],
+          },
+          "label": "Done",
+          "opId": "markComplete",
+        },
+        {
+          "appliesTo": {
+            "type": [
+              "shopping",
+              "errand",
+              "repair",
+              "schedule",
+              "task",
+            ],
+          },
+          "label": "Remove",
+          "opId": "removeItem",
+        },
+      ],
+      "itemType": "schedule",
+      "title": "Schedule",
+    },
+    {
+      "affordances": [
+        {
+          "label": "add",
+          "opId": "addTask",
+          "paramsSchema": {
+            "properties": {
+              "assignee": {
+                "type": "string",
+              },
+              "dueAt": {
+                "type": "number",
+              },
+              "text": {
+                "minLength": 1,
+                "type": "string",
+              },
+            },
+            "required": [
+              "text",
+            ],
+            "type": "object",
+          },
+          "placement": "section",
+        },
+      ],
+      "filter": {
+        "open": true,
+      },
+      "id": "tasks",
+      "itemActions": [
+        {
+          "appliesTo": {
+            "type": [
+              "shopping",
+              "errand",
+              "repair",
+              "schedule",
+              "task",
+            ],
+          },
+          "label": "Done",
+          "opId": "markComplete",
+        },
+        {
+          "appliesTo": {
+            "type": [
+              "shopping",
+              "errand",
+              "repair",
+              "schedule",
+              "task",
+            ],
+          },
+          "label": "Remove",
+          "opId": "removeItem",
+        },
+        {
+          "appliesTo": {
+            "state": "open",
+            "type": "task",
+          },
+          "label": "I'll do this",
+          "opId": "claim",
+        },
+      ],
+      "itemType": "task",
+      "title": "Tasks",
+    },
+    {
+      "affordances": [],
+      "id": "members",
+      "itemActions": [],
+      "itemType": "contact",
+      "title": "Members",
+    },
+  ],
+}
+`;

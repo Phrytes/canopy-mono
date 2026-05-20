@@ -85,8 +85,12 @@ export const householdManifest = {
       },
     },
     {
-      id:   'markComplete',
-      verb: 'complete',
+      id:        'markComplete',
+      verb:      'complete',
+      // Slice A.2 — surface as per-item button across all list-type
+      // sections + tasks.  Multi-type via F-SP3-a; safe vs renderChat
+      // byte-equivalence (toolCatalog ignores appliesTo).
+      appliesTo: { type: [...LIST_TYPES, 'task'] },
       params: [
         { name: 'match', kind: 'string', required: true, ...STR_NONEMPTY },
       ],
@@ -102,11 +106,13 @@ export const householdManifest = {
             onEmpty:    { skillId: 'help', args: {} },
           },
         },
+        ui: { control: 'button', label: 'Done' },   // Slice A.2 — web surface
       },
     },
     {
-      id:   'removeItem',
-      verb: 'remove',
+      id:        'removeItem',
+      verb:      'remove',
+      appliesTo: { type: [...LIST_TYPES, 'task'] },   // Slice A.2 — same as markComplete
       params: [
         { name: 'match', kind: 'string', required: true, ...STR_NONEMPTY },
       ],
@@ -122,6 +128,7 @@ export const householdManifest = {
             onEmpty:    { skillId: 'help', args: {} },
           },
         },
+        ui: { control: 'button', label: 'Remove' },  // Slice A.2 — web surface
       },
     },
     {
@@ -231,8 +238,18 @@ export const householdManifest = {
   ],
 
   views: [
-    { id: 'tasks',   title: 'Tasks',   type: 'task',    filter: { open: true } },
-    { id: 'members', title: 'Members', type: 'contact' },
+    // Slice A.2 (2026-05-20) — four list-type views.  These let the
+    // household web surface (`PLAN-gui-chat-uplift.md` Slice A) render
+    // one section per canonical list-type.  `addItem` / `markComplete`
+    // / `removeItem` surface in each section via renderWeb's Q6 type-
+    // enum fallback (see DESIGN-navmodel-sketch.md § Q6).  No impact
+    // on renderChat output (toolCatalog + systemPrompt unchanged).
+    { id: 'shopping', title: 'Shopping', type: 'shopping', filter: { open: true } },
+    { id: 'errand',   title: 'Errands',  type: 'errand',   filter: { open: true } },
+    { id: 'repair',   title: 'Repairs',  type: 'repair',   filter: { open: true } },
+    { id: 'schedule', title: 'Schedule', type: 'schedule', filter: { open: true } },
+    { id: 'tasks',    title: 'Tasks',    type: 'task',     filter: { open: true } },
+    { id: 'members',  title: 'Members',  type: 'contact' },
   ],
 
   slashGrammar: {
