@@ -174,6 +174,31 @@
  *
  * Forward-additive: validator special-cases `'*'`; renderWeb's
  * `matchOp` returns matched=true for wildcard regardless of view.type.
+ *
+ * ──── Q15 — `view.dataSource.argsFromContext` (locked 2026-05-21)
+ *
+ * Surfaced by E.2 + E.3: stoop's privacy.html needs a runtime `lang`
+ * arg (browser-derived) and stoop's settings.html surfaced the
+ * adjacent need for context-bound args.  V0.2 `dataSource.args` is
+ * static; runtime values forced consumers to bypass the manifest.
+ *
+ * Solution: `dataSource.argsFromContext: {lang: '$lang'}` — adapter
+ * recognises `$<key>` strings and substitutes from the caller-
+ * supplied `context` arg at call time.  Forward-additive — absent
+ * means existing static-args behaviour.
+ *
+ * ──── Q17 — `view.shape: 'record'` (locked 2026-05-21)
+ *
+ * Surfaced by E.3: stoop's settings.html is a SINGLETON record
+ * (`getSettings` returns `{settings: {...}}`), not a list.  NavModel
+ * V0.2 assumes sections are `Array<item>`.  E.3 worked around by
+ * treating the singleton as a 1-element list.
+ *
+ * Solution: `view.shape: 'record' | 'list'` (default `'list'` —
+ * existing behaviour).  Adapter switches rendering: `'list'` →
+ * iterate items[]; `'record'` → render the single returned record
+ * with its fields.  Future Q18 (deferred) lets the record's fields
+ * declare their own patch-op for per-field mutations.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -246,6 +271,9 @@ function buildSection(view, ops, manifest) {
   // this in preference to the default `listOpen({type, ...filter})`
   // heuristic.  Validate-loose: shape correctness is the adapter's
   // concern (forward-additive — V0.3 may tighten via JSDoc).
+  // Q15 (V0.3, 2026-05-21) — `dataSource.argsFromContext` passes
+  // through verbatim.  Substitution happens in
+  // `@canopy/web-adapter/fetchSectionItems` at call time.
   if (view.dataSource !== undefined) section.dataSource = view.dataSource;
   // Q9 (2026-05-21) — read-only marker.  Adapter skips Add forms /
   // creative affordances; itemActions still render (state-gated
@@ -253,6 +281,13 @@ function buildSection(view, ops, manifest) {
   // verbatim so adapter can also disable per-row interactivity if
   // needed (e.g. dim the row).
   if (view.readOnly === true)       section.readOnly   = true;
+  // Q17 (V0.3, 2026-05-21) — section shape.  Default `'list'`
+  // (Array<item>); `'record'` switches the adapter to expect ONE
+  // record (e.g. settings, profile).  Field NOT set on the section
+  // when `view.shape` is absent OR equals `'list'` — keeps NavModel
+  // JSON minimal + back-compatible (every existing section is
+  // implicitly list-shaped).
+  if (view.shape === 'record')      section.shape      = 'record';
 
   for (const op of ops) {
     const ui = op?.surfaces?.ui;

@@ -91,6 +91,79 @@ describe('fetchSectionItems — fallback Q6 rule-b (no dataSource)', () => {
   });
 });
 
+describe('fetchSectionItems — V0.3 Q15 argsFromContext', () => {
+  it('substitutes "$key" strings from context object', async () => {
+    const callSkill = vi.fn().mockResolvedValue({});
+    const section = {
+      id: 'privacy', itemType: 'note',
+      dataSource: {
+        skillId: 'getPrivacyNotice',
+        argsFromContext: { lang: '$lang' },
+      },
+    };
+    await fetchSectionItems(section, {
+      callSkill,
+      context: { lang: 'nl' },
+    });
+    expect(callSkill).toHaveBeenCalledWith('getPrivacyNotice', { lang: 'nl' });
+  });
+
+  it('merges static args + argsFromContext (context-substituted wins on collision)', async () => {
+    const callSkill = vi.fn().mockResolvedValue({});
+    const section = {
+      id: 'x', itemType: 'note',
+      dataSource: {
+        skillId: 'getX',
+        args:             { limit: 10, lang: 'en' },
+        argsFromContext:  { lang: '$lang' },
+      },
+    };
+    await fetchSectionItems(section, {
+      callSkill,
+      context: { lang: 'nl' },
+    });
+    expect(callSkill).toHaveBeenCalledWith('getX', { limit: 10, lang: 'nl' });
+  });
+
+  it('non-"$" string values pass through literally', async () => {
+    const callSkill = vi.fn().mockResolvedValue({});
+    const section = {
+      id: 'x', itemType: 'note',
+      dataSource: {
+        skillId: 'getX',
+        argsFromContext: { mode: 'plain', sort: 'desc' },
+      },
+    };
+    await fetchSectionItems(section, { callSkill, context: { mode: 'override' } });
+    expect(callSkill).toHaveBeenCalledWith('getX', { mode: 'plain', sort: 'desc' });
+  });
+
+  it('"$key" pass-through when context missing the key (caller can detect)', async () => {
+    const callSkill = vi.fn().mockResolvedValue({});
+    const section = {
+      id: 'x', itemType: 'note',
+      dataSource: { skillId: 'getX', argsFromContext: { lang: '$lang' } },
+    };
+    await fetchSectionItems(section, { callSkill /* no context */ });
+    expect(callSkill).toHaveBeenCalledWith('getX', { lang: '$lang' });
+  });
+
+  it('non-string values in argsFromContext pass through unchanged', async () => {
+    const callSkill = vi.fn().mockResolvedValue({});
+    const section = {
+      id: 'x', itemType: 'note',
+      dataSource: {
+        skillId: 'getX',
+        argsFromContext: { count: 10, flag: true, nested: { a: 1 } },
+      },
+    };
+    await fetchSectionItems(section, { callSkill, context: { count: 'override' } });
+    expect(callSkill).toHaveBeenCalledWith('getX', {
+      count: 10, flag: true, nested: { a: 1 },
+    });
+  });
+});
+
 describe('fetchSectionItems — return shape', () => {
   it('returns the skill reply verbatim (no normalisation)', async () => {
     const replies = [

@@ -545,6 +545,40 @@ describe('renderWeb V0.2 — Q10 creative verbs (add + register)', () => {
   });
 });
 
+describe("renderWeb V0.3 — Q17 view.shape: 'record'", () => {
+  const MANIFEST = {
+    app:       'rec',
+    itemTypes: ['settings-record', 'task'],
+    operations: [],
+    views: [
+      { id: 'settings', title: 'Settings', type: 'settings-record',
+        shape: 'record',
+        dataSource: { skillId: 'getSettings' } },
+      { id: 'tasks', title: 'Tasks', type: 'task' },              // implicit 'list'
+      { id: 'explicit-list', title: 'Explicit list', type: 'task',
+        shape: 'list' },
+    ],
+  };
+
+  it("section.shape is set to 'record' when view.shape === 'record'", () => {
+    const nav = renderWeb(MANIFEST);
+    const settings = nav.sections.find((s) => s.id === 'settings');
+    expect(settings.shape).toBe('record');
+  });
+
+  it("section.shape is ABSENT when view.shape is undefined (default 'list')", () => {
+    const nav = renderWeb(MANIFEST);
+    const tasks = nav.sections.find((s) => s.id === 'tasks');
+    expect(tasks).not.toHaveProperty('shape');
+  });
+
+  it("section.shape is ABSENT when view.shape === 'list' (avoid noise; default is implicit)", () => {
+    const nav = renderWeb(MANIFEST);
+    const ex = nav.sections.find((s) => s.id === 'explicit-list');
+    expect(ex).not.toHaveProperty('shape');
+  });
+});
+
 describe("renderWeb V0.2 — Q8 appliesTo.type: '*' wildcard", () => {
   it('wildcard op surfaces as itemAction in EVERY section', () => {
     const nav = renderWeb(V02_SYNTH);

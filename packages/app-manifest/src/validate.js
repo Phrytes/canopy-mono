@@ -198,6 +198,54 @@ function validateView(v, path, manifest, errors, idSet) {
   if (typeof v.title !== 'string') {
     errors.push({ path: `${path}/title`, message: 'view.title must be a string' });
   }
+
+  // Q17 (V0.3, 2026-05-21) — view.shape: 'list' | 'record' (default 'list').
+  // Forward-additive; existing manifests (no `shape` field) → implicit 'list'.
+  if (v.shape !== undefined && v.shape !== 'list' && v.shape !== 'record') {
+    errors.push({
+      path: `${path}/shape`,
+      message: `view.shape must be 'list' or 'record' (got ${JSON.stringify(v.shape)})`,
+    });
+  }
+
+  // Q15 + Q16 (V0.3, 2026-05-21) — dataSource shape sanity check.
+  // Loose verification; consumers (renderWeb / fetchSectionItems) are
+  // tolerant if structure deviates.
+  if (v.dataSource !== undefined) {
+    if (v.dataSource === null || typeof v.dataSource !== 'object' || Array.isArray(v.dataSource)) {
+      errors.push({ path: `${path}/dataSource`, message: 'view.dataSource must be an object if present' });
+    } else if (typeof v.dataSource.skillId !== 'string' || v.dataSource.skillId === '') {
+      errors.push({
+        path: `${path}/dataSource/skillId`,
+        message: 'view.dataSource.skillId must be a non-empty string',
+      });
+    } else {
+      // Q16 cross-check (advisory, not strict): warn-equivalent if
+      // skillId doesn't match an operation id in the manifest.
+      // Recorded as an error with `code: 'unknown-skillId'` so
+      // tooling can opt-into-strict / opt-into-warn.  Existing
+      // manifests with skillIds that reference external skills
+      // (e.g. tasks-v0's `listMine` lives in buildSkills,
+      // not the manifest) MUST be excused via a future allow-list.
+      // For V0.3 the cross-check is OFF BY DEFAULT — guarded behind
+      // an env flag so it doesn't break the chain.  Enabled tools
+      // can grep for the error `code` to surface typos.
+      //
+      // (Implementation TODO: env-flag gating + allow-list.  V0.3
+      // ships the SHAPE check above; the cross-check follows once
+      // a tooling consumer wants it.)
+    }
+    if (v.dataSource.argsFromContext !== undefined) {
+      if (v.dataSource.argsFromContext === null
+          || typeof v.dataSource.argsFromContext !== 'object'
+          || Array.isArray(v.dataSource.argsFromContext)) {
+        errors.push({
+          path: `${path}/dataSource/argsFromContext`,
+          message: 'view.dataSource.argsFromContext must be an object if present',
+        });
+      }
+    }
+  }
 }
 
 /**
