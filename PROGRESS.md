@@ -39,6 +39,8 @@ Branch `feat/app-manifest` carries 48 commits ahead of master; total
 | NavModel V0.4 (Q18 patch + per-kind + section CTAs + strict skillId) | ✅ Done — 4 forward-additive extensions       |
 | NavModel V0.3 (d — structured list reply shape) | ✅ Done — renderChat passes through `reply.data`  |
 | V0.4-adopt stoop settings (Q18 fields)| ✅ Done — 4 representative fields declared with patch  |
+| NavModel V0.5 (Q21 patch.argWrapper + tasks-v0 manifest export) | ✅ Done — wrapped-patch convention      |
+| Slice C.3 (ReviewScreen via adapter)  | ✅ Done — first RN consumer of renderItemActions       |
 | SP-4b + SP-11 V0 demo               | ✅ Done (`examples/manifest-host-demo/`)                    |
 | Slice A.1–A.4 (household web + LLM) | ✅ Done — **Slice A COMPLETE**                              |
 | Slice B.0 parity audit              | ✅ Done                                                    |
@@ -130,7 +132,7 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 
 | Package / app                  | Tests        | Notes                                       |
 | ------------------------------ | ------------ | ------------------------------------------- |
-| `@canopy/app-manifest`         | **159**      | +5 V0.3 (d) reply.data passthrough          |
+| `@canopy/app-manifest`         | **165**      | +5 V0.3 (d) + 6 V0.5 Q21 argWrapper          |
 | `@canopy/circles`              | **50**       | (unchanged)                                 |
 | `@canopy/manifest-host`        | **20**       | (unchanged)                                 |
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |
