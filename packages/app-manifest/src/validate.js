@@ -339,6 +339,17 @@ function validateView(v, path, manifest, errors, idSet, strict = false) {
                 message: 'field.patch.argName must be a non-empty string',
               });
             }
+            // Q21 (V0.5, 2026-05-22) — optional `argWrapper`.  When
+            // present, must be a non-empty string; signals the adapter
+            // to dispatch a wrapped patch shape
+            // (`opId({[argWrapper]: {[argName]: newValue}})`).
+            if (f.patch.argWrapper !== undefined
+                && (typeof f.patch.argWrapper !== 'string' || f.patch.argWrapper === '')) {
+              errors.push({
+                path:    `${fp}/patch/argWrapper`,
+                message: 'field.patch.argWrapper must be a non-empty string if present',
+              });
+            }
           }
         }
       });

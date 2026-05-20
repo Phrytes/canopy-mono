@@ -266,6 +266,36 @@ describe('validateManifest', () => {
       const e = errs(base({ fields: [{ name: 'x', patch: { opId: 'updateRec' } }] }));
       expect(e.some((x) => /field\.patch\.argName must be a non-empty string/.test(x.message))).toBe(true);
     });
+
+    /* ─── Q21 (V0.5, 2026-05-22) — patch.argWrapper ─────────────────── */
+
+    it('Q21 — accepts patch.argWrapper as a non-empty string', () => {
+      expect(ok(base({
+        fields: [
+          { name: 'pollIntervalMs', type: 'number',
+            patch: { opId: 'updateRec', argName: 'pollIntervalMs',
+                     argWrapper: 'patch' } },
+        ],
+      }))).toBe(true);
+    });
+
+    it('Q21 — rejects empty-string patch.argWrapper', () => {
+      const e = errs(base({
+        fields: [
+          { name: 'x', patch: { opId: 'updateRec', argName: 'x', argWrapper: '' } },
+        ],
+      }));
+      expect(e.some((x) => /field\.patch\.argWrapper must be a non-empty string/.test(x.message))).toBe(true);
+    });
+
+    it('Q21 — rejects non-string patch.argWrapper', () => {
+      const e = errs(base({
+        fields: [
+          { name: 'x', patch: { opId: 'updateRec', argName: 'x', argWrapper: 42 } },
+        ],
+      }));
+      expect(e.some((x) => /field\.patch\.argWrapper must be a non-empty string/.test(x.message))).toBe(true);
+    });
   });
 
   describe('V0.4 Q16-strict mode', () => {

@@ -207,13 +207,34 @@
  * for "patch this field via opId(argName=value)".
  *
  * Solution: `view.fields: [{name, type, label?, choices?, patch?:
- * {opId, argName}}]`.  Only meaningful when `view.shape === 'record'`.
- * NavModel passes through to `section.fields[]`.  Adapter renders each
- * field as an input based on `type`; on change, dispatches
- * `patch.opId({patch.argName: newValue})`.
+ * {opId, argName, argWrapper?}}]`.  Only meaningful when
+ * `view.shape === 'record'`.  NavModel passes through to
+ * `section.fields[]`.  Adapter renders each field as an input based on
+ * `type`; on change, dispatches `patch.opId(<args>)` per Q21.
  *
  * Forward-additive — absent means existing record-rendering (no
  * editable fields).
+ *
+ * ──── Q21 — `patch.argWrapper` for wrapped-patch shapes (locked 2026-05-22)
+ *
+ * Surfaced by the V0.4-adopt for stoop's settings (commit 9e7003b):
+ * Q18's flat `{opId, argName}` assumes the dispatch shape
+ * `opId({[argName]: newValue})`.  But many real APIs use nested patch
+ * shapes — e.g. stoop's `updateSettings({patch: {pollIntervalMs: 30000}})`.
+ * The page-level adapter wrapped this ad-hoc; V0.5 makes it explicit
+ * in the substrate.
+ *
+ * Solution: `patch.argWrapper?: string` opt-in.  When absent or empty,
+ * dispatch stays FLAT: `opId({[argName]: newValue})` (Q18 behaviour
+ * preserved).  When a non-empty string, dispatch is WRAPPED:
+ * `opId({[argWrapper]: {[argName]: newValue}})`.
+ *
+ * Example (stoop settings):
+ *   patch: { opId: 'updateSettings', argName: 'pollIntervalMs',
+ *            argWrapper: 'patch' }
+ *   → updateSettings({patch: {pollIntervalMs: newValue}})
+ *
+ * Forward-additive — absent means existing flat behaviour (V0.4).
  *
  * ──── Q19 — Section-scope CTAs via `surfaces.ui.placement: 'section-header'`
  *
@@ -338,6 +359,14 @@ function buildSection(view, ops, manifest) {
       if (Array.isArray(f.choices)) out.choices = f.choices.slice();
       if (f.patch && typeof f.patch === 'object') {
         out.patch = { opId: f.patch.opId, argName: f.patch.argName };
+        // Q21 (V0.5, 2026-05-22) — wrapped-patch shape opt-in.  When
+        // present, adapters dispatch
+        // `opId({[argWrapper]: {[argName]: newValue}})` instead of the
+        // flat default `opId({[argName]: newValue})`.  Validator
+        // guarantees non-empty string when set.
+        if (typeof f.patch.argWrapper === 'string' && f.patch.argWrapper !== '') {
+          out.patch.argWrapper = f.patch.argWrapper;
+        }
       }
       return out;
     });
