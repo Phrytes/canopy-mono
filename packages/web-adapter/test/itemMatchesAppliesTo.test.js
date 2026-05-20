@@ -28,6 +28,32 @@ describe('itemMatchesAppliesTo — base predicates', () => {
     expect(itemMatchesAppliesTo({ type: 'task' }, { type: 'shopping' })).toBe(false);
   });
 
+  describe('Q8 wildcard — appliesTo.type === "*"', () => {
+    it('wildcard matches every item.type', () => {
+      expect(itemMatchesAppliesTo({ type: '*' }, { type: 'ask'   })).toBe(true);
+      expect(itemMatchesAppliesTo({ type: '*' }, { type: 'offer' })).toBe(true);
+      expect(itemMatchesAppliesTo({ type: '*' }, { type: 'lend'  })).toBe(true);
+      expect(itemMatchesAppliesTo({ type: '*' }, { type: 'task'  })).toBe(true);
+    });
+
+    it('wildcard in array form matches every item.type', () => {
+      // Less common but logically equivalent: appliesTo.type: ['*'].
+      expect(itemMatchesAppliesTo({ type: ['*'] }, { type: 'ask' })).toBe(true);
+    });
+
+    it('wildcard + state gate — state still applies', () => {
+      const gate = { type: '*', state: 'open' };
+      // Open item — passes both.
+      expect(itemMatchesAppliesTo(gate, { type: 'ask', state: 'open' })).toBe(true);
+      // Wrong state — fails.
+      expect(itemMatchesAppliesTo(gate, { type: 'ask', state: 'closed' })).toBe(false);
+    });
+
+    it('item with falsy type still rejected when appliesTo is set (existing invariant)', () => {
+      expect(itemMatchesAppliesTo({ type: '*' }, null)).toBe(false);
+    });
+  });
+
   it('matches an array type gate', () => {
     const gate = { type: ['task', 'shopping'] };
     expect(itemMatchesAppliesTo(gate, { type: 'task' })).toBe(true);
