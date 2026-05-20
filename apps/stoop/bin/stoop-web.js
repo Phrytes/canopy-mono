@@ -8,28 +8,37 @@
  * `mountLocalUi` substrate, same `extraStaticFiles` carrying
  * `/navmodel.json` + `/stoop-config.json`.
  *
- * ──── Slice E.1 scope (the smallest stoop web page) ──────────────────
+ * ──── Slice E.1 + E.2 scope (the two smallest stoop web pages) ──────
  *
  * Stoop has 16 web pages today (per `AUDIT-stoop-folio-surfaces.md`).
- * E.1 surfaces ONE — `mine.html` (my active posts + completions) — to
- * prove the substrate-shape, mirroring B.1's discipline for tasks-v0
- * (just `dag.html`).  The remaining 15 pages stay hand-built and will
- * land in follow-on E.x slices.
+ * E.1 surfaced ONE — `mine.html` (my active posts + completions); E.2
+ * (2026-05-20) added a second — `privacy.html` (closed-beta
+ * disclosure + data-location).  Both pages prove the substrate-shape,
+ * mirroring B.1's discipline for tasks-v0 (just `dag.html`).  14
+ * pages remain hand-built and will land in follow-on E.x slices.
  *
- * Why `mine.html`?
+ * Why `mine.html` (E.1)?
  *   - Single-list page (one `listMyRequests` skill, one `<ul>` of items)
  *   - The skill it calls (`listMyRequests`) IS in the manifest
  *     (`listMyRequests` op declared D.1, line 158)
  *   - Smaller than `index.html` (prikbord has filters + multi-intent
  *     tabs) — strictly less risky to migrate as the first proof
- *   - Smaller than `privacy.html` (which calls `getPrivacyNotice` +
- *     `getDataLocation`, neither of which is in the D.1 manifest's
- *     "chat/slash-callable core" — privacy would be a flat NavModel
- *     consumer that only ties navigation, not data)
+ *
+ * Why `privacy.html` (E.2)?
+ *   - Smallest read-only page (66 lines pre-migration) — a clean
+ *     Q9 `view.readOnly: true` proof-point
+ *   - Two skill calls (`getPrivacyNotice`, `getDataLocation`), one of
+ *     which (`getDataLocation`) fits the V0.2 `dataSource` contract
+ *     (param-free); the lang-aware `getPrivacyNotice` exposes a V0.2
+ *     gap (static `dataSource.args`) logged inline for V0.3
+ *   - Neither skill is a manifest op (they're read-only info-skills,
+ *     not chat/slash-callable per D.1 primary-flows discipline) —
+ *     `dataSource.skillId` is a free string in validate.js so this
+ *     is permitted and worth flagging
  *
  * Other pages (chat / contacts / group / create-group / profile /
  * settings / onboard / sign-in / auth-callback / push / restore /
- * welcome / metrics / privacy / index) DEFER to follow-on E.x slices.
+ * welcome / metrics / index) DEFER to follow-on E.x slices.
  *
  * ──── This bootstrap vs `stoop-ui.js` / `stoop-testbed.js` ──────────
  *
@@ -108,8 +117,8 @@ export async function startStoopWeb(opts = {}) {
   await bundle.skillMatch.start();
 
   // Pre-compute the NavModel from the manifest.  Static for the life
-  // of the server (manifest is module-scope const).  E.1 ships ONE
-  // section (`mine`); follow-on E.x will grow this.
+  // of the server (manifest is module-scope const).  E.1 + E.2 ship
+  // TWO sections (`mine`, `privacy`); follow-on E.x will grow this.
   const navModel = renderWeb(stoopManifest);
 
   const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
@@ -196,14 +205,14 @@ if (isMain) {
   const group = values.group ?? DEFAULT_GROUP;
 
   const handle = await startStoopWeb({ port, actor, group });
-  console.log(`Stoop web UI (Slice E.1) ready at ${handle.url}`);
+  console.log(`Stoop web UI (Slice E.1 + E.2) ready at ${handle.url}`);
   console.log(`  actor:    ${actor}`);
   console.log(`  group:    ${group}`);
   console.log(`  app:      ${handle.navModel.app}`);
   console.log(`  sections: ${handle.navModel.sections.map((s) => s.id).join(', ')}`);
-  console.log(`  ⚠  E.1 surfaces /mine.html via the NavModel.  Other pages`);
-  console.log(`     still load (legacy hand-built); their migration is`);
-  console.log(`     follow-on E.x scope.`);
+  console.log(`  ⚠  E.1+E.2 surface /mine.html + /privacy.html via the NavModel.`);
+  console.log(`     Other pages still load (legacy hand-built); their migration`);
+  console.log(`     is follow-on E.x scope (14 pages remaining).`);
 
   process.on('SIGINT',  shutdown);
   process.on('SIGTERM', shutdown);

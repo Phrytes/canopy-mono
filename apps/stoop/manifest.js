@@ -419,16 +419,20 @@ export const stoopManifest = {
   // Slice E.1 (2026-05-20) — first stoop web page via renderWeb.
   // V0.2 adopt (2026-05-21) — `dataSource` (Q7) declares the section's
   // data-fetch skill in the manifest, removing the client special-case.
+  // Slice E.2 (2026-05-20) — second stoop web page via renderWeb:
+  // `privacy.html` (closed-beta disclosure + data-location).  Picked
+  // as the smallest read-only page (66 lines) — perfect fit for Q9
+  // `view.readOnly: true`.  Contacts (417 lines, heavy mutations) and
+  // profile (591 lines, form-heavy) defer to later E.x slices.
   //
   // Stoop has 16 web pages today (per AUDIT-stoop-folio-surfaces.md).
-  // E.1 surfaces ONE page — `mine.html` (my active posts + completions)
-  // — to prove the substrate-shape.  The remaining 15 pages
-  // (`index.html` prikbord, `chat.html`, `contacts.html`,
-  // `create-group.html`, `group.html`, `profile.html`, `settings.html`,
-  // `onboard.html`, `sign-in.html`, `auth-callback.html`, `push.html`,
-  // `restore.html`, `welcome.html`, `metrics.html`, `privacy.html`)
-  // stay hand-built and will land in follow-on E.x slices.  Same
-  // discipline B.1 used for tasks-v0 (just `dag.html`).
+  // After E.2, TWO pages are NavModel-driven (`mine.html`,
+  // `privacy.html`); 14 pages remain hand-built (`index.html`
+  // prikbord, `chat.html`, `contacts.html`, `create-group.html`,
+  // `group.html`, `profile.html`, `settings.html`, `onboard.html`,
+  // `sign-in.html`, `auth-callback.html`, `push.html`, `restore.html`,
+  // `welcome.html`, `metrics.html`) and will land in follow-on E.x
+  // slices.  Same discipline B.1 used for tasks-v0 (just `dag.html`).
   //
   // The `mine` view's `type: 'request'` is the broadest stoop itemType
   // (legacy V0 — every kind of post canonicalises through it).  The
@@ -442,6 +446,56 @@ export const stoopManifest = {
   // honours `section.dataSource` and dispatches `listMyRequests({})`.
   // Removes the previous client special-case ("if section.id === 'mine'
   // then listMyRequests") — the manifest is now the source of truth.
+  //
+  // ──── E.2 — privacy view (V0.2 Q7 + Q9) ──────────────────────────
+  //
+  // `privacy.html` is a closed-beta disclosure page: it renders the
+  // privacy-notice sections + a small key/value summary of where the
+  // user's data lives.  TRUE read-only — no forms, no mutations —
+  // a perfect Q9 `readOnly: true` proof-point.
+  //
+  // The view's `type: 'group-rules'` is a placeholder (closest
+  // semantic — privacy is "rules of the system").  It does NOT
+  // describe the data the section renders (which is text sections,
+  // not group-rules items).  Same pattern mine.html uses with
+  // `type: 'request'` — the type is a manifest-shape requirement
+  // (validateView pins type ∈ manifest.itemTypes) more than a real
+  // descriptor.
+  //
+  // `dataSource: { skillId: 'getDataLocation' }` declares ONE of the
+  // two fetches privacy.html performs.  `getDataLocation` takes no
+  // params — perfect fit for `fetchSectionItems`'s static `args ?? {}`
+  // contract.  The second fetch (`getPrivacyNotice({lang})`) needs a
+  // RUNTIME-derived param (browser language) — the V0.2 `dataSource`
+  // contract is static args only, so the page keeps a direct
+  // `callSkill('getPrivacyNotice', {lang})` for that fetch.  This is
+  // a V0.2 substrate gap (logged below) — V0.3 may add a
+  // `dataSource.argsFromContext` mechanism so language-aware skills
+  // can be declared too.
+  //
+  // ──── V0.2 substrate gaps surfaced by E.2 ─────────────────────────
+  //   3. `view.dataSource.args` is STATIC (frozen at manifest-author
+  //      time).  Privacy needs a RUNTIME lang param for
+  //      `getPrivacyNotice`; no mechanism today to declare "fetch
+  //      with browser lang".  Worked around: privacy.html calls
+  //      `getPrivacyNotice` directly while the section's declared
+  //      dataSource targets `getDataLocation` (param-free).  Logged
+  //      as a V0.3 follow-on — likely `dataSource.argsFromContext:
+  //      {lang: '$lang'}` (or similar).
+  //   4. `getPrivacyNotice` + `getDataLocation` are not manifest ops
+  //      (they're read-only info-skills, not chat/slash-callable per
+  //      Slice D.1's primary-flows discipline).  `dataSource.skillId`
+  //      is a FREE STRING (validate.js doesn't constrain it to
+  //      `operations[].id`), so this is permitted but worth flagging:
+  //      a manifest-driven page can call skills outside the manifest's
+  //      op set.  Forward-additive — V0.3 could add an opt-in cross-
+  //      check.
+  //
+  // `readOnly: true` suppresses creative-verb auto-surface (Q10
+  // affordances like `register` ops would otherwise appear here).
+  // Wildcard itemActions (Q8 `cancelRequest`) still surface in this
+  // section's `itemActions[]` — the page IGNORES them (privacy
+  // renders text sections + key/value rows, not items).
   views: [
     {
       id:     'mine',
@@ -452,6 +506,16 @@ export const stoopManifest = {
       // this up and call `listMyRequests({})` instead of the rule-b
       // fallback `listOpen({type: 'request', open: true})`.
       dataSource: { skillId: 'listMyRequests' },
+    },
+    {
+      id:       'privacy',
+      title:    'Privacy — wat je moet weten',
+      type:     'group-rules',  // placeholder; see note above
+      readOnly: true,           // V0.2 Q9 — read-only disclosure page
+      // V0.2 Q7 — declares the param-free fetch (getDataLocation).
+      // The companion lang-aware fetch (getPrivacyNotice) is direct-
+      // called in the page until V0.3 adds runtime-arg support.
+      dataSource: { skillId: 'getDataLocation' },
     },
   ],
 };
