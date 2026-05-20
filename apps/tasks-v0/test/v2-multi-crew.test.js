@@ -14,15 +14,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { DataPart } from '@canopy/core';
+import { DataPart, AgentIdentity, VaultMemory } from '@canopy/core';
 
-import { buildMeshAgent } from '../src/MeshAgent.js';
-import { createCrewAgent } from '../src/Crew.js';
-import { buildBundle } from '../src/storage/buildBundle.js';
-import { wireSkills } from '../src/wireSkills.js';
-import { multiCrewResolver } from '../src/bundleResolver.js';
-import { buildMultiCrewOnboardingSkills } from '../src/skills/multiCrewOnboarding.js';
-import { AgentIdentity, VaultMemory } from '@canopy/core';
+import { buildMultiCrewRuntime } from '../src/buildMultiCrewRuntime.js';
 
 const ANNE = 'https://id.example/anne';
 const BOB  = 'https://id.example/bob';
@@ -38,72 +32,14 @@ async function callSkill(agent, skillId, args, fromWebid = ANNE) {
   });
 }
 
-async function buildMultiCrew() {
-  const localStoreBundle = buildBundle();
-  const { meshAgent, identity } = await buildMeshAgent({
-    localStoreBundle,
-    label: 'tasks-multi-crew-smoke',
-  });
-
-  const primaryConfig = {
-    crewId:  'primary-crew',
-    name:    'Primary',
-    kind:    'project',
-    members: [{ webid: ANNE, displayName: 'Anne', role: 'admin' }],
-  };
-
-  const primaryBundle = await createCrewAgent({
-    crewConfig:           primaryConfig,
-    localStoreBundle,
-    identity,
-    transport:            meshAgent.transport,
-    agent:                meshAgent,
-    registerSkills:       false,
-    wireOnboardingSkills: false,
-  });
-  const primaryCrewState = primaryBundle._crewState;
-  const crewsMap = new Map([[primaryCrewState.crewId, primaryCrewState]]);
-
-  async function spawnCrewInProcess(crewId) {
-    if (crewsMap.has(crewId)) return crewsMap.get(crewId);
-    const path = `mem://tasks/crews/${crewId}/config.json`;
-    const raw = await localStoreBundle.cache.read(path);
-    if (!raw) throw new Error(`no saved config at ${path}`);
-    const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    const spawned = await createCrewAgent({
-      crewConfig:           cfg,
-      localStoreBundle,
-      identity,
-      transport:            meshAgent.transport,
-      agent:                meshAgent,
-      registerSkills:       false,
-      wireOnboardingSkills: false,
-    });
-    const cs = spawned._crewState;
-    cs._spawnCrewInProcess = spawnCrewInProcess;
-    crewsMap.set(cfg.crewId, cs);
-    return cs;
-  }
-  primaryCrewState._spawnCrewInProcess = spawnCrewInProcess;
-
-  wireSkills({
-    meshAgent,
-    bundleResolver: multiCrewResolver(crewsMap),
-    crewsProvider:  () => crewsMap.values(),
-    members:        primaryBundle.members,
-  });
-
-  // Multi-crew onboarding dispatch (Tasks V2 seventh slice).
-  for (const def of buildMultiCrewOnboardingSkills({
-    bundleResolver: multiCrewResolver(crewsMap),
-  })) {
-    meshAgent.skills.register(def);
-  }
-
-  await meshAgent.start();
-
-  return { meshAgent, primaryBundle, crewsMap, localStoreBundle };
-}
+/**
+ * Thin alias kept so the SP-4b proof + existing assertions stay
+ * untouched.  Real machinery lives in `src/buildMultiCrewRuntime.js`
+ * (extracted 2026-05-20 for re-use by the SP-4b mount test + the
+ * SP-11 recombination demo).
+ */
+const buildMultiCrew = () =>
+  buildMultiCrewRuntime({ label: 'tasks-multi-crew-smoke' });
 
 describe('Tasks V2 multi-crew runtime', () => {
   it('builds primary crew on a shared agent', async () => {
