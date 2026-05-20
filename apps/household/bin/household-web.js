@@ -312,6 +312,12 @@ async function loadWebAdapterFiles() {
     'deriveItemState.js',
     'itemMatchesAppliesTo.js',
     'applyPrefilledParams.js',
+    // V0.2 (2026-05-21) — new helpers consumed by web/main.js:
+    //   fetchSectionItems   honours view.dataSource (Q7) with Q6 fallback
+    //   schemaToFormFields  drives multi-field add-form rendering from
+    //                       the affordance's paramsSchema
+    'fetchSectionItems.js',
+    'schemaToFormFields.js',
     'index.js',
   ];
   const out = {};
