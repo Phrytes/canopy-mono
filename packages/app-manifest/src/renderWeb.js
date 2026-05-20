@@ -236,6 +236,33 @@
  *
  * Forward-additive — absent means existing flat behaviour (V0.4).
  *
+ * ──── Q23 — `field.type: 'file' | 'image'` byte-shaped fields (locked 2026-05-20)
+ *
+ * Q18's recognized `field.type` set was implicit — manifests today use
+ * `'string' | 'number' | 'boolean' | 'enum' | 'object'`.  Q23
+ * formalises the set + adds two new values for byte-shaped fields
+ * (avatar upload, document attach, photo capture):
+ *
+ *   `'file'`   — generic binary payload (PDF, archive, anything).
+ *   `'image'`  — image-typed binary (preview-able, resize-able).
+ *
+ * Dispatch contract (consumer-side):
+ *   Web — patch dispatcher receives a DOM `File` instance as the
+ *         field's value.  Consumer is responsible for any client-side
+ *         transform (resize, format conversion) before calling the
+ *         skill.
+ *   RN  — patch dispatcher receives the image picker's result object
+ *         `{uri, name, type, size}` as the field's value.  Same
+ *         consumer-side transform rule.
+ *
+ * The substrate stays renderer-agnostic — projector passes `type`
+ * through verbatim; rendering + transform are consumer concerns.
+ * Surfaced by E.4 (stoop profile.html's avatar upload — `avatarUrl`
+ * is a data-URL post client-side resize; no Q18 type fit it before).
+ *
+ * Forward-additive — adopting consumers extend their renderer-side
+ * field switch to handle the two new type values.
+ *
  * ──── Q22 — `labelKey` i18n passthrough (locked 2026-05-20)
  *
  * Surfaced by C.3 closeout: manifest `label` strings are English while
