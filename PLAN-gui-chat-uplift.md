@@ -76,50 +76,87 @@ the first app that needs it — never speculative.
 Eight slices, A–H.  Each is independently mergeable; dependencies
 called out below.
 
-### Slice A — `tasks-v0` web → `renderWeb`
+### Slice A — household web (greenfield) → `renderWeb` substrate
 
-> **The flagship slice.**  tasks-v0's 14-page web UI is the project's
-> richest hand-built surface.  Replacing it via `renderWeb`
-> simultaneously: (1) ships the `renderWeb` projector for the
-> substrate; (2) proves the manifest model on a non-trivial UI;
-> (3) sets the characterization gold-standard the other web slices
-> follow.
+> **Reordered 2026-05-20.**  Was originally Slice C.  Promoted to the
+> flagship per the "let the smallest first consumer drive the
+> substrate" discipline — household has no web UI today, so there is
+> zero characterization burden, just "does the projector produce
+> something usable?".  This locks the NavModel shape on the easiest
+> possible surface; every subsequent web/mobile slice consumes the
+> shape Slice A settles.
+
+- **Prereq:** SP-11 V0 demo merged (✅ done — `examples/manifest-host-
+  demo/`) so the substrate's chat-side is proven before the web side
+  starts.
+- **Scope:**
+  - Add `renderWeb(manifest) → NavModel` to `@canopy/app-manifest`.
+    NavModel shape is the killer cross-surface contract — designed
+    here to be **identical** to what `renderMobile` will later
+    consume (only platform adapters differ).
+  - Ship `apps/household/web/` consuming `householdManifest` via
+    `renderWeb`.  Bare minimum: list/add/markComplete/remove for
+    each canonical list type; LLM passthrough optional.
+- **Out of scope:** any visual polish beyond functional adequacy;
+  hooking the new web up to existing TG bot's state (those are
+  separate cross-cutting decisions later).
+- **Risk:** **Low** (no existing UI to characterize against).  The
+  substrate-design risk lives here — bad NavModel choices ripple to
+  every later slice — so spend time on shape, not on visuals.
+- **Done:** household web is browsable; same manifest drives both
+  chat + web; the NavModel shape is ready to consume in Slices B+.
+
+### Slice B — `tasks-v0` web → `renderWeb` applied
+
+> **The big one.**  tasks-v0's 13-page web UI (per
+> `apps/tasks-v0/docs/characterization-corpus.md`) is the project's
+> richest hand-built surface.  This slice **applies** the renderWeb
+> projector from Slice A to a real characterized UI.
 >
 > Owner emphasis recorded verbatim
 > (`memory/project-app-manifest-convergence.md`):
 > *"De bestaande web-UI is rijk en goed-getest; vervangen vraagt
 > zorgvuldige characterization van alle 14 pagina's."*
 
-- **Prereq:** SP-3 V0 (✅ done) + uniform-representation SP-11 demo
-  (in-flight) for first real-world signal on the host model.
+- **Prereq:** Slice A merged (renderWeb exists + NavModel shape
+  locked) + characterization corpus largely populated (see
+  `apps/tasks-v0/docs/characterization-corpus.md` — corpus work can
+  start in parallel with Slice A's substrate design, NOT with
+  Slice B's implementation).
 - **Scope:**
-  - Add `renderWeb(manifest) → NavModel` to `@canopy/app-manifest`.
-  - Per-page characterization corpus: for each of `index`, `mine`,
-    `review`, `dag`, `availability`, `crew`, `crews`, `inbox`,
-    `onboard`, `pod-settings`, `privacy`, `welcome` (etc.) — snapshot
-    today's rendered HTML + interaction affordances; assert
-    byte/structural-identical output from the projector.
+  - Per-page migration: for each stable page (`index`, `mine`,
+    `review`, `dag`, `availability`, `inbox`, `privacy`, …) and the
+    in-flight V2 pages (`crews`, `crew`, `onboard`, `pod-settings`,
+    `welcome`) — snapshot today's rendered HTML + interaction
+    affordances; assert byte/structural-identical output from the
+    projector.
   - Migrate `apps/tasks-v0/web/index.js` (and per-page modules) to
     consume the NavModel + per-item buttons from the manifest.
   - Preserve the existing UI-helpers (`taskStatus.js`, `composeArgs.js`,
     `dagFlatten.js`) — they encode V2.7 deps-gate + role-gate
     semantics that the projector must respect, not re-implement.
+  - Sub-divide into commits per-page-group (e.g., view/list pages
+    first, then editing, then admin) — DON'T merge as one giant
+    diff.
 - **Out of scope:** any visual redesign, mobile-shared helper changes,
   pod-routing changes.
 - **Risk:** **High** by construction (rich UI, broad surface).
-  Mitigation: characterization corpus per page; merge per-page if
-  needed (incremental cutover).
+  Mitigation: characterization corpus per page; merge per-page-group
+  (incremental cutover); 5 in-flight V2 pages held until their V2
+  work lands.
 - **Done:** every page renders from the projector + characterization
-  is byte-stable; 14 page suites + integration tests all green;
-  no divergent hand UI.
+  is byte/structurally-stable; 13 page suites + integration tests
+  all green; no divergent hand UI.
 
-### Slice B — `tasks-mobile` → `renderMobile`
+### Slice C — `tasks-mobile` → `renderMobile`
 
 > The proof of "web ≡ mobile from one source".  tasks-mobile's
 > existing M0–M4 substrate-parity work
 > (`memory/project-tasks-mobile-substrate-parity.md`) has already
 > retired most divergence; this slice closes the loop by making the
-> screen tree itself manifest-driven.
+> screen tree itself manifest-driven.  Can run **in parallel** with
+> Slice B once Slice A's NavModel locks (both consume the same
+> NavModel; different surfaces).
 
 - **Prereq:** Slice A merged (renderWeb's NavModel shape locks first).
 - **Scope:**
@@ -136,22 +173,6 @@ called out below.
   surface is RN-shaped only.
 - **Done:** tasks-mobile screens projector-generated from the same
   manifest as web; cross-surface NavModel equality holds.
-
-### Slice C — household web (new)
-
-> Household has no web UI today.  Adding one through `renderWeb` is the
-> **easiest possible greenfield** for the projector — no
-> characterization burden, just "does the manifest produce something
-> usable?".  Useful both as user-facing functionality and as a
-> renderWeb-shape sanity check after Slice A.
-
-- **Prereq:** Slice A merged (renderWeb exists).
-- **Scope:** ship `apps/household/web/` consuming `householdManifest`
-  via `renderWeb`.  Bare minimum: list/add/markComplete/remove for
-  each canonical list type; LLM passthrough (or none in V0).
-- **Risk:** Low (no existing UI to characterize against).
-- **Done:** household web is browsable; same manifest as the chat
-  surface drives both.
 
 ### Slice D — `stoop` manifest + chat surface migration
 
@@ -187,7 +208,7 @@ called out below.
 
 ### Slice F — `stoop-mobile` → `renderMobile`
 
-- **Prereq:** Slice B merged + Slice D's manifest landed.
+- **Prereq:** Slice C merged + Slice D's manifest landed.
 - **Scope:** RN adapter from Slice B, applied to stoop.  Cross-surface
   equivalence holds for stoop too.
 - **Risk:** Low-medium.
@@ -237,22 +258,30 @@ called out below.
 
 ## Order & dependencies
 
+**Reordered 2026-05-20** per the "smallest first consumer drives the
+substrate" discipline.  Was: A=tasks-v0-web, B=tasks-mobile,
+C=household-web.  Now: A=household-web (greenfield), B=tasks-v0-web
+(rich), C=tasks-mobile.
+
 ```
-                        ┌─ Slice C (household web) ───┐
-                        │                              │
-Slice A (tasks-v0 web ──┼─ Slice B (tasks-mobile) ────┤
-  + renderWeb substrate)│                              │
-                        │                              │
-Slice D (stoop chat ────┼─ Slice E (stoop web) ───────┼─ Slice H
-  + manifest)           │                              │  (cross-
-                        ├─ Slice F (stoop-mobile) ────┤  cutting)
-                        │                              │
-                        └─ Slice G (folio) ───────────┘
+Slice A (household web                      ┌─ Slice B (tasks-v0 web)
+  + renderWeb substrate ──── NavModel ──────┼─ Slice C (tasks-mobile
+  — greenfield)                              │   + renderMobile)
+                                             │
+Slice D (stoop chat ─────────────────────────┼─ Slice E (stoop web) ────┐
+  + manifest)                                │                           │
+                                             ├─ Slice F (stoop-mobile) ──┼─ Slice H
+                                             │                           │  (cross-
+                                             └─ Slice G (folio) ─────────┘  cutting)
 ```
 
-**Critical-path slices:** A (largest), D (most-different domain).
-**Lowest-risk early wins:** C (greenfield), B (most prep done).
+**Critical-path slice:** A (locks NavModel shape).
+**Largest slice:** B (tasks-v0's 13 pages).
+**Cleanest greenfield:** A (no characterization burden) and C-secondary.
 **Defer until two apps live:** H.
+**Parallelisable after A:** B + C consume the same locked NavModel
+from different surfaces, so they can run in parallel once Slice A
+merges (owner's bandwidth permitting).
 
 ---
 
@@ -263,9 +292,9 @@ existing UIs.  Sizing depends on how rich the existing surface is.
 
 | Slice | Existing-UI richness | Corpus per page/screen | Reasonable timebox per slice |
 | ----- | -------------------- | ---------------------- | ---------------------------- |
-| A     | Very high (14 pages) | Full snapshot + interaction matrix | 4–8 weeks |
-| B     | Medium (M0–M4 done)  | Cross-surface equivalence test     | 2–3 weeks |
-| C     | None (greenfield)    | Smoke + golden-output              | 1 week    |
+| A     | None (greenfield)    | Smoke + golden-output              | 1–2 weeks (substrate design dominates) |
+| B     | Very high (13 pages) | Full snapshot + interaction matrix | 4–8 weeks |
+| C     | Medium (M0–M4 done)  | Cross-surface equivalence test     | 2–3 weeks |
 | D     | Medium (TG bot)      | Byte-equivalence on bot replies + slash routing | 2–3 weeks |
 | E     | Medium               | Per-page snapshot                  | 2–3 weeks |
 | F     | Medium               | Cross-surface equivalence + smoke  | 1–2 weeks |
@@ -292,9 +321,12 @@ Universal:
   "open the inbox, claim task X, mark complete, see it move").
 
 Slice-specific:
-- **A:** 14 pages identical to baseline (byte- or DOM-equivalent);
-  V2.7 deps-gate + role-gate semantics preserved.
-- **B:** NavModel JSON structurally equal between renderWeb +
+- **A:** household web browsable; chat + web from one manifest;
+  NavModel shape design-doc'd before any Slice B/C work starts.
+- **B:** 13 pages identical to baseline (byte- or DOM-equivalent);
+  V2.7 deps-gate + role-gate semantics preserved; per-page-group
+  merge cadence.
+- **C:** NavModel JSON structurally equal between renderWeb +
   renderMobile.
 - **D:** TG bot replies + slash routing byte-equivalent to baseline.
 - **G:** Either projector-driven OR documented boundary.
@@ -346,18 +378,23 @@ Day-to-day:
 
 ## Open questions (for owner to refine)
 
-1. **Slice A timeboxing** — is 4–8 weeks acceptable, or should we
-   pre-split per page (a, b, c…) for incremental merge?
-2. **Slice D scope** — does stoop want LLM tool-calling (like
+1. **Slice A scope** — household web with what feature set?  Bare
+   list/add/markComplete is the minimum; do we want LLM passthrough
+   too?  (Yes/no/later affects substrate signal.)
+2. **Slice B timeboxing** — 4–8 weeks acceptable, or pre-split per
+   page-group (view pages first, then editing, then admin)?  Per-page
+   suggests sub-slices B.1, B.2, B.3…
+3. **Slice D scope** — does stoop want LLM tool-calling (like
    household) or stay slash-only?  Affects manifest shape + collision
    surface.
-3. **Slice G boundary** — folio's restore + version-history domain may
+4. **Slice G boundary** — folio's restore + version-history domain may
    need `@canopy/protocol` declarations.  When?
-4. **Slice H ordering** — does the audience affordance work block
+5. **Slice H ordering** — does the audience affordance work block
    on SP-5b (item-store schema change) or can it precede it via
    client-only audience labels?
-5. **Visual-refresh slice** — separate later, or wove into Slice A's
+6. **Visual-refresh slice** — separate later, or woven into Slice B's
    characterization (some pages can't be byte-equal if visual changes
    are intended)?
-6. **household web (Slice C)** — does household ACTUALLY want a web
-   UI, or is the chat surface sufficient forever?
+7. **household web (Slice A)** — does household ACTUALLY want a web
+   UI as a real production surface, or is this purely a substrate-
+   forcing-function and we drop it after substrate ships?
