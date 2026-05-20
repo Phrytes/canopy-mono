@@ -100,21 +100,6 @@ export function createNavModelAdapter(manifest, { callSkill } = {}) {
     (navModel.sections ?? []).map((s) => [s.id, s]),
   );
 
-  // Slice C.4 (2026-05-20) — index ops by id, keyed against the
-  // ORIGINAL manifest (not the NavModel projection).  Why: renderWeb's
-  // `buildItemAction` projects only `appliesTo.type` + `appliesTo.state`
-  // — V0.4 generic gate fields (e.g. `kind` for per-event-kind
-  // dispatch) are stripped on projection.  The adapter looks up the
-  // full appliesTo from this map for gate evaluation so the V0.4
-  // promise (substrate handles per-event-kind gating) holds end-to-
-  // end.  Substrate-side gap to lift up to `renderWeb` in a future
-  // slice (see signals in the C.4 commit message); for now the adapter
-  // bridges it.
-  const opsById = new Map(
-    (Array.isArray(manifest.operations) ? manifest.operations : [])
-      .map((o) => [o.id, o]),
-  );
-
   function getSection(id) {
     return sectionsById.get(id);
   }
@@ -141,13 +126,9 @@ export function createNavModelAdapter(manifest, { callSkill } = {}) {
    * `applyPrefilledParams({ id }, _action(…))` pattern from
    * `apps/tasks-v0/web/mine.html` (DRY — same gate, same prefill).
    *
-   * Slice C.4 (2026-05-20) — gate consults the ORIGINAL manifest's
-   * op-level `appliesTo` (not the projected section.itemAction's
-   * `appliesTo`) because `renderWeb.buildItemAction` strips V0.4
-   * generic-field gate entries (e.g. `kind: 'subtask-proposal'`).
-   * The adapter sidesteps that gap so consumers (InboxScreen) get
-   * the per-event-kind dispatch promised by V0.4.  Substrate fix
-   * (lift the pass-through into renderWeb) is forward-additive.
+   * V0.4 per-event-kind gates (e.g. `kind: 'subtask-proposal'`) flow
+   * through verbatim — see commit 83ce267 which lifted the generic-
+   * field pass-through into `renderWeb.buildItemAction`.
    */
   function renderItemActions(section, item) {
     if (!section || typeof section !== 'object') return [];
@@ -155,14 +136,7 @@ export function createNavModelAdapter(manifest, { callSkill } = {}) {
     const actions = Array.isArray(section.itemActions) ? section.itemActions : [];
     const out = [];
     for (const a of actions) {
-      // Slice C.4 (2026-05-20) — gate against the ORIGINAL manifest
-      // op's appliesTo (with V0.4 generic fields intact), not the
-      // projected action's appliesTo (which only carries type+state).
-      // Fallback to the projected appliesTo when the op isn't in the
-      // map (defensive; shouldn't happen for manifest-declared ops).
-      const op   = opsById.get(a.opId);
-      const gate = op?.appliesTo ?? a.appliesTo;
-      if (!itemMatchesAppliesTo(gate, item)) continue;
+      if (!itemMatchesAppliesTo(a.appliesTo, item)) continue;
       out.push({
         opId:  a.opId,
         label: a.label,
