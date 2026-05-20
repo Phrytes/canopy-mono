@@ -37,7 +37,8 @@ Branch `feat/app-manifest` carries 48 commits ahead of master; total
 | V0.3-adopt stoop (privacy Q15 + settings Q17) | ✅ Done — argsFromContext + shape:'record' live      |
 | V0.3-adopt tasks-mobile (Workspace + MyWork → useAdapterSection) | ✅ Done — boilerplate collapsed       |
 | NavModel V0.4 (Q18 patch + per-kind + section CTAs + strict skillId) | ✅ Done — 4 forward-additive extensions       |
-| NavModel V0.3 (d — structured list reply shape) | ⏸ Deferred until consumer pressure (task #11)      |
+| NavModel V0.3 (d — structured list reply shape) | ✅ Done — renderChat passes through `reply.data`  |
+| V0.4-adopt stoop settings (Q18 fields)| ✅ Done — 4 representative fields declared with patch  |
 | SP-4b + SP-11 V0 demo               | ✅ Done (`examples/manifest-host-demo/`)                    |
 | Slice A.1–A.4 (household web + LLM) | ✅ Done — **Slice A COMPLETE**                              |
 | Slice B.0 parity audit              | ✅ Done                                                    |
@@ -69,7 +70,8 @@ Branch `feat/app-manifest` carries 48 commits ahead of master; total
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — B.2.3b inbox subtask ops + section CTA
+- (next) — V0.4-adopt stoop settings + V0.3 (d) structured reply shape
+- `538f9d2` — feat(tasks-v0): Slice B.2.3b
 - `e66ffba` — feat(app-manifest, web-adapter): NavModel V0.4 substrate
 - `e36d6f5` — refactor(stoop, tasks-mobile): V0.3-adopt
 - `32cb903` — feat(app-manifest, web-adapter, tasks-mobile): NavModel V0.3 substrate
@@ -128,7 +130,7 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 
 | Package / app                  | Tests        | Notes                                       |
 | ------------------------------ | ------------ | ------------------------------------------- |
-| `@canopy/app-manifest`         | **154**      | +16 V0.2 + 12 V0.3 + 19 V0.4 (Q16/Q18/Q19)  |
+| `@canopy/app-manifest`         | **159**      | +5 V0.3 (d) reply.data passthrough          |
 | `@canopy/circles`              | **50**       | (unchanged)                                 |
 | `@canopy/manifest-host`        | **20**       | (unchanged)                                 |
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |

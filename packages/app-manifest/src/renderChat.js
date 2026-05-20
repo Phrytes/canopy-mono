@@ -76,9 +76,22 @@ export function renderChat(manifest, args, opts = {}) {
           console.error('[renderChat] onStateUpdates threw:', err?.message ?? err);
         }
       }
+      // V0.3 (d) — structured list reply shape (task #11, 2026-05-22).
+      // The skill MAY return `reply.data` (e.g. `{items: [...]}` for
+      // list ops, `{settings: {...}}` for record-shape views).
+      // Pass through verbatim alongside `stateUpdates` so consumers
+      // can read structured data without re-querying the store.
+      // Forward-additive — skills without `data` work unchanged.
+      // Surfaced by A.3 agent: household's listOpen returns chat-shape
+      // only, forcing the web adapter to re-read the store.  With this
+      // pass-through, skills can opt into the structured shape.
+      const replyData = reply?.data;
       return {
         replies: reply?.replies ?? [],
-        data:    { stateUpdates },
+        data:
+          (replyData && typeof replyData === 'object' && !Array.isArray(replyData))
+            ? { stateUpdates, ...replyData }
+            : { stateUpdates },
       };
     };
   }
