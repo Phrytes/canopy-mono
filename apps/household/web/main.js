@@ -1,5 +1,5 @@
 /**
- * household web client — Slice A.3 (PLAN-gui-chat-uplift.md).
+ * household web client — Slice A.3 + A.4 (PLAN-gui-chat-uplift.md).
  *
  * Pure NavModel-driven UI:
  *   - tabs ← navModel.sections[].title
@@ -8,8 +8,15 @@
  *                                  (with prefilledParams.type, per Q6)
  *   - per-item buttons           ← navModel.sections[].itemActions[] (gated by appliesTo)
  *
+ * Slice A.4 — free-text chat (sticky footer):
+ *   - Submit hits the `chat` skill on the server, which routes through
+ *     HouseholdAgent.onMessage (regex fast path → manifest-built LLM
+ *     slow path when an LLM is configured).  Replies render in
+ *     `#chat-log` (a small scrollable feed above the input).  No
+ *     auto-refresh of section items — the user can switch tabs to see
+ *     anything the LLM mutated.
+ *
  * V0 LIMITS (intentional):
- *   - LLM passthrough deferred to Slice A.4.  No free-text chat input.
  *   - The members section (itemType: 'contact') has no list-skill in V0;
  *     the navmodel.test.js explicitly acknowledges this gap.  We render
  *     it as an empty section without a working add-form (no
@@ -223,14 +230,17 @@ async function main() {
     config,
     activeSection: navModel.sections[0],
     dom: {
-      tabs:     document.getElementById('tabs'),
-      title:    document.getElementById('active-title'),
-      items:    document.getElementById('items'),
-      empty:    document.getElementById('empty'),
-      error:    document.getElementById('error'),
-      addForm:  document.getElementById('add-form'),
-      addInput: document.getElementById('add-text'),
-      actor:    document.getElementById('actor'),
+      tabs:       document.getElementById('tabs'),
+      title:      document.getElementById('active-title'),
+      items:      document.getElementById('items'),
+      empty:      document.getElementById('empty'),
+      error:      document.getElementById('error'),
+      addForm:    document.getElementById('add-form'),
+      addInput:   document.getElementById('add-text'),
+      actor:      document.getElementById('actor'),
+      chatForm:   document.getElementById('chat-form'),
+      chatInput:  document.getElementById('chat-input'),
+      chatLog:    document.getElementById('chat-log'),
     },
   };
   state.dom.actor.textContent = config?.actor ?? '';
@@ -260,6 +270,52 @@ async function main() {
 
   // (5) initial section render.
   await renderSection(state);
+
+  // (6) Slice A.4 — chat passthrough.  Submits free text to the
+  //     `chat` skill, which forwards to HouseholdAgent.onMessage on
+  //     the server.  Replies stream into the chat-log feed above the
+  //     input.  After a successful turn, re-render the active section
+  //     so any store mutations the LLM made (addItem etc.) show up.
+  if (state.dom.chatForm && state.dom.chatInput && state.dom.chatLog) {
+    state.dom.chatForm.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const text = state.dom.chatInput.value.trim();
+      if (!text) return;
+      appendChat(state, 'user', text);
+      state.dom.chatInput.value = '';
+      state.dom.chatInput.disabled = true;
+      try {
+        const result = await callSkill('chat', { text });
+        const replies = Array.isArray(result?.replies) ? result.replies : [];
+        if (replies.length === 0) {
+          appendChat(state, 'bot', '(no reply)');
+        } else {
+          for (const r of replies) {
+            const t = typeof r === 'string' ? r : (r?.text ?? '');
+            if (t) appendChat(state, 'bot', t);
+          }
+        }
+        // The LLM (or a slash command) may have mutated the store —
+        // refresh the visible section so the user sees the change.
+        await renderSection(state);
+      } catch (err) {
+        appendChat(state, 'error', err?.message ?? String(err));
+      } finally {
+        state.dom.chatInput.disabled = false;
+        state.dom.chatInput.focus();
+      }
+    });
+  }
+}
+
+/** Append a chat bubble to the chat-log feed and scroll to the bottom. */
+function appendChat(state, kind, text) {
+  if (!state.dom.chatLog) return;
+  const div = document.createElement('div');
+  div.className = `chat-msg ${kind}`;
+  div.textContent = text;
+  state.dom.chatLog.appendChild(div);
+  state.dom.chatLog.scrollTop = state.dom.chatLog.scrollHeight;
 }
 
 main().catch((err) => {

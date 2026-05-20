@@ -33,6 +33,20 @@
     </section>
   </main>
 
+  <!-- Slice A.4 — sticky-footer chat passthrough.  Submits to the
+       `chat` skill, which routes through the HouseholdAgent's
+       regex-then-LLM pipeline (the regex fast path covers /add,
+       /list, /done; free text routes to the LLM when configured). -->
+  <footer id="chat-footer" aria-label="Chat with the household assistant">
+    <div id="chat-log" aria-live="polite" aria-relevant="additions"></div>
+    <form id="chat-form" autocomplete="off">
+      <input id="chat-input" type="text" required
+             placeholder="Chat with the household assistant…"
+             aria-label="Chat input">
+      <button type="submit">Send</button>
+    </form>
+  </footer>
+
   <script type="module" src="/main.js"></script>
 </body>
 </html>
