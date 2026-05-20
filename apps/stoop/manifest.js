@@ -26,20 +26,20 @@
  *           `report`/`group-rules`/`rules-accept`/`group-leave`/
  *           `request`) — none are canonical in `@canopy/item-types`.
  *           Permitted by `validateManifest`.
- * F-SP1-e — non-canonical verbs used here: `report`, `mute`, `cancel`,
- *           `set`, `assign`, `tree`.  Each is annotated inline.
- *           Canonical verb fallback options noted in DECIDE markers
- *           where applicable.
+ * F-SP1-e — non-canonical verbs used here: `report`, `mute`, `set`,
+ *           `tree`.  Each is annotated inline.
  *
  * Slash-grammar choice: bare names selected to **minimise collisions
  * with household's `/add /list /done /remove /help /task /tasks
- * /claim /register`**.  Stoop's commands are buurt-/peer-prefixed
- * (`/post`, `/buurt`, `/mine`, `/respond`, `/lend-assign`,
- * `/lend-return`, …).  DECIDE markers flag the 3 places owner
- * judgement is needed: (a) `/claim` collision (household has it for
- * tasks; stoop's analogue is `assignLend`), (b) `/profile` vs
- * `/skills` for `setMySkills`, (c) whether `/respond` or `/reply`
- * reads better.
+ * /claim /register`**.  Stoop's commands are bulletin-/peer-prefixed
+ * (`/post`, `/bulletin`, `/mine`, `/respond`, `/lend-assign`,
+ * `/lend-return`, …).
+ *
+ * Owner DECIDE markers resolved 2026-05-21 (this commit) — see commit
+ * message for the resolution table.  Naming choices favour English
+ * (open-source convention); Dutch synonyms (`buurt`, `prikbord`,
+ * `mijn`, `reageer`, `intrekken`, `teruggebracht`, …) are kept as
+ * `match.verbs` aliases.
  *
  * Hints come verbatim from each `defineSkill({description})` string
  * (one source — no fresh prose).  Where the description was terse,
@@ -116,12 +116,9 @@ export const stoopManifest = {
         slash: {
           command: '/post',
           shape:   '/post <ask|offer|lend> <text>',
-          // DECIDE (owner): the slash match parser uses 'type+text'
-          // bodies — emitted by renderSlash as
+          // Body shape: 'type+text' — renderSlash emits
           // `/post ask buy a vacuum cleaner` → {intent:'ask',text:'...'}.
-          // The verb tokens cover EN ('post', 'add', 'share') + NL
-          // ('plaats', 'deel').  Two-arg bodies (intent+text) match
-          // household's 'type+text' grammar — reusing that body shape.
+          // Verb tokens: EN ('post', 'add', 'share') + NL ('plaats', 'deel').
           match: {
             verbs:   ['post', 'plaats', 'deel'],
             body:    'type+text',
@@ -143,14 +140,15 @@ export const stoopManifest = {
       surfaces: {
         chat:  { hint: 'List open requests; optional `skill` + `intent` filters.' },
         slash: {
-          // DECIDE (owner): `/list` collides with household.listOpen.
-          // Chose `/buurt` (Dutch for "neighbourhood") — natural stoop
-          // brand vocab + zero collision.  Alternative: `/posts` (EN)
-          // or `/prikbord` (the in-app term for the board).
-          command: '/buurt',
-          shape:   '/buurt [ask|offer|lend]',
+          // Resolved 2026-05-21 (owner): `/bulletin` (EN — open-source
+          // convention).  `/list` would collide with household.listOpen;
+          // `/bulletin` is collision-free and the English equivalent of
+          // the in-app term "prikbord"/"buurt".  Dutch synonyms kept as
+          // match.verbs aliases.
+          command: '/bulletin',
+          shape:   '/bulletin [ask|offer|lend]',
           match: {
-            verbs:   ['buurt', 'prikbord', 'posts', 'open'],
+            verbs:   ['bulletin', 'board', 'posts', 'open', 'prikbord', 'buurt'],
             body:    'type-only',
             onEmpty: { skillId: 'listOpen', args: {} },
           },
@@ -164,9 +162,8 @@ export const stoopManifest = {
       surfaces: {
         chat:  { hint: 'List open requests posted by the calling actor.' },
         slash: {
-          // DECIDE (owner): household uses `/tasks` for its
-          // listTasks; `/mine` is collision-free + reads naturally
-          // ("show MY posts").  Alternative: `/mijn` (NL).
+          // Resolved 2026-05-21 (owner): `/mine` (EN).  Collision-free
+          // with household.  NL alias `mijn` kept as a match verb.
           command: '/mine',
           match:   { verbs: ['mine', 'mijn'], body: 'none' },
         },
@@ -184,11 +181,13 @@ export const stoopManifest = {
       surfaces: {
         chat:  { hint: 'Open a chat thread on a post + send the first message; soft-claims the post.' },
         slash: {
-          // DECIDE (owner): `/respond` reads better in EN; `/reply`
-          // is the chat-app-native verb.  Both are collision-free vs
-          // household.  Pick one.  NL alternative: `/reageer`.
-          // No `match` block: two-arg body (itemId + free-text) needs
-          // the chat composer's picker UI — slash-command shell only.
+          // Resolved 2026-05-21 (owner): `/respond` (EN — action-on-post).
+          // `/reply` would feel too chat-app-generic; `/respond` reads
+          // as taking action on a referenced item.  No `match` block:
+          // two-arg body (itemId + free-text) needs the chat composer's
+          // picker UI — slash-command shell only.  Aliases (`reply`,
+          // `reageer`) noted here for future grammar work; consumer's
+          // composer can prefix-match if useful.
           command: '/respond',
           shape:   '/respond <itemId> <message>',
         },
@@ -205,11 +204,10 @@ export const stoopManifest = {
       surfaces: {
         chat:  { hint: 'Cancel an open request.' },
         slash: {
-          // DECIDE (owner): household uses `/remove` for its own
-          // hard-delete.  Stoop's `cancelRequest` is semantically
-          // "withdraw my own post" — chose `/withdraw` (collision-
-          // free).  Alternative: `/intrekken` (NL) or
-          // `/cancel`.
+          // Resolved 2026-05-21 (owner): `/withdraw` (EN — clearer
+          // mental model: "withdraw my post").  `/cancel` is too
+          // generic; `/remove` collides with household.  Aliases
+          // (cancel, intrekken, annuleer) in match.verbs.
           command: '/withdraw',
           match: {
             verbs:   ['withdraw', 'cancel', 'intrekken', 'annuleer'],
@@ -250,9 +248,10 @@ export const stoopManifest = {
       surfaces: {
         chat:  { hint: 'Mark a lend item as returned; cancels its return reminder.' },
         slash: {
-          // `/done` is household's; chose `/lend-return` to make the
-          // domain (lending) explicit + avoid the collision.
-          // Alternative: `/returned` (EN) or `/teruggebracht` (NL).
+          // Resolved 2026-05-21 (owner): `/lend-return` (EN —
+          // domain-prefixed makes it unambiguous in a multi-app host).
+          // `/returned` alone would be ambiguous vs tasks lifecycle.
+          // `/done` collides with household.  Aliases in match.verbs.
           command: '/lend-return',
           match: {
             verbs:   ['returned', 'teruggebracht', 'terug'],
@@ -267,10 +266,10 @@ export const stoopManifest = {
     // ── Moderation ──────────────────────────────────────────────────
     {
       id:   'reportPost',
-      verb: 'report',  // F-SP1-e: non-canonical.  DECIDE (owner):
-                       // could squeeze into `add` (it does add a
-                       // report-type item), but `report` reads
-                       // truer to intent.  Picked the truer verb.
+      verb: 'report',  // F-SP1-e: non-canonical.  Resolved 2026-05-21
+                       // (owner): kept `report` (truer to intent).
+                       // Squeezing into canonical `add` would obscure
+                       // the action's nature.
       appliesTo: { type: 'report' },
       params: [
         { name: 'itemId', kind: 'string', required: true, ...ID_NONEMPTY  },
@@ -325,10 +324,13 @@ export const stoopManifest = {
       id:   'setMySkills',
       verb: 'set',  // F-SP1-e: non-canonical.  This is a profile
                     // mutation — not add/remove/list of an item.
-                    // DECIDE (owner): could split into addMySkill +
-                    // removeMySkill (both already exist as separate
-                    // skills) and use canonical add/remove — but the
-                    // audit asked for *setMySkills* specifically.
+                    // Resolved 2026-05-21 (owner): kept as one
+                    // `setMySkills` op (vs splitting into addMySkill +
+                    // removeMySkill).  Slash is line-oriented; "set my
+                    // skills" is the natural user mental model.
+                    // Granular `addMySkill`/`removeMySkill` already
+                    // exist as skills and can be added to a future LLM-
+                    // only manifest layer (D.2) if needed.
       params: [
         // Complex param — array of {categoryId, freeTags?,
         // availability?, radius?, status?}.  Slash surface can't
@@ -339,10 +341,10 @@ export const stoopManifest = {
       surfaces: {
         chat:  { hint: "Replace the calling actor's skills array." },
         slash: {
-          // DECIDE (owner): pick `/skills` or `/profile`.  `/skills`
-          // is more direct; `/profile` could later carry other
-          // profile mutations (handle, displayName, avatar) as
-          // sub-args.  No collision with household either way.
+          // Resolved 2026-05-21 (owner): `/skills` (direct; matches op
+          // id 1:1).  A future `/profile` or `/profile-edit` can land
+          // separately if richer profile-mutation slash surfaces are
+          // needed.
           command: '/skills',
           shape:   '/skills <json-array-of-skill-entries>',
         },

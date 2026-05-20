@@ -34,7 +34,7 @@ status:
 | Slice B.2+ (tasks-v0 web migration) | ⏸ B.2/B.3/B.4 ahead                                       |
 | Slice C.0 recon (tasks-mobile)      | ✅ Done                                                    |
 | Slice C.1+ (renderMobile migration) | ⏸ Awaiting Slice A sign-off + manifest extension          |
-| Slice D.1 (stoop manifest draft)    | ✅ Done — **9 DECIDE markers** awaiting owner              |
+| Slice D.1 (stoop manifest FINAL)    | ✅ Done — all 8 DECIDE markers resolved 2026-05-21          |
 | Slice D.2 (stoop LLM)               | ⏸ After D.1 settles                                       |
 | Slice E–G                           | ⏸ Future                                                  |
 | Slice H (cross-cutting)             | ⏸ After ≥2 apps live                                      |
@@ -45,7 +45,8 @@ status:
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — feat(item-store): SP-5b V0b — `ListFilter.audience` equality match
+- (next) — feat(stoop): D.1 FINAL — owner-resolved DECIDE markers
+- `1f5f8ba` — feat(item-store): SP-5b V0b — `ListFilter.audience` equality match
 - `ef961dc` — feat(item-store): SP-5b V0a — `item.audience` field + `audienceFromItem` bridge
 - `41b140d` — feat(tasks-v0): Slice B.1 — dag.html via renderWeb (view-only)
 - `9dfff80` — feat(household): Slice A.4 — LLM passthrough on web
