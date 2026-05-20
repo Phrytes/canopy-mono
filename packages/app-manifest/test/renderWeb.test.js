@@ -185,6 +185,46 @@ describe('renderWeb V0', () => {
       const claim = tasks.itemActions.find((a) => a.opId === 'claim');
       expect(claim.label).toBe('Claim');
     });
+
+    // V0.4 regression (surfaced by C.4) — buildItemAction used to strip
+    // every appliesTo field except type+state, silently dropping the
+    // generic gate the adapter's itemMatchesAppliesTo expects.
+    it('itemAction preserves generic appliesTo fields (V0.4 per-kind gating)', () => {
+      const M = {
+        appId:      'inbox',
+        title:      'Inbox',
+        version:    '0',
+        itemTypes:  ['inbox-item'],
+        operations: [
+          {
+            id:        'approveSubtaskProposal',
+            verb:      'approve',
+            params:    [],
+            appliesTo: { type: 'inbox-item', kind: 'subtask-proposal' },
+            surfaces:  { ui: { label: 'Approve' }, chat: {} },
+          },
+          {
+            id:        'declineSubtaskRequest',
+            verb:      'decline',
+            params:    [],
+            appliesTo: { type: 'inbox-item', kind: ['subtask-request', 'subtask-proposal'] },
+            surfaces:  { ui: { label: 'Decline' }, chat: {} },
+          },
+        ],
+        views: [{ id: 'inbox', title: 'Inbox', type: 'inbox-item' }],
+      };
+      const sec = renderWeb(M).sections.find((s) => s.id === 'inbox');
+      const approve = sec.itemActions.find((a) => a.opId === 'approveSubtaskProposal');
+      expect(approve.appliesTo).toEqual({
+        type: 'inbox-item',
+        kind: 'subtask-proposal',
+      });
+      const decline = sec.itemActions.find((a) => a.opId === 'declineSubtaskRequest');
+      expect(decline.appliesTo).toEqual({
+        type: 'inbox-item',
+        kind: ['subtask-request', 'subtask-proposal'],
+      });
+    });
   });
 
   describe('globals (Q3 — inferred from surfaces.ui.placement)', () => {
