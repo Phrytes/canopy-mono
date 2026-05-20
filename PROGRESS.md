@@ -31,12 +31,17 @@ status:
 | Slice A.1–A.4 (household web + LLM) | ✅ Done — **Slice A COMPLETE**                              |
 | Slice B.0 parity audit              | ✅ Done                                                    |
 | Slice B.1 (dag.html via renderWeb)  | ✅ Done — first tasks-v0 page projector-driven              |
-| Slice B.2+ (tasks-v0 web migration) | ⏸ B.2/B.3/B.4 ahead                                       |
+| Slice B.2.0 (shared web-adapter)    | ✅ Done — `@canopy/web-adapter` package (4 helpers)         |
+| Slice B.2.1 (mine.html via renderWeb)| ✅ Done                                                    |
+| Slice B.2.2+ (review/inbox/avail/privacy)| ⏸ ahead — each is ~B.1-scope                          |
 | Slice C.0 recon (tasks-mobile)      | ✅ Done                                                    |
 | Slice C.1+ (renderMobile migration) | ⏸ Awaiting Slice A sign-off + manifest extension          |
 | Slice D.1 (stoop manifest FINAL)    | ✅ Done — all 8 DECIDE markers resolved 2026-05-21          |
-| Slice D.2 (stoop LLM)               | ⏸ After D.1 settles                                       |
-| Slice E–G                           | ⏸ Future                                                  |
+| Slice D.2 (stoop LLM)               | ✅ Done — `createLlmChat` adapter; 13 ops 1:1 mapped         |
+| Slice E.1 (first stoop web page)    | ✅ Done — mine.html via renderWeb; 15 pages ahead in E.x     |
+| Slice E.2+ (remaining stoop web)    | ⏸ Per-page sub-slices ahead                                |
+| Slice F (stoop-mobile)              | ⏸ After Slice C                                            |
+| Slice G (folio)                     | ⏸ Future                                                   |
 | Slice H (cross-cutting)             | ⏸ After ≥2 apps live                                      |
 
 ---
@@ -45,7 +50,12 @@ status:
 
 Branch `feat/app-manifest` — substantive commits this session:
 
-- (next) — feat(stoop): D.1 FINAL — owner-resolved DECIDE markers
+- (next) — Slice B.2 + D.2 + E.1 (3 parallel agents) — see below
+- `322fe03` — feat(tasks-v0): Slice B.2.1 — mine.html via renderWeb
+- `e1f5181` — feat(stoop): Slice E.1 — first stoop web page via renderWeb
+- `42631d4` — refactor(web-adapter): Slice B.2.0 — extract shared web-adapter helpers
+- `faa5d03` — feat(stoop): Slice D.2 — LLM tool-calling on chat via renderChat
+- `08637d1` — feat(stoop): D.1 FINAL — owner-resolved DECIDE markers
 - `1f5f8ba` — feat(item-store): SP-5b V0b — `ListFilter.audience` equality match
 - `ef961dc` — feat(item-store): SP-5b V0a — `item.audience` field + `audienceFromItem` bridge
 - `41b140d` — feat(tasks-v0): Slice B.1 — dag.html via renderWeb (view-only)
@@ -86,6 +96,10 @@ Plus the C.0 recon doc + this PROGRESS.md in the next commit.
 | `@canopy/manifest-host`        | **20**       | (unchanged)                                 |
 | `@canopy/item-types`           | **97**       | +6 view/circle sweep                        |
 | `@canopy/item-store`           | **118**      | +14 V0a + 8 V0b audience filter             |
+| `@canopy/web-adapter` (NEW)    | **38**       | callSkill + itemMatchesAppliesTo + deriveItemState + applyPrefilledParams |
+| `apps/stoop`                   | **585**      | +7 D.2 + +6 E.1                              |
+| `apps/tasks-v0`                | **578**      | +9 B.2.1 mine.html                           |
+| `apps/household`               | **575**      | +1 web-adapter overlay smoke (B.2.0)         |
 | `apps/household`               | **574**      | +4 LLM-passthrough smoke (A.4)              |
 | `apps/tasks-v0`                | **569**      | +4 sliceB1-navmodel test (B.1)              |
 | `apps/stoop`                   | **572**      | +6 D.1 manifest-validation                  |
@@ -123,36 +137,50 @@ auto-written on first run; owner should review + tick the "Owner ✓"
 column in `apps/tasks-v0/docs/characterization-corpus.md` (status
 table) once confirmed intended.
 
-### 3. Slice C signal — NavModel extensions surfaced in A.3
+### 3. Slice C/E signal — NavModel extensions (CONVERGENT)
 
-The A.3 agent (household web adapter) flagged 5 items the NavModel
-likely needs:
+Multiple agents have independently flagged the same NavModel gaps.
+Convergence makes the substrate need real.
 
-a. **Read-only sections marker** — `members` section is empty by
-   substrate-default (`listOpen` rejects `type:'contact'`).  Want
-   a `view.readOnly: true` or "no add affordance" signal so the
-   adapter doesn't surface an Add form.
+**From A.3 (household web):**
+a. **Read-only sections marker** — `view.readOnly: true` so adapter
+   doesn't surface Add for `listOpen`-incompatible types like
+   `contact`.
+b. **`registerName` no `surfaces.ui`** — needs declaration or a
+   `verb === 'register'` auto-surface rule.
+c. **Multi-field forms** — `paramsSchema`-driven affordance projection
+   (e.g. addTask's optional `assignee` + `dueAt` not reachable).
+d. **`listOpen` returns text-only** — list ops should return
+   structured `data` alongside `replies`.
+e. **`deriveItemState` lifecycle gap** — resolved by B.2.0 (the
+   `@canopy/web-adapter` package's helper handles V0.7 DoD lifecycle
+   now).  ✅
 
-b. **`registerName` no `surfaces.ui`** — household's members can't
-   be added from web today.  Either declare `surfaces.ui` on the op
-   (manifest-side) OR add a `verb === 'register'` auto-surface rule
-   in renderWeb (substrate-side).
+**From B.2.1 (tasks-v0 mine.html) + E.1 (stoop mine.html) —
+CONVERGENT:**
+f. **`view.dataSource: '<skillId>'`** — sections need to declare
+   their data source skill.  Today both household + stoop + tasks-v0
+   hard-code "this section calls listMine / listMyRequests" in the
+   adapter.  Both agents proposed the same fix:
+   ```js
+   views: [
+     { id: 'mine', title: 'My posts', type: 'request',
+       dataSource: { skillId: 'listMyRequests', args: {} } },
+   ]
+   ```
+   Removes adapter-side hard-coding; same declaration on every
+   surface (web + mobile).
 
-c. **Multi-field forms** — `addTask`'s optional `assignee` + `dueAt`
-   aren't reachable from web; the form only sends `{text}`.  Slice B
-   will need richer affordance projection driven off `paramsSchema`.
+**From E.1 (stoop) + B.1 (tasks-v0):**
+g. **Multi-type lifecycle ops as itemActions** — `cancelRequest`
+   spans ALL stoop post types (ask/offer/lend); `markComplete`/
+   `removeItem` span all household list-types.  Q6 partially
+   addresses this via `appliesTo.type: [array]` but it's manual
+   per-op.  A `'*'` wildcard or "any of manifest.itemTypes" sigil
+   would close the gap.
 
-d. **`listOpen` returns text-only** — bootstrap re-reads the store
-   to surface `items[]`.  V1 cleanup: manifest's list ops should
-   return structured `data` alongside `replies`.
-
-e. **`itemActions` state-gating needs richer state derivation** —
-   client's `deriveItemState(item)` only derives `open|complete|
-   removed`; doesn't handle `claimed|submitted|approved` (V2.7 DoD
-   lifecycle).  Tasks-v0 web (Slice B) will hit this.
-
-Action: owner judges priority; some are pure substrate (a, b, c)
-and some are adapter-level (d, e).
+Action: owner judges priority.  **(f) is the highest-leverage** —
+two surfaces already need it; renderMobile (Slice C) will too.
 
 ---
 
