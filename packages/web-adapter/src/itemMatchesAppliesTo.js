@@ -56,5 +56,28 @@ export function itemMatchesAppliesTo(appliesTo, item) {
     if (!states.includes(itemState)) return false;
   }
 
+  // V0.4 (2026-05-21) — Per-event-kind dispatch (a.k.a. generic field
+  // gating).  Surfaced by B.2.3 deferral: inbox events vary by `kind`
+  // (subtask-proposal / task-rejected / etc.); per-row buttons need to
+  // gate by kind, not just by type.  Generalised: ANY field in
+  // `appliesTo` beyond the type+state pair is treated as an exact-or-
+  // any-of match against the item's same-named field.
+  //
+  //   appliesTo: { type: 'inbox-item', kind: 'subtask-proposal' }
+  //     → matches items where item.type==='inbox-item' AND
+  //                            item.kind==='subtask-proposal'.
+  //
+  //   appliesTo: { type: 'task', kind: ['urgent', 'urgent-blocked'] }
+  //     → array form for any-of (mirrors F-SP3-a's state semantics).
+  //
+  // Forward-additive: existing manifests with just `{type, state}`
+  // gates keep working unchanged.
+  for (const [field, gate] of Object.entries(appliesTo)) {
+    if (field === 'type' || field === 'state') continue;  // already handled
+    if (gate === undefined) continue;
+    const values = Array.isArray(gate) ? gate : [gate];
+    if (!values.includes(item[field])) return false;
+  }
+
   return true;
 }

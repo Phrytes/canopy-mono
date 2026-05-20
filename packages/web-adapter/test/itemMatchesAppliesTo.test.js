@@ -54,6 +54,41 @@ describe('itemMatchesAppliesTo — base predicates', () => {
     });
   });
 
+  /* ─── V0.4 per-event-kind dispatch (generic field gating) ────── */
+
+  describe('V0.4 — per-event-kind dispatch (generic field gating)', () => {
+    it('matches additional fields beyond type+state (exact)', () => {
+      const gate = { type: 'inbox-item', kind: 'subtask-proposal' };
+      expect(itemMatchesAppliesTo(gate, { type: 'inbox-item', kind: 'subtask-proposal' })).toBe(true);
+      expect(itemMatchesAppliesTo(gate, { type: 'inbox-item', kind: 'task-rejected'    })).toBe(false);
+    });
+
+    it('rejects when generic field is missing from the item', () => {
+      const gate = { type: 'inbox-item', kind: 'subtask-proposal' };
+      expect(itemMatchesAppliesTo(gate, { type: 'inbox-item' })).toBe(false);
+    });
+
+    it('matches array form (any-of) on a generic field', () => {
+      const gate = { type: 'inbox-item', kind: ['subtask-proposal', 'subtask-request'] };
+      expect(itemMatchesAppliesTo(gate, { type: 'inbox-item', kind: 'subtask-proposal' })).toBe(true);
+      expect(itemMatchesAppliesTo(gate, { type: 'inbox-item', kind: 'subtask-request'  })).toBe(true);
+      expect(itemMatchesAppliesTo(gate, { type: 'inbox-item', kind: 'other'             })).toBe(false);
+    });
+
+    it('composes with type + state gates', () => {
+      const gate = { type: 'task', state: 'open', priority: 'urgent' };
+      expect(itemMatchesAppliesTo(gate, { type: 'task',  state: 'open',    priority: 'urgent' })).toBe(true);
+      expect(itemMatchesAppliesTo(gate, { type: 'task',  state: 'claimed', priority: 'urgent' })).toBe(false);
+      expect(itemMatchesAppliesTo(gate, { type: 'task',  state: 'open',    priority: 'normal' })).toBe(false);
+      expect(itemMatchesAppliesTo(gate, { type: 'offer', state: 'open',    priority: 'urgent' })).toBe(false);
+    });
+
+    it('undefined-valued gate field is a no-op (matches everything)', () => {
+      const gate = { type: 'task', kind: undefined };
+      expect(itemMatchesAppliesTo(gate, { type: 'task' })).toBe(true);
+    });
+  });
+
   it('matches an array type gate', () => {
     const gate = { type: ['task', 'shopping'] };
     expect(itemMatchesAppliesTo(gate, { type: 'task' })).toBe(true);

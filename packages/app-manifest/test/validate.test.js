@@ -216,6 +216,132 @@ describe('validateManifest', () => {
       expect(e.some((x) => /argsFromContext must be an object/.test(x.message))).toBe(true);
     });
   });
+
+  /* ─── V0.4 — Q18 view.fields + Q16 strict mode ─────────────────────────── */
+
+  describe('V0.4 Q18 view.fields', () => {
+    const base = (overrides) => ({
+      app: 'a',
+      itemTypes: ['rec'],
+      operations: [{ id: 'updateRec', verb: 'update' }],
+      views: [{
+        id: 'r', title: 'R', type: 'rec', shape: 'record', ...overrides,
+      }],
+    });
+
+    it('accepts well-formed view.fields[] with patch declarations', () => {
+      expect(ok(base({
+        fields: [
+          { name: 'language', type: 'enum',
+            patch: { opId: 'updateRec', argName: 'language' } },
+          { name: 'readonlyField', type: 'string' },
+        ],
+      }))).toBe(true);
+    });
+
+    it('rejects view.fields when view.shape !== "record"', () => {
+      const e = errs({
+        app: 'a',
+        itemTypes: ['rec'],
+        operations: [],
+        views: [{
+          id: 'r', title: 'R', type: 'rec',  // shape NOT 'record'
+          fields: [{ name: 'x' }],
+        }],
+      });
+      expect(e.some((x) => /only meaningful when view\.shape === 'record'/.test(x.message))).toBe(true);
+    });
+
+    it('rejects fields without name', () => {
+      const e = errs(base({ fields: [{ type: 'string' }] }));
+      expect(e.some((x) => /field\.name must be a non-empty string/.test(x.message))).toBe(true);
+    });
+
+    it('rejects field.patch missing opId', () => {
+      const e = errs(base({ fields: [{ name: 'x', patch: { argName: 'x' } }] }));
+      expect(e.some((x) => /field\.patch\.opId must be a non-empty string/.test(x.message))).toBe(true);
+    });
+
+    it('rejects field.patch missing argName', () => {
+      const e = errs(base({ fields: [{ name: 'x', patch: { opId: 'updateRec' } }] }));
+      expect(e.some((x) => /field\.patch\.argName must be a non-empty string/.test(x.message))).toBe(true);
+    });
+  });
+
+  describe('V0.4 Q16-strict mode', () => {
+    const strict = (m) => validateManifest(m, { strict: true });
+    const lax    = (m) => validateManifest(m);
+
+    const MANIFEST_TYPO = {
+      app: 'a',
+      itemTypes: ['t'],
+      operations: [{ id: 'listKnown', verb: 'list' }],
+      views: [{
+        id: 'v', title: 'V', type: 't',
+        dataSource: { skillId: 'listMisspelled' },  // typo
+      }],
+    };
+
+    it('lax mode allows unknown skillId (existing behaviour)', () => {
+      expect(lax(MANIFEST_TYPO).ok).toBe(true);
+    });
+
+    it('strict mode REJECTS unknown skillId', () => {
+      const r = strict(MANIFEST_TYPO);
+      expect(r.ok).toBe(false);
+      expect(r.errors.some((x) =>
+        x.code === 'unknown-skillId' && /listMisspelled/.test(x.message))).toBe(true);
+    });
+
+    it('strict mode accepts skillId from operations[].id', () => {
+      const r = strict({
+        app: 'a',
+        itemTypes: ['t'],
+        operations: [{ id: 'listKnown', verb: 'list' }],
+        views: [{ id: 'v', title: 'V', type: 't',
+                  dataSource: { skillId: 'listKnown' } }],
+      });
+      expect(r.ok).toBe(true);
+    });
+
+    it('strict mode accepts skillId from externalSkills allow-list', () => {
+      const r = strict({
+        app: 'a',
+        itemTypes: ['t'],
+        externalSkills: ['listExternal'],
+        operations: [],
+        views: [{ id: 'v', title: 'V', type: 't',
+                  dataSource: { skillId: 'listExternal' } }],
+      });
+      expect(r.ok).toBe(true);
+    });
+
+    it('strict mode ALSO checks Q18 field.patch.opId', () => {
+      const r = strict({
+        app: 'a',
+        itemTypes: ['rec'],
+        operations: [],
+        views: [{
+          id: 'r', title: 'R', type: 'rec', shape: 'record',
+          dataSource: { skillId: 'getRec' },           // would also be unknown
+          externalSkills: undefined,
+          fields: [{ name: 'x', patch: { opId: 'updateMisspelled', argName: 'x' } }],
+        }],
+        externalSkills: ['getRec'],   // allow getRec
+      });
+      expect(r.ok).toBe(false);
+      expect(r.errors.some((x) =>
+        x.code === 'unknown-skillId' && /updateMisspelled/.test(x.message))).toBe(true);
+    });
+
+    it('externalSkills must be an array of strings', () => {
+      const e = errs({
+        app: 'a', itemTypes: [], operations: [],
+        externalSkills: 'listA,listB',
+      });
+      expect(e.some((x) => /externalSkills must be an array/.test(x.message))).toBe(true);
+    });
+  });
 });
 
 describe('VERBS / isCanonicalVerb', () => {
