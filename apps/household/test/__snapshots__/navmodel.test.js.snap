@@ -347,7 +347,25 @@ exports[`household manifest → NavModel (Slice A.2) > determinism + structural 
       "title": "Tasks",
     },
     {
-      "affordances": [],
+      "affordances": [
+        {
+          "label": "register",
+          "opId": "registerName",
+          "paramsSchema": {
+            "properties": {
+              "text": {
+                "minLength": 1,
+                "type": "string",
+              },
+            },
+            "required": [
+              "text",
+            ],
+            "type": "object",
+          },
+          "placement": "section",
+        },
+      ],
       "id": "members",
       "itemActions": [],
       "itemType": "contact",

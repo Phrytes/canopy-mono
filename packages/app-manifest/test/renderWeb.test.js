@@ -432,6 +432,119 @@ describe('renderWeb V0.2 — Q7 view.dataSource', () => {
   });
 });
 
+describe('renderWeb V0.2 — Q9 view.readOnly', () => {
+  const MANIFEST = {
+    app:       'ro',
+    itemTypes: ['contact', 'task'],
+    operations: [
+      {
+        id:        'addContact', verb: 'add', appliesTo: { type: 'contact' },
+        params:    [{ name: 'name', kind: 'string', required: true }],
+        surfaces:  { chat: { hint: 'add' } },
+      },
+      {
+        id:        'removeContact', verb: 'remove', appliesTo: { type: 'contact' },
+        params:    [{ name: 'id', kind: 'string', required: true }],
+        surfaces:  { ui: { control: 'button', label: 'X' } },
+      },
+    ],
+    views: [
+      { id: 'contacts-ro', title: 'Contacts',     type: 'contact', readOnly: true },
+      { id: 'contacts-rw', title: 'Editable',     type: 'contact' },
+    ],
+  };
+
+  it('section.readOnly is set when view.readOnly is true', () => {
+    const nav = renderWeb(MANIFEST);
+    const ro = nav.sections.find((s) => s.id === 'contacts-ro');
+    expect(ro.readOnly).toBe(true);
+  });
+
+  it('section.readOnly is ABSENT when view.readOnly is not declared', () => {
+    const nav = renderWeb(MANIFEST);
+    const rw = nav.sections.find((s) => s.id === 'contacts-rw');
+    expect(rw).not.toHaveProperty('readOnly');
+  });
+
+  it('creative affordances are SKIPPED in read-only sections', () => {
+    const nav = renderWeb(MANIFEST);
+    const ro = nav.sections.find((s) => s.id === 'contacts-ro');
+    expect(ro.affordances).toEqual([]);
+  });
+
+  it('itemActions still render in read-only sections (delete-button etc.)', () => {
+    const nav = renderWeb(MANIFEST);
+    const ro = nav.sections.find((s) => s.id === 'contacts-ro');
+    expect(ro.itemActions.map((a) => a.opId)).toContain('removeContact');
+  });
+
+  it('writable sibling keeps both affordances + itemActions', () => {
+    const nav = renderWeb(MANIFEST);
+    const rw = nav.sections.find((s) => s.id === 'contacts-rw');
+    expect(rw.affordances.map((a) => a.opId)).toContain('addContact');
+    expect(rw.itemActions.map((a) => a.opId)).toContain('removeContact');
+  });
+});
+
+describe('renderWeb V0.2 — Q10 creative verbs (add + register)', () => {
+  const MANIFEST = {
+    app:       'cv',
+    itemTypes: ['task', 'contact'],
+    operations: [
+      // verb='register' op without surfaces.ui — Q10 surfaces it.
+      {
+        id:        'registerName',
+        verb:      'register',
+        appliesTo: { type: 'contact' },
+        params:    [{ name: 'text', kind: 'string', required: true }],
+        surfaces:  { chat: { hint: 'register name' } },
+      },
+      // verb='add' op — also surfaces (Q6 rule a, now generalised).
+      {
+        id:        'addTask',
+        verb:      'add',
+        appliesTo: { type: 'task' },
+        params:    [{ name: 'text', kind: 'string', required: true }],
+        surfaces:  { chat: { hint: 'add task' } },
+      },
+      // Non-creative verb without surfaces.ui — STILL omitted (only
+      // creative verbs auto-surface).
+      {
+        id:        'classify',
+        verb:      'classify',
+        appliesTo: { type: 'task' },
+        params:    [{ name: 'text', kind: 'string', required: true }],
+        surfaces:  { chat: { hint: 'classify' } },
+      },
+    ],
+    views: [
+      { id: 'tasks',   title: 'Tasks',   type: 'task'    },
+      { id: 'members', title: 'Members', type: 'contact' },
+    ],
+  };
+
+  it('verb=register op auto-surfaces in members section', () => {
+    const nav = renderWeb(MANIFEST);
+    const members = nav.sections.find((s) => s.id === 'members');
+    expect(members.affordances.map((a) => a.opId)).toContain('registerName');
+  });
+
+  it('verb=add op continues to auto-surface (Q6 rule a still works)', () => {
+    const nav = renderWeb(MANIFEST);
+    const tasks = nav.sections.find((s) => s.id === 'tasks');
+    expect(tasks.affordances.map((a) => a.opId)).toContain('addTask');
+  });
+
+  it('non-creative verbs WITHOUT surfaces.ui stay omitted', () => {
+    const nav = renderWeb(MANIFEST);
+    const allOpIds = nav.sections.flatMap((s) => [
+      ...s.affordances.map((a) => a.opId),
+      ...s.itemActions.map((a) => a.opId),
+    ]);
+    expect(allOpIds).not.toContain('classify');
+  });
+});
+
 describe("renderWeb V0.2 — Q8 appliesTo.type: '*' wildcard", () => {
   it('wildcard op surfaces as itemAction in EVERY section', () => {
     const nav = renderWeb(V02_SYNTH);
