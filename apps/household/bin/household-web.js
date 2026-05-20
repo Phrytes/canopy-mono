@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * household-web — Slice A.3 bootstrap (PLAN-gui-chat-uplift.md).
+ * household-web — Slice A.3 + A.4 bootstrap (PLAN-gui-chat-uplift.md).
  *
  * Boots a localhost-only household web UI driven by the manifest's
  * NavModel (rendered via `@canopy/app-manifest`'s `renderWeb`).  The
@@ -9,16 +9,28 @@
  * `/navmodel.json` and `/household-config.json` to render tabs +
  * affordances + per-item buttons.
  *
- * V0 scope (this slice):
+ * Slice A.3 scope (manifest-driven UI):
  *   - list/add/markComplete/remove for the 4 list-type sections (+
  *     tasks/members surfaced for completeness).
- *   - LLM passthrough is DEFERRED to Slice A.4.
+ *
+ * Slice A.4 scope (LLM passthrough — NEW):
+ *   - When started with `{ llm }`, the bootstrap also wires a real
+ *     HouseholdAgent over the SAME store.  A `chat` skill is registered
+ *     that hands free text to `agent.onMessage` — the HouseholdAgent's
+ *     existing regex-then-LLM router does the rest (slash fast-path
+ *     hits skills directly; free text routes to the embedded
+ *     `@canopy/chat-agent` ChatAgent built from the manifest).
+ *   - No new LLM stack: this re-exposes the path HouseholdAgent already
+ *     constructs when an LLM is configured (see HouseholdAgent.js
+ *     lines 111–144).
+ *   - Without `{ llm }`, the `chat` skill replies with the regex
+ *     help-hint — the V0 behaviour pre-A.4.
  *
  * Usage:
  *   node bin/household-web.js [--port 8080] [--actor https://id.example/anne]
  *
  * Returns (when used as a module via `startHouseholdWeb()`):
- *   { url, port, stop, agent, store }
+ *   { url, port, stop, agent, store, householdAgent }
  *
  * The CLI entry-point uses `startHouseholdWeb` with defaults and logs
  * the URL; the smoke test (`test/web.test.js`) imports `startHouseholdWeb`
@@ -39,6 +51,8 @@ import { mountLocalUi, LocalUiAuth }              from '@canopy/agent-ui';
 import { renderWeb }                              from '@canopy/app-manifest';
 
 import { householdManifest }                       from '../manifest.js';
+import { HouseholdAgent }                          from '../src/HouseholdAgent.js';
+import { MockBridge }                              from '../src/bridges/MockBridge.js';
 import { InMemoryStore }                           from '../src/storage/InMemoryStore.js';
 import {
   addItem,
@@ -109,21 +123,38 @@ function adaptHouseholdSkill(skill, store, getAgent, postProcess) {
  * @param {number} [opts.port=0]      0 → OS picks a free port
  * @param {string} [opts.actor]       webid the LocalUiAuth claims
  * @param {InMemoryStore} [opts.store]  pre-built store (else fresh)
+ * @param {object} [opts.llm]
+ *   Optional LlmClient — when provided, free-text chat messages route
+ *   through the HouseholdAgent's manifest-built ChatAgent (Slice A.4).
+ *   When omitted, the `chat` skill replies with the regex help-hint.
  */
 export async function startHouseholdWeb(opts = {}) {
   const port  = opts.port ?? 0;
   const actor = opts.actor ?? DEFAULT_ACTOR;
   const store = opts.store ?? new InMemoryStore();
+  const llm   = opts.llm ?? null;
 
   const id        = await AgentIdentity.generate(new VaultMemory());
   const bus       = new InternalBus();
   const transport = new InternalTransport(bus, id.pubKey);
   const agent     = new Agent({ identity: id, transport, label: 'household-web' });
 
+  // ── Slice A.4: real HouseholdAgent on the SAME store ─────────────
+  // HouseholdAgent.constructor wires the regex fast path + (when an
+  // LLM is configured) the `@canopy/chat-agent` ChatAgent built from
+  // the manifest's renderChat projection (toolCatalog/toolHandlers/
+  // systemPrompt).  We use a MockBridge as a placeholder — the chat
+  // skill below calls `householdAgent.onMessage(msg)` directly and
+  // reads the returned Reply, so no outbound bridge dispatch is
+  // needed for the web surface.
+  const webBridge      = new MockBridge();
+  const householdAgent = new HouseholdAgent({ store, bridges: [webBridge], llm });
+  await householdAgent.start();
+
   // Closure-captured ref so adaptHouseholdSkill can pass the live agent
   // into the skill ctx (skills inspect ctx.agent for the LLM hook,
-  // which is null in this V0 — but kept to match the renderChat shape).
-  const getAgent = () => agent;
+  // which is the HouseholdAgent when an LLM is configured).
+  const getAgent = () => householdAgent;
 
   // Web-shaped skill registrations.  Each maps the manifest op id 1:1
   // to a core.Agent skill that adapts the household skill's reply
@@ -173,6 +204,49 @@ export async function startHouseholdWeb(opts = {}) {
   agent.register('claim',        adaptHouseholdSkill(claim,        store, getAgent));
   agent.register('registerName', adaptHouseholdSkill(registerName, store, getAgent));
 
+  // ── Slice A.4: `chat` skill — free-text passthrough ──────────────
+  // The web client POSTs to `/tasks/send` with skillId='chat' and
+  // `{ text }` in the DataPart.  We synthesise an IncomingMessage and
+  // hand it to `householdAgent.onMessage` — which routes through the
+  // manifest's slash grammar (regex fast path) first and falls
+  // through to the ChatAgent's LLM pipeline when no command matches.
+  //
+  // Reply shape: `{ replies: [{text, buttons?}, ...], stateUpdates }`
+  // mirroring the bridge-facing contract.  The browser reads
+  // `replies[0].text` (or concatenates all) for display.
+  let chatMessageCounter = 0;
+  agent.register('chat', async (ctx) => {
+    const args  = ctx.parts?.[0]?.data ?? {};
+    const text  = typeof args.text === 'string' ? args.text : '';
+    const sender = {
+      displayName: args.displayName ?? 'web-user',
+      bridgeUid:   args.bridgeUid   ?? 'web-ui',
+      webid:       ctx.from ?? ctx.originFrom ?? DEFAULT_ACTOR,
+    };
+    const msg = {
+      bridgeId:    webBridge.bridgeId,
+      chatId:      args.chatId ?? 'web-ui',
+      messageId:   `web-${++chatMessageCounter}`,
+      sender,
+      text,
+      replyTo:     null,
+      isAddressed: true,
+    };
+    let reply;
+    try {
+      reply = await householdAgent.onMessage(msg);
+    } catch (err) {
+      return Parts.wrap({
+        replies:      [{ text: `chat failed: ${err?.message ?? String(err)}` }],
+        stateUpdates: [],
+      });
+    }
+    return Parts.wrap({
+      replies:      reply?.replies ?? [],
+      stateUpdates: reply?.stateUpdates ?? [],
+    });
+  });
+
   // (no need to register `listOpen` for type=contact specifically — the
   // members section's adapter calls listOpen({type: 'contact'}) and
   // the household skill's KNOWN_TYPES guard rejects it.  V0 surfaces
@@ -199,9 +273,13 @@ export async function startHouseholdWeb(opts = {}) {
     url:   ui.url,
     port:  ui.port,
     agent,
+    householdAgent,
     store,
     navModel,
-    async stop() { await ui.stop(); },
+    async stop() {
+      try { await householdAgent.stop(); } catch { /* swallow */ }
+      await ui.stop();
+    },
   };
 }
 

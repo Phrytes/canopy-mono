@@ -39,6 +39,9 @@ describe('household web UI smoke (Slice A.3)', () => {
     expect(html).toContain('Household');
     expect(html).toContain('add-form');
     expect(html).toContain('id="tabs"');
+    // Slice A.4 — chat passthrough surface.
+    expect(html).toContain('chat-form');
+    expect(html).toContain('chat-input');
   });
 
   it('serves /main.js', async () => {
