@@ -513,11 +513,18 @@ async function loadWebAdapterFiles() {
     '..', '..', '..',
     'packages', 'web-adapter', 'src',
   );
+  // V0.2 (2026-05-20) — fetchSectionItems + schemaToFormFields join the
+  // shared web-adapter overlay. `fetchSectionItems` honours the
+  // manifest's `view.dataSource` (Q7) so per-page section→skill dispatch
+  // collapses; `schemaToFormFields` turns an affordance's paramsSchema
+  // into a platform-neutral form-field descriptor list.
   const names = [
     'callSkill.js',
     'deriveItemState.js',
     'itemMatchesAppliesTo.js',
     'applyPrefilledParams.js',
+    'fetchSectionItems.js',
+    'schemaToFormFields.js',
     'index.js',
   ];
   const out = {};

@@ -76,6 +76,14 @@
      * `claimable` views; per-item action buttons are filtered by the
      * manifest's `appliesTo` gate via `itemMatchesAppliesTo`.
      *
+     * V0.2 (2026-05-20) — the section→skill dispatch (`mine` →
+     * `listMine`, `mastered` → `listMyMasteredTasks`, `claimable` →
+     * `listClaimable`) now flows through the shared `fetchSectionItems`
+     * helper, honouring the manifest's Q7 `view.dataSource` field.
+     * The inline `DATA_SOURCE` map is gone; the substrate-gap comment
+     * (`renderWeb's NavModel grows a section.dataSource …`) is
+     * resolved.
+     *
      * Discipline:
      *   - The page's static <nav> + section <h2>s stay untouched —
      *     the navmodel projects titles into the H2s when present
@@ -93,16 +101,6 @@
      *     re-submit → complete) comes from each manifest op's
      *     `appliesTo.state` (F-SP3-a multi-state arrays); see
      *     `apps/tasks-v0/manifest.js`.
-     *
-     * Substrate gap (logged for Slice C tasks-mobile renderMobile):
-     *   - The renderWeb projector says the section's implicit data
-     *     source is `listOpen({type, ...filter})`; in reality the
-     *     three sections here need three DIFFERENT list skills
-     *     (`listMine`, `listMyMasteredTasks`, `listClaimable`).  Same
-     *     pattern dag.html worked around in B.1 (hardcoded
-     *     `getDagTree`).  Until renderWeb's NavModel grows a
-     *     `section.dataSource: '<skillId>'` field, this page maps the
-     *     three view ids to three list skills inline.
      */
     import {
       callSkill, renderTasks, getActor, getConfig, mountLive,
@@ -110,6 +108,9 @@
     } from '/app.js';
     import { itemMatchesAppliesTo } from '/lib/web-adapter/itemMatchesAppliesTo.js';
     import { applyPrefilledParams } from '/lib/web-adapter/applyPrefilledParams.js';
+    // V0.2 (2026-05-20) — section data-fetch via the manifest's Q7
+    // `view.dataSource`; replaces the per-page DATA_SOURCE map.
+    import { fetchSectionItems }    from '/lib/web-adapter/fetchSectionItems.js';
 
     document.getElementById('actor').textContent = await getActor();
     const cfg  = await getConfig();
@@ -247,23 +248,18 @@
     }
 
     /*
-     * Substrate gap (logged above): the renderWeb projector says the
-     * section's data source is `listOpen({type, ...filter})`; mine /
-     * mastered / claimable each need their own dedicated list skill.
-     * Until renderWeb grows `section.dataSource: '<skillId>'`, this
-     * page maps the three view ids to three list skills inline.
+     * V0.2 (2026-05-20) — section data-fetch via the shared
+     * `fetchSectionItems(section, {callSkill})` helper.  Each
+     * section's manifest declaration carries `dataSource: {skillId}`
+     * (Q7); the helper looks that up and dispatches the skill call.
+     * Pre-V0.2 the page hard-coded a DATA_SOURCE map mapping nav-id
+     * to skill id — that lookup is now in the manifest.
      */
-    const DATA_SOURCE = {
-      mine:      { skill: 'listMine',             fallback: { items: [] } },
-      mastered:  { skill: 'listMyMasteredTasks',  fallback: { items: [] } },
-      claimable: { skill: 'listClaimable',        fallback: { items: [] } },
-    };
-
     async function fetchSection(navId) {
-      const ds = DATA_SOURCE[navId];
-      if (!ds) return [];
+      const sec = sectionsById.get(navId);
+      if (!sec) return [];
       try {
-        const r = await callSkill(ds.skill, {});
+        const r = await fetchSectionItems(sec, { callSkill });
         return Array.isArray(r?.items) ? r.items : [];
       } catch {
         return [];
@@ -394,10 +390,12 @@
     // assert the per-section manifest gate is wired in (the gate is
     // applied implicitly because each manifest op's appliesTo.state
     // matches renderTasks's role-based gate).
+    // V0.2: DATA_SOURCE map removed (section→skill dispatch lives in
+    // the manifest's `view.dataSource`); the projected NavModel
+    // exposes it via `sectionsById.get(id).dataSource`.
     window.__sliceB2_1 = Object.freeze({
       sectionsById,
       manifestAllows,
-      DATA_SOURCE,
     });
   </script>
 </body>

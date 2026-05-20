@@ -235,25 +235,63 @@ export const tasksManifest = {
   ],
 
   views: [
-    { id: 'open',      title: 'Open',      type: 'task', filter: { open: true } },
-    { id: 'mine',      title: 'My work',   type: 'task' },
+    /*
+     * V0.2 (2026-05-20) — `dataSource` (Q7) declares the section's
+     * data-fetch skill in the manifest.  Web + mobile adapters call
+     * `fetchSectionItems(section, {callSkill})` which honours this
+     * field; the previous adapter-side hard-coded "if section.id === …"
+     * dispatch collapses.  Where omitted, the fallback would call
+     * `listOpen({type, ...filter})` — for the `open` view that's
+     * identical to the explicit declaration but we still spell it out
+     * so the manifest is the single source of truth (every section
+     * has a visible data source).
+     */
+    {
+      id:         'open',
+      title:      'Open',
+      type:       'task',
+      filter:     { open: true },
+      dataSource: { skillId: 'listOpen', args: { type: 'task' } },
+    },
+    {
+      id:         'mine',
+      title:      'My work',
+      type:       'task',
+      dataSource: { skillId: 'listMine' },
+    },
     /*
      * Slice B.2.1 (2026-05-20) — middle section of mine.html.  Tasks
      * the caller is master of (lets them revoke, change approval
      * mode, spawn sub-tasks).  Data source: listMyMasteredTasks (V0
-     * skill, now manifest-declared).
+     * skill, manifest-declared).  Pre-V0.2 the page mapped view→skill
+     * inline; V0.2 lifts it into the manifest.
      */
-    { id: 'mastered',  title: "I'm master of", type: 'task' },
-    { id: 'claimable', title: 'Claimable',     type: 'task' },
+    {
+      id:         'mastered',
+      title:      "I'm master of",
+      type:       'task',
+      dataSource: { skillId: 'listMyMasteredTasks' },
+    },
+    {
+      id:         'claimable',
+      title:      'Claimable',
+      type:       'task',
+      dataSource: { skillId: 'listClaimable' },
+    },
     /*
      * Slice B.1 (2026-05-20) — read-only DAG view consumed by
      * `apps/tasks-v0/web/dag.html` through the NavModel projector.
      * No `filter` (the dag skill walks the whole forest); no `sort`
-     * (rendering preserves DAG order via `flattenDagTree`).  This is
-     * the first tasks-v0 web page wired to renderWeb — view-only path
-     * proof per `PLAN-gui-chat-uplift.md` § Slice B.1.
+     * (rendering preserves DAG order via `flattenDagTree`).  V0.2 —
+     * `dataSource` lifts the hard-coded `getDagTree` call out of
+     * dag.html into the manifest.
      */
-    { id: 'dag',       title: 'DAG',       type: 'task' },
+    {
+      id:         'dag',
+      title:      'DAG',
+      type:       'task',
+      dataSource: { skillId: 'getDagTree' },
+    },
   ],
 };
 
