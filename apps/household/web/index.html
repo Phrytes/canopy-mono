@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Household</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Household</h1>
+    <nav id="tabs" aria-label="Sections">
+      <!-- tabs rendered from navModel.sections[].title -->
+    </nav>
+    <div id="actor" title="The signed-in actor (LocalUiAuth)"></div>
+  </header>
+
+  <main>
+    <section id="active-section">
+      <h2 id="active-title">Loading…</h2>
+
+      <form id="add-form" hidden>
+        <!-- the affordance form; populated from section.affordances[] -->
+        <input id="add-text" type="text" required placeholder="Add an item…" autocomplete="off">
+        <button type="submit">Add</button>
+      </form>
+
+      <ul id="items" class="items">
+        <!-- per-item rows rendered by main.js — text + per-item buttons -->
+      </ul>
+
+      <p id="empty" class="empty" hidden>Nothing here yet.</p>
+      <p id="error" class="error" hidden></p>
+    </section>
+  </main>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

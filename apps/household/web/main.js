@@ -1,0 +1,273 @@
+/**
+ * household web client — Slice A.3 (PLAN-gui-chat-uplift.md).
+ *
+ * Pure NavModel-driven UI:
+ *   - tabs ← navModel.sections[].title
+ *   - the active section's items ← callSkill('listOpen', {type: section.itemType})
+ *   - the section's add-form     ← navModel.sections[].affordances[0]
+ *                                  (with prefilledParams.type, per Q6)
+ *   - per-item buttons           ← navModel.sections[].itemActions[] (gated by appliesTo)
+ *
+ * V0 LIMITS (intentional):
+ *   - LLM passthrough deferred to Slice A.4.  No free-text chat input.
+ *   - The members section (itemType: 'contact') has no list-skill in V0;
+ *     the navmodel.test.js explicitly acknowledges this gap.  We render
+ *     it as an empty section without a working add-form (no
+ *     `registerName` affordance on the section either — same gap).
+ *   - Affordance form is a single text input.  The manifest's add ops
+ *     (addItem, addTask) take only `text` as the user-supplied arg
+ *     (everything else has a prefilled or optional default).  When the
+ *     substrate grows multi-field affordances, this client widens.
+ */
+
+/** Mirrors tasks-v0/web/app.js's callSkill — same `/tasks/send` shape. */
+async function callSkill(skillId, args = {}) {
+  const body = {
+    skillId,
+    message: { parts: [{ type: 'DataPart', data: args }] },
+  };
+  const res = await fetch('/tasks/send', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`${skillId}: ${res.status} ${err}`);
+  }
+  const json = await res.json();
+  if (json.status && json.status !== 'completed') {
+    throw new Error(`${skillId}: ${json.status} — ${JSON.stringify(json.error ?? {})}`);
+  }
+  const outParts = json.artifacts?.[0]?.parts ?? json.parts ?? [];
+  const dp = outParts.find((p) => p?.type === 'DataPart');
+  return dp?.data ?? {};
+}
+
+/** Does this item match the action's appliesTo gate? */
+function itemMatchesAppliesTo(item, appliesTo) {
+  if (!appliesTo) return true;
+  if (appliesTo.type !== undefined) {
+    const types = Array.isArray(appliesTo.type) ? appliesTo.type : [appliesTo.type];
+    if (!types.includes(item.type)) return false;
+  }
+  if (appliesTo.state !== undefined) {
+    const states = Array.isArray(appliesTo.state) ? appliesTo.state : [appliesTo.state];
+    const itemState = deriveItemState(item);
+    if (!states.includes(itemState)) return false;
+  }
+  return true;
+}
+
+/** Minimal item-state derivation — enough for V0's `state: 'open'` gate. */
+function deriveItemState(item) {
+  if (item.completedAt) return 'complete';
+  if (item.removedAt)   return 'removed';
+  return 'open';
+}
+
+/** Build the dispatch args for an item action.  Per the manifest's
+ *  appliesTo and the spec's Q6 prefilledParams contract. */
+function buildActionArgs(action, item) {
+  // markComplete/removeItem/claim all take `match: <id>`.  reassign
+  // takes two args — not surfaced in this slice (no surfaces.ui).
+  const args = { match: item.id };
+  if (action.prefilledParams) Object.assign(args, action.prefilledParams);
+  return args;
+}
+
+/** Build the dispatch args for an add-affordance form submit. */
+function buildAddArgs(affordance, text) {
+  const args = { text };
+  if (affordance.prefilledParams) Object.assign(args, affordance.prefilledParams);
+  return args;
+}
+
+/** Find the first add-affordance (verb=add) in a section. */
+function sectionAddAffordance(section) {
+  // Order = manifest declaration order.  For list sections that's
+  // `addItem` (the only add op surfaced via Q6 type-enum fallback).
+  // For the tasks section it's `addTask` (explicit appliesTo).
+  return (section.affordances ?? []).find((a) => /^add/i.test(a.opId));
+}
+
+/** Re-render the active section's items list. */
+async function renderSection(state) {
+  const section = state.activeSection;
+  state.dom.title.textContent = section.title;
+  state.dom.error.hidden  = true;
+  state.dom.error.textContent = '';
+
+  // Set up the add-form (when the section has an add affordance).
+  const add = sectionAddAffordance(section);
+  if (add) {
+    state.dom.addForm.hidden = false;
+    state.dom.addInput.placeholder = `Add to ${section.title.toLowerCase()}…`;
+    state.dom.addForm.dataset.opId = add.opId;
+  } else {
+    state.dom.addForm.hidden = true;
+    delete state.dom.addForm.dataset.opId;
+  }
+
+  // Fetch items via the section's implicit data source (a `listOpen`
+  // call, parameterised by the section's itemType).  The members
+  // section has no list-skill in V0 — render empty, no error.
+  let items = [];
+  try {
+    if (section.itemType === 'contact') {
+      // V0 gap (per navmodel.test.js § members section) — no listOpen
+      // for `contact`.  Render empty.
+      items = [];
+    } else if (section.itemType === 'task') {
+      const r = await callSkill('listTasks', {});
+      items = Array.isArray(r?.items) ? r.items : [];
+    } else {
+      const r = await callSkill('listOpen', { type: section.itemType });
+      items = Array.isArray(r?.items) ? r.items : [];
+    }
+  } catch (err) {
+    showError(state, err);
+    items = [];
+  }
+
+  // Render rows.
+  state.dom.items.innerHTML = '';
+  if (items.length === 0) {
+    state.dom.empty.hidden = false;
+  } else {
+    state.dom.empty.hidden = true;
+    for (const item of items) {
+      state.dom.items.appendChild(renderItemRow(state, section, item));
+    }
+  }
+}
+
+function renderItemRow(state, section, item) {
+  const li = document.createElement('li');
+  li.className = 'item';
+  li.dataset.itemId = item.id;
+
+  const text = document.createElement('span');
+  text.className = 'item-text';
+  text.textContent = item.text ?? '(no text)';
+  li.appendChild(text);
+
+  // Per-item buttons — itemActions[] filtered by appliesTo.
+  const actions = (section.itemActions ?? []).filter((a) =>
+    itemMatchesAppliesTo(item, a.appliesTo),
+  );
+  if (actions.length > 0) {
+    const btns = document.createElement('div');
+    btns.className = 'item-actions';
+    for (const action of actions) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = action.label;
+      btn.dataset.opId = action.opId;
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          await callSkill(action.opId, buildActionArgs(action, item));
+          await renderSection(state);
+        } catch (err) {
+          showError(state, err);
+          btn.disabled = false;
+        }
+      });
+      btns.appendChild(btn);
+    }
+    li.appendChild(btns);
+  }
+  return li;
+}
+
+function showError(state, err) {
+  state.dom.error.hidden = false;
+  state.dom.error.textContent = err?.message ?? String(err);
+}
+
+function renderTabs(state) {
+  state.dom.tabs.innerHTML = '';
+  for (const section of state.navModel.sections) {
+    const a = document.createElement('a');
+    a.href = '#';
+    a.textContent = section.title;
+    a.dataset.sectionId = section.id;
+    if (section.id === state.activeSection.id) a.classList.add('active');
+    a.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      state.activeSection = section;
+      for (const link of state.dom.tabs.querySelectorAll('a')) {
+        link.classList.toggle('active', link.dataset.sectionId === section.id);
+      }
+      renderSection(state);
+    });
+    state.dom.tabs.appendChild(a);
+  }
+}
+
+async function main() {
+  // (1) load NavModel + config — both served via extraStaticFiles.
+  const [navModel, config] = await Promise.all([
+    fetch('/navmodel.json').then((r) => r.json()),
+    fetch('/household-config.json').then((r) => r.json()).catch(() => ({})),
+  ]);
+  if (!navModel?.sections?.length) {
+    document.body.innerHTML = '<p class="error">NavModel has no sections — manifest mis-renders?</p>';
+    return;
+  }
+
+  // (2) wire DOM refs.
+  const state = {
+    navModel,
+    config,
+    activeSection: navModel.sections[0],
+    dom: {
+      tabs:     document.getElementById('tabs'),
+      title:    document.getElementById('active-title'),
+      items:    document.getElementById('items'),
+      empty:    document.getElementById('empty'),
+      error:    document.getElementById('error'),
+      addForm:  document.getElementById('add-form'),
+      addInput: document.getElementById('add-text'),
+      actor:    document.getElementById('actor'),
+    },
+  };
+  state.dom.actor.textContent = config?.actor ?? '';
+
+  // (3) render shell.
+  renderTabs(state);
+
+  // (4) wire add-form submit — dispatches the section's add-affordance.
+  state.dom.addForm.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const text = state.dom.addInput.value.trim();
+    if (!text) return;
+    const add = sectionAddAffordance(state.activeSection);
+    if (!add) return;
+    state.dom.addInput.disabled = true;
+    try {
+      await callSkill(add.opId, buildAddArgs(add, text));
+      state.dom.addInput.value = '';
+      await renderSection(state);
+    } catch (err) {
+      showError(state, err);
+    } finally {
+      state.dom.addInput.disabled = false;
+      state.dom.addInput.focus();
+    }
+  });
+
+  // (5) initial section render.
+  await renderSection(state);
+}
+
+main().catch((err) => {
+  // Last-resort error surface — when NavModel fetch fails or DOM is
+  // shaped wrong.  Real per-call errors render inline via showError().
+  console.error('household-web: fatal', err);
+  document.body.insertAdjacentHTML(
+    'afterbegin',
+    `<p class="error">Fatal: ${err?.message ?? err}</p>`,
+  );
+});

@@ -1,0 +1,234 @@
+#!/usr/bin/env node
+/**
+ * household-web — Slice A.3 bootstrap (PLAN-gui-chat-uplift.md).
+ *
+ * Boots a localhost-only household web UI driven by the manifest's
+ * NavModel (rendered via `@canopy/app-manifest`'s `renderWeb`).  The
+ * server is the same `@canopy/agent-ui`'s `mountLocalUi` substrate that
+ * tasks-v0 uses; the client (apps/household/web/main.js) consumes
+ * `/navmodel.json` and `/household-config.json` to render tabs +
+ * affordances + per-item buttons.
+ *
+ * V0 scope (this slice):
+ *   - list/add/markComplete/remove for the 4 list-type sections (+
+ *     tasks/members surfaced for completeness).
+ *   - LLM passthrough is DEFERRED to Slice A.4.
+ *
+ * Usage:
+ *   node bin/household-web.js [--port 8080] [--actor https://id.example/anne]
+ *
+ * Returns (when used as a module via `startHouseholdWeb()`):
+ *   { url, port, stop, agent, store }
+ *
+ * The CLI entry-point uses `startHouseholdWeb` with defaults and logs
+ * the URL; the smoke test (`test/web.test.js`) imports `startHouseholdWeb`
+ * directly so it can await + stop without shell-driven lifecycle.
+ */
+import { parseArgs }                              from 'node:util';
+import { fileURLToPath }                          from 'node:url';
+import { dirname, join }                          from 'node:path';
+import {
+  Agent,
+  AgentIdentity,
+  VaultMemory,
+  InternalBus,
+  InternalTransport,
+  Parts,
+}                                                 from '@canopy/core';
+import { mountLocalUi, LocalUiAuth }              from '@canopy/agent-ui';
+import { renderWeb }                              from '@canopy/app-manifest';
+
+import { householdManifest }                       from '../manifest.js';
+import { InMemoryStore }                           from '../src/storage/InMemoryStore.js';
+import {
+  addItem,
+  listOpen,
+  markComplete,
+  removeItem,
+  addTask,
+  listTasks,
+  claim,
+  registerName,
+} from '../src/skills/index.js';
+
+const DEFAULT_ACTOR = 'https://id.example/anne';
+
+/**
+ * Build a `(args, skillCtx) → {replies, stateUpdates}` shape from `ctx`
+ * (the core.Agent skill ctx).  Mirrors `mountable.js`'s shape, but
+ * called inline since we own the dispatch here.
+ *
+ * @param {object} ctx                 core.Agent skill ctx
+ * @param {InMemoryStore} store
+ * @param {object} agent
+ */
+function buildSkillCtx(ctx, store, agent) {
+  return {
+    store,
+    chatId:      'web-ui',
+    senderWebid: ctx.from ?? ctx.originFrom ?? DEFAULT_ACTOR,
+    bridgeId:    'local-ui',
+    agent,
+  };
+}
+
+/**
+ * Adapt a renderChat-shape skill `(args, skillCtx) → {replies, stateUpdates}`
+ * into a core.Agent handler `(ctx) → parts`.  The web client reads the
+ * skill's text reply via `replies[0].text` (or the structured `items`
+ * we add post-hoc for the data-returning skills).
+ *
+ * @param {function} skill   household-shape skill handler
+ * @param {InMemoryStore} store
+ * @param {function} getAgent  closure returning the live agent (avoids
+ *                             a circular ref before Agent is constructed)
+ * @param {function} [postProcess]  optional `(reply, args, skillCtx) → data`
+ *                                  to add structured data to the response
+ */
+function adaptHouseholdSkill(skill, store, getAgent, postProcess) {
+  return async (ctx) => {
+    const args = ctx.parts?.[0]?.data ?? {};
+    const skillCtx = buildSkillCtx(ctx, store, getAgent());
+    const reply = await skill(args, skillCtx);
+    const data = {
+      replies:      reply?.replies ?? [],
+      stateUpdates: reply?.stateUpdates ?? [],
+    };
+    if (typeof postProcess === 'function') {
+      Object.assign(data, await postProcess(reply, args, skillCtx) ?? {});
+    }
+    return Parts.wrap(data);
+  };
+}
+
+/**
+ * Start the household-web server.  Returns a handle the caller can use
+ * to stop it cleanly (the smoke test does this).
+ *
+ * @param {object} [opts]
+ * @param {number} [opts.port=0]      0 → OS picks a free port
+ * @param {string} [opts.actor]       webid the LocalUiAuth claims
+ * @param {InMemoryStore} [opts.store]  pre-built store (else fresh)
+ */
+export async function startHouseholdWeb(opts = {}) {
+  const port  = opts.port ?? 0;
+  const actor = opts.actor ?? DEFAULT_ACTOR;
+  const store = opts.store ?? new InMemoryStore();
+
+  const id        = await AgentIdentity.generate(new VaultMemory());
+  const bus       = new InternalBus();
+  const transport = new InternalTransport(bus, id.pubKey);
+  const agent     = new Agent({ identity: id, transport, label: 'household-web' });
+
+  // Closure-captured ref so adaptHouseholdSkill can pass the live agent
+  // into the skill ctx (skills inspect ctx.agent for the LLM hook,
+  // which is null in this V0 — but kept to match the renderChat shape).
+  const getAgent = () => agent;
+
+  // Web-shaped skill registrations.  Each maps the manifest op id 1:1
+  // to a core.Agent skill that adapts the household skill's reply
+  // shape into a DataPart the web client can read.  Where the
+  // household skill returns text-only (e.g. listOpen), we add the
+  // structured `items` array post-hoc by re-reading the store.
+  //
+  // The handlers preserve the manifest's contract: same op ids, same
+  // arg names, same param shapes.  This is what makes the NavModel
+  // drive the UI — every button on the page traces to an op the
+  // server knows how to dispatch.
+
+  agent.register('listOpen', adaptHouseholdSkill(
+    listOpen, store, getAgent,
+    async (_reply, args) => ({
+      items: await store.listOpen({ type: args?.type }),
+    }),
+  ));
+
+  agent.register('listTasks', adaptHouseholdSkill(
+    listTasks, store, getAgent,
+    async () => ({
+      items: await store.listOpen({ type: 'task' }),
+    }),
+  ));
+
+  agent.register('addItem', adaptHouseholdSkill(
+    addItem, store, getAgent,
+    // After addItem, surface the freshly-added item (last one in the
+    // type's listOpen) so the client can render it without a refetch.
+    async (_reply, args) => {
+      const open = await store.listOpen({ type: args?.type });
+      return { items: open, added: open[open.length - 1] ?? null };
+    },
+  ));
+
+  agent.register('addTask', adaptHouseholdSkill(
+    addTask, store, getAgent,
+    async () => {
+      const items = await store.listOpen({ type: 'task' });
+      return { items, added: items[items.length - 1] ?? null };
+    },
+  ));
+
+  agent.register('markComplete', adaptHouseholdSkill(markComplete, store, getAgent));
+  agent.register('removeItem',   adaptHouseholdSkill(removeItem,   store, getAgent));
+  agent.register('claim',        adaptHouseholdSkill(claim,        store, getAgent));
+  agent.register('registerName', adaptHouseholdSkill(registerName, store, getAgent));
+
+  // (no need to register `listOpen` for type=contact specifically — the
+  // members section's adapter calls listOpen({type: 'contact'}) and
+  // the household skill's KNOWN_TYPES guard rejects it.  V0 surfaces
+  // the members tab as empty until a follow-on adds a contact-list
+  // path.  Owner ack'd this in `test/navmodel.test.js`.)
+
+  // Pre-compute the NavModel from the manifest.  Static for the life
+  // of the server (manifest is module-scope const).
+  const navModel = renderWeb(householdManifest);
+
+  const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
+
+  const ui = await mountLocalUi(agent, {
+    port,
+    staticDir:        webDir,
+    a2aTLSLayer:      new LocalUiAuth({ localActor: actor }),
+    extraStaticFiles: {
+      '/navmodel.json':         JSON.stringify(navModel),
+      '/household-config.json': JSON.stringify({ actor, app: navModel.app }),
+    },
+  });
+
+  return {
+    url:   ui.url,
+    port:  ui.port,
+    agent,
+    store,
+    navModel,
+    async stop() { await ui.stop(); },
+  };
+}
+
+// ── CLI entry ─────────────────────────────────────────────────────────
+const isMain = fileURLToPath(import.meta.url) === process.argv[1];
+if (isMain) {
+  const { values } = parseArgs({
+    options: {
+      port:  { type: 'string' },
+      actor: { type: 'string' },
+    },
+  });
+
+  const port  = values.port ? Number(values.port) : 0;
+  const actor = values.actor ?? DEFAULT_ACTOR;
+
+  const handle = await startHouseholdWeb({ port, actor });
+  console.log(`Household web UI ready at ${handle.url}`);
+  console.log(`  actor:    ${actor}`);
+  console.log(`  app:      ${handle.navModel.app}`);
+  console.log(`  sections: ${handle.navModel.sections.map((s) => s.id).join(', ')}`);
+
+  process.on('SIGINT',  shutdown);
+  process.on('SIGTERM', shutdown);
+  async function shutdown() {
+    console.log('\nShutting down…');
+    await handle.stop();
+    process.exit(0);
+  }
+}
