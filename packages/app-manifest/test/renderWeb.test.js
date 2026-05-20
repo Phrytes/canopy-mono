@@ -357,3 +357,116 @@ describe('renderWeb V0 — Q6 type-enum fallback + prefilledParams', () => {
     });
   });
 });
+
+/* ─── V0.2: Q7 view.dataSource + Q8 appliesTo wildcard ─────────────── */
+
+const V02_SYNTH = {
+  app:       'v02',
+  itemTypes: ['ask', 'offer', 'lend', 'task'],
+  operations: [
+    // Wildcard appliesTo — surfaces in every section.
+    {
+      id:        'cancelAny',
+      verb:      'remove',
+      appliesTo: { type: '*' },
+      params:    [{ name: 'id', kind: 'string', required: true }],
+      surfaces:  { ui: { control: 'button', label: 'Cancel' } },
+    },
+    // Wildcard with state — must compose.
+    {
+      id:        'archiveOpen',
+      verb:      'archive',
+      appliesTo: { type: '*', state: 'open' },
+      params:    [{ name: 'id', kind: 'string', required: true }],
+      surfaces:  { ui: { control: 'button', label: 'Archive' } },
+    },
+    // Single-type op — still works as before; should NOT appear in other sections.
+    {
+      id:        'submitTask',
+      verb:      'submit',
+      appliesTo: { type: 'task', state: 'claimed' },
+      params:    [{ name: 'id', kind: 'string', required: true }],
+      surfaces:  { ui: { control: 'button', label: 'Submit' } },
+    },
+  ],
+  views: [
+    // view.dataSource declared explicitly.
+    {
+      id:         'mine-asks',
+      title:      'My asks',
+      type:       'ask',
+      dataSource: { skillId: 'listMyAsks', args: { open: true } },
+    },
+    // view.dataSource OMITTED — adapter falls back to default heuristic.
+    { id: 'all-offers', title: 'All offers', type: 'offer' },
+    // dataSource with no args.
+    {
+      id:         'lend',
+      title:      'Lend',
+      type:       'lend',
+      dataSource: { skillId: 'listLends' },
+    },
+    // task section — single-type op should appear here.
+    { id: 'tasks', title: 'Tasks', type: 'task' },
+  ],
+};
+
+describe('renderWeb V0.2 — Q7 view.dataSource', () => {
+  it('section.dataSource is passed through when declared on the view', () => {
+    const nav = renderWeb(V02_SYNTH);
+    const asks = nav.sections.find((s) => s.id === 'mine-asks');
+    expect(asks.dataSource).toEqual({ skillId: 'listMyAsks', args: { open: true } });
+  });
+
+  it('section.dataSource is ABSENT when the view does not declare it', () => {
+    const nav = renderWeb(V02_SYNTH);
+    const offers = nav.sections.find((s) => s.id === 'all-offers');
+    expect(offers).not.toHaveProperty('dataSource');
+  });
+
+  it('section.dataSource with no args field is preserved verbatim', () => {
+    const nav = renderWeb(V02_SYNTH);
+    const lend = nav.sections.find((s) => s.id === 'lend');
+    expect(lend.dataSource).toEqual({ skillId: 'listLends' });
+    expect(lend.dataSource).not.toHaveProperty('args');
+  });
+});
+
+describe("renderWeb V0.2 — Q8 appliesTo.type: '*' wildcard", () => {
+  it('wildcard op surfaces as itemAction in EVERY section', () => {
+    const nav = renderWeb(V02_SYNTH);
+    for (const section of nav.sections) {
+      const ids = section.itemActions.map((a) => a.opId);
+      expect(ids, `section ${section.id} should include cancelAny`).toContain('cancelAny');
+    }
+  });
+
+  it('wildcard with state preserves state gate', () => {
+    const nav = renderWeb(V02_SYNTH);
+    const asks = nav.sections.find((s) => s.id === 'mine-asks');
+    const archive = asks.itemActions.find((a) => a.opId === 'archiveOpen');
+    expect(archive.appliesTo).toEqual({ type: '*', state: 'open' });
+  });
+
+  it('wildcard itemAction has appliesTo.type preserved as "*" (NOT narrowed to view.type)', () => {
+    const nav = renderWeb(V02_SYNTH);
+    const tasks = nav.sections.find((s) => s.id === 'tasks');
+    const cancel = tasks.itemActions.find((a) => a.opId === 'cancelAny');
+    expect(cancel.appliesTo.type).toBe('*');
+  });
+
+  it('wildcard op does NOT get prefilledParams (it is type-agnostic)', () => {
+    const nav = renderWeb(V02_SYNTH);
+    const asks = nav.sections.find((s) => s.id === 'mine-asks');
+    const cancel = asks.itemActions.find((a) => a.opId === 'cancelAny');
+    expect(cancel).not.toHaveProperty('prefilledParams');
+  });
+
+  it('single-type op (submitTask) still only appears in matching section', () => {
+    const nav = renderWeb(V02_SYNTH);
+    const tasks = nav.sections.find((s) => s.id === 'tasks');
+    const asks  = nav.sections.find((s) => s.id === 'mine-asks');
+    expect(tasks.itemActions.map((a) => a.opId)).toContain('submitTask');
+    expect(asks.itemActions.map((a) => a.opId)).not.toContain('submitTask');
+  });
+});

@@ -55,6 +55,17 @@
  * @property {{by: string, direction?: 'asc'|'desc'}} [sort]
  *                                         mirrors view.sort (Q5)
  * @property {*}        [audience]         mirrors view.audience (SP-5b consumer)
+ * @property {{skillId: string, args?: object}} [dataSource]
+ *                                         mirrors view.dataSource (V0.2 Q7).
+ *                                         When present, adapters call this
+ *                                         skill (with merged args) instead
+ *                                         of the default `listOpen({type})`
+ *                                         heuristic.  Resolves the
+ *                                         convergent gap flagged by B.2 +
+ *                                         E.1 + B.1 agents (sections
+ *                                         needing custom data fetchers
+ *                                         like `listMine`, `listMyRequests`,
+ *                                         `getDagTree`).
  * @property {Affordance[]} affordances    per-section actions (e.g. add-form)
  * @property {ItemAction[]} itemActions    per-item state-gated buttons
  *
@@ -75,8 +86,13 @@
  * @typedef {object} ItemAction
  * @property {string}   opId               matches manifest.operation.id
  * @property {string}   label              from surfaces.ui.label or op.verb
- * @property {{type?: string|string[], state?: string|string[]}} appliesTo
- *                                         passed through (F-SP3-a multi-state honoured)
+ * @property {{type?: string|string[]|'*', state?: string|string[]}} appliesTo
+ *                                         passed through (F-SP3-a multi-state
+ *                                         honoured).  V0.2 — `type` may be
+ *                                         `'*'` (wildcard, Q8): matches every
+ *                                         section regardless of itemType.
+ *                                         Surfaced by stoop's `cancelRequest`
+ *                                         spanning ask/offer/lend.
  * @property {object}   [prefilledParams]  same semantics as Affordance.prefilledParams
  *
  * Note on `callbackData`: the design sketch proposed a per-action
@@ -102,6 +118,35 @@
  *       items.  Not a button.
  *   (c) **Other verbs require `surfaces.ui`** to surface as
  *       itemActions (state-gated per-item buttons).  Same as V0.
+ *
+ * ──── Q7 — `view.dataSource` explicit declaration (locked 2026-05-21)
+ *
+ * Surfaced by the CONVERGENT signal from B.2 (tasks-v0 mine.html) +
+ * E.1 (stoop mine.html) + B.1 (tasks-v0 dag.html).  Q6 rule (b) says
+ * "list ops are the section's implicit data source — adapter calls
+ * `listOpen({type, ...filter})`".  But many real sections need a
+ * DIFFERENT list skill: `listMine`, `listMyMasteredTasks`,
+ * `listClaimable`, `listMyRequests`, `getDagTree`.  Hard-coded in
+ * adapters today; convergent signal = real substrate gap.
+ *
+ * Solution: `view.dataSource: {skillId, args?}` declares the skill
+ * the adapter should call to populate the section, with optional
+ * pre-filled args.  Forward-additive: absent → existing behaviour
+ * (adapter calls `listOpen({type, ...filter})`).
+ *
+ * ──── Q8 — `appliesTo.type: '*'` wildcard (locked 2026-05-21)
+ *
+ * Surfaced by E.1: stoop's `cancelRequest` spans all 3 prikbord
+ * types (ask/offer/lend); `markReturned` only matches `lend` but
+ * conceptually belongs on every per-row button.  Q6 + F-SP3-a's
+ * multi-type array helps but is manual per-op.
+ *
+ * Solution: `appliesTo: { type: '*' }` is permitted (validator).
+ * Wildcard ops match EVERY view's section.  NavModel preserves the
+ * `'*'` literal so adapters can decide rendering.
+ *
+ * Forward-additive: validator special-cases `'*'`; renderWeb's
+ * `matchOp` returns matched=true for wildcard regardless of view.type.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -152,9 +197,14 @@ function buildSection(view, ops, manifest) {
   };
 
   // Optional fields — only set when present (keep NavModel JSON minimal).
-  if (view.filter   !== undefined) section.filter   = view.filter;
-  if (view.sort     !== undefined) section.sort     = view.sort;
-  if (view.audience !== undefined) section.audience = view.audience;
+  if (view.filter     !== undefined) section.filter     = view.filter;
+  if (view.sort       !== undefined) section.sort       = view.sort;
+  if (view.audience   !== undefined) section.audience   = view.audience;
+  // Q7 (2026-05-21) — explicit data-source declaration; adapters use
+  // this in preference to the default `listOpen({type, ...filter})`
+  // heuristic.  Validate-loose: shape correctness is the adapter's
+  // concern (forward-additive — V0.3 may tighten via JSDoc).
+  if (view.dataSource !== undefined) section.dataSource = view.dataSource;
 
   for (const op of ops) {
     const ui = op?.surfaces?.ui;
@@ -196,6 +246,12 @@ function buildSection(view, ops, manifest) {
  */
 function matchOp(op, view) {
   if (op.appliesTo?.type !== undefined) {
+    // Q8 (2026-05-21) — wildcard: '*' matches every section.  No
+    // prefilledParams; op is type-agnostic (operates on the item's
+    // id, not its type).
+    if (op.appliesTo.type === '*') {
+      return { matched: true, viaTypeEnum: false, viaWildcard: true };
+    }
     const types = Array.isArray(op.appliesTo.type) ? op.appliesTo.type : [op.appliesTo.type];
     return { matched: types.includes(view.type), viaTypeEnum: false };
   }
