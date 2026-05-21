@@ -1,0 +1,59 @@
+Agent object
+
+An agent is a plain object with a stable ID (user-facing slug, not an address), a blueprint label, dynamic capabilities, a connections map, group memberships, a policy block, and storage references. Addresses live in the connections map and change freely.
+
+{
+  id: "alice-home",              // stable user slug
+  blueprint: "household-agent", // named preset
+  capabilities: {
+    "summarise": {
+      fn: <ref>,
+      style: "request-response",
+      visibility: "group:home",
+      policy: "on-request"
+    },
+    "live-feed": {
+      fn: <ref>,
+      style: "streaming",
+      visibility: "public",
+      policy: "negotiated"
+    }
+  },
+  connections: {
+    nkn:  { address: "abc123.nkn" },
+    mqtt: { broker: "mqtt://...", topic: "agents/alice-home" },
+    mdns: { hostname: "alice-home.local" }   // native only
+  },
+  groups: [
+    { id: "home", proof: "<signed-token>" }
+  ],
+  policy: {
+    ping:       "always",
+    messaging:  "on-request",
+    streaming:  "negotiated",
+    taskAccept: "negotiated"
+  },
+  storage: {
+    cache:      "memory",
+    persistent: "local-encrypted",
+    sources: [
+      { label: "private", type: "solid-pod", url: "https://..." },
+      { label: "app",     type: "indexeddb", name: "myapp-db"  }
+    ]
+  },
+  resources: {
+    maxPendingTasks: 5,
+    maxConnections: 20
+  },
+  hooks: {
+    onTask:    ["log-to-email"],   // capability names
+    onMessage: ["log-locally"]
+  }
+}
+
+JSON portability
+
+Calling agent.export() serialises this shape without runtime state, secrets, or resolved credentials. Agent.import(json) re-hydrates it. The format is the standard — any conforming runtime can load any conforming file.
+Blueprint labels
+
+A blueprint is a named, shareable preset of capabilities, policies, and hooks — not tied to a group or identity. Think of it as a role template: "drone-operator", "logger-agent". Apps can ship built-in blueprints; users can define their own in the agent file.

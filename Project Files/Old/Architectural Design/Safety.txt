@@ -1,0 +1,180 @@
+SAFETY
+
+---
+
+## Security design — portable agent system
+
+### Threat model
+
+Six threats, in order of severity:
+
+**Malicious app** (critical) — an app embedding the package tries to read vault credentials, extract group proofs, register unapproved capabilities, or exfiltrate data without the user's knowledge.
+
+**Lying peer** (high) — a peer agent claims group membership or capabilities it doesn't have, to receive tasks or data it shouldn't.
+
+**Compromised transport** (medium) — a NKN relay node, MQTT broker, or network path is monitored or tampered with.
+
+**Shared agent file leak** (medium) — the user accidentally exposes their agent file. Group proofs and connection addresses are exposed. Secrets are not, if vault separation is enforced.
+
+**Runaway agent** (medium) — an agent accepts more tasks or connections than intended, exhausting resources or leaking data to too many peers.
+
+**Replay attack** (low) — an old valid signed envelope is re-submitted to trigger an action twice. Can be accidental or intentional.
+
+---
+
+### Core principle: public key as identity
+
+Every agent has an Ed25519 keypair. The private key never leaves the device vault. The public key is the agent's true identity — used for signing all outbound envelopes, verifying all inbound envelopes, anchoring group proofs, and deriving transport addresses (NKN addresses are deterministically derived from the keypair). The user-readable agent ID (e.g. `alice-home`) is a human alias only — all security operations reference the public key.
+
+---
+
+### Layer 1 — envelope security
+
+Every envelope is signed by the sender's private key and encrypted with the recipient's public key before it touches any transport. This means a compromised relay sees only ciphertext and cannot forge messages. The signature covers the envelope ID, sender, recipient, timestamp, and a hash of the payload — making both tampering and replay detectable.
+
+```
+envelope = {
+  id:       uuid-v4,
+  replyTo:  uuid-v4 | null,
+  from:     sender-pubkey,
+  to:       recipient-pubkey | topic,
+  pattern:  "one-way" | "request-response" | ...,
+  protocol: "ping" | "hello" | "task-offer" | ...,
+  payload:  encrypted(recipientPubKey, rawPayload),
+  ts:       unix-timestamp,
+  sig:      Ed25519-sign(privKey, id+from+to+ts+hash(payload))
+}
+```
+
+Residual risk to document: encryption hides payload but not routing metadata (who talks to whom, how often, envelope sizes). This is a known accepted risk for the PoC.
+
+---
+
+### Layer 2 — identity and key management
+
+**Keypair generation** happens once per agent, at creation time. The private key is stored in the device vault (encrypted). The public key is stored in the agent file and shared freely.
+
+**Key rotation** is a first-class operation: generate a new keypair, sign the new public key with the old private key (a rotation proof), broadcast the rotation proof to known peers, peers update their local registry, group admins re-issue proofs against the new key.
+
+**NKN address derivation**: because NKN addresses can be derived from public keys, no separate address management is needed. The keypair generates both the identity and the NKN address. MQTT topics are not key-derived, but after connecting the exchanged MQTT address is carried in a signed envelope, so it is still verifiable.
+
+---
+
+### Layer 3 — group proofs with expiry and revocation
+
+Group membership is proved with a signed token. The proof is issued by a group admin (either the user or an app, with independent keys) and verified locally — no server needed.
+
+**Proof structure:**
+```
+proof = groupAdmin.sign({
+  memberPubKey: "...",
+  groupId:      "home",
+  issuedAt:     unix-timestamp,
+  expiresAt:    unix-timestamp + window
+})
+```
+
+**Expiry windows** (configurable, suggested defaults):
+- High-trust groups (e.g. `home`): 24 hours
+- Low-trust groups (e.g. `neighborhood`): 7 days
+- App-issued proofs: 30 days
+
+**Revocation**: the group admin publishes a signed revocation envelope, broadcast to all group members via pub-sub. Each member caches revocations locally. Verification checks signature, expiry, and revocation cache before accepting a proof.
+
+**Proof refresh**: a background task runs N hours before expiry and requests renewal from any admin-capable peer in the group. If renewal fails, the agent loses group access gracefully rather than holding stale credentials.
+
+**Why this solves the file leak problem**: a leaked agent file exposes group proofs, but those proofs expire automatically. The damage window is bounded by the expiry window, not permanent. MFA is the wrong tool for file leaks — it protects vault access at startup, not the proofs in the file itself. Use MFA for vault unlock only.
+
+---
+
+### Layer 4 — the browser layer (active enforcement, not observation)
+
+The browser layer is a user-controlled middleware that sits in the critical outbound path. It is not a reporting tool — it is an enforcer. The package runtime owns the entire outbound `send`/`respond` path; there is no method that bypasses middleware, no internal escape hatch the embedding app can reach.
+
+**User-defined outbound rules** (configurable in agent file or at runtime):
+```
+outbound rules:
+  - match: { protocol: "task-offer", to: "group:neighborhood" }
+    action: require-confirm
+
+  - match: { to: "unknown" }
+    action: block
+
+  - match: { payloadSize: { gt: 10000 } }
+    action: require-confirm
+```
+
+Actions: `allow` (default), `block`, `require-confirm` (pauses the send and notifies the user), `log-only`.
+
+**REST endpoint** (consumed by a companion UI or dashboard):
+```
+GET  /agents/alice-home/activity
+     → { recent, blocked, pending }
+
+POST /agents/alice-home/confirm/:pendingId
+     → releases a held outbound envelope
+
+DELETE /agents/alice-home/pending/:pendingId
+     → drops a held outbound envelope
+```
+
+The endpoint provides: recent outbound envelopes (protocol, recipient, payload size — not decrypted content), blocked attempts, and pending confirmations awaiting user approval. The package provides the endpoint; the UI is a separate concern but the contract is part of the spec.
+
+---
+
+### Layer 5 — trust tiers
+
+Trust is gradated, not binary. Full distrust of unknown peers breaks discovery; full trust of all group members is too coarse.
+
+**Tier 0 — unknown**: no verified relationship. Can ping and run capability discovery (public capabilities only). Cannot send tasks, access group capabilities, or initiate streams. Rate-limited by default. Max pending tasks: 0.
+
+**Tier 1 — verified peer**: public key is in the local registry (added manually or via accepted HELLO). Can message, share files on request, submit task offers subject to negotiation. Cannot access group-scoped capabilities.
+
+**Tier 2 — group member**: valid, unexpired, unrevoked group proof verified against the group admin's key. Full access to capabilities scoped to that group. Each group is independent — membership of `home` implies nothing about `work`.
+
+**Blocking**: `agent.peers.block(publicKey)` — always by public key, never by agent ID or transport address. A blocked agent can change its NKN address or slug freely; the public key is the only stable unforgeable identifier. The blocklist is a set of public key hashes checked before any inbound envelope is processed.
+
+---
+
+### Layer 6 — resource policy (per group)
+
+Resource limits apply both globally and per trust tier / group, so a flood of low-trust task offers cannot starve high-trust peers.
+
+```
+resources:
+  global:
+    maxPendingTasks:      20
+    maxConnections:       50
+
+  perGroup:
+    home:
+      maxPendingTasks:    20
+      maxConcurrentStreams: 10
+    neighborhood:
+      maxPendingTasks:    2
+      maxConcurrentStreams: 1
+    unknown:
+      maxPendingTasks:    0
+      maxConcurrentStreams: 0
+```
+
+Exceeding a limit returns a standard `RESOURCE_LIMIT` rejection. All activity against capped resources is automatically logged to the audit trail.
+
+---
+
+### Replay and dedup
+
+Every envelope carries a UUID and a timestamp. The receiving agent maintains a short-lived dedup cache (keyed by envelope ID, TTL = clock-skew tolerance, suggested 5 minutes). Envelopes older than the tolerance window or with a known ID are rejected. This handles both accidental duplicates (scream mode, multi-channel delivery) and intentional replay attacks.
+
+---
+
+### Summary: what each threat is covered by
+
+| Threat | Primary defence | Secondary |
+|---|---|---|
+| Malicious app | Browser layer enforcement (non-bypassable middleware) | Vault API isolation |
+| Lying peer | Group proof verification (sig + expiry + revocation) | Trust tier gating |
+| Compromised transport | Envelope-level encryption | Signing |
+| Agent file leak | Proof expiry + revocation | Vault separation (secrets not in file) |
+| Runaway agent | Per-group resource policy | Global resource limits |
+| Replay attack | Envelope ID dedup + timestamp window | Blocking by public key |

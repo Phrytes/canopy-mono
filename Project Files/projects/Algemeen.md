@@ -1,0 +1,4 @@
+Vragen/todo/meenemen
+
+- wil je niet juist weer verder af van alle infrastructurele zaken en alles oplossen met agents? Bijv dat je de taak 'vat al deze queries samen' gewoon aan het netwerk aanbiedt, en dat dan in theorie zowel een mens als een llm het op kan pakken - en dat bijv digitale agents de voorkeur krijgen, behalve als die niet reageren (binnen x tijd)
+- hetzelfde geldt voor buurtqueries. Natuurlijk kun je er wel een privacyslot opzetten, zodat het bijvoorbeeld alleen maar door een betrouwbare llm wordt opgepakt (en misschien heb je nog een anonimiseer-agent ofzo nodig, die dient als betrouwbare tussenpersoon)
