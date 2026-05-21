@@ -32,30 +32,71 @@ import { createManifestHost } from '@canopy/manifest-host';
  * @property {Array<{ command: string, opId: string, appOrigin: string }>} commandMenu
  * @property {Map<string, { op: object, appOrigin: string }>}              opsById
  * @property {(opId: string) => string | undefined}                        replyShapeFor
+ * @property {(opId: string) => Array<{opId: string, prefilledArgs?: object}> | undefined} followUpsFor
  * @property {string[]}                                                    appOrigins
  * @property {string[]}                                                    warnings
+ */
+
+/**
+ * @typedef {object} MergeOptions
+ * @property {'browser' | 'node' | 'both'} [runtime='both']
+ *   Filters out ops whose `op.runtime` doesn't match this runtime.
+ *   - 'browser' → keeps ops with runtime 'browser' or 'both'; drops 'node'
+ *   - 'node'    → keeps 'node' or 'both'; drops 'browser'
+ *   - 'both'    → no filtering (default)
+ *   Per OQ-1.A: canopy-chat in the browser passes 'browser' so folio's
+ *   sync/watch family (runtime: 'node') stays out of the catalog.  A
+ *   future sidecar deployment passes 'both' to re-include them.
  */
 
 /**
  * Merge an array of `{manifest, callSkill?}` pairs into a canopy-chat
  * catalog.  Composes `@canopy/manifest-host` underneath.
  *
+ * Op-prefix-on-collision policy:
+ *   - When op-ids are unique across all manifests, the catalog uses
+ *     bare opIds (`'markComplete'`).
+ *   - When ≥2 manifests declare the SAME opId, the second-and-later
+ *     declarations surface in `opsById` as `'<appOrigin>/<opId>'`
+ *     (`'tasks-v0/markComplete'`).  The FIRST declaration keeps the
+ *     bare form (no churn for solo apps).
+ *   - Slash collisions still apply first-wins on the bare command
+ *     (apps coordinate slash names per the existing convention).
+ *
  * @param {Array<{ manifest: object, callSkill?: Function }>} sources
+ * @param {MergeOptions} [opts]
  * @returns {MergedCatalog}
  */
-export function mergeManifests(sources) {
+export function mergeManifests(sources, opts = {}) {
   if (!Array.isArray(sources)) {
     throw new TypeError('mergeManifests: sources must be an array');
   }
+  const wantRuntime = opts.runtime ?? 'both';
 
   const host        = createManifestHost();
   const warnings    = [];
-  const opsById     = new Map();          // canopy-chat-shaped (unprefixed)
+  const opsById     = new Map();          // canonical key (bare or prefixed)
   const replyShape  = new Map();
+  const followUps   = new Map();
   const appOrigins  = [];
   /** @type {Map<string, string>} command → first-mounting appId */
   const commandOwner = new Map();
-  const commandMenu = [];                 // canopy-chat-shaped
+  const commandMenu = [];
+
+  // Pre-pass 1: collect bare op-ids per app + identify collisions
+  // across apps so we can apply prefix-on-collision in a second pass.
+  /** @type {Map<string, Set<string>>} opId → set of appOrigins declaring it */
+  const opIdAppearances = new Map();
+  for (const source of sources) {
+    const m = source?.manifest;
+    if (!m || typeof m !== 'object') continue;
+    for (const op of m.operations ?? []) {
+      if (!opIdAppearances.has(op.id)) opIdAppearances.set(op.id, new Set());
+      opIdAppearances.get(op.id).add(m.app);
+    }
+  }
+  /** @type {Map<string, string>} opId → the app that "owns" the bare form (first declarer) */
+  const bareOwner = new Map();
 
   for (const source of sources) {
     const m = source?.manifest;
@@ -64,9 +105,6 @@ export function mergeManifests(sources) {
       continue;
     }
 
-    // Forward-fail loud on broken manifests with the legacy error
-    // message canopy-chat callers already match against in tests.
-    // manifest-host validates again internally; idempotent.
     const { ok, errors } = validateManifest(m);
     if (!ok) {
       throw new Error(
@@ -74,10 +112,6 @@ export function mergeManifests(sources) {
       );
     }
 
-    // Skill-registry stub: renderChat runs inside host.mount() and
-    // requires every operation to have an entry.  Real dispatch
-    // happens via canopy-chat's own callSkill in main.js — not via
-    // the stub.
     const stub = {};
     for (const op of m.operations ?? []) {
       stub[op.id] = async () => ({ replies: [], stateUpdates: [] });
@@ -90,8 +124,6 @@ export function mergeManifests(sources) {
         toSkillCtx:    (c) => c,
       });
     } catch (err) {
-      // host.mount throws on duplicate appId; surface as a warning
-      // matching the legacy "op-id collision"-style message.
       if (/already mounted/.test(String(err?.message))) {
         warnings.push(
           `app collision: "${m.app}" mounted twice; v0.1 keeps the first.`,
@@ -103,12 +135,11 @@ export function mergeManifests(sources) {
 
     appOrigins.push(m.app);
 
-    // Op-level merge: canopy-chat tracks each op's source app so
-    // dispatch can route callSkill against the right agent.
     for (const op of m.operations ?? []) {
-      // commandMenu: include only on first-mount-wins basis (collision
-      // policy decided here; substrate would have reported the data
-      // via compose().collisions, but we apply first-wins eagerly).
+      // Q32 runtime filter — drop ops that don't run in our runtime.
+      if (!matchesRuntime(op.runtime ?? 'both', wantRuntime)) continue;
+
+      // commandMenu: first-wins by slash command (bare commands).
       if (op?.surfaces?.slash?.command) {
         const command = op.surfaces.slash.command;
         const owner   = commandOwner.get(command);
@@ -122,18 +153,32 @@ export function mergeManifests(sources) {
         }
       }
 
-      if (opsById.has(op.id)) {
+      // Op-id prefix-on-collision: when multiple apps declare the
+      // same op id, only the FIRST app gets the bare key; the rest
+      // get '<app>/<id>' keys so dispatch is unambiguous.
+      const isColliding = (opIdAppearances.get(op.id)?.size ?? 0) > 1;
+      let canonicalKey;
+      if (!isColliding) {
+        canonicalKey = op.id;
+      } else if (!bareOwner.has(op.id)) {
+        canonicalKey = op.id;
+        bareOwner.set(op.id, m.app);
+      } else {
+        canonicalKey = `${m.app}/${op.id}`;
+        // Surface the policy decision as a warning so consumers can
+        // see which ops became prefixed.
         warnings.push(
-          `op-id collision: "${op.id}" declared by both "${opsById.get(op.id).appOrigin}" and "${m.app}"; v0.1 keeps the first.`,
+          `op-id collision: "${op.id}" also declared by "${m.app}"; canopy-chat exposes it as "${canonicalKey}".`,
         );
-        continue;
       }
-      opsById.set(op.id, { op, appOrigin: m.app });
+      opsById.set(canonicalKey, { op, appOrigin: m.app });
 
-      // Q28 reply-shape lookup comes from the substrate's renderChat
-      // output (mounted.rendered.replyShapeFor).
+      // Q28 + Q31 lookups from the substrate's renderChat output.
       const shape = mounted.rendered.replyShapeFor?.(op.id);
-      if (shape) replyShape.set(op.id, shape);
+      if (shape) replyShape.set(canonicalKey, shape);
+
+      const fu = mounted.rendered.followUpsFor?.(op.id);
+      if (Array.isArray(fu) && fu.length > 0) followUps.set(canonicalKey, fu);
     }
   }
 
@@ -141,7 +186,22 @@ export function mergeManifests(sources) {
     commandMenu,
     opsById,
     replyShapeFor: (opId) => replyShape.get(opId),
+    followUpsFor:  (opId) => followUps.get(opId),
     appOrigins,
     warnings,
   };
+}
+
+/**
+ * Q32 runtime filter — does an op's declared runtime match the
+ * environment the chat shell is composing for?
+ *
+ * @param {'browser' | 'node' | 'both'} opRuntime
+ * @param {'browser' | 'node' | 'both'} wantRuntime
+ * @returns {boolean}
+ */
+function matchesRuntime(opRuntime, wantRuntime) {
+  if (wantRuntime === 'both') return true;
+  if (opRuntime === 'both')   return true;
+  return opRuntime === wantRuntime;
 }

@@ -27,6 +27,8 @@ import { renderStream }              from '../src/web/domAdapter.js';
 import { renderForm }                from '../src/web/domForm.js';
 import { renderSidebar }             from '../src/web/threadSidebar.js';
 import { createRealHouseholdAgent }  from '../src/web/realAgent.js';
+import { mockStoopManifest,
+         mockFolioManifest }         from '../src/web/mockAgent.js';
 import { createLocalBuiltins }       from '../src/web/localBuiltins.js';
 
 /* ── DOM refs ──────────────────────────────────────────── */
@@ -43,13 +45,21 @@ const headerFilterEl = document.getElementById('active-thread-filter');
 /* ── state ─────────────────────────────────────────────── */
 
 const agent = await createRealHouseholdAgent();
+// v0.4 cross-app surface: stoop + folio manifests join the merged
+// catalog so users see their commands in /help.  Q32 runtime filter
+// drops folio's sync/watch (node-only) ops in the browser build.
 const catalog = mergeManifests([
   { manifest: canopyChatManifest },
   { manifest: agent.manifest },
-]);
+  { manifest: mockStoopManifest },
+  { manifest: mockFolioManifest },
+], { runtime: 'browser' });
+
 const manifestsByOrigin = {
   'canopy-chat': canopyChatManifest,
   'household':   agent.manifest,
+  'stoop':       mockStoopManifest,
+  'folio':       mockFolioManifest,
 };
 
 // v0.2.4 — IndexedDB persistence.  Load existing threads on boot;
@@ -110,7 +120,33 @@ const callSkill = async (appOrigin, opId, args) => {
     if (!handler) throw new Error(`No local handler for canopy-chat.${opId}`);
     return handler(args ?? {});
   }
-  return agent.callSkill(appOrigin, opId, args);
+  if (appOrigin === 'household') {
+    return agent.callSkill(appOrigin, opId, args);
+  }
+  // v0.4 cross-app demo: stoop + folio manifests are in the catalog
+  // but their agents aren't wired in the v0.1 in-process topology.
+  // Return placeholder data so /help discovery + dispatch feedback
+  // demonstrate the cross-app surface.
+  if (appOrigin === 'stoop') {
+    if (opId === 'listFeed') {
+      return { items: [
+        { id: 'p-1', label: 'Anne needs help moving a couch', state: 'open' },
+        { id: 'p-2', label: 'Karl offers tomato seedlings',    state: 'open' },
+      ] };
+    }
+    if (opId === 'postRequest') {
+      return { ok: true, message: `✓ Posted: ${args?.text ?? '(empty)'}` };
+    }
+  }
+  if (appOrigin === 'folio') {
+    if (opId === 'readNote') {
+      return { message: `[demo] readNote("${args?.path ?? ''}") — folio agent not wired in this build` };
+    }
+    if (opId === 'shareFolder') {
+      return { ok: true, message: `✓ [demo] would share "${args?.folder}" with ${args?.with}` };
+    }
+  }
+  return { ok: false, error: `${appOrigin}.${opId} not wired in this demo build` };
 };
 
 /* ── render orchestration ──────────────────────────────── */
