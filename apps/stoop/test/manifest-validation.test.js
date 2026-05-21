@@ -13,7 +13,7 @@
  *     (snapshot stoop's set; consumer can spot-check vs household
  *     manually per the audit's collision-policy guidance).
  *
- * Per `AUDIT-slash-coverage.md`: cross-app collision *resolution* is
+ * Per `Project Files/projects/audit-slash-coverage.md`: cross-app collision *resolution* is
  * a consumer-side host policy, but Slice D.1 explicitly chose the
  * grammar to MINIMISE collisions at the source.  This test pins the
  * stoop command set so the choice is auditable + regression-tested.
@@ -83,7 +83,7 @@ describe('stoop manifest — Slice D.1 structural invariants', () => {
     ).toEqual([]);
   });
 
-  it("ships ~12–15 ops covering stoop's primary flows (per AUDIT-stoop-folio-surfaces.md)", () => {
+  it("ships ~12–15 ops covering stoop's primary flows (per Project Files/projects/audit-stoop-folio-surfaces.md)", () => {
     expect(stoopManifest.operations.length).toBeGreaterThanOrEqual(12);
     expect(stoopManifest.operations.length).toBeLessThanOrEqual(15);
   });

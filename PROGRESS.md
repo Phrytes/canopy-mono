@@ -129,7 +129,7 @@ Branch `feat/app-manifest` — substantive commits this session:
 - `020f1b8` — feat(app-manifest): Slice A.1 — renderWeb skeleton + NavModel typedefs
 - `c61552f` — docs(tasks-v0): Slice B.0 parity audit — web↔mobile workarounds
 - `f298992` — docs+plan: stoop+folio surface audit + lock-in of owner decisions
-- `bd14da1` — docs: AUDIT-slash-coverage.md — cross-cutting policy options for slash
+- `bd14da1` — docs: Project Files/projects/audit-slash-coverage.md — cross-cutting policy options for slash
 - `66597a4` — corpus(tasks-v0): expand characterization to dag/inbox/availability/privacy
 - `80ef762` — docs: DESIGN-navmodel-sketch.md — proposed renderWeb/renderMobile shape
 - `196c729` — docs+corpus(tasks-v0): reorder GUI/chat plan + scaffold characterization corpus
@@ -354,7 +354,7 @@ SP-8 as Slices B / C / G / D), the **pure SP** options narrow to:
   `item.audience` is a new optional field that defaults to the
   existing visibility's structured equivalent.  Existing items
   validate unchanged.
-- **Multiple apps flagging it** — `AUDIT-stoop-folio-surfaces.md` §
+- **Multiple apps flagging it** — `Project Files/projects/audit-stoop-folio-surfaces.md` §
   "Shared concerns": both apps flagged audience semantics + cross-
   pod member metadata as out-of-scope-but-needed substrate work.
   SP-5b satisfies both.

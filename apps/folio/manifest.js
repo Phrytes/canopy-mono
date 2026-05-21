@@ -14,7 +14,7 @@
  *
  * What this manifest IS:
  *   - Source-of-truth declaration of folio's destructive ops with Q27
- *     severity hints (per TIER-C-PROPOSALS.md):
+ *     severity hints (per Project Files/Substrates/tier-c-proposals.md):
  *
  *       deleteFromPod   severity: 'danger'  (irreversible pod-side delete)
  *       deleteLocally   severity: 'info'    (tombstone; pod copy survives)
