@@ -370,8 +370,7 @@ to ask the caller for more input.
   app for how to wire `enableTunnelForward` + `registerTunnelReceiveSealed`
   + `enableSealedForwardFor('groupId')`.
 - **The relay is currently for trusted networks only.**  No auth, no
-  rate limit.  Hardening is on the roadmap — see
-  `TODO-GENERAL.md § Production-ready relay for online deployment`.
+  rate limit.  Hardening is on the roadmap.
 - **Vault choice depends on host.**  `VaultMemory` for tests,
   `VaultNodeFs` for Node, `VaultLocalStorage` / `VaultIndexedDB` for
   browsers, `KeychainVault` for RN.

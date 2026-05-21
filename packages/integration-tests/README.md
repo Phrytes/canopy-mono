@@ -94,9 +94,9 @@ describe('routing/fall-through', () => {
 **v1 clock-skew limitation:** the SDK reads time via raw `Date.now()` in
 ~100 places.  `injectClockSkew` sets a per-agent MockClock that
 *scenarios* can read; the SDK ITSELF doesn't honour the offset until
-the v2 clock-injection refactor lands (tracked in `TODO-GENERAL.md`
-under HIGH PRIORITY).  Scenarios that depend on the SDK using the
-skewed clock for replay-window checks, token expiry, etc. must wait.
+the v2 clock-injection refactor lands.  Scenarios that depend on the
+SDK using the skewed clock for replay-window checks, token expiry,
+etc. must wait.
 
 ### Inspection
 

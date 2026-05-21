@@ -626,8 +626,8 @@ substrates were lifted by parallel work).
 ### V1 acceptance gates — partial
 
 - ⚠️ **Crew switcher UI** — not built. V1 ships `--crew <path>` per launch; switching crews means restart-with-different-config. Multi-crew-switcher screen is V1.5 work.
-- ⚠️ **Localisation back-fill** — i18n scaffolding shipped (`locales/{en,nl}.json` + `lib/i18n.js` + 60+ keyed strings + privacy notice in both langs). HTML pages still ship hardcoded English; `data-i18n` attribute back-fill is the standing TODO-GENERAL "Translatable-by-design back-fill" item — opportunistic per touched page.
-- ⚠️ **Inrupt-migration TODO** (`Project Files/TODO-GENERAL.md` 🔴 HIGH) — undecided. Tasks V1 ships local-only-mode-by-default; pod sign-in surface is the same legacy bespoke UX Stoop / Folio currently use. Documented inheritance.
+- ⚠️ **Localisation back-fill** — i18n scaffolding shipped (`locales/{en,nl}.json` + `lib/i18n.js` + 60+ keyed strings + privacy notice in both langs). HTML pages still ship hardcoded English; `data-i18n` attribute back-fill is opportunistic per touched page.
+- ⚠️ **Inrupt-migration** — undecided. Tasks V1 ships local-only-mode-by-default; pod sign-in surface is the same legacy bespoke UX Stoop / Folio currently use. Documented inheritance.
 
 ### V1 design + plan documents
 

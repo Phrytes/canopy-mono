@@ -246,7 +246,6 @@ if (hubInstalled) {
 
 The companion plans live under `Project Files/`:
 
-- `Project Files/standardisation-plan-restructured-2026-05-10.md`
 - `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`
 - `Project Files/Substrates/substrates-v2-functional-design-2026-05-11.md`
 - `Project Files/SDK/core-v2-coding-plan-2026-05-11.md`

@@ -306,7 +306,7 @@
  *
  * ──── Q27 — `surfaces.ui.confirm` severity hint (locked 2026-05-20)
  *
- * Surfaced by the Tier C investigation (TIER-C-PROPOSALS.md):
+ * Surfaced by the Tier C investigation (Project Files/Substrates/tier-c-proposals.md):
  * 14 destructive / side-effect-bearing surfaces across folio + tasks
  * + stoop already have hand-rolled confirm modals (folio's 3 custom
  * confirm modals + tasks-mobile's <ConfirmModal> + stoop's CLI

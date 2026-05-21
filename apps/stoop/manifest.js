@@ -9,7 +9,7 @@
  * in D.1).
  *
  * Op set (~14): mined from `src/skills/index.js` via
- * `AUDIT-stoop-folio-surfaces.md`'s "primary flows" recommendation.
+ * `Project Files/projects/audit-stoop-folio-surfaces.md`'s "primary flows" recommendation.
  * Stoop has 110 `defineSkill()` definitions in total; this manifest
  * deliberately surfaces only the chat/slash-callable core
  * (post + browse + claim + lifecycle + moderation + profile).
@@ -468,7 +468,7 @@ export const stoopManifest = {
   // many runtime-arg skills) and contacts (417 lines, heavy mutations)
   // defer to later E.x slices.
   //
-  // Stoop has 16 web pages today (per AUDIT-stoop-folio-surfaces.md).
+  // Stoop has 16 web pages today (per Project Files/projects/audit-stoop-folio-surfaces.md).
   // After E.3, THREE pages are NavModel-driven (`mine.html`,
   // `privacy.html`, `settings.html`); 13 pages remain hand-built
   // (`index.html` prikbord, `chat.html`, `contacts.html`,
