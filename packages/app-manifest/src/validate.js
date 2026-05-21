@@ -50,6 +50,14 @@ export const CHAT_REPLY_SHAPES = Object.freeze([
   'brief',
 ]);
 
+/**
+ * Q32 (canopy-chat v0.4, 2026-05-22) — frozen allow-list of op.runtime
+ * values.  'both' (the default when absent) means the op works in any
+ * environment.  Browser builds filter out 'node' ops; sidecars re-
+ * include them.  Per OQ-1.A user resolution.
+ */
+export const RUNTIME_VALUES = Object.freeze(['browser', 'node', 'both']);
+
 /** @param {string} verb */
 export function isCanonicalVerb(verb) { return VERB_SET.has(verb); }
 
@@ -246,6 +254,53 @@ function validateOperation(op, path, manifest, errors, idSet) {
     errors.push({
       path:    `${path}/surfaces/chat/reply`,
       message: `surfaces.chat.reply must be one of ${CHAT_REPLY_SHAPES.map((s) => `'${s}'`).join(' | ')}`,
+    });
+  }
+
+  // Q31 (canopy-chat v0.4, 2026-05-22) — optional `surfaces.chat.followUps`
+  // lets an op declare suggested next actions the chat shell surfaces
+  // as inline buttons after a successful dispatch.  Each entry has an
+  // opId (the suggested next op) and optional prefilledArgs.  Cross-
+  // app chains (e.g. after household.addMember → folio.share) live in
+  // canopy-chat's static registry, NOT here.
+  const chatFollowUps = op?.surfaces?.chat?.followUps;
+  if (chatFollowUps !== undefined) {
+    if (!Array.isArray(chatFollowUps)) {
+      errors.push({
+        path:    `${path}/surfaces/chat/followUps`,
+        message: 'surfaces.chat.followUps must be an array if present',
+      });
+    } else {
+      chatFollowUps.forEach((f, i) => {
+        const p = `${path}/surfaces/chat/followUps/${i}`;
+        if (!f || typeof f !== 'object' || Array.isArray(f)) {
+          errors.push({ path: p, message: 'followUp entry must be an object' });
+          return;
+        }
+        if (typeof f.opId !== 'string' || f.opId === '') {
+          errors.push({ path: `${p}/opId`, message: 'followUp.opId must be a non-empty string' });
+        }
+        if (f.prefilledArgs !== undefined
+            && (!f.prefilledArgs || typeof f.prefilledArgs !== 'object' || Array.isArray(f.prefilledArgs))) {
+          errors.push({
+            path:    `${p}/prefilledArgs`,
+            message: 'followUp.prefilledArgs must be an object if present',
+          });
+        }
+      });
+    }
+  }
+
+  // Q32 (canopy-chat v0.4, 2026-05-22) — optional `op.runtime` tag
+  // declares which runtimes the op's skill implementation supports.
+  // Values: 'browser' | 'node' | 'both' (default 'both' when absent).
+  // canopy-chat's browser-side merge filters out `runtime: 'node'`
+  // ops (folio's sync/watch family); a future sidecar deployment
+  // re-includes them.  Per OQ-1.A resolution.
+  if (op.runtime !== undefined && !RUNTIME_VALUES.includes(op.runtime)) {
+    errors.push({
+      path:    `${path}/runtime`,
+      message: `op.runtime must be one of ${RUNTIME_VALUES.map((s) => `'${s}'`).join(' | ')}`,
     });
   }
 

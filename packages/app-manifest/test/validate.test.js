@@ -551,6 +551,99 @@ describe('validateManifest', () => {
     });
   });
 
+  describe('canopy-chat v0.4 Q31 surfaces.chat.followUps', () => {
+    const baseManifest = (op) => ({
+      app:        'c',
+      itemTypes:  ['t'],
+      operations: [op],
+      views:      [{ id: 'v', title: 'V', type: 't' }],
+    });
+
+    it('Q31 — accepts followUps as an array of {opId, prefilledArgs?}', () => {
+      expect(ok(baseManifest({
+        id: 'addMember', verb: 'add', params: [],
+        surfaces: { chat: { followUps: [
+          { opId: 'shareFolder' },
+          { opId: 'addTask', prefilledArgs: { for: 'newMember' } },
+        ] } },
+      }))).toBe(true);
+    });
+
+    it('Q31 — accepts absent followUps (forward-additive)', () => {
+      expect(ok(baseManifest({
+        id: 'addMember', verb: 'add', params: [],
+        surfaces: { chat: { hint: 'no followups' } },
+      }))).toBe(true);
+    });
+
+    it('Q31 — accepts empty array', () => {
+      expect(ok(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { followUps: [] } },
+      }))).toBe(true);
+    });
+
+    it('Q31 — rejects non-array', () => {
+      const e = errs(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { followUps: 'not-array' } },
+      }));
+      expect(e.some((x) => /followUps must be an array/.test(x.message))).toBe(true);
+    });
+
+    it('Q31 — rejects entry with missing opId', () => {
+      const e = errs(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { followUps: [{ prefilledArgs: { x: 1 } }] } },
+      }));
+      expect(e.some((x) => /opId must be a non-empty string/.test(x.message))).toBe(true);
+    });
+
+    it('Q31 — rejects non-object entry', () => {
+      const e = errs(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { followUps: ['not-object'] } },
+      }));
+      expect(e.some((x) => /followUp entry must be an object/.test(x.message))).toBe(true);
+    });
+
+    it('Q31 — rejects non-object prefilledArgs', () => {
+      const e = errs(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { followUps: [{ opId: 'x', prefilledArgs: 'wrong' }] } },
+      }));
+      expect(e.some((x) => /prefilledArgs must be an object/.test(x.message))).toBe(true);
+    });
+  });
+
+  describe('canopy-chat v0.4 Q32 op.runtime', () => {
+    const baseManifest = (op) => ({
+      app:        'c',
+      itemTypes:  ['t'],
+      operations: [op],
+      views:      [{ id: 'v', title: 'V', type: 't' }],
+    });
+
+    it.each(['browser', 'node', 'both'])('Q32 — accepts runtime: %s', (val) => {
+      expect(ok(baseManifest({
+        id: 'op', verb: 'do', params: [], runtime: val,
+      }))).toBe(true);
+    });
+
+    it('Q32 — accepts absent runtime (forward-additive)', () => {
+      expect(ok(baseManifest({
+        id: 'op', verb: 'do', params: [],
+      }))).toBe(true);
+    });
+
+    it('Q32 — rejects unknown value', () => {
+      const e = errs(baseManifest({
+        id: 'op', verb: 'do', params: [], runtime: 'wasm',
+      }));
+      expect(e.some((x) => /runtime must be one of/.test(x.message))).toBe(true);
+    });
+  });
+
   describe('V0.4 Q16-strict mode', () => {
     const strict = (m) => validateManifest(m, { strict: true });
     const lax    = (m) => validateManifest(m);
