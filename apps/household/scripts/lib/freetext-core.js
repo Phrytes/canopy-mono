@@ -588,12 +588,12 @@ function levenshtein(a, b) {
   return prev[b.length];
 }
 
-// ─── i18n — every user-facing string in one place ────────────────
+// ─── localisation — every user-facing string in one place ────────────────
 //
 // Each language is a single self-contained object.  Add a new
 // language by:
-//   1. Copy `I18N_NL`, rename to `I18N_<XX>`, translate every field.
-//   2. Register it in `pickI18n()` below for some env value
+//   1. Copy `LOCALISATION_NL`, rename to `LOCALISATION_<XX>`, translate every field.
+//   2. Register it in `pickLocalisation()` below for some env value
 //      (`HOUSEHOLD_LANG=de`, etc).
 //   3. Optionally write a matching `SYSTEM_PROMPT_LEAN_<XX>` and
 //      register it in `pickPrompt()`.
@@ -652,7 +652,7 @@ const SLASH_HELP_EN = `Available commands:
 Or just write naturally — e.g. "add milk to my shopping" or "what's on
 my chores?".  The LLM handles those.`;
 
-export const I18N_NL = {
+export const LOCALISATION_NL = {
   // — tool reply strings —
   notFound:        (item, list) => `🤔 "${item}" stond niet op je ${list}lijst.`,
   removedNowEmpty: (removed, list) => `✓ verwijderd: ${removed}\n📭 Je ${list}lijst is nu leeg.`,
@@ -687,7 +687,7 @@ export const I18N_NL = {
   contextLine:    (name, count) => `- ${name}: ${count} item(s)`,
 };
 
-export const I18N_EN = {
+export const LOCALISATION_EN = {
   notFound:        (item, list) => `🤔 "${item}" wasn't on your ${list} list.`,
   removedNowEmpty: (removed, list) => `✓ removed: ${removed}\n📭 Your ${list} list is now empty.`,
   removedRemaining:(removed, list, bullets) => `✓ removed: ${removed}\n\n📋 ${list} (remaining):\n${bullets}`,
@@ -718,7 +718,7 @@ export const I18N_EN = {
   contextLine:    (name, count) => `- ${name}: ${count} item(s)`,
 };
 
-export function createToolHandlers(store, { i18n = I18N_NL } = {}) {
+export function createToolHandlers(store, { localisation = LOCALISATION_NL } = {}) {
   return {
     addToList: async ({ listName, item }) => {
       if (!listName || !item) return { data: { ok: false, reason: 'missing args' } };
@@ -755,14 +755,14 @@ export function createToolHandlers(store, { i18n = I18N_NL } = {}) {
       if (existing.some((it) => norm(it) === norm(itemStr))) {
         console.error(`[tool] addToList SKIPPED duplicate: ${name}, ${itemStr}`);
         return {
-          reply: { text: i18n.duplicate(itemStr, name) },
+          reply: { text: localisation.duplicate(itemStr, name) },
           data:  { ok: true, listName: name, item: itemStr, duplicate: true },
         };
       }
       store.addItem(name, itemStr);
       console.error(`[tool] addToList(${name}, ${itemStr})`);
       return {
-        reply: { text: i18n.buttonLabel(itemStr) },
+        reply: { text: localisation.buttonLabel(itemStr) },
         data:  { ok: true, listName: name, item: itemStr },
       };
     },
@@ -784,7 +784,7 @@ export function createToolHandlers(store, { i18n = I18N_NL } = {}) {
 
       if (!removed) {
         return {
-          reply: { text: i18n.notFound(match, name) },
+          reply: { text: localisation.notFound(match, name) },
           data: { ok: false, listName: name, reason: 'not found' },
         };
       }
@@ -792,21 +792,21 @@ export function createToolHandlers(store, { i18n = I18N_NL } = {}) {
       const items = store.lists.get(name) ?? [];
       if (items.length === 0) {
         return {
-          reply: { text: i18n.removedNowEmpty(removed, name) },
+          reply: { text: localisation.removedNowEmpty(removed, name) },
           data: { ok: true, listName: name, removed, count: 0 },
         };
       }
       const buttons = items.map((it) => {
-        const phrase = i18n.buttonTapShape(it, name);
+        const phrase = localisation.buttonTapShape(it, name);
         return {
           id:    phrase.length > 60 ? phrase.slice(0, 60) : phrase,
-          label: i18n.buttonLabel(it),
+          label: localisation.buttonLabel(it),
         };
       });
       const bullets = items.map((it) => `• ${it}`).join('\n');
       return {
         reply: {
-          text:    i18n.removedRemaining(removed, name, bullets),
+          text:    localisation.removedRemaining(removed, name, bullets),
           buttons,
         },
         data: { ok: true, listName: name, removed, count: items.length },
@@ -822,21 +822,21 @@ export function createToolHandlers(store, { i18n = I18N_NL } = {}) {
 
       if (!items || items.length === 0) {
         return {
-          reply: { text: i18n.listEmpty(name) },
+          reply: { text: localisation.listEmpty(name) },
           data: { ok: true, listName: name, count: 0 },
         };
       }
       const buttons = items.map((it) => {
-        const phrase = i18n.buttonTapShape(it, name);
+        const phrase = localisation.buttonTapShape(it, name);
         return {
           id:    phrase.length > 60 ? phrase.slice(0, 60) : phrase,
-          label: i18n.buttonLabel(it),
+          label: localisation.buttonLabel(it),
         };
       });
       const bullets = items.map((it) => `• ${it}`).join('\n');
       return {
         reply: {
-          text: i18n.listShow(name, bullets),
+          text: localisation.listShow(name, bullets),
           buttons,
         },
         data: { ok: true, listName: name, count: items.length },
@@ -848,12 +848,12 @@ export function createToolHandlers(store, { i18n = I18N_NL } = {}) {
 // ─── ContextBuilder — list names + counts only (item contents
 //     intentionally hidden so the LLM has to call showList). ───
 
-export function createContextBuilder(store, { i18n = I18N_NL } = {}) {
+export function createContextBuilder(store, { localisation = LOCALISATION_NL } = {}) {
   return async () => {
-    if (store.lists.size === 0) return i18n.contextNoLists;
-    const lines = [i18n.contextHeader];
+    if (store.lists.size === 0) return localisation.contextNoLists;
+    const lines = [localisation.contextHeader];
     for (const [name, items] of store.lists) {
-      lines.push(i18n.contextLine(name, items.length));
+      lines.push(localisation.contextLine(name, items.length));
     }
     return lines.join('\n');
   };
@@ -1005,10 +1005,10 @@ export function pickPrompt(name) {
  * `HOUSEHOLD_LANG` env value.
  *
  * @param {string} [lang]   "en" → English; anything else → Dutch
- * @returns {typeof I18N_NL}
+ * @returns {typeof LOCALISATION_NL}
  */
-export function pickI18n(lang) {
-  return String(lang ?? '').toLowerCase() === 'en' ? I18N_EN : I18N_NL;
+export function pickLocalisation(lang) {
+  return String(lang ?? '').toLowerCase() === 'en' ? LOCALISATION_EN : LOCALISATION_NL;
 }
 
 /**
@@ -1018,7 +1018,7 @@ export function pickI18n(lang) {
  * @returns {string}
  */
 export function pickFallbackNotDone(lang) {
-  return pickI18n(lang).fallbackNotDone;
+  return pickLocalisation(lang).fallbackNotDone;
 }
 
 // ─── File-persisted list store ───────────────────────────────────
@@ -1183,45 +1183,45 @@ export function parseListAndItems(args) {
  * @param {ReturnType<typeof createListStore>} store
  * @returns {Promise<{text: string, buttons?: Array}|Array<{text, buttons?}>|null>}
  */
-export async function dispatchSlashCommand(parsed, store, { i18n = I18N_NL } = {}) {
+export async function dispatchSlashCommand(parsed, store, { localisation = LOCALISATION_NL } = {}) {
   const { command, args } = parsed;
 
   switch (command) {
     case 'add': {
       const { listName, items } = parseListAndItems(args);
-      if (!listName) return { text: i18n.slashAddNoListName };
+      if (!listName) return { text: localisation.slashAddNoListName };
       if (items.length === 0) {
         // Single-word arg — almost certainly the user expected an
         // implicit default list, but we don't make that guess.
         // Better UX: clear error that teaches the syntax + suggests
         // the most likely correction.
-        return { text: i18n.slashAddNoItems(listName) };
+        return { text: localisation.slashAddNoItems(listName) };
       }
       for (const item of items) store.addItem(listName, item);
       // eslint-disable-next-line no-console
       console.error(`[slash] /add ${listName} ${items.join(', ')}`);
-      return { text: i18n.slashAddSuccess(listName, items) };
+      return { text: localisation.slashAddSuccess(listName, items) };
     }
 
     case 'show': {
       const { listName } = parseListAndItems(args);
-      if (!listName) return { text: i18n.slashShowUsage };
+      if (!listName) return { text: localisation.slashShowUsage };
       const list = store.lists.get(listName);
       // eslint-disable-next-line no-console
       console.error(`[slash] /show ${listName} → ${list?.length ?? 0} item(s)`);
       if (!list || list.length === 0) {
-        return { text: i18n.listEmpty(listName) };
+        return { text: localisation.listEmpty(listName) };
       }
       const buttons = list.map((it) => {
-        const phrase = i18n.buttonTapShape(it, listName);
+        const phrase = localisation.buttonTapShape(it, listName);
         return {
           id:    phrase.length > 60 ? phrase.slice(0, 60) : phrase,
-          label: i18n.buttonLabel(it),
+          label: localisation.buttonLabel(it),
         };
       });
       const bullets = list.map((it) => `• ${it}`).join('\n');
       return {
-        text:    i18n.listShow(listName, bullets),
+        text:    localisation.listShow(listName, bullets),
         buttons,
       };
     }
@@ -1229,9 +1229,9 @@ export async function dispatchSlashCommand(parsed, store, { i18n = I18N_NL } = {
     case 'remove':
     case 'done': {
       const { listName, items } = parseListAndItems(args);
-      if (!listName) return { text: i18n.slashRemoveUsage };
+      if (!listName) return { text: localisation.slashRemoveUsage };
       if (items.length === 0) {
-        return { text: i18n.slashRemoveNoItem(command, listName) };
+        return { text: localisation.slashRemoveNoItem(command, listName) };
       }
       const replies = [];
       for (const item of items) {
@@ -1241,7 +1241,7 @@ export async function dispatchSlashCommand(parsed, store, { i18n = I18N_NL } = {
         replies.push(
           removed
             ? { text: `✓ ${removed}` }
-            : { text: i18n.notFound(item, listName) },
+            : { text: localisation.notFound(item, listName) },
         );
       }
       return replies;
@@ -1250,10 +1250,10 @@ export async function dispatchSlashCommand(parsed, store, { i18n = I18N_NL } = {
     case 'lists': {
       // eslint-disable-next-line no-console
       console.error(`[slash] /lists`);
-      if (store.lists.size === 0) return { text: i18n.slashListsEmpty };
-      const lines = [i18n.slashListsHeader];
+      if (store.lists.size === 0) return { text: localisation.slashListsEmpty };
+      const lines = [localisation.slashListsHeader];
       for (const [name, items] of store.lists) {
-        lines.push(i18n.slashListLine(name, items.length));
+        lines.push(localisation.slashListLine(name, items.length));
       }
       return { text: lines.join('\n') };
     }
@@ -1261,7 +1261,7 @@ export async function dispatchSlashCommand(parsed, store, { i18n = I18N_NL } = {
     case 'help': {
       // eslint-disable-next-line no-console
       console.error(`[slash] /help`);
-      return { text: i18n.slashHelp };
+      return { text: localisation.slashHelp };
     }
 
     default:
@@ -1598,11 +1598,11 @@ export function looksLikeActionConfirmation(text) {
  * but no tool actually fired — better than silently lying that
  * something happened.
  */
-// Back-compat aliases — the canonical strings live in the i18n
-// tables (I18N_NL.fallbackNotDone / I18N_EN.fallbackNotDone).  Use
+// Back-compat aliases — the canonical strings live in the localisation
+// tables (LOCALISATION_NL.fallbackNotDone / LOCALISATION_EN.fallbackNotDone).  Use
 // `pickFallbackNotDone(lang)` for new code.
-export const FALLBACK_NOT_DONE    = I18N_NL.fallbackNotDone;
-export const FALLBACK_NOT_DONE_EN = I18N_EN.fallbackNotDone;
+export const FALLBACK_NOT_DONE    = LOCALISATION_NL.fallbackNotDone;
+export const FALLBACK_NOT_DONE_EN = LOCALISATION_EN.fallbackNotDone;
 
 /**
  * Wrap a `bridge.onMessage` registrar so:
@@ -1623,12 +1623,12 @@ export const FALLBACK_NOT_DONE_EN = I18N_EN.fallbackNotDone;
  * @param {(text: string) => void} [opts.log]   per-message log hook
  * @param {boolean} [opts.naturalLanguage=true]  set false to keep
  *   only slash dispatch + always defer NL to the LLM
- * @param {object} [opts.i18n=I18N_NL]  user-facing strings table —
- *   pass I18N_EN for English replies + button-tap shape
+ * @param {object} [opts.localisation=LOCALISATION_NL]  user-facing strings table —
+ *   pass LOCALISATION_EN for English replies + button-tap shape
  */
 export function installSlashCommandPreprocessor(bridge, store, opts = {}) {
   const log = typeof opts.log === 'function' ? opts.log : null;
-  const i18n = opts.i18n ?? I18N_NL;
+  const localisation = opts.localisation ?? LOCALISATION_NL;
   const originalOnMessage = bridge.onMessage.bind(bridge);
 
   /** @type {Map<string, Promise<void>>}  per-chatId tail of the queue */
@@ -1653,7 +1653,7 @@ export function installSlashCommandPreprocessor(bridge, store, opts = {}) {
   };
 
   const naturalLanguage = opts.naturalLanguage !== false;
-  const handlers = createToolHandlers(store, { i18n });
+  const handlers = createToolHandlers(store, { localisation });
 
   bridge.onMessage = (handler) => {
     originalOnMessage(async (msg) => {
@@ -1665,7 +1665,7 @@ export function installSlashCommandPreprocessor(bridge, store, opts = {}) {
         // 1. Slash commands.
         const slash = parseSlashCommand(text);
         if (slash) {
-          const reply = await dispatchSlashCommand(slash, store, { i18n });
+          const reply = await dispatchSlashCommand(slash, store, { localisation });
           if (reply != null) {
             const replies = Array.isArray(reply) ? reply : [reply];
             for (const r of replies) {

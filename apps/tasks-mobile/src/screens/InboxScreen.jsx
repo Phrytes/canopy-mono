@@ -71,7 +71,7 @@ import { useTheme }       from '@canopy/react-native/theme';
 import { ConfirmModal }   from '@canopy/react-native/components';
 import { useService }     from '../ServiceContext.js';
 import { useSkill, toParts, unwrapParts } from '../lib/useSkill.js';
-import { useI18n }        from '../I18nProvider.js';
+import { useLocalisation }        from '../LocalisationProvider.js';
 import { kindOf, proposalIdOf, requestIdOf } from '../lib/inboxClassify.js';
 import { useInboxBadge }  from '../lib/useInboxBadge.js';
 import { ROUTES }         from '../navigation.js';
@@ -81,7 +81,7 @@ import { useAdapterSection }     from '../useAdapterSection.js';
 export function InboxScreen() {
   const nav = useNavigation();
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   // Slice C.4 — build the NavModel adapter once per service-change.
@@ -267,7 +267,7 @@ export function InboxScreen() {
             }}
           >
             <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.xs }}>
-              {/* Prefer i18n for the canonical "Clear all" label; fall
+              {/* Prefer localisation for the canonical "Clear all" label; fall
                   back to the manifest's English label for any
                   forward-additive section CTAs. */}
               {action.opId === 'clearInbox'
@@ -443,7 +443,7 @@ export function InboxScreen() {
  */
 function SubtaskProposalCard({ event, actions, onAction }) {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const by   = _suffix(event?.by ?? event?.from ?? event?.proposer ?? '');
   const text = event?.partial?.text ?? event?.text ?? '';
   return (
@@ -512,7 +512,7 @@ function SubtaskProposalCard({ event, actions, onAction }) {
  */
 function SubtaskRequestCard({ event, actions, onAction }) {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const by   = _suffix(event?.by ?? event?.from ?? event?.requestedBy ?? '');
   const text = event?.partial?.text ?? event?.text ?? '';
   return (
@@ -583,7 +583,7 @@ function SubtaskRequestCard({ event, actions, onAction }) {
  */
 function GenericInboxRow({ event, actions, onAction, onOpen }) {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const kind = kindOf(event);
 
   // The substrate-projected per-row actions on a generic event are

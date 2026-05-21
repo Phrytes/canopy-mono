@@ -23,7 +23,7 @@ import { useTheme }      from '@canopy/react-native/theme';
 
 import { useService }     from '../ServiceContext.js';
 import { useSkill, useSkillResult } from '../lib/useSkill.js';
-import { useI18n }        from '../I18nProvider.js';
+import { useLocalisation }        from '../LocalisationProvider.js';
 import {
   DELIVERABLE_PRESET, deliverableRef, photoId,
 } from '../lib/photoPresets.js';
@@ -32,7 +32,7 @@ export function SubmitScreen() {
   const nav   = useNavigation();
   const route = useRoute();
   const svc   = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const taskId = route?.params?.id;

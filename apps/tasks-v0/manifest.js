@@ -578,7 +578,7 @@ export const tasksManifest = {
      * adopt settings view (commit 9e7003b): the manifest models the
      * data shape (record + per-field patch declarations); the page
      * keeps its rich custom UI (pod-sign-in flow, conditional
-     * groupPodUri row, i18n labels — auto-rendering would regress).
+     * groupPodUri row, localisation labels — auto-rendering would regress).
      *
      * V0.3 Q17 (`shape: 'record'`) — `getCrewStoragePolicy` returns a
      * singleton `{policy, groupPodUri?}` object, NOT a list.  Q15

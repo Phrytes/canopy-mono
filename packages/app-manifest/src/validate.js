@@ -176,7 +176,7 @@ function validateOperation(op, path, manifest, errors, idSet) {
     }
   }
 
-  // Q22 (V0.6, 2026-05-20) — optional `surfaces.ui.labelKey` for i18n.
+  // Q22 (V0.6, 2026-05-20) — optional `surfaces.ui.labelKey` for localisation.
   // Validate shape only; the projector decides whether to surface it.
   const uiLabelKey = op?.surfaces?.ui?.labelKey;
   if (uiLabelKey !== undefined
@@ -357,7 +357,7 @@ function validateView(v, path, manifest, errors, idSet, strict = false) {
             message: 'field.name must be a non-empty string',
           });
         }
-        // Q22 (V0.6, 2026-05-20) — optional `labelKey` for i18n
+        // Q22 (V0.6, 2026-05-20) — optional `labelKey` for localisation
         // resolution.  Must be a non-empty string when present;
         // consumer-side lookup, no adapter wiring.
         if (f.labelKey !== undefined

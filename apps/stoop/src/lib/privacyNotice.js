@@ -6,7 +6,7 @@
  * "Closed-beta privacy notice — required content".
  *
  * Stoop's onboarding renders this on the join / first-run screens.
- * Localisation: keep the content in NL/EN here for V1; a richer i18n
+ * Localisation: keep the content in NL/EN here for V1; a richer localisation
  * pipeline (Phase 8) lifts the strings into locale JSON when more
  * locales are added.
  */

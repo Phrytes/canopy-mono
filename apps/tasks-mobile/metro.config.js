@@ -225,7 +225,7 @@ module.exports = withCanopyPreset({
       // ── Phase 41.0 + 41.0.b substrate subpaths ────────────────────
       // The preset only auto-handles `@canopy/react-native/platform/*`
       // and `@canopy/sync-engine/*`. Everything we lifted in Phase 41.0
-      // (picker, qr, mnemonic, push, i18n) + 41.0.b (identity, storage,
+      // (picker, qr, mnemonic, push, localisation) + 41.0.b (identity, storage,
       // deepLinks, theme, components) needs explicit resolvers because
       // unstable_enablePackageExports stays off.
 
@@ -257,7 +257,7 @@ module.exports = withCanopyPreset({
       // for every remaining substrate submodule.
       const RN_SUBS = new Set([
         'identity', 'storage', 'picker', 'qr', 'mnemonic',
-        'push', 'i18n', 'deepLinks', 'theme', 'components',
+        'push', 'localisation', 'deepLinks', 'theme', 'components',
       ]);
       if (moduleName.startsWith('@canopy/react-native/')) {
         const sub = moduleName.slice('@canopy/react-native/'.length);

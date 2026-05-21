@@ -305,7 +305,7 @@ The 11 tiers in scope:
 
 After Phase 41.18 lands the phone reaches **functional parity with the desktop** for every capability that's reasonable to put on a phone — every skill in `apps/tasks-v0/src/skills/index.js` has at least one CTA reachable from a mobile screen, with the documented Telegram-bot exception.
 
-## 7. Locale + i18n
+## 7. Locale + localisation
 
 Tasks-mobile reuses `apps/tasks-v0/locales/{nl,en}.json`. The locale resolver becomes a small RN-friendly module — no DOM walker (no `data-i18n` attributes), just `t(key, fallback)`. Existing `{text, doc}` shape works through the same `_lookupKey` unwrap.
 

@@ -315,7 +315,7 @@ skill the user adds picks one category; tags are free.
 ```
 
 Each category has a multilingual label set (NL + EN + future
-locales) loaded via the i18n wrapper:
+locales) loaded via the localisation wrapper:
 
 ```json
 "skills": {

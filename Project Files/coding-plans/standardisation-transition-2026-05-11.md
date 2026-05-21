@@ -312,7 +312,7 @@ Changes:
 ### `react-native` (RN-shell substrate) — **extends** (P4)
 
 Today: shared RN primitives — theme, hooks, picker, qr,
-mnemonic, push, i18n.
+mnemonic, push, localisation.
 
 Changes:
 
@@ -448,7 +448,7 @@ site at `web/`. No Solid pod attachment in current data path
 it lifts out of Tasks into `item-store` during P1.
 
 The shared UI helpers at `apps/tasks-v0/src/ui/` (taskStatus,
-composeArgs, inboxClassify, effectiveActor, i18nMerge,
+composeArgs, inboxClassify, effectiveActor, localisationMerge,
 dagFlatten) plus the `_scope` field for crewId routing already
 match the canonical app skeleton — Tasks is the closest of the
 three to the destination shape on the codebase axis.

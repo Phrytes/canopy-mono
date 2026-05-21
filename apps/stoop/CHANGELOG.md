@@ -196,7 +196,7 @@ Stoop V1 lib modules (Phases 4, 6, 8, 9):
 - `lib/CachingDataSource.js` — local-first DataSource wrapper with write queue + `attachInner` mid-session.
 - `lib/SyncCadence.js` — foreground-only periodic sync ticker.
 - `lib/handle.js` — pure handle validator.
-- `lib/i18n.js` — `i18next` wrapper; en + nl ship.
+- `lib/localisation.js` — `i18next` wrapper; en + nl ship.
 - `lib/RotationScheduler.js` — periodic `Agent.rotateIdentity` (foreground-only).
 - `lib/PushPolicy.js` — humanInTheLoop + per-day cap + quiet-hours wrapper.
 - `lib/UsageMetrics.js` — local counter for the V1 push-UX feedback loop.

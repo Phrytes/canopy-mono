@@ -16,11 +16,11 @@ import { useTheme }     from '@canopy/react-native/theme';
 import { AvatarCircle } from '@canopy/react-native/components';
 
 import { useMemberProfile } from '../lib/useSkill.js';
-import { useI18n }          from '../I18nProvider.js';
+import { useLocalisation }          from '../LocalisationProvider.js';
 
 export function ProfileOtherScreen() {
   const route = useRoute();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const { pubKey, stableId, webid } = route?.params ?? {};

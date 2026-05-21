@@ -27,9 +27,9 @@
  *     surface end-to-end.
  *
  * What stays hand-built:
- *   - **Button styling + labels** — i18n via `t('mobile.review.*')`;
+ *   - **Button styling + labels** — localisation via `t('mobile.review.*')`;
  *     RN Pressable + theme tokens (the adapter's `action.label` is the
- *     manifest's English string, not i18n).
+ *     manifest's English string, not localisation).
  *   - **V2.7 deps gate on Approve** — `describeTaskStatus(item).canClose`
  *     gates the Approve button's `disabled` state (RN-specific UX hint;
  *     the manifest's `appliesTo.state` gate decides VISIBILITY, the
@@ -65,7 +65,7 @@ import { tasksManifest } from '@canopy-app/tasks-v0/manifest';
 import { useTheme }       from '@canopy/react-native/theme';
 import { useService }     from '../ServiceContext.js';
 import { useSkill, toParts, unwrapParts } from '../lib/useSkill.js';
-import { useI18n }        from '../I18nProvider.js';
+import { useLocalisation }        from '../LocalisationProvider.js';
 import { describeTaskStatus } from '../lib/taskStatus.js';
 import { DeliverablePhoto } from '../components/DeliverablePhoto.jsx';
 import { ROUTES }          from '../navigation.js';
@@ -75,7 +75,7 @@ import { useAdapterSection }     from '../useAdapterSection.js';
 export function ReviewScreen() {
   const nav = useNavigation();
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   // Slice C.3 — build the NavModel adapter once per service-change.
@@ -159,13 +159,13 @@ export function ReviewScreen() {
 
 function ReviewRow({ item, actions, onOpen, onApprove, onReject }) {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const status = describeTaskStatus(item);
   const blocked = !status.canClose; // V2.7 — waiting/blocked means Approve is gated
 
   // Slice C.3 — derive button visibility from the manifest's
   // state-gated itemActions[] (V0.4). The action LIST decides which
-  // buttons surface; i18n + RN styling are local. This matches the
+  // buttons surface; localisation + RN styling are local. This matches the
   // web review.html pattern (sliceB2_2-review.test.js) where the page
   // walks `section.itemActions` and renders only matching ops.
   const actionIds = new Set((actions ?? []).map((a) => a.opId));

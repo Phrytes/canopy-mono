@@ -16,14 +16,14 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@canopy/react-native/theme';
 import { useSkill, useSkillResult } from '../../lib/useSkill.js';
-import { useI18n }    from '../../I18nProvider.js';
+import { useLocalisation }    from '../../LocalisationProvider.js';
 import { useActiveRole } from '../../lib/useActiveRole.js';
 import { ROUTES }     from '../../navigation.js';
 
 export function BotBindingsSection() {
   const nav = useNavigation();
   const { isAdmin } = useActiveRole();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const list   = useSkillResult('getBotChatBindings', {});

@@ -15,16 +15,16 @@
 const SUBSCRIBE_SKILL = 'subscribe';   // core.protocol.subscribe — agent's event stream
 
 /* ────────────────────────────────────────────────────────────
- * Browser-side i18n bridge
+ * Browser-side localisation bridge
  *
  * GUI strings MUST live in `apps/stoop/locales/<lang>.json` —
  * never hardcoded in HTML or JS.  See
  * `Project Files/conventions/translatable-by-design.md`.
  *
- * Pages call `await initI18n()` once at boot, then either:
+ * Pages call `await initLocalisation()` once at boot, then either:
  *   (a) tag DOM nodes with `data-i18n="key.path"` (textContent) or
  *       `data-i18n-attr="placeholder"` / `title` etc., and call
- *       `applyI18n()` after page paint;
+ *       `applyLocalisation()` after page paint;
  *   (b) call `t('key.path', fallback)` from JS for dynamic strings.
  * ──────────────────────────────────────────────────────────── */
 
@@ -35,7 +35,7 @@ let _i18nLang   = 'nl';
  * Load the locale bundle for `lang` (defaults to navigator.language
  * → 'nl').  Idempotent; subsequent calls return the cached bundle.
  */
-export async function initI18n(lang) {
+export async function initLocalisation(lang) {
   if (_i18nBundle) return _i18nBundle;
   const target = lang
     ?? (typeof navigator !== 'undefined' && navigator.language?.startsWith('en') ? 'en' : 'nl');
@@ -78,8 +78,8 @@ function _lookupKey(bundle, key) {
 
 /**
  * Translate `key` to the loaded locale.  Returns `fallback` (or the
- * key itself) when the lookup misses or i18n hasn't been initialised
- * yet.  Synchronous; pages should `await initI18n()` first to avoid
+ * key itself) when the lookup misses or localisation hasn't been initialised
+ * yet.  Synchronous; pages should `await initLocalisation()` first to avoid
  * fallback flashes.
  */
 export function t(key, fallback) {
@@ -90,13 +90,13 @@ export function t(key, fallback) {
 
 /**
  * Walk the document for `[data-i18n]` / `[data-i18n-attr]` nodes
- * and fill them from the loaded bundle.  Call after `initI18n()`.
+ * and fill them from the loaded bundle.  Call after `initLocalisation()`.
  *
  * - `data-i18n="some.key"` sets `textContent`.
  * - `data-i18n-attr="placeholder"` (in addition to `data-i18n`) sets
  *   the named attribute instead.  Multiple attrs comma-separated.
  */
-export function applyI18n(root = document) {
+export function applyLocalisation(root = document) {
   for (const el of root.querySelectorAll('[data-i18n]')) {
     const key = el.getAttribute('data-i18n');
     const val = _lookupKey(_i18nBundle, key);
@@ -112,7 +112,7 @@ export function applyI18n(root = document) {
   }
 }
 
-/** Current locale code (set by initI18n). */
+/** Current locale code (set by initLocalisation). */
 export function currentLang() { return _i18nLang; }
 
 /**
@@ -806,7 +806,7 @@ function pollForAttachment(modal, itemId, attId) {
  * Welcome + Settings). app.js is imported by every nav page, so
  * augmenting the nav here once closes it structurally for all pages.
  * Idempotent; no-op when there is no nav. Plain text to match the
- * surrounding (pre-i18n) hardcoded nav, which has not been migrated.
+ * surrounding (pre-localisation) hardcoded nav, which has not been migrated.
  * ──────────────────────────────────────────────────────────── */
 export async function ensureNavLinks() {
   const nav = document.querySelector('header nav');

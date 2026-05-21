@@ -119,11 +119,11 @@
 
   <script type="module" src="/app.js"></script>
   <script type="module">
-    import { callSkill, renderItems, getActor, mountLive, mountGroupSwitcher, mountNotifyBanner, initI18n, applyI18n, t } from '/app.js';
+    import { callSkill, renderItems, getActor, mountLive, mountGroupSwitcher, mountNotifyBanner, initLocalisation, applyLocalisation, t } from '/app.js';
     import { resizeBatch, PRIKBORD_PRESET } from '/lib/imageResize.js';
 
-    await initI18n();
-    applyI18n();
+    await initLocalisation();
+    applyLocalisation();
 
     document.getElementById('actor').textContent = await getActor();
     mountGroupSwitcher(document.getElementById('group-switcher'));

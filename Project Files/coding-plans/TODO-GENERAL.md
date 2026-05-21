@@ -775,7 +775,7 @@ plan, explicitly reusing P3's pseudo-pod adapter + an IndexedDB backend.
 | **`apps/sdk-smoke`** | Manual two-device Expo harness, no unit tests; `vitest run` exits 1 on no-match. | `--passWithNoTests` on the `test` script **and** a `vitest.config.js` with `passWithNoTests:true` (so a bare `vitest run` sweep is green too). |
 | **`apps/tasks-v0`** | `test/v2_1-calendar-emission.test.js` had identifier `onthe author` — the 2026-05-15 `Frits → the author` history scrub corrupted the JS identifier `onFrits` (space → invalid syntax). | Renamed → `onAuthor`. Repo-wide grep confirmed it was the only space-injected identifier in code (rest were prose). 481/481. |
 | **`apps/stoop-mobile`** | `feedFilter.test.js` stale vs the **deliberate** Phase 52.7.2 canonical-types clean break (whitelist now `{offer,request,claim,announcement,report}`); test still asserted pre-migration `kind:vraag/aanbod`. | Updated fixtures to canonical `type` (keeping `kind` for the kinds-filter) + the post-types test to the canonical whitelist, per the documented source contract. 908/908. |
-| **`apps/household` ×2** | Both from the 2026-05-02 Plan B substrate migration. (a) `@canopy/chat-agent` `layoutButtons` deliberately defaults to one-button-per-row; the test asserted the old all-in-one-row. (b) **Real regression**: the LLM path moved into the chat-agent substrate, whose `#dispatchToolCalls` silently dropped the turn on an unknown tool — the old app-local polite "unknown tool" message was lost. | (a) Updated the household keyboard test to the substrate's deliberate one-per-row contract. (b) **Substrate fix** — ChatAgent now surfaces a configurable `unknownToolReply` (module default on; constructor-overridable for i18n) instead of silent drop. 465/465. |
+| **`apps/household` ×2** | Both from the 2026-05-02 Plan B substrate migration. (a) `@canopy/chat-agent` `layoutButtons` deliberately defaults to one-button-per-row; the test asserted the old all-in-one-row. (b) **Real regression**: the LLM path moved into the chat-agent substrate, whose `#dispatchToolCalls` silently dropped the turn on an unknown tool — the old app-local polite "unknown tool" message was lost. | (a) Updated the household keyboard test to the substrate's deliberate one-per-row contract. (b) **Substrate fix** — ChatAgent now surfaces a configurable `unknownToolReply` (module default on; constructor-overridable for localisation) instead of silent drop. 465/465. |
 | **`packages/react-native` ×2** | `BleTransport.test.js` + `MdnsTransport.test.js` mocked `react-native-ble-plx`/`-zeroconf` but not `react-native` itself → reinstall made the real Flow-typed RN package resolvable → rollup parse error. Underneath, both tests were stale vs source rewrites (BLE Group-V buffer + `writeWithoutResponse`; mDNS zeroconf → native `MdnsModule`). | Added `vi.mock('react-native')`. Fixed BleTransport's 4 stale assertions to the current buffer/`writeWithoutResponse` design. **Fully rewrote** `MdnsTransport.test.js` against the native `MdnsModule` + event-emitter API (tiebreaker, hello-frame ID, lifecycle). 254/254 (was 232 — +22 newly running). |
 | **`packages/item-store`** *(flake, surfaced during verification)* | `ItemStore.h2` audit-log test intermittently failed (`log[0].action` `add`↔`complete`). Root cause: `ulid()` non-monotonic — within the same ms the 80-bit suffix is fully random, so the audit sort's `(at, id)` tiebreaker is non-deterministic when add+complete land in the same ms. | Made `packages/item-store/src/ulid.js` **monotonic** (ULID-spec monotonic factory: same/backwards ms → reuse timestamp, increment suffix). Strictly safer (still unique + time-sortable). Verified 10/10 runs green; integration-tests + item-store consumers unaffected (each package has its own ulid.js copy). |
 
@@ -787,7 +787,7 @@ arg-shape fallback, instead of silently dropping the turn. Affects
 Stoop / H2 V2 / H5 / household — restores user-visible feedback the
 Plan B migration had inadvertently removed. `error` event still emitted
 with the tool id for diagnostics. Constructor-overridable per app
-(i18n). chat-agent suite green (24/24).
+(localisation). chat-agent suite green (24/24).
 
 ---
 
@@ -931,7 +931,7 @@ resolve, but they are known-incomplete.
   literals. Convert to error/status codes (or `t('errors.xyz')`
   on the UI side). Treat as opportunistic until V2.5 closes.
 - **folio / folio-mobile / archive / household**: full audit not
-  done yet. Block: each app needs a small `lib/i18n.js` and a
+  done yet. Block: each app needs a small `lib/localisation.js` and a
   `locales/en.json`; do that before the first refactor lands in
   the app.
 

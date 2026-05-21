@@ -14,7 +14,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
-import { t }                                  from '../lib/i18n.js';
+import { t }                                  from '../lib/localisation.js';
 import {
   validateDraft, remainingChars, removeAttachmentAt, capAttachments,
   MAX_ATTACHMENTS, MAX_BODY_LEN,

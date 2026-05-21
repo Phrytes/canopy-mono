@@ -147,7 +147,7 @@ These stay app-local; Tasks V1 doesn't trigger them:
 - `lib/EvictionRoster.js` (Stoop's revoked-membership grace
   roster — different shape from Tasks's per-task revoke)
 - `lib/encryptedBackup.js` (handy but no Tasks V1 consumer)
-- `lib/i18n.js` (trivial wrapper around `i18next`)
+- `lib/localisation.js` (trivial wrapper around `i18next`)
 - `lib/RevealsCache.js` + `lib/InterestProfileCache.js` +
   `lib/PushRegistryCache.js` (lift triggers when a 2nd
   consumer needs the same auto-persist shape; not yet)

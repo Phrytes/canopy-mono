@@ -16,7 +16,7 @@
  *      manifest as the source-of-truth.
  *
  * The page itself (`pod-settings.html`) keeps its rich custom UI —
- * the pod-sign-in flow + conditional groupPodUri row + i18n labels
+ * the pod-sign-in flow + conditional groupPodUri row + localisation labels
  * would all regress under auto-rendering.  The manifest models the
  * data; the page draws the chrome.
  *

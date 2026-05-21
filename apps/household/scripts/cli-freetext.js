@@ -47,7 +47,7 @@ import {
   createToolHandlers,
   createContextBuilder,
   pickPrompt,
-  pickI18n,
+  pickLocalisation,
   pickFallbackNotDone,
   parseLlmOptions,
   installSlashCommandPreprocessor,
@@ -56,7 +56,7 @@ import {
 } from './lib/freetext-core.js';
 
 const LANG          = (process.env.HOUSEHOLD_LANG ?? '').toLowerCase();
-const I18N          = pickI18n(LANG);
+const LOCALISATION          = pickLocalisation(LANG);
 const FALLBACK      = pickFallbackNotDone(LANG);
 const PROMPT_NAME   = process.env.HOUSEHOLD_PROMPT ?? (LANG === 'en' ? 'lean-en' : 'lean');
 
@@ -147,12 +147,12 @@ async function buildAgent() {
   const llm    = buildLlm();
 
   const store          = createListStore();
-  const toolHandlers   = createToolHandlers(store, { i18n: I18N });
-  const contextBuilder = createContextBuilder(store, { i18n: I18N });
+  const toolHandlers   = createToolHandlers(store, { localisation: LOCALISATION });
+  const contextBuilder = createContextBuilder(store, { localisation: LOCALISATION });
 
   // Slash-command pre-processor — deterministic, model-agnostic
   // fast path.  Falls through to LLM when text isn't a slash command.
-  installSlashCommandPreprocessor(bridge, store, { i18n: I18N });
+  installSlashCommandPreprocessor(bridge, store, { localisation: LOCALISATION });
 
   const agent = new ChatAgent({
     bridges:        [bridge],

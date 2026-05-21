@@ -44,7 +44,7 @@ import { Ionicons }                   from '@expo/vector-icons';
 import { parseDeepLink, actionToNavigation } from './src/lib/deepLinks.js';
 
 import { ROUTES, SHELL_TAB_ROUTES, STACK_ONLY_ROUTES } from './src/navigation.js';
-import { t, initI18n }                from './src/lib/i18n.js';
+import { t, initLocalisation }                from './src/lib/localisation.js';
 import { COLORS, SPACING, RADII, FONT_SIZES } from './src/lib/theme.js';
 import { ThemeProvider }              from '@canopy/react-native/theme';
 
@@ -231,11 +231,11 @@ function DeepLinkHandler() {
   return null;
 }
 
-// Kick off i18n once at module-load.  No `lng` → auto-detect from
+// Kick off localisation once at module-load.  No `lng` → auto-detect from
 // the device locale (Dutch → 'nl', everything else → 'en').
 // Settings can swap it later.
-initI18n().catch((err) => {
-  console.warn('[i18n] init failed (falling back to keys):', err?.message ?? err);
+initLocalisation().catch((err) => {
+  console.warn('[localisation] init failed (falling back to keys):', err?.message ?? err);
 });
 
 export default function App() {

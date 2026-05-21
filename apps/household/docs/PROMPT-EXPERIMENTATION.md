@@ -600,9 +600,9 @@ language one (less context, less ambiguity).  So pick the user's
 language at session start (from the bridge / config) and build a
 language-specific system prompt.
 
-**2. ContextBuilder + handler reply text → i18n.**
+**2. ContextBuilder + handler reply text → localisation.**
 
-Replace hard-coded Dutch strings with a tiny i18n table:
+Replace hard-coded Dutch strings with a tiny localisation table:
 
 ```js
 const STRINGS = {
@@ -662,7 +662,7 @@ Drop the hard-coded `"boodschappen"` default.  Either:
 1. Patterns refactor in `parseLooseToolCalls` (substrate change,
    purely additive — existing consumers pass nothing and existing
    Dutch + English patterns still apply by default).
-2. i18n table for the household app's user-facing text.
+2. localisation table for the household app's user-facing text.
 3. Per-language prompt builder.
 4. Add a second language (German is the obvious next pick — geitje
    doesn't help with German, but Mistral and Qwen support German

@@ -18,13 +18,13 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@canopy/react-native/theme';
 import { useSkillResult } from '../lib/useSkill.js';
-import { useI18n }    from '../I18nProvider.js';
+import { useLocalisation }    from '../LocalisationProvider.js';
 import { useService } from '../ServiceContext.js';
 
 export function MetricsScreen() {
   const nav = useNavigation();
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const result  = useSkillResult('getMetrics', {}, [svc?.activeCrewId]);

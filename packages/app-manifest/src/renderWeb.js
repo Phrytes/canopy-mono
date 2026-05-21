@@ -331,16 +331,16 @@
  * Out of scope:
  *   - passphrase prompts (mnemonic / encryptedBackup) — auth flow
  *   - one-shot reveals (mnemonic show-once) — business rule
- *   - i18n on message (use a future Q22-style messageKey if needed)
+ *   - localisation on message (use a future Q22-style messageKey if needed)
  *
  * Adapters that don't understand `confirm` should fail the
  * affordance (strict) rather than silently ignore — a `danger` gate
  * dropped on the floor is a UX hazard.
  *
- * ──── Q22 — `labelKey` i18n passthrough (locked 2026-05-20)
+ * ──── Q22 — `labelKey` localisation passthrough (locked 2026-05-20)
  *
  * Surfaced by C.3 closeout: manifest `label` strings are English while
- * stoop is Dutch-first and tasks-mobile RN screens already use an i18n
+ * stoop is Dutch-first and tasks-mobile RN screens already use an localisation
  * function (`t(key, fallback)`).  Auto-rendered substrate UIs would
  * regress on localization.
  *
@@ -473,7 +473,7 @@ function buildSection(view, ops, manifest) {
       const out = { name: f.name };
       if (f.type    !== undefined) out.type    = f.type;
       if (f.label   !== undefined) out.label   = f.label;
-      // Q22 (V0.6, 2026-05-20) — i18n key passthrough on fields.
+      // Q22 (V0.6, 2026-05-20) — localisation key passthrough on fields.
       if (typeof f.labelKey === 'string' && f.labelKey !== '') {
         out.labelKey = f.labelKey;
       }
@@ -608,9 +608,9 @@ function buildAffordance(op, manifest, placement, prefilledParams) {
     paramsSchema: paramsToJsonSchema(op.params ?? [], { manifest }),
     placement,
   };
-  // Q22 (V0.6, 2026-05-20) — i18n key passthrough.  When the manifest
+  // Q22 (V0.6, 2026-05-20) — localisation key passthrough.  When the manifest
   // declares `surfaces.ui.labelKey`, surface it alongside `label` so
-  // consumers with an i18n function look up the localized string;
+  // consumers with an localisation function look up the localized string;
   // others fall back to `label`.  Forward-additive — absent means
   // existing English-label behaviour.
   if (typeof op?.surfaces?.ui?.labelKey === 'string'
@@ -658,7 +658,7 @@ function buildItemAction(op, view, prefilledParams) {
     label: op?.surfaces?.ui?.label ?? op.verb ?? op.id,
     appliesTo,
   };
-  // Q22 (V0.6) — i18n key passthrough (see buildAffordance).
+  // Q22 (V0.6) — localisation key passthrough (see buildAffordance).
   if (typeof op?.surfaces?.ui?.labelKey === 'string'
       && op.surfaces.ui.labelKey !== '') {
     action.labelKey = op.surfaces.ui.labelKey;

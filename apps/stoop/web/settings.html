@@ -5,7 +5,7 @@
   Manifest section: `settings` (shape: 'record', 4 fields with patch +
     labelKey) in apps/stoop/manifest.js.
   Rendering: hand-coded HTML — per-field hint text + scope badges +
-    i18n.  Auto-rendering would regress UX.
+    localisation.  Auto-rendering would regress UX.
   Skills referenced: getSettings, updateSettings, setHopMode, plus
     a few app-internal ones (Q16-strict not enabled for stoop).
 -->
@@ -237,15 +237,15 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, mountGroupSwitcher, initI18n, applyI18n, t } from '/app.js';
+    import { callSkill, getActor, mountGroupSwitcher, initLocalisation, applyLocalisation, t } from '/app.js';
     // V0.2 (2026-05-20) — shared @canopy/web-adapter helpers.  Overlaid
     // at `/lib/web-adapter/*.js` by `bin/stoop-web.js`'s extraStaticFiles
     // (same mechanism mine.html + privacy.html use).  Source-of-truth
     // lives in `packages/web-adapter/src/`.
     import { fetchSectionItems } from '/lib/web-adapter/fetchSectionItems.js';
 
-    await initI18n();
-    applyI18n();
+    await initLocalisation();
+    applyLocalisation();
     document.title = t('settings.page_title', 'Stoop — Settings');
 
     document.getElementById('actor').textContent = await getActor();

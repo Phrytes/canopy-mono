@@ -95,7 +95,7 @@ workspace, not a substrate):
 - **Role policy.** `buildStandardRolePolicy` + the standard
   five roles + DoD gates + Phase 7 narrow exception.
 - **Shared UI helpers (`src/ui/`).** taskStatus, composeArgs,
-  inboxClassify, effectiveActor, i18nMerge, dagFlatten — all
+  inboxClassify, effectiveActor, localisationMerge, dagFlatten — all
   pure-of-platform, re-exported via `export *` shims in
   `apps/tasks-mobile/src/lib/`.
 - **Skills + DAG.** `src/skills/`, `src/dag.js`, `src/dag-
@@ -117,7 +117,7 @@ What mobile adds on top (the RN-specific layer):
   `MobilePushBridge` (all from `@canopy/react-native`).
 - **Mobile substrates** — `oidc-session-rn`, `react-native/
   picker`, `react-native/qr`, `react-native/mnemonic`,
-  `react-native/push`, `react-native/i18n`.
+  `react-native/push`, `react-native/localisation`.
 
 The cross-app dep on `@canopy-app/tasks-v0` is **the only
 mobile-specific cross-app import**; everything else is via

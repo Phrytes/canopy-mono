@@ -201,7 +201,7 @@ it opens the chat thread.
 
 **Estimate:** 5-6 days.
 **Acceptance:** complete navigation through all journeys §5 of the
-functional design; every visible string is i18n-resolvable.
+functional design; every visible string is localisation-resolvable.
 
 ## Phase 40.11 — Deep links
 
