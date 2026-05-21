@@ -17,6 +17,7 @@
     "./threadStore":    "./src/threadStore.js",
     "./filter":         "./src/filter.js",
     "./events":         "./src/events.js",
+    "./bulkOps":        "./src/bulkOps.js",
     "./localisation":   "./src/localisation.js",
     "./locales/en":     "./locales/en.json",
     "./locales/nl":     "./locales/nl.json"
