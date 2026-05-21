@@ -27,6 +27,7 @@ export { runBulkOp, summariseBulkOp } from './bulkOps.js';
 export {
   buildFormSpec, pickStrategy, validateAndCoerce,
 } from './forms/buildFormSpec.js';
+export { parseRelativeDate } from './forms/parseDate.js';
 export { IndexedDBStore, attachPersistence } from './storage/local.js';
 export { PodSyncStore }                      from './storage/podSync.js';
 export {
