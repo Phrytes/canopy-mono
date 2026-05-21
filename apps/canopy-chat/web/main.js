@@ -1,61 +1,103 @@
 /**
- * canopy-chat — v0.1.4 web demo entry.
+ * canopy-chat — v0.2 web demo entry.
  *
- * Wires the full pipeline:
- *   user input → parseInput → resolveDispatch → runDispatch → renderReply
- *              → thread state → DOM render
+ * Multi-thread workspace.  Sidebar lists every thread; user can
+ * create new threads with filter + permissions; clicking switches
+ * the active thread.  Events from skill dispatches fan out through
+ * the EventRouter to every thread whose filter matches (per OQ-4).
  *
- * Uses a mock household agent (v0.1.5 wires the real browser-bundled
- * mesh agent — currently blocked by OQ-1.C).  All canopy-chat logic
- * is identical to what production will run.
+ * Pipeline:
+ *   user input → parseInput → resolveDispatch → runDispatch
+ *              → renderReply → ACTIVE thread state → DOM render
+ *   mutation reply → EventRouter.deliver(item-changed event)
+ *                  → matching threads receive notifications
  *
- * Phase v0.1 sub-slice 1.10.
+ * Phase v0.2 sub-slice 2.3.
  */
 
 import {
   parseInput, mergeManifests, resolveDispatch, runDispatch,
-  renderReply, Thread,
+  renderReply, ThreadStore, createDefaultThreadStore, createEventRouter,
   initLocalisation, t, setLang, detectDeviceLang, currentLang,
-  canopyChatManifest,
+  describeFilter, canopyChatManifest,
+  IndexedDBStore, attachPersistence,
 } from '../src/index.js';
-import { renderToDom, renderStream }     from '../src/web/domAdapter.js';
-import { createRealHouseholdAgent }      from '../src/web/realAgent.js';
-import { createLocalBuiltins }           from '../src/web/localBuiltins.js';
+import { renderStream }              from '../src/web/domAdapter.js';
+import { renderSidebar }             from '../src/web/threadSidebar.js';
+import { createRealHouseholdAgent }  from '../src/web/realAgent.js';
+import { createLocalBuiltins }       from '../src/web/localBuiltins.js';
 
+/* ── DOM refs ──────────────────────────────────────────── */
+
+const sidebarEl  = document.getElementById('sidebar');
 const messagesEl = document.getElementById('messages');
 const formEl     = document.getElementById('input-form');
 const inputEl    = document.getElementById('chat-input');
 const langEnBtn  = document.getElementById('lang-en');
 const langNlBtn  = document.getElementById('lang-nl');
+const headerNameEl   = document.getElementById('active-thread-name');
+const headerFilterEl = document.getElementById('active-thread-filter');
 
-const agent   = await createRealHouseholdAgent();
-// canopy-chat's own manifest joins the merged catalog so its built-in
-// commands (/help today; /brief, /threads in later phases) show up
-// like any other app's ops.  Built-in handlers live in localBuiltins.js
-// and are dispatched locally in callSkill below.
+/* ── state ─────────────────────────────────────────────── */
+
+const agent = await createRealHouseholdAgent();
 const catalog = mergeManifests([
   { manifest: canopyChatManifest },
   { manifest: agent.manifest },
 ]);
-const thread  = new Thread({ id: 'main' });
-
 const manifestsByOrigin = {
   'canopy-chat': canopyChatManifest,
   'household':   agent.manifest,
 };
-const ctxBase = { doc: document };
 
-// Chat-shell built-ins.  Created AFTER the localisation initialises
-// so help text comes through the right locale.
+// v0.2.4 — IndexedDB persistence.  Load existing threads on boot;
+// seed defaults on fresh install; subscribe so future changes
+// persist automatically.
+const idb = new IndexedDBStore();
+let store;
+const persisted = await idb.loadAll();
+if (persisted.length > 0) {
+  // Hydrate from disk.
+  store = new ThreadStore();
+  for (const t0 of persisted) {
+    // ThreadStore.createThread builds its own Thread; we want THE
+    // persisted instance.  Insert directly via a small bypass: use
+    // the same id + filter + permissions so the public API stays
+    // honest, then graft the messages + listings back on.
+    const created = store.createThread({
+      id:          t0.id,
+      name:        t0.name,
+      filter:      t0.filter,
+      permissions: t0.permissions,
+    });
+    created.createdAt = t0.createdAt;
+    created.messages  = t0.messages;
+    for (const [opId, listing] of t0._listings) {
+      created._listings.set(opId, listing);
+    }
+  }
+} else {
+  store = createDefaultThreadStore();
+  // Seed an extra "Household alerts" thread for the J8 demo (only
+  // on fresh install — existing users keep their layout).
+  store.createThread({
+    id:     'household-alerts',
+    name:   'Household alerts',
+    filter: { apps: ['household'], eventTypes: ['item-changed', 'notification'] },
+    permissions: { allowCommands: true },
+  });
+}
+
+// Persist future changes asynchronously.
+attachPersistence({ threadStore: store, idb });
+
+const router = createEventRouter({ threadStore: store });
 
 await initLocalisation({ lng: detectDeviceLang() });
 updateLangButtons();
 
 const localBuiltins = createLocalBuiltins({ catalog, t });
 
-// Wrap the agent's callSkill: chat-shell built-ins (appOrigin =
-// 'canopy-chat') dispatch locally; everything else goes to the real
-// agent.  v0.7 expands this with the brief aggregator (/brief).
 const callSkill = async (appOrigin, opId, args) => {
   if (appOrigin === 'canopy-chat') {
     const handler = localBuiltins[opId];
@@ -65,17 +107,78 @@ const callSkill = async (appOrigin, opId, args) => {
   return agent.callSkill(appOrigin, opId, args);
 };
 
-/* ── greeting ─────────────────────────────────────────── */
+/* ── render orchestration ──────────────────────────────── */
+
+function activeThread() { return store.getActiveThread(); }
+
+function renderAll() {
+  renderSidebarHere();
+  renderActiveHeader();
+  renderActiveStream();
+}
+
+function renderSidebarHere() {
+  renderSidebar(sidebarEl, {
+    doc:      document,
+    store,
+    onSelect: (id) => { store.setActiveThread(id); },
+    t,
+  });
+}
+
+function renderActiveHeader() {
+  const t0 = activeThread();
+  if (!t0) {
+    headerNameEl.textContent = '';
+    headerFilterEl.textContent = '';
+    return;
+  }
+  headerNameEl.textContent = t0.name;
+  const filterText = describeFilter(t0.filter);
+  headerFilterEl.textContent = filterText === '*' ? '' : `(${filterText})`;
+}
+
+function renderActiveStream() {
+  const t0 = activeThread();
+  if (!t0) {
+    while (messagesEl.firstChild) messagesEl.removeChild(messagesEl.firstChild);
+    return;
+  }
+  renderStream(messagesEl, t0.messages, makeCtx());
+}
+
+function makeCtx() {
+  return { doc: document, onButtonTap };
+}
+
+/* ── greeting on the Main thread ───────────────────────── */
 
 {
+  const main = store.getThread('main');
   const greeting = renderReply({
-    payload: 'Welcome to canopy-chat. Try /help to see commands.',
+    payload: 'Welcome to canopy-chat (v0.2). Try /help. Create more threads via the sidebar.',
     shape:   'text',
-    threadId: thread.id,
+    threadId: main.id,
   }, { t });
-  thread.addShellMessage(greeting);
+  main.addShellMessage(greeting);
 }
-renderStream(messagesEl, thread.messages, makeCtx());
+
+renderAll();
+
+/* ── subscriptions ─────────────────────────────────────── */
+
+store.subscribe(() => {
+  // ThreadStore changes (create/delete/update/active) → re-render
+  // sidebar + the active thread's stream + header.
+  renderAll();
+});
+
+router.onRouted(() => {
+  // An event was delivered to ≥0 threads.  Cheapest correct move:
+  // re-render the active thread (the matched threads' state is
+  // already in store — just the visible one needs refresh).
+  renderActiveStream();
+});
 
 /* ── input handler ─────────────────────────────────────── */
 
@@ -85,22 +188,29 @@ formEl.addEventListener('submit', async (e) => {
   if (!text) return;
   inputEl.value = '';
 
-  thread.addUserMessage(text);                     // triggers A2 lifecycle
-  renderStream(messagesEl, thread.messages, makeCtx());
+  const t0 = activeThread();
+  if (!t0) return;
+  t0.addUserMessage(text);
+  renderActiveStream();
 
-  await handleUserText(text);
+  // Permission gate (v0.2: allowCommands)
+  if (t0.permissions.allowCommands === false) {
+    const rendered = renderReply({
+      payload: 'This thread does not accept commands.',
+      shape:   'text', threadId: t0.id,
+    }, { t });
+    t0.addShellMessage(rendered);
+    renderActiveStream();
+    return;
+  }
+
+  await handleUserText(text, t0);
 });
 
 /* ── language switch ───────────────────────────────────── */
 
-langEnBtn.addEventListener('click', async () => {
-  await setLang('en');
-  updateLangButtons();
-});
-langNlBtn.addEventListener('click', async () => {
-  await setLang('nl');
-  updateLangButtons();
-});
+langEnBtn.addEventListener('click', async () => { await setLang('en'); updateLangButtons(); renderAll(); });
+langNlBtn.addEventListener('click', async () => { await setLang('nl'); updateLangButtons(); renderAll(); });
 
 function updateLangButtons() {
   const cur = currentLang();
@@ -110,37 +220,31 @@ function updateLangButtons() {
 
 /* ── core flow ─────────────────────────────────────────── */
 
-async function handleUserText(text) {
+async function handleUserText(text, thread) {
   const parse = parseInput(text, catalog, { threadId: thread.id });
   const route = resolveDispatch(parse, catalog);
 
   if (route.kind === 'unknown') {
     const rendered = renderReply({
       payload:  t('reply.unknown_command', { input: text }),
-      shape:    'text',
-      threadId: thread.id,
+      shape:    'text', threadId: thread.id,
     }, { t });
     thread.addShellMessage(rendered);
-    renderStream(messagesEl, thread.messages, makeCtx());
+    renderActiveStream();
     return;
   }
 
   if (route.kind === 'error') {
     const rendered = renderReply({
-      payload:  null,
-      shape:    'text',
-      threadId: thread.id,
-      error:    { code: route.code, message: route.message },
+      payload: null, shape: 'text', threadId: thread.id,
+      error:   { code: route.code, message: route.message },
     }, { t });
     thread.addShellMessage(rendered);
-    renderStream(messagesEl, thread.messages, makeCtx());
+    renderActiveStream();
     return;
   }
 
   if (route.kind === 'needsForm' || route.kind === 'needsConfirm') {
-    // v0.1.4 — these gates aren't implemented in the web UI yet
-    // (lands in v0.3 alongside the form generator + confirm modal).
-    // For now, render an explainer.
     const note = route.kind === 'needsForm'
       ? `Missing required params: ${route.missing.join(', ')} (form UX lands in v0.3)`
       : `This op needs confirmation (${route.severity}): ${route.message ?? ''} — confirm UX lands in v0.3`;
@@ -148,15 +252,15 @@ async function handleUserText(text) {
       payload: note, shape: 'text', threadId: thread.id,
     }, { t });
     thread.addShellMessage(rendered);
-    renderStream(messagesEl, thread.messages, makeCtx());
+    renderActiveStream();
     return;
   }
 
-  // route.kind === 'ready' — dispatch + render
-  await dispatchAndRender(route);
+  // ready → dispatch + render + (maybe) emit item-changed event.
+  await dispatchAndRender(route, thread);
 }
 
-async function dispatchAndRender(route) {
+async function dispatchAndRender(route, thread) {
   const reply = await runDispatch(route, callSkill);
   const rendered = renderReply(reply, {
     t,
@@ -164,48 +268,46 @@ async function dispatchAndRender(route) {
     manifestsByOrigin,
   });
   thread.addShellMessage(rendered, { opId: route.opId });
-  renderStream(messagesEl, thread.messages, makeCtx());
+
+  // Mutation? Fan out per OQ-4 — every thread with a matching
+  // filter sees an 'item-changed' event.  We skip listOpen-style
+  // reads (Q28 reply: 'list'), /help, and errors.
+  const op = catalog.opsById.get(route.opId)?.op;
+  const isMutation = op?.verb && !['list', 'help'].includes(op.verb)
+                   && !reply.error;
+  if (isMutation && reply.payload) {
+    router.deliver({
+      app:     route.appOrigin,
+      type:    'item-changed',
+      payload: {
+        message: typeof reply.payload.message === 'string'
+          ? reply.payload.message
+          : `${route.appOrigin}.${route.opId} completed`,
+        op:      route.opId,
+        result:  reply.payload,
+      },
+    });
+  }
+
+  renderActiveStream();
 }
 
 /* ── button tap handler ─────────────────────────────────── */
 
 async function onButtonTap(opId, itemId) {
-  // Buttons skip the parser; we synthesise the parse result directly.
-  // Args are the callbackData-encoded ones; we still need to know which
-  // param to bind them to.  The router's _match-binding logic only
-  // applies to parser positional captures; for buttons we already know
-  // the opId, so build the args from the catalog entry.
-
-  // For v0.1: hard-code the convention that callback buttons pass
-  // `id`-shaped args.  Tasks-v0 / household / stoop all do this today.
-  // A future refinement would consult the op's appliesTo + params to
-  // pick the right name.  v0.1 maps to the first required string param.
+  const t0 = activeThread();
+  if (!t0) return;
   const entry = catalog.opsById.get(opId);
   if (!entry) return;
-
   const firstReq = (entry.op.params ?? []).find(
     (p) => p?.required && (p.kind === 'string' || p.kind === 'enum'),
   );
   const args = firstReq ? { [firstReq.name]: itemId } : { id: itemId };
-
-  // Synthesise a slash parseResult so we can route + dispatch the
-  // same way the parser does.
   const parse = {
-    kind: 'slash', opId, args, threadId: thread.id,
+    kind: 'slash', opId, args, threadId: t0.id,
     command: '(button)', body: itemId,
   };
-
-  // Lifecycle: a button tap on a still-live action menu also counts
-  // as a "new user action" for A2 purposes — the simplest signal is
-  // to append a synthetic user message in the thread so prior list
-  // bubbles disable.  For v0.1.4 we keep it minimal and don't append
-  // — the button-tap re-renders below pick up any state changes
-  // anyway.
   const route = resolveDispatch(parse, catalog);
   if (route.kind !== 'ready') return;
-  await dispatchAndRender(route);
-}
-
-function makeCtx() {
-  return { ...ctxBase, onButtonTap };
+  await dispatchAndRender(route, t0);
 }

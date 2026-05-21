@@ -1,0 +1,155 @@
+/**
+ * canopy-chat — bulk-op fan-out.
+ *
+ * `/done all` (and analogues) needs to fire ONE op against MANY items.
+ * The bulk runner does this sequentially per-item and collects results.
+ * Per OQ-4 user resolution (2026-05-21): bulk ops should affect every
+ * thread that surfaces affected items — that happens automatically via
+ * the EventRouter (mutation skills emit item-changed events; the router
+ * matches them against each thread's filter).
+ *
+ * v0.2.2 ships the pure-logic helper.  Parser/router integration ("all"
+ * keyword detection → fan-out) lands in v0.3 alongside the form-confirm
+ * UX so the user can review N items before dispatch.
+ *
+ * Phase v0.2 sub-slice 2.7 per `/Project Files/canopy-chat/coding-plan.md`.
+ */
+
+/**
+ * @typedef {object} BulkOpRequest
+ * @property {string}                                  opId
+ * @property {string}                                  appOrigin
+ * @property {Array<{id: string}>}                     items
+ * @property {string}                                  argName
+ *   The op param to bind each item id to (e.g. `'choreId'` for
+ *   household.markComplete).  The router's _match-binding does this
+ *   automatically for single dispatches; bulk callers state it
+ *   explicitly.
+ * @property {object}                                  [baseArgs]
+ *   Extra args merged into each per-item call (e.g. a `reason`
+ *   shared across all items).
+ * @property {import('./dispatch.js').CallSkill}       callSkill
+ * @property {(event: object) => void}                 [emitEvent]
+ *   Optional EventRouter.deliver function — receives an item-changed
+ *   event for each successful operation so the fan-out reaches other
+ *   threads per OQ-4.
+ */
+
+/**
+ * @typedef {object} BulkOpResult
+ * @property {Array<{itemId: string, payload: *}>}     successes
+ * @property {Array<{itemId: string, error: {code: string, message: string}}>} failures
+ * @property {{total: number, ok: number, failed: number}} stats
+ */
+
+/**
+ * Run a bulk op against a list of items.  Sequential — preserves
+ * order; failures don't halt the whole run.
+ *
+ * @param {BulkOpRequest} req
+ * @returns {Promise<BulkOpResult>}
+ */
+export async function runBulkOp(req) {
+  if (!req || typeof req !== 'object') {
+    throw new TypeError('runBulkOp: request required');
+  }
+  const { opId, appOrigin, items, argName, baseArgs, callSkill, emitEvent } = req;
+  if (typeof opId      !== 'string' || opId      === '') throw new TypeError('runBulkOp: opId required');
+  if (typeof appOrigin !== 'string' || appOrigin === '') throw new TypeError('runBulkOp: appOrigin required');
+  if (typeof argName   !== 'string' || argName   === '') throw new TypeError('runBulkOp: argName required');
+  if (typeof callSkill !== 'function')                   throw new TypeError('runBulkOp: callSkill required');
+  if (!Array.isArray(items))                             throw new TypeError('runBulkOp: items must be an array');
+
+  const successes = [];
+  const failures  = [];
+
+  for (const item of items) {
+    const itemId = item?.id ?? String(item);
+    const args = { ...(baseArgs ?? {}), [argName]: itemId };
+    try {
+      const payload = await callSkill(appOrigin, opId, args);
+      // Honour app convention: payload.ok === false → failure.
+      if (payload && typeof payload === 'object' && payload.ok === false) {
+        failures.push({
+          itemId,
+          error: {
+            code:    'skill-returned-not-ok',
+            message: typeof payload.error === 'string'
+                       ? payload.error
+                       : (payload.error?.message ?? 'Failed'),
+          },
+        });
+        continue;
+      }
+      successes.push({ itemId, payload });
+      // Fan-out via EventRouter (per OQ-4).  Optional — caller may
+      // omit emitEvent if they don't want cross-thread propagation.
+      if (typeof emitEvent === 'function') {
+        try {
+          emitEvent({
+            app:   appOrigin,
+            type:  'item-changed',
+            itemRef: { app: appOrigin, type: 'item', id: itemId },
+            payload: {
+              message: `${appOrigin}.${opId}(${itemId}) completed`,
+              op:      opId,
+              item:    itemId,
+              result:  payload,
+            },
+          });
+        } catch { /* swallow emit errors — they shouldn't fail the bulk */ }
+      }
+    } catch (err) {
+      failures.push({
+        itemId,
+        error: {
+          code:    err?.code ?? 'dispatch-error',
+          message: err?.message ?? String(err),
+        },
+      });
+    }
+  }
+
+  return {
+    successes,
+    failures,
+    stats: {
+      total:  items.length,
+      ok:     successes.length,
+      failed: failures.length,
+    },
+  };
+}
+
+/**
+ * Format a BulkOpResult as a single human-readable message body
+ * suitable for the renderer's text shape.  Used by the chat shell
+ * after a /done-all-style dispatch.
+ *
+ * @param {BulkOpResult} result
+ * @param {object} [opts]
+ * @param {string} [opts.opLabel]   e.g. 'Marked complete' / 'Archived'
+ * @returns {{ message: string, ok: boolean }}
+ */
+export function summariseBulkOp(result, opts = {}) {
+  const opLabel = opts.opLabel ?? 'Bulk op';
+  const { ok, failed, total } = result.stats;
+  if (failed === 0) {
+    return {
+      message: `✓ ${opLabel}: ${ok}/${total} items.`,
+      ok:      true,
+    };
+  }
+  if (ok === 0) {
+    return {
+      message: `✗ ${opLabel}: all ${failed} items failed.\n` +
+               result.failures.map((f) => `  • ${f.itemId}: ${f.error.message}`).join('\n'),
+      ok: false,
+    };
+  }
+  return {
+    message: `⚠ ${opLabel}: ${ok}/${total} succeeded, ${failed} failed.\n` +
+             result.failures.map((f) => `  • ${f.itemId}: ${f.error.message}`).join('\n'),
+    ok: false,
+  };
+}
