@@ -217,13 +217,79 @@ In ~6 months of normal evolution, if this policy holds:
 Current state of the repo (2026-05-21): roughly **10% T1 / 15% T2 /
 75% T3**. The actionable migration work is **T3 → T2**, not T2 → T1.
 
+## Drift canary — one per app, mechanical enforcement
+
+Every app with a page/screen-side skill-reference surface ships a
+drift-canary test. It's the **automated counterpart** to the tier
+header comments: humans declare tier intent in the header; the
+canary catches forgotten / typo'd / renamed skill IDs in code.
+
+| App | Canary file | Scan target | Pattern | Source of truth for real skill IDs |
+| --- | --- | --- | --- | --- |
+| **tasks-v0** | `test/page-skill-drift.test.js` | `web/*.html` | `callSkill('<id>')` | 19 skill builders imported, output unioned |
+| **stoop** | `test/page-skill-drift.test.js` | `web/*.html` + `web/app.js` | `callSkill('<id>')` | static grep over `src/skills/index.js` + identity-resolver substrate (`packages/identity-resolver/src/*.js`) |
+| **tasks-mobile** | `test/screen-skill-drift.test.js` | `src/screens/**/*.jsx` + `src/lib/*.js` | `useSkill('<id>')`, `useSkillResult('<id>', ...)`, `callSkill('<id>')` | tasks-v0's full builder set imported across the workspace |
+| **household** | `test/page-skill-drift.test.js` | `web/main.js` + `web/index.html` | `callSkill('<id>')` | `HOUSEHOLD_SKILL_REGISTRY` keys + `agent.register('<id>', ...)` greps in `bin/household-web.js` |
+
+### Apps NOT covered + why
+
+| App | Reason |
+| --- | --- |
+| **folio** (web) | No HTML pages — folio is HTTP routes + CLI. The folio manifest is declaration-only; pages don't `callSkill`. |
+| **folio-mobile** (RN) | RN screens use `engine.foo()` directly (sync-engine-based, not agent-based). The skill-ref pattern doesn't apply. |
+| **stoop-mobile** (RN) | Not yet covered. Add when stoop-mobile next gets updated; use the tasks-mobile canary as the template. |
+
+### Canary conventions
+
+Each canary follows this shape:
+
+1. **Strip comments before scanning.** HTML comments (`<!-- ... -->`)
+   for web; JS line + block comments for `.js`/`.jsx`. Without this,
+   JSDoc examples like `useSkill('id')` inside docstrings show up as
+   false positives.
+2. **Declare an `ALLOWLIST` set.** Every entry MUST cite (in a comment)
+   *why* it's exempted — usually because the skill is provided by a
+   substrate package (e.g. `@canopy/identity-resolver` issueInvite /
+   redeemInvite) or composed across apps (e.g. tasks-mobile's
+   `ProfileMineScreen` calling stoop's `getMyProfile`).
+3. **Diff page IDs against real IDs.** The test message lists every
+   orphan with a 3-option fix recipe (typo / add skill / allowlist).
+4. **Sanity-check non-empty sets.** A separate `it` asserts both the
+   page-side and real-side sets have a plausible minimum size, so
+   the canary doesn't silently pass if a builder import breaks and
+   the real set goes empty.
+
+### What canaries catch
+
+| Bug | Caught |
+| --- | --- |
+| Typo: `callSkill('clreaInbox')` | ✅ |
+| Skill renamed, page missed | ✅ |
+| Dead page calls deleted skill | ✅ |
+| Cross-app skill leak (e.g. tasks-v0 page calling a stoop skill) | ✅ — flagged unless added to ALLOWLIST with justification |
+
+### What canaries do NOT enforce
+
+| Concern | Where it's enforced instead |
+| --- | --- |
+| Is the skill in `manifest.operations[]`? | The reverse canary (`sp3-manifest.test.js`-style) — manifest → real skills |
+| Is the page's tier (T1/T2/T3) correct? | Human review of the tier header comment |
+| Is the skill *used* by some page? | Not enforced (dead skills are a separate cleanup concern) |
+
+### Adding a canary for a new app
+
+1. Copy the closest sibling (`tasks-mobile` for RN, `stoop` for web-only-static-grep, `tasks-v0` for runtime-stub).
+2. Wire the skill source path(s) for the app.
+3. Run the test. Fix orphans (typo / add skill / ALLOWLIST with reason).
+4. Commit alongside any related manifest / page changes.
+
 ## Cross-references
 
 - **NavModel substrate** — `DESIGN-navmodel-sketch.md` (owner decisions Q1-Q27)
 - **Tier C audit** — `TIER-C-PROPOSALS.md` (what stays app-side and why)
 - **Slice G audit** — `SLICE-G-AUDIT.md` (folio boundary observations)
 - **Substrate helper** — `packages/web-adapter/src/createOpBinding.js` (T2 dispatch utility)
-- **Drift canary** — per-app `test/manifest-skill-drift.test.js` (asserts every page's `callSkill` IDs are declared)
+- **Drift canaries** — `apps/<app>/test/page-skill-drift.test.js` (web) and `apps/<app>/test/screen-skill-drift.test.js` (RN)
 
 ## Decision rationale
 
