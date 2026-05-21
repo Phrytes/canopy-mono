@@ -1,6 +1,18 @@
 # H4 — tasks-v0
 
 > **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, local-store, chat-p2p, identity-resolver, notifier, skill-match}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+>
+> **Manifest + tier policy.** This app's surface is declared in
+> [`manifest.js`](./manifest.js) (NavModel substrate V0.8 / Q1–Q27).
+> Pages follow [`DESIGN-tier-policy.md`](../../DESIGN-tier-policy.md):
+> **T1** substrate-rendered (`dag.html`, `mine.html`, `review.html`,
+> `inbox.html`); **T2** manifest-bound (`pod-settings.html` —
+> V0.4-adopt + Q26 requiresField); **T3** fully bespoke
+> (`availability.html`, `onboard.html`). New pages declare a tier in
+> their HTML header comment. The page→skill drift canary in
+> [`test/page-skill-drift.test.js`](./test/page-skill-drift.test.js)
+> asserts every `callSkill('id')` in `web/*.html` maps to a real
+> `defineSkill`.
 
 Multi-tenant task ledger with DAG dependencies + skill-based
 dispatch + role-aware governance + DoD-with-approver lifecycle +
