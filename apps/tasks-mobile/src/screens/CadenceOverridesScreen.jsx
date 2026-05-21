@@ -21,7 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@canopy/react-native/theme';
 import { useService } from '../ServiceContext.js';
 import { useSkill, useSkillResult } from '../lib/useSkill.js';
-import { useI18n }    from '../I18nProvider.js';
+import { useLocalisation }    from '../LocalisationProvider.js';
 
 const KNOWN_EVENTS = [
   'deadlineApproaching',
@@ -35,7 +35,7 @@ const KNOWN_EVENTS = [
 export function CadenceOverridesScreen() {
   const nav = useNavigation();
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const cur     = useSkillResult('getMyCadenceOverrides', {}, [svc?.activeCrewId]);

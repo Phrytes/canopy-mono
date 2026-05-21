@@ -20,14 +20,14 @@ import { useTheme }   from '@canopy/react-native/theme';
 import { QrCodeView } from '@canopy/react-native/qr/view';
 
 import { useSkill } from '../lib/useSkill.js';
-import { useI18n }  from '../I18nProvider.js';
+import { useLocalisation }  from '../LocalisationProvider.js';
 import { useActiveRole } from '../lib/useActiveRole.js';
 import { encodeIssueBotTokenUrl } from '../lib/issueBotTokenUrl.js';
 
 export function IssueBotTokenScreen() {
   const route = useRoute();
   const { isAdmin } = useActiveRole();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const { chatId, webid } = route?.params ?? {};

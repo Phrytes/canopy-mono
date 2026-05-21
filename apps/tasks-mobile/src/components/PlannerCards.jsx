@@ -14,7 +14,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useTheme } from '@canopy/react-native/theme';
 import { useSkill } from '../lib/useSkill.js';
-import { useI18n }  from '../I18nProvider.js';
+import { useLocalisation }  from '../LocalisationProvider.js';
 
 const REASON_KEYS = {
   'overdue':                'mobile.planner.reason_overdue',
@@ -25,7 +25,7 @@ const REASON_KEYS = {
 
 export function PlannerCards() {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
 
   const suggest = useSkill('suggestSchedule');
   const accept  = useSkill('acceptSchedule');

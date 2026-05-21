@@ -53,11 +53,11 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, mountGroupSwitcher, mountNotifyBanner, initI18n, applyI18n, t, renderAttachmentThumbs, openAttachmentModal } from '/app.js';
+    import { callSkill, getActor, mountGroupSwitcher, mountNotifyBanner, initLocalisation, applyLocalisation, t, renderAttachmentThumbs, openAttachmentModal } from '/app.js';
     import { resizeImage, CHAT_PRESET } from '/lib/imageResize.js';
 
-    await initI18n();
-    applyI18n();
+    await initLocalisation();
+    applyLocalisation();
 
     document.getElementById('actor').textContent = await getActor();
     mountGroupSwitcher(document.getElementById('group-switcher'));

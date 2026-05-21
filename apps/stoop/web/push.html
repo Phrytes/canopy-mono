@@ -46,10 +46,10 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, mountGroupSwitcher, initI18n, applyI18n, t } from '/app.js';
+    import { callSkill, getActor, mountGroupSwitcher, initLocalisation, applyLocalisation, t } from '/app.js';
 
-    await initI18n();
-    applyI18n();
+    await initLocalisation();
+    applyLocalisation();
     document.title = t('push.page_title', 'Stoop — Push notifications');
 
     document.getElementById('actor').textContent = await getActor();

@@ -281,7 +281,7 @@ inbox copy, ...) live under per-screen namespaces (`mobile.*`,
 `contact.*`, `group.*`, `settings.*`, `signin.*`, `auth_callback.*`,
 `metadata_warning.*`, `skillmatch.*`, etc.).
 
-The locale resolver (`src/lib/i18n.js`) auto-detects the device
+The locale resolver (`src/lib/localisation.js`) auto-detects the device
 locale at boot via `Intl.DateTimeFormat().resolvedOptions().locale`
 — `nl` if Dutch, else `en`. Settings can override later (deferred
 to a follow-up).
@@ -372,7 +372,7 @@ apps/stoop-mobile/
 │   ├── components/            ← AvatarCircle, ChipRow, PostCard, ConfirmModal,
 │   │                              AttachmentModal, SkillPicker, AudiencePicker, QrCode
 │   └── lib/                   ← hooks + pure helpers
-│       ├── i18n.js, theme.js, navigation helpers
+│       ├── localisation.js, theme.js, navigation helpers
 │       ├── identityBootstrap.js, groupRegistry.js, agentBundle.js
 │       ├── useSkill.js, useSkillResult.js, useAgentEvent.js
 │       ├── useProfile.js, useMemberProfile.js, useSettings.js

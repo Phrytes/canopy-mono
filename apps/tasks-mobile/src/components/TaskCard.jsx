@@ -17,7 +17,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useTheme } from '@canopy/react-native/theme';
 import { describeTaskStatus } from '../lib/taskStatus.js';
-import { useI18n } from '../I18nProvider.js';
+import { useLocalisation } from '../LocalisationProvider.js';
 
 /**
  * @param {object} props
@@ -28,7 +28,7 @@ import { useI18n } from '../I18nProvider.js';
  */
 export function TaskCard({ task, onPress, resolveDisplayName }) {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const status = describeTaskStatus(task);
 
   const pillBg = COLORS[status.colorKey] ?? COLORS.textMuted;

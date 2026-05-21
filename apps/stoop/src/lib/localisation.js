@@ -29,7 +29,7 @@ let initialised = false;
  * @param {string} [opts.fallbackLng='en']
  * @returns {Promise<void>}
  */
-export async function initI18n({ lng = 'en', fallbackLng = 'en' } = {}) {
+export async function initLocalisation({ lng = 'en', fallbackLng = 'en' } = {}) {
   if (initialised) {
     if (i18next.language !== lng) await i18next.changeLanguage(lng);
     return;
@@ -69,7 +69,7 @@ export function t(key, params) {
  * @param {string} lang
  */
 export async function setLang(lang) {
-  if (!initialised) await initI18n({ lng: lang });
+  if (!initialised) await initLocalisation({ lng: lang });
   else              await i18next.changeLanguage(lang);
 }
 

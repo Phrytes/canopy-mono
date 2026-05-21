@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
-import { t }                                  from '../lib/i18n.js';
+import { t }                                  from '../lib/localisation.js';
 import { AvatarCircle }                       from './AvatarCircle.js';
 import { isTargetSelected, toggleTarget }     from '../lib/audience.js';
 

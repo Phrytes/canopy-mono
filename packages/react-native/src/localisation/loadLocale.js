@@ -1,21 +1,21 @@
 /**
  * loadLocale — RN-friendly locale resolver factory.
  *
- * Lifted from apps/stoop-mobile/src/lib/i18n.js 2026-05-09 (Phase 41.0
+ * Lifted from apps/stoop-mobile/src/lib/localisation.js 2026-05-09 (Phase 41.0
  * L7; Tasks-mobile is the second consumer). The original module
  * hardcoded Stoop's locale imports; the substrate factory takes the
  * locale bundles as args so each app provides its own.
  *
  * Apps consume:
  *
- *   import { loadLocale } from '@canopy/react-native/i18n';
+ *   import { loadLocale } from '@canopy/react-native/localisation';
  *   import en from '@canopy-app/<app>/locales/en';
  *   import nl from '@canopy-app/<app>/locales/nl';
- *   const i18n = loadLocale({ bundles: { en, nl }, defaultLang: 'en' });
+ *   const localisation = loadLocale({ bundles: { en, nl }, defaultLang: 'en' });
  *
- *   await i18n.initI18n();             // detects device locale
- *   i18n.t('mobile.scan_qr');          // dotted-path lookup; unwraps {text, doc}
- *   i18n.format('chat.unread', { count: 3 });
+ *   await localisation.initLocalisation();             // detects device locale
+ *   localisation.t('mobile.scan_qr');          // dotted-path lookup; unwraps {text, doc}
+ *   localisation.format('chat.unread', { count: 3 });
  *
  * The resolver is per-instance — apps can run two instances if they
  * need to (e.g. one for app strings, one for substrate strings).
@@ -27,7 +27,7 @@
  *   Map of language code → locale bundle (object tree of `{text, doc}` leaves).
  * @param {string} [args.defaultLang='en']
  * @returns {{
- *   initI18n:      (opts?: {lng?: string}) => Promise<void>,
+ *   initLocalisation:      (opts?: {lng?: string}) => Promise<void>,
  *   detectDeviceLang: () => string,
  *   setLang:       (lang: string) => Promise<void>,
  *   currentLang:   () => string,
@@ -75,7 +75,7 @@ export function loadLocale({ bundles, defaultLang = 'en' } = {}) {
     _bundle = next;
   }
 
-  async function initI18n({ lng } = {}) {
+  async function initLocalisation({ lng } = {}) {
     await setLang(lng ?? detectDeviceLang());
     _initialised = true;
   }
@@ -99,7 +99,7 @@ export function loadLocale({ bundles, defaultLang = 'en' } = {}) {
   }
 
   return {
-    initI18n,
+    initLocalisation,
     detectDeviceLang,
     setLang,
     currentLang,

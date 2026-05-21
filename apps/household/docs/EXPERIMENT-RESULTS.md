@@ -360,7 +360,7 @@ Steps, in dependency order:
    currently writes to a local JSON file.  Add a pod-backed variant
    that uses the existing `@canopy/pod-client` (multi-device
    safety).
-5. **Migrate user-facing language to i18n** (per the multilingual
+5. **Migrate user-facing language to localisation** (per the multilingual
    extension plan in `PROMPT-EXPERIMENTATION.md`).
 6. **Deprecate legacy** with a console warning when `HouseholdAgent`
    is constructed.  Document that `HouseholdAgentFreeform` is the

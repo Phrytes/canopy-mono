@@ -23,7 +23,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
-import { t }                                  from '../lib/i18n.js';
+import { t }                                  from '../lib/localisation.js';
 import { validateHandle, normaliseHandle, HANDLE_LIMITS }
                                               from '../lib/handle.js';
 import { formatLocationLine }                 from '../lib/profileSync.js';

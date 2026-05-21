@@ -108,7 +108,7 @@ describe('createOpBinding — labelFor', () => {
     expect(binding.labelFor('plainOp')).toBe('Do thing');
   });
 
-  it('returns t(labelKey, label) when an i18n function is passed AND labelKey exists', () => {
+  it('returns t(labelKey, label) when an localisation function is passed AND labelKey exists', () => {
     const t = (key, fallback) => `[${key}]`;  // dummy resolver
     expect(binding.labelFor('labelKeyOp', t)).toBe('[profile.sign_out_label]');
   });

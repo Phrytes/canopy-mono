@@ -25,14 +25,14 @@ import { useTheme }          from '@canopy/react-native/theme';
 import { TASKS_CLASSIFIERS } from '../lib/qrClassifiers.js';
 import { useService }        from '../ServiceContext.js';
 import { useSkill }          from '../lib/useSkill.js';
-import { useI18n }           from '../I18nProvider.js';
+import { useLocalisation }           from '../LocalisationProvider.js';
 import { ROUTES }            from '../navigation.js';
 
 export function OnboardScanScreen() {
   const nav   = useNavigation();
   const route = useRoute();
   const svc   = useService();
-  const { t }  = useI18n();
+  const { t }  = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const [permission, requestPermission] = useCameraPermissions();

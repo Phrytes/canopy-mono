@@ -23,7 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@canopy/react-native/theme';
 import { IssuerPicker } from '@canopy/oidc-session-rn/picker';
 import { useService }   from '../ServiceContext.js';
-import { useI18n }      from '../I18nProvider.js';
+import { useLocalisation }      from '../LocalisationProvider.js';
 import { useTasksAuth, TASKS_OIDC_DEFAULT_ISSUER } from '../auth/useTasksAuth.js';
 import { ROUTES } from '../navigation.js';
 
@@ -35,7 +35,7 @@ function _baseFromWebid(webid) {
 export function PodSignInScreen() {
   const nav = useNavigation();
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const [issuer, setIssuer]     = useState(TASKS_OIDC_DEFAULT_ISSUER);

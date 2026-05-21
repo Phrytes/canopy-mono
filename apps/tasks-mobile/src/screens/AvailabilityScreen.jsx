@@ -18,7 +18,7 @@ import { View, Text, Pressable, ScrollView, Switch } from 'react-native';
 import { useTheme } from '@canopy/react-native/theme';
 import { useService }     from '../ServiceContext.js';
 import { useSkill, useSkillResult } from '../lib/useSkill.js';
-import { useI18n }        from '../I18nProvider.js';
+import { useLocalisation }        from '../LocalisationProvider.js';
 import {
   STATE_CYCLE, STATE_COLOR, STATE_LABEL_KEY,
   nextState, buildGrid, isoWeekOf, DAYS, HALVES,
@@ -26,7 +26,7 @@ import {
 
 export function AvailabilityScreen() {
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const week = useMemo(() => isoWeekOf(), []);

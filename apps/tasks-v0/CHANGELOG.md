@@ -626,7 +626,7 @@ substrates were lifted by parallel work).
 ### V1 acceptance gates — partial
 
 - ⚠️ **Crew switcher UI** — not built. V1 ships `--crew <path>` per launch; switching crews means restart-with-different-config. Multi-crew-switcher screen is V1.5 work.
-- ⚠️ **Localisation back-fill** — i18n scaffolding shipped (`locales/{en,nl}.json` + `lib/i18n.js` + 60+ keyed strings + privacy notice in both langs). HTML pages still ship hardcoded English; `data-i18n` attribute back-fill is opportunistic per touched page.
+- ⚠️ **Localisation back-fill** — localisation scaffolding shipped (`locales/{en,nl}.json` + `lib/localisation.js` + 60+ keyed strings + privacy notice in both langs). HTML pages still ship hardcoded English; `data-i18n` attribute back-fill is opportunistic per touched page.
 - ⚠️ **Inrupt-migration** — undecided. Tasks V1 ships local-only-mode-by-default; pod sign-in surface is the same legacy bespoke UX Stoop / Folio currently use. Documented inheritance.
 
 ### V1 design + plan documents
@@ -697,11 +697,11 @@ substrates were lifted by parallel work).
 - ✅ Finalised this CHANGELOG with a top-level `0.2.0` entry + acceptance gates summary (passed / partial).
 - ✅ Final acceptance run: **176/176 tests passing** across 13 files; Stoop 429/429 untouched.
 
-### Phase 10 — i18n + archive + pause + privacy notice (2026-05-08)
+### Phase 10 — localisation + archive + pause + privacy notice (2026-05-08)
 
 - ✅ Added `i18next@^26` dependency.
 - ✅ New `locales/en.json` + `locales/nl.json` — every leaf carries the project-mandated `{text, doc}` shape (per `Project Files/conventions/localisation.md`); `doc` field is mandatory and explains where the string appears + tone. Coverage: common, nav, status pills, action labels, composer fields, crew labels, inbox event chips, error codes (~60 keys per language).
-- ✅ New `src/lib/i18n.js` — i18next wrapper. `unwrapLeaves()` transforms `{text, doc}` pairs to bare strings at init time so callers write `t('common.save')` (not `t('common.save.text')`). Falls back to the key when missing; supports `{{params}}` interpolation; `setLang(lng)` for runtime switching. Mirrors Stoop's wrapper pattern.
+- ✅ New `src/lib/localisation.js` — i18next wrapper. `unwrapLeaves()` transforms `{text, doc}` pairs to bare strings at init time so callers write `t('common.save')` (not `t('common.save.text')`). Falls back to the key when missing; supports `{{params}}` interpolation; `setLang(lng)` for runtime switching. Mirrors Stoop's wrapper pattern.
 - ✅ New `src/lib/privacyNotice.js` — `PRIVACY_NOTICE` (frozen) with 6 items per language. Inherits items 1-4 from Stoop's notice (encryption, relay surface, abuse-tracing, group governance) + 2 Tasks-specific items (calendar-stays-on-device + pod-data-sharing caution principles).
 - ✅ New `src/skills/crewControls.js`:
   - `pauseCrew()` / `unpauseCrew()` — admin/coord only. Sets `crew.paused = true|false`.
@@ -709,7 +709,7 @@ substrates were lifted by parallel work).
   - `getPrivacyNotice({lang?})` — returns the localised closed-beta notice; defaults to `en`.
 - ✅ `Crew.js`'s `_normaliseConfig` honours `paused` + `archived` flags (default `false`); the shared `crewMutator` is reused by both observability + crewControls; `liveCrew` is now declared before `createTasksAgent` so a `crewProvider` can flow into the base agent.
 - ✅ `addTask` skill (`src/skills/index.js`) accepts an optional `crewProvider` and gates: `crew.archived` → `{error: 'crew-archived'}`; `crew.paused` → `{error: 'crew-paused'}`; archive takes precedence over pause when both are set. V0 zero-config path (no `crewProvider`) never blocks.
-- ✅ Tests: 17 added in `test/phase10-lifecycle.test.js` covering i18n init/translate/interpolate/fallback, locale-file `{text, doc}` schema validation, en+nl key-set parity, privacy-notice shape + content, pause/unpause/archive/unarchive flow + addTask gate + admin-only authz + privacy-notice skill. Total now **176/176 passing**.
+- ✅ Tests: 17 added in `test/phase10-lifecycle.test.js` covering localisation init/translate/interpolate/fallback, locale-file `{text, doc}` schema validation, en+nl key-set parity, privacy-notice shape + content, pause/unpause/archive/unarchive flow + addTask gate + admin-only authz + privacy-notice skill. Total now **176/176 passing**.
 
 ### Phase 9 — observability stats + cadence config (2026-05-08)
 

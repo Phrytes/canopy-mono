@@ -47,10 +47,10 @@
   </main>
 
   <script type="module">
-    import { callSkill, initI18n, applyI18n, t } from '/app.js';
+    import { callSkill, initLocalisation, applyLocalisation, t } from '/app.js';
 
-    await initI18n();
-    applyI18n();
+    await initLocalisation();
+    applyLocalisation();
     document.title = t('auth_callback.page_title', 'Stoop — Completing pod sign-in');
 
     const out          = document.getElementById('result');

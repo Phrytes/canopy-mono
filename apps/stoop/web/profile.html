@@ -208,10 +208,10 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, mountGroupSwitcher, renderAvatar, initI18n, applyI18n, t, currentLang } from '/app.js';
+    import { callSkill, getActor, mountGroupSwitcher, renderAvatar, initLocalisation, applyLocalisation, t, currentLang } from '/app.js';
 
-    await initI18n();
-    applyI18n();
+    await initLocalisation();
+    applyLocalisation();
     document.title = t('profile.page_title', 'Stoop — My profile');
 
     document.getElementById('actor').textContent = await getActor();

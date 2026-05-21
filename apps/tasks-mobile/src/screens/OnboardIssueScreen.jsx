@@ -18,7 +18,7 @@ import { useTheme } from '@canopy/react-native/theme';
 import { QrCodeView } from '@canopy/react-native/qr/view';
 
 import { useSkill } from '../lib/useSkill.js';
-import { useI18n }  from '../I18nProvider.js';
+import { useLocalisation }  from '../LocalisationProvider.js';
 
 const TTL_SHORT = 60 * 60 * 1000;        // 1 hour
 const TTL_LONG  = 24 * 60 * 60 * 1000;   // 24 hours
@@ -45,7 +45,7 @@ export function encodeInviteUrl(token) {
 }
 
 export function OnboardIssueScreen() {
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const issue = useSkill('issueInvite');
