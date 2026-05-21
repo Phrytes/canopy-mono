@@ -180,6 +180,20 @@ export class Thread {
   }
 
   /**
+   * Return EVERY item id from the most-recent listing cached for the
+   * given opId.  Used by bulk operations like `/done all` — see
+   * `bulkOps.js`.  Returns null when no listing exists.
+   *
+   * @param {string} opId
+   * @returns {string[] | null}
+   */
+  resolveAllListed(opId) {
+    const listing = this._listings.get(opId);
+    if (!listing) return null;
+    return (listing.items ?? []).map((it) => it.id);
+  }
+
+  /**
    * Resolve a user-typed token against the LAST listing for the
    * given opId.  Returns the matching item's id if a unique match is
    * found, or null if no listing exists / no match / ambiguous.

@@ -23,6 +23,7 @@ export {
 export {
   EventRouter, createEventRouter, defaultFormatNotification,
 } from './events.js';
+export { runBulkOp, summariseBulkOp } from './bulkOps.js';
 export {
   initLocalisation, t, setLang, currentLang,
   detectDeviceLang, isInitialised,
