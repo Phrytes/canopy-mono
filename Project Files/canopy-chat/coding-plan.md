@@ -62,6 +62,72 @@ Every phase must pass:
   canary pattern (`conventions/page-skill-drift.md`-equivalent;
   see Slice G audit)
 
+### Substrate-reuse gate (added 2026-05-22 after v0.3.4 audit)
+
+For **every new module** in a sub-slice, before writing it, the
+implementer MUST ask:
+
+1. **Does a substrate in `packages/` already do this?**  Inventory
+   to consult (one-line purposes):
+     - `app-manifest`      — manifest schema + renderChat/renderWeb/renderMobile/renderSlash
+     - `manifest-host`     — runtime composition of N manifests
+     - `web-adapter`       — NavModel → DOM/web (sections, forms via schemaToFormFields, callSkill, applyPrefilledParams)
+     - `core`              — Agent, transports, identity, vault types, skill registry
+     - `agent-provisioning`— facade for production agent bring-up
+     - `agent-ui`          — out-of-process agent ↔ UI over localhost A2A
+     - `agent-registry`    — agent discovery
+     - `chat-agent`        — LLM-mediated chat (MessagingBridge + tool dispatcher)
+     - `chat-p2p`          — peer-to-peer chat envelopes
+     - `chat-nav`          — chat ⇄ side-panel B.1 navigation
+     - `circles`           — closed-group identity
+     - `identity-resolver` — cross-app contact resolution
+     - `interface-registry`— per-type item rendering (renderCompact / renderFull)
+     - `item-store`        — typed item CRUD with verb dispatch
+     - `item-types`        — canonical item-type definitions
+     - `llm-client`        — LLM provider client (Anthropic / others)
+     - `local-store`       — `CachingDataSource` + Settings (pod-syncable item cache)
+     - `notifier`          — outbound scheduled push + retry
+     - `notify-envelope`   — push-envelope wire shape
+     - `oidc-session` / `oidc-session-rn` — Solid OIDC auth
+     - `online-cadence`    — connectivity heartbeat
+     - `pod-client`        — Solid pod client (HTTP + IDs)
+     - `pod-onboarding`    — first-time pod provisioning
+     - `pod-routing`       — `mem://` → pod-URI routing
+     - `pod-search`        — pod content search
+     - `protocol`          — wire protocol (direction-only; refer to core)
+     - `pseudo-pod`        — pod-style replication layer
+     - `react-native`      — RN substrate (KeychainVault, createMeshAgent, localisation)
+     - `vault`             — `VaultMemory`/`VaultLocalStorage`/`VaultIndexedDB`/`VaultNodeFs`
+
+2. **If yes → compose it.**  Document the composition in the
+   commit message and in `apps/canopy-chat/README.md`'s
+   "Substrates this app composes" table.
+
+3. **If no — or the substrate's shape doesn't fit — write the new
+   module AND document in `apps/canopy-chat/README.md`'s
+   "Intentionally kept separate" table:**
+   - Which substrate is the closest match
+   - Why it doesn't fit (specific shape mismatch)
+   - When canopy-chat will revisit (phase X)
+
+This gate exists because v0.1–v0.3 shipped without it and
+`@canopy/manifest-host` (which had been waiting since SP-4) was
+reinvented in `src/manifestMerge.js`.  See v0.3.4 audit findings
+for the full retrospective.
+
+### Audit retrospective (2026-05-22)
+
+| Substrate | Audit verdict | Action |
+|---|---|---|
+| `manifest-host` | 🔴 REPLACE | v0.3.4 — `manifestMerge.js` now a thin shim over `createManifestHost` |
+| `web-adapter` | 🟡 DEFER | Revisit in v0.4+ when manifest schema is next touched |
+| `notifier` | 🟢 KEEP | Different concern (outbound vs. inbound); composed in v0.5+ background notifications |
+| `local-store` | 🟢 KEEP until v0.6 | Pod-sync revisit |
+| `chat-agent` | 🟢 KEEP | Optional compose in v0.5+ for LLM-conversation path |
+| `chat-p2p` | ⚪ IRRELEVANT (v0.3) | Compose in v0.5 J7 embed work |
+| `agent-ui` | 🟢 KEEP | In-process model is intentional per OQ-1.A |
+| `agent-provisioning` | 🟢 KEEP | Optional upgrade once OIDC handoff (v0.6) is real |
+
 ---
 
 ## Phase v0.1 — bare-minimum chat shell (static web app)
