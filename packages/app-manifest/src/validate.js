@@ -31,7 +31,14 @@ export const VERBS = Object.freeze([
 ]);
 
 const VERB_SET   = new Set(VERBS);
-const PARAM_KINDS = new Set(['string', 'number', 'boolean', 'enum']);
+// v0.3.2 (canopy-chat) extended the form generator with 'date' +
+// 'webid' input kinds; Q23 reserved 'file' + 'image' for the
+// upload path.  All four pass through the validator forward-additively
+// (older manifests using just string/number/boolean/enum still work).
+const PARAM_KINDS = new Set([
+  'string', 'number', 'boolean', 'enum',
+  'date', 'webid', 'file', 'image',
+]);
 
 /**
  * Q28 (canopy-chat v0.1, 2026-05-21) — frozen allow-list of chat
