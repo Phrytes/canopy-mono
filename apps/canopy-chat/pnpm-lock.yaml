@@ -14,6 +14,9 @@ importers:
       '@canopy/core':
         specifier: file:../../packages/core
         version: file:../../packages/core
+      '@canopy/manifest-host':
+        specifier: file:../../packages/manifest-host
+        version: file:../../packages/manifest-host
       '@canopy/vault':
         specifier: file:../../packages/vault
         version: file:../../packages/vault
@@ -55,6 +58,9 @@ packages:
 
   '@canopy/item-types@file:../../packages/item-types':
     resolution: {directory: ../../packages/item-types, type: directory}
+
+  '@canopy/manifest-host@file:../../packages/manifest-host':
+    resolution: {directory: ../../packages/manifest-host, type: directory}
 
   '@canopy/oidc-session@file:../../packages/oidc-session':
     resolution: {directory: ../../packages/oidc-session, type: directory}
@@ -931,6 +937,10 @@ snapshots:
     dependencies:
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
+
+  '@canopy/manifest-host@file:../../packages/manifest-host':
+    dependencies:
+      '@canopy/app-manifest': file:../../packages/app-manifest
 
   '@canopy/oidc-session@file:../../packages/oidc-session':
     dependencies:

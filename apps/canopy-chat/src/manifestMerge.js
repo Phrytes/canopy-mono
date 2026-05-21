@@ -1,25 +1,31 @@
 /**
- * canopy-chat — manifest merge.
+ * canopy-chat — manifest merge (thin shim over @canopy/manifest-host).
  *
- * At boot, the chat shell loads multiple apps' manifests and merges
- * them into a single catalog the parser + router consume.  v0.1
- * builds the minimum the parser needs: a flat `commandMenu` from
- * all manifests' slash-declaring ops + an `opsById` map that records
- * each op's owning app (for the router's dispatch step).
+ * The merge logic lives in `@canopy/manifest-host` (SP-4 substrate).
+ * This file is a canopy-chat-shaped projection over that substrate:
  *
- * Op-prefix-on-collision (per v0.4 design — flat names when unique,
- * `<app>/<op>` when ≥2 apps declare the same id) is NOT in scope for
- * v0.1; v0.1 ships flat names + warns on collision.  v0.4 lands the
- * prefix logic.
+ *   - `host.compose()` produces a generic composed view with
+ *     `appId.opId` namespacing + structured `collisions` data.
+ *   - canopy-chat's parser + router + dispatch consume a SHAPE with
+ *     `commandMenu: [{command, opId, appOrigin}]`, `opsById:
+ *     Map<opId, {op, appOrigin}>`, `replyShapeFor(opId)`, and
+ *     `warnings`.  This shim translates the substrate's output into
+ *     that shape so the existing consumers don't churn.
  *
- * Q28 reply-shape lookup is exposed per-app via the underlying
- * `renderChat.replyShapeFor`, surfaced through a single
- * `replyShapeFor(opId)` on the merged catalog.
+ * Architectural choice (per substrate-reuse audit 2026-05-22, see
+ * `Project Files/canopy-chat/coding-plan.md` § Substrate-reuse gate):
+ *   - Use the substrate underneath (composition + collision detection
+ *     are its job; we don't reinvent).
+ *   - Keep the canopy-chat-shaped projection (`opsById`,
+ *     `replyShapeFor`) because manifest-host's output is generic;
+ *     canopy-chat's consumers expect richer per-op lookups.
  *
- * Phase v0.1 sub-slice 1.5 per `/Project Files/canopy-chat/coding-plan.md`.
+ * Phase v0.1 sub-slice 1.5 (original) → v0.3.4 substrate-reuse
+ * refactor 2026-05-22.
  */
 
-import { renderChat, validateManifest } from '@canopy/app-manifest';
+import { validateManifest }   from '@canopy/app-manifest';
+import { createManifestHost } from '@canopy/manifest-host';
 
 /**
  * @typedef {object} MergedCatalog
@@ -31,12 +37,8 @@ import { renderChat, validateManifest } from '@canopy/app-manifest';
  */
 
 /**
- * Merge an array of `{manifest, callSkill}` pairs into one catalog.
- *
- * For v0.1 we only need read-only manifest information (commandMenu,
- * opsById, replyShapeFor).  The `callSkill` plumbing lives on the
- * pairs so a future phase can wire dispatch through the merged
- * catalog without changing this API.
+ * Merge an array of `{manifest, callSkill?}` pairs into a canopy-chat
+ * catalog.  Composes `@canopy/manifest-host` underneath.
  *
  * @param {Array<{ manifest: object, callSkill?: Function }>} sources
  * @returns {MergedCatalog}
@@ -46,12 +48,14 @@ export function mergeManifests(sources) {
     throw new TypeError('mergeManifests: sources must be an array');
   }
 
+  const host        = createManifestHost();
   const warnings    = [];
-  const commandMenu = [];
-  const opsById     = new Map();        // opId → {op, appOrigin}
-  const replyShape  = new Map();        // opId → declared chat reply shape
+  const opsById     = new Map();          // canopy-chat-shaped (unprefixed)
+  const replyShape  = new Map();
   const appOrigins  = [];
-  const commandSeen = new Map();        // command → first appOrigin that declared it
+  /** @type {Map<string, string>} command → first-mounting appId */
+  const commandOwner = new Map();
+  const commandMenu = [];                 // canopy-chat-shaped
 
   for (const source of sources) {
     const m = source?.manifest;
@@ -60,8 +64,9 @@ export function mergeManifests(sources) {
       continue;
     }
 
-    // Forward-fail loud on broken manifests — the chat shell can't
-    // safely dispatch against an invalid catalog.  Caller may catch.
+    // Forward-fail loud on broken manifests with the legacy error
+    // message canopy-chat callers already match against in tests.
+    // manifest-host validates again internally; idempotent.
     const { ok, errors } = validateManifest(m);
     if (!ok) {
       throw new Error(
@@ -69,47 +74,54 @@ export function mergeManifests(sources) {
       );
     }
 
-    appOrigins.push(m.app);
-
-    // Build per-app chat-side projection (v0.1 only needs commandMenu
-    // + replyShapeFor; toolCatalog/handlers are LLM-shaped and land
-    // in v0.8).  renderChat needs a skillRegistry stub so its strict
-    // mode is happy; we don't actually invoke it during merge.
+    // Skill-registry stub: renderChat runs inside host.mount() and
+    // requires every operation to have an entry.  Real dispatch
+    // happens via canopy-chat's own callSkill in main.js — not via
+    // the stub.
     const stub = {};
     for (const op of m.operations ?? []) {
       stub[op.id] = async () => ({ replies: [], stateUpdates: [] });
     }
-    const projection = renderChat(m, {
-      skillRegistry: stub,
-      toSkillCtx:    (c) => c,
-    });
 
-    for (const entry of projection.commandMenu ?? []) {
-      const owned = commandSeen.get(entry.command);
-      if (owned && owned !== m.app) {
-        // v0.1 — flat names; warn on collision.  v0.4 will replace
-        // this with prefix-on-collision logic.
+    let mounted;
+    try {
+      mounted = host.mount(m.app, m, {
+        skillRegistry: stub,
+        toSkillCtx:    (c) => c,
+      });
+    } catch (err) {
+      // host.mount throws on duplicate appId; surface as a warning
+      // matching the legacy "op-id collision"-style message.
+      if (/already mounted/.test(String(err?.message))) {
         warnings.push(
-          `slash collision: "${entry.command}" declared by both "${owned}" and "${m.app}"; v0.1 keeps the first.`,
+          `app collision: "${m.app}" mounted twice; v0.1 keeps the first.`,
         );
         continue;
       }
-      commandSeen.set(entry.command, m.app);
-      // Map command back to opId via the manifest (renderChat's
-      // commandMenu carries `command` + `description` but not `opId`).
-      // Re-walk operations to find the owning op.
-      const op = (m.operations ?? []).find(
-        (o) => o?.surfaces?.slash?.command === entry.command,
-      );
-      if (!op) continue;          // defensive: should never happen post-validate
-      commandMenu.push({
-        command:   entry.command,
-        opId:      op.id,
-        appOrigin: m.app,
-      });
+      throw err;
     }
 
+    appOrigins.push(m.app);
+
+    // Op-level merge: canopy-chat tracks each op's source app so
+    // dispatch can route callSkill against the right agent.
     for (const op of m.operations ?? []) {
+      // commandMenu: include only on first-mount-wins basis (collision
+      // policy decided here; substrate would have reported the data
+      // via compose().collisions, but we apply first-wins eagerly).
+      if (op?.surfaces?.slash?.command) {
+        const command = op.surfaces.slash.command;
+        const owner   = commandOwner.get(command);
+        if (owner && owner !== m.app) {
+          warnings.push(
+            `slash collision: "${command}" declared by both "${owner}" and "${m.app}"; v0.1 keeps the first.`,
+          );
+        } else {
+          commandOwner.set(command, m.app);
+          commandMenu.push({ command, opId: op.id, appOrigin: m.app });
+        }
+      }
+
       if (opsById.has(op.id)) {
         warnings.push(
           `op-id collision: "${op.id}" declared by both "${opsById.get(op.id).appOrigin}" and "${m.app}"; v0.1 keeps the first.`,
@@ -117,11 +129,10 @@ export function mergeManifests(sources) {
         continue;
       }
       opsById.set(op.id, { op, appOrigin: m.app });
-    }
 
-    // Q28 reply shapes — fold per-app into the merged map.
-    for (const op of m.operations ?? []) {
-      const shape = projection.replyShapeFor?.(op.id);
+      // Q28 reply-shape lookup comes from the substrate's renderChat
+      // output (mounted.rendered.replyShapeFor).
+      const shape = mounted.rendered.replyShapeFor?.(op.id);
       if (shape) replyShape.set(op.id, shape);
     }
   }

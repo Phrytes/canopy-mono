@@ -33,10 +33,11 @@
     "preview":    "vite preview"
   },
   "dependencies": {
-    "@canopy/app-manifest": "file:../../packages/app-manifest",
-    "@canopy/core":         "file:../../packages/core",
-    "@canopy/vault":        "file:../../packages/vault",
-    "i18next":              "^23.15.0"
+    "@canopy/app-manifest":  "file:../../packages/app-manifest",
+    "@canopy/core":          "file:../../packages/core",
+    "@canopy/manifest-host": "file:../../packages/manifest-host",
+    "@canopy/vault":         "file:../../packages/vault",
+    "i18next":               "^23.15.0"
   },
   "devDependencies": {
     "vitest":          "^3.0.0",
