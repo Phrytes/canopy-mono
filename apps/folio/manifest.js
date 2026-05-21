@@ -61,6 +61,10 @@ export const folioManifest = {
     {
       id:        'deleteFromPod',
       verb:      'remove',
+      // Q32 (canopy-chat v0.4, 2026-05-22) — pod-side delete is HTTPS;
+      // works in browser.  Per OQ-1.A: canopy-chat exposes this in
+      // its browser bundle.
+      runtime:   'browser',
       appliesTo: { type: 'file' },
       params: [
         { name: 'relPath', kind: 'string', required: true },
@@ -81,6 +85,9 @@ export const folioManifest = {
     {
       id:        'deleteLocally',
       verb:      'remove',
+      // Q32 — local-fs delete needs Node; canopy-chat in browser
+      // filters this out per OQ-1.A.
+      runtime:   'node',
       appliesTo: { type: 'file' },
       params: [
         { name: 'relPath', kind: 'string', required: true },
@@ -103,6 +110,9 @@ export const folioManifest = {
       verb:   'sync',  // F-SP1-e: app-local verb.  Distinct from runOnce
                        // (a normal bi-directional sync) — forceRepush
                        // overwrites pod versions wholesale.
+      // Q32 — sync touches local fs (reads files to overwrite pod);
+      // node-only.  Sidecar-mode canopy-chat re-includes.
+      runtime: 'node',
       params: [],
       // V0.2 Q8 wildcard — folder-wide op, not file-specific.  The
       // wildcard surfaces it as a section-header CTA on every view
@@ -128,6 +138,8 @@ export const folioManifest = {
     {
       id:        'syncOnce',
       verb:      'sync',
+      // Q32 — bi-directional fs ↔ pod sync; needs Node.
+      runtime:   'node',
       params:    [],
       // V0.2 Q8 wildcard — folder-wide; surfaces on every view's header.
       appliesTo: { type: '*' },
@@ -144,6 +156,8 @@ export const folioManifest = {
     {
       id:        'watchStart',
       verb:      'watch',
+      // Q32 — local-fs watcher (chokidar); Node-only.
+      runtime:   'node',
       params:    [],
       appliesTo: { type: '*' },
       surfaces: {
@@ -160,6 +174,8 @@ export const folioManifest = {
       id:        'watchStop',
       verb:      'watch',  // F-SP1-e: same verb as watchStart, opposite
                            // semantics — distinguished by skill id.
+      // Q32 — stops the local-fs watcher; Node-only.
+      runtime:   'node',
       params:    [],
       appliesTo: { type: '*' },
       surfaces: {
@@ -175,6 +191,9 @@ export const folioManifest = {
     {
       id:        'verifyPodState',
       verb:      'read',
+      // Q32 — HEAD-equivalent pod check + hash compare; HTTPS only,
+      // browser-doable.
+      runtime:   'browser',
       appliesTo: { type: 'file' },
       params: [
         { name: 'relPath', kind: 'string', required: true },
