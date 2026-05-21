@@ -17,9 +17,10 @@
 
 import {
   parseInput, mergeManifests, resolveDispatch, runDispatch,
-  renderReply, createDefaultThreadStore, createEventRouter,
+  renderReply, ThreadStore, createDefaultThreadStore, createEventRouter,
   initLocalisation, t, setLang, detectDeviceLang, currentLang,
   describeFilter, canopyChatManifest,
+  IndexedDBStore, attachPersistence,
 } from '../src/index.js';
 import { renderStream }              from '../src/web/domAdapter.js';
 import { renderSidebar }             from '../src/web/threadSidebar.js';
@@ -49,14 +50,46 @@ const manifestsByOrigin = {
   'household':   agent.manifest,
 };
 
-const store  = createDefaultThreadStore();
-// Seed an extra "Household alerts" thread for the J8 demo.
-store.createThread({
-  id:     'household-alerts',
-  name:   'Household alerts',
-  filter: { apps: ['household'], eventTypes: ['item-changed', 'notification'] },
-  permissions: { allowCommands: true },
-});
+// v0.2.4 — IndexedDB persistence.  Load existing threads on boot;
+// seed defaults on fresh install; subscribe so future changes
+// persist automatically.
+const idb = new IndexedDBStore();
+let store;
+const persisted = await idb.loadAll();
+if (persisted.length > 0) {
+  // Hydrate from disk.
+  store = new ThreadStore();
+  for (const t0 of persisted) {
+    // ThreadStore.createThread builds its own Thread; we want THE
+    // persisted instance.  Insert directly via a small bypass: use
+    // the same id + filter + permissions so the public API stays
+    // honest, then graft the messages + listings back on.
+    const created = store.createThread({
+      id:          t0.id,
+      name:        t0.name,
+      filter:      t0.filter,
+      permissions: t0.permissions,
+    });
+    created.createdAt = t0.createdAt;
+    created.messages  = t0.messages;
+    for (const [opId, listing] of t0._listings) {
+      created._listings.set(opId, listing);
+    }
+  }
+} else {
+  store = createDefaultThreadStore();
+  // Seed an extra "Household alerts" thread for the J8 demo (only
+  // on fresh install — existing users keep their layout).
+  store.createThread({
+    id:     'household-alerts',
+    name:   'Household alerts',
+    filter: { apps: ['household'], eventTypes: ['item-changed', 'notification'] },
+    permissions: { allowCommands: true },
+  });
+}
+
+// Persist future changes asynchronously.
+attachPersistence({ threadStore: store, idb });
 
 const router = createEventRouter({ threadStore: store });
 
