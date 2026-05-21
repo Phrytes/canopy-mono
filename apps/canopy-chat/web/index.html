@@ -10,8 +10,8 @@
     <header>
       <h1>canopy-chat</h1>
       <p class="hint">
-        v0.1 demo · mock household agent
-        · try <code>/mine</code> · <code>/done dishwasher</code> · or just type
+        v0.2 demo · real <code>@canopy/core</code> agent · multi-thread
+        · try <code>/help</code>
       </p>
       <p class="lang-toggle">
         Language:
@@ -19,14 +19,23 @@
         <button type="button" id="lang-nl" class="lang-btn">NL</button>
       </p>
     </header>
-    <main id="messages" aria-live="polite"></main>
-    <form id="input-form" autocomplete="off">
-      <input id="chat-input"
-             type="text"
-             aria-label="Chat input"
-             placeholder="Type a /command or text…">
-      <button type="submit">Send</button>
-    </form>
+    <div class="cc-workspace">
+      <aside id="sidebar" class="cc-sidebar" aria-label="Threads"></aside>
+      <section class="cc-main">
+        <header class="cc-thread-header">
+          <h2 id="active-thread-name"></h2>
+          <span id="active-thread-filter" class="cc-thread-header-filter"></span>
+        </header>
+        <main id="messages" aria-live="polite"></main>
+        <form id="input-form" autocomplete="off">
+          <input id="chat-input"
+                 type="text"
+                 aria-label="Chat input"
+                 placeholder="Type a /command or text…">
+          <button type="submit">Send</button>
+        </form>
+      </section>
+    </div>
     <script type="module" src="./main.js"></script>
   </body>
 </html>
