@@ -115,7 +115,7 @@ describe('mergeManifests — error handling', () => {
   });
 });
 
-describe('mergeManifests — collision handling (v0.1 flat-only)', () => {
+describe('mergeManifests — collision handling', () => {
   it('warns on slash collision but keeps the first declarer', () => {
     const competing = {
       app:       'compet',
@@ -134,22 +134,108 @@ describe('mergeManifests — collision handling (v0.1 flat-only)', () => {
     expect(cat.warnings.some((w) => /slash collision.*\/done/.test(w))).toBe(true);
   });
 
-  it('warns on op-id collision but keeps the first declarer', () => {
+  it('v0.4 op-id collision policy: prefix-on-collision', () => {
+    // Two apps declare the same op id; the first keeps the bare key,
+    // the second is exposed as '<app>/<id>'.
     const competingOpId = {
       app:       'compet',
       itemTypes: ['task'],
       operations: [{
-        id:       'markComplete',   // collides
+        id:       'markComplete',   // collides with household's
         verb:     'complete',
         params:   [],
         surfaces: { slash: { command: '/competcomplete' } },
       }],
+      views: [{ id: 'v', title: 'V', type: 'task' }],
     };
     const cat = mergeManifests([
       { manifest: householdLite },
       { manifest: competingOpId },
     ]);
+    // Bare key → household (first declarer).
     expect(cat.opsById.get('markComplete').appOrigin).toBe('household');
-    expect(cat.warnings.some((w) => /op-id collision.*markComplete/.test(w))).toBe(true);
+    // Prefixed key → compet (second declarer).
+    expect(cat.opsById.get('compet/markComplete').appOrigin).toBe('compet');
+    expect(cat.warnings.some((w) => /op-id collision.*markComplete.*compet\/markComplete/.test(w))).toBe(true);
+  });
+
+  it("unique op-ids stay BARE (no prefix churn for solo apps)", () => {
+    const cat = mergeManifests([
+      { manifest: householdLite },
+      { manifest: tasksLite },
+    ]);
+    // No collisions — every key is bare.
+    for (const key of cat.opsById.keys()) {
+      expect(key).not.toMatch(/\//);
+    }
+    expect(cat.opsById.has('markComplete')).toBe(true);
+    expect(cat.opsById.has('addTask')).toBe(true);
+  });
+});
+
+describe('mergeManifests — Q32 runtime filter (v0.4)', () => {
+  const folioLite = {
+    app:       'folio',
+    itemTypes: ['note'],
+    operations: [
+      { id: 'readNote',  verb: 'list', params: [], runtime: 'browser',
+        surfaces: { slash: { command: '/readnote' } } },
+      { id: 'syncOnce',  verb: 'add',  params: [], runtime: 'node',
+        surfaces: { slash: { command: '/sync' } } },
+      { id: 'shareNote', verb: 'add',  params: [], runtime: 'both',
+        surfaces: { slash: { command: '/share' } } },
+      { id: 'unmarked',  verb: 'list', params: [],   // absent → 'both'
+        surfaces: { slash: { command: '/x' } } },
+    ],
+    views: [{ id: 'notes', title: 'Notes', type: 'note' }],
+  };
+
+  it("default (no opts) → no filtering (runtime: 'both')", () => {
+    const cat = mergeManifests([{ manifest: folioLite }]);
+    const ids = [...cat.opsById.keys()].sort();
+    expect(ids).toEqual(['readNote', 'shareNote', 'syncOnce', 'unmarked']);
+  });
+
+  it("runtime: 'browser' filters out 'node' ops", () => {
+    const cat = mergeManifests([{ manifest: folioLite }], { runtime: 'browser' });
+    const ids = [...cat.opsById.keys()].sort();
+    expect(ids).toEqual(['readNote', 'shareNote', 'unmarked']);
+    // syncOnce (node) is gone; also from commandMenu
+    expect(cat.commandMenu.find((e) => e.command === '/sync')).toBeUndefined();
+  });
+
+  it("runtime: 'node' filters out 'browser' ops", () => {
+    const cat = mergeManifests([{ manifest: folioLite }], { runtime: 'node' });
+    const ids = [...cat.opsById.keys()].sort();
+    expect(ids).toEqual(['shareNote', 'syncOnce', 'unmarked']);
+    expect(cat.commandMenu.find((e) => e.command === '/readnote')).toBeUndefined();
+  });
+
+  it("absent op.runtime defaults to 'both' (works in either filter)", () => {
+    const browser = mergeManifests([{ manifest: folioLite }], { runtime: 'browser' });
+    const node    = mergeManifests([{ manifest: folioLite }], { runtime: 'node'    });
+    expect(browser.opsById.has('unmarked')).toBe(true);
+    expect(node.opsById.has('unmarked')).toBe(true);
+  });
+});
+
+describe('mergeManifests — Q31 followUpsFor (v0.4)', () => {
+  it("exposes per-op follow-ups via the projector", () => {
+    const m = {
+      app: 'household', itemTypes: ['member'],
+      operations: [{
+        id: 'addMember', verb: 'add', params: [],
+        surfaces: {
+          slash: { command: '/addmember' },
+          chat:  { followUps: [{ opId: 'shareFolder', prefilledArgs: { for: 'new' } }] },
+        },
+      }],
+      views: [{ id: 'v', title: 'V', type: 'member' }],
+    };
+    const cat = mergeManifests([{ manifest: m }]);
+    expect(cat.followUpsFor('addMember')).toEqual([
+      { opId: 'shareFolder', prefilledArgs: { for: 'new' } },
+    ]);
+    expect(cat.followUpsFor('nonexistent')).toBeUndefined();
   });
 });

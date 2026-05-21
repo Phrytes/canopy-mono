@@ -145,9 +145,31 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const replyShapeFor = (opId) => replyShapeByOp.get(opId);
 
+  // (f) Q31 follow-up hints (canopy-chat v0.4, 2026-05-22).  After a
+  // successful dispatch the chat shell looks up suggested next-actions
+  // here; cross-app chains live in canopy-chat's static registry.
+  const followUpsByOp = new Map();
+  for (const op of ops) {
+    const declared = op?.surfaces?.chat?.followUps;
+    if (Array.isArray(declared) && declared.length > 0) {
+      followUpsByOp.set(op.id, declared);
+    }
+  }
+  const followUpsFor = (opId) => followUpsByOp.get(opId);
+
+  // (g) Q32 runtime lookup (canopy-chat v0.4, 2026-05-22).  Absent
+  // value → 'both' (works anywhere); explicit value passes through.
+  // Consumers (manifest-host wrappers, canopy-chat's merge) filter
+  // ops by runtime as appropriate.
+  const runtimeByOp = new Map();
+  for (const op of ops) {
+    runtimeByOp.set(op.id, op?.runtime ?? 'both');
+  }
+  const runtimeFor = (opId) => runtimeByOp.get(opId) ?? 'both';
+
   return {
     toolCatalog, toolHandlers, systemPrompt, commandMenu,
-    inlineKeyboardFor, replyShapeFor,
+    inlineKeyboardFor, replyShapeFor, followUpsFor, runtimeFor,
   };
 }
 
