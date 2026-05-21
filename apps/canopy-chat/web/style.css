@@ -296,6 +296,134 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   font-style: italic;
 }
 
+/* ──── record / mini-page panels (v0.3.1) ─────────────── */
+.cc-record, .cc-mini-page {
+  max-width: 80%;
+  background: var(--shell-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  align-self: flex-start;
+  overflow: hidden;
+}
+.cc-mini-page { max-width: 92%; }  /* mini-page is wider than record */
+
+.cc-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.7rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+.cc-panel-close {
+  background: transparent;
+  border: none;
+  color: var(--fg-mute);
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+}
+.cc-panel-close:hover { color: #c14545; }
+.cc-panel-close-bare {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.3rem;
+}
+.cc-record, .cc-mini-page { position: relative; }
+
+.cc-panel-fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0.7rem;
+  row-gap: 0.25rem;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+}
+.cc-field-name {
+  color: var(--fg-mute);
+  font-size: 0.85rem;
+  margin: 0;
+}
+.cc-field-value {
+  margin: 0;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+.cc-field-boolean::before { content: ''; }
+.cc-panel-empty {
+  padding: 0.6rem 0.8rem;
+  color: var(--fg-mute);
+  font-style: italic;
+}
+.cc-panel-collapsed {
+  padding: 0.4rem 0.7rem;
+  color: var(--fg-mute);
+  font-style: italic;
+  background: var(--bg);
+}
+
+/* ──── form bubbles (v0.3.0) ────────────────────────────── */
+.cc-form {
+  align-self: flex-start;
+  max-width: 80%;
+  background: var(--shell-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+}
+.cc-form-mini-page { max-width: 92%; }
+.cc-form-heading {
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+.cc-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.cc-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+.cc-form-field .cc-field-label {
+  color: var(--fg-mute);
+}
+.cc-form-field input[type="text"],
+.cc-form-field input[type="number"],
+.cc-form-field input[type="date"],
+.cc-form-field select {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+.cc-form-submit {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.cc-form-cancel {
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.cc-field-hint {
+  font-size: 0.75rem;
+  color: var(--fg-mute);
+}
+
 /* input form */
 form#input-form {
   display: flex;
