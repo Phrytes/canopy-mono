@@ -23,6 +23,9 @@ export {
 export {
   EventRouter, createEventRouter, defaultFormatNotification,
 } from './events.js';
+export { runBulkOp, summariseBulkOp } from './bulkOps.js';
+export { IndexedDBStore, attachPersistence } from './storage/local.js';
+export { PodSyncStore }                      from './storage/podSync.js';
 export {
   initLocalisation, t, setLang, currentLang,
   detectDeviceLang, isInitialised,

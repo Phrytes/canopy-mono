@@ -33,5 +33,19 @@
       "text": "Nog geen commando's beschikbaar.",
       "doc": "Shown when /help fires before any app manifests have loaded."
     }
+  },
+  "sidebar": {
+    "heading":    { "text": "Threads",        "doc": "Sidebar heading above the thread list." },
+    "new_thread": { "text": "+ Nieuwe thread", "doc": "Button that toggles the new-thread form." },
+    "delete":     { "text": "Verwijderen",    "doc": "Per-thread delete button tooltip." },
+    "form_name":  { "text": "Naam",           "doc": "New-thread form: name field label." },
+    "form_apps":  { "text": "Apps (komma-gescheiden, * voor alle)",
+                    "doc": "New-thread form: apps filter field label." },
+    "form_event_types": { "text": "Event-types (komma-gescheiden)",
+                          "doc": "New-thread form: eventTypes filter field label." },
+    "form_allow_commands": { "text": "Commando's toegestaan",
+                             "doc": "New-thread form: allowCommands checkbox label." },
+    "form_create": { "text": "Aanmaken",      "doc": "New-thread form: submit button." },
+    "form_cancel": { "text": "Annuleren",     "doc": "New-thread form: cancel button." }
   }
 }

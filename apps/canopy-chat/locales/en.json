@@ -33,5 +33,19 @@
       "text": "No commands available yet.",
       "doc": "Shown when /help fires before any app manifests have loaded."
     }
+  },
+  "sidebar": {
+    "heading":    { "text": "Threads",      "doc": "Sidebar heading above the thread list." },
+    "new_thread": { "text": "+ New thread", "doc": "Button that toggles the new-thread form." },
+    "delete":     { "text": "Delete",        "doc": "Per-thread delete button tooltip." },
+    "form_name":  { "text": "Name",         "doc": "New-thread form: name field label." },
+    "form_apps":  { "text": "Apps (comma-separated, * for all)",
+                    "doc": "New-thread form: apps filter field label." },
+    "form_event_types": { "text": "Event types (comma-separated)",
+                          "doc": "New-thread form: eventTypes filter field label." },
+    "form_allow_commands": { "text": "Allow commands",
+                             "doc": "New-thread form: allowCommands checkbox label." },
+    "form_create": { "text": "Create",      "doc": "New-thread form: submit button." },
+    "form_cancel": { "text": "Cancel",      "doc": "New-thread form: cancel button." }
   }
 }
