@@ -21,6 +21,9 @@ export {
   matchesFilter, normaliseFilter, isWildcardFilter, describeFilter,
 } from './filter.js';
 export {
+  EventRouter, createEventRouter, defaultFormatNotification,
+} from './events.js';
+export {
   initLocalisation, t, setLang, currentLang,
   detectDeviceLang, isInitialised,
 } from './localisation.js';
