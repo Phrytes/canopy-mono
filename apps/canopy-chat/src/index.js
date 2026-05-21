@@ -25,6 +25,9 @@ export {
 } from './events.js';
 export { runBulkOp, summariseBulkOp } from './bulkOps.js';
 export {
+  collectFollowUps, createFollowUpResolver, DEFAULT_CROSS_APP_CHAINS,
+} from './followUps.js';
+export {
   buildFormSpec, pickStrategy, validateAndCoerce,
 } from './forms/buildFormSpec.js';
 export { parseRelativeDate } from './forms/parseDate.js';

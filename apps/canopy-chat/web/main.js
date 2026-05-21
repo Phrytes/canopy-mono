@@ -21,6 +21,7 @@ import {
   initLocalisation, t, setLang, detectDeviceLang, currentLang,
   describeFilter, canopyChatManifest,
   IndexedDBStore, attachPersistence,
+  collectFollowUps,
 } from '../src/index.js';
 import { buildFormSpec, validateAndCoerce } from '../src/forms/buildFormSpec.js';
 import { renderStream }              from '../src/web/domAdapter.js';
@@ -198,6 +199,24 @@ function makeCtx() {
       if (!t0) return;
       t0.closeMessage(messageId);
       renderActiveStream();
+    },
+    onFollowUp: async (entry) => {
+      // v0.4 — clicking a follow-up button dispatches it as if the
+      // user had typed the slash with the prefilled args.
+      const t0 = activeThread();
+      if (!t0) return;
+      const parse = {
+        kind: 'slash', opId: entry.opId, args: entry.prefilledArgs ?? {},
+        threadId: t0.id, command: '(followup)', body: '',
+      };
+      const route = resolveDispatch(parse, catalog);
+      // If args are missing, the form gate kicks in — that's correct UX.
+      if (route.kind === 'needsForm') {
+        await handleUserText(`/${entry.opId}`, t0);
+        return;
+      }
+      if (route.kind !== 'ready') return;
+      await dispatchAndRender(route, t0);
     },
   };
 }
@@ -391,6 +410,14 @@ async function handleUserText(text, thread) {
 
 async function dispatchAndRender(route, thread) {
   const reply = await runDispatch(route, callSkill);
+  // v0.4 — when dispatch succeeded, look up follow-up suggestions
+  // (per-op Q31 hints from the catalog + cross-app chains from the
+  // static registry) and attach them to the reply so the renderer
+  // surfaces them as buttons under the text.
+  if (!reply.error) {
+    const followUps = collectFollowUps(route.opId, route.appOrigin, reply.payload, catalog);
+    if (followUps.length > 0) reply.followUps = followUps;
+  }
   const rendered = renderReply(reply, {
     t,
     appOrigin:         route.appOrigin,
