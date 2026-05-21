@@ -1,4 +1,23 @@
 <!doctype html>
+<!--
+  Tier: 2 — manifest-bound (V0.4 + Q22 + Q25 + Q27-adopt).
+  (See DESIGN-tier-policy.md.)
+  Manifest section: `profile` (shape: 'record', 3 fields: handle,
+    displayName, holidayMode — with patch + labelKey + readSkill)
+    in apps/stoop/manifest.js.
+  Rendering: hand-coded 5-section HTML — avatar resize, skills picker,
+    location wizard, mnemonic reveal, my-pods, recovery — each has
+    bespoke UX that doesn't fit any substrate shape.
+  Page reads from manifest:
+    - V0.8 createOpBinding loads /stoop-manifest.json at boot and
+      gates the sign-out button via Q27 confirm.severity + message
+      (signOutOfPod op).  See the `import createOpBinding` block.
+    - Falls back to plain callSkill if the manifest fetch fails.
+  Skills referenced: getMyProfile, setMyHandle, setMyDisplayName,
+    getHolidayMode, setHolidayMode, signOutOfPod, plus location +
+    skills + recovery skills (largely manifest-declared; some app-
+    internal — see Q16-strict comment in the manifest).
+-->
 <html lang="nl">
 <head>
   <meta charset="utf-8">
@@ -569,21 +588,38 @@
       }
     }
 
+    // V0.8 T2 (2026-05-21) — manifest binding for the sign-out
+    // confirm.  Pre-V0.8 this page hardcoded the Dutch message verbatim;
+    // now it loads the manifest once and lets createOpBinding gate the
+    // dispatch with the manifest's own Q27 confirm.message.  Falls
+    // back to plain callSkill if the manifest fetch fails (offline /
+    // older server) — T2 binding is enrichment, not a hard dep.
+    const { createOpBinding } = await import('/lib/web-adapter/createOpBinding.js');
+    let opBinding = null;
+    try {
+      const manifest = await fetch('/stoop-manifest.json').then((r) => r.json());
+      opBinding = createOpBinding({ manifest, callSkill });
+    } catch (err) {
+      console.warn('[profile.html] manifest fetch failed; falling back to direct callSkill', err);
+    }
+
     document.getElementById('profile-sign-out').addEventListener('click', async () => {
       const status = document.getElementById('profile-sign-out-status');
-      // V0.8 Q27 (2026-05-21) — confirm gate mirrors the manifest's
-      // signOutOfPod.surfaces.ui.confirm.message.  Closes a foot-gun
-      // that existed pre-Q27: a single mis-click signed the user out
-      // mid-sync with no chance to cancel.  Manifest is the source-of-
-      // truth; the page mirrors the Dutch message verbatim.
-      const confirmMsg = t(
-        'profile.my_pods_sign_out_confirm',
-        'Uitloggen van je pod?  Lopende synchronisatie wordt afgebroken.',
-      );
-      if (!confirm(confirmMsg)) return;
       status.textContent = t('profile.my_pods_signing_out', 'Uitloggen…');
       try {
-        const r = await callSkill('signOutOfPod', {});
+        // V0.8 — confirmAndCall reads Q27 confirm.message from the
+        // manifest + gates with window.confirm.  Returns undefined on
+        // user cancel; truthy on success.  When manifest binding
+        // failed to load, fall through with a plain callSkill (the
+        // pre-V0.8 path) so a stale server doesn't break sign-out.
+        const r = opBinding
+          ? await opBinding.confirmAndCall('signOutOfPod')
+          : await callSkill('signOutOfPod', {});
+        if (r === undefined && opBinding) {
+          // User cancelled — clear the "Uitloggen…" status.
+          status.textContent = '';
+          return;
+        }
         if (r?.error) {
           status.textContent = `${t('common.error', 'Fout')}: ${r.error}`;
           return;

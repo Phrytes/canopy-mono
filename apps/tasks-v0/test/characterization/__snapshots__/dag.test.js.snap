@@ -2,6 +2,18 @@
 
 exports[`characterization: dag.html > initial HTML snapshot (empty DAG) 1`] = `
 "<!doctype html>
+<!--
+  Tier: 1 — substrate-rendered.  (See DESIGN-tier-policy.md.)
+  Manifest section: \`dag\` in apps/tasks-v0/manifest.js.
+  Rendering:
+    - section structure (title + dataSource) comes from
+      \`renderWeb(tasksManifest).sections[id='dag']\` via /navmodel.json.
+    - per-row buttons come from \`section.itemActions[]\`; no
+      hand-coded callSkill('id') lookups.
+  Skills referenced: getDagTree (via section.dataSource.skillId),
+    plus any task itemActions (claim, complete, submit, etc.) that
+    match \`appliesTo\` for the current item.
+-->
 <html lang="en">
 <head>
   <meta charset="utf-8">

@@ -1,6 +1,14 @@
 # @canopy-app/household
 
 > **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+>
+> **Manifest + tier policy.** Household was the **pattern source** for
+> the NavModel substrate ([`manifest.js`](./manifest.js)); the other
+> apps' manifests follow this one's shape.  Pages follow
+> [`DESIGN-tier-policy.md`](../../DESIGN-tier-policy.md).  Most
+> household pages are T2 manifest-bound today (chat surface is the
+> primary path); web pages back-fill T1/T2 as they get substrate-
+> driven.
 
 Household app — H2.  Telegram-driven, optionally LLM-mediated
 household state on a Solid pod.

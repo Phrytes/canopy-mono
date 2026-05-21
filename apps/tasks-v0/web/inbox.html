@@ -1,4 +1,16 @@
 <!doctype html>
+<!--
+  Tier: 1 — substrate-rendered.  (See DESIGN-tier-policy.md.)
+  Manifest section: `inbox` in apps/tasks-v0/manifest.js.
+  Rendering:
+    - section dataSource + per-row dismiss + section-header "Clear all"
+      all come from the NavModel projection.
+    - V0.8 Q27 — clear-all button reads `action.confirm.severity` +
+      `action.confirm.message` from the manifest (see
+      renderSectionActions() in this file).
+  Skills referenced: listMyInbox, clearInbox, clearInboxItem, and
+    the 4 subtask approve/decline ops (all manifest-declared).
+-->
 <html lang="en">
 <head>
   <meta charset="utf-8">
