@@ -1,5 +1,12 @@
 <!doctype html>
 <!--
+  Tier: 1 — substrate-rendered.  (See DESIGN-tier-policy.md.)
+  Manifest section: `mine` in apps/stoop/manifest.js.
+  Rendering: section + per-row actions come from
+    `renderWeb(stoopManifest)` via /navmodel.json.  Hand-coded only
+    where the row card needs item-type-specific layout (ask/offer/lend).
+-->
+<!--
   mine.html — Slice E.1 (PLAN-gui-chat-uplift.md).
   V0.2-adopt (2026-05-21) — refactored to consume the NavModel V0.2
   substrate: `view.dataSource` (Q7) + `appliesTo.type: '*'` (Q8) +

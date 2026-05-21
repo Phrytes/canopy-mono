@@ -1,4 +1,23 @@
 <!doctype html>
+<!--
+  Tier: 2 — manifest-bound (V0.4 + Q22 + Q25 + Q27-adopt).
+  (See DESIGN-tier-policy.md.)
+  Manifest section: `profile` (shape: 'record', 3 fields: handle,
+    displayName, holidayMode — with patch + labelKey + readSkill)
+    in apps/stoop/manifest.js.
+  Rendering: hand-coded 5-section HTML — avatar resize, skills picker,
+    location wizard, mnemonic reveal, my-pods, recovery — each has
+    bespoke UX that doesn't fit any substrate shape.
+  Page reads from manifest:
+    - V0.8 createOpBinding loads /stoop-manifest.json at boot and
+      gates the sign-out button via Q27 confirm.severity + message
+      (signOutOfPod op).  See the `import createOpBinding` block.
+    - Falls back to plain callSkill if the manifest fetch fails.
+  Skills referenced: getMyProfile, setMyHandle, setMyDisplayName,
+    getHolidayMode, setHolidayMode, signOutOfPod, plus location +
+    skills + recovery skills (largely manifest-declared; some app-
+    internal — see Q16-strict comment in the manifest).
+-->
 <html lang="nl">
 <head>
   <meta charset="utf-8">

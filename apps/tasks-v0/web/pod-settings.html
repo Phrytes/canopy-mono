@@ -1,4 +1,19 @@
 <!doctype html>
+<!--
+  Tier: 2 — manifest-bound (V0.4 + Q26-adopt).  (See DESIGN-tier-policy.md.)
+  Manifest section: `pod-settings` (shape: 'record', 2 fields: policy +
+    groupPodUri with patch + Q26 requiresField gate) in
+    apps/tasks-v0/manifest.js.
+  Rendering: hand-coded — pod-sign-in OIDC flow + conditional
+    groupPodUri row (auto-rendering would regress; pod-sign-in is an
+    auth flow, out of scope per Q27).
+  Page reads from manifest:
+    - field declarations documented; the page enforces Q26 conditional
+      display (groupPodUri hidden when policy is 'decentralised') via
+      its own DOM logic
+  Skills referenced: getCrewStoragePolicy, setCrewStoragePolicy (manifest-
+    declared), plus pod-sign-in flow skills (auth-side).
+-->
 <html lang="en">
 <head>
   <meta charset="utf-8">
