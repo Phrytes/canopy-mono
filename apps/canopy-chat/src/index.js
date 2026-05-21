@@ -14,3 +14,7 @@ export { resolveDispatch }           from './router.js';
 export { runDispatch }               from './dispatch.js';
 export { renderReply, formatText }   from './renderer.js';
 export { Thread, newThread }         from './thread.js';
+export {
+  initLocalisation, t, setLang, currentLang,
+  detectDeviceLang, isInitialised,
+} from './localisation.js';

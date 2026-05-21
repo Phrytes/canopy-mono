@@ -1,0 +1,19 @@
+{
+  "common": {
+    "ok":      { "text": "✓",       "doc": "Generic success indicator rendered when a skill returns { ok: true } with no message." },
+    "failed":  { "text": "Failed",  "doc": "Generic failure fallback when a skill returns { ok: false } with no error text." },
+    "error":   { "text": "Error",   "doc": "Generic error label when an error envelope has no message or code." }
+  },
+  "reply": {
+    "unknown_command": {
+      "text": "Didn't understand “{{input}}”. Try /help for the commands available here.",
+      "doc": "Shown when parser falls through to kind:'unknown' — user input matched no slash command."
+    }
+  },
+  "thread": {
+    "stale_list": {
+      "text": "This list is stale. Run the command again to refresh.",
+      "doc": "Shown when the user taps a disabled action menu (per A2 hybrid lifecycle)."
+    }
+  }
+}
