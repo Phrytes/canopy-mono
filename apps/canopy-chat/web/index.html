@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>canopy-chat — v0.1.4 demo</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <header>
+      <h1>canopy-chat</h1>
+      <p class="hint">
+        v0.1 demo · mock household agent
+        · try <code>/mine</code> · <code>/done dishwasher</code> · or just type
+      </p>
+      <p class="lang-toggle">
+        Language:
+        <button type="button" id="lang-en" class="lang-btn">EN</button>
+        <button type="button" id="lang-nl" class="lang-btn">NL</button>
+      </p>
+    </header>
+    <main id="messages" aria-live="polite"></main>
+    <form id="input-form" autocomplete="off">
+      <input id="chat-input"
+             type="text"
+             aria-label="Chat input"
+             placeholder="Type a /command or text…">
+      <button type="submit">Send</button>
+    </form>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
