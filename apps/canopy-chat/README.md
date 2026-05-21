@@ -55,13 +55,13 @@ Tracking per `/Project Files/canopy-chat/coding-plan.md` § Phase v0.1:
 
 | Sub-slice | Scope | Status |
 |---|---|---|
-| 1.1 | Workspace scaffold (this commit) | shipped 2026-05-21 |
+| 1.1 | Workspace scaffold | shipped 2026-05-21 |
 | 1.2 | Q28 substrate (`op.surfaces.chat.reply`) | shipped 2026-05-21 |
 | 1.3 | Browser-bundled mesh agent | pending |
-| 1.4 | Slash parser | landing alongside 1.1 |
-| 1.5 | Manifest merge | landing alongside 1.1 |
-| 1.6 | Router | pending |
-| 1.7 | Dispatch | pending |
+| 1.4 | Slash parser | shipped 2026-05-21 |
+| 1.5 | Manifest merge | shipped 2026-05-21 |
+| 1.6 | Router (resolve → dispatch w/ Q27 confirm gate) | shipped 2026-05-21 |
+| 1.7 | Dispatch (callSkill wrap + Reply envelope) | shipped 2026-05-21 |
 | 1.8 | Renderer (text + list) | pending |
 | 1.9 | Per-conv state v0 | pending |
 | 1.10 | Web entry | pending |

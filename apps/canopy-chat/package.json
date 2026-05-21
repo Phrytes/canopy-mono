@@ -9,7 +9,9 @@
     ".":                "./src/index.js",
     "./manifest":       "./manifest.js",
     "./parser":         "./src/parser.js",
-    "./manifestMerge":  "./src/manifestMerge.js"
+    "./manifestMerge":  "./src/manifestMerge.js",
+    "./router":         "./src/router.js",
+    "./dispatch":       "./src/dispatch.js"
   },
   "scripts": {
     "test":       "vitest run",
