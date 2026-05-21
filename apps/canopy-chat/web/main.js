@@ -16,9 +16,11 @@ import {
   parseInput, mergeManifests, resolveDispatch, runDispatch,
   renderReply, Thread,
   initLocalisation, t, setLang, detectDeviceLang, currentLang,
+  canopyChatManifest,
 } from '../src/index.js';
 import { renderToDom, renderStream }     from '../src/web/domAdapter.js';
 import { createRealHouseholdAgent }      from '../src/web/realAgent.js';
+import { createLocalBuiltins }           from '../src/web/localBuiltins.js';
 
 const messagesEl = document.getElementById('messages');
 const formEl     = document.getElementById('input-form');
@@ -27,20 +29,47 @@ const langEnBtn  = document.getElementById('lang-en');
 const langNlBtn  = document.getElementById('lang-nl');
 
 const agent   = await createRealHouseholdAgent();
-const catalog = mergeManifests([{ manifest: agent.manifest }]);
+// canopy-chat's own manifest joins the merged catalog so its built-in
+// commands (/help today; /brief, /threads in later phases) show up
+// like any other app's ops.  Built-in handlers live in localBuiltins.js
+// and are dispatched locally in callSkill below.
+const catalog = mergeManifests([
+  { manifest: canopyChatManifest },
+  { manifest: agent.manifest },
+]);
 const thread  = new Thread({ id: 'main' });
 
-const manifestsByOrigin = { household: agent.manifest };
+const manifestsByOrigin = {
+  'canopy-chat': canopyChatManifest,
+  'household':   agent.manifest,
+};
 const ctxBase = { doc: document };
+
+// Chat-shell built-ins.  Created AFTER the localisation initialises
+// so help text comes through the right locale.
 
 await initLocalisation({ lng: detectDeviceLang() });
 updateLangButtons();
+
+const localBuiltins = createLocalBuiltins({ catalog, t });
+
+// Wrap the agent's callSkill: chat-shell built-ins (appOrigin =
+// 'canopy-chat') dispatch locally; everything else goes to the real
+// agent.  v0.7 expands this with the brief aggregator (/brief).
+const callSkill = async (appOrigin, opId, args) => {
+  if (appOrigin === 'canopy-chat') {
+    const handler = localBuiltins[opId];
+    if (!handler) throw new Error(`No local handler for canopy-chat.${opId}`);
+    return handler(args ?? {});
+  }
+  return agent.callSkill(appOrigin, opId, args);
+};
 
 /* ── greeting ─────────────────────────────────────────── */
 
 {
   const greeting = renderReply({
-    payload: 'Welcome to canopy-chat. Try /mine to list chores.',
+    payload: 'Welcome to canopy-chat. Try /help to see commands.',
     shape:   'text',
     threadId: thread.id,
   }, { t });
@@ -128,7 +157,7 @@ async function handleUserText(text) {
 }
 
 async function dispatchAndRender(route) {
-  const reply = await runDispatch(route, agent.callSkill);
+  const reply = await runDispatch(route, callSkill);
   const rendered = renderReply(reply, {
     t,
     appOrigin:         route.appOrigin,
