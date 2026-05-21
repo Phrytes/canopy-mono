@@ -11,7 +11,9 @@
     "./parser":         "./src/parser.js",
     "./manifestMerge":  "./src/manifestMerge.js",
     "./router":         "./src/router.js",
-    "./dispatch":       "./src/dispatch.js"
+    "./dispatch":       "./src/dispatch.js",
+    "./renderer":       "./src/renderer.js",
+    "./thread":         "./src/thread.js"
   },
   "scripts": {
     "test":       "vitest run",
