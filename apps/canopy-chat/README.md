@@ -64,9 +64,22 @@ Tracking per `/Project Files/canopy-chat/coding-plan.md` § Phase v0.1:
 | 1.7 | Dispatch (callSkill wrap + Reply envelope) | shipped 2026-05-21 |
 | 1.8 | Renderer (text + list reply shapes) | shipped 2026-05-21 |
 | 1.9 | Thread state v0 (single-thread; fuzzy resolve; A2 lifecycle) | shipped 2026-05-21 |
-| 1.10 | Web entry | pending |
+| 1.10 | Web entry (HTML + DOM adapter + mock agent) | shipped 2026-05-21 |
 | 1.11 | Localisation scaffold (en + nl, i18next wrapper) | shipped 2026-05-21 |
-| 1.12 | Build pipeline | pending |
+| 1.12 | Build pipeline (Vite) | shipped 2026-05-21 |
+
+## Running locally
+
+```bash
+pnpm --filter @canopy-app/canopy-chat dev       # http://localhost:5173
+pnpm --filter @canopy-app/canopy-chat build     # → dist/ (static-deployable)
+pnpm --filter @canopy-app/canopy-chat preview   # preview the prod build
+```
+
+The dev server hot-reloads ESM. The mock household agent (v0.1.5
+ships the real browser-bundled mesh agent) provides 3 chores you
+can list with `/mine` and complete with `/done <name>` or via the
+inline `[Mark done]` button.
 
 ## Conventions
 
