@@ -154,7 +154,16 @@ function renderActiveStream() {
 }
 
 function makeCtx() {
-  return { doc: document, onButtonTap };
+  return {
+    doc: document,
+    onButtonTap,
+    onCloseMessage: (messageId) => {
+      const t0 = activeThread();
+      if (!t0) return;
+      t0.closeMessage(messageId);
+      renderActiveStream();
+    },
+  };
 }
 
 /* ── greeting on the Main thread ───────────────────────── */

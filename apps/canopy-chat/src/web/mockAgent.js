@@ -57,6 +57,20 @@ export const mockHouseholdManifest = {
         ui:    { control: 'button', label: 'Mark done' },
       },
     },
+    /**
+     * `/profile` — record-shape demo.  Returns a household profile
+     * blob so the chat shell can showcase the v0.3.1 `record` reply
+     * rendering with title bar + field rows + [Close] button.
+     */
+    {
+      id:    'getProfile',
+      verb:  'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/profile' },
+        chat:  { reply: 'record', hint: 'show household profile' },
+      },
+    },
   ],
   views: [{ id: 'chores', title: 'Chores', type: 'chore' }],
 };
@@ -78,6 +92,19 @@ export function createMockHouseholdAgent(opts = {}) {
     }
     if (opId === 'listOpen') {
       return { items: chores.filter((c) => c.state === 'open') };
+    }
+    if (opId === 'getProfile') {
+      const open = chores.filter((c) => c.state === 'open').length;
+      const done = chores.filter((c) => c.state === 'done').length;
+      return {
+        title:        'Household',
+        name:         'Casa de Demo',
+        openChores:   open,
+        doneChores:   done,
+        memberCount:  3,
+        polite:       true,
+        established:  '2026-05-21',
+      };
     }
     if (opId === 'markComplete') {
       const id = args?.choreId;

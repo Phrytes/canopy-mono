@@ -123,6 +123,20 @@ export function renderReply(reply, opts = {}) {
     };
   }
 
+  if (shape === 'record' || shape === 'mini-page') {
+    return {
+      kind: shape,
+      messageId, threadId,
+      lifecycleState: 'live',     // A2 hybrid — record/mini-page stay live until Close
+      title:  inferRecordTitle(reply.payload),
+      fields: extractRecordFields(reply.payload),
+      // Preserve the original payload for app-specific renderers that
+      // want richer access; the DOM adapter falls back to fields[] for
+      // generic display.
+      payload: reply.payload,
+    };
+  }
+
   // Default + text: render as a text bubble.
   return {
     kind: 'text',
@@ -130,6 +144,57 @@ export function renderReply(reply, opts = {}) {
     lifecycleState: 'live',
     text: formatText(reply.payload, t),
   };
+}
+
+/* ───── shape: record / mini-page ───── */
+
+/**
+ * Pull a human-readable title from a record payload.  Priority:
+ *   1. payload.title
+ *   2. payload.name
+ *   3. payload.label
+ *   4. fallback: undefined (DOM adapter renders without a title bar)
+ */
+function inferRecordTitle(payload) {
+  if (payload === null || typeof payload !== 'object') return undefined;
+  if (typeof payload.title === 'string') return payload.title;
+  if (typeof payload.name  === 'string') return payload.name;
+  if (typeof payload.label === 'string') return payload.label;
+  return undefined;
+}
+
+/**
+ * Convert a record-shape payload into platform-neutral field rows.
+ * Skips meta fields (`title`, `name`, `label`, `id`, `_*`) since
+ * those are typically rendered separately (title bar) or are
+ * substrate plumbing (`_sync`, `_lastSync`).
+ *
+ * @param {*} payload
+ * @returns {Array<{name: string, value: *, kind: string}>}
+ */
+function extractRecordFields(payload) {
+  if (payload === null || typeof payload !== 'object') return [];
+  if (Array.isArray(payload)) return [];  // arrays render via 'list' shape, not record
+  const out = [];
+  for (const [name, value] of Object.entries(payload)) {
+    if (name === 'title' || name === 'name' || name === 'label' || name === 'id') continue;
+    if (name.startsWith('_')) continue;   // skip _sync, _lastSync, _internal etc.
+    out.push({
+      name,
+      value,
+      kind: classifyFieldKind(value),
+    });
+  }
+  return out;
+}
+
+function classifyFieldKind(v) {
+  if (typeof v === 'string')  return 'string';
+  if (typeof v === 'number')  return 'number';
+  if (typeof v === 'boolean') return 'boolean';
+  if (Array.isArray(v))       return 'list';
+  if (v && typeof v === 'object') return 'object';
+  return 'unknown';
 }
 
 /* ───── shape: text ───── */

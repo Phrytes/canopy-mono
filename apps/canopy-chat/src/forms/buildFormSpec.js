@@ -20,6 +20,8 @@
  * Phase v0.3 sub-slice 3.3 per `/Project Files/canopy-chat/coding-plan.md`.
  */
 
+import { parseRelativeDate } from './parseDate.js';
+
 const SIMPLE_KINDS = new Set(['string', 'number', 'boolean', 'enum']);
 
 /**
@@ -191,9 +193,41 @@ export function validateAndCoerce(spec, formValues) {
         }
         break;
       }
+      case 'date': {
+        // v0.3.2 — accept ISO + 'today' / 'tomorrow' / weekday names
+        // (en + nl).  Native <input type="date"> already emits ISO,
+        // so this layer is for slash-typed inputs and the future
+        // free-text path.
+        const iso = parseRelativeDate(String(raw));
+        if (iso === null) {
+          errors.push({
+            field: field.name,
+            message: `not a valid date: ${raw} (try YYYY-MM-DD, 'today', 'friday', 'vrijdag')`,
+          });
+        } else {
+          args[field.name] = iso;
+        }
+        break;
+      }
+      case 'webid': {
+        // v0.3.2 — basic shape check.  Real contact-picker via the
+        // resolveContact convention lands in v0.4 (per OQ-4 user
+        // resolution).  Until then accept anything looking like a
+        // URL or 'webid:' / 'did:' prefix; warn otherwise.
+        const s = String(raw);
+        if (!/^(https?:\/\/|webid:|did:)/i.test(s) && !s.includes('@')) {
+          errors.push({
+            field: field.name,
+            message: `not a valid webid (expected a URL, did:, or webid: prefix)`,
+          });
+        } else {
+          args[field.name] = s;
+        }
+        break;
+      }
       default: {
-        // string, date, webid, file, image — pass through verbatim for v0.3.0.
-        // Real date / webid parsing lands in v0.3.2.
+        // string, file, image — pass through verbatim.  File/image
+        // (Q23) handling lands when an app actually uses them.
         args[field.name] = raw;
         break;
       }
