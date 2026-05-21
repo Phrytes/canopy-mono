@@ -29,9 +29,14 @@
 5. **Single agent per service-context.** Per
    `conventions/single-agent.md`. Per-thread state lives outside
    the agent in a thread store.
-6. **Forward-additive substrate.** New manifest fields (Q28–Q31)
+6. **Forward-additive substrate.** New manifest fields (Q28–Q32)
    are optional; existing manifests work unchanged.
 7. **No iOS-specific code.** Per project lock.
+8. **Browser-first deployment.** canopy-chat ships as a **static
+   web app** (no localhost server required). Mesh agent runs in the
+   browser via relay + NKN + WebRTC transports. mDNS / BLE
+   transports + Node-only skills are sidecar territory (deferred,
+   see v0.7+). Per OQ-1.A user resolution 2026-05-21.
 
 ## Substrate addition inventory
 
@@ -41,6 +46,7 @@
 | **Q29** | `op.surfaces.chat.embed: { cardSnapshotSkill }` | v0.5 | Apps opt in per item-type for J7 embeds. |
 | **Q30** | `op.surfaces.chat.brief: { summarySkill, order?, label? }` | v0.7 | Apps opt in for the `/brief` aggregator. |
 | **Q31** | `op.surfaces.chat.followUps: [{ opId, prefilledArgs? }]` | v0.4 | Per-op follow-up hints; pairs with the **cross-app follow-up registry** added in v0.4. |
+| **Q32** | `op.runtime: 'browser' \| 'node' \| 'both'` (default `'both'`) | v0.4 | Runtime requirement. Browser canopy-chat filters out `'node'` ops at merge time; sidecar (when present) unlocks them. Per OQ-1.A resolution; enables folio's pod-doable ops in browser while keeping sync ops sidecar-only. |
 | **Reply convention** | `_sync: {style, peers, pending, unreachable, lastSeen}` on skill replies | v0.6 | Runtime envelope convention; NOT a manifest field. Documented in `DESIGN-canopy-chat.md`. |
 | **Reply convention** | `_lastSync` per-item on list replies (per-row staleness) | v0.6 | Per E.2 user resolution. |
 
@@ -58,26 +64,39 @@ Every phase must pass:
 
 ---
 
-## Phase v0.1 — bare-minimum chat shell
+## Phase v0.1 — bare-minimum chat shell (static web app)
 
-**Goal.** Prove the end-to-end dispatch path. User can type
-`/done dishwasher` in a single chat window and the household app's
-`markComplete` skill runs.
+**Goal.** Prove the end-to-end dispatch path. User opens the static
+web page (no local server), types `/done dishwasher` in a single
+chat window, and the household app's `markComplete` skill runs in
+the browser-side agent.
+
+**Deployment shape** (decided 2026-05-21 per OQ-1.A): static HTML
++ JS bundle, deployable to any static host (or the user's pod).
+Mesh agent runs in-browser via relay + NKN + WebRTC transports.
+No localhost Express server required.
+
+**Initial actor binding** (per OQ-1.A note): v0.1 ships
+**pre-signed-in for one initial actor** (similar to stoop-mobile's
+single-pod model). The OIDC sign-in flow lands later in v0.6 via
+J6. v0.1 avoids forcing the auth question.
 
 ### Scope
 
 | # | Task | Files |
 |---|---|---|
-| 1.1 | Scaffold `apps/canopy-chat/` workspace (package.json, README, manifest stub, lifecycle wiring) | `apps/canopy-chat/{package.json,manifest.js,README.md,index.js}` |
+| 1.1 | Scaffold `apps/canopy-chat/` workspace as a STATIC web app (package.json, README, build config, manifest stub) | `apps/canopy-chat/{package.json,manifest.js,README.md,index.js,vite.config.js}` |
 | 1.2 | Substrate Q28 — `op.surfaces.chat.reply` validator + projector | `packages/app-manifest/src/{validate.js,renderChat.js}`; tests in `packages/app-manifest/test/` |
-| 1.3 | Parser (slash matcher only; LLM stub returns `unknown`) | `apps/canopy-chat/src/parser.js` + tests |
-| 1.4 | Manifest merge (load household + tasks-v0 at boot; merged `commandMenu` + `opsById` + `globals`) | `apps/canopy-chat/src/manifestMerge.js` + tests |
-| 1.5 | Router (resolve opId → app, bind args, Q27 confirm gate, paramsSchema validation) | `apps/canopy-chat/src/router.js` + tests |
-| 1.6 | Dispatch (call into the right app's agent; minimal error handling) | `apps/canopy-chat/src/dispatch.js` + tests |
-| 1.7 | Renderer — `text` and `list` shapes only; inline keyboard from `renderChat.inlineKeyboardFor` | `apps/canopy-chat/src/renderer/{index.js,text.js,list.js}` + tests |
-| 1.8 | Per-conv state v0 (single default thread; `lastListings` cache for fuzzy arg resolution) | `apps/canopy-chat/src/thread.js` (single-thread mode) |
-| 1.9 | Web entry — `apps/canopy-chat/web/index.html` + a chat-input + message-stream renderer | `apps/canopy-chat/web/` |
-| 1.10 | Localisation scaffold — localisation provider + `locales/{en,nl}.json` from v0.1 (per `conventions/localisation.md`) | `apps/canopy-chat/web/localisation/` |
+| 1.3 | Browser-bundled mesh agent — wire `@canopy/core` Agent with relay + NKN + WebRTC transports; verify browser-bundle works | `apps/canopy-chat/src/agent/{index.js,transports.js}` + tests |
+| 1.4 | Parser (slash matcher only; LLM stub returns `unknown`) | `apps/canopy-chat/src/parser.js` + tests |
+| 1.5 | Manifest merge (load household + tasks-v0 at boot; merged `commandMenu` + `opsById` + `globals`) | `apps/canopy-chat/src/manifestMerge.js` + tests |
+| 1.6 | Router (resolve opId → app, bind args, Q27 confirm gate, paramsSchema validation) | `apps/canopy-chat/src/router.js` + tests |
+| 1.7 | Dispatch (call into the right app's agent; minimal error handling) | `apps/canopy-chat/src/dispatch.js` + tests |
+| 1.8 | Renderer — `text` and `list` shapes only; inline keyboard from `renderChat.inlineKeyboardFor` | `apps/canopy-chat/src/renderer/{index.js,text.js,list.js}` + tests |
+| 1.9 | Per-conv state v0 (single default thread; `lastListings` cache for fuzzy arg resolution; IndexedDB persistence) | `apps/canopy-chat/src/thread.js` + `apps/canopy-chat/src/storage/local.js` |
+| 1.10 | Web entry — `apps/canopy-chat/web/index.html` + chat-input + message-stream renderer | `apps/canopy-chat/web/` |
+| 1.11 | Localisation scaffold — localisation provider + `locales/{en,nl}.json` from v0.1 (per `conventions/localisation.md`) | `apps/canopy-chat/web/localisation/` |
+| 1.12 | Build pipeline — static bundle output; deployable to any static host or to the user's pod | `apps/canopy-chat/build/` |
 
 ### Substrate add: Q28
 
@@ -121,14 +140,18 @@ sections with `view.shape:'record'`, otherwise `'text'`.
 
 ### Open questions for v0.1
 
-- **OQ-1.A** — Where exactly does `apps/canopy-chat/web/` deploy? A
-  standalone web server (like `bin/stoop-web.js`) or a route on an
-  existing host? *Lean: standalone Express server like the other
-  apps, port 9000 by default.*
-- **OQ-1.B** — Does v0.1 ship an RN counterpart, or web-only? *Lean:
-  web-only for v0.1; RN screens land in v0.2+ alongside the thread
-  UI which makes mobile worthwhile.*
-F: yeh v0.1 web only is fine
+- ~~**OQ-1.A** — Deployment shape (standalone server vs static)?~~
+  **Resolved 2026-05-21:** static web app, no localhost server.
+  Mesh agent runs in browser; pod-doable folio ops join the merged
+  catalog in v0.4 (per Q32 runtime tags); sync ops stay sidecar-
+  only (v0.7+).
+- ~~**OQ-1.B** — Web vs RN for v0.1?~~ **Resolved 2026-05-21:**
+  web-only for v0.1; RN screens land in v0.2+ alongside multi-thread
+  UI which makes mobile worthwhile.
+- **OQ-1.C** — Browser-bundle of the mesh agent — does every
+  current `@canopy/core` transport (relay / NKN / WebRTC) build
+  cleanly for browser, or does any have Node-only imports we need
+  to shim? *Surfaced 2026-05-21; resolve during v0.1 implementation.*
 ---
 
 ## Phase v0.2 — multi-thread workspace
@@ -230,11 +253,14 @@ F: ok
 
 ---
 
-## Phase v0.4 — cross-app surface + follow-ups
+## Phase v0.4 — cross-app surface + follow-ups + folio browser slice
 
-**Goal.** Stoop + folio join the merged catalog; cross-app slash
-namespace works; J3 demoable in command-first mode. Cross-app
-follow-up hints implemented per OQ-2 user resolution.
+**Goal.** Stoop + folio (browser-doable subset) join the merged
+catalog; cross-app slash namespace works; J3 demoable in command-
+first mode. Cross-app follow-up hints implemented per OQ-2 user
+resolution. Folio's pod-doable ops (read, write, share, delete,
+list) work browser-side via Q32 runtime tags; sync ops carve out
+for the sidecar (v0.7+).
 
 ### Scope
 
@@ -247,10 +273,16 @@ follow-up hints implemented per OQ-2 user resolution.
 | 4.5 | Cross-app follow-up registry — `apps/canopy-chat/src/followUps.js`. Format: `{ trigger: {appOrigin, opId}, suggestion: {appOrigin, opId, prefilledArgs?} }`. Populated by app manifests + a chat-shell-level config of common cross-app chains | + tests |
 | 4.6 | Chat-shell heuristic for follow-ups — when an op's reply succeeds, look up the registry for `appOrigin:opId` matches + surface inline buttons | `apps/canopy-chat/src/renderer/followUps.js` |
 | 4.7 | App-presence detection — only show ops from enabled apps; user can toggle apps in settings (a side-panel page) | `apps/canopy-chat/src/appRegistry.js` |
+| 4.8 | **Substrate Q32** — `op.runtime: 'browser' \| 'node' \| 'both'` validator + projector. Default `'both'` (works anywhere) | `packages/app-manifest/src/{validate.js,renderChat.js}` + tests |
+| 4.9 | **Folio manifest — runtime tags on every op.** Pod-side ops (`deleteFromPod`, `shareFolder`, `listFiles`, `readNote`, `editNote`, `verifyPodState`) tagged `'browser'`; sync ops (`syncOnce`, `watchStart`, `watchStop`, `forceRepush`) tagged `'node'` | `apps/folio/manifest.js` + tests |
+| 4.10 | **Folio browser-skill extract** — verify each `'browser'`-tagged op uses only `@canopy/pod-client` (no `fs`, no `chokidar`, no Node-only imports). Extract into a browser-importable module that registers skills on the browser-bundled agent | `apps/folio/src/browser/skills.js` + `apps/folio/src/browser/index.js` + tests |
+| 4.11 | **Chat-shell runtime filter** — when running in browser, manifest merge filters out ops with `runtime: 'node'`; when sidecar present (v0.7+), re-includes them | `apps/canopy-chat/src/manifestMerge.js` (extension) + tests |
 
-### Substrate add: Q31
+### Substrate adds: Q31 + Q32
 
-`op.surfaces.chat.followUps?: Array<{ opId: string, prefilledArgs?: object }>`.
+**Q31** — `op.surfaces.chat.followUps?: Array<{ opId: string, prefilledArgs?: object }>`. Per-op follow-up hints.
+
+**Q32** — `op.runtime?: 'browser' | 'node' | 'both'` (default `'both'`). Runtime requirement. Validator: enum check. Projector: pass through. Forward-additive — existing ops without `runtime` work anywhere. Per OQ-1.A resolution. Enables the browser-vs-sidecar split for folio without splitting folio into two apps.
 
 ### Acceptance criteria
 
@@ -258,24 +290,35 @@ follow-up hints implemented per OQ-2 user resolution.
   Anne added → chat suggests `[Share folio folder]` + `[Add task for
   Anne]` from the cross-app registry → user picks one → form pre-
   fills "Anne" from per-thread cache.
-- Stoop's `/post`, folio's `/sync` reachable from the same chat.
+- Stoop's `/post` reachable; folio's pod-doable ops (`/folio share`,
+  `/folio list`, `/folio read`, `/folio delete-from-pod`) reachable
+  in the browser. Sync ops (`/folio sync`, `/folio watch`) NOT
+  visible in browser mode; surface "install canopy-chat-helper for
+  sync" hint instead.
 - Op-namespace collisions handled (e.g. `/done` exists in household,
   could exist in tasks-v0 — first-collision-prefixes-both).
 - `resolveContact` works across at least 3 apps (household +
   tasks-v0 + stoop).
+- Q32 forward-additive: existing manifests (without `runtime` field)
+  continue to work unchanged.
 
 ### Open questions for v0.4
 
-- **OQ-4.A** — Cross-app follow-up registry storage — is it a static
-  config file in canopy-chat, or do apps publish their preferred
-  follow-up chains via the manifest? *Lean: hybrid. Apps declare
-  per-op `followUps` (Q31); canopy-chat's static registry adds
-  cross-app chains that no single app owns (e.g. "after household.
-  addMember, suggest folio.share").*
-F: perfect!
-- **OQ-4.B** — App-toggle UI — chat-inline or side-panel-only?
-  *Lean: side-panel under "Apps" settings; rare interaction.*
-F: chat inline too I think can be useful? Double check with me when we arrive at this point
+- ~~**OQ-4.A** — Cross-app follow-up registry storage?~~ **Resolved
+  2026-05-21 (user F:):** hybrid. Apps declare per-op `followUps`
+  (Q31); canopy-chat's static registry adds cross-app chains that
+  no single app owns.
+- **OQ-4.B** — App-toggle UI placement. **Tentative (user F:):**
+  both chat-inline AND side-panel; revisit at design-time of v0.4
+  to confirm.
+- **OQ-4.C** — Folio browser-skill extract scope. How many existing
+  folio skills need browser-compat refactoring vs. work as-is? Sub-
+  question: does `@canopy/pod-client` import cleanly in browser
+  today, or are there `node:`-prefixed imports we need to shim?
+  *Surfaced 2026-05-21; resolve during v0.4 implementation.*
+- **OQ-4.D** — Default for `op.runtime` field. **Decision:** `'both'`
+  (works anywhere). Reason: forward-additive — existing manifests
+  with no `runtime` field automatically work in browser+node.
 
 ---
 
@@ -481,18 +524,38 @@ F: ok
 
 | Phase | Goal | Demo journey | Substrate Q | Status |
 |---|---|---|---|---|
-| v0.1 | Bare-minimum chat shell | J1 | Q28 reply-shape | Not started |
+| v0.1 | Bare-minimum chat shell (static web app) | J1 | Q28 reply-shape | Not started |
 | v0.2 | Multi-thread workspace | J8 | — | Not started |
 | v0.3 | Mini-pages + forms | J5, J2 (form path), J4 | param-types (date, webid) | Not started |
-| v0.4 | Cross-app + follow-ups | J3 (command-first) | Q31 follow-ups | Not started |
+| v0.4 | Cross-app + follow-ups + folio browser slice | J3 (command-first) | Q31 follow-ups + **Q32 runtime tags** | Not started |
 | v0.5 | Embeds | J7 | Q29 embed snapshot | Not started |
 | v0.6 | Pod-style + reactive + external flows | J6, J10 | `_sync` + `_lastSync` reply conventions | Not started |
 | v0.7 | Log page + brief | J9 | Q30 brief summary | Not started |
 | v0.8 | LLM layer | J3 (NL mode) | — | Not started |
+| **v0.9 (deferred)** | **Sidecar for Node-only ops** | — | — | Deferred until folio sync demand surfaces |
 
 Each phase is **independently shippable** — the chat shell works at
 every step; later phases add capability without breaking earlier
 ones.
+
+### Deferred: v0.9 — canopy-chat-helper sidecar
+
+When users want **folio sync** (or mDNS / BLE transports beyond what
+browser provides), a small **Node sidecar** can be installed
+separately. The sidecar:
+
+- Publishes the Node-only subset of folio's skills (`syncOnce`,
+  `watchStart`, `watchStop`, `forceRepush`) via a localhost
+  WebSocket interface
+- Optionally hosts mDNS + BLE transports for the browser-bundled
+  agent
+- Auto-detected by the browser chat (localhost ping); when present,
+  Q32 `runtime: 'node'` ops re-join the merged catalog
+
+Spec sketch lives in `/DESIGN-canopy-chat.md` (search for
+"sidecar"); concrete coding-plan entries land when this phase
+becomes active. For v0.4 we ship the browser slice; sync is a
+documented gap-with-known-fix until v0.9 lands.
 
 ## Cross-cutting concerns
 
@@ -552,13 +615,13 @@ pointing at where the answer lives.
 
 | ID | Phase | Question | Pin until |
 |---|---|---|---|
-| OQ-1.A | v0.1 | Standalone web server or hosted route? | Phase v0.1 design |
-| OQ-1.B | v0.1 | v0.1 RN or web-only? | Phase v0.1 design |
+| OQ-1.C | v0.1 | Mesh-agent browser-bundle — any Node-only imports to shim? | Phase v0.1 implementation |
 | OQ-2.A | v0.2 | Filter DSL — key:value or expression tree? | Phase v0.2 design |
 | OQ-2.B | v0.2 | Web ⇄ RN thread sync model? | Phase v0.2 design |
 | OQ-3.A | v0.3 | Date param strictness | Phase v0.3 design |
 | OQ-3.B | v0.3 | formStyle override needed? | Phase v0.3 design |
-| OQ-4.A | v0.4 | Follow-up registry — manifest-declared vs canopy-chat-config | Phase v0.4 design |
+| OQ-4.B | v0.4 | App-toggle UI — chat-inline vs side-panel? (User: both; revisit) | Phase v0.4 design |
+| OQ-4.C | v0.4 | Folio browser-skill extract scope (how much existing code needs refactor) | Phase v0.4 implementation |
 | OQ-4.B | v0.4 | App-toggle UI location | Phase v0.4 design |
 | OQ-5.A | v0.5 | Embed when no cross-pod read access | Phase v0.5 design |
 | OQ-5.B | v0.5 | Embed types beyond item-card | Phase v0.5 design |
@@ -569,7 +632,7 @@ pointing at where the answer lives.
 | OQ-8.A | v0.8 | LLM default — local vs cloud | Phase v0.8 design |
 | OQ-8.B | v0.8 | LLM context window scope | Phase v0.8 design |
 
-### Resolved (from architecture-doc open questions)
+### Resolved (architecture-doc + coding-plan)
 
 - ~~E.2 per-row staleness signal~~ — **Resolved 2026-05-21**: YES,
   ships in v0.6 as `_lastSync` per-item annotation.
@@ -584,6 +647,16 @@ pointing at where the answer lives.
 - ~~Embed permission boundary~~ — **Resolved 2026-05-21**: sender
   issues; receiver claims (or sender claims-on-behalf with
   notification); ships in v0.5.
+- ~~OQ-1.A: standalone server vs static~~ — **Resolved 2026-05-21**:
+  static web app; mesh agent runs in browser; folio's pod-doable
+  ops in browser via Q32 runtime tags; sync ops sidecar-only (v0.9
+  deferred).
+- ~~OQ-1.B: v0.1 web vs RN~~ — **Resolved 2026-05-21 (user F:)**:
+  web-only for v0.1.
+- ~~OQ-4.A: follow-up registry — manifest-declared vs canopy-chat-
+  config~~ — **Resolved 2026-05-21 (user F:)**: hybrid (apps declare
+  per-op `followUps`; canopy-chat ships a static cross-app registry
+  on top).
 
 ## Pointers
 

@@ -111,6 +111,28 @@ these as in-scope decisions:
    notification signal. The chat shell renders the issuance/claim
    state visibly. Lands in v0.5.
 
+Three more questions resolved via the coding-plan iteration
+(see `./coding-plan.md` § "Open questions — running tracker"):
+
+6. **OQ-1.A: deployment shape** — **static web app**, not
+   localhost server. canopy-chat ships as a static HTML+JS
+   bundle deployable to any static host or to the user's pod.
+   Mesh agent runs in browser via relay + NKN + WebRTC. Lands
+   in v0.1.
+
+7. **OQ-1.B: web vs RN for v0.1** — **web-only**. RN screens
+   land in v0.2 alongside the multi-thread UI.
+
+8. **Folio in the browser (raised from OQ-1.A)** — **kept in
+   folio (one app), runtime-tagged per op.** New manifest field
+   **Q32 `op.runtime: 'browser' | 'node' | 'both'`** (default
+   `'both'`). Pod-doable folio ops (share, read, edit, list,
+   delete) tagged `'browser'`; sync ops (syncOnce, watchStart,
+   forceRepush) tagged `'node'`. Browser chat-shell filters out
+   `'node'` ops at merge time. Sidecar (v0.9 deferred) unlocks
+   them. Lands in v0.4 (Q32 substrate + folio runtime tags +
+   browser-skill extract).
+
 ## Pointers
 
 - Functional design — `/DESIGN-canopy-chat.md`
