@@ -248,13 +248,39 @@ thread," no implicit "stoop-bot thread"). Instead:
 - Cross-thread navigation (chat ⇄ side-panel from B.1) returns to
   the **originating thread**, not the root
 
-**What about the "logs" page?** Possibly: a single non-technical
-**network-events surface** — sits alongside the side panel (a B-style
-surface), shows what other users / agents in your groups did. Not a
-chat thread; not technical logs. The user can ALSO route those same
-events into a thread if they want, but the logs page is the always-
-on default sink. Open question: needed in v1, or wait for a real
-use case?
+#### D.1 Network-events log page — included in v1 (decided 2026-05-21)
+
+A single non-technical **network-events surface** sits alongside the
+side panel (B-style). Specification:
+
+- **Content** — chronological feed of activity by *other* users +
+  agents in your groups / networks. Examples:
+  - "Anne added a chore: *Vacuum living room*"
+  - "Karl claimed *Bins out*"
+  - "Maria's bot replied to your skill-request"
+  - "Frits synced changes to `notes/shared/`"
+- **Not** the user's own actions (those happen in chat), **not**
+  technical logs (no stack traces, no sync diagnostics — those go
+  in a developer-mode panel)
+- **Filterable** by group / network / event-type / actor; default
+  view is "all groups, last 24h"
+- **Per-event affordances** — `[View context]` jumps to the
+  originating item (chat thread, item card, or relevant view);
+  `[Mute this kind]` adds a chat-shell-level filter
+- **Always-on default sink** — events that don't match any chat-
+  thread filter still land here, so nothing is lost
+- **Chat ⇄ logs nav** — same B.1 protocol; floating "back to chat"
+  button when arrived from chat; "open in chat" button on each event
+  if a thread is configured to surface it
+- **Relationship to chat threads** — a user CAN route the same
+  events into a chat thread (per D's filter config), in which case
+  they appear in both. Logs page is the authoritative archive; chat
+  threads are configurable foreground.
+
+This is a chat-shell-owned surface, not per-app. Per-app contribution:
+events must be **structured** (app + actor + verb + item-ref +
+timestamp) so the page can render them coherently. Existing
+substrate emits these via the notifier; the logs page consumes them.
 
 ### E. Pod-style as UX dimension (decided 2026-05-21)
 
@@ -269,7 +295,7 @@ is **already a first-class concept** in canopy — `tasks-v0`'s
 - *Reality:* one server holds canonical state; binary connection
 - *Chat UX:* minimal divergence from page-based; "offline" =
   "Stoop is offline; cached view"
-- *User model:* simple, Trello-like
+- *User model:* simple, Trello-like (not in terms of GUI, but of syncing UX)
 
 **Decentralized pods (federated, per-peer sharing):**
 - *Reality:* different parts of the data live on different peers'
@@ -301,20 +327,74 @@ This is one of the strongest *arguments for* canopy-chat as the
 primary interface for canopy apps — particularly for stoop
 (decentralized by design) and for any future pod-less mode.
 
-**Open architecture questions (for the next doc):**
-1. Does the manifest **declare** an op's pod-style behavior, or does
-   the chat shell **observe at runtime** via skill return values?
-   (Lean toward runtime — less work for app authors; substrate
-   already has the events.)
-2. Can a single thread contain items from multiple pod-styles, or
-   does the chat shell try to keep threads pod-style-uniform?
-   (Lean toward "mixed is fine, the cards declare their own
-   connectivity state.")
-3. For decentralized + pod-less, the chat shell's "list is stale"
-   logic (A2 hybrid decision) gets more nuanced — staleness can be
-   **per-row** (Anne's row stale because she's offline; Karl's row
-   fresh because he just synced). Does the substrate need a
-   per-item staleness signal?
+#### E.1 The `_sync` skill-reply convention (decided 2026-05-21)
+
+Pod-style is **runtime-observed via skill return data**, not
+manifest-declared. Skills serving decentralized or pod-less contexts
+populate an optional `_sync` field on their reply; the chat shell
+reads it and renders connectivity / staleness / partial-merge hints.
+
+**Reply-envelope shape (formalised v1):**
+
+```js
+// Skill return value:
+{
+  // ...op-specific payload (the actual result the caller wanted)
+  ok:        true,
+  itemId:    'task-abc',
+  // ...
+
+  // Optional sync annotation — present iff the op crosses peer
+  // boundaries (decentralized + pod-less) and the app's substrate
+  // can report per-peer state.  Central-pod skills omit it.
+  _sync?: {
+    style:        'central' | 'decentralized' | 'pod-less',
+    peers?:       string[],          // webids that confirmed receipt
+    pending?:     string[],          // webids not yet confirmed
+    unreachable?: string[],          // webids that couldn't be reached
+    lastSeen?:    Record<string, number>,  // pod-less mode: per-peer
+                                           // last-known-online timestamps
+  },
+}
+```
+
+**Chat shell rendering rules (per style):**
+
+| style | UX |
+|---|---|
+| `'central'` (or `_sync` absent) | Show `✓` on success, error message on failure. Same as today's flat reply rendering. |
+| `'decentralized'` | After `✓`, show "synced to N of M peers"; reactive update when pending peers confirm. Unreachable peers shown with "Pod offline — will sync when reachable." |
+| `'pod-less'` | After `✓`, show "Last update propagated to peers: ..." with per-peer last-seen times. Cards include `[Refresh from peers]` affordance for explicit re-poll. |
+
+**Adopter responsibility.** Apps that operate across peers (stoop,
+tasks-v0 decentralised crews, future pod-less mode) populate `_sync`
+when emitting skill replies. Central-only apps (folio per-pod,
+household local-first) omit it; chat shell defaults to the simple
+flat rendering. Forward-additive: existing skills work unchanged.
+
+**Substrate location.** This is a **skill-reply convention**, not a
+manifest schema field — so it doesn't get a NavModel Q-number. It's
+formalised in `DESIGN-canopy-chat.md`'s reply-envelope section + a
+substrate helper (`@canopy/web-adapter/syncStateRenderer` or similar)
+that consumes the field uniformly.
+
+#### E.2 Per-row staleness signal (deferred to substrate work)
+
+For decentralized + pod-less list replies, the A2 hybrid "list is
+stale" logic gets more nuanced — staleness is **per-row**, not
+per-list (Anne's row stale because she's offline; Karl's row fresh
+because he just synced). Substrate may need a per-item `_lastSync`
+annotation alongside `_sync`. Deferred: revisit when a real
+consumer's list rendering hits the limit.
+
+#### E.3 Thread pod-style — mixed is fine (decided 2026-05-21)
+
+A single chat thread can contain items from multiple pod-styles —
+the chat shell does not try to keep threads pod-style-uniform. Each
+card declares its own connectivity state via `_sync`; the user sees
+a mix of "Synced ✓" / "Pod offline" / "Last seen 2h ago" cards in
+the same thread. This is the natural state when a thread surfaces
+events from multiple apps with different storage policies.
 
 ---
 
