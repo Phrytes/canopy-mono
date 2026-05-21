@@ -10,3 +10,5 @@
 export { canopyChatManifest } from '../manifest.js';
 export { parseInput, parseSlash }    from './parser.js';
 export { mergeManifests }            from './manifestMerge.js';
+export { resolveDispatch }           from './router.js';
+export { runDispatch }               from './dispatch.js';
