@@ -11,12 +11,19 @@ importers:
       '@canopy/app-manifest':
         specifier: file:../../packages/app-manifest
         version: file:../../packages/app-manifest
+      i18next:
+        specifier: ^23.15.0
+        version: 23.16.8
     devDependencies:
       vitest:
         specifier: ^3.0.0
         version: 3.2.4
 
 packages:
+
+  '@babel/runtime@7.29.2':
+    resolution: {integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==}
+    engines: {node: '>=6.9.0'}
 
   '@canopy/app-manifest@file:../../packages/app-manifest':
     resolution: {directory: ../../packages/app-manifest, type: directory}
@@ -437,6 +444,9 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
+  i18next@23.16.8:
+    resolution: {integrity: sha512-06r/TitrM88Mg5FdUXAKL96dJMzgqLE5dv3ryBAra4KCwD9mJ4ndOTS95ZuymIGoE+2hzfdaMak2X11/es7ZWg==}
+
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
 
@@ -601,6 +611,8 @@ packages:
     hasBin: true
 
 snapshots:
+
+  '@babel/runtime@7.29.2': {}
 
   '@canopy/app-manifest@file:../../packages/app-manifest':
     dependencies:
@@ -897,6 +909,10 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  i18next@23.16.8:
+    dependencies:
+      '@babel/runtime': 7.29.2
 
   js-tokens@9.0.1: {}
 

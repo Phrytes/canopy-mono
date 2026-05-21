@@ -51,13 +51,30 @@ function nextMessageId() {
 }
 
 /**
+ * Default t() implementation used when no localiser is supplied —
+ * returns English fallbacks for the renderer's own user-facing
+ * strings.  The chat shell normally passes a real `t` (from
+ * `./localisation.js`) via opts; this fallback keeps the renderer
+ * usable in tests + environments where localisation hasn't been
+ * initialised yet.
+ *
+ * @param {string} key
+ * @returns {string}
+ */
+const DEFAULT_T = (key) => {
+  switch (key) {
+    case 'common.ok':     return '✓';
+    case 'common.failed': return 'Failed';
+    case 'common.error':  return 'Error';
+    default:              return key;
+  }
+};
+
+/**
  * Render a Reply into a RenderedReply.
  *
  * @param {import('./dispatch.js').Reply}                       reply
  * @param {object}                                              [opts]
- * @param {object}                                              [opts.appliesToItem]
- *   When set, the chat shell wants inline-keyboard buttons for this item;
- *   used by list-shape rendering.  Not user-facing.
  * @param {object<string, object>}                              [opts.manifestsByOrigin]
  *   Optional: map of appOrigin → manifest.  Required for list shape
  *   to compute per-item inline-keyboard via renderChat.inlineKeyboardFor.
@@ -66,6 +83,10 @@ function nextMessageId() {
  * @param {string}                                              [opts.appOrigin]
  *   The dispatch's appOrigin; used to look up the right manifest in
  *   manifestsByOrigin.
+ * @param {(key: string, params?: object) => string}            [opts.t]
+ *   Translator function (typically from `./localisation.js`).  Falls
+ *   back to English literals for the renderer's own strings when
+ *   absent.
  * @returns {RenderedReply}
  */
 export function renderReply(reply, opts = {}) {
@@ -73,6 +94,7 @@ export function renderReply(reply, opts = {}) {
     throw new TypeError('renderReply: reply required');
   }
 
+  const t         = typeof opts.t === 'function' ? opts.t : DEFAULT_T;
   const messageId = nextMessageId();
   const threadId  = reply.threadId ?? null;
 
@@ -84,7 +106,7 @@ export function renderReply(reply, opts = {}) {
       kind: 'error',
       messageId, threadId,
       lifecycleState: 'live',
-      text:  formatErrorText(reply.error),
+      text:  formatErrorText(reply.error, t),
       error: reply.error,
     };
   }
@@ -106,7 +128,7 @@ export function renderReply(reply, opts = {}) {
     kind: 'text',
     messageId, threadId,
     lifecycleState: 'live',
-    text: formatText(reply.payload),
+    text: formatText(reply.payload, t),
   };
 }
 
@@ -118,16 +140,17 @@ export function renderReply(reply, opts = {}) {
  *
  *   1. payload.message (string)        — the canonical chat reply field
  *   2. payload.text    (string)        — alternative
- *   3. payload.ok === true             — "✓"
- *   4. payload.ok === false            — payload.error || "Failed"
+ *   3. payload.ok === true             — t('common.ok') (default "✓")
+ *   4. payload.ok === false            — payload.error || t('common.failed')
  *   5. payload is a primitive string   — verbatim
  *   6. payload is a primitive number/boolean — String(payload)
  *   7. fallback                        — JSON.stringify (visible; nudges apps to declare a field)
  *
  * @param {*} payload
+ * @param {(key: string, params?: object) => string} [t]
  * @returns {string}
  */
-export function formatText(payload) {
+export function formatText(payload, t = DEFAULT_T) {
   if (payload === undefined || payload === null) return '';
   if (typeof payload === 'string')               return payload;
   if (typeof payload === 'number' || typeof payload === 'boolean') {
@@ -136,14 +159,14 @@ export function formatText(payload) {
   if (typeof payload === 'object') {
     if (typeof payload.message === 'string') return payload.message;
     if (typeof payload.text === 'string')    return payload.text;
-    if (payload.ok === true)                 return '✓';
+    if (payload.ok === true)                 return t('common.ok');
     if (payload.ok === false) {
       const err = payload.error;
       if (typeof err === 'string')       return err;
       if (err && typeof err === 'object' && typeof err.message === 'string') {
         return err.message;
       }
-      return 'Failed';
+      return t('common.failed');
     }
   }
   // Last resort — surface the raw shape so the developer notices.
@@ -151,10 +174,10 @@ export function formatText(payload) {
   catch { return String(payload); }
 }
 
-function formatErrorText({ code, message }) {
+function formatErrorText({ code, message }, t = DEFAULT_T) {
   if (typeof message === 'string' && message !== '') return message;
   if (typeof code    === 'string' && code    !== '') return code;
-  return 'Error';
+  return t('common.error');
 }
 
 /* ───── shape: list ───── */
