@@ -266,8 +266,8 @@ async function buildAndAttachEngine({
   // on-device offline→reconnect→drain verification happen together,
   // never blind. Until then RN Folio runs the proven direct path; this
   // block stays dormant unless a tester explicitly opts in.
-  // See TODO-GENERAL.md (hardware-pending Folio-mobile) + Project
-  // Files/Substrates/P3-…-2026-05-15.md (OQ-6).
+  // See Project Files/Substrates/P3-…-2026-05-15.md (OQ-6) for the
+  // hardware-pending Folio-mobile context.
   //
   // Enablement: `FOLIO_PSEUDO_POD=1` works under vitest/Node, but RN
   // (Metro) does NOT populate `process.env` at runtime — only

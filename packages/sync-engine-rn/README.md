@@ -148,8 +148,7 @@ turnkey on mobile.
 ## Future work (Inrupt-cleanup convergence)
 
 The `defaultPodFactory` here calls
-`@canopy/pod-client`'s `SolidOidcAuth`. When the Inrupt-cleanup
-TODO ([`Project Files/TODO-GENERAL.md`](../../Project%20Files/TODO-GENERAL.md))
+`@canopy/pod-client`'s `SolidOidcAuth`. When a future Inrupt-cleanup
 extracts the shared "sign in / share via Inrupt" component, this
 substrate's pod-factory entry point will be one of the surfaces
 that migrates. The factory's API stays — implementation may change.

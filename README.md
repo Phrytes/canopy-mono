@@ -227,8 +227,8 @@ path.
   encrypted envelopes between peers.  The relay can't read them.
 
 Authentication, rate limiting, and a public deployment story are still
-on the roadmap (see `TODO-GENERAL.md`).  Today the relay is suitable
-for trusted networks (personal devices, group infrastructure, dev).
+on the roadmap.  Today the relay is suitable for trusted networks
+(personal devices, group infrastructure, dev).
 
 ### 3. NKN
 
