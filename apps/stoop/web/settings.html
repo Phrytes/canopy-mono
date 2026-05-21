@@ -1,5 +1,15 @@
 <!doctype html>
 <!--
+  Tier: 2 — manifest-bound (V0.4-adopt + Q22 labelKey).
+  (See DESIGN-tier-policy.md.)
+  Manifest section: `settings` (shape: 'record', 4 fields with patch +
+    labelKey) in apps/stoop/manifest.js.
+  Rendering: hand-coded HTML — per-field hint text + scope badges +
+    i18n.  Auto-rendering would regress UX.
+  Skills referenced: getSettings, updateSettings, setHopMode, plus
+    a few app-internal ones (Q16-strict not enabled for stoop).
+-->
+<!--
   settings.html — Slice E.3 (PLAN-gui-chat-uplift.md).
 
   Third stoop web page consuming `renderWeb(stoopManifest)`.  Picked
