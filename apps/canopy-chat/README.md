@@ -57,7 +57,7 @@ Tracking per `/Project Files/canopy-chat/coding-plan.md` § Phase v0.1:
 |---|---|---|
 | 1.1 | Workspace scaffold | shipped 2026-05-21 |
 | 1.2 | Q28 substrate (`op.surfaces.chat.reply`) | shipped 2026-05-21 |
-| 1.3 | Browser-bundled mesh agent | pending |
+| 1.3 | Browser-bundled mesh agent (OQ-1.C resolved) | shipped 2026-05-21 |
 | 1.4 | Slash parser | shipped 2026-05-21 |
 | 1.5 | Manifest merge | shipped 2026-05-21 |
 | 1.6 | Router (resolve → dispatch w/ Q27 confirm gate) | shipped 2026-05-21 |

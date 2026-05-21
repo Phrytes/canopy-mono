@@ -18,7 +18,7 @@ import {
   initLocalisation, t, setLang, detectDeviceLang, currentLang,
 } from '../src/index.js';
 import { renderToDom, renderStream }     from '../src/web/domAdapter.js';
-import { createMockHouseholdAgent }      from '../src/web/mockAgent.js';
+import { createRealHouseholdAgent }      from '../src/web/realAgent.js';
 
 const messagesEl = document.getElementById('messages');
 const formEl     = document.getElementById('input-form');
@@ -26,7 +26,7 @@ const inputEl    = document.getElementById('chat-input');
 const langEnBtn  = document.getElementById('lang-en');
 const langNlBtn  = document.getElementById('lang-nl');
 
-const agent   = createMockHouseholdAgent();
+const agent   = await createRealHouseholdAgent();
 const catalog = mergeManifests([{ manifest: agent.manifest }]);
 const thread  = new Thread({ id: 'main' });
 
