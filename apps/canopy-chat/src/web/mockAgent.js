@@ -29,6 +29,95 @@ const SEED_CHORES = [
 ];
 
 /**
+ * Mock stoop manifest (v0.4 cross-app demo).  Three browser-doable ops
+ * with a slash-name collision-induction (`/post` is stoop-only, `/done`
+ * collides with household for v0.4 prefix-on-collision demonstration —
+ * not actually colliding here since opIds differ, but shows multi-app
+ * UX in /help).
+ */
+export const mockStoopManifest = {
+  app:        'stoop',
+  itemTypes:  ['post'],
+  operations: [
+    {
+      id:    'listFeed', verb: 'list', params: [],
+      surfaces: {
+        slash: { command: '/feed' },
+        chat:  { reply: 'list', hint: "list your buurt's feed" },
+      },
+    },
+    {
+      id:    'postRequest', verb: 'add',
+      params: [{ name: 'text', kind: 'string', required: true }],
+      surfaces: {
+        slash: { command: '/post' },
+        chat:  {
+          reply: 'text', hint: 'post a skill-request to your buurt',
+          followUps: [
+            // Q31 demo — same-app follow-up: after posting, suggest viewing.
+            { opId: 'listFeed' },
+          ],
+        },
+      },
+    },
+  ],
+  views: [{ id: 'feed', title: 'Feed', type: 'post' }],
+};
+
+/**
+ * Mock folio manifest (v0.4 cross-app demo).  Shows Q32 runtime tags:
+ *   - readNote / shareFolder → 'browser'  (work in the browser bundle)
+ *   - syncOnce / watchStart  → 'node'     (filtered OUT of browser catalog
+ *                                          per OQ-1.A)
+ * The browser /help only surfaces 'browser' + 'both' ops; 'node' ops
+ * appear when canopy-chat is built for a sidecar deployment.
+ */
+export const mockFolioManifest = {
+  app:        'folio',
+  itemTypes:  ['note'],
+  operations: [
+    {
+      id:    'readNote', verb: 'list',
+      params: [{ name: 'path', kind: 'string', required: true }],
+      runtime: 'browser',
+      surfaces: {
+        slash: { command: '/readnote' },
+        chat:  { reply: 'text', hint: 'read a folio note' },
+      },
+    },
+    {
+      id:    'shareFolder', verb: 'add',
+      params: [
+        { name: 'folder', kind: 'string', required: true },
+        { name: 'with',   kind: 'webid',  required: true },
+      ],
+      runtime: 'browser',
+      surfaces: {
+        slash: { command: '/share' },
+        chat:  { reply: 'text', hint: 'share a folio folder with a contact' },
+      },
+    },
+    {
+      id:    'syncOnce', verb: 'add', params: [],
+      runtime: 'node',                                   // ← filtered in browser
+      surfaces: {
+        slash: { command: '/sync' },
+        chat:  { reply: 'text', hint: 'force a one-shot sync (sidecar only)' },
+      },
+    },
+    {
+      id:    'watchStart', verb: 'add', params: [],
+      runtime: 'node',                                   // ← filtered in browser
+      surfaces: {
+        slash: { command: '/watch' },
+        chat:  { reply: 'text', hint: 'start the folder watcher (sidecar only)' },
+      },
+    },
+  ],
+  views: [{ id: 'notes', title: 'Notes', type: 'note' }],
+};
+
+/**
  * Household manifest for the demo.  Mirrors the production household
  * manifest's relevant ops; declarations only — the mock agent
  * provides the skill implementations.
@@ -71,6 +160,26 @@ export const mockHouseholdManifest = {
         chat:  { reply: 'record', hint: 'show household profile' },
       },
     },
+    /**
+     * `/addmember <name>` — household membership demo.  Q31 follow-up:
+     * after adding a member, suggest sharing a folio folder with them
+     * (cross-app chain registered in followUps.js, but this op also
+     * declares an in-app follow-up — viewing the chore list — so we
+     * cover both cases in the demo).
+     */
+    {
+      id:    'addMember', verb: 'add',
+      params: [{ name: 'name', kind: 'string', required: true }],
+      surfaces: {
+        slash: { command: '/addmember' },
+        chat:  {
+          reply: 'text', hint: 'add a member to the household',
+          followUps: [
+            { opId: 'listOpen' },   // same-app follow-up
+          ],
+        },
+      },
+    },
   ],
   views: [{ id: 'chores', title: 'Chores', type: 'chore' }],
 };
@@ -105,6 +214,11 @@ export function createMockHouseholdAgent(opts = {}) {
         polite:       true,
         established:  '2026-05-21',
       };
+    }
+    if (opId === 'addMember') {
+      const name = String(args?.name ?? '').trim();
+      if (!name) return { ok: false, error: 'name required' };
+      return { ok: true, message: `✓ Added member: ${name}`, memberName: name };
     }
     if (opId === 'markComplete') {
       const id = args?.choreId;
