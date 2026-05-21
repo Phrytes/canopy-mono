@@ -46,12 +46,29 @@ export class Thread {
    * @param {object}      [opts]
    * @param {string}      [opts.id='main']
    * @param {string}      [opts.name='Main']
+   * @param {number}      [opts.createdAt=Date.now()]   epoch ms; thread creation time
+   * @param {import('./filter.js').ThreadFilter} [opts.filter]
+   *   v0.2 — event-routing filter; defaults to wildcard {} (matches all events).
+   * @param {object}      [opts.permissions]
+   * @param {boolean}     [opts.permissions.allowCommands=true]
+   *   When false, the thread is event-only (refuses slash dispatch).
+   * @param {string[]}    [opts.permissions.allowedApps]
+   *   Optional whitelist of appOrigins this thread may dispatch against.
+   *   Undefined → all apps allowed.
    * @param {() => number} [opts.now=Date.now]   injectable clock for tests
    */
   constructor(opts = {}) {
     this.id           = opts.id   ?? 'main';
     this.name         = opts.name ?? 'Main';
     this._now         = typeof opts.now === 'function' ? opts.now : Date.now;
+    this.createdAt    = typeof opts.createdAt === 'number' ? opts.createdAt : this._now();
+    this.filter       = opts.filter ?? {};
+    this.permissions  = {
+      allowCommands: opts.permissions?.allowCommands ?? true,
+      ...(opts.permissions?.allowedApps !== undefined
+        ? { allowedApps: opts.permissions.allowedApps }
+        : {}),
+    };
     /** @type {ThreadMessage[]} */
     this.messages     = [];
     /** @type {Map<string, ListingSnapshot>} */

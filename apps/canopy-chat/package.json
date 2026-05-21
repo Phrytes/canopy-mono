@@ -14,6 +14,8 @@
     "./dispatch":       "./src/dispatch.js",
     "./renderer":       "./src/renderer.js",
     "./thread":         "./src/thread.js",
+    "./threadStore":    "./src/threadStore.js",
+    "./filter":         "./src/filter.js",
     "./localisation":   "./src/localisation.js",
     "./locales/en":     "./locales/en.json",
     "./locales/nl":     "./locales/nl.json"
