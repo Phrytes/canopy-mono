@@ -76,6 +76,21 @@ export async function createRealHouseholdAgent() {
     return [DataPart({ items: open })];
   });
 
+  // /profile — record-shape demo.
+  hostAgent.register('getProfile', async () => {
+    const open = chores.filter((c) => c.state === 'open').length;
+    const done = chores.filter((c) => c.state === 'done').length;
+    return [DataPart({
+      title:        'Household',
+      name:         'Casa de Demo',
+      openChores:   open,
+      doneChores:   done,
+      memberCount:  3,
+      polite:       true,
+      established:  '2026-05-21',
+    })];
+  });
+
   hostAgent.register('markComplete', async ({ parts }) => {
     const args = parts?.[0]?.data ?? {};
     const id = args?.choreId;
