@@ -10,7 +10,7 @@
  *
  * ──── Slice E.1 + E.2 + E.3 scope (the three smallest stoop pages) ──
  *
- * Stoop has 16 web pages today (per `AUDIT-stoop-folio-surfaces.md`).
+ * Stoop has 16 web pages today (per `Project Files/projects/audit-stoop-folio-surfaces.md`).
  * E.1 surfaced ONE — `mine.html` (my active posts + completions); E.2
  * (2026-05-20) added a second — `privacy.html` (closed-beta
  * disclosure + data-location); E.3 (2026-05-20) added a third —

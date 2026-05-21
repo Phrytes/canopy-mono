@@ -2,7 +2,7 @@
  * Slice F.1 — folio first manifest (V0.8, 2026-05-21).
  *
  * Validates the manifest's structure + Q27 confirm hints on the three
- * destructive ops the Tier C audit (TIER-C-PROPOSALS.md) flagged for
+ * destructive ops the Tier C audit (Project Files/Substrates/tier-c-proposals.md) flagged for
  * lift.  The manifest is declaration-only today (no adapter consumes
  * it yet); these tests pin the shape so future adopters know what to
  * read.

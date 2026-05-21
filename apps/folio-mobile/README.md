@@ -68,7 +68,7 @@ absorption — see [`Project Files/Folio/v1-mobile-functional-design-2026-05-11.
 - 52.14 Q-D Lamport `_v` stale-peer auto-heal — same.
 - 52.2.x peer-fetch gates / `fetch-resource` skill — same.
 
-Surfaced by Slice G audit (`SLICE-G-AUDIT.md`, 2026-05-20) — both
+Surfaced by Slice G audit (`Project Files/Folio/slice-g-audit.md`, 2026-05-20) — both
 intentional v0 gaps in user-facing parity with folio desktop:
 
 - **Inbound cap-token receive UI.** Desktop's `/share` endpoint
