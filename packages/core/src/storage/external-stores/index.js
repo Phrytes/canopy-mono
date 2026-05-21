@@ -5,7 +5,7 @@
  * inline to a Solid pod and offloads big content to a pluggable
  * `ExternalStore`.  This module documents the interface and re-exports the
  * v1 default (`NoneStore`).  Real adapters (S3, IPFS, Drive, …) ship
- * outside `@canopy/core` per `TODO-GENERAL.md § External-store adapters`.
+ * outside `@canopy/core`.
  *
  * ─────────────────────────────────────────────────────────────────────────
  *

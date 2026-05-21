@@ -27,8 +27,7 @@
  * The `oidcSession` instance lives on `crew.oidcSession` (lazily
  * created on first sign-in attempt; reused across attempts). Tasks
  * runs one crew per process today so per-crew session-state is fine;
- * when multi-crew runtime lands (TODO-GENERAL §"Tasks V2"), each
- * crew gets its own session slot.
+ * when multi-crew runtime lands, each crew gets its own session slot.
  *
  * ── Session-injection seam (Tasks V2 Slice 5 / mobile S5, 2026-05-18) ──
  *

@@ -39,9 +39,9 @@ export class Notifier extends Emitter {
   #store;
   /** @type {number[]} */
   #retryDelaysMs;
-  // TODO: when core ships an injectable Clock primitive (TODO-GENERAL.md
-  // item E.1), collapse the (now, setTimeoutFn, clearTimeoutFn) triple
-  // into a single `clock` constructor option.
+  // TODO: when core ships an injectable Clock primitive, collapse the
+  // (now, setTimeoutFn, clearTimeoutFn) triple into a single `clock`
+  // constructor option.
   #now;
   #setTimeout;
   #clearTimeout;
