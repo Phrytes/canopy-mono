@@ -34,6 +34,22 @@
       "doc": "Shown when /help fires before any app manifests have loaded."
     }
   },
+  "form": {
+    "heading":   { "text": "Fill in {{opId}}:", "doc": "Form heading; opId is the manifest op." },
+    "submit":    { "text": "Submit",            "doc": "Form submit button label." },
+    "cancel":    { "text": "Cancel",            "doc": "Form cancel button label." },
+    "cancelled": { "text": "Form cancelled.",   "doc": "Shown after the user clicks [Cancel] on a form." }
+  },
+  "newthread": {
+    "created":  { "text": "✓ Created thread \"{{name}}\". Switched to it.", "doc": "Confirmation when /newthread succeeds." },
+    "no_name":  { "text": "Please provide a name: /newthread <name>",       "doc": "When /newthread fires with no name arg." },
+    "no_store": { "text": "Thread workspace not available in this build.",  "doc": "Defensive — should never trigger in the standard web build." }
+  },
+  "threads": {
+    "heading":  { "text": "Threads:", "doc": "First line of /threads output." },
+    "empty":    { "text": "No threads yet.", "doc": "Shown when no threads exist." },
+    "no_store": { "text": "Thread workspace not available in this build.", "doc": "Defensive." }
+  },
   "sidebar": {
     "heading":    { "text": "Threads",      "doc": "Sidebar heading above the thread list." },
     "new_thread": { "text": "+ New thread", "doc": "Button that toggles the new-thread form." },
