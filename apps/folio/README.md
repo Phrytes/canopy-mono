@@ -1,6 +1,16 @@
 # Folio
 
 > **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+>
+> **Manifest + tier policy.** Folio's surface is **declaration-only**
+> today — [`manifest.js`](./manifest.js) lists the destructive ops
+> (`deleteFromPod` Q27 danger, `forceRepush` Q27 warn, `deleteLocally`
+> Q27 info) + sync/watch ops, but the HTTP routes + RN screens keep
+> their hand-coded UX (currently all T3 per
+> [`DESIGN-tier-policy.md`](../../DESIGN-tier-policy.md)).  Future
+> slices F.2 / F.3 wire the status page + folio-mobile screens to read
+> from the manifest projection via `createOpBinding`, lifting the 3
+> hand-rolled confirm modals to one substrate-driven component.
 
 Your markdown notes, mirrored into your Solid pod.
 

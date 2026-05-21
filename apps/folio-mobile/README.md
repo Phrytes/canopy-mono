@@ -1,6 +1,14 @@
 # @canopy-app/folio-mobile
 
 > **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md). **Known direct SDK use:** `pod-client.PodClient` + `core.Bootstrap` — the canonical "no substrate fits yet" example called out in the layering doc.
+>
+> **Manifest + tier policy.** Folio-mobile reads from the folio
+> manifest (declared in [`../folio/manifest.js`](../folio/manifest.js))
+> via the workspace dependency.  All RN screens are currently T3 per
+> [`DESIGN-tier-policy.md`](../../DESIGN-tier-policy.md); future slice
+> F.3 wires `ShareScreen` + `NotesListScreen` to consume the
+> manifest's Q27 confirms (deleteFromPod / forceRepush /
+> deleteLocally) via an RN-side equivalent of `createOpBinding`.
 
 Folio.C2 — React Native mobile client for [Folio](../folio/), the
 Solid-pod-backed markdown notes app built on the @canopy SDK.
