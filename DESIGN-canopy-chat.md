@@ -704,12 +704,13 @@ op.surfaces.chat.brief?: {
 }
 ```
 
-Apps opt in. Failures (skill error / unreachable pod) render as
-"⚠ Brief from <app> unavailable" rather than failing the whole
+Apps opt in. Failures (skill error / unreachable pod) render as "⚠ Brief from  {app} unavailable" 
+ rather than failing the whole
 brief.
 
 **Where this lives.** Manifest schema extension +
-`packages/canopy-chat/src/brief.js`.
+`packages/canopy-chat/src/brief.js`. 
+
 
 ## Confirm gate (Q27 in chat)
 
@@ -880,23 +881,28 @@ here).
 1. **Per-row staleness signal** (E.2) — for decentralized + pod-less
    list replies, do we add a per-item `_lastSync` annotation? Defer
    to a real consumer hitting the limit.
+F: yes
 2. **Cross-app follow-ups** (J3) — `surfaces.chat.followUps` is
    proposed as Q31, but the more interesting case is **across apps**
    ("just added a member, suggest sharing a folio folder"). May need
    a cross-app registry of "after X, consider Y." Defer to v0.4+
    when real cross-app chains surface.
+F: yes!
 3. **Multi-device chat sync** — when the user has chat threads on
    both phone and laptop, do threads sync? Probably yes via the
    user's pod (when one exists). Defer the sync model to v0.2+ once
    the storage shape is clear.
+F: yes, dependent on pod :) without pod there is no real user/profile connection between devices (yet)
 4. **Multi-thread bulk operations** — "mark all done in this
    thread" vs. "in all threads" — UX choice for v0.2+.
+F: I guess all threads need to know? 
 5. **Permission boundary for embed cards** (J7) — when Anne adopts
    Frits's embedded task, who issues the assignment? Frits's agent
    (because he owns the task) or Anne's agent (because she's the
    acting party)? Defer to v0.5 implementation; probably
    appOrigin's agent runs the skill, with the recipient's identity
    as the actor.
+F: I think the one sending it, is the one issuing it, the receiver claims it (or not) - or even the sender claims it by itself - just communicating that to the receiver - so that is a signal that should be communicated too! 
 
 ## Where this doc fits in the design canon
 
