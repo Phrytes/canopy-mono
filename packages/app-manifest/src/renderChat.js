@@ -131,7 +131,24 @@ export function renderChat(manifest, args, opts = {}) {
     return out;
   };
 
-  return { toolCatalog, toolHandlers, systemPrompt, commandMenu, inlineKeyboardFor };
+  // (e) Q28 reply-shape lookup (canopy-chat v0.1, 2026-05-21).  The
+  // chat shell calls `replyShapeFor(opId)` to pick a renderer (text,
+  // list, record, mini-page, file, embed-card, notification, brief).
+  // When the op declares `surfaces.chat.reply`, that wins; otherwise
+  // the shell falls back to a default it derives from `verb` +
+  // `view.shape`.  Returning `undefined` here means "no opinion, ask
+  // the consumer for a default."
+  const replyShapeByOp = new Map();
+  for (const op of ops) {
+    const declared = op?.surfaces?.chat?.reply;
+    if (declared) replyShapeByOp.set(op.id, declared);
+  }
+  const replyShapeFor = (opId) => replyShapeByOp.get(opId);
+
+  return {
+    toolCatalog, toolHandlers, systemPrompt, commandMenu,
+    inlineKeyboardFor, replyShapeFor,
+  };
 }
 
 function matchesAppliesTo(appliesTo, item) {
