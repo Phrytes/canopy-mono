@@ -34,6 +34,22 @@
       "doc": "Shown when /help fires before any app manifests have loaded."
     }
   },
+  "form": {
+    "heading":   { "text": "Vul in {{opId}}:", "doc": "Form heading; opId is the manifest op." },
+    "submit":    { "text": "Versturen",        "doc": "Form submit button label." },
+    "cancel":    { "text": "Annuleren",        "doc": "Form cancel button label." },
+    "cancelled": { "text": "Formulier geannuleerd.", "doc": "Shown after the user clicks [Cancel] on a form." }
+  },
+  "newthread": {
+    "created":  { "text": "✓ Thread „{{name}}\" aangemaakt. Overgeschakeld.", "doc": "Confirmation when /newthread succeeds." },
+    "no_name":  { "text": "Geef een naam op: /newthread <naam>",              "doc": "When /newthread fires with no name arg." },
+    "no_store": { "text": "Thread-werkruimte niet beschikbaar in deze build.","doc": "Defensive." }
+  },
+  "threads": {
+    "heading":  { "text": "Threads:", "doc": "First line of /threads output." },
+    "empty":    { "text": "Nog geen threads.", "doc": "Shown when no threads exist." },
+    "no_store": { "text": "Thread-werkruimte niet beschikbaar in deze build.", "doc": "Defensive." }
+  },
   "sidebar": {
     "heading":    { "text": "Threads",        "doc": "Sidebar heading above the thread list." },
     "new_thread": { "text": "+ Nieuwe thread", "doc": "Button that toggles the new-thread form." },

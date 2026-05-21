@@ -33,6 +33,44 @@ export const canopyChatManifest = {
         },
       },
     },
+
+    /**
+     * `/newthread <name>` — create a new chat thread.
+     *
+     * Default filter is wildcard ({}); the user can refine via the
+     * sidebar's Configure (rename / filter / permissions) — v0.3+.
+     * After creation, the new thread becomes active.
+     */
+    {
+      id:    'newthread',
+      verb:  'add',
+      params: [
+        { name: 'name', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/newthread' },
+        chat:  {
+          reply: 'text',
+          hint:  'create a new chat thread',
+        },
+      },
+    },
+
+    /**
+     * `/threads` — list every chat thread in the workspace.
+     */
+    {
+      id:    'threads',
+      verb:  'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/threads' },
+        chat:  {
+          reply: 'text',
+          hint:  'list every chat thread',
+        },
+      },
+    },
   ],
   views: [],   // chat shell does not surface its own views in nav;
                //   threads are managed via the chat UI, not a section

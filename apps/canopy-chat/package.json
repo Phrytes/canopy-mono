@@ -18,6 +18,7 @@
     "./filter":         "./src/filter.js",
     "./events":         "./src/events.js",
     "./bulkOps":        "./src/bulkOps.js",
+    "./forms":          "./src/forms/buildFormSpec.js",
     "./storage/local":  "./src/storage/local.js",
     "./storage/podSync": "./src/storage/podSync.js",
     "./localisation":   "./src/localisation.js",

@@ -1,12 +1,13 @@
 /**
  * canopy-chat — local built-ins tests.  /help today.
  */
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 
 import { canopyChatManifest }              from '../manifest.js';
 import { mergeManifests }                  from '../src/manifestMerge.js';
 import { createLocalBuiltins }             from '../src/web/localBuiltins.js';
 import { initLocalisation, t, setLang }    from '../src/localisation.js';
+import { ThreadStore }                     from '../src/threadStore.js';
 
 const householdLite = {
   app:       'household', itemTypes: ['chore'],
@@ -100,5 +101,106 @@ describe('canopyChatManifest now carries /help', () => {
     expect(helpEntry).toBeTruthy();
     expect(helpEntry.appOrigin).toBe('canopy-chat');
     expect(helpEntry.opId).toBe('help');
+  });
+});
+
+describe('/newthread', () => {
+  let store, setActiveCalls;
+  beforeAll(async () => { await initLocalisation({ lng: 'en' }); });
+  beforeEach(() => {
+    store = new ThreadStore();
+    store.createThread({ id: 'main', name: 'Main' });
+    setActiveCalls = [];
+  });
+
+  it("creates a new thread + switches active", async () => {
+    const catalog  = mergeManifests([{ manifest: canopyChatManifest }]);
+    const builtins = createLocalBuiltins({
+      catalog, t, threadStore: store,
+      setActive: (id) => setActiveCalls.push(id),
+    });
+    const r = await builtins.newthread({ name: 'Project Alpha' });
+    expect(r.ok).toBe(true);
+    expect(r.message).toMatch(/Created thread "Project Alpha"/);
+    expect(r.threadId).toBeTruthy();
+    expect(store.size).toBe(2);
+    expect(store.getThread(r.threadId).name).toBe('Project Alpha');
+    expect(setActiveCalls).toEqual([r.threadId]);
+  });
+
+  it("rejects empty name", async () => {
+    const builtins = createLocalBuiltins({
+      catalog: mergeManifests([{ manifest: canopyChatManifest }]),
+      t, threadStore: store, setActive: () => {},
+    });
+    const r1 = await builtins.newthread({});
+    const r2 = await builtins.newthread({ name: '   ' });
+    expect(r1.ok).toBe(false);
+    expect(r1.error).toMatch(/Please provide a name/);
+    expect(r2.ok).toBe(false);
+    expect(store.size).toBe(1);
+  });
+
+  it("fails gracefully when no threadStore wired", async () => {
+    const builtins = createLocalBuiltins({
+      catalog: mergeManifests([{ manifest: canopyChatManifest }]),
+      t,
+    });
+    const r = await builtins.newthread({ name: 'X' });
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/not available/);
+  });
+});
+
+describe('/threads', () => {
+  let store;
+  beforeEach(() => {
+    store = new ThreadStore();
+    store.createThread({ id: 'main',  name: 'Main' });
+    store.createThread({ id: 'inbox', name: 'Inbox',
+                         filter: { eventTypes: ['notification'] } });
+  });
+
+  it('lists every thread with active marker', async () => {
+    const builtins = createLocalBuiltins({
+      catalog:     mergeManifests([{ manifest: canopyChatManifest }]),
+      t,
+      threadStore: store,
+    });
+    const r = await builtins.threads();
+    expect(r.message).toMatch(/Threads:/);
+    expect(r.message).toMatch(/Main ●/);   // active (created first)
+    expect(r.message).toMatch(/Inbox/);
+    expect(r.message).toMatch(/type:notification/);
+  });
+
+  it('shows "no threads" when store empty', async () => {
+    const empty = new ThreadStore();
+    const builtins = createLocalBuiltins({
+      catalog: mergeManifests([{ manifest: canopyChatManifest }]),
+      t, threadStore: empty,
+    });
+    const r = await builtins.threads();
+    expect(r.message).toMatch(/No threads yet/);
+  });
+});
+
+describe('canopyChatManifest now also carries /newthread + /threads', () => {
+  it('declares both ops', () => {
+    const ids = canopyChatManifest.operations.map((o) => o.id);
+    expect(ids).toContain('newthread');
+    expect(ids).toContain('threads');
+  });
+
+  it('newthread has a required name param', () => {
+    const op = canopyChatManifest.operations.find((o) => o.id === 'newthread');
+    expect(op.params).toEqual([{ name: 'name', kind: 'string', required: true }]);
+    expect(op.surfaces.slash.command).toBe('/newthread');
+  });
+
+  it('threads has no params + /threads slash', () => {
+    const op = canopyChatManifest.operations.find((o) => o.id === 'threads');
+    expect(op.params).toEqual([]);
+    expect(op.surfaces.slash.command).toBe('/threads');
   });
 });
