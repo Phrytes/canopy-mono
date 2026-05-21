@@ -503,7 +503,7 @@ Stoop's existing collision-avoidance (its slash commands already
 avoid household's `/add`, `/done`, etc.) reduces collisions in
 practice.
 
-### Identity bridge
+### Identity bridge — `resolveContact` skill convention
 
 **Problem.** Anne's WebID is one identity, but each app may surface
 her differently (household's actor pubkey, stoop's MemberMap entry,
@@ -515,10 +515,46 @@ applicable) a `resolveContact(name)` skill that returns
 when resolving names across apps; first non-empty result wins for
 that name. Caches per-thread.
 
-**Substrate work.** Add `resolveContact` as a documented
-skill-convention in `DESIGN-canopy-chat.md` (this doc); each app
-optionally implements it. Future Q-number considered if pattern
-proliferates.
+#### Convention (v0.4.3, 2026-05-22)
+
+```ts
+// Skill id:      'resolveContact'
+// Op verb:       'list'   (read-only; idempotent)
+// Op.runtime:    'browser' | 'both'   (no fs / no node-only crypto)
+// Params:
+//   { name: 'query', kind: 'string', required: true }
+
+// Reply payload:
+//   {
+//     webid?:       string,    // canonical identity (Solid WebID or 'webid:...')
+//     displayName?: string,    // human-readable name
+//     handle?:      string,    // app-local handle (household.actor, stoop member, …)
+//     confidence?:  'exact' | 'fuzzy',  // 'exact' beats 'fuzzy' in chat-shell merge
+//   }
+//   OR { ok: false, error: '...' } when not found
+```
+
+**Discovery.** canopy-chat iterates apps with `op.id === 'resolveContact'`
+in the merged catalog and calls them in parallel.  The first
+`confidence: 'exact'` reply wins; otherwise the highest-confidence
+match (`exact` > `fuzzy`) is used.  Ties broken by app-registration
+order (household → tasks-v0 → stoop → folio by default).
+
+**Caching.** Per-thread `lastResolvedContact: Map<query, webid>` so
+follow-up references to the same name don't re-fan-out.  Cache cleared
+on thread close or after 24h.
+
+**Status.** Documented v0.4.3; **no apps implement it yet** (the
+convention is the deliverable; implementations land per-app on demand,
+typically when the app gains its first cross-app reference).
+Future Q-number considered if pattern proliferates (would formalise
+the reply shape in the manifest schema).
+
+**Why a convention, not a Q-number.** Q-numbers extend manifest
+shape; this is a skill-id contract that any app can opt into.  Apps
+without a contact concept (folio for now; tasks-v0 today) simply
+don't implement the skill.  Adding a Q-number would force them to
+declare absence explicitly — overkill for an opt-in convention.
 
 ## Form generation (paramsSchema → UX)
 
