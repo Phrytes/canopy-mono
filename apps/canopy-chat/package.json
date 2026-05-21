@@ -20,13 +20,18 @@
   },
   "scripts": {
     "test":       "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "dev":        "vite",
+    "build":      "vite build",
+    "preview":    "vite preview"
   },
   "dependencies": {
     "@canopy/app-manifest": "file:../../packages/app-manifest",
     "i18next":              "^23.15.0"
   },
   "devDependencies": {
-    "vitest": "^3.0.0"
+    "vitest":    "^3.0.0",
+    "vite":      "^5.4.0",
+    "happy-dom": "^15.0.0"
   }
 }
