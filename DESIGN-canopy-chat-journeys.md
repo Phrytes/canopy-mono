@@ -94,13 +94,12 @@ fixed settings panel — see B).
   elements* — the text stays, the buttons collapse to text after N
   turns
 
-**Recommended starting position (subject to user testing):** A2
-hybrid — action menus disable on next user message; record-shape
-panels stay live until explicit close; bulk action over an old list
-is rejected with "list is stale, run `/mine` again."
-
-This is a Q-decision the architecture doc will resolve. The choice
-affects every journey's transcript.
+**Decision (2026-05-21):** **A2 hybrid.** Action menus (list + per-row,
+section-header CTAs) disable on the next user message. Record-shape
+panels (settings, profile) stay live until explicit `[Close]`. Bulk
+action over a stale list is rejected with "list is stale, run
+`/mine` again." The architecture doc carries this forward; journey
+transcripts assume A2 hybrid throughout.
 
 ### B. Chat is the primary surface, but NOT the only one
 
@@ -126,6 +125,27 @@ hosts *persistent* views.
 
 This maps loosely to Telegram's own model: chat for messages, side
 menu for settings, WebApps for rich one-off interactions.
+
+#### B.1 Chat ⇄ side-panel navigation protocol (decided 2026-05-21)
+
+Chat and the persistent side surfaces (settings, logs, file
+directories, etc.) must be **mutually navigable**:
+
+- **Chat → side surface.** Chat replies can include navigation
+  actions that link to the relevant side-panel page — either as a
+  tappable link, an "open settings ▸" inline button, or a textual
+  instruction ("swipe right to open settings"). The chat shell
+  decides the form based on platform (web/RN/desktop).
+- **Side surface → chat.** Every settings / logs / file-directory
+  page (and similar non-chat persistent surfaces) ships a
+  **floating "back to chat" button**, shown when the user arrived
+  from chat. The button returns to the **specific thread** the user
+  came from, not the chat root.
+
+This is a chat-shell concern, not per-app — the navigation protocol
+is uniform across apps' side panels. Implementation: the chat-side
+nav-link carries a return-context (`returnTo: <threadId>`); the
+side-panel reads it and surfaces the floating button.
 
 ### C. App boundaries blur — items can cross-reference (separate concern)
 
@@ -168,6 +188,133 @@ benefit from it but isn't blocked on it.
 Tracked as a forward-looking item; the journeys assume the chat
 shell will eventually consume a unified item view, but command-
 first v1 can ship without it (each app's items remain typed by app).
+
+#### C.1 Unification is synthesis, not union (decided 2026-05-21)
+
+When the unified item taxonomy is designed (separate doc), it should
+be the **best-of-three distillation** — not the lowest common
+denominator. Audit each app's existing item shape (household chore,
+tasks-v0 task, stoop skill-request, the implicit calendar-item),
+identify each shape's strengths and weaknesses, and synthesise a
+single "task-chore-item" type that **carries forward what each does
+well**. The four apps then project this unified type back into their
+own UX shapes, but the type itself is one coherent thing.
+
+#### C.2 Calendar is a view, not an app (decided 2026-05-21)
+
+A `task-chore-item` with a `dueAt` field renders in calendar UX; one
+without doesn't. The "calendar" is a **projection** (probably a
+side-panel B-style surface) over the unified type, filtered to items
+with `dueAt`. No separate item taxonomy for calendar events; no
+separate "calendar app." This keeps the four-app boundary count
+fixed and the data model coherent.
+
+---
+
+### D. Chat threads are user-managed workspaces (decided 2026-05-21)
+
+The chat shell supports **multiple parallel chat threads**, but
+threads are **not** auto-created from a taxonomy (no implicit "Anne
+thread," no implicit "stoop-bot thread"). Instead:
+
+- A thread is a **generic instance of the chat-shell** — same
+  command grammar, same rendering pipeline
+- The user **spawns threads** for their own mental processes (like
+  browser tabs or terminal windows)
+- Each thread has its own **explicit configuration**:
+  - What events flow in (none / all / filtered by app, type, person)
+  - What functions are permitted (a "focus" thread may forbid
+    cross-app commands; an "inbox" thread may only show notifications)
+  - Per-conv state (open live panels, last-listed items)
+
+**Examples of how a user might configure threads:**
+
+- A "work" thread filtered to crew=family-business with all
+  cross-app commands enabled
+- A "Anne" thread filtered to messages where Anne is involved
+  (sender or subject) — events from other people muted
+- An "alerts" thread that only receives notifications, no
+  command-dispatch allowed
+- A "personal todo" thread with notifications muted, only
+  user-initiated commands
+
+**Architecture implications:**
+- The chat shell manages a **thread list** as a top-level concept;
+  the user can create / rename / delete / configure threads
+- Routing: skill replies + reactive events check each thread's
+  filter rules to decide which threads display them
+- Per-thread state is independent — open mini-pages don't leak
+  across threads
+- Cross-thread navigation (chat ⇄ side-panel from B.1) returns to
+  the **originating thread**, not the root
+
+**What about the "logs" page?** Possibly: a single non-technical
+**network-events surface** — sits alongside the side panel (a B-style
+surface), shows what other users / agents in your groups did. Not a
+chat thread; not technical logs. The user can ALSO route those same
+events into a thread if they want, but the logs page is the always-
+on default sink. Open question: needed in v1, or wait for a real
+use case?
+
+### E. Pod-style as UX dimension (decided 2026-05-21)
+
+The three pod-storage models map to three UX realities. The chat
+shell knows the active pod-style per context and renders
+**connectivity / staleness / partial-merge** hints accordingly. This
+is **already a first-class concept** in canopy — `tasks-v0`'s
+`crew-storage-policy` enum is `centralised | decentralised | hybrid`
+(per Q26 `requiresField` adoption).
+
+**Central pod (e.g. Inrupt-hosted):**
+- *Reality:* one server holds canonical state; binary connection
+- *Chat UX:* minimal divergence from page-based; "offline" =
+  "Stoop is offline; cached view"
+- *User model:* simple, Trello-like
+
+**Decentralized pods (federated, per-peer sharing):**
+- *Reality:* different parts of the data live on different peers'
+  pods; access is per-relationship
+- *Chat UX:* **natural fit** — "Anne is offline → her share
+  unavailable" maps cleanly to chat's existing "Anne is offline"
+  concept. Partial-merge UX surfaces explicitly: "Synced from Anne
+  + Karl. Maria's pod unreachable; her contribution pending."
+- *User model:* matches email / IM intuition
+
+**Pod-less / pure P2P:**
+- *Reality:* no central pod; items pass between devices; aggressive
+  caching; polling for latest
+- *Chat UX:* **chat IS the protocol** — messages ARE the data
+  movement. Staleness explicit: "Last update from Karl: 2 hours ago
+  [Refresh]" surfaces as a card affordance, not a hidden detail
+- *User model:* more sophisticated, but chat surfaces what's
+  invisible in page-based UX
+
+**Why this matters for canopy-chat:**
+
+Chat-oriented UX is **more honest** about decentralized realities
+than page-based UX. Traditional pages assume a server; decentralized
+realities don't fit. Chat already thinks in "who can I reach"
+(connection-per-relationship), which is exactly what decentralized
+data needs.
+
+This is one of the strongest *arguments for* canopy-chat as the
+primary interface for canopy apps — particularly for stoop
+(decentralized by design) and for any future pod-less mode.
+
+**Open architecture questions (for the next doc):**
+1. Does the manifest **declare** an op's pod-style behavior, or does
+   the chat shell **observe at runtime** via skill return values?
+   (Lean toward runtime — less work for app authors; substrate
+   already has the events.)
+2. Can a single thread contain items from multiple pod-styles, or
+   does the chat shell try to keep threads pod-style-uniform?
+   (Lean toward "mixed is fine, the cards declare their own
+   connectivity state.")
+3. For decentralized + pod-less, the chat shell's "list is stale"
+   logic (A2 hybrid decision) gets more nuanced — staleness can be
+   **per-row** (Anne's row stale because she's offline; Karl's row
+   fresh because he just synced). Does the substrate need a
+   per-item staleness signal?
 
 ---
 
@@ -665,7 +812,7 @@ sign in to his pod from the chat shell.
 **Design implications**
 - The chat shell must support **out-of-process flows** — open URL,
   wait, complete on callback. This is structurally different from
-  the slash → skill → reply model.
+  the slash → skill → reply model. // but this is already happening in all the apps that login to solidpods right? Isnt this exposed through the manifest or anything already?
 - **Reactive chat messages** (server-initiated / event-driven) are
   first-class. Today's substrate has notifier + inbox bridges;
   chat-shell consumes those to wake the chat thread.
@@ -784,25 +931,285 @@ Anne might want to *adopt* it (claim it) or just react to it.
 
 ---
 
-## Suggested additional journey shapes (for you to fill in)
+## Seed Journey 8 — user-configured thread + notification arrives
+
+### J8 — A focused "household alerts" thread
+
+**Persona** Anne, partner in a household with three crews (family,
+work-side-project, neighbourhood). Wants notifications about
+*household* events only, in a thread where she can also take quick
+action.
+
+**Context** Multi-thread enabled (design choice D). Default main
+thread is busy. Anne wants a dedicated thread that quietly streams
+household events and lets her dismiss / claim from inline cards.
+
+**Transcript — setting up the thread**
+
+> Anne: *taps `+ New thread`*
+> Chat: 🧵 **New thread**
+>   ```
+>   Name:       [_______________]
+>   Receive:    ( ) Everything
+>               (●) Filtered events only
+>   Filter:     app:household
+>               type:notification
+>               actor:any
+>               [Edit filter ▾]
+>   Commands:   [✓] Allowed
+>   [Create]    [Cancel]
+>   ```
+> Anne: names it "Household alerts", picks the filter, submits.
+> Chat: ✓ Thread *Household alerts* created.
+
+**Transcript — event arrives later that day**
+
+(Karl has just marked the dishwasher chore done on his phone.)
+
+> Chat → *Household alerts*: 🔔
+>   ```
+>   ┌────────────────────────────────────┐
+>   │ Karl completed *Dishwasher*         │
+>   │ 18:42 · 5 min ago                   │
+>   │ [View] [Thank Karl] [What's next?] │
+>   └────────────────────────────────────┘
+>
+> Anne: *taps Thank Karl*
+> Chat → *Household alerts*: ✓ "Bedankt, Karl 🙏" sent.
+
+**Transcript — second event, this time Anne acts**
+
+(Maria's birthday — household has a recurring chore "Bring Maria's
+birthday cake")
+
+> Chat → *Household alerts*: 🔔
+>   ```
+>   ┌────────────────────────────────────┐
+>   │ Chore unclaimed: *Maria's cake*     │
+>   │ Due today, no one claimed yet       │
+>   │ [Claim] [Reassign] [View]           │
+>   └────────────────────────────────────┘
+>
+> Anne: *taps Claim*
+> Chat → *Household alerts*: ✓ Claimed by you.
+>   (the card refreshes — assignee now "you," buttons change to
+>   `[Done]` `[Reassign]`)
+
+**Skills dispatched**
+- (thread creation) `chat.createThread({name, filter, ...})` — **new**
+  shell-side, not an app skill
+- (incoming events) reactive — household's notifier emits
+  `chore-completed`, `chore-unclaimed`; the shell's filter matches
+  and routes to *Household alerts*
+- (Anne's actions) `stoop.sendChatMessage({to: karl, text: '...'})`
+  for the thank-you; `household.claim({id: 'maria-cake'})` for
+  the claim
+
+**Mini-pages rendered**
+- The "New thread" form (B-style — could be inline or a popout)
+- Per-row alert cards (notification reply-shape with inline keyboard)
+
+**What's missing today**
+- **Thread management primitive** in the chat shell (D's main
+  building block): create / configure / filter / route.
+- **Event-to-thread routing** — every reactive event needs metadata
+  (app, type, actor, item-ref) so filter rules can match. Today's
+  inbox bridge stamps `type: 'inbox-item'` + `kind: <eventType>`
+  (per the J7-era cleanup); extending to `app:` + `actor:` is small.
+- **Filter DSL** — what does "app:household type:notification" look
+  like in code? Probably a simple key:value match list, escape valve
+  for arbitrary predicates later.
+- **The `[What's next?]` button** is a fun affordance — would call
+  back to household's `getNextChore` or similar — needs the manifest
+  to surface "follow-up" hints (or the shell heuristics, see J3).
+
+**Design implications**
+- The chat shell owns **thread state + filters + routing**; the
+  per-app substrate doesn't need to know about threads
+- The chat shell's filter engine needs to be **declarative enough**
+  for users to configure via a form (no scripting)
+- Reactive events that fail to match any thread's filter still need
+  a home — either default thread, the network-events log page, or
+  silenced
+
+---
+
+## Seed Journey 9 — cross-app morning brief
+
+### J9 — "What's on my plate today?"
+
+**Persona** Frits, mid-morning coffee, opens chat.
+
+**Context** Default thread. Wants a quick scan of what's happening
+across his canopy footprint — open tasks, unread inbox, pending
+share-requests, anything overdue.
+
+**Transcript**
+> Frits: `/morning` (or `/brief`, or "what's on my plate")
+> Chat: 📋 **Morning brief — Wed 21 May**
+>   ```
+>   Tasks (3 open, 1 overdue)
+>     ⚠ Replace smoke detector — overdue 2d
+>     • Fix the back door — due Fri
+>     • Set up Anne's bedroom — due Fri 30 May
+>     [Open all]
+>
+>   Household chores (2 unclaimed today)
+>     • Bins out — tonight
+>     • Maria's cake — by 17:00
+>     [See all]
+>
+>   Stoop activity (4 new posts in your buurt)
+>     [Open prikbord]
+>
+>   Folio (sync clean, 1 conflict in `notes/work/`)
+>     [Resolve conflict]
+>
+>   Inbox (5 unread)
+>     [Open inbox]
+>   ```
+
+**Skills dispatched (parallel)**
+- `tasks-v0.listMine({})` — open + overdue tasks
+- `household.listUnclaimed({today: true})` — today's chores
+- `stoop.listOpen({since: 'last-visit'})` — buurt activity
+- `folio.getSyncStatus({})` — sync + conflicts
+- `tasks-v0.inboxBadgeCount({})` — unread count
+
+**Mini-pages rendered**
+- One unified brief card with per-app sub-sections, each with
+  `[See all]` / `[Open X]` navigation buttons that link to the
+  respective list (chat-inline list, or side-panel page per design
+  choice B)
+
+**What's missing today**
+- **Aggregator orchestration** — the brief is a fan-out: call N
+  list-skills in parallel, format each section, render. Chat shell
+  needs a recipe for this; per-app `surfaces.chat.brief: true` flag
+  to opt in?
+- **Reply-format conventions** for multi-app summaries — pick a
+  cap (3-5 items shown per section, "+N more"), pick an ordering
+  rule (overdue first, then by due date, then by other)
+- **Per-app counts** — `inboxBadgeCount` is a count skill; not
+  every app has one yet. Either every app adds one, or the
+  aggregator fetches a list-skill and takes `.length`.
+- **Skill batching / cost** — `/morning` fires ~5 skills in parallel.
+  For a P2P decentralized model that crosses pods, this could be
+  expensive. Maybe cache the brief for N minutes?
+
+**Design implications**
+- Chat shell has a **fan-out brief primitive** — possibly its own
+  built-in slash (`/brief`) that knows how to compose per-app
+  summaries
+- Per-app **brief participation** is opt-in via manifest declaration
+  — `surfaces.chat.brief: { summarySkill: 'briefSummary' }`
+- The brief itself is a **list reply** (A2 disables on next message
+  per design choice A); for a persistent "morning brief," the user
+  would create a dedicated thread per design choice D
+
+---
+
+## Seed Journey 10 — pod-style differences for the same action
+
+### J10 — Mark a chore done, in three pod-styles
+
+**Persona** Anne again, but the household app is configured
+differently in three hypothetical setups. Same J1 action, three
+realities.
+
+**Setup A — Central pod (Inrupt-hosted, online)**
+> Anne: `/done dishwasher`
+> Chat: ✓ Dishwasher complete. (instantly confirmed)
+
+**Setup A — Central pod, offline**
+> Anne: `/done dishwasher`
+> Chat: ⚠ Stoop is offline; can't reach your pod. Queued — will sync
+>   when you're back online.
+>   [Show queue] [Cancel]
+
+**Setup B — Decentralized pods, all peers reachable**
+> Anne: `/done dishwasher`
+> Chat: ✓ Marked done on your device.
+>   Synced to Karl ✓ · Maria ✓
+>   Frits's pod unreachable — pending.
+>   (5 min later, reactive update:)
+>   ✓ Frits's pod synced.
+
+**Setup B — Decentralized pods, partial reachability**
+> Anne: `/mine`
+> Chat: 🗂️ Your open chores (3)
+>   ```
+>   • Dishwasher — your view (last sync 2 min ago)
+>   • Bins out — your view (Karl's pod offline; last from Karl 3h ago)
+>   • Maria's cake — ⚠ partial (Frits's pod unreachable;
+>                                  showing stale snapshot)
+>   ```
+>   [Refresh reachable peers]
+
+**Setup C — Pod-less (P2P, no pod)**
+> Anne: `/done dishwasher`
+> Chat: ✓ Marked done in your copy.
+>   📡 Polling peers... Karl saw it, Maria saw it.
+>   Frits not seen since 14:30 — will propagate next time he's
+>   reachable.
+
+**Skills dispatched (per setup)**
+- All setups: `household.markComplete({id})` — same skill, same
+  args
+- The **return value** varies:
+  - Central: simple `{ok: true}` or `{error: 'offline'}`
+  - Decentralized: `{ok: true, syncedTo: [karl, maria], pending: [frits]}`
+  - Pod-less: `{ok: true, polledPeers: [karl, maria], unreachable: [frits], lastSeenFrits: 14:30}`
+
+**What's missing today**
+- **Pod-style awareness in skill returns** — skills today return
+  app-local results. For decentralized + pod-less, they'd need to
+  report **per-peer sync state**. Substrate work: extend skill
+  return shape with optional `_sync: {peers: [...]}` field.
+- **Chat shell renders connectivity hints** per pod-style. Needs to
+  know each app's active pod-style (probably runtime-observed; see
+  open question 1 in choice E).
+- **Reactive completion** — for "Frits's pod synced" follow-up,
+  same reactive primitive as J6's OIDC callback + J8's filtered
+  notifications.
+- **Staleness annotation on list rows** (per-row freshness) — see
+  choice E's open question 3.
+
+**Design implications**
+- The skill is **the same** across pod-styles; the chat shell
+  **adapts the rendering** based on the skill's `_sync` return data
+- Substrate gains an optional `_sync` field on skill replies — apps
+  using decentralized or pod-less storage populate it; central
+  apps omit it (chat shell shows simple "✓" when absent)
+- This proves design choice E concretely — pod-style propagates via
+  **runtime observation** (skill return data), not manifest
+  declaration
+
+---
+
+## Suggested additional journey shapes (kept as one-liners)
+
+Three of the original suggested shapes (status/brief, notification-
+driven, pod-style differences) have been promoted to full journeys
+(J9, J8, J10). The remaining shapes stay as one-line descriptions —
+the architecture doc revisits them only if a gap appears:
 
 | Shape | Why it matters |
 |---|---|
-| **Status / morning brief** — "what's on my plate today across everything?" | Tests cross-app aggregation; reveals reply-format conventions for multi-app summaries |
 | **Destructive action with confirm** — `/clear-inbox`, `/delete-folder` from pod | Tests Q27 confirm severity flowing into chat (button styling, double-tap-to-confirm) |
 | **Settings change with ambiguity** — "turn on holiday mode" | Tests disambiguation across apps that both have the concept (stoop + tasks-v0 both do) |
 | **Onboarding new user** — `/start` from a fresh install (NOT pod sign-in — that's J6) | Tests first-run flow + which T3 wizards chat replaces vs hands off to |
-| **Notification-driven** — chat wakes you with "Karl just completed *Replace smoke detector*. `[View]` `[Thank]`" | Tests outbound/reactive chat (server-initiated messages), notifier substrate integration |
 | **Privacy-sensitive** — "show my mnemonic" (Tier C app-side only) | Tests how chat hands off to T3 surfaces without compromising security |
 | **Folio sync status** — `/folio-status` → mini-page with last sync, conflicts, sharing state | Tests folio as the first real consumer of its declaration-only manifest |
 | **Bulk action over a list reply** — list returns 8 tasks, batch select + `/done all` | Tests bulk-op composition + Q27 confirm for bulk + the "is this list still fresh?" staleness question |
-| **External event arrives** — Anne accepts the invite; chat says "Anne is now in your household. `[Send welcome]` `[Assign first task]`" | Tests reactive chat — skill replies in the future, not just immediate |
+| **External event arrives** — Anne accepts the invite; chat says "Anne is now in your household. `[Send welcome]` `[Assign first task]`" | Tests reactive chat — skill replies in the future, not just immediate (J8 already exercises the same primitive for filtered events) |
 | **Cross-device handoff** — "send this task to my phone" | Tests the canopy mesh / relay model from a chat UI |
 | **Search across apps** — "find anything about 'back door'" | Tests cross-app search; reveals whether/how each app exposes a `search` op |
 | **Help / discovery** — `/help` or "what can I do?" | Tests how chat surfaces the merged toolCatalog as a navigable menu |
 | **Settings panel via SIDE menu (not chat)** — user navigates to a persistent settings route | Tests the chat-vs-fixed-panel split (design choice B) — which settings are chat-inline (J5) vs side-panel-only? |
-| **Calendar view of tasks with due dates** — "show this week" → embedded calendar card | Tests whether calendar IS a separate app or a *view of* tasks-v0 (overlap surfaced in design choice C) |
-| **Person-to-person message with reply** — Anne types back, Frits sees her message + her task-card adoption in one thread | Tests the chat-thread model — does each contact have its own thread, or one unified inbox? |
+| **Calendar view of items with due dates** — "show this week" → side-panel calendar projection over `task-chore-item`-with-`dueAt` | Tests choice C.2 (calendar is a view, not an app); reveals the chat ⇄ calendar-panel nav protocol from B.1 |
+| **Network-events log page** — non-chat surface showing other users' / agents' activity in your groups | Tests choice D's "logs page" sibling surface; reveals whether v1 needs it or it can wait |
+| **Person-to-person message with reply** — Anne types back, Frits sees her message + her task-card adoption | Tests J7's embed primitive across multiple turns + per-user appliesTo gating |
 | **Embed a skill-request, not a task** — `/skill-request` (stoop's `postRequest`) embedded in a P2P message | Tests embed type extensibility (J7 covers tasks; do all itemtypes get an embed shape?) |
 
 ## How to fill in additional journeys
@@ -819,51 +1226,69 @@ Anne might want to *adopt* it (claim it) or just react to it.
 
 ## What this doc will feed into next
 
-Once the journey set is filled in, `DESIGN-canopy-chat.md` will
-absorb the gaps and design implications into concrete decisions:
+The journey set is now substantial enough to drive the architecture
+doc. `DESIGN-canopy-chat.md` will absorb the gaps and design
+implications into concrete decisions:
 
-- **Chat shell anatomy** — parser, router, renderer, per-conv state
-- **Menu/keyboard lifecycle** — pick between A1/A2/A3 variants
-  (recommended starting position: A2 hybrid; see design choice A)
+- **Chat shell anatomy** — parser, router, renderer, per-thread state
+- **Menu/keyboard lifecycle** — **decided: A2 hybrid** (choice A);
+  the architecture carries it forward
+- **Multi-thread workspace model** — **decided shape: D** (user-
+  managed instances). Architecture defines: thread storage, filter
+  DSL, event routing engine, per-thread config schema
+- **Pod-style runtime observation** (choice E) — skill replies carry
+  optional `_sync: {peers, pending, lastSeen}` shape; chat shell
+  renders connectivity hints accordingly. Manifest does NOT declare
+  pod-style; runtime data drives UX
 - **Reply-shape taxonomy** — Q-number proposal for the manifest
-  (`surfaces.chat.reply: 'text' | 'list' | 'record' | 'mini-page' | 'file' | 'embed-card'`)
+  (`surfaces.chat.reply: 'text' | 'list' | 'record' | 'mini-page' | 'file' | 'embed-card' | 'notification' | 'brief'`)
 - **Form generation** — `paramsSchema` → inline / mini-page /
   sequential, including new param types (date, picker-from-skill)
 - **Mini-page hosting model** — inline HTML vs side panel vs
   deep-link
-- **Chat-vs-side-panel split** — which surfaces are chat-inline
-  (settings as J5, contextual cards) vs side-panel-only (profile /
-  password / pod URL — see design choice B)
+- **Chat ⇄ side-panel navigation protocol** (B.1) — `returnTo:
+  <threadId>` link convention + floating "back to chat" button
+  contract for every persistent surface
 - **Detail-view scope (Q1)** — closing the V0 deferral; chat is the
   forcing function
-- **Cross-app namespace + identity-bridge rules**
-- **Slash → LLM → free-text routing rules**
-- **Per-conversation state schema** — short-term cache for fuzzy
-  resolution, in-flight flows (e.g. OIDC handoff), open live panels
+- **Cross-app slash namespace + identity-bridge rules**
+- **Slash → LLM → free-text routing rules** (per-thread, since
+  threads can disable commands per D)
+- **Per-thread state schema** — short-term cache for fuzzy
+  resolution, in-flight flows (e.g. OIDC handoff), open live panels,
+  thread filter rules
 - **Follow-up hints** — `surfaces.chat.followUps`?
 - **Reactive / outbound chat** — server-initiated messages (J6 OIDC
-  callback, J7 cross-pod adoption replication)
+  callback, J7 cross-pod adoption, J8 filtered events). Event router
+  matches against thread filter rules
 - **Embed payload shape** — rich-message embed primitive for J7;
   cross-app routing by `appOrigin`; snapshot vs live ref
 - **External flow primitive** — browser handoff for OIDC / app-store
   / external auth
+- **Brief / aggregator primitive** (J9) — fan-out across apps; per-
+  app `surfaces.chat.brief` opt-in?
 
 ## Separate / forward-looking concerns these journeys surface
 
 Not in scope for the chat architecture doc, but flagged here so they
 don't get lost:
 
-- **Unified item taxonomy** (design choice C) — a single "thing
-  with a state, master, assignee, deps, skills, dueAt" that the
-  apps project differently. Worth its own design doc. Chat ships
-  without it (typed embeds bridge the gap); a future refactor
-  could unify.
-- **Calendar as a view** — is calendar a separate app or a `view`
-  of tasks with `dueAt`? Probably the latter; revisit when a
-  calendar surface is on the table.
-- **Multi-thread chat model** — one thread per contact, one unified
-  inbox, or threads-per-topic? Mostly a UX choice; affects the
-  per-conv state model.
+- **Unified item taxonomy** (design choice C) — a single "task-
+  chore-item" type synthesised best-of-three from the four apps.
+  Per choice **C.1**: synthesis, not lowest-common-denominator. Worth
+  its own design doc. Chat ships without it (typed embeds bridge
+  the gap); a future refactor could unify.
+- **Calendar as a view** (choice C.2) — calendar is a side-panel
+  projection over `task-chore-item`-with-`dueAt`. Not a separate app.
+  Possibly filterable per chat-thread (so a thread can show "only my
+  calendar items"). Revisit when a calendar surface is on the table.
+- **Network-events log page** (choice D) — non-technical surface
+  showing other users' / agents' activity in your groups. Sits
+  alongside the side panel. Open whether v1 needs it or it can wait
+  until a thread-with-filter proves insufficient.
+- **Per-item staleness signal** (choice E open question 3) — for
+  decentralized + pod-less, list rows may be fresh or stale per
+  peer. Substrate may need a per-item `_lastSync` annotation.
 
 The journeys decide which of these are real concerns vs. premature
 generalisation.
