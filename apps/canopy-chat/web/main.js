@@ -22,7 +22,9 @@ import {
   describeFilter, canopyChatManifest,
   IndexedDBStore, attachPersistence,
 } from '../src/index.js';
+import { buildFormSpec, validateAndCoerce } from '../src/forms/buildFormSpec.js';
 import { renderStream }              from '../src/web/domAdapter.js';
+import { renderForm }                from '../src/web/domForm.js';
 import { renderSidebar }             from '../src/web/threadSidebar.js';
 import { createRealHouseholdAgent }  from '../src/web/realAgent.js';
 import { createLocalBuiltins }       from '../src/web/localBuiltins.js';
@@ -96,7 +98,11 @@ const router = createEventRouter({ threadStore: store });
 await initLocalisation({ lng: detectDeviceLang() });
 updateLangButtons();
 
-const localBuiltins = createLocalBuiltins({ catalog, t });
+const localBuiltins = createLocalBuiltins({
+  catalog, t,
+  threadStore: store,
+  setActive:   (id) => store.setActiveThread(id),
+});
 
 const callSkill = async (appOrigin, opId, args) => {
   if (appOrigin === 'canopy-chat') {
@@ -244,10 +250,88 @@ async function handleUserText(text, thread) {
     return;
   }
 
-  if (route.kind === 'needsForm' || route.kind === 'needsConfirm') {
-    const note = route.kind === 'needsForm'
-      ? `Missing required params: ${route.missing.join(', ')} (form UX lands in v0.3)`
-      : `This op needs confirmation (${route.severity}): ${route.message ?? ''} — confirm UX lands in v0.3`;
+  if (route.kind === 'needsForm') {
+    // v0.3.0 — render an inline form; on submit, retry dispatch.
+    const spec = buildFormSpec({
+      opParams:      catalog.opsById.get(route.opId)?.op?.params ?? [],
+      missing:       route.missing,
+      prefilledArgs: route.prefilledArgs,
+      opId:          route.opId,
+      appOrigin:     route.appOrigin,
+      threadId:      thread.id,
+    });
+    const formEl = renderForm(spec, {
+      doc: document, t,
+      onSubmit: async (values) => {
+        const v = validateAndCoerce(spec, values);
+        if (!v.ok) {
+          const errMsg = v.errors.map((e) => `${e.field}: ${e.message}`).join('; ');
+          const errEl = renderReply({
+            payload: null, shape: 'text', threadId: thread.id,
+            error:   { code: 'form-invalid', message: errMsg },
+          }, { t });
+          thread.addShellMessage(errEl);
+          renderActiveStream();
+          return;
+        }
+        // Dispatch with the full args.
+        const parse = {
+          kind: 'slash', opId: route.opId, args: v.args,
+          threadId: thread.id, command: '(form)', body: '',
+        };
+        const route2 = resolveDispatch(parse, catalog);
+        if (route2.kind !== 'ready') {
+          const errEl = renderReply({
+            payload: `Form submission failed: ${route2.kind}`,
+            shape: 'text', threadId: thread.id,
+          }, { t });
+          thread.addShellMessage(errEl);
+          renderActiveStream();
+          return;
+        }
+        await dispatchAndRender(route2, thread);
+      },
+      onCancel: () => {
+        const cancelMsg = renderReply({
+          payload: t('form.cancelled', { defaultValue: 'Form cancelled.' }),
+          shape: 'text', threadId: thread.id,
+        }, { t });
+        thread.addShellMessage(cancelMsg);
+        renderActiveStream();
+      },
+    });
+    // Append the form DOM directly into the messages stream as a
+    // shell-side "live" message.  We synthesise a thread message so
+    // the thread.tail() and lifecycle machinery treat it like any
+    // other shell reply.
+    thread.addShellMessage({
+      kind:           'form',
+      messageId:      `form-${Date.now()}`,
+      threadId:       thread.id,
+      lifecycleState: 'live',
+      formElement:    formEl,
+      text:           `Form: ${route.opId}`,
+    });
+    renderActiveStream();
+    // The DOM stream rebuild will use our message's text fallback —
+    // append the actual form element on top.  Easiest: re-attach
+    // the form DOM in a tick (after renderActiveStream).
+    setTimeout(() => {
+      // Find the form-placeholder bubble + replace its content with
+      // the live form element.  Identified by messageId.
+      const messages = thread.messages;
+      const last = messages[messages.length - 1];
+      const node = messagesEl.querySelector(`[data-message-id="${last.messageId}"]`);
+      if (node) {
+        while (node.firstChild) node.removeChild(node.firstChild);
+        node.appendChild(formEl);
+      }
+    }, 0);
+    return;
+  }
+
+  if (route.kind === 'needsConfirm') {
+    const note = `This op needs confirmation (${route.severity}): ${route.message ?? ''} — confirm UX lands in v0.3+`;
     const rendered = renderReply({
       payload: note, shape: 'text', threadId: thread.id,
     }, { t });
@@ -270,8 +354,9 @@ async function dispatchAndRender(route, thread) {
   thread.addShellMessage(rendered, { opId: route.opId });
 
   // Mutation? Fan out per OQ-4 — every thread with a matching
-  // filter sees an 'item-changed' event.  We skip listOpen-style
-  // reads (Q28 reply: 'list'), /help, and errors.
+  // filter sees an 'item-changed' event EXCEPT the thread the user
+  // dispatched from (the mutation reply already appears there, so
+  // a notification copy would duplicate).
   const op = catalog.opsById.get(route.opId)?.op;
   const isMutation = op?.verb && !['list', 'help'].includes(op.verb)
                    && !reply.error;
@@ -286,7 +371,7 @@ async function dispatchAndRender(route, thread) {
         op:      route.opId,
         result:  reply.payload,
       },
-    });
+    }, { excludeThreadIds: [thread.id] });
   }
 
   renderActiveStream();

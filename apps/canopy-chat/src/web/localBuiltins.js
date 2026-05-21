@@ -17,18 +17,73 @@
  * `apps/canopy-chat/manifest.js`.
  */
 
+import { describeFilter } from '../filter.js';
+
 /**
  * Build the local-builtins dispatcher.
  *
  * @param {object} deps
  * @param {import('../manifestMerge.js').MergedCatalog} deps.catalog
  * @param {(key: string, params?: object) => string}   deps.t
+ * @param {import('../threadStore.js').ThreadStore}    [deps.threadStore]
+ *   Required for /newthread and /threads.
+ * @param {(threadId: string) => void}                 [deps.setActive]
+ *   Called by /newthread to switch active thread to the new one.
  * @returns {{[opId: string]: (args: object) => Promise<*>}}
  */
-export function createLocalBuiltins({ catalog, t }) {
+export function createLocalBuiltins({ catalog, t, threadStore, setActive }) {
   return {
     help: async () => formatHelp(catalog, t),
+    newthread: async (args) => createNewThread(args, { threadStore, setActive, t }),
+    threads:   async ()     => listThreads({ threadStore, t }),
   };
+}
+
+/**
+ * `/newthread <name>` — create + switch.
+ *
+ * @param {{name: string}} args
+ */
+function createNewThread(args, { threadStore, setActive, t }) {
+  if (!threadStore) {
+    return { ok: false, error: t('newthread.no_store') };
+  }
+  const name = String(args?.name ?? '').trim();
+  if (!name) {
+    return { ok: false, error: t('newthread.no_name') };
+  }
+  const thread = threadStore.createThread({
+    name,
+    filter:      {},   // wildcard — user can refine via sidebar later
+    permissions: { allowCommands: true },
+  });
+  if (typeof setActive === 'function') setActive(thread.id);
+  return {
+    ok: true,
+    message: t('newthread.created', { name: thread.name }),
+    threadId: thread.id,
+  };
+}
+
+/**
+ * `/threads` — list all threads with their filters.
+ */
+function listThreads({ threadStore, t }) {
+  if (!threadStore) {
+    return { message: t('threads.no_store') };
+  }
+  const all = threadStore.listThreads();
+  if (all.length === 0) {
+    return { message: t('threads.empty') };
+  }
+  const lines = [t('threads.heading')];
+  for (const th of all) {
+    const filt    = describeFilter(th.filter);
+    const filtStr = filt === '*' ? '' : ` (${filt})`;
+    const active  = th.id === threadStore.activeId ? ' ●' : '';
+    lines.push(`  ${th.name}${active}${filtStr}`);
+  }
+  return { message: lines.join('\n') };
 }
 
 /**

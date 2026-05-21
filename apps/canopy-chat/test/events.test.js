@@ -290,6 +290,41 @@ describe('EventRouter — normalisation', () => {
   });
 });
 
+describe('EventRouter — excludeThreadIds (deduplication)', () => {
+  it("skips threads listed in opts.excludeThreadIds even when filter matches", () => {
+    const store = makeStore();
+    const router = new EventRouter({ threadStore: store });
+    const matched = router.deliver({
+      app: 'household', type: 'notification',
+      payload: { message: 'x' },
+    }, { excludeThreadIds: ['house'] });
+    expect(matched.sort()).toEqual(['inbox', 'main']);   // 'house' excluded
+    expect(store.getThread('house').messages.length).toBe(0);
+  });
+
+  it("excluding a non-matching thread is a no-op", () => {
+    const store = makeStore();
+    const router = new EventRouter({ threadStore: store });
+    const matched = router.deliver({
+      app: 'household', type: 'notification',
+      payload: { message: 'x' },
+    }, { excludeThreadIds: ['silent'] });
+    expect(matched.sort()).toEqual(['house', 'inbox', 'main']);
+  });
+
+  it("excluding ALL matching threads returns empty + still notifies subscribers", () => {
+    const store = makeStore();
+    const router = new EventRouter({ threadStore: store });
+    const subs = [];
+    router.onRouted((e, ids) => subs.push(ids));
+    const matched = router.deliver({
+      app: 'household', type: 'notification', payload: { message: 'x' },
+    }, { excludeThreadIds: ['main', 'inbox', 'house'] });
+    expect(matched).toEqual([]);
+    expect(subs).toEqual([[]]);
+  });
+});
+
 describe('EventRouter — integration with A2 hybrid lifecycle', () => {
   it("notification arrival does NOT trigger A2 flip (only user messages do)", () => {
     const store = new ThreadStore();
