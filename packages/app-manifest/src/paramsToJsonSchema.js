@@ -46,6 +46,16 @@ function paramToProperty(p, manifest) {
         ? { type: 'string', enum: values, ...extra }
         : { type: 'string', enum: values };
     }
+    // v0.3.2 + v0.4 — date / webid surface in JSON Schema as strings
+    // with format hints.  Real validation happens in canopy-chat's
+    // buildFormSpec.validateAndCoerce (per-kind parser).
+    case 'date':    return extra ? { type: 'string', format: 'date',  ...extra } : { type: 'string', format: 'date'  };
+    case 'webid':   return extra ? { type: 'string', format: 'uri',   ...extra } : { type: 'string', format: 'uri'   };
+    // Q23 — file / image surface as objects with a contentType field;
+    // adapters interpret the upload UI.  No real consumer yet; minimal
+    // shape so the schema doesn't reject them.
+    case 'file':    return extra ? { type: 'object', ...extra } : { type: 'object' };
+    case 'image':   return extra ? { type: 'object', ...extra } : { type: 'object' };
     default:
       throw new Error(
         `paramsToJsonSchema: unknown kind "${p?.kind}" for param "${p?.name}"`,
