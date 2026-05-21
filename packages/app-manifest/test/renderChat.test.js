@@ -309,6 +309,72 @@ describe('renderChat — Q28 replyShapeFor (canopy-chat v0.1)', () => {
   });
 });
 
+describe('renderChat — Q31 followUpsFor (canopy-chat v0.4)', () => {
+  it('returns the declared follow-ups array', () => {
+    const m = {
+      app: 'demo', itemTypes: ['task'],
+      operations: [{
+        id: 'addMember', verb: 'add', params: [],
+        surfaces: { chat: {
+          followUps: [
+            { opId: 'shareFolder' },
+            { opId: 'addTask', prefilledArgs: { for: 'newMember' } },
+          ],
+        } },
+      }],
+      views: [{ id: 'v', title: 'V', type: 'task' }],
+    };
+    const out = renderChat(m, {
+      skillRegistry: { addMember: async () => ({ replies: [], stateUpdates: [] }) },
+      toSkillCtx:    (c) => c,
+    });
+    expect(out.followUpsFor('addMember')).toEqual([
+      { opId: 'shareFolder' },
+      { opId: 'addTask', prefilledArgs: { for: 'newMember' } },
+    ]);
+  });
+
+  it('returns undefined when no follow-ups declared', () => {
+    const out = renderChat(baseManifest, { skillRegistry, toSkillCtx });
+    expect(out.followUpsFor('addTask')).toBeUndefined();
+  });
+});
+
+describe('renderChat — Q32 runtimeFor (canopy-chat v0.4)', () => {
+  it("returns 'both' when op.runtime absent", () => {
+    const out = renderChat(baseManifest, { skillRegistry, toSkillCtx });
+    expect(out.runtimeFor('addTask')).toBe('both');
+  });
+
+  it('returns the declared runtime when present', () => {
+    const m = {
+      app: 'folio', itemTypes: ['note'],
+      operations: [
+        { id: 'readNote',  verb: 'list', params: [], runtime: 'browser' },
+        { id: 'syncOnce',  verb: 'add',  params: [], runtime: 'node'    },
+        { id: 'shareNote', verb: 'add',  params: [], runtime: 'both'    },
+      ],
+      views: [{ id: 'v', title: 'V', type: 'note' }],
+    };
+    const out = renderChat(m, {
+      skillRegistry: {
+        readNote:  async () => ({ replies: [], stateUpdates: [] }),
+        syncOnce:  async () => ({ replies: [], stateUpdates: [] }),
+        shareNote: async () => ({ replies: [], stateUpdates: [] }),
+      },
+      toSkillCtx: (c) => c,
+    });
+    expect(out.runtimeFor('readNote')).toBe('browser');
+    expect(out.runtimeFor('syncOnce')).toBe('node');
+    expect(out.runtimeFor('shareNote')).toBe('both');
+  });
+
+  it("unknown opId → 'both' (defensive default)", () => {
+    const out = renderChat(baseManifest, { skillRegistry, toSkillCtx });
+    expect(out.runtimeFor('nonexistent')).toBe('both');
+  });
+});
+
 describe('renderChat — systemPrompt', () => {
   it('is deterministic + uses the chat hint per op (fallback to id)', () => {
     const out = renderChat(baseManifest, { skillRegistry, toSkillCtx });

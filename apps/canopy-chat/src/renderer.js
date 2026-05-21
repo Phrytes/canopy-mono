@@ -143,6 +143,10 @@ export function renderReply(reply, opts = {}) {
     messageId, threadId,
     lifecycleState: 'live',
     text: formatText(reply.payload, t),
+    // v0.4 — when caller pre-computes follow-up suggestions (via
+    // `collectFollowUps`), they ride along on the rendered reply.
+    // DOM adapter renders them as inline buttons below the text.
+    followUps: Array.isArray(reply.followUps) ? reply.followUps : undefined,
   };
 }
 

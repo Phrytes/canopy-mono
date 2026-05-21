@@ -81,7 +81,8 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
   }
 }
 
-function renderTextBubble(rendered, state, { doc }) {
+function renderTextBubble(rendered, state, ctx) {
+  const { doc, onFollowUp } = ctx;
   const wrap = doc.createElement('div');
   wrap.className = `cc-message cc-shell cc-text cc-${state}`;
   if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
@@ -89,6 +90,23 @@ function renderTextBubble(rendered, state, { doc }) {
   bubble.className = 'cc-bubble';
   bubble.textContent = rendered.text ?? '';
   wrap.appendChild(bubble);
+
+  // v0.4 — render follow-up buttons under the text bubble.
+  if (Array.isArray(rendered.followUps) && rendered.followUps.length > 0
+      && state !== 'disabled'
+      && typeof onFollowUp === 'function') {
+    const kb = doc.createElement('div');
+    kb.className = 'cc-followups';
+    for (const fu of rendered.followUps) {
+      const btn = doc.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cc-followup-btn';
+      btn.textContent = fu.label ?? `${fu.appOrigin}.${fu.opId}`;
+      btn.addEventListener('click', () => onFollowUp(fu));
+      kb.appendChild(btn);
+    }
+    wrap.appendChild(kb);
+  }
   return wrap;
 }
 
