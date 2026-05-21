@@ -72,10 +72,12 @@ function renderUserBubble(text, { doc }) {
 function renderShellMessage(rendered, lifecycleState, ctx) {
   const state = lifecycleState ?? rendered.lifecycleState ?? 'live';
   switch (rendered.kind) {
-    case 'text':  return renderTextBubble(rendered, state, ctx);
-    case 'error': return renderErrorBubble(rendered, state, ctx);
-    case 'list':  return renderListMessage(rendered, state, ctx);
-    default:      return renderUnknownShape(rendered, ctx);
+    case 'text':      return renderTextBubble(rendered, state, ctx);
+    case 'error':     return renderErrorBubble(rendered, state, ctx);
+    case 'list':      return renderListMessage(rendered, state, ctx);
+    case 'record':    return renderRecordPanel(rendered, state, ctx, 'record');
+    case 'mini-page': return renderRecordPanel(rendered, state, ctx, 'mini-page');
+    default:          return renderUnknownShape(rendered, ctx);
   }
 }
 
@@ -155,6 +157,94 @@ function renderListMessage(rendered, state, ctx) {
   }
   wrap.appendChild(ul);
   return wrap;
+}
+
+/**
+ * Render a record / mini-page reply as a stable panel with field
+ * rows + [Close] button.  Per A2 hybrid: these shapes stay 'live'
+ * until the user explicitly closes them.
+ *
+ * @param {object} rendered
+ * @param {'live'|'disabled'|'closed'} state
+ * @param {DomAdapterContext} ctx
+ * @param {'record' | 'mini-page'} variant
+ */
+function renderRecordPanel(rendered, state, ctx, variant) {
+  const { doc, onCloseMessage } = ctx;
+  const wrap = doc.createElement('div');
+  wrap.className = `cc-message cc-shell cc-${variant} cc-${state}`;
+  if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
+
+  if (state === 'closed') {
+    // Collapsed one-liner.
+    const collapsed = doc.createElement('div');
+    collapsed.className = 'cc-panel-collapsed';
+    collapsed.textContent = rendered.title
+      ? `(closed: ${rendered.title})`
+      : '(closed)';
+    wrap.appendChild(collapsed);
+    return wrap;
+  }
+
+  // Title bar
+  if (rendered.title) {
+    const bar = doc.createElement('div');
+    bar.className = 'cc-panel-title';
+    const titleSpan = doc.createElement('span');
+    titleSpan.textContent = rendered.title;
+    bar.appendChild(titleSpan);
+
+    if (typeof onCloseMessage === 'function') {
+      const closeBtn = doc.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'cc-panel-close';
+      closeBtn.textContent = '×';
+      closeBtn.title = 'Close';
+      closeBtn.addEventListener('click', () => onCloseMessage(rendered.messageId));
+      bar.appendChild(closeBtn);
+    }
+    wrap.appendChild(bar);
+  } else if (typeof onCloseMessage === 'function') {
+    // No title — still expose a small floating close in the top-right.
+    const closeBtn = doc.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'cc-panel-close cc-panel-close-bare';
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', () => onCloseMessage(rendered.messageId));
+    wrap.appendChild(closeBtn);
+  }
+
+  // Field rows
+  const body = doc.createElement('dl');
+  body.className = 'cc-panel-fields';
+  const fields = Array.isArray(rendered.fields) ? rendered.fields : [];
+  if (fields.length === 0) {
+    const empty = doc.createElement('div');
+    empty.className = 'cc-panel-empty';
+    empty.textContent = '(no fields)';
+    wrap.appendChild(empty);
+  } else {
+    for (const field of fields) {
+      const dt = doc.createElement('dt');
+      dt.className = 'cc-field-name';
+      dt.textContent = field.name;
+      const dd = doc.createElement('dd');
+      dd.className = `cc-field-value cc-field-${field.kind ?? 'unknown'}`;
+      dd.textContent = formatFieldValue(field.value);
+      body.appendChild(dt);
+      body.appendChild(dd);
+    }
+    wrap.appendChild(body);
+  }
+  return wrap;
+}
+
+function formatFieldValue(v) {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  try { return JSON.stringify(v); }
+  catch { return String(v); }
 }
 
 function renderUnknownShape(rendered, { doc }) {
