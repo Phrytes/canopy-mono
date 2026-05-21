@@ -65,7 +65,7 @@ Tracking per `/Project Files/canopy-chat/coding-plan.md` § Phase v0.1:
 | 1.8 | Renderer (text + list reply shapes) | shipped 2026-05-21 |
 | 1.9 | Thread state v0 (single-thread; fuzzy resolve; A2 lifecycle) | shipped 2026-05-21 |
 | 1.10 | Web entry | pending |
-| 1.11 | Localisation scaffold | pending |
+| 1.11 | Localisation scaffold (en + nl, i18next wrapper) | shipped 2026-05-21 |
 | 1.12 | Build pipeline | pending |
 
 ## Conventions

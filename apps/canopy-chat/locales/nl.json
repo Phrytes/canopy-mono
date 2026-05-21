@@ -1,0 +1,19 @@
+{
+  "common": {
+    "ok":      { "text": "✓",        "doc": "Generic success indicator rendered when a skill returns { ok: true } with no message." },
+    "failed":  { "text": "Mislukt",  "doc": "Generic failure fallback when a skill returns { ok: false } with no error text." },
+    "error":   { "text": "Fout",     "doc": "Generic error label when an error envelope has no message or code." }
+  },
+  "reply": {
+    "unknown_command": {
+      "text": "Begreep „{{input}}” niet. Probeer /help voor de beschikbare commando's.",
+      "doc": "Shown when parser falls through to kind:'unknown' — user input matched no slash command."
+    }
+  },
+  "thread": {
+    "stale_list": {
+      "text": "Deze lijst is verouderd. Voer het commando opnieuw uit om te verversen.",
+      "doc": "Shown when the user taps a disabled action menu (per A2 hybrid lifecycle)."
+    }
+  }
+}
