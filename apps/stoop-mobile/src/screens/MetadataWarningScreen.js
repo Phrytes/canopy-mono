@@ -19,7 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { ROUTES }                            from '../navigation.js';
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
-import { t }                                  from '../lib/i18n.js';
+import { t }                                  from '../lib/localisation.js';
 import { markMetadataWarningSeen }            from '../lib/metadataWarning.js';
 
 export function MetadataWarningScreen() {

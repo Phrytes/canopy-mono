@@ -21,13 +21,13 @@ import { useTheme }    from '@canopy/react-native/theme';
 import { ConfirmModal } from '@canopy/react-native/components';
 import { useService }  from '../../ServiceContext.js';
 import { useSkill }    from '../../lib/useSkill.js';
-import { useI18n }     from '../../I18nProvider.js';
+import { useLocalisation }     from '../../LocalisationProvider.js';
 import { useActiveRole } from '../../lib/useActiveRole.js';
 
 export function LifecycleSection() {
   const svc          = useService();
   const { isAdmin }  = useActiveRole();
-  const { t }        = useI18n();
+  const { t }        = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const cs       = svc?.activeCrewId ? svc.crews.get(svc.activeCrewId) : null;

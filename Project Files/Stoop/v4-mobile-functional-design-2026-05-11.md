@@ -132,7 +132,7 @@ What mobile adds on top (the RN-specific layer):
   `MobilePushBridge` (all from `@canopy/react-native`).
 - **Mobile substrates** — `oidc-session-rn`, `react-native/
   picker`, `react-native/qr`, `react-native/mnemonic`,
-  `react-native/push`, `react-native/i18n`.
+  `react-native/push`, `react-native/localisation`.
 
 The cross-app dep on `@canopy-app/stoop` is **the only
 mobile-specific cross-app import**; everything else is via
@@ -392,7 +392,7 @@ Cross-references:
 V4 reuses `apps/stoop/locales/{nl,en}.json` (shared with web)
 plus `apps/stoop-mobile/locales/{nl,en}.json` for mobile-only
 strings. V3 already established the locale-resolver substrate
-(`@canopy/react-native/i18n`). V4 adds keys for:
+(`@canopy/react-native/localisation`). V4 adds keys for:
 
 - Storage-policy picker copy in the create-group wizard.
 - "My Solid pods" section on profile.

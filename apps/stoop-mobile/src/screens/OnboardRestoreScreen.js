@@ -19,7 +19,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { ROUTES }                          from '../navigation.js';
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
-import { t }                               from '../lib/i18n.js';
+import { t }                               from '../lib/localisation.js';
 import {
   normaliseMnemonic, statusFor, looksLikeMnemonic,
 } from '../lib/mnemonic.js';

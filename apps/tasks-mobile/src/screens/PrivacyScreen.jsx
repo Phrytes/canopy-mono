@@ -6,7 +6,7 @@
  * Wraps `getPrivacyNotice({lang})` from tasks-v0's crewControls
  * skills. Renders each item as a heading + paragraph block, mirroring
  * `apps/tasks-v0/web/privacy.html`. Picks the language from the active
- * I18n locale.
+ * Localisation locale.
  */
 
 import React from 'react';
@@ -15,11 +15,11 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@canopy/react-native/theme';
 import { useSkillResult } from '../lib/useSkill.js';
-import { useI18n }    from '../I18nProvider.js';
+import { useLocalisation }    from '../LocalisationProvider.js';
 
 export function PrivacyScreen() {
   const nav = useNavigation();
-  const { t, lang } = useI18n();
+  const { t, lang } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const result = useSkillResult('getPrivacyNotice', { lang }, [lang]);

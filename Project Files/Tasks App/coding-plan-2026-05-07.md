@@ -722,7 +722,7 @@ Things that could derail V1, in priority order.
                   │
                   └─→ Phase 8 (UI)
                             │
-                            └─→ Phase 10 (i18n + archive + pause + privacy)
+                            └─→ Phase 10 (localisation + archive + pause + privacy)
                                       │
                                       └─→ Phase 11 (docs + acceptance)
 ```

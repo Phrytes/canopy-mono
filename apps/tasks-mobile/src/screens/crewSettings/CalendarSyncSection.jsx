@@ -13,13 +13,13 @@ import { View, Text, Switch, Pressable } from 'react-native';
 import { useTheme } from '@canopy/react-native/theme';
 import { useService } from '../../ServiceContext.js';
 import { useSkill, useSkillResult } from '../../lib/useSkill.js';
-import { useI18n }    from '../../I18nProvider.js';
+import { useLocalisation }    from '../../LocalisationProvider.js';
 import { useActiveRole } from '../../lib/useActiveRole.js';
 
 export function CalendarSyncSection() {
   const svc = useService();
   const { isAdminOrCoord, actor } = useActiveRole();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const cs = svc?.activeCrewId ? svc.crews.get(svc.activeCrewId) : null;

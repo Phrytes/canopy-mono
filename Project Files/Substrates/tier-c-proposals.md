@@ -142,7 +142,7 @@ op.surfaces.ui.confirm?: {
 - `severity` is purely stylistic — adapters style the confirm button
   (red for danger, yellow for warn).
 - `message` is plain text (V1). A future minor can add `messageKey`
-  for i18n parity with Q22 labelKey.
+  for localisation parity with Q22 labelKey.
 - Adapter shows a substrate-prescribed yes/no modal; web + mobile reuse
   the same component shape.
 - Forward-additive: absent → no gating (today's behaviour, plain click

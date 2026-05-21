@@ -1,7 +1,7 @@
 # Localisation convention — every app ships translatable
 
-> **Status:** locked 2026-05-05; renamed from `i18n.md` 2026-05-07
-> for clarity (the "i18n" numeronym is jargon).
+> **Status:** locked 2026-05-05; renamed from `localisation.md` 2026-05-07
+> for clarity (the "localisation" numeronym is jargon).
 > **Companion:** [`./app-readme-scheme.md`](./app-readme-scheme.md).
 > **Applies to:** every directory under `apps/` that has a user-facing surface (UI, CLI prompts, push-notification copy).
 
@@ -37,7 +37,7 @@ apps/<name>/
     en.json          ← default; required
     nl.json          ← additional locales as needed
   src/
-    lib/i18n.js      ← thin wrapper over chosen library; exposes t()
+    lib/localisation.js      ← thin wrapper over chosen library; exposes t()
     ...
 ```
 
@@ -113,10 +113,10 @@ Other libraries (Lingui, FormatJS/react-intl, Fluent) are acceptable
 when an app's needs justify them — document the choice in that app's
 README. **Don't add a 3rd library without rule-of-two justification.**
 
-## Minimal `lib/i18n.js` shape
+## Minimal `lib/localisation.js` shape
 
 ```js
-// apps/<name>/src/lib/i18n.js
+// apps/<name>/src/lib/localisation.js
 import i18next from 'i18next';
 import en from '../../locales/en.json' assert { type: 'json' };
 import nl from '../../locales/nl.json' assert { type: 'json' };

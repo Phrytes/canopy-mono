@@ -53,7 +53,7 @@ import {
   createToolHandlers,
   createContextBuilder,
   pickPrompt,
-  pickI18n,
+  pickLocalisation,
   pickFallbackNotDone,
   parseLlmOptions,
   installSlashCommandPreprocessor,
@@ -65,7 +65,7 @@ import {
 // + button-tap shape to English.  Anything else (or unset) → Dutch.
 // HOUSEHOLD_PROMPT overrides the language-derived prompt if set.
 const LANG          = (process.env.HOUSEHOLD_LANG ?? '').toLowerCase();
-const I18N          = pickI18n(LANG);
+const LOCALISATION          = pickLocalisation(LANG);
 const FALLBACK      = pickFallbackNotDone(LANG);
 const PROMPT_NAME   = process.env.HOUSEHOLD_PROMPT ?? (LANG === 'en' ? 'lean-en' : 'lean');
 const SYSTEM_PROMPT = pickPrompt(PROMPT_NAME);
@@ -174,13 +174,13 @@ async function main() {
     ? createListStore()
     : createPersistedListStore({ path: listsPath });
 
-  const toolHandlers   = createToolHandlers(store, { i18n: I18N });
-  const contextBuilder = createContextBuilder(store, { i18n: I18N });
+  const toolHandlers   = createToolHandlers(store, { localisation: LOCALISATION });
+  const contextBuilder = createContextBuilder(store, { localisation: LOCALISATION });
 
   // Slash-command pre-processor: deterministic /add /show /remove
   // /done /lists /help.  Bypasses the LLM when matched; otherwise
   // falls through to ChatAgent's LLM path.
-  installSlashCommandPreprocessor(bridge, store, { i18n: I18N });
+  installSlashCommandPreprocessor(bridge, store, { localisation: LOCALISATION });
 
   const agent = new ChatAgent({
     bridges:        [bridge],

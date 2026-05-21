@@ -1358,7 +1358,7 @@ Sub-modules under `@canopy/react-native/`:
 - **mnemonic** — `useMnemonicReveal`, `<MnemonicView>`.
 - **push** — `setupPush`, `requestPushPermission`,
   `usePushOptIn`, `MobilePushBridge`.
-- **i18n** — `loadLocale({bundles, defaultLang})`.
+- **localisation** — `loadLocale({bundles, defaultLang})`.
 - **Native adapters** — `KeychainVault`,
   `AsyncStorageAdapter`, `FileSystemAdapter`,
   `MdnsTransport`, `BleTransport`,

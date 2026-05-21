@@ -61,7 +61,7 @@ export function createOpBinding({ manifest, callSkill, confirmFn } = {}) {
   }
 
   /**
-   * Resolve a label for an op, honouring Q22 labelKey when an i18n
+   * Resolve a label for an op, honouring Q22 labelKey when an localisation
    * function is supplied.
    *
    *   labelFor('signOutOfPod')           // → 'Uitloggen'  (fallback)

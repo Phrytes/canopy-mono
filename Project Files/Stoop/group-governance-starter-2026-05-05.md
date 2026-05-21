@@ -5,7 +5,7 @@
 > people, not configuring an app. Six questions, all answerable in
 > 5–10 minutes by a thoughtful admin.
 >
-> Text is bilingual NL / EN; both ship in V1 per the i18n
+> Text is bilingual NL / EN; both ship in V1 per the localisation
 > convention. Tone: warm, plain, slightly formal Dutch / direct,
 > non-corporate English.
 

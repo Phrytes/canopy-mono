@@ -80,7 +80,7 @@ additive — `createCrewAgent` wires the V1+ surface; the legacy
 
 ### Localisation + privacy
 - **`locales/{en,nl}.json`** — `{text, doc}` leaf shape (project convention); ~60 keys per language covering nav, status pills, actions, composer, crew labels, inbox event chips, error codes.
-- **`src/lib/i18n.js`** — `i18next` wrapper with `unwrapLeaves` so callers write `t('common.save')` directly.
+- **`src/lib/localisation.js`** — `i18next` wrapper with `unwrapLeaves` so callers write `t('common.save')` directly.
 - **`src/lib/privacyNotice.js`** — closed-beta notice content; 6 items in nl + en; surfaced via `getPrivacyNotice` skill + `/privacy.html`.
 
 ### Web UI (`web/`)
@@ -189,7 +189,7 @@ project rule
 | `composeArgs`    | `buildAddTaskArgs(form)` / `buildForceSpawnArgs(form)` — pure-fn translators from compose-form state to the `addTask` / `forceSpawnSubtask` skill payloads. | both shells |
 | `inboxClassify`  | `kindOf(event)` + `proposalIdOf(event)` + `requestIdOf(event)` — inbox event-kind taxonomy used to pick the right card layout. | both shells |
 | `effectiveActor` | `resolveActorWebid({from, envelope, crewState})` + `resolveActorRole({...})` + `buildActorAliases(members)` — pubKey ↔ webid resolution against the crew's role table. Mobile's React-bindings dispatch carries `from = pubKey`; the desktop's relay path will hit the same shape. | both shells (mobile via `useActiveRole`; desktop's role policy via `buildStandardRolePolicy(roles, {aliases})`) |
-| `i18nMerge`      | `mergeLocales(shared, shellLocal)` + `lookupKey(bundle, path, fallback)` — deep-merge helpers for the shared locale namespace. | both shells |
+| `localisationMerge`      | `mergeLocales(shared, shellLocal)` + `lookupKey(bundle, path, fallback)` — deep-merge helpers for the shared locale namespace. | both shells |
 
 Tests live in `test/ui/*.test.js` and run on this app's vitest config
 (Node only, no RN polyfills). The mobile shell does not duplicate
@@ -199,7 +199,7 @@ these tests; it imports the helper and trusts the shared coverage.
 role labels, crew kinds, approval modes) live in
 `apps/tasks-v0/locales/shared/{en,nl}.json`. Both shells merge that
 bundle on top of their own — see
-`apps/tasks-mobile/src/I18nProvider.js` for the consumer pattern.
+`apps/tasks-mobile/src/LocalisationProvider.js` for the consumer pattern.
 
 ## Bring it up
 
@@ -332,7 +332,7 @@ V2+ (demand-driven):
 | `test/phase7-subtasks.test.js`    | 16 | dag-tree helpers + addSubtask + admin-approval queuing + approve/decline + status integration. |
 | `test/phase8-ui.test.js`          | 11 | All 6 UI pages serve + nav skeleton + workspace + inbox + creator-approval cycle end-to-end. |
 | `test/phase9-observability.test.js` | 16 | MetricsTracker + cadence resolution + setCrewCadences (admin-gated) + setMyCadenceOverrides. |
-| `test/phase10-lifecycle.test.js`  | 17 | i18n init/translate/interpolate; locale `{text, doc}` schema validation; en+nl key-set parity; pause/archive flow + addTask gate; privacy notice content. |
+| `test/phase10-lifecycle.test.js`  | 17 | localisation init/translate/interpolate; locale `{text, doc}` schema validation; en+nl key-set parity; pause/archive flow + addTask gate; privacy notice content. |
 
 Plus the substrate-level item-store tests (`packages/item-store/test/ItemStore.dod.test.js` — 24 substrate tests) cover the DoD lifecycle at the substrate layer.
 

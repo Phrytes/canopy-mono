@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { ConfirmModal } from '@canopy/react-native/components';
-import { useI18n } from '../I18nProvider.js';
+import { useLocalisation } from '../LocalisationProvider.js';
 
 /**
  * @param {object} props
@@ -21,7 +21,7 @@ import { useI18n } from '../I18nProvider.js';
  * @param {() => void} [props.onSkip]  user declined; default closes the modal
  */
 export function PermissionRationale({ visible, kind, onGrant, onSkip }) {
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   return (
     <ConfirmModal
       visible={visible}

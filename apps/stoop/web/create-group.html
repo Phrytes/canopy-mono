@@ -164,11 +164,11 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, initI18n, applyI18n, t } from '/app.js';
+    import { callSkill, getActor, initLocalisation, applyLocalisation, t } from '/app.js';
     import { renderQrInto, inviteQrPayload } from '/lib/qr.js';
 
-    await initI18n();
-    applyI18n();
+    await initLocalisation();
+    applyLocalisation();
     document.title = t('create_group.page_title', 'Stoop — New group');
 
     document.getElementById('actor').textContent = await getActor();

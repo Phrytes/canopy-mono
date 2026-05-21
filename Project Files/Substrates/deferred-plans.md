@@ -279,7 +279,7 @@ visible at the project level for periodic review.
      `removeFromList` emit state-update events for digests + nudges.
   4. Pod-backed store option (multi-device safety).  Currently only
      local-JSON-file persistence ships.
-  5. i18n for user-facing strings (Dutch hard-coded today).  See
+  5. localisation for user-facing strings (Dutch hard-coded today).  See
      also the multilingual extension path documented in
      `apps/household/docs/PROMPT-EXPERIMENTATION.md`.
   6. Deprecation warning on legacy `HouseholdAgent` constructor.

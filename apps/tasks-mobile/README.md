@@ -92,7 +92,7 @@ This app composes the following substrate packages
 | `@canopy/react-native/qr` | `classifyQrPayload(text, classifiers)` + `<QrCodeView>`. | Phase 41.0 L4 lift. Tasks registers its own classifier list (`tasks://invite`, `tasks://bot-token`, BIP-39, contact-share). |
 | `@canopy/react-native/mnemonic` | Pure helpers + `useMnemonicReveal` hook + `<MnemonicView>` (recovery phrase). | Phase 41.0 L5 lift. |
 | `@canopy/react-native/push` | `setupPush` + `requestPushPermission` + `usePushOptIn` hook. | Phase 41.0 L6 lift. |
-| `@canopy/react-native/i18n` | `loadLocale({bundles, defaultLang})` resolver. | Phase 41.0 L7 lift; locales come from `apps/tasks-v0/locales/{en,nl}.json` (and a tasks-mobile-only `locales/{en,nl}.json` for mobile-screen strings). |
+| `@canopy/react-native/localisation` | `loadLocale({bundles, defaultLang})` resolver. | Phase 41.0 L7 lift; locales come from `apps/tasks-v0/locales/{en,nl}.json` (and a tasks-mobile-only `locales/{en,nl}.json` for mobile-screen strings). |
 
 ## Direct SDK use
 
@@ -126,7 +126,7 @@ meshAgent's bus.
 ## Shared UI helpers
 
 UI-glue helpers (`taskStatus`, `composeArgs`, `inboxClassify`,
-`effectiveActor`, `i18nMerge`) come from
+`effectiveActor`, `localisationMerge`) come from
 `@canopy-app/tasks-v0/ui/*` — the desktop shell's `src/ui/`
 directory. Both shells consume the same code so the V2.7 deps
 gate, the addTask payload shape, the inbox event classifier, and
@@ -140,7 +140,7 @@ The genuinely-shared locale strings (status pills, role labels,
 crew-kind chips, approval modes) live in
 `apps/tasks-v0/locales/shared/{en,nl}.json` and merge under both
 `@canopy-app/tasks-v0/locales/<lang>` and `apps/tasks-mobile/locales/<lang>`
-in `I18nProvider.js` — shell-local keys win on collision.
+in `LocalisationProvider.js` — shell-local keys win on collision.
 
 ## Bring it up
 
@@ -165,7 +165,7 @@ you can — same Expo 52 / RN 0.76.9 pin.
 
 > **Pair-test scenarios** (Tasks-desktop ↔ Tasks-mobile, T1–T6) live
 > in the cross-app pair-test runbook:
-> [`Project Files/conventions/pair-test-runbook-2026-05-15.md`](../../Project%20Files/conventions/pair-test-runbook-2026-05-15.md).
+> [`Project Files/conventions/pair-test-runbook-2026-05-15.md`](pair-test-runbook-2026-05-15.md).
 > The walkthrough below covers the single-device journeys; pair
 > the two when running 41.16 on hardware.
 
@@ -234,9 +234,9 @@ sources:
 
 Both bundles get merged at boot and fed to
 `loadLocale({bundles, defaultLang})` from
-`@canopy/react-native/i18n`. To add a locale: drop a new
+`@canopy/react-native/localisation`. To add a locale: drop a new
 `locales/<lang>.json` matching the en shape, add it to the merge
-call in `src/I18nProvider.js`, declare the `<lang>` key on
+call in `src/LocalisationProvider.js`, declare the `<lang>` key on
 `loadLocale({bundles})`.
 
 ## What's in here

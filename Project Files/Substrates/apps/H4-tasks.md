@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **V1 shipped 2026-05-08** as `apps/tasks-v0` (`0.2.0`). Crew envelope + DoD lifecycle + sub-tasks + in-app inbox + local calendar + observability + i18n + lifecycle controls. 7-screen workspace UI. **176/176 tests passing.** |
+| **Status** | **V1 shipped 2026-05-08** as `apps/tasks-v0` (`0.2.0`). Crew envelope + DoD lifecycle + sub-tasks + in-app inbox + local calendar + observability + localisation + lifecycle controls. 7-screen workspace UI. **176/176 tests passing.** |
 | **Code** | `apps/tasks-v0` (~1100 LOC of app glue on top of 7 substrate packages) |
 | **Tests** | 176 across 13 files (V0 baseline 34 + V1 phases 1-10 add 142) |
 | **Source notes** | `projects/04-tasks-app/README.md`, `Tasks App/advice-2026-05-07.md`, `Tasks App/critique-2026-05-07.md`, `Tasks App/coding-plan-2026-05-07.md`, `apps/tasks-v0/CHANGELOG.md` |
@@ -12,7 +12,7 @@
 
 ## Current state
 
-**V1 shipped 2026-05-08** — `createCrewAgent({crewConfig, localStoreBundle, ...})` is the V1 entry point; `createTasksAgent` keeps working for V0 callers (zero-config single-household path). Both wire into the same item-store / role-policy / DAG; V1 adds the Crew envelope + DoD lifecycle + sub-tasks + in-app inbox + local calendar + per-event observability + i18n + lifecycle controls (pause/archive) on top.
+**V1 shipped 2026-05-08** — `createCrewAgent({crewConfig, localStoreBundle, ...})` is the V1 entry point; `createTasksAgent` keeps working for V0 callers (zero-config single-household path). Both wire into the same item-store / role-policy / DAG; V1 adds the Crew envelope + DoD lifecycle + sub-tasks + in-app inbox + local calendar + per-event observability + localisation + lifecycle controls (pause/archive) on top.
 
 **Substrate consumption (V1 reality)**:
 
@@ -40,7 +40,7 @@
 - `src/notifications/wireIssuerNotifications.js` — itemStore-event-to-inbox routing.
 - `src/observability/{metrics, cadence}.js` — UsageMetrics + cadence resolution.
 - `src/bridges/InAppInboxBridge.js` — per-recipient `MessagingBridge` (substrate-candidate flagged).
-- `src/lib/{i18n, privacyNotice}.js` — localisation + privacy notice.
+- `src/lib/{localisation, privacyNotice}.js` — localisation + privacy notice.
 
 **Locked Q-H4.x decisions:**
 - Q-H4.1 hybrid pod with per-field merge ✓

@@ -623,7 +623,7 @@ export const stoopManifest = {
       dataSource:  { skillId: 'getSettings' },
       // V0.4 Q18 (adopted 2026-05-22) — declare a representative
       // subset of editable fields with patch declarations.  The
-      // settings.html UI is rich (i18n + per-field custom UX); the
+      // settings.html UI is rich (localisation + per-field custom UX); the
       // manifest is the source-of-truth for WHICH fields exist +
       // their patch ops, but UI rendering stays hand-coded.
       //
@@ -639,7 +639,7 @@ export const stoopManifest = {
           name:     'hopThrough',
           type:     'boolean',
           label:    'Hop-relay (globaal)',
-          // V0.6 Q22 — i18n key for Dutch-first surfaces.  Consumer-
+          // V0.6 Q22 — localisation key for Dutch-first surfaces.  Consumer-
           // side resolution; falls back to `label` if unknown.
           labelKey: 'settings.hop_label',
           // setHopMode takes `{global: <bool>}` directly — Q18 fits.
@@ -767,7 +767,7 @@ export const stoopManifest = {
           name:     'handle',
           type:     'string',
           label:    'Handle (kleine letters, 3–32 tekens)',
-          // V0.6 Q22 — i18n key for Dutch-first surfaces.
+          // V0.6 Q22 — localisation key for Dutch-first surfaces.
           labelKey: 'profile.handle_label',
           // setMyHandle takes `{handle: <string>}` directly — flat fit.
           patch:    { opId: 'setMyHandle', argName: 'handle' },

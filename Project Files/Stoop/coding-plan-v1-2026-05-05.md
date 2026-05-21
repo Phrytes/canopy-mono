@@ -188,13 +188,13 @@ symmetric and clear; users know what others see.
 for two real testers (target 5; measure and iterate); decentralised
 disclaimer surfaces; recovery phrase saved.
 
-## Phase 8 — i18n wrapper + locales ✅
+## Phase 8 — localisation wrapper + locales ✅
 
 | # | Task | Files |
 |---|---|---|
-| 8.1 | Wire `i18next` per `Project Files/conventions/localisation.md`; `lib/i18n.js`. | `apps/stoop/src/lib/i18n.js` |
+| 8.1 | Wire `i18next` per `Project Files/conventions/localisation.md`; `lib/localisation.js`. | `apps/stoop/src/lib/localisation.js` |
 | 8.2 | Populate `locales/en.json` + `locales/nl.json` with every user-facing string. | `apps/stoop/locales/*.json` |
-| 8.3 | Hook in `expo-localization` for RN auto-detect. | `apps/stoop/src/lib/i18n.js` |
+| 8.3 | Hook in `expo-localization` for RN auto-detect. | `apps/stoop/src/lib/localisation.js` |
 
 **Acceptance for Phase 8:** language toggle works; both locales
 ship complete.
@@ -272,7 +272,7 @@ still applies.
 
 | # | Task | Files | Substrate-touch |
 |---|---|---|---|
-| 12.1 | `apps/stoop/src/lib/skillsTaxonomy.json` — 10 top-level categories (klusjes / tuin / vervoer / kinderopvang / eten-en-koken / tech / administratie / lichaam-en-zorg / creatief-en-handvaardig / anders) with `{nl, en}` labels per category. Multilingual labels loaded via the i18n wrapper. | `apps/stoop/src/lib/skillsTaxonomy.json`, `locales/{nl,en}.json` | **App-local.** Hot-swappable JSON. |
+| 12.1 | `apps/stoop/src/lib/skillsTaxonomy.json` — 10 top-level categories (klusjes / tuin / vervoer / kinderopvang / eten-en-koken / tech / administratie / lichaam-en-zorg / creatief-en-handvaardig / anders) with `{nl, en}` labels per category. Multilingual labels loaded via the localisation wrapper. | `apps/stoop/src/lib/skillsTaxonomy.json`, `locales/{nl,en}.json` | **App-local.** Hot-swappable JSON. |
 | 12.2 | `apps/stoop/src/lib/tagNormalisation.json` — ~500 keyword→canonical mappings hand-curated for NL + EN. Loaded as a Map. | new file | **App-local.** Curated by hand for V1; LLM-assisted curation is V2. |
 | 12.3 | `apps/stoop/src/lib/skillsMatch.js` — pure functions: `categoryFor(text)`, `normaliseTag(token)`, `matchesProfile(post, member)`. No I/O, fully unit-testable. | new file + tests | **App-local.** |
 | 12.4 | Post form (`web/index.html`) calls `categoryFor(text)` debounced as the user types and **suggests** category + extracted tags. User accepts / overrides. | `apps/stoop/web/index.html`, `apps/stoop/web/app.js` | **App-local.** |
@@ -617,7 +617,7 @@ with parallelisation.
 - Threat model: [`privacy-and-safety-2026-05-05.md`](privacy-and-safety-2026-05-05.md)
 - User-empathy: [`potential-user-complaints-2026-05-05.md`](potential-user-complaints-2026-05-05.md)
 - Group governance: [`group-governance-starter-2026-05-05.md`](group-governance-starter-2026-05-05.md)
-- Conventions: `Project Files/conventions/{app-readme-scheme,i18n,architectural-layering}.md`
+- Conventions: `Project Files/conventions/{app-readme-scheme,localisation,architectural-layering}.md`
 - Hub: `Project Files/AgentHub/agent-hub-design-2026-05-05.md`
 - Substrate candidates: [`../Substrates/substrate-candidates.md`](../Substrates/substrate-candidates.md)
 - TODOs: `Project Files/TODO-GENERAL.md` § "Default pod issuer flexibility", § "Relay-deployment kit"

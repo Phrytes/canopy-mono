@@ -14,14 +14,14 @@ import { View, Text, Pressable, ScrollView } from 'react-native';
 
 import { useTheme } from '@canopy/react-native/theme';
 import { useSkillResult } from '../../lib/useSkill.js';
-import { useI18n }    from '../../I18nProvider.js';
+import { useLocalisation }    from '../../LocalisationProvider.js';
 import { useActiveRole } from '../../lib/useActiveRole.js';
 import { useService } from '../../ServiceContext.js';
 
 export function CrewConfigSection() {
   const svc = useService();
   const { isAdmin } = useActiveRole();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const [open, setOpen] = useState(false);

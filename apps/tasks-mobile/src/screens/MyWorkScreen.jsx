@@ -37,7 +37,7 @@ import { tasksManifest } from '@canopy-app/tasks-v0/manifest';
 import { useTheme } from '@canopy/react-native/theme';
 import { useService }     from '../ServiceContext.js';
 import { toParts, unwrapParts } from '../lib/useSkill.js';
-import { useI18n }        from '../I18nProvider.js';
+import { useLocalisation }        from '../LocalisationProvider.js';
 import { TaskCard }       from '../components/TaskCard.jsx';
 import { PlannerCards }   from '../components/PlannerCards.jsx';
 import { ROUTES }         from '../navigation.js';
@@ -47,7 +47,7 @@ import { useAdapterSection }     from '../useAdapterSection.js';
 export function MyWorkScreen() {
   const nav = useNavigation();
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES } = useTheme();
 
   // Slice C.2 — build the NavModel adapter once per service-change,

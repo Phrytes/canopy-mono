@@ -83,7 +83,7 @@ Branch `feat/app-manifest` — substantive commits this session:
 - `ac8b1ab` — docs: NavModel V0.6 — Q22 + Q23 + Q24 design rows
 - `5364314` — feat(tasks-mobile): Q24 — useAdapterAction RN hook
 - `3801cc3` — feat(app-manifest): NavModel V0.6 — Q23 field.type 'file' | 'image'
-- `3b4c909` — feat(app-manifest): NavModel V0.6 — Q22 labelKey i18n passthrough
+- `3b4c909` — feat(app-manifest): NavModel V0.6 — Q22 labelKey localisation passthrough
 - `442bc6a` — refactor(tasks-mobile): drop C.4 buildItemAction workaround (now in substrate)
 - `bcf4c16` — feat(tasks-mobile): Slice C.4 — InboxScreen via adapter + renderItemActions
 - `83ce267` — fix(app-manifest): buildItemAction preserves generic appliesTo fields (V0.4 per-kind gate)

@@ -14,7 +14,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme }       from '@canopy/react-native/theme';
 import { useService }     from '../ServiceContext.js';
 import { useSkillResult } from '../lib/useSkill.js';
-import { useI18n }        from '../I18nProvider.js';
+import { useLocalisation }        from '../LocalisationProvider.js';
 import { describeTaskStatus } from '../lib/taskStatus.js';
 import { flattenDagTree } from '../lib/dagFlatten.js';
 import { ROUTES }         from '../navigation.js';
@@ -23,7 +23,7 @@ export function DagScreen() {
   const nav   = useNavigation();
   const route = useRoute();
   const svc   = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   // Accept either `rootId` (preferred) or `id` (legacy nav callers

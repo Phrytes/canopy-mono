@@ -15,13 +15,13 @@ import { useTheme }     from '@canopy/react-native/theme';
 import { AvatarCircle } from '@canopy/react-native/components';
 
 import { useService } from '../../ServiceContext.js';
-import { useI18n }    from '../../I18nProvider.js';
+import { useLocalisation }    from '../../LocalisationProvider.js';
 import { ROUTES }     from '../../navigation.js';
 
 export function MembersSection() {
   const nav = useNavigation();
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const cs = svc?.activeCrewId ? svc.crews.get(svc.activeCrewId) : null;

@@ -21,7 +21,7 @@
 1. **Android-primary; no iOS-specific code.** Per the main
    project lock.
 2. **Existing modules carry forward unchanged.** theme,
-   hooks, picker, qr, mnemonic, push, i18n, native adapters
+   hooks, picker, qr, mnemonic, push, localisation, native adapters
    (KeychainVault, FileSystemAdapter, AsyncStorageAdapter,
    MdnsTransport, BleTransport, MobilePushBridge,
    requestMeshPermissions, createMeshAgent, metro-preset,
@@ -46,7 +46,7 @@
 | `@canopy/react-native/hub-binding` | NEW module — AIDL bound-service client. | 51.7 – 51.9 |
 
 The existing modules (theme, picker, qr, mnemonic, push,
-i18n, native adapters) are **unchanged** in V2.
+localisation, native adapters) are **unchanged** in V2.
 
 ---
 

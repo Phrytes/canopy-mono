@@ -22,7 +22,7 @@ import { usePushOptIn } from '@canopy/react-native/push';
 
 import { useService } from '../ServiceContext.js';
 import { useSettings, useSkill } from '../lib/useSkill.js';
-import { useI18n }     from '../I18nProvider.js';
+import { useLocalisation }     from '../LocalisationProvider.js';
 import { ROUTES }      from '../navigation.js';
 import { useNativeCalendarLiveSync } from '../lib/useNativeCalendarLiveSync.js';
 
@@ -42,7 +42,7 @@ const POLL_PRESETS = [2000, 5000, 10000, 30000];
 export function SettingsScreen() {
   const svc = useService();
   const nav = useNavigation();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const settingsHook = useSettings();

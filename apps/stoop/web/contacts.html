@@ -152,11 +152,11 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, mountGroupSwitcher, renderAvatar, initI18n, applyI18n, t } from '/app.js';
+    import { callSkill, getActor, mountGroupSwitcher, renderAvatar, initLocalisation, applyLocalisation, t } from '/app.js';
     import { renderQrInto } from '/lib/qr.js';
 
-    await initI18n();
-    applyI18n();
+    await initLocalisation();
+    applyLocalisation();
     document.title = t('contacts.page_title', 'Stoop — Contacts');
 
     document.getElementById('actor').textContent = await getActor();

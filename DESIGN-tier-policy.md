@@ -80,7 +80,7 @@ itemActions + sectionActions + fields.
 
 **Definition.** The page is hand-coded but reads from the manifest
 for the parts that benefit (labels, severities, slash commands,
-confirm messages, i18n keys). The data layer is uniform; the
+confirm messages, localisation keys). The data layer is uniform; the
 rendering layer is bespoke.
 
 **Examples in the repo today:**
@@ -98,7 +98,7 @@ rendering layer is bespoke.
 **When to use (DEFAULT for non-T1 pages):**
 - Page has at least one user-facing op the LLM agent might want to
   reference (declare it in the manifest's `surfaces.chat.hint`)
-- Page has labels or messages that benefit from i18n key resolution
+- Page has labels or messages that benefit from localisation key resolution
   (Q22 `labelKey`)
 - Page has destructive actions that warrant a substrate-level
   severity hint (Q27 `confirm`)
@@ -112,7 +112,7 @@ rendering layer is bespoke.
   Manifest declares: <ops + fields + verbs>.
   Page renders: <custom layout — list what's bespoke>.
   Page reads from manifest:
-    - `<opId>.surfaces.ui.label` / `labelKey` — for i18n
+    - `<opId>.surfaces.ui.label` / `labelKey` — for localisation
     - `<opId>.surfaces.ui.confirm` — Q27 severity hint
     - <anything else>
 -->
@@ -177,7 +177,7 @@ When migrating a hand-coded page to manifest-bound:
 1. **Declare the ops in the manifest.** Add `surfaces.chat.hint` (required
    by stoop's structural test); add `surfaces.slash.command` if the
    chat agent should accept a slash form; add `surfaces.ui.label` +
-   `labelKey` for i18n; add `surfaces.ui.confirm` if destructive.
+   `labelKey` for localisation; add `surfaces.ui.confirm` if destructive.
 2. **Update the page** to read labels + confirm from the manifest.
    Use the `createOpBinding` helper (V0.8, see
    `packages/web-adapter/src/createOpBinding.js`) — it gives you
@@ -305,7 +305,7 @@ Why is T2 the default? Because the **cost of declaring an op in the
 manifest is small** (~5-15 lines) and the **value compounds**:
 - LLM agents can dispatch the op without per-page rules
 - Drift canary catches forgotten skill declarations
-- Cross-page changes (severity colours, i18n keys) flow through
+- Cross-page changes (severity colours, localisation keys) flow through
   one source of truth
 - Future T2→T1 migration is cheap when it makes sense
 

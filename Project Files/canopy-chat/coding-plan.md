@@ -77,7 +77,7 @@ Every phase must pass:
 | 1.7 | Renderer — `text` and `list` shapes only; inline keyboard from `renderChat.inlineKeyboardFor` | `apps/canopy-chat/src/renderer/{index.js,text.js,list.js}` + tests |
 | 1.8 | Per-conv state v0 (single default thread; `lastListings` cache for fuzzy arg resolution) | `apps/canopy-chat/src/thread.js` (single-thread mode) |
 | 1.9 | Web entry — `apps/canopy-chat/web/index.html` + a chat-input + message-stream renderer | `apps/canopy-chat/web/` |
-| 1.10 | Localisation scaffold — i18n provider + `locales/{en,nl}.json` from v0.1 (per `conventions/localisation.md`) | `apps/canopy-chat/web/i18n/` |
+| 1.10 | Localisation scaffold — localisation provider + `locales/{en,nl}.json` from v0.1 (per `conventions/localisation.md`) | `apps/canopy-chat/web/localisation/` |
 
 ### Substrate add: Q28
 
@@ -128,7 +128,7 @@ sections with `view.shape:'record'`, otherwise `'text'`.
 - **OQ-1.B** — Does v0.1 ship an RN counterpart, or web-only? *Lean:
   web-only for v0.1; RN screens land in v0.2+ alongside the thread
   UI which makes mobile worthwhile.*
-
+F: yeh v0.1 web only is fine
 ---
 
 ## Phase v0.2 — multi-thread workspace
@@ -172,11 +172,12 @@ None. v0.2 is pure app-layer.
   expression-tree-style for v1? *Lean: key:value list with implicit
   AND across keys + array-value for OR within a key (mirroring
   `appliesTo.state` shape from V0.4 Q4); expression tree deferred.*
+F: I would say expression tree 
 - **OQ-2.B** — Web vs RN sync — do threads sync between a user's
   web tab and their RN app on the same device? *Lean: yes via the
   user's pod (when present) per OQ-3 resolution; no-pod = each device
   is a separate scope.*
-
+F: ok, I dont think it will happen very often on same device, so not important. Syncing through pod is okay
 ---
 
 ## Phase v0.3 — mini-pages + forms
@@ -221,9 +222,11 @@ unchanged (substrate is permissive on `field.type` per Q23).
   "tomorrow" / ISO-8601? *Lean: ISO-8601 + a few keywords ("today",
   "tomorrow", "next-friday"); free-text dates go through the LLM
   layer later.*
+F: can we mimic the slack-style parsing? That worked quite flexibly 
 - **OQ-3.B** — Form-strategy rule — is the heuristic enough or do
   apps need `surfaces.chat.formStyle` to override? *Defer: ship the
   heuristic; add Q32 if a third surface needs an override.*
+F: ok
 
 ---
 
@@ -269,8 +272,10 @@ follow-up hints implemented per OQ-2 user resolution.
   per-op `followUps` (Q31); canopy-chat's static registry adds
   cross-app chains that no single app owns (e.g. "after household.
   addMember, suggest folio.share").*
+F: perfect!
 - **OQ-4.B** — App-toggle UI — chat-inline or side-panel-only?
   *Lean: side-panel under "Apps" settings; rare interaction.*
+F: chat inline too I think can be useful? Double check with me when we arrive at this point
 
 ---
 
@@ -315,9 +320,11 @@ P2P chat messages. Cross-app routing by `appOrigin`. Sender-issued
   share — show snapshot only, or refuse to render? *Lean: show
   snapshot + "no live access" hint; action buttons either fail
   loud or are hidden.*
+F: perfect!
 - **OQ-5.B** — Embed type extensibility — beyond `kind:'item-card'`,
   do we ship `kind:'file-card'` (folio file), `kind:'thread-ref'`?
   *Defer to v0.5+ when a real need surfaces.*
+F: yes, ask me again when needed 
 
 ---
 
@@ -352,7 +359,7 @@ on remote events; thread sync across devices for pod-having users.
 ### Acceptance criteria
 
 - J6 demoable: user clicks `[Sign in to pod]` → browser opens →
-  OIDC redirect → callback wakes chat → "Signed in as <webid>".
+  OIDC redirect → callback wakes chat → "Signed in as {webid} ".
 - J10 demoable: same `/done dishwasher` action across 3 hypothetical
   setups (central / decentralized / pod-less) renders 3 distinct
   hint patterns (`✓` / "synced to N peers" / "last seen X h ago").
@@ -368,9 +375,11 @@ on remote events; thread sync across devices for pod-having users.
 - **OQ-6.A** — `_sync` empty-state — when an op crosses 0 peers
   (everyone offline), what does the shell show? *Lean: "Saved
   locally; awaiting peer sync" with a `[Retry]` affordance.*
+F: sounds good
 - **OQ-6.B** — `_lastSync` granularity — per-item timestamp, or
   per-peer-per-item? *Lean: per-item is enough for v1; per-peer
   drill-down deferred.*
+F: ok
 
 ---
 
@@ -415,9 +424,11 @@ its own manifest.
   refetch or cache? *Lean: cache 60s; explicit `[Refresh]` button
   bypasses; bigger TTL for pod-less mode (where polling is
   expensive).*
+F: ok
 - **OQ-7.B** — Log page persistence — keep N days of events, or
   unbounded? *Lean: bounded — keep 30 days; older events archive to
   pod (when present) or drop.*
+F: maybe just 14 days
 
 ---
 
@@ -458,9 +469,11 @@ None. LLM is consumer-side.
   cloud (capability)? *Lean: configurable in settings; default to
   local with cloud fallback marker; pod-credentialed in either
   case.*
+F: perfect
 - **OQ-8.B** — Multi-turn LLM context — does the LLM see prior chat
   turns, or only the current message? *Lean: limited window (last
   N turns from the same thread) + per-thread system prompt.*
+F: ok
 
 ---
 
@@ -487,7 +500,7 @@ ones.
 
 Every user-facing string in the chat shell is translatable from
 v0.1. Substrates emit error codes; the chat shell maps codes to
-localised strings via its own i18n bundle. Adopters' manifests use
+localised strings via its own localisation bundle. Adopters' manifests use
 Q22 `labelKey` for op labels; chat shell honours.
 
 ### Single-agent (`conventions/single-agent.md`)

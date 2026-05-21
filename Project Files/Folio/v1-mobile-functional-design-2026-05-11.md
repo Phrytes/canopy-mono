@@ -119,7 +119,7 @@ What mobile adds on top (the RN-specific layer):
   (when V1 ships push).
 - **Mobile substrates** — `oidc-session-rn` (already in V0;
   Folio-mobile is the canonical consumer), `react-native/
-  i18n`, `react-native/push` (V1).
+  localisation`, `react-native/push` (V1).
 - **Share-sheet integration** — Android intent handler for
   inbound paste / share-to-Folio.
 

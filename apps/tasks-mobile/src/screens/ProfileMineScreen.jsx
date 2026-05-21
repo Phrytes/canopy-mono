@@ -23,14 +23,14 @@ import { validateHandle, normaliseHandle } from '@canopy/identity-resolver/displ
 
 import { useService }     from '../ServiceContext.js';
 import { useSkill, useSkillResult } from '../lib/useSkill.js';
-import { useI18n }        from '../I18nProvider.js';
+import { useLocalisation }        from '../LocalisationProvider.js';
 import { AVATAR_PRESET }  from '../lib/photoPresets.js';
 import { ROUTES }         from '../navigation.js';
 
 export function ProfileMineScreen() {
   const svc = useService();
   const nav = useNavigation();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const get   = useSkillResult('getMyProfile', {}, [svc?.activeCrewId]);
@@ -197,7 +197,7 @@ export function ProfileMineScreen() {
 }
 
 function RecoverySection() {
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
   const reveal = useMnemonicReveal({ useSkill: useSkillForReveal });
 

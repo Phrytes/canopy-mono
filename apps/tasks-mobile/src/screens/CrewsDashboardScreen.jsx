@@ -18,13 +18,13 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@canopy/react-native/theme';
 import { useService }     from '../ServiceContext.js';
 import { useSkillResult } from '../lib/useSkill.js';
-import { useI18n }        from '../I18nProvider.js';
+import { useLocalisation }        from '../LocalisationProvider.js';
 import { ROUTES }         from '../navigation.js';
 
 export function CrewsDashboardScreen() {
   const nav = useNavigation();
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const list = useSkillResult('getMyCrews', {}, [svc?.activeCrewId]);
@@ -88,7 +88,7 @@ export function CrewsDashboardScreen() {
 
 function CrewRow({ crew, onJumpIn }) {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const counts = crew?.counts ?? {};
   return (
     <Pressable

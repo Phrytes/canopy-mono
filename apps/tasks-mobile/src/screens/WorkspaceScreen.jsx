@@ -36,7 +36,7 @@ import { ChipRow }  from '@canopy/react-native/components';
 
 import { useService }     from '../ServiceContext.js';
 import { toParts, unwrapParts } from '../lib/useSkill.js';
-import { useI18n }        from '../I18nProvider.js';
+import { useLocalisation }        from '../LocalisationProvider.js';
 import { TaskCard }       from '../components/TaskCard.jsx';
 import { ROUTES }         from '../navigation.js';
 import { createNavModelAdapter } from '../manifest-adapter.js';
@@ -53,7 +53,7 @@ const FILTER_CHIPS = [
 export function WorkspaceScreen() {
   const nav = useNavigation();
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const [filter, setFilter] = useState('all');

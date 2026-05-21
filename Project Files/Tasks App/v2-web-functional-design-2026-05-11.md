@@ -54,7 +54,7 @@ These are decided 2026-05-11 and shape the rest of the doc:
    site on `127.0.0.1`). Mobile mirrors it via `src/ui/`
    re-exports.
 4. **Shared UI helpers live in `src/ui/`.** taskStatus,
-   composeArgs, inboxClassify, effectiveActor, i18nMerge,
+   composeArgs, inboxClassify, effectiveActor, localisationMerge,
    dagFlatten (lifted 2026-05-10). Mobile re-exports via
    `export *` shims; never forks.
 5. **V2.7 hard-deps + V2.8 single-agent** carry forward

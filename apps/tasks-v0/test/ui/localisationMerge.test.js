@@ -1,11 +1,11 @@
 /**
- * i18nMerge — pure-fn coverage for the shared-locale merge helper.
+ * localisationMerge — pure-fn coverage for the shared-locale merge helper.
  *
  * Phase 41.18 follow-up (2026-05-10).
  */
 
 import { describe, it, expect } from 'vitest';
-import { mergeLocales, lookupKey } from '../../src/ui/i18nMerge.js';
+import { mergeLocales, lookupKey } from '../../src/ui/localisationMerge.js';
 
 const SHARED = {
   shared: {

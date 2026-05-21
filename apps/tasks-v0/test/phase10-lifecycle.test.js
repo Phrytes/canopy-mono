@@ -1,8 +1,8 @@
 /**
- * Phase 10 — i18n + archive + pause + privacy notice tests.
+ * Phase 10 — localisation + archive + pause + privacy notice tests.
  *
  * Covers:
- *   1. i18n wrapper — initI18n loads en + nl; t() unwraps `{text, doc}`
+ *   1. localisation wrapper — initLocalisation loads en + nl; t() unwraps `{text, doc}`
  *      leaves; missing keys fall back to the key.
  *   2. PRIVACY_NOTICE shape — same item count + headings in both langs.
  *   3. crewControls skills — pause/unpause/archive/unarchive (admin /
@@ -23,7 +23,7 @@ import { DataPart } from '@canopy/core';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
 import { createCrewAgent } from '../src/Crew.js';
-import { initI18n, t, setLang, currentLang, __test__ } from '../src/lib/i18n.js';
+import { initLocalisation, t, setLang, currentLang, __test__ } from '../src/lib/localisation.js';
 import { PRIVACY_NOTICE, privacyNoticeFor } from '../src/lib/privacyNotice.js';
 
 const ANNE  = 'https://id.example/anne';
@@ -54,11 +54,11 @@ async function callSkill(agent, skillId, args, fromWebid) {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// ── Pure i18n + privacy-notice tests ───────────────────────────────────────
+// ── Pure localisation + privacy-notice tests ───────────────────────────────────────
 
-describe('Phase 10 — i18n wrapper', () => {
-  it('initI18n + t() returns the en text', async () => {
-    await initI18n({ lng: 'en' });
+describe('Phase 10 — localisation wrapper', () => {
+  it('initLocalisation + t() returns the en text', async () => {
+    await initLocalisation({ lng: 'en' });
     expect(t('common.save')).toBe('Save');
     expect(t('actions.claim')).toBe('Claim');
     expect(t('status.submitted')).toBe('submitted');

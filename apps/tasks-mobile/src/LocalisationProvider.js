@@ -1,6 +1,6 @@
 /**
- * I18nProvider — wraps the substrate's `loadLocale` factory with
- * tasks-mobile's locale bundles + exposes a stable `useI18n` hook.
+ * LocalisationProvider — wraps the substrate's `loadLocale` factory with
+ * tasks-mobile's locale bundles + exposes a stable `useLocalisation` hook.
  *
  * Phase 41.2 (2026-05-09).
  * 41.18 follow-up — adds `apps/tasks-v0/locales/shared/{en,nl}.json`
@@ -20,7 +20,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { loadLocale } from '@canopy/react-native/i18n';
+import { loadLocale } from '@canopy/react-native/localisation';
 
 import enShared  from '@canopy-app/tasks-v0/locales/shared/en';
 import nlShared  from '@canopy-app/tasks-v0/locales/shared/nl';
@@ -29,7 +29,7 @@ import nlDesktop from '@canopy-app/tasks-v0/locales/nl';
 import enMobile  from '../locales/en.json';
 import nlMobile  from '../locales/nl.json';
 
-const I18nContext = createContext({
+const LocalisationContext = createContext({
   t:        (key, fb) => fb ?? key,
   format:   (key, _, fb) => fb ?? key,
   setLang:  () => {},
@@ -59,36 +59,36 @@ const BUNDLES = {
   nl: _deepMerge(_deepMerge(nlShared, nlDesktop), nlMobile),
 };
 
-export function I18nProvider({ children, defaultLang = 'en' }) {
-  const i18n = useMemo(() => loadLocale({ bundles: BUNDLES, defaultLang }), [defaultLang]);
+export function LocalisationProvider({ children, defaultLang = 'en' }) {
+  const localisation = useMemo(() => loadLocale({ bundles: BUNDLES, defaultLang }), [defaultLang]);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    i18n.initI18n().then(() => {
+    localisation.initLocalisation().then(() => {
       if (!cancelled) setTick((n) => n + 1);
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [i18n]);
+  }, [localisation]);
 
   const value = useMemo(() => ({
-    t:           i18n.t,
-    format:      i18n.format,
-    setLang:     async (lang) => { await i18n.setLang(lang); setTick((n) => n + 1); },
-    currentLang: i18n.currentLang,
-    ready:       i18n.isInitialised(),
+    t:           localisation.t,
+    format:      localisation.format,
+    setLang:     async (lang) => { await localisation.setLang(lang); setTick((n) => n + 1); },
+    currentLang: localisation.currentLang,
+    ready:       localisation.isInitialised(),
     _tick:       tick,
-  }), [i18n, tick]);
+  }), [localisation, tick]);
 
   return (
-    <I18nContext.Provider value={value}>
+    <LocalisationContext.Provider value={value}>
       {children}
-    </I18nContext.Provider>
+    </LocalisationContext.Provider>
   );
 }
 
-export function useI18n() {
-  return useContext(I18nContext);
+export function useLocalisation() {
+  return useContext(LocalisationContext);
 }
 
-export { I18nContext };
+export { LocalisationContext };
