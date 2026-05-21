@@ -68,6 +68,20 @@ Tracking per `/Project Files/canopy-chat/coding-plan.md` § Phase v0.1:
 | 1.11 | Localisation scaffold (en + nl, i18next wrapper) | shipped 2026-05-21 |
 | 1.12 | Build pipeline (Vite) | shipped 2026-05-21 |
 
+## Phase v0.2 — multi-thread workspace
+
+| Sub-slice | Scope | Status |
+|---|---|---|
+| 2.1 | Thread schema + ThreadStore | shipped 2026-05-21 |
+| 2.2 | Filter DSL | shipped 2026-05-21 |
+| 2.3 | Thread management UI (web) | shipped 2026-05-21 |
+| 2.4 | Default threads (Main + Inbox) | shipped 2026-05-21 |
+| 2.5 | Event router | shipped 2026-05-21 |
+| 2.6 | Per-thread state isolation | shipped 2026-05-21 |
+| 2.7 | Bulk-op fan-out | shipped 2026-05-21 |
+| 2.8 | Thread persistence (IndexedDB + pod-sync stub) | shipped 2026-05-21 |
+| 2.9 | RN scaffold (minimal) | shipped 2026-05-21 — see `apps/canopy-chat/rn/README.md` for runnable-state requirements |
+
 ## Running locally
 
 ```bash
