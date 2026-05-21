@@ -19,7 +19,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
-import { t }                                  from '../lib/i18n.js';
+import { t }                                  from '../lib/localisation.js';
 import { validateChatDraft, groupConsecutive, CHAT_MAX_BODY_LEN }
                                               from '../lib/chat.js';
 import { attachmentUri }                      from '../lib/post.js';

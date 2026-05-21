@@ -1,7 +1,7 @@
 /**
- * Stoop V1 — Phase 8 (i18n) tests.
+ * Stoop V1 — Phase 8 (localisation) tests.
  *
- * `lib/i18n.js` is a thin wrapper over `i18next`.  We test:
+ * `lib/localisation.js` is a thin wrapper over `i18next`.  We test:
  *  - `t(key)` returns the en string after init({lng: 'en'}).
  *  - `setLang('nl')` switches; same key returns the nl string.
  *  - missing keys soft-fall to the key itself (developer hint).
@@ -9,13 +9,13 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initI18n, t, setLang, getLang } from '../src/lib/i18n.js';
+import { initLocalisation, t, setLang, getLang } from '../src/lib/localisation.js';
 
 beforeAll(async () => {
-  await initI18n({ lng: 'en' });
+  await initLocalisation({ lng: 'en' });
 });
 
-describe('Stoop V1 — i18n wrapper', () => {
+describe('Stoop V1 — localisation wrapper', () => {
   it('translates a known key in en', () => {
     expect(t('common.save')).toBe('Save');
     expect(t('prikbord.title')).toBe('On the prikbord');

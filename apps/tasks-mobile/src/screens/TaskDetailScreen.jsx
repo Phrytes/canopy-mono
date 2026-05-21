@@ -48,7 +48,7 @@ import { ConfirmModal } from '@canopy/react-native/components';
 
 import { useService }     from '../ServiceContext.js';
 import { useSkill, useSkillResult } from '../lib/useSkill.js';
-import { useI18n }        from '../I18nProvider.js';
+import { useLocalisation }        from '../LocalisationProvider.js';
 import {
   describeTaskStatus,
   shouldOfferForceComplete,
@@ -62,7 +62,7 @@ export function TaskDetailScreen() {
   const nav   = useNavigation();
   const route = useRoute();
   const svc   = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const id = route?.params?.id;

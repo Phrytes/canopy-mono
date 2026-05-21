@@ -66,9 +66,9 @@
   </main>
 
   <script type="module">
-    import { initI18n, applyI18n, t } from '/app.js';
-    await initI18n();
-    applyI18n();
+    import { initLocalisation, applyLocalisation, t } from '/app.js';
+    await initLocalisation();
+    applyLocalisation();
     document.title = t('welcome.page_title', 'Stoop — Welcome');
   </script>
 </body>

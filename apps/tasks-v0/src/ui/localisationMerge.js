@@ -1,5 +1,5 @@
 /**
- * i18nMerge — merge a shell-local locale bundle with the shared
+ * localisationMerge — merge a shell-local locale bundle with the shared
  * `apps/tasks-v0/locales/shared/<lang>.json`.
  *
  * Phase 41.18 follow-up (2026-05-10) — created alongside the
@@ -10,7 +10,7 @@
  * Both shells consume from here:
  *   - `apps/tasks-v0/web/app.js`                    (eventually — when migrating
  *                                                    inline status labels to keys)
- *   - `apps/tasks-mobile/src/I18nProvider.js`        (mobile — wraps useI18n)
+ *   - `apps/tasks-mobile/src/LocalisationProvider.js`        (mobile — wraps useLocalisation)
  *
  * The shape of every locale leaf is `{text, doc}` — see
  * `Project Files/conventions/localisation.md`. The merge is

@@ -28,7 +28,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@canopy/react-native/theme';
 import { useService } from '../ServiceContext.js';
-import { useI18n }    from '../I18nProvider.js';
+import { useLocalisation }    from '../LocalisationProvider.js';
 import { ROUTES }     from '../navigation.js';
 
 const MainMenuContext = createContext(null);
@@ -74,7 +74,7 @@ function MainMenu() {
   const { open, hide } = useMainMenu();
   const nav  = useNavigation();
   const svc  = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const go = useCallback((route, params) => {

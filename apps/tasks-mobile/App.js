@@ -7,7 +7,7 @@
  * that consumes `tasks://...` URLs through the substrate's
  * parseDeepLink dispatcher (Phase 41.15.3).
  *
- * Provider tree: ThemeProvider → I18nProvider → ServiceProvider →
+ * Provider tree: ThemeProvider → LocalisationProvider → ServiceProvider →
  * NavigationContainer (with DeepLinkHandler mounted INSIDE so
  * useNavigation works).
  */
@@ -50,7 +50,7 @@ if (typeof globalThis.ErrorUtils?.setGlobalHandler === 'function') {
 
 import { ThemeProvider } from '@canopy/react-native/theme';
 import { ServiceProvider, useService } from './src/ServiceContext.js';
-import { I18nProvider, useI18n } from './src/I18nProvider.js';
+import { LocalisationProvider, useLocalisation } from './src/LocalisationProvider.js';
 import { ROUTES } from './src/navigation.js';
 import { parseDeepLink, actionToNavigation } from './src/lib/deepLinks.js';
 
@@ -251,7 +251,7 @@ function DeepLinkHandler() {
 
 function BootGate() {
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
 
   if (!svc || svc.status === 'booting') {
     return (
@@ -339,11 +339,11 @@ export default function App({ boot } = {}) {
       <SafeAreaProvider>
         <StatusBar barStyle="dark-content" />
         <ThemeProvider value={TASKS_TOKENS}>
-          <I18nProvider>
+          <LocalisationProvider>
             <ServiceProvider boot={boot}>
               <BootGate />
             </ServiceProvider>
-          </I18nProvider>
+          </LocalisationProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

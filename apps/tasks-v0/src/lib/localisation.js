@@ -1,7 +1,7 @@
 /**
  * Tasks V1 — i18next wrapper.
  *
- * Mirrors `apps/stoop/src/lib/i18n.js`. The substrate convention
+ * Mirrors `apps/stoop/src/lib/localisation.js`. The substrate convention
  * (`Project Files/conventions/localisation.md`) is:
  *   - every user-facing string lives in `locales/<lang>.json`
  *   - leaf shape is `{text, doc}` where `doc` is a translator note
@@ -50,7 +50,7 @@ function unwrapLeaves(node) {
  * @param {string} [opts.fallbackLng='en']
  * @returns {Promise<void>}
  */
-export async function initI18n({ lng = 'en', fallbackLng = 'en' } = {}) {
+export async function initLocalisation({ lng = 'en', fallbackLng = 'en' } = {}) {
   if (initialised) {
     if (i18next.language !== lng) await i18next.changeLanguage(lng);
     return;
@@ -92,7 +92,7 @@ export function currentLang() {
 
 /** Switch language at runtime. */
 export async function setLang(lng) {
-  if (!initialised) await initI18n({ lng });
+  if (!initialised) await initLocalisation({ lng });
   else if (i18next.language !== lng) await i18next.changeLanguage(lng);
 }
 

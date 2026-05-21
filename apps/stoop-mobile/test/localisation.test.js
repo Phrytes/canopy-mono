@@ -1,24 +1,24 @@
 /**
- * i18n tests — locale-resolver behaviour with the real
+ * localisation tests — locale-resolver behaviour with the real
  * `apps/stoop/locales/{en,nl}.json` files.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { initI18n, setLang, currentLang, t, format, _internal, isInitialised } from '../src/lib/i18n.js';
+import { initLocalisation, setLang, currentLang, t, format, _internal, isInitialised } from '../src/lib/localisation.js';
 
 beforeEach(async () => {
   await setLang('en');
 });
 
-describe('i18n — initialisation', () => {
+describe('localisation — initialisation', () => {
   it('defaults to English when no lng is given', async () => {
-    await initI18n();
+    await initLocalisation();
     expect(currentLang()).toBe('en');
     expect(isInitialised()).toBe(true);
   });
 
   it('switches to Dutch when asked', async () => {
-    await initI18n({ lng: 'nl' });
+    await initLocalisation({ lng: 'nl' });
     expect(currentLang()).toBe('nl');
   });
 
@@ -28,7 +28,7 @@ describe('i18n — initialisation', () => {
   });
 });
 
-describe('i18n — t() lookups', () => {
+describe('localisation — t() lookups', () => {
   it('resolves a known mobile.* key in English', () => {
     expect(t('mobile.scan_qr')).toBe('Scan QR');
   });
@@ -59,7 +59,7 @@ describe('i18n — t() lookups', () => {
   });
 });
 
-describe('i18n — format()', () => {
+describe('localisation — format()', () => {
   it('substitutes {param} placeholders', () => {
     // Use a literal key with manual fallback for predictability.
     const out = format('does.not.exist', { name: 'Anne' }, 'Hello {name}');

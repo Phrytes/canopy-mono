@@ -76,15 +76,15 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, initI18n, applyI18n, t, currentLang } from '/app.js';
+    import { callSkill, getActor, initLocalisation, applyLocalisation, t, currentLang } from '/app.js';
     // V0.2 (2026-05-20) — shared @canopy/web-adapter helpers.  Overlaid
     // at `/lib/web-adapter/*.js` by `bin/stoop-web.js`'s extraStaticFiles
     // (same mechanism mine.html uses).  Source-of-truth lives in
     // `packages/web-adapter/src/`.
     import { fetchSectionItems } from '/lib/web-adapter/fetchSectionItems.js';
 
-    await initI18n();
-    applyI18n();
+    await initLocalisation();
+    applyLocalisation();
     document.title = t('privacy.page_title', 'Stoop — Privacy');
     document.getElementById('actor').textContent = await getActor();
 

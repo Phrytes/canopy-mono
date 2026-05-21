@@ -43,10 +43,10 @@ React Native platform layer + adapters for the canopy agent SDK.
   `apps/stoop-mobile/src/lib/push.js`) plus the new
   `usePushOptIn({agent, ...})` hook for Settings-screen UX. Lifted
   2026-05-09 — Phase 41.0 L6.
-- `./i18n/*` — locale resolver substrate. `loadLocale({bundles,
+- `./localisation/*` — locale resolver substrate. `loadLocale({bundles,
   defaultLang})` returns a `{t, format, setLang, currentLang,
-  initI18n, isInitialised}` instance. Lifted from
-  `apps/stoop-mobile/src/lib/i18n.js` 2026-05-09 — Phase 41.0 L7.
+  initLocalisation, isInitialised}` instance. Lifted from
+  `apps/stoop-mobile/src/lib/localisation.js` 2026-05-09 — Phase 41.0 L7.
   Apps now pass their own locale bundles instead of the substrate
   hardcoding Stoop's.
 
@@ -56,7 +56,7 @@ The platform layer was extracted in earlier phases (see
 [Stoop V3 Phase 40.x](../../Project%20Files/Stoop/v3-mobile-coding-plan-2026-05-08.md)
 + [Tasks-mobile Phase 41.0](../../Project%20Files/Tasks%20App/mobile-coding-plan-2026-05-08.md)).
 The Phase 41.0 lifts (L3 + L4 + L5 + L6 + L7) added `./picker`,
-`./qr`, `./mnemonic`, `./push`, `./i18n` as submodules of the same
+`./qr`, `./mnemonic`, `./push`, `./localisation` as submodules of the same
 package — locked decision (2026-05-08) to keep the package count
 flat instead of fanning out into one micro-package per submodule.
 

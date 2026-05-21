@@ -174,39 +174,39 @@ describe('stripFakeListBlocks', () => {
   });
 });
 
-describe('I18N tables — parity + smoke', () => {
-  it('every key in I18N_NL exists in I18N_EN (no translation drift)', async () => {
-    const { I18N_NL, I18N_EN } = await import('../scripts/lib/freetext-core.js');
-    expect(Object.keys(I18N_EN).sort()).toEqual(Object.keys(I18N_NL).sort());
+describe('LOCALISATION tables — parity + smoke', () => {
+  it('every key in LOCALISATION_NL exists in LOCALISATION_EN (no translation drift)', async () => {
+    const { LOCALISATION_NL, LOCALISATION_EN } = await import('../scripts/lib/freetext-core.js');
+    expect(Object.keys(LOCALISATION_EN).sort()).toEqual(Object.keys(LOCALISATION_NL).sort());
   });
 
   it('renders both languages without throwing for every kind of string', async () => {
-    const { I18N_NL, I18N_EN } = await import('../scripts/lib/freetext-core.js');
-    for (const i18n of [I18N_NL, I18N_EN]) {
+    const { LOCALISATION_NL, LOCALISATION_EN } = await import('../scripts/lib/freetext-core.js');
+    for (const localisation of [LOCALISATION_NL, LOCALISATION_EN]) {
       // function fields — call with realistic args
-      expect(typeof i18n.notFound('kaas', 'boodschappen')).toBe('string');
-      expect(typeof i18n.removedNowEmpty('kaas', 'boodschappen')).toBe('string');
-      expect(typeof i18n.removedRemaining('kaas', 'boodschappen', '• melk')).toBe('string');
-      expect(typeof i18n.listEmpty('boodschappen')).toBe('string');
-      expect(typeof i18n.listShow('boodschappen', '• melk')).toBe('string');
-      expect(typeof i18n.duplicate('kaas', 'boodschappen')).toBe('string');
-      expect(typeof i18n.buttonTapShape('kaas', 'boodschappen')).toBe('string');
-      expect(typeof i18n.buttonLabel('kaas')).toBe('string');
-      expect(typeof i18n.slashAddNoItems('foo')).toBe('string');
-      expect(typeof i18n.slashAddSuccess('foo', ['a','b'])).toBe('string');
-      expect(typeof i18n.slashRemoveNoItem('remove', 'foo')).toBe('string');
-      expect(typeof i18n.slashListLine('foo', 3)).toBe('string');
-      expect(typeof i18n.contextLine('foo', 3)).toBe('string');
+      expect(typeof localisation.notFound('kaas', 'boodschappen')).toBe('string');
+      expect(typeof localisation.removedNowEmpty('kaas', 'boodschappen')).toBe('string');
+      expect(typeof localisation.removedRemaining('kaas', 'boodschappen', '• melk')).toBe('string');
+      expect(typeof localisation.listEmpty('boodschappen')).toBe('string');
+      expect(typeof localisation.listShow('boodschappen', '• melk')).toBe('string');
+      expect(typeof localisation.duplicate('kaas', 'boodschappen')).toBe('string');
+      expect(typeof localisation.buttonTapShape('kaas', 'boodschappen')).toBe('string');
+      expect(typeof localisation.buttonLabel('kaas')).toBe('string');
+      expect(typeof localisation.slashAddNoItems('foo')).toBe('string');
+      expect(typeof localisation.slashAddSuccess('foo', ['a','b'])).toBe('string');
+      expect(typeof localisation.slashRemoveNoItem('remove', 'foo')).toBe('string');
+      expect(typeof localisation.slashListLine('foo', 3)).toBe('string');
+      expect(typeof localisation.contextLine('foo', 3)).toBe('string');
       // string fields
-      expect(typeof i18n.fallbackNotDone).toBe('string');
-      expect(typeof i18n.slashAddNoListName).toBe('string');
-      expect(typeof i18n.slashShowUsage).toBe('string');
-      expect(typeof i18n.slashRemoveUsage).toBe('string');
-      expect(typeof i18n.slashListsEmpty).toBe('string');
-      expect(typeof i18n.slashListsHeader).toBe('string');
-      expect(typeof i18n.slashHelp).toBe('string');
-      expect(typeof i18n.contextNoLists).toBe('string');
-      expect(typeof i18n.contextHeader).toBe('string');
+      expect(typeof localisation.fallbackNotDone).toBe('string');
+      expect(typeof localisation.slashAddNoListName).toBe('string');
+      expect(typeof localisation.slashShowUsage).toBe('string');
+      expect(typeof localisation.slashRemoveUsage).toBe('string');
+      expect(typeof localisation.slashListsEmpty).toBe('string');
+      expect(typeof localisation.slashListsHeader).toBe('string');
+      expect(typeof localisation.slashHelp).toBe('string');
+      expect(typeof localisation.contextNoLists).toBe('string');
+      expect(typeof localisation.contextHeader).toBe('string');
     }
   });
 });

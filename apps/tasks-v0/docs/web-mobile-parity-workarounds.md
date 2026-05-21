@@ -90,8 +90,8 @@ rejected | task-claimed | …).  Helpers (`kindOf()`, `proposalIdOf()`,
 **For renderWeb:** Import `kindOf(event)` to classify inbox rows; do
 not inspect `event.kind` directly.
 
-### 6. Locale merging → `i18nMerge.js`
-**File:** `apps/tasks-v0/src/ui/i18nMerge.js:33–73`
+### 6. Locale merging → `localisationMerge.js`
+**File:** `apps/tasks-v0/src/ui/localisationMerge.js:33–73`
 
 **Pattern:** Shared strings (status pills, role labels, crew kinds,
 approval modes) live in `locales/shared/{en,nl}.json`.  Both shells
@@ -153,8 +153,8 @@ adapter to set `from = localActor` (a webid) in the envelope.
 `apps/tasks-mobile/locales/` (mobile-local)
 
 `tasks-v0` owns the shared namespace; each shell owns its own screen
-strings.  Mobile loads via `@canopy/react-native/i18n`; web loads
-via `@canopy/local-store`'s i18n or raw fetch.
+strings.  Mobile loads via `@canopy/react-native/localisation`; web loads
+via `@canopy/local-store`'s localisation or raw fetch.
 
 **For projector:** keep shared keys under `shared.*` in the merged
 bundle; house web-specific keys at the top level.
@@ -222,7 +222,7 @@ proof.
 
 1. **Absorb the UI-helper contracts** (§A.1–7): Import + use
    `describeTaskStatus`, `effectiveActor`, `composeArgs`,
-   `dagFlatten`, `inboxClassify`, `i18nMerge`,
+   `dagFlatten`, `inboxClassify`, `localisationMerge`,
    `attachTasksBundle` directly.  These are DRY, tested, shared
    with mobile.
 2. **Record the adapter boundaries** (§B.1–5): Ensure the web

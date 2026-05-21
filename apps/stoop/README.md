@@ -51,7 +51,7 @@ H5 / `apps/neighborhood-v0` until 2026-05-06; renamed in place.
 Phases 0–22 of the coding plan have landed:
 
 - 0–10: scaffold, substrate / relay extensions, skill layer,
-  local-first cache, prikbord UI, handle UX, onboarding, i18n,
+  local-first cache, prikbord UI, handle UX, onboarding, localisation,
   rotation + push policy + metrics, export + leaveGroup.
 - 11: stableId on `core.AgentIdentity`; stableId-keyed mute /
   reveal; MemberMap stableId resolver.
@@ -268,8 +268,8 @@ what `{{placeholder}}` means). The runtime `t(key)` returns only the
 strings still resolve (back-compat), but new entries must include a
 `doc`.
 
-**Browser bridge:** `web/app.js` exports `initI18n()`, `t(key, fallback)`,
-and `applyI18n(root)`. Pages declare strings via `data-i18n="key"` (or
+**Browser bridge:** `web/app.js` exports `initLocalisation()`, `t(key, fallback)`,
+and `applyLocalisation(root)`. Pages declare strings via `data-i18n="key"` (or
 `data-i18n-attr="placeholder"` for attributes); the bridge walks the
 DOM and substitutes on load.
 

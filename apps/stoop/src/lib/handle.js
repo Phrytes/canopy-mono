@@ -38,7 +38,7 @@ export function validateHandle(input) {
   return { ok: true, handle: h };
 }
 
-/** Constants exported for UI form-validation hints + i18n. */
+/** Constants exported for UI form-validation hints + localisation. */
 export const HANDLE_RULES = Object.freeze({
   minLen: MIN_LEN,
   maxLen: MAX_LEN,

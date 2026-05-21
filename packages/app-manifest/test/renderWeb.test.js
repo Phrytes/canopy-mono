@@ -948,14 +948,14 @@ describe('renderWeb V0.8 — Q27 confirm severity hint', () => {
   });
 });
 
-describe('renderWeb V0.6 — Q22 labelKey i18n passthrough', () => {
+describe('renderWeb V0.6 — Q22 labelKey localisation passthrough', () => {
   // Manifest with labelKey on every label-bearing surface: an op-level
   // affordance, an item-action op (state-gated), and a field on a
   // record-shape view.  The projector must pass labelKey through
   // unchanged on each surface; absent labelKey leaves NavModel
   // identical to V0.5 (no extra key).
   const MANIFEST = {
-    app:       'i18n-rec',
+    app:       'localisation-rec',
     itemTypes: ['task', 'settings-record'],
     operations: [
       {

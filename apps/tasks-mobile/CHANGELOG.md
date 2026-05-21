@@ -30,7 +30,7 @@ of the [Tasks-mobile coding plan](../../Project%20Files/Tasks%20App/mobile-codin
 
 | Phase | What shipped | Tests added |
 |---|---|---|
-| 41.0  | 7 substrate lifts (L1–L7): hooks, online-cadence, picker, qr, mnemonic, push, i18n | 47 |
+| 41.0  | 7 substrate lifts (L1–L7): hooks, online-cadence, picker, qr, mnemonic, push, localisation | 47 |
 | 41.0.b | 10 more substrate lifts (A1–A7 + B0–B4): identity-resolver/display, identity bootstrap, storage, deepLinks, theme, components | 13 |
 | 41.1  | Workspace scaffold (Expo 52 / RN 0.76.9, navigator skeleton) | 1 |
 | 41.2  | ServiceContext (boot, agent, crews Map, identity vault, AppState bridge) | 13 |
@@ -63,7 +63,7 @@ of the [Tasks-mobile coding plan](../../Project%20Files/Tasks%20App/mobile-codin
 | `@canopy/online-cadence` | Foreground ticker + AppState bridge + bg-fetch helpers |
 | `@canopy/sync-engine-rn` (`./react`) | Skill hooks (useSkill, useAgentEvent, useSkillResult, useSettings, useMemberProfile) |
 | `@canopy/oidc-session-rn` (`./hook`) | Pod sign-in (PKCE + DCR + token storage) |
-| `@canopy/react-native` | Platform layer + 5 lifted submodules (picker, qr, mnemonic, push, i18n) + theme + components + storage + deepLinks + identity helpers |
+| `@canopy/react-native` | Platform layer + 5 lifted submodules (picker, qr, mnemonic, push, localisation) + theme + components + storage + deepLinks + identity helpers |
 | `@canopy-app/tasks-v0` | V2.8 single-agent factories + role policy (platform-shell exception, locked 2026-05-08) |
 
 ### Deferred items (carried into V1.x)

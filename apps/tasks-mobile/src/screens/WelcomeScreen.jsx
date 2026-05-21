@@ -25,14 +25,14 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { useTheme } from '@canopy/react-native/theme';
 import { useService } from '../ServiceContext.js';
-import { useI18n } from '../I18nProvider.js';
+import { useLocalisation } from '../LocalisationProvider.js';
 import { ROUTES } from '../navigation.js';
 
 export function WelcomeScreen() {
   const nav   = useNavigation();
   const route = useRoute();
   const svc   = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const [showCreate, setShowCreate] = useState(false);

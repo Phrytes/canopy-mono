@@ -17,7 +17,7 @@ import { View, Text, TextInput, Pressable } from 'react-native';
 import { useTheme }    from '@canopy/react-native/theme';
 import { useService } from '../../ServiceContext.js';
 import { useSkill, useSkillResult } from '../../lib/useSkill.js';
-import { useI18n }     from '../../I18nProvider.js';
+import { useLocalisation }     from '../../LocalisationProvider.js';
 import { useActiveRole } from '../../lib/useActiveRole.js';
 
 const KNOWN_EVENTS = [
@@ -32,7 +32,7 @@ const KNOWN_EVENTS = [
 export function CadenceSection() {
   const svc = useService();
   const { isAdmin } = useActiveRole();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const cur   = useSkillResult('getCrewCadences', {}, [svc?.activeCrewId]);

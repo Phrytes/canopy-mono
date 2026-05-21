@@ -104,10 +104,10 @@
   </main>
 
   <script type="module">
-    import { callSkill, initI18n, applyI18n, t } from '/app.js';
+    import { callSkill, initLocalisation, applyLocalisation, t } from '/app.js';
 
-    await initI18n();
-    applyI18n();
+    await initLocalisation();
+    applyLocalisation();
     document.title = t('restore.page_title', document.title);
 
     const step1 = document.getElementById('step-1');

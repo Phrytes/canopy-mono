@@ -37,7 +37,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@canopy/react-native/theme';
 import { useService } from '../ServiceContext.js';
 import { useSkill }   from '../lib/useSkill.js';
-import { useI18n }    from '../I18nProvider.js';
+import { useLocalisation }    from '../LocalisationProvider.js';
 import { ROUTES }     from '../navigation.js';
 
 const STORAGE_POLICIES    = ['no-pod', 'centralised', 'decentralised', 'hybrid'];
@@ -46,7 +46,7 @@ const UPGRADEABLE_POLICIES = ['centralised', 'decentralised', 'hybrid'];
 export function PodSettingsScreen() {
   const nav        = useNavigation();
   const svc        = useService();
-  const { t }      = useI18n();
+  const { t }      = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const setCrewStoragePolicy = useSkill('setCrewStoragePolicy');

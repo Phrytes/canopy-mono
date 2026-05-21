@@ -1,11 +1,11 @@
 /**
  * loadLocale — substrate-level coverage. The end-to-end Stoop locale
- * resolution is exercised in apps/stoop-mobile/test/i18n.test.js
+ * resolution is exercised in apps/stoop-mobile/test/localisation.test.js
  * (which now goes through this substrate).
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadLocale } from '../../src/i18n/loadLocale.js';
+import { loadLocale } from '../../src/localisation/loadLocale.js';
 
 const EN = {
   greeting: { text: 'Hello', doc: 'Generic greeting' },
@@ -37,51 +37,51 @@ describe('loadLocale — input validation', () => {
 });
 
 describe('loadLocale — basic flow', () => {
-  let i18n;
-  beforeEach(() => { i18n = loadLocale({ bundles: { en: EN, nl: NL }, defaultLang: 'en' }); });
+  let localisation;
+  beforeEach(() => { localisation = loadLocale({ bundles: { en: EN, nl: NL }, defaultLang: 'en' }); });
 
   it('starts on the default language, not initialised', () => {
-    expect(i18n.currentLang()).toBe('en');
-    expect(i18n.isInitialised()).toBe(false);
+    expect(localisation.currentLang()).toBe('en');
+    expect(localisation.isInitialised()).toBe(false);
   });
 
-  it('initI18n marks initialised', async () => {
-    await i18n.initI18n({ lng: 'nl' });
-    expect(i18n.currentLang()).toBe('nl');
-    expect(i18n.isInitialised()).toBe(true);
+  it('initLocalisation marks initialised', async () => {
+    await localisation.initLocalisation({ lng: 'nl' });
+    expect(localisation.currentLang()).toBe('nl');
+    expect(localisation.isInitialised()).toBe(true);
   });
 
   it('falls back to default on unknown language', async () => {
-    await i18n.setLang('zh');
-    expect(i18n.currentLang()).toBe('en');
+    await localisation.setLang('zh');
+    expect(localisation.currentLang()).toBe('en');
   });
 });
 
 describe('loadLocale — t() + format()', () => {
-  let i18n;
-  beforeEach(() => { i18n = loadLocale({ bundles: { en: EN, nl: NL }, defaultLang: 'en' }); });
+  let localisation;
+  beforeEach(() => { localisation = loadLocale({ bundles: { en: EN, nl: NL }, defaultLang: 'en' }); });
 
   it('unwraps {text, doc} leaves', () => {
-    expect(i18n.t('greeting')).toBe('Hello');
+    expect(localisation.t('greeting')).toBe('Hello');
   });
 
   it('walks dotted paths', () => {
-    expect(i18n.t('ui.nav.home')).toBe('Home');
+    expect(localisation.t('ui.nav.home')).toBe('Home');
   });
 
   it('returns fallback (or key) when not found', () => {
-    expect(i18n.t('missing.key', 'default')).toBe('default');
-    expect(i18n.t('missing.key')).toBe('missing.key');
+    expect(localisation.t('missing.key', 'default')).toBe('default');
+    expect(localisation.t('missing.key')).toBe('missing.key');
   });
 
   it('switches bundle on setLang', async () => {
-    await i18n.setLang('nl');
-    expect(i18n.t('greeting')).toBe('Hallo');
-    expect(i18n.t('ui.nav.home')).toBe('Thuis');
+    await localisation.setLang('nl');
+    expect(localisation.t('greeting')).toBe('Hallo');
+    expect(localisation.t('ui.nav.home')).toBe('Thuis');
   });
 
   it('format() interpolates {param}', () => {
-    expect(i18n.format('count', { count: 3 })).toBe('You have 3 unread');
+    expect(localisation.format('count', { count: 3 })).toBe('You have 3 unread');
   });
 });
 

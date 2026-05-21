@@ -15,7 +15,7 @@ import { View, Text, ScrollView } from 'react-native';
 
 import { useTheme } from '@canopy/react-native/theme';
 import { useService } from '../ServiceContext.js';
-import { useI18n }    from '../I18nProvider.js';
+import { useLocalisation }    from '../LocalisationProvider.js';
 
 import { MembersSection }            from './crewSettings/MembersSection.jsx';
 import { CustomRolesSection }        from './crewSettings/CustomRolesSection.jsx';
@@ -29,7 +29,7 @@ import { CadenceSection }            from './crewSettings/CadenceSection.jsx';
 
 export function CrewSettingsScreen() {
   const svc = useService();
-  const { t } = useI18n();
+  const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   if (!svc?.activeCrewId) {

@@ -103,7 +103,7 @@
   </main>
 
   <script type="module">
-    import { callSkill, getActor, mountLive, mountGroupSwitcher, initI18n, applyI18n, t } from '/app.js';
+    import { callSkill, getActor, mountLive, mountGroupSwitcher, initLocalisation, applyLocalisation, t } from '/app.js';
     // V0.2 (2026-05-21) — shared @canopy/web-adapter helpers.  Overlaid
     // at `/lib/web-adapter/*.js` by `bin/stoop-web.js`'s extraStaticFiles
     // (same mechanism tasks-v0 uses).  Source-of-truth lives in
@@ -111,8 +111,8 @@
     import { fetchSectionItems }     from '/lib/web-adapter/fetchSectionItems.js';
     import { itemMatchesAppliesTo }  from '/lib/web-adapter/itemMatchesAppliesTo.js';
 
-    await initI18n();
-    applyI18n();
+    await initLocalisation();
+    applyLocalisation();
     document.title = t('mine.page_title', 'Stoop — My posts');
 
     document.getElementById('actor').textContent = await getActor();
