@@ -1,6 +1,17 @@
 # @canopy-app/stoop
 
 > **Layer: app.** Composes substrates from `packages/{item-store, skill-match, identity-resolver, agent-ui, notifier, chat-agent, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+>
+> **Manifest + tier policy.** Stoop's surface is declared in
+> [`manifest.js`](./manifest.js) (NavModel substrate V0.8 /
+> Q1–Q27).  Pages follow
+> [`DESIGN-tier-policy.md`](../../DESIGN-tier-policy.md):
+> **T1** substrate-rendered (`mine.html`, `privacy.html`); **T2**
+> manifest-bound (`settings.html` V0.4-adopt + Q22 labelKey;
+> `profile.html` V0.4 + Q22 + Q25 + Q27 wired via `createOpBinding`);
+> **T3** fully bespoke (`onboard.html`, `restore.html`, …).
+> `bin/stoop-web.js` serves `/stoop-manifest.json` so T2 pages can
+> read Q27 confirm severity directly from the manifest.
 
 Buurt-skill-app: vragen, aanbod, en lenen tussen buurtgenoten —
 prikbord-not-feed, mens en machine-agents naast elkaar, decentraal

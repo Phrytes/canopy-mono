@@ -1,4 +1,13 @@
 <!doctype html>
+<!--
+  Tier: 3 — fully bespoke.  (See DESIGN-tier-policy.md.)
+  Justification: multi-step onboard wizard (gate validation checkboxes
+    → redeem invite → identity bring-up).  Wizard flows are explicitly
+    out-of-scope per the Tier C audit (TIER-C-PROPOSALS.md) — UX-shaped
+    not data-shaped.  Skills called are bridges
+    (redeemInviteWithGate, redeemInvite) that have no useful manifest
+    declaration outside the wizard.
+-->
 <html lang="nl">
 <head>
   <meta charset="utf-8">

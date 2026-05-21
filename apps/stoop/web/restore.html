@@ -1,4 +1,12 @@
 <!doctype html>
+<!--
+  Tier: 3 — fully bespoke.  (See DESIGN-tier-policy.md.)
+  Justification: mnemonic-restore wizard — validate phrase → show
+    pubkey preview → confirm restore.  Out-of-scope per Tier C audit:
+    passphrase/mnemonic flows are auth concerns, app-side.  Skills
+    called (validateMnemonicPhrase, restoreFromMnemonic) are one-shot
+    reveals — Q27 explicitly defers them.
+-->
 <html lang="nl">
 <head>
   <meta charset="utf-8">

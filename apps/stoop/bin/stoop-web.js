@@ -154,6 +154,13 @@ export async function startStoopWeb(opts = {}) {
     a2aTLSLayer:      new LocalUiAuth({ localActor: actor }),
     extraStaticFiles: {
       '/navmodel.json':      JSON.stringify(navModel),
+      // V0.8 (2026-05-21) — expose the raw manifest for T2 pages that
+      // need ops the NavModel projection doesn't carry (e.g. session-
+      // scoped ops with no view surface like signOutOfPod).
+      // Pre-V0.8 only /navmodel.json was served; T2 pages had to
+      // hardcode Q27 confirm messages.  With /stoop-manifest.json,
+      // createOpBinding({manifest}) can resolve any declared op.
+      '/stoop-manifest.json': JSON.stringify(stoopManifest),
       '/stoop-config.json':  JSON.stringify({ actor, group, app: navModel.app }),
       // One entry: the switcher dropdown still hides (mountGroupSwitcher
       // hides at length<=1) but the client now KNOWS the active group —
@@ -197,6 +204,10 @@ async function loadWebAdapterFiles() {
     'applyPrefilledParams.js',
     'fetchSectionItems.js',
     'schemaToFormFields.js',
+    // V0.8 (2026-05-21) — T2-tier helper.  Pages that read the
+    // manifest for Q27 confirm + Q22 labelKey resolution import via
+    // /lib/web-adapter/createOpBinding.js.
+    'createOpBinding.js',
     'index.js',
   ];
   const out = {};
