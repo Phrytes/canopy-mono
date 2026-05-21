@@ -286,8 +286,8 @@ Each canary follows this shape:
 ## Cross-references
 
 - **NavModel substrate** — `DESIGN-navmodel-sketch.md` (owner decisions Q1-Q27)
-- **Tier C audit** — `TIER-C-PROPOSALS.md` (what stays app-side and why)
-- **Slice G audit** — `SLICE-G-AUDIT.md` (folio boundary observations)
+- **Tier C audit** — `Project Files/Substrates/tier-c-proposals.md` (what stays app-side and why)
+- **Slice G audit** — `Project Files/Folio/slice-g-audit.md` (folio boundary observations)
 - **Substrate helper** — `packages/web-adapter/src/createOpBinding.js` (T2 dispatch utility)
 - **Drift canaries** — `apps/<app>/test/page-skill-drift.test.js` (web) and `apps/<app>/test/screen-skill-drift.test.js` (RN)
 

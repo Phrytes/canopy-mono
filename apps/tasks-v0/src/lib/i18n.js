@@ -13,8 +13,7 @@
  * `t('common.save.text')`).
  *
  * Existing HTML pages still ship hardcoded copy; the back-fill from
- * hardcoded → t-keys is opportunistic per
- * `Project Files/TODO-GENERAL.md` § "Translatable-by-design back-fill".
+ * hardcoded → t-keys is opportunistic per touched page.
  * The wrapper is ready when that day comes.
  */
 

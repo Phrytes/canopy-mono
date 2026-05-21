@@ -237,10 +237,8 @@ link → `completePodSignIn` → AuthCallbackScreen polls
 Token persistence rides on `@canopy/oidc-session-rn` — keys
 under `stoop-oidc-*` in `expo-secure-store`.
 
-The Inrupt-cleanup TODO in
-[`Project Files/TODO-GENERAL.md`](../../Project%20Files/TODO-GENERAL.md)
-will eventually unify pod-share/auth UX across all apps; Stoop V3's
-auth surface migrates with the rest.
+An eventual cleanup of pod-share/auth UX across all apps is planned;
+Stoop V3's auth surface migrates with the rest.
 
 ## Settings layout
 

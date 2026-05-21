@@ -165,7 +165,7 @@ you can — same Expo 52 / RN 0.76.9 pin.
 
 > **Pair-test scenarios** (Tasks-desktop ↔ Tasks-mobile, T1–T6) live
 > in the cross-app pair-test runbook:
-> [`Project Files/pair-test-runbook-2026-05-15.md`](../../Project%20Files/pair-test-runbook-2026-05-15.md).
+> [`Project Files/conventions/pair-test-runbook-2026-05-15.md`](../../Project%20Files/conventions/pair-test-runbook-2026-05-15.md).
 > The walkthrough below covers the single-device journeys; pair
 > the two when running 41.16 on hardware.
 

@@ -1,0 +1,38 @@
+Two true primitives
+send
+emit a message envelope to a target address — fire and forget, no response assumed
+respond
+emit a message envelope addressed to a prior message ID — always a reply to something
+Everything else is a pattern — a rule about how many sends and responds happen, in what order, and what to do when the expected ones don't arrive. request is send + wait-for-respond. ack is a minimal respond with an empty body. pub–sub is repeated send to a topic address. There is no third primitive.
+The envelope
+
+Both primitives carry the same envelope. The replyTo field is what turns a send into something a receiver can respond to. The pattern field tells the receiver what response behaviour is expected — but it is advisory, not mandatory. A receiver can always choose to respond or not.
+
+{
+  id:       "uuid-v4",           // dedup key
+  replyTo:  "uuid-v4" | null,    // present if this is a respond
+  from:     "agent-id",
+  to:       "agent-id | topic",
+  pattern:  "one-way"            // advisory: what sender expects
+           | "request-response"
+           | "ack"
+           | "stream-open"
+           | "stream-chunk"
+           | "stream-close"
+           | "pub-sub",
+  protocol: "ping"               // what this is about
+           | "hello"
+           | "capability-query"
+           | "message"
+           | "task-offer"
+           | "task-accept"
+           | "task-reject"
+           | "task-progress"
+           | "task-done"
+           | "negotiate"
+           | "session",
+  payload:  { ... },
+  ts:       1234567890
+}
+
+The pattern + protocol pair fully describes what the sender wants and why. A receiver that only understands one-way can still process any envelope — it just won't send a response. This is what enables graceful degradation.

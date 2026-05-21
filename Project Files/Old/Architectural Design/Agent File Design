@@ -1,0 +1,66 @@
+Agent file (YAML)
+
+Portable, user-owned, encrypted at rest. Defines one or more agents. Apps read this file to hydrate agents; the user controls what's in it.
+
+version: "1.0"
+
+blueprints:
+  household-agent:
+    policy:
+      ping: always
+      messaging: on-request
+      taskAccept: negotiated
+    hooks:
+      onTask: [log-locally]
+
+agents:
+  - id: alice-home
+    blueprint: household-agent
+    label: "Home assistant"
+
+    connections:
+      nkn:
+        address: abc123.nkn
+      mqtt:
+        broker: mqtt://my-broker.example
+        topic: agents/alice-home
+
+    groups:
+      - id: home
+        proof: <signed-token>
+      - id: neighborhood
+        proof: <signed-token>
+
+    credentials:
+      solid-pod-token: vault:solid-pod-token
+      home-db-key:     vault:home-db-key
+
+    storage:
+      sources:
+        - label: private
+          type: solid-pod
+          url: https://alice.solidpod.example
+          credential: solid-pod-token
+        - label: app
+          type: indexeddb
+          name: myapp-db
+
+    resources:
+      maxPendingTasks: 5
+      maxConnections: 20
+
+    capabilities:
+      # Override blueprint defaults per capability
+      live-feed:
+        visibility: public
+        policy: negotiated
+
+  - id: alice-work
+    blueprint: household-agent
+    label: "Work agent"
+    connections:
+      nkn:
+        address: def456.nkn
+    groups:
+      - id: work-team
+        proof: <signed-token>

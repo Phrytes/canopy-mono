@@ -1,0 +1,142 @@
+2. App: shareskills (buurtapp)
+- decentraal georganiseerd
+- leunend op solid pods
+- ik heb al een agent SDK waarmee agents via mdns/bt/relay etc kunnen communiceren (messagen), taken uitwisselen, streams starten en skills uitwisselen
+
+- de app vraagt je om een lijst met vaardigheden
+	> vaardigheid
+	> categorie (vanuit de app)
+	> korte beschrijving
+	> nog wat meer eigenschappen:
+		- beschikbaarheid/capaciteit
+		- locatieradius
+		- tags
+		- actief/gepauzeerd/gearchiveerd
+	> per vaardigheid openheidslevel aangeven: publiek - familie/goede vrienden - buurtgenoten - plaatsgenoten etc - specifieke groep (aansluiting vinden bij agent SDK)
+- verder kun je per verbonden groep aangeven:
+	- openheidslevel hanteren
+	- misschien nog labelen met een privelabel waar vanuit eigenschappen overgenomen kunnen worden oid
+
+- deze vaardigheden worden opgeslagen in je profiel (evt met naam en foto enzo)
+- eventueel ook per skill wat fotootjes op je profiel (makkelijk doorklikbaar etc)
+	> profiel etc: op solidpod (moet ook aansluiten op de 'portable agent file' die we aan het begin van dit project hebben bedacht èn waarvan als het goed is nog wel wat te vinden is binnen de sdk)
+- deze vaardigheden komen vervolgens ook in een lijst met agent-skills op je solidpod (deze worden opgeslagen per gedefinieerde agent)
+- op je telefoon kun je een app draaien waarmee je een agent kunt starten (agent wordt door user ingelogd - haalt agentprofiel op uit pod of agentprofiel importeren vanuit bestand) 
+	> later zou je dus willen dat deze ook extra skills mee kan nemen, zoals het aanroepen van een bepaalde API of db oid >> nu nog niet aan de orde
+
+- vervolgens kun je mensen toevoegen aan een groep (zelf opgezet), met een private key + public key (QR code- eenmalig getoond). Met BT of mdns kunnen dan users als het goed is al gelijk connecten met elkaar). Bij een relayserver kun je vervolgens je groep aanmelden en daarbij de public key te uploaden. De relayserver moet dan denk ik ook een private key krijgen, waarmee het kan verifieren of een vermeend groepslid echt lid is. Zo niet, dan worden connecties niet toegelaten.
+Vragen: wie beheert een relayserver? Kan het niet makkelijker zijn om zelf een relay op te zetten ergens op gebruiksvriendelijke manier? Bijv: gebruiker kiest host, en via een lanceerwebsite (die moet dan nog gemaakt worden) kun je vervolgens inloggen op die host, settings configureren via GUI op de lanceerwebsite en de lanceerwebsite doet vervolgens container draaien en evt poorten openzetten (liever niet denk ik? of gewoon alleen https poort oid?) 
+
+
+Mbt SolidPods
+
+Skills-model — functioneel
+
+Beschikbaarheid/capaciteit: tijdsindicatie ("weekenden", "ad hoc"), eventueel of iemand er vergoeding voor wil (gratis / ruil / kleine vergoeding) — dit voorkomt awkward gesprekken.
+Locatie-radius los van openheidslevel: iemand kan publiek aanbieden maar alleen binnen 2 km willen reizen.
+Tags/keywords vrij invulbaar naast de vaste categorie — categorieën dekken nooit alles.
+Status: actief / gepauzeerd / gearchiveerd. Mensen willen niet elke keer skills verwijderen als ze even geen tijd hebben.
+
+Voor de openheidslevels: pas op dat je niet té veel niveaus krijgt. Vijf overlappende niveaus (publiek / familie / buurt / dorp / specifieke groep) wordt complex om uit te leggen én te implementeren. Ik zou een capability-based model overwegen: elke skill heeft een ACL die verwijst naar groepen of individuen, en "publiek" / "buurt" zijn gewoon voorgedefinieerde groepen. Dat schaalt mooier en sluit aan bij hoe Solid's WAC/ACP werkt.
+Skills-model — technisch op Solid
+Concrete suggesties voor je pod-structuur:
+/profile/card                  (WebID, basis)
+/skills/index.ttl              (lijst, met links naar items)
+/skills/{uuid}.ttl             (per skill)
+/skills/{uuid}/photos/         (container)
+/groups/{group-uuid}.ttl       (groepsdefinitie + leden)
+/agents/{agent-id}/profile.ttl (agentprofiel)
+/agents/{agent-id}/skills.ttl  (agent capabilities)
+Gebruik bestaande vocabularies waar mogelijk: foaf: voor persoonsinfo, schema: voor algemene properties, en definieer een eigen klein vocab shareskills: voor wat ontbreekt (zoals shareskills:opennessLevel). Dat maakt je data later interoperabel.
+Voor de ACLs: gebruik ACP (Access Control Policies) als je pod-server het ondersteunt — dat is flexibeler dan het oudere WAC, vooral voor groepsgebaseerde access. Je kunt dan een groep als vcard:Group modelleren en daarnaar verwijzen vanuit ACPs.
+Eén ding om over na te denken: wie host de pod? Als je doelgroep buurtbewoners zijn die geen idee hebben wat Solid is, wordt "kies een pod-provider" een drempel. Overwegen: standaard naar één of twee aanbevolen providers wijzen, of optioneel een eigen pod laten meedraaien op dezelfde host als de relay (zie verderop).
+
+
+Inspiratie voor groepen/relayservers
+Voor (1) werkt een group capability: bij toevoegen krijgt het nieuwe lid een signed credential van de groepsbeheerder ("X is lid van groep Y, geldig tot Z, gesigneerd door groepskey"). Iedereen — inclusief relay — kan dat verifiëren met de publieke groepskey. Geen gedoe met "relay krijgt private key" (dat is sowieso een rode vlag — een relay zou nooit een private key moeten hebben waarmee het zelf leden kan toevoegen).
+Voor (2) wil je MLS (Messaging Layer Security) of iets in die richting bekijken. Het is gemaakt voor groeps-E2EE met efficient member add/remove en forward secrecy. Signal Protocol kan ook, maar schaalt minder mooi voor groepen >10. MLS is een IETF-standaard (RFC 9420) en er zijn implementaties zoals OpenMLS (Rust) en MLS-rs.
+Concreet voorstel voor je groepsmodel:
+
+Groep heeft een groepskey-pair, beheerd door de oprichter (of een set admins)
+Nieuwe leden krijgen via QR een invite token + groepskey-fingerprint
+Bij join genereert het nieuwe lid een eigen device-key, en de admin signeert een lidmaatschap-credential
+Relay krijgt alleen de publieke groepskey om credentials te verifiëren — nooit een private key
+Voor messaging gebruik je een MLS-groep waarin alle device-keys zijn opgenomen
+
+QR voor invite is fijn voor in-person, maar voeg ook een share-link / out-of-band optie toe voor wie op afstand een familielid wil toevoegen.
+Antwoord op je vragen over de relayserver
+Wie beheert een relayserver? Drie modellen, allemaal valide:
+
+Community-relay: een buurtvereniging, lokale stichting, of enthousiaste vrijwilliger draait er één. Goedkoop, sociaal logisch voor een buurtapp, maar single point of failure.
+Federated relays: meerdere relays praten met elkaar (zoals Matrix homeservers of ActivityPub). Robuuster, complexer.
+Self-host per groep: elke groep heeft z'n eigen relay. Ideologisch netjes, maar veel groepen willen dat niet beheren.
+
+Eén ding waar je over kunt nadenken: kijk eens naar Nostr's relay-model (specifiek de "client publiceert naar meerdere relays, dedupliceert bij ontvangst"-aanpak). Het is niet helemaal jouw model — Nostr-relays zijn publiek en hebben geen group-credentials — maar het idee dat clients relays kiezen en wisselen, in plaats van dat groepen aan relays vastzitten, is precies wat je hier wilt. Het schaalt verbazend goed met heel weinig coördinatie.
+
+Voor een buurtapp is mijn intuïtie: default community-relay aanbieden, self-host als optie voor wie wil. De meeste buurten gaan niet zelf hosten.
+"Kan het niet makkelijker zijn om zelf een relay op te zetten ergens?" Ja, en je launch-website-idee is goed. Dit bestaat in vergelijkbare vormen — kijk naar hoe Yunohost, Umbrel, of Sandstorm dit doen, of hoe "Deploy to Railway/Fly.io"-knoppen werken. Concreet patroon:
+
+Gebruiker kiest een VPS-provider (Hetzner, DigitalOcean, etc.) of een thuisserver
+Launch-site genereert een script of gebruikt provider-API's om automatisch te deployen
+Relay draait in een container (Docker/Podman) met config via env vars
+Caddy als reverse proxy met automatic HTTPS via Let's Encrypt — dan hoef je alleen poort 443 (en evt. 80 voor ACME) open te zetten. Geen handmatig certificaten gedoe.
+Admin-GUI op de relay zelf, geauthenticeerd met de admin-key die bij setup gegenereerd is
+
+Een ding om over na te denken: moet de relay überhaupt veel weten? Als je messaging E2EE doet en lidmaatschap via signed credentials verifieert, dan is de relay een dom store-and-forward systeem. Dat maakt zelf-hosten makkelijker (minder state, minder dat kan kapot) én privacy-vriendelijker. Lijkt mij inderdaad beter.
+
+Het verhaal naar buiten toe
+Het lastigste aan zo'n app is niet het bouwen — het is het uitleggen. "Decentraal", "Solid pods", "agents" — daar haakt 95% van je doelgroep af. Je hebt twee verhalen nodig:
+Voor de buurtbewoner: niet over de techniek beginnen. Iets als "Een buurtje waarin iedereen iets te bieden heeft. Vraag hulp, deel wat je kan, en je spullen blijven van jou." De decentralisatie verkoop je als gevoel — jouw profiel, jouw groep, geen bedrijf ertussen — niet als architectuur.
+Voor de tech-geïnteresseerde / early adopter: hier mag je wél het agents-verhaal vertellen. Dit is je secret sauce en het trekt mensen aan die het netwerk gaan dragen in de eerste fase. Iets als "Mensen en machines als gelijke deelnemers in een lokaal netwerk" — dat is filosofisch interessant en zeldzaam.
+Eén ding dat ik zou benadrukken in beide verhalen: wederkerigheid. Buurt-skill-apps hebben de neiging om óf vraag-gedreven te worden (Nextdoor-achtig, mensen klagen en vragen) óf aanbod-gedreven (LinkedIn-light). De magie zit in het matchen van beide, en het feit dat agents dat matchen voor je kunnen doen is een goed verkoopargument zonder dat je "AI" hoeft te zeggen.
+Wat de app absoluut moet kunnen
+Een paar dingen die ik als non-negotiable zou zien:
+Onboarding zonder cognitieve overhead. Iemand moet binnen 3 minuten een profiel hebben met 3 skills en in één groep zitten. Als de eerste interactie "kies een Solid pod provider" is, ben je ze kwijt. Verstop de techniek. Eventueel: app regelt default een pod aan, gevorderden kunnen later migreren of eigen pod kiezen.
+Lokale ontdekking die voelt als magie. Twee mensen met de app op een buurt-BBQ moeten elkaars (gedeelde) skills kunnen zien zonder dat ze iets configureren. Dit is precies waar je BT/mDNS-stack glanst — gebruik dat. Een schermpje "5 mensen in de buurt — 2 delen skills met jou" is zowel functioneel als wonderlijk.
+Vragen stellen, niet alleen aanbieden. Een blanco "wat kun jij?" is voor veel mensen blokkerend ("ik kan eigenlijk niks bijzonders"). Maar "ik zoek iemand die m'n fiets kan repareren" is laagdrempelig. En vaak ontstaat het aanbod uit zien wat anderen vragen ("oh, dát kan ik wel").
+Een gesprek beginnen. Skill-match is alleen een opening. Mensen moeten makkelijk kunnen chatten / bellen / een afspraak prikken. Ik zou niet een eigen volwaardig messaging systeem proberen te bouwen — gewoon kort genoeg om "hoi, hoe en wanneer?" af te handelen, en daarna mogen ze naar Signal/WhatsApp/IRL.
+Iets afronden. Na een uitwisseling: een lichte afronding ("gelukt? bedankje? korte review zichtbaar voor jullie groep?"). Dit is wat skill-platforms onderscheidt van vergeten chats. Geen sterren-systeem alsjeblieft (te transactioneel voor een buurt), maar wel iets dat erkenning geeft.
+
+Interface-ideeën
+Wat mij betreft zijn er drie views waar de app om draait:
+De "buurt" view — de homepage. Geen feed à la social media (vermijd dat alsjeblieft), maar iets ruimtelijks. Misschien letterlijk een kaart-achtige weergave waar skills in je groepen verschijnen, of een soort "prikbord" met vragen en aanbod door elkaar. De feed-vorm trekt scroll-gedrag aan; een prikbord nodigt uit tot kijken-en-weer-wegklikken, wat past bij hoe vaak je deze app zou moeten openen (een paar keer per week, niet per dag).
+De "ik" view — je eigen profiel als je het zelf bekijkt. Hier zou ik een truc toepassen: laat zien hoe je profiel eruitziet voor verschillende groepen. Een togglje "bekijk als familie / als buurt / als publiek" — dan begrijpen mensen je openheidslevels intuïtief, want ze zien het effect. Dit lost een echt UX-probleem op met privacy-instellingen: mensen weten nooit wat anderen zien.
+De "agent" view — apart, voor de geïnteresseerde gebruikers. Een soort dashboard van wat jouw agent(s) aan het doen zijn, welke skills ze namens jou aanbieden, met welke andere agents ze recent contact hadden. Dit hoeft niet voor iedereen zichtbaar te zijn — het mag een "geavanceerd" tabje zijn — maar voor de mensen die snappen wat een agent is, is dit fascinerend en geruststellend tegelijk (je ziet wat er namens jou gebeurt).
+Een interface-detail dat ik zou overwegen: mens-agents en machine-agents visueel onderscheiden maar gelijkwaardig presenteren. Iemands fiets-reparatie-skill en een buurtweerstation-agent dat luchtkwaliteit deelt staan in dezelfde lijst, met subtiele iconografie die het verschil maakt. Dat communiceert je filosofie zonder woorden.
+Wat leuk zou zijn
+Een paar dingen die niet essentieel zijn maar charmant kunnen werken:
+
+Skill-ketens / ruil-suggesties: "Anna zoekt een fietsreparateur, jij biedt dat aan, en jij zoekt hulp bij belastingaangifte — Bert biedt dat. Ringruil?" Agents kunnen dit prima berekenen en het is leuk als sociale interactie.
+Stille modus / vakantiestand: één tap en je agent reageert met "even niet beschikbaar" zonder dat je skills hoeft te verwijderen.
+Groeps-rituelen: een "wat speelt er deze week" digest die de agent samenstelt voor een groep. Niet als notificatie-spam, maar opt-in.
+Skill-verhalen: optioneel een kort verhaaltje per skill ("hoe ik leerde fietsen repareren"). Maakt profielen menselijk in plaats van CV-achtig.
+Agent-personas: gebruikers kunnen hun agent een naam/karakter geven. Klinkt frivool maar helpt enorm bij het begrijpen "wie" er namens jou praat — en past bij je filosofie van agents-als-volwaardige-entiteiten.
+Buurt-skills die niet aan een persoon hangen: een gedeelde boormachine, een logeerbed, een aanhanger. Eigenlijk geen "skill" maar een "resource" — past misschien in dezelfde structuur, past misschien niet. Iets om over na te denken.
+
+
+Zie bestand shareskills_app_mockup.html
+
+Toelichting:
+Een paar dingen die ik bewust heb verwerkt op basis van ons gesprek:
+Anonimiteit als opening, vertrouwen als groei. Op het buurt-prikbord zie je een vraag van "iemand uit Oosterpoort" zonder naam. De opsteller heeft "Anoniem plaatsen" aangevinkt op het Vragen-scherm. De chat begint anoniem (met een lichte hint bovenaan), en pas na een gesprek verschijnt de "connectie accepteren"-knop — dáárna wordt het profiel zichtbaar. Geen vriendje-knop vooraf.
+Mens en machine naast elkaar. Op het matches-scherm staat "Buurtwerkplaats" als agent tussen Sander en Mei. Subtiel onderscheiden met icoon en een klein "agent"-labeltje, maar dezelfde lijst, dezelfde behandeling. Dat is jouw filosofie zichtbaar zonder dat je het hoeft uit te leggen.
+Prikbord, geen feed. Geen likes, geen counts onder posts, geen tijdsweergave die urgentie suggereert. Drie verschillende post-types (vraag / aanbod / te leen) met rustige semantische kleuren.
+Openheidslevel concreet. Bij het plaatsen van een vraag kies je direct welke groep het ziet. Op het profiel-scherm zie je het bericht "Je ziet wat Sander deelt met buurtgenoten" — wat hint naar de "bekijk als…"-toggle die jij/Sander zelf hebt om te previewen wat anderen zien.
+Lenen ingebouwd. Aanhanger op de buurtpagina, boormachine op het profiel. Past in dezelfde structuur als skills, hoeft geen aparte sectie te worden.
+
+
+Misbruik voorkomen — drie lagen
+Je zorg over "iemand's thuisserver loopt vol als een key online verschijnt" is reëel, en hier gelden drie verdedigingsmechanismen die elkaar versterken:
+Capability-based access op de relay. Een relay accepteert alleen verbindingen van clients die een geldig signed lidmaatschap-credential kunnen tonen voor een groep die op die relay is geregistreerd. Random vreemde met een uitgelekte group-id krijgt geen toegang, want ze hebben geen credential. Een uitgelekte group-id alleen is dus waardeloos — wat je beschrijft (iemand verbindt "voor de grap") werkt simpelweg niet.
+Quota per groep, niet per gebruiker. De groep die zich aanmeldt bij een relay krijgt een budget: bv. X berichten per dag, Y MB opslag, Z gelijktijdige verbindingen. Als de groep over de limiet gaat, verzint de relay zelf nieuwe berichten weigeren — het probleem blijft binnen die groep en raakt andere groepen op dezelfde relay niet. De groepsbeheerder kan dan upgraden, opschonen, of overstappen.
+Self-hosters bepalen hun eigen acceptatie-policy. Een thuis-relay mag standaard alleen verbindingen accepteren van groepen waarvoor de eigenaar expliciet opt-in heeft gegeven (bv. via z'n admin-GUI: "voeg groep X toe aan deze relay"). Public community-relays staan opener, maar zijn ook beter geprovisioned. Dit is het belangrijkste mechanisme om te voorkomen wat jij beschrijft. De thuis-relay is geen open server die iedereen mag gebruiken; hij is een opt-in resource voor groepen die de eigenaar kent.
+Een concreet flow voor jouw scenario
+Anna start een groep "Oosterpoort skills":
+
+App genereert groepskey-pair, slaat private deel veilig op bij Anna
+App registreert de groep bij 2 community-relays uit de default-pool — relays slaan alleen groep_pubkey → bucket op
+Anna nodigt Bob uit via QR. QR bevat: groep-pubkey, signed invite-token, lijst van Anna's relays
+Bob scant. Z'n app: (a) genereert eigen device-key, (b) verbindt met Anna's relays, (c) toont signed credential van Anna's invite, (d) wisselt verder MLS-handshake direct uit via die relays
+Vanaf nu: berichten gaan langs willekeurig welke relay uit de set die op dat moment werkt. Als Anna haar zelf-gehoste relay later toevoegt, krijgt Bob die info via een groepsbericht en gebruikt 'm als extra optie.
+
+Niemand "host de groep". De groep is een gedistribueerd protocol-construct. Relays zijn vervangbare tussenstations.

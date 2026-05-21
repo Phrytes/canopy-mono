@@ -1,8 +1,7 @@
 /**
  * podPathMap — Stoop's `mem://` logical-key ↔ canonical
  * storage-function classifier (Phase 2 of the pod-storage routing
- * work; spec = the 13-row table in
- * `Project Files/TODO-GENERAL.md` 🔴 "Stoop pod-backed storage").
+ * work).
  *
  * PURE + reversible. No pod-routing / identity / network here — the
  * attach-time glue (Phase 2.4) composes `classify` + the bundle's

@@ -251,7 +251,7 @@ called out below.
 > minimises Slice D's scope + makes the slash-collision-policy
 > decision concrete on day one of the migration.
 >
-> See `AUDIT-stoop-folio-surfaces.md` for stoop's surface inventory
+> See `Project Files/projects/audit-stoop-folio-surfaces.md` for stoop's surface inventory
 > (16 web pages, 110 skills, no manifest today, no slash today
 > either — chat is SDK-skill-dispatch via `@canopy/chat-p2p`).
 
@@ -263,12 +263,12 @@ called out below.
     (postRequest, listOpen, listMyRequests, assignLend, markReturned,
     setMySkills, createGroupV2, leaveGroup, reportPost, getItemTree,
     mutePeer, setPeerReveal — per
-    `AUDIT-stoop-folio-surfaces.md`).
+    `Project Files/projects/audit-stoop-folio-surfaces.md`).
   - Add `surfaces.slash` declarations to the manifest's ops; pick a
     grammar that aligns with household's where it matches (e.g.
     `/add` for postRequest may collide with household — forces the
     host-level collision-policy decision per
-    `AUDIT-slash-coverage.md`).
+    `Project Files/projects/audit-slash-coverage.md`).
   - Adopt `renderChat` + `renderSlash` for stoop's existing chat
     surface; behaviour-equivalence-gated against the current SDK
     skill-dispatch path.
@@ -279,7 +279,7 @@ called out below.
   household).  Mitigation: per-op characterization for slash; LLM
   layered in D.2 after slash works.
 - **Done (D.1):** stoop's TG + slash surface is manifest-driven;
-  collision-policy applied per `AUDIT-slash-coverage.md`;
+  collision-policy applied per `Project Files/projects/audit-slash-coverage.md`;
   characterization corpus green.
 - **Done (D.2):** LLM tool-calling on the existing chat surface.
 
