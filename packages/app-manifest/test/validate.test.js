@@ -506,6 +506,51 @@ describe('validateManifest', () => {
     });
   });
 
+  describe('canopy-chat v0.1 Q28 surfaces.chat.reply', () => {
+    const baseManifest = (op) => ({
+      app:        'c',
+      itemTypes:  ['t'],
+      operations: [op],
+      views:      [{ id: 'v', title: 'V', type: 't' }],
+    });
+    const shapes = [
+      'text', 'list', 'record', 'mini-page',
+      'file', 'embed-card', 'notification', 'brief',
+    ];
+
+    it.each(shapes)('Q28 — accepts reply: %s', (shape) => {
+      expect(ok(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { reply: shape } },
+      }))).toBe(true);
+    });
+
+    it('Q28 — accepts absent reply (forward-additive default)', () => {
+      expect(ok(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { hint: 'no reply field declared' } },
+      }))).toBe(true);
+    });
+
+    it('Q28 — rejects unknown reply value', () => {
+      const e = errs(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { reply: 'carousel' } },
+      }));
+      expect(e.some((x) => /reply must be one of/.test(x.message))).toBe(true);
+      expect(e.some((x) => /'text'/.test(x.message))).toBe(true);
+      expect(e.some((x) => /'brief'/.test(x.message))).toBe(true);
+    });
+
+    it('Q28 — rejects non-string reply value', () => {
+      const e = errs(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { reply: 42 } },
+      }));
+      expect(e.some((x) => /reply must be one of/.test(x.message))).toBe(true);
+    });
+  });
+
   describe('V0.4 Q16-strict mode', () => {
     const strict = (m) => validateManifest(m, { strict: true });
     const lax    = (m) => validateManifest(m);

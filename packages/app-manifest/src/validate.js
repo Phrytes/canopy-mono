@@ -33,6 +33,23 @@ export const VERBS = Object.freeze([
 const VERB_SET   = new Set(VERBS);
 const PARAM_KINDS = new Set(['string', 'number', 'boolean', 'enum']);
 
+/**
+ * Q28 (canopy-chat v0.1, 2026-05-21) — frozen allow-list of chat
+ * reply shapes.  The chat shell picks a renderer per shape; absent
+ * `surfaces.chat.reply` falls back to a default derived from the op's
+ * `verb` + the section's `view.shape`.
+ */
+export const CHAT_REPLY_SHAPES = Object.freeze([
+  'text',
+  'list',
+  'record',
+  'mini-page',
+  'file',
+  'embed-card',
+  'notification',
+  'brief',
+]);
+
 /** @param {string} verb */
 export function isCanonicalVerb(verb) { return VERB_SET.has(verb); }
 
@@ -214,6 +231,22 @@ function validateOperation(op, path, manifest, errors, idSet) {
         });
       }
     }
+  }
+
+  // Q28 (canopy-chat v0.1, 2026-05-21) — optional `surfaces.chat.reply`
+  // declares the shape of the reply the op produces, so the chat shell
+  // picks the right renderer (text bubble, list with inline keyboard,
+  // record/mini-page, file attachment, embed-card, notification card,
+  // multi-section brief).  Forward-additive: absent → chat shell
+  // computes a default from `verb` + `view.shape`.  See
+  // `Project Files/canopy-chat/coding-plan.md` § Phase v0.1.
+  const chatReply = op?.surfaces?.chat?.reply;
+  if (chatReply !== undefined
+      && !CHAT_REPLY_SHAPES.includes(chatReply)) {
+    errors.push({
+      path:    `${path}/surfaces/chat/reply`,
+      message: `surfaces.chat.reply must be one of ${CHAT_REPLY_SHAPES.map((s) => `'${s}'`).join(' | ')}`,
+    });
   }
 
   if (op.appliesTo !== undefined) {
