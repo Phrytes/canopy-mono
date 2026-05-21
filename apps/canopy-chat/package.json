@@ -1,0 +1,24 @@
+{
+  "name":        "@canopy-app/canopy-chat",
+  "version":     "0.1.0-dev",
+  "private":     true,
+  "description": "canopy-chat — command-first unified chat shell consuming canopy app manifests.  Static web app; mesh agent runs browser-side via relay + NKN + WebRTC.",
+  "type":        "module",
+  "main":        "src/index.js",
+  "exports": {
+    ".":                "./src/index.js",
+    "./manifest":       "./manifest.js",
+    "./parser":         "./src/parser.js",
+    "./manifestMerge":  "./src/manifestMerge.js"
+  },
+  "scripts": {
+    "test":       "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/app-manifest": "file:../../packages/app-manifest"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}
