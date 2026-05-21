@@ -62,8 +62,8 @@ Tracking per `/Project Files/canopy-chat/coding-plan.md` § Phase v0.1:
 | 1.5 | Manifest merge | shipped 2026-05-21 |
 | 1.6 | Router (resolve → dispatch w/ Q27 confirm gate) | shipped 2026-05-21 |
 | 1.7 | Dispatch (callSkill wrap + Reply envelope) | shipped 2026-05-21 |
-| 1.8 | Renderer (text + list) | pending |
-| 1.9 | Per-conv state v0 | pending |
+| 1.8 | Renderer (text + list reply shapes) | shipped 2026-05-21 |
+| 1.9 | Thread state v0 (single-thread; fuzzy resolve; A2 lifecycle) | shipped 2026-05-21 |
 | 1.10 | Web entry | pending |
 | 1.11 | Localisation scaffold | pending |
 | 1.12 | Build pipeline | pending |
