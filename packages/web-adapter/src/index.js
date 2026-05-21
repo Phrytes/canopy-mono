@@ -35,3 +35,7 @@ export { fetchSectionItems }    from './fetchSectionItems.js';
 // V0.2 (2026-05-21) — paramsSchema → platform-neutral form-field
 // descriptors.  Resolves A.3 agent's multi-field-form signal.
 export { schemaToFormFields }   from './schemaToFormFields.js';
+// V0.8 (2026-05-21) — T2-tier helper for hand-coded pages that want
+// to read confirm-severity + labels from the manifest.  Per
+// DESIGN-tier-policy.md, this is the bridge that makes T2 cheap.
+export { createOpBinding }      from './createOpBinding.js';
