@@ -15,5 +15,23 @@
       "text": "This list is stale. Run the command again to refresh.",
       "doc": "Shown when the user taps a disabled action menu (per A2 hybrid lifecycle)."
     }
+  },
+  "help": {
+    "heading": {
+      "text": "Available commands:",
+      "doc": "First line of /help output; precedes the per-app command sections."
+    },
+    "section_chat": {
+      "text": "Chat",
+      "doc": "Section heading for chat-shell built-in commands (/help, /brief, /threads)."
+    },
+    "section_app": {
+      "text": "{{app}}",
+      "doc": "Section heading for an app's commands. {{app}} = app id (household, tasks-v0, …)."
+    },
+    "empty": {
+      "text": "No commands available yet.",
+      "doc": "Shown when /help fires before any app manifests have loaded."
+    }
   }
 }
