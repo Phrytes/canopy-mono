@@ -24,6 +24,9 @@ export {
   EventRouter, createEventRouter, defaultFormatNotification,
 } from './events.js';
 export { runBulkOp, summariseBulkOp } from './bulkOps.js';
+export {
+  buildFormSpec, pickStrategy, validateAndCoerce,
+} from './forms/buildFormSpec.js';
 export { IndexedDBStore, attachPersistence } from './storage/local.js';
 export { PodSyncStore }                      from './storage/podSync.js';
 export {

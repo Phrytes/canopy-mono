@@ -117,16 +117,27 @@ export class EventRouter {
    * matched).
    *
    * @param {Event}   event
+   * @param {object}  [opts]
+   * @param {string[]} [opts.excludeThreadIds]
+   *   Threads to skip even when their filter matches.  The chat
+   *   shell uses this when a user-initiated mutation in thread T
+   *   would otherwise produce a duplicate notification IN T (the
+   *   mutation reply already appears there).  Other matching
+   *   threads still receive the notification.
    * @returns {string[]}  thread ids that received the event
    */
-  deliver(event) {
+  deliver(event, opts = {}) {
     if (!event || typeof event !== 'object') {
       throw new TypeError('EventRouter.deliver: event required');
     }
     const enriched = this.#normaliseEvent(event);
     const matched  = [];
+    const exclude  = new Set(
+      Array.isArray(opts.excludeThreadIds) ? opts.excludeThreadIds : [],
+    );
 
     for (const thread of this.#threadStore.listThreads()) {
+      if (exclude.has(thread.id)) continue;
       if (!matchesFilter(enriched, thread.filter)) continue;
       this.#appendNotificationTo(thread, enriched);
       matched.push(thread.id);
