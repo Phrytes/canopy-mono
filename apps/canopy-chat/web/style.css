@@ -243,6 +243,24 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   border-color: #f3b8b8;
 }
 
+/* follow-up buttons (v0.4) */
+.cc-followups {
+  margin-top: 0.4rem;
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.cc-followup-btn {
+  background: var(--bg);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.cc-followup-btn:hover { background: var(--accent); color: var(--accent-fg); }
+
 /* lists */
 .cc-list { max-width: 80%; }
 .cc-list-items {
