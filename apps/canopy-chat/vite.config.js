@@ -11,7 +11,8 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath } from 'node:url';
 
-const empty = fileURLToPath(new URL('./src/web/shims/empty.js', import.meta.url));
+const empty       = fileURLToPath(new URL('./src/web/shims/empty.js',       import.meta.url));
+const oidcSession = fileURLToPath(new URL('./src/web/shims/oidcSession.js', import.meta.url));
 
 export default defineConfig({
   root: 'web',
@@ -53,7 +54,14 @@ export default defineConfig({
       // the whole OIDC tree.  A future cleanup should split
       // @canopy/oidc-session into browser-compat + Node-only entry
       // points (existing @canopy/oidc-session-rn shows the pattern).
-      '@canopy/oidc-session':                 empty,
+      //
+      // The OIDC shim provides NAMED exports matching the real
+      // package's index.js (SolidVault, KNOWN_ISSUERS, …) because
+      // esbuild (Vite's dep pre-bundler in dev mode) is stricter
+      // than rollup about named-export resolution.  The other
+      // entries point at the bare empty module because their
+      // imports happen via dynamic-import (never executed).
+      '@canopy/oidc-session':                 oidcSession,
       '@inrupt/solid-client-authn-node':      empty,
       '@inrupt/solid-client-authn-core':      empty,
       'openid-client':                        empty,
