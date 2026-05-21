@@ -270,6 +270,45 @@ describe('renderChat — inlineKeyboardFor', () => {
   });
 });
 
+describe('renderChat — Q28 replyShapeFor (canopy-chat v0.1)', () => {
+  it('returns the declared reply shape when present', () => {
+    const m = {
+      app: 'demo', itemTypes: ['task'],
+      operations: [
+        { id: 'listMine', verb: 'list', params: [],
+          surfaces: { chat: { reply: 'list', hint: 'list mine' } } },
+        { id: 'addTask', verb: 'add', params: [],
+          surfaces: { chat: { reply: 'text', hint: 'add a task' } } },
+        { id: 'settings', verb: 'list', params: [],
+          surfaces: { chat: { reply: 'record', hint: 'open settings' } } },
+      ],
+      views: [{ id: 'v', title: 'V', type: 'task' }],
+    };
+    const out = renderChat(m, {
+      skillRegistry: {
+        listMine: async () => ({ replies: [], stateUpdates: [] }),
+        addTask:  async () => ({ replies: [], stateUpdates: [] }),
+        settings: async () => ({ replies: [], stateUpdates: [] }),
+      },
+      toSkillCtx: (c) => c,
+    });
+    expect(out.replyShapeFor('listMine')).toBe('list');
+    expect(out.replyShapeFor('addTask')).toBe('text');
+    expect(out.replyShapeFor('settings')).toBe('record');
+  });
+
+  it('returns undefined when the op does NOT declare a reply shape (forward-additive default)', () => {
+    const out = renderChat(baseManifest, { skillRegistry, toSkillCtx });
+    expect(out.replyShapeFor('addTask')).toBeUndefined();
+    expect(out.replyShapeFor('help')).toBeUndefined();
+  });
+
+  it('returns undefined for unknown opIds', () => {
+    const out = renderChat(baseManifest, { skillRegistry, toSkillCtx });
+    expect(out.replyShapeFor('nonexistent')).toBeUndefined();
+  });
+});
+
 describe('renderChat — systemPrompt', () => {
   it('is deterministic + uses the chat hint per op (fallback to id)', () => {
     const out = renderChat(baseManifest, { skillRegistry, toSkillCtx });
