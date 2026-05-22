@@ -53,6 +53,25 @@ export async function runDispatch(ready, callSkill) {
 
   try {
     const payload = await callSkill(appOrigin, opId, args);
+    // v0.5.x defensive guard — when the skill returns an explicit
+    // {ok: false, error} envelope, elevate it to reply.error so the
+    // renderer falls back to the error-bubble path instead of force-
+    // rendering the failure as the declared replyShape (which led to
+    // a broken '? (unnamed)' embed-card in v0.5.0 when a skill was
+    // missing on the real agent — user-reported 2026-05-23).
+    if (payload && typeof payload === 'object'
+        && payload.ok === false
+        && typeof payload.error === 'string') {
+      return {
+        payload:  null,
+        shape:    'text',
+        threadId: threadId ?? null,
+        error: {
+          code:    'skill-error',
+          message: payload.error,
+        },
+      };
+    }
     return {
       payload,
       shape:    replyShape,
