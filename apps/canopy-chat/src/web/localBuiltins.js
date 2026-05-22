@@ -38,6 +38,7 @@ import { buildEmbed }     from '../embed.js';
 export function createLocalBuiltins({
   catalog, t, threadStore, setActive, callSkill, localActor,
   simPeers,                  // v0.5.6 — { '<peer>': { threadId, webid } }
+  appRegistry,               // v0.6 OQ-4.B
 }) {
   return {
     help: async () => formatHelp(catalog, t),
@@ -49,7 +50,47 @@ export function createLocalBuiltins({
     sendto:    async (args) => sendToPeer(args, {
       catalog, callSkill, t, localActor, simPeers, threadStore,
     }),
+    apps:      async (args) => appsToggle(args, { catalog, appRegistry, t }),
   };
+}
+
+/**
+ * `/apps [on|off] [name]` — v0.6 OQ-4.B chat-inline app-toggle.
+ * Bare call lists apps + enabled state.  With action+name, toggles
+ * and reports.
+ */
+async function appsToggle(args, { catalog, appRegistry, t }) {
+  if (!appRegistry) return { ok: false, error: t('apps.no_registry') };
+
+  const action = args?.action;
+  const name   = args?.app;
+
+  if (!action) {
+    // List mode.
+    const lines = [t('apps.heading')];
+    const origins = catalog?.appOrigins ?? [];
+    for (const origin of origins) {
+      const on = appRegistry.isEnabled(origin) ? '●' : '○';
+      lines.push(`  ${on} ${origin}`);
+    }
+    if (origins.length === 0) lines.push(`  ${t('apps.empty')}`);
+    return { message: lines.join('\n') };
+  }
+
+  if (!name) {
+    return { ok: false, error: t('apps.no_name', { action }) };
+  }
+
+  if (action === 'on' || action === 'off') {
+    appRegistry.setEnabled(name, action === 'on');
+    return {
+      ok: true,
+      message: action === 'on'
+        ? t('apps.enabled',  { app: name })
+        : t('apps.disabled', { app: name }),
+    };
+  }
+  return { ok: false, error: t('apps.unknown_action', { action }) };
 }
 
 /**

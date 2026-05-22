@@ -60,10 +60,10 @@ describe('formatSyncHints — decentralized style', () => {
     }, t, NOW)).toBe('synced to 1/3 peers · 2 unreachable: webid:b, webid:c');
   });
 
-  it('returns empty when no peers at all', () => {
+  it("returns 'saved locally; awaiting peer sync' when no peers at all (OQ-6.A catch-up)", () => {
     expect(formatSyncHints({
       style: 'decentralized', peers: [], pending: [], unreachable: [],
-    }, t, NOW)).toBe('');
+    }, t, NOW)).toBe('Saved locally; awaiting peer sync');
   });
 });
 
