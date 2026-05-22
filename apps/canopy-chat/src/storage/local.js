@@ -23,15 +23,20 @@
 import { Thread } from '../thread.js';
 
 const DB_NAME    = 'canopy-chat';
-// v0.6.2 — schema bumped to v2 to add the in-flight-flows store for
-// the external-flow primitive (J6 framework).  Existing v1 stores
-// migrate cleanly; new store created if absent.
-const DB_VERSION = 2;
+// v0.7.1 — schema bumped to v3:
+//   v1: threads
+//   v2: + in-flight-flows  (external-flow primitive, J6 framework)
+//   v3: + events           (network-events log, D.1; ts-indexed)
+// All upgrades additive; existing data unchanged.
+const DB_VERSION = 3;
 const STORE          = 'threads';
 const STORE_INFLIGHT = 'in-flight-flows';
+const STORE_EVENTS   = 'events';
+const STORE_MUTED    = 'event-mutes';   // keyless: single 'set' entry
 // Single fixed key for the in-flight list (one row holding all
 // pending flows, simpler than a multi-row keyPath).
 const INFLIGHT_KEY = 'flows';
+const MUTED_KEY    = 'set';
 
 /* ─── low-level open/get/put/delete ─────────────────────── */
 
@@ -47,6 +52,15 @@ function openDb(idbFactory) {
       if (!db.objectStoreNames.contains(STORE_INFLIGHT)) {
         // No keyPath — we use the fixed string INFLIGHT_KEY.
         db.createObjectStore(STORE_INFLIGHT);
+      }
+      // v0.7.1 — events log + event-mutes store.
+      if (!db.objectStoreNames.contains(STORE_EVENTS)) {
+        const events = db.createObjectStore(STORE_EVENTS, { keyPath: 'id' });
+        // Index on ts so 14-day prune is fast on cold boot.
+        events.createIndex('ts', 'ts', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(STORE_MUTED)) {
+        db.createObjectStore(STORE_MUTED);
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -207,6 +221,98 @@ export class IndexedDBStore {
     await txDone(tx);
   }
 
+  /* ─── v0.7.1 events log persistence ─────────────────────── */
+
+  /**
+   * Load every event from the log (oldest-first by ts index).
+   * Returns most-recent-first to match EventLog's internal ordering.
+   *
+   * @returns {Promise<Array<object>>}
+   */
+  async loadEvents() {
+    const db = await this.#db();
+    const tx = db.transaction(STORE_EVENTS, 'readonly');
+    const result = await reqAsPromise(tx.objectStore(STORE_EVENTS).getAll());
+    await txDone(tx);
+    if (!Array.isArray(result)) return [];
+    return result.sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0));
+  }
+
+  /**
+   * Overwrite the entire event log.  Called after EventLog prune.
+   *
+   * @param {Array<object>} events
+   * @returns {Promise<void>}
+   */
+  async saveEvents(events) {
+    const db = await this.#db();
+    const tx = db.transaction(STORE_EVENTS, 'readwrite');
+    const store = tx.objectStore(STORE_EVENTS);
+    store.clear();
+    for (const e of (Array.isArray(events) ? events : [])) {
+      if (e && typeof e.id === 'string') store.put(e);
+    }
+    await txDone(tx);
+  }
+
+  /**
+   * Append a single event without touching the rest of the log.
+   * Faster than saveEvents() for the common-case single-append path.
+   *
+   * @param {object} event
+   * @returns {Promise<void>}
+   */
+  async appendEvent(event) {
+    if (!event || typeof event.id !== 'string') return;
+    const db = await this.#db();
+    const tx = db.transaction(STORE_EVENTS, 'readwrite');
+    tx.objectStore(STORE_EVENTS).put(event);
+    await txDone(tx);
+  }
+
+  /**
+   * Delete every event with ts < cutoff.  Used by the 14-day prune
+   * on boot — avoids loading + filtering + re-saving the whole log.
+   *
+   * @param {number} cutoff   epoch ms
+   * @returns {Promise<number>}  number pruned
+   */
+  async pruneEventsBefore(cutoff) {
+    const db = await this.#db();
+    const tx = db.transaction(STORE_EVENTS, 'readwrite');
+    const idx = tx.objectStore(STORE_EVENTS).index('ts');
+    const range = IDBKeyRange.upperBound(cutoff, true);
+    let count = 0;
+    await new Promise((resolve, reject) => {
+      const req = idx.openCursor(range);
+      req.onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) { cursor.delete(); count++; cursor.continue(); }
+        else        { resolve(); }
+      };
+      req.onerror = () => reject(req.error);
+    });
+    await txDone(tx);
+    return count;
+  }
+
+  /** v0.7.1 — load the muted-keys set. */
+  async loadMutedEvents() {
+    const db = await this.#db();
+    const tx = db.transaction(STORE_MUTED, 'readonly');
+    const r  = await reqAsPromise(tx.objectStore(STORE_MUTED).get(MUTED_KEY));
+    await txDone(tx);
+    return Array.isArray(r) ? r : [];
+  }
+
+  /** v0.7.1 — overwrite the muted-keys set. */
+  async saveMutedEvents(muted) {
+    const db = await this.#db();
+    const tx = db.transaction(STORE_MUTED, 'readwrite');
+    tx.objectStore(STORE_MUTED).put(Array.isArray(muted) ? muted : [], MUTED_KEY);
+    await txDone(tx);
+  }
+
   /**
    * Wipe everything.  Useful for tests + a future "factory reset"
    * UX.
@@ -215,9 +321,11 @@ export class IndexedDBStore {
    */
   async clear() {
     const db = await this.#db();
-    const tx = db.transaction([STORE, STORE_INFLIGHT], 'readwrite');
+    const tx = db.transaction([STORE, STORE_INFLIGHT, STORE_EVENTS, STORE_MUTED], 'readwrite');
     tx.objectStore(STORE).clear();
     tx.objectStore(STORE_INFLIGHT).clear();
+    tx.objectStore(STORE_EVENTS).clear();
+    tx.objectStore(STORE_MUTED).clear();
     await txDone(tx);
   }
 

@@ -35,6 +35,7 @@ export {
   generateSessionId, IN_FLIGHT_STORE_KEY,
 } from './externalFlow.js';
 export { runBrief, createBriefCache } from './brief.js';
+export { EventLog, createEventLog, RETENTION_MS } from './eventLog.js';
 export {
   buildFormSpec, pickStrategy, validateAndCoerce,
 } from './forms/buildFormSpec.js';
