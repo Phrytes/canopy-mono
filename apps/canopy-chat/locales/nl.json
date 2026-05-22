@@ -74,10 +74,25 @@
     "panel_opened": { "text": "Log-paneel geopend. Klik [×] om te sluiten.", "doc": "Confirmation when bare /logs opens the side-panel UI." }
   },
   "signin": {
-    "no_flow":      { "text": "Sign-in flow niet beschikbaar in deze build.", "doc": "Defensive." },
-    "opening":      { "text": "Sign-in wordt geopend (issuer: {{issuer}}) … kom terug zodra de redirect klaar is.", "doc": "Confirmation shown before navigation." },
-    "completed":    { "text": "✓ Aangemeld als {{webid}}.", "doc": "Shown when the external callback resumes the chat." },
-    "failed":       { "text": "Sign-in mislukt: {{reason}}.", "doc": "Shown when the callback delivers an error." }
+    "no_flow":        { "text": "Sign-in flow niet beschikbaar in deze build.", "doc": "Defensive." },
+    "opening":        { "text": "Sign-in wordt geopend (issuer: {{issuer}}) … kom terug zodra de redirect klaar is.", "doc": "v0.7.P1." },
+    "unknown_issuer": { "text": "Onbekende issuer „{{issuer}}\". Probeer 'inrupt', 'solidcommunity', 'solidweb' of een volledige URL.", "doc": "resolveIssuer returned null." },
+    "completed":      { "text": "✓ Aangemeld als {{webid}}.", "doc": "External callback resumed." },
+    "welcome":        { "text": "✓ Aangemeld als {{webid}}.", "doc": "v0.7.P1 OIDC round-trip on boot." },
+    "failed":         { "text": "Sign-in mislukt: {{reason}}.", "doc": "Callback delivered an error." }
+  },
+  "whoami": {
+    "unavailable":   { "text": "Identiteitscontrole niet beschikbaar in deze build.", "doc": "Defensive." },
+    "not_signed_in": { "text": "Niet ingelogd. Probeer /signin.",                       "doc": "/whoami signed out." },
+    "signed_in":     { "text": "Ingelogd als {{webid}}.",                                "doc": "/whoami signed in." }
+  },
+  "signout": {
+    "unavailable":   { "text": "Uitloggen niet beschikbaar in deze build.",             "doc": "Defensive." },
+    "done":          { "text": "✓ Uitgelogd.",                                            "doc": "/signout." }
+  },
+  "reset": {
+    "no_thread":     { "text": "Geen actieve thread om te wissen.",                     "doc": "Defensive." },
+    "done":          { "text": "✓ Thread gewist (berichten + lijstcache leeg).",        "doc": "/reset-thread confirmation." }
   },
   "apps": {
     "heading":        { "text": "Apps:",                                "doc": "First line of /apps list." },
