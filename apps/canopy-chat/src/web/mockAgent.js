@@ -218,6 +218,15 @@ mockStoopManifest.operations.find((o) => o.id === 'listFeed')
 mockFolioManifest.operations.find((o) => o.id === 'readNote')
   .surfaces.chat.brief = { summarySkill: 'briefSummary', order: 20, label: 'Folio' };
 
+// v0.7.5 — Q33 search decls.  Each app declares a text-search skill
+// so /find can fan across them.
+mockHouseholdManifest.operations.find((o) => o.id === 'listOpen')
+  .surfaces.chat.search = { searchSkill: 'searchChores' };
+mockStoopManifest.operations.find((o) => o.id === 'listFeed')
+  .surfaces.chat.search = { searchSkill: 'searchPosts' };
+mockFolioManifest.operations.find((o) => o.id === 'readNote')
+  .surfaces.chat.search = { searchSkill: 'searchFiles' };
+
 /**
  * Build a mock agent: returns `{ manifest, callSkill, reset }`.
  *

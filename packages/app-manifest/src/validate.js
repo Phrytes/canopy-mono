@@ -55,6 +55,7 @@ export const CHAT_REPLY_SHAPES = Object.freeze([
   'embed-card',
   'notification',
   'brief',
+  'find',          // v0.7.5 — /find aggregator output
 ]);
 
 /**
@@ -342,6 +343,28 @@ function validateOperation(op, path, manifest, errors, idSet) {
           message: 'surfaces.chat.brief.label must be a string if present',
         });
       }
+    }
+  }
+
+  // Q33 (canopy-chat v0.7.5, 2026-05-23) — optional `surfaces.chat.search`
+  // declares the skill the chat-shell `/find` aggregator calls to
+  // search this app's cached items.  Per user resolution: cache-first
+  // (instant + works offline); an [Extensive search] button on the
+  // result card triggers deeper queries (pod/network) — separate
+  // skill, not in scope for v0.7.5.
+  const chatSearch = op?.surfaces?.chat?.search;
+  if (chatSearch !== undefined) {
+    if (!chatSearch || typeof chatSearch !== 'object' || Array.isArray(chatSearch)) {
+      errors.push({
+        path:    `${path}/surfaces/chat/search`,
+        message: 'surfaces.chat.search must be an object if present',
+      });
+    } else if (typeof chatSearch.searchSkill !== 'string'
+               || chatSearch.searchSkill === '') {
+      errors.push({
+        path:    `${path}/surfaces/chat/search/searchSkill`,
+        message: 'surfaces.chat.search.searchSkill must be a non-empty string',
+      });
     }
   }
 

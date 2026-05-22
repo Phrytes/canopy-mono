@@ -142,6 +142,20 @@ export function renderReply(reply, opts = {}) {
     };
   }
 
+  if (shape === 'find') {
+    // v0.7.5 — Q33 search aggregator output.  Payload is a FindReply
+    // (query, groups[], generatedAt, extensiveAvailable).
+    return {
+      kind: 'find',
+      messageId, threadId,
+      lifecycleState: 'live',
+      query:              reply.payload?.query              ?? '',
+      groups:             Array.isArray(reply.payload?.groups) ? reply.payload.groups : [],
+      generatedAt:        reply.payload?.generatedAt        ?? Date.now(),
+      extensiveAvailable: !!reply.payload?.extensiveAvailable,
+    };
+  }
+
   if (shape === 'brief') {
     // v0.7 — Q30 aggregator output.  Payload is a BriefReply
     // (sections[], generatedAt, cacheKey).  DOM adapter renders.

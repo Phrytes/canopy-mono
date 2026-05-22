@@ -59,6 +59,10 @@
   "brief": {
     "no_runner": { "text": "Brief aggregator not available in this build.", "doc": "Defensive." }
   },
+  "find": {
+    "no_query":  { "text": "Please provide a query: /find <text>",      "doc": "When /find fires with no query." },
+    "no_runner": { "text": "Search not available in this build.",        "doc": "Defensive." }
+  },
   "logs": {
     "no_log":  { "text": "Event log not available in this build.",                     "doc": "Defensive." },
     "heading": { "text": "Last {{count}} events:",                                      "doc": "First line of /logs output." },
