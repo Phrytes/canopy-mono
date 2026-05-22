@@ -67,7 +67,17 @@ export function renderForm(spec, ctx) {
     cancel.type = 'button';
     cancel.className = 'cc-form-cancel';
     cancel.textContent = tr('form.cancel');
-    cancel.addEventListener('click', () => onCancel());
+    // v0.7.P1-followup 2026-05-23 (5th pass): after a successful
+    // submit, the cancel button is relabelled to 'Close'.  Clicking
+    // it should NOT fire onCancel (which adds 'Form cancelled' to
+    // chat — confusing when the submit already succeeded).  We
+    // gate the click on the same `alreadySubmitted` flag defined
+    // below; until submit, click runs onCancel; afterwards, it's
+    // a no-op (visually the form is just hidden by submission).
+    cancel.addEventListener('click', () => {
+      if (alreadySubmitted) return;
+      onCancel();
+    });
     actions.appendChild(cancel);
   }
   form.appendChild(actions);

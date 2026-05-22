@@ -189,22 +189,50 @@ function tokenize(s) {
   while (i < s.length) {
     while (i < s.length && s[i] === ' ') i++;     // skip whitespace
     if (i >= s.length) break;
-    if (s[i] === '"') {
-      // quoted span
-      const end = s.indexOf('"', i + 1);
+
+    // v0.7.P1-followup 2026-05-23 (5th pass): handle both styles AND
+    // quoted values AFTER --key= boundaries.  Cases:
+    //   "foo bar"              → one token: 'foo bar'
+    //   'foo bar'              → one token: 'foo bar'
+    //   --key=value            → one token: '--key=value'
+    //   --key="foo bar"        → one token: '--key=foo bar'
+    //   --key='foo bar'        → one token: '--key=foo bar'
+    //   bareword               → one token: 'bareword'
+    //
+    // Token-starts with a quote → simple quoted span (existing).
+    if (s[i] === '"' || s[i] === "'") {
+      const quote = s[i];
+      const end = s.indexOf(quote, i + 1);
       if (end === -1) {                            // unterminated → take rest
         out.push(s.slice(i + 1));
         break;
       }
       out.push(s.slice(i + 1, end));
       i = end + 1;
-    } else {
-      // bare word
-      let j = i;
-      while (j < s.length && s[j] !== ' ') j++;
-      out.push(s.slice(i, j));
-      i = j;
+      continue;
     }
+
+    // Otherwise: bareword scanner that's quote-aware.  Read until
+    // an unquoted space.  Inside quotes, spaces are part of the token
+    // and the quotes themselves are stripped from the output.
+    let buf = '';
+    while (i < s.length && s[i] !== ' ') {
+      const ch = s[i];
+      if (ch === '"' || ch === "'") {
+        const close = s.indexOf(ch, i + 1);
+        if (close === -1) {            // unterminated; take rest verbatim
+          buf += s.slice(i + 1);
+          i = s.length;
+          break;
+        }
+        buf += s.slice(i + 1, close);   // strip quotes
+        i = close + 1;
+      } else {
+        buf += ch;
+        i++;
+      }
+    }
+    out.push(buf);
   }
   return out;
 }
