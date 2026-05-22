@@ -282,9 +282,22 @@ if (typeof agent.setInviteAttendee === 'function') {
 // can /me to see their NKN address + /test-peer <addr> [text] to
 // send a ping.  Inbound messages render as text bubbles in Main.
 async function connectPeerImpl() {
-  const nknLib = (typeof window !== 'undefined') ? window.nkn : null;
+  // v0.7.P3b — try to detect what's happening if the CDN didn't
+  // load.  nkn-sdk sets window.nkn (UMD default).  Some builds set
+  // it as 'nknSdk' or similar — try a few candidates before failing.
+  const nknLib =
+       (typeof window !== 'undefined' && window.nkn)
+    ?? (typeof globalThis !== 'undefined' && globalThis.nkn)
+    ?? null;
   if (!nknLib) {
-    throw new Error('nkn-sdk not loaded (CDN script missing).  Reload the page.');
+    const loadError = (typeof window !== 'undefined') ? window.__cc_nkn_load_error : null;
+    const loaded    = (typeof window !== 'undefined') ? window.__cc_nkn_loaded     : null;
+    const hint = loadError
+      ? `CDN load failed (${loadError}).  Check network + CSP.`
+      : loaded
+        ? 'CDN script loaded but did not set window.nkn — check the version pinned in index.html.'
+        : 'CDN script not loaded yet.  Wait a moment + retry /peer-connect, or check network.';
+    throw new Error(`nkn-sdk not available.  ${hint}`);
   }
   if (typeof agent.connectPeerTransport !== 'function') {
     throw new Error('Peer transport not supported by this agent build.');
