@@ -247,6 +247,23 @@ export const canopyChatManifest = {
      * UI lands with RN port (v0.6.7+).
      */
     /**
+     * `/reset-thread` — v0.7.P1-followup.  Clears the active
+     * thread's message history (in-memory + IDB).  Useful when
+     * accumulated routed-event bubbles polluted Main during the
+     * permissive-filter era.  Future: replace with per-thread
+     * settings panel.
+     */
+    {
+      id:    'reset-thread',
+      verb:  'remove',
+      params: [],
+      surfaces: {
+        slash: { command: '/reset-thread' },
+        chat:  { reply: 'text', hint: "clear this thread's message history" },
+      },
+    },
+
+    /**
      * `/whoami` — v0.7.P1.  Returns the current Solid webid (if
      * signed in) or a hint to /signin.
      */
