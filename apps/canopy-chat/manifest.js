@@ -278,6 +278,21 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `/me` — v0.7.P3a.  Shows the user's persistent agent identity
+     * info: chat-agent stableId + pubKey + (future) NKN address.
+     * Used to share with peers for cross-peer chat-p2p connection.
+     */
+    {
+      id:    'me',
+      verb:  'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/me' },
+        chat:  { reply: 'text', hint: 'show your agent identity (pubKey, stableId)' },
+      },
+    },
+
+    /**
      * `/signout` — v0.7.P1.  Clears the local OIDC session.
      */
     {

@@ -26,7 +26,32 @@
 import {
   Agent, AgentIdentity, InternalBus, InternalTransport, DataPart,
 } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
+
+/**
+ * v0.7.P3a — choose the right vault for the runtime.  Browser →
+ * VaultLocalStorage; Node tests / SSR → VaultMemory.  Identity
+ * persists across page refreshes when localStorage exists.
+ */
+function makeBrowserVault(prefix) {
+  if (typeof globalThis.localStorage !== 'undefined') {
+    try { return new VaultLocalStorage({ prefix }); } catch { /* defensive */ }
+  }
+  return new VaultMemory();
+}
+
+/**
+ * v0.7.P3a — try to restore an existing identity; generate fresh if
+ * the vault is empty.  Either way returns a usable AgentIdentity.
+ */
+async function restoreOrGenerate(vault) {
+  try {
+    if (await vault.has('agent-privkey')) {
+      return await AgentIdentity.restore(vault);
+    }
+  } catch { /* fall through to generate */ }
+  return AgentIdentity.generate(vault);
+}
 
 import { mockHouseholdManifest } from './mockAgent.js';
 import {
@@ -73,9 +98,21 @@ export async function createRealHouseholdAgent(opts = {}) {
     ? opts.publishEvent
     : () => {};
 
-  const bus      = new InternalBus();
-  const hostId   = await AgentIdentity.generate(new VaultMemory());
-  const chatId   = await AgentIdentity.generate(new VaultMemory());
+  const bus = new InternalBus();
+  // v0.7.P3a 2026-05-23 — persistent identity via VaultLocalStorage.
+  // Was: VaultMemory regenerated keys every refresh → user's NKN
+  // address changed every reload → no stable cross-peer identity.
+  // Now: keys persist; same NKN address across sessions; ready for
+  // chat-p2p cross-peer in v0.7.P3b.
+  //
+  // hostAgent (in-process backend) + chatAgent (chat surface) both
+  // get persistent identities under separate localStorage prefixes.
+  // Caller can override via opts.hostVault / opts.chatVault
+  // (e.g. tests inject VaultMemory).
+  const hostVault = opts.hostVault ?? makeBrowserVault('cc-host-id:');
+  const chatVault = opts.chatVault ?? makeBrowserVault('cc-chat-id:');
+  const hostId    = await restoreOrGenerate(hostVault);
+  const chatId    = await restoreOrGenerate(chatVault);
 
   // InternalTransport's address must equal the agent's pubKey so the
   // bus routes envelopes to the right listener.
@@ -598,5 +635,12 @@ export async function createRealHouseholdAgent(opts = {}) {
     // sign-out so calendar's .ics feed writes-through to the user's
     // pod under <pod>/canopy/calendar/feed.ics.
     setCalendarPodWriter,
+    // v0.7.P3a — expose identity info for /me + /pod-status + future
+    // chat-p2p composition.  pubKeys are stable across refreshes
+    // because identity is persisted to VaultLocalStorage.
+    identity: {
+      host: { pubKey: hostId.pubKey, stableId: hostId.stableId },
+      chat: { pubKey: chatId.pubKey, stableId: chatId.stableId },
+    },
   };
 }
