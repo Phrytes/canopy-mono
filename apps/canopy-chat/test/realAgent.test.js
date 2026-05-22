@@ -30,7 +30,11 @@ describe('createRealHouseholdAgent — Agent boot + skill dispatch', () => {
   it("markComplete flips state + listOpen reflects it", async () => {
     const a = await createRealHouseholdAgent();
     const done = await a.callSkill('household', 'markComplete', { choreId: 'c-1' });
-    expect(done).toEqual({ ok: true, message: '✓ Done: Dishwasher', itemId: 'c-1' });
+    // v0.6 — reply now includes _sync envelope; use toMatchObject to
+    // tolerate the extra field.
+    expect(done).toMatchObject({
+      ok: true, message: '✓ Done: Dishwasher', itemId: 'c-1',
+    });
     const list = await a.callSkill('household', 'listOpen', {});
     expect(list.items.length).toBe(2);
     expect(list.items.find((c) => c.id === 'c-1')).toBeUndefined();

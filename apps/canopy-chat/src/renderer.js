@@ -19,6 +19,8 @@
 
 import { renderChat } from '@canopy/app-manifest';
 
+import { formatSyncHints, formatLastSync } from './syncHints.js';
+
 /**
  * @typedef {object} RenderedReply
  * @property {'text' | 'list' | 'error'} kind
@@ -114,12 +116,15 @@ export function renderReply(reply, opts = {}) {
   const shape = reply.shape ?? 'text';
 
   if (shape === 'list') {
-    const items = renderListItems(reply.payload, opts);
+    const items = renderListItems(reply.payload, opts, t);
     return {
       kind: 'list',
       messageId, threadId,
       lifecycleState: 'live',     // A2 hybrid — flips 'disabled' on next user msg
       items,
+      // v0.6 — list-level _sync from the reply itself (vs per-row
+      // _lastSync extracted inside renderListItems).
+      syncHint: formatSyncHints(reply.payload?._sync, t),
     };
   }
 
@@ -158,6 +163,10 @@ export function renderReply(reply, opts = {}) {
     // `collectFollowUps`), they ride along on the rendered reply.
     // DOM adapter renders them as inline buttons below the text.
     followUps: Array.isArray(reply.followUps) ? reply.followUps : undefined,
+    // v0.6 — sync-hint suffix from the reply's _sync envelope.
+    // Empty string when 'central' or absent; DOM adapter omits the
+    // sub-line entirely in that case.
+    syncHint: formatSyncHints(reply.payload?._sync, t),
   };
 }
 
@@ -267,11 +276,16 @@ function formatErrorText({ code, message }, t = DEFAULT_T) {
  * the source array.  Each item is normalised + (optionally) decorated
  * with an inline keyboard from `renderChat.inlineKeyboardFor`.
  *
+ * v0.6 — per-row `_lastSync` annotation (epoch ms) renders as a
+ * staleness label (`'2h ago'`).  When the row also has a top-level
+ * `_sync` style hint (rare), prefer that.
+ *
  * @param {*} payload
  * @param {object} opts
+ * @param {Function} [t]
  * @returns {RenderedListItem[]}
  */
-function renderListItems(payload, opts) {
+function renderListItems(payload, opts, t) {
   const raw = Array.isArray(payload?.items) ? payload.items
             : Array.isArray(payload)         ? payload    // tolerant: bare array
             : [];
@@ -284,7 +298,11 @@ function renderListItems(payload, opts) {
     const buttons = inlineKeyboardFor
       ? inlineKeyboardFor({ id, ...(typeof item === 'object' ? item : {}) })
       : [];
-    return { id, label, buttons };
+    // v0.6 — per-row staleness label from item._lastSync.
+    const staleHint = formatLastSync(item?._lastSync, t);
+    return staleHint
+      ? { id, label, buttons, staleHint }
+      : { id, label, buttons };
   });
 }
 
