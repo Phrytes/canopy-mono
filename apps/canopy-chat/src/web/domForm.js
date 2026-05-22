@@ -1,4 +1,7 @@
 /**
+ * **Platform: web** (DOM-dependent).  Needs an RN sibling under `rn/` — see
+ * `Project Files/canopy-chat/coding-plan.md` § RN portability inventory.
+ *
  * canopy-chat — DOM form adapter.
  *
  * Renders a `FormSpec` (from `forms/buildFormSpec.js`) into a DOM

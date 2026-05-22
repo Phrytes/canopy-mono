@@ -140,6 +140,68 @@ The fix landed in `31313bb` (`fix(app-manifest): extend
 PARAM_KINDS + paramsToJsonSchema for date/webid/file/image`).
 The lesson is in the gate.
 
+### RN portability inventory (added 2026-05-23)
+
+When a phone-side canopy-chat ships, the **substrate / business-logic
+layer of canopy-chat is already platform-neutral** — only the
+**DOM renderer + DOM-specific UI modules** need RN parallels.
+
+| Module | Layer | Platform | RN parallel needed? |
+|---|---|---|---|
+| `src/parser.js`              | substrate | neutral | no |
+| `src/router.js`              | substrate | neutral | no |
+| `src/dispatch.js`            | substrate | neutral | no |
+| `src/renderer.js`            | substrate | neutral | no — emits platform-neutral `RenderedReply` |
+| `src/thread.js`              | substrate | neutral | no |
+| `src/threadStore.js`         | substrate | neutral | no |
+| `src/events.js`              | substrate | neutral | no |
+| `src/filter.js`              | substrate | neutral | no |
+| `src/manifestMerge.js`       | substrate | neutral | no |
+| `src/bulkOps.js`             | substrate | neutral | no |
+| `src/followUps.js`           | substrate | neutral | no |
+| `src/embed.js`               | substrate | neutral | no |
+| `src/syncHints.js`           | substrate | neutral | no |
+| `src/localisation.js`        | substrate | neutral | i18next; RN-compatible |
+| `src/forms/buildFormSpec.js` | substrate | neutral | no |
+| `src/forms/parseDate.js`     | substrate | neutral | no |
+| **`src/web/domAdapter.js`**       | **app** | **web** | **YES — `rn/domAdapter.js` sibling** |
+| **`src/web/domForm.js`**          | **app** | **web** | **YES — `rn/RnForm.js`** |
+| **`src/web/threadSidebar.js`**    | **app** | **web** | **YES — `rn/ThreadSidebar.js`** |
+| `src/web/localBuiltins.js`        | app     | neutral | no — pure dispatcher |
+| `src/web/realAgent.js`            | app     | mostly neutral | YES — RN-friendly transport bootstrap |
+| `src/web/mockAgent.js`            | app     | neutral | no — pure dispatcher |
+| `src/web/shims/*`                 | app     | web bundler only | no |
+| `src/storage/local.js` (IndexedDB)| app     | web | YES — AsyncStorage/SQLite sibling |
+| `src/storage/podSync.js`          | app     | neutral | no |
+
+**Discipline going forward** (added 2026-05-23): every NEW
+canopy-chat module gets a `Platform:` header in its top docstring
+— one of `Platform: web`, `Platform: RN`, or `Platform: neutral`.
+Web-specific modules MUST be in `src/web/`; RN-specific modules
+MUST be in `src/rn/` (when they exist); platform-neutral modules
+in `src/` directly.
+
+This makes the future RN port a sed-and-substitute exercise on
+imports rather than a hunt-for-the-DOM-references audit.
+
+### RN-portability roadmap (added 2026-05-23)
+
+Provisional milestones — adjust scope as real work happens:
+
+| Slice | What | Estimate |
+|---|---|---|
+| **v0.6.5** | Inline-editable record fields (Q18 patch semantics in record-shape panels) — same code path on web + RN once RN renderer exists | ~30 min |
+| **v0.6.6** | `@canopy/chat-nav` RN parallel (`@canopy/chat-nav/rn` export) — touch-fired floating button + deep-link reader | ~1 session |
+| **v0.6.7** | `apps/canopy-chat/rn/` runnable — port `domAdapter.js` + `domForm.js` + `threadSidebar.js` reading the same `RenderedReply` shapes | ~2-3 sessions |
+| **v0.6.8** | `src/storage/local.js` substrate split — `LocalStore` interface; `IndexedDBStore` (web) + `AsyncStorageStore` (RN) implementations | ~1 session |
+| **v0.6.9** | RN transport bootstrap (RN-friendly relay/NKN binding for `realAgent.js`) | depends on RN auth + relay |
+
+After v0.6.9 the RN canopy-chat runs the SAME chat shell over the
+SAME substrates with only platform-specific UI components.  Per
+the platform-parity convention (`feedback-platform-parity.md`
+memory): web ≡ mobile for canopy-chat; neither is the "primitive"
+one.
+
 ### Audit retrospective (2026-05-22)
 
 | Substrate | Audit verdict | Action |
@@ -704,24 +766,24 @@ pointing at where the answer lives.
 
 ### Active
 
-| ID | Phase | Question | Pin until |
-|---|---|---|---|
-| OQ-1.C | v0.1 | Mesh-agent browser-bundle — any Node-only imports to shim? | Phase v0.1 implementation |
-| OQ-2.A | v0.2 | Filter DSL — key:value or expression tree? | Phase v0.2 design |
-| OQ-2.B | v0.2 | Web ⇄ RN thread sync model? | Phase v0.2 design |
-| OQ-3.A | v0.3 | Date param strictness | Phase v0.3 design |
-| OQ-3.B | v0.3 | formStyle override needed? | Phase v0.3 design |
-| OQ-4.B | v0.4 | App-toggle UI — chat-inline vs side-panel? (User: both; revisit) | Phase v0.4 design |
-| OQ-4.C | v0.4 | Folio browser-skill extract scope (how much existing code needs refactor) | Phase v0.4 implementation |
-| OQ-4.B | v0.4 | App-toggle UI location | Phase v0.4 design |
-| OQ-5.A | v0.5 | Embed when no cross-pod read access | Phase v0.5 design |
-| OQ-5.B | v0.5 | Embed types beyond item-card | Phase v0.5 design |
-| OQ-6.A | v0.6 | `_sync` empty-state UX | Phase v0.6 design |
-| OQ-6.B | v0.6 | `_lastSync` per-item or per-peer | Phase v0.6 design |
-| OQ-7.A | v0.7 | Brief caching TTL | Phase v0.7 design |
-| OQ-7.B | v0.7 | Log page persistence horizon | Phase v0.7 design |
-| OQ-8.A | v0.8 | LLM default — local vs cloud | Phase v0.8 design |
-| OQ-8.B | v0.8 | LLM context window scope | Phase v0.8 design |
+| ID     | Phase | Question                                                                  | Pin until                 |
+| ------ | ----- | ------------------------------------------------------------------------- | ------------------------- |
+| OQ-1.C | v0.1  | Mesh-agent browser-bundle — any Node-only imports to shim?                | Phase v0.1 implementation |
+| OQ-2.A | v0.2  | Filter DSL — key:value or expression tree?                                | Phase v0.2 design         |
+| OQ-2.B | v0.2  | Web ⇄ RN thread sync model?                                               | Phase v0.2 design         |
+| OQ-3.A | v0.3  | Date param strictness                                                     | Phase v0.3 design         |
+| OQ-3.B | v0.3  | formStyle override needed?                                                | Phase v0.3 design         |
+| OQ-4.B | v0.4  | App-toggle UI — chat-inline vs side-panel? (User: both; revisit)          | Phase v0.4 design         |
+| OQ-4.C | v0.4  | Folio browser-skill extract scope (how much existing code needs refactor) | Phase v0.4 implementation |
+| OQ-4.B | v0.4  | App-toggle UI location                                                    | Phase v0.4 design         |
+| OQ-5.A | v0.5  | Embed when no cross-pod read access                                       | Phase v0.5 design         |
+| OQ-5.B | v0.5  | Embed types beyond item-card                                              | Phase v0.5 design         |
+| OQ-6.A | v0.6  | `_sync` empty-state UX                                                    | Phase v0.6 design         |
+| OQ-6.B | v0.6  | `_lastSync` per-item or per-peer                                          | Phase v0.6 design         |
+| OQ-7.A | v0.7  | Brief caching TTL                                                         | Phase v0.7 design         |
+| OQ-7.B | v0.7  | Log page persistence horizon                                              | Phase v0.7 design         |
+| OQ-8.A | v0.8  | LLM default — local vs cloud                                              | Phase v0.8 design         |
+| OQ-8.B | v0.8  | LLM context window scope                                                  | Phase v0.8 design         |
 
 ### Resolved (architecture-doc + coding-plan)
 

@@ -35,12 +35,154 @@ import { buildEmbed }     from '../embed.js';
  *   Q29 declaration.
  * @returns {{[opId: string]: (args: object) => Promise<*>}}
  */
-export function createLocalBuiltins({ catalog, t, threadStore, setActive, callSkill, localActor }) {
+export function createLocalBuiltins({
+  catalog, t, threadStore, setActive, callSkill, localActor,
+  simPeers,                  // v0.5.6 — { '<peer>': { threadId, webid } }
+}) {
   return {
     help: async () => formatHelp(catalog, t),
     newthread: async (args) => createNewThread(args, { threadStore, setActive, t }),
     threads:   async ()     => listThreads({ threadStore, t }),
     embed:     async (args) => createEmbed(args, { catalog, callSkill, t, localActor }),
+    'embed-file': async (args) => createFileEmbed(args, { localActor, t }),
+    'embed-time': async (args) => createTimeEmbed(args, { localActor, t }),
+    sendto:    async (args) => sendToPeer(args, {
+      catalog, callSkill, t, localActor, simPeers, threadStore,
+    }),
+  };
+}
+
+/**
+ * `/send-to <peer> <itemId>` — v0.5.6 simulated cross-peer demo.
+ *
+ * Resolves the peer's destination thread from simPeers, builds an
+ * embed against the catalog's Q29 factory (same path as /embed),
+ * then appends a synthesised embed-card shell message DIRECTLY to
+ * the peer's thread.  Returns a text confirmation in the sender's
+ * active thread.
+ *
+ * This fakes the round-trip in a single browser tab.  Real cross-
+ * peer delivery rides on the hosting app's chat surface (per v0.5.3).
+ */
+async function sendToPeer(args, { catalog, callSkill, t, localActor, simPeers, threadStore }) {
+  const peer   = String(args?.peer ?? '').trim();
+  const itemId = String(args?.itemId ?? '').trim();
+  if (!peer)   return { ok: false, error: t('sendto.no_peer') };
+  if (!itemId) return { ok: false, error: t('sendto.no_id') };
+  if (!simPeers || !simPeers[peer]) {
+    return { ok: false, error: t('sendto.unknown_peer', { peer }) };
+  }
+  const target = simPeers[peer];
+  const destThread = threadStore?.getThread(target.threadId);
+  if (!destThread) {
+    return { ok: false, error: t('sendto.no_thread', { threadId: target.threadId }) };
+  }
+
+  // Use the same factory-discovery as /embed but make the recipient
+  // perspective explicit — the embed's issuedBy is the local user;
+  // the destination thread renders the [Claim] button because the
+  // recipient (peer) is NOT the issuer.
+  let snapshotSkill = null, snapshotAppOrigin = null;
+  for (const [opId] of catalog.opsById) {
+    const decl = catalog.embedSnapshotFor?.(opId);
+    if (decl) { snapshotSkill = decl.snapshotSkill; snapshotAppOrigin = decl.appOrigin; break; }
+  }
+  if (!snapshotSkill) return { ok: false, error: t('embed.no_factory') };
+
+  let snapshot;
+  try {
+    snapshot = await callSkill(snapshotAppOrigin, snapshotSkill, { choreId: itemId });
+  } catch (err) {
+    return { ok: false, error: err?.message ?? String(err) };
+  }
+  if (!snapshot || snapshot.ok === false) {
+    return { ok: false, error: snapshot?.error ?? 'snapshot failed' };
+  }
+
+  const embed = buildEmbed({
+    appOrigin: snapshotAppOrigin,
+    snapshot,
+    issuedBy:  localActor ?? 'webid:local-demo-user',
+  });
+
+  // Synthesise an embed-card RenderedReply directly into the peer's
+  // thread.  Bypasses the dispatch pipeline — this is the cross-peer
+  // simulation path.
+  destThread.addShellMessage({
+    kind:           'embed-card',
+    messageId:      `embed-from-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    threadId:       target.threadId,
+    lifecycleState: 'live',
+    embed,
+  });
+
+  return {
+    ok:      true,
+    message: t('sendto.sent', { peer, item: snapshot.title ?? itemId }),
+  };
+}
+
+/**
+ * `/embed-file <path>` — v0.5.5 builtin.  Synthesises a fake file
+ * snapshot from the user-supplied path.  Real folio integration
+ * (calling folio's Q29 fileSnapshot skill) lands when folio's
+ * manifest declares the embed primitive — until then this stub
+ * proves the renderer works.
+ */
+async function createFileEmbed(args, { localActor, t }) {
+  const path = String(args?.path ?? '').trim();
+  if (!path) return { ok: false, error: t('embed-file.no_path') };
+  const baseName = path.split('/').pop();
+  return {
+    kind:      'file-card',
+    appOrigin: 'folio',
+    itemRef:   { app: 'folio', type: 'file', id: path },
+    snapshot:  {
+      id:    path,
+      type:  'file',
+      name:  baseName,
+      mime:  mimeFromExtension(baseName),
+      bytes: Math.floor(Math.random() * 1024 * 1024 * 4),
+      path,
+    },
+    issuedBy:  localActor ?? 'webid:local-demo-user',
+  };
+}
+
+function mimeFromExtension(name) {
+  const lower = (name ?? '').toLowerCase();
+  if (lower.endsWith('.pdf'))  return 'application/pdf';
+  if (lower.endsWith('.png'))  return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.md'))   return 'text/markdown';
+  if (lower.endsWith('.txt'))  return 'text/plain';
+  if (lower.endsWith('.json')) return 'application/json';
+  return 'application/octet-stream';
+}
+
+/**
+ * `/embed-time <eventId>` — v0.5.5 builtin.  Synthesises a fake
+ * calendar-event snapshot for the demo (no app currently owns
+ * calendar events; the primitive is here for J7 completeness).
+ */
+async function createTimeEmbed(args, { localActor, t }) {
+  const eventId = String(args?.eventId ?? '').trim();
+  if (!eventId) return { ok: false, error: t('embed-time.no_event') };
+  const now = Date.now();
+  return {
+    kind:      'time-card',
+    appOrigin: 'household',
+    itemRef:   { app: 'household', type: 'time', id: eventId },
+    snapshot:  {
+      id:       eventId,
+      type:     'time',
+      title:    `Event ${eventId}`,
+      startAt:  new Date(now + 2 * 3_600_000).toISOString(),
+      endAt:    new Date(now + 3 * 3_600_000).toISOString(),
+      timezone: 'UTC',
+      location: 'Demo venue',
+    },
+    issuedBy:  localActor ?? 'webid:local-demo-user',
   };
 }
 
