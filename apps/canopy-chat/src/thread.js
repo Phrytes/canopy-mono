@@ -73,6 +73,22 @@ export class Thread {
     this.messages     = [];
     /** @type {Map<string, ListingSnapshot>} */
     this._listings    = new Map();
+    // v0.7.P1 bug-fix (2026-05-23): message-append used to be SILENT
+    // (no event emitted), so the persistence layer missed every new
+    // message — refresh lost the conversation.  Now Thread accepts
+    // an `onChange()` callback at construction; ThreadStore wires it
+    // to `emit('thread-updated')` so attachPersistence saves.
+    this._onChange = typeof opts.onChange === 'function' ? opts.onChange : null;
+  }
+
+  /* @internal — fired after every state mutation. */
+  _notifyChange(reason) {
+    if (this._onChange) {
+      try { this._onChange(reason); }
+      catch (err) {
+        if (typeof console !== 'undefined') console.error('[thread.onChange]', err);
+      }
+    }
   }
 
   /* ─── message append ────────────────────────────────────── */
@@ -93,6 +109,7 @@ export class Thread {
       text:   String(text ?? ''),
     };
     this.messages.push(msg);
+    this._notifyChange('user-message');
     return msg;
   }
 
@@ -126,6 +143,7 @@ export class Thread {
         })),
       });
     }
+    this._notifyChange('shell-message');
     return msg;
   }
 
