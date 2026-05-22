@@ -43,6 +43,7 @@ export function createLocalBuiltins({
   externalFlow,              // v0.6.2 — { open, getActiveThreadId, mockSigninUrl }
   briefRunner,               // v0.7 — () => Promise<BriefReply>
   eventLog,                  // v0.7.1 — EventLog instance
+  openLogsPanel,             // v0.7.1c — () => void (opens side-panel)
   findRunner,                // v0.7.5 — ({query}) => Promise<FindReply>
 }) {
   return {
@@ -56,9 +57,12 @@ export function createLocalBuiltins({
       catalog, callSkill, t, localActor, simPeers, threadStore,
     }),
     apps:      async (args) => appsToggle(args, { catalog, appRegistry, t }),
+    // v0.7.5 / v0.7.1c — also expose openLogsPanel reachable to
+    // handlers (currently only used by /logs but reads well at this
+    // layer).
     signin:    async (args) => signinFlow(args, { externalFlow, t }),
     brief:     async (args) => runBriefBuiltin(args, { briefRunner, t }),
-    logs:      async (args) => runLogsBuiltin(args, { eventLog, t }),
+    logs:      async (args) => runLogsBuiltin(args, { eventLog, t, openLogsPanel }),
     find:      async (args) => runFindBuiltin(args, { findRunner, t }),
   };
 }
@@ -77,14 +81,25 @@ async function runFindBuiltin(args, { findRunner, t }) {
  * v0.7.1 — list recent network events from the EventLog (14d retention).
  * `--mute` is a side-effect: adds the kind to the mute set + reports.
  */
-async function runLogsBuiltin(args, { eventLog, t }) {
+async function runLogsBuiltin(args, { eventLog, t, openLogsPanel }) {
   if (!eventLog) return { ok: false, error: t('logs.no_log') };
 
-  // Side-effect: --mute=app:type
+  // v0.7.1c — bare /logs opens the side-panel; --inline reverts to
+  // the v0.7.1b chat-inline list; --mute=app:type keeps working
+  // either way.
   if (typeof args?.mute === 'string' && args.mute.includes(':')) {
     const [app, type] = args.mute.split(':', 2);
     eventLog.mute(app, type);
     return { ok: true, message: t('logs.muted', { app, type }) };
+  }
+
+  const hasFilterFlag =
+       !!args?.app   || !!args?.type || !!args?.actor
+    || !!args?.since || typeof args?.limit === 'number'
+    || !!args?.inline;
+  if (!hasFilterFlag && typeof openLogsPanel === 'function') {
+    openLogsPanel();
+    return { ok: true, message: t('logs.panel_opened') };
   }
 
   // Build filter from flag args.
