@@ -129,6 +129,19 @@ export function registerCalendarSkills(agent, store, opts = {}) {
     })];
   });
 
+  reg('getIcsFeed', async () => {
+    const { ics, uri } = await store.getIcsFeed();
+    const eventCount = (ics.match(/BEGIN:VEVENT/g) ?? []).length;
+    return [DataPart({
+      message:
+        `iCal feed for your calendar (${eventCount} event${eventCount === 1 ? '' : 's'}):\n` +
+        `  ${uri}\n\n` +
+        `Subscribe to this URI from Apple Calendar / Google Calendar / Proton.\n` +
+        `(v0.7.11: lives on the local pseudo-pod; a real-pod attach makes\n` +
+        ` it externally reachable.)`,
+    })];
+  });
+
   reg('searchEvents', async ({ parts }) => {
     const q = String(parts?.[0]?.data?.query ?? '');
     const hits = await store.search(q);

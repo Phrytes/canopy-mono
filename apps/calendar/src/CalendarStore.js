@@ -35,10 +35,16 @@
  */
 
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { buildIcsForEvents }                    from '@canopy/calendar-emission';
 
 const TYPE      = 'calendar-event';
-const DEVICE_ID = 'calendar-demo';
-const ROOT      = `pseudo-pod://${DEVICE_ID}/calendar/events/`;
+const DEVICE_ID    = 'calendar-demo';
+const ROOT         = `pseudo-pod://${DEVICE_ID}/calendar/events/`;
+// v0.7.11 — iCal feed lives next to the events container so a
+// real-pod attach (cache mode) makes the same URI fetchable as
+// `<pod>/calendar/feed.ics` via the @canopy/calendar-emission
+// convention.
+const ICS_FEED_URI = `pseudo-pod://${DEVICE_ID}/calendar/feed.ics`;
 
 /**
  * @typedef {object} CalendarEvent
@@ -80,6 +86,23 @@ export class CalendarStore {
   }
 
   /**
+   * v0.7.11 — return the current iCal feed string + the URI it
+   * lives at on the pseudo-pod.  Subscribers (calendar apps) can
+   * point at this URI; pod-attach makes it externally fetchable.
+   *
+   * @returns {Promise<{ ics: string, uri: string }>}
+   */
+  async getIcsFeed() {
+    const events = await this.#readAll();
+    const ics = buildIcsForEvents({
+      events,
+      calendarName: 'Canopy Calendar',
+      prodId:       '-//canopy-app/calendar//EN',
+    });
+    return { ics, uri: ICS_FEED_URI };
+  }
+
+  /**
    * Create an event.  Returns the persisted item.
    *
    * @param {object} args
@@ -112,6 +135,7 @@ export class CalendarStore {
     };
 
     await this.#write(event);
+    await this.#refreshIcsFeed();
     return event;
   }
 
@@ -148,6 +172,7 @@ export class CalendarStore {
     if (!event) throw new Error(`CalendarStore.rsvp: no event with id "${eventId}"`);
     const next = { ...event, rsvp: { ...(event.rsvp ?? {}), [actor]: response } };
     await this.#write(next);
+    await this.#refreshIcsFeed();
     return next;
   }
 
@@ -167,6 +192,7 @@ export class CalendarStore {
       cancelledBy:  actor ?? this.#actorDefault,
     };
     await this.#write(next);
+    await this.#refreshIcsFeed();
     return { id: eventId };
   }
 
@@ -205,6 +231,22 @@ export class CalendarStore {
     await this.#pod.write(`${ROOT}${event.id}.json`, JSON.stringify(event), {
       contentType: 'application/json',
     });
+  }
+
+  /**
+   * v0.7.11 — rebuild + persist the `.ics` feed on every mutation.
+   * Subscribers (Apple Calendar etc) consume this single file.
+   * Path matches the existing `<pod>/calendar/<source>.ics`
+   * convention from `@canopy/calendar-emission`.
+   */
+  async #refreshIcsFeed() {
+    try {
+      const { ics } = await this.getIcsFeed();
+      await this.#pod.write(ICS_FEED_URI, ics, { contentType: 'text/calendar' });
+    } catch {
+      // Feed-refresh failure should never block a mutation; log + move on.
+      // (Real implementation would surface in a sync-state field.)
+    }
   }
 
   async #readAll() {
