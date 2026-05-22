@@ -76,7 +76,11 @@ export const mockTasksManifest = {
     {
       id:    'claimTask', verb: 'claim',
       appliesTo: { type: 'task', state: ['open'] },
-      params: [{ name: 'id', kind: 'string', required: true }],
+      params: [{
+        name: 'id', kind: 'string', required: true,
+        // v0.7.Q34 — bare `/claim` → form shows clickable task list.
+        pickerSource: { listOp: 'listMine' },
+      }],
       surfaces: {
         slash: { command: '/claim' },
         ui:    { control: 'button', label: 'Claim' },
@@ -86,7 +90,11 @@ export const mockTasksManifest = {
     {
       id:    'completeTask', verb: 'complete',
       appliesTo: { type: 'task', state: ['claimed'] },
-      params: [{ name: 'id', kind: 'string', required: true }],
+      params: [{
+        name: 'id', kind: 'string', required: true,
+        // v0.7.Q34 — bare `/complete-task` → form shows claimed tasks.
+        pickerSource: { listOp: 'listMine' },
+      }],
       surfaces: {
         slash: { command: '/complete-task' },
         ui:    { control: 'button', label: 'Mark complete' },
