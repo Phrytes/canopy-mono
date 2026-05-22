@@ -27,6 +27,7 @@ export { runBulkOp, summariseBulkOp } from './bulkOps.js';
 export {
   collectFollowUps, createFollowUpResolver, DEFAULT_CROSS_APP_CHAINS,
 } from './followUps.js';
+export { buildEmbed, claimEmbed, actionsFor as embedActionsFor } from './embed.js';
 export {
   buildFormSpec, pickStrategy, validateAndCoerce,
 } from './forms/buildFormSpec.js';

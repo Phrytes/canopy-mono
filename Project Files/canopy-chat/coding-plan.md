@@ -115,6 +115,31 @@ This gate exists because v0.1–v0.3 shipped without it and
 reinvented in `src/manifestMerge.js`.  See v0.3.4 audit findings
 for the full retrospective.
 
+### Cross-layer consistency check (added 2026-05-22 after v0.4.0 bug)
+
+When ADDING a new value to a substrate's enum / kind / allow-list,
+**audit every sub-layer of that substrate** for the same list.
+Concrete checklist for `@canopy/app-manifest`:
+
+| Sub-layer | Where the list lives | Update when adding a kind / value? |
+|---|---|---|
+| Validator allow-set | `validate.js` — `VERBS`, `PARAM_KINDS`, `CHAT_REPLY_SHAPES`, `RUNTIME_VALUES` | YES — gates manifest acceptance |
+| JSON-Schema emitter | `paramsToJsonSchema.js` — `switch (p.kind)` | YES — fails LOUD on unknown kind when an op is consumed |
+| Projector lookups | `renderChat.js` — `replyShapeFor`, `followUpsFor`, `runtimeFor` | When the new value needs a projection (e.g. Q28-Q32 added their own lookups) |
+| Web adapter | `@canopy/web-adapter` — `schemaToFormFields` if relevant | When the kind has a web-form input |
+| canopy-chat form generator | `apps/canopy-chat/src/forms/buildFormSpec.js` + `domForm.js` | When the kind has a chat-shell form input |
+
+**Why this gate matters.** v0.3.2 added `'date'` and `'webid'` to
+canopy-chat's `buildFormSpec` + `domForm` but didn't propagate
+them to `validate.js` / `paramsToJsonSchema.js`.  Tests passed
+(neither substrate test exercised the new kinds); the bug only
+surfaced at v0.4.1's live boot when the mock folio manifest
+declared `kind: 'webid'` and `host.mount()` rejected it.
+
+The fix landed in `31313bb` (`fix(app-manifest): extend
+PARAM_KINDS + paramsToJsonSchema for date/webid/file/image`).
+The lesson is in the gate.
+
 ### Audit retrospective (2026-05-22)
 
 | Substrate | Audit verdict | Action |

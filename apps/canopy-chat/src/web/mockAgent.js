@@ -180,9 +180,29 @@ export const mockHouseholdManifest = {
         },
       },
     },
+    /**
+     * Q29 (v0.5) — `getChoreSnapshot` produces an ItemSnapshot for
+     * the J7 embed primitive.  Declared on the household manifest so
+     * markComplete-style ops can be embedded into chat messages.
+     */
+    {
+      id:    'getChoreSnapshot', verb: 'list',
+      params: [{ name: 'choreId', kind: 'string', required: true }],
+      surfaces: {
+        chat: { hint: 'snapshot a chore for embedding' },
+      },
+    },
+    // Mark `markComplete` as embeddable: the embed primitive will
+    // call getChoreSnapshot to produce the snapshot.
   ],
   views: [{ id: 'chores', title: 'Chores', type: 'chore' }],
 };
+
+// Attach Q29 declaratively post-manifest-definition: markComplete's
+// embed-card factory is getChoreSnapshot.  This keeps the manifest
+// definition above readable while still wiring Q29 for the demo.
+mockHouseholdManifest.operations.find((o) => o.id === 'markComplete')
+  .surfaces.chat.embed = { cardSnapshotSkill: 'getChoreSnapshot' };
 
 /**
  * Build a mock agent: returns `{ manifest, callSkill, reset }`.
@@ -219,6 +239,21 @@ export function createMockHouseholdAgent(opts = {}) {
       const name = String(args?.name ?? '').trim();
       if (!name) return { ok: false, error: 'name required' };
       return { ok: true, message: `✓ Added member: ${name}`, memberName: name };
+    }
+    if (opId === 'getChoreSnapshot') {
+      const id = args?.choreId;
+      const target = chores.find((c) => c.id === id);
+      if (!target) return { ok: false, error: `No chore with id "${id}".` };
+      return {
+        id:    target.id,
+        type:  target.type,
+        state: target.state,
+        title: target.label,
+        fields: {
+          state: target.state,
+          assigned_to: 'unassigned',
+        },
+      };
     }
     if (opId === 'markComplete') {
       const id = args?.choreId;

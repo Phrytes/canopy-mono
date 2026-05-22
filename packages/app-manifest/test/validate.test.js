@@ -616,6 +616,52 @@ describe('validateManifest', () => {
     });
   });
 
+  describe('canopy-chat v0.5 Q29 surfaces.chat.embed', () => {
+    const baseManifest = (op) => ({
+      app:        'c',
+      itemTypes:  ['t'],
+      operations: [op],
+      views:      [{ id: 'v', title: 'V', type: 't' }],
+    });
+
+    it('Q29 — accepts cardSnapshotSkill: string', () => {
+      expect(ok(baseManifest({
+        id: 'markComplete', verb: 'complete', params: [],
+        surfaces: { chat: { embed: { cardSnapshotSkill: 'getSnapshot' } } },
+      }))).toBe(true);
+    });
+
+    it('Q29 — accepts absent embed (forward-additive)', () => {
+      expect(ok(baseManifest({
+        id: 'op', verb: 'do', params: [],
+      }))).toBe(true);
+    });
+
+    it('Q29 — rejects non-object embed', () => {
+      const e = errs(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { embed: 'wrong' } },
+      }));
+      expect(e.some((x) => /embed must be an object/.test(x.message))).toBe(true);
+    });
+
+    it('Q29 — rejects missing cardSnapshotSkill', () => {
+      const e = errs(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { embed: {} } },
+      }));
+      expect(e.some((x) => /cardSnapshotSkill must be a non-empty string/.test(x.message))).toBe(true);
+    });
+
+    it('Q29 — rejects empty cardSnapshotSkill', () => {
+      const e = errs(baseManifest({
+        id: 'op', verb: 'do', params: [],
+        surfaces: { chat: { embed: { cardSnapshotSkill: '' } } },
+      }));
+      expect(e.some((x) => /cardSnapshotSkill must be a non-empty string/.test(x.message))).toBe(true);
+    });
+  });
+
   describe('canopy-chat v0.4 Q32 op.runtime', () => {
     const baseManifest = (op) => ({
       app:        'c',
