@@ -97,6 +97,18 @@
   "security": {
     "unavailable":  { "text": "Crypto-status niet beschikbaar in deze build.",                  "doc": "Defensive." }
   },
+  "lookup": {
+    "no_webid":     { "text": "Geef een webid op: /lookup-peer <webid>",                       "doc": "missing arg." },
+    "unavailable":  { "text": "Peer-opzoeken niet beschikbaar (eerst inloggen op je pod).",   "doc": "Defensive." },
+    "not_found":    { "text": "Geen NKN-adres gevonden voor {{webid}}.",                       "doc": "Lookup miss." },
+    "found":        { "text": "✓ {{webid}}\n  → {{address}}\n\nGebruik: /test-peer {{address}} hallo\n         /addappt --attendees-nkn={{address}}", "doc": "Lookup hit." },
+    "failed":       { "text": "Opzoeken mislukt: {{error}}",                                   "doc": "Lookup error." }
+  },
+  "publishNkn": {
+    "unavailable":  { "text": "Pod-publiceren niet beschikbaar (eerst inloggen).",            "doc": "Defensive." },
+    "done":         { "text": "✓ NKN-adres gepubliceerd naar {{url}}",                         "doc": "Confirmation." },
+    "failed":       { "text": "Pod-publiceren mislukt: {{error}}{{status}}",                   "doc": "Defensive." }
+  },
   "peer": {
     "unavailable":    { "text": "Peer-transport niet beschikbaar in deze build.",          "doc": "Defensive." },
     "no_address":     { "text": "Geef een NKN-adres: /test-peer <adres> [tekst]",          "doc": "/test-peer missing arg." },

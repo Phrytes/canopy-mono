@@ -97,6 +97,18 @@
   "security": {
     "unavailable":  { "text": "Crypto status not available in this build.",                     "doc": "Defensive." }
   },
+  "lookup": {
+    "no_webid":     { "text": "Please provide a webid: /lookup-peer <webid>",                  "doc": "/lookup-peer missing arg." },
+    "unavailable":  { "text": "Peer lookup unavailable (sign in to your pod first).",         "doc": "Defensive." },
+    "not_found":    { "text": "No NKN address found for {{webid}}.  They may not have signed in to canopy-chat from a pod yet.", "doc": "Lookup miss." },
+    "found":        { "text": "✓ {{webid}}\n  → {{address}}\n\nUse: /test-peer {{address}} hello\n     /addappt --attendees-nkn={{address}}", "doc": "Lookup hit." },
+    "failed":       { "text": "Lookup failed: {{error}}",                                      "doc": "Lookup error." }
+  },
+  "publishNkn": {
+    "unavailable":  { "text": "Pod publish unavailable (sign in first).",                     "doc": "Defensive." },
+    "done":         { "text": "✓ Published NKN address to {{url}}",                            "doc": "Confirmation." },
+    "failed":       { "text": "Pod publish failed: {{error}}{{status}}",                       "doc": "Defensive." }
+  },
   "peer": {
     "unavailable":    { "text": "Peer transport not available in this build.",            "doc": "Defensive: window.nkn missing." },
     "no_address":     { "text": "Please provide a peer NKN address: /test-peer <addr> [text]", "doc": "/test-peer arg missing." },

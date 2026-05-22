@@ -50,6 +50,8 @@ export function createLocalBuiltins({
   onSignOut,                 // v0.7.P2 — cleanup hook for the pod writer
   agent,                     // v0.7.P3a — agent {identity:{host,chat}}
   connectPeer,               // v0.7.P3b — () => Promise<{address}>
+  lookupPeerNknByWebid,      // v0.7.P3d — (webid) => Promise<string|null>
+  publishNknAddrToPod,       // v0.7.P3d — () => Promise<{ok, url, status}>
 }) {
   return {
     help: async () => formatHelp(catalog, t),
@@ -72,6 +74,8 @@ export function createLocalBuiltins({
     'test-peer':        async (args) => testPeer(args, { agent, t }),
     'rotate-identity':  async (args) => rotateIdentity(args, { agent, t }),
     'security-status':  async (args) => securityStatus(args, { agent, t }),
+    'lookup-peer':      async (args) => lookupPeer(args, { lookupPeerNknByWebid, t }),
+    'publish-nkn':      async (args) => publishNkn(args, { publishNknAddrToPod, t }),
     signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
     'reset-thread': async () => {
       // v0.7.P1-followup — clear the active thread's messages.
@@ -295,6 +299,43 @@ async function meIdentity(_args, { agent, t }) {
     lines.push('NKN: not connected.  /peer-connect to enable cross-peer chat.');
   }
   return { message: lines.join('\n') };
+}
+
+/**
+ * `/lookup-peer <webid>` — v0.7.P3d.  Resolves WebID → NKN address
+ * via the peer's pod profile.  Returns the address so the user can
+ * `/test-peer` or `/addappt --attendees-nkn=` with it.
+ */
+async function lookupPeer(args, { lookupPeerNknByWebid, t }) {
+  const webid = String(args?.webid ?? '').trim();
+  if (!webid) return { ok: false, error: t('lookup.no_webid') };
+  if (typeof lookupPeerNknByWebid !== 'function') {
+    return { ok: false, error: t('lookup.unavailable') };
+  }
+  try {
+    const addr = await lookupPeerNknByWebid(webid);
+    if (!addr) return { ok: false, error: t('lookup.not_found', { webid }) };
+    return { message: t('lookup.found', { webid, address: addr }) };
+  } catch (err) {
+    return { ok: false, error: t('lookup.failed', { error: err.message ?? String(err) }) };
+  }
+}
+
+/**
+ * `/publish-nkn` — v0.7.P3d.  Re-publishes the user's NKN address
+ * to their pod identity.ttl.
+ */
+async function publishNkn(_args, { publishNknAddrToPod, t }) {
+  if (typeof publishNknAddrToPod !== 'function') {
+    return { ok: false, error: t('publishNkn.unavailable') };
+  }
+  try {
+    const r = await publishNknAddrToPod();
+    if (!r?.ok) return { ok: false, error: t('publishNkn.failed', { status: r?.status ?? 'unknown' }) };
+    return { message: t('publishNkn.done', { url: r.url }) };
+  } catch (err) {
+    return { ok: false, error: t('publishNkn.failed', { error: err.message ?? String(err) }) };
+  }
 }
 
 /**

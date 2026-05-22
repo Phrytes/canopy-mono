@@ -40,7 +40,10 @@ import { mockTasksManifest,
 import { calendarManifest }          from '@canopy-app/calendar/manifest';
 import { createLocalBuiltins }       from '../src/web/localBuiltins.js';
 import * as podAuth                  from '../src/web/podAuth.js';
-import { createPodWriter, discoverPodRoot } from '../src/web/podStorage.js';
+import {
+  createPodWriter, discoverPodRoot,
+  publishNknAddr, discoverPeerNknAddr,
+} from '../src/web/podStorage.js';
 
 /* ── DOM refs ──────────────────────────────────────────── */
 
@@ -518,6 +521,29 @@ podAuth.handleRedirect({ restorePreviousSession: true })
             actor:   session.webid,
             payload: { message: `Pod root: ${writer.podRoot}` },
           });
+
+          // v0.7.P3d — publish our NKN address to the pod so peers
+          // can discover it from our WebID.  Fire-and-forget; the
+          // user can manually re-publish via /publish-nkn if needed.
+          const nknAddr = agent.peer?.address;
+          if (nknAddr) {
+            try {
+              const r = await publishNknAddr(writer, nknAddr);
+              if (r.ok) {
+                publishEventRef({
+                  app: 'canopy-chat', type: 'notification', actor: session.webid,
+                  payload: { message: `🔗 Published NKN address to pod: ${r.url}` },
+                });
+              } else {
+                publishEventRef({
+                  app: 'canopy-chat', type: 'notification', actor: session.webid,
+                  payload: { message: `⚠️ NKN address publish: HTTP ${r.status}` },
+                });
+              }
+            } catch (err) {
+              console.warn('[podAuth] failed to publish NKN address', err);
+            }
+          }
         } catch (err) {
           console.warn('[podAuth] failed to wire calendar pod writer', err);
         }
@@ -751,6 +777,23 @@ const localBuiltins = createLocalBuiltins({
   // window.nkn is missing (CDN not loaded yet), returns rejected
   // promise.
   connectPeer: () => connectPeerImpl(),
+  // v0.7.P3d — WebID-based peer discovery.  /lookup-peer <webid>
+  // hits the peer's pod identity.ttl + extracts canopy:nknAddr.
+  lookupPeerNknByWebid: async (webid) => {
+    const session = podAuth.getCurrentSession();
+    if (!session) throw new Error('Sign in first: /signin');
+    return discoverPeerNknAddr(session, webid);
+  },
+  // v0.7.P3d — re-publish own NKN address to pod.
+  publishNknAddrToPod: async () => {
+    const session = podAuth.getCurrentSession();
+    if (!session) throw new Error('Sign in first: /signin');
+    const podRoot = await discoverPodRoot(session).catch(() => null);
+    const writer  = createPodWriter(session, podRoot ? { podRoot } : {});
+    const addr    = agent.peer?.address;
+    if (!addr) throw new Error('NKN not connected yet.  /peer-connect first.');
+    return publishNknAddr(writer, addr);
+  },
   externalFlow: {
     /**
      * Open a sign-in flow.  Persists in-flight state + navigates to
