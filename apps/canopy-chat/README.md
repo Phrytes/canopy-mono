@@ -139,6 +139,42 @@ Tracking per `/Project Files/canopy-chat/coding-plan.md` § Phase v0.1:
 | 5.2 | tasks-v0 Q29 adoption (manifest declaration + `getTaskSnapshot` skill) | shipped 2026-05-22 |
 | 5.3 | Re-audit: chat-p2p NOT composed by canopy-chat; embeds delivered by apps' own chat surfaces | shipped 2026-05-22 |
 
+## Phase v0.7 — brief aggregator + network-events log (v0.7.0+v0.7.1)
+
+| Sub-slice | Scope | Status |
+|---|---|---|
+| 7.0 | Q30 `surfaces.chat.brief` substrate + `/brief` aggregator | shipped 2026-05-23 (household real; stoop/folio stubs in main.js) |
+| 7.1a | `EventLog` substrate (D.1) + 14-day retention | shipped 2026-05-23 |
+| 7.1b | `/logs` chat-shell builtin + filter/mute flags | shipped 2026-05-23 |
+| 7.1c | Dedicated `/logs` side-panel page UI | pending — chat-inline works today |
+| 7.5 | Search/browse via Q33 `searchSkill` (user-requested 2026-05-23) | pending |
+| 7.8 | Folio's real `briefSummary` Q30 adoption | pending — declarative-only today |
+
+## Reality-check on phase statuses (added 2026-05-23 after journey audit)
+
+The phase tables above mark `✅ shipped` based on chat-shell
+primitives being complete + tests green.  This is technically
+correct but **misleading about end-to-end demoability** because
+several phases depend on real backing apps (folio / stoop /
+tasks-v0) that aren't wired into the browser-bundled real agent.
+
+Honest re-statement:
+
+- **Phase v0.4** primitives ✅ shipped; **real multi-app
+  dispatch 🟡 partial** (only household runs as a real agent;
+  folio/stoop/tasks-v0 are stubs in `main.js`'s callSkill).
+- **Phase v0.5** embeds primitive ✅ shipped; **cross-peer
+  delivery 🟡 deferred to apps' chat surfaces** per the v0.5.3
+  audit (intentional, not a gap).
+- **Phase v0.6** `_sync` rendering ✅ shipped; **real adopters
+  (stoop/tasks-v0 populating `_sync` from real sync state)
+  🟡 pending** per v0.6.5.
+- **Phase v0.7** brief + logs ✅ shipped with mocks; real
+  per-app `briefSummary` skills land per-app.
+
+See `/Project Files/canopy-chat/journey-audit-2026-05-23.md` for
+the per-journey table + prioritised gap list.
+
 ## Phase v0.6 — pod-style hints + reactive refresh
 
 | Sub-slice | Scope | Status |
