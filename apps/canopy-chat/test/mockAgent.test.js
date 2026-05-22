@@ -17,8 +17,10 @@ describe('mockHouseholdManifest', () => {
     expect(ops.listOpen.surfaces.chat.reply).toBe('list');
     expect(ops.markComplete.verb).toBe('complete');
     expect(ops.markComplete.surfaces.slash.command).toBe('/done');
+    // Q34 (v0.7) added pickerSource — markComplete picks via listOpen.
     expect(ops.markComplete.params[0]).toEqual({
       name: 'choreId', kind: 'string', required: true,
+      pickerSource: { listOp: 'listOpen' },
     });
   });
 });
