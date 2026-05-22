@@ -106,11 +106,21 @@ export function renderChat(manifest, args, opts = {}) {
     : buildPrompt(manifest, opts.prompt);
 
   // (c) command menu — Telegram setMyCommands shape.
+  //
+  // 2026-05-23 bug-fix: `body` rule was silently dropped here, so
+  // ops declared with `body: 'flags'` (canonical /addtask, /brief,
+  // /find, /embed-*, /addappt etc) were parsed as the default
+  // 'match' rule.  The first positional argument worked because
+  // it bound to the op's first required param via _match-binding,
+  // but bare `--key` flags landed in `_match` instead of being
+  // parsed into args.  canopy-chat's parser reads entry.body to
+  // pick parseFlags vs parseMatch; the field must round-trip.
   const commandMenu = ops
     .filter((op) => op?.surfaces?.slash?.command)
     .map((op) => ({
       command:     op.surfaces.slash.command,
       description: op.surfaces.chat?.hint ?? op.id,
+      ...(op.surfaces.slash.body ? { body: op.surfaces.slash.body } : {}),
     }));
 
   // (d) inline-keyboard projector — per shown item, the applicable
