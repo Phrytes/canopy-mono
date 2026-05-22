@@ -531,6 +531,9 @@ const localBuiltins = createLocalBuiltins({
       agent.setCalendarPodWriter(null);
     }
   },
+  // v0.7.P3a — expose the persistent agent identity (chat-side
+  // pubKey + stableId) to handlers like /me.
+  agent,
   externalFlow: {
     /**
      * Open a sign-in flow.  Persists in-flight state + navigates to

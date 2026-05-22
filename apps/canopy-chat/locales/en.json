@@ -86,6 +86,9 @@
     "not_signed_in": { "text": "Not signed in. Try /signin.",                     "doc": "User asked /whoami while signed out." },
     "signed_in":     { "text": "Signed in as {{webid}}.",                          "doc": "/whoami result when signed in." }
   },
+  "me": {
+    "unavailable":   { "text": "Agent identity not available.",                   "doc": "Defensive: agent boot missing identity." }
+  },
   "signout": {
     "unavailable":   { "text": "Sign-out is not available in this build.",        "doc": "Defensive: podAuth not wired." },
     "done":          { "text": "✓ Signed out.",                                    "doc": "Confirmation of /signout." }

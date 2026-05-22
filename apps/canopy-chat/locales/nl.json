@@ -86,6 +86,9 @@
     "not_signed_in": { "text": "Niet ingelogd. Probeer /signin.",                       "doc": "/whoami signed out." },
     "signed_in":     { "text": "Ingelogd als {{webid}}.",                                "doc": "/whoami signed in." }
   },
+  "me": {
+    "unavailable":   { "text": "Agent-identiteit niet beschikbaar.",              "doc": "Defensive." }
+  },
   "signout": {
     "unavailable":   { "text": "Uitloggen niet beschikbaar in deze build.",             "doc": "Defensive." },
     "done":          { "text": "✓ Uitgelogd.",                                            "doc": "/signout." }

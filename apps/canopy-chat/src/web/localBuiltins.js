@@ -48,6 +48,7 @@ export function createLocalBuiltins({
   openFilePicker,            // v0.7.13 — () => Promise<File|null>
   podAuth,                   // v0.7.P1 — real Solid OIDC wrapper
   onSignOut,                 // v0.7.P2 — cleanup hook for the pod writer
+  agent,                     // v0.7.P3a — agent {identity:{host,chat}}
 }) {
   return {
     help: async () => formatHelp(catalog, t),
@@ -65,6 +66,7 @@ export function createLocalBuiltins({
     // layer).
     signin:    async (args) => signinFlow(args, { podAuth, externalFlow, t }),
     whoami:    async (args) => whoami(args, { podAuth, t }),
+    me:        async (args) => meIdentity(args, { agent, t }),
     signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
     'reset-thread': async () => {
       // v0.7.P1-followup — clear the active thread's messages.
@@ -237,6 +239,26 @@ async function whoami(_args, { podAuth, t }) {
   const sess = podAuth.getCurrentSession();
   if (!sess) return { message: t('whoami.not_signed_in') };
   return { message: t('whoami.signed_in', { webid: sess.webid }) };
+}
+
+/**
+ * `/me` — v0.7.P3a.  Returns persistent agent-identity info needed
+ * to share with peers for cross-peer chat-p2p.  Format the chat
+ * stableId + pubKey as a copy-pasteable block.
+ */
+async function meIdentity(_args, { agent, t }) {
+  if (!agent?.identity?.chat) return { message: t('me.unavailable') };
+  const id = agent.identity.chat;
+  const lines = [
+    'Your agent identity (persists across refresh):',
+    `  pubKey:    ${id.pubKey}`,
+    `  stableId:  ${id.stableId ?? '(none)'}`,
+    '',
+    'Cross-peer chat (v0.7.P3b — coming next):',
+    '  Share your pubKey with a peer; they paste it into /test-peer',
+    '  to send you a message via @canopy/chat-p2p over NKN.',
+  ];
+  return { message: lines.join('\n') };
 }
 
 /**
