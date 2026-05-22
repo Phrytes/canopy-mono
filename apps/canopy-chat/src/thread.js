@@ -194,6 +194,59 @@ export class Thread {
   }
 
   /**
+   * v0.6.3 — return every still-`'live'` record / mini-page / embed
+   * panel whose rendered payload references the given itemRef.
+   * Used by the event-router refinement: when an item-changed
+   * event arrives, matching open panels are marked stale so the UI
+   * can prompt for a refresh.
+   *
+   * @param {{ app: string, type: string, id: string }} itemRef
+   * @returns {Array<{ messageId: string, rendered: object }>}
+   */
+  openPanelsForItemRef(itemRef) {
+    if (!itemRef || typeof itemRef !== 'object') return [];
+    const out = [];
+    for (const m of this.messages) {
+      if (m.origin !== 'shell')        continue;
+      if (m.lifecycleState !== 'live') continue;
+      const r = m.rendered;
+      if (!r) continue;
+      // record / mini-page panels — match against payload.id +
+      // payload.type when they look like items.
+      if ((r.kind === 'record' || r.kind === 'mini-page')
+          && r.payload?.id === itemRef.id
+          && (r.payload?.type ?? null) === (itemRef.type ?? null)) {
+        out.push({ messageId: m.messageId, rendered: r });
+        continue;
+      }
+      // embed-card — match against rendered.embed.itemRef.
+      if (r.kind === 'embed-card'
+          && r.embed?.itemRef?.id === itemRef.id
+          && r.embed?.itemRef?.app === itemRef.app
+          && r.embed?.itemRef?.type === itemRef.type) {
+        out.push({ messageId: m.messageId, rendered: r });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * v0.6.3 — mark a panel as stale (set rendered.stale = true).
+   * Idempotent.  Caller passes the messageId returned by
+   * openPanelsForItemRef.
+   *
+   * @param {string} messageId
+   */
+  markPanelStale(messageId) {
+    for (const m of this.messages) {
+      if (m.messageId !== messageId) continue;
+      if (!m.rendered) continue;
+      m.rendered.stale = true;
+      return;
+    }
+  }
+
+  /**
    * Resolve a user-typed token against the LAST listing for the
    * given opId.  Returns the matching item's id if a unique match is
    * found, or null if no listing exists / no match / ambiguous.

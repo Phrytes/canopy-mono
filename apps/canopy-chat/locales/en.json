@@ -45,6 +45,20 @@
     "no_callskill": { "text": "Embed dispatch not available in this build.", "doc": "Defensive." },
     "no_factory":   { "text": "No app declares a Q29 cardSnapshotSkill yet.", "doc": "When the merged catalog has no embed-producing op." }
   },
+  "sync": {
+    "synced_to":     { "text": "synced to {{ok}}/{{total}} peers",
+                        "doc": "Decentralized sync hint suffix; ok=confirmed, total=peers." },
+    "pending":       { "text": "{{count}} pending",
+                        "doc": "Decentralized sync hint suffix; count of peers awaiting confirmation." },
+    "unreachable":   { "text": "{{count}} unreachable: {{list}}",
+                        "doc": "Decentralized sync hint suffix; list of unreachable peer webids." },
+    "podless":       { "text": "polled {{count}} peers · oldest {{ago}} ago",
+                        "doc": "Pod-less sync hint suffix; shows the oldest last-seen time." },
+    "podless_empty": { "text": "no peers polled",
+                        "doc": "Pod-less sync hint when no peers known." },
+    "row_ago":       { "text": "stale {{ago}} ago",
+                        "doc": "Per-row _lastSync badge on list items." }
+  },
   "newthread": {
     "created":  { "text": "✓ Created thread \"{{name}}\". Switched to it.", "doc": "Confirmation when /newthread succeeds." },
     "no_name":  { "text": "Please provide a name: /newthread <name>",       "doc": "When /newthread fires with no name arg." },

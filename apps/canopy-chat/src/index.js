@@ -28,6 +28,7 @@ export {
   collectFollowUps, createFollowUpResolver, DEFAULT_CROSS_APP_CHAINS,
 } from './followUps.js';
 export { buildEmbed, claimEmbed, actionsFor as embedActionsFor } from './embed.js';
+export { formatSyncHints, formatLastSync, relativeAgo } from './syncHints.js';
 export {
   buildFormSpec, pickStrategy, validateAndCoerce,
 } from './forms/buildFormSpec.js';
