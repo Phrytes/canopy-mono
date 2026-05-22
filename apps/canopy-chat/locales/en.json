@@ -67,7 +67,8 @@
     "no_log":  { "text": "Event log not available in this build.",                     "doc": "Defensive." },
     "heading": { "text": "Last {{count}} events:",                                      "doc": "First line of /logs output." },
     "empty":   { "text": "No events matched (try /logs --app=household).",              "doc": "Empty state." },
-    "muted":   { "text": "✓ Muted events: {{app}}:{{type}}. /logs --mute=... toggles.", "doc": "Mute confirmation." }
+    "muted":   { "text": "✓ Muted events: {{app}}:{{type}}. /logs --mute=... toggles.", "doc": "Mute confirmation." },
+    "panel_opened": { "text": "Logs panel opened. Click [×] to close.", "doc": "Confirmation when bare /logs opens the side-panel UI." }
   },
   "signin": {
     "no_flow":      { "text": "Sign-in flow not available in this build.", "doc": "Defensive — externalFlow not wired." },
