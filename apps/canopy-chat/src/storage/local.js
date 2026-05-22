@@ -23,8 +23,15 @@
 import { Thread } from '../thread.js';
 
 const DB_NAME    = 'canopy-chat';
-const DB_VERSION = 1;
-const STORE      = 'threads';
+// v0.6.2 — schema bumped to v2 to add the in-flight-flows store for
+// the external-flow primitive (J6 framework).  Existing v1 stores
+// migrate cleanly; new store created if absent.
+const DB_VERSION = 2;
+const STORE          = 'threads';
+const STORE_INFLIGHT = 'in-flight-flows';
+// Single fixed key for the in-flight list (one row holding all
+// pending flows, simpler than a multi-row keyPath).
+const INFLIGHT_KEY = 'flows';
 
 /* ─── low-level open/get/put/delete ─────────────────────── */
 
@@ -35,6 +42,11 @@ function openDb(idbFactory) {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
         db.createObjectStore(STORE, { keyPath: 'id' });
+      }
+      // v0.6.2 — in-flight-flows store for external-flow primitive.
+      if (!db.objectStoreNames.contains(STORE_INFLIGHT)) {
+        // No keyPath — we use the fixed string INFLIGHT_KEY.
+        db.createObjectStore(STORE_INFLIGHT);
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -165,6 +177,37 @@ export class IndexedDBStore {
   }
 
   /**
+   * v0.6.2 — load the in-flight-flows list (external-flow primitive
+   * persistence).  Returns an empty array when never written.
+   *
+   * @returns {Promise<Array<object>>}
+   */
+  async loadInFlight() {
+    const db = await this.#db();
+    const tx = db.transaction(STORE_INFLIGHT, 'readonly');
+    const result = await reqAsPromise(
+      tx.objectStore(STORE_INFLIGHT).get(INFLIGHT_KEY),
+    );
+    await txDone(tx);
+    return Array.isArray(result) ? result : [];
+  }
+
+  /**
+   * v0.6.2 — overwrite the in-flight-flows list.  Caller is
+   * responsible for the read-modify-write race window; the
+   * external-flow module passes a fresh array each call.
+   *
+   * @param {Array<object>} flows
+   * @returns {Promise<void>}
+   */
+  async saveInFlight(flows) {
+    const db = await this.#db();
+    const tx = db.transaction(STORE_INFLIGHT, 'readwrite');
+    tx.objectStore(STORE_INFLIGHT).put(Array.isArray(flows) ? flows : [], INFLIGHT_KEY);
+    await txDone(tx);
+  }
+
+  /**
    * Wipe everything.  Useful for tests + a future "factory reset"
    * UX.
    *
@@ -172,8 +215,9 @@ export class IndexedDBStore {
    */
   async clear() {
     const db = await this.#db();
-    const tx = db.transaction(STORE, 'readwrite');
+    const tx = db.transaction([STORE, STORE_INFLIGHT], 'readwrite');
     tx.objectStore(STORE).clear();
+    tx.objectStore(STORE_INFLIGHT).clear();
     await txDone(tx);
   }
 

@@ -123,6 +123,45 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `/brief` — v0.7 morning-brief aggregator.  Fans across all
+     * enabled apps that declare `surfaces.chat.brief.summarySkill`
+     * (Q30); aggregates replies into a single brief-shape card.
+     * Cache TTL: 60s per OQ-7.A (use --refresh / click [Refresh] to
+     * bypass).
+     */
+    {
+      id:    'brief',
+      verb:  'list',
+      params: [
+        { name: 'refresh', kind: 'boolean', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/brief', body: 'flags' },
+        chat:  { reply: 'brief', hint: 'morning summary across all apps' },
+      },
+    },
+
+    /**
+     * `/signin` — v0.6.2 external-flow demo (J6 framework).
+     *
+     * Opens a mock external page that simulates an OIDC sign-in
+     * round-trip; the callback wakes this thread with a fake
+     * webid.  Real Inrupt OIDC binding lands when @canopy/oidc-session
+     * is composed into the chat-shell (v0.7+).
+     */
+    {
+      id:    'signin',
+      verb:  'add',
+      params: [
+        { name: 'issuer', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/signin' },
+        chat:  { reply: 'text', hint: 'open the (mock) sign-in flow' },
+      },
+    },
+
+    /**
      * `/apps` — v0.6 OQ-4.B chat-inline app-toggle.  Subcommands:
      *   /apps             → list every catalog app + enabled state
      *   /apps on <name>   → enable an app

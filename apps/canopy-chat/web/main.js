@@ -23,6 +23,8 @@ import {
   IndexedDBStore, attachPersistence,
   collectFollowUps, claimEmbed,
   AppRegistry, filterCatalog,
+  openExternalFlow, parseCallbackUrl, resumeInFlightFlows,
+  runBrief, createBriefCache,
 } from '../src/index.js';
 import { buildFormSpec, validateAndCoerce } from '../src/forms/buildFormSpec.js';
 import { renderStream }              from '../src/web/domAdapter.js';
@@ -116,6 +118,29 @@ attachPersistence({ threadStore: store, idb });
 
 const router = createEventRouter({ threadStore: store });
 
+// v0.6.2 — external-flow callback handler.  When the deep-link
+// receiver fires (or the EventRouter wakes us via a delivered event),
+// resume the thread with a confirmation message.  Real OIDC binding
+// would also exchange the code for a session here; the mock returns
+// a deterministic fake webid.
+async function onSigninCallback(flow, params) {
+  const t0 = store.getThread(flow.threadId);
+  if (!t0) return;
+  await dropFlow(flow.sessionId);
+  const errored = params?.error ?? params?.code === undefined;
+  const text = errored
+    ? t('signin.failed',    { reason: params?.error ?? 'no code returned' })
+    : t('signin.completed', { webid:  `webid:mock-${flow.sessionId.slice(-6)}` });
+  t0.addShellMessage({
+    kind:           'text',
+    messageId:      `signin-cb-${flow.sessionId}`,
+    threadId:       flow.threadId,
+    lifecycleState: 'live',
+    text,
+  });
+  if (typeof renderActiveStream === 'function') renderActiveStream();
+}
+
 await initLocalisation({ lng: detectDeviceLang() });
 updateLangButtons();
 
@@ -145,6 +170,35 @@ const SIM_PEERS = {
   anne: { threadId: SIM_ANNE_THREAD_ID, webid: SIM_ANNE_WEBID },
 };
 
+// v0.6.2 — external-flow wiring.  In-flight state persists to IDB's
+// 'cc-in-flight-flows' object store.  The mock sign-in URL is
+// canopy-chat's own page with a query param that auto-triggers the
+// callback after a short delay (so the demo round-trip works
+// without a real OIDC provider).
+const IN_FLIGHT_IDB_KEY = 'cc-in-flight-flows';
+async function persistFlow(flow) {
+  // Read-modify-write the in-flight list in IDB.
+  const all = await idb.loadInFlight().catch(() => []);
+  const next = [...all.filter((f) => f.sessionId !== flow.sessionId), flow];
+  await idb.saveInFlight(next);
+}
+async function dropFlow(sessionId) {
+  const all = await idb.loadInFlight().catch(() => []);
+  await idb.saveInFlight(all.filter((f) => f.sessionId !== sessionId));
+}
+
+// Mock sign-in URL — reuses canopy-chat's own page with ?mock-oidc=1
+// + the session id; the deep-link receiver fires the callback when
+// the URL has cc-callback=<sessionId>.  In real OIDC, this becomes
+// the issuer's authorization endpoint.
+function mockSigninUrl(sessionId) {
+  const here = globalThis.location?.origin ?? 'http://localhost:5173';
+  return `${here}/?mock-oidc=1&cc-callback=${encodeURIComponent(sessionId)}`;
+}
+
+// v0.7 — /brief aggregator cache (60s TTL per OQ-7.A).
+const briefCache = createBriefCache();
+
 // callSkill is declared further down; createLocalBuiltins needs it
 // for the /embed factory.  Forward-declared variable + helper.
 let callSkillRef;
@@ -163,6 +217,29 @@ const localBuiltins = createLocalBuiltins({
   localActor:  LOCAL_ACTOR,
   simPeers:    SIM_PEERS,
   appRegistry,
+  briefRunner: (opts) => runBrief({ catalog, callSkill, cache: briefCache, bypassCache: opts?.bypassCache }),
+  externalFlow: {
+    /**
+     * Open a sign-in flow.  Persists in-flight state + navigates to
+     * the (mock) external page.  When the user returns via the
+     * callback URL, the deep-link receiver below fires `onCallback`
+     * which resumes the chat thread.
+     */
+    async open({ issuer }) {
+      const active = store.activeThread;
+      if (!active) throw new Error('no active thread');
+      await openExternalFlow({
+        url:        mockSigninUrl('{sessionId}'),
+        threadId:   active.id,
+        opId:       'signin',
+        prefilledArgs: issuer ? { issuer } : undefined,
+        purpose:    'oidc-signin',
+        eventRouter: router,
+        onCallback: onSigninCallback,
+        persistFlow,
+      });
+    },
+  },
 });
 
 const callSkill = async (appOrigin, opId, args) => {
@@ -188,6 +265,12 @@ const callSkill = async (appOrigin, opId, args) => {
     if (opId === 'postRequest') {
       return { ok: true, message: `✓ Posted: ${args?.text ?? '(empty)'}` };
     }
+    // v0.7 — Q30 brief stub.
+    if (opId === 'briefSummary') {
+      return { items: [
+        { id: 'p-1', label: '2 buurt requests open' },
+      ] };
+    }
   }
   if (appOrigin === 'folio') {
     if (opId === 'readNote') {
@@ -195,6 +278,10 @@ const callSkill = async (appOrigin, opId, args) => {
     }
     if (opId === 'shareFolder') {
       return { ok: true, message: `✓ [demo] would share "${args?.folder}" with ${args?.with}` };
+    }
+    if (opId === 'briefSummary') {
+      // v0.7 — Q30 brief stub.  Demo always reports zero changes.
+      return { count: 0, label: 'sync changes since yesterday' };
     }
   }
   return { ok: false, error: `${appOrigin}.${opId} not wired in this demo build` };
@@ -534,3 +621,38 @@ async function onButtonTap(opId, itemId) {
   if (route.kind !== 'ready') return;
   await dispatchAndRender(route, t0);
 }
+
+/* ── v0.6.2 deep-link receiver — boot-time ──────────────── */
+
+// On boot, check the URL for a callback fragment + load persisted
+// in-flight flows.  resumeInFlightFlows fires the matching callback
+// (if any) and re-registers the rest on the EventRouter so events
+// arriving later still wake the right thread.
+//
+// For the demo: when the URL has ?mock-oidc=1, simulate the OIDC
+// provider by setting cc-callback=<sessionId> in a separate tick
+// so the receiver picks it up.  Real OIDC would have its own
+// redirect machinery here.
+
+(async function bootDeepLinkReceiver() {
+  try {
+    const persisted = await idb.loadInFlight().catch(() => []);
+    const callback  = parseCallbackUrl(globalThis.location?.href ?? '');
+    resumeInFlightFlows({
+      persisted,
+      eventRouter: router,
+      onCallback:  onSigninCallback,
+      callback,
+    });
+    if (callback) {
+      // Clean up the URL so a future reload doesn't re-fire the
+      // callback.  Use replaceState — no extra history entry.
+      try {
+        globalThis.history?.replaceState?.({}, '', globalThis.location.pathname);
+      } catch { /* swallow */ }
+      renderActiveStream();
+    }
+  } catch (err) {
+    console.warn('canopy-chat: deep-link receiver failed', err);
+  }
+})();
