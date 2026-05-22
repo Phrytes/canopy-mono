@@ -19,7 +19,8 @@
     "@canopy/item-store":        "workspace:*",
     "@canopy/item-types":        "workspace:*",
     "@canopy/pseudo-pod":        "workspace:*",
-    "@canopy/vault":             "workspace:*"
+    "@canopy/vault":             "workspace:*",
+    "chrono-node":               "^2.7.0"
   },
   "devDependencies": {
     "vitest": "^3.0.0"
