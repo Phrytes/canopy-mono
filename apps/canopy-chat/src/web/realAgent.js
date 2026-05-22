@@ -130,6 +130,30 @@ export async function createRealHouseholdAgent() {
     })];
   });
 
+  // v0.5 Q29 — snapshot factory for the J7 embed primitive.  Declared
+  // in mockHouseholdManifest, consumed by canopy-chat's /embed
+  // built-in.  Same kind of host-agent gap as addMember; caught by
+  // user testing 2026-05-23 + a defensive guard added to runDispatch
+  // alongside this commit.
+  hostAgent.register('getChoreSnapshot', async ({ parts }) => {
+    const args = parts?.[0]?.data ?? {};
+    const id = args?.choreId;
+    const target = chores.find((c) => c.id === id);
+    if (!target) {
+      return [DataPart({ ok: false, error: `No chore with id "${id}".` })];
+    }
+    return [DataPart({
+      id:    target.id,
+      type:  target.type,
+      state: target.state,
+      title: target.label,
+      fields: {
+        state:       target.state,
+        assigned_to: 'unassigned',
+      },
+    })];
+  });
+
   hostAgent.register('markComplete', async ({ parts }) => {
     const args = parts?.[0]?.data ?? {};
     const id = args?.choreId;
