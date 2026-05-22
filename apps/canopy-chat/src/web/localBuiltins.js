@@ -35,23 +35,37 @@ import { buildEmbed }     from '../embed.js';
  *   Q29 declaration.
  * @returns {{[opId: string]: (args: object) => Promise<*>}}
  */
-export function createLocalBuiltins({ catalog, t, threadStore, setActive, callSkill }) {
+export function createLocalBuiltins({ catalog, t, threadStore, setActive, callSkill, localActor }) {
   return {
     help: async () => formatHelp(catalog, t),
     newthread: async (args) => createNewThread(args, { threadStore, setActive, t }),
     threads:   async ()     => listThreads({ threadStore, t }),
-    embed:     async (args) => createEmbed(args, { catalog, callSkill, t }),
+    embed:     async (args) => createEmbed(args, { catalog, callSkill, t, localActor }),
   };
 }
 
 /**
  * `/embed <itemId>` — scan the merged catalog for ops that declare
  * a Q29 cardSnapshotSkill, fetch a snapshot, and return an embed-
- * card reply.  v0.5.0 local-only; v0.5.1 wires chat-p2p for cross-
- * peer delivery.
+ * card reply.
+ *
+ * v0.5.1 — supports `--claim` flag for sender-claim-on-behalf:
+ *   /embed c-1                  → issued; receiver claims
+ *   /embed c-1 --claim          → issued AND claimed by sender
+ *                                  ("I'll handle this")
+ *
+ * Cross-peer P2P delivery rides on each app's existing chat surface
+ * (e.g. stoop's sendChatMessage) — canopy-chat produces the
+ * envelope; the source app delivers.  Not in canopy-chat's scope
+ * to compose @canopy/chat-p2p directly (per v0.5.3 audit).
  */
-async function createEmbed(args, { catalog, callSkill, t }) {
+async function createEmbed(args, { catalog, callSkill, t, localActor }) {
+  // Parse args — supports both flag-style (--claim) and bare itemId.
+  // The router's flag parser already split these for `/embed`; if
+  // the user typed `/embed c-1 --claim`, args.itemId='c-1' and
+  // args.claim=true.
   const itemId = String(args?.itemId ?? '').trim();
+  const claimOnBehalf = !!args?.claim;
   if (!itemId) {
     return { ok: false, error: t('embed.no_id') };
   }
@@ -59,10 +73,6 @@ async function createEmbed(args, { catalog, callSkill, t }) {
     return { ok: false, error: t('embed.no_callskill') };
   }
 
-  // Find any op in the catalog with a Q29 declaration.  v0.5.0
-  // demos a single embed factory (mock household's getChoreSnapshot);
-  // multi-factory selection arrives with the receiver-side UX of
-  // v0.5.1+.
   let snapshotSkill = null;
   let snapshotAppOrigin = null;
   for (const [opId, entry] of catalog.opsById) {
@@ -78,18 +88,23 @@ async function createEmbed(args, { catalog, callSkill, t }) {
   }
 
   try {
-    // Q29 skills take a `<type>Id`-style arg; for the v0.5.0 demo we
-    // pass the user-supplied itemId verbatim against the convention
-    // (mock household's getChoreSnapshot accepts `choreId`).
     const snapshot = await callSkill(snapshotAppOrigin, snapshotSkill, { choreId: itemId });
     if (!snapshot || snapshot.ok === false) {
       return { ok: false, error: snapshot?.error ?? 'snapshot failed' };
     }
-    return buildEmbed({
+    const issuer = localActor ?? 'webid:local-demo-user';
+    let embed = buildEmbed({
       appOrigin: snapshotAppOrigin,
       snapshot,
-      issuedBy:  'webid:local-demo-user',
+      issuedBy:  issuer,
     });
+    if (claimOnBehalf) {
+      // Sender claims-on-behalf — the receiver sees the embed
+      // already claimed by the sender; can still react but knows
+      // the issuer's already on it.
+      embed = { ...embed, claimedBy: issuer, claimedAt: Date.now() };
+    }
+    return embed;
   } catch (err) {
     return { ok: false, error: err?.message ?? String(err) };
   }

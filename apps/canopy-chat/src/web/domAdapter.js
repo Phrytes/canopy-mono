@@ -275,7 +275,7 @@ function formatFieldValue(v) {
  * @param {DomAdapterContext} ctx
  */
 function renderEmbedCard(rendered, state, ctx) {
-  const { doc, onButtonTap, onCloseMessage, manifestsByOrigin } = ctx;
+  const { doc, onButtonTap, onCloseMessage, onClaimEmbed, manifestsByOrigin, localActor } = ctx;
   const embed = rendered.embed;
   const wrap = doc.createElement('div');
   wrap.className = `cc-message cc-shell cc-embed-card cc-${state}`;
@@ -342,6 +342,24 @@ function renderEmbedCard(rendered, state, ctx) {
     meta.appendChild(claimed);
   }
   if (meta.childNodes.length > 0) wrap.appendChild(meta);
+
+  // v0.5.1 — [Claim] button when the local actor is a candidate
+  // claimer (the embed has no claimedBy yet, AND the local actor
+  // isn't the issuer — receivers claim, not issuers, unless they
+  // explicitly claim-on-behalf via /embed --claim).  Per OQ-5
+  // sender-issues/receiver-claims semantics.
+  if (state !== 'disabled'
+      && embed
+      && !embed.claimedBy
+      && typeof onClaimEmbed === 'function'
+      && (!embed.issuedBy || embed.issuedBy !== localActor)) {
+    const claimBtn = doc.createElement('button');
+    claimBtn.type = 'button';
+    claimBtn.className = 'cc-embed-claim-btn';
+    claimBtn.textContent = 'Claim';
+    claimBtn.addEventListener('click', () => onClaimEmbed(rendered.messageId));
+    wrap.appendChild(claimBtn);
+  }
 
   // Action buttons (Q28 button surfaces from the embed's appOrigin
   // manifest, gated by appliesTo against the snapshot).

@@ -298,6 +298,41 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * listOpen({type?, requiredSkill?, assignee?, status?})
      * Returns items + computed `status` (ready/waiting/blocked).
      */
+    /**
+     * `getTaskSnapshot(id)` → ItemSnapshot — Q29 (canopy-chat v0.5)
+     * snapshot factory.  Returns a thin display projection of the
+     * task suitable for embedding in a chat message.  Read-only;
+     * idempotent.  When canopy-chat consumes tasks-v0's full
+     * manifest, /embed against a task surfaces a real card with
+     * lifecycle-state-gated action buttons.
+     */
+    defineSkill('getTaskSnapshot', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew) return { error: 'crewId required' };
+      const a = argsFromParts(parts);
+      if (!a.id) return { error: 'id required' };
+      const open   = await crew.itemStore.listOpen({});
+      const closed = await crew.itemStore.listClosed();
+      const all    = [...open, ...closed];
+      const target = all.find((t) => t.id === a.id);
+      if (!target) return { error: `task "${a.id}" not found` };
+      const status = effectiveStatus(target, open, closed);
+      return {
+        id:    target.id,
+        type:  target.type ?? 'task',
+        state: status,
+        title: target.text ?? target.id,
+        fields: {
+          state:    status,
+          assignee: target.assignee ?? 'unassigned',
+          ...(target.requiredSkill ? { requires: target.requiredSkill } : {}),
+        },
+      };
+    }, {
+      description: 'Snapshot a task for chat-embed (Q29 v0.5).',
+      visibility:  'authenticated',
+    }),
+
     defineSkill('listOpen', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
       if (!crew) return { error: 'crewId required' };

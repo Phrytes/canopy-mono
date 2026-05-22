@@ -21,7 +21,7 @@ import {
   initLocalisation, t, setLang, detectDeviceLang, currentLang,
   describeFilter, canopyChatManifest,
   IndexedDBStore, attachPersistence,
-  collectFollowUps,
+  collectFollowUps, claimEmbed,
 } from '../src/index.js';
 import { buildFormSpec, validateAndCoerce } from '../src/forms/buildFormSpec.js';
 import { renderStream }              from '../src/web/domAdapter.js';
@@ -109,6 +109,12 @@ const router = createEventRouter({ threadStore: store });
 await initLocalisation({ lng: detectDeviceLang() });
 updateLangButtons();
 
+// v0.5.1 — local actor identity for embed issuance.  Real
+// identity wiring lands in v0.6 with the OIDC sign-in flow (J6);
+// v0.5.x uses a stable demo webid so the [Claim] button correctly
+// hides when the local user is the issuer.
+const LOCAL_ACTOR = 'webid:local-demo-user';
+
 // callSkill is declared further down; createLocalBuiltins needs it
 // for the /embed factory.  Forward-declared variable + helper.
 let callSkillRef;
@@ -117,6 +123,7 @@ const localBuiltins = createLocalBuiltins({
   threadStore: store,
   setActive:   (id) => store.setActiveThread(id),
   callSkill:   (appOrigin, opId, args) => callSkillRef(appOrigin, opId, args),
+  localActor:  LOCAL_ACTOR,
 });
 
 const callSkill = async (appOrigin, opId, args) => {
@@ -198,11 +205,26 @@ function renderActiveStream() {
 function makeCtx() {
   return {
     doc: document,
+    localActor: LOCAL_ACTOR,
+    manifestsByOrigin,
     onButtonTap,
     onCloseMessage: (messageId) => {
       const t0 = activeThread();
       if (!t0) return;
       t0.closeMessage(messageId);
+      renderActiveStream();
+    },
+    onClaimEmbed: (messageId) => {
+      // v0.5.1 — receiver-claim path.  Find the message, claim its
+      // embed in-place, re-render.  The claim is local-state only in
+      // v0.5.x; real cross-peer claim propagation rides on the
+      // hosting chat substrate (stoop's chat-p2p, etc.) and is
+      // app-side work (deferred per v0.5.3 audit).
+      const t0 = activeThread();
+      if (!t0) return;
+      const msg = t0.messages.find((m) => m.messageId === messageId);
+      if (!msg?.rendered?.embed) return;
+      msg.rendered.embed = claimEmbed(msg.rendered.embed, LOCAL_ACTOR);
       renderActiveStream();
     },
     onFollowUp: async (entry) => {
