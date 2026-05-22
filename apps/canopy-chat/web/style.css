@@ -330,6 +330,25 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
 .cc-embed-claim-btn:hover { background: var(--accent); color: var(--accent-fg); }
 .cc-embed-card.cc-disabled { opacity: 0.55; }
 
+/* v0.5.5 — file + time embed-card variants */
+.cc-file-card-body, .cc-time-card-body {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.3rem 0;
+}
+.cc-file-icon, .cc-time-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+.cc-file-meta, .cc-time-meta { flex: 1; min-width: 0; }
+.cc-file-name, .cc-time-title { font-weight: 600; word-break: break-word; }
+.cc-file-details, .cc-time-when, .cc-time-location {
+  font-size: 0.8rem;
+  color: var(--fg-mute);
+  margin-top: 0.15rem;
+}
+
 /* follow-up buttons (v0.4) */
 .cc-followups {
   margin-top: 0.4rem;

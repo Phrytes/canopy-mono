@@ -115,6 +115,26 @@ updateLangButtons();
 // hides when the local user is the issuer.
 const LOCAL_ACTOR = 'webid:local-demo-user';
 
+// v0.5.6 — simulated cross-peer demo.  A second thread + identity
+// representing "Anne" — lets /send-to anne route an embed to Anne's
+// thread without real network.  Real cross-peer delivery rides on
+// each hosting app's chat surface (per v0.5.3 audit).
+const SIM_ANNE_THREAD_ID = 'sim-anne';
+const SIM_ANNE_WEBID     = 'webid:anne';
+
+if (!store.getThread(SIM_ANNE_THREAD_ID)) {
+  store.createThread({
+    id:          SIM_ANNE_THREAD_ID,
+    name:        "Anne's view (simulated)",
+    filter:      { actors: [SIM_ANNE_WEBID] },
+    permissions: { allowCommands: false },   // read-only thread — represents Anne's chat
+  });
+}
+
+const SIM_PEERS = {
+  anne: { threadId: SIM_ANNE_THREAD_ID, webid: SIM_ANNE_WEBID },
+};
+
 // callSkill is declared further down; createLocalBuiltins needs it
 // for the /embed factory.  Forward-declared variable + helper.
 let callSkillRef;
@@ -124,6 +144,7 @@ const localBuiltins = createLocalBuiltins({
   setActive:   (id) => store.setActiveThread(id),
   callSkill:   (appOrigin, opId, args) => callSkillRef(appOrigin, opId, args),
   localActor:  LOCAL_ACTOR,
+  simPeers:    SIM_PEERS,
 });
 
 const callSkill = async (appOrigin, opId, args) => {

@@ -1,4 +1,7 @@
 /**
+ * **Platform: web** (DOM-dependent).  Needs an RN sibling under `rn/` — see
+ * `Project Files/canopy-chat/coding-plan.md` § RN portability inventory.
+ *
  * canopy-chat — DOM adapter.
  *
  * Converts a platform-neutral `RenderedReply` (from `renderer.js`) into
@@ -77,7 +80,13 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
     case 'list':       return renderListMessage(rendered, state, ctx);
     case 'record':     return renderRecordPanel(rendered, state, ctx, 'record');
     case 'mini-page':  return renderRecordPanel(rendered, state, ctx, 'mini-page');
-    case 'embed-card': return renderEmbedCard(rendered, state, ctx);
+    case 'embed-card': {
+      // v0.5.5 — kind discriminator drives card layout.
+      const variant = rendered.embed?.kind ?? 'item-card';
+      if (variant === 'file-card') return renderFileCard(rendered, state, ctx);
+      if (variant === 'time-card') return renderTimeCard(rendered, state, ctx);
+      return renderEmbedCard(rendered, state, ctx);
+    }
     default:           return renderUnknownShape(rendered, ctx);
   }
 }
@@ -455,6 +464,177 @@ function embedAppliesTo(appliesTo, item) {
     if (!states.includes(item.state)) return false;
   }
   return true;
+}
+
+/**
+ * v0.5.5 — file-card embed renderer.
+ */
+function renderFileCard(rendered, state, ctx) {
+  const { doc, onCloseMessage } = ctx;
+  const embed = rendered.embed;
+  const snap  = embed?.snapshot ?? {};
+  const wrap = doc.createElement('div');
+  wrap.className = `cc-message cc-shell cc-embed-card cc-file-card cc-${state}`;
+  if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
+
+  appendEmbedHeader(wrap, embed, ctx, doc);
+
+  const body = doc.createElement('div');
+  body.className = 'cc-file-card-body';
+  const icon = doc.createElement('span');
+  icon.className = 'cc-file-icon';
+  icon.textContent = '📄';
+  body.appendChild(icon);
+
+  const meta = doc.createElement('div');
+  meta.className = 'cc-file-meta';
+  const nameEl = doc.createElement('div');
+  nameEl.className = 'cc-file-name';
+  nameEl.textContent = snap.name ?? snap.id ?? '(unnamed file)';
+  meta.appendChild(nameEl);
+
+  const detailsLine = doc.createElement('div');
+  detailsLine.className = 'cc-file-details';
+  const details = [];
+  if (typeof snap.mime  === 'string')  details.push(snap.mime);
+  if (typeof snap.bytes === 'number')  details.push(formatBytes(snap.bytes));
+  if (typeof snap.path  === 'string')  details.push(snap.path);
+  detailsLine.textContent = details.join(' · ');
+  if (details.length > 0) meta.appendChild(detailsLine);
+
+  body.appendChild(meta);
+  wrap.appendChild(body);
+
+  appendIssuerClaimerMeta(wrap, embed, doc);
+  appendClaimButton(wrap, embed, state, ctx, doc);
+  return wrap;
+}
+
+/**
+ * v0.5.5 — time-card embed renderer.
+ */
+function renderTimeCard(rendered, state, ctx) {
+  const { doc } = ctx;
+  const embed = rendered.embed;
+  const snap  = embed?.snapshot ?? {};
+  const wrap = doc.createElement('div');
+  wrap.className = `cc-message cc-shell cc-embed-card cc-time-card cc-${state}`;
+  if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
+
+  appendEmbedHeader(wrap, embed, ctx, doc);
+
+  const body = doc.createElement('div');
+  body.className = 'cc-time-card-body';
+  const icon = doc.createElement('span');
+  icon.className = 'cc-time-icon';
+  icon.textContent = '📅';
+  body.appendChild(icon);
+
+  const meta = doc.createElement('div');
+  meta.className = 'cc-time-meta';
+  const title = doc.createElement('div');
+  title.className = 'cc-time-title';
+  title.textContent = snap.title ?? snap.id ?? '(untitled event)';
+  meta.appendChild(title);
+
+  const when = doc.createElement('div');
+  when.className = 'cc-time-when';
+  const whenParts = [];
+  if (snap.startAt) whenParts.push(formatTime(snap.startAt));
+  if (snap.endAt)   whenParts.push(`→ ${formatTime(snap.endAt)}`);
+  if (snap.timezone && snap.timezone !== 'UTC') whenParts.push(`(${snap.timezone})`);
+  when.textContent = whenParts.join(' ');
+  if (whenParts.length > 0) meta.appendChild(when);
+
+  if (snap.location) {
+    const loc = doc.createElement('div');
+    loc.className = 'cc-time-location';
+    loc.textContent = `📍 ${snap.location}`;
+    meta.appendChild(loc);
+  }
+
+  body.appendChild(meta);
+  wrap.appendChild(body);
+
+  appendIssuerClaimerMeta(wrap, embed, doc);
+  appendClaimButton(wrap, embed, state, ctx, doc);
+  return wrap;
+}
+
+/* ─── shared embed-card helpers ────────── */
+
+function appendEmbedHeader(wrap, embed, ctx, doc) {
+  const { onCloseMessage } = ctx;
+  const header = doc.createElement('div');
+  header.className = 'cc-embed-header';
+  const appBadge = doc.createElement('span');
+  appBadge.className = 'cc-embed-app';
+  appBadge.textContent = embed?.appOrigin ?? '?';
+  header.appendChild(appBadge);
+  if (typeof onCloseMessage === 'function') {
+    const closeBtn = doc.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'cc-panel-close';
+    closeBtn.textContent = '×';
+    closeBtn.title = 'Close';
+    closeBtn.addEventListener('click', () => onCloseMessage(wrap.dataset.messageId));
+    header.appendChild(closeBtn);
+  }
+  wrap.appendChild(header);
+}
+
+function appendIssuerClaimerMeta(wrap, embed, doc) {
+  const meta = doc.createElement('div');
+  meta.className = 'cc-embed-meta';
+  if (embed?.issuedBy) {
+    const issued = doc.createElement('span');
+    issued.textContent = `issued by ${embed.issuedBy}`;
+    issued.className = 'cc-embed-issued';
+    meta.appendChild(issued);
+  }
+  if (embed?.claimedBy) {
+    const claimed = doc.createElement('span');
+    claimed.textContent = `claimed by ${embed.claimedBy}`;
+    claimed.className = 'cc-embed-claimed';
+    meta.appendChild(claimed);
+  }
+  if (meta.childNodes.length > 0) wrap.appendChild(meta);
+}
+
+function appendClaimButton(wrap, embed, state, ctx, doc) {
+  const { onClaimEmbed, localActor } = ctx;
+  if (state !== 'disabled'
+      && embed
+      && !embed.claimedBy
+      && typeof onClaimEmbed === 'function'
+      && (!embed.issuedBy || embed.issuedBy !== localActor)) {
+    const claimBtn = doc.createElement('button');
+    claimBtn.type = 'button';
+    claimBtn.className = 'cc-embed-claim-btn';
+    claimBtn.textContent = 'Claim';
+    claimBtn.addEventListener('click', () => onClaimEmbed(wrap.dataset.messageId));
+    wrap.appendChild(claimBtn);
+  }
+}
+
+function formatBytes(n) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function formatTime(iso) {
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    const pad = (n) => String(n).padStart(2, '0');
+    const date = `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
+    const time = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+    return `${date} ${time}`;
+  } catch {
+    return String(iso);
+  }
 }
 
 function renderUnknownShape(rendered, { doc }) {

@@ -95,6 +95,53 @@ export const canopyChatManifest = {
         },
       },
     },
+
+    /**
+     * `/embed-file <path>` — v0.5.5 file-card variant.
+     */
+    {
+      id:    'embed-file',
+      verb:  'add',
+      params: [{ name: 'path', kind: 'string', required: true }],
+      surfaces: {
+        slash: { command: '/embed-file' },
+        chat:  { reply: 'embed-card', hint: 'embed a file card in this thread' },
+      },
+    },
+
+    /**
+     * `/embed-time <eventId>` — v0.5.5 time-card variant.
+     */
+    {
+      id:    'embed-time',
+      verb:  'add',
+      params: [{ name: 'eventId', kind: 'string', required: true }],
+      surfaces: {
+        slash: { command: '/embed-time' },
+        chat:  { reply: 'embed-card', hint: 'embed a time/event card in this thread' },
+      },
+    },
+
+    /**
+     * `/send-to <peer> <itemId>` — v0.5.6 simulated cross-peer demo.
+     * Fakes a J7 round-trip by routing an embed-card into the named
+     * peer's thread (per the simulated cross-peer simPeers config).
+     * Lets the user test issued-by + receiver-claim UX in a single
+     * browser tab without real network.  Real cross-peer delivery
+     * happens through each hosting app's chat surface (v0.5.3 audit).
+     */
+    {
+      id:    'sendto',
+      verb:  'add',
+      params: [
+        { name: 'peer',   kind: 'string', required: true },
+        { name: 'itemId', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/send-to' },
+        chat:  { reply: 'text', hint: 'simulate sending an embed to a peer thread' },
+      },
+    },
   ],
   views: [],   // chat shell does not surface its own views in nav;
                //   threads are managed via the chat UI, not a section
