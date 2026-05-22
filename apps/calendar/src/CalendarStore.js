@@ -164,10 +164,23 @@ export class CalendarStore {
   async addEvent(args = {}) {
     const title = String(args.title ?? '').trim();
     if (!title) throw new Error('CalendarStore.addEvent: title required');
-    const startsAt = parseDateInput(args.startsAt);
-    if (!startsAt) throw new Error('CalendarStore.addEvent: startsAt required (ISO-8601)');
-    const endsAt   = parseDateInput(args.endsAt)
-                    ?? new Date(new Date(startsAt).getTime() + 3_600_000).toISOString();
+    // v0.7.P1-followup (3rd pass): accept `when` (canonical 2026-05-23+)
+    // OR `startsAt` (legacy alias).  Same for `until` / `endsAt`.
+    const startsAt = parseDateInput(args.when ?? args.startsAt);
+    if (!startsAt) throw new Error('CalendarStore.addEvent: when (or startsAt) required (ISO-8601)');
+    // v0.7.P1-followup: duration as a string ('1h' / '30m' / '2h30m').
+    // CalendarStore now also accepts an explicit until/endsAt + a
+    // duration override.  Default: 1 hour.
+    let endsAt = parseDateInput(args.until ?? args.endsAt);
+    if (!endsAt && typeof args.duration === 'string') {
+      const ms = parseDurationMs(args.duration);
+      if (ms != null) {
+        endsAt = new Date(new Date(startsAt).getTime() + ms).toISOString();
+      }
+    }
+    if (!endsAt) {
+      endsAt = new Date(new Date(startsAt).getTime() + 3_600_000).toISOString();
+    }
     const attendees = normaliseAttendees(args.attendees);
     const actor     = args.actor ?? this.#actorDefault;
     const organiser = args.organiser ?? actor;
@@ -388,6 +401,25 @@ function toEpoch(input) {
   if (typeof input === 'number') return input;
   const d = new Date(input);
   return Number.isNaN(d.getTime()) ? null : d.getTime();
+}
+
+/**
+ * v0.7.P1-followup — parse '1h' / '30m' / '2h30m' / '1d' / '90m' → ms.
+ * Returns null on parse-fail.
+ */
+function parseDurationMs(text) {
+  if (typeof text !== 'string') return null;
+  const re = /(\d+)\s*([dhm])/gi;
+  let total = 0, matched = false, m;
+  while ((m = re.exec(text)) !== null) {
+    matched = true;
+    const n = parseInt(m[1], 10);
+    const u = m[2].toLowerCase();
+    if (u === 'd') total += n * 86_400_000;
+    if (u === 'h') total += n *  3_600_000;
+    if (u === 'm') total += n *     60_000;
+  }
+  return matched ? total : null;
 }
 
 function normaliseAttendees(input) {

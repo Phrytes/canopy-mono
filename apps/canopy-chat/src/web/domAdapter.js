@@ -1011,8 +1011,18 @@ export function renderStream(container, messages, ctx) {
   for (const m of messages) {
     const el = renderToDom(m, ctx);
     // v0.7.P2.2 — timestamp every message.  Today: show only HH:mm;
-    // older: show short date + HH:mm.  Element is positioned by CSS.
+    // older: show short date + HH:mm.
+    //
+    // v0.7.P1-followup 2026-05-23 — form messages return a LIVE DOM
+    // node (rendered.formElement) that gets reused across renders.
+    // The naive `el.appendChild(tsEl)` accumulated one tsEl per
+    // render → users saw stacks of timestamps inside the form.
+    // Idempotent fix: strip any existing direct-child .cc-msg-ts
+    // before appending the fresh one.
     if (typeof m?.ts === 'number') {
+      for (const old of Array.from(el.children)) {
+        if (old.classList?.contains('cc-msg-ts')) old.remove();
+      }
       const tsEl = ctx.doc.createElement('span');
       tsEl.className = 'cc-msg-ts';
       tsEl.textContent = formatMessageTs(m.ts);

@@ -48,11 +48,14 @@ describe('addEvent', () => {
       .rejects.toThrow(/title required/);
   });
 
-  it("rejects missing or invalid startsAt", async () => {
+  it("rejects missing or invalid when (formerly startsAt)", async () => {
     await expect(store.addEvent({ title: 'X' }))
-      .rejects.toThrow(/startsAt required/);
-    await expect(store.addEvent({ title: 'X', startsAt: 'not-a-date' }))
-      .rejects.toThrow(/startsAt required/);
+      .rejects.toThrow(/when \(or startsAt\) required/);
+    await expect(store.addEvent({ title: 'X', when: 'not-a-date' }))
+      .rejects.toThrow(/when \(or startsAt\) required/);
+    // back-compat: legacy startsAt still works
+    const ok = await store.addEvent({ title: 'Y', startsAt: '2026-06-01T10:00:00Z' });
+    expect(ok.title).toBe('Y');
   });
 });
 

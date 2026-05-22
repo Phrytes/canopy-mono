@@ -29,10 +29,15 @@ export const calendarManifest = {
       id:    'addEvent',
       verb:  'add',
       appliesTo: { type: 'calendar-event' },
+      // v0.7.P1-followup 2026-05-23 (3rd pass): renamed startsAt →
+      // 'when' for slash-arg ergonomics.  User-typed
+      // `/addappt --when='tomorrow 3pm'` now matches the param name.
+      // CalendarStore accepts both internally for back-compat.
+      // Aliased: 'startsAt' still works for any existing callers.
       params: [
         { name: 'title',     kind: 'string', required: true  },
-        { name: 'startsAt',  kind: 'date',   required: true  },
-        { name: 'endsAt',    kind: 'date',   required: false },
+        { name: 'when',      kind: 'date',   required: true  },
+        { name: 'duration',  kind: 'string', required: false },
         { name: 'location',  kind: 'string', required: false },
         { name: 'attendees', kind: 'string', required: false },
       ],

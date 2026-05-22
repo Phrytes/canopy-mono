@@ -28,10 +28,10 @@ describe('renderForm — happy path', () => {
     const el = renderForm(spec, ctx());
     expect(el.querySelectorAll('.cc-form-field').length).toBe(2);
     expect(el.querySelector('.cc-field-string input')).not.toBeNull();
-    // v0.7.P1-followup (2026-05-23): date kind now renders as a
-    // text input (was type="date") so users can type relative dates
-    // like 'tomorrow 3pm' that the native picker rejects.
-    expect(el.querySelector('.cc-field-date input[type="text"]')).not.toBeNull();
+    // v0.7.P1-followup (3rd pass, 2026-05-23): date kind renders as
+    // datetime-local — native browser picker for date AND time.
+    // Slash-arg path uses parseDateAndTime for natural-language.
+    expect(el.querySelector('.cc-field-date input[type="datetime-local"]')).not.toBeNull();
   });
 
   it("required marker '*' appended to label", () => {
