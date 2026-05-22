@@ -54,7 +54,7 @@ Decisions documented after the v0.3.4 substrate-reuse audit (see
 |---|---|
 | `@canopy/web-adapter` | Adopted by tasks-v0 / household / tasks-mobile for NavModel → DOM section rendering.  canopy-chat's `domAdapter.js` / `domForm.js` are chat-specific (message-stream model, list-with-inline-keyboard, A2 lifecycle, record/mini-page with `[Close]`).  The substrate's `schemaToFormFields` overlaps with our `buildFormSpec`, but the manifest shapes are misaligned (its JSON-Schema vs our `op.params[]`).  **Revisit in v0.4+** when the manifest schema is next touched. |
 | `@canopy/notifier` | Outbound scheduled push delivery + retry.  Our `EventRouter` is **inbound** event routing to threads.  Different concern.  When v0.5+ ships background notifications, notifier composes on top of EventRouter. |
-| `@canopy/local-store` | `CachingDataSource` is for pod-synced item caches.  Our `IndexedDBStore` persists UI state (thread workspaces) without a pod inner DataSource.  **Revisit in v0.6** when OQ-3 pod-sync lands; the CachingDataSource shape may then be the right substrate. |
+| `@canopy/local-store` | `CachingDataSource` is for pod-synced item caches.  Our `IndexedDBStore` persists UI state (thread workspaces) without a pod inner DataSource.  **Pod-sync compose path (v0.6.4 spec, real wiring deferred):** when canopy-chat gains OIDC sign-in (J6, v0.7+) and obtains a pod, `IndexedDBStore` swaps to `CachingDataSource({inner: podDataSource, paths: ['mem://canopy-chat/threads/*']})`.  Threads then sync per-thread to the pod alongside the local cache; offline edits queue via the substrate's write queue + flush on reconnect.  Until OIDC handoff is real, IndexedDB-only is the right shape — pure UI state with no pod dependency. |
 | `@canopy/chat-agent` | LLM-mediated chat with `MessagingBridge` + per-chat session manager + tool dispatcher.  canopy-chat is a **command-first** chat shell over manifest dispatch — different product.  May **compose** chat-agent in v0.5+ as an optional LLM-conversation sink alongside the slash path. |
 | `@canopy/chat-p2p` | P2P chat envelopes via `agent.transport.sendOneWay`.  **Re-audited 2026-05-23 (v0.5.3):** canopy-chat does NOT compose chat-p2p directly.  Real cross-peer embed delivery rides on each HOSTING app's chat surface (e.g. stoop's `sendChatMessage` extended with an `embed` envelope field — app-side work).  canopy-chat's role: produce the envelope (Q29 + `buildEmbed`) + render it (`embed-card` shape).  The substrate doesn't fit our role; composing it would force canopy-chat to take on itemStore + identity-resolver + members machinery that belongs to apps. |
 | `@canopy/agent-ui` | Out-of-process agent ↔ UI via HTTP+SSE.  canopy-chat uses in-process `InternalBus` (simpler; matches the static-web deployment of OQ-1.A).  Revisit if relay-bound agents land. |
@@ -120,6 +120,35 @@ Tracking per `/Project Files/canopy-chat/coding-plan.md` § Phase v0.1:
 | 3.7 | `@canopy/chat-nav` substrate | shipped 2026-05-22 |
 | 3.8 | B.1 nav protocol | shipped 2026-05-22 (substrate ships; chat-shell adoption follows) |
 | **3.x** | **Substrate-reuse audit + manifest-host adoption** | shipped 2026-05-22 (this README + the manifest-host refactor) |
+
+## Phase v0.4 — cross-app surface
+
+| Sub-slice | Scope | Status |
+|---|---|---|
+| 4.0 | Q31 (`followUps`) + Q32 (`op.runtime`) substrate adds | shipped 2026-05-22 |
+| 4.1 | Cross-app surface (4 apps in catalog) + op-prefix-on-collision + Q32 runtime filter | shipped 2026-05-22 |
+| 4.2 | Follow-up registry + inline-button UI | shipped 2026-05-22 |
+| 4.3 | `resolveContact` skill convention + folio runtime tags | shipped 2026-05-22 |
+
+## Phase v0.5 — embeds (J7)
+
+| Sub-slice | Scope | Status |
+|---|---|---|
+| 5.0 | Q29 (`surfaces.chat.embed`) substrate + embed envelope + renderer + mock demo | shipped 2026-05-22 |
+| 5.1 | Receiver-claim button + sender-claim-on-behalf (`/embed --claim`) | shipped 2026-05-22 |
+| 5.2 | tasks-v0 Q29 adoption (manifest declaration + `getTaskSnapshot` skill) | shipped 2026-05-22 |
+| 5.3 | Re-audit: chat-p2p NOT composed by canopy-chat; embeds delivered by apps' own chat surfaces | shipped 2026-05-22 |
+
+## Phase v0.6 — pod-style hints + reactive refresh
+
+| Sub-slice | Scope | Status |
+|---|---|---|
+| 6.0 | `_sync` reply-envelope convention + per-style rendering (central / decentralized / pod-less) | shipped 2026-05-23 |
+| 6.1 | Per-row `_lastSync` staleness badge on list items | shipped 2026-05-23 |
+| 6.2 | External-flow primitive + deep-link callback (J6 framework) | pending — needs real OIDC consumer |
+| 6.3 | Reactive panel-stale refresh on matching item-changed events | shipped 2026-05-23 |
+| 6.4 | Pod-sync compose-path documentation (real wiring deferred to v0.7+) | shipped 2026-05-23 |
+| 6.5 | Adopter — stoop / tasks-v0 populate `_sync` from real sync state | pending (app-side work) |
 
 ## Running locally
 
