@@ -71,6 +71,27 @@ export const canopyChatManifest = {
         },
       },
     },
+
+    /**
+     * `/embed <itemId>` — v0.5 J7 demo.  Posts an embed-card to the
+     * active thread using the snapshot returned by the item's
+     * `cardSnapshotSkill` (Q29).  Cross-peer P2P delivery via chat-p2p
+     * comes in v0.5.1; v0.5.0 ships local-only.
+     */
+    {
+      id:    'embed',
+      verb:  'add',
+      params: [
+        { name: 'itemId', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/embed' },
+        chat:  {
+          reply: 'embed-card',
+          hint:  'embed an item card in this thread',
+        },
+      },
+    },
   ],
   views: [],   // chat shell does not surface its own views in nav;
                //   threads are managed via the chat UI, not a section

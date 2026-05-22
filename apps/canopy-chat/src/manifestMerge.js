@@ -78,6 +78,7 @@ export function mergeManifests(sources, opts = {}) {
   const opsById     = new Map();          // canonical key (bare or prefixed)
   const replyShape  = new Map();
   const followUps   = new Map();
+  const embedSnapshot = new Map();
   const appOrigins  = [];
   /** @type {Map<string, string>} command → first-mounting appId */
   const commandOwner = new Map();
@@ -179,14 +180,19 @@ export function mergeManifests(sources, opts = {}) {
 
       const fu = mounted.rendered.followUpsFor?.(op.id);
       if (Array.isArray(fu) && fu.length > 0) followUps.set(canonicalKey, fu);
+
+      // Q29 (v0.5) embed snapshot skill lookup.
+      const skill = mounted.rendered.embedSnapshotFor?.(op.id);
+      if (skill) embedSnapshot.set(canonicalKey, { snapshotSkill: skill, appOrigin: m.app });
     }
   }
 
   return {
     commandMenu,
     opsById,
-    replyShapeFor: (opId) => replyShape.get(opId),
-    followUpsFor:  (opId) => followUps.get(opId),
+    replyShapeFor:    (opId) => replyShape.get(opId),
+    followUpsFor:     (opId) => followUps.get(opId),
+    embedSnapshotFor: (opId) => embedSnapshot.get(opId),
     appOrigins,
     warnings,
   };

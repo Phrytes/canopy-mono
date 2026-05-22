@@ -72,12 +72,13 @@ function renderUserBubble(text, { doc }) {
 function renderShellMessage(rendered, lifecycleState, ctx) {
   const state = lifecycleState ?? rendered.lifecycleState ?? 'live';
   switch (rendered.kind) {
-    case 'text':      return renderTextBubble(rendered, state, ctx);
-    case 'error':     return renderErrorBubble(rendered, state, ctx);
-    case 'list':      return renderListMessage(rendered, state, ctx);
-    case 'record':    return renderRecordPanel(rendered, state, ctx, 'record');
-    case 'mini-page': return renderRecordPanel(rendered, state, ctx, 'mini-page');
-    default:          return renderUnknownShape(rendered, ctx);
+    case 'text':       return renderTextBubble(rendered, state, ctx);
+    case 'error':      return renderErrorBubble(rendered, state, ctx);
+    case 'list':       return renderListMessage(rendered, state, ctx);
+    case 'record':     return renderRecordPanel(rendered, state, ctx, 'record');
+    case 'mini-page':  return renderRecordPanel(rendered, state, ctx, 'mini-page');
+    case 'embed-card': return renderEmbedCard(rendered, state, ctx);
+    default:           return renderUnknownShape(rendered, ctx);
   }
 }
 
@@ -263,6 +264,142 @@ function formatFieldValue(v) {
   if (typeof v === 'number' || typeof v === 'boolean') return String(v);
   try { return JSON.stringify(v); }
   catch { return String(v); }
+}
+
+/**
+ * Render an embed-card shape (J7) as a stable card with title,
+ * issuer/claimer metadata, and per-recipient action buttons.
+ *
+ * @param {object} rendered
+ * @param {'live'|'disabled'|'closed'} state
+ * @param {DomAdapterContext} ctx
+ */
+function renderEmbedCard(rendered, state, ctx) {
+  const { doc, onButtonTap, onCloseMessage, manifestsByOrigin } = ctx;
+  const embed = rendered.embed;
+  const wrap = doc.createElement('div');
+  wrap.className = `cc-message cc-shell cc-embed-card cc-${state}`;
+  if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
+
+  // Header with app + close
+  const header = doc.createElement('div');
+  header.className = 'cc-embed-header';
+  const appBadge = doc.createElement('span');
+  appBadge.className = 'cc-embed-app';
+  appBadge.textContent = embed?.appOrigin ?? '?';
+  header.appendChild(appBadge);
+
+  if (typeof onCloseMessage === 'function') {
+    const closeBtn = doc.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'cc-panel-close';
+    closeBtn.textContent = '×';
+    closeBtn.title = 'Close';
+    closeBtn.addEventListener('click', () => onCloseMessage(rendered.messageId));
+    header.appendChild(closeBtn);
+  }
+  wrap.appendChild(header);
+
+  // Title
+  const title = doc.createElement('div');
+  title.className = 'cc-embed-title';
+  title.textContent = embed?.snapshot?.title
+    ?? embed?.snapshot?.label
+    ?? embed?.snapshot?.id
+    ?? '(unnamed)';
+  wrap.appendChild(title);
+
+  // Fields (snapshot.fields rendered as a dl)
+  const fields = embed?.snapshot?.fields ?? {};
+  const fieldKeys = Object.keys(fields).filter((k) => !k.startsWith('_'));
+  if (fieldKeys.length > 0) {
+    const dl = doc.createElement('dl');
+    dl.className = 'cc-embed-fields';
+    for (const key of fieldKeys) {
+      const dt = doc.createElement('dt');
+      dt.textContent = key;
+      const dd = doc.createElement('dd');
+      dd.textContent = String(fields[key]);
+      dl.appendChild(dt);
+      dl.appendChild(dd);
+    }
+    wrap.appendChild(dl);
+  }
+
+  // Issuer / claimer metadata
+  const meta = doc.createElement('div');
+  meta.className = 'cc-embed-meta';
+  if (embed?.issuedBy) {
+    const issued = doc.createElement('span');
+    issued.textContent = `issued by ${embed.issuedBy}`;
+    issued.className = 'cc-embed-issued';
+    meta.appendChild(issued);
+  }
+  if (embed?.claimedBy) {
+    const claimed = doc.createElement('span');
+    claimed.textContent = `claimed by ${embed.claimedBy}`;
+    claimed.className = 'cc-embed-claimed';
+    meta.appendChild(claimed);
+  }
+  if (meta.childNodes.length > 0) wrap.appendChild(meta);
+
+  // Action buttons (Q28 button surfaces from the embed's appOrigin
+  // manifest, gated by appliesTo against the snapshot).
+  if (state !== 'disabled'
+      && manifestsByOrigin
+      && manifestsByOrigin[embed?.appOrigin]
+      && typeof onButtonTap === 'function') {
+    const manifest = manifestsByOrigin[embed.appOrigin];
+    // Same canonical-state guard as src/embed.js — fields must not
+    // override snapshot.state.
+    const item = {
+      ...(embed.snapshot.fields ?? {}),
+      id: embed.snapshot.id, type: embed.snapshot.type, state: embed.snapshot.state,
+    };
+    const buttons = [];
+    for (const op of manifest.operations ?? []) {
+      const ui = op?.surfaces?.ui;
+      if (!ui || ui.control !== 'button') continue;
+      if (!embedAppliesTo(op.appliesTo, item)) continue;
+      buttons.push({
+        label:        ui.label ?? op.id,
+        callbackData: `${op.id}:${item.id}`,
+      });
+    }
+    if (buttons.length > 0) {
+      const kb = doc.createElement('div');
+      kb.className = 'cc-embed-actions';
+      for (const btn of buttons) {
+        const b = doc.createElement('button');
+        b.type = 'button';
+        b.className = 'cc-keyboard-btn';
+        b.textContent = btn.label;
+        b.dataset.callback = btn.callbackData;
+        b.addEventListener('click', () => {
+          const [opId, itemId] = String(btn.callbackData).split(':');
+          onButtonTap(opId, itemId, { appOrigin: embed.appOrigin });
+        });
+        kb.appendChild(b);
+      }
+      wrap.appendChild(kb);
+    }
+  }
+
+  return wrap;
+}
+
+function embedAppliesTo(appliesTo, item) {
+  if (!appliesTo) return true;
+  if (!item || typeof item !== 'object') return false;
+  if (appliesTo.type !== undefined) {
+    const types = Array.isArray(appliesTo.type) ? appliesTo.type : [appliesTo.type];
+    if (!types.includes('*') && !types.includes(item.type)) return false;
+  }
+  if (appliesTo.state !== undefined) {
+    const states = Array.isArray(appliesTo.state) ? appliesTo.state : [appliesTo.state];
+    if (!states.includes(item.state)) return false;
+  }
+  return true;
 }
 
 function renderUnknownShape(rendered, { doc }) {

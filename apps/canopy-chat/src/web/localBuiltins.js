@@ -18,6 +18,7 @@
  */
 
 import { describeFilter } from '../filter.js';
+import { buildEmbed }     from '../embed.js';
 
 /**
  * Build the local-builtins dispatcher.
@@ -29,14 +30,69 @@ import { describeFilter } from '../filter.js';
  *   Required for /newthread and /threads.
  * @param {(threadId: string) => void}                 [deps.setActive]
  *   Called by /newthread to switch active thread to the new one.
+ * @param {(appOrigin: string, opId: string, args: object) => Promise<*>} [deps.callSkill]
+ *   Required for /embed — fetches the snapshot via the catalog's
+ *   Q29 declaration.
  * @returns {{[opId: string]: (args: object) => Promise<*>}}
  */
-export function createLocalBuiltins({ catalog, t, threadStore, setActive }) {
+export function createLocalBuiltins({ catalog, t, threadStore, setActive, callSkill }) {
   return {
     help: async () => formatHelp(catalog, t),
     newthread: async (args) => createNewThread(args, { threadStore, setActive, t }),
     threads:   async ()     => listThreads({ threadStore, t }),
+    embed:     async (args) => createEmbed(args, { catalog, callSkill, t }),
   };
+}
+
+/**
+ * `/embed <itemId>` — scan the merged catalog for ops that declare
+ * a Q29 cardSnapshotSkill, fetch a snapshot, and return an embed-
+ * card reply.  v0.5.0 local-only; v0.5.1 wires chat-p2p for cross-
+ * peer delivery.
+ */
+async function createEmbed(args, { catalog, callSkill, t }) {
+  const itemId = String(args?.itemId ?? '').trim();
+  if (!itemId) {
+    return { ok: false, error: t('embed.no_id') };
+  }
+  if (typeof callSkill !== 'function') {
+    return { ok: false, error: t('embed.no_callskill') };
+  }
+
+  // Find any op in the catalog with a Q29 declaration.  v0.5.0
+  // demos a single embed factory (mock household's getChoreSnapshot);
+  // multi-factory selection arrives with the receiver-side UX of
+  // v0.5.1+.
+  let snapshotSkill = null;
+  let snapshotAppOrigin = null;
+  for (const [opId, entry] of catalog.opsById) {
+    const decl = catalog.embedSnapshotFor?.(opId);
+    if (decl) {
+      snapshotSkill     = decl.snapshotSkill;
+      snapshotAppOrigin = decl.appOrigin;
+      break;
+    }
+  }
+  if (!snapshotSkill) {
+    return { ok: false, error: t('embed.no_factory') };
+  }
+
+  try {
+    // Q29 skills take a `<type>Id`-style arg; for the v0.5.0 demo we
+    // pass the user-supplied itemId verbatim against the convention
+    // (mock household's getChoreSnapshot accepts `choreId`).
+    const snapshot = await callSkill(snapshotAppOrigin, snapshotSkill, { choreId: itemId });
+    if (!snapshot || snapshot.ok === false) {
+      return { ok: false, error: snapshot?.error ?? 'snapshot failed' };
+    }
+    return buildEmbed({
+      appOrigin: snapshotAppOrigin,
+      snapshot,
+      issuedBy:  'webid:local-demo-user',
+    });
+  } catch (err) {
+    return { ok: false, error: err?.message ?? String(err) };
+  }
 }
 
 /**

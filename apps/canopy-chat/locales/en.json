@@ -40,6 +40,11 @@
     "cancel":    { "text": "Cancel",            "doc": "Form cancel button label." },
     "cancelled": { "text": "Form cancelled.",   "doc": "Shown after the user clicks [Cancel] on a form." }
   },
+  "embed": {
+    "no_id":        { "text": "Please provide an item id: /embed <itemId>", "doc": "When /embed fires with no itemId." },
+    "no_callskill": { "text": "Embed dispatch not available in this build.", "doc": "Defensive." },
+    "no_factory":   { "text": "No app declares a Q29 cardSnapshotSkill yet.", "doc": "When the merged catalog has no embed-producing op." }
+  },
   "newthread": {
     "created":  { "text": "✓ Created thread \"{{name}}\". Switched to it.", "doc": "Confirmation when /newthread succeeds." },
     "no_name":  { "text": "Please provide a name: /newthread <name>",       "doc": "When /newthread fires with no name arg." },
