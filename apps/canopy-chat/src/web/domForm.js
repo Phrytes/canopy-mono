@@ -204,8 +204,19 @@ function makeInput(field, doc) {
       return sel;
     }
     case 'date': {
+      // v0.7.P1-followup 2026-05-23: switched from <input type="date">
+      // to free-text.  Reasons:
+      //   - native date-picker doesn't accept relative phrases
+      //     ('tomorrow', 'fri 15:00') that the user expects
+      //   - native date-picker is date-ONLY (no time) — calendar
+      //     events need full datetime
+      //   - parseDateAndTime covers ISO + relative + natural-language
+      //     in EN + NL via chrono-node
+      // Placeholder shows the supported shapes.
       const i = doc.createElement('input');
-      i.type = 'date';   // browser-native picker; v0.3.2 may extend with NL keywords
+      i.type = 'text';
+      i.placeholder = "2026-05-23 14:00 · tomorrow 3pm · fri 15:00 · friday";
+      i.autocomplete = 'off';
       return i;
     }
     case 'webid': {
