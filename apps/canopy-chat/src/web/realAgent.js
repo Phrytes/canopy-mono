@@ -124,6 +124,26 @@ export async function createRealHouseholdAgent(opts = {}) {
     inviteAttendee: (webid, snapshot) => inviteAttendeeRef(webid, snapshot),
   });
 
+  // v0.7.P2 — caller (main.js) wires the pod writer on sign-in via
+  // this setter; calendar's .ics feed then write-throughs to
+  // <pod>/canopy/calendar/feed.ics.
+  const setCalendarPodWriter = (writer) => calendarStore.setPodWriter(writer);
+  // v0.7.P2.1 — surface pod-write success / failure as notification
+  // events so /logs + matching threads pick them up.
+  if (typeof calendarStore.setPodEventSink === 'function') {
+    calendarStore.setPodEventSink((event) => {
+      publishEvent({
+        app:  'calendar',
+        type: event.kind === 'pod-write-error' ? 'notification' : 'item-changed',
+        payload: {
+          message: event.kind === 'pod-write-ok'
+            ? `📤 pod write OK: ${event.url}`
+            : `❌ pod write failed (${event.status ?? 'no status'}): ${event.error}`,
+        },
+      });
+    });
+  }
+
   // Register the household skills on the HOST agent.  Skills take
   // `{parts}` per @canopy/core convention; we transport args via a
   // DataPart and reply with another DataPart whose `.data` is the
@@ -574,5 +594,9 @@ export async function createRealHouseholdAgent(opts = {}) {
     setInviteAttendee(fn) {
       if (typeof fn === 'function') inviteAttendeeRef = fn;
     },
+    // v0.7.P2 — caller wires the pod-writer on sign-in / clears on
+    // sign-out so calendar's .ics feed writes-through to the user's
+    // pod under <pod>/canopy/calendar/feed.ics.
+    setCalendarPodWriter,
   };
 }
