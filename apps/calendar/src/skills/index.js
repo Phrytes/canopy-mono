@@ -34,6 +34,14 @@ export function registerCalendarSkills(agent, store, opts = {}) {
   const prefix = typeof opts.skillPrefix === 'string' ? opts.skillPrefix : '';
   const reg = (name, fn) => agent.register(`${prefix}${name}`, fn);
 
+  // v0.7.12 — multi-pod RSVP coordination.  Caller (canopy-chat
+  // main.js) wires an inviteAttendee callback that posts an invite
+  // embed to each attendee's thread (sim-peer in the demo; real
+  // cross-pod chat-p2p in production).  Signature:
+  //   inviteAttendee(webid, snapshot) → Promise<void>
+  const inviteAttendee = typeof opts.inviteAttendee === 'function'
+    ? opts.inviteAttendee : null;
+
   reg('addEvent', async ({ parts }) => {
     const a = parts?.[0]?.data ?? {};
     try {
@@ -44,9 +52,30 @@ export function registerCalendarSkills(agent, store, opts = {}) {
         itemRef: { app: 'calendar', type: 'calendar-event', id: event.id },
         payload: { message: `✓ Added event: ${event.title}` },
       });
+
+      // v0.7.12 — dispatch invites to attendees.  Each gets the
+      // event card in their own thread; they RSVP via the embed's
+      // [Accept]/[Decline]/[Tentative] buttons (manifest-driven
+      // since v0.7.13).  Responses broadcast back via the
+      // calendar's rsvp* skills (which already publishEvent + the
+      // organiser's open record panels go stale per v0.6.3
+      // reactive refresh).
+      let invitedCount = 0;
+      if (inviteAttendee && Array.isArray(event.attendees)) {
+        const snapshot = buildInviteSnapshot(event);
+        for (const webid of event.attendees) {
+          try {
+            await inviteAttendee(webid, snapshot);
+            invitedCount += 1;
+          } catch { /* per-attendee failures shouldn't block the event */ }
+        }
+      }
+
       return [DataPart({
         ok:      true,
-        message: `✓ Added event: ${event.title}`,
+        message: invitedCount > 0
+          ? `✓ Added event: ${event.title}  (sent invitation to ${invitedCount} ${invitedCount === 1 ? 'attendee' : 'attendees'})`
+          : `✓ Added event: ${event.title}`,
         itemId:  event.id,
         _sync:   simulateSync(),
       })];
@@ -178,6 +207,29 @@ async function rsvpHandler({ parts }, response, store, simulateSync, publishEven
 }
 
 function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+/**
+ * v0.7.12 — build the snapshot the inviteAttendee callback embeds
+ * in each attendee's thread.  Same shape as getEventSnapshot's
+ * output so the time-card renderer + appliesTo gating work
+ * unchanged on the receiver side.
+ */
+function buildInviteSnapshot(event) {
+  return {
+    id:    event.id,
+    type:  'calendar-event',
+    state: 'open',
+    title: event.title,
+    startAt:  event.startsAt,
+    endAt:    event.endsAt,
+    ...(event.location ? { location: event.location } : {}),
+    fields: {
+      state:     'open',
+      organiser: event.organiser ?? 'unknown',
+      ...(event.attendees?.length ? { attendees: event.attendees.join(', ') } : {}),
+    },
+  };
+}
 
 function formatDate(iso) {
   try {

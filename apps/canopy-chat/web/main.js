@@ -195,6 +195,50 @@ const SIM_PEERS = {
   anne: { threadId: SIM_ANNE_THREAD_ID, webid: SIM_ANNE_WEBID },
 };
 
+// v0.7.12 — multi-pod RSVP coordination (simulated for the demo).
+// When calendar.addEvent has attendees, the calendar app calls this
+// to dispatch an invite-card to each attendee's thread.  Receivers
+// RSVP via the embed's [Accept]/[Decline]/[Tentative] buttons
+// (manifest-driven since v0.7.13).  Responses broadcast back via
+// the calendar's rsvp* skills (which publishEvent → the organiser's
+// open record panels reactively refresh per v0.6.3).
+//
+// In real cross-pod work this becomes:
+//   - lookup attendee's chat surface (stoop's chat-p2p or notifier
+//     push to their webid)
+//   - send the invite envelope across the wire
+//   - the attendee's calendar receives, persists their copy + opens
+//     a chat thread with the invite-card
+//
+// Demo: attendee=webid → simPeer thread lookup; append embed-card
+// directly to their thread.
+async function inviteAttendee(webid, snapshot) {
+  // Map webid → simPeer entry.  webid:anne → anne, etc.
+  const peerName = webid.replace(/^webid:/, '');
+  const peer     = SIM_PEERS[peerName];
+  if (!peer) return;     // unknown attendee; demo can't reach them
+  const dest = store.getThread(peer.threadId);
+  if (!dest) return;
+  dest.addShellMessage({
+    kind:           'embed-card',
+    messageId:      `invite-${snapshot.id}-${peerName}`,
+    threadId:       peer.threadId,
+    lifecycleState: 'live',
+    embed: {
+      kind:      'time-card',
+      appOrigin: 'calendar',
+      itemRef:   { app: 'calendar', type: 'calendar-event', id: snapshot.id },
+      snapshot,
+      issuedBy:  LOCAL_ACTOR,   // sender is the organiser (us)
+    },
+  });
+}
+// Wire it once the agent exists.  Done immediately below (the agent
+// is already constructed above this block).
+if (typeof agent.setInviteAttendee === 'function') {
+  agent.setInviteAttendee(inviteAttendee);
+}
+
 // v0.6.2 — external-flow wiring.  In-flight state persists to IDB's
 // 'cc-in-flight-flows' object store.  The mock sign-in URL is
 // canopy-chat's own page with a query param that auto-triggers the
