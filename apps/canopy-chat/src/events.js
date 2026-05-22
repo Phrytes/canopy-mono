@@ -116,6 +116,12 @@ export class EventRouter {
    * of thread ids that received the event (empty when no thread
    * matched).
    *
+   * v0.6.3 — when the event carries an `itemRef`, ALSO scans every
+   * thread (regardless of filter match) for open record / mini-page
+   * / embed-card panels referencing the same item and marks them
+   * stale.  This is "reactive panel refresh" — separate from
+   * filter-based notification routing.
+   *
    * @param {Event}   event
    * @param {object}  [opts]
    * @param {string[]} [opts.excludeThreadIds]
@@ -137,6 +143,15 @@ export class EventRouter {
     );
 
     for (const thread of this.#threadStore.listThreads()) {
+      // v0.6.3 — reactive panel-staleness scan happens REGARDLESS of
+      // filter match (excludeThreadIds still respected — the
+      // dispatching thread already shows the fresh state).
+      if (!exclude.has(thread.id) && enriched.itemRef) {
+        for (const panel of thread.openPanelsForItemRef(enriched.itemRef)) {
+          thread.markPanelStale(panel.messageId);
+        }
+      }
+
       if (exclude.has(thread.id)) continue;
       if (!matchesFilter(enriched, thread.filter)) continue;
       this.#appendNotificationTo(thread, enriched);
