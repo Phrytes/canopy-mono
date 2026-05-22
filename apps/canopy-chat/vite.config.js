@@ -32,6 +32,12 @@ export default defineConfig({
     alias: {
       'ws':              empty,
       'mqtt':            empty,
+      // v0.7.P3b 2026-05-23 — 'nkn-sdk' kept shimmed.  The real lib
+      // arrives via the CDN <script> tag in index.html (window.nkn).
+      // Vite's dynamic-import resolution still needs SOMETHING to
+      // resolve the bare 'nkn-sdk' specifier; the empty shim does
+      // exactly that (the dynamic-import path in NknTransport never
+      // executes when window.nkn is supplied as opts.nknLib).
       'nkn-sdk':         empty,
       'js-yaml':         empty,
       'node-datachannel': empty,

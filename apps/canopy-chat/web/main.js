@@ -277,6 +277,63 @@ if (typeof agent.setInviteAttendee === 'function') {
   agent.setInviteAttendee(inviteAttendee);
 }
 
+// v0.7.P3b — connect NKN cross-peer transport.  Triggers async,
+// non-blocking; takes 5-90s on first connect.  On success the user
+// can /me to see their NKN address + /test-peer <addr> [text] to
+// send a ping.  Inbound messages render as text bubbles in Main.
+async function connectPeerImpl() {
+  const nknLib = (typeof window !== 'undefined') ? window.nkn : null;
+  if (!nknLib) {
+    throw new Error('nkn-sdk not loaded (CDN script missing).  Reload the page.');
+  }
+  if (typeof agent.connectPeerTransport !== 'function') {
+    throw new Error('Peer transport not supported by this agent build.');
+  }
+  return agent.connectPeerTransport({
+    nknLib,
+    onPeerMessage: ({ from, payload }) => {
+      // Render incoming peer message as a bubble in the active
+      // thread (Main by default).  v0.7.P3c will route based on
+      // payload.type instead of always-text.
+      const active = store.getActiveThread();
+      if (!active) return;
+      const body = (payload && typeof payload === 'object' && typeof payload.body === 'string')
+        ? payload.body
+        : JSON.stringify(payload);
+      const rendered = renderReply({
+        payload: `📨 from ${from.slice(0, 16)}…: ${body}`,
+        shape:   'text',
+        threadId: active.id,
+      }, { t });
+      active.addShellMessage(rendered);
+      if (store.getActiveThread()?.id === active.id) renderActiveStream();
+      publishEventRef({
+        app:     'canopy-chat',
+        type:    'notification',
+        actor:   from,
+        payload: { message: `📨 peer message: ${body}` },
+      });
+    },
+  });
+}
+
+// Fire-and-forget on boot: connect NKN whenever the CDN script is
+// loaded.  If nkn-sdk hasn't loaded yet (race), the user can manually
+// retry via /peer-connect.
+if (typeof window !== 'undefined' && window.nkn) {
+  connectPeerImpl()
+    .then((ctrl) => {
+      console.info('[peer] connected, NKN address:', ctrl.address);
+      publishEventRef({
+        app: 'canopy-chat', type: 'notification',
+        payload: { message: `🔗 NKN connected: ${ctrl.address}` },
+      });
+    })
+    .catch((err) => {
+      console.warn('[peer] NKN connect failed:', err.message);
+    });
+}
+
 // v0.7.P1 — real Solid OIDC boot.  After the user returns from the
 // pod issuer's auth page, the URL carries `?code=...&state=...&iss=...`
 // and the issuer expects us to call handleIncomingRedirect() so the
@@ -534,6 +591,11 @@ const localBuiltins = createLocalBuiltins({
   // v0.7.P3a — expose the persistent agent identity (chat-side
   // pubKey + stableId) to handlers like /me.
   agent,
+  // v0.7.P3b — connect the NKN peer transport.  Called by /peer-
+  // connect builtin or auto-fired on sign-in (below).  When
+  // window.nkn is missing (CDN not loaded yet), returns rejected
+  // promise.
+  connectPeer: () => connectPeerImpl(),
   externalFlow: {
     /**
      * Open a sign-in flow.  Persists in-flight state + navigates to
