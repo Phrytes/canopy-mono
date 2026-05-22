@@ -45,13 +45,14 @@ export function createLocalBuiltins({
   eventLog,                  // v0.7.1 — EventLog instance
   openLogsPanel,             // v0.7.1c — () => void (opens side-panel)
   findRunner,                // v0.7.5 — ({query}) => Promise<FindReply>
+  openFilePicker,            // v0.7.13 — () => Promise<File|null>
 }) {
   return {
     help: async () => formatHelp(catalog, t),
     newthread: async (args) => createNewThread(args, { threadStore, setActive, t }),
     threads:   async ()     => listThreads({ threadStore, t }),
     embed:     async (args) => createEmbed(args, { catalog, callSkill, t, localActor }),
-    'embed-file': async (args) => createFileEmbed(args, { localActor, t, simPeers, threadStore }),
+    'embed-file': async (args) => createFileEmbed(args, { localActor, t, simPeers, threadStore, callSkill, openFilePicker }),
     'embed-time': async (args) => createTimeEmbed(args, { localActor, t, simPeers, threadStore, callSkill }),
     sendto:    async (args) => sendToPeer(args, {
       catalog, callSkill, t, localActor, simPeers, threadStore,
@@ -303,36 +304,81 @@ async function sendToPeer(args, { catalog, callSkill, t, localActor, simPeers, t
 }
 
 /**
- * `/embed-file` — v0.7 catch-up.  User supplies name + optional
- * mime/path/share.  Until a real file-vault app exists, this is a
- * CREATOR (not a lookup): the file reference is synthesised from
- * params.  --share=<peer> dispatches the card to the peer's thread.
+ * `/embed-file` — v0.7.13.  Three modes:
+ *   --path=<existing>  → look up via folio's Q29 getFileSnapshot;
+ *                        embed real file metadata
+ *   --pick             → opens browser File API picker; user
+ *                        selects local file; reads bytes inline
+ *   --name=X [...]     → synthesises (back-compat with v0.7.x)
  *
- * Future: when a file-vault app ships, /embed-file --pick swaps to
- * a picker UI that lists existing files.
+ * --share=<peer> routes to peer's thread.
  */
-async function createFileEmbed(args, { localActor, t, simPeers, threadStore }) {
-  const name  = String(args?.name ?? '').trim();
+async function createFileEmbed(args, { localActor, t, simPeers, threadStore, callSkill, openFilePicker }) {
   const path  = String(args?.path ?? '').trim();
-  const mime  = String(args?.mime ?? '').trim() || mimeFromExtension(name);
+  const pick  = !!args?.pick;
+  const name  = String(args?.name ?? '').trim();
   const share = String(args?.share ?? '').trim();
-  if (!name) return { ok: false, error: t('embed-file.no_name') };
-
   const issuer = localActor ?? 'webid:local-demo-user';
-  const id     = path || `file-${Math.random().toString(36).slice(2, 8)}`;
+
+  let snapshot = null;
+
+  // Mode 1: --path → folio lookup via Q29.
+  if (path && !pick) {
+    if (typeof callSkill === 'function') {
+      try {
+        const r = await callSkill('folio', 'getFileSnapshot', { path });
+        if (r && r.ok !== false && r.id) snapshot = r;
+      } catch { /* fall through to synthesis */ }
+    }
+  }
+
+  // Mode 2: --pick → browser File API.
+  if (!snapshot && pick) {
+    if (typeof openFilePicker !== 'function') {
+      return { ok: false, error: t('embed-file.pick_unavailable') };
+    }
+    try {
+      const file = await openFilePicker();
+      if (!file) return { ok: false, error: t('embed-file.pick_cancelled') };
+      // Read file as base64 (inline) so the embed can travel.  For
+      // larger files (> ~1MB) a real implementation would pod-upload
+      // first + embed a pod URI.  Defer the threshold to v0.7.14.
+      const dataB64 = await readFileAsBase64(file);
+      snapshot = {
+        id:    `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        type:  'file',
+        name:  file.name,
+        mime:  file.type || mimeFromExtension(file.name),
+        bytes: file.size,
+        dataB64,
+        local: true,
+      };
+    } catch (err) {
+      return { ok: false, error: err?.message ?? String(err) };
+    }
+  }
+
+  // Mode 3 / fallback: synthesise from --name.
+  if (!snapshot) {
+    if (!name && !path) return { ok: false, error: t('embed-file.no_input') };
+    const finalName = name || (path.split('/').pop() ?? 'file');
+    const mime = String(args?.mime ?? '').trim() || mimeFromExtension(finalName);
+    const id   = path || `file-${Math.random().toString(36).slice(2, 8)}`;
+    snapshot = {
+      id, type: 'file', name: finalName, mime,
+      bytes: Math.floor(Math.random() * 1024 * 1024 * 4),
+      ...(path ? { path } : {}),
+    };
+  }
+
   const embed = {
     kind:      'file-card',
     appOrigin: 'folio',
-    itemRef:   { app: 'folio', type: 'file', id },
-    snapshot:  {
-      id, type: 'file', name, mime,
-      bytes: Math.floor(Math.random() * 1024 * 1024 * 4),
-      ...(path ? { path } : {}),
-    },
-    issuedBy: issuer,
+    itemRef:   { app: 'folio', type: 'file', id: snapshot.id },
+    snapshot,
+    issuedBy:  issuer,
   };
 
-  // --share=<peer>: route to the peer's thread (same as /send-to).
   if (share) {
     const peer = simPeers?.[share];
     if (!peer) return { ok: false, error: t('sendto.unknown_peer', { peer: share }) };
@@ -345,9 +391,33 @@ async function createFileEmbed(args, { localActor, t, simPeers, threadStore }) {
       lifecycleState: 'live',
       embed,
     });
-    return { ok: true, message: t('sendto.sent', { peer: share, item: name }) };
+    return { ok: true, message: t('sendto.sent', { peer: share, item: snapshot.name }) };
   }
   return embed;
+}
+
+/**
+ * Read a browser File as base64 (data URL minus the prefix).
+ * Pure browser-only via FileReader.
+ *
+ * @param {File} file
+ * @returns {Promise<string>}
+ */
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    if (typeof FileReader === 'undefined') {
+      reject(new Error('FileReader not available in this runtime'));
+      return;
+    }
+    const fr = new FileReader();
+    fr.onload  = () => {
+      const dataUrl = String(fr.result ?? '');
+      const commaIdx = dataUrl.indexOf(',');
+      resolve(commaIdx > 0 ? dataUrl.slice(commaIdx + 1) : dataUrl);
+    };
+    fr.onerror = () => reject(fr.error ?? new Error('FileReader failed'));
+    fr.readAsDataURL(file);
+  });
 }
 
 function mimeFromExtension(name) {
