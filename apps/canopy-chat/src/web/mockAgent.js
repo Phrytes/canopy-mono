@@ -262,7 +262,11 @@ export const mockHouseholdManifest = {
       id:        'markComplete',
       verb:      'complete',
       appliesTo: { type: 'chore', state: 'open' },
-      params:    [{ name: 'choreId', kind: 'string', required: true }],
+      params:    [{
+        name: 'choreId', kind: 'string', required: true,
+        // Q34 — bare `/done` → list open chores; click row → done.
+        pickerSource: { listOp: 'listOpen' },
+      }],
       surfaces:  {
         slash: { command: '/done' },
         chat:  { reply: 'text', hint: 'mark a chore complete' },

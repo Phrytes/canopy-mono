@@ -84,7 +84,11 @@ export const canopyChatManifest = {
       id:    'embed',
       verb:  'add',
       params: [
-        { name: 'itemId', kind: 'string',  required: true  },
+        { name: 'itemId', kind: 'string',  required: true,
+          // Q34 — bare `/embed` → list household chores (default app);
+          // user can switch app via /apps before invoking.  Each row
+          // becomes a [pick] button that auto-submits.
+          pickerSource: { listOp: 'listOpen', appOrigin: 'household' } },
         { name: 'claim',  kind: 'boolean', required: false },
       ],
       surfaces: {

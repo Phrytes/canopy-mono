@@ -441,6 +441,36 @@ function validateParam(p, path, errors) {
       errors.push({ path: `${path}/of`, message: 'param.of array must contain only strings' });
     }
   }
+
+  // Q34 (canopy-chat v0.7, 2026-05-23) — optional `pickerSource` for
+  // form-elicitation of ID-style params.  When a required param has
+  // a `pickerSource: {listOp, filter?}` declaration AND the param
+  // is missing on a slash invocation, the chat-shell renders a
+  // CLICKABLE LIST instead of a text input.  Closes the UX gap on
+  // /claim, /done bare, /embed bare etc.
+  if (p.pickerSource !== undefined) {
+    const ps = p.pickerSource;
+    if (!ps || typeof ps !== 'object' || Array.isArray(ps)) {
+      errors.push({
+        path:    `${path}/pickerSource`,
+        message: 'param.pickerSource must be an object if present',
+      });
+    } else {
+      if (typeof ps.listOp !== 'string' || ps.listOp === '') {
+        errors.push({
+          path:    `${path}/pickerSource/listOp`,
+          message: 'param.pickerSource.listOp must be a non-empty string',
+        });
+      }
+      if (ps.filter !== undefined
+          && (typeof ps.filter !== 'object' || Array.isArray(ps.filter))) {
+        errors.push({
+          path:    `${path}/pickerSource/filter`,
+          message: 'param.pickerSource.filter must be an object if present',
+        });
+      }
+    }
+  }
 }
 
 function validateView(v, path, manifest, errors, idSet, strict = false) {
