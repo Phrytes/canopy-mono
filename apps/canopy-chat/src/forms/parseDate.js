@@ -92,3 +92,61 @@ function toIsoDate(d) {
   const da = String(d.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${da}`;
 }
+
+/**
+ * v0.7.P1-followup 2026-05-23 — same parser, but PRESERVES time-of-
+ * day when the input includes a clock component.  Calendar event
+ * startsAt + endsAt need full datetime; the date-only
+ * parseRelativeDate above was dropping '3pm' / '15:00' info.
+ *
+ * Returns:
+ *   - full ISO datetime (YYYY-MM-DDTHH:mm:ssZ) when time was specified
+ *   - YYYY-MM-DD when only a date was given (back-compat with the
+ *     calendar's parseDateInput which appends midnight UTC)
+ *   - null when unparseable
+ *
+ * @param {string} input
+ * @param {object} [opts]
+ * @param {() => Date} [opts.now]
+ * @returns {string|null}
+ */
+export function parseDateAndTime(input, opts = {}) {
+  if (typeof input !== 'string') return null;
+  const trimmed = input.trim();
+  if (trimmed === '') return null;
+  const raw = trimmed.toLowerCase();
+  const now = (typeof opts.now === 'function' ? opts.now() : new Date());
+
+  // ISO datetime — passthrough.
+  if (/^\d{4}-\d{2}-\d{2}T/i.test(trimmed)) {
+    const d = new Date(trimmed);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  // ISO date — passthrough (no time component).
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  // Today / tomorrow / weekday — keyword-only (no time) → date-only.
+  if (raw === 'today' || raw === 'tomorrow' || raw === 'morgen'
+      || WEEKDAYS_EN.includes(raw) || WEEKDAYS_NL.includes(raw)) {
+    return parseRelativeDate(trimmed, { now: () => now });
+  }
+  // chrono — preserves time component when present.
+  try {
+    const parsed = chrono.parseDate(trimmed, now, { forwardDate: true });
+    if (parsed instanceof Date && !Number.isNaN(parsed.getTime())) {
+      // Detect whether the input mentioned a time.  Heuristic: chrono
+      // returns a date with hours/minutes/seconds set to 0 when no
+      // time was parsed; non-zero implies time was given.
+      const hasTime = parsed.getHours()   !== 0
+                   || parsed.getMinutes() !== 0
+                   || parsed.getSeconds() !== 0
+                   || /\d{1,2}\s*(:\d{2}|am|pm)/i.test(trimmed);
+      if (hasTime) return parsed.toISOString();
+      return toIsoDate(parsed);
+    }
+  } catch {
+    // chrono throws on pathological inputs; null below.
+  }
+  return null;
+}

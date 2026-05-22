@@ -20,7 +20,7 @@
  * Phase v0.3 sub-slice 3.3 per `/Project Files/canopy-chat/coding-plan.md`.
  */
 
-import { parseRelativeDate } from './parseDate.js';
+import { parseRelativeDate, parseDateAndTime } from './parseDate.js';
 
 const SIMPLE_KINDS = new Set(['string', 'number', 'boolean', 'enum']);
 
@@ -204,15 +204,15 @@ export function validateAndCoerce(spec, formValues) {
         break;
       }
       case 'date': {
-        // v0.3.2 — accept ISO + 'today' / 'tomorrow' / weekday names
-        // (en + nl).  Native <input type="date"> already emits ISO,
-        // so this layer is for slash-typed inputs and the future
-        // free-text path.
-        const iso = parseRelativeDate(String(raw));
+        // v0.7.P1-followup 2026-05-23 — use the time-preserving
+        // variant so 'tomorrow 3pm' / '23 may 15:00' / ISO datetime
+        // all round-trip with their time component (instead of
+        // collapsing to midnight UTC).
+        const iso = parseDateAndTime(String(raw));
         if (iso === null) {
           errors.push({
             field: field.name,
-            message: `not a valid date: ${raw} (try YYYY-MM-DD, 'today', 'friday', 'vrijdag')`,
+            message: `not a valid date: ${raw} (try '2026-05-23 14:00', 'tomorrow 3pm', 'fri 15:00', 'friday')`,
           });
         } else {
           args[field.name] = iso;
