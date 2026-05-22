@@ -25,6 +25,7 @@ import {
   AppRegistry, filterCatalog,
   openExternalFlow, parseCallbackUrl, resumeInFlightFlows,
   runBrief, createBriefCache,
+  runFind,
   EventLog, RETENTION_MS,
 } from '../src/index.js';
 import { buildFormSpec, validateAndCoerce } from '../src/forms/buildFormSpec.js';
@@ -49,7 +50,14 @@ const headerFilterEl = document.getElementById('active-thread-filter');
 
 /* ── state ─────────────────────────────────────────────── */
 
-const agent = await createRealHouseholdAgent();
+// v0.7.7 — pass a publishEvent callback that defers to the router
+// (created further down).  Forward-ref pattern: skill mutations
+// fire publishEvent which dispatches into the router; the router
+// fans out to matching threads + appends to the EventLog.
+let publishEventRef = () => {};   // overwritten right after router is constructed
+const agent = await createRealHouseholdAgent({
+  publishEvent: (event) => publishEventRef(event),
+});
 // v0.4 cross-app surface: stoop + folio manifests join the merged
 // catalog so users see their commands in /help.  Q32 runtime filter
 // drops folio's sync/watch (node-only) ops in the browser build.
@@ -118,6 +126,17 @@ if (persisted.length > 0) {
 attachPersistence({ threadStore: store, idb });
 
 const router = createEventRouter({ threadStore: store });
+// v0.7.7 — wire the agent's publishEvent so real mutations route
+// through the EventRouter.  Each event gets a fresh id; ts auto-set
+// by the router's normaliseEvent.
+publishEventRef = (event) => {
+  const enriched = {
+    id: `evt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    ts: Date.now(),
+    ...event,
+  };
+  router.deliver(enriched);
+};
 
 // v0.6.2 — external-flow callback handler.  When the deep-link
 // receiver fires (or the EventRouter wakes us via a delivered event),
@@ -235,6 +254,7 @@ const localBuiltins = createLocalBuiltins({
   appRegistry,
   eventLog,
   briefRunner: (opts) => runBrief({ catalog, callSkill, cache: briefCache, bypassCache: opts?.bypassCache }),
+  findRunner:  (opts) => runFind({ catalog, callSkill, query: opts?.query }),
   externalFlow: {
     /**
      * Open a sign-in flow.  Persists in-flight state + navigates to
@@ -265,41 +285,25 @@ const callSkill = async (appOrigin, opId, args) => {
     if (!handler) throw new Error(`No local handler for canopy-chat.${opId}`);
     return handler(args ?? {});
   }
+  // v0.7.2/3/4 — all 4 apps now run as real skills on the same
+  // host agent.  Skill ids are flat (no collisions in the v0.7 demo);
+  // briefSummary ids are app-scoped (tasks_briefSummary etc) to
+  // avoid the Q30 fan-out hitting the wrong one.
   if (appOrigin === 'household') {
     return agent.callSkill(appOrigin, opId, args);
   }
-  // v0.4 cross-app demo: stoop + folio manifests are in the catalog
-  // but their agents aren't wired in the v0.1 in-process topology.
-  // Return placeholder data so /help discovery + dispatch feedback
-  // demonstrate the cross-app surface.
+  if (appOrigin === 'tasks-v0') {
+    // tasks-v0's brief skill is registered as 'tasks_briefSummary'.
+    const realOp = opId === 'briefSummary' ? 'tasks_briefSummary' : opId;
+    return agent.callSkill('household', realOp, args);
+  }
   if (appOrigin === 'stoop') {
-    if (opId === 'listFeed') {
-      return { items: [
-        { id: 'p-1', label: 'Anne needs help moving a couch', state: 'open' },
-        { id: 'p-2', label: 'Karl offers tomato seedlings',    state: 'open' },
-      ] };
-    }
-    if (opId === 'postRequest') {
-      return { ok: true, message: `✓ Posted: ${args?.text ?? '(empty)'}` };
-    }
-    // v0.7 — Q30 brief stub.
-    if (opId === 'briefSummary') {
-      return { items: [
-        { id: 'p-1', label: '2 buurt requests open' },
-      ] };
-    }
+    const realOp = opId === 'briefSummary' ? 'stoop_briefSummary' : opId;
+    return agent.callSkill('household', realOp, args);
   }
   if (appOrigin === 'folio') {
-    if (opId === 'readNote') {
-      return { message: `[demo] readNote("${args?.path ?? ''}") — folio agent not wired in this build` };
-    }
-    if (opId === 'shareFolder') {
-      return { ok: true, message: `✓ [demo] would share "${args?.folder}" with ${args?.with}` };
-    }
-    if (opId === 'briefSummary') {
-      // v0.7 — Q30 brief stub.  Demo always reports zero changes.
-      return { count: 0, label: 'sync changes since yesterday' };
-    }
+    const realOp = opId === 'briefSummary' ? 'folio_briefSummary' : opId;
+    return agent.callSkill('household', realOp, args);
   }
   return { ok: false, error: `${appOrigin}.${opId} not wired in this demo build` };
 };

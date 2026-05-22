@@ -81,6 +81,7 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
     case 'record':     return renderRecordPanel(rendered, state, ctx, 'record');
     case 'mini-page':  return renderRecordPanel(rendered, state, ctx, 'mini-page');
     case 'brief':      return renderBrief(rendered, state, ctx);
+    case 'find':       return renderFind(rendered, state, ctx);
     case 'form':       return renderFormShape(rendered, state, ctx);
     case 'embed-card': {
       // v0.5.5 — kind discriminator drives card layout.
@@ -839,6 +840,88 @@ function renderFormShape(rendered, state, { doc }) {
   if (rendered.messageId) el.dataset.messageId = rendered.messageId;
   el.textContent = `(form for ${rendered.text ?? 'a previous request'} — expired; re-run the command)`;
   return el;
+}
+
+/**
+ * v0.7.5 — render a /find result.  One section per app with matches;
+ * each row is clickable and dispatches a getSnapshot-style /embed
+ * (future) — for v0.7.5 the rows are informational labels.
+ * Extensive-search button at the bottom is a stub today.
+ */
+function renderFind(rendered, state, ctx) {
+  const { doc, onCloseMessage, onButtonTap } = ctx;
+  const wrap = doc.createElement('div');
+  wrap.className = `cc-message cc-shell cc-find cc-${state}`;
+  if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
+
+  const header = doc.createElement('div');
+  header.className = 'cc-brief-header cc-find-header';
+  const title = doc.createElement('span');
+  title.className = 'cc-brief-title';
+  title.textContent = rendered.query
+    ? `Results for "${rendered.query}"`
+    : 'Search';
+  header.appendChild(title);
+  if (typeof onCloseMessage === 'function') {
+    const closeBtn = doc.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'cc-panel-close';
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', () => onCloseMessage(rendered.messageId));
+    header.appendChild(closeBtn);
+  }
+  wrap.appendChild(header);
+
+  if (!Array.isArray(rendered.groups) || rendered.groups.length === 0) {
+    const empty = doc.createElement('div');
+    empty.className = 'cc-brief-empty';
+    empty.textContent = 'No matches.';
+    wrap.appendChild(empty);
+  } else {
+    for (const group of rendered.groups) {
+      const block = doc.createElement('section');
+      block.className = 'cc-brief-section cc-find-group';
+      block.dataset.appOrigin = group.appOrigin;
+      const label = doc.createElement('h3');
+      label.className = 'cc-brief-section-label';
+      label.textContent = `${group.appOrigin}  (${group.items.length})`;
+      block.appendChild(label);
+
+      if (group.error) {
+        const err = doc.createElement('div');
+        err.className = 'cc-brief-section-error';
+        err.textContent = `(${group.error})`;
+        block.appendChild(err);
+      } else {
+        const ul = doc.createElement('ul');
+        ul.className = 'cc-brief-list cc-find-list';
+        for (const it of group.items) {
+          const li = doc.createElement('li');
+          li.textContent = it.label;
+          li.dataset.itemId = it.id;
+          if (it.type) li.dataset.itemType = it.type;
+          ul.appendChild(li);
+        }
+        block.appendChild(ul);
+      }
+      wrap.appendChild(block);
+    }
+  }
+
+  // [Extensive search] stub — surfaces when extensiveAvailable.
+  if (rendered.extensiveAvailable && typeof onButtonTap === 'function') {
+    const footer = doc.createElement('div');
+    footer.className = 'cc-find-footer';
+    const btn = doc.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cc-keyboard-btn cc-find-extensive';
+    btn.textContent = 'Extensive search (pod + network)';
+    btn.title = 'Stub — backing skills land per-app';
+    btn.addEventListener('click', () => onButtonTap('demo-extensive-search', rendered.query));
+    footer.appendChild(btn);
+    wrap.appendChild(footer);
+  }
+  return wrap;
 }
 
 function renderUnknownShape(rendered, { doc }) {

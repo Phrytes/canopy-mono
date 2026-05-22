@@ -170,6 +170,25 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `/find <text>` — v0.7.5 user-requested search.  Fans across
+     * apps with Q33 `surfaces.chat.search.searchSkill` declarations;
+     * queries cached items first (instant).  An [Extensive search]
+     * button on the result surfaces deeper queries (pod/network)
+     * when those skills land.
+     */
+    {
+      id:    'find',
+      verb:  'list',
+      params: [
+        { name: 'query', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/find' },
+        chat:  { reply: 'find', hint: 'search across all apps cached items' },
+      },
+    },
+
+    /**
      * `/brief` — v0.7 morning-brief aggregator.  Fans across all
      * enabled apps that declare `surfaces.chat.brief.summarySkill`
      * (Q30); aggregates replies into a single brief-shape card.

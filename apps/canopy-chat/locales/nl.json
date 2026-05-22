@@ -59,6 +59,10 @@
   "brief": {
     "no_runner": { "text": "Brief-aggregator niet beschikbaar in deze build.", "doc": "Defensive." }
   },
+  "find": {
+    "no_query":  { "text": "Geef een zoekterm op: /find <tekst>",       "doc": "When /find fires with no query." },
+    "no_runner": { "text": "Zoeken niet beschikbaar in deze build.",     "doc": "Defensive." }
+  },
   "logs": {
     "no_log":  { "text": "Event-log niet beschikbaar in deze build.",                  "doc": "Defensive." },
     "heading": { "text": "Laatste {{count}} events:",                                  "doc": "First line of /logs output." },

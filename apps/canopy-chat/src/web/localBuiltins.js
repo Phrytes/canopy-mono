@@ -43,6 +43,7 @@ export function createLocalBuiltins({
   externalFlow,              // v0.6.2 — { open, getActiveThreadId, mockSigninUrl }
   briefRunner,               // v0.7 — () => Promise<BriefReply>
   eventLog,                  // v0.7.1 — EventLog instance
+  findRunner,                // v0.7.5 — ({query}) => Promise<FindReply>
 }) {
   return {
     help: async () => formatHelp(catalog, t),
@@ -58,7 +59,17 @@ export function createLocalBuiltins({
     signin:    async (args) => signinFlow(args, { externalFlow, t }),
     brief:     async (args) => runBriefBuiltin(args, { briefRunner, t }),
     logs:      async (args) => runLogsBuiltin(args, { eventLog, t }),
+    find:      async (args) => runFindBuiltin(args, { findRunner, t }),
   };
+}
+
+async function runFindBuiltin(args, { findRunner, t }) {
+  const q = String(args?.query ?? args?._match ?? '').trim();
+  if (!q) return { ok: false, error: t('find.no_query') };
+  if (typeof findRunner !== 'function') {
+    return { ok: false, error: t('find.no_runner') };
+  }
+  return findRunner({ query: q });
 }
 
 /**
