@@ -197,10 +197,22 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const briefFor = (opId) => briefByOp.get(opId);
 
+  // (j) Q33 search-skill (canopy-chat v0.7.5, 2026-05-23).  When an
+  // op declares `surfaces.chat.search.searchSkill`, /find calls it
+  // to query this app's cached items by text.
+  const searchByOp = new Map();
+  for (const op of ops) {
+    const skill = op?.surfaces?.chat?.search?.searchSkill;
+    if (typeof skill === 'string' && skill !== '') {
+      searchByOp.set(op.id, skill);
+    }
+  }
+  const searchFor = (opId) => searchByOp.get(opId);
+
   return {
     toolCatalog, toolHandlers, systemPrompt, commandMenu,
     inlineKeyboardFor, replyShapeFor, followUpsFor, runtimeFor,
-    embedSnapshotFor, briefFor,
+    embedSnapshotFor, briefFor, searchFor,
   };
 }
 

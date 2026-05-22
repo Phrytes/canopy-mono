@@ -80,6 +80,7 @@ export function mergeManifests(sources, opts = {}) {
   const followUps   = new Map();
   const embedSnapshot = new Map();
   const briefDecls    = new Map();        // v0.7 Q30 — canonicalKey → {summarySkill, order?, label?, appOrigin}
+  const searchDecls   = new Map();        // v0.7.5 Q33 — canonicalKey → {searchSkill, appOrigin}
   const appOrigins  = [];
   /** @type {Map<string, string>} command → first-mounting appId */
   const commandOwner = new Map();
@@ -189,6 +190,10 @@ export function mergeManifests(sources, opts = {}) {
       // Q30 (v0.7) brief summary skill lookup.
       const brief = mounted.rendered.briefFor?.(op.id);
       if (brief) briefDecls.set(canonicalKey, { ...brief, appOrigin: m.app });
+
+      // Q33 (v0.7.5) search-skill lookup.
+      const searchSkill = mounted.rendered.searchFor?.(op.id);
+      if (searchSkill) searchDecls.set(canonicalKey, { searchSkill, appOrigin: m.app });
     }
   }
 
@@ -199,10 +204,14 @@ export function mergeManifests(sources, opts = {}) {
     followUpsFor:     (opId) => followUps.get(opId),
     embedSnapshotFor: (opId) => embedSnapshot.get(opId),
     briefFor:         (opId) => briefDecls.get(opId),
+    searchFor:        (opId) => searchDecls.get(opId),
     // v0.7 — flattened brief decls, order-sorted, for /brief fan-out.
     briefAggregations: () => [...briefDecls.entries()]
       .map(([opId, decl]) => ({ opId, ...decl }))
       .sort((a, b) => (a.order ?? 999) - (b.order ?? 999)),
+    // v0.7.5 — flattened search decls for /find fan-out.
+    searchAggregations: () => [...searchDecls.entries()]
+      .map(([opId, decl]) => ({ opId, ...decl })),
     appOrigins,
     warnings,
   };

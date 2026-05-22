@@ -24,6 +24,7 @@
     "./appRegistry": "./src/appRegistry.js",
     "./externalFlow": "./src/externalFlow.js",
     "./brief": "./src/brief.js",
+    "./find":  "./src/find.js",
     "./eventLog": "./src/eventLog.js",
     "./forms": "./src/forms/buildFormSpec.js",
     "./storage/local": "./src/storage/local.js",
