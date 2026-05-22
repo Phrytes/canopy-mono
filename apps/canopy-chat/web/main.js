@@ -36,6 +36,7 @@ import { renderLogsPanel }           from '../src/web/logsPanel.js';
 import { createRealHouseholdAgent }  from '../src/web/realAgent.js';
 import { mockStoopManifest,
          mockFolioManifest }         from '../src/web/mockAgent.js';
+import { calendarManifest }          from '@canopy-app/calendar/manifest';
 import { createLocalBuiltins }       from '../src/web/localBuiltins.js';
 
 /* ── DOM refs ──────────────────────────────────────────── */
@@ -68,6 +69,7 @@ const rawCatalog = mergeManifests([
   { manifest: agent.manifest },
   { manifest: mockStoopManifest },
   { manifest: mockFolioManifest },
+  { manifest: calendarManifest },     // v0.7.10 — calendar app
 ], { runtime: 'browser' });
 
 // v0.6 OQ-4.B — app-toggle registry.  Filters disabled apps out of
@@ -84,6 +86,7 @@ const manifestsByOrigin = {
   'household':   agent.manifest,
   'stoop':       mockStoopManifest,
   'folio':       mockFolioManifest,
+  'calendar':    calendarManifest,
 };
 
 // v0.2.4 — IndexedDB persistence.  Load existing threads on boot;
@@ -377,6 +380,11 @@ const callSkill = async (appOrigin, opId, args) => {
   if (appOrigin === 'folio') {
     const realOp = opId === 'briefSummary' ? 'folio_briefSummary' : opId;
     return agent.callSkill('household', realOp, args);
+  }
+  if (appOrigin === 'calendar') {
+    // Calendar skills are registered with the 'calendar_' prefix on
+    // the host agent (per v0.7.10 multi-app collision-avoidance).
+    return agent.callSkill('household', `calendar_${opId}`, args);
   }
   return { ok: false, error: `${appOrigin}.${opId} not wired in this demo build` };
 };

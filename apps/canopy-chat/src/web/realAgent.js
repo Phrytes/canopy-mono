@@ -29,6 +29,9 @@ import {
 import { VaultMemory } from '@canopy/vault';
 
 import { mockHouseholdManifest } from './mockAgent.js';
+import {
+  CalendarStore, registerCalendarSkills,
+} from '@canopy-app/calendar';
 
 const SEED_CHORES = [
   { id: 'c-1', label: 'Dishwasher',         type: 'chore', state: 'open' },
@@ -91,6 +94,23 @@ export async function createRealHouseholdAgent(opts = {}) {
       unreachable: offline,
     };
   }
+
+  /* ─────────── v0.7.10 — Calendar app skills ─────────── */
+  // Composed via @canopy-app/calendar's registerCalendarSkills.  The
+  // calendar app's CalendarStore is built fresh per agent instance
+  // (in-memory pseudo-pod for v0.7.10; v0.7.11 swaps to real pod).
+  //
+  // v0.7.10 limitation: all 5 apps' skills register on ONE hostAgent.
+  // For brief / search, app-prefixed names (calendar_briefSummary,
+  // tasks_briefSummary, ...) avoid the collision.  main.js's callSkill
+  // remaps the bare op id → the prefixed id.  v0.7.11+ may mount each
+  // app as its own agent on the InternalBus for cleaner architecture.
+  const calendarStore = new CalendarStore({ actor: 'webid:local-demo-user' });
+  registerCalendarSkills(hostAgent, calendarStore, {
+    simulateSync,
+    publishEvent,
+    skillPrefix: 'calendar_',     // ← namespaces colliding skill ids
+  });
 
   // Register the household skills on the HOST agent.  Skills take
   // `{parts}` per @canopy/core convention; we transport args via a
