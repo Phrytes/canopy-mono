@@ -510,13 +510,11 @@ function renderFileCard(rendered, state, ctx) {
 
   appendIssuerClaimerMeta(wrap, embed, doc);
   appendClaimButton(wrap, embed, state, ctx, doc);
-  // v0.7 catch-up — receiver-action stub buttons.  Real backing apps
-  // declare these via manifest appliesTo: {type:'file'} when they
-  // ship; until then the chat shell offers two no-op demos.
-  appendDemoActions(wrap, embed, state, ctx, doc, [
-    { label: 'Download',        op: 'demo-download'     },
-    { label: 'Save to my pod',  op: 'demo-save-to-pod'  },
-  ]);
+  // v0.7.13 — manifest-driven receiver actions (replaces v0.7 demo
+  // stubs).  Folio's manifest declares appliesTo:{type:'file'}-gated
+  // ops (downloadFile, saveToMyPod); renderEmbedActions walks the
+  // manifest + surfaces buttons; clicks dispatch real skills.
+  appendManifestActions(wrap, embed, state, ctx, doc);
   return wrap;
 }
 
@@ -568,23 +566,88 @@ function renderTimeCard(rendered, state, ctx) {
 
   appendIssuerClaimerMeta(wrap, embed, doc);
   appendClaimButton(wrap, embed, state, ctx, doc);
-  // v0.7 catch-up — receiver-action stub buttons for time-card.
-  // Future calendar app (task #111) declares these via manifest.
-  appendDemoActions(wrap, embed, state, ctx, doc, [
-    { label: 'Add to calendar', op: 'demo-add-to-calendar' },
-    { label: 'Decline',         op: 'demo-decline'         },
-  ]);
+  // v0.7.13 — manifest-driven receiver actions for time-cards too:
+  // calendar's appliesTo:{type:'calendar-event',state:['open']} ops
+  // (rsvpAccept/Decline/Tentative) auto-surface via this same code.
+  appendManifestActions(wrap, embed, state, ctx, doc);
   return wrap;
 }
 
 /* ─── shared embed-card helpers ────────── */
 
 /**
- * v0.7 — render demo stub buttons (file: [Download]/[Save to my pod];
- * time: [Add to calendar]/[Decline]).  Clicks fire onButtonTap with
- * a 'demo-...' opId; main.js handles them with a placeholder reply.
- * Real backing apps replace these via manifest appliesTo when they
- * ship.
+ * v0.7.13 — manifest-driven receiver-action buttons.  Walks the
+ * embed's appOrigin manifest (from ctx.manifestsByOrigin) and
+ * surfaces every `surfaces.ui.control:'button'` op whose
+ * `appliesTo` matches the snapshot's type+state.  Clicks fire
+ * onButtonTap(opId, snapshot.id, {embed}); main.js routes to the
+ * matching real skill (folio.downloadFile, folio.saveToMyPod,
+ * calendar.rsvpAccept etc).
+ *
+ * This REPLACES the v0.7 demo-stub buttons.  When a real backing
+ * skill exists, it surfaces here automatically via the manifest.
+ */
+function appendManifestActions(wrap, embed, state, ctx, doc) {
+  if (state === 'disabled') return;
+  const { manifestsByOrigin, onButtonTap } = ctx;
+  if (!manifestsByOrigin || typeof onButtonTap !== 'function') return;
+  const manifest = manifestsByOrigin[embed?.appOrigin];
+  if (!manifest) return;
+  const snap = embed?.snapshot ?? {};
+  // Build the gating item: snapshot's id + type + state + any extra
+  // fields the snapshot exposes for the appliesTo check.
+  const item = {
+    ...(snap.fields ?? {}),
+    id:    snap.id,
+    type:  snap.type ?? deriveTypeFromKind(embed?.kind),
+    state: snap.state ?? 'open',
+  };
+  const buttons = [];
+  for (const op of manifest.operations ?? []) {
+    const ui = op?.surfaces?.ui;
+    if (!ui || ui.control !== 'button') continue;
+    if (!embedAppliesTo(op.appliesTo, item)) continue;
+    buttons.push({
+      opId:         op.id,
+      label:        ui.label ?? op.id,
+      callbackData: `${op.id}:${item.id}`,
+    });
+  }
+  if (buttons.length === 0) return;
+  const kb = doc.createElement('div');
+  kb.className = 'cc-embed-actions';
+  for (const btn of buttons) {
+    const b = doc.createElement('button');
+    b.type = 'button';
+    b.className = 'cc-keyboard-btn';
+    b.textContent = btn.label;
+    b.dataset.callback = btn.callbackData;
+    b.addEventListener('click', () => {
+      onButtonTap(btn.opId, item.id, { embed });
+    });
+    kb.appendChild(b);
+  }
+  wrap.appendChild(kb);
+}
+
+/**
+ * Snapshot's `type` doesn't always equal the embed's `kind`.
+ * file-card snapshots have type 'file'; time-cards have either
+ * 'time' (v0.5.5 stubs) or 'calendar-event' (v0.7.10 real).
+ * item-card snapshots carry their app's natural type.
+ *
+ * If snapshot lacks a type, infer from kind so appliesTo gating
+ * still works.
+ */
+function deriveTypeFromKind(kind) {
+  if (kind === 'file-card') return 'file';
+  if (kind === 'time-card') return 'calendar-event';
+  return undefined;
+}
+
+/**
+ * @deprecated — kept for any path still calling demo buttons.  v0.7.13
+ * superseded by `appendManifestActions`.
  */
 function appendDemoActions(wrap, embed, state, ctx, doc, actions) {
   if (state === 'disabled') return;

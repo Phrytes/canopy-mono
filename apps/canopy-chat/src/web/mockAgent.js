@@ -74,7 +74,7 @@ export const mockStoopManifest = {
  */
 export const mockFolioManifest = {
   app:        'folio',
-  itemTypes:  ['note'],
+  itemTypes:  ['note', 'file'],     // v0.7.13 — file added
   operations: [
     {
       id:    'readNote', verb: 'list',
@@ -113,8 +113,56 @@ export const mockFolioManifest = {
         chat:  { reply: 'text', hint: 'start the folder watcher (sidecar only)' },
       },
     },
+    /* ─── v0.7.13 — Q29 + receiver-action surface ─── */
+    /**
+     * `getFileSnapshot(path)` — Q29 cardSnapshotSkill for /embed-file
+     * when the user picks an existing folio file by name/path.
+     */
+    {
+      id:    'getFileSnapshot', verb: 'list',
+      appliesTo: { type: 'file' },
+      params: [{ name: 'path', kind: 'string', required: true }],
+      runtime: 'browser',
+      surfaces: { chat: { hint: 'snapshot a folio file for embedding' } },
+    },
+    /**
+     * `[Download]` button on file-cards.  appliesTo:{type:'file'}
+     * means the chat-shell's appliesTo-gated renderer auto-surfaces
+     * this on every file-card embed (replaces the v0.7.x demo stub).
+     */
+    {
+      id:    'downloadFile', verb: 'list',
+      appliesTo: { type: 'file' },
+      params: [{ name: 'path', kind: 'string', required: true }],
+      runtime: 'browser',
+      surfaces: {
+        ui:   { control: 'button', label: 'Download' },
+        chat: { hint: 'download a file from the sender\'s pod' },
+      },
+    },
+    /**
+     * `[Save to my pod]` cross-pod copy.  Reads the sender's bytes
+     * (or inline payload), writes to the receiver's own pod under
+     * /shared-with-me/<name>.
+     */
+    {
+      id:    'saveToMyPod', verb: 'add',
+      appliesTo: { type: 'file' },
+      params: [
+        { name: 'path', kind: 'string', required: false },
+        { name: 'name', kind: 'string', required: false },
+      ],
+      runtime: 'browser',
+      surfaces: {
+        ui:   { control: 'button', label: 'Save to my pod' },
+        chat: { hint: 'save a shared file to your own pod' },
+      },
+    },
   ],
-  views: [{ id: 'notes', title: 'Notes', type: 'note' }],
+  views: [
+    { id: 'notes', title: 'Notes', type: 'note' },
+    { id: 'files', title: 'Files', type: 'file' },
+  ],
 };
 
 /**
@@ -226,6 +274,12 @@ mockStoopManifest.operations.find((o) => o.id === 'listFeed')
   .surfaces.chat.search = { searchSkill: 'searchPosts' };
 mockFolioManifest.operations.find((o) => o.id === 'readNote')
   .surfaces.chat.search = { searchSkill: 'searchFiles' };
+
+// v0.7.13 — Q29 cardSnapshotSkill on shareFolder (the user-visible
+// 'share a file' moment).  /embed-file --path=<existing> looks up
+// the file via getFileSnapshot before building the embed envelope.
+mockFolioManifest.operations.find((o) => o.id === 'shareFolder')
+  .surfaces.chat.embed = { cardSnapshotSkill: 'getFileSnapshot' };
 
 /**
  * Build a mock agent: returns `{ manifest, callSkill, reset }`.
