@@ -265,41 +265,25 @@ const callSkill = async (appOrigin, opId, args) => {
     if (!handler) throw new Error(`No local handler for canopy-chat.${opId}`);
     return handler(args ?? {});
   }
+  // v0.7.2/3/4 — all 4 apps now run as real skills on the same
+  // host agent.  Skill ids are flat (no collisions in the v0.7 demo);
+  // briefSummary ids are app-scoped (tasks_briefSummary etc) to
+  // avoid the Q30 fan-out hitting the wrong one.
   if (appOrigin === 'household') {
     return agent.callSkill(appOrigin, opId, args);
   }
-  // v0.4 cross-app demo: stoop + folio manifests are in the catalog
-  // but their agents aren't wired in the v0.1 in-process topology.
-  // Return placeholder data so /help discovery + dispatch feedback
-  // demonstrate the cross-app surface.
+  if (appOrigin === 'tasks-v0') {
+    // tasks-v0's brief skill is registered as 'tasks_briefSummary'.
+    const realOp = opId === 'briefSummary' ? 'tasks_briefSummary' : opId;
+    return agent.callSkill('household', realOp, args);
+  }
   if (appOrigin === 'stoop') {
-    if (opId === 'listFeed') {
-      return { items: [
-        { id: 'p-1', label: 'Anne needs help moving a couch', state: 'open' },
-        { id: 'p-2', label: 'Karl offers tomato seedlings',    state: 'open' },
-      ] };
-    }
-    if (opId === 'postRequest') {
-      return { ok: true, message: `✓ Posted: ${args?.text ?? '(empty)'}` };
-    }
-    // v0.7 — Q30 brief stub.
-    if (opId === 'briefSummary') {
-      return { items: [
-        { id: 'p-1', label: '2 buurt requests open' },
-      ] };
-    }
+    const realOp = opId === 'briefSummary' ? 'stoop_briefSummary' : opId;
+    return agent.callSkill('household', realOp, args);
   }
   if (appOrigin === 'folio') {
-    if (opId === 'readNote') {
-      return { message: `[demo] readNote("${args?.path ?? ''}") — folio agent not wired in this build` };
-    }
-    if (opId === 'shareFolder') {
-      return { ok: true, message: `✓ [demo] would share "${args?.folder}" with ${args?.with}` };
-    }
-    if (opId === 'briefSummary') {
-      // v0.7 — Q30 brief stub.  Demo always reports zero changes.
-      return { count: 0, label: 'sync changes since yesterday' };
-    }
+    const realOp = opId === 'briefSummary' ? 'folio_briefSummary' : opId;
+    return agent.callSkill('household', realOp, args);
   }
   return { ok: false, error: `${appOrigin}.${opId} not wired in this demo build` };
 };

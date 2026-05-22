@@ -185,6 +185,190 @@ export async function createRealHouseholdAgent() {
     })];
   });
 
+  /* ─────────── v0.7.2 — tasks-v0 real skills ─────────── */
+  // Mock-but-realistic task state.  Same shape as tasks-v0's real
+  // itemStore; lives in canopy-chat's browser memory for the demo.
+  // When tasks-v0's real agent migrates browser-side (separate
+  // effort), this stub is replaced by composing its actual agent.
+  const SEED_TASKS = [
+    { id: 't-1', text: 'Set up Anne\'s bedroom', type: 'task', state: 'open',    assignee: null,        requiredSkill: 'household' },
+    { id: 't-2', text: 'Fix the leaky tap',      type: 'task', state: 'open',    assignee: null,        requiredSkill: 'plumbing'  },
+    { id: 't-3', text: 'Order groceries',        type: 'task', state: 'claimed', assignee: 'webid:anne',requiredSkill: null        },
+    { id: 't-4', text: 'Take out the bins',      type: 'task', state: 'done',    assignee: 'webid:karl',requiredSkill: null        },
+  ];
+  let tasks = SEED_TASKS.map((t) => ({ ...t }));
+
+  hostAgent.register('addTask', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    const text = String(a.text ?? '').trim();
+    if (!text) return [DataPart({ ok: false, error: 'text required' })];
+    const id = `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const task = {
+      id, text, type: 'task', state: 'open',
+      assignee:      a.assignee      ?? null,
+      requiredSkill: a.requiredSkill ?? null,
+    };
+    tasks.push(task);
+    return [DataPart({
+      ok: true, message: `✓ Added task: ${text}`, itemId: id, _sync: simulateSync(),
+    })];
+  });
+
+  hostAgent.register('listMine', async () => {
+    // v0.7 demo: 'mine' interpreted as 'open + claimed by anyone';
+    // real tasks-v0 filters by actor's webid.
+    const items = tasks.filter((t) => t.state === 'open' || t.state === 'claimed');
+    return [DataPart({ items, _sync: simulateSync() })];
+  });
+
+  hostAgent.register('claimTask', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    const target = tasks.find((t) => t.id === a.id);
+    if (!target) return [DataPart({ ok: false, error: `No task with id "${a.id}".` })];
+    if (target.state !== 'open') {
+      return [DataPart({ ok: false, error: `Task "${target.text}" not in open state.` })];
+    }
+    target.state    = 'claimed';
+    target.assignee = a.assignee ?? 'webid:local-demo-user';
+    return [DataPart({
+      ok: true, message: `✓ Claimed: ${target.text}`, itemId: target.id, _sync: simulateSync(),
+    })];
+  });
+
+  hostAgent.register('completeTask', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    const target = tasks.find((t) => t.id === a.id);
+    if (!target) return [DataPart({ ok: false, error: `No task with id "${a.id}".` })];
+    if (target.state === 'done') {
+      return [DataPart({ ok: false, error: `Task "${target.text}" is already done.` })];
+    }
+    target.state = 'done';
+    return [DataPart({
+      ok: true, message: `✓ Completed: ${target.text}`, itemId: target.id, _sync: simulateSync(),
+    })];
+  });
+
+  hostAgent.register('getTaskSnapshot', async ({ parts }) => {
+    const id = parts?.[0]?.data?.id;
+    const target = tasks.find((t) => t.id === id);
+    if (!target) return [DataPart({ ok: false, error: `No task with id "${id}".` })];
+    return [DataPart({
+      id:    target.id,
+      type:  'task',
+      state: target.state,
+      title: target.text,
+      fields: {
+        state:    target.state,
+        assignee: target.assignee ?? 'unassigned',
+        ...(target.requiredSkill ? { requires: target.requiredSkill } : {}),
+      },
+    })];
+  });
+
+  // Tasks-v0 briefSummary for the /brief aggregator (Q30).
+  hostAgent.register('tasks_briefSummary', async () => {
+    const open = tasks.filter((t) => t.state === 'open');
+    if (open.length === 0) return [DataPart({ ok: true })];   // empty → skipped
+    return [DataPart({
+      items:   open.map((t) => ({ id: t.id, label: t.text })),
+      message: `${open.length} open task${open.length === 1 ? '' : 's'}`,
+    })];
+  });
+
+  /* ─────────── v0.7.3 — stoop real skills ─────────── */
+  const SEED_POSTS = [
+    { id: 'p-1', label: 'Anne needs help moving a couch',   state: 'open',   actor: 'webid:anne' },
+    { id: 'p-2', label: 'Karl offers tomato seedlings',     state: 'open',   actor: 'webid:karl' },
+    { id: 'p-3', label: 'Maria looking for a bike pump',    state: 'open',   actor: 'webid:maria' },
+  ];
+  let posts = SEED_POSTS.map((p) => ({ ...p }));
+
+  hostAgent.register('listFeed', async () => {
+    return [DataPart({
+      items: posts.filter((p) => p.state === 'open'),
+      _sync: simulateSync(),
+    })];
+  });
+
+  hostAgent.register('postRequest', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    const text = String(a.text ?? '').trim();
+    if (!text) return [DataPart({ ok: false, error: 'text required' })];
+    const id = `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    posts.unshift({ id, label: text, state: 'open', actor: 'webid:local-demo-user' });
+    return [DataPart({
+      ok: true, message: `✓ Posted: ${text}`, itemId: id, _sync: simulateSync(),
+    })];
+  });
+
+  hostAgent.register('stoop_briefSummary', async () => {
+    const open = posts.filter((p) => p.state === 'open');
+    if (open.length === 0) return [DataPart({ ok: true })];
+    return [DataPart({
+      items:   open.slice(0, 3).map((p) => ({ id: p.id, label: p.label })),
+      message: `${open.length} buurt request${open.length === 1 ? '' : 's'}`,
+    })];
+  });
+
+  /* ─────────── v0.7.4 — folio browser-side skills ─────────── */
+  const SEED_FILES = [
+    { id: '/notes/shared/anne.md',  name: 'anne.md',  type: 'file', mime: 'text/markdown', bytes: 1234, state: 'synced' },
+    { id: '/notes/recipes.md',      name: 'recipes.md', type: 'file', mime: 'text/markdown', bytes: 5678, state: 'synced' },
+    { id: '/docs/lease.pdf',        name: 'lease.pdf',  type: 'file', mime: 'application/pdf', bytes: 102400, state: 'synced' },
+  ];
+  let files = SEED_FILES.map((f) => ({ ...f }));
+
+  hostAgent.register('readNote', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    const target = files.find((f) => f.id === a.path || f.name === a.path);
+    if (!target) return [DataPart({ ok: false, error: `No file at "${a.path}".` })];
+    return [DataPart({
+      message: `[demo] Contents of ${target.name} would be shown here. ${target.bytes} bytes; mime ${target.mime}.`,
+    })];
+  });
+
+  hostAgent.register('shareFolder', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    const folder = String(a.folder ?? '').trim();
+    const withWebid = String(a.with ?? '').trim();
+    if (!folder)    return [DataPart({ ok: false, error: 'folder required' })];
+    if (!withWebid) return [DataPart({ ok: false, error: 'with (webid) required' })];
+    return [DataPart({
+      ok:      true,
+      message: `✓ Shared "${folder}" with ${withWebid}.`,
+      _sync:   simulateSync(),
+    })];
+  });
+
+  hostAgent.register('listFiles', async () => {
+    return [DataPart({ items: files, _sync: simulateSync() })];
+  });
+
+  hostAgent.register('verifyPodState', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    return [DataPart({
+      message: `[demo] ${a.relPath ?? 'file'} matches pod state (sha + size verified).`,
+    })];
+  });
+
+  hostAgent.register('deleteFromPod', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    const idx = files.findIndex((f) => f.id === a.relPath || f.name === a.relPath);
+    if (idx === -1) return [DataPart({ ok: false, error: `No file at "${a.relPath}".` })];
+    const removed = files.splice(idx, 1)[0];
+    return [DataPart({
+      ok: true, message: `✓ Deleted from pod: ${removed.name}`, _sync: simulateSync(),
+    })];
+  });
+
+  hostAgent.register('folio_briefSummary', async () => {
+    if (files.length === 0) return [DataPart({ ok: true })];
+    return [DataPart({
+      count: files.length,
+      label: `file${files.length === 1 ? '' : 's'} in folio`,
+    })];
+  });
+
   await Promise.all([
     hostAgent.start(),
     chatAgent.start(),
