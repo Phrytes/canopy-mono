@@ -344,11 +344,12 @@ None. v0.2 is pure app-layer.
 
 ### Open questions for v0.2
 
-- **OQ-2.A** — Filter DSL — simple key:value match list, or
-  expression-tree-style for v1? *Lean: key:value list with implicit
-  AND across keys + array-value for OR within a key (mirroring
-  `appliesTo.state` shape from V0.4 Q4); expression tree deferred.*
-F: I would say expression tree 
+- ~~**OQ-2.A** — Filter DSL — simple key:value match list, or
+  expression-tree-style for v1?~~ **Resolved 2026-05-23 (user F:
+  expression tree):** OQ-cleanup landed an expression-tree extension
+  on top of the flat key:value shape.  Filters accept `{and: [...]}`,
+  `{or: [...]}`, `{not: ...}` operators alongside the v0.2 flat
+  shape (which still works unchanged).  See `src/filter.js`.
 - **OQ-2.B** — Web vs RN sync — do threads sync between a user's
   web tab and their RN app on the same device? *Lean: yes via the
   user's pod (when present) per OQ-3 resolution; no-pod = each device
@@ -394,11 +395,13 @@ unchanged (substrate is permissive on `field.type` per Q23).
 
 ### Open questions for v0.3
 
-- **OQ-3.A** — Date param parsing — how strict? Accept "friday" /
-  "tomorrow" / ISO-8601? *Lean: ISO-8601 + a few keywords ("today",
-  "tomorrow", "next-friday"); free-text dates go through the LLM
-  layer later.*
-F: can we mimic the slack-style parsing? That worked quite flexibly 
+- ~~**OQ-3.A** — Date param parsing — how strict?~~ **Resolved
+  2026-05-23 (user F: slack-style):** OQ-cleanup landed `chrono-node`
+  as the date parser.  Now accepts 'next tuesday 3pm', 'in 2 hours',
+  'feb 15', 'tomorrow morning', and other slack-style inputs.
+  Fast-path retained for ISO + 'today' / 'tomorrow' / 'morgen' +
+  EN/NL weekday names (so EN+NL parity is locked in tests, not
+  dependent on chrono's locale defaults).  See `src/forms/parseDate.js`.
 - **OQ-3.B** — Form-strategy rule — is the heuristic enough or do
   apps need `surfaces.chat.formStyle` to override? *Defer: ship the
   heuristic; add Q32 if a third surface needs an override.*
@@ -461,9 +464,12 @@ for the sidecar (v0.7+).
   2026-05-21 (user F:):** hybrid. Apps declare per-op `followUps`
   (Q31); canopy-chat's static registry adds cross-app chains that
   no single app owns.
-- **OQ-4.B** — App-toggle UI placement. **Tentative (user F:):**
-  both chat-inline AND side-panel; revisit at design-time of v0.4
-  to confirm.
+- ~~**OQ-4.B** — App-toggle UI placement.~~ **Resolved 2026-05-23
+  (user F: both chat-inline AND side-panel):** OQ-cleanup landed
+  the chat-inline half — `/apps` lists; `/apps on|off <name>`
+  toggles.  `AppRegistry` + `filterCatalog` swap the merged catalog
+  on each change.  Side-panel UI defers to v0.6.7+ (RN renderer
+  port) — same `AppRegistry` powers both surfaces.
 - **OQ-4.C** — Folio browser-skill extract scope. How many existing
   folio skills need browser-compat refactoring vs. work as-is? Sub-
   question: does `@canopy/pod-client` import cleanly in browser
@@ -568,10 +574,13 @@ on remote events; thread sync across devices for pod-having users.
 
 ### Open questions for v0.6
 
-- **OQ-6.A** — `_sync` empty-state — when an op crosses 0 peers
-  (everyone offline), what does the shell show? *Lean: "Saved
-  locally; awaiting peer sync" with a `[Retry]` affordance.*
-F: sounds good
+- ~~**OQ-6.A** — `_sync` empty-state — when an op crosses 0 peers
+  (everyone offline), what does the shell show?~~ **Resolved
+  2026-05-23 (user F: sounds good):** OQ-cleanup landed the message.
+  `formatSyncHints` returns `t('sync.saved_locally')` ("Saved locally;
+  awaiting peer sync") when peers + pending + unreachable are all
+  empty.  `[Retry]` affordance defers until a real failure path
+  needs it (today the sync hint is informational only).
 - **OQ-6.B** — `_lastSync` granularity — per-item timestamp, or
   per-peer-per-item? *Lean: per-item is enough for v1; per-peer
   drill-down deferred.*
@@ -769,16 +778,15 @@ pointing at where the answer lives.
 | ID     | Phase | Question                                                                  | Pin until                 |
 | ------ | ----- | ------------------------------------------------------------------------- | ------------------------- |
 | OQ-1.C | v0.1  | Mesh-agent browser-bundle — any Node-only imports to shim?                | Phase v0.1 implementation |
-| OQ-2.A | v0.2  | Filter DSL — key:value or expression tree?                                | Phase v0.2 design         |
+| ~~OQ-2.A~~ | ~~v0.2~~ | ~~Filter DSL — key:value or expression tree?~~                       | ✅ resolved 2026-05-23 (expression tree on top of flat shape) |
 | OQ-2.B | v0.2  | Web ⇄ RN thread sync model?                                               | Phase v0.2 design         |
-| OQ-3.A | v0.3  | Date param strictness                                                     | Phase v0.3 design         |
+| ~~OQ-3.A~~ | ~~v0.3~~ | ~~Date param strictness~~                                            | ✅ resolved 2026-05-23 (chrono-node, slack-style) |
 | OQ-3.B | v0.3  | formStyle override needed?                                                | Phase v0.3 design         |
-| OQ-4.B | v0.4  | App-toggle UI — chat-inline vs side-panel? (User: both; revisit)          | Phase v0.4 design         |
+| ~~OQ-4.B~~ | ~~v0.4~~ | ~~App-toggle UI — chat-inline vs side-panel?~~                       | ✅ chat-inline 2026-05-23; side-panel defers to RN port |
 | OQ-4.C | v0.4  | Folio browser-skill extract scope (how much existing code needs refactor) | Phase v0.4 implementation |
-| OQ-4.B | v0.4  | App-toggle UI location                                                    | Phase v0.4 design         |
 | OQ-5.A | v0.5  | Embed when no cross-pod read access                                       | Phase v0.5 design         |
 | OQ-5.B | v0.5  | Embed types beyond item-card                                              | Phase v0.5 design         |
-| OQ-6.A | v0.6  | `_sync` empty-state UX                                                    | Phase v0.6 design         |
+| ~~OQ-6.A~~ | ~~v0.6~~ | ~~`_sync` empty-state UX~~                                           | ✅ resolved 2026-05-23 ("Saved locally; awaiting peer sync") |
 | OQ-6.B | v0.6  | `_lastSync` per-item or per-peer                                          | Phase v0.6 design         |
 | OQ-7.A | v0.7  | Brief caching TTL                                                         | Phase v0.7 design         |
 | OQ-7.B | v0.7  | Log page persistence horizon                                              | Phase v0.7 design         |

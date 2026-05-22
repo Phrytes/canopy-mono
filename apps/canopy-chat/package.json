@@ -37,7 +37,8 @@
     "@canopy/core": "workspace:*",
     "@canopy/manifest-host": "workspace:*",
     "@canopy/vault": "workspace:*",
-    "i18next": "^23.15.0"
+    "i18next": "^23.15.0",
+    "chrono-node": "^2.7.0"
   },
   "devDependencies": {
     "vitest": "^3.0.0",

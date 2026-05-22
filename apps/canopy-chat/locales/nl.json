@@ -51,6 +51,15 @@
   "embed-time": {
     "no_event": { "text": "Geef een event-id op: /embed-time <eventId>", "doc": "When /embed-time fires with no eventId." }
   },
+  "apps": {
+    "heading":        { "text": "Apps:",                                "doc": "First line of /apps list." },
+    "empty":          { "text": "(geen)",                               "doc": "When no apps in the catalog." },
+    "no_registry":    { "text": "App-registry niet beschikbaar.",        "doc": "Defensive." },
+    "no_name":        { "text": "Geef een app-naam op: /apps {{action}} <naam>", "doc": "When toggle action has no app name." },
+    "unknown_action": { "text": "Onbekende actie „{{action}}\". Gebruik: on, off", "doc": "Bad toggle action." },
+    "enabled":        { "text": "✓ App „{{app}}\" ingeschakeld.",         "doc": "Confirmation when /apps on succeeds." },
+    "disabled":       { "text": "✓ App „{{app}}\" uitgeschakeld.",        "doc": "Confirmation when /apps off succeeds." }
+  },
   "sendto": {
     "no_peer":      { "text": "Geef een peer op: /send-to <peer> <itemId>",          "doc": "When /send-to fires with no peer." },
     "no_id":        { "text": "Geef een item-id op: /send-to <peer> <itemId>",      "doc": "When /send-to fires with no itemId." },
@@ -70,7 +79,9 @@
     "podless_empty": { "text": "geen peers gepolld",
                         "doc": "Pod-less sync hint when no peers known." },
     "row_ago":       { "text": "verouderd {{ago}} geleden",
-                        "doc": "Per-row _lastSync badge on list items." }
+                        "doc": "Per-row _lastSync badge on list items." },
+    "saved_locally": { "text": "Lokaal opgeslagen; wacht op peer-sync",
+                        "doc": "Decentralized empty-state suffix (per OQ-6.A)." }
   },
   "newthread": {
     "created":  { "text": "✓ Thread „{{name}}\" aangemaakt. Overgeschakeld.", "doc": "Confirmation when /newthread succeeds." },

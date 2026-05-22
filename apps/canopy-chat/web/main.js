@@ -22,6 +22,7 @@ import {
   describeFilter, canopyChatManifest,
   IndexedDBStore, attachPersistence,
   collectFollowUps, claimEmbed,
+  AppRegistry, filterCatalog,
 } from '../src/index.js';
 import { buildFormSpec, validateAndCoerce } from '../src/forms/buildFormSpec.js';
 import { renderStream }              from '../src/web/domAdapter.js';
@@ -49,12 +50,21 @@ const agent = await createRealHouseholdAgent();
 // v0.4 cross-app surface: stoop + folio manifests join the merged
 // catalog so users see their commands in /help.  Q32 runtime filter
 // drops folio's sync/watch (node-only) ops in the browser build.
-const catalog = mergeManifests([
+const rawCatalog = mergeManifests([
   { manifest: canopyChatManifest },
   { manifest: agent.manifest },
   { manifest: mockStoopManifest },
   { manifest: mockFolioManifest },
 ], { runtime: 'browser' });
+
+// v0.6 OQ-4.B — app-toggle registry.  Filters disabled apps out of
+// the catalog seen by parser/router/dispatch/renderer.  Persistence
+// rides on the same IndexedDB store as threads in a future slice;
+// today the registry is in-memory + survives the session.
+const appRegistry = new AppRegistry();
+appRegistry.syncWithCatalog(rawCatalog.appOrigins);
+let catalog = filterCatalog(rawCatalog, appRegistry);
+appRegistry.subscribe(() => { catalog = filterCatalog(rawCatalog, appRegistry); });
 
 const manifestsByOrigin = {
   'canopy-chat': canopyChatManifest,
@@ -138,13 +148,21 @@ const SIM_PEERS = {
 // callSkill is declared further down; createLocalBuiltins needs it
 // for the /embed factory.  Forward-declared variable + helper.
 let callSkillRef;
+// Pass `catalog` as a getter so /apps and /help always see the
+// CURRENT filtered catalog (re-derived when appRegistry changes).
 const localBuiltins = createLocalBuiltins({
-  catalog, t,
+  // Builtins receive the current rawCatalog for app listing; opsById
+  // / commandMenu are read at call time on the filtered catalog via
+  // the dispatch path.  /apps surfaces both enabled AND disabled
+  // apps (so the user can re-enable).
+  catalog: rawCatalog,
+  t,
   threadStore: store,
   setActive:   (id) => store.setActiveThread(id),
   callSkill:   (appOrigin, opId, args) => callSkillRef(appOrigin, opId, args),
   localActor:  LOCAL_ACTOR,
   simPeers:    SIM_PEERS,
+  appRegistry,
 });
 
 const callSkill = async (appOrigin, opId, args) => {
