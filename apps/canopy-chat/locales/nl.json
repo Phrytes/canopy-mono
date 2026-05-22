@@ -45,6 +45,19 @@
     "no_callskill": { "text": "Embed-dispatch niet beschikbaar in deze build.", "doc": "Defensive." },
     "no_factory":   { "text": "Geen app levert een Q29 cardSnapshotSkill.", "doc": "When the merged catalog has no embed-producing op." }
   },
+  "embed-file": {
+    "no_path":  { "text": "Geef een bestandspad op: /embed-file <pad>",  "doc": "When /embed-file fires with no path." }
+  },
+  "embed-time": {
+    "no_event": { "text": "Geef een event-id op: /embed-time <eventId>", "doc": "When /embed-time fires with no eventId." }
+  },
+  "sendto": {
+    "no_peer":      { "text": "Geef een peer op: /send-to <peer> <itemId>",          "doc": "When /send-to fires with no peer." },
+    "no_id":        { "text": "Geef een item-id op: /send-to <peer> <itemId>",      "doc": "When /send-to fires with no itemId." },
+    "unknown_peer": { "text": "Onbekende peer „{{peer}}\". Probeer: anne",            "doc": "When the peer name isn't in simPeers." },
+    "no_thread":    { "text": "Thread van peer (id={{threadId}}) bestaat niet.",     "doc": "Defensive — sim peer thread missing." },
+    "sent":         { "text": "✓ \"{{item}}\" verzonden naar de thread van {{peer}}.","doc": "Confirmation in sender thread." }
+  },
   "sync": {
     "synced_to":     { "text": "gesynchroniseerd met {{ok}}/{{total}} peers",
                         "doc": "Decentralized sync hint suffix." },

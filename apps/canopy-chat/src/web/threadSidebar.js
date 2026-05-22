@@ -1,4 +1,7 @@
 /**
+ * **Platform: web** (DOM-dependent).  Needs an RN sibling under `rn/` — see
+ * `Project Files/canopy-chat/coding-plan.md` § RN portability inventory.
+ *
  * canopy-chat — thread sidebar DOM adapter.
  *
  * Renders the workspace's threads as a clickable list + new-thread
