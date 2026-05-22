@@ -459,6 +459,49 @@ export async function createRealHouseholdAgent(opts = {}) {
     })];
   });
 
+  // v0.7.13 — getFileSnapshot (Q29 cardSnapshotSkill for /embed-file
+  // when the user picks an existing folio file by name/path).
+  hostAgent.register('getFileSnapshot', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    const target = files.find((f) => f.id === a.path || f.name === a.path);
+    if (!target) return [DataPart({ ok: false, error: `No file at "${a.path}".` })];
+    return [DataPart({
+      id:    target.id,
+      type:  'file',
+      name:  target.name,
+      mime:  target.mime,
+      bytes: target.bytes,
+      path:  target.id,
+      state: target.state ?? 'synced',
+    })];
+  });
+
+  // v0.7.13 — downloadFile: receiver-side action.  In a real browser
+  // build this triggers a Blob download; for the demo (no real bytes
+  // server-side) we synthesise a placeholder reply.
+  hostAgent.register('downloadFile', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    const target = files.find((f) => f.id === a.path || f.name === a.path);
+    return [DataPart({
+      ok:      true,
+      message: target
+        ? `↓ Downloading ${target.name} (${target.bytes} bytes, ${target.mime})… [demo: no real bytes]`
+        : `↓ Downloading ${a.path} from sender's pod… [demo]`,
+    })];
+  });
+
+  // v0.7.13 — saveToMyPod: receiver-side action.  Cross-pod copy:
+  // the receiver reads the sender's pod URL + writes to their own
+  // pod's /shared-with-me/ tree.  Demo: just confirm.
+  hostAgent.register('saveToMyPod', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    return [DataPart({
+      ok:      true,
+      message: `📥 Saved "${a.name ?? a.path ?? 'file'}" to your pod's /shared-with-me/ folder. [demo]`,
+      _sync:   simulateSync(),
+    })];
+  });
+
   // v0.7.5 — searchFiles.
   hostAgent.register('searchFiles', async ({ parts }) => {
     const q = String(parts?.[0]?.data?.query ?? '').toLowerCase();

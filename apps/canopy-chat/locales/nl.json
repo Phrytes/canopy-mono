@@ -46,7 +46,10 @@
     "no_factory":   { "text": "Geen app levert een Q29 cardSnapshotSkill.", "doc": "When the merged catalog has no embed-producing op." }
   },
   "embed-file": {
-    "no_name":  { "text": "Geef een bestandsnaam op.", "doc": "When /embed-file fires with no name." }
+    "no_input":          { "text": "Geef --path / --pick / --name op.",                "doc": "When /embed-file fires with no recognisable input." },
+    "no_name":           { "text": "Geef een bestandsnaam op.",                        "doc": "Back-compat with v0.7.x." },
+    "pick_unavailable":  { "text": "Bestandskiezer niet beschikbaar in deze build.",   "doc": "Defensive." },
+    "pick_cancelled":    { "text": "Bestandskiezer geannuleerd.",                       "doc": "User dismissed the picker." }
   },
   "embed-time": {
     "no_title": { "text": "Geef een titel voor de afspraak op.", "doc": "When /embed-time fires with no title." },

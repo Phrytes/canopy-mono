@@ -97,25 +97,30 @@ export const canopyChatManifest = {
     },
 
     /**
-     * `/embed-file` — file-card.  v0.7 catch-up: now an actual
-     * file-attach UX with real params instead of a stub that
-     * synthesised metadata from a path.  Real folio integration
-     * (calling folio.getFileSnapshot) lands when folio's Q29 ships.
-     * Until then, /embed-file CREATES a file reference card from
-     * the supplied params.
+     * `/embed-file` — file-card.  v0.7.13: three modes:
+     *   /embed-file --path=<existing>  → look up via folio's Q29
+     *                                    getFileSnapshot; embed the
+     *                                    real file metadata
+     *   /embed-file --pick             → opens browser File API
+     *                                    picker; user selects local
+     *                                    file; reads bytes inline
+     *   /embed-file --name=X [...]     → synthesises (back-compat)
+     *
+     * --share=<peer> routes the card to the peer's thread.
      */
     {
       id:    'embed-file',
       verb:  'add',
       params: [
-        { name: 'name',  kind: 'string', required: true  },
-        { name: 'mime',  kind: 'string', required: false },
-        { name: 'path',  kind: 'string', required: false },
-        { name: 'share', kind: 'string', required: false },
+        { name: 'path',  kind: 'string',  required: false },
+        { name: 'pick',  kind: 'boolean', required: false },
+        { name: 'name',  kind: 'string',  required: false },
+        { name: 'mime',  kind: 'string',  required: false },
+        { name: 'share', kind: 'string',  required: false },
       ],
       surfaces: {
         slash: { command: '/embed-file', body: 'flags' },
-        chat:  { reply: 'embed-card', hint: 'embed a file card; --share=anne to send' },
+        chat:  { reply: 'embed-card', hint: 'embed a file; --path=X | --pick | --name=X' },
       },
     },
 
