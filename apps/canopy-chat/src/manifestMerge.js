@@ -152,7 +152,12 @@ export function mergeManifests(sources, opts = {}) {
           );
         } else {
           commandOwner.set(command, m.app);
-          commandMenu.push({ command, opId: op.id, appOrigin: m.app });
+          // 2026-05-23 bug-fix: forward the `body` rule (match/flags/
+          // reject) so the parser picks parseFlags for canonical
+          // flag-body ops like /brief / /addtask / /find etc.
+          const entry = { command, opId: op.id, appOrigin: m.app };
+          if (op.surfaces.slash.body) entry.body = op.surfaces.slash.body;
+          commandMenu.push(entry);
         }
       }
 

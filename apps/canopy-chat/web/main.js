@@ -34,7 +34,8 @@ import { renderForm }                from '../src/web/domForm.js';
 import { renderSidebar }             from '../src/web/threadSidebar.js';
 import { renderLogsPanel }           from '../src/web/logsPanel.js';
 import { createRealHouseholdAgent }  from '../src/web/realAgent.js';
-import { mockStoopManifest,
+import { mockTasksManifest,
+         mockStoopManifest,
          mockFolioManifest }         from '../src/web/mockAgent.js';
 import { calendarManifest }          from '@canopy-app/calendar/manifest';
 import { createLocalBuiltins }       from '../src/web/localBuiltins.js';
@@ -67,6 +68,7 @@ const agent = await createRealHouseholdAgent({
 const rawCatalog = mergeManifests([
   { manifest: canopyChatManifest },
   { manifest: agent.manifest },
+  { manifest: mockTasksManifest },    // v0.7.2 — slash decls (skills already on host)
   { manifest: mockStoopManifest },
   { manifest: mockFolioManifest },
   { manifest: calendarManifest },     // v0.7.10 — calendar app
@@ -84,6 +86,7 @@ appRegistry.subscribe(() => { catalog = filterCatalog(rawCatalog, appRegistry); 
 const manifestsByOrigin = {
   'canopy-chat': canopyChatManifest,
   'household':   agent.manifest,
+  'tasks-v0':    mockTasksManifest,
   'stoop':       mockStoopManifest,
   'folio':       mockFolioManifest,
   'calendar':    calendarManifest,
