@@ -69,12 +69,15 @@ export class CalendarStore {
   #pod;
   /** @type {string} */
   #actorDefault;
+  /** @type {object|null} v0.7.P2 — pod write-through target */
+  #podWriter;
 
   /**
    * @param {object}  [opts]
    * @param {object}  [opts.pseudoPod]   pre-wired pseudo-pod; otherwise we build one in-memory
    * @param {string}  [opts.actor='webid:local-demo-user']
    * @param {string}  [opts.deviceId=DEVICE_ID]
+   * @param {object}  [opts.podWriter]   v0.7.P2 podStorage.createPodWriter result
    */
   constructor(opts = {}) {
     this.#pod = opts.pseudoPod ?? createPseudoPod({
@@ -83,6 +86,23 @@ export class CalendarStore {
       deviceId: opts.deviceId ?? DEVICE_ID,
     });
     this.#actorDefault = opts.actor ?? 'webid:local-demo-user';
+    this.#podWriter    = opts.podWriter ?? null;
+  }
+
+  /**
+   * v0.7.P2 — wire/unwire the pod-write target at runtime.  canopy-
+   * chat calls this on sign-in / sign-out so calendar's .ics feed
+   * writes-through to `<pod>/canopy/calendar/feed.ics`.
+   *
+   * @param {object|null} writer  result of podStorage.createPodWriter,
+   *                                or null to disable write-through.
+   */
+  setPodWriter(writer) { this.#podWriter = writer ?? null; }
+
+  /** @returns {string|null} pod URL the feed write-throughs to (when wired). */
+  getPodFeedUrl() {
+    if (!this.#podWriter || typeof this.#podWriter.urlFor !== 'function') return null;
+    return this.#podWriter.urlFor('calendar', 'feed.ics');
   }
 
   /**
@@ -240,12 +260,24 @@ export class CalendarStore {
    * convention from `@canopy/calendar-emission`.
    */
   async #refreshIcsFeed() {
+    let ics;
     try {
-      const { ics } = await this.getIcsFeed();
+      ({ ics } = await this.getIcsFeed());
       await this.#pod.write(ICS_FEED_URI, ics, { contentType: 'text/calendar' });
     } catch {
-      // Feed-refresh failure should never block a mutation; log + move on.
-      // (Real implementation would surface in a sync-state field.)
+      // Local pseudo-pod failure shouldn't block; in-memory state
+      // is canonical.
+      return;
+    }
+    // v0.7.P2 — write-through to real pod when signed in.
+    if (this.#podWriter && typeof this.#podWriter.write === 'function') {
+      try {
+        await this.#podWriter.write('calendar', 'feed.ics', ics, 'text/calendar');
+      } catch (err) {
+        if (typeof console !== 'undefined') {
+          console.warn('[calendar.podWrite] failed', err?.message ?? err);
+        }
+      }
     }
   }
 

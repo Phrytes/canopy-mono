@@ -159,16 +159,26 @@ export function registerCalendarSkills(agent, store, opts = {}) {
   });
 
   reg('getIcsFeed', async () => {
-    const { ics, uri } = await store.getIcsFeed();
+    const { ics, uri: localUri } = await store.getIcsFeed();
     const eventCount = (ics.match(/BEGIN:VEVENT/g) ?? []).length;
-    return [DataPart({
-      message:
-        `iCal feed for your calendar (${eventCount} event${eventCount === 1 ? '' : 's'}):\n` +
-        `  ${uri}\n\n` +
-        `Subscribe to this URI from Apple Calendar / Google Calendar / Proton.\n` +
-        `(v0.7.11: lives on the local pseudo-pod; a real-pod attach makes\n` +
-        ` it externally reachable.)`,
-    })];
+    // v0.7.P2 — when signed in + podWriter wired, surface the REAL
+    // pod URL as the subscribable feed.  Local pseudo-pod URI is
+    // shown as a fallback when not signed in.
+    const podUri = store.getPodFeedUrl?.();
+    const lines = [
+      `iCal feed for your calendar (${eventCount} event${eventCount === 1 ? '' : 's'}):`,
+    ];
+    if (podUri) {
+      lines.push(`  ${podUri}  ← subscribable URL (your pod)`);
+      lines.push('');
+      lines.push('Subscribe from Apple Calendar / Google Calendar / Proton.');
+      lines.push('Updated automatically on every event change.');
+    } else {
+      lines.push(`  ${localUri}`);
+      lines.push('');
+      lines.push('Local pseudo-pod URL.  /signin to write through to your real pod.');
+    }
+    return [DataPart({ message: lines.join('\n') })];
   });
 
   reg('searchEvents', async ({ parts }) => {
