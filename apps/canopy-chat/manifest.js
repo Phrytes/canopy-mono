@@ -292,6 +292,41 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `/lookup-peer <webid>` — v0.7.P3d.  Resolves a peer's NKN
+     * address by fetching their WebID profile + reading the
+     * canopy:nknAddr triple from their pod's identity.ttl file.
+     * Used to bridge webid → NKN cross-peer (so users don't have
+     * to paste raw NKN addresses).
+     */
+    {
+      id:    'lookup-peer',
+      verb:  'list',
+      params: [
+        { name: 'webid', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/lookup-peer', body: 'flags' },
+        chat:  { reply: 'text', hint: 'resolve a peer\'s NKN address from their webid' },
+      },
+    },
+
+    /**
+     * `/publish-nkn` — v0.7.P3d.  Re-publishes the user's NKN
+     * address to their pod's identity.ttl (auto-runs on sign-in;
+     * this command is for manual re-publish after /rotate-identity
+     * changes the address).
+     */
+    {
+      id:    'publish-nkn',
+      verb:  'add',
+      params: [],
+      surfaces: {
+        slash: { command: '/publish-nkn' },
+        chat:  { reply: 'text', hint: 'publish your NKN address to your pod' },
+      },
+    },
+
+    /**
      * `/rotate-identity` — v0.7.P3d.  Generates a fresh Ed25519
      * keypair for the chat-agent.  Old key stays valid 7 days
      * (grace period); KeyRotation.broadcast notifies known peers.
