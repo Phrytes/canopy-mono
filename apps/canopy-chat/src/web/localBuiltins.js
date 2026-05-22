@@ -49,8 +49,8 @@ export function createLocalBuiltins({
     newthread: async (args) => createNewThread(args, { threadStore, setActive, t }),
     threads:   async ()     => listThreads({ threadStore, t }),
     embed:     async (args) => createEmbed(args, { catalog, callSkill, t, localActor }),
-    'embed-file': async (args) => createFileEmbed(args, { localActor, t }),
-    'embed-time': async (args) => createTimeEmbed(args, { localActor, t }),
+    'embed-file': async (args) => createFileEmbed(args, { localActor, t, simPeers, threadStore }),
+    'embed-time': async (args) => createTimeEmbed(args, { localActor, t, simPeers, threadStore }),
     sendto:    async (args) => sendToPeer(args, {
       catalog, callSkill, t, localActor, simPeers, threadStore,
     }),
@@ -277,30 +277,51 @@ async function sendToPeer(args, { catalog, callSkill, t, localActor, simPeers, t
 }
 
 /**
- * `/embed-file <path>` — v0.5.5 builtin.  Synthesises a fake file
- * snapshot from the user-supplied path.  Real folio integration
- * (calling folio's Q29 fileSnapshot skill) lands when folio's
- * manifest declares the embed primitive — until then this stub
- * proves the renderer works.
+ * `/embed-file` — v0.7 catch-up.  User supplies name + optional
+ * mime/path/share.  Until a real file-vault app exists, this is a
+ * CREATOR (not a lookup): the file reference is synthesised from
+ * params.  --share=<peer> dispatches the card to the peer's thread.
+ *
+ * Future: when a file-vault app ships, /embed-file --pick swaps to
+ * a picker UI that lists existing files.
  */
-async function createFileEmbed(args, { localActor, t }) {
-  const path = String(args?.path ?? '').trim();
-  if (!path) return { ok: false, error: t('embed-file.no_path') };
-  const baseName = path.split('/').pop();
-  return {
+async function createFileEmbed(args, { localActor, t, simPeers, threadStore }) {
+  const name  = String(args?.name ?? '').trim();
+  const path  = String(args?.path ?? '').trim();
+  const mime  = String(args?.mime ?? '').trim() || mimeFromExtension(name);
+  const share = String(args?.share ?? '').trim();
+  if (!name) return { ok: false, error: t('embed-file.no_name') };
+
+  const issuer = localActor ?? 'webid:local-demo-user';
+  const id     = path || `file-${Math.random().toString(36).slice(2, 8)}`;
+  const embed = {
     kind:      'file-card',
     appOrigin: 'folio',
-    itemRef:   { app: 'folio', type: 'file', id: path },
+    itemRef:   { app: 'folio', type: 'file', id },
     snapshot:  {
-      id:    path,
-      type:  'file',
-      name:  baseName,
-      mime:  mimeFromExtension(baseName),
+      id, type: 'file', name, mime,
       bytes: Math.floor(Math.random() * 1024 * 1024 * 4),
-      path,
+      ...(path ? { path } : {}),
     },
-    issuedBy:  localActor ?? 'webid:local-demo-user',
+    issuedBy: issuer,
   };
+
+  // --share=<peer>: route to the peer's thread (same as /send-to).
+  if (share) {
+    const peer = simPeers?.[share];
+    if (!peer) return { ok: false, error: t('sendto.unknown_peer', { peer: share }) };
+    const destThread = threadStore?.getThread(peer.threadId);
+    if (!destThread) return { ok: false, error: t('sendto.no_thread', { threadId: peer.threadId }) };
+    destThread.addShellMessage({
+      kind:           'embed-card',
+      messageId:      `embed-from-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      threadId:       peer.threadId,
+      lifecycleState: 'live',
+      embed,
+    });
+    return { ok: true, message: t('sendto.sent', { peer: share, item: name }) };
+  }
+  return embed;
 }
 
 function mimeFromExtension(name) {
@@ -315,29 +336,86 @@ function mimeFromExtension(name) {
 }
 
 /**
- * `/embed-time <eventId>` — v0.5.5 builtin.  Synthesises a fake
- * calendar-event snapshot for the demo (no app currently owns
- * calendar events; the primitive is here for J7 completeness).
+ * `/embed-time` — v0.7 catch-up.  Appointment maker (user F:
+ * "calendar lookup as an appointment maker").  Until a real calendar
+ * app exists, /embed-time CREATES an event card from the supplied
+ * title + when + duration + location, optionally shared.
+ *
+ * `when` is parsed via the slack-style parseRelativeDate (OQ-3.A:
+ * ISO + 'tomorrow' / 'next tuesday 3pm' / etc).
+ * `duration` accepts '1h', '30m', '2h30m', '1d'; default 1h.
+ *
+ * Future: real calendar app + lookup-vs-create branch.
  */
-async function createTimeEmbed(args, { localActor, t }) {
-  const eventId = String(args?.eventId ?? '').trim();
-  if (!eventId) return { ok: false, error: t('embed-time.no_event') };
-  const now = Date.now();
-  return {
+async function createTimeEmbed(args, { localActor, t, simPeers, threadStore }) {
+  const title = String(args?.title ?? '').trim();
+  const when  = String(args?.when  ?? '').trim();
+  if (!title) return { ok: false, error: t('embed-time.no_title') };
+  if (!when)  return { ok: false, error: t('embed-time.no_when') };
+
+  // when may already be ISO ('2026-05-30') from form-coercion, or
+  // free-text from /embed-time --when="next tuesday 3pm".  Try the
+  // direct ISO parse first; fall through if invalid.
+  let startAt;
+  const direct = new Date(when);
+  if (!Number.isNaN(direct.getTime())) {
+    startAt = direct;
+  } else {
+    return { ok: false, error: t('embed-time.bad_when', { when }) };
+  }
+
+  const durationMs = parseDuration(String(args?.duration ?? '').trim()) ?? 3_600_000;
+  const endAt = new Date(startAt.getTime() + durationMs);
+  const location = String(args?.location ?? '').trim() || undefined;
+  const share    = String(args?.share    ?? '').trim();
+
+  const issuer = localActor ?? 'webid:local-demo-user';
+  const id = `evt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const embed = {
     kind:      'time-card',
-    appOrigin: 'household',
-    itemRef:   { app: 'household', type: 'time', id: eventId },
+    appOrigin: 'household',         // demo only — future: 'calendar' app
+    itemRef:   { app: 'household', type: 'time', id },
     snapshot:  {
-      id:       eventId,
-      type:     'time',
-      title:    `Event ${eventId}`,
-      startAt:  new Date(now + 2 * 3_600_000).toISOString(),
-      endAt:    new Date(now + 3 * 3_600_000).toISOString(),
+      id, type: 'time', title,
+      startAt:  startAt.toISOString(),
+      endAt:    endAt.toISOString(),
       timezone: 'UTC',
-      location: 'Demo venue',
+      ...(location ? { location } : {}),
     },
-    issuedBy:  localActor ?? 'webid:local-demo-user',
+    issuedBy: issuer,
   };
+
+  if (share) {
+    const peer = simPeers?.[share];
+    if (!peer) return { ok: false, error: t('sendto.unknown_peer', { peer: share }) };
+    const destThread = threadStore?.getThread(peer.threadId);
+    if (!destThread) return { ok: false, error: t('sendto.no_thread', { threadId: peer.threadId }) };
+    destThread.addShellMessage({
+      kind:           'embed-card',
+      messageId:      `embed-from-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      threadId:       peer.threadId,
+      lifecycleState: 'live',
+      embed,
+    });
+    return { ok: true, message: t('sendto.sent', { peer: share, item: title }) };
+  }
+  return embed;
+}
+
+/** Parse '1h' / '30m' / '2h30m' / '1d' / '90m' into ms.  Returns null on parse fail. */
+function parseDuration(text) {
+  if (!text) return null;
+  let total = 0;
+  const re = /(\d+)\s*([dhm])/g;
+  let m, matched = false;
+  while ((m = re.exec(text)) !== null) {
+    matched = true;
+    const n = parseInt(m[1], 10);
+    if (m[2] === 'd') total += n * 86_400_000;
+    if (m[2] === 'h') total += n *  3_600_000;
+    if (m[2] === 'm') total += n *     60_000;
+  }
+  return matched ? total : null;
 }
 
 /**
