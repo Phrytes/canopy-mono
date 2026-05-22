@@ -49,7 +49,14 @@ const headerFilterEl = document.getElementById('active-thread-filter');
 
 /* ── state ─────────────────────────────────────────────── */
 
-const agent = await createRealHouseholdAgent();
+// v0.7.7 — pass a publishEvent callback that defers to the router
+// (created further down).  Forward-ref pattern: skill mutations
+// fire publishEvent which dispatches into the router; the router
+// fans out to matching threads + appends to the EventLog.
+let publishEventRef = () => {};   // overwritten right after router is constructed
+const agent = await createRealHouseholdAgent({
+  publishEvent: (event) => publishEventRef(event),
+});
 // v0.4 cross-app surface: stoop + folio manifests join the merged
 // catalog so users see their commands in /help.  Q32 runtime filter
 // drops folio's sync/watch (node-only) ops in the browser build.
@@ -118,6 +125,17 @@ if (persisted.length > 0) {
 attachPersistence({ threadStore: store, idb });
 
 const router = createEventRouter({ threadStore: store });
+// v0.7.7 — wire the agent's publishEvent so real mutations route
+// through the EventRouter.  Each event gets a fresh id; ts auto-set
+// by the router's normaliseEvent.
+publishEventRef = (event) => {
+  const enriched = {
+    id: `evt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    ts: Date.now(),
+    ...event,
+  };
+  router.deliver(enriched);
+};
 
 // v0.6.2 — external-flow callback handler.  When the deep-link
 // receiver fires (or the EventRouter wakes us via a delivered event),
