@@ -243,6 +243,60 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   border-color: #f3b8b8;
 }
 
+/* embed cards (v0.5) */
+.cc-embed-card {
+  max-width: 78%;
+  background: var(--shell-bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  align-self: flex-start;
+  position: relative;
+}
+.cc-embed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.3rem;
+}
+.cc-embed-app {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  font-weight: 600;
+}
+.cc-embed-title {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+.cc-embed-fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0.6rem;
+  row-gap: 0.2rem;
+  margin: 0.3rem 0;
+  font-size: 0.85rem;
+}
+.cc-embed-fields dt { color: var(--fg-mute); margin: 0; }
+.cc-embed-fields dd { margin: 0; word-break: break-word; }
+.cc-embed-meta {
+  display: flex;
+  gap: 0.7rem;
+  font-size: 0.75rem;
+  color: var(--fg-mute);
+  margin-top: 0.3rem;
+}
+.cc-embed-claimed { color: var(--accent); font-weight: 500; }
+.cc-embed-actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+.cc-embed-card.cc-disabled { opacity: 0.55; }
+
 /* follow-up buttons (v0.4) */
 .cc-followups {
   margin-top: 0.4rem;

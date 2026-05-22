@@ -311,6 +311,28 @@ function validateOperation(op, path, manifest, errors, idSet) {
     });
   }
 
+  // Q29 (canopy-chat v0.5, 2026-05-22) — optional `surfaces.chat.embed`
+  // declares the skill that produces a snapshot for the J7 embed
+  // primitive (cards inserted into P2P chat messages).  When set, the
+  // chat shell knows it can call this op as an inline-card factory;
+  // dispatch produces an ItemSnapshot for the embed envelope.  See
+  // `DESIGN-canopy-chat.md` § Embed primitive (J7).
+  const chatEmbed = op?.surfaces?.chat?.embed;
+  if (chatEmbed !== undefined) {
+    if (!chatEmbed || typeof chatEmbed !== 'object' || Array.isArray(chatEmbed)) {
+      errors.push({
+        path:    `${path}/surfaces/chat/embed`,
+        message: 'surfaces.chat.embed must be an object if present',
+      });
+    } else if (typeof chatEmbed.cardSnapshotSkill !== 'string'
+               || chatEmbed.cardSnapshotSkill === '') {
+      errors.push({
+        path:    `${path}/surfaces/chat/embed/cardSnapshotSkill`,
+        message: 'surfaces.chat.embed.cardSnapshotSkill must be a non-empty string',
+      });
+    }
+  }
+
   if (op.appliesTo !== undefined) {
     if (op.appliesTo === null || typeof op.appliesTo !== 'object' || Array.isArray(op.appliesTo)) {
       errors.push({ path: `${path}/appliesTo`, message: 'appliesTo must be an object if present' });

@@ -109,10 +109,14 @@ const router = createEventRouter({ threadStore: store });
 await initLocalisation({ lng: detectDeviceLang() });
 updateLangButtons();
 
+// callSkill is declared further down; createLocalBuiltins needs it
+// for the /embed factory.  Forward-declared variable + helper.
+let callSkillRef;
 const localBuiltins = createLocalBuiltins({
   catalog, t,
   threadStore: store,
   setActive:   (id) => store.setActiveThread(id),
+  callSkill:   (appOrigin, opId, args) => callSkillRef(appOrigin, opId, args),
 });
 
 const callSkill = async (appOrigin, opId, args) => {
@@ -149,6 +153,7 @@ const callSkill = async (appOrigin, opId, args) => {
   }
   return { ok: false, error: `${appOrigin}.${opId} not wired in this demo build` };
 };
+callSkillRef = callSkill;
 
 /* ── render orchestration ──────────────────────────────── */
 
