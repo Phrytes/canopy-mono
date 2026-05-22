@@ -13,12 +13,13 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/app-manifest": "workspace:*",
-    "@canopy/core":         "workspace:*",
-    "@canopy/item-store":   "workspace:*",
-    "@canopy/item-types":   "workspace:*",
-    "@canopy/pseudo-pod":   "workspace:*",
-    "@canopy/vault":        "workspace:*"
+    "@canopy/app-manifest":      "workspace:*",
+    "@canopy/calendar-emission": "workspace:*",
+    "@canopy/core":              "workspace:*",
+    "@canopy/item-store":        "workspace:*",
+    "@canopy/item-types":        "workspace:*",
+    "@canopy/pseudo-pod":        "workspace:*",
+    "@canopy/vault":             "workspace:*"
   },
   "devDependencies": {
     "vitest": "^3.0.0"
