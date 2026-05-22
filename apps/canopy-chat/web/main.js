@@ -32,6 +32,7 @@ import { buildFormSpec, validateAndCoerce } from '../src/forms/buildFormSpec.js'
 import { renderStream }              from '../src/web/domAdapter.js';
 import { renderForm }                from '../src/web/domForm.js';
 import { renderSidebar }             from '../src/web/threadSidebar.js';
+import { renderLogsPanel }           from '../src/web/logsPanel.js';
 import { createRealHouseholdAgent }  from '../src/web/realAgent.js';
 import { mockStoopManifest,
          mockFolioManifest }         from '../src/web/mockAgent.js';
@@ -41,6 +42,7 @@ import { createLocalBuiltins }       from '../src/web/localBuiltins.js';
 
 const sidebarEl  = document.getElementById('sidebar');
 const messagesEl = document.getElementById('messages');
+const logsPanelEl = document.getElementById('logs-panel');
 const formEl     = document.getElementById('input-form');
 const inputEl    = document.getElementById('chat-input');
 const langEnBtn  = document.getElementById('lang-en');
@@ -219,6 +221,74 @@ function mockSigninUrl(sessionId) {
 // v0.7 — /brief aggregator cache (60s TTL per OQ-7.A).
 const briefCache = createBriefCache();
 
+// v0.7.1c — log-panel toggle.  /logs opens the side-panel; clicking
+// [×] closes it.  EventLog subscribers re-render on every appended
+// event so the panel stays live.
+function openLogsPanel() {
+  logsPanelEl.hidden = false;
+  logsPanelEl.classList.remove('cc-logs-closed');
+  logsPanelEl.classList.add('cc-logs-open');
+  renderLogsPanel(logsPanelEl, {
+    doc: document,
+    eventLog,
+    onClose: () => {
+      logsPanelEl.hidden = true;
+      logsPanelEl.classList.remove('cc-logs-open');
+      logsPanelEl.classList.add('cc-logs-closed');
+    },
+    onViewContext: (itemRef) => {
+      const t0 = activeThread();
+      if (!t0) return;
+      // Demo only: append a text bubble describing the item ref.
+      // Future: navigate to the item's mini-page via /embed-like
+      // lookup if a Q29 cardSnapshotSkill is declared.
+      const rendered = renderReply({
+        payload: `→ ${itemRef.app}.${itemRef.type}.${itemRef.id} (context navigation lands when item-pages exist)`,
+        shape:   'text', threadId: t0.id,
+      }, { t });
+      t0.addShellMessage(rendered);
+      renderActiveStream();
+    },
+    onMute: () => { /* eventLog handles + re-renders via the panel itself */ },
+    onOpenInChat: (event) => {
+      // Find a thread whose filter matches the event's app+type;
+      // if one exists, switch to it.  Otherwise create one.
+      const threads = store.listThreads();
+      const match = threads.find((th) => {
+        const apps  = th.filter?.apps      ?? [];
+        const types = th.filter?.eventTypes ?? [];
+        return (apps.includes(event.app)  || apps.includes('*')  || apps.length === 0)
+            && (types.includes(event.type) || types.includes('*') || types.length === 0);
+      });
+      if (match) {
+        store.setActiveThread(match.id);
+      } else {
+        const created = store.createThread({
+          name:        `${event.app} alerts`,
+          filter:      { apps: [event.app], eventTypes: [event.type] },
+          permissions: { allowCommands: true },
+        });
+        store.setActiveThread(created.id);
+      }
+      logsPanelEl.hidden = true;
+      logsPanelEl.classList.remove('cc-logs-open');
+      logsPanelEl.classList.add('cc-logs-closed');
+    },
+  });
+}
+
+// Re-render the logs panel when new events arrive (so the live
+// stream updates without needing to re-type /logs).
+let logsPanelDirty = null;
+function scheduleLogsPanelRerender() {
+  if (logsPanelEl.hidden) return;
+  if (logsPanelDirty) return;
+  logsPanelDirty = setTimeout(() => {
+    logsPanelDirty = null;
+    if (!logsPanelEl.hidden) openLogsPanel();   // rerender
+  }, 100);
+}
+
 // v0.7.1 — network-events log (D.1).  Hydrates from IndexedDB; prunes
 // 14-day cutoff on boot (per OQ-7.B); attaches to the EventRouter so
 // every delivered event flows in automatically.
@@ -233,6 +303,8 @@ const eventLog = new EventLog({
 });
 eventLog.setMutedPersistor((muted) => idb.saveMutedEvents(muted));
 eventLog.attachToRouter(router);
+// Live-rerender the logs panel when new events flow in.
+eventLog.subscribe(() => scheduleLogsPanelRerender());
 
 // callSkill is declared further down; createLocalBuiltins needs it
 // for the /embed factory.  Forward-declared variable + helper.
@@ -255,6 +327,7 @@ const localBuiltins = createLocalBuiltins({
   eventLog,
   briefRunner: (opts) => runBrief({ catalog, callSkill, cache: briefCache, bypassCache: opts?.bypassCache }),
   findRunner:  (opts) => runFind({ catalog, callSkill, query: opts?.query }),
+  openLogsPanel: () => openLogsPanel(),
   externalFlow: {
     /**
      * Open a sign-in flow.  Persists in-flight state + navigates to
