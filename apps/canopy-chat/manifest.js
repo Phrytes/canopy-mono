@@ -97,28 +97,50 @@ export const canopyChatManifest = {
     },
 
     /**
-     * `/embed-file <path>` — v0.5.5 file-card variant.
+     * `/embed-file` — file-card.  v0.7 catch-up: now an actual
+     * file-attach UX with real params instead of a stub that
+     * synthesised metadata from a path.  Real folio integration
+     * (calling folio.getFileSnapshot) lands when folio's Q29 ships.
+     * Until then, /embed-file CREATES a file reference card from
+     * the supplied params.
      */
     {
       id:    'embed-file',
       verb:  'add',
-      params: [{ name: 'path', kind: 'string', required: true }],
+      params: [
+        { name: 'name',  kind: 'string', required: true  },
+        { name: 'mime',  kind: 'string', required: false },
+        { name: 'path',  kind: 'string', required: false },
+        { name: 'share', kind: 'string', required: false },
+      ],
       surfaces: {
-        slash: { command: '/embed-file' },
-        chat:  { reply: 'embed-card', hint: 'embed a file card in this thread' },
+        slash: { command: '/embed-file', body: 'flags' },
+        chat:  { reply: 'embed-card', hint: 'embed a file card; --share=anne to send' },
       },
     },
 
     /**
-     * `/embed-time <eventId>` — v0.5.5 time-card variant.
+     * `/embed-time` — appointment maker.  v0.7 catch-up: user F:
+     * "calendar lookup as an appointment maker (can be shared with
+     * others too)".  Until a real calendar app exists, /embed-time
+     * CREATES an appointment card client-side with the supplied
+     * title + when + duration + location, optionally shared with a
+     * peer.  Future: when a calendar app exists, /embed-time accepts
+     * either an existing eventId (lookup) OR creation params.
      */
     {
       id:    'embed-time',
       verb:  'add',
-      params: [{ name: 'eventId', kind: 'string', required: true }],
+      params: [
+        { name: 'title',    kind: 'string', required: true  },
+        { name: 'when',     kind: 'date',   required: true  },
+        { name: 'duration', kind: 'string', required: false },
+        { name: 'location', kind: 'string', required: false },
+        { name: 'share',    kind: 'string', required: false },
+      ],
       surfaces: {
-        slash: { command: '/embed-time' },
-        chat:  { reply: 'embed-card', hint: 'embed a time/event card in this thread' },
+        slash: { command: '/embed-time', body: 'flags' },
+        chat:  { reply: 'embed-card', hint: 'create an appointment; --share=anne to send' },
       },
     },
 

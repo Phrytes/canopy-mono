@@ -663,9 +663,23 @@ async function dispatchAndRender(route, thread) {
 
 /* ── button tap handler ─────────────────────────────────── */
 
-async function onButtonTap(opId, itemId) {
+async function onButtonTap(opId, itemId, extra) {
   const t0 = activeThread();
   if (!t0) return;
+
+  // v0.7 catch-up — demo-* stub ops fire from receiver-action buttons
+  // on file/time cards (no backing app yet; tasks #111/#112).  Reply
+  // is a placeholder text so the user sees the click registered.
+  if (typeof opId === 'string' && opId.startsWith('demo-')) {
+    const rendered = renderReply({
+      payload: t('demo.stub', { op: opId, item: itemId }),
+      shape:   'text', threadId: t0.id,
+    }, { t });
+    t0.addShellMessage(rendered);
+    renderActiveStream();
+    return;
+  }
+
   const entry = catalog.opsById.get(opId);
   if (!entry) return;
   const firstReq = (entry.op.params ?? []).find(

@@ -46,10 +46,15 @@
     "no_factory":   { "text": "Geen app levert een Q29 cardSnapshotSkill.", "doc": "When the merged catalog has no embed-producing op." }
   },
   "embed-file": {
-    "no_path":  { "text": "Geef een bestandspad op: /embed-file <pad>",  "doc": "When /embed-file fires with no path." }
+    "no_name":  { "text": "Geef een bestandsnaam op.", "doc": "When /embed-file fires with no name." }
   },
   "embed-time": {
-    "no_event": { "text": "Geef een event-id op: /embed-time <eventId>", "doc": "When /embed-time fires with no eventId." }
+    "no_title": { "text": "Geef een titel voor de afspraak op.", "doc": "When /embed-time fires with no title." },
+    "no_when":  { "text": "Geef een datum/tijd voor de afspraak op.", "doc": "When /embed-time fires with no when." },
+    "bad_when": { "text": "„{{when}}\" kon niet als datum worden gelezen. Probeer YYYY-MM-DD of 'morgen 15:00'.", "doc": "When /embed-time's when can't be parsed." }
+  },
+  "demo": {
+    "stub":     { "text": "[demo] {{op}} aangeklikt op {{item}} — onderliggende app nog niet gebouwd (getrackt).", "doc": "Receiver-action stub on file/time cards before real backing apps exist." }
   },
   "brief": {
     "no_runner": { "text": "Brief-aggregator niet beschikbaar in deze build.", "doc": "Defensive." }
