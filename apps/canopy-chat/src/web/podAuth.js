@@ -127,6 +127,24 @@ export function getCurrentSession() {
 }
 
 /**
+ * v0.7.P3c diagnostic — return the raw session state shape WITHOUT
+ * the isLoggedIn gate, so /whoami can show 'session exists but
+ * isLoggedIn=false' and similar diagnostic states.
+ *
+ * @returns {{ sessionExists: boolean, isLoggedIn: boolean, webId?: string, sessionId?: string }}
+ */
+export function getRawSessionInfo() {
+  const sess = authImpl.getDefaultSession();
+  if (!sess) return { sessionExists: false, isLoggedIn: false };
+  return {
+    sessionExists: true,
+    isLoggedIn:    !!sess?.info?.isLoggedIn,
+    webId:         sess?.info?.webId,
+    sessionId:     sess?.info?.sessionId,
+  };
+}
+
+/**
  * Sign out — clears the session AND removes any persisted tokens.
  *
  * @param {object} [opts]
