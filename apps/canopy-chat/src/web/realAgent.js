@@ -58,6 +58,13 @@ const SEED_CHORES = [
 export async function createRealHouseholdAgent(opts = {}) {
   let chores = SEED_CHORES.map((c) => ({ ...c }));
 
+  // v0.7.12 — multi-pod RSVP coordination (simulated for the demo).
+  // calendar.addEvent calls this when attendees are present; default
+  // is no-op (registerCalendarSkills's inviteAttendee:null path).
+  // main.js wires the real impl post-construction (forward-ref) since
+  // it owns the simPeers map + threadStore.
+  let inviteAttendeeRef = async (/* webid, snapshot */) => {};
+
   // v0.7.7 — optional event publisher.  When supplied, mutation
   // skills publish item-changed events via this callback so the
   // chat-shell EventRouter routes them to matching threads.
@@ -110,6 +117,11 @@ export async function createRealHouseholdAgent(opts = {}) {
     simulateSync,
     publishEvent,
     skillPrefix: 'calendar_',     // ← namespaces colliding skill ids
+    // v0.7.12 — invite-attendee callback wired by main.js (which has
+    // the simPeers map).  Forward-ref pattern: realAgent doesn't
+    // know about main.js's threadStore + simPeers at construction,
+    // so we expose a setter the caller wires post-construction.
+    inviteAttendee: (webid, snapshot) => inviteAttendeeRef(webid, snapshot),
   });
 
   // Register the household skills on the HOST agent.  Skills take
@@ -555,6 +567,12 @@ export async function createRealHouseholdAgent(opts = {}) {
       hostAddress: hostAgent.address,
       chatAddress: chatAgent.address,
       transport:   'internal',
+    },
+    // v0.7.12 — caller wires the invite-attendee callback after
+    // construction (so the simPeers map + threadStore from main.js
+    // are visible here).
+    setInviteAttendee(fn) {
+      if (typeof fn === 'function') inviteAttendeeRef = fn;
     },
   };
 }
