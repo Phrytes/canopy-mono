@@ -36,6 +36,7 @@
 
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { buildIcsForEvents }                    from '@canopy/calendar-emission';
+import * as chrono                              from 'chrono-node';
 
 const TYPE      = 'calendar-event';
 const DEVICE_ID    = 'calendar-demo';
@@ -386,12 +387,31 @@ function parseEvent(raw) {
 
 function parseDateInput(input) {
   if (!input) return null;
-  if (typeof input === 'string' && input !== '') {
-    const d = new Date(input);
-    if (!Number.isNaN(d.getTime())) return d.toISOString();
-  }
   if (input instanceof Date && !Number.isNaN(input.getTime())) {
     return input.toISOString();
+  }
+  if (typeof input !== 'string') return null;
+  const trimmed = input.trim();
+  if (trimmed === '') return null;
+
+  // Fast path 1: ISO + datetime-local + similar machine formats.
+  // (datetime-local emits 'YYYY-MM-DDTHH:mm' without timezone; native
+  // Date treats that as LOCAL time — that's what the user picked.)
+  const direct = new Date(trimmed);
+  if (!Number.isNaN(direct.getTime())) return direct.toISOString();
+
+  // v0.7.P1-followup 2026-05-23 (4th pass) — natural-language fallback
+  // via chrono-node.  Slash-arg path bypassed buildFormSpec's
+  // validateAndCoerce so /addappt --when='tomorrow 3pm' reached the
+  // store as raw text + failed `new Date(input)`.  This in-store
+  // fallback covers ALL entry points (slash, programmatic, form).
+  try {
+    const parsed = chrono.parseDate(trimmed, new Date(), { forwardDate: true });
+    if (parsed instanceof Date && !Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  } catch {
+    // chrono throws on pathological inputs; fall through to null.
   }
   return null;
 }
