@@ -1009,8 +1009,39 @@ export function renderStream(container, messages, ctx) {
   // Clear existing children.
   while (container.firstChild) container.removeChild(container.firstChild);
   for (const m of messages) {
-    container.appendChild(renderToDom(m, ctx));
+    const el = renderToDom(m, ctx);
+    // v0.7.P2.2 — timestamp every message.  Today: show only HH:mm;
+    // older: show short date + HH:mm.  Element is positioned by CSS.
+    if (typeof m?.ts === 'number') {
+      const tsEl = ctx.doc.createElement('span');
+      tsEl.className = 'cc-msg-ts';
+      tsEl.textContent = formatMessageTs(m.ts);
+      tsEl.title = new Date(m.ts).toLocaleString();
+      el.appendChild(tsEl);
+    }
+    container.appendChild(el);
   }
   // Auto-scroll to bottom.
   container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * v0.7.P2.2 — message timestamp formatter.
+ *   today           → 'HH:mm'   (e.g. '14:32')
+ *   not today       → 'M/D HH:mm' (e.g. '5/21 14:32')
+ *   not this year   → 'YYYY-M-D HH:mm'
+ */
+function formatMessageTs(ts) {
+  const d   = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const hm  = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const sameDay = d.getFullYear() === now.getFullYear()
+               && d.getMonth()    === now.getMonth()
+               && d.getDate()     === now.getDate();
+  if (sameDay) return hm;
+  const sameYear = d.getFullYear() === now.getFullYear();
+  if (sameYear) return `${d.getMonth() + 1}/${d.getDate()} ${hm}`;
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${hm}`;
 }

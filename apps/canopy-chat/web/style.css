@@ -499,6 +499,56 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   text-align: center;
 }
 
+/* v0.7.P2.2 — per-message timestamp.  Today: HH:mm only.  Older:
+   prefixed with M/D (this year) or YYYY-M-D.  Hover shows full
+   locale string. */
+.cc-message {
+  position: relative;
+}
+.cc-msg-ts {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.45rem;
+  font-size: 0.65rem;
+  color: var(--fg-mute);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  opacity: 0.7;
+}
+.cc-user .cc-msg-ts { color: rgba(255,255,255,0.7); }
+
+/* v0.7.Q34 — form picker list */
+.cc-field-picker .cc-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+}
+.cc-picker-row {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+.cc-picker-row:hover {
+  background: var(--accent);
+  color:      var(--accent-fg);
+  border-color: var(--accent);
+}
+.cc-picker-loading,
+.cc-picker-empty,
+.cc-picker-error {
+  color: var(--fg-mute);
+  font-style: italic;
+  padding: 0.4rem 0;
+  font-size: 0.85rem;
+}
+.cc-picker-error { color: #c33; }
+
 /* v0.7.5 — /find search results */
 .cc-find {
   max-width: 85%;
