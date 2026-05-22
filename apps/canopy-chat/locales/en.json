@@ -54,6 +54,12 @@
   "brief": {
     "no_runner": { "text": "Brief aggregator not available in this build.", "doc": "Defensive." }
   },
+  "logs": {
+    "no_log":  { "text": "Event log not available in this build.",                     "doc": "Defensive." },
+    "heading": { "text": "Last {{count}} events:",                                      "doc": "First line of /logs output." },
+    "empty":   { "text": "No events matched (try /logs --app=household).",              "doc": "Empty state." },
+    "muted":   { "text": "✓ Muted events: {{app}}:{{type}}. /logs --mute=... toggles.", "doc": "Mute confirmation." }
+  },
   "signin": {
     "no_flow":      { "text": "Sign-in flow not available in this build.", "doc": "Defensive — externalFlow not wired." },
     "opening":      { "text": "Opening sign-in (issuer: {{issuer}}) … come back when the redirect lands.", "doc": "Confirmation shown before navigation." },

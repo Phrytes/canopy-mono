@@ -123,6 +123,31 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `/logs [--since=...] [--app=X] [--type=Y] [--mute=app:type]` —
+     * v0.7.1 D.1 network-events log.  Lists every event the
+     * EventRouter delivered in the last 14 days (OQ-7.B retention),
+     * with optional filter flags.  `--mute=app:type` adds a kind to
+     * the mute set + reports.  Without args, shows the 20 most-recent
+     * events.
+     */
+    {
+      id:    'logs',
+      verb:  'list',
+      params: [
+        { name: 'app',   kind: 'string', required: false },
+        { name: 'type',  kind: 'string', required: false },
+        { name: 'actor', kind: 'string', required: false },
+        { name: 'since', kind: 'string', required: false },
+        { name: 'mute',  kind: 'string', required: false },
+        { name: 'limit', kind: 'number', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/logs', body: 'flags' },
+        chat:  { reply: 'list', hint: 'recent events; --app= / --type= / --mute=app:type' },
+      },
+    },
+
+    /**
      * `/brief` — v0.7 morning-brief aggregator.  Fans across all
      * enabled apps that declare `surfaces.chat.brief.summarySkill`
      * (Q30); aggregates replies into a single brief-shape card.
