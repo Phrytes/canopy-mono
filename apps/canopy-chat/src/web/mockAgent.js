@@ -35,6 +35,81 @@ const SEED_CHORES = [
  * not actually colliding here since opIds differ, but shows multi-app
  * UX in /help).
  */
+/**
+ * Mock tasks-v0 manifest (added 2026-05-23 — closes the gap where
+ * tasks-v0 skills were wired on the host agent in v0.7.2 but no
+ * slash commands were declared).  Real tasks-v0 has 20+ ops; the
+ * subset surfaced here mirrors what canopy-chat's host agent
+ * actually implements (addTask / listMine / claimTask /
+ * completeTask / getTaskSnapshot / searchTasks / tasks_briefSummary).
+ */
+export const mockTasksManifest = {
+  app:        'tasks-v0',
+  itemTypes:  ['task'],
+  operations: [
+    {
+      id:    'addTask', verb: 'add',
+      params: [
+        { name: 'text',          kind: 'string', required: true  },
+        { name: 'assignee',      kind: 'string', required: false },
+        { name: 'requiredSkill', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/addtask', body: 'flags' },
+        chat:  { reply: 'text', hint: 'add a task' },
+      },
+    },
+    {
+      id:    'listMine', verb: 'list',
+      appliesTo: { type: 'task' },
+      params: [],
+      surfaces: {
+        slash: { command: '/mytasks' },
+        chat:  {
+          reply: 'list',
+          hint:  'list open + claimed tasks',
+          brief:  { summarySkill: 'briefSummary', order: 5, label: 'Tasks' },
+          search: { searchSkill:  'searchTasks' },
+        },
+      },
+    },
+    {
+      id:    'claimTask', verb: 'claim',
+      appliesTo: { type: 'task', state: ['open'] },
+      params: [{ name: 'id', kind: 'string', required: true }],
+      surfaces: {
+        slash: { command: '/claim' },
+        ui:    { control: 'button', label: 'Claim' },
+        chat:  { hint: 'compare-and-swap claim a task' },
+      },
+    },
+    {
+      id:    'completeTask', verb: 'complete',
+      appliesTo: { type: 'task', state: ['claimed'] },
+      params: [{ name: 'id', kind: 'string', required: true }],
+      surfaces: {
+        slash: { command: '/complete-task' },
+        ui:    { control: 'button', label: 'Mark complete' },
+        chat:  { hint: 'mark a claimed task complete' },
+      },
+    },
+    {
+      id:    'getTaskSnapshot', verb: 'list',
+      appliesTo: { type: 'task' },
+      params: [{ name: 'id', kind: 'string', required: true }],
+      surfaces: {
+        chat: { hint: 'snapshot a task for embedding' },
+      },
+    },
+  ],
+  views: [{ id: 'open', title: 'Open tasks', type: 'task' }],
+};
+
+// Q29 declaration: claimTask is the lifecycle entry-point that gets
+// embedded (clicking [Claim] from an embed-card claims the task).
+mockTasksManifest.operations.find((o) => o.id === 'claimTask')
+  .surfaces.chat.embed = { cardSnapshotSkill: 'getTaskSnapshot' };
+
 export const mockStoopManifest = {
   app:        'stoop',
   itemTypes:  ['post'],
