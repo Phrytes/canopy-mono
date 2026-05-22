@@ -78,7 +78,10 @@ export const calendarManifest = {
       // Receiver-only: appears on open events the viewer is invited to.
       appliesTo: { type: 'calendar-event', state: ['open'] },
       params: [
-        { name: 'id', kind: 'string', required: true },
+        { name: 'id', kind: 'string', required: true,
+          // v0.7.Q34 — bare /accept / /decline / /tentative /
+          // /cancelappt → form with event picker.
+          pickerSource: { listOp: 'listEvents' } },
       ],
       surfaces: {
         slash: { command: '/accept' },
@@ -91,7 +94,10 @@ export const calendarManifest = {
       verb:  'reject',
       appliesTo: { type: 'calendar-event', state: ['open'] },
       params: [
-        { name: 'id', kind: 'string', required: true },
+        { name: 'id', kind: 'string', required: true,
+          // v0.7.Q34 — bare /accept / /decline / /tentative /
+          // /cancelappt → form with event picker.
+          pickerSource: { listOp: 'listEvents' } },
       ],
       surfaces: {
         slash: { command: '/decline' },
@@ -104,7 +110,10 @@ export const calendarManifest = {
       verb:  'submit',     // approximate; ItemStore.submit is the closest contract
       appliesTo: { type: 'calendar-event', state: ['open'] },
       params: [
-        { name: 'id', kind: 'string', required: true },
+        { name: 'id', kind: 'string', required: true,
+          // v0.7.Q34 — bare /accept / /decline / /tentative /
+          // /cancelappt → form with event picker.
+          pickerSource: { listOp: 'listEvents' } },
       ],
       surfaces: {
         slash: { command: '/tentative' },
@@ -117,7 +126,10 @@ export const calendarManifest = {
       verb:  'remove',
       appliesTo: { type: 'calendar-event', state: ['open'] },
       params: [
-        { name: 'id', kind: 'string', required: true },
+        { name: 'id', kind: 'string', required: true,
+          // v0.7.Q34 — bare /accept / /decline / /tentative /
+          // /cancelappt → form with event picker.
+          pickerSource: { listOp: 'listEvents' } },
       ],
       surfaces: {
         slash: { command: '/cancelappt' },
@@ -139,7 +151,10 @@ export const calendarManifest = {
       verb:  'list',
       appliesTo: { type: 'calendar-event' },
       params: [
-        { name: 'id', kind: 'string', required: true },
+        { name: 'id', kind: 'string', required: true,
+          // v0.7.Q34 — bare /accept / /decline / /tentative /
+          // /cancelappt → form with event picker.
+          pickerSource: { listOp: 'listEvents' } },
       ],
       surfaces: {
         chat: { hint: 'snapshot a calendar event for embedding' },
