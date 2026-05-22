@@ -67,7 +67,8 @@
     "no_log":  { "text": "Event-log niet beschikbaar in deze build.",                  "doc": "Defensive." },
     "heading": { "text": "Laatste {{count}} events:",                                  "doc": "First line of /logs output." },
     "empty":   { "text": "Geen events gevonden (probeer /logs --app=household).",      "doc": "Empty state." },
-    "muted":   { "text": "✓ Events gedempt: {{app}}:{{type}}.",                          "doc": "Mute confirmation." }
+    "muted":   { "text": "✓ Events gedempt: {{app}}:{{type}}.",                          "doc": "Mute confirmation." },
+    "panel_opened": { "text": "Log-paneel geopend. Klik [×] om te sluiten.", "doc": "Confirmation when bare /logs opens the side-panel UI." }
   },
   "signin": {
     "no_flow":      { "text": "Sign-in flow niet beschikbaar in deze build.", "doc": "Defensive." },
