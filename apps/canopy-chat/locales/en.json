@@ -46,10 +46,15 @@
     "no_factory":   { "text": "No app declares a Q29 cardSnapshotSkill yet.", "doc": "When the merged catalog has no embed-producing op." }
   },
   "embed-file": {
-    "no_path":  { "text": "Please provide a file path: /embed-file <path>",  "doc": "When /embed-file fires with no path." }
+    "no_name":  { "text": "Please provide a file name.",  "doc": "When /embed-file fires with no name." }
   },
   "embed-time": {
-    "no_event": { "text": "Please provide an event id: /embed-time <eventId>", "doc": "When /embed-time fires with no eventId." }
+    "no_title": { "text": "Please provide a title for the appointment.", "doc": "When /embed-time fires with no title." },
+    "no_when":  { "text": "Please provide a when date for the appointment.", "doc": "When /embed-time fires with no when." },
+    "bad_when": { "text": "Couldn't parse \"{{when}}\" as a date. Try YYYY-MM-DD or 'tomorrow 3pm'.", "doc": "When /embed-time's when can't be parsed." }
+  },
+  "demo": {
+    "stub":     { "text": "[demo] {{op}} clicked on {{item}} — backing app not built yet (tracked).", "doc": "Receiver-action stub on file/time cards before real backing apps exist." }
   },
   "brief": {
     "no_runner": { "text": "Brief aggregator not available in this build.", "doc": "Defensive." }

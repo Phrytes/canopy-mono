@@ -163,7 +163,12 @@ export function resolveDispatch(parseResult, catalog) {
 /**
  * Bind the parser's `_match` positional value to the op's first
  * required string-kind param.  If no `_match`, return args verbatim.
- * If `_match` present but no compatible target, drop it.
+ *
+ * v0.7 catch-up (2026-05-23, user-reported): when no required target
+ * exists (e.g. /apps with two optional positional params), the
+ * function used to STRIP `_match`, leaving handlers with no way to
+ * read the positional input.  Now: preserve `_match` in `rest` so
+ * the handler can split it manually for multi-positional commands.
  *
  * @param {object}            args
  * @param {object}            op
@@ -174,8 +179,11 @@ function bindMatchArg(args, op) {
   const target = (op.params ?? []).find(
     (p) => p?.required && (p.kind === 'string' || p.kind === 'enum'),
   );
+  if (!target) {
+    // No required target — keep _match for the handler to split.
+    return { ...args };
+  }
   const { _match, ...rest } = args;
-  if (!target) return rest;
   // Don't clobber an explicit `--key=value` for the same name.
   if (rest[target.name] !== undefined) return rest;
   return { ...rest, [target.name]: _match };
