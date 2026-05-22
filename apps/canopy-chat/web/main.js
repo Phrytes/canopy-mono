@@ -97,6 +97,18 @@ const manifestsByOrigin = {
 // v0.2.4 — IndexedDB persistence.  Load existing threads on boot;
 // seed defaults on fresh install; subscribe so future changes
 // persist automatically.
+/**
+ * v0.7.P1-followup — was Main's persisted filter the OLD wildcard?
+ * matchesKey treats `[]` and absent allow-lists as wildcard, so
+ * `{}` matches every event.  We check via deep-equal to the empty
+ * object (treating null/undefined/empty as the same condition).
+ */
+function isPermissiveWildcard(filter) {
+  if (filter == null) return true;
+  if (typeof filter !== 'object' || Array.isArray(filter)) return false;
+  return Object.keys(filter).length === 0;
+}
+
 const idb = new IndexedDBStore();
 let store;
 const persisted = await idb.loadAll();
@@ -104,18 +116,34 @@ if (persisted.length > 0) {
   // Hydrate from disk.
   store = new ThreadStore();
   for (const t0 of persisted) {
-    // ThreadStore.createThread builds its own Thread; we want THE
-    // persisted instance.  Insert directly via a small bypass: use
-    // the same id + filter + permissions so the public API stays
-    // honest, then graft the messages + listings back on.
+    // v0.7.P1-followup 2026-05-23 — filter migration.  Threads
+    // persisted before the {not:{}} fix have filter `{}` (the old
+    // wildcard, which actually matches ALL events).  On hydration
+    // we upgrade Main's filter to the new strict default so
+    // routed events no longer flood Main as duplicate bubbles.
+    let migratedFilter = t0.filter;
+    if (t0.id === 'main' && isPermissiveWildcard(t0.filter)) {
+      migratedFilter = { not: {} };
+    }
     const created = store.createThread({
       id:          t0.id,
       name:        t0.name,
-      filter:      t0.filter,
+      filter:      migratedFilter,
       permissions: t0.permissions,
     });
     created.createdAt = t0.createdAt;
-    created.messages  = t0.messages;
+    // v0.7.P1-followup — strip auto-routed event bubbles that
+    // polluted Main when its filter was permissive.  We keep
+    // user-typed messages + dispatch replies; drop shell-text
+    // notifications that came from the EventRouter delivery path
+    // (these are still in /logs).  Heuristic: shell-rendered
+    // text messages whose messageId starts with 'notif-' came
+    // from the EventRouter (per events.js #appendNotificationTo).
+    created.messages = (t0.messages ?? []).filter((m) =>
+      !(m.origin === 'shell'
+        && typeof m.messageId === 'string'
+        && m.messageId.startsWith('notif-'))
+    );
     for (const [opId, listing] of t0._listings) {
       created._listings.set(opId, listing);
     }
