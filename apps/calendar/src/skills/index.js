@@ -92,7 +92,11 @@ export function registerCalendarSkills(agent, store, opts = {}) {
 
   reg('listEvents', async ({ parts }) => {
     const a = parts?.[0]?.data ?? {};
-    const days = typeof a.days === 'number' ? a.days : 7;
+    // v0.7.P1-followup 2026-05-23 (5th pass): default window bumped
+    // from 7 → 90 days.  User had events scheduled 3+ weeks out
+    // that didn't appear in /upcoming.  90 days is a reasonable
+    // 'visible upcoming horizon'; user can still narrow with --days.
+    const days = typeof a.days === 'number' ? a.days : 90;
     const since = Date.now();
     const until = since + days * 86_400_000;
     const events = await store.listInRange({ since, until });
