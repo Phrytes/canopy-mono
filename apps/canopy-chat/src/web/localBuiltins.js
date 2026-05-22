@@ -42,6 +42,7 @@ export function createLocalBuiltins({
   appRegistry,               // v0.6 OQ-4.B
   externalFlow,              // v0.6.2 — { open, getActiveThreadId, mockSigninUrl }
   briefRunner,               // v0.7 — () => Promise<BriefReply>
+  eventLog,                  // v0.7.1 — EventLog instance
 }) {
   return {
     help: async () => formatHelp(catalog, t),
@@ -56,7 +57,72 @@ export function createLocalBuiltins({
     apps:      async (args) => appsToggle(args, { catalog, appRegistry, t }),
     signin:    async (args) => signinFlow(args, { externalFlow, t }),
     brief:     async (args) => runBriefBuiltin(args, { briefRunner, t }),
+    logs:      async (args) => runLogsBuiltin(args, { eventLog, t }),
   };
+}
+
+/**
+ * `/logs [--app=X] [--type=Y] [--actor=Z] [--since=ISO] [--mute=app:type] [--limit=N]`
+ * v0.7.1 — list recent network events from the EventLog (14d retention).
+ * `--mute` is a side-effect: adds the kind to the mute set + reports.
+ */
+async function runLogsBuiltin(args, { eventLog, t }) {
+  if (!eventLog) return { ok: false, error: t('logs.no_log') };
+
+  // Side-effect: --mute=app:type
+  if (typeof args?.mute === 'string' && args.mute.includes(':')) {
+    const [app, type] = args.mute.split(':', 2);
+    eventLog.mute(app, type);
+    return { ok: true, message: t('logs.muted', { app, type }) };
+  }
+
+  // Build filter from flag args.
+  const filter = {};
+  if (typeof args?.app   === 'string' && args.app   !== '') filter.apps       = [args.app];
+  if (typeof args?.type  === 'string' && args.type  !== '') filter.eventTypes = [args.type];
+  if (typeof args?.actor === 'string' && args.actor !== '') filter.actors     = [args.actor];
+
+  // since: accept ISO date string OR 'today' / 'yesterday'.
+  let since;
+  if (typeof args?.since === 'string' && args.since !== '') {
+    const lower = args.since.trim().toLowerCase();
+    if (lower === 'today') {
+      const d = new Date(); d.setHours(0,0,0,0); since = d.getTime();
+    } else if (lower === 'yesterday') {
+      const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - 1);
+      since = d.getTime();
+    } else {
+      const parsed = new Date(args.since);
+      if (!Number.isNaN(parsed.getTime())) since = parsed.getTime();
+    }
+  }
+
+  const limit = typeof args?.limit === 'number' ? args.limit : 20;
+  const events = eventLog.query({
+    filter: Object.keys(filter).length > 0 ? filter : undefined,
+    since,
+    excludeMuted: true,
+    limit,
+  });
+
+  if (events.length === 0) {
+    return { ok: true, message: t('logs.empty') };
+  }
+  return {
+    items: events.map((e) => ({
+      id:    e.id,
+      label: formatLogRow(e),
+    })),
+    message: t('logs.heading', { count: events.length }),
+  };
+}
+
+function formatLogRow(e) {
+  const time = new Date(e.ts).toISOString().slice(11, 16);   // HH:MM
+  const date = new Date(e.ts).toISOString().slice(5, 10);    // MM-DD
+  const actor = e.actor ? ` ${e.actor}` : '';
+  const text  = e.payload?.message ?? e.payload?.text ?? `[${e.app}/${e.type}]`;
+  return `${date} ${time}${actor} · ${text}`;
 }
 
 /**

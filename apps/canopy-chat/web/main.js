@@ -25,6 +25,7 @@ import {
   AppRegistry, filterCatalog,
   openExternalFlow, parseCallbackUrl, resumeInFlightFlows,
   runBrief, createBriefCache,
+  EventLog, RETENTION_MS,
 } from '../src/index.js';
 import { buildFormSpec, validateAndCoerce } from '../src/forms/buildFormSpec.js';
 import { renderStream }              from '../src/web/domAdapter.js';
@@ -199,6 +200,21 @@ function mockSigninUrl(sessionId) {
 // v0.7 — /brief aggregator cache (60s TTL per OQ-7.A).
 const briefCache = createBriefCache();
 
+// v0.7.1 — network-events log (D.1).  Hydrates from IndexedDB; prunes
+// 14-day cutoff on boot (per OQ-7.B); attaches to the EventRouter so
+// every delivered event flows in automatically.
+const persistedEvents = await idb.loadEvents().catch(() => []);
+const persistedMuted  = await idb.loadMutedEvents().catch(() => []);
+// Prune on boot for speed (avoids scanning the whole log in JS).
+await idb.pruneEventsBefore(Date.now() - RETENTION_MS).catch(() => {});
+const eventLog = new EventLog({
+  initial: persistedEvents,
+  muted:   persistedMuted,
+  persist: (events) => idb.saveEvents(events),
+});
+eventLog.setMutedPersistor((muted) => idb.saveMutedEvents(muted));
+eventLog.attachToRouter(router);
+
 // callSkill is declared further down; createLocalBuiltins needs it
 // for the /embed factory.  Forward-declared variable + helper.
 let callSkillRef;
@@ -217,6 +233,7 @@ const localBuiltins = createLocalBuiltins({
   localActor:  LOCAL_ACTOR,
   simPeers:    SIM_PEERS,
   appRegistry,
+  eventLog,
   briefRunner: (opts) => runBrief({ catalog, callSkill, cache: briefCache, bypassCache: opts?.bypassCache }),
   externalFlow: {
     /**
