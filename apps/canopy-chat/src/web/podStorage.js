@@ -98,14 +98,62 @@ export function createPodWriter(session) {
     webid:   session.webid,
     podRoot,
     urlFor:  (app, resource) => podUrl(podRoot, app, resource),
+    /**
+     * Ensure parent container exists (recursively).  Some Solid
+     * servers (community-solid-server / CSS) require explicit
+     * container creation before you can PUT into them; Inrupt's
+     * older NSS auto-creates.  v0.7.P2.1 adds the explicit step.
+     */
+    async ensureContainer(containerUrl) {
+      // Stop at pod root.
+      if (containerUrl === podRoot) return { ok: true, status: 200, url: containerUrl, created: false };
+      // Check if it exists.
+      try {
+        const head = await session.fetch(containerUrl, { method: 'HEAD' });
+        if (head.ok) return { ok: true, status: head.status, url: containerUrl, created: false };
+      } catch { /* fall through to create */ }
+      // Recurse up first.
+      const parent = containerUrl.replace(/[^/]+\/?$/, '');
+      if (parent && parent !== containerUrl) {
+        await this.ensureContainer(parent);
+      }
+      // Create via PUT with empty body + Link header indicating
+      // Container resource type.  Most Solid servers accept this.
+      const res = await session.fetch(containerUrl, {
+        method:  'PUT',
+        headers: {
+          'Content-Type': 'text/turtle',
+          'Link':         '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+        },
+        body: '',
+      });
+      return { ok: res.ok, status: res.status, url: containerUrl, created: res.ok };
+    },
     async write(app, resource, body, contentType = 'application/octet-stream') {
       const url = podUrl(podRoot, app, resource);
+      // Pre-create parent container (containerUrl ends with /).
+      const containerUrl = url.replace(/[^/]+$/, '');
+      const cont = await this.ensureContainer(containerUrl).catch((err) => ({
+        ok: false, status: 0, url: containerUrl, error: err?.message ?? String(err),
+      }));
+      // Even if container creation reported failure, try the PUT —
+      // some servers return non-2xx HEAD but still accept the write.
       const res = await session.fetch(url, {
         method:  'PUT',
         headers: { 'Content-Type': contentType },
         body,
       });
-      return { ok: res.ok, url, status: res.status };
+      // Surface the body of failures so the caller can show the
+      // server's error text (CORS rejection / WAC denial / etc).
+      let errorBody = null;
+      if (!res.ok) {
+        try { errorBody = await res.text(); } catch { /* defensive */ }
+      }
+      return {
+        ok: res.ok, url, status: res.status,
+        ...(errorBody ? { errorBody: errorBody.slice(0, 500) } : {}),
+        ...(cont?.created ? { containerCreated: true } : {}),
+      };
     },
     async read(app, resource) {
       const url = podUrl(podRoot, app, resource);
