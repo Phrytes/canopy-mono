@@ -223,7 +223,12 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
 .cc-message {
   display: flex;
   flex-direction: column;
-  max-width: 70%;
+  /* v0.7.P3b-followup 2026-05-23: bumped 70% → 85% so long strings
+     (NKN addresses ~64 hex chars, webids, snapshot dumps) get more
+     room before wrapping.  Combined with `word-break: break-all`
+     on .cc-bubble below, long unbroken tokens now wrap inside the
+     bubble instead of clipping. */
+  max-width: 85%;
 }
 .cc-message.cc-user {
   align-self: flex-end;
@@ -238,6 +243,12 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   background: var(--shell-bg);
   border: 1px solid var(--border);
   white-space: pre-wrap;
+  /* v0.7.P3b-followup 2026-05-23: long unbroken tokens (NKN
+     addresses, URLs, base64 blobs) need overflow-wrap so they
+     break mid-word inside the bubble.  Otherwise they extend
+     past the container + look truncated. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .cc-user .cc-bubble {
   background: var(--user-bg);

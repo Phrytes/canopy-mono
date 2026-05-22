@@ -330,22 +330,12 @@ async function connectPeerImpl() {
   });
 }
 
-// Fire-and-forget on boot: connect NKN whenever the CDN script is
-// loaded.  If nkn-sdk hasn't loaded yet (race), the user can manually
-// retry via /peer-connect.
-if (typeof window !== 'undefined' && window.nkn) {
-  connectPeerImpl()
-    .then((ctrl) => {
-      console.info('[peer] connected, NKN address:', ctrl.address);
-      publishEventRef({
-        app: 'canopy-chat', type: 'notification',
-        payload: { message: `🔗 NKN connected: ${ctrl.address}` },
-      });
-    })
-    .catch((err) => {
-      console.warn('[peer] NKN connect failed:', err.message);
-    });
-}
+// v0.7.P3b-followup 2026-05-23: NKN auto-connect moved to AFTER the
+// eventLog is attached (below) so the '🔗 NKN connected' event is
+// captured in /logs.  Previously this block fired here + the
+// async then() ran BEFORE eventLog.attachToRouter — events were
+// published but eventLog hadn't subscribed yet → lost from /logs.
+// Search for the deferred call near the eventLog wiring.
 
 // v0.7.P1 — real Solid OIDC boot.  After the user returns from the
 // pod issuer's auth page, the URL carries `?code=...&state=...&iss=...`
@@ -535,6 +525,23 @@ eventLog.setMutedPersistor((muted) => idb.saveMutedEvents(muted));
 eventLog.attachToRouter(router);
 // Live-rerender the logs panel when new events flow in.
 eventLog.subscribe(() => scheduleLogsPanelRerender());
+
+// v0.7.P3b-followup — NKN auto-connect, now AFTER eventLog is
+// wired so the connect notification + every inbound peer message
+// reliably hits /logs.
+if (typeof window !== 'undefined' && window.nkn) {
+  connectPeerImpl()
+    .then((ctrl) => {
+      console.info('[peer] connected, NKN address:', ctrl.address);
+      publishEventRef({
+        app: 'canopy-chat', type: 'notification',
+        payload: { message: `🔗 NKN connected: ${ctrl.address}` },
+      });
+    })
+    .catch((err) => {
+      console.warn('[peer] NKN connect failed:', err.message);
+    });
+}
 
 // callSkill is declared further down; createLocalBuiltins needs it
 // for the /embed factory.  Forward-declared variable + helper.
