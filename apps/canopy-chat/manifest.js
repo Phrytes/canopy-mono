@@ -227,8 +227,8 @@ export const canopyChatManifest = {
         { name: 'issuer', kind: 'string', required: false },
       ],
       surfaces: {
-        slash: { command: '/signin' },
-        chat:  { reply: 'text', hint: 'open the (mock) sign-in flow' },
+        slash: { command: '/signin', body: 'flags' },
+        chat:  { reply: 'text', hint: 'sign in to your Solid pod' },
       },
     },
 
@@ -242,6 +242,33 @@ export const canopyChatManifest = {
      * friendly error.  Toggle persists across reloads.  Side-panel
      * UI lands with RN port (v0.6.7+).
      */
+    /**
+     * `/whoami` — v0.7.P1.  Returns the current Solid webid (if
+     * signed in) or a hint to /signin.
+     */
+    {
+      id:    'whoami',
+      verb:  'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/whoami' },
+        chat:  { reply: 'text', hint: 'show the signed-in webid' },
+      },
+    },
+
+    /**
+     * `/signout` — v0.7.P1.  Clears the local OIDC session.
+     */
+    {
+      id:    'signout',
+      verb:  'remove',
+      params: [],
+      surfaces: {
+        slash: { command: '/signout' },
+        chat:  { reply: 'text', hint: 'sign out of your pod' },
+      },
+    },
+
     {
       id:    'apps',
       verb:  'list',

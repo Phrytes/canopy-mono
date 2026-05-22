@@ -293,6 +293,18 @@ describe('J6 — External-flow primitive (mock OIDC)', () => {
   let ws;
   beforeEach(async () => { ws = await bootTestWorkspace(); });
 
+  it("/whoami with no podAuth wired returns 'unavailable'", async () => {
+    const reply = await ws.userInput('/whoami');
+    expect(reply.shape).toBe('text');
+    expect(reply.payload.message).toMatch(/whoami\.unavailable|not available/i);
+  });
+
+  it("/signout with no podAuth wired returns 'unavailable'", async () => {
+    const reply = await ws.userInput('/signout');
+    expect(reply.payload).toBeNull();
+    expect(reply.error?.message).toMatch(/signout\.unavailable|not available/i);
+  });
+
   it("/signin (no externalFlow wired) returns a friendly error", async () => {
     // bootTestWorkspace doesn't wire externalFlow.open (no real
     // OIDC consumer in node).  /signin returns {ok:false, error}

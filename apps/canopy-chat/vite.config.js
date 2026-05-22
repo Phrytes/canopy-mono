@@ -63,7 +63,12 @@ export default defineConfig({
       // imports happen via dynamic-import (never executed).
       '@canopy/oidc-session':                 oidcSession,
       '@inrupt/solid-client-authn-node':      empty,
-      '@inrupt/solid-client-authn-core':      empty,
+      // v0.7.P1 — DON'T shim '@inrupt/solid-client-authn-core'.  We
+      // now compose '@inrupt/solid-client-authn-browser' for real
+      // OIDC; the browser package depends on the core package's
+      // type/util exports (e.g. determineSigningAlg).  Stubbing it
+      // breaks the build with 'X is not exported by empty.js'.  The
+      // Node auth package stays shimmed (separate name).
       'openid-client':                        empty,
       // VaultNodeFs is Node-only by design — VaultMemory is what we
       // use in v0.1.  Stubbing keeps the @canopy/vault index re-export

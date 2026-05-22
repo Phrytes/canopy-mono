@@ -46,6 +46,7 @@ export function createLocalBuiltins({
   openLogsPanel,             // v0.7.1c — () => void (opens side-panel)
   findRunner,                // v0.7.5 — ({query}) => Promise<FindReply>
   openFilePicker,            // v0.7.13 — () => Promise<File|null>
+  podAuth,                   // v0.7.P1 — real Solid OIDC wrapper
 }) {
   return {
     help: async () => formatHelp(catalog, t),
@@ -61,7 +62,9 @@ export function createLocalBuiltins({
     // v0.7.5 / v0.7.1c — also expose openLogsPanel reachable to
     // handlers (currently only used by /logs but reads well at this
     // layer).
-    signin:    async (args) => signinFlow(args, { externalFlow, t }),
+    signin:    async (args) => signinFlow(args, { podAuth, externalFlow, t }),
+    whoami:    async (args) => whoami(args, { podAuth, t }),
+    signout:   async (args) => signOutFlow(args, { podAuth, t }),
     brief:     async (args) => runBriefBuiltin(args, { briefRunner, t }),
     logs:      async (args) => runLogsBuiltin(args, { eventLog, t, openLogsPanel }),
     find:      async (args) => runFindBuiltin(args, { findRunner, t }),
@@ -165,24 +168,76 @@ async function runBriefBuiltin(args, { briefRunner, t }) {
 }
 
 /**
- * `/signin [issuer]` — v0.6.2 external-flow demo.  Opens the
- * (mock) external sign-in URL via the openExternalFlow primitive.
- * The callback wakes the chat thread with a fake webid.
+ * `/signin [--issuer=X]` — v0.7.P1 real Solid OIDC.  Triggers a
+ * full-page redirect to the chosen pod issuer.  When the user
+ * returns, main.js's boot handler completes the round-trip + this
+ * thread gets a confirmation via the signed-in event.
  *
- * Real OIDC binding lands when @canopy/oidc-session is composed
- * (v0.7+); this slice proves the FRAMEWORK works.
+ * `podAuth` is the test seam — main.js passes the real podAuth
+ * module; tests pass a stub.  When podAuth isn't wired (test or
+ * partial build), falls back to the v0.6.2 mock externalFlow.
  */
-async function signinFlow(args, { externalFlow, t }) {
-  if (!externalFlow || typeof externalFlow.open !== 'function') {
-    return { ok: false, error: t('signin.no_flow') };
+async function signinFlow(args, { podAuth, externalFlow, t }) {
+  const issuer = String(args?.issuer ?? '').trim() || undefined;
+
+  // Real OIDC path.
+  if (podAuth && typeof podAuth.startSignIn === 'function') {
+    try {
+      // startSignIn navigates away; the promise only resolves on error.
+      const resolved = podAuth.resolveIssuer?.(issuer);
+      if (resolved === null) {
+        return { ok: false, error: t('signin.unknown_issuer', { issuer }) };
+      }
+      const name = resolved?.name ?? issuer ?? 'default';
+      // Fire-and-forget — the browser is about to navigate to the
+      // issuer.  Return an opening message that may briefly flash
+      // before the redirect.
+      podAuth.startSignIn({ issuer }).catch((err) => {
+        console.error('[signin] redirect failed', err);
+      });
+      return { ok: true, message: t('signin.opening', { issuer: name }) };
+    } catch (err) {
+      return { ok: false, error: err?.message ?? String(err) };
+    }
   }
-  const issuer = String(args?.issuer ?? '').trim() || 'mock';
+
+  // Fallback (test workspace / pre-v0.7.P1 builds): the mock
+  // externalFlow path.  Real builds always have podAuth wired.
+  if (externalFlow && typeof externalFlow.open === 'function') {
+    try {
+      await externalFlow.open({ issuer: issuer ?? 'mock' });
+      return { ok: true, message: t('signin.opening', { issuer: issuer ?? 'mock' }) };
+    } catch (err) {
+      return { ok: false, error: err?.message ?? String(err) };
+    }
+  }
+
+  return { ok: false, error: t('signin.no_flow') };
+}
+
+/**
+ * `/whoami` — v0.7.P1.  Returns the current webid (signed in) or
+ * a hint to use /signin.
+ */
+async function whoami(_args, { podAuth, t }) {
+  if (!podAuth || typeof podAuth.getCurrentSession !== 'function') {
+    return { message: t('whoami.unavailable') };
+  }
+  const sess = podAuth.getCurrentSession();
+  if (!sess) return { message: t('whoami.not_signed_in') };
+  return { message: t('whoami.signed_in', { webid: sess.webid }) };
+}
+
+/**
+ * `/signout` — v0.7.P1.  Clears the local OIDC session.
+ */
+async function signOutFlow(_args, { podAuth, t }) {
+  if (!podAuth || typeof podAuth.signOut !== 'function') {
+    return { ok: false, error: t('signout.unavailable') };
+  }
   try {
-    await externalFlow.open({ issuer });
-    return {
-      ok: true,
-      message: t('signin.opening', { issuer }),
-    };
+    await podAuth.signOut({});
+    return { ok: true, message: t('signout.done') };
   } catch (err) {
     return { ok: false, error: err?.message ?? String(err) };
   }

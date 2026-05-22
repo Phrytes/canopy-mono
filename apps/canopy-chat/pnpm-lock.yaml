@@ -23,6 +23,9 @@ importers:
       '@canopy/vault':
         specifier: workspace:*
         version: link:../../packages/vault
+      '@inrupt/solid-client-authn-browser':
+        specifier: ^2.4.0
+        version: 2.5.0
       chrono-node:
         specifier: ^2.7.0
         version: 2.9.1
@@ -189,6 +192,19 @@ packages:
     engines: {node: '>=12'}
     cpu: [x64]
     os: [win32]
+
+  '@inrupt/oidc-client-ext@2.5.0':
+    resolution: {integrity: sha512-Pr89aEk0zWTghET6bAFvF75x3LL9X7Mj2aaum28DIfvMDoAgihJnc6O5UoTox3/0+r7bvz0JkhlQM7a8Gn4hig==}
+
+  '@inrupt/oidc-client@1.11.6':
+    resolution: {integrity: sha512-1rCTk1T6pdm/7gKozutZutk7jwmYBADlnkGGoI5ypke099NOCa5KFXjkQpbjsps0PRkKZ+0EaR70XN5+xqmViA==}
+
+  '@inrupt/solid-client-authn-browser@2.5.0':
+    resolution: {integrity: sha512-ftY1UCgTDkjcvfmQKBI8QRcxvRo84Os0tSDRjlUYPKS+dj0Qq6s4WbBenj6j7tsi0TlkCMw8jeGruL6ePdtI1Q==}
+
+  '@inrupt/solid-client-authn-core@2.5.0':
+    resolution: {integrity: sha512-S02hizURW3IL4d03Cn1xZTz25KqZdmS7qYfkOb/UHwPcy+VA7G8Um1xeDByqu7Bva2yPjNk5iCrKKUMmGb56mA==}
+    engines: {node: ^18.0.0 || ^20.0.0 || ^22.0.0}
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
@@ -375,9 +391,17 @@ packages:
   '@vitest/utils@3.2.4':
     resolution: {integrity: sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA==}
 
+  acorn@7.4.1:
+    resolution: {integrity: sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A==}
+    engines: {node: '>=0.4.0'}
+    hasBin: true
+
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
+
+  base64-js@1.5.1:
+    resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
 
   cac@6.7.14:
     resolution: {integrity: sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==}
@@ -394,6 +418,12 @@ packages:
   chrono-node@2.9.1:
     resolution: {integrity: sha512-nqP8Zp11efCYQIESXPxeDM8ikzN5BDb3Zzou+a66fZq+X2hzKFdsNLQE2/uBAh//BZEMbaMo1eTnagK7hOenAg==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
+  core-js@3.49.0:
+    resolution: {integrity: sha512-es1U2+YTtzpwkxVLwAFdSpaIMyQaq0PBgm3YD1W3Qpsn1NAmO3KSgZfu+oGSWVu6NvLHoHCV/aYcsE5wiB7ALg==}
+
+  crypto-js@4.2.0:
+    resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -456,6 +486,9 @@ packages:
   i18next@23.16.8:
     resolution: {integrity: sha512-06r/TitrM88Mg5FdUXAKL96dJMzgqLE5dv3ryBAra4KCwD9mJ4ndOTS95ZuymIGoE+2hzfdaMak2X11/es7ZWg==}
 
+  jose@5.10.0:
+    resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
+
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
 
@@ -491,10 +524,19 @@ packages:
     resolution: {integrity: sha512-FfR8sjd4em2T6fb3I2MwAJU7HWVMr9zba+enmQeeWFfCbm+UOC/0X4DS8XtpUTMwWMGbjKYP7xjfNekzyGmB3A==}
     engines: {node: ^10 || ^12 || >=14}
 
+  randombytes@2.1.0:
+    resolution: {integrity: sha512-vYl3iOX+4CKUWuxGi9Ukhie6fsqXqS9FE2Zaic4tNFD2N2QQaXOMFbuKK4QmDHC0JO6B1Zp41J0LpT0oR68amQ==}
+
   rollup@4.60.4:
     resolution: {integrity: sha512-WHeFSbZYsPu3+bLoNRUuAO+wavNlocOPf3wSHTP7hcFKVnJeWsYlCDbr3mTS14FCizf9ccIxXA8sGL8zKeQN3g==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
+
+  safe-buffer@5.2.1:
+    resolution: {integrity: sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==}
+
+  serialize-javascript@4.0.0:
+    resolution: {integrity: sha512-GaNA54380uFefWghODBWEGisLZFj00nS5ACs6yHa9nLqlLpVLO8ChDGeKRjZnV4Nh4n0Qi7nhYZD/9fCPzEqkw==}
 
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
@@ -536,6 +578,10 @@ packages:
 
   undici-types@7.24.6:
     resolution: {integrity: sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg==}
+
+  uuid@11.1.1:
+    resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
+    hasBin: true
 
   vite-node@3.2.4:
     resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
@@ -687,6 +733,35 @@ snapshots:
   '@esbuild/win32-x64@0.21.5':
     optional: true
 
+  '@inrupt/oidc-client-ext@2.5.0':
+    dependencies:
+      '@inrupt/oidc-client': 1.11.6
+      '@inrupt/solid-client-authn-core': 2.5.0
+      jose: 5.10.0
+      uuid: 11.1.1
+
+  '@inrupt/oidc-client@1.11.6':
+    dependencies:
+      acorn: 7.4.1
+      base64-js: 1.5.1
+      core-js: 3.49.0
+      crypto-js: 4.2.0
+      serialize-javascript: 4.0.0
+
+  '@inrupt/solid-client-authn-browser@2.5.0':
+    dependencies:
+      '@inrupt/oidc-client-ext': 2.5.0
+      '@inrupt/solid-client-authn-core': 2.5.0
+      events: 3.3.0
+      jose: 5.10.0
+      uuid: 11.1.1
+
+  '@inrupt/solid-client-authn-core@2.5.0':
+    dependencies:
+      events: 3.3.0
+      jose: 5.10.0
+      uuid: 11.1.1
+
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
   '@rollup/rollup-android-arm-eabi@4.60.4':
@@ -822,7 +897,11 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
 
+  acorn@7.4.1: {}
+
   assertion-error@2.0.1: {}
+
+  base64-js@1.5.1: {}
 
   cac@6.7.14: {}
 
@@ -837,6 +916,10 @@ snapshots:
   check-error@2.1.3: {}
 
   chrono-node@2.9.1: {}
+
+  core-js@3.49.0: {}
+
+  crypto-js@4.2.0: {}
 
   debug@4.4.3:
     dependencies:
@@ -901,6 +984,8 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.2
 
+  jose@5.10.0: {}
+
   js-tokens@9.0.1: {}
 
   loupe@3.2.1: {}
@@ -926,6 +1011,10 @@ snapshots:
       nanoid: 3.3.12
       picocolors: 1.1.1
       source-map-js: 1.2.1
+
+  randombytes@2.1.0:
+    dependencies:
+      safe-buffer: 5.2.1
 
   rollup@4.60.4:
     dependencies:
@@ -958,6 +1047,12 @@ snapshots:
       '@rollup/rollup-win32-x64-msvc': 4.60.4
       fsevents: 2.3.3
 
+  safe-buffer@5.2.1: {}
+
+  serialize-javascript@4.0.0:
+    dependencies:
+      randombytes: 2.1.0
+
   siginfo@2.0.0: {}
 
   source-map-js@1.2.1: {}
@@ -987,6 +1082,8 @@ snapshots:
 
   undici-types@7.24.6:
     optional: true
+
+  uuid@11.1.1: {}
 
   vite-node@3.2.4(@types/node@25.9.1):
     dependencies:
