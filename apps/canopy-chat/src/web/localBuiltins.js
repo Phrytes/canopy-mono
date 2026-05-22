@@ -47,6 +47,7 @@ export function createLocalBuiltins({
   findRunner,                // v0.7.5 — ({query}) => Promise<FindReply>
   openFilePicker,            // v0.7.13 — () => Promise<File|null>
   podAuth,                   // v0.7.P1 — real Solid OIDC wrapper
+  onSignOut,                 // v0.7.P2 — cleanup hook for the pod writer
 }) {
   return {
     help: async () => formatHelp(catalog, t),
@@ -64,7 +65,7 @@ export function createLocalBuiltins({
     // layer).
     signin:    async (args) => signinFlow(args, { podAuth, externalFlow, t }),
     whoami:    async (args) => whoami(args, { podAuth, t }),
-    signout:   async (args) => signOutFlow(args, { podAuth, t }),
+    signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
     brief:     async (args) => runBriefBuiltin(args, { briefRunner, t }),
     logs:      async (args) => runLogsBuiltin(args, { eventLog, t, openLogsPanel }),
     find:      async (args) => runFindBuiltin(args, { findRunner, t }),
@@ -229,14 +230,19 @@ async function whoami(_args, { podAuth, t }) {
 }
 
 /**
- * `/signout` — v0.7.P1.  Clears the local OIDC session.
+ * `/signout` — v0.7.P1.  Clears the local OIDC session.  v0.7.P2:
+ * also unwires the calendar pod writer so subsequent mutations
+ * stop writing-through to the (now-disconnected) pod.
  */
-async function signOutFlow(_args, { podAuth, t }) {
+async function signOutFlow(_args, { podAuth, t, onSignOut }) {
   if (!podAuth || typeof podAuth.signOut !== 'function') {
     return { ok: false, error: t('signout.unavailable') };
   }
   try {
     await podAuth.signOut({});
+    if (typeof onSignOut === 'function') {
+      try { onSignOut(); } catch { /* defensive */ }
+    }
     return { ok: true, message: t('signout.done') };
   } catch (err) {
     return { ok: false, error: err?.message ?? String(err) };
