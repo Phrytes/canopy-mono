@@ -52,8 +52,16 @@ const SEED_CHORES = [
  *   meta: { hostAddress: string, chatAddress: string, transport: 'internal' },
  * }>}
  */
-export async function createRealHouseholdAgent() {
+export async function createRealHouseholdAgent(opts = {}) {
   let chores = SEED_CHORES.map((c) => ({ ...c }));
+
+  // v0.7.7 — optional event publisher.  When supplied, mutation
+  // skills publish item-changed events via this callback so the
+  // chat-shell EventRouter routes them to matching threads.
+  // Unblocks J8's "household alerts" real-event demo.
+  const publishEvent = typeof opts.publishEvent === 'function'
+    ? opts.publishEvent
+    : () => {};
 
   const bus      = new InternalBus();
   const hostId   = await AgentIdentity.generate(new VaultMemory());
@@ -175,6 +183,14 @@ export async function createRealHouseholdAgent() {
       return [DataPart({ ok: false, error: `Chore "${target.label}" is already done.` })];
     }
     target.state = 'done';
+    // v0.7.7 — publish item-changed event for J8 reactive demo.
+    publishEvent({
+      app:     'household',
+      type:    'item-changed',
+      actor:   'webid:local-demo-user',
+      itemRef: { app: 'household', type: 'chore', id: target.id },
+      payload: { message: `✓ Done: ${target.label}` },
+    });
     return [DataPart({
       ok:      true,
       message: `✓ Done: ${target.label}`,
@@ -183,6 +199,22 @@ export async function createRealHouseholdAgent() {
       // suffix below the bubble.
       _sync:   simulateSync(),
     })];
+  });
+
+  // v0.7.6 — resolveContact convention.  Returns webid + display
+  // name when the query matches a known household member.
+  hostAgent.register('resolveContact', async ({ parts }) => {
+    const query = String(parts?.[0]?.data?.query ?? '').toLowerCase();
+    const members = [
+      { displayName: 'Anne',  webid: 'webid:anne',  handle: 'anne'  },
+      { displayName: 'Karl',  webid: 'webid:karl',  handle: 'karl'  },
+      { displayName: 'Maria', webid: 'webid:maria', handle: 'maria' },
+    ];
+    const exact = members.find((m) => m.handle === query || m.displayName.toLowerCase() === query);
+    if (exact) return [DataPart({ ...exact, confidence: 'exact' })];
+    const fuzzy = members.find((m) => m.displayName.toLowerCase().includes(query) && query.length >= 2);
+    if (fuzzy) return [DataPart({ ...fuzzy, confidence: 'fuzzy' })];
+    return [DataPart({ ok: false, error: `No contact matches "${query}"` })];
   });
 
   /* ─────────── v0.7.2 — tasks-v0 real skills ─────────── */
@@ -209,6 +241,11 @@ export async function createRealHouseholdAgent() {
       requiredSkill: a.requiredSkill ?? null,
     };
     tasks.push(task);
+    publishEvent({
+      app: 'tasks-v0', type: 'item-changed',
+      itemRef: { app: 'tasks-v0', type: 'task', id },
+      payload: { message: `✓ Added task: ${text}` },
+    });
     return [DataPart({
       ok: true, message: `✓ Added task: ${text}`, itemId: id, _sync: simulateSync(),
     })];
@@ -243,6 +280,11 @@ export async function createRealHouseholdAgent() {
       return [DataPart({ ok: false, error: `Task "${target.text}" is already done.` })];
     }
     target.state = 'done';
+    publishEvent({
+      app: 'tasks-v0', type: 'item-changed',
+      itemRef: { app: 'tasks-v0', type: 'task', id: target.id },
+      payload: { message: `✓ Completed: ${target.text}` },
+    });
     return [DataPart({
       ok: true, message: `✓ Completed: ${target.text}`, itemId: target.id, _sync: simulateSync(),
     })];
@@ -296,6 +338,12 @@ export async function createRealHouseholdAgent() {
     if (!text) return [DataPart({ ok: false, error: 'text required' })];
     const id = `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     posts.unshift({ id, label: text, state: 'open', actor: 'webid:local-demo-user' });
+    publishEvent({
+      app: 'stoop', type: 'notification',
+      actor: 'webid:local-demo-user',
+      itemRef: { app: 'stoop', type: 'post', id },
+      payload: { message: `New buurt post: ${text}` },
+    });
     return [DataPart({
       ok: true, message: `✓ Posted: ${text}`, itemId: id, _sync: simulateSync(),
     })];
