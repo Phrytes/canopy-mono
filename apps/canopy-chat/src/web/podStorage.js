@@ -31,9 +31,14 @@
  */
 
 /**
- * Derive a pod root URL from a webid.  Standard Solid convention:
- *   webid `https://anne.example/profile/card#me`
- *     → pod root `https://anne.example/`
+ * Derive a pod root URL from a webid via the URL structure only.
+ * Best-effort fallback when the WebID document can't be fetched.
+ *
+ * v0.7.P2.2 note: this fallback is WRONG for Inrupt-style providers
+ * where the WebID lives on the identity-provider host but the actual
+ * pod storage is on a separate host (e.g. id.inrupt.com vs
+ * storage.inrupt.com).  Always prefer `discoverPodRoot(session)`
+ * which fetches the WebID doc + reads the `pim:storage` triple.
  *
  * @param {string} webid
  * @returns {string} pod root URL (ends with `/`)
@@ -43,20 +48,109 @@ export function podRootFromWebid(webid) {
     throw new TypeError('podRootFromWebid: webid required');
   }
   const url = new URL(webid);
-  // Standard Solid heuristic: the pod root is wherever the webid
-  // doc's `/profile/...` suffix is rooted.
-  //   https://anne.example/profile/card#me
-  //     → pod root https://anne.example/
-  //   https://solidcommunity.net/anne/profile/card#me
-  //     → pod root https://solidcommunity.net/anne/
-  //   https://anne.example/  (no /profile in path)
-  //     → pod root https://anne.example/
   const profileIdx = url.pathname.indexOf('/profile/');
   if (profileIdx >= 0) {
     const prefix = url.pathname.slice(0, profileIdx);
     return `${url.origin}${prefix}/`;
   }
   return `${url.origin}/`;
+}
+
+const PIM_STORAGE = 'http://www.w3.org/ns/pim/space#storage';
+
+/**
+ * v0.7.P2.2 — discover the user's actual pod storage URL by fetching
+ * the WebID document + reading the `pim:storage` triple.  This is
+ * the canonical Solid mechanism and works for every spec-compliant
+ * provider (Inrupt PodSpaces, CommunitySolid, SolidCommunity, NSS).
+ *
+ * Falls back to `podRootFromWebid` when the WebID doc can't be
+ * fetched OR doesn't carry a `pim:storage` triple.
+ *
+ * @param {{ webid: string, fetch: typeof fetch }} session
+ * @returns {Promise<string>} pod root URL (ends with `/`)
+ */
+export async function discoverPodRoot(session) {
+  if (!session?.webid || typeof session?.fetch !== 'function') {
+    throw new TypeError('discoverPodRoot: session with {webid, fetch} required');
+  }
+  // Strip any fragment from the WebID; the doc URL is the part
+  // before `#`.  Many WebIDs have shape `<doc>#me`.
+  const docUrl = session.webid.split('#')[0];
+  try {
+    const res = await session.fetch(docUrl, {
+      headers: { Accept: 'text/turtle, application/ld+json' },
+    });
+    if (!res.ok) {
+      return podRootFromWebid(session.webid);
+    }
+    const ct   = res.headers.get('content-type') ?? '';
+    const body = await res.text();
+    const url  = parseStorageTriple(body, ct, session.webid);
+    if (url) return url.endsWith('/') ? url : url + '/';
+  } catch {
+    // Network / parse error — fall through.
+  }
+  return podRootFromWebid(session.webid);
+}
+
+/**
+ * Best-effort extraction of the `pim:storage` URL from a WebID doc.
+ * Handles Turtle (most common) + JSON-LD; ignores RDF/XML.
+ *
+ * @internal
+ */
+function parseStorageTriple(body, contentType, webid) {
+  if (contentType.includes('application/ld+json') || body.trim().startsWith('{')) {
+    return parseStorageFromJsonLd(body, webid);
+  }
+  return parseStorageFromTurtle(body);
+}
+
+function parseStorageFromTurtle(body) {
+  // Full-URI form: <pim:storage> <pod>.
+  const fullRe   = /<http:\/\/www\.w3\.org\/ns\/pim\/space#storage>\s*<([^>]+)>/i;
+  const fullMatch = body.match(fullRe);
+  if (fullMatch) return fullMatch[1];
+  // Prefixed form: pim:storage <pod>. OR space:storage <pod>.
+  // We accept any prefix declared with the canonical IRI.
+  const prefixDeclRe = /@prefix\s+(\w+)\s*:\s*<http:\/\/www\.w3\.org\/ns\/pim\/space#>\s*\.?/i;
+  const prefixDecl   = body.match(prefixDeclRe);
+  if (prefixDecl) {
+    const prefix = prefixDecl[1];
+    const re = new RegExp(`\\b${prefix}:storage\\s*<([^>]+)>`, 'i');
+    const m  = body.match(re);
+    if (m) return m[1];
+  }
+  // Fallback: bare `space:storage` / `pim:storage` (common defaults).
+  const fallbacks = ['space:storage', 'pim:storage'];
+  for (const pred of fallbacks) {
+    const re = new RegExp(`\\b${pred.replace(':', '\\:')}\\s*<([^>]+)>`, 'i');
+    const m = body.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function parseStorageFromJsonLd(body, webid) {
+  try {
+    const json = JSON.parse(body);
+    const docs = Array.isArray(json) ? json
+               : Array.isArray(json['@graph']) ? json['@graph']
+               : [json];
+    for (const doc of docs) {
+      const id = doc?.['@id'];
+      if (id && (id === webid || webid.startsWith(id))) {
+        const storage = doc?.[PIM_STORAGE];
+        if (typeof storage === 'string') return storage;
+        if (Array.isArray(storage) && storage.length > 0) {
+          const first = storage[0];
+          return typeof first === 'string' ? first : first?.['@id'];
+        }
+      }
+    }
+  } catch { /* fall through */ }
+  return null;
 }
 
 /**
@@ -88,11 +182,16 @@ export function podUrl(podRoot, app, resource) {
  *   podRoot: string,
  * }}
  */
-export function createPodWriter(session) {
+export function createPodWriter(session, opts = {}) {
   if (!session || typeof session.fetch !== 'function' || typeof session.webid !== 'string') {
     throw new TypeError('createPodWriter: session with {fetch, webid} required');
   }
-  const podRoot = podRootFromWebid(session.webid);
+  // v0.7.P2.2 — caller can supply a pre-discovered pod root (e.g.
+  // from discoverPodRoot(session)).  Defaults to the URL-shape
+  // heuristic if not provided.
+  const podRoot = (typeof opts.podRoot === 'string' && opts.podRoot)
+    ? (opts.podRoot.endsWith('/') ? opts.podRoot : opts.podRoot + '/')
+    : podRootFromWebid(session.webid);
 
   return {
     webid:   session.webid,
