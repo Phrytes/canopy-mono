@@ -79,6 +79,7 @@ export function mergeManifests(sources, opts = {}) {
   const replyShape  = new Map();
   const followUps   = new Map();
   const embedSnapshot = new Map();
+  const briefDecls    = new Map();        // v0.7 Q30 — canonicalKey → {summarySkill, order?, label?, appOrigin}
   const appOrigins  = [];
   /** @type {Map<string, string>} command → first-mounting appId */
   const commandOwner = new Map();
@@ -184,6 +185,10 @@ export function mergeManifests(sources, opts = {}) {
       // Q29 (v0.5) embed snapshot skill lookup.
       const skill = mounted.rendered.embedSnapshotFor?.(op.id);
       if (skill) embedSnapshot.set(canonicalKey, { snapshotSkill: skill, appOrigin: m.app });
+
+      // Q30 (v0.7) brief summary skill lookup.
+      const brief = mounted.rendered.briefFor?.(op.id);
+      if (brief) briefDecls.set(canonicalKey, { ...brief, appOrigin: m.app });
     }
   }
 
@@ -193,6 +198,11 @@ export function mergeManifests(sources, opts = {}) {
     replyShapeFor:    (opId) => replyShape.get(opId),
     followUpsFor:     (opId) => followUps.get(opId),
     embedSnapshotFor: (opId) => embedSnapshot.get(opId),
+    briefFor:         (opId) => briefDecls.get(opId),
+    // v0.7 — flattened brief decls, order-sorted, for /brief fan-out.
+    briefAggregations: () => [...briefDecls.entries()]
+      .map(([opId, decl]) => ({ opId, ...decl }))
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999)),
     appOrigins,
     warnings,
   };

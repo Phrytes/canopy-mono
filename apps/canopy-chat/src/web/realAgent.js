@@ -117,6 +117,16 @@ export async function createRealHouseholdAgent() {
   // v0.4 — household membership demo (declared in mockHouseholdManifest
   // but the skill was missing from the host agent — caught by user
   // testing 2026-05-23).
+  // v0.7 Q30 — briefSummary for the /brief aggregator.
+  hostAgent.register('briefSummary', async () => {
+    const open = chores.filter((c) => c.state === 'open');
+    if (open.length === 0) return [DataPart({ ok: true })];   // empty → /brief skips
+    return [DataPart({
+      items:   open.map((c) => ({ id: c.id, label: c.label })),
+      message: `${open.length} chore${open.length === 1 ? '' : 's'} open`,
+    })];
+  });
+
   hostAgent.register('addMember', async ({ parts }) => {
     const args = parts?.[0]?.data ?? {};
     const name = String(args.name ?? '').trim();

@@ -80,6 +80,7 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
     case 'list':       return renderListMessage(rendered, state, ctx);
     case 'record':     return renderRecordPanel(rendered, state, ctx, 'record');
     case 'mini-page':  return renderRecordPanel(rendered, state, ctx, 'mini-page');
+    case 'brief':      return renderBrief(rendered, state, ctx);
     case 'embed-card': {
       // v0.5.5 — kind discriminator drives card layout.
       const variant = rendered.embed?.kind ?? 'item-card';
@@ -635,6 +636,146 @@ function formatTime(iso) {
   } catch {
     return String(iso);
   }
+}
+
+/**
+ * v0.7 — render a brief-shape reply (Q30 aggregator output).  Each
+ * section becomes a labelled block; the section's payload is
+ * rendered with the same rules as the top-level shapes (text /
+ * list-with-items).  A [Refresh] button at the top re-runs /brief.
+ *
+ * @param {object} rendered
+ * @param {'live'|'disabled'|'closed'} state
+ * @param {DomAdapterContext} ctx
+ */
+function renderBrief(rendered, state, ctx) {
+  const { doc, onCloseMessage, onBriefRefresh, onButtonTap } = ctx;
+  const wrap = doc.createElement('div');
+  wrap.className = `cc-message cc-shell cc-brief cc-${state}`;
+  if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
+
+  // Header — generated-at + refresh button + close.
+  const header = doc.createElement('div');
+  header.className = 'cc-brief-header';
+  const title = doc.createElement('span');
+  title.className = 'cc-brief-title';
+  title.textContent = 'Morning brief';
+  header.appendChild(title);
+
+  const actions = doc.createElement('span');
+  actions.className = 'cc-brief-actions';
+  if (typeof onBriefRefresh === 'function' && state !== 'disabled') {
+    const refresh = doc.createElement('button');
+    refresh.type = 'button';
+    refresh.className = 'cc-brief-refresh';
+    refresh.textContent = '↻ Refresh';
+    refresh.title = 'Re-run /brief and bypass the cache';
+    refresh.addEventListener('click', () => onBriefRefresh());
+    actions.appendChild(refresh);
+  }
+  if (typeof onCloseMessage === 'function') {
+    const closeBtn = doc.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'cc-panel-close';
+    closeBtn.textContent = '×';
+    closeBtn.title = 'Close';
+    closeBtn.addEventListener('click', () => onCloseMessage(rendered.messageId));
+    actions.appendChild(closeBtn);
+  }
+  header.appendChild(actions);
+  wrap.appendChild(header);
+
+  // Empty-state.
+  if (!Array.isArray(rendered.sections) || rendered.sections.length === 0) {
+    const empty = doc.createElement('div');
+    empty.className = 'cc-brief-empty';
+    empty.textContent = 'Nothing to report.';
+    wrap.appendChild(empty);
+    return wrap;
+  }
+
+  // Sections.
+  for (const section of rendered.sections) {
+    const block = doc.createElement('section');
+    block.className = 'cc-brief-section';
+    block.dataset.appOrigin = section.appOrigin;
+
+    const label = doc.createElement('h3');
+    label.className = 'cc-brief-section-label';
+    label.textContent = section.label;
+    block.appendChild(label);
+
+    if (section.error) {
+      const errEl = doc.createElement('div');
+      errEl.className = 'cc-brief-section-error';
+      errEl.textContent = `(${section.error})`;
+      block.appendChild(errEl);
+    } else {
+      block.appendChild(renderBriefSectionPayload(section, doc, onButtonTap));
+    }
+    wrap.appendChild(block);
+  }
+
+  return wrap;
+}
+
+/**
+ * Render the per-section payload.  Supports the common shapes:
+ *   - { items: [...] } → small bullet list (label-only; no inline
+ *                        keyboards in brief sections — they're
+ *                        summary cards, not action menus)
+ *   - { message: '...' } → text block
+ *   - { count: N, label: '...' } → "<N> <label>" line
+ *   - object → key:value pairs
+ *   - primitive → toString
+ */
+function renderBriefSectionPayload(section, doc, onButtonTap) {
+  const wrap = doc.createElement('div');
+  wrap.className = 'cc-brief-section-body';
+  const p = section.payload;
+  if (p === null || p === undefined) {
+    wrap.textContent = '(empty)';
+    return wrap;
+  }
+  if (typeof p === 'object' && Array.isArray(p.items)) {
+    const ul = doc.createElement('ul');
+    ul.className = 'cc-brief-list';
+    for (const it of p.items) {
+      const li = doc.createElement('li');
+      li.textContent = String(it?.label ?? it?.title ?? it?.id ?? it);
+      ul.appendChild(li);
+    }
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  if (typeof p === 'object' && typeof p.count === 'number') {
+    wrap.textContent = `${p.count}${p.label ? ` ${p.label}` : ''}`;
+    return wrap;
+  }
+  if (typeof p === 'object' && typeof p.message === 'string') {
+    wrap.textContent = p.message;
+    return wrap;
+  }
+  if (typeof p === 'string' || typeof p === 'number' || typeof p === 'boolean') {
+    wrap.textContent = String(p);
+    return wrap;
+  }
+  if (typeof p === 'object') {
+    // Render as dl of non-meta keys.
+    const dl = doc.createElement('dl');
+    dl.className = 'cc-brief-section-fields';
+    for (const [k, v] of Object.entries(p)) {
+      if (k.startsWith('_') || k === 'ok') continue;
+      const dt = doc.createElement('dt'); dt.textContent = k;
+      const dd = doc.createElement('dd');
+      dd.textContent = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      dl.appendChild(dt); dl.appendChild(dd);
+    }
+    wrap.appendChild(dl);
+    return wrap;
+  }
+  wrap.textContent = String(p);
+  return wrap;
 }
 
 function renderUnknownShape(rendered, { doc }) {
