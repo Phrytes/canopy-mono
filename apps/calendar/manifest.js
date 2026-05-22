@@ -35,11 +35,16 @@ export const calendarManifest = {
       // CalendarStore accepts both internally for back-compat.
       // Aliased: 'startsAt' still works for any existing callers.
       params: [
-        { name: 'title',     kind: 'string', required: true  },
-        { name: 'when',      kind: 'date',   required: true  },
-        { name: 'duration',  kind: 'string', required: false },
-        { name: 'location',  kind: 'string', required: false },
-        { name: 'attendees', kind: 'string', required: false },
+        { name: 'title',         kind: 'string', required: true  },
+        { name: 'when',          kind: 'date',   required: true  },
+        { name: 'duration',      kind: 'string', required: false },
+        { name: 'location',      kind: 'string', required: false },
+        { name: 'attendees',     kind: 'string', required: false },
+        // v0.7.P3c — comma-separated NKN addresses to invite via
+        // chat-p2p envelopes.  Each gets a 'calendar-invite'
+        // envelope; their canopy-chat surfaces a time-card embed
+        // with [Accept]/[Decline]/[Tentative] that RSVPs back.
+        { name: 'attendees-nkn', kind: 'string', required: false },
       ],
       surfaces: {
         slash: { command: '/addappt', body: 'flags' },
