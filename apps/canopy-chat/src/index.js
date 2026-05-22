@@ -29,6 +29,7 @@ export {
 } from './followUps.js';
 export { buildEmbed, claimEmbed, actionsFor as embedActionsFor } from './embed.js';
 export { formatSyncHints, formatLastSync, relativeAgo } from './syncHints.js';
+export { AppRegistry, filterCatalog } from './appRegistry.js';
 export {
   buildFormSpec, pickStrategy, validateAndCoerce,
 } from './forms/buildFormSpec.js';

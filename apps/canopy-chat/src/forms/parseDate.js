@@ -1,22 +1,25 @@
 /**
- * canopy-chat — relaxed date parser.
+ * canopy-chat — relaxed date parser (Slack-style).
  *
- * Accepts:
- *   - ISO-8601 date strings:           '2026-05-30'
- *   - ISO-8601 datetime strings:       '2026-05-30T14:00:00Z'
- *   - the literal 'today'              → today's date (UTC)
- *   - the literal 'tomorrow'           → tomorrow (UTC)
- *   - weekday names (en + nl):         'friday' / 'vrijdag'
- *                                       → the next occurrence of that
- *                                         weekday (today counts if it
- *                                         is that weekday)
+ * Per OQ-3.A user resolution (2026-05-23): mimic Slack's flexibility.
+ *
+ * Backed by `chrono-node` — battle-tested natural-language date
+ * parser handling: 'next tuesday 3pm', 'in 2 hours', 'tomorrow
+ * morning', '5/30 4:30pm', 'feb 15', etc.
+ *
+ * canopy-chat keeps a small fast-path for ISO + the handful of
+ * keywords that already had test coverage (today / tomorrow /
+ * morgen / weekday names in EN + NL) so behaviour stays predictable
+ * when chrono's heuristics drift across versions.
  *
  * Returns an ISO-8601 date string ('YYYY-MM-DD') OR null on parse
  * failure.  Caller (validateAndCoerce) treats null as a validation
  * error.
  *
- * Phase v0.3 sub-slice 3.4 per `/Project Files/canopy-chat/coding-plan.md`.
+ * Phase v0.3 sub-slice 3.4 (original) → v0.6 OQ-3.A catch-up 2026-05-23.
  */
+
+import * as chrono from 'chrono-node';
 
 const WEEKDAYS_EN = [
   'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
@@ -26,11 +29,13 @@ const WEEKDAYS_NL = [
 ];
 
 /**
- * Parse a date-ish string into an ISO date.
+ * Parse a date-ish string into an ISO date.  Slack-style: accepts
+ * a wide range of inputs via chrono-node, with a fast-path for the
+ * canonical cases the canopy-chat tests already pin.
  *
  * @param {string}        input
  * @param {object}        [opts]
- * @param {() => Date}    [opts.now=() => new Date()]   injectable clock for tests
+ * @param {() => Date}    [opts.now=() => new Date()]   injectable clock
  * @returns {string | null}                              'YYYY-MM-DD' or null
  */
 export function parseRelativeDate(input, opts = {}) {
@@ -40,22 +45,22 @@ export function parseRelativeDate(input, opts = {}) {
   const raw = trimmed.toLowerCase();
   const now = (typeof opts.now === 'function' ? opts.now() : new Date());
 
-  // ISO date or datetime — pass through if it parses.  Use the
-  // ORIGINAL trimmed string (case-sensitive: 'T' + 'Z' are
-  // required by the Date constructor for ISO datetimes).
+  // Fast path 1: ISO date / datetime — pass through deterministically.
   if (/^\d{4}-\d{2}-\d{2}([Tt].*)?$/.test(trimmed)) {
     const d = new Date(trimmed);
     if (!Number.isNaN(d.getTime())) return toIsoDate(d);
   }
 
-  if (raw === 'today')    return toIsoDate(now);
+  // Fast path 2: pinned keywords.  chrono handles 'today' / 'tomorrow'
+  // but we keep the explicit paths so EN+NL parity is locked in
+  // tests and doesn't depend on chrono locale support.
+  if (raw === 'today') return toIsoDate(now);
   if (raw === 'tomorrow' || raw === 'morgen') {
     const d = new Date(now);
     d.setUTCDate(d.getUTCDate() + 1);
     return toIsoDate(d);
   }
 
-  // Weekday names — find the next occurrence (today counts).
   const enIdx = WEEKDAYS_EN.indexOf(raw);
   const nlIdx = WEEKDAYS_NL.indexOf(raw);
   const wkIdx = enIdx !== -1 ? enIdx : nlIdx;
@@ -65,6 +70,17 @@ export function parseRelativeDate(input, opts = {}) {
     const d = new Date(now);
     d.setUTCDate(d.getUTCDate() + delta);
     return toIsoDate(d);
+  }
+
+  // Slack-style fallback: feed it to chrono.  forwardDate biases
+  // ambiguous dates ('feb 15') toward the future.
+  try {
+    const parsed = chrono.parseDate(trimmed, now, { forwardDate: true });
+    if (parsed instanceof Date && !Number.isNaN(parsed.getTime())) {
+      return toIsoDate(parsed);
+    }
+  } catch {
+    // chrono throws on some pathological inputs; treat as null.
   }
 
   return null;
