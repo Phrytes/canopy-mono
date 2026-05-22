@@ -162,3 +162,51 @@ describe('search', () => {
     expect(await store.search('zzzzz')).toEqual([]);
   });
 });
+
+describe('iCal feed (v0.7.11)', () => {
+  beforeEach(async () => {
+    await store.addEvent({
+      title: 'Team standup',
+      startsAt: '2026-06-01T09:00:00Z',
+      endsAt:   '2026-06-01T09:30:00Z',
+      location: 'Demo HQ',
+      attendees: ['webid:anne', 'webid:karl'],
+    });
+    await store.addEvent({
+      title: 'Drinks',
+      startsAt: '2026-06-01T18:00:00Z',
+      endsAt:   '2026-06-01T20:00:00Z',
+      attendees: ['webid:maria'],
+    });
+  });
+
+  it("returns a VCALENDAR with one VEVENT per event", async () => {
+    const { ics, uri } = await store.getIcsFeed();
+    expect(uri).toMatch(/calendar\/feed\.ics$/);
+    expect(ics).toMatch(/^BEGIN:VCALENDAR/);
+    expect(ics).toMatch(/X-WR-CALNAME:Canopy Calendar/);
+    const vevents = (ics.match(/BEGIN:VEVENT/g) ?? []).length;
+    expect(vevents).toBe(2);
+    expect(ics).toMatch(/SUMMARY:Team standup/);
+    expect(ics).toMatch(/SUMMARY:Drinks/);
+    expect(ics).toMatch(/LOCATION:Demo HQ/);
+  });
+
+  it("RSVP responses surface as PARTSTAT in the feed", async () => {
+    const events = await store.listInRange({ since: 0, until: 99999999999999 });
+    const drinks = events.find((e) => e.title === 'Drinks');
+    await store.rsvp({ eventId: drinks.id, actor: 'webid:maria', response: 'accepted' });
+    const { ics } = await store.getIcsFeed();
+    expect(ics).toMatch(/ATTENDEE;PARTSTAT=ACCEPTED:mailto:webid:maria/);
+  });
+
+  it("cancelled events surface as STATUS:CANCELLED in the feed", async () => {
+    const events = await store.listInRange({ since: 0, until: 99999999999999 });
+    const standup = events.find((e) => e.title === 'Team standup');
+    await store.cancel({ eventId: standup.id });
+    const { ics } = await store.getIcsFeed();
+    // The cancelled event still appears in the feed so subscribers
+    // see the STATUS:CANCELLED transition.
+    expect(ics).toMatch(/STATUS:CANCELLED/);
+  });
+});
