@@ -137,6 +137,17 @@ export function renderReply(reply, opts = {}) {
     };
   }
 
+  if (shape === 'embed-card') {
+    // v0.5 — embedded item card (J7).  The reply.payload IS the embed
+    // envelope; the DOM adapter consumes it.
+    return {
+      kind:           'embed-card',
+      messageId, threadId,
+      lifecycleState: 'live',   // A2 hybrid — embed cards stay live until close
+      embed:          reply.payload,
+    };
+  }
+
   // Default + text: render as a text bubble.
   return {
     kind: 'text',

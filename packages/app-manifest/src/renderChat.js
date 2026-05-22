@@ -167,9 +167,24 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const runtimeFor = (opId) => runtimeByOp.get(opId) ?? 'both';
 
+  // (h) Q29 embed snapshot skill (canopy-chat v0.5, 2026-05-22).
+  // When an op declares `surfaces.chat.embed.cardSnapshotSkill`, the
+  // chat shell knows it can use this op as an inline-card factory
+  // for J7 embed messages.  Returns the snapshot-skill-id string OR
+  // undefined when the op doesn't opt in.
+  const embedSnapshotByOp = new Map();
+  for (const op of ops) {
+    const skill = op?.surfaces?.chat?.embed?.cardSnapshotSkill;
+    if (typeof skill === 'string' && skill !== '') {
+      embedSnapshotByOp.set(op.id, skill);
+    }
+  }
+  const embedSnapshotFor = (opId) => embedSnapshotByOp.get(opId);
+
   return {
     toolCatalog, toolHandlers, systemPrompt, commandMenu,
     inlineKeyboardFor, replyShapeFor, followUpsFor, runtimeFor,
+    embedSnapshotFor,
   };
 }
 

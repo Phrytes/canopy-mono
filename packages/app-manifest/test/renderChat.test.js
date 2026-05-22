@@ -340,6 +340,33 @@ describe('renderChat — Q31 followUpsFor (canopy-chat v0.4)', () => {
   });
 });
 
+describe('renderChat — Q29 embedSnapshotFor (canopy-chat v0.5)', () => {
+  it('returns the declared cardSnapshotSkill', () => {
+    const m = {
+      app: 'household', itemTypes: ['chore'],
+      operations: [{
+        id: 'markComplete', verb: 'complete',
+        appliesTo: { type: 'chore', state: 'open' },
+        params: [],
+        surfaces: { chat: { embed: { cardSnapshotSkill: 'getChoreSnapshot' } } },
+      }],
+      views: [{ id: 'v', title: 'V', type: 'chore' }],
+    };
+    const out = renderChat(m, {
+      skillRegistry: {
+        markComplete: async () => ({ replies: [], stateUpdates: [] }),
+      },
+      toSkillCtx: (c) => c,
+    });
+    expect(out.embedSnapshotFor('markComplete')).toBe('getChoreSnapshot');
+  });
+
+  it('returns undefined when op does not declare embed', () => {
+    const out = renderChat(baseManifest, { skillRegistry, toSkillCtx });
+    expect(out.embedSnapshotFor('addTask')).toBeUndefined();
+  });
+});
+
 describe('renderChat — Q32 runtimeFor (canopy-chat v0.4)', () => {
   it("returns 'both' when op.runtime absent", () => {
     const out = renderChat(baseManifest, { skillRegistry, toSkillCtx });

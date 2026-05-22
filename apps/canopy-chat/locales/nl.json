@@ -40,6 +40,11 @@
     "cancel":    { "text": "Annuleren",        "doc": "Form cancel button label." },
     "cancelled": { "text": "Formulier geannuleerd.", "doc": "Shown after the user clicks [Cancel] on a form." }
   },
+  "embed": {
+    "no_id":        { "text": "Geef een item-id op: /embed <itemId>", "doc": "When /embed fires with no itemId." },
+    "no_callskill": { "text": "Embed-dispatch niet beschikbaar in deze build.", "doc": "Defensive." },
+    "no_factory":   { "text": "Geen app levert een Q29 cardSnapshotSkill.", "doc": "When the merged catalog has no embed-producing op." }
+  },
   "newthread": {
     "created":  { "text": "✓ Thread „{{name}}\" aangemaakt. Overgeschakeld.", "doc": "Confirmation when /newthread succeeds." },
     "no_name":  { "text": "Geef een naam op: /newthread <naam>",              "doc": "When /newthread fires with no name arg." },
