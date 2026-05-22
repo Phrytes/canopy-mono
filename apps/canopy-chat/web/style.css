@@ -295,6 +295,17 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   margin-top: 0.5rem;
   flex-wrap: wrap;
 }
+.cc-embed-claim-btn {
+  margin-top: 0.5rem;
+  background: var(--bg);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.cc-embed-claim-btn:hover { background: var(--accent); color: var(--accent-fg); }
 .cc-embed-card.cc-disabled { opacity: 0.55; }
 
 /* follow-up buttons (v0.4) */

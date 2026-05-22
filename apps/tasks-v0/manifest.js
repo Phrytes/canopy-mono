@@ -83,8 +83,14 @@ export const tasksManifest = {
         { name: 'id', kind: 'string', required: true, ...ID_NONEMPTY },
       ],
       surfaces: {
-        chat: { hint: 'Compare-and-swap claim a task.' },
-        ui:   { control: 'button', label: 'Claim' },
+        chat: {
+          hint:  'Compare-and-swap claim a task.',
+          // Q29 (canopy-chat v0.5, 2026-05-22) — declare a snapshot
+          // factory so this op surfaces as embeddable in chat.  The
+          // `getTaskSnapshot` skill below is the source.
+          embed: { cardSnapshotSkill: 'getTaskSnapshot' },
+        },
+        ui: { control: 'button', label: 'Claim' },
       },
     },
     {
@@ -95,8 +101,30 @@ export const tasksManifest = {
         { name: 'id', kind: 'string', required: true, ...ID_NONEMPTY },
       ],
       surfaces: {
-        chat: { hint: 'Mark a task complete.' },
+        chat: {
+          hint: 'Mark a task complete.',
+          // Q29 — same factory; lifecycle ops share the snapshot skill.
+          embed: { cardSnapshotSkill: 'getTaskSnapshot' },
+        },
         ui:   { control: 'button', label: 'Mark complete' },
+      },
+    },
+    /**
+     * `getTaskSnapshot(id)` → ItemSnapshot — Q29 factory (canopy-chat
+     * v0.5).  Declaration-only in tasks-v0's manifest; the real skill
+     * lives wherever tasks-v0's agent runs.  When canopy-chat
+     * consumes tasks-v0's full manifest (currently it uses mocks),
+     * /embed against tasks ops surfaces a real task-card.
+     */
+    {
+      id:        'getTaskSnapshot',
+      verb:      'list',
+      appliesTo: { type: 'task' },
+      params: [
+        { name: 'id', kind: 'string', required: true, ...ID_NONEMPTY },
+      ],
+      surfaces: {
+        chat: { hint: 'Snapshot a task for embedding in chat.' },
       },
     },
     {

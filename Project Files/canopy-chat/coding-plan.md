@@ -149,7 +149,7 @@ The lesson is in the gate.
 | `notifier` | 🟢 KEEP | Different concern (outbound vs. inbound); composed in v0.5+ background notifications |
 | `local-store` | 🟢 KEEP until v0.6 | Pod-sync revisit |
 | `chat-agent` | 🟢 KEEP | Optional compose in v0.5+ for LLM-conversation path |
-| `chat-p2p` | ⚪ IRRELEVANT (v0.3) | Compose in v0.5 J7 embed work |
+| `chat-p2p` | 🟢 KEEP (re-audited v0.5.3) | NOT composed by canopy-chat.  Real cross-peer embed delivery rides on each hosting app's chat surface (stoop, etc.).  canopy-chat produces + renders embeds; apps deliver them. |
 | `agent-ui` | 🟢 KEEP | In-process model is intentional per OQ-1.A |
 | `agent-provisioning` | 🟢 KEEP | Optional upgrade once OIDC handoff (v0.6) is real |
 

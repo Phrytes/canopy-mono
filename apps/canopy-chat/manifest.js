@@ -73,22 +73,25 @@ export const canopyChatManifest = {
     },
 
     /**
-     * `/embed <itemId>` — v0.5 J7 demo.  Posts an embed-card to the
-     * active thread using the snapshot returned by the item's
-     * `cardSnapshotSkill` (Q29).  Cross-peer P2P delivery via chat-p2p
-     * comes in v0.5.1; v0.5.0 ships local-only.
+     * `/embed <itemId> [--claim]` — v0.5 J7 demo.  Posts an embed-
+     * card to the active thread using the snapshot returned by the
+     * item's `cardSnapshotSkill` (Q29).  `--claim` is the sender-
+     * claim-on-behalf path (per OQ-5): the embed is issued AND
+     * claimed by the sender atomically.  Without `--claim`, the
+     * receiver claims via the [Claim] button on the rendered card.
      */
     {
       id:    'embed',
       verb:  'add',
       params: [
-        { name: 'itemId', kind: 'string', required: true },
+        { name: 'itemId', kind: 'string',  required: true  },
+        { name: 'claim',  kind: 'boolean', required: false },
       ],
       surfaces: {
-        slash: { command: '/embed' },
+        slash: { command: '/embed', body: 'flags' },
         chat:  {
           reply: 'embed-card',
-          hint:  'embed an item card in this thread',
+          hint:  'embed an item card; --claim for claim-on-behalf',
         },
       },
     },

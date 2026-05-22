@@ -163,6 +163,11 @@ function parseFlags(body) {
     }
   }
   if (positional.length > 0) {
+    // v0.5.1 — for flags-body parsers, ALSO surface the first
+    // positional as the canonical id field convention; the router's
+    // _match-binding picks it up automatically for the op's first
+    // required non-boolean param.  Older callers using `_match`
+    // continue to work.
     out._match = positional.join(' ');
   }
   return out;
