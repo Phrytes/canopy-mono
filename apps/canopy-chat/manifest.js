@@ -292,6 +292,37 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `/rotate-identity` — v0.7.P3d.  Generates a fresh Ed25519
+     * keypair for the chat-agent.  Old key stays valid 7 days
+     * (grace period); KeyRotation.broadcast notifies known peers.
+     * Your NKN address CHANGES (derived from pubKey), so peers will
+     * need to update.  Use /me to see the new address afterwards.
+     */
+    {
+      id:    'rotate-identity',
+      verb:  'add',
+      params: [],
+      surfaces: {
+        slash: { command: '/rotate-identity' },
+        chat:  { reply: 'text', hint: 'rotate your chat-agent identity (7-day grace period)' },
+      },
+    },
+
+    /**
+     * `/security-status` — v0.7.P3d.  Reports SecurityLayer state:
+     * wired? known peers? identity pubKey + stableId.
+     */
+    {
+      id:    'security-status',
+      verb:  'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/security-status' },
+        chat:  { reply: 'text', hint: 'show cryptography state (signed/encrypted peer messages)' },
+      },
+    },
+
+    /**
      * `/peer-connect` — v0.7.P3b.  Initiates the NKN cross-peer
      * transport (takes 5-30s; up to 90s on first connect).  Runs
      * automatically on sign-in but the user can re-trigger via

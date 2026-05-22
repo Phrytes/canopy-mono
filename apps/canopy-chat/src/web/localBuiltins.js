@@ -68,8 +68,10 @@ export function createLocalBuiltins({
     signin:    async (args) => signinFlow(args, { podAuth, externalFlow, t }),
     whoami:    async (args) => whoami(args, { podAuth, t }),
     me:        async (args) => meIdentity(args, { agent, t }),
-    'peer-connect': async (args) => peerConnect(args, { connectPeer, t }),
-    'test-peer':    async (args) => testPeer(args, { agent, t }),
+    'peer-connect':     async (args) => peerConnect(args, { connectPeer, t }),
+    'test-peer':        async (args) => testPeer(args, { agent, t }),
+    'rotate-identity':  async (args) => rotateIdentity(args, { agent, t }),
+    'security-status':  async (args) => securityStatus(args, { agent, t }),
     signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
     'reset-thread': async () => {
       // v0.7.P1-followup — clear the active thread's messages.
@@ -292,6 +294,59 @@ async function meIdentity(_args, { agent, t }) {
     lines.push('');
     lines.push('NKN: not connected.  /peer-connect to enable cross-peer chat.');
   }
+  return { message: lines.join('\n') };
+}
+
+/**
+ * `/rotate-identity` — v0.7.P3d.  Rotates the chat-agent's Ed25519
+ * keypair.  Old key stays valid for 7 days (in-flight envelopes
+ * still decrypt).  KeyRotation.broadcast notifies known peers.
+ * Your NKN address changes — share the new one via /me.
+ */
+async function rotateIdentity(_args, { agent, t }) {
+  if (!agent || typeof agent.rotateChatIdentity !== 'function') {
+    return { ok: false, error: t('rotate.unavailable') };
+  }
+  try {
+    const result = await agent.rotateChatIdentity();
+    return {
+      message: t('rotate.done', {
+        oldPub:   result.oldPubKey.slice(0, 16) + '…',
+        newPub:   result.newPubKey.slice(0, 16) + '…',
+        grace:    result.graceUntilDays,
+      }),
+    };
+  } catch (err) {
+    return { ok: false, error: t('rotate.failed', { error: err.message ?? String(err) }) };
+  }
+}
+
+/**
+ * `/security-status` — v0.7.P3d.  Diagnostic for the crypto layer.
+ */
+async function securityStatus(_args, { agent, t }) {
+  if (!agent || typeof agent.securityStatus !== 'function') {
+    return { message: t('security.unavailable') };
+  }
+  const st = agent.securityStatus();
+  const lines = ['Crypto state:'];
+  lines.push(`  SecurityLayer wired:    ${st.layerWired ? 'yes' : 'no'}`);
+  lines.push(`  Identity pubKey:        ${st.identityPub}`);
+  lines.push(`  Identity stableId:      ${st.identityStable}`);
+  lines.push(`  Peer transport status:  ${st.peerTransportConnected ? 'connected' : 'idle'}`);
+  lines.push(`  Known peers (HI'd):     ${st.helloedPeerCount}`);
+  if (st.helloedPeerCount > 0) {
+    lines.push('');
+    lines.push('Peers you can encrypt to:');
+    for (const p of st.helloedPeers) {
+      lines.push(`  - ${p.length > 64 ? p.slice(0, 60) + '…' : p}`);
+    }
+  }
+  lines.push('');
+  lines.push('Every OW envelope to a HI\'d peer is:');
+  lines.push('  ✓ Ed25519-signed (sender authenticated)');
+  lines.push('  ✓ nacl.box-encrypted (XSalsa20-Poly1305 + Curve25519 DH)');
+  lines.push('  ✓ replay-protected (±10 min window + dedup cache)');
   return { message: lines.join('\n') };
 }
 

@@ -89,6 +89,14 @@
   "me": {
     "unavailable":   { "text": "Agent identity not available.",                   "doc": "Defensive: agent boot missing identity." }
   },
+  "rotate": {
+    "unavailable":  { "text": "Identity rotation not available in this build.",                "doc": "Defensive." },
+    "done":         { "text": "✓ Identity rotated.\n  old pubKey: {{oldPub}}\n  new pubKey: {{newPub}}\n  grace period: {{grace}} days\n\nYour NKN address has CHANGED.  Run /me to see it.\nKnown peers were notified via KeyRotation.broadcast.", "doc": "v0.7.P3d." },
+    "failed":       { "text": "Rotation failed: {{error}}",                                     "doc": "Defensive." }
+  },
+  "security": {
+    "unavailable":  { "text": "Crypto status not available in this build.",                     "doc": "Defensive." }
+  },
   "peer": {
     "unavailable":    { "text": "Peer transport not available in this build.",            "doc": "Defensive: window.nkn missing." },
     "no_address":     { "text": "Please provide a peer NKN address: /test-peer <addr> [text]", "doc": "/test-peer arg missing." },

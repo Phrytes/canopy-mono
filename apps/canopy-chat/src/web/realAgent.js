@@ -100,6 +100,10 @@ export async function createRealHouseholdAgent(opts = {}) {
     get address() { return peerState.address; },
     get status()  { return peerState.status; },
   };
+  // v0.7.P3d — track which NKN addresses we've HI'd.  Before the
+  // first OW envelope to a peer, we MUST send HI so the peer can
+  // register our pubKey + decrypt subsequent envelopes.
+  const helloedPeers = new Set();
 
   // v0.7.7 — optional event publisher.  When supplied, mutation
   // skills publish item-changed events via this callback so the
@@ -676,8 +680,14 @@ export async function createRealHouseholdAgent(opts = {}) {
       try {
         // Reuse the chat identity so the NKN address is stable.
         const transport = new NknTransport({ identity: chatId, nknLib });
+        // v0.7.P3d 2026-05-23 — wire the chatAgent's SecurityLayer
+        // onto the peer transport.  Every outbound OW envelope is
+        // signed (Ed25519) + nacl.box encrypted (Curve25519 DH +
+        // XSalsa20-Poly1305) using a per-peer shared secret.  HI
+        // envelopes stay plaintext-but-signed so peers can bootstrap.
+        transport.useSecurityLayer(chatAgent.security);
         // Hook the receive path BEFORE connect.  Transport.emit
-        // ('envelope', env) fires for every inbound message after
+        // ('envelope', env) fires for every inbound message AFTER
         // security-layer decrypt; we hand the inner payload to the
         // caller (main.js renders into the active thread).
         if (typeof onPeerMessage === 'function') {
@@ -705,13 +715,71 @@ export async function createRealHouseholdAgent(opts = {}) {
       }
       return peerController;
     },
-    sendPeerMessage(targetAddress, payload) {
+    async sendPeerMessage(targetAddress, payload) {
       if (!peerTransport) {
         throw new Error('Peer transport not connected.  /signin then wait for NKN connect.');
       }
-      // sendOneWay = fire-and-forget; sufficient for ping-echo + the
-      // future calendar-invite envelopes.
+      // v0.7.P3d — auto-HI on first contact.  The peer needs our
+      // Ed25519 pubKey to (a) verify our sig on subsequent envelopes
+      // + (b) derive the shared secret to decrypt them.  HI envelope
+      // carries pubKey in plaintext (it's signed-but-not-encrypted);
+      // SecurityLayer at the receiver auto-registers it.
+      if (!helloedPeers.has(targetAddress)) {
+        try {
+          await peerTransport.sendHello(targetAddress, {
+            // The receiver's SecurityLayer extracts pubKey from this
+            // payload (per its own _autoRegisterFromHi convention).
+            pubKey: chatId.pubKey,
+          });
+          helloedPeers.add(targetAddress);
+        } catch (err) {
+          // Log + continue — sendOneWay may still work if the peer
+          // already knows our pubKey from a previous session.
+          console.warn('[peer] HI failed (continuing)', err.message ?? err);
+        }
+      }
+      // sendOneWay = fire-and-forget.  SecurityLayer signs + encrypts
+      // before the wire.  Receiver verifies + decrypts.
       return peerTransport.sendOneWay(targetAddress, payload);
+    },
+
+    /**
+     * v0.7.P3d — rotate the chat-agent's Ed25519 identity.  Old key
+     * stays valid for a 7-day grace period so in-flight envelopes
+     * still decrypt; KeyRotation.broadcast notifies known peers so
+     * they migrate their SecurityLayer state.
+     *
+     * Returns the new pubKey + the (now-old) pubKey.
+     */
+    async rotateChatIdentity(opts = {}) {
+      const oldPubKey = chatAgent.identity.pubKey;
+      // Default: 7 days, broadcast to known peers (Agent.rotateIdentity
+      // honours these).  When peer transport isn't connected, only
+      // the local-side rotation happens; peers learn on next contact.
+      await chatAgent.rotateIdentity(opts);
+      return {
+        oldPubKey,
+        newPubKey: chatAgent.identity.pubKey,
+        graceUntilDays: opts.gracePeriodSeconds
+          ? opts.gracePeriodSeconds / 86_400
+          : 7,
+      };
+    },
+
+    /**
+     * v0.7.P3d — diagnostic for /security-status.
+     */
+    securityStatus() {
+      const sec = chatAgent.security;
+      const helloed = [...helloedPeers];
+      return {
+        layerWired:    !!sec,
+        identityPub:   chatAgent.identity.pubKey,
+        identityStable: chatAgent.identity.stableId,
+        peerTransportConnected: !!peerTransport,
+        helloedPeerCount: helloed.length,
+        helloedPeers:  helloed,
+      };
     },
   };
 }
