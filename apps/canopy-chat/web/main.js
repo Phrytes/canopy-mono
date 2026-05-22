@@ -305,21 +305,29 @@ async function connectPeerImpl() {
   return agent.connectPeerTransport({
     nknLib,
     onPeerMessage: ({ from, payload }) => {
-      // Render incoming peer message as a bubble in the active
-      // thread (Main by default).  v0.7.P3c will route based on
-      // payload.type instead of always-text.
-      const active = store.getActiveThread();
-      if (!active) return;
+      // v0.7.P3b-followup 2026-05-23: route incoming peer messages
+      // robustly.  Prior code rendered in 'active thread' only,
+      // dropping the message silently when no thread was active OR
+      // when the user was on a non-Main thread + then switched away.
+      // Now: log the raw envelope to console (debug aid), route to
+      // Main if it exists (canonical inbox for peer messages), AND
+      // ALSO fire publishEvent so /logs records every receipt.
+      console.info('[peer] received from', from, payload);
       const body = (payload && typeof payload === 'object' && typeof payload.body === 'string')
         ? payload.body
         : JSON.stringify(payload);
-      const rendered = renderReply({
-        payload: `📨 from ${from.slice(0, 16)}…: ${body}`,
-        shape:   'text',
-        threadId: active.id,
-      }, { t });
-      active.addShellMessage(rendered);
-      if (store.getActiveThread()?.id === active.id) renderActiveStream();
+      const main = store.getThread('main') ?? store.getActiveThread();
+      if (main) {
+        const rendered = renderReply({
+          payload: `📨 from ${from.slice(0, 16)}…: ${body}`,
+          shape:   'text',
+          threadId: main.id,
+        }, { t });
+        main.addShellMessage(rendered);
+        if (store.getActiveThread()?.id === main.id) renderActiveStream();
+      } else {
+        console.warn('[peer] no Main thread to deliver to — dropped:', body);
+      }
       publishEventRef({
         app:     'canopy-chat',
         type:    'notification',
