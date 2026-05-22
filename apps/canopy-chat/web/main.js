@@ -353,9 +353,19 @@ async function connectPeerImpl() {
 // v0.7.P2) can read.
 //
 // Fire-and-forget — boot continues whether or not a session restores.
+// v0.7.P3c diagnostic — log the redirect outcome to console so we
+// can see what's happening when /whoami stays 'not signed in' even
+// after a successful trip to the issuer (esp. for solidcommunity).
 podAuth.handleRedirect({ restorePreviousSession: true })
   .then((session) => {
-    if (!session) return;
+    if (typeof podAuth.getRawSessionInfo === 'function') {
+      const raw = podAuth.getRawSessionInfo();
+      console.info('[podAuth] handleRedirect resolved.  Raw session:', raw);
+    }
+    if (!session) {
+      console.info('[podAuth] no logged-in session restored (use /whoami for state).');
+      return;
+    }
     // Strip the OIDC redirect params from the URL so a refresh
     // doesn't try to handle the same redirect again.
     if (typeof window !== 'undefined' && window.history?.replaceState) {

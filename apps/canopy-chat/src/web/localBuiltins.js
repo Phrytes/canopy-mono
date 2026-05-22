@@ -240,8 +240,26 @@ async function whoami(_args, { podAuth, t }) {
     return { message: t('whoami.unavailable') };
   }
   const sess = podAuth.getCurrentSession();
-  if (!sess) return { message: t('whoami.not_signed_in') };
-  return { message: t('whoami.signed_in', { webid: sess.webid }) };
+  if (sess) return { message: t('whoami.signed_in', { webid: sess.webid }) };
+  // v0.7.P3c diagnostic — surface the RAW session state when the
+  // logged-in gate fails.  Helps diagnose SolidCommunity / NSS
+  // edge cases where handleRedirect returns but isLoggedIn stays
+  // false (CORS, ID-token mismatch, redirect-URL drift, etc).
+  if (typeof podAuth.getRawSessionInfo === 'function') {
+    const raw = podAuth.getRawSessionInfo();
+    if (!raw.sessionExists) return { message: t('whoami.not_signed_in') };
+    const lines = ['Not signed in.  Diagnostic state:'];
+    lines.push(`  sessionExists: ${raw.sessionExists}`);
+    lines.push(`  isLoggedIn:    ${raw.isLoggedIn}`);
+    if (raw.webId) lines.push(`  webId:         ${raw.webId}`);
+    if (raw.sessionId) lines.push(`  sessionId:     ${raw.sessionId}`);
+    lines.push('');
+    lines.push('If you JUST returned from the issuer + this says isLoggedIn:');
+    lines.push('false: the redirect-back round-trip didn\'t complete.');
+    lines.push('Check DevTools console for [podAuth] errors; retry /signin.');
+    return { message: lines.join('\n') };
+  }
+  return { message: t('whoami.not_signed_in') };
 }
 
 /**
