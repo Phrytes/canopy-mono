@@ -121,10 +121,15 @@ if (persisted.length > 0) {
     // wildcard, which actually matches ALL events).  On hydration
     // we upgrade Main's filter to the new strict default so
     // routed events no longer flood Main as duplicate bubbles.
-    let migratedFilter = t0.filter;
-    if (t0.id === 'main' && isPermissiveWildcard(t0.filter)) {
-      migratedFilter = { not: {} };
-    }
+    // v0.7.P1-followup, 2nd pass: ALWAYS force Main's filter to the
+    // strict {not:{}} regardless of the persisted value.  The earlier
+    // version only ran when the filter was an empty object, but
+    // some persisted threads have variations the wildcard check
+    // missed (e.g. {apps: [], eventTypes: []} from older versions).
+    // Main is the typed-input thread; it should NEVER receive
+    // auto-routed events.  This is the right default for the
+    // canonical 'main' thread.
+    let migratedFilter = (t0.id === 'main') ? { not: {} } : t0.filter;
     const created = store.createThread({
       id:          t0.id,
       name:        t0.name,

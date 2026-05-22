@@ -66,6 +66,16 @@ export function createLocalBuiltins({
     signin:    async (args) => signinFlow(args, { podAuth, externalFlow, t }),
     whoami:    async (args) => whoami(args, { podAuth, t }),
     signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
+    'reset-thread': async () => {
+      // v0.7.P1-followup — clear the active thread's messages.
+      const active = threadStore?.getActiveThread?.();
+      if (!active) return { ok: false, error: t('reset.no_thread') };
+      active.messages = [];
+      active._listings?.clear?.();
+      // Fire onChange so IDB persistence catches up.
+      active._notifyChange?.('reset');
+      return { ok: true, message: t('reset.done') };
+    },
     brief:     async (args) => runBriefBuiltin(args, { briefRunner, t }),
     logs:      async (args) => runLogsBuiltin(args, { eventLog, t, openLogsPanel }),
     find:      async (args) => runFindBuiltin(args, { findRunner, t }),
