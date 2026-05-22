@@ -243,6 +243,28 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   border-color: #f3b8b8;
 }
 
+/* sync hints (v0.6) */
+.cc-sync-hint {
+  font-size: 0.7rem;
+  color: var(--fg-mute);
+  margin-top: 0.2rem;
+  font-style: italic;
+}
+.cc-sync-hint-list {
+  padding: 0.3rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  font-style: italic;
+}
+.cc-row-stale {
+  font-size: 0.7rem;
+  color: #a06000;
+  margin-left: 0.5rem;
+  background: #fff5e0;
+  padding: 0 0.35rem;
+  border-radius: 4px;
+}
+
 /* embed cards (v0.5) */
 .cc-embed-card {
   max-width: 78%;

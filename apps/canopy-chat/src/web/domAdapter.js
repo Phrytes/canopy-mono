@@ -92,6 +92,15 @@ function renderTextBubble(rendered, state, ctx) {
   bubble.textContent = rendered.text ?? '';
   wrap.appendChild(bubble);
 
+  // v0.6 — render sync hint sub-line under the bubble (only when
+  // non-empty; central-style replies + absent _sync omit it).
+  if (typeof rendered.syncHint === 'string' && rendered.syncHint !== '') {
+    const hint = doc.createElement('div');
+    hint.className = 'cc-sync-hint';
+    hint.textContent = rendered.syncHint;
+    wrap.appendChild(hint);
+  }
+
   // v0.4 — render follow-up buttons under the text bubble.
   if (Array.isArray(rendered.followUps) && rendered.followUps.length > 0
       && state !== 'disabled'
@@ -128,6 +137,14 @@ function renderListMessage(rendered, state, ctx) {
   wrap.className = `cc-message cc-shell cc-list cc-${state}`;
   if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
 
+  // v0.6 — list-level sync hint above the items.
+  if (typeof rendered.syncHint === 'string' && rendered.syncHint !== '') {
+    const hint = doc.createElement('div');
+    hint.className = 'cc-sync-hint cc-sync-hint-list';
+    hint.textContent = rendered.syncHint;
+    wrap.appendChild(hint);
+  }
+
   const ul = doc.createElement('ul');
   ul.className = 'cc-list-items';
 
@@ -149,6 +166,14 @@ function renderListMessage(rendered, state, ctx) {
     label.className = 'cc-item-label';
     label.textContent = item.label;
     li.appendChild(label);
+
+    // v0.6 — per-row staleness badge from item._lastSync.
+    if (typeof item.staleHint === 'string' && item.staleHint !== '') {
+      const stale = doc.createElement('span');
+      stale.className = 'cc-row-stale';
+      stale.textContent = item.staleHint;
+      li.appendChild(stale);
+    }
 
     if (Array.isArray(item.buttons) && item.buttons.length > 0) {
       const kb = doc.createElement('span');

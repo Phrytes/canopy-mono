@@ -67,13 +67,36 @@ export async function createRealHouseholdAgent() {
   const hostAgent = new Agent({ identity: hostId, transport: hostTransport });
   const chatAgent = new Agent({ identity: chatId, transport: chatTransport });
 
+  // v0.6 demo — household runs as a 'decentralized' crew with three
+  // simulated peers.  Mostly online; one randomly unreachable so the
+  // sync-hint UI surfaces a recognisable pattern.  Real apps populate
+  // _sync from their actual sync-engine state.
+  const SIM_PEERS = ['webid:anne', 'webid:karl', 'webid:maria'];
+  function simulateSync() {
+    const offline = Math.random() < 0.4
+      ? [SIM_PEERS[Math.floor(Math.random() * SIM_PEERS.length)]]
+      : [];
+    return {
+      style:       'decentralized',
+      peers:       SIM_PEERS.filter((p) => !offline.includes(p)),
+      pending:     [],
+      unreachable: offline,
+    };
+  }
+
   // Register the household skills on the HOST agent.  Skills take
   // `{parts}` per @canopy/core convention; we transport args via a
   // DataPart and reply with another DataPart whose `.data` is the
   // canopy-chat payload shape.
   hostAgent.register('listOpen', async () => {
     const open = chores.filter((c) => c.state === 'open');
-    return [DataPart({ items: open })];
+    // v0.6 — annotate every-other row with synthetic _lastSync so the
+    // per-row 'stale Xh ago' badge has something to render.
+    const now = Date.now();
+    const decorated = open.map((c, i) => i % 2 === 0
+      ? { ...c, _lastSync: now - 3 * 3_600_000 }   // 3h ago
+      : c);
+    return [DataPart({ items: decorated, _sync: simulateSync() })];
   });
 
   // /profile — record-shape demo.
@@ -122,6 +145,9 @@ export async function createRealHouseholdAgent() {
       ok:      true,
       message: `✓ Done: ${target.label}`,
       itemId:  target.id,
+      // v0.6 — mutation reply carries _sync; chat shell renders the
+      // suffix below the bubble.
+      _sync:   simulateSync(),
     })];
   });
 
