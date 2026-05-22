@@ -430,10 +430,55 @@ router.onRouted(() => {
 
 /* ── input handler ─────────────────────────────────────── */
 
+// v0.7 catch-up — terminal-style command history.  Up/down arrows
+// cycle through previous user messages.  Stored in-memory only;
+// each thread's full history is in t0.messages anyway.
+const inputHistory = [];
+let   inputHistoryIdx = -1;
+let   inputPendingDraft = '';
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  if (inputHistory.length === 0) return;
+  // Only cycle when the caret is at start/end of input — preserves
+  // multi-line editing if a future input ever uses textarea.
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (inputHistoryIdx === -1) {
+      // First press — save the current draft so we can restore it.
+      inputPendingDraft = inputEl.value;
+      inputHistoryIdx = inputHistory.length - 1;
+    } else if (inputHistoryIdx > 0) {
+      inputHistoryIdx -= 1;
+    }
+    inputEl.value = inputHistory[inputHistoryIdx];
+    // Move cursor to end for predictable edit behaviour.
+    setTimeout(() => inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length), 0);
+  } else if (e.key === 'ArrowDown') {
+    if (inputHistoryIdx === -1) return;
+    e.preventDefault();
+    if (inputHistoryIdx < inputHistory.length - 1) {
+      inputHistoryIdx += 1;
+      inputEl.value = inputHistory[inputHistoryIdx];
+    } else {
+      // Past the newest — restore the draft.
+      inputHistoryIdx = -1;
+      inputEl.value = inputPendingDraft;
+    }
+  }
+});
+
 formEl.addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = inputEl.value.trim();
   if (!text) return;
+  // Append to history (de-dup against the last entry; same as bash).
+  if (inputHistory[inputHistory.length - 1] !== text) inputHistory.push(text);
+  // Cap history at 200 entries.
+  if (inputHistory.length > 200) inputHistory.shift();
+  inputHistoryIdx = -1;
+  inputPendingDraft = '';
+
   inputEl.value = '';
 
   const t0 = activeThread();
@@ -554,21 +599,10 @@ async function handleUserText(text, thread) {
       formElement:    formEl,
       text:           `Form: ${route.opId}`,
     });
+    // v0.7 catch-up — the renderer's new 'form' case returns
+    // formElement directly (see domAdapter.renderFormShape), so the
+    // earlier setTimeout patch is no longer needed.  Just rerender.
     renderActiveStream();
-    // The DOM stream rebuild will use our message's text fallback —
-    // append the actual form element on top.  Easiest: re-attach
-    // the form DOM in a tick (after renderActiveStream).
-    setTimeout(() => {
-      // Find the form-placeholder bubble + replace its content with
-      // the live form element.  Identified by messageId.
-      const messages = thread.messages;
-      const last = messages[messages.length - 1];
-      const node = messagesEl.querySelector(`[data-message-id="${last.messageId}"]`);
-      if (node) {
-        while (node.firstChild) node.removeChild(node.firstChild);
-        node.appendChild(formEl);
-      }
-    }, 0);
     return;
   }
 
