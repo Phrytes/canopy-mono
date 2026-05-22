@@ -468,6 +468,15 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   font-style: italic;
   background: var(--bg);
 }
+.cc-panel-stale-indicator {
+  padding: 0.2rem 0.7rem;
+  background: #fff5e0;
+  color: #a06000;
+  font-size: 0.75rem;
+  font-style: italic;
+  border-bottom: 1px solid var(--border);
+}
+.cc-panel-stale { opacity: 0.85; }
 
 /* ──── form bubbles (v0.3.0) ────────────────────────────── */
 .cc-form {

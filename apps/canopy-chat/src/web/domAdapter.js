@@ -230,6 +230,18 @@ function renderRecordPanel(rendered, state, ctx, variant) {
     return wrap;
   }
 
+  // v0.6.3 — stale indicator: when the panel's underlying item has
+  // received an item-changed event since this render, show a
+  // "refresh needed" badge.  Caller (main.js) can re-fetch via the
+  // originating op + replace the message.
+  if (rendered.stale === true) {
+    wrap.classList.add('cc-panel-stale');
+    const indicator = doc.createElement('div');
+    indicator.className = 'cc-panel-stale-indicator';
+    indicator.textContent = '(stale — refresh to see latest)';
+    wrap.appendChild(indicator);
+  }
+
   // Title bar
   if (rendered.title) {
     const bar = doc.createElement('div');
