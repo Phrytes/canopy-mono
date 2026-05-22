@@ -501,17 +501,16 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
 
 /* v0.7.P2.2 — per-message timestamp.  Today: HH:mm only.  Older:
    prefixed with M/D (this year) or YYYY-M-D.  Hover shows full
-   locale string. */
-.cc-message {
-  position: relative;
-}
+   locale string.  Rendered INLINE as block after the message body
+   (was absolute-positioned in the first cut — that caused stacking
+   when many messages landed in the same thread). */
 .cc-msg-ts {
-  position: absolute;
-  top: 0.15rem;
-  right: 0.45rem;
+  display: block;
+  margin: 0.15rem 0 0 0;
   font-size: 0.65rem;
   color: var(--fg-mute);
   font-variant-numeric: tabular-nums;
+  text-align: right;
   pointer-events: none;
   opacity: 0.7;
 }
