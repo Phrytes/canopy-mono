@@ -388,6 +388,32 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
 .cc-brief-section-fields dt { color: var(--fg-mute); font-size: 0.85rem; }
 .cc-brief-section-fields dd { margin: 0; font-size: 0.85rem; }
 
+/* v0.7.5 — /find search results */
+.cc-find {
+  max-width: 85%;
+  background: var(--shell-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  align-self: flex-start;
+}
+.cc-find-header { display: flex; justify-content: space-between; align-items: center;
+                  padding: 0.5rem 0.7rem; background: var(--bg);
+                  border-bottom: 1px solid var(--border); }
+.cc-find-list { padding-left: 1.2rem; margin: 0; }
+.cc-find-list li { padding: 0.15rem 0; font-size: 0.9rem; cursor: default; }
+.cc-find-footer { padding: 0.5rem 0.8rem; border-top: 1px solid var(--border); text-align: right; }
+.cc-find-extensive {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.cc-find-extensive:hover { background: var(--accent); color: var(--accent-fg); }
+
 /* v0.5.5 — file + time embed-card variants */
 .cc-file-card-body, .cc-time-card-body {
   display: flex;

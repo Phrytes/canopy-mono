@@ -25,6 +25,7 @@ import {
   AppRegistry, filterCatalog,
   openExternalFlow, parseCallbackUrl, resumeInFlightFlows,
   runBrief, createBriefCache,
+  runFind,
   EventLog, RETENTION_MS,
 } from '../src/index.js';
 import { buildFormSpec, validateAndCoerce } from '../src/forms/buildFormSpec.js';
@@ -253,6 +254,7 @@ const localBuiltins = createLocalBuiltins({
   appRegistry,
   eventLog,
   briefRunner: (opts) => runBrief({ catalog, callSkill, cache: briefCache, bypassCache: opts?.bypassCache }),
+  findRunner:  (opts) => runFind({ catalog, callSkill, query: opts?.query }),
   externalFlow: {
     /**
      * Open a sign-in flow.  Persists in-flight state + navigates to

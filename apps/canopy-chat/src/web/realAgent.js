@@ -201,6 +201,16 @@ export async function createRealHouseholdAgent(opts = {}) {
     })];
   });
 
+  // v0.7.5 — searchChores: text search across cached chores.
+  hostAgent.register('searchChores', async ({ parts }) => {
+    const q = String(parts?.[0]?.data?.query ?? '').toLowerCase();
+    if (!q) return [DataPart({ items: [] })];
+    const hits = chores.filter((c) => c.label.toLowerCase().includes(q));
+    return [DataPart({
+      items: hits.map((c) => ({ id: c.id, label: c.label, type: 'chore' })),
+    })];
+  });
+
   // v0.7.6 — resolveContact convention.  Returns webid + display
   // name when the query matches a known household member.
   hostAgent.register('resolveContact', async ({ parts }) => {
@@ -307,6 +317,16 @@ export async function createRealHouseholdAgent(opts = {}) {
     })];
   });
 
+  // v0.7.5 — searchTasks: text search across cached tasks.
+  hostAgent.register('searchTasks', async ({ parts }) => {
+    const q = String(parts?.[0]?.data?.query ?? '').toLowerCase();
+    if (!q) return [DataPart({ items: [] })];
+    const hits = tasks.filter((tk) => tk.text.toLowerCase().includes(q));
+    return [DataPart({
+      items: hits.map((tk) => ({ id: tk.id, label: tk.text, type: 'task' })),
+    })];
+  });
+
   // Tasks-v0 briefSummary for the /brief aggregator (Q30).
   hostAgent.register('tasks_briefSummary', async () => {
     const open = tasks.filter((t) => t.state === 'open');
@@ -346,6 +366,16 @@ export async function createRealHouseholdAgent(opts = {}) {
     });
     return [DataPart({
       ok: true, message: `✓ Posted: ${text}`, itemId: id, _sync: simulateSync(),
+    })];
+  });
+
+  // v0.7.5 — searchPosts.
+  hostAgent.register('searchPosts', async ({ parts }) => {
+    const q = String(parts?.[0]?.data?.query ?? '').toLowerCase();
+    if (!q) return [DataPart({ items: [] })];
+    const hits = posts.filter((p) => p.label.toLowerCase().includes(q));
+    return [DataPart({
+      items: hits.map((p) => ({ id: p.id, label: p.label, type: 'post' })),
     })];
   });
 
@@ -406,6 +436,16 @@ export async function createRealHouseholdAgent(opts = {}) {
     const removed = files.splice(idx, 1)[0];
     return [DataPart({
       ok: true, message: `✓ Deleted from pod: ${removed.name}`, _sync: simulateSync(),
+    })];
+  });
+
+  // v0.7.5 — searchFiles.
+  hostAgent.register('searchFiles', async ({ parts }) => {
+    const q = String(parts?.[0]?.data?.query ?? '').toLowerCase();
+    if (!q) return [DataPart({ items: [] })];
+    const hits = files.filter((f) => f.name.toLowerCase().includes(q) || f.id.toLowerCase().includes(q));
+    return [DataPart({
+      items: hits.map((f) => ({ id: f.id, label: f.name, type: 'file' })),
     })];
   });
 
