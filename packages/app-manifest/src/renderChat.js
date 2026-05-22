@@ -181,10 +181,26 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const embedSnapshotFor = (opId) => embedSnapshotByOp.get(opId);
 
+  // (i) Q30 brief-summary skill (canopy-chat v0.7, 2026-05-23).
+  // When an op declares `surfaces.chat.brief.summarySkill`, /brief
+  // calls it to populate this app's section of the aggregated brief.
+  const briefByOp = new Map();
+  for (const op of ops) {
+    const brief = op?.surfaces?.chat?.brief;
+    if (brief?.summarySkill && typeof brief.summarySkill === 'string') {
+      briefByOp.set(op.id, {
+        summarySkill: brief.summarySkill,
+        ...(typeof brief.order === 'number' ? { order: brief.order } : {}),
+        ...(typeof brief.label === 'string' ? { label: brief.label } : {}),
+      });
+    }
+  }
+  const briefFor = (opId) => briefByOp.get(opId);
+
   return {
     toolCatalog, toolHandlers, systemPrompt, commandMenu,
     inlineKeyboardFor, replyShapeFor, followUpsFor, runtimeFor,
-    embedSnapshotFor,
+    embedSnapshotFor, briefFor,
   };
 }
 

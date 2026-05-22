@@ -17,8 +17,9 @@
  * `apps/canopy-chat/manifest.js`.
  */
 
-import { describeFilter } from '../filter.js';
-import { buildEmbed }     from '../embed.js';
+import { describeFilter }    from '../filter.js';
+import { buildEmbed }        from '../embed.js';
+import { openExternalFlow }  from '../externalFlow.js';
 
 /**
  * Build the local-builtins dispatcher.
@@ -39,6 +40,8 @@ export function createLocalBuiltins({
   catalog, t, threadStore, setActive, callSkill, localActor,
   simPeers,                  // v0.5.6 — { '<peer>': { threadId, webid } }
   appRegistry,               // v0.6 OQ-4.B
+  externalFlow,              // v0.6.2 — { open, getActiveThreadId, mockSigninUrl }
+  briefRunner,               // v0.7 — () => Promise<BriefReply>
 }) {
   return {
     help: async () => formatHelp(catalog, t),
@@ -51,7 +54,45 @@ export function createLocalBuiltins({
       catalog, callSkill, t, localActor, simPeers, threadStore,
     }),
     apps:      async (args) => appsToggle(args, { catalog, appRegistry, t }),
+    signin:    async (args) => signinFlow(args, { externalFlow, t }),
+    brief:     async (args) => runBriefBuiltin(args, { briefRunner, t }),
   };
+}
+
+/**
+ * `/brief [--refresh]` — v0.7 builtin.  Delegates to briefRunner
+ * (closure created in web/main.js with the live callSkill +
+ * cache).  The argument controls cache-bypass only.
+ */
+async function runBriefBuiltin(args, { briefRunner, t }) {
+  if (typeof briefRunner !== 'function') {
+    return { ok: false, error: t('brief.no_runner') };
+  }
+  return briefRunner({ bypassCache: !!args?.refresh });
+}
+
+/**
+ * `/signin [issuer]` — v0.6.2 external-flow demo.  Opens the
+ * (mock) external sign-in URL via the openExternalFlow primitive.
+ * The callback wakes the chat thread with a fake webid.
+ *
+ * Real OIDC binding lands when @canopy/oidc-session is composed
+ * (v0.7+); this slice proves the FRAMEWORK works.
+ */
+async function signinFlow(args, { externalFlow, t }) {
+  if (!externalFlow || typeof externalFlow.open !== 'function') {
+    return { ok: false, error: t('signin.no_flow') };
+  }
+  const issuer = String(args?.issuer ?? '').trim() || 'mock';
+  try {
+    await externalFlow.open({ issuer });
+    return {
+      ok: true,
+      message: t('signin.opening', { issuer }),
+    };
+  } catch (err) {
+    return { ok: false, error: err?.message ?? String(err) };
+  }
 }
 
 /**

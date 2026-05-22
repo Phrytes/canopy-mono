@@ -311,6 +311,40 @@ function validateOperation(op, path, manifest, errors, idSet) {
     });
   }
 
+  // Q30 (canopy-chat v0.7, 2026-05-23) — optional `surfaces.chat.brief`
+  // declares the skill the chat-shell `/brief` aggregator calls to
+  // get this app's morning-brief summary.  Optional `order` controls
+  // section ordering across apps; `label` overrides the default
+  // section title (defaults to the app name).
+  const chatBrief = op?.surfaces?.chat?.brief;
+  if (chatBrief !== undefined) {
+    if (!chatBrief || typeof chatBrief !== 'object' || Array.isArray(chatBrief)) {
+      errors.push({
+        path:    `${path}/surfaces/chat/brief`,
+        message: 'surfaces.chat.brief must be an object if present',
+      });
+    } else {
+      if (typeof chatBrief.summarySkill !== 'string' || chatBrief.summarySkill === '') {
+        errors.push({
+          path:    `${path}/surfaces/chat/brief/summarySkill`,
+          message: 'surfaces.chat.brief.summarySkill must be a non-empty string',
+        });
+      }
+      if (chatBrief.order !== undefined && typeof chatBrief.order !== 'number') {
+        errors.push({
+          path:    `${path}/surfaces/chat/brief/order`,
+          message: 'surfaces.chat.brief.order must be a number if present',
+        });
+      }
+      if (chatBrief.label !== undefined && typeof chatBrief.label !== 'string') {
+        errors.push({
+          path:    `${path}/surfaces/chat/brief/label`,
+          message: 'surfaces.chat.brief.label must be a string if present',
+        });
+      }
+    }
+  }
+
   // Q29 (canopy-chat v0.5, 2026-05-22) — optional `surfaces.chat.embed`
   // declares the skill that produces a snapshot for the J7 embed
   // primitive (cards inserted into P2P chat messages).  When set, the

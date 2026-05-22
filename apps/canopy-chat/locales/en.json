@@ -51,6 +51,15 @@
   "embed-time": {
     "no_event": { "text": "Please provide an event id: /embed-time <eventId>", "doc": "When /embed-time fires with no eventId." }
   },
+  "brief": {
+    "no_runner": { "text": "Brief aggregator not available in this build.", "doc": "Defensive." }
+  },
+  "signin": {
+    "no_flow":      { "text": "Sign-in flow not available in this build.", "doc": "Defensive — externalFlow not wired." },
+    "opening":      { "text": "Opening sign-in (issuer: {{issuer}}) … come back when the redirect lands.", "doc": "Confirmation shown before navigation." },
+    "completed":    { "text": "✓ Signed in as {{webid}}.", "doc": "Shown when the external callback resumes the chat." },
+    "failed":       { "text": "Sign-in failed: {{reason}}.", "doc": "Shown when the callback delivers an error." }
+  },
   "apps": {
     "heading":        { "text": "Apps:",                                "doc": "First line of /apps list." },
     "empty":          { "text": "(none)",                               "doc": "When no apps in the catalog." },

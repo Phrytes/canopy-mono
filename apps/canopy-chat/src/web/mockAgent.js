@@ -204,6 +204,20 @@ export const mockHouseholdManifest = {
 mockHouseholdManifest.operations.find((o) => o.id === 'markComplete')
   .surfaces.chat.embed = { cardSnapshotSkill: 'getChoreSnapshot' };
 
+// v0.7 — Q30 brief-summary decls on each app's list op.  /brief
+// fans across these to produce the morning brief.  Demo only — real
+// apps declare in their own manifests when they ship Q30.
+mockHouseholdManifest.operations.find((o) => o.id === 'listOpen')
+  .surfaces.chat.brief = {
+    summarySkill: 'briefSummary',
+    order:        10,
+    label:        'Household',
+  };
+mockStoopManifest.operations.find((o) => o.id === 'listFeed')
+  .surfaces.chat.brief = { summarySkill: 'briefSummary', order: 30, label: 'Buurt' };
+mockFolioManifest.operations.find((o) => o.id === 'readNote')
+  .surfaces.chat.brief = { summarySkill: 'briefSummary', order: 20, label: 'Folio' };
+
 /**
  * Build a mock agent: returns `{ manifest, callSkill, reset }`.
  *
