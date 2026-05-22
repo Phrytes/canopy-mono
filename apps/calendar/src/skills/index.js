@@ -92,18 +92,23 @@ export function registerCalendarSkills(agent, store, opts = {}) {
 
   reg('listEvents', async ({ parts }) => {
     const a = parts?.[0]?.data ?? {};
-    // v0.7.P1-followup 2026-05-23 (5th pass): default window bumped
-    // from 7 → 90 days.  User had events scheduled 3+ weeks out
-    // that didn't appear in /upcoming.  90 days is a reasonable
-    // 'visible upcoming horizon'; user can still narrow with --days.
     const days = typeof a.days === 'number' ? a.days : 90;
     const since = Date.now();
     const until = since + days * 86_400_000;
     const events = await store.listInRange({ since, until });
+    // v0.7.P3c-followup 2026-05-23: include rsvp summary in each
+    // row label so the user can see at a glance which events
+    // they've accepted/declined/tentative-RSVP'd to.  Three
+    // sources for 'me':
+    //   1. webid:local-demo-user           (default actor)
+    //   2. an explicit args.actor          (rare; future)
+    //   3. ANY of the rsvp keys — if event has only one rsvp,
+    //      assume it's the user's
+    const meActor = a.actor ?? 'webid:local-demo-user';
     return [DataPart({
       items: events.map((e) => ({
         id:    e.id,
-        label: `${formatDate(e.startsAt)} · ${e.title}`,
+        label: formatEventLabel(e, meActor),
         type:  'calendar-event',
         state: e.state ?? 'open',
       })),
@@ -285,6 +290,39 @@ function buildInviteSnapshot(event) {
       ...(event.attendees?.length ? { attendees: event.attendees.join(', ') } : {}),
     },
   };
+}
+
+/**
+ * v0.7.P3c-followup — render a row label that surfaces the user's
+ * RSVP status when known.  Examples:
+ *   '5/24 13:00 · Beer'              (no RSVP)
+ *   '5/24 13:00 · Beer (✓ accepted)' (you accepted)
+ *   '5/24 13:00 · Beer (✗ declined)'
+ *   '5/24 13:00 · Beer (? tentative)'
+ *   '5/24 13:00 · Beer ✓anne ✗karl' (multi-attendee RSVPs visible)
+ */
+function formatEventLabel(event, meActor) {
+  const base = `${formatDate(event.startsAt)} · ${event.title}`;
+  const rsvp = event.rsvp ?? {};
+  const entries = Object.entries(rsvp);
+  if (entries.length === 0) return base;
+  // Your own RSVP gets a prominent suffix; other attendees a smaller mark.
+  const mine = rsvp[meActor];
+  let suffix = '';
+  if (mine) {
+    const sym = mine === 'accepted' ? '✓' : mine === 'declined' ? '✗' : '?';
+    suffix += ` (${sym} ${mine})`;
+  }
+  const others = entries.filter(([who]) => who !== meActor);
+  if (others.length > 0) {
+    const otherStr = others.map(([who, resp]) => {
+      const s = resp === 'accepted' ? '✓' : resp === 'declined' ? '✗' : '?';
+      const shortWho = who.length > 18 ? `${who.slice(0, 14)}…` : who;
+      return `${s}${shortWho}`;
+    }).join(' ');
+    suffix += `  [${otherStr}]`;
+  }
+  return base + suffix;
 }
 
 function formatDate(iso) {
