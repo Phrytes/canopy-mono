@@ -1,0 +1,192 @@
+/**
+ * @canopy-app/calendar — manifest.
+ *
+ * Declarative slash + chat surface for the calendar app.  v0.7.10
+ * is in-process + in-memory; the same manifest works unchanged when
+ * v0.7.11 swaps the storage to a real Solid pod (per the substrate
+ * convention).
+ *
+ * Item type: 'calendar-event' (canonical, from @canopy/item-types).
+ * RSVP states: an event's lifecycle uses ItemStore's state field +
+ * a per-attendee response map (open / claimed = accepted / declined
+ * / tentative).  Cancelling an event uses ItemStore.markComplete
+ * with state 'cancelled' (mapped onto removal in v0.7.11 RDF).
+ *
+ * Phase v0.7 sub-slice 7.10 per `/Project Files/canopy-chat/coding-plan.md`.
+ */
+
+export const calendarManifest = {
+  app:        'calendar',
+  itemTypes:  ['calendar-event'],
+
+  operations: [
+    /**
+     * `/addappt` — create an event.  Required: title, startsAt.
+     * Optional: endsAt (default startsAt + 1h), location, attendees
+     * (comma-separated webids), notes.
+     */
+    {
+      id:    'addEvent',
+      verb:  'add',
+      appliesTo: { type: 'calendar-event' },
+      params: [
+        { name: 'title',     kind: 'string', required: true  },
+        { name: 'startsAt',  kind: 'date',   required: true  },
+        { name: 'endsAt',    kind: 'date',   required: false },
+        { name: 'location',  kind: 'string', required: false },
+        { name: 'attendees', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/addappt', body: 'flags' },
+        chat:  { reply: 'text', hint: 'create an appointment' },
+      },
+    },
+
+    /**
+     * `/upcoming` — list events with startsAt in [now, now + window).
+     * Optional `days` flag (default 7).
+     */
+    {
+      id:    'listEvents',
+      verb:  'list',
+      appliesTo: { type: 'calendar-event' },
+      params: [
+        { name: 'days', kind: 'number', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/upcoming', body: 'flags' },
+        chat:  {
+          reply: 'list',
+          hint:  'list upcoming events',
+          // Q30 — calendar's slot in the morning brief.
+          brief: { summarySkill: 'briefSummary', order: 15, label: 'Calendar' },
+          // Q33 — searchable from /find.
+          search: { searchSkill: 'searchEvents' },
+        },
+      },
+    },
+
+    /* ──── RSVP receiver actions (appliesTo-gated buttons) ──── */
+    /**
+     * `[Accept]` button on the time-card / mini-page when the
+     * viewing user is in the event's attendees list AND their
+     * response isn't already 'accepted'.
+     */
+    {
+      id:    'rsvpAccept',
+      verb:  'claim',
+      // Receiver-only: appears on open events the viewer is invited to.
+      appliesTo: { type: 'calendar-event', state: ['open'] },
+      params: [
+        { name: 'id', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/accept' },
+        ui:    { control: 'button', label: 'Accept' },
+        chat:  { hint: 'accept an invitation' },
+      },
+    },
+    {
+      id:    'rsvpDecline',
+      verb:  'reject',
+      appliesTo: { type: 'calendar-event', state: ['open'] },
+      params: [
+        { name: 'id', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/decline' },
+        ui:    { control: 'button', label: 'Decline' },
+        chat:  { hint: 'decline an invitation' },
+      },
+    },
+    {
+      id:    'rsvpTentative',
+      verb:  'submit',     // approximate; ItemStore.submit is the closest contract
+      appliesTo: { type: 'calendar-event', state: ['open'] },
+      params: [
+        { name: 'id', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/tentative' },
+        ui:    { control: 'button', label: 'Tentative' },
+        chat:  { hint: 'mark as tentative' },
+      },
+    },
+    {
+      id:    'cancelEvent',
+      verb:  'remove',
+      appliesTo: { type: 'calendar-event', state: ['open'] },
+      params: [
+        { name: 'id', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/cancelappt' },
+        ui:    {
+          control: 'button',
+          label:   'Cancel event',
+          confirm: { severity: 'warn', message: 'Cancel this event?' },
+        },
+        chat: { hint: 'cancel an event (organiser only)' },
+      },
+    },
+
+    /* ──── Snapshot + search ──── */
+    /**
+     * `getEventSnapshot(id)` — Q29 cardSnapshotSkill for /embed-time.
+     */
+    {
+      id:    'getEventSnapshot',
+      verb:  'list',
+      appliesTo: { type: 'calendar-event' },
+      params: [
+        { name: 'id', kind: 'string', required: true },
+      ],
+      surfaces: {
+        chat: { hint: 'snapshot a calendar event for embedding' },
+      },
+    },
+
+    /**
+     * `briefSummary` — Q30 contributor.
+     */
+    {
+      id:    'briefSummary',
+      verb:  'list',
+      params: [],
+      surfaces: {
+        chat: { hint: 'calendar slot of the morning brief' },
+      },
+    },
+
+    /**
+     * `searchEvents` — Q33 contributor.  Text match on title +
+     * location.
+     */
+    {
+      id:    'searchEvents',
+      verb:  'list',
+      params: [
+        { name: 'query', kind: 'string', required: true },
+      ],
+      surfaces: {
+        chat: { hint: 'text search across calendar events' },
+      },
+    },
+  ],
+
+  views: [
+    {
+      id:     'upcoming',
+      title:  'Upcoming events',
+      type:   'calendar-event',
+      shape:  'list',
+    },
+  ],
+};
+
+// Q29 declaration: addEvent surfaces as embeddable via getEventSnapshot.
+// /embed-time → calendar.addEvent → returns event → /embed renders card.
+calendarManifest.operations.find((o) => o.id === 'addEvent')
+  .surfaces.chat.embed = { cardSnapshotSkill: 'getEventSnapshot' };
+
+export default calendarManifest;

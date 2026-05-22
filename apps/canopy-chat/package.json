@@ -41,6 +41,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@canopy-app/calendar": "workspace:*",
     "@canopy/app-manifest": "workspace:*",
     "@canopy/core": "workspace:*",
     "@canopy/manifest-host": "workspace:*",

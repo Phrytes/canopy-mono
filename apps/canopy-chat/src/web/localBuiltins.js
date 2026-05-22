@@ -52,7 +52,7 @@ export function createLocalBuiltins({
     threads:   async ()     => listThreads({ threadStore, t }),
     embed:     async (args) => createEmbed(args, { catalog, callSkill, t, localActor }),
     'embed-file': async (args) => createFileEmbed(args, { localActor, t, simPeers, threadStore }),
-    'embed-time': async (args) => createTimeEmbed(args, { localActor, t, simPeers, threadStore }),
+    'embed-time': async (args) => createTimeEmbed(args, { localActor, t, simPeers, threadStore, callSkill }),
     sendto:    async (args) => sendToPeer(args, {
       catalog, callSkill, t, localActor, simPeers, threadStore,
     }),
@@ -373,15 +373,12 @@ function mimeFromExtension(name) {
  *
  * Future: real calendar app + lookup-vs-create branch.
  */
-async function createTimeEmbed(args, { localActor, t, simPeers, threadStore }) {
+async function createTimeEmbed(args, { localActor, t, simPeers, threadStore, callSkill }) {
   const title = String(args?.title ?? '').trim();
   const when  = String(args?.when  ?? '').trim();
   if (!title) return { ok: false, error: t('embed-time.no_title') };
   if (!when)  return { ok: false, error: t('embed-time.no_when') };
 
-  // when may already be ISO ('2026-05-30') from form-coercion, or
-  // free-text from /embed-time --when="next tuesday 3pm".  Try the
-  // direct ISO parse first; fall through if invalid.
   let startAt;
   const direct = new Date(when);
   if (!Number.isNaN(direct.getTime())) {
@@ -389,24 +386,61 @@ async function createTimeEmbed(args, { localActor, t, simPeers, threadStore }) {
   } else {
     return { ok: false, error: t('embed-time.bad_when', { when }) };
   }
-
   const durationMs = parseDuration(String(args?.duration ?? '').trim()) ?? 3_600_000;
   const endAt = new Date(startAt.getTime() + durationMs);
   const location = String(args?.location ?? '').trim() || undefined;
   const share    = String(args?.share    ?? '').trim();
+  const issuer   = localActor ?? 'webid:local-demo-user';
 
-  const issuer = localActor ?? 'webid:local-demo-user';
-  const id = `evt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-  const embed = {
-    kind:      'time-card',
-    appOrigin: 'household',         // demo only — future: 'calendar' app
-    itemRef:   { app: 'household', type: 'time', id },
-    snapshot:  {
+  // v0.7.10 — dispatch to the calendar app's real addEvent skill.
+  // The calendar app persists the event to its store; we then build
+  // the embed envelope from the persisted snapshot.
+  let event;
+  if (typeof callSkill === 'function') {
+    try {
+      const reply = await callSkill('calendar', 'addEvent', {
+        title,
+        startsAt: startAt.toISOString(),
+        endsAt:   endAt.toISOString(),
+        ...(location ? { location } : {}),
+        attendees: share ? [share] : [],
+        actor:     issuer,
+      });
+      if (reply?.ok === false) return reply;   // pass through error
+      // Read back the snapshot for the embed.
+      event = reply?.itemId
+        ? await callSkill('calendar', 'getEventSnapshot', { id: reply.itemId })
+        : null;
+    } catch (err) {
+      return { ok: false, error: err?.message ?? String(err) };
+    }
+  }
+
+  // Fall back to synthesized snapshot if calendar dispatch unavailable
+  // (defensive — shouldn't happen in the v0.7.10 demo).
+  if (!event || event.ok === false) {
+    const id = `evt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    event = {
       id, type: 'time', title,
       startAt:  startAt.toISOString(),
       endAt:    endAt.toISOString(),
-      timezone: 'UTC',
       ...(location ? { location } : {}),
+    };
+  }
+
+  const embed = {
+    kind:      'time-card',
+    appOrigin: 'calendar',
+    itemRef:   { app: 'calendar', type: 'calendar-event', id: event.id },
+    snapshot: {
+      id:    event.id,
+      type:  event.type ?? 'calendar-event',
+      title: event.title,
+      startAt:  event.startAt  ?? event.startsAt,
+      endAt:    event.endAt    ?? event.endsAt,
+      timezone: 'UTC',
+      ...(event.location ? { location: event.location } : {}),
+      ...(event.fields   ? { fields:   event.fields   } : {}),
     },
     issuedBy: issuer,
   };
