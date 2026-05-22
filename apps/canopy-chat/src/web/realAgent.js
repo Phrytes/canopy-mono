@@ -91,6 +91,22 @@ export async function createRealHouseholdAgent() {
     })];
   });
 
+  // v0.4 — household membership demo (declared in mockHouseholdManifest
+  // but the skill was missing from the host agent — caught by user
+  // testing 2026-05-23).
+  hostAgent.register('addMember', async ({ parts }) => {
+    const args = parts?.[0]?.data ?? {};
+    const name = String(args.name ?? '').trim();
+    if (!name) {
+      return [DataPart({ ok: false, error: 'name required' })];
+    }
+    return [DataPart({
+      ok:         true,
+      message:    `✓ Added member: ${name}`,
+      memberName: name,
+    })];
+  });
+
   hostAgent.register('markComplete', async ({ parts }) => {
     const args = parts?.[0]?.data ?? {};
     const id = args?.choreId;
