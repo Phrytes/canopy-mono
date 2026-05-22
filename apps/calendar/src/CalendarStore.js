@@ -71,6 +71,10 @@ export class CalendarStore {
   #actorDefault;
   /** @type {object|null} v0.7.P2 — pod write-through target */
   #podWriter;
+  /** v0.7.P2.1 — last write outcome + recorded errors, for diagnostics. */
+  #podStatus = { lastResult: null, errorCount: 0, lastError: null, attempts: 0 };
+  /** v0.7.P2.1 — optional sink for pod-write events (canopy-chat router). */
+  #podEventSink;
 
   /**
    * @param {object}  [opts]
@@ -97,7 +101,36 @@ export class CalendarStore {
    * @param {object|null} writer  result of podStorage.createPodWriter,
    *                                or null to disable write-through.
    */
-  setPodWriter(writer) { this.#podWriter = writer ?? null; }
+  setPodWriter(writer) {
+    this.#podWriter = writer ?? null;
+    // Reset diagnostics on writer change so the user sees fresh status.
+    this.#podStatus = { lastResult: null, errorCount: 0, lastError: null, attempts: 0 };
+  }
+
+  /**
+   * v0.7.P2.1 — optional event sink for pod-write events.  When set,
+   * each pod-write attempt fires a notification event (success or
+   * failure) so the chat shell can route it to /logs + Main thread.
+   *
+   * Signature: (event: {kind, url, status, error?}) => void
+   */
+  setPodEventSink(sink) {
+    this.#podEventSink = typeof sink === 'function' ? sink : null;
+  }
+
+  /** v0.7.P2.1 — diagnostics for /pod-status. */
+  getPodStatus() {
+    return {
+      writerWired:   !!this.#podWriter,
+      writerUrl:     this.getPodFeedUrl(),
+      writerWebid:   this.#podWriter?.webid ?? null,
+      writerPodRoot: this.#podWriter?.podRoot ?? null,
+      attempts:      this.#podStatus.attempts,
+      errorCount:    this.#podStatus.errorCount,
+      lastResult:    this.#podStatus.lastResult,
+      lastError:     this.#podStatus.lastError,
+    };
+  }
 
   /** @returns {string|null} pod URL the feed write-throughs to (when wired). */
   getPodFeedUrl() {
@@ -271,12 +304,38 @@ export class CalendarStore {
     }
     // v0.7.P2 — write-through to real pod when signed in.
     if (this.#podWriter && typeof this.#podWriter.write === 'function') {
+      this.#podStatus.attempts += 1;
+      let result;
       try {
-        await this.#podWriter.write('calendar', 'feed.ics', ics, 'text/calendar');
+        result = await this.#podWriter.write('calendar', 'feed.ics', ics, 'text/calendar');
+        this.#podStatus.lastResult = result;
       } catch (err) {
+        const msg = err?.message ?? String(err);
+        this.#podStatus.errorCount += 1;
+        this.#podStatus.lastError   = msg;
+        this.#podStatus.lastResult  = null;
         if (typeof console !== 'undefined') {
-          console.warn('[calendar.podWrite] failed', err?.message ?? err);
+          console.warn('[calendar.podWrite] threw', msg);
         }
+        if (this.#podEventSink) {
+          try { this.#podEventSink({ kind: 'pod-write-error', url: this.getPodFeedUrl(), error: msg }); } catch { /* defensive */ }
+        }
+        return;
+      }
+      if (result && !result.ok) {
+        this.#podStatus.errorCount += 1;
+        this.#podStatus.lastError   = `HTTP ${result.status}${result.errorBody ? ' — ' + result.errorBody : ''}`;
+        if (typeof console !== 'undefined') {
+          console.warn('[calendar.podWrite] HTTP', result.status, result.errorBody ?? '(no body)');
+        }
+        if (this.#podEventSink) {
+          try { this.#podEventSink({ kind: 'pod-write-error', url: result.url, status: result.status, error: this.#podStatus.lastError }); } catch { /* defensive */ }
+        }
+        return;
+      }
+      // Success.
+      if (this.#podEventSink) {
+        try { this.#podEventSink({ kind: 'pod-write-ok', url: result.url, status: result.status }); } catch { /* defensive */ }
       }
     }
   }

@@ -158,6 +158,42 @@ export function registerCalendarSkills(agent, store, opts = {}) {
     })];
   });
 
+  reg('podStatus', async () => {
+    const st = typeof store.getPodStatus === 'function' ? store.getPodStatus() : null;
+    if (!st) {
+      return [DataPart({ message: 'Pod status not available (store lacks getPodStatus).' })];
+    }
+    const lines = ['Pod-write status:'];
+    lines.push(`  Writer wired: ${st.writerWired ? 'yes' : 'no'}`);
+    if (st.writerWired) {
+      lines.push(`  WebID:        ${st.writerWebid}`);
+      lines.push(`  Pod root:     ${st.writerPodRoot}`);
+      lines.push(`  Feed URL:     ${st.writerUrl}`);
+    }
+    lines.push(`  Attempts:     ${st.attempts}`);
+    lines.push(`  Errors:       ${st.errorCount}`);
+    if (st.lastResult) {
+      lines.push(`  Last result:  HTTP ${st.lastResult.status}${st.lastResult.containerCreated ? ' (container created)' : ''} ${st.lastResult.ok ? '✓' : '✗'}`);
+    }
+    if (st.lastError) {
+      lines.push(`  Last error:   ${st.lastError}`);
+    }
+    if (!st.writerWired) {
+      lines.push('');
+      lines.push('Hint: /signin first to wire the pod writer.');
+    } else if (st.attempts === 0) {
+      lines.push('');
+      lines.push('Hint: /addappt to trigger the first write.');
+    } else if (st.errorCount > 0 && st.errorCount === st.attempts) {
+      lines.push('');
+      lines.push('All writes have failed.  Likely causes:');
+      lines.push('  - Pod ACL: the canopy/ path may not be writable for this WebID');
+      lines.push('  - CORS: the pod may not allow cross-origin authenticated PUTs');
+      lines.push('  - 404: parent container missing (v0.7.P2.1 tries to auto-create)');
+    }
+    return [DataPart({ message: lines.join('\n') })];
+  });
+
   reg('getIcsFeed', async () => {
     const { ics, uri: localUri } = await store.getIcsFeed();
     const eventCount = (ics.match(/BEGIN:VEVENT/g) ?? []).length;
