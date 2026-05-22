@@ -369,11 +369,17 @@ async function sendToPeer(args, { catalog, callSkill, t, localActor, simPeers, t
  * --share=<peer> routes to peer's thread.
  */
 async function createFileEmbed(args, { localActor, t, simPeers, threadStore, callSkill, openFilePicker }) {
-  const path  = String(args?.path ?? '').trim();
-  const pick  = !!args?.pick;
-  const name  = String(args?.name ?? '').trim();
-  const share = String(args?.share ?? '').trim();
-  const issuer = localActor ?? 'webid:local-demo-user';
+  const path     = String(args?.path ?? '').trim();
+  const name     = String(args?.name ?? '').trim();
+  const share    = String(args?.share ?? '').trim();
+  const issuer   = localActor ?? 'webid:local-demo-user';
+  // v0.7.P1-fix 2026-05-23: bare `/embed-file` (no args) is the
+  // friendliest case — auto-open the file picker.  Explicit
+  // `--pick=false` or other flags disable the auto-pick.
+  const explicitPickFlag = args && Object.prototype.hasOwnProperty.call(args, 'pick');
+  const pick = explicitPickFlag
+    ? !!args.pick
+    : (!path && !name);
 
   let snapshot = null;
 

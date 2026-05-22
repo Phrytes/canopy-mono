@@ -93,6 +93,16 @@ export function buildFormSpec({
     if (typeof p.placeholder === 'string') field.placeholder = p.placeholder;
     if (typeof p.hint        === 'string') field.hint        = p.hint;
 
+    // Q34 (v0.7) — propagate pickerSource so the DOM/RN adapter can
+    // render a click-to-pick list instead of a text input.
+    if (p.pickerSource && typeof p.pickerSource === 'object') {
+      field.pickerSource = {
+        listOp: p.pickerSource.listOp,
+        ...(p.pickerSource.filter ? { filter: p.pickerSource.filter } : {}),
+        ...(p.pickerSource.appOrigin ? { appOrigin: p.pickerSource.appOrigin } : {}),
+      };
+    }
+
     // Mark editable readOnly→false when this field is in `missing` (it
     // explicitly needs user input).
     if (Array.isArray(missing) && missing.includes(name)) {
