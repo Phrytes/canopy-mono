@@ -44,7 +44,31 @@
  */
 
 /**
- * Returns true iff the event matches every specified key in the filter.
+ * Returns true iff the event matches the filter.
+ *
+ * Two filter shapes are accepted (backward-compatible per OQ-2.A
+ * user resolution 2026-05-23):
+ *
+ *   1. Flat key:value (v0.2 shape) — `{ apps?, eventTypes?, actors? }`.
+ *      Keys are AND-combined; arrays within each key are OR-combined.
+ *
+ *   2. Expression tree (v0.6 OQ-2.A) — explicit Boolean composition:
+ *      `{ and: [<filter>, <filter>, ...] }`
+ *      `{ or:  [<filter>, <filter>, ...] }`
+ *      `{ not: <filter> }`
+ *      Leaves are either flat-shape filters OR the wildcard {}.
+ *
+ *   Mixed example:
+ *     {
+ *       and: [
+ *         { apps: ['household', 'tasks-v0'] },     // app:household OR app:tasks-v0
+ *         { or: [
+ *             { actors: ['webid:anne'] },
+ *             { eventTypes: ['reminder'] },
+ *         ]},
+ *         { not: { eventTypes: ['notification'] } },
+ *       ],
+ *     }
  *
  * @param {Event}        event
  * @param {ThreadFilter} [filter]   absent / null → wildcard everything
@@ -53,7 +77,36 @@
 export function matchesFilter(event, filter) {
   if (!event || typeof event !== 'object') return false;
   if (!filter || typeof filter !== 'object') return true;
+  if (Array.isArray(filter)) return false;   // defensive: arrays aren't filters
 
+  // Expression-tree branches (OQ-2.A resolution).  An object with
+  // an `and` / `or` / `not` key is treated as a Boolean composition;
+  // we walk recursively.  Keys can co-exist with flat-shape keys —
+  // the implicit AND between tree keys and flat keys preserves the
+  // "every specified condition" semantic.
+  if ('and' in filter) {
+    if (!Array.isArray(filter.and)) return false;
+    for (const sub of filter.and) {
+      if (!matchesFilter(event, sub)) return false;
+    }
+  }
+  if ('or' in filter) {
+    if (!Array.isArray(filter.or) || filter.or.length === 0) {
+      // empty `or: []` matches nothing (consistent with logic — OR
+      // over an empty set is false).
+      return false;
+    }
+    let anyMatched = false;
+    for (const sub of filter.or) {
+      if (matchesFilter(event, sub)) { anyMatched = true; break; }
+    }
+    if (!anyMatched) return false;
+  }
+  if ('not' in filter) {
+    if (matchesFilter(event, filter.not)) return false;
+  }
+
+  // Flat-shape leaves (still applied; they AND with the tree above).
   if (!matchesKey(event.app,    filter.apps))       return false;
   if (!matchesKey(event.type,   filter.eventTypes)) return false;
   if (!matchesKey(event.actor,  filter.actors))     return false;
@@ -109,6 +162,9 @@ export function normaliseFilter(filter) {
  */
 export function isWildcardFilter(filter) {
   if (!filter || typeof filter !== 'object') return true;
+  // Expression-tree filters are NEVER wildcards (they have explicit
+  // composition; even {and: []} doesn't match everything).
+  if ('and' in filter || 'or' in filter || 'not' in filter) return false;
   for (const key of ['apps', 'eventTypes', 'actors']) {
     const arr = filter[key];
     if (!Array.isArray(arr) || arr.length === 0) continue;
@@ -127,6 +183,30 @@ export function isWildcardFilter(filter) {
  */
 export function describeFilter(filter) {
   if (isWildcardFilter(filter)) return '*';
+  if (!filter || typeof filter !== 'object') return '*';
+
+  // Expression-tree branches — describe recursively with operator
+  // notation.  Keeps the sidebar label compact even for complex
+  // filters.
+  if (filter.and || filter.or || filter.not) {
+    const treeParts = [];
+    if (Array.isArray(filter.and) && filter.and.length > 0) {
+      treeParts.push(`(${filter.and.map(describeFilter).join(' AND ')})`);
+    }
+    if (Array.isArray(filter.or)  && filter.or.length > 0) {
+      treeParts.push(`(${filter.or.map(describeFilter).join(' OR ')})`);
+    }
+    if (filter.not) {
+      treeParts.push(`NOT ${describeFilter(filter.not)}`);
+    }
+    // Flat keys also present? Append them AND-style.
+    const flatParts = [];
+    if (filter.apps?.length)       flatParts.push(`app:${filter.apps.join('|')}`);
+    if (filter.eventTypes?.length) flatParts.push(`type:${filter.eventTypes.join('|')}`);
+    if (filter.actors?.length)     flatParts.push(`actor:${filter.actors.join('|')}`);
+    return [...treeParts, ...flatParts].join(' AND ');
+  }
+
   const parts = [];
   if (filter.apps?.length)       parts.push(`app:${filter.apps.join('|')}`);
   if (filter.eventTypes?.length) parts.push(`type:${filter.eventTypes.join('|')}`);

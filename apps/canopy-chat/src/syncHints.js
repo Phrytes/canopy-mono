@@ -55,7 +55,12 @@ export function formatSyncHints(sync, t, now = Date.now) {
     const pending     = (sync.pending     ?? []).length;
     const unreachable = (sync.unreachable ?? []).length;
     const total       = peers + pending + unreachable;
-    if (total === 0) return '';
+    // OQ-6.A user resolution (2026-05-23): when the decentralized op
+    // crosses 0 peers (everyone offline / not yet known), surface the
+    // "saved locally; awaiting peer sync" hint instead of returning
+    // empty.  A [Retry] affordance can ride on this in v0.6+ when a
+    // real retry path exists; for now the message is informational.
+    if (total === 0) return tr('sync.saved_locally');
 
     const parts = [];
     parts.push(tr('sync.synced_to', { ok: peers, total }));

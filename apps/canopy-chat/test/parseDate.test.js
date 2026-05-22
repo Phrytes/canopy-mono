@@ -47,7 +47,10 @@ describe('parseRelativeDate', () => {
   });
 
   it('returns null for unparseable inputs', () => {
-    expect(parseRelativeDate('next month')).toBeNull();
+    // 'next month' used to be in this list; chrono-node (OQ-3.A
+    // catch-up 2026-05-23) parses it as "today + 1 month".  That's
+    // the slack-style flexibility the user asked for; the assertion
+    // moved into the slack-style suite.
     expect(parseRelativeDate('whenever')).toBeNull();
     expect(parseRelativeDate('not a date')).toBeNull();
     expect(parseRelativeDate('')).toBeNull();
@@ -107,5 +110,40 @@ describe('validateAndCoerce — webid kind (v0.3.2)', () => {
     const r = validateAndCoerce(spec(), { who: 'just-a-name' });
     expect(r.ok).toBe(false);
     expect(r.errors[0].message).toMatch(/not a valid webid/);
+  });
+});
+
+describe('parseRelativeDate — Slack-style (OQ-3.A catch-up, v0.6)', () => {
+  const FIXED_NOW = () => new Date('2026-05-31T12:00:00Z');   // Sunday
+
+  it("'next tuesday' → next Tuesday", () => {
+    // FIXED_NOW is Sunday 2026-05-31; next Tuesday should be 2026-06-02
+    expect(parseRelativeDate('next tuesday', { now: FIXED_NOW })).toBe('2026-06-02');
+  });
+
+  it("'in 2 hours' → today (same UTC date when within window)", () => {
+    // FIXED_NOW = 12:00 UTC; +2h = 14:00 UTC, still same date.
+    expect(parseRelativeDate('in 2 hours', { now: FIXED_NOW })).toBe('2026-05-31');
+  });
+
+  it("'feb 15' → next Feb 15 (forward-date)", () => {
+    expect(parseRelativeDate('feb 15', { now: FIXED_NOW })).toBe('2027-02-15');
+  });
+
+  it("'tomorrow morning' → tomorrow", () => {
+    expect(parseRelativeDate('tomorrow morning', { now: FIXED_NOW })).toBe('2026-06-01');
+  });
+
+  it("'in 3 days' → +3 days", () => {
+    expect(parseRelativeDate('in 3 days', { now: FIXED_NOW })).toBe('2026-06-03');
+  });
+
+  it('still returns null for genuine nonsense', () => {
+    expect(parseRelativeDate('not a date at all', { now: FIXED_NOW })).toBeNull();
+  });
+
+  it('still passes ISO + weekday fast paths (regression check)', () => {
+    expect(parseRelativeDate('2026-05-30', { now: FIXED_NOW })).toBe('2026-05-30');
+    expect(parseRelativeDate('vrijdag',    { now: FIXED_NOW })).toBe('2026-06-05');
   });
 });

@@ -165,3 +165,72 @@ describe('describeFilter', () => {
     })).toBe('app:household, type:notification, actor:webid:anne');
   });
 });
+
+describe('matchesFilter — expression tree (OQ-2.A, v0.6 catch-up)', () => {
+  const houseNotif  = { id: 'e1', ts: 1, app: 'household', type: 'notification', actor: 'webid:anne' };
+  const tasksRemind = { id: 'e2', ts: 2, app: 'tasks-v0',  type: 'reminder',     actor: 'webid:karl' };
+  const stoopPost   = { id: 'e3', ts: 3, app: 'stoop',     type: 'item-changed', actor: 'webid:anne' };
+
+  it('and: [F1, F2] → both must match', () => {
+    const f = { and: [{ apps: ['household'] }, { actors: ['webid:anne'] }] };
+    expect(matchesFilter(houseNotif,  f)).toBe(true);
+    expect(matchesFilter(tasksRemind, f)).toBe(false);  // wrong app
+    expect(matchesFilter(stoopPost,   f)).toBe(false);  // wrong app
+  });
+
+  it('or: [F1, F2] → either matches', () => {
+    const f = { or: [{ apps: ['household'] }, { actors: ['webid:karl'] }] };
+    expect(matchesFilter(houseNotif,  f)).toBe(true);   // app matches
+    expect(matchesFilter(tasksRemind, f)).toBe(true);   // actor matches
+    expect(matchesFilter(stoopPost,   f)).toBe(false);
+  });
+
+  it('not: F → inverts F', () => {
+    expect(matchesFilter(houseNotif, { not: { apps: ['household'] } })).toBe(false);
+    expect(matchesFilter(tasksRemind, { not: { apps: ['household'] } })).toBe(true);
+  });
+
+  it('mixed tree + flat: implicit AND between them', () => {
+    const f = {
+      apps: ['household', 'tasks-v0'],
+      not:  { eventTypes: ['notification'] },
+    };
+    expect(matchesFilter(tasksRemind, f)).toBe(true);    // tasks-v0 ✓ AND not notif ✓
+    expect(matchesFilter(houseNotif,  f)).toBe(false);   // app ✓ but type IS notification
+    expect(matchesFilter(stoopPost,   f)).toBe(false);   // wrong app
+  });
+
+  it('nested or-of-ands', () => {
+    const f = {
+      or: [
+        { and: [{ apps: ['household'] }, { actors: ['webid:anne'] }] },
+        { and: [{ apps: ['tasks-v0']   }, { actors: ['webid:karl'] }] },
+      ],
+    };
+    expect(matchesFilter(houseNotif,  f)).toBe(true);
+    expect(matchesFilter(tasksRemind, f)).toBe(true);
+    expect(matchesFilter(stoopPost,   f)).toBe(false);
+  });
+
+  it('empty or: [] matches nothing', () => {
+    expect(matchesFilter(houseNotif, { or: [] })).toBe(false);
+  });
+
+  it('empty and: [] matches everything', () => {
+    expect(matchesFilter(houseNotif, { and: [] })).toBe(true);
+  });
+
+  it("describeFilter handles tree filters", () => {
+    expect(describeFilter({ and: [{ apps: ['h'] }, { actors: ['a'] }] }))
+      .toBe('(app:h AND actor:a)');
+    expect(describeFilter({ or: [{ apps: ['h'] }, { apps: ['t'] }] }))
+      .toBe('(app:h OR app:t)');
+    expect(describeFilter({ not: { apps: ['h'] } })).toBe('NOT app:h');
+  });
+
+  it("isWildcardFilter returns false for tree filters", () => {
+    expect(isWildcardFilter({ and: [] })).toBe(false);
+    expect(isWildcardFilter({ or:  [] })).toBe(false);
+    expect(isWildcardFilter({ not: {} })).toBe(false);
+  });
+});

@@ -123,6 +123,29 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `/apps` — v0.6 OQ-4.B chat-inline app-toggle.  Subcommands:
+     *   /apps             → list every catalog app + enabled state
+     *   /apps on <name>   → enable an app
+     *   /apps off <name>  → disable an app
+     *
+     * Disabled apps disappear from /help + dispatches fail with a
+     * friendly error.  Toggle persists across reloads.  Side-panel
+     * UI lands with RN port (v0.6.7+).
+     */
+    {
+      id:    'apps',
+      verb:  'list',
+      params: [
+        { name: 'action', kind: 'enum', of: ['on', 'off'], required: false },
+        { name: 'app',    kind: 'string',                  required: false },
+      ],
+      surfaces: {
+        slash: { command: '/apps', body: 'flags' },
+        chat:  { reply: 'text', hint: 'list or toggle apps; /apps on|off <name>' },
+      },
+    },
+
+    /**
      * `/send-to <peer> <itemId>` — v0.5.6 simulated cross-peer demo.
      * Fakes a J7 round-trip by routing an embed-card into the named
      * peer's thread (per the simulated cross-peer simPeers config).
