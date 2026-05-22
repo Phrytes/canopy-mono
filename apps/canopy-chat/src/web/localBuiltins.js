@@ -169,8 +169,14 @@ async function signinFlow(args, { externalFlow, t }) {
 async function appsToggle(args, { catalog, appRegistry, t }) {
   if (!appRegistry) return { ok: false, error: t('apps.no_registry') };
 
-  const action = args?.action;
-  const name   = args?.app;
+  // Positional binding: '/apps off stoop' parses to args._match='off stoop'
+  // because flags-body packs positionals into _match for the router's
+  // single-required-param binding.  Multi-positional commands like
+  // /apps need to unpack manually.  Same pattern applies to any
+  // 2+ positional flags-body op (user-reported 2026-05-23).
+  const tokens = String(args?._match ?? '').trim().split(/\s+/).filter(Boolean);
+  const action = args?.action ?? tokens[0];
+  const name   = args?.app    ?? tokens[1];
 
   if (!action) {
     // List mode.

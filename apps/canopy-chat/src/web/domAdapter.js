@@ -81,6 +81,7 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
     case 'record':     return renderRecordPanel(rendered, state, ctx, 'record');
     case 'mini-page':  return renderRecordPanel(rendered, state, ctx, 'mini-page');
     case 'brief':      return renderBrief(rendered, state, ctx);
+    case 'form':       return renderFormShape(rendered, state, ctx);
     case 'embed-card': {
       // v0.5.5 — kind discriminator drives card layout.
       const variant = rendered.embed?.kind ?? 'item-card';
@@ -776,6 +777,30 @@ function renderBriefSectionPayload(section, doc, onButtonTap) {
   }
   wrap.textContent = String(p);
   return wrap;
+}
+
+/**
+ * v0.7 catch-up — render a `kind: 'form'` shell message.  Forms get
+ * created in `web/main.js`'s `needsForm` route handler: a `formElement`
+ * is built via `renderForm()` and stuffed onto the shell message.
+ * The original v0.3.0 path then patched the DOM via setTimeout — but
+ * that left a brief flash of `[shape "form" not yet supported]` AND
+ * lost the form entirely on re-renders (user-reported 2026-05-23).
+ *
+ * This case returns the formElement directly so the renderer pipeline
+ * handles it like any other shape.  If formElement is missing (e.g.
+ * the message rehydrated from IDB and structured-clone dropped the
+ * DOM ref), show a soft "form expired" placeholder.
+ */
+function renderFormShape(rendered, state, { doc }) {
+  if (rendered.formElement && typeof rendered.formElement === 'object') {
+    return rendered.formElement;
+  }
+  const el = doc.createElement('div');
+  el.className = `cc-message cc-shell cc-form-expired cc-${state}`;
+  if (rendered.messageId) el.dataset.messageId = rendered.messageId;
+  el.textContent = `(form for ${rendered.text ?? 'a previous request'} — expired; re-run the command)`;
+  return el;
 }
 
 function renderUnknownShape(rendered, { doc }) {
