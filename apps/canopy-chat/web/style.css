@@ -26,11 +26,16 @@ body {
   flex-direction: column;
 }
 
-/* ──── two-column workspace ──────────────────────────── */
+/* ──── workspace layout (sidebar | main | optional logs panel) ── */
 .cc-workspace {
   flex: 1;
   display: grid;
-  grid-template-columns: 220px 1fr;
+  /* v0.7.1c-followup — make the logs panel a real 3rd column.
+     Previously the grid only had 2 columns, so opening the logs
+     panel pushed it down to a new ROW (under the chat input).
+     'auto' lets the panel size to its content when visible; when
+     [hidden], display:none drops it from the grid track. */
+  grid-template-columns: 220px 1fr auto;
   min-height: 0;          /* allow children to scroll */
 }
 .cc-sidebar {
@@ -513,6 +518,13 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   text-align: right;
   pointer-events: none;
   opacity: 0.7;
+  /* v0.7.P1-followup 2026-05-23: ensure timestamps always wrap to
+     their own line even when many messages cluster.  display:block
+     alone wasn't always enough — adjacent absolute/inline blocks
+     could still pack horizontally if the parent had flex-row.  Add
+     an explicit clear + width:100% as defense in depth. */
+  clear: both;
+  width:  100%;
 }
 .cc-user .cc-msg-ts { color: rgba(255,255,255,0.7); }
 
