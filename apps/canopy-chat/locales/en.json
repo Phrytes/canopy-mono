@@ -89,6 +89,15 @@
   "me": {
     "unavailable":   { "text": "Agent identity not available.",                   "doc": "Defensive: agent boot missing identity." }
   },
+  "peer": {
+    "unavailable":    { "text": "Peer transport not available in this build.",            "doc": "Defensive: window.nkn missing." },
+    "no_address":     { "text": "Please provide a peer NKN address: /test-peer <addr> [text]", "doc": "/test-peer arg missing." },
+    "not_connected":  { "text": "Not connected to NKN yet.  Try /peer-connect (and wait 5-90s).", "doc": "Defensive: NKN not connected when sending." },
+    "connect_failed": { "text": "Couldn't connect to NKN: {{error}}",                       "doc": "/peer-connect failure." },
+    "connected":      { "text": "🔗 Connected to NKN. Your address:\n  {{address}}\nShare it; peers can /test-peer <this address> text.", "doc": "/peer-connect success." },
+    "sent":           { "text": "✓ Sent to {{address}}: {{text}}",                          "doc": "/test-peer confirmation." },
+    "send_failed":    { "text": "Failed to send: {{error}}",                                 "doc": "/test-peer send failure." }
+  },
   "signout": {
     "unavailable":   { "text": "Sign-out is not available in this build.",        "doc": "Defensive: podAuth not wired." },
     "done":          { "text": "✓ Signed out.",                                    "doc": "Confirmation of /signout." }

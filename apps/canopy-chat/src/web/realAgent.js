@@ -25,6 +25,7 @@
 
 import {
   Agent, AgentIdentity, InternalBus, InternalTransport, DataPart,
+  NknTransport,
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 
@@ -89,6 +90,16 @@ export async function createRealHouseholdAgent(opts = {}) {
   // main.js wires the real impl post-construction (forward-ref) since
   // it owns the simPeers map + threadStore.
   let inviteAttendeeRef = async (/* webid, snapshot */) => {};
+
+  // v0.7.P3b — cross-peer NKN transport state.  Stays inert until
+  // connectPeerTransport() is called from main.js (after window.nkn
+  // is available).
+  let peerTransport = null;
+  const peerState   = { status: 'idle', address: null, error: null };
+  const peerController = {
+    get address() { return peerState.address; },
+    get status()  { return peerState.status; },
+  };
 
   // v0.7.7 — optional event publisher.  When supplied, mutation
   // skills publish item-changed events via this callback so the
@@ -641,6 +652,66 @@ export async function createRealHouseholdAgent(opts = {}) {
     identity: {
       host: { pubKey: hostId.pubKey, stableId: hostId.stableId },
       chat: { pubKey: chatId.pubKey, stableId: chatId.stableId },
+    },
+    // v0.7.P3b — cross-peer connection state, populated post-boot
+    // when main.js calls connectPeerTransport(opts).  Until then,
+    // these stay null + /me reports 'not connected'.
+    peer: {
+      get address() { return peerState.address; },
+      get status()  { return peerState.status; },
+      get error()   { return peerState.error;  },
+    },
+    /**
+     * v0.7.P3b — connect the NKN cross-peer transport.  Called by
+     * main.js when nkn-sdk is loaded (window.nkn from CDN).
+     * Returns a controller with sendTo(addr, body) for outbound +
+     * onMessage(handler) for inbound + close().
+     */
+    async connectPeerTransport({ nknLib, onPeerMessage }) {
+      if (!nknLib) throw new Error('connectPeerTransport: nknLib required (window.nkn)');
+      if (peerState.status === 'connected' || peerState.status === 'connecting') {
+        return peerController;
+      }
+      peerState.status = 'connecting';
+      try {
+        // Reuse the chat identity so the NKN address is stable.
+        const transport = new NknTransport({ identity: chatId, nknLib });
+        // Hook the receive path BEFORE connect.  Transport.emit
+        // ('envelope', env) fires for every inbound message after
+        // security-layer decrypt; we hand the inner payload to the
+        // caller (main.js renders into the active thread).
+        if (typeof onPeerMessage === 'function') {
+          transport.on('envelope', (env) => {
+            try {
+              onPeerMessage({
+                from:    env._from,
+                payload: env.payload,
+                ts:      env._ts ?? Date.now(),
+              });
+            } catch (err) {
+              console.error('[peer onMessage]', err);
+            }
+          });
+        }
+        await transport.connect();
+        peerTransport     = transport;
+        peerState.status  = 'connected';
+        peerState.address = transport.address;
+        peerState.error   = null;
+      } catch (err) {
+        peerState.status = 'error';
+        peerState.error  = err?.message ?? String(err);
+        throw err;
+      }
+      return peerController;
+    },
+    sendPeerMessage(targetAddress, payload) {
+      if (!peerTransport) {
+        throw new Error('Peer transport not connected.  /signin then wait for NKN connect.');
+      }
+      // sendOneWay = fire-and-forget; sufficient for ping-echo + the
+      // future calendar-invite envelopes.
+      return peerTransport.sendOneWay(targetAddress, payload);
     },
   };
 }

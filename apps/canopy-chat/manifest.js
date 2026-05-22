@@ -279,8 +279,7 @@ export const canopyChatManifest = {
 
     /**
      * `/me` — v0.7.P3a.  Shows the user's persistent agent identity
-     * info: chat-agent stableId + pubKey + (future) NKN address.
-     * Used to share with peers for cross-peer chat-p2p connection.
+     * info: chat-agent stableId + pubKey + NKN address.
      */
     {
       id:    'me',
@@ -288,7 +287,42 @@ export const canopyChatManifest = {
       params: [],
       surfaces: {
         slash: { command: '/me' },
-        chat:  { reply: 'text', hint: 'show your agent identity (pubKey, stableId)' },
+        chat:  { reply: 'text', hint: 'show your agent identity (pubKey, NKN address)' },
+      },
+    },
+
+    /**
+     * `/peer-connect` — v0.7.P3b.  Initiates the NKN cross-peer
+     * transport (takes 5-30s; up to 90s on first connect).  Runs
+     * automatically on sign-in but the user can re-trigger via
+     * this command.
+     */
+    {
+      id:    'peer-connect',
+      verb:  'add',
+      params: [],
+      surfaces: {
+        slash: { command: '/peer-connect' },
+        chat:  { reply: 'text', hint: 'connect to the NKN cross-peer network' },
+      },
+    },
+
+    /**
+     * `/test-peer <addr> [text]` — v0.7.P3b.  Send a one-way
+     * chat-p2p envelope to another peer's NKN address (their /me
+     * output).  The receiver's NKN transport renders it as an
+     * incoming bubble in their Main thread.
+     */
+    {
+      id:    'test-peer',
+      verb:  'add',
+      params: [
+        { name: 'address', kind: 'string', required: true  },
+        { name: 'text',    kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/test-peer', body: 'flags' },
+        chat:  { reply: 'text', hint: 'send a test message to another peer' },
       },
     },
 

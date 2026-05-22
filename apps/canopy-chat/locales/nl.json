@@ -89,6 +89,15 @@
   "me": {
     "unavailable":   { "text": "Agent-identiteit niet beschikbaar.",              "doc": "Defensive." }
   },
+  "peer": {
+    "unavailable":    { "text": "Peer-transport niet beschikbaar in deze build.",          "doc": "Defensive." },
+    "no_address":     { "text": "Geef een NKN-adres: /test-peer <adres> [tekst]",          "doc": "/test-peer missing arg." },
+    "not_connected":  { "text": "Nog niet verbonden met NKN.  Probeer /peer-connect.",     "doc": "Defensive." },
+    "connect_failed": { "text": "Verbinden met NKN mislukt: {{error}}",                     "doc": "/peer-connect failure." },
+    "connected":      { "text": "🔗 Verbonden met NKN. Jouw adres:\n  {{address}}\nDeel dit; peers kunnen /test-peer <dit adres> tekst.", "doc": "/peer-connect success." },
+    "sent":           { "text": "✓ Verstuurd naar {{address}}: {{text}}",                  "doc": "/test-peer confirmation." },
+    "send_failed":    { "text": "Versturen mislukt: {{error}}",                              "doc": "/test-peer send failure." }
+  },
   "signout": {
     "unavailable":   { "text": "Uitloggen niet beschikbaar in deze build.",             "doc": "Defensive." },
     "done":          { "text": "✓ Uitgelogd.",                                            "doc": "/signout." }

@@ -49,6 +49,7 @@ export function createLocalBuiltins({
   podAuth,                   // v0.7.P1 — real Solid OIDC wrapper
   onSignOut,                 // v0.7.P2 — cleanup hook for the pod writer
   agent,                     // v0.7.P3a — agent {identity:{host,chat}}
+  connectPeer,               // v0.7.P3b — () => Promise<{address}>
 }) {
   return {
     help: async () => formatHelp(catalog, t),
@@ -67,6 +68,8 @@ export function createLocalBuiltins({
     signin:    async (args) => signinFlow(args, { podAuth, externalFlow, t }),
     whoami:    async (args) => whoami(args, { podAuth, t }),
     me:        async (args) => meIdentity(args, { agent, t }),
+    'peer-connect': async (args) => peerConnect(args, { connectPeer, t }),
+    'test-peer':    async (args) => testPeer(args, { agent, t }),
     signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
     'reset-thread': async () => {
       // v0.7.P1-followup — clear the active thread's messages.
@@ -248,17 +251,69 @@ async function whoami(_args, { podAuth, t }) {
  */
 async function meIdentity(_args, { agent, t }) {
   if (!agent?.identity?.chat) return { message: t('me.unavailable') };
-  const id = agent.identity.chat;
+  const id   = agent.identity.chat;
+  const peer = agent.peer ?? {};
   const lines = [
     'Your agent identity (persists across refresh):',
     `  pubKey:    ${id.pubKey}`,
     `  stableId:  ${id.stableId ?? '(none)'}`,
-    '',
-    'Cross-peer chat (v0.7.P3b — coming next):',
-    '  Share your pubKey with a peer; they paste it into /test-peer',
-    '  to send you a message via @canopy/chat-p2p over NKN.',
   ];
+  // v0.7.P3b — NKN address (the thing peers send to).
+  if (peer.address) {
+    lines.push('');
+    lines.push('Cross-peer (NKN):');
+    lines.push(`  NKN address: ${peer.address}`);
+    lines.push('  → share this with a peer; they /test-peer <this-address> hello');
+  } else if (peer.status === 'connecting') {
+    lines.push('');
+    lines.push('NKN: connecting… (5-90s on first connect)');
+  } else if (peer.status === 'error') {
+    lines.push('');
+    lines.push(`NKN: connect failed — ${peer.error ?? 'unknown error'}`);
+  } else {
+    lines.push('');
+    lines.push('NKN: not connected.  /peer-connect to enable cross-peer chat.');
+  }
   return { message: lines.join('\n') };
+}
+
+/**
+ * `/peer-connect` — v0.7.P3b.  Initiates the NKN transport.
+ */
+async function peerConnect(_args, { connectPeer, t }) {
+  if (typeof connectPeer !== 'function') return { ok: false, error: t('peer.unavailable') };
+  try {
+    const status = await connectPeer();
+    return { message: t('peer.connected', { address: status.address }) };
+  } catch (err) {
+    return { ok: false, error: t('peer.connect_failed', { error: err.message ?? String(err) }) };
+  }
+}
+
+/**
+ * `/test-peer <addr> [text]` — v0.7.P3b.  Send a test envelope.
+ */
+async function testPeer(args, { agent, t }) {
+  const address = String(args?.address ?? '').trim();
+  const text    = String(args?.text    ?? 'hello').trim();
+  if (!address) return { ok: false, error: t('peer.no_address') };
+  if (typeof agent?.sendPeerMessage !== 'function') {
+    return { ok: false, error: t('peer.unavailable') };
+  }
+  if (agent.peer?.status !== 'connected') {
+    return { ok: false, error: t('peer.not_connected') };
+  }
+  try {
+    await agent.sendPeerMessage(address, {
+      type:    'p2p-chat',
+      subtype: 'chat-message',
+      body:    text,
+      sentAt:  Date.now(),
+    });
+    return { message: t('peer.sent', { address, text }) };
+  } catch (err) {
+    return { ok: false, error: t('peer.send_failed', { error: err.message ?? String(err) }) };
+  }
 }
 
 /**
