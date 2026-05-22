@@ -509,6 +509,13 @@ function renderFileCard(rendered, state, ctx) {
 
   appendIssuerClaimerMeta(wrap, embed, doc);
   appendClaimButton(wrap, embed, state, ctx, doc);
+  // v0.7 catch-up — receiver-action stub buttons.  Real backing apps
+  // declare these via manifest appliesTo: {type:'file'} when they
+  // ship; until then the chat shell offers two no-op demos.
+  appendDemoActions(wrap, embed, state, ctx, doc, [
+    { label: 'Download',        op: 'demo-download'     },
+    { label: 'Save to my pod',  op: 'demo-save-to-pod'  },
+  ]);
   return wrap;
 }
 
@@ -560,10 +567,41 @@ function renderTimeCard(rendered, state, ctx) {
 
   appendIssuerClaimerMeta(wrap, embed, doc);
   appendClaimButton(wrap, embed, state, ctx, doc);
+  // v0.7 catch-up — receiver-action stub buttons for time-card.
+  // Future calendar app (task #111) declares these via manifest.
+  appendDemoActions(wrap, embed, state, ctx, doc, [
+    { label: 'Add to calendar', op: 'demo-add-to-calendar' },
+    { label: 'Decline',         op: 'demo-decline'         },
+  ]);
   return wrap;
 }
 
 /* ─── shared embed-card helpers ────────── */
+
+/**
+ * v0.7 — render demo stub buttons (file: [Download]/[Save to my pod];
+ * time: [Add to calendar]/[Decline]).  Clicks fire onButtonTap with
+ * a 'demo-...' opId; main.js handles them with a placeholder reply.
+ * Real backing apps replace these via manifest appliesTo when they
+ * ship.
+ */
+function appendDemoActions(wrap, embed, state, ctx, doc, actions) {
+  if (state === 'disabled') return;
+  if (!Array.isArray(actions) || actions.length === 0) return;
+  if (typeof ctx.onButtonTap !== 'function') return;
+  const kb = doc.createElement('div');
+  kb.className = 'cc-embed-actions cc-demo-actions';
+  for (const a of actions) {
+    const btn = doc.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cc-keyboard-btn cc-demo-action';
+    btn.textContent = a.label;
+    btn.dataset.demo = '1';
+    btn.addEventListener('click', () => ctx.onButtonTap(a.op, embed?.snapshot?.id ?? '', { embed }));
+    kb.appendChild(btn);
+  }
+  wrap.appendChild(kb);
+}
 
 function appendEmbedHeader(wrap, embed, ctx, doc) {
   const { onCloseMessage } = ctx;
