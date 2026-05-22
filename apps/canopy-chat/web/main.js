@@ -39,6 +39,7 @@ import { mockTasksManifest,
          mockFolioManifest }         from '../src/web/mockAgent.js';
 import { calendarManifest }          from '@canopy-app/calendar/manifest';
 import { createLocalBuiltins }       from '../src/web/localBuiltins.js';
+import * as podAuth                  from '../src/web/podAuth.js';
 
 /* ── DOM refs ──────────────────────────────────────────── */
 
@@ -242,6 +243,48 @@ if (typeof agent.setInviteAttendee === 'function') {
   agent.setInviteAttendee(inviteAttendee);
 }
 
+// v0.7.P1 — real Solid OIDC boot.  After the user returns from the
+// pod issuer's auth page, the URL carries `?code=...&state=...&iss=...`
+// and the issuer expects us to call handleIncomingRedirect() so the
+// Inrupt lib completes the round-trip.  Result: an authenticated
+// session that subsequent skills (and the future pod-attach in
+// v0.7.P2) can read.
+//
+// Fire-and-forget — boot continues whether or not a session restores.
+podAuth.handleRedirect({ restorePreviousSession: true })
+  .then((session) => {
+    if (!session) return;
+    // Strip the OIDC redirect params from the URL so a refresh
+    // doesn't try to handle the same redirect again.
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      const url = new URL(window.location.href);
+      ['code', 'state', 'iss'].forEach((k) => url.searchParams.delete(k));
+      window.history.replaceState({}, document.title, url.toString());
+    }
+    // Surface the welcome in the Main thread.
+    const main = store.getThread('main');
+    if (main) {
+      const rendered = renderReply({
+        payload: t('signin.welcome', { webid: session.webid }),
+        shape:   'text', threadId: main.id,
+      }, { t });
+      main.addShellMessage(rendered);
+      if (store.getActiveThread()?.id === main.id) renderActiveStream();
+    }
+    // Also publish into the EventRouter so /logs records it.
+    publishEventRef({
+      app:     'canopy-chat',
+      type:    'notification',
+      actor:   session.webid,
+      payload: { message: `Signed in as ${session.webid}` },
+    });
+    // Refresh the sidebar so the new identity chip can render.
+    renderSidebarHere?.();
+  })
+  .catch((err) => {
+    console.error('[podAuth] handleRedirect failed', err);
+  });
+
 // v0.6.2 — external-flow wiring.  In-flight state persists to IDB's
 // 'cc-in-flight-flows' object store.  The mock sign-in URL is
 // canopy-chat's own page with a query param that auto-triggers the
@@ -408,6 +451,11 @@ const localBuiltins = createLocalBuiltins({
     }, 0);
     inp.click();
   }),
+  // v0.7.P1 — real Inrupt browser OIDC for /signin + /whoami + /signout.
+  // podAuth.* delegates to @inrupt/solid-client-authn-browser; the
+  // signinFlow handler in localBuiltins prefers podAuth.startSignIn
+  // over the mock externalFlow when both are available.
+  podAuth,
   externalFlow: {
     /**
      * Open a sign-in flow.  Persists in-flight state + navigates to
