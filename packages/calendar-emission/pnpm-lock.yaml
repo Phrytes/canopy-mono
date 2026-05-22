@@ -8,27 +8,9 @@ importers:
 
   .:
     dependencies:
-      '@canopy/app-manifest':
-        specifier: workspace:*
-        version: link:../../packages/app-manifest
-      '@canopy/calendar-emission':
-        specifier: workspace:*
-        version: link:../../packages/calendar-emission
-      '@canopy/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@canopy/item-store':
-        specifier: workspace:*
-        version: link:../../packages/item-store
-      '@canopy/item-types':
-        specifier: workspace:*
-        version: link:../../packages/item-types
-      '@canopy/pseudo-pod':
-        specifier: workspace:*
-        version: link:../../packages/pseudo-pod
-      '@canopy/vault':
-        specifier: workspace:*
-        version: link:../../packages/vault
+      ical.js:
+        specifier: ^2.2.1
+        version: 2.2.1
     devDependencies:
       vitest:
         specifier: ^3.0.0
@@ -431,6 +413,9 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  ical.js@2.2.1:
+    resolution: {integrity: sha512-yK/UlPbEs316igb/tjRgbFA8ZV75rCsBJp/hWOatpyaPNlgw0dGDmU+FoicOcwX4xXkeXOkYiOmCqNPFpNPkQg==}
 
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
@@ -861,6 +846,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  ical.js@2.2.1: {}
 
   js-tokens@9.0.1: {}
 

@@ -6,26 +6,26 @@
   "type": "module",
   "main": "src/index.js",
   "exports": {
-    ".":                           "./src/index.js",
-    "./manifest":                  "./manifest.js",
-    "./MeshAgent":                 "./src/MeshAgent.js",
-    "./wireSkills":                "./src/wireSkills.js",
-    "./bundleResolver":            "./src/bundleResolver.js",
-    "./substrateMirror":           "./src/substrateMirror.js",
-    "./multiCrewOnboarding":       "./src/skills/multiCrewOnboarding.js",
-    "./lib/podSignIn":             "./src/lib/podSignIn.js",
-    "./lib/substrateStack":        "./src/lib/substrateStack.js",
-    "./lib/attachTasksBundle":     "./src/lib/attachTasksBundle.js",
-    "./lib/podPathMap":            "./src/lib/podPathMap.js",
-    "./ui/effectiveActor":         "./src/ui/effectiveActor.js",
-    "./ui/composeArgs":            "./src/ui/composeArgs.js",
-    "./ui/dagFlatten":             "./src/ui/dagFlatten.js",
-    "./ui/taskStatus":             "./src/ui/taskStatus.js",
-    "./ui/inboxClassify":          "./src/ui/inboxClassify.js",
-    "./locales/en":                "./locales/en.json",
-    "./locales/nl":                "./locales/nl.json",
-    "./locales/shared/en":         "./locales/shared/en.json",
-    "./locales/shared/nl":         "./locales/shared/nl.json"
+    ".": "./src/index.js",
+    "./manifest": "./manifest.js",
+    "./MeshAgent": "./src/MeshAgent.js",
+    "./wireSkills": "./src/wireSkills.js",
+    "./bundleResolver": "./src/bundleResolver.js",
+    "./substrateMirror": "./src/substrateMirror.js",
+    "./multiCrewOnboarding": "./src/skills/multiCrewOnboarding.js",
+    "./lib/podSignIn": "./src/lib/podSignIn.js",
+    "./lib/substrateStack": "./src/lib/substrateStack.js",
+    "./lib/attachTasksBundle": "./src/lib/attachTasksBundle.js",
+    "./lib/podPathMap": "./src/lib/podPathMap.js",
+    "./ui/effectiveActor": "./src/ui/effectiveActor.js",
+    "./ui/composeArgs": "./src/ui/composeArgs.js",
+    "./ui/dagFlatten": "./src/ui/dagFlatten.js",
+    "./ui/taskStatus": "./src/ui/taskStatus.js",
+    "./ui/inboxClassify": "./src/ui/inboxClassify.js",
+    "./locales/en": "./locales/en.json",
+    "./locales/nl": "./locales/nl.json",
+    "./locales/shared/en": "./locales/shared/en.json",
+    "./locales/shared/nl": "./locales/shared/nl.json"
   },
   "bin": {
     "tasks-ui": "bin/tasks-ui.js"
@@ -56,7 +56,8 @@
     "@canopy/relay": "file:../../packages/relay",
     "@canopy/skill-match": "file:../../packages/skill-match",
     "i18next": "^26.0.10",
-    "ical.js": "^2.2.1"
+    "ical.js": "^2.2.1",
+    "@canopy/calendar-emission": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^2.1.0"
