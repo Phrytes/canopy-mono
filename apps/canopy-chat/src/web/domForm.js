@@ -24,6 +24,10 @@
  * @param {(formValues: object) => void} ctx.onSubmit
  * @param {() => void}                    [ctx.onCancel]
  * @param {(key: string, params?: object) => string} [ctx.t]
+ * @param {(decl: object) => Promise<Array<{id, label}>>} [ctx.pickerFetcher]
+ *   v0.7.Q34 — when a field has `pickerSource`, this fetcher resolves
+ *   the choices list at render-time.  The DOM adapter renders a
+ *   click-to-pick list instead of a text input.
  * @returns {Element}
  */
 export function renderForm(spec, ctx) {
@@ -31,7 +35,7 @@ export function renderForm(spec, ctx) {
   if (typeof ctx.onSubmit !== 'function') {
     throw new TypeError('renderForm: ctx.onSubmit required');
   }
-  const { doc, onSubmit, onCancel, t } = ctx;
+  const { doc, onSubmit, onCancel, t, pickerFetcher } = ctx;
   const tr = typeof t === 'function' ? t : (k) => k;
 
   const wrap = doc.createElement('div');
@@ -46,7 +50,7 @@ export function renderForm(spec, ctx) {
   form.className = 'cc-form-body';
 
   for (const field of spec.fields) {
-    form.appendChild(renderField(field, { doc, tr }));
+    form.appendChild(renderField(field, { doc, tr, pickerFetcher, onSubmit }));
   }
 
   const actions = doc.createElement('div');
@@ -78,7 +82,14 @@ export function renderForm(spec, ctx) {
   return wrap;
 }
 
-function renderField(field, { doc, tr }) {
+function renderField(field, { doc, tr, pickerFetcher, onSubmit }) {
+  // v0.7.Q34 — pickerSource overrides the input kind.  Render a
+  // clickable list whose rows pick the value + submit the form
+  // immediately (the bare-/claim, bare-/done UX flow).
+  if (field.pickerSource && typeof pickerFetcher === 'function') {
+    return renderPickerField(field, { doc, tr, pickerFetcher, onSubmit });
+  }
+
   const row = doc.createElement('label');
   row.className = `cc-form-field cc-field-${field.kind}`;
   row.dataset.fieldName = field.name;
@@ -105,6 +116,68 @@ function renderField(field, { doc, tr }) {
     hint.textContent = field.hint;
     row.appendChild(hint);
   }
+  return row;
+}
+
+/**
+ * v0.7.Q34 — render a field whose manifest declared `pickerSource`.
+ * Fetches the list at render time + renders one button per row.
+ * Clicking a row sets a hidden input + auto-submits the form.
+ */
+function renderPickerField(field, { doc, tr, pickerFetcher, onSubmit }) {
+  const row = doc.createElement('div');
+  row.className = `cc-form-field cc-field-picker cc-field-${field.kind}`;
+  row.dataset.fieldName = field.name;
+
+  const label = doc.createElement('div');
+  label.className = 'cc-field-label';
+  label.textContent = (field.labelKey ? tr(field.labelKey) : field.name)
+                    + (field.required ? ' *' : '');
+  row.appendChild(label);
+
+  // Hidden input so the form serialises this field's selected value.
+  const hidden = doc.createElement('input');
+  hidden.type = 'hidden';
+  hidden.name = field.name;
+  if (field.value !== undefined) hidden.value = String(field.value);
+  if (field.required) hidden.required = true;
+  row.appendChild(hidden);
+
+  const list = doc.createElement('div');
+  list.className = 'cc-picker-list cc-picker-loading';
+  list.textContent = tr('form.picker.loading');
+  row.appendChild(list);
+
+  Promise.resolve(pickerFetcher(field.pickerSource))
+    .then((items) => {
+      list.classList.remove('cc-picker-loading');
+      while (list.firstChild) list.removeChild(list.firstChild);
+      if (!Array.isArray(items) || items.length === 0) {
+        list.classList.add('cc-picker-empty');
+        list.textContent = tr('form.picker.empty');
+        return;
+      }
+      for (const it of items) {
+        const btn = doc.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cc-picker-row';
+        btn.dataset.itemId = it.id;
+        btn.textContent = it.label ?? it.id;
+        btn.addEventListener('click', () => {
+          hidden.value = it.id;
+          // Submit immediately — single-pick UX.
+          const form = btn.closest('form');
+          if (form) form.requestSubmit?.() ?? form.dispatchEvent(new Event('submit', { cancelable: true }));
+        });
+        list.appendChild(btn);
+      }
+    })
+    .catch((err) => {
+      list.classList.remove('cc-picker-loading');
+      list.classList.add('cc-picker-error');
+      list.textContent = tr('form.picker.error', { error: err?.message ?? String(err) });
+    });
+
   return row;
 }
 

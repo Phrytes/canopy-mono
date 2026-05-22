@@ -759,6 +759,21 @@ async function handleUserText(text, thread) {
     });
     const formEl = renderForm(spec, {
       doc: document, t,
+      // v0.7.Q34 — picker fetcher: when a field declares
+      // pickerSource: { listOp, filter?, appOrigin? }, the form
+      // renders a click-to-pick list.  We resolve the list-op via
+      // callSkill — same dispatch path the user-typed /listOp would
+      // take.  `decl.appOrigin` defaults to the op's appOrigin so
+      // intra-app references work without extra wiring.
+      pickerFetcher: async (decl) => {
+        const appOrigin = decl.appOrigin ?? route.appOrigin;
+        const reply = await callSkill(appOrigin, decl.listOp, decl.filter ?? {});
+        const items = Array.isArray(reply?.items) ? reply.items : [];
+        return items.map((it) => ({
+          id:    String(it.id ?? ''),
+          label: String(it.label ?? it.text ?? it.title ?? it.id ?? ''),
+        }));
+      },
       onSubmit: async (values) => {
         const v = validateAndCoerce(spec, values);
         if (!v.ok) {
