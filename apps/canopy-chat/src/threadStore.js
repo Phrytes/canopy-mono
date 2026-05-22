@@ -77,6 +77,11 @@ export class ThreadStore {
       filter:      normaliseFilter(opts.filter),
       permissions: opts.permissions,
       now:         this.#now,
+      // v0.7.P1 bug-fix — wire the thread's onChange callback so
+      // every message append (add{User,Shell}Message) bubbles up
+      // as a thread-updated event.  attachPersistence subscribes
+      // to thread-updated → so messages now persist across refresh.
+      onChange:    () => this.#emit({ kind: 'thread-updated', threadId: id }),
     });
     this.#threads.set(id, thread);
     if (this.#activeId === null) this.#activeId = id;
@@ -225,7 +230,15 @@ export function createDefaultThreadStore(opts) {
   store.createThread({
     id:     'main',
     name:   'Main',
-    filter: {},   // wildcard: receives no auto-events but user posts here
+    // v0.7.P1 bug-fix 2026-05-23: filter `{}` ACTUALLY matches every
+    // event (matchesKey treats absent allowed-lists as wildcard).
+    // The old comment claimed it received 'no auto-events', which
+    // was wrong — every routed event landed here, doubling
+    // confirmation messages (the dispatched reply AND the routed
+    // event).  `{ not: {} }` semantically = NOT (anything) = nothing,
+    // so Main becomes a typed-input-only thread.  Notifications +
+    // events route to Inbox / custom alert threads.
+    filter: { not: {} },
     permissions: { allowCommands: true },
   });
   store.createThread({
