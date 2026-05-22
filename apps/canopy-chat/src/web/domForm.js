@@ -72,8 +72,28 @@ export function renderForm(spec, ctx) {
   }
   form.appendChild(actions);
 
+  // v0.7.P1-followup 2026-05-23 (3rd pass): one-shot submit guard.
+  // Form messages have a live DOM node that re-renders across the
+  // thread stream.  If the user clicks Submit twice (or hits Enter
+  // after the first submit), the listener used to fire each click.
+  // Now: first successful submit marks the form 'submitted' +
+  // disables the submit button + ignores subsequent submits.
+  let alreadySubmitted = false;
   form.addEventListener('submit', (e) => {
     e.preventDefault();
+    if (alreadySubmitted) return;
+    alreadySubmitted = true;
+    submit.disabled = true;
+    submit.textContent = tr('form.submitted', { defaultValue: '✓ Submitted' });
+    if (typeof onCancel === 'function') {
+      // Re-purpose the cancel button as a 'close' affordance once
+      // the form has been used — keeps the panel out of the way.
+      const cancelBtn = actions.querySelector('.cc-form-cancel');
+      if (cancelBtn) {
+        cancelBtn.textContent = tr('form.close',
+          { defaultValue: 'Close' });
+      }
+    }
     const values = readFormValues(form, spec);
     onSubmit(values);
   });
@@ -204,18 +224,15 @@ function makeInput(field, doc) {
       return sel;
     }
     case 'date': {
-      // v0.7.P1-followup 2026-05-23: switched from <input type="date">
-      // to free-text.  Reasons:
-      //   - native date-picker doesn't accept relative phrases
-      //     ('tomorrow', 'fri 15:00') that the user expects
-      //   - native date-picker is date-ONLY (no time) — calendar
-      //     events need full datetime
-      //   - parseDateAndTime covers ISO + relative + natural-language
-      //     in EN + NL via chrono-node
-      // Placeholder shows the supported shapes.
+      // v0.7.P1-followup 2026-05-23 (3rd pass): user reverted on
+      // text-only date input — they want the native calendar picker
+      // back AND the time component visible.  Use datetime-local
+      // which gives the date PICKER + a time field, native browser
+      // UI.  Free-text natural-language ('tomorrow 3pm') still
+      // works via the slash-command path
+      // (--when='tomorrow 3pm' → parseDateAndTime).
       const i = doc.createElement('input');
-      i.type = 'text';
-      i.placeholder = "2026-05-23 14:00 · tomorrow 3pm · fri 15:00 · friday";
+      i.type = 'datetime-local';
       i.autocomplete = 'off';
       return i;
     }
