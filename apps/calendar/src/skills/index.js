@@ -46,11 +46,17 @@ export function registerCalendarSkills(agent, store, opts = {}) {
     const a = parts?.[0]?.data ?? {};
     try {
       const event = await store.addEvent(a);
+      // v0.7.P1-followup 2026-05-23: routed event message is DIFFERENT
+      // from the dispatch reply.  Old code used the same text on both
+      // ('✓ Added event: X') which caused visible duplication if a
+      // thread filter mis-accepted item-changed events.  Now: routed
+      // event says '📝 Calendar updated: <title>' (a feed-style note),
+      // dispatch reply keeps '✓ Added event: ...' (a user-action ack).
       publishEvent({
         app: 'calendar', type: 'item-changed',
         actor: a.actor ?? 'webid:local-demo-user',
         itemRef: { app: 'calendar', type: 'calendar-event', id: event.id },
-        payload: { message: `✓ Added event: ${event.title}` },
+        payload: { message: `📝 Calendar updated: ${event.title}` },
       });
 
       // v0.7.12 — dispatch invites to attendees.  Each gets the

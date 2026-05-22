@@ -74,10 +74,25 @@
     "panel_opened": { "text": "Logs panel opened. Click [×] to close.", "doc": "Confirmation when bare /logs opens the side-panel UI." }
   },
   "signin": {
-    "no_flow":      { "text": "Sign-in flow not available in this build.", "doc": "Defensive — externalFlow not wired." },
-    "opening":      { "text": "Opening sign-in (issuer: {{issuer}}) … come back when the redirect lands.", "doc": "Confirmation shown before navigation." },
-    "completed":    { "text": "✓ Signed in as {{webid}}.", "doc": "Shown when the external callback resumes the chat." },
-    "failed":       { "text": "Sign-in failed: {{reason}}.", "doc": "Shown when the callback delivers an error." }
+    "no_flow":        { "text": "Sign-in flow not available in this build.", "doc": "Defensive — neither podAuth nor externalFlow wired." },
+    "opening":        { "text": "Opening sign-in (issuer: {{issuer}}) … come back when the redirect lands.", "doc": "v0.7.P1." },
+    "unknown_issuer": { "text": "Unknown issuer \"{{issuer}}\". Try 'inrupt', 'solidcommunity', 'solidweb' or a full URL.", "doc": "When resolveIssuer returns null." },
+    "completed":      { "text": "✓ Signed in as {{webid}}.", "doc": "Shown when the external callback resumes the chat." },
+    "welcome":        { "text": "✓ Signed in as {{webid}}.", "doc": "v0.7.P1 — OIDC round-trip completed on boot." },
+    "failed":         { "text": "Sign-in failed: {{reason}}.", "doc": "Callback delivered an error." }
+  },
+  "whoami": {
+    "unavailable":   { "text": "Identity check is not available in this build.", "doc": "Defensive: podAuth not wired." },
+    "not_signed_in": { "text": "Not signed in. Try /signin.",                     "doc": "User asked /whoami while signed out." },
+    "signed_in":     { "text": "Signed in as {{webid}}.",                          "doc": "/whoami result when signed in." }
+  },
+  "signout": {
+    "unavailable":   { "text": "Sign-out is not available in this build.",        "doc": "Defensive: podAuth not wired." },
+    "done":          { "text": "✓ Signed out.",                                    "doc": "Confirmation of /signout." }
+  },
+  "reset": {
+    "no_thread":     { "text": "No active thread to reset.",                       "doc": "Defensive." },
+    "done":          { "text": "✓ Thread cleared (messages + list cache wiped).",  "doc": "/reset-thread confirmation." }
   },
   "apps": {
     "heading":        { "text": "Apps:",                                "doc": "First line of /apps list." },
