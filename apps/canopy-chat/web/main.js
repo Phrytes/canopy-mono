@@ -305,14 +305,27 @@ async function connectPeerImpl() {
   return agent.connectPeerTransport({
     nknLib,
     onPeerMessage: ({ from, payload }) => {
-      // v0.7.P3b-followup 2026-05-23: route incoming peer messages
-      // robustly.  Prior code rendered in 'active thread' only,
-      // dropping the message silently when no thread was active OR
-      // when the user was on a non-Main thread + then switched away.
-      // Now: log the raw envelope to console (debug aid), route to
-      // Main if it exists (canonical inbox for peer messages), AND
-      // ALSO fire publishEvent so /logs records every receipt.
       console.info('[peer] received from', from, payload);
+
+      // v0.7.P3c — subtype-aware dispatch.  Three known types:
+      //   'chat-message'     → plain text bubble (P3b)
+      //   'calendar-invite'  → time-card embed in Main + add to
+      //                        local calendar with _organiserNkn
+      //   'calendar-rsvp'    → update local event's rsvp field
+      const subtype = payload?.subtype;
+
+      if (subtype === 'calendar-invite' && payload?.event) {
+        handleCalendarInvite(from, payload).catch((err) =>
+          console.error('[peer] calendar-invite failed', err));
+        return;
+      }
+      if (subtype === 'calendar-rsvp' && payload?.eventId) {
+        handleCalendarRsvp(from, payload).catch((err) =>
+          console.error('[peer] calendar-rsvp failed', err));
+        return;
+      }
+
+      // Default: plain chat message → bubble in Main.
       const body = (payload && typeof payload === 'object' && typeof payload.body === 'string')
         ? payload.body
         : JSON.stringify(payload);
@@ -335,6 +348,110 @@ async function connectPeerImpl() {
         payload: { message: `📨 peer message: ${body}` },
       });
     },
+  });
+}
+
+/**
+ * v0.7.P3c — handle incoming 'calendar-invite' envelope.
+ *
+ * Adds the event to the LOCAL calendar (same id as organiser; stores
+ * organiser's NKN address in _organiserNkn so a later RSVP knows
+ * where to reply).  Then synthesises a time-card embed in Main so
+ * the user sees [Accept]/[Decline]/[Tentative] buttons.
+ */
+async function handleCalendarInvite(fromNknAddr, payload) {
+  const event = payload.event;
+  if (!event?.id || !event?.title || !event?.startsAt) {
+    console.warn('[peer] calendar-invite missing fields', payload);
+    return;
+  }
+  // Persist locally via calendar.addEvent.  Pass the explicit id +
+  // _organiserNkn so the receiver's calendar stays in sync with the
+  // organiser's view + the RSVP knows where to dispatch.
+  try {
+    await callSkill('calendar', 'addEvent', {
+      id:           event.id,
+      title:        event.title,
+      when:         event.startsAt,
+      until:        event.endsAt,
+      location:     event.location,
+      attendees:    event.attendees ?? [],
+      organiser:    event.organiser ?? fromNknAddr,
+      _organiserNkn: fromNknAddr,
+    });
+  } catch (err) {
+    console.error('[peer] failed to ingest invite locally', err);
+    return;
+  }
+  // Render time-card embed in Main so the user sees the invitation.
+  const main = store.getThread('main');
+  if (!main) return;
+  main.addShellMessage({
+    kind:           'embed-card',
+    messageId:      `invite-${event.id}`,
+    threadId:       main.id,
+    lifecycleState: 'live',
+    embed: {
+      kind:      'time-card',
+      appOrigin: 'calendar',
+      itemRef:   { app: 'calendar', type: 'calendar-event', id: event.id },
+      snapshot: {
+        id:       event.id,
+        type:     'calendar-event',
+        title:    event.title,
+        startAt:  event.startsAt,
+        endAt:    event.endsAt,
+        ...(event.location ? { location: event.location } : {}),
+        state:    'open',
+        fields:   {
+          state:     'open',
+          organiser: event.organiser ?? fromNknAddr,
+          ...(event.attendees?.length ? { attendees: event.attendees.join(', ') } : {}),
+        },
+      },
+      issuedBy:  fromNknAddr,
+    },
+  });
+  if (store.getActiveThread()?.id === main.id) renderActiveStream();
+  publishEventRef({
+    app:     'calendar',
+    type:    'notification',
+    actor:   fromNknAddr,
+    payload: { message: `📅 calendar invite: ${event.title}` },
+  });
+}
+
+/**
+ * v0.7.P3c — handle incoming 'calendar-rsvp' envelope.
+ *
+ * Looks up the local event by id; applies the response via the
+ * existing rsvp* skills.  Publishes a notification so /logs +
+ * matching threads see the RSVP.
+ */
+async function handleCalendarRsvp(fromNknAddr, payload) {
+  const { eventId, response } = payload;
+  if (!eventId || !['accepted', 'declined', 'tentative'].includes(response)) {
+    console.warn('[peer] calendar-rsvp invalid', payload);
+    return;
+  }
+  const skillName = {
+    accepted:  'rsvpAccept',
+    declined:  'rsvpDecline',
+    tentative: 'rsvpTentative',
+  }[response];
+  // Use the peer's NKN address as the actor key so the rsvp map
+  // distinguishes attendees.
+  try {
+    await callSkill('calendar', skillName, { id: eventId, actor: fromNknAddr });
+  } catch (err) {
+    console.error('[peer] failed to apply RSVP locally', err);
+    return;
+  }
+  publishEventRef({
+    app:     'calendar',
+    type:    'notification',
+    actor:   fromNknAddr,
+    payload: { message: `📅 RSVP ${response} from ${fromNknAddr.slice(0, 16)}…` },
   });
 }
 
@@ -687,7 +804,96 @@ const callSkill = async (appOrigin, opId, args) => {
   if (appOrigin === 'calendar') {
     // Calendar skills are registered with the 'calendar_' prefix on
     // the host agent (per v0.7.10 multi-app collision-avoidance).
-    return agent.callSkill('household', `calendar_${opId}`, args);
+    const result = await agent.callSkill('household', `calendar_${opId}`, args);
+
+    // v0.7.P3c — cross-peer side-effects.
+    //
+    // (a) addEvent with attendees-nkn → dispatch invite envelopes
+    //     to each NKN address.
+    // (b) rsvp* with success on an event that has _organiserNkn →
+    //     dispatch rsvp envelope back to the organiser.
+    try {
+      if (opId === 'addEvent' && result?.ok && args['attendees-nkn']) {
+        const targets = String(args['attendees-nkn']).split(/[,\s]+/)
+          .map((s) => s.trim()).filter(Boolean);
+        if (targets.length > 0 && agent.peer?.status === 'connected') {
+          // Pull the event back for the snapshot.
+          const snapshot = await agent.callSkill('household',
+            'calendar_getEventSnapshot', { id: result.itemId });
+          if (snapshot?.id) {
+            for (const t of targets) {
+              try {
+                await agent.sendPeerMessage(t, {
+                  type:    'p2p-chat',
+                  subtype: 'calendar-invite',
+                  event: {
+                    id:        snapshot.id,
+                    title:     snapshot.title,
+                    startsAt:  snapshot.startAt,
+                    endsAt:    snapshot.endAt,
+                    location:  snapshot.location,
+                    attendees: snapshot.fields?.attendees ? snapshot.fields.attendees.split(/,\s*/) : [],
+                    organiser: snapshot.fields?.organiser,
+                  },
+                  sentAt: Date.now(),
+                });
+                publishEventRef({
+                  app: 'calendar', type: 'notification',
+                  payload: { message: `📤 invite sent to ${t.slice(0, 16)}…` },
+                });
+              } catch (err) {
+                console.error('[peer] invite send failed', t, err);
+                publishEventRef({
+                  app: 'calendar', type: 'notification',
+                  payload: { message: `❌ invite send failed: ${err.message ?? err}` },
+                });
+              }
+            }
+          }
+        }
+      }
+      if (
+        (opId === 'rsvpAccept' || opId === 'rsvpDecline' || opId === 'rsvpTentative')
+        && result?.ok && args?.id
+        && agent.peer?.status === 'connected'
+      ) {
+        // Find the event's _organiserNkn via the snapshot path.
+        // (Snapshot doesn't expose it directly; for v0.7.P3c we
+        // route by inspecting whichever the local store knows.
+        // Workaround: in the receiver-side flow, args.actor was set
+        // to the organiser's NKN address on ingest — so when this
+        // user RSVPs, the snapshot's organiser is the organiser's
+        // NKN address.)
+        const snapshot = await agent.callSkill('household',
+          'calendar_getEventSnapshot', { id: args.id });
+        const organiser = snapshot?.fields?.organiser;
+        if (organiser && organiser.startsWith && !organiser.startsWith('webid:')) {
+          // Looks like an NKN address (not a webid).  Send RSVP.
+          const response = opId === 'rsvpAccept'  ? 'accepted'
+                          : opId === 'rsvpDecline' ? 'declined'
+                          : 'tentative';
+          try {
+            await agent.sendPeerMessage(organiser, {
+              type:    'p2p-chat',
+              subtype: 'calendar-rsvp',
+              eventId: args.id,
+              response,
+              sentAt:  Date.now(),
+            });
+            publishEventRef({
+              app: 'calendar', type: 'notification',
+              payload: { message: `📤 RSVP ${response} sent to ${organiser.slice(0, 16)}…` },
+            });
+          } catch (err) {
+            console.error('[peer] RSVP send failed', err);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[peer] calendar cross-peer side-effect failed', err);
+    }
+
+    return result;
   }
   return { ok: false, error: `${appOrigin}.${opId} not wired in this demo build` };
 };

@@ -186,8 +186,13 @@ export class CalendarStore {
     const actor     = args.actor ?? this.#actorDefault;
     const organiser = args.organiser ?? actor;
 
+    // v0.7.P3c — accept an explicit id (used by receiver-side when
+    // ingesting an invite envelope; same id as organiser keeps the
+    // RSVP round-trip referentially consistent).  Also accept
+    // _organiserNkn so the receiver knows where to send the RSVP
+    // back via NKN.
     const event = {
-      id:        generateId(),
+      id:        typeof args.id === 'string' && args.id ? args.id : generateId(),
       type:      TYPE,
       title,
       startsAt,
@@ -199,6 +204,7 @@ export class CalendarStore {
       state:   'open',
       addedAt: Date.now(),
       addedBy: actor,
+      ...(args._organiserNkn ? { _organiserNkn: String(args._organiserNkn) } : {}),
     };
 
     await this.#write(event);
