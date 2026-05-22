@@ -46,7 +46,10 @@
     "no_factory":   { "text": "No app declares a Q29 cardSnapshotSkill yet.", "doc": "When the merged catalog has no embed-producing op." }
   },
   "embed-file": {
-    "no_name":  { "text": "Please provide a file name.",  "doc": "When /embed-file fires with no name." }
+    "no_input":          { "text": "Please provide either --path / --pick / --name.", "doc": "When /embed-file fires with no recognisable input." },
+    "no_name":           { "text": "Please provide a file name.",                      "doc": "Back-compat with v0.7.x." },
+    "pick_unavailable":  { "text": "File picker not available in this build.",         "doc": "Defensive — openFilePicker not wired." },
+    "pick_cancelled":    { "text": "File picker cancelled.",                           "doc": "User dismissed the picker." }
   },
   "embed-time": {
     "no_title": { "text": "Please provide a title for the appointment.", "doc": "When /embed-time fires with no title." },

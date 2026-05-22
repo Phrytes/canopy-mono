@@ -331,6 +331,36 @@ const localBuiltins = createLocalBuiltins({
   briefRunner: (opts) => runBrief({ catalog, callSkill, cache: briefCache, bypassCache: opts?.bypassCache }),
   findRunner:  (opts) => runFind({ catalog, callSkill, query: opts?.query }),
   openLogsPanel: () => openLogsPanel(),
+  // v0.7.13 — browser File API picker for /embed-file --pick.  Opens
+  // a hidden <input type="file"> programmatically + resolves with the
+  // selected File (or null if the user cancels).
+  openFilePicker: () => new Promise((resolve) => {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.style.display = 'none';
+    document.body.appendChild(inp);
+    let settled = false;
+    inp.addEventListener('change', () => {
+      if (settled) return;
+      settled = true;
+      const file = inp.files?.[0] ?? null;
+      document.body.removeChild(inp);
+      resolve(file);
+    });
+    // Some browsers fire focus when the dialog closes via Cancel +
+    // never fire change.  Use focus as a fallback to resolve(null).
+    setTimeout(() => {
+      window.addEventListener('focus', () => {
+        setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          if (inp.parentNode) document.body.removeChild(inp);
+          resolve(null);
+        }, 300);
+      }, { once: true });
+    }, 0);
+    inp.click();
+  }),
   externalFlow: {
     /**
      * Open a sign-in flow.  Persists in-flight state + navigates to
