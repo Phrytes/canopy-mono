@@ -54,6 +54,12 @@
   "brief": {
     "no_runner": { "text": "Brief-aggregator niet beschikbaar in deze build.", "doc": "Defensive." }
   },
+  "logs": {
+    "no_log":  { "text": "Event-log niet beschikbaar in deze build.",                  "doc": "Defensive." },
+    "heading": { "text": "Laatste {{count}} events:",                                  "doc": "First line of /logs output." },
+    "empty":   { "text": "Geen events gevonden (probeer /logs --app=household).",      "doc": "Empty state." },
+    "muted":   { "text": "✓ Events gedempt: {{app}}:{{type}}.",                          "doc": "Mute confirmation." }
+  },
   "signin": {
     "no_flow":      { "text": "Sign-in flow niet beschikbaar in deze build.", "doc": "Defensive." },
     "opening":      { "text": "Sign-in wordt geopend (issuer: {{issuer}}) … kom terug zodra de redirect klaar is.", "doc": "Confirmation shown before navigation." },
