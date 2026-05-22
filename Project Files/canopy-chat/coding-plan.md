@@ -301,10 +301,12 @@ sections with `view.shape:'record'`, otherwise `'text'`.
 - ~~**OQ-1.B** — Web vs RN for v0.1?~~ **Resolved 2026-05-21:**
   web-only for v0.1; RN screens land in v0.2+ alongside multi-thread
   UI which makes mobile worthwhile.
-- **OQ-1.C** — Browser-bundle of the mesh agent — does every
-  current `@canopy/core` transport (relay / NKN / WebRTC) build
-  cleanly for browser, or does any have Node-only imports we need
-  to shim? *Surfaced 2026-05-21; resolve during v0.1 implementation.*
+- ~~**OQ-1.C** — Browser-bundle of the mesh agent — Node-only
+  imports to shim?~~ **Resolved during v0.1 implementation
+  (2026-05-21):** 5 shim categories needed: `ws`, `mqtt`, `nkn-sdk`,
+  `js-yaml`, `node-datachannel` + the OIDC chain.  Vite resolves
+  via `resolve.alias` to either empty modules or `events`/
+  `oidcSession` shims.  Live demo runs in browser without changes.
 ---
 
 ## Phase v0.2 — multi-thread workspace
@@ -350,11 +352,12 @@ None. v0.2 is pure app-layer.
   on top of the flat key:value shape.  Filters accept `{and: [...]}`,
   `{or: [...]}`, `{not: ...}` operators alongside the v0.2 flat
   shape (which still works unchanged).  See `src/filter.js`.
-- **OQ-2.B** — Web vs RN sync — do threads sync between a user's
-  web tab and their RN app on the same device? *Lean: yes via the
-  user's pod (when present) per OQ-3 resolution; no-pod = each device
-  is a separate scope.*
-F: ok, I dont think it will happen very often on same device, so not important. Syncing through pod is okay
+- ~~**OQ-2.B** — Web vs RN sync — do threads sync between a user's
+  web tab and their RN app on the same device?~~ **Resolved
+  2026-05-21 (user F):** sync through the pod is fine; not high-
+  priority since same-device cross-platform isn't a common case.
+  Implementation lands when pod-sync work (v0.7+) covers thread
+  storage.
 ---
 
 ## Phase v0.3 — mini-pages + forms
@@ -402,10 +405,11 @@ unchanged (substrate is permissive on `field.type` per Q23).
   Fast-path retained for ISO + 'today' / 'tomorrow' / 'morgen' +
   EN/NL weekday names (so EN+NL parity is locked in tests, not
   dependent on chrono's locale defaults).  See `src/forms/parseDate.js`.
-- **OQ-3.B** — Form-strategy rule — is the heuristic enough or do
-  apps need `surfaces.chat.formStyle` to override? *Defer: ship the
-  heuristic; add Q32 if a third surface needs an override.*
-F: ok
+- ~~**OQ-3.B** — Form-strategy rule — heuristic or `surfaces.chat.formStyle`
+  override?~~ **Resolved 2026-05-21 (user F: ok, defer):** the
+  heuristic in `buildFormSpec.pickStrategy` is shipping as-is.  A
+  manifest-side `formStyle` override stays deferred until a real app
+  needs to override the strategy.
 
 ---
 
@@ -470,11 +474,14 @@ for the sidecar (v0.7+).
   toggles.  `AppRegistry` + `filterCatalog` swap the merged catalog
   on each change.  Side-panel UI defers to v0.6.7+ (RN renderer
   port) — same `AppRegistry` powers both surfaces.
-- **OQ-4.C** — Folio browser-skill extract scope. How many existing
-  folio skills need browser-compat refactoring vs. work as-is? Sub-
-  question: does `@canopy/pod-client` import cleanly in browser
-  today, or are there `node:`-prefixed imports we need to shim?
-  *Surfaced 2026-05-21; resolve during v0.4 implementation.*
+- ~~**OQ-4.C** — Folio browser-skill extract scope.~~ **Resolved
+  2026-05-23 by audit retrospective:** out of canopy-chat scope.
+  Folio's current runtime (Node CLI + HTTP server) needs an
+  in-process agent + skill-registry refactor before its real
+  manifest can be browser-bundled.  Tracked in folio's own plan,
+  not canopy-chat's.  Q32 `runtime` tags + the deferred sidecar
+  build give canopy-chat what it needs without folio's refactor
+  blocking us.
 - **OQ-4.D** — Default for `op.runtime` field. **Decision:** `'both'`
   (works anywhere). Reason: forward-additive — existing manifests
   with no `runtime` field automatically work in browser+node.
@@ -670,11 +677,16 @@ None. LLM is consumer-side.
 
 ### Open questions for v0.8
 
-- **OQ-8.A** — LLM model choice — default to local (privacy) or
-  cloud (capability)? *Lean: configurable in settings; default to
-  local with cloud fallback marker; pod-credentialed in either
-  case.*
-F: perfect
+- ~~**OQ-8.A** — LLM model choice — default to local (privacy) or
+  cloud (capability)?~~ **Resolved 2026-05-23 (user F):**
+  configurable in settings; **default to Qwen2.5 (local)**, validated
+  by extensive household-app testing.  Notes: Dutch-language tool
+  use is weak across ALL tool-capable LLMs at this size class
+  (including Geitje, which is Dutch-focused but doesn't tool-call
+  well); we accept the trade-off.  Cloud-fallback marker still
+  applies; pod-credentialed in either case.  v0.8 implementation:
+  Qwen2.5 default via Ollama / browser-side WASM (decide at impl
+  time based on what's runnable in the canopy-chat bundle).
 - **OQ-8.B** — Multi-turn LLM context — does the LLM see prior chat
   turns, or only the current message? *Lean: limited window (last
   N turns from the same thread) + per-thread system prompt.*
@@ -790,7 +802,7 @@ pointing at where the answer lives.
 | OQ-6.B | v0.6  | `_lastSync` per-item or per-peer                                          | Phase v0.6 design         |
 | OQ-7.A | v0.7  | Brief caching TTL                                                         | Phase v0.7 design         |
 | OQ-7.B | v0.7  | Log page persistence horizon                                              | Phase v0.7 design         |
-| OQ-8.A | v0.8  | LLM default — local vs cloud                                              | Phase v0.8 design         |
+| ~~OQ-8.A~~ | ~~v0.8~~ | ~~LLM default — local vs cloud~~                                  | ✅ resolved 2026-05-23 (Qwen2.5 default; tested in household; Dutch weak across all tool LLMs) |
 | OQ-8.B | v0.8  | LLM context window scope                                                  | Phase v0.8 design         |
 
 ### Resolved (architecture-doc + coding-plan)

@@ -31,6 +31,11 @@ export { buildEmbed, claimEmbed, actionsFor as embedActionsFor } from './embed.j
 export { formatSyncHints, formatLastSync, relativeAgo } from './syncHints.js';
 export { AppRegistry, filterCatalog } from './appRegistry.js';
 export {
+  openExternalFlow, parseCallbackUrl, resumeInFlightFlows,
+  generateSessionId, IN_FLIGHT_STORE_KEY,
+} from './externalFlow.js';
+export { runBrief, createBriefCache } from './brief.js';
+export {
   buildFormSpec, pickStrategy, validateAndCoerce,
 } from './forms/buildFormSpec.js';
 export { parseRelativeDate } from './forms/parseDate.js';
