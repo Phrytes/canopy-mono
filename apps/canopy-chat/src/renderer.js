@@ -142,6 +142,19 @@ export function renderReply(reply, opts = {}) {
     };
   }
 
+  if (shape === 'brief') {
+    // v0.7 — Q30 aggregator output.  Payload is a BriefReply
+    // (sections[], generatedAt, cacheKey).  DOM adapter renders.
+    return {
+      kind: 'brief',
+      messageId, threadId,
+      lifecycleState: 'live',   // A2 hybrid — brief stays live until close
+      sections:    Array.isArray(reply.payload?.sections) ? reply.payload.sections : [],
+      generatedAt: reply.payload?.generatedAt ?? Date.now(),
+      cacheKey:    reply.payload?.cacheKey,
+    };
+  }
+
   if (shape === 'embed-card') {
     // v0.5 — embedded item card (J7).  The reply.payload IS the embed
     // envelope; the DOM adapter consumes it.
