@@ -376,14 +376,22 @@ function makeCtx() {
 
 /* ── greeting on the Main thread ───────────────────────── */
 
+// v0.7 defensive — `store.getThread('main')` returns undefined when
+// the user previously deleted the Main thread (the workspace can
+// have any combination of threads now that /newthread + sidebar
+// delete exist).  Show the greeting on Main when it exists AND
+// is empty; otherwise skip silently — the user already has chat
+// history and doesn't need the welcome message.
 {
   const main = store.getThread('main');
-  const greeting = renderReply({
-    payload: 'Welcome to canopy-chat (v0.2). Try /help. Create more threads via the sidebar.',
-    shape:   'text',
-    threadId: main.id,
-  }, { t });
-  main.addShellMessage(greeting);
+  if (main && main.messages.length === 0) {
+    const greeting = renderReply({
+      payload: 'Welcome to canopy-chat (v0.2). Try /help. Create more threads via the sidebar.',
+      shape:   'text',
+      threadId: main.id,
+    }, { t });
+    main.addShellMessage(greeting);
+  }
 }
 
 renderAll();
