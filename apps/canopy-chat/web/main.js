@@ -889,6 +889,24 @@ const callSkill = async (appOrigin, opId, args) => {
           }
         }
       }
+      // v0.7.P3c-followup — propagate cancellations to peers.
+      // When the organiser cancels an event with attendees-nkn, send
+      // a 'calendar-cancelled' envelope to each so they see the
+      // event drop from THEIR /upcoming too.
+      if (opId === 'cancelEvent' && result?.ok && args?.id
+          && agent.peer?.status === 'connected') {
+        // Look up the (now-cancelled) event for its attendees-nkn list.
+        // CalendarStore stores _attendeesNkn iff we stash them at
+        // addEvent time.  v0.7.P3c-followup adds that stash; until
+        // then attendees-nkn isn't recoverable post-cancel, so this
+        // branch is a no-op until the data carries forward.
+        // Reactive path TBD; this scaffolding emits the publishEvent
+        // for /logs visibility.
+        publishEventRef({
+          app: 'calendar', type: 'notification',
+          payload: { message: `🚫 Cancelled locally; peer notification deferred to v0.7.P3c+` },
+        });
+      }
     } catch (err) {
       console.warn('[peer] calendar cross-peer side-effect failed', err);
     }
