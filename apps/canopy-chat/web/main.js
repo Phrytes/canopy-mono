@@ -40,6 +40,7 @@ import { mockTasksManifest,
 import { calendarManifest }          from '@canopy-app/calendar/manifest';
 import { createLocalBuiltins }       from '../src/web/localBuiltins.js';
 import * as podAuth                  from '../src/web/podAuth.js';
+import { createPodWriter }           from '../src/web/podStorage.js';
 
 /* ── DOM refs ──────────────────────────────────────────── */
 
@@ -261,6 +262,17 @@ podAuth.handleRedirect({ restorePreviousSession: true })
       ['code', 'state', 'iss'].forEach((k) => url.searchParams.delete(k));
       window.history.replaceState({}, document.title, url.toString());
     }
+    // v0.7.P2 — wire the pod writer into calendar so the .ics feed
+    // write-throughs to <pod>/canopy/calendar/feed.ics.  Apps opt
+    // in to pod-write per-call; calendar is the first adopter.
+    if (typeof agent.setCalendarPodWriter === 'function') {
+      try {
+        const writer = createPodWriter(session);
+        agent.setCalendarPodWriter(writer);
+      } catch (err) {
+        console.warn('[podAuth] failed to wire calendar pod writer', err);
+      }
+    }
     // Surface the welcome in the Main thread.
     const main = store.getThread('main');
     if (main) {
@@ -456,6 +468,14 @@ const localBuiltins = createLocalBuiltins({
   // signinFlow handler in localBuiltins prefers podAuth.startSignIn
   // over the mock externalFlow when both are available.
   podAuth,
+  // v0.7.P2 — when the user signs out, unwire the calendar pod
+  // writer so subsequent mutations no longer hit the now-stale
+  // session.fetch + go local-only.
+  onSignOut: () => {
+    if (typeof agent.setCalendarPodWriter === 'function') {
+      agent.setCalendarPodWriter(null);
+    }
+  },
   externalFlow: {
     /**
      * Open a sign-in flow.  Persists in-flight state + navigates to
