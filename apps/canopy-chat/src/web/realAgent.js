@@ -30,6 +30,7 @@ import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 import { createSecureAgent } from '@canopy/secure-agent';
 import { createBrowserTasksAgent } from '@canopy-app/tasks-v0/browser';
 import { createBrowserStoopAgent } from '@canopy-app/stoop/browser';
+import { createBrowserFolioAgent } from '@canopy-app/folio/browser';
 
 /**
  * Pick the right vault for the runtime.  Used here only for the
@@ -409,132 +410,17 @@ export async function createRealHouseholdAgent(opts = {}) {
   });
 
 
-  /* ─────────── v0.7.4 — folio browser-side skills ─────────── */
-  const SEED_FILES = [
-    { id: '/notes/shared/anne.md',  name: 'anne.md',  type: 'file', mime: 'text/markdown', bytes: 1234, state: 'synced' },
-    { id: '/notes/recipes.md',      name: 'recipes.md', type: 'file', mime: 'text/markdown', bytes: 5678, state: 'synced' },
-    { id: '/docs/lease.pdf',        name: 'lease.pdf',  type: 'file', mime: 'application/pdf', bytes: 102400, state: 'synced' },
-  ];
-  let files = SEED_FILES.map((f) => ({ ...f }));
-
-  hostAgent.register('readNote', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const target = files.find((f) => f.id === a.path || f.name === a.path);
-    if (!target) return [DataPart({ ok: false, error: `No file at "${a.path}".` })];
-    return [DataPart({
-      message: `[demo] Contents of ${target.name} would be shown here. ${target.bytes} bytes; mime ${target.mime}.`,
-    })];
-  });
-
-  hostAgent.register('shareFolder', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const folder = String(a.folder ?? '').trim();
-    const withWebid = String(a.with ?? '').trim();
-    if (!folder)    return [DataPart({ ok: false, error: 'folder required' })];
-    if (!withWebid) return [DataPart({ ok: false, error: 'with (webid) required' })];
-    return [DataPart({
-      ok:      true,
-      message: `✓ Shared "${folder}" with ${withWebid}.`,
-      _sync:   simulateSync(),
-    })];
-  });
-
-  hostAgent.register('listFiles', async () => {
-    return [DataPart({ items: files, _sync: simulateSync() })];
-  });
-
-  hostAgent.register('verifyPodState', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    return [DataPart({
-      message: `[demo] ${a.relPath ?? 'file'} matches pod state (sha + size verified).`,
-    })];
-  });
-
-  hostAgent.register('deleteFromPod', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const idx = files.findIndex((f) => f.id === a.relPath || f.name === a.relPath);
-    if (idx === -1) return [DataPart({ ok: false, error: `No file at "${a.relPath}".` })];
-    const removed = files.splice(idx, 1)[0];
-    return [DataPart({
-      ok: true, message: `✓ Deleted from pod: ${removed.name}`, _sync: simulateSync(),
-    })];
-  });
-
-  // v0.7.13 — getFileSnapshot (Q29 cardSnapshotSkill for /embed-file
-  // when the user picks an existing folio file by name/path).
-  hostAgent.register('getFileSnapshot', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const target = files.find((f) => f.id === a.path || f.name === a.path);
-    if (!target) return [DataPart({ ok: false, error: `No file at "${a.path}".` })];
-    return [DataPart({
-      id:    target.id,
-      type:  'file',
-      name:  target.name,
-      mime:  target.mime,
-      bytes: target.bytes,
-      path:  target.id,
-      state: target.state ?? 'synced',
-    })];
-  });
-
-  // v0.7.13 — downloadFile: receiver-side action.  In a real browser
-  // build this triggers a Blob download; for the demo (no real bytes
-  // server-side) we synthesise a placeholder reply.
-  hostAgent.register('downloadFile', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const target = files.find((f) => f.id === a.path || f.name === a.path);
-    return [DataPart({
-      ok:      true,
-      message: target
-        ? `↓ Downloading ${target.name} (${target.bytes} bytes, ${target.mime})… [demo: no real bytes]`
-        : `↓ Downloading ${a.path} from sender's pod… [demo]`,
-    })];
-  });
-
-  // v0.7.13 — saveToMyPod: receiver-side action.  Cross-pod copy:
-  // the receiver reads the sender's pod URL + writes to their own
-  // pod's /shared-with-me/ tree.  Demo: just confirm.
-  hostAgent.register('saveToMyPod', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    return [DataPart({
-      ok:      true,
-      message: `📥 Saved "${a.name ?? a.path ?? 'file'}" to your pod's /shared-with-me/ folder. [demo]`,
-      _sync:   simulateSync(),
-    })];
-  });
-
-  // v0.7.5 — searchFiles.
-  hostAgent.register('searchFiles', async ({ parts }) => {
-    const q = String(parts?.[0]?.data?.query ?? '').toLowerCase();
-    if (!q) return [DataPart({ items: [] })];
-    const hits = files.filter((f) => f.name.toLowerCase().includes(q) || f.id.toLowerCase().includes(q));
-    return [DataPart({
-      items: hits.map((f) => ({ id: f.id, label: f.name, type: 'file' })),
-    })];
-  });
-
-  hostAgent.register('folio_briefSummary', async () => {
-    if (files.length === 0) return [DataPart({ ok: true })];
-    return [DataPart({
-      count: files.length,
-      label: `file${files.length === 1 ? '' : 's'} in folio`,
-    })];
-  });
-
-  /* ─── v0.7.cc — folio status (record reply) ─── */
-
-  hostAgent.register('folioStatus', async () => {
-    const synced = files.filter((f) => f.state === 'synced').length;
-    const conflicted = files.filter((f) => f.state === 'conflict').length;
-    return [DataPart({
-      title:        'Folio sync status',
-      lastSync:     new Date().toISOString(),
-      fileCount:    files.length,
-      syncedCount:  synced,
-      conflictCount: conflicted,
-      sharedFolders: 0,
-    })];
-  });
+  /* folio's web-only handlers used to live here (~125 lines of mock-
+   * real handlers registered on hostAgent).  Slice 4 of the
+   * integration-plan-2026-05-23 moved them into a dedicated browser
+   * agent — see the `createBrowserFolioAgent` boot block below the
+   * tasks/stoop blocks, and the 'folio' branch in `callSkill`.
+   *
+   * shareFolder now issues a REAL PodCapabilityToken via
+   * autoShare.mintShareToken; the other skills retained their
+   * placeholder reply shapes (real bytes/pod-IO is deferred to slice
+   * 5 + the mobile pivot).
+   */
 
   await Promise.all([
     hostAgent.start(),
@@ -681,14 +567,43 @@ export async function createRealHouseholdAgent(opts = {}) {
     }
   }
 
+  /* ─── folio web-only agent (slice 4 — integration plan 2026-05-23) ──
+   *
+   * Replaces the previous in-host folio handlers (~125 lines: readNote
+   * / shareFolder / listFiles / searchFiles / getFileSnapshot /
+   * verifyPodState / deleteFromPod / downloadFile / saveToMyPod /
+   * folio_briefSummary / folioStatus) with a dedicated folio agent
+   * composed in-process.  shareFolder now issues a REAL
+   * PodCapabilityToken via autoShare.mintShareToken; the other skills
+   * preserve their mock-era reply shapes (real pod-IO + Blob bytes
+   * stay deferred per the slice-4 scope reduction).
+   *
+   * Separate identity vault prefix (`cc-folio-id:`) so folio's web
+   * identity is isolated from chat / tasks / stoop (decision #2).
+   * podRoot is reserved — when canopy-chat lands real pod-attached
+   * folio writes (slice 5 / mobile), pass `opts.folioPodRoot` so
+   * shareFolder tokens carry the real pod URI.
+   */
+  const folioIdentityVault = opts.folioIdentityVault
+    ?? makeBrowserVault('cc-folio-id:');
+  const folioAgent = await createBrowserFolioAgent({
+    bus,
+    identityVault: folioIdentityVault,
+    podRoot:       opts.folioPodRoot,
+    seedFiles:     opts.folioSeedFiles,   // pass [] for clean-slate fixtures
+    label:         'FolioAgent(cc)',
+  });
+  await chatAgent.hello(folioAgent.address);
+
   /**
    * canopy-chat's CallSkill shape: `(appOrigin, opId, args) → payload`.
    *
-   * Two routing targets:
-   *   - 'household'  → hostAgent (chores, members, calendar skills,
-   *                    stoop mock-real, folio mock-real)
+   * Routing targets:
+   *   - 'household'  → hostAgent (chores, members, calendar skills)
    *   - 'tasks-v0'   → tasksCrew.address (the REAL tasks crew agent
    *                    via slice-1 integration; 110 skills)
+   *   - 'stoop'      → stoopAgent.address (slice-2b NeighborhoodAgent)
+   *   - 'folio'      → folioAgent.address (slice-4 web-only agent)
    *
    * Some opIds are renamed across the boundary (the chat surface
    * uses `myInbox` historically; tasks-v0 exposes `listMyInbox`).
@@ -845,6 +760,17 @@ export async function createRealHouseholdAgent(opts = {}) {
       const result = await chatAgent.invoke(stoopAgent.address, realOpId, parts);
       const first  = Array.isArray(result) ? result[0] : null;
       return adaptStoopReply(opId, first?.data ?? null, realArgs);
+    }
+    if (appOrigin === 'folio') {
+      // Folio's web-only skills already return chat-shell-shaped
+      // replies (no adapter layer needed today).  The one alias is
+      // briefSummary → folio_briefSummary so the chat-shell's generic
+      // /brief op reaches folio's named briefSummary skill.
+      const realOpId = (opId === 'briefSummary') ? 'folio_briefSummary' : opId;
+      const parts = [DataPart(args ?? {})];
+      const result = await chatAgent.invoke(folioAgent.address, realOpId, parts);
+      const first  = Array.isArray(result) ? result[0] : null;
+      return first?.data ?? null;
     }
     throw new Error(`realAgent: unknown appOrigin "${appOrigin}"`);
   };

@@ -6,6 +6,7 @@
   "main":        "src/index.js",
   "exports": {
     ".":                  "./src/index.js",
+    "./browser":          "./src/browser.js",
     "./manifest":         "./manifest.js",
     "./rn/serviceFactory": "./src/rn/serviceFactory.js",
     "./rn/backgroundTasks": "./src/rn/backgroundTasks.js",
