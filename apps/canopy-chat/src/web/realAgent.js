@@ -719,6 +719,24 @@ export async function createRealHouseholdAgent(opts = {}) {
           ? Number(realArgs['ttl-hours']) : 24;
         realArgs = { ...realArgs, ttlMs: hours * 60 * 60 * 1000 };
       }
+      // #190 (B3) — crew admin skills require crewId; auto-inject
+      // from the configured crew so the user doesn't have to type it.
+      const CREW_AUTO_INJECT = new Set([
+        'getCrewConfig', 'pauseCrew', 'unpauseCrew',
+        'archiveCrew',   'unarchiveCrew', 'issueInvite',
+        'listAwaitingApproval',
+      ]);
+      if (CREW_AUTO_INJECT.has(realOpId) && !realArgs.crewId) {
+        const crewId = opts.tasksCrewConfig?.crewId ?? 'cc-default';
+        realArgs = { ...realArgs, crewId };
+      }
+      if (realOpId === 'archiveCrew' && realArgs.confirm !== true) {
+        // Q27 two-step confirm.
+        return {
+          ok: false,
+          error: 'Archiving the crew puts it read-only. Re-run with --confirm=true to proceed.',
+        };
+      }
       if (realOpId === 'redeemInvite' && typeof realArgs.invite === 'string') {
         // User pastes either a QR URL (`stoop-invite://<base64url>`) or
         // raw JSON.  Decode the URL form back to the invite object that
@@ -989,6 +1007,70 @@ export async function createRealHouseholdAgent(opts = {}) {
         message: `✓ Joined crew. ${memberCount} members visible. /mytasks shows the crew's tasks.`,
         crew:   data,
         _sync:  simulateSync(),
+      };
+    }
+    // #190 (B3) — getCrewConfig: {crew: {...}} or {crew: null} →
+    // record reply with members + paused/archived state.
+    if (opId === 'getCrewConfig') {
+      const crew = data.crew;
+      if (!crew) {
+        return {
+          title:   'Crew config',
+          status:  'not-found',
+          message: 'No crew config found for this id.',
+        };
+      }
+      return {
+        title:       'Crew config',
+        crewId:      crew.crewId,
+        name:        crew.name ?? crew.crewId,
+        kind:        crew.kind ?? 'household',
+        memberCount: Array.isArray(crew.members) ? crew.members.length : 0,
+        members:     (crew.members ?? []).map((m) => ({
+          webid:       m.webid,
+          displayName: m.displayName,
+          role:        m.role ?? 'member',
+        })),
+        paused:      !!crew.paused,
+        archived:    !!crew.archived,
+      };
+    }
+    // #190 — pauseCrew / unpauseCrew / archiveCrew / unarchiveCrew:
+    // real returns {ok, paused?, archived?} → friendly text reply.
+    if (opId === 'pauseCrew' && data.ok) {
+      return {
+        ok: true,
+        message: data.paused
+          ? '⏸️ Crew paused. No new tasks; existing tasks remain workable.'
+          : '✓ Crew already unpaused.',
+        _sync: simulateSync(),
+      };
+    }
+    if (opId === 'unpauseCrew' && data.ok) {
+      return {
+        ok: true,
+        message: data.paused
+          ? '✓ Crew is paused.'
+          : '▶️ Crew resumed. New tasks can be added again.',
+        _sync: simulateSync(),
+      };
+    }
+    if (opId === 'archiveCrew' && data.ok) {
+      return {
+        ok: true,
+        message: data.archived
+          ? '📦 Crew archived. Read-only ledger; use /unarchive-crew to reverse.'
+          : '✓ Crew already unarchived.',
+        _sync: simulateSync(),
+      };
+    }
+    if (opId === 'unarchiveCrew' && data.ok) {
+      return {
+        ok: true,
+        message: data.archived
+          ? '✓ Crew is archived.'
+          : '✓ Crew unarchived. Active again.',
+        _sync: simulateSync(),
       };
     }
     // provisionMyCrew: real returns {crew: {...}} (or similar) →
