@@ -279,7 +279,7 @@ export const mockFolioManifest = {
       ],
       runtime: 'browser',
       surfaces: {
-        slash: { command: '/share' },
+        slash: { command: '/share', body: 'flags' },
         chat:  { reply: 'text', hint: 'share a folio folder with a contact' },
       },
     },
@@ -462,8 +462,9 @@ export const mockHouseholdManifest = {
     },
     /**
      * v0.7.cc — `/remove-chore <id-or-label>` — destructive (Q27).
-     * Two-step: first call returns a confirm button; second call with
-     * the `--confirm` flag actually removes.
+     * Two-step: first call returns a confirm prompt; second call
+     * adds the `--confirm=true` flag (body:'flags' so both positional
+     * id + boolean flag parse together).
      */
     {
       id:    'removeChore', verb: 'remove',
@@ -475,7 +476,7 @@ export const mockHouseholdManifest = {
         { name: 'confirm', kind: 'boolean', required: false },
       ],
       surfaces: {
-        slash: { command: '/remove-chore' },
+        slash: { command: '/remove-chore', body: 'flags' },
         chat:  { reply: 'text', hint: 'remove a chore (asks to confirm)' },
       },
     },
