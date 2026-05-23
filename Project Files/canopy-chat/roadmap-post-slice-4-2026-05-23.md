@@ -14,6 +14,42 @@
 >   nl/en files; canopy-chat has 221 locale keys today but no
 >   workflow for the new surfaces.)  Has its own cluster below.
 
+## Design principle — slash is one surface among several
+
+Slash commands are NOT the only way to expose a feature in
+canopy-chat.  When designing each item below, pick the right surface
+for the user's intent — slash is great for power-users and the
+future LLM tool-call layer, but often a clickable affordance or a
+spawned thread/window is more intuitive.  Recommended hierarchy:
+
+1. **Inline button on a row / card / reply** — when the action is
+   tightly bound to a visible item (e.g. [Mark done] on a chore row,
+   [Help with] on a stoop post, [Download] on a file embed).  Lowest
+   friction; user doesn't have to remember a command name.
+2. **Spawned thread** — when the action launches a conversation
+   (e.g. clicking [Help with this] on a stoop post opens a private
+   DM thread between requester + helper; clicking [Open] on a crew
+   row in the cross-crew dashboard switches to that crew's thread).
+3. **Side-panel / new window** (#180 `surfaces.page`) — when the
+   action wants a persistent rich-UI surface (Settings, group
+   create-wizard, contact card, calendar week-view, conflict
+   mediation flow).  Mobile interprets the same declaration as an
+   RN nav screen.
+4. **Slash command** — when the action is one-shot, parameter-driven,
+   and benefits from being typeable (`/set-relay`, `/share`,
+   `/addtask`).  Also the natural LLM tool-call surface — every
+   slash op becomes an LLM-callable tool when v0.8 LLM lands (#122).
+5. **Form elicitation** (Q34) — when a slash has missing required
+   args.  The chat-shell already turns bare `/done` → form with
+   clickable list.  Keep using this for "I started a command but need
+   help completing it."
+
+Each cluster item below should pick the surface that fits best.
+The roadmap doesn't lock-in slash for everything; in many cases an
+inline button is the better V0 choice (cheaper to build, friendlier
+to use).  Slash declarations are added EITHER for power-users OR
+when the LLM tool-call layer needs them — usually both.
+
 ## Effort calibration — what slices 1-4 taught us
 
 | Slice | Span | Hardest part | Pattern |
@@ -129,7 +165,7 @@ mapper.  So Cluster C is realistically ~3 sessions counting #180.
 | **E2. Audit `apps/canopy-chat/locales/en.json` + `nl.json` (221 keys each) for new-surface coverage** | 1 hour | Grep for `t('xxx')` calls in chat-shell renderer; cross-check keys exist in both files. |
 | **E3. Establish "every user-facing string goes through `t()`" convention** | doc-only | Add to `Project Files/conventions/`; include in PR-review checklist. |
 | **E4. Translate every NEW slash command we add in Clusters A/B/C** | continuous | 2 lines (en + nl) per slash; built into the slash-add template. |
-| **E5. Audit apps' design docs for English/Dutch mix** (e.g. "Holiday mode" alongside "stille modus") | 2 hours | Stoop docs mix freely; canopy-chat as Dutch-first means UI strings should be `t('stoop.holidayMode.label')` resolving to NL by default. |
+| **E5. Audit apps' design docs for English/Dutch mix** (e.g. "Holiday mode" alongside "stille modus") | 2 hours | Stoop docs mix freely.  **canopy-chat is English-first** — UI strings go through `t('stoop.holidayMode.label')` resolving to EN by default; NL is the secondary locale.  Don't take Dutch from design docs literally as UI copy. |
 | **E6. Locale audit of existing chat-shell surfaces** (do all current 221 keys actually get used? do all rendered strings get translated?) | 2 hours | Defensive — would surface gaps before they spread. |
 
 ### Cluster F — admin actions (deferred per stoop manifest)
