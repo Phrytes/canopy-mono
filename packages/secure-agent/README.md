@@ -103,6 +103,28 @@ const cred = await sa3.passkey.register();
 const sec  = await sa3.passkey.unlock();
 ```
 
+### S8 — Perfect Forward Secrecy
+
+```js
+const sa = await createSecureAgent({
+  usePerfectFwdSec: { vaultKeyPrefix: 'pfs:' },     // chains persist
+});
+
+// App opts in by wrapping payloads:
+const wire  = await sa.pfs.encrypt(peerPubKey, JSON.stringify(payload));
+sa.peer.sendTo(addr, { type: 'pfs', body: wire });
+
+// Receive side:
+const wire    = incoming.payload.body;
+const plain   = await sa.pfs.decrypt(senderPubKey, wire);
+const payload = JSON.parse(new TextDecoder().decode(plain));
+```
+
+**Honest scope**: this is the SYMMETRIC ratchet of Double-Ratchet —
+forward secrecy holds against compromise of CHAIN STATE.  It does NOT
+yet hold against compromise of identity private keys (chain seed is
+derived from static DH).  The DH ratchet (S8b) closes that.
+
 ### S7 — groups + A2A-TLS + rate-limit + pod-migrate
 
 ```js
@@ -234,7 +256,7 @@ if (!v.ok) throw new Error(`claim invalid: ${v.reason}`);
 await podWriter.put('canopy/identity/claim.json', sa.claim.serialize(claim));
 ```
 
-## What's wired today (S0 + S1 + S2 + S3 + S4 + S5 + S6 + S7)
+## What's wired today (S0 → S8 — every roadmap slice)
 
 S0 — foundation:
 - ✅ Persistent identity (`VaultLocalStorage` in browser, `VaultMemory` elsewhere)
@@ -256,6 +278,19 @@ S2 — signed WebID claim:
 - ✅ `sa.claim.verify(claim)` — returns `{ ok, body | reason }`; checks sig + exp + ts skew
 - ✅ `sa.claim.{serialize,parse}` — JSON for pod-side storage
 - ✅ `webidClaim: { webid }` factory opt binds default WebID
+
+S8 — Perfect Forward Secrecy (partial Double-Ratchet):
+- ✅ `usePerfectFwdSec: true | { vaultKeyPrefix, maxSkip }` → `sa.pfs`
+- ✅ Per-peer symmetric KDF chain (HKDF-SHA256); each message gets a
+  fresh `messageKey`; old keys deleted immediately after use
+- ✅ XSalsa20-Poly1305 (nacl.secretbox) for the message ciphertext
+- ✅ Out-of-order delivery: skipped-message-key cache (default 64 slots)
+- ✅ Replay protection: consumed keys are dropped, second receipt rejected
+- ✅ Persistence: optional `vaultKeyPrefix` for chain state survival
+- ✅ **Scope-honest**: NO DH ratchet — see `pfs.js` header for the limits.
+  Apps opt in by passing payloads through `sa.pfs.encrypt(peer, ...)` /
+  `sa.pfs.decrypt(peer, wire)`.  Auto-wrapping the transport waits for
+  S8b (full DH ratchet).
 
 S7 — closed groups + A2A-TLS + rate-limit + pod-migration:
 - ✅ `groupManager: true | { vault }` → `sa.groups` (GroupManager instance);
@@ -298,16 +333,16 @@ S3 — passphrase vault + WebAuthn passkey:
 - ✅ Clear error codes (`PASSKEY_NO_WEBAUTHN`, `PASSKEY_PRF_UNAVAILABLE`,
   `PASSKEY_REGISTRATION_REJECTED`, `PASSKEY_UNLOCK_REJECTED`) for fallbacks
 
-## What's reserved (future S slices)
+## Future work
 
-Each opt is RESERVED in the factory signature today.  Setting it
-emits a `[secure-agent] opt "X" is RESERVED for a future slice`
-warning + preserves the value on `.pendingOpts.X` until the slice
-lands.  No app-code change needed when each slice activates.
+The whole roadmap (S0–S8) has landed.  Open follow-ups, deferred
+by design:
 
-| Opt | S slice | Item |
-|---|---|---|
-| `usePerfectFwdSec` | S8 | A.1 Double-Ratchet PFS |
+| Future slice | Scope |
+|---|---|
+| **S8b** | Full Double-Ratchet — DH ratchet with per-message ephemeral keys.  Closes the chain-seed-recoverable-from-static-DH gap that the S8 symmetric ratchet leaves open.  Requires transport-level integration (HI message piggybacks ephemeral; new chain re-seed when peer's ephemeral changes). |
+| **Resolver integration** | `sa.resolver` currently fans out aliases for the mute set only.  Other consumers (audit log entries, caps subject IDs, etc.) could optionally store resolved webids alongside pubkeys. |
+| **Audit log pod-sync** | `sa.audit.serialize()` exists; an opt-in periodic pod-sync job (`auditLog: { podSyncEveryMs }`) was discussed in the roadmap but not implemented — apps wire their own write-through today. |
 
 See `Project Files/canopy-chat/security-roadmap-2026-05-23.md`
 for the full plan + per-slice scope + tests + threat-addressed.
@@ -341,7 +376,7 @@ its own InternalBus.
 pnpm --filter @canopy/secure-agent test
 ```
 
-100/101 passing (1 skipped pending integration test infrastructure
+113/114 passing (1 skipped pending integration test infrastructure
 for sig-validated envelopes; the bilateral HI auto-handshake's
 wiring is in place + verified in canopy-chat's two-tab demo).
 

@@ -26,6 +26,7 @@ import {
 import { loadAuditLog, AuditLog, AUDIT_VERSION } from '../src/auditLog.js';
 import { createRateLimiter, RateLimiter } from '../src/rateLimit.js';
 import { GroupManager, A2ATLSLayer } from '@canopy/core';
+import { loadPFSChain, PFSChain } from '../src/pfs.js';
 
 describe('createSecureAgent — S0 foundation', () => {
   it('builds an agent with auto-SecurityLayer (no peer transport)', async () => {
@@ -129,38 +130,16 @@ describe('createSecureAgent — S0 foundation', () => {
     await sa.shutdown();
   });
 
-  it('warns on stubbed opts (warnOnInsecure default true)', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  // (S8 completion note: STUB_OPTS is now empty.  The
+  // "warns on stubbed opts" + "warnOnInsecure:false suppresses" +
+  // "pendingOpts" assertions used to bind to a still-stubbed opt;
+  // since every roadmap opt is wired, those tests now live in
+  // the S8 suite below ("STUB_OPTS is empty: every roadmap opt is
+  // now wired").)
+  it('securityStatus() reports identity + peer + (empty) pendingOpts', async () => {
     const sa = await createSecureAgent({
-      vault:            new VaultMemory(),
-      usePerfectFwdSec: true,   // still-stubbed (S8)
-    });
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('"usePerfectFwdSec"'),
-    );
-    // The stubbed opt should still be visible on pendingOpts.
-    expect(sa.pendingOpts.usePerfectFwdSec).toBe(true);
-    expect(sa.securityStatus().pendingOpts.usePerfectFwdSec).toBe(true);
-    warn.mockRestore();
-    await sa.shutdown();
-  });
-
-  it('warnOnInsecure:false suppresses the warning', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    await createSecureAgent({
-      vault:            new VaultMemory(),
-      usePerfectFwdSec: true,
-      warnOnInsecure:   false,
-    });
-    expect(warn).not.toHaveBeenCalled();
-    warn.mockRestore();
-  });
-
-  it('securityStatus() reports identity + peer + pendingOpts', async () => {
-    const sa = await createSecureAgent({
-      vault:            new VaultMemory(),
-      usePerfectFwdSec: { foo: true },
-      warnOnInsecure:   false,
+      vault:           new VaultMemory(),
+      warnOnInsecure:  false,
     });
     const st = sa.securityStatus();
     expect(st.layerWired).toBe(true);
@@ -168,9 +147,7 @@ describe('createSecureAgent — S0 foundation', () => {
     expect(st.identityStable).toBeTruthy();
     expect(st.peerTransportConnected).toBe(false);
     expect(st.helloedPeerCount).toBe(0);
-    expect(st.pendingOpts).toEqual({
-      usePerfectFwdSec: { foo: true },
-    });
+    expect(st.pendingOpts).toEqual({});
     await sa.shutdown();
   });
 
@@ -1365,6 +1342,204 @@ describe('createSecureAgent — S7 groups + a2aTls + rateLimit + migrate', () =>
     expect(allWarnArgs).not.toMatch(/"a2aTls"/);
     expect(allWarnArgs).not.toMatch(/"rateLimit"/);
     warn.mockRestore();
+  });
+});
+
+/* ─── S8 — Perfect Forward Secrecy ──────────────────── */
+
+describe('PFSChain — standalone', () => {
+  async function makePair() {
+    const vA = new VaultMemory();
+    const vB = new VaultMemory();
+    const idA = await AgentIdentity.generate(vA);
+    const idB = await AgentIdentity.generate(vB);
+    const chainA = await loadPFSChain({ identity: idA, peerPubKey: idB.pubKey });
+    const chainB = await loadPFSChain({ identity: idB, peerPubKey: idA.pubKey });
+    return { idA, idB, chainA, chainB };
+  }
+
+  it('encrypt then decrypt round-trips (in order)', async () => {
+    const { chainA, chainB } = await makePair();
+    const w1 = await chainA.encrypt('hello');
+    const w2 = await chainA.encrypt('world');
+    const p1 = await chainB.decrypt(w1);
+    const p2 = await chainB.decrypt(w2);
+    expect(new TextDecoder().decode(p1)).toBe('hello');
+    expect(new TextDecoder().decode(p2)).toBe('world');
+  });
+
+  it('reverse direction also works (symmetric chain assignment)', async () => {
+    const { chainA, chainB } = await makePair();
+    const w = await chainB.encrypt('reply');
+    const p = await chainA.decrypt(w);
+    expect(new TextDecoder().decode(p)).toBe('reply');
+  });
+
+  it('chain advances: same key never reused', async () => {
+    const { chainA, chainB } = await makePair();
+    const w1 = await chainA.encrypt('x');
+    const w2 = await chainA.encrypt('x');
+    expect(w1.ct).not.toEqual(w2.ct);
+    expect(w1.n).toBe(0);
+    expect(w2.n).toBe(1);
+    await chainB.decrypt(w1);
+    await chainB.decrypt(w2);
+  });
+
+  it('out-of-order delivery: skipped key cache makes it work', async () => {
+    const { chainA, chainB } = await makePair();
+    const w1 = await chainA.encrypt('one');
+    const w2 = await chainA.encrypt('two');
+    const w3 = await chainA.encrypt('three');
+    const p2 = await chainB.decrypt(w2);
+    const p1 = await chainB.decrypt(w1);
+    const p3 = await chainB.decrypt(w3);
+    expect(new TextDecoder().decode(p1)).toBe('one');
+    expect(new TextDecoder().decode(p2)).toBe('two');
+    expect(new TextDecoder().decode(p3)).toBe('three');
+  });
+
+  it('replay (same n twice) is rejected on second receipt', async () => {
+    const { chainA, chainB } = await makePair();
+    const w = await chainA.encrypt('once');
+    await chainB.decrypt(w);
+    await expect(chainB.decrypt(w)).rejects.toThrow(/replay|stale/i);
+  });
+
+  it('tampered ciphertext fails secretbox auth', async () => {
+    const { chainA, chainB } = await makePair();
+    const w = await chainA.encrypt('protected');
+    const tampered = { ...w, ct: w.ct.slice(0, -4) + 'AAAA' };
+    await expect(chainB.decrypt(tampered)).rejects.toThrow(/auth failed|secretbox/);
+  });
+
+  it('gap exceeding maxSkip is rejected', async () => {
+    const { idA, idB } = await makePair();
+    const chainA = await loadPFSChain({ identity: idA, peerPubKey: idB.pubKey, maxSkip: 3 });
+    const chainB = await loadPFSChain({ identity: idB, peerPubKey: idA.pubKey, maxSkip: 3 });
+    let last;
+    for (let i = 0; i < 5; i++) last = await chainA.encrypt('msg');
+    await expect(chainB.decrypt(last)).rejects.toThrow(/sequence gap/);
+  });
+
+  it('serialize → restore round-trips + chain continues correctly', async () => {
+    const { idA, idB, chainA, chainB } = await makePair();
+    const w1 = await chainA.encrypt('first');
+    await chainB.decrypt(w1);
+    const snapA = chainA.serialize();
+    const snapB = chainB.serialize();
+    const chainA2 = PFSChain.restore(snapA, { identity: idA, peerPubKey: idB.pubKey });
+    const chainB2 = PFSChain.restore(snapB, { identity: idB, peerPubKey: idA.pubKey });
+    expect(chainA2.sendN).toBe(1);
+    expect(chainB2.recvN).toBe(1);
+    const w2 = await chainA2.encrypt('second');
+    const p2 = await chainB2.decrypt(w2);
+    expect(new TextDecoder().decode(p2)).toBe('second');
+  });
+
+  it('different peers → different chains (no cross-decrypt)', async () => {
+    const { chainA, chainB } = await makePair();
+    const { chainA: chainC } = await makePair();
+    const w = await chainA.encrypt('for B');
+    await expect(chainC.decrypt(w)).rejects.toThrow(/auth failed|secretbox/);
+    expect(new TextDecoder().decode(await chainB.decrypt(w))).toBe('for B');
+  });
+});
+
+describe('createSecureAgent — S8 PFS integration', () => {
+  it('usePerfectFwdSec opt off → sa.pfs is null', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    expect(sa.pfs).toBeNull();
+    await sa.shutdown();
+  });
+
+  it('usePerfectFwdSec:true → sa.pfs exposed; partial flag honest', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(), usePerfectFwdSec: true,
+    });
+    expect(sa.pfs).toBeTruthy();
+    expect(sa.pfs.enabled).toBe(true);
+    expect(sa.pfs.partial).toBe(true);
+    expect(sa.pfs.knownPeers()).toEqual([]);
+    await sa.shutdown();
+  });
+
+  it('two factories with PFS can encrypt/decrypt to each other', async () => {
+    const vA = new VaultMemory();
+    const vB = new VaultMemory();
+    const saA = await createSecureAgent({
+      vault: vA, usePerfectFwdSec: true,
+    });
+    const saB = await createSecureAgent({
+      vault: vB, usePerfectFwdSec: true,
+    });
+    const wire = await saA.pfs.encrypt(saB.identity.pubKey, 'secret message');
+    const plain = await saB.pfs.decrypt(saA.identity.pubKey, wire);
+    expect(new TextDecoder().decode(plain)).toBe('secret message');
+    await saA.shutdown();
+    await saB.shutdown();
+  });
+
+  it('vaultKeyPrefix: chain state persists across factory restart', async () => {
+    const vA = new VaultMemory();
+    const vB = new VaultMemory();
+    let saA = await createSecureAgent({
+      vault: vA, usePerfectFwdSec: { vaultKeyPrefix: 'pfs:' },
+    });
+    let saB = await createSecureAgent({
+      vault: vB, usePerfectFwdSec: { vaultKeyPrefix: 'pfs:' },
+    });
+    const bPub = saB.identity.pubKey;
+    const aPub = saA.identity.pubKey;
+    const w1 = await saA.pfs.encrypt(bPub, 'one');
+    await saB.pfs.decrypt(aPub, w1);
+    await saA.shutdown();
+    await saB.shutdown();
+
+    saA = await createSecureAgent({
+      vault: vA, usePerfectFwdSec: { vaultKeyPrefix: 'pfs:' },
+    });
+    saB = await createSecureAgent({
+      vault: vB, usePerfectFwdSec: { vaultKeyPrefix: 'pfs:' },
+    });
+    const w2 = await saA.pfs.encrypt(bPub, 'two');
+    expect(w2.n).toBe(1);
+    const p2 = await saB.pfs.decrypt(aPub, w2);
+    expect(new TextDecoder().decode(p2)).toBe('two');
+    await saA.shutdown();
+    await saB.shutdown();
+  });
+
+  it('securityStatus reports PFS state', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(), usePerfectFwdSec: true,
+    });
+    const st = sa.securityStatus();
+    expect(st.pfsWired).toBe(true);
+    expect(st.pfsPartial).toBe(true);
+    expect(st.pfsChainCount).toBe(0);
+    await sa.shutdown();
+  });
+
+  it('STUB_OPTS is empty: every roadmap opt is now wired', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const sa = await createSecureAgent({
+      vault:            new VaultMemory(),
+      muteListVaultKey: 'm', helloGate: 'psk',
+      webidClaim:       { webid: 'https://x.example/#me' },
+      passphrase:       'p',
+      webAuthnUnlock:   { rpId: 'x.test', prfSalt: 's' },
+      identityResolver: { resolveByPubKey: async () => null },
+      trustRegistry:    true, capabilityIssuer: true, policyEngine: true,
+      auditLog:         true,
+      groupManager:     true, a2aTls: true, rateLimit: true,
+      usePerfectFwdSec: true,
+    });
+    const allWarnArgs = warn.mock.calls.flat().join(' ');
+    expect(allWarnArgs).not.toMatch(/RESERVED for a future slice/);
+    expect(Object.keys(sa.pendingOpts)).toEqual([]);
+    warn.mockRestore();
+    await sa.shutdown();
   });
 });
 
