@@ -297,6 +297,34 @@ export const mockStoopManifest = {
         ui:   { control: 'button', label: 'Returned' },
       },
     },
+    /**
+     * #185 (A6, 2026-05-23) — `/holiday-mode <on|off>` — toggle the
+     * calling actor's holiday-mode flag (Phase 23.4 in stoop).  When
+     * on: notifications suppressed, skills marked unavailable, no
+     * skill-match hints.  Allows a temporary pause without leaving
+     * the buurt.  Real skills:
+     *   - setHolidayMode (apps/stoop/src/skills/index.js:1043)
+     *   - getHolidayMode (apps/stoop/src/skills/index.js:1058)
+     * Bare `/holiday-mode` reads current state.
+     */
+    {
+      id:    'setHolidayMode', verb: 'submit',
+      params: [
+        { name: 'on', kind: 'enum', of: ['on', 'off'], required: true },
+      ],
+      surfaces: {
+        slash: { command: '/holiday-mode' },
+        chat:  { reply: 'text', hint: 'toggle holiday mode on/off' },
+      },
+    },
+    {
+      id:    'getHolidayMode', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/holiday-status' },
+        chat:  { reply: 'record', hint: 'show current holiday-mode state' },
+      },
+    },
   ],
   views: [{ id: 'feed', title: 'Feed', type: 'post' }],
 };
