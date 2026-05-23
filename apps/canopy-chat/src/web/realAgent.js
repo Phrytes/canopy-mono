@@ -724,7 +724,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       const CREW_AUTO_INJECT = new Set([
         'getCrewConfig', 'pauseCrew', 'unpauseCrew',
         'archiveCrew',   'unarchiveCrew', 'issueInvite',
-        'listAwaitingApproval',
+        'listAwaitingApproval', 'getMyCrews',
       ]);
       if (CREW_AUTO_INJECT.has(realOpId) && !realArgs.crewId) {
         const crewId = opts.tasksCrewConfig?.crewId ?? 'cc-default';
@@ -1007,6 +1007,46 @@ export async function createRealHouseholdAgent(opts = {}) {
         message: `✓ Joined crew. ${memberCount} members visible. /mytasks shows the crew's tasks.`,
         crew:   data,
         _sync:  simulateSync(),
+      };
+    }
+    // #191 (B5) — getMyCrews: {crews: [{crewId, name, kind, counts}]}
+    // → chat-shell list with crew-shape rows.  Each row's label
+    // surfaces counters inline so the user sees the dashboard at a
+    // glance without expanding rows.
+    if (opId === 'getMyCrews' && Array.isArray(data.crews)) {
+      if (data.crews.length === 0) {
+        return {
+          items:   [],
+          message: 'You\'re not in any crews yet. Use /crew-new to create one.',
+        };
+      }
+      let totalOpen = 0, totalOverdue = 0, totalMine = 0, totalApproval = 0;
+      const items = data.crews.map((c) => {
+        const cnt = c.counts ?? {};
+        totalOpen     += cnt.open ?? 0;
+        totalOverdue  += cnt.overdue ?? 0;
+        totalMine     += cnt.mine ?? 0;
+        totalApproval += cnt.awaitingApproval ?? 0;
+        const stats = [
+          `${cnt.open ?? 0} open`,
+          cnt.overdue ? `${cnt.overdue} overdue` : null,
+          cnt.mine    ? `${cnt.mine} mine`       : null,
+          cnt.awaitingApproval ? `${cnt.awaitingApproval} awaiting approval` : null,
+        ].filter(Boolean).join(' · ');
+        return {
+          id:    c.crewId,
+          type:  'crew',
+          label: `${c.name} (${c.kind}) — ${stats}`,
+          crewId: c.crewId,
+          name:   c.name,
+          kind:   c.kind,
+          counts: cnt,
+        };
+      });
+      return {
+        items,
+        message: `Crews: ${data.crews.length} · Total: ${totalOpen} open, ${totalOverdue} overdue, ${totalMine} mine, ${totalApproval} awaiting approval`,
+        _sync: simulateSync(),
       };
     }
     // #190 (B3) — getCrewConfig: {crew: {...}} or {crew: null} →
