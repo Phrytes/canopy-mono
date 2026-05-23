@@ -771,6 +771,24 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   cursor: pointer;
 }
 
+/* Refs field — "See also" chips used by folio note frontmatter +
+   any payload returning an embeds[] array of {type, ref, label}. */
+.cc-field-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.2rem 0;
+}
+.cc-ref-chip {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--fg-mute, #ccc);
+  border-radius: 12px;
+  background: var(--bg-mute, #f5f5f5);
+  white-space: nowrap;
+}
+
 .cc-panel-empty {
   padding: 0.6rem 0.8rem;
   color: var(--fg-mute);

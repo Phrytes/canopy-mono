@@ -47,9 +47,22 @@ import { mintShareToken } from './autoShare.js';
  * etc).  Opt out with `seedFiles:false`.
  */
 const SEED_FILES = [
-  { id: '/notes/shared/anne.md', name: 'anne.md',   type: 'file', mime: 'text/markdown',   bytes: 1234,   state: 'synced' },
-  { id: '/notes/recipes.md',     name: 'recipes.md', type: 'file', mime: 'text/markdown',   bytes: 5678,   state: 'synced' },
-  { id: '/docs/lease.pdf',       name: 'lease.pdf',  type: 'file', mime: 'application/pdf', bytes: 102400, state: 'synced' },
+  {
+    id: '/notes/shared/anne.md', name: 'anne.md', type: 'file',
+    mime: 'text/markdown', bytes: 1234, state: 'synced',
+    // #194 (B9, 2026-05-23) — frontmatter `embeds` per
+    // v1-web-functional-design § 4f.  Notes can declare references to
+    // tasks / stoop posts / events; the chat-shell renders them as
+    // clickable "See also" chips at the head of /readnote replies.
+    frontmatter: {
+      embeds: [
+        { type: 'task',          ref: 't-anne-onboarding', label: 'Anne onboarding' },
+        { type: 'calendar-event', ref: 'evt-anne-welcome', label: 'Welcome dinner' },
+      ],
+    },
+  },
+  { id: '/notes/recipes.md', name: 'recipes.md', type: 'file', mime: 'text/markdown',   bytes: 5678,   state: 'synced' },
+  { id: '/docs/lease.pdf',   name: 'lease.pdf',  type: 'file', mime: 'application/pdf', bytes: 102400, state: 'synced' },
 ];
 
 /**
@@ -122,9 +135,16 @@ export async function createBrowserFolioAgent({
     // Pod-backed read is future work (needs podClient + content-type
     // negotiation); for the browser session today we surface the
     // metadata + a placeholder body so chat-shell tests keep working.
-    return [DataPart({
+    // #194 (B9, 2026-05-23) — also surface frontmatter.embeds when
+    // present so the chat-shell can render "See also" chips per
+    // v1-web-functional-design § 4f.
+    const reply = {
       message: `[browser] Contents of ${target.name} would be shown here. ${target.bytes} bytes; mime ${target.mime}.`,
-    })];
+    };
+    if (target.frontmatter?.embeds) {
+      reply.embeds = target.frontmatter.embeds;
+    }
+    return [DataPart(reply)];
   });
 
   /* ─── shareFolder — REAL PodCapabilityToken via autoShare ─── */
