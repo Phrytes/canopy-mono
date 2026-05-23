@@ -712,6 +712,13 @@ export async function createRealHouseholdAgent(opts = {}) {
         // submitTask also requires a non-empty note (audit-log).
         realArgs = { ...realArgs, note: 'submitted via chat' };
       }
+      if (realOpId === 'issueInvite') {
+        // Chat-shell flag `ttl-hours` → real arg `ttlMs`.  Default 24h
+        // when omitted.
+        const hours = Number.isFinite(Number(realArgs['ttl-hours']))
+          ? Number(realArgs['ttl-hours']) : 24;
+        realArgs = { ...realArgs, ttlMs: hours * 60 * 60 * 1000 };
+      }
       const parts = [DataPart(realArgs)];
       const result = await chatAgent.invoke(tasksCrew.address, realOpId, parts);
       const first = Array.isArray(result) ? result[0] : null;
@@ -867,6 +874,34 @@ export async function createRealHouseholdAgent(opts = {}) {
         state: t.state ?? 'open',
         title: t.text ?? t.title ?? t.id,
         fields: { state: t.state ?? 'open', assignee: t.assignee ?? 'unassigned' },
+      };
+    }
+    // issueInvite: real returns {invite: {...JWT-shaped token...}} →
+    // record-shape reply so the chat-shell renders the token + a
+    // shareable summary the inviter can DM to the invitee.
+    if (opId === 'issueInvite' && data.invite) {
+      const inv = data.invite;
+      // Render the invite as compact base64-ish string for sharing.
+      const token = typeof inv === 'string' ? inv : JSON.stringify(inv);
+      const expires = inv?.expiresAt
+        ? new Date(inv.expiresAt).toISOString()
+        : '(no expiry)';
+      return {
+        title:    'Crew invite',
+        role:     inv?.role ?? 'member',
+        expires,
+        token,
+        message:  `🎟️ Single-use invite minted. Share the token with the invitee; they redeem with /redeem-invite <token>.`,
+      };
+    }
+    // redeemInvite: real returns {groupProof, members, ...} → friendly text.
+    if (opId === 'redeemInvite' && (data.groupProof || data.members)) {
+      const memberCount = Array.isArray(data.members) ? data.members.length : '?';
+      return {
+        ok: true,
+        message: `✓ Joined crew. ${memberCount} members visible. /mytasks shows the crew's tasks.`,
+        crew:   data,
+        _sync:  simulateSync(),
       };
     }
     // provisionMyCrew: real returns {crew: {...}} (or similar) →
