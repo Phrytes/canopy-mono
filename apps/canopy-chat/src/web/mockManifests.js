@@ -133,6 +133,10 @@ export const mockTasksManifest = {
       surfaces: {
         slash: { command: '/submit', body: 'flags' },
         chat:  { reply: 'text', hint: 'submit a task for review (DoD gate)' },
+        // #184 — appliesTo-gated row button: shows up on claimed tasks
+        // in /mytasks lists.  Same auto-render path household uses for
+        // [Mark done] (mockHouseholdManifest.markComplete).
+        ui:    { control: 'button', label: 'Submit' },
       },
     },
     /**
@@ -145,6 +149,8 @@ export const mockTasksManifest = {
       surfaces: {
         slash: { command: '/approve' },
         chat:  { reply: 'text', hint: 'approve a submitted task' },
+        // #184 — appliesTo-gated row button on submitted tasks (approver view).
+        ui:    { control: 'button', label: 'Approve' },
       },
     },
     /**
@@ -161,6 +167,8 @@ export const mockTasksManifest = {
       surfaces: {
         slash: { command: '/reject', body: 'flags' },
         chat:  { reply: 'text', hint: 'reject a submitted task' },
+        // #184 — appliesTo-gated row button on submitted tasks (approver view).
+        ui:    { control: 'button', label: 'Reject' },
       },
     },
     /**
@@ -242,6 +250,51 @@ export const mockStoopManifest = {
       surfaces: {
         slash: { command: '/reveal', body: 'flags' },
         chat:  { reply: 'text', hint: 'reveal (or hide) a peer\'s real name' },
+      },
+    },
+    /**
+     * #179 (2026-05-23) — `respondToItem` — offer help on an open
+     * stoop post (the "Help with" / "Ik help" UX from the design doc).
+     * Real skill at apps/stoop/src/skills/index.js:1987.  Opens a
+     * private DM thread between requester + responder; first body
+     * becomes the thread's first message.
+     *
+     * No slash command — the natural surface is the [Help with]
+     * button on each post row in /feed.  Typing post-id is friction
+     * (per the existing-slash-surface audit, /help-with → R→B).
+     */
+    {
+      id:    'respondToItem', verb: 'claim',
+      appliesTo: { type: 'post', state: ['open'] },
+      params: [
+        { name: 'itemId', kind: 'string', required: true },
+        { name: 'body',   kind: 'string', required: false },
+      ],
+      surfaces: {
+        chat: { reply: 'text', hint: 'offer help on a request' },
+        // appliesTo-gated row button on /feed posts.  Click → spawns
+        // private DM thread (the (T) surface from the principle).
+        ui:   { control: 'button', label: 'Help with' },
+      },
+    },
+    /**
+     * #179 (2026-05-23) — `markReturned` — close a "lend" post after
+     * the borrower returns the item.  Real skill at
+     * apps/stoop/src/skills/index.js:843.  Author-only.
+     *
+     * No slash command — natural surface is the [Returned] button on
+     * the lender's own /mijn-posts.  (per design — borrower handle
+     * stays private; only lender sees who.)
+     */
+    {
+      id:    'markReturned', verb: 'complete',
+      appliesTo: { type: 'post', state: ['open'] },
+      params: [
+        { name: 'itemId', kind: 'string', required: true },
+      ],
+      surfaces: {
+        chat: { reply: 'text', hint: 'mark a lend as returned' },
+        ui:   { control: 'button', label: 'Returned' },
       },
     },
   ],
