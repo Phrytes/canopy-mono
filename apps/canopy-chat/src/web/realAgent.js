@@ -823,6 +823,43 @@ export async function createRealHouseholdAgent(opts = {}) {
           trustOffer: TRUST_EN_TO_NL[realArgs.trust] ?? realArgs.trust,
         };
       }
+      // #189 — buurt/group skills.  Several require groupId; the
+      // chat-shell knows which buurt this agent is in (single-buurt
+      // mode), so auto-inject when missing.
+      const REQUIRES_GROUP_ID = new Set([
+        'getGroupRules', 'leaveGroup', 'getMyMembershipStatus',
+        'editGroupRules', 'removeMember',
+      ]);
+      if (REQUIRES_GROUP_ID.has(realOpId) && !realArgs.groupId) {
+        realArgs = {
+          ...realArgs,
+          groupId: opts.stoopGroup ?? 'cc-default-buurt',
+        };
+      }
+      if (realOpId === 'leaveGroup' && realArgs.confirm !== true) {
+        // Q27-style two-step confirm.  Short-circuit before invoke.
+        return {
+          ok: false,
+          error: 'Leaving your buurt is irreversible. Re-run with --confirm=true to proceed.',
+        };
+      }
+      // Synthesize a `/groups` op locally — there's no listMyGroups
+      // skill in single-buurt mode; we render what we know.  After
+      // invoke for member count.
+      if (realOpId === 'getCurrentGroup') {
+        const membersResult = await chatAgent.invoke(
+          stoopAgent.address, 'listGroupMembers',
+          [DataPart({ groupId: opts.stoopGroup ?? 'cc-default-buurt' })],
+        );
+        const members = membersResult?.[0]?.data?.members ?? [];
+        return {
+          title:       'Your buurt',
+          groupId:     opts.stoopGroup ?? 'cc-default-buurt',
+          memberCount: members.length,
+          mode:        'single-buurt (V0)',
+          note:        'Multi-buurt support requires multi-agent topology — separate slice.',
+        };
+      }
       const parts = [DataPart(realArgs)];
       const result = await chatAgent.invoke(stoopAgent.address, realOpId, parts);
       const first  = Array.isArray(result) ? result[0] : null;
@@ -1111,6 +1148,56 @@ export async function createRealHouseholdAgent(opts = {}) {
         trust:    args?.trustOffer ?? args?.trust ?? 'bekend',
         payload:  data.payload,
         message:  'Copy the payload above + paste into any QR generator.  The receiver scans + uses /add-contact to add you with the proposed trust level.',
+      };
+    }
+    // #189 — listGroupMembers: {groupId, members: []} → chat-shell list.
+    // Each member carries webid/handle/displayName/role from MemberMap.
+    if (opId === 'listGroupMembers' && Array.isArray(data.members)) {
+      return {
+        items: data.members.map((m) => ({
+          id:          m.webid,
+          type:        'member',
+          webid:       m.webid,
+          label:       m.displayName ?? m.handle ?? m.webid,
+          handle:      m.handle ?? null,
+          role:        m.role ?? 'member',
+        })),
+        _sync: simulateSync(),
+      };
+    }
+    // #189 — getGroupRules: real returns a rules-item or null →
+    // record-shape reply with the latest rules text.
+    if (opId === 'getGroupRules') {
+      if (!data || data.error) {
+        return {
+          title:   'Group rules',
+          status:  'no-rules-set',
+          message: 'No rules have been set for this buurt yet.',
+        };
+      }
+      // Real shape: rules item with source.rulesText (or similar).
+      const item = data.item ?? data;
+      const rulesText = item?.source?.rulesText
+        ?? item?.source?.text
+        ?? item?.text
+        ?? '(rules payload shape unknown — see console)';
+      if (typeof console !== 'undefined' && rulesText.startsWith('(rules')) {
+        console.warn('[realAgent] getGroupRules: unexpected payload shape', data);
+      }
+      return {
+        title:   'Group rules',
+        groupId: item?.source?.groupId ?? args?.groupId ?? '(unknown)',
+        rules:   rulesText,
+        addedAt: item?.addedAt ? new Date(item.addedAt).toISOString() : null,
+      };
+    }
+    // #189 — leaveGroup: real returns {ok} or {error}.  Confirm-gated
+    // above; when invoked for real, friendly text.
+    if (opId === 'leaveGroup' && data.ok) {
+      return {
+        ok: true,
+        message: '👋 Left the buurt. Your local data stays; you no longer receive feed updates.',
+        _sync: simulateSync(),
       };
     }
     // Default: pass through.
