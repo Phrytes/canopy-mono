@@ -36,7 +36,7 @@
  */
 export const mockTasksManifest = {
   app:        'tasks-v0',
-  itemTypes:  ['task'],
+  itemTypes:  ['task', 'crew'],
   operations: [
     {
       id:    'addTask', verb: 'add',
@@ -181,6 +181,22 @@ export const mockTasksManifest = {
       surfaces: {
         slash: { command: '/inbox' },
         chat:  { reply: 'list', hint: 'list mentions + items needing my attention' },
+      },
+    },
+    /**
+     * #191 (B5, 2026-05-23) — cross-crew dashboard.  Wires
+     * getMyCrews (apps/tasks-v0/src/skills/dashboard.js:40) +
+     * aggregateCrews (per-crew counts: open / overdue / mine /
+     * awaitingApproval).  Single-crew mode today shows one row;
+     * multi-crew mode (when supported) shows all crews actor is in.
+     */
+    {
+      id:    'getMyCrews', verb: 'list',
+      appliesTo: { type: 'crew' },
+      params: [],
+      surfaces: {
+        slash: { command: '/crews' },
+        chat:  { reply: 'list', hint: 'cross-crew dashboard with per-crew counters' },
       },
     },
     /**
