@@ -103,6 +103,35 @@ const cred = await sa3.passkey.register();
 const sec  = await sa3.passkey.unlock();
 ```
 
+### S4 — identity-resolver + alias-aware mute
+
+```js
+import { MemberMap } from '@canopy/identity-resolver';
+
+const memberMap = new MemberMap({
+  initial: [
+    { webid: 'https://alice.example/#me', pubKey: 'pk-alice', stableId: 'sid-alice' },
+    { webid: 'https://bob.example/#me',   pubKey: 'pk-bob',   stableId: 'sid-bob'   },
+  ],
+});
+
+const sa = await createSecureAgent({
+  identityResolver: memberMap,
+  nknLib:           window.nkn,
+});
+
+// Mute by webid — every device, every address, every key rotation
+await sa.mute.add('https://alice.example/#me');
+
+// Or by stableId — works across pod migrations + webid changes
+await sa.mute.add('sid-alice');
+
+// Resolver passthroughs
+await sa.resolver.resolveByAddr('app.alice.123');     // → member object
+await sa.resolver.resolveByPubKey('pk-alice');
+await sa.resolver.aliasesFor('app.alice.123');        // → [addr, pubKey, webid, stableId]
+```
+
 ### S2 — signed WebID claim
 
 ```js
@@ -122,7 +151,7 @@ if (!v.ok) throw new Error(`claim invalid: ${v.reason}`);
 await podWriter.put('canopy/identity/claim.json', sa.claim.serialize(claim));
 ```
 
-## What's wired today (S0 + S1 + S2 + S3)
+## What's wired today (S0 + S1 + S2 + S3 + S4)
 
 S0 — foundation:
 - ✅ Persistent identity (`VaultLocalStorage` in browser, `VaultMemory` elsewhere)
@@ -145,6 +174,12 @@ S2 — signed WebID claim:
 - ✅ `sa.claim.{serialize,parse}` — JSON for pod-side storage
 - ✅ `webidClaim: { webid }` factory opt binds default WebID
 
+S4 — identity-resolver + alias-aware mute:
+- ✅ `identityResolver: memberMap` (or `{ memberMap }`) factory opt
+- ✅ `sa.resolver.{resolveByAddr,resolveByPubKey,resolveByWebid,resolveByStableId,aliasesFor}`
+- ✅ Mute now matches across the FULL alias set — `mute.add(webid)` blocks the peer
+  on every device, every address, after every key rotation
+
 S3 — passphrase vault + WebAuthn passkey:
 - ✅ `passphrase: 'string'` factory opt → vault picker promotes to `VaultIndexedDB`
   (PBKDF2 + AES-GCM, browser/IndexedDB)
@@ -165,7 +200,6 @@ lands.  No app-code change needed when each slice activates.
 
 | Opt | S slice | Item |
 |---|---|---|
-| `identityResolver` | S4 | A.4 MemberMap + Reveals |
 | `capabilityIssuer` | S5 | A.5 capability tokens |
 | `trustRegistry` | S5 | A+.3 per-peer trust score |
 | `auditLog` | S6 | A.6 signed activity log |
@@ -206,7 +240,7 @@ its own InternalBus.
 pnpm --filter @canopy/secure-agent test
 ```
 
-48/49 passing (1 skipped pending integration test infrastructure
+59/60 passing (1 skipped pending integration test infrastructure
 for sig-validated envelopes; the bilateral HI auto-handshake's
 wiring is in place + verified in canopy-chat's two-tab demo).
 

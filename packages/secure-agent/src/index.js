@@ -34,3 +34,6 @@ export {
   webauthnAvailable,
   PASSKEY_ERRORS,
 } from './passkey.js';
+
+// S4 — peer identity resolver
+export { createPeerResolver, PeerResolver } from './resolver.js';

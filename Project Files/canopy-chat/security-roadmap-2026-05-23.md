@@ -482,7 +482,7 @@ demoable improvement after each slice.
 | Batch 2 | A.1 + A.1a (mute + helloGates) | v0.7.S1 | ✅ DONE 2026-05-23 |
 | Batch 3 | A.2 (signed claim) | v0.7.S2 | ✅ DONE 2026-05-23 |
 | Batch 4 | A.3 + A.3a (passphrase + WebAuthn) | v0.7.S3 | ✅ DONE 2026-05-23 |
-| Batch 5 | A.4 (identity-resolver) | v0.7.S4 | pending |
+| Batch 5 | A.4 (identity-resolver) | v0.7.S4 | ✅ DONE 2026-05-23 |
 | Batch 6 | A.5 + A.5a + A.5b (caps + roles + trust) | v0.7.S5 | pending |
 | Batch 7 | A.6 (audit log) | v0.7.S6 | pending |
 | Batch 8 | A.7 + A.7a + A.7b + A.7c (groups + a2a-tls + rate-limit + migrate) | v0.7.S7 | pending |

@@ -24,10 +24,10 @@
  *   - webidClaim         (S2 — A.2)   sa.claim.sign/verify/serialize/parse
  *   - passphrase         (S3 — A.3)   forwards to vault picker → VaultIndexedDB
  *   - webAuthnUnlock     (S3 — A+.5)  sa.passkey.{register,unlock} via PRF
+ *   - identityResolver   (S4 — A.4)   sa.resolver.* + alias-fanout mute
  *
  * # What's a stub (filled by later slices)
  *
- *   - identityResolver   (S4 — A.4)
  *   - capabilityIssuer   (S5 — A.5)
  *   - trustRegistry      (S5 — A+.3)
  *   - auditLog           (S6 — A.6)
@@ -67,6 +67,7 @@ import {
   webauthnAvailable,
   PASSKEY_ERRORS,
 } from './passkey.js';
+import { createPeerResolver } from './resolver.js';
 
 /**
  * @typedef {object} CreateSecureAgentOpts
@@ -81,7 +82,7 @@ import {
  * @property {string}  [muteListVaultKey]       S1 — persistent mute slot (omit = in-memory)
  * @property {Function|string|object} [helloGate] S1 — fn(envelope)=>bool, PSK string, or { token }
  * @property {object}  [webidClaim]             S2 — { webid } binds default WebID for claim.sign()
- * @property {boolean} [identityResolver]       [STUB — S4]
+ * @property {object}  [identityResolver]       S4 — MemberMap-shape (or { memberMap }) for alias-aware mute + sa.resolver.*
  * @property {boolean} [capabilityIssuer]       [STUB — S5]
  * @property {boolean} [trustRegistry]          [STUB — S5b]
  * @property {object}  [auditLog]               [STUB — S6] { signEvery, podSyncEvery }
@@ -107,7 +108,7 @@ const STUB_OPTS = Object.freeze([
   // muteListVaultKey  — wired in S1
   // helloGate         — wired in S1
   // webidClaim        — wired in S2
-  'identityResolver',
+  // identityResolver  — wired in S4 (sa.resolver.* + mute-fanout)
   'capabilityIssuer',
   'trustRegistry',
   'auditLog',
@@ -230,6 +231,37 @@ export async function createSecureAgent(opts = {}) {
   //   { rpId, rpName, prfSalt, ... }→ explicit config
   const passkeyConfig = resolvePasskeyConfig(opts.webAuthnUnlock);
 
+  // ─── S4 — identity-resolver (A.4) ─────────────────────────────────
+  // Compose SecurityLayer (addr→pubKey) with the caller-supplied
+  // MemberMap-like (pubKey/webid/stableId→member).  Either source may
+  // be absent; the resolver degrades gracefully (returns null).
+  //
+  // identityResolver opt forms:
+  //   memberMap-shape       → treat as MemberMap directly
+  //   { memberMap }         → object form for future expansion
+  const resolverMemberMap = pickResolverMemberMap(opts.identityResolver);
+  const peerResolver = createPeerResolver({
+    security:  agent.security,
+    memberMap: resolverMemberMap,
+  });
+
+  /**
+   * Mute check with resolver fanout.  An envelope from `addr` is
+   * considered muted if EITHER:
+   *   - addr is in the mute set (sync fast-path), OR
+   *   - any of {pubKey, webid, stableId} for addr is in the mute set.
+   *
+   * Without a resolver wired, this collapses to the sync fast-path.
+   */
+  async function isPeerMuted(addr) {
+    if (!addr) return false;
+    if (muteSet.has(addr)) return true;
+    if (!resolverMemberMap) return false;
+    const aliases = await peerResolver.aliasesFor(addr);
+    for (const a of aliases) if (muteSet.has(a)) return true;
+    return false;
+  }
+
   // ─── Peer state (NKN cross-peer; stays idle until connect()) ───
   let peerTransport = null;
   const peerState = { status: 'idle', address: null, error: null };
@@ -266,10 +298,11 @@ export async function createSecureAgent(opts = {}) {
       //   B → A OW    : encrypt requires A's pubKey at B — A already HI'd ✓
       // Bilateral fix: when B receives A's HI, B auto-sends HI back.
       // Now A also knows B's pubKey + can encrypt OW.
-      tx.on('envelope', (env) => {
+      tx.on('envelope', async (env) => {
         // S1 — drop envelopes from muted peers BEFORE any further
         // bookkeeping (no reciprocal HI, no onPeerMessage fire).
-        if (muteSet.has(env?._from)) return;
+        // S4 — fanout the check across resolver-known aliases.
+        if (await isPeerMuted(env?._from)) return;
         try {
           if (!helloedPeers.has(env._from)) {
             tx.sendHello(env._from, { pubKey: identity.pubKey })
@@ -314,9 +347,10 @@ export async function createSecureAgent(opts = {}) {
     if (!peerTransport) {
       throw new Error('Peer transport not connected.  connect() first.');
     }
-    // S1 — refuse to send to a muted peer.  Throws (not silent) so the
-    // caller knows their intent didn't reach the wire.
-    if (muteSet.has(addr)) {
+    // S1 + S4 — refuse to send to a muted peer (alias-aware).  Throws
+    // (not silent) so the caller knows their intent didn't reach the
+    // wire.
+    if (await isPeerMuted(addr)) {
       throw new Error(`secure-agent: peer "${addr}" is muted; sendTo refused`);
     }
     if (!helloedPeers.has(addr)) {
@@ -376,6 +410,8 @@ export async function createSecureAgent(opts = {}) {
       vaultEncrypted,
       passkeyConfigured: !!passkeyConfig,
       passkeyAvailable:  webauthnAvailable(),
+      // S4 — resolver state
+      resolverWired:    !!resolverMemberMap,
       // STUB sections — surfaces what's reserved vs what's wired:
       pendingOpts: pickStubOpts(opts),
     };
@@ -419,6 +455,9 @@ export async function createSecureAgent(opts = {}) {
       clear:  ()     => muteSet.clear(),
       get size() { return muteSet.size; },
     },
+
+    // S4 — identity-resolver (peer alias resolution + mute fanout)
+    resolver: peerResolver,
 
     // S3 — WebAuthn / passkey unlock helpers
     passkey: {
@@ -489,6 +528,28 @@ function resolveHelloGate(opt) {
     'createSecureAgent: helloGate must be a function, a string ' +
     '(PSK), or { token: string }.  Got: ' + typeof opt,
   );
+}
+
+/**
+ * Normalise the identityResolver opt to a MemberMap-shaped object,
+ * or null if the opt wasn't set.
+ *
+ *   memberMapInstance  → used directly (must expose resolveByPubKey OR resolveByWebid)
+ *   { memberMap }      → unwrapped
+ */
+function pickResolverMemberMap(opt) {
+  if (opt == null) return null;
+  const mm = (opt.memberMap && typeof opt.memberMap === 'object') ? opt.memberMap : opt;
+  // Sanity check: at least one resolver method must be present.
+  if (typeof mm.resolveByPubKey !== 'function'
+   && typeof mm.resolveByWebid  !== 'function'
+   && typeof mm.resolveByStableId !== 'function') {
+    throw new Error(
+      'createSecureAgent: identityResolver must expose at least one of ' +
+      'resolveByPubKey / resolveByWebid / resolveByStableId.',
+    );
+  }
+  return mm;
 }
 
 function pickStubOpts(opts) {
