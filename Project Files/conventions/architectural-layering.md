@@ -478,3 +478,82 @@ Two ongoing checks for the layering invariant:
 
 Both are honest checkpoints, not gates — the invariant is what matters
 day to day, and the audits are the safety net.
+
+---
+
+## Safety-by-default for cross-peer apps (locked 2026-05-23)
+
+After the v0.7.S0–S8 security pass landed, every safety primitive
+(persistent identity, SecurityLayer, mute/block, helloGate, signed
+WebID claim, passphrase vault, WebAuthn, identity-resolver, capability
+tokens, TrustRegistry, PolicyEngine, signed audit log, GroupManager,
+A2A-TLS, rate-limit, migrateVaultToPod, PFS) lives behind a single
+checkbox-style opt on the `@canopy/secure-agent` factory.
+
+### Rule
+
+**New apps that compose a real network transport (NKN, WebRTC, relay)
+MUST use `createSecureAgent({...})` to build their cross-peer agent.**
+
+Per-property opt-outs require a grep-able comment co-located with the
+manual wiring so the decision is auditable:
+
+```js
+// SECURITY: opted out — rate limit disabled for file-transfer burst.
+const sa = await createSecureAgent({ rateLimit: false });
+```
+
+Apps may still build in-process topology (e.g. canopy-chat's
+`hostAgent` + `chatAgent`) manually; the factory is for the
+cross-peer surface.  Pass `opts.bus` to share an InternalBus across
+factory-built + manually-built agents (see
+`apps/canopy-chat/src/web/realAgent.js` for the canonical pattern).
+
+### Per-app safety checklist
+
+When adding cross-peer support to an app — OR when reviewing an
+existing app's adoption — walk this checklist:
+
+| # | Opt | Default rec. | Notes |
+|---|---|---|---|
+| 1 | `identityVaultPrefix` | `<app>-id:` | so two apps on one origin don't clash |
+| 2 | `muteListVaultKey` | `<app>-mute` | persistent mute survives reload |
+| 3 | `helloGate` | depends | PSK / group-token / off — match threat model |
+| 4 | `webidClaim` | `{ webid }` on sign-in | pod-publish the signed binding |
+| 5 | `passphrase` | from passkey if available | promotes vault to AES-GCM IndexedDB |
+| 6 | `webAuthnUnlock` | `{ rpId, prfSalt: '<app>/v1' }` | only when the browser supports PRF |
+| 7 | `identityResolver` | wire when MemberMap exists | enables mute-fanout |
+| 8 | `trustRegistry` | true when peer-trust matters | foundation for caps + policy |
+| 9 | `capabilityIssuer` | true when granting peer access | required for skill-call gating |
+| 10 | `policyEngine` | true when both trust + caps are wired | composes them |
+| 11 | `auditLog` | `{ vaultKey: '<app>-audit' }` | autoLog of every safety event |
+| 12 | `groupManager` | true for closed-group apps | auto-threads into policy |
+| 13 | `a2aTls` | only if composing A2ATransport | otherwise no-op |
+| 14 | `rateLimit` | true for consumer-pace apps | disable for bursty transfer flows |
+| 15 | `usePerfectFwdSec` | true when threat model warrants | partial PFS today; app opts-in payloads |
+
+### How to verify adoption
+
+Two checks the reviewer runs:
+
+1. **Factory call present.** Grep `createSecureAgent\(` in
+   `apps/<app>/src/web/realAgent.js` (or the equivalent boot file).
+2. **No surprise opt-outs.** Grep `SECURITY: opted out` — every hit
+   should have a reason in the same line.
+
+Optionally: every cross-peer app SHOULD ship a `journeys-security.test.js`
+in the style of `apps/canopy-chat/test/journeys-security.test.js` —
+≥6 tests exercising the SEAMS between primitives (mute persistence,
+audit autoLog, rotation-mid-conversation, etc.).
+
+### Why a factory + checkbox rather than per-app helpers
+
+Before the factory, each new app re-wired identity persistence +
+SecurityLayer + auto-HI + rotation manually.  A single missed
+`transport.useSecurityLayer(...)` ships envelopes plaintext.
+Safety bugs slipped through silently.  The factory makes those
+wirings the default and surfaces opt-outs in code review.
+
+See `Project Files/canopy-chat/security-roadmap-2026-05-23.md` for
+the full per-slice rationale and `packages/secure-agent/README.md`
+for the per-opt API.
