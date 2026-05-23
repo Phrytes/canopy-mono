@@ -172,16 +172,31 @@ if (persisted.length > 0) {
 attachPersistence({ threadStore: store, idb });
 
 const router = createEventRouter({ threadStore: store });
+
+// #176 — chat-shell double-render fix.  Tracks the thread currently
+// running dispatchAndRender so the agent's publishEvent (called
+// INSIDE the skill handler) can exclude it from notification routing.
+// Without this, mutation slash commands appeared TWICE in the
+// dispatching thread: once via the skill's publishEvent → notification
+// render, once via dispatchAndRender's shellMessage reply render.
+let activeDispatchThreadId = null;
+
 // v0.7.7 — wire the agent's publishEvent so real mutations route
 // through the EventRouter.  Each event gets a fresh id; ts auto-set
-// by the router's normaliseEvent.
+// by the router's normaliseEvent.  #176 — auto-injects
+// excludeThreadIds for the currently-dispatching thread so the
+// dispatching thread doesn't see a notification copy of the reply
+// it's about to render as a shellMessage.
 publishEventRef = (event) => {
   const enriched = {
     id: `evt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     ts: Date.now(),
     ...event,
   };
-  router.deliver(enriched);
+  const opts = activeDispatchThreadId
+    ? { excludeThreadIds: [activeDispatchThreadId] }
+    : {};
+  router.deliver(enriched, opts);
 };
 
 // v0.6.2 — external-flow callback handler.  When the deep-link
@@ -1404,7 +1419,17 @@ async function handleUserText(text, thread) {
 }
 
 async function dispatchAndRender(route, thread) {
-  const reply = await runDispatch(route, callSkill);
+  // #176 — set the dispatching-thread context so any publishEvent
+  // calls inside the skill handler exclude this thread from
+  // notification routing (the reply is rendered as a shellMessage
+  // below; we don't also want a notification copy).
+  activeDispatchThreadId = thread.id;
+  let reply;
+  try {
+    reply = await runDispatch(route, callSkill);
+  } finally {
+    activeDispatchThreadId = null;
+  }
   // v0.4 — when dispatch succeeded, look up follow-up suggestions
   // (per-op Q31 hints from the catalog + cross-app chains from the
   // static registry) and attach them to the reply so the renderer
@@ -1420,26 +1445,22 @@ async function dispatchAndRender(route, thread) {
   });
   thread.addShellMessage(rendered, { opId: route.opId });
 
-  // Mutation? Fan out per OQ-4 — every thread with a matching
-  // filter sees an 'item-changed' event EXCEPT the thread the user
-  // dispatched from (the mutation reply already appears there, so
-  // a notification copy would duplicate).
-  const op = catalog.opsById.get(route.opId)?.op;
-  const isMutation = op?.verb && !['list', 'help'].includes(op.verb)
-                   && !reply.error;
-  if (isMutation && reply.payload) {
-    router.deliver({
-      app:     route.appOrigin,
-      type:    'item-changed',
-      payload: {
-        message: typeof reply.payload.message === 'string'
-          ? reply.payload.message
-          : `${route.appOrigin}.${route.opId} completed`,
-        op:      route.opId,
-        result:  reply.payload,
-      },
-    }, { excludeThreadIds: [thread.id] });
-  }
+  // #176 — dispatchAndRender used to fire its own router.deliver
+  // here for the OQ-4 cross-thread routing.  Removed because every
+  // real household skill in realAgent.js ALSO calls publishEvent,
+  // which doubles every mutation notification (once in the
+  // dispatching thread + once in every filtered thread like
+  // household-alerts).  With the activeDispatchThreadId context
+  // above, the skill's publishEvent now excludes the dispatching
+  // thread correctly, so the single skill-side publish is the
+  // canonical cross-thread routing source.
+  //
+  // TODO: tasks-v0 / stoop / folio agents don't currently call
+  // publishEvent for their mutations (their browser factories
+  // don't accept a publishEvent callback yet).  Their mutations
+  // therefore don't route to filtered threads.  Wire that through
+  // in a future slice — the substrate-injection pattern already
+  // used by realAgent.js for household is the template.
 
   renderActiveStream();
 }
