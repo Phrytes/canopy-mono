@@ -11,6 +11,15 @@ importers:
       '@canopy-app/calendar':
         specifier: workspace:*
         version: link:../calendar
+      '@canopy-app/folio':
+        specifier: workspace:*
+        version: link:../folio
+      '@canopy-app/stoop':
+        specifier: workspace:*
+        version: link:../stoop
+      '@canopy-app/tasks-v0':
+        specifier: workspace:*
+        version: link:../tasks-v0
       '@canopy/app-manifest':
         specifier: workspace:*
         version: link:../../packages/app-manifest
@@ -20,6 +29,9 @@ importers:
       '@canopy/manifest-host':
         specifier: workspace:*
         version: link:../../packages/manifest-host
+      '@canopy/secure-agent':
+        specifier: workspace:*
+        version: link:../../packages/secure-agent
       '@canopy/vault':
         specifier: workspace:*
         version: link:../../packages/vault

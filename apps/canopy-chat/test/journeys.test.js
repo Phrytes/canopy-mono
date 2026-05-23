@@ -100,8 +100,10 @@ async function bootTestWorkspace() {
       return agent.callSkill('stoop', opId, args);
     }
     if (appOrigin === 'folio') {
-      const realOp = opId === 'briefSummary' ? 'folio_briefSummary' : opId;
-      return agent.callSkill('household', realOp, args);
+      // Post-slice-4: folio is the dedicated browser folio agent
+      // composed in realAgent.js.  realAgent.callSkill knows the
+      // briefSummary → folio_briefSummary alias.
+      return agent.callSkill('folio', opId, args);
     }
     if (appOrigin === 'calendar') {
       return agent.callSkill('household', `calendar_${opId}`, args);

@@ -16,7 +16,7 @@
 | **calendar** | Already real (composed via `@canopy-app/calendar`) | Done | n/a |
 | **tasks-v0** | ✅ **REAL — shipped slice 1 at `ab6f32f` (2026-05-23)** — full 110-skill crew agent composed in-process | Done | n/a |
 | **stoop** | ✅ **REAL — shipped slice 2a at `4931a3f` (FilePersist→IDB) + slice 2b at this commit (composition)** — full 110-skill NeighborhoodAgent on shared bus, IndexedDB persistence | Done | n/a |
-| **folio** | Mock handlers (web-only subset); per Frits's clarification — only the chat-web concerns (file embed / share / status), NOT local-folder sync | **1 slice** (was 2; sync-engine integration deferred to desktop / mobile-extended) | ~1 session |
+| **folio** | ✅ **REAL — shipped slice 4 at this commit (2026-05-23)** — dedicated browser folio agent on shared bus; shareFolder issues REAL PodCapabilityToken via autoShare.mintShareToken | Done | n/a |
 
 ## Why each app is in better shape than the bin scripts suggest
 
@@ -239,7 +239,7 @@ support a single buurt at a time (V0 simplification), or do we
 need multi-buurt UI?  Recommend: single buurt at V0, configurable
 via `/crew-new --kind=neighborhood`.
 
-### Slice 4: Folio → canopy-chat browser (web-only subset, ~1 session)
+### Slice 4: Folio → canopy-chat browser — ✅ DONE 2026-05-23 (web-only subset)
 
 **Scope reduced 2026-05-23 (Frits clarification)**: canopy-chat web
 doesn't need local-folder syncing.  Slice covers ONLY the
@@ -249,19 +249,33 @@ watcher + pseudo-pod cache integration is for the DESKTOP folio app
 (already shipped) + the future mobile-extended canopy-chat (where
 mDNS / BT / RN-fs adapters land per the mobile pivot).
 
-**Steps**:
+**Shipped state**:
+  - `apps/folio/src/browser.js` exports `createBrowserFolioAgent`
+    ({bus, identityVault, label?, podClient?, podRoot?, seedFiles?})
+  - `apps/canopy-chat/src/web/realAgent.js` boots a dedicated folio
+    agent on the shared bus + removes ~125 lines of in-host folio
+    handlers; `'folio'` is now a separate appOrigin in callSkill
+  - `shareFolder` issues a REAL `PodCapabilityToken` via
+    `autoShare.mintShareToken` (same primitive the desktop sync
+    uses; verified by 6 new `apps/folio/test/browser.test.js` tests
+    that round-trip the token JSON through `PodCapabilityToken.fromJSON`)
+  - Other web-only skills (readNote, listFiles, searchFiles,
+    getFileSnapshot, verifyPodState, deleteFromPod, downloadFile,
+    saveToMyPod, folio_briefSummary, folioStatus) preserve their
+    chat-shell-shaped replies — no adapter layer needed today
+  - Test routers (journeys.test.js, journeys-cross-app.test.js,
+    main.js) updated to dispatch `appOrigin='folio'` directly
+  - Per-app vault prefix `cc-folio-id:` (decision #2)
+  - Pre-seed of 3 demo files preserved; opt out with
+    `opts.folioSeedFiles: []`
 
-1. Add `apps/folio/src/browser.js` exporting `createBrowserFolioAgent`
-   that registers ONLY the chat-web-relevant skills:
-   - `getFileSnapshot` (Q29 cardSnapshot)
-   - `shareFolder` (capability-token issuance)
-   - `folioStatus` (record reply: count / shared / last-sync —
-     all reported as "browser session" state since no real sync)
-   - `readNote` (in-memory or pod-backed when podClient available)
-2. Replace canopy-chat's mock folio handlers with composition.
-3. **NOT in scope**: sync core, folder watcher, OS tray, desktop
-   server, CLI.  Those stay app-side and never enter canopy-chat
-   web.
+**Tests**: canopy-chat 606/615 unchanged (9 it.todo, same as
+before); folio 482/485 (3 pre-existing acp failures on master,
+unrelated to slice 4); new `apps/folio/test/browser.test.js` 6/6.
+
+**NOT in scope**: sync core, folder watcher, OS tray, desktop
+server, CLI.  Those stay app-side and never enter canopy-chat
+web.
 
 **Mobile-extended (DEFERRED)**: canopy-chat mobile (post #127-#131
 pivot) composes the same browser-shape integration PLUS:

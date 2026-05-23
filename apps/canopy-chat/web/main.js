@@ -951,8 +951,11 @@ const callSkill = async (appOrigin, opId, args) => {
     return agent.callSkill('stoop', opId, args);
   }
   if (appOrigin === 'folio') {
-    const realOp = opId === 'briefSummary' ? 'folio_briefSummary' : opId;
-    return agent.callSkill('household', realOp, args);
+    // Post-slice-4 (integration-plan 2026-05-23): folio is the
+    // dedicated browser folio agent composed in realAgent.js.
+    // realAgent.callSkill knows the briefSummary→folio_briefSummary
+    // alias.
+    return agent.callSkill('folio', opId, args);
   }
   if (appOrigin === 'calendar') {
     // Calendar skills are registered with the 'calendar_' prefix on

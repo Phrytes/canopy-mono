@@ -92,8 +92,9 @@ async function bootWorkspace({ chatVault, secureAgentOpts } = {}) {
       return agent.callSkill('stoop', opId, args);
     }
     if (appOrigin === 'folio') {
-      const realOp = opId === 'briefSummary' ? 'folio_briefSummary' : opId;
-      return agent.callSkill('household', realOp, args);
+      // Post-slice-4: folio is the dedicated browser folio agent
+      // (real shareFolder cap-token + the other web-only skills).
+      return agent.callSkill('folio', opId, args);
     }
     if (appOrigin === 'calendar') {
       return agent.callSkill('household', `calendar_${opId}`, args);
