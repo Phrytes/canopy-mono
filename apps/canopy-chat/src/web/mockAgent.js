@@ -109,6 +109,81 @@ export const mockTasksManifest = {
         chat: { hint: 'snapshot a task for embedding' },
       },
     },
+    /**
+     * v0.7.cc — `/crew-new <name> --kind=<household|project|team|...>`.
+     * Mirrors tasks-v0 V2's provisionMyCrew.  Returns a crew id +
+     * suggested next ops (invite a member, add the first task).
+     */
+    {
+      id:    'provisionMyCrew', verb: 'add',
+      params: [
+        { name: 'name', kind: 'string', required: true },
+        { name: 'kind', kind: 'enum',
+          of: ['household', 'project', 'team', 'friends', 'maintenance'],
+          required: false },
+      ],
+      surfaces: {
+        slash: { command: '/crew-new', body: 'flags' },
+        chat:  { reply: 'text', hint: 'provision a new crew' },
+      },
+    },
+    /**
+     * v0.7.cc — `/submit <id> --note=<text>` — submit a claimed task
+     * for DoD (definition-of-done) review by the crew approver.
+     */
+    {
+      id:    'submitTask', verb: 'submit',
+      appliesTo: { type: 'task', state: ['claimed'] },
+      params: [
+        { name: 'id',   kind: 'string', required: true,
+          pickerSource: { listOp: 'listMine' } },
+        { name: 'note', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/submit', body: 'flags' },
+        chat:  { reply: 'text', hint: 'submit a task for review (DoD gate)' },
+      },
+    },
+    /**
+     * v0.7.cc — `/approve <id>` — approver action on a submitted task.
+     */
+    {
+      id:    'approveTask', verb: 'approve',
+      appliesTo: { type: 'task', state: ['submitted'] },
+      params: [{ name: 'id', kind: 'string', required: true }],
+      surfaces: {
+        slash: { command: '/approve' },
+        chat:  { reply: 'text', hint: 'approve a submitted task' },
+      },
+    },
+    /**
+     * v0.7.cc — `/reject <id> --reason=<text>` — approver rejection;
+     * task returns to claimed state.
+     */
+    {
+      id:    'rejectTask', verb: 'reject',
+      appliesTo: { type: 'task', state: ['submitted'] },
+      params: [
+        { name: 'id',     kind: 'string', required: true },
+        { name: 'reason', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/reject', body: 'flags' },
+        chat:  { reply: 'text', hint: 'reject a submitted task' },
+      },
+    },
+    /**
+     * v0.7.cc — `/inbox` — list mentions / pending review items for
+     * the current user.  Mirrors tasks-v0's in-app inbox.
+     */
+    {
+      id:    'myInbox', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/inbox' },
+        chat:  { reply: 'list', hint: 'list mentions + items needing my attention' },
+      },
+    },
   ],
   views: [{ id: 'open', title: 'Open tasks', type: 'task' }],
 };
@@ -141,6 +216,34 @@ export const mockStoopManifest = {
             { opId: 'listFeed' },
           ],
         },
+      },
+    },
+    /**
+     * v0.7.cc — `/stoop-profile` — stoop's per-buurt profile (handle +
+     * displayName + reveals).  Mirrors DEMO.md §2.
+     */
+    {
+      id:    'getStoopProfile', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/stoop-profile' },
+        chat:  { reply: 'record', hint: 'show your stoop profile (handle + reveals)' },
+      },
+    },
+    /**
+     * v0.7.cc — `/reveal <peer> <on|off>` — flip the local Reveal
+     * setting for a peer (DEMO.md §2 connection accept).  Bilateral —
+     * the peer must also flip on their side for full reveal.
+     */
+    {
+      id:    'revealPeer', verb: 'add',
+      params: [
+        { name: 'peer',   kind: 'string', required: true },
+        { name: 'action', kind: 'enum', of: ['on', 'off'], required: false },
+      ],
+      surfaces: {
+        slash: { command: '/reveal', body: 'flags' },
+        chat:  { reply: 'text', hint: 'reveal (or hide) a peer\'s real name' },
       },
     },
   ],
@@ -241,6 +344,19 @@ export const mockFolioManifest = {
         chat: { hint: 'save a shared file to your own pod' },
       },
     },
+    /**
+     * v0.7.cc — `/folio-status` — record reply: last sync, conflict
+     * count, current sharing.  Mirrors `bin/folio status`.
+     */
+    {
+      id:    'folioStatus', verb: 'list',
+      params: [],
+      runtime: 'browser',
+      surfaces: {
+        slash: { command: '/folio-status' },
+        chat:  { reply: 'record', hint: 'show folio sync status' },
+      },
+    },
   ],
   views: [
     { id: 'notes', title: 'Notes', type: 'note' },
@@ -313,6 +429,54 @@ export const mockHouseholdManifest = {
             { opId: 'listOpen' },   // same-app follow-up
           ],
         },
+      },
+    },
+    /**
+     * v0.7.cc — `/add-chore <label>` — add a new chore.  Mirrors the
+     * native household app's `addItem`; in canopy-chat command-first
+     * shape it's an explicit verb (the LLM-driven NL path lands in v0.8).
+     */
+    {
+      id:    'addChore', verb: 'add',
+      params: [{ name: 'label', kind: 'string', required: true }],
+      surfaces: {
+        slash: { command: '/add-chore' },
+        chat:  { reply: 'text', hint: 'add a new chore' },
+      },
+    },
+    /**
+     * v0.7.cc — `/nudge <peer> [<chore>]` — nudge a peer about a
+     * pending chore.  Native app fires the nudge via the daily-digest
+     * scheduler; chat-side this is an explicit verb.
+     */
+    {
+      id:    'nudgePeer', verb: 'add',
+      params: [
+        { name: 'peer',  kind: 'string', required: true },
+        { name: 'chore', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/nudge', body: 'flags' },
+        chat:  { reply: 'text', hint: 'nudge a peer about a chore' },
+      },
+    },
+    /**
+     * v0.7.cc — `/remove-chore <id-or-label>` — destructive (Q27).
+     * Two-step: first call returns a confirm button; second call with
+     * the `--confirm` flag actually removes.
+     */
+    {
+      id:    'removeChore', verb: 'remove',
+      params: [
+        {
+          name: 'choreId', kind: 'string', required: true,
+          pickerSource: { listOp: 'listOpen' },
+        },
+        { name: 'confirm', kind: 'boolean', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/remove-chore' },
+        chat:  { reply: 'text', hint: 'remove a chore (asks to confirm)' },
       },
     },
     /**

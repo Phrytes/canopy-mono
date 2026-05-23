@@ -313,6 +313,73 @@ export async function createRealHouseholdAgent(opts = {}) {
     })];
   });
 
+  /* ─── v0.7.cc — household: add-chore / nudge / remove-chore ─── */
+
+  hostAgent.register('addChore', async ({ parts }) => {
+    const args = parts?.[0]?.data ?? {};
+    const label = String(args.label ?? '').trim();
+    if (!label) return [DataPart({ ok: false, error: 'label required' })];
+    const id = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    chores.push({ id, label, type: 'chore', state: 'open' });
+    publishEvent({
+      app: 'household', type: 'item-changed',
+      actor: 'webid:local-demo-user',
+      itemRef: { app: 'household', type: 'chore', id },
+      payload: { message: `✓ Added chore: ${label}` },
+    });
+    return [DataPart({
+      ok: true, message: `✓ Added chore: ${label}`,
+      itemId: id, _sync: simulateSync(),
+    })];
+  });
+
+  hostAgent.register('nudgePeer', async ({ parts }) => {
+    const args = parts?.[0]?.data ?? {};
+    const peer  = String(args.peer  ?? '').trim();
+    const chore = args.chore ? String(args.chore).trim() : null;
+    if (!peer) return [DataPart({ ok: false, error: 'peer required' })];
+    const msg = chore
+      ? `Hey ${peer}, friendly nudge about: ${chore}`
+      : `Hey ${peer}, friendly nudge about the open chores`;
+    publishEvent({
+      app: 'household', type: 'notification',
+      actor: 'webid:local-demo-user',
+      itemRef: chore ? { app: 'household', type: 'chore', id: chore } : null,
+      payload: { message: msg, target: peer },
+    });
+    return [DataPart({
+      ok: true, message: `📣 Nudged ${peer}${chore ? ` about "${chore}"` : ''}.`,
+    })];
+  });
+
+  hostAgent.register('removeChore', async ({ parts }) => {
+    const args = parts?.[0]?.data ?? {};
+    const id = args?.choreId;
+    const target = chores.find((c) => c.id === id);
+    if (!target) return [DataPart({ ok: false, error: `No chore with id "${id}".` })];
+    // Q27 destructive — two-step confirm.  Bare call returns a
+    // confirmation prompt; --confirm=true actually removes.
+    if (!args.confirm) {
+      return [DataPart({
+        ok: true,
+        message: `⚠ Remove chore "${target.label}"?  Re-run with --confirm=true to proceed.`,
+        confirmRequired: true,
+        itemId: target.id,
+      })];
+    }
+    chores = chores.filter((c) => c.id !== id);
+    publishEvent({
+      app: 'household', type: 'item-changed',
+      actor: 'webid:local-demo-user',
+      itemRef: { app: 'household', type: 'chore', id: target.id },
+      payload: { message: `🗑 Removed: ${target.label}` },
+    });
+    return [DataPart({
+      ok: true, message: `🗑 Removed: ${target.label}`,
+      itemId: target.id, _sync: simulateSync(),
+    })];
+  });
+
   // v0.7.5 — searchChores: text search across cached chores.
   hostAgent.register('searchChores', async ({ parts }) => {
     const q = String(parts?.[0]?.data?.query ?? '').toLowerCase();
@@ -449,6 +516,110 @@ export async function createRealHouseholdAgent(opts = {}) {
     })];
   });
 
+  /* ─── v0.7.cc — tasks-v0: crew / DoD / inbox ─── */
+
+  // In-memory crew + inbox state.  Real tasks-v0 uses crewConfig +
+  // local-store + agent-registry; the mock-real here is just enough
+  // for the cross-app journeys to verify the chat-shell wiring.
+  const crews = [];   // [{id, name, kind, ownerWebid}]
+  const inbox = [];   // [{id, kind, message, ts, itemRef?}]
+
+  hostAgent.register('provisionMyCrew', async ({ parts }) => {
+    const args = parts?.[0]?.data ?? {};
+    const name = String(args.name ?? '').trim();
+    const kind = String(args.kind ?? 'household');
+    if (!name) return [DataPart({ ok: false, error: 'name required' })];
+    const id = `crew-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    crews.push({ id, name, kind, ownerWebid: 'webid:local-demo-user' });
+    return [DataPart({
+      ok: true,
+      message: `✓ Crew "${name}" (${kind}) provisioned.  id=${id}`,
+      crewId: id,
+      _sync:  simulateSync(),
+    })];
+  });
+
+  hostAgent.register('submitTask', async ({ parts }) => {
+    const args = parts?.[0]?.data ?? {};
+    const target = tasks.find((t) => t.id === args.id);
+    if (!target) return [DataPart({ ok: false, error: `No task with id "${args.id}".` })];
+    if (target.state !== 'claimed') {
+      return [DataPart({ ok: false, error: `Task "${target.text}" must be claimed before submit (state=${target.state}).` })];
+    }
+    target.state = 'submitted';
+    target.submittedNote = args.note ?? null;
+    // Notify approver via inbox.
+    inbox.push({
+      id: `mention-${target.id}-${Date.now().toString(36)}`,
+      kind: 'review-needed', ts: Date.now(),
+      message: `${target.text} submitted for review${args.note ? ` ("${args.note}")` : ''}`,
+      itemRef: { app: 'tasks-v0', type: 'task', id: target.id },
+    });
+    publishEvent({
+      app: 'tasks-v0', type: 'item-changed',
+      itemRef: { app: 'tasks-v0', type: 'task', id: target.id },
+      payload: { message: `📩 ${target.text} submitted for review` },
+    });
+    return [DataPart({
+      ok: true,
+      message: `📩 Submitted "${target.text}" for review.`,
+      itemId: target.id, _sync: simulateSync(),
+    })];
+  });
+
+  hostAgent.register('approveTask', async ({ parts }) => {
+    const args = parts?.[0]?.data ?? {};
+    const target = tasks.find((t) => t.id === args.id);
+    if (!target) return [DataPart({ ok: false, error: `No task with id "${args.id}".` })];
+    if (target.state !== 'submitted') {
+      return [DataPart({ ok: false, error: `Task "${target.text}" must be submitted before approve (state=${target.state}).` })];
+    }
+    target.state = 'done';
+    publishEvent({
+      app: 'tasks-v0', type: 'item-changed',
+      itemRef: { app: 'tasks-v0', type: 'task', id: target.id },
+      payload: { message: `✅ ${target.text} approved` },
+    });
+    return [DataPart({
+      ok: true, message: `✅ Approved: ${target.text}`,
+      itemId: target.id, _sync: simulateSync(),
+    })];
+  });
+
+  hostAgent.register('rejectTask', async ({ parts }) => {
+    const args = parts?.[0]?.data ?? {};
+    const target = tasks.find((t) => t.id === args.id);
+    if (!target) return [DataPart({ ok: false, error: `No task with id "${args.id}".` })];
+    if (target.state !== 'submitted') {
+      return [DataPart({ ok: false, error: `Task "${target.text}" must be submitted before reject (state=${target.state}).` })];
+    }
+    target.state = 'claimed';
+    target.rejectReason = args.reason ?? null;
+    publishEvent({
+      app: 'tasks-v0', type: 'item-changed',
+      itemRef: { app: 'tasks-v0', type: 'task', id: target.id },
+      payload: { message: `↩ ${target.text} rejected${args.reason ? `: ${args.reason}` : ''}` },
+    });
+    return [DataPart({
+      ok: true,
+      message: `↩ Rejected: ${target.text}${args.reason ? ` — ${args.reason}` : ''}`,
+      itemId: target.id, _sync: simulateSync(),
+    })];
+  });
+
+  hostAgent.register('myInbox', async () => {
+    return [DataPart({
+      items: inbox.map((entry) => ({
+        id:    entry.id,
+        label: entry.message,
+        type:  entry.kind,
+        ts:    entry.ts,
+        itemRef: entry.itemRef ?? null,
+      })),
+      _sync: simulateSync(),
+    })];
+  });
+
   /* ─────────── v0.7.3 — stoop real skills ─────────── */
   const SEED_POSTS = [
     { id: 'p-1', label: 'Anne needs help moving a couch',   state: 'open',   actor: 'webid:anne' },
@@ -497,6 +668,43 @@ export async function createRealHouseholdAgent(opts = {}) {
     return [DataPart({
       items:   open.slice(0, 3).map((p) => ({ id: p.id, label: p.label })),
       message: `${open.length} buurt request${open.length === 1 ? '' : 's'}`,
+    })];
+  });
+
+  /* ─── v0.7.cc — stoop: profile + reveals ─── */
+
+  // In-memory reveal state (per-buurt + per-peer).  Same shape as
+  // packages/identity-resolver/src/Reveals.js but local to the
+  // mock-real for the demo.
+  const stoopReveals = new Map();   // peerKey → boolean
+
+  hostAgent.register('getStoopProfile', async () => {
+    return [DataPart({
+      title:        'Stoop profile',
+      handle:       'frits-westend-42',
+      displayName:  'Frits',
+      buurt:        'Oosterpoort',
+      revealsCount: stoopReveals.size,
+      muteCount:    0,
+    })];
+  });
+
+  hostAgent.register('revealPeer', async ({ parts }) => {
+    const args = parts?.[0]?.data ?? {};
+    const peer   = String(args.peer ?? '').trim();
+    const action = String(args.action ?? 'on').toLowerCase();
+    if (!peer) return [DataPart({ ok: false, error: 'peer required' })];
+    if (action !== 'on' && action !== 'off') {
+      return [DataPart({ ok: false, error: 'action must be on or off' })];
+    }
+    if (action === 'on') stoopReveals.set(peer, true);
+    else                 stoopReveals.delete(peer);
+    return [DataPart({
+      ok: true,
+      message: action === 'on'
+        ? `🔓 Reveal flipped on for ${peer}. (Bilateral — they must flip on their side too.)`
+        : `🔒 Reveal flipped off for ${peer}.`,
+      peer, action,
     })];
   });
 
@@ -609,6 +817,21 @@ export async function createRealHouseholdAgent(opts = {}) {
     return [DataPart({
       count: files.length,
       label: `file${files.length === 1 ? '' : 's'} in folio`,
+    })];
+  });
+
+  /* ─── v0.7.cc — folio status (record reply) ─── */
+
+  hostAgent.register('folioStatus', async () => {
+    const synced = files.filter((f) => f.state === 'synced').length;
+    const conflicted = files.filter((f) => f.state === 'conflict').length;
+    return [DataPart({
+      title:        'Folio sync status',
+      lastSync:     new Date().toISOString(),
+      fileCount:    files.length,
+      syncedCount:  synced,
+      conflictCount: conflicted,
+      sharedFolders: 0,
     })];
   });
 

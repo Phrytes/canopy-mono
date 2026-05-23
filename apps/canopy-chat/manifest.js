@@ -57,6 +57,28 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `/help-with <post-id>` — v0.7.cc.  Spawn (or activate) a chat
+     * thread whose filter targets a specific stoop post.  The user
+     * who tapped "Ik help" on Anne's post ends up in a private
+     * thread on that post — DEMO.md §1.  Chat-shell builtin (no
+     * stoop-side skill needed: filters on itemRef.id).
+     */
+    {
+      id:    'help-with',
+      verb:  'add',
+      params: [
+        { name: 'postId', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/help-with' },
+        chat:  {
+          reply: 'text',
+          hint:  'open a private thread on a stoop post',
+        },
+      },
+    },
+
+    /**
      * `/threads` — list every chat thread in the workspace.
      */
     {

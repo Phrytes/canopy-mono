@@ -83,6 +83,7 @@ export function createLocalBuiltins({
     unmute:             async (args) => unmuteHandler(args, { agent, t }),
     muted:              async (args) => mutedHandler(args, { agent, t }),
     'audit-tail':       async (args) => auditTailHandler(args, { agent, t }),
+    'help-with':        async (args) => helpWithPost(args, { threadStore, setActive, t }),
     signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
     'reset-thread': async () => {
       // v0.7.P1-followup — clear the active thread's messages.
@@ -564,6 +565,34 @@ async function auditTailHandler(args, { agent, t }) {
     lines.push(`  ${when}  ${e.event}${subj}`);
   }
   return { message: lines.join('\n') };
+}
+
+/**
+ * `/help-with <post-id>` — v0.7.cc.  Open (or activate) a thread
+ * filtered on a stoop post.  Mirrors stoop's "Ik help" UX.  Pure
+ * chat-shell: no stoop-side skill needed; filter targets the post
+ * via itemRef.id so any future event referencing that post lands
+ * in this thread.
+ */
+async function helpWithPost(args, { threadStore, setActive, t }) {
+  const postId = String(args?.postId ?? args?._match ?? '').trim();
+  if (!postId) return { ok: false, error: t('helpWith.no_post') };
+  if (!threadStore) return { ok: false, error: t('helpWith.no_store') };
+  const id = `help-${postId}`;
+  let thread = threadStore.getThread?.(id);
+  if (!thread) {
+    thread = threadStore.createThread({
+      id,
+      name: `Help with ${postId}`,
+      filter: { itemRefs: [{ app: 'stoop', type: 'post', id: postId }] },
+      permissions: { allowCommands: true },
+    });
+  }
+  if (typeof setActive === 'function') setActive(id);
+  return {
+    message: t('helpWith.opened', { postId, threadId: id }),
+    threadId: id,
+  };
 }
 
 /**
