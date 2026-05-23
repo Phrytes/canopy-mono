@@ -554,6 +554,68 @@ SecurityLayer + auto-HI + rotation manually.  A single missed
 Safety bugs slipped through silently.  The factory makes those
 wirings the default and surfaces opt-outs in code review.
 
+### Migration recipe (for the next cross-peer app)
+
+The concrete steps when adopting `@canopy/secure-agent` in an
+existing app, or wiring a new one:
+
+1. **Add the dep.**  In `apps/<app>/package.json`:
+   ```json
+   "@canopy/secure-agent": "workspace:*"
+   ```
+   Then `pnpm --filter <app> install`.
+
+2. **Build the cross-peer agent via the factory.**  In whichever
+   file currently constructs the Agent + transport (typically
+   `src/web/realAgent.js` or equivalent boot file):
+   ```js
+   import { createSecureAgent } from '@canopy/secure-agent';
+
+   const sa = await createSecureAgent({
+     bus,                                      // share with in-process agents
+     identityVaultPrefix: '<app>-id:',
+     muteListVaultKey:    '<app>-mute',
+     auditLog:            { vaultKey: '<app>-audit' },
+     // ... add opts from the checklist as the app's needs grow
+   });
+   const chatAgent = sa.agent;
+   ```
+   Pass `opts.bus` from a shared `InternalBus` so the factory-built
+   agent can talk to other in-process agents (e.g. an app's
+   `hostAgent`).  Otherwise the factory builds its own siloed bus.
+
+3. **Delegate existing controller methods to `sa.*`.**  Keep the
+   external surface the app's UI consumes (e.g. `sendPeerMessage`,
+   `rotateChatIdentity`, `securityStatus`); rewrite their bodies as
+   thin pass-throughs:
+   ```js
+   sendPeerMessage(addr, payload) { return sa.peer.sendTo(addr, payload); }
+   rotateChatIdentity(opts)       { return sa.rotateIdentity(opts); }
+   securityStatus()               { return sa.securityStatus(); }
+   ```
+   This keeps the diff small + the UI untouched.  Late-bind
+   `nknLib` / `onPeerMessage` via `sa.peer.connect({ nknLib, onPeerMessage })`
+   when the CDN script loads.
+
+4. **Surface the new ops in the manifest + slash commands.**  Add
+   `/mute`, `/unmute`, `/muted`, `/audit-tail` (+ extend
+   `/security-status` to report the new wired primitives).  See
+   `apps/canopy-chat/manifest.js` and
+   `apps/canopy-chat/src/web/localBuiltins.js` for the reference
+   implementation.
+
+5. **Copy the journey template + adapt.**  Take
+   `apps/canopy-chat/test/journeys-security.test.js` as a starting
+   point — at minimum verify mute persistence, audit autoLog,
+   identity rotation, and `/security-status` reports every wired
+   primitive.  Add app-specific seams (e.g. file-transfer apps
+   should test that rate-limit doesn't choke legitimate bursts).
+
+Done in a single PR per app — the canopy-chat reference adoption
+(`779190c` + `a1ccb14` + `600e751`) is ~−60 LOC in `realAgent.js`,
++11 new tests, and unlocks every safety primitive behind a
+checkbox.
+
 See `Project Files/canopy-chat/security-roadmap-2026-05-23.md` for
 the full per-slice rationale and `packages/secure-agent/README.md`
 for the per-opt API.
