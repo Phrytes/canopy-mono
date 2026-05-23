@@ -6,55 +6,56 @@
   "type": "module",
   "main": "src/index.js",
   "exports": {
-    ".":                            "./src/index.js",
-    "./lib/geo":                    "./src/lib/geo.js",
-    "./lib/podPathMap":             "./src/lib/podPathMap.js",
+    ".": "./src/index.js",
+    "./lib/geo": "./src/lib/geo.js",
+    "./lib/podPathMap": "./src/lib/podPathMap.js",
     "./lib/existingPodProvisioner": "./src/lib/existingPodProvisioner.js",
-    "./lib/derivePodRoot":          "./src/lib/derivePodRoot.js",
-    "./lib/attachPodToBundle":      "./src/lib/attachPodToBundle.js",
-    "./locales/en":                 "./locales/en.json",
-    "./locales/nl":                 "./locales/nl.json"
+    "./lib/derivePodRoot": "./src/lib/derivePodRoot.js",
+    "./lib/attachPodToBundle": "./src/lib/attachPodToBundle.js",
+    "./locales/en": "./locales/en.json",
+    "./locales/nl": "./locales/nl.json"
   },
   "bin": {
-    "stoop-ui":      "bin/stoop-ui.js",
+    "stoop-ui": "bin/stoop-ui.js",
     "stoop-testbed": "bin/stoop-testbed.js",
-    "stoop-web":     "bin/stoop-web.js"
+    "stoop-web": "bin/stoop-web.js"
   },
   "scripts": {
-    "test":       "vitest run",
+    "test": "vitest run",
     "test:watch": "vitest",
-    "ui":         "node bin/stoop-ui.js",
-    "testbed":    "node bin/stoop-testbed.js",
-    "web":        "node bin/stoop-web.js"
+    "ui": "node bin/stoop-ui.js",
+    "testbed": "node bin/stoop-testbed.js",
+    "web": "node bin/stoop-web.js"
   },
   "dependencies": {
-    "@canopy/app-manifest":      "file:../../packages/app-manifest",
-    "@canopy/core":              "file:../../packages/core",
-    "@canopy/relay":             "file:../../packages/relay",
-    "@canopy/agent-registry":    "file:../../packages/agent-registry",
-    "@canopy/agent-ui":          "file:../../packages/agent-ui",
-    "@canopy/chat-agent":        "file:../../packages/chat-agent",
-    "@canopy/chat-p2p":          "file:../../packages/chat-p2p",
+    "@canopy/agent-registry": "file:../../packages/agent-registry",
+    "@canopy/agent-ui": "file:../../packages/agent-ui",
+    "@canopy/app-manifest": "file:../../packages/app-manifest",
+    "@canopy/chat-agent": "file:../../packages/chat-agent",
+    "@canopy/chat-p2p": "file:../../packages/chat-p2p",
+    "@canopy/core": "file:../../packages/core",
     "@canopy/identity-resolver": "file:../../packages/identity-resolver",
-    "@canopy/item-store":        "file:../../packages/item-store",
-    "@canopy/item-types":        "file:../../packages/item-types",
-    "@canopy/llm-client":        "file:../../packages/llm-client",
-    "@canopy/local-store":       "file:../../packages/local-store",
-    "@canopy/notifier":          "file:../../packages/notifier",
-    "@canopy/notify-envelope":   "file:../../packages/notify-envelope",
-    "@canopy/oidc-session":      "file:../../packages/oidc-session",
-    "@canopy/pod-onboarding":    "file:../../packages/pod-onboarding",
-    "@canopy/pod-routing":       "file:../../packages/pod-routing",
-    "@canopy/pseudo-pod":        "file:../../packages/pseudo-pod",
-    "@canopy/skill-match":       "file:../../packages/skill-match",
-    "i18next":                     "^23.15.0",
-    "tweetnacl":                   "^1.0.3"
+    "@canopy/item-store": "file:../../packages/item-store",
+    "@canopy/item-types": "file:../../packages/item-types",
+    "@canopy/llm-client": "file:../../packages/llm-client",
+    "@canopy/local-store": "file:../../packages/local-store",
+    "@canopy/notifier": "file:../../packages/notifier",
+    "@canopy/notify-envelope": "file:../../packages/notify-envelope",
+    "@canopy/oidc-session": "file:../../packages/oidc-session",
+    "@canopy/pod-onboarding": "file:../../packages/pod-onboarding",
+    "@canopy/pod-routing": "file:../../packages/pod-routing",
+    "@canopy/pseudo-pod": "file:../../packages/pseudo-pod",
+    "@canopy/relay": "file:../../packages/relay",
+    "@canopy/skill-match": "file:../../packages/skill-match",
+    "i18next": "^23.15.0",
+    "tweetnacl": "^1.0.3"
   },
   "optionalDependencies": {
     "@inrupt/solid-client-authn-node": "4.0.0",
-    "web-push":                        "^3.6.7"
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "fake-indexeddb": "^6.2.5",
     "vitest": "^2.1.0"
   }
 }

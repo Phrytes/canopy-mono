@@ -30,7 +30,12 @@ import { SkillMatch }                                 from '@canopy/skill-match'
 
 import { buildSkills } from './skills/index.js';
 import { CachingDataSource } from './lib/CachingDataSource.js';
-import { FilePersist }       from './lib/FilePersist.js';
+// FilePersist intentionally NOT statically imported — node-only deps
+// (node:fs/promises, node:path) would break browser bundles.  The
+// `persistPicker` module dynamically imports whichever adapter the
+// caller asked for (FilePersist for Node, IndexedDBPersist for
+// browser).  See `lib/persistPicker.js`.
+import { pickPersist }       from './lib/persistPicker.js';
 import { UsageMetrics }      from './lib/UsageMetrics.js';
 import { PushRegistry }      from './lib/PushRegistry.js';
 import { createProfile }     from './lib/InterestProfile.js';
@@ -109,6 +114,15 @@ export async function createNeighborhoodAgent({
    * persistence path via `bundle.cache.on('queued', ...)` etc.
    */
   persistPath,
+  /**
+   * v0.7.cc (2026-05-23): browser equivalent of `persistPath`.
+   * When `{dbName, storeName?}` is supplied + `indexedDB` is
+   * available, an `IndexedDBPersist` adapter is wired into
+   * `bundle.cache`.  Mutually exclusive with `persistPath` (pass
+   * exactly one).  Used by canopy-chat's browser composition
+   * (integration plan 2026-05-23, slice 3).
+   */
+  persistDb,
   notifier:      providedNotifier,
   reveals:       providedReveals,
   /**
@@ -212,13 +226,22 @@ export async function createNeighborhoodAgent({
   if (useCache) {
     // Phase 15 (Stoop V1, 2026-05-06): when `persistPath` is set,
     // load any prior cache state from disk + auto-flush every change
-    // to the same file via `FilePersist.scheduleSave`.  Without it,
-    // the cache stays in-memory only (legacy behaviour).
+    // via `FilePersist.scheduleSave`.  v0.7.cc (2026-05-23): same
+    // path now also accepts `persistDb` for browser composition
+    // (IndexedDBPersist).  Without either, the cache stays
+    // in-memory only (legacy behaviour).
     let initialMap;
-    if (typeof persistPath === 'string' && persistPath) {
-      const filePath = persistPath.endsWith('.json') ? persistPath : `${persistPath}/state.json`;
-      persist = new FilePersist({ path: filePath });
-      initialMap = await persist.load();
+    const persistArgs = (typeof persistPath === 'string' && persistPath)
+      ? { path: persistPath.endsWith('.json') ? persistPath : `${persistPath}/state.json` }
+      : (persistDb && typeof persistDb === 'object')
+        ? persistDb
+        : null;
+    if (persistArgs) {
+      const picked = await pickPersist(persistArgs);
+      if (picked) {
+        persist    = picked.persist;
+        initialMap = await persist.load();
+      }
     }
     cache = new CachingDataSource({
       inner:         itemBackend ?? null,

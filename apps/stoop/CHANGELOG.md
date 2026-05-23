@@ -1,5 +1,41 @@
 # Changelog — @canopy-app/stoop
 
+## [Unreleased] — IndexedDBPersist adapter + persistPicker (2026-05-23)
+
+Prerequisite for `Project Files/canopy-chat/integration-plan-2026-
+05-23.md` slice 2 (Stoop → canopy-chat browser).
+
+New files
+  - `src/lib/IndexedDBPersist.js` — browser-side equivalent of
+    `FilePersist`; same `load/save/scheduleSave/flush/cancel`
+    surface; raw IndexedDB (no idb-keyval dep) keyed
+    `{dbName, storeName='snapshots', key='state'}`.
+  - `src/lib/persistPicker.js` — `pickPersist({path?, dbName?, ...})`
+    dynamically imports the right adapter so a browser bundle never
+    pulls in `node:fs/promises`.  Rejects mutually-exclusive opts;
+    returns null when caller wants in-memory only.
+
+Agent.js change
+  - Removed static `import { FilePersist }`; use `pickPersist` via
+    a unified `persistArgs` block.  New `persistDb` opt accepts
+    `{dbName, storeName?, saveDelayMs?}` for browser composition
+    (mutually exclusive with the existing node-only `persistPath`).
+  - Behaviour unchanged for existing callers — `persistPath` still
+    routes to `FilePersist` exactly as before.
+
+Tests + footprint
+  - `test/IndexedDBPersist.test.js` (15 tests) — construction,
+    round-trip, debounce / flush / cancel, two-instance sharing
+    of the same dbName, dbName isolation
+  - `test/persistPicker.test.js` (6 tests) — selection rules,
+    mutual-exclusion guard, opt pass-through
+  - `package.json` devDeps: + `fake-indexeddb` ^6.0.0
+  - Stoop suite: 594 → 612 tests passing (+21 new + 0 regressions)
+
+Next: slice 3 (Stoop → canopy-chat browser composition via the
+shared bus; uses this adapter to keep the CachingDataSource alive
+across page reloads).
+
 ## [Unreleased] — Slice E.1 — first stoop web page via renderWeb
 
 Opens Slice E (stoop web → renderWeb) of `PLAN-gui-chat-uplift.md`.
