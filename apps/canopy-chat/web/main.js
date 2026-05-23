@@ -939,9 +939,11 @@ const callSkill = async (appOrigin, opId, args) => {
     return agent.callSkill(appOrigin, opId, args);
   }
   if (appOrigin === 'tasks-v0') {
-    // tasks-v0's brief skill is registered as 'tasks_briefSummary'.
-    const realOp = opId === 'briefSummary' ? 'tasks_briefSummary' : opId;
-    return agent.callSkill('household', realOp, args);
+    // Post-slice-1 (integration-plan 2026-05-23): tasks-v0 is the
+    // real crew agent composed in realAgent.js (110 real skills).
+    // realAgent.callSkill knows the bus address + the briefSummary
+    // / searchTasks / myInbox alias mappings.
+    return agent.callSkill('tasks-v0', opId, args);
   }
   if (appOrigin === 'stoop') {
     const realOp = opId === 'briefSummary' ? 'stoop_briefSummary' : opId;
