@@ -789,6 +789,32 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   white-space: nowrap;
 }
 
+/* Availability grid — 7x2 of clickable cells, click cycles state. */
+.cc-field-grid {
+  border-collapse: collapse;
+  margin: 0.3rem 0;
+  font-size: 0.85rem;
+}
+.cc-field-grid th, .cc-field-grid td {
+  padding: 0.15rem 0.3rem;
+  text-align: center;
+  border: 1px solid var(--fg-mute, #ddd);
+}
+.cc-field-grid th {
+  color: var(--fg-mute, #777);
+  font-weight: normal;
+}
+.cc-grid-cell {
+  min-width: 2rem;
+  padding: 0.25rem 0.4rem;
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.cc-grid-cell:hover { background: var(--bg-hover, #eef); }
+.cc-grid-cell:disabled { cursor: default; opacity: 0.5; }
+
 .cc-panel-empty {
   padding: 0.6rem 0.8rem;
   color: var(--fg-mute);
