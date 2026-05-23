@@ -327,6 +327,11 @@ async function connectPeerImpl() {
           console.error('[peer] calendar-rsvp failed', err));
         return;
       }
+      if (subtype === 'file-share' && payload?.file) {
+        handleFileShare(from, payload).catch((err) =>
+          console.error('[peer] file-share failed', err));
+        return;
+      }
 
       // Default: plain chat message → bubble in Main.
       const body = (payload && typeof payload === 'object' && typeof payload.body === 'string')
@@ -422,6 +427,59 @@ async function handleCalendarInvite(fromNknAddr, payload) {
     actor:   fromNknAddr,
     payload: { message: `📅 calendar invite: ${event.title}` },
   });
+}
+
+/**
+ * v0.7.P3f — handle incoming 'file-share' envelope.
+ *
+ * Renders a file-card embed in Main with the file's metadata
+ * (name, mime, size).  Bytes (base64) stay in the embed payload
+ * so [Download] can produce a Blob.  [Save to my pod] dispatches
+ * the existing folio.saveToMyPod skill.
+ */
+async function handleFileShare(fromNkn, payload) {
+  const f = payload.file;
+  if (!f?.id || !f?.name || !f?.dataB64) {
+    console.warn('[peer] file-share missing fields', payload);
+    return;
+  }
+  const main = store.getThread('main');
+  if (!main) return;
+  main.addShellMessage({
+    kind:           'embed-card',
+    messageId:      `file-share-${f.id}`,
+    threadId:       main.id,
+    lifecycleState: 'live',
+    embed: {
+      kind:      'file-card',
+      appOrigin: 'folio',
+      itemRef:   { app: 'folio', type: 'file', id: f.id },
+      snapshot:  {
+        id:      f.id,
+        type:    'file',
+        name:    f.name,
+        mime:    f.mime ?? 'application/octet-stream',
+        bytes:   f.size,
+        dataB64: f.dataB64,
+        local:   false,
+      },
+      issuedBy:  fromNkn,
+    },
+  });
+  if (store.getActiveThread()?.id === main.id) renderActiveStream();
+  publishEventRef({
+    app:     'folio',
+    type:    'notification',
+    actor:   fromNkn,
+    payload: { message: `📎 file shared: ${f.name} (${formatBytes(f.size)})` },
+  });
+}
+
+function formatBytes(n) {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '?';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /**

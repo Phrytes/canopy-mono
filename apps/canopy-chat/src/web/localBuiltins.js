@@ -76,6 +76,9 @@ export function createLocalBuiltins({
     'security-status':  async (args) => securityStatus(args, { agent, t }),
     'lookup-peer':      async (args) => lookupPeer(args, { lookupPeerNknByWebid, t }),
     'publish-nkn':      async (args) => publishNkn(args, { publishNknAddrToPod, t }),
+    'send-file':        async (args) => sendFile(args, {
+      agent, t, openFilePicker, lookupPeerNknByWebid,
+    }),
     signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
     'reset-thread': async () => {
       // v0.7.P1-followup — clear the active thread's messages.
@@ -299,6 +302,85 @@ async function meIdentity(_args, { agent, t }) {
     lines.push('NKN: not connected.  /peer-connect to enable cross-peer chat.');
   }
   return { message: lines.join('\n') };
+}
+
+/**
+ * `/send-file <peer>` — v0.7.P3f.  Opens the file picker, reads
+ * bytes as base64, sends as 'file-share' envelope.  Peer can be
+ * an NKN address ('app.<hex>') OR a webid (auto-resolved).
+ */
+async function sendFile(args, {
+  agent, t, openFilePicker, lookupPeerNknByWebid,
+}) {
+  const peerRaw = String(args?.peer ?? '').trim();
+  if (!peerRaw) return { ok: false, error: t('sendFile.no_peer') };
+  if (typeof openFilePicker !== 'function') {
+    return { ok: false, error: t('sendFile.no_picker') };
+  }
+  if (typeof agent?.sendPeerMessage !== 'function' || agent.peer?.status !== 'connected') {
+    return { ok: false, error: t('sendFile.not_connected') };
+  }
+
+  // Resolve peer if it looks like a webid.
+  let peerAddr = peerRaw;
+  if (peerRaw.startsWith('http') || peerRaw.startsWith('webid:')) {
+    if (typeof lookupPeerNknByWebid !== 'function') {
+      return { ok: false, error: t('sendFile.no_lookup') };
+    }
+    const resolved = await lookupPeerNknByWebid(peerRaw).catch(() => null);
+    if (!resolved) return { ok: false, error: t('sendFile.lookup_failed', { peer: peerRaw }) };
+    peerAddr = resolved;
+  }
+
+  // Open the file picker.
+  let file;
+  try {
+    file = await openFilePicker();
+    if (!file) return { ok: false, error: t('sendFile.cancelled') };
+  } catch (err) {
+    return { ok: false, error: t('sendFile.pick_failed', { error: err.message ?? String(err) }) };
+  }
+
+  // 512KB cap on inline base64 (NKN envelope size limit + crypto
+  // overhead).  Larger files defer to a future pod-URL flow.
+  const MAX_INLINE = 512 * 1024;
+  if (file.size > MAX_INLINE) {
+    return { ok: false, error: t('sendFile.too_large', { size: file.size, max: MAX_INLINE }) };
+  }
+
+  let dataB64;
+  try {
+    dataB64 = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload  = () => {
+        const dataUrl = String(fr.result ?? '');
+        const idx = dataUrl.indexOf(',');
+        resolve(idx > 0 ? dataUrl.slice(idx + 1) : dataUrl);
+      };
+      fr.onerror = () => reject(fr.error ?? new Error('FileReader failed'));
+      fr.readAsDataURL(file);
+    });
+  } catch (err) {
+    return { ok: false, error: t('sendFile.read_failed', { error: err.message ?? String(err) }) };
+  }
+
+  try {
+    await agent.sendPeerMessage(peerAddr, {
+      type:    'p2p-chat',
+      subtype: 'file-share',
+      file: {
+        id:    `file-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        name:  file.name,
+        mime:  file.type || 'application/octet-stream',
+        size:  file.size,
+        dataB64,
+      },
+      sentAt: Date.now(),
+    });
+    return { message: t('sendFile.sent', { name: file.name, size: file.size, peer: peerAddr }) };
+  } catch (err) {
+    return { ok: false, error: t('sendFile.send_failed', { error: err.message ?? String(err) }) };
+  }
 }
 
 /**

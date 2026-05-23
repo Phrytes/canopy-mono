@@ -97,6 +97,19 @@
   "security": {
     "unavailable":  { "text": "Crypto-status niet beschikbaar in deze build.",                  "doc": "Defensive." }
   },
+  "sendFile": {
+    "no_peer":        { "text": "Geef een peer op: /send-file <nkn-adres-of-webid>",   "doc": "missing." },
+    "no_picker":      { "text": "Bestandskiezer niet beschikbaar in deze build.",      "doc": "Defensive." },
+    "not_connected":  { "text": "NKN niet verbonden.  /peer-connect eerst.",            "doc": "Defensive." },
+    "no_lookup":      { "text": "Peer-opzoeken niet beschikbaar; log eerst in.",        "doc": "Defensive." },
+    "lookup_failed":  { "text": "Kon {{peer}} niet naar NKN-adres herleiden.",          "doc": "Lookup failure." },
+    "cancelled":      { "text": "Bestandskiezer geannuleerd.",                            "doc": "User dismissed." },
+    "pick_failed":    { "text": "Bestand kiezen mislukt: {{error}}",                     "doc": "Defensive." },
+    "too_large":      { "text": "Bestand te groot ({{size}}; max {{max}} voor inline).", "doc": "Cap." },
+    "read_failed":    { "text": "Bestand lezen mislukt: {{error}}",                       "doc": "Defensive." },
+    "sent":           { "text": "📤 verstuurd {{name}} ({{size}} bytes) → {{peer}}",     "doc": "Confirmation." },
+    "send_failed":    { "text": "Versturen mislukt: {{error}}",                            "doc": "Defensive." }
+  },
   "lookup": {
     "no_webid":     { "text": "Geef een webid op: /lookup-peer <webid>",                       "doc": "missing arg." },
     "unavailable":  { "text": "Peer-opzoeken niet beschikbaar (eerst inloggen op je pod).",   "doc": "Defensive." },
