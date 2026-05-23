@@ -1148,6 +1148,17 @@ export async function createRealHouseholdAgent(opts = {}) {
     // already consumes: peer.address / peer.status / peer.error.
     peer: sa.peer,
 
+    // A1 (2026-05-23) — second cross-peer transport: WebSocket relay.
+    // Symmetric to .peer; main.js + the /set-relay slash use these.
+    relay: sa.relay,
+    get transportMode() { return sa.transportMode; },
+    setTransportMode:    sa.setTransportMode,
+
+    // The slash handlers persist the relay URL + transport mode here.
+    // Expose the SA's identity-vault so /set-relay can stash both
+    // across reloads (key: cc-relay-url; cc-transport-mode).
+    vault: sa.identity?.vault ?? sa.vault ?? null,
+
     /**
      * Connect the NKN cross-peer transport.  Called by main.js when
      * nkn-sdk is loaded (window.nkn from CDN).  Late-binding wiring

@@ -404,6 +404,58 @@ export const canopyChatManifest = {
     },
 
     /**
+     * A1 (2026-05-23) — relay-server configuration.  canopy-chat uses
+     * NKN by default; a WebSocket relay can be added as a second
+     * cross-peer transport.  Frits 2026-05-23: "users must be able to
+     * choose either relay or nkn when connecting through internet."
+     *
+     *   /set-relay <ws://ip:port>   persist + connect to a relay
+     *   /set-relay --clear          disconnect + clear persisted URL
+     */
+    {
+      id:    'set-relay',
+      verb:  'submit',
+      params: [
+        { name: 'url',   kind: 'string',  required: false },
+        { name: 'clear', kind: 'boolean', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/set-relay', body: 'flags' },
+        chat:  { reply: 'text', hint: 'set the canopy relay URL (or --clear to drop it)' },
+      },
+    },
+
+    /**
+     * A1 — transport routing choice.  When both NKN + relay are
+     * connected, picks which one sendToPeer uses.
+     */
+    {
+      id:    'transport-mode',
+      verb:  'submit',
+      params: [
+        { name: 'mode', kind: 'enum', of: ['nkn', 'relay', 'both'], required: true },
+      ],
+      surfaces: {
+        slash: { command: '/transport-mode' },
+        chat:  { reply: 'text', hint: 'pick which transport handles peer sends' },
+      },
+    },
+
+    /**
+     * A1 — status reporter for both transports.  Shows NKN + relay
+     * state side-by-side: connected? address? URL? + current mode.
+     */
+    {
+      id:    'transports',
+      verb:  'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/transports' },
+        chat:  { reply: 'record', hint: 'show NKN + relay transport status' },
+      },
+    },
+
+    /**
      * `/mute <peer>` — mute a peer.  Accepts NKN address, pubKey,
      * webid, or stableId — when identityResolver is wired, mute
      * fans out across all aliases (one webid blocks every device).

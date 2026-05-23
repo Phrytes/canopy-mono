@@ -52,6 +52,7 @@ import {
   InternalBus,
   InternalTransport,
   NknTransport,
+  RelayTransport,
 } from '@canopy/core';
 
 import {
@@ -440,6 +441,17 @@ export async function createSecureAgent(opts = {}) {
   const peerState = { status: 'idle', address: null, error: null };
   const helloedPeers = new Set();
 
+  // ─── Relay state (WebSocket relay; stays idle until connectRelay) ───
+  // A1 (2026-05-23): second cross-peer transport.  Both transports
+  // share the same envelope handler (extracted into makeReceiveHandler
+  // below) + the same helloed-peers cache, so a peer that HI'd via
+  // NKN is also implicitly trusted on relay (same identity, same
+  // SecurityLayer).  sendToPeer picks the transport based on
+  // `transportMode` ('nkn' | 'relay' | 'both', default 'nkn').
+  let relayTransport = null;
+  const relayState = { status: 'idle', address: null, error: null, url: null };
+  let transportMode = opts.transportMode ?? 'nkn';
+
   // v0.7.cc — rolling buffer of recent peer traffic for /debug-dump.
   // Tiny memory footprint (last 10 envelopes); diagnostic-only.
   const RECENT_LIMIT = 10;
@@ -454,6 +466,73 @@ export async function createSecureAgent(opts = {}) {
   // can pass onPeerMessage to connect() OR set it via setPeerMessageHandler().
   let onPeerMessageFn = (typeof opts.onPeerMessage === 'function')
     ? opts.onPeerMessage : null;
+
+  /**
+   * Wire a transport's receive-handler.  Shared by connectPeer (NKN)
+   * and connectRelay (RelayTransport) so both apply the same
+   * mute/rate-limit gates + reciprocal-HI + onPeerMessage fanout.
+   *
+   * @param {object} tx  any Transport-shaped object (NknTransport,
+   *                     RelayTransport, ...) with .on('envelope', …)
+   *                     and .sendHello(addr, payload).
+   */
+  function makeReceiveHandler(tx) {
+    // Auto-wire SecurityLayer so every outbound envelope is signed
+    // + nacl.box encrypted with a per-peer shared secret.  HI stays
+    // plaintext-but-signed so peers can bootstrap.
+    tx.useSecurityLayer(agent.security);
+    // v0.7.S0 — bilateral HI auto-handshake on receive.  When we
+    // receive an envelope from a peer we haven't HI'd, send HI to
+    // them so THEIR SecurityLayer registers our pubKey too.
+    // Without this:
+    //   A → B HI    : B knows A's pubKey ✓
+    //   A → B OW    : encrypt requires B's pubKey at A — FAILS
+    //   B → A HI    : A knows B's pubKey ✓ (only on B's first send)
+    //   B → A OW    : encrypt requires A's pubKey at B — A already HI'd ✓
+    // Bilateral fix: when B receives A's HI, B auto-sends HI back.
+    // Now A also knows B's pubKey + can encrypt OW.
+    tx.on('envelope', async (env) => {
+      // S1 — drop envelopes from muted peers BEFORE any further
+      // bookkeeping (no reciprocal HI, no onPeerMessage fire).
+      // S4 — fanout the check across resolver-known aliases.
+      if (await isPeerMuted(env?._from)) return;
+      // S7 — rate-limit drop.  Over-quota peers are silently
+      // ignored at the receive boundary (no reciprocal HI either —
+      // we don't want them to make us spam them in return).
+      if (rateLimiter && !rateLimiter.check(env?._from)) return;
+      // v0.7.cc — record for /debug-dump.  Size is the JSON-
+      // serialised length of the envelope; matches the wire bytes
+      // the transport actually received.
+      recordTraffic({
+        dir:     'recv',
+        from:    env?._from,
+        subtype: env?.payload?.subtype ?? env?.type ?? null,
+        size:    JSON.stringify(env ?? {}).length,
+      });
+      try {
+        if (!helloedPeers.has(env._from)) {
+          tx.sendHello(env._from, { pubKey: identity.pubKey })
+            .catch((err) => console.warn('[secure-agent] reciprocal HI failed', err));
+          helloedPeers.add(env._from);
+        }
+      } catch (err) {
+        console.warn('[secure-agent] reciprocal-HI bookkeeping failed', err);
+      }
+      if (typeof onPeerMessageFn === 'function') {
+        try {
+          onPeerMessageFn({
+            from:    env._from,
+            payload: env.payload,
+            ts:      env._ts ?? Date.now(),
+          });
+        } catch (err) {
+          if (typeof console !== 'undefined') {
+            console.error('[secure-agent] onPeerMessage threw', err);
+          }
+        }
+      }
+    });
+  }
 
   /**
    * Establish the cross-peer NKN transport, wired with SecurityLayer
@@ -481,66 +560,20 @@ export async function createSecureAgent(opts = {}) {
     peerState.status = 'connecting';
     try {
       const tx = new NknTransport({ identity, nknLib });
-      // Auto-wire SecurityLayer so every outbound envelope is signed
-      // + nacl.box encrypted with a per-peer shared secret.  HI stays
-      // plaintext-but-signed so peers can bootstrap.
-      tx.useSecurityLayer(agent.security);
-      // v0.7.S0 — bilateral HI auto-handshake on receive.  When we
-      // receive an envelope from a peer we haven't HI'd, send HI to
-      // them so THEIR SecurityLayer registers our pubKey too.
-      // Without this:
-      //   A → B HI    : B knows A's pubKey ✓
-      //   A → B OW    : encrypt requires B's pubKey at A — FAILS
-      //   B → A HI    : A knows B's pubKey ✓ (only on B's first send)
-      //   B → A OW    : encrypt requires A's pubKey at B — A already HI'd ✓
-      // Bilateral fix: when B receives A's HI, B auto-sends HI back.
-      // Now A also knows B's pubKey + can encrypt OW.
-      tx.on('envelope', async (env) => {
-        // S1 — drop envelopes from muted peers BEFORE any further
-        // bookkeeping (no reciprocal HI, no onPeerMessage fire).
-        // S4 — fanout the check across resolver-known aliases.
-        if (await isPeerMuted(env?._from)) return;
-        // S7 — rate-limit drop.  Over-quota peers are silently
-        // ignored at the receive boundary (no reciprocal HI either —
-        // we don't want them to make us spam them in return).
-        if (rateLimiter && !rateLimiter.check(env?._from)) return;
-        // v0.7.cc — record for /debug-dump.  Size is the JSON-
-        // serialised length of the envelope; matches the wire bytes
-        // the transport actually received.
-        recordTraffic({
-          dir:     'recv',
-          from:    env?._from,
-          subtype: env?.payload?.subtype ?? env?.type ?? null,
-          size:    JSON.stringify(env ?? {}).length,
-        });
-        try {
-          if (!helloedPeers.has(env._from)) {
-            tx.sendHello(env._from, { pubKey: identity.pubKey })
-              .catch((err) => console.warn('[secure-agent] reciprocal HI failed', err));
-            helloedPeers.add(env._from);
-          }
-        } catch (err) {
-          console.warn('[secure-agent] reciprocal-HI bookkeeping failed', err);
-        }
-        if (typeof onPeerMessageFn === 'function') {
-          try {
-            onPeerMessageFn({
-              from:    env._from,
-              payload: env.payload,
-              ts:      env._ts ?? Date.now(),
-            });
-          } catch (err) {
-            if (typeof console !== 'undefined') {
-              console.error('[secure-agent] onPeerMessage threw', err);
-            }
-          }
-        }
-      });
+      makeReceiveHandler(tx);
       await tx.connect();
       peerTransport     = tx;
       peerState.status  = 'connected';
       peerState.address = tx.address;
       peerState.error   = null;
+      // A1 NOTE: we deliberately do NOT call agent.addTransport('nkn', tx)
+      // here.  Agent.addTransport on an already-started agent re-wraps
+      // useSecurityLayer + setReceiveHandler, which breaks the wiring
+      // makeReceiveHandler() already set up.  secure-agent's
+      // sendToPeer routes directly via peerTransport/relayTransport so
+      // the Agent doesn't need to know about either transport.  If a
+      // future app wants Agent-level routing (e.g. RoutingStrategy
+      // picking transports per peer), this is the place to wire it.
       if (auditAutoLog) audit('peer.connect', tx.address);
       return { ...peerState };
     } catch (err) {
@@ -548,6 +581,69 @@ export async function createSecureAgent(opts = {}) {
       peerState.error  = err?.message ?? String(err);
       throw err;
     }
+  }
+
+  /**
+   * A1 (2026-05-23) — connect the optional RelayTransport (WebSocket
+   * relay).  Independent of NKN; either can be on alone, or both.
+   * sendToPeer() honours `transportMode` to pick which one routes
+   * outbound traffic; both transports always feed the same
+   * onPeerMessage receive handler.
+   *
+   * @param {object} callOpts
+   * @param {string} callOpts.relayUrl  ws:// or wss:// URL
+   */
+  async function connectRelay(callOpts = {}) {
+    const relayUrl = callOpts.relayUrl ?? opts.relayUrl;
+    if (callOpts.onPeerMessage) onPeerMessageFn = callOpts.onPeerMessage;
+    if (!relayUrl) {
+      throw new Error(
+        'createSecureAgent: connectRelay() called but no relayUrl provided.  ' +
+        'Pass relayUrl at factory time (opts.relayUrl) or call-time ' +
+        '(sa.relay.connect({relayUrl})).',
+      );
+    }
+    if (relayState.status === 'connected' || relayState.status === 'connecting') {
+      return { ...relayState };
+    }
+    relayState.status = 'connecting';
+    relayState.url    = relayUrl;
+    try {
+      const tx = new RelayTransport({ identity, relayUrl });
+      makeReceiveHandler(tx);
+      await tx.connect();
+      relayTransport     = tx;
+      relayState.status  = 'connected';
+      relayState.address = tx.address;
+      relayState.error   = null;
+      // Same NOTE as connectPeer: don't agent.addTransport here;
+      // sendToPeer routes via relayTransport directly.
+      if (auditAutoLog) audit('relay.connect', relayUrl);
+      return { ...relayState };
+    } catch (err) {
+      relayState.status = 'error';
+      relayState.error  = err?.message ?? String(err);
+      throw err;
+    }
+  }
+
+  async function disconnectRelay() {
+    if (relayTransport) {
+      try { await relayTransport.disconnect(); } catch { /* swallow */ }
+      try { agent.removeTransport?.('relay'); } catch { /* defensive */ }
+      relayTransport = null;
+    }
+    relayState.status = 'idle';
+    relayState.address = null;
+    relayState.url = null;
+    relayState.error = null;
+  }
+
+  function setTransportMode(mode) {
+    if (mode !== 'nkn' && mode !== 'relay' && mode !== 'both') {
+      throw new Error(`setTransportMode: invalid mode "${mode}"; expected nkn|relay|both`);
+    }
+    transportMode = mode;
   }
 
   /**
@@ -568,9 +664,32 @@ export async function createSecureAgent(opts = {}) {
    * apps (RN, slow networks) extend the wait; set to 0 to opt out
    * (fall back to old eager-send behavior).
    */
+  /**
+   * A1 — pick which transport to use for outbound sends based on the
+   * current transportMode.  Returns null if no suitable transport is
+   * connected.
+   *
+   *   'nkn'   — NknTransport only (current default; throws if NKN not connected)
+   *   'relay' — RelayTransport only (throws if relay not connected)
+   *   'both'  — prefer NKN; fall back to relay if NKN isn't connected.
+   *             (Doesn't broadcast on both — that would duplicate at
+   *             the receiver.)
+   */
+  function pickTransport() {
+    if (transportMode === 'nkn')   return peerTransport ?? null;
+    if (transportMode === 'relay') return relayTransport ?? null;
+    // 'both' — NKN preferred when connected (lower-friction in the V0
+    // demo), relay fallback otherwise.
+    return peerTransport ?? relayTransport ?? null;
+  }
+
   async function sendToPeer(addr, payload) {
-    if (!peerTransport) {
-      throw new Error('Peer transport not connected.  connect() first.');
+    const tx = pickTransport();
+    if (!tx) {
+      throw new Error(
+        `Peer transport not connected (mode=${transportMode}).  ` +
+        `Call sa.peer.connect() and/or sa.relay.connect() first.`,
+      );
     }
     // S1 + S4 — refuse to send to a muted peer (alias-aware).  Throws
     // (not silent) so the caller knows their intent didn't reach the
@@ -580,7 +699,7 @@ export async function createSecureAgent(opts = {}) {
     }
     if (!helloedPeers.has(addr)) {
       try {
-        await peerTransport.sendHello(addr, { pubKey: identity.pubKey });
+        await tx.sendHello(addr, { pubKey: identity.pubKey });
         helloedPeers.add(addr);
       } catch (err) {
         // Log + continue — sendOneWay may still succeed if the peer
@@ -617,7 +736,7 @@ export async function createSecureAgent(opts = {}) {
       subtype: payload?.subtype ?? payload?.type ?? null,
       size:    JSON.stringify(payload ?? {}).length,
     });
-    return peerTransport.sendOneWay(addr, payload);
+    return tx.sendOneWay(addr, payload);
   }
 
   /**
@@ -713,6 +832,19 @@ export async function createSecureAgent(opts = {}) {
       get address() { return peerState.address; },
       get error()   { return peerState.error;   },
     },
+    // A1 (2026-05-23) — second cross-peer transport: WebSocket relay.
+    // Independent of NKN; either or both can be active.  sa.sendToPeer
+    // honours `transportMode` (default 'nkn') to pick which routes.
+    relay: {
+      connect:    connectRelay,
+      disconnect: disconnectRelay,
+      get status()  { return relayState.status;  },
+      get address() { return relayState.address; },
+      get url()     { return relayState.url;     },
+      get error()   { return relayState.error;   },
+    },
+    get transportMode() { return transportMode; },
+    setTransportMode,
     rotateIdentity,
     securityStatus,
     shutdown,

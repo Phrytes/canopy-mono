@@ -1543,6 +1543,65 @@ describe('createSecureAgent — S8 PFS integration', () => {
   });
 });
 
+/* ─── A1 (2026-05-23) — transport-mode + relay surface ─── */
+
+describe('createSecureAgent — A1 multi-transport', () => {
+  it('exposes sa.relay with idle state by default', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    expect(sa.relay).toBeDefined();
+    expect(sa.relay.status).toBe('idle');
+    expect(sa.relay.address).toBeNull();
+    expect(sa.relay.url).toBeNull();
+    await sa.shutdown();
+  });
+
+  it('defaults transportMode to "nkn"', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    expect(sa.transportMode).toBe('nkn');
+    await sa.shutdown();
+  });
+
+  it('setTransportMode accepts nkn|relay|both, rejects others', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    sa.setTransportMode('relay');
+    expect(sa.transportMode).toBe('relay');
+    sa.setTransportMode('both');
+    expect(sa.transportMode).toBe('both');
+    sa.setTransportMode('nkn');
+    expect(sa.transportMode).toBe('nkn');
+    expect(() => sa.setTransportMode('bogus')).toThrow(/invalid mode/);
+    await sa.shutdown();
+  });
+
+  it('honours opts.transportMode at factory time', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      transportMode: 'both',
+    });
+    expect(sa.transportMode).toBe('both');
+    await sa.shutdown();
+  });
+
+  it('sendToPeer throws when no transport in current mode', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      transportMode: 'relay',  // relay is the only acceptable transport
+    });
+    // No relay connected → sendToPeer should throw, even though
+    // peerTransport (NKN) is also not connected (would be the same
+    // throw either way).
+    await expect(sa.peer.sendTo('peer-x', { type: 'test' }))
+      .rejects.toThrow(/Peer transport not connected.*mode=relay/);
+    await sa.shutdown();
+  });
+
+  it('relay.connect throws when no relayUrl provided', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    await expect(sa.relay.connect()).rejects.toThrow(/no relayUrl/);
+    await sa.shutdown();
+  });
+});
+
 /* ─── helpers ───────────────────────────────────────── */
 
 /**

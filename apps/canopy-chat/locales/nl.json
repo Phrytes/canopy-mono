@@ -224,5 +224,29 @@
       "trusted": { "text": "vertrouwd", "doc": "Vertrouwensniveau voor een volledig-vertrouwd contact. Stoop bewaart dit als 'vertrouwd' aan de pod-kant; chat-shell wisselt 'trusted' aan de UI-grens." },
       "none":    { "text": "geen",      "doc": "Geen vertrouwen ingesteld (gewist)." }
     }
+  },
+  "relay": {
+    "no_substrate":   { "text": "Relay-ondersteuning is niet aanwezig in deze build.",
+                        "doc": "/set-relay aangeroepen maar agent.relay ontbreekt." },
+    "url_required":   { "text": "Relay-URL vereist. Probeer /set-relay ws://jouw-host:poort of /set-relay --clear",
+                        "doc": "/set-relay zonder --url of --clear." },
+    "bad_url":        { "text": "Ongeldige relay-URL. Moet beginnen met ws:// of wss://",
+                        "doc": "/set-relay met een ongeldig URL-schema." },
+    "cleared":        { "text": "✓ Relay gewist. NKN blijft actief.",
+                        "doc": "/set-relay --clear is gelukt." },
+    "connected":      { "text": "✓ Relay verbonden: {{url}} (adres: {{address}})",
+                        "doc": "/set-relay is gelukt." },
+    "connect_failed": { "text": "Relay-verbinding mislukt: {{reason}}",
+                        "doc": "/set-relay ving een fout op van sa.relay.connect()." }
+  },
+  "transport": {
+    "no_substrate":  { "text": "Transport-modus-besturing niet aanwezig in deze build.",
+                       "doc": "/transport-mode of /transports aangeroepen maar agent.setTransportMode ontbreekt." },
+    "bad_mode":      { "text": "Ongeldige modus \"{{mode}}\". Kies nkn, relay of both.",
+                       "doc": "/transport-mode met een ongeldig argument." },
+    "mode_set":      { "text": "✓ Transport-modus ingesteld: {{mode}}. Uitgaande peer-berichten gaan nu via dit kanaal.",
+                       "doc": "/transport-mode is gelukt." },
+    "status_title":  { "text": "Transporten",
+                       "doc": "Titel voor het /transports record-antwoord." }
   }
 }
