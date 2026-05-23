@@ -306,6 +306,52 @@ canopy-chat browser composes the SHARED logic of each app; mobile
 canopy-chat (when the pivot happens, tasks #127-#131) composes the
 same shared logic PLUS the platform-extended substrates.
 
+## Slice-4 smoke findings (2026-05-23)
+
+Browser smoke after slice-4 ship (commit `c05ec75`) ran all 5 steps
+(household, tasks-v0, stoop, folio, cross-app) end-to-end in Firefox.
+**All slices integrate cleanly** — no wiring/catalog regressions.  The
+bundle needed four boot fixes (committed at `7846779`):
+optimizeDeps.exclude for `@canopy/core`, `fs.allow` reaching the
+monorepo root, expanded `oidcSession.js` shim for stoop's podSignIn,
+absolute-path `events` alias for transitive `node:events` imports;
+plus one manifest fix (`downloadFile` chat.reply: 'text').
+
+Smoke surfaced seven UX gaps — none block the integration, but they
+shape the next-best work and the mobile pivot's design.  Logged as
+tasks + included here so they're visible from the plan.
+
+| # | Where | Gap | Notes |
+|---|---|---|---|
+| #176 | chat-shell (pre-existing) | Mutation slash commands double-render the reply (one without _sync, one with).  Tests don't catch it (single runDispatch return). | Investigate the event-router subscription in main.js. |
+| #177 | dispatch resolver | Slash commands require raw item ids (`/done c-1`).  Should accept user-typed text (`/done dishwasher`) and fuzzy-resolve via the relevant pickerSource.listOp. | Cross-app — every mutation op with an id param. |
+| #178 | renderer | List-row buttons don't morph after dispatch (clicked [Claim] → still [Claim], should become [Mark complete]).  User must re-summon the list. | Needs the renderer to subscribe to item-changed events + patch the row in place, using manifest's `appliesTo.state` + verb declarations as the state-machine. |
+| #179 | mockStoopManifest | stoop's `listFeed` item rows have no `surfaces.ui.control: button` declarations — respondToItem / helpWith / markFulfilled are unreachable from the chat UI even though the real agent has them. | Same audit probably affects tasks-v0's [Submit] / [Approve] / [Reject] state-gated approver actions. |
+| #180 | manifest schema | Needs a `surfaces.page` slot (`{route, kind: 'side-panel' \| 'modal' \| 'screen'}`) for ops that belong in their own window (settings, private chat threads, app-specific dashboards).  Web → panel/modal; mobile → RN nav screen. | Aligns with [[app-manifest-convergence]]; coordinate with #128 (`@canopy/chat-nav` RN parallel). |
+| #181 | thread renderer | When a new thread is spawned from another (e.g. stoop /help-with), no "← back to <origin>" link.  threadStore already knows the relationship. | Add to renderThreadHeader. |
+| #182 | renderer | record-shape replies (/folio-status, /stoop-profile) + brief multi-section replies blend into the chat stream — users miss them.  Need stronger visual presence (card border, "Reply from <app>" chip, etc.). | Smoke surfaced this three times — high-confidence signal. |
+
+### Cross-app journeys these gaps motivate
+
+(For `cross-app-journey-coverage-2026-05-23.md` to absorb when the
+next journey-audit pass happens.)
+
+- **Claim → next-action loop** (#178): /mytasks → [Claim] (row morphs to [Mark complete]) → [Mark complete] (row morphs to [Submitted/Done]).  No re-summoning the list.
+- **Post → respond → private DM** (#179 + #180): /post → another peer sees it in /feed → clicks [Help with] → opens a new private chat thread → bilateral conversation → back link to /feed (#181).
+- **Settings round-trip** (#180): /settings → opens side-panel → tweak a preference → close → back to chat thread continues.
+- **Type-by-text everywhere** (#177): every existing CC-HH/TK/ST/FO test that uses an id-arg gets a sibling test using the human-readable text.
+
+### Smoke validates these design assumptions
+(All confirmed end-to-end in Firefox; this is what slices 1-4
+actually bought us.)
+
+- Real agents (tasks-v0 110-skill crew, stoop 110-skill NeighborhoodAgent, folio web subset) compose into canopy-chat's browser bundle in-process.
+- Per-app vault-prefix isolation works (cc-tasks-id, cc-stoop-id, cc-folio-id).
+- Adapter layer at the callSkill boundary keeps chat-shell shapes stable while real agents return their richer native shapes.
+- Pre-seed at boot makes the chat-shell demo-ready without extra clicks (4 tasks, 3 stoop posts, 3 folio files, handle + displayName).
+- The shared InternalBus routes between 4 agents (host + chat + tasksCrew + stoopAgent + folioAgent) without contention.
+- shareFolder issues a REAL `PodCapabilityToken` end-to-end (validated by CC-FO.2 + the chat-shell smoke).
+
 ## Decision points needing Frits's input
 
 | # | Question | My recommendation |
