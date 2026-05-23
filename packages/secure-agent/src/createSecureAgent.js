@@ -535,6 +535,20 @@ export async function createSecureAgent(opts = {}) {
   /**
    * Send an envelope to a peer.  Auto-HI on first contact so the
    * peer registers our pubKey + can decrypt the subsequent payload.
+   *
+   * Bilateral HI race fix (2026-05-23): the OW encrypt needs the
+   * PEER's pubKey at our SecurityLayer.  We get it via their HI
+   * envelope back to us — which is asynchronous.  Without waiting,
+   * the first send to a never-contacted peer fails with
+   * "No pubKey registered for recipient".  Solution: after sending
+   * our HI, poll agent.security.getPeerKey(addr) for up to
+   * `firstSendTimeoutMs` (default 5s) so the peer's bilateral HI
+   * has time to arrive.  Subsequent sends to the same peer skip
+   * the wait (helloedPeers cache).
+   *
+   * `firstSendTimeoutMs` opt at factory time lets transport-heavy
+   * apps (RN, slow networks) extend the wait; set to 0 to opt out
+   * (fall back to old eager-send behavior).
    */
   async function sendToPeer(addr, payload) {
     if (!peerTransport) {
@@ -555,6 +569,26 @@ export async function createSecureAgent(opts = {}) {
         // already has our pubKey from a previous session.
         if (typeof console !== 'undefined') {
           console.warn('[secure-agent] HI failed (continuing)', err.message ?? err);
+        }
+      }
+      // Wait for the peer's reciprocal HI to register their pubKey
+      // at our SecurityLayer.  Otherwise the OW encrypt below throws
+      // 'No pubKey registered for recipient'.
+      const waitMs = typeof opts.firstSendTimeoutMs === 'number'
+        ? opts.firstSendTimeoutMs : 5000;
+      if (waitMs > 0 && agent.security
+            && typeof agent.security.getPeerKey === 'function'
+            && !agent.security.getPeerKey(addr)) {
+        const start = Date.now();
+        while (Date.now() - start < waitMs) {
+          if (agent.security.getPeerKey(addr)) break;
+          await new Promise((r) => setTimeout(r, 100));
+        }
+        if (!agent.security.getPeerKey(addr)) {
+          throw new Error(
+            `secure-agent: peer "${addr}" did not respond with HI within ${waitMs}ms; ` +
+            `they may be offline.  Try again after they reconnect.`,
+          );
         }
       }
     }

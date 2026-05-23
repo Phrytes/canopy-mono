@@ -784,32 +784,50 @@ const localBuiltins = createLocalBuiltins({
   briefRunner: (opts) => runBrief({ catalog, callSkill, cache: briefCache, bypassCache: opts?.bypassCache }),
   findRunner:  (opts) => runFind({ catalog, callSkill, query: opts?.query }),
   openLogsPanel: () => openLogsPanel(),
-  // v0.7.13 — browser File API picker for /embed-file --pick.  Opens
-  // a hidden <input type="file"> programmatically + resolves with the
-  // selected File (or null if the user cancels).
+  // v0.7.13 — browser File API picker.  Opens a hidden
+  // <input type="file"> programmatically + resolves with the selected
+  // File (or null if the user cancels).
+  //
+  // 2026-05-23 bugfix — Frits hit "File picker cancelled" AFTER picking
+  // a file (Linux / large file).  Root cause: the focus fallback (used
+  // to detect "user dismissed dialog without picking") raced with the
+  // real `change` event on slow filesystems — 300ms wasn't long enough
+  // for change to win.
+  //
+  // Fix:
+  //   1. Prefer the modern `cancel` event (Chrome 113+, Safari 16.4+,
+  //      Firefox 91+) — fires ONLY on dismiss, never on success.
+  //   2. Keep the focus fallback for older browsers but extend the
+  //      wait + recheck `inp.files.length` so a slow-arriving change
+  //      doesn't lose the race.
   openFilePicker: () => new Promise((resolve) => {
     const inp = document.createElement('input');
     inp.type = 'file';
     inp.style.display = 'none';
     document.body.appendChild(inp);
     let settled = false;
-    inp.addEventListener('change', () => {
+    const cleanup = (result) => {
       if (settled) return;
       settled = true;
-      const file = inp.files?.[0] ?? null;
-      document.body.removeChild(inp);
-      resolve(file);
-    });
-    // Some browsers fire focus when the dialog closes via Cancel +
-    // never fire change.  Use focus as a fallback to resolve(null).
+      if (inp.parentNode) document.body.removeChild(inp);
+      resolve(result);
+    };
+    inp.addEventListener('change', () => cleanup(inp.files?.[0] ?? null));
+    // Modern signal — only fires on actual dismiss.
+    inp.addEventListener('cancel', () => cleanup(null));
+    // Legacy fallback — focus returns when the dialog closes (either
+    // way).  Wait 1500ms (vs. 300ms before) AND re-check inp.files
+    // so a slow-firing change event still wins.
     setTimeout(() => {
       window.addEventListener('focus', () => {
         setTimeout(() => {
           if (settled) return;
-          settled = true;
-          if (inp.parentNode) document.body.removeChild(inp);
-          resolve(null);
-        }, 300);
+          if ((inp.files?.length ?? 0) > 0) {
+            cleanup(inp.files[0]);
+          } else {
+            cleanup(null);
+          }
+        }, 1500);
       }, { once: true });
     }, 0);
     inp.click();
