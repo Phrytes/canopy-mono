@@ -24,7 +24,7 @@
     "./appRegistry": "./src/appRegistry.js",
     "./externalFlow": "./src/externalFlow.js",
     "./brief": "./src/brief.js",
-    "./find":  "./src/find.js",
+    "./find": "./src/find.js",
     "./eventLog": "./src/eventLog.js",
     "./forms": "./src/forms/buildFormSpec.js",
     "./storage/local": "./src/storage/local.js",
@@ -44,24 +44,25 @@
   },
   "dependencies": {
     "@canopy-app/calendar": "workspace:*",
-    "@canopy-app/folio":    "workspace:*",
-    "@canopy-app/stoop":    "workspace:*",
+    "@canopy-app/folio": "workspace:*",
+    "@canopy-app/stoop": "workspace:*",
     "@canopy-app/tasks-v0": "workspace:*",
     "@canopy/app-manifest": "workspace:*",
     "@canopy/core": "workspace:*",
     "@canopy/manifest-host": "workspace:*",
-    "@canopy/secure-agent":  "workspace:*",
+    "@canopy/secure-agent": "workspace:*",
     "@canopy/vault": "workspace:*",
-    "@inrupt/solid-client":               "^3.0.0",
+    "@inrupt/solid-client": "^3.0.0",
     "@inrupt/solid-client-authn-browser": "^2.4.0",
+    "chrono-node": "^2.7.0",
     "i18next": "^23.15.0",
-    "chrono-node": "^2.7.0"
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
-    "vitest": "^3.0.0",
-    "vite": "^5.4.0",
-    "happy-dom": "^15.0.0",
+    "events": "^3.3.0",
     "fake-indexeddb": "^6.0.0",
-    "events": "^3.3.0"
+    "happy-dom": "^15.0.0",
+    "vite": "^5.4.0",
+    "vitest": "^3.0.0"
   }
 }

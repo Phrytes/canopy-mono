@@ -168,6 +168,32 @@ mapper.  So Cluster C is realistically ~3 sessions counting #180.
 | **E5. Audit apps' design docs for English/Dutch mix** (e.g. "Holiday mode" alongside "stille modus") | 2 hours | Stoop docs mix freely.  **canopy-chat is English-first** — UI strings go through `t('stoop.holidayMode.label')` resolving to EN by default; NL is the secondary locale.  Don't take Dutch from design docs literally as UI copy. |
 | **E6. Locale audit of existing chat-shell surfaces** (do all current 221 keys actually get used? do all rendered strings get translated?) | 2 hours | Defensive — would surface gaps before they spread. |
 
+### Cluster H — multi-hop networking UX (NEW)
+
+Substrate exists but chat-shell has no surface:
+- `packages/core/src/routing/hopBridges.js` — bridge candidate selection
+- `packages/core/src/routing/callWithHop.js` — orchestrator
+- `packages/core/src/routing/ReachabilityTier.js` — 'direct' vs 'hop' tiers
+- stoop's `setContactFlag` skill manages per-contact `allowHopThrough`
+  (stoop-mobile's ContactScreen surfaces this already)
+
+User journeys this unlocks:
+- Reach a peer who isn't directly reachable (lift via Anne as relay)
+- See WHY a peer ping is slow ("via Karl, 2 hops")
+- Control "let others hop through me" globally + per-contact
+
+| Item | Cost | Notes |
+|---|---|---|
+| **H1. Per-contact `allowHopThrough` toggle** | 30 min | Wire setContactFlag for hopThrough as a [Allow hop] toggle on contact rows (after contact-card panel lands). |
+| **H2. Reachability-tier badge on peers** | 1 hour | When `/lookup-peer` resolves a peer, show ReachabilityTier ('direct' / 'via X' / 'unreachable') in the reply. |
+| **H3. Global "let others hop through me" setting** | 30 min | Single toggle in Settings; persists to vault. |
+| **H4. /reach-test <peer> with hop diagnostics** | 1 hour | Like /test-peer but reports the path taken + each hop's latency.  Useful for diagnosing offline contacts. |
+| **H5. Show hop-graph in /security-status** | 30 min | Add "Known bridges: 3" + a per-bridge row to the existing /security-status output. |
+
+**Total Cluster H: ~3-4 hours.**  Hopping is largely invisible UI work;
+the substrate already does the right thing, the chat just needs to
+surface the state + give users the toggles.
+
 ### Cluster F — admin actions (deferred per stoop manifest)
 
 These were deliberately deferred at the stoop manifest level (line

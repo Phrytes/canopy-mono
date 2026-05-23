@@ -743,6 +743,34 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   word-break: break-word;
 }
 .cc-field-boolean::before { content: ''; }
+
+/* QR field — used by /share-my-contact + /invite QR replies.
+   240x240 canvas centred + a copyable URL line below. */
+.cc-field-qr-canvas {
+  margin: 0.4rem 0;
+  border: 1px solid var(--fg-mute, #ccc);
+  border-radius: 4px;
+  padding: 6px;
+}
+.cc-field-qr-url {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.8rem;
+}
+.cc-field-qr-url code {
+  flex: 1 1 auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-all;
+  color: var(--fg-mute, #777);
+}
+.cc-field-qr-copy {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
 .cc-panel-empty {
   padding: 0.6rem 0.8rem;
   color: var(--fg-mute);

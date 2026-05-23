@@ -239,8 +239,24 @@ function extractRecordFields(payload) {
   return out;
 }
 
+/**
+ * QR-scheme URIs that the chat-shell renders as actual QR canvases.
+ * Apps return a `payload` string like `stoop-contact://...` from
+ * their QR-payload skills (getContactShareQr, getInviteQrPayload).
+ * The renderer detects the prefix here + dispatches to the QR canvas
+ * path in domAdapter.js's renderRecordPanel.
+ */
+const QR_URI_PREFIXES = [
+  'stoop-contact://',
+  'stoop-invite://',
+  'canopy-chat://',    // future use for chat-shell invites
+];
+
 function classifyFieldKind(v) {
-  if (typeof v === 'string')  return 'string';
+  if (typeof v === 'string') {
+    if (QR_URI_PREFIXES.some((p) => v.startsWith(p))) return 'qr';
+    return 'string';
+  }
   if (typeof v === 'number')  return 'number';
   if (typeof v === 'boolean') return 'boolean';
   if (Array.isArray(v))       return 'list';

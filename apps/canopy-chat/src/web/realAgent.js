@@ -719,6 +719,31 @@ export async function createRealHouseholdAgent(opts = {}) {
           ? Number(realArgs['ttl-hours']) : 24;
         realArgs = { ...realArgs, ttlMs: hours * 60 * 60 * 1000 };
       }
+      if (realOpId === 'redeemInvite' && typeof realArgs.invite === 'string') {
+        // User pastes either a QR URL (`stoop-invite://<base64url>`) or
+        // raw JSON.  Decode the URL form back to the invite object that
+        // the real skill expects.  Pass JSON through unchanged.
+        let inv = realArgs.invite.trim();
+        const PREFIX = 'stoop-invite://';
+        if (inv.startsWith(PREFIX)) {
+          try {
+            const b64 = inv.slice(PREFIX.length);
+            const padded = b64.replace(/-/g, '+').replace(/_/g, '/')
+                              + '=='.slice(0, (4 - b64.length % 4) % 4);
+            const json = typeof globalThis.atob === 'function'
+              ? globalThis.atob(padded) : padded;
+            realArgs = { ...realArgs, invite: JSON.parse(json) };
+          } catch (err) {
+            return { ok: false, error: `Couldn't decode invite URL: ${err.message ?? err}` };
+          }
+        } else if (inv.startsWith('{')) {
+          try {
+            realArgs = { ...realArgs, invite: JSON.parse(inv) };
+          } catch (err) {
+            return { ok: false, error: `Couldn't parse invite JSON: ${err.message ?? err}` };
+          }
+        }
+      }
       const parts = [DataPart(realArgs)];
       const result = await chatAgent.invoke(tasksCrew.address, realOpId, parts);
       const first = Array.isArray(result) ? result[0] : null;
@@ -779,6 +804,10 @@ export async function createRealHouseholdAgent(opts = {}) {
       if (realOpId === 'setContactTrust' && realArgs.level === 'none') {
         // Chat-shell uses 'none' to clear; real skill takes null.
         realArgs = { ...realArgs, level: null };
+      }
+      if (realOpId === 'getContactShareQr' && realArgs.trust) {
+        // Chat-shell flag `trust` → real arg `trustOffer`.
+        realArgs = { ...realArgs, trustOffer: realArgs.trust };
       }
       const parts = [DataPart(realArgs)];
       const result = await chatAgent.invoke(stoopAgent.address, realOpId, parts);
@@ -877,12 +906,19 @@ export async function createRealHouseholdAgent(opts = {}) {
       };
     }
     // issueInvite: real returns {invite: {...JWT-shaped token...}} →
-    // record-shape reply so the chat-shell renders the token + a
-    // shareable summary the inviter can DM to the invitee.
+    // record-shape reply with a `qr` URI the chat-shell renders as
+    // an actual scannable QR canvas (see classifyFieldKind + the
+    // 'qr' branch in domAdapter.renderRecordPanel).  Inviter can
+    // [Copy] the URL fallback or have the invitee scan the QR.
     if (opId === 'issueInvite' && data.invite) {
       const inv = data.invite;
-      // Render the invite as compact base64-ish string for sharing.
-      const token = typeof inv === 'string' ? inv : JSON.stringify(inv);
+      const json = typeof inv === 'string' ? inv : JSON.stringify(inv);
+      // Browser-safe base64url encode (no Buffer dep).
+      const b64url = typeof globalThis.btoa === 'function'
+        ? globalThis.btoa(json)
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+        : json;
+      const qrUri = `stoop-invite://${b64url}`;
       const expires = inv?.expiresAt
         ? new Date(inv.expiresAt).toISOString()
         : '(no expiry)';
@@ -890,8 +926,8 @@ export async function createRealHouseholdAgent(opts = {}) {
         title:    'Crew invite',
         role:     inv?.role ?? 'member',
         expires,
-        token,
-        message:  `🎟️ Single-use invite minted. Share the token with the invitee; they redeem with /redeem-invite <token>.`,
+        invite:   qrUri,   // classified as kind:'qr' by classifyFieldKind
+        message:  `🎟️ Single-use invite minted. Have the invitee scan the QR or paste the URL into /redeem-invite.`,
       };
     }
     // redeemInvite: real returns {groupProof, members, ...} → friendly text.
@@ -1045,6 +1081,17 @@ export async function createRealHouseholdAgent(opts = {}) {
         ok: true,
         message: `✓ Removed contact: ${who}`,
         _sync: simulateSync(),
+      };
+    }
+    // getContactShareQr: real returns {payload: 'stoop-contact://...'}
+    // → record reply with the URL spelt out (user can paste into any
+    // QR generator).  Canvas-rendered QR image is a follow-up.
+    if (opId === 'getContactShareQr' && data.payload) {
+      return {
+        title:    'Share your contact card',
+        trust:    args?.trustOffer ?? args?.trust ?? 'bekend',
+        payload:  data.payload,
+        message:  'Copy the payload above + paste into any QR generator.  The receiver scans + uses /add-contact to add you with the proposed trust level.',
       };
     }
     // Default: pass through.
