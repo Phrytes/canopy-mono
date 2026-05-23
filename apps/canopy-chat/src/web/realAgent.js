@@ -756,6 +756,13 @@ export async function createRealHouseholdAgent(opts = {}) {
           realArgs = { ...realArgs, reveal: realArgs.action.toLowerCase() === 'on' };
         }
       }
+      if (realOpId === 'setHolidayMode') {
+        // Chat-shell sends {on: 'on'|'off'} (enum from /holiday-mode
+        // <on|off>); real skill takes {on: boolean}.
+        if (typeof realArgs.on === 'string') {
+          realArgs = { ...realArgs, on: realArgs.on.toLowerCase() === 'on' };
+        }
+      }
       const parts = [DataPart(realArgs)];
       const result = await chatAgent.invoke(stoopAgent.address, realOpId, parts);
       const first  = Array.isArray(result) ? result[0] : null;
@@ -934,6 +941,24 @@ export async function createRealHouseholdAgent(opts = {}) {
           ? `🔓 Reveal flipped on for ${peer}. (Bilateral — they must flip on their side too.)`
           : `🔒 Reveal flipped off for ${peer}.`,
         peer, action,
+      };
+    }
+    // setHolidayMode: real returns {holidayMode: bool} → friendly text.
+    if (opId === 'setHolidayMode' && typeof data.holidayMode === 'boolean') {
+      return {
+        ok: true,
+        message: data.holidayMode
+          ? '🌙 Holiday mode on. Notifications suppressed; your skills marked unavailable.'
+          : '🌅 Holiday mode off. Notifications and skill-match resume.',
+        holidayMode: data.holidayMode,
+      };
+    }
+    // getHolidayMode: real returns {holidayMode: bool} → record reply.
+    if (opId === 'getHolidayMode' && typeof data.holidayMode === 'boolean') {
+      return {
+        title:       'Holiday mode',
+        holidayMode: data.holidayMode,
+        status:      data.holidayMode ? 'on' : 'off',
       };
     }
     // Default: pass through.
