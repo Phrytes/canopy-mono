@@ -259,7 +259,18 @@ function classifyFieldKind(v) {
   }
   if (typeof v === 'number')  return 'number';
   if (typeof v === 'boolean') return 'boolean';
-  if (Array.isArray(v))       return 'list';
+  if (Array.isArray(v)) {
+    // #194 (B9, 2026-05-23) — detect "refs" arrays: every element is
+    // an object with `type` + `ref` (or `id`).  Pattern used by folio
+    // note frontmatter `embeds: [{type: 'task', ref: 't-1', label}]`
+    // and any other "see also" reference list.  Renderer chips these.
+    if (v.length > 0 && v.every((e) =>
+      e && typeof e === 'object' &&
+      typeof e.type === 'string' &&
+      (typeof e.ref === 'string' || typeof e.id === 'string')
+    )) return 'refs';
+    return 'list';
+  }
   if (v && typeof v === 'object') return 'object';
   return 'unknown';
 }

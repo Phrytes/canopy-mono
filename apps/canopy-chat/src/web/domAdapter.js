@@ -303,6 +303,12 @@ function renderRecordPanel(rendered, state, ctx, variant) {
         // is primary, fallback URL secondary (copy/paste).  See
         // renderQrCanvas comment for the lazy-load story.
         renderQrField(dd, doc, String(field.value));
+      } else if (field.kind === 'refs') {
+        // #194 (B9) — render an array of {type, ref, label} as a row
+        // of "See also" chips.  Click-handlers TBD: future slice
+        // adds chip → dispatch (e.g. clicking a task chip opens its
+        // /mytasks entry).
+        renderRefChips(dd, doc, field.value);
       } else {
         dd.textContent = formatFieldValue(field.value);
       }
@@ -374,6 +380,41 @@ function renderQrField(container, doc, text) {
       console.warn('[qr] qrcode lib failed to load', err);
     }
   });
+}
+
+/**
+ * #194 (B9) — render a "refs" array as a row of "See also" chips.
+ * Each chip shows the ref's label (or type:ref fallback) prefixed
+ * by a small type-glyph.  No click handlers wired yet — future slice
+ * dispatches chip clicks to the right app/op (e.g. task chip →
+ * /mytasks → row matching ref).
+ *
+ * @param {HTMLElement}                      container
+ * @param {Document}                         doc
+ * @param {Array<{type, ref|id, label?}>}    refs
+ */
+function renderRefChips(container, doc, refs) {
+  const TYPE_GLYPH = {
+    task:            '📋',
+    'calendar-event': '📅',
+    post:            '📣',
+    file:            '📄',
+    contact:         '👤',
+    member:          '👥',
+    crew:            '🎯',
+  };
+  const wrap = doc.createElement('div');
+  wrap.className = 'cc-field-refs';
+  for (const r of refs) {
+    const chip = doc.createElement('span');
+    chip.className = `cc-ref-chip cc-ref-chip-${r.type ?? 'unknown'}`;
+    const glyph = TYPE_GLYPH[r.type] ?? '🔗';
+    const label = r.label ?? r.ref ?? r.id ?? '(unnamed)';
+    chip.textContent = `${glyph} ${label}`;
+    chip.title = `${r.type}: ${r.ref ?? r.id ?? ''}`;
+    wrap.appendChild(chip);
+  }
+  container.appendChild(wrap);
 }
 
 function formatFieldValue(v) {

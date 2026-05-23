@@ -607,7 +607,10 @@ export const mockFolioManifest = {
       runtime: 'browser',
       surfaces: {
         slash: { command: '/readnote' },
-        chat:  { reply: 'text', hint: 'read a folio note' },
+        // #194 (B9, 2026-05-23) — record reply so frontmatter `embeds`
+        // ("See also" refs to tasks / events / posts) can render as
+        // clickable chips alongside the body text.
+        chat:  { reply: 'record', hint: 'read a folio note' },
       },
     },
     {
