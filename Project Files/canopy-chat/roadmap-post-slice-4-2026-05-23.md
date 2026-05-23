@@ -100,7 +100,7 @@ Order matches recommended attack order.
 
 | Item | Source | Cost | Notes |
 |---|---|---|---|
-| **A1. `/set-relay <ws://ip:port>`** | audit N1 | 30 min | Pure chat-shell add; unblocks cross-device testing. |
+| **A1. Relay support + transport choice** (relay vs NKN) | audit N1 + Frits 2026-05-23 | **3-4 hours** (re-scoped — see below) | Today canopy-chat uses NKN only; no relay wired.  Frits clarified 2026-05-23: "users must be able to choose either relay or nkn when connecting through internet."  So A1 = wire `@canopy/core` RelayTransport as a second transport in createSecureAgent + add `/set-relay <ws://...>` (vault-persisted) + `/transport-mode <relay\|nkn\|both>` for the user choice.  Includes Settings panel hook (when #180 lands) — slash is the V0 surface. |
 | **A2. `/signin` opens browser tab** | audit O1 | 15 min | Just `window.open(authUrl, '_blank')`; intentional per Frits — no in-app wizard. |
 | **A3. Stoop row buttons** (#179) | task #179 | 30 min | Adds button decls to mockStoopManifest. |
 | **A4. `/contacts` + `/add-contact`** | audit C1 | 1-2 hours | Surfaces stoop's `ContactBook`; reuse Q34 form for trust-level enum. |
