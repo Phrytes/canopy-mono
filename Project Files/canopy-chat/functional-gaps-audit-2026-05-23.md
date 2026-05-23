@@ -104,7 +104,7 @@
 
 | # | Feature | Source | Missing | Tier |
 |---|---|---|---|---|
-| O1 | Pod sign-in flow in chat | OIDC web wizards in stoop/tasks-v0; `startPodSignIn` substrate exists | No chat-native sign-in flow (popping to webview is current) | core |
+| O1 | Pod sign-in entry from chat | OIDC web wizards in stoop/tasks-v0; `startPodSignIn` substrate exists | `/signin` slash exists; opens the OIDC URL in a new browser tab (intentional — Frits 2026-05-23: "no need to embed it into the web app as a window — it is outside the app so it must look like that too").  Just needs `window.open(authUrl, '_blank')` from the slash handler. | core |
 | O2 | Mnemonic reveal (one-shot) | `stoop.getMnemonicOnce` | Not manifested (security-sensitive) | important |
 | O3 | Restore from mnemonic | `web/restore.html` wizard + `Bootstrap.mnemonicToSeed` | No chat entry | core |
 | O4 | Export / delete my data | `stoop.exportMyData` | Not manifested | important |
@@ -163,6 +163,63 @@ Slice that needs `surfaces.page` (#180) first:
 
 Deliberately deferred per app conventions:
 - M1, M2 (admin actions marked deferred in stoop manifest).
+
+## Second wave — features from Project Files design docs (2026-05-23)
+
+The first scan above was source-code-heavy.  Frits asked for a re-scan
+of `Project Files/<AppName>/*.md` (52 design docs Frits and prior
+contributors wrote during the V0 design phase).  These are NOT
+duplicates of the first audit — they're meatier, designed-but-not-built
+features that have substrate support but lack the chat-facing
+affordances.
+
+### Stoop — privacy, governance, lifecycle
+
+| # | Feature | Design doc | Why it matters |
+|---|---|---|---|
+| S1 | **Identity rotation every 30 days** (network-pubkey swap with grace-period broadcasts) | `privacy-and-safety-2026-05-05.md` § "Stable WebID enables long-term de-anonymisation" | User-facing privacy guarantee — limits relay-operator tracking.  Substrate exists (`Agent.rotateIdentity()`); needs a Settings entry + a `/rotate-identity` slash (already exists, but no schedule). |
+| S2 | **Discreet mode toggle** (silences mDNS/BLE local broadcast; still RECEIVES) | `functional-design-2026-05-06.md` § F3 | Real-world use: untrusted café, library, public space.  User taps "Discreet mode" → device stops announcing itself but still discovers others.  Privacy control. |
+| S3 | **Encrypted backup file** (`stoop-backup-<date>.json.enc` user-passphrase-protected) | `functional-design-2026-05-06.md` § I5 | Recovery without central infra.  User drops file + passphrase → state restored.  Complements mnemonic recovery (O2/O3 above). |
+| S4 | **"Stille modus" / holiday mode** (suppresses notifications + skill-match availability) | `functional-design-2026-05-06.md` § A6 | Temporary pause without leaving groups.  Skills marked unavailable; no push; no skill-match hints.  Critical UX: don't make people choose between "always on" and "leave the group". |
+| S5 | **Stale-post nudge after 30 days** (soft prompt: heropen / verwijderen / klaar) | `functional-design-2026-05-06.md` § D7 | Reduces post-and-forget clutter without nagging.  Default: no action, post stays.  Needs a per-post scheduler. |
+| S6 | **Per-group conflict-resolution policy** (6-Q wizard codifies admin/mediation/vote in rules.md) | `group-governance-starter-2026-05-05.md` § Q4 | Governance contract.  Members see chosen policy at join.  Avoids ad-hoc dispute drama. |
+| S7 | **Conflict-resolution flow** (3-step mediation: `raiseDispute` → `proposeResolution` → `acceptResolution`) | `conflict-resolution-design-2026-05-14.md` | Substrate ships Lamport `_v` + `'stale-peer'` events; the user-facing dispute flow on top of it is not wired. |
+| S8 | **Post-audience picker** (multi-select groups/lists/tags + km distance grid: 1/2/5/10/25) | `functional-design-2026-05-06.md` § C8-C9 | "Ask only trusted contacts within 5 km" — granular sharing.  Substrate has audience model; composer UI absent. |
+| S9 | **"Ausgeleend" state privacy** (lend marked checked-out publicly but borrower handle hidden) | `functional-design-2026-05-06.md` § E3 | Lender sees who borrowed (private chat thread); buurt sees "uitgeleend" without naming the borrower.  Subtle but important consent control. |
+| S10 | **3-step bilateral reveal handshake with hints** (asymmetric reveal state with "they revealed to you" notification) | `functional-design-2026-05-06.md` § Journey 4 | "Connectie accepteren" flow is richer than the current `/reveal on/off` toggle suggests. |
+
+### Tasks-v0 — workflow features with substrate support
+
+| # | Feature | Design doc | Why it matters |
+|---|---|---|---|
+| T6 | **Auto-scheduling planner** (greedy slot suggestion with reason chips: "fits before deadline", "last-chance", "overdue") | `functional-design-v2-2026-05-08.md` § O | Real coordinator productivity win.  `suggestSchedule` skill exists; needs chat surface with accept/reject + reason display. |
+| T7 | **Hard-dependency blocking gate** (parent task can't close until subs done; force-complete requires mandatory reason audit) | `functional-design-v2-2026-05-08.md` § U | Substrate flag `enforceDependencies: true` exists but isn't wired.  Critical for any non-trivial workflow. |
+| T8 | **Availability-hint half-day grid** (7×2 cells, cycles `open / tight / unavailable / unknown`, coordinator-visible) | `functional-design-v2-2026-05-08.md` § Q | Lightweight signaling.  Per-crew opt-in; opting out shows `unknown` (indistinguishable from non-opted-in — privacy-preserving). |
+| T9 | **Invoicing primitives** (per-pro per-month JSON blobs at `<crew-pod>/tasks/invoicing/<webid>/<month>.json`, role-gated) | `functional-design-v2-2026-05-08.md` § P | For compensated members (paid pros, household helpers).  Rolled up from audit log. |
+| T10 | **Cross-crew dashboard** (one screen showing ALL crews with counters: open / overdue / mine / awaiting-approval) | `functional-design-v2-2026-05-08.md` § S | Primary mobile view.  Today the user has to switch crews to see each one's state. |
+| T11 | **Photo-based deliverables** (camera capture → pod upload → photo URL becomes deliverable.ref; approver sees inline) | `mobile-functional-design-2026-05-08.md` § 4e | Mobile-native; substrate ready (`task.deliverable: {kind: 'photo'}`).  Desktop has no camera so this is a mobile-only V0. |
+
+### Folio — note cross-references
+
+| # | Feature | Design doc | Why it matters |
+|---|---|---|---|
+| F2 | **Cross-pod ref rendering in notes** (frontmatter `embeds: [{type: task, ref: ...}]` → inline "See also" chips at note head) | `v1-web-functional-design-2026-05-11.md` § 4f | "This note references a task / a Stoop offer / a calendar event" → clickable navigation.  Connective tissue between apps. |
+
+### Counts (second wave)
+
+| Tier | Count |
+|---|---|
+| core | 8 (S1, S2, S3, S4, T7, T10, F2, S6) |
+| important | 9 (S5, S7, S8, S9, S10, T6, T8, T9, T11) |
+
+### Why these were missed in the first scan
+
+The first scan focused on source code (manifests, skill registrations,
+UI HTML pages).  These features are DESIGNED in the Project Files
+docs but mostly NOT yet implemented in source — so a code scan
+wouldn't surface them.  Pattern: substrate exists (audit log,
+schedule slot model, lend lifecycle, etc.) but the user-facing
+controls + slash surfaces don't.
 
 ## Cross-references
 
