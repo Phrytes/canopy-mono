@@ -37,3 +37,20 @@ export {
 
 // S4 — peer identity resolver
 export { createPeerResolver, PeerResolver } from './resolver.js';
+
+// S5 — re-export the substrate primitives the factory wires
+export {
+  TrustRegistry,
+  TIER_LEVEL,
+  CapabilityToken,
+  PolicyEngine,
+  ROLES,
+  roleRank,
+  isKnownRole,
+  registerCustomRole,
+  unregisterCustomRole,
+  canPromote,
+  listKnownRoles,
+  skillMatches,
+  skillAttenuates,
+} from '@canopy/core';
