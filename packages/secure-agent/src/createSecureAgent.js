@@ -29,10 +29,10 @@
  *   - capabilityIssuer   (S5 — A.5)   sa.caps.issue/verify
  *   - policyEngine       (S5 — A.5b)  sa.policy (composes trust + skills)
  *   - Roles re-exported as sa.ROLES + module export
+ *   - auditLog           (S6 — A.6)   sa.audit signed hash-chain + autoLog
  *
  * # What's a stub (filled by later slices)
  *
- *   - auditLog           (S6 — A.6)
  *   - groupManager       (S7 — A.7)
  *   - a2aTls             (S7 — A+.4)
  *   - rateLimit          (S7 — A+.8)
@@ -76,6 +76,7 @@ import {
   PASSKEY_ERRORS,
 } from './passkey.js';
 import { createPeerResolver } from './resolver.js';
+import { loadAuditLog }       from './auditLog.js';
 
 /**
  * @typedef {object} CreateSecureAgentOpts
@@ -94,7 +95,7 @@ import { createPeerResolver } from './resolver.js';
  * @property {boolean|object} [capabilityIssuer] S5 — true | { defaultExpiresIn }  exposes sa.caps
  * @property {boolean|object} [trustRegistry]    S5 — true | { vault }  exposes sa.trust
  * @property {boolean|object} [policyEngine]     S5 — true | { groupManager, isRevoked, actorResolver }  exposes sa.policy (requires trustRegistry)
- * @property {object}  [auditLog]               [STUB — S6] { signEvery, podSyncEvery }
+ * @property {boolean|object} [auditLog]        S6 — true | { vaultKey, vault?, autoLog? }  exposes sa.audit
  * @property {boolean} [groupManager]           [STUB — S7]
  * @property {boolean} [a2aTls]                 [STUB — S7a]
  * @property {object}  [rateLimit]              [STUB — S7b] { perPeer, perSkill }
@@ -121,7 +122,7 @@ const STUB_OPTS = Object.freeze([
   // capabilityIssuer  — wired in S5 (sa.caps.{issue,verify})
   // trustRegistry     — wired in S5 (sa.trust.* — vault-backed)
   // policyEngine      — wired in S5 (sa.policy)
-  'auditLog',
+  // auditLog          — wired in S6 (sa.audit.* signed hash-chain)
   'groupManager',
   'a2aTls',
   'rateLimit',
@@ -177,6 +178,15 @@ export async function createSecureAgent(opts = {}) {
       }
     }
   }
+
+  // Forward-declared so async ops below can fire-and-forget into the
+  // audit log without caring whether it's wired or not.
+  let auditLog = null;
+  const audit = (event, subject, data) => {
+    if (!auditLog) return;
+    auditLog.append({ event, subject, data })
+      .catch((err) => console.warn('[secure-agent] audit append failed', err));
+  };
 
   // ─── Identity (persists across page loads when vault supports it) ───
   // S3 — when opts.passphrase is set, the picker promotes us from
@@ -317,6 +327,29 @@ export async function createSecureAgent(opts = {}) {
     });
   }
 
+  // ─── S6 — signed activity / audit log (A.6) ───────────────────────
+  //
+  // auditLog opt forms:
+  //   true             → in-memory log, autoLog ON
+  //   { vaultKey?, autoLog?, vault? }
+  //                    → persistent (vault, vaultKey) + opt-in autoLog
+  //
+  // The autoLog flag (default true) wires fire-and-forget audit
+  // entries for the security-critical actions exposed by the factory:
+  // identity.rotate, mute.add, mute.remove, caps.issue, peer.connect,
+  // claim.sign.  Disable with `autoLog: false` if you want full
+  // manual control via sa.audit.append.
+  let auditAutoLog = false;
+  if (opts.auditLog) {
+    const aOpts = (typeof opts.auditLog === 'object') ? opts.auditLog : {};
+    auditAutoLog = aOpts.autoLog !== false;
+    auditLog = await loadAuditLog({
+      identity,
+      vault:    aOpts.vault    ?? vault,
+      vaultKey: aOpts.vaultKey ?? null,
+    });
+  }
+
   // ─── Peer state (NKN cross-peer; stays idle until connect()) ───
   let peerTransport = null;
   const peerState = { status: 'idle', address: null, error: null };
@@ -386,6 +419,7 @@ export async function createSecureAgent(opts = {}) {
       peerState.status  = 'connected';
       peerState.address = tx.address;
       peerState.error   = null;
+      if (auditAutoLog) audit('peer.connect', tx.address);
       return { ...peerState };
     } catch (err) {
       peerState.status = 'error';
@@ -431,13 +465,15 @@ export async function createSecureAgent(opts = {}) {
   async function rotateIdentity(rotateOpts = {}) {
     const oldPubKey = agent.identity.pubKey;
     await agent.rotateIdentity(rotateOpts);
-    return {
+    const result = {
       oldPubKey,
       newPubKey: agent.identity.pubKey,
       graceUntilDays: rotateOpts.gracePeriodSeconds
         ? rotateOpts.gracePeriodSeconds / 86_400
         : 7,
     };
+    if (auditAutoLog) audit('identity.rotate', oldPubKey, { newPubKey: result.newPubKey });
+    return result;
   }
 
   /**
@@ -471,6 +507,10 @@ export async function createSecureAgent(opts = {}) {
       trustWired:       !!trustRegistry,
       capsWired,
       policyWired:      !!policyEngine,
+      // S6 — audit log
+      auditWired:       !!auditLog,
+      auditAutoLog,
+      auditSize:        auditLog?.size ?? 0,
       // STUB sections — surfaces what's reserved vs what's wired:
       pendingOpts: pickStubOpts(opts),
     };
@@ -505,10 +545,18 @@ export async function createSecureAgent(opts = {}) {
     securityStatus,
     shutdown,
 
-    // S1 — mute / block list
+    // S1 — mute / block list (S6 — instrumented for autoLog)
     mute: {
-      add:    (addr) => muteSet.add(addr),
-      remove: (addr) => muteSet.remove(addr),
+      async add(addr) {
+        const r = await muteSet.add(addr);
+        if (auditAutoLog && r) audit('mute.add', addr);
+        return r;
+      },
+      async remove(addr) {
+        const r = await muteSet.remove(addr);
+        if (auditAutoLog && r) audit('mute.remove', addr);
+        return r;
+      },
       has:    (addr) => muteSet.has(addr),
       list:   ()     => muteSet.list(),
       clear:  ()     => muteSet.clear(),
@@ -521,15 +569,23 @@ export async function createSecureAgent(opts = {}) {
     // S5 — TrustRegistry (vault-backed per-peer trust)
     trust: trustRegistry,                  // null when not opted in
 
-    // S5 — CapabilityToken issuance + verification
+    // S5 — CapabilityToken issuance + verification (S6 — autoLog issue)
     caps: capsWired ? {
       async issue(issueOpts = {}) {
-        return CapabilityToken.issue(identity, {
+        const token = await CapabilityToken.issue(identity, {
           agentId:   identity.pubKey,
           expiresIn: capDefaults.defaultExpiresIn ?? 3_600_000,
           skill:     '*',
           ...issueOpts,
         });
+        if (auditAutoLog) {
+          audit('caps.issue', issueOpts.subject, {
+            tokenId:   token.id,
+            skill:     token.skill,
+            expiresAt: token.expiresAt,
+          });
+        }
+        return token;
       },
       verify(token, vOpts = {}) {
         return CapabilityToken.verify(
@@ -545,6 +601,10 @@ export async function createSecureAgent(opts = {}) {
 
     // S5 — Roles constants (no per-instance state)
     ROLES,
+
+    // S6 — signed activity / audit log
+    audit: auditLog,                       // null when not opted in
+    auditAutoLog,                          // diagnostic: were auto-fires wired?
 
     // S3 — WebAuthn / passkey unlock helpers
     passkey: {
@@ -569,7 +629,7 @@ export async function createSecureAgent(opts = {}) {
       ERRORS: PASSKEY_ERRORS,
     },
 
-    // S2 — signed WebID claim
+    // S2 — signed WebID claim (S6 — autoLog claim.sign)
     claim: {
       sign(args = {}) {
         const webid = args.webid ?? boundWebid;
@@ -579,7 +639,9 @@ export async function createSecureAgent(opts = {}) {
             'opts.webidClaim.webid at factory time or pass {webid} here.',
           );
         }
-        return signClaimFn(identity, { ...args, webid });
+        const c = signClaimFn(identity, { ...args, webid });
+        if (auditAutoLog) audit('claim.sign', webid, { nknAddr: args.nknAddr ?? null });
+        return c;
       },
       verify:    (c, vOpts) => verifyClaimFn(c, vOpts),
       serialize: (c)        => serializeClaim(c),
