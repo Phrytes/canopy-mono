@@ -725,6 +725,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         'getCrewConfig', 'pauseCrew', 'unpauseCrew',
         'archiveCrew',   'unarchiveCrew', 'issueInvite',
         'listAwaitingApproval', 'getMyCrews',
+        'suggestSchedule', 'acceptSchedule',
       ]);
       if (CREW_AUTO_INJECT.has(realOpId) && !realArgs.crewId) {
         const crewId = opts.tasksCrewConfig?.crewId ?? 'cc-default';
@@ -736,6 +737,24 @@ export async function createRealHouseholdAgent(opts = {}) {
           ok: false,
           error: 'Archiving the crew puts it read-only. Re-run with --confirm=true to proceed.',
         };
+      }
+      if (realOpId === 'suggestSchedule' && realArgs['lookahead-days']) {
+        realArgs = {
+          ...realArgs,
+          lookaheadDays: Number(realArgs['lookahead-days']),
+        };
+      }
+      if (realOpId === 'acceptSchedule' && realArgs.slotKey) {
+        // #193 — decode "taskId|slotStart|slotEnd" packed into row id.
+        const parts = String(realArgs.slotKey).split('|');
+        if (parts.length === 3) {
+          realArgs = {
+            ...realArgs,
+            taskId:    parts[0],
+            slotStart: Number(parts[1]),
+            slotEnd:   Number(parts[2]),
+          };
+        }
       }
       if (realOpId === 'redeemInvite' && typeof realArgs.invite === 'string') {
         // User pastes either a QR URL (`stoop-invite://<base64url>`) or
@@ -1031,6 +1050,59 @@ export async function createRealHouseholdAgent(opts = {}) {
         message: `✓ Joined crew. ${memberCount} members visible. /mytasks shows the crew's tasks.`,
         crew:   data,
         _sync:  simulateSync(),
+      };
+    }
+    // #193 (B6) — suggestSchedule: {lookaheadDays, suggestions: [
+    //   {taskId, slots: [{start, end, reasons: [...]}], ...}
+    // ]} → chat-shell list with each row = ONE clickable slot
+    // (top 3 per task).  Row label inlines date/time + reason chips.
+    // slotKey packs (taskId|start|end) into the row id so the [Pick]
+    // button dispatches all three to acceptSchedule.
+    if (opId === 'suggestSchedule' && Array.isArray(data.suggestions)) {
+      if (data.suggestions.length === 0) {
+        return {
+          items:   [],
+          message: 'No schedulable tasks in your lookahead window (set --lookahead-days to expand).',
+        };
+      }
+      const items = [];
+      for (const s of data.suggestions) {
+        const slots = Array.isArray(s.slots) ? s.slots.slice(0, 3) : [];
+        for (let i = 0; i < slots.length; i++) {
+          const slot = slots[i];
+          const start = new Date(slot.start);
+          const end   = new Date(slot.end);
+          const fmt   = (d) => `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+          const reasonChips = (slot.reasons ?? []).map((r) => `[${r}]`).join(' ');
+          const taskLabel = s.taskText ?? s.title ?? s.taskId;
+          items.push({
+            id:        `${s.taskId}|${slot.start}|${slot.end}`,
+            type:      'schedule-slot',
+            label:     `#${i + 1} ${taskLabel}: ${fmt(start)} – ${fmt(end).split(' ')[1]} ${reasonChips}`,
+            taskId:    s.taskId,
+            slotStart: slot.start,
+            slotEnd:   slot.end,
+            reasons:   slot.reasons ?? [],
+          });
+        }
+      }
+      return {
+        items,
+        message: `${data.suggestions.length} task${data.suggestions.length === 1 ? '' : 's'} with suggestions (${data.lookaheadDays}-day window). Click a slot to schedule it.`,
+        _sync:   simulateSync(),
+      };
+    }
+    // #193 — acceptSchedule: {ok, task} → friendly text.
+    if (opId === 'acceptSchedule' && data?.task) {
+      const t = data.task;
+      const when = Number.isFinite(t.scheduledAt)
+        ? new Date(t.scheduledAt).toLocaleString()
+        : '(no time)';
+      return {
+        ok:      true,
+        message: `📅 Scheduled "${t.text ?? t.title ?? t.id}" at ${when}.`,
+        task:    t,
+        _sync:   simulateSync(),
       };
     }
     // #191 (B5) — getMyCrews: {crews: [{crewId, name, kind, counts}]}
