@@ -109,6 +109,9 @@
   "audit": {
     "unavailable":  { "text": "Audit log not available in this build.",                         "doc": "Defensive — sa.audit missing." }
   },
+  "debug": {
+    "unavailable":  { "text": "Debug dump not available — secure-agent factory not wired.",     "doc": "Defensive." }
+  },
   "helpWith": {
     "no_post":    { "text": "Please name a post: /help-with <post-id>",                          "doc": "/help-with missing arg." },
     "no_store":   { "text": "Thread store not available in this build.",                         "doc": "Defensive." },

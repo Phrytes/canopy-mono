@@ -109,6 +109,9 @@
   "audit": {
     "unavailable":  { "text": "Audit-log niet beschikbaar in deze build.",                       "doc": "Defensive." }
   },
+  "debug": {
+    "unavailable":  { "text": "Debug-dump niet beschikbaar — secure-agent-factory niet gekoppeld.", "doc": "Defensive." }
+  },
   "helpWith": {
     "no_post":    { "text": "Noem een post: /help-with <post-id>",                               "doc": "/help-with missing arg." },
     "no_store":   { "text": "Thread-opslag niet beschikbaar in deze build.",                     "doc": "Defensive." },
