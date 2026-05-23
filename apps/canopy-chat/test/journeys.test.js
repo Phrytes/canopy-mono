@@ -40,7 +40,7 @@ import {
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
-} from '../src/web/mockAgent.js';
+} from '../src/web/mockManifests.js';
 import { calendarManifest } from '@canopy-app/calendar/manifest';
 import { createLocalBuiltins } from '../src/web/localBuiltins.js';
 
