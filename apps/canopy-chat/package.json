@@ -45,6 +45,7 @@
     "@canopy/app-manifest": "workspace:*",
     "@canopy/core": "workspace:*",
     "@canopy/manifest-host": "workspace:*",
+    "@canopy/secure-agent":  "workspace:*",
     "@canopy/vault": "workspace:*",
     "@inrupt/solid-client":               "^3.0.0",
     "@inrupt/solid-client-authn-browser": "^2.4.0",

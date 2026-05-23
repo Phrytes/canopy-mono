@@ -25,14 +25,15 @@
 
 import {
   Agent, AgentIdentity, InternalBus, InternalTransport, DataPart,
-  NknTransport,
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
+import { createSecureAgent } from '@canopy/secure-agent';
 
 /**
- * v0.7.P3a — choose the right vault for the runtime.  Browser →
- * VaultLocalStorage; Node tests / SSR → VaultMemory.  Identity
- * persists across page refreshes when localStorage exists.
+ * Pick the right vault for the runtime.  Used here only for the
+ * HOST agent (in-process app skills; no cross-peer); the CHAT
+ * agent's vault is selected by createSecureAgent's picker via the
+ * identityVaultPrefix opt.
  */
 function makeBrowserVault(prefix) {
   if (typeof globalThis.localStorage !== 'undefined') {
@@ -44,6 +45,7 @@ function makeBrowserVault(prefix) {
 /**
  * v0.7.P3a — try to restore an existing identity; generate fresh if
  * the vault is empty.  Either way returns a usable AgentIdentity.
+ * (Host-only helper; createSecureAgent handles this for the chat side.)
  */
 async function restoreOrGenerate(vault) {
   try {
@@ -91,20 +93,6 @@ export async function createRealHouseholdAgent(opts = {}) {
   // it owns the simPeers map + threadStore.
   let inviteAttendeeRef = async (/* webid, snapshot */) => {};
 
-  // v0.7.P3b — cross-peer NKN transport state.  Stays inert until
-  // connectPeerTransport() is called from main.js (after window.nkn
-  // is available).
-  let peerTransport = null;
-  const peerState   = { status: 'idle', address: null, error: null };
-  const peerController = {
-    get address() { return peerState.address; },
-    get status()  { return peerState.status; },
-  };
-  // v0.7.P3d — track which NKN addresses we've HI'd.  Before the
-  // first OW envelope to a peer, we MUST send HI so the peer can
-  // register our pubKey + decrypt subsequent envelopes.
-  const helloedPeers = new Set();
-
   // v0.7.7 — optional event publisher.  When supplied, mutation
   // skills publish item-changed events via this callback so the
   // chat-shell EventRouter routes them to matching threads.
@@ -114,28 +102,44 @@ export async function createRealHouseholdAgent(opts = {}) {
     : () => {};
 
   const bus = new InternalBus();
-  // v0.7.P3a 2026-05-23 — persistent identity via VaultLocalStorage.
-  // Was: VaultMemory regenerated keys every refresh → user's NKN
-  // address changed every reload → no stable cross-peer identity.
-  // Now: keys persist; same NKN address across sessions; ready for
-  // chat-p2p cross-peer in v0.7.P3b.
-  //
-  // hostAgent (in-process backend) + chatAgent (chat surface) both
-  // get persistent identities under separate localStorage prefixes.
-  // Caller can override via opts.hostVault / opts.chatVault
-  // (e.g. tests inject VaultMemory).
+
+  // Host agent — in-process app skills (household, tasks-v0, stoop,
+  // folio, calendar).  No cross-peer; vault picks the standard browser
+  // localStorage path.  Built manually because it's a pure backend.
   const hostVault = opts.hostVault ?? makeBrowserVault('cc-host-id:');
-  const chatVault = opts.chatVault ?? makeBrowserVault('cc-chat-id:');
   const hostId    = await restoreOrGenerate(hostVault);
-  const chatId    = await restoreOrGenerate(chatVault);
-
-  // InternalTransport's address must equal the agent's pubKey so the
-  // bus routes envelopes to the right listener.
   const hostTransport = new InternalTransport(bus, hostId.pubKey);
-  const chatTransport = new InternalTransport(bus, chatId.pubKey);
-
   const hostAgent = new Agent({ identity: hostId, transport: hostTransport });
-  const chatAgent = new Agent({ identity: chatId, transport: chatTransport });
+
+  // Chat agent — the user-facing surface.  Built via @canopy/secure-agent
+  // factory so every safety primitive (identity persistence, SecurityLayer,
+  // mute/block, helloGate, signed WebID claim, audit log, …) is wired
+  // by default rather than re-assembled per app.
+  //
+  // - bus: shared with hostAgent so chatAgent.invoke(hostAgent.address)
+  //        works in-process via InternalBus
+  // - vault: opt.chatVault wins (tests inject VaultMemory); otherwise
+  //   picker chooses VaultLocalStorage by prefix 'cc-chat-id:'
+  // - auditLog: persistent under 'cc-audit'; autoLogs identity.rotate /
+  //   mute / claim.sign / caps.issue / peer.connect
+  // - muteListVaultKey: persistent peer mute across reloads
+  // - nknLib: not passed here — main.js calls sa.peer.connect() once
+  //   window.nkn is loaded from the CDN
+  // - onPeerMessage: not passed here — main.js wires it when connecting
+  //
+  // SECURITY: any opt below this comment that is RESET / DISABLED needs
+  // a `// SECURITY: opted out — <reason>` comment per
+  // Project Files/conventions/architectural-layering.md.
+  const sa = await createSecureAgent({
+    bus,
+    vault:               opts.chatVault,
+    identityVaultPrefix: 'cc-chat-id:',
+    muteListVaultKey:    'cc-mute',
+    auditLog:            { vaultKey: 'cc-audit' },
+    // onPeerMessage + nknLib supplied later via setPeerWiring().
+  });
+  const chatAgent = sa.agent;
+  const chatId    = chatAgent.identity;
 
   // v0.6 demo — household runs as a 'decentralized' crew with three
   // simulated peers.  Mostly online; one randomly unreachable so the
@@ -650,136 +654,54 @@ export async function createRealHouseholdAgent(opts = {}) {
     // sign-out so calendar's .ics feed writes-through to the user's
     // pod under <pod>/canopy/calendar/feed.ics.
     setCalendarPodWriter,
-    // v0.7.P3a — expose identity info for /me + /pod-status + future
-    // chat-p2p composition.  pubKeys are stable across refreshes
-    // because identity is persisted to VaultLocalStorage.
+    // Expose identity info for /me + /pod-status.  pubKeys are stable
+    // across refreshes because identity is persisted to VaultLocalStorage.
     identity: {
       host: { pubKey: hostId.pubKey, stableId: hostId.stableId },
       chat: { pubKey: chatId.pubKey, stableId: chatId.stableId },
     },
-    // v0.7.P3b — cross-peer connection state, populated post-boot
-    // when main.js calls connectPeerTransport(opts).  Until then,
-    // these stay null + /me reports 'not connected'.
-    peer: {
-      get address() { return peerState.address; },
-      get status()  { return peerState.status; },
-      get error()   { return peerState.error;  },
-    },
+
+    // Cross-peer state (delegates to sa.peer).  Same surface main.js
+    // already consumes: peer.address / peer.status / peer.error.
+    peer: sa.peer,
+
     /**
-     * v0.7.P3b — connect the NKN cross-peer transport.  Called by
-     * main.js when nkn-sdk is loaded (window.nkn from CDN).
-     * Returns a controller with sendTo(addr, body) for outbound +
-     * onMessage(handler) for inbound + close().
+     * Connect the NKN cross-peer transport.  Called by main.js when
+     * nkn-sdk is loaded (window.nkn from CDN).  Late-binding wiring
+     * for { nknLib, onPeerMessage } supported by sa.peer.connect.
      */
     async connectPeerTransport({ nknLib, onPeerMessage }) {
       if (!nknLib) throw new Error('connectPeerTransport: nknLib required (window.nkn)');
-      if (peerState.status === 'connected' || peerState.status === 'connecting') {
-        return peerController;
-      }
-      peerState.status = 'connecting';
-      try {
-        // Reuse the chat identity so the NKN address is stable.
-        const transport = new NknTransport({ identity: chatId, nknLib });
-        // v0.7.P3d 2026-05-23 — wire the chatAgent's SecurityLayer
-        // onto the peer transport.  Every outbound OW envelope is
-        // signed (Ed25519) + nacl.box encrypted (Curve25519 DH +
-        // XSalsa20-Poly1305) using a per-peer shared secret.  HI
-        // envelopes stay plaintext-but-signed so peers can bootstrap.
-        transport.useSecurityLayer(chatAgent.security);
-        // Hook the receive path BEFORE connect.  Transport.emit
-        // ('envelope', env) fires for every inbound message AFTER
-        // security-layer decrypt; we hand the inner payload to the
-        // caller (main.js renders into the active thread).
-        if (typeof onPeerMessage === 'function') {
-          transport.on('envelope', (env) => {
-            try {
-              onPeerMessage({
-                from:    env._from,
-                payload: env.payload,
-                ts:      env._ts ?? Date.now(),
-              });
-            } catch (err) {
-              console.error('[peer onMessage]', err);
-            }
-          });
-        }
-        await transport.connect();
-        peerTransport     = transport;
-        peerState.status  = 'connected';
-        peerState.address = transport.address;
-        peerState.error   = null;
-      } catch (err) {
-        peerState.status = 'error';
-        peerState.error  = err?.message ?? String(err);
-        throw err;
-      }
-      return peerController;
+      await sa.peer.connect({ nknLib, onPeerMessage });
+      return sa.peer;
     },
+
+    /**
+     * Fire-and-forget cross-peer send.  Auto-HI on first contact,
+     * SecurityLayer sign+encrypt — both handled inside the factory.
+     * S1 mute-block: throws when targetAddress is muted.
+     */
     async sendPeerMessage(targetAddress, payload) {
-      if (!peerTransport) {
-        throw new Error('Peer transport not connected.  /signin then wait for NKN connect.');
-      }
-      // v0.7.P3d — auto-HI on first contact.  The peer needs our
-      // Ed25519 pubKey to (a) verify our sig on subsequent envelopes
-      // + (b) derive the shared secret to decrypt them.  HI envelope
-      // carries pubKey in plaintext (it's signed-but-not-encrypted);
-      // SecurityLayer at the receiver auto-registers it.
-      if (!helloedPeers.has(targetAddress)) {
-        try {
-          await peerTransport.sendHello(targetAddress, {
-            // The receiver's SecurityLayer extracts pubKey from this
-            // payload (per its own _autoRegisterFromHi convention).
-            pubKey: chatId.pubKey,
-          });
-          helloedPeers.add(targetAddress);
-        } catch (err) {
-          // Log + continue — sendOneWay may still work if the peer
-          // already knows our pubKey from a previous session.
-          console.warn('[peer] HI failed (continuing)', err.message ?? err);
-        }
-      }
-      // sendOneWay = fire-and-forget.  SecurityLayer signs + encrypts
-      // before the wire.  Receiver verifies + decrypts.
-      return peerTransport.sendOneWay(targetAddress, payload);
+      return sa.peer.sendTo(targetAddress, payload);
     },
 
     /**
-     * v0.7.P3d — rotate the chat-agent's Ed25519 identity.  Old key
-     * stays valid for a 7-day grace period so in-flight envelopes
-     * still decrypt; KeyRotation.broadcast notifies known peers so
-     * they migrate their SecurityLayer state.
-     *
-     * Returns the new pubKey + the (now-old) pubKey.
+     * Rotate the chat-agent's Ed25519 identity.  Old key stays valid
+     * for a 7-day grace period; KeyRotation.broadcast notifies known
+     * peers.  S6 autoLog fires 'identity.rotate'.
      */
-    async rotateChatIdentity(opts = {}) {
-      const oldPubKey = chatAgent.identity.pubKey;
-      // Default: 7 days, broadcast to known peers (Agent.rotateIdentity
-      // honours these).  When peer transport isn't connected, only
-      // the local-side rotation happens; peers learn on next contact.
-      await chatAgent.rotateIdentity(opts);
-      return {
-        oldPubKey,
-        newPubKey: chatAgent.identity.pubKey,
-        graceUntilDays: opts.gracePeriodSeconds
-          ? opts.gracePeriodSeconds / 86_400
-          : 7,
-      };
+    async rotateChatIdentity(rotateOpts = {}) {
+      return sa.rotateIdentity(rotateOpts);
     },
 
+    /** Diagnostic for /security-status (proxies through the factory). */
+    securityStatus() { return sa.securityStatus(); },
+
     /**
-     * v0.7.P3d — diagnostic for /security-status.
+     * Direct access to the underlying secure-agent.  Lets new
+     * canopy-chat commands (mute, audit-tail, claim, …) tap every
+     * primitive the factory wires without re-exposing each one.
      */
-    securityStatus() {
-      const sec = chatAgent.security;
-      const helloed = [...helloedPeers];
-      return {
-        layerWired:    !!sec,
-        identityPub:   chatAgent.identity.pubKey,
-        identityStable: chatAgent.identity.stableId,
-        peerTransportConnected: !!peerTransport,
-        helloedPeerCount: helloed.length,
-        helloedPeers:  helloed,
-      };
-    },
+    sa,
   };
 }

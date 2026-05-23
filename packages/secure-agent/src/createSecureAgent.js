@@ -89,6 +89,7 @@ import { loadAuditLog }       from './auditLog.js';
  *
  * @property {object}  [vault]                  Pre-built Vault (e.g. VaultMemory for tests)
  * @property {string}  [identityVaultPrefix]    Default 'sa-id:'
+ * @property {object}  [bus]                    Pre-built InternalBus — share when this agent needs to talk to others in-process (e.g. canopy-chat's host+chat topology).  Default: factory builds its own siloed bus.
  * @property {string}  [passphrase]             S3 — wraps vault with AES-GCM via PBKDF2 (browser/IndexedDB)
  * @property {boolean|object} [webAuthnUnlock]  S3 — true | { rpId, prfSalt, userName, ... }
  *
@@ -204,11 +205,12 @@ export async function createSecureAgent(opts = {}) {
   });
   const identity = await restoreOrGenerate(vault);
 
-  // ─── Agent on a single-agent InternalBus (no co-located peers) ───
-  // Note: in-process app topologies (host+chat in canopy-chat) build
-  // their own bus + multi-agent setup; secure-agent gives them a
-  // CLEAN cross-peer agent that they can compose alongside.
-  const bus = new InternalBus();
+  // ─── Agent on an InternalBus ─────────────────────────────────────
+  // Default: factory builds its own siloed bus (single-agent topology).
+  // Override: pass opts.bus when this agent must talk to other in-process
+  // agents (e.g. canopy-chat's host+chat topology — chatAgent comes from
+  // the factory; hostAgent is built manually; both share the bus).
+  const bus = opts.bus ?? new InternalBus();
   const transport = new InternalTransport(bus, identity.pubKey);
   const agent = new Agent({ identity, transport });
   await agent.start();
@@ -438,15 +440,30 @@ export async function createSecureAgent(opts = {}) {
   const peerState = { status: 'idle', address: null, error: null };
   const helloedPeers = new Set();
 
+  // Late-binding hook for onPeerMessage: factory opts may not have it
+  // (canopy-chat-style flow: construct first, wire UI later).  Caller
+  // can pass onPeerMessage to connect() OR set it via setPeerMessageHandler().
+  let onPeerMessageFn = (typeof opts.onPeerMessage === 'function')
+    ? opts.onPeerMessage : null;
+
   /**
    * Establish the cross-peer NKN transport, wired with SecurityLayer
    * + receive-path that calls onPeerMessage.
+   *
+   * Both `nknLib` and `onPeerMessage` can be supplied here as overrides
+   * for late-binding flows (e.g. apps that construct the agent before
+   * window.nkn has loaded from a CDN).  Either takes precedence over
+   * the factory-time opt.
    */
-  async function connectPeer() {
-    if (!opts.nknLib) {
+  async function connectPeer(callOpts = {}) {
+    const nknLib = callOpts.nknLib ?? opts.nknLib;
+    if (callOpts.onPeerMessage) onPeerMessageFn = callOpts.onPeerMessage;
+    if (!nknLib) {
       throw new Error(
         'createSecureAgent: connect() called but no nknLib provided.  ' +
-        'Pass window.nkn (CDN-loaded in browser) or the RN nkn-sdk.',
+        'Pass window.nkn (CDN-loaded in browser) or the RN nkn-sdk — ' +
+        'either at factory time (opts.nknLib) or at connect time ' +
+        '(sa.peer.connect({ nknLib })).',
       );
     }
     if (peerState.status === 'connected' || peerState.status === 'connecting') {
@@ -454,7 +471,7 @@ export async function createSecureAgent(opts = {}) {
     }
     peerState.status = 'connecting';
     try {
-      const tx = new NknTransport({ identity, nknLib: opts.nknLib });
+      const tx = new NknTransport({ identity, nknLib });
       // Auto-wire SecurityLayer so every outbound envelope is signed
       // + nacl.box encrypted with a per-peer shared secret.  HI stays
       // plaintext-but-signed so peers can bootstrap.
@@ -487,9 +504,9 @@ export async function createSecureAgent(opts = {}) {
         } catch (err) {
           console.warn('[secure-agent] reciprocal-HI bookkeeping failed', err);
         }
-        if (typeof opts.onPeerMessage === 'function') {
+        if (typeof onPeerMessageFn === 'function') {
           try {
-            opts.onPeerMessage({
+            onPeerMessageFn({
               from:    env._from,
               payload: env.payload,
               ts:      env._ts ?? Date.now(),
