@@ -20,6 +20,9 @@ import {
   PASSKEY_ERRORS,
 } from '../src/passkey.js';
 import { createPeerResolver, PeerResolver } from '../src/resolver.js';
+import {
+  TrustRegistry, CapabilityToken, PolicyEngine, ROLES, roleRank,
+} from '@canopy/core';
 
 describe('createSecureAgent — S0 foundation', () => {
   it('builds an agent with auto-SecurityLayer (no peer transport)', async () => {
@@ -126,15 +129,15 @@ describe('createSecureAgent — S0 foundation', () => {
   it('warns on stubbed opts (warnOnInsecure default true)', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const sa = await createSecureAgent({
-      vault:           new VaultMemory(),
-      capabilityIssuer: true,   // stubbed in S0
+      vault:    new VaultMemory(),
+      auditLog: true,   // still-stubbed (S6)
     });
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('"capabilityIssuer"'),
+      expect.stringContaining('"auditLog"'),
     );
     // The stubbed opt should still be visible on pendingOpts.
-    expect(sa.pendingOpts.capabilityIssuer).toBe(true);
-    expect(sa.securityStatus().pendingOpts.capabilityIssuer).toBe(true);
+    expect(sa.pendingOpts.auditLog).toBe(true);
+    expect(sa.securityStatus().pendingOpts.auditLog).toBe(true);
     warn.mockRestore();
     await sa.shutdown();
   });
@@ -142,9 +145,9 @@ describe('createSecureAgent — S0 foundation', () => {
   it('warnOnInsecure:false suppresses the warning', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await createSecureAgent({
-      vault:           new VaultMemory(),
-      capabilityIssuer: true,
-      warnOnInsecure:  false,
+      vault:          new VaultMemory(),
+      auditLog:       true,
+      warnOnInsecure: false,
     });
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
@@ -153,7 +156,6 @@ describe('createSecureAgent — S0 foundation', () => {
   it('securityStatus() reports identity + peer + pendingOpts', async () => {
     const sa = await createSecureAgent({
       vault:           new VaultMemory(),
-      capabilityIssuer: true,
       auditLog:        { signEvery: true },
       warnOnInsecure:  false,
     });
@@ -164,8 +166,7 @@ describe('createSecureAgent — S0 foundation', () => {
     expect(st.peerTransportConnected).toBe(false);
     expect(st.helloedPeerCount).toBe(0);
     expect(st.pendingOpts).toEqual({
-      capabilityIssuer: true,
-      auditLog:         { signEvery: true },
+      auditLog: { signEvery: true },
     });
     await sa.shutdown();
   });
@@ -832,6 +833,134 @@ describe('createSecureAgent — S4 identity-resolver', () => {
     const r = createPeerResolver({ memberMap: mm });
     const m = await r.resolveByAddr('app.directpubkey');
     expect(m.webid).toBe('https://d.example/#me');
+  });
+});
+
+/* ─── S5 — caps + roles + trust ─────────────────────── */
+
+describe('createSecureAgent — S5 trust + caps + policy', () => {
+  it('omit trustRegistry/capabilityIssuer/policyEngine → all null', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    expect(sa.trust).toBeNull();
+    expect(sa.caps).toBeNull();
+    expect(sa.policy).toBeNull();
+    expect(sa.ROLES).toEqual(ROLES);
+    await sa.shutdown();
+  });
+
+  it('trustRegistry:true wires a TrustRegistry on the identity vault', async () => {
+    const vault = new VaultMemory();
+    const sa = await createSecureAgent({ vault, trustRegistry: true });
+    expect(sa.trust).toBeInstanceOf(TrustRegistry);
+    expect(sa.securityStatus().trustWired).toBe(true);
+    // Round-trip:
+    await sa.trust.setTier('pk-x', 'trusted');
+    expect(await sa.trust.getTier('pk-x')).toBe('trusted');
+    await sa.shutdown();
+  });
+
+  it('trustRegistry: { vault } isolates state from identity vault', async () => {
+    const identityV = new VaultMemory();
+    const trustV    = new VaultMemory();
+    const sa = await createSecureAgent({
+      vault: identityV, trustRegistry: { vault: trustV },
+    });
+    await sa.trust.setTier('pk-y', 'authenticated');
+    // identityV must not have the trust key
+    const idKeys = await identityV.list();
+    expect(idKeys.some((k) => k.startsWith('trust:'))).toBe(false);
+    const tKeys  = await trustV.list();
+    expect(tKeys).toContain('trust:pk-y');
+    await sa.shutdown();
+  });
+
+  it('capabilityIssuer:true wires sa.caps.issue + verify with defaults', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(), capabilityIssuer: true,
+    });
+    expect(typeof sa.caps.issue).toBe('function');
+    const token = await sa.caps.issue({
+      subject: 'pk-recipient',
+      skill:   'echo',
+    });
+    expect(token).toBeInstanceOf(CapabilityToken);
+    expect(token.issuer).toBe(sa.identity.pubKey);
+    expect(token.agentId).toBe(sa.identity.pubKey);
+    expect(token.subject).toBe('pk-recipient');
+    expect(token.skill).toBe('echo');
+    expect(token.isExpired).toBe(false);
+    // Default verify uses our pubKey as expectedAgentId
+    expect(sa.caps.verify(token)).toBe(true);
+    await sa.shutdown();
+  });
+
+  it('capabilityIssuer: { defaultExpiresIn } honored', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      capabilityIssuer: { defaultExpiresIn: 100 },
+    });
+    const before = Date.now();
+    const token = await sa.caps.issue({ subject: 'pk-r', skill: 's' });
+    expect(token.expiresAt).toBeLessThanOrEqual(before + 100 + 50);
+    await sa.shutdown();
+  });
+
+  it('caps.verify rejects expired token', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(), capabilityIssuer: true,
+    });
+    const token = await sa.caps.issue({ subject: 'pk-r', skill: 's', expiresIn: 1 });
+    await new Promise(r => setTimeout(r, 10));
+    expect(sa.caps.verify(token)).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('caps.verify rejects token whose agentId is not ours', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(), capabilityIssuer: true,
+    });
+    // Issue manually with a wrong agentId
+    const token = await sa.caps.issue({
+      subject: 'pk-r', agentId: 'pk-someone-else', skill: 's',
+    });
+    expect(sa.caps.verify(token)).toBe(false);
+  });
+
+  it('policyEngine requires trustRegistry — throws otherwise', async () => {
+    await expect(createSecureAgent({
+      vault: new VaultMemory(), policyEngine: true,
+    })).rejects.toThrow(/requires trustRegistry/);
+  });
+
+  it('policyEngine:true wires sa.policy with both trust + skills', async () => {
+    const sa = await createSecureAgent({
+      vault:           new VaultMemory(),
+      trustRegistry:   true,
+      policyEngine:    true,
+    });
+    expect(sa.policy).toBeInstanceOf(PolicyEngine);
+    expect(sa.securityStatus().policyWired).toBe(true);
+    await sa.shutdown();
+  });
+
+  it('Roles re-export: roleRank + ROLES are usable', async () => {
+    expect(ROLES.ADMIN).toBe('admin');
+    expect(roleRank('admin') > roleRank('member')).toBe(true);
+  });
+
+  it('warnings no longer fire for trustRegistry / capabilityIssuer / policyEngine', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await createSecureAgent({
+      vault:            new VaultMemory(),
+      trustRegistry:    true,
+      capabilityIssuer: true,
+      policyEngine:     true,
+    });
+    const allWarnArgs = warn.mock.calls.flat().join(' ');
+    expect(allWarnArgs).not.toMatch(/"trustRegistry"/);
+    expect(allWarnArgs).not.toMatch(/"capabilityIssuer"/);
+    expect(allWarnArgs).not.toMatch(/"policyEngine"/);
+    warn.mockRestore();
   });
 });
 

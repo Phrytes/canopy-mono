@@ -103,6 +103,36 @@ const cred = await sa3.passkey.register();
 const sec  = await sa3.passkey.unlock();
 ```
 
+### S5 — caps + roles + trust
+
+```js
+const sa = await createSecureAgent({
+  trustRegistry:    true,
+  capabilityIssuer: { defaultExpiresIn: 24 * 3600_000 },     // 24h
+  policyEngine:     true,
+});
+
+// TrustRegistry — per-peer trust state, vault-backed
+await sa.trust.setTier('pk-alice', 'trusted');
+await sa.trust.getTier('pk-alice');                          // → 'trusted'
+await sa.trust.addGroup('pk-alice', 'crew-1');
+
+// CapabilityToken — grant Alice the right to invoke our 'echo' skill
+const token = await sa.caps.issue({
+  subject: 'pk-alice',
+  skill:   'echo',
+  expiresIn: 3_600_000,
+});
+sa.caps.verify(token);                                       // → true
+
+// Roles — constants + rank helpers
+import { roleRank } from '@canopy/secure-agent';
+roleRank(sa.ROLES.ADMIN) > roleRank(sa.ROLES.MEMBER);        // → true
+
+// PolicyEngine — composed automatically when both are wired
+sa.policy;   // PolicyEngine instance — use for skill-call gating
+```
+
 ### S4 — identity-resolver + alias-aware mute
 
 ```js
@@ -151,7 +181,7 @@ if (!v.ok) throw new Error(`claim invalid: ${v.reason}`);
 await podWriter.put('canopy/identity/claim.json', sa.claim.serialize(claim));
 ```
 
-## What's wired today (S0 + S1 + S2 + S3 + S4)
+## What's wired today (S0 + S1 + S2 + S3 + S4 + S5)
 
 S0 — foundation:
 - ✅ Persistent identity (`VaultLocalStorage` in browser, `VaultMemory` elsewhere)
@@ -173,6 +203,12 @@ S2 — signed WebID claim:
 - ✅ `sa.claim.verify(claim)` — returns `{ ok, body | reason }`; checks sig + exp + ts skew
 - ✅ `sa.claim.{serialize,parse}` — JSON for pod-side storage
 - ✅ `webidClaim: { webid }` factory opt binds default WebID
+
+S5 — capabilities + roles + trust:
+- ✅ `trustRegistry: true | { vault }` factory opt → `sa.trust` (TrustRegistry instance)
+- ✅ `capabilityIssuer: true | { defaultExpiresIn }` → `sa.caps.{issue,verify}`
+- ✅ `policyEngine: true | { groupManager, isRevoked, actorResolver }` → `sa.policy`
+- ✅ `sa.ROLES` + module re-export of Roles primitives
 
 S4 — identity-resolver + alias-aware mute:
 - ✅ `identityResolver: memberMap` (or `{ memberMap }`) factory opt
@@ -200,8 +236,6 @@ lands.  No app-code change needed when each slice activates.
 
 | Opt | S slice | Item |
 |---|---|---|
-| `capabilityIssuer` | S5 | A.5 capability tokens |
-| `trustRegistry` | S5 | A+.3 per-peer trust score |
 | `auditLog` | S6 | A.6 signed activity log |
 | `groupManager` | S7 | A.7 GroupManager closed groups |
 | `a2aTls` | S7 | A+.4 future A2A protocol |
@@ -240,7 +274,7 @@ its own InternalBus.
 pnpm --filter @canopy/secure-agent test
 ```
 
-59/60 passing (1 skipped pending integration test infrastructure
+70/71 passing (1 skipped pending integration test infrastructure
 for sig-validated envelopes; the bilateral HI auto-handshake's
 wiring is in place + verified in canopy-chat's two-tab demo).
 

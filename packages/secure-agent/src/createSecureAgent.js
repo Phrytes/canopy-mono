@@ -25,11 +25,13 @@
  *   - passphrase         (S3 — A.3)   forwards to vault picker → VaultIndexedDB
  *   - webAuthnUnlock     (S3 — A+.5)  sa.passkey.{register,unlock} via PRF
  *   - identityResolver   (S4 — A.4)   sa.resolver.* + alias-fanout mute
+ *   - trustRegistry      (S5 — A+.3)  sa.trust (vault-backed)
+ *   - capabilityIssuer   (S5 — A.5)   sa.caps.issue/verify
+ *   - policyEngine       (S5 — A.5b)  sa.policy (composes trust + skills)
+ *   - Roles re-exported as sa.ROLES + module export
  *
  * # What's a stub (filled by later slices)
  *
- *   - capabilityIssuer   (S5 — A.5)
- *   - trustRegistry      (S5 — A+.3)
  *   - auditLog           (S6 — A.6)
  *   - groupManager       (S7 — A.7)
  *   - a2aTls             (S7 — A+.4)
@@ -51,7 +53,13 @@ import {
   NknTransport,
 } from '@canopy/core';
 
-import { tokenGate } from '@canopy/core';
+import {
+  tokenGate,
+  TrustRegistry,
+  CapabilityToken,
+  PolicyEngine,
+  ROLES,
+} from '@canopy/core';
 
 import { makeBrowserVault, restoreOrGenerate } from './vault.js';
 import { loadMuteSet }                          from './mute.js';
@@ -83,8 +91,9 @@ import { createPeerResolver } from './resolver.js';
  * @property {Function|string|object} [helloGate] S1 — fn(envelope)=>bool, PSK string, or { token }
  * @property {object}  [webidClaim]             S2 — { webid } binds default WebID for claim.sign()
  * @property {object}  [identityResolver]       S4 — MemberMap-shape (or { memberMap }) for alias-aware mute + sa.resolver.*
- * @property {boolean} [capabilityIssuer]       [STUB — S5]
- * @property {boolean} [trustRegistry]          [STUB — S5b]
+ * @property {boolean|object} [capabilityIssuer] S5 — true | { defaultExpiresIn }  exposes sa.caps
+ * @property {boolean|object} [trustRegistry]    S5 — true | { vault }  exposes sa.trust
+ * @property {boolean|object} [policyEngine]     S5 — true | { groupManager, isRevoked, actorResolver }  exposes sa.policy (requires trustRegistry)
  * @property {object}  [auditLog]               [STUB — S6] { signEvery, podSyncEvery }
  * @property {boolean} [groupManager]           [STUB — S7]
  * @property {boolean} [a2aTls]                 [STUB — S7a]
@@ -109,8 +118,9 @@ const STUB_OPTS = Object.freeze([
   // helloGate         — wired in S1
   // webidClaim        — wired in S2
   // identityResolver  — wired in S4 (sa.resolver.* + mute-fanout)
-  'capabilityIssuer',
-  'trustRegistry',
+  // capabilityIssuer  — wired in S5 (sa.caps.{issue,verify})
+  // trustRegistry     — wired in S5 (sa.trust.* — vault-backed)
+  // policyEngine      — wired in S5 (sa.policy)
   'auditLog',
   'groupManager',
   'a2aTls',
@@ -260,6 +270,51 @@ export async function createSecureAgent(opts = {}) {
     const aliases = await peerResolver.aliasesFor(addr);
     for (const a of aliases) if (muteSet.has(a)) return true;
     return false;
+  }
+
+  // ─── S5 — TrustRegistry + CapabilityTokens + PolicyEngine ─────────
+  // (A.5 caps + A+.2 Roles + A+.3 Trust)
+  //
+  // TrustRegistry: persistent per-peer trust/tier/group/token-grant
+  // records.  Vault-backed; reuses the agent's vault by default (so
+  // identity + trust live side-by-side), or a separate vault may be
+  // supplied for isolation (e.g. pod-mirrored trust vs local identity).
+  let trustRegistry = null;
+  if (opts.trustRegistry) {
+    const trustVault = (typeof opts.trustRegistry === 'object' && opts.trustRegistry.vault)
+      ? opts.trustRegistry.vault
+      : vault;
+    trustRegistry = new TrustRegistry(trustVault);
+  }
+
+  // CapabilityToken issuance + verification helpers, bound to the
+  // factory's identity (signer) and pubKey (expected-agent on verify).
+  const capDefaults = (typeof opts.capabilityIssuer === 'object' && opts.capabilityIssuer)
+    ? opts.capabilityIssuer
+    : {};
+  const capsWired = !!opts.capabilityIssuer;
+
+  // PolicyEngine wiring — composed when opted in.  Requires
+  // trustRegistry (created here) + agent.skills (always present).  An
+  // optional actorResolver may be the same MemberMap-shape we received
+  // in S4 (it must expose .resolve to satisfy PolicyEngine — we adapt
+  // below).
+  let policyEngine = null;
+  if (opts.policyEngine) {
+    if (!trustRegistry) {
+      throw new Error(
+        'createSecureAgent: policyEngine requires trustRegistry to also be enabled.',
+      );
+    }
+    const peOpts = (typeof opts.policyEngine === 'object') ? opts.policyEngine : {};
+    policyEngine = new PolicyEngine({
+      trustRegistry,
+      skillRegistry: agent.skills,
+      agentPubKey:   identity.pubKey,
+      groupManager:  peOpts.groupManager  ?? null,
+      isRevoked:     peOpts.isRevoked     ?? null,
+      actorResolver: peOpts.actorResolver ?? null,
+    });
   }
 
   // ─── Peer state (NKN cross-peer; stays idle until connect()) ───
@@ -412,6 +467,10 @@ export async function createSecureAgent(opts = {}) {
       passkeyAvailable:  webauthnAvailable(),
       // S4 — resolver state
       resolverWired:    !!resolverMemberMap,
+      // S5 — caps + trust + policy
+      trustWired:       !!trustRegistry,
+      capsWired,
+      policyWired:      !!policyEngine,
       // STUB sections — surfaces what's reserved vs what's wired:
       pendingOpts: pickStubOpts(opts),
     };
@@ -458,6 +517,34 @@ export async function createSecureAgent(opts = {}) {
 
     // S4 — identity-resolver (peer alias resolution + mute fanout)
     resolver: peerResolver,
+
+    // S5 — TrustRegistry (vault-backed per-peer trust)
+    trust: trustRegistry,                  // null when not opted in
+
+    // S5 — CapabilityToken issuance + verification
+    caps: capsWired ? {
+      async issue(issueOpts = {}) {
+        return CapabilityToken.issue(identity, {
+          agentId:   identity.pubKey,
+          expiresIn: capDefaults.defaultExpiresIn ?? 3_600_000,
+          skill:     '*',
+          ...issueOpts,
+        });
+      },
+      verify(token, vOpts = {}) {
+        return CapabilityToken.verify(
+          token,
+          vOpts.expectedAgentId ?? identity.pubKey,
+          vOpts,
+        );
+      },
+    } : null,
+
+    // S5 — PolicyEngine
+    policy: policyEngine,                  // null when not opted in
+
+    // S5 — Roles constants (no per-instance state)
+    ROLES,
 
     // S3 — WebAuthn / passkey unlock helpers
     passkey: {
