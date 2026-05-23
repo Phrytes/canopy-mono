@@ -909,6 +909,20 @@ export async function createRealHouseholdAgent(opts = {}) {
    */
   function adaptTasksReply(opId, data) {
     if (data == null) return null;
+    // #192 (B8) — DAG hard-dep blocking surface.  Real skill returns
+    // {error: 'has-open-dependencies', openDeps: [...]} when the user
+    // tries to complete a task whose subtasks aren't done.  Translate
+    // to a clear chat-shell message + structured payload the UI can
+    // render the dep IDs from.
+    if ((opId === 'completeTask' || opId === 'approveTask')
+        && data?.error === 'has-open-dependencies') {
+      const deps = Array.isArray(data.openDeps) ? data.openDeps : [];
+      return {
+        ok:    false,
+        error: `🔒 Blocked: ${deps.length} open dependenc${deps.length === 1 ? 'y' : 'ies'} (${deps.slice(0, 3).join(', ')}${deps.length > 3 ? '…' : ''}). Close the sub-tasks first.`,
+        openDeps: deps,
+      };
+    }
     // Skill returned an error envelope — pass through unchanged.
     if (data.ok === false) return data;
 
@@ -954,12 +968,22 @@ export async function createRealHouseholdAgent(opts = {}) {
     // Real items carry `status` (ready/claimed/submitted/rejected/
     // complete/blocked) but the chat-shell renderer + most tests
     // expect a mock-era `state` field (open/claimed/done).  Add the
-    // mapped `state` alongside the original status.
+    // mapped `state` alongside the original status.  #192 (B8): also
+    // surface a `blockedBy` label when the task has openDeps so the
+    // user sees the gate without clicking [Mark complete] first.
     if ((opId === 'listMine' || opId === 'listOpen' || opId === 'listMyInbox' || opId === 'myInbox')
         && Array.isArray(data.items)) {
       return {
         ...data,
-        items: data.items.map((t) => ({ ...t, state: _statusToChatState(t.status, t) })),
+        items: data.items.map((t) => {
+          const openDeps = Array.isArray(t.openDeps) ? t.openDeps : [];
+          const baseRow = { ...t, state: _statusToChatState(t.status, t) };
+          if (openDeps.length > 0) {
+            baseRow.blockedBy = openDeps;
+            baseRow.label = `${t.text ?? t.title ?? t.id} 🔒 blocked by ${openDeps.length} dep${openDeps.length === 1 ? '' : 's'}`;
+          }
+          return baseRow;
+        }),
         _sync: simulateSync(),
       };
     }
