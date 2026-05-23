@@ -1,0 +1,21 @@
+{
+  "name":        "@canopy/secure-agent",
+  "version":     "0.1.0",
+  "description": "Safety-by-default agent factory.  Wires persistent identity + Agent (auto-SecurityLayer) + NknTransport (with useSecurityLayer + auto-HI) into a single createSecureAgent({...}) call.  Reserved opts for future safety items (mute, helloGates, signed-WebID, passphrase-vault, WebAuthn, identity-resolver, capability tokens, audit log, group encryption, Double-Ratchet PFS) so apps inherit each defence behind a checkbox — without re-wiring per app.  See Project Files/canopy-chat/security-roadmap-2026-05-23.md.",
+  "type":        "module",
+  "main":        "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test":       "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/core":  "workspace:*",
+    "@canopy/vault": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}
