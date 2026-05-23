@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.js",
     "./manifest": "./manifest.js",
+    "./browser": "./src/browser.js",
     "./MeshAgent": "./src/MeshAgent.js",
     "./wireSkills": "./src/wireSkills.js",
     "./bundleResolver": "./src/bundleResolver.js",

@@ -28,6 +28,7 @@ import {
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 import { createSecureAgent } from '@canopy/secure-agent';
+import { createBrowserTasksAgent } from '@canopy-app/tasks-v0/browser';
 
 /**
  * Pick the right vault for the runtime.  Used here only for the
@@ -406,219 +407,6 @@ export async function createRealHouseholdAgent(opts = {}) {
     return [DataPart({ ok: false, error: `No contact matches "${query}"` })];
   });
 
-  /* ─────────── v0.7.2 — tasks-v0 real skills ─────────── */
-  // Mock-but-realistic task state.  Same shape as tasks-v0's real
-  // itemStore; lives in canopy-chat's browser memory for the demo.
-  // When tasks-v0's real agent migrates browser-side (separate
-  // effort), this stub is replaced by composing its actual agent.
-  const SEED_TASKS = [
-    { id: 't-1', text: 'Set up Anne\'s bedroom', type: 'task', state: 'open',    assignee: null,        requiredSkill: 'household' },
-    { id: 't-2', text: 'Fix the leaky tap',      type: 'task', state: 'open',    assignee: null,        requiredSkill: 'plumbing'  },
-    { id: 't-3', text: 'Order groceries',        type: 'task', state: 'claimed', assignee: 'webid:anne',requiredSkill: null        },
-    { id: 't-4', text: 'Take out the bins',      type: 'task', state: 'done',    assignee: 'webid:karl',requiredSkill: null        },
-  ];
-  let tasks = SEED_TASKS.map((t) => ({ ...t }));
-
-  hostAgent.register('addTask', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const text = String(a.text ?? '').trim();
-    if (!text) return [DataPart({ ok: false, error: 'text required' })];
-    const id = `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-    const task = {
-      id, text, type: 'task', state: 'open',
-      assignee:      a.assignee      ?? null,
-      requiredSkill: a.requiredSkill ?? null,
-    };
-    tasks.push(task);
-    publishEvent({
-      app: 'tasks-v0', type: 'item-changed',
-      itemRef: { app: 'tasks-v0', type: 'task', id },
-      payload: { message: `✓ Added task: ${text}` },
-    });
-    return [DataPart({
-      ok: true, message: `✓ Added task: ${text}`, itemId: id, _sync: simulateSync(),
-    })];
-  });
-
-  hostAgent.register('listMine', async () => {
-    // v0.7 demo: 'mine' interpreted as 'open + claimed by anyone';
-    // real tasks-v0 filters by actor's webid.
-    const items = tasks.filter((t) => t.state === 'open' || t.state === 'claimed');
-    return [DataPart({ items, _sync: simulateSync() })];
-  });
-
-  hostAgent.register('claimTask', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const target = tasks.find((t) => t.id === a.id);
-    if (!target) return [DataPart({ ok: false, error: `No task with id "${a.id}".` })];
-    if (target.state !== 'open') {
-      return [DataPart({ ok: false, error: `Task "${target.text}" not in open state.` })];
-    }
-    target.state    = 'claimed';
-    target.assignee = a.assignee ?? 'webid:local-demo-user';
-    return [DataPart({
-      ok: true, message: `✓ Claimed: ${target.text}`, itemId: target.id, _sync: simulateSync(),
-    })];
-  });
-
-  hostAgent.register('completeTask', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const target = tasks.find((t) => t.id === a.id);
-    if (!target) return [DataPart({ ok: false, error: `No task with id "${a.id}".` })];
-    if (target.state === 'done') {
-      return [DataPart({ ok: false, error: `Task "${target.text}" is already done.` })];
-    }
-    target.state = 'done';
-    publishEvent({
-      app: 'tasks-v0', type: 'item-changed',
-      itemRef: { app: 'tasks-v0', type: 'task', id: target.id },
-      payload: { message: `✓ Completed: ${target.text}` },
-    });
-    return [DataPart({
-      ok: true, message: `✓ Completed: ${target.text}`, itemId: target.id, _sync: simulateSync(),
-    })];
-  });
-
-  hostAgent.register('getTaskSnapshot', async ({ parts }) => {
-    const id = parts?.[0]?.data?.id;
-    const target = tasks.find((t) => t.id === id);
-    if (!target) return [DataPart({ ok: false, error: `No task with id "${id}".` })];
-    return [DataPart({
-      id:    target.id,
-      type:  'task',
-      state: target.state,
-      title: target.text,
-      fields: {
-        state:    target.state,
-        assignee: target.assignee ?? 'unassigned',
-        ...(target.requiredSkill ? { requires: target.requiredSkill } : {}),
-      },
-    })];
-  });
-
-  // v0.7.5 — searchTasks: text search across cached tasks.
-  hostAgent.register('searchTasks', async ({ parts }) => {
-    const q = String(parts?.[0]?.data?.query ?? '').toLowerCase();
-    if (!q) return [DataPart({ items: [] })];
-    const hits = tasks.filter((tk) => tk.text.toLowerCase().includes(q));
-    return [DataPart({
-      items: hits.map((tk) => ({ id: tk.id, label: tk.text, type: 'task' })),
-    })];
-  });
-
-  // Tasks-v0 briefSummary for the /brief aggregator (Q30).
-  hostAgent.register('tasks_briefSummary', async () => {
-    const open = tasks.filter((t) => t.state === 'open');
-    if (open.length === 0) return [DataPart({ ok: true })];   // empty → skipped
-    return [DataPart({
-      items:   open.map((t) => ({ id: t.id, label: t.text })),
-      message: `${open.length} open task${open.length === 1 ? '' : 's'}`,
-    })];
-  });
-
-  /* ─── v0.7.cc — tasks-v0: crew / DoD / inbox ─── */
-
-  // In-memory crew + inbox state.  Real tasks-v0 uses crewConfig +
-  // local-store + agent-registry; the mock-real here is just enough
-  // for the cross-app journeys to verify the chat-shell wiring.
-  const crews = [];   // [{id, name, kind, ownerWebid}]
-  const inbox = [];   // [{id, kind, message, ts, itemRef?}]
-
-  hostAgent.register('provisionMyCrew', async ({ parts }) => {
-    const args = parts?.[0]?.data ?? {};
-    const name = String(args.name ?? '').trim();
-    const kind = String(args.kind ?? 'household');
-    if (!name) return [DataPart({ ok: false, error: 'name required' })];
-    const id = `crew-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-    crews.push({ id, name, kind, ownerWebid: 'webid:local-demo-user' });
-    return [DataPart({
-      ok: true,
-      message: `✓ Crew "${name}" (${kind}) provisioned.  id=${id}`,
-      crewId: id,
-      _sync:  simulateSync(),
-    })];
-  });
-
-  hostAgent.register('submitTask', async ({ parts }) => {
-    const args = parts?.[0]?.data ?? {};
-    const target = tasks.find((t) => t.id === args.id);
-    if (!target) return [DataPart({ ok: false, error: `No task with id "${args.id}".` })];
-    if (target.state !== 'claimed') {
-      return [DataPart({ ok: false, error: `Task "${target.text}" must be claimed before submit (state=${target.state}).` })];
-    }
-    target.state = 'submitted';
-    target.submittedNote = args.note ?? null;
-    // Notify approver via inbox.
-    inbox.push({
-      id: `mention-${target.id}-${Date.now().toString(36)}`,
-      kind: 'review-needed', ts: Date.now(),
-      message: `${target.text} submitted for review${args.note ? ` ("${args.note}")` : ''}`,
-      itemRef: { app: 'tasks-v0', type: 'task', id: target.id },
-    });
-    publishEvent({
-      app: 'tasks-v0', type: 'item-changed',
-      itemRef: { app: 'tasks-v0', type: 'task', id: target.id },
-      payload: { message: `📩 ${target.text} submitted for review` },
-    });
-    return [DataPart({
-      ok: true,
-      message: `📩 Submitted "${target.text}" for review.`,
-      itemId: target.id, _sync: simulateSync(),
-    })];
-  });
-
-  hostAgent.register('approveTask', async ({ parts }) => {
-    const args = parts?.[0]?.data ?? {};
-    const target = tasks.find((t) => t.id === args.id);
-    if (!target) return [DataPart({ ok: false, error: `No task with id "${args.id}".` })];
-    if (target.state !== 'submitted') {
-      return [DataPart({ ok: false, error: `Task "${target.text}" must be submitted before approve (state=${target.state}).` })];
-    }
-    target.state = 'done';
-    publishEvent({
-      app: 'tasks-v0', type: 'item-changed',
-      itemRef: { app: 'tasks-v0', type: 'task', id: target.id },
-      payload: { message: `✅ ${target.text} approved` },
-    });
-    return [DataPart({
-      ok: true, message: `✅ Approved: ${target.text}`,
-      itemId: target.id, _sync: simulateSync(),
-    })];
-  });
-
-  hostAgent.register('rejectTask', async ({ parts }) => {
-    const args = parts?.[0]?.data ?? {};
-    const target = tasks.find((t) => t.id === args.id);
-    if (!target) return [DataPart({ ok: false, error: `No task with id "${args.id}".` })];
-    if (target.state !== 'submitted') {
-      return [DataPart({ ok: false, error: `Task "${target.text}" must be submitted before reject (state=${target.state}).` })];
-    }
-    target.state = 'claimed';
-    target.rejectReason = args.reason ?? null;
-    publishEvent({
-      app: 'tasks-v0', type: 'item-changed',
-      itemRef: { app: 'tasks-v0', type: 'task', id: target.id },
-      payload: { message: `↩ ${target.text} rejected${args.reason ? `: ${args.reason}` : ''}` },
-    });
-    return [DataPart({
-      ok: true,
-      message: `↩ Rejected: ${target.text}${args.reason ? ` — ${args.reason}` : ''}`,
-      itemId: target.id, _sync: simulateSync(),
-    })];
-  });
-
-  hostAgent.register('myInbox', async () => {
-    return [DataPart({
-      items: inbox.map((entry) => ({
-        id:    entry.id,
-        label: entry.message,
-        type:  entry.kind,
-        ts:    entry.ts,
-        itemRef: entry.itemRef ?? null,
-      })),
-      _sync: simulateSync(),
-    })];
-  });
 
   /* ─────────── v0.7.3 — stoop real skills ─────────── */
   const SEED_POSTS = [
@@ -844,22 +632,277 @@ export async function createRealHouseholdAgent(opts = {}) {
   // delivers synchronously enough that one hello is sufficient.
   await chatAgent.hello(hostAgent.address);
 
+  /* ─── tasks-v0 real crew agent (slice 1 — integration plan
+   *     2026-05-23) ─────────────────────────────────────────────
+   *
+   * Replaces the previous mock-task handlers (~210 lines) with
+   * the actual tasks-v0 Crew agent composed in-process.  Boots
+   * 110 real skills (addTask, claimTask, completeTask, submitTask,
+   * approveTask, rejectTask, listMyInbox, listOpen, listMine,
+   * getTaskSnapshot, provisionMyCrew, …).
+   *
+   * Separate identity vault prefix so crew identity is isolated
+   * from chat identity (per integration-plan decision #2).
+   */
+  const tasksIdentityVault = opts.tasksIdentityVault
+    ?? makeBrowserVault('cc-tasks-id:');
+  // Register the chatAgent's pubKey as the local member ("admin")
+  // AND keep the legacy webid:* members for demo cross-actor tests.
+  // Real tasks-v0 skills use `from` (caller) to look up the actor's
+  // role; without the chatAgent's pubKey in the member list, every
+  // call from canopy-chat would be treated as a stranger + denied
+  // by RolePolicy.
+  const tasksCrew = await createBrowserTasksAgent({
+    bus,
+    identityVault: tasksIdentityVault,
+    crewConfig: opts.tasksCrewConfig ?? {
+      crewId:  'cc-default',
+      name:    'Canopy-chat tasks',
+      kind:    'household',
+      members: [
+        // chatAgent's pubKey is what tasks-v0 sees as `from`; bind
+        // it to the local-demo-user webid + admin role.
+        { webid: chatId.pubKey, displayName: 'me', role: 'admin' },
+        // Aliases so existing CC tests that mention 'webid:anne'
+        // / 'webid:karl' / 'webid:maria' still resolve to known
+        // crew members.
+        { webid: 'webid:anne',  displayName: 'Anne',  role: 'coordinator' },
+        { webid: 'webid:karl',  displayName: 'Karl',  role: 'member'      },
+        { webid: 'webid:maria', displayName: 'Maria', role: 'member'      },
+      ],
+    },
+    label: 'TasksCrew(cc)',
+  });
+  await chatAgent.hello(tasksCrew.address);
+
+  // Pre-seed the demo crew with the same 4 tasks the mock used —
+  // existing tests + the user-facing demo expect /mytasks to show
+  // these out of the box.  Skip when caller passes seedTasks:false
+  // (clean-slate fixtures, e.g. for persistence tests).
+  if (opts.seedTasks !== false) {
+    const SEED_TASKS = [
+      { text: "Set up Anne's bedroom", requiredSkill: 'household' },
+      { text: 'Fix the leaky tap',     requiredSkill: 'plumbing'  },
+      { text: 'Order groceries',       assignee: 'webid:anne'     },
+      { text: 'Take out the bins',     assignee: 'webid:karl'     },
+    ];
+    for (const seed of SEED_TASKS) {
+      try {
+        await chatAgent.invoke(tasksCrew.address, 'addTask', [DataPart(seed)]);
+      } catch (err) {
+        if (typeof console !== 'undefined') {
+          console.warn('[realAgent] seed task failed:', err.message ?? err);
+        }
+      }
+    }
+  }
+
   /**
    * canopy-chat's CallSkill shape: `(appOrigin, opId, args) → payload`.
-   * We invoke from chatAgent against hostAgent's address.  Args get
-   * wrapped in a DataPart; the host's skill unwraps + replies with a
-   * DataPart whose `.data` is the payload canopy-chat expects.
+   *
+   * Two routing targets:
+   *   - 'household'  → hostAgent (chores, members, calendar skills,
+   *                    stoop mock-real, folio mock-real)
+   *   - 'tasks-v0'   → tasksCrew.address (the REAL tasks crew agent
+   *                    via slice-1 integration; 110 skills)
+   *
+   * Some opIds are renamed across the boundary (the chat surface
+   * uses `myInbox` historically; tasks-v0 exposes `listMyInbox`).
+   * Adapt here so the chat-shell renderer stays stable.
    */
-  const callSkill = async (appOrigin, opId, args) => {
-    if (appOrigin !== 'household') {
-      throw new Error(`realAgent: unknown appOrigin "${appOrigin}"`);
-    }
-    const parts = [DataPart(args ?? {})];
-    const result = await chatAgent.invoke(hostAgent.address, opId, parts);
-    // Skills reply with [DataPart] containing the payload object.
-    const first = Array.isArray(result) ? result[0] : null;
-    return first?.data ?? null;
+  const TASKS_OP_ALIAS = {
+    myInbox:  'listMyInbox',                  // canopy-chat → tasks-v0
+    // listMine on real tasks-v0 filters by t.assignee === from (only
+    // tasks ALREADY assigned to me).  The chat-shell semantic of
+    // /mytasks is broader — "everything actionable in my crew".  Map
+    // to listOpen so the chat user sees what they expect.
+    listMine: 'listOpen',
+    // briefSummary / searchTasks: tasks-v0 doesn't expose these as
+    // own skills today; canopy-chat derives them from listOpen below.
   };
+
+  /**
+   * Map real tasks-v0 status → chat-shell `state` field.
+   *
+   * Real status values (from item-store dag.js effectiveStatus):
+   *   ready / blocked / claimed / submitted / rejected / complete
+   * Chat-shell expects (mock-era):
+   *   open / claimed / done
+   *
+   * 'rejected' goes back to 'claimed' (assignee can retry).
+   * 'blocked' surfaces as 'open' for the chat-shell (UI gates the
+   * action by openDeps.length).
+   */
+  function _statusToChatState(status, task) {
+    if (task?.completedAt || status === 'complete') return 'done';
+    if (status === 'submitted') return 'submitted';
+    if (status === 'rejected')  return 'claimed';
+    if (status === 'claimed' || task?.assignee) return 'claimed';
+    return 'open';   // ready / blocked / undefined
+  }
+
+  /** Slugify a name → safe crewId for provisionMyCrew. */
+  function _slugifyCrewId(name) {
+    const slug = String(name ?? '')
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 30) || 'crew';
+    return /^[a-z0-9]/.test(slug) ? slug : `c-${slug}`;
+  }
+
+  const callSkill = async (appOrigin, opId, args) => {
+    if (appOrigin === 'household') {
+      const parts = [DataPart(args ?? {})];
+      const result = await chatAgent.invoke(hostAgent.address, opId, parts);
+      const first = Array.isArray(result) ? result[0] : null;
+      return first?.data ?? null;
+    }
+    if (appOrigin === 'tasks-v0') {
+      // Derived ops (not in the real crew agent): build the reply
+      // from listMine + a small shape adapter.
+      if (opId === 'briefSummary' || opId === 'tasks_briefSummary') {
+        const list = await callSkill('tasks-v0', 'listMine', {});
+        const items = (list?.items ?? []).filter((t) => t.state === 'open');
+        if (items.length === 0) return { ok: true };   // empty → /brief skips
+        return {
+          items:   items.map((t) => ({ id: t.id, label: t.text ?? t.title })),
+          message: `${items.length} open task${items.length === 1 ? '' : 's'}`,
+        };
+      }
+      if (opId === 'searchTasks') {
+        const q = String(args?.query ?? '').toLowerCase();
+        if (!q) return { items: [] };
+        const list = await callSkill('tasks-v0', 'listMine', {});
+        const hits = (list?.items ?? []).filter((t) =>
+          String(t.text ?? t.title ?? '').toLowerCase().includes(q),
+        );
+        return {
+          items: hits.map((t) => ({ id: t.id, label: t.text ?? t.title, type: 'task' })),
+        };
+      }
+      const realOpId = TASKS_OP_ALIAS[opId] ?? opId;
+      // Per-op arg normalisation between the chat-shell vocabulary
+      // and tasks-v0's real skill arg names.
+      let realArgs = args ?? {};
+      if (realOpId === 'provisionMyCrew' && !realArgs.crewId && realArgs.name) {
+        // /crew-new sends a human name; real skill demands a slug.
+        realArgs = { ...realArgs, crewId: _slugifyCrewId(realArgs.name) };
+      }
+      if (realOpId === 'rejectTask' && realArgs.reason && !realArgs.note) {
+        // Chat-shell calls the rejection field `reason`; the real
+        // item-store wants `note` (audit-log convention).
+        realArgs = { ...realArgs, note: realArgs.reason };
+      }
+      // Pass through any reject note so the adapter can append it
+      // to the chat-shell reply message.
+      const noteHint = (realOpId === 'rejectTask') ? realArgs.note : undefined;
+      if (realOpId === 'submitTask' && realArgs.note == null) {
+        // submitTask also requires a non-empty note (audit-log).
+        realArgs = { ...realArgs, note: 'submitted via chat' };
+      }
+      const parts = [DataPart(realArgs)];
+      const result = await chatAgent.invoke(tasksCrew.address, realOpId, parts);
+      const first = Array.isArray(result) ? result[0] : null;
+      const data  = first?.data ?? null;
+      if (data && noteHint) data.noteHint = noteHint;
+      return adaptTasksReply(opId, data);
+    }
+    throw new Error(`realAgent: unknown appOrigin "${appOrigin}"`);
+  };
+
+  /**
+   * Bridge real tasks-v0 reply shapes → canopy-chat's chat-shell
+   * expectations.  Real skills return rich shapes
+   * (e.g. `{task: {id, text, ...}}`); canopy-chat's renderer expects
+   * the mock-era shapes (`{ok, message, itemId, _sync}`).
+   *
+   * Adapters keep the chat-shell stable while we run with real
+   * tasks-v0 underneath.  Eventually the chat-shell renderer
+   * absorbs the richer shape natively + these adapters fall away.
+   */
+  function adaptTasksReply(opId, data) {
+    if (data == null) return null;
+    // Skill returned an error envelope — pass through unchanged.
+    if (data.ok === false) return data;
+
+    // Real task skills variously return {task: ...} (addTask /
+    // submitTask) OR {result: ...} (claimTask / completeTask) — the
+    // field name differs by skill.  Normalise to a task variable.
+    const task = data.task ?? data.result ?? null;
+
+    // addTask: {task} → {ok, message, itemId, _sync}
+    if (opId === 'addTask' && task) {
+      return {
+        ok:      true,
+        message: `✓ Added task: ${task.text ?? task.title ?? task.id}`,
+        itemId:  task.id,
+        task,
+        _sync:   simulateSync(),
+      };
+    }
+    // claimTask / completeTask / submitTask / approveTask / rejectTask:
+    // shape adapter — emit the chat-shell ok/message envelope.
+    const verbMap = {
+      claimTask:   'Claimed',
+      completeTask:'Completed',
+      submitTask:  'Submitted',
+      approveTask: 'Approved',
+      rejectTask:  'Rejected',
+    };
+    if (verbMap[opId] && task) {
+      const title = task.text ?? task.title ?? task.id;
+      // Reject path: surface the audit-log note in the message so
+      // the chat-shell + user see WHY the task was rejected.
+      const noteSuffix = (opId === 'rejectTask' && data.noteHint)
+        ? ` — ${data.noteHint}` : '';
+      return {
+        ok:      true,
+        message: `✓ ${verbMap[opId]}: ${title}${noteSuffix}`,
+        itemId:  task.id,
+        task,
+        _sync:   simulateSync(),
+      };
+    }
+    // listMine / listOpen: real returns {items: [...]} of task records.
+    // Real items carry `status` (ready/claimed/submitted/rejected/
+    // complete/blocked) but the chat-shell renderer + most tests
+    // expect a mock-era `state` field (open/claimed/done).  Add the
+    // mapped `state` alongside the original status.
+    if ((opId === 'listMine' || opId === 'listOpen' || opId === 'listMyInbox' || opId === 'myInbox')
+        && Array.isArray(data.items)) {
+      return {
+        ...data,
+        items: data.items.map((t) => ({ ...t, state: _statusToChatState(t.status, t) })),
+        _sync: simulateSync(),
+      };
+    }
+    // getTaskSnapshot: real returns {task: {...}} → flatten to embed-card shape
+    if (opId === 'getTaskSnapshot' && data.task) {
+      const t = data.task;
+      return {
+        id:    t.id,
+        type:  'task',
+        state: t.state ?? 'open',
+        title: t.text ?? t.title ?? t.id,
+        fields: { state: t.state ?? 'open', assignee: t.assignee ?? 'unassigned' },
+      };
+    }
+    // provisionMyCrew: real returns {crew: {...}} (or similar) →
+    // adapt to mock-era {ok, message, crewId}.
+    if (opId === 'provisionMyCrew') {
+      const crewId = data.crewId ?? data.crew?.crewId ?? data.id ?? null;
+      return {
+        ok:      true,
+        message: `✓ Crew provisioned (id=${crewId ?? '?'})`,
+        crewId,
+        crew:    data.crew ?? data,
+        _sync:   simulateSync(),
+      };
+    }
+    // Default: pass through.
+    return data;
+  }
 
   return {
     manifest: mockHouseholdManifest,    // SAME declaration as v0.1.4 mock
