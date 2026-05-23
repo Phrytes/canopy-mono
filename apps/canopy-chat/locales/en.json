@@ -125,7 +125,7 @@
     "lookup_failed":  { "text": "Couldn't resolve {{peer}} to an NKN address.",        "doc": "Lookup failure." },
     "cancelled":      { "text": "File picker cancelled.",                                "doc": "User dismissed." },
     "pick_failed":    { "text": "File pick failed: {{error}}",                          "doc": "Defensive." },
-    "too_large":      { "text": "File too large ({{size}} bytes; max {{max}} for inline NKN send).  Larger-file flow lands later.", "doc": "Cap." },
+    "too_large":      { "text": "File too large ({{size}} bytes; max {{max}} bytes inline).  NKN drops messages over ~64KB silently, so we cap at 32KB to guarantee delivery.  Larger files need pod-URL hand-off (next slice).", "doc": "Cap." },
     "read_failed":    { "text": "File read failed: {{error}}",                           "doc": "FileReader error." },
     "sent":           { "text": "📤 sent {{name}} ({{size}} bytes) → {{peer}}",          "doc": "Confirmation." },
     "send_failed":    { "text": "Send failed: {{error}}",                                "doc": "NKN send error." }

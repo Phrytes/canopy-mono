@@ -346,9 +346,19 @@ async function sendFile(args, {
     return { ok: false, error: t('sendFile.pick_failed', { error: err.message ?? String(err) }) };
   }
 
-  // 512KB cap on inline base64 (NKN envelope size limit + crypto
-  // overhead).  Larger files defer to a future pod-URL flow.
-  const MAX_INLINE = 512 * 1024;
+  // 32KB cap on inline base64.  Why 32KB and not the obvious 64KB
+  // (nkn-sdk-js MaxClientMessageSize ≈ 65528 bytes)?  Base64 inflates
+  // by 4/3 (32KB raw → 44KB encoded) + JSON envelope wrapping +
+  // Ed25519 sig (~88 bytes) + nacl.box overhead.  32KB raw keeps the
+  // wire payload comfortably below 64KB.
+  //
+  // Reported by Frits 2026-05-23 (manual H-1 follow-up): a 117KB
+  // file went through /send-file but never arrived at the receiver
+  // because the 512KB code-side cap was 2.5x over NKN's silent
+  // drop threshold.  Larger-file flow (chunked transfer OR pod-URL
+  // hand-off) is the next slice; for now we hard-cap at 32KB so
+  // every successful /send-file actually delivers.
+  const MAX_INLINE = 32 * 1024;
   if (file.size > MAX_INLINE) {
     return { ok: false, error: t('sendFile.too_large', { size: file.size, max: MAX_INLINE }) };
   }

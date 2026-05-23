@@ -150,8 +150,10 @@ re-verifying after any change to `web/main.js`'s openFilePicker.
 **Steps**
 
 1. Both tabs at NKN-connected state (H-3's setup)
-2. Tab A: `/send-file <b>` → pick a PDF (any size ≤ 512KB; the
-   inline-NKN cap)
+2. Tab A: `/send-file <b>` → pick a PDF or image **≤ 32KB raw**
+   (the inline-NKN cap, tightened 2026-05-23 after a 117KB file
+   silently failed delivery — see file-share-roundtrip.test.js).
+   Larger files: out of scope until the pod-URL hand-off slice.
 3. Tab B: observe the incoming embed card
 
 **Pass**:
