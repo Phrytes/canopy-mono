@@ -233,7 +233,7 @@ mockTasksManifest.operations.find((o) => o.id === 'claimTask')
  */
 export const mockStoopManifest = {
   app:        'stoop',
-  itemTypes:  ['post', 'contact'],
+  itemTypes:  ['post', 'contact', 'member'],
   operations: [
     {
       id:    'listFeed', verb: 'list', params: [],
@@ -419,6 +419,52 @@ export const mockStoopManifest = {
       surfaces: {
         slash: { command: '/contact-trust', body: 'flags' },
         chat:  { reply: 'text', hint: 'set a contact\'s trust level' },
+      },
+    },
+    /**
+     * #189 (B1+B2, 2026-05-23) — buurt/group surface.  V0: single-
+     * buurt info per agent instance (the chat-shell currently runs
+     * one stoop agent in one buurt; true multi-buurt requires
+     * multi-agent topology — separate slice).  Surfaces existing
+     * stoop skills:
+     *   /groups        → current buurt info + member count
+     *   /group-members → members of current buurt
+     *   /group-rules   → latest rules.md for current buurt
+     *   /leave-group   → with Q27 confirm
+     */
+    {
+      id:    'getCurrentGroup', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/groups' },
+        chat:  { reply: 'record', hint: 'show your current buurt' },
+      },
+    },
+    {
+      id:    'listGroupMembers', verb: 'list',
+      appliesTo: { type: 'member' },
+      params: [],
+      surfaces: {
+        slash: { command: '/group-members' },
+        chat:  { reply: 'list', hint: 'list members of your buurt' },
+      },
+    },
+    {
+      id:    'getGroupRules', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/group-rules' },
+        chat:  { reply: 'record', hint: 'show your buurt\'s rules' },
+      },
+    },
+    {
+      id:    'leaveGroup', verb: 'remove',
+      params: [
+        { name: 'confirm', kind: 'boolean', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/leave-group', body: 'flags' },
+        chat:  { reply: 'text', hint: 'leave your buurt (irreversible — asks to confirm)' },
       },
     },
     /**
