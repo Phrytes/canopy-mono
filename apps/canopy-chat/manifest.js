@@ -366,7 +366,10 @@ export const canopyChatManifest = {
 
     /**
      * `/security-status` — v0.7.P3d.  Reports SecurityLayer state:
-     * wired? known peers? identity pubKey + stableId.
+     * wired? known peers? identity pubKey + stableId.  Post-factory-
+     * migration: also reports mute count, audit chain size, claim
+     * binding, vault encryption — everything the secure-agent factory
+     * has wired.
      */
     {
       id:    'security-status',
@@ -375,6 +378,72 @@ export const canopyChatManifest = {
       surfaces: {
         slash: { command: '/security-status' },
         chat:  { reply: 'text', hint: 'show cryptography state (signed/encrypted peer messages)' },
+      },
+    },
+
+    /**
+     * `/mute <peer>` — mute a peer.  Accepts NKN address, pubKey,
+     * webid, or stableId — when identityResolver is wired, mute
+     * fans out across all aliases (one webid blocks every device).
+     * Persisted across reloads.
+     */
+    {
+      id:    'mute',
+      verb:  'add',
+      params: [
+        { name: 'peer', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/mute', body: 'argline' },
+        chat:  { reply: 'text', hint: 'block a peer (drops their messages + refuses to send)' },
+      },
+    },
+
+    /**
+     * `/unmute <peer>` — remove a peer from the mute set.  Use the
+     * same identifier you muted with (NKN addr / pubKey / webid).
+     */
+    {
+      id:    'unmute',
+      verb:  'add',
+      params: [
+        { name: 'peer', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/unmute', body: 'argline' },
+        chat:  { reply: 'text', hint: 'remove a peer from the mute set' },
+      },
+    },
+
+    /**
+     * `/muted` — list everyone in the mute set.
+     */
+    {
+      id:    'muted',
+      verb:  'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/muted' },
+        chat:  { reply: 'text', hint: 'list muted peers' },
+      },
+    },
+
+    /**
+     * `/audit-tail [N=20]` — show the last N entries from the signed
+     * audit chain (default 20).  Verifies the chain on every call:
+     * if the chain is tampered, the result includes the failure
+     * point + reason.
+     */
+    {
+      id:    'audit-tail',
+      verb:  'list',
+      params: [
+        { name: 'n',     kind: 'number', required: false },
+        { name: 'event', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/audit-tail', body: 'flags' },
+        chat:  { reply: 'text', hint: 'show recent entries from the signed audit log' },
       },
     },
 

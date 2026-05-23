@@ -97,6 +97,18 @@
   "security": {
     "unavailable":  { "text": "Crypto status not available in this build.",                     "doc": "Defensive." }
   },
+  "mute": {
+    "no_peer":      { "text": "Please name a peer: /mute <nkn-addr-or-webid-or-pubkey>",       "doc": "/mute missing arg." },
+    "unavailable":  { "text": "Mute not available in this build.",                              "doc": "Defensive — sa.mute missing." },
+    "added":        { "text": "🔇 Muted {{peer}}.\nTheir messages will be dropped + you can't send to them.", "doc": "/mute success." },
+    "already":      { "text": "{{peer}} is already muted.",                                     "doc": "Idempotent." },
+    "removed":      { "text": "🔊 Unmuted {{peer}}.",                                           "doc": "/unmute success." },
+    "not_muted":    { "text": "{{peer}} wasn't muted.",                                         "doc": "Idempotent." },
+    "empty":        { "text": "Mute set is empty.",                                             "doc": "/muted on empty set." }
+  },
+  "audit": {
+    "unavailable":  { "text": "Audit log not available in this build.",                         "doc": "Defensive — sa.audit missing." }
+  },
   "sendFile": {
     "no_peer":        { "text": "Please name a peer: /send-file <nkn-addr-or-webid>", "doc": "/send-file missing peer." },
     "no_picker":      { "text": "File picker not available in this build.",            "doc": "Defensive." },

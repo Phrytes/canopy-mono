@@ -97,6 +97,18 @@
   "security": {
     "unavailable":  { "text": "Crypto-status niet beschikbaar in deze build.",                  "doc": "Defensive." }
   },
+  "mute": {
+    "no_peer":      { "text": "Geef een peer op: /mute <nkn-adres-of-webid-of-pubkey>",         "doc": "missing arg." },
+    "unavailable":  { "text": "Mute niet beschikbaar in deze build.",                            "doc": "Defensive." },
+    "added":        { "text": "🔇 {{peer}} gedempt.\nHun berichten worden genegeerd en je kunt ze niet meer aanschrijven.", "doc": "success." },
+    "already":      { "text": "{{peer}} stond al op de mute-lijst.",                             "doc": "Idempotent." },
+    "removed":      { "text": "🔊 {{peer}} weer aangezet.",                                      "doc": "success." },
+    "not_muted":    { "text": "{{peer}} stond niet op de mute-lijst.",                           "doc": "Idempotent." },
+    "empty":        { "text": "Mute-lijst is leeg.",                                              "doc": "/muted op lege lijst." }
+  },
+  "audit": {
+    "unavailable":  { "text": "Audit-log niet beschikbaar in deze build.",                       "doc": "Defensive." }
+  },
   "sendFile": {
     "no_peer":        { "text": "Geef een peer op: /send-file <nkn-adres-of-webid>",   "doc": "missing." },
     "no_picker":      { "text": "Bestandskiezer niet beschikbaar in deze build.",      "doc": "Defensive." },
