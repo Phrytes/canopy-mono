@@ -292,6 +292,27 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `/send-file <peer-addr>` — v0.7.P3f.  Opens a file picker;
+     * dispatches the picked file via a chat-p2p envelope (subtype
+     * 'file-share') to the peer.  Receiver renders a file-card embed
+     * in Main with [Download]/[Save to my pod] buttons.  Small
+     * files (under ~512 KB) inline as base64; larger require a pod
+     * URL (deferred).  Peer can be an NKN address or (when WebID
+     * resolution succeeds) a webid.
+     */
+    {
+      id:    'send-file',
+      verb:  'add',
+      params: [
+        { name: 'peer', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/send-file', body: 'flags' },
+        chat:  { reply: 'text', hint: 'share a file with a peer via NKN' },
+      },
+    },
+
+    /**
      * `/lookup-peer <webid>` — v0.7.P3d.  Resolves a peer's NKN
      * address by fetching their WebID profile + reading the
      * canopy:nknAddr triple from their pod's identity.ttl file.

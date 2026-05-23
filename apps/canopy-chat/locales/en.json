@@ -97,6 +97,19 @@
   "security": {
     "unavailable":  { "text": "Crypto status not available in this build.",                     "doc": "Defensive." }
   },
+  "sendFile": {
+    "no_peer":        { "text": "Please name a peer: /send-file <nkn-addr-or-webid>", "doc": "/send-file missing peer." },
+    "no_picker":      { "text": "File picker not available in this build.",            "doc": "Defensive." },
+    "not_connected":  { "text": "NKN not connected.  /peer-connect first.",            "doc": "Defensive." },
+    "no_lookup":      { "text": "Peer-resolution unavailable; sign in to your pod.",    "doc": "Defensive." },
+    "lookup_failed":  { "text": "Couldn't resolve {{peer}} to an NKN address.",        "doc": "Lookup failure." },
+    "cancelled":      { "text": "File picker cancelled.",                                "doc": "User dismissed." },
+    "pick_failed":    { "text": "File pick failed: {{error}}",                          "doc": "Defensive." },
+    "too_large":      { "text": "File too large ({{size}} bytes; max {{max}} for inline NKN send).  Larger-file flow lands later.", "doc": "Cap." },
+    "read_failed":    { "text": "File read failed: {{error}}",                           "doc": "FileReader error." },
+    "sent":           { "text": "📤 sent {{name}} ({{size}} bytes) → {{peer}}",          "doc": "Confirmation." },
+    "send_failed":    { "text": "Send failed: {{error}}",                                "doc": "NKN send error." }
+  },
   "lookup": {
     "no_webid":     { "text": "Please provide a webid: /lookup-peer <webid>",                  "doc": "/lookup-peer missing arg." },
     "unavailable":  { "text": "Peer lookup unavailable (sign in to your pod first).",         "doc": "Defensive." },
