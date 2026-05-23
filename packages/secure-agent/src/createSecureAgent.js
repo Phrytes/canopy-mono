@@ -30,12 +30,13 @@
  *   - policyEngine       (S5 — A.5b)  sa.policy (composes trust + skills)
  *   - Roles re-exported as sa.ROLES + module export
  *   - auditLog           (S6 — A.6)   sa.audit signed hash-chain + autoLog
+ *   - groupManager       (S7 — A.7)   sa.groups (auto-threaded into policy)
+ *   - a2aTls             (S7 — A+.4)  sa.a2aTls (A2ATransport helper)
+ *   - rateLimit          (S7 — A+.8)  drops over-quota envelopes
+ *   - sa.migrateVaultToPod helper bound to our identity + vault
  *
  * # What's a stub (filled by later slices)
  *
- *   - groupManager       (S7 — A.7)
- *   - a2aTls             (S7 — A+.4)
- *   - rateLimit          (S7 — A+.8)
  *   - usePerfectFwdSec   (S8 — A.8)
  *
  * For each stubbed opt: if the caller supplies it, createSecureAgent
@@ -59,7 +60,11 @@ import {
   CapabilityToken,
   PolicyEngine,
   ROLES,
+  GroupManager,
+  A2ATLSLayer,
+  migrateVaultToPod as migrateVaultToPodFn,
 } from '@canopy/core';
+import { createRateLimiter } from './rateLimit.js';
 
 import { makeBrowserVault, restoreOrGenerate } from './vault.js';
 import { loadMuteSet }                          from './mute.js';
@@ -96,9 +101,9 @@ import { loadAuditLog }       from './auditLog.js';
  * @property {boolean|object} [trustRegistry]    S5 — true | { vault }  exposes sa.trust
  * @property {boolean|object} [policyEngine]     S5 — true | { groupManager, isRevoked, actorResolver }  exposes sa.policy (requires trustRegistry)
  * @property {boolean|object} [auditLog]        S6 — true | { vaultKey, vault?, autoLog? }  exposes sa.audit
- * @property {boolean} [groupManager]           [STUB — S7]
- * @property {boolean} [a2aTls]                 [STUB — S7a]
- * @property {object}  [rateLimit]              [STUB — S7b] { perPeer, perSkill }
+ * @property {boolean|object} [groupManager]    S7 — true | { vault } exposes sa.groups (auto-threaded into policy)
+ * @property {boolean|object} [a2aTls]          S7 — true | { a2aAuth } exposes sa.a2aTls
+ * @property {boolean|object} [rateLimit]       S7 — true | { perPeer, global } drops over-quota envelopes
  * @property {boolean} [usePerfectFwdSec]       [STUB — S8]
  *
  * @property {Function} [onPeerMessage]         ({from, payload, ts}) => void
@@ -123,9 +128,9 @@ const STUB_OPTS = Object.freeze([
   // trustRegistry     — wired in S5 (sa.trust.* — vault-backed)
   // policyEngine      — wired in S5 (sa.policy)
   // auditLog          — wired in S6 (sa.audit.* signed hash-chain)
-  'groupManager',
-  'a2aTls',
-  'rateLimit',
+  // groupManager      — wired in S7 (sa.groups)
+  // a2aTls            — wired in S7 (sa.a2aTls)
+  // rateLimit         — wired in S7 (drops envelopes over quota)
   'usePerfectFwdSec',
 ]);
 
@@ -304,6 +309,17 @@ export async function createSecureAgent(opts = {}) {
     : {};
   const capsWired = !!opts.capabilityIssuer;
 
+  // ─── S7 — GroupManager (A.7) ──────────────────────────────────────
+  // Closed-group membership proofs.  Vault-backed; reuses identity
+  // vault by default.  Threaded into PolicyEngine when both are wired
+  // (so policy checks can consult group membership).
+  let groupManager = null;
+  if (opts.groupManager) {
+    const gmOpts = (typeof opts.groupManager === 'object') ? opts.groupManager : {};
+    const gmVault = gmOpts.vault ?? vault;
+    groupManager = new GroupManager({ identity, vault: gmVault });
+  }
+
   // PolicyEngine wiring — composed when opted in.  Requires
   // trustRegistry (created here) + agent.skills (always present).  An
   // optional actorResolver may be the same MemberMap-shape we received
@@ -321,9 +337,34 @@ export async function createSecureAgent(opts = {}) {
       trustRegistry,
       skillRegistry: agent.skills,
       agentPubKey:   identity.pubKey,
-      groupManager:  peOpts.groupManager  ?? null,
+      // Auto-thread the GroupManager we built above unless the caller
+      // explicitly supplied a different one (covers the "use my own
+      // pre-built GroupManager" escape hatch).
+      groupManager:  peOpts.groupManager  ?? groupManager ?? null,
       isRevoked:     peOpts.isRevoked     ?? null,
       actorResolver: peOpts.actorResolver ?? null,
+    });
+  }
+
+  // ─── S7 — A2ATLSLayer (A+.4) ──────────────────────────────────────
+  // For agents that compose A2ATransport (HTTPS + Bearer JWT).  The
+  // layer itself just wraps A2AAuth (which the caller supplies if any).
+  let a2aTls = null;
+  if (opts.a2aTls) {
+    const aOpts = (typeof opts.a2aTls === 'object') ? opts.a2aTls : {};
+    a2aTls = new A2ATLSLayer({ a2aAuth: aOpts.a2aAuth ?? null });
+  }
+
+  // ─── S7 — rate-limit (A+.8) ───────────────────────────────────────
+  // Per-peer + global token-bucket; drops over-quota envelopes BEFORE
+  // they reach onPeerMessage.  Default tuning is chat-pace; apps with
+  // bursty traffic should pass explicit limits or false.
+  let rateLimiter = null;
+  if (opts.rateLimit) {
+    const rlOpts = (typeof opts.rateLimit === 'object') ? opts.rateLimit : {};
+    rateLimiter = createRateLimiter({
+      perPeer: rlOpts.perPeer,
+      global:  rlOpts.global,
     });
   }
 
@@ -391,6 +432,10 @@ export async function createSecureAgent(opts = {}) {
         // bookkeeping (no reciprocal HI, no onPeerMessage fire).
         // S4 — fanout the check across resolver-known aliases.
         if (await isPeerMuted(env?._from)) return;
+        // S7 — rate-limit drop.  Over-quota peers are silently
+        // ignored at the receive boundary (no reciprocal HI either —
+        // we don't want them to make us spam them in return).
+        if (rateLimiter && !rateLimiter.check(env?._from)) return;
         try {
           if (!helloedPeers.has(env._from)) {
             tx.sendHello(env._from, { pubKey: identity.pubKey })
@@ -511,6 +556,11 @@ export async function createSecureAgent(opts = {}) {
       auditWired:       !!auditLog,
       auditAutoLog,
       auditSize:        auditLog?.size ?? 0,
+      // S7 — groups + a2aTls + rate-limit
+      groupsWired:      !!groupManager,
+      a2aTlsWired:      !!a2aTls,
+      rateLimitWired:   !!rateLimiter,
+      rateLimitState:   rateLimiter?.snapshot() ?? null,
       // STUB sections — surfaces what's reserved vs what's wired:
       pendingOpts: pickStubOpts(opts),
     };
@@ -605,6 +655,40 @@ export async function createSecureAgent(opts = {}) {
     // S6 — signed activity / audit log
     audit: auditLog,                       // null when not opted in
     auditAutoLog,                          // diagnostic: were auto-fires wired?
+
+    // S7 — closed groups
+    groups: groupManager,                  // null when not opted in
+
+    // S7 — A2A TLS layer (for A2ATransport composition)
+    a2aTls,                                // null when not opted in
+
+    // S7 — rate limiter (the running instance, for inspection)
+    rateLimit: rateLimiter,                // null when not opted in
+
+    // S7 — pod-mirror identity migration (bound to our identity + vault)
+    async migrateVaultToPod(args = {}) {
+      if (!args.podClient || !args.podRoot || !args.mnemonic) {
+        throw new Error(
+          'sa.migrateVaultToPod: { podClient, podRoot, mnemonic } required.',
+        );
+      }
+      const report = await migrateVaultToPodFn({
+        vault,
+        identity,
+        podClient:  args.podClient,
+        podRoot:    args.podRoot,
+        mnemonic:   args.mnemonic,
+        deviceMeta: args.deviceMeta ?? {},
+        dryRun:     args.dryRun ?? false,
+        force:      args.force ?? false,
+      });
+      if (auditAutoLog) audit('vault.migrate', args.podRoot, {
+        migrated: report.migrated.length,
+        skipped:  report.skipped.length,
+        dryRun:   report.dryRun,
+      });
+      return report;
+    },
 
     // S3 — WebAuthn / passkey unlock helpers
     passkey: {

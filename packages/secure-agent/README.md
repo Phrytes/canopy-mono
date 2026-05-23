@@ -103,6 +103,31 @@ const cred = await sa3.passkey.register();
 const sec  = await sa3.passkey.unlock();
 ```
 
+### S7 — groups + A2A-TLS + rate-limit + pod-migrate
+
+```js
+const sa = await createSecureAgent({
+  trustRegistry: true,
+  policyEngine:  true,
+  groupManager:  true,     // → sa.groups; auto-threads into policyEngine
+  a2aTls:        true,     // → sa.a2aTls (for A2ATransport composition)
+  rateLimit:     {         // → drops over-quota envelopes
+    perPeer: { burst: 30, refillPerSec: 5 },
+    global:  { burst: 200, refillPerSec: 50 },
+  },
+});
+
+// Closed-group membership (admin issues, members hold + present)
+const proof = await sa.groups.issueProof('pk-alice', 'crew-1', { role: 'member' });
+
+// One-shot vault → pod migration (Track B)
+const report = await sa.migrateVaultToPod({
+  podClient, podRoot: 'https://alice.example/canopy/', mnemonic: '...',
+});
+report.migrated;        // keys migrated
+report.skipped;         // keys NOT migrated (with reason)
+```
+
 ### S6 — signed audit log
 
 ```js
@@ -209,7 +234,7 @@ if (!v.ok) throw new Error(`claim invalid: ${v.reason}`);
 await podWriter.put('canopy/identity/claim.json', sa.claim.serialize(claim));
 ```
 
-## What's wired today (S0 + S1 + S2 + S3 + S4 + S5 + S6)
+## What's wired today (S0 + S1 + S2 + S3 + S4 + S5 + S6 + S7)
 
 S0 — foundation:
 - ✅ Persistent identity (`VaultLocalStorage` in browser, `VaultMemory` elsewhere)
@@ -231,6 +256,16 @@ S2 — signed WebID claim:
 - ✅ `sa.claim.verify(claim)` — returns `{ ok, body | reason }`; checks sig + exp + ts skew
 - ✅ `sa.claim.{serialize,parse}` — JSON for pod-side storage
 - ✅ `webidClaim: { webid }` factory opt binds default WebID
+
+S7 — closed groups + A2A-TLS + rate-limit + pod-migration:
+- ✅ `groupManager: true | { vault }` → `sa.groups` (GroupManager instance);
+  when `policyEngine` is also wired, GroupManager auto-threads in
+- ✅ `a2aTls: true | { a2aAuth }` → `sa.a2aTls` (A2ATLSLayer) for
+  composition with A2ATransport
+- ✅ `rateLimit: true | { perPeer, global }` → drops over-quota inbound
+  envelopes (token bucket; default tuned for chat-pace traffic)
+- ✅ `sa.migrateVaultToPod({ podClient, podRoot, mnemonic, deviceMeta?, dryRun?, force? })`
+  bound to our identity + vault (autoLog fires `vault.migrate`)
 
 S6 — signed activity / audit log:
 - ✅ `auditLog: true | { vaultKey, vault?, autoLog? }` factory opt → `sa.audit` (AuditLog)
@@ -272,9 +307,6 @@ lands.  No app-code change needed when each slice activates.
 
 | Opt | S slice | Item |
 |---|---|---|
-| `groupManager` | S7 | A.7 GroupManager closed groups |
-| `a2aTls` | S7 | A+.4 future A2A protocol |
-| `rateLimit` | S7 | A+.8 DoS protection |
 | `usePerfectFwdSec` | S8 | A.1 Double-Ratchet PFS |
 
 See `Project Files/canopy-chat/security-roadmap-2026-05-23.md`
@@ -309,7 +341,7 @@ its own InternalBus.
 pnpm --filter @canopy/secure-agent test
 ```
 
-87/88 passing (1 skipped pending integration test infrastructure
+100/101 passing (1 skipped pending integration test infrastructure
 for sig-validated envelopes; the bilateral HI auto-handshake's
 wiring is in place + verified in canopy-chat's two-tab demo).
 
