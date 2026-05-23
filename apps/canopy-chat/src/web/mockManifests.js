@@ -183,6 +183,38 @@ export const mockTasksManifest = {
         chat:  { reply: 'list', hint: 'list mentions + items needing my attention' },
       },
     },
+    /**
+     * #187 (A9, 2026-05-23) — crew invite + redeem.  Real skills:
+     *   - issueInvite ({crewId, ttlMs?, role?}) → {invite}
+     *   - redeemInvite({invite, displayName?, webid?}) → {groupProof, ...}
+     * (apps/tasks-v0/src/skills/multiCrewOnboarding.js:50,73)
+     *
+     * /invite [--role=member|admin] [--ttl-hours=24] → mints a single-
+     * use code; chat-shell shows it to the inviter to share via DM/QR.
+     * /redeem-invite <token> joins the crew that issued the token.
+     */
+    {
+      id:    'issueInvite', verb: 'add',
+      params: [
+        { name: 'role',      kind: 'enum',   of: ['member', 'admin'], required: false },
+        { name: 'ttl-hours', kind: 'number', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/invite', body: 'flags' },
+        chat:  { reply: 'record', hint: 'mint a single-use crew invite (admin-only)' },
+      },
+    },
+    {
+      id:    'redeemInvite', verb: 'add',
+      params: [
+        { name: 'invite',      kind: 'string', required: true },
+        { name: 'displayName', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/redeem-invite', body: 'flags' },
+        chat:  { reply: 'text', hint: 'join a crew using an invite token' },
+      },
+    },
   ],
   views: [{ id: 'open', title: 'Open tasks', type: 'task' }],
 };
