@@ -581,10 +581,14 @@ async function helpWithPost(args, { threadStore, setActive, t }) {
   const id = `help-${postId}`;
   let thread = threadStore.getThread?.(id);
   if (!thread) {
+    // Filter is wildcard (any event admitted) but the thread carries
+    // the post id in its meta so the renderer can label + the stale-
+    // panel logic (events.js: scan threads referencing an itemRef)
+    // can surface item-changed events that mention this post.
     thread = threadStore.createThread({
       id,
       name: `Help with ${postId}`,
-      filter: { itemRefs: [{ app: 'stoop', type: 'post', id: postId }] },
+      meta: { postRef: { app: 'stoop', type: 'post', id: postId } },
       permissions: { allowCommands: true },
     });
   }
@@ -592,6 +596,7 @@ async function helpWithPost(args, { threadStore, setActive, t }) {
   return {
     message: t('helpWith.opened', { postId, threadId: id }),
     threadId: id,
+    postId,
   };
 }
 
