@@ -10,5 +10,11 @@ export default defineConfig({
     // Per-file env via @vitest/environment directive at the top of
     // each test file that needs DOM (see test/domAdapter.test.js).
     environment: 'node',
+    // Vitest's default include picks up `**/*.spec.{js,...}` which
+    // collides with Playwright (test-browser/*.spec.js).  Restrict
+    // to the canonical `test/**` location so Playwright owns
+    // `test-browser/**` cleanly.
+    include: ['test/**/*.{test,spec}.?(c|m)[jt]s?(x)'],
+    exclude: ['test-browser/**', 'node_modules/**'],
   },
 });
