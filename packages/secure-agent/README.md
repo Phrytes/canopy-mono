@@ -68,6 +68,41 @@ sa.mute.list();                            // → ['app.spammer.abc']
 await sa.mute.remove('app.spammer.abc');
 ```
 
+### S3 — passphrase + passkey
+
+```js
+// Bare passphrase: vault is AES-GCM encrypted in IndexedDB
+const sa = await createSecureAgent({
+  passphrase:       'hunter2-correct-horse-battery-staple',
+  identityVaultPrefix: 'myapp-vault',
+});
+
+// Passkey → derived secret → use as passphrase
+import { unlockWithPasskey, registerPasskey } from '@canopy/secure-agent';
+
+// First-time: register the credential
+const { credentialId } = await registerPasskey({
+  rpId:     window.location.hostname,
+  userName: 'alice',
+});
+localStorage.setItem('myapp-cred-id', credentialId);
+
+// Subsequent loads: prompt for fingerprint / Windows Hello / etc.
+const secret = await unlockWithPasskey({
+  rpId:         window.location.hostname,
+  prfSalt:      'myapp/v1',                        // identical → identical secret
+  credentialId: localStorage.getItem('myapp-cred-id'),
+});
+const sa2 = await createSecureAgent({ passphrase: secret });
+
+// Or use the factory-bound helpers:
+const sa3 = await createSecureAgent({
+  webAuthnUnlock: { rpId: 'app.example', prfSalt: 'myapp/v1' },
+});
+const cred = await sa3.passkey.register();
+const sec  = await sa3.passkey.unlock();
+```
+
 ### S2 — signed WebID claim
 
 ```js
@@ -87,7 +122,7 @@ if (!v.ok) throw new Error(`claim invalid: ${v.reason}`);
 await podWriter.put('canopy/identity/claim.json', sa.claim.serialize(claim));
 ```
 
-## What's wired today (S0 + S1 + S2)
+## What's wired today (S0 + S1 + S2 + S3)
 
 S0 — foundation:
 - ✅ Persistent identity (`VaultLocalStorage` in browser, `VaultMemory` elsewhere)
@@ -110,6 +145,17 @@ S2 — signed WebID claim:
 - ✅ `sa.claim.{serialize,parse}` — JSON for pod-side storage
 - ✅ `webidClaim: { webid }` factory opt binds default WebID
 
+S3 — passphrase vault + WebAuthn passkey:
+- ✅ `passphrase: 'string'` factory opt → vault picker promotes to `VaultIndexedDB`
+  (PBKDF2 + AES-GCM, browser/IndexedDB)
+- ✅ `webAuthnUnlock: true | { rpId, prfSalt, ... }` factory opt → exposes
+  `sa.passkey.{register,unlock}`
+- ✅ Standalone `registerPasskey` / `unlockWithPasskey` use the CTAP2 PRF
+  (hmac-secret) extension to derive a deterministic 32-byte secret from a
+  passkey — feed that into `passphrase` for a passkey-protected vault
+- ✅ Clear error codes (`PASSKEY_NO_WEBAUTHN`, `PASSKEY_PRF_UNAVAILABLE`,
+  `PASSKEY_REGISTRATION_REJECTED`, `PASSKEY_UNLOCK_REJECTED`) for fallbacks
+
 ## What's reserved (future S slices)
 
 Each opt is RESERVED in the factory signature today.  Setting it
@@ -119,8 +165,6 @@ lands.  No app-code change needed when each slice activates.
 
 | Opt | S slice | Item |
 |---|---|---|
-| `passphrase` | S3 | A.3 passphrase-wrapped vault |
-| `webAuthnUnlock` | S3 | A+.5 passkey-based unlock |
 | `identityResolver` | S4 | A.4 MemberMap + Reveals |
 | `capabilityIssuer` | S5 | A.5 capability tokens |
 | `trustRegistry` | S5 | A+.3 per-peer trust score |
@@ -162,7 +206,7 @@ its own InternalBus.
 pnpm --filter @canopy/secure-agent test
 ```
 
-32/33 passing (1 skipped pending integration test infrastructure
+48/49 passing (1 skipped pending integration test infrastructure
 for sig-validated envelopes; the bilateral HI auto-handshake's
 wiring is in place + verified in canopy-chat's two-tab demo).
 
