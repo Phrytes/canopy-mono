@@ -361,21 +361,24 @@ export const mockStoopManifest = {
      * #186 (A4, 2026-05-23) — ContactBook surface.  Stoop's contact
      * graph (apps/stoop/src/lib/ContactBook.js + skills 2701-2783) had
      * zero chat-shell affordance before today.  Wired:
-     *   /contacts [--min-trust=bekend|vertrouwd] [--tag=X]  → list
+     *   /contacts [--min-trust=known|trusted] [--tag=X]    → list
      *   /add-contact <webid> [--name=X]                    → add
      *   /remove-contact <webid>                            → remove
-     *   /contact-trust <webid> <bekend|vertrouwd|none>     → set trust
-     * Trust levels are Dutch terms (bekend = "known", vertrouwd =
-     * "trusted") preserved from the design.  In-chat row buttons
-     * planned for the contacts list (R→B replacements for /mute,
-     * /unmute, /reveal per existing-slash-surface-audit) once the
-     * contact-card panel lands.
+     *   /contact-trust <webid> <known|trusted|none>        → set trust
+     * Chat-shell enums are English (EN-first locale rule).  The
+     * underlying stoop skill still persists Dutch labels ("bekend",
+     * "vertrouwd") — the realAgent.js adapter translates at the
+     * boundary.  Locale entries in en/nl.json:contacts.trust render
+     * the labels per user language.  In-chat row buttons planned for
+     * the contacts list (R→B replacements for /mute, /unmute, /reveal
+     * per existing-slash-surface-audit) once the contact-card panel
+     * lands.
      */
     {
       id:    'listContacts', verb: 'list',
       appliesTo: { type: 'contact' },
       params: [
-        { name: 'min-trust', kind: 'enum', of: ['bekend', 'vertrouwd'], required: false },
+        { name: 'min-trust', kind: 'enum', of: ['known', 'trusted'], required: false },
         { name: 'tag',       kind: 'string', required: false },
       ],
       surfaces: {
@@ -411,7 +414,7 @@ export const mockStoopManifest = {
       appliesTo: { type: 'contact' },
       params: [
         { name: 'webid', kind: 'webid', required: true },
-        { name: 'level', kind: 'enum', of: ['bekend', 'vertrouwd', 'none'], required: true },
+        { name: 'level', kind: 'enum', of: ['known', 'trusted', 'none'], required: true },
       ],
       surfaces: {
         slash: { command: '/contact-trust', body: 'flags' },
@@ -427,7 +430,7 @@ export const mockStoopManifest = {
     {
       id:    'getContactShareQr', verb: 'list',
       params: [
-        { name: 'trust', kind: 'enum', of: ['bekend', 'vertrouwd'], required: false },
+        { name: 'trust', kind: 'enum', of: ['known', 'trusted'], required: false },
       ],
       surfaces: {
         slash: { command: '/share-my-contact', body: 'flags' },

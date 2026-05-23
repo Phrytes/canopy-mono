@@ -217,5 +217,12 @@
                              "doc": "New-thread form: allowCommands checkbox label." },
     "form_create": { "text": "Aanmaken",      "doc": "New-thread form: submit button." },
     "form_cancel": { "text": "Annuleren",     "doc": "New-thread form: cancel button." }
+  },
+  "contacts": {
+    "trust": {
+      "known":   { "text": "bekend",    "doc": "Vertrouwensniveau voor een herkend contact. Stoop bewaart dit als 'bekend' aan de pod-kant; chat-shell wisselt 'known' aan de UI-grens." },
+      "trusted": { "text": "vertrouwd", "doc": "Vertrouwensniveau voor een volledig-vertrouwd contact. Stoop bewaart dit als 'vertrouwd' aan de pod-kant; chat-shell wisselt 'trusted' aan de UI-grens." },
+      "none":    { "text": "geen",      "doc": "Geen vertrouwen ingesteld (gewist)." }
+    }
   }
 }
