@@ -137,6 +137,10 @@ export async function createRealHouseholdAgent(opts = {}) {
     muteListVaultKey:    'cc-mute',
     auditLog:            { vaultKey: 'cc-audit' },
     // onPeerMessage + nknLib supplied later via setPeerWiring().
+    // Pass-through for extra factory opts (tests + future ops):
+    // identityResolver, capabilityIssuer, policyEngine, groupManager,
+    // a2aTls, rateLimit, usePerfectFwdSec, webidClaim, helloGate, …
+    ...(opts.secureAgentOpts ?? {}),
   });
   const chatAgent = sa.agent;
   const chatId    = chatAgent.identity;
