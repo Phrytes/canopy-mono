@@ -14,9 +14,9 @@
 |---|---|---|---|
 | **household** | Already real (chores + member ops on hostAgent) | Done | n/a |
 | **calendar** | Already real (composed via `@canopy-app/calendar`) | Done | n/a |
-| **tasks-v0** | Mock handlers; ZERO node-deps in src; ready to compose | **1 slice** | ~1 session |
+| **tasks-v0** | ✅ **REAL — shipped slice 1 at `ab6f32f` (2026-05-23)** — full 110-skill crew agent composed in-process | Done | n/a |
 | **stoop** | Mock handlers; 1 node-only file (`FilePersist.js`) to swap | **2 slices** (swap + compose) | ~2 sessions |
-| **folio** | Mock handlers; sync-core browser-safe; daemon/tray/CLI node-only | **2 slices** (extract + compose) | ~2 sessions |
+| **folio** | Mock handlers (web-only subset); per Frits's clarification — only the chat-web concerns (file embed / share / status), NOT local-folder sync | **1 slice** (was 2; sync-engine integration deferred to desktop / mobile-extended) | ~1 session |
 
 ## Why each app is in better shape than the bin scripts suggest
 
@@ -103,12 +103,36 @@ in `apps/folio/src/_podFactory.js` for Node-vs-RN.
 
 ## Per-app slice plan
 
-### Slice 1: tasks-v0 → canopy-chat browser (~1 session)
+### Slice 1: tasks-v0 → canopy-chat browser — ✅ DONE 2026-05-23 (`ab6f32f`)
 
 **Why first**: zero node-deps in src; the lowest-risk extraction.
 Frits chose Stoop first in conversation, but starting with tasks-v0
-lets us validate the integration pattern with the simplest app
+let us validate the integration pattern with the simplest app
 before the bigger Stoop slice.
+
+**Actual shipped state**:
+  - `apps/tasks-v0/src/browser.js` exports `createBrowserTasksAgent`
+  - `apps/canopy-chat/src/web/realAgent.js` boots a real crew agent
+    on the shared bus + replaces ~210 lines of mock handlers
+  - 110 real tasks-v0 skills registered (11 surface via chat ops,
+    99 reachable via `agent.callSkill` for future expansion)
+  - Adapter layer at the callSkill boundary normalises real reply
+    shapes to chat-shell expectations (`{task: ...}` / `{result: ...}`
+    → `{ok, message, itemId, _sync}`)
+  - 606/615 tests passing post-integration
+
+**Lessons learned (apply to slice 2+)**:
+  - Real apps use `from` (caller pubKey) for role lookups — register
+    canopy-chat's chat-agent pubKey as a crew member ('admin') or
+    every call from chat is treated as a stranger
+  - Real reply shapes differ from mock per-skill (some return
+    `{task: ...}`, others `{result: ...}`) — adapter handles both
+  - Real arg names differ too (`note` not `reason` for reject; real
+    addTask uses `requiredSkills` plural, no `assignee` on creation)
+  - `from` is a pubKey, `webid` slot accepts any unique string —
+    bind chat pubKey to a synthetic webid in the crew member list
+  - Pre-seed demo state at boot (opts.seedTasks:false to opt out)
+    so existing tests + demo UX stay stable
 
 **Steps**:
 
@@ -182,28 +206,34 @@ support a single buurt at a time (V0 simplification), or do we
 need multi-buurt UI?  Recommend: single buurt at V0, configurable
 via `/crew-new --kind=neighborhood`.
 
-### Slice 4: Folio → canopy-chat browser (~1.5 sessions)
+### Slice 4: Folio → canopy-chat browser (web-only subset, ~1 session)
+
+**Scope reduced 2026-05-23 (Frits clarification)**: canopy-chat web
+doesn't need local-folder syncing.  Slice covers ONLY the
+web-facing concerns: file embed (Q29 cardSnapshotSkill), share-folder
+via capability tokens, status reply.  The full sync engine + file
+watcher + pseudo-pod cache integration is for the DESKTOP folio app
+(already shipped) + the future mobile-extended canopy-chat (where
+mDNS / BT / RN-fs adapters land per the mobile pivot).
 
 **Steps**:
 
-1. Folio's sync core is already browser-safe (`src/SyncEngine.js`,
-   `src/PathMap.js`, etc.) and the package re-exports it from
-   `@canopy/sync-engine`.  Add `apps/folio/src/browser.js` that
-   wires the SyncEngine with the pseudo-pod cache (browser-side)
-   instead of the node fs watcher (desktop-side).
-2. Replace canopy-chat's mock folio handlers (`readNote`,
-   `shareFolder`, `listFiles`, the new `folioStatus`) with real
-   calls.
-3. **NOT in scope for browser**: the folder-watcher (no browser
-   API for watching a local folder), the OS tray, the desktop
-   server.  Those stay daemon-only; they're not what canopy-chat
-   needs.
-4. **Mobile-extended (DEFERRED)**: real file-system mirroring on
-   mobile happens via `@canopy/sync-engine-rn` (already exists for
-   folio-mobile).  Canopy-chat mobile gets the same browser-shape
-   integration; mobile adds RN-specific extensions (background
-   tasks, native file picker, etc.) via the established substrate
-   pattern.
+1. Add `apps/folio/src/browser.js` exporting `createBrowserFolioAgent`
+   that registers ONLY the chat-web-relevant skills:
+   - `getFileSnapshot` (Q29 cardSnapshot)
+   - `shareFolder` (capability-token issuance)
+   - `folioStatus` (record reply: count / shared / last-sync —
+     all reported as "browser session" state since no real sync)
+   - `readNote` (in-memory or pod-backed when podClient available)
+2. Replace canopy-chat's mock folio handlers with composition.
+3. **NOT in scope**: sync core, folder watcher, OS tray, desktop
+   server, CLI.  Those stay app-side and never enter canopy-chat
+   web.
+
+**Mobile-extended (DEFERRED)**: canopy-chat mobile (post #127-#131
+pivot) composes the same browser-shape integration PLUS:
+`@canopy/sync-engine-rn` (real file-system mirroring; existing),
+plus future RN substrates for mDNS / BT / background sync.
 
 ## Mobile-extended functionality (per Frits's brief)
 

@@ -1,5 +1,23 @@
 # Changelog — @canopy-app/tasks-v0
 
+## [Unreleased] — canopy-chat browser integration (2026-05-23, `ab6f32f`)
+
+New export: `@canopy-app/tasks-v0/browser` →
+`createBrowserTasksAgent({bus, identityVault, crewConfig, label})`.
+
+Lets canopy-chat compose a real Crew agent in-process (no bin/
+launcher needed; tasks-v0/src has zero node imports).  Replaces
+canopy-chat's ~210 lines of mock task handlers with the actual
+110-skill crew agent on a shared InternalBus.
+
+Plan + per-app integration details:
+`Project Files/canopy-chat/integration-plan-2026-05-23.md` §
+"Slice 1: tasks-v0 → canopy-chat browser".
+
+122/122 tasks-v0 tests still green; no app-side changes — just a
+new browser entry that wraps the existing `createCrewAgent` with
+the minimal opts canopy-chat needs.
+
 ## [Unreleased] — Slice B.1 (2026-05-20) — dag.html via renderWeb (view-only)
 
 First tasks-v0 web page migrated to the NavModel projector
