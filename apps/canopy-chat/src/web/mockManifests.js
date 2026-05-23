@@ -321,7 +321,11 @@ export const mockFolioManifest = {
       runtime: 'browser',
       surfaces: {
         ui:   { control: 'button', label: 'Download' },
-        chat: { hint: 'download a file from the sender\'s pod' },
+        // Declare `reply: 'text'` so the chat-shell renders the
+        // skill's `{ok, message}` reply as text — without this the
+        // verb:'list' default renders as an empty list ('(no items)').
+        // Slice-4 smoke fix (2026-05-23).
+        chat: { reply: 'text', hint: 'download a file from the sender\'s pod' },
       },
     },
     /**

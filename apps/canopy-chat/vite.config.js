@@ -13,11 +13,35 @@ import { fileURLToPath } from 'node:url';
 
 const empty       = fileURLToPath(new URL('./src/web/shims/empty.js',       import.meta.url));
 const oidcSession = fileURLToPath(new URL('./src/web/shims/oidcSession.js', import.meta.url));
+// Resolve the npm `events` polyfill once, by absolute path.  Transitive
+// importers (packages/webid-discovery, etc.) lose the bare-specifier
+// resolution chain when they're served as source under pnpm hoisting;
+// pinning to one absolute file keeps every `node:events` import on the
+// same module instance.
+const eventsShim  = fileURLToPath(new URL(
+  './node_modules/events/events.js', import.meta.url,
+));
 
 export default defineConfig({
   root: 'web',
-  // Allow imports from outside `web/` (the src/ + locales/ trees).
-  server: { fs: { allow: ['..'] } },
+  // Allow imports from outside `web/`.  '../..' reaches the monorepo
+  // root so `packages/*` and other apps' node_modules trees (pnpm
+  // hoists per-app copies under `apps/<x>/node_modules/.pnpm/...`)
+  // can be served as source.  Required when `optimizeDeps.exclude`
+  // bypasses the per-package .vite/deps bundle.
+  server: { fs: { allow: ['..', '../..'] } },
+  // Skip esbuild pre-bundling for `@canopy/core`: its index.js uses
+  // the renamed re-export form `export { encode as b64encode } from
+  // './crypto/b64.js'`, which esbuild's pre-bundler drops when
+  // applied to pnpm workspace deps (file:../packages/core).  Symptom:
+  // `Uncaught SyntaxError: doesn't provide an export named: b64encode`
+  // at runtime even though the source file does export b64encode.
+  // Serving core's source directly bypasses the bad bundle.  Other
+  // workspace deps don't use the same export form + pre-bundle fine.
+  // See slice-4 smoke fix (2026-05-23).
+  optimizeDeps: {
+    exclude: ['@canopy/core'],
+  },
   // OQ-1.C resolution: @canopy/core transports use runtime detection
   // (`typeof WebSocket !== 'undefined'` etc.) and fall back to Node-
   // only packages via `await import('ws' | 'mqtt' | …)`.  In the
@@ -51,7 +75,8 @@ export default defineConfig({
       // substrates (SolidVault, WebIdCache) statically import it.
       // We don't EXECUTE those code paths in v0.1, but they're in the
       // import graph so they need to resolve.
-      'node:events': 'events',
+      'node:events': eventsShim,
+      'events':      eventsShim,   // some packages import the bare specifier
       // OIDC chain — @canopy/core re-exports SolidVault from
       // @canopy/oidc-session, which pulls in Inrupt's Node-only auth
       // package + openid-client (which uses node:crypto, node:http,
