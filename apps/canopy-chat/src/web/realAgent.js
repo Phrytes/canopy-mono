@@ -726,6 +726,8 @@ export async function createRealHouseholdAgent(opts = {}) {
         'archiveCrew',   'unarchiveCrew', 'issueInvite',
         'listAwaitingApproval', 'getMyCrews',
         'suggestSchedule', 'acceptSchedule',
+        'getMyAvailability', 'setMyAvailability', 'setAvailabilityOptIn',
+        'getCrewAvailability',
       ]);
       if (CREW_AUTO_INJECT.has(realOpId) && !realArgs.crewId) {
         const crewId = opts.tasksCrewConfig?.crewId ?? 'cc-default';
@@ -755,6 +757,28 @@ export async function createRealHouseholdAgent(opts = {}) {
             slotEnd:   Number(parts[2]),
           };
         }
+      }
+      if (realOpId === 'setMyAvailability' && realArgs.cellKey) {
+        // #195 — decode "week|day|half|state" packed into the cell id.
+        // day: 0-6 (Mon-Sun); half: 'AM'|'PM'; state cycles
+        // unknown → open → tight → unavailable → unknown.
+        const parts = String(realArgs.cellKey).split('|');
+        if (parts.length === 4) {
+          realArgs = {
+            ...realArgs,
+            week:  parts[0],
+            day:   Number(parts[1]),
+            half:  parts[2],
+            state: parts[3],
+          };
+        }
+      }
+      if (realOpId === 'setAvailabilityOptIn' && typeof realArgs.on === 'string') {
+        // Chat-shell enum 'on'/'off' → real arg {optedIn: boolean}.
+        realArgs = {
+          ...realArgs,
+          optedIn: realArgs.on.toLowerCase() === 'on',
+        };
       }
       if (realOpId === 'redeemInvite' && typeof realArgs.invite === 'string') {
         // User pastes either a QR URL (`stoop-invite://<base64url>`) or
@@ -1050,6 +1074,51 @@ export async function createRealHouseholdAgent(opts = {}) {
         message: `✓ Joined crew. ${memberCount} members visible. /mytasks shows the crew's tasks.`,
         crew:   data,
         _sync:  simulateSync(),
+      };
+    }
+    // #195 (B7) — getMyAvailability: {enabled, optedIn, week,
+    //   grid: {0: {AM, PM}, 1: {AM, PM}, ...}} → record reply with a
+    // 'grid' field the chat-shell renders as a 7×2 clickable table.
+    if (opId === 'getMyAvailability') {
+      if (data.enabled === false) {
+        return {
+          title:   'Availability',
+          status:  'disabled-for-crew',
+          message: 'Availability hints aren\'t enabled for this crew yet.',
+        };
+      }
+      const week = data.week ?? '(this week)';
+      return {
+        title:   `Availability — ${week}`,
+        optedIn: !!data.optedIn,
+        week,
+        // Pass the raw grid through; classifyFieldKind detects the
+        // {0: {AM, PM}, ...} shape as kind:'grid' and the renderer
+        // dispatches to renderGridField for clickable cells.
+        grid:    data.grid ?? {},
+        message: data.optedIn
+          ? 'Click a cell to cycle: unknown → open → tight → unavailable → unknown.'
+          : 'You haven\'t opted in. /availability-opt-in on to start broadcasting.',
+      };
+    }
+    // #195 — setMyAvailability: {ok, week, day, half, state} → text.
+    if (opId === 'setMyAvailability' && data.ok) {
+      const STATE_GLYPH = { open: '🟢', tight: '🟡', unavailable: '🔴', unknown: '⚪' };
+      const dayName = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][data.day] ?? '?';
+      return {
+        ok: true,
+        message: `${STATE_GLYPH[data.state] ?? '⚪'} ${dayName} ${data.half}: ${data.state}`,
+        _sync: simulateSync(),
+      };
+    }
+    // #195 — setAvailabilityOptIn: {ok, optedIn} → friendly text.
+    if (opId === 'setAvailabilityOptIn' && data.ok) {
+      return {
+        ok: true,
+        message: data.optedIn
+          ? '✓ Opted in. Your availability hints are visible to your crew.'
+          : '✓ Opted out. Coordinator sees you as "unknown" (indistinguishable from non-opted).',
+        _sync: simulateSync(),
       };
     }
     // #193 (B6) — suggestSchedule: {lookaheadDays, suggestions: [

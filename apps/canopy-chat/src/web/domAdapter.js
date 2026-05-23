@@ -226,7 +226,7 @@ function renderListMessage(rendered, state, ctx) {
  * @param {'record' | 'mini-page'} variant
  */
 function renderRecordPanel(rendered, state, ctx, variant) {
-  const { doc, onCloseMessage } = ctx;
+  const { doc, onCloseMessage, onButtonTap } = ctx;
   const wrap = doc.createElement('div');
   wrap.className = `cc-message cc-shell cc-${variant} cc-${state}`;
   if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
@@ -309,6 +309,11 @@ function renderRecordPanel(rendered, state, ctx, variant) {
         // adds chip → dispatch (e.g. clicking a task chip opens its
         // /mytasks entry).
         renderRefChips(dd, doc, field.value);
+      } else if (field.kind === 'grid') {
+        // #195 (B7) — 7×2 availability grid.  Each cell is a button
+        // whose dataset packs (week|day|half|nextState) so onButtonTap
+        // dispatches setMyAvailability.
+        renderGridField(dd, doc, field.value, rendered, onButtonTap);
       } else {
         dd.textContent = formatFieldValue(field.value);
       }
@@ -393,6 +398,77 @@ function renderQrField(container, doc, text) {
  * @param {Document}                         doc
  * @param {Array<{type, ref|id, label?}>}    refs
  */
+/**
+ * #195 (B7) — render a 7×2 availability grid.  Each cell is a
+ * clickable button; click cycles state (unknown→open→tight→
+ * unavailable→unknown) by dispatching setMyAvailability via
+ * onButtonTap with the cell-key packed as `week|day|half|nextState`.
+ *
+ * @param {HTMLElement}   container
+ * @param {Document}      doc
+ * @param {object}        grid       { 0: {AM, PM}, 1: {AM, PM}, ... }
+ * @param {object}        rendered   the parent record reply
+ * @param {Function}      onButtonTap  (opId, itemId) — main.js dispatcher
+ */
+function renderGridField(container, doc, grid, rendered, onButtonTap) {
+  const week = rendered?.week ?? rendered?.payload?.week ?? '';
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const HALVES = ['AM', 'PM'];
+  const NEXT_STATE = {
+    unknown:     'open',
+    open:        'tight',
+    tight:       'unavailable',
+    unavailable: 'unknown',
+  };
+  const STATE_GLYPH = {
+    unknown:     '⚪',
+    open:        '🟢',
+    tight:       '🟡',
+    unavailable: '🔴',
+  };
+  const table = doc.createElement('table');
+  table.className = 'cc-field-grid';
+  const thead = doc.createElement('thead');
+  const headerRow = doc.createElement('tr');
+  headerRow.appendChild(doc.createElement('th'));   // corner spacer
+  for (const day of DAYS) {
+    const th = doc.createElement('th');
+    th.textContent = day;
+    headerRow.appendChild(th);
+  }
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = doc.createElement('tbody');
+  for (const half of HALVES) {
+    const tr = doc.createElement('tr');
+    const rowLabel = doc.createElement('th');
+    rowLabel.textContent = half;
+    rowLabel.scope = 'row';
+    tr.appendChild(rowLabel);
+    for (let d = 0; d < 7; d++) {
+      const cellState = grid?.[d]?.[half] ?? 'unknown';
+      const td = doc.createElement('td');
+      const btn = doc.createElement('button');
+      btn.type = 'button';
+      btn.className = `cc-grid-cell cc-grid-cell-${cellState}`;
+      btn.textContent = STATE_GLYPH[cellState] ?? '⚪';
+      btn.title = `${DAYS[d]} ${half}: ${cellState} (click to cycle)`;
+      if (typeof onButtonTap === 'function') {
+        const cellKey = `${week}|${d}|${half}|${NEXT_STATE[cellState] ?? 'open'}`;
+        btn.addEventListener('click', () => onButtonTap('setMyAvailability', cellKey));
+      } else {
+        btn.disabled = true;
+      }
+      td.appendChild(btn);
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
+
 function renderRefChips(container, doc, refs) {
   const TYPE_GLYPH = {
     task:            '📋',

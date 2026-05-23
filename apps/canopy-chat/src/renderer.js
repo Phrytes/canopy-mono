@@ -271,7 +271,17 @@ function classifyFieldKind(v) {
     )) return 'refs';
     return 'list';
   }
-  if (v && typeof v === 'object') return 'object';
+  if (v && typeof v === 'object') {
+    // #195 (B7) — detect availability-grid shape: object whose keys
+    // are numeric day-indexes (0-6) mapping to objects with 'AM'/'PM'
+    // string-state values.  Renderer dispatches to renderGridField.
+    const keys = Object.keys(v);
+    const looksLikeGrid = keys.length > 0 && keys.every((k) => /^[0-6]$/.test(k))
+      && keys.every((k) => v[k] && typeof v[k] === 'object'
+        && ('AM' in v[k] || 'PM' in v[k]));
+    if (looksLikeGrid) return 'grid';
+    return 'object';
+  }
   return 'unknown';
 }
 

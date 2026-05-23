@@ -184,6 +184,44 @@ export const mockTasksManifest = {
       },
     },
     /**
+     * #195 (B7, 2026-05-24) — availability half-day grid.  Wires
+     * tasks-v0's per-member availability hints (apps/tasks-v0/src/
+     * skills/availability.js).  Coordinator-visible signal: each
+     * member can mark a 7×2 grid of half-days (open / tight /
+     * unavailable / unknown).  Opt-in per crew; opted-out members
+     * show as `unknown` indistinguishable from non-opted.
+     */
+    {
+      id:    'getMyAvailability', verb: 'list',
+      params: [
+        { name: 'week', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/availability', body: 'flags' },
+        chat:  { reply: 'record', hint: 'show my availability grid for this week' },
+      },
+    },
+    {
+      id:    'setMyAvailability', verb: 'submit',
+      params: [
+        { name: 'cellKey', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/set-availability' },
+        chat:  { reply: 'text', hint: 'set one half-day cell (week|day|half|state)' },
+      },
+    },
+    {
+      id:    'setAvailabilityOptIn', verb: 'submit',
+      params: [
+        { name: 'on', kind: 'enum', of: ['on', 'off'], required: true },
+      ],
+      surfaces: {
+        slash: { command: '/availability-opt-in' },
+        chat:  { reply: 'text', hint: 'opt in/out of broadcasting availability hints' },
+      },
+    },
+    /**
      * #193 (B6, 2026-05-23) — auto-scheduling planner.  Wires
      * suggestSchedule + acceptSchedule (apps/tasks-v0/src/skills/
      * planner.js:55,95).  Greedy slot suggestion per the design's
