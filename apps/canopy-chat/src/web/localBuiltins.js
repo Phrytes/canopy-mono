@@ -79,6 +79,10 @@ export function createLocalBuiltins({
     'send-file':        async (args) => sendFile(args, {
       agent, t, openFilePicker, lookupPeerNknByWebid,
     }),
+    mute:               async (args) => muteHandler(args, { agent, t }),
+    unmute:             async (args) => unmuteHandler(args, { agent, t }),
+    muted:              async (args) => mutedHandler(args, { agent, t }),
+    'audit-tail':       async (args) => auditTailHandler(args, { agent, t }),
     signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
     'reset-thread': async () => {
       // v0.7.P1-followup — clear the active thread's messages.
@@ -458,6 +462,24 @@ async function securityStatus(_args, { agent, t }) {
   lines.push(`  Identity stableId:      ${st.identityStable}`);
   lines.push(`  Peer transport status:  ${st.peerTransportConnected ? 'connected' : 'idle'}`);
   lines.push(`  Known peers (HI'd):     ${st.helloedPeerCount}`);
+  // Factory-wired (S1+) extras — only shown when the relevant opt is on
+  if (typeof st.muteCount === 'number') {
+    lines.push(`  Muted peers:            ${st.muteCount}${st.muteIsPersistent ? ' (persistent)' : ' (in-memory)'}`);
+  }
+  if (st.helloGateWired) lines.push(`  helloGate:              wired`);
+  if (st.claimWebidBound) lines.push(`  WebID claim bound:      ${st.claimWebidBound}`);
+  if (st.vaultEncrypted)  lines.push(`  Vault encrypted:        yes (IndexedDB+AES-GCM)`);
+  if (st.passkeyConfigured) {
+    lines.push(`  Passkey unlock:         ${st.passkeyAvailable ? 'configured + available' : 'configured (WebAuthn unavailable)'}`);
+  }
+  if (st.resolverWired) lines.push(`  Identity resolver:      wired (alias-aware mute)`);
+  if (st.trustWired)    lines.push(`  TrustRegistry:          wired`);
+  if (st.capsWired)     lines.push(`  Capability tokens:      wired`);
+  if (st.policyWired)   lines.push(`  PolicyEngine:           wired`);
+  if (st.auditWired)    lines.push(`  Audit log:              ${st.auditSize} entries${st.auditAutoLog ? ' (autoLog on)' : ''}`);
+  if (st.groupsWired)   lines.push(`  GroupManager:           wired`);
+  if (st.rateLimitWired) lines.push(`  Rate limit:             wired`);
+  if (st.pfsWired)      lines.push(`  PFS:                    partial (symmetric ratchet; no DH ratchet)`);
   if (st.helloedPeerCount > 0) {
     lines.push('');
     lines.push('Peers you can encrypt to:');
@@ -470,6 +492,77 @@ async function securityStatus(_args, { agent, t }) {
   lines.push('  ✓ Ed25519-signed (sender authenticated)');
   lines.push('  ✓ nacl.box-encrypted (XSalsa20-Poly1305 + Curve25519 DH)');
   lines.push('  ✓ replay-protected (±10 min window + dedup cache)');
+  return { message: lines.join('\n') };
+}
+
+/**
+ * `/mute <peer>` — add peer to the mute set.  Resolver fanout
+ * means a webid mute blocks the peer across all their devices /
+ * addresses.  Persisted via the factory's muteListVaultKey opt.
+ */
+async function muteHandler(args, { agent, t }) {
+  const peer = String(args?.peer ?? args?._match ?? '').trim();
+  if (!peer) return { ok: false, error: t('mute.no_peer') };
+  const sa = agent?.sa;
+  if (!sa?.mute) return { ok: false, error: t('mute.unavailable') };
+  const added = await sa.mute.add(peer);
+  if (!added) return { ok: true, message: t('mute.already', { peer }) };
+  return { ok: true, message: t('mute.added', { peer }) };
+}
+
+/**
+ * `/unmute <peer>` — remove a peer from the mute set.
+ */
+async function unmuteHandler(args, { agent, t }) {
+  const peer = String(args?.peer ?? args?._match ?? '').trim();
+  if (!peer) return { ok: false, error: t('mute.no_peer') };
+  const sa = agent?.sa;
+  if (!sa?.mute) return { ok: false, error: t('mute.unavailable') };
+  const removed = await sa.mute.remove(peer);
+  if (!removed) return { ok: true, message: t('mute.not_muted', { peer }) };
+  return { ok: true, message: t('mute.removed', { peer }) };
+}
+
+/**
+ * `/muted` — list current mute set.
+ */
+async function mutedHandler(_args, { agent, t }) {
+  const sa = agent?.sa;
+  if (!sa?.mute) return { ok: false, error: t('mute.unavailable') };
+  const list = sa.mute.list();
+  if (list.length === 0) return { message: t('mute.empty') };
+  const lines = [`Muted peers (${list.length}):`];
+  for (const p of list) {
+    lines.push(`  - ${p.length > 64 ? p.slice(0, 60) + '…' : p}`);
+  }
+  return { message: lines.join('\n') };
+}
+
+/**
+ * `/audit-tail [n] [event=...]` — show the last N entries from the
+ * signed audit chain.  Verifies the chain on every call.
+ */
+async function auditTailHandler(args, { agent, t }) {
+  const sa = agent?.sa;
+  if (!sa?.audit) return { ok: false, error: t('audit.unavailable') };
+  const verification = sa.audit.verify();
+  const n = Number.isInteger(args?.n) && args.n > 0 ? args.n : 20;
+  const all = (typeof args?.event === 'string' && args.event)
+    ? sa.audit.filter(args.event)
+    : sa.audit.entries();
+  const tail = all.slice(-n);
+  const lines = [];
+  lines.push(`Audit chain — ${all.length} total, ${tail.length} shown` +
+             (verification.ok
+                ? ' [chain verified]'
+                : ` [⚠ chain BROKEN at index ${verification.brokenAt}: ${verification.reason}]`));
+  if (tail.length === 0) return { message: lines.join('\n') };
+  lines.push('');
+  for (const e of tail) {
+    const when = new Date(e.ts).toISOString().replace('T', ' ').slice(0, 19);
+    const subj = e.subject ? ` ${e.subject.length > 50 ? e.subject.slice(0, 47) + '…' : e.subject}` : '';
+    lines.push(`  ${when}  ${e.event}${subj}`);
+  }
   return { message: lines.join('\n') };
 }
 
