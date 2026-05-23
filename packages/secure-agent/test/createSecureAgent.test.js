@@ -8,6 +8,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { VaultMemory } from '@canopy/vault';
 import { createSecureAgent } from '../src/createSecureAgent.js';
+import {
+  signClaim, verifyClaim, serializeClaim, parseClaim,
+} from '../src/claim.js';
+import { loadMuteSet }   from '../src/mute.js';
+import { AgentIdentity } from '@canopy/core';
 
 describe('createSecureAgent — S0 foundation', () => {
   it('builds an agent with auto-SecurityLayer (no peer transport)', async () => {
@@ -162,6 +167,268 @@ describe('createSecureAgent — S0 foundation', () => {
     const sa = await createSecureAgent({ vault: new VaultMemory() });
     await sa.shutdown();
     await expect(sa.shutdown()).resolves.toBeUndefined();
+  });
+});
+
+/* ─── S1 — mute / block + helloGate ──────────────────── */
+
+describe('createSecureAgent — S1 mute + helloGate', () => {
+  it('mute set persists across two factory invocations (same vault key)', async () => {
+    const vault = new VaultMemory();
+    const a1 = await createSecureAgent({
+      vault, muteListVaultKey: 'sa-mute', warnOnInsecure: false,
+    });
+    await a1.mute.add('app.bad.1');
+    await a1.mute.add('app.bad.2');
+    expect(a1.mute.size).toBe(2);
+    await a1.shutdown();
+
+    const a2 = await createSecureAgent({
+      vault, muteListVaultKey: 'sa-mute', warnOnInsecure: false,
+    });
+    expect(a2.mute.has('app.bad.1')).toBe(true);
+    expect(a2.mute.has('app.bad.2')).toBe(true);
+    expect(a2.mute.list().sort()).toEqual(['app.bad.1', 'app.bad.2']);
+    await a2.shutdown();
+  });
+
+  it('mute without vaultKey is in-memory only', async () => {
+    const vault = new VaultMemory();
+    const a1 = await createSecureAgent({ vault });
+    await a1.mute.add('app.bad.1');
+    expect(a1.mute.has('app.bad.1')).toBe(true);
+    await a1.shutdown();
+
+    const a2 = await createSecureAgent({ vault });
+    expect(a2.mute.has('app.bad.1')).toBe(false);   // not persisted
+    await a2.shutdown();
+  });
+
+  it('sendTo throws when target is muted', async () => {
+    const fakeNkn = makeFakeNkn({ address: 'app.fake.123' });
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(), nknLib: fakeNkn,
+    });
+    await sa.peer.connect();
+    await sa.mute.add('app.peer.456');
+    await expect(
+      sa.peer.sendTo('app.peer.456', { type: 'p2p-chat', body: 'hi' })
+    ).rejects.toThrow(/muted/);
+    await sa.shutdown();
+  });
+
+  it('helloGate as string is treated as PSK (tokenGate)', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      helloGate: 'shared-secret-xyz',
+      warnOnInsecure: false,
+    });
+    const gate = sa.agent.helloGate;
+    expect(typeof gate).toBe('function');
+    // Composed gate: passes only when env._from not muted AND PSK matches
+    expect(await gate({ _from: 'app.who', payload: { authToken: 'shared-secret-xyz' } })).toBe(true);
+    expect(await gate({ _from: 'app.who', payload: { authToken: 'wrong' } })).toBe(false);
+    expect(await gate({ _from: 'app.who', payload: {} })).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('helloGate as { token } is treated as tokenGate', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      helloGate: { token: 'sek' },
+      warnOnInsecure: false,
+    });
+    const gate = sa.agent.helloGate;
+    expect(await gate({ _from: 'app.x', payload: { authToken: 'sek' } })).toBe(true);
+    expect(await gate({ _from: 'app.x', payload: { authToken: 'no' } })).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('helloGate as a custom function is composed with mute base gate', async () => {
+    const calls = [];
+    const customGate = async (env) => {
+      calls.push(env._from);
+      return env._from.startsWith('app.good.');
+    };
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(), helloGate: customGate,
+    });
+    const gate = sa.agent.helloGate;
+    // Mute-block kicks in BEFORE user gate; muted peer → false, user gate not called
+    await sa.mute.add('app.good.muted');
+    expect(await gate({ _from: 'app.good.muted', payload: {} })).toBe(false);
+    expect(calls).toEqual([]);   // user gate not invoked for muted peer
+    // Non-muted but failing custom gate → false
+    expect(await gate({ _from: 'app.bad.42', payload: {} })).toBe(false);
+    expect(calls).toEqual(['app.bad.42']);
+    // Non-muted, passing custom → true
+    expect(await gate({ _from: 'app.good.99', payload: {} })).toBe(true);
+    await sa.shutdown();
+  });
+
+  it('no helloGate opt → mute-only base gate is still installed', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    const gate = sa.agent.helloGate;
+    expect(typeof gate).toBe('function');
+    expect(await gate({ _from: 'app.fresh', payload: {} })).toBe(true);
+    await sa.mute.add('app.bad');
+    expect(await gate({ _from: 'app.bad', payload: {} })).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('helloGate of wrong type throws at factory time', async () => {
+    await expect(createSecureAgent({
+      vault: new VaultMemory(), helloGate: 42,
+    })).rejects.toThrow(/helloGate must be/);
+  });
+
+  it('securityStatus reports mute + helloGate state', async () => {
+    const sa = await createSecureAgent({
+      vault:            new VaultMemory(),
+      muteListVaultKey: 'sa-mute',
+      helloGate:        'psk',
+      warnOnInsecure:   false,
+    });
+    await sa.mute.add('app.x');
+    const st = sa.securityStatus();
+    expect(st.muteCount).toBe(1);
+    expect(st.mutedPeers).toEqual(['app.x']);
+    expect(st.muteIsPersistent).toBe(true);
+    expect(st.helloGateWired).toBe(true);
+    await sa.shutdown();
+  });
+
+  it('loadMuteSet (standalone helper) survives corrupt JSON in vault slot', async () => {
+    const vault = new VaultMemory();
+    await vault.set('sa-mute', '{not json');
+    const set = await loadMuteSet({ vault, vaultKey: 'sa-mute' });
+    expect(set.size).toBe(0);
+    // And persists fresh state cleanly:
+    await set.add('app.a');
+    const raw = await vault.get('sa-mute');
+    expect(JSON.parse(raw)).toEqual(['app.a']);
+  });
+});
+
+/* ─── S2 — signed WebID claim ────────────────────────── */
+
+describe('createSecureAgent — S2 signed WebID claim', () => {
+  it('signClaim → verifyClaim round-trips', async () => {
+    const vault = new VaultMemory();
+    const identity = await AgentIdentity.generate(vault);
+    const claim = signClaim(identity, {
+      webid:   'https://alice.example/profile/card#me',
+      nknAddr: 'app.alice.abc',
+    });
+    expect(claim.v).toBe(1);
+    expect(claim.webid).toBe('https://alice.example/profile/card#me');
+    expect(claim.pubKey).toBe(identity.pubKey);
+    expect(claim.nknAddr).toBe('app.alice.abc');
+    expect(typeof claim.sig).toBe('string');
+    const v = verifyClaim(claim);
+    expect(v).toEqual({ ok: true, body: expect.any(Object) });
+  });
+
+  it('verifyClaim rejects tampered fields', async () => {
+    const vault = new VaultMemory();
+    const identity = await AgentIdentity.generate(vault);
+    const claim = signClaim(identity, { webid: 'https://a.example/#me' });
+    // Tamper the webid; the sig was over the original
+    const tampered = { ...claim, webid: 'https://attacker.example/#me' };
+    expect(verifyClaim(tampered)).toEqual({ ok: false, reason: 'bad-sig' });
+  });
+
+  it('verifyClaim rejects expired claims', async () => {
+    const vault = new VaultMemory();
+    const identity = await AgentIdentity.generate(vault);
+    const claim = signClaim(identity, {
+      webid: 'https://a.example/#me',
+      ttlMs: 1000,
+      now:   1000,
+    });
+    expect(verifyClaim(claim, { now: 3000 })).toEqual({ ok: false, reason: 'expired' });
+  });
+
+  it('verifyClaim rejects future-dated claims beyond skew', async () => {
+    const vault = new VaultMemory();
+    const identity = await AgentIdentity.generate(vault);
+    const claim = signClaim(identity, {
+      webid: 'https://a.example/#me',
+      now:   100_000_000,
+    });
+    expect(verifyClaim(claim, { now: 1000, clockSkewMs: 1000 }))
+      .toEqual({ ok: false, reason: 'future-ts' });
+  });
+
+  it('verifyClaim rejects missing/bad-shape input', async () => {
+    expect(verifyClaim(null)).toEqual({ ok: false, reason: 'bad-shape' });
+    expect(verifyClaim({})).toEqual({ ok: false, reason: 'bad-shape' });
+    expect(verifyClaim({ v: 1 })).toEqual({ ok: false, reason: 'bad-shape' });
+  });
+
+  it('serializeClaim → parseClaim round-trips', async () => {
+    const vault = new VaultMemory();
+    const identity = await AgentIdentity.generate(vault);
+    const claim = signClaim(identity, { webid: 'https://a.example/#me' });
+    const str = serializeClaim(claim);
+    expect(typeof str).toBe('string');
+    const parsed = parseClaim(str);
+    expect(parsed).toEqual(claim);
+    expect(verifyClaim(parsed).ok).toBe(true);
+  });
+
+  it('factory binds webid: sa.claim.sign() needs no args', async () => {
+    const sa = await createSecureAgent({
+      vault:      new VaultMemory(),
+      webidClaim: { webid: 'https://bob.example/#me' },
+      warnOnInsecure: false,
+    });
+    const claim = sa.claim.sign({ nknAddr: 'app.bob.xyz' });
+    expect(claim.webid).toBe('https://bob.example/#me');
+    expect(claim.pubKey).toBe(sa.identity.pubKey);
+    expect(sa.claim.verify(claim).ok).toBe(true);
+    expect(sa.claim.boundWebid).toBe('https://bob.example/#me');
+    await sa.shutdown();
+  });
+
+  it('factory without bound webid: sa.claim.sign({webid}) works', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    const claim = sa.claim.sign({ webid: 'https://c.example/#me' });
+    expect(claim.webid).toBe('https://c.example/#me');
+    expect(sa.claim.boundWebid).toBeNull();
+    await sa.shutdown();
+  });
+
+  it('factory without bound webid + no call-time webid → throws', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    expect(() => sa.claim.sign()).toThrow(/no webid bound/);
+    await sa.shutdown();
+  });
+
+  it('signed claim from one identity does NOT verify with another pubKey', async () => {
+    const vaultA = new VaultMemory();
+    const vaultB = new VaultMemory();
+    const idA = await AgentIdentity.generate(vaultA);
+    const idB = await AgentIdentity.generate(vaultB);
+    const claim = signClaim(idA, { webid: 'https://a.example/#me' });
+    // Swap in B's pubKey; sig was made by A, so it must fail
+    const swapped = { ...claim, pubKey: idB.pubKey };
+    expect(verifyClaim(swapped)).toEqual({ ok: false, reason: 'bad-sig' });
+  });
+
+  it('warnings no longer fire for muteListVaultKey / helloGate / webidClaim (now wired)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await createSecureAgent({
+      vault:            new VaultMemory(),
+      muteListVaultKey: 'sa-mute',
+      helloGate:        'psk',
+      webidClaim:       { webid: 'https://x.example/#me' },
+    });
+    const allWarnArgs = warn.mock.calls.flat().join(' ');
+    expect(allWarnArgs).not.toMatch(/muteListVaultKey/);
+    expect(allWarnArgs).not.toMatch(/helloGate/);
+    expect(allWarnArgs).not.toMatch(/webidClaim/);
+    warn.mockRestore();
   });
 });
 

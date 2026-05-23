@@ -13,3 +13,16 @@
 
 export { createSecureAgent } from './createSecureAgent.js';
 export { makeBrowserVault, restoreOrGenerate } from './vault.js';
+
+// S1 — mute / block
+export { loadMuteSet, MuteSet } from './mute.js';
+
+// S2 — signed WebID claim
+export {
+  signClaim,
+  verifyClaim,
+  serializeClaim,
+  parseClaim,
+  CLAIM_VERSION,
+  DEFAULT_TTL_MS as DEFAULT_CLAIM_TTL_MS,
+} from './claim.js';

@@ -17,11 +17,14 @@
  *   - rotateIdentity wrapper (Agent.rotateIdentity + grace + broadcast)
  *   - securityStatus diagnostic
  *
- * # What's a stub in S0 (filled by later slices)
+ * # What lands in S1 + S2 (also this file)
  *
- *   - muteListVaultKey   (S1 — A.1)
- *   - helloGate          (S1 — A+.1)
- *   - webidClaim         (S2 — A.2)
+ *   - muteListVaultKey   (S1 — A.1)   persistent mute set + send-side block
+ *   - helloGate          (S1 — A+.1)  PSK / predicate gate + mute base gate
+ *   - webidClaim         (S2 — A.2)   sa.claim.sign/verify/serialize/parse
+ *
+ * # What's a stub (filled by later slices)
+ *
  *   - passphrase         (S3 — A.3)
  *   - webAuthnUnlock     (S3 — A+.5)
  *   - identityResolver   (S4 — A.4)
@@ -48,7 +51,16 @@ import {
   NknTransport,
 } from '@canopy/core';
 
+import { tokenGate } from '@canopy/core';
+
 import { makeBrowserVault, restoreOrGenerate } from './vault.js';
+import { loadMuteSet }                          from './mute.js';
+import {
+  signClaim    as signClaimFn,
+  verifyClaim  as verifyClaimFn,
+  serializeClaim,
+  parseClaim,
+} from './claim.js';
 
 /**
  * @typedef {object} CreateSecureAgentOpts
@@ -60,9 +72,9 @@ import { makeBrowserVault, restoreOrGenerate } from './vault.js';
  *
  * @property {object}  [nknLib]                 window.nkn from CDN, or RN nkn-sdk; absent → no peer transport
  *
- * @property {string}  [muteListVaultKey]       [STUB — S1] persistent mute set
- * @property {Function|string} [helloGate]      [STUB — S1] gate fn or 'pre-shared-secret'
- * @property {object}  [webidClaim]             [STUB — S2] { sign, publishOnSignIn }
+ * @property {string}  [muteListVaultKey]       S1 — persistent mute slot (omit = in-memory)
+ * @property {Function|string|object} [helloGate] S1 — fn(envelope)=>bool, PSK string, or { token }
+ * @property {object}  [webidClaim]             S2 — { webid } binds default WebID for claim.sign()
  * @property {boolean} [identityResolver]       [STUB — S4]
  * @property {boolean} [capabilityIssuer]       [STUB — S5]
  * @property {boolean} [trustRegistry]          [STUB — S5b]
@@ -86,9 +98,9 @@ import { makeBrowserVault, restoreOrGenerate } from './vault.js';
 const STUB_OPTS = Object.freeze([
   'passphrase',
   'webAuthnUnlock',
-  'muteListVaultKey',
-  'helloGate',
-  'webidClaim',
+  // muteListVaultKey  — wired in S1
+  // helloGate         — wired in S1
+  // webidClaim        — wired in S2
   'identityResolver',
   'capabilityIssuer',
   'trustRegistry',
@@ -115,6 +127,21 @@ const STUB_OPTS = Object.freeze([
  *   rotateIdentity: (opts?: object) => Promise<{ oldPubKey, newPubKey, graceUntilDays }>,
  *   securityStatus: () => object,
  *   shutdown: () => Promise<void>,
+ *   mute: {
+ *     add: (addr) => Promise<boolean>,
+ *     remove: (addr) => Promise<boolean>,
+ *     has: (addr) => boolean,
+ *     list: () => string[],
+ *     clear: () => Promise<void>,
+ *     size: number,
+ *   },
+ *   claim: {
+ *     sign: (args?: { webid?: string, nknAddr?: string, ttlMs?: number }) => object,
+ *     verify: (claim, opts?) => { ok: true, body } | { ok: false, reason },
+ *     serialize: (claim) => string,
+ *     parse: (str) => object,
+ *     boundWebid: string|null,
+ *   },
  * }>}
  */
 export async function createSecureAgent(opts = {}) {
@@ -146,6 +173,35 @@ export async function createSecureAgent(opts = {}) {
   const transport = new InternalTransport(bus, identity.pubKey);
   const agent = new Agent({ identity, transport });
   await agent.start();
+
+  // ─── S1 — persistent mute set (A.1) ───────────────────────────────
+  // Match key today = NKN peer address.  S4 (identity-resolver) will
+  // additionally match on stableId + webid when those mappings exist.
+  const muteSet = await loadMuteSet({
+    vault,
+    vaultKey: opts.muteListVaultKey ?? null,
+  });
+
+  // ─── S1 — helloGate (A+.1) ────────────────────────────────────────
+  // Two layers, composed via anyOf-style AND (we want ALL to pass):
+  //   1. mute-block gate (always installed): reject HI from muted peer addr
+  //   2. user-supplied gate (optional): tokenGate(string) | groupGate | custom fn
+  // Composition: AND (both must return true to accept).  Helper:
+  // helloGates.anyOf is OR, so we manually AND here.
+  const userHelloGate = resolveHelloGate(opts.helloGate);
+  const muteBlockGate = async (env) => !muteSet.has(env?._from);
+  const composedGate  = userHelloGate
+    ? async (env) => (await muteBlockGate(env)) && (await userHelloGate(env))
+    : muteBlockGate;
+  agent.setHelloGate(composedGate);
+
+  // ─── S2 — signed WebID claim (A.2) ────────────────────────────────
+  // Bind the WebID once (factory-time) if the caller passed one; then
+  // signClaim() can default to it.  No bound webid → caller must pass
+  // it to each signClaim call.
+  const boundWebid = (typeof opts.webidClaim === 'object' && opts.webidClaim)
+    ? (opts.webidClaim.webid ?? null)
+    : null;
 
   // ─── Peer state (NKN cross-peer; stays idle until connect()) ───
   let peerTransport = null;
@@ -184,6 +240,9 @@ export async function createSecureAgent(opts = {}) {
       // Bilateral fix: when B receives A's HI, B auto-sends HI back.
       // Now A also knows B's pubKey + can encrypt OW.
       tx.on('envelope', (env) => {
+        // S1 — drop envelopes from muted peers BEFORE any further
+        // bookkeeping (no reciprocal HI, no onPeerMessage fire).
+        if (muteSet.has(env?._from)) return;
         try {
           if (!helloedPeers.has(env._from)) {
             tx.sendHello(env._from, { pubKey: identity.pubKey })
@@ -227,6 +286,11 @@ export async function createSecureAgent(opts = {}) {
   async function sendToPeer(addr, payload) {
     if (!peerTransport) {
       throw new Error('Peer transport not connected.  connect() first.');
+    }
+    // S1 — refuse to send to a muted peer.  Throws (not silent) so the
+    // caller knows their intent didn't reach the wire.
+    if (muteSet.has(addr)) {
+      throw new Error(`secure-agent: peer "${addr}" is muted; sendTo refused`);
     }
     if (!helloedPeers.has(addr)) {
       try {
@@ -274,6 +338,13 @@ export async function createSecureAgent(opts = {}) {
       peerAddress:    peerState.address,
       helloedPeerCount: helloedPeers.size,
       helloedPeers:   [...helloedPeers],
+      // S1 — mute state
+      muteCount:       muteSet.size,
+      mutedPeers:      muteSet.list(),
+      muteIsPersistent: !!opts.muteListVaultKey,
+      helloGateWired:  !!userHelloGate,
+      // S2 — claim state
+      claimWebidBound: boundWebid,
       // STUB sections — surfaces what's reserved vs what's wired:
       pendingOpts: pickStubOpts(opts),
     };
@@ -307,11 +378,63 @@ export async function createSecureAgent(opts = {}) {
     rotateIdentity,
     securityStatus,
     shutdown,
+
+    // S1 — mute / block list
+    mute: {
+      add:    (addr) => muteSet.add(addr),
+      remove: (addr) => muteSet.remove(addr),
+      has:    (addr) => muteSet.has(addr),
+      list:   ()     => muteSet.list(),
+      clear:  ()     => muteSet.clear(),
+      get size() { return muteSet.size; },
+    },
+
+    // S2 — signed WebID claim
+    claim: {
+      sign(args = {}) {
+        const webid = args.webid ?? boundWebid;
+        if (!webid) {
+          throw new Error(
+            'claim.sign: no webid bound + none passed.  Either set ' +
+            'opts.webidClaim.webid at factory time or pass {webid} here.',
+          );
+        }
+        return signClaimFn(identity, { ...args, webid });
+      },
+      verify:    (c, vOpts) => verifyClaimFn(c, vOpts),
+      serialize: (c)        => serializeClaim(c),
+      parse:     (s)        => parseClaim(s),
+      get boundWebid() { return boundWebid; },
+    },
+
     // S0 — pendingOpts is the bridge between 'caller asked for X' and
     // 'X not wired yet'.  Future slices delete each entry from
     // STUB_OPTS as they activate.
     pendingOpts: pickStubOpts(opts),
   };
+}
+
+/**
+ * Resolve the helloGate opt to a predicate fn.  Accepts:
+ *   - function           → use as-is
+ *   - string             → tokenGate(secret)
+ *   - { token: 'xyz' }   → tokenGate('xyz')
+ *   - null / undefined   → no user gate (mute-only base gate still applies)
+ *
+ * Returns null when no user gate; the factory installs only the mute
+ * base gate in that case.
+ */
+function resolveHelloGate(opt) {
+  if (opt == null) return null;
+  if (typeof opt === 'function') return opt;
+  if (typeof opt === 'string')   return tokenGate(opt);
+  if (typeof opt === 'object' && typeof opt.token === 'string') {
+    return tokenGate(opt.token);
+  }
+  throw new Error(
+    'createSecureAgent: helloGate must be a function, a string ' +
+    '(PSK), or { token: string }.  Got: ' + typeof opt,
+  );
 }
 
 function pickStubOpts(opts) {
