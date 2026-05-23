@@ -125,7 +125,7 @@
     "lookup_failed":  { "text": "Kon {{peer}} niet naar NKN-adres herleiden.",          "doc": "Lookup failure." },
     "cancelled":      { "text": "Bestandskiezer geannuleerd.",                            "doc": "User dismissed." },
     "pick_failed":    { "text": "Bestand kiezen mislukt: {{error}}",                     "doc": "Defensive." },
-    "too_large":      { "text": "Bestand te groot ({{size}}; max {{max}} voor inline).", "doc": "Cap." },
+    "too_large":      { "text": "Bestand te groot ({{size}} bytes; max {{max}} bytes inline).  NKN dropt berichten boven ~64KB stilletjes; daarom houden we 32KB als bovengrens om levering te garanderen.  Grotere bestanden komen via pod-URL (volgende slice).", "doc": "Cap." },
     "read_failed":    { "text": "Bestand lezen mislukt: {{error}}",                       "doc": "Defensive." },
     "sent":           { "text": "📤 verstuurd {{name}} ({{size}} bytes) → {{peer}}",     "doc": "Confirmation." },
     "send_failed":    { "text": "Versturen mislukt: {{error}}",                            "doc": "Defensive." }
