@@ -87,8 +87,9 @@ async function bootWorkspace({ chatVault, secureAgentOpts } = {}) {
       return agent.callSkill('tasks-v0', opId, args);
     }
     if (appOrigin === 'stoop') {
-      const realOp = opId === 'briefSummary' ? 'stoop_briefSummary' : opId;
-      return agent.callSkill('household', realOp, args);
+      // Post-slice-2b: stoop is the real NeighborhoodAgent composed
+      // in realAgent.js (110 real skills).
+      return agent.callSkill('stoop', opId, args);
     }
     if (appOrigin === 'folio') {
       const realOp = opId === 'briefSummary' ? 'folio_briefSummary' : opId;

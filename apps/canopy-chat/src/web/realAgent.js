@@ -29,6 +29,7 @@ import {
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 import { createSecureAgent } from '@canopy/secure-agent';
 import { createBrowserTasksAgent } from '@canopy-app/tasks-v0/browser';
+import { createBrowserStoopAgent } from '@canopy-app/stoop/browser';
 
 /**
  * Pick the right vault for the runtime.  Used here only for the
@@ -408,94 +409,6 @@ export async function createRealHouseholdAgent(opts = {}) {
   });
 
 
-  /* ─────────── v0.7.3 — stoop real skills ─────────── */
-  const SEED_POSTS = [
-    { id: 'p-1', label: 'Anne needs help moving a couch',   state: 'open',   actor: 'webid:anne' },
-    { id: 'p-2', label: 'Karl offers tomato seedlings',     state: 'open',   actor: 'webid:karl' },
-    { id: 'p-3', label: 'Maria looking for a bike pump',    state: 'open',   actor: 'webid:maria' },
-  ];
-  let posts = SEED_POSTS.map((p) => ({ ...p }));
-
-  hostAgent.register('listFeed', async () => {
-    return [DataPart({
-      items: posts.filter((p) => p.state === 'open'),
-      _sync: simulateSync(),
-    })];
-  });
-
-  hostAgent.register('postRequest', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const text = String(a.text ?? '').trim();
-    if (!text) return [DataPart({ ok: false, error: 'text required' })];
-    const id = `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-    posts.unshift({ id, label: text, state: 'open', actor: 'webid:local-demo-user' });
-    publishEvent({
-      app: 'stoop', type: 'notification',
-      actor: 'webid:local-demo-user',
-      itemRef: { app: 'stoop', type: 'post', id },
-      payload: { message: `New buurt post: ${text}` },
-    });
-    return [DataPart({
-      ok: true, message: `✓ Posted: ${text}`, itemId: id, _sync: simulateSync(),
-    })];
-  });
-
-  // v0.7.5 — searchPosts.
-  hostAgent.register('searchPosts', async ({ parts }) => {
-    const q = String(parts?.[0]?.data?.query ?? '').toLowerCase();
-    if (!q) return [DataPart({ items: [] })];
-    const hits = posts.filter((p) => p.label.toLowerCase().includes(q));
-    return [DataPart({
-      items: hits.map((p) => ({ id: p.id, label: p.label, type: 'post' })),
-    })];
-  });
-
-  hostAgent.register('stoop_briefSummary', async () => {
-    const open = posts.filter((p) => p.state === 'open');
-    if (open.length === 0) return [DataPart({ ok: true })];
-    return [DataPart({
-      items:   open.slice(0, 3).map((p) => ({ id: p.id, label: p.label })),
-      message: `${open.length} buurt request${open.length === 1 ? '' : 's'}`,
-    })];
-  });
-
-  /* ─── v0.7.cc — stoop: profile + reveals ─── */
-
-  // In-memory reveal state (per-buurt + per-peer).  Same shape as
-  // packages/identity-resolver/src/Reveals.js but local to the
-  // mock-real for the demo.
-  const stoopReveals = new Map();   // peerKey → boolean
-
-  hostAgent.register('getStoopProfile', async () => {
-    return [DataPart({
-      title:        'Stoop profile',
-      handle:       'frits-westend-42',
-      displayName:  'Frits',
-      buurt:        'Oosterpoort',
-      revealsCount: stoopReveals.size,
-      muteCount:    0,
-    })];
-  });
-
-  hostAgent.register('revealPeer', async ({ parts }) => {
-    const args = parts?.[0]?.data ?? {};
-    const peer   = String(args.peer ?? '').trim();
-    const action = String(args.action ?? 'on').toLowerCase();
-    if (!peer) return [DataPart({ ok: false, error: 'peer required' })];
-    if (action !== 'on' && action !== 'off') {
-      return [DataPart({ ok: false, error: 'action must be on or off' })];
-    }
-    if (action === 'on') stoopReveals.set(peer, true);
-    else                 stoopReveals.delete(peer);
-    return [DataPart({
-      ok: true,
-      message: action === 'on'
-        ? `🔓 Reveal flipped on for ${peer}. (Bilateral — they must flip on their side too.)`
-        : `🔒 Reveal flipped off for ${peer}.`,
-      peer, action,
-    })];
-  });
-
   /* ─────────── v0.7.4 — folio browser-side skills ─────────── */
   const SEED_FILES = [
     { id: '/notes/shared/anne.md',  name: 'anne.md',  type: 'file', mime: 'text/markdown', bytes: 1234, state: 'synced' },
@@ -697,6 +610,77 @@ export async function createRealHouseholdAgent(opts = {}) {
     }
   }
 
+  /* ─── stoop real agent (slice 2b — integration plan 2026-05-23) ──
+   *
+   * Replaces the previous mock-stoop handlers (~85 lines: listFeed,
+   * postRequest, searchPosts, stoop_briefSummary, getStoopProfile,
+   * revealPeer) with the actual Stoop NeighborhoodAgent composed
+   * in-process.  Boots 110 real stoop skills; ~6 surface via chat
+   * ops today, the rest reachable via agent.callSkill('stoop', …).
+   *
+   * Separate identity vault prefix (`cc-stoop-id:`) so stoop's per-
+   * buurt identity is isolated from chat + tasks (decision #2).
+   * IndexedDBPersist via opts.persistDb keeps the local cache alive
+   * across page reloads (slice 2a).
+   */
+  const stoopIdentityVault = opts.stoopIdentityVault
+    ?? makeBrowserVault('cc-stoop-id:');
+  const stoopAgent = await createBrowserStoopAgent({
+    bus,
+    identityVault: stoopIdentityVault,
+    // Bind chatAgent's pubKey as the local actor so real stoop
+    // skills' `from` lookups resolve back to 'me' (admin role).
+    localActor: chatId.pubKey,
+    group:      opts.stoopGroup ?? 'cc-default-buurt',
+    members:    opts.stoopMembers ?? [
+      { webid: chatId.pubKey,     displayName: 'me',    role: 'admin'       },
+      { webid: 'webid:anne',      displayName: 'Anne',  role: 'coordinator' },
+      { webid: 'webid:karl',      displayName: 'Karl',  role: 'member'      },
+      { webid: 'webid:maria',     displayName: 'Maria', role: 'member'      },
+    ],
+    persistDb:  opts.stoopPersistDb,   // browser IDB; opt-in via caller
+    label:      'StoopAgent(cc)',
+  });
+  await chatAgent.hello(stoopAgent.address);
+
+  // Pre-seed the local actor's stoop handle + displayName so
+  // /stoop-profile has something to show (real getMyProfile returns
+  // {entry: null} until the user first sets these).  Opts out with
+  // seedStoopProfile:false.
+  if (opts.seedStoopProfile !== false) {
+    try {
+      await chatAgent.invoke(stoopAgent.address, 'setMyHandle', [DataPart({
+        handle: opts.stoopHandle ?? 'frits-westend-42',
+      })]);
+      await chatAgent.invoke(stoopAgent.address, 'setMyDisplayName', [DataPart({
+        displayName: opts.stoopDisplayName ?? 'Frits',
+      })]);
+    } catch (err) {
+      if (typeof console !== 'undefined') {
+        console.warn('[realAgent] seed stoop profile failed:', err.message ?? err);
+      }
+    }
+  }
+
+  // Pre-seed 3 demo posts so /feed has content out of the box
+  // (matches the previous mock seed; opts.seedStoopPosts:false to opt out).
+  if (opts.seedStoopPosts !== false) {
+    const SEED_POSTS = [
+      { kind: 'ask',   text: 'Anne needs help moving a couch' },
+      { kind: 'offer', text: 'Karl offers tomato seedlings'   },
+      { kind: 'ask',   text: 'Maria looking for a bike pump'  },
+    ];
+    for (const seed of SEED_POSTS) {
+      try {
+        await chatAgent.invoke(stoopAgent.address, 'postRequest', [DataPart(seed)]);
+      } catch (err) {
+        if (typeof console !== 'undefined') {
+          console.warn('[realAgent] seed stoop post failed:', err.message ?? err);
+        }
+      }
+    }
+  }
+
   /**
    * canopy-chat's CallSkill shape: `(appOrigin, opId, args) → payload`.
    *
@@ -740,6 +724,18 @@ export async function createRealHouseholdAgent(opts = {}) {
     if (status === 'claimed' || task?.assignee) return 'claimed';
     return 'open';   // ready / blocked / undefined
   }
+
+  /**
+   * Stoop opId aliases — chat-shell vocabulary → real skill name.
+   *   /feed       → listOpen     (no `listFeed` in real stoop)
+   *   /stoop-profile → getMyProfile
+   *   /reveal     → setPeerReveal
+   */
+  const STOOP_OP_ALIAS = {
+    listFeed:        'listOpen',
+    getStoopProfile: 'getMyProfile',
+    revealPeer:      'setPeerReveal',
+  };
 
   /** Slugify a name → safe crewId for provisionMyCrew. */
   function _slugifyCrewId(name) {
@@ -807,6 +803,48 @@ export async function createRealHouseholdAgent(opts = {}) {
       const data  = first?.data ?? null;
       if (data && noteHint) data.noteHint = noteHint;
       return adaptTasksReply(opId, data);
+    }
+    if (appOrigin === 'stoop') {
+      // Derived: briefSummary builds a summary from listOpen since
+      // stoop doesn't expose its own briefSummary skill.
+      if (opId === 'briefSummary' || opId === 'stoop_briefSummary') {
+        const list = await callSkill('stoop', 'listFeed', {});
+        const items = list?.items ?? [];
+        if (items.length === 0) return { ok: true };   // empty → /brief skips
+        return {
+          items:   items.slice(0, 3).map((p) => ({ id: p.id, label: p.text ?? p.label })),
+          message: `${items.length} buurt request${items.length === 1 ? '' : 's'}`,
+        };
+      }
+      // Derived: searchPosts (no dedicated skill in stoop today).
+      if (opId === 'searchPosts') {
+        const q = String(args?.query ?? '').toLowerCase();
+        if (!q) return { items: [] };
+        const list = await callSkill('stoop', 'listFeed', {});
+        const hits = (list?.items ?? []).filter((p) =>
+          String(p.text ?? p.label ?? '').toLowerCase().includes(q),
+        );
+        return {
+          items: hits.map((p) => ({ id: p.id, label: p.text ?? p.label, type: 'post' })),
+        };
+      }
+      const realOpId = STOOP_OP_ALIAS[opId] ?? opId;
+      // Arg normalisation between chat-shell vocabulary + real stoop.
+      let realArgs = args ?? {};
+      if (realOpId === 'setPeerReveal') {
+        // Chat-shell sends {peer, action: 'on'/'off'}; real takes
+        // {peerWebid, reveal: boolean}.
+        if (realArgs.peer && !realArgs.peerWebid) {
+          realArgs = { ...realArgs, peerWebid: realArgs.peer };
+        }
+        if (typeof realArgs.action === 'string' && realArgs.reveal === undefined) {
+          realArgs = { ...realArgs, reveal: realArgs.action.toLowerCase() === 'on' };
+        }
+      }
+      const parts = [DataPart(realArgs)];
+      const result = await chatAgent.invoke(stoopAgent.address, realOpId, parts);
+      const first  = Array.isArray(result) ? result[0] : null;
+      return adaptStoopReply(opId, first?.data ?? null, realArgs);
     }
     throw new Error(`realAgent: unknown appOrigin "${appOrigin}"`);
   };
@@ -898,6 +936,78 @@ export async function createRealHouseholdAgent(opts = {}) {
         crewId,
         crew:    data.crew ?? data,
         _sync:   simulateSync(),
+      };
+    }
+    // Default: pass through.
+    return data;
+  }
+
+  /**
+   * Bridge real stoop reply shapes → canopy-chat's chat-shell
+   * expectations.  Mock-era shapes the chat renderer was built
+   * against:
+   *   postRequest     → {ok, message, itemId, _sync}
+   *   listFeed/Open   → {items: [{id, label, state, ...}], _sync}
+   *   getMyProfile    → {title, handle, displayName, buurt, ...}
+   *   setPeerReveal   → {ok, message, peer, action}
+   */
+  function adaptStoopReply(opId, data, args) {
+    if (data == null) return null;
+    if (data.ok === false || data.error)  {
+      // Pass through error envelopes; canopy-chat dispatch handles them.
+      return data.ok === false ? data : { ok: false, error: data.error };
+    }
+
+    // postRequest: {requestId, claims} → {ok, message, itemId, _sync}
+    if (opId === 'postRequest' && data.requestId) {
+      const text = args?.text ?? '(post)';
+      return {
+        ok:      true,
+        message: `✓ Posted: ${text}`,
+        itemId:  data.requestId,
+        request: data,                       // preserve full shape
+        _sync:   simulateSync(),
+      };
+    }
+    // listFeed / listOpen / listMyRequests: items[] of {id, text, ...}
+    // → add a `label` alias on each row + add _sync envelope so the
+    // chat shell's renderer picks up the standard chat shapes.
+    if ((opId === 'listFeed' || opId === 'listOpen' || opId === 'listMyRequests')
+        && Array.isArray(data.items)) {
+      return {
+        ...data,
+        items: data.items.map((p) => ({
+          ...p,
+          label: p.text ?? p.label ?? p.id,
+          // Chat-shell convention: `state: open|done`.  Stoop posts
+          // are "open" while addedBy is set + not closed; "done"
+          // when there's a `closedAt`.
+          state: p.closedAt ? 'done' : 'open',
+        })),
+        _sync: simulateSync(),
+      };
+    }
+    // getMyProfile: real returns {entry: {handle, displayName, ...}|null}
+    // → adapt to {title, handle, displayName, buurt}.
+    if (opId === 'getStoopProfile') {
+      const e = data.entry ?? {};
+      return {
+        title:       'Stoop profile',
+        handle:      e.handle ?? null,
+        displayName: e.displayName ?? null,
+        buurt:       opts.stoopGroup ?? 'cc-default-buurt',
+      };
+    }
+    // setPeerReveal: real returns {} on success → adapt to mock shape.
+    if (opId === 'revealPeer') {
+      const peer   = args?.peer ?? args?.peerWebid ?? '(peer)';
+      const action = args?.action ?? (args?.reveal ? 'on' : 'off');
+      return {
+        ok: true,
+        message: action === 'on'
+          ? `🔓 Reveal flipped on for ${peer}. (Bilateral — they must flip on their side too.)`
+          : `🔒 Reveal flipped off for ${peer}.`,
+        peer, action,
       };
     }
     // Default: pass through.
