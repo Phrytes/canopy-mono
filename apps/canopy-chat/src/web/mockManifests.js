@@ -36,7 +36,7 @@
  */
 export const mockTasksManifest = {
   app:        'tasks-v0',
-  itemTypes:  ['task', 'crew'],
+  itemTypes:  ['task', 'crew', 'schedule-slot'],
   operations: [
     {
       id:    'addTask', verb: 'add',
@@ -181,6 +181,40 @@ export const mockTasksManifest = {
       surfaces: {
         slash: { command: '/inbox' },
         chat:  { reply: 'list', hint: 'list mentions + items needing my attention' },
+      },
+    },
+    /**
+     * #193 (B6, 2026-05-23) — auto-scheduling planner.  Wires
+     * suggestSchedule + acceptSchedule (apps/tasks-v0/src/skills/
+     * planner.js:55,95).  Greedy slot suggestion per the design's
+     * "reason chips" UX (functional-design-v2 § O).
+     *   /suggest-schedule [--lookahead-days=7]  → list of top-3 slots
+     *   /accept-schedule  <slotKey>             → schedules the slot
+     *
+     * slotKey shape: "taskId|slotStartMs|slotEndMs" — encoded into
+     * the row id so [Pick] buttons dispatch all three args.
+     */
+    {
+      id:    'suggestSchedule', verb: 'list',
+      appliesTo: { type: 'schedule-slot' },
+      params: [
+        { name: 'lookahead-days', kind: 'number', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/suggest-schedule', body: 'flags' },
+        chat:  { reply: 'list', hint: 'suggest scheduling slots for my open tasks' },
+      },
+    },
+    {
+      id:    'acceptSchedule', verb: 'add',
+      appliesTo: { type: 'schedule-slot' },
+      params: [
+        { name: 'slotKey', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/accept-schedule' },
+        chat:  { reply: 'text', hint: 'accept a scheduling suggestion' },
+        ui:    { control: 'button', label: 'Pick' },
       },
     },
     /**
