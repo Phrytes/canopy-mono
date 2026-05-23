@@ -39,6 +39,13 @@ import {
 import { VaultMemory }      from '@canopy/vault';
 import { AgentIdentity }    from '@canopy/core';
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
+import {
+  parseInput, resolveDispatch, runDispatch,
+  createDefaultThreadStore,
+} from '../src/index.js';
+import { canopyChatManifest }   from '../manifest.js';
+import { mergeManifests }       from '../src/manifestMerge.js';
+import { createLocalBuiltins }  from '../src/web/localBuiltins.js';
 
 /* ─── helpers ────────────────────────────────────────── */
 
@@ -91,58 +98,86 @@ describe('US-1 — Alice mutes a harasser', () => {
     expect(alice.audit.verify()).toEqual({ ok: true });
   });
 
-  it('Alice\'s mute survives a "page reload" (factory rebuild)', async () => {
+  it('Alice\'s mute survives a "page reload" — sendTo still refuses', async () => {
     const sharedVault = new VaultMemory();
+    const fakeNkn1    = makeFakeNknSelf('app.alice.test');
     const a1 = await createSecureAgent({
-      vault: sharedVault, muteListVaultKey: 'mute',
+      vault: sharedVault, muteListVaultKey: 'mute', nknLib: fakeNkn1,
     });
+    await a1.peer.connect();
     await a1.mute.add('app.bob.harasser');
     await a1.shutdown();
 
-    // Page reload simulation:
+    // Page reload simulation — fresh factory on same vault.
+    const fakeNkn2 = makeFakeNknSelf('app.alice.test');
     const a2 = await createSecureAgent({
-      vault: sharedVault, muteListVaultKey: 'mute',
+      vault: sharedVault, muteListVaultKey: 'mute', nknLib: fakeNkn2,
     });
+    await a2.peer.connect();
+    // Precondition: mute set restored.
     expect(a2.mute.has('app.bob.harasser')).toBe(true);
-    // ...and continues to refuse on send (verified by mute.has — the
-    // throw path lives in the same isPeerMuted check).
+    // The user-experience claim — sendTo still throws — verified
+    // directly through the post-reload factory, not inferred.
+    await expect(
+      a2.peer.sendTo('app.bob.harasser', { body: 'across the reload' })
+    ).rejects.toThrow(/muted/);
   });
 });
 
 /* ─── US-2 — Impersonation defence ───────────────────── */
 
 describe('US-2 — Carol cannot impersonate Alice', () => {
-  it('only Alice\'s private key signs a claim that verifies against Alice\'s pubKey', async () => {
+  it('Carol cannot produce a claim that verifies as bound to Alice\'s pubKey', async () => {
     const va = new VaultMemory();
     const vc = new VaultMemory();
     const alice = await AgentIdentity.generate(va);
     const carol = await AgentIdentity.generate(vc);
 
-    // Alice signs a claim that says "this WebID is mine + my pubKey
-    // is X".  Anyone fetching this from her pod can verify the bind.
+    // Alice signs her own claim.  Normal case.
     const aliceClaim = signClaim(alice, {
       webid: 'https://alice.example/profile/card#me',
     });
     expect(verifyClaim(aliceClaim).ok).toBe(true);
+    expect(aliceClaim.pubKey).toBe(alice.pubKey);
 
-    // Carol tries to forge a claim AS Alice: same webid, but signed
-    // with her own (Carol's) key.  She picks the right webid string,
-    // but the sig is over body containing CAROL's pubKey, which is
-    // a different binding.  When the verifier checks (carol's pubKey,
-    // carol's sig) the math works — BUT consumers compare the bound
-    // pubKey to whoever's claiming to be Alice.  An app that fetches
-    // "https://alice.example/.../claim.json" + the body says
-    // pubKey=Carol → app sees the binding is to Carol, not Alice,
-    // and rejects the impersonation attempt at the app layer.
-    const carolForgery = signClaim(carol, {
+    // The impersonation attempt: Carol writes a claim with Alice's
+    // pubKey in the body (she wants apps to think "this is bound
+    // to Alice's pubKey, so it must be Alice").  She can construct
+    // the body, but she'd need Alice's private key to sign over it.
+    // We simulate the attempt by SWAPPING in Alice's pubKey on
+    // Carol's signed body — which is the strongest attack a forger
+    // can mount without Alice's key.
+    const carolBody = signClaim(carol, {
       webid: 'https://alice.example/profile/card#me',
     });
-    expect(verifyClaim(carolForgery).ok).toBe(true);    // sig is valid for carol's key
-    expect(carolForgery.pubKey).toBe(carol.pubKey);     // BUT bound to carol
-    expect(aliceClaim.pubKey).toBe(alice.pubKey);
-    // The user-visible defence: app code checking the bound pubKey
-    // catches the mismatch.  We assert THE BINDING is correct + can't
-    // be silently swapped.
+    const forgedAsAlice = { ...carolBody, pubKey: alice.pubKey };
+    // The defense: verification recomputes the sig over the body
+    // (which now contains Alice's pubKey).  Carol's sig was over a
+    // DIFFERENT body (with her own pubKey).  Verifier checks
+    // sig against (canonicalized body, alice.pubKey) — fails.
+    const v = verifyClaim(forgedAsAlice);
+    expect(v.ok).toBe(false);
+    expect(v.reason).toBe('bad-sig');
+  });
+
+  it('Carol\'s own claim is bound to Carol — apps comparing identifier reject it', async () => {
+    // This is the "app-layer defense" companion to the cryptographic
+    // test above: even when Carol picks Alice's webid string, the
+    // bound pubKey in her own (valid) claim is Carol's — so an app
+    // comparing "claim.pubKey === expected.pubKey for this webid"
+    // catches the mismatch.
+    const va = new VaultMemory();
+    const vc = new VaultMemory();
+    const alice = await AgentIdentity.generate(va);
+    const carol = await AgentIdentity.generate(vc);
+    const carolClaimingAlicesWebid = signClaim(carol, {
+      webid: 'https://alice.example/profile/card#me',
+    });
+    expect(verifyClaim(carolClaimingAlicesWebid).ok).toBe(true);
+    // App's check after verification: does the bound pubKey match
+    // who we EXPECT to own this webid?
+    expect(carolClaimingAlicesWebid.pubKey).not.toBe(alice.pubKey);
+    expect(carolClaimingAlicesWebid.pubKey).toBe(carol.pubKey);
   });
 
   it('tampering with Alice\'s claim invalidates verification', async () => {
@@ -198,8 +233,8 @@ describe('US-3 — Alice can prove her audit log is intact', () => {
   });
 
   it('canopy-chat /audit-tail surfaces the broken state in the user\'s view', async () => {
-    // End-to-end check via realAgent — broken chain shows up in the
-    // /audit-tail output so a real user would see it.
+    // End-to-end through realAgent + slash-dispatch: a broken chain
+    // shows up in the message a real user would see.
     const vault = new VaultMemory();
     const agent = await createRealHouseholdAgent({ chatVault: vault });
     await agent.sa.mute.add('app.user.x');
@@ -210,10 +245,15 @@ describe('US-3 — Alice can prove her audit log is intact', () => {
       i === 0 ? { ...e, subject: 'tampered!' } : e,
     );
     await agent.sa.audit.loadSerialized(JSON.stringify(tampered));
-    // Verify the audit instance itself notices.
-    const v = agent.sa.audit.verify();
-    expect(v.ok).toBe(false);
-    expect(typeof v.brokenAt).toBe('number');
+
+    // Dispatch /audit-tail through the same pipeline a user hits.
+    // Reuse the helper from the security journeys: parseInput →
+    // resolveDispatch → runDispatch → handler payload.
+    const { run } = await bootSafetyHelpers(agent);
+    const res = await run('/audit-tail');
+    expect(typeof res.message).toBe('string');
+    expect(res.message).toMatch(/BROKEN/);
+    expect(res.message).toMatch(/bad-(sig|prev)/);
   });
 });
 
@@ -348,6 +388,44 @@ describe('US-7 — Alice keeps the same pubKey + stableId after a page reload', 
     expect(a2.identity.chat.pubKey).toBe(newPub);
   });
 });
+
+/* ─── slash-pipeline helper (real dispatch) ───────────── */
+
+async function bootSafetyHelpers(agent) {
+  const catalog = mergeManifests(
+    [{ manifest: canopyChatManifest }, { manifest: agent.manifest }],
+    { runtime: 'browser' },
+  );
+  const threadStore = createDefaultThreadStore();
+  const t = (k, p) => p ? `${k}(${JSON.stringify(p)})` : k;
+
+  const callSkill = async (appOrigin, opId, args) => {
+    if (appOrigin === 'canopy-chat') return localBuiltins[opId]?.(args ?? {});
+    if (appOrigin === 'household')   return agent.callSkill(appOrigin, opId, args);
+    return { ok: false, error: `${appOrigin}.${opId} not wired` };
+  };
+  const localBuiltins = createLocalBuiltins({
+    catalog, t, threadStore,
+    setActive: (id) => threadStore.setActiveThread(id),
+    callSkill, localActor: 'webid:local-demo-user',
+    simPeers: {}, appRegistry: { allowsOrigin: () => true, subscribe: () => () => {} },
+    eventLog: { append: () => {}, query: () => [], attachToRouter: () => {} },
+    briefRunner: async () => ({}),
+    findRunner:  async () => ({ items: [] }),
+    agent, podAuth: null, externalFlow: null, openFilePicker: null,
+    connectPeer: async () => agent.peer,
+  });
+
+  async function run(line) {
+    const parsed = parseInput(line, catalog, { threadId: null });
+    const route  = resolveDispatch(parsed, catalog);
+    if (route.kind !== 'ready') return { ok: false, error: route.error ?? 'parse fail' };
+    const reply = await runDispatch(route, callSkill);
+    if (reply.error) return { ok: false, error: reply.error.message };
+    return reply.payload ?? { ok: true };
+  }
+  return { run, catalog, callSkill };
+}
 
 /* ─── Minimal fake NKN — single-client (no loopback) ──── */
 
