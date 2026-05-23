@@ -451,6 +451,24 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `/debug-dump` — print a triage-friendly snapshot for bug
+     * reports.  Pastes nicely into a chat / issue / DM so Claude
+     * can diagnose without asking "what does securityStatus
+     * report?" twelve times.  Includes: securityStatus, last 5
+     * wire sizes (inbound + outbound), peer state, mute count,
+     * audit chain size, vault prefix.
+     */
+    {
+      id:    'debug-dump',
+      verb:  'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/debug-dump' },
+        chat:  { reply: 'text', hint: 'print a triage snapshot for bug reports' },
+      },
+    },
+
+    /**
      * `/audit-tail [N=20]` — show the last N entries from the signed
      * audit chain (default 20).  Verifies the chain on every call:
      * if the chain is tampered, the result includes the failure

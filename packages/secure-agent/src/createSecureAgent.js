@@ -440,6 +440,15 @@ export async function createSecureAgent(opts = {}) {
   const peerState = { status: 'idle', address: null, error: null };
   const helloedPeers = new Set();
 
+  // v0.7.cc — rolling buffer of recent peer traffic for /debug-dump.
+  // Tiny memory footprint (last 10 envelopes); diagnostic-only.
+  const RECENT_LIMIT = 10;
+  const recentTraffic = [];
+  const recordTraffic = (entry) => {
+    recentTraffic.push({ ts: Date.now(), ...entry });
+    if (recentTraffic.length > RECENT_LIMIT) recentTraffic.shift();
+  };
+
   // Late-binding hook for onPeerMessage: factory opts may not have it
   // (canopy-chat-style flow: construct first, wire UI later).  Caller
   // can pass onPeerMessage to connect() OR set it via setPeerMessageHandler().
@@ -495,6 +504,15 @@ export async function createSecureAgent(opts = {}) {
         // ignored at the receive boundary (no reciprocal HI either —
         // we don't want them to make us spam them in return).
         if (rateLimiter && !rateLimiter.check(env?._from)) return;
+        // v0.7.cc — record for /debug-dump.  Size is the JSON-
+        // serialised length of the envelope; matches the wire bytes
+        // the transport actually received.
+        recordTraffic({
+          dir:     'recv',
+          from:    env?._from,
+          subtype: env?.payload?.subtype ?? env?.type ?? null,
+          size:    JSON.stringify(env ?? {}).length,
+        });
         try {
           if (!helloedPeers.has(env._from)) {
             tx.sendHello(env._from, { pubKey: identity.pubKey })
@@ -592,6 +610,13 @@ export async function createSecureAgent(opts = {}) {
         }
       }
     }
+    // v0.7.cc — record outbound for /debug-dump diagnostic.
+    recordTraffic({
+      dir:     'send',
+      to:      addr,
+      subtype: payload?.subtype ?? payload?.type ?? null,
+      size:    JSON.stringify(payload ?? {}).length,
+    });
     return peerTransport.sendOneWay(addr, payload);
   }
 
@@ -691,6 +716,10 @@ export async function createSecureAgent(opts = {}) {
     rotateIdentity,
     securityStatus,
     shutdown,
+
+    /** v0.7.cc — diagnostic snapshot of the last 10 envelopes,
+     * inbound + outbound, for /debug-dump bug reports. */
+    recentTraffic: () => recentTraffic.slice(),
 
     // S1 — mute / block list (S6 — instrumented for autoLog)
     mute: {

@@ -84,6 +84,7 @@ export function createLocalBuiltins({
     muted:              async (args) => mutedHandler(args, { agent, t }),
     'audit-tail':       async (args) => auditTailHandler(args, { agent, t }),
     'help-with':        async (args) => helpWithPost(args, { threadStore, setActive, t }),
+    'debug-dump':       async ()     => debugDump({ agent, t }),
     signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
     'reset-thread': async () => {
       // v0.7.P1-followup — clear the active thread's messages.
@@ -574,6 +575,63 @@ async function auditTailHandler(args, { agent, t }) {
     const subj = e.subject ? ` ${e.subject.length > 50 ? e.subject.slice(0, 47) + '…' : e.subject}` : '';
     lines.push(`  ${when}  ${e.event}${subj}`);
   }
+  return { message: lines.join('\n') };
+}
+
+/**
+ * `/debug-dump` — v0.7.cc.  Triage snapshot to paste into a bug
+ * report.  Includes everything Claude needs to diagnose a
+ * cross-peer / safety / file-share issue WITHOUT a 12-round
+ * "what does securityStatus say" interrogation.
+ */
+async function debugDump({ agent, t }) {
+  if (!agent?.sa) return { ok: false, error: t('debug.unavailable') };
+  const sa = agent.sa;
+  const st = sa.securityStatus();
+  const recent = (typeof sa.recentTraffic === 'function') ? sa.recentTraffic() : [];
+
+  const lines = ['🩺 canopy-chat debug-dump'];
+  lines.push('');
+  lines.push('Identity');
+  lines.push(`  pubKey:    ${st.identityPub}`);
+  lines.push(`  stableId:  ${st.identityStable}`);
+  lines.push('');
+  lines.push('Peer');
+  lines.push(`  transport: ${st.peerTransportConnected ? 'connected' : 'idle'}`);
+  if (st.peerAddress) lines.push(`  address:   ${st.peerAddress}`);
+  lines.push(`  HI'd peers: ${st.helloedPeerCount}`);
+  lines.push('');
+  lines.push('Safety');
+  lines.push(`  SecurityLayer: ${st.layerWired ? 'on' : 'off'}`);
+  lines.push(`  Muted:         ${st.muteCount ?? 0}${st.muteIsPersistent ? ' (persistent)' : ''}`);
+  lines.push(`  Audit chain:   ${st.auditSize ?? 0} entries${st.auditAutoLog ? ' (autoLog on)' : ''}`);
+  if (st.helloGateWired)   lines.push('  helloGate:     wired');
+  if (st.claimWebidBound)  lines.push(`  Claim WebID:   ${st.claimWebidBound}`);
+  if (st.vaultEncrypted)   lines.push('  Vault:         encrypted (IndexedDB+AES-GCM)');
+  if (st.passkeyConfigured) lines.push(`  Passkey:       configured${st.passkeyAvailable ? ' + available' : ''}`);
+  if (st.resolverWired)    lines.push('  Resolver:      wired');
+  if (st.trustWired)       lines.push('  TrustRegistry: wired');
+  if (st.capsWired)        lines.push('  Caps:          wired');
+  if (st.policyWired)      lines.push('  PolicyEngine:  wired');
+  if (st.groupsWired)      lines.push('  Groups:        wired');
+  if (st.rateLimitWired)   lines.push('  Rate limit:    wired');
+  if (st.pfsWired)         lines.push('  PFS:           partial (no DH ratchet)');
+  lines.push('');
+  if (recent.length === 0) {
+    lines.push('No peer traffic recorded yet (recent buffer empty).');
+  } else {
+    lines.push(`Last ${recent.length} envelopes (most-recent last)`);
+    for (const r of recent) {
+      const when = new Date(r.ts).toISOString().slice(11, 19);
+      const peer = r.dir === 'send'
+        ? `→ ${(r.to ?? '').slice(0, 16)}…`
+        : `← ${(r.from ?? '').slice(0, 16)}…`;
+      const sub = r.subtype ?? '(no subtype)';
+      lines.push(`  ${when}  ${r.dir}  ${peer}  ${sub}  ${r.size}B`);
+    }
+  }
+  lines.push('');
+  lines.push('(Paste this into the bug report.)');
   return { message: lines.join('\n') };
 }
 
