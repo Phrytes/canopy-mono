@@ -114,6 +114,9 @@
     "no_store":   { "text": "Thread-opslag niet beschikbaar in deze build.",                     "doc": "Defensive." },
     "opened":     { "text": "🤝 Help-thread geopend voor {{postId}} (id={{threadId}}).",          "doc": "/help-with success." }
   },
+  "fileShare": {
+    "downloaded":     { "text": "↓ {{name}} gedownload naar je standaard downloadmap.", "doc": "Download-klik op een ontvangen file-kaart." }
+  },
   "sendFile": {
     "no_peer":        { "text": "Geef een peer op: /send-file <nkn-adres-of-webid>",   "doc": "missing." },
     "no_picker":      { "text": "Bestandskiezer niet beschikbaar in deze build.",      "doc": "Defensive." },

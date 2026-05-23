@@ -483,6 +483,37 @@ function formatBytes(n) {
 }
 
 /**
+ * v0.7.cc — turn an inline base64 file body (carried in a file-share
+ * embed's snapshot.dataB64) into a real browser download.  Without
+ * this, clicking [Download] on a received file-card would dispatch
+ * folio.downloadFile — a demo stub that returns text, not bytes.
+ *
+ * Reported by Frits 2026-05-23 (manual runbook H-1): "Tab B's card
+ * is missing the file body".  The card metadata renders fine; the
+ * fix is making the [Download] action consume the inline bytes.
+ *
+ * @param {string} dataB64  base64-encoded file bytes
+ * @param {string} name     filename (used as the download attribute)
+ * @param {string} mime     MIME type (defaults to octet-stream)
+ */
+function triggerBlobDownloadFromBase64(dataB64, name, mime) {
+  const bin = atob(dataB64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const blob = new Blob([bytes], { type: mime || 'application/octet-stream' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = name || 'file';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Free the blob URL after the click; some browsers need a tick.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+/**
  * v0.7.P3c — handle incoming 'calendar-rsvp' envelope.
  *
  * Looks up the local event by id; applies the response via the
@@ -1424,6 +1455,37 @@ async function onButtonTap(opId, itemId, extra) {
     t0.addShellMessage(rendered);
     renderActiveStream();
     return;
+  }
+
+  // v0.7.cc — when [Download] is clicked on a file-card whose
+  // snapshot already carries the inline file bytes (file-share
+  // embeds always do — the sender embedded them), trigger a REAL
+  // browser download.  Without this short-circuit, folio.downloadFile
+  // returns a demo-text placeholder + the user sees no file.
+  if (opId === 'downloadFile') {
+    const snap = extra?.embed?.snapshot;
+    if (snap?.dataB64) {
+      try {
+        triggerBlobDownloadFromBase64(
+          snap.dataB64,
+          snap.name ?? snap.id ?? 'file',
+          snap.mime ?? 'application/octet-stream',
+        );
+        const rendered = renderReply({
+          payload: t('fileShare.downloaded', {
+            name: snap.name ?? snap.id ?? 'file',
+          }),
+          shape:   'text', threadId: t0.id,
+        }, { t });
+        t0.addShellMessage(rendered);
+        renderActiveStream();
+        return;
+      } catch (err) {
+        console.error('[file-share download] failed', err);
+        // Fall through to skill dispatch so the user sees an error
+        // path rather than a silent no-op.
+      }
+    }
   }
 
   const entry = catalog.opsById.get(opId);

@@ -74,14 +74,26 @@ re-verifying after any change to `web/main.js`'s openFilePicker.
    (a video clip, a large PDF, etc.)
 8. Wait for the OS dialog to close
 
-**Pass**: Tab A shows "📤 sent &lt;name&gt; (&lt;size&gt; bytes) →
-&lt;b&gt;".  Tab B shows the file as an embed card with [Download]
-and [Save to my pod] buttons.
+**Pass**:
+- Tab A shows "📤 sent &lt;name&gt; (&lt;size&gt; bytes) → &lt;b&gt;"
+- Tab B shows an embed card with the filename, MIME, size + two
+  buttons [Download] and [Save to my pod]
+- Click [Download] on Tab B → browser downloads the actual file
+  bytes; Tab B shows "↓ Downloaded &lt;name&gt; ..."
+- The downloaded file matches the original byte-for-byte
+  (verify via `sha256sum` or by opening in an editor)
 
 **Fail signals**:
 - Tab A shows "File picker cancelled" even though you picked a file
 - Tab A hangs (no reply within 30s)
-- Tab B's card is missing the file body
+- Tab B's card has no metadata (name/mime/size all missing)
+- [Download] click produces no file at all — fixed in commit
+  `<this slice>`; report regression if it recurs.  Look for
+  `triggerBlobDownloadFromBase64` in `web/main.js` and the
+  `downloadFile` short-circuit in `onButtonTap`.
+- [Download] produces a file with wrong size or 0 bytes —
+  base64 decoding bug or the file-share envelope was truncated
+  in transit (check console for "[peer] file-share missing fields").
 
 ---
 

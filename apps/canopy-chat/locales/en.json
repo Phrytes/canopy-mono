@@ -114,6 +114,9 @@
     "no_store":   { "text": "Thread store not available in this build.",                         "doc": "Defensive." },
     "opened":     { "text": "🤝 Opened help thread for {{postId}} (id={{threadId}}).",            "doc": "/help-with success." }
   },
+  "fileShare": {
+    "downloaded":     { "text": "↓ Downloaded {{name}} to your browser's default download location.", "doc": "/Download click on a received file-card." }
+  },
   "sendFile": {
     "no_peer":        { "text": "Please name a peer: /send-file <nkn-addr-or-webid>", "doc": "/send-file missing peer." },
     "no_picker":      { "text": "File picker not available in this build.",            "doc": "Defensive." },
