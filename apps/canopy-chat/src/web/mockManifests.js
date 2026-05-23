@@ -418,6 +418,22 @@ export const mockStoopManifest = {
         chat:  { reply: 'text', hint: 'set a contact\'s trust level' },
       },
     },
+    /**
+     * #188 (A8, 2026-05-23) — share-my-contact via QR payload.
+     * Real skill at apps/stoop/src/skills/index.js:2247.  V0 returns
+     * the stoop-contact:// URL; user pastes into any QR generator.
+     * Canvas-rendered QR image is a follow-up.
+     */
+    {
+      id:    'getContactShareQr', verb: 'list',
+      params: [
+        { name: 'trust', kind: 'enum', of: ['bekend', 'vertrouwd'], required: false },
+      ],
+      surfaces: {
+        slash: { command: '/share-my-contact', body: 'flags' },
+        chat:  { reply: 'record', hint: 'show your contact-share payload (paste into a QR generator)' },
+      },
+    },
   ],
   views: [
     { id: 'feed',     title: 'Feed',     type: 'post' },

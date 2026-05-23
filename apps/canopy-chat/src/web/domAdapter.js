@@ -298,13 +298,82 @@ function renderRecordPanel(rendered, state, ctx, variant) {
       dt.textContent = field.name;
       const dd = doc.createElement('dd');
       dd.className = `cc-field-value cc-field-${field.kind ?? 'unknown'}`;
-      dd.textContent = formatFieldValue(field.value);
+      if (field.kind === 'qr') {
+        // Render the QR canvas above the URL text so scannable image
+        // is primary, fallback URL secondary (copy/paste).  See
+        // renderQrCanvas comment for the lazy-load story.
+        renderQrField(dd, doc, String(field.value));
+      } else {
+        dd.textContent = formatFieldValue(field.value);
+      }
       body.appendChild(dt);
       body.appendChild(dd);
     }
     wrap.appendChild(body);
   }
   return wrap;
+}
+
+/**
+ * Render a QR field: a 240×240 canvas + the URL text below.
+ *
+ * The qrcode lib is imported dynamically so it only loads when a QR
+ * field actually renders — keeps the cold-start bundle small.
+ *
+ * @param {HTMLElement} container  the <dd> the QR + URL go into
+ * @param {Document}    doc
+ * @param {string}      text       the URI to encode (full URL)
+ */
+function renderQrField(container, doc, text) {
+  const canvas = doc.createElement('canvas');
+  canvas.className = 'cc-field-qr-canvas';
+  canvas.width = 240;
+  canvas.height = 240;
+  canvas.style.display = 'block';
+  canvas.style.maxWidth = '240px';
+  canvas.style.background = '#fff';
+  container.appendChild(canvas);
+
+  // Fallback URL line + copy button (always visible — phones may scan,
+  // desktop usually copy/pastes).
+  const urlLine = doc.createElement('div');
+  urlLine.className = 'cc-field-qr-url';
+  const urlText = doc.createElement('code');
+  urlText.textContent = text;
+  urlLine.appendChild(urlText);
+
+  const copyBtn = doc.createElement('button');
+  copyBtn.type = 'button';
+  copyBtn.className = 'cc-field-qr-copy';
+  copyBtn.textContent = 'Copy';
+  copyBtn.addEventListener('click', () => {
+    try {
+      void navigator.clipboard.writeText(text);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+    } catch { /* clipboard API may be unavailable; fall through */ }
+  });
+  urlLine.appendChild(copyBtn);
+  container.appendChild(urlLine);
+
+  // Lazy-load qrcode; if it fails (e.g. SSR / test env), keep the
+  // text fallback (already rendered above).
+  import('qrcode').then((mod) => {
+    const qrcode = mod.default ?? mod;
+    qrcode.toCanvas(canvas, text, {
+      width: 240,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+    }, (err) => {
+      if (err && typeof console !== 'undefined') {
+        console.warn('[qr] render failed', err);
+      }
+    });
+  }).catch((err) => {
+    if (typeof console !== 'undefined') {
+      console.warn('[qr] qrcode lib failed to load', err);
+    }
+  });
 }
 
 function formatFieldValue(v) {
