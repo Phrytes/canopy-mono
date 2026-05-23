@@ -185,7 +185,7 @@ affordances.
 | S6 | **Per-group conflict-resolution policy** (6-Q wizard codifies admin/mediation/vote in rules.md) | `group-governance-starter-2026-05-05.md` § Q4 | Governance contract.  Members see chosen policy at join.  Avoids ad-hoc dispute drama. |
 | S7 | **Conflict-resolution flow** (3-step mediation: `raiseDispute` → `proposeResolution` → `acceptResolution`) | `conflict-resolution-design-2026-05-14.md` | Substrate ships Lamport `_v` + `'stale-peer'` events; the user-facing dispute flow on top of it is not wired. |
 | S8 | **Post-audience picker** (multi-select groups/lists/tags + km distance grid: 1/2/5/10/25) | `functional-design-2026-05-06.md` § C8-C9 | "Ask only trusted contacts within 5 km" — granular sharing.  Substrate has audience model; composer UI absent. |
-| S9 | **"Ausgeleend" state privacy** (lend marked checked-out publicly but borrower handle hidden) | `functional-design-2026-05-06.md` § E3 | Lender sees who borrowed (private chat thread); buurt sees "uitgeleend" without naming the borrower.  Subtle but important consent control. |
+| S9 | **"Uitgeleend" state privacy** (lend marked checked-out publicly but borrower handle hidden) | `functional-design-2026-05-06.md` § E3 | Lender sees who borrowed (private chat thread); buurt sees "uitgeleend" without naming the borrower.  Subtle but important consent control. |
 | S10 | **3-step bilateral reveal handshake with hints** (asymmetric reveal state with "they revealed to you" notification) | `functional-design-2026-05-06.md` § Journey 4 | "Connectie accepteren" flow is richer than the current `/reveal on/off` toggle suggests. |
 
 ### Tasks-v0 — workflow features with substrate support
