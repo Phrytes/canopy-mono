@@ -184,6 +184,55 @@ export const mockTasksManifest = {
       },
     },
     /**
+     * #190 (B3, 2026-05-23) — crew admin surface.  Real skills:
+     *   - getCrewConfig (workspace.js:46) → live crew snapshot
+     *   - pauseCrew / unpauseCrew (crewControls.js:43,56) → admin/coord
+     *   - archiveCrew / unarchiveCrew (crewControls.js:69,82) → admin
+     * All accept a crewId; auto-injected from opts.tasksCrewConfig.crewId.
+     */
+    {
+      id:    'getCrewConfig', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/crew-members' },
+        chat:  { reply: 'record', hint: 'show your crew config + member roster' },
+      },
+    },
+    {
+      id:    'pauseCrew', verb: 'submit',
+      params: [],
+      surfaces: {
+        slash: { command: '/pause-crew' },
+        chat:  { reply: 'text', hint: 'pause the crew (no new tasks; existing tasks remain workable)' },
+      },
+    },
+    {
+      id:    'unpauseCrew', verb: 'submit',
+      params: [],
+      surfaces: {
+        slash: { command: '/unpause-crew' },
+        chat:  { reply: 'text', hint: 'resume the crew after a pause' },
+      },
+    },
+    {
+      id:    'archiveCrew', verb: 'remove',
+      params: [
+        { name: 'confirm', kind: 'boolean', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/archive-crew', body: 'flags' },
+        chat:  { reply: 'text', hint: 'archive the crew (read-only ledger; reversible)' },
+      },
+    },
+    {
+      id:    'unarchiveCrew', verb: 'submit',
+      params: [],
+      surfaces: {
+        slash: { command: '/unarchive-crew' },
+        chat:  { reply: 'text', hint: 'reverse a crew archive' },
+      },
+    },
+    /**
      * #187 (A9, 2026-05-23) — crew invite + redeem.  Real skills:
      *   - issueInvite ({crewId, ttlMs?, role?}) → {invite}
      *   - redeemInvite({invite, displayName?, webid?}) → {groupProof, ...}
