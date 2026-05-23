@@ -109,6 +109,11 @@
   "audit": {
     "unavailable":  { "text": "Audit-log niet beschikbaar in deze build.",                       "doc": "Defensive." }
   },
+  "helpWith": {
+    "no_post":    { "text": "Noem een post: /help-with <post-id>",                               "doc": "/help-with missing arg." },
+    "no_store":   { "text": "Thread-opslag niet beschikbaar in deze build.",                     "doc": "Defensive." },
+    "opened":     { "text": "🤝 Help-thread geopend voor {{postId}} (id={{threadId}}).",          "doc": "/help-with success." }
+  },
   "sendFile": {
     "no_peer":        { "text": "Geef een peer op: /send-file <nkn-adres-of-webid>",   "doc": "missing." },
     "no_picker":      { "text": "Bestandskiezer niet beschikbaar in deze build.",      "doc": "Defensive." },
