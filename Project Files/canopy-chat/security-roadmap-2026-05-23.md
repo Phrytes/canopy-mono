@@ -484,7 +484,7 @@ demoable improvement after each slice.
 | Batch 4 | A.3 + A.3a (passphrase + WebAuthn) | v0.7.S3 | ✅ DONE 2026-05-23 |
 | Batch 5 | A.4 (identity-resolver) | v0.7.S4 | ✅ DONE 2026-05-23 |
 | Batch 6 | A.5 + A.5a + A.5b (caps + roles + trust + PolicyEngine) | v0.7.S5 | ✅ DONE 2026-05-23 |
-| Batch 7 | A.6 (audit log) | v0.7.S6 | pending |
+| Batch 7 | A.6 (audit log) | v0.7.S6 | ✅ DONE 2026-05-23 |
 | Batch 8 | A.7 + A.7a + A.7b + A.7c (groups + a2a-tls + rate-limit + migrate) | v0.7.S7 | pending |
 | Batch 9 | A.8 (PFS) | v0.7.S8 | pending |
 

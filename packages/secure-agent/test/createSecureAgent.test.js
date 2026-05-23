@@ -23,6 +23,7 @@ import { createPeerResolver, PeerResolver } from '../src/resolver.js';
 import {
   TrustRegistry, CapabilityToken, PolicyEngine, ROLES, roleRank,
 } from '@canopy/core';
+import { loadAuditLog, AuditLog, AUDIT_VERSION } from '../src/auditLog.js';
 
 describe('createSecureAgent — S0 foundation', () => {
   it('builds an agent with auto-SecurityLayer (no peer transport)', async () => {
@@ -129,15 +130,15 @@ describe('createSecureAgent — S0 foundation', () => {
   it('warns on stubbed opts (warnOnInsecure default true)', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const sa = await createSecureAgent({
-      vault:    new VaultMemory(),
-      auditLog: true,   // still-stubbed (S6)
+      vault:        new VaultMemory(),
+      groupManager: true,   // still-stubbed (S7)
     });
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('"auditLog"'),
+      expect.stringContaining('"groupManager"'),
     );
     // The stubbed opt should still be visible on pendingOpts.
-    expect(sa.pendingOpts.auditLog).toBe(true);
-    expect(sa.securityStatus().pendingOpts.auditLog).toBe(true);
+    expect(sa.pendingOpts.groupManager).toBe(true);
+    expect(sa.securityStatus().pendingOpts.groupManager).toBe(true);
     warn.mockRestore();
     await sa.shutdown();
   });
@@ -146,7 +147,7 @@ describe('createSecureAgent — S0 foundation', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await createSecureAgent({
       vault:          new VaultMemory(),
-      auditLog:       true,
+      groupManager:   true,
       warnOnInsecure: false,
     });
     expect(warn).not.toHaveBeenCalled();
@@ -156,7 +157,7 @@ describe('createSecureAgent — S0 foundation', () => {
   it('securityStatus() reports identity + peer + pendingOpts', async () => {
     const sa = await createSecureAgent({
       vault:           new VaultMemory(),
-      auditLog:        { signEvery: true },
+      groupManager:    { foo: true },
       warnOnInsecure:  false,
     });
     const st = sa.securityStatus();
@@ -166,7 +167,7 @@ describe('createSecureAgent — S0 foundation', () => {
     expect(st.peerTransportConnected).toBe(false);
     expect(st.helloedPeerCount).toBe(0);
     expect(st.pendingOpts).toEqual({
-      auditLog: { signEvery: true },
+      groupManager: { foo: true },
     });
     await sa.shutdown();
   });
@@ -960,6 +961,218 @@ describe('createSecureAgent — S5 trust + caps + policy', () => {
     expect(allWarnArgs).not.toMatch(/"trustRegistry"/);
     expect(allWarnArgs).not.toMatch(/"capabilityIssuer"/);
     expect(allWarnArgs).not.toMatch(/"policyEngine"/);
+    warn.mockRestore();
+  });
+});
+
+/* ─── S6 — signed audit log ──────────────────────────── */
+
+describe('AuditLog — standalone', () => {
+  async function makeLog({ vault = null, vaultKey = null } = {}) {
+    const v = new VaultMemory();
+    const id = await AgentIdentity.generate(v);
+    const log = await loadAuditLog({
+      identity: id, vault: vault ?? v, vaultKey,
+    });
+    return { log, id };
+  }
+
+  it('appends signed entries; chain verifies', async () => {
+    const { log } = await makeLog();
+    await log.append({ event: 'identity.rotate', subject: 'pk-a' });
+    await log.append({ event: 'mute.add',         subject: 'pk-bad' });
+    await log.append({ event: 'caps.issue',       data: { skill: 'echo' } });
+    expect(log.size).toBe(3);
+    expect(log.verify()).toEqual({ ok: true });
+  });
+
+  it('first entry has prev=null; subsequent prevs chain', async () => {
+    const { log } = await makeLog();
+    const e1 = await log.append({ event: 'a' });
+    const e2 = await log.append({ event: 'b' });
+    expect(e1.prev).toBeNull();
+    expect(typeof e2.prev).toBe('string');
+    expect(e2.prev.length).toBeGreaterThan(20);
+  });
+
+  it('tampered entry → verify fails with bad-sig', async () => {
+    const { log } = await makeLog();
+    await log.append({ event: 'a' });
+    await log.append({ event: 'b' });
+    const entries = log.entries();
+    // Mutate entry [0]'s data — sig over original is now invalid
+    entries[0].data = { evil: true };
+    const log2 = new AuditLog({ identity: { pubKey: 'x', sign: () => new Uint8Array(64) }, entries });
+    const r = log2.verify();
+    expect(r.ok).toBe(false);
+    expect(r.brokenAt).toBe(0);
+    expect(r.reason).toBe('bad-sig');
+  });
+
+  it('dropped middle entry → verify fails with bad-prev at the join', async () => {
+    const { log, id } = await makeLog();
+    await log.append({ event: 'a' });
+    await log.append({ event: 'b' });
+    await log.append({ event: 'c' });
+    const entries = log.entries();
+    entries.splice(1, 1);     // drop the middle one
+    const log2 = new AuditLog({ identity: id, entries });
+    const r = log2.verify();
+    expect(r.ok).toBe(false);
+    expect(r.brokenAt).toBe(1);
+    expect(r.reason).toBe('bad-prev');
+  });
+
+  it('serialize → loadSerialized round-trips + still verifies', async () => {
+    const { log, id } = await makeLog();
+    await log.append({ event: 'a' });
+    await log.append({ event: 'b' });
+    const str = log.serialize();
+    const v2 = new VaultMemory();
+    const log2 = await loadAuditLog({ identity: id, vault: v2 });
+    await log2.loadSerialized(str);
+    expect(log2.size).toBe(2);
+    expect(log2.verify()).toEqual({ ok: true });
+  });
+
+  it('persistence: vault-backed log restores on second load', async () => {
+    const v = new VaultMemory();
+    const id = await AgentIdentity.generate(v);
+    const log = await loadAuditLog({ identity: id, vault: v, vaultKey: 'audit' });
+    await log.append({ event: 'a' });
+    await log.append({ event: 'b' });
+    expect(log.size).toBe(2);
+    const log2 = await loadAuditLog({ identity: id, vault: v, vaultKey: 'audit' });
+    expect(log2.size).toBe(2);
+    expect(log2.verify()).toEqual({ ok: true });
+  });
+
+  it('filter() returns matching entries (string + RegExp)', async () => {
+    const { log } = await makeLog();
+    await log.append({ event: 'mute.add', subject: 'a' });
+    await log.append({ event: 'mute.remove', subject: 'a' });
+    await log.append({ event: 'caps.issue' });
+    expect(log.filter('mute.add')).toHaveLength(1);
+    expect(log.filter(/^mute\./)).toHaveLength(2);
+    expect(log.filter(/.*/)).toHaveLength(3);
+  });
+
+  it('append requires event:string', async () => {
+    const { log } = await makeLog();
+    await expect(log.append({})).rejects.toThrow(/event \(string\) required/);
+  });
+});
+
+describe('createSecureAgent — S6 audit integration', () => {
+  it('omit auditLog → sa.audit is null', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    expect(sa.audit).toBeNull();
+    expect(sa.auditAutoLog).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('auditLog:true → in-memory log, autoLog ON by default', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(), auditLog: true,
+    });
+    expect(sa.audit).toBeInstanceOf(AuditLog);
+    expect(sa.auditAutoLog).toBe(true);
+    expect(sa.audit.size).toBe(0);
+
+    // identity.rotate should fire an audit entry
+    await sa.rotateIdentity();
+    expect(sa.audit.size).toBe(1);
+    expect(sa.audit.entries()[0].event).toBe('identity.rotate');
+    await sa.shutdown();
+  });
+
+  it('autoLog wires mute.add + mute.remove', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(), auditLog: true,
+    });
+    await sa.mute.add('app.x');
+    await sa.mute.remove('app.x');
+    const events = sa.audit.entries().map((e) => e.event);
+    expect(events).toEqual(['mute.add', 'mute.remove']);
+    await sa.shutdown();
+  });
+
+  it('autoLog wires caps.issue', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      capabilityIssuer: true,
+      auditLog: true,
+    });
+    await sa.caps.issue({ subject: 'pk-r', skill: 'echo' });
+    const e = sa.audit.entries().find((x) => x.event === 'caps.issue');
+    expect(e).toBeTruthy();
+    expect(e.subject).toBe('pk-r');
+    expect(e.data.skill).toBe('echo');
+    await sa.shutdown();
+  });
+
+  it('autoLog wires claim.sign', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      webidClaim: { webid: 'https://a.example/#me' },
+      auditLog: true,
+    });
+    sa.claim.sign({ nknAddr: 'app.x' });
+    const e = sa.audit.entries().find((x) => x.event === 'claim.sign');
+    expect(e).toBeTruthy();
+    expect(e.subject).toBe('https://a.example/#me');
+    await sa.shutdown();
+  });
+
+  it('autoLog:false → no auto-fires; manual append still works', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(), auditLog: { autoLog: false },
+    });
+    await sa.rotateIdentity();
+    expect(sa.audit.size).toBe(0);
+    await sa.audit.append({ event: 'manual.event' });
+    expect(sa.audit.size).toBe(1);
+    await sa.shutdown();
+  });
+
+  it('persistent: auditLog with vaultKey survives factory restart', async () => {
+    const vault = new VaultMemory();
+    const sa1 = await createSecureAgent({
+      vault,
+      auditLog: { vaultKey: 'sa-audit' },
+    });
+    await sa1.rotateIdentity();
+    await sa1.shutdown();
+
+    const sa2 = await createSecureAgent({
+      vault,
+      auditLog: { vaultKey: 'sa-audit' },
+    });
+    expect(sa2.audit.size).toBe(1);
+    expect(sa2.audit.entries()[0].event).toBe('identity.rotate');
+    expect(sa2.audit.verify()).toEqual({ ok: true });
+    await sa2.shutdown();
+  });
+
+  it('securityStatus reports audit state', async () => {
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(), auditLog: true,
+    });
+    await sa.mute.add('app.x');
+    const st = sa.securityStatus();
+    expect(st.auditWired).toBe(true);
+    expect(st.auditAutoLog).toBe(true);
+    expect(st.auditSize).toBe(1);
+    await sa.shutdown();
+  });
+
+  it('warnings no longer fire for auditLog (now wired)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await createSecureAgent({
+      vault: new VaultMemory(), auditLog: true,
+    });
+    const allWarnArgs = warn.mock.calls.flat().join(' ');
+    expect(allWarnArgs).not.toMatch(/"auditLog"/);
     warn.mockRestore();
   });
 });

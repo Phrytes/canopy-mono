@@ -103,6 +103,34 @@ const cred = await sa3.passkey.register();
 const sec  = await sa3.passkey.unlock();
 ```
 
+### S6 — signed audit log
+
+```js
+const sa = await createSecureAgent({
+  auditLog: { vaultKey: 'myapp-audit' },   // persistent + autoLog on
+});
+
+// All security-critical actions are auto-logged
+await sa.mute.add('app.spammer');          // → 'mute.add' entry
+await sa.rotateIdentity();                 // → 'identity.rotate' entry
+await sa.caps.issue({ subject: 'pk-r' });  // → 'caps.issue' entry  (when caps wired)
+
+// Manual entries for app-level events
+await sa.audit.append({
+  event:   'file.shared',
+  subject: 'app.recipient.123',
+  data:    { name: 'q3-report.pdf', size: 12_445 },
+});
+
+// Inspection + verification
+sa.audit.size;                              // → 3
+sa.audit.filter(/^mute\./);                 // → all mute events
+sa.audit.verify();                          // → { ok: true }
+
+// Pod-side mirroring
+await podWriter.put('canopy/audit/log.json', sa.audit.serialize());
+```
+
 ### S5 — caps + roles + trust
 
 ```js
@@ -181,7 +209,7 @@ if (!v.ok) throw new Error(`claim invalid: ${v.reason}`);
 await podWriter.put('canopy/identity/claim.json', sa.claim.serialize(claim));
 ```
 
-## What's wired today (S0 + S1 + S2 + S3 + S4 + S5)
+## What's wired today (S0 + S1 + S2 + S3 + S4 + S5 + S6)
 
 S0 — foundation:
 - ✅ Persistent identity (`VaultLocalStorage` in browser, `VaultMemory` elsewhere)
@@ -203,6 +231,14 @@ S2 — signed WebID claim:
 - ✅ `sa.claim.verify(claim)` — returns `{ ok, body | reason }`; checks sig + exp + ts skew
 - ✅ `sa.claim.{serialize,parse}` — JSON for pod-side storage
 - ✅ `webidClaim: { webid }` factory opt binds default WebID
+
+S6 — signed activity / audit log:
+- ✅ `auditLog: true | { vaultKey, vault?, autoLog? }` factory opt → `sa.audit` (AuditLog)
+- ✅ Ed25519-signed + SHA-256 hash-chained entries (tamper-evident)
+- ✅ `autoLog` (default true) fires entries for `identity.rotate`, `mute.add`,
+  `mute.remove`, `caps.issue`, `claim.sign`, `peer.connect`
+- ✅ `sa.audit.{append,entries,verify,serialize,loadSerialized,filter,clear}`
+- ✅ `verify()` walks the chain — sig + prev-hash; reports `brokenAt` + `reason`
 
 S5 — capabilities + roles + trust:
 - ✅ `trustRegistry: true | { vault }` factory opt → `sa.trust` (TrustRegistry instance)
@@ -236,7 +272,6 @@ lands.  No app-code change needed when each slice activates.
 
 | Opt | S slice | Item |
 |---|---|---|
-| `auditLog` | S6 | A.6 signed activity log |
 | `groupManager` | S7 | A.7 GroupManager closed groups |
 | `a2aTls` | S7 | A+.4 future A2A protocol |
 | `rateLimit` | S7 | A+.8 DoS protection |
@@ -274,7 +309,7 @@ its own InternalBus.
 pnpm --filter @canopy/secure-agent test
 ```
 
-70/71 passing (1 skipped pending integration test infrastructure
+87/88 passing (1 skipped pending integration test infrastructure
 for sig-validated envelopes; the bilateral HI auto-handshake's
 wiring is in place + verified in canopy-chat's two-tab demo).
 

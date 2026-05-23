@@ -38,6 +38,9 @@ export {
 // S4 — peer identity resolver
 export { createPeerResolver, PeerResolver } from './resolver.js';
 
+// S6 — signed activity / audit log
+export { loadAuditLog, AuditLog, AUDIT_VERSION } from './auditLog.js';
+
 // S5 — re-export the substrate primitives the factory wires
 export {
   TrustRegistry,
