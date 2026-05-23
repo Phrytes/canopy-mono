@@ -46,6 +46,12 @@ export {
   createRateLimiter, RateLimiter, RATE_LIMIT_DEFAULTS,
 } from './rateLimit.js';
 
+// S8 — Perfect Forward Secrecy (partial Double-Ratchet)
+export {
+  loadPFSChain, PFSChain,
+  PFS_VERSION, DEFAULT_MAX_SKIP,
+} from './pfs.js';
+
 // S5 + S7 — re-export the substrate primitives the factory wires
 export {
   TrustRegistry,

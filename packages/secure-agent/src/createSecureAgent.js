@@ -34,16 +34,16 @@
  *   - a2aTls             (S7 — A+.4)  sa.a2aTls (A2ATransport helper)
  *   - rateLimit          (S7 — A+.8)  drops over-quota envelopes
  *   - sa.migrateVaultToPod helper bound to our identity + vault
+ *   - usePerfectFwdSec   (S8 — A.8)   sa.pfs partial Double-Ratchet
+ *                                      (symmetric ratchet; no DH ratchet —
+ *                                      see pfs.js header for scope)
  *
- * # What's a stub (filled by later slices)
+ * # Future work
  *
- *   - usePerfectFwdSec   (S8 — A.8)
+ *   - S8b — full Double-Ratchet (DH ratchet + per-message ephemerals)
+ *           — requires transport-level integration; not in current scope
  *
- * For each stubbed opt: if the caller supplies it, createSecureAgent
- * console.warns with a 'not yet implemented' notice + ignores; the
- * eventual slice will read the same opt + activate behaviour.
- * Opts are explicit IN THE FACTORY SIGNATURE today so apps can
- * write `passphrase: '...'` now + it just works the day S3 lands.
+ * All roadmap slices S0–S8 are now wired.  STUB_OPTS is empty.
  */
 
 import {
@@ -65,6 +65,7 @@ import {
   migrateVaultToPod as migrateVaultToPodFn,
 } from '@canopy/core';
 import { createRateLimiter } from './rateLimit.js';
+import { loadPFSChain }      from './pfs.js';
 
 import { makeBrowserVault, restoreOrGenerate } from './vault.js';
 import { loadMuteSet }                          from './mute.js';
@@ -104,7 +105,7 @@ import { loadAuditLog }       from './auditLog.js';
  * @property {boolean|object} [groupManager]    S7 — true | { vault } exposes sa.groups (auto-threaded into policy)
  * @property {boolean|object} [a2aTls]          S7 — true | { a2aAuth } exposes sa.a2aTls
  * @property {boolean|object} [rateLimit]       S7 — true | { perPeer, global } drops over-quota envelopes
- * @property {boolean} [usePerfectFwdSec]       [STUB — S8]
+ * @property {boolean|object} [usePerfectFwdSec] S8 — true | { vaultKeyPrefix, maxSkip } exposes sa.pfs
  *
  * @property {Function} [onPeerMessage]         ({from, payload, ts}) => void
  * @property {object}   [podWriter]             For S2 / S6 pod-side writes
@@ -131,7 +132,7 @@ const STUB_OPTS = Object.freeze([
   // groupManager      — wired in S7 (sa.groups)
   // a2aTls            — wired in S7 (sa.a2aTls)
   // rateLimit         — wired in S7 (drops envelopes over quota)
-  'usePerfectFwdSec',
+  // usePerfectFwdSec  — wired in S8 (sa.pfs — partial Double-Ratchet)
 ]);
 
 /**
@@ -368,6 +369,47 @@ export async function createSecureAgent(opts = {}) {
     });
   }
 
+  // ─── S8 — Perfect Forward Secrecy (A.8, partial Double-Ratchet) ──
+  // Per-peer symmetric KDF chain.  Each message gets a fresh one-time
+  // key derived via HKDF-SHA256; old keys are deleted after use.
+  //
+  // SCOPE NOTE: this implements the SYMMETRIC ratchet only.  Without
+  // a DH ratchet, an attacker who later steals an identity private
+  // key can recompute the chain seed (it's derived from static DH
+  // over identity keys) and decrypt every message ever sent on the
+  // chain.  Closing this gap is S8b (DH ratchet via per-message
+  // ephemeral keys) — left as future work.  See pfs.js header.
+  //
+  // The chains are NOT auto-wrapped onto the transport: apps opt in
+  // by passing payloads through sa.pfs.encrypt(peer, ...) before
+  // sending, and sa.pfs.decrypt(peer, wire) on receive.  Auto-
+  // wrapping needs the same DH ratchet to be done correctly, hence
+  // S8b territory.
+  const pfsEnabled = !!opts.usePerfectFwdSec;
+  const pfsOpts    = (typeof opts.usePerfectFwdSec === 'object')
+    ? opts.usePerfectFwdSec : {};
+  const pfsChains  = new Map();   // peerPubKey → PFSChain
+
+  async function pfsChainFor(peerPubKey) {
+    if (!pfsEnabled) {
+      throw new Error('sa.pfs: usePerfectFwdSec opt is off');
+    }
+    let c = pfsChains.get(peerPubKey);
+    if (!c) {
+      c = await loadPFSChain({
+        identity,
+        peerPubKey,
+        maxSkip:  pfsOpts.maxSkip,
+        vault,
+        vaultKey: pfsOpts.vaultKeyPrefix
+          ? `${pfsOpts.vaultKeyPrefix}${peerPubKey}`
+          : null,
+      });
+      pfsChains.set(peerPubKey, c);
+    }
+    return c;
+  }
+
   // ─── S6 — signed activity / audit log (A.6) ───────────────────────
   //
   // auditLog opt forms:
@@ -561,6 +603,10 @@ export async function createSecureAgent(opts = {}) {
       a2aTlsWired:      !!a2aTls,
       rateLimitWired:   !!rateLimiter,
       rateLimitState:   rateLimiter?.snapshot() ?? null,
+      // S8 — PFS (partial)
+      pfsWired:         pfsEnabled,
+      pfsChainCount:    pfsChains.size,
+      pfsPartial:       true,            // honest: no DH ratchet
       // STUB sections — surfaces what's reserved vs what's wired:
       pendingOpts: pickStubOpts(opts),
     };
@@ -664,6 +710,22 @@ export async function createSecureAgent(opts = {}) {
 
     // S7 — rate limiter (the running instance, for inspection)
     rateLimit: rateLimiter,                // null when not opted in
+
+    // S8 — Perfect Forward Secrecy chains (partial Double-Ratchet)
+    pfs: pfsEnabled ? {
+      enabled: true,
+      get partial() { return true; },     // honest about scope
+      async encrypt(peerPubKey, plaintext) {
+        const chain = await pfsChainFor(peerPubKey);
+        return chain.encrypt(plaintext);
+      },
+      async decrypt(peerPubKey, wire) {
+        const chain = await pfsChainFor(peerPubKey);
+        return chain.decrypt(wire);
+      },
+      async chainFor(peerPubKey)   { return pfsChainFor(peerPubKey); },
+      knownPeers() { return [...pfsChains.keys()]; },
+    } : null,
 
     // S7 — pod-mirror identity migration (bound to our identity + vault)
     async migrateVaultToPod(args = {}) {
