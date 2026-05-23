@@ -53,8 +53,43 @@ console.log(sa.securityStatus());
 await sa.shutdown();
 ```
 
-## What's wired today (S0 foundation)
+### S1 — mute / block + helloGate
 
+```js
+const sa = await createSecureAgent({
+  muteListVaultKey: 'myapp-mute',          // persists across reloads
+  helloGate:        'shared-secret-xyz',   // or fn(env)=>bool, or { token }
+  nknLib:           window.nkn,
+});
+
+await sa.mute.add('app.spammer.abc');      // drops their HI + envelopes + sends
+sa.mute.has('app.spammer.abc');            // → true
+sa.mute.list();                            // → ['app.spammer.abc']
+await sa.mute.remove('app.spammer.abc');
+```
+
+### S2 — signed WebID claim
+
+```js
+const sa = await createSecureAgent({
+  webidClaim: { webid: 'https://alice.example/profile/card#me' },
+});
+
+// Sign — pubKey + ts + exp added automatically
+const claim = sa.claim.sign({ nknAddr: sa.peer.address });
+// → { v:1, webid, pubKey, nknAddr, ts, exp, sig }
+
+// Verify (e.g. after fetching from a peer's pod)
+const v = sa.claim.verify(receivedClaim);
+if (!v.ok) throw new Error(`claim invalid: ${v.reason}`);
+
+// Pod-side storage
+await podWriter.put('canopy/identity/claim.json', sa.claim.serialize(claim));
+```
+
+## What's wired today (S0 + S1 + S2)
+
+S0 — foundation:
 - ✅ Persistent identity (`VaultLocalStorage` in browser, `VaultMemory` elsewhere)
 - ✅ Agent with auto-`SecurityLayer` (signed + nacl.box encrypted envelopes)
 - ✅ Optional `NknTransport` wired with `useSecurityLayer`
@@ -62,6 +97,18 @@ await sa.shutdown();
 - ✅ Bilateral HI on receive (we register their pubKey too)
 - ✅ `rotateIdentity` wrapper (7-day grace + `KeyRotation.broadcast`)
 - ✅ `securityStatus()` diagnostic
+
+S1 — mute / block + helloGate:
+- ✅ `muteListVaultKey` opt → persistent `sa.mute.{add,remove,has,list,clear,size}`
+- ✅ Drop inbound envelopes from muted peers (before `onPeerMessage`)
+- ✅ Refuse outbound `peer.sendTo` to muted peers (throws)
+- ✅ `helloGate` opt: fn / PSK string / `{ token }` — composed AND mute base gate
+
+S2 — signed WebID claim:
+- ✅ `sa.claim.sign({ webid?, nknAddr?, ttlMs? })` — Ed25519-signed binding
+- ✅ `sa.claim.verify(claim)` — returns `{ ok, body | reason }`; checks sig + exp + ts skew
+- ✅ `sa.claim.{serialize,parse}` — JSON for pod-side storage
+- ✅ `webidClaim: { webid }` factory opt binds default WebID
 
 ## What's reserved (future S slices)
 
@@ -74,9 +121,6 @@ lands.  No app-code change needed when each slice activates.
 |---|---|---|
 | `passphrase` | S3 | A.3 passphrase-wrapped vault |
 | `webAuthnUnlock` | S3 | A+.5 passkey-based unlock |
-| `muteListVaultKey` | S1 | A.1 mute/block list |
-| `helloGate` | S1 | A+.1 PSK / predicate gate |
-| `webidClaim` | S2 | A.2 signed WebID claim |
 | `identityResolver` | S4 | A.4 MemberMap + Reveals |
 | `capabilityIssuer` | S5 | A.5 capability tokens |
 | `trustRegistry` | S5 | A+.3 per-peer trust score |
@@ -118,7 +162,7 @@ its own InternalBus.
 pnpm --filter @canopy/secure-agent test
 ```
 
-11/12 passing (1 skipped pending integration test infrastructure
+32/33 passing (1 skipped pending integration test infrastructure
 for sig-validated envelopes; the bilateral HI auto-handshake's
 wiring is in place + verified in canopy-chat's two-tab demo).
 

@@ -105,6 +105,8 @@ export { TunnelSessions }              from './skills/tunnelSessions.js';
 export { generateTunnelKey,
          sealTunnelOW,
          openTunnelOW }                from './security/tunnelSeal.js';
+export { encode as b64encode,
+         decode as b64decode }         from './crypto/b64.js';
 
 // ── Protocol ──────────────────────────────────────────────────────────────────
 export { Task }                                           from './protocol/Task.js';
