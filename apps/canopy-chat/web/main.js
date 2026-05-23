@@ -36,7 +36,7 @@ import { renderLogsPanel }           from '../src/web/logsPanel.js';
 import { createRealHouseholdAgent }  from '../src/web/realAgent.js';
 import { mockTasksManifest,
          mockStoopManifest,
-         mockFolioManifest }         from '../src/web/mockAgent.js';
+         mockFolioManifest }         from '../src/web/mockManifests.js';
 import { calendarManifest }          from '@canopy-app/calendar/manifest';
 import { createLocalBuiltins }       from '../src/web/localBuiltins.js';
 import * as podAuth                  from '../src/web/podAuth.js';

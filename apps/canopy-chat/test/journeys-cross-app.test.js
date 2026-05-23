@@ -22,6 +22,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
 
+import { PodCapabilityToken } from '@canopy/core';
+
 import {
   parseInput, mergeManifests, resolveDispatch, runDispatch,
   createDefaultThreadStore, createEventRouter,
@@ -32,7 +34,7 @@ import {
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
-} from '../src/web/mockAgent.js';
+} from '../src/web/mockManifests.js';
 import { calendarManifest } from '@canopy-app/calendar/manifest';
 import { createLocalBuiltins } from '../src/web/localBuiltins.js';
 
@@ -535,6 +537,24 @@ describe('CC-FO.2 — share a folder with a contact', () => {
     expect(r.payload.ok).toBe(true);
     expect(r.payload.message).toMatch(/Shared/);
     expect(r.payload.message).toMatch(/webid:anne/);
+  });
+
+  // Slice-4 end-to-end: the chat-shell's /share dispatch must carry a
+  // REAL PodCapabilityToken back through the runDispatch pipeline (not
+  // just a stub).  Validates the slice-4 claim from the chat-shell's
+  // point of view, complementing apps/folio/test/browser.test.js which
+  // verifies the same on the folio-agent side directly.
+  it('reply payload carries a parseable PodCapabilityToken', async () => {
+    const r = await ws.userInput('/share /notes --with=webid:anne');
+    expect(r.payload.share).toBeTruthy();
+    expect(r.payload.share.mode).toBe('cap-token');
+    expect(r.payload.share.token).toBeTruthy();
+    const token = await PodCapabilityToken.fromJSON(r.payload.share.token);
+    expect(token.subject).toBe('webid:anne');
+    expect(token.scopes.some((s) => s.startsWith('pod.read:'))).toBe(true);
+    expect(token.scopes.some((s) => s.startsWith('pod.write:'))).toBe(true);
+    // Token expiry should be ~90 days out (SHARE_EXPIRY_MS).
+    expect(token.expiresAt).toBeGreaterThan(Date.now());
   });
 });
 
