@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@canopy-app/calendar": "workspace:*",
+    "@canopy-app/stoop":    "workspace:*",
     "@canopy-app/tasks-v0": "workspace:*",
     "@canopy/app-manifest": "workspace:*",
     "@canopy/core": "workspace:*",

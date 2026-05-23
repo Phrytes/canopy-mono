@@ -15,7 +15,7 @@
 | **household** | Already real (chores + member ops on hostAgent) | Done | n/a |
 | **calendar** | Already real (composed via `@canopy-app/calendar`) | Done | n/a |
 | **tasks-v0** | ✅ **REAL — shipped slice 1 at `ab6f32f` (2026-05-23)** — full 110-skill crew agent composed in-process | Done | n/a |
-| **stoop** | Mock handlers; 1 node-only file (`FilePersist.js`) to swap | **2 slices** (swap + compose) | ~2 sessions |
+| **stoop** | ✅ **REAL — shipped slice 2a at `4931a3f` (FilePersist→IDB) + slice 2b at this commit (composition)** — full 110-skill NeighborhoodAgent on shared bus, IndexedDB persistence | Done | n/a |
 | **folio** | Mock handlers (web-only subset); per Frits's clarification — only the chat-web concerns (file embed / share / status), NOT local-folder sync | **1 slice** (was 2; sync-engine integration deferred to desktop / mobile-extended) | ~1 session |
 
 ## Why each app is in better shape than the bin scripts suggest
@@ -162,7 +162,7 @@ before the bigger Stoop slice.
 - Multi-crew flag: V2 supports multiple crews per agent.  Plumb
   through to canopy-chat's `/crew-new` flow.
 
-### Slice 2: Stoop swap FilePersist → IndexedDB (~0.5 session)
+### Slice 2: Stoop swap FilePersist → IndexedDB — ✅ DONE 2026-05-23 (`4931a3f`)
 
 **Why second**: must precede the full Stoop integration; small +
 testable in isolation.
@@ -180,7 +180,40 @@ testable in isolation.
 3. Stoop's existing tests stay green; add a browser test for the
    IndexedDB adapter.
 
-### Slice 3: Stoop → canopy-chat browser (~1.5 sessions)
+### Slice 3: Stoop → canopy-chat browser — ✅ DONE 2026-05-23 (slice 2b)
+
+**Shipped state**:
+  - `apps/stoop/src/browser.js` exports `createBrowserStoopAgent`
+  - `apps/canopy-chat/src/web/realAgent.js` boots real
+    NeighborhoodAgent on shared bus + replaces ~85 lines of mock
+    handlers (listFeed / postRequest / searchPosts /
+    stoop_briefSummary / getStoopProfile / revealPeer)
+  - 110 real stoop skills registered; canopy-chat consumes ~6
+    via slash commands today, the rest reachable via
+    `agent.callSkill('stoop', ...)`
+  - Pre-seed at boot: 3 demo posts + handle + displayName so
+    `/feed` + `/stoop-profile` show content out of the box
+  - Adapter layer at callSkill boundary normalises real shapes:
+    - postRequest `{requestId, claims}` → `{ok, message, itemId, _sync}`
+    - listOpen items get `label` alias + `state: open|done` derived
+      from `closedAt`
+    - getMyProfile `{entry: {...}|null}` → `{title, handle, displayName, buurt}`
+    - setPeerReveal: chat-shell `{peer, action: on|off}` → real
+      `{peerWebid, reveal: bool}`; success-empty → user-facing message
+  - Test routing updated: tests + main.js dispatch
+    `appOrigin='stoop'` directly to the stoop branch
+
+**Tests**: canopy-chat 606/615 unchanged; stoop 612/612 unchanged.
+
+**Lessons reinforced** (apply to slice 4 / Folio):
+  - Same per-skill arg + reply shape pattern as tasks-v0
+  - Pre-seed in-process state at boot for chat-shell continuity
+  - `/feed`-style "list everything visible" maps to `listOpen` (not
+    actor-filtered `listMyRequests`)
+
+(Original slice-3 step list preserved below for historical
+reference + future reuse if revisiting:)
+
 
 **Steps**:
 

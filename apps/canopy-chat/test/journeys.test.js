@@ -94,8 +94,10 @@ async function bootTestWorkspace() {
       return agent.callSkill('tasks-v0', opId, args);
     }
     if (appOrigin === 'stoop') {
-      const realOp = opId === 'briefSummary' ? 'stoop_briefSummary' : opId;
-      return agent.callSkill('household', realOp, args);
+      // Post-slice-2b (integration-plan 2026-05-23): stoop is the
+      // real NeighborhoodAgent.  realAgent.callSkill knows the
+      // listFeed→listOpen alias + getStoopProfile/revealPeer adapters.
+      return agent.callSkill('stoop', opId, args);
     }
     if (appOrigin === 'folio') {
       const realOp = opId === 'briefSummary' ? 'folio_briefSummary' : opId;

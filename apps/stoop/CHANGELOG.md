@@ -1,5 +1,27 @@
 # Changelog — @canopy-app/stoop
 
+## [Unreleased] — canopy-chat browser composition (2026-05-23)
+
+New export: `@canopy-app/stoop/browser` →
+`createBrowserStoopAgent({bus, identityVault, localActor, group?, members?, persistDb?, label?})`.
+
+Lets canopy-chat boot a real Stoop NeighborhoodAgent on its shared
+bus.  Replaces canopy-chat's ~85 lines of mock stoop handlers
+(listFeed / postRequest / searchPosts / getStoopProfile /
+revealPeer) with the actual 110-skill stoop agent.  ~6 skills
+surface via chat slash commands; the rest are reachable via
+`agent.callSkill('stoop', ...)` for future expansion.
+
+Implementation: thin wrapper around `createNeighborhoodAgent` that
+generates an InternalTransport on the shared bus + restores/creates
+identity from a vault.  Uses the slice-2a `persistDb` opt for
+IndexedDB persistence in the browser.
+
+Plan: `Project Files/canopy-chat/integration-plan-2026-05-23.md` §
+"Slice 3: Stoop → canopy-chat browser".
+
+594/594 stoop tests still green; no app-side changes.
+
 ## [Unreleased] — IndexedDBPersist adapter + persistPicker (2026-05-23)
 
 Prerequisite for `Project Files/canopy-chat/integration-plan-2026-
