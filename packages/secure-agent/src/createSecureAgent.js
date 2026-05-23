@@ -17,16 +17,16 @@
  *   - rotateIdentity wrapper (Agent.rotateIdentity + grace + broadcast)
  *   - securityStatus diagnostic
  *
- * # What lands in S1 + S2 (also this file)
+ * # What lands in S1 + S2 + S3 (also this file)
  *
  *   - muteListVaultKey   (S1 — A.1)   persistent mute set + send-side block
  *   - helloGate          (S1 — A+.1)  PSK / predicate gate + mute base gate
  *   - webidClaim         (S2 — A.2)   sa.claim.sign/verify/serialize/parse
+ *   - passphrase         (S3 — A.3)   forwards to vault picker → VaultIndexedDB
+ *   - webAuthnUnlock     (S3 — A+.5)  sa.passkey.{register,unlock} via PRF
  *
  * # What's a stub (filled by later slices)
  *
- *   - passphrase         (S3 — A.3)
- *   - webAuthnUnlock     (S3 — A+.5)
  *   - identityResolver   (S4 — A.4)
  *   - capabilityIssuer   (S5 — A.5)
  *   - trustRegistry      (S5 — A+.3)
@@ -61,14 +61,20 @@ import {
   serializeClaim,
   parseClaim,
 } from './claim.js';
+import {
+  registerPasskey   as registerPasskeyFn,
+  unlockWithPasskey as unlockWithPasskeyFn,
+  webauthnAvailable,
+  PASSKEY_ERRORS,
+} from './passkey.js';
 
 /**
  * @typedef {object} CreateSecureAgentOpts
  *
  * @property {object}  [vault]                  Pre-built Vault (e.g. VaultMemory for tests)
  * @property {string}  [identityVaultPrefix]    Default 'sa-id:'
- * @property {string}  [passphrase]             [STUB — S3] passphrase to wrap vault
- * @property {boolean} [webAuthnUnlock]         [STUB — S3a] use passkey to unlock vault
+ * @property {string}  [passphrase]             S3 — wraps vault with AES-GCM via PBKDF2 (browser/IndexedDB)
+ * @property {boolean|object} [webAuthnUnlock]  S3 — true | { rpId, prfSalt, userName, ... }
  *
  * @property {object}  [nknLib]                 window.nkn from CDN, or RN nkn-sdk; absent → no peer transport
  *
@@ -96,8 +102,8 @@ import {
  * corresponding S slice lands, the warning becomes an activation.
  */
 const STUB_OPTS = Object.freeze([
-  'passphrase',
-  'webAuthnUnlock',
+  // passphrase        — wired in S3 (forwarded to vault picker)
+  // webAuthnUnlock    — wired in S3 (exposes sa.passkey.{register,unlock})
   // muteListVaultKey  — wired in S1
   // helloGate         — wired in S1
   // webidClaim        — wired in S2
@@ -162,7 +168,13 @@ export async function createSecureAgent(opts = {}) {
   }
 
   // ─── Identity (persists across page loads when vault supports it) ───
-  const vault = opts.vault ?? makeBrowserVault(opts.identityVaultPrefix ?? 'sa-id:');
+  // S3 — when opts.passphrase is set, the picker promotes us from
+  // VaultLocalStorage (plaintext) to VaultIndexedDB (AES-GCM via
+  // PBKDF2(passphrase, dbName)).  See vault.js for the picker.
+  const vault = opts.vault ?? makeBrowserVault({
+    prefix:     opts.identityVaultPrefix ?? 'sa-id:',
+    passphrase: opts.passphrase ?? null,
+  });
   const identity = await restoreOrGenerate(vault);
 
   // ─── Agent on a single-agent InternalBus (no co-located peers) ───
@@ -202,6 +214,21 @@ export async function createSecureAgent(opts = {}) {
   const boundWebid = (typeof opts.webidClaim === 'object' && opts.webidClaim)
     ? (opts.webidClaim.webid ?? null)
     : null;
+
+  // ─── S3 — passphrase + WebAuthn (A.3 + A+.5) ──────────────────────
+  // The passphrase has already been forwarded to the vault picker
+  // above.  Here we record whether the vault was actually wrapped,
+  // for securityStatus reporting.
+  // (No way to introspect VaultIndexedDB's enc state from outside;
+  //  we proxy on the user's opts + runtime support.)
+  const vaultEncrypted = !!opts.passphrase
+                      && typeof globalThis.indexedDB !== 'undefined'
+                      && !opts.vault;
+
+  // WebAuthn binding — config + helpers.  Accept:
+  //   true                          → infer rpId from window.location.hostname
+  //   { rpId, rpName, prfSalt, ... }→ explicit config
+  const passkeyConfig = resolvePasskeyConfig(opts.webAuthnUnlock);
 
   // ─── Peer state (NKN cross-peer; stays idle until connect()) ───
   let peerTransport = null;
@@ -345,6 +372,10 @@ export async function createSecureAgent(opts = {}) {
       helloGateWired:  !!userHelloGate,
       // S2 — claim state
       claimWebidBound: boundWebid,
+      // S3 — vault encryption + passkey
+      vaultEncrypted,
+      passkeyConfigured: !!passkeyConfig,
+      passkeyAvailable:  webauthnAvailable(),
       // STUB sections — surfaces what's reserved vs what's wired:
       pendingOpts: pickStubOpts(opts),
     };
@@ -387,6 +418,29 @@ export async function createSecureAgent(opts = {}) {
       list:   ()     => muteSet.list(),
       clear:  ()     => muteSet.clear(),
       get size() { return muteSet.size; },
+    },
+
+    // S3 — WebAuthn / passkey unlock helpers
+    passkey: {
+      get available() { return webauthnAvailable(); },
+      get config()    { return passkeyConfig; },
+      async register(extra = {}) {
+        if (!passkeyConfig) {
+          throw new Error(
+            'passkey.register: opt webAuthnUnlock not set at factory time.',
+          );
+        }
+        return registerPasskeyFn({ ...passkeyConfig, ...extra });
+      },
+      async unlock(extra = {}) {
+        if (!passkeyConfig) {
+          throw new Error(
+            'passkey.unlock: opt webAuthnUnlock not set at factory time.',
+          );
+        }
+        return unlockWithPasskeyFn({ ...passkeyConfig, ...extra });
+      },
+      ERRORS: PASSKEY_ERRORS,
     },
 
     // S2 — signed WebID claim
@@ -443,4 +497,35 @@ function pickStubOpts(opts) {
     if (opts[key] !== undefined) out[key] = opts[key];
   }
   return out;
+}
+
+/**
+ * Normalise the webAuthnUnlock opt to a config object usable by
+ * the passkey helpers, or null if the opt wasn't set.
+ *
+ *   true         → infer rpId from window.location.hostname; userName='canopy-user'
+ *   { rpId, … }  → use as-is, fill in defaults
+ */
+function resolvePasskeyConfig(opt) {
+  if (opt == null || opt === false) return null;
+  const base = (opt === true) ? {} : opt;
+  const inferredRpId =
+    (typeof globalThis.location !== 'undefined' && globalThis.location.hostname)
+      ? globalThis.location.hostname
+      : null;
+  const rpId = base.rpId ?? inferredRpId;
+  if (!rpId) {
+    throw new Error(
+      'createSecureAgent: webAuthnUnlock=true requires window.location.hostname; ' +
+      'pass { rpId } explicitly outside a browser.',
+    );
+  }
+  return {
+    rpId,
+    rpName:   base.rpName   ?? rpId,
+    userName: base.userName ?? 'canopy-user',
+    userId:   base.userId   ?? 'canopy-user',
+    prfSalt:  base.prfSalt  ?? 'canopy/secure-agent/v1',
+    ...(base.credentialId ? { credentialId: base.credentialId } : {}),
+  };
 }

@@ -26,3 +26,11 @@ export {
   CLAIM_VERSION,
   DEFAULT_TTL_MS as DEFAULT_CLAIM_TTL_MS,
 } from './claim.js';
+
+// S3 — WebAuthn / passkey helpers
+export {
+  registerPasskey,
+  unlockWithPasskey,
+  webauthnAvailable,
+  PASSKEY_ERRORS,
+} from './passkey.js';

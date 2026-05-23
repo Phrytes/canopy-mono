@@ -12,21 +12,54 @@
 import {
   VaultMemory,
   VaultLocalStorage,
+  VaultIndexedDB,
 } from '@canopy/vault';
 import { AgentIdentity } from '@canopy/core';
 
 /**
- * Pick the right vault for the runtime:
- *   - Browser → VaultLocalStorage (persists across reloads)
- *   - Node / tests / SSR → VaultMemory (transient)
+ * Pick the right vault for the runtime + options:
+ *
+ *   passphrase + IndexedDB  →  VaultIndexedDB (AES-GCM encrypted)        ← S3 secure
+ *   no-passphrase + localStorage →  VaultLocalStorage (plaintext)          ← S0 default
+ *   otherwise (Node / tests / SSR)  →  VaultMemory (transient)             ← fallback
  *
  * Caller can always pass an explicit `vault` to createSecureAgent
  * to bypass this picker entirely (e.g. tests inject VaultMemory).
  *
- * @param {string} [prefix='sa-id:']   localStorage key namespace
+ * @param {string|object} [arg='sa-id:']    Backwards-compat: a string is treated as `prefix`.
+ *                                          Or an object: { prefix, passphrase }.
  * @returns {Vault}
  */
-export function makeBrowserVault(prefix = 'sa-id:') {
+export function makeBrowserVault(arg = 'sa-id:') {
+  // Accept legacy string form OR options object.
+  const opts = (typeof arg === 'string') ? { prefix: arg } : (arg ?? {});
+  const prefix     = opts.prefix     ?? 'sa-id:';
+  const passphrase = opts.passphrase ?? null;
+
+  // S3 — passphrase-wrapped vault.  IndexedDB is the only browser
+  // backend the @canopy/vault family supports encryption for.
+  if (passphrase) {
+    if (typeof globalThis.indexedDB !== 'undefined') {
+      try {
+        return new VaultIndexedDB({
+          dbName:        prefix,
+          storeName:     'vault',
+          encryptionKey: passphrase,
+        });
+      } catch {
+        // Fall through; surface a clear warning below.
+      }
+    }
+    if (typeof console !== 'undefined') {
+      console.warn(
+        '[secure-agent] passphrase opt set but IndexedDB unavailable; ' +
+        'vault stays unencrypted.  (Provide your own VaultIndexedDB ' +
+        'or VaultNodeFs via opts.vault to enforce encryption here.)',
+      );
+    }
+  }
+
+  // S0 — default browser path: plaintext localStorage.
   if (typeof globalThis.localStorage !== 'undefined') {
     try {
       return new VaultLocalStorage({ prefix });
