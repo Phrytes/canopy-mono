@@ -763,6 +763,16 @@ export async function createRealHouseholdAgent(opts = {}) {
           realArgs = { ...realArgs, on: realArgs.on.toLowerCase() === 'on' };
         }
       }
+      if (realOpId === 'listContacts') {
+        // Chat-shell flag `min-trust` → real arg `minTrust`.
+        if (realArgs['min-trust'] && !realArgs.minTrust) {
+          realArgs = { ...realArgs, minTrust: realArgs['min-trust'] };
+        }
+      }
+      if (realOpId === 'setContactTrust' && realArgs.level === 'none') {
+        // Chat-shell uses 'none' to clear; real skill takes null.
+        realArgs = { ...realArgs, level: null };
+      }
       const parts = [DataPart(realArgs)];
       const result = await chatAgent.invoke(stoopAgent.address, realOpId, parts);
       const first  = Array.isArray(result) ? result[0] : null;
@@ -959,6 +969,47 @@ export async function createRealHouseholdAgent(opts = {}) {
         title:       'Holiday mode',
         holidayMode: data.holidayMode,
         status:      data.holidayMode ? 'on' : 'off',
+      };
+    }
+    // listContacts: real returns {contacts: [...]} → chat-shell {items: [...]}.
+    // Each contact carries {webid, displayName?, handle?, trustLevel?, tags?, ...};
+    // surface displayName || handle || webid as the label.
+    if (opId === 'listContacts' && Array.isArray(data.contacts)) {
+      return {
+        items: data.contacts.map((c) => ({
+          id:          c.webid,
+          type:        'contact',
+          webid:       c.webid,
+          label:       c.displayName ?? c.handle ?? c.webid,
+          handle:      c.handle ?? null,
+          trustLevel:  c.trustLevel ?? null,
+          tags:        c.tags ?? [],
+        })),
+        _sync: simulateSync(),
+      };
+    }
+    // addContact / setContactTrust / setContactTags: real returns
+    // {contact} → friendly text reply.
+    if ((opId === 'addContact' || opId === 'setContactTrust' || opId === 'setContactTags')
+        && data.contact) {
+      const c = data.contact;
+      const who = c.displayName ?? c.handle ?? c.webid;
+      const msg = opId === 'addContact'
+        ? `✓ Added contact: ${who}`
+        : opId === 'setContactTrust'
+          ? `✓ Trust level updated for ${who}: ${c.trustLevel ?? '(cleared)'}`
+          : `✓ Tags updated for ${who}: ${(c.tags ?? []).join(', ') || '(none)'}`;
+      return {
+        ok: true, message: msg, contact: c, _sync: simulateSync(),
+      };
+    }
+    // removeContact: real returns {ok: true} → friendly text.
+    if (opId === 'removeContact' && data.ok === true) {
+      const who = args?.webid ?? '(contact)';
+      return {
+        ok: true,
+        message: `✓ Removed contact: ${who}`,
+        _sync: simulateSync(),
       };
     }
     // Default: pass through.

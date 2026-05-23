@@ -201,7 +201,7 @@ mockTasksManifest.operations.find((o) => o.id === 'claimTask')
  */
 export const mockStoopManifest = {
   app:        'stoop',
-  itemTypes:  ['post'],
+  itemTypes:  ['post', 'contact'],
   operations: [
     {
       id:    'listFeed', verb: 'list', params: [],
@@ -325,8 +325,72 @@ export const mockStoopManifest = {
         chat:  { reply: 'record', hint: 'show current holiday-mode state' },
       },
     },
+    /**
+     * #186 (A4, 2026-05-23) — ContactBook surface.  Stoop's contact
+     * graph (apps/stoop/src/lib/ContactBook.js + skills 2701-2783) had
+     * zero chat-shell affordance before today.  Wired:
+     *   /contacts [--min-trust=bekend|vertrouwd] [--tag=X]  → list
+     *   /add-contact <webid> [--name=X]                    → add
+     *   /remove-contact <webid>                            → remove
+     *   /contact-trust <webid> <bekend|vertrouwd|none>     → set trust
+     * Trust levels are Dutch terms (bekend = "known", vertrouwd =
+     * "trusted") preserved from the design.  In-chat row buttons
+     * planned for the contacts list (R→B replacements for /mute,
+     * /unmute, /reveal per existing-slash-surface-audit) once the
+     * contact-card panel lands.
+     */
+    {
+      id:    'listContacts', verb: 'list',
+      appliesTo: { type: 'contact' },
+      params: [
+        { name: 'min-trust', kind: 'enum', of: ['bekend', 'vertrouwd'], required: false },
+        { name: 'tag',       kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/contacts', body: 'flags' },
+        chat:  { reply: 'list', hint: 'list your contacts' },
+      },
+    },
+    {
+      id:    'addContact', verb: 'add',
+      params: [
+        { name: 'webid', kind: 'webid',  required: true },
+        { name: 'name',  kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/add-contact', body: 'flags' },
+        chat:  { reply: 'text', hint: 'add a 1:1 contact' },
+      },
+    },
+    {
+      id:    'removeContact', verb: 'remove',
+      appliesTo: { type: 'contact' },
+      params: [
+        { name: 'webid', kind: 'webid', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/remove-contact' },
+        chat:  { reply: 'text', hint: 'remove a contact' },
+        ui:    { control: 'button', label: 'Remove' },
+      },
+    },
+    {
+      id:    'setContactTrust', verb: 'submit',
+      appliesTo: { type: 'contact' },
+      params: [
+        { name: 'webid', kind: 'webid', required: true },
+        { name: 'level', kind: 'enum', of: ['bekend', 'vertrouwd', 'none'], required: true },
+      ],
+      surfaces: {
+        slash: { command: '/contact-trust', body: 'flags' },
+        chat:  { reply: 'text', hint: 'set a contact\'s trust level' },
+      },
+    },
   ],
-  views: [{ id: 'feed', title: 'Feed', type: 'post' }],
+  views: [
+    { id: 'feed',     title: 'Feed',     type: 'post' },
+    { id: 'contacts', title: 'Contacts', type: 'contact' },
+  ],
 };
 
 /**
