@@ -74,6 +74,9 @@ export function createLocalBuiltins({
     'test-peer':        async (args) => testPeer(args, { agent, t }),
     'rotate-identity':  async (args) => rotateIdentity(args, { agent, t }),
     'security-status':  async (args) => securityStatus(args, { agent, t }),
+    'set-relay':        async (args) => setRelay(args, { agent, t }),
+    'transport-mode':   async (args) => transportMode(args, { agent, t }),
+    'transports':       async ()     => transportsStatus({ agent, t }),
     'lookup-peer':      async (args) => lookupPeer(args, { lookupPeerNknByWebid, t }),
     'publish-nkn':      async (args) => publishNkn(args, { publishNknAddrToPod, t }),
     'send-file':        async (args) => sendFile(args, {
@@ -1256,4 +1259,82 @@ function formatHelp(catalog, t) {
     }
   }
   return { message: lines.join('\n') };
+}
+
+/* ─── A1 (2026-05-23) — relay-server slash handlers ─────────── */
+
+const RELAY_VAULT_KEY    = 'cc-relay-url';
+const TRANSPORT_VAULT_KEY = 'cc-transport-mode';
+
+/**
+ * `/set-relay <ws://...>` — persist + connect to a canopy relay.
+ * `/set-relay --clear`    — disconnect + clear the persisted URL.
+ *
+ * The agent's secure-agent has sa.relay.connect({relayUrl}) /
+ * sa.relay.disconnect() exposed.  The slash both APPLIES the change
+ * live AND persists to the vault so the next boot re-applies it.
+ */
+async function setRelay(args, { agent, t }) {
+  if (!agent?.relay || !agent?.vault?.set) {
+    return { ok: false, error: t('relay.no_substrate') };
+  }
+  if (args?.clear) {
+    try { await agent.relay.disconnect(); } catch { /* swallow */ }
+    try { await agent.vault.delete?.(RELAY_VAULT_KEY); }
+    catch { await agent.vault.set(RELAY_VAULT_KEY, ''); }
+    return { ok: true, message: t('relay.cleared') };
+  }
+  const url = String(args?.url ?? '').trim();
+  if (!url) return { ok: false, error: t('relay.url_required') };
+  if (!/^wss?:\/\//.test(url)) return { ok: false, error: t('relay.bad_url') };
+  try {
+    await agent.vault.set(RELAY_VAULT_KEY, url);
+    if (agent.relay.status === 'connected') {
+      try { await agent.relay.disconnect(); } catch { /* swallow */ }
+    }
+    await agent.relay.connect({ relayUrl: url });
+    return {
+      ok: true,
+      message: t('relay.connected', { url, address: agent.relay.address }),
+    };
+  } catch (err) {
+    return { ok: false, error: t('relay.connect_failed', { reason: err.message ?? String(err) }) };
+  }
+}
+
+/**
+ * `/transport-mode <nkn|relay|both>` — pick which transport handles
+ * outbound peer sends.  Persists to vault; takes effect immediately.
+ */
+async function transportMode(args, { agent, t }) {
+  if (typeof agent?.setTransportMode !== 'function' || !agent?.vault?.set) {
+    return { ok: false, error: t('transport.no_substrate') };
+  }
+  const mode = String(args?.mode ?? '').trim();
+  if (!['nkn', 'relay', 'both'].includes(mode)) {
+    return { ok: false, error: t('transport.bad_mode', { mode }) };
+  }
+  try {
+    agent.setTransportMode(mode);
+    await agent.vault.set(TRANSPORT_VAULT_KEY, mode);
+    return { ok: true, message: t('transport.mode_set', { mode }) };
+  } catch (err) {
+    return { ok: false, error: err.message ?? String(err) };
+  }
+}
+
+/**
+ * `/transports` — record reply with NKN + relay status side-by-side.
+ */
+async function transportsStatus({ agent, t }) {
+  if (!agent) return { ok: false, error: t('transport.no_substrate') };
+  return {
+    title:       t('transport.status_title'),
+    mode:        agent.transportMode ?? 'nkn',
+    nknStatus:   agent.peer?.status  ?? 'idle',
+    nknAddress:  agent.peer?.address ?? '(none)',
+    relayStatus: agent.relay?.status ?? 'idle',
+    relayUrl:    agent.relay?.url    ?? '(none)',
+    relayError:  agent.relay?.error  ?? null,
+  };
 }

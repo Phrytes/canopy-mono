@@ -808,6 +808,32 @@ if (typeof window !== 'undefined' && window.nkn) {
     });
 }
 
+// A1 (2026-05-23) — auto-restore relay configuration from vault.
+// /set-relay persists the URL under cc-relay-url; /transport-mode
+// persists the choice under cc-transport-mode.  On boot we re-apply
+// both so the user doesn't have to retype the URL every session.
+(async function restoreRelayConfig() {
+  if (!agent?.vault?.get) return;
+  try {
+    const savedMode = await agent.vault.get('cc-transport-mode');
+    if (savedMode && typeof agent.setTransportMode === 'function') {
+      agent.setTransportMode(savedMode);
+      console.info('[relay] restored transport mode:', savedMode);
+    }
+    const savedUrl = await agent.vault.get('cc-relay-url');
+    if (savedUrl && agent.relay?.connect) {
+      await agent.relay.connect({ relayUrl: savedUrl });
+      console.info('[relay] reconnected:', savedUrl, '→', agent.relay.address);
+      publishEventRef({
+        app: 'canopy-chat', type: 'notification',
+        payload: { message: `🔗 Relay connected: ${savedUrl}` },
+      });
+    }
+  } catch (err) {
+    console.warn('[relay] restore failed:', err.message ?? err);
+  }
+})();
+
 // callSkill is declared further down; createLocalBuiltins needs it
 // for the /embed factory.  Forward-declared variable + helper.
 let callSkillRef;
