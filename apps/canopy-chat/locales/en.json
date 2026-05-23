@@ -217,5 +217,12 @@
                              "doc": "New-thread form: allowCommands checkbox label." },
     "form_create": { "text": "Create",      "doc": "New-thread form: submit button." },
     "form_cancel": { "text": "Cancel",      "doc": "New-thread form: cancel button." }
+  },
+  "contacts": {
+    "trust": {
+      "known":   { "text": "known",   "doc": "Trust level for an acknowledged contact. Stoop persists this as Dutch 'bekend'; chat-shell translates EN at the boundary." },
+      "trusted": { "text": "trusted", "doc": "Trust level for a fully-trusted contact. Stoop persists this as Dutch 'vertrouwd'; chat-shell translates EN at the boundary." },
+      "none":    { "text": "none",    "doc": "No trust set (cleared)." }
+    }
   }
 }

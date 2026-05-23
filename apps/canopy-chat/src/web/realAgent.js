@@ -795,19 +795,33 @@ export async function createRealHouseholdAgent(opts = {}) {
           realArgs = { ...realArgs, on: realArgs.on.toLowerCase() === 'on' };
         }
       }
+      // Chat-shell trust enums use English ('known' / 'trusted');
+      // stoop's underlying skill persists Dutch ('bekend' / 'vertrouwd').
+      // Translate at the boundary so the chat surface stays EN-first.
+      const TRUST_EN_TO_NL = { known: 'bekend', trusted: 'vertrouwd' };
       if (realOpId === 'listContacts') {
         // Chat-shell flag `min-trust` → real arg `minTrust`.
         if (realArgs['min-trust'] && !realArgs.minTrust) {
-          realArgs = { ...realArgs, minTrust: realArgs['min-trust'] };
+          realArgs = {
+            ...realArgs,
+            minTrust: TRUST_EN_TO_NL[realArgs['min-trust']] ?? realArgs['min-trust'],
+          };
         }
       }
-      if (realOpId === 'setContactTrust' && realArgs.level === 'none') {
-        // Chat-shell uses 'none' to clear; real skill takes null.
-        realArgs = { ...realArgs, level: null };
+      if (realOpId === 'setContactTrust') {
+        if (realArgs.level === 'none') {
+          // Chat-shell uses 'none' to clear; real skill takes null.
+          realArgs = { ...realArgs, level: null };
+        } else if (TRUST_EN_TO_NL[realArgs.level]) {
+          realArgs = { ...realArgs, level: TRUST_EN_TO_NL[realArgs.level] };
+        }
       }
       if (realOpId === 'getContactShareQr' && realArgs.trust) {
-        // Chat-shell flag `trust` → real arg `trustOffer`.
-        realArgs = { ...realArgs, trustOffer: realArgs.trust };
+        // Chat-shell flag `trust` → real arg `trustOffer` + EN→NL.
+        realArgs = {
+          ...realArgs,
+          trustOffer: TRUST_EN_TO_NL[realArgs.trust] ?? realArgs.trust,
+        };
       }
       const parts = [DataPart(realArgs)];
       const result = await chatAgent.invoke(stoopAgent.address, realOpId, parts);
@@ -1044,7 +1058,10 @@ export async function createRealHouseholdAgent(opts = {}) {
     }
     // listContacts: real returns {contacts: [...]} → chat-shell {items: [...]}.
     // Each contact carries {webid, displayName?, handle?, trustLevel?, tags?, ...};
-    // surface displayName || handle || webid as the label.
+    // surface displayName || handle || webid as the label.  Stoop
+    // persists trustLevel in Dutch ('bekend'/'vertrouwd'); we translate
+    // to EN for the chat surface.
+    const TRUST_NL_TO_EN = { bekend: 'known', vertrouwd: 'trusted' };
     if (opId === 'listContacts' && Array.isArray(data.contacts)) {
       return {
         items: data.contacts.map((c) => ({
@@ -1053,7 +1070,7 @@ export async function createRealHouseholdAgent(opts = {}) {
           webid:       c.webid,
           label:       c.displayName ?? c.handle ?? c.webid,
           handle:      c.handle ?? null,
-          trustLevel:  c.trustLevel ?? null,
+          trustLevel:  c.trustLevel ? (TRUST_NL_TO_EN[c.trustLevel] ?? c.trustLevel) : null,
           tags:        c.tags ?? [],
         })),
         _sync: simulateSync(),
@@ -1065,13 +1082,15 @@ export async function createRealHouseholdAgent(opts = {}) {
         && data.contact) {
       const c = data.contact;
       const who = c.displayName ?? c.handle ?? c.webid;
+      const trustEn = c.trustLevel
+        ? (TRUST_NL_TO_EN[c.trustLevel] ?? c.trustLevel) : null;
       const msg = opId === 'addContact'
         ? `✓ Added contact: ${who}`
         : opId === 'setContactTrust'
-          ? `✓ Trust level updated for ${who}: ${c.trustLevel ?? '(cleared)'}`
+          ? `✓ Trust level updated for ${who}: ${trustEn ?? '(cleared)'}`
           : `✓ Tags updated for ${who}: ${(c.tags ?? []).join(', ') || '(none)'}`;
       return {
-        ok: true, message: msg, contact: c, _sync: simulateSync(),
+        ok: true, message: msg, contact: { ...c, trustLevel: trustEn }, _sync: simulateSync(),
       };
     }
     // removeContact: real returns {ok: true} → friendly text.
