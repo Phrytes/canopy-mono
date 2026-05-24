@@ -700,7 +700,6 @@ export async function createSecureAgent(opts = {}) {
     if (!helloedPeers.has(addr)) {
       try {
         await tx.sendHello(addr, { pubKey: identity.pubKey });
-        helloedPeers.add(addr);
       } catch (err) {
         // Log + continue — sendOneWay may still succeed if the peer
         // already has our pubKey from a previous session.
@@ -722,12 +721,22 @@ export async function createSecureAgent(opts = {}) {
           await new Promise((r) => setTimeout(r, 100));
         }
         if (!agent.security.getPeerKey(addr)) {
+          // 2026-05-24 — DON'T add to helloedPeers when the poll
+          // times out.  Previously this happened right after
+          // tx.sendHello, so subsequent retries skipped the HI
+          // re-send entirely and threw "No pubKey registered"
+          // forever.  Leaving helloedPeers unset lets the next call
+          // retry the full handshake (which may succeed if the peer
+          // came online or the previous HI was lost in flight).
           throw new Error(
             `secure-agent: peer "${addr}" did not respond with HI within ${waitMs}ms; ` +
             `they may be offline.  Try again after they reconnect.`,
           );
         }
       }
+      // Only mark as helloed after the bidirectional handshake fully
+      // completed (or wasn't needed because we already had their key).
+      helloedPeers.add(addr);
     }
     // v0.7.cc — record outbound for /debug-dump diagnostic.
     recordTraffic({
