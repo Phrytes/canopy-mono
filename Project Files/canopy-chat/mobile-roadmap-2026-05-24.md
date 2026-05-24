@@ -441,6 +441,39 @@ apps/canopy-chat/
 
 **Blocks:** simplifies #222 substantially.
 
+## JM-* journey-test plan (2026-05-24)
+
+User principle 2026-05-24: every shipped slice ends with a JM-*
+verification pass. The journeys aren't just design artefacts —
+they're the checklist for "is this slice actually demoable?"
+
+**Three test layers, each at a different abstraction:**
+
+| Layer | Tool | Scope | Task |
+|-------|------|-------|------|
+| 1 — substrate skill-chain | vitest | JM-1..JM-10 substrate spine (skill composition; no UI, no transport) | **#229** |
+| 2 — Playwright cross-tab | Playwright on dev server | JM-1, JM-2, JM-7, JM-8, JM-9 (web↔web cross-device via NKN) | **#218 fixmes (re-tag)** |
+| 3 — Detox real-device | Detox on Android | JM-3, JM-4, JM-5, JM-6 (push, BLE, camera, audio — native-only) | **#224 Phase B** |
+
+**Verify-after-each-slice convention:** when a roadmap slice ships,
+mark in its commit message which JM-* journeys it advances or
+unblocks. Pick at least one JM-* and demonstrate it works (vitest
+test, manual smoke, or Playwright run — whichever layer fits the
+slice's scope). This converts the journey list from a planning
+artefact into a continuous acceptance signal.
+
+Mapping examples:
+
+- **#221 (renderMobile)** advances JM-1, JM-7, JM-8 (the
+  composition-shell journeys) at the substrate level. Verify via
+  #229 (Layer 1).
+- **#222 (canopy-chat-mobile skeleton)** advances JM-1, JM-2
+  end-to-end on RN. Verify via #224 Phase A (Layer 2).
+- **#223 (NKN-on-RN)** unblocks JM-2, JM-7, JM-8 mesh paths on RN.
+  Verify with two real Android devices (Layer 3, manual).
+- **#220.1 (editTask UI)** is a tasks-mobile fragment; doesn't
+  advance a full JM but is exercised inside JM-7.
+
 ## Session-specific lessons baked in (don't re-learn the hard way)
 
 - **HI race**: `secure-agent` now awaits `tx.sendHello()` before
