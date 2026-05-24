@@ -167,4 +167,34 @@ test.describe('Cross-tab mesh + DM end-to-end', () => {
     await input.press('Escape');
     await expect(list).toBeHidden();
   });
+
+  /**
+   * #219 (2026-05-24) regression — verify the new task-editing +
+   * sub-task slash commands made it into the manifest catalog
+   * (which the auto-suggest reads from).  If someone removes the
+   * manifest entries without thinking, this test catches it
+   * before the user does.
+   */
+  test('new /edit-task + sub-task commands appear in auto-suggest', async ({ page }) => {
+    await page.goto('/');
+    const input = page.locator('#chat-input');
+    const list  = page.locator('#cmd-suggest');
+
+    // /edit-task is the #219 slice-a entry-point.
+    await input.focus();
+    await input.pressSequentially('/edit-t');
+    await expect(list).toContainText(/edit-task/i, { timeout: 5_000 });
+    await input.press('Escape');
+
+    // Slice-b: /add-subtask + /propose-subtask.
+    await input.fill('');
+    await input.pressSequentially('/add-sub');
+    await expect(list).toContainText(/add-subtask/i, { timeout: 5_000 });
+    await input.press('Escape');
+
+    await input.fill('');
+    await input.pressSequentially('/propose-sub');
+    await expect(list).toContainText(/propose-subtask/i, { timeout: 5_000 });
+    await input.press('Escape');
+  });
 });

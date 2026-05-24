@@ -36,7 +36,7 @@
  */
 export const mockTasksManifest = {
   app:        'tasks-v0',
-  itemTypes:  ['task', 'crew', 'schedule-slot', 'member'],
+  itemTypes:  ['task', 'crew', 'schedule-slot', 'member', 'subtask-request', 'subtask-proposal'],
   operations: [
     {
       id:    'addTask', verb: 'add',
@@ -90,6 +90,35 @@ export const mockTasksManifest = {
         slash: { command: '/complete-task' },
         ui:    { control: 'button', label: 'Mark complete' },
         chat:  { hint: 'mark a claimed task complete' },
+      },
+    },
+    /**
+     * #219 (2026-05-24) — patch body fields on an existing task.
+     * Wraps the substrate editTask skill which delegates to
+     * itemStore.update with the forbidden-field gate
+     * (id/addedBy/completedAt/assignee/claimedAt/reviewLog/…).
+     * Row button shows on open OR claimed tasks (post-completion
+     * edits are out of scope — that would re-open).
+     */
+    {
+      id:    'editTask', verb: 'edit',
+      appliesTo: { type: 'task', state: ['open', 'claimed'] },
+      params: [
+        { name: 'id',               kind: 'string',  required: true,
+          pickerSource: { listOp: 'listMine' } },
+        { name: 'text',             kind: 'string',  required: false },
+        { name: 'notes',            kind: 'string',  required: false },
+        { name: 'dueAt',            kind: 'string',  required: false },
+        { name: 'requiredSkills',   kind: 'string',  required: false },
+        { name: 'scheduledAt',      kind: 'string',  required: false },
+        { name: 'estimateMinutes',  kind: 'number',  required: false },
+        { name: 'definitionOfDone', kind: 'string',  required: false },
+        { name: 'visibility',       kind: 'string',  required: false },
+      ],
+      surfaces: {
+        slash: { command: '/edit-task', body: 'flags' },
+        ui:    { control: 'button', label: 'Edit' },
+        chat:  { reply: 'text', hint: 'patch fields on an existing task' },
       },
     },
     {
@@ -366,6 +395,119 @@ export const mockTasksManifest = {
       surfaces: {
         slash: { command: '/redeem-invite', body: 'flags' },
         chat:  { reply: 'text', hint: 'join a crew using an invite token' },
+      },
+    },
+    /**
+     * #219 slice (b) (2026-05-24) — sub-task wiring.  All 7 substrate
+     * skills from apps/tasks-v0/src/skills/subtasks.js exposed:
+     *
+     *   - addSubtask         — direct spawn (allowed up to depth 3)
+     *   - approveSubtaskRequest / declineSubtaskRequest
+     *                       — admin path for depth > 3 spawns
+     *   - proposeSubtask     — post-submit, needs assignee consent
+     *   - approveSubtaskProposal / declineSubtaskProposal
+     *                       — assignee's accept/decline buttons
+     *   - forceSpawnSubtask  — admin override w/ mandatory reason
+     *
+     * The accept/decline pairs use `appliesTo` so they only render as
+     * row buttons on the right item type (subtask-request /
+     * subtask-proposal), keeping the [Approve][Decline] UX scoped.
+     */
+    {
+      id:    'addSubtask', verb: 'add',
+      appliesTo: { type: 'task', state: ['open', 'claimed'] },
+      params: [
+        { name: 'parentTaskId',     kind: 'string', required: true,
+          pickerSource: { listOp: 'listMine' } },
+        { name: 'text',             kind: 'string', required: true  },
+        { name: 'notes',            kind: 'string', required: false },
+        { name: 'dueAt',            kind: 'string', required: false },
+        { name: 'requiredSkills',   kind: 'string', required: false },
+        { name: 'definitionOfDone', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/add-subtask', body: 'flags' },
+        ui:    { control: 'button', label: 'Add sub-task' },
+        chat:  { reply: 'text', hint: 'spawn a child task under a parent' },
+      },
+    },
+    {
+      id:    'proposeSubtask', verb: 'add',
+      appliesTo: { type: 'task', state: ['submitted'] },
+      params: [
+        { name: 'parentTaskId',     kind: 'string', required: true },
+        { name: 'text',             kind: 'string', required: true  },
+        { name: 'notes',            kind: 'string', required: false },
+        { name: 'dueAt',            kind: 'string', required: false },
+        { name: 'requiredSkills',   kind: 'string', required: false },
+        { name: 'definitionOfDone', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/propose-subtask', body: 'flags' },
+        ui:    { control: 'button', label: 'Propose sub-task' },
+        chat:  { reply: 'text', hint: 'propose a sub-task on a submitted parent (needs assignee consent)' },
+      },
+    },
+    {
+      id:    'approveSubtaskRequest', verb: 'approve',
+      appliesTo: { type: 'subtask-request' },
+      params: [{ name: 'requestId', kind: 'string', required: true }],
+      surfaces: {
+        slash: { command: '/approve-subtask-request' },
+        ui:    { control: 'button', label: 'Approve' },
+        chat:  { reply: 'text', hint: 'admin/coord approves a depth-gated sub-task request' },
+      },
+    },
+    {
+      id:    'declineSubtaskRequest', verb: 'reject',
+      appliesTo: { type: 'subtask-request' },
+      params: [
+        { name: 'requestId', kind: 'string', required: true },
+        { name: 'note',      kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/decline-subtask-request', body: 'flags' },
+        ui:    { control: 'button', label: 'Decline' },
+        chat:  { reply: 'text', hint: 'admin/coord declines a depth-gated sub-task request' },
+      },
+    },
+    {
+      id:    'approveSubtaskProposal', verb: 'approve',
+      appliesTo: { type: 'subtask-proposal' },
+      params: [{ name: 'proposalId', kind: 'string', required: true }],
+      surfaces: {
+        slash: { command: '/approve-subtask-proposal' },
+        ui:    { control: 'button', label: 'Accept' },
+        chat:  { reply: 'text', hint: 'parent assignee accepts the sub-task scope change' },
+      },
+    },
+    {
+      id:    'declineSubtaskProposal', verb: 'reject',
+      appliesTo: { type: 'subtask-proposal' },
+      params: [
+        { name: 'proposalId', kind: 'string', required: true },
+        { name: 'note',       kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/decline-subtask-proposal', body: 'flags' },
+        ui:    { control: 'button', label: 'Decline' },
+        chat:  { reply: 'text', hint: 'parent assignee declines the sub-task scope change' },
+      },
+    },
+    {
+      id:    'forceSpawnSubtask', verb: 'add',
+      // Admin-only escape hatch — no row button (admins use the slash).
+      params: [
+        { name: 'parentTaskId',     kind: 'string', required: true },
+        { name: 'text',             kind: 'string', required: true  },
+        { name: 'reason',           kind: 'string', required: true  },
+        { name: 'notes',            kind: 'string', required: false },
+        { name: 'dueAt',            kind: 'string', required: false },
+        { name: 'requiredSkills',   kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/force-spawn-subtask', body: 'flags' },
+        chat:  { reply: 'text', hint: 'admin override: spawn sub-task bypassing depth + post-submit gates' },
       },
     },
   ],

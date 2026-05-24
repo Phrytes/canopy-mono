@@ -223,6 +223,70 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     }),
 
     /**
+     * editTask({id, text?, notes?, dueAt?, requiredSkills?,
+     *           dependencies?, scheduledAt?, estimateMinutes?,
+     *           definitionOfDone?, visibility?})
+     *   — 2026-05-24.  Patch body fields on an existing task.
+     *
+     *   Wraps itemStore.update which forbids editing attribution /
+     *   completion / assignment fields (those have dedicated
+     *   primitives — claim, submit, approve, …).  Caller can
+     *   change any combination of the allowed fields in one call.
+     *
+     *   Re-validates the DAG when dependencies change so an edit
+     *   can't introduce a cycle.  Blocked when the crew is paused
+     *   or archived (same gate as addTask).
+     */
+    defineSkill('editTask', async ({ parts, from, envelope, actorDisplayName }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew) return { error: 'crewId required' };
+      const lc = crew.liveCrew;
+      if (lc?.archived) return { error: 'crew-archived' };
+      if (lc?.paused)   return { error: 'crew-paused' };
+
+      const a = argsFromParts(parts);
+      if (typeof a.id !== 'string' || !a.id) return { error: 'id required' };
+
+      // Only forward fields the caller actually supplied — undefined
+      // would clobber existing values.
+      const patch = {};
+      for (const f of [
+        'text', 'notes', 'dueAt', 'requiredSkills', 'dependencies',
+        'scheduledAt', 'estimateMinutes', 'definitionOfDone', 'visibility',
+      ]) {
+        if (a[f] !== undefined) patch[f] = a[f];
+      }
+      if (Object.keys(patch).length === 0) return { error: 'no fields to update' };
+
+      // DAG cycle re-check when dependencies change.
+      if (Array.isArray(patch.dependencies) && patch.dependencies.length > 0) {
+        const all = await crew.itemStore.listOpen();
+        const cycle = detectCycle({ id: a.id, dependencies: patch.dependencies }, all);
+        if (cycle) {
+          throw Object.assign(
+            new Error(`editTask: dependency cycle would form: ${cycle.join(' → ')}`),
+            { code: 'DEPENDENCY_CYCLE', cycle },
+          );
+        }
+      }
+
+      try {
+        const updated = await crew.itemStore.update(a.id, patch, { actor: from, actorDisplayName });
+        // Re-publish through the substrate mirror so other crew
+        // members see the update (same fan-out as addTask).
+        crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+        return { task: updated };
+      } catch (err) {
+        if (err?.code === 'ITEM_NOT_FOUND') return { error: 'not-found' };
+        if (err?.code === 'PERMISSION_DENIED') return { error: 'permission-denied' };
+        throw err;
+      }
+    }, {
+      description: 'Patch body fields on an existing task (text, notes, dueAt, …); paused/archived crews blocked.',
+      visibility:  'authenticated',
+    }),
+
+    /**
      * completeTask({id})
      */
     defineSkill('completeTask', async ({ parts, from, envelope, actorDisplayName }) => {
