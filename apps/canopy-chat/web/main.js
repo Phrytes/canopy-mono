@@ -33,6 +33,7 @@ import { renderStream }              from '../src/web/domAdapter.js';
 import { renderForm }                from '../src/web/domForm.js';
 import { renderSidebar }             from '../src/web/threadSidebar.js';
 import { renderLogsPanel }           from '../src/web/logsPanel.js';
+import { openPagePanel }             from '../src/web/pagePanel.js';
 import { createRealHouseholdAgent }  from '../src/web/realAgent.js';
 import { mockTasksManifest,
          mockStoopManifest,
@@ -50,6 +51,7 @@ import {
 const sidebarEl  = document.getElementById('sidebar');
 const messagesEl = document.getElementById('messages');
 const logsPanelEl = document.getElementById('logs-panel');
+const pagePanelEl = document.getElementById('page-panel');
 const formEl     = document.getElementById('input-form');
 const inputEl    = document.getElementById('chat-input');
 const langEnBtn  = document.getElementById('lang-en');
@@ -762,6 +764,38 @@ function openLogsPanel() {
   });
 }
 
+// #180 (2026-05-24) — open the generic page panel for an op whose
+// manifest declares surfaces.page.  Caller: dispatchAndRender's
+// interception; the panel handles dispatch on form submit.
+function pageSurfaceOpen({ op, appOrigin, args }) {
+  openPagePanel({
+    container: pagePanelEl,
+    doc:       document,
+    op,
+    appOrigin,
+    args,
+    callSkill: callSkillRef,
+    t,
+    onClose:   () => {
+      // Already cleared the DOM in pagePanel; this hook is for
+      // any external bookkeeping (none today).
+    },
+    onDispatched: (reply) => {
+      // After a successful dispatch from inside the panel, also drop
+      // the reply into the active chat thread so the user has a trail.
+      const t0 = activeThread();
+      if (!t0) return;
+      const rendered = renderReply(reply, {
+        t,
+        appOrigin,
+        manifestsByOrigin,
+      });
+      t0.addShellMessage(rendered, { opId: op.id });
+      renderActiveStream();
+    },
+  });
+}
+
 // Re-render the logs panel when new events arrive (so the live
 // stream updates without needing to re-type /logs).
 let logsPanelDirty = null;
@@ -1445,6 +1479,30 @@ async function handleUserText(text, thread) {
 }
 
 async function dispatchAndRender(route, thread) {
+  // #180 — if the op declares surfaces.page, open it in the side-panel
+  // instead of running the normal dispatch + render path.  The panel
+  // handles dispatch on submit and closes itself on success.  Posts a
+  // one-line shellMessage acknowledging the open so the chat thread
+  // has a trail of what the user opened.
+  const opEntry = catalog.opsById.get(route.opId);
+  const pageSurface = opEntry?.op?.surfaces?.page;
+  if (pageSurface && pageSurfaceOpen) {
+    pageSurfaceOpen({
+      op:        opEntry.op,
+      appOrigin: route.appOrigin,
+      args:      route.args ?? {},
+    });
+    thread.addShellMessage({
+      kind:           'text',
+      messageId:      `page-open-${route.opId}-${Date.now()}`,
+      threadId:       thread.id,
+      lifecycleState: 'live',
+      text:           `📂 Opened "${pageSurface.title ?? route.opId}" in the side panel.`,
+    }, { opId: route.opId });
+    renderActiveStream();
+    return;
+  }
+
   // #176 — set the dispatching-thread context so any publishEvent
   // calls inside the skill handler exclude this thread from
   // notification routing (the reply is rendered as a shellMessage

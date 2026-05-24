@@ -49,6 +49,12 @@
            /logs opens it.  Closed via the [×] button.  Filter chips
            + per-event affordances live inside. -->
       <aside id="logs-panel" class="cc-logs-panel cc-logs-closed" aria-label="Network events log" hidden></aside>
+      <!-- #180 (2026-05-24) — generic side-panel for manifest ops
+           that declare `surfaces.page`.  Settings, multi-step wizards
+           (create-group, redeem-invite gate, restore-from-mnemonic,
+           ...), contact cards, calendar week-view all share this
+           surface.  Mobile maps the same kind to an RN nav screen. -->
+      <aside id="page-panel" class="cc-page-panel cc-page-closed" aria-label="Page panel" hidden></aside>
     </div>
     <script type="module" src="./main.js"></script>
   </body>

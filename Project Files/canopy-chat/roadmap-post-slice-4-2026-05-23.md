@@ -129,9 +129,13 @@ Order matches recommended attack order.
 
 **Total Cluster B: ~20 hours / two sessions.**
 
-#### Cluster C — needs #180 (surfaces.page) first
+#### Cluster C — wizards (#180 enabler shipped 2026-05-24)
 
-These all want a multi-step wizard — slash commands aren't enough.
+These want multi-step rich panels.  **#180 surfaces.page shipped at
+the start of this cluster (manifest schema + side-panel infra +
+`/settings` V0 consumer).**  Cluster C items now use the
+`customRenderer` hook on `openPagePanel` to draw their own wizard
+state machines.
 
 | Item | Source | Cost | Notes |
 |---|---|---|---|

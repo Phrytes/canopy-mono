@@ -77,6 +77,7 @@ export function createLocalBuiltins({
     'set-relay':        async (args) => setRelay(args, { agent, t }),
     'transport-mode':   async (args) => transportMode(args, { agent, t }),
     'transports':       async ()     => transportsStatus({ agent, t }),
+    'settings':         async (args) => settingsHandler(args, { t }),
     'lookup-peer':      async (args) => lookupPeer(args, { lookupPeerNknByWebid, t }),
     'publish-nkn':      async (args) => publishNkn(args, { publishNknAddrToPod, t }),
     'send-file':        async (args) => sendFile(args, {
@@ -1326,6 +1327,29 @@ async function transportMode(args, { agent, t }) {
 /**
  * `/transports` — record reply with NKN + relay status side-by-side.
  */
+/**
+ * #180 — settings page handler.  Invoked TWO ways:
+ *   1. Bare `/settings` opens the panel (dispatchAndRender intercepts
+ *      and never calls this handler — the panel handles its own
+ *      submit).
+ *   2. /settings --lang=nl  — the panel's submit OR a typed slash
+ *      with the lang flag triggers a real dispatch through this
+ *      handler.  Applies the locale change live.
+ */
+async function settingsHandler(args, { t }) {
+  const lang = String(args?.lang ?? '').trim();
+  if (lang && (lang === 'en' || lang === 'nl')) {
+    try {
+      const i18n = await import('i18next');
+      await i18n.default.changeLanguage(lang);
+      return { ok: true, message: t('settings.changed', { lang }) ?? `✓ Language: ${lang}` };
+    } catch (err) {
+      return { ok: false, error: err?.message ?? String(err) };
+    }
+  }
+  return { ok: true, message: t('settings.no_changes') ?? '(no changes)' };
+}
+
 async function transportsStatus({ agent, t }) {
   if (!agent) return { ok: false, error: t('transport.no_substrate') };
   return {

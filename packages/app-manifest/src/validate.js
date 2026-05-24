@@ -209,6 +209,52 @@ function validateOperation(op, path, manifest, errors, idSet) {
     }
   }
 
+  // #180 (canopy-chat, 2026-05-24) — optional `surfaces.page` slot
+  // for ops that open a persistent rich-UI surface instead of (or
+  // alongside) returning a chat reply.  Used by Cluster C wizards
+  // (create-group, redeem-invite gate, restore-from-mnemonic, conflict
+  // dispute, audience picker, encrypted backup) + future Settings /
+  // contact-card panels.
+  //
+  // Web chat-shell interprets `kind` as a side-panel / modal / new
+  // window respectively; mobile chat-shell maps the same declaration
+  // to an RN nav screen (via @canopy/chat-nav RN parallel #128).
+  //
+  //   kind: 'side-panel' | 'modal' | 'screen'  (required if surfaces.page exists)
+  //   title?: string                            (rendered in panel header)
+  //   route?: string                            (mobile nav route; web ignores)
+  const pageSurface = op?.surfaces?.page;
+  if (pageSurface !== undefined) {
+    if (!pageSurface || typeof pageSurface !== 'object' || Array.isArray(pageSurface)) {
+      errors.push({
+        path:    `${path}/surfaces/page`,
+        message: 'surfaces.page must be an object if present',
+      });
+    } else {
+      const PAGE_KINDS = ['side-panel', 'modal', 'screen'];
+      if (!PAGE_KINDS.includes(pageSurface.kind)) {
+        errors.push({
+          path:    `${path}/surfaces/page/kind`,
+          message: `surfaces.page.kind must be one of ${PAGE_KINDS.map((k) => `'${k}'`).join(' | ')}`,
+        });
+      }
+      if (pageSurface.title !== undefined
+          && (typeof pageSurface.title !== 'string' || pageSurface.title === '')) {
+        errors.push({
+          path:    `${path}/surfaces/page/title`,
+          message: 'surfaces.page.title must be a non-empty string if present',
+        });
+      }
+      if (pageSurface.route !== undefined
+          && (typeof pageSurface.route !== 'string' || pageSurface.route === '')) {
+        errors.push({
+          path:    `${path}/surfaces/page/route`,
+          message: 'surfaces.page.route must be a non-empty string if present',
+        });
+      }
+    }
+  }
+
   // Q22 (V0.6, 2026-05-20) — optional `surfaces.ui.labelKey` for localisation.
   // Validate shape only; the projector decides whether to surface it.
   const uiLabelKey = op?.surfaces?.ui?.labelKey;

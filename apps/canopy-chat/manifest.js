@@ -456,6 +456,31 @@ export const canopyChatManifest = {
     },
 
     /**
+     * #180 (2026-05-24) — first consumer of surfaces.page.  Opens a
+     * Settings side-panel where the user can change locale + a few
+     * other preferences without typing slashes.  V0 proves the panel
+     * infra works; future settings (transport-mode picker, mute
+     * audit, identity rotation date) layer in.
+     */
+    {
+      id:    'settings',
+      verb:  'list',
+      params: [
+        {
+          name: 'lang',
+          kind: 'enum',
+          of:   ['en', 'nl'],
+          required: false,
+        },
+      ],
+      surfaces: {
+        slash: { command: '/settings' },
+        chat:  { hint: 'open Settings in a side panel' },
+        page:  { kind: 'side-panel', title: 'Settings' },
+      },
+    },
+
+    /**
      * `/mute <peer>` — mute a peer.  Accepts NKN address, pubKey,
      * webid, or stableId — when identityResolver is wired, mute
      * fans out across all aliases (one webid blocks every device).
