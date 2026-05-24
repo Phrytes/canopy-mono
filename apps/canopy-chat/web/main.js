@@ -377,21 +377,28 @@ async function connectPeerImpl() {
         return;
       }
 
-      // Default: plain chat message → bubble in Main.
+      // Slice 6a (2026-05-24) — default chat-message → route into the
+      // DM thread paired with `from`.  Auto-spawn the DM thread on
+      // first contact so the message has somewhere to land.  Falls
+      // back to Main only when DM spawn fails for some reason.
       const body = (payload && typeof payload === 'object' && typeof payload.body === 'string')
         ? payload.body
         : JSON.stringify(payload);
-      const main = store.getThread('main') ?? store.getActiveThread();
-      if (main) {
+      const dm = ensureDmThread(from);
+      const target = dm ?? store.getThread('main') ?? store.getActiveThread();
+      if (target) {
         const rendered = renderReply({
-          payload: `📨 from ${from.slice(0, 16)}…: ${body}`,
+          payload: `📨 ${body}`,
           shape:   'text',
-          threadId: main.id,
+          threadId: target.id,
         }, { t });
-        main.addShellMessage(rendered);
-        if (store.getActiveThread()?.id === main.id) renderActiveStream();
+        target.addShellMessage(rendered);
+        if (store.getActiveThread()?.id === target.id) renderActiveStream();
+        // Even when the DM thread isn't active, refresh the sidebar so
+        // the new thread (or unread state once we have it) is visible.
+        renderSidebarHere();
       } else {
-        console.warn('[peer] no Main thread to deliver to — dropped:', body);
+        console.warn('[peer] no thread to deliver to — dropped:', body);
       }
       publishEventRef({
         app:     'canopy-chat',
@@ -966,6 +973,38 @@ const WIZARD_RENDERERS = {
   postAudienceWizard:         renderPostAudienceWizard,
   encryptedBackupWizard:      renderEncryptedBackupWizard,
 };
+
+/**
+ * Slice 6a (2026-05-24) — ensure a DM-scoped thread exists for the
+ * given peer (NKN address OR webid; we use whatever the caller
+ * passes).  Pairs the two parties via `filter.actors`.  The `dm:
+ * true` flag is informational (sidebar can style DMs distinctly).
+ *
+ * @param {string}   peerId            NKN address or webid of the other party
+ * @param {object}   [opts]
+ * @param {string}   [opts.label]      display name; defaults to a short hash
+ * @param {{threadId: string, label?: string}} [opts.origin]
+ *   When the DM was spawned from another thread (e.g. [Help with] on a
+ *   buurt post), record the originating thread so #181's "← back" link
+ *   shows up.
+ * @returns {import('../src/thread.js').Thread}
+ */
+function ensureDmThread(peerId, opts = {}) {
+  if (typeof peerId !== 'string' || peerId === '') return null;
+  const existing = [...store.listThreads()].find(t =>
+    t.filter?.dm === true
+      && Array.isArray(t.filter?.actors)
+      && t.filter.actors.includes(peerId),
+  );
+  if (existing) return existing;
+  const label = opts.label ?? `${peerId.slice(0, 16)}…`;
+  return store.createThread({
+    name:   `DM: ${label}`,
+    filter: { actors: [peerId], dm: true },
+    permissions: { allowCommands: true },
+    ...(opts.origin ? { origin: opts.origin } : {}),
+  });
+}
 
 /**
  * Slice 2 (2026-05-24) — ensure a buurt-scoped thread exists for the
