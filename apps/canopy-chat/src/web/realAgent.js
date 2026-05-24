@@ -662,6 +662,33 @@ export async function createRealHouseholdAgent(opts = {}) {
   };
 
   /**
+   * 2026-05-24 — retry wrapper for first-contact peer sends.  Same
+   * shape as main.js's sendPeerWithRetry, lives here because the
+   * stoop fan-out uses sa.peer.sendTo directly (rather than going
+   * through main.js's agent.sendPeerMessage wrapper).
+   */
+  async function _saSendWithRetry(sa, addr, payload, opts = {}) {
+    const delays = opts.delays ?? [3000, 5000];
+    let lastErr = null;
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      try {
+        return await sa.peer.sendTo(addr, payload);
+      } catch (err) {
+        lastErr = err;
+        const msg = String(err?.message ?? err);
+        const isHandshake = /No pubKey registered|send HI first|did not respond with HI/i.test(msg);
+        if (!isHandshake) throw err;
+        if (attempt === delays.length) break;
+        if (typeof console !== 'undefined') {
+          console.info(`[realAgent _saSendWithRetry] HI not ready for ${addr.slice(0, 16)}…, retrying in ${delays[attempt]}ms`);
+        }
+        await new Promise(r => setTimeout(r, delays[attempt]));
+      }
+    }
+    throw lastErr;
+  }
+
+  /**
    * 2026-05-24 — list the buurts this user has peer-confirmed
    * memberships in (their own `membership-redemption` items).
    * Used by the cross-instance /post fan-out to decide WHICH
@@ -1052,7 +1079,7 @@ export async function createRealHouseholdAgent(opts = {}) {
                 if (!m?.addr || sent.has(m.addr)) continue;
                 sent.add(m.addr);
                 try {
-                  await sa.peer.sendTo(m.addr, {
+                  await _saSendWithRetry(sa, m.addr, {
                     type:    'p2p-chat',
                     subtype: 'buurt-post',
                     groupId,
