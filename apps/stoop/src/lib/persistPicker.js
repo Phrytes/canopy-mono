@@ -3,9 +3,10 @@
  * runtime, so `Agent.js` doesn't hard-import the node-only
  * `FilePersist` (which breaks browser composition).
  *
- * Two adapters today, same interface:
- *   - `FilePersist`        Node:  `{path: '/data/stoop.json'}`
- *   - `IndexedDBPersist`   Browser: `{dbName: 'stoop-cache'}`
+ * Three adapters today, same interface:
+ *   - `FilePersist`           Node:    `{path: '/data/stoop.json'}`
+ *   - `IndexedDBPersist`      Browser: `{dbName: 'stoop-cache'}`
+ *   - `AsyncStoragePersist`   RN:      `{dbName, asyncStorage}`  (#222.6)
  *
  * Callers pass exactly ONE of these.  The picker validates +
  * dynamically imports the matching adapter so a browser bundle
@@ -23,20 +24,28 @@
 /**
  * @param {object}  args
  * @param {string}  [args.path]                  → FilePersist (Node)
- * @param {string}  [args.dbName]                → IndexedDBPersist (browser)
+ * @param {string}  [args.dbName]                → IndexedDBPersist (browser) OR AsyncStoragePersist (when args.asyncStorage also passed)
+ * @param {object}  [args.asyncStorage]          → triggers AsyncStoragePersist (RN; requires args.dbName)
  * @param {string}  [args.storeName]             IndexedDB-only
- * @param {number}  [args.saveDelayMs]           applies to both
- * @returns {Promise<{ persist: object, kind: 'file' | 'idb' } | null>}
- *   Returns null when neither is set (caller wanted in-memory only).
+ * @param {string}  [args.prefix]                AsyncStorage-only (key prefix; default 'stoop-cache:')
+ * @param {number}  [args.saveDelayMs]           applies to all three
+ * @returns {Promise<{ persist: object, kind: 'file' | 'idb' | 'async' } | null>}
+ *   Returns null when none is set (caller wanted in-memory only).
  */
 export async function pickPersist(args = {}) {
-  if (typeof args.path === 'string' && args.path) {
-    if (typeof args.dbName === 'string' && args.dbName) {
-      throw new TypeError(
-        'pickPersist: pass EITHER {path} (FilePersist) OR {dbName} ' +
-        '(IndexedDBPersist), not both.',
-      );
-    }
+  const hasFile  = typeof args.path === 'string' && args.path;
+  const hasDb    = typeof args.dbName === 'string' && args.dbName;
+  const hasAsync = !!args.asyncStorage;
+
+  // Mutually exclusive — bail loud rather than silently picking.
+  if (hasFile && (hasDb || hasAsync)) {
+    throw new TypeError(
+      'pickPersist: pass EITHER {path} (FilePersist) OR {dbName} ' +
+      '(IndexedDBPersist) OR {dbName, asyncStorage} (AsyncStoragePersist), not a combination.',
+    );
+  }
+
+  if (hasFile) {
     const { FilePersist } = await import('./FilePersist.js');
     return {
       kind:    'file',
@@ -46,7 +55,26 @@ export async function pickPersist(args = {}) {
       }),
     };
   }
-  if (typeof args.dbName === 'string' && args.dbName) {
+  if (hasAsync) {
+    // RN path: {asyncStorage, dbName} → AsyncStoragePersist.
+    // dbName is REQUIRED here (it becomes part of the AsyncStorage key).
+    if (!hasDb) {
+      throw new TypeError(
+        'pickPersist: {asyncStorage} requires {dbName} (used as the AsyncStorage key namespace).',
+      );
+    }
+    const { AsyncStoragePersist } = await import('./AsyncStoragePersist.js');
+    return {
+      kind:    'async',
+      persist: new AsyncStoragePersist({
+        dbName:       args.dbName,
+        prefix:       args.prefix,
+        saveDelayMs:  args.saveDelayMs,
+        asyncStorage: args.asyncStorage,
+      }),
+    };
+  }
+  if (hasDb) {
     const { IndexedDBPersist } = await import('./IndexedDBPersist.js');
     return {
       kind:    'idb',

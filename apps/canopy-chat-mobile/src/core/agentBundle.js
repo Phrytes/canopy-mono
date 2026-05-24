@@ -100,11 +100,22 @@ export async function bootAgentBundle(opts = {}) {
       ? new VaultAsyncStorage({ prefix: 'cc-host-id:', asyncStorage: opts.asyncStorage })
       : undefined);
 
+  // #222.6: when asyncStorage is provided, also seed the stoop
+  // per-agent cache adapter so stoop's web-style boot survives app
+  // reloads on Hermes.  createRealHouseholdAgent threads `opts.
+  // stoopPersistDb` into createBrowserStoopAgent (which delegates
+  // to apps/stoop/src/lib/persistPicker.js → AsyncStoragePersist).
+  const stoopPersistDb = opts.stoopPersistDb
+    ?? (opts.asyncStorage
+      ? { dbName: 'cc-stoop-cache', asyncStorage: opts.asyncStorage }
+      : undefined);
+
   let agent;
   try {
     agent = await createRealHouseholdAgent({
       chatVault,
       hostVault,
+      stoopPersistDb,
       secureAgentOpts:  opts.secureAgentOpts,
       publishEvent:     opts.publishEvent,
     });
