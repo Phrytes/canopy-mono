@@ -36,7 +36,7 @@
  */
 export const mockTasksManifest = {
   app:        'tasks-v0',
-  itemTypes:  ['task', 'crew', 'schedule-slot'],
+  itemTypes:  ['task', 'crew', 'schedule-slot', 'member'],
   operations: [
     {
       id:    'addTask', verb: 'add',
@@ -282,8 +282,24 @@ export const mockTasksManifest = {
       id:    'getCrewConfig', verb: 'list',
       params: [],
       surfaces: {
+        slash: { command: '/crew-info' },
+        chat:  { reply: 'record', hint: 'show crew config (kind, paused/archived, counts)' },
+      },
+    },
+    /**
+     * 2026-05-24 bug-fix split — /crew-members was reading the SAME
+     * getCrewConfig output as /crew-info, which JSON-stringified the
+     * members array as an unreadable field.  Real /crew-members =
+     * list reply with one clickable row per member.  Reads the
+     * roster from getCrewConfig + adapter unpacks it.
+     */
+    {
+      id:    'listCrewMembers', verb: 'list',
+      appliesTo: { type: 'member' },
+      params: [],
+      surfaces: {
         slash: { command: '/crew-members' },
-        chat:  { reply: 'record', hint: 'show your crew config + member roster' },
+        chat:  { reply: 'list', hint: 'list members of your crew (with role)' },
       },
     },
     {

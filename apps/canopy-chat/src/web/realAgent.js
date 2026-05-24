@@ -496,6 +496,15 @@ export async function createRealHouseholdAgent(opts = {}) {
     }
   }
 
+  // 2026-05-24 — track crews provisioned via /crew-new at runtime.
+  // The tasks-v0 agent runs in single-crew topology (one CrewState
+  // wired at boot); provisionMyCrew persists a config to the
+  // dataSource but doesn't instantiate a CrewState the dashboard
+  // can see.  Until multi-crew topology lands as a separate slice
+  // (#127-#131-ish), the /crews adapter appends these "pending"
+  // entries so the user gets visible feedback on /crew-new.
+  const provisionedCrews = new Map();   // crewId → {name, kind, provisionedAt}
+
   /* ─── stoop real agent (slice 2b — integration plan 2026-05-23) ──
    *
    * Replaces the previous mock-stoop handlers (~85 lines: listFeed,
@@ -727,8 +736,19 @@ export async function createRealHouseholdAgent(opts = {}) {
         'listAwaitingApproval', 'getMyCrews',
         'suggestSchedule', 'acceptSchedule',
         'getMyAvailability', 'setMyAvailability', 'setAvailabilityOptIn',
-        'getCrewAvailability',
+        'getCrewAvailability', 'listCrewMembers',
       ]);
+      // 2026-05-24 — listCrewMembers is a derived op (no real skill);
+      // dispatch to getCrewConfig + the adapter unpacks members[].
+      if (realOpId === 'listCrewMembers') {
+        realArgs = { ...realArgs, _derivedFromGetCrewConfig: true };
+        // Swap to the real skill name; adapter inspects opId (not
+        // realOpId) so it still hits the listCrewMembers branch.
+        const parts = [DataPart({ crewId: realArgs.crewId })];
+        const result = await chatAgent.invoke(tasksCrew.address, 'getCrewConfig', parts);
+        const first = Array.isArray(result) ? result[0] : null;
+        return adaptTasksReply('listCrewMembers', first?.data ?? null);
+      }
       if (CREW_AUTO_INJECT.has(realOpId) && !realArgs.crewId) {
         const crewId = opts.tasksCrewConfig?.crewId ?? 'cc-default';
         realArgs = { ...realArgs, crewId };
@@ -1084,18 +1104,29 @@ export async function createRealHouseholdAgent(opts = {}) {
         return {
           title:   'Availability',
           status:  'disabled-for-crew',
-          message: 'Availability hints aren\'t enabled for this crew yet.',
+          message: 'Availability hints aren\'t enabled for this crew yet. Ask an admin to enable them, then /availability-opt-in on to start setting your week.',
         };
       }
       const week = data.week ?? '(this week)';
+      // 2026-05-24 — pad with a default blank 7×2 grid so the renderer
+      // always has a structural grid to draw.  Real cells overlay
+      // 'unknown' defaults; empty `data.grid` no longer renders as
+      // the unreadable JSON `{}`.
+      const blankGrid = {};
+      for (let d = 0; d < 7; d++) {
+        blankGrid[d] = { AM: 'unknown', PM: 'unknown' };
+      }
+      const merged = { ...blankGrid };
+      for (const [day, halves] of Object.entries(data.grid ?? {})) {
+        merged[day] = { ...blankGrid[day], ...halves };
+      }
       return {
         title:   `Availability — ${week}`,
         optedIn: !!data.optedIn,
         week,
-        // Pass the raw grid through; classifyFieldKind detects the
-        // {0: {AM, PM}, ...} shape as kind:'grid' and the renderer
-        // dispatches to renderGridField for clickable cells.
-        grid:    data.grid ?? {},
+        // classifyFieldKind detects {0-6: {AM, PM}} shape as 'grid' →
+        // renderGridField in domAdapter draws clickable cells.
+        grid:    merged,
         message: data.optedIn
           ? 'Click a cell to cycle: unknown → open → tight → unavailable → unknown.'
           : 'You haven\'t opted in. /availability-opt-in on to start broadcasting.',
@@ -1179,7 +1210,25 @@ export async function createRealHouseholdAgent(opts = {}) {
     // surfaces counters inline so the user sees the dashboard at a
     // glance without expanding rows.
     if (opId === 'getMyCrews' && Array.isArray(data.crews)) {
-      if (data.crews.length === 0) {
+      // 2026-05-24 — fold in provisionedCrews (pending entries from
+      // /crew-new since boot) so the user sees feedback even though
+      // the dashboard's crewsProvider doesn't auto-pick them up.
+      const knownIds = new Set(data.crews.map((c) => c.crewId));
+      const pendingItems = [];
+      for (const [crewId, info] of provisionedCrews.entries()) {
+        if (knownIds.has(crewId)) continue;   // active now (after reload)
+        pendingItems.push({
+          id:    crewId,
+          type:  'crew',
+          label: `${info.name} (${info.kind}) — (pending — reload to activate)`,
+          crewId,
+          name:  info.name,
+          kind:  info.kind,
+          pending: true,
+          counts: { open: 0, overdue: 0, mine: 0, awaitingApproval: 0 },
+        });
+      }
+      if (data.crews.length === 0 && pendingItems.length === 0) {
         return {
           items:   [],
           message: 'You\'re not in any crews yet. Use /crew-new to create one.',
@@ -1208,9 +1257,12 @@ export async function createRealHouseholdAgent(opts = {}) {
           counts: cnt,
         };
       });
+      const allItems = [...items, ...pendingItems];
+      const pendingSuffix = pendingItems.length > 0
+        ? ` + ${pendingItems.length} pending (reload to activate)` : '';
       return {
-        items,
-        message: `Crews: ${data.crews.length} · Total: ${totalOpen} open, ${totalOverdue} overdue, ${totalMine} mine, ${totalApproval} awaiting approval`,
+        items: allItems,
+        message: `Crews: ${data.crews.length}${pendingSuffix} · Total: ${totalOpen} open, ${totalOverdue} overdue, ${totalMine} mine, ${totalApproval} awaiting approval`,
         _sync: simulateSync(),
       };
     }
@@ -1225,19 +1277,37 @@ export async function createRealHouseholdAgent(opts = {}) {
           message: 'No crew config found for this id.',
         };
       }
+      // 2026-05-24 — DON'T inline members[] here.  The record renderer
+      // JSON-stringifies arrays of objects (unreadable).  Use the
+      // separate /crew-members list reply (see listCrewMembers below).
       return {
         title:       'Crew config',
         crewId:      crew.crewId,
         name:        crew.name ?? crew.crewId,
         kind:        crew.kind ?? 'household',
         memberCount: Array.isArray(crew.members) ? crew.members.length : 0,
-        members:     (crew.members ?? []).map((m) => ({
-          webid:       m.webid,
-          displayName: m.displayName,
-          role:        m.role ?? 'member',
-        })),
         paused:      !!crew.paused,
         archived:    !!crew.archived,
+        hint:        'Use /crew-members for the member list.',
+      };
+    }
+    // 2026-05-24 — listCrewMembers (derived from getCrewConfig): list
+    // reply with one row per member, role surfaced inline.
+    if (opId === 'listCrewMembers') {
+      const crew = data?.crew;
+      if (!crew || !Array.isArray(crew.members)) {
+        return { items: [], message: 'No crew config — try /crew-info first.' };
+      }
+      return {
+        items: crew.members.map((m) => ({
+          id:    m.webid,
+          type:  'member',
+          webid: m.webid,
+          label: `${m.displayName ?? m.webid.slice(0, 12)} (${m.role ?? 'member'})`,
+          role:  m.role ?? 'member',
+        })),
+        message: `${crew.members.length} member${crew.members.length === 1 ? '' : 's'} in ${crew.name ?? crew.crewId}`,
+        _sync: simulateSync(),
       };
     }
     // #190 — pauseCrew / unpauseCrew / archiveCrew / unarchiveCrew:
@@ -1279,12 +1349,22 @@ export async function createRealHouseholdAgent(opts = {}) {
       };
     }
     // provisionMyCrew: real returns {crew: {...}} (or similar) →
-    // adapt to mock-era {ok, message, crewId}.
+    // adapt to mock-era {ok, message, crewId}.  2026-05-24: also
+    // track newly-provisioned crews in provisionedCrews so /crews
+    // shows them as pending entries (substrate doesn't auto-bind
+    // a CrewState; needs reload + multi-crew topology).
     if (opId === 'provisionMyCrew') {
       const crewId = data.crewId ?? data.crew?.crewId ?? data.id ?? null;
+      if (crewId && !provisionedCrews.has(crewId)) {
+        provisionedCrews.set(crewId, {
+          name: data.crew?.name ?? data.name ?? crewId,
+          kind: data.crew?.kind ?? data.kind ?? 'household',
+          provisionedAt: Date.now(),
+        });
+      }
       return {
         ok:      true,
-        message: `✓ Crew provisioned (id=${crewId ?? '?'})`,
+        message: `✓ Crew "${crewId ?? '?'}" provisioned. It shows in /crews as "(pending)" — full activation requires multi-crew topology (deferred slice).`,
         crewId,
         crew:    data.crew ?? data,
         _sync:   simulateSync(),
