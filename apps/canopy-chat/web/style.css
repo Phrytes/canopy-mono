@@ -433,24 +433,26 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
 .cc-embed-claim-btn:hover { background: var(--accent); color: var(--accent-fg); }
 .cc-embed-card.cc-disabled { opacity: 0.55; }
 
-/* v0.7 — brief aggregator */
+/* v0.7 — brief aggregator (#182 polish 2026-05-24) */
 .cc-brief {
   max-width: 85%;
   background: var(--shell-bg);
   border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
   border-radius: var(--radius);
   overflow: hidden;
   align-self: flex-start;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 .cc-brief-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0.7rem;
+  padding: 0.6rem 0.85rem;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
-.cc-brief-title { font-weight: 600; }
+.cc-brief-title { font-weight: 600; font-size: 0.95rem; }
 .cc-brief-actions { display: flex; gap: 0.4rem; }
 .cc-brief-refresh {
   background: transparent;
@@ -1052,14 +1054,16 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   font-style: italic;
 }
 
-/* ──── record / mini-page panels (v0.3.1) ─────────────── */
+/* ──── record / mini-page panels (v0.3.1; #182 polish 2026-05-24) ─ */
 .cc-record, .cc-mini-page {
   max-width: 80%;
   background: var(--shell-bg);
   border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
   border-radius: var(--radius);
   align-self: flex-start;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 .cc-mini-page { max-width: 92%; }  /* mini-page is wider than record */
 
@@ -1067,10 +1071,11 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.4rem 0.7rem;
+  padding: 0.5rem 0.8rem;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   font-weight: 600;
+  font-size: 0.95rem;
 }
 .cc-panel-close {
   background: transparent;
