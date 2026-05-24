@@ -1728,6 +1728,28 @@ async function handleUserText(text, thread) {
 }
 
 async function dispatchAndRender(route, thread) {
+  // Slice 3 (2026-05-24) — /post audience inheritance.  When the
+  // dispatching thread is buurt-scoped (filter.buurtId), inject the
+  // buurt target into postRequest args so /post inside the thread
+  // implicitly targets that buurt (skips the audience picker).
+  // postAudienceWizard (/post-audience) is the explicit path for
+  // posts that need finer-grained targeting.
+  if (route.opId === 'postRequest') {
+    const buurtIds = thread.filter?.buurtId;
+    if (Array.isArray(buurtIds) && buurtIds.length === 1) {
+      const args = route.args ?? {};
+      const existingTargets = Array.isArray(args.targets) ? args.targets : [];
+      if (!existingTargets.some(t => t?.kind === 'group')) {
+        route = {
+          ...route,
+          args: {
+            ...args,
+            targets: [...existingTargets, { kind: 'group', groupId: buurtIds[0] }],
+          },
+        };
+      }
+    }
+  }
   // #180 — if the op declares surfaces.page, open it in the side-panel
   // instead of running the normal dispatch + render path.  The panel
   // handles dispatch on submit and closes itself on success.  Posts a
