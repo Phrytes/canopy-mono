@@ -1152,6 +1152,9 @@ export async function createRealHouseholdAgent(opts = {}) {
       submitTask:  'Submitted',
       approveTask: 'Approved',
       rejectTask:  'Rejected',
+      // #219 (2026-05-24) — editTask returns {task}; chat-shell needs
+      // the ok/message envelope to render the confirmation bubble.
+      editTask:    'Edited',
     };
     if (verbMap[opId] && task) {
       const title = task.text ?? task.title ?? task.id;
