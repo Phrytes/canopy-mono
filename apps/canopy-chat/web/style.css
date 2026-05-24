@@ -764,6 +764,45 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   font-style: italic;
   color: var(--fg);
 }
+/* Slice 6c — responder card (Alice's view of Bob's offer of help). */
+.cc-responder-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.7rem;
+  background: var(--shell-bg);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  max-width: 92%;
+}
+.cc-responder-card-header {
+  font-weight: 600;
+  color: var(--fg);
+}
+.cc-responder-card-context {
+  font-size: 0.8rem;
+  color: var(--fg-mute);
+  padding: 0.3rem 0.5rem;
+  background: var(--bg);
+  border-radius: 4px;
+  font-style: italic;
+}
+.cc-responder-card-body {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+  font-size: 0.95rem;
+  color: var(--fg);
+}
+.cc-responder-card-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
 .cc-wizard-distance-grid {
   display: flex;
   flex-wrap: wrap;
