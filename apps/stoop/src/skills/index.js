@@ -1261,6 +1261,13 @@ export function buildSkills({
         ? 'peer-distributable' : 'admin-only';
       const rotationDays = (typeof a.rotationDays === 'number' && a.rotationDays >= 1 && a.rotationDays <= 365)
         ? a.rotationDays : 30;
+      // Admin-controlled membership-code lifetime (hours). Decoupled
+      // from key rotation since 2026-05-24 — short codes default to
+      // 1 h so ad-hoc WhatsApp/SMS shares don't leak a live join
+      // secret for weeks. Range 1-8760 (1h-1y).
+      const inviteExpiresInHours = (typeof a.inviteExpiresInHours === 'number'
+          && a.inviteExpiresInHours >= 1 && a.inviteExpiresInHours <= 8760)
+        ? a.inviteExpiresInHours : 1;
 
       // A3 (2026-05-14) — storage policy (§II.2 of the standardisation
       // plan). Default `'no-pod'` keeps V1 UX parity. Centralised /
@@ -1270,7 +1277,10 @@ export function buildSkills({
       if (storageErr) return { error: storageErr };
       const storage = _buildStoragePolicy(a.storagePolicy, a.groupPodUri);
 
-      const rulesWithRotation = { ...a.rules, keyRotationMode, rotationDays, storage, version: 1 };
+      const rulesWithRotation = {
+        ...a.rules, keyRotationMode, rotationDays, inviteExpiresInHours,
+        storage, version: 1,
+      };
 
       // Persist the group rules.
       const [rulesItem] = await store.addItems(
@@ -1286,14 +1296,14 @@ export function buildSkills({
       // Mint the initial membership code.
       const code      = _freshMembershipCode();
       const issuedAt  = Date.now();
-      const expiresAt = issuedAt + rotationDays * 24 * 60 * 60 * 1000;
+      const expiresAt = issuedAt + inviteExpiresInHours * 60 * 60 * 1000;
       const [codeItem] = await store.addItems(
         [{
           type:       'membership-code',
           text:       `Membership code for ${a.groupId}`,
           source:     {
             groupId: a.groupId, code, issuedAt, expiresAt,
-            issuedBy: from, rotationDays, keyRotationMode,
+            issuedBy: from, rotationDays, keyRotationMode, inviteExpiresInHours,
           },
           visibility: 'household',
         }],
@@ -1416,6 +1426,17 @@ export function buildSkills({
       const rules = rulesItem?.source?.rules ?? {};
       const keyRotationMode = rules.keyRotationMode ?? 'admin-only';
       const rotationDays    = rules.rotationDays    ?? 30;
+      // Per-call override > rules-stored admin pref > 1 h default.
+      // Pre-2026-05-24 groups have no inviteExpiresInHours in rules —
+      // they used to inherit rotationDays * 24, so honour that as the
+      // legacy fallback before clamping to the 1 h default.
+      const legacyHours = rotationDays * 24;
+      const inviteExpiresInHours = (typeof a.inviteExpiresInHours === 'number'
+          && a.inviteExpiresInHours >= 1 && a.inviteExpiresInHours <= 8760)
+        ? a.inviteExpiresInHours
+        : (typeof rules.inviteExpiresInHours === 'number'
+            ? rules.inviteExpiresInHours
+            : legacyHours);
 
       const code = _freshMembershipCode();
       // Guarantee the rotated code has a strictly later issuedAt than
@@ -1426,14 +1447,14 @@ export function buildSkills({
         .filter(i => i?.source?.groupId === a.groupId)
         .reduce((m, i) => Math.max(m, i.source?.issuedAt ?? 0), 0);
       const issuedAt  = Math.max(Date.now(), maxPrev + 1);
-      const expiresAt = issuedAt + rotationDays * 24 * 60 * 60 * 1000;
+      const expiresAt = issuedAt + inviteExpiresInHours * 60 * 60 * 1000;
       const [codeItem] = await store.addItems(
         [{
           type:       'membership-code',
           text:       `Membership code for ${a.groupId}`,
           source:     {
             groupId: a.groupId, code, issuedAt, expiresAt,
-            issuedBy: from, rotationDays, keyRotationMode,
+            issuedBy: from, rotationDays, keyRotationMode, inviteExpiresInHours,
           },
           visibility: 'household',
         }],
@@ -1526,6 +1547,117 @@ export function buildSkills({
       };
     }, {
       description: 'Present a membership code obtained out-of-band; records redemption.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * verifyMembershipCodeForPeer({groupId, code, requesterWebid})
+     *   — 2026-05-24 cross-instance redeem.
+     *
+     *   Called by the ADMIN's substrate after receiving a peer-redeem
+     *   request over NKN.  Validates the code in the admin's local
+     *   store + records a `membership-redemption` for the requester.
+     *   The peer-bridge layer reads this skill's reply and forwards
+     *   to the joiner so they can write their own audit record.
+     *
+     *   Differs from redeemMembershipCode only in that the `from`
+     *   actor is the admin (the substrate runner) but the recorded
+     *   redemption tracks `requesterWebid` (the joiner) so the
+     *   admin's roster sees the new member.
+     *
+     *   The reply intentionally includes the code's `codeId` so the
+     *   joiner can mirror a local redemption that references it.
+     */
+    defineSkill('verifyMembershipCodeForPeer', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      if (typeof a.groupId !== 'string' || !a.groupId)
+        return { error: 'groupId required' };
+      if (typeof a.code !== 'string' || !a.code)
+        return { error: 'code required' };
+      if (typeof a.requesterWebid !== 'string' || !a.requesterWebid)
+        return { error: 'requesterWebid required' };
+
+      const all = await store.listOpen({ type: 'membership-code' });
+      const forGroup = all.filter(i => i?.source?.groupId === a.groupId);
+      const now = Date.now();
+      const GRACE_MS = 24 * 60 * 60 * 1000;
+      const valid = forGroup.find(i =>
+        i.source.code === a.code &&
+        (now <= (i.source.expiresAt ?? 0) + GRACE_MS),
+      );
+      if (!valid) return { error: 'invalid-or-expired-code' };
+
+      const [item] = await store.addItems([{
+        type:       'membership-redemption',
+        text:       `${a.requesterWebid} redeemed (via peer) membership code for ${a.groupId}`,
+        source:     {
+          groupId:        a.groupId,
+          code:           a.code,
+          codeId:         valid.id,
+          redeemedBy:     a.requesterWebid,
+          redeemedAt:     now,
+          expiresAt:      valid.source.expiresAt,
+          confirmedBy:    from,
+          channel:        'peer',
+        },
+        visibility: 'household',
+      }], { actor: from });
+      metrics?.record?.('group-code-redeemed-peer');
+      return {
+        redemptionId: item.id,
+        codeId:       valid.id,
+        groupId:      a.groupId,
+        validUntil:   valid.source.expiresAt,
+      };
+    }, {
+      description: 'Admin-side peer validator: confirms a joiner-presented code + records redemption.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * recordRemoteRedemption({groupId, code, codeId, expiresAt, confirmedBy})
+     *   — 2026-05-24 cross-instance redeem (joiner-side mirror).
+     *
+     *   After the peer-bridge receives a successful
+     *   verifyMembershipCodeForPeer reply from the admin, the joiner
+     *   calls this skill locally to write its OWN
+     *   `membership-redemption` audit record.  Without this mirror,
+     *   `getMyMembershipStatus()` on the joiner side would return
+     *   `redeemed: false` since it reads local items.
+     *
+     *   `codeId` is the admin-side item-id (the joiner has no matching
+     *   `membership-code` item locally — that's the whole point of
+     *   the peer-bridge — so the codeId here is a foreign reference,
+     *   useful only as an audit pointer back to the admin's substrate).
+     */
+    defineSkill('recordRemoteRedemption', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      if (typeof a.groupId !== 'string' || !a.groupId)
+        return { error: 'groupId required' };
+      if (typeof a.code !== 'string' || !a.code)
+        return { error: 'code required' };
+      const [item] = await store.addItems([{
+        type:       'membership-redemption',
+        text:       `${from} (peer-confirmed) for ${a.groupId}`,
+        source:     {
+          groupId:     a.groupId,
+          code:        a.code,
+          codeId:      a.codeId ?? null,
+          redeemedBy:  from,
+          redeemedAt:  Date.now(),
+          expiresAt:   a.expiresAt ?? null,
+          confirmedBy: a.confirmedBy ?? null,
+          channel:     'peer',
+        },
+        visibility: 'household',
+      }], { actor: from });
+      return {
+        redemptionId: item.id,
+        groupId:      a.groupId,
+        validUntil:   a.expiresAt ?? null,
+      };
+    }, {
+      description: 'Joiner-side mirror: records a peer-confirmed redemption locally.',
       visibility:  'authenticated',
     }),
 
