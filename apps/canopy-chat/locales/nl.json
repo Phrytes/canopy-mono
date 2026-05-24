@@ -14,7 +14,15 @@
     "stale_list": {
       "text": "Deze lijst is verouderd. Voer het commando opnieuw uit om te verversen.",
       "doc": "Shown when the user taps a disabled action menu (per A2 hybrid lifecycle)."
-    }
+    },
+    "welcome":                    { "text": "Welkom bij canopy-chat (v0.2). Probeer /help. Maak meer threads via de zijbalk.", "doc": "First-boot greeting in the Main thread." },
+    "permission_no_commands":     { "text": "Deze thread accepteert geen commando's.", "doc": "Shown when allowCommands=false on the active thread." }
+  },
+  "dm": {
+    "no_peer":              { "text": "DM-thread heeft geen gekoppeld peer-adres.",                       "doc": "Shown when a DM-scoped thread is missing its actor address (config bug)." },
+    "peer_offline":         { "text": "Peer-transport niet verbonden. Probeer eerst /peer-connect.",      "doc": "Shown when the user sends in a DM but NKN isn't connected." },
+    "respond_neither_ok":   { "text": "Noch de lokale opslag noch de NKN-aflevering lukte.",              "doc": "[Help with] flow — both substrate and NKN paths failed." },
+    "counter_prompt":       { "text": "Typ je tegenvoorstel hieronder.",                                  "doc": "Hint after [Counter] click on a responder card." }
   },
   "help": {
     "heading": {
