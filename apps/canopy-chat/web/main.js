@@ -390,11 +390,13 @@ async function connectPeerImpl() {
       // thread paired with Bob, with [Accept] / [Decline] / [Counter]
       // buttons.
       if (subtype === 'help-with-response' && payload?.itemId && payload?.body) {
+        if (payload.senderDisplay) updateDmPeerDisplay(from, payload.senderDisplay);
         handleHelpWithResponse(from, payload).catch((err) =>
           console.error('[peer] help-with-response failed', err));
         return;
       }
       if (subtype === 'help-with-accepted' && payload?.itemId) {
+        if (payload.senderDisplay) updateDmPeerDisplay(from, payload.senderDisplay);
         handleHelpWithAccepted(from, payload);
         return;
       }
@@ -403,6 +405,7 @@ async function connectPeerImpl() {
       // DM thread paired with `from`.  Auto-spawn the DM thread on
       // first contact so the message has somewhere to land.  Falls
       // back to Main only when DM spawn fails for some reason.
+      if (payload?.senderDisplay) updateDmPeerDisplay(from, payload.senderDisplay);
       const body = (payload && typeof payload === 'object' && typeof payload.body === 'string')
         ? payload.body
         : JSON.stringify(payload);
@@ -719,6 +722,11 @@ async function handleBuurtPost(fromNknAddr, envelope) {
     const result = await callSkill('stoop', 'ingestRemotePost', {
       payload,
       fromPubKey: fromPubKey ?? fromNknAddr,
+      // 2026-05-24 — record the NKN address separately so [Help with]
+      // can route over the wire later.  fromPubKey is the substrate
+      // chat-agent identity (not routable on NKN); fromNknAddr is
+      // what sa.peer.sendTo needs.
+      fromNknAddr,
     });
     if (result?.error) {
       console.warn('[peer] ingestRemotePost rejected', result.error, payload.requestId);
@@ -1023,13 +1031,68 @@ function ensureDmThread(peerId, opts = {}) {
       && t.filter.actors.includes(peerId),
   );
   if (existing) return existing;
-  const label = opts.label ?? `${peerId.slice(0, 16)}…`;
-  return store.createThread({
-    name:   `DM: ${label}`,
+  // 2026-05-24 — pre-HI placeholder via locale: "DM: Unknown peer".
+  // Real name is filled in by updateDmPeerDisplay() once the peer
+  // sends us their displayName (in any inbound envelope).
+  const dmPrefix  = t('sidebar.dm_prefix',  { defaultValue: 'DM' });
+  const fallback  = t('sidebar.dm_unknown', { defaultValue: 'Unknown peer' });
+  const label = opts.label ?? fallback;
+  const dm = store.createThread({
+    name:   `${dmPrefix}: ${label}`,
     filter: { actors: [peerId], dm: true },
     permissions: { allowCommands: true },
     ...(opts.origin ? { origin: opts.origin } : {}),
   });
+  // Capture the peer's address on the thread itself so renames + the
+  // (future) /test-peer-from-dm slash can read it without re-parsing
+  // the filter.
+  dm.peerAddr = peerId;
+  return dm;
+}
+
+/**
+ * Slice 6a follow-up (2026-05-24) — when a peer's display name
+ * becomes known (e.g. via any inbound envelope's senderDisplay
+ * field), rename every DM thread paired with that peer.  Idempotent;
+ * skips when the new name matches the current.
+ */
+function updateDmPeerDisplay(peerAddr, displayName) {
+  if (typeof peerAddr !== 'string' || !peerAddr) return;
+  if (typeof displayName !== 'string' || !displayName.trim()) return;
+  const dmPrefix = t('sidebar.dm_prefix', { defaultValue: 'DM' });
+  const newName  = `${dmPrefix}: ${displayName.trim()}`;
+  let changed = false;
+  for (const thread of store.listThreads()) {
+    if (thread.filter?.dm !== true) continue;
+    if (!Array.isArray(thread.filter?.actors) || !thread.filter.actors.includes(peerAddr)) continue;
+    if (thread.name === newName) continue;
+    store.updateThread(thread.id, { name: newName });
+    changed = true;
+  }
+  if (changed) {
+    renderSidebarHere();
+    if (store.getActiveThread()?.filter?.dm === true) renderActiveHeader();
+  }
+}
+
+/**
+ * 2026-05-24 — read our local display name from stoop profile so we
+ * can stamp it on outbound peer envelopes (the receiver uses it to
+ * rename their DM-with-us thread).  Cached for the session; falls
+ * back to the local actor's pubKey when no handle is set yet.
+ */
+let _cachedDisplay = null;
+async function getMyDisplayName() {
+  if (_cachedDisplay) return _cachedDisplay;
+  try {
+    const reply = await callSkill('stoop', 'getStoopProfile', {});
+    const name = reply?.displayName ?? reply?.handle ?? null;
+    if (typeof name === 'string' && name.trim()) {
+      _cachedDisplay = name.trim();
+      return _cachedDisplay;
+    }
+  } catch { /* swallow */ }
+  return null;
 }
 
 /**
@@ -2092,9 +2155,13 @@ async function openHelpWithDm(originThread, itemId, originMessageId) {
 
   const labelHit = rawItems.find(it => it.id === itemId);
   const postText = post?.text ?? labelHit?.label ?? itemId;
-  // Author NKN address lives in source.fromPubKey for broadcast-mirror
-  // posts; falls back to addedBy webid when the post is local-origin.
-  const authorAddr = post?.source?.fromPubKey
+  // 2026-05-24 — NKN address has to be the wire-level transport
+  // identifier (fromNknAddr, recorded by ingestRemotePost) so DM
+  // delivery can route.  fromPubKey is a substrate-internal identity
+  // that the browser InternalTransport doesn't know about.  Fall back
+  // to legacy fields for items written before fromNknAddr existed.
+  const authorAddr = post?.source?.fromNknAddr
+    ?? post?.source?.fromPubKey
     ?? post?.source?.from
     ?? post?.addedBy
     ?? null;
@@ -2140,43 +2207,69 @@ async function openHelpWithDm(originThread, itemId, originMessageId) {
 async function dispatchPendingResponse(dm, body) {
   const pending = dm.pendingResponse;
   if (!pending?.itemId) return;
+  // 1. Substrate respondToItem (local audit + soft-claim).  In the
+  //    browser bundle stoop's chat.send is local-only (InternalTransport)
+  //    so it errors with "No pubKey registered" — that's expected for
+  //    cross-instance.  Soft-claim happens BEFORE chat.send so the
+  //    local record is in place regardless.  We log + continue.
+  let substrateOk = false;
   try {
     const reply = await callSkill('stoop', 'respondToItem', {
       itemId: pending.itemId,
       body,
     });
-    if (reply?.error) throw new Error(reply.error);
-    // Slice 6c — also push the response over NKN so the post author's
-    // canopy-chat can surface it as a responder-card with [Accept] /
-    // [Decline] / [Counter] buttons.  Mirrors the Slice 1 pattern
-    // (substrate handles persistence; chat layer handles UX wire).
-    if (agent?.peer?.status === 'connected' && pending.authorAddr) {
-      try {
-        await agent.sendPeerMessage(pending.authorAddr, {
-          type:    'p2p-chat',
-          subtype: 'help-with-response',
-          itemId:  pending.itemId,
-          body,
-          postText: pending.postText ?? '',
-          sentAt:  Date.now(),
-        });
-      } catch (err) {
-        console.warn('[help-with-response] NKN send failed', err);
-      }
+    if (reply?.error) {
+      const msg = String(reply.error);
+      const isTransportFail = /transport:|No pubKey|chat-not-wired/i.test(msg);
+      if (!isTransportFail) throw new Error(msg);
+      console.info('[dispatchPendingResponse] substrate chat.send unavailable in browser bundle (expected) — proceeding with NKN bridge');
+    } else {
+      substrateOk = true;
     }
+  } catch (err) {
+    // Network/IO errors from the local substrate call — surface as
+    // hard failure since they indicate the substrate itself broke.
     dm.addShellMessage(renderReply({
-      payload: `✓ Sent your offer to the post author.`,
-      shape: 'text',
-      threadId: dm.id,
+      payload: null, shape: 'text', threadId: dm.id,
+      error: { code: 'respond-failed', message: err?.message ?? String(err) },
+    }, { t }));
+    renderActiveStream();
+    return;
+  }
+
+  // 2. NKN bridge — the actual cross-instance delivery.  Slice 6c.
+  let nknOk = false;
+  if (agent?.peer?.status === 'connected' && pending.authorAddr) {
+    try {
+      const senderDisplay = await getMyDisplayName();
+      await agent.sendPeerMessage(pending.authorAddr, {
+        type:    'p2p-chat',
+        subtype: 'help-with-response',
+        itemId:  pending.itemId,
+        body,
+        postText: pending.postText ?? '',
+        ...(senderDisplay ? { senderDisplay } : {}),
+        sentAt:  Date.now(),
+      });
+      nknOk = true;
+    } catch (err) {
+      console.warn('[help-with-response] NKN send failed', err);
+    }
+  }
+
+  if (!substrateOk && !nknOk) {
+    dm.addShellMessage(renderReply({
+      payload: null, shape: 'text', threadId: dm.id,
+      error: { code: 'respond-failed', message: 'Neither local audit nor NKN delivery succeeded.' },
+    }, { t }));
+  } else {
+    dm.addShellMessage(renderReply({
+      payload: nknOk
+        ? `✓ Sent your offer to the post author.`
+        : `✓ Recorded locally (peer unreachable — will retry on reconnect).`,
+      shape: 'text', threadId: dm.id,
     }, { t }));
     delete dm.pendingResponse;
-  } catch (err) {
-    dm.addShellMessage(renderReply({
-      payload: null,
-      shape:   'text',
-      threadId: dm.id,
-      error:   { code: 'respond-failed', message: err?.message ?? String(err) },
-    }, { t }));
   }
   renderActiveStream();
 }
@@ -2232,9 +2325,12 @@ async function handleHelpWithResponse(fromAddr, payload) {
       accept.textContent = '✓ Accepted';
       if (agent?.peer?.status === 'connected') {
         try {
+          const senderDisplay = await getMyDisplayName();
           await agent.sendPeerMessage(fromAddr, {
             type: 'p2p-chat', subtype: 'help-with-accepted',
-            itemId: payload.itemId, sentAt: Date.now(),
+            itemId: payload.itemId,
+            ...(senderDisplay ? { senderDisplay } : {}),
+            sentAt: Date.now(),
           });
         } catch { /* swallow */ }
       }

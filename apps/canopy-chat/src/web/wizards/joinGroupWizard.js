@@ -356,12 +356,44 @@ function decodeInvite(invite, state) {
 }
 
 async function fetchGroupRules(state, callSkill) {
+  // 2026-05-24 — invite URL embeds the rules object (createGroupWizard
+  // result.rules), so we can show them WITHOUT querying the local
+  // substrate (which has no group-rules item until after join).
+  // Fall back to a substrate lookup when the invite has no rules
+  // payload (older invites, GroupManager-invite path).
+  const embedded = state.invite?.rules;
+  if (embedded && typeof embedded === 'object') {
+    state.rulesText = summariseEmbeddedRules(embedded);
+    return;
+  }
   try {
     const reply = await callSkill('stoop', 'getGroupRules', { groupId: state.invite.groupId });
     state.rulesText = reply?.rules ?? reply?.message ?? '(no rules set for this group)';
   } catch (err) {
     state.rulesError = err?.message ?? String(err);
   }
+}
+
+/**
+ * Format a rules object as readable text — same layout the
+ * getGroupRules adapter uses (purpose/access/leave/conflict/tags/
+ * admins/freeform).  Keeps the joiner's display consistent with
+ * what /group-rules shows post-join.
+ */
+function summariseEmbeddedRules(r) {
+  if (r.rulesText && r.rulesText.trim()) return r.rulesText;
+  const parts = [];
+  if (r.purpose)        parts.push(`Purpose: ${r.purpose}`);
+  if (r.accessPolicy)   parts.push(`Access: ${r.accessPolicy}`);
+  if (r.leavePolicy)    parts.push(`Leave: ${r.leavePolicy}`);
+  if (r.conflictPolicy) parts.push(`Conflict resolution: ${r.conflictPolicy}`);
+  if (Array.isArray(r.tags) && r.tags.length)
+    parts.push(`Tags: ${r.tags.join(', ')}`);
+  if (Array.isArray(r.additionalAdmins) && r.additionalAdmins.length)
+    parts.push(`Extra admins: ${r.additionalAdmins.join(', ')}`);
+  return parts.length > 0
+    ? parts.join('\n')
+    : '(no rules set; defaults apply)';
 }
 
 function isValidHandle(handle) {
@@ -413,12 +445,15 @@ async function finalSubmit(state, callSkill, sendPeerRedeem) {
           ?? 'Admin\'s substrate did not confirm the code. They may be offline — try again, or ask for a fresh code.');
       }
       // Mirror the confirmation locally so getMyMembershipStatus() works.
+      // 2026-05-24 — also persist the rules from the invite URL so
+      // /group-rules works on this side post-join.
       await callSkill('stoop', 'recordRemoteRedemption', {
         groupId:     inv.groupId,
         code:        inv.code,
         codeId:      peerReply.codeId ?? null,
         expiresAt:   peerReply.validUntil ?? null,
         confirmedBy: inv.adminNkn,
+        ...(inv.rules && typeof inv.rules === 'object' ? { rules: inv.rules } : {}),
       });
       return {
         ok:      true,

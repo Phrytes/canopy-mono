@@ -114,6 +114,10 @@ export function renderCreateGroupWizard(opts) {
         // null / unavailable transport just means joiners can't fall
         // back to the peer path (they still get local + pod paths).
         result.adminNkn = (typeof getMyNkn === 'function') ? (getMyNkn() ?? null) : null;
+        // 2026-05-24 — also embed the rules in the invite URL so the
+        // joiner's wizard step 1 can show them directly (their local
+        // substrate has no group-rules item until after they join).
+        result.rules = buildRulesObjectFromState(state);
         state.successResult = result;
         if (typeof onDispatched === 'function') {
           try { onDispatched({ ok: true, message: `✓ Buurt "${result.groupId}" created.`, ...result }); } catch { /* swallow */ }
@@ -457,6 +461,11 @@ function encodeMembershipCodeUrl(result) {
     // Optional: admin's NKN address for peer-redeem fallback when the
     // joiner has no local copy of the code (cross-browser/-device).
     ...(result.adminNkn ? { adminNkn: result.adminNkn } : {}),
+    // 2026-05-24 — embed the rules object so the joiner's wizard can
+    // show them without needing to fetch from the admin's substrate
+    // (joiner has no local group-rules item for groups they haven't
+    // joined yet).  Compact: only the fields with values.
+    ...(result.rules ? { rules: result.rules } : {}),
   };
   const json = JSON.stringify(payload);
   if (typeof globalThis.btoa !== 'function') return `stoop-invite://${json}`;
@@ -577,16 +586,14 @@ function labelOf(options, id) {
 }
 
 /**
- * Final submission: build the `rules` blob from collected fields +
- * call createGroupV2.  Returns the result so the success step can
- * show the one-time membership code.
+ * Build the rules object from wizard state.  Shared by finalSubmit
+ * (sent to substrate) and the invite-URL encoder (shipped to joiner).
  */
-async function finalSubmit(state, callSkill) {
+function buildRulesObjectFromState(state) {
   const additionalAdmins = state.additionalAdmins
     .split(',').map((s) => s.trim()).filter(Boolean);
   const tags = state.tags
     .split(',').map((s) => s.trim()).filter(Boolean);
-
   const rules = {
     purpose:           state.purpose || undefined,
     tags:              tags.length > 0 ? tags : undefined,
@@ -596,10 +603,19 @@ async function finalSubmit(state, callSkill) {
     rulesText:         state.rulesText || undefined,
     conflictPolicy:    state.conflictPolicy,
   };
-  // Strip undefined keys for a tighter persisted object.
   for (const k of Object.keys(rules)) {
     if (rules[k] === undefined) delete rules[k];
   }
+  return rules;
+}
+
+/**
+ * Final submission: build the `rules` blob from collected fields +
+ * call createGroupV2.  Returns the result so the success step can
+ * show the one-time membership code.
+ */
+async function finalSubmit(state, callSkill) {
+  const rules = buildRulesObjectFromState(state);
 
   const result = await callSkill('stoop', 'createGroupV2', {
     groupId:              state.groupId,
