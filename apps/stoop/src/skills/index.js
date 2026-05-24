@@ -1704,6 +1704,124 @@ export function buildSkills({
     }),
 
     /**
+     * listGroupRoster({groupId})
+     *   — 2026-05-24 cross-instance fan-out support.
+     *
+     *   Returns the addresses we know for the calling actor's buurt
+     *   peers, drawn from `membership-redemption` items.  The chat
+     *   layer uses this to fan out /post envelopes over NKN.
+     *
+     *   Two sources collapse into the same list:
+     *     - On the ADMIN side: rows we wrote via
+     *       `verifyMembershipCodeForPeer` carry `redeemedBy = joinerNkn`.
+     *     - On the JOINER side: rows we wrote via
+     *       `recordRemoteRedemption` carry `confirmedBy = adminNkn`.
+     *
+     *   We collect every non-self, non-empty `redeemedBy` + `confirmedBy`
+     *   for the group, dedupe, and return as a flat list.  Caller can
+     *   pass any of them to its transport layer for fan-out.
+     *
+     *   Returns: { members: [{addr, role: 'admin'|'member'}, ...] }
+     */
+    defineSkill('listGroupRoster', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      if (typeof a.groupId !== 'string' || !a.groupId) return { error: 'groupId required' };
+      const all = await store.listOpen({ type: 'membership-redemption' });
+      const forGroup = all.filter(i => i?.source?.groupId === a.groupId);
+      const seen = new Map();   // addr → role
+      for (const it of forGroup) {
+        const src = it.source ?? {};
+        // `redeemedBy` is a joiner (the actor who presented the code).
+        if (src.redeemedBy && src.redeemedBy !== from) {
+          if (!seen.has(src.redeemedBy)) seen.set(src.redeemedBy, 'member');
+        }
+        // `confirmedBy` is the admin's address as recorded on the
+        // joiner side (peer-bridge channel only).
+        if (src.confirmedBy && src.confirmedBy !== from && src.channel === 'peer') {
+          seen.set(src.confirmedBy, 'admin');
+        }
+      }
+      return {
+        groupId: a.groupId,
+        members: [...seen.entries()].map(([addr, role]) => ({ addr, role })),
+      };
+    }, {
+      description: 'List addresses for the calling actor\'s buurt peers (fan-out roster).',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * ingestRemotePost({payload, fromPubKey})
+     *   — 2026-05-24 cross-instance fan-out (chat-layer bridge).
+     *
+     *   Called by canopy-chat when an NKN envelope of `subtype:
+     *   'buurt-post'` arrives.  Mirrors substrateMirror.mirror()'s
+     *   logic — dedupe by `payload.requestId`, eviction-filter by
+     *   `payload.from`, draft + addItems with the same shape stoop's
+     *   substrate-mirror produces.  This way local UI surfaces the
+     *   remote post identically to a substrate-mirror-delivered post.
+     *
+     *   Reuses the existing broadcast payload shape (Phase 52.7.2 —
+     *   `{requestId, text, from, type, kind, ...}`) so a future
+     *   substrate-multi-transport slice can drop this bridge without
+     *   schema changes.
+     *
+     *   Returns: { ok: true, itemId } or { deduped: true } or { error }.
+     */
+    defineSkill('ingestRemotePost', async ({ parts }) => {
+      const a = dataArgs(parts);
+      const payload = a.payload;
+      const fromPubKey = typeof a.fromPubKey === 'string' ? a.fromPubKey : null;
+      if (!payload || typeof payload !== 'object') return { error: 'payload required' };
+      const requestId = payload.requestId;
+      if (typeof requestId !== 'string' || !requestId) return { error: 'payload.requestId required' };
+      // Eviction filter — drop posts from members who left/were evicted.
+      const evictionRoster = bundle?.evictionRoster ?? null;
+      if (evictionRoster) {
+        const fromWebid = payload.from ?? null;
+        if (fromWebid && evictionRoster.isEvicted(fromWebid)) return { evicted: true };
+      }
+      // Dedupe — same O(N) check as substrate-mirror.
+      const open = await store.listOpen();
+      if (open.some(i => i?.source?.requestId === requestId)) return { deduped: true };
+
+      const type = typeof payload.type === 'string' && payload.type
+        ? payload.type
+        : 'request';
+      const draft = {
+        type,
+        ...(typeof payload.kind === 'string' && payload.kind ? { kind: payload.kind } : {}),
+        text:           payload.text ?? '(broadcast)',
+        requiredSkills: payload.requiredSkills ?? [],
+        visibility:     'household',
+        source: {
+          requestId,
+          broadcast:    true,
+          from:         payload.from ?? null,
+          fromPubKey,
+          claimsTopic:  payload.claimsTopic ?? null,
+          categoryId:   payload.categoryId ?? null,
+          skillTags:    Array.isArray(payload.skillTags) ? payload.skillTags : [],
+          attachments:  Array.isArray(payload.attachments) ? payload.attachments : [],
+          ...(Array.isArray(payload.embeds) && payload.embeds.length > 0
+            ? { embeds: payload.embeds }
+            : {}),
+          ...(Array.isArray(payload.targets) && payload.targets.length > 0
+            ? { targets: payload.targets }
+            : {}),
+        },
+      };
+      if (typeof payload.dueAt === 'number') draft.dueAt = payload.dueAt;
+      const [item] = await store.addItems([draft], {
+        actor: payload.from ?? (fromPubKey ? `pubkey:${fromPubKey.slice(0, 12)}` : 'broadcast'),
+      });
+      return { ok: true, itemId: item.id };
+    }, {
+      description: 'Ingest a remote post envelope into the local feed (mirrors substrate-mirror logic).',
+      visibility:  'authenticated',
+    }),
+
+    /**
      * getGroupRules({groupId})
      *   — return the latest `group-rules` item for `groupId` (or null).
      */

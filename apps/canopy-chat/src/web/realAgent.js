@@ -944,7 +944,75 @@ export async function createRealHouseholdAgent(opts = {}) {
       const parts = [DataPart(realArgs)];
       const result = await chatAgent.invoke(stoopAgent.address, realOpId, parts);
       const first  = Array.isArray(result) ? result[0] : null;
-      return adaptStoopReply(opId, first?.data ?? null, realArgs);
+      const reply  = first?.data ?? null;
+
+      // 2026-05-24 — Slice 1 cross-instance fan-out (chat-layer bridge).
+      // After a local postRequest succeeds, look up the buurt roster
+      // (peers we know via membership-redemption items) + fan out a
+      // 'buurt-post' envelope over NKN.  Each recipient's onPeerMessage
+      // handler in main.js calls stoop.ingestRemotePost to write the
+      // payload into THEIR feed.  Reuses the existing broadcast payload
+      // shape (Phase 52.7.2) so a future substrate-multi-transport
+      // slice can drop this bridge without protocol changes.
+      if (realOpId === 'postRequest' && reply?.requestId && sa?.peer?.status === 'connected') {
+        const groupId = realArgs.groupId
+          ?? (Array.isArray(realArgs.targets)
+              ? realArgs.targets.find(t => t?.kind === 'group')?.groupId
+              : null)
+          ?? opts.stoopGroup ?? 'cc-default-buurt';
+        // Fire-and-forget: don't block the user on remote delivery.
+        (async () => {
+          try {
+            const rosterReply = await chatAgent.invoke(
+              stoopAgent.address, 'listGroupRoster',
+              [DataPart({ groupId })],
+            );
+            const roster = rosterReply?.[0]?.data?.members ?? [];
+            if (roster.length === 0) return;
+            const payload = {
+              requestId:      reply.requestId,
+              text:           realArgs.text ?? '',
+              from:           chatId.pubKey,
+              type:           realArgs.type ?? 'request',
+              kind:           realArgs.kind ?? null,
+              dueAt:          typeof realArgs.dueAt === 'number' ? realArgs.dueAt : null,
+              categoryId:     realArgs.categoryId ?? null,
+              skillTags:      Array.isArray(realArgs.skillTags) ? realArgs.skillTags : [],
+              requiredSkills: realArgs.requiredSkills ?? [],
+              targets:        Array.isArray(realArgs.targets) ? realArgs.targets : [{ kind: 'group', groupId }],
+              attachments:    Array.isArray(realArgs.attachments) ? realArgs.attachments : [],
+              ...(Array.isArray(realArgs.embeds) && realArgs.embeds.length > 0
+                ? { embeds: realArgs.embeds } : {}),
+            };
+            for (const m of roster) {
+              if (!m?.addr) continue;
+              try {
+                await sa.peer.sendTo(m.addr, {
+                  type:    'p2p-chat',
+                  subtype: 'buurt-post',
+                  groupId,
+                  fromPubKey: chatId.pubKey,
+                  payload,
+                  sentAt: Date.now(),
+                });
+              } catch (err) {
+                if (typeof console !== 'undefined') {
+                  console.warn('[realAgent] buurt-post fan-out failed for', m.addr, err);
+                }
+              }
+            }
+            if (typeof console !== 'undefined') {
+              console.info(`[realAgent] buurt-post fanned out to ${roster.length} peer(s)`);
+            }
+          } catch (err) {
+            if (typeof console !== 'undefined') {
+              console.warn('[realAgent] postRequest fan-out failed', err);
+            }
+          }
+        })();
+      }
+
+      return adaptStoopReply(opId, reply, realArgs);
     }
     if (appOrigin === 'folio') {
       // Folio's web-only skills already return chat-shell-shaped

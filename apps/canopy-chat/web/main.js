@@ -367,6 +367,15 @@ async function connectPeerImpl() {
         handleGroupRedeemResponse(from, payload);
         return;
       }
+      // Slice 1 (2026-05-24) — cross-instance fan-out for buurt posts.
+      // Sender's realAgent fans out NKN envelopes after a local
+      // postRequest; we ingest into local stoop substrate via the
+      // ingestRemotePost skill (mirrors substrateMirror.mirror's logic).
+      if (subtype === 'buurt-post' && payload?.payload?.requestId) {
+        handleBuurtPost(from, payload).catch((err) =>
+          console.error('[peer] buurt-post failed', err));
+        return;
+      }
 
       // Default: plain chat message → bubble in Main.
       const body = (payload && typeof payload === 'object' && typeof payload.body === 'string')
@@ -660,6 +669,51 @@ function handleGroupRedeemResponse(fromNknAddr, payload) {
   clearTimeout(entry.timer);
   pendingPeerRedeems.delete(payload.requestId);
   entry.resolve(payload);
+}
+
+/**
+ * Slice 1 (2026-05-24) — incoming buurt-post envelope from a peer.
+ * Hands the broadcast payload to stoop.ingestRemotePost which mirrors
+ * the substrate-mirror's write logic (dedup, eviction-filter, item
+ * draft).  After ingest, publish a notification so the matching
+ * thread + /logs see the inbound post.
+ */
+async function handleBuurtPost(fromNknAddr, envelope) {
+  const { groupId, fromPubKey, payload } = envelope ?? {};
+  if (!payload?.requestId) {
+    console.warn('[peer] buurt-post missing payload.requestId', envelope);
+    return;
+  }
+  try {
+    const result = await callSkill('stoop', 'ingestRemotePost', {
+      payload,
+      fromPubKey: fromPubKey ?? fromNknAddr,
+    });
+    if (result?.error) {
+      console.warn('[peer] ingestRemotePost rejected', result.error, payload.requestId);
+      return;
+    }
+    if (result?.deduped) {
+      // Idempotent — duplicate envelope or echo of own post.
+      return;
+    }
+    if (result?.evicted) {
+      console.info('[peer] buurt-post from evicted member dropped', payload.from);
+      return;
+    }
+    publishEventRef({
+      app:   'stoop',
+      type:  'notification',
+      actor: payload.from ?? fromNknAddr,
+      payload: {
+        message: `📥 ${payload.kind ?? payload.type ?? 'post'} in ${groupId ?? 'buurt'}: ${payload.text ?? '(no text)'}`,
+        ...(payload.requestId ? { postId: payload.requestId } : {}),
+        ...(groupId ? { groupId } : {}),
+      },
+    });
+  } catch (err) {
+    console.error('[peer] handleBuurtPost failed', err);
+  }
 }
 
 /**
