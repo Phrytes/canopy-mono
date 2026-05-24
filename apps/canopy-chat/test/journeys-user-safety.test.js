@@ -45,7 +45,7 @@ import {
 } from '../src/index.js';
 import { canopyChatManifest }   from '../manifest.js';
 import { mergeManifests }       from '../src/manifestMerge.js';
-import { createLocalBuiltins }  from '../src/web/localBuiltins.js';
+import { createLocalBuiltins }  from '../src/core/localBuiltins.js';
 
 /* ─── helpers ────────────────────────────────────────── */
 

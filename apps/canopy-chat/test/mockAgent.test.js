@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   createMockHouseholdAgent, mockHouseholdManifest,
-} from '../src/web/mockAgent.js';
+} from '../src/core/agent/mockAgent.js';
 
 describe('mockHouseholdManifest', () => {
   it('declares listOpen + markComplete with right surfaces', () => {

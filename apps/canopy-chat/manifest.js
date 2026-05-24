@@ -18,7 +18,7 @@ export const canopyChatManifest = {
      *
      * Chat-shell built-in (handled locally by the web entry; not
      * routed to any app agent).  The handler lives in
-     * `src/web/localBuiltins.js` and introspects the merged catalog
+     * `src/core/localBuiltins.js` and introspects the merged catalog
      * to produce its reply, so it picks up new apps automatically.
      */
     {

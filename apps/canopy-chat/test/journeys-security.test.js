@@ -31,7 +31,7 @@ import {
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 import { canopyChatManifest }         from '../manifest.js';
 import { mergeManifests }              from '../src/manifestMerge.js';
-import { createLocalBuiltins }         from '../src/web/localBuiltins.js';
+import { createLocalBuiltins }         from '../src/core/localBuiltins.js';
 import { VaultMemory }                 from '@canopy/vault';
 import { createSecureAgent }           from '@canopy/secure-agent';
 
