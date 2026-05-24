@@ -793,38 +793,11 @@ async function propagateMeshIntros({ groupId, newPeerAddr, newPeerDisplay, newPe
     + (newPeerShared ? ' (incl. broadcast of new joiner)' : ' (new joiner opted out)'));
 }
 
-/**
- * 2026-05-24 — retry wrapper for first-contact sends.  Secure-agent's
- * HI (Hello-Initiation) handshake is asynchronous; the very first
- * sendPeerMessage to an unknown peer can race the handshake and
- * throw "No pubKey registered for recipient … — send HI first" OR
- * "did not respond with HI within 5000ms".  The send itself does
- * trigger HI as a side effect, so a short wait + retry usually
- * succeeds.  Caller flows that target a freshly-discovered peer
- * should use this instead of bare agent.sendPeerMessage.
- *
- * Defaults: 2 retries with 3s + 5s backoff (so ~8s total before
- * giving up).  Throws the last error on persistent failure.
- */
-async function sendPeerWithRetry(addr, payload, opts = {}) {
-  if (!agent?.sendPeerMessage) throw new Error('sendPeerMessage unavailable');
-  const delays = opts.delays ?? [3000, 5000];
-  let lastErr = null;
-  for (let attempt = 0; attempt <= delays.length; attempt++) {
-    try {
-      return await agent.sendPeerMessage(addr, payload);
-    } catch (err) {
-      lastErr = err;
-      const msg = String(err?.message ?? err);
-      const isHandshake = /No pubKey registered|send HI first|did not respond with HI/i.test(msg);
-      if (!isHandshake) throw err;
-      if (attempt === delays.length) break;
-      console.info(`[sendPeerWithRetry] HI not ready for ${addr.slice(0, 16)}…, retrying in ${delays[attempt]}ms (attempt ${attempt + 1}/${delays.length})`);
-      await new Promise(r => setTimeout(r, delays[attempt]));
-    }
-  }
-  throw lastErr;
-}
+// 2026-05-24 — retry-on-HI-race now lives in secure-agent's
+// sendToPeer (task #215). agent.sendPeerMessage handles it
+// transparently.  sendPeerWithRetry kept as a thin alias for
+// existing callsites; new callers should just use agent.sendPeerMessage.
+const sendPeerWithRetry = (addr, payload) => agent.sendPeerMessage(addr, payload);
 
 /**
  * Slice 5 (2026-05-24) — when our NKN transport connects (or

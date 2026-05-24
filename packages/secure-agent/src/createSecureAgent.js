@@ -683,7 +683,44 @@ export async function createSecureAgent(opts = {}) {
     return peerTransport ?? relayTransport ?? null;
   }
 
-  async function sendToPeer(addr, payload) {
+  /**
+   * Public sendToPeer wraps the inner _sendToPeerOnce with retry-on-
+   * handshake-error so first-contact sends survive races between
+   * sendHello + the peer's reciprocal HI.  Callers no longer need
+   * application-layer retry wrappers.
+   *
+   * Default policy: 2 retries with 3s + 5s backoff (~8s total).
+   * Override via `opts.retryDelays: number[]` per-call (e.g. `[]`
+   * to disable retry).  Non-handshake errors throw immediately.
+   *
+   * Triggered by 2026-05-24 canopy-chat user reports of:
+   *   - "No pubKey registered for recipient … — send HI first"
+   *   - "did not respond with HI within 5000ms"
+   * Both surface because HI is asynchronous + the very first send
+   * to a fresh peer races the handshake.
+   */
+  async function sendToPeer(addr, payload, opts = {}) {
+    const delays = Array.isArray(opts.retryDelays) ? opts.retryDelays : [3000, 5000];
+    let lastErr = null;
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      try {
+        return await _sendToPeerOnce(addr, payload);
+      } catch (err) {
+        lastErr = err;
+        const msg = String(err?.message ?? err);
+        const isHandshake = /No pubKey registered|send HI first|did not respond with HI/i.test(msg);
+        if (!isHandshake) throw err;
+        if (attempt === delays.length) break;
+        if (typeof console !== 'undefined') {
+          console.info(`[secure-agent] HI race for ${String(addr).slice(0, 16)}…, retrying in ${delays[attempt]}ms (${attempt + 1}/${delays.length})`);
+        }
+        await new Promise((r) => setTimeout(r, delays[attempt]));
+      }
+    }
+    throw lastErr;
+  }
+
+  async function _sendToPeerOnce(addr, payload) {
     const tx = pickTransport();
     if (!tx) {
       throw new Error(
