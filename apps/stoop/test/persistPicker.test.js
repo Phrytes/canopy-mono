@@ -57,4 +57,38 @@ describe('persistPicker', () => {
     });
     expect(picked.persist).toBeTruthy();
   });
+
+  // ── #222.6 — AsyncStoragePersist branch ───────────────────────────
+
+  function makeMockAsyncStorage() {
+    const store = new Map();
+    return {
+      _store: store,
+      async getItem(k)    { return store.has(k) ? store.get(k) : null; },
+      async setItem(k, v) { store.set(k, String(v)); },
+      async removeItem(k) { store.delete(k); },
+    };
+  }
+
+  it('{asyncStorage, dbName} picks AsyncStoragePersist (RN)', async () => {
+    const picked = await pickPersist({
+      asyncStorage: makeMockAsyncStorage(),
+      dbName:       'cc-stoop-cache',
+    });
+    expect(picked.kind).toBe('async');
+    expect(picked.persist.constructor.name).toBe('AsyncStoragePersist');
+  });
+
+  it('rejects {asyncStorage} without dbName (dbName is the key namespace)', async () => {
+    await expect(pickPersist({ asyncStorage: makeMockAsyncStorage() }))
+      .rejects.toThrow(/dbName/);
+  });
+
+  it('rejects path + asyncStorage combo', async () => {
+    await expect(pickPersist({
+      path:         '/tmp/x.json',
+      asyncStorage: makeMockAsyncStorage(),
+      dbName:       'x',
+    })).rejects.toThrow(/not a combination/);
+  });
 });
