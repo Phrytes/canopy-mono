@@ -260,6 +260,19 @@ body {
   font-size: 0.75rem;
   color: var(--fg-mute);
 }
+.cc-back-to-origin {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--fg-mute);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+}
+.cc-back-to-origin:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
 
 header {
   background: var(--bg-soft);

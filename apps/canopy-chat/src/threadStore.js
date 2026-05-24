@@ -76,6 +76,7 @@ export class ThreadStore {
       createdAt:   this.#now(),
       filter:      normaliseFilter(opts.filter),
       permissions: opts.permissions,
+      origin:      opts.origin,    // #181 — back-to-origin metadata
       now:         this.#now,
       // v0.7.P1 bug-fix — wire the thread's onChange callback so
       // every message append (add{User,Shell}Message) bubbles up

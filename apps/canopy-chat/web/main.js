@@ -982,10 +982,18 @@ function ensureBuurtThread(buurtId, hint) {
   const name = hint?.handle
     ? `Buurt: ${buurtId} (${hint.handle})`
     : `Buurt: ${buurtId}`;
+  // #181 — record the originating thread so the new buurt thread
+  // can offer a "← Back to <origin>" affordance.  When called from
+  // pageSurfaceOpen's onDispatched the active thread IS the origin.
+  const originThread = activeThread();
+  const origin = originThread && originThread.id !== name
+    ? { threadId: originThread.id, label: originThread.name }
+    : undefined;
   return store.createThread({
     name,
     filter: { apps: ['stoop'], buurtId: [buurtId] },
     permissions: { allowCommands: true },
+    ...(origin ? { origin } : {}),
   });
 }
 
@@ -1421,11 +1429,49 @@ function renderActiveHeader() {
   if (!t0) {
     headerNameEl.textContent = '';
     headerFilterEl.textContent = '';
+    renderBackToOriginLink(null);
     return;
   }
   headerNameEl.textContent = t0.name;
   const filterText = describeFilter(t0.filter);
   headerFilterEl.textContent = filterText === '*' ? '' : `(${filterText})`;
+  // #181 — surface a "← Back to <origin>" affordance when the active
+  // thread was spawned from another thread (buurt threads from
+  // /create-group or /join-group; future: DM threads from [Help
+  // with]).  Returns to the origin without removing the spawned
+  // thread (user can come back via sidebar).
+  renderBackToOriginLink(t0);
+}
+
+/**
+ * #181 — render or clear the "← Back to <origin>" link next to the
+ * active thread header.  Idempotent — call on every active-thread
+ * change.
+ */
+function renderBackToOriginLink(thread) {
+  let el = document.getElementById('active-thread-back');
+  if (!thread?.origin?.threadId || !store.getThread(thread.origin.threadId)) {
+    if (el) el.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement('button');
+    el.id = 'active-thread-back';
+    el.type = 'button';
+    el.className = 'cc-back-to-origin';
+    // Place it right before the thread name in the header.
+    headerNameEl.parentNode?.insertBefore(el, headerNameEl);
+  }
+  el.textContent = `← ${thread.origin.label ?? 'Back'}`;
+  el.title = `Back to ${thread.origin.label ?? thread.origin.threadId}`;
+  el.onclick = () => {
+    if (store.getThread(thread.origin.threadId)) {
+      store.setActiveThread(thread.origin.threadId);
+      renderSidebarHere();
+      renderActiveHeader();
+      renderActiveStream();
+    }
+  };
 }
 
 function renderActiveStream() {
