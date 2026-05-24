@@ -35,6 +35,10 @@ import { renderSidebar }             from '../src/web/threadSidebar.js';
 import { renderLogsPanel }           from '../src/web/logsPanel.js';
 import { openPagePanel }             from '../src/web/pagePanel.js';
 import { renderJoinGroupWizard }     from '../src/web/wizards/joinGroupWizard.js';
+import { makePropagateMeshIntros, makeHandleBuurtPeerIntro }
+                                     from '../src/web/handlers/meshIntros.js';
+import { makeRequestCatchUpFromKnownPeers, makeHandleCatchUpRequest }
+                                     from '../src/web/handlers/catchUp.js';
 import { renderSettingsWizard }      from '../src/web/wizards/settingsWizard.js';
 import { renderCreateGroupWizard }   from '../src/web/wizards/createGroupWizard.js';
 import { renderRestoreFromMnemonicWizard } from '../src/web/wizards/restoreFromMnemonicWizard.js';
@@ -733,65 +737,9 @@ async function handleGroupRedeemRequest(fromNknAddr, payload) {
   }
 }
 
-/**
- * Slice 4 (2026-05-24) — admin-side mesh-intro propagation.
- *
- *   - To NEW joiner: list of existing consenting members' addresses
- *     so they can DM directly.
- *   - To each existing consenting member: the new joiner's address
- *     (only if joiner gave shareCard).  Asymmetric: opt-outs stay
- *     star-routed via admin; opt-ins get full mesh.
- *
- * Uses the substrate's listConsentingPeers to get the address roster.
- * Each recipient writes the intro locally via recordPeerIntro so
- * their next /post fan-out reaches the new address.
- */
-async function propagateMeshIntros({ groupId, newPeerAddr, newPeerDisplay, newPeerShared }) {
-  if (!agent?.peer || agent.peer.status !== 'connected') return;
-  let consenting = [];
-  try {
-    const reply = await callSkill('stoop', 'listConsentingPeers', { groupId });
-    consenting = reply?.peers ?? [];
-  } catch { /* swallow */ }
-  // Strip the new joiner from "existing" (they were just added).
-  const existing = consenting.filter(p => p.addr !== newPeerAddr);
-
-  // 1. Send existing-peer intros TO new joiner.
-  for (const p of existing) {
-    try {
-      await sendPeerWithRetry(newPeerAddr, {
-        type:    'p2p-chat',
-        subtype: 'buurt-peer-intro',
-        groupId,
-        peerAddr:    p.addr,
-        peerDisplay: p.display ?? null,
-        sentAt:      Date.now(),
-      });
-    } catch (err) {
-      console.warn('[mesh-intro] new-joiner intro failed for', p.addr, err);
-    }
-  }
-
-  // 2. If new joiner consented, broadcast their address to existing.
-  if (newPeerShared) {
-    for (const p of existing) {
-      try {
-        await sendPeerWithRetry(p.addr, {
-          type:    'p2p-chat',
-          subtype: 'buurt-peer-intro',
-          groupId,
-          peerAddr:    newPeerAddr,
-          peerDisplay: newPeerDisplay ?? null,
-          sentAt:      Date.now(),
-        });
-      } catch (err) {
-        console.warn('[mesh-intro] existing-peer intro failed for', p.addr, err);
-      }
-    }
-  }
-  console.info(`[mesh-intro] propagated for ${groupId}: ${existing.length} existing peer(s)`
-    + (newPeerShared ? ' (incl. broadcast of new joiner)' : ' (new joiner opted out)'));
-}
+// #217 — Slice 4 + 5 handlers extracted to src/web/handlers/.  main.js
+// wires them with module-level deps (agent + callSkill).  See
+// test/handlers/*.test.js for fast unit coverage.
 
 // 2026-05-24 — retry-on-HI-race now lives in secure-agent's
 // sendToPeer (task #215). agent.sendPeerMessage handles it
@@ -799,117 +747,31 @@ async function propagateMeshIntros({ groupId, newPeerAddr, newPeerDisplay, newPe
 // existing callsites; new callers should just use agent.sendPeerMessage.
 const sendPeerWithRetry = (addr, payload) => agent.sendPeerMessage(addr, payload);
 
-/**
- * Slice 5 (2026-05-24) — when our NKN transport connects (or
- * reconnects), ask known peers in each buurt for posts we missed
- * while offline.  Single round-trip per peer per buurt; receiver
- * replies via the existing buurt-post envelope so the standard
- * ingest path handles dedup + render.
- *
- * Quiet on failure — peer might be offline too, or might just not
- * have anything new.
- */
+const _propagateMeshIntros = makePropagateMeshIntros({
+  callSkill,
+  sendPeer: sendPeerWithRetry,
+});
+async function propagateMeshIntros(args) {
+  if (!agent?.peer || agent.peer.status !== 'connected') return;
+  return _propagateMeshIntros(args);
+}
+
+const handleBuurtPeerIntro = makeHandleBuurtPeerIntro({ callSkill });
+
+const _requestCatchUpFromKnownPeers = makeRequestCatchUpFromKnownPeers({
+  callSkill,
+  sendPeer: sendPeerWithRetry,
+});
 async function requestCatchUpFromKnownPeers() {
   if (!agent?.peer || agent.peer.status !== 'connected') return;
-  let buurts = [];
-  try {
-    const r = await callSkill('stoop', 'listMyBuurts', {});
-    buurts = r?.buurts ?? [];
-  } catch { return; }
-  for (const groupId of buurts) {
-    let sinceMs = 0;
-    try {
-      const hi = await callSkill('stoop', 'getLatestPostAddedAt', { groupId });
-      sinceMs = hi?.latestAt ?? 0;
-    } catch { /* swallow */ }
-    let roster = [];
-    try {
-      const r = await callSkill('stoop', 'listGroupRoster', { groupId });
-      roster = r?.members ?? [];
-    } catch { /* swallow */ }
-    for (const m of roster) {
-      if (!m?.addr) continue;
-      try {
-        await sendPeerWithRetry(m.addr, {
-          type:    'p2p-chat',
-          subtype: 'catch-up-request',
-          groupId,
-          sinceMs,
-          sentAt:  Date.now(),
-        });
-      } catch (err) {
-        console.warn('[catch-up] send failed for', m.addr, err);
-      }
-    }
-    console.info(`[catch-up] requested posts since ${new Date(sinceMs).toISOString()}`
-      + ` for groupId=${groupId} from ${roster.length} peer(s)`);
-  }
+  return _requestCatchUpFromKnownPeers();
 }
 
-/**
- * Slice 5 — handler for incoming 'catch-up-request'.  Look up
- * posts in groupId added after payload.sinceMs + send each back
- * via the existing buurt-post envelope.  Receiver's ingestRemotePost
- * dedupes on requestId so overlap is safe.
- */
-async function handleCatchUpRequest(fromAddr, payload) {
-  const { groupId, sinceMs } = payload ?? {};
-  if (!groupId) return;
-  let posts = [];
-  try {
-    const r = await callSkill('stoop', 'listBuurtPostsSince', { groupId, sinceMs: sinceMs ?? 0 });
-    posts = r?.posts ?? [];
-  } catch (err) {
-    console.warn('[catch-up] listBuurtPostsSince failed', err);
-    return;
-  }
-  if (posts.length === 0) {
-    console.info(`[catch-up] no new posts to send to ${fromAddr.slice(0, 16)}…`);
-    return;
-  }
-  for (const post of posts) {
-    const { _addedAt, ...payloadCore } = post;
-    try {
-      await sendPeerWithRetry(fromAddr, {
-        type:       'p2p-chat',
-        subtype:    'buurt-post',
-        groupId,
-        fromPubKey: payloadCore.fromPubKey ?? agent?.identity?.chat?.pubKey ?? null,
-        payload:    payloadCore,
-        catchUp:    true,    // mark for diagnostics; receiver ignores
-        sentAt:     Date.now(),
-      });
-    } catch (err) {
-      console.warn('[catch-up] send post failed', err);
-    }
-  }
-  console.info(`[catch-up] sent ${posts.length} post(s) to ${fromAddr.slice(0, 16)}…`);
-}
-
-/**
- * Slice 4 — handler for incoming 'buurt-peer-intro' envelope.
- * Writes a local membership-redemption with channel='intro' so
- * listGroupRoster surfaces the introduced peer in fan-out.
- */
-async function handleBuurtPeerIntro(fromAddr, payload) {
-  const { groupId, peerAddr, peerDisplay } = payload ?? {};
-  if (!groupId || !peerAddr) {
-    console.warn('[peer] buurt-peer-intro missing fields', payload);
-    return;
-  }
-  try {
-    const result = await callSkill('stoop', 'recordPeerIntro', {
-      groupId, peerAddr, peerDisplay,
-    });
-    if (result?.error) {
-      console.warn('[peer] recordPeerIntro rejected', result.error);
-    } else {
-      console.info(`[peer] mesh-intro: ${peerAddr.slice(0, 16)}… added to ${groupId}`);
-    }
-  } catch (err) {
-    console.error('[peer] handleBuurtPeerIntro failed', err);
-  }
-}
+const handleCatchUpRequest = makeHandleCatchUpRequest({
+  callSkill,
+  sendPeer: sendPeerWithRetry,
+  getMyPubKey: () => agent?.identity?.chat?.pubKey ?? null,
+});
 
 /**
  * Joiner-side: incoming group-redeem-response from the admin.  Look
