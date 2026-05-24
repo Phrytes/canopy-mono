@@ -400,6 +400,14 @@ async function connectPeerImpl() {
         handleHelpWithAccepted(from, payload);
         return;
       }
+      // Slice 4 (2026-05-24) — mesh address-intro from admin.
+      // {groupId, peerAddr, peerDisplay} → write a local
+      // membership-redemption (channel='intro') via recordPeerIntro.
+      if (subtype === 'buurt-peer-intro' && payload?.peerAddr && payload?.groupId) {
+        handleBuurtPeerIntro(from, payload).catch((err) =>
+          console.error('[peer] buurt-peer-intro failed', err));
+        return;
+      }
 
       // Slice 6a (2026-05-24) — default chat-message → route into the
       // DM thread paired with `from`.  Auto-spawn the DM thread on
@@ -611,7 +619,7 @@ const pendingPeerRedeems = new Map();
  * invite carries an adminNkn.  Sends a peer-message to the admin's
  * NKN address + awaits the matching response with a 30s timeout.
  */
-async function sendGroupRedeemRequest({ adminNkn, groupId, code }) {
+async function sendGroupRedeemRequest({ adminNkn, groupId, code, shareCard, peerDisplay }) {
   if (!agent?.peer || agent.peer.status !== 'connected') {
     throw new Error('Peer transport not connected. Try /peer-connect first.');
   }
@@ -633,6 +641,11 @@ async function sendGroupRedeemRequest({ adminNkn, groupId, code }) {
       requestId,
       groupId,
       code,
+      // Slice 4 (2026-05-24) — mesh-consent token + display name
+      // travel with the redeem request so admin can store them in
+      // the membership-redemption + propagate.
+      ...(shareCard ? { shareCard: true } : {}),
+      ...(peerDisplay ? { peerDisplay } : {}),
       sentAt: Date.now(),
     });
   } catch (err) {
@@ -650,7 +663,7 @@ async function sendGroupRedeemRequest({ adminNkn, groupId, code }) {
  * error string.
  */
 async function handleGroupRedeemRequest(fromNknAddr, payload) {
-  const { requestId, groupId, code } = payload ?? {};
+  const { requestId, groupId, code, shareCard, peerDisplay } = payload ?? {};
   if (!requestId || !groupId || !code) {
     console.warn('[peer] group-redeem-request missing fields', payload);
     return;
@@ -663,6 +676,10 @@ async function handleGroupRedeemRequest(fromNknAddr, payload) {
       // the admin's roster sees who joined.  NKN address is our best
       // available joiner-identifier at this layer.
       requesterWebid: fromNknAddr,
+      // Slice 4 — store joiner's mesh-consent + display name on the
+      // redemption so propagation logic + listConsentingPeers can read.
+      ...(shareCard ? { shareCard: true } : {}),
+      ...(peerDisplay ? { peerDisplay } : {}),
     });
     if (result?.error) {
       reply = { error: result.error };
@@ -692,8 +709,102 @@ async function handleGroupRedeemRequest(fromNknAddr, payload) {
           : `⚠ rejected join attempt for ${groupId}: ${reply.error}`,
       },
     });
+    // Slice 4 — after a successful redeem, propagate addresses
+    // among consenting members.  Fire-and-forget; failures don't
+    // affect the redeem itself.
+    if (reply.ok) {
+      propagateMeshIntros({
+        groupId, newPeerAddr: fromNknAddr, newPeerDisplay: peerDisplay,
+        newPeerShared: !!shareCard,
+      }).catch((err) => console.warn('[mesh-intro] propagation failed', err));
+    }
   } catch (err) {
     console.error('[peer] group-redeem-response send failed', err);
+  }
+}
+
+/**
+ * Slice 4 (2026-05-24) — admin-side mesh-intro propagation.
+ *
+ *   - To NEW joiner: list of existing consenting members' addresses
+ *     so they can DM directly.
+ *   - To each existing consenting member: the new joiner's address
+ *     (only if joiner gave shareCard).  Asymmetric: opt-outs stay
+ *     star-routed via admin; opt-ins get full mesh.
+ *
+ * Uses the substrate's listConsentingPeers to get the address roster.
+ * Each recipient writes the intro locally via recordPeerIntro so
+ * their next /post fan-out reaches the new address.
+ */
+async function propagateMeshIntros({ groupId, newPeerAddr, newPeerDisplay, newPeerShared }) {
+  if (!agent?.peer || agent.peer.status !== 'connected') return;
+  let consenting = [];
+  try {
+    const reply = await callSkill('stoop', 'listConsentingPeers', { groupId });
+    consenting = reply?.peers ?? [];
+  } catch { /* swallow */ }
+  // Strip the new joiner from "existing" (they were just added).
+  const existing = consenting.filter(p => p.addr !== newPeerAddr);
+
+  // 1. Send existing-peer intros TO new joiner.
+  for (const p of existing) {
+    try {
+      await agent.sendPeerMessage(newPeerAddr, {
+        type:    'p2p-chat',
+        subtype: 'buurt-peer-intro',
+        groupId,
+        peerAddr:    p.addr,
+        peerDisplay: p.display ?? null,
+        sentAt:      Date.now(),
+      });
+    } catch (err) {
+      console.warn('[mesh-intro] new-joiner intro failed for', p.addr, err);
+    }
+  }
+
+  // 2. If new joiner consented, broadcast their address to existing.
+  if (newPeerShared) {
+    for (const p of existing) {
+      try {
+        await agent.sendPeerMessage(p.addr, {
+          type:    'p2p-chat',
+          subtype: 'buurt-peer-intro',
+          groupId,
+          peerAddr:    newPeerAddr,
+          peerDisplay: newPeerDisplay ?? null,
+          sentAt:      Date.now(),
+        });
+      } catch (err) {
+        console.warn('[mesh-intro] existing-peer intro failed for', p.addr, err);
+      }
+    }
+  }
+  console.info(`[mesh-intro] propagated for ${groupId}: ${existing.length} existing peer(s)`
+    + (newPeerShared ? ' (incl. broadcast of new joiner)' : ' (new joiner opted out)'));
+}
+
+/**
+ * Slice 4 — handler for incoming 'buurt-peer-intro' envelope.
+ * Writes a local membership-redemption with channel='intro' so
+ * listGroupRoster surfaces the introduced peer in fan-out.
+ */
+async function handleBuurtPeerIntro(fromAddr, payload) {
+  const { groupId, peerAddr, peerDisplay } = payload ?? {};
+  if (!groupId || !peerAddr) {
+    console.warn('[peer] buurt-peer-intro missing fields', payload);
+    return;
+  }
+  try {
+    const result = await callSkill('stoop', 'recordPeerIntro', {
+      groupId, peerAddr, peerDisplay,
+    });
+    if (result?.error) {
+      console.warn('[peer] recordPeerIntro rejected', result.error);
+    } else {
+      console.info(`[peer] mesh-intro: ${peerAddr.slice(0, 16)}… added to ${groupId}`);
+    }
+  } catch (err) {
+    console.error('[peer] handleBuurtPeerIntro failed', err);
   }
 }
 
