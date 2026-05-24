@@ -121,14 +121,20 @@ test.describe('Cross-tab mesh + DM end-to-end', () => {
   test('command auto-suggest shows + filters on slash input', async ({ page }) => {
     await page.goto('/');
     const input = page.locator('#chat-input');
-    await input.fill('/cr');
-    // The suggest dropdown should appear with matching commands.
-    const suggest = page.locator('#cmd-suggest');
-    await expect(suggest).toBeVisible({ timeout: 2_000 });
-    // /create-group + /crew-new + /crews should all match the prefix.
-    await expect(suggest).toContainText(/create-group|crew-new|crews/i);
+    // Focus + pressSequentially so each keystroke fires `input`
+    // events the way the user typing does.  `.fill()` sets value
+    // in one shot which doesn't always wake input listeners that
+    // refresh per-keystroke (our refreshSuggest is keystroke-driven).
+    await input.focus();
+    await input.pressSequentially('/cr');
+    // The suggest dropdown should populate with matching commands.
+    // Wait for any <li> child (our render adds one per match).
+    const items = page.locator('#cmd-suggest .cc-cmd-suggest-item');
+    await expect(items.first()).toBeVisible({ timeout: 5_000 });
+    const list = page.locator('#cmd-suggest');
+    await expect(list).toContainText(/create-group|crew-new|crews/i);
     // Esc dismisses.
     await input.press('Escape');
-    await expect(suggest).toBeHidden();
+    await expect(list).toBeHidden();
   });
 });
