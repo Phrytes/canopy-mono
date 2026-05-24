@@ -44,15 +44,49 @@ export function renderPostAudienceWizard(opts) {
     tags:        '',
     distanceKm:  0,
     recipients:  '',
+    // Slice 3 (2026-05-24) — buurt picker.  Populated async from
+    // listMyGroups (or default cc-default-buurt for single-buurt).
+    // null while loading; [] when fetch failed; non-empty array
+    // surfaces a radio picker.
+    availableBuurts: null,
+    selectedBuurt:   args?.groupId ?? null,
     submitting:  false,
     submitError: null,
   };
+
+  // Lazy-load the buurt list.  Failures fall back silently to the
+  // single-buurt default ('cc-default-buurt'); the picker just won't
+  // render and substrate-side default applies.
+  (async () => {
+    try {
+      const reply = await callSkill('stoop', 'getCurrentGroup', {});
+      const groups = reply?.groupId ? [{ id: reply.groupId, label: reply.title ?? reply.groupId }] : [];
+      state.availableBuurts = groups;
+      if (groups.length === 1 && !state.selectedBuurt) state.selectedBuurt = groups[0].id;
+      rerender();
+    } catch (err) {
+      state.availableBuurts = [];
+      if (typeof console !== 'undefined') {
+        console.warn('[postAudienceWizard] buurt-list load failed', err);
+      }
+      rerender();
+    }
+  })();
+
   rerender();
 
   function rerender() {
     container.innerHTML = '';
     const body = mkBody(doc, 'Post with audience',
       'Pick a target audience.  Empty = everyone in your buurt.');
+
+    // Buurt picker (only when we have a real list).  Single-buurt
+    // users see one radio for clarity; multi-buurt users see all.
+    if (Array.isArray(state.availableBuurts) && state.availableBuurts.length > 0) {
+      mkRadioGroup(body, doc, 'Buurt', state.selectedBuurt ?? state.availableBuurts[0].id,
+        state.availableBuurts.map(b => ({ id: b.id, label: b.label })),
+        (v) => { state.selectedBuurt = v; });
+    }
     const validText = () => state.text.trim().length > 0;
     mkTextarea(body, doc, 'Post text', state.text, (v) => {
       state.text = v;
@@ -114,8 +148,12 @@ export function renderPostAudienceWizard(opts) {
               delete audience[k];
             }
           }
+          const targets = state.selectedBuurt
+            ? [{ kind: 'group', groupId: state.selectedBuurt }]
+            : undefined;
           const result = await callSkill('stoop', 'postRequest', {
             text: state.text, kind: state.kind,
+            ...(targets ? { targets, groupId: state.selectedBuurt } : {}),
             ...(Object.keys(audience).length > 0 ? { audience } : {}),
           });
           if (result?.error) throw new Error(result.error);
