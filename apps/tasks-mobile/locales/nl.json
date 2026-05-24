@@ -126,7 +126,13 @@
       "appeal":             { "text": "Beroep aantekenen",                   "doc": "Appeal CTA — only when last reviewLog entry is revoke." },
       "subtask_of":         { "text": "Sub-taak van: {text}",                "doc": "Parent reference chip on a sub-task — when the parent is in listOpen." },
       "subtask_of_id":      { "text": "Sub-taak van #{id}",                  "doc": "Parent reference chip on a sub-task — when the parent isn't in listOpen (e.g. completed)." },
-      "subtasks_label":     { "text": "{count} sub-taak/taken",              "doc": "Section header above the sub-tasks list." }
+      "subtasks_label":     { "text": "{count} sub-taak/taken",              "doc": "Section header above the sub-tasks list." },
+      "edit":               { "text": "Bewerken",                             "doc": "#226 — Edit task body CTA (visible when status is ready/waiting/blocked/claimed)." },
+      "edit_title":         { "text": "Taak bewerken",                        "doc": "#226 — EditTaskModal title." },
+      "edit_text_label":    { "text": "Wat moet er gebeuren?",                "doc": "#226 — EditTaskModal text-field label." },
+      "edit_notes_label":   { "text": "Notities (optioneel)",                 "doc": "#226 — EditTaskModal notes-field label." },
+      "edit_cancel":        { "text": "Annuleren",                            "doc": "#226 — EditTaskModal cancel button." },
+      "edit_save":          { "text": "Opslaan",                              "doc": "#226 — EditTaskModal save button." }
     },
     "compose": {
       "title":           { "text": "Nieuwe taak",                       "doc": "ComposeScreen title." },
