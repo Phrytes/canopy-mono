@@ -23,54 +23,21 @@
  */
 
 import { mkBody, mkActions, mkField, mkTextarea, mkRadioGroup, mkError, mkSubmitting, refreshActions } from './_wizardKit.js';
-
-const TRUST_OPTS = [
-  { id: 'all',      label: 'Everyone in the buurt' },
-  { id: 'known',    label: 'Known contacts only' },
-  { id: 'trusted',  label: 'Trusted contacts only' },
-];
-
-const DISTANCE_OPTS = [
-  { km: 1, label: '1 km' }, { km: 2, label: '2 km' }, { km: 5, label: '5 km' },
-  { km: 10, label: '10 km' }, { km: 25, label: '25 km' }, { km: 0, label: 'No limit' },
-];
+import {
+  TRUST_OPTS, DISTANCE_OPTS,
+  initialState, canSubmit, loadAvailableBuurts, submitPost,
+} from '../../core/wizards/postAudienceState.js';
 
 export function renderPostAudienceWizard(opts) {
   const { container, doc, args, callSkill, onClose, onDispatched } = opts;
-  const state = {
-    text:        args?.text ?? '',
-    kind:        args?.kind ?? 'ask',
-    minTrust:    'all',
-    tags:        '',
-    distanceKm:  0,
-    recipients:  '',
-    // Slice 3 (2026-05-24) — buurt picker.  Populated async from
-    // listMyGroups (or default cc-default-buurt for single-buurt).
-    // null while loading; [] when fetch failed; non-empty array
-    // surfaces a radio picker.
-    availableBuurts: null,
-    selectedBuurt:   args?.groupId ?? null,
-    submitting:  false,
-    submitError: null,
-  };
+  const state = initialState(args);
 
   // Lazy-load the buurt list.  Failures fall back silently to the
   // single-buurt default ('cc-default-buurt'); the picker just won't
   // render and substrate-side default applies.
   (async () => {
-    try {
-      const reply = await callSkill('stoop', 'getCurrentGroup', {});
-      const groups = reply?.groupId ? [{ id: reply.groupId, label: reply.title ?? reply.groupId }] : [];
-      state.availableBuurts = groups;
-      if (groups.length === 1 && !state.selectedBuurt) state.selectedBuurt = groups[0].id;
-      rerender();
-    } catch (err) {
-      state.availableBuurts = [];
-      if (typeof console !== 'undefined') {
-        console.warn('[postAudienceWizard] buurt-list load failed', err);
-      }
-      rerender();
-    }
+    await loadAvailableBuurts({ state, callSkill });
+    rerender();
   })();
 
   rerender();
@@ -133,41 +100,18 @@ export function renderPostAudienceWizard(opts) {
     mkActions(container, doc, [
       { label: 'Cancel', onClick: onClose, kind: 'secondary', disabled: state.submitting },
       { label: 'Post',   onClick: async () => {
-        state.submitting = true;
-        state.submitError = null;
-        rerender();
-        try {
-          const audience = {
-            minTrust:    state.minTrust === 'all' ? null : state.minTrust,
-            tags:        state.tags.split(',').map((s) => s.trim()).filter(Boolean),
-            distanceKm:  state.distanceKm || null,
-            recipients:  state.recipients.split(',').map((s) => s.trim()).filter(Boolean),
-          };
-          for (const k of Object.keys(audience)) {
-            if (audience[k] === null || (Array.isArray(audience[k]) && audience[k].length === 0)) {
-              delete audience[k];
-            }
-          }
-          const targets = state.selectedBuurt
-            ? [{ kind: 'group', groupId: state.selectedBuurt }]
-            : undefined;
-          const result = await callSkill('stoop', 'postRequest', {
-            text: state.text, kind: state.kind,
-            ...(targets ? { targets, groupId: state.selectedBuurt } : {}),
-            ...(Object.keys(audience).length > 0 ? { audience } : {}),
-          });
-          if (result?.error) throw new Error(result.error);
+        rerender(); // show submitting state
+        const { result } = await submitPost({ state, callSkill });
+        if (result) {
           if (typeof onDispatched === 'function') {
             try { onDispatched({ ok: true, message: '✓ Posted to your buurt.', ...result }); } catch {}
           }
           onClose();
-        } catch (err) {
-          state.submitError = err?.message ?? String(err);
-          state.submitting = false;
-          rerender();
+          return;
         }
+        rerender(); // failure path: re-render to show submitError
       }, kind: 'primary', validate: 'textOk',
-        disabled: state.submitting || state.text.trim().length === 0 },
+        disabled: !canSubmit(state) },
     ]);
   }
 }

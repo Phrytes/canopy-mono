@@ -15,19 +15,18 @@
  */
 
 import { mkBody, mkActions, mkField, mkCheck, mkSteps, mkError, mkSubmitting, refreshActions } from './_wizardKit.js';
+import {
+  initialState,
+  isMnemonicValid,
+  canAdvanceFromConfirm,
+  mnemonicWordCount,
+  submitRestore,
+} from '../../core/wizards/restoreFromMnemonicState.js';
 
 export function renderRestoreFromMnemonicWizard(opts) {
   const { container, doc, callSkill, onClose, onDispatched } = opts;
 
-  const state = {
-    step:             1,            // 1..3
-    mnemonic:         '',
-    understandsLoss:  false,
-    confirmedNoUndo:  false,
-    submitting:       false,
-    submitError:      null,
-    successResult:    null,
-  };
+  const state = initialState();
 
   rerender();
 
@@ -43,21 +42,17 @@ export function renderRestoreFromMnemonicWizard(opts) {
   function renderMnemonicStep() {
     const body = mkBody(doc, 'Restore from mnemonic',
       'Enter the 12 or 24-word recovery phrase you saved when you first set up canopy-chat.');
-    const validMnemonic = () => {
-      const words = state.mnemonic.trim().split(/\s+/).filter(Boolean);
-      return words.length === 12 || words.length === 24;
-    };
     mkField(body, doc, 'Mnemonic phrase', state.mnemonic, (v) => {
       state.mnemonic = v;
       // No rerender — would lose input focus.  Just refresh the
       // [Next] button's disabled state.
-      refreshActions(container, { mnemonicOk: validMnemonic });
+      refreshActions(container, { mnemonicOk: () => isMnemonicValid(state.mnemonic) });
     }, { placeholder: 'word1 word2 word3 ...', monospace: true, hint: 'Words separated by single spaces.' });
     container.appendChild(body);
     mkActions(container, doc, [
       { label: 'Cancel', onClick: onClose, kind: 'secondary' },
       { label: 'Next →', onClick: () => { state.step = 2; rerender(); }, kind: 'primary',
-        disabled: !validMnemonic(), validate: 'mnemonicOk' },
+        disabled: !isMnemonicValid(state.mnemonic), validate: 'mnemonicOk' },
     ]);
   }
 
@@ -75,7 +70,7 @@ export function renderRestoreFromMnemonicWizard(opts) {
       { label: '← Back',    onClick: () => { state.step = 1; rerender(); }, kind: 'secondary' },
       { label: 'Cancel',    onClick: onClose, kind: 'secondary' },
       { label: 'Continue →',onClick: () => { state.step = 3; rerender(); }, kind: 'primary',
-        disabled: !(state.understandsLoss && state.confirmedNoUndo) },
+        disabled: !canAdvanceFromConfirm(state) },
     ]);
   }
 
@@ -83,8 +78,7 @@ export function renderRestoreFromMnemonicWizard(opts) {
     const body = mkBody(doc, 'Restore now', 'One last check.  Click [Restore now] to apply.');
     const summary = doc.createElement('div');
     summary.className = 'cc-wizard-blurb';
-    const wordCount = state.mnemonic.trim().split(/\s+/).filter(Boolean).length;
-    summary.textContent = `Mnemonic: ${wordCount} words.  After restore you'll be using the new identity immediately.`;
+    summary.textContent = `Mnemonic: ${mnemonicWordCount(state.mnemonic)} words.  After restore you'll be using the new identity immediately.`;
     body.appendChild(summary);
     mkError(body, doc, state.submitError);
     mkSubmitting(body, doc, state.submitting, 'Restoring identity…');
@@ -93,22 +87,10 @@ export function renderRestoreFromMnemonicWizard(opts) {
       { label: '← Back',     onClick: () => { state.step = 2; rerender(); }, kind: 'secondary', disabled: state.submitting },
       { label: 'Cancel',     onClick: onClose, kind: 'secondary', disabled: state.submitting },
       { label: 'Restore now',onClick: async () => {
-        state.submitting = true;
-        state.submitError = null;
-        rerender();
-        try {
-          const result = await callSkill('stoop', 'restoreFromMnemonic', {
-            mnemonic: state.mnemonic.trim(),
-            confirm:  true,
-          });
-          if (result?.error) throw new Error(result.error);
-          state.successResult = result;
-          if (typeof onDispatched === 'function') {
-            try { onDispatched({ ok: true, message: '✓ Identity restored. Reload to refresh the chat-shell.' }); } catch {}
-          }
-        } catch (err) {
-          state.submitError = err?.message ?? String(err);
-          state.submitting = false;
+        rerender(); // show submitting state
+        await submitRestore({ state, callSkill });
+        if (state.successResult && typeof onDispatched === 'function') {
+          try { onDispatched({ ok: true, message: '✓ Identity restored. Reload to refresh the chat-shell.' }); } catch {}
         }
         rerender();
       }, kind: 'primary', disabled: state.submitting },

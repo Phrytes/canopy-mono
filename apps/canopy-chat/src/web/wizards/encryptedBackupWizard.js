@@ -19,17 +19,16 @@
  */
 
 import { mkBody, mkActions, mkField, mkError, mkSubmitting, mkSteps, refreshActions } from './_wizardKit.js';
+import {
+  initialState,
+  canCreateBackup,
+  suggestedFilename,
+  submitCreateBackup,
+} from '../../core/wizards/encryptedBackupState.js';
 
 export function renderEncryptedBackupWizard(opts) {
   const { container, doc, callSkill, onClose, onDispatched } = opts;
-  const state = {
-    step:         1,         // 1 = passphrase, 2 = download
-    passphrase:   '',
-    confirm:      '',
-    submitting:   false,
-    submitError:  null,
-    blob:         null,
-  };
+  const state = initialState();
   rerender();
 
   function rerender() {
@@ -46,13 +45,13 @@ export function renderEncryptedBackupWizard(opts) {
     mkField(body, doc, 'Passphrase', state.passphrase,
       (v) => {
         state.passphrase = v;
-        refreshActions(container, { canSubmit: () => canAdvance() && !state.submitting });
+        refreshActions(container, { canSubmit: () => canCreateBackup(state) && !state.submitting });
       },
       { type: 'password', placeholder: 'minimum 12 characters recommended' });
     mkField(body, doc, 'Confirm passphrase', state.confirm,
       (v) => {
         state.confirm = v;
-        refreshActions(container, { canSubmit: () => canAdvance() && !state.submitting });
+        refreshActions(container, { canSubmit: () => canCreateBackup(state) && !state.submitting });
       },
       { type: 'password' });
 
@@ -68,33 +67,16 @@ export function renderEncryptedBackupWizard(opts) {
     mkActions(container, doc, [
       { label: 'Cancel', onClick: onClose, kind: 'secondary', disabled: state.submitting },
       { label: 'Create backup', validate: 'canSubmit', kind: 'primary',
-        disabled: !canAdvance() || state.submitting,
+        disabled: !canCreateBackup(state) || state.submitting,
         onClick: async () => {
-          state.submitting = true;
-          state.submitError = null;
-          rerender();
-          try {
-            const result = await callSkill('stoop', 'encryptedBackup', { passphrase: state.passphrase });
-            if (result?.error) throw new Error(result.error);
-            if (!result?.blob) throw new Error('substrate returned no blob');
-            state.blob = result.blob;
-            state.step = 2;
-            state.submitting = false;
-            if (typeof onDispatched === 'function') {
-              try { onDispatched({ ok: true, message: '✓ Encrypted backup created.' }); } catch {}
-            }
-          } catch (err) {
-            state.submitError = err?.message ?? String(err);
-            state.submitting = false;
+          rerender(); // show submitting state
+          await submitCreateBackup({ state, callSkill });
+          if (state.blob && typeof onDispatched === 'function') {
+            try { onDispatched({ ok: true, message: '✓ Encrypted backup created.' }); } catch {}
           }
           rerender();
         } },
     ]);
-  }
-
-  function canAdvance() {
-    return state.passphrase.length > 0
-      && state.passphrase === state.confirm;
   }
 
   function renderDownloadStep() {
@@ -102,7 +84,7 @@ export function renderEncryptedBackupWizard(opts) {
       'Download + store the file somewhere safe. Email it to yourself, copy to a USB stick, sync to a cloud you trust — anywhere, since it\'s encrypted.');
 
     const blobText = typeof state.blob === 'string' ? state.blob : JSON.stringify(state.blob);
-    const filename = `stoop-backup-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json.enc`;
+    const filename = suggestedFilename();
 
     const sizeKb = (new Blob([blobText]).size / 1024).toFixed(1);
     const stats = doc.createElement('p');
