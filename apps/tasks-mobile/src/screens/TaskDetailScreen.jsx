@@ -123,6 +123,13 @@ export function TaskDetailScreen() {
   const [showRemove,    setShowRemove]   = useState(false);
   const [showApproval,  setShowApproval] = useState(false);
 
+  // #226 (2026-05-24) — editTask UI affordance. Visible when the
+  // task is in `ready`/`open` or `claimed` state. The form patches
+  // text + notes through the substrate's editTask skill (#219).
+  const [showEdit,      setShowEdit]     = useState(false);
+  const [editText,      setEditText]     = useState('');
+  const [editNotes,     setEditNotes]    = useState('');
+
   // Skill bindings
   const claim       = useSkill('claimTask');
   const complete    = useSkill('completeTask');
@@ -137,6 +144,8 @@ export function TaskDetailScreen() {
   const reassignSk  = useSkill('reassignTask');
   const removeSk    = useSkill('removeTask');
   const setApproval = useSkill('setApprovalMode');
+  // #226 — editTask skill binding.
+  const edit        = useSkill('editTask');
 
   const [busyAction, setBusyAction] = useState(null); // skill name or null
 
@@ -235,6 +244,35 @@ export function TaskDetailScreen() {
     setShowApproval(false);
     await _withErr('setApprovalMode', () => setApproval.call({ id, mode }));
   }, [_withErr, setApproval, id]);
+
+  // #226 — editTask: open the form pre-filled with the current task
+  // body. The form patches only the fields the user actually changes
+  // (the skill rejects an empty patch). Forbidden lifecycle fields
+  // (assignee / claimedAt / completedAt / id / addedBy / reviewLog /
+  // deliverable / approval / master / parentTaskId) are NOT in this
+  // form — those have dedicated CTAs above.
+  const onOpenEdit = useCallback(() => {
+    setEditText(task?.text ?? '');
+    setEditNotes(task?.notes ?? '');
+    setError(null);
+    setShowEdit(true);
+  }, [task?.text, task?.notes]);
+
+  const onSubmitEdit = useCallback(async () => {
+    if (!task) return;
+    // Build a patch with only the fields that actually changed so a
+    // no-op submit hits the substrate's 'no fields to update' guard
+    // and surfaces a clear error instead of writing a null-edit.
+    const patch = { id };
+    if ((task.text ?? '') !== editText)  patch.text  = editText;
+    if ((task.notes ?? '') !== editNotes) patch.notes = editNotes;
+    const ok = await _withErr('editTask', () => edit.call(patch));
+    if (ok) {
+      setShowEdit(false);
+      setEditText('');
+      setEditNotes('');
+    }
+  }, [_withErr, edit, id, task, editText, editNotes]);
 
   const onForceSpawnSubtask = useCallback(() => {
     nav.navigate(ROUTES.Compose, { parent: id, forceSpawn: true });
@@ -489,6 +527,22 @@ export function TaskDetailScreen() {
           />
         ) : null}
 
+        {/* #226 — Edit task body. Visible when the task is open
+            (ready / waiting / blocked) or claimed. Submitted /
+            complete / rejected tasks intentionally do NOT expose
+            edit here: those have dedicated lifecycle CTAs and the
+            substrate's editTask doesn't model lifecycle-aware
+            permissions yet (gating happens via canEditBody +
+            crew paused/archived). */}
+        {(status.kind === 'ready' || status.kind === 'waiting'
+          || status.kind === 'blocked' || status.kind === 'claimed') ? (
+          <Action
+            label={t('mobile.task_detail.edit')}
+            variant="secondary"
+            onPress={onOpenEdit}
+          />
+        ) : null}
+
         {/* Sub-task / propose */}
         {status.kind !== 'complete' ? (
           <Action
@@ -667,6 +721,27 @@ export function TaskDetailScreen() {
         onSelect={(mode) => onSetApprovalMode(mode)}
         onCancel={() => setShowApproval(false)}
       />
+
+      {/* #226 — Edit task body modal (text + notes). */}
+      <EditTaskModal
+        visible={showEdit}
+        title={t('mobile.task_detail.edit_title')}
+        textLabel={t('mobile.task_detail.edit_text_label')}
+        notesLabel={t('mobile.task_detail.edit_notes_label')}
+        cancelLabel={t('mobile.task_detail.edit_cancel')}
+        saveLabel={t('mobile.task_detail.edit_save')}
+        busy={busyAction === 'editTask'}
+        text={editText}
+        notes={editNotes}
+        onChangeText={setEditText}
+        onChangeNotes={setEditNotes}
+        onConfirm={onSubmitEdit}
+        onCancel={() => {
+          setShowEdit(false);
+          setEditText('');
+          setEditNotes('');
+        }}
+      />
     </ScrollView>
   );
 }
@@ -782,6 +857,123 @@ function ReasonModal({ visible, title, body, label, value, onChange, onConfirm, 
                 fontSize: FONT_SIZES.md, fontWeight: '600',
               }}>
                 OK
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/**
+ * EditTaskModal — #226 (2026-05-24) — two-field form (text + notes)
+ * for editTask. Sibling of `ReasonModal` above but with two inputs
+ * and a Save/Cancel pair labelled via t() entries. All copy is
+ * supplied by the caller so this stays locale-agnostic.
+ *
+ * Save is disabled when the text field is empty (we never want to
+ * patch a task to an empty title) and while the dispatch is in
+ * flight (`busy`).
+ */
+function EditTaskModal({
+  visible, title, textLabel, notesLabel,
+  cancelLabel, saveLabel, busy,
+  text, notes, onChangeText, onChangeNotes,
+  onConfirm, onCancel,
+}) {
+  const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
+  if (!visible) return null;
+  const canSave = typeof text === 'string' && text.trim().length > 0 && !busy;
+  return (
+    <Modal transparent animationType="fade" visible onRequestClose={onCancel}>
+      <View style={{
+        flex: 1, alignItems: 'center', justifyContent: 'center',
+        backgroundColor: COLORS.overlay, padding: SPACING.lg,
+      }}>
+        <View style={{
+          width: '100%', maxWidth: 480,
+          backgroundColor: COLORS.surface, borderRadius: RADII.md, padding: SPACING.xl,
+        }}>
+          <Text style={{
+            fontSize: FONT_SIZES.lg, fontWeight: '600',
+            color: COLORS.text, marginBottom: SPACING.md,
+          }}>
+            {title}
+          </Text>
+
+          <Text style={{ fontSize: FONT_SIZES.sm, color: COLORS.text, marginBottom: SPACING.xs }}>
+            {textLabel}
+          </Text>
+          <TextInput
+            value={text}
+            onChangeText={onChangeText}
+            autoFocus
+            accessibilityLabel="edit-task-text"
+            style={{
+              minHeight: 44,
+              borderWidth: 1, borderColor: COLORS.border, borderRadius: RADII.sm,
+              padding: SPACING.md, fontSize: FONT_SIZES.md, color: COLORS.text,
+              backgroundColor: COLORS.surface, marginBottom: SPACING.md,
+            }}
+          />
+
+          <Text style={{ fontSize: FONT_SIZES.sm, color: COLORS.text, marginBottom: SPACING.xs }}>
+            {notesLabel}
+          </Text>
+          <TextInput
+            value={notes}
+            onChangeText={onChangeNotes}
+            multiline
+            accessibilityLabel="edit-task-notes"
+            style={{
+              minHeight: 80,
+              borderWidth: 1, borderColor: COLORS.border, borderRadius: RADII.sm,
+              padding: SPACING.md, fontSize: FONT_SIZES.md, color: COLORS.text,
+              backgroundColor: COLORS.surface, textAlignVertical: 'top',
+            }}
+          />
+
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: SPACING.lg }}>
+            <Pressable
+              onPress={onCancel}
+              disabled={busy}
+              style={{
+                paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
+                borderRadius: RADII.sm, marginLeft: SPACING.sm,
+                backgroundColor: COLORS.surfaceMuted,
+                opacity: busy ? 0.5 : 1,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="edit-task-cancel"
+            >
+              <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.md }}>
+                {cancelLabel}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={onConfirm}
+              disabled={!canSave}
+              style={{
+                paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
+                borderRadius: RADII.sm, marginLeft: SPACING.sm,
+                backgroundColor: canSave ? COLORS.primary : COLORS.surfaceMuted,
+                flexDirection: 'row', alignItems: 'center',
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="edit-task-save"
+            >
+              {busy ? (
+                <ActivityIndicator
+                  color={COLORS.textInverse}
+                  style={{ marginRight: 8 }}
+                />
+              ) : null}
+              <Text style={{
+                color: canSave ? COLORS.textInverse : COLORS.textMuted,
+                fontSize: FONT_SIZES.md, fontWeight: '600',
+              }}>
+                {saveLabel}
               </Text>
             </Pressable>
           </View>
