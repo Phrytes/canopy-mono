@@ -18,7 +18,7 @@ import {
   renderReply, Thread,
 } from '../src/index.js';
 import { renderStream }              from '../src/web/domAdapter.js';
-import { createMockHouseholdAgent }  from '../src/web/mockAgent.js';
+import { createMockHouseholdAgent }  from '../src/core/agent/mockAgent.js';
 
 function makeApp() {
   const agent   = createMockHouseholdAgent();

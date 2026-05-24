@@ -7,7 +7,7 @@
  * and their notifications stop routing.
  *
  * The chat-shell built-ins `/apps` (list) + `/apps on|off <name>`
- * (toggle) live in `web/localBuiltins.js`; this module owns the
+ * (toggle) live in `core/localBuiltins.js`; this module owns the
  * pure state.  Persistence rides on the same IndexedDB store as
  * threads (in a separate object store, `appStates`).
  *

@@ -59,7 +59,7 @@ async function restoreOrGenerate(vault) {
   return AgentIdentity.generate(vault);
 }
 
-import { mockHouseholdManifest } from './mockAgent.js';
+import { mockHouseholdManifest } from '../core/agent/mockAgent.js';
 import {
   CalendarStore, registerCalendarSkills,
 } from '@canopy-app/calendar';

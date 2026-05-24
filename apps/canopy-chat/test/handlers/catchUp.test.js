@@ -1,9 +1,9 @@
 /**
- * Unit tests for src/web/handlers/catchUp.js (Slice 5).
+ * Unit tests for src/core/handlers/catchUp.js (Slice 5).
  */
 import { describe, it, expect, vi } from 'vitest';
 import { makeRequestCatchUpFromKnownPeers, makeHandleCatchUpRequest }
-  from '../../src/web/handlers/catchUp.js';
+  from '../../src/core/handlers/catchUp.js';
 
 const silentLogger = { info: () => {}, warn: () => {}, error: () => {} };
 

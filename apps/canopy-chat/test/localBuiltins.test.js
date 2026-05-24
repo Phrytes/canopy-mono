@@ -5,7 +5,7 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 
 import { canopyChatManifest }              from '../manifest.js';
 import { mergeManifests }                  from '../src/manifestMerge.js';
-import { createLocalBuiltins }             from '../src/web/localBuiltins.js';
+import { createLocalBuiltins }             from '../src/core/localBuiltins.js';
 import { initLocalisation, t, setLang }    from '../src/localisation.js';
 import { ThreadStore }                     from '../src/threadStore.js';
 

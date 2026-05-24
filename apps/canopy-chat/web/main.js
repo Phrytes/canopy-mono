@@ -36,9 +36,9 @@ import { renderLogsPanel }           from '../src/web/logsPanel.js';
 import { openPagePanel }             from '../src/web/pagePanel.js';
 import { renderJoinGroupWizard }     from '../src/web/wizards/joinGroupWizard.js';
 import { makePropagateMeshIntros, makeHandleBuurtPeerIntro }
-                                     from '../src/web/handlers/meshIntros.js';
+                                     from '../src/core/handlers/meshIntros.js';
 import { makeRequestCatchUpFromKnownPeers, makeHandleCatchUpRequest }
-                                     from '../src/web/handlers/catchUp.js';
+                                     from '../src/core/handlers/catchUp.js';
 import { renderSettingsWizard }      from '../src/web/wizards/settingsWizard.js';
 import { renderCreateGroupWizard }   from '../src/web/wizards/createGroupWizard.js';
 import { renderRestoreFromMnemonicWizard } from '../src/web/wizards/restoreFromMnemonicWizard.js';
@@ -48,9 +48,9 @@ import { renderEncryptedBackupWizard }     from '../src/web/wizards/encryptedBac
 import { createRealHouseholdAgent }  from '../src/web/realAgent.js';
 import { mockTasksManifest,
          mockStoopManifest,
-         mockFolioManifest }         from '../src/web/mockManifests.js';
+         mockFolioManifest }         from '../src/core/manifests/mockManifests.js';
 import { calendarManifest }          from '@canopy-app/calendar/manifest';
-import { createLocalBuiltins }       from '../src/web/localBuiltins.js';
+import { createLocalBuiltins }       from '../src/core/localBuiltins.js';
 import * as podAuth                  from '../src/web/podAuth.js';
 import {
   createPodWriter, discoverPodRoot,
@@ -737,9 +737,11 @@ async function handleGroupRedeemRequest(fromNknAddr, payload) {
   }
 }
 
-// #217 — Slice 4 + 5 handlers extracted to src/web/handlers/.  main.js
-// wires them with module-level deps (agent + callSkill).  See
-// test/handlers/*.test.js for fast unit coverage.
+// #217 (2026-05-24) — Slice 4 + 5 handlers extracted to portable
+// factories.  Lifted to src/core/handlers/ in #221.5 (2026-05-24) so
+// canopy-chat-mobile can reuse them unchanged — they're zero-DOM,
+// zero-Node, dependency-injected via ({callSkill, sendPeer, logger}).
+// See test/handlers/*.test.js for fast unit coverage.
 
 // 2026-05-24 — retry-on-HI-race now lives in secure-agent's
 // sendToPeer (task #215). agent.sendPeerMessage handles it

@@ -22,7 +22,7 @@ import { renderMobile } from '@canopy/app-manifest';
 
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
-} from '../src/web/mockManifests.js';
+} from '../src/core/manifests/mockManifests.js';
 import { canopyChatManifest } from '../src/index.js';
 import { calendarManifest } from '@canopy-app/calendar/manifest';
 
