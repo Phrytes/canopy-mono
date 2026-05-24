@@ -74,6 +74,14 @@ const headerFilterEl = document.getElementById('active-thread-filter');
 let publishEventRef = () => {};   // overwritten right after router is constructed
 const agent = await createRealHouseholdAgent({
   publishEvent: (event) => publishEventRef(event),
+  // 2026-05-24 — wire stoop's IndexedDB persistence adapter (slice
+  // 2a's IndexedDBPersist).  Without this, every page reload wipes
+  // stoop's substrate state — including membership-redemption items,
+  // which means cross-instance /post fan-out can't find any peers
+  // after a reload (listGroupRoster returns []).  V0 single-actor:
+  // one DB per browser origin is enough; multi-actor refinement
+  // would derive the DB name from the active webid.
+  stoopPersistDb: { dbName: 'cc-stoop-state', storeName: 'items' },
 });
 // v0.4 cross-app surface: stoop + folio manifests join the merged
 // catalog so users see their commands in /help.  Q32 runtime filter
