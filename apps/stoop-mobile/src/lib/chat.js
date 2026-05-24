@@ -67,6 +67,52 @@ export function validateChatDraft(draft) {
 }
 
 /**
+ * Map (revealedByMe, loading) → render state for the bilateral
+ * reveal-toggle in ChatThreadScreen's header.
+ *
+ * Task #228 (2026-05-24): aligns mobile to web canopy-chat's
+ * `revealPeer`→`setPeerReveal` bilateral-toggle semantics. The user
+ * controls only THEIR OWN side of the reveal here ("I have agreed
+ * to see this peer's real name"); the peer flips their own side
+ * independently. Both must agree before displayName actually shows.
+ *
+ * Returns translation-key + fallback pairs so the caller can pass
+ * them straight to `t(key, fallback)` — keeps every user-facing
+ * string in the locale bundles.
+ *
+ * @param {{ revealedByMe: boolean, loading?: boolean }} args
+ * @returns {{
+ *   checked: boolean,
+ *   busy: boolean,
+ *   labelKey: string,
+ *   labelFallback: string,
+ * }}
+ */
+export function revealToggleState({ revealedByMe, loading } = {}) {
+  const checked = !!revealedByMe;
+  const busy    = !!loading;
+  if (busy) {
+    return {
+      checked, busy: true,
+      labelKey:      'chat_thread.reveal_toggle_busy',
+      labelFallback: 'Wisselen…',
+    };
+  }
+  if (checked) {
+    return {
+      checked, busy: false,
+      labelKey:      'chat_thread.reveal_toggle_on',
+      labelFallback: 'Echte naam zichtbaar (tikken om te verbergen)',
+    };
+  }
+  return {
+    checked, busy: false,
+    labelKey:      'chat_thread.reveal_toggle_off',
+    labelFallback: 'Toon echte naam aan deze persoon',
+  };
+}
+
+/**
  * Group consecutive same-author messages so the bubble UI can
  * collapse repeat avatars / timestamps.
  *

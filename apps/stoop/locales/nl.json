@@ -320,9 +320,12 @@
   "chat_thread": {
     "placeholder":         { "text": "Schrijf een bericht…", "doc": "Placeholder of the message composer in ChatThreadScreen." },
     "empty":               { "text": "Nog geen berichten.", "doc": "Empty state inside an open thread." },
-    "request_reveal":      { "text": "Vraag echte naam", "doc": "CTA in the thread header that opens the bilateral-reveal flow." },
-    "revealing":           { "text": "Versturen…", "doc": "CTA label while the requestReveal call is in flight." },
+    "request_reveal":      { "text": "Vraag echte naam", "doc": "Legacy CTA — kept for ProfileOtherScreen's nav hand-off to ChatThread. ChatThread zelf gebruikt de bilaterale toggle hieronder." },
+    "revealing":           { "text": "Versturen…", "doc": "Legacy busy label paired with request_reveal." },
     "reveal_unavailable":  { "text": "Reveal-flow niet beschikbaar in deze build.", "doc": "Alert shown when onRequestReveal is missing." },
+    "reveal_toggle_off":   { "text": "Toon echte naam aan deze persoon", "doc": "Bilateral reveal-toggle label (off state) — task #228. Tikken zet MIJN Reveals-record; de andere kant zet die van zichzelf onafhankelijk (beide zichtbaar pas als beide ja zeggen)." },
+    "reveal_toggle_on":    { "text": "Echte naam zichtbaar (tikken om te verbergen)", "doc": "Bilateral reveal-toggle label (on state) — task #228." },
+    "reveal_toggle_busy":  { "text": "Wisselen…", "doc": "Reveal-toggle busy label while setPeerReveal is in flight." },
     "no_active_group":     { "text": "Sluit eerst aan bij een groep om gesprekken te zien.", "doc": "Empty state when no bundle is active." },
     "no_peer":             { "text": "Geen gesprekspartner.", "doc": "Empty state when ChatThreadScreen is opened without a peerId." }
   },
