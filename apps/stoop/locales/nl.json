@@ -755,6 +755,11 @@
     "section_shared_title":   { "text": "Mijn voorkeuren", "doc": "Section heading for shared / pod-portable settings (V2.5 Phase 33). Travels with the user." },
     "badge_shared":           { "text": "synct met al je apparaten", "doc": "Small badge next to the shared-section heading. Should signal 'syncs across devices'." },
     "section_shared_hint":    { "text": "Deze voorkeuren horen bij jou — niet bij dit apparaat. Als je inlogt op je pod, reizen ze automatisch mee naar je andere apparaten.", "doc": "Subtitle under the shared-section heading. Tells the user pod-sign-in is what enables cross-device sync." },
+    "section_privacy_title":  { "text": "Privacy & identiteit", "doc": "Heading of the privacy-and-identity settings section (#243, 2026-05-24)." },
+    "section_privacy_hint":   { "text": "Lokale beheers-acties: gedempte contacten weer aanzetten, en je netwerk-adres roteren (handig na een lek of als je even rust wilt van een specifieke contactketen).", "doc": "Subtitle under the privacy-and-identity section heading." },
+    "muted_label":            { "text": "Gedempte contacten", "doc": "Row label for the local muted-peers list on the privacy-and-identity section." },
+    "muted_hint":             { "text": "Posts en chat van deze peers worden lokaal verborgen. Demping is alleen op dit account zichtbaar — de peers weten het niet.", "doc": "Hint under the muted-contacts row." },
+    "muted_empty":            { "text": "Geen gedempte contacten.", "doc": "Empty-state line shown when listMutedPeers returns zero entries." },
 
     "poll_interval_label":    { "text": "Hoe vaak het prikbord ververst", "doc": "Label for the polling-interval select. Device-scoped." },
     "poll_interval_hint":     { "text": "Lager = sneller nieuwe posts zien; hoger = zuiniger met data en accu.", "doc": "Hint under the polling-interval label. Trade-off summary: faster vs. battery." },
