@@ -109,6 +109,29 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
     await bundle.dispose();
   });
 
+  it('V1: opts.asyncStorage synthesises VaultAsyncStorage for chat + host (#222.5)', async () => {
+    // Mock AsyncStorage (same shape real RN exposes).
+    const store = new Map();
+    const mockAS = {
+      async getItem(k)    { return store.has(k) ? store.get(k) : null; },
+      async setItem(k, v) { store.set(k, String(v)); },
+      async removeItem(k) { store.delete(k); },
+      async getAllKeys()  { return [...store.keys()]; },
+    };
+
+    const bundle = await bootAgentBundle({ asyncStorage: mockAS });
+    expect(bundle.agent).toBeTruthy();
+    // The factory's identity-bootstrap path wrote the chat-side
+    // agent's seed to its vault under the 'cc-chat-id:' prefix.
+    // We verify by inspecting the mock store directly — if the
+    // wiring is broken, the store stays empty.
+    const writtenKeys = [...store.keys()];
+    expect(writtenKeys.some((k) => k.startsWith('cc-chat-id:'))).toBe(true);
+    // Host side too.
+    expect(writtenKeys.some((k) => k.startsWith('cc-host-id:'))).toBe(true);
+    await bundle.dispose();
+  });
+
   it('localisation: t() resolves locale keys + falls back to key', async () => {
     await initLocalisation({ lng: 'en' });
     expect(t('app.name')).toBe('canopy-chat');

@@ -37,14 +37,18 @@ import { composeManifests } from './composeManifests.js';
 // The package.json "./core-realAgent" export is still the canonical
 // public path for callers OUTSIDE the monorepo.
 import { createRealHouseholdAgent } from '../../../canopy-chat/src/core/agent/realAgent.js';
+// VaultAsyncStorage from @canopy/react-native — pure JS, accepts an
+// injected asyncStorage instance so vitest works without an RN runtime.
+import { VaultAsyncStorage } from '../../../../packages/react-native/src/identity/VaultAsyncStorage.js';
 
 /**
  * Boot the agent bundle.  See module-doc for the three boot modes.
  *
  * @param {object}  [opts]
  * @param {object}  [opts.householdManifest]   merge an extra manifest into the catalog
- * @param {object}  [opts.chatVault]           secure-agent chat-side vault (e.g. VaultMemory in tests, AsyncStorageVault on RN)
+ * @param {object}  [opts.chatVault]           secure-agent chat-side vault (e.g. VaultMemory in tests, VaultAsyncStorage on RN)
  * @param {object}  [opts.hostVault]           host-side vault (defaults inside factory to makeBrowserVault)
+ * @param {object}  [opts.asyncStorage]        when provided AND chatVault/hostVault are NOT, synthesises two VaultAsyncStorage instances (cc-chat-id: + cc-host-id: prefixes). RN runtime path; vitest can pass a mock AsyncStorage to exercise it.
  * @param {object}  [opts.secureAgentOpts]     forwarded to createRealHouseholdAgent → createSecureAgent
  * @param {function}[opts.publishEvent]        forwarded; defaults to no-op
  * @param {object}  [opts.nknLib]              optional runtime nkn-sdk module; if present, connectPeerTransport is wired
@@ -81,11 +85,26 @@ export async function bootAgentBundle(opts = {}) {
   // Mode 2 + 3 — real boot.  Factory throws on Hermes if no chatVault
   // is provided (it tries makeBrowserVault → localStorage).  Surface
   // the error in a useful shape rather than letting it crash the bundle.
+  //
+  // #222.5: if the caller passed `opts.asyncStorage` but no explicit
+  // vaults, synthesise VaultAsyncStorage instances under the same
+  // prefix convention the web factory uses ('cc-chat-id:' /
+  // 'cc-host-id:').  This is the canonical RN-runtime path; vitest
+  // tests use it with a mock AsyncStorage.
+  const chatVault = opts.chatVault
+    ?? (opts.asyncStorage
+      ? new VaultAsyncStorage({ prefix: 'cc-chat-id:', asyncStorage: opts.asyncStorage })
+      : undefined);
+  const hostVault = opts.hostVault
+    ?? (opts.asyncStorage
+      ? new VaultAsyncStorage({ prefix: 'cc-host-id:', asyncStorage: opts.asyncStorage })
+      : undefined);
+
   let agent;
   try {
     agent = await createRealHouseholdAgent({
-      chatVault:        opts.chatVault,
-      hostVault:        opts.hostVault,
+      chatVault,
+      hostVault,
       secureAgentOpts:  opts.secureAgentOpts,
       publishEvent:     opts.publishEvent,
     });

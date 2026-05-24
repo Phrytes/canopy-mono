@@ -9,6 +9,7 @@
  */
 
 export { KeychainVault }          from './src/identity/KeychainVault.js';
+export { VaultAsyncStorage }      from './src/identity/VaultAsyncStorage.js';
 export { attachIdentityToAgent }  from './src/identity/IdentityWiring.js';
 export { AsyncStorageAdapter }    from './src/storage/AsyncStorageAdapter.js';
 export { FileSystemAdapter }      from './src/storage/FileSystemAdapter.js';
