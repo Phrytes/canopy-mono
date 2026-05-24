@@ -239,6 +239,12 @@
     "connect_failed": { "text": "Relay-verbinding mislukt: {{reason}}",
                         "doc": "/set-relay ving een fout op van sa.relay.connect()." }
   },
+  "page": {
+    "submit":     { "text": "Verstuur",  "doc": "Page-panel form submit button (#180)." },
+    "cancel":     { "text": "Annuleer",  "doc": "Page-panel form cancel button (#180)." },
+    "settings_title": { "text": "Instellingen", "doc": "Title for the /settings page panel." },
+    "settings_hint":  { "text": "Pas je voorkeuren aan. Wijzigingen worden direct toegepast.", "doc": "Settings panel intro line." }
+  },
   "transport": {
     "no_substrate":  { "text": "Transport-modus-besturing niet aanwezig in deze build.",
                        "doc": "/transport-mode of /transports aangeroepen maar agent.setTransportMode ontbreekt." },

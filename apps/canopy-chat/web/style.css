@@ -404,6 +404,54 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
 .cc-brief-section-fields dt { color: var(--fg-mute); font-size: 0.85rem; }
 .cc-brief-section-fields dd { margin: 0; font-size: 0.85rem; }
 
+/* #180 (2026-05-24) — generic side-panel for manifest ops that declare
+   surfaces.page (Settings, multi-step wizards, contact cards, etc.). */
+.cc-page-panel {
+  width: 380px;
+  max-width: 60vw;
+  background: var(--shell-bg);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cc-page-panel[hidden] { display: none; }
+.cc-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.cc-page-title { font-weight: bold; }
+.cc-page-close {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  color: var(--fg-mute, #777);
+}
+.cc-page-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0.8rem;
+}
+.cc-page-hint {
+  margin: 0 0 0.8rem;
+  color: var(--fg-mute, #666);
+  font-size: 0.9rem;
+}
+.cc-page-form { margin-bottom: 0.6rem; }
+.cc-page-status {
+  font-size: 0.85rem;
+  color: var(--fg-mute, #666);
+  margin-top: 0.4rem;
+}
+.cc-page-status-error {
+  color: var(--err, #c33);
+}
+
 /* v0.7.1c — network-events log side-panel */
 .cc-logs-panel {
   width: 360px;

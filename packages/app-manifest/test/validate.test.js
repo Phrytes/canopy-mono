@@ -766,6 +766,60 @@ describe('validateManifest', () => {
   });
 });
 
+describe('#180 — surfaces.page slot (2026-05-24)', () => {
+  const okBase = { app: 'a', itemTypes: ['t'], operations: [], views: [] };
+
+  it("accepts surfaces.page with kind 'side-panel'", () => {
+    const e = errs({
+      ...okBase,
+      operations: [{
+        id: 'openSettings', verb: 'list',
+        surfaces: { page: { kind: 'side-panel', title: 'Settings' } },
+      }],
+    });
+    expect(e).toEqual([]);
+  });
+
+  it("accepts surfaces.page with kind 'modal' + 'screen'", () => {
+    expect(errs({ ...okBase, operations: [{
+      id: 'm', verb: 'list', surfaces: { page: { kind: 'modal' } },
+    }] })).toEqual([]);
+    expect(errs({ ...okBase, operations: [{
+      id: 's', verb: 'list', surfaces: { page: { kind: 'screen', route: '/settings' } },
+    }] })).toEqual([]);
+  });
+
+  it('rejects surfaces.page without kind', () => {
+    const e = errs({ ...okBase, operations: [{
+      id: 'o', verb: 'list', surfaces: { page: { title: 'oops' } },
+    }] });
+    expect(e.some((x) => /surfaces\/page\/kind/.test(x.path))).toBe(true);
+  });
+
+  it('rejects unknown kind', () => {
+    const e = errs({ ...okBase, operations: [{
+      id: 'o', verb: 'list', surfaces: { page: { kind: 'overlay' } },
+    }] });
+    expect(e.some((x) => /side-panel/.test(x.message))).toBe(true);
+  });
+
+  it('rejects empty title / route strings', () => {
+    expect(errs({ ...okBase, operations: [{
+      id: 'o', verb: 'list', surfaces: { page: { kind: 'modal', title: '' } },
+    }] }).some((x) => /title/.test(x.path))).toBe(true);
+    expect(errs({ ...okBase, operations: [{
+      id: 'o', verb: 'list', surfaces: { page: { kind: 'screen', route: '' } },
+    }] }).some((x) => /route/.test(x.path))).toBe(true);
+  });
+
+  it('rejects non-object surfaces.page', () => {
+    const e = errs({ ...okBase, operations: [{
+      id: 'o', verb: 'list', surfaces: { page: 'side-panel' },
+    }] });
+    expect(e.some((x) => /must be an object/.test(x.message))).toBe(true);
+  });
+});
+
 describe('VERBS / isCanonicalVerb', () => {
   it('frozen verb allow-list mirrors item-store', () => {
     for (const v of ['add', 'list', 'complete', 'remove', 'claim', 'reassign', 'submit', 'approve', 'reject', 'revoke']) {

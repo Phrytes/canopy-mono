@@ -239,6 +239,12 @@
     "connect_failed": { "text": "Relay connect failed: {{reason}}",
                         "doc": "/set-relay caught an exception from sa.relay.connect()." }
   },
+  "page": {
+    "submit":     { "text": "Submit", "doc": "Page-panel form submit button (#180)." },
+    "cancel":     { "text": "Cancel", "doc": "Page-panel form cancel button (#180)." },
+    "settings_title": { "text": "Settings", "doc": "Title for the /settings page panel." },
+    "settings_hint":  { "text": "Adjust your preferences. Changes apply immediately.", "doc": "Settings panel intro line." }
+  },
   "transport": {
     "no_substrate":  { "text": "Transport-mode control not wired in this build.",
                        "doc": "/transport-mode or /transports called but agent.setTransportMode isn't exposed." },
