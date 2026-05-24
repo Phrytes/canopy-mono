@@ -126,7 +126,13 @@
       "appeal":             { "text": "Appeal this revoke",                   "doc": "Appeal CTA — only when last reviewLog entry is revoke." },
       "subtask_of":         { "text": "Sub-task of: {text}",                  "doc": "Parent reference chip on a sub-task — when the parent is in listOpen." },
       "subtask_of_id":      { "text": "Sub-task of #{id}",                    "doc": "Parent reference chip on a sub-task — when the parent isn't in listOpen (e.g. completed)." },
-      "subtasks_label":     { "text": "{count} sub-task(s)",                  "doc": "Section header above the sub-tasks list." }
+      "subtasks_label":     { "text": "{count} sub-task(s)",                  "doc": "Section header above the sub-tasks list." },
+      "edit":               { "text": "Edit",                                 "doc": "#226 — Edit task body CTA (visible when status is ready/waiting/blocked/claimed)." },
+      "edit_title":         { "text": "Edit task",                            "doc": "#226 — EditTaskModal title." },
+      "edit_text_label":    { "text": "What needs doing?",                    "doc": "#226 — EditTaskModal text-field label." },
+      "edit_notes_label":   { "text": "Notes (optional)",                     "doc": "#226 — EditTaskModal notes-field label." },
+      "edit_cancel":        { "text": "Cancel",                               "doc": "#226 — EditTaskModal cancel button." },
+      "edit_save":          { "text": "Save",                                 "doc": "#226 — EditTaskModal save button." }
     },
     "compose": {
       "title":           { "text": "New task",                        "doc": "ComposeScreen title." },
