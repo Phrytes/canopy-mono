@@ -747,20 +747,27 @@ async function handleGroupRedeemRequest(fromNknAddr, payload) {
 // existing callsites; new callers should just use agent.sendPeerMessage.
 const sendPeerWithRetry = (addr, payload) => agent.sendPeerMessage(addr, payload);
 
+// 2026-05-24 fix — the handler factories below are called at MODULE
+// load, but `callSkill` is `const`-declared later in this file → TDZ
+// crash on browser load.  Wrap with lazy thunks so the inner ref
+// resolves at CALL time (by which point callSkill is initialised).
+const callSkillLazy = (...args) => callSkill(...args);
+const sendPeerLazy  = (...args) => sendPeerWithRetry(...args);
+
 const _propagateMeshIntros = makePropagateMeshIntros({
-  callSkill,
-  sendPeer: sendPeerWithRetry,
+  callSkill: callSkillLazy,
+  sendPeer:  sendPeerLazy,
 });
 async function propagateMeshIntros(args) {
   if (!agent?.peer || agent.peer.status !== 'connected') return;
   return _propagateMeshIntros(args);
 }
 
-const handleBuurtPeerIntro = makeHandleBuurtPeerIntro({ callSkill });
+const handleBuurtPeerIntro = makeHandleBuurtPeerIntro({ callSkill: callSkillLazy });
 
 const _requestCatchUpFromKnownPeers = makeRequestCatchUpFromKnownPeers({
-  callSkill,
-  sendPeer: sendPeerWithRetry,
+  callSkill: callSkillLazy,
+  sendPeer:  sendPeerLazy,
 });
 async function requestCatchUpFromKnownPeers() {
   if (!agent?.peer || agent.peer.status !== 'connected') return;
@@ -768,8 +775,8 @@ async function requestCatchUpFromKnownPeers() {
 }
 
 const handleCatchUpRequest = makeHandleCatchUpRequest({
-  callSkill,
-  sendPeer: sendPeerWithRetry,
+  callSkill: callSkillLazy,
+  sendPeer:  sendPeerLazy,
   getMyPubKey: () => agent?.identity?.chat?.pubKey ?? null,
 });
 
