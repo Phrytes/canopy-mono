@@ -2036,8 +2036,55 @@ function updateLangButtons() {
 
 /* ── core flow ─────────────────────────────────────────── */
 
+/**
+ * #177 (2026-05-24) — fuzzy text→id resolution.  For each param on
+ * the dispatched op that declares `pickerSource.listOp`, look up
+ * the most-recent cached listing for that op + try to match the
+ * user-supplied text against item labels (case-insensitive
+ * substring).  Unique match → swap arg in place.  Ambiguous or
+ * no match → leave as-is.
+ *
+ * Skips values that already look like ulids (20+ uppercase
+ * alphanumeric chars) — those are correctly-typed ids, no
+ * resolution needed.
+ */
+function resolveTextArgsInPlace(parse, thread) {
+  const entry = catalog?.opsById?.get(parse.opId);
+  const params = entry?.op?.params ?? [];
+  for (const p of params) {
+    const listOp = p?.pickerSource?.listOp;
+    if (!listOp) continue;
+    const raw = parse.args[p.name];
+    if (typeof raw !== 'string' || raw === '') continue;
+    // Already a ulid-looking id?  Skip resolution.
+    if (/^[0-9A-Z]{20,}$/.test(raw)) continue;
+    const listing = thread.lastListingFor(listOp);
+    const items = listing?.items ?? [];
+    if (items.length === 0) continue;
+    const needle = raw.toLowerCase();
+    const hits = items.filter(it => {
+      const label = String(it?.label ?? '').toLowerCase();
+      return label.includes(needle);
+    });
+    if (hits.length === 1) {
+      parse.args[p.name] = hits[0].id;
+    }
+    // Ambiguous (>1) or no match (0): leave as-is.  The substrate
+    // surfaces a clearer "not-found" + the user retries.
+  }
+}
+
 async function handleUserText(text, thread) {
   const parse = parseInput(text, catalog, { threadId: thread.id });
+  // #177 (2026-05-24) — fuzzy text→id resolution.  When the user
+  // typed a human label (e.g. `/done dishwasher` instead of
+  // `/done c-1`) and the op's id-param declares a `pickerSource`,
+  // look the label up in the most-recent cached listing and swap
+  // the arg in place.  Ambiguity / no match → leave as-is and
+  // let dispatch surface the error normally.
+  if (parse?.kind === 'slash' && parse.opId && parse.args) {
+    resolveTextArgsInPlace(parse, thread);
+  }
   const route = resolveDispatch(parse, catalog);
 
   if (route.kind === 'unknown') {
