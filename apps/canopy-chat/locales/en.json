@@ -234,7 +234,9 @@
                              "doc": "New-thread form: allowCommands checkbox label." },
     "form_create": { "text": "Create",      "doc": "New-thread form: submit button (create mode)." },
     "form_save":   { "text": "Save",        "doc": "New-thread form: submit button (edit mode)." },
-    "form_cancel": { "text": "Cancel",      "doc": "New-thread form: cancel button." }
+    "form_cancel": { "text": "Cancel",      "doc": "New-thread form: cancel button." },
+    "dm_prefix":   { "text": "DM",          "doc": "Prefix for DM-scoped thread names (Slice 6a)." },
+    "dm_unknown":  { "text": "Unknown peer", "doc": "Placeholder DM peer label shown before identity is exchanged (Slice 6a)." }
   },
   "contacts": {
     "trust": {

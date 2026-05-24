@@ -1651,13 +1651,30 @@ export function buildSkills({
         },
         visibility: 'household',
       }], { actor: from });
+      // 2026-05-24 — also persist the rules locally so /group-rules
+      // works on the joiner side after join.  Caller (canopy-chat's
+      // join-group wizard) reads `rules` from the invite URL payload
+      // and forwards it here.  Idempotent: skip if a group-rules
+      // item for this groupId already exists.
+      if (a.rules && typeof a.rules === 'object') {
+        const existing = await store.listOpen({ type: 'group-rules' });
+        const already = existing.find(i => i?.source?.groupId === a.groupId);
+        if (!already) {
+          await store.addItems([{
+            type:       'group-rules',
+            text:       `Rules for ${a.groupId} (mirrored from invite)`,
+            source:     { groupId: a.groupId, rules: a.rules, version: 1, mirrored: true },
+            visibility: 'household',
+          }], { actor: from });
+        }
+      }
       return {
         redemptionId: item.id,
         groupId:      a.groupId,
         validUntil:   a.expiresAt ?? null,
       };
     }, {
-      description: 'Joiner-side mirror: records a peer-confirmed redemption locally.',
+      description: 'Joiner-side mirror: records a peer-confirmed redemption + rules locally.',
       visibility:  'authenticated',
     }),
 
@@ -1808,6 +1825,11 @@ export function buildSkills({
       const a = dataArgs(parts);
       const payload = a.payload;
       const fromPubKey = typeof a.fromPubKey === 'string' ? a.fromPubKey : null;
+      // 2026-05-24 — separate NKN address tracking.  fromPubKey is
+      // the sender's substrate chat-agent identity (not NKN-routable
+      // in the browser bundle); fromNknAddr is the actual transport
+      // address [Help with] uses to send DMs back to the post author.
+      const fromNknAddr = typeof a.fromNknAddr === 'string' ? a.fromNknAddr : null;
       if (!payload || typeof payload !== 'object') return { error: 'payload required' };
       const requestId = payload.requestId;
       if (typeof requestId !== 'string' || !requestId) return { error: 'payload.requestId required' };
@@ -1835,6 +1857,9 @@ export function buildSkills({
           broadcast:    true,
           from:         payload.from ?? null,
           fromPubKey,
+          // 2026-05-24 — wire-level NKN address for back-channel DM
+          // delivery (Slice 6b's [Help with] routes via this).
+          ...(fromNknAddr ? { fromNknAddr } : {}),
           claimsTopic:  payload.claimsTopic ?? null,
           categoryId:   payload.categoryId ?? null,
           skillTags:    Array.isArray(payload.skillTags) ? payload.skillTags : [],
