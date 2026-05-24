@@ -661,32 +661,11 @@ export async function createRealHouseholdAgent(opts = {}) {
     revealPeer:      'setPeerReveal',
   };
 
-  /**
-   * 2026-05-24 — retry wrapper for first-contact peer sends.  Same
-   * shape as main.js's sendPeerWithRetry, lives here because the
-   * stoop fan-out uses sa.peer.sendTo directly (rather than going
-   * through main.js's agent.sendPeerMessage wrapper).
-   */
-  async function _saSendWithRetry(sa, addr, payload, opts = {}) {
-    const delays = opts.delays ?? [3000, 5000];
-    let lastErr = null;
-    for (let attempt = 0; attempt <= delays.length; attempt++) {
-      try {
-        return await sa.peer.sendTo(addr, payload);
-      } catch (err) {
-        lastErr = err;
-        const msg = String(err?.message ?? err);
-        const isHandshake = /No pubKey registered|send HI first|did not respond with HI/i.test(msg);
-        if (!isHandshake) throw err;
-        if (attempt === delays.length) break;
-        if (typeof console !== 'undefined') {
-          console.info(`[realAgent _saSendWithRetry] HI not ready for ${addr.slice(0, 16)}…, retrying in ${delays[attempt]}ms`);
-        }
-        await new Promise(r => setTimeout(r, delays[attempt]));
-      }
-    }
-    throw lastErr;
-  }
+  // 2026-05-24 — retry-on-HI-race now lives in secure-agent's
+  // sendToPeer (task #215). sa.peer.sendTo handles it transparently.
+  // Wrapper alias kept for the existing fan-out callsite so the diff
+  // stays small; new code can call sa.peer.sendTo directly.
+  const _saSendWithRetry = (sa, addr, payload) => sa.peer.sendTo(addr, payload);
 
   /**
    * 2026-05-24 — list the buurts this user has peer-confirmed
