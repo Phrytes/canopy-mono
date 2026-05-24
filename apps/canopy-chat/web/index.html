@@ -43,6 +43,10 @@
                  aria-label="Chat input"
                  placeholder="Type a /command or text…">
           <button type="submit">Send</button>
+          <!-- #199 (2026-05-24) — slash-command auto-suggest dropdown.
+               Hidden until user types '/'; arrow keys cycle, Enter
+               picks, Esc dismisses. -->
+          <ul id="cmd-suggest" class="cc-cmd-suggest" hidden role="listbox"></ul>
         </form>
       </section>
       <!-- v0.7.1c — network-events log side-panel.  Hidden by default;
