@@ -1,64 +1,129 @@
 /**
  * canopy-chat-mobile — in-process agent bundle.
  *
- * Mirrors apps/canopy-chat/src/web/realAgent.js's composition
- * pattern: three (eventually four) real app agents share one
- * InternalBus + LocalStore, exposed behind a single `callSkill`
- * dispatcher.  Portable: zero RN, zero DOM.
+ * Composition shell: the same `createRealHouseholdAgent` factory
+ * that powers web canopy-chat (lifted to portable code in #225.1)
+ * gets booted here with RN-friendly opts.  Cross-peer mesh wires
+ * the RN NknTransport (#223) when a runtime nkn-sdk module is
+ * available.
  *
- * V0 (#222 skeleton):
- *   - Composes ONLY the manifests (renderMobile-ready) + a
- *     stubbed dispatcher.  Real per-agent boot lives behind
- *     adapter seams that the next slice fills.
+ * Portable: zero RN, zero DOM at import time.  The actual factory
+ * boot may need browser-globals (createRealHouseholdAgent uses
+ * `typeof globalThis.localStorage` guards), so on RN the caller
+ * passes `opts.chatVault` + `opts.hostVault` to bypass the
+ * localStorage default.  See #222.5 (AsyncStorage adapter follow-
+ * up) for the production storage path.
  *
- * V1 (per #225.1):
- *   - When realAgent.js's portable half is lifted from
- *     apps/canopy-chat/src/web/, this file consumes that lifted
- *     factory directly — no re-implementation.
+ * Three boot modes, picked by opts:
+ *   1. `opts.skillStub` — test-only stub; bypasses the real factory.
+ *      Returned bundle's callSkill delegates straight to the stub.
+ *   2. Real boot with `opts.chatVault` (+ optional opts.hostVault) —
+ *      the production path.  createRealHouseholdAgent runs; the
+ *      returned controller exposes its callSkill verbatim.
+ *   3. No vaults + no stub — the factory tries `makeBrowserVault`,
+ *      which uses localStorage; on Hermes this throws.  We catch
+ *      and surface a clear error rather than crash silently.
  *
- * V2 (per #223 NKN-on-RN):
- *   - Wires the RN NKN transport so cross-device mesh flows work
- *     on Android.  Until then, callSkill returns {ok:false,
- *     error:'mesh transport pending'} for any cross-instance op.
+ * The V0 'agent-not-booted' stub fell away in V1 (replaced by
+ * boot-failure error or the real factory's reply).
  */
 import { composeManifests } from './composeManifests.js';
 
+// Eager imports of the portable factory + the manifest type.  Both
+// are pure ESM, no RN/DOM imports at module-load.  NknTransport is
+// dynamic — we only need it when wiring real cross-peer.
+// Relative import for the same reason composeManifests uses one — pnpm
+// workspace self-resolution from a sibling app needs an install cycle.
+// The package.json "./core-realAgent" export is still the canonical
+// public path for callers OUTSIDE the monorepo.
+import { createRealHouseholdAgent } from '../../../canopy-chat/src/core/agent/realAgent.js';
+
 /**
- * Boot a minimal canopy-chat-mobile agent bundle.
+ * Boot the agent bundle.  See module-doc for the three boot modes.
  *
- * @param {object} [opts]
- * @param {object} [opts.householdManifest]  optional real household
- *                                           manifest to merge in
- * @param {(opId: string, args: object) => Promise<object>} [opts.skillStub]
- *           optional stub for callSkill — used by tests + the V0
- *           skeleton before per-agent boot is wired.  Defaults to a
- *           handler that returns `{ok: false, error: 'agent-not-booted'}`.
+ * @param {object}  [opts]
+ * @param {object}  [opts.householdManifest]   merge an extra manifest into the catalog
+ * @param {object}  [opts.chatVault]           secure-agent chat-side vault (e.g. VaultMemory in tests, AsyncStorageVault on RN)
+ * @param {object}  [opts.hostVault]           host-side vault (defaults inside factory to makeBrowserVault)
+ * @param {object}  [opts.secureAgentOpts]     forwarded to createRealHouseholdAgent → createSecureAgent
+ * @param {function}[opts.publishEvent]        forwarded; defaults to no-op
+ * @param {object}  [opts.nknLib]              optional runtime nkn-sdk module; if present, connectPeerTransport is wired
+ * @param {function}[opts.onPeerMessage]       NKN inbound callback (only meaningful when nknLib provided)
+ * @param {function}[opts.skillStub]           test-only — bypass the real factory entirely
  *
- * @returns {Promise<{catalog, callSkill, dispose}>}
+ * @returns {Promise<{
+ *   catalog: object,
+ *   callSkill: (appOrigin: string, opId: string, args?: object) => Promise<object>,
+ *   agent: object | null,
+ *   transport: { kind: 'none' | 'nkn' | 'stub', connected?: boolean } ,
+ *   dispose: () => Promise<void>,
+ * }>}
  */
 export async function bootAgentBundle(opts = {}) {
   const catalog = composeManifests({ householdManifest: opts.householdManifest });
 
-  // The stub returns a clear error so callers can detect "skeleton
-  // mode" vs. "real agents wired".  When #225.1 lifts realAgent's
-  // portable half, this default flips to the real dispatcher.
-  const defaultSkill = async (opId) => ({
-    ok:    false,
-    error: 'agent-not-booted',
-    note:  `canopy-chat-mobile V0 skeleton; skill "${opId}" requires per-agent boot (see #225.1).`,
-  });
-  const skillStub = typeof opts.skillStub === 'function' ? opts.skillStub : defaultSkill;
+  // Mode 1 — test stub.  No real factory boot; callSkill delegates
+  // to the injected stub.  Used by vitest tests that don't want to
+  // pay the createRealHouseholdAgent cost (which provisions a vault,
+  // signs WebID claims, etc.).
+  if (typeof opts.skillStub === 'function') {
+    const callSkill = async (appOrigin, opId, args) =>
+      opts.skillStub(opId, args ?? {}, { appOrigin });
+    return {
+      catalog,
+      callSkill,
+      agent:     null,
+      transport: { kind: 'stub' },
+      dispose:   async () => {},
+    };
+  }
 
-  const callSkill = async (appOrigin, opId, args) => {
-    // V0: no app-routing yet — just delegate to the stub.  V1
-    // restores canopy-chat web's routing table (appOrigin →
-    // tasksCrew | stoopAgent | folioAgent | hostAgent).
-    return skillStub(opId, args ?? {}, { appOrigin });
-  };
+  // Mode 2 + 3 — real boot.  Factory throws on Hermes if no chatVault
+  // is provided (it tries makeBrowserVault → localStorage).  Surface
+  // the error in a useful shape rather than letting it crash the bundle.
+  let agent;
+  try {
+    agent = await createRealHouseholdAgent({
+      chatVault:        opts.chatVault,
+      hostVault:        opts.hostVault,
+      secureAgentOpts:  opts.secureAgentOpts,
+      publishEvent:     opts.publishEvent,
+    });
+  } catch (err) {
+    // Wrap with a localised-error-friendly shape so the RN UI can
+    // surface it via `t('boot.boot_failed', { message: err.message })`.
+    throw Object.assign(new Error(`agent-wiring-failed: ${err.message}`), {
+      cause: err,
+      code:  'AGENT_WIRING_FAILED',
+    });
+  }
+
+  // Optional cross-peer transport.  Mobile users that bring their own
+  // nkn-sdk module (or use the bundled @canopy/react-native NknTransport
+  // path) wire it here.  Without nknLib, the bundle still works for
+  // local-only flows — cross-device mesh just isn't connected.
+  let transport = { kind: 'none' };
+  if (opts.nknLib && typeof agent.connectPeerTransport === 'function') {
+    try {
+      await agent.connectPeerTransport({
+        nknLib:        opts.nknLib,
+        onPeerMessage: opts.onPeerMessage,
+      });
+      transport = { kind: 'nkn', connected: true };
+    } catch (err) {
+      // NKN connect failures are non-fatal — the rest of the bundle
+      // (slash commands, local-only flows) keeps working.
+      transport = { kind: 'nkn', connected: false, error: err.message };
+    }
+  }
 
   return {
     catalog,
-    callSkill,
-    dispose: async () => { /* V1: tear down agents */ },
+    callSkill: agent.callSkill,
+    agent,
+    transport,
+    dispose: async () => {
+      try { await agent?.sa?.shutdown?.(); } catch { /* defensive */ }
+    },
   };
 }

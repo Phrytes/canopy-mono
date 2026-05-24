@@ -17,7 +17,9 @@
   "boot": {
     "loading":          { "text": "Agents opstarten…",            "doc": "Tijdens in-process bundel-compositie" },
     "agents_ready":     { "text": "Agents klaar",                 "doc": "a11y bij voltooide boot" },
-    "boot_failed":      { "text": "Opstarten mislukt: {{message}}", "doc": "Foutbanner bij agentBundle-throw; {{message}} ingevuld" }
+    "boot_failed":      { "text": "Opstarten mislukt: {{message}}", "doc": "Foutbanner bij agentBundle-throw; {{message}} ingevuld" },
+    "transport_ready":  { "text": "Mesh-transport gereed",          "doc": "Na voltooide initiële NknTransport-connect" },
+    "agent_wiring_failed": { "text": "Kon agent niet bedraden: {{message}}", "doc": "Bij createRealHouseholdAgent-fout tijdens V1 boot" }
   },
   "rn": {
     "shell_stub_intro": { "text": "RN compositiel-shell — V0 skelet.", "doc": "Placeholder tot ChatScreen echt rendert" }

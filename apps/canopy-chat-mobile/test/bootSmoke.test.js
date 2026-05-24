@@ -52,24 +52,61 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
     }
   });
 
-  it('bootAgentBundle returns the V0 skeleton skill stub', async () => {
-    const bundle = await bootAgentBundle();
-    expect(typeof bundle.callSkill).toBe('function');
-    const r = await bundle.callSkill('tasks-v0', 'addTask', { text: 'x' });
-    // V0: stub returns agent-not-booted; #225.1 + per-agent wiring
-    // flips this to a real result.
-    expect(r.ok).toBe(false);
-    expect(r.error).toBe('agent-not-booted');
-    expect(r.note).toMatch(/addTask/);
-  });
-
-  it('bootAgentBundle accepts a skillStub override (test-double seam)', async () => {
+  it('bootAgentBundle accepts a skillStub override (test-double seam, no real boot)', async () => {
     const bundle = await bootAgentBundle({
       skillStub: async (opId) => ({ ok: true, mockOp: opId }),
     });
+    expect(typeof bundle.callSkill).toBe('function');
+    expect(bundle.agent).toBe(null);                  // no real factory ran
+    expect(bundle.transport).toEqual({ kind: 'stub' });
     const r = await bundle.callSkill('stoop', 'postRequest', { text: 'hi' });
     expect(r.ok).toBe(true);
     expect(r.mockOp).toBe('postRequest');
+  });
+
+  it('V1: real boot with VaultMemory wires createRealHouseholdAgent', async () => {
+    const { VaultMemory } = await import('@canopy/vault');
+    const bundle = await bootAgentBundle({
+      chatVault: new VaultMemory(),
+      hostVault: new VaultMemory(),
+    });
+    expect(bundle.agent).toBeTruthy();
+    // Real agent exposes a callSkill, an `sa` (secure-agent) handle,
+    // and connectPeerTransport for NKN wiring.
+    expect(typeof bundle.callSkill).toBe('function');
+    expect(typeof bundle.agent.sa).toBe('object');
+    expect(typeof bundle.agent.connectPeerTransport).toBe('function');
+    // No nknLib provided → transport stays 'none' but agent is live.
+    expect(bundle.transport.kind).toBe('none');
+
+    // Smoke-call a household skill so we know the factory actually
+    // routes a request (not just constructed shells).
+    const r = await bundle.callSkill('household', 'listOpen', {});
+    expect(r).toBeTruthy();
+    expect(r.ok !== false || r.items).toBeTruthy(); // either ok-shaped reply or items
+
+    await bundle.dispose();
+  });
+
+  it('V1: real boot with mocked nknLib registers NKN transport', async () => {
+    const { VaultMemory } = await import('@canopy/vault');
+    // Minimal nknLib mock — just enough surface to let
+    // sa.peer.connect() resolve without going to the real network.
+    // The connect path may still fail (we don't fake the full client
+    // lifecycle); we just verify the wiring SEAM doesn't crash.
+    const fakeNknLib = { MultiClient: class { constructor() {} on() {} } };
+    const bundle = await bootAgentBundle({
+      chatVault: new VaultMemory(),
+      hostVault: new VaultMemory(),
+      nknLib:    fakeNknLib,
+    });
+    // Transport reports either connected:true (if connect path
+    // finished synchronously) or connected:false with an error — both
+    // are acceptable; the key invariant is that the seam was invoked
+    // and the bundle remains usable.
+    expect(bundle.transport.kind).toBe('nkn');
+    expect(typeof bundle.transport.connected).toBe('boolean');
+    await bundle.dispose();
   });
 
   it('localisation: t() resolves locale keys + falls back to key', async () => {
