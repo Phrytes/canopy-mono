@@ -645,7 +645,7 @@ async function sendGroupRedeemRequest({ adminNkn, groupId, code, shareCard, peer
     pendingPeerRedeems.set(requestId, { resolve, reject, timer });
   });
   try {
-    await agent.sendPeerMessage(adminNkn, {
+    await sendPeerWithRetry(adminNkn, {
       type:      'p2p-chat',
       subtype:   'group-redeem-request',
       requestId,
@@ -759,7 +759,7 @@ async function propagateMeshIntros({ groupId, newPeerAddr, newPeerDisplay, newPe
   // 1. Send existing-peer intros TO new joiner.
   for (const p of existing) {
     try {
-      await agent.sendPeerMessage(newPeerAddr, {
+      await sendPeerWithRetry(newPeerAddr, {
         type:    'p2p-chat',
         subtype: 'buurt-peer-intro',
         groupId,
@@ -776,7 +776,7 @@ async function propagateMeshIntros({ groupId, newPeerAddr, newPeerDisplay, newPe
   if (newPeerShared) {
     for (const p of existing) {
       try {
-        await agent.sendPeerMessage(p.addr, {
+        await sendPeerWithRetry(p.addr, {
           type:    'p2p-chat',
           subtype: 'buurt-peer-intro',
           groupId,
@@ -791,6 +791,39 @@ async function propagateMeshIntros({ groupId, newPeerAddr, newPeerDisplay, newPe
   }
   console.info(`[mesh-intro] propagated for ${groupId}: ${existing.length} existing peer(s)`
     + (newPeerShared ? ' (incl. broadcast of new joiner)' : ' (new joiner opted out)'));
+}
+
+/**
+ * 2026-05-24 — retry wrapper for first-contact sends.  Secure-agent's
+ * HI (Hello-Initiation) handshake is asynchronous; the very first
+ * sendPeerMessage to an unknown peer can race the handshake and
+ * throw "No pubKey registered for recipient … — send HI first" OR
+ * "did not respond with HI within 5000ms".  The send itself does
+ * trigger HI as a side effect, so a short wait + retry usually
+ * succeeds.  Caller flows that target a freshly-discovered peer
+ * should use this instead of bare agent.sendPeerMessage.
+ *
+ * Defaults: 2 retries with 3s + 5s backoff (so ~8s total before
+ * giving up).  Throws the last error on persistent failure.
+ */
+async function sendPeerWithRetry(addr, payload, opts = {}) {
+  if (!agent?.sendPeerMessage) throw new Error('sendPeerMessage unavailable');
+  const delays = opts.delays ?? [3000, 5000];
+  let lastErr = null;
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      return await agent.sendPeerMessage(addr, payload);
+    } catch (err) {
+      lastErr = err;
+      const msg = String(err?.message ?? err);
+      const isHandshake = /No pubKey registered|send HI first|did not respond with HI/i.test(msg);
+      if (!isHandshake) throw err;
+      if (attempt === delays.length) break;
+      console.info(`[sendPeerWithRetry] HI not ready for ${addr.slice(0, 16)}…, retrying in ${delays[attempt]}ms (attempt ${attempt + 1}/${delays.length})`);
+      await new Promise(r => setTimeout(r, delays[attempt]));
+    }
+  }
+  throw lastErr;
 }
 
 /**
@@ -824,7 +857,7 @@ async function requestCatchUpFromKnownPeers() {
     for (const m of roster) {
       if (!m?.addr) continue;
       try {
-        await agent.sendPeerMessage(m.addr, {
+        await sendPeerWithRetry(m.addr, {
           type:    'p2p-chat',
           subtype: 'catch-up-request',
           groupId,
@@ -864,7 +897,7 @@ async function handleCatchUpRequest(fromAddr, payload) {
   for (const post of posts) {
     const { _addedAt, ...payloadCore } = post;
     try {
-      await agent.sendPeerMessage(fromAddr, {
+      await sendPeerWithRetry(fromAddr, {
         type:       'p2p-chat',
         subtype:    'buurt-post',
         groupId,
@@ -2644,7 +2677,7 @@ async function sendDmMessage(dm, body) {
   }
   try {
     const senderDisplay = await getMyDisplayName();
-    await agent.sendPeerMessage(peerAddr, {
+    await sendPeerWithRetry(peerAddr, {
       type:    'p2p-chat',
       subtype: 'chat-message',
       body,
@@ -2698,7 +2731,7 @@ async function dispatchPendingResponse(dm, body) {
   if (agent?.peer?.status === 'connected' && pending.authorAddr) {
     try {
       const senderDisplay = await getMyDisplayName();
-      await agent.sendPeerMessage(pending.authorAddr, {
+      await sendPeerWithRetry(pending.authorAddr, {
         type:    'p2p-chat',
         subtype: 'help-with-response',
         itemId:  pending.itemId,
@@ -2782,7 +2815,7 @@ async function handleHelpWithResponse(fromAddr, payload) {
       if (agent?.peer?.status === 'connected') {
         try {
           const senderDisplay = await getMyDisplayName();
-          await agent.sendPeerMessage(fromAddr, {
+          await sendPeerWithRetry(fromAddr, {
             type: 'p2p-chat', subtype: 'help-with-accepted',
             itemId: payload.itemId,
             ...(senderDisplay ? { senderDisplay } : {}),
