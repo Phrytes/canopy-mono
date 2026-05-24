@@ -979,6 +979,13 @@ export async function createRealHouseholdAgent(opts = {}) {
       // payload into THEIR feed.  Reuses the existing broadcast payload
       // shape (Phase 52.7.2) so a future substrate-multi-transport
       // slice can drop this bridge without protocol changes.
+      if (realOpId === 'postRequest' && reply?.requestId) {
+        if (sa?.peer?.status !== 'connected') {
+          if (typeof console !== 'undefined') {
+            console.warn('[realAgent] postRequest fan-out skipped — peer transport not connected (status=' + sa?.peer?.status + ')');
+          }
+        }
+      }
       if (realOpId === 'postRequest' && reply?.requestId && sa?.peer?.status === 'connected') {
         // 2026-05-24 — Slice 1 follow-up.  The substrate bundle's
         // group is a hardcoded 'cc-default-buurt' from bundle bring-
@@ -1002,7 +1009,18 @@ export async function createRealHouseholdAgent(opts = {}) {
             const buurtIds = explicitGroupId
               ? [explicitGroupId]
               : await _listMyKnownBuurts();
-            if (buurtIds.length === 0) return;
+            if (typeof console !== 'undefined') {
+              console.info('[realAgent] postRequest fan-out: explicitGroupId=' + explicitGroupId
+                + ' buurtIds=' + JSON.stringify(buurtIds));
+            }
+            if (buurtIds.length === 0) {
+              if (typeof console !== 'undefined') {
+                console.warn('[realAgent] postRequest fan-out: no buurts to address. '
+                  + 'Posts from outside a buurt-scoped thread + with no targets arg fall here. '
+                  + 'Post from inside the Buurt:<id> thread (Slice 3) or pass --targets.');
+              }
+              return;
+            }
             const sent = new Set();   // dedupe addrs across multiple buurts
             for (const groupId of buurtIds) {
               const rosterReply = await chatAgent.invoke(
@@ -1010,6 +1028,10 @@ export async function createRealHouseholdAgent(opts = {}) {
                 [DataPart({ groupId })],
               );
               const roster = rosterReply?.[0]?.data?.members ?? [];
+              if (typeof console !== 'undefined') {
+                console.info('[realAgent] fan-out: groupId=' + groupId
+                  + ' roster=' + JSON.stringify(roster.map(m => ({ addr: m?.addr?.slice(0, 16) + '…', role: m?.role }))));
+              }
               if (roster.length === 0) continue;
               const payload = {
                 requestId:      reply.requestId,
