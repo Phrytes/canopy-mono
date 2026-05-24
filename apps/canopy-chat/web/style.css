@@ -458,6 +458,122 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   color: var(--err, #c33);
 }
 
+/* #196 (C2 join-group wizard) — multi-step panel layout. */
+.cc-wizard-steps {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+  font-size: 0.8rem;
+}
+.cc-wizard-step {
+  flex: 1;
+  text-align: center;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 4px;
+  color: var(--fg-mute, #999);
+  background: var(--bg, #fafafa);
+}
+.cc-wizard-step-active {
+  border-color: var(--accent, #4a90e2);
+  color: var(--accent, #4a90e2);
+  font-weight: bold;
+}
+.cc-wizard-step-done {
+  background: var(--user-bg, #eef);
+  color: var(--fg, #333);
+}
+.cc-wizard-body { margin-bottom: 1rem; }
+.cc-wizard-body h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+.cc-wizard-blurb {
+  margin: 0 0 0.6rem;
+  color: var(--fg-mute, #666);
+  font-size: 0.85rem;
+}
+.cc-wizard-rules {
+  background: var(--bg, #fafafa);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 4px;
+  padding: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+.cc-wizard-privacy {
+  background: var(--bg, #fafafa);
+  border-left: 3px solid var(--accent, #4a90e2);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.cc-wizard-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.6rem 0;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.cc-wizard-handle-input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+.cc-wizard-suggestions {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+.cc-wizard-suggestion {
+  padding: 0.2rem 0.6rem;
+  background: var(--bg-mute, #f0f0f0);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  cursor: pointer;
+}
+.cc-wizard-suggestion:hover { background: var(--user-bg, #eef); }
+.cc-wizard-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border, #ddd);
+  padding-top: 0.7rem;
+}
+.cc-wizard-btn {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.cc-wizard-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.cc-wizard-btn-primary {
+  background: var(--accent, #4a90e2);
+  color: white;
+  border-color: var(--accent, #4a90e2);
+}
+.cc-wizard-btn-secondary {
+  background: var(--bg, #fafafa);
+}
+.cc-wizard-error {
+  color: var(--err, #c33);
+  font-size: 0.85rem;
+  margin: 0.4rem 0;
+}
+.cc-wizard-submitting {
+  color: var(--fg-mute, #666);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
 /* v0.7.1c — network-events log side-panel */
 .cc-logs-panel {
   width: 360px;

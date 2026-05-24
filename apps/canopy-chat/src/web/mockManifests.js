@@ -575,6 +575,24 @@ export const mockStoopManifest = {
       },
     },
     /**
+     * #196 (C2, 2026-05-24) — first Cluster C wizard.  Opens a 3-step
+     * panel: rules disclosure → privacy notice → handle pick → submits
+     * chained redeemInviteWithGate + setMyHandle + redeemInvite.
+     * Slash arg: invite URL ('stoop-invite://...').
+     */
+    {
+      id:    'joinGroupWizard',
+      verb:  'add',
+      params: [
+        { name: 'invite', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/join-group' },
+        chat:  { hint: 'join a buurt: open the 3-step rules-gate wizard' },
+        page:  { kind: 'side-panel', title: 'Join buurt' },
+      },
+    },
+    /**
      * #189 (B1+B2, 2026-05-23) — buurt/group surface.  V0: single-
      * buurt info per agent instance (the chat-shell currently runs
      * one stoop agent in one buurt; true multi-buurt requires
