@@ -91,14 +91,17 @@ test.describe('Cross-tab mesh + DM end-to-end', () => {
 
     const addrAPromise = waitForNknConnect(tabA);
     const addrBPromise = waitForNknConnect(tabB);
+    // Diagnostic: forward both tabs' console to test stdout so failures
+    // surface what the browser actually saw (NKN errors, receive
+    // events, send failures, etc.).
+    tabA.on('console', (m) => console.log('  [A]', m.text()));
+    tabB.on('console', (m) => console.log('  [B]', m.text()));
     await tabA.goto('/');
     await tabB.goto('/');
     const [addrA, addrB] = await Promise.all([addrAPromise, addrBPromise]);
 
     // Both tabs pre-open the DM with the other — so when messages
     // arrive, the receiving tab's active thread IS the DM thread.
-    // Otherwise the message lands in an auto-spawned sidebar entry
-    // but #messages still shows Main (the test would miss it).
     await typeCmd(tabA, `/dm ${addrB}`);
     await typeCmd(tabB, `/dm ${addrA}`);
     await expect(tabA.locator('#active-thread-name')).toContainText(/DM/i, { timeout: 5_000 });
@@ -106,15 +109,16 @@ test.describe('Cross-tab mesh + DM end-to-end', () => {
 
     // Tab A sends a message.  First send triggers HI handshake;
     // secure-agent's sendToPeer retries on race (#215), so we wait
-    // up to 20s for the receive bubble on tab B.
+    // up to 45s — real NKN routing through a public node can be
+    // slow in a fresh headless context.
     await typeCmd(tabA, 'hello from A');
     await expect(tabB.locator('#messages'))
-      .toContainText(/hello from A/i, { timeout: 20_000 });
+      .toContainText(/hello from A/i, { timeout: 45_000 });
 
     // Round-trip the other direction.
     await typeCmd(tabB, 'reply from B');
     await expect(tabA.locator('#messages'))
-      .toContainText(/reply from B/i, { timeout: 20_000 });
+      .toContainText(/reply from B/i, { timeout: 45_000 });
 
     await ctxA.close();
     await ctxB.close();
