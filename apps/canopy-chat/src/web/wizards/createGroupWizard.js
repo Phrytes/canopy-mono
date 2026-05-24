@@ -17,34 +17,15 @@
  * everything).  Custom renderer in main.js's WIZARD_RENDERERS map.
  */
 
-const ACCESS_POLICIES = [
-  { id: 'invite-only', label: 'Invite only (admins issue invites)' },
-  { id: 'request',     label: 'Request to join (admins approve)' },
-  { id: 'open',        label: 'Open (anyone with the buurt id joins)' },
-];
-
-const LEAVE_POLICIES = [
-  { id: 'anyone',        label: 'Anyone can leave at any time' },
-  { id: 'notify-first',  label: 'Leavers notify the buurt before going' },
-];
-
-const CONFLICT_POLICIES = [
-  { id: 'admin-decides', label: 'Admin decides' },
-  { id: 'mediation',     label: 'Mediation by two random members' },
-  { id: 'vote',          label: 'Member vote' },
-];
-
-const STORAGE_POLICIES = [
-  { id: 'no-pod',        label: 'No pod (local state only — simplest)' },
-  { id: 'decentralised', label: 'Decentralised (per-member pods sync)' },
-  { id: 'centralised',   label: 'Centralised (one group pod — needs URI)' },
-  { id: 'hybrid',        label: 'Hybrid (per-member + group pod — needs URI)' },
-];
-
-const KEY_ROTATION_MODES = [
-  { id: 'admin-only',         label: 'Admin-only (rotation requires admin action)' },
-  { id: 'peer-distributable', label: 'Peer-distributable (any active member can rotate)' },
-];
+// Policy catalogs + state helpers moved to
+// ../../core/wizards/createGroupState.js (#231.2d) so canopy-chat-
+// mobile's RN wizard can reuse them.
+import {
+  ACCESS_POLICIES, LEAVE_POLICIES, CONFLICT_POLICIES,
+  STORAGE_POLICIES, KEY_ROTATION_MODES, STEP_NAMES,
+  initialState, slugify, isValidSlug, labelOf,
+  buildRulesObjectFromState, finalSubmit,
+} from '../../core/wizards/createGroupState.js';
 
 /**
  * Wizard renderer for /create-group.
@@ -60,35 +41,7 @@ const KEY_ROTATION_MODES = [
 export function renderCreateGroupWizard(opts) {
   const { container, doc, callSkill, onClose, onDispatched, getMyNkn } = opts;
 
-  const state = {
-    step: 1,                   // 1..5
-    // Step 1 — identity & purpose
-    name:        '',
-    groupId:     '',
-    purpose:     '',
-    tags:        '',           // free-form CSV
-    // Step 2 — members & governance
-    additionalAdmins: '',      // CSV of webids
-    accessPolicy:    'invite-only',
-    leavePolicy:     'anyone',
-    // Step 3 — rules & conflict
-    rulesText:        '',
-    conflictPolicy:   'mediation',
-    // Step 4 — tech & storage
-    keyRotationMode: 'admin-only',
-    rotationDays:    30,
-    // Membership-code lifetime — admin-controlled, decoupled from
-    // rotationDays since 2026-05-24. Short default (1 h) so ad-hoc
-    // shares via WhatsApp/SMS don't leak a live join secret for
-    // weeks; admins bump this for slower onboarding flows.
-    inviteExpiresInHours: 1,
-    storagePolicy:   'no-pod',
-    groupPodUri:     '',
-    // Submission
-    submitting:      false,
-    submitError:     null,
-    successResult:   null,     // populated on success → step 6 (post-create code reveal)
-  };
+  const state = initialState();
 
   rerender();
 
@@ -104,11 +57,9 @@ export function renderCreateGroupWizard(opts) {
     if (state.step === 3) renderRulesStep(container, doc, state, advance, back, onClose, rerender);
     if (state.step === 4) renderTechStep(container, doc, state, advance, back, onClose, rerender);
     if (state.step === 5) renderReviewStep(container, doc, state, back, onClose, rerender, async () => {
-      state.submitting = true;
-      state.submitError = null;
-      rerender();
-      try {
-        const result = await finalSubmit(state, callSkill);
+      rerender(); // show submitting state
+      const { result } = await finalSubmit({ state, callSkill });
+      if (result) {
         // Stamp the current NKN address on the success payload so the
         // invite URL we render carries the admin's peer-redeem target.
         // null / unavailable transport just means joiners can't fall
@@ -122,9 +73,6 @@ export function renderCreateGroupWizard(opts) {
         if (typeof onDispatched === 'function') {
           try { onDispatched({ ok: true, message: `✓ Buurt "${result.groupId}" created.`, ...result }); } catch { /* swallow */ }
         }
-      } catch (err) {
-        state.submitError = err?.message ?? String(err);
-        state.submitting = false;
       }
       rerender();
     });
@@ -135,7 +83,7 @@ export function renderCreateGroupWizard(opts) {
 
 /* ─── step renderers ───────────────────────────────────────── */
 
-const STEP_NAMES = ['Identity', 'Governance', 'Rules', 'Tech', 'Review'];
+// STEP_NAMES moved to ../../core/wizards/createGroupState.js (#231.2d).
 
 function renderStepHeader(container, doc, step) {
   const header = doc.createElement('div');
@@ -569,66 +517,5 @@ function renderActions(container, doc, buttons) {
   container.appendChild(row);
 }
 
-function slugify(s) {
-  return String(s ?? '').toLowerCase().trim()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 30);
-}
-
-function isValidSlug(s) {
-  return typeof s === 'string'
-    && /^[a-z0-9](?:[a-z0-9_-]{1,28}[a-z0-9])?$/.test(s);
-}
-
-function labelOf(options, id) {
-  return options.find((o) => o.id === id)?.label ?? id;
-}
-
-/**
- * Build the rules object from wizard state.  Shared by finalSubmit
- * (sent to substrate) and the invite-URL encoder (shipped to joiner).
- */
-function buildRulesObjectFromState(state) {
-  const additionalAdmins = state.additionalAdmins
-    .split(',').map((s) => s.trim()).filter(Boolean);
-  const tags = state.tags
-    .split(',').map((s) => s.trim()).filter(Boolean);
-  const rules = {
-    purpose:           state.purpose || undefined,
-    tags:              tags.length > 0 ? tags : undefined,
-    additionalAdmins:  additionalAdmins.length > 0 ? additionalAdmins : undefined,
-    accessPolicy:      state.accessPolicy,
-    leavePolicy:       state.leavePolicy,
-    rulesText:         state.rulesText || undefined,
-    conflictPolicy:    state.conflictPolicy,
-  };
-  for (const k of Object.keys(rules)) {
-    if (rules[k] === undefined) delete rules[k];
-  }
-  return rules;
-}
-
-/**
- * Final submission: build the `rules` blob from collected fields +
- * call createGroupV2.  Returns the result so the success step can
- * show the one-time membership code.
- */
-async function finalSubmit(state, callSkill) {
-  const rules = buildRulesObjectFromState(state);
-
-  const result = await callSkill('stoop', 'createGroupV2', {
-    groupId:              state.groupId,
-    name:                 state.name,
-    rules,
-    keyRotationMode:      state.keyRotationMode,
-    rotationDays:         state.rotationDays,
-    inviteExpiresInHours: state.inviteExpiresInHours,
-    storagePolicy:        state.storagePolicy,
-    ...(state.groupPodUri ? { groupPodUri: state.groupPodUri } : {}),
-  });
-  if (result?.error) {
-    throw new Error(result.error);
-  }
-  return result;
-}
+// slugify, isValidSlug, labelOf, buildRulesObjectFromState, finalSubmit
+// moved to ../../core/wizards/createGroupState.js (#231.2d).

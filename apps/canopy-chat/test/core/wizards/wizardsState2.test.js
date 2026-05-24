@@ -1,0 +1,409 @@
+/**
+ * Wizard state-machines — #231.2 split.  Covers the second wave:
+ * conflictDispute, settings, joinGroup, createGroup.
+ *
+ * Same shape as wizardsState.test.js (#231.1) — pure functions +
+ * async submits with stub callSkills; zero DOM.
+ */
+import { describe, it, expect, vi } from 'vitest';
+
+// ── conflictDispute ─────────────────────────────────────────────
+import * as CD from '../../../src/core/wizards/conflictDisputeState.js';
+
+describe('conflictDisputeState', () => {
+  it('initialState pre-seeds from postId or id arg', () => {
+    expect(CD.initialState({ postId: 'p1' }).aboutPostId).toBe('p1');
+    expect(CD.initialState({ id: 'p2' }).aboutPostId).toBe('p2');
+    expect(CD.initialState().aboutPostId).toBe('');
+  });
+
+  it('isSummaryValid requires 10+ trimmed chars', () => {
+    expect(CD.isSummaryValid('short')).toBe(false);
+    expect(CD.isSummaryValid('   ' + 'a'.repeat(10) + '   ')).toBe(true);
+    expect(CD.isSummaryValid(null)).toBe(false);
+  });
+
+  it('isProposalValid requires 5+ trimmed chars', () => {
+    expect(CD.isProposalValid('abc')).toBe(false);
+    expect(CD.isProposalValid('abcde')).toBe(true);
+  });
+
+  it('labelOf returns the option label, falls back to id', () => {
+    expect(CD.labelOf(CD.ESCALATION_PATHS, 'mediation')).toMatch(/Mediation/);
+    expect(CD.labelOf(CD.ESCALATION_PATHS, 'unknown-id')).toBe('unknown-id');
+  });
+
+  it('loadAboutPostText: skips when no aboutPostId', async () => {
+    const state = CD.initialState();
+    const callSkill = vi.fn();
+    await CD.loadAboutPostText({ state, callSkill });
+    expect(callSkill).not.toHaveBeenCalled();
+  });
+
+  it('loadAboutPostText finds the post by id', async () => {
+    const state = CD.initialState({ postId: 'p1' });
+    const callSkill = vi.fn().mockResolvedValue({
+      items: [{ id: 'other' }, { id: 'p1', text: 'the post text' }],
+    });
+    await CD.loadAboutPostText({ state, callSkill });
+    expect(state.aboutPostText).toBe('the post text');
+  });
+
+  it('loadAboutPostText silently swallows substrate errors', async () => {
+    const state = CD.initialState({ postId: 'p1' });
+    const callSkill = vi.fn().mockRejectedValue(new Error('boom'));
+    await CD.loadAboutPostText({ state, callSkill });
+    expect(state.aboutPostText).toBe(null);   // unchanged
+  });
+
+  it('formatDisputeText assembles a structured body', () => {
+    const state = CD.initialState({ postId: 'p1' });
+    state.summary = 'X happened.';
+    state.proposal = 'Y.';
+    state.escalation = 'mediation';
+    const t = CD.formatDisputeText(state);
+    expect(t).toMatch(/\[Dispute\] X happened/);
+    expect(t).toMatch(/Proposed: Y/);
+    expect(t).toMatch(/escalation: mediation/);
+    expect(t).toMatch(/About: p1/);
+  });
+
+  it('formatDisputeText omits About when no postId', () => {
+    const state = CD.initialState();
+    state.summary = 'X.';
+    state.proposal = 'Y.';
+    state.escalation = 'vote';
+    expect(CD.formatDisputeText(state)).not.toMatch(/About:/);
+  });
+
+  it('submitDispute happy-path: posts via stoop.postRequest', async () => {
+    const state = CD.initialState();
+    state.summary = 'something happened';
+    state.proposal = 'an apology';
+    const callSkill = vi.fn().mockResolvedValue({ ok: true, postId: 'dispute-1' });
+    const { result } = await CD.submitDispute({ state, callSkill });
+    expect(callSkill.mock.calls[0][0]).toBe('stoop');
+    expect(callSkill.mock.calls[0][1]).toBe('postRequest');
+    expect(callSkill.mock.calls[0][2].kind).toBe('dispute');
+    expect(state.successResult).toBe(result);
+  });
+
+  it('submitDispute failure: sets submitError', async () => {
+    const state = CD.initialState();
+    state.summary = 'x'; state.proposal = 'y';
+    const callSkill = vi.fn().mockRejectedValue(new Error('substrate down'));
+    const r = await CD.submitDispute({ state, callSkill });
+    expect(r.result).toBeUndefined();
+    expect(state.submitError).toBe('substrate down');
+  });
+});
+
+// ── settings ────────────────────────────────────────────────────
+import * as ST from '../../../src/core/wizards/settingsState.js';
+
+describe('settingsState', () => {
+  it('initialState marks panel as loading', () => {
+    const s = ST.initialState();
+    expect(s.loading).toBe(true);
+    expect(s.profile).toBe(null);
+    expect(s.holiday).toBe(null);
+  });
+
+  it('LANG_OPTIONS includes en + nl', () => {
+    const codes = ST.LANG_OPTIONS.map((o) => o.code);
+    expect(codes).toContain('en');
+    expect(codes).toContain('nl');
+  });
+
+  it('TRANSPORT_MODES is the canonical 3-entry list', () => {
+    expect(ST.TRANSPORT_MODES).toEqual(['nkn', 'relay', 'both']);
+  });
+
+  it('loadSettings populates profile + holiday + clears loading', async () => {
+    const state = ST.initialState();
+    const callSkill = vi.fn()
+      .mockResolvedValueOnce({ handle: 'h', displayName: 'D' })   // getStoopProfile
+      .mockResolvedValueOnce({ holidayMode: true });               // getHolidayMode
+    await ST.loadSettings({ state, callSkill });
+    expect(state.profile).toEqual({ handle: 'h', displayName: 'D' });
+    expect(state.holiday).toBe(true);
+    expect(state.loading).toBe(false);
+  });
+
+  it('loadSettings swallows per-skill failures (one bad call doesn\'t block the other)', async () => {
+    const state = ST.initialState();
+    const callSkill = vi.fn()
+      .mockRejectedValueOnce(new Error('no profile'))
+      .mockResolvedValueOnce({ holidayMode: false });
+    await ST.loadSettings({ state, callSkill });
+    expect(state.profile).toBe(null);
+    expect(state.holiday).toBe(false);
+    expect(state.loading).toBe(false);
+  });
+
+  it('saveHandle rejects empty input', async () => {
+    const callSkill = vi.fn();
+    expect(await ST.saveHandle({ callSkill, handle: '   ' })).toEqual({ ok: false, error: 'empty' });
+    expect(callSkill).not.toHaveBeenCalled();
+  });
+
+  it('saveHandle trims + delegates to setMyHandle', async () => {
+    const callSkill = vi.fn().mockResolvedValue({});
+    const r = await ST.saveHandle({ callSkill, handle: '  anne  ' });
+    expect(r.ok).toBe(true);
+    expect(callSkill).toHaveBeenCalledWith('stoop', 'setMyHandle', { handle: 'anne' });
+  });
+
+  it('saveDisplayName parallels saveHandle', async () => {
+    const callSkill = vi.fn().mockResolvedValue({});
+    const r = await ST.saveDisplayName({ callSkill, displayName: 'Anne K' });
+    expect(r.ok).toBe(true);
+    expect(callSkill).toHaveBeenCalledWith('stoop', 'setMyDisplayName', { displayName: 'Anne K' });
+  });
+
+  it('setHolidayMode returns the substrate-reported flag', async () => {
+    const callSkill = vi.fn().mockResolvedValue({ holidayMode: true });
+    const r = await ST.setHolidayMode({ callSkill, on: true });
+    expect(r).toEqual({ ok: true, holidayMode: true });
+  });
+
+  it('setHolidayMode surfaces error on failure', async () => {
+    const callSkill = vi.fn().mockRejectedValue(new Error('boom'));
+    const r = await ST.setHolidayMode({ callSkill, on: true });
+    expect(r.ok).toBe(false);
+    expect(r.error).toBe('boom');
+  });
+});
+
+// ── joinGroup ───────────────────────────────────────────────────
+import * as JG from '../../../src/core/wizards/joinGroupState.js';
+
+describe('joinGroupState', () => {
+  it('privacyNoticeFor picks the right language; falls back to en', () => {
+    expect(JG.privacyNoticeFor('nl')).toMatch(/buurt|leden/i);
+    expect(JG.privacyNoticeFor('en')).toMatch(/buurt|posts/i);
+    expect(JG.privacyNoticeFor('xx')).toBe(JG.PRIVACY_NOTICE.en);
+  });
+
+  it('handleSuggestions slugifies the base name + adds 2 variants', () => {
+    const suggestions = JG.handleSuggestions('Anne K.');
+    expect(suggestions).toHaveLength(3);
+    expect(suggestions[0]).toBe('anne-k-');
+    expect(suggestions[1]).toMatch(/^anne-k--\d{2}$/);
+    expect(suggestions[2]).toMatch(/^anne-k-\.\d{4}$/);
+  });
+
+  it('isValidHandle accepts lower+digits+ _ -; rejects mixed case', () => {
+    expect(JG.isValidHandle('anne')).toBe(true);
+    expect(JG.isValidHandle('anne-k_99')).toBe(true);
+    expect(JG.isValidHandle('Anne')).toBe(false);
+    // 'a' is valid per the regex (^[a-z0-9](?:...)?$ — optional middle).
+    expect(JG.isValidHandle('a')).toBe(true);
+    expect(JG.isValidHandle('a'.repeat(31))).toBe(false);  // too long (max 30)
+    expect(JG.isValidHandle('with space')).toBe(false);
+  });
+
+  it('decodeInvite: no invite → parse error', () => {
+    const state = JG.initialState();
+    JG.decodeInvite(null, state);
+    expect(state.inviteParseError).toMatch(/No invite/);
+  });
+
+  it('decodeInvite: pre-decoded object passes through', () => {
+    const state = JG.initialState();
+    JG.decodeInvite({ groupId: 'b1', kind: 'membershipCode' }, state);
+    expect(state.invite).toEqual({ groupId: 'b1', kind: 'membershipCode' });
+  });
+
+  it('decodeInvite: JSON-literal URL parses', () => {
+    const state = JG.initialState();
+    JG.decodeInvite('stoop-invite://{"groupId":"b2","code":"c"}', state);
+    expect(state.invite).toEqual({ groupId: 'b2', code: 'c' });
+  });
+
+  it('decodeInvite: base64 form parses', () => {
+    const state = JG.initialState();
+    const json = JSON.stringify({ groupId: 'b3', code: 'x' });
+    const b64 = Buffer.from(json).toString('base64').replace(/=/g, '');
+    JG.decodeInvite(`stoop-invite://${b64}`, state);
+    expect(state.invite.groupId).toBe('b3');
+  });
+
+  it('summariseEmbeddedRules falls back to a default when nothing populated', () => {
+    expect(JG.summariseEmbeddedRules({})).toMatch(/no rules/);
+    expect(JG.summariseEmbeddedRules({ rulesText: 'custom' })).toBe('custom');
+    expect(JG.summariseEmbeddedRules({ purpose: 'P', leavePolicy: 'anyone' }))
+      .toMatch(/Purpose: P/);
+  });
+
+  it('fetchGroupRules uses embedded rules when present (no substrate call)', async () => {
+    const state = JG.initialState();
+    state.invite = { rules: { purpose: 'Test' } };
+    const callSkill = vi.fn();
+    await JG.fetchGroupRules({ state, callSkill });
+    expect(state.rulesText).toMatch(/Purpose: Test/);
+    expect(callSkill).not.toHaveBeenCalled();
+  });
+
+  it('fetchGroupRules falls back to getGroupRules substrate call', async () => {
+    const state = JG.initialState();
+    state.invite = { groupId: 'b1' };  // no embedded rules
+    const callSkill = vi.fn().mockResolvedValue({ rules: 'remote rules text' });
+    await JG.fetchGroupRules({ state, callSkill });
+    expect(callSkill).toHaveBeenCalledWith('stoop', 'getGroupRules', { groupId: 'b1' });
+    expect(state.rulesText).toBe('remote rules text');
+  });
+
+  it('finalSubmit membershipCode path: handle + redeem', async () => {
+    const state = JG.initialState();
+    state.invite = { kind: 'membershipCode', groupId: 'b1', code: 'c1' };
+    state.handle = 'anne';
+    const callSkill = vi.fn()
+      .mockResolvedValueOnce({ ok: true })                       // setMyHandle
+      .mockResolvedValueOnce({ ok: true });                      // redeemMembershipCode
+    const { result } = await JG.finalSubmit({ state, callSkill });
+    expect(result.ok).toBe(true);
+    expect(result.groupId).toBe('b1');
+    expect(result.handle).toBe('anne');
+  });
+
+  it('finalSubmit membershipCode: expired-code triggers peer fallback', async () => {
+    const state = JG.initialState();
+    state.invite = { kind: 'membershipCode', groupId: 'b1', code: 'c1', adminNkn: 'NKN-ADMIN', rules: { purpose: 'P' } };
+    state.handle = 'anne';
+    const callSkill = vi.fn()
+      .mockResolvedValueOnce({ ok: true })                                  // setMyHandle
+      .mockResolvedValueOnce({ error: 'invalid-or-expired-code' })          // redeemMembershipCode
+      .mockResolvedValueOnce({ ok: true });                                 // recordRemoteRedemption
+    const sendPeerRedeem = vi.fn().mockResolvedValue({ codeId: 'c-1', validUntil: 'soon' });
+    const { result } = await JG.finalSubmit({ state, callSkill, sendPeerRedeem });
+    expect(sendPeerRedeem).toHaveBeenCalled();
+    expect(result.message).toMatch(/peer-bridge/);
+    // recordRemoteRedemption should have been called with the rules.
+    expect(callSkill.mock.calls[2][2].rules).toEqual({ purpose: 'P' });
+  });
+
+  it('finalSubmit legacy invite path: gate + handle + redeem', async () => {
+    const state = JG.initialState();
+    state.invite = { groupId: 'b2' };   // no kind field → legacy path
+    state.handle = 'anne';
+    state.rulesAccepted = true;
+    state.privacyAccepted = true;
+    const callSkill = vi.fn()
+      .mockResolvedValueOnce({ ok: true })   // redeemInviteWithGate
+      .mockResolvedValueOnce({ ok: true })   // setMyHandle
+      .mockResolvedValueOnce({ ok: true });  // redeemInvite
+    const { result } = await JG.finalSubmit({ state, callSkill });
+    expect(result.ok).toBe(true);
+    expect(callSkill.mock.calls.map((c) => c[1])).toEqual([
+      'redeemInviteWithGate', 'setMyHandle', 'redeemInvite',
+    ]);
+  });
+
+  it('finalSubmit aborts on first error + sets submitError', async () => {
+    const state = JG.initialState();
+    state.invite = { kind: 'membershipCode', groupId: 'b1', code: 'c1' };
+    state.handle = 'a';
+    const callSkill = vi.fn().mockResolvedValue({ error: 'bad handle' });
+    const r = await JG.finalSubmit({ state, callSkill });
+    expect(r.result).toBeUndefined();
+    expect(state.submitError).toBe('bad handle');
+  });
+});
+
+// ── createGroup ─────────────────────────────────────────────────
+import * as CG from '../../../src/core/wizards/createGroupState.js';
+
+describe('createGroupState', () => {
+  it('initialState carries policy defaults', () => {
+    const s = CG.initialState();
+    expect(s.step).toBe(1);
+    expect(s.accessPolicy).toBe('invite-only');
+    expect(s.conflictPolicy).toBe('mediation');
+    expect(s.storagePolicy).toBe('no-pod');
+    expect(s.keyRotationMode).toBe('admin-only');
+  });
+
+  it('STEP_NAMES is the canonical 5-step list', () => {
+    expect(CG.STEP_NAMES).toEqual(['Identity', 'Governance', 'Rules', 'Tech', 'Review']);
+  });
+
+  it('slugify normalises arbitrary names', () => {
+    expect(CG.slugify('Mijn Buurt')).toBe('mijn-buurt');
+    expect(CG.slugify('  --!!--  ')).toBe('');
+    expect(CG.slugify('Café 123 ✓')).toBe('caf-123');
+    expect(CG.slugify('a'.repeat(50))).toHaveLength(30);
+  });
+
+  it('isValidSlug: same rules as joinGroup.isValidHandle', () => {
+    expect(CG.isValidSlug('buurt-1')).toBe(true);
+    expect(CG.isValidSlug('UPPER')).toBe(false);
+    expect(CG.isValidSlug('')).toBe(false);   // empty fails
+    expect(CG.isValidSlug('a'.repeat(31))).toBe(false);
+  });
+
+  it('labelOf: same fallback as conflictDispute.labelOf', () => {
+    expect(CG.labelOf(CG.ACCESS_POLICIES, 'open')).toMatch(/Open/);
+    expect(CG.labelOf(CG.ACCESS_POLICIES, 'unknown')).toBe('unknown');
+  });
+
+  it('buildRulesObjectFromState: empty slots collapse', () => {
+    const s = CG.initialState();
+    const r = CG.buildRulesObjectFromState(s);
+    expect(r.purpose).toBeUndefined();
+    expect(r.tags).toBeUndefined();
+    expect(r.additionalAdmins).toBeUndefined();
+    expect(r.rulesText).toBeUndefined();
+    expect(r.accessPolicy).toBe('invite-only');
+    expect(r.leavePolicy).toBe('anyone');
+    expect(r.conflictPolicy).toBe('mediation');
+  });
+
+  it('buildRulesObjectFromState parses CSV lists', () => {
+    const s = CG.initialState();
+    s.tags = 'tools, gardening,, ';
+    s.additionalAdmins = 'webid:a, webid:b';
+    s.purpose = 'Test buurt';
+    s.rulesText = 'Be kind.';
+    const r = CG.buildRulesObjectFromState(s);
+    expect(r.tags).toEqual(['tools', 'gardening']);
+    expect(r.additionalAdmins).toEqual(['webid:a', 'webid:b']);
+    expect(r.purpose).toBe('Test buurt');
+    expect(r.rulesText).toBe('Be kind.');
+  });
+
+  it('finalSubmit happy-path: calls createGroupV2 with composed rules', async () => {
+    const state = CG.initialState();
+    state.groupId = 'b1';
+    state.name    = 'Buurt 1';
+    state.purpose = 'Test';
+    const callSkill = vi.fn().mockResolvedValue({ ok: true, groupId: 'b1', code: 'JOIN-CODE' });
+    const { result } = await CG.finalSubmit({ state, callSkill });
+    expect(result.code).toBe('JOIN-CODE');
+    const args = callSkill.mock.calls[0][2];
+    expect(args.groupId).toBe('b1');
+    expect(args.name).toBe('Buurt 1');
+    expect(args.rules.purpose).toBe('Test');
+    expect(args.storagePolicy).toBe('no-pod');
+    expect(args.groupPodUri).toBeUndefined();
+  });
+
+  it('finalSubmit includes groupPodUri only when set', async () => {
+    const state = CG.initialState();
+    state.groupId = 'b1';
+    state.storagePolicy = 'centralised';
+    state.groupPodUri = 'https://pods.example/buurt-1/';
+    const callSkill = vi.fn().mockResolvedValue({ ok: true });
+    await CG.finalSubmit({ state, callSkill });
+    expect(callSkill.mock.calls[0][2].groupPodUri).toBe('https://pods.example/buurt-1/');
+  });
+
+  it('finalSubmit failure: surfaces error', async () => {
+    const state = CG.initialState();
+    state.groupId = 'b1';
+    const callSkill = vi.fn().mockResolvedValue({ error: 'slug taken' });
+    const r = await CG.finalSubmit({ state, callSkill });
+    expect(r.result).toBeUndefined();
+    expect(state.submitError).toBe('slug taken');
+  });
+});

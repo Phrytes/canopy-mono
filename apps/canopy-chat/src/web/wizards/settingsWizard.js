@@ -15,32 +15,23 @@
  * for language) — no monolithic dispatch.
  */
 
+import {
+  LANG_OPTIONS, TRANSPORT_MODES,
+  initialState, loadSettings,
+  saveHandle, saveDisplayName, setHolidayMode,
+} from '../../core/wizards/settingsState.js';
+
 export function renderSettingsWizard(opts) {
   const { container, doc, callSkill, onClose, getLang, setLang } = opts;
-  const state = {
-    profile:   null,    // {handle, displayName, ...} from stoop
-    holiday:   null,    // boolean or null
-    loading:   true,
-    saving:    {},      // per-field saving flag
-  };
+  const state = { ...initialState(), saving: {} };
 
-  load().then(rerender).catch((err) => {
-    state.loading = false;
-    state.loadError = err?.message ?? String(err);
-    rerender();
-  });
-
-  async function load() {
-    try {
-      const p = await callSkill('stoop', 'getStoopProfile', {});
-      state.profile = p ?? null;
-    } catch { /* swallow */ }
-    try {
-      const h = await callSkill('stoop', 'getHolidayMode', {});
-      state.holiday = h?.holidayMode === true;
-    } catch { /* swallow */ }
-    state.loading = false;
-  }
+  loadSettings({ state, callSkill })
+    .then(rerender)
+    .catch((err) => {
+      state.loading   = false;
+      state.loadError = err?.message ?? String(err);
+      rerender();
+    });
 
   rerender();
 
@@ -111,7 +102,7 @@ function renderLangControl(doc, state, getLang, setLang, rerender) {
   const cur = (typeof getLang === 'function') ? getLang() : 'en';
   const select = doc.createElement('select');
   select.className = 'cc-settings-control';
-  for (const [code, name] of [['en', 'English'], ['nl', 'Nederlands']]) {
+  for (const { code, name } of LANG_OPTIONS) {
     const opt = doc.createElement('option');
     opt.value = code;
     opt.textContent = name;
@@ -139,7 +130,7 @@ function renderTransportControl(doc, opts) {
   select.className = 'cc-settings-control';
   const cur = (typeof opts.getTransportMode === 'function')
     ? (opts.getTransportMode() ?? 'nkn') : 'nkn';
-  for (const m of ['nkn', 'relay', 'both']) {
+  for (const m of TRANSPORT_MODES) {
     const o = doc.createElement('option');
     o.value = m; o.textContent = m.toUpperCase();
     if (m === cur) o.selected = true;
@@ -169,14 +160,12 @@ function renderHandleControl(doc, state, callSkill, rerender) {
   save.className = 'cc-wizard-btn cc-wizard-btn-secondary';
   save.textContent = 'Save';
   save.addEventListener('click', async () => {
-    const v = input.value.trim();
-    if (!v) return;
     save.disabled = true;
-    try {
-      await callSkill('stoop', 'setMyHandle', { handle: v });
+    const r = await saveHandle({ callSkill, handle: input.value });
+    if (r.ok) {
       save.textContent = '✓';
       setTimeout(() => { save.textContent = 'Save'; save.disabled = false; }, 1500);
-    } catch (err) {
+    } else {
       save.textContent = '✗';
       setTimeout(() => { save.textContent = 'Save'; save.disabled = false; }, 2000);
     }
@@ -203,14 +192,12 @@ function renderDisplayNameControl(doc, state, callSkill, rerender) {
   save.className = 'cc-wizard-btn cc-wizard-btn-secondary';
   save.textContent = 'Save';
   save.addEventListener('click', async () => {
-    const v = input.value.trim();
-    if (!v) return;
     save.disabled = true;
-    try {
-      await callSkill('stoop', 'setMyDisplayName', { displayName: v });
+    const r = await saveDisplayName({ callSkill, displayName: input.value });
+    if (r.ok) {
       save.textContent = '✓';
       setTimeout(() => { save.textContent = 'Save'; save.disabled = false; }, 1500);
-    } catch (err) {
+    } else {
       save.textContent = '✗';
       setTimeout(() => { save.textContent = 'Save'; save.disabled = false; }, 2000);
     }
@@ -234,14 +221,13 @@ function renderHolidayControl(doc, state, callSkill, rerender) {
   box.checked = !!state.holiday;
   box.addEventListener('change', async () => {
     box.disabled = true;
-    try {
-      await callSkill('stoop', 'setHolidayMode', { on: box.checked });
-      state.holiday = box.checked;
-    } catch {
+    const r = await setHolidayMode({ callSkill, on: box.checked });
+    if (r.ok) {
+      state.holiday = r.holidayMode;
+    } else {
       box.checked = !box.checked;   // revert
-    } finally {
-      box.disabled = false;
     }
+    box.disabled = false;
   });
   toggle.appendChild(box);
   toggle.appendChild(doc.createTextNode(' Suppress notifications + mark me unavailable.'));
