@@ -370,34 +370,62 @@ function isValidHandle(handle) {
 }
 
 /**
- * Final submission: chain the three real-skill calls in sequence.
- * Aborts on first error so the user sees the FIRST problem rather
- * than a cascade.
+ * Final submission: chain the substrate calls in sequence.  Two paths
+ * depending on the invite's `kind`:
+ *
+ *   'membershipCode' (default for /create-group → /join-group):
+ *     1. setMyHandle
+ *     2. redeemMembershipCode({groupId, code})
+ *
+ *   'invite' (legacy GroupManager invite from /invite slash):
+ *     1. redeemInviteWithGate (records rules-accept audit item)
+ *     2. setMyHandle
+ *     3. redeemInvite (joins the GroupManager)
+ *
+ * Aborts on first error so the user sees the FIRST problem.
  */
 async function finalSubmit(state, callSkill) {
-  // 1. Gate check (records rules-acceptance audit item).
+  const inv = state.invite;
+  // Membership-code path (new — single short string OR encoded URL).
+  if (inv?.kind === 'membershipCode' && inv.code && inv.groupId) {
+    const handle = await callSkill('stoop', 'setMyHandle', { handle: state.handle });
+    if (handle?.ok === false || handle?.error) {
+      throw new Error(handle.error ?? 'Couldn\'t set handle.');
+    }
+    const redeem = await callSkill('stoop', 'redeemMembershipCode', {
+      groupId: inv.groupId, code: inv.code,
+    });
+    if (redeem?.ok === false || redeem?.error) {
+      throw new Error(redeem.error ?? 'Couldn\'t redeem code.');
+    }
+    return {
+      ok:      true,
+      message: `✓ Joined buurt "${inv.groupId}" as ${state.handle}.`,
+      groupId: inv.groupId,
+      handle:  state.handle,
+    };
+  }
+  // GroupManager-invite path (legacy / explicit /invite from admin).
   const gate = await callSkill('stoop', 'redeemInviteWithGate', {
-    invite:          state.invite,
+    invite:          inv,
     privacyAccepted: state.privacyAccepted,
     rulesAccepted:   state.rulesAccepted,
   });
   if (gate?.ok === false || gate?.error) {
     throw new Error(gate.error ?? 'Gate refused the redeem.');
   }
-  // 2. Bind the handle.
   const handle = await callSkill('stoop', 'setMyHandle', { handle: state.handle });
   if (handle?.ok === false || handle?.error) {
     throw new Error(handle.error ?? 'Couldn\'t set handle.');
   }
-  // 3. Actually redeem (joins the group's GroupManager).
-  const redeem = await callSkill('stoop', 'redeemInvite', { invite: state.invite });
+  const redeem = await callSkill('stoop', 'redeemInvite', { invite: inv });
   if (redeem?.ok === false || redeem?.error) {
     throw new Error(redeem.error ?? 'Couldn\'t redeem invite.');
   }
   return {
     ok:      true,
-    message: `✓ Joined buurt "${state.invite.groupId}" as ${state.handle}.`,
-    groupId: state.invite.groupId,
+    message: `✓ Joined buurt "${inv.groupId}" as ${state.handle}.`,
+    groupId: inv.groupId,
     handle:  state.handle,
   };
 }
