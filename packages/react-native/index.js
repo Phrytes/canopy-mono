@@ -15,6 +15,8 @@ export { FileSystemAdapter }      from './src/storage/FileSystemAdapter.js';
 export { MdnsTransport }          from './src/transport/MdnsTransport.js';
 export { BleTransport, SERVICE_UUID, CHARACTERISTIC_UUID }
                                   from './src/transport/BleTransport.js';
+export { NknTransport, HI_RACE_PATTERNS }
+                                  from './src/transport/NknTransport.js';
 export { requestMeshPermissions } from './src/permissions.js';
 export { createMeshAgent }        from './src/createMeshAgent.js';
 export { MobilePushBridge }       from './src/transport/MobilePushBridge.js';
