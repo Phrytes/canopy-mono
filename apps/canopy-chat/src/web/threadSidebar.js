@@ -1,17 +1,29 @@
 /**
- * **Platform: web** (DOM-dependent).  Needs an RN sibling under `rn/` — see
- * `Project Files/canopy-chat/coding-plan.md` § RN portability inventory.
+ * **Platform: web** (DOM-dependent).
  *
- * canopy-chat — thread sidebar DOM adapter.
+ * canopy-chat — thread sidebar DOM adapter.  Renders the workspace's
+ * threads as a clickable list + new-thread form.  Pure DOM (no
+ * framework); subscribes to ThreadStore changes for live updates.
  *
- * Renders the workspace's threads as a clickable list + new-thread
- * form.  Pure DOM (no framework); subscribes to ThreadStore changes
- * for live updates.
+ * #231 (2026-05-24): the state-machine pieces (form-state shape,
+ * filter build, submit logic, parseList, KNOWN_EVENT_TYPES) lifted
+ * to `src/core/threads/threadFormState.js` so canopy-chat-mobile's
+ * RN renderer can reuse them.  This file keeps only DOM + event
+ * wiring.
  *
  * Phase v0.2 sub-slice 2.3 per `/Project Files/canopy-chat/coding-plan.md`.
  */
 
 import { describeFilter } from '../filter.js';
+import {
+  KNOWN_EVENT_TYPES,
+  mergeKnownEventTypes,
+  parseList,
+  buildFilterFromFormState,
+  emptyFormState,
+  formStateFromThread,
+  submitThreadForm,
+} from '../core/threads/threadFormState.js';
 
 /**
  * @typedef {object} SidebarContext
@@ -29,10 +41,8 @@ import { describeFilter } from '../filter.js';
  *   Optional localisation function.
  */
 
-// Common event types known to the chat-shell.  Each app's notifier
-// usually fires a small fixed set; the form chips offer them as
-// click-to-toggle without forcing the user to remember the names.
-const KNOWN_EVENT_TYPES = ['notification', 'item-changed', 'reminder', 'mention'];
+// KNOWN_EVENT_TYPES moved to src/core/threads/threadFormState.js
+// (#231).  Re-imported here for the DOM renderer's use.
 
 /**
  * Re-render the sidebar's thread list inside `container`.  Idempotent;
@@ -165,18 +175,15 @@ function renderThreadForm(ctx, existingThread, onDone) {
   // Selection state — Set-of-strings for apps + event-types.  When
   // empty the filter slot is omitted (= wildcard '*').  Custom
   // values typed in the "+ add custom" field land here too.
-  const state = {
-    name:          existingThread?.name ?? '',
-    apps:          new Set(existingThread?.filter?.apps ?? []),
-    types:         new Set(existingThread?.filter?.eventTypes ?? []),
-    actors:        (existingThread?.filter?.actors ?? []).join(','),
-    allowCommands: existingThread?.permissions?.allowCommands ?? true,
-  };
+  // Form-state shape lifted to core (#231).
+  const state = editing
+    ? formStateFromThread(existingThread)
+    : emptyFormState();
 
   const appsList = (typeof knownApps  === 'function' ? knownApps()  : []) ?? [];
-  const typesList = ((typeof knownEventTypes === 'function' ? knownEventTypes() : []) ?? [])
-    .concat(KNOWN_EVENT_TYPES)
-    .filter((v, i, arr) => arr.indexOf(v) === i);
+  const typesList = mergeKnownEventTypes(
+    typeof knownEventTypes === 'function' ? knownEventTypes() : [],
+  );
 
   // Title
   const heading = doc.createElement('div');
@@ -261,30 +268,13 @@ function renderThreadForm(ctx, existingThread, onDone) {
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const name = state.name.trim();
-    if (!name) return;
-    const apps   = [...state.apps];
-    const types  = [...state.types];
-    const actors = parseList(state.actors);
-    const filter = {
-      ...(apps.length   > 0 ? { apps }              : {}),
-      ...(types.length  > 0 ? { eventTypes: types } : {}),
-      ...(actors.length > 0 ? { actors }            : {}),
-    };
-    if (editing) {
-      store.updateThread(existingThread.id, {
-        name,
-        filter,
-        permissions: { allowCommands: state.allowCommands },
-      });
-      onSelect(existingThread.id);
-    } else {
-      const t = store.createThread({
-        name, filter,
-        permissions: { allowCommands: state.allowCommands },
-      });
-      onSelect(t.id);
-    }
+    // Submit-side state machine lifted to core (#231).  Validation
+    // (empty-name reject) + filter build + create-vs-update routing
+    // all happen there; this handler just wires the DOM event +
+    // the onSelect / onDone navigation.
+    const result = submitThreadForm(state, store, { existingThread });
+    if (!result.ok) return;        // e.g. 'name-required' — leave form open
+    onSelect(result.threadId);
     onDone();
   });
 
@@ -372,10 +362,4 @@ function renderChipGroup({ doc, label, hint, knownValues, selected, onChange, ad
   return wrap;
 }
 
-function parseList(raw) {
-  if (typeof raw !== 'string') return [];
-  return raw
-    .split(/[,\s]+/)
-    .map((s) => s.trim())
-    .filter((s) => s !== '');
-}
+// parseList moved to src/core/threads/threadFormState.js (#231).
