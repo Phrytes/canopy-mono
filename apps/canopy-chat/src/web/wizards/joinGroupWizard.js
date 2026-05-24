@@ -314,19 +314,44 @@ function decodeInvite(invite, state) {
   }
   const PREFIX = 'stoop-invite://';
   let str = String(invite).trim();
-  if (str.startsWith(PREFIX)) str = str.slice(PREFIX.length);
-  // Try base64url decode first; fall back to raw JSON.
+  // Slash-arg parsers sometimes mangle "://" into ":" — tolerate
+  // `stoop-invite:base64payload` AND `stoop-invite//base64payload`
+  // in addition to the canonical `stoop-invite://base64payload`.
+  if (str.startsWith(PREFIX)) {
+    str = str.slice(PREFIX.length);
+  } else if (str.startsWith('stoop-invite:')) {
+    str = str.replace(/^stoop-invite:[\/]*/i, '');
+  } else if (str.startsWith('stoop-invite/')) {
+    str = str.replace(/^stoop-invite[\/]+/i, '');
+  }
   try {
     if (str.startsWith('{')) {
       state.invite = JSON.parse(str);
       return;
     }
+    // base64url → base64 → atob → UTF-8 JSON parse
     const padded = str.replace(/-/g, '+').replace(/_/g, '/')
                        + '=='.slice(0, (4 - str.length % 4) % 4);
-    const json = typeof globalThis.atob === 'function' ? globalThis.atob(padded) : padded;
-    state.invite = JSON.parse(json);
+    if (typeof globalThis.atob !== 'function') {
+      throw new Error('no base64 decoder available (browser only)');
+    }
+    const bin = globalThis.atob(padded);
+    // atob returns a Latin-1 binary string.  If the source was
+    // UTF-8 JSON, parsing directly may fail on non-ASCII bytes.
+    // For invite tokens (pubKey + nonce + sig + ints) everything
+    // is ASCII so JSON.parse should work directly.  If it doesn't,
+    // surface a clearer diagnostic.
+    try {
+      state.invite = JSON.parse(bin);
+    } catch (innerErr) {
+      const snippet = bin.slice(0, 50).replace(/[^\x20-\x7e]/g, '·');
+      throw new Error(`base64 decoded to non-JSON: "${snippet}…" — likely the URL was corrupted in transit (paste mangled?).  Try copy-pasting the full URL again.`);
+    }
   } catch (err) {
     state.inviteParseError = `Bad invite: ${err.message ?? err}`;
+    if (typeof console !== 'undefined') {
+      console.warn('[joinGroupWizard] decodeInvite failed', { input: invite, err });
+    }
   }
 }
 

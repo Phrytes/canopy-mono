@@ -43,7 +43,11 @@ export function mkBody(doc, heading, blurb) {
   return wrap;
 }
 
-/** Action button row (sticky at the bottom of a step). */
+/**
+ * Action button row (sticky at the bottom of a step).
+ * Pass `validate: 'key'` on a button to wire it for refreshActions —
+ * input handlers can re-evaluate disabled state without rerender.
+ */
 export function mkActions(container, doc, buttons) {
   const row = doc.createElement('div');
   row.className = 'cc-wizard-actions';
@@ -53,10 +57,34 @@ export function mkActions(container, doc, buttons) {
     btn.className = `cc-wizard-btn cc-wizard-btn-${b.kind ?? 'secondary'} ${b.className ?? ''}`.trim();
     btn.textContent = b.label;
     btn.disabled = !!b.disabled;
+    if (b.validate) btn.setAttribute('data-cc-validate', b.validate);
     btn.addEventListener('click', b.onClick);
     row.appendChild(btn);
   }
   container.appendChild(row);
+}
+
+/**
+ * Refresh action-row buttons' disabled state by re-evaluating their
+ * disabled-predicate.  Use this from text-input onInput handlers
+ * INSTEAD of calling rerender() (which destroys the input + loses
+ * focus / caret position).
+ *
+ * Each button must have a `data-cc-validate` attribute pointing at
+ * a key in `predicates`; the value will be `!predicates[key]()`.
+ *
+ * @param {HTMLElement} container
+ * @param {Record<string, () => boolean>} predicates
+ */
+export function refreshActions(container, predicates) {
+  if (!container) return;
+  for (const btn of container.querySelectorAll('button[data-cc-validate]')) {
+    const key = btn.getAttribute('data-cc-validate');
+    const fn = predicates[key];
+    if (typeof fn === 'function') {
+      btn.disabled = !fn();
+    }
+  }
 }
 
 /**
@@ -65,7 +93,9 @@ export function mkActions(container, doc, buttons) {
  * @param {Document}    doc
  * @param {string}      label
  * @param {string}      value
- * @param {(v: string) => void} onInput   fired on each keystroke
+ * @param {(v: string) => void} onInput   fired on each keystroke.
+ *   NOTE: DO NOT call rerender() from here — input gets recreated +
+ *   loses focus.  Just mutate state + call refreshActions(container, …).
  * @param {object}      [extra]
  */
 export function mkField(body, doc, label, value, onInput, extra = {}) {

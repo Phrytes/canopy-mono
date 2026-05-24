@@ -139,13 +139,32 @@ function renderIdentityStep(container, doc, state, onNext, onCancel, rerender) {
   const wrap = makeBody(doc, 'Buurt identity & purpose',
     'A buurt is a closed group with its own posts, members, and rules.');
 
+  // The name input updates the auto-derived groupId field WITHOUT
+  // rerendering the panel (which would lose focus).  We grab a
+  // direct reference to the groupId input after it's appended +
+  // mutate its .value on each keystroke.
+  let groupIdInputRef = null;
+  const refreshNextBtn = () => refreshActionsLocal(container, () =>
+    !!state.name.trim() && isValidSlug(state.groupId));
+
   appendField(wrap, doc, 'Name *', 'name',
-    state.name, (v) => { state.name = v; state.groupId = slugify(v); rerender(); },
+    state.name, (v) => {
+      state.name = v;
+      // Re-derive groupId only if user hasn't manually edited it.
+      const derived = slugify(v);
+      state.groupId = derived;
+      if (groupIdInputRef) groupIdInputRef.value = derived;
+      refreshNextBtn();
+    },
     { placeholder: 'e.g. Buurt Westend' });
   appendField(wrap, doc, 'Buurt id *', 'groupId',
-    state.groupId, (v) => { state.groupId = v; },
+    state.groupId, (v) => { state.groupId = v; refreshNextBtn(); },
     { placeholder: 'auto-slugified from name', monospace: true,
       hint: 'Lowercase letters, digits, hyphens. Must be unique.' });
+  // Capture a ref to the groupId input we just appended (it's the
+  // second `.cc-wizard-input` in the wrap).
+  groupIdInputRef = wrap.querySelectorAll('.cc-wizard-input')[1] ?? null;
+
   appendField(wrap, doc, 'Purpose', 'purpose',
     state.purpose, (v) => { state.purpose = v; },
     { placeholder: 'One sentence: what is this buurt for?' });
@@ -157,8 +176,16 @@ function renderIdentityStep(container, doc, state, onNext, onCancel, rerender) {
   renderActions(container, doc, [
     { label: 'Cancel', onClick: onCancel, kind: 'secondary' },
     { label: 'Next →', onClick: onNext, kind: 'primary',
-      disabled: !state.name.trim() || !isValidSlug(state.groupId) },
+      disabled: !state.name.trim() || !isValidSlug(state.groupId),
+      validate: 'identityOk' },
   ]);
+}
+
+// Local refresh-helper for C1 — the wizardKit's refreshActions uses
+// a predicates map; here we just refresh the single primary button.
+function refreshActionsLocal(container, ok) {
+  const btn = container.querySelector('button[data-cc-validate]');
+  if (btn) btn.disabled = !ok();
 }
 
 function renderGovernanceStep(container, doc, state, onNext, onBack, onCancel, rerender) {
@@ -418,6 +445,7 @@ function renderActions(container, doc, buttons) {
     btn.className = `cc-wizard-btn cc-wizard-btn-${b.kind ?? 'secondary'} ${b.className ?? ''}`.trim();
     btn.textContent = b.label;
     btn.disabled = !!b.disabled;
+    if (b.validate) btn.setAttribute('data-cc-validate', b.validate);
     btn.addEventListener('click', b.onClick);
     row.appendChild(btn);
   }

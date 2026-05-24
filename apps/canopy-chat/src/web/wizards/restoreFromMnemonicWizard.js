@@ -14,7 +14,7 @@
  * over-communicate the destructiveness.
  */
 
-import { mkBody, mkActions, mkField, mkCheck, mkSteps, mkError, mkSubmitting } from './_wizardKit.js';
+import { mkBody, mkActions, mkField, mkCheck, mkSteps, mkError, mkSubmitting, refreshActions } from './_wizardKit.js';
 
 export function renderRestoreFromMnemonicWizard(opts) {
   const { container, doc, callSkill, onClose, onDispatched } = opts;
@@ -43,15 +43,21 @@ export function renderRestoreFromMnemonicWizard(opts) {
   function renderMnemonicStep() {
     const body = mkBody(doc, 'Restore from mnemonic',
       'Enter the 12 or 24-word recovery phrase you saved when you first set up canopy-chat.');
-    mkField(body, doc, 'Mnemonic phrase', state.mnemonic, (v) => { state.mnemonic = v; rerender(); }, {
-      placeholder: 'word1 word2 word3 ...', monospace: true, hint: 'Words separated by single spaces.',
-    });
+    const validMnemonic = () => {
+      const words = state.mnemonic.trim().split(/\s+/).filter(Boolean);
+      return words.length === 12 || words.length === 24;
+    };
+    mkField(body, doc, 'Mnemonic phrase', state.mnemonic, (v) => {
+      state.mnemonic = v;
+      // No rerender — would lose input focus.  Just refresh the
+      // [Next] button's disabled state.
+      refreshActions(container, { mnemonicOk: validMnemonic });
+    }, { placeholder: 'word1 word2 word3 ...', monospace: true, hint: 'Words separated by single spaces.' });
     container.appendChild(body);
-    const words = state.mnemonic.trim().split(/\s+/).filter(Boolean);
-    const ok = words.length === 12 || words.length === 24;
     mkActions(container, doc, [
       { label: 'Cancel', onClick: onClose, kind: 'secondary' },
-      { label: 'Next →', onClick: () => { state.step = 2; rerender(); }, kind: 'primary', disabled: !ok },
+      { label: 'Next →', onClick: () => { state.step = 2; rerender(); }, kind: 'primary',
+        disabled: !validMnemonic(), validate: 'mnemonicOk' },
     ]);
   }
 

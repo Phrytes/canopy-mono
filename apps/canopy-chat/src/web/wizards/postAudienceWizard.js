@@ -22,7 +22,7 @@
  * audience intent is preserved for when stoop wires audience-filter.
  */
 
-import { mkBody, mkActions, mkField, mkTextarea, mkRadioGroup, mkError, mkSubmitting } from './_wizardKit.js';
+import { mkBody, mkActions, mkField, mkTextarea, mkRadioGroup, mkError, mkSubmitting, refreshActions } from './_wizardKit.js';
 
 const TRUST_OPTS = [
   { id: 'all',      label: 'Everyone in the buurt' },
@@ -53,15 +53,20 @@ export function renderPostAudienceWizard(opts) {
     container.innerHTML = '';
     const body = mkBody(doc, 'Post with audience',
       'Pick a target audience.  Empty = everyone in your buurt.');
-    mkTextarea(body, doc, 'Post text', state.text, (v) => { state.text = v; rerender(); },
-      { placeholder: 'What are you asking / offering?', rows: 3 });
+    const validText = () => state.text.trim().length > 0;
+    mkTextarea(body, doc, 'Post text', state.text, (v) => {
+      state.text = v;
+      refreshActions(container, { textOk: validText });
+    }, { placeholder: 'What are you asking / offering?', rows: 3 });
+    // Radio + distance buttons change visible UI; rerender is safe
+    // (no text input focus to preserve at those points).
     mkRadioGroup(body, doc, 'Kind', state.kind, [
       { id: 'ask', label: 'Ask (request help)' },
       { id: 'offer', label: 'Offer (share skills/items)' },
       { id: 'lend',  label: 'Lend (share a physical thing)' },
-    ], (v) => { state.kind = v; rerender(); });
+    ], (v) => { state.kind = v; });
     mkRadioGroup(body, doc, 'Trust level', state.minTrust, TRUST_OPTS,
-      (v) => { state.minTrust = v; rerender(); });
+      (v) => { state.minTrust = v; });
     mkField(body, doc, 'Tags (CSV — match contacts with any tag)',
       state.tags, (v) => { state.tags = v; },
       { placeholder: 'e.g. tools, gardening, kids' });
@@ -123,7 +128,8 @@ export function renderPostAudienceWizard(opts) {
           state.submitting = false;
           rerender();
         }
-      }, kind: 'primary', disabled: state.submitting || state.text.trim().length === 0 },
+      }, kind: 'primary', validate: 'textOk',
+        disabled: state.submitting || state.text.trim().length === 0 },
     ]);
   }
 }
