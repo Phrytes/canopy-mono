@@ -55,6 +55,11 @@ export class Thread {
    * @param {string[]}    [opts.permissions.allowedApps]
    *   Optional whitelist of appOrigins this thread may dispatch against.
    *   Undefined → all apps allowed.
+   * @param {{threadId: string, label?: string}} [opts.origin]
+   *   #181 (2026-05-24) — when this thread was spawned from another
+   *   thread (e.g. via a row button or wizard dispatch), `origin`
+   *   records where to return.  Renderer surfaces a "← Back to
+   *   <label>" affordance.
    * @param {() => number} [opts.now=Date.now]   injectable clock for tests
    */
   constructor(opts = {}) {
@@ -69,6 +74,12 @@ export class Thread {
         ? { allowedApps: opts.permissions.allowedApps }
         : {}),
     };
+    if (opts.origin && typeof opts.origin === 'object' && opts.origin.threadId) {
+      this.origin = {
+        threadId: String(opts.origin.threadId),
+        ...(opts.origin.label ? { label: String(opts.origin.label) } : {}),
+      };
+    }
     /** @type {ThreadMessage[]} */
     this.messages     = [];
     /** @type {Map<string, ListingSnapshot>} */
