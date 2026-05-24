@@ -764,6 +764,64 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   font-style: italic;
   color: var(--fg);
 }
+/* #212 (2026-05-24) — /settings panel sections */
+.cc-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.7rem;
+}
+.cc-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.cc-settings-section-title {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.cc-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.cc-settings-label {
+  flex: 0 0 110px;
+  font-size: 0.85rem;
+  color: var(--fg-mute);
+}
+.cc-settings-control {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.cc-settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--fg);
+}
+.cc-settings-info {
+  flex: 1;
+  font-size: 0.7rem;
+  font-family: monospace;
+  color: var(--fg-mute);
+  word-break: break-all;
+}
+
 /* Slice 6c — responder card (Alice's view of Bob's offer of help). */
 .cc-responder-card {
   display: flex;
