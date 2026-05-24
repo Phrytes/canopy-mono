@@ -30,6 +30,7 @@
  * @property {string[]} [apps]
  * @property {string[]} [eventTypes]
  * @property {string[]} [actors]
+ * @property {string[]} [buurtId]    matches `event.payload.groupId` (Slice 2 buurt-scoped threads)
  */
 
 /**
@@ -110,6 +111,10 @@ export function matchesFilter(event, filter) {
   if (!matchesKey(event.app,    filter.apps))       return false;
   if (!matchesKey(event.type,   filter.eventTypes)) return false;
   if (!matchesKey(event.actor,  filter.actors))     return false;
+  // Slice 2 — buurt scoping reads groupId off the event payload.
+  // publishEventRef calls from handleBuurtPost + local post echo
+  // surface `payload.groupId`.
+  if (!matchesKey(event.payload?.groupId, filter.buurtId)) return false;
   return true;
 }
 
@@ -144,7 +149,7 @@ function matchesKey(value, allowed) {
 export function normaliseFilter(filter) {
   if (!filter || typeof filter !== 'object') return {};
   const out = {};
-  for (const key of ['apps', 'eventTypes', 'actors']) {
+  for (const key of ['apps', 'eventTypes', 'actors', 'buurtId']) {
     const arr = filter[key];
     if (!Array.isArray(arr) || arr.length === 0) continue;
     const dedup = [...new Set(arr.map((v) => String(v)))].sort();
@@ -165,7 +170,7 @@ export function isWildcardFilter(filter) {
   // Expression-tree filters are NEVER wildcards (they have explicit
   // composition; even {and: []} doesn't match everything).
   if ('and' in filter || 'or' in filter || 'not' in filter) return false;
-  for (const key of ['apps', 'eventTypes', 'actors']) {
+  for (const key of ['apps', 'eventTypes', 'actors', 'buurtId']) {
     const arr = filter[key];
     if (!Array.isArray(arr) || arr.length === 0) continue;
     if (arr.includes('*')) continue;
@@ -204,6 +209,7 @@ export function describeFilter(filter) {
     if (filter.apps?.length)       flatParts.push(`app:${filter.apps.join('|')}`);
     if (filter.eventTypes?.length) flatParts.push(`type:${filter.eventTypes.join('|')}`);
     if (filter.actors?.length)     flatParts.push(`actor:${filter.actors.join('|')}`);
+    if (filter.buurtId?.length)    flatParts.push(`buurt:${filter.buurtId.join('|')}`);
     return [...treeParts, ...flatParts].join(' AND ');
   }
 
@@ -211,5 +217,6 @@ export function describeFilter(filter) {
   if (filter.apps?.length)       parts.push(`app:${filter.apps.join('|')}`);
   if (filter.eventTypes?.length) parts.push(`type:${filter.eventTypes.join('|')}`);
   if (filter.actors?.length)     parts.push(`actor:${filter.actors.join('|')}`);
+  if (filter.buurtId?.length)    parts.push(`buurt:${filter.buurtId.join('|')}`);
   return parts.join(', ');
 }

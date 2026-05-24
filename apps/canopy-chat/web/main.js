@@ -967,6 +967,28 @@ const WIZARD_RENDERERS = {
   encryptedBackupWizard:      renderEncryptedBackupWizard,
 };
 
+/**
+ * Slice 2 (2026-05-24) — ensure a buurt-scoped thread exists for the
+ * given groupId, creating it on first call.  Subsequent calls return
+ * the same thread.  Thread filter routes any event whose
+ * `payload.groupId === buurtId` here (matches handleBuurtPost
+ * notifications + the local-post echo).
+ */
+function ensureBuurtThread(buurtId, hint) {
+  const existing = [...store.listThreads()].find(t =>
+    Array.isArray(t.filter?.buurtId) && t.filter.buurtId.includes(buurtId),
+  );
+  if (existing) return existing;
+  const name = hint?.handle
+    ? `Buurt: ${buurtId} (${hint.handle})`
+    : `Buurt: ${buurtId}`;
+  return store.createThread({
+    name,
+    filter: { apps: ['stoop'], buurtId: [buurtId] },
+    permissions: { allowCommands: true },
+  });
+}
+
 function pageSurfaceOpen({ op, appOrigin, args }) {
   const customRenderer = WIZARD_RENDERERS[op.id];
   openPagePanel({
@@ -982,16 +1004,27 @@ function pageSurfaceOpen({ op, appOrigin, args }) {
       // any external bookkeeping (none today).
     },
     onDispatched: (reply) => {
-      // After a successful dispatch from inside the panel, also drop
-      // the reply into the active chat thread so the user has a trail.
-      const t0 = activeThread();
-      if (!t0) return;
+      // Slice 2 — when a wizard dispatch carries a groupId (create-
+      // or join-group success), auto-spawn (or activate) a buurt-
+      // scoped thread + drop the reply there.  Falls back to the
+      // active thread when no groupId in the reply.
+      const buurtId = reply?.groupId ?? null;
+      const target  = buurtId
+        ? ensureBuurtThread(buurtId, reply)
+        : activeThread();
+      if (!target) return;
       const rendered = renderReply(reply, {
         t,
         appOrigin,
         manifestsByOrigin,
       });
-      t0.addShellMessage(rendered, { opId: op.id });
+      target.addShellMessage(rendered, { opId: op.id });
+      if (buurtId) {
+        // Activate the freshly-opened buurt thread so the user lands
+        // in the right conversation immediately.
+        store.setActiveThread(target.id);
+        renderSidebarHere();
+      }
       renderActiveStream();
     },
     ...(customRenderer ? { customRenderer: ({ container, onClose, onDispatched }) =>
