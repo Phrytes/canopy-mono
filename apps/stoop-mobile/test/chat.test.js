@@ -5,7 +5,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   sortThreadsByActivity, formatUnreadBadge, validateChatDraft,
-  groupConsecutive, UNREAD_BADGE_CAP, CHAT_MAX_BODY_LEN,
+  groupConsecutive, revealToggleState,
+  UNREAD_BADGE_CAP, CHAT_MAX_BODY_LEN,
 } from '../src/lib/chat.js';
 
 describe('sortThreadsByActivity', () => {
@@ -78,6 +79,43 @@ describe('validateChatDraft', () => {
   it('rejects too-long text', () => {
     expect(validateChatDraft({ text: 'a'.repeat(CHAT_MAX_BODY_LEN + 1) }))
       .toEqual({ ok: false, reason: 'too_long' });
+  });
+});
+
+describe('revealToggleState (task #228)', () => {
+  it('off → "show real name" CTA with unchecked switch', () => {
+    const s = revealToggleState({ revealedByMe: false });
+    expect(s.checked).toBe(false);
+    expect(s.busy).toBe(false);
+    expect(s.labelKey).toBe('chat_thread.reveal_toggle_off');
+    expect(typeof s.labelFallback).toBe('string');
+    expect(s.labelFallback.length).toBeGreaterThan(0);
+  });
+
+  it('on → "tap to hide" CTA with checked switch', () => {
+    const s = revealToggleState({ revealedByMe: true });
+    expect(s.checked).toBe(true);
+    expect(s.busy).toBe(false);
+    expect(s.labelKey).toBe('chat_thread.reveal_toggle_on');
+  });
+
+  it('loading wins over both states (busy label, preserves checked)', () => {
+    const onBusy = revealToggleState({ revealedByMe: true, loading: true });
+    expect(onBusy.busy).toBe(true);
+    expect(onBusy.checked).toBe(true);
+    expect(onBusy.labelKey).toBe('chat_thread.reveal_toggle_busy');
+
+    const offBusy = revealToggleState({ revealedByMe: false, loading: true });
+    expect(offBusy.busy).toBe(true);
+    expect(offBusy.checked).toBe(false);
+    expect(offBusy.labelKey).toBe('chat_thread.reveal_toggle_busy');
+  });
+
+  it('coerces truthy/falsy revealedByMe to strict boolean', () => {
+    expect(revealToggleState({ revealedByMe: 1 }).checked).toBe(true);
+    expect(revealToggleState({ revealedByMe: null }).checked).toBe(false);
+    expect(revealToggleState({}).checked).toBe(false);
+    expect(revealToggleState().checked).toBe(false);
   });
 });
 

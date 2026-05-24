@@ -320,9 +320,12 @@
   "chat_thread": {
     "placeholder":         { "text": "Write a message…", "doc": "Placeholder of the message composer in ChatThreadScreen." },
     "empty":               { "text": "No messages yet.", "doc": "Empty state inside an open thread." },
-    "request_reveal":      { "text": "Request real name", "doc": "CTA in the thread header that opens the bilateral-reveal flow." },
-    "revealing":           { "text": "Sending…", "doc": "CTA label while the requestReveal call is in flight." },
+    "request_reveal":      { "text": "Request real name", "doc": "Legacy CTA — kept for ProfileOtherScreen's nav hand-off to ChatThread. ChatThread itself uses the bilateral toggle below." },
+    "revealing":           { "text": "Sending…", "doc": "Legacy busy label paired with request_reveal." },
     "reveal_unavailable":  { "text": "Reveal flow not available in this build.", "doc": "Alert shown when onRequestReveal is missing (placeholder-only build)." },
+    "reveal_toggle_off":   { "text": "Show real name to this person", "doc": "Bilateral reveal-toggle label (off state) — task #228. Tapping flips MY local Reveals record; the peer's record is independent (both must agree before displayName actually renders)." },
+    "reveal_toggle_on":    { "text": "Real name visible (tap to hide)", "doc": "Bilateral reveal-toggle label (on state) — task #228." },
+    "reveal_toggle_busy":  { "text": "Switching…", "doc": "Reveal-toggle busy label while setPeerReveal is in flight." },
     "no_active_group":     { "text": "Join a group first to see conversations.", "doc": "Empty state when no bundle is active." },
     "no_peer":             { "text": "No conversation partner.", "doc": "Empty state when ChatThreadScreen is opened without a peerId." }
   },

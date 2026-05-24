@@ -2,10 +2,11 @@
  * ChatThreadScreen — single 1:1 chat thread.
  *
  * Stoop V3 mobile.  Phase 40.17 (2026-05-08): wired to the live
- * agent.  Reveal handshake header CTA calls `requestReveal`; the
- * peer's reveal-back lands as a `chat-message-arrive` with
- * `subtype: 'reveal-request'` which the agent processes via
- * Reveals.setPeerReveal — the screen re-renders on the next refresh.
+ * agent.  Task #228 (2026-05-24): aligned to web canopy-chat's
+ * bilateral-toggle semantics — the header now exposes a Reveal
+ * SWITCH backed by the `setPeerReveal` skill (local-only viewer
+ * choice; "if I reveal AND you reveal, we both see"). Replaces
+ * the earlier `requestReveal` unilateral hint flow.
  *
  * route.params: `{ threadId, peerId }`.  When threadId is missing
  * but peerId is set, derives a deterministic threadId from the two
@@ -20,8 +21,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
 import { t }                                  from '../lib/localisation.js';
-import { validateChatDraft, groupConsecutive, CHAT_MAX_BODY_LEN }
-                                              from '../lib/chat.js';
+import { validateChatDraft, groupConsecutive, CHAT_MAX_BODY_LEN,
+         revealToggleState }                  from '../lib/chat.js';
 import { attachmentUri }                      from '../lib/post.js';
 import { pickChatImage }                      from '../lib/imagePicker.js';
 import { AvatarCircle }                       from '../components/AvatarCircle.js';
@@ -46,7 +47,7 @@ export function ChatThreadScreen() {
   const [modalView, setModalView]   = useState(null);
 
   const sendCall    = useSkill('sendChatMessage');
-  const revealCall  = useSkill('requestReveal');
+  const revealCall  = useSkill('setPeerReveal');
   const { data, loading, refresh } = useSkillResult(
     'getChatThread', threadId ? { threadId } : null, [threadId],
   );
@@ -88,8 +89,11 @@ export function ChatThreadScreen() {
     } catch { return null; }
   })();
   const reveals  = svc.activeBundle.reveals;
-  const revealedFromMe = peer && reveals?.hasRevealed?.(peer.stableId ?? peer.webid ?? peer.pubKey);
-  const revealed = !!(peer?.revealed || revealedFromMe);
+  // The identifier we use as the Reveals key — same precedence the
+  // substrate's Reveals.hasRevealed() accepts (opaque string).
+  const peerKey  = peer?.stableId ?? peer?.webid ?? peer?.pubKey ?? null;
+  const revealedByMe = !!(peerKey && reveals?.hasRevealed?.(peerKey));
+  const revealed = !!(peer?.revealed || revealedByMe);
   // Prefer revealed display name → handle → short pubKey prefix
   // (so two handle-less peers don't both render as "@unknown" and
   // become indistinguishable from a self-chat). Falls back to
@@ -138,19 +142,24 @@ export function ChatThreadScreen() {
     }
   }, [v.ok, sendCall, threadId, peer, peerId, text, attachment, refresh]);
 
-  const requestReveal = useCallback(async () => {
+  // Bilateral toggle — flips MY local Reveals record only ("I have
+  // agreed to see this peer's real name"). The peer flips their own
+  // side independently; displayName renders only when both sides
+  // agree (see `revealed` derivation above). Matches web canopy-chat's
+  // `revealPeer` → `setPeerReveal` semantics.
+  const togglePeerReveal = useCallback(async () => {
+    if (!peerKey) return;
     setError(null);
     try {
       await revealCall.call({
-        threadId,
-        peerStableId: peer?.stableId,
-        peerWebid:    peer?.webid,
+        peerWebid:       peerKey,
+        showDisplayName: !revealedByMe,
       });
       await refresh();
     } catch (err) {
       setError(err?.message ?? String(err));
     }
-  }, [revealCall, threadId, peer, refresh]);
+  }, [revealCall, peerKey, revealedByMe, refresh]);
 
   const pickPhoto = useCallback(async (mode) => {
     setError(null);
@@ -172,19 +181,29 @@ export function ChatThreadScreen() {
         <AvatarCircle uri={peer?.avatarUrl ?? peer?.avatarUri} name={peerName} size={36} />
         <View style={styles.headerText}>
           <Text style={styles.peerName} numberOfLines={1}>{peerName}</Text>
-          {!revealed ? (
-            <Pressable
-              onPress={requestReveal}
-              accessibilityRole="button"
-              accessibilityLabel="chat-request-reveal"
-            >
-              <Text style={styles.revealLink}>
-                {revealCall.loading
-                  ? t('chat_thread.revealing', 'Versturen…')
-                  : t('chat_thread.request_reveal', 'Vraag echte naam')}
-              </Text>
-            </Pressable>
-          ) : null}
+          {peerKey ? (() => {
+            const toggle = revealToggleState({
+              revealedByMe,
+              loading: revealCall.loading,
+            });
+            return (
+              <Pressable
+                onPress={togglePeerReveal}
+                disabled={revealCall.loading}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: toggle.checked, busy: toggle.busy }}
+                accessibilityLabel="chat-peer-reveal-toggle"
+                style={[styles.revealRow, toggle.checked && styles.revealRowOn]}
+              >
+                <Text style={[styles.revealDot, toggle.checked && styles.revealDotOn]}>
+                  {toggle.checked ? '●' : '○'}
+                </Text>
+                <Text style={styles.revealLink}>
+                  {t(toggle.labelKey, toggle.labelFallback)}
+                </Text>
+              </Pressable>
+            );
+          })() : null}
         </View>
       </View>
 
@@ -327,7 +346,16 @@ const styles = StyleSheet.create({
   },
   headerText: { marginLeft: SPACING.md, flex: 1 },
   peerName:   { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.text },
-  revealLink: { fontSize: FONT_SIZES.xs, color: COLORS.info, marginTop: 2 },
+  revealLink: { fontSize: FONT_SIZES.xs, color: COLORS.info },
+  revealRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginTop: 2, paddingVertical: 2, paddingHorizontal: SPACING.xs,
+    borderRadius: RADII.pill, alignSelf: 'flex-start',
+    backgroundColor: COLORS.surfaceMuted,
+  },
+  revealRowOn: { backgroundColor: COLORS.primaryLight },
+  revealDot:   { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginRight: SPACING.xs },
+  revealDotOn: { color: COLORS.primaryDark },
   listContent: { padding: SPACING.md, flexGrow: 1 },
   bubbleRow:    { flexDirection: 'row', marginBottom: SPACING.sm },
   bubbleRowSelf: { justifyContent: 'flex-end' },
