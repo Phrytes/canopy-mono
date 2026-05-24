@@ -76,9 +76,10 @@ body {
 }
 .cc-thread-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  /* name + (filter) | edit | delete */
+  grid-template-columns: 1fr auto auto;
   grid-template-rows: auto auto;
-  column-gap: 0.4rem;
+  column-gap: 0.3rem;
   align-items: center;
   padding: 0.3rem 0.5rem;
   border-radius: 6px;
@@ -106,12 +107,11 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.cc-thread-edit,
 .cc-thread-delete {
-  /* 2026-05-24 — span both grid rows + align centre so the [×] sits
-     vertically halfway the row even when the filter sub-line wraps to
-     a second visual line.  Previously was grid-row:1 which pinned it
-     to the top row only, leaving it visually misaligned. */
-  grid-column: 2;
+  /* span both grid rows + align centre so the icon sits vertically
+     halfway the row even when the filter sub-line wraps to a second
+     visual line. */
   grid-row: 1 / span 2;
   align-self: center;
   background: transparent;
@@ -119,7 +119,12 @@ body {
   color: var(--fg-mute);
   cursor: pointer;
   padding: 0 0.2rem;
+  font-size: 0.95rem;
+  line-height: 1;
 }
+.cc-thread-edit   { grid-column: 2; }
+.cc-thread-delete { grid-column: 3; }
+.cc-thread-edit:hover:not(:disabled)   { color: var(--accent); }
 .cc-thread-delete:hover:not(:disabled) { color: #c14545; }
 .cc-thread-delete:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -169,6 +174,69 @@ body {
   background: var(--accent);
   color: var(--accent-fg);
   border-color: var(--accent);
+}
+.cc-form-heading {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 0.1rem;
+}
+.cc-form-hint {
+  font-size: 0.7rem;
+  color: var(--fg-mute);
+  margin-top: 0.05rem;
+}
+.cc-form-chip-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.cc-form-chip-label {
+  font-size: 0.7rem;
+  color: var(--fg-mute);
+}
+.cc-form-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.cc-form-chip {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: var(--fg-mute);
+  cursor: pointer;
+}
+.cc-form-chip:hover { border-color: var(--accent); }
+.cc-form-chip-active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+.cc-form-chip-add {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.15rem;
+}
+.cc-form-chip-add-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  background: transparent;
+}
+.cc-form-chip-add-btn {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-soft);
+  cursor: pointer;
 }
 
 .cc-main {

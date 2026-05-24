@@ -1532,8 +1532,10 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync: simulateSync(),
       };
     }
-    // #189 — getGroupRules: real returns a rules-item or null →
-    // record-shape reply with the latest rules text.
+    // #189 — getGroupRules: real returns {rules: <rules-item> | null}
+    // where the item carries the structured rules under
+    // source.rules (an object with rulesText + accessPolicy +
+    // leavePolicy + conflictPolicy + tags etc, as written by C1).
     if (opId === 'getGroupRules') {
       if (!data || data.error) {
         return {
@@ -1542,14 +1544,35 @@ export async function createRealHouseholdAgent(opts = {}) {
           message: 'No rules have been set for this buurt yet.',
         };
       }
-      // Real shape: rules item with source.rulesText (or similar).
-      const item = data.item ?? data;
-      const rulesText = item?.source?.rulesText
+      const item = data.rules ?? data.item ?? data;
+      // 2026-05-24 fix — when the buurt was created without freeform
+      // rulesText (user left the textarea blank in C1), the structured
+      // rules object exists but has no `rulesText` field.  Synthesize
+      // a human-readable summary from the structured fields instead of
+      // emitting "shape unknown".
+      const rulesObj = item?.source?.rules ?? null;
+      let rulesText = rulesObj?.rulesText
         ?? item?.source?.text
         ?? item?.text
-        ?? '(rules payload shape unknown — see console)';
-      if (typeof console !== 'undefined' && rulesText.startsWith('(rules')) {
-        console.warn('[realAgent] getGroupRules: unexpected payload shape', data);
+        ?? null;
+      if (!rulesText && rulesObj) {
+        const parts = [];
+        if (rulesObj.purpose)        parts.push(`Purpose: ${rulesObj.purpose}`);
+        if (rulesObj.accessPolicy)   parts.push(`Access: ${rulesObj.accessPolicy}`);
+        if (rulesObj.leavePolicy)    parts.push(`Leave: ${rulesObj.leavePolicy}`);
+        if (rulesObj.conflictPolicy) parts.push(`Conflict resolution: ${rulesObj.conflictPolicy}`);
+        if (Array.isArray(rulesObj.tags) && rulesObj.tags.length) {
+          parts.push(`Tags: ${rulesObj.tags.join(', ')}`);
+        }
+        if (Array.isArray(rulesObj.additionalAdmins) && rulesObj.additionalAdmins.length) {
+          parts.push(`Extra admins: ${rulesObj.additionalAdmins.join(', ')}`);
+        }
+        rulesText = parts.length > 0
+          ? parts.join('\n')
+          : '(no freeform rules set; defaults apply)';
+      }
+      if (!rulesText) {
+        rulesText = '(no rules set)';
       }
       return {
         title:   'Group rules',

@@ -355,6 +355,18 @@ async function connectPeerImpl() {
           console.error('[peer] file-share failed', err));
         return;
       }
+      // 2026-05-24 — cross-instance group-redeem peer-bridge.
+      // Joiner sends 'group-redeem-request'; admin's substrate
+      // validates locally + replies with 'group-redeem-response'.
+      if (subtype === 'group-redeem-request' && payload?.requestId) {
+        handleGroupRedeemRequest(from, payload).catch((err) =>
+          console.error('[peer] group-redeem-request failed', err));
+        return;
+      }
+      if (subtype === 'group-redeem-response' && payload?.requestId) {
+        handleGroupRedeemResponse(from, payload);
+        return;
+      }
 
       // Default: plain chat message → bubble in Main.
       const body = (payload && typeof payload === 'object' && typeof payload.body === 'string')
@@ -534,6 +546,120 @@ function triggerBlobDownloadFromBase64(dataB64, name, mime) {
   document.body.removeChild(a);
   // Free the blob URL after the click; some browsers need a tick.
   setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+/* ─── 2026-05-24 — group-redeem peer-bridge (cross-instance join) ── */
+
+// Joiner-side: outstanding redeem-requests keyed by requestId.  Each
+// entry is {resolve, reject, timer}; the response handler looks up by
+// requestId, fires resolve, clears the timeout.
+const pendingPeerRedeems = new Map();
+
+/**
+ * Joiner-side helper called by /join-group's wizard finalSubmit when
+ * local redeemMembershipCode returns invalid-or-expired-code AND the
+ * invite carries an adminNkn.  Sends a peer-message to the admin's
+ * NKN address + awaits the matching response with a 30s timeout.
+ */
+async function sendGroupRedeemRequest({ adminNkn, groupId, code }) {
+  if (!agent?.peer || agent.peer.status !== 'connected') {
+    throw new Error('Peer transport not connected. Try /peer-connect first.');
+  }
+  if (typeof agent.sendPeerMessage !== 'function') {
+    throw new Error('Peer message API unavailable on this agent build.');
+  }
+  const requestId = `gr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const promise = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      pendingPeerRedeems.delete(requestId);
+      reject(new Error('Admin did not respond within 30 s. They may be offline — try again later.'));
+    }, 30_000);
+    pendingPeerRedeems.set(requestId, { resolve, reject, timer });
+  });
+  try {
+    await agent.sendPeerMessage(adminNkn, {
+      type:      'p2p-chat',
+      subtype:   'group-redeem-request',
+      requestId,
+      groupId,
+      code,
+      sentAt: Date.now(),
+    });
+  } catch (err) {
+    const entry = pendingPeerRedeems.get(requestId);
+    if (entry) { clearTimeout(entry.timer); pendingPeerRedeems.delete(requestId); }
+    throw new Error(`Failed to reach admin over NKN: ${err?.message ?? err}`);
+  }
+  return promise;
+}
+
+/**
+ * Admin-side: incoming group-redeem-request from a joiner.  Validate
+ * the code in our local stoop substrate + reply over the same NKN
+ * channel with either an ok-payload (codeId + validUntil) or an
+ * error string.
+ */
+async function handleGroupRedeemRequest(fromNknAddr, payload) {
+  const { requestId, groupId, code } = payload ?? {};
+  if (!requestId || !groupId || !code) {
+    console.warn('[peer] group-redeem-request missing fields', payload);
+    return;
+  }
+  let reply;
+  try {
+    const result = await callSkill('stoop', 'verifyMembershipCodeForPeer', {
+      groupId, code,
+      // The substrate logs `requesterWebid` against the redemption so
+      // the admin's roster sees who joined.  NKN address is our best
+      // available joiner-identifier at this layer.
+      requesterWebid: fromNknAddr,
+    });
+    if (result?.error) {
+      reply = { error: result.error };
+    } else {
+      reply = {
+        ok:         true,
+        codeId:     result.codeId,
+        validUntil: result.validUntil,
+      };
+    }
+  } catch (err) {
+    reply = { error: err?.message ?? String(err) };
+  }
+  try {
+    await agent.sendPeerMessage(fromNknAddr, {
+      type:    'p2p-chat',
+      subtype: 'group-redeem-response',
+      requestId,
+      ...reply,
+      sentAt: Date.now(),
+    });
+    publishEventRef({
+      app: 'stoop', type: 'notification',
+      payload: {
+        message: reply.ok
+          ? `📥 ${fromNknAddr.slice(0, 16)}… joined ${groupId} (peer-confirmed)`
+          : `⚠ rejected join attempt for ${groupId}: ${reply.error}`,
+      },
+    });
+  } catch (err) {
+    console.error('[peer] group-redeem-response send failed', err);
+  }
+}
+
+/**
+ * Joiner-side: incoming group-redeem-response from the admin.  Look
+ * up the pending request by id + resolve its promise.
+ */
+function handleGroupRedeemResponse(fromNknAddr, payload) {
+  const entry = pendingPeerRedeems.get(payload?.requestId);
+  if (!entry) {
+    console.warn('[peer] group-redeem-response with no pending entry', payload?.requestId);
+    return;
+  }
+  clearTimeout(entry.timer);
+  pendingPeerRedeems.delete(payload.requestId);
+  entry.resolve(payload);
 }
 
 /**
@@ -815,7 +941,16 @@ function pageSurfaceOpen({ op, appOrigin, args }) {
       renderActiveStream();
     },
     ...(customRenderer ? { customRenderer: ({ container, onClose, onDispatched }) =>
-      customRenderer({ container, doc: document, args, callSkill: callSkillRef, onClose, onDispatched }) } : {}),
+      customRenderer({
+        container, doc: document, args, callSkill: callSkillRef,
+        onClose, onDispatched,
+        // /create-group success step uses this to stamp the admin's
+        // NKN address into the invite URL.  /join-group uses
+        // sendPeerRedeem to route a redeem-request to that address
+        // when the joiner's local store has no copy of the code.
+        getMyNkn:       () => agent?.peer?.address ?? null,
+        sendPeerRedeem: sendGroupRedeemRequest,
+      }) } : {}),
   });
 }
 
@@ -1186,6 +1321,10 @@ function renderSidebarHere() {
     doc:      document,
     store,
     onSelect: (id) => { store.setActiveThread(id); },
+    // Catalog drives the chip-toggle suggestions in the new/edit
+    // thread form.  Getter (not snapshot) so chips always reflect
+    // the CURRENT filtered catalog when appRegistry toggles fire.
+    knownApps: () => (catalog?.appOrigins ?? []).slice().sort(),
     t,
   });
 }
