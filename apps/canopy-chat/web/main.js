@@ -1021,7 +1021,19 @@ function pageSurfaceOpen({ op, appOrigin, args }) {
         ? ensureBuurtThread(buurtId, reply)
         : activeThread();
       if (!target) return;
-      const rendered = renderReply(reply, {
+      // 2026-05-24 — wizards send `{ok, message, ...result}` directly
+      // (no shape envelope).  Normalise to a {shape, payload} reply
+      // so renderReply produces a readable text bubble instead of an
+      // empty stub.  Pass-through when the wizard already returned a
+      // shape (defensive: future-proof).
+      const normalised = (reply && typeof reply === 'object' && reply.shape)
+        ? reply
+        : {
+            shape:    'text',
+            payload:  reply?.message ?? (reply?.ok === true ? '✓ done' : JSON.stringify(reply)),
+            threadId: target.id,
+          };
+      const rendered = renderReply(normalised, {
         t,
         appOrigin,
         manifestsByOrigin,
@@ -1676,86 +1688,7 @@ async function handleUserText(text, thread) {
   }
 
   if (route.kind === 'needsForm') {
-    // v0.3.0 — render an inline form; on submit, retry dispatch.
-    const spec = buildFormSpec({
-      opParams:      catalog.opsById.get(route.opId)?.op?.params ?? [],
-      missing:       route.missing,
-      prefilledArgs: route.prefilledArgs,
-      opId:          route.opId,
-      appOrigin:     route.appOrigin,
-      threadId:      thread.id,
-    });
-    const formEl = renderForm(spec, {
-      doc: document, t,
-      // v0.7.Q34 — picker fetcher: when a field declares
-      // pickerSource: { listOp, filter?, appOrigin? }, the form
-      // renders a click-to-pick list.  We resolve the list-op via
-      // callSkill — same dispatch path the user-typed /listOp would
-      // take.  `decl.appOrigin` defaults to the op's appOrigin so
-      // intra-app references work without extra wiring.
-      pickerFetcher: async (decl) => {
-        const appOrigin = decl.appOrigin ?? route.appOrigin;
-        const reply = await callSkill(appOrigin, decl.listOp, decl.filter ?? {});
-        const items = Array.isArray(reply?.items) ? reply.items : [];
-        return items.map((it) => ({
-          id:    String(it.id ?? ''),
-          label: String(it.label ?? it.text ?? it.title ?? it.id ?? ''),
-        }));
-      },
-      onSubmit: async (values) => {
-        const v = validateAndCoerce(spec, values);
-        if (!v.ok) {
-          const errMsg = v.errors.map((e) => `${e.field}: ${e.message}`).join('; ');
-          const errEl = renderReply({
-            payload: null, shape: 'text', threadId: thread.id,
-            error:   { code: 'form-invalid', message: errMsg },
-          }, { t });
-          thread.addShellMessage(errEl);
-          renderActiveStream();
-          return;
-        }
-        // Dispatch with the full args.
-        const parse = {
-          kind: 'slash', opId: route.opId, args: v.args,
-          threadId: thread.id, command: '(form)', body: '',
-        };
-        const route2 = resolveDispatch(parse, catalog);
-        if (route2.kind !== 'ready') {
-          const errEl = renderReply({
-            payload: `Form submission failed: ${route2.kind}`,
-            shape: 'text', threadId: thread.id,
-          }, { t });
-          thread.addShellMessage(errEl);
-          renderActiveStream();
-          return;
-        }
-        await dispatchAndRender(route2, thread);
-      },
-      onCancel: () => {
-        const cancelMsg = renderReply({
-          payload: t('form.cancelled', { defaultValue: 'Form cancelled.' }),
-          shape: 'text', threadId: thread.id,
-        }, { t });
-        thread.addShellMessage(cancelMsg);
-        renderActiveStream();
-      },
-    });
-    // Append the form DOM directly into the messages stream as a
-    // shell-side "live" message.  We synthesise a thread message so
-    // the thread.tail() and lifecycle machinery treat it like any
-    // other shell reply.
-    thread.addShellMessage({
-      kind:           'form',
-      messageId:      `form-${Date.now()}`,
-      threadId:       thread.id,
-      lifecycleState: 'live',
-      formElement:    formEl,
-      text:           `Form: ${route.opId}`,
-    });
-    // v0.7 catch-up — the renderer's new 'form' case returns
-    // formElement directly (see domAdapter.renderFormShape), so the
-    // earlier setTimeout patch is no longer needed.  Just rerender.
-    renderActiveStream();
+    renderFormElicitation(route, thread);
     return;
   }
 
@@ -1771,6 +1704,79 @@ async function handleUserText(text, thread) {
 
   // ready → dispatch + render + (maybe) emit item-changed event.
   await dispatchAndRender(route, thread);
+}
+
+/**
+ * Extracted from handleUserText so both the slash-input path AND the
+ * row-button path (onButtonTap) can pop a form when the dispatch
+ * needs more args (e.g. [Help with] needs `body`).
+ */
+function renderFormElicitation(route, thread) {
+  const spec = buildFormSpec({
+    opParams:      catalog.opsById.get(route.opId)?.op?.params ?? [],
+    missing:       route.missing,
+    prefilledArgs: route.prefilledArgs,
+    opId:          route.opId,
+    appOrigin:     route.appOrigin,
+    threadId:      thread.id,
+  });
+  const formEl = renderForm(spec, {
+    doc: document, t,
+    pickerFetcher: async (decl) => {
+      const appOrigin = decl.appOrigin ?? route.appOrigin;
+      const reply = await callSkill(appOrigin, decl.listOp, decl.filter ?? {});
+      const items = Array.isArray(reply?.items) ? reply.items : [];
+      return items.map((it) => ({
+        id:    String(it.id ?? ''),
+        label: String(it.label ?? it.text ?? it.title ?? it.id ?? ''),
+      }));
+    },
+    onSubmit: async (values) => {
+      const v = validateAndCoerce(spec, values);
+      if (!v.ok) {
+        const errMsg = v.errors.map((e) => `${e.field}: ${e.message}`).join('; ');
+        const errEl = renderReply({
+          payload: null, shape: 'text', threadId: thread.id,
+          error:   { code: 'form-invalid', message: errMsg },
+        }, { t });
+        thread.addShellMessage(errEl);
+        renderActiveStream();
+        return;
+      }
+      const parse = {
+        kind: 'slash', opId: route.opId, args: v.args,
+        threadId: thread.id, command: '(form)', body: '',
+      };
+      const route2 = resolveDispatch(parse, catalog);
+      if (route2.kind !== 'ready') {
+        const errEl = renderReply({
+          payload: `Form submission failed: ${route2.kind}`,
+          shape: 'text', threadId: thread.id,
+        }, { t });
+        thread.addShellMessage(errEl);
+        renderActiveStream();
+        return;
+      }
+      await dispatchAndRender(route2, thread);
+    },
+    onCancel: () => {
+      const cancelMsg = renderReply({
+        payload: t('form.cancelled', { defaultValue: 'Form cancelled.' }),
+        shape: 'text', threadId: thread.id,
+      }, { t });
+      thread.addShellMessage(cancelMsg);
+      renderActiveStream();
+    },
+  });
+  thread.addShellMessage({
+    kind:           'form',
+    messageId:      `form-${Date.now()}`,
+    threadId:       thread.id,
+    lifecycleState: 'live',
+    formElement:    formEl,
+    text:           `Form: ${route.opId}`,
+  });
+  renderActiveStream();
 }
 
 async function dispatchAndRender(route, thread) {
@@ -1931,6 +1937,13 @@ async function onButtonTap(opId, itemId, extra) {
     command: '(button)', body: itemId,
   };
   const route = resolveDispatch(parse, catalog);
+  // 2026-05-24 — row buttons with additional required args (e.g.
+  // [Help with] needs `body`) trip needsForm.  Pop the inline form
+  // so the user can fill them in instead of silently bailing.
+  if (route.kind === 'needsForm') {
+    renderFormElicitation(route, t0);
+    return;
+  }
   if (route.kind !== 'ready') return;
   await dispatchAndRender(route, t0);
 

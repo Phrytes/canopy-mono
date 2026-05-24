@@ -751,6 +751,19 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   border-radius: 0 4px 4px 0;
   margin: 0.5rem 0;
 }
+.cc-wizard-context-card {
+  margin: 0.4rem 0 0.8rem 0;
+}
+.cc-wizard-context-quote {
+  margin: 0.25rem 0 0 0;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--fg);
+}
 .cc-wizard-distance-grid {
   display: flex;
   flex-wrap: wrap;

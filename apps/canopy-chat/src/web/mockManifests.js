@@ -453,12 +453,18 @@ export const mockStoopManifest = {
       appliesTo: { type: 'post', state: ['open'] },
       params: [
         { name: 'itemId', kind: 'string', required: true },
-        { name: 'body',   kind: 'string', required: false },
+        // 2026-05-24 — body is required by the substrate; mark it
+        // required here so [Help with] click triggers form-elicitation
+        // ("what help are you offering?") instead of dispatching with
+        // missing arg + getting 'body required' from the substrate.
+        { name: 'body',   kind: 'string', required: true },
       ],
       surfaces: {
         chat: { reply: 'text', hint: 'offer help on a request' },
-        // appliesTo-gated row button on /feed posts.  Click → spawns
-        // private DM thread (the (T) surface from the principle).
+        // appliesTo-gated row button on /feed posts.  Click → form
+        // prompts for body, then dispatches.  Future Slice: spawn a
+        // DM thread instead of the inline form (per post>reply>chat
+        // flow noted 2026-05-24).
         ui:   { control: 'button', label: 'Help with' },
       },
     },
@@ -479,7 +485,10 @@ export const mockStoopManifest = {
       ],
       surfaces: {
         chat: { reply: 'text', hint: 'mark a lend as returned' },
-        ui:   { control: 'button', label: 'Returned' },
+        // 2026-05-24 — ui button deferred until the chat-shell can
+        // filter by author + kind=lend (current appliesTo only does
+        // type+state, so the button would appear on EVERY open post
+        // and 'not-found' on click).  Slash still works for now.
       },
     },
     /**

@@ -34,6 +34,9 @@ export function renderConflictDisputeWizard(opts) {
     // #200 — accept either `postId` (slash flag) or `id` (the chat-
     // shell's default callbackData arg when launched via a row button).
     aboutPostId:    args?.postId ?? args?.id ?? '',
+    // 2026-05-24 — the post text (fetched async below) so the wizard
+    // can show "Disputing: <text>" instead of a raw ulid.
+    aboutPostText:  null,
     summary:        '',
     escalation:     'mediation',
     proposal:       '',
@@ -42,6 +45,23 @@ export function renderConflictDisputeWizard(opts) {
     submitError:   null,
     successResult: null,
   };
+
+  // Lazy-load the post text so the wizard can display it readably.
+  if (state.aboutPostId) {
+    (async () => {
+      try {
+        const reply = await callSkill('stoop', 'listFeed', {});
+        const items = reply?.items ?? [];
+        const hit = items.find(p =>
+          p?.id === state.aboutPostId
+          || p?.source?.requestId === state.aboutPostId,
+        );
+        state.aboutPostText = hit?.text ?? hit?.label ?? null;
+        rerender();
+      } catch { /* silent; falls back to id */ }
+    })();
+  }
+
   rerender();
 
   function rerender() {
@@ -57,9 +77,26 @@ export function renderConflictDisputeWizard(opts) {
     const body = mkBody(doc, 'Raise a dispute',
       'Describe what happened.  This goes to the buurt; admins and (if your conflict-policy is mediation) two random members see it.');
     const validSummary = () => state.summary.trim().length >= 10;
-    mkField(body, doc, 'Related post id (optional)', state.aboutPostId,
-      (v) => { state.aboutPostId = v; },
-      { placeholder: 'leave blank for general dispute', monospace: true });
+    // 2026-05-24 — when launched from a row button (postId pre-filled),
+    // show the post text as a read-only context card instead of a raw
+    // id input.  Falls back to a text input when no postId.
+    if (state.aboutPostId) {
+      const card = doc.createElement('div');
+      card.className = 'cc-wizard-context-card';
+      const label = doc.createElement('div');
+      label.className = 'cc-wizard-field-label';
+      label.textContent = 'Disputing this post:';
+      card.appendChild(label);
+      const quote = doc.createElement('blockquote');
+      quote.className = 'cc-wizard-context-quote';
+      quote.textContent = state.aboutPostText ?? '(loading post text…)';
+      card.appendChild(quote);
+      body.appendChild(card);
+    } else {
+      mkField(body, doc, 'Related post id (optional)', state.aboutPostId,
+        (v) => { state.aboutPostId = v; },
+        { placeholder: 'leave blank for general dispute', monospace: true });
+    }
     mkTextarea(body, doc, 'What happened?', state.summary, (v) => {
       state.summary = v;
       refreshActions(container, { summaryOk: validSummary });
