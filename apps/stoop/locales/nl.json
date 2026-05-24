@@ -684,6 +684,10 @@
     "onboard":  { "text": "Onboarden",     "doc": "Top-nav link to /onboard.html — admin invite / onboarding tools." },
     "settings": { "text": "Instellingen",  "doc": "Top-nav link to /settings.html — user-tunable settings." }
   },
+  "group_switcher": {
+    "join_other":  { "text": "+ Sluit aan bij andere buurt", "doc": "Menu item on the active-group badge dropdown — opens /onboard.html (#245)." },
+    "create_new":  { "text": "+ Maak nieuwe buurt aan",      "doc": "Menu item on the active-group badge dropdown — opens /create-group.html (#245)." }
+  },
   "group": {
     "eviction_banner_title":  { "text": "Verlopen lidmaatschappen", "doc": "Heading of the orange banner on /group.html shown when one or more members' codes have expired past the grace window." },
     "eviction_banner_intro":  { "text": "Voor één of meer leden is de membership-code verlopen — hun posts worden verborgen totdat ze de nieuwe code inwisselen.", "doc": "Lead paragraph in the eviction banner. Explains the auto-evict behaviour from Phase 35 (V2.5)." },

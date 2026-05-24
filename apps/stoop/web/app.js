@@ -858,28 +858,116 @@ export async function ensureNavLinks() {
 export async function ensureActiveGroupBadge() {
   const header = document.querySelector('header');
   if (!header || header.querySelector('.active-group')) return;
+
+  // Resolve active groupId (from ?id= query OR /groups.json lookup).
   const cur = new URLSearchParams(location.search);
   let gid = cur.get('id') ?? cur.get('groupId') ?? null;
-  if (!gid) {
-    try {
-      const res = await fetch('/groups.json');
-      if (res.ok) {
-        const groups = await res.json();
-        if (Array.isArray(groups) && groups.length) {
-          const active = groups.find((g) => g.url === location.origin) ?? groups[0];
-          gid = active?.groupId ?? null;
-        }
+  let groups = [];
+  try {
+    const res = await fetch('/groups.json');
+    if (res.ok) {
+      const raw = await res.json();
+      if (Array.isArray(raw)) groups = raw;
+      if (!gid && groups.length) {
+        const active = groups.find((g) => g.url === location.origin) ?? groups[0];
+        gid = active?.groupId ?? null;
       }
-    } catch { /* unknown — no badge */ }
-  }
+    }
+  } catch { /* unknown — leave groups[] empty */ }
   if (!gid) return;
-  const badge = document.createElement('span');
-  badge.className = 'active-group';
-  badge.textContent = `groep: ${gid}`;
-  badge.style.cssText = 'font-size:0.85rem;color:var(--muted,#667);margin-right:0.6rem;align-self:center;';
+
+  // #245 (2026-05-24) — clickable badge → switch / join / create menu.
+  // Closes the in-app group switch/create gap from
+  // [[web-mobile-parity-gaps]] §"Convergence initiative".  Mobile
+  // switches freely; web was per-group launcher with no switch path
+  // beyond the legacy group-switcher <select>.  This makes the
+  // badge a button that opens a small menu with the same three
+  // actions a user might want: switch, join another, create new.
+  const wrap = document.createElement('span');
+  wrap.className = 'active-group';
+  wrap.style.cssText = 'position: relative; margin-right:0.6rem; align-self:center;';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'active-group-btn';
+  btn.textContent = `groep: ${gid} ▾`;
+  btn.style.cssText = 'font-size:0.85rem;color:var(--muted,#667);background:none;border:none;cursor:pointer;padding:0.1rem 0.4rem;';
+  btn.setAttribute('aria-haspopup', 'true');
+  btn.setAttribute('aria-expanded', 'false');
+  wrap.appendChild(btn);
+
+  const menu = document.createElement('div');
+  menu.className = 'active-group-menu';
+  menu.hidden = true;
+  menu.style.cssText = 'position:absolute;top:100%;left:0;background:#fff;border:1px solid #ccc;border-radius:4px;padding:0.25rem 0;min-width:14rem;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:100;';
+  wrap.appendChild(menu);
+
+  function mkMenuItem(label, onClick, opts = {}) {
+    const a = document.createElement('a');
+    a.href = '#';
+    a.textContent = label;
+    a.style.cssText = `display:block;padding:0.35rem 0.75rem;text-decoration:none;color:${opts.muted ? '#888' : 'inherit'};${opts.active ? 'font-weight:600;background:#f0f0f0;' : ''}`;
+    if (typeof onClick === 'function') {
+      a.addEventListener('click', (e) => { e.preventDefault(); onClick(); });
+    }
+    return a;
+  }
+
+  // Section: known groups (with switch).
+  if (groups.length > 0) {
+    for (const g of groups) {
+      const isActive = g.groupId === gid;
+      const item = mkMenuItem(
+        (isActive ? '✓ ' : '   ') + g.groupId,
+        isActive ? null : () => {
+          // Preserve path so /mine.html → /mine.html on the other group.
+          location.href = g.url + location.pathname;
+        },
+        { active: isActive },
+      );
+      menu.appendChild(item);
+    }
+    // Divider.
+    const hr = document.createElement('hr');
+    hr.style.cssText = 'margin:0.25rem 0;border:none;border-top:1px solid #eee;';
+    menu.appendChild(hr);
+  }
+
+  // Section: join existing buurt + create new buurt.  Strings carry
+  // data-i18n so applyLocalisation() picks them up when the page's
+  // init has run; pre-init they show the Dutch fallback.
+  const joinItem = mkMenuItem('+ Sluit aan bij andere buurt', () => {
+    location.href = '/onboard.html';
+  });
+  joinItem.setAttribute('data-i18n', 'group_switcher.join_other');
+  menu.appendChild(joinItem);
+  const createItem = mkMenuItem('+ Maak nieuwe buurt aan', () => {
+    location.href = '/create-group.html';
+  });
+  createItem.setAttribute('data-i18n', 'group_switcher.create_new');
+  menu.appendChild(createItem);
+
+  function toggleMenu(open) {
+    const willOpen = open ?? menu.hidden;
+    menu.hidden = !willOpen;
+    btn.setAttribute('aria-expanded', String(willOpen));
+  }
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMenu();
+  });
+  // Click-outside-to-close.
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target)) toggleMenu(false);
+  });
+  // Escape to close.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') toggleMenu(false);
+  });
+
   const actor = header.querySelector('#actor');
-  if (actor) actor.insertAdjacentElement('beforebegin', badge);
-  else header.appendChild(badge);
+  if (actor) actor.insertAdjacentElement('beforebegin', wrap);
+  else header.appendChild(wrap);
 }
 
 if (typeof document !== 'undefined') {
