@@ -17,7 +17,9 @@
   "boot": {
     "loading":          { "text": "Booting agents…",                "doc": "Shown while the in-process bundle composes" },
     "agents_ready":     { "text": "Agents ready",                   "doc": "a11y announcement when boot finishes" },
-    "boot_failed":      { "text": "Boot failed: {{message}}",       "doc": "Error banner when agentBundle throws; {{message}} interpolated" }
+    "boot_failed":      { "text": "Boot failed: {{message}}",       "doc": "Error banner when agentBundle throws; {{message}} interpolated" },
+    "transport_ready":  { "text": "Mesh transport ready",            "doc": "Shown when NknTransport completes its initial connect" },
+    "agent_wiring_failed": { "text": "Could not wire agent: {{message}}", "doc": "Shown when createRealHouseholdAgent throws on V1 boot" }
   },
   "rn": {
     "shell_stub_intro": { "text": "RN composition shell — V0 skeleton.", "doc": "Placeholder body until ChatScreen renders real content" }
