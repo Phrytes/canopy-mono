@@ -202,7 +202,10 @@ function renderListMessage(rendered, state, ctx) {
         } else if (typeof onButtonTap === 'function') {
           button.addEventListener('click', () => {
             const [opId, itemId] = String(btn.callbackData ?? '').split(':');
-            onButtonTap(opId, itemId);
+            // #178 — pass the originating message-id so onButtonTap
+            // can refresh THIS list in place after the dispatch
+            // (state-morphing row buttons).
+            onButtonTap(opId, itemId, { originMessageId: rendered.messageId });
           });
         }
         kb.appendChild(button);
