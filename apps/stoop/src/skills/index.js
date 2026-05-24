@@ -1599,6 +1599,13 @@ export function buildSkills({
           expiresAt:      valid.source.expiresAt,
           confirmedBy:    from,
           channel:        'peer',
+          // Slice 4 (2026-05-24) — joiner's mesh-consent token.
+          // When true, admin propagates this peer's address to
+          // other members (+ propagates other consenting members'
+          // addresses to this joiner).  When false, the joiner
+          // stays star-routed via admin.
+          ...(a.shareCard ? { shareCard: true } : {}),
+          ...(typeof a.peerDisplay === 'string' && a.peerDisplay ? { peerDisplay: a.peerDisplay } : {}),
         },
         visibility: 'household',
       }], { actor: from });
@@ -1675,6 +1682,82 @@ export function buildSkills({
       };
     }, {
       description: 'Joiner-side mirror: records a peer-confirmed redemption + rules locally.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * recordPeerIntro({groupId, peerAddr, peerDisplay?})
+     *   — Slice 4 (2026-05-24).  Joiner-side mirror for a mesh
+     *   introduction.  Admin propagates each consenting member's
+     *   address; the receiver calls this skill to write a local
+     *   `membership-redemption` item with `channel: 'intro'`.
+     *   listGroupRoster's existing filter picks it up so the
+     *   recipient can fan-out posts directly to the introduced
+     *   peer (mesh topology) instead of relaying via admin.
+     *
+     *   Idempotent — skips when an intro for the same peer
+     *   already exists for the group.
+     */
+    defineSkill('recordPeerIntro', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      if (typeof a.groupId !== 'string' || !a.groupId)
+        return { error: 'groupId required' };
+      if (typeof a.peerAddr !== 'string' || !a.peerAddr)
+        return { error: 'peerAddr required' };
+      if (a.peerAddr === from) return { ok: true, skipped: 'self' };
+      const all = await store.listOpen({ type: 'membership-redemption' });
+      const dup = all.find(i =>
+        i?.source?.groupId === a.groupId
+          && i?.source?.redeemedBy === a.peerAddr
+          && i?.source?.channel === 'intro',
+      );
+      if (dup) return { ok: true, skipped: 'duplicate' };
+      const [item] = await store.addItems([{
+        type:       'membership-redemption',
+        text:       `${a.peerAddr} introduced for ${a.groupId}`,
+        source:     {
+          groupId:     a.groupId,
+          redeemedBy:  a.peerAddr,
+          peerDisplay: typeof a.peerDisplay === 'string' ? a.peerDisplay : null,
+          channel:     'intro',
+          introducedAt: Date.now(),
+        },
+        visibility: 'household',
+      }], { actor: from });
+      return { ok: true, introId: item.id };
+    }, {
+      description: 'Joiner-side mirror: record a mesh introduction for another buurt member.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * listConsentingPeers({groupId})
+     *   — Slice 4 (2026-05-24).  Returns members of groupId who
+     *   gave a `shareCard` (consented to mesh address-sharing).
+     *   Used by admin to decide who to propagate when a new
+     *   joiner arrives.  Skips self.
+     */
+    defineSkill('listConsentingPeers', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      if (typeof a.groupId !== 'string' || !a.groupId)
+        return { error: 'groupId required' };
+      const all = await store.listOpen({ type: 'membership-redemption' });
+      const peers = [];
+      const seen = new Set();
+      for (const it of all) {
+        const src = it.source ?? {};
+        if (src.groupId !== a.groupId) continue;
+        if (!src.shareCard) continue;
+        const addr = src.redeemedBy;
+        if (typeof addr !== 'string' || !addr) continue;
+        if (addr === from) continue;
+        if (seen.has(addr)) continue;
+        seen.add(addr);
+        peers.push({ addr, display: src.peerDisplay ?? null });
+      }
+      return { peers };
+    }, {
+      description: 'List buurt members who consented to mesh address-sharing.',
       visibility:  'authenticated',
     }),
 

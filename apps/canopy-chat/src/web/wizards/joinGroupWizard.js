@@ -73,6 +73,10 @@ export function renderJoinGroupWizard(opts) {
     rulesError:       null,
     rulesAccepted:    false,
     privacyAccepted:  false,
+    // Slice 4 (2026-05-24) — mesh-consent toggle.  Default ON so the
+    // common case "I want to join + chat directly with members" works
+    // out of the box; users can opt out to stay star-routed via admin.
+    shareAddress:     true,
     handle:           '',
     submitting:       false,
     submitError:      null,
@@ -198,6 +202,27 @@ function renderPrivacyStep(container, doc, state, onNext, onBack, onCancel, rere
   checkRow.appendChild(check);
   checkRow.appendChild(doc.createTextNode(' I understand and accept.'));
   wrap.appendChild(checkRow);
+
+  // Slice 4 (2026-05-24) — mesh address-sharing consent.  When on,
+  // admin propagates this joiner's NKN address to other consenting
+  // members + propagates other consenting members' addresses to
+  // this joiner.  When off, the joiner only talks to admin (star
+  // routing); other members can't DM directly.
+  const meshRow = doc.createElement('label');
+  meshRow.className = 'cc-wizard-check';
+  const meshBox = doc.createElement('input');
+  meshBox.type = 'checkbox';
+  meshBox.checked = state.shareAddress;
+  meshBox.addEventListener('change', () => {
+    state.shareAddress = meshBox.checked;
+  });
+  meshRow.appendChild(meshBox);
+  meshRow.appendChild(doc.createTextNode(' Let other buurt members contact me directly (DM).'));
+  wrap.appendChild(meshRow);
+  const meshHint = doc.createElement('div');
+  meshHint.className = 'cc-wizard-field-hint';
+  meshHint.textContent = 'Off = admin relays everything; you stay reachable only via them.';
+  wrap.appendChild(meshHint);
 
   container.appendChild(wrap);
   renderActions(container, doc, [
@@ -439,6 +464,10 @@ async function finalSubmit(state, callSkill, sendPeerRedeem) {
         adminNkn: inv.adminNkn,
         groupId:  inv.groupId,
         code:     inv.code,
+        // Slice 4 — joiner's mesh-consent + display name so admin
+        // can propagate this peer to other consenting members.
+        shareCard:   !!state.shareAddress,
+        peerDisplay: state.handle,
       });
       if (!peerReply || peerReply.error) {
         throw new Error(peerReply?.error
