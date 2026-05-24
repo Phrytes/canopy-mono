@@ -3,6 +3,17 @@
  *
  * Slice F.1 (V0.8, 2026-05-21) — folio's first NavModel manifest.
  *
+ * **Slash-command policy: LLM-only** (SP-12 audit 2026-05-24, #246).
+ * Folio's audience is "I want to save this note" intent users, not
+ * power users running `/share-folder /list-files`.  Natural-language
+ * chat with the LLM picking the skill fits the information-
+ * management mental model better than a CLI surface.  Power users
+ * who want slash get it via `apps/canopy-chat/src/core/manifests/
+ * mockManifests.js` (mockFolioManifest declares /share /save-to-pod
+ * /download-file /folio-status at the chat-shell layer).  Same
+ * convention tasks-v0 uses (SP-3 V0).  See `Project Files/canopy-
+ * chat/slash-coverage-audit-2026-05-24.md` for the full audit.
+ *
  * Folio is structurally different from the item-store apps (tasks-v0,
  * stoop, household): it doesn't have an ItemStore + crew-scoped items.
  * Its "items" are markdown files mirrored to a Solid pod via

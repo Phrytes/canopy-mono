@@ -91,6 +91,17 @@ shell / per-circle config); the host itself is policy-free.
 
    Pick deliberately; mixing policies across hosts confuses users.
 
+   **Canonical default (SP-12 audit 2026-05-24, #246):** hosts SHOULD
+   adopt **first-mount-wins** unless they have a specific reason to
+   pick another policy.  Rationale: today household/stoop/calendar
+   have ZERO command-name overlap (audit confirmed across all 31
+   slash commands), so collisions are rare; first-mount-wins handles
+   the rare case predictably with no per-command config burden.  Add
+   `prefix-all-on-collision` as a per-host override when a specific
+   collision warrants it; reserve `LLM-disambiguate` for cases where
+   user testing shows confusion.  See `Project Files/canopy-chat/
+   slash-coverage-audit-2026-05-24.md` for the underlying data.
+
 2. **`perAppSystemPrompts` composition.**  `compose()` returns the
    per-app system prompts in a keyed object, **not** concatenated.
    Reasonable policies:
