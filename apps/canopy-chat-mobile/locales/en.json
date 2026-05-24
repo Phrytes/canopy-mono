@@ -23,5 +23,13 @@
   },
   "rn": {
     "shell_stub_intro": { "text": "RN composition shell — V0 skeleton.", "doc": "Placeholder body until ChatScreen renders real content" }
+  },
+  "slash": {
+    "fab_a11y":          { "text": "Open slash commands",          "doc": "Accessibility label for the bottom-right slash FAB (#241)" },
+    "modal_placeholder": { "text": "Type a slash command…",        "doc": "Placeholder shown inside the slash-FAB's TextInput when empty" }
+  },
+  "common": {
+    "cancel":            { "text": "Cancel",                       "doc": "Generic cancel-button label (slash FAB modal)" },
+    "send":              { "text": "Send",                         "doc": "Generic send-button label (slash FAB modal)" }
   }
 }

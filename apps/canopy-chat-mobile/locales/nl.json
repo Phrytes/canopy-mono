@@ -23,5 +23,13 @@
   },
   "rn": {
     "shell_stub_intro": { "text": "RN compositiel-shell — V0 skelet.", "doc": "Placeholder tot ChatScreen echt rendert" }
+  },
+  "slash": {
+    "fab_a11y":          { "text": "Slash-commando's openen",        "doc": "Toegankelijkheids-label voor de rechterhoek-FAB (#241)" },
+    "modal_placeholder": { "text": "Typ een slash-commando…",        "doc": "Placeholder in de slash-FAB-TextInput wanneer leeg" }
+  },
+  "common": {
+    "cancel":            { "text": "Annuleren",                       "doc": "Generieke annuleren-knop (slash-FAB modal)" },
+    "send":              { "text": "Verzend",                         "doc": "Generieke verzendknop (slash-FAB modal)" }
   }
 }

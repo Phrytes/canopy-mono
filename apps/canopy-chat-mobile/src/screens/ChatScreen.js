@@ -7,12 +7,13 @@
  * No hardcoded strings ([[no-hardcoded-strings]]) — every label
  * goes through `t()`.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { bootAgentBundle } from '../core/agentBundle.js';
 import { buildNavModels }  from '../core/navModel.js';
 import { t }               from '../core/localisation.js';
+import SlashFAB            from '../rn/SlashFAB.js';
 
 export default function ChatScreen() {
   const [bootState, setBootState] = useState({ kind: 'loading' });
@@ -29,6 +30,18 @@ export default function ChatScreen() {
       }
     })();
   }, []);
+
+  // #241 — slash FAB dispatcher.  Parses "/cmd arg=v" into the
+  // chat-shell's standard shape; V0 just routes to the bundle's
+  // catalog-mounted skill (the chat-shell layer's parseInput is
+  // overkill for the V0 placeholder).  Full parse/render will
+  // arrive when the real chat-shell ships on RN.
+  const onSlashDispatch = useCallback(async (line) => {
+    if (bootState.kind !== 'ready') return;
+    // eslint-disable-next-line no-console
+    console.info('[SlashFAB] dispatched', line);
+    // V0: log + leave the heavy lifting to the future chat-shell.
+  }, [bootState]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -56,6 +69,12 @@ export default function ChatScreen() {
               </Text>
             </View>
           ))}
+          {/* #241 — slash FAB overlay (default-visible per the
+              slash-on-mobile decision doc). */}
+          <SlashFAB
+            catalog={bootState.bundle?.catalog}
+            onDispatch={onSlashDispatch}
+          />
         </>
       )}
     </ScrollView>
