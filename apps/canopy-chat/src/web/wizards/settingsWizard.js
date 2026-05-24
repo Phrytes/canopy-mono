@@ -1,0 +1,264 @@
+/**
+ * **Platform: web** (DOM-dependent).  RN parallel pending #128.
+ *
+ * canopy-chat — /settings panel renderer (#212, 2026-05-24).
+ *
+ * Brings the per-app settings that used to live as individual slash
+ * commands into a single grouped panel:
+ *
+ *   - General      — locale (EN/NL), transport mode (NKN / relay / both)
+ *   - Stoop        — handle + displayName + holiday-mode toggle
+ *   - Privacy      — clear ContactBook + show mute list (read-only)
+ *
+ * The panel is opened via the /settings slash → surfaces.page side-panel.
+ * Each control wires its own substrate skill (or chat-shell built-in
+ * for language) — no monolithic dispatch.
+ */
+
+export function renderSettingsWizard(opts) {
+  const { container, doc, callSkill, onClose, getLang, setLang } = opts;
+  const state = {
+    profile:   null,    // {handle, displayName, ...} from stoop
+    holiday:   null,    // boolean or null
+    loading:   true,
+    saving:    {},      // per-field saving flag
+  };
+
+  load().then(rerender).catch((err) => {
+    state.loading = false;
+    state.loadError = err?.message ?? String(err);
+    rerender();
+  });
+
+  async function load() {
+    try {
+      const p = await callSkill('stoop', 'getStoopProfile', {});
+      state.profile = p ?? null;
+    } catch { /* swallow */ }
+    try {
+      const h = await callSkill('stoop', 'getHolidayMode', {});
+      state.holiday = h?.holidayMode === true;
+    } catch { /* swallow */ }
+    state.loading = false;
+  }
+
+  rerender();
+
+  function rerender() {
+    container.innerHTML = '';
+    const body = doc.createElement('div');
+    body.className = 'cc-settings-panel';
+
+    if (state.loading) {
+      const note = doc.createElement('div');
+      note.className = 'cc-wizard-blurb';
+      note.textContent = 'Loading settings…';
+      body.appendChild(note);
+      container.appendChild(body);
+      return;
+    }
+
+    body.appendChild(renderSection(doc, 'General', [
+      renderLangControl(doc, state, getLang, setLang, rerender),
+      renderTransportControl(doc, opts),
+    ]));
+
+    body.appendChild(renderSection(doc, 'Stoop / Buurt', [
+      renderHandleControl(doc, state, callSkill, rerender),
+      renderDisplayNameControl(doc, state, callSkill, rerender),
+      renderHolidayControl(doc, state, callSkill, rerender),
+    ]));
+
+    body.appendChild(renderSection(doc, 'About', [
+      renderInfo(doc, 'NKN address',
+        opts.getMyNkn ? (opts.getMyNkn() ?? '(not connected)') : '(unknown)'),
+    ]));
+
+    container.appendChild(body);
+
+    const actions = doc.createElement('div');
+    actions.className = 'cc-wizard-actions';
+    const close = doc.createElement('button');
+    close.type = 'button';
+    close.className = 'cc-wizard-btn cc-wizard-btn-primary';
+    close.textContent = 'Close';
+    close.addEventListener('click', onClose);
+    actions.appendChild(close);
+    container.appendChild(actions);
+  }
+}
+
+/* ─── sections + controls ─────────────────────────────────── */
+
+function renderSection(doc, title, controls) {
+  const sec = doc.createElement('section');
+  sec.className = 'cc-settings-section';
+  const h = doc.createElement('h3');
+  h.className = 'cc-settings-section-title';
+  h.textContent = title;
+  sec.appendChild(h);
+  for (const c of controls) if (c) sec.appendChild(c);
+  return sec;
+}
+
+function renderLangControl(doc, state, getLang, setLang, rerender) {
+  const row = doc.createElement('div');
+  row.className = 'cc-settings-row';
+  const label = doc.createElement('label');
+  label.className = 'cc-settings-label';
+  label.textContent = 'Language';
+  row.appendChild(label);
+  const cur = (typeof getLang === 'function') ? getLang() : 'en';
+  const select = doc.createElement('select');
+  select.className = 'cc-settings-control';
+  for (const [code, name] of [['en', 'English'], ['nl', 'Nederlands']]) {
+    const opt = doc.createElement('option');
+    opt.value = code;
+    opt.textContent = name;
+    if (code === cur) opt.selected = true;
+    select.appendChild(opt);
+  }
+  select.addEventListener('change', async () => {
+    if (typeof setLang === 'function') {
+      await setLang(select.value);
+      rerender();
+    }
+  });
+  row.appendChild(select);
+  return row;
+}
+
+function renderTransportControl(doc, opts) {
+  const row = doc.createElement('div');
+  row.className = 'cc-settings-row';
+  const label = doc.createElement('label');
+  label.className = 'cc-settings-label';
+  label.textContent = 'Transport mode';
+  row.appendChild(label);
+  const select = doc.createElement('select');
+  select.className = 'cc-settings-control';
+  const cur = (typeof opts.getTransportMode === 'function')
+    ? (opts.getTransportMode() ?? 'nkn') : 'nkn';
+  for (const m of ['nkn', 'relay', 'both']) {
+    const o = doc.createElement('option');
+    o.value = m; o.textContent = m.toUpperCase();
+    if (m === cur) o.selected = true;
+    select.appendChild(o);
+  }
+  select.addEventListener('change', () => {
+    try { opts.setTransportMode?.(select.value); } catch { /* swallow */ }
+  });
+  row.appendChild(select);
+  return row;
+}
+
+function renderHandleControl(doc, state, callSkill, rerender) {
+  const row = doc.createElement('div');
+  row.className = 'cc-settings-row';
+  const label = doc.createElement('label');
+  label.className = 'cc-settings-label';
+  label.textContent = 'Handle';
+  row.appendChild(label);
+  const input = doc.createElement('input');
+  input.type = 'text';
+  input.className = 'cc-settings-control';
+  input.value = state.profile?.handle ?? '';
+  input.placeholder = 'lowercase, digits, hyphens';
+  const save = doc.createElement('button');
+  save.type = 'button';
+  save.className = 'cc-wizard-btn cc-wizard-btn-secondary';
+  save.textContent = 'Save';
+  save.addEventListener('click', async () => {
+    const v = input.value.trim();
+    if (!v) return;
+    save.disabled = true;
+    try {
+      await callSkill('stoop', 'setMyHandle', { handle: v });
+      save.textContent = '✓';
+      setTimeout(() => { save.textContent = 'Save'; save.disabled = false; }, 1500);
+    } catch (err) {
+      save.textContent = '✗';
+      setTimeout(() => { save.textContent = 'Save'; save.disabled = false; }, 2000);
+    }
+  });
+  row.appendChild(input);
+  row.appendChild(save);
+  return row;
+}
+
+function renderDisplayNameControl(doc, state, callSkill, rerender) {
+  const row = doc.createElement('div');
+  row.className = 'cc-settings-row';
+  const label = doc.createElement('label');
+  label.className = 'cc-settings-label';
+  label.textContent = 'Display name';
+  row.appendChild(label);
+  const input = doc.createElement('input');
+  input.type = 'text';
+  input.className = 'cc-settings-control';
+  input.value = state.profile?.displayName ?? '';
+  input.placeholder = 'How peers see you';
+  const save = doc.createElement('button');
+  save.type = 'button';
+  save.className = 'cc-wizard-btn cc-wizard-btn-secondary';
+  save.textContent = 'Save';
+  save.addEventListener('click', async () => {
+    const v = input.value.trim();
+    if (!v) return;
+    save.disabled = true;
+    try {
+      await callSkill('stoop', 'setMyDisplayName', { displayName: v });
+      save.textContent = '✓';
+      setTimeout(() => { save.textContent = 'Save'; save.disabled = false; }, 1500);
+    } catch (err) {
+      save.textContent = '✗';
+      setTimeout(() => { save.textContent = 'Save'; save.disabled = false; }, 2000);
+    }
+  });
+  row.appendChild(input);
+  row.appendChild(save);
+  return row;
+}
+
+function renderHolidayControl(doc, state, callSkill, rerender) {
+  const row = doc.createElement('div');
+  row.className = 'cc-settings-row';
+  const label = doc.createElement('label');
+  label.className = 'cc-settings-label';
+  label.textContent = 'Holiday mode';
+  row.appendChild(label);
+  const toggle = doc.createElement('label');
+  toggle.className = 'cc-settings-toggle';
+  const box = doc.createElement('input');
+  box.type = 'checkbox';
+  box.checked = !!state.holiday;
+  box.addEventListener('change', async () => {
+    box.disabled = true;
+    try {
+      await callSkill('stoop', 'setHolidayMode', { on: box.checked });
+      state.holiday = box.checked;
+    } catch {
+      box.checked = !box.checked;   // revert
+    } finally {
+      box.disabled = false;
+    }
+  });
+  toggle.appendChild(box);
+  toggle.appendChild(doc.createTextNode(' Suppress notifications + mark me unavailable.'));
+  row.appendChild(toggle);
+  return row;
+}
+
+function renderInfo(doc, label, value) {
+  const row = doc.createElement('div');
+  row.className = 'cc-settings-row';
+  const lab = doc.createElement('span');
+  lab.className = 'cc-settings-label';
+  lab.textContent = label;
+  const val = doc.createElement('code');
+  val.className = 'cc-settings-info';
+  val.textContent = value;
+  row.appendChild(lab);
+  row.appendChild(val);
+  return row;
+}

@@ -35,6 +35,7 @@ import { renderSidebar }             from '../src/web/threadSidebar.js';
 import { renderLogsPanel }           from '../src/web/logsPanel.js';
 import { openPagePanel }             from '../src/web/pagePanel.js';
 import { renderJoinGroupWizard }     from '../src/web/wizards/joinGroupWizard.js';
+import { renderSettingsWizard }      from '../src/web/wizards/settingsWizard.js';
 import { renderCreateGroupWizard }   from '../src/web/wizards/createGroupWizard.js';
 import { renderRestoreFromMnemonicWizard } from '../src/web/wizards/restoreFromMnemonicWizard.js';
 import { renderConflictDisputeWizard }     from '../src/web/wizards/conflictDisputeWizard.js';
@@ -1216,6 +1217,7 @@ function openLogsPanel() {
 // + this map dispatches to the right one.  Ops with no entry use
 // the V0 generic-form path in pagePanel.js.
 const WIZARD_RENDERERS = {
+  settings:                   renderSettingsWizard,
   joinGroupWizard:            renderJoinGroupWizard,
   createGroupWizard:          renderCreateGroupWizard,
   restoreFromMnemonicWizard:  renderRestoreFromMnemonicWizard,
@@ -1401,6 +1403,11 @@ function pageSurfaceOpen({ op, appOrigin, args }) {
         // when the joiner's local store has no copy of the code.
         getMyNkn:       () => agent?.peer?.address ?? null,
         sendPeerRedeem: sendGroupRedeemRequest,
+        // #212 — /settings wizard needs locale + transport-mode hooks.
+        getLang: currentLang,
+        setLang: async (lng) => { await setLang(lng); updateLangButtons(); renderAll(); },
+        getTransportMode: () => agent?.transportMode ?? null,
+        setTransportMode: (m) => { try { agent?.setTransportMode?.(m); } catch { /* swallow */ } },
       }) } : {}),
   });
 }
