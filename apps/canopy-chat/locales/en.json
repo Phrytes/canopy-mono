@@ -14,7 +14,15 @@
     "stale_list": {
       "text": "This list is stale. Run the command again to refresh.",
       "doc": "Shown when the user taps a disabled action menu (per A2 hybrid lifecycle)."
-    }
+    },
+    "welcome":                    { "text": "Welcome to canopy-chat (v0.2). Try /help. Create more threads via the sidebar.", "doc": "First-boot greeting in the Main thread." },
+    "permission_no_commands":     { "text": "This thread does not accept commands.", "doc": "Shown when allowCommands=false on the active thread." }
+  },
+  "dm": {
+    "no_peer":              { "text": "DM thread has no paired peer address.",                       "doc": "Shown when a DM-scoped thread is missing its actor address (config bug)." },
+    "peer_offline":         { "text": "Peer transport not connected. Try /peer-connect first.",      "doc": "Shown when the user sends in a DM but NKN isn't connected." },
+    "respond_neither_ok":   { "text": "Neither local audit nor NKN delivery succeeded.",             "doc": "[Help with] flow — both substrate and NKN paths failed." },
+    "counter_prompt":       { "text": "Type your counter-offer below.",                              "doc": "Hint after [Counter] click on a responder card." }
   },
   "help": {
     "heading": {

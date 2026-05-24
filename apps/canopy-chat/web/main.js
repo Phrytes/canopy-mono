@@ -1914,7 +1914,7 @@ function makeCtx() {
   const main = store.getThread('main');
   if (main && main.messages.length === 0) {
     const greeting = renderReply({
-      payload: 'Welcome to canopy-chat (v0.2). Try /help. Create more threads via the sidebar.',
+      payload: t('thread.welcome'),
       shape:   'text',
       threadId: main.id,
     }, { t });
@@ -2107,7 +2107,7 @@ formEl.addEventListener('submit', async (e) => {
   // Permission gate (v0.2: allowCommands)
   if (t0.permissions.allowCommands === false) {
     const rendered = renderReply({
-      payload: 'This thread does not accept commands.',
+      payload: t('thread.permission_no_commands'),
       shape:   'text', threadId: t0.id,
     }, { t });
     t0.addShellMessage(rendered);
@@ -2629,7 +2629,7 @@ async function sendDmMessage(dm, body) {
   if (!peerAddr) {
     dm.addShellMessage(renderReply({
       payload: null, shape: 'text', threadId: dm.id,
-      error: { code: 'dm-no-peer', message: 'DM thread has no paired peer address.' },
+      error: { code: 'dm-no-peer', message: t('dm.no_peer') },
     }, { t }));
     renderActiveStream();
     return;
@@ -2637,7 +2637,7 @@ async function sendDmMessage(dm, body) {
   if (agent?.peer?.status !== 'connected') {
     dm.addShellMessage(renderReply({
       payload: null, shape: 'text', threadId: dm.id,
-      error: { code: 'peer-offline', message: 'Peer transport not connected. Try /peer-connect first.' },
+      error: { code: 'peer-offline', message: t('dm.peer_offline') },
     }, { t }));
     renderActiveStream();
     return;
@@ -2716,7 +2716,7 @@ async function dispatchPendingResponse(dm, body) {
   if (!substrateOk && !nknOk) {
     dm.addShellMessage(renderReply({
       payload: null, shape: 'text', threadId: dm.id,
-      error: { code: 'respond-failed', message: 'Neither local audit nor NKN delivery succeeded.' },
+      error: { code: 'respond-failed', message: t('dm.respond_neither_ok') },
     }, { t }));
   } else {
     dm.addShellMessage(renderReply({
@@ -2820,7 +2820,7 @@ async function handleHelpWithResponse(fromAddr, payload) {
   counter.title = 'Reply with a counter-offer in this DM';
   counter.addEventListener('click', () => {
     dm.addShellMessage(renderReply({
-      payload: 'Type your counter-offer below.',
+      payload: t('dm.counter_prompt'),
       shape: 'text', threadId: dm.id,
     }, { t }));
     renderActiveStream();
