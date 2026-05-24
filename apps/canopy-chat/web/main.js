@@ -1793,6 +1793,15 @@ formEl.addEventListener('submit', async (e) => {
     return;
   }
 
+  // Slice 6e (2026-05-24) — regular DM messages.  Non-slash text in a
+  // DM-scoped thread (filter.dm===true) gets sent to the paired peer
+  // over NKN with subtype:'chat-message'.  Receiver's Slice 6a
+  // handler renders it in their DM-with-us thread.
+  if (t0.filter?.dm === true && !text.startsWith('/')) {
+    await sendDmMessage(t0, text);
+    return;
+  }
+
   await handleUserText(text, t0);
 });
 
@@ -2221,6 +2230,57 @@ async function openHelpWithDm(originThread, itemId, originMessageId) {
  * their first message in a [Help with]-spawned DM.  Clears the
  * marker on success so subsequent messages are regular DMs.
  */
+/**
+ * Slice 6e (2026-05-24) — send a regular DM message to the paired
+ * peer.  The user's typed text already landed in the DM thread via
+ * addUserMessage; we just need to put it on the wire so the
+ * receiver's Slice 6a handler can render it on their side.
+ *
+ * Failure modes:
+ *   - peer.status !== 'connected' → render a small "✗ not delivered"
+ *     hint underneath the user message.  No queue/retry in V0; user
+ *     can /peer-connect + retype.
+ *   - sendPeerMessage throws → same failure hint with the error.
+ *
+ * Doesn't dispatch into stoop's chat-substrate (its InternalTransport
+ * is local-only in the browser — same gap that affects respondToItem).
+ */
+async function sendDmMessage(dm, body) {
+  const peerAddr = dm.peerAddr ?? dm.filter?.actors?.[0] ?? null;
+  if (!peerAddr) {
+    dm.addShellMessage(renderReply({
+      payload: null, shape: 'text', threadId: dm.id,
+      error: { code: 'dm-no-peer', message: 'DM thread has no paired peer address.' },
+    }, { t }));
+    renderActiveStream();
+    return;
+  }
+  if (agent?.peer?.status !== 'connected') {
+    dm.addShellMessage(renderReply({
+      payload: null, shape: 'text', threadId: dm.id,
+      error: { code: 'peer-offline', message: 'Peer transport not connected. Try /peer-connect first.' },
+    }, { t }));
+    renderActiveStream();
+    return;
+  }
+  try {
+    const senderDisplay = await getMyDisplayName();
+    await agent.sendPeerMessage(peerAddr, {
+      type:    'p2p-chat',
+      subtype: 'chat-message',
+      body,
+      ...(senderDisplay ? { senderDisplay } : {}),
+      sentAt:  Date.now(),
+    });
+  } catch (err) {
+    dm.addShellMessage(renderReply({
+      payload: null, shape: 'text', threadId: dm.id,
+      error: { code: 'dm-send-failed', message: err?.message ?? String(err) },
+    }, { t }));
+    renderActiveStream();
+  }
+}
+
 async function dispatchPendingResponse(dm, body) {
   const pending = dm.pendingResponse;
   if (!pending?.itemId) return;
