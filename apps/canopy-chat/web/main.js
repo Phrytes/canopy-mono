@@ -1686,6 +1686,16 @@ formEl.addEventListener('submit', async (e) => {
     return;
   }
 
+  // Slice 6b — first message in a [Help with]-spawned DM dispatches
+  // respondToItem with this text as body, then clears the pending
+  // marker.  Subsequent messages are regular DMs (handled by 6a's
+  // NKN routing).  Skip when the user typed a slash command — let
+  // it dispatch normally.
+  if (t0.pendingResponse && !text.startsWith('/')) {
+    await dispatchPendingResponse(t0, text);
+    return;
+  }
+
   await handleUserText(text, t0);
 });
 
@@ -1921,6 +1931,18 @@ async function onButtonTap(opId, itemId, extra) {
   const t0 = activeThread();
   if (!t0) return;
 
+  // Slice 6b (2026-05-24) — [Help with] (respondToItem) intercept.
+  // Instead of popping an inline form for body, spawn a DM thread
+  // with the post's author + pin the post as a context card.  The
+  // user's first message in that DM dispatches respondToItem with
+  // their text as the body (Slice 6c wires the send path).
+  if (opId === 'respondToItem' && extra?.originMessageId) {
+    const handled = await openHelpWithDm(t0, itemId, extra.originMessageId);
+    if (handled) return;
+    // Fall through to generic dispatch if we couldn't resolve the
+    // post (defensive — should be rare).
+  }
+
   // v0.7 catch-up — demo-* stub ops fire from receiver-action buttons
   // on file/time cards (no backing app yet; tasks #111/#112).  Reply
   // is a placeholder text so the user sees the click registered.
@@ -1996,6 +2018,108 @@ async function onButtonTap(opId, itemId, extra) {
   if (originId) {
     await refreshListMessageInPlace(t0, originId);
   }
+}
+
+/**
+ * Slice 6b (2026-05-24) — [Help with] handler.  Resolves the post
+ * + its author, spawns a DM thread paired with that author, pins
+ * the post as a context card at the top, and stashes pending-
+ * response metadata so the next user message in that DM dispatches
+ * respondToItem with body=their-text.
+ *
+ * Returns true when the DM was opened (caller should skip the
+ * generic dispatch path), false when we couldn't resolve the post.
+ */
+async function openHelpWithDm(originThread, itemId, originMessageId) {
+  // Find the post text + author from the originating list message.
+  // We have to look up by id since the row already rendered.
+  const sourceMsg = originThread.messages.find(m => m.messageId === originMessageId);
+  const rawItems = sourceMsg?.rendered?.items ?? [];
+  // The rendered items only have {id, label, buttons, ...}; we need
+  // raw substrate fields (author, source.from) → refetch via the
+  // source op or via getPostSnapshot.  For V0 we re-call listFeed
+  // and find by id.  Cheap + matches what stoop's adapter returns.
+  let post = null;
+  try {
+    const reply = await callSkill('stoop', 'listFeed', {});
+    const items = reply?.items ?? [];
+    post = items.find(p =>
+      p?.id === itemId
+        || p?.source?.requestId === itemId,
+    ) ?? null;
+  } catch { /* swallow — falls through to label-only */ }
+
+  const labelHit = rawItems.find(it => it.id === itemId);
+  const postText = post?.text ?? labelHit?.label ?? itemId;
+  // Author NKN address lives in source.fromPubKey for broadcast-mirror
+  // posts; falls back to addedBy webid when the post is local-origin.
+  const authorAddr = post?.source?.fromPubKey
+    ?? post?.source?.from
+    ?? post?.addedBy
+    ?? null;
+  if (!authorAddr) {
+    // No-one to DM — fall back to the inline form path (caller dispatches).
+    return false;
+  }
+
+  // Spawn (or activate) the DM thread.
+  const dm = ensureDmThread(authorAddr, {
+    label:  authorAddr.slice(0, 16) + '…',
+    origin: { threadId: originThread.id, label: originThread.name },
+  });
+  if (!dm) return false;
+  // Stash the pending response context so the first user message
+  // in this DM dispatches respondToItem.  Slice 6c reads this.
+  dm.pendingResponse = {
+    itemId,
+    authorAddr,
+    postText,
+  };
+  // Pin the post as a context card at the top of the DM thread (only
+  // when it's the first message in the thread, so we don't duplicate).
+  if (dm.messages.length === 0) {
+    dm.addShellMessage(renderReply({
+      payload: `📌 Responding to:\n\n${postText}\n\nType your offer of help below — first message becomes your response.`,
+      shape: 'text',
+      threadId: dm.id,
+    }, { t }));
+  }
+  store.setActiveThread(dm.id);
+  renderSidebarHere();
+  renderActiveHeader();
+  renderActiveStream();
+  return true;
+}
+
+/**
+ * Slice 6b — fire the pending respondToItem when the user types
+ * their first message in a [Help with]-spawned DM.  Clears the
+ * marker on success so subsequent messages are regular DMs.
+ */
+async function dispatchPendingResponse(dm, body) {
+  const pending = dm.pendingResponse;
+  if (!pending?.itemId) return;
+  try {
+    const reply = await callSkill('stoop', 'respondToItem', {
+      itemId: pending.itemId,
+      body,
+    });
+    if (reply?.error) throw new Error(reply.error);
+    dm.addShellMessage(renderReply({
+      payload: `✓ Sent your offer to the post author.`,
+      shape: 'text',
+      threadId: dm.id,
+    }, { t }));
+    delete dm.pendingResponse;
+  } catch (err) {
+    dm.addShellMessage(renderReply({
+      payload: null,
+      shape:   'text',
+      threadId: dm.id,
+      error:   { code: 'respond-failed', message: err?.message ?? String(err) },
+    }, { t }));
+  }
+  renderActiveStream();
 }
 
 /**
