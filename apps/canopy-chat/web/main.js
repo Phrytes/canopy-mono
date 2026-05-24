@@ -433,12 +433,13 @@ async function connectPeerImpl() {
       } else {
         console.warn('[peer] no thread to deliver to — dropped:', body);
       }
-      publishEventRef({
-        app:     'canopy-chat',
-        type:    'notification',
-        actor:   from,
-        payload: { message: `📨 peer message: ${body}` },
-      });
+      // 2026-05-24 — DON'T publishEventRef here.  We've already rendered
+      // the message directly into the DM thread above; publishing as a
+      // notification event would route via the event-router to every
+      // matching thread (including this same DM, because filter.actors
+      // matches `from`) → user sees a duplicate bubble like
+      // "📨 peer message: <body>" right after the direct render.  /logs
+      // still picks up the envelope via console diagnostics.
     },
   });
 }
