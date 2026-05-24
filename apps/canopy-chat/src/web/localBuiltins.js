@@ -57,6 +57,9 @@ export function createLocalBuiltins({
     help: async () => formatHelp(catalog, t),
     newthread: async (args) => createNewThread(args, { threadStore, setActive, t }),
     threads:   async ()     => listThreads({ threadStore, t }),
+    // Slice 6d — /dm <webid> opens a DM thread with the given peer.
+    // Same outcome as the [DM] row button (which intercepts in main.js).
+    startDm:   async (args) => createDmThread(args, { threadStore, setActive, t }),
     embed:     async (args) => createEmbed(args, { catalog, callSkill, t, localActor }),
     'embed-file': async (args) => createFileEmbed(args, { localActor, t, simPeers, threadStore, callSkill, openFilePicker }),
     'embed-time': async (args) => createTimeEmbed(args, { localActor, t, simPeers, threadStore, callSkill }),
@@ -1187,6 +1190,39 @@ function createNewThread(args, { threadStore, setActive, t }) {
     message: t('newthread.created', { name: thread.name }),
     threadId: thread.id,
   };
+}
+
+/**
+ * Slice 6d — `/dm <webid>` — open (or activate) a DM thread paired
+ * with the given peer.  Mirrors main.js's ensureDmThread; lives in
+ * localBuiltins so the slash dispatch path is symmetric with the
+ * button-click intercept.
+ */
+function createDmThread(args, { threadStore, setActive, t }) {
+  if (!threadStore) {
+    return { ok: false, error: t('newthread.no_store', { defaultValue: 'Thread store unavailable.' }) };
+  }
+  const peerId = String(args?.webid ?? args?.id ?? '').trim();
+  if (!peerId) {
+    return { ok: false, error: 'Pass a webid or NKN address: /dm <peerId>' };
+  }
+  // Look for an existing DM with this peer; activate it if found.
+  const existing = [...threadStore.listThreads()].find(th =>
+    th.filter?.dm === true
+      && Array.isArray(th.filter?.actors)
+      && th.filter.actors.includes(peerId),
+  );
+  if (existing) {
+    if (typeof setActive === 'function') setActive(existing.id);
+    return { ok: true, message: `Opened DM with ${peerId.slice(0, 16)}…`, threadId: existing.id };
+  }
+  const thread = threadStore.createThread({
+    name:   `DM: ${peerId.slice(0, 16)}…`,
+    filter: { actors: [peerId], dm: true },
+    permissions: { allowCommands: true },
+  });
+  if (typeof setActive === 'function') setActive(thread.id);
+  return { ok: true, message: `Started DM with ${peerId.slice(0, 16)}…`, threadId: thread.id };
 }
 
 /**

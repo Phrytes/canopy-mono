@@ -492,6 +492,23 @@ export const mockStoopManifest = {
       },
     },
     /**
+     * Slice 6d (2026-05-24) — per-row [DM] button on contact + member
+     * rows.  No substrate dispatch — onButtonTap intercepts and routes
+     * to ensureDmThread.  Alias-as-button-only of canopy-chat's
+     * `startDm` op (so the validator's appliesTo gate stays in stoop's
+     * manifest where 'contact'/'member' itemTypes are declared).
+     */
+    {
+      id:    'startDm',
+      verb:  'add',
+      appliesTo: { type: ['contact', 'member'] },
+      params: [{ name: 'webid', kind: 'string', required: true }],
+      surfaces: {
+        chat: { reply: 'text', hint: 'open a DM with this peer' },
+        ui:   { control: 'button', label: 'DM' },
+      },
+    },
+    /**
      * #185 (A6, 2026-05-23) — `/holiday-mode <on|off>` — toggle the
      * calling actor's holiday-mode flag (Phase 23.4 in stoop).  When
      * on: notifications suppressed, skills marked unavailable, no

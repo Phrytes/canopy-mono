@@ -1957,6 +1957,21 @@ async function onButtonTap(opId, itemId, extra) {
     // post (defensive — should be rare).
   }
 
+  // Slice 6d (2026-05-24) — [DM] button on contact / member rows.
+  // Chat-shell-internal: spawn a DM thread, no substrate dispatch.
+  if (opId === 'startDm') {
+    const dm = ensureDmThread(itemId, {
+      origin: { threadId: t0.id, label: t0.name },
+    });
+    if (dm) {
+      store.setActiveThread(dm.id);
+      renderSidebarHere();
+      renderActiveHeader();
+      renderActiveStream();
+    }
+    return;
+  }
+
   // v0.7 catch-up — demo-* stub ops fire from receiver-action buttons
   // on file/time cards (no backing app yet; tasks #111/#112).  Reply
   // is a placeholder text so the user sees the click registered.
