@@ -127,7 +127,16 @@ export function openPagePanel(opts) {
  */
 function renderSimplePage(body, doc, opts, teardown) {
   const { op, appOrigin, args, callSkill, onDispatched, t } = opts;
-  const formSpec = buildFormSpec(op, args ?? {});
+  // buildFormSpec takes a named-args object, NOT (op, args).  All
+  // params render as fields (missing=[] means inline strategy = show
+  // every field as editable).  prefilledArgs populates initial values.
+  const formSpec = buildFormSpec({
+    opParams:      Array.isArray(op.params) ? op.params : [],
+    missing:       [],
+    prefilledArgs: args ?? {},
+    opId:          op.id,
+    appOrigin,
+  });
 
   // Hint / blurb (uses chat hint as the panel's intro line).
   if (op.surfaces?.chat?.hint) {
