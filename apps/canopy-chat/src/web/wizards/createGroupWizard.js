@@ -58,7 +58,7 @@ const KEY_ROTATION_MODES = [
  * @param {Function}    [opts.onDispatched]
  */
 export function renderCreateGroupWizard(opts) {
-  const { container, doc, callSkill, onClose, onDispatched } = opts;
+  const { container, doc, callSkill, onClose, onDispatched, getMyNkn } = opts;
 
   const state = {
     step: 1,                   // 1..5
@@ -77,6 +77,11 @@ export function renderCreateGroupWizard(opts) {
     // Step 4 — tech & storage
     keyRotationMode: 'admin-only',
     rotationDays:    30,
+    // Membership-code lifetime — admin-controlled, decoupled from
+    // rotationDays since 2026-05-24. Short default (1 h) so ad-hoc
+    // shares via WhatsApp/SMS don't leak a live join secret for
+    // weeks; admins bump this for slower onboarding flows.
+    inviteExpiresInHours: 1,
     storagePolicy:   'no-pod',
     groupPodUri:     '',
     // Submission
@@ -104,6 +109,11 @@ export function renderCreateGroupWizard(opts) {
       rerender();
       try {
         const result = await finalSubmit(state, callSkill);
+        // Stamp the current NKN address on the success payload so the
+        // invite URL we render carries the admin's peer-redeem target.
+        // null / unavailable transport just means joiners can't fall
+        // back to the peer path (they still get local + pod paths).
+        result.adminNkn = (typeof getMyNkn === 'function') ? (getMyNkn() ?? null) : null;
         state.successResult = result;
         if (typeof onDispatched === 'function') {
           try { onDispatched({ ok: true, message: `✓ Buurt "${result.groupId}" created.`, ...result }); } catch { /* swallow */ }
@@ -201,6 +211,16 @@ function renderGovernanceStep(container, doc, state, onNext, onBack, onCancel, r
   appendRadioField(wrap, doc, 'Leave policy', state.leavePolicy, LEAVE_POLICIES,
     (v) => { state.leavePolicy = v; rerender(); });
 
+  appendField(wrap, doc, 'Invite-code expiry (hours, 1-8760)', 'inviteExpiresInHours',
+    String(state.inviteExpiresInHours),
+    (v) => {
+      const n = parseInt(v, 10);
+      state.inviteExpiresInHours = Number.isFinite(n)
+        ? Math.max(1, Math.min(8760, n)) : 1;
+    },
+    { type: 'number',
+      hint: 'How long the membership-code stays redeemable. Short = safer for ad-hoc shares (1 h default). Long = good for slower onboarding (e.g. 168 = 1 week). Admin can /rotate-code later to mint a fresh one.' });
+
   container.appendChild(wrap);
   renderActions(container, doc, [
     { label: '← Back',  onClick: onBack,   kind: 'secondary' },
@@ -254,10 +274,11 @@ function renderTechStep(container, doc, state, onNext, onBack, onCancel, rerende
   appendRadioField(wrap, doc, 'Key rotation mode', state.keyRotationMode, KEY_ROTATION_MODES,
     (v) => { state.keyRotationMode = v; rerender(); });
 
-  appendField(wrap, doc, 'Rotation interval (days, 1-365)', 'rotationDays',
+  appendField(wrap, doc, 'Key rotation interval (days, 1-365)', 'rotationDays',
     String(state.rotationDays),
     (v) => { state.rotationDays = Math.max(1, Math.min(365, parseInt(v, 10) || 30)); },
-    { type: 'number' });
+    { type: 'number',
+      hint: 'How often the buurt-wide encryption key rotates. 30 d default suits most buurts; drop lower for higher-sensitivity groups. (Invite expiry is configured separately in Governance.)' });
 
   const needsUri = (state.storagePolicy === 'centralised' || state.storagePolicy === 'hybrid');
   const uriOk    = !needsUri || /^https?:\/\//.test(state.groupPodUri.trim());
@@ -280,8 +301,9 @@ function renderReviewStep(container, doc, state, onBack, onCancel, rerender, onS
   if (state.purpose) appendReview(dl, doc, 'Purpose', state.purpose);
   if (state.tags)    appendReview(dl, doc, 'Tags', state.tags);
   if (state.additionalAdmins) appendReview(dl, doc, 'Additional admins', state.additionalAdmins);
-  appendReview(dl, doc, 'Access policy',  labelOf(ACCESS_POLICIES, state.accessPolicy));
-  appendReview(dl, doc, 'Leave policy',   labelOf(LEAVE_POLICIES, state.leavePolicy));
+  appendReview(dl, doc, 'Access policy',   labelOf(ACCESS_POLICIES, state.accessPolicy));
+  appendReview(dl, doc, 'Leave policy',    labelOf(LEAVE_POLICIES, state.leavePolicy));
+  appendReview(dl, doc, 'Invite expiry',   `${state.inviteExpiresInHours} h`);
   if (state.rulesText) appendReview(dl, doc, 'Rules', state.rulesText, { pre: true });
   appendReview(dl, doc, 'Conflict policy', labelOf(CONFLICT_POLICIES, state.conflictPolicy));
   appendReview(dl, doc, 'Storage',        labelOf(STORAGE_POLICIES, state.storagePolicy));
@@ -314,23 +336,51 @@ function renderReviewStep(container, doc, state, onBack, onCancel, rerender, onS
 function renderSuccessStep(container, doc, state, onClose) {
   const wrap = makeBody(doc, '✓ Buurt created', `${state.successResult.groupId} is live.`);
 
-  // Encode {kind, groupId, code, expiresAt} as a stoop-invite:// URL
-  // so the invitee can paste a single string into /join-group.  The
-  // wizard's decoder reads `kind` to pick the right substrate path.
+  // Encode {kind, groupId, code, expiresAt, adminNkn?} as a stoop-invite://
+  // URL so the invitee can paste a single string into /join-group.  The
+  // wizard's decoder reads `kind` to pick the right substrate path; if
+  // `adminNkn` is set, the joiner falls back to a peer-redeem when its
+  // local substrate has no copy of the code (cross-browser/-device).
   const inviteUrl = encodeMembershipCodeUrl(state.successResult);
 
-  // ── URL block (primary share method) ──
-  const urlLabel = doc.createElement('div');
-  urlLabel.className = 'cc-wizard-field-label';
-  urlLabel.textContent = 'Share this URL (or the QR — invitee pastes into /join-group)';
-  wrap.appendChild(urlLabel);
+  // ── QR block (primary on mobile — scan + done) ──
+  const qrLabel = doc.createElement('div');
+  qrLabel.className = 'cc-wizard-field-label';
+  qrLabel.textContent = 'Scan the QR with the invitee\'s phone (or copy the URL below)';
+  wrap.appendChild(qrLabel);
 
+  const canvas = doc.createElement('canvas');
+  canvas.className = 'cc-field-qr-canvas';
+  canvas.width = 240; canvas.height = 240;
+  canvas.style.display = 'block';
+  canvas.style.maxWidth = '240px';
+  canvas.style.background = '#fff';
+  canvas.style.margin = '0.4rem auto';
+  wrap.appendChild(canvas);
+
+  // Lazy-load qrcode; renders into the canvas.
+  import('qrcode').then((mod) => {
+    const qrcode = mod.default ?? mod;
+    qrcode.toCanvas(canvas, inviteUrl, {
+      width: 240, margin: 1, errorCorrectionLevel: 'M',
+    }, (err) => {
+      if (err && typeof console !== 'undefined') {
+        console.warn('[createGroupWizard] QR render failed', err);
+      }
+    });
+  }).catch((err) => {
+    if (typeof console !== 'undefined') {
+      console.warn('[createGroupWizard] qrcode lib failed to load', err);
+    }
+  });
+
+  // ── URL block (fallback / desktop copy-paste) ──
   const urlRow = doc.createElement('div');
   urlRow.className = 'cc-wizard-code-row';
   const urlText = doc.createElement('code');
   urlText.className = 'cc-wizard-code';
   urlText.textContent = inviteUrl;
-  urlText.style.fontSize = '0.7rem';
+  urlText.style.fontSize = '0.65rem';
   urlText.style.wordBreak = 'break-all';
   urlRow.appendChild(urlText);
 
@@ -404,6 +454,9 @@ function encodeMembershipCodeUrl(result) {
     groupId:   result.groupId,
     code:      result.code,
     expiresAt: result.expiresAt,
+    // Optional: admin's NKN address for peer-redeem fallback when the
+    // joiner has no local copy of the code (cross-browser/-device).
+    ...(result.adminNkn ? { adminNkn: result.adminNkn } : {}),
   };
   const json = JSON.stringify(payload);
   if (typeof globalThis.btoa !== 'function') return `stoop-invite://${json}`;
@@ -549,12 +602,13 @@ async function finalSubmit(state, callSkill) {
   }
 
   const result = await callSkill('stoop', 'createGroupV2', {
-    groupId:         state.groupId,
-    name:            state.name,
+    groupId:              state.groupId,
+    name:                 state.name,
     rules,
-    keyRotationMode: state.keyRotationMode,
-    rotationDays:    state.rotationDays,
-    storagePolicy:   state.storagePolicy,
+    keyRotationMode:      state.keyRotationMode,
+    rotationDays:         state.rotationDays,
+    inviteExpiresInHours: state.inviteExpiresInHours,
+    storagePolicy:        state.storagePolicy,
     ...(state.groupPodUri ? { groupPodUri: state.groupPodUri } : {}),
   });
   if (result?.error) {

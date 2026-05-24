@@ -62,7 +62,7 @@ const HANDLE_SUGGESTIONS = (existingDisplayName) => {
  * @param {Function}    [opts.onDispatched]  fired after final success with the redeemInvite reply
  */
 export function renderJoinGroupWizard(opts) {
-  const { container, doc, args, callSkill, onClose, onDispatched } = opts;
+  const { container, doc, args, callSkill, onClose, onDispatched, sendPeerRedeem } = opts;
 
   // Wizard state — kept in-scope, re-renders rebuild the DOM from it.
   const state = {
@@ -105,7 +105,7 @@ export function renderJoinGroupWizard(opts) {
       state.submitError = null;
       rerender();
       try {
-        const result = await finalSubmit(state, callSkill);
+        const result = await finalSubmit(state, callSkill, sendPeerRedeem);
         if (typeof onDispatched === 'function') {
           try { onDispatched(result); } catch { /* swallow */ }
         }
@@ -384,7 +384,7 @@ function isValidHandle(handle) {
  *
  * Aborts on first error so the user sees the FIRST problem.
  */
-async function finalSubmit(state, callSkill) {
+async function finalSubmit(state, callSkill, sendPeerRedeem) {
   const inv = state.invite;
   // Membership-code path (new — single short string OR encoded URL).
   if (inv?.kind === 'membershipCode' && inv.code && inv.groupId) {
@@ -392,9 +392,41 @@ async function finalSubmit(state, callSkill) {
     if (handle?.ok === false || handle?.error) {
       throw new Error(handle.error ?? 'Couldn\'t set handle.');
     }
+    // Local redeem first — works in shared-substrate scenarios (single
+    // tab, tests, IndexedDB-shared admin+joiner).
     const redeem = await callSkill('stoop', 'redeemMembershipCode', {
       groupId: inv.groupId, code: inv.code,
     });
+    // Cross-instance fallback: when local store has no copy of the code
+    // (different browser/device), route the redeem-request to the admin's
+    // NKN address embedded in the invite URL.  Admin's substrate
+    // validates locally + records the redemption on its side; the bridge
+    // returns the confirmation here so we can mirror an audit record.
+    if (redeem?.error === 'invalid-or-expired-code' && inv.adminNkn && typeof sendPeerRedeem === 'function') {
+      const peerReply = await sendPeerRedeem({
+        adminNkn: inv.adminNkn,
+        groupId:  inv.groupId,
+        code:     inv.code,
+      });
+      if (!peerReply || peerReply.error) {
+        throw new Error(peerReply?.error
+          ?? 'Admin\'s substrate did not confirm the code. They may be offline — try again, or ask for a fresh code.');
+      }
+      // Mirror the confirmation locally so getMyMembershipStatus() works.
+      await callSkill('stoop', 'recordRemoteRedemption', {
+        groupId:     inv.groupId,
+        code:        inv.code,
+        codeId:      peerReply.codeId ?? null,
+        expiresAt:   peerReply.validUntil ?? null,
+        confirmedBy: inv.adminNkn,
+      });
+      return {
+        ok:      true,
+        message: `✓ Joined buurt "${inv.groupId}" as ${state.handle} (confirmed by admin over peer-bridge).`,
+        groupId: inv.groupId,
+        handle:  state.handle,
+      };
+    }
     if (redeem?.ok === false || redeem?.error) {
       throw new Error(redeem.error ?? 'Couldn\'t redeem code.');
     }
