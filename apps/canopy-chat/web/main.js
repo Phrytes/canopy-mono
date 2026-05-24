@@ -34,6 +34,7 @@ import { renderForm }                from '../src/web/domForm.js';
 import { renderSidebar }             from '../src/web/threadSidebar.js';
 import { renderLogsPanel }           from '../src/web/logsPanel.js';
 import { openPagePanel }             from '../src/web/pagePanel.js';
+import { renderJoinGroupWizard }     from '../src/web/wizards/joinGroupWizard.js';
 import { createRealHouseholdAgent }  from '../src/web/realAgent.js';
 import { mockTasksManifest,
          mockStoopManifest,
@@ -767,7 +768,17 @@ function openLogsPanel() {
 // #180 (2026-05-24) — open the generic page panel for an op whose
 // manifest declares surfaces.page.  Caller: dispatchAndRender's
 // interception; the panel handles dispatch on form submit.
+//
+// Per-op wizard renderers register here.  Each Cluster C wizard
+// (#196 joinGroup, #197 createGroup, …) exports a custom renderer
+// + this map dispatches to the right one.  Ops with no entry use
+// the V0 generic-form path in pagePanel.js.
+const WIZARD_RENDERERS = {
+  joinGroupWizard: renderJoinGroupWizard,
+};
+
 function pageSurfaceOpen({ op, appOrigin, args }) {
+  const customRenderer = WIZARD_RENDERERS[op.id];
   openPagePanel({
     container: pagePanelEl,
     doc:       document,
@@ -793,6 +804,8 @@ function pageSurfaceOpen({ op, appOrigin, args }) {
       t0.addShellMessage(rendered, { opId: op.id });
       renderActiveStream();
     },
+    ...(customRenderer ? { customRenderer: ({ container, onClose, onDispatched }) =>
+      customRenderer({ container, doc: document, args, callSkill: callSkillRef, onClose, onDispatched }) } : {}),
   });
 }
 
