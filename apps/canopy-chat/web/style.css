@@ -1320,11 +1320,49 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
 
 /* input form */
 form#input-form {
+  position: relative;             /* anchor for #cmd-suggest */
   display: flex;
   gap: 0.5rem;
   padding: 0.75rem;
   background: var(--bg-soft);
   border-top: 1px solid var(--border);
+}
+/* #199 (2026-05-24) — slash-command auto-suggest dropdown */
+.cc-cmd-suggest {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: calc(100% - 0.25rem);
+  margin: 0 0 0.25rem 0;
+  padding: 0.25rem 0;
+  background: var(--shell-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 20;
+}
+.cc-cmd-suggest-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+.cc-cmd-suggest-item:hover,
+.cc-cmd-suggest-active {
+  background: var(--bg);
+}
+.cc-cmd-suggest-cmd {
+  font-family: monospace;
+  color: var(--accent);
+  font-weight: 600;
+}
+.cc-cmd-suggest-hint {
+  color: var(--fg-mute);
+  font-size: 0.85rem;
 }
 #chat-input {
   flex: 1;

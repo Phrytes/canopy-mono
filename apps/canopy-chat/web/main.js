@@ -1972,6 +1972,113 @@ inputEl.addEventListener('keydown', (e) => {
   }
 });
 
+/* ── #199 (2026-05-24) — slash-command auto-suggest ──────── */
+
+const cmdSuggestEl = document.getElementById('cmd-suggest');
+let suggestActiveIdx = -1;
+let suggestEntries   = [];
+
+function commandPool() {
+  // Pull every slash command from the merged catalog.  Filter by
+  // prefix match against the current input.
+  const out = [];
+  for (const entry of catalog.opsById.values()) {
+    const slash = entry?.op?.surfaces?.slash?.command;
+    if (typeof slash !== 'string' || !slash) continue;
+    out.push({
+      command: slash,
+      hint:    entry?.op?.surfaces?.chat?.hint ?? entry.op.id,
+      opId:    entry.op.id,
+    });
+  }
+  return out.sort((a, b) => a.command.localeCompare(b.command));
+}
+
+function renderSuggest(matches) {
+  while (cmdSuggestEl.firstChild) cmdSuggestEl.removeChild(cmdSuggestEl.firstChild);
+  if (matches.length === 0) {
+    cmdSuggestEl.hidden = true;
+    suggestEntries = [];
+    suggestActiveIdx = -1;
+    return;
+  }
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    const li = document.createElement('li');
+    li.role = 'option';
+    li.className = `cc-cmd-suggest-item${i === suggestActiveIdx ? ' cc-cmd-suggest-active' : ''}`;
+    const cmd = document.createElement('span');
+    cmd.className = 'cc-cmd-suggest-cmd';
+    cmd.textContent = m.command;
+    li.appendChild(cmd);
+    if (m.hint) {
+      const hint = document.createElement('span');
+      hint.className = 'cc-cmd-suggest-hint';
+      hint.textContent = m.hint;
+      li.appendChild(hint);
+    }
+    li.addEventListener('mousedown', (ev) => {
+      ev.preventDefault();   // keep focus on the input
+      acceptSuggest(i);
+    });
+    cmdSuggestEl.appendChild(li);
+  }
+  cmdSuggestEl.hidden = false;
+  suggestEntries = matches;
+}
+
+function refreshSuggest() {
+  const v = inputEl.value;
+  if (!v.startsWith('/')) { renderSuggest([]); return; }
+  // Only suggest while typing the command word (no space yet).
+  if (v.includes(' ')) { renderSuggest([]); return; }
+  const needle = v.toLowerCase();
+  const pool = commandPool();
+  const matches = pool.filter(m => m.command.toLowerCase().startsWith(needle)).slice(0, 12);
+  // Reset active selection to the first match when the list changes.
+  if (matches.length > 0 && suggestActiveIdx >= matches.length) suggestActiveIdx = 0;
+  if (suggestActiveIdx < 0 && matches.length > 0) suggestActiveIdx = 0;
+  renderSuggest(matches);
+}
+
+function acceptSuggest(idx) {
+  const m = suggestEntries[idx];
+  if (!m) return;
+  // Replace whatever's typed with the full command + trailing space
+  // so the user can continue typing args.
+  inputEl.value = m.command + ' ';
+  renderSuggest([]);
+  inputEl.focus();
+}
+
+inputEl.addEventListener('input', refreshSuggest);
+inputEl.addEventListener('focus', refreshSuggest);
+inputEl.addEventListener('blur', () => {
+  // Defer so click-on-suggestion fires first.
+  setTimeout(() => renderSuggest([]), 100);
+});
+
+inputEl.addEventListener('keydown', (e) => {
+  if (cmdSuggestEl.hidden || suggestEntries.length === 0) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    suggestActiveIdx = (suggestActiveIdx + 1) % suggestEntries.length;
+    renderSuggest(suggestEntries);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    suggestActiveIdx = (suggestActiveIdx - 1 + suggestEntries.length) % suggestEntries.length;
+    renderSuggest(suggestEntries);
+  } else if (e.key === 'Tab' || (e.key === 'Enter' && suggestActiveIdx >= 0)) {
+    // Tab always accepts; Enter accepts ONLY when a suggestion is
+    // actively highlighted (so plain text submit still works).
+    e.preventDefault();
+    acceptSuggest(suggestActiveIdx);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    renderSuggest([]);
+  }
+});
+
 formEl.addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = inputEl.value.trim();
