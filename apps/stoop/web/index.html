@@ -34,6 +34,20 @@
           <label><input type="radio" name="intent" value="lend">          Te leen</label>
         </fieldset>
 
+        <!-- #244 (2026-05-24) — canonical kind sub-picker.
+             Shows extra granularity beyond the 3 top-level intents:
+              - ask  → borrow (default) / share / receive / buy / help / other
+              - offer → give (default) / share / sell / help / other
+              - lend → no sub-pick (kind=lend implied)
+             Substrate enums: packages/item-types/src/types/{request,offer}.js.
+             Web parity gap from [[web-mobile-parity-gaps]]. -->
+        <label id="post-kind-row" style="margin-top: 0.25rem;">
+          <span data-i18n="post_form.kind_label">Specifieker (optioneel)</span>
+          <select id="post-kind">
+            <!-- populated dynamically from intent change -->
+          </select>
+        </label>
+
         <label>
           <span>Wat?</span>
           <input id="post-text" type="text" required placeholder="bv. iemand handig met fietsen?">
@@ -186,10 +200,55 @@
       const isLend = document.querySelector('input[name="intent"]:checked')?.value === 'lend';
       document.querySelector('.lend-only').hidden = !isLend;
     }
+
+    // #244 (2026-05-24) — kind sub-picker.  Repopulates the dropdown
+    // based on the current intent.  Substrate enums:
+    //   request.kind: borrow / share / receive / buy / help / other
+    //   offer.kind:   lend / share / give / sell / help / other
+    // 'lend' intent has its own top-level button → no sub-pick UI.
+    const KIND_OPTS_BY_INTENT = {
+      ask: [
+        { id: 'borrow',  i18n: 'post_form.kind_borrow',  fallback: 'Lenen' },
+        { id: 'share',   i18n: 'post_form.kind_share',   fallback: 'Klein delen (consumables)' },
+        { id: 'receive', i18n: 'post_form.kind_receive', fallback: 'Krijgen (gift)' },
+        { id: 'buy',     i18n: 'post_form.kind_buy',     fallback: 'Kopen' },
+        { id: 'help',    i18n: 'post_form.kind_help',    fallback: 'Hulp / dienst' },
+        { id: 'other',   i18n: 'post_form.kind_other',   fallback: 'Anders' },
+      ],
+      offer: [
+        { id: 'give',    i18n: 'post_form.kind_give',    fallback: 'Weggeven' },
+        { id: 'share',   i18n: 'post_form.kind_share',   fallback: 'Klein delen (consumables)' },
+        { id: 'sell',    i18n: 'post_form.kind_sell',    fallback: 'Verkopen' },
+        { id: 'help',    i18n: 'post_form.kind_help',    fallback: 'Hulp / dienst' },
+        { id: 'other',   i18n: 'post_form.kind_other',   fallback: 'Anders' },
+      ],
+      lend: [],   // empty = no sub-pick
+    };
+    function syncKindOptions() {
+      const intent = document.querySelector('input[name="intent"]:checked')?.value || 'ask';
+      const opts   = KIND_OPTS_BY_INTENT[intent] || [];
+      const row    = document.getElementById('post-kind-row');
+      const sel    = document.getElementById('post-kind');
+      if (opts.length === 0) {
+        row.hidden = true;
+        sel.innerHTML = '';
+        return;
+      }
+      row.hidden = false;
+      sel.innerHTML = '';
+      for (const o of opts) {
+        const op = document.createElement('option');
+        op.value = o.id;
+        op.textContent = t(o.i18n, o.fallback);
+        sel.appendChild(op);
+      }
+    }
+
     for (const r of document.querySelectorAll('input[name="intent"]')) {
-      r.addEventListener('change', syncLendVisible);
+      r.addEventListener('change', () => { syncLendVisible(); syncKindOptions(); });
     }
     syncLendVisible();
+    syncKindOptions();
 
     // Phase 12 — Layer 1 category auto-suggest.  Debounced; calls the
     // `suggestCategory` skill via the existing REST surface so the
@@ -356,6 +415,14 @@
       out.textContent = 'Aan het posten…';
       try {
         const args = { text, intent, requiredSkills: skills, timeoutMs };
+        // #244 — canonical kind override.  Empty = let substrate use
+        // the intent's default (borrow / give / lend).  Substrate's
+        // intentToCanonicalDraft (apps/stoop/src/lib/canonicalAdapter.js)
+        // clamps to the schema enum, so a bad value falls back safely.
+        const kindSel = document.getElementById('post-kind');
+        if (kindSel && !kindSel.closest('#post-kind-row').hidden && kindSel.value) {
+          args.kind = kindSel.value;
+        }
         if (dueAt)    args.dueAt    = dueAt;
         if (hideName) args.hideName = true;       // V1: forwarded to skills; UI hint only for now
         if (targets.length) args.targets = targets;
@@ -374,6 +441,7 @@
         picPreviewBox.innerHTML = '';
         picStatus.textContent = '';
         syncLendVisible();
+        syncKindOptions();
         await refresh();
       } catch (err) {
         out.textContent = `Fout: ${err.message}`;
