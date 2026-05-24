@@ -1798,7 +1798,11 @@ async function dispatchAndRender(route, thread) {
     appOrigin:         route.appOrigin,
     manifestsByOrigin,
   });
-  thread.addShellMessage(rendered, { opId: route.opId });
+  thread.addShellMessage(rendered, {
+    opId:      route.opId,
+    appOrigin: route.appOrigin,
+    args:      route.args ?? {},
+  });
 
   // #176 — dispatchAndRender used to fire its own router.deliver
   // here for the OQ-4 cross-thread routing.  Removed because every
@@ -1883,6 +1887,50 @@ async function onButtonTap(opId, itemId, extra) {
   const route = resolveDispatch(parse, catalog);
   if (route.kind !== 'ready') return;
   await dispatchAndRender(route, t0);
+
+  // #178 (2026-05-24) — state-morphing row buttons.  After a
+  // successful row-action dispatch, refresh the ORIGINATING list
+  // message in place so the row's appliesTo-gated buttons re-match
+  // against the post-dispatch item state (e.g. [Claim] → [Mark
+  // complete]).  Skip when the originating message is gone or had
+  // no sourceOp (e.g. a fresh-spawned-on-demand list).
+  const originId = extra?.originMessageId;
+  if (originId) {
+    await refreshListMessageInPlace(t0, originId);
+  }
+}
+
+/**
+ * #178 — re-fetch the source list-op for a specific message and swap
+ * the message's rendered content in place.  Idempotent; silent on
+ * failure (the user sees the dispatch reply regardless).  Uses
+ * runDispatch so the chat-shell's reply-shape inference (list vs
+ * record vs text, per manifest surfaces.chat.reply) applies the
+ * same way it did for the original message.
+ */
+async function refreshListMessageInPlace(thread, messageId) {
+  const msg = thread.messages.find((m) => m.messageId === messageId);
+  if (!msg?.sourceOp?.opId || !msg.sourceOp.appOrigin) return;
+  try {
+    const parse = {
+      kind: 'slash', opId: msg.sourceOp.opId, args: msg.sourceOp.args ?? {},
+      threadId: thread.id, command: '(refresh)', body: '',
+    };
+    const route = resolveDispatch(parse, catalog);
+    if (route.kind !== 'ready') return;
+    const reply = await runDispatch(route, callSkill);
+    if (reply?.error) return;
+    const fresh = renderReply(reply, {
+      t, appOrigin: route.appOrigin, manifestsByOrigin,
+    });
+    if (fresh) fresh.messageId = messageId;
+    thread.replaceRendered(messageId, fresh);
+    renderActiveStream();
+  } catch (err) {
+    if (typeof console !== 'undefined') {
+      console.warn('[refreshListMessageInPlace] failed for', messageId, err);
+    }
+  }
 }
 
 /* ── v0.6.2 deep-link receiver — boot-time ──────────────── */

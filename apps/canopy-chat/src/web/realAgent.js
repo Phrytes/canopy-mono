@@ -1479,6 +1479,13 @@ export async function createRealHouseholdAgent(opts = {}) {
         items: data.items.map((p) => ({
           ...p,
           label: p.text ?? p.label ?? p.id,
+          // #178 (2026-05-24) — chat-shell appliesTo gate matches on
+          // `item.type`.  Stoop posts are 'post' in the chat-shell
+          // vocabulary (mockManifests respondToItem + markReturned
+          // both gate `type: 'post'`).  Substrate item.type carries
+          // the canonical 'request'|'offer'|'report' taxonomy, so we
+          // map them all to chat-shell 'post' here.
+          type:  'post',
           // Chat-shell convention: `state: open|done`.  Stoop posts
           // are "open" while addedBy is set + not closed; "done"
           // when there's a `closedAt`.

@@ -130,6 +130,13 @@ export class Thread {
       messageId:      rendered?.messageId,
       rendered,
       lifecycleState: rendered?.lifecycleState ?? 'live',
+      // #178 (2026-05-24) — sourceOp is the {opId, appOrigin, args}
+      // that produced this message.  Used by main.js to refresh a
+      // list message in place after a row-action dispatch (state-
+      // morphing buttons).
+      ...(meta.opId
+        ? { sourceOp: { opId: meta.opId, appOrigin: meta.appOrigin, args: meta.args } }
+        : {}),
     };
     this.messages.push(msg);
 
@@ -145,6 +152,25 @@ export class Thread {
     }
     this._notifyChange('shell-message');
     return msg;
+  }
+
+  /**
+   * #178 — replace a message's rendered content in place.  Used by
+   * the state-morphing refresh path: after a row-action dispatch,
+   * the originating list message gets re-fetched + its `rendered`
+   * swapped without inserting a new message.  Idempotent.
+   *
+   * @param {string} messageId
+   * @param {object} freshRendered
+   */
+  replaceRendered(messageId, freshRendered) {
+    for (const m of this.messages) {
+      if (m.messageId !== messageId) continue;
+      m.rendered = freshRendered;
+      m.lifecycleState = freshRendered?.lifecycleState ?? 'live';
+      this._notifyChange('shell-message');
+      return;
+    }
   }
 
   /* ─── lifecycle ────────────────────────────────────────── */

@@ -84,7 +84,7 @@ describe('renderToDom — list shape', () => {
     expect(btn.textContent).toBe('Done');
     expect(btn.dataset.callback).toBe('markComplete:c-1');
     btn.click();
-    expect(onTap).toHaveBeenCalledWith('markComplete', 'c-1');
+    expect(onTap).toHaveBeenCalledWith('markComplete', 'c-1', { originMessageId: 'm-1' });
   });
 
   it("disabled lifecycle: buttons rendered but disabled + aria-disabled", () => {
