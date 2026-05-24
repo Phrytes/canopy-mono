@@ -592,6 +592,9 @@ export const mockStoopManifest = {
     {
       id:    'conflictDisputeWizard',
       verb:  'add',
+      // #200 — per-bubble action on stoop posts.  Slash kept for
+      // general-dispute (no postId) + LLM tool-call surface.
+      appliesTo: { type: 'post', state: ['open'] },
       params: [
         { name: 'postId', kind: 'string', required: false },
       ],
@@ -599,6 +602,7 @@ export const mockStoopManifest = {
         slash: { command: '/dispute', body: 'flags' },
         chat:  { hint: 'raise a conflict-resolution dispute in your buurt' },
         page:  { kind: 'side-panel', title: 'Raise a dispute' },
+        ui:    { control: 'button', label: 'Dispute' },
       },
     },
     {

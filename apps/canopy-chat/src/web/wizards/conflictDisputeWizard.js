@@ -31,7 +31,9 @@ export function renderConflictDisputeWizard(opts) {
   const { container, doc, args, callSkill, onClose, onDispatched } = opts;
   const state = {
     step:           1,
-    aboutPostId:    args?.postId ?? '',
+    // #200 — accept either `postId` (slash flag) or `id` (the chat-
+    // shell's default callbackData arg when launched via a row button).
+    aboutPostId:    args?.postId ?? args?.id ?? '',
     summary:        '',
     escalation:     'mediation',
     proposal:       '',
