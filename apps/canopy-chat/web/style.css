@@ -658,6 +658,36 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   text-align: center;
 }
 
+/* #198 (C3-C6) — additional bits used by the new wizards. */
+.cc-wizard-warn {
+  border-left: 3px solid #d97706;
+  background: #fff7ed;
+  color: #92400e;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.85rem;
+  border-radius: 0 4px 4px 0;
+  margin: 0.5rem 0;
+}
+.cc-wizard-distance-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.6rem;
+}
+.cc-wizard-distance {
+  padding: 0.3rem 0.7rem;
+  background: var(--bg-mute, #f0f0f0);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.cc-wizard-distance-active {
+  background: var(--accent, #4a90e2);
+  color: white;
+  border-color: var(--accent, #4a90e2);
+}
+
 /* v0.7.1c — network-events log side-panel */
 .cc-logs-panel {
   width: 360px;

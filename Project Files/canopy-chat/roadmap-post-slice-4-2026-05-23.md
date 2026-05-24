@@ -129,13 +129,22 @@ Order matches recommended attack order.
 
 **Total Cluster B: ~20 hours / two sessions.**
 
-#### Cluster C — wizards (#180 enabler shipped 2026-05-24)
+#### Cluster C — wizards ✅ ALL SHIPPED 2026-05-24
 
-These want multi-step rich panels.  **#180 surfaces.page shipped at
-the start of this cluster (manifest schema + side-panel infra +
-`/settings` V0 consumer).**  Cluster C items now use the
-`customRenderer` hook on `openPagePanel` to draw their own wizard
-state machines.
+#180 surfaces.page enabler + all 6 wizards shipped:
+  - C1 create-group 5-step (#197)
+  - C2 join-group rules-gate 3-step (#196)
+  - C3 restore-from-mnemonic 3-step (#198)
+  - C4 conflict-dispute 3-step (#198, V0 uses postRequest +
+    `kind: 'dispute'` until stoop ships raiseDispute /
+    proposeResolution / acceptResolution skills)
+  - C5 post-audience picker (#198)
+  - C6 encrypted-backup 2-step (#198)
+
+Shared wizard infrastructure: `src/web/wizards/_wizardKit.js`
+exports mkSteps / mkBody / mkActions / mkField / mkTextarea /
+mkCheck / mkRadioGroup / mkError / mkSubmitting.  All wizards
+register via `WIZARD_RENDERERS` in `web/main.js`.
 
 | Item | Source | Cost | Notes |
 |---|---|---|---|

@@ -575,6 +575,55 @@ export const mockStoopManifest = {
       },
     },
     /**
+     * #198 (C3-C6, 2026-05-24) — remaining Cluster C wizards.  All
+     * use #180 customRenderer; per-wizard renderer files under
+     * src/web/wizards/.
+     */
+    {
+      id:    'restoreFromMnemonicWizard',
+      verb:  'submit',
+      params: [],
+      surfaces: {
+        slash: { command: '/restore-from-mnemonic' },
+        chat:  { hint: 'recover from a saved mnemonic phrase (DESTRUCTIVE)' },
+        page:  { kind: 'side-panel', title: 'Restore identity' },
+      },
+    },
+    {
+      id:    'conflictDisputeWizard',
+      verb:  'add',
+      params: [
+        { name: 'postId', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/dispute', body: 'flags' },
+        chat:  { hint: 'raise a conflict-resolution dispute in your buurt' },
+        page:  { kind: 'side-panel', title: 'Raise a dispute' },
+      },
+    },
+    {
+      id:    'postAudienceWizard',
+      verb:  'add',
+      params: [
+        { name: 'text', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/post-audience', body: 'flags' },
+        chat:  { hint: 'post with audience targeting (trust + tags + distance)' },
+        page:  { kind: 'side-panel', title: 'Post with audience' },
+      },
+    },
+    {
+      id:    'encryptedBackupWizard',
+      verb:  'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/encrypted-backup' },
+        chat:  { hint: 'download a passphrase-encrypted snapshot of your data' },
+        page:  { kind: 'side-panel', title: 'Encrypted backup' },
+      },
+    },
+    /**
      * #197 (C1, 2026-05-24) — biggest Cluster C wizard.  Surfaces
      * createGroupV2 across 5 sections (identity, governance, rules,
      * tech, review).  Membership-code reveal on success — show ONCE,

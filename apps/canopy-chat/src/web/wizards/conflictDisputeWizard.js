@@ -1,0 +1,156 @@
+/**
+ * **Platform: web** (DOM-dependent).  RN parallel pending #128.
+ *
+ * canopy-chat — C4 conflict-resolution dispute wizard (#198, 2026-05-24).
+ *
+ * 3-step dispute flow: raise → propose resolution → acceptance.  Per
+ * stoop's S7 design.
+ *
+ * **Substrate gap**: stoop hasn't shipped the dedicated raiseDispute /
+ * proposeResolution / acceptResolution skills yet (the Lamport
+ * version-vector substrate exists but the user-facing dispute ops
+ * don't).  V0 fallback per [[quality-over-cheap]]: persist as a
+ * `kind: 'dispute'` stoop request via the existing `postRequest`
+ * skill.  The buurt feed becomes the V0 escalation surface; future
+ * C4.5 slice swaps in the real escalation skills when they land.
+ *
+ * The wizard collects all three steps' data and packages them into a
+ * single dispute payload so the substrate skills, when they land,
+ * have a ready-to-consume shape.
+ */
+
+import { mkBody, mkActions, mkField, mkTextarea, mkRadioGroup, mkSteps, mkError, mkSubmitting } from './_wizardKit.js';
+
+const ESCALATION_PATHS = [
+  { id: 'mediation', label: 'Mediation (two random members weigh in)' },
+  { id: 'admin',     label: 'Admin decides' },
+  { id: 'vote',      label: 'Member vote' },
+];
+
+export function renderConflictDisputeWizard(opts) {
+  const { container, doc, args, callSkill, onClose, onDispatched } = opts;
+  const state = {
+    step:           1,
+    aboutPostId:    args?.postId ?? '',
+    summary:        '',
+    escalation:     'mediation',
+    proposal:       '',
+    proposalShared: false,    // user must explicitly check "OK to file"
+    submitting:    false,
+    submitError:   null,
+    successResult: null,
+  };
+  rerender();
+
+  function rerender() {
+    container.innerHTML = '';
+    if (state.successResult) return renderSuccessStep(container, doc, state, onClose);
+    mkSteps(container, doc, ['Raise', 'Propose', 'File'], state.step);
+    if (state.step === 1) renderRaiseStep();
+    if (state.step === 2) renderProposeStep();
+    if (state.step === 3) renderFileStep();
+  }
+
+  function renderRaiseStep() {
+    const body = mkBody(doc, 'Raise a dispute',
+      'Describe what happened.  This goes to the buurt; admins and (if your conflict-policy is mediation) two random members see it.');
+    mkField(body, doc, 'Related post id (optional)', state.aboutPostId, (v) => { state.aboutPostId = v; },
+      { placeholder: 'leave blank for general dispute', monospace: true });
+    mkTextarea(body, doc, 'What happened?', state.summary, (v) => { state.summary = v; rerender(); },
+      { placeholder: 'Be specific. Avoid naming third parties unless necessary.', rows: 5 });
+    mkRadioGroup(body, doc, 'Preferred escalation', state.escalation, ESCALATION_PATHS,
+      (v) => { state.escalation = v; rerender(); });
+    container.appendChild(body);
+    mkActions(container, doc, [
+      { label: 'Cancel', onClick: onClose, kind: 'secondary' },
+      { label: 'Next →', onClick: () => { state.step = 2; rerender(); }, kind: 'primary',
+        disabled: state.summary.trim().length < 10 },
+    ]);
+  }
+
+  function renderProposeStep() {
+    const body = mkBody(doc, 'Propose a resolution',
+      'What would resolve this for you?  Even if you\'re not sure, write what would feel "good enough" so the mediator has a starting point.');
+    mkTextarea(body, doc, 'Proposed resolution', state.proposal, (v) => { state.proposal = v; rerender(); },
+      { placeholder: 'e.g. "an apology + agreement not to use my tools without asking"', rows: 4 });
+    container.appendChild(body);
+    mkActions(container, doc, [
+      { label: '← Back', onClick: () => { state.step = 1; rerender(); }, kind: 'secondary' },
+      { label: 'Cancel', onClick: onClose, kind: 'secondary' },
+      { label: 'Next →', onClick: () => { state.step = 3; rerender(); }, kind: 'primary',
+        disabled: state.proposal.trim().length < 5 },
+    ]);
+  }
+
+  function renderFileStep() {
+    const body = mkBody(doc, 'File the dispute',
+      'Review + confirm.  Filed disputes are visible to admins (and mediators if you picked mediation).  You can withdraw via /leave-group → re-join, or via a follow-up post.');
+    const dl = doc.createElement('dl');
+    dl.className = 'cc-wizard-review';
+    appendKV(dl, doc, 'Summary',          state.summary, { pre: true });
+    if (state.aboutPostId) appendKV(dl, doc, 'About post', state.aboutPostId, { mono: true });
+    appendKV(dl, doc, 'Escalation',       labelOf(ESCALATION_PATHS, state.escalation));
+    appendKV(dl, doc, 'Proposed resolution', state.proposal, { pre: true });
+    body.appendChild(dl);
+
+    const warn = doc.createElement('div');
+    warn.className = 'cc-wizard-warn';
+    warn.textContent = '⚠️ V0 substrate gap: this files as a stoop post with kind:dispute. Full mediation flow (raiseDispute → proposeResolution → acceptResolution) lands when stoop ships those skills.';
+    body.appendChild(warn);
+
+    mkError(body, doc, state.submitError);
+    mkSubmitting(body, doc, state.submitting, 'Filing dispute…');
+    container.appendChild(body);
+    mkActions(container, doc, [
+      { label: '← Back',     onClick: () => { state.step = 2; rerender(); }, kind: 'secondary', disabled: state.submitting },
+      { label: 'Cancel',     onClick: onClose, kind: 'secondary', disabled: state.submitting },
+      { label: 'File',       onClick: async () => {
+        state.submitting = true;
+        state.submitError = null;
+        rerender();
+        try {
+          const text = `[Dispute] ${state.summary}\n\nProposed: ${state.proposal}\n\nPreferred escalation: ${state.escalation}` +
+            (state.aboutPostId ? `\nAbout: ${state.aboutPostId}` : '');
+          const result = await callSkill('stoop', 'postRequest', {
+            text, kind: 'dispute',
+          });
+          if (result?.error) throw new Error(result.error);
+          state.successResult = result;
+          if (typeof onDispatched === 'function') {
+            try { onDispatched({ ok: true, message: '✓ Dispute filed.', ...result }); } catch {}
+          }
+        } catch (err) {
+          state.submitError = err?.message ?? String(err);
+          state.submitting = false;
+        }
+        rerender();
+      }, kind: 'primary', disabled: state.submitting },
+    ]);
+  }
+}
+
+function renderSuccessStep(container, doc, state, onClose) {
+  const body = mkBody(doc, '✓ Dispute filed',
+    'Admins (and mediators if you picked mediation) will see it in the buurt feed.');
+  container.appendChild(body);
+  mkActions(container, doc, [{ label: 'Done', onClick: onClose, kind: 'primary' }]);
+}
+
+function appendKV(dl, doc, label, value, opts = {}) {
+  const dt = doc.createElement('dt'); dt.textContent = label;
+  const dd = doc.createElement('dd');
+  if (opts.pre) {
+    const pre = doc.createElement('pre'); pre.className = 'cc-wizard-review-pre'; pre.textContent = value;
+    dd.appendChild(pre);
+  } else if (opts.mono) {
+    const code = doc.createElement('code'); code.textContent = value;
+    dd.appendChild(code);
+  } else {
+    dd.textContent = value;
+  }
+  dl.appendChild(dt); dl.appendChild(dd);
+}
+
+function labelOf(options, id) {
+  return options.find((o) => o.id === id)?.label ?? id;
+}
