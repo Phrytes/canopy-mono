@@ -18,7 +18,7 @@
  * isn't user-driven from chat — just the export.
  */
 
-import { mkBody, mkActions, mkField, mkError, mkSubmitting, mkSteps } from './_wizardKit.js';
+import { mkBody, mkActions, mkField, mkError, mkSubmitting, mkSteps, refreshActions } from './_wizardKit.js';
 
 export function renderEncryptedBackupWizard(opts) {
   const { container, doc, callSkill, onClose, onDispatched } = opts;
@@ -44,10 +44,16 @@ export function renderEncryptedBackupWizard(opts) {
       'A passphrase-protected snapshot of YOUR stoop state. The passphrase never leaves your device — without it the backup is useless.');
 
     mkField(body, doc, 'Passphrase', state.passphrase,
-      (v) => { state.passphrase = v; refreshBtn(); },
+      (v) => {
+        state.passphrase = v;
+        refreshActions(container, { canSubmit: () => canAdvance() && !state.submitting });
+      },
       { type: 'password', placeholder: 'minimum 12 characters recommended' });
     mkField(body, doc, 'Confirm passphrase', state.confirm,
-      (v) => { state.confirm = v; refreshBtn(); },
+      (v) => {
+        state.confirm = v;
+        refreshActions(container, { canSubmit: () => canAdvance() && !state.submitting });
+      },
       { type: 'password' });
 
     const warn = doc.createElement('div');
@@ -59,15 +65,9 @@ export function renderEncryptedBackupWizard(opts) {
     mkSubmitting(body, doc, state.submitting, 'Encrypting…');
     container.appendChild(body);
 
-    function refreshBtn() {
-      const btn = container.querySelector('.cc-wizard-next');
-      if (!btn) return;
-      btn.disabled = !canAdvance() || state.submitting;
-    }
-
     mkActions(container, doc, [
       { label: 'Cancel', onClick: onClose, kind: 'secondary', disabled: state.submitting },
-      { label: 'Create backup', className: 'cc-wizard-next', kind: 'primary',
+      { label: 'Create backup', validate: 'canSubmit', kind: 'primary',
         disabled: !canAdvance() || state.submitting,
         onClick: async () => {
           state.submitting = true;

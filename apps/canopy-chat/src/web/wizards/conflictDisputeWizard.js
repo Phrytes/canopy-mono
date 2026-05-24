@@ -19,7 +19,7 @@
  * have a ready-to-consume shape.
  */
 
-import { mkBody, mkActions, mkField, mkTextarea, mkRadioGroup, mkSteps, mkError, mkSubmitting } from './_wizardKit.js';
+import { mkBody, mkActions, mkField, mkTextarea, mkRadioGroup, mkSteps, mkError, mkSubmitting, refreshActions } from './_wizardKit.js';
 
 const ESCALATION_PATHS = [
   { id: 'mediation', label: 'Mediation (two random members weigh in)' },
@@ -54,31 +54,40 @@ export function renderConflictDisputeWizard(opts) {
   function renderRaiseStep() {
     const body = mkBody(doc, 'Raise a dispute',
       'Describe what happened.  This goes to the buurt; admins and (if your conflict-policy is mediation) two random members see it.');
-    mkField(body, doc, 'Related post id (optional)', state.aboutPostId, (v) => { state.aboutPostId = v; },
+    const validSummary = () => state.summary.trim().length >= 10;
+    mkField(body, doc, 'Related post id (optional)', state.aboutPostId,
+      (v) => { state.aboutPostId = v; },
       { placeholder: 'leave blank for general dispute', monospace: true });
-    mkTextarea(body, doc, 'What happened?', state.summary, (v) => { state.summary = v; rerender(); },
-      { placeholder: 'Be specific. Avoid naming third parties unless necessary.', rows: 5 });
+    mkTextarea(body, doc, 'What happened?', state.summary, (v) => {
+      state.summary = v;
+      refreshActions(container, { summaryOk: validSummary });
+    }, { placeholder: 'Be specific. Avoid naming third parties unless necessary.', rows: 5 });
+    // Radio group changes WHICH summary is shown next step — these can
+    // safely call rerender (no focus to preserve).
     mkRadioGroup(body, doc, 'Preferred escalation', state.escalation, ESCALATION_PATHS,
-      (v) => { state.escalation = v; rerender(); });
+      (v) => { state.escalation = v; });
     container.appendChild(body);
     mkActions(container, doc, [
       { label: 'Cancel', onClick: onClose, kind: 'secondary' },
       { label: 'Next →', onClick: () => { state.step = 2; rerender(); }, kind: 'primary',
-        disabled: state.summary.trim().length < 10 },
+        disabled: !validSummary(), validate: 'summaryOk' },
     ]);
   }
 
   function renderProposeStep() {
     const body = mkBody(doc, 'Propose a resolution',
       'What would resolve this for you?  Even if you\'re not sure, write what would feel "good enough" so the mediator has a starting point.');
-    mkTextarea(body, doc, 'Proposed resolution', state.proposal, (v) => { state.proposal = v; rerender(); },
-      { placeholder: 'e.g. "an apology + agreement not to use my tools without asking"', rows: 4 });
+    const validProposal = () => state.proposal.trim().length >= 5;
+    mkTextarea(body, doc, 'Proposed resolution', state.proposal, (v) => {
+      state.proposal = v;
+      refreshActions(container, { proposalOk: validProposal });
+    }, { placeholder: 'e.g. "an apology + agreement not to use my tools without asking"', rows: 4 });
     container.appendChild(body);
     mkActions(container, doc, [
       { label: '← Back', onClick: () => { state.step = 1; rerender(); }, kind: 'secondary' },
       { label: 'Cancel', onClick: onClose, kind: 'secondary' },
       { label: 'Next →', onClick: () => { state.step = 3; rerender(); }, kind: 'primary',
-        disabled: state.proposal.trim().length < 5 },
+        disabled: !validProposal(), validate: 'proposalOk' },
     ]);
   }
 
