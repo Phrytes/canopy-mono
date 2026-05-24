@@ -107,7 +107,13 @@ body {
   text-overflow: ellipsis;
 }
 .cc-thread-delete {
-  grid-row: 1;
+  /* 2026-05-24 — span both grid rows + align centre so the [×] sits
+     vertically halfway the row even when the filter sub-line wraps to
+     a second visual line.  Previously was grid-row:1 which pinned it
+     to the top row only, leaving it visually misaligned. */
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
   background: transparent;
   border: none;
   color: var(--fg-mute);
