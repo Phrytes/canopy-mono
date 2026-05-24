@@ -1686,6 +1686,90 @@ export function buildSkills({
     }),
 
     /**
+     * listBuurtPostsSince({groupId, sinceMs})
+     *   — Slice 5 (2026-05-24).  Returns broadcast posts in groupId
+     *   added after `sinceMs`.  Used by the catch-up flow:
+     *
+     *     - Joiner comes online → asks each peer "anything new in
+     *       buurt X since timestamp T?"
+     *     - Peer (admin or member) calls this skill → packages each
+     *       result as a buurt-post envelope back to the joiner
+     *
+     *   Output items match what fan-out's payload-builder needs:
+     *   {requestId, text, type, kind, from, targets, ...} so the
+     *   caller can re-package without extra lookups.
+     */
+    defineSkill('listBuurtPostsSince', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      if (typeof a.groupId !== 'string' || !a.groupId)
+        return { error: 'groupId required' };
+      const sinceMs = (typeof a.sinceMs === 'number' && Number.isFinite(a.sinceMs))
+        ? a.sinceMs : 0;
+      const all = await store.listOpen();
+      const posts = [];
+      for (const it of all) {
+        // Only broadcast-shaped (mirrored OR locally-posted-to-group) items.
+        const targets = it?.source?.targets ?? [];
+        const inGroup = Array.isArray(targets)
+          && targets.some(t => t?.kind === 'group' && t?.groupId === a.groupId);
+        if (!inGroup) continue;
+        const ts = it.addedAt ?? 0;
+        if (ts <= sinceMs) continue;
+        // Reuse the broadcast payload shape (Phase 52.7.2) so the
+        // caller can dispatch via the existing buurt-post envelope.
+        posts.push({
+          requestId:      it.source?.requestId ?? it.id,
+          text:           it.text ?? '',
+          from:           it.source?.from ?? it.addedBy ?? null,
+          fromPubKey:     it.source?.fromPubKey ?? null,
+          fromNknAddr:    it.source?.fromNknAddr ?? null,
+          type:           it.type ?? 'request',
+          kind:           it.kind ?? null,
+          dueAt:          it.dueAt ?? null,
+          categoryId:     it.source?.categoryId ?? null,
+          skillTags:      Array.isArray(it.source?.skillTags) ? it.source.skillTags : [],
+          requiredSkills: it.requiredSkills ?? [],
+          targets,
+          attachments:    Array.isArray(it.source?.attachments) ? it.source.attachments : [],
+          ...(Array.isArray(it.source?.embeds) && it.source.embeds.length > 0
+            ? { embeds: it.source.embeds } : {}),
+          _addedAt:       ts,
+        });
+      }
+      posts.sort((a, b) => (a._addedAt ?? 0) - (b._addedAt ?? 0));
+      return { groupId: a.groupId, sinceMs, posts };
+    }, {
+      description: 'List broadcast posts in groupId added after sinceMs (catch-up).',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * getLatestPostAddedAt({groupId})
+     *   — Slice 5 (2026-05-24).  Returns the max `addedAt` we have
+     *   for broadcast posts in groupId — joiner's catch-up
+     *   high-water mark.  0 when never received anything.
+     */
+    defineSkill('getLatestPostAddedAt', async ({ parts }) => {
+      const a = dataArgs(parts);
+      if (typeof a.groupId !== 'string' || !a.groupId)
+        return { error: 'groupId required' };
+      const all = await store.listOpen();
+      let max = 0;
+      for (const it of all) {
+        const targets = it?.source?.targets ?? [];
+        const inGroup = Array.isArray(targets)
+          && targets.some(t => t?.kind === 'group' && t?.groupId === a.groupId);
+        if (!inGroup) continue;
+        const ts = it.addedAt ?? 0;
+        if (ts > max) max = ts;
+      }
+      return { groupId: a.groupId, latestAt: max };
+    }, {
+      description: 'High-water mark: latest addedAt for broadcast posts in groupId.',
+      visibility:  'authenticated',
+    }),
+
+    /**
      * recordPeerIntro({groupId, peerAddr, peerDisplay?})
      *   — Slice 4 (2026-05-24).  Joiner-side mirror for a mesh
      *   introduction.  Admin propagates each consenting member's
