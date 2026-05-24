@@ -35,6 +35,7 @@ import { renderSidebar }             from '../src/web/threadSidebar.js';
 import { renderLogsPanel }           from '../src/web/logsPanel.js';
 import { openPagePanel }             from '../src/web/pagePanel.js';
 import { renderJoinGroupWizard }     from '../src/web/wizards/joinGroupWizard.js';
+import { renderCreateGroupWizard }   from '../src/web/wizards/createGroupWizard.js';
 import { createRealHouseholdAgent }  from '../src/web/realAgent.js';
 import { mockTasksManifest,
          mockStoopManifest,
@@ -774,7 +775,8 @@ function openLogsPanel() {
 // + this map dispatches to the right one.  Ops with no entry use
 // the V0 generic-form path in pagePanel.js.
 const WIZARD_RENDERERS = {
-  joinGroupWizard: renderJoinGroupWizard,
+  joinGroupWizard:   renderJoinGroupWizard,
+  createGroupWizard: renderCreateGroupWizard,
 };
 
 function pageSurfaceOpen({ op, appOrigin, args }) {

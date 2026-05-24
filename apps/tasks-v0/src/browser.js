@@ -71,7 +71,11 @@ export async function createBrowserTasksAgent({
   const crew = await createCrewAgent({
     crewConfig,
     localStoreBundle,
-    wireOnboardingSkills: false,   // no invite issuance from chat-shell V0
+    // 2026-05-24 — flipped to true so canopy-chat's /invite + /redeem-invite
+    // slashes (A9 #187) and /join-group wizard (C2 #196) actually reach
+    // registered issueInvite / redeemInvite skills.  Earlier comment
+    // "no invite issuance from chat-shell V0" predates A9 / C2.
+    wireOnboardingSkills: true,
     identity,
     transport: new InternalTransport(bus, identity.pubKey),
     label,
