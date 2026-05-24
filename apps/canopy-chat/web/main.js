@@ -408,6 +408,15 @@ async function connectPeerImpl() {
           console.error('[peer] buurt-peer-intro failed', err));
         return;
       }
+      // Slice 5 (2026-05-24) — catch-up request: peer asks for
+      // posts in groupId added after sinceMs.  We reply by sending
+      // back each matching post via the regular buurt-post envelope
+      // (so the existing ingest path handles dedup + render).
+      if (subtype === 'catch-up-request' && payload?.groupId) {
+        handleCatchUpRequest(from, payload).catch((err) =>
+          console.error('[peer] catch-up-request failed', err));
+        return;
+      }
 
       // Slice 6a (2026-05-24) — default chat-message → route into the
       // DM thread paired with `from`.  Auto-spawn the DM thread on
@@ -781,6 +790,93 @@ async function propagateMeshIntros({ groupId, newPeerAddr, newPeerDisplay, newPe
   }
   console.info(`[mesh-intro] propagated for ${groupId}: ${existing.length} existing peer(s)`
     + (newPeerShared ? ' (incl. broadcast of new joiner)' : ' (new joiner opted out)'));
+}
+
+/**
+ * Slice 5 (2026-05-24) — when our NKN transport connects (or
+ * reconnects), ask known peers in each buurt for posts we missed
+ * while offline.  Single round-trip per peer per buurt; receiver
+ * replies via the existing buurt-post envelope so the standard
+ * ingest path handles dedup + render.
+ *
+ * Quiet on failure — peer might be offline too, or might just not
+ * have anything new.
+ */
+async function requestCatchUpFromKnownPeers() {
+  if (!agent?.peer || agent.peer.status !== 'connected') return;
+  let buurts = [];
+  try {
+    const r = await callSkill('stoop', 'listMyBuurts', {});
+    buurts = r?.buurts ?? [];
+  } catch { return; }
+  for (const groupId of buurts) {
+    let sinceMs = 0;
+    try {
+      const hi = await callSkill('stoop', 'getLatestPostAddedAt', { groupId });
+      sinceMs = hi?.latestAt ?? 0;
+    } catch { /* swallow */ }
+    let roster = [];
+    try {
+      const r = await callSkill('stoop', 'listGroupRoster', { groupId });
+      roster = r?.members ?? [];
+    } catch { /* swallow */ }
+    for (const m of roster) {
+      if (!m?.addr) continue;
+      try {
+        await agent.sendPeerMessage(m.addr, {
+          type:    'p2p-chat',
+          subtype: 'catch-up-request',
+          groupId,
+          sinceMs,
+          sentAt:  Date.now(),
+        });
+      } catch (err) {
+        console.warn('[catch-up] send failed for', m.addr, err);
+      }
+    }
+    console.info(`[catch-up] requested posts since ${new Date(sinceMs).toISOString()}`
+      + ` for groupId=${groupId} from ${roster.length} peer(s)`);
+  }
+}
+
+/**
+ * Slice 5 — handler for incoming 'catch-up-request'.  Look up
+ * posts in groupId added after payload.sinceMs + send each back
+ * via the existing buurt-post envelope.  Receiver's ingestRemotePost
+ * dedupes on requestId so overlap is safe.
+ */
+async function handleCatchUpRequest(fromAddr, payload) {
+  const { groupId, sinceMs } = payload ?? {};
+  if (!groupId) return;
+  let posts = [];
+  try {
+    const r = await callSkill('stoop', 'listBuurtPostsSince', { groupId, sinceMs: sinceMs ?? 0 });
+    posts = r?.posts ?? [];
+  } catch (err) {
+    console.warn('[catch-up] listBuurtPostsSince failed', err);
+    return;
+  }
+  if (posts.length === 0) {
+    console.info(`[catch-up] no new posts to send to ${fromAddr.slice(0, 16)}…`);
+    return;
+  }
+  for (const post of posts) {
+    const { _addedAt, ...payloadCore } = post;
+    try {
+      await agent.sendPeerMessage(fromAddr, {
+        type:       'p2p-chat',
+        subtype:    'buurt-post',
+        groupId,
+        fromPubKey: payloadCore.fromPubKey ?? agent?.identity?.chat?.pubKey ?? null,
+        payload:    payloadCore,
+        catchUp:    true,    // mark for diagnostics; receiver ignores
+        sentAt:     Date.now(),
+      });
+    } catch (err) {
+      console.warn('[catch-up] send post failed', err);
+    }
+  }
+  console.info(`[catch-up] sent ${posts.length} post(s) to ${fromAddr.slice(0, 16)}…`);
 }
 
 /**
@@ -1349,6 +1445,16 @@ if (typeof window !== 'undefined' && window.nkn) {
         app: 'canopy-chat', type: 'notification',
         payload: { message: `🔗 NKN connected: ${ctrl.address}` },
       });
+      // Slice 5 (2026-05-24) — catch up on posts we missed while
+      // offline.  Single round-trip per known peer per buurt; the
+      // receiver replies via the existing buurt-post envelope so
+      // the standard ingest path handles dedup + render.  Small
+      // delay so NKN's HI handshake settles first (otherwise the
+      // first sendPeerMessage to each new peer trips "send HI first").
+      setTimeout(() => {
+        requestCatchUpFromKnownPeers().catch((err) =>
+          console.warn('[catch-up] kick-off failed', err));
+      }, 1500);
     })
     .catch((err) => {
       console.warn('[peer] NKN connect failed:', err.message);
