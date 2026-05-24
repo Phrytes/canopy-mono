@@ -1,0 +1,25 @@
+{
+  "app": {
+    "name":   { "text": "canopy-chat",                       "doc": "App-display in headers + over-scherm" },
+    "tagline":{ "text": "Jouw buurt, jouw taken, jouw bestanden — één chat.", "doc": "Splash + over-scherm" }
+  },
+  "chat": {
+    "placeholder":     { "text": "Typ een slash-commando of bericht…", "doc": "Input-placeholder" },
+    "send":            { "text": "Verzend",                            "doc": "Verzendknop-label" },
+    "active_thread":   { "text": "Actieve thread",                     "doc": "a11y label op actieve thread-titel" },
+    "no_messages_yet": { "text": "Nog geen berichten.",                "doc": "Lege thread" }
+  },
+  "nav": {
+    "chat":     { "text": "Chat",          "doc": "Onderste tab voor hoofdchat" },
+    "threads":  { "text": "Threads",       "doc": "Onderste tab voor thread-overzicht" },
+    "settings": { "text": "Instellingen",  "doc": "Onderste tab voor instellingen" }
+  },
+  "boot": {
+    "loading":          { "text": "Agents opstarten…",            "doc": "Tijdens in-process bundel-compositie" },
+    "agents_ready":     { "text": "Agents klaar",                 "doc": "a11y bij voltooide boot" },
+    "boot_failed":      { "text": "Opstarten mislukt: {{message}}", "doc": "Foutbanner bij agentBundle-throw; {{message}} ingevuld" }
+  },
+  "rn": {
+    "shell_stub_intro": { "text": "RN compositiel-shell — V0 skelet.", "doc": "Placeholder tot ChatScreen echt rendert" }
+  }
+}

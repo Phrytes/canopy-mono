@@ -1,0 +1,48 @@
+{
+  "name": "@canopy-app/canopy-chat-mobile",
+  "version": "0.0.1",
+  "private": true,
+  "description": "canopy-chat for Android — composition shell that unifies tasks-v0 + stoop + folio + household + calendar over a shared InternalBus, rendered with RN. Per Project Files/canopy-chat/mobile-roadmap-2026-05-24.md (#222).",
+  "main": "index.js",
+  "scripts": {
+    "android": "expo run:android",
+    "start": "expo start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@canopy-app/canopy-chat": "file:../canopy-chat",
+    "@canopy-app/calendar": "file:../calendar",
+    "@canopy-app/folio": "file:../folio",
+    "@canopy-app/stoop": "file:../stoop",
+    "@canopy-app/tasks-v0": "file:../tasks-v0",
+    "@canopy/app-manifest": "file:../../packages/app-manifest",
+    "@canopy/core": "file:../../packages/core",
+    "@canopy/local-store": "file:../../packages/local-store",
+    "@canopy/react-native": "file:../../packages/react-native",
+    "@canopy/secure-agent": "file:../../packages/secure-agent",
+    "@react-native-async-storage/async-storage": "^1.24.0",
+    "@react-navigation/bottom-tabs": "^6.6.1",
+    "@react-navigation/native": "^6.1.18",
+    "@react-navigation/native-stack": "^6.11.0",
+    "events": "^3.3.0",
+    "expo": "^52.0.0",
+    "expo-dev-client": "~5.0.20",
+    "expo-status-bar": "~2.0.1",
+    "react": "18.3.1",
+    "react-native": "0.76.9",
+    "react-native-get-random-values": "^1.11.0",
+    "react-native-safe-area-context": "~4.12.0",
+    "react-native-screens": "~3.34.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@react-native/babel-preset": "0.76.9",
+    "fake-indexeddb": "^6.0.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.19.4"
+  }
+}

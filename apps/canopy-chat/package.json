@@ -8,6 +8,10 @@
   "exports": {
     ".": "./src/index.js",
     "./manifest": "./manifest.js",
+    "./core-manifests": "./src/core/manifests/mockManifests.js",
+    "./core-handlers/catchUp": "./src/core/handlers/catchUp.js",
+    "./core-handlers/meshIntros": "./src/core/handlers/meshIntros.js",
+    "./core-localBuiltins": "./src/core/localBuiltins.js",
     "./parser": "./src/parser.js",
     "./manifestMerge": "./src/manifestMerge.js",
     "./router": "./src/router.js",

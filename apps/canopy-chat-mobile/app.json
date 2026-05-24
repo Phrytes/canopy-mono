@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "canopy-chat",
+    "slug": "canopy-chat-mobile",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "canopychat",
+    "android": {
+      "package": "ag.canopy.canopychatmobile",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "ag.canopy.canopychatmobile",
+      "supportsTablet": false
+    },
+    "plugins": [
+      "expo-dev-client"
+    ]
+  }
+}
