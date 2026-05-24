@@ -575,6 +575,22 @@ export const mockStoopManifest = {
       },
     },
     /**
+     * #197 (C1, 2026-05-24) — biggest Cluster C wizard.  Surfaces
+     * createGroupV2 across 5 sections (identity, governance, rules,
+     * tech, review).  Membership-code reveal on success — show ONCE,
+     * user must copy or it's lost (per stoop design).
+     */
+    {
+      id:    'createGroupWizard',
+      verb:  'add',
+      params: [],
+      surfaces: {
+        slash: { command: '/create-group' },
+        chat:  { hint: 'create a new buurt: 5-step wizard' },
+        page:  { kind: 'side-panel', title: 'Create buurt' },
+      },
+    },
+    /**
      * #196 (C2, 2026-05-24) — first Cluster C wizard.  Opens a 3-step
      * panel: rules disclosure → privacy notice → handle pick → submits
      * chained redeemInviteWithGate + setMyHandle + redeemInvite.

@@ -574,6 +574,90 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   font-style: italic;
 }
 
+/* #197 (C1 create-group wizard) — additional layout. */
+.cc-wizard-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.6rem;
+}
+.cc-wizard-field-label {
+  font-size: 0.85rem;
+  color: var(--fg-mute, #666);
+  margin-bottom: 0.2rem;
+}
+.cc-wizard-field-hint {
+  font-size: 0.75rem;
+  color: var(--fg-mute, #999);
+  margin-top: 0.15rem;
+}
+.cc-wizard-input,
+.cc-wizard-textarea {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+.cc-wizard-input-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.cc-wizard-textarea { width: 100%; resize: vertical; min-height: 4rem; }
+
+.cc-wizard-radio-group {
+  border: none;
+  padding: 0;
+  margin: 0 0 0.6rem;
+}
+.cc-wizard-radio {
+  display: block;
+  padding: 0.15rem 0;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.cc-wizard-review {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.3rem 0.7rem;
+  margin: 0;
+}
+.cc-wizard-review dt {
+  color: var(--fg-mute, #666);
+  font-size: 0.85rem;
+  font-weight: normal;
+}
+.cc-wizard-review dd {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.cc-wizard-review-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  background: var(--bg, #fafafa);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+}
+
+.cc-wizard-code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.cc-wizard-code {
+  flex: 1 1 auto;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg, #fafafa);
+  border: 2px dashed var(--accent, #4a90e2);
+  border-radius: 4px;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: center;
+}
+
 /* v0.7.1c — network-events log side-panel */
 .cc-logs-panel {
   width: 360px;
