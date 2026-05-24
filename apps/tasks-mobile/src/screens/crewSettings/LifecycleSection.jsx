@@ -1,17 +1,20 @@
 /**
- * LifecycleSection — admin-only crew lifecycle controls.
+ * LifecycleSection — crew lifecycle controls.
  *
  * Phase 41.18.2 (2026-05-10).
+ * Task #227 (2026-05-24): coordinators can now pause/unpause; archive
+ * controls remain admin-only. Members + observers still see only the
+ * read-only label. Gating is computed by the pure helper
+ * `lib/lifecycleControls.js` so it can be unit-tested without React.
  *
  * Wraps the four crewControls skills:
- *   - pauseCrew    — soft-disables addTask + dispatch
- *   - unpauseCrew  — undo
- *   - archiveCrew  — read-only state (still listed in CrewsDashboard)
- *   - unarchiveCrew
+ *   - pauseCrew     — admin OR coordinator, soft-disables addTask
+ *   - unpauseCrew   — admin OR coordinator, undo
+ *   - archiveCrew   — admin only, read-only state
+ *   - unarchiveCrew — admin only
  *
- * Renders the current state ("active" / "paused" / "archived") + a
- * single contextual CTA pair. Members see a read-only label so they
- * understand why addTask is failing, but no toggles.
+ * Renders the current state ("active" / "paused" / "archived") + the
+ * CTAs the caller is allowed to invoke.
  */
 
 import React, { useCallback, useState } from 'react';
@@ -23,10 +26,11 @@ import { useService }  from '../../ServiceContext.js';
 import { useSkill }    from '../../lib/useSkill.js';
 import { useLocalisation }     from '../../LocalisationProvider.js';
 import { useActiveRole } from '../../lib/useActiveRole.js';
+import { lifecycleControlsFor } from '../../lib/lifecycleControls.js';
 
 export function LifecycleSection() {
   const svc          = useService();
-  const { isAdmin }  = useActiveRole();
+  const { role }     = useActiveRole();
   const { t }        = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
@@ -34,7 +38,15 @@ export function LifecycleSection() {
   const live     = cs?.liveCrew ?? {};
   const archived = !!live.archived;
   const paused   = !!live.paused;
-  const stateKey = archived ? 'archived' : paused ? 'paused' : 'active';
+
+  const {
+    stateKey,
+    canPause,
+    canUnpause,
+    canArchive,
+    canUnarchive,
+    showReadOnly,
+  } = lifecycleControlsFor({ role, paused, archived });
 
   const pauseSk     = useSkill('pauseCrew');
   const unpauseSk   = useSkill('unpauseCrew');
@@ -70,7 +82,7 @@ export function LifecycleSection() {
     await _withErr(() => unarchiveSk.call({}));
   }, [_withErr, unarchiveSk]);
 
-  if (!isAdmin) {
+  if (showReadOnly) {
     return (
       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
         {t(`mobile.crew_settings.lifecycle_state_${stateKey}_member`)}
@@ -107,7 +119,7 @@ export function LifecycleSection() {
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm }}>
-        {!archived && !paused ? (
+        {canPause ? (
           <CtaBtn
             label={t('mobile.crew_settings.lifecycle_pause')}
             onPress={onPause}
@@ -115,7 +127,7 @@ export function LifecycleSection() {
             variant="warning"
           />
         ) : null}
-        {!archived && paused ? (
+        {canUnpause ? (
           <CtaBtn
             label={t('mobile.crew_settings.lifecycle_unpause')}
             onPress={onUnpause}
@@ -123,21 +135,22 @@ export function LifecycleSection() {
             variant="primary"
           />
         ) : null}
-        {!archived ? (
+        {canArchive ? (
           <CtaBtn
             label={t('mobile.crew_settings.lifecycle_archive')}
             onPress={() => setShowArchive(true)}
             disabled={busy}
             variant="danger"
           />
-        ) : (
+        ) : null}
+        {canUnarchive ? (
           <CtaBtn
             label={t('mobile.crew_settings.lifecycle_unarchive')}
             onPress={() => setShowUnarchive(true)}
             disabled={busy}
             variant="primary"
           />
-        )}
+        ) : null}
       </View>
 
       {error ? (
