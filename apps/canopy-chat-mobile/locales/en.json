@@ -1,0 +1,25 @@
+{
+  "app": {
+    "name":   { "text": "canopy-chat",                       "doc": "App display name in headers + about screen" },
+    "tagline":{ "text": "Your neighbourhood, your tasks, your files — one chat.", "doc": "First-run splash + about screen" }
+  },
+  "chat": {
+    "placeholder":     { "text": "Type a slash command or message…", "doc": "Input field placeholder" },
+    "send":            { "text": "Send",                             "doc": "Send-button label" },
+    "active_thread":   { "text": "Active thread",                    "doc": "a11y label on the active-thread title" },
+    "no_messages_yet": { "text": "No messages yet.",                 "doc": "Empty-state for a fresh thread" }
+  },
+  "nav": {
+    "chat":     { "text": "Chat",     "doc": "Bottom-tab label for the main chat view" },
+    "threads":  { "text": "Threads",  "doc": "Bottom-tab label for the thread sidebar" },
+    "settings": { "text": "Settings", "doc": "Bottom-tab label for the settings screen" }
+  },
+  "boot": {
+    "loading":          { "text": "Booting agents…",                "doc": "Shown while the in-process bundle composes" },
+    "agents_ready":     { "text": "Agents ready",                   "doc": "a11y announcement when boot finishes" },
+    "boot_failed":      { "text": "Boot failed: {{message}}",       "doc": "Error banner when agentBundle throws; {{message}} interpolated" }
+  },
+  "rn": {
+    "shell_stub_intro": { "text": "RN composition shell — V0 skeleton.", "doc": "Placeholder body until ChatScreen renders real content" }
+  }
+}
