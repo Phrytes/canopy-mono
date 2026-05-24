@@ -79,10 +79,16 @@ function renderThreadRow(thread, { doc, store, onSelect, t }) {
   nameBtn.addEventListener('click', () => onSelect(thread.id));
   li.appendChild(nameBtn);
 
-  const filterLabel = doc.createElement('span');
-  filterLabel.className = 'cc-thread-filter';
-  filterLabel.textContent = describeFilter(thread.filter);
-  li.appendChild(filterLabel);
+  // Hide wildcard '*' filter labels — they're visual noise (every new
+  // thread starts wildcard so they show as '*' under every row name).
+  // Only render the filter label when it's a meaningful constraint.
+  const filterText = describeFilter(thread.filter);
+  if (filterText && filterText !== '*') {
+    const filterLabel = doc.createElement('span');
+    filterLabel.className = 'cc-thread-filter';
+    filterLabel.textContent = filterText;
+    li.appendChild(filterLabel);
+  }
 
   // Delete button — disabled for the last remaining thread (UX guard).
   const delBtn = doc.createElement('button');

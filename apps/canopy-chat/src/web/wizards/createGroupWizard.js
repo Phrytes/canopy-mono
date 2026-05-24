@@ -314,47 +314,102 @@ function renderReviewStep(container, doc, state, onBack, onCancel, rerender, onS
 function renderSuccessStep(container, doc, state, onClose) {
   const wrap = makeBody(doc, '✓ Buurt created', `${state.successResult.groupId} is live.`);
 
-  const codeBlock = doc.createElement('div');
-  codeBlock.className = 'cc-wizard-code-block';
+  // Encode {kind, groupId, code, expiresAt} as a stoop-invite:// URL
+  // so the invitee can paste a single string into /join-group.  The
+  // wizard's decoder reads `kind` to pick the right substrate path.
+  const inviteUrl = encodeMembershipCodeUrl(state.successResult);
+
+  // ── URL block (primary share method) ──
+  const urlLabel = doc.createElement('div');
+  urlLabel.className = 'cc-wizard-field-label';
+  urlLabel.textContent = 'Share this URL (or the QR — invitee pastes into /join-group)';
+  wrap.appendChild(urlLabel);
+
+  const urlRow = doc.createElement('div');
+  urlRow.className = 'cc-wizard-code-row';
+  const urlText = doc.createElement('code');
+  urlText.className = 'cc-wizard-code';
+  urlText.textContent = inviteUrl;
+  urlText.style.fontSize = '0.7rem';
+  urlText.style.wordBreak = 'break-all';
+  urlRow.appendChild(urlText);
+
+  const copyUrlBtn = doc.createElement('button');
+  copyUrlBtn.type = 'button';
+  copyUrlBtn.className = 'cc-wizard-btn cc-wizard-btn-secondary';
+  copyUrlBtn.textContent = 'Copy URL';
+  copyUrlBtn.addEventListener('click', () => {
+    try {
+      void navigator.clipboard.writeText(inviteUrl);
+      copyUrlBtn.textContent = 'Copied!';
+      setTimeout(() => { copyUrlBtn.textContent = 'Copy URL'; }, 1500);
+    } catch { /* clipboard API unavailable */ }
+  });
+  urlRow.appendChild(copyUrlBtn);
+  wrap.appendChild(urlRow);
+
+  // ── Raw code block (fallback for voice / SMS share) ──
   const codeLabel = doc.createElement('div');
   codeLabel.className = 'cc-wizard-field-label';
-  codeLabel.textContent = 'Membership code (shown ONCE — copy now!)';
+  codeLabel.style.marginTop = '0.8rem';
+  codeLabel.textContent = 'Or share groupId + code separately:';
   wrap.appendChild(codeLabel);
+
+  const idRow = doc.createElement('div');
+  idRow.className = 'cc-wizard-code-row';
+  const idText = doc.createElement('code');
+  idText.className = 'cc-wizard-code';
+  idText.textContent = `groupId: ${state.successResult.groupId}`;
+  idRow.appendChild(idText);
+  wrap.appendChild(idRow);
 
   const codeRow = doc.createElement('div');
   codeRow.className = 'cc-wizard-code-row';
   const codeText = doc.createElement('code');
   codeText.className = 'cc-wizard-code';
-  codeText.textContent = state.successResult.code;
+  codeText.textContent = `code: ${state.successResult.code}`;
   codeRow.appendChild(codeText);
-
-  const copyBtn = doc.createElement('button');
-  copyBtn.type = 'button';
-  copyBtn.className = 'cc-wizard-btn cc-wizard-btn-secondary';
-  copyBtn.textContent = 'Copy';
-  copyBtn.addEventListener('click', () => {
+  const copyCodeBtn = doc.createElement('button');
+  copyCodeBtn.type = 'button';
+  copyCodeBtn.className = 'cc-wizard-btn cc-wizard-btn-secondary';
+  copyCodeBtn.textContent = 'Copy code';
+  copyCodeBtn.addEventListener('click', () => {
     try {
       void navigator.clipboard.writeText(state.successResult.code);
-      copyBtn.textContent = 'Copied!';
-      setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+      copyCodeBtn.textContent = 'Copied!';
+      setTimeout(() => { copyCodeBtn.textContent = 'Copy code'; }, 1500);
     } catch { /* clipboard API unavailable */ }
   });
-  codeRow.appendChild(copyBtn);
+  codeRow.appendChild(copyCodeBtn);
   wrap.appendChild(codeRow);
-  wrap.appendChild(codeBlock);
 
   const expires = state.successResult.expiresAt
     ? new Date(state.successResult.expiresAt).toLocaleString()
     : '(no expiry)';
   const hint = doc.createElement('p');
   hint.className = 'cc-wizard-blurb';
-  hint.textContent = `Expires ${expires}.  After expiry: /rotate-code to mint a fresh one.`;
+  hint.style.marginTop = '0.8rem';
+  hint.textContent = `Expires ${expires}.  After expiry: /rotate-code to mint a fresh one.  ⚠️ This is the ONLY time the code is shown — save it now.`;
   wrap.appendChild(hint);
 
   container.appendChild(wrap);
   renderActions(container, doc, [
     { label: 'Done', onClick: onClose, kind: 'primary' },
   ]);
+}
+
+function encodeMembershipCodeUrl(result) {
+  const payload = {
+    kind:      'membershipCode',
+    groupId:   result.groupId,
+    code:      result.code,
+    expiresAt: result.expiresAt,
+  };
+  const json = JSON.stringify(payload);
+  if (typeof globalThis.btoa !== 'function') return `stoop-invite://${json}`;
+  const b64 = globalThis.btoa(json)
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `stoop-invite://${b64}`;
 }
 
 /* ─── helpers ──────────────────────────────────────────────── */
