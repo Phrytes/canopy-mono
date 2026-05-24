@@ -511,9 +511,20 @@ export async function createSecureAgent(opts = {}) {
       });
       try {
         if (!helloedPeers.has(env._from)) {
-          tx.sendHello(env._from, { pubKey: identity.pubKey })
-            .catch((err) => console.warn('[secure-agent] reciprocal HI failed', err));
-          helloedPeers.add(env._from);
+          // 2026-05-24 — await the reciprocal HI + only mark helloed
+          // when it succeeds.  Previously add-before-await meant a
+          // silent first-send failure (catch + warn) left helloedPeers
+          // populated, so we never retried — and the other side
+          // (which is polling for our pubKey to encrypt) timed out
+          // forever.  Symmetric with the same fix in sendToPeer.
+          try {
+            await tx.sendHello(env._from, { pubKey: identity.pubKey });
+            helloedPeers.add(env._from);
+          } catch (err) {
+            console.warn('[secure-agent] reciprocal HI failed (will retry on next envelope)', err?.message ?? err);
+            // Don't add to helloedPeers — next inbound envelope from
+            // this peer triggers another HI attempt.
+          }
         }
       } catch (err) {
         console.warn('[secure-agent] reciprocal-HI bookkeeping failed', err);
