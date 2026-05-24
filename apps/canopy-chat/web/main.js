@@ -701,6 +701,8 @@ function handleGroupRedeemResponse(fromNknAddr, payload) {
  */
 async function handleBuurtPost(fromNknAddr, envelope) {
   const { groupId, fromPubKey, payload } = envelope ?? {};
+  console.info('[peer] buurt-post received: groupId=' + groupId
+    + ' from=' + fromNknAddr?.slice(0, 16) + '… requestId=' + payload?.requestId);
   if (!payload?.requestId) {
     console.warn('[peer] buurt-post missing payload.requestId', envelope);
     return;
@@ -716,12 +718,14 @@ async function handleBuurtPost(fromNknAddr, envelope) {
     }
     if (result?.deduped) {
       // Idempotent — duplicate envelope or echo of own post.
+      console.info('[peer] buurt-post deduped (already have requestId=' + payload.requestId + ')');
       return;
     }
     if (result?.evicted) {
       console.info('[peer] buurt-post from evicted member dropped', payload.from);
       return;
     }
+    console.info('[peer] buurt-post ingested: new itemId=' + result?.itemId);
     publishEventRef({
       app:   'stoop',
       type:  'notification',

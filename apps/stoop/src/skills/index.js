@@ -1707,23 +1707,35 @@ export function buildSkills({
      * listMyBuurts()
      *   — 2026-05-24 cross-instance fan-out support.
      *
-     *   Returns the set of buurt groupIds the calling actor has
-     *   peer-confirmed memberships in (via `membership-redemption`
-     *   items where redeemedBy === from).  Used by the canopy-chat
-     *   fan-out layer to address every relevant buurt when /post
-     *   doesn't pin one explicitly.
+     *   Returns the set of buurt groupIds the calling actor is in,
+     *   from TWO sources combined:
+     *
+     *   1. `membership-redemption` items where redeemedBy === from
+     *      (joiner side — the actor redeemed someone else's code).
+     *   2. `group-rules` items where addedBy === from (creator/admin
+     *      side — admins don't have a redemption for buurts they
+     *      created themselves; they ARE the implicit owner).
+     *
+     *   Used by the canopy-chat fan-out layer to address every
+     *   relevant buurt when /post doesn't pin one explicitly.
      */
     defineSkill('listMyBuurts', async ({ from }) => {
-      const all = await store.listOpen({ type: 'membership-redemption' });
-      const mine = all.filter(i => i?.source?.redeemedBy === from);
       const ids = new Set();
-      for (const it of mine) {
+      const redemptions = await store.listOpen({ type: 'membership-redemption' });
+      for (const it of redemptions) {
+        if (it?.source?.redeemedBy !== from) continue;
+        const gid = it?.source?.groupId;
+        if (typeof gid === 'string' && gid) ids.add(gid);
+      }
+      const rules = await store.listOpen({ type: 'group-rules' });
+      for (const it of rules) {
+        if (it?.addedBy !== from) continue;
         const gid = it?.source?.groupId;
         if (typeof gid === 'string' && gid) ids.add(gid);
       }
       return { buurts: [...ids] };
     }, {
-      description: 'List the buurt groupIds the calling actor has memberships in.',
+      description: 'List the buurt groupIds the calling actor is a member or admin of.',
       visibility:  'authenticated',
     }),
 
