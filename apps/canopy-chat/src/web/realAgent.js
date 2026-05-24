@@ -661,6 +661,25 @@ export async function createRealHouseholdAgent(opts = {}) {
     revealPeer:      'setPeerReveal',
   };
 
+  /**
+   * 2026-05-24 — list the buurts this user has peer-confirmed
+   * memberships in (their own `membership-redemption` items).
+   * Used by the cross-instance /post fan-out to decide WHICH
+   * rosters to address when the caller didn't pin an explicit
+   * group.  Dedupes + skips empty.
+   */
+  async function _listMyKnownBuurts() {
+    try {
+      const result = await chatAgent.invoke(
+        stoopAgent.address, 'listMyBuurts', [DataPart({})],
+      );
+      const buurts = result?.[0]?.data?.buurts ?? [];
+      return Array.isArray(buurts) ? buurts : [];
+    } catch {
+      return [];
+    }
+  }
+
   /** Slugify a name → safe crewId for provisionMyCrew. */
   function _slugifyCrewId(name) {
     const slug = String(name ?? '')
@@ -869,6 +888,12 @@ export async function createRealHouseholdAgent(opts = {}) {
           realArgs = { ...realArgs, reveal: realArgs.action.toLowerCase() === 'on' };
         }
       }
+      // markReturned substrate skill reads `a.requestId` but chat-shell
+      // params + slash users say `itemId`.  Alias here so /markReturned
+      // <id> and any future button mapping both reach the substrate.
+      if (realOpId === 'markReturned' && realArgs.itemId && !realArgs.requestId) {
+        realArgs = { ...realArgs, requestId: realArgs.itemId };
+      }
       if (realOpId === 'setHolidayMode') {
         // Chat-shell sends {on: 'on'|'off'} (enum from /holiday-mode
         // <on|off>); real skill takes {on: boolean}.
@@ -955,54 +980,73 @@ export async function createRealHouseholdAgent(opts = {}) {
       // shape (Phase 52.7.2) so a future substrate-multi-transport
       // slice can drop this bridge without protocol changes.
       if (realOpId === 'postRequest' && reply?.requestId && sa?.peer?.status === 'connected') {
-        const groupId = realArgs.groupId
+        // 2026-05-24 — Slice 1 follow-up.  The substrate bundle's
+        // group is a hardcoded 'cc-default-buurt' from bundle bring-
+        // up, but real buurts (the ones users /create- or /join-) are
+        // tagged on membership-redemption items with their REAL
+        // groupId (e.g. 'westend').  Caller-explicit > targets-derived
+        // > '_any-known' fallback (= all buurts the user has peer-
+        // confirmed memberships in).
+        const explicitGroupId = realArgs.groupId
           ?? (Array.isArray(realArgs.targets)
               ? realArgs.targets.find(t => t?.kind === 'group')?.groupId
               : null)
-          ?? opts.stoopGroup ?? 'cc-default-buurt';
+          ?? null;
         // Fire-and-forget: don't block the user on remote delivery.
         (async () => {
           try {
-            const rosterReply = await chatAgent.invoke(
-              stoopAgent.address, 'listGroupRoster',
-              [DataPart({ groupId })],
-            );
-            const roster = rosterReply?.[0]?.data?.members ?? [];
-            if (roster.length === 0) return;
-            const payload = {
-              requestId:      reply.requestId,
-              text:           realArgs.text ?? '',
-              from:           chatId.pubKey,
-              type:           realArgs.type ?? 'request',
-              kind:           realArgs.kind ?? null,
-              dueAt:          typeof realArgs.dueAt === 'number' ? realArgs.dueAt : null,
-              categoryId:     realArgs.categoryId ?? null,
-              skillTags:      Array.isArray(realArgs.skillTags) ? realArgs.skillTags : [],
-              requiredSkills: realArgs.requiredSkills ?? [],
-              targets:        Array.isArray(realArgs.targets) ? realArgs.targets : [{ kind: 'group', groupId }],
-              attachments:    Array.isArray(realArgs.attachments) ? realArgs.attachments : [],
-              ...(Array.isArray(realArgs.embeds) && realArgs.embeds.length > 0
-                ? { embeds: realArgs.embeds } : {}),
-            };
-            for (const m of roster) {
-              if (!m?.addr) continue;
-              try {
-                await sa.peer.sendTo(m.addr, {
-                  type:    'p2p-chat',
-                  subtype: 'buurt-post',
-                  groupId,
-                  fromPubKey: chatId.pubKey,
-                  payload,
-                  sentAt: Date.now(),
-                });
-              } catch (err) {
-                if (typeof console !== 'undefined') {
-                  console.warn('[realAgent] buurt-post fan-out failed for', m.addr, err);
+            // Resolve the target buurt(s).  Explicit takes precedence;
+            // otherwise list-all-my-buurts from membership-redemption
+            // items so cross-instance posts reach the right peers
+            // regardless of the substrate's static bundle group.
+            const buurtIds = explicitGroupId
+              ? [explicitGroupId]
+              : await _listMyKnownBuurts();
+            if (buurtIds.length === 0) return;
+            const sent = new Set();   // dedupe addrs across multiple buurts
+            for (const groupId of buurtIds) {
+              const rosterReply = await chatAgent.invoke(
+                stoopAgent.address, 'listGroupRoster',
+                [DataPart({ groupId })],
+              );
+              const roster = rosterReply?.[0]?.data?.members ?? [];
+              if (roster.length === 0) continue;
+              const payload = {
+                requestId:      reply.requestId,
+                text:           realArgs.text ?? '',
+                from:           chatId.pubKey,
+                type:           realArgs.type ?? 'request',
+                kind:           realArgs.kind ?? null,
+                dueAt:          typeof realArgs.dueAt === 'number' ? realArgs.dueAt : null,
+                categoryId:     realArgs.categoryId ?? null,
+                skillTags:      Array.isArray(realArgs.skillTags) ? realArgs.skillTags : [],
+                requiredSkills: realArgs.requiredSkills ?? [],
+                targets:        Array.isArray(realArgs.targets) ? realArgs.targets : [{ kind: 'group', groupId }],
+                attachments:    Array.isArray(realArgs.attachments) ? realArgs.attachments : [],
+                ...(Array.isArray(realArgs.embeds) && realArgs.embeds.length > 0
+                  ? { embeds: realArgs.embeds } : {}),
+              };
+              for (const m of roster) {
+                if (!m?.addr || sent.has(m.addr)) continue;
+                sent.add(m.addr);
+                try {
+                  await sa.peer.sendTo(m.addr, {
+                    type:    'p2p-chat',
+                    subtype: 'buurt-post',
+                    groupId,
+                    fromPubKey: chatId.pubKey,
+                    payload,
+                    sentAt: Date.now(),
+                  });
+                } catch (err) {
+                  if (typeof console !== 'undefined') {
+                    console.warn('[realAgent] buurt-post fan-out failed for', m.addr, err);
+                  }
                 }
               }
             }
             if (typeof console !== 'undefined') {
-              console.info(`[realAgent] buurt-post fanned out to ${roster.length} peer(s)`);
+              console.info(`[realAgent] buurt-post fanned out to ${sent.size} peer(s) across ${buurtIds.length} buurt(s)`);
             }
           } catch (err) {
             if (typeof console !== 'undefined') {

@@ -1704,6 +1704,30 @@ export function buildSkills({
     }),
 
     /**
+     * listMyBuurts()
+     *   — 2026-05-24 cross-instance fan-out support.
+     *
+     *   Returns the set of buurt groupIds the calling actor has
+     *   peer-confirmed memberships in (via `membership-redemption`
+     *   items where redeemedBy === from).  Used by the canopy-chat
+     *   fan-out layer to address every relevant buurt when /post
+     *   doesn't pin one explicitly.
+     */
+    defineSkill('listMyBuurts', async ({ from }) => {
+      const all = await store.listOpen({ type: 'membership-redemption' });
+      const mine = all.filter(i => i?.source?.redeemedBy === from);
+      const ids = new Set();
+      for (const it of mine) {
+        const gid = it?.source?.groupId;
+        if (typeof gid === 'string' && gid) ids.add(gid);
+      }
+      return { buurts: [...ids] };
+    }, {
+      description: 'List the buurt groupIds the calling actor has memberships in.',
+      visibility:  'authenticated',
+    }),
+
+    /**
      * listGroupRoster({groupId})
      *   — 2026-05-24 cross-instance fan-out support.
      *
