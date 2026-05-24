@@ -47,14 +47,18 @@
     "react-native-ble-plx": "*",
     "react-native-keychain": "*",
     "react-native-get-random-values": "*",
-    "buffer": "*"
+    "buffer": "*",
+    "nkn-multiclient": "*",
+    "nkn-sdk": "*"
   },
   "peerDependenciesMeta": {
     "@react-native-async-storage/async-storage": { "optional": false },
     "react-native-ble-plx": { "optional": false },
     "react-native-keychain": { "optional": false },
     "react-native-get-random-values": { "optional": false },
-    "buffer": { "optional": false }
+    "buffer": { "optional": false },
+    "nkn-multiclient": { "optional": true },
+    "nkn-sdk": { "optional": true }
   },
   "devDependencies": {
     "@canopy/core": "file:../core",
