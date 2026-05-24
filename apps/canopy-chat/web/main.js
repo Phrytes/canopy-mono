@@ -405,10 +405,18 @@ async function connectPeerImpl() {
       // DM thread paired with `from`.  Auto-spawn the DM thread on
       // first contact so the message has somewhere to land.  Falls
       // back to Main only when DM spawn fails for some reason.
+      // 2026-05-24 — skip envelopes that are secure-agent infrastructure
+      // (HI/claims/handshake): they have no `subtype` or `body` and
+      // would otherwise render as garbage like `📨 {"pubKey":"…"}`.
+      // Only surface plain chat-messages that explicitly carry text.
+      const hasBody = payload && typeof payload === 'object' && typeof payload.body === 'string' && payload.body !== '';
+      if (!hasBody) {
+        // Diagnostic only — don't pollute the UI.
+        console.debug('[peer] received non-chat envelope from', from?.slice(0, 16) + '…', payload);
+        return;
+      }
       if (payload?.senderDisplay) updateDmPeerDisplay(from, payload.senderDisplay);
-      const body = (payload && typeof payload === 'object' && typeof payload.body === 'string')
-        ? payload.body
-        : JSON.stringify(payload);
+      const body = payload.body;
       const dm = ensureDmThread(from);
       const target = dm ?? store.getThread('main') ?? store.getActiveThread();
       if (target) {
@@ -2169,6 +2177,15 @@ async function openHelpWithDm(originThread, itemId, originMessageId) {
     // No-one to DM — fall back to the inline form path (caller dispatches).
     return false;
   }
+  // 2026-05-24 — canonical itemId is the ORIGINAL post id (the one
+  // Alice's substrate assigned at /post time).  Bob's substrate
+  // gave the mirrored item a fresh ulid + stored Alice's id under
+  // source.requestId.  We need Alice's id everywhere downstream
+  // (substrate-side respondToItem lookup, NKN envelope, and
+  // especially the [Accept] handler on Alice's side, which calls
+  // acceptResponder({requestId}) against HER substrate where only
+  // Alice's id is registered).
+  const canonicalId = post?.source?.requestId ?? itemId;
 
   // Spawn (or activate) the DM thread.
   const dm = ensureDmThread(authorAddr, {
@@ -2179,7 +2196,7 @@ async function openHelpWithDm(originThread, itemId, originMessageId) {
   // Stash the pending response context so the first user message
   // in this DM dispatches respondToItem.  Slice 6c reads this.
   dm.pendingResponse = {
-    itemId,
+    itemId: canonicalId,
     authorAddr,
     postText,
   };

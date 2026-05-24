@@ -92,9 +92,34 @@ function threadToRecord(thread) {
     createdAt:   thread.createdAt,
     filter:      thread.filter,
     permissions: thread.permissions,
-    messages:    thread.messages,
+    // 2026-05-24 — strip DOM-bearing fields ('form'-kind messages
+    // carry a live HTMLElement that IDB.structuredClone can't
+    // serialise).  Replace with a placeholder text so the message
+    // history shape stays consistent across reloads; the live UI
+    // (forms, responder cards) is ephemeral by design.
+    messages:    thread.messages.map(stripDomFields),
     _listings:   [...thread._listings.entries()],
+    ...(thread.origin ? { origin: thread.origin } : {}),
   };
+}
+
+function stripDomFields(msg) {
+  if (!msg || typeof msg !== 'object') return msg;
+  // Detect any field that's a DOM Node (HTMLElement / Element).
+  let out = msg;
+  for (const k of Object.keys(msg)) {
+    const v = msg[k];
+    if (v && typeof v === 'object' && typeof v.nodeType === 'number') {
+      if (out === msg) out = { ...msg };
+      delete out[k];
+    }
+  }
+  // The same can hide inside rendered.formElement.
+  if (out.rendered && typeof out.rendered === 'object' && out.rendered.formElement) {
+    out = { ...out, rendered: { ...out.rendered } };
+    delete out.rendered.formElement;
+  }
+  return out;
 }
 
 function recordToThread(rec, now) {
@@ -104,6 +129,7 @@ function recordToThread(rec, now) {
     createdAt:   rec.createdAt,
     filter:      rec.filter,
     permissions: rec.permissions,
+    origin:      rec.origin,
     now,
   });
   t.messages = Array.isArray(rec.messages) ? rec.messages : [];
