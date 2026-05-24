@@ -93,15 +93,16 @@ test.describe('Cross-tab mesh + DM end-to-end', () => {
     const addrBPromise = waitForNknConnect(tabB);
     await tabA.goto('/');
     await tabB.goto('/');
-    const [, addrB] = await Promise.all([addrAPromise, addrBPromise]);
+    const [addrA, addrB] = await Promise.all([addrAPromise, addrBPromise]);
 
-    // Tab A opens a DM with tab B's NKN address.  /dm dispatch puts
-    // the reply in the originating thread + switches active to the
-    // new DM thread (now empty in #messages).  Just verify the
-    // sidebar shows the DM thread by checking the active header
-    // contains "DM".
+    // Both tabs pre-open the DM with the other — so when messages
+    // arrive, the receiving tab's active thread IS the DM thread.
+    // Otherwise the message lands in an auto-spawned sidebar entry
+    // but #messages still shows Main (the test would miss it).
     await typeCmd(tabA, `/dm ${addrB}`);
+    await typeCmd(tabB, `/dm ${addrA}`);
     await expect(tabA.locator('#active-thread-name')).toContainText(/DM/i, { timeout: 5_000 });
+    await expect(tabB.locator('#active-thread-name')).toContainText(/DM/i, { timeout: 5_000 });
 
     // Tab A sends a message.  First send triggers HI handshake;
     // secure-agent's sendToPeer retries on race (#215), so we wait
@@ -110,10 +111,7 @@ test.describe('Cross-tab mesh + DM end-to-end', () => {
     await expect(tabB.locator('#messages'))
       .toContainText(/hello from A/i, { timeout: 20_000 });
 
-    // Round-trip the other direction.  Tab B's DM-with-A thread was
-    // auto-spawned by the incoming chat-message (Slice 6a), so just
-    // make sure it's active before typing the reply.
-    await expect(tabB.locator('#active-thread-name')).toContainText(/DM/i, { timeout: 5_000 });
+    // Round-trip the other direction.
     await typeCmd(tabB, 'reply from B');
     await expect(tabA.locator('#messages'))
       .toContainText(/reply from B/i, { timeout: 20_000 });
