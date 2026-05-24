@@ -20,45 +20,21 @@
  */
 
 import { mkBody, mkActions, mkField, mkTextarea, mkRadioGroup, mkSteps, mkError, mkSubmitting, refreshActions } from './_wizardKit.js';
-
-const ESCALATION_PATHS = [
-  { id: 'mediation', label: 'Mediation (two random members weigh in)' },
-  { id: 'admin',     label: 'Admin decides' },
-  { id: 'vote',      label: 'Member vote' },
-];
+import {
+  ESCALATION_PATHS,
+  initialState, isSummaryValid, isProposalValid, labelOf,
+  loadAboutPostText, submitDispute,
+} from '../../core/wizards/conflictDisputeState.js';
 
 export function renderConflictDisputeWizard(opts) {
   const { container, doc, args, callSkill, onClose, onDispatched } = opts;
-  const state = {
-    step:           1,
-    // #200 — accept either `postId` (slash flag) or `id` (the chat-
-    // shell's default callbackData arg when launched via a row button).
-    aboutPostId:    args?.postId ?? args?.id ?? '',
-    // 2026-05-24 — the post text (fetched async below) so the wizard
-    // can show "Disputing: <text>" instead of a raw ulid.
-    aboutPostText:  null,
-    summary:        '',
-    escalation:     'mediation',
-    proposal:       '',
-    proposalShared: false,    // user must explicitly check "OK to file"
-    submitting:    false,
-    submitError:   null,
-    successResult: null,
-  };
+  const state = initialState(args);
 
   // Lazy-load the post text so the wizard can display it readably.
   if (state.aboutPostId) {
     (async () => {
-      try {
-        const reply = await callSkill('stoop', 'listFeed', {});
-        const items = reply?.items ?? [];
-        const hit = items.find(p =>
-          p?.id === state.aboutPostId
-          || p?.source?.requestId === state.aboutPostId,
-        );
-        state.aboutPostText = hit?.text ?? hit?.label ?? null;
-        rerender();
-      } catch { /* silent; falls back to id */ }
+      await loadAboutPostText({ state, callSkill });
+      rerender();
     })();
   }
 
@@ -76,7 +52,7 @@ export function renderConflictDisputeWizard(opts) {
   function renderRaiseStep() {
     const body = mkBody(doc, 'Raise a dispute',
       'Describe what happened.  This goes to the buurt; admins and (if your conflict-policy is mediation) two random members see it.');
-    const validSummary = () => state.summary.trim().length >= 10;
+    const validSummary = () => isSummaryValid(state.summary);
     // 2026-05-24 — when launched from a row button (postId pre-filled),
     // show the post text as a read-only context card instead of a raw
     // id input.  Falls back to a text input when no postId.
@@ -116,7 +92,7 @@ export function renderConflictDisputeWizard(opts) {
   function renderProposeStep() {
     const body = mkBody(doc, 'Propose a resolution',
       'What would resolve this for you?  Even if you\'re not sure, write what would feel "good enough" so the mediator has a starting point.');
-    const validProposal = () => state.proposal.trim().length >= 5;
+    const validProposal = () => isProposalValid(state.proposal);
     mkTextarea(body, doc, 'Proposed resolution', state.proposal, (v) => {
       state.proposal = v;
       refreshActions(container, { proposalOk: validProposal });
@@ -153,23 +129,10 @@ export function renderConflictDisputeWizard(opts) {
       { label: '← Back',     onClick: () => { state.step = 2; rerender(); }, kind: 'secondary', disabled: state.submitting },
       { label: 'Cancel',     onClick: onClose, kind: 'secondary', disabled: state.submitting },
       { label: 'File',       onClick: async () => {
-        state.submitting = true;
-        state.submitError = null;
-        rerender();
-        try {
-          const text = `[Dispute] ${state.summary}\n\nProposed: ${state.proposal}\n\nPreferred escalation: ${state.escalation}` +
-            (state.aboutPostId ? `\nAbout: ${state.aboutPostId}` : '');
-          const result = await callSkill('stoop', 'postRequest', {
-            text, kind: 'dispute',
-          });
-          if (result?.error) throw new Error(result.error);
-          state.successResult = result;
-          if (typeof onDispatched === 'function') {
-            try { onDispatched({ ok: true, message: '✓ Dispute filed.', ...result }); } catch {}
-          }
-        } catch (err) {
-          state.submitError = err?.message ?? String(err);
-          state.submitting = false;
+        rerender(); // show submitting state
+        const { result } = await submitDispute({ state, callSkill });
+        if (result && typeof onDispatched === 'function') {
+          try { onDispatched({ ok: true, message: '✓ Dispute filed.', ...result }); } catch {}
         }
         rerender();
       }, kind: 'primary', disabled: state.submitting },
@@ -199,6 +162,4 @@ function appendKV(dl, doc, label, value, opts = {}) {
   dl.appendChild(dt); dl.appendChild(dd);
 }
 
-function labelOf(options, id) {
-  return options.find((o) => o.id === id)?.label ?? id;
-}
+// labelOf moved to ../../core/wizards/conflictDisputeState.js (#231.2a).

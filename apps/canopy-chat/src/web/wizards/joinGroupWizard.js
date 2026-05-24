@@ -30,24 +30,22 @@
  * already-decoded invite per stoop's GroupManager.issueInvite shape.
  */
 
-const PRIVACY_NOTICE_NL = `Lid worden van een buurt betekent dat andere
-leden je posts kunnen zien, je kunnen aanspreken en — afhankelijk van
-groepsregels — kunnen oordelen over conflicten. Buurt-admins hebben
-geen toegang tot je privé-chats, alleen tot wat je publiek post.`;
+// State-machine pieces (decodeInvite, summariseEmbeddedRules,
+// fetchGroupRules, isValidHandle, handleSuggestions, finalSubmit,
+// PRIVACY_NOTICE) moved to ../../core/wizards/joinGroupState.js
+// (#231.2c) so canopy-chat-mobile's RN wizard can reuse them.
+import {
+  PRIVACY_NOTICE,
+  handleSuggestions as HANDLE_SUGGESTIONS,
+  decodeInvite,
+  isValidHandle,
+  initialState,
+  fetchGroupRules,
+  finalSubmit,
+} from '../../core/wizards/joinGroupState.js';
 
-const PRIVACY_NOTICE_EN = `Joining a buurt means other members can see
-your posts, contact you, and — depending on group rules — weigh in on
-conflicts. Buurt admins have no access to your private chats, only to
-what you post publicly.`;
-
-const HANDLE_SUGGESTIONS = (existingDisplayName) => {
-  const base = (existingDisplayName ?? 'me').toLowerCase().replace(/[^a-z0-9]/g, '-');
-  return [
-    base,
-    `${base}-${Math.floor(Math.random() * 90 + 10)}`,
-    `${base}.${new Date().getFullYear()}`,
-  ];
-};
+const PRIVACY_NOTICE_NL = PRIVACY_NOTICE.nl;
+const PRIVACY_NOTICE_EN = PRIVACY_NOTICE.en;
 
 /**
  * Wizard renderer for /join-group.  Wired via openPagePanel's
@@ -65,29 +63,14 @@ export function renderJoinGroupWizard(opts) {
   const { container, doc, args, callSkill, onClose, onDispatched, sendPeerRedeem } = opts;
 
   // Wizard state — kept in-scope, re-renders rebuild the DOM from it.
-  const state = {
-    step:             1,            // 1..3
-    invite:           null,         // decoded invite object
-    inviteParseError: null,         // string if parse failed
-    rulesText:        null,         // fetched on step 1 enter
-    rulesError:       null,
-    rulesAccepted:    false,
-    privacyAccepted:  false,
-    // Slice 4 (2026-05-24) — mesh-consent toggle.  Default ON so the
-    // common case "I want to join + chat directly with members" works
-    // out of the box; users can opt out to stay star-routed via admin.
-    shareAddress:     true,
-    handle:           '',
-    submitting:       false,
-    submitError:      null,
-  };
+  const state = initialState();
 
   // Decode the invite arg (URL form or pre-decoded object).
   decodeInvite(args?.invite, state);
 
   // Kick off the rules fetch when state.step === 1.
   if (state.invite && !state.inviteParseError) {
-    fetchGroupRules(state, callSkill).then(rerender).catch((err) => {
+    fetchGroupRules({ state, callSkill }).then(rerender).catch((err) => {
       state.rulesError = err?.message ?? String(err);
       rerender();
     });
@@ -105,20 +88,16 @@ export function renderJoinGroupWizard(opts) {
     if (state.step === 1) renderRulesStep(container, doc, state, () => { state.step = 2; rerender(); }, onClose, rerender);
     if (state.step === 2) renderPrivacyStep(container, doc, state, () => { state.step = 3; rerender(); }, () => { state.step = 1; rerender(); }, onClose, rerender);
     if (state.step === 3) renderHandleStep(container, doc, state, async () => {
-      state.submitting = true;
-      state.submitError = null;
-      rerender();
-      try {
-        const result = await finalSubmit(state, callSkill, sendPeerRedeem);
+      rerender(); // show submitting state
+      const { result } = await finalSubmit({ state, callSkill, sendPeerRedeem });
+      if (result) {
         if (typeof onDispatched === 'function') {
           try { onDispatched(result); } catch { /* swallow */ }
         }
         onClose();
-      } catch (err) {
-        state.submitting = false;
-        state.submitError = err?.message ?? String(err);
-        rerender();
+        return;
       }
+      rerender(); // failure path: show submitError
     }, () => { state.step = 2; rerender(); }, onClose, rerender);
   }
 }
@@ -328,200 +307,10 @@ function renderActions(container, doc, buttons) {
   container.appendChild(row);
 }
 
-function decodeInvite(invite, state) {
-  if (!invite) {
-    state.inviteParseError = 'No invite supplied — type /join-group <invite-url>.';
-    return;
-  }
-  if (typeof invite === 'object') {
-    state.invite = invite;
-    return;
-  }
-  const PREFIX = 'stoop-invite://';
-  let str = String(invite).trim();
-  // Slash-arg parsers sometimes mangle "://" into ":" — tolerate
-  // `stoop-invite:base64payload` AND `stoop-invite//base64payload`
-  // in addition to the canonical `stoop-invite://base64payload`.
-  if (str.startsWith(PREFIX)) {
-    str = str.slice(PREFIX.length);
-  } else if (str.startsWith('stoop-invite:')) {
-    str = str.replace(/^stoop-invite:[\/]*/i, '');
-  } else if (str.startsWith('stoop-invite/')) {
-    str = str.replace(/^stoop-invite[\/]+/i, '');
-  }
-  try {
-    if (str.startsWith('{')) {
-      state.invite = JSON.parse(str);
-      return;
-    }
-    // base64url → base64 → atob → UTF-8 JSON parse
-    const padded = str.replace(/-/g, '+').replace(/_/g, '/')
-                       + '=='.slice(0, (4 - str.length % 4) % 4);
-    if (typeof globalThis.atob !== 'function') {
-      throw new Error('no base64 decoder available (browser only)');
-    }
-    const bin = globalThis.atob(padded);
-    // atob returns a Latin-1 binary string.  If the source was
-    // UTF-8 JSON, parsing directly may fail on non-ASCII bytes.
-    // For invite tokens (pubKey + nonce + sig + ints) everything
-    // is ASCII so JSON.parse should work directly.  If it doesn't,
-    // surface a clearer diagnostic.
-    try {
-      state.invite = JSON.parse(bin);
-    } catch (innerErr) {
-      const snippet = bin.slice(0, 50).replace(/[^\x20-\x7e]/g, '·');
-      throw new Error(`base64 decoded to non-JSON: "${snippet}…" — likely the URL was corrupted in transit (paste mangled?).  Try copy-pasting the full URL again.`);
-    }
-  } catch (err) {
-    state.inviteParseError = `Bad invite: ${err.message ?? err}`;
-    if (typeof console !== 'undefined') {
-      console.warn('[joinGroupWizard] decodeInvite failed', { input: invite, err });
-    }
-  }
-}
+// decodeInvite, fetchGroupRules, summariseEmbeddedRules,
+// isValidHandle moved to ../../core/wizards/joinGroupState.js
+// (#231.2c).
 
-async function fetchGroupRules(state, callSkill) {
-  // 2026-05-24 — invite URL embeds the rules object (createGroupWizard
-  // result.rules), so we can show them WITHOUT querying the local
-  // substrate (which has no group-rules item until after join).
-  // Fall back to a substrate lookup when the invite has no rules
-  // payload (older invites, GroupManager-invite path).
-  const embedded = state.invite?.rules;
-  if (embedded && typeof embedded === 'object') {
-    state.rulesText = summariseEmbeddedRules(embedded);
-    return;
-  }
-  try {
-    const reply = await callSkill('stoop', 'getGroupRules', { groupId: state.invite.groupId });
-    state.rulesText = reply?.rules ?? reply?.message ?? '(no rules set for this group)';
-  } catch (err) {
-    state.rulesError = err?.message ?? String(err);
-  }
-}
-
-/**
- * Format a rules object as readable text — same layout the
- * getGroupRules adapter uses (purpose/access/leave/conflict/tags/
- * admins/freeform).  Keeps the joiner's display consistent with
- * what /group-rules shows post-join.
- */
-function summariseEmbeddedRules(r) {
-  if (r.rulesText && r.rulesText.trim()) return r.rulesText;
-  const parts = [];
-  if (r.purpose)        parts.push(`Purpose: ${r.purpose}`);
-  if (r.accessPolicy)   parts.push(`Access: ${r.accessPolicy}`);
-  if (r.leavePolicy)    parts.push(`Leave: ${r.leavePolicy}`);
-  if (r.conflictPolicy) parts.push(`Conflict resolution: ${r.conflictPolicy}`);
-  if (Array.isArray(r.tags) && r.tags.length)
-    parts.push(`Tags: ${r.tags.join(', ')}`);
-  if (Array.isArray(r.additionalAdmins) && r.additionalAdmins.length)
-    parts.push(`Extra admins: ${r.additionalAdmins.join(', ')}`);
-  return parts.length > 0
-    ? parts.join('\n')
-    : '(no rules set; defaults apply)';
-}
-
-function isValidHandle(handle) {
-  return typeof handle === 'string'
-    && /^[a-z0-9](?:[a-z0-9_-]{1,28}[a-z0-9])?$/.test(handle);
-}
-
-/**
- * Final submission: chain the substrate calls in sequence.  Two paths
- * depending on the invite's `kind`:
- *
- *   'membershipCode' (default for /create-group → /join-group):
- *     1. setMyHandle
- *     2. redeemMembershipCode({groupId, code})
- *
- *   'invite' (legacy GroupManager invite from /invite slash):
- *     1. redeemInviteWithGate (records rules-accept audit item)
- *     2. setMyHandle
- *     3. redeemInvite (joins the GroupManager)
- *
- * Aborts on first error so the user sees the FIRST problem.
- */
-async function finalSubmit(state, callSkill, sendPeerRedeem) {
-  const inv = state.invite;
-  // Membership-code path (new — single short string OR encoded URL).
-  if (inv?.kind === 'membershipCode' && inv.code && inv.groupId) {
-    const handle = await callSkill('stoop', 'setMyHandle', { handle: state.handle });
-    if (handle?.ok === false || handle?.error) {
-      throw new Error(handle.error ?? 'Couldn\'t set handle.');
-    }
-    // Local redeem first — works in shared-substrate scenarios (single
-    // tab, tests, IndexedDB-shared admin+joiner).
-    const redeem = await callSkill('stoop', 'redeemMembershipCode', {
-      groupId: inv.groupId, code: inv.code,
-    });
-    // Cross-instance fallback: when local store has no copy of the code
-    // (different browser/device), route the redeem-request to the admin's
-    // NKN address embedded in the invite URL.  Admin's substrate
-    // validates locally + records the redemption on its side; the bridge
-    // returns the confirmation here so we can mirror an audit record.
-    if (redeem?.error === 'invalid-or-expired-code' && inv.adminNkn && typeof sendPeerRedeem === 'function') {
-      const peerReply = await sendPeerRedeem({
-        adminNkn: inv.adminNkn,
-        groupId:  inv.groupId,
-        code:     inv.code,
-        // Slice 4 — joiner's mesh-consent + display name so admin
-        // can propagate this peer to other consenting members.
-        shareCard:   !!state.shareAddress,
-        peerDisplay: state.handle,
-      });
-      if (!peerReply || peerReply.error) {
-        throw new Error(peerReply?.error
-          ?? 'Admin\'s substrate did not confirm the code. They may be offline — try again, or ask for a fresh code.');
-      }
-      // Mirror the confirmation locally so getMyMembershipStatus() works.
-      // 2026-05-24 — also persist the rules from the invite URL so
-      // /group-rules works on this side post-join.
-      await callSkill('stoop', 'recordRemoteRedemption', {
-        groupId:     inv.groupId,
-        code:        inv.code,
-        codeId:      peerReply.codeId ?? null,
-        expiresAt:   peerReply.validUntil ?? null,
-        confirmedBy: inv.adminNkn,
-        ...(inv.rules && typeof inv.rules === 'object' ? { rules: inv.rules } : {}),
-      });
-      return {
-        ok:      true,
-        message: `✓ Joined buurt "${inv.groupId}" as ${state.handle} (confirmed by admin over peer-bridge).`,
-        groupId: inv.groupId,
-        handle:  state.handle,
-      };
-    }
-    if (redeem?.ok === false || redeem?.error) {
-      throw new Error(redeem.error ?? 'Couldn\'t redeem code.');
-    }
-    return {
-      ok:      true,
-      message: `✓ Joined buurt "${inv.groupId}" as ${state.handle}.`,
-      groupId: inv.groupId,
-      handle:  state.handle,
-    };
-  }
-  // GroupManager-invite path (legacy / explicit /invite from admin).
-  const gate = await callSkill('stoop', 'redeemInviteWithGate', {
-    invite:          inv,
-    privacyAccepted: state.privacyAccepted,
-    rulesAccepted:   state.rulesAccepted,
-  });
-  if (gate?.ok === false || gate?.error) {
-    throw new Error(gate.error ?? 'Gate refused the redeem.');
-  }
-  const handle = await callSkill('stoop', 'setMyHandle', { handle: state.handle });
-  if (handle?.ok === false || handle?.error) {
-    throw new Error(handle.error ?? 'Couldn\'t set handle.');
-  }
-  const redeem = await callSkill('stoop', 'redeemInvite', { invite: inv });
-  if (redeem?.ok === false || redeem?.error) {
-    throw new Error(redeem.error ?? 'Couldn\'t redeem invite.');
-  }
-  return {
-    ok:      true,
-    message: `✓ Joined buurt "${inv.groupId}" as ${state.handle}.`,
-    groupId: inv.groupId,
-    handle:  state.handle,
-  };
-}
+// finalSubmit moved to ../../core/wizards/joinGroupState.js (#231.2c).
+// The lifted version wraps the chain in a {result, state} envelope +
+// mutates state.submitting/submitError; see the call site in rerender().
