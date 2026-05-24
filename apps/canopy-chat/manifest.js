@@ -95,6 +95,24 @@ export const canopyChatManifest = {
     },
 
     /**
+     * Slice 6d (2026-05-24) — `/dm <webid>`.  Slash-only entry in the
+     * canopy-chat manifest; the per-row [DM] button is declared in
+     * stoop's mock manifest because that's where the 'contact' and
+     * 'member' item types live (appliesTo validates against
+     * itemTypes).  Chat-shell-internal — main.js intercepts the
+     * button + localBuiltins handles the slash.
+     */
+    {
+      id:    'startDm',
+      verb:  'add',
+      params: [{ name: 'webid', kind: 'string', required: true }],
+      surfaces: {
+        slash: { command: '/dm' },
+        chat:  { reply: 'text', hint: 'open a DM with a peer by webid' },
+      },
+    },
+
+    /**
      * `/embed <itemId> [--claim]` — v0.5 J7 demo.  Posts an embed-
      * card to the active thread using the snapshot returned by the
      * item's `cardSnapshotSkill` (Q29).  `--claim` is the sender-
