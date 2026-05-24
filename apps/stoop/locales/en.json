@@ -755,6 +755,11 @@
     "section_shared_title":   { "text": "My preferences", "doc": "Section heading for shared / pod-portable settings (V2.5 Phase 33). Travels with the user." },
     "badge_shared":           { "text": "syncs across all your devices", "doc": "Small badge next to the shared-section heading. Should signal 'syncs across devices'." },
     "section_shared_hint":    { "text": "These preferences belong to you — not to this device. When you sign in to your pod, they automatically follow you to your other devices.", "doc": "Subtitle under the shared-section heading. Tells the user pod-sign-in is what enables cross-device sync." },
+    "section_privacy_title":  { "text": "Privacy & identity", "doc": "Heading of the privacy-and-identity settings section (#243, 2026-05-24)." },
+    "section_privacy_hint":   { "text": "Local management actions: unmute muted contacts, and rotate your network address (useful after a leak or when you want a break from a specific contact chain).", "doc": "Subtitle under the privacy-and-identity section heading." },
+    "muted_label":            { "text": "Muted contacts", "doc": "Row label for the local muted-peers list on the privacy-and-identity section." },
+    "muted_hint":             { "text": "Posts and chat from these peers are locally hidden. Muting is only visible on this account — the peers don't know.", "doc": "Hint under the muted-contacts row." },
+    "muted_empty":            { "text": "No muted contacts.", "doc": "Empty-state line shown when listMutedPeers returns zero entries." },
 
     "poll_interval_label":    { "text": "How often the feed refreshes", "doc": "Label for the polling-interval select. Device-scoped." },
     "poll_interval_hint":     { "text": "Lower = see new posts faster; higher = lighter on data and battery.", "doc": "Hint under the polling-interval label. Trade-off summary: faster vs. battery." },

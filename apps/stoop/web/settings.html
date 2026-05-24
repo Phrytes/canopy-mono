@@ -232,6 +232,36 @@
         </div>
       </div>
 
+      <!-- ─ Privacy & identity section (#243, 2026-05-24) ─ -->
+      <div class="settings-section">
+        <h3 data-i18n="settings.section_privacy_title">Privacy & identiteit</h3>
+        <p class="scope-hint" data-i18n="settings.section_privacy_hint">
+          Lokale beheers-acties: gedempte contacten weer aanzetten,
+          en je netwerk-adres roteren (handig na een lek of als je
+          even rust wilt van een specifieke contactketen).
+        </p>
+
+        <!-- Muted-peers list with per-row unmute (#243). -->
+        <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 0.5rem;">
+          <div class="lbl">
+            <strong data-i18n="settings.muted_label">Gedempte contacten</strong>
+            <small data-i18n="settings.muted_hint">Posts en chat van deze peers worden lokaal verborgen. Demping is alleen op dit account zichtbaar — de peers weten het niet.</small>
+          </div>
+          <ul id="muted-list" class="settings-muted-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+          <span id="muted-empty" class="hint" style="display: none;" data-i18n="settings.muted_empty">Geen gedempte contacten.</span>
+        </div>
+
+        <!-- Rotate-my-address CTA (#243). -->
+        <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 0.5rem;">
+          <div class="lbl">
+            <strong data-i18n="profile.rotate_identity_label">Network-adres rotatie</strong>
+            <small data-i18n="profile.rotate_identity_hint">Vervangt je publieke sleutel door een nieuwe. Je stableId blijft hetzelfde — contacten en mute-lijsten volgen je. 7-dagen grace-periode voor in-flight berichten.</small>
+          </div>
+          <button id="rotate-identity-btn" type="button" class="btn-danger" style="align-self: flex-start;" data-i18n="profile.rotate_identity">Roteer mijn adres nu</button>
+          <span id="rotate-result" class="hint" style="display: none;"></span>
+        </div>
+      </div>
+
       <span id="settings-feedback" class="hint" style="margin-top: 1rem; display: block;"></span>
     </section>
   </main>
@@ -340,6 +370,80 @@
     document.getElementById('online-duration').addEventListener('blur', (e) => {
       const v = e.target.value === '' ? null : Number(e.target.value);
       save({ onlineWindow: { durationSec: v } });
+    });
+
+    // ── #243 (2026-05-24) — Privacy & identity section ───────────────
+    // Muted-peers list with per-row unmute + rotate-my-address CTA.
+    // Both substrate skills already shipped (listMutedPeers,
+    // unmutePeer, rotateMyAddress); this just surfaces them on web.
+
+    async function refreshMutedList() {
+      const ul    = document.getElementById('muted-list');
+      const empty = document.getElementById('muted-empty');
+      ul.innerHTML = '';
+      let peers = [];
+      try {
+        const r = await callSkill('listMutedPeers', {});
+        peers = Array.isArray(r?.peers) ? r.peers : [];
+      } catch { /* swallow; empty state covers it */ }
+      if (peers.length === 0) {
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+      for (const key of peers) {
+        const li = document.createElement('li');
+        li.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0;';
+        const label = document.createElement('code');
+        label.style.cssText = 'flex: 1; font-size: 0.85em; word-break: break-all;';
+        label.textContent = key;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-secondary';
+        btn.textContent = t('contacts.unmute', 'Unmute');
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            // peerStableId-first (substrate prefers it; webid: prefix
+            // signals the legacy webid-based key).
+            const args = key.startsWith('webid:')
+              ? { peerWebid: key.slice('webid:'.length) }
+              : { peerStableId: key };
+            await callSkill('unmutePeer', args);
+            await refreshMutedList();
+          } catch (err) {
+            btn.textContent = `${t('common.error', 'Error')}: ${err.message ?? err}`;
+            setTimeout(() => { btn.textContent = t('contacts.unmute', 'Unmute'); btn.disabled = false; }, 2000);
+          }
+        });
+        li.appendChild(label);
+        li.appendChild(btn);
+        ul.appendChild(li);
+      }
+    }
+    await refreshMutedList();
+
+    document.getElementById('rotate-identity-btn').addEventListener('click', async () => {
+      const confirmed = confirm(t('profile.confirm_rotate_title', 'Rotate network address?'));
+      if (!confirmed) return;
+      const btn = document.getElementById('rotate-identity-btn');
+      const out = document.getElementById('rotate-result');
+      btn.disabled = true;
+      const prev = btn.textContent;
+      btn.textContent = t('profile.rotating', 'Rotating…');
+      try {
+        const r = await callSkill('rotateMyAddress', {});
+        if (r?.error) throw new Error(r.error);
+        const pk = String(r?.newPubKey ?? '').slice(0, 12) + '…';
+        out.style.display = 'block';
+        out.textContent = t('profile.rotate_done', 'Rotated. New address: {pk}').replace('{pk}', pk);
+      } catch (err) {
+        out.style.display = 'block';
+        out.textContent = `${t('common.error', 'Error')}: ${err.message ?? err}`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = prev;
+      }
     });
   </script>
 </body>
