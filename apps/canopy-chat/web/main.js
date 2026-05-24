@@ -376,6 +376,20 @@ async function connectPeerImpl() {
           console.error('[peer] buurt-post failed', err));
         return;
       }
+      // Slice 6c (2026-05-24) — responder card for [Help with] flow.
+      // Bob's canopy-chat sends this after his respondToItem succeeds;
+      // we (Alice / the post author) surface it as a card in the DM
+      // thread paired with Bob, with [Accept] / [Decline] / [Counter]
+      // buttons.
+      if (subtype === 'help-with-response' && payload?.itemId && payload?.body) {
+        handleHelpWithResponse(from, payload).catch((err) =>
+          console.error('[peer] help-with-response failed', err));
+        return;
+      }
+      if (subtype === 'help-with-accepted' && payload?.itemId) {
+        handleHelpWithAccepted(from, payload);
+        return;
+      }
 
       // Slice 6a (2026-05-24) — default chat-message → route into the
       // DM thread paired with `from`.  Auto-spawn the DM thread on
@@ -2105,6 +2119,24 @@ async function dispatchPendingResponse(dm, body) {
       body,
     });
     if (reply?.error) throw new Error(reply.error);
+    // Slice 6c — also push the response over NKN so the post author's
+    // canopy-chat can surface it as a responder-card with [Accept] /
+    // [Decline] / [Counter] buttons.  Mirrors the Slice 1 pattern
+    // (substrate handles persistence; chat layer handles UX wire).
+    if (agent?.peer?.status === 'connected' && pending.authorAddr) {
+      try {
+        await agent.sendPeerMessage(pending.authorAddr, {
+          type:    'p2p-chat',
+          subtype: 'help-with-response',
+          itemId:  pending.itemId,
+          body,
+          postText: pending.postText ?? '',
+          sentAt:  Date.now(),
+        });
+      } catch (err) {
+        console.warn('[help-with-response] NKN send failed', err);
+      }
+    }
     dm.addShellMessage(renderReply({
       payload: `✓ Sent your offer to the post author.`,
       shape: 'text',
@@ -2120,6 +2152,134 @@ async function dispatchPendingResponse(dm, body) {
     }, { t }));
   }
   renderActiveStream();
+}
+
+/**
+ * Slice 6c — render Bob's response as an interactive card in Alice's
+ * DM thread.  Spawns the DM if first contact.  Three buttons:
+ *
+ *   [Accept]  → acceptResponder({requestId, responderWebid}) substrate
+ *               skill + sends 'help-with-accepted' envelope back to
+ *               Bob so his side surfaces "✓ Accepted".
+ *   [Decline] → sends 'help-with-declined' (no substrate side-effect
+ *               in V0 — acceptResponder just picks ONE).
+ *   [Counter] → posts a placeholder message; full counter-offer
+ *               compose lands in a future slice.
+ */
+async function handleHelpWithResponse(fromAddr, payload) {
+  const dm = ensureDmThread(fromAddr);
+  if (!dm) return;
+  const card = document.createElement('div');
+  card.className = 'cc-responder-card';
+  const header = document.createElement('div');
+  header.className = 'cc-responder-card-header';
+  header.textContent = `📩 Offer of help on your post`;
+  card.appendChild(header);
+  if (payload.postText) {
+    const ctx = document.createElement('div');
+    ctx.className = 'cc-responder-card-context';
+    ctx.textContent = payload.postText;
+    card.appendChild(ctx);
+  }
+  const body = document.createElement('blockquote');
+  body.className = 'cc-responder-card-body';
+  body.textContent = payload.body;
+  card.appendChild(body);
+
+  const actions = document.createElement('div');
+  actions.className = 'cc-responder-card-actions';
+  const accept = document.createElement('button');
+  accept.type = 'button';
+  accept.className = 'cc-wizard-btn cc-wizard-btn-primary';
+  accept.textContent = 'Accept';
+  accept.addEventListener('click', async () => {
+    try {
+      const result = await callSkill('stoop', 'acceptResponder', {
+        requestId: payload.itemId,
+        responderWebid: fromAddr,
+      });
+      if (result?.error) throw new Error(result.error);
+      accept.disabled = true;
+      decline.disabled = true;
+      counter.disabled = true;
+      accept.textContent = '✓ Accepted';
+      if (agent?.peer?.status === 'connected') {
+        try {
+          await agent.sendPeerMessage(fromAddr, {
+            type: 'p2p-chat', subtype: 'help-with-accepted',
+            itemId: payload.itemId, sentAt: Date.now(),
+          });
+        } catch { /* swallow */ }
+      }
+    } catch (err) {
+      const errMsg = document.createElement('div');
+      errMsg.className = 'cc-wizard-error';
+      errMsg.textContent = `Failed: ${err?.message ?? err}`;
+      actions.appendChild(errMsg);
+    }
+  });
+  const decline = document.createElement('button');
+  decline.type = 'button';
+  decline.className = 'cc-wizard-btn cc-wizard-btn-secondary';
+  decline.textContent = 'Decline';
+  decline.addEventListener('click', async () => {
+    decline.disabled = true; accept.disabled = true; counter.disabled = true;
+    decline.textContent = '✗ Declined';
+    if (agent?.peer?.status === 'connected') {
+      try {
+        await agent.sendPeerMessage(fromAddr, {
+          type: 'p2p-chat', subtype: 'help-with-declined',
+          itemId: payload.itemId, sentAt: Date.now(),
+        });
+      } catch { /* swallow */ }
+    }
+  });
+  const counter = document.createElement('button');
+  counter.type = 'button';
+  counter.className = 'cc-wizard-btn cc-wizard-btn-secondary';
+  counter.textContent = 'Counter';
+  counter.title = 'Reply with a counter-offer in this DM';
+  counter.addEventListener('click', () => {
+    dm.addShellMessage(renderReply({
+      payload: 'Type your counter-offer below.',
+      shape: 'text', threadId: dm.id,
+    }, { t }));
+    renderActiveStream();
+  });
+  actions.appendChild(accept);
+  actions.appendChild(decline);
+  actions.appendChild(counter);
+  card.appendChild(actions);
+
+  dm.addShellMessage({
+    kind: 'form',
+    messageId: `helpresp-${Date.now()}`,
+    threadId: dm.id,
+    lifecycleState: 'live',
+    formElement: card,
+    text: 'Help-with response card',
+  });
+  publishEventRef({
+    app: 'stoop', type: 'notification', actor: fromAddr,
+    payload: { message: `📩 ${fromAddr.slice(0, 16)}… offered help` },
+  });
+  renderSidebarHere();
+  if (store.getActiveThread()?.id === dm.id) renderActiveStream();
+}
+
+/**
+ * Slice 6c — Bob (responder side) receives confirmation that Alice
+ * accepted his offer.  Surface a small notice in his DM with Alice.
+ */
+function handleHelpWithAccepted(fromAddr, payload) {
+  const dm = ensureDmThread(fromAddr);
+  if (!dm) return;
+  dm.addShellMessage(renderReply({
+    payload: `✓ Your offer was accepted. Coordinate next steps in this DM.`,
+    shape: 'text', threadId: dm.id,
+  }, { t }));
+  renderSidebarHere();
+  if (store.getActiveThread()?.id === dm.id) renderActiveStream();
 }
 
 /**
