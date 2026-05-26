@@ -23,28 +23,25 @@ describe('slash command round-trip', () => {
     await waitFor(element(by.id('chat-header-status')))
       .toBeVisible()
       .withTimeout(60_000);
+    // Same as _hello.test.js — our app has perpetual background work
+    // (NknTransport reconnect loop, periodic catch-up timers) so the
+    // RN bridge never goes idle.  Detox would otherwise time out
+    // waiting for sync between commands.
+    await device.disableSynchronization();
   });
 
-  it('typing /mine + Send produces a list bubble with at least one button row', async () => {
+  it('typing /mine + Send produces a list bubble with markComplete buttons', async () => {
     await element(by.id('chat-input')).typeText('/mine');
     await element(by.id('chat-send')).tap();
 
-    // The bot bubble is the LIST one — wait for its container to land.
-    // We don't know the msg id ahead of time, so we scope on the
-    // first matching list bubble via the chat-screen ancestor.
-    // 30s is enough for the household.listOpen skill + render round-trip.
-    await waitFor(element(by.id('chat-screen').withDescendant(by.id(/^bubble-bot-list-/))))
+    // The household factory seeds 3 chores in state:'open' with ids
+    // c-1, c-2, c-3 (see apps/canopy-chat/src/core/agent/mockAgent.js
+    // line 31-33).  /mine returns listOpen → all three render with a
+    // [Mark complete] button (id-format: list-row-btn-<opId>-<itemId>).
+    // We pin the FIRST one rather than using a regex matcher because
+    // Detox's regex-id support has known timing quirks.
+    await waitFor(element(by.id('list-row-btn-markComplete-c-1')))
       .toBeVisible()
-      .withTimeout(30_000)
-      .catch(async () => {
-        // Fallback assertion if Detox's regex-id matcher misbehaves —
-        // just check that SOME list-row landed.
-        await expect(element(by.id(/^list-row-/)).atIndex(0)).toBeVisible();
-      });
-
-    // At least one row button must be visible.  The mock household
-    // ships with 3 chores in state 'open' from the factory's seed.
-    await expect(element(by.id(/^list-row-btn-markComplete-/)).atIndex(0))
-      .toBeVisible();
+      .withTimeout(30_000);
   });
 });
