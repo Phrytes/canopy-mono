@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network security config (#254 fix, 2026-05-26).  Production-safe:
+  base-config denies cleartext (HTTPS-only), with an explicit
+  exception for loopback addresses so:
+   - Detox's WS bridge (ws://localhost:<random-port>) works in
+     release-mode test builds without compromising production
+   - Future dev-style flows that touch 127.0.0.1 (Metro, debugger,
+     local proxies) keep working
+  External traffic stays HTTPS-only.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

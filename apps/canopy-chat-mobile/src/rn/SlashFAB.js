@@ -135,7 +135,11 @@ export default function SlashFAB({ catalog, onDispatch, visible = true }) {
 
 const styles = StyleSheet.create({
   fab: {
-    position: 'absolute', right: 16, bottom: 24,
+    // Positioned ABOVE the input bar (#253 step 1 added a fixed
+    // bottom TextInput + Send) so the FAB doesn't overlap the
+    // Send button.  2026-05-26 Detox debugging caught this when
+    // tap('chat-send') was actually hitting the FAB.
+    position: 'absolute', right: 16, bottom: 80,
     width: 56, height: 56, borderRadius: 28,
     backgroundColor: '#1e88e5',
     justifyContent: 'center', alignItems: 'center',
