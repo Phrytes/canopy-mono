@@ -33,6 +33,9 @@ import { t }               from '../core/localisation.js';
 import {
   refreshList, snapshotSourceDispatch,
 } from '../core/refreshList.js';
+import {
+  beginFollowUp, completeFollowUp,
+} from '../core/followUp.js';
 import SlashFAB            from '../rn/SlashFAB.js';
 
 // Stable counter for synthetic message IDs (each round-trip = 2 ids).
@@ -46,6 +49,10 @@ export default function ChatScreen() {
   const [input,     setInput]     = useState('');
   const [busy,      setBusy]      = useState(false);
   const [debugOpen, setDebugOpen] = useState(false); // collapse the 6 boot boxes
+  // #253 step 4 — single-field follow-up for needsForm dispatches.
+  // When non-null, the next user TextInput submission completes
+  // this pending follow-up instead of going through parseInput.
+  const [pendingFollowUp, setPendingFollowUp] = useState(null);
   const scrollRef   = useRef(null);
   // messagesRef stays in sync with `messages` so async handlers
   // (button taps fire-and-forget) can look up the originating bubble
@@ -197,22 +204,54 @@ export default function ChatScreen() {
     }
   }, [bootState]);
 
-  /** Bottom TextInput + SlashFAB path — parse free text then dispatch. */
+  /** Bottom TextInput + SlashFAB path — parse free text then dispatch.
+   *  When a pending follow-up exists (#253 step 4), the user's text is
+   *  treated as the missing param rather than as a new slash command. */
   const submitInput = useCallback(async (rawInput) => {
     if (bootState.kind !== 'ready') return;
     const text = String(rawInput ?? '').trim();
     if (!text) return;
+
+    // Follow-up path: complete the pending dispatch with this text.
+    if (pendingFollowUp) {
+      dlog.dispatch('followup completing', {
+        opId:  pendingFollowUp.opId,
+        param: pendingFollowUp.missingParam,
+      });
+      const completed = completeFollowUp({ pending: pendingFollowUp, text });
+      const originId  = pendingFollowUp.originMessageId;
+      setPendingFollowUp(null);
+      await dispatchAndAppend({ dispatch: completed, userText: text });
+      // After-completion list refresh (mirrors handleButtonTap path).
+      if (originId) {
+        const origin = messagesRef.current.find((m) => m.id === originId);
+        if (origin?.sourceDispatch) {
+          const refreshed = await refreshList({
+            sourceDispatch:    origin.sourceDispatch,
+            catalog:           bootState.bundle.catalog,
+            manifestsByOrigin: bootState.bundle.manifestsByOrigin,
+            callSkill:         bootState.bundle.callSkill,
+            t,
+          });
+          if (refreshed) {
+            setMessages((prev) => prev.map((m) =>
+              m.id === originId ? { ...m, rendered: refreshed } : m,
+            ));
+          }
+        }
+      }
+      return;
+    }
+
     const catalog  = bootState.bundle.catalog;
     const parsed   = parseInput(text, catalog);
     const dispatch = resolveDispatch(parsed, catalog);
-    // sourceDispatch == dispatch when this is a slash that lists —
-    // the bubble can re-run itself for state-morphing (#253 step 3).
     await dispatchAndAppend({
       dispatch,
       userText:       text,
       sourceDispatch: dispatch.kind === 'ready' ? snapshotSourceDispatch(dispatch) : null,
     });
-  }, [bootState, dispatchAndAppend]);
+  }, [bootState, dispatchAndAppend, pendingFollowUp]);
 
   /**
    * Row-button-tap path (#253 step 2) — synthesise a slash-equivalent
@@ -250,6 +289,38 @@ export default function ChatScreen() {
       command: '(button)', body: itemId,
     };
     const dispatch = resolveDispatch(parse, catalog);
+
+    // #253 step 4 — if the row-tap dispatch needs more args (e.g.
+    // respondToItem also needs `body`), start a follow-up instead of
+    // dispatching with missing args (which would red-bubble).  Bot
+    // bubble prompts; user's next input completes the dispatch.
+    if (dispatch.kind === 'needsForm') {
+      const pending = beginFollowUp({
+        dispatch,
+        originMessageId,
+        t,
+      });
+      if (pending) {
+        const userMsgId = mkId();
+        const botMsgId  = mkId();
+        setMessages((prev) => [
+          ...prev,
+          { id: userMsgId, role: 'user', text: t('chat.button_tap', { label: buttonLabel, item: itemId }) },
+          { id: botMsgId,  role: 'bot', pending: false, rendered: {
+            kind: 'text',
+            messageId: botMsgId,
+            threadId: null,
+            lifecycleState: 'live',
+            text: pending.promptText,
+          }},
+        ]);
+        setPendingFollowUp(pending);
+        return;
+      }
+      // multi-missing → fall through to the generic error path
+      // until a real form-elicitation lands (deferred sub-step).
+    }
+
     await dispatchAndAppend({
       dispatch,
       userText: t('chat.button_tap', { label: buttonLabel, item: itemId }),

@@ -14,7 +14,8 @@
     "list_summary":    { "text": "{{count}} item(s):",               "doc": "Header for list replies (until step 2 ships per-item inline keyboards)" },
     "canopy_chat_op_pending": { "text": "/{{opId}} is a chat-shell command — not wired on mobile yet.", "doc": "Shown when the user invokes a canopy-chat-host op (/help, /threads, /settings, …) that webMain routes via localBuiltins; the RN port is a later #253 sub-step" },
     "list_empty":      { "text": "(no items)",                       "doc": "Shown inside a list-kind bubble when items is empty" },
-    "button_tap":      { "text": "{{label}} → {{item}}",             "doc": "Synthetic user-bubble shown when a row button is tapped (#253 step 2 — label is the button label, item the targeted item id)" }
+    "button_tap":      { "text": "{{label}} → {{item}}",             "doc": "Synthetic user-bubble shown when a row button is tapped (#253 step 2 — label is the button label, item the targeted item id)" },
+    "followup_prompt": { "text": "What's your {{param}}? (for /{{opId}})", "doc": "Bot bubble asking for a missing required param after a row-tap dispatch returned needsForm (#253 step 4 — opId names the op, param the missing arg)" }
   },
   "nav": {
     "chat":     { "text": "Chat",     "doc": "Bottom-tab label for the main chat view" },

@@ -14,7 +14,8 @@
     "list_summary":    { "text": "{{count}} item(s):",                  "doc": "Lijst-kop tot stap 2 inline-keyboards landt" },
     "canopy_chat_op_pending": { "text": "/{{opId}} is een chat-shell-commando — nog niet bedraad op mobiel.", "doc": "Toont wanneer een canopy-chat-host op (/help, /threads, /settings, …) gebruikt wordt; de RN-port is een latere #253-substap" },
     "list_empty":      { "text": "(geen items)",                       "doc": "Toont in een list-bubble wanneer items leeg is" },
-    "button_tap":      { "text": "{{label}} → {{item}}",                "doc": "Synthetische gebruiker-bubble bij een rij-knop tap (#253 stap 2)" }
+    "button_tap":      { "text": "{{label}} → {{item}}",                "doc": "Synthetische gebruiker-bubble bij een rij-knop tap (#253 stap 2)" },
+    "followup_prompt": { "text": "Wat is je {{param}}? (voor /{{opId}})", "doc": "Bot-bubble die om een ontbrekend verplicht argument vraagt na needsForm (#253 stap 4)" }
   },
   "nav": {
     "chat":     { "text": "Chat",          "doc": "Onderste tab voor hoofdchat" },
