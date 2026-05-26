@@ -40,6 +40,32 @@
  */
 
 /**
+ * Per-op natural-language prompts.  Keyed `<opId>.<missingParam>`.
+ * Missing entries fall back to the generic `chat.followup_prompt`
+ * ("What's your {{param}}?").  Locale entries with these keys MUST
+ * exist in both en + nl bundles — `pickPromptKey` returns the key,
+ * not the resolved string, so the `t()` call still localises.
+ *
+ * Add a new entry here when a new op trips needsForm + deserves a
+ * friendlier prompt than the generic one.
+ */
+const SPECIFIC_PROMPT_KEYS = {
+  'respondToItem.body': 'chat.followup_prompt_respond_to_item_body',
+};
+
+/**
+ * Pick the locale key for a followup prompt.  Op-specific keys win
+ * over the generic fallback.  Pure function — exported for tests.
+ *
+ * @param {string} opId
+ * @param {string} missingParam
+ * @returns {string}    locale key to pass to t()
+ */
+export function pickPromptKey(opId, missingParam) {
+  return SPECIFIC_PROMPT_KEYS[`${opId}.${missingParam}`] ?? 'chat.followup_prompt';
+}
+
+/**
  * Build a PendingFollowUp from a needsForm dispatch + the localiser.
  * Returns null when the dispatch isn't a needsForm or has more than
  * one missing required param (mobile V1 only handles single-missing).
@@ -55,6 +81,7 @@ export function beginFollowUp({ dispatch, originMessageId, t }) {
   const missing = Array.isArray(dispatch.missing) ? dispatch.missing : [];
   if (missing.length !== 1) return null;     // multi-missing → real form
   const missingParam = missing[0];
+  const promptKey = pickPromptKey(dispatch.opId, missingParam);
   return {
     opId:            dispatch.opId,
     appOrigin:       dispatch.appOrigin,
@@ -62,7 +89,7 @@ export function beginFollowUp({ dispatch, originMessageId, t }) {
     replyShape:      dispatch.replyShape ?? 'text',
     prefilledArgs:   { ...(dispatch.prefilledArgs ?? {}) },
     missingParam,
-    promptText:      t('chat.followup_prompt', {
+    promptText:      t(promptKey, {
       opId:   dispatch.opId,
       param:  missingParam,
     }),
