@@ -54,7 +54,7 @@ export const mockHouseholdManifest = {
     {
       id:        'markComplete',
       verb:      'complete',
-      appliesTo: { type: 'chore', state: 'open' },
+      appliesTo: { type: 'chore', state: ['open'] },     // #240 — array form is canonical (matches tasks-v0/calendar/stoop)
       params:    [{
         name: 'choreId', kind: 'string', required: true,
         // Q34 — bare `/done` → list open chores; click row → done.
