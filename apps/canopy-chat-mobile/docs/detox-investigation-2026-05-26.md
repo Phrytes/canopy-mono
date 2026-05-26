@@ -14,11 +14,22 @@ D-1 three tests)`.
 
 Original estimate: ~1 day.  Actual: ~4× that, blocked.
 
-## End state
+## End state — UPDATED 2026-05-26 evening: SHIPPED ✅
 
-**Scaffolding complete + commit-worthy.  Tests do not yet run end-
-to-end on the emulator.**  Resume needs a focused half-hour with one
-specific debug step (see "Next session checklist" below).
+**5/5 Detox tests green on both physical phone (c53828f5) AND
+emulator (Medium_Phone_API_36).**  Full suite ~70 seconds.
+
+The blocker after the release-build switch turned out to be the
+release AndroidManifest not allowing cleartext traffic — Detox's
+`ws://localhost:<port>` bridge connection was silently blocked.
+Fix: `android/app/src/main/res/xml/network_security_config.xml`
+permitting loopback cleartext only (production-safe), wired via
+`android:networkSecurityConfig` in main AndroidManifest.
+
+Bonus catch from the screenshot during debugging: the SlashFAB
+overlapped the chat-send button (`tap('chat-send')` actually hit
+the FAB).  Moved FAB to `bottom: 80` — real UX bug too, not just
+a test artifact.
 
 ## Pipeline of attempts
 

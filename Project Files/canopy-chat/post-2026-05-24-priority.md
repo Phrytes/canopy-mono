@@ -1,26 +1,29 @@
 # Post-2026-05-24 priority — bundled plan
 
 After the 2026-05-24 mobile-pivot wave + the 2026-05-25 first-boot
-debug session (#249 bundle now green on Android).  This doc
-re-frames the remaining work as **bundles with goals**, not a flat
-priority list.  Each bundle says what user-perceptible thing it
-delivers (cross-referenced against the JM-* and J-* journeys) so
-the "why" is visible at a glance.
+debug session + the 2026-05-26 chat-shell-port + Detox-D-1 wave.
+Re-framed as **bundles with goals**, not a flat priority list.
+Each bundle says what user-perceptible thing it delivers (cross-
+referenced against the JM-* and J-* journeys).
 
-## TL;DR
+## Status — 2026-05-26 close-of-day
 
-| Bundle | Goal | Tasks | Blocking? |
-|---|---|---|---|
-| **A — Mobile becomes usable** | A user can actually chat on canopy-chat-mobile (JM-1, JM-2, JM-7, JM-8, JM-9, JM-10 reachable) | #249, #253 | Blocks everything user-perceptible |
-| **B — Cross-platform surface parity** | Every reachable app has the same surface on web + mobile | #237, #250, #251, #252 | Independent of A |
-| **C — Foundation decisions** | Architectural calls land in code, drift gets reconciled | #238, #240, #248 | Independent; each needs one decision |
-| **D — Test infrastructure** | JM-* journeys become regression-tested instead of one-shot smoke | #224 Phase A, then Phase B | Phase A needs #253; Phase B much later |
-| **E — Deferred (parking lot)** | Pre-existing parked work | #167 | Not mobile-pivot |
+| Bundle | Goal | Status |
+|---|---|---|
+| **A — Mobile becomes usable** | User can chat on canopy-chat-mobile (JM-1/2/7/8/9/10) | ✅ Most-shipped — #249 done, #253 steps 1-4 + polish shipped, only step 5+ remaining |
+| **B — Cross-platform surface parity** | Web ≡ mobile per app | ✅ Mostly done — #250 closed (redundant), #251 shipped, #252 remains, #237 likely redundant |
+| **C — Foundation decisions** | Architectural calls land in code | 🚧 #240 done; #248 + #238 still need YOUR architectural calls (A/B/C) |
+| **D — Test infrastructure** | JM-* regression-tested | ✅✅ MASSIVE WIN — **#254 D-0 + D-1 green on phone AND emulator** (5/5 tests, ~70s).  #224 Phase A still pending |
+| **E — Deferred** | Pre-existing parked | #167 unchanged |
 
-**Sequencing recommendation:** Bundle A first (one focused push).
-B and C interleavable in any order after A.  D Phase A after A.
-D Phase B much later (probably end-of-quarter).  E whenever pod
-credentials become available.
+**Today's deliverables (2026-05-26):**
+- ✅ #253 steps 2, 3, 4 + polish (inline keyboards, state morphing, needsForm followup, op-specific prompts)
+- ✅ #240 manifest-state-shape convergence (2-line fix + defensive vitest)
+- ✅ #251 tasks-v0 web edit-skills page
+- 🗑️ #250 closed as misframed (stoop already had it)
+- ✅ **#254 D-0 setup + D-1 smoke tests green** on c53828f5 + Medium_Phone_API_36 emulator
+
+**Sequencing now:** Bundle A's remaining (#253 step 5+ — thread sidebar, real form rendering, DM spawn, file download) is the natural next slice. After that: #252 (tasks-v0 web chat thread page). Then design calls on #238 + #248.
 
 ---
 
@@ -36,48 +39,53 @@ post sync), JM-7 (sub-task spawn), JM-8 (cross-device handoff),
 JM-9 (calendar invite from thread), JM-10 (holiday mode UI).  Six
 of the ten mobile journeys.
 
-### #249 — Finish first Android boot smoke (PARTIAL)
+### #249 — First Android boot smoke ✅ COMPLETED 2026-05-26
 
-Bundle landed green on 2026-05-25.  Manual checklist still owes:
+All checklist items verified on-device:
+- ✅ Cold boot → "Agents ready" status
+- ✅ All 6 NavModel rows render (canopy-chat / household /
+  tasks-v0 / stoop / folio / calendar)
+- ✅ Kill + relaunch — identity persists via VaultAsyncStorage,
+  stoop cache via AsyncStoragePersist, no re-onboarding
+- ✅ NknTransport boot completes (mesh transport status banner
+  is its own polish, gated on nknLib being passed)
 
-- [ ] Cold boot shows "Booting agents…" → "Agents ready" (or
-      surface a redbox if not).
-- [ ] All 6 NavModel rows render (canopy-chat, household,
-      tasks-v0, stoop, folio, calendar).
-- [ ] Kill + relaunch restores identity (VaultAsyncStorage) +
-      stoop's cached state (AsyncStoragePersist).  Should NOT
-      re-onboard.
-- [ ] NknTransport "Mesh transport ready" announces.
+Now ALSO covered by Detox D-1 automated smoke (#254) — no more
+manual reload-and-eyeball required for this checklist.
 
-Expected: 30 mins on device.  Any failure here gates #253 —
-runtime polyfill or vault bug needs fixing first.
-
-### #253 — RN chat-shell port (NEW — was lost from the task list)
+### #253 — RN chat-shell port (steps 1-4 + polish SHIPPED 2026-05-26)
 
 Scope ordered by user value:
 
-1. **Bottom TextInput + send button** on ChatScreen.  Without
-   this nothing about #253 is user-visible.
-2. **Scrolling message list** above the input — render dispatched
-   skill outputs as bubbles.
-3. **Wire `onSubmit` through `bundle.callSkill` / LLM-router** —
-   mirror what the web chat-shell does in
-   `apps/canopy-chat/src/web/chat-shell/index.js`.
-4. **Inline action buttons** in reply bubbles ([Help with] /
-   [Accept] / [Decline] / [Counter] / [Schedule]) — portable
-   handlers already exist from #231.
-5. **Thread sidebar** as a hamburger drawer (no fixed-sidebar
-   space on a phone).  Uses the portable state machine from
-   #231.
+1. ✅ **Bottom TextInput + send button** on ChatScreen.  Full
+   pipeline (parseInput → resolveDispatch → runDispatch →
+   renderReply) wired.  User + bot bubble pair per dispatch.
+2. ✅ **Inline action buttons** on list bubbles.  TouchableOpacity
+   per row.button rendering `<opId>:<itemId>` callback format.
+3. ✅ **State-morphing** — list bubble re-renders in place after
+   a row-tap dispatch (`refreshList.js` helper, mirrors web's
+   `refreshListMessageInPlace`).
+4. ✅ **Form follow-up for needsForm dispatches** — [Help with]
+   on a stoop post now triggers a bot bubble asking "What help
+   are you offering?" (op-specific via `pickPromptKey`); next
+   user input completes the dispatch with both itemId + body.
+5. 🚧 **Thread sidebar / drawer** — pending.  Hamburger drawer
+   leveraging the portable thread-state machine from #231.  No
+   fixed-sidebar space on a phone.
+6. 🚧 **Multi-field form rendering** — pending.  Today's single-
+   missing-param fallback works; multi-field forms need actual
+   form renderer port from web's `renderForm`.
+7. 🚧 **Special-case button behaviors** — pending.  `[Help with]`
+   DM-spawn, `[Start DM]`, `[Download]` file-blob trigger.
 
-Out of scope: native-only paths (push, BLE, camera, voice) —
-those are #224 Phase B.
+Out of scope (deferred to #224 Phase B): native-only paths —
+push, BLE, camera, voice.
 
-Estimated: 2-3 days.
-
-**Acceptance:** typing `/post ladder available` and hitting send
-produces a reply bubble.  Then JM-7's [Help with] inline button
-spawns a DM thread.
+**Acceptance for V2:** typing `/post ladder available` produces
+a reply bubble (done step 1).  [Mark complete] tap updates the
+list in place (done step 3).  [Help with] reaches body-prompt +
+dispatches (done step 4).  Multi-thread + DM spawn still pending
+(step 5-7).
 
 ---
 
@@ -207,54 +215,53 @@ they exist as vitest substrate spines (#229, Layer 1) plus
 manual smoke (Layer 3); the middle layers (Playwright / Detox
 end-to-end) are missing.
 
-**Test pyramid for canopy-chat-mobile (2026-05-26 state):**
+**Test pyramid for canopy-chat-mobile (2026-05-26 close-of-day):**
 
 | Layer | What it covers | Status |
 |---|---|---|
-| **L1 vitest substrate** | Pure JS logic, manifest pipeline, render contracts, devLog toggles, refreshList state morph | ✅ 34 tests green |
+| **L1 vitest substrate** | Pure JS logic, manifest pipeline, render contracts, devLog toggles, refreshList state morph, followup state machine, manifest convergence | ✅ 47 tests green |
 | **L2 RN component (TBD)** | JSX rendering, click handlers wired correctly, conditional render | ⏸ not started — not yet justified by bug history (see priority doc 2026-05-26 strategy note) |
-| **L3a Detox smoke (D-1)** | Cold boot, slash round-trip, restart survival on real Android emulator/device | 🚧 **#254 — going next** |
-| **L3b Playwright on Expo web (Phase A)** | Browser-equivalent JM-1/JM-2/JM-7 cross-tab flows | 🕓 #224 Phase A — after #253 stabilises |
-| **L3c Detox extended (D-2+, Phase B remainder)** | State morph, cross-device JM, native-only JM-3/4/5/6 | 🕓 #224 Phase B — defer until D-1 informs the API |
+| **L3a Detox smoke (D-1)** | Cold boot, 6 NavModel rows, slash round-trip with buttons, restart survival | ✅ **5/5 GREEN** on physical phone (c53828f5) AND emulator (Medium_Phone_API_36).  ~70s for the full suite. |
+| **L3b Playwright on Expo web (Phase A)** | Browser-equivalent JM-1/JM-2/JM-7 cross-tab flows | 🕓 #224 Phase A — natural next step now D-1 is green |
+| **L3c Detox extended (D-2+, Phase B remainder)** | State morph assertion, cross-device JM, native-only JM-3/4/5/6 | 🕓 #224 Phase B — incremental from D-1 |
 
-### #254 — Detox smoke (D-0 + D-1) ⬅ NEXT
+### #254 — Detox smoke (D-0 + D-1) ✅ SHIPPED 2026-05-26
 
-**Goal:** replace Frits's manual reload-and-check loop with three
-automated tests that run on the Android emulator.  Setup is ~half-
-day, plus ~half-day for the 3 tests.
+**Result:** 5/5 tests green in ~70 seconds, both targets:
+- `_hello.test.js` — sanity (chat-screen visible)
+- `coldBoot.test.js` — Agents ready + 6 NavModel rows
+- `slashRoundtrip.test.js` — /mine + Send → list with markComplete buttons
+- `restartSurvival.test.js` — relaunch keeps identity
 
-**The three D-1 tests:**
+**What unblocked it** (the multi-attempt debugging journey, full pipeline
+in `apps/canopy-chat-mobile/docs/detox-investigation-2026-05-26.md`):
+1. Switch to release build to bypass `expo-dev-launcher`'s manual-tap picker.
+2. Scope `:app:assembleAndroidTest` to avoid library-androidTest cascade pulling JUnit 4/5 duplicates.
+3. `packagingOptions.resources.pickFirsts` for META-INF/LICENSE collision.
+4. `disableSynchronization()` AFTER `launchApp()` — our app has perpetual background work so default sync-on-idle times out.
+5. **`network_security_config.xml` allowing loopback cleartext** — the killer.  Without it, release-mode silently blocked the `ws://localhost:<port>` Detox bridge.
+6. SlashFAB moved from `bottom: 24` to `bottom: 80` so it doesn't overlap the chat-send button (real UX bug too).
 
-1. **Cold boot smoke** — launches app, asserts "Agents ready"
-   visible, expanding the debug section shows 6 app rows
-   including `household`.
-2. **Slash command round-trip** — types `/mine`, asserts a list
-   bubble appears with at least one `[Mark complete]` button.
-3. **Restart survival** — relaunches the app, asserts no
-   welcome / onboarding screen + the existing identity persists.
+**Auto-coverage now in place:**
 
-**What gets auto-covered after D-1 ships:**
+| Source | Item | Now covered? |
+|---|---|---|
+| #249 | Cold boot without redbox | ✅ coldBoot test |
+| #249 | 6 NavModel rows incl. household | ✅ coldBoot test |
+| #249 | Restart-survival (vault + stoop cache) | ✅ restartSurvival test |
+| #253 step 1 | TextInput + bubble pair appear | ✅ slashRoundtrip test |
+| #253 step 2 | List bubble has inline-keyboard buttons | ✅ slashRoundtrip test |
+| #249 | "Mesh transport ready" banner | ❌ needs nknLib in test env — D-2 |
+| #253 step 3 | State-morphing (row vanishes post-tap) | ❌ D-2 will add this |
+| #253 step 4 | `[Help with]` follow-up + DM spawn | ❌ D-2 after the step lands |
 
-| Source bundle | Manual item | D-1 auto? | Notes |
-|---|---|---|---|
-| #249 | Cold boot without redbox | ✅ | covered by test 1 |
-| #249 | 6 NavModel rows incl. household | ✅ | covered by test 1 |
-| #249 | Restart-survival (vault + stoop cache) | ✅ | covered by test 3 |
-| #249 | "Mesh transport ready" banner | ❌ | needs nknLib in test env — D-2 |
-| #249 | Slash FAB visible + functional | ✅ partial | test 2 exercises the SlashFAB path |
-| #253 step 1 | TextInput + bubble pair appear | ✅ | covered by test 2 |
-| #253 step 2 | List bubble has inline-keyboard buttons | ✅ | covered by test 2 |
-| #253 step 3 | State-morphing (row vanishes post-tap) | ❌ | D-2 will add this |
-| #253 step 4 | `[Help with]` DM spawn etc. | ❌ | D-2 after step 4 ships |
-
-**Constraints / setup-day specifics:**
-- Uses Android emulator (AVD).  No CI yet — local-only.
-- Jest as the Detox runner (not vitest — Detox can't use vitest).
-- Will sprinkle `testID="…"` on key components (ChatScreen
-  wrapper, input, send button, debug toggle, list row, button).
-- Gradle Detox flavor added (release-with-debugger).
-- New scripts in `apps/canopy-chat-mobile/package.json`:
-  `detox:build`, `detox:test`.
+**How to run:**
+```sh
+cd apps/canopy-chat-mobile
+npm run detox:build                  # ~2 min
+npm run detox:test:attached          # ~70s (phone, default)
+npm run detox:test                   # ~70s (emulator)
+```
 
 ### #224 Phase A — Playwright on Expo web
 
