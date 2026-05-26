@@ -17,24 +17,37 @@ import { mergeManifests, canopyChatManifest } from '../../../canopy-chat/src/ind
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
 } from '../../../canopy-chat/src/core/manifests/mockManifests.js';
+import { mockHouseholdManifest } from '../../../canopy-chat/src/core/agent/mockAgent.js';
 import { calendarManifest } from '../../../calendar/manifest.js';
 
 /**
+ * Single source of truth for the per-app manifest list — used by
+ * composeManifests (dispatch catalog), buildManifestsByOrigin
+ * (renderReply opts), and indirectly by buildNavModels.  See
+ * docs/manifest-pipeline.md for the rationale + the dual-truth
+ * pitfall the household-missing bug surfaced 2026-05-26.
+ */
+function manifestList({ householdManifest } = {}) {
+  return [
+    canopyChatManifest,
+    householdManifest ?? mockHouseholdManifest,
+    mockTasksManifest,
+    mockStoopManifest,
+    mockFolioManifest,
+    calendarManifest,
+  ];
+}
+
+/**
  * @param {object} extras
- * @param {object} [extras.householdManifest]  optional real household
- *                                             manifest (when the agent
- *                                             bundle has booted one)
+ * @param {object} [extras.householdManifest]  override the default
+ *                                             mockHouseholdManifest
+ *                                             (e.g. when the real
+ *                                             agent bundle has booted)
  * @returns {object}  raw merged catalog
  */
 export function composeManifests({ householdManifest } = {}) {
-  const entries = [
-    { manifest: canopyChatManifest },
-    ...(householdManifest ? [{ manifest: householdManifest }] : []),
-    { manifest: mockTasksManifest },
-    { manifest: mockStoopManifest },
-    { manifest: mockFolioManifest },
-    { manifest: calendarManifest },
-  ];
+  const entries = manifestList({ householdManifest }).map((manifest) => ({ manifest }));
   // runtime:'browser' matches what canopy-chat web passes — the
   // manifest validator uses it to gate browser-only ops.  RN is
   // closer to browser than to Node for these purposes (fetch,
@@ -43,3 +56,27 @@ export function composeManifests({ householdManifest } = {}) {
   // to mergeManifests's runtime allowlist.
   return mergeManifests(entries, { runtime: 'browser' });
 }
+
+/**
+ * Build the `{appOrigin → manifest}` map that `renderReply` needs in
+ * its opts to compute per-row inline-keyboard buttons via
+ * `renderChat.inlineKeyboardFor`.  Without this map, list bubbles
+ * come out button-less (regression captured in
+ * test/chatRender.test.js 2026-05-26).
+ *
+ * @param {object} extras
+ * @param {object} [extras.householdManifest]  same override semantics
+ *                                             as composeManifests
+ * @returns {Object<string, object>}  appOrigin → manifest
+ */
+export function buildManifestsByOrigin({ householdManifest } = {}) {
+  const result = {};
+  for (const m of manifestList({ householdManifest })) {
+    result[m.app] = m;
+  }
+  return result;
+}
+
+// Internal export for buildNavModels — same single source so the
+// dual-truth gap that hid the household bug can't reopen.
+export { manifestList as _internalManifestList };

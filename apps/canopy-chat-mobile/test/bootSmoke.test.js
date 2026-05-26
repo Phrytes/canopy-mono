@@ -17,11 +17,12 @@ import { bootAgentBundle }                 from '../src/core/agentBundle.js';
 import { t, initLocalisation, setLang }    from '../src/core/localisation.js';
 
 describe('#222 canopy-chat-mobile portable-core boot', () => {
-  it('composeManifests merges all 5 apps without validator errors', () => {
+  it('composeManifests merges all 6 apps without validator errors', () => {
     const catalog = composeManifests();
-    // All 5 expected apps land in appOrigins (Set).
+    // All 6 expected apps land in appOrigins (Set).
     const apps = [...catalog.appOrigins];
     expect(apps).toContain('canopy-chat');
+    expect(apps).toContain('household');   // 2026-05-26 — mockHouseholdManifest is now the default (was opts-only)
     expect(apps).toContain('tasks-v0');
     expect(apps).toContain('stoop');
     expect(apps).toContain('folio');
@@ -35,12 +36,24 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
     expect(unexpected).toEqual([]);
   });
 
+  it('composeManifests and buildNavModels return the same apps in the same order', () => {
+    // 2026-05-26 dual-truth contract — see docs/manifest-pipeline.md
+    // for the rationale.  A household-missing bug surfaced exactly
+    // because these two lists drifted; this test pins them in sync.
+    const catalogApps = [...composeManifests().appOrigins];
+    const navApps     = buildNavModels().map((n) => n.appOrigin);
+    expect(navApps).toEqual(catalogApps);
+  });
+
   it('buildNavModels produces one NavModel per app via renderMobile', () => {
     const navs = buildNavModels();
     const apps = navs.map((n) => n.appOrigin);
-    // Same five apps, deterministic order matching the bottom-tab
-    // layout (canopy-chat first, content apps after).
+    // Same six apps, deterministic order matching the bottom-tab
+    // layout (canopy-chat first, content apps after).  Must match
+    // composeManifests's order 1:1 — see docs/manifest-pipeline.md
+    // for the dual-truth contract.
     expect(apps[0]).toBe('canopy-chat');
+    expect(apps).toContain('household');
     expect(apps).toContain('tasks-v0');
     expect(apps).toContain('stoop');
     expect(apps).toContain('folio');

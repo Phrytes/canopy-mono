@@ -15,17 +15,19 @@ import { canopyChatManifest } from '../../../canopy-chat/src/index.js';
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
 } from '../../../canopy-chat/src/core/manifests/mockManifests.js';
+import { mockHouseholdManifest } from '../../../canopy-chat/src/core/agent/mockAgent.js';
 import { calendarManifest } from '../../../calendar/manifest.js';
 
 /**
  * @returns {{appOrigin: string, nav: object}[]}  one entry per app,
  *   in the order they show up in the bottom-tab nav (chat/canopy-chat
- *   first, then content apps).
+ *   first, then content apps).  Mirror the composeManifests order so
+ *   the boot-debug list lines up 1:1 with the merged catalog.
  */
 export function buildNavModels({ householdManifest } = {}) {
   const manifests = [
     canopyChatManifest,
-    ...(householdManifest ? [householdManifest] : []),
+    householdManifest ?? mockHouseholdManifest,
     mockTasksManifest,
     mockStoopManifest,
     mockFolioManifest,

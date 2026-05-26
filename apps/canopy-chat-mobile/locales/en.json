@@ -7,7 +7,14 @@
     "placeholder":     { "text": "Type a slash command or message…", "doc": "Input field placeholder" },
     "send":            { "text": "Send",                             "doc": "Send-button label" },
     "active_thread":   { "text": "Active thread",                    "doc": "a11y label on the active-thread title" },
-    "no_messages_yet": { "text": "No messages yet.",                 "doc": "Empty-state for a fresh thread" }
+    "no_messages_yet": { "text": "No messages yet.",                 "doc": "Empty-state for a fresh thread" },
+    "thinking":        { "text": "…",                                "doc": "Placeholder shown while a dispatched skill is in flight" },
+    "unknown_input":   { "text": "I didn't recognise that input.",   "doc": "Bot reply when parseInput returns kind:'unknown' (non-slash or unmatched slash)" },
+    "dispatch_error":  { "text": "Couldn't run that command.",       "doc": "Generic fallback when resolveDispatch returns an error shape" },
+    "list_summary":    { "text": "{{count}} item(s):",               "doc": "Header for list replies (until step 2 ships per-item inline keyboards)" },
+    "canopy_chat_op_pending": { "text": "/{{opId}} is a chat-shell command — not wired on mobile yet.", "doc": "Shown when the user invokes a canopy-chat-host op (/help, /threads, /settings, …) that webMain routes via localBuiltins; the RN port is a later #253 sub-step" },
+    "list_empty":      { "text": "(no items)",                       "doc": "Shown inside a list-kind bubble when items is empty" },
+    "button_tap":      { "text": "{{label}} → {{item}}",             "doc": "Synthetic user-bubble shown when a row button is tapped (#253 step 2 — label is the button label, item the targeted item id)" }
   },
   "nav": {
     "chat":     { "text": "Chat",     "doc": "Bottom-tab label for the main chat view" },
@@ -27,6 +34,15 @@
   "slash": {
     "fab_a11y":          { "text": "Open slash commands",          "doc": "Accessibility label for the bottom-right slash FAB (#241)" },
     "modal_placeholder": { "text": "Type a slash command…",        "doc": "Placeholder shown inside the slash-FAB's TextInput when empty" }
+  },
+  "sync": {
+    "row_ago":         { "text": "{{ago}} ago",                       "doc": "Per-row staleness badge on list items (renderer.js → formatLastSync; {{ago}} comes pre-formatted as '2h' / '30m' / etc. via relativeAgo)" },
+    "saved_locally":   { "text": "saved locally — awaiting peer sync", "doc": "Decentralized sync hint when 0 peers are reachable yet" },
+    "synced_to":       { "text": "synced to {{ok}} of {{total}}",     "doc": "Decentralized sync hint — N of M peers confirmed" },
+    "pending":         { "text": "{{count}} pending",                  "doc": "Decentralized sync hint — count of peers not yet confirmed" },
+    "unreachable":     { "text": "{{count}} unreachable ({{list}})",   "doc": "Decentralized sync hint — count + comma-separated WebIDs" },
+    "podless_empty":   { "text": "no peers polled yet",                "doc": "Pod-less sync hint — empty lastSeen map" },
+    "podless":         { "text": "{{count}} peers · last seen {{ago}} ago", "doc": "Pod-less sync hint — count + relative-ago of oldest peer" }
   },
   "common": {
     "cancel":            { "text": "Cancel",                       "doc": "Generic cancel-button label (slash FAB modal)" },
