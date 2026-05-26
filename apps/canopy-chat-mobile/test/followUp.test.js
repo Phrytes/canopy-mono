@@ -10,7 +10,7 @@
  * together produce a runnable dispatch.
  */
 import { describe, it, expect } from 'vitest';
-import { beginFollowUp, completeFollowUp } from '../src/core/followUp.js';
+import { beginFollowUp, completeFollowUp, pickPromptKey } from '../src/core/followUp.js';
 
 /** The exact shape resolveDispatch returns for `respondToItem` when
  *  the row-tap binds only itemId. */
@@ -101,5 +101,30 @@ describe('#253 step 4 — completeFollowUp', () => {
     });
     const ready = completeFollowUp({ pending, text: 42 });
     expect(ready.args.body).toBe('42');
+  });
+});
+
+describe('#253 step 4 polish — op-specific prompts', () => {
+  it('pickPromptKey returns the op-specific key for respondToItem.body', () => {
+    expect(pickPromptKey('respondToItem', 'body')).toBe(
+      'chat.followup_prompt_respond_to_item_body',
+    );
+  });
+
+  it('pickPromptKey falls back to the generic key for unknown ops', () => {
+    expect(pickPromptKey('someUnknownOp',  'body')).toBe('chat.followup_prompt');
+    expect(pickPromptKey('respondToItem',  'id'  )).toBe('chat.followup_prompt');
+    expect(pickPromptKey('claimTask',      'id'  )).toBe('chat.followup_prompt');
+  });
+
+  it('beginFollowUp routes respondToItem.body through the op-specific key', () => {
+    const pending = beginFollowUp({
+      dispatch: makeNeedsFormDispatch(),    // opId=respondToItem, missing=['body']
+      t:        stubT,
+    });
+    // stubT echoes the key, so the op-specific routing is visible
+    // in the prompt text.
+    expect(pending.promptText).toContain('chat.followup_prompt_respond_to_item_body');
+    expect(pending.promptText).not.toContain('chat.followup_prompt(');
   });
 });

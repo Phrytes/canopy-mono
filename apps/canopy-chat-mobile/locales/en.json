@@ -15,7 +15,8 @@
     "canopy_chat_op_pending": { "text": "/{{opId}} is a chat-shell command — not wired on mobile yet.", "doc": "Shown when the user invokes a canopy-chat-host op (/help, /threads, /settings, …) that webMain routes via localBuiltins; the RN port is a later #253 sub-step" },
     "list_empty":      { "text": "(no items)",                       "doc": "Shown inside a list-kind bubble when items is empty" },
     "button_tap":      { "text": "{{label}} → {{item}}",             "doc": "Synthetic user-bubble shown when a row button is tapped (#253 step 2 — label is the button label, item the targeted item id)" },
-    "followup_prompt": { "text": "What's your {{param}}? (for /{{opId}})", "doc": "Bot bubble asking for a missing required param after a row-tap dispatch returned needsForm (#253 step 4 — opId names the op, param the missing arg)" }
+    "followup_prompt": { "text": "What's your {{param}}? (for /{{opId}})", "doc": "Generic fallback prompt when a row-tap dispatch returns needsForm and the op doesn't have an op-specific entry in pickPromptKey (#253 step 4)" },
+    "followup_prompt_respond_to_item_body": { "text": "What help are you offering?", "doc": "Friendlier prompt for [Help with] on a stoop post (respondToItem.body) — picked via pickPromptKey in src/core/followUp.js" }
   },
   "nav": {
     "chat":     { "text": "Chat",     "doc": "Bottom-tab label for the main chat view" },
