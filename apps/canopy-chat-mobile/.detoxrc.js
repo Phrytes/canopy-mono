@@ -44,7 +44,10 @@ module.exports = {
     },
     attached: {
       type:   'android.attached',
-      device: { adbName: '.*' },    // first attached device
+      // Pin to Frits's specific phone (avoids picking the emulator
+      // when both are connected).  Override with adbName: '.*' if a
+      // different phone gets connected.
+      device: { adbName: 'c53828f5' },
     },
   },
 
