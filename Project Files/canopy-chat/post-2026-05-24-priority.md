@@ -92,15 +92,40 @@ ahead of the other.  Close those.
 J5 (profile management) becomes possible on tasks-v0 web; JM-1
 becomes more useful as folio-mobile gains real ops.
 
-### #250 — tasks-v0 web profile-edit page
+### ~~#250 — tasks-v0 web profile-edit page~~ — RE-FRAMED 2026-05-26
 
-Mobile has it; web doesn't.  Model on stoop's web `profile.html`.
-~half-day.
+Investigation 2026-05-26 found this was misframed: the profile
+skills (`getMyProfile`, `setMyHandle`, `setMyDisplayName`,
+`setMyAvatarUrl`, `setHolidayMode`) all live in `apps/stoop` (not
+tasks-v0), so the canonical web profile-edit page is
+`apps/stoop/web/profile.html` — which **already exists**.
 
-### #251 — tasks-v0 web edit-skills page
+Mobile's `apps/tasks-mobile/src/screens/ProfileMineScreen.jsx`
+reaches across apps to call stoop's skills because the mobile
+shell composes all apps into one InternalBus.  Tasks-v0's web
+server only mounts tasks-v0 skills, so duplicating the page there
+would require either copy-pasting the skills (drift bug) OR
+cross-app remote calls (substrate doesn't do that today).
 
-Mobile uses a dynamic per-crew form schema.  Web needs the same.
-~half-day.
+**Closed as redundant.**  If a tasks-v0-flavoured profile entry
+point is later wanted, the right move is a cross-app link from
+tasks-v0's nav to stoop's `/profile.html`, not a new page.
+
+### #251 — tasks-v0 web edit-skills page — SHIPPED 2026-05-26
+
+`apps/tasks-v0/web/skills.html` mirrors
+`apps/tasks-mobile/src/screens/EditSkillsScreen.jsx`.  Calls
+`getMySkillsFormShape` (load) + `editMySkillsForCrew` (save) —
+both genuinely tasks-v0-native (live in
+`apps/tasks-v0/src/skills/profile.js`, unlike the misframed #250).
+
+Three form sections (prefilled / suggestions / free-entry) match
+the mobile version.  Persist-to-canonical-profile defaults off
+(same caution principle as pod-data sharing).  Taxonomy hints
+surfaced as informational below the save button.
+
+Nav link added to `apps/tasks-v0/web/index.html`.  Page-skill-drift
+canary stays green (614/614 vitest pass).
 
 ### #252 — tasks-v0 web chat thread page
 

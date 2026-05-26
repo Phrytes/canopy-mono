@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tasks — My skills</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/mine.html">My work</a>
+      <a href="/skills.html" class="active" data-i18n="skills.nav_label">Skills</a>
+      <a href="/dag.html">DAG</a>
+      <a href="/availability.html">Availability</a>
+      <a href="/crew.html">Crew</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/inbox.html" id="nav-inbox">Inbox</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section id="skills-section">
+      <h2 data-i18n="skills.section_heading">My skills for the active crew</h2>
+      <p class="hint" data-i18n="skills.section_intro">
+        Crew-scoped tagging.  Skills you mark here let task auto-match
+        suggest you for matching tasks, and let crew planners pick you
+        for the right slots.  Three sources:
+      </p>
+      <ul class="hint" style="margin-top: -0.4rem;">
+        <li data-i18n="skills.bullet_prefilled"><strong>Prefilled</strong> — already on your canonical profile (toggle to keep / drop)</li>
+        <li data-i18n="skills.bullet_suggested"><strong>Suggested</strong> — crew vocabulary you haven't claimed yet (toggle to add)</li>
+        <li data-i18n="skills.bullet_free"><strong>Free entry</strong> — comma-separated tags you want to add</li>
+      </ul>
+
+      <p id="skills-loading" class="hint" data-i18n="skills.loading">Loading form shape…</p>
+      <p id="skills-error" class="hint" hidden></p>
+
+      <div id="skills-form" hidden>
+
+        <!-- Prefilled ─────────────────────────────────────────── -->
+        <div class="code-card" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+          <h3 style="margin-top: 0;" data-i18n="skills.prefilled_heading">Prefilled (from your profile)</h3>
+          <p class="hint" data-i18n="skills.prefilled_intro">
+            These are already on your canonical profile.  Untick any
+            you DON'T want surfaced to this crew.
+          </p>
+          <ul id="prefilled-list" class="skill-list"></ul>
+          <p id="prefilled-empty" class="hint" hidden data-i18n="skills.prefilled_empty">
+            Nothing prefilled — add some via the suggestions or free
+            entry below.
+          </p>
+        </div>
+
+        <!-- Suggestions ───────────────────────────────────────── -->
+        <div class="code-card" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+          <h3 style="margin-top: 0;" data-i18n="skills.suggestions_heading">Suggested (crew vocabulary)</h3>
+          <p class="hint" data-i18n="skills.suggestions_intro">
+            Tags other crew members use that you haven't claimed yet.
+            Tick to add.
+          </p>
+          <ul id="suggestions-list" class="skill-list"></ul>
+          <p id="suggestions-empty" class="hint" hidden data-i18n="skills.suggestions_empty">
+            No suggestions — the crew vocabulary is fresh.
+          </p>
+        </div>
+
+        <!-- Free entry ────────────────────────────────────────── -->
+        <div class="code-card" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+          <h3 style="margin-top: 0;" data-i18n="skills.free_heading">Free entry</h3>
+          <p class="hint" data-i18n="skills.free_intro">
+            Comma-separated tags not in either list above.  Lowercase
+            preferred; we'll normalise.
+          </p>
+          <label style="display: block;">
+            <input id="free-tags" type="text" placeholder="ladder, garden, electrical" style="width: 100%;">
+          </label>
+        </div>
+
+        <!-- Persist toggle ────────────────────────────────────── -->
+        <div class="code-card" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+          <h3 style="margin-top: 0;" data-i18n="skills.persist_heading">Promote to canonical profile</h3>
+          <p class="hint" data-i18n="skills.persist_intro">
+            Off by default — same caution principle as pod-data sharing
+            (default-deny).  When ON, the saved skill set also lands on
+            your canonical profile, surfacing across every crew you join.
+          </p>
+          <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <input id="persist-canonical" type="checkbox">
+            <span data-i18n="skills.persist_label">Also save to canonical profile</span>
+          </label>
+        </div>
+
+        <!-- Save ──────────────────────────────────────────────── -->
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+          <button id="save-skills" type="button" data-i18n="skills.save_btn">Save my skills</button>
+          <span id="save-status" class="hint"></span>
+        </div>
+
+        <!-- Taxonomy hints ────────────────────────────────────── -->
+        <div id="taxonomy-section" class="code-card" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;" hidden>
+          <h3 style="margin-top: 0;" data-i18n="skills.taxonomy_heading">Taxonomy hints</h3>
+          <p class="hint" data-i18n="skills.taxonomy_intro">
+            Substrate suggested these as nearby tags from the shared
+            taxonomy — informational only.
+          </p>
+          <ul id="taxonomy-list" class="hint"></ul>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <style>
+    .skill-list { list-style: none; padding: 0; margin: 0.4rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .skill-list li { padding: 0; }
+    .skill-row { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); font-size: 0.9rem; cursor: pointer; }
+    .skill-row input { margin: 0; }
+    .skill-row.checked { background: var(--primary-soft, #e6f0ff); border-color: var(--primary, #1e88e5); }
+  </style>
+
+  <script type="module">
+    /*
+     * Slice #251 (2026-05-26) — edit-skills page on web.
+     *
+     * Mirrors apps/tasks-mobile/src/screens/EditSkillsScreen.jsx.
+     * Two skill calls:
+     *   - getMySkillsFormShape (load) — returns { prefilled, vocabSuggestions, taxonomyHints }
+     *   - editMySkillsForCrew (save)   — receives { skills: [{tag, ...}, ...], persistToProfile }
+     *
+     * Each row in prefilled / suggestions is a {tag, …meta} object.
+     * The user toggles individual rows + can add free-entry tags +
+     * can opt-in to canonical promotion.
+     */
+    import { callSkill } from '/app.js';
+
+    const $ = (id) => document.getElementById(id);
+
+    const loading      = $('skills-loading');
+    const errorMsg     = $('skills-error');
+    const form         = $('skills-form');
+    const prefilledUL  = $('prefilled-list');
+    const prefilledMt  = $('prefilled-empty');
+    const suggestUL    = $('suggestions-list');
+    const suggestMt    = $('suggestions-empty');
+    const freeIn       = $('free-tags');
+    const persistCB    = $('persist-canonical');
+    const saveBtn      = $('save-skills');
+    const saveStatus   = $('save-status');
+    const taxonomySec  = $('taxonomy-section');
+    const taxonomyUL   = $('taxonomy-list');
+
+    /** Selected map: tag → { ...rowMeta, _checked }.  Mutated by toggleTag. */
+    const selected = new Map();
+
+    function flash(el, text, kind = 'ok') {
+      el.textContent = text;
+      el.style.color = kind === 'err' ? 'var(--danger)' : 'var(--muted)';
+      clearTimeout(el._flashT);
+      el._flashT = setTimeout(() => { el.textContent = ''; }, 2500);
+    }
+
+    function makeSkillRow(meta, checked) {
+      const li = document.createElement('li');
+      const label = document.createElement('label');
+      label.className = `skill-row${checked ? ' checked' : ''}`;
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = checked;
+      cb.addEventListener('change', () => {
+        const cur = selected.get(meta.tag) ?? meta;
+        selected.set(meta.tag, { ...cur, _checked: cb.checked });
+        label.classList.toggle('checked', cb.checked);
+      });
+      const span = document.createElement('span');
+      span.textContent = meta.tag;
+      label.appendChild(cb);
+      label.appendChild(span);
+      li.appendChild(label);
+      return li;
+    }
+
+    function renderTaxonomyHints(hints) {
+      if (!hints?.length) return;
+      taxonomySec.hidden = false;
+      taxonomyUL.innerHTML = '';
+      for (const h of hints) {
+        const li = document.createElement('li');
+        li.textContent = h.tag ?? JSON.stringify(h);
+        taxonomyUL.appendChild(li);
+      }
+    }
+
+    async function loadForm() {
+      try {
+        const data = await callSkill('getMySkillsFormShape', {});
+        loading.hidden = true;
+        form.hidden = false;
+
+        const prefilled        = Array.isArray(data?.prefilled)        ? data.prefilled        : [];
+        const vocabSuggestions = Array.isArray(data?.vocabSuggestions) ? data.vocabSuggestions : [];
+        const taxonomyHints    = Array.isArray(data?.taxonomyHints)    ? data.taxonomyHints    : [];
+
+        // Seed selection map.
+        for (const s of prefilled) {
+          if (s?.tag) selected.set(s.tag, { ...s, _checked: true });
+        }
+        for (const s of vocabSuggestions) {
+          if (s?.tag) selected.set(s.tag, { ...s, _checked: false });
+        }
+
+        // Render prefilled.
+        prefilledUL.innerHTML = '';
+        for (const s of prefilled) {
+          if (s?.tag) prefilledUL.appendChild(makeSkillRow(s, true));
+        }
+        if (!prefilled.length) prefilledMt.hidden = false;
+
+        // Render suggestions.
+        suggestUL.innerHTML = '';
+        for (const s of vocabSuggestions) {
+          if (s?.tag) suggestUL.appendChild(makeSkillRow(s, false));
+        }
+        if (!vocabSuggestions.length) suggestMt.hidden = false;
+
+        renderTaxonomyHints(taxonomyHints);
+      } catch (err) {
+        loading.hidden = true;
+        errorMsg.hidden = false;
+        errorMsg.textContent = `Couldn't load skills form: ${err?.message ?? err}`;
+      }
+    }
+
+    saveBtn.addEventListener('click', async () => {
+      saveBtn.disabled = true;
+      try {
+        // Walk selection map → pick the rows the user wants.
+        const fromToggles = [];
+        for (const [tag, meta] of selected.entries()) {
+          if (meta?._checked) {
+            const out = { ...meta };
+            delete out._checked;
+            fromToggles.push(out);
+          }
+        }
+        // Free-entry tags.
+        const fromFree = String(freeIn.value ?? '')
+          .split(',')
+          .map((s) => s.trim().toLowerCase().replace(/[^a-z0-9_-]/g, ''))
+          .filter(Boolean)
+          .filter((tag) => !selected.has(tag))    // dedupe against toggles
+          .map((tag) => ({ tag }));
+
+        const skills = [...fromToggles, ...fromFree];
+
+        await callSkill('editMySkillsForCrew', {
+          skills,
+          persistToProfile: !!persistCB.checked,
+        });
+        flash(saveStatus, `Saved (${skills.length} tag${skills.length === 1 ? '' : 's'})`);
+        freeIn.value = '';
+      } catch (err) {
+        flash(saveStatus, err?.message ?? 'Failed', 'err');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    loadForm();
+  </script>
+</body>
+</html>
