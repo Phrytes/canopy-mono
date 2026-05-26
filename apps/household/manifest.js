@@ -183,7 +183,7 @@ export const householdManifest = {
     {
       id:        'claim',
       verb:      'claim',
-      appliesTo: { type: 'task', state: 'open' },
+      appliesTo: { type: 'task', state: ['open'] },     // #240 — array form is canonical (matches tasks-v0/calendar/stoop)
       params: [
         { name: 'match', kind: 'string', required: true, ...STR_NONEMPTY },
       ],

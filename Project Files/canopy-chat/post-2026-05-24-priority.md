@@ -131,20 +131,27 @@ implementation is small.
 
 ### #240 — Manifest cross-app convergence
 
-Three concrete drifts identified 2026-05-24:
+**Investigated + resolved 2026-05-26.**  All three of the
+priority-doc drifts turned out to be either already fixed or
+intentional-by-design:
 
-- `state: 'open'` (household, string) vs `state: ['open']`
-  (tasks-v0, array)
-- `appliesTo.kind` is tasks-v0-only; collisions inevitable as
-  others adopt
-- `pickerSource` is calendar-only; tasks-v0 editTask would
-  benefit from the same pattern
+- ~~`state: 'open'` (household, string) vs `state: ['open']`~~ —
+  REAL drift, fixed 2026-05-26 (2 lines in
+  `apps/canopy-chat/src/core/agent/mockAgent.js` +
+  `apps/household/manifest.js`).  Renderer tolerates both shapes
+  per F-SP3-a (locked 2026-05-20); array form is now canonical.
+- ~~`appliesTo.kind` is tasks-v0-only~~ — used legitimately by
+  tasks-v0's 4 subtask ops to gate `inbox-item` sub-types
+  (`subtask-request`, `subtask-proposal`).  No collision today;
+  forward-looking concern only.  No action needed.
+- ~~`pickerSource` is calendar-only~~ — already adopted by tasks-v0
+  via `mockManifests.js` (5+ usages alongside calendar's 5).
+  Resolved before the priority doc was written.
 
-Decision: pick canonical shapes; migrate.  ~1-1.5 day.
-
-**Why it matters now:** #253's TextInput dispatcher relies on
-the merged catalog from `composeManifests()`; drifts surface as
-"weird per-app behavior" at the chat surface.
+**Test added:** `apps/canopy-chat-mobile/test/manifestConvergence.test.js`
+walks every op in the merged catalog + asserts shape invariants
+(`appliesTo.state` is always an array; `appliesTo.type` is string
+or array of strings).  Catches future drift at vitest time.
 
 ### #248 — Stoop-mobile catch-up reconnect-trigger
 
