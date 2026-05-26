@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Detox (#254 — D-0 setup, 2026-05-26).  Android API 31+ requires
+  every Activity with an <intent-filter> to declare an explicit
+  android:exported value.  The Detox InstrumentationActivityInvoker
+  activities don't ship one, so we override their manifest merge
+  here.  android:exported="false" because these are test-only
+  activities — they should NOT be launchable by other apps.
+
+  See https://developer.android.com/guide/topics/manifest/activity-element#exported
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <activity
+            android:name="androidx.test.core.app.InstrumentationActivityInvoker$BootstrapActivity"
+            android:exported="false"
+            tools:replace="android:exported" />
+        <activity
+            android:name="androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity"
+            android:exported="false"
+            tools:replace="android:exported" />
+        <activity
+            android:name="androidx.test.core.app.InstrumentationActivityInvoker$EmptyFloatingActivity"
+            android:exported="false"
+            tools:replace="android:exported" />
+    </application>
+</manifest>

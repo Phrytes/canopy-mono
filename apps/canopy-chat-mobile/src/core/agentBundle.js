@@ -27,19 +27,26 @@
  * The V0 'agent-not-booted' stub fell away in V1 (replaced by
  * boot-failure error or the real factory's reply).
  */
-import { composeManifests } from './composeManifests.js';
+import { composeManifests, buildManifestsByOrigin } from './composeManifests.js';
 
-// Eager imports of the portable factory + the manifest type.  Both
-// are pure ESM, no RN/DOM imports at module-load.  NknTransport is
-// dynamic — we only need it when wiring real cross-peer.
-// Relative import for the same reason composeManifests uses one — pnpm
-// workspace self-resolution from a sibling app needs an install cycle.
-// The package.json "./core-realAgent" export is still the canonical
-// public path for callers OUTSIDE the monorepo.
-import { createRealHouseholdAgent } from '../../../canopy-chat/src/core/agent/realAgent.js';
-// VaultAsyncStorage from @canopy/react-native — pure JS, accepts an
+// `createRealHouseholdAgent` is loaded LAZILY (dynamic import below)
+// so importing agentBundle.js doesn't transitively pull in
+// `@canopy/oidc-session` and the rest of the realAgent chain.  This
+// lets vitest exercise the stub-mode test seam (opts.skillStub) plus
+// composeManifests / buildNavModels even when the real-boot chain
+// isn't installed (e.g. canopy-chat-mobile's `npm install` doesn't
+// declare @canopy/oidc-session yet, but the symlinked-vitest mode
+// would).  Metro on Android still eagerly resolves the chain because
+// Hermes loads the module top-to-bottom.
+//
+// VaultAsyncStorage from @canopy/react-native is pure JS, accepts an
 // injected asyncStorage instance so vitest works without an RN runtime.
 import { VaultAsyncStorage } from '../../../../packages/react-native/src/identity/VaultAsyncStorage.js';
+
+async function loadCreateRealHouseholdAgent() {
+  const mod = await import('../../../canopy-chat/src/core/agent/realAgent.js');
+  return mod.createRealHouseholdAgent;
+}
 
 /**
  * Boot the agent bundle.  See module-doc for the three boot modes.
@@ -64,7 +71,11 @@ import { VaultAsyncStorage } from '../../../../packages/react-native/src/identit
  * }>}
  */
 export async function bootAgentBundle(opts = {}) {
-  const catalog = composeManifests({ householdManifest: opts.householdManifest });
+  const catalog           = composeManifests({ householdManifest: opts.householdManifest });
+  // Same source-of-truth as the catalog — used by renderReply opts so
+  // list bubbles get per-row inline-keyboard buttons (see
+  // docs/manifest-pipeline.md + test/chatRender.test.js).
+  const manifestsByOrigin = buildManifestsByOrigin({ householdManifest: opts.householdManifest });
 
   // Mode 1 — test stub.  No real factory boot; callSkill delegates
   // to the injected stub.  Used by vitest tests that don't want to
@@ -75,6 +86,7 @@ export async function bootAgentBundle(opts = {}) {
       opts.skillStub(opId, args ?? {}, { appOrigin });
     return {
       catalog,
+      manifestsByOrigin,
       callSkill,
       agent:     null,
       transport: { kind: 'stub' },
@@ -112,6 +124,7 @@ export async function bootAgentBundle(opts = {}) {
 
   let agent;
   try {
+    const createRealHouseholdAgent = await loadCreateRealHouseholdAgent();
     agent = await createRealHouseholdAgent({
       chatVault,
       hostVault,
@@ -149,6 +162,7 @@ export async function bootAgentBundle(opts = {}) {
 
   return {
     catalog,
+    manifestsByOrigin,
     callSkill: agent.callSkill,
     agent,
     transport,

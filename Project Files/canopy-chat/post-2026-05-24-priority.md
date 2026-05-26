@@ -1,121 +1,290 @@
-# Post-2026-05-24 priority order
+# Post-2026-05-24 priority — bundled plan
 
-After the massive 2026-05-24 mobile-pivot + parity wave (40+
-commits, 8 mobile slices, 4 stoop-web parity ships, 3 docs).
-What's open + the order I'd tackle it in.
+After the 2026-05-24 mobile-pivot wave + the 2026-05-25 first-boot
+debug session (#249 bundle now green on Android).  This doc
+re-frames the remaining work as **bundles with goals**, not a flat
+priority list.  Each bundle says what user-perceptible thing it
+delivers (cross-referenced against the JM-* and J-* journeys) so
+the "why" is visible at a glance.
 
-## Tier 1 — unblocks everything else
+## TL;DR
 
-### 1. **#249 — Test canopy-chat-mobile (first Android boot + V1 smoke)** ⭐ START HERE
-Validates the entire V1 wave (#222 / #222.5 / #222.6 / #223 /
-#241 SlashFAB) end-to-end on a real device.  Until this happens
-the mobile pivot is "structurally complete + unverified."  Every
-remaining mobile task benefits from knowing whether the V1 boot
-actually works on Hermes.  ~1-2h on-device; might surface gradle
-or polyfill issues that need fixes.
+| Bundle | Goal | Tasks | Blocking? |
+|---|---|---|---|
+| **A — Mobile becomes usable** | A user can actually chat on canopy-chat-mobile (JM-1, JM-2, JM-7, JM-8, JM-9, JM-10 reachable) | #249, #253 | Blocks everything user-perceptible |
+| **B — Cross-platform surface parity** | Every reachable app has the same surface on web + mobile | #237, #250, #251, #252 | Independent of A |
+| **C — Foundation decisions** | Architectural calls land in code, drift gets reconciled | #238, #240, #248 | Independent; each needs one decision |
+| **D — Test infrastructure** | JM-* journeys become regression-tested instead of one-shot smoke | #224 Phase A, then Phase B | Phase A needs #253; Phase B much later |
+| **E — Deferred (parking lot)** | Pre-existing parked work | #167 | Not mobile-pivot |
 
-### 2. **#224 Phase A — Playwright on Expo web parity tests**
-After #249 surfaces real flows, codify the 5 JM-* scenarios that
-fit web-style testing.  Reuses
-`apps/canopy-chat/test-browser/helpers.js`.  ~1d per scenario;
-schedule the highest-value 2-3 first (JM-1 cross-app, JM-2
-offline-post, JM-7 sub-task spawn).
+**Sequencing recommendation:** Bundle A first (one focused push).
+B and C interleavable in any order after A.  D Phase A after A.
+D Phase B much later (probably end-of-quarter).  E whenever pod
+credentials become available.
 
-## Tier 2 — concrete tech debt that grows if ignored
+---
 
-### 3. **#240 — manifest cross-app convergence** (now actionable)
-Three real drifts found 2026-05-24:
-- `state: 'open'` (household, string) vs `state: ['open']`
-  (tasks-v0, array) — same field, two shapes
-- `appliesTo.kind` is tasks-v0-only; other apps will collide
-- `pickerSource` is calendar-only; tasks-v0 editTask would
-  benefit from the same pattern
-~1-1.5d to pick canonical shapes, migrate, strengthen validator.
+## Bundle A — Mobile becomes usable ⭐
 
-### 4. **#248 — wire reconnect-trigger half of stoop-mobile catch-up**
-The lastSeenFrom persistence shipped in #247; the actual request-
-on-reconnect needs an architectural choice (A: add NknTransport
-to stoop-mobile, ~1.5d, best long-term; B: translate envelopes,
-~half-day; C: stoop-native via notify-envelope, ~1d).  Decide
-first, then ship.  Closes the last user-visible stoop-mobile
-substrate gap.
+**Goal:** turn canopy-chat-mobile from a curiosity into something
+a user can actually have a conversation in.  Today the app boots,
+shows the per-app section counts and a "/" FAB, and that's it —
+there's no way to type freely, no message list, no thread sidebar.
 
-## Tier 3 — parity expansion (codeable now, no decisions blocking)
+**Journeys unblocked:** JM-1 (compose across apps), JM-2 (offline
+post sync), JM-7 (sub-task spawn), JM-8 (cross-device handoff),
+JM-9 (calendar invite from thread), JM-10 (holiday mode UI).  Six
+of the ten mobile journeys.
 
-### 5. **#237 — folio-mobile substrate wiring**
-folio-mobile is essentially a UI stub: ShareScreen.js has no
-shareFolder / saveToMyPod / downloadFile / listFiles / Q29
-getFileSnapshot calls.  ~1d to wire the 5 skills.  Alternative:
-defer until canopy-chat-mobile composes folio via the shared
-factory (Option B from #220 audit), making this redundant.
-Pick a path; ship either way.
+### #249 — Finish first Android boot smoke (PARTIAL)
 
-### 6. **#250 — tasks-v0 web profile-edit** (#242a, cheapest)
-Mobile has it, web doesn't.  Model after stoop's web profile.html.
+Bundle landed green on 2026-05-25.  Manual checklist still owes:
+
+- [ ] Cold boot shows "Booting agents…" → "Agents ready" (or
+      surface a redbox if not).
+- [ ] All 6 NavModel rows render (canopy-chat, household,
+      tasks-v0, stoop, folio, calendar).
+- [ ] Kill + relaunch restores identity (VaultAsyncStorage) +
+      stoop's cached state (AsyncStoragePersist).  Should NOT
+      re-onboard.
+- [ ] NknTransport "Mesh transport ready" announces.
+
+Expected: 30 mins on device.  Any failure here gates #253 —
+runtime polyfill or vault bug needs fixing first.
+
+### #253 — RN chat-shell port (NEW — was lost from the task list)
+
+Scope ordered by user value:
+
+1. **Bottom TextInput + send button** on ChatScreen.  Without
+   this nothing about #253 is user-visible.
+2. **Scrolling message list** above the input — render dispatched
+   skill outputs as bubbles.
+3. **Wire `onSubmit` through `bundle.callSkill` / LLM-router** —
+   mirror what the web chat-shell does in
+   `apps/canopy-chat/src/web/chat-shell/index.js`.
+4. **Inline action buttons** in reply bubbles ([Help with] /
+   [Accept] / [Decline] / [Counter] / [Schedule]) — portable
+   handlers already exist from #231.
+5. **Thread sidebar** as a hamburger drawer (no fixed-sidebar
+   space on a phone).  Uses the portable state machine from
+   #231.
+
+Out of scope: native-only paths (push, BLE, camera, voice) —
+those are #224 Phase B.
+
+Estimated: 2-3 days.
+
+**Acceptance:** typing `/post ladder available` and hitting send
+produces a reply bubble.  Then JM-7's [Help with] inline button
+spawns a DM thread.
+
+---
+
+## Bundle B — Cross-platform surface parity
+
+**Goal:** the platform-parity invariant
+([[platform-parity]]) says web ≡ mobile for every app.  Today's
+audit ([[web-mobile-parity-gaps]]) lists 4 surfaces where one is
+ahead of the other.  Close those.
+
+**Journeys unblocked:** none new — these are completeness fills.
+J5 (profile management) becomes possible on tasks-v0 web; JM-1
+becomes more useful as folio-mobile gains real ops.
+
+### #250 — tasks-v0 web profile-edit page
+
+Mobile has it; web doesn't.  Model on stoop's web `profile.html`.
 ~half-day.
 
-### 7. **#251 — tasks-v0 web edit-skills** (#242b, medium)
-Mobile EditSkillsScreen uses a dynamic per-crew form schema.  Web
-needs the same.  ~half-day.
+### #251 — tasks-v0 web edit-skills page
 
-### 8. **#252 — tasks-v0 web chat thread** (#242c, biggest)
-Mobile has peer-to-peer task chat.  Web has zero chat surface.
-Needs full message-list + send-input + appeal-button page.
+Mobile uses a dynamic per-crew form schema.  Web needs the same.
+~half-day.
+
+### #252 — tasks-v0 web chat thread page
+
+Mobile has peer-to-peer task chat.  Web has zero chat surface for
+tasks.  Needs message-list + send-input + appeal-button page.
 ~1 day.
 
-## Tier 4 — needs design call before code
+### #237 — folio-mobile substrate wiring (5 skills)
 
-### 9. **#238 — calendar substrate path on mobile**
-Mobile uses native calendar sync only; substrate's
-`calendar_addEvent` + RSVP not wired.  Three options:
-(a) Substrate only (drop native);
-(b) Native only (lose cross-peer RSVP);
-(c) Both (sync native ↔ substrate).
-Pick first, then ~1.5d to wire.
+`shareFolder`, `saveToMyPod`, `downloadFile`, `listFiles`,
+`getFileSnapshot` are stubbed on mobile.  ~1 day.
 
-## Tier 5 — deferred / pre-existing
+**Decision point on #237:** if Bundle A's #253 ends up
+composing folio via the shared browser-factory (Option B from
+the 2026-05-24 audit), this becomes redundant.  Re-evaluate
+once #253 ships.
 
-### 10. **#167 — provision 3 pod creds + flip 9 it.todo to real**
-Pre-existing deferred from v0.7.P3 work.  Needs real Solid pod
-accounts; not mobile-pivot territory.
+---
 
-### 11. **#224 Phase B — Detox real-device cross-device tests**
-After Phase A.  Covers the native-only JM-* journeys (JM-3 push,
-JM-4 BLE, JM-5 camera, JM-6 voice).  Detox setup is its own
-investment; defer until Phase A informs the API.
+## Bundle C — Foundation decisions
 
-## Manual-only (always Frits's turf, never automated)
+**Goal:** convert open architectural questions into code.  Each
+item here has one design call to make first; once decided the
+implementation is small.
 
-- **Browser smoke per app** — pending since 2026-05-23 + the
-  2026-05-24 wave (#218 / #219 / #231.* / #243 / #244 / #245).
-  See `[[canopy-chat-smoke-pending]]` memory for the checklist.
-- **Real device verification of NknTransport (#223)** — unit
-  tests use a mock; the real network connect needs a phone.
-- **iOS** — out of scope per `[[stoop-mobile]]` convention.
+**Journeys unblocked:** JM-9 (calendar invite from thread) needs
+#238; JM-2 (offline post sync) needs #248's reconnect-trigger.
 
-## Snapshot — what shipped tonight
+### #240 — Manifest cross-app convergence
 
-7 substantive ships + 1 audit doc + 2 follow-ups filed + 2 memory
-updates:
+Three concrete drifts identified 2026-05-24:
 
-| Task | What | Tests delta |
+- `state: 'open'` (household, string) vs `state: ['open']`
+  (tasks-v0, array)
+- `appliesTo.kind` is tasks-v0-only; collisions inevitable as
+  others adopt
+- `pickerSource` is calendar-only; tasks-v0 editTask would
+  benefit from the same pattern
+
+Decision: pick canonical shapes; migrate.  ~1-1.5 day.
+
+**Why it matters now:** #253's TextInput dispatcher relies on
+the merged catalog from `composeManifests()`; drifts surface as
+"weird per-app behavior" at the chat surface.
+
+### #248 — Stoop-mobile catch-up reconnect-trigger
+
+Decision: A (add NknTransport, ~1.5d, best long-term) / B
+(translate envelopes, ~half-day) / C (stoop-native via
+notify-envelope, ~1d).  Closes the last user-visible
+stoop-mobile substrate gap.
+
+**Why it matters now:** JM-2 (offline post sync) is functionally
+incomplete without the reconnect-trigger half.
+
+### #238 — Calendar substrate path on mobile
+
+Decision: (a) substrate only (drop native) / (b) native only
+(lose cross-peer RSVP) / (c) both (sync native ↔ substrate).
+~1.5d after decision.
+
+**Why it matters now:** JM-9 (calendar invite from a stoop
+thread) needs this — currently mobile's calendar can only show
+local events, not cross-peer ones.
+
+---
+
+## Bundle D — Test infrastructure
+
+**Goal:** the JM-* journeys become regression-tested.  Today
+they exist as vitest substrate spines (#229, Layer 1) plus
+manual smoke (Layer 3); the middle layers (Playwright / Detox
+end-to-end) are missing.
+
+**Test pyramid for canopy-chat-mobile (2026-05-26 state):**
+
+| Layer | What it covers | Status |
 |---|---|---|
-| #246 | Slash-coverage audit + folio LLM-only call + first-mount-wins policy | — |
-| #243 | Stoop web rotateMyAddress + unmutePeer | 0 (locale-integrity passes) |
-| #244 | Stoop web kind sub-picker | 0 |
-| #245 | Stoop web group switch/join/create | 0 |
-| #239 | Stoop-mobile catch-up verify (→ #247 filed) | — |
-| #241 | Canopy-chat-mobile slash FAB + filter | +10 (mobile 7→17) |
-| #247 | Stoop-mobile lastSeenFrom + wireCatchUp scaffold (→ #248 filed) | +14 (mobile 918→932) |
+| **L1 vitest substrate** | Pure JS logic, manifest pipeline, render contracts, devLog toggles, refreshList state morph | ✅ 34 tests green |
+| **L2 RN component (TBD)** | JSX rendering, click handlers wired correctly, conditional render | ⏸ not started — not yet justified by bug history (see priority doc 2026-05-26 strategy note) |
+| **L3a Detox smoke (D-1)** | Cold boot, slash round-trip, restart survival on real Android emulator/device | 🚧 **#254 — going next** |
+| **L3b Playwright on Expo web (Phase A)** | Browser-equivalent JM-1/JM-2/JM-7 cross-tab flows | 🕓 #224 Phase A — after #253 stabilises |
+| **L3c Detox extended (D-2+, Phase B remainder)** | State morph, cross-device JM, native-only JM-3/4/5/6 | 🕓 #224 Phase B — defer until D-1 informs the API |
 
-## Cumulative state of the mobile pivot
+### #254 — Detox smoke (D-0 + D-1) ⬅ NEXT
 
-**Structurally complete:** the renderMobile projector exists, the
-canopy-chat-mobile skeleton boots with real factory wiring, NKN
-transport is built, AsyncStorage covers all known persistence
-paths, the slash FAB is wired, every web wizard has a portable
-state core ready for RN re-use.
+**Goal:** replace Frits's manual reload-and-check loop with three
+automated tests that run on the Android emulator.  Setup is ~half-
+day, plus ~half-day for the 3 tests.
 
-**Awaiting real-device validation** (the #249 step).  Once that's
-green, the remaining work is per-app polish (#240, #237, #242a-c)
-and the cross-device test infrastructure (#224).
+**The three D-1 tests:**
+
+1. **Cold boot smoke** — launches app, asserts "Agents ready"
+   visible, expanding the debug section shows 6 app rows
+   including `household`.
+2. **Slash command round-trip** — types `/mine`, asserts a list
+   bubble appears with at least one `[Mark complete]` button.
+3. **Restart survival** — relaunches the app, asserts no
+   welcome / onboarding screen + the existing identity persists.
+
+**What gets auto-covered after D-1 ships:**
+
+| Source bundle | Manual item | D-1 auto? | Notes |
+|---|---|---|---|
+| #249 | Cold boot without redbox | ✅ | covered by test 1 |
+| #249 | 6 NavModel rows incl. household | ✅ | covered by test 1 |
+| #249 | Restart-survival (vault + stoop cache) | ✅ | covered by test 3 |
+| #249 | "Mesh transport ready" banner | ❌ | needs nknLib in test env — D-2 |
+| #249 | Slash FAB visible + functional | ✅ partial | test 2 exercises the SlashFAB path |
+| #253 step 1 | TextInput + bubble pair appear | ✅ | covered by test 2 |
+| #253 step 2 | List bubble has inline-keyboard buttons | ✅ | covered by test 2 |
+| #253 step 3 | State-morphing (row vanishes post-tap) | ❌ | D-2 will add this |
+| #253 step 4 | `[Help with]` DM spawn etc. | ❌ | D-2 after step 4 ships |
+
+**Constraints / setup-day specifics:**
+- Uses Android emulator (AVD).  No CI yet — local-only.
+- Jest as the Detox runner (not vitest — Detox can't use vitest).
+- Will sprinkle `testID="…"` on key components (ChatScreen
+  wrapper, input, send button, debug toggle, list row, button).
+- Gradle Detox flavor added (release-with-debugger).
+- New scripts in `apps/canopy-chat-mobile/package.json`:
+  `detox:build`, `detox:test`.
+
+### #224 Phase A — Playwright on Expo web
+
+After #253 surfaces the real chat UI, codify 2-3 highest-value
+JM-* scenarios in Playwright.  Reuses
+`apps/canopy-chat/test-browser/helpers.js`.  ~1d per scenario;
+JM-1 + JM-2 + JM-7 are the recommended first three.
+
+### #224 Phase B — Detox extended (D-2+)
+
+After D-1 lands + the API is informed by real usage.  Covers:
+- State-morphing assertions (tap → row vanishes from origin bubble)
+- Cross-device JM flows on paired emulators
+- Native-only JM-3 (push), JM-4 (BLE), JM-5 (camera), JM-6 (voice)
+
+Detox setup itself is shared with D-1; the extended scope is the
+expensive part.
+
+---
+
+## Bundle E — Deferred (parking lot)
+
+### #167 — Provision 3 pod creds + flip 9 it.todo to real
+
+Pre-existing deferred from v0.7.P3 work.  Needs real Solid pod
+accounts; not mobile-pivot territory.  Whenever creds become
+available.
+
+---
+
+## What's NOT in this plan (deliberately)
+
+- **iOS** — out of scope per [[stoop-mobile]] convention; would
+  be a separate quarter's work.
+- **Browser smoke per app** — manual-only, never automated.
+  See [[canopy-chat-smoke-pending]] memory for the checklist.
+- **Real-device verification of NknTransport (#223)** — manual,
+  needs two physical phones; rolls into Bundle D.
+
+---
+
+## Cumulative state of the mobile pivot (2026-05-26)
+
+**Bundle complete + on-device:** the renderMobile projector,
+canopy-chat-mobile composition shell, NKN-on-RN transport,
+AsyncStorage vault + ItemStore, slash FAB, every web wizard's
+portable state core.  Bundle green on Android (#249 partial).
+
+**The honest gap:** the *chat surface itself* (#253) is the only
+remaining mobile blocker between "structurally complete" and
+"user-usable."  Everything else (Bundles B/C/D) is polish,
+parity, or testing.
+
+## Snapshot — what shipped 2026-05-24 + -25
+
+| Date | Task | What |
+|---|---|---|
+| 2026-05-24 | #246 | Slash-coverage audit + folio LLM-only call + first-mount-wins policy |
+| 2026-05-24 | #243 | Stoop web rotateMyAddress + unmutePeer |
+| 2026-05-24 | #244 | Stoop web kind sub-picker |
+| 2026-05-24 | #245 | Stoop web group switch/join/create |
+| 2026-05-24 | #239 | Stoop-mobile catch-up verify (→ #247 filed) |
+| 2026-05-24 | #241 | Canopy-chat-mobile slash FAB + filter |
+| 2026-05-24 | #247 | Stoop-mobile lastSeenFrom + wireCatchUp scaffold (→ #248 filed) |
+| 2026-05-25 | #249 (bundle) | metro.config.js + 10 dep additions + stray-store cleanup → Android bundle green |

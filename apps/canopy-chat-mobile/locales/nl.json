@@ -7,7 +7,14 @@
     "placeholder":     { "text": "Typ een slash-commando of bericht…", "doc": "Input-placeholder" },
     "send":            { "text": "Verzend",                            "doc": "Verzendknop-label" },
     "active_thread":   { "text": "Actieve thread",                     "doc": "a11y label op actieve thread-titel" },
-    "no_messages_yet": { "text": "Nog geen berichten.",                "doc": "Lege thread" }
+    "no_messages_yet": { "text": "Nog geen berichten.",                "doc": "Lege thread" },
+    "thinking":        { "text": "…",                                  "doc": "Placeholder terwijl een dispatch loopt" },
+    "unknown_input":   { "text": "Ik herkende die invoer niet.",       "doc": "Bot-antwoord bij parseInput kind:'unknown'" },
+    "dispatch_error":  { "text": "Kon dat commando niet uitvoeren.",   "doc": "Fallback bij resolveDispatch-fout" },
+    "list_summary":    { "text": "{{count}} item(s):",                  "doc": "Lijst-kop tot stap 2 inline-keyboards landt" },
+    "canopy_chat_op_pending": { "text": "/{{opId}} is een chat-shell-commando — nog niet bedraad op mobiel.", "doc": "Toont wanneer een canopy-chat-host op (/help, /threads, /settings, …) gebruikt wordt; de RN-port is een latere #253-substap" },
+    "list_empty":      { "text": "(geen items)",                       "doc": "Toont in een list-bubble wanneer items leeg is" },
+    "button_tap":      { "text": "{{label}} → {{item}}",                "doc": "Synthetische gebruiker-bubble bij een rij-knop tap (#253 stap 2)" }
   },
   "nav": {
     "chat":     { "text": "Chat",          "doc": "Onderste tab voor hoofdchat" },
@@ -27,6 +34,15 @@
   "slash": {
     "fab_a11y":          { "text": "Slash-commando's openen",        "doc": "Toegankelijkheids-label voor de rechterhoek-FAB (#241)" },
     "modal_placeholder": { "text": "Typ een slash-commando…",        "doc": "Placeholder in de slash-FAB-TextInput wanneer leeg" }
+  },
+  "sync": {
+    "row_ago":         { "text": "{{ago}} geleden",                    "doc": "Rij-staleness-badge (renderer.js → formatLastSync)" },
+    "saved_locally":   { "text": "lokaal opgeslagen — wacht op sync",   "doc": "Decentrale sync-hint zonder bereikbare peers" },
+    "synced_to":       { "text": "gesynced naar {{ok}} van {{total}}",  "doc": "Decentrale sync-hint" },
+    "pending":         { "text": "{{count}} in afwachting",             "doc": "Decentrale sync-hint" },
+    "unreachable":     { "text": "{{count}} onbereikbaar ({{list}})",   "doc": "Decentrale sync-hint" },
+    "podless_empty":   { "text": "nog geen peers gepolld",              "doc": "Pod-loze sync-hint — lege lastSeen-map" },
+    "podless":         { "text": "{{count}} peers · laatst gezien {{ago}} geleden", "doc": "Pod-loze sync-hint" }
   },
   "common": {
     "cancel":            { "text": "Annuleren",                       "doc": "Generieke annuleren-knop (slash-FAB modal)" },
