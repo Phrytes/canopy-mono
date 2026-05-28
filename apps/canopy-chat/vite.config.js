@@ -115,7 +115,12 @@ export default defineConfig({
     emptyOutDir: true,
     target:      'es2022',
     rollupOptions: {
-      input: 'web/index.html',
+      // Multi-page: the classic shell (index.html) + the additive v2
+      // circle launcher (circle.html). Both reuse the same src/ + web/v2.
+      input: {
+        main:   'web/index.html',
+        circle: 'web/circle.html',
+      },
     },
   },
 });

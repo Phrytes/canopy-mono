@@ -47,11 +47,15 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
 - [x] 0.1b `src/v2/circleSources.js` (shared) — adapter mapping the host's
       `callSkill` onto the fetchers, **reusing existing ops** `getMyCrews` +
       `getCurrentGroup` (+ optional circlesStore); no new ops. 5 unit tests green
-- [ ] 0.2 `circle.*` locale keys in `en.json` (default) + `nl.json` (both apps)
-- [ ] 0.3 **web** — new Vite entry `circle.html` + `web/v2/circleLauncher.js`:
-      circle tiles (board 1B) + "+ new circle" (wires `/create-group`)
-- [ ] 0.4 **mobile** — `screens/v2/CircleLauncherScreen.js` + a nav entry to
-      reach it; same tiles over the shared `circleModel`
+- [x] 0.2 `circle.*` locale keys in `en.json` (default) + `nl.json` (both apps)
+      ✓ title/new/members/empty/loading × 4 files, JSON valid + key parity
+- [x] 0.3 **web** — new Vite entry `circle.html` + `web/v2/circleLauncher.js`
+      (pure DOM renderer, 6 happy-dom tests green) + `web/v2/circleApp.js` boot
+      (reuses agent + circleSources, graceful-empty) + multi-page vite input.
+      ⚠ renderer tested; live boot/data needs a **browser check**.
+- [x] 0.4 **mobile** — `screens/v2/CircleLauncherScreen.js` over the shared
+      model + an additive toggle pill in `App.js` (ChatScreen untouched, still
+      default). ⚠ needs a **device check** (RN not unit-rendered here).
 - [ ] 0.5 F1 — open a circle → scoped view: filter the composed surface by
       `circleId` (adopt `@canopy/circles` Audience in `filter.js`/router) — shared
 - [ ] 0.6 Smoke: launcher lists real circles + opening one scopes the feed,
@@ -105,3 +109,11 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
   `test/v2/circleModel.test.js` (8 tests green). Next: 0.2 locale keys, then
   the launcher views — web (`circle.html` + `web/v2/`) and mobile
   (`screens/v2/CircleLauncherScreen`) — over the shared model.
+- **2026-05-29** — Launcher views shipped (0.2–0.4). Locale keys (4 files);
+  web `circle.html` + DOM renderer (6 happy-dom tests, 19 v2 tests total green)
+  + defensive boot + multi-page vite; mobile `CircleLauncherScreen` + additive
+  App.js toggle pill. Shared model re-exported from `src/index.js` for mobile.
+  Full canopy-chat suite: 874 pass / 1 unrelated flake (podStorage timing,
+  passes isolated). **Needs human check:** web `circle.html` in a browser +
+  the mobile "Circles" pill on device. Next: F1 (scope the shell by the opened
+  circle) + real data wiring on both surfaces.
