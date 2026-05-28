@@ -98,6 +98,19 @@ export async function buildCharacterizationFixture({
     join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'ui', 'dagFlatten.js'),
     'utf8',
   );
+  // task.html (2026-05-27) — overlay the per-task detail helpers +
+  // the taskStatus module the page imports via `/lib/`. Mirror of
+  // `bin/tasks-ui.js`. Without these the characterization corpus's
+  // task.html fetch returns the page body but the module scripts
+  // can't resolve their imports under the fixture.
+  const taskDetailJs = await readFile(
+    join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'ui', 'taskDetail.js'),
+    'utf8',
+  );
+  const taskStatusJs = await readFile(
+    join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'ui', 'taskStatus.js'),
+    'utf8',
+  );
 
   // Slice B.2.0 — overlay @canopy/web-adapter helpers under
   // `/lib/web-adapter/<basename>.js`. Same pattern as dagFlatten.js;
@@ -133,6 +146,8 @@ export async function buildCharacterizationFixture({
       '/tasks-config.json': JSON.stringify(tasksConfig),
       '/navmodel.json':     JSON.stringify(navModel),
       '/lib/dagFlatten.js': dagFlattenJs,
+      '/lib/taskDetail.js': taskDetailJs,
+      '/lib/taskStatus.js': taskStatusJs,
       ...webAdapterFiles,
       ...(extraStaticFiles ?? {}),
     },

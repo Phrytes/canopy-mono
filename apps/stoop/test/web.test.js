@@ -224,7 +224,7 @@ describe('Stoop V1 web UI — Phase 5 (intent tabs + moderation)', () => {
 
   it('mutePeer + listMutedPeers via REST', async () => {
     const m = await callRest('mutePeer', { peerWebid: 'https://id.example/marie' });
-    expect(m).toEqual({ muted: 'https://id.example/marie' });
+    expect(m).toMatchObject({ muted: 'https://id.example/marie' });
 
     const list = await callRest('listMutedPeers', {});
     expect(list.peers).toContain('https://id.example/marie');

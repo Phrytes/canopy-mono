@@ -20,6 +20,7 @@
 import { renderChat } from '@canopy/app-manifest';
 
 import { formatSyncHints, formatLastSync } from './syncHints.js';
+import { QR_URI_PREFIXES }                 from './core/qrSchemes.js';
 
 /**
  * @typedef {object} RenderedReply
@@ -158,14 +159,20 @@ export function renderReply(reply, opts = {}) {
 
   if (shape === 'brief') {
     // v0.7 — Q30 aggregator output.  Payload is a BriefReply
-    // (sections[], generatedAt, cacheKey).  DOM adapter renders.
+    // (sections[], generatedAt, cacheKey, optional emptyMessage).
+    // DOM adapter renders.
     return {
       kind: 'brief',
       messageId, threadId,
       lifecycleState: 'live',   // A2 hybrid — brief stays live until close
-      sections:    Array.isArray(reply.payload?.sections) ? reply.payload.sections : [],
-      generatedAt: reply.payload?.generatedAt ?? Date.now(),
-      cacheKey:    reply.payload?.cacheKey,
+      sections:     Array.isArray(reply.payload?.sections) ? reply.payload.sections : [],
+      generatedAt:  reply.payload?.generatedAt ?? Date.now(),
+      cacheKey:     reply.payload?.cacheKey,
+      // A3 follow-up: brief.js sets this when every section was
+      // filtered out by isEmpty — renderer can show the hint.
+      emptyMessage: typeof reply.payload?.emptyMessage === 'string'
+        ? reply.payload.emptyMessage
+        : undefined,
     };
   }
 
@@ -239,18 +246,8 @@ function extractRecordFields(payload) {
   return out;
 }
 
-/**
- * QR-scheme URIs that the chat-shell renders as actual QR canvases.
- * Apps return a `payload` string like `stoop-contact://...` from
- * their QR-payload skills (getContactShareQr, getInviteQrPayload).
- * The renderer detects the prefix here + dispatches to the QR canvas
- * path in domAdapter.js's renderRecordPanel.
- */
-const QR_URI_PREFIXES = [
-  'stoop-contact://',
-  'stoop-invite://',
-  'canopy-chat://',    // future use for chat-shell invites
-];
+// QR_URI_PREFIXES lifted to ./core/qrSchemes.js so the mobile chat-shell
+// can share the registry (2026-05-27).
 
 function classifyFieldKind(v) {
   if (typeof v === 'string') {
@@ -321,6 +318,18 @@ export function formatText(payload, t = DEFAULT_T) {
       }
       return t('common.failed');
     }
+    // A5/A6 follow-up (2026-05-27 user real-device test) — many
+    // mutating skills return `{itemId, queued}` etc with no
+    // friendly `message`.  Synthesise something readable from the
+    // obvious fields before falling back to JSON dump.
+    const id    = payload.itemId ?? payload.id ?? payload.requestId;
+    const label = payload.label  ?? payload.text ?? payload.title;
+    if (typeof id === 'string' && id !== '') {
+      const queuedHint = payload.queued === true ? ' (queued)' : '';
+      return label
+        ? `✓ ${label}${queuedHint}`
+        : `✓ Done (${id})${queuedHint}`;
+    }
   }
   // Last resort — surface the raw shape so the developer notices.
   try { return JSON.stringify(payload); }
@@ -364,9 +373,21 @@ function renderListItems(payload, opts, t) {
       : [];
     // v0.6 — per-row staleness label from item._lastSync.
     const staleHint = formatLastSync(item?._lastSync, t);
-    return staleHint
-      ? { id, label, buttons, staleHint }
-      : { id, label, buttons };
+    // Bundle F P4-followup-1 (#266) — surface item.embed so a
+    // [Download] tap on a folio file-card can reach the inline
+    // snapshot bytes (mobile's saveBase64File path).  Pure pass-
+    // through; renderer doesn't interpret the embed shape.
+    const embed = (item && typeof item === 'object' && item.embed) || undefined;
+    const out = { id, label, buttons };
+    if (staleHint) out.staleHint = staleHint;
+    if (embed)     out.embed     = embed;
+    // 2026-05-27 — contact rows carry the peer's NKN address as
+    // `peerAddr` so the [DM] button can target it directly (see
+    // realAgent.js listContacts mapper).  Pure pass-through.
+    if (item && typeof item === 'object' && typeof item.peerAddr === 'string' && item.peerAddr) {
+      out.peerAddr = item.peerAddr;
+    }
+    return out;
   });
 }
 

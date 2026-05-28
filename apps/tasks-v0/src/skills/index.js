@@ -23,6 +23,8 @@
 import { defineSkill } from '@canopy/core';
 import { computeStatus, effectiveStatus, unmetDeps, detectCycle } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';
+// DESIGN gap #2 (2026-05-27) — `_sync` reply envelope for staleness hints.
+import { simulateSync, decorateWithLastSync } from './_syncEnvelope.js';
 import { validateCanonical } from '@canopy/item-types';
 import { saveCrewConfig, loadCrewConfig, KIND_DEFAULTS } from '../Crew.js';
 import {
@@ -421,7 +423,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
         openDeps: unmetDeps(t, open, closed),
       }));
       const filtered = a.status ? items.filter((t) => t.status === a.status) : items;
-      return { items: filtered };
+      return { items: decorateWithLastSync(filtered), _sync: simulateSync() };
     }, {
       description: 'List open tasks with computed status; filters: type/requiredSkill/assignee/status.',
       visibility:  'authenticated',
@@ -444,7 +446,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
           status:   effectiveStatus(t, open, closed),
           openDeps: unmetDeps(t, open, closed),
         }));
-      return { items };
+      return { items: decorateWithLastSync(items), _sync: simulateSync() };
     }, {
       description: 'List open tasks assigned to the calling actor.',
       visibility:  'authenticated',
@@ -460,7 +462,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       const filter = { assignee: null };
       if (a.skill) filter.requiredSkill = a.skill;
       const items = await crew.itemStore.listOpen(filter);
-      return { items };
+      return { items: decorateWithLastSync(items), _sync: simulateSync() };
     }, {
       description: 'List unassigned tasks; optional `skill` filter.',
       visibility:  'authenticated',

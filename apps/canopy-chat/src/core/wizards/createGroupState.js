@@ -120,6 +120,31 @@ export function buildRulesObjectFromState(state) {
 }
 
 /**
+ * Encode the substrate's `{groupId, code, expiresAt, adminNkn?, rules?}`
+ * result into a `stoop-invite://<base64url-of-JSON>` URL the joiner
+ * can paste into `/join-group`.  Lifted from web/createGroupWizard.js
+ * 2026-05-27 so the mobile success-screen can reuse it.
+ *
+ * @param {{ groupId: string, code: string, expiresAt?: number, adminNkn?: string, rules?: object }} result
+ * @returns {string}
+ */
+export function encodeMembershipCodeUrl(result) {
+  const payload = {
+    kind:      'membershipCode',
+    groupId:   result.groupId,
+    code:      result.code,
+    expiresAt: result.expiresAt,
+    ...(result.adminNkn ? { adminNkn: result.adminNkn } : {}),
+    ...(result.rules    ? { rules:    result.rules    } : {}),
+  };
+  const json = JSON.stringify(payload);
+  if (typeof globalThis.btoa !== 'function') return `stoop-invite://${json}`;
+  const b64 = globalThis.btoa(json)
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `stoop-invite://${b64}`;
+}
+
+/**
  * Final submission: build the `rules` blob from collected fields +
  * call createGroupV2.  Mutates state.submitting / state.submitError
  * / state.successResult.  Returns `{result?, state}`.

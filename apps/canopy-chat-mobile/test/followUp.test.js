@@ -10,7 +10,10 @@
  * together produce a runnable dispatch.
  */
 import { describe, it, expect } from 'vitest';
-import { beginFollowUp, completeFollowUp, pickPromptKey } from '../src/core/followUp.js';
+import {
+  beginFollowUp, completeFollowUp, pickPromptKey,
+  beginFormFollowUp, completeMultiFieldFollowUp,
+} from '../src/core/followUp.js';
 
 /** The exact shape resolveDispatch returns for `respondToItem` when
  *  the row-tap binds only itemId. */
@@ -101,6 +104,98 @@ describe('#253 step 4 — completeFollowUp', () => {
     });
     const ready = completeFollowUp({ pending, text: 42 });
     expect(ready.args.body).toBe('42');
+  });
+});
+
+describe('#253 step 6 — beginFormFollowUp', () => {
+  function makeMultiNeedsForm() {
+    return {
+      kind:         'needsForm',
+      opId:         'composePost',
+      appOrigin:    'stoop',
+      threadId:     null,
+      replyShape:   'text',
+      missing:      ['title', 'body'],
+      prefilledArgs:{ audience: 'buurt' },
+      params:       [
+        { name: 'audience', kind: 'string', required: true },
+        { name: 'title',    kind: 'string', required: true },
+        { name: 'body',     kind: 'string', required: true },
+      ],
+    };
+  }
+
+  it('returns a multi-field pending shape for needsForm with >= 2 missing params', () => {
+    const pending = beginFormFollowUp({
+      dispatch:        makeMultiNeedsForm(),
+      originMessageId: 'm9',
+      t:               stubT,
+    });
+    expect(pending).toBeTruthy();
+    expect(pending.kind).toBe('multi');
+    expect(pending.opId).toBe('composePost');
+    expect(pending.fields).toHaveLength(2);
+    expect(pending.fields.map((f) => f.name)).toEqual(['title', 'body']);
+    expect(pending.prefilledArgs).toEqual({ audience: 'buurt' });
+    expect(pending.originMessageId).toBe('m9');
+    // Each field has a label resolved via t() (stubT echoes the key).
+    expect(pending.fields[1].label).toContain('chat.form_label_body');
+  });
+
+  it('returns null when dispatch has only one missing param (single-field path owns that)', () => {
+    const d = makeMultiNeedsForm();
+    d.missing = ['body'];
+    expect(beginFormFollowUp({ dispatch: d, t: stubT })).toBeNull();
+  });
+
+  it('returns null for non-needsForm dispatches', () => {
+    expect(beginFormFollowUp({ dispatch: null,                  t: stubT })).toBeNull();
+    expect(beginFormFollowUp({ dispatch: { kind: 'ready' },     t: stubT })).toBeNull();
+    expect(beginFormFollowUp({ dispatch: { kind: 'unknown' },   t: stubT })).toBeNull();
+  });
+});
+
+describe('#253 step 6 — completeMultiFieldFollowUp', () => {
+  function makePending() {
+    return {
+      kind:         'multi',
+      opId:         'composePost',
+      appOrigin:    'stoop',
+      threadId:     null,
+      replyShape:   'text',
+      prefilledArgs:{ audience: 'buurt' },
+      fields: [
+        { name: 'title', kind: 'string', label: 'Title' },
+        { name: 'body',  kind: 'string', label: 'Body'  },
+      ],
+    };
+  }
+
+  it('merges field values into the prefilled args + flips to ready', () => {
+    const ready = completeMultiFieldFollowUp({
+      pending: makePending(),
+      values:  { title: 'Need a ladder', body: 'Anyone got one to borrow?' },
+    });
+    expect(ready.kind).toBe('ready');
+    expect(ready.opId).toBe('composePost');
+    expect(ready.args).toEqual({
+      audience: 'buurt',
+      title:    'Need a ladder',
+      body:     'Anyone got one to borrow?',
+    });
+  });
+
+  it('coerces missing values to empty string (caller validates)', () => {
+    const ready = completeMultiFieldFollowUp({
+      pending: makePending(),
+      values:  { title: 'X' },              // body absent
+    });
+    expect(ready.args.body).toBe('');
+  });
+
+  it('throws when pending is missing', () => {
+    expect(() => completeMultiFieldFollowUp({ pending: null, values: {} }))
+      .toThrow(/pending required/);
   });
 });
 

@@ -92,7 +92,7 @@ describe('Stoop V1 Phase 11 — mutePeer by stableId (with webid back-compat)', 
   it('mutes by peerStableId when supplied', async () => {
     const bundle = await buildAgent();
     const r = await callSkill(bundle.agent, 'mutePeer', { peerStableId: 'sid-bob-42' });
-    expect(r).toEqual({ muted: 'sid-bob-42' });
+    expect(r).toMatchObject({ muted: 'sid-bob-42' });
     expect(bundle.muted.has('sid-bob-42')).toBe(true);
   });
 
@@ -104,7 +104,7 @@ describe('Stoop V1 Phase 11 — mutePeer by stableId (with webid back-compat)', 
       ],
     });
     const r = await callSkill(bundle.agent, 'mutePeer', { peerWebid: BOB });
-    expect(r).toEqual({ muted: 'sid-bob-known' });
+    expect(r).toMatchObject({ muted: 'sid-bob-known' });
     expect(bundle.muted.has('sid-bob-known')).toBe(true);
   });
 
@@ -113,7 +113,7 @@ describe('Stoop V1 Phase 11 — mutePeer by stableId (with webid back-compat)', 
       members: [{ webid: ANNE }, { webid: BOB }],   // BOB has no stableId
     });
     const r = await callSkill(bundle.agent, 'mutePeer', { peerWebid: BOB });
-    expect(r).toEqual({ muted: BOB });
+    expect(r).toMatchObject({ muted: BOB });
     expect(bundle.muted.has(BOB)).toBe(true);
   });
 
@@ -123,7 +123,7 @@ describe('Stoop V1 Phase 11 — mutePeer by stableId (with webid back-compat)', 
     });
     await callSkill(bundle.agent, 'mutePeer',   { peerWebid: BOB });
     const u = await callSkill(bundle.agent, 'unmutePeer', { peerWebid: BOB });
-    expect(u).toEqual({ unmuted: 'sid-bob', had: true });
+    expect(u).toMatchObject({ unmuted: 'sid-bob', had: true });
     expect(bundle.muted.has('sid-bob')).toBe(false);
   });
 

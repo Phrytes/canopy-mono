@@ -96,6 +96,14 @@ export async function runBrief({ catalog, callSkill, cache, bypassCache }) {
     sections,
     generatedAt: Date.now(),
     cacheKey:    Math.random().toString(36).slice(2, 10),
+    // A3 follow-up (2026-05-27 user real-device test) — when every
+    // app declared a brief but had nothing to brief about (empty
+    // tasks/posts/files/events), expose a friendly aggregate-empty
+    // hint so the renderer can show *something* instead of a blank
+    // bubble.  Renderers consult `emptyMessage` first.
+    ...(sections.length === 0
+      ? { emptyMessage: 'Nothing to brief today.' }
+      : {}),
   };
 
   if (cache && !bypassCache) cache.set(reply);

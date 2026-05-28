@@ -255,6 +255,12 @@ export class MemberMap extends Emitter {
       // L1e (skill-match) which subscribes to peer pubsub by pubkey.
       // Optional — apps that don't use pubsub can omit.
       pubKey:      m.pubKey ?? null,
+      // nknAddr: this member's NKN peer address (2026-05-27).  Used
+      // by the chat-shell to route DMs over NKN after a /share-my-
+      // contact QR exchange — addContactFromQr reads it from the
+      // scanned card.  Independent of pubKey (which is the long-
+      // term identity key) — nknAddr can rotate per session.
+      nknAddr:     m.nknAddr ?? null,
       // ── Stoop V2 Phase 24: contact-graph fields (additive) ──
       // relation: distinguishes group members (default for back-compat
       //   with V1 callers) from 1:1 contacts. Apps that don't model

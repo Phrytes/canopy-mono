@@ -935,6 +935,17 @@ export async function createRealHouseholdAgent(opts = {}) {
           trustOffer: TRUST_EN_TO_NL[realArgs.trust] ?? realArgs.trust,
         };
       }
+      if (realOpId === 'getContactShareQr') {
+        // 2026-05-27 — inject the chat-shell's current NKN peer
+        // address into the card so the scanner can DM straight back
+        // (no pod lookup needed).  The stoop substrate has no NKN
+        // identity of its own; only the chat-layer secure-agent does.
+        const myNkn = sa?.peer?.address ?? null;
+        if (myNkn) realArgs = { ...realArgs, nknAddr: myNkn };
+        if (typeof console !== 'undefined') {
+          console.log('[realAgent] getContactShareQr inject nknAddr=' + (myNkn ? myNkn.slice(0,16)+'…' : 'NONE'));
+        }
+      }
       // #189 — buurt/group skills.  Several require groupId; the
       // chat-shell knows which buurt this agent is in (single-buurt
       // mode), so auto-inject when missing.
@@ -1617,6 +1628,12 @@ export async function createRealHouseholdAgent(opts = {}) {
     // to EN for the chat surface.
     const TRUST_NL_TO_EN = { bekend: 'known', vertrouwd: 'trusted' };
     if (opId === 'listContacts' && Array.isArray(data.contacts)) {
+      if (typeof console !== 'undefined') {
+        console.log('[realAgent] listContacts result:', data.contacts.map((c) => ({
+          webid: String(c.webid).slice(0,32),
+          nknAddr: c.nknAddr ? (c.nknAddr.slice(0,16) + '…') : 'NONE',
+        })));
+      }
       return {
         items: data.contacts.map((c) => ({
           id:          c.webid,
@@ -1626,6 +1643,12 @@ export async function createRealHouseholdAgent(opts = {}) {
           handle:      c.handle ?? null,
           trustLevel:  c.trustLevel ? (TRUST_NL_TO_EN[c.trustLevel] ?? c.trustLevel) : null,
           tags:        c.tags ?? [],
+          // 2026-05-27 — surface the contact's NKN peer address (set
+          // by addContactFromQr from the scanned card) so the [DM]
+          // button can target the right NKN destination instead of
+          // the contact's stableId/webid.  ListItemRow forwards this
+          // to buttonSpecials.startDm.
+          peerAddr:    c.nknAddr ?? null,
         })),
         _sync: simulateSync(),
       };

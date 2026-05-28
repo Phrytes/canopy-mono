@@ -81,6 +81,14 @@
     "muted":   { "text": "✓ Muted events: {{app}}:{{type}}. /logs --mute=... toggles.", "doc": "Mute confirmation." },
     "panel_opened": { "text": "Logs panel opened. Click [×] to close.", "doc": "Confirmation when bare /logs opens the side-panel UI." }
   },
+  "scan_qr": {
+    "not_available":  { "text": "QR scanner not available on this platform (mobile only today).", "doc": "Web doesn't ship a webcam scanner yet; /scan-qr returns this hint." },
+    "opening":        { "text": "Opening QR scanner…",                                           "doc": "Mobile localBuiltins triggered openQrScanner()." },
+    "scanned_contact": { "text": "✓ Added contact: {{name}}",                                    "doc": "Bot bubble after scanning a stoop-contact:// QR and addContactFromQr succeeds." },
+    "scanned_invite": { "text": "Opening join-buurt wizard with scanned invite…",               "doc": "Bot bubble after scanning a stoop-invite://; the wizard takes over." },
+    "scan_failed":    { "text": "Scan failed: {{error}}",                                       "doc": "Substrate returned error or classifier saw an unknown payload." },
+    "scan_unknown":   { "text": "Unrecognised QR code. Expected a stoop-contact:// or stoop-invite:// URL.", "doc": "classifyQrPayload returned kind:'unknown'." }
+  },
   "signin": {
     "no_flow":        { "text": "Sign-in flow not available in this build.", "doc": "Defensive — neither podAuth nor externalFlow wired." },
     "opening":        { "text": "Opening sign-in (issuer: {{issuer}}) … come back when the redirect lands.", "doc": "v0.7.P1." },
@@ -167,7 +175,8 @@
     "done":          { "text": "✓ Signed out.",                                    "doc": "Confirmation of /signout." }
   },
   "reset": {
-    "no_thread":     { "text": "No active thread to reset.",                       "doc": "Defensive." },
+    "no_store":      { "text": "Thread store not available in this build.",        "doc": "Defensive: threadStore dependency not wired." },
+    "no_thread":     { "text": "No active thread to reset.",                       "doc": "Defensive: no active thread selected." },
     "done":          { "text": "✓ Thread cleared (messages + list cache wiped).",  "doc": "/reset-thread confirmation." }
   },
   "apps": {

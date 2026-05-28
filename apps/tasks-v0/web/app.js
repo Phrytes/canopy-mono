@@ -129,10 +129,15 @@ export function renderTasks(ul, items, ctx) {
       ? `<span class="role-chip subtasks-count" title="${myKids.length} sub-task(s); ${openKids} still open">↓ ${myKids.length} sub-task${myKids.length === 1 ? '' : 's'}${openKids > 0 ? ` (${openKids} open)` : ''}</span>`
       : '';
 
+    // 2026-05-27 — task title links to the per-task detail page
+    // (`task.html?taskId=<id>`). Mirrors tasks-mobile's row→
+    // TaskDetailScreen tap; before this the desktop had no per-task
+    // surface and titles rendered as inert `<span>`s.
+    const taskHref = `/task.html?taskId=${encodeURIComponent(item.id ?? '')}`;
     head.innerHTML = `
       ${subHint}
       ${subCount}
-      <span class="text">${escapeHtml(item.text ?? '')}</span>
+      <a class="text" href="${escapeHtml(taskHref)}">${escapeHtml(item.text ?? '')}</a>
       <span class="status pill">${escapeHtml(status)}</span>`;
 
     const meta = document.createElement('div');

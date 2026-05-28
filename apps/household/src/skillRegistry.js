@@ -36,6 +36,9 @@ export const HOUSEHOLD_SKILL_REGISTRY = Object.freeze({
   claim:               Skills.claim,
   reassign:            Skills.reassign,
   registerName:        Skills.registerName,
+  // Q30 — canopy-chat /brief contributor; declared by listOpen's
+  // surfaces.chat.brief.summarySkill in manifest.js.
+  household_briefSummary: Skills.briefSummary,
   // Slow-path internal
   classifyAndExtract,
   // nudgeCompletion + composeDigest are NOT in the user-facing

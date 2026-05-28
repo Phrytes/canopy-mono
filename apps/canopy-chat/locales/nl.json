@@ -81,6 +81,14 @@
     "muted":   { "text": "✓ Events gedempt: {{app}}:{{type}}.",                          "doc": "Mute confirmation." },
     "panel_opened": { "text": "Log-paneel geopend. Klik [×] om te sluiten.", "doc": "Confirmation when bare /logs opens the side-panel UI." }
   },
+  "scan_qr": {
+    "not_available":  { "text": "QR-scanner niet beschikbaar op dit platform (vandaag alleen mobiel).", "doc": "Web doesn't ship a scanner yet." },
+    "opening":        { "text": "QR-scanner wordt geopend…",                                          "doc": "Mobile triggered openQrScanner()." },
+    "scanned_contact": { "text": "✓ Contact toegevoegd: {{name}}",                                    "doc": "After scanning a stoop-contact://." },
+    "scanned_invite": { "text": "Bezig met openen van de join-buurt-wizard…",                       "doc": "After scanning a stoop-invite://; wizard opens." },
+    "scan_failed":    { "text": "Scan mislukt: {{error}}",                                          "doc": "Substrate error or unknown payload." },
+    "scan_unknown":   { "text": "QR-code niet herkend. Verwacht: stoop-contact:// of stoop-invite:// URL.", "doc": "classifyQrPayload returned kind:'unknown'." }
+  },
   "signin": {
     "no_flow":        { "text": "Sign-in flow niet beschikbaar in deze build.", "doc": "Defensive." },
     "opening":        { "text": "Sign-in wordt geopend (issuer: {{issuer}}) … kom terug zodra de redirect klaar is.", "doc": "v0.7.P1." },
@@ -167,7 +175,8 @@
     "done":          { "text": "✓ Uitgelogd.",                                            "doc": "/signout." }
   },
   "reset": {
-    "no_thread":     { "text": "Geen actieve thread om te wissen.",                     "doc": "Defensive." },
+    "no_store":      { "text": "Thread-store niet beschikbaar in deze build.",          "doc": "Defensive: threadStore dependency not wired." },
+    "no_thread":     { "text": "Geen actieve thread om te wissen.",                     "doc": "Defensive: no active thread selected." },
     "done":          { "text": "✓ Thread gewist (berichten + lijstcache leeg).",        "doc": "/reset-thread confirmation." }
   },
   "apps": {

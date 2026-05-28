@@ -213,7 +213,16 @@ export const tasksManifest = {
         { name: 'status',        kind: 'string' },
       ],
       surfaces: {
-        chat: { hint: 'List open tasks with computed status; filters: type/requiredSkill/assignee/status.' },
+        chat: {
+          hint: 'List open tasks with computed status; filters: type/requiredSkill/assignee/status.',
+          // Q30 (DESIGN gap #1, closed 2026-05-27) — tasks-v0's slot in
+          // the morning brief.  /brief fans across apps that declare
+          // `surfaces.chat.brief`; the `tasks_briefSummary` skill
+          // (defined in src/skills/briefSummary.js, registered via
+          // wireSkills) returns a count of open tasks + the topmost
+          // rows.  `order: 20` slots between household (10) + stoop (30).
+          brief: { summarySkill: 'tasks_briefSummary', order: 20, label: 'Tasks' },
+        },
       },
     },
     {

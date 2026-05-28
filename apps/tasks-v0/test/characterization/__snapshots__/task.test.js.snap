@@ -1,0 +1,556 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`characterization: task.html > structural snapshot (empty querystring) 1`] = `
+"<!doctype html>
+<!--
+  Per-task detail surface — web parity for tasks-mobile's
+  \`TaskDetailScreen.jsx\`. Renders a single task with header (title +
+  status badge), description body + edit affordance, lifecycle action
+  buttons (Claim / Submit / Approve / Reject / Mark complete), admin
+  overrides (Revoke / Reassign / Remove / Force complete), an Appeal
+  CTA that routes into \`/chat.html?threadId=appeal:<taskId>&…\`, and a
+  reviewLog history timeline.
+
+  URL shape: \`task.html?taskId=t-123\`.
+
+  Pure-JS glue (URL parsing, listOpen+listClosed lookup, action-
+  visibility derivation, reviewLog formatter, short-webid, appeal
+  url) lives in \`src/ui/taskDetail.js\`, served at \`/lib/taskDetail.js\`
+  by \`bin/tasks-ui.js\`. Shared verbatim with the mobile screen so the
+  view-model drift can't happen.
+
+  Locale keys live under \`web.task.*\` in
+  \`apps/tasks-v0/locales/{en,nl}.json\` (parallel to mobile's
+  \`mobile.task_detail.*\` — same separation as the chat page).
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title data-i18n="web.task.page_title">Tasks — Task</title>
+  <link rel="stylesheet" href="/style.css">
+  <!-- Post-V0 (#272, 2026-05-27) — runtime locale loader.  Reads
+       \`?lng=nl\` URL param or \`localStorage[tasks-v0:lng]\`, defaults
+       to en.  Walks data-i18n* attributes on first paint. -->
+  <script type="module" src="/lib/i18nAutoBoot.js"></script>
+  <style>
+    /* Task-detail page-local styles. Kept inline (page-local) so the
+       global \`style.css\` stays focused on the list surfaces. The
+       visual language echoes the mobile screen: status pill at the
+       top, body + history timeline, then the action stack. */
+    .task-shell      { max-width: 720px; margin: 0 auto; padding: 0.5rem 0.8rem; }
+    .task-no-task    { padding: 2rem; color: var(--danger, #c0392b); }
+    .task-header     { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.4rem; }
+    .task-pill       { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; color: #fff; background: var(--muted); }
+    .task-pill.ready     { background: #1e88e5; }
+    .task-pill.waiting   { background: #f59f00; }
+    .task-pill.blocked   { background: #c0392b; }
+    .task-pill.claimed   { background: #4f46e5; }
+    .task-pill.submitted { background: #16a34a; }
+    .task-pill.complete  { background: #6b7280; }
+    .task-pill.rejected  { background: #c0392b; }
+    .task-pill.unknown   { background: #6b7280; }
+    .task-title      { font-size: 1.3rem; font-weight: 600; margin: 0.4rem 0 0.6rem; }
+    .task-meta       { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.6rem; }
+    .task-meta .chip { display: inline-block; padding: 0.05rem 0.4rem; border-radius: 4px; background: var(--bg-soft, #f4f4f4); margin-right: 0.4rem; }
+    .task-notes      { white-space: pre-wrap; border-left: 3px solid var(--border); padding: 0.4rem 0.8rem; color: var(--text); margin-bottom: 0.8rem; }
+    .task-history    { border-top: 1px solid var(--border); padding-top: 0.6rem; margin-top: 0.6rem; }
+    .task-history h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 0.4rem; }
+    .task-history .entry { font-size: 0.85rem; color: var(--text); padding: 0.2rem 0; border-bottom: 1px dashed var(--border); }
+    .task-history .entry:last-child { border-bottom: 0; }
+    .task-history .entry .when { color: var(--muted); font-size: 0.75rem; margin-left: 0.4rem; }
+    .task-history .entry .note { display: block; color: var(--muted); margin-top: 0.1rem; padding-left: 0.6rem; white-space: pre-wrap; }
+    .task-actions    { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 1rem; }
+    .task-actions button { padding: 0.55rem 0.8rem; font-size: 0.95rem; }
+    .task-admin-section { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--border); }
+    .task-admin-section h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 0.4rem; }
+    .task-error      { color: var(--danger, #c0392b); padding: 0.4rem 0; font-size: 0.85rem; }
+    .task-deliverable { border-left: 3px solid var(--accent, #1e88e5); padding: 0.4rem 0.8rem; margin-bottom: 0.8rem; background: var(--bg-soft, #f4f4f4); }
+    .task-deliverable .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" data-i18n="nav.workspace">Workspace</a>
+      <a href="/mine.html" data-i18n="nav.my_work">My work</a>
+      <a href="/review.html" data-i18n="nav.review">Review</a>
+      <a href="/dag.html" data-i18n="nav.dag">DAG</a>
+      <a href="/availability.html">Availability</a>
+      <a href="/crew.html" data-i18n="nav.crew">Crew</a>
+      <a href="/crews.html">Crews</a>
+      <a href="/inbox.html" id="nav-inbox" data-i18n="nav.inbox">Inbox</a>
+    </nav>
+    <div id="actor"></div>
+  </header>
+
+  <main>
+    <section class="task-shell" id="task-shell">
+      <div id="no-task" class="task-no-task" data-i18n="web.task.no_task" hidden>
+        No task specified. Add <code>?taskId=…</code> to the URL.
+      </div>
+
+      <div id="loading" data-i18n="web.task.loading">Loading…</div>
+
+      <div id="task" hidden>
+        <div class="task-header">
+          <span class="task-pill" id="status-pill"></span>
+          <a href="/mine.html"
+             id="back-link"
+             style="font-size:0.85rem;margin-left:auto"
+             data-i18n="web.task.back_to_list">← Back to list</a>
+        </div>
+
+        <h2 class="task-title" id="task-title"></h2>
+        <div class="task-meta" id="task-meta"></div>
+
+        <div id="task-notes" class="task-notes" hidden></div>
+
+        <div id="task-deliverable" class="task-deliverable" hidden>
+          <div class="label" data-i18n="web.task.deliverable_label">Deliverable</div>
+          <div id="task-deliverable-body"></div>
+        </div>
+
+        <div class="task-error" id="action-error" hidden></div>
+
+        <div class="task-actions" id="primary-actions"></div>
+        <div class="task-admin-section" id="admin-section" hidden>
+          <h3 data-i18n="web.task.admin_section">Admin / master</h3>
+          <div class="task-actions" id="admin-actions"></div>
+        </div>
+
+        <section class="task-history">
+          <h3 data-i18n="web.task.history_heading">History</h3>
+          <div id="history-list">
+            <p class="empty" data-i18n="web.task.history_empty">No history yet.</p>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    /*
+     * Per-task page bootstrap — mirrors chat.html's structure.
+     *   - URL parsing + lookup + action-visibility derivation +
+     *     reviewLog formatting come from /lib/taskDetail.js (shared
+     *     with mobile).
+     *   - Skill dispatch goes through the same \`callSkill\` overlay
+     *     the list pages use.
+     *   - Live refresh piggybacks on mountLive() (lifecycle events
+     *     write into the per-crew item-store and reach this page via
+     *     the existing \`item-*\` poll).
+     */
+    import { callSkill, getActor, getConfig, mountInboxBadge, mountLive, escapeHtml } from '/app.js';
+    import {
+      parseTaskLocation,
+      findTaskById,
+      deriveTaskActions,
+      formatReviewEntry,
+      shortWebid,
+      buildAppealUrl,
+    } from '/lib/taskDetail.js';
+    import { describeTaskStatus } from '/lib/taskStatus.js';
+    import { t as i18nT, bootI18n } from '/lib/i18nBootstrap.js';
+
+    // Ensure the bootstrap has resolved before we render dynamic
+    // strings. The auto-boot script in <head> kicks off bootI18n;
+    // calling it here is idempotent (it shares the same promise) so
+    // we can \`await\` it before the first render. Resilient to a
+    // locale-fetch failure: bootI18n catches and \`t()\` falls back to
+    // the key (we pass the English fallback through ourselves so the
+    // UI stays usable when /locales/* is 404).
+    try { await bootI18n({ lng: 'en' }); } catch { /* fallback below */ }
+
+    const $ = (id) => document.getElementById(id);
+
+    $('actor').textContent = await getActor();
+    mountInboxBadge($('nav-inbox'));
+
+    const route = parseTaskLocation(new URLSearchParams(window.location.search));
+    const cfg   = await getConfig();
+    const me    = cfg.actor ?? null;
+    const role  = me ? (cfg.roles?.[me] ?? 'member') : null;
+
+    if (!route) {
+      $('no-task').hidden    = false;
+      $('loading').hidden    = true;
+      $('task').hidden       = true;
+    } else {
+      let task = null;
+      let busy = false;
+
+      async function refresh() {
+        // Mobile uses listOpen and finds the matching id. We also peek
+        // listClosed so complete/rejected tasks still render — same
+        // pattern the desktop's task-detail modal already uses
+        // elsewhere (see workspace.js).
+        const [openR, closedR] = await Promise.all([
+          callSkill('listOpen', {}).catch(() => ({ items: [] })),
+          // listClosed is a substrate-side method, not a skill — but
+          // the substrate exposes listOpen's \`status: 'complete'\`
+          // through computeStatus on closed items via \`listOpen({})\`
+          // alone returns only open items. We fall back to listMine
+          // for the assignee's complete tasks (mobile's V1 shortcut).
+          callSkill('listMine',  {}).catch(() => ({ items: [] })),
+        ]);
+        const open   = Array.isArray(openR?.items)   ? openR.items   : [];
+        // listMine emits the assignee's view; complete tasks are not
+        // included by listOpen but the substrate's listMine carries
+        // them. Two-pass merge keeps the helper input shape stable.
+        const mine   = Array.isArray(closedR?.items) ? closedR.items : [];
+        task = findTaskById(route.taskId, { open, closed: mine });
+        renderTask();
+      }
+
+      function renderError(msg) {
+        const el = $('action-error');
+        el.textContent = msg;
+        el.hidden = false;
+        clearTimeout(renderError._t);
+        renderError._t = setTimeout(() => {
+          el.hidden = true;
+          el.textContent = '';
+        }, 5000);
+      }
+
+      function renderTask() {
+        $('loading').hidden = true;
+        if (!task) {
+          $('task').hidden = true;
+          const root = $('task-shell');
+          // No DOM-clobber: render the no-task error in-place.
+          const notFound = document.createElement('p');
+          notFound.className = 'task-no-task';
+          notFound.textContent = localised(
+            'web.task.not_found',
+            'Task not found.',
+          );
+          // Replace any prior render. Idempotent on poll.
+          const prior = root.querySelector('.task-not-found');
+          if (prior) prior.remove();
+          notFound.classList.add('task-not-found');
+          root.appendChild(notFound);
+          return;
+        }
+
+        $('task').hidden = false;
+
+        // Header — pill + title.
+        const desc = describeTaskStatus(task);
+        const kind = desc.kind;
+        const pill = $('status-pill');
+        pill.className = \`task-pill \${kind}\`;
+        pill.textContent = localised(\`status.\${kind}\`, kind);
+
+        $('task-title').textContent = task.text ?? '(untitled)';
+
+        // Meta — assignee, master, due, skills.
+        const meta = $('task-meta');
+        const parts = [];
+        if (task.assignee) {
+          parts.push(\`<span class="chip">\${escapeHtml(localised('web.task.meta_assignee', 'assignee'))}: @\${escapeHtml(shortWebid(task.assignee))}</span>\`);
+        } else {
+          parts.push(\`<span class="chip">\${escapeHtml(localised('web.task.meta_unclaimed', 'unclaimed'))}</span>\`);
+        }
+        const masterId = task.master ?? task.addedBy;
+        if (masterId) {
+          parts.push(\`<span class="chip">\${escapeHtml(localised('web.task.meta_master', 'master'))}: @\${escapeHtml(shortWebid(masterId))}</span>\`);
+        }
+        if (task.dueAt) {
+          parts.push(\`<span class="chip">\${escapeHtml(localised('web.task.meta_due', 'due'))} \${escapeHtml(new Date(task.dueAt).toLocaleDateString())}</span>\`);
+        }
+        if (Array.isArray(task.requiredSkills)) {
+          for (const s of task.requiredSkills) {
+            parts.push(\`<span class="chip">\${escapeHtml(s)}</span>\`);
+          }
+        }
+        meta.innerHTML = parts.join('');
+
+        // Body — notes + DoD.
+        const notesEl = $('task-notes');
+        const body = task.notes ?? task.definitionOfDone ?? '';
+        if (body) {
+          notesEl.textContent = body;
+          notesEl.hidden = false;
+        } else {
+          notesEl.hidden = true;
+        }
+
+        // Deliverable block — when a submission carries one.
+        const dEl = $('task-deliverable');
+        const dBody = $('task-deliverable-body');
+        if (task.deliverable && task.deliverable.ref) {
+          const k = String(task.deliverable.kind ?? '');
+          const ref = String(task.deliverable.ref ?? '');
+          let refHtml;
+          if (k === 'url' && /^https?:\\/\\//i.test(ref)) {
+            refHtml = \`<a href="\${escapeHtml(ref)}" target="_blank" rel="noopener">\${escapeHtml(ref)}</a>\`;
+          } else {
+            refHtml = \`<code>\${escapeHtml(ref)}</code>\`;
+          }
+          dBody.innerHTML = \`<strong>\${escapeHtml(k)}</strong>: \${refHtml}\`;
+          dEl.hidden = false;
+        } else {
+          dEl.hidden = true;
+        }
+
+        renderActions();
+        renderHistory();
+      }
+
+      function renderActions() {
+        const acts = deriveTaskActions(task, me, role);
+        const primary = $('primary-actions');
+        const admin   = $('admin-actions');
+        primary.innerHTML = '';
+        admin.innerHTML = '';
+
+        if (acts.canClaim) {
+          primary.appendChild(makeButton(
+            localised('web.task.action_claim', 'Claim'),
+            () => dispatch('claimTask', { id: task.id }),
+          ));
+        }
+        if (acts.canMarkComplete) {
+          const desc = describeTaskStatus(task);
+          const btn = makeButton(
+            localised('web.task.action_mark_complete', 'Mark complete'),
+            () => dispatch('completeTask', { id: task.id }),
+          );
+          if (desc.depsBlocked) {
+            btn.disabled = true;
+            btn.title = \`\${desc.openDepIds.length} open sub-task(s)\`;
+          }
+          primary.appendChild(btn);
+        }
+        if (acts.canSubmit) {
+          primary.appendChild(makeButton(
+            localised('web.task.action_submit', 'Submit for review'),
+            () => {
+              const ref = prompt(
+                localised(
+                  'web.task.prompt_submit_deliverable',
+                  'Optional deliverable URL or note (leave blank if none):',
+                ),
+                '',
+              );
+              const args = { id: task.id };
+              if (ref && ref.trim()) {
+                args.deliverable = /^https?:\\/\\//i.test(ref.trim())
+                  ? { kind: 'url',  ref: ref.trim() }
+                  : { kind: 'note', ref: ref.trim() };
+              }
+              dispatch('submitTask', args);
+            },
+          ));
+        }
+        if (acts.canApproveReject) {
+          const desc = describeTaskStatus(task);
+          const approveBtn = makeButton(
+            localised('web.task.action_approve', 'Approve'),
+            () => dispatch('approveTask', { id: task.id }),
+          );
+          if (desc.depsBlocked) {
+            approveBtn.disabled = true;
+            approveBtn.title = \`\${desc.openDepIds.length} open sub-task(s)\`;
+          }
+          primary.appendChild(approveBtn);
+          primary.appendChild(makeButton(
+            localised('web.task.action_reject', 'Reject'),
+            () => {
+              const note = prompt(
+                localised('web.task.prompt_reject_reason', 'Reason for rejection (required):'),
+                '',
+              );
+              if (!note || !note.trim()) return;
+              dispatch('rejectTask', { id: task.id, note: note.trim() });
+            },
+            'danger',
+          ));
+        }
+        if (acts.canEdit) {
+          primary.appendChild(makeButton(
+            localised('web.task.action_edit', 'Edit'),
+            () => {
+              const text = prompt(
+                localised('web.task.prompt_edit_text', 'Edit title:'),
+                task.text ?? '',
+              );
+              if (text === null) return;
+              const notes = prompt(
+                localised('web.task.prompt_edit_notes', 'Edit notes / description (leave blank for none):'),
+                task.notes ?? task.definitionOfDone ?? '',
+              );
+              if (notes === null) return;
+              // Build a patch with only the fields that actually
+              // changed (the substrate rejects empty patches). Mirror
+              // of mobile's onSubmitEdit.
+              const patch = { id: task.id };
+              if ((task.text ?? '') !== text)  patch.text  = text;
+              if ((task.notes ?? '') !== notes) patch.notes = notes;
+              if (Object.keys(patch).length === 1) return; // no-op
+              dispatch('editTask', patch);
+            },
+            'secondary',
+          ));
+        }
+        if (acts.canAppeal) {
+          primary.appendChild(makeButton(
+            localised('web.task.action_appeal', 'Appeal'),
+            () => { window.location.href = buildAppealUrl(task.id); },
+            'secondary',
+          ));
+        }
+        if (acts.canForceComplete) {
+          primary.appendChild(makeButton(
+            localised('web.task.action_force_complete', 'Force complete'),
+            () => {
+              const reason = prompt(
+                localised(
+                  'web.task.prompt_force_reason',
+                  'Reason for force-completing (mandatory; recorded in the audit log):',
+                ),
+                '',
+              );
+              if (!reason || !reason.trim()) return;
+              dispatch('forceCompleteTask', { id: task.id, reason: reason.trim() });
+            },
+            'danger',
+          ));
+        }
+
+        // Admin section: revoke / reassign / remove.
+        const hasAdmin = acts.canRevoke || acts.canReassign || acts.canRemove;
+        $('admin-section').hidden = !hasAdmin;
+        if (acts.canRevoke) {
+          admin.appendChild(makeButton(
+            localised('web.task.action_revoke', 'Revoke'),
+            () => {
+              const reason = prompt(
+                localised('web.task.prompt_revoke_reason', 'Reason for revoking (required):'),
+                '',
+              );
+              if (!reason || !reason.trim()) return;
+              dispatch('revokeTask', { id: task.id, reason: reason.trim() });
+            },
+            'secondary',
+          ));
+        }
+        if (acts.canReassign) {
+          admin.appendChild(makeButton(
+            localised('web.task.action_reassign', 'Reassign'),
+            () => {
+              const w = prompt(
+                localised('web.task.prompt_reassign_webid', 'New assignee webid (blank to clear):'),
+                task.assignee ?? '',
+              );
+              if (w === null) return;
+              dispatch('reassignTask', {
+                id: task.id,
+                newAssignee: w.trim() || null,
+              });
+            },
+            'secondary',
+          ));
+        }
+        if (acts.canRemove) {
+          admin.appendChild(makeButton(
+            localised('web.task.action_remove', 'Remove'),
+            () => {
+              const confirmMsg = localised(
+                'web.task.confirm_remove',
+                'Remove this task?',
+              );
+              if (!confirm(confirmMsg)) return;
+              dispatch('removeTask', { id: task.id }, () => {
+                // After a removal we navigate back; the task is gone.
+                window.location.href = '/mine.html';
+              });
+            },
+            'danger',
+          ));
+        }
+      }
+
+      function renderHistory() {
+        const root = $('history-list');
+        const log  = Array.isArray(task.reviewLog) ? task.reviewLog : [];
+        if (log.length === 0) {
+          root.innerHTML = \`<p class="empty">\${escapeHtml(localised('web.task.history_empty', 'No history yet.'))}</p>\`;
+          return;
+        }
+        root.innerHTML = '';
+        for (const entry of log) {
+          const fmt = formatReviewEntry(entry);
+          const div = document.createElement('div');
+          div.className = 'entry';
+          const byTxt   = fmt.by ? \`@\${shortWebid(fmt.by)}\` : '';
+          const whenTxt = Number.isFinite(fmt.at) ? new Date(fmt.at).toLocaleString() : '';
+          const actionLabel = localised(\`web.task.history_action_\${fmt.action}\`, fmt.action || '?');
+          div.innerHTML =
+            \`<span>\${escapeHtml(actionLabel)}</span>\` +
+            (byTxt ? \` <span>· \${escapeHtml(byTxt)}</span>\` : '') +
+            (whenTxt ? \`<span class="when">\${escapeHtml(whenTxt)}</span>\` : '') +
+            (fmt.note ? \`<span class="note">\${escapeHtml(fmt.note)}</span>\` : '');
+          root.appendChild(div);
+        }
+      }
+
+      async function dispatch(skill, args, onSuccess) {
+        if (busy) return;
+        busy = true;
+        try {
+          const r = await callSkill(skill, args);
+          if (r?.error) {
+            renderError(\`\${skill}: \${r.error}\`);
+            return;
+          }
+          if (typeof onSuccess === 'function') {
+            onSuccess(r);
+            return;
+          }
+          await refresh();
+        } catch (err) {
+          renderError(\`\${skill}: \${err?.message ?? String(err)}\`);
+        } finally {
+          busy = false;
+        }
+      }
+
+      function makeButton(label, onClick, variant) {
+        const b = document.createElement('button');
+        b.textContent = label;
+        if (variant) b.className = variant;
+        b.addEventListener('click', onClick);
+        return b;
+      }
+
+      await refresh();
+      mountLive([
+        'item-added', 'item-completed', 'item-removed', 'item-claimed',
+        'item-submitted', 'item-rejected', 'item-revoked',
+      ], refresh);
+    }
+
+    /*
+     * Locale shim — wraps \`t()\` from \`/lib/i18nBootstrap.js\`. When the
+     * loader hasn't booted yet (or the locale fetch failed), \`t(key)\`
+     * returns the key itself; we detect that and fall back to the
+     * English string passed by the caller so the UI stays usable.
+     */
+    function localised(key, fallback) {
+      try {
+        const v = i18nT(key);
+        // \`t()\` returns the key when boot hasn't completed OR the
+        // key is missing from the JSON. Fall back to the English copy
+        // so the UI is always populated.
+        return (typeof v === 'string' && v !== key) ? v : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+  </script>
+</body>
+</html>
+"
+`;

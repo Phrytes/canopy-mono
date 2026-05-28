@@ -35,6 +35,7 @@ export {
   generateSessionId, IN_FLIGHT_STORE_KEY,
 } from './externalFlow.js';
 export { runBrief, createBriefCache } from './brief.js';
+export { QR_URI_PREFIXES, isQrUri }   from './core/qrSchemes.js';
 export { runFind } from './find.js';
 export { EventLog, createEventLog, RETENTION_MS } from './eventLog.js';
 export {

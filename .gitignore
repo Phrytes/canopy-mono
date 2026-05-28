@@ -39,6 +39,14 @@ packages/*/ios/Pods/
 **/.vitest-cache/
 **/coverage/
 
+# Playwright / Detox test artifacts (regenerated each run)
+playwright-report/
+test-results/
+
+# Android debug signing key — auto-generated, not a secret, but a binary
+# that shouldn't be version-controlled (regenerates on first build).
+**/debug.keystore
+
 # Common log / temp files
 *.log
 *.tmp
@@ -59,3 +67,8 @@ apps/*/firebase-credentials.json
 # Generated publish artifact: clean copy made by maak-publieke-kopie.sh.
 # Source of truth is outreach/site/; this dir is rebuilt on each publish.
 outreach/site-publiek/
+# Same for the v2 site's generated publish copy + its zipped bundle.
+outreach/onderling-v2-publiek/
+# Zipped bundles/exports don't belong in git history (binary, non-diffable,
+# regenerable). Commit the unzipped source instead if it needs versioning.
+*.zip

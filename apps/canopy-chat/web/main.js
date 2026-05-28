@@ -39,6 +39,17 @@ import { makePropagateMeshIntros, makeHandleBuurtPeerIntro }
                                      from '../src/core/handlers/meshIntros.js';
 import { makeRequestCatchUpFromKnownPeers, makeHandleCatchUpRequest }
                                      from '../src/core/handlers/catchUp.js';
+// Bundle H Phase 2 (#269, 2026-05-27) — portable peer-router + lifted handler factories.
+import { makePeerRouter }            from '../src/core/handlers/peerRouter.js';
+import { makeHandleChatMessage }    from '../src/core/handlers/chatMessage.js';
+import { makeHandleCalendarInvite } from '../src/core/handlers/calendarInvite.js';
+import { makeHandleCalendarRsvp }   from '../src/core/handlers/calendarRsvp.js';
+import { makeHandleFileShare }     from '../src/core/handlers/fileShare.js';
+import { makeHandleBuurtPost }     from '../src/core/handlers/buurtPost.js';
+import { makeHandleGroupRedeemRequest, makeHandleGroupRedeemResponse }
+                                     from '../src/core/handlers/groupRedeem.js';
+import { makeHandleHelpWithAccepted } from '../src/core/handlers/helpWith.js';
+import { makeCalendarOutboundHook } from '../src/core/handlers/calendarOutbound.js';
 import { renderSettingsWizard }      from '../src/web/wizards/settingsWizard.js';
 import { renderCreateGroupWizard }   from '../src/web/wizards/createGroupWizard.js';
 import { renderRestoreFromMnemonicWizard } from '../src/web/wizards/restoreFromMnemonicWizard.js';
@@ -341,128 +352,13 @@ async function connectPeerImpl() {
   if (typeof agent.connectPeerTransport !== 'function') {
     throw new Error('Peer transport not supported by this agent build.');
   }
+  // Bundle H Phase 2 (#269, 2026-05-27) — inline subtype dispatch
+  // replaced by `peerMessageRouter` (built from portable
+  // `makePeerRouter`).  Same subtype guards + handlers; the
+  // dispatch shape now matches canopy-chat-mobile.
   return agent.connectPeerTransport({
     nknLib,
-    onPeerMessage: ({ from, payload }) => {
-      console.info('[peer] received from', from, payload);
-
-      // v0.7.P3c — subtype-aware dispatch.  Three known types:
-      //   'chat-message'     → plain text bubble (P3b)
-      //   'calendar-invite'  → time-card embed in Main + add to
-      //                        local calendar with _organiserNkn
-      //   'calendar-rsvp'    → update local event's rsvp field
-      const subtype = payload?.subtype;
-
-      if (subtype === 'calendar-invite' && payload?.event) {
-        handleCalendarInvite(from, payload).catch((err) =>
-          console.error('[peer] calendar-invite failed', err));
-        return;
-      }
-      if (subtype === 'calendar-rsvp' && payload?.eventId) {
-        handleCalendarRsvp(from, payload).catch((err) =>
-          console.error('[peer] calendar-rsvp failed', err));
-        return;
-      }
-      if (subtype === 'file-share' && payload?.file) {
-        handleFileShare(from, payload).catch((err) =>
-          console.error('[peer] file-share failed', err));
-        return;
-      }
-      // 2026-05-24 — cross-instance group-redeem peer-bridge.
-      // Joiner sends 'group-redeem-request'; admin's substrate
-      // validates locally + replies with 'group-redeem-response'.
-      if (subtype === 'group-redeem-request' && payload?.requestId) {
-        handleGroupRedeemRequest(from, payload).catch((err) =>
-          console.error('[peer] group-redeem-request failed', err));
-        return;
-      }
-      if (subtype === 'group-redeem-response' && payload?.requestId) {
-        handleGroupRedeemResponse(from, payload);
-        return;
-      }
-      // Slice 1 (2026-05-24) — cross-instance fan-out for buurt posts.
-      // Sender's realAgent fans out NKN envelopes after a local
-      // postRequest; we ingest into local stoop substrate via the
-      // ingestRemotePost skill (mirrors substrateMirror.mirror's logic).
-      if (subtype === 'buurt-post' && payload?.payload?.requestId) {
-        handleBuurtPost(from, payload).catch((err) =>
-          console.error('[peer] buurt-post failed', err));
-        return;
-      }
-      // Slice 6c (2026-05-24) — responder card for [Help with] flow.
-      // Bob's canopy-chat sends this after his respondToItem succeeds;
-      // we (Alice / the post author) surface it as a card in the DM
-      // thread paired with Bob, with [Accept] / [Decline] / [Counter]
-      // buttons.
-      if (subtype === 'help-with-response' && payload?.itemId && payload?.body) {
-        if (payload.senderDisplay) updateDmPeerDisplay(from, payload.senderDisplay);
-        handleHelpWithResponse(from, payload).catch((err) =>
-          console.error('[peer] help-with-response failed', err));
-        return;
-      }
-      if (subtype === 'help-with-accepted' && payload?.itemId) {
-        if (payload.senderDisplay) updateDmPeerDisplay(from, payload.senderDisplay);
-        handleHelpWithAccepted(from, payload);
-        return;
-      }
-      // Slice 4 (2026-05-24) — mesh address-intro from admin.
-      // {groupId, peerAddr, peerDisplay} → write a local
-      // membership-redemption (channel='intro') via recordPeerIntro.
-      if (subtype === 'buurt-peer-intro' && payload?.peerAddr && payload?.groupId) {
-        handleBuurtPeerIntro(from, payload).catch((err) =>
-          console.error('[peer] buurt-peer-intro failed', err));
-        return;
-      }
-      // Slice 5 (2026-05-24) — catch-up request: peer asks for
-      // posts in groupId added after sinceMs.  We reply by sending
-      // back each matching post via the regular buurt-post envelope
-      // (so the existing ingest path handles dedup + render).
-      if (subtype === 'catch-up-request' && payload?.groupId) {
-        handleCatchUpRequest(from, payload).catch((err) =>
-          console.error('[peer] catch-up-request failed', err));
-        return;
-      }
-
-      // Slice 6a (2026-05-24) — default chat-message → route into the
-      // DM thread paired with `from`.  Auto-spawn the DM thread on
-      // first contact so the message has somewhere to land.  Falls
-      // back to Main only when DM spawn fails for some reason.
-      // 2026-05-24 — skip envelopes that are secure-agent infrastructure
-      // (HI/claims/handshake): they have no `subtype` or `body` and
-      // would otherwise render as garbage like `📨 {"pubKey":"…"}`.
-      // Only surface plain chat-messages that explicitly carry text.
-      const hasBody = payload && typeof payload === 'object' && typeof payload.body === 'string' && payload.body !== '';
-      if (!hasBody) {
-        // Diagnostic only — don't pollute the UI.
-        console.debug('[peer] received non-chat envelope from', from?.slice(0, 16) + '…', payload);
-        return;
-      }
-      if (payload?.senderDisplay) updateDmPeerDisplay(from, payload.senderDisplay);
-      const body = payload.body;
-      const dm = ensureDmThread(from);
-      const target = dm ?? store.getThread('main') ?? store.getActiveThread();
-      if (target) {
-        const rendered = renderReply({
-          payload: `📨 ${body}`,
-          shape:   'text',
-          threadId: target.id,
-        }, { t });
-        target.addShellMessage(rendered);
-        if (store.getActiveThread()?.id === target.id) renderActiveStream();
-        // Even when the DM thread isn't active, refresh the sidebar so
-        // the new thread (or unread state once we have it) is visible.
-        renderSidebarHere();
-      } else {
-        console.warn('[peer] no thread to deliver to — dropped:', body);
-      }
-      // 2026-05-24 — DON'T publishEventRef here.  We've already rendered
-      // the message directly into the DM thread above; publishing as a
-      // notification event would route via the event-router to every
-      // matching thread (including this same DM, because filter.actors
-      // matches `from`) → user sees a duplicate bubble like
-      // "📨 peer message: <body>" right after the direct render.  /logs
-      // still picks up the envelope via console diagnostics.
-    },
+    onPeerMessage: peerMessageRouter,
   });
 }
 
@@ -780,6 +676,65 @@ const handleCatchUpRequest = makeHandleCatchUpRequest({
   callSkill: callSkillLazy,
   sendPeer:  sendPeerLazy,
   getMyPubKey: () => agent?.identity?.chat?.pubKey ?? null,
+});
+
+// Bundle H Phase 2 (#269, 2026-05-27) — peer-message router via
+// portable makePeerRouter.  Keeps web's existing inline handler
+// bodies (they close over DOM state — store, renderActiveStream,
+// dm.addShellMessage, …) but routes through the same dispatch
+// shape canopy-chat-mobile uses.  The portable factory bodies live
+// alongside (apps/canopy-chat/src/core/handlers/*.js) — mobile
+// consumes them; web could migrate when convenient.
+//
+// Note on function-vs-arrow indirection: `handleCalendarInvite` etc.
+// are `async function` declarations (hoisted) defined later in this
+// module; passing the bare reference is safe.  Subtypes with extra
+// inline guards (help-with-*, group-redeem-*) keep the guards as
+// thin wrappers so the router stays declarative.
+const peerMessageRouter = makePeerRouter({
+  handlers: {
+    'calendar-invite':       handleCalendarInvite,
+    'calendar-rsvp':         handleCalendarRsvp,
+    'file-share':            handleFileShare,
+    'group-redeem-request':  handleGroupRedeemRequest,
+    'group-redeem-response': handleGroupRedeemResponse,
+    'buurt-post':            handleBuurtPost,
+    'help-with-response':    (from, payload) => {
+      // Web's pre-router guard preserved verbatim.
+      if (!payload?.itemId || !payload?.body) return;
+      if (payload.senderDisplay) updateDmPeerDisplay(from, payload.senderDisplay);
+      return handleHelpWithResponse(from, payload);
+    },
+    'help-with-accepted':    (from, payload) => {
+      if (!payload?.itemId) return;
+      if (payload.senderDisplay) updateDmPeerDisplay(from, payload.senderDisplay);
+      return handleHelpWithAccepted(from, payload);
+    },
+    'buurt-peer-intro':      (from, payload) => {
+      // Pre-router guard: require both peerAddr + groupId.
+      if (!payload?.peerAddr || !payload?.groupId) return;
+      return handleBuurtPeerIntro(from, payload);
+    },
+    'catch-up-request':      (from, payload) => {
+      if (!payload?.groupId) return;
+      return handleCatchUpRequest(from, payload);
+    },
+  },
+  // Slice 6a — default chat-message → DM bubble.  Lifted to portable
+  // chatMessage.js; web wires it with its own ensureDmThread/
+  // appendBubble/updatePeerDisplay closures.
+  defaultHandler: makeHandleChatMessage({
+    ensureDmThread,
+    appendBubble: (threadId, rendered) => {
+      const thread = store.getThread(threadId) ?? store.getThread('main') ?? store.getActiveThread();
+      if (!thread) return;
+      thread.addShellMessage(rendered);
+      renderSidebarHere();
+      if (store.getActiveThread()?.id === thread.id) renderActiveStream();
+    },
+    updatePeerDisplay: updateDmPeerDisplay,
+    t,
+  }),
 });
 
 /**
@@ -1503,6 +1458,11 @@ const localBuiltins = createLocalBuiltins({
   },
 });
 
+// Bundle calendar cross-peer (#238) — late-bound so callSkill can
+// reference the hook without TDZ.  Assigned just below after callSkill
+// itself is initialised, since the hook closes over callSkill.
+let _calendarOutboundHook = async () => {};
+
 const callSkill = async (appOrigin, opId, args) => {
   if (appOrigin === 'canopy-chat') {
     const handler = localBuiltins[opId];
@@ -1540,116 +1500,30 @@ const callSkill = async (appOrigin, opId, args) => {
     // the host agent (per v0.7.10 multi-app collision-avoidance).
     const result = await agent.callSkill('household', `calendar_${opId}`, args);
 
-    // v0.7.P3c — cross-peer side-effects.
-    //
-    // (a) addEvent with attendees-nkn → dispatch invite envelopes
-    //     to each NKN address.
-    // (b) rsvp* with success on an event that has _organiserNkn →
-    //     dispatch rsvp envelope back to the organiser.
-    try {
-      if (opId === 'addEvent' && result?.ok && args['attendees-nkn']) {
-        const targets = String(args['attendees-nkn']).split(/[,\s]+/)
-          .map((s) => s.trim()).filter(Boolean);
-        if (targets.length > 0 && agent.peer?.status === 'connected') {
-          // Pull the event back for the snapshot.
-          const snapshot = await agent.callSkill('household',
-            'calendar_getEventSnapshot', { id: result.itemId });
-          if (snapshot?.id) {
-            for (const t of targets) {
-              try {
-                await agent.sendPeerMessage(t, {
-                  type:    'p2p-chat',
-                  subtype: 'calendar-invite',
-                  event: {
-                    id:        snapshot.id,
-                    title:     snapshot.title,
-                    startsAt:  snapshot.startAt,
-                    endsAt:    snapshot.endAt,
-                    location:  snapshot.location,
-                    attendees: snapshot.fields?.attendees ? snapshot.fields.attendees.split(/,\s*/) : [],
-                    organiser: snapshot.fields?.organiser,
-                  },
-                  sentAt: Date.now(),
-                });
-                publishEventRef({
-                  app: 'calendar', type: 'notification',
-                  payload: { message: `📤 invite sent to ${t.slice(0, 16)}…` },
-                });
-              } catch (err) {
-                console.error('[peer] invite send failed', t, err);
-                publishEventRef({
-                  app: 'calendar', type: 'notification',
-                  payload: { message: `❌ invite send failed: ${err.message ?? err}` },
-                });
-              }
-            }
-          }
-        }
-      }
-      if (
-        (opId === 'rsvpAccept' || opId === 'rsvpDecline' || opId === 'rsvpTentative')
-        && result?.ok && args?.id
-        && agent.peer?.status === 'connected'
-      ) {
-        // Find the event's _organiserNkn via the snapshot path.
-        // (Snapshot doesn't expose it directly; for v0.7.P3c we
-        // route by inspecting whichever the local store knows.
-        // Workaround: in the receiver-side flow, args.actor was set
-        // to the organiser's NKN address on ingest — so when this
-        // user RSVPs, the snapshot's organiser is the organiser's
-        // NKN address.)
-        const snapshot = await agent.callSkill('household',
-          'calendar_getEventSnapshot', { id: args.id });
-        const organiser = snapshot?.fields?.organiser;
-        if (organiser && organiser.startsWith && !organiser.startsWith('webid:')) {
-          // Looks like an NKN address (not a webid).  Send RSVP.
-          const response = opId === 'rsvpAccept'  ? 'accepted'
-                          : opId === 'rsvpDecline' ? 'declined'
-                          : 'tentative';
-          try {
-            await agent.sendPeerMessage(organiser, {
-              type:    'p2p-chat',
-              subtype: 'calendar-rsvp',
-              eventId: args.id,
-              response,
-              sentAt:  Date.now(),
-            });
-            publishEventRef({
-              app: 'calendar', type: 'notification',
-              payload: { message: `📤 RSVP ${response} sent to ${organiser.slice(0, 16)}…` },
-            });
-          } catch (err) {
-            console.error('[peer] RSVP send failed', err);
-          }
-        }
-      }
-      // v0.7.P3c-followup — propagate cancellations to peers.
-      // When the organiser cancels an event with attendees-nkn, send
-      // a 'calendar-cancelled' envelope to each so they see the
-      // event drop from THEIR /upcoming too.
-      if (opId === 'cancelEvent' && result?.ok && args?.id
-          && agent.peer?.status === 'connected') {
-        // Look up the (now-cancelled) event for its attendees-nkn list.
-        // CalendarStore stores _attendeesNkn iff we stash them at
-        // addEvent time.  v0.7.P3c-followup adds that stash; until
-        // then attendees-nkn isn't recoverable post-cancel, so this
-        // branch is a no-op until the data carries forward.
-        // Reactive path TBD; this scaffolding emits the publishEvent
-        // for /logs visibility.
-        publishEventRef({
-          app: 'calendar', type: 'notification',
-          payload: { message: `🚫 Cancelled locally; peer notification deferred to v0.7.P3c+` },
-        });
-      }
-    } catch (err) {
-      console.warn('[peer] calendar cross-peer side-effect failed', err);
-    }
+    // Bundle calendar cross-peer (#238, 2026-05-27) — inline fan-out
+    // logic replaced by portable `calendarOutboundHook`.  Same envelope
+    // shapes (calendar-invite / calendar-rsvp + cancelEvent stub) +
+    // same guards; mobile uses the same factory now.  See
+    // src/core/handlers/calendarOutbound.js.
+    try { await _calendarOutboundHook(appOrigin, opId, args ?? {}, result); }
+    catch (err) { console.warn('[peer] calendar cross-peer side-effect failed', err); }
 
     return result;
   }
   return { ok: false, error: `${appOrigin}.${opId} not wired in this demo build` };
 };
 callSkillRef = callSkill;
+
+// Bundle calendar cross-peer (#238, 2026-05-27) — populate the late-
+// bound hook now that `callSkill` is initialised.  The hook closes
+// over the outer callSkill so its `getEventSnapshot` lookups go
+// through the same calendar→household routing.
+_calendarOutboundHook = makeCalendarOutboundHook({
+  callSkill,
+  sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
+  isPeerConnected: () => agent.peer?.status === 'connected',
+  publishEvent:    (event) => publishEventRef(event),
+});
 
 /* ── render orchestration ──────────────────────────────── */
 
@@ -2367,7 +2241,10 @@ async function onButtonTap(opId, itemId, extra) {
   const entry = catalog.opsById.get(opId);
   if (!entry) return;
   const firstReq = (entry.op.params ?? []).find(
-    (p) => p?.required && (p.kind === 'string' || p.kind === 'enum'),
+    // 2026-05-27 — bind row itemId to webid-kind too, so [Remove]
+    // on a contact row dispatches with webid=<itemId> instead of
+    // falling into a followup that asks for the user's webid.
+    (p) => p?.required && (p.kind === 'string' || p.kind === 'enum' || p.kind === 'webid'),
   );
   const args = firstReq ? { [firstReq.name]: itemId } : { id: itemId };
   const parse = {

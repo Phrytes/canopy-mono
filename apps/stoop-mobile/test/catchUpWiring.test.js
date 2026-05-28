@@ -140,13 +140,16 @@ describe('wireCatchUp — item-arrive listener bumps lastSeenFrom', () => {
     expect(await lastSeenFrom.entries()).toEqual({});
   });
 
-  it('scheduleCatchUp is a logged no-op pending #247.1', async () => {
+  it('scheduleCatchUp soft-skips when bundle.nkn is missing (#248)', async () => {
+    // No bundle.nkn → no outbound trigger.  scheduleCatchUp logs +
+    // resolves so callers can fire it unconditionally.  This is the
+    // dev-without-nkn-sdk path (soft dep).
     const storage = makeMockAsyncStorage();
     const bundle = { agent: { on() {}, off() {} } };
     const logger = { info: vi.fn(), warn: vi.fn() };
     const { scheduleCatchUp } = wireCatchUp({ bundle, asyncStorage: storage, logger });
     await scheduleCatchUp();
-    expect(logger.info).toHaveBeenCalledWith(expect.stringMatching(/#247\.1/));
+    expect(logger.info).toHaveBeenCalledWith(expect.stringMatching(/no NKN transport/));
   });
 
   it('dispose detaches the item-arrive listener', async () => {

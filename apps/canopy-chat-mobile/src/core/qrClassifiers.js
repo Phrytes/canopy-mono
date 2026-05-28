@@ -1,0 +1,45 @@
+/**
+ * canopy-chat-mobile QR classifiers.
+ *
+ * Two payload shapes the mobile scanner accepts today (2026-05-27):
+ *
+ *   - kind 'contact' — `stoop-contact://<base64url-encoded-card>`
+ *     (output of /share-my-contact); routes via stoop's
+ *     `addContactFromQr` skill.
+ *   - kind 'invite'  — `stoop-invite://<base64url-encoded-invite>` OR
+ *     a URL with `?invite=<encoded-json>` (output of /create-group);
+ *     routes via the joinGroup wizard, which already accepts the URL
+ *     verbatim (decodeInvite is in core/wizards/joinGroupState.js).
+ *
+ * Built on @canopy/react-native/qr's plug-in dispatcher
+ * (`classifyQrPayload(text, classifiers)`).  Pure JS, no Expo deps —
+ * testable with vitest.
+ */
+
+const STOOP_CONTACT_SCHEME = 'stoop-contact://';
+const STOOP_INVITE_SCHEME  = 'stoop-invite://';
+
+/**
+ * @returns {Array<{kind: string, classify: (text: string) => unknown|null}>}
+ */
+export function getCanopyChatClassifiers() {
+  return [
+    { kind: 'contact', classify: _classifyContact },
+    { kind: 'invite',  classify: _classifyInvite  },
+  ];
+}
+
+function _classifyContact(text) {
+  return typeof text === 'string' && text.startsWith(STOOP_CONTACT_SCHEME)
+    ? text
+    : null;
+}
+
+function _classifyInvite(text) {
+  if (typeof text !== 'string') return null;
+  if (text.startsWith(STOOP_INVITE_SCHEME)) return text;
+  // Also accept URLs with `?invite=<encoded>` query — the form
+  // stoop's web onboarding emits.
+  if (/[?&]invite=[^&#]+/i.test(text)) return text;
+  return null;
+}

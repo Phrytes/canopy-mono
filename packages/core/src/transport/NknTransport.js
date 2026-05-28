@@ -56,7 +56,15 @@ export class NknTransport extends Transport {
     }
 
     const seed = this._deriveSeed();
-    await this.#tryConnect(seed, false);
+    // 2026-05-28 — start with MultiClient when the lib exposes it
+    // (better inbound delivery — multiple sub-client routes to our
+    // address), but fall back to single Client on timeout so the
+    // known-good single-client path stays available if MultiClient
+    // misbehaves on a given network.  `opts.preferMultiClient: false`
+    // forces single Client from the start.
+    const canMulti = !!this.#nknLib.MultiClient
+      && this.#opts.preferMultiClient !== false;
+    await this.#tryConnect(seed, { multi: canMulti, seedRetried: false });
   }
 
   async disconnect() {
@@ -109,13 +117,32 @@ export class NknTransport extends Transport {
     return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  async #tryConnect(seed, isRetry) {
+  async #tryConnect(seed, { multi, seedRetried }) {
     return new Promise((resolve, reject) => {
       const clientOpts = seed ? { seed } : {};
       if (this.#opts.identifier) {
         clientOpts.identifier = this.#opts.identifier;
       }
-      this.#client = new this.#nknLib.Client(clientOpts);
+      // 2026-05-28 — MultiClient (when `multi`) spawns N sub-clients
+      // across different nodes, so a message to our base address
+      // reaches whichever sub-client is reachable — far better inbound
+      // delivery than a single Client's one route (which can be
+      // unreachable from a sender's node even when our OUTBOUND works,
+      // the asymmetric-delivery bug we saw on two phones).  We fall
+      // back to single Client on timeout so the known-good path stays
+      // available.
+      const Ctor = (multi && this.#nknLib.MultiClient)
+        ? this.#nknLib.MultiClient
+        : this.#nknLib.Client;
+      if (multi && this.#nknLib.MultiClient && clientOpts.numSubClients === undefined) {
+        clientOpts.numSubClients = this.#opts.numSubClients ?? 4;
+      }
+      if (typeof console !== 'undefined') {
+        console.log('[NknTransport] connecting via '
+          + (Ctor === this.#nknLib.MultiClient ? 'MultiClient(' + clientOpts.numSubClients + ')' : 'Client')
+          + (seed ? ' (seeded)' : ' (seedless)'));
+      }
+      this.#client = new Ctor(clientOpts);
 
       const warnTimer = setTimeout(() => {
         if (this.address) return;
@@ -125,14 +152,17 @@ export class NknTransport extends Transport {
       const hardTimer = setTimeout(() => {
         if (this.address) return;
         clearTimeout(warnTimer);
-        if (!isRetry && seed) {
+        try { this.#client?.close(); } catch { /**/ }
+        this.#client = null;
+        // Fallback chain: MultiClient+seed → Client+seed →
+        // Client+seedless → reject.
+        if (multi) {
+          this.emit('warn', 'NKN MultiClient timed out — falling back to single Client…');
+          this.#tryConnect(seed, { multi: false, seedRetried }).then(resolve, reject);
+        } else if (seed && !seedRetried) {
           this.emit('warn', 'NKN timed out with seed — retrying without seed…');
-          try { this.#client?.close(); } catch { /**/ }
-          this.#client = null;
-          this.#tryConnect(null, true).then(resolve, reject);
+          this.#tryConnect(null, { multi: false, seedRetried: true }).then(resolve, reject);
         } else {
-          try { this.#client?.close(); } catch { /**/ }
-          this.#client = null;
           reject(new Error('NKN connect timed out'));
         }
       }, this.#opts.connectTimeout);

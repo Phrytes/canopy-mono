@@ -1,0 +1,61 @@
+/**
+ * tasks_briefSummary — Q30 contributor for canopy-chat's /brief
+ * aggregator.  Post-V0 follow-up (2026-05-27) closing DESIGN gap #1
+ * (`apps/canopy-chat/README.md` line 146).
+ *
+ * Manifest declaration: `apps/tasks-v0/manifest.js:listOpen` ->
+ * `surfaces.chat.brief = { summarySkill: 'tasks_briefSummary',
+ * order: 20, label: 'Tasks' }`.
+ *
+ * Reply shape mirrors:
+ *   - `apps/folio/src/browser.js:280` (folio_briefSummary)
+ *   - `apps/household/src/skills/briefSummary.js`
+ *   - `apps/stoop/src/skills/index.js` (stoop_briefSummary)
+ *
+ * When the open-tasks list is empty we return `{ok: true}` — brief.js
+ * skips that section.  Otherwise return `{items, message}` where
+ * `items` is up to `MAX_ITEMS` rows with `{id, label}` and `message`
+ * is the one-line aggregate ("N open tasks").
+ *
+ * Reads through the per-crew ItemStore — same data path the
+ * `listOpen` skill uses.  Per-call: requires a resolvable crew via
+ * the standard bundleResolver pattern.
+ */
+
+import { defineSkill } from '@canopy/core';
+
+const MAX_ITEMS = 5;
+
+/**
+ * Build the `tasks_briefSummary` skill.  Same factory shape as
+ * `buildWorkspaceSkills`; consumed by `wireSkills.js`.
+ *
+ * @param {object} args
+ * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver
+ * @returns {Array<object>}    one `defineSkill` per array entry
+ */
+export function buildBriefSummarySkill({ bundleResolver } = {}) {
+  if (typeof bundleResolver !== 'function') {
+    throw new TypeError('buildBriefSummarySkill: bundleResolver(parts, ctx) required');
+  }
+  return [
+    defineSkill('tasks_briefSummary', async ({ parts, from, envelope }) => {
+      const crew = bundleResolver(parts, { envelope, from });
+      if (!crew) return { error: 'crewId required' };
+      const open = await crew.itemStore.listOpen({ type: 'task' });
+      const all  = Array.isArray(open) ? open : [];
+      if (all.length === 0) {
+        // brief.js's isEmpty skips this section.
+        return { ok: true };
+      }
+      const items = all.slice(0, MAX_ITEMS).map((it) => ({
+        id:    it.id,
+        label: it.text ?? it.title ?? it.id,
+      }));
+      const message = `${all.length} open task${all.length === 1 ? '' : 's'}`;
+      return { items, message };
+    }, {
+      description: 'Q30 brief-summary contributor: open-tasks count + topmost rows.',
+    }),
+  ];
+}
