@@ -1,4 +1,11 @@
 {
+  "circle": {
+    "title":   { "text": "Jouw kringen", "doc": "Heading of the circle launcher (board 1B)." },
+    "new":     { "text": "+ nieuwe kring", "doc": "Create-a-new-circle entry on the launcher." },
+    "members": { "text": "{{count}} leden", "doc": "Member count on a circle tile; {{count}} interpolated." },
+    "empty":   { "text": "Nog geen kringen.", "doc": "Shown when the launcher has no circles." },
+    "loading": { "text": "Kringen laden…", "doc": "Shown while circles are being fetched." }
+  },
   "app": {
     "name":   { "text": "canopy-chat",                       "doc": "App-display in headers + over-scherm" },
     "tagline":{ "text": "Jouw buurt, jouw taken, jouw bestanden — één chat.", "doc": "Splash + over-scherm" }

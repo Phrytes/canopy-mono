@@ -36,6 +36,10 @@ export {
 } from './externalFlow.js';
 export { runBrief, createBriefCache } from './brief.js';
 export { QR_URI_PREFIXES, isQrUri }   from './core/qrSchemes.js';
+// v2 circle model — re-exported here so canopy-chat-mobile can import via
+// '@canopy-app/canopy-chat' (Metro can't resolve src/v2 subpaths directly).
+export { normalizeCircle, mergeCircles, loadCircles } from './v2/circleModel.js';
+export { circleSourcesFromAgent }                     from './v2/circleSources.js';
 export { runFind } from './find.js';
 export { EventLog, createEventLog, RETENTION_MS } from './eventLog.js';
 export {

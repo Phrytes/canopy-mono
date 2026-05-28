@@ -1,0 +1,79 @@
+/**
+ * canopy-chat v2 — circle launcher (web DOM renderer, board 1B).
+ *
+ * Pure render over a circle list; the host injects data + handlers +
+ * `t`. Mirrors the `renderSidebar(container, ctx)` pattern. No data
+ * fetching, no agent — that lives in the host boot (`circleApp.js`), so
+ * this stays unit-testable under happy-dom.
+ */
+
+export function renderCircleLauncher(container, {
+  circles = [],
+  t,
+  onOpenCircle,
+  onNewCircle,
+  loading = false,
+} = {}) {
+  const tr = typeof t === 'function' ? t : (k) => k;
+  container.innerHTML = '';
+  container.classList.add('circle-launcher');
+
+  const heading = document.createElement('h2');
+  heading.className = 'circle-launcher__title';
+  heading.textContent = tr('circle.title');
+  container.appendChild(heading);
+
+  if (loading) {
+    const l = document.createElement('div');
+    l.className = 'circle-launcher__loading';
+    l.textContent = tr('circle.loading');
+    container.appendChild(l);
+    return container;
+  }
+
+  if (!circles.length) {
+    const empty = document.createElement('div');
+    empty.className = 'circle-launcher__empty';
+    empty.textContent = tr('circle.empty');
+    container.appendChild(empty);
+  }
+
+  const list = document.createElement('div');
+  list.className = 'circle-launcher__list';
+  for (const c of circles) {
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'circle-tile';
+    tile.dataset.circleId = c.id;
+    if (c.kind) tile.dataset.kind = c.kind;
+
+    const name = document.createElement('div');
+    name.className = 'circle-tile__name';
+    name.textContent = c.name;
+    tile.appendChild(name);
+
+    if (c.memberCount != null) {
+      const meta = document.createElement('div');
+      meta.className = 'circle-tile__meta';
+      meta.textContent = tr('circle.members', { count: c.memberCount });
+      tile.appendChild(meta);
+    }
+
+    tile.addEventListener('click', () => {
+      if (typeof onOpenCircle === 'function') onOpenCircle(c.id, c);
+    });
+    list.appendChild(tile);
+  }
+  container.appendChild(list);
+
+  const newBtn = document.createElement('button');
+  newBtn.type = 'button';
+  newBtn.className = 'circle-launcher__new';
+  newBtn.textContent = tr('circle.new');
+  newBtn.addEventListener('click', () => {
+    if (typeof onNewCircle === 'function') onNewCircle();
+  });
+  container.appendChild(newBtn);
+
+  return container;
+}

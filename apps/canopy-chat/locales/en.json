@@ -1,4 +1,11 @@
 {
+  "circle": {
+    "title":   { "text": "Your circles", "doc": "Heading of the circle launcher (board 1B)." },
+    "new":     { "text": "+ new circle", "doc": "Create-a-new-circle entry on the launcher." },
+    "members": { "text": "{{count}} members", "doc": "Member count on a circle tile; {{count}} interpolated." },
+    "empty":   { "text": "No circles yet.", "doc": "Shown when the launcher has no circles." },
+    "loading": { "text": "Loading circles…", "doc": "Shown while circles are being fetched." }
+  },
   "common": {
     "ok":      { "text": "✓",       "doc": "Generic success indicator rendered when a skill returns { ok: true } with no message." },
     "failed":  { "text": "Failed",  "doc": "Generic failure fallback when a skill returns { ok: false } with no error text." },
