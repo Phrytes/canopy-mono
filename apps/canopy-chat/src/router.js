@@ -177,7 +177,11 @@ export function resolveDispatch(parseResult, catalog) {
 function bindMatchArg(args, op) {
   if (args._match === undefined) return { ...args };
   const target = (op.params ?? []).find(
-    (p) => p?.required && (p.kind === 'string' || p.kind === 'enum'),
+    // 2026-05-27 — accept `webid` as a stringy identifier kind so
+    // row-button taps on contacts (and slash bodies like
+    // `/remove-contact <webid>`) bind the body to the webid param
+    // instead of falling through to a single-field followup.
+    (p) => p?.required && (p.kind === 'string' || p.kind === 'enum' || p.kind === 'webid'),
   );
   if (!target) {
     // No required target — keep _match for the handler to split.

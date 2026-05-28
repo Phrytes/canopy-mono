@@ -137,7 +137,7 @@ describe('Stoop V1 — setPeerReveal / setGroupReveal', () => {
     expect(reveals.decide({ peerWebid: BOB }).showDisplayName).toBe(false);
 
     const r = await callSkill(bundle.agent, 'setPeerReveal', { peerWebid: BOB });
-    expect(r).toEqual({ peerWebid: BOB, showDisplayName: true });
+    expect(r).toMatchObject({ peerWebid: BOB, showDisplayName: true });
     expect(reveals.decide({ peerWebid: BOB }).showDisplayName).toBe(true);
   });
 

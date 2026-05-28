@@ -32,6 +32,8 @@ import { computeStatus as itemStoreComputeStatus, treeOf as itemStoreTreeOf, cre
 import { treeOf } from '../dag-tree.js';
 import { effectiveStatus, unmetDeps } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';
+// DESIGN gap #2 (2026-05-27) — `_sync` reply envelope for staleness hints.
+import { simulateSync, decorateWithLastSync } from './_syncEnvelope.js';
 
 /**
  * @param {object} args
@@ -67,7 +69,7 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
           status:   effectiveStatus(it, open, closed),
           openDeps: unmetDeps(it, open, closed),
         }));
-      return { items: pending, viewer: from ?? null };
+      return { items: decorateWithLastSync(pending), viewer: from ?? null, _sync: simulateSync() };
     }, {
       description: 'List items in the submitted state (awaiting approval).',
     }),
@@ -119,7 +121,7 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
           status:   effectiveStatus(it, open, closed),
           openDeps: unmetDeps(it, open, closed),
         }));
-      return { items: mastered };
+      return { items: decorateWithLastSync(mastered), _sync: simulateSync() };
     }, {
       description: 'Open tasks where the caller is the master.',
     }),

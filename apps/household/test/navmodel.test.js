@@ -73,7 +73,9 @@ describe('household manifest → NavModel (Slice A.2)', () => {
     it('claim surfaces as itemAction with state="open"', () => {
       const claim = tasks.itemActions.find((a) => a.opId === 'claim');
       expect(claim).toBeTruthy();
-      expect(claim.appliesTo.state).toBe('open');
+      // #240 (2026-05-26) canonicalised appliesTo.state to array form
+      // across all apps (tasks-v0 / calendar / stoop / household).
+      expect(claim.appliesTo.state).toEqual(['open']);
     });
 
     it('markComplete + removeItem surface as itemActions on tasks too (multi-type appliesTo)', () => {

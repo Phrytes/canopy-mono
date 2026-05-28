@@ -60,6 +60,8 @@ async function loadCreateRealHouseholdAgent() {
  * @param {function}[opts.publishEvent]        forwarded; defaults to no-op
  * @param {object}  [opts.nknLib]              optional runtime nkn-sdk module; if present, connectPeerTransport is wired
  * @param {function}[opts.onPeerMessage]       NKN inbound callback (only meaningful when nknLib provided)
+ * @param {function}[opts.requestCatchUp]      Bundle H (#268): fired 1.5s after NKN connect; mirrors web's requestCatchUpFromKnownPeers
+ * @param {function}[opts.buildPeerWiring]     Bundle H (#268): factory `({agent, callSkill}) => {onPeerMessage, requestCatchUp}`. Called after agent is created but before connect. Lets the caller build router/trigger that depend on the live agent without a chicken-and-egg with the returned bundle. Takes precedence over the explicit `opts.onPeerMessage` + `opts.requestCatchUp` when present.
  * @param {function}[opts.skillStub]           test-only — bypass the real factory entirely
  *
  * @returns {Promise<{
@@ -141,23 +143,70 @@ export async function bootAgentBundle(opts = {}) {
     });
   }
 
-  // Optional cross-peer transport.  Mobile users that bring their own
-  // nkn-sdk module (or use the bundled @canopy/react-native NknTransport
-  // path) wire it here.  Without nknLib, the bundle still works for
-  // local-only flows — cross-device mesh just isn't connected.
-  let transport = { kind: 'none' };
-  if (opts.nknLib && typeof agent.connectPeerTransport === 'function') {
+  // Cross-peer transport.  Bundle G2 (#264, 2026-05-27): NKN is the
+  // primary public layer.  Mobile loads nkn-sdk as a runtime peer-dep
+  // (web uses `window.nkn` from CDN); we import it here + pass to
+  // realAgent's connectPeerTransport which REQUIRES nknLib explicitly
+  // (the substrate NknTransport could dynamic-import on its own, but
+  // realAgent's gate throws first if nknLib is undefined).  Fire-and-
+  // forget so boot stays fast — nkn-sdk's seed-node handshake can take
+  // 5-90s.  Web does the same (main.js:1325 — connectPeerImpl().then).
+  //
+  // Bundle H (#268): peer-router + catch-up trigger.  `buildPeerWiring`
+  // is called now (agent ready, callSkill present) so the caller can
+  // produce both pieces without waiting for the bundle return.
+  let peerWiring = null;
+  if (typeof opts.buildPeerWiring === 'function') {
     try {
-      await agent.connectPeerTransport({
-        nknLib:        opts.nknLib,
-        onPeerMessage: opts.onPeerMessage,
-      });
-      transport = { kind: 'nkn', connected: true };
+      peerWiring = opts.buildPeerWiring({ agent, callSkill: agent.callSkill });
     } catch (err) {
-      // NKN connect failures are non-fatal — the rest of the bundle
-      // (slash commands, local-only flows) keeps working.
-      transport = { kind: 'nkn', connected: false, error: err.message };
+      console.warn('[cc/boot] buildPeerWiring threw', err?.message ?? err);
     }
+  }
+  const onPeerMessage  = peerWiring?.onPeerMessage  ?? opts.onPeerMessage;
+  const requestCatchUp = peerWiring?.requestCatchUp ?? opts.requestCatchUp;
+
+  let transport = { kind: 'none' };
+  if (typeof agent.connectPeerTransport === 'function') {
+    transport = { kind: 'nkn', connecting: true };
+    (async () => {
+      try {
+        // Resolve nkn-sdk: caller-injected (tests) > runtime import.
+        let nknLib = opts.nknLib;
+        if (!nknLib) {
+          try {
+            const mod = await import('nkn-sdk');
+            nknLib = mod.default ?? mod;
+          } catch (err) {
+            console.warn('[cc/boot] nkn-sdk import failed:', err?.message ?? err);
+            return;
+          }
+        }
+        await agent.connectPeerTransport({ nknLib, onPeerMessage });
+        console.log('[cc/boot] NKN connected, address:', agent.peer?.address);
+        // Bundle H (#268, 2026-05-27) — fire the catch-up trigger
+        // 1.5s after connect so HI handshake settles first.  Mirrors
+        // web/main.js:1338.  Resolved from `buildPeerWiring` OR the
+        // explicit `opts.requestCatchUp` — null/undefined skips
+        // silently (test-mode boots don't wire it).
+        if (typeof requestCatchUp === 'function') {
+          setTimeout(() => {
+            try {
+              const r = requestCatchUp();
+              if (r && typeof r.catch === 'function') {
+                r.catch((err) => console.warn('[cc/boot] catch-up failed', err?.message ?? err));
+              }
+            } catch (err) {
+              console.warn('[cc/boot] catch-up threw', err?.message ?? err);
+            }
+          }, 1500);
+        }
+      } catch (err) {
+        // Connect failures are non-fatal — local-only flows stay live.
+        // Log so /me can be debugged when it shows "not connected".
+        console.warn('[cc/boot] NKN connect failed:', err?.message ?? err);
+      }
+    })();
   }
 
   return {

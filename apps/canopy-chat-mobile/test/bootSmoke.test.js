@@ -89,8 +89,12 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
     expect(typeof bundle.callSkill).toBe('function');
     expect(typeof bundle.agent.sa).toBe('object');
     expect(typeof bundle.agent.connectPeerTransport).toBe('function');
-    // No nknLib provided → transport stays 'none' but agent is live.
-    expect(bundle.transport.kind).toBe('none');
+    // Bundle G2 (#264, 2026-05-27) — agentBundle fires
+    // connectPeerTransport as fire-and-forget so boot stays fast.
+    // transport.connecting:true is the post-boot shape; the actual
+    // connect completes asynchronously (vitest doesn't await it).
+    expect(bundle.transport.kind).toBe('nkn');
+    expect(bundle.transport.connecting).toBe(true);
 
     // Smoke-call a household skill so we know the factory actually
     // routes a request (not just constructed shells).
@@ -113,12 +117,14 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
       hostVault: new VaultMemory(),
       nknLib:    fakeNknLib,
     });
-    // Transport reports either connected:true (if connect path
-    // finished synchronously) or connected:false with an error — both
-    // are acceptable; the key invariant is that the seam was invoked
-    // and the bundle remains usable.
+    // Bundle G2 (#264, 2026-05-27) — connectPeerTransport is now
+    // fire-and-forget so boot returns immediately with
+    // {kind:'nkn', connecting:true}.  The actual connect resolves
+    // asynchronously (the fake MultiClient never emits 'connect',
+    // so we never get to {connected:true} in this test — that's
+    // OK; we just need to know the seam fires).
     expect(bundle.transport.kind).toBe('nkn');
-    expect(typeof bundle.transport.connected).toBe('boolean');
+    expect(bundle.transport.connecting).toBe(true);
     await bundle.dispose();
   });
 

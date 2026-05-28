@@ -490,6 +490,56 @@ const dagFlattenJs = await readFile(
   'utf8',
 );
 
+// Slice #252 (2026-05-27) — overlay the chat-thread helpers at
+// `/lib/chatThread.js` so the web chat page (`chat.html`) can import
+// the same pure-JS glue tasks-mobile's `ChatThreadScreen.jsx`
+// consumes. Source-of-truth: `src/ui/chatThread.js`.
+const chatThreadJs = await readFile(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'ui', 'chatThread.js'),
+  'utf8',
+);
+
+// task.html (2026-05-27) — overlay the per-task detail helpers at
+// `/lib/taskDetail.js` so the web per-task page can import the
+// shared pure-JS glue. Mirrors `src/ui/chatThread.js`. The page also
+// pulls `describeTaskStatus` from `taskStatus.js`; that lives at
+// `/lib/taskStatus.js` (overlayed alongside) so the import path is
+// stable rather than relative-into-parent (which the static handler
+// blocks via path-traversal hardening). Source-of-truth:
+// `src/ui/{taskDetail,taskStatus}.js`.
+const taskDetailJs = await readFile(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'ui', 'taskDetail.js'),
+  'utf8',
+);
+const taskStatusJs = await readFile(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'ui', 'taskStatus.js'),
+  'utf8',
+);
+
+// Post-V0 follow-up (#272, 2026-05-27) — runtime locale loader.
+// Pages declare `data-i18n` attributes; until this loader landed,
+// no JS swapped them so every visible string rendered as the
+// hardcoded English fallback.  Overlay the browser-side bootstrap
+// + serve the en/nl JSON files via extraStaticFiles so pages can
+// `fetch('/locales/<lng>.json')`.  Source-of-truth: same locale
+// JSONs `src/lib/localisation.js` (Node) consumes.
+const i18nBootstrapJs = await readFile(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'ui', 'i18nBootstrap.js'),
+  'utf8',
+);
+const i18nAutoBootJs = await readFile(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'ui', 'i18nAutoBoot.js'),
+  'utf8',
+);
+const enLocaleJson = await readFile(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'locales', 'en.json'),
+  'utf8',
+);
+const nlLocaleJson = await readFile(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'locales', 'nl.json'),
+  'utf8',
+);
+
 // Slice B.2.0 (2026-05-20) — overlay the shared @canopy/web-adapter
 // helpers at `/lib/web-adapter/<basename>.js`. Same mechanism as
 // `/lib/dagFlatten.js`. Source-of-truth: `packages/web-adapter/src/`.
@@ -500,9 +550,16 @@ const ui = await mountLocalUi(bundle.agent, {
   staticDir:        webDir,
   a2aTLSLayer:      new LocalUiAuth({ localActor: values.actor }),
   extraStaticFiles: {
-    '/tasks-config.json': tasksConfig,
-    '/navmodel.json':     JSON.stringify(navModel),
-    '/lib/dagFlatten.js': dagFlattenJs,
+    '/tasks-config.json':     tasksConfig,
+    '/navmodel.json':         JSON.stringify(navModel),
+    '/lib/dagFlatten.js':     dagFlattenJs,
+    '/lib/chatThread.js':     chatThreadJs,
+    '/lib/taskDetail.js':     taskDetailJs,
+    '/lib/taskStatus.js':     taskStatusJs,
+    '/lib/i18nBootstrap.js':  i18nBootstrapJs,
+    '/lib/i18nAutoBoot.js':   i18nAutoBootJs,
+    '/locales/en.json':       enLocaleJson,
+    '/locales/nl.json':       nlLocaleJson,
     ...webAdapterFiles,
   },
 });

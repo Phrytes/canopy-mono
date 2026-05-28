@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Network security config (#254 fix, 2026-05-26).  Production-safe:
-  base-config denies cleartext (HTTPS-only), with an explicit
-  exception for loopback addresses so:
-   - Detox's WS bridge (ws://localhost:<random-port>) works in
-     release-mode test builds without compromising production
-   - Future dev-style flows that touch 127.0.0.1 (Metro, debugger,
-     local proxies) keep working
-  External traffic stays HTTPS-only.
+  Network security config.
+
+  Development-permissive: cleartext is allowed for ALL hosts because
+  the NKN bootstrap RPC nodes (Bundle G2, #264 — 2026-05-27) are HTTP
+  IPs that change over time, e.g. 172.245.30.19.  Without this the
+  NKN client gets `CLEARTEXT communication not permitted by network
+  security policy` on every seed-node lookup and never connects.
+
+  Production hardening (future): swap to a per-host exemption list of
+  the canonical NKN bootstrap nodes (or use only HTTPS-capable nodes
+  via a custom rpcServerAddr), and keep the loopback exception for
+  Detox + Metro.  For now the unrestricted permit matches the
+  `usesCleartextTraffic="true"` pattern nkn-test apps use in their
+  src/debug/AndroidManifest.xml.
 -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">127.0.0.1</domain>
-        <domain includeSubdomains="true">10.0.2.2</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

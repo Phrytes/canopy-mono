@@ -73,7 +73,14 @@ export const householdManifest = {
         { name: 'type', kind: 'enum', of: LIST_TYPES, required: true },
       ],
       surfaces: {
-        chat:  { hint: 'List open items of a type.' },
+        chat:  {
+          hint: 'List open items of a type.',
+          // Q30 — household's slot in the morning brief.  /brief fans
+          // across apps that declare `surfaces.chat.brief`; the
+          // `household_briefSummary` skill (skills/briefSummary.js)
+          // returns a count of open items + the topmost row.
+          brief: { summarySkill: 'household_briefSummary', order: 10, label: 'Household' },
+        },
         slash: {
           command: '/list',
           match: {

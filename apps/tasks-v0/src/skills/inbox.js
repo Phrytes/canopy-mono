@@ -24,6 +24,8 @@
 import { defineSkill } from '@canopy/core';
 
 import { argsFromParts } from '../bundleResolver.js';
+// DESIGN gap #2 (2026-05-27) — `_sync` reply envelope for staleness hints.
+import { simulateSync, decorateWithLastSync } from './_syncEnvelope.js';
 
 const DEFAULT_INBOX_CONTAINER = 'mem://user/inbox/';
 const BADGE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -65,7 +67,7 @@ export function buildInboxSkills({ bundleResolver, container = DEFAULT_INBOX_CON
         .filter((i) => (i.addedAt ?? 0) >= since)
         .sort((x, y) => (y.addedAt ?? 0) - (x.addedAt ?? 0))
         .slice(0, limit);
-      return { items: filtered };
+      return { items: decorateWithLastSync(filtered), _sync: simulateSync() };
     }, {
       description: 'List inbox notifications, newest first.',
     }),

@@ -36,6 +36,8 @@ import { buildPushTokenSkills } from './skills/pushTokens.js';
 import { buildSubtaskSkills } from './skills/subtasks.js';
 import { buildInboxSkills } from './skills/inbox.js';
 import { buildWorkspaceSkills } from './skills/workspace.js';
+// Q30 (DESIGN gap #1, closed 2026-05-27) — `tasks_briefSummary`.
+import { buildBriefSummarySkill } from './skills/briefSummary.js';
 import { buildObservabilitySkills } from './skills/observability.js';
 import { buildCrewControlSkills } from './skills/crewControls.js';
 import { buildCustomRoleSkills } from './skills/customRoles.js';
@@ -107,6 +109,7 @@ export function wireSkills({
     buildSubtaskSkills({ bundleResolver }),
     buildInboxSkills({ bundleResolver }),
     buildWorkspaceSkills({ bundleResolver }),
+    buildBriefSummarySkill({ bundleResolver }),
     buildObservabilitySkills({ bundleResolver, userSettings: us }),
     buildCrewControlSkills({ bundleResolver }),
     buildCustomRoleSkills({ bundleResolver }),

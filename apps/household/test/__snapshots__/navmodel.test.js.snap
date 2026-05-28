@@ -363,7 +363,9 @@ exports[`household manifest → NavModel (Slice A.2) > determinism + structural 
         },
         {
           "appliesTo": {
-            "state": "open",
+            "state": [
+              "open",
+            ],
             "type": "task",
           },
           "label": "I'll do this",

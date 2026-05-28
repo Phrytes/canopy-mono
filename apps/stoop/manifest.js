@@ -138,7 +138,14 @@ export const stoopManifest = {
         { name: 'skill',  kind: 'string' },
       ],
       surfaces: {
-        chat:  { hint: 'List open requests; optional `skill` + `intent` filters.' },
+        chat:  {
+          hint:  'List open requests; optional `skill` + `intent` filters.',
+          // Q30 — stoop's slot in the morning brief.  /brief fans
+          // across apps that declare `surfaces.chat.brief`; the
+          // `stoop_briefSummary` skill (defined in skills/index.js)
+          // returns a count of open posts + the topmost rows.
+          brief: { summarySkill: 'stoop_briefSummary', order: 30, label: 'Buurt' },
+        },
         slash: {
           // Resolved 2026-05-21 (owner): `/bulletin` (EN — open-source
           // convention).  `/list` would collide with household.listOpen;
@@ -240,6 +247,12 @@ export const stoopManifest = {
         slash: {
           // Collision-free vs household (`/claim` is theirs).  Stoop-
           // specific verb name.  No `match`: two-arg body.
+          //
+          // Shell-only by design (2026-05-27 audit close-out): two-arg
+          // positional slash → always needsForm at resolveDispatch.
+          // The consumer's composer surfaces the form/picker UI; slash
+          // bodies are line-oriented and can't bind two positional
+          // args cleanly.  Same pattern setPeerReveal uses.
           command: '/lend-assign',
           shape:   '/lend-assign <itemId> <borrower-webid>',
         },
@@ -388,6 +401,13 @@ export const stoopManifest = {
         slash: {
           command: '/leave-group',
           shape:   '/leave-group <groupId> [--delete-posts]',
+          // `body: 'flags'` so chat-layer flags (`--confirm=true`,
+          // `--delete-posts`) parse into `args.confirm` / `args
+          // .deletePosts`.  realAgent.js short-circuits with an
+          // 'irreversible' error unless `confirm:true` is also passed
+          // (line 951) — without `body: 'flags'` the user can't reach
+          // that gate through pure slash.  2026-05-27 slash audit.
+          body: 'flags',
         },
       },
     },

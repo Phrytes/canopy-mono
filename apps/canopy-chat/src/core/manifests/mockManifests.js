@@ -528,7 +528,11 @@ mockTasksManifest.operations.find((o) => o.id === 'claimTask')
  */
 export const mockStoopManifest = {
   app:        'stoop',
-  itemTypes:  ['post', 'contact', 'member'],
+  // 2026-05-27 slash audit close-out — `lend` + `report` added for the
+  // new audit-close-out ops (`assignLend` appliesTo:'lend', `reportPost`
+  // appliesTo:'report').  Mirrors the real stoopManifest's itemTypes
+  // (subset — the mock only needs the types its declared ops reference).
+  itemTypes:  ['post', 'contact', 'member', 'lend', 'report'],
   operations: [
     {
       id:    'listFeed', verb: 'list', params: [],
@@ -539,9 +543,18 @@ export const mockStoopManifest = {
     },
     {
       id:    'postRequest', verb: 'add',
-      params: [{ name: 'text', kind: 'string', required: true }],
+      // C6 (real-device 2026-05-27) — accept --kind=ask|borrow|share|report|event
+      // alongside the body text.  Substrate already understands `kind`
+      // (see apps/stoop/src/skills/index.js postRequest skill — it
+      // routes to canonicalDraft via intentToCanonicalDraft).  Prior
+      // shape was `body: 'match'` so any `--kind=ask` ended up glued
+      // into the post text instead of becoming a flag.
+      params: [
+        { name: 'text', kind: 'string', required: true },
+        { name: 'kind', kind: 'string', required: false, enum: ['ask', 'borrow', 'share', 'report', 'event'] },
+      ],
       surfaces: {
-        slash: { command: '/post' },
+        slash: { command: '/post', body: 'flags' },
         chat:  {
           reply: 'text', hint: 'post a skill-request to your buurt',
           followUps: [
@@ -615,9 +628,11 @@ export const mockStoopManifest = {
      * the borrower returns the item.  Real skill at
      * apps/stoop/src/skills/index.js:843.  Author-only.
      *
-     * No slash command — natural surface is the [Returned] button on
-     * the lender's own /mijn-posts.  (per design — borrower handle
-     * stays private; only lender sees who.)
+     * 2026-05-27 audit close-out — `/lend-return` slash declaration
+     * mirrored from `apps/stoop/manifest.js` (real D.1 stoop).  Body
+     * `match` with EN/NL verbs binds `_match` → first required param
+     * (`itemId`); the realAgent adapter aliases `itemId → requestId`
+     * for the substrate skill.
      */
     {
       id:    'markReturned', verb: 'complete',
@@ -626,11 +641,16 @@ export const mockStoopManifest = {
         { name: 'itemId', kind: 'string', required: true },
       ],
       surfaces: {
-        chat: { reply: 'text', hint: 'mark a lend as returned' },
-        // 2026-05-24 — ui button deferred until the chat-shell can
-        // filter by author + kind=lend (current appliesTo only does
-        // type+state, so the button would appear on EVERY open post
-        // and 'not-found' on click).  Slash still works for now.
+        chat: { reply: 'text', hint: 'Mark a lend item as returned; cancels its return reminder.' },
+        slash: {
+          command: '/lend-return',
+          match: {
+            verbs:   ['returned', 'teruggebracht', 'terug'],
+            body:    'match',
+            onEmpty: { skillId: 'markReturned', args: {} },
+          },
+        },
+        ui:   { control: 'button', label: 'Teruggebracht' },
       },
     },
     /**
@@ -891,6 +911,134 @@ export const mockStoopManifest = {
         chat:  { reply: 'record', hint: 'show your contact-share payload (paste into a QR generator)' },
       },
     },
+    /* ─────── 2026-05-27 slash-audit close-out (7 long-tail ops) ───────
+     * The seven ops below mirror their `apps/stoop/manifest.js` (real
+     * D.1 stoop) shape — verbs, body, params, hints, appliesTo.  No
+     * substrate handlers needed: declarations alone make
+     * `bundle.callSkill('stoop', '<id>', args)` route past the catalog
+     * check for chat-shell-only demos.  Real skill execution always
+     * goes through realAgent.js (which composes the live stoop agent). */
+    /**
+     * `/lend-assign <itemId> <borrower-webid>` — two-arg positional
+     * slash → ALWAYS needsForm (no `match` block).  Shell-only by
+     * design: the consumer's composer surfaces the form/picker UI
+     * because slash bodies are line-oriented and can't bind two
+     * positional args.  Same shape household.markComplete uses for
+     * row-button-only ops.
+     */
+    {
+      id:        'assignLend', verb: 'reassign',
+      appliesTo: { type: 'lend' },
+      params: [
+        { name: 'itemId',        kind: 'string', required: true },
+        { name: 'borrowerWebid', kind: 'string', required: true },
+      ],
+      surfaces: {
+        chat:  { hint: 'Assign a lent item to a borrower without closing it.' },
+        slash: {
+          command: '/lend-assign',
+          shape:   '/lend-assign <itemId> <borrower-webid>',
+        },
+      },
+    },
+    {
+      id:        'setMySkills', verb: 'set',
+      params: [
+        { name: 'skills', kind: 'string', required: true },
+      ],
+      surfaces: {
+        chat:  { hint: "Replace the calling actor's skills array." },
+        slash: {
+          command: '/skills',
+          shape:   '/skills <json-array-of-skill-entries>',
+        },
+      },
+    },
+    {
+      id:    'getItemTree', verb: 'tree',
+      params: [
+        { name: 'itemId', kind: 'string', required: true },
+      ],
+      surfaces: {
+        chat:  { hint: "Walk an item's embeds/deps tree, materialising cross-pod refs (Phase 3.3c decentralised read path)." },
+        slash: {
+          command: '/tree',
+          match: {
+            verbs:   ['tree', 'boom'],
+            body:    'match',
+            onEmpty: { skillId: 'getItemTree', args: {} },
+          },
+        },
+      },
+    },
+    /**
+     * Q27 confirm-gated session op — `surfaces.ui.confirm.severity:
+     * 'warn'` triggers a `needsConfirm` envelope from resolveDispatch
+     * BEFORE the substrate runs.  Same pattern household.removeChore
+     * uses.
+     */
+    {
+      id:    'signOutOfPod', verb: 'remove',
+      params: [],
+      surfaces: {
+        chat:  { hint: 'Sign out of the current Solid pod session.  Mid-sync state may be dropped; the user can sign back in any time.' },
+        slash: {
+          command: '/sign-out',
+          match: {
+            verbs:   ['sign-out', 'signout', 'uitloggen'],
+            body:    'reject',
+            onEmpty: { skillId: 'signOutOfPod', args: {} },
+          },
+        },
+        ui: {
+          control: 'button',
+          label:   'Uitloggen',
+          confirm: {
+            severity: 'warn',
+            message:  'Uitloggen van je pod?  Lopende synchronisatie wordt afgebroken.',
+          },
+        },
+      },
+    },
+    {
+      id:        'reportPost', verb: 'report',
+      appliesTo: { type: 'report' },
+      params: [
+        { name: 'itemId', kind: 'string', required: true },
+        { name: 'reason', kind: 'string' },
+      ],
+      surfaces: {
+        chat:  { hint: 'File a report on another item; visible to admins of the group.' },
+        slash: {
+          command: '/report',
+          match: {
+            verbs:   ['report', 'rapporteer', 'flag'],
+            body:    'match',
+            onEmpty: { skillId: 'reportPost', args: {} },
+          },
+        },
+        ui: { control: 'button', label: 'Rapporteer' },
+      },
+    },
+    {
+      id:    'listOpen', verb: 'list',
+      params: [
+        { name: 'intent', kind: 'enum', of: ['ask', 'offer', 'lend'] },
+        { name: 'skill',  kind: 'string' },
+      ],
+      surfaces: {
+        chat:  { hint: 'List open requests; optional `skill` + `intent` filters.' },
+        slash: {
+          command: '/bulletin',
+          shape:   '/bulletin [ask|offer|lend]',
+          match: {
+            verbs:   ['bulletin', 'board', 'posts', 'open', 'prikbord', 'buurt'],
+            body:    'type-only',
+            onEmpty: { skillId: 'listOpen', args: {} },
+          },
+        },
+      },
+    },
   ],
   views: [
     { id: 'feed',     title: 'Feed',     type: 'post' },
@@ -1010,6 +1158,24 @@ export const mockFolioManifest = {
       surfaces: {
         slash: { command: '/folio-status' },
         chat:  { reply: 'record', hint: 'show folio sync status' },
+      },
+    },
+    /**
+     * Post-V0 follow-up — `/files` lists every folio file in the
+     * current in-process index.  The substrate skill `listFiles`
+     * was always registered + reachable via `bundle.callSkill`
+     * (verified in #237 audit, 2026-05-27); the slash + surfaces
+     * entry was simply missing from this manifest.  No-arg, list
+     * reply so each row renders with file-card action buttons
+     * (Download / Save to my pod) via appliesTo:{type:'file'}.
+     */
+    {
+      id:    'listFiles', verb: 'list',
+      params: [],
+      runtime: 'browser',
+      surfaces: {
+        slash: { command: '/files' },
+        chat:  { reply: 'list', hint: 'list files in folio' },
       },
     },
   ],

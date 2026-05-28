@@ -492,6 +492,13 @@ export async function createSecureAgent(opts = {}) {
     // Bilateral fix: when B receives A's HI, B auto-sends HI back.
     // Now A also knows B's pubKey + can encrypt OW.
     tx.on('envelope', async (env) => {
+      // 2026-05-27 (DM cross-device debug) — log every inbound
+      // envelope so we can see HI / chat-message deliveries on the
+      // other phone's Metro log.  Top-level type + subtype identify
+      // the envelope shape; the from-address is truncated.
+      if (typeof console !== 'undefined') {
+        console.log('[secure-agent] recv envelope from=' + String(env?._from ?? '?').slice(0, 16) + '… type=' + (env?.type ?? '?') + ' subtype=' + (env?.payload?.subtype ?? 'n/a'));
+      }
       // S1 — drop envelopes from muted peers BEFORE any further
       // bookkeeping (no reciprocal HI, no onPeerMessage fire).
       // S4 — fanout the check across resolver-known aliases.
@@ -510,16 +517,22 @@ export async function createSecureAgent(opts = {}) {
         size:    JSON.stringify(env ?? {}).length,
       });
       try {
+        // First-contact reciprocal HI: when we receive from a peer we
+        // haven't HI'd, send ours so THEIR SecurityLayer registers our
+        // pubKey.  (We do NOT re-send on every inbound HI — that
+        // creates an infinite HI ping-pong between two peers who both
+        // keep replying.  The real cross-device delivery asymmetry is
+        // handled at the transport layer via MultiClient.)
         if (!helloedPeers.has(env._from)) {
-          // 2026-05-24 — await the reciprocal HI + only mark helloed
-          // when it succeeds.  Previously add-before-await meant a
-          // silent first-send failure (catch + warn) left helloedPeers
-          // populated, so we never retried — and the other side
-          // (which is polling for our pubKey to encrypt) timed out
-          // forever.  Symmetric with the same fix in sendToPeer.
+          if (typeof console !== 'undefined') {
+            console.log('[secure-agent] sending reciprocal HI to ' + String(env._from).slice(0, 16) + '…');
+          }
           try {
             await tx.sendHello(env._from, { pubKey: identity.pubKey });
             helloedPeers.add(env._from);
+            if (typeof console !== 'undefined') {
+              console.log('[secure-agent] reciprocal HI sent OK to ' + String(env._from).slice(0, 16) + '…');
+            }
           } catch (err) {
             console.warn('[secure-agent] reciprocal HI failed (will retry on next envelope)', err?.message ?? err);
             // Don't add to helloedPeers — next inbound envelope from
@@ -746,8 +759,14 @@ export async function createSecureAgent(opts = {}) {
       throw new Error(`secure-agent: peer "${addr}" is muted; sendTo refused`);
     }
     if (!helloedPeers.has(addr)) {
+      if (typeof console !== 'undefined') {
+        console.log('[secure-agent] sending outbound HI to ' + String(addr).slice(0, 16) + '…');
+      }
       try {
         await tx.sendHello(addr, { pubKey: identity.pubKey });
+        if (typeof console !== 'undefined') {
+          console.log('[secure-agent] outbound HI sent OK to ' + String(addr).slice(0, 16) + '…');
+        }
       } catch (err) {
         // Log + continue — sendOneWay may still succeed if the peer
         // already has our pubKey from a previous session.

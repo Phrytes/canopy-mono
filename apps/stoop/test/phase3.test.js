@@ -201,7 +201,7 @@ describe('Stoop V1 — moderation skills (mute / report)', () => {
     expect(bundle.muted.has(BOB)).toBe(true);
 
     const u = await callSkill(bundle.agent, 'unmutePeer', { peerWebid: BOB });
-    expect(u).toEqual({ unmuted: BOB, had: true });
+    expect(u).toMatchObject({ unmuted: BOB, had: true });
     expect(bundle.muted.has(BOB)).toBe(false);
   });
 

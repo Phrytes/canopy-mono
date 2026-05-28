@@ -170,7 +170,7 @@ describe('Stoop Slice D.2 — LLM tool-calling on chat via renderChat', () => {
       requestId: posted.requestId,
     });
 
-    expect(withdrawn).toEqual({ id: posted.requestId });
+    expect(withdrawn).toMatchObject({ id: posted.requestId });
     // The LLM was never called.
     expect(invokeCount).toBe(0);
     // The item is gone.

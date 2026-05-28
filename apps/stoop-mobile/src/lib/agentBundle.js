@@ -35,6 +35,7 @@ import { SkillMatch }                      from '@canopy/skill-match';
 // would re-evaluate KeychainVault, whose `react-native-keychain` TS
 // import vitest can't parse.  Subpath bypass.
 import { MdnsTransport }       from '@canopy/react-native/src/transport/MdnsTransport.js';
+import { NknTransport }        from '@canopy/react-native/src/transport/NknTransport.js';
 import { AsyncStorageAdapter } from '@canopy/react-native/src/storage/AsyncStorageAdapter.js';
 
 /**
@@ -84,6 +85,12 @@ export async function buildBundleForGroup({
   label,
   /** Optional ws://… or wss://… URL for the broker transport. */
   relayUrl,
+  /** Optional runtime nkn-sdk module — see buildMeshAgent jsdoc. (#248) */
+  nknLib,
+  /** Optional bootstrap RPC node URL passed to nkn-sdk. */
+  nknRpcServerAddr,
+  /** Optional inbound NKN peer-message subscriber (typically makePeerRouter). */
+  onNknPeerMessage,
 } = {}) {
   if (!identity) throw new Error('buildBundleForGroup: identity required');
   if (typeof groupId !== 'string' || !groupId) {
@@ -102,6 +109,9 @@ export async function buildBundleForGroup({
     label: label ?? `stoop-mobile:${groupId}`,
     peerGraphPrefix: `stoop:peers:${groupId}:`,
     relayUrl,
+    nknLib,
+    nknRpcServerAddr,
+    onNknPeerMessage,
   });
 
   const bundle = await createNeighborhoodAgent({
@@ -223,7 +233,9 @@ export async function buildBundleForGroup({
     try { await bundle.agent.stop?.();           } catch { /* swallow */ }
   };
 
-  return { ...bundle, stop };
+  // #248: surface the NKN adapter (if any) on the bundle so wireCatchUp
+  // + the catch-up trigger reach it without touching the agent internals.
+  return { ...bundle, nkn: meshAgent.nkn ?? null, stop };
 }
 
 /**
@@ -399,7 +411,9 @@ export async function buildGroupState({
     try { bundle.itemStore.off?.('item-completed', _bridgeItemArrive); } catch { /* swallow */ }
   };
 
-  return { ...bundle, groupId, localActor, stop };
+  // #248: surface the shared agent's NKN adapter (if any) so wireCatchUp
+  // can reach it from any per-group bundle.
+  return { ...bundle, groupId, localActor, nkn: meshAgent.nkn ?? null, stop };
 }
 
 /**
@@ -420,12 +434,32 @@ export async function buildGroupState({
  *     peers (the right behaviour: SkillMatch only addPeer's known
  *     peers, so a fall-through to internal means the broadcast is a
  *     no-op rather than an error).
+ *   - **Named** (nkn slot, #248 2026-05-27): `NknTransport` — global
+ *     mainnet routing for the reconnect-catch-up flow.  Only added
+ *     when the caller injects `nknLib` (runtime nkn-sdk module).  The
+ *     dep is SOFT: nkn-sdk is NOT listed in stoop-mobile's package.json,
+ *     so devs without it installed simply skip this branch.  To
+ *     actually use NKN cross-device, install `nkn-sdk` and pass the
+ *     module as `opts.nknLib` (mirrors canopy-chat-mobile's pattern in
+ *     apps/canopy-chat-mobile/src/core/agentBundle.js).
  *
- * BLE + relay are deliberately omitted for now — BLE adds permission
- * complexity for the simple PoC and relay needs a server URL.
- * Plumbed-in extension points are obvious if we want them later.
+ * BLE is deliberately omitted for now — adds permission complexity
+ * for the simple PoC.  Plumbed-in extension point is obvious if we
+ * want it later.
+ *
+ * @param {object} args
+ * @param {object} args.identity
+ * @param {string} [args.label]
+ * @param {string} [args.peerGraphPrefix]
+ * @param {string} [args.relayUrl]
+ * @param {object} [args.nknLib]            optional runtime nkn-sdk module; when supplied, NknTransport is added under the 'nkn' slot
+ * @param {string} [args.nknRpcServerAddr]  optional bootstrap RPC node URL (passed to nkn-sdk's Client/MultiClient)
+ * @param {(env: {from: string, payload: object, ts?: number}) => void} [args.onNknPeerMessage]   subscriber called for every inbound NKN envelope; the lifted peerRouter is the typical caller (subtype-dispatched). Wired in addition to the agent's normal dispatch — both paths fire.
  */
-export async function buildMeshAgent({ identity, label, peerGraphPrefix, relayUrl }) {
+export async function buildMeshAgent({
+  identity, label, peerGraphPrefix, relayUrl,
+  nknLib, nknRpcServerAddr, onNknPeerMessage,
+}) {
   const bus       = new InternalBus();
   const internal  = new InternalTransport(bus, identity.pubKey);
 
@@ -529,6 +563,102 @@ export async function buildMeshAgent({ identity, label, peerGraphPrefix, relayUr
       });
     } catch (err) {
       console.warn('[agentBundle] RelayTransport init failed:', err?.message ?? err);
+    }
+  }
+
+  // NKN (Path C, #248 2026-05-27): when a runtime nkn-sdk module is
+  // injected, plumb an `NknTransport` for global mainnet routing.
+  // The lifted reconnect-catch-up handlers in canopy-chat live on top
+  // of NKN's subtype-routed envelopes (`p2p-chat` / `catch-up-request`
+  // / `buurt-post`), so wiring NKN here lets stoop-mobile reuse them
+  // without re-implementing the catch-up flow.
+  //
+  // Soft dependency: nkn-sdk is NOT in stoop-mobile/package.json.  If
+  // the caller doesn't pass `nknLib`, we skip silently — same pattern
+  // as relay-when-relayUrl-absent.  Real-device verification needs the
+  // mainnet (90s connect on cold-start), so vitest exercises the
+  // wiring with a mocked nknLib (see test/catchUpWiring.nkn.test.js).
+  //
+  // Lifecycle:
+  //   - addTransport BEFORE awaiting connect.  Routing's canReach()
+  //     on NknTransport returns false until connected, so the agent
+  //     falls through to InternalTransport for pre-connect sends —
+  //     which is harmless since no peers are addressable yet anyway.
+  //   - connect runs fire-and-forget; the actual mainnet handshake
+  //     can take 5–90s.  Mirror canopy-chat-mobile's boot pattern in
+  //     apps/canopy-chat-mobile/src/core/agentBundle.js so buildMeshAgent
+  //     returns quickly.
+  //   - The bridge `agent.nkn` is the shim wireCatchUp() / lifted
+  //     handlers reach to send/listen.  It mirrors the `sa.peer`
+  //     surface canopy-chat-mobile uses (sendTo + on('peer-message')).
+  if (nknLib) {
+    try {
+      const nkn = new NknTransport({
+        identity,
+        nknLib,
+        ...(nknRpcServerAddr ? { rpcServerAddr: nknRpcServerAddr } : {}),
+      });
+      agent.addTransport('nkn', nkn);
+
+      // ── peer-message bridge ────────────────────────────────────────
+      // `agent.addTransport` set the transport's receiveHandler to
+      // agent._dispatch.  Wrap it so inbound envelopes ALSO fan out to
+      // peer-message subscribers (subtype routing for the lifted
+      // catch-up + buurt-post handlers) BEFORE agent dispatch — both
+      // paths fire on every inbound.
+      const peerMessageListeners = new Set();
+      if (typeof onNknPeerMessage === 'function') {
+        peerMessageListeners.add(onNknPeerMessage);
+      }
+      const agentReceive = nkn.receiveHandler;
+      nkn.setReceiveHandler((env) => {
+        if (peerMessageListeners.size > 0) {
+          const view = { from: env?._from, payload: env?.payload, ts: env?._ts ?? Date.now() };
+          for (const cb of peerMessageListeners) {
+            try { cb(view); } catch (err) {
+              console.warn('[agentBundle] nkn peer-message listener threw', err?.message ?? err);
+            }
+          }
+        }
+        agentReceive?.(env);
+      });
+
+      // Adapter exposed on the agent so bundle.nkn reaches it.  Surface
+      // mirrors canopy-chat-mobile's `sa.peer` so the lifted handlers
+      // (which take `{sendPeer, ...}`) drop in unchanged.
+      agent.nkn = {
+        get address() { return nkn.address; },
+        get connected() { return nkn.connected; },
+        on(event, cb) {
+          if (event === 'peer-message') {
+            peerMessageListeners.add(cb);
+            return;
+          }
+          return nkn.on(event, cb);
+        },
+        off(event, cb) {
+          if (event === 'peer-message') {
+            peerMessageListeners.delete(cb);
+            return;
+          }
+          return nkn.off(event, cb);
+        },
+        sendTo(addr, payload) { return nkn.sendOneWay(addr, payload); },
+        disconnect() { return nkn.disconnect(); },
+        // Test seam — exposes the underlying NknTransport for white-box
+        // assertions (sendHelloOnce / forgetPeer / receiveHandler).
+        _transport: nkn,
+      };
+
+      // Fire-and-forget connect.  Same pattern as canopy-chat-mobile
+      // (apps/canopy-chat-mobile/src/core/agentBundle.js:170).  Boot
+      // stays fast (mainnet handshake can take 5–90s) and the catch-up
+      // trigger fires on the 'connect' event downstream.
+      nkn.connect().catch((err) => {
+        console.warn('[agentBundle] NknTransport connect failed:', err?.message ?? err);
+      });
+    } catch (err) {
+      console.warn('[agentBundle] NknTransport init failed:', err?.message ?? err);
     }
   }
 

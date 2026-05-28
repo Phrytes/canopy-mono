@@ -219,6 +219,26 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `/scan-qr` — open the camera + scan a QR code (2026-05-27).
+     * Pure UI host-op: the chat-shell catches this in localBuiltins,
+     * triggers `openQrScanner()`, and the scanner modal classifies the
+     * scanned text against the registered URI schemes (stoop-contact://,
+     * stoop-invite://, …).  Web shell renders nothing today — the
+     * platform-specific implementation lives in
+     * apps/canopy-chat-mobile (and a future browser implementation
+     * via getUserMedia + jsQR if desired).
+     */
+    {
+      id:    'scanQr',
+      verb:  'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/scan-qr' },
+        chat:  { reply: 'text', hint: 'open the camera to scan a QR' },
+      },
+    },
+
+    /**
      * `/find <text>` — v0.7.5 user-requested search.  Fans across
      * apps with Q33 `surfaces.chat.search.searchSkill` declarations;
      * queries cached items first (instant).  An [Extensive search]
@@ -608,8 +628,11 @@ export const canopyChatManifest = {
       id:    'test-peer',
       verb:  'add',
       params: [
-        { name: 'address', kind: 'string', required: true  },
-        { name: 'text',    kind: 'string', required: false },
+        // 2026-05-27 slash audit close-out — param renamed
+        // `address` → `addr` to match the user-facing locale
+        // contract (`peer.no_address` reads "/test-peer <addr> [text]").
+        { name: 'addr', kind: 'string', required: true  },
+        { name: 'text', kind: 'string', required: false },
       ],
       surfaces: {
         slash: { command: '/test-peer', body: 'flags' },

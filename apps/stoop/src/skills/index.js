@@ -169,6 +169,41 @@ function _freshMembershipCode() {
   return std.replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
 }
 
+/**
+ * Sync-envelope stub consumed by the chat-shell renderer (mirrors
+ * folio's `simulateSync` so the `_sync` reply-envelope convention
+ * works without a real pod-write round-trip).  Pure JS; no deps —
+ * keeps `skills/index.js` portable per the node-portability
+ * convention.
+ */
+function simulateSync() {
+  return {
+    plannedPaths:  [],
+    durationMs:    0,
+    bytesPushed:   0,
+    bytesPulled:   0,
+    conflictCount: 0,
+    queueDepth:    0,
+  };
+}
+
+/**
+ * Decorate list items with `_lastSync` (epoch ms) so the chat-shell
+ * renderer's per-row staleness badge has something to render.  Uses
+ * the item's own `addedAt` as the most reasonable "freshness" stamp
+ * we can produce without a real sync layer.  Items without an
+ * `addedAt` get `Date.now()`.  Non-object entries are returned
+ * unchanged.
+ */
+function decorateWithLastSync(items) {
+  if (!Array.isArray(items)) return items;
+  const now = Date.now();
+  return items.map((it) => {
+    if (!it || typeof it !== 'object') return it;
+    return { ...it, _lastSync: it.addedAt ?? it.lastSentAt ?? now };
+  });
+}
+
 /** Latest `kind: 'group-rules'` item for the given group. */
 async function _findLatestGroupRules(store, groupId) {
   const all = await store.listOpen({ type: 'group-rules' });
@@ -623,11 +658,11 @@ export function buildSkills({
 
       if (typeof a.expectClaims === 'number' && a.expectClaims > 0) {
         const result = await broadcastP;
-        return { requestId: item.id, claims: result.claims };
+        return { requestId: item.id, claims: result.claims, _sync: simulateSync() };
       }
       // Don't leave an unhandled rejection sitting around.
       void broadcastP;
-      return { requestId: item.id, claims: [] };
+      return { requestId: item.id, claims: [], _sync: simulateSync() };
     }, {
       description: 'Post an item (ask/offer/lend) and broadcast it; returns immediately. Pass `expectClaims > 0` to wait for claims.',
       visibility:  'authenticated',
@@ -652,7 +687,7 @@ export function buildSkills({
         { actor: from },
       );
       metrics?.record?.('accept-responder');
-      return { request: completed };
+      return { request: completed, _sync: simulateSync() };
     }, {
       description: 'Mark a request as fulfilled by a chosen responder.',
       visibility:  'authenticated',
@@ -672,7 +707,7 @@ export function buildSkills({
         try { await notifier.cancel(`due:${a.requestId}`); } catch {}
       }
       metrics?.record?.('cancel-request');
-      return { id };
+      return { id, _sync: simulateSync() };
     }, {
       description: 'Cancel an open request.',
       visibility:  'authenticated',
@@ -685,7 +720,7 @@ export function buildSkills({
       const open = await store.listOpen();
       const mine = open.filter((i) => i.addedBy === from);
       const items = await hydrateItems(mine, { members, reveals, viewerWebid: from, groupId });
-      return { items };
+      return { items: decorateWithLastSync(items), _sync: simulateSync() };
     }, {
       description: 'List open requests posted by the calling actor.',
       visibility:  'authenticated',
@@ -730,9 +765,34 @@ export function buildSkills({
         ? open.filter((it) => it.kind === kindPostFilter)
         : open;
       const items = await hydrateItems(matched, { members, reveals, viewerWebid: from, groupId });
-      return { items };
+      return { items: decorateWithLastSync(items), _sync: simulateSync() };
     }, {
       description: 'List open requests; optional `skill` + `intent` filters.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * stoop_briefSummary()  — Q30 contributor for canopy-chat's /brief
+     * aggregator.  Declared by `listOpen.surfaces.chat.brief` in the
+     * stoop manifest.  Mirrors folio's `folio_briefSummary` shape:
+     * returns `{ok: true}` when no open posts exist (brief.js skips
+     * that section) or `{items, message}` listing the topmost rows +
+     * a count.  Takes no args.
+     */
+    defineSkill('stoop_briefSummary', async () => {
+      const open = await store.listOpen();
+      if (!open || open.length === 0) {
+        return { ok: true };          // brief.js's isEmpty skips this section
+      }
+      return {
+        items:   open.slice(0, 3).map((it) => ({
+          id:    it.id,
+          label: it.text ?? it.id,
+        })),
+        message: `${open.length} buurt request${open.length === 1 ? '' : 's'}`,
+      };
+    }, {
+      description: 'Q30 brief-summary contributor: open-posts count + topmost rows.',
       visibility:  'authenticated',
     }),
 
@@ -830,7 +890,7 @@ export function buildSkills({
       if (claimResult.error) {
         return { error: 'already-assigned', current: claimResult.current };
       }
-      return { item: claimResult, by: from };
+      return { item: claimResult, by: from, _sync: simulateSync() };
     }, {
       description: 'Assign a lent item to a borrower without closing it.',
       visibility:  'authenticated',
@@ -842,19 +902,27 @@ export function buildSkills({
      */
     defineSkill('markReturned', async ({ parts, from }) => {
       const a = dataArgs(parts);
-      const current = await store.getById(a.requestId);
+      // 2026-05-27 slash audit close-out — accept the user-facing slash
+      // arg name `itemId` as an alias for `requestId`.  Real stoop
+      // manifest declares the slash shape `/lend-return <itemId>`, so
+      // typing `/lend-return abc` historically failed with "requestId
+      // required" (surprising — the slash help says `<itemId>`).  Now
+      // either arg name reaches this skill cleanly.
+      const id = a.requestId ?? a.itemId;
+      if (typeof id !== 'string' || !id) return { error: 'requestId required' };
+      const current = await store.getById(id);
       if (!current) return { error: 'not-found' };
       if (current.completedAt) return { error: 'already-returned', current };
 
       if (notifier) {
-        try { await notifier.cancel(`due:${a.requestId}`); } catch {}
+        try { await notifier.cancel(`due:${id}`); } catch {}
       }
       const [completed] = await store.markComplete(
-        [{ id: a.requestId }],
+        [{ id }],
         { actor: from },
       );
       metrics?.record?.('mark-returned');
-      return { item: completed };
+      return { item: completed, _sync: simulateSync() };
     }, {
       description: 'Mark a lend item as returned; cancels its return reminder.',
       visibility:  'authenticated',
@@ -878,7 +946,7 @@ export function buildSkills({
         { actor: from },
       );
       metrics?.record?.('report-post');
-      return { reportId: report.id };
+      return { reportId: report.id, _sync: simulateSync() };
     }, {
       description: 'File a report on another item; visible to admins of the group.',
       visibility:  'authenticated',
@@ -900,7 +968,7 @@ export function buildSkills({
       if (!key) return { error: 'peerStableId or peerWebid required' };
       muted?.add(key);
       metrics?.record?.('mute-peer');
-      return { muted: key };
+      return { muted: key, _sync: simulateSync() };
     }, {
       description: 'Locally mute a peer (does not affect anyone else). Prefer peerStableId; peerWebid back-compat.',
       visibility:  'authenticated',
@@ -914,7 +982,7 @@ export function buildSkills({
       const key = await _resolveMuteKey(a, members);
       if (!key) return { error: 'peerStableId or peerWebid required' };
       const had = muted?.delete(key) ?? false;
-      return { unmuted: key, had };
+      return { unmuted: key, had, _sync: simulateSync() };
     }, {
       description: 'Reverse a local mute.',
       visibility:  'authenticated',
@@ -926,7 +994,7 @@ export function buildSkills({
      * the Phase 11 migration).
      */
     defineSkill('listMutedPeers', async () => {
-      return { peers: muted ? [...muted] : [] };
+      return { peers: muted ? [...muted] : [], _sync: simulateSync() };
     }, {
       description: 'List locally muted peer keys (stableId, or "webid:<webid>" for legacy entries).',
       visibility:  'authenticated',
@@ -948,7 +1016,7 @@ export function buildSkills({
       if (!v.ok) return { error: 'invalid-handle', reason: v.reason };
       if (!members) return { error: 'no-member-map' };
       const updated = await members.addMember({ webid: from, handle: v.handle });
-      return { handle: v.handle, member: updated };
+      return { handle: v.handle, member: updated, _sync: simulateSync() };
     }, {
       description: 'Set the calling actor\'s handle (lowercase, 3–32 chars).',
       visibility:  'authenticated',
@@ -962,11 +1030,22 @@ export function buildSkills({
      */
     defineSkill('setMySkills', async ({ parts, from }) => {
       const a = dataArgs(parts);
-      if (!Array.isArray(a.skills)) return { error: 'skills array required' };
+      // 2026-05-27 slash audit close-out — the chat-shell's slash
+      // surface declares `skills` as `kind: 'string'` (consumer
+      // JSON-encodes the array).  Accept the JSON-string handoff:
+      // parse-then-validate so `/skills [{...}]` reaches the skill
+      // without the LLM-tool-call (`kind: 'json'` grammar extension is
+      // tracked as a separate follow-up — see slash-audit doc).
+      let skillsArr = a.skills;
+      if (typeof skillsArr === 'string') {
+        try { skillsArr = JSON.parse(skillsArr); }
+        catch { return { error: 'skills array required' }; }
+      }
+      if (!Array.isArray(skillsArr)) return { error: 'skills array required' };
       if (!members) return { error: 'no-member-map' };
       const me = (await members.resolveByWebid(from)) ?? { webid: from };
-      const updated = await members.addMember({ ...me, skills: a.skills });
-      return { skills: updated.skills };
+      const updated = await members.addMember({ ...me, skills: skillsArr });
+      return { skills: updated.skills, _sync: simulateSync() };
     }, {
       description: 'Replace the calling actor\'s skills array.',
       visibility:  'authenticated',
@@ -994,7 +1073,7 @@ export function buildSkills({
         status:       a.status ?? 'active',
       });
       const updated = await members.addMember({ ...me, skills: filtered });
-      return { skills: updated.skills };
+      return { skills: updated.skills, _sync: simulateSync() };
     }, {
       description: 'Add or update one skill on the calling actor\'s profile.',
       visibility:  'authenticated',
@@ -1014,7 +1093,7 @@ export function buildSkills({
       const existing = Array.isArray(me.skills) ? me.skills : [];
       const next = existing.filter(s => s.categoryId !== a.categoryId);
       const updated = await members.addMember({ ...me, skills: next });
-      return { skills: updated.skills };
+      return { skills: updated.skills, _sync: simulateSync() };
     }, {
       description: 'Remove a skill from the calling actor\'s profile.',
       visibility:  'authenticated',
@@ -1024,9 +1103,9 @@ export function buildSkills({
      * listMySkills() — diagnostic / settings UI.
      */
     defineSkill('listMySkills', async ({ from }) => {
-      if (!members) return { skills: [] };
+      if (!members) return { skills: [], _sync: simulateSync() };
       const me = await members.resolveByWebid(from);
-      return { skills: me?.skills ?? [] };
+      return { skills: me?.skills ?? [], _sync: simulateSync() };
     }, {
       description: 'List the calling actor\'s skills.',
       visibility:  'authenticated',
@@ -1046,7 +1125,7 @@ export function buildSkills({
       if (!members) return { error: 'no-member-map' };
       const me = (await members.resolveByWebid(from)) ?? { webid: from };
       const updated = await members.addMember({ ...me, holidayMode: a.on });
-      return { holidayMode: updated.holidayMode };
+      return { holidayMode: updated.holidayMode, _sync: simulateSync() };
     }, {
       description: 'Toggle the calling actor\'s holiday-mode flag (cross-device).',
       visibility:  'authenticated',
@@ -1110,7 +1189,7 @@ export function buildSkills({
       if (!name) return { error: 'displayName required' };
       if (!members) return { error: 'no-member-map' };
       const updated = await members.addMember({ webid: from, displayName: name });
-      return { displayName: name, member: updated };
+      return { displayName: name, member: updated, _sync: simulateSync() };
     }, {
       description: 'Set the calling actor\'s display name (revealed to peers who opted in).',
       visibility:  'authenticated',
@@ -1133,7 +1212,7 @@ export function buildSkills({
       if (!url) return { error: 'url required' };
       if (!members) return { error: 'no-member-map' };
       const updated = await members.addMember({ webid: from, avatarUrl: url });
-      return { avatarUrl: url, member: updated };
+      return { avatarUrl: url, member: updated, _sync: simulateSync() };
     }, {
       description: 'Set the calling actor\'s avatar URL (mem://stoop/avatars/<webid>.<ext> by convention).',
       visibility:  'authenticated',
@@ -1149,7 +1228,7 @@ export function buildSkills({
       if (!members) return { error: 'no-member-map' };
       const me = (await members.resolveByWebid(from)) ?? { webid: from };
       const updated = await members.addMember({ ...me, avatarUrl: null });
-      return { cleared: true, member: updated };
+      return { cleared: true, member: updated, _sync: simulateSync() };
     }, {
       description: 'Clear the calling actor\'s avatar URL (does not delete cached bytes).',
       visibility:  'authenticated',
@@ -1173,7 +1252,7 @@ export function buildSkills({
       if (!reveals) return { error: 'no-reveals' };
       const show = a.showDisplayName ?? true;
       reveals.setPeerReveal(a.peerWebid, !!show);
-      return { peerWebid: a.peerWebid, showDisplayName: !!show };
+      return { peerWebid: a.peerWebid, showDisplayName: !!show, _sync: simulateSync() };
     }, {
       description: 'Locally flip "show real name" for a single peer.',
       visibility:  'authenticated',
@@ -1205,7 +1284,7 @@ export function buildSkills({
       if (!reveals) return { error: 'no-reveals' };
       const show = a.showDisplayName ?? true;
       reveals.setGroupReveal(a.groupId, !!show);
-      return { groupId: a.groupId, showDisplayName: !!show };
+      return { groupId: a.groupId, showDisplayName: !!show, _sync: simulateSync() };
     }, {
       description: 'Locally flip "show real name" for an entire group.',
       visibility:  'authenticated',
@@ -1233,7 +1312,7 @@ export function buildSkills({
         }],
         { actor: from },
       );
-      return { rulesId: item.id, groupId: a.groupId };
+      return { rulesId: item.id, groupId: a.groupId, _sync: simulateSync() };
     }, {
       description: 'Persist a group\'s governance rules (V1 admin wizard output).',
       visibility:  'authenticated',
@@ -1335,6 +1414,7 @@ export function buildSkills({
         keyRotationMode,
         rotationDays,
         storage,
+        _sync:   simulateSync(),
       };
     }, {
       description: 'V2: create a group + initial membership code; caller becomes admin.',
@@ -1399,7 +1479,7 @@ export function buildSkills({
         return { error: `storage-policy-write-failed:${e?.message ?? 'unknown'}` };
       }
       metrics?.record?.('group-storage-policy-update');
-      return { groupId: a.groupId, storage: next };
+      return { groupId: a.groupId, storage: next, _sync: simulateSync() };
     }, {
       description: 'A3/A5: admin-only upgrade of the crew storage policy. One-way.',
       visibility:  'authenticated',
@@ -1461,7 +1541,7 @@ export function buildSkills({
         { actor: from },
       );
       metrics?.record?.('group-code-rotated');
-      return { codeId: codeItem.id, code, expiresAt };
+      return { codeId: codeItem.id, code, expiresAt, _sync: simulateSync() };
     }, {
       description: 'Admin-only: mint a fresh membership code (rotates the group secret).',
       visibility:  'authenticated',
@@ -1544,6 +1624,7 @@ export function buildSkills({
         redemptionId: item.id,
         groupId:      a.groupId,
         validUntil:   valid.source.expiresAt,
+        _sync:        simulateSync(),
       };
     }, {
       description: 'Present a membership code obtained out-of-band; records redemption.',
@@ -1615,6 +1696,7 @@ export function buildSkills({
         codeId:       valid.id,
         groupId:      a.groupId,
         validUntil:   valid.source.expiresAt,
+        _sync:        simulateSync(),
       };
     }, {
       description: 'Admin-side peer validator: confirms a joiner-presented code + records redemption.',
@@ -1679,6 +1761,7 @@ export function buildSkills({
         redemptionId: item.id,
         groupId:      a.groupId,
         validUntil:   a.expiresAt ?? null,
+        _sync:        simulateSync(),
       };
     }, {
       description: 'Joiner-side mirror: records a peer-confirmed redemption + rules locally.',
@@ -1737,7 +1820,8 @@ export function buildSkills({
         });
       }
       posts.sort((a, b) => (a._addedAt ?? 0) - (b._addedAt ?? 0));
-      return { groupId: a.groupId, sinceMs, posts };
+      const decorated = posts.map((p) => ({ ...p, _lastSync: p._addedAt ?? Date.now() }));
+      return { groupId: a.groupId, sinceMs, posts: decorated, _sync: simulateSync() };
     }, {
       description: 'List broadcast posts in groupId added after sinceMs (catch-up).',
       visibility:  'authenticated',
@@ -1808,7 +1892,7 @@ export function buildSkills({
         },
         visibility: 'household',
       }], { actor: from });
-      return { ok: true, introId: item.id };
+      return { ok: true, introId: item.id, _sync: simulateSync() };
     }, {
       description: 'Joiner-side mirror: record a mesh introduction for another buurt member.',
       visibility:  'authenticated',
@@ -1839,7 +1923,7 @@ export function buildSkills({
         seen.add(addr);
         peers.push({ addr, display: src.peerDisplay ?? null });
       }
-      return { peers };
+      return { peers, _sync: simulateSync() };
     }, {
       description: 'List buurt members who consented to mesh address-sharing.',
       visibility:  'authenticated',
@@ -1917,7 +2001,7 @@ export function buildSkills({
         const gid = it?.source?.groupId;
         if (typeof gid === 'string' && gid) ids.add(gid);
       }
-      return { buurts: [...ids] };
+      return { buurts: [...ids], _sync: simulateSync() };
     }, {
       description: 'List the buurt groupIds the calling actor is a member or admin of.',
       visibility:  'authenticated',
@@ -1964,6 +2048,7 @@ export function buildSkills({
       return {
         groupId: a.groupId,
         members: [...seen.entries()].map(([addr, role]) => ({ addr, role })),
+        _sync:   simulateSync(),
       };
     }, {
       description: 'List addresses for the calling actor\'s buurt peers (fan-out roster).',
@@ -2043,7 +2128,7 @@ export function buildSkills({
       const [item] = await store.addItems([draft], {
         actor: payload.from ?? (fromPubKey ? `pubkey:${fromPubKey.slice(0, 12)}` : 'broadcast'),
       });
-      return { ok: true, itemId: item.id };
+      return { ok: true, itemId: item.id, _sync: simulateSync() };
     }, {
       description: 'Ingest a remote post envelope into the local feed (mirrors substrate-mirror logic).',
       visibility:  'authenticated',
@@ -2090,7 +2175,7 @@ export function buildSkills({
         }],
         { actor: from },
       );
-      return { acceptanceId: item.id };
+      return { acceptanceId: item.id, _sync: simulateSync() };
     }, {
       description: 'Record acceptance of a group\'s rules (audit).',
       visibility:  'authenticated',
@@ -2179,7 +2264,7 @@ export function buildSkills({
         status: s.status === 'archived' ? 'archived' : targetStatus,
       }));
       await members.addMember({ ...me, skills: updated });
-      return { holidayMode: a.on, skillCount: updated.length };
+      return { holidayMode: a.on, skillCount: updated.length, _sync: simulateSync() };
     }, {
       description: 'Bulk-flip every active skill between paused (gepauzeerd) and active (actief); does not touch archived skills.',
       visibility:  'authenticated',
@@ -2224,7 +2309,7 @@ export function buildSkills({
         && (i.type === 'ask' || i.type === 'offer' || i.type === 'lend' || i.type === 'request')
         && (i.addedAt ?? 0) < cutoff,
       );
-      return { stale: mine };
+      return { stale: decorateWithLastSync(mine), _sync: simulateSync() };
     }, {
       description: 'Return my open posts older than thresholdDays (default 30).',
       visibility:  'authenticated',
@@ -2246,7 +2331,7 @@ export function buildSkills({
       const data    = { webid: from, member, items: myItems, exportedAt: Date.now() };
       const blob    = await encryptBackup({ data, passphrase: a.passphrase });
       metrics?.record?.('backup-created');
-      return { blob };
+      return { blob, _sync: simulateSync() };
     }, {
       description: 'Passphrase-encrypted snapshot of my data; the passphrase never leaves the device.',
       visibility:  'authenticated',
@@ -2313,7 +2398,7 @@ export function buildSkills({
           deleted += 1;
         }
       }
-      return { leaveMarkerId: marker.id, deletedItems: deleted };
+      return { leaveMarkerId: marker.id, deletedItems: deleted, _sync: simulateSync() };
     }, {
       description: 'Record group-leave audit + optionally delete the actor\'s own items.',
       visibility:  'authenticated',
@@ -2330,7 +2415,7 @@ export function buildSkills({
       const me = (await members.resolveByWebid(from)) ?? { webid: from };
       const externalIds = { ...(me.externalIds ?? {}), mnemonicShown: 'true' };
       await members.addMember({ ...me, externalIds });
-      return { ok: true };
+      return { ok: true, _sync: simulateSync() };
     }, {
       description: 'Mark that the user\'s recovery phrase has been shown.',
       visibility:  'authenticated',
@@ -2400,7 +2485,7 @@ export function buildSkills({
         subtype:    'chat-message',
         extras:     hasAttachment ? { attachment: a.attachment } : undefined,
       });
-      return r.ok ? { ok: true, itemId: r.itemId } : { error: r.reason };
+      return r.ok ? { ok: true, itemId: r.itemId, _sync: simulateSync() } : { error: r.reason };
     }, {
       description: 'Send a 1-on-1 chat message (with optional inline image attachment) to a peer.',
       visibility:  'authenticated',
@@ -2417,7 +2502,11 @@ export function buildSkills({
       const messages = all
         .filter(i => i.source?.threadId === a.threadId)
         .sort((p, q) => (p.source?.sentAt ?? p.addedAt ?? 0) - (q.source?.sentAt ?? q.addedAt ?? 0));
-      return { messages };
+      const decorated = messages.map((m) => ({
+        ...m,
+        _lastSync: m.source?.sentAt ?? m.addedAt ?? Date.now(),
+      }));
+      return { messages: decorated, _sync: simulateSync() };
     }, {
       description: 'Return all chat-messages for a thread, oldest-first.',
       visibility:  'authenticated',
@@ -2449,7 +2538,10 @@ export function buildSkills({
           });
         }
       }
-      return { threads: [...byThread.values()].sort((a, b) => b.lastSentAt - a.lastSentAt) };
+      const threads = [...byThread.values()]
+        .sort((a, b) => b.lastSentAt - a.lastSentAt)
+        .map((t) => ({ ...t, _lastSync: t.lastSentAt ?? Date.now() }));
+      return { threads, _sync: simulateSync() };
     }, {
       description: 'List my chat threads, most-recently-active first.',
       visibility:  'authenticated',
@@ -2735,6 +2827,12 @@ export function buildSkills({
         displayName:  me?.displayName  ?? null,
         avatarUrl:    me?.avatarUrl    ?? null,
         trustOffer,
+        // 2026-05-27 — embed the caller's NKN peer address so the
+        // scanner can DM the contact straight after add, without
+        // needing a Solid pod lookup (lookupPeerNknByWebid).  Caller
+        // (canopy-chat's realAgent) passes args.nknAddr; the stoop
+        // substrate doesn't have its own NKN identity.
+        ...(typeof a.nknAddr === 'string' && a.nknAddr ? { nknAddr: a.nknAddr } : {}),
       };
       return { payload: `stoop-contact://${_encodeQrPayload(card)}` };
     }, {
@@ -2758,6 +2856,9 @@ export function buildSkills({
       if (!bundle?.contacts) return { error: 'no-contacts' };
       const card = _decodeQrPayload(a.payload.slice('stoop-contact://'.length));
       if (!card?.webid) return { error: 'malformed-card' };
+      if (typeof console !== 'undefined') {
+        console.log('[stoop/addContactFromQr] card.nknAddr=' + (card.nknAddr ? (card.nknAddr.slice(0,16)+'…') : 'NONE') + ' for webid=' + String(card.webid).slice(0, 32));
+      }
       const trustLevel = card.trustOffer === 'vertrouwd' || card.trustOffer === 'bekend'
         ? card.trustOffer : 'bekend';
       const m = await bundle.contacts.addContact({
@@ -2767,6 +2868,9 @@ export function buildSkills({
         handle:      card.handle      ?? null,
         displayName: card.displayName ?? null,
         avatarUrl:   card.avatarUrl   ?? null,
+        // 2026-05-27 — preserve the NKN peer address embedded in the
+        // QR card so the chat-shell can DM straight after add.
+        ...(typeof card.nknAddr === 'string' && card.nknAddr ? { nknAddr: card.nknAddr } : {}),
         trustLevel,
       });
       metrics?.record?.('contact-added-from-qr');

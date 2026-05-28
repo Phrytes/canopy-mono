@@ -21,6 +21,17 @@ import { describeFilter }    from '../filter.js';
 import { buildEmbed }        from '../embed.js';
 import { openExternalFlow }  from '../externalFlow.js';
 
+// Bundle F P5 (#261) — lazy chrono import for createTimeEmbed's
+// natural-language fallback.  Lazy because the parseDate module
+// pulls in chrono-node (~70KB) and only /embed-time needs it.
+let _parseDateAndTime;
+async function parseDateLazy(input) {
+  if (!_parseDateAndTime) {
+    _parseDateAndTime = (await import('../forms/parseDate.js')).parseDateAndTime;
+  }
+  try { return _parseDateAndTime(input); } catch { return null; }
+}
+
 /**
  * Build the local-builtins dispatcher.
  *
@@ -46,6 +57,7 @@ export function createLocalBuiltins({
   openLogsPanel,             // v0.7.1c — () => void (opens side-panel)
   findRunner,                // v0.7.5 — ({query}) => Promise<FindReply>
   openFilePicker,            // v0.7.13 — () => Promise<File|null>
+  openQrScanner,             // 2026-05-27 — () => void (mobile: opens scanner modal)
   podAuth,                   // v0.7.P1 — real Solid OIDC wrapper
   onSignOut,                 // v0.7.P2 — cleanup hook for the pod writer
   agent,                     // v0.7.P3a — agent {identity:{host,chat}}
@@ -95,7 +107,12 @@ export function createLocalBuiltins({
     signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
     'reset-thread': async () => {
       // v0.7.P1-followup — clear the active thread's messages.
-      const active = threadStore?.getActiveThread?.();
+      // 2026-05-27 slash audit close-out — distinguish "no store"
+      // (threadStore not wired in this build) from "no active thread"
+      // (store wired but nothing selected).  Two distinct conditions
+      // → two distinct locale keys.
+      if (!threadStore) return { ok: false, error: t('reset.no_store') };
+      const active = threadStore.getActiveThread?.();
       if (!active) return { ok: false, error: t('reset.no_thread') };
       active.messages = [];
       active._listings?.clear?.();
@@ -106,7 +123,20 @@ export function createLocalBuiltins({
     brief:     async (args) => runBriefBuiltin(args, { briefRunner, t }),
     logs:      async (args) => runLogsBuiltin(args, { eventLog, t, openLogsPanel }),
     find:      async (args) => runFindBuiltin(args, { findRunner, t }),
+    scanQr:    async ()     => runScanQrBuiltin({ openQrScanner, t }),
   };
+}
+
+/**
+ * `/scan-qr` — open the camera so the user can scan a stoop-contact://
+ * or stoop-invite:// URL.  Mobile-only today; web returns a hint.
+ */
+async function runScanQrBuiltin({ openQrScanner, t }) {
+  if (typeof openQrScanner !== 'function') {
+    return { ok: false, error: t('scan_qr.not_available') };
+  }
+  openQrScanner();
+  return { ok: true, message: t('scan_qr.opening') };
 }
 
 async function runFindBuiltin(args, { findRunner, t }) {
@@ -372,19 +402,28 @@ async function sendFile(args, {
   }
 
   let dataB64;
-  try {
-    dataB64 = await new Promise((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload  = () => {
-        const dataUrl = String(fr.result ?? '');
-        const idx = dataUrl.indexOf(',');
-        resolve(idx > 0 ? dataUrl.slice(idx + 1) : dataUrl);
-      };
-      fr.onerror = () => reject(fr.error ?? new Error('FileReader failed'));
-      fr.readAsDataURL(file);
-    });
-  } catch (err) {
-    return { ok: false, error: t('sendFile.read_failed', { error: err.message ?? String(err) }) };
+  if (typeof file?.dataB64 === 'string' && file.dataB64.length > 0) {
+    // Bundle F P4 (#260) — mobile pickers pre-encode the bytes
+    // (substrate `packages/react-native/src/picker` returns
+    // {dataB64, ...}).  Hermes has no FileReader, so the browser
+    // path below would crash on RN.  Short-circuit when the
+    // picker already gave us the base64.
+    dataB64 = file.dataB64;
+  } else {
+    try {
+      dataB64 = await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload  = () => {
+          const dataUrl = String(fr.result ?? '');
+          const idx = dataUrl.indexOf(',');
+          resolve(idx > 0 ? dataUrl.slice(idx + 1) : dataUrl);
+        };
+        fr.onerror = () => reject(fr.error ?? new Error('FileReader failed'));
+        fr.readAsDataURL(file);
+      });
+    } catch (err) {
+      return { ok: false, error: t('sendFile.read_failed', { error: err.message ?? String(err) }) };
+    }
   }
 
   try {
@@ -690,10 +729,15 @@ async function peerConnect(_args, { connectPeer, t }) {
 
 /**
  * `/test-peer <addr> [text]` — v0.7.P3b.  Send a test envelope.
+ *
+ * 2026-05-27 slash audit close-out — the manifest param is `addr`
+ * (matches the user-facing locale contract `peer.no_address` which
+ * says `<addr>`).  Accept the legacy `address` arg name for back-compat
+ * with any external caller that still passes the old key.
  */
 async function testPeer(args, { agent, t }) {
-  const address = String(args?.address ?? '').trim();
-  const text    = String(args?.text    ?? 'hello').trim();
+  const address = String(args?.addr ?? args?.address ?? '').trim();
+  const text    = String(args?.text ?? 'hello').trim();
   if (!address) return { ok: false, error: t('peer.no_address') };
   if (typeof agent?.sendPeerMessage !== 'function') {
     return { ok: false, error: t('peer.unavailable') };
@@ -956,6 +1000,14 @@ async function createFileEmbed(args, { localActor, t, simPeers, threadStore, cal
  * @returns {Promise<string>}
  */
 function readFileAsBase64(file) {
+  // RN/Hermes short-circuit (#267): when the caller's openFilePicker
+  // already returned bytes inline (expo-document-picker reads the URI
+  // through expo-file-system before resolving), skip the browser
+  // FileReader path — Hermes has neither FileReader nor a fetchable
+  // URI we could re-read here.  Web's <input type="file"> path
+  // returns a real File without `.dataB64`, so the original path
+  // still fires there.
+  if (typeof file?.dataB64 === 'string') return Promise.resolve(file.dataB64);
   return new Promise((resolve, reject) => {
     if (typeof FileReader === 'undefined') {
       reject(new Error('FileReader not available in this runtime'));
@@ -1001,12 +1053,22 @@ async function createTimeEmbed(args, { localActor, t, simPeers, threadStore, cal
   if (!title) return { ok: false, error: t('embed-time.no_title') };
   if (!when)  return { ok: false, error: t('embed-time.no_when') };
 
+  // Bundle F P5 (#261) — fall back to chrono-node for natural-
+  // language dates ("tomorrow 3pm", "next Friday").  parseDate is
+  // already in the bundle (used by form elicitation) + benefits
+  // both web and mobile surfaces.
   let startAt;
   const direct = new Date(when);
   if (!Number.isNaN(direct.getTime())) {
     startAt = direct;
   } else {
-    return { ok: false, error: t('embed-time.bad_when', { when }) };
+    const chronoIso = await parseDateLazy(when);
+    const chronoDate = chronoIso ? new Date(chronoIso) : null;
+    if (chronoDate && !Number.isNaN(chronoDate.getTime())) {
+      startAt = chronoDate;
+    } else {
+      return { ok: false, error: t('embed-time.bad_when', { when }) };
+    }
   }
   const durationMs = parseDuration(String(args?.duration ?? '').trim()) ?? 3_600_000;
   const endAt = new Date(startAt.getTime() + durationMs);
