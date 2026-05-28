@@ -44,6 +44,9 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       existing groups; normalize `{ id, name, memberCount, lastActivity, features }`
       ✓ `normalizeCircle` / `mergeCircles` (de-dupe crewId≡circleId) /
       `loadCircles` (injectable fetchers, fault-tolerant, sorted); 8 unit tests green
+- [x] 0.1b `src/v2/circleSources.js` (shared) — adapter mapping the host's
+      `callSkill` onto the fetchers, **reusing existing ops** `getMyCrews` +
+      `getCurrentGroup` (+ optional circlesStore); no new ops. 5 unit tests green
 - [ ] 0.2 `circle.*` locale keys in `en.json` (default) + `nl.json` (both apps)
 - [ ] 0.3 **web** — new Vite entry `circle.html` + `web/v2/circleLauncher.js`:
       circle tiles (board 1B) + "+ new circle" (wires `/create-group`)
