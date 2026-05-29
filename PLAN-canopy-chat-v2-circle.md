@@ -80,8 +80,15 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       from the detail "⚙ settings"; en+nl labels. Store + renderer = 9 tests
       (56 v2 total). ⏳ per-option **Consequences** info-panel = 1.2b; mobile
       screen = M3.
-- [ ] 1.3 Co-admin consensus: pending-change record + "send proposal" (reuse
-      `groupRedeem` envelope) (board 4A footer)
+- [x] 1.3 Co-admin consensus (model + web gating) — `src/v2/circleConsensus.js`
+      (`makeProposal`/`approveProposal`/`pendingApprovers`: edits apply unless
+      `consensusRequired` + ≥2 admins, then a pending proposal needs the other
+      admins). Settings screen gains a `consensusRequired` toggle + a
+      "Send proposal →" save label + pending note when consensus is active.
+      en+nl. 5 model + 2 renderer tests (70 v2 total).
+- [ ] 1.3b Cross-admin proposal **delivery** — send/approve proposals
+      peer-to-peer (reuse the groupRedeem request/response envelope). Needs the
+      multi-admin P2P flow (can't exercise with one local user).
 - [x] 1.4 personal-override sheet (web, board 6A) — chat-off / reveal-open /
       agents-may-contact-me + flow-through (tasks/calendar → My things) toggles
       over the `memberOverride` model, persisted via `createMemberOverrideStore`

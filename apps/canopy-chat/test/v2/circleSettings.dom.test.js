@@ -46,4 +46,22 @@ describe('renderCircleSettings', () => {
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onBack).toHaveBeenCalledTimes(1);
   });
+
+  it('renders the consensus toggle and honours custom saveLabel + note', () => {
+    const el = mount();
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t, saveLabel: 'Send proposal', note: 'pending note' });
+    expect(el.querySelector('input[data-field=consensusRequired]')).not.toBeNull();
+    expect(el.querySelector('.circle-settings__save').textContent).toBe('Send proposal');
+    expect(el.querySelector('.circle-settings__note').textContent).toBe('pending note');
+  });
+
+  it('consensus toggle fires onChange({ consensusRequired })', () => {
+    const el = mount();
+    const onChange = vi.fn();
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t, onChange });
+    const c = el.querySelector('input[data-field=consensusRequired]');
+    c.checked = true;
+    c.dispatchEvent(new Event('change'));
+    expect(onChange).toHaveBeenCalledWith({ consensusRequired: true });
+  });
 });

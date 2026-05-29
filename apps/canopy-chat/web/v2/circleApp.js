@@ -20,6 +20,7 @@ import { loadCircleItems } from '../../src/v2/circleContent.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
 import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
+import { makeProposal } from '../../src/v2/circleConsensus.js';
 import {
   createCirclePolicyStore, localStoragePolicyIo,
   createMemberOverrideStore, localStorageOverrideIo,
@@ -95,12 +96,25 @@ async function showOverride(id) {
 
 async function showSettings(id) {
   let working = await policyStore.get(id);
+  const consensusActive = () => !!working.consensusRequired && (working.admins?.length ?? 0) >= 2;
   const rerender = () => renderCircleSettings(rootEl, {
     policy: working,
     t,
+    saveLabel: consensusActive() ? t('circle.settings.send_proposal') : undefined,
+    note: consensusActive() ? t('circle.settings.pending') : undefined,
     onChange: (patch) => { working = mergeCirclePolicy(working, patch); rerender(); },
     onBack: () => showDetail(id),
-    onSave: async () => { await policyStore.update(id, working); showDetail(id); },
+    onSave: async () => {
+      if (!consensusActive()) {
+        await policyStore.update(id, working);
+        showDetail(id);
+        return;
+      }
+      // Consensus required: record a pending proposal. Cross-admin delivery
+      // (reuse the groupRedeem envelope) lands in 1.3b — not applied yet.
+      makeProposal({ circleId: id, patch: working, proposedBy: null, policy: working });
+      showDetail(id);
+    },
   });
   rerender();
 }
