@@ -12,7 +12,27 @@
 .circle-page {
   max-width: 640px;
   margin: 0 auto;
-  padding: 18px 16px 56px;
+  padding: 18px 16px 84px; /* bottom clears the fixed tab bar */
+}
+
+/* ───────────────── launcher bottom tab bar (board 1/5/6C) ───────────────── */
+.circle-tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  display: flex; justify-content: center; gap: 4px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+.circle-tabbar--hidden { display: none; }
+.circle-tabbar__tab {
+  flex: 1 1 0; max-width: 200px; cursor: pointer; font: inherit;
+  padding: 9px 12px; border-radius: var(--radius);
+  background: transparent; border: 1px solid transparent;
+  color: var(--ink-soft); font-weight: 600; font-size: 14px;
+}
+.circle-tabbar__tab:hover { color: var(--accent-ink); }
+.circle-tabbar__tab.is-active {
+  background: var(--accent); border-color: var(--accent); color: #fff;
 }
 .circle-page__bar { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
 .circle-page__back {
@@ -55,13 +75,11 @@
   cursor: pointer; letter-spacing: .02em;
 }
 .circle-page [class$="__back"]:hover { color: var(--accent-ink); }
-.circle-page button[class$="__back"]::before { content: "← "; }
 
 /* primary buttons (save / agree / ask / open) */
 .circle-page [class$="__save"],
 .circle-page .circle-rules-consent__agree,
-.circle-page .circle-hop__ask,
-.circle-page .circle-launcher__stream {
+.circle-page .circle-hop__ask {
   display: inline-block;
   background: var(--accent); color: #fff; border: 1px solid var(--accent);
   border-radius: var(--radius); padding: 11px 18px;
@@ -72,17 +90,16 @@
 .circle-page .circle-hop__ask:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
 .circle-page [class$="__save"] { margin-top: 14px; }
 
-/* secondary buttons (decline / sla over / availability / hop nav) */
+/* secondary buttons (decline / hop nav) */
 .circle-page .circle-rules-consent__decline,
-.circle-page .circle-launcher__availability,
-.circle-page .circle-launcher__hop {
+.circle-page .circle-availability__hop {
+  display: block; margin-top: 10px;
   background: var(--card); color: var(--ink);
   border: 1px solid var(--line); border-radius: var(--radius);
   padding: 11px 18px; font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
 }
 .circle-page .circle-rules-consent__decline:hover,
-.circle-page .circle-launcher__availability:hover,
-.circle-page .circle-launcher__hop:hover { border-color: var(--accent); }
+.circle-page .circle-availability__hop:hover { border-color: var(--accent); }
 
 /* notes / empties / loading */
 .circle-page [class$="__note"],

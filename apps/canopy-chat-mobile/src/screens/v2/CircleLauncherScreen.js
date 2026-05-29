@@ -35,6 +35,17 @@ import CircleSkillEditorScreen from './CircleSkillEditorScreen.js';
 import CircleFolioScreen from './CircleFolioScreen.js';
 import CircleRulesScreen from './CircleRulesScreen.js';
 import CircleRulesConsentScreen from './CircleRulesConsentScreen.js';
+import CircleTabBar from './CircleTabBar.js';
+
+// Wrap a top-level surface (Kringen / Stroom / Mij) with the bottom tab bar.
+function WithTabBar({ active, onSelect, children }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>{children}</View>
+      <CircleTabBar active={active} onSelect={onSelect} />
+    </View>
+  );
+}
 
 export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   const [circles, setCircles] = useState([]);
@@ -93,6 +104,13 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
 
   const closeCircle = () => { setActiveCircle(null); setSelected(null); setItems([]); setView('list'); };
 
+  // Bottom tab bar (Kringen / Stroom / Mij).
+  const onTab = (id) => {
+    if (id === 'kringen') { setActiveCircle(null); setSelected(null); setView('list'); }
+    else if (id === 'stroom') setView('stream');
+    else if (id === 'mij') setView('availability');
+  };
+
   const submitCreate = useCallback(async () => {
     const name = newName.trim();
     if (!name || !bundle?.callSkill) { setCreating(false); setNewName(''); return; }
@@ -105,16 +123,26 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   }, [newName, bundle, load]);
 
   if (view === 'availability') {
-    return <CircleAvailabilityScreen store={availabilityStore} onBack={() => setView('list')} />;
+    return (
+      <WithTabBar active="mij" onSelect={onTab}>
+        <CircleAvailabilityScreen
+          store={availabilityStore}
+          onBack={() => setView('list')}
+          onHop={() => setView('hop')}
+        />
+      </WithTabBar>
+    );
   }
   if (view === 'stream') {
     return (
-      <CircleStreamScreen
-        eventLog={eventLog}
-        circles={circles}
-        onBack={() => setView('list')}
-        onOpenCircle={(id) => openCircle(circles.find((c) => c.id === id) || { id })}
-      />
+      <WithTabBar active="stroom" onSelect={onTab}>
+        <CircleStreamScreen
+          eventLog={eventLog}
+          circles={circles}
+          onBack={() => setView('list')}
+          onOpenCircle={(id) => openCircle(circles.find((c) => c.id === id) || { id })}
+        />
+      </WithTabBar>
     );
   }
   if (selected && view === 'settings') {
@@ -129,7 +157,8 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
     return <CircleViewAsScreen members={[]} policy={viewAsPolicy} onBack={() => setView('detail')} />;
   }
   if (view === 'hop') {
-    return <CircleHopScreen callSkill={callSkill} onBack={() => setView('list')} />;
+    // Hopping lives under the Mij tab (personal settings).
+    return <CircleHopScreen callSkill={callSkill} onBack={() => setView('availability')} />;
   }
   if (selected && view === 'advisor') {
     return <CircleAdvisorScreen eventLog={eventLog} circleId={selected.id} onBack={() => setView('detail')} />;
@@ -208,88 +237,67 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   }
 
   return (
-    <View style={styles.page} testID="circle-launcher">
-      <View style={styles.bar}>
+    <WithTabBar active="kringen" onSelect={onTab}>
+      <View style={styles.page} testID="circle-launcher">
         {onBack ? (
-          <Pressable onPress={onBack} accessibilityRole="button" testID="circle-to-chat">
-            <Text style={styles.back}>← chat</Text>
-          </Pressable>
-        ) : null}
-        <View style={styles.barActions}>
-          <Pressable
-            onPress={() => setView('stream')}
-            accessibilityRole="button"
-            testID="circle-stream-open"
-          >
-            <Text style={styles.availText}>{t('circle.stream.open')}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setView('availability')}
-            accessibilityRole="button"
-            testID="circle-availability-open"
-          >
-            <Text style={styles.availText}>{t('circle.availability.title')}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setView('hop')}
-            accessibilityRole="button"
-            testID="circle-hop-open"
-          >
-            <Text style={styles.availText}>{t('circle.hop.title')}</Text>
-          </Pressable>
-        </View>
-      </View>
-      <Text style={styles.title}>{t('circle.title')}</Text>
-
-      {loading ? (
-        <Text style={styles.muted}>{t('circle.loading')}</Text>
-      ) : (
-        <ScrollView contentContainerStyle={styles.list}>
-          {circles.length === 0 ? (
-            <Text style={styles.muted}>{t('circle.empty')}</Text>
-          ) : (
-            circles.map((c) => (
-              <Pressable
-                key={c.id}
-                style={styles.tile}
-                accessibilityRole="button"
-                onPress={() => openCircle(c)}
-              >
-                <Text style={styles.tileName}>{c.name}</Text>
-                {c.memberCount != null ? (
-                  <Text style={styles.tileMeta}>{t('circle.members', { count: c.memberCount })}</Text>
-                ) : null}
-              </Pressable>
-            ))
-          )}
-
-          {creating ? (
-            <View style={styles.createRow}>
-              <TextInput
-                style={styles.input}
-                value={newName}
-                onChangeText={setNewName}
-                placeholder={t('circle.new')}
-                autoFocus
-                onSubmitEditing={submitCreate}
-                returnKeyType="done"
-              />
-              <Pressable style={styles.createBtn} accessibilityRole="button" onPress={submitCreate}>
-                <Text style={styles.createBtnText}>✓</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable
-              style={styles.newBtn}
-              accessibilityRole="button"
-              onPress={() => setCreating(true)}
-            >
-              <Text style={styles.newText}>{t('circle.new')}</Text>
+          <View style={styles.bar}>
+            <Pressable onPress={onBack} accessibilityRole="button" testID="circle-to-chat">
+              <Text style={styles.back}>← chat</Text>
             </Pressable>
-          )}
-        </ScrollView>
-      )}
-    </View>
+          </View>
+        ) : null}
+        <Text style={styles.title}>{t('circle.title')}</Text>
+
+        {loading ? (
+          <Text style={styles.muted}>{t('circle.loading')}</Text>
+        ) : (
+          <ScrollView contentContainerStyle={styles.list}>
+            {circles.length === 0 ? (
+              <Text style={styles.muted}>{t('circle.empty')}</Text>
+            ) : (
+              circles.map((c) => (
+                <Pressable
+                  key={c.id}
+                  style={styles.tile}
+                  accessibilityRole="button"
+                  onPress={() => openCircle(c)}
+                >
+                  <Text style={styles.tileName}>{c.name}</Text>
+                  {c.memberCount != null ? (
+                    <Text style={styles.tileMeta}>{t('circle.members', { count: c.memberCount })}</Text>
+                  ) : null}
+                </Pressable>
+              ))
+            )}
+
+            {creating ? (
+              <View style={styles.createRow}>
+                <TextInput
+                  style={styles.input}
+                  value={newName}
+                  onChangeText={setNewName}
+                  placeholder={t('circle.new')}
+                  autoFocus
+                  onSubmitEditing={submitCreate}
+                  returnKeyType="done"
+                />
+                <Pressable style={styles.createBtn} accessibilityRole="button" onPress={submitCreate}>
+                  <Text style={styles.createBtnText}>✓</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                style={styles.newBtn}
+                accessibilityRole="button"
+                onPress={() => setCreating(true)}
+              >
+                <Text style={styles.newText}>{t('circle.new')}</Text>
+              </Pressable>
+            )}
+          </ScrollView>
+        )}
+      </View>
+    </WithTabBar>
   );
 }
 

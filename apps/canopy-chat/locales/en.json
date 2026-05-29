@@ -1,6 +1,11 @@
 {
   "circle": {
     "title":   { "text": "Your circles", "doc": "Heading of the circle launcher (board 1B)." },
+    "tab": {
+      "kringen": { "text": "Circles", "doc": "Bottom-nav tab → the circle list (board 1)." },
+      "stroom":  { "text": "Stream", "doc": "Bottom-nav tab → the cross-circle stream (board 5)." },
+      "mij":     { "text": "Me", "doc": "Bottom-nav tab → personal availability/quiet-hours/hopping (board 6C)." }
+    },
     "new":     { "text": "+ new circle", "doc": "Create-a-new-circle entry on the launcher." },
     "members": { "text": "{{count}} members", "doc": "Member count on a circle tile; {{count}} interpolated." },
     "empty":   { "text": "No circles yet.", "doc": "Shown when the launcher has no circles." },

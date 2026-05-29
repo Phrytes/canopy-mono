@@ -41,6 +41,18 @@ export const THEME = {
   space:  { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 },
 };
 
+// Soft per-circle avatar tints (board 1B — each circle gets its own shade:
+// periwinkle / sage / tan / beige / rose). Assigned by a stable hash of the
+// circle id so a circle keeps its colour across renders.
+export const AVATAR_TINTS = ['#e0e3f2', '#e0e7d2', '#ece2cf', '#ece6d6', '#f3e3df'];
+
+export function circleTint(seed) {
+  const s = String(seed || '');
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return AVATAR_TINTS[h % AVATAR_TINTS.length];
+}
+
 /**
  * Tag-chip palette keyed by the stream item kind (board 5/8). Returns
  * `{ fg, bg }`; unknown kinds fall back to the neutral ink-soft/line pair.

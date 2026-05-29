@@ -8,7 +8,7 @@
  * merges + re-renders + persists. Pure → unit-testable under happy-dom.
  */
 
-export function renderCircleAvailability(container, { availability, t, onChange, onBack, onSave } = {}) {
+export function renderCircleAvailability(container, { availability, t, onChange, onBack, onSave, onHop } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   const emit = (patch) => { if (typeof onChange === 'function') onChange(patch); };
   const a = availability || {};
@@ -69,6 +69,16 @@ export function renderCircleAvailability(container, { availability, t, onChange,
   save.textContent = tr('circle.settings.save');
   save.addEventListener('click', () => { if (typeof onSave === 'function') onSave(); });
   container.appendChild(save);
+
+  // Mij tab also surfaces the device-global Hopping stance (board 7).
+  if (typeof onHop === 'function') {
+    const hop = document.createElement('button');
+    hop.type = 'button';
+    hop.className = 'circle-availability__hop';
+    hop.textContent = tr('circle.hop.title');
+    hop.addEventListener('click', () => onHop());
+    container.appendChild(hop);
+  }
 
   return container;
 }
