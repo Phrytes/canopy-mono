@@ -116,8 +116,16 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       row jumps to that circle. circleApp/App now wire an EventLog the agent's
       publishEvent feeds. en+nl. 12 new tests (97 v2 total) + Playwright green.
       ⚠ mobile screen Detox-only (next rebuild).
-- [ ] 2.2 **"View as…"** preview — re-run reveal/openness filter as a chosen
-      viewer (board 4C)
+- [x] 2.2 **"View as…"** preview — re-run the reveal/openness filter as a chosen
+      viewer (board 4C). Shared `viewAsDirectory`/`VIEWER_KINDS`
+      (`src/v2/circleViewAs.js`): a real name shows iff the viewer is the member
+      themselves, or a member under `open` policy / a pairwise reveal; strangers
+      + agents see handles only. Web renderer + mobile `CircleViewAsScreen` (viewer
+      picker chips + directory with shown/hidden badges) over the same projection;
+      reached from circle detail "View as…". en+nl (web + mobile). 12 new tests
+      (109 v2 total) + Playwright green. ⚠ **member directory has no data source
+      yet** — needs an identity-resolver MemberMap op; renders empty until then
+      (logic fully tested). Mobile screen Detox-only.
 - [ ] 2.3 **Advisor** — rules over `eventLog` + "too busy?" counter, ≤1/month
       (board 3D)
 - [ ] 2.4 **Agent-as-participant** — add/approve an LLM member (board 4B)

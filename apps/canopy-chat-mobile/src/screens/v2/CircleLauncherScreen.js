@@ -27,6 +27,7 @@ import CircleSettingsScreen from './CircleSettingsScreen.js';
 import CircleOverrideScreen from './CircleOverrideScreen.js';
 import CircleAvailabilityScreen from './CircleAvailabilityScreen.js';
 import CircleStreamScreen from './CircleStreamScreen.js';
+import CircleViewAsScreen from './CircleViewAsScreen.js';
 
 export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   const [circles, setCircles] = useState([]);
@@ -36,6 +37,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   // | 'settings' | 'override'.  `selected` carries the active circle for
   // detail/settings/override.
   const [view, setView] = useState('list');
+  const [viewAsPolicy, setViewAsPolicy] = useState('pairwise');
   const [items, setItems] = useState([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -111,6 +113,11 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   if (selected && view === 'override') {
     return <CircleOverrideScreen store={overrideStore} circleId={selected.id} onBack={() => setView('detail')} />;
   }
+  if (selected && view === 'viewas') {
+    // Members come from the identity-resolver MemberMap once an op surfaces
+    // it; empty until then (the reveal projection is fully tested).
+    return <CircleViewAsScreen members={[]} policy={viewAsPolicy} onBack={() => setView('detail')} />;
+  }
   if (selected) {
     return (
       <CircleDetail
@@ -119,6 +126,11 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
         onBack={closeCircle}
         onSettings={() => setView('settings')}
         onMine={() => setView('override')}
+        onViewAs={async () => {
+          const p = await policyStore.get(selected.id);
+          setViewAsPolicy(p?.revealPolicy ?? 'pairwise');
+          setView('viewas');
+        }}
       />
     );
   }
@@ -202,7 +214,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   );
 }
 
-function CircleDetail({ circle, items, onBack, onSettings, onMine }) {
+function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs }) {
   return (
     <View style={styles.page} testID="circle-detail">
       <View style={styles.bar}>
@@ -220,6 +232,9 @@ function CircleDetail({ circle, items, onBack, onSettings, onMine }) {
         </Pressable>
         <Pressable onPress={onMine} accessibilityRole="button" testID="circle-detail-mine" style={styles.detailAction}>
           <Text style={styles.detailActionText}>{t('circle.override.title')}</Text>
+        </Pressable>
+        <Pressable onPress={onViewAs} accessibilityRole="button" testID="circle-detail-viewas" style={styles.detailAction}>
+          <Text style={styles.detailActionText}>{t('circle.viewAs.title')}</Text>
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.list}>
