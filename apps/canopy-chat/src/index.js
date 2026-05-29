@@ -55,6 +55,7 @@ export {
 } from './v2/circlePolicyStore.js';
 export { makeProposal, approveProposal, pendingApprovers } from './v2/circleConsensus.js';
 export { eventCircleId, buildCircleStream } from './v2/circleStream.js';
+export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export {
   DEFAULT_AVAILABILITY, normalizeAvailability, mergeAvailability, isPushSuppressed,
   createAvailabilityStore, localStorageAvailabilityIo,

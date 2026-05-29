@@ -84,6 +84,14 @@
       "from":          { "text": "From", "doc": "Quiet-hours start time label." },
       "to":            { "text": "To", "doc": "Quiet-hours end time label." },
       "weekends":      { "text": "Weekends all day too", "doc": "Quiet-hours weekend toggle label." }
+    },
+    "viewAs": {
+      "title":    { "text": "View as…", "doc": "Heading of the View-as reveal preview (board 4C)." },
+      "stranger": { "text": "A stranger", "doc": "View-as viewer option: a non-member." },
+      "agent":    { "text": "An agent", "doc": "View-as viewer option: an LLM agent." },
+      "empty":    { "text": "No members to preview yet.", "doc": "Empty state for View-as." },
+      "revealed": { "text": "name shown", "doc": "Badge: this member's real name is visible to the chosen viewer." },
+      "hidden":   { "text": "name hidden", "doc": "Badge: this member shows only a handle to the chosen viewer." }
     }
   },
   "common": {

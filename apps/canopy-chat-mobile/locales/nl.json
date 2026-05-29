@@ -84,6 +84,14 @@
       "from":          { "text": "Van", "doc": "Quiet-hours start time label." },
       "to":            { "text": "Tot", "doc": "Quiet-hours end time label." },
       "weekends":      { "text": "In het weekend ook overdag", "doc": "Quiet-hours weekend toggle label." }
+    },
+    "viewAs": {
+      "title":    { "text": "Bekijk als…", "doc": "Heading of the View-as reveal preview (board 4C)." },
+      "stranger": { "text": "Een vreemde", "doc": "View-as viewer option: a non-member." },
+      "agent":    { "text": "Een agent", "doc": "View-as viewer option: an LLM agent." },
+      "empty":    { "text": "Nog geen leden om te bekijken.", "doc": "Empty state for View-as." },
+      "revealed": { "text": "naam zichtbaar", "doc": "Badge: this member's real name is visible to the chosen viewer." },
+      "hidden":   { "text": "naam verborgen", "doc": "Badge: this member shows only a handle to the chosen viewer." }
     }
   },
   "app": {

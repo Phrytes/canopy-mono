@@ -14,6 +14,7 @@ export function renderCircleDetail(container, {
   onBack,
   onSettings,
   onMine,
+  onViewAs,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
@@ -44,6 +45,14 @@ export function renderCircleDetail(container, {
     gear.textContent = tr('circle.settings.title');
     gear.addEventListener('click', () => onSettings());
     bar.appendChild(gear);
+  }
+  if (typeof onViewAs === 'function') {
+    const va = document.createElement('button');
+    va.type = 'button';
+    va.className = 'circle-detail__viewas';
+    va.textContent = tr('circle.viewAs.title');
+    va.addEventListener('click', () => onViewAs());
+    bar.appendChild(va);
   }
   container.appendChild(bar);
 

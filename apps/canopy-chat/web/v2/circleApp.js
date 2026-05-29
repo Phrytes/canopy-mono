@@ -31,6 +31,7 @@ import {
   createCirclePolicyStore, localStoragePolicyIo,
   createMemberOverrideStore, localStorageOverrideIo,
 } from '../../src/v2/circlePolicyStore.js';
+import { renderCircleViewAs } from './circleViewAs.js';
 import { renderCircleLauncher } from './circleLauncher.js';
 import { renderCircleDetail } from './circleDetail.js';
 import { renderCircleSettings } from './circleSettings.js';
@@ -102,7 +103,8 @@ async function showDetail(id) {
   const circle = circlesCache.find((c) => c.id === id) || { id };
   const onSettings = () => showSettings(id);
   const onMine = () => showOverride(id);
-  renderCircleDetail(rootEl, { circle, items: [], t, onBack: showLauncher, onSettings, onMine });
+  const onViewAs = () => showViewAs(id);
+  renderCircleDetail(rootEl, { circle, items: [], t, onBack: showLauncher, onSettings, onMine, onViewAs });
 
   if (!resolveCallSkill) return;
   let items = [];
@@ -110,8 +112,22 @@ async function showDetail(id) {
     items = await loadCircleItems({ callSkill: resolveCallSkill, circleId: id });
   } catch { /* keep empty */ }
   if (getActiveCircle() === id) {
-    renderCircleDetail(rootEl, { circle, items, t, onBack: showLauncher, onSettings, onMine });
+    renderCircleDetail(rootEl, { circle, items, t, onBack: showLauncher, onSettings, onMine, onViewAs });
   }
+}
+
+async function showViewAs(id) {
+  // Member directory comes from the identity-resolver MemberMap once an op
+  // surfaces it; empty until then (the reveal projection is fully tested).
+  const members = [];
+  const policy = (await policyStore.get(id))?.revealPolicy ?? 'pairwise';
+  let viewer = { kind: 'stranger' };
+  const rerender = () => renderCircleViewAs(rootEl, {
+    members, policy, viewer, t,
+    onPickViewer: (v) => { viewer = v; rerender(); },
+    onBack: () => showDetail(id),
+  });
+  rerender();
 }
 
 async function showOverride(id) {
