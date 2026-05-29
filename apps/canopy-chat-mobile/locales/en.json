@@ -4,7 +4,9 @@
     "new":     { "text": "+ new circle", "doc": "Create-a-new-circle entry on the launcher." },
     "members": { "text": "{{count}} members", "doc": "Member count on a circle tile; {{count}} interpolated." },
     "empty":   { "text": "No circles yet.", "doc": "Shown when the launcher has no circles." },
-    "loading": { "text": "Loading circles…", "doc": "Shown while circles are being fetched." }
+    "loading": { "text": "Loading circles…", "doc": "Shown while circles are being fetched." },
+    "back":    { "text": "← circles", "doc": "Back link from a circle detail view to the launcher." },
+    "detail_empty": { "text": "Nothing here yet.", "doc": "Empty state inside a circle detail view." }
   },
   "app": {
     "name":   { "text": "canopy-chat",                       "doc": "App display name in headers + about screen" },

@@ -1,24 +1,27 @@
 /**
- * canopy-chat-mobile v2 — circle launcher screen (board 1B).
+ * canopy-chat-mobile v2 — circle launcher + detail screen (boards 1B / F1).
  *
- * Mobile counterpart of web's `web/v2/circleLauncher.js`, over the same
- * shared model (`loadCircles` / `circleSourcesFromAgent` from
- * '@canopy-app/canopy-chat'). Additive: ChatScreen is untouched; App.js
- * shows this when the user toggles to "Circles".
+ * Mobile counterpart of web's `web/v2/circleLauncher.js` + `circleDetail.js`,
+ * over the same shared model ('@canopy-app/canopy-chat'). Additive:
+ * ChatScreen is untouched; App.js shows this when the user toggles to
+ * "Circles". Opening a circle sets the active circle (F1) and shows an
+ * inline scoped detail; back returns to the launcher.
  *
- * Data: if a `bundle` (with `callSkill`) is passed, real circles load via
- * the shared sources; otherwise the launcher renders its empty state. The
- * bundle is not yet lifted to App level, so live data + opening a circle
- * (F1 scoping) land in the next slice — flagged for device verification.
+ * Data: with a `bundle` (callSkill) real circles load via the shared
+ * sources; otherwise the launcher shows its empty state. Scoped detail
+ * content lands in a later sub-slice — flagged for device verification.
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { loadCircles, circleSourcesFromAgent } from '@canopy-app/canopy-chat';
+import {
+  loadCircles, circleSourcesFromAgent, setActiveCircle,
+} from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
-export default function CircleLauncherScreen({ bundle, onBack, onOpenCircle, onNewCircle }) {
+export default function CircleLauncherScreen({ bundle, onBack, onNewCircle }) {
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -38,6 +41,13 @@ export default function CircleLauncherScreen({ bundle, onBack, onOpenCircle, onN
   }, [bundle]);
 
   useEffect(() => { load(); }, [load]);
+
+  const openCircle = (c) => { setActiveCircle(c.id); setSelected(c); };
+  const closeCircle = () => { setActiveCircle(null); setSelected(null); };
+
+  if (selected) {
+    return <CircleDetail circle={selected} items={[]} onBack={closeCircle} />;
+  }
 
   return (
     <View style={styles.page}>
@@ -62,7 +72,7 @@ export default function CircleLauncherScreen({ bundle, onBack, onOpenCircle, onN
                 key={c.id}
                 style={styles.tile}
                 accessibilityRole="button"
-                onPress={() => onOpenCircle && onOpenCircle(c.id, c)}
+                onPress={() => openCircle(c)}
               >
                 <Text style={styles.tileName}>{c.name}</Text>
                 {c.memberCount != null ? (
@@ -81,6 +91,33 @@ export default function CircleLauncherScreen({ bundle, onBack, onOpenCircle, onN
           </Pressable>
         </ScrollView>
       )}
+    </View>
+  );
+}
+
+function CircleDetail({ circle, items, onBack }) {
+  return (
+    <View style={styles.page}>
+      <View style={styles.bar}>
+        <Pressable onPress={onBack} accessibilityRole="button">
+          <Text style={styles.back}>{t('circle.back')}</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.title}>{circle.name || circle.id}</Text>
+      {circle.memberCount != null ? (
+        <Text style={styles.tileMeta}>{t('circle.members', { count: circle.memberCount })}</Text>
+      ) : null}
+      <ScrollView contentContainerStyle={styles.list}>
+        {(!items || items.length === 0) ? (
+          <Text style={styles.muted}>{t('circle.detail_empty')}</Text>
+        ) : (
+          items.map((it, i) => (
+            <View key={it.id ?? i} style={styles.tile}>
+              <Text style={styles.tileName}>{it.title || it.text || it.name || String(it.id ?? '')}</Text>
+            </View>
+          ))
+        )}
+      </ScrollView>
     </View>
   );
 }

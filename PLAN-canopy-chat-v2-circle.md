@@ -56,8 +56,14 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
 - [x] 0.4 **mobile** — `screens/v2/CircleLauncherScreen.js` over the shared
       model + an additive toggle pill in `App.js` (ChatScreen untouched, still
       default). ⚠ needs a **device check** (RN not unit-rendered here).
-- [ ] 0.5 F1 — open a circle → scoped view: filter the composed surface by
-      `circleId` (adopt `@canopy/circles` Audience in `filter.js`/router) — shared
+- [x] 0.5 F1 (foundation) — open a circle → scoped detail view. Shared
+      `src/v2/circleScope.js` (`itemCircleId`/`isInCircle`/`scopeItems`, crewId≡
+      circleId + `circle:`/`crew:` audience) + `src/v2/activeCircle.js`
+      (get/set/subscribe). Web: launcher↔`circleDetail` nav (6+4 happy-dom
+      tests). Mobile: inline detail in `CircleLauncherScreen`. 31 v2 tests green.
+- [ ] 0.5b F1 (content) — populate the detail with the circle's **scoped
+      items** (fetch feed/tasks/notes per circle, run through `scopeItems`).
+      Today the detail shows the header + empty state.
 - [ ] 0.6 Smoke: launcher lists real circles + opening one scopes the feed,
       verified on **both** web and mobile
 
@@ -117,3 +123,9 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
   passes isolated). **Needs human check:** web `circle.html` in a browser +
   the mobile "Circles" pill on device. Next: F1 (scope the shell by the opened
   circle) + real data wiring on both surfaces.
+- **2026-05-29** — F1 foundation (0.5) shipped. Shared `circleScope` +
+  `activeCircle` (8 tests); web launcher↔detail nav + `circleDetail` renderer
+  (4 happy-dom tests); mobile inline detail in `CircleLauncherScreen`. Opening a
+  circle now sets the active circle + shows a scoped detail with back. 31 v2
+  tests green. **Needs human check:** open a circle on web (`circle.html`) and
+  mobile → detail view + back. Next: 0.5b — populate detail with scoped items.
