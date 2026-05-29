@@ -15,7 +15,10 @@
 
 describe('circle availability screen (M3)', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
+    // The app's NKN timers never let RN idle, so launchApp would otherwise
+    // hang on Detox's TimersIdlingResource. Launch with synchronization
+    // disabled natively (detoxEnableSynchronization: 0).
+    await device.launchApp({ newInstance: true, launchArgs: { detoxEnableSynchronization: 0 } });
     await device.disableSynchronization();
     await waitFor(element(by.id('circle-launcher')))
       .toBeVisible()
