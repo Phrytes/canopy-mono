@@ -100,6 +100,51 @@
       "too_busy_logged": { "text": "Noted — thanks for the signal.", "doc": "Confirmation after logging a too-busy signal." },
       "advice_too_busy": { "text": "This circle has had {{count}} 'too busy' signals in two weeks while it's getting busier. Consider sharing the load — add a co-admin or split off a sub-circle.", "doc": "Advice card for the too-busy + growth rule; {{count}} interpolated." },
       "dismiss":         { "text": "Dismiss", "doc": "Dismiss the advice card." }
+    },
+    "hop": {
+      "title":        { "text": "Hopping", "doc": "Heading of the hopping screen (board 7)." },
+      "global_label": { "text": "Let trusted contacts relay my requests one hop", "doc": "Global hop-mode toggle (Stoop allowHopThrough)." },
+      "explain":      { "text": "When you ask for something no one nearby has, a contact who allows it can pass your request one step further — to their contacts. Max one hop, and the relay is anonymized.", "doc": "Explanation of how hopping works." },
+      "ask_relay":    { "text": "Ask to relay", "doc": "Button: ask the gate contact to relay the request one hop." },
+      "over_limit":   { "text": "Too many hops — requests travel at most one step.", "doc": "Shown when a chain exceeds max-one-hop." }
+    },
+    "skills": {
+      "editor_title":  { "text": "Skill", "doc": "Skill editor heading (board 8)." },
+      "matches_title": { "text": "Matches", "doc": "Skill match-list heading." },
+      "no_matches":    { "text": "No matches yet", "doc": "Empty state for the skill match list." },
+      "axis": {
+        "openness": { "text": "Openness", "doc": "Skill axis: how openly it is shared." },
+        "posture":  { "text": "Posture", "doc": "Skill axis: fixed vs negotiable offer." },
+        "status":   { "text": "Status", "doc": "Skill axis: lifecycle." },
+        "radius":   { "text": "Radius", "doc": "Skill axis: how far it reaches." }
+      },
+      "opt": {
+        "private":       { "text": "Private", "doc": "Openness option." },
+        "circle":        { "text": "This circle", "doc": "Openness option." },
+        "contacts":      { "text": "Contacts", "doc": "Openness option." },
+        "public":        { "text": "Public", "doc": "Openness option." },
+        "always":        { "text": "Always", "doc": "Posture option." },
+        "negotiable":    { "text": "Negotiable", "doc": "Posture option." },
+        "active":        { "text": "Active", "doc": "Status option." },
+        "paused":        { "text": "Paused", "doc": "Status option." },
+        "archived":      { "text": "Archived", "doc": "Status option." },
+        "home":          { "text": "Home", "doc": "Radius option." },
+        "street":        { "text": "Street", "doc": "Radius option." },
+        "neighbourhood": { "text": "Neighbourhood", "doc": "Radius option." },
+        "city":          { "text": "City", "doc": "Radius option." }
+      },
+      "source": {
+        "human":   { "text": "Person", "doc": "Match source badge: a human." },
+        "agent":   { "text": "Agent", "doc": "Match source badge: an LLM agent." },
+        "via-hop": { "text": "Via contact", "doc": "Match source badge: reached via a one-hop relay." }
+      }
+    },
+    "folio": {
+      "title":      { "text": "Files", "doc": "Circle file-browser heading (board 10B)." },
+      "all":        { "text": "All", "doc": "File filter: all files." },
+      "favourites": { "text": "Favourites", "doc": "File filter: favourited files." },
+      "recent":     { "text": "Recent", "doc": "File filter: recently changed files." },
+      "empty":      { "text": "No files in this circle yet.", "doc": "Empty state for the circle file browser." }
     }
   },
   "common": {

@@ -17,8 +17,14 @@ import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
 import { EventLog } from '../../src/eventLog.js';
 import { buildCircleStream } from '../../src/v2/circleStream.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
+import { normalizeHopMode } from '../../src/v2/circleHop.js';
+import { mergeSkill, normalizeSkill } from '../../src/v2/circleSkills.js';
+import { buildCircleFiles } from '../../src/v2/circleFolio.js';
 import { renderCircleStream } from './circleStream.js';
 import { renderCircleAdvisor } from './circleAdvisor.js';
+import { renderCircleHop } from './circleHop.js';
+import { renderSkillEditor } from './circleSkillEditor.js';
+import { renderCircleFolioBrowser } from './circleFolio.js';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircleItems } from '../../src/v2/circleContent.js';
@@ -62,7 +68,33 @@ function showLauncher() {
     onNewCircle: createCircle,
     onAvailability: showAvailability,
     onStream: showStream,
+    onHop: showHop,
   });
+}
+
+// Hopping is a DEVICE-global stance (Stoop getHopMode/setHopMode), so it
+// lives at launcher level like Availability. Chain-card data lands later.
+async function showHop() {
+  let hopMode = { global: false };
+  if (resolveCallSkill) {
+    try { hopMode = normalizeHopMode(await resolveCallSkill('getHopMode', {})); } catch { /* default */ }
+  }
+  const rerender = () => renderCircleHop(rootEl, {
+    hopMode,
+    t,
+    onToggleGlobal: async (v) => {
+      hopMode = { global: v };
+      rerender();
+      if (resolveCallSkill) {
+        try {
+          const r = await resolveCallSkill('setHopMode', { global: v });
+          if (r && !r.error) { hopMode = normalizeHopMode(r); rerender(); }
+        } catch { /* keep optimistic */ }
+      }
+    },
+    onBack: showLauncher,
+  });
+  rerender();
 }
 
 function showStream() {
@@ -107,7 +139,10 @@ async function showDetail(id) {
   const onMine = () => showOverride(id);
   const onViewAs = () => showViewAs(id);
   const onAdvisor = () => showAdvisor(id);
-  renderCircleDetail(rootEl, { circle, items: [], t, onBack: showLauncher, onSettings, onMine, onViewAs, onAdvisor });
+  const onSkills = () => showSkills(id);
+  const onFiles = () => showFolio(id);
+  const detailOpts = { onBack: showLauncher, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles };
+  renderCircleDetail(rootEl, { circle, items: [], t, ...detailOpts });
 
   if (!resolveCallSkill) return;
   let items = [];
@@ -115,8 +150,42 @@ async function showDetail(id) {
     items = await loadCircleItems({ callSkill: resolveCallSkill, circleId: id });
   } catch { /* keep empty */ }
   if (getActiveCircle() === id) {
-    renderCircleDetail(rootEl, { circle, items, t, onBack: showLauncher, onSettings, onMine, onViewAs, onAdvisor });
+    renderCircleDetail(rootEl, { circle, items, t, ...detailOpts });
   }
+}
+
+// Skill editor (board 8) — draft persists locally per circle (cc.circleSkill.<id>);
+// "extend the Stoop skill item" is the later real-persistence path.
+const skillKey = (id) => `cc.circleSkill.${id}`;
+function showSkills(id) {
+  let skill = normalizeSkill(null);
+  try { const s = localStorage.getItem(skillKey(id)); if (s) skill = normalizeSkill(JSON.parse(s)); } catch { /* default */ }
+  const rerender = () => renderSkillEditor(rootEl, {
+    skill,
+    t,
+    onChange: (patch) => { skill = mergeSkill(skill, patch); rerender(); },
+    onBack: () => showDetail(id),
+    onSave: () => {
+      try { localStorage.setItem(skillKey(id), JSON.stringify(skill)); } catch { /* ignore */ }
+      showDetail(id);
+    },
+  });
+  rerender();
+}
+
+// Circle-scoped Folio browser (board 10B) — files come from a circle pod's
+// listFiles once wired; empty until then (the scope/normalize is tested).
+function showFolio(id) {
+  let filter = 'all';
+  const files = buildCircleFiles({ files: [], circleId: id });
+  const rerender = () => renderCircleFolioBrowser(rootEl, {
+    files,
+    filter,
+    t,
+    onFilter: (f) => { filter = f; rerender(); },
+    onBack: () => showDetail(id),
+  });
+  rerender();
 }
 
 // Advisor cooldown (≤1 card/month) persists per-circle in localStorage.

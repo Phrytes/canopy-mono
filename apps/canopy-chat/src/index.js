@@ -60,6 +60,14 @@ export {
   COMPLAINT_TYPES, ADVISOR_DEFAULTS, makeTooBusyEvent, computeAdvice,
 } from './v2/circleAdvisor.js';
 export {
+  MAX_HOPS, normalizeHopMode, buildHopChain, makeHopRelayRequest,
+} from './v2/circleHop.js';
+export {
+  SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill,
+  MATCH_SOURCES, buildSkillMatches,
+} from './v2/circleSkills.js';
+export { normalizeFolioFile, buildCircleFiles } from './v2/circleFolio.js';
+export {
   DEFAULT_AVAILABILITY, normalizeAvailability, mergeAvailability, isPushSuppressed,
   createAvailabilityStore, localStorageAvailabilityIo,
 } from './v2/memberAvailability.js';
