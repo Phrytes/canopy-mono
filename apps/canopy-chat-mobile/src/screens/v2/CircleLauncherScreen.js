@@ -18,7 +18,7 @@ import { theme } from './theme.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   loadCircles, circleSourcesFromAgent, makeResolvingCallSkill,
-  loadCircleItems, quickCreateCircle, setActiveCircle,
+  loadCircleItems, quickCreateCircle, setActiveCircle, normalizeCircleMembers,
 } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 import {
@@ -56,6 +56,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   // detail/settings/override.
   const [view, setView] = useState('list');
   const [viewAsPolicy, setViewAsPolicy] = useState('pairwise');
+  const [viewAsMembers, setViewAsMembers] = useState([]);
   const [skillDraft, setSkillDraft] = useState(null);
   const [rulesDoc, setRulesDoc] = useState(null);
   const [rulesPreview, setRulesPreview] = useState(null);
@@ -150,9 +151,8 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
     return <CircleOverrideScreen store={overrideStore} circleId={selected.id} onBack={() => setView('detail')} />;
   }
   if (selected && view === 'viewas') {
-    // Members come from the identity-resolver MemberMap once an op surfaces
-    // it; empty until then (the reveal projection is fully tested).
-    return <CircleViewAsScreen members={[]} policy={viewAsPolicy} onBack={() => setView('detail')} />;
+    // F-5.1 — real member directory loaded in onViewAs via listGroupMembers.
+    return <CircleViewAsScreen members={viewAsMembers} policy={viewAsPolicy} onBack={() => setView('detail')} />;
   }
   if (view === 'hop') {
     // Hopping lives under the Mij tab (personal settings).
@@ -214,6 +214,11 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
         onViewAs={async () => {
           const p = await policyStore.get(selected.id);
           setViewAsPolicy(p?.revealPolicy ?? 'pairwise');
+          let mem = [];
+          if (callSkill) {
+            try { mem = normalizeCircleMembers(await callSkill('listGroupMembers', { groupId: selected.id })); } catch { /* keep empty */ }
+          }
+          setViewAsMembers(mem);
           setView('viewas');
         }}
         onAdvisor={() => setView('advisor')}

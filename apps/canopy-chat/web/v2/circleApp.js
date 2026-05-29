@@ -33,6 +33,7 @@ import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/cir
 import { loadCircleItems } from '../../src/v2/circleContent.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
+import { normalizeCircleMembers } from '../../src/v2/circleMembers.js';
 import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
 import { makeProposal } from '../../src/v2/circleConsensus.js';
 import { mergeAvailability } from '../../src/v2/memberAvailability.js';
@@ -270,9 +271,9 @@ function showAdvisor(id) {
 }
 
 async function showViewAs(id) {
-  // Member directory comes from the identity-resolver MemberMap once an op
-  // surfaces it; empty until then (the reveal projection is fully tested).
-  const members = [];
+  // F-5.1 — real member directory via the listGroupMembers op (MemberMap);
+  // re-running the reveal/openness rules over it is the shared projection.
+  let members = [];
   const policy = (await policyStore.get(id))?.revealPolicy ?? 'pairwise';
   let viewer = { kind: 'stranger' };
   const rerender = () => renderCircleViewAs(rootEl, {
@@ -281,6 +282,12 @@ async function showViewAs(id) {
     onBack: () => showDetail(id),
   });
   rerender();
+  if (resolveCallSkill) {
+    try {
+      members = normalizeCircleMembers(await resolveCallSkill('listGroupMembers', { groupId: id }));
+      if (getActiveCircle() === id) rerender();
+    } catch { /* keep empty */ }
+  }
 }
 
 async function showOverride(id) {
