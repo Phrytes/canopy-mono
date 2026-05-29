@@ -1,0 +1,98 @@
+/**
+ * canopy-chat v2 — circle policy + member override model (shared, F2).
+ *
+ * A circle's settings are a small record keyed by circleId (board 4: the
+ * five axes) plus a per-member override record (board 6). This module is
+ * the pure model: defaults, enum validation, normalisation (merge a
+ * stored partial onto defaults), and deep-merge for edits. Persistence
+ * (pod `shared.json` per the cross-app-settings convention) is wired by
+ * the host on top — kept out of here so it stays unit-testable + portable.
+ */
+
+export const CIRCLE_FEATURES = [
+  'chat', 'noticeboard', 'tasks', 'lists', 'calendar', 'notes', 'houseRules', 'memberDirectory',
+];
+
+export const CIRCLE_POLICY_ENUMS = {
+  view:         ['chat', 'screen', 'cross-stream'],
+  llmTool:      ['off', 'local', 'cloud'],
+  agents:       ['yes', 'admin-approval', 'no'],
+  revealPolicy: ['pairwise', 'open'],
+  pod:          ['none', 'shared', 'personal', 'hybrid'],
+};
+
+export const DEFAULT_CIRCLE_POLICY = {
+  features: {
+    chat: true, noticeboard: false, tasks: false, lists: false,
+    calendar: false, notes: false, houseRules: false, memberDirectory: false,
+  },
+  view:             'chat',
+  llmTool:          'off',
+  agents:           'admin-approval',
+  revealPolicy:     'pairwise',
+  pod:              'none',
+  admins:           [],
+  consensusRequired: false,
+};
+
+/** Coerce any stored partial into a complete, valid policy (invalid values fall back to defaults). */
+export function normalizeCirclePolicy(stored = {}) {
+  const p = stored && typeof stored === 'object' ? stored : {};
+  const features = {};
+  for (const f of CIRCLE_FEATURES) {
+    features[f] = typeof p.features?.[f] === 'boolean' ? p.features[f] : DEFAULT_CIRCLE_POLICY.features[f];
+  }
+  const pickEnum = (key) =>
+    CIRCLE_POLICY_ENUMS[key].includes(p[key]) ? p[key] : DEFAULT_CIRCLE_POLICY[key];
+  return {
+    features,
+    view:         pickEnum('view'),
+    llmTool:      pickEnum('llmTool'),
+    agents:       pickEnum('agents'),
+    revealPolicy: pickEnum('revealPolicy'),
+    pod:          pickEnum('pod'),
+    admins:       Array.isArray(p.admins) ? p.admins.filter((x) => typeof x === 'string') : [],
+    consensusRequired:
+      typeof p.consensusRequired === 'boolean' ? p.consensusRequired : DEFAULT_CIRCLE_POLICY.consensusRequired,
+  };
+}
+
+/** Deep-merge an edit `patch` onto `base`, then normalise (features merge per-key). */
+export function mergeCirclePolicy(base, patch = {}) {
+  const merged = {
+    ...normalizeCirclePolicy(base),
+    ...patch,
+    features: { ...normalizeCirclePolicy(base).features, ...(patch.features || {}) },
+  };
+  return normalizeCirclePolicy(merged);
+}
+
+export const DEFAULT_MEMBER_OVERRIDE = {
+  chatOff:            false,
+  revealOpen:         false,
+  agentsMayContactMe: true,
+  flowThrough:        { tasksToPersonal: false, calendarToPersonal: false },
+};
+
+export function normalizeMemberOverride(stored = {}) {
+  const o = stored && typeof stored === 'object' ? stored : {};
+  const ft = o.flowThrough && typeof o.flowThrough === 'object' ? o.flowThrough : {};
+  return {
+    chatOff:            !!o.chatOff,
+    revealOpen:         !!o.revealOpen,
+    agentsMayContactMe: typeof o.agentsMayContactMe === 'boolean' ? o.agentsMayContactMe : true,
+    flowThrough: {
+      tasksToPersonal:    !!ft.tasksToPersonal,
+      calendarToPersonal: !!ft.calendarToPersonal,
+    },
+  };
+}
+
+export function mergeMemberOverride(base, patch = {}) {
+  const b = normalizeMemberOverride(base);
+  return normalizeMemberOverride({
+    ...b,
+    ...patch,
+    flowThrough: { ...b.flowThrough, ...(patch.flowThrough || {}) },
+  });
+}
