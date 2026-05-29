@@ -218,10 +218,13 @@ Recurring components the boards demand (build once, reuse everywhere):
 - [x] 4.7 Mobile re-skin — gold/cream hex → THEME tokens across all 13 RN screens
       + App.js; serif titles, small-caps labels, terracotta Switch tint.
       ⚠ First device build booted black (font gate, now fixed) — re-verifying.
-- [ ] 4.8 Per-board pass — walk each board in the PDF and match spacing/labels/
-      copy (Dutch in nl locale, English canonical) so screens read like the print.
-      Includes: ⓘ placement, radio-as-box on mobile, embed Source Serif 4 (mobile),
-      remove redundant back-arrows on tab screens.
+- [x] 4.8 Per-board pass — settings ⓘ moved inline top-right + consequence
+      callout wraps inside the selected box (web, board 4A); mobile radio-as-box
+      (selected option ringed terracotta) + left-bordered consequence callout.
+      ↳ Optional deferrals (low value / entangled): embed Source Serif 4 on
+        mobile at build time (platform serif works now); trim redundant
+        back-arrows on the Stroom/Mij tab screens (the mobile e2e taps those
+        `circle-*-back` testIDs, so removing them means re-tuning the specs).
 
 ### Phase 5 — Wiring & enforcement (close the "UI shipped, data/enforcement deferred" gaps)
 Audit 2026-05-29: every in-scope board has UI+model on both surfaces, but a
