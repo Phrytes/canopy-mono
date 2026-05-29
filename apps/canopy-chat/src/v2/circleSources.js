@@ -21,22 +21,17 @@ export function circleSourcesFromAgent({ callSkill, circlesStore } = {}) {
       return Array.isArray(res?.crews) ? res.crews : [];
     },
     fetchGroups: async () => {
-      const res = await call('getCurrentGroup');
-      return toGroupArray(res);
+      // listMyBuurts → { buurts: [groupId, ...] } — ALL buurts the actor is
+      // in (incl. one just created via createGroupV2). getCurrentGroup only
+      // returned the single active buurt, so new circles never surfaced.
+      const res = await call('listMyBuurts');
+      const buurts = Array.isArray(res?.buurts) ? res.buurts : [];
+      return buurts.map((b) => (typeof b === 'string' ? { id: b, name: b } : b));
     },
     fetchCircles: circlesStore
       ? async () => (await circlesStore.list()) ?? []
       : undefined,
   };
-}
-
-/** `getCurrentGroup` returns a single buurt record (possibly wrapped) — coerce to an array. */
-function toGroupArray(res) {
-  if (!res) return [];
-  const g = res.group ?? res.current ?? res;
-  if (!g || typeof g !== 'object') return [];
-  const id = g.id ?? g.groupId ?? g.circleId ?? g.crewId;
-  return id ? [g] : [];
 }
 
 /** App origins probed when resolving an op to its owning app (both surfaces). */
