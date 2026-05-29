@@ -48,4 +48,15 @@ describe('circle availability screen (M3)', () => {
       .toBeVisible()
       .withTimeout(10_000);
   });
+
+  it('opens the cross-circle Stream from the launcher + back returns', async () => {
+    await element(by.id('circle-stream-open')).tap();
+    await waitFor(element(by.id('circle-stream')))
+      .toBeVisible()
+      .withTimeout(10_000);
+    await element(by.id('circle-stream-back')).tap();
+    await waitFor(element(by.id('circle-launcher')))
+      .toBeVisible()
+      .withTimeout(10_000);
+  });
 });
