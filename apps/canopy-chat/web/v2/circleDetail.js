@@ -13,6 +13,7 @@ export function renderCircleDetail(container, {
   t,
   onBack,
   onSettings,
+  onMine,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
@@ -28,6 +29,14 @@ export function renderCircleDetail(container, {
     if (typeof onBack === 'function') onBack();
   });
   bar.appendChild(back);
+  if (typeof onMine === 'function') {
+    const mine = document.createElement('button');
+    mine.type = 'button';
+    mine.className = 'circle-detail__mine';
+    mine.textContent = tr('circle.override.title');
+    mine.addEventListener('click', () => onMine());
+    bar.appendChild(mine);
+  }
   if (typeof onSettings === 'function') {
     const gear = document.createElement('button');
     gear.type = 'button';

@@ -82,7 +82,11 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       screen = M3.
 - [ ] 1.3 Co-admin consensus: pending-change record + "send proposal" (reuse
       `groupRedeem` envelope) (board 4A footer)
-- [ ] 1.4 `memberOverride` record + personal-override sheet (board 6A)
+- [x] 1.4 personal-override sheet (web, board 6A) — chat-off / reveal-open /
+      agents-may-contact-me + flow-through (tasks/calendar → My things) toggles
+      over the `memberOverride` model, persisted via `createMemberOverrideStore`
+      (localStorage). Reached from the detail "my settings". en+nl. 7 new tests
+      (63 v2 total). Mobile screen → M3.
 - [ ] 1.5 Holiday mode + quiet hours → cross-circle availability + push
       suppression (board 6C)
 
