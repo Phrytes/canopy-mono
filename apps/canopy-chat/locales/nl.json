@@ -6,7 +6,40 @@
     "empty":   { "text": "Nog geen kringen.", "doc": "Shown when the launcher has no circles." },
     "loading": { "text": "Kringen laden…", "doc": "Shown while circles are being fetched." },
     "back":    { "text": "← kringen", "doc": "Back link from a circle detail view to the launcher." },
-    "detail_empty": { "text": "Nog niks hier.", "doc": "Empty state inside a circle detail view." }
+    "detail_empty": { "text": "Nog niks hier.", "doc": "Empty state inside a circle detail view." },
+    "settings": {
+      "title":        { "text": "Kring-instellingen", "doc": "Settings screen heading (board 4A)." },
+      "save":         { "text": "Opslaan", "doc": "Save the circle settings." },
+      "features":     { "text": "Functies", "doc": "Settings axis: which features the circle has." },
+      "llmTool":      { "text": "LLM als gereedschap", "doc": "Settings axis: LLM assist mode." },
+      "agents":       { "text": "Agents toegestaan", "doc": "Settings axis: whether LLM agents may join." },
+      "revealPolicy": { "text": "Onthul-beleid", "doc": "Settings axis: who sees real names." },
+      "pod":          { "text": "Waar leeft de data?", "doc": "Settings axis: pod storage policy." },
+      "feat": {
+        "chat":            { "text": "Chat", "doc": "Feature label." },
+        "noticeboard":     { "text": "Prikbord", "doc": "Feature label." },
+        "tasks":           { "text": "Taken", "doc": "Feature label." },
+        "lists":           { "text": "Lijsten", "doc": "Feature label." },
+        "calendar":        { "text": "Agenda", "doc": "Feature label." },
+        "notes":           { "text": "Notities", "doc": "Feature label." },
+        "houseRules":      { "text": "Huisregels", "doc": "Feature label." },
+        "memberDirectory": { "text": "Ledenkaart", "doc": "Feature label." }
+      },
+      "opt": {
+        "off":            { "text": "Uit", "doc": "Option label." },
+        "local":          { "text": "Lokaal (Ollama)", "doc": "Option label." },
+        "cloud":          { "text": "Onafhankelijke cloud", "doc": "Option label." },
+        "yes":            { "text": "Ja — iedereen", "doc": "Option label." },
+        "admin-approval": { "text": "Met admin-OK", "doc": "Option label." },
+        "no":             { "text": "Geen agents", "doc": "Option label." },
+        "pairwise":       { "text": "1-op-1", "doc": "Option label." },
+        "open":           { "text": "Open — alle leden", "doc": "Option label." },
+        "none":           { "text": "Geen pod", "doc": "Option label." },
+        "shared":         { "text": "Eén gedeelde pod", "doc": "Option label." },
+        "personal":       { "text": "Persoonlijke pods + verwijzingen", "doc": "Option label." },
+        "hybrid":         { "text": "Hybride", "doc": "Option label." }
+      }
+    }
   },
   "common": {
     "ok":      { "text": "✓",        "doc": "Generic success indicator rendered when a skill returns { ok: true } with no message." },

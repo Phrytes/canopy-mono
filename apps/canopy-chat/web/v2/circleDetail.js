@@ -12,11 +12,14 @@ export function renderCircleDetail(container, {
   items = [],
   t,
   onBack,
+  onSettings,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
   container.classList.add('circle-detail');
 
+  const bar = document.createElement('div');
+  bar.className = 'circle-detail__bar';
   const back = document.createElement('button');
   back.type = 'button';
   back.className = 'circle-detail__back';
@@ -24,7 +27,16 @@ export function renderCircleDetail(container, {
   back.addEventListener('click', () => {
     if (typeof onBack === 'function') onBack();
   });
-  container.appendChild(back);
+  bar.appendChild(back);
+  if (typeof onSettings === 'function') {
+    const gear = document.createElement('button');
+    gear.type = 'button';
+    gear.className = 'circle-detail__settings';
+    gear.textContent = tr('circle.settings.title');
+    gear.addEventListener('click', () => onSettings());
+    bar.appendChild(gear);
+  }
+  container.appendChild(bar);
 
   const head = document.createElement('h2');
   head.className = 'circle-detail__title';

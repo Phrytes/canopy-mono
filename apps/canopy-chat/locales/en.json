@@ -6,7 +6,40 @@
     "empty":   { "text": "No circles yet.", "doc": "Shown when the launcher has no circles." },
     "loading": { "text": "Loading circles…", "doc": "Shown while circles are being fetched." },
     "back":    { "text": "← circles", "doc": "Back link from a circle detail view to the launcher." },
-    "detail_empty": { "text": "Nothing here yet.", "doc": "Empty state inside a circle detail view." }
+    "detail_empty": { "text": "Nothing here yet.", "doc": "Empty state inside a circle detail view." },
+    "settings": {
+      "title":        { "text": "Circle settings", "doc": "Settings screen heading (board 4A)." },
+      "save":         { "text": "Save", "doc": "Save the circle settings." },
+      "features":     { "text": "Features", "doc": "Settings axis: which features the circle has." },
+      "llmTool":      { "text": "LLM as a tool", "doc": "Settings axis: LLM assist mode." },
+      "agents":       { "text": "Agents allowed", "doc": "Settings axis: whether LLM agents may join." },
+      "revealPolicy": { "text": "Reveal policy", "doc": "Settings axis: who sees real names." },
+      "pod":          { "text": "Where data lives", "doc": "Settings axis: pod storage policy." },
+      "feat": {
+        "chat":            { "text": "Chat", "doc": "Feature label." },
+        "noticeboard":     { "text": "Noticeboard", "doc": "Feature label." },
+        "tasks":           { "text": "Tasks", "doc": "Feature label." },
+        "lists":           { "text": "Lists", "doc": "Feature label." },
+        "calendar":        { "text": "Calendar", "doc": "Feature label." },
+        "notes":           { "text": "Notes", "doc": "Feature label." },
+        "houseRules":      { "text": "House rules", "doc": "Feature label." },
+        "memberDirectory": { "text": "Member directory", "doc": "Feature label." }
+      },
+      "opt": {
+        "off":            { "text": "Off", "doc": "Option label." },
+        "local":          { "text": "Local (Ollama)", "doc": "Option label." },
+        "cloud":          { "text": "Independent cloud", "doc": "Option label." },
+        "yes":            { "text": "Yes — anyone", "doc": "Option label." },
+        "admin-approval": { "text": "With admin approval", "doc": "Option label." },
+        "no":             { "text": "No agents", "doc": "Option label." },
+        "pairwise":       { "text": "Pairwise (1-on-1)", "doc": "Option label." },
+        "open":           { "text": "Open — all members", "doc": "Option label." },
+        "none":           { "text": "No pod", "doc": "Option label." },
+        "shared":         { "text": "One shared pod", "doc": "Option label." },
+        "personal":       { "text": "Personal pods + refs", "doc": "Option label." },
+        "hybrid":         { "text": "Hybrid", "doc": "Option label." }
+      }
+    }
   },
   "common": {
     "ok":      { "text": "✓",       "doc": "Generic success indicator rendered when a skill returns { ok: true } with no message." },
