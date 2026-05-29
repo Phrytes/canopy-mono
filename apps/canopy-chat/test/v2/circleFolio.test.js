@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeFolioFile, buildCircleFiles } from '../../src/v2/circleFolio.js';
+import { normalizeFolioFile, buildCircleFiles, circleFilesFromListFiles } from '../../src/v2/circleFolio.js';
 
 describe('normalizeFolioFile', () => {
   it('keeps the supplied fields', () => {
@@ -63,5 +63,23 @@ describe('buildCircleFiles', () => {
     expect(buildCircleFiles()).toEqual([]);
     expect(buildCircleFiles({ files: [], circleId: 'crew-1' })).toEqual([]);
     expect(buildCircleFiles({ files: [null, undefined], circleId: 'crew-1' })).toEqual([]);
+  });
+});
+
+describe('circleFilesFromListFiles', () => {
+  it('extracts the listFiles { items } shape and scopes to the circle', () => {
+    const res = { items: [{ id: 'a', name: 'a.md' }, { id: 'b', name: 'b.md', circleId: 'other' }], _sync: {} };
+    const rows = circleFilesFromListFiles(res, 'crew-1');
+    expect(rows.map((r) => r.id).sort()).toEqual(['a']); // 'b' tagged to another circle is dropped
+  });
+
+  it('accepts { files } and bare-array shapes', () => {
+    expect(circleFilesFromListFiles({ files: [{ id: 'x', name: 'x' }] }, null)).toHaveLength(1);
+    expect(circleFilesFromListFiles([{ id: 'y', name: 'y' }], null)).toHaveLength(1);
+  });
+
+  it('tolerates null / malformed results', () => {
+    expect(circleFilesFromListFiles(null, 'crew-1')).toEqual([]);
+    expect(circleFilesFromListFiles({}, 'crew-1')).toEqual([]);
   });
 });

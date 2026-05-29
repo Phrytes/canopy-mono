@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   loadCircles, circleSourcesFromAgent, makeResolvingCallSkill,
   loadCircleItems, quickCreateCircle, setActiveCircle, normalizeCircleMembers,
+  circleFilesFromListFiles,
 } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 import {
@@ -57,6 +58,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   const [view, setView] = useState('list');
   const [viewAsPolicy, setViewAsPolicy] = useState('pairwise');
   const [viewAsMembers, setViewAsMembers] = useState([]);
+  const [folioFiles, setFolioFiles] = useState([]);
   const [skillDraft, setSkillDraft] = useState(null);
   const [rulesDoc, setRulesDoc] = useState(null);
   const [rulesPreview, setRulesPreview] = useState(null);
@@ -175,8 +177,8 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
     );
   }
   if (selected && view === 'folio') {
-    // Files come from a circle pod's listFiles once wired; empty until then.
-    return <CircleFolioScreen files={[]} onBack={() => setView('detail')} />;
+    // F-5.2 — real files loaded in onFiles via listFiles, scoped to the circle.
+    return <CircleFolioScreen files={folioFiles} onBack={() => setView('detail')} />;
   }
   if (selected && view === 'rules') {
     return (
@@ -228,7 +230,14 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
           setSkillDraft(raw);
           setView('skills');
         }}
-        onFiles={() => setView('folio')}
+        onFiles={async () => {
+          let fs = [];
+          if (callSkill) {
+            try { fs = circleFilesFromListFiles(await callSkill('listFiles', {}), selected.id); } catch { /* keep empty */ }
+          }
+          setFolioFiles(fs);
+          setView('folio');
+        }}
         onRules={async () => {
           let raw = null;
           try { const s = await AsyncStorage.getItem(`cc.circleRules.${selected.id}`); if (s) raw = JSON.parse(s); } catch { /* fresh */ }

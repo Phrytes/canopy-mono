@@ -67,7 +67,7 @@ export {
   SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill,
   MATCH_SOURCES, buildSkillMatches,
 } from './v2/circleSkills.js';
-export { normalizeFolioFile, buildCircleFiles } from './v2/circleFolio.js';
+export { normalizeFolioFile, buildCircleFiles, circleFilesFromListFiles } from './v2/circleFolio.js';
 export {
   RULES_FIELDS, RULES_QUESTIONS, DEFAULT_RULES_DOC,
   normalizeRulesDoc, buildRulesDoc, isRulesComplete, isRulesEmpty,

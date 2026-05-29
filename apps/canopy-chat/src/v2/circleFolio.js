@@ -58,3 +58,17 @@ export function buildCircleFiles({ files = [], circleId = null } = {}) {
     .map(normalizeFolioFile)
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
+
+/**
+ * Build circle file rows straight from a `listFiles` op result (F-5.2).
+ * The op returns `{ items: [...] }` (the in-process index); older shapes use
+ * `{ files }` or a bare array. Extract the list, then scope to the circle.
+ */
+export function circleFilesFromListFiles(result, circleId = null) {
+  const files = result && typeof result === 'object'
+    ? (Array.isArray(result.items) ? result.items
+      : Array.isArray(result.files) ? result.files
+        : Array.isArray(result) ? result : [])
+    : [];
+  return buildCircleFiles({ files, circleId });
+}
