@@ -92,6 +92,14 @@
       "empty":    { "text": "Nog geen leden om te bekijken.", "doc": "Empty state for View-as." },
       "revealed": { "text": "naam zichtbaar", "doc": "Badge: this member's real name is visible to the chosen viewer." },
       "hidden":   { "text": "naam verborgen", "doc": "Badge: this member shows only a handle to the chosen viewer." }
+    },
+    "advisor": {
+      "title":           { "text": "Raadgever", "doc": "Heading of the circle Advisor (board 3D)." },
+      "none":            { "text": "Nu niets om te melden.", "doc": "Advisor: calm state, no advice." },
+      "too_busy_btn":    { "text": "Ik heb het te druk", "doc": "Advisor: member logs a 'too busy' strain signal." },
+      "too_busy_logged": { "text": "Genoteerd — bedankt voor het signaal.", "doc": "Confirmation after logging a too-busy signal." },
+      "advice_too_busy": { "text": "Deze kring kreeg {{count}} 'te druk'-signalen in twee weken terwijl het drukker wordt. Overweeg de last te delen — voeg een mede-admin toe of splits een deelkring af.", "doc": "Advice card for the too-busy + growth rule; {{count}} interpolated." },
+      "dismiss":         { "text": "Sluiten", "doc": "Dismiss the advice card." }
     }
   },
   "app": {

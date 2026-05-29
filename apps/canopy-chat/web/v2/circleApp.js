@@ -16,7 +16,9 @@ import { initLocalisation, t, detectDeviceLang } from '../../src/index.js';
 import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
 import { EventLog } from '../../src/eventLog.js';
 import { buildCircleStream } from '../../src/v2/circleStream.js';
+import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { renderCircleStream } from './circleStream.js';
+import { renderCircleAdvisor } from './circleAdvisor.js';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircleItems } from '../../src/v2/circleContent.js';
@@ -104,7 +106,8 @@ async function showDetail(id) {
   const onSettings = () => showSettings(id);
   const onMine = () => showOverride(id);
   const onViewAs = () => showViewAs(id);
-  renderCircleDetail(rootEl, { circle, items: [], t, onBack: showLauncher, onSettings, onMine, onViewAs });
+  const onAdvisor = () => showAdvisor(id);
+  renderCircleDetail(rootEl, { circle, items: [], t, onBack: showLauncher, onSettings, onMine, onViewAs, onAdvisor });
 
   if (!resolveCallSkill) return;
   let items = [];
@@ -112,8 +115,33 @@ async function showDetail(id) {
     items = await loadCircleItems({ callSkill: resolveCallSkill, circleId: id });
   } catch { /* keep empty */ }
   if (getActiveCircle() === id) {
-    renderCircleDetail(rootEl, { circle, items, t, onBack: showLauncher, onSettings, onMine, onViewAs });
+    renderCircleDetail(rootEl, { circle, items, t, onBack: showLauncher, onSettings, onMine, onViewAs, onAdvisor });
   }
+}
+
+// Advisor cooldown (≤1 card/month) persists per-circle in localStorage.
+const advisorSeenKey = (id) => `cc.advisorShown.${id}`;
+function showAdvisor(id) {
+  const rerender = () => {
+    let lastShownAt = null;
+    try { const s = localStorage.getItem(advisorSeenKey(id)); if (s) lastShownAt = Number(s); } catch { /* ignore */ }
+    const advice = computeAdvice({
+      events: eventLog.query({ excludeMuted: true }),
+      circleId: id,
+      lastShownAt,
+    });
+    renderCircleAdvisor(rootEl, {
+      advice,
+      t,
+      onTooBusy: () => { eventLog.append(makeTooBusyEvent({ circleId: id })); rerender(); },
+      onDismiss: () => {
+        try { localStorage.setItem(advisorSeenKey(id), String(Date.now())); } catch { /* ignore */ }
+        rerender();
+      },
+      onBack: () => showDetail(id),
+    });
+  };
+  rerender();
 }
 
 async function showViewAs(id) {
