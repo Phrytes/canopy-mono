@@ -96,7 +96,7 @@ export default function App() {
         <ChatScreen bundle={bundle} bootError={bootError} eventLog={eventLogRef.current} />
         {screen === 'circles' ? (
           <View style={styles.overlay}>
-            <CircleLauncherScreen bundle={bundle} onBack={() => setScreen('chat')} />
+            <CircleLauncherScreen bundle={bundle} eventLog={eventLogRef.current} onBack={() => setScreen('chat')} />
           </View>
         ) : (
           <Pressable

@@ -26,8 +26,9 @@ import {
 import CircleSettingsScreen from './CircleSettingsScreen.js';
 import CircleOverrideScreen from './CircleOverrideScreen.js';
 import CircleAvailabilityScreen from './CircleAvailabilityScreen.js';
+import CircleStreamScreen from './CircleStreamScreen.js';
 
-export default function CircleLauncherScreen({ bundle, onBack }) {
+export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -94,6 +95,16 @@ export default function CircleLauncherScreen({ bundle, onBack }) {
   if (view === 'availability') {
     return <CircleAvailabilityScreen store={availabilityStore} onBack={() => setView('list')} />;
   }
+  if (view === 'stream') {
+    return (
+      <CircleStreamScreen
+        eventLog={eventLog}
+        circles={circles}
+        onBack={() => setView('list')}
+        onOpenCircle={(id) => openCircle(circles.find((c) => c.id === id) || { id })}
+      />
+    );
+  }
   if (selected && view === 'settings') {
     return <CircleSettingsScreen store={policyStore} circleId={selected.id} onBack={() => setView('detail')} />;
   }
@@ -120,14 +131,22 @@ export default function CircleLauncherScreen({ bundle, onBack }) {
             <Text style={styles.back}>← chat</Text>
           </Pressable>
         ) : null}
-        <Pressable
-          onPress={() => setView('availability')}
-          accessibilityRole="button"
-          testID="circle-availability-open"
-          style={styles.availBtn}
-        >
-          <Text style={styles.availText}>{t('circle.availability.title')}</Text>
-        </Pressable>
+        <View style={styles.barActions}>
+          <Pressable
+            onPress={() => setView('stream')}
+            accessibilityRole="button"
+            testID="circle-stream-open"
+          >
+            <Text style={styles.availText}>{t('circle.stream.open')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setView('availability')}
+            accessibilityRole="button"
+            testID="circle-availability-open"
+          >
+            <Text style={styles.availText}>{t('circle.availability.title')}</Text>
+          </Pressable>
+        </View>
       </View>
       <Text style={styles.title}>{t('circle.title')}</Text>
 
@@ -224,7 +243,7 @@ const styles = StyleSheet.create({
   page:       { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
   bar:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 22 },
   back:       { fontSize: 13, color: '#6a6a6a' },
-  availBtn:   { marginLeft: 'auto' },
+  barActions: { flexDirection: 'row', gap: 14, marginLeft: 'auto' },
   availText:  { fontSize: 13, color: '#8a6d1f', fontWeight: '600' },
   detailActions:   { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 },
   detailAction:    { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: '#d8d2c0', backgroundColor: '#fbf8ed' },
