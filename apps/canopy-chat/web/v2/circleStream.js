@@ -19,12 +19,16 @@ export function renderCircleStream(container, {
   container.innerHTML = '';
   container.classList.add('circle-stream');
 
-  const back = document.createElement('button');
-  back.type = 'button';
-  back.className = 'circle-stream__back';
-  back.textContent = tr('circle.back');
-  back.addEventListener('click', () => { if (typeof onBack === 'function') onBack(); });
-  container.appendChild(back);
+  // Back link only when a handler is supplied — top-level tab screens
+  // (reached via the bottom bar) omit it; sub-screens keep it.
+  if (typeof onBack === 'function') {
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'circle-stream__back';
+    back.textContent = tr('circle.back');
+    back.addEventListener('click', () => onBack());
+    container.appendChild(back);
+  }
 
   const head = document.createElement('h2');
   head.className = 'circle-stream__title';

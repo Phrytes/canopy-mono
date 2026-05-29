@@ -21,11 +21,13 @@ export default function CircleStreamScreen({ eventLog, circles = [], onBack, onO
 
   return (
     <View style={styles.page} testID="circle-stream">
-      <View style={styles.bar}>
-        <Pressable onPress={onBack} accessibilityRole="button" testID="circle-stream-back">
-          <Text style={styles.back}>{t('circle.back')}</Text>
-        </Pressable>
-      </View>
+      {onBack ? (
+        <View style={styles.bar}>
+          <Pressable onPress={onBack} accessibilityRole="button" testID="circle-stream-back">
+            <Text style={styles.back}>{t('circle.back')}</Text>
+          </Pressable>
+        </View>
+      ) : null}
       <Text style={styles.title}>{t('circle.stream.title')}</Text>
 
       {rows.length === 0 ? (

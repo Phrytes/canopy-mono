@@ -17,12 +17,16 @@ export function renderCircleAvailability(container, { availability, t, onChange,
   container.innerHTML = '';
   container.classList.add('circle-availability');
 
-  const back = document.createElement('button');
-  back.type = 'button';
-  back.className = 'circle-availability__back';
-  back.textContent = tr('circle.back');
-  back.addEventListener('click', () => { if (typeof onBack === 'function') onBack(); });
-  container.appendChild(back);
+  // Back link only when a handler is supplied — the Mij tab (reached via
+  // the bottom bar) omits it; sub-screens keep it.
+  if (typeof onBack === 'function') {
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'circle-availability__back';
+    back.textContent = tr('circle.back');
+    back.addEventListener('click', () => onBack());
+    container.appendChild(back);
+  }
 
   const head = document.createElement('h2');
   head.className = 'circle-availability__title';

@@ -127,7 +127,6 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
       <WithTabBar active="mij" onSelect={onTab}>
         <CircleAvailabilityScreen
           store={availabilityStore}
-          onBack={() => setView('list')}
           onHop={() => setView('hop')}
         />
       </WithTabBar>
@@ -139,7 +138,6 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
         <CircleStreamScreen
           eventLog={eventLog}
           circles={circles}
-          onBack={() => setView('list')}
           onOpenCircle={(id) => openCircle(circles.find((c) => c.id === id) || { id })}
         />
       </WithTabBar>
