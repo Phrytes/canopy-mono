@@ -11,7 +11,9 @@ import { CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS } from '../../src/v2/circlePolicy.
 
 const ENUM_AXES = ['llmTool', 'agents', 'revealPolicy', 'pod'];
 
-export function renderCircleSettings(container, { policy, t, onChange, onBack, onSave } = {}) {
+export function renderCircleSettings(container, {
+  policy, t, onChange, onBack, onSave, saveLabel, note,
+} = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   const emit = (patch) => { if (typeof onChange === 'function') onChange(patch); };
   container.innerHTML = '';
@@ -68,10 +70,33 @@ export function renderCircleSettings(container, { policy, t, onChange, onBack, o
     container.appendChild(sec);
   }
 
+  // Consensus toggle (a circlePolicy boolean — gates co-admin approval).
+  const consSec = section(tr('circle.settings.consensus'));
+  consSec.classList.add('circle-settings__consensus');
+  const consRow = document.createElement('label');
+  consRow.className = 'circle-settings__consensus-toggle';
+  const consBox = document.createElement('input');
+  consBox.type = 'checkbox';
+  consBox.checked = !!policy?.consensusRequired;
+  consBox.dataset.field = 'consensusRequired';
+  consBox.addEventListener('change', () => emit({ consensusRequired: consBox.checked }));
+  const consSpan = document.createElement('span');
+  consSpan.textContent = tr('circle.settings.consensus_label');
+  consRow.append(consBox, consSpan);
+  consSec.appendChild(consRow);
+  container.appendChild(consSec);
+
+  if (note) {
+    const noteEl = document.createElement('div');
+    noteEl.className = 'circle-settings__note';
+    noteEl.textContent = note;
+    container.appendChild(noteEl);
+  }
+
   const save = document.createElement('button');
   save.type = 'button';
   save.className = 'circle-settings__save';
-  save.textContent = tr('circle.settings.save');
+  save.textContent = saveLabel || tr('circle.settings.save');
   save.addEventListener('click', () => { if (typeof onSave === 'function') onSave(); });
   container.appendChild(save);
 
