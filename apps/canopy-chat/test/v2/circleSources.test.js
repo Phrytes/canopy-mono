@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { circleSourcesFromAgent } from '../../src/v2/circleSources.js';
+import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircles } from '../../src/v2/circleModel.js';
 
 const callSkill = async (op) => {
@@ -42,5 +42,25 @@ describe('circleSources', () => {
     const s = circleSourcesFromAgent({});
     expect(await s.fetchCrews()).toEqual([]);
     expect(await s.fetchGroups()).toEqual([]);
+  });
+});
+
+describe('makeResolvingCallSkill', () => {
+  it('returns the first non-null result across origins, passing through op+args', async () => {
+    const calls = [];
+    const raw = async (app, op, args) => {
+      calls.push([app, op]);
+      return app === 'tasks-v0' && op === 'getMyCrews' ? { crews: [], echoed: args.x } : null;
+    };
+    const resolve = makeResolvingCallSkill(raw, ['stoop', 'tasks-v0', 'folio']);
+    const res = await resolve('getMyCrews', { x: 7 });
+    expect(res).toEqual({ crews: [], echoed: 7 });
+    expect(calls).toEqual([['stoop', 'getMyCrews'], ['tasks-v0', 'getMyCrews']]); // stopped at first hit
+  });
+
+  it('returns null when every origin yields null/throws or callSkill is missing', async () => {
+    expect(await makeResolvingCallSkill(null)('op')).toBeNull();
+    const raw = async () => { throw new Error('x'); };
+    expect(await makeResolvingCallSkill(raw, ['stoop'])('op')).toBeNull();
   });
 });

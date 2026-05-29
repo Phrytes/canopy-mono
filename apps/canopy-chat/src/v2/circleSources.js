@@ -38,3 +38,25 @@ function toGroupArray(res) {
   const id = g.id ?? g.groupId ?? g.circleId ?? g.crewId;
   return id ? [g] : [];
 }
+
+/** App origins probed when resolving an op to its owning app (both surfaces). */
+export const DEFAULT_CIRCLE_ORIGINS = ['stoop', 'tasks-v0', 'household', 'calendar', 'folio'];
+
+/**
+ * Wrap a host's 3-arg `callSkill(appOrigin, opId, args)` into the 2-arg
+ * `callSkill(opId, args)` the circle helpers expect, by probing each app
+ * origin and returning the first non-null result. Web's `agent.callSkill`
+ * and mobile's `bundle.callSkill` share this signature, so both reuse it.
+ */
+export function makeResolvingCallSkill(rawCallSkill, origins = DEFAULT_CIRCLE_ORIGINS) {
+  return async (opId, args) => {
+    if (typeof rawCallSkill !== 'function') return null;
+    for (const app of origins) {
+      try {
+        const r = await rawCallSkill(app, opId, args ?? {});
+        if (r != null) return r;
+      } catch { /* try next origin */ }
+    }
+    return null;
+  };
+}

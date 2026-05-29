@@ -61,9 +61,12 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       circleId + `circle:`/`crew:` audience) + `src/v2/activeCircle.js`
       (get/set/subscribe). Web: launcher↔`circleDetail` nav (6+4 happy-dom
       tests). Mobile: inline detail in `CircleLauncherScreen`. 31 v2 tests green.
-- [ ] 0.5b F1 (content) — populate the detail with the circle's **scoped
-      items** (fetch feed/tasks/notes per circle, run through `scopeItems`).
-      Today the detail shows the header + empty state.
+- [x] 0.5b F1 (content) — populate the detail with the circle's **scoped
+      items**. Shared `src/v2/circleContent.js` (`loadCircleItems` over existing
+      list ops — bulletin/feed/tasks/notes — normalised + scoped) + a shared
+      `makeResolvingCallSkill` (3-arg host callSkill → 2-arg op resolver, reused
+      by web + mobile). Detail now lists scoped items (late-fetch guarded so it
+      won't clobber the launcher after back). 37 v2 tests green.
 - [ ] 0.6 Smoke: launcher lists real circles + opening one scopes the feed,
       verified on **both** web and mobile
 
@@ -129,3 +132,10 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
   circle now sets the active circle + shows a scoped detail with back. 31 v2
   tests green. **Needs human check:** open a circle on web (`circle.html`) and
   mobile → detail view + back. Next: 0.5b — populate detail with scoped items.
+- **2026-05-29** — 0.5b shipped: `circleContent.loadCircleItems` (best-effort
+  over existing bulletin/feed/tasks/notes ops, normalised + scoped) +
+  `makeResolvingCallSkill` shared by both surfaces; web + mobile detail views
+  now list the circle's scoped items (late-fetch guarded). 37 v2 tests green.
+  **Needs human check:** real per-circle items in the detail on web + mobile
+  (data path is best-effort; renderer/scope/content logic is unit-covered).
+  Phase 0 done — next chapter is Phase 1 (settings + member overrides).

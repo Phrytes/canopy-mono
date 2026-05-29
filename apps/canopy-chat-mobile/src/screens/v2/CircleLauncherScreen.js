@@ -1,20 +1,22 @@
 /**
  * canopy-chat-mobile v2 — circle launcher + detail screen (boards 1B / F1).
  *
- * Mobile counterpart of web's `web/v2/circleLauncher.js` + `circleDetail.js`,
+ * Mobile counterpart of web's circleLauncher + circleDetail + circleApp,
  * over the same shared model ('@canopy-app/canopy-chat'). Additive:
  * ChatScreen is untouched; App.js shows this when the user toggles to
  * "Circles". Opening a circle sets the active circle (F1) and shows an
- * inline scoped detail; back returns to the launcher.
+ * inline scoped detail populated with that circle's items; back returns
+ * to the launcher.
  *
- * Data: with a `bundle` (callSkill) real circles load via the shared
- * sources; otherwise the launcher shows its empty state. Scoped detail
- * content lands in a later sub-slice — flagged for device verification.
+ * Data: with a `bundle` (callSkill) real circles + items load via the
+ * shared sources/content helpers; otherwise the empty states show.
+ * Flagged for device verification.
  */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import {
-  loadCircles, circleSourcesFromAgent, setActiveCircle,
+  loadCircles, circleSourcesFromAgent, makeResolvingCallSkill,
+  loadCircleItems, setActiveCircle,
 } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
@@ -22,15 +24,18 @@ export default function CircleLauncherScreen({ bundle, onBack, onNewCircle }) {
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [items, setItems] = useState([]);
+
+  const callSkill = useMemo(
+    () => (bundle?.callSkill ? makeResolvingCallSkill(bundle.callSkill) : null),
+    [bundle],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const sources = bundle?.callSkill
-        ? circleSourcesFromAgent({
-            callSkill: (opId, args) => bundle.callSkill('stoop', opId, args),
-            circlesStore: bundle.circlesStore,
-          })
+      const sources = callSkill
+        ? circleSourcesFromAgent({ callSkill, circlesStore: bundle?.circlesStore })
         : {};
       setCircles(await loadCircles(sources));
     } catch {
@@ -38,15 +43,29 @@ export default function CircleLauncherScreen({ bundle, onBack, onNewCircle }) {
     } finally {
       setLoading(false);
     }
-  }, [bundle]);
+  }, [callSkill, bundle]);
 
   useEffect(() => { load(); }, [load]);
 
-  const openCircle = (c) => { setActiveCircle(c.id); setSelected(c); };
-  const closeCircle = () => { setActiveCircle(null); setSelected(null); };
+  const openCircle = useCallback(async (c) => {
+    setActiveCircle(c.id);
+    setSelected(c);
+    setItems([]);
+    if (!callSkill) return;
+    try {
+      const got = await loadCircleItems({ callSkill, circleId: c.id });
+      // only paint if still on this circle
+      setSelected((cur) => {
+        if (cur && cur.id === c.id) setItems(got);
+        return cur;
+      });
+    } catch { /* keep empty */ }
+  }, [callSkill]);
+
+  const closeCircle = () => { setActiveCircle(null); setSelected(null); setItems([]); };
 
   if (selected) {
-    return <CircleDetail circle={selected} items={[]} onBack={closeCircle} />;
+    return <CircleDetail circle={selected} items={items} onBack={closeCircle} />;
   }
 
   return (
@@ -113,7 +132,9 @@ function CircleDetail({ circle, items, onBack }) {
         ) : (
           items.map((it, i) => (
             <View key={it.id ?? i} style={styles.tile}>
-              <Text style={styles.tileName}>{it.title || it.text || it.name || String(it.id ?? '')}</Text>
+              <Text style={styles.tileName}>
+                {it.label || it.title || it.text || it.name || String(it.id ?? '')}
+              </Text>
             </View>
           ))
         )}
