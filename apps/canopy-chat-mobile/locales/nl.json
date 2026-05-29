@@ -6,7 +6,85 @@
     "empty":   { "text": "Nog geen kringen.", "doc": "Shown when the launcher has no circles." },
     "loading": { "text": "Kringen laden…", "doc": "Shown while circles are being fetched." },
     "back":    { "text": "← kringen", "doc": "Back link from a circle detail view to the launcher." },
-    "detail_empty": { "text": "Nog niks hier.", "doc": "Empty state inside a circle detail view." }
+    "detail_empty": { "text": "Nog niks hier.", "doc": "Empty state inside a circle detail view." },
+    "stream": {
+      "title":    { "text": "Stroom", "doc": "Heading of the cross-circle Stream tab (board 5B)." },
+      "open":     { "text": "Stroom", "doc": "Launcher entry that opens the cross-circle Stream." },
+      "empty":    { "text": "Nog niks uit je kringen.", "doc": "Empty state for the Stream." },
+      "untagged": { "text": "—", "doc": "Tag shown on a Stream row that isn't tied to a circle." }
+    },
+    "settings": {
+      "title":        { "text": "Kring-instellingen", "doc": "Settings screen heading (board 4A)." },
+      "save":         { "text": "Opslaan", "doc": "Save the circle settings." },
+      "features":     { "text": "Functies", "doc": "Settings axis: which features the circle has." },
+      "llmTool":      { "text": "LLM als gereedschap", "doc": "Settings axis: LLM assist mode." },
+      "agents":       { "text": "Agents toegestaan", "doc": "Settings axis: whether LLM agents may join." },
+      "revealPolicy": { "text": "Onthul-beleid", "doc": "Settings axis: who sees real names." },
+      "pod":          { "text": "Waar leeft de data?", "doc": "Settings axis: pod storage policy." },
+      "consensus":       { "text": "Consensus tussen admins", "doc": "Settings section: co-admin approval for changes." },
+      "consensus_label": { "text": "Wijzigingen vereisen goedkeuring van mede-admins", "doc": "consensusRequired toggle label." },
+      "consequence_aria": { "text": "Wat deze keuze betekent", "doc": "Accessible label for the per-option ⓘ consequence toggle." },
+      "consequence": {
+        "off":             { "text": "Geen AI-hulp in deze kring — er wordt niets naar een model gestuurd.", "doc": "Consequence of llmTool=off." },
+        "local":           { "text": "AI draait op de eigen computer van een lid (Ollama). Berichten blijven op het apparaat; niets gaat naar de cloud.", "doc": "Consequence of llmTool=local." },
+        "cloud":           { "text": "AI draait op een onafhankelijk cloudmodel. Je berichten gaan naar die aanbieder zodra je iets vraagt.", "doc": "Consequence of llmTool=cloud." },
+        "yes":             { "text": "Iedereen kan een AI-agent als deelnemer toevoegen. Agents kunnen lezen wat de kring deelt.", "doc": "Consequence of agents=yes." },
+        "admin-approval":  { "text": "AI-agents mogen pas meedoen na goedkeuring van een admin — een controlepunt voordat een agent kringinhoud ziet.", "doc": "Consequence of agents=admin-approval." },
+        "no":              { "text": "Er mogen geen AI-agents meedoen. Alleen mensen nemen deel aan deze kring.", "doc": "Consequence of agents=no." },
+        "pairwise":        { "text": "Echte namen worden één-op-één onthuld. Elk lid kiest zelf wie zijn identiteit mag zien.", "doc": "Consequence of revealPolicy=pairwise." },
+        "open":            { "text": "Alle leden zien elkaars echte naam. Er is geen verberging per persoon.", "doc": "Consequence of revealPolicy=open." },
+        "none":            { "text": "Er wordt niets in een pod opgeslagen. Gegevens staan alleen op de apparaten van leden en gaan verloren als ze die wissen.", "doc": "Consequence of pod=none." },
+        "shared":          { "text": "Eén gedeelde pod bewaart de gegevens van de kring — elk lid leest en schrijft dezelfde opslag.", "doc": "Consequence of pod=shared." },
+        "personal":        { "text": "Elk lid houdt zijn eigen pod en de kring verwijst ernaar. Je houdt zelf de controle over je eigen kopie.", "doc": "Consequence of pod=personal." },
+        "hybrid":          { "text": "Een gedeelde pod plus persoonlijke pods: gemeenschappelijke items worden gedeeld, privé-items blijven bij elk lid.", "doc": "Consequence of pod=hybrid." }
+      },
+      "send_proposal":   { "text": "Voorstel sturen →", "doc": "Save-button label when consensus is required." },
+      "pending":         { "text": "Wijzigingen moeten eerst door mede-admins worden goedgekeurd.", "doc": "Footer note when consensus is active." },
+      "feat": {
+        "chat":            { "text": "Chat", "doc": "Feature label." },
+        "noticeboard":     { "text": "Prikbord", "doc": "Feature label." },
+        "tasks":           { "text": "Taken", "doc": "Feature label." },
+        "lists":           { "text": "Lijsten", "doc": "Feature label." },
+        "calendar":        { "text": "Agenda", "doc": "Feature label." },
+        "notes":           { "text": "Notities", "doc": "Feature label." },
+        "houseRules":      { "text": "Huisregels", "doc": "Feature label." },
+        "memberDirectory": { "text": "Ledenkaart", "doc": "Feature label." }
+      },
+      "opt": {
+        "off":            { "text": "Uit", "doc": "Option label." },
+        "local":          { "text": "Lokaal (Ollama)", "doc": "Option label." },
+        "cloud":          { "text": "Onafhankelijke cloud", "doc": "Option label." },
+        "yes":            { "text": "Ja — iedereen", "doc": "Option label." },
+        "admin-approval": { "text": "Met admin-OK", "doc": "Option label." },
+        "no":             { "text": "Geen agents", "doc": "Option label." },
+        "pairwise":       { "text": "1-op-1", "doc": "Option label." },
+        "open":           { "text": "Open — alle leden", "doc": "Option label." },
+        "none":           { "text": "Geen pod", "doc": "Option label." },
+        "shared":         { "text": "Eén gedeelde pod", "doc": "Option label." },
+        "personal":       { "text": "Persoonlijke pods + verwijzingen", "doc": "Option label." },
+        "hybrid":         { "text": "Hybride", "doc": "Option label." }
+      }
+    },
+    "override": {
+      "title":              { "text": "Mijn instellingen voor deze kring", "doc": "Personal override sheet heading (board 6A)." },
+      "chatOff":            { "text": "Chat uitzetten", "doc": "Override: silence this circle's chat for me." },
+      "revealOpen":         { "text": "Mijn naam tonen aan alle leden", "doc": "Override: reveal my real name circle-wide." },
+      "agentsMayContactMe": { "text": "Agents mogen mij aanspreken", "doc": "Override: allow LLM agents to address me." },
+      "flowThrough":        { "text": "Doorstroom naar Mijn dingen", "doc": "Override section: route circle items into my personal circle." },
+      "tasksToPersonal":    { "text": "Taken → Mijn dingen", "doc": "Override: claimed circle tasks land in my personal list." },
+      "calendarToPersonal": { "text": "Agenda → mijn agenda", "doc": "Override: circle events also show in my calendar." }
+    },
+    "availability": {
+      "title":         { "text": "Beschikbaarheid", "doc": "Cross-circle availability screen heading (board 6C)." },
+      "holiday":       { "text": "Vakantiestand", "doc": "Availability section: away until a date." },
+      "holiday_on":    { "text": "Vakantiestand aan", "doc": "Holiday toggle label." },
+      "holiday_until": { "text": "Tot en met", "doc": "Holiday end-date label." },
+      "quietHours":    { "text": "Stilte-uren", "doc": "Availability section: defer pushes in a window." },
+      "quiet_on":      { "text": "Pushmeldingen uitstellen tijdens stilte-uren", "doc": "Quiet-hours toggle label." },
+      "from":          { "text": "Van", "doc": "Quiet-hours start time label." },
+      "to":            { "text": "Tot", "doc": "Quiet-hours end time label." },
+      "weekends":      { "text": "In het weekend ook overdag", "doc": "Quiet-hours weekend toggle label." }
+    }
   },
   "app": {
     "name":   { "text": "canopy-chat",                       "doc": "App-display in headers + over-scherm" },

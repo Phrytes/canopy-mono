@@ -6,7 +6,85 @@
     "empty":   { "text": "No circles yet.", "doc": "Shown when the launcher has no circles." },
     "loading": { "text": "Loading circles…", "doc": "Shown while circles are being fetched." },
     "back":    { "text": "← circles", "doc": "Back link from a circle detail view to the launcher." },
-    "detail_empty": { "text": "Nothing here yet.", "doc": "Empty state inside a circle detail view." }
+    "detail_empty": { "text": "Nothing here yet.", "doc": "Empty state inside a circle detail view." },
+    "stream": {
+      "title":    { "text": "Stream", "doc": "Heading of the cross-circle Stream tab (board 5B)." },
+      "open":     { "text": "Stream", "doc": "Launcher entry that opens the cross-circle Stream." },
+      "empty":    { "text": "Nothing across your circles yet.", "doc": "Empty state for the Stream." },
+      "untagged": { "text": "—", "doc": "Tag shown on a Stream row that isn't tied to a circle." }
+    },
+    "settings": {
+      "title":        { "text": "Circle settings", "doc": "Settings screen heading (board 4A)." },
+      "save":         { "text": "Save", "doc": "Save the circle settings." },
+      "features":     { "text": "Features", "doc": "Settings axis: which features the circle has." },
+      "llmTool":      { "text": "LLM as a tool", "doc": "Settings axis: LLM assist mode." },
+      "agents":       { "text": "Agents allowed", "doc": "Settings axis: whether LLM agents may join." },
+      "revealPolicy": { "text": "Reveal policy", "doc": "Settings axis: who sees real names." },
+      "pod":          { "text": "Where data lives", "doc": "Settings axis: pod storage policy." },
+      "consensus":       { "text": "Co-admin consensus", "doc": "Settings section: co-admin approval for changes." },
+      "consensus_label": { "text": "Require co-admin approval for changes", "doc": "consensusRequired toggle label." },
+      "consequence_aria": { "text": "What this choice means", "doc": "Accessible label for the per-option ⓘ consequence toggle." },
+      "consequence": {
+        "off":             { "text": "No AI assistance in this circle — nothing is sent to any model.", "doc": "Consequence of llmTool=off." },
+        "local":           { "text": "AI runs on a member's own machine (Ollama). Messages stay on-device; nothing goes to the cloud.", "doc": "Consequence of llmTool=local." },
+        "cloud":           { "text": "AI runs on an independent cloud model. Your messages are sent to that provider when you ask it something.", "doc": "Consequence of llmTool=cloud." },
+        "yes":             { "text": "Anyone can add an AI agent as a participant. Agents can read whatever the circle shares.", "doc": "Consequence of agents=yes." },
+        "admin-approval":  { "text": "AI agents may join only after an admin approves — a checkpoint before any agent sees circle content.", "doc": "Consequence of agents=admin-approval." },
+        "no":              { "text": "No AI agents may join. Only people take part in this circle.", "doc": "Consequence of agents=no." },
+        "pairwise":        { "text": "Real names are revealed one-to-one. Each member chooses who gets to see their identity.", "doc": "Consequence of revealPolicy=pairwise." },
+        "open":            { "text": "Every member can see each other's real names. There is no per-person hiding.", "doc": "Consequence of revealPolicy=open." },
+        "none":            { "text": "Nothing is stored to a pod. Data lives only on members' devices and is lost if they clear it.", "doc": "Consequence of pod=none." },
+        "shared":          { "text": "One shared pod holds the circle's data — every member reads and writes the same store.", "doc": "Consequence of pod=shared." },
+        "personal":        { "text": "Each member keeps their own pod and the circle links to them by reference. You keep control of your own copy.", "doc": "Consequence of pod=personal." },
+        "hybrid":          { "text": "A shared pod plus personal pods: common items are shared, private items stay with each member.", "doc": "Consequence of pod=hybrid." }
+      },
+      "send_proposal":   { "text": "Send proposal →", "doc": "Save-button label when consensus is required." },
+      "pending":         { "text": "Changes need co-admin approval before they apply.", "doc": "Footer note when consensus is active." },
+      "feat": {
+        "chat":            { "text": "Chat", "doc": "Feature label." },
+        "noticeboard":     { "text": "Noticeboard", "doc": "Feature label." },
+        "tasks":           { "text": "Tasks", "doc": "Feature label." },
+        "lists":           { "text": "Lists", "doc": "Feature label." },
+        "calendar":        { "text": "Calendar", "doc": "Feature label." },
+        "notes":           { "text": "Notes", "doc": "Feature label." },
+        "houseRules":      { "text": "House rules", "doc": "Feature label." },
+        "memberDirectory": { "text": "Member directory", "doc": "Feature label." }
+      },
+      "opt": {
+        "off":            { "text": "Off", "doc": "Option label." },
+        "local":          { "text": "Local (Ollama)", "doc": "Option label." },
+        "cloud":          { "text": "Independent cloud", "doc": "Option label." },
+        "yes":            { "text": "Yes — anyone", "doc": "Option label." },
+        "admin-approval": { "text": "With admin approval", "doc": "Option label." },
+        "no":             { "text": "No agents", "doc": "Option label." },
+        "pairwise":       { "text": "Pairwise (1-on-1)", "doc": "Option label." },
+        "open":           { "text": "Open — all members", "doc": "Option label." },
+        "none":           { "text": "No pod", "doc": "Option label." },
+        "shared":         { "text": "One shared pod", "doc": "Option label." },
+        "personal":       { "text": "Personal pods + refs", "doc": "Option label." },
+        "hybrid":         { "text": "Hybrid", "doc": "Option label." }
+      }
+    },
+    "override": {
+      "title":              { "text": "My settings for this circle", "doc": "Personal override sheet heading (board 6A)." },
+      "chatOff":            { "text": "Turn chat off", "doc": "Override: silence this circle's chat for me." },
+      "revealOpen":         { "text": "Show my name to all members", "doc": "Override: reveal my real name circle-wide." },
+      "agentsMayContactMe": { "text": "Agents may contact me", "doc": "Override: allow LLM agents to address me." },
+      "flowThrough":        { "text": "Flow-through to My things", "doc": "Override section: route circle items into my personal circle." },
+      "tasksToPersonal":    { "text": "Tasks → My things", "doc": "Override: claimed circle tasks land in my personal list." },
+      "calendarToPersonal": { "text": "Calendar → my calendar", "doc": "Override: circle events also show in my calendar." }
+    },
+    "availability": {
+      "title":         { "text": "Availability", "doc": "Cross-circle availability screen heading (board 6C)." },
+      "holiday":       { "text": "Holiday mode", "doc": "Availability section: away until a date." },
+      "holiday_on":    { "text": "Holiday mode on", "doc": "Holiday toggle label." },
+      "holiday_until": { "text": "Until", "doc": "Holiday end-date label." },
+      "quietHours":    { "text": "Quiet hours", "doc": "Availability section: defer pushes in a window." },
+      "quiet_on":      { "text": "Defer pushes during quiet hours", "doc": "Quiet-hours toggle label." },
+      "from":          { "text": "From", "doc": "Quiet-hours start time label." },
+      "to":            { "text": "To", "doc": "Quiet-hours end time label." },
+      "weekends":      { "text": "Weekends all day too", "doc": "Quiet-hours weekend toggle label." }
+    }
   },
   "app": {
     "name":   { "text": "canopy-chat",                       "doc": "App display name in headers + about screen" },
