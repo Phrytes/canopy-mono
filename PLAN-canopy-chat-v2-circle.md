@@ -240,23 +240,83 @@ lot is screen-only. This phase makes it real.
       `circleFilesFromListFiles` (scoped to the circle); web + mobile.
       web-verified showing the 3 seeded files. (Real circle-pod scoping lands
       with 5.4 pod-backing; today it scopes the flat index by circle tag.)
-- [ ] 5.3 Override **enforcement**: quiet-hours push-suppression wired to the
-      notifier (`isPushSuppressed`); chat-off "stored / not delivered + silent"
-      card (board 5C); flow-through actually routes claimed tasks/calendar →
-      personal circle; agents-may-contact-me filtering (needs member-is-agent flag).
-- [ ] 5.4 Pod backing — F2 persists `circlePolicy`/override/rules/skill to the
-      circle's pod `shared.json` (today: localStorage / AsyncStorage), + enforce
-      the `pod` axis.
-- [ ] 5.5 F1 — thread the active `circleId` through EVERY mutating dispatch (not
-      just reads/projections).
-- [ ] 5.6 Thread rules-consent into the real **join** flow + skills into the
-      **create** flow (today standalone/additive).
-- [ ] 5.7 Design bits not yet built: `view` layout-mode axis (chat/screen/
-      cross-stream, board 4/5) · first-run onboarding + example neighbourhood
-      (board 3A) · local discovery "who's here" mDNS/BLE (board 8) · PoL
-      placeholder row in settings (board 10C).
-- [ ] 5.8 Pluggable LLM backend ([[llm-pluggability-deferred]]) — last, after
-      the above.
+#### Substrate audit (2026-05-29, 3 parallel deep-dives) — reuse, don't rebuild
+The remaining slices first looked "blocked on missing substrate", but the audit
+of stoop / tasks-v0 / household / secure-agent / packages found the opposite:
+**most of it already exists; the work is WIRING/surfacing in canopy-chat, not
+authoring.** (Correction: my earlier "inject circleId at dispatch is a no-op"
+call was WRONG — the tasks/stoop resolvers already consume an explicit
+`_scope`/`crewId`/`groupId` arg, so scoping writes is a thin binding.)
+
+EXISTS — reuse (file refs):
+- **Pod IO**: `createPodWriter` + `discoverPodRoot` (`web/podStorage.js:262/73`,
+  wired for calendar). Stoop per-group pod state: `attachPodToBundle.js:36` +
+  `podPathMap.js:42` (`group/<crewId>/…`; `mem://stoop/settings` cross-app-settings
+  = the canonical "shared.json" home). `createCirclePolicyStore({load,save})` is
+  already IO-injectable — a `podPolicyIo` adapter drops in with zero caller changes.
+- **Active-circle → app scope**: tasks `multiCrewResolver` picks the crew from
+  `args.crewId → args._scope → topic` (`bundleResolver.js:54`); stoop resolves
+  `groupId` per-call. Injecting `_scope=circleId` scopes writes. Mobile
+  `switchActiveGroup` / `setActiveCrew` registry setters exist (ServiceContext).
+- **Inbound gate**: secure-agent mute drop (`createSecureAgent.js:505` silent drop,
+  vault-backed `MuteSet`) is the chat-off pattern; `PeerResolver.resolveByAddr` =
+  addr→member.
+- **Rules/consent flows**: join wizard (`joinGroupState.js`) already shows +
+  ENFORCES rules consent (gated Next); create wizard (`createGroupState.js`)
+  captures rules → `createGroupV2`. v2 `circleRules`/`circleSkills` are parallel
+  PREVIEW models to map in (their headers say "threading is a follow-on").
+- **Task claim**: `claimTask` (`tasks-v0/skills/index.js:209`). Solo crew: `Crew.js`
+  zero-config + `'personal'` pod axis. `flowThrough.tasksToPersonal` flag exists, unconsumed.
+- **Mnemonic onboarding**: `@canopy/react-native/mnemonic` + Vault Ed25519 seed +
+  restore wizards. **Local "who's here"**: stoop-mobile `MdnsTransport`/BLE.
+  **Proof-of-location**: `apps/presence-v0` attestation. **LLM**: `packages/llm-client`
+  (provider-agnostic, ollama/mock).
+- **Notifier**: `packages/notifier` + `PushPolicy` quiet-hours gate; mobile push
+  `setupPush`/`ExpoNotificationsAdapter` (stoop/tasks-mobile, NOT canopy-chat).
+
+GENUINELY NEW substrate (the only authoring left) — and WHY:
+1. **Peer→circle membership reverse index** (`groupsFor(webid)`/`membersOf`). WHY:
+   chat-off + agents-filter are per-circle, but inbound msgs arrive by peer addr;
+   today there's addr→member but no "which circles is this member in" reverse index.
+2. **Agent-vs-human marker** (`MemberMap.relation:'agent'` or a signed-claim field).
+   WHY: `agentsMayContactMe` must filter AGENT contact specifically; no agent/human
+   distinction exists ("an agent is just a user with a WebID", so none was added).
+3. **Stored-silent message store**. WHY: board-5C chat-off = "stored, not delivered,
+   keep/withdraw" — but mute only DROPS (no retention).
+4. **Personal "Mijn dingen" crew instance + claim→personal router**. WHY: the
+   `flowThrough.tasksToPersonal` flag is unconsumed + no crew is designated personal.
+5. **Notifier suppression hook**. WHY: Notifier delivers unconditionally; needs a
+   pre-gate to call `isPushSuppressed` (PushPolicy is a separate wrapper apps compose).
+
+#### Re-sequenced coding plan (reuse-first)
+- [ ] 5.3 **Active-circle → app-scope sync** (WIRING; supersedes old 5.5). On
+      open-circle, bind stoop group + tasks crew to the circle by injecting
+      `_scope`/`crewId`/`groupId = circleId` into mutating skill calls (reuse
+      `multiCrewResolver._scope`) + mobile `switchActiveGroup`/`setActiveCrew`.
+      Verify a task/post created in a circle carries the circle tag (`itemCircleId`).
+- [ ] 5.4 **Pod-backed circle config** (WIRING + adapter). `podPolicyIo({write,read})`
+      over `createPodWriter`; persist circlePolicy/override/rules/skill under the
+      per-group pod path (reuse `podPathMap` / `mem://stoop/settings`); enforce the
+      `pod` axis. Drop-in replaces the localStorage/AsyncStorage IO (store is injectable).
+- [ ] 5.5 **Rules/skills into the real create/join flows** (WIRING). Map v2
+      `RULES_FIELDS` ↔ the wizard rules step (reuse `joinGroupState`/`createGroupState`
+      + `buildRulesDoc`); add a skills step to create (reuse `circleSkills` +
+      `CircleSkillEditorScreen`). Retire the standalone v2 previews into the wizards.
+- [ ] 5.6 **NEW substrate — peer→circle index + agent marker** (small; the only real
+      authoring). `groupsFor`/`membersOf` on the resolver/MemberMap + an `agent`
+      relation/claim marker. Unblocks 5.7.
+- [ ] 5.7 **Override enforcement** (WIRING, after 5.6): chat-off per-circle inbound
+      gate (reuse mute-drop + the new peer→circle index) + stored-silent store;
+      agents-filter gate (new marker); flow-through (personal crew + claim→personal
+      router reading the flag); quiet-hours → wire `isPushSuppressed` into the Notifier
+      hook. NB canopy-chat has no push path yet, so quiet-hours lands household
+      digests first; surfacing canopy-chat-mobile push (reuse `setupPush`) is a sub-task.
+- [ ] 5.8 **Pluggable LLM** (WIRING) — inject an `LlmClient` provider through the
+      `realAgent` composition (reuse `packages/llm-client`); last. [[llm-pluggability-deferred]]
+- [ ] 5.9 **Remaining design bits** (mostly WIRING; was 5.7): `view` axis (add to
+      `ENUM_AXES` + consume in launcher/detail) · first-run onboarding + mnemonic
+      (reuse `@canopy/react-native/mnemonic` + restore wizards) · local "who's here"
+      (reuse stoop-mobile `MdnsTransport`) · PoL placeholder row (reuse `presence-v0`).
 
 ### Later / excluded
 - Store packaging (board 2), co-redaction (board 11), working PoL gate (10C).
