@@ -236,7 +236,10 @@ lot is screen-only. This phase makes it real.
         designed (board-8 local discovery, 5.7); routing an empty screen = hollow.
       ↳ Tile counts: crews already carry counts (getMyCrews); buurt tiles need a
         small enrichment pass (call listGroupMembers per buurt) — follow-on.
-- [ ] 5.2 Folio `listFiles` (circle pod) → real **Folio browser** (3.3) data.
+- [x] 5.2 Folio `listFiles` → real **Folio browser** data via
+      `circleFilesFromListFiles` (scoped to the circle); web + mobile.
+      web-verified showing the 3 seeded files. (Real circle-pod scoping lands
+      with 5.4 pod-backing; today it scopes the flat index by circle tag.)
 - [ ] 5.3 Override **enforcement**: quiet-hours push-suppression wired to the
       notifier (`isPushSuppressed`); chat-off "stored / not delivered + silent"
       card (board 5C); flow-through actually routes claimed tasks/calendar →
