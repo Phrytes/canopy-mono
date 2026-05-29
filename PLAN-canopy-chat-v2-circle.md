@@ -103,6 +103,16 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
 ### Later / excluded
 - Store packaging (board 2), co-redaction (board 11), working PoL gate (10C).
 
+## v2 becomes the main app (user-directed 2026-05-29)
+- [x] Web: the v2 circle app is the **default** at `/` (`web/index.html`); the
+      classic shell moved to `web/classic.html` (linked from the header).
+      e2e specs + `bootTabs` repointed to `/classic.html`.
+- [x] "+ new circle" creates for real via `quickCreateCircle` → `createGroupV2`
+      (web prompt; mobile inline name input), then refreshes the launcher.
+- [ ] Mobile default → circle app: **blocked on lifting the agent bundle to
+      App level** (ChatScreen boots it internally; the launcher needs it for
+      data + create). Reachable via the "Circles" pill until then.
+
 ## Open questions (carry from design)
 1. Agents-in-circle (2.4): spec agent-as-participant now (own WebID + scope)
    or park as a placeholder like PoL?

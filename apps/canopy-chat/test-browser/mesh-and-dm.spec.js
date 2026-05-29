@@ -83,8 +83,8 @@ test.describe('Cross-tab mesh + DM end-to-end', () => {
     // Hook NKN-connect listeners BEFORE navigating.
     const addrAPromise = waitForNknConnect(tabA);
     const addrBPromise = waitForNknConnect(tabB);
-    await tabA.goto('/');
-    await tabB.goto('/');
+    await tabA.goto('/classic.html');
+    await tabB.goto('/classic.html');
     const [addrA, addrB] = await Promise.all([addrAPromise, addrBPromise]);
     expect(addrA).toMatch(/^[0-9a-f]{64}$/);
     expect(addrB).toMatch(/^[0-9a-f]{64}$/);
@@ -115,8 +115,8 @@ test.describe('Cross-tab mesh + DM end-to-end', () => {
     // events, send failures, etc.).
     tabA.on('console', (m) => console.log('  [A]', m.text()));
     tabB.on('console', (m) => console.log('  [B]', m.text()));
-    await tabA.goto('/');
-    await tabB.goto('/');
+    await tabA.goto('/classic.html');
+    await tabB.goto('/classic.html');
     const [addrA, addrB] = await Promise.all([addrAPromise, addrBPromise]);
 
     // NKN multiclient finishes bootstrapping after the first
@@ -149,7 +149,7 @@ test.describe('Cross-tab mesh + DM end-to-end', () => {
   });
 
   test('command auto-suggest shows + filters on slash input', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/classic.html');
     const input = page.locator('#chat-input');
     // Focus + pressSequentially so each keystroke fires `input`
     // events the way the user typing does.  `.fill()` sets value
@@ -176,7 +176,7 @@ test.describe('Cross-tab mesh + DM end-to-end', () => {
    * before the user does.
    */
   test('new /edit-task + sub-task commands appear in auto-suggest', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/classic.html');
     const input = page.locator('#chat-input');
     const list  = page.locator('#cmd-suggest');
 

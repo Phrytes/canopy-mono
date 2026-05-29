@@ -115,11 +115,11 @@ export default defineConfig({
     emptyOutDir: true,
     target:      'es2022',
     rollupOptions: {
-      // Multi-page: the classic shell (index.html) + the additive v2
-      // circle launcher (circle.html). Both reuse the same src/ + web/v2.
+      // Multi-page: the v2 circle app is now the default landing
+      // (index.html); the classic shell is kept reachable at classic.html.
       input: {
-        main:   'web/index.html',
-        circle: 'web/circle.html',
+        main:    'web/index.html',   // v2 circle app (default)
+        classic: 'web/classic.html', // legacy chat shell (reference)
       },
     },
   },
