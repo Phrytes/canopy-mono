@@ -17,13 +17,13 @@
 // runs against stale snapshot state — D-1 only proves the FIRST
 // render is correct.
 
+const { gotoChat } = require('./support/nav.js');
+
 describe('state morph on row-button tap', () => {
   beforeAll(async () => {
     await device.launchApp({ newInstance: true });
-    await waitFor(element(by.id('chat-header-status')))
-      .toBeVisible()
-      .withTimeout(60_000);
     await device.disableSynchronization();
+    await gotoChat();   // M2 — circle launcher is the default screen
   });
 
   it('after tapping [Mark complete] on c-1, that row\'s button disappears (others remain)', async () => {

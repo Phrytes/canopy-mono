@@ -170,7 +170,14 @@ the mobile screens are thin follow-ons.
       holds peer-wiring in a mutable slot read at delivery time + on the 1.5s
       catch-up — attach lands before the seconds-long NKN handshake. 2 new
       bootSmoke tests (163 mobile total). ⚠ RN screen layer is Detox-only.
-- [ ] M2 mobile default → circle app once M1 lands.
+- [x] M2 mobile default → circle app. App.js lands on the circle launcher;
+      the classic chat shell stays ALWAYS mounted underneath (so its
+      peer-wiring keeps routing inbound DMs / mesh while the launcher is up)
+      and is revealed via "← chat" (testID `circle-to-chat`); the "Circles"
+      pill (testID `open-circles`) returns. New `e2e/circleDefault.test.js` +
+      a shared `e2e/support/nav.js` `gotoChat()` helper; the 9 chat-focused
+      Detox tests now `gotoChat()` after launch. ⚠ Detox suite rebuild + run
+      pending (device-only).
 - [ ] M3 port the Phase 1 web screens (settings 1.2, override 1.4) to RN.
 
 ## Open questions (carry from design)

@@ -11,13 +11,13 @@
 // We don't submit — that would need substrate state these tests
 // don't bootstrap.  State-machine submission is verified by vitest.
 
+const { gotoChat } = require('./support/nav.js');
+
 describe('Bundle F P2 — all-wizard launch smoke (via slash)', () => {
   beforeAll(async () => {
     await device.launchApp({ newInstance: true });
-    await waitFor(element(by.id('chat-header-status')))
-      .toBeVisible()
-      .withTimeout(60_000);
     await device.disableSynchronization();
+    await gotoChat();   // M2 — circle launcher is the default screen
   });
 
   async function launchViaSlash(slash, modalTestId) {

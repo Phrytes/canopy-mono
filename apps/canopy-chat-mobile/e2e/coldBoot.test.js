@@ -22,14 +22,20 @@ const EXPECTED_APPS = [
   'calendar',
 ];
 
+const { gotoChat } = require('./support/nav.js');
+
 describe('cold boot smoke', () => {
   beforeAll(async () => {
     await device.launchApp({ newInstance: true });
+    // M2 — the circle launcher is the default screen; reveal the chat
+    // shell (which carries the boot status + debug section).  Disable
+    // sync first so gotoChat's tap doesn't hang on the never-idle bridge.
+    await device.disableSynchronization();
+    await gotoChat();
   });
 
   it('shows "Agents ready" status within the boot timeout', async () => {
-    // Wait up to 60s for the boot pipeline (createRealHouseholdAgent
-    // signs WebID, provisions VaultMemory, registers skills, etc.).
+    // gotoChat already waited for the boot status; re-assert for clarity.
     await waitFor(element(by.id('chat-header-status')))
       .toBeVisible()
       .withTimeout(60_000);
@@ -39,7 +45,7 @@ describe('cold boot smoke', () => {
 
   it('expanding the debug section reveals all 6 app rows', async () => {
     await element(by.id('chat-debug-toggle')).tap();
-    await expect(element(by.id('chat-debug-list'))).toBeVisible();
+    await waitFor(element(by.id('chat-debug-list'))).toBeVisible().withTimeout(5_000);
 
     for (const appOrigin of EXPECTED_APPS) {
       await expect(element(by.id(`chat-app-row-${appOrigin}`))).toBeVisible();

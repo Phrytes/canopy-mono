@@ -16,13 +16,16 @@
 // see the second boot take noticeably longer OR show an error
 // banner.  Both are testable here.
 
+const { gotoChat } = require('./support/nav.js');
+
 describe('restart survival', () => {
   it('relaunching the app lands on the same "Agents ready" screen', async () => {
-    // First boot.
+    // First boot.  M2 — the circle launcher is the default screen, so
+    // reveal the chat shell to assert on its boot status.  Disable sync
+    // first so gotoChat's tap doesn't hang on the never-idle bridge.
     await device.launchApp({ newInstance: true });
-    await waitFor(element(by.id('chat-header-status')))
-      .toBeVisible()
-      .withTimeout(60_000);
+    await device.disableSynchronization();
+    await gotoChat();
 
     // Second boot — Detox terminates the app and starts fresh.
     // newInstance:false uses the existing process (faster); the
@@ -30,13 +33,12 @@ describe('restart survival', () => {
     // app session, which is what device.reloadReactNative does.
     await device.terminateApp();
     await device.launchApp({ newInstance: false });
+    await device.disableSynchronization();
 
     // Re-boot should reach "Agents ready" again — and FASTER than
-    // the cold boot because the JS bundle is cached.  20s timeout
-    // (vs 60s on first boot).
-    await waitFor(element(by.id('chat-header-status')))
-      .toBeVisible()
-      .withTimeout(20_000);
+    // the cold boot because the JS bundle is cached.  gotoChat waits
+    // up to 60s; the re-boot is well under that.
+    await gotoChat();
 
     // No error banner.  (We can't easily assert "no boot.boot_failed"
     // because that bound text is dynamic; instead we check that the

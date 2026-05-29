@@ -13,13 +13,13 @@
 // launch + step transitions; vitest verifies submitDispute calls
 // stoop.postRequest with kind:'dispute' (see test/wizardRegistry.test.js).
 
+const { gotoChat } = require('./support/nav.js');
+
 describe('conflict-dispute wizard launch', () => {
   beforeAll(async () => {
     await device.launchApp({ newInstance: true });
-    await waitFor(element(by.id('chat-header-status')))
-      .toBeVisible()
-      .withTimeout(60_000);
     await device.disableSynchronization();
+    await gotoChat();   // M2 — circle launcher is the default screen
   });
 
   it('[Dispute] on a stoop post opens the wizard + Next is gated by the validator', async () => {

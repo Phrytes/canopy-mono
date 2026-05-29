@@ -16,8 +16,9 @@ describe('Detox sanity', () => {
     await device.disableSynchronization();
   });
 
-  it('app launches and the chat screen is visible', async () => {
-    await waitFor(element(by.id('chat-screen')))
+  it('app launches and the circle launcher (default screen) is visible', async () => {
+    // M2 — the circle launcher is the default landing screen.
+    await waitFor(element(by.id('circle-launcher')))
       .toBeVisible()
       .withTimeout(60_000);
   });

@@ -10,13 +10,13 @@
 // between boot and this test).  Empty-state copy is still inside
 // the modal, so the modal mounts either way.
 
+const { gotoChat } = require('./support/nav.js');
+
 describe('/logs opens the LogsPanel modal', () => {
   beforeAll(async () => {
     await device.launchApp({ newInstance: true });
-    await waitFor(element(by.id('chat-header-status')))
-      .toBeVisible()
-      .withTimeout(60_000);
     await device.disableSynchronization();
+    await gotoChat();   // M2 — circle launcher is the default screen
   });
 
   it('typing /logs opens the panel + Done dismisses it', async () => {

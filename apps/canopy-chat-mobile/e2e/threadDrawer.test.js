@@ -9,13 +9,13 @@
 // Pure UI state — no substrate dispatch needed, runs against the
 // same boot setup as D-1.
 
+const { gotoChat } = require('./support/nav.js');
+
 describe('thread drawer create + switch', () => {
   beforeAll(async () => {
     await device.launchApp({ newInstance: true });
-    await waitFor(element(by.id('chat-header-status')))
-      .toBeVisible()
-      .withTimeout(60_000);
     await device.disableSynchronization();
+    await gotoChat();   // M2 — circle launcher is the default screen
   });
 
   it('☰ opens drawer; + creates thread; switching threads updates header name', async () => {
