@@ -18,6 +18,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  useFonts, SourceSerif4_400Regular, SourceSerif4_600SemiBold,
+} from '@expo-google-fonts/source-serif-4';
+
+import { theme } from './src/screens/v2/theme.js';
 
 import ChatScreen from './src/screens/ChatScreen.js';
 import CircleLauncherScreen from './src/screens/v2/CircleLauncherScreen.js';
@@ -28,6 +33,7 @@ import { EventLog } from '../canopy-chat/src/eventLog.js';
 
 export default function App() {
   const [localeReady, setLocaleReady] = useState(false);
+  const [fontsLoaded] = useFonts({ SourceSerif4_400Regular, SourceSerif4_600SemiBold });
   // M2 (2026-05-29) — the circle launcher is the DEFAULT landing screen
   // (web already lands on the circle app).  The classic chat shell stays
   // mounted underneath (so its peer-wiring keeps routing inbound DMs /
@@ -84,7 +90,7 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  if (!localeReady) return null;
+  if (!localeReady || !fontsLoaded) return null;
 
   return (
     <SafeAreaProvider>
@@ -119,12 +125,12 @@ const styles = StyleSheet.create({
   // doesn't bleed through while the circle launcher is the active screen.
   overlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: '#fdfaf1',
+    backgroundColor: theme.color.paper,
   },
   pill: {
     position: 'absolute', top: 8, right: 12,
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: '#c9a13a',
+    backgroundColor: theme.color.accent,
   },
-  pillText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  pillText: { color: theme.color.white, fontSize: 12, fontWeight: '600' },
 });

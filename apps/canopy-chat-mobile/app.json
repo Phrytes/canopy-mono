@@ -30,7 +30,8 @@
         {
           "cameraPermission": "canopy-chat wants to use the camera to scan QR codes (contact cards, group invites)."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

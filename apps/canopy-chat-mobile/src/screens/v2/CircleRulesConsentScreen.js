@@ -8,6 +8,7 @@
  */
 import React from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { theme } from './theme.js';
 import { RULES_FIELDS, normalizeRulesDoc, isRulesEmpty } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
@@ -50,18 +51,18 @@ export default function CircleRulesConsentScreen({ doc, onAgree, onDecline, onBa
 }
 
 const styles = StyleSheet.create({
-  page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
+  page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:         { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
-  back:        { fontSize: 13, color: '#6a6a6a' },
-  title:       { fontSize: 20, fontWeight: '600', marginVertical: 10 },
+  back:        { fontSize: 13, color: theme.color.inkSoft },
+  title:       { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   body:        { paddingBottom: 16 },
   field:       { marginBottom: 14 },
-  q:           { fontSize: 13, fontWeight: '700', color: '#8a6d1f' },
-  a:           { fontSize: 14, color: '#1a1a1a', marginTop: 2, lineHeight: 20 },
-  muted:       { color: '#6a6a6a', fontStyle: 'italic', paddingVertical: 10 },
+  q:           { fontSize: 13, fontWeight: '700', color: theme.color.inkSoft },
+  a:           { fontSize: 14, color: theme.color.ink, marginTop: 2, lineHeight: 20 },
+  muted:       { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
   actions:     { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  decline:     { flex: 1, padding: 13, borderRadius: 8, borderWidth: 1, borderColor: '#d8d2c0', alignItems: 'center' },
-  declineText: { color: '#6a6a6a', fontSize: 15 },
-  agree:       { flex: 1, padding: 13, borderRadius: 8, backgroundColor: '#c9a13a', alignItems: 'center' },
-  agreeText:   { color: '#fff', fontSize: 15, fontWeight: '700' },
+  decline:     { flex: 1, padding: 13, borderRadius: 8, borderWidth: 1, borderColor: theme.color.line, alignItems: 'center' },
+  declineText: { color: theme.color.inkSoft, fontSize: 15 },
+  agree:       { flex: 1, padding: 13, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
+  agreeText:   { color: theme.color.white, fontSize: 15, fontWeight: '700' },
 });

@@ -14,6 +14,7 @@
  */
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { theme } from './theme.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   loadCircles, circleSourcesFromAgent, makeResolvingCallSkill,
@@ -345,24 +346,24 @@ function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs, onA
 }
 
 const styles = StyleSheet.create({
-  page:       { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
+  page:       { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 22 },
-  back:       { fontSize: 13, color: '#6a6a6a' },
+  back:       { fontSize: 13, color: theme.color.inkSoft },
   barActions: { flexDirection: 'row', gap: 14, marginLeft: 'auto' },
-  availText:  { fontSize: 13, color: '#8a6d1f', fontWeight: '600' },
+  availText:  { fontSize: 13, color: theme.color.inkSoft, fontWeight: '600' },
   detailActions:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 6 },
-  detailAction:    { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: '#d8d2c0', backgroundColor: '#fbf8ed' },
-  detailActionText: { fontSize: 12, color: '#6a6a6a' },
-  title:      { fontSize: 20, fontWeight: '600', marginVertical: 10 },
+  detailAction:    { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.card },
+  detailActionText: { fontSize: 12, color: theme.color.inkSoft },
+  title:      { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   list:       { gap: 6, paddingBottom: 32 },
-  tile:       { padding: 13, borderWidth: 1, borderColor: '#e6e0cf', borderRadius: 8, backgroundColor: '#fbf8ed' },
-  tileName:   { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
-  tileMeta:   { fontSize: 11, color: '#6a6a6a', marginTop: 2 },
-  muted:      { color: '#6a6a6a', fontStyle: 'italic', paddingVertical: 10 },
-  newBtn:     { marginTop: 12, padding: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: '#d8d2c0', borderRadius: 8, alignItems: 'center' },
-  newText:    { color: '#6a6a6a' },
+  tile:       { padding: 13, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card },
+  tileName:   { fontSize: 14, fontWeight: '600', color: theme.color.ink },
+  tileMeta:   { fontSize: 11, color: theme.color.inkSoft, marginTop: 2 },
+  muted:      { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
+  newBtn:     { marginTop: 12, padding: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.color.line, borderRadius: 8, alignItems: 'center' },
+  newText:    { color: theme.color.inkSoft },
   createRow:  { marginTop: 12, flexDirection: 'row', gap: 8, alignItems: 'center' },
-  input:      { flex: 1, padding: 11, borderWidth: 1, borderColor: '#c9a13a', borderRadius: 8, backgroundColor: '#fff', fontSize: 14 },
-  createBtn:  { width: 42, paddingVertical: 11, borderRadius: 8, backgroundColor: '#c9a13a', alignItems: 'center' },
-  createBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  input:      { flex: 1, padding: 11, borderWidth: 1, borderColor: theme.color.accent, borderRadius: 8, backgroundColor: theme.color.white, fontSize: 14 },
+  createBtn:  { width: 42, paddingVertical: 11, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
+  createBtnText: { color: theme.color.white, fontSize: 16, fontWeight: '700' },
 });

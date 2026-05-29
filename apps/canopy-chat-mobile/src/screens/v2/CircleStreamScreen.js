@@ -9,6 +9,7 @@
  */
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { theme } from './theme.js';
 import { buildCircleStream } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
@@ -66,14 +67,14 @@ function formatTs(ts) {
 }
 
 const styles = StyleSheet.create({
-  page:   { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
+  page:   { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:    { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
-  back:   { fontSize: 13, color: '#6a6a6a' },
-  title:  { fontSize: 20, fontWeight: '600', marginVertical: 10 },
+  back:   { fontSize: 13, color: theme.color.inkSoft },
+  title:  { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   list:   { gap: 6, paddingBottom: 32 },
-  row:    { padding: 12, borderWidth: 1, borderColor: '#e6e0cf', borderRadius: 8, backgroundColor: '#fbf8ed' },
-  tag:    { fontSize: 11, fontWeight: '700', color: '#8a6d1f' },
-  body:   { fontSize: 14, color: '#1a1a1a', marginTop: 2 },
-  when:   { fontSize: 11, color: '#9a9a9a', marginTop: 2 },
-  muted:  { color: '#6a6a6a', fontStyle: 'italic', paddingVertical: 10 },
+  row:    { padding: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card },
+  tag:    { fontSize: 11, fontWeight: '700', color: theme.color.inkSoft },
+  body:   { fontSize: 14, color: theme.color.ink, marginTop: 2 },
+  when:   { fontSize: 11, color: theme.color.inkSoft, marginTop: 2 },
+  muted:  { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
 });
