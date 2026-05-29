@@ -20,9 +20,10 @@ import { initLocalisation } from './src/core/localisation.js';
 
 export default function App() {
   const [localeReady, setLocaleReady] = useState(false);
-  // v2 (additive): default 'chat' keeps the classic shell untouched; a
-  // small overlay pill toggles to the circle launcher so both stay
-  // reachable side-by-side.
+  // v2: web already defaults to the circle app. Mobile stays chat-default
+  // until the agent bundle is lifted to App level (ChatScreen boots it
+  // internally today, so the launcher has no bundle to load/create with).
+  // Reachable now via the "Circles" pill; flip to 'circles' after the lift.
   const [screen, setScreen] = useState('chat');
 
   useEffect(() => {

@@ -41,6 +41,7 @@ export { QR_URI_PREFIXES, isQrUri }   from './core/qrSchemes.js';
 export { normalizeCircle, mergeCircles, loadCircles } from './v2/circleModel.js';
 export { circleSourcesFromAgent, makeResolvingCallSkill, DEFAULT_CIRCLE_ORIGINS } from './v2/circleSources.js';
 export { loadCircleItems, normalizeContentItem }      from './v2/circleContent.js';
+export { quickCreateCircle }                          from './v2/circleCreate.js';
 export { itemCircleId, isInCircle, scopeItems }       from './v2/circleScope.js';
 export { getActiveCircle, setActiveCircle, subscribeActiveCircle } from './v2/activeCircle.js';
 export {

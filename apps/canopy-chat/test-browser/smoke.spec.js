@@ -17,7 +17,7 @@
 import { test, expect } from '@playwright/test';
 
 test('chat shell loads + dispatches /me', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/classic.html');
   // The chat shell has an input the user types into; selector is
   // best-effort — adjust if the markup changes.  We look for any
   // input that accepts text + the input area's container.

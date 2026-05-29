@@ -1,14 +1,15 @@
 /**
- * canopy-chat v2 — circle launcher boot (web entry for `circle.html`).
+ * canopy-chat v2 — circle app boot (DEFAULT web entry, `index.html`).
  *
- * Additive: a SEPARATE page from the classic shell (`index.html` +
- * `main.js`), which is left untouched. Reuses the same bundled agent
- * factory + shared circle model. Opening a circle sets the active
- * circle (F1) and shows a scoped detail view populated with that
- * circle's items; back returns to the launcher.
+ * The v2 circle app is now the landing page; the classic chat shell is
+ * kept reachable at `classic.html` (linked from the header). Reuses the
+ * same bundled agent factory + shared circle model. Opening a circle
+ * sets the active circle (F1) and shows a scoped detail; "+ new circle"
+ * creates one via the existing createGroupV2 path and refreshes.
  *
- * ⚠ Needs a browser check: agent boot + live circle data are not unit-
- * verifiable here (renderer + model + scope + content are covered by tests).
+ * ⚠ Needs a browser check: agent boot, live circle data, and create are
+ * not unit-verifiable here (renderer/model/scope/content/create logic
+ * are covered by tests).
  */
 
 import { initLocalisation, t, detectDeviceLang } from '../../src/index.js';
@@ -16,13 +17,16 @@ import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircleItems } from '../../src/v2/circleContent.js';
+import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
 import { renderCircleLauncher } from './circleLauncher.js';
 import { renderCircleDetail } from './circleDetail.js';
 
 let rootEl = null;
 let circlesCache = [];
+let sources = {};
 let resolveCallSkill = null; // (opId, args) => Promise<object|null>
+let rawCallSkill = null;     // (appOrigin, opId, args) — for createGroupV2
 
 function showLauncher() {
   setActiveCircle(null);
@@ -31,8 +35,22 @@ function showLauncher() {
     circles: circlesCache,
     t,
     onOpenCircle: showDetail,
-    onNewCircle: () => { location.href = './index.html'; },
+    onNewCircle: createCircle,
   });
+}
+
+async function createCircle() {
+  if (!rawCallSkill) { location.href = './classic.html'; return; } // fallback: create in classic shell
+  const name = (globalThis.prompt?.(t('circle.new')) || '').trim();
+  if (!name) return;
+  try {
+    await quickCreateCircle({ callSkill: rawCallSkill, name });
+    circlesCache = await loadCircles(sources);
+  } catch (err) {
+    console.warn('[circleApp] create failed', err);
+    globalThis.alert?.(String(err?.message ?? err));
+  }
+  showLauncher();
 }
 
 async function showDetail(id) {
@@ -46,7 +64,6 @@ async function showDetail(id) {
   try {
     items = await loadCircleItems({ callSkill: resolveCallSkill, circleId: id });
   } catch { /* keep empty */ }
-  // The fetch is async — only paint if the user is still on this circle.
   if (getActiveCircle() === id) {
     renderCircleDetail(rootEl, { circle, items, t, onBack: showLauncher });
   }
@@ -57,13 +74,13 @@ async function boot() {
   await initLocalisation({ lng: detectDeviceLang() });
   renderCircleLauncher(rootEl, { loading: true, t });
 
-  let sources = {};
   try {
     const agent = await createRealHouseholdAgent({
       publishEvent: () => {},
       stoopPersistDb: { dbName: 'cc-stoop-state', storeName: 'items' },
     });
     if (typeof agent?.callSkill === 'function') {
+      rawCallSkill = agent.callSkill;
       resolveCallSkill = makeResolvingCallSkill(agent.callSkill);
       sources = circleSourcesFromAgent({ callSkill: resolveCallSkill, circlesStore: agent.circlesStore });
     }

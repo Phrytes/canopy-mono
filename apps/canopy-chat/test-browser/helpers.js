@@ -59,8 +59,10 @@ export async function openThreadByName(page, needle, timeoutMs = 10_000) {
   await row.click();
 }
 
-/** Open three tabs, each in its own context; return addresses in order. */
-export async function bootTabs(browser, n, gotoUrl = '/') {
+/** Open three tabs, each in its own context; return addresses in order.
+ *  Defaults to the classic chat shell (now at /classic.html since the v2
+ *  circle app took over the default route). */
+export async function bootTabs(browser, n, gotoUrl = '/classic.html') {
   const ctxs  = [];
   const pages = [];
   const addrPromises = [];
