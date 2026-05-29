@@ -121,6 +121,19 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       App level** (ChatScreen boots it internally; the launcher needs it for
       data + create). Reachable via the "Circles" pill until then.
 
+## Testing cadence (user-directed 2026-05-29)
+Catch mistakes "not too early, not too late" while keeping manual testing
+minimal — automated-first:
+- **vitest** unit + happy-dom render — every slice (assistant runs; green
+  before commit). 63 v2 tests today.
+- **Playwright** web e2e (`test-browser/circle-v2.spec.js`) — real flows
+  unit tests can't cover (create→listMyBuurts). Assistant writes; **user runs**
+  `npx playwright test` (no browser here).
+- **Detox** mobile — after the M1 bundle lift; user runs on device.
+- **Manual web/mobile checkpoints** at phase boundaries / first time a new
+  flow is reachable — not per micro-slice. Next: after Phase 1 web (1.3 + 1.5
+  + 1.2b) → one manual web pass.
+
 ## Parity adjustment (user-directed 2026-05-29)
 Web confirmed working (launcher + create). Mobile's launcher/screens can't
 function until the **agent bundle is lifted to App level** (ChatScreen boots
