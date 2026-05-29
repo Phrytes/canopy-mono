@@ -12,6 +12,7 @@ export function renderCircleLauncher(container, {
   t,
   onOpenCircle,
   onNewCircle,
+  onAvailability,
   loading = false,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -22,6 +23,15 @@ export function renderCircleLauncher(container, {
   heading.className = 'circle-launcher__title';
   heading.textContent = tr('circle.title');
   container.appendChild(heading);
+
+  if (typeof onAvailability === 'function') {
+    const avail = document.createElement('button');
+    avail.type = 'button';
+    avail.className = 'circle-launcher__availability';
+    avail.textContent = tr('circle.availability.title');
+    avail.addEventListener('click', () => onAvailability());
+    container.appendChild(avail);
+  }
 
   if (loading) {
     const l = document.createElement('div');

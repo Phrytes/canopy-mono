@@ -54,6 +54,10 @@ export {
   createMemberOverrideStore, localStorageOverrideIo,
 } from './v2/circlePolicyStore.js';
 export { makeProposal, approveProposal, pendingApprovers } from './v2/circleConsensus.js';
+export {
+  DEFAULT_AVAILABILITY, normalizeAvailability, mergeAvailability, isPushSuppressed,
+  createAvailabilityStore, localStorageAvailabilityIo,
+} from './v2/memberAvailability.js';
 export { runFind } from './find.js';
 export { EventLog, createEventLog, RETENTION_MS } from './eventLog.js';
 export {

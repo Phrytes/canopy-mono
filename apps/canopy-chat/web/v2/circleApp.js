@@ -21,6 +21,9 @@ import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
 import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
 import { makeProposal } from '../../src/v2/circleConsensus.js';
+import { mergeAvailability } from '../../src/v2/memberAvailability.js';
+import { createAvailabilityStore, localStorageAvailabilityIo } from '../../src/v2/memberAvailability.js';
+import { renderCircleAvailability } from './circleAvailability.js';
 import {
   createCirclePolicyStore, localStoragePolicyIo,
   createMemberOverrideStore, localStorageOverrideIo,
@@ -32,6 +35,7 @@ import { renderCircleOverride } from './circleOverride.js';
 
 const policyStore = createCirclePolicyStore(localStoragePolicyIo());
 const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
+const availabilityStore = createAvailabilityStore(localStorageAvailabilityIo());
 
 let rootEl = null;
 let circlesCache = [];
@@ -47,7 +51,20 @@ function showLauncher() {
     t,
     onOpenCircle: showDetail,
     onNewCircle: createCircle,
+    onAvailability: showAvailability,
   });
+}
+
+async function showAvailability() {
+  let working = await availabilityStore.get();
+  const rerender = () => renderCircleAvailability(rootEl, {
+    availability: working,
+    t,
+    onChange: (patch) => { working = mergeAvailability(working, patch); rerender(); },
+    onBack: showLauncher,
+    onSave: async () => { await availabilityStore.update(working); showLauncher(); },
+  });
+  rerender();
 }
 
 async function createCircle() {
