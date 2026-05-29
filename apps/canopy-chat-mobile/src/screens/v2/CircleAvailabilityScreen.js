@@ -48,11 +48,13 @@ export default function CircleAvailabilityScreen({ store, onBack }) {
 
   return (
     <View style={styles.page} testID="circle-availability">
-      <View style={styles.bar}>
-        <Pressable onPress={onBack} accessibilityRole="button" testID="circle-availability-back">
-          <Text style={styles.back}>{t('circle.back')}</Text>
-        </Pressable>
-      </View>
+      {onBack ? (
+        <View style={styles.bar}>
+          <Pressable onPress={onBack} accessibilityRole="button" testID="circle-availability-back">
+            <Text style={styles.back}>{t('circle.back')}</Text>
+          </Pressable>
+        </View>
+      ) : null}
       <Text style={styles.title}>{t('circle.availability.title')}</Text>
 
       <ScrollView contentContainerStyle={styles.body}>

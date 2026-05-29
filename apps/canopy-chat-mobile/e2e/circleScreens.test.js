@@ -41,23 +41,24 @@ describe('circle availability screen (M3)', () => {
       .withTimeout(10_000);
   });
 
-  it('Availability "back" also returns to the launcher', async () => {
+  it('the Kringen tab returns from Availability to the launcher', async () => {
     await element(by.id('circle-tab-mij')).tap();
     await waitFor(element(by.id('circle-availability')))
       .toBeVisible()
       .withTimeout(10_000);
-    await element(by.id('circle-availability-back')).tap();
+    // No back arrow on a tab screen — the Kringen tab is the way back.
+    await element(by.id('circle-tab-kringen')).tap();
     await waitFor(element(by.id('circle-launcher')))
       .toBeVisible()
       .withTimeout(10_000);
   });
 
-  it('opens the cross-circle Stream from the launcher + back returns', async () => {
+  it('opens the cross-circle Stream; the Kringen tab returns', async () => {
     await element(by.id('circle-tab-stroom')).tap();
     await waitFor(element(by.id('circle-stream')))
       .toBeVisible()
       .withTimeout(10_000);
-    await element(by.id('circle-stream-back')).tap();
+    await element(by.id('circle-tab-kringen')).tap();
     await waitFor(element(by.id('circle-launcher')))
       .toBeVisible()
       .withTimeout(10_000);

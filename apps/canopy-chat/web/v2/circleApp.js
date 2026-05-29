@@ -117,7 +117,8 @@ function showStream() {
     events: eventLog.query({ excludeMuted: true }),
     circles: circlesCache,
   });
-  renderCircleStream(rootEl, { rows, t, onBack: showLauncher, onOpenCircle: showDetail });
+  // Top-level tab screen — no back link (the Kringen tab is the way back).
+  renderCircleStream(rootEl, { rows, t, onOpenCircle: showDetail });
   showTabBar('stroom');
 }
 
@@ -125,11 +126,12 @@ function showStream() {
 // the device-global Hopping stance.
 async function showMij() {
   let working = await availabilityStore.get();
+  // Top-level tab screen — no back link (the Kringen tab is the way back);
+  // Save still returns to the launcher.
   const rerender = () => renderCircleAvailability(rootEl, {
     availability: working,
     t,
     onChange: (patch) => { working = mergeAvailability(working, patch); rerender(); },
-    onBack: showLauncher,
     onSave: async () => { await availabilityStore.update(working); showLauncher(); },
     onHop: showHop,
   });
