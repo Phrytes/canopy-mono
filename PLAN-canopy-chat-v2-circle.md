@@ -137,8 +137,15 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       detail. en+nl (web + mobile). 13 new tests (122 v2 total) + Playwright green.
       Has live data (eventLog) — the too-busy button populates it. Mobile screen
       Detox-only.
-- [ ] 2.4 **Agent-as-participant** — add/approve an LLM member (board 4B)
-      *(needs the design decision in Open Questions first)*
+- [x] 2.4 **Agent-as-participant** — RESOLVED by reframe (Frits, 2026-05-29), no
+      new code. An agent is **just another user**: own WebID, runs externally,
+      connects over NKN like any peer — so the existing identity/membership/
+      reveal/capability stack already handles it (see [[agent-is-just-a-user]]).
+      The only agent-specific knobs already exist: `memberOverride.agentsMayContactMe`
+      (1.4/M3), the `circlePolicy.agents` axis (1.2), and "view as… agent" (2.2).
+      Future hook (not now): a member-is-an-agent flag so the UI can badge it +
+      `agentsMayContactMe` can enforce message filtering. Mirrors the
+      circle=group reframe — don't build a separate agent entity.
 
 ### Phase 3 — breadth
 - [ ] 3.1 Hopping UI around Stoop's `hopThrough` (board 7)
@@ -214,8 +221,9 @@ the mobile screens are thin follow-ons.
       Date/time fields are plain TextInputs (native picker = polish).
 
 ## Open questions (carry from design)
-1. Agents-in-circle (2.4): spec agent-as-participant now (own WebID + scope)
-   or park as a placeholder like PoL?
+1. ~~Agents-in-circle (2.4)~~ — **RESOLVED 2026-05-29:** an agent is just
+   another user (own WebID, external, over NKN). No in-app agent entity;
+   reuse the peer/identity/membership stack. See [[agent-is-just-a-user]].
 2. `nl` label for "circle" — "kring" (default) vs ruimte/plek/tafel/hoek.
 3. ~~Mobile parity timing~~ — **resolved: web + mobile together, every slice.**
 
