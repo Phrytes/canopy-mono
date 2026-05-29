@@ -83,7 +83,7 @@ export default function CircleSettingsScreen({ store, circleId, onBack }) {
               const hasCons = consText && consText !== consKey;
               const selected = working[axis] === opt;
               return (
-                <View key={opt}>
+                <View key={opt} style={[styles.optBox, selected && styles.optBoxSelected]}>
                   <View style={styles.optRow}>
                     <Pressable
                       style={styles.optTap}
@@ -148,13 +148,16 @@ const styles = StyleSheet.create({
   section:     { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', color: theme.color.inkSoft, marginTop: 16, marginBottom: 4 },
   row:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 },
   rowLabel:    { fontSize: 14, color: theme.color.ink, flexShrink: 1, paddingRight: 8 },
-  optRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
+  // radio-as-box (board 4) — selected option boxed with a terracotta ring.
+  optBox:        { borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, backgroundColor: theme.color.paper, paddingHorizontal: 12, marginBottom: 8 },
+  optBoxSelected:{ borderColor: theme.color.accent, backgroundColor: theme.color.card },
+  optRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 9 },
   optTap:      { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
-  radio:       { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: theme.color.accent, marginRight: 10, alignItems: 'center', justifyContent: 'center' },
+  radio:       { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: theme.color.line, marginRight: 10, alignItems: 'center', justifyContent: 'center' },
   radioOn:     { borderColor: theme.color.accent },
   radioDot:    { width: 9, height: 9, borderRadius: 5, backgroundColor: theme.color.accent },
-  info:        { fontSize: 16, color: theme.color.inkSoft, paddingHorizontal: 6 },
-  consequence: { fontSize: 12, color: theme.color.inkSoft, backgroundColor: theme.color.paper2, borderRadius: 6, padding: 8, marginBottom: 6 },
+  info:        { fontSize: 16, color: theme.color.accent, paddingHorizontal: 6 },
+  consequence: { fontSize: 12, color: theme.color.inkSoft, backgroundColor: theme.color.paper2, borderLeftWidth: 3, borderLeftColor: theme.color.accent, borderRadius: 6, padding: 8, marginBottom: 10 },
   note:        { fontSize: 12, color: theme.color.inkSoft, fontStyle: 'italic', marginTop: 8 },
   muted:       { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
   save:        { marginTop: 8, marginBottom: 12, padding: 13, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },

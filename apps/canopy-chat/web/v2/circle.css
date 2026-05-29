@@ -151,6 +151,7 @@
 
 /* radio-as-box — selected option boxed + terracotta ring (board 4/8) */
 .circle-page .circle-settings__opt-row {
+  display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px;
   border: 1px solid var(--line); border-radius: var(--radius);
   padding: 10px 12px; margin: 0 0 8px; background: var(--paper);
 }
@@ -159,6 +160,7 @@
   background: var(--card);
 }
 .circle-page .circle-settings__opt {
+  flex: 1 1 auto; min-width: 0;
   display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px;
 }
 .circle-page .circle-settings__opt input[type="radio"] {
@@ -174,15 +176,16 @@
 
 /* ⓘ info button + consequence callout */
 .circle-page .circle-settings__info {
+  flex: 0 0 auto; margin-left: auto; align-self: flex-start;
   background: var(--accent); color: #fff; border: none; cursor: pointer;
   width: 18px; height: 18px; border-radius: 50%; font-size: 11px; line-height: 18px;
-  padding: 0; margin-left: 8px; float: right;
+  padding: 0;
 }
 .circle-page .circle-settings__consequence {
-  margin-top: 10px; padding: 10px 12px;
+  flex-basis: 100%; margin-top: 10px; padding: 10px 12px;
   background: var(--paper-2); border-left: 3px solid var(--accent);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  font-size: 13px; color: var(--ink-soft); clear: both;
+  font-size: 13px; color: var(--ink-soft);
 }
 
 /* multi-column settings on wide screens (board 4A) */
