@@ -198,26 +198,30 @@ Recurring components the boards demand (build once, reuse everywhere):
 - **tag chips** (kind-coloured: VRAAG blue, AANBOD green, LENEN amber; skill
   chips green); **numbered section badges** (terracotta circle "1/2/3").
 
-- [ ] 4.1 Shared theme — one token source: web CSS variables (`:root`) + an RN
-      JS theme object (colors / fonts / radius / spacing). Single source of truth.
-- [ ] 4.2 Fonts — load Source Serif 4 (web @font-face / Google Fonts; mobile
-      expo-font), sans body stack.
-- [ ] 4.3 Component primitives — implement the recurring components above as
-      web CSS classes + RN components, so every screen composes them.
-- [ ] 4.4 Nav restructure (chrome) — bottom tab bar **Kringen / Stroom / Mij**
-      at launcher level (today: launcher + a "Circles" pill overlay + chat); a
-      circle, when opened, shows **per-feature bottom tabs** (Prikbord/Agenda/
-      Leden · Gesprek/Notities/Taken · Notities/Bestanden…) driven by its enabled
-      features. **Mij** = personal availability/quiet-hours/holiday (board 6C).
-- [ ] 4.5 Launcher re-skin — circle tiles = avatar circle + serif name + activity
-      subtitle ("87 leden · 3 nieuw"); "+ nieuwe kring" dashed tile.
-- [ ] 4.6 Web re-skin — a v2 stylesheet over the `circle-*` classes (detail,
-      settings, override, availability, stream, view-as, advisor, hop, skills,
-      folio, rules, consent) composing 4.3; settings = multi-column on wide.
-- [ ] 4.7 Mobile re-skin — replace hardcoded `#c9a13a`/`#fdfaf1` hex in the RN
-      StyleSheets with the shared theme + 4.3 components across all v2 screens.
+- [x] 4.1 Shared theme — `src/v2/theme.js` (THEME, re-exported) + `web/v2/theme.css`
+      (`:root` vars) + mobile `screens/v2/theme.js` deriving from THEME.
+- [x] 4.2 Fonts — web: Source Serif 4 via Google Fonts (mirrors outreach).
+      mobile: platform serif (Android Noto Serif / iOS Georgia) — NOT a runtime
+      useFonts load (that hung boot at a black screen on device). Embedding
+      Source Serif 4 at build time = a 4.8 polish follow-up.
+- [x] 4.3 Component primitives — web `circle.css` + mobile theme/CircleTabBar;
+      framed cards, pill toggles, radio-as-box + consequence callouts, etc.
+- [x] 4.4 Nav restructure (chrome) — bottom tab bar **Kringen / Stroom / Mij**
+      done on web (`circleTabBar.js`) + mobile (`CircleTabBar.js`); **Mij** =
+      availability/quiet-hours + Hopping. ⏭ **Per-circle feature tabs deferred to
+      Phase 5** — the feature surfaces (Agenda/Leden) have no content yet, so
+      tabs would be hollow; build them when Phase 5 wires the data.
+- [x] 4.5 Launcher re-skin — avatar tiles (web) + serif names; "+ new" dashed tile.
+      (activity subtitle = Phase 5 member-directory data.)
+- [x] 4.6 Web re-skin — `web/v2/circle.css` over all `circle-*` classes; settings
+      multi-column on wide. Screenshot-verified launcher/detail/settings/Mij/stream.
+- [x] 4.7 Mobile re-skin — gold/cream hex → THEME tokens across all 13 RN screens
+      + App.js; serif titles, small-caps labels, terracotta Switch tint.
+      ⚠ First device build booted black (font gate, now fixed) — re-verifying.
 - [ ] 4.8 Per-board pass — walk each board in the PDF and match spacing/labels/
       copy (Dutch in nl locale, English canonical) so screens read like the print.
+      Includes: ⓘ placement, radio-as-box on mobile, embed Source Serif 4 (mobile),
+      remove redundant back-arrows on tab screens.
 
 ### Phase 5 — Wiring & enforcement (close the "UI shipped, data/enforcement deferred" gaps)
 Audit 2026-05-29: every in-scope board has UI+model on both surfaces, but a

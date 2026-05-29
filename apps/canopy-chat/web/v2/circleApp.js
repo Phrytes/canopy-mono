@@ -44,6 +44,7 @@ import {
 } from '../../src/v2/circlePolicyStore.js';
 import { renderCircleViewAs } from './circleViewAs.js';
 import { renderCircleLauncher } from './circleLauncher.js';
+import { renderCircleTabBar, hideCircleTabBar } from './circleTabBar.js';
 import { renderCircleDetail } from './circleDetail.js';
 import { renderCircleSettings } from './circleSettings.js';
 import { renderCircleOverride } from './circleOverride.js';
@@ -56,10 +57,22 @@ const availabilityStore = createAvailabilityStore(localStorageAvailabilityIo());
 const eventLog = new EventLog({ initial: [], muted: [] });
 
 let rootEl = null;
+let tabBarEl = null;
 let circlesCache = [];
 let sources = {};
 let resolveCallSkill = null; // (opId, args) => Promise<object|null>
 let rawCallSkill = null;     // (appOrigin, opId, args) — for createGroupV2
+
+// Top-level tab bar (Kringen / Stroom / Mij). Shown on the three top-level
+// surfaces; hidden inside a circle + its sub-screens.
+function showTabBar(active) {
+  renderCircleTabBar(tabBarEl, {
+    active, t,
+    onKringen: showLauncher,
+    onStroom: showStream,
+    onMij: showMij,
+  });
+}
 
 function showLauncher() {
   setActiveCircle(null);
@@ -69,15 +82,14 @@ function showLauncher() {
     t,
     onOpenCircle: showDetail,
     onNewCircle: createCircle,
-    onAvailability: showAvailability,
-    onStream: showStream,
-    onHop: showHop,
   });
+  showTabBar('kringen');
 }
 
-// Hopping is a DEVICE-global stance (Stoop getHopMode/setHopMode), so it
-// lives at launcher level like Availability. Chain-card data lands later.
+// Hopping is a DEVICE-global stance (Stoop getHopMode/setHopMode); it lives
+// under the Mij tab (personal settings). Chain-card data lands later.
 async function showHop() {
+  hideCircleTabBar(tabBarEl);
   let hopMode = { global: false };
   if (resolveCallSkill) {
     try { hopMode = normalizeHopMode(await resolveCallSkill('getHopMode', {})); } catch { /* default */ }
@@ -95,7 +107,7 @@ async function showHop() {
         } catch { /* keep optimistic */ }
       }
     },
-    onBack: showLauncher,
+    onBack: showMij,
   });
   rerender();
 }
@@ -106,9 +118,12 @@ function showStream() {
     circles: circlesCache,
   });
   renderCircleStream(rootEl, { rows, t, onBack: showLauncher, onOpenCircle: showDetail });
+  showTabBar('stroom');
 }
 
-async function showAvailability() {
+// "Mij" tab — personal availability (holiday + quiet hours, board 6C) plus
+// the device-global Hopping stance.
+async function showMij() {
   let working = await availabilityStore.get();
   const rerender = () => renderCircleAvailability(rootEl, {
     availability: working,
@@ -116,8 +131,10 @@ async function showAvailability() {
     onChange: (patch) => { working = mergeAvailability(working, patch); rerender(); },
     onBack: showLauncher,
     onSave: async () => { await availabilityStore.update(working); showLauncher(); },
+    onHop: showHop,
   });
   rerender();
+  showTabBar('mij');
 }
 
 async function createCircle() {
@@ -135,6 +152,7 @@ async function createCircle() {
 }
 
 async function showDetail(id) {
+  hideCircleTabBar(tabBarEl);
   setActiveCircle(id);
   try { sessionStorage.setItem('cc.activeCircle', id); } catch { /* ignore */ }
   const circle = circlesCache.find((c) => c.id === id) || { id };
@@ -302,6 +320,7 @@ async function showSettings(id) {
 
 async function boot() {
   rootEl = document.getElementById('circle-root');
+  tabBarEl = document.getElementById('circle-tabbar');
   await initLocalisation({ lng: detectDeviceLang() });
   renderCircleLauncher(rootEl, { loading: true, t });
 

@@ -7,6 +7,8 @@
  * this stays unit-testable under happy-dom.
  */
 
+import { circleTint } from '../../src/v2/theme.js';
+
 export function renderCircleLauncher(container, {
   circles = [],
   t,
@@ -80,6 +82,7 @@ export function renderCircleLauncher(container, {
     const avatar = document.createElement('div');
     avatar.className = 'circle-tile__avatar';
     avatar.setAttribute('aria-hidden', 'true');
+    avatar.style.background = circleTint(c.id);
     avatar.textContent = circleInitial(c.name);
     tile.appendChild(avatar);
 

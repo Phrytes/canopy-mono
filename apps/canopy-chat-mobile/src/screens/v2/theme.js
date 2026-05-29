@@ -7,18 +7,22 @@
  * by Phase 4.2 (expo-font load in App.js); until then they're undefined →
  * RN falls back to the system serif/sans, which is the graceful default.
  */
+import { Platform } from 'react-native';
 import { THEME } from '@canopy-app/canopy-chat';
+
+// Platform serif — always present, so headings render serif with NO font
+// load (a runtime useFonts load of Source Serif 4 once hung boot at a black
+// screen on device when it never resolved). Android → Noto Serif; iOS →
+// Georgia. Embedding Source Serif 4 at build time is a later polish step.
+const SERIF = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 
 export const theme = {
   color:  THEME.color,
   radius: THEME.radius,
   space:  THEME.space,
   font: {
-    // Family names registered by useFonts(...) in App.js
-    // (@expo-google-fonts/source-serif-4). Before load, RN falls back to
-    // the system default, so the UI still renders.
-    serif:     'SourceSerif4_600SemiBold',
-    serifBody: 'SourceSerif4_400Regular',
+    serif:     SERIF,
+    serifBody: SERIF,
     mono:      'monospace',
   },
 };

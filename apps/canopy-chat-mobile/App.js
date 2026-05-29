@@ -18,9 +18,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  useFonts, SourceSerif4_400Regular, SourceSerif4_600SemiBold,
-} from '@expo-google-fonts/source-serif-4';
 
 import { theme } from './src/screens/v2/theme.js';
 
@@ -33,7 +30,6 @@ import { EventLog } from '../canopy-chat/src/eventLog.js';
 
 export default function App() {
   const [localeReady, setLocaleReady] = useState(false);
-  const [fontsLoaded] = useFonts({ SourceSerif4_400Regular, SourceSerif4_600SemiBold });
   // M2 (2026-05-29) — the circle launcher is the DEFAULT landing screen
   // (web already lands on the circle app).  The classic chat shell stays
   // mounted underneath (so its peer-wiring keeps routing inbound DMs /
@@ -90,7 +86,7 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  if (!localeReady || !fontsLoaded) return null;
+  if (!localeReady) return null;
 
   return (
     <SafeAreaProvider>

@@ -23,7 +23,7 @@ describe('circle availability screen (M3)', () => {
   });
 
   it('opens Availability from the launcher, toggles holiday, Saves back to the launcher', async () => {
-    await element(by.id('circle-availability-open')).tap();
+    await element(by.id('circle-tab-mij')).tap();
     await waitFor(element(by.id('circle-availability')))
       .toBeVisible()
       .withTimeout(10_000);
@@ -39,7 +39,7 @@ describe('circle availability screen (M3)', () => {
   });
 
   it('Availability "back" also returns to the launcher', async () => {
-    await element(by.id('circle-availability-open')).tap();
+    await element(by.id('circle-tab-mij')).tap();
     await waitFor(element(by.id('circle-availability')))
       .toBeVisible()
       .withTimeout(10_000);
@@ -50,7 +50,7 @@ describe('circle availability screen (M3)', () => {
   });
 
   it('opens the cross-circle Stream from the launcher + back returns', async () => {
-    await element(by.id('circle-stream-open')).tap();
+    await element(by.id('circle-tab-stroom')).tap();
     await waitFor(element(by.id('circle-stream')))
       .toBeVisible()
       .withTimeout(10_000);
