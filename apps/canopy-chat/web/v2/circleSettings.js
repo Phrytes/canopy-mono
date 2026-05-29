@@ -4,8 +4,10 @@
  * Controlled render of the five policy axes over a `policy`
  * (`@canopy/circlePolicy`). Feature toggles + radio groups fire
  * `onChange(patch)`; the host merges + re-renders + persists via the
- * policy store. Pure render → unit-testable under happy-dom. The
- * per-option "consequences" info-panel (board 4A ⓘ) is a follow-on (1.2b).
+ * policy store. Pure render → unit-testable under happy-dom. Each enum
+ * option carries a ⓘ button that toggles a "consequences" panel (board
+ * 4A ⓘ, slice 1.2b) sourced from `circle.settings.consequence.<opt>`;
+ * the ⓘ only appears when a consequence string is actually translated.
  */
 import { CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS } from '../../src/v2/circlePolicy.js';
 
@@ -54,8 +56,11 @@ export function renderCircleSettings(container, {
     sec.classList.add('circle-settings__axis');
     sec.dataset.axis = axis;
     for (const opt of CIRCLE_POLICY_ENUMS[axis]) {
-      const row = document.createElement('label');
-      row.className = 'circle-settings__opt';
+      const row = document.createElement('div');
+      row.className = 'circle-settings__opt-row';
+
+      const label = document.createElement('label');
+      label.className = 'circle-settings__opt';
       const radio = document.createElement('input');
       radio.type = 'radio';
       radio.name = axis;
@@ -64,7 +69,10 @@ export function renderCircleSettings(container, {
       radio.addEventListener('change', () => { if (radio.checked) emit({ [axis]: opt }); });
       const span = document.createElement('span');
       span.textContent = tr(`circle.settings.opt.${opt}`);
-      row.append(radio, span);
+      label.append(radio, span);
+      row.appendChild(label);
+
+      addConsequence(row, tr, opt);
       sec.appendChild(row);
     }
     container.appendChild(sec);
@@ -101,6 +109,38 @@ export function renderCircleSettings(container, {
   container.appendChild(save);
 
   return container;
+}
+
+/**
+ * Append a ⓘ toggle + collapsed consequence panel to an option row, but
+ * only when `circle.settings.consequence.<opt>` resolves to real copy
+ * (t() echoes the key on a miss → no ⓘ for options without guidance).
+ */
+function addConsequence(row, tr, opt) {
+  const key = `circle.settings.consequence.${opt}`;
+  const text = tr(key);
+  if (!text || text === key) return;
+
+  const info = document.createElement('button');
+  info.type = 'button';
+  info.className = 'circle-settings__info';
+  info.dataset.opt = opt;
+  info.setAttribute('aria-expanded', 'false');
+  info.setAttribute('aria-label', tr('circle.settings.consequence_aria'));
+  info.textContent = 'ⓘ';
+
+  const panel = document.createElement('div');
+  panel.className = 'circle-settings__consequence';
+  panel.dataset.opt = opt;
+  panel.hidden = true;
+  panel.textContent = text;
+
+  info.addEventListener('click', () => {
+    panel.hidden = !panel.hidden;
+    info.setAttribute('aria-expanded', String(!panel.hidden));
+  });
+
+  row.append(info, panel);
 }
 
 function section(title) {

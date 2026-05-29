@@ -17,6 +17,21 @@
       "pod":          { "text": "Where data lives", "doc": "Settings axis: pod storage policy." },
       "consensus":       { "text": "Co-admin consensus", "doc": "Settings section: co-admin approval for changes." },
       "consensus_label": { "text": "Require co-admin approval for changes", "doc": "consensusRequired toggle label." },
+      "consequence_aria": { "text": "What this choice means", "doc": "Accessible label for the per-option ⓘ consequence toggle." },
+      "consequence": {
+        "off":             { "text": "No AI assistance in this circle — nothing is sent to any model.", "doc": "Consequence of llmTool=off." },
+        "local":           { "text": "AI runs on a member's own machine (Ollama). Messages stay on-device; nothing goes to the cloud.", "doc": "Consequence of llmTool=local." },
+        "cloud":           { "text": "AI runs on an independent cloud model. Your messages are sent to that provider when you ask it something.", "doc": "Consequence of llmTool=cloud." },
+        "yes":             { "text": "Anyone can add an AI agent as a participant. Agents can read whatever the circle shares.", "doc": "Consequence of agents=yes." },
+        "admin-approval":  { "text": "AI agents may join only after an admin approves — a checkpoint before any agent sees circle content.", "doc": "Consequence of agents=admin-approval." },
+        "no":              { "text": "No AI agents may join. Only people take part in this circle.", "doc": "Consequence of agents=no." },
+        "pairwise":        { "text": "Real names are revealed one-to-one. Each member chooses who gets to see their identity.", "doc": "Consequence of revealPolicy=pairwise." },
+        "open":            { "text": "Every member can see each other's real names. There is no per-person hiding.", "doc": "Consequence of revealPolicy=open." },
+        "none":            { "text": "Nothing is stored to a pod. Data lives only on members' devices and is lost if they clear it.", "doc": "Consequence of pod=none." },
+        "shared":          { "text": "One shared pod holds the circle's data — every member reads and writes the same store.", "doc": "Consequence of pod=shared." },
+        "personal":        { "text": "Each member keeps their own pod and the circle links to them by reference. You keep control of your own copy.", "doc": "Consequence of pod=personal." },
+        "hybrid":          { "text": "A shared pod plus personal pods: common items are shared, private items stay with each member.", "doc": "Consequence of pod=hybrid." }
+      },
       "send_proposal":   { "text": "Send proposal →", "doc": "Save-button label when consensus is required." },
       "pending":         { "text": "Changes need co-admin approval before they apply.", "doc": "Footer note when consensus is active." },
       "feat": {

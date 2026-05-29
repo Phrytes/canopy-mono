@@ -17,6 +17,21 @@
       "pod":          { "text": "Waar leeft de data?", "doc": "Settings axis: pod storage policy." },
       "consensus":       { "text": "Consensus tussen admins", "doc": "Settings section: co-admin approval for changes." },
       "consensus_label": { "text": "Wijzigingen vereisen goedkeuring van mede-admins", "doc": "consensusRequired toggle label." },
+      "consequence_aria": { "text": "Wat deze keuze betekent", "doc": "Accessible label for the per-option ⓘ consequence toggle." },
+      "consequence": {
+        "off":             { "text": "Geen AI-hulp in deze kring — er wordt niets naar een model gestuurd.", "doc": "Consequence of llmTool=off." },
+        "local":           { "text": "AI draait op de eigen computer van een lid (Ollama). Berichten blijven op het apparaat; niets gaat naar de cloud.", "doc": "Consequence of llmTool=local." },
+        "cloud":           { "text": "AI draait op een onafhankelijk cloudmodel. Je berichten gaan naar die aanbieder zodra je iets vraagt.", "doc": "Consequence of llmTool=cloud." },
+        "yes":             { "text": "Iedereen kan een AI-agent als deelnemer toevoegen. Agents kunnen lezen wat de kring deelt.", "doc": "Consequence of agents=yes." },
+        "admin-approval":  { "text": "AI-agents mogen pas meedoen na goedkeuring van een admin — een controlepunt voordat een agent kringinhoud ziet.", "doc": "Consequence of agents=admin-approval." },
+        "no":              { "text": "Er mogen geen AI-agents meedoen. Alleen mensen nemen deel aan deze kring.", "doc": "Consequence of agents=no." },
+        "pairwise":        { "text": "Echte namen worden één-op-één onthuld. Elk lid kiest zelf wie zijn identiteit mag zien.", "doc": "Consequence of revealPolicy=pairwise." },
+        "open":            { "text": "Alle leden zien elkaars echte naam. Er is geen verberging per persoon.", "doc": "Consequence of revealPolicy=open." },
+        "none":            { "text": "Er wordt niets in een pod opgeslagen. Gegevens staan alleen op de apparaten van leden en gaan verloren als ze die wissen.", "doc": "Consequence of pod=none." },
+        "shared":          { "text": "Eén gedeelde pod bewaart de gegevens van de kring — elk lid leest en schrijft dezelfde opslag.", "doc": "Consequence of pod=shared." },
+        "personal":        { "text": "Elk lid houdt zijn eigen pod en de kring verwijst ernaar. Je houdt zelf de controle over je eigen kopie.", "doc": "Consequence of pod=personal." },
+        "hybrid":          { "text": "Een gedeelde pod plus persoonlijke pods: gemeenschappelijke items worden gedeeld, privé-items blijven bij elk lid.", "doc": "Consequence of pod=hybrid." }
+      },
       "send_proposal":   { "text": "Voorstel sturen →", "doc": "Save-button label when consensus is required." },
       "pending":         { "text": "Wijzigingen moeten eerst door mede-admins worden goedgekeurd.", "doc": "Footer note when consensus is active." },
       "feat": {
