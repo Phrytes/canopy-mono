@@ -52,6 +52,17 @@
       "flowThrough":        { "text": "Doorstroom naar Mijn dingen", "doc": "Override section: route circle items into my personal circle." },
       "tasksToPersonal":    { "text": "Taken → Mijn dingen", "doc": "Override: claimed circle tasks land in my personal list." },
       "calendarToPersonal": { "text": "Agenda → mijn agenda", "doc": "Override: circle events also show in my calendar." }
+    },
+    "availability": {
+      "title":         { "text": "Beschikbaarheid", "doc": "Cross-circle availability screen heading (board 6C)." },
+      "holiday":       { "text": "Vakantiestand", "doc": "Availability section: away until a date." },
+      "holiday_on":    { "text": "Vakantiestand aan", "doc": "Holiday toggle label." },
+      "holiday_until": { "text": "Tot en met", "doc": "Holiday end-date label." },
+      "quietHours":    { "text": "Stilte-uren", "doc": "Availability section: defer pushes in a window." },
+      "quiet_on":      { "text": "Pushmeldingen uitstellen tijdens stilte-uren", "doc": "Quiet-hours toggle label." },
+      "from":          { "text": "Van", "doc": "Quiet-hours start time label." },
+      "to":            { "text": "Tot", "doc": "Quiet-hours end time label." },
+      "weekends":      { "text": "In het weekend ook overdag", "doc": "Quiet-hours weekend toggle label." }
     }
   },
   "common": {
