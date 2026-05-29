@@ -4,7 +4,9 @@
     "new":     { "text": "+ nieuwe kring", "doc": "Create-a-new-circle entry on the launcher." },
     "members": { "text": "{{count}} leden", "doc": "Member count on a circle tile; {{count}} interpolated." },
     "empty":   { "text": "Nog geen kringen.", "doc": "Shown when the launcher has no circles." },
-    "loading": { "text": "Kringen laden…", "doc": "Shown while circles are being fetched." }
+    "loading": { "text": "Kringen laden…", "doc": "Shown while circles are being fetched." },
+    "back":    { "text": "← kringen", "doc": "Back link from a circle detail view to the launcher." },
+    "detail_empty": { "text": "Nog niks hier.", "doc": "Empty state inside a circle detail view." }
   },
   "common": {
     "ok":      { "text": "✓",        "doc": "Generic success indicator rendered when a skill returns { ok: true } with no message." },

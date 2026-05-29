@@ -40,6 +40,8 @@ export { QR_URI_PREFIXES, isQrUri }   from './core/qrSchemes.js';
 // '@canopy-app/canopy-chat' (Metro can't resolve src/v2 subpaths directly).
 export { normalizeCircle, mergeCircles, loadCircles } from './v2/circleModel.js';
 export { circleSourcesFromAgent }                     from './v2/circleSources.js';
+export { itemCircleId, isInCircle, scopeItems }       from './v2/circleScope.js';
+export { getActiveCircle, setActiveCircle, subscribeActiveCircle } from './v2/activeCircle.js';
 export { runFind } from './find.js';
 export { EventLog, createEventLog, RETENTION_MS } from './eventLog.js';
 export {
