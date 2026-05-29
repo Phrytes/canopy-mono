@@ -176,6 +176,73 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       threading the consent into the real create/join wizard state machines is a
       follow-on (kept the shared wizards stable).
 
+### Phase 4 — Look & feel (Onderling design system re-skin) ← NEXT (Frits, 2026-05-29)
+The original reason for the v2 transition. Current screens use an ad-hoc
+gold/cream palette + system fonts + (web) ~no CSS + flat lists — wildly off the
+design. Adopt the **Onderling design language: linen + serif + terracotta**
+(tokens source: `outreach/Onderling_v2/_chrome.css`; layouts source: the 36-page
+**`Canopy interface — interface-ontwerp · print.pdf`** at repo root — read it;
+see [[onderling-design-system]]). Tokens: ink `#1f1c14`, ink-soft `#5a5240`,
+paper `#f3efe2`, paper-2 `#ebe6d5`, line `#d8d1bc`, **accent terracotta
+`#b04a30`**, status green `#4a6230`/`#e0e7d2` + blue `#3f4f76`/`#dde2ee`,
+radius 10px, serif "Source Serif 4" headings + sans body.
+
+Recurring components the boards demand (build once, reuse everywhere):
+- **framed card** (1px `#d8d1bc`, 10px radius, paper-2 header strip);
+- **pill toggle** (terracotta when on, grey track when off);
+- **radio-as-box**: selected = terracotta ring + bordered box that expands an
+  inline **"GEVOLGEN ALS JE DIT KIEST" consequence callout** (terracotta left-rule);
+- **small-caps section label** (ink-soft, letter-spaced);
+- **serif headline**; **primary button** solid terracotta / **secondary**
+  bordered paper; **avatar circle** (initial on pastel);
+- **tag chips** (kind-coloured: VRAAG blue, AANBOD green, LENEN amber; skill
+  chips green); **numbered section badges** (terracotta circle "1/2/3").
+
+- [ ] 4.1 Shared theme — one token source: web CSS variables (`:root`) + an RN
+      JS theme object (colors / fonts / radius / spacing). Single source of truth.
+- [ ] 4.2 Fonts — load Source Serif 4 (web @font-face / Google Fonts; mobile
+      expo-font), sans body stack.
+- [ ] 4.3 Component primitives — implement the recurring components above as
+      web CSS classes + RN components, so every screen composes them.
+- [ ] 4.4 Nav restructure (chrome) — bottom tab bar **Kringen / Stroom / Mij**
+      at launcher level (today: launcher + a "Circles" pill overlay + chat); a
+      circle, when opened, shows **per-feature bottom tabs** (Prikbord/Agenda/
+      Leden · Gesprek/Notities/Taken · Notities/Bestanden…) driven by its enabled
+      features. **Mij** = personal availability/quiet-hours/holiday (board 6C).
+- [ ] 4.5 Launcher re-skin — circle tiles = avatar circle + serif name + activity
+      subtitle ("87 leden · 3 nieuw"); "+ nieuwe kring" dashed tile.
+- [ ] 4.6 Web re-skin — a v2 stylesheet over the `circle-*` classes (detail,
+      settings, override, availability, stream, view-as, advisor, hop, skills,
+      folio, rules, consent) composing 4.3; settings = multi-column on wide.
+- [ ] 4.7 Mobile re-skin — replace hardcoded `#c9a13a`/`#fdfaf1` hex in the RN
+      StyleSheets with the shared theme + 4.3 components across all v2 screens.
+- [ ] 4.8 Per-board pass — walk each board in the PDF and match spacing/labels/
+      copy (Dutch in nl locale, English canonical) so screens read like the print.
+
+### Phase 5 — Wiring & enforcement (close the "UI shipped, data/enforcement deferred" gaps)
+Audit 2026-05-29: every in-scope board has UI+model on both surfaces, but a
+lot is screen-only. This phase makes it real.
+- [ ] 5.1 Member-directory op → lights up **View-as** (2.2) + **Skills matches**
+      (3.2) + member count/last-activity on tiles; route the matches screen.
+- [ ] 5.2 Folio `listFiles` (circle pod) → real **Folio browser** (3.3) data.
+- [ ] 5.3 Override **enforcement**: quiet-hours push-suppression wired to the
+      notifier (`isPushSuppressed`); chat-off "stored / not delivered + silent"
+      card (board 5C); flow-through actually routes claimed tasks/calendar →
+      personal circle; agents-may-contact-me filtering (needs member-is-agent flag).
+- [ ] 5.4 Pod backing — F2 persists `circlePolicy`/override/rules/skill to the
+      circle's pod `shared.json` (today: localStorage / AsyncStorage), + enforce
+      the `pod` axis.
+- [ ] 5.5 F1 — thread the active `circleId` through EVERY mutating dispatch (not
+      just reads/projections).
+- [ ] 5.6 Thread rules-consent into the real **join** flow + skills into the
+      **create** flow (today standalone/additive).
+- [ ] 5.7 Design bits not yet built: `view` layout-mode axis (chat/screen/
+      cross-stream, board 4/5) · first-run onboarding + example neighbourhood
+      (board 3A) · local discovery "who's here" mDNS/BLE (board 8) · PoL
+      placeholder row in settings (board 10C).
+- [ ] 5.8 Pluggable LLM backend ([[llm-pluggability-deferred]]) — last, after
+      the above.
+
 ### Later / excluded
 - Store packaging (board 2), co-redaction (board 11), working PoL gate (10C).
 
