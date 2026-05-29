@@ -19,7 +19,7 @@ import { buildCircleStream } from '../../src/v2/circleStream.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '../../src/v2/circleHop.js';
 import { mergeSkill, normalizeSkill } from '../../src/v2/circleSkills.js';
-import { buildCircleFiles } from '../../src/v2/circleFolio.js';
+import { buildCircleFiles, circleFilesFromListFiles } from '../../src/v2/circleFolio.js';
 import { renderCircleStream } from './circleStream.js';
 import { renderCircleAdvisor } from './circleAdvisor.js';
 import { renderCircleHop } from './circleHop.js';
@@ -202,7 +202,7 @@ function showSkills(id) {
 // listFiles once wired; empty until then (the scope/normalize is tested).
 function showFolio(id) {
   let filter = 'all';
-  const files = buildCircleFiles({ files: [], circleId: id });
+  let files = buildCircleFiles({ files: [], circleId: id });
   const rerender = () => renderCircleFolioBrowser(rootEl, {
     files,
     filter,
@@ -211,6 +211,12 @@ function showFolio(id) {
     onBack: () => showDetail(id),
   });
   rerender();
+  // F-5.2 — real files from the folio listFiles op, scoped to this circle.
+  if (resolveCallSkill) {
+    resolveCallSkill('listFiles', {})
+      .then((res) => { files = circleFilesFromListFiles(res, id); if (getActiveCircle() === id) rerender(); })
+      .catch(() => { /* keep empty */ });
+  }
 }
 
 // Circle rules document (boards 3B/3C) — editor persists per circle
