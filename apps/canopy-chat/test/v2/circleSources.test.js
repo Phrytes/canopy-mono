@@ -6,8 +6,8 @@ const callSkill = async (op) => {
   if (op === 'getMyCrews') {
     return { crews: [{ crewId: 'c1', name: 'Crew', counts: { members: 3 } }] };
   }
-  if (op === 'getCurrentGroup') {
-    return { group: { id: 'g1', name: 'Selwerd', memberCount: 87 } };
+  if (op === 'listMyBuurts') {
+    return { buurts: ['selwerd', 'akkerstraat'] };
   }
   return null;
 };
@@ -18,10 +18,10 @@ describe('circleSources', () => {
     expect(await s.fetchCrews()).toHaveLength(1);
   });
 
-  it('fetchGroups coerces the getCurrentGroup record to an array', async () => {
+  it('fetchGroups maps listMyBuurts groupId strings to circle objects', async () => {
     const g = await circleSourcesFromAgent({ callSkill }).fetchGroups();
-    expect(g).toHaveLength(1);
-    expect(g[0].id).toBe('g1');
+    expect(g.map((x) => x.id)).toEqual(['selwerd', 'akkerstraat']);
+    expect(g[0].name).toBe('selwerd');
   });
 
   it('omits fetchCircles without a circlesStore, uses it when present', async () => {
@@ -31,10 +31,9 @@ describe('circleSources', () => {
     expect(await s.fetchCircles()).toEqual([{ id: 'z', name: 'Z' }]);
   });
 
-  it('feeds loadCircles end-to-end (crew + group merged + normalised)', async () => {
+  it('feeds loadCircles end-to-end (crews + buurts merged + normalised)', async () => {
     const list = await loadCircles(circleSourcesFromAgent({ callSkill }));
-    expect(list.map((c) => c.id).sort()).toEqual(['c1', 'g1']);
-    expect(list.find((c) => c.id === 'g1').memberCount).toBe(87);
+    expect(list.map((c) => c.id).sort()).toEqual(['akkerstraat', 'c1', 'selwerd']);
     expect(list.find((c) => c.id === 'c1').memberCount).toBe(3);
   });
 
