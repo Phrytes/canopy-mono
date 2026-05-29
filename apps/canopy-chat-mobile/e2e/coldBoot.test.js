@@ -26,10 +26,12 @@ const { gotoChat } = require('./support/nav.js');
 
 describe('cold boot smoke', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
-    // M2 — the circle launcher is the default screen; reveal the chat
-    // shell (which carries the boot status + debug section).  Disable
-    // sync first so gotoChat's tap doesn't hang on the never-idle bridge.
+    // The app's NKN keepalive/reconnect setInterval timers never let RN go
+    // idle, so Detox's launch-time synchronization waits forever (the 192s
+    // "waiting for ready" timeout on TimersIdlingResource). Launch with
+    // synchronization disabled natively (detoxEnableSynchronization: 0) so
+    // launchApp doesn't block on the never-idle bridge.
+    await device.launchApp({ newInstance: true, launchArgs: { detoxEnableSynchronization: 0 } });
     await device.disableSynchronization();
     await gotoChat();
   });
