@@ -100,6 +100,51 @@
       "too_busy_logged": { "text": "Genoteerd — bedankt voor het signaal.", "doc": "Confirmation after logging a too-busy signal." },
       "advice_too_busy": { "text": "Deze kring kreeg {{count}} 'te druk'-signalen in twee weken terwijl het drukker wordt. Overweeg de last te delen — voeg een mede-admin toe of splits een deelkring af.", "doc": "Advice card for the too-busy + growth rule; {{count}} interpolated." },
       "dismiss":         { "text": "Sluiten", "doc": "Dismiss the advice card." }
+    },
+    "hop": {
+      "title":        { "text": "Hoppen", "doc": "Heading of the hopping screen (board 7)." },
+      "global_label": { "text": "Laat vertrouwde contacten mijn vraag één stap doorgeven", "doc": "Global hop-mode toggle (Stoop allowHopThrough)." },
+      "explain":      { "text": "Als je iets vraagt dat niemand dichtbij heeft, kan een contact die dat toestaat je vraag één stap verder doorgeven — aan hún contacten. Maximaal één hop, en de doorgifte is anoniem.", "doc": "Explanation of how hopping works." },
+      "ask_relay":    { "text": "Vraag om door te geven", "doc": "Button: ask the gate contact to relay the request one hop." },
+      "over_limit":   { "text": "Te veel hops — vragen reizen maximaal één stap.", "doc": "Shown when a chain exceeds max-one-hop." }
+    },
+    "skills": {
+      "editor_title":  { "text": "Vaardigheid", "doc": "Skill editor heading (board 8)." },
+      "matches_title": { "text": "Matches", "doc": "Skill match-list heading." },
+      "no_matches":    { "text": "Nog geen matches", "doc": "Empty state for the skill match list." },
+      "axis": {
+        "openness": { "text": "Openheid", "doc": "Skill axis: how openly it is shared." },
+        "posture":  { "text": "Houding", "doc": "Skill axis: fixed vs negotiable offer." },
+        "status":   { "text": "Status", "doc": "Skill axis: lifecycle." },
+        "radius":   { "text": "Bereik", "doc": "Skill axis: how far it reaches." }
+      },
+      "opt": {
+        "private":       { "text": "Privé", "doc": "Openness option." },
+        "circle":        { "text": "Deze kring", "doc": "Openness option." },
+        "contacts":      { "text": "Contacten", "doc": "Openness option." },
+        "public":        { "text": "Openbaar", "doc": "Openness option." },
+        "always":        { "text": "Altijd", "doc": "Posture option." },
+        "negotiable":    { "text": "Bespreekbaar", "doc": "Posture option." },
+        "active":        { "text": "Actief", "doc": "Status option." },
+        "paused":        { "text": "Gepauzeerd", "doc": "Status option." },
+        "archived":      { "text": "Gearchiveerd", "doc": "Status option." },
+        "home":          { "text": "Thuis", "doc": "Radius option." },
+        "street":        { "text": "Straat", "doc": "Radius option." },
+        "neighbourhood": { "text": "Buurt", "doc": "Radius option." },
+        "city":          { "text": "Stad", "doc": "Radius option." }
+      },
+      "source": {
+        "human":   { "text": "Persoon", "doc": "Match source badge: a human." },
+        "agent":   { "text": "Agent", "doc": "Match source badge: an LLM agent." },
+        "via-hop": { "text": "Via contact", "doc": "Match source badge: reached via a one-hop relay." }
+      }
+    },
+    "folio": {
+      "title":      { "text": "Bestanden", "doc": "Circle file-browser heading (board 10B)." },
+      "all":        { "text": "Alles", "doc": "File filter: all files." },
+      "favourites": { "text": "Favorieten", "doc": "File filter: favourited files." },
+      "recent":     { "text": "Recent", "doc": "File filter: recently changed files." },
+      "empty":      { "text": "Nog geen bestanden in deze kring.", "doc": "Empty state for the circle file browser." }
     }
   },
   "common": {

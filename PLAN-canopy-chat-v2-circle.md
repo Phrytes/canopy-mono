@@ -147,11 +147,24 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       `agentsMayContactMe` can enforce message filtering. Mirrors the
       circle=group reframe — don't build a separate agent entity.
 
-### Phase 3 — breadth
-- [ ] 3.1 Hopping UI around Stoop's `hopThrough` (board 7)
-- [ ] 3.2 Skill 4-axis editor + match list (human/agent/via-hop) + local
-      discovery list (board 8)
-- [ ] 3.3 Folio circle-scoped file browser (board 10B)
+### Phase 3 — breadth (built in parallel 2026-05-29: 3.1 by orchestrator, 3.2/3.3 by worktree sub-agents)
+- [x] 3.1 Hopping UI around Stoop's `hopThrough` (board 7). Shared `circleHop.js`
+      (`normalizeHopMode`, `buildHopChain` me→gate→target with `MAX_HOPS=1`,
+      `makeHopRelayRequest` anonymized). Device-global stance toggle backed by
+      Stoop `getHopMode`/`setHopMode`; web renderer + mobile `CircleHopScreen` +
+      hop-match chain card (within-limit gate). Launcher-level (like Availability).
+      en+nl ×2. 12 tests.
+- [x] 3.2 Skill 4-axis editor + match list (board 8; local-discovery deferred).
+      Shared `circleSkills.js` (4 axes openness/posture/status/radius +
+      `buildSkillMatches` human/agent/via-hop). Web `circleSkillEditor` +
+      `circleSkillMatches` + mobile screens. Editor reached from circle detail
+      (draft persists `cc.circleSkill.<id>`); **matches screen built+tested but
+      not yet routed** (no match source — like view-as). en+nl ×2. 17 tests.
+- [x] 3.3 Folio circle-scoped file browser (board 10B). Shared `circleFolio.js`
+      (`normalizeFolioFile` + `buildCircleFiles` scoped via `circleScope`).
+      Web `renderCircleFolioBrowser` (All/Favourites/Recent filter strip) +
+      mobile `CircleFolioScreen`. Reached from circle detail; **empty until a
+      circle pod listFiles is wired**. en+nl ×2. 17 tests. (168 v2 total)
 - [ ] 3.4 Create wizard → 6 rule-based questions + rules-document at join
       (boards 3B/3C)
 

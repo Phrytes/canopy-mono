@@ -29,6 +29,9 @@ import CircleAvailabilityScreen from './CircleAvailabilityScreen.js';
 import CircleStreamScreen from './CircleStreamScreen.js';
 import CircleViewAsScreen from './CircleViewAsScreen.js';
 import CircleAdvisorScreen from './CircleAdvisorScreen.js';
+import CircleHopScreen from './CircleHopScreen.js';
+import CircleSkillEditorScreen from './CircleSkillEditorScreen.js';
+import CircleFolioScreen from './CircleFolioScreen.js';
 
 export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   const [circles, setCircles] = useState([]);
@@ -39,6 +42,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   // detail/settings/override.
   const [view, setView] = useState('list');
   const [viewAsPolicy, setViewAsPolicy] = useState('pairwise');
+  const [skillDraft, setSkillDraft] = useState(null);
   const [items, setItems] = useState([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -119,8 +123,28 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
     // it; empty until then (the reveal projection is fully tested).
     return <CircleViewAsScreen members={[]} policy={viewAsPolicy} onBack={() => setView('detail')} />;
   }
+  if (view === 'hop') {
+    return <CircleHopScreen callSkill={callSkill} onBack={() => setView('list')} />;
+  }
   if (selected && view === 'advisor') {
     return <CircleAdvisorScreen eventLog={eventLog} circleId={selected.id} onBack={() => setView('detail')} />;
+  }
+  if (selected && view === 'skills') {
+    return (
+      <CircleSkillEditorScreen
+        skill={skillDraft}
+        onSave={async (s) => {
+          try { await AsyncStorage.setItem(`cc.circleSkill.${selected.id}`, JSON.stringify(s)); } catch { /* ignore */ }
+          setSkillDraft(s);
+          setView('detail');
+        }}
+        onBack={() => setView('detail')}
+      />
+    );
+  }
+  if (selected && view === 'folio') {
+    // Files come from a circle pod's listFiles once wired; empty until then.
+    return <CircleFolioScreen files={[]} onBack={() => setView('detail')} />;
   }
   if (selected) {
     return (
@@ -136,6 +160,13 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
           setView('viewas');
         }}
         onAdvisor={() => setView('advisor')}
+        onSkills={async () => {
+          let raw = null;
+          try { const s = await AsyncStorage.getItem(`cc.circleSkill.${selected.id}`); if (s) raw = JSON.parse(s); } catch { /* fresh */ }
+          setSkillDraft(raw);
+          setView('skills');
+        }}
+        onFiles={() => setView('folio')}
       />
     );
   }
@@ -162,6 +193,13 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
             testID="circle-availability-open"
           >
             <Text style={styles.availText}>{t('circle.availability.title')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setView('hop')}
+            accessibilityRole="button"
+            testID="circle-hop-open"
+          >
+            <Text style={styles.availText}>{t('circle.hop.title')}</Text>
           </Pressable>
         </View>
       </View>
@@ -219,7 +257,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   );
 }
 
-function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs, onAdvisor }) {
+function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles }) {
   return (
     <View style={styles.page} testID="circle-detail">
       <View style={styles.bar}>
@@ -243,6 +281,12 @@ function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs, onA
         </Pressable>
         <Pressable onPress={onAdvisor} accessibilityRole="button" testID="circle-detail-advisor" style={styles.detailAction}>
           <Text style={styles.detailActionText}>{t('circle.advisor.title')}</Text>
+        </Pressable>
+        <Pressable onPress={onSkills} accessibilityRole="button" testID="circle-detail-skills" style={styles.detailAction}>
+          <Text style={styles.detailActionText}>{t('circle.skills.editor_title')}</Text>
+        </Pressable>
+        <Pressable onPress={onFiles} accessibilityRole="button" testID="circle-detail-files" style={styles.detailAction}>
+          <Text style={styles.detailActionText}>{t('circle.folio.title')}</Text>
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.list}>
@@ -268,7 +312,7 @@ const styles = StyleSheet.create({
   back:       { fontSize: 13, color: '#6a6a6a' },
   barActions: { flexDirection: 'row', gap: 14, marginLeft: 'auto' },
   availText:  { fontSize: 13, color: '#8a6d1f', fontWeight: '600' },
-  detailActions:   { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 },
+  detailActions:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 6 },
   detailAction:    { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: '#d8d2c0', backgroundColor: '#fbf8ed' },
   detailActionText: { fontSize: 12, color: '#6a6a6a' },
   title:      { fontSize: 20, fontWeight: '600', marginVertical: 10 },

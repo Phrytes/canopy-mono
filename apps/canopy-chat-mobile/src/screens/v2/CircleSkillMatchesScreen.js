@@ -1,0 +1,52 @@
+/**
+ * canopy-chat-mobile v2 — skill match list (RN screen, board 8).
+ *
+ * RN counterpart of web's circleSkillMatches over the SAME shared projection
+ * (`buildSkillMatches`): one row per INJECTED match, each carrying a label +
+ * a source badge (human / agent / via-hop). The host supplies the matches;
+ * no fetching or local discovery happens here. Mirrors CircleStreamScreen.
+ */
+import React, { useMemo } from 'react';
+import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { buildSkillMatches } from '@canopy-app/canopy-chat';
+import { t } from '../../core/localisation.js';
+
+export default function CircleSkillMatchesScreen({ matches = [], onBack }) {
+  const rows = useMemo(() => buildSkillMatches({ matches }), [matches]);
+
+  return (
+    <View style={styles.page} testID="circle-skill-matches">
+      <View style={styles.bar}>
+        <Pressable onPress={onBack} accessibilityRole="button" testID="circle-skill-matches-back">
+          <Text style={styles.back}>{t('circle.back')}</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.title}>{t('circle.skills.matches_title')}</Text>
+
+      {rows.length === 0 ? (
+        <Text style={styles.muted}>{t('circle.skills.no_matches')}</Text>
+      ) : (
+        <ScrollView contentContainerStyle={styles.list}>
+          {rows.map((row) => (
+            <View key={row.id} style={styles.row} testID={`skill-match-${row.id}`}>
+              <Text style={styles.label}>{row.label}</Text>
+              <Text style={styles.badge}>{t(`circle.skills.source.${row.source}`)}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  page:   { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
+  bar:    { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
+  back:   { fontSize: 13, color: '#6a6a6a' },
+  title:  { fontSize: 20, fontWeight: '600', marginVertical: 10 },
+  list:   { gap: 6, paddingBottom: 32 },
+  row:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderWidth: 1, borderColor: '#e6e0cf', borderRadius: 8, backgroundColor: '#fbf8ed' },
+  label:  { fontSize: 14, color: '#1a1a1a', flexShrink: 1, paddingRight: 8 },
+  badge:  { fontSize: 11, fontWeight: '700', color: '#8a6d1f' },
+  muted:  { color: '#6a6a6a', fontStyle: 'italic', paddingVertical: 10 },
+});

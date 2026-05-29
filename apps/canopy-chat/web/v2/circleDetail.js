@@ -16,6 +16,8 @@ export function renderCircleDetail(container, {
   onMine,
   onViewAs,
   onAdvisor,
+  onSkills,
+  onFiles,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
@@ -62,6 +64,22 @@ export function renderCircleDetail(container, {
     adv.textContent = tr('circle.advisor.title');
     adv.addEventListener('click', () => onAdvisor());
     bar.appendChild(adv);
+  }
+  if (typeof onSkills === 'function') {
+    const sk = document.createElement('button');
+    sk.type = 'button';
+    sk.className = 'circle-detail__skills';
+    sk.textContent = tr('circle.skills.editor_title');
+    sk.addEventListener('click', () => onSkills());
+    bar.appendChild(sk);
+  }
+  if (typeof onFiles === 'function') {
+    const fi = document.createElement('button');
+    fi.type = 'button';
+    fi.className = 'circle-detail__files';
+    fi.textContent = tr('circle.folio.title');
+    fi.addEventListener('click', () => onFiles());
+    bar.appendChild(fi);
   }
   container.appendChild(bar);
 
