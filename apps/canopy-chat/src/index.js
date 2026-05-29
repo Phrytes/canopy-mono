@@ -68,6 +68,10 @@ export {
 } from './v2/circleSkills.js';
 export { normalizeFolioFile, buildCircleFiles } from './v2/circleFolio.js';
 export {
+  RULES_FIELDS, RULES_QUESTIONS, DEFAULT_RULES_DOC,
+  normalizeRulesDoc, buildRulesDoc, isRulesComplete, isRulesEmpty,
+} from './v2/circleRules.js';
+export {
   DEFAULT_AVAILABILITY, normalizeAvailability, mergeAvailability, isPushSuppressed,
   createAvailabilityStore, localStorageAvailabilityIo,
 } from './v2/memberAvailability.js';

@@ -145,6 +145,25 @@
       "favourites": { "text": "Favourites", "doc": "File filter: favourited files." },
       "recent":     { "text": "Recent", "doc": "File filter: recently changed files." },
       "empty":      { "text": "No files in this circle yet.", "doc": "Empty state for the circle file browser." }
+    },
+    "rules": {
+      "title":         { "text": "House rules", "doc": "Rules editor heading (board 3B)." },
+      "save":          { "text": "Save rules", "doc": "Save the rules document." },
+      "preview":       { "text": "Preview (as a new member)", "doc": "Open the consent preview." },
+      "required_note": { "text": "Add a purpose and the agreements to save.", "doc": "Shown when required rules fields are blank." },
+      "consent_title": { "text": "Before you join", "doc": "Rules consent screen heading (board 3C)." },
+      "consent_empty": { "text": "This circle hasn't written its rules yet.", "doc": "Consent screen with an empty rules doc." },
+      "agree":         { "text": "I agree", "doc": "Consent: accept the rules + join." },
+      "decline":       { "text": "Not now", "doc": "Consent: decline the rules." },
+      "q": {
+        "purpose":        { "text": "What is this circle for?", "doc": "Rules question: purpose." },
+        "admins":         { "text": "Who runs it, and what can they decide on their own?", "doc": "Rules question: admins." },
+        "agreements":     { "text": "What does everyone agree to?", "doc": "Rules question: agreements." },
+        "conflict":       { "text": "When people disagree, how do you sort it out?", "doc": "Rules question: conflict approach." },
+        "admission":      { "text": "How does someone new get in?", "doc": "Rules question: admission." },
+        "leaving":        { "text": "When someone leaves, what happens to their stuff and tasks?", "doc": "Rules question: leaving." },
+        "responsibility": { "text": "Who is responsible for what?", "doc": "Rules field: responsibility (folded into agreements; shown if filled)." }
+      }
     }
   },
   "app": {

@@ -165,8 +165,16 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       Web `renderCircleFolioBrowser` (All/Favourites/Recent filter strip) +
       mobile `CircleFolioScreen`. Reached from circle detail; **empty until a
       circle pod listFiles is wired**. en+nl ×2. 17 tests. (168 v2 total)
-- [ ] 3.4 Create wizard → 6 rule-based questions + rules-document at join
-      (boards 3B/3C)
+- [x] 3.4 Rules document — 6 governance questions + Agree/Decline consent
+      (boards 3B/3C). Shared `circleRules.js` (7-field doc, 6 questions with
+      purpose+agreements required, `normalizeRulesDoc`/`buildRulesDoc`/
+      `isRulesComplete`/`isRulesEmpty`). Web `circleRulesEditor` (Save gated on
+      required) + `circleRulesConsent` (read-only doc + Agree/Decline) + mobile
+      `CircleRulesScreen`/`CircleRulesConsentScreen`. Reached from circle detail
+      "House rules"; editor "Preview" → consent. Draft persists per circle
+      (`cc.circleRules.<id>`). en+nl ×2. 14 tests (182 v2 total). **Additive** —
+      threading the consent into the real create/join wizard state machines is a
+      follow-on (kept the shared wizards stable).
 
 ### Later / excluded
 - Store packaging (board 2), co-redaction (board 11), working PoL gate (10C).

@@ -25,6 +25,9 @@ import { renderCircleAdvisor } from './circleAdvisor.js';
 import { renderCircleHop } from './circleHop.js';
 import { renderSkillEditor } from './circleSkillEditor.js';
 import { renderCircleFolioBrowser } from './circleFolio.js';
+import { normalizeRulesDoc } from '../../src/v2/circleRules.js';
+import { renderRulesEditor } from './circleRulesEditor.js';
+import { renderRulesConsent } from './circleRulesConsent.js';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircleItems } from '../../src/v2/circleContent.js';
@@ -141,7 +144,8 @@ async function showDetail(id) {
   const onAdvisor = () => showAdvisor(id);
   const onSkills = () => showSkills(id);
   const onFiles = () => showFolio(id);
-  const detailOpts = { onBack: showLauncher, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles };
+  const onRules = () => showRules(id);
+  const detailOpts = { onBack: showLauncher, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules };
   renderCircleDetail(rootEl, { circle, items: [], t, ...detailOpts });
 
   if (!resolveCallSkill) return;
@@ -186,6 +190,38 @@ function showFolio(id) {
     onBack: () => showDetail(id),
   });
   rerender();
+}
+
+// Circle rules document (boards 3B/3C) — editor persists per circle
+// (cc.circleRules.<id>); "preview" shows the Agree/Decline consent screen.
+// Threading the consent into the real join flow is the follow-on.
+const rulesKey = (id) => `cc.circleRules.${id}`;
+function showRules(id) {
+  let doc = normalizeRulesDoc(null);
+  try { const s = localStorage.getItem(rulesKey(id)); if (s) doc = normalizeRulesDoc(JSON.parse(s)); } catch { /* default */ }
+  const rerender = () => renderRulesEditor(rootEl, {
+    doc,
+    t,
+    onChange: (patch) => { doc = normalizeRulesDoc({ ...doc, ...patch }); rerender(); },
+    onBack: () => showDetail(id),
+    onPreview: () => showRulesConsent(id, doc),
+    onSave: () => {
+      try { localStorage.setItem(rulesKey(id), JSON.stringify(doc)); } catch { /* ignore */ }
+      showDetail(id);
+    },
+  });
+  rerender();
+}
+
+function showRulesConsent(id, doc) {
+  // Preview from the editor — Agree/Decline just return to the editor.
+  renderRulesConsent(rootEl, {
+    doc,
+    t,
+    onBack: () => showRules(id),
+    onAgree: () => showRules(id),
+    onDecline: () => showRules(id),
+  });
 }
 
 // Advisor cooldown (≤1 card/month) persists per-circle in localStorage.

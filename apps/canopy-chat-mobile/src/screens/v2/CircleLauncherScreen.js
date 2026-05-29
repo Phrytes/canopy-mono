@@ -32,6 +32,8 @@ import CircleAdvisorScreen from './CircleAdvisorScreen.js';
 import CircleHopScreen from './CircleHopScreen.js';
 import CircleSkillEditorScreen from './CircleSkillEditorScreen.js';
 import CircleFolioScreen from './CircleFolioScreen.js';
+import CircleRulesScreen from './CircleRulesScreen.js';
+import CircleRulesConsentScreen from './CircleRulesConsentScreen.js';
 
 export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   const [circles, setCircles] = useState([]);
@@ -43,6 +45,8 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   const [view, setView] = useState('list');
   const [viewAsPolicy, setViewAsPolicy] = useState('pairwise');
   const [skillDraft, setSkillDraft] = useState(null);
+  const [rulesDoc, setRulesDoc] = useState(null);
+  const [rulesPreview, setRulesPreview] = useState(null);
   const [items, setItems] = useState([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -146,6 +150,31 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
     // Files come from a circle pod's listFiles once wired; empty until then.
     return <CircleFolioScreen files={[]} onBack={() => setView('detail')} />;
   }
+  if (selected && view === 'rules') {
+    return (
+      <CircleRulesScreen
+        doc={rulesDoc}
+        onBack={() => setView('detail')}
+        onPreview={(working) => { setRulesPreview(working); setView('rulesconsent'); }}
+        onSave={async (doc) => {
+          try { await AsyncStorage.setItem(`cc.circleRules.${selected.id}`, JSON.stringify(doc)); } catch { /* ignore */ }
+          setRulesDoc(doc);
+          setView('detail');
+        }}
+      />
+    );
+  }
+  if (selected && view === 'rulesconsent') {
+    // Preview from the editor: Agree/Decline just return (real join-flow consent is the follow-on).
+    return (
+      <CircleRulesConsentScreen
+        doc={rulesPreview}
+        onBack={() => setView('rules')}
+        onAgree={() => setView('rules')}
+        onDecline={() => setView('rules')}
+      />
+    );
+  }
   if (selected) {
     return (
       <CircleDetail
@@ -167,6 +196,12 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
           setView('skills');
         }}
         onFiles={() => setView('folio')}
+        onRules={async () => {
+          let raw = null;
+          try { const s = await AsyncStorage.getItem(`cc.circleRules.${selected.id}`); if (s) raw = JSON.parse(s); } catch { /* fresh */ }
+          setRulesDoc(raw);
+          setView('rules');
+        }}
       />
     );
   }
@@ -257,7 +292,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   );
 }
 
-function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles }) {
+function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules }) {
   return (
     <View style={styles.page} testID="circle-detail">
       <View style={styles.bar}>
@@ -287,6 +322,9 @@ function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs, onA
         </Pressable>
         <Pressable onPress={onFiles} accessibilityRole="button" testID="circle-detail-files" style={styles.detailAction}>
           <Text style={styles.detailActionText}>{t('circle.folio.title')}</Text>
+        </Pressable>
+        <Pressable onPress={onRules} accessibilityRole="button" testID="circle-detail-rules" style={styles.detailAction}>
+          <Text style={styles.detailActionText}>{t('circle.rules.title')}</Text>
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.list}>
