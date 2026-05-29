@@ -18,6 +18,7 @@ export function renderCircleDetail(container, {
   onAdvisor,
   onSkills,
   onFiles,
+  onRules,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
@@ -80,6 +81,14 @@ export function renderCircleDetail(container, {
     fi.textContent = tr('circle.folio.title');
     fi.addEventListener('click', () => onFiles());
     bar.appendChild(fi);
+  }
+  if (typeof onRules === 'function') {
+    const ru = document.createElement('button');
+    ru.type = 'button';
+    ru.className = 'circle-detail__rules';
+    ru.textContent = tr('circle.rules.title');
+    ru.addEventListener('click', () => onRules());
+    bar.appendChild(ru);
   }
   container.appendChild(bar);
 

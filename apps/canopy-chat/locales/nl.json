@@ -145,6 +145,25 @@
       "favourites": { "text": "Favorieten", "doc": "File filter: favourited files." },
       "recent":     { "text": "Recent", "doc": "File filter: recently changed files." },
       "empty":      { "text": "Nog geen bestanden in deze kring.", "doc": "Empty state for the circle file browser." }
+    },
+    "rules": {
+      "title":         { "text": "Huisregels", "doc": "Rules editor heading (board 3B)." },
+      "save":          { "text": "Regels opslaan", "doc": "Save the rules document." },
+      "preview":       { "text": "Voorbeeld (zoals een nieuw lid het ziet)", "doc": "Open the consent preview." },
+      "required_note": { "text": "Vul een doel en de afspraken in om op te slaan.", "doc": "Shown when required rules fields are blank." },
+      "consent_title": { "text": "Voordat je meedoet", "doc": "Rules consent screen heading (board 3C)." },
+      "consent_empty": { "text": "Deze kring heeft nog geen regels opgeschreven.", "doc": "Consent screen with an empty rules doc." },
+      "agree":         { "text": "Ik ga akkoord", "doc": "Consent: accept the rules + join." },
+      "decline":       { "text": "Nu niet", "doc": "Consent: decline the rules." },
+      "q": {
+        "purpose":        { "text": "Waar is deze kring voor?", "doc": "Rules question: purpose." },
+        "admins":         { "text": "Wie beheert hem, en wat mogen zij zelf beslissen?", "doc": "Rules question: admins." },
+        "agreements":     { "text": "Waar gaat iedereen mee akkoord?", "doc": "Rules question: agreements." },
+        "conflict":       { "text": "Hoe los je het op als mensen het oneens zijn?", "doc": "Rules question: conflict approach." },
+        "admission":      { "text": "Hoe komt iemand nieuw erbij?", "doc": "Rules question: admission." },
+        "leaving":        { "text": "Als iemand vertrekt, wat gebeurt er met hun spullen en taken?", "doc": "Rules question: leaving." },
+        "responsibility": { "text": "Wie is waarvoor verantwoordelijk?", "doc": "Rules field: responsibility (folded into agreements; shown if filled)." }
+      }
     }
   },
   "common": {
