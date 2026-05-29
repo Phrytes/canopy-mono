@@ -126,8 +126,17 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       (109 v2 total) + Playwright green. ⚠ **member directory has no data source
       yet** — needs an identity-resolver MemberMap op; renders empty until then
       (logic fully tested). Mobile screen Detox-only.
-- [ ] 2.3 **Advisor** — rules over `eventLog` + "too busy?" counter, ≤1/month
-      (board 3D)
+- [x] 2.3 **Advisor** — no-LLM rules over the EventLog (board 3D). Shared
+      `computeAdvice`/`makeTooBusyEvent`/`COMPLAINT_TYPES` (`src/v2/circleAdvisor.js`):
+      surfaces ≤1 advice card / circle / month when ≥3 complaints (incl. a
+      member "I'm too busy" signal + disputes) land in 14d AND activity is rising
+      (recent-vs-prior count), scoped per circle via `eventCircleId`. Web renderer
+      + mobile `CircleAdvisorScreen` (advice card + dismiss + "I'm too busy"
+      button that logs a `too-busy` event); monthly cooldown persists per-circle
+      (localStorage / AsyncStorage `cc.advisorShown.<id>`). Reached from circle
+      detail. en+nl (web + mobile). 13 new tests (122 v2 total) + Playwright green.
+      Has live data (eventLog) — the too-busy button populates it. Mobile screen
+      Detox-only.
 - [ ] 2.4 **Agent-as-participant** — add/approve an LLM member (board 4B)
       *(needs the design decision in Open Questions first)*
 

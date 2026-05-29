@@ -28,6 +28,7 @@ import CircleOverrideScreen from './CircleOverrideScreen.js';
 import CircleAvailabilityScreen from './CircleAvailabilityScreen.js';
 import CircleStreamScreen from './CircleStreamScreen.js';
 import CircleViewAsScreen from './CircleViewAsScreen.js';
+import CircleAdvisorScreen from './CircleAdvisorScreen.js';
 
 export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   const [circles, setCircles] = useState([]);
@@ -118,6 +119,9 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
     // it; empty until then (the reveal projection is fully tested).
     return <CircleViewAsScreen members={[]} policy={viewAsPolicy} onBack={() => setView('detail')} />;
   }
+  if (selected && view === 'advisor') {
+    return <CircleAdvisorScreen eventLog={eventLog} circleId={selected.id} onBack={() => setView('detail')} />;
+  }
   if (selected) {
     return (
       <CircleDetail
@@ -131,6 +135,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
           setViewAsPolicy(p?.revealPolicy ?? 'pairwise');
           setView('viewas');
         }}
+        onAdvisor={() => setView('advisor')}
       />
     );
   }
@@ -214,7 +219,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   );
 }
 
-function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs }) {
+function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs, onAdvisor }) {
   return (
     <View style={styles.page} testID="circle-detail">
       <View style={styles.bar}>
@@ -235,6 +240,9 @@ function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs }) {
         </Pressable>
         <Pressable onPress={onViewAs} accessibilityRole="button" testID="circle-detail-viewas" style={styles.detailAction}>
           <Text style={styles.detailActionText}>{t('circle.viewAs.title')}</Text>
+        </Pressable>
+        <Pressable onPress={onAdvisor} accessibilityRole="button" testID="circle-detail-advisor" style={styles.detailAction}>
+          <Text style={styles.detailActionText}>{t('circle.advisor.title')}</Text>
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.list}>

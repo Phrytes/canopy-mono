@@ -57,6 +57,9 @@ export { makeProposal, approveProposal, pendingApprovers } from './v2/circleCons
 export { eventCircleId, buildCircleStream } from './v2/circleStream.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export {
+  COMPLAINT_TYPES, ADVISOR_DEFAULTS, makeTooBusyEvent, computeAdvice,
+} from './v2/circleAdvisor.js';
+export {
   DEFAULT_AVAILABILITY, normalizeAvailability, mergeAvailability, isPushSuppressed,
   createAvailabilityStore, localStorageAvailabilityIo,
 } from './v2/memberAvailability.js';

@@ -92,6 +92,14 @@
       "empty":    { "text": "No members to preview yet.", "doc": "Empty state for View-as." },
       "revealed": { "text": "name shown", "doc": "Badge: this member's real name is visible to the chosen viewer." },
       "hidden":   { "text": "name hidden", "doc": "Badge: this member shows only a handle to the chosen viewer." }
+    },
+    "advisor": {
+      "title":           { "text": "Advisor", "doc": "Heading of the circle Advisor (board 3D)." },
+      "none":            { "text": "Nothing to flag right now.", "doc": "Advisor: calm state, no advice." },
+      "too_busy_btn":    { "text": "I'm too busy", "doc": "Advisor: member logs a 'too busy' strain signal." },
+      "too_busy_logged": { "text": "Noted — thanks for the signal.", "doc": "Confirmation after logging a too-busy signal." },
+      "advice_too_busy": { "text": "This circle has had {{count}} 'too busy' signals in two weeks while it's getting busier. Consider sharing the load — add a co-admin or split off a sub-circle.", "doc": "Advice card for the too-busy + growth rule; {{count}} interpolated." },
+      "dismiss":         { "text": "Dismiss", "doc": "Dismiss the advice card." }
     }
   },
   "common": {
