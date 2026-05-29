@@ -1,0 +1,325 @@
+/* canopy-chat v2 — Onderling re-skin (web).
+ *
+ * Composes the tokens in theme.css over the circle-* renderers. Matches the
+ * v3 print mockups: framed cards, serif headlines, small-caps section labels,
+ * pill toggles, radio-as-box with inline consequence callouts, terracotta
+ * buttons, avatar tiles, kind-coloured tag chips.
+ *
+ * Scoped under .circle-page (the body wrapper in index.html) so generic
+ * input/heading selectors don't leak. */
+
+/* ───────────────────────── layout ───────────────────────── */
+.circle-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 18px 16px 56px;
+}
+.circle-page__bar { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.circle-page__back {
+  font-size: 12px; color: var(--ink-soft); text-decoration: none;
+  letter-spacing: .02em;
+}
+.circle-page__back:hover { color: var(--accent-ink); text-decoration: underline; }
+
+/* ─────────────────────── primitives ─────────────────────── */
+
+/* serif headlines (every screen __title) */
+.circle-page h2[class$="__title"],
+.circle-page .circle-launcher__title {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 4px 0 14px;
+  color: var(--ink);
+}
+
+/* small-caps section labels */
+.circle-page [class$="__section-title"],
+.circle-page [class$="__axis-title"],
+.circle-page .circle-skill-matches__label,
+.circle-page .circle-folio__filters {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink-soft);
+  margin: 0 0 8px;
+}
+
+/* back links (rendered as <button>) */
+.circle-page [class$="__back"] {
+  display: inline-block;
+  background: none; border: none; padding: 4px 0; margin: 0 0 6px;
+  font: inherit; font-size: 13px; color: var(--ink-soft);
+  cursor: pointer; letter-spacing: .02em;
+}
+.circle-page [class$="__back"]:hover { color: var(--accent-ink); }
+.circle-page button[class$="__back"]::before { content: "← "; }
+
+/* primary buttons (save / agree / ask / open) */
+.circle-page [class$="__save"],
+.circle-page .circle-rules-consent__agree,
+.circle-page .circle-hop__ask,
+.circle-page .circle-launcher__stream {
+  display: inline-block;
+  background: var(--accent); color: #fff; border: 1px solid var(--accent);
+  border-radius: var(--radius); padding: 11px 18px;
+  font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+}
+.circle-page [class$="__save"]:hover,
+.circle-page .circle-rules-consent__agree:hover,
+.circle-page .circle-hop__ask:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+.circle-page [class$="__save"] { margin-top: 14px; }
+
+/* secondary buttons (decline / sla over / availability / hop nav) */
+.circle-page .circle-rules-consent__decline,
+.circle-page .circle-launcher__availability,
+.circle-page .circle-launcher__hop {
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 11px 18px; font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+}
+.circle-page .circle-rules-consent__decline:hover,
+.circle-page .circle-launcher__availability:hover,
+.circle-page .circle-launcher__hop:hover { border-color: var(--accent); }
+
+/* notes / empties / loading */
+.circle-page [class$="__note"],
+.circle-page [class$="__empty"],
+.circle-page [class$="__loading"] {
+  color: var(--ink-soft); font-style: italic; font-size: 13px; padding: 8px 0;
+}
+
+/* framed-card sections */
+.circle-page [class$="__section"],
+.circle-page .circle-settings__axis,
+.circle-page .circle-settings__consensus,
+.circle-page .circle-advisor__card,
+.circle-page .circle-rules-consent__doc {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 0 0 14px;
+}
+
+/* pill toggle — every native checkbox in the circle UI */
+.circle-page input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none;
+  position: relative; flex: 0 0 auto;
+  width: 40px; height: 24px; border-radius: 999px;
+  background: var(--track-off); border: none; cursor: pointer;
+  transition: background .15s ease; margin: 0;
+}
+.circle-page input[type="checkbox"]::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25);
+  transition: transform .15s ease;
+}
+.circle-page input[type="checkbox"]:checked { background: var(--accent); }
+.circle-page input[type="checkbox"]:checked::after { transform: translateX(16px); }
+
+/* toggle rows (label wrapping a checkbox + text) */
+.circle-page .circle-settings__feature,
+.circle-page .circle-settings__consensus-toggle,
+.circle-page .circle-override__toggle,
+.circle-page .circle-override__flow-toggle,
+.circle-page .circle-availability__toggle,
+.circle-page .circle-hop__global {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0; cursor: pointer; font-size: 14px;
+}
+
+/* radio-as-box — selected option boxed + terracotta ring (board 4/8) */
+.circle-page .circle-settings__opt-row {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 12px; margin: 0 0 8px; background: var(--paper);
+}
+.circle-page .circle-settings__opt-row:has(input:checked) {
+  border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--card);
+}
+.circle-page .circle-settings__opt {
+  display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px;
+}
+.circle-page .circle-settings__opt input[type="radio"] {
+  appearance: none; -webkit-appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--line); cursor: pointer; flex: 0 0 auto; margin: 0;
+  display: grid; place-content: center;
+}
+.circle-page .circle-settings__opt input[type="radio"]:checked { border-color: var(--accent); }
+.circle-page .circle-settings__opt input[type="radio"]:checked::after {
+  content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--accent);
+}
+
+/* ⓘ info button + consequence callout */
+.circle-page .circle-settings__info {
+  background: var(--accent); color: #fff; border: none; cursor: pointer;
+  width: 18px; height: 18px; border-radius: 50%; font-size: 11px; line-height: 18px;
+  padding: 0; margin-left: 8px; float: right;
+}
+.circle-page .circle-settings__consequence {
+  margin-top: 10px; padding: 10px 12px;
+  background: var(--paper-2); border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 13px; color: var(--ink-soft); clear: both;
+}
+
+/* multi-column settings on wide screens (board 4A) */
+.circle-page .circle-settings__section,
+.circle-page .circle-settings__axis,
+.circle-page .circle-settings__consensus { break-inside: avoid; }
+@media (min-width: 620px) {
+  .circle-settings { column-count: 2; column-gap: 16px; }
+  .circle-settings__back,
+  .circle-settings__title,
+  .circle-settings__save,
+  .circle-settings__note { column-span: all; }
+}
+
+/* ───────────────────── launcher (board 1) ───────────────────── */
+.circle-launcher__list { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 4px; }
+.circle-tile {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left; cursor: pointer; font: inherit;
+  padding: 12px 14px; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  transition: border-color .12s ease;
+}
+.circle-tile:hover { border-color: var(--accent); }
+.circle-tile__avatar {
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-content: center;
+  font-family: var(--font-serif); font-weight: 600; font-size: 17px;
+  color: var(--ink); background: var(--paper-2);
+}
+.circle-tile__body { min-width: 0; }
+.circle-tile__name { font-family: var(--font-serif); font-size: 16px; font-weight: 600; color: var(--ink); }
+.circle-tile__meta { font-size: 12px; color: var(--ink-soft); margin-top: 1px; }
+.circle-launcher__new {
+  margin-top: 10px; width: 100%; cursor: pointer; font: inherit; font-size: 14px;
+  padding: 12px; border: 1px dashed var(--line); border-radius: var(--radius);
+  background: transparent; color: var(--ink-soft);
+}
+.circle-launcher__new:hover { color: var(--accent-ink); border-color: var(--accent); }
+
+/* ───────────────────── circle detail ───────────────────── */
+.circle-detail__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
+.circle-detail__bar [class^="circle-detail__"]:not(.circle-detail__back) {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 6px 11px; font: inherit; font-size: 12px; color: var(--ink); cursor: pointer;
+}
+.circle-detail__bar [class^="circle-detail__"]:not(.circle-detail__back):hover { border-color: var(--accent); }
+.circle-detail__meta { font-size: 12px; color: var(--ink-soft); margin: -8px 0 14px; }
+.circle-detail__items { display: flex; flex-direction: column; gap: 6px; }
+.circle-detail__item {
+  padding: 11px 13px; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px;
+}
+
+/* ───────────────────── stream (board 5) ───────────────────── */
+.circle-stream__list { display: flex; flex-direction: column; gap: 6px; }
+.circle-stream__row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.circle-stream__tag, .circle-tag {
+  flex: 0 0 auto; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; padding: 3px 8px; border-radius: 999px;
+  background: var(--blue-bg); color: var(--blue);
+}
+.circle-stream__body { flex: 1 1 auto; font-size: 14px; }
+.circle-stream__when { flex: 0 0 auto; font-size: 12px; color: var(--ink-soft); }
+
+/* ───────────────────── view-as (board 4C) ───────────────────── */
+.circle-viewas__picker { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.circle-viewas__viewer {
+  padding: 7px 13px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px;
+  background: var(--card); border: 1px solid var(--line); color: var(--ink);
+}
+.circle-viewas__viewer[aria-pressed="true"], .circle-viewas__viewer.is-active {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.circle-viewas__list { display: flex; flex-direction: column; gap: 6px; }
+.circle-viewas__row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px;
+}
+.circle-viewas__name { font-weight: 600; }
+.circle-viewas__badge, .circle-skill-matches__badge, .circle-rules-consent__field {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  padding: 3px 8px; border-radius: 999px; background: var(--paper-2); color: var(--ink-soft);
+}
+
+/* ───────────────────── advisor (board 3D) ───────────────────── */
+.circle-advisor__card { border-left: 3px solid var(--accent); }
+.circle-advisor__advice { font-size: 14px; }
+.circle-advisor__toobusy { color: var(--accent-ink); font-weight: 600; }
+.circle-advisor__dismiss {
+  margin-top: 8px; background: none; border: none; color: var(--accent-ink);
+  cursor: pointer; font: inherit; font-size: 13px; padding: 0;
+}
+
+/* ───────────────────── hop (board 7) ───────────────────── */
+.circle-hop__chain { display: flex; align-items: center; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.circle-hop__step {
+  display: grid; place-content: center; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--paper-2); font-family: var(--font-serif); font-weight: 600;
+}
+.circle-hop__step.is-hop, .circle-hop__step[data-hop="true"] { background: var(--accent); color: #fff; }
+.circle-hop__arrow { color: var(--ink-soft); }
+.circle-hop__explain { font-size: 13px; color: var(--ink-soft); }
+.circle-hop__overlimit { color: var(--accent-ink); font-weight: 600; font-size: 13px; }
+
+/* ───────────────────── skills (board 8) ───────────────────── */
+.circle-skill__axis { margin-bottom: 14px; }
+.circle-skill__opt {
+  display: inline-flex; align-items: center; gap: 7px; margin: 0 8px 6px 0;
+  padding: 6px 11px; border-radius: 999px; cursor: pointer; font-size: 13px;
+  background: var(--card); border: 1px solid var(--line);
+}
+.circle-skill__opt:has(input:checked) { border-color: var(--accent); background: var(--card); }
+.circle-skill-matches__list { display: flex; flex-direction: column; gap: 8px; }
+.circle-skill-matches__row {
+  padding: 12px 14px; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px;
+}
+
+/* ───────────────────── folio (board 10) ───────────────────── */
+.circle-folio__filters { display: flex; gap: 8px; margin-bottom: 10px; }
+.circle-folio__filter {
+  padding: 5px 11px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 12px;
+  background: var(--card); border: 1px solid var(--line);
+}
+.circle-folio__filter[aria-pressed="true"], .circle-folio__filter.is-active {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.circle-folio__list { display: flex; flex-direction: column; }
+.circle-folio__row {
+  display: flex; align-items: center; gap: 10px; padding: 11px 4px;
+  border-bottom: 1px solid var(--line); font-size: 14px;
+}
+.circle-folio__row:last-child { border-bottom: none; }
+.circle-folio__name { font-weight: 600; }
+
+/* ───────────────────── rules (board 3B/3C) ───────────────────── */
+.circle-rules__field, .circle-rules-consent__field { margin-bottom: 14px; }
+.circle-rules__q, .circle-rules-consent__q { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.circle-rules__input {
+  width: 100%; padding: 10px 12px; font: inherit; font-size: 14px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: #fff;
+}
+.circle-rules__input:focus { outline: none; border-color: var(--accent); }
+.circle-rules-consent__actions { display: flex; gap: 10px; margin-top: 16px; }
+.circle-rules-consent__a { font-size: 14px; margin-bottom: 6px; }
+
+/* ───────────────────── availability (board 6C) ───────────────────── */
+.circle-availability__time-row, .circle-availability__until-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.circle-availability__time, .circle-availability__until {
+  padding: 9px 11px; font: inherit; font-size: 14px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: #fff;
+}
