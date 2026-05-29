@@ -19,8 +19,13 @@ import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/cir
 import { loadCircleItems } from '../../src/v2/circleContent.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
+import { mergeCirclePolicy } from '../../src/v2/circlePolicy.js';
+import { createCirclePolicyStore, localStoragePolicyIo } from '../../src/v2/circlePolicyStore.js';
 import { renderCircleLauncher } from './circleLauncher.js';
 import { renderCircleDetail } from './circleDetail.js';
+import { renderCircleSettings } from './circleSettings.js';
+
+const policyStore = createCirclePolicyStore(localStoragePolicyIo());
 
 let rootEl = null;
 let circlesCache = [];
@@ -57,7 +62,8 @@ async function showDetail(id) {
   setActiveCircle(id);
   try { sessionStorage.setItem('cc.activeCircle', id); } catch { /* ignore */ }
   const circle = circlesCache.find((c) => c.id === id) || { id };
-  renderCircleDetail(rootEl, { circle, items: [], t, onBack: showLauncher });
+  const onSettings = () => showSettings(id);
+  renderCircleDetail(rootEl, { circle, items: [], t, onBack: showLauncher, onSettings });
 
   if (!resolveCallSkill) return;
   let items = [];
@@ -65,8 +71,20 @@ async function showDetail(id) {
     items = await loadCircleItems({ callSkill: resolveCallSkill, circleId: id });
   } catch { /* keep empty */ }
   if (getActiveCircle() === id) {
-    renderCircleDetail(rootEl, { circle, items, t, onBack: showLauncher });
+    renderCircleDetail(rootEl, { circle, items, t, onBack: showLauncher, onSettings });
   }
+}
+
+async function showSettings(id) {
+  let working = await policyStore.get(id);
+  const rerender = () => renderCircleSettings(rootEl, {
+    policy: working,
+    t,
+    onChange: (patch) => { working = mergeCirclePolicy(working, patch); rerender(); },
+    onBack: () => showDetail(id),
+    onSave: async () => { await policyStore.update(id, working); showDetail(id); },
+  });
+  rerender();
 }
 
 async function boot() {

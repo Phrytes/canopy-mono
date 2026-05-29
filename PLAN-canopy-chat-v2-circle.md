@@ -74,8 +74,12 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
 - [x] 1.1 F2 `circlePolicy` + `memberOverride` model — `src/v2/circlePolicy.js`
       (defaults, enum validation, normalise, deep-merge for edits); 7 unit tests.
       Pod `shared.json` persistence wires in with the settings screen (1.2).
-- [ ] 1.2 Circle settings screen — 5 axes (features/LLM/agents/reveal/pod) with
-      a `Consequences` info-panel component (board 4A)
+- [x] 1.2 Circle settings screen (web) — 5 axes (features toggles + LLM/agents/
+      reveal/pod radios) over the policy model, persisted via
+      `circlePolicyStore` (localStorage now; pod `shared.json` later). Reached
+      from the detail "⚙ settings"; en+nl labels. Store + renderer = 9 tests
+      (56 v2 total). ⏳ per-option **Consequences** info-panel = 1.2b; mobile
+      screen = M3.
 - [ ] 1.3 Co-admin consensus: pending-change record + "send proposal" (reuse
       `groupRedeem` envelope) (board 4A footer)
 - [ ] 1.4 `memberOverride` record + personal-override sheet (board 6A)
@@ -112,6 +116,20 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
 - [ ] Mobile default → circle app: **blocked on lifting the agent bundle to
       App level** (ChatScreen boots it internally; the launcher needs it for
       data + create). Reachable via the "Circles" pill until then.
+
+## Parity adjustment (user-directed 2026-05-29)
+Web confirmed working (launcher + create). Mobile's launcher/screens can't
+function until the **agent bundle is lifted to App level** (ChatScreen boots
+it internally). So for Phase 1 the per-feature slices ship **shared model +
+web renderer** now; the mobile renderers + the bundle-lift are batched into a
+**Phase 1 · mobile (M)** block. The shared `src/v2/` logic is written once, so
+the mobile screens are thin follow-ons.
+
+### Phase 1 · mobile (M)
+- [ ] M1 lift the agent bundle to `App.js` (inject into ChatScreen + the
+      launcher) so mobile circle screens can load/create.
+- [ ] M2 mobile default → circle app once M1 lands.
+- [ ] M3 port the Phase 1 web screens (settings 1.2, override 1.4) to RN.
 
 ## Open questions (carry from design)
 1. Agents-in-circle (2.4): spec agent-as-participant now (own WebID + scope)
