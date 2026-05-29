@@ -28,8 +28,11 @@ import { EventLog } from '../canopy-chat/src/eventLog.js';
 
 export default function App() {
   const [localeReady, setLocaleReady] = useState(false);
-  // v2: reachable now via the "Circles" pill; M2 flips the default.
-  const [screen, setScreen] = useState('chat');
+  // M2 (2026-05-29) — the circle launcher is the DEFAULT landing screen
+  // (web already lands on the circle app).  The classic chat shell stays
+  // mounted underneath (so its peer-wiring keeps routing inbound DMs /
+  // mesh even while the launcher is up) and is revealed via "← chat".
+  const [screen, setScreen] = useState('circles');
   const [bundle, setBundle] = useState(null);
   const [bootError, setBootError] = useState(null);
 
@@ -87,18 +90,24 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="auto" />
       <View style={styles.root}>
-        {screen === 'circles'
-          ? <CircleLauncherScreen bundle={bundle} onBack={() => setScreen('chat')} />
-          : <ChatScreen bundle={bundle} bootError={bootError} eventLog={eventLogRef.current} />}
-        {screen === 'chat' ? (
+        {/* ChatScreen is ALWAYS mounted so its peer-wiring stays attached
+            (inbound DMs / mesh land even while the circle launcher is the
+            visible screen). */}
+        <ChatScreen bundle={bundle} bootError={bootError} eventLog={eventLogRef.current} />
+        {screen === 'circles' ? (
+          <View style={styles.overlay}>
+            <CircleLauncherScreen bundle={bundle} onBack={() => setScreen('chat')} />
+          </View>
+        ) : (
           <Pressable
             style={styles.pill}
             accessibilityRole="button"
+            testID="open-circles"
             onPress={() => setScreen('circles')}
           >
             <Text style={styles.pillText}>Circles</Text>
           </Pressable>
-        ) : null}
+        )}
       </View>
     </SafeAreaProvider>
   );
@@ -106,6 +115,12 @@ export default function App() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  // Opaque full-bleed overlay so the always-mounted chat shell behind it
+  // doesn't bleed through while the circle launcher is the active screen.
+  overlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: '#fdfaf1',
+  },
   pill: {
     position: 'absolute', top: 8, right: 12,
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,

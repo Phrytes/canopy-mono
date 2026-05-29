@@ -16,18 +16,20 @@
 // If buttonCount goes to 0 on regression, this test catches the
 // "/mine works but no buttons" bug we hit 2026-05-26.
 
+const { gotoChat } = require('./support/nav.js');
+
 describe('slash command round-trip', () => {
   beforeAll(async () => {
     await device.launchApp({ newInstance: true });
-    // Wait for boot.
-    await waitFor(element(by.id('chat-header-status')))
-      .toBeVisible()
-      .withTimeout(60_000);
     // Same as _hello.test.js — our app has perpetual background work
     // (NknTransport reconnect loop, periodic catch-up timers) so the
     // RN bridge never goes idle.  Detox would otherwise time out
-    // waiting for sync between commands.
+    // waiting for sync between commands.  Disable sync BEFORE gotoChat
+    // so its tap on "← chat" doesn't hang on the never-idle bridge.
     await device.disableSynchronization();
+    // M2 — circle launcher is the default screen; reveal chat + wait
+    // for the boot status.
+    await gotoChat();
   });
 
   it('typing /mine + Send produces a list bubble with markComplete buttons', async () => {

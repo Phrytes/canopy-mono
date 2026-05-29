@@ -14,13 +14,13 @@
 // Bundle F P1 (#257) and the bubble text changed; user-bubbles
 // are stable across host-op-routing changes.
 
+const { gotoChat } = require('./support/nav.js');
+
 describe('multi-thread message isolation', () => {
   beforeAll(async () => {
     await device.launchApp({ newInstance: true });
-    await waitFor(element(by.id('chat-header-status')))
-      .toBeVisible()
-      .withTimeout(60_000);
     await device.disableSynchronization();
+    await gotoChat();   // M2 — circle launcher is the default screen
   });
 
   it('messages stay in their thread; switching swaps the visible stream', async () => {

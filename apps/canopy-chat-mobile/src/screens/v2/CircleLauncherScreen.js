@@ -78,10 +78,10 @@ export default function CircleLauncherScreen({ bundle, onBack }) {
   }
 
   return (
-    <View style={styles.page}>
+    <View style={styles.page} testID="circle-launcher">
       <View style={styles.bar}>
         {onBack ? (
-          <Pressable onPress={onBack} accessibilityRole="button">
+          <Pressable onPress={onBack} accessibilityRole="button" testID="circle-to-chat">
             <Text style={styles.back}>← chat</Text>
           </Pressable>
         ) : null}
