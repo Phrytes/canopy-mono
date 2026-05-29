@@ -229,8 +229,13 @@ Recurring components the boards demand (build once, reuse everywhere):
 ### Phase 5 — Wiring & enforcement (close the "UI shipped, data/enforcement deferred" gaps)
 Audit 2026-05-29: every in-scope board has UI+model on both surfaces, but a
 lot is screen-only. This phase makes it real.
-- [ ] 5.1 Member-directory op → lights up **View-as** (2.2) + **Skills matches**
-      (3.2) + member count/last-activity on tiles; route the matches screen.
+- [x] 5.1 Member-directory op → **View-as** now wired to the real directory
+      via `listGroupMembers` (`normalizeCircleMembers`, web + mobile);
+      device/web-verified showing real members + reveal badges.
+      ↳ Skills matches: deferred — the match-by-skill DISCOVERY op isn't
+        designed (board-8 local discovery, 5.7); routing an empty screen = hollow.
+      ↳ Tile counts: crews already carry counts (getMyCrews); buurt tiles need a
+        small enrichment pass (call listGroupMembers per buurt) — follow-on.
 - [ ] 5.2 Folio `listFiles` (circle pod) → real **Folio browser** (3.3) data.
 - [ ] 5.3 Override **enforcement**: quiet-hours push-suppression wired to the
       notifier (`isPushSuppressed`); chat-off "stored / not delivered + silent"
