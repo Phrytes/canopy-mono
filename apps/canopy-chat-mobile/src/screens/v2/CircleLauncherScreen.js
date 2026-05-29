@@ -37,7 +37,7 @@ export default function CircleLauncherScreen({ bundle, onBack }) {
     setLoading(true);
     try {
       const sources = callSkill
-        ? circleSourcesFromAgent({ callSkill, circlesStore: bundle?.circlesStore })
+        ? circleSourcesFromAgent({ callSkill, circlesStore: bundle?.agent?.circlesStore })
         : {};
       setCircles(await loadCircles(sources));
     } catch {

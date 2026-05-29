@@ -160,8 +160,16 @@ web renderer** now; the mobile renderers + the bundle-lift are batched into a
 the mobile screens are thin follow-ons.
 
 ### Phase 1 · mobile (M)
-- [ ] M1 lift the agent bundle to `App.js` (inject into ChatScreen + the
-      launcher) so mobile circle screens can load/create.
+- [x] M1 lift the agent bundle to `App.js` (inject into ChatScreen + the
+      launcher) so mobile circle screens can load/create. App.js boots the
+      bundle once + owns the shared EventLog; both screens receive it as a
+      prop. ChatScreen's `bootState` is now DERIVED from the prop (shape
+      unchanged) and it attaches its peer-wiring after mount via the new
+      `bundle.attachPeerWiring` seam (the inbound router closes over
+      ChatScreen's thread state, so it can't be passed at boot). agentBundle
+      holds peer-wiring in a mutable slot read at delivery time + on the 1.5s
+      catch-up — attach lands before the seconds-long NKN handshake. 2 new
+      bootSmoke tests (163 mobile total). ⚠ RN screen layer is Detox-only.
 - [ ] M2 mobile default → circle app once M1 lands.
 - [ ] M3 port the Phase 1 web screens (settings 1.2, override 1.4) to RN.
 
