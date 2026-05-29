@@ -71,7 +71,9 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       verified on **both** web and mobile
 
 ### Phase 1 — settings + overrides
-- [ ] 1.1 F2 `circlePolicy` record + reader (pod `shared.json`)
+- [x] 1.1 F2 `circlePolicy` + `memberOverride` model — `src/v2/circlePolicy.js`
+      (defaults, enum validation, normalise, deep-merge for edits); 7 unit tests.
+      Pod `shared.json` persistence wires in with the settings screen (1.2).
 - [ ] 1.2 Circle settings screen — 5 axes (features/LLM/agents/reveal/pod) with
       a `Consequences` info-panel component (board 4A)
 - [ ] 1.3 Co-admin consensus: pending-change record + "send proposal" (reuse

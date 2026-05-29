@@ -43,6 +43,11 @@ export { circleSourcesFromAgent, makeResolvingCallSkill, DEFAULT_CIRCLE_ORIGINS 
 export { loadCircleItems, normalizeContentItem }      from './v2/circleContent.js';
 export { itemCircleId, isInCircle, scopeItems }       from './v2/circleScope.js';
 export { getActiveCircle, setActiveCircle, subscribeActiveCircle } from './v2/activeCircle.js';
+export {
+  CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS,
+  DEFAULT_CIRCLE_POLICY, normalizeCirclePolicy, mergeCirclePolicy,
+  DEFAULT_MEMBER_OVERRIDE, normalizeMemberOverride, mergeMemberOverride,
+} from './v2/circlePolicy.js';
 export { runFind } from './find.js';
 export { EventLog, createEventLog, RETENTION_MS } from './eventLog.js';
 export {
