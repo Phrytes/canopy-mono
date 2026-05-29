@@ -151,6 +151,32 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
     await bundle.dispose();
   });
 
+  it('M1: bundle exposes attachPeerWiring for post-boot router attach', async () => {
+    const { VaultMemory } = await import('@canopy/vault');
+    const fakeNknLib = { MultiClient: class { constructor() {} on() {} } };
+    const bundle = await bootAgentBundle({
+      chatVault: new VaultMemory(),
+      hostVault: new VaultMemory(),
+      nknLib:    fakeNknLib,
+    });
+    // App.js boots WITHOUT buildPeerWiring; ChatScreen attaches later.
+    expect(typeof bundle.attachPeerWiring).toBe('function');
+    expect(() => bundle.attachPeerWiring({
+      onPeerMessage:  () => {},
+      requestCatchUp: () => {},
+    })).not.toThrow();
+    // Tolerant of a partial / empty attach (defensive).
+    expect(() => bundle.attachPeerWiring()).not.toThrow();
+    expect(() => bundle.attachPeerWiring({})).not.toThrow();
+    await bundle.dispose();
+  });
+
+  it('M1: stub bundle has a no-op attachPeerWiring (shape parity)', async () => {
+    const bundle = await bootAgentBundle({ skillStub: async () => ({ ok: true }) });
+    expect(typeof bundle.attachPeerWiring).toBe('function');
+    expect(() => bundle.attachPeerWiring({ onPeerMessage: () => {} })).not.toThrow();
+  });
+
   it('localisation: t() resolves locale keys + falls back to key', async () => {
     await initLocalisation({ lng: 'en' });
     expect(t('app.name')).toBe('canopy-chat');

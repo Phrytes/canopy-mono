@@ -29,7 +29,6 @@ import {
   parseInput, resolveDispatch, runDispatch, renderReply, isQrUri,
 } from '@canopy-app/canopy-chat';
 
-import { bootAgentBundle } from '../core/agentBundle.js';
 import { buildNavModels }  from '../core/navModel.js';
 import { dlog }            from '../core/devLog.js';
 import { t }               from '../core/localisation.js';
@@ -104,9 +103,17 @@ const MSG_ID_PREFIX = Math.random().toString(36).slice(2, 8);
 let nextMessageId = 1;
 const mkId = () => `m${MSG_ID_PREFIX}${nextMessageId++}`;
 
-export default function ChatScreen() {
-  const [bootState,    setBootState]    = useState({ kind: 'loading' });
-  const [navModels,    setNavModels]    = useState([]);
+export default function ChatScreen({ bundle = null, bootError = null, eventLog = null }) {
+  // M1 (2026-05-29) — the agent bundle is booted ONCE in App.js (shared
+  // with the circle launcher).  `bootState` is DERIVED from the props so
+  // the rest of this screen — which reads `bootState.kind` /
+  // `bootState.bundle` throughout — is unchanged.
+  const bootState = useMemo(() => {
+    if (bundle)    return { kind: 'ready', bundle };
+    if (bootError) return { kind: 'error', message: bootError };
+    return { kind: 'loading' };
+  }, [bundle, bootError]);
+  const navModels = useMemo(() => (bundle ? buildNavModels() : []), [bundle]);
   const [threadState,  setThreadState]  = useState(() => createInitialThreadState());
   const [input,        setInput]        = useState('');
   const [busy,         setBusy]         = useState(false);
@@ -122,7 +129,10 @@ export default function ChatScreen() {
   // the user types a bare /logs.
   const eventLogRef = useRef(null);
   if (!eventLogRef.current) {
-    eventLogRef.current = new EventLog({ initial: [], muted: [] });
+    // M1 — App.js owns the EventLog (so boot-time agent events + this
+    // screen's inbound peer events share one log).  Fall back to a fresh
+    // one if rendered standalone (e.g. a future test harness).
+    eventLogRef.current = eventLog ?? new EventLog({ initial: [], muted: [] });
   }
   const [logsPanelOpen, setLogsPanelOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
@@ -184,175 +194,142 @@ export default function ChatScreen() {
     });
   }, [bootState, podAuth]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        dlog.boot('booting agent bundle');
-        // Bundle F P3 — every event the agent publishes lands in
-        // the EventLog so /logs has something to show.  Defensively
-        // mint an id when the publisher doesn't supply one (some
-        // mobile callsites omit it).
-        let eventSeq = 0;
-        const bundle = await bootAgentBundle({
-          // 2026-05-28 — persist the agent identity (chat + host vaults
-          // + stoop cache) to AsyncStorage.  Without this the chat
-          // identity was minted fresh in memory every reload, so the
-          // NKN address (derived from the identity keypair) rotated on
-          // each launch — invalidating any nknAddr a peer had cached
-          // from a /share-my-contact QR.  Persisting keeps the address
-          // stable across reboots so DMs survive an app restart.
-          asyncStorage: AsyncStorage,
-          publishEvent: (e) => {
-            if (!e || typeof e !== 'object') return;
-            const evt = {
-              ...e,
-              id: e.id ?? `mob-${Date.now()}-${(eventSeq += 1).toString(36)}`,
-              ts: e.ts ?? Date.now(),
-            };
-            try { eventLogRef.current?.append?.(evt); } catch { /* defensive */ }
-          },
-          // Bundle H (#268, 2026-05-27) — inbound peer-router (port of
-          // web/main.js:346) + catch-up trigger (port of main.js:1338).
-          // Factory pattern: bootAgentBundle calls this once the agent
-          // is created, before NKN connect, so we can close over the
-          // live callSkill + sendPeer without a chicken-and-egg.
-          buildPeerWiring: ({ agent, callSkill }) => {
-            const sendPeer = (addr, payload) => agent.sendPeerMessage(addr, payload);
-            const getMyPubKey = () =>
-              agent?.identity?.chat?.pubKey ?? agent?.identity?.host?.webid ?? null;
+  // M1 (2026-05-29) — the agent bundle is booted ONCE in App.js and
+  // shared with the circle launcher (so mobile circle screens can
+  // load/create without a second agent / NKN identity).  This screen
+  // attaches its peer-wiring AFTER mount via `bundle.attachPeerWiring`.
+  // The wiring closes over THIS screen's thread state, which App.js
+  // can't see — so it can't be passed at boot time.  The NKN handshake
+  // takes seconds; attaching at mount lands well before any inbound
+  // peer message or the 1.5s catch-up trigger.
+  //
+  // Bundle H (#268) — inbound peer-router (port of web/main.js:346) +
+  // catch-up trigger (port of main.js:1338), built over the live agent
+  // + callSkill.
+  const buildPeerWiring = useCallback(({ agent, callSkill }) => {
+    const sendPeer = (addr, payload) => agent.sendPeerMessage(addr, payload);
+    const getMyPubKey = () =>
+      agent?.identity?.chat?.pubKey ?? agent?.identity?.host?.webid ?? null;
 
-            // Reducer-style state updates from inbound envelopes.
-            // ensureDmThread mutates threadStateRef synchronously so
-            // multiple inbound calls in the same tick see each other.
-            const handleDmThreadOpen = (peerAddr) => {
-              const prev = threadStateRef.current;
-              const { state, threadId } = ensureDmThread(prev, { peerAddr });
-              if (state !== prev) {
-                threadStateRef.current = state;
-                setThreadState(state);
-              }
-              return { id: threadId };
-            };
-            const appendBubble = (threadId, rendered) => {
-              setThreadState((prev) => updateMessages(prev, threadId, (msgs) => [
-                ...msgs,
-                { id: mkId(), role: 'bot', pending: false, rendered },
-              ]));
-            };
-            const renamePeer = (peerAddr, displayName) => {
-              setThreadState((prev) => {
-                const next = updatePeerDisplay(prev, { peerAddr, displayName });
-                threadStateRef.current = next;
-                return next;
-              });
-            };
-
-            // Mobile publishEvent — fans into the eventLog so /logs
-            // picks up inbound notifications (parity with web's
-            // publishEventRef → event-router).
-            const publishEvent = (e) => {
-              if (!e || typeof e !== 'object') return;
-              const evt = {
-                ...e,
-                id: e.id ?? `peer-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                ts: e.ts ?? Date.now(),
-              };
-              try { eventLogRef.current?.append?.(evt); } catch { /* defensive */ }
-            };
-
-            // Bundle H Phase 3 (#270) — main-thread bubble landing.
-            // Mirrors web's `store.getThread('main').addShellMessage`.
-            const addMainBubble = (bubble) => appendBubble('main', bubble);
-
-            const handlers = {
-              // Substrate-only handlers — no UI bubble; just persist
-              // local state + publish a notification for /logs.
-              'buurt-peer-intro':      makeHandleBuurtPeerIntro({ callSkill }),
-              'catch-up-request':      makeHandleCatchUpRequest({ callSkill, sendPeer, getMyPubKey }),
-              'calendar-rsvp':         makeHandleCalendarRsvp({ callSkill, publishEvent }),
-              'buurt-post':            makeHandleBuurtPost({ callSkill, publishEvent }),
-              'group-redeem-request':  makeHandleGroupRedeemRequest({ callSkill, sendPeer, publishEvent }),
-              // Bundle H Phase 4 (#271) — joiner-side response.  Pairs
-              // with `pendingPeerRedeemsRef` populated by the joinGroup
-              // wizard's sendPeerRedeem call (see WizardComponent
-              // prop wiring below).  Mirror of web's
-              // `handleGroupRedeemResponse` at main.js:743.
-              'group-redeem-response': makeHandleGroupRedeemResponse({
-                pendingMap: pendingPeerRedeemsRef.current,
-              }),
-              'help-with-accepted':    makeHandleHelpWithAccepted({
-                ensureDmThread:    handleDmThreadOpen,
-                appendBubble,
-                updatePeerDisplay: renamePeer,
-                t,
-              }),
-              // Bundle H Phase 4 (#271, 2026-05-27) — inbound
-              // 'help-with-response': lift produces a structured
-              // responder-card bubble that MessageBubble's new
-              // 'responder-card' branch renders with Accept / Decline /
-              // Counter buttons.  Tap → buttonSpecials intercept →
-              // applyButtonSpecial fires the substrate call + sendPeer.
-              'help-with-response':    makeHandleHelpWithResponse({
-                ensureDmThread:        handleDmThreadOpen,
-                appendResponderCard:   (threadId, data) => {
-                  setThreadState((prev) => updateMessages(prev, threadId, (msgs) => [
-                    ...msgs,
-                    { id: mkId(), role: 'bot', pending: false, rendered: {
-                      kind:           'responder-card',
-                      messageId:      null,
-                      threadId:       null,
-                      lifecycleState: 'live',
-                      itemId:         data.itemId,
-                      fromAddr:       data.fromAddr,
-                      postText:       data.postText,
-                      body:           data.body,
-                      senderDisplay:  data.senderDisplay,
-                    }},
-                  ]));
-                },
-                updatePeerDisplay:     renamePeer,
-              }),
-              // Bundle H Phase 3 (#270) — embed-card bubbles now render
-              // on mobile (time-card + file-card via MessageBubble's
-              // embed-card branch below).  Calendar invites land as
-              // time-card with RSVP buttons; file-shares as file-card
-              // with [Download] (#266 real-save) + [Save to my pod].
-              'calendar-invite':       makeHandleCalendarInvite({
-                callSkill, addMainBubble, publishEvent,
-              }),
-              'file-share':            makeHandleFileShare({
-                addMainBubble, publishEvent,
-              }),
-              // STILL DEFERRED (#270 follow-up): group-redeem-response
-              // (needs a /join-group pendingMap mobile doesn't own yet)
-              // + help-with-response (DOM card; structured 'responder-
-              // card' bubble shape needs designing).
-            };
-            const defaultHandler = makeHandleChatMessage({
-              ensureDmThread:    handleDmThreadOpen,
-              appendBubble,
-              updatePeerDisplay: renamePeer,
-              t,
-            });
-            return {
-              onPeerMessage:  makePeerRouter({ handlers, defaultHandler }),
-              requestCatchUp: makeRequestCatchUpFromKnownPeers({ callSkill, sendPeer }),
-            };
-          },
-        });
-        dlog.boot('bundle ready', {
-          transport:   bundle.transport,
-          appOrigins:  [...bundle.catalog.appOrigins],
-          opCount:     bundle.catalog.opsById?.size ?? 0,
-        });
-        setNavModels(buildNavModels());
-        setBootState({ kind: 'ready', bundle });
-      } catch (err) {
-        dlog.warn('boot failed', err?.message ?? err);
-        setBootState({ kind: 'error', message: err?.message ?? String(err) });
+    // Reducer-style state updates from inbound envelopes.
+    // ensureDmThread mutates threadStateRef synchronously so multiple
+    // inbound calls in the same tick see each other.
+    const handleDmThreadOpen = (peerAddr) => {
+      const prev = threadStateRef.current;
+      const { state, threadId } = ensureDmThread(prev, { peerAddr });
+      if (state !== prev) {
+        threadStateRef.current = state;
+        setThreadState(state);
       }
-    })();
+      return { id: threadId };
+    };
+    const appendBubble = (threadId, rendered) => {
+      setThreadState((prev) => updateMessages(prev, threadId, (msgs) => [
+        ...msgs,
+        { id: mkId(), role: 'bot', pending: false, rendered },
+      ]));
+    };
+    const renamePeer = (peerAddr, displayName) => {
+      setThreadState((prev) => {
+        const next = updatePeerDisplay(prev, { peerAddr, displayName });
+        threadStateRef.current = next;
+        return next;
+      });
+    };
+
+    // Mobile publishEvent — fans into the eventLog so /logs picks up
+    // inbound notifications (parity with web's publishEventRef →
+    // event-router).
+    const publishEvent = (e) => {
+      if (!e || typeof e !== 'object') return;
+      const evt = {
+        ...e,
+        id: e.id ?? `peer-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        ts: e.ts ?? Date.now(),
+      };
+      try { eventLogRef.current?.append?.(evt); } catch { /* defensive */ }
+    };
+
+    // Bundle H Phase 3 (#270) — main-thread bubble landing.
+    // Mirrors web's `store.getThread('main').addShellMessage`.
+    const addMainBubble = (bubble) => appendBubble('main', bubble);
+
+    const handlers = {
+      // Substrate-only handlers — no UI bubble; just persist local
+      // state + publish a notification for /logs.
+      'buurt-peer-intro':      makeHandleBuurtPeerIntro({ callSkill }),
+      'catch-up-request':      makeHandleCatchUpRequest({ callSkill, sendPeer, getMyPubKey }),
+      'calendar-rsvp':         makeHandleCalendarRsvp({ callSkill, publishEvent }),
+      'buurt-post':            makeHandleBuurtPost({ callSkill, publishEvent }),
+      'group-redeem-request':  makeHandleGroupRedeemRequest({ callSkill, sendPeer, publishEvent }),
+      // Bundle H Phase 4 (#271) — joiner-side response.  Pairs with
+      // `pendingPeerRedeemsRef` populated by the joinGroup wizard's
+      // sendPeerRedeem call.  Mirror of web's handleGroupRedeemResponse
+      // at main.js:743.
+      'group-redeem-response': makeHandleGroupRedeemResponse({
+        pendingMap: pendingPeerRedeemsRef.current,
+      }),
+      'help-with-accepted':    makeHandleHelpWithAccepted({
+        ensureDmThread:    handleDmThreadOpen,
+        appendBubble,
+        updatePeerDisplay: renamePeer,
+        t,
+      }),
+      // Bundle H Phase 4 (#271) — inbound 'help-with-response' produces
+      // a structured responder-card bubble (Accept / Decline / Counter).
+      'help-with-response':    makeHandleHelpWithResponse({
+        ensureDmThread:        handleDmThreadOpen,
+        appendResponderCard:   (threadId, data) => {
+          setThreadState((prev) => updateMessages(prev, threadId, (msgs) => [
+            ...msgs,
+            { id: mkId(), role: 'bot', pending: false, rendered: {
+              kind:           'responder-card',
+              messageId:      null,
+              threadId:       null,
+              lifecycleState: 'live',
+              itemId:         data.itemId,
+              fromAddr:       data.fromAddr,
+              postText:       data.postText,
+              body:           data.body,
+              senderDisplay:  data.senderDisplay,
+            }},
+          ]));
+        },
+        updatePeerDisplay:     renamePeer,
+      }),
+      // Bundle H Phase 3 (#270) — embed-card bubbles (time-card +
+      // file-card).  Calendar invites land as time-card with RSVP
+      // buttons; file-shares as file-card with [Download] + [Save].
+      'calendar-invite':       makeHandleCalendarInvite({
+        callSkill, addMainBubble, publishEvent,
+      }),
+      'file-share':            makeHandleFileShare({
+        addMainBubble, publishEvent,
+      }),
+    };
+    const defaultHandler = makeHandleChatMessage({
+      ensureDmThread:    handleDmThreadOpen,
+      appendBubble,
+      updatePeerDisplay: renamePeer,
+      t,
+    });
+    return {
+      onPeerMessage:  makePeerRouter({ handlers, defaultHandler }),
+      requestCatchUp: makeRequestCatchUpFromKnownPeers({ callSkill, sendPeer }),
+    };
   }, []);
+
+  // Attach the peer-wiring once the App-booted bundle is ready.
+  useEffect(() => {
+    if (bootState.kind !== 'ready') return;
+    const { agent, callSkill } = bootState.bundle;
+    dlog.boot('attaching peer wiring', {
+      transport:  bootState.bundle.transport,
+      appOrigins: [...bootState.bundle.catalog.appOrigins],
+      opCount:    bootState.bundle.catalog.opsById?.size ?? 0,
+    });
+    bootState.bundle.attachPeerWiring?.(buildPeerWiring({ agent, callSkill }));
+  }, [bootState, buildPeerWiring]);
 
   // Auto-scroll on every new message in the active thread.
   useEffect(() => {

@@ -69,6 +69,7 @@ async function loadCreateRealHouseholdAgent() {
  *   callSkill: (appOrigin: string, opId: string, args?: object) => Promise<object>,
  *   agent: object | null,
  *   transport: { kind: 'none' | 'nkn' | 'stub', connected?: boolean } ,
+ *   attachPeerWiring: (wiring: { onPeerMessage?: function, requestCatchUp?: function }) => void,
  *   dispose: () => Promise<void>,
  * }>}
  */
@@ -92,6 +93,7 @@ export async function bootAgentBundle(opts = {}) {
       callSkill,
       agent:     null,
       transport: { kind: 'stub' },
+      attachPeerWiring: () => {},   // no transport in stub mode
       dispose:   async () => {},
     };
   }
@@ -155,16 +157,32 @@ export async function bootAgentBundle(opts = {}) {
   // Bundle H (#268): peer-router + catch-up trigger.  `buildPeerWiring`
   // is called now (agent ready, callSkill present) so the caller can
   // produce both pieces without waiting for the bundle return.
-  let peerWiring = null;
+  // Peer-wiring is held in a MUTABLE slot so the caller can attach it
+  // AFTER boot (M1, 2026-05-29).  Lifting the bundle boot to App.js
+  // means ChatScreen — which owns the thread state the router closes
+  // over — can no longer pass `buildPeerWiring` at boot time; it
+  // attaches via `bundle.attachPeerWiring(...)` once it has mounted.
+  // The connectPeerTransport handshake takes seconds, so a same-tick
+  // mount attach lands well before any inbound message or the 1.5s
+  // catch-up fires.  `buildPeerWiring`/`opts.onPeerMessage` are still
+  // honoured for the boot-time path (tests, single-screen callers).
+  const peerWiringRef = { onPeerMessage: undefined, requestCatchUp: undefined };
   if (typeof opts.buildPeerWiring === 'function') {
     try {
-      peerWiring = opts.buildPeerWiring({ agent, callSkill: agent.callSkill });
+      const w = opts.buildPeerWiring({ agent, callSkill: agent.callSkill });
+      peerWiringRef.onPeerMessage  = w?.onPeerMessage;
+      peerWiringRef.requestCatchUp = w?.requestCatchUp;
     } catch (err) {
       console.warn('[cc/boot] buildPeerWiring threw', err?.message ?? err);
     }
   }
-  const onPeerMessage  = peerWiring?.onPeerMessage  ?? opts.onPeerMessage;
-  const requestCatchUp = peerWiring?.requestCatchUp ?? opts.requestCatchUp;
+  peerWiringRef.onPeerMessage  ??= opts.onPeerMessage;
+  peerWiringRef.requestCatchUp ??= opts.requestCatchUp;
+
+  const attachPeerWiring = ({ onPeerMessage, requestCatchUp } = {}) => {
+    if (typeof onPeerMessage === 'function')  peerWiringRef.onPeerMessage  = onPeerMessage;
+    if (typeof requestCatchUp === 'function') peerWiringRef.requestCatchUp = requestCatchUp;
+  };
 
   let transport = { kind: 'none' };
   if (typeof agent.connectPeerTransport === 'function') {
@@ -182,25 +200,29 @@ export async function bootAgentBundle(opts = {}) {
             return;
           }
         }
-        await agent.connectPeerTransport({ nknLib, onPeerMessage });
+        // Stable wrapper reads the mutable slot at delivery time, so a
+        // router attached after connect still receives messages.
+        await agent.connectPeerTransport({
+          nknLib,
+          onPeerMessage: (addr, payload) => peerWiringRef.onPeerMessage?.(addr, payload),
+        });
         console.log('[cc/boot] NKN connected, address:', agent.peer?.address);
         // Bundle H (#268, 2026-05-27) — fire the catch-up trigger
         // 1.5s after connect so HI handshake settles first.  Mirrors
-        // web/main.js:1338.  Resolved from `buildPeerWiring` OR the
-        // explicit `opts.requestCatchUp` — null/undefined skips
-        // silently (test-mode boots don't wire it).
-        if (typeof requestCatchUp === 'function') {
-          setTimeout(() => {
-            try {
-              const r = requestCatchUp();
-              if (r && typeof r.catch === 'function') {
-                r.catch((err) => console.warn('[cc/boot] catch-up failed', err?.message ?? err));
-              }
-            } catch (err) {
-              console.warn('[cc/boot] catch-up threw', err?.message ?? err);
+        // web/main.js:1338.  Read the slot at fire time — null/undefined
+        // (test-mode / not-yet-attached) skips silently.
+        setTimeout(() => {
+          const requestCatchUp = peerWiringRef.requestCatchUp;
+          if (typeof requestCatchUp !== 'function') return;
+          try {
+            const r = requestCatchUp();
+            if (r && typeof r.catch === 'function') {
+              r.catch((err) => console.warn('[cc/boot] catch-up failed', err?.message ?? err));
             }
-          }, 1500);
-        }
+          } catch (err) {
+            console.warn('[cc/boot] catch-up threw', err?.message ?? err);
+          }
+        }, 1500);
       } catch (err) {
         // Connect failures are non-fatal — local-only flows stay live.
         // Log so /me can be debugged when it shows "not connected".
@@ -215,6 +237,7 @@ export async function bootAgentBundle(opts = {}) {
     callSkill: agent.callSkill,
     agent,
     transport,
+    attachPeerWiring,
     dispose: async () => {
       try { await agent?.sa?.shutdown?.(); } catch { /* defensive */ }
     },
