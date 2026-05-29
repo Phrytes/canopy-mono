@@ -75,6 +75,7 @@ export {
   DEFAULT_AVAILABILITY, normalizeAvailability, mergeAvailability, isPushSuppressed,
   createAvailabilityStore, localStorageAvailabilityIo,
 } from './v2/memberAvailability.js';
+export { THEME, tagColors } from './v2/theme.js';
 export { runFind } from './find.js';
 export { EventLog, createEventLog, RETENTION_MS } from './eventLog.js';
 export {

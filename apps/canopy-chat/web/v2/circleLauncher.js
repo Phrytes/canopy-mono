@@ -77,17 +77,26 @@ export function renderCircleLauncher(container, {
     tile.dataset.circleId = c.id;
     if (c.kind) tile.dataset.kind = c.kind;
 
+    const avatar = document.createElement('div');
+    avatar.className = 'circle-tile__avatar';
+    avatar.setAttribute('aria-hidden', 'true');
+    avatar.textContent = circleInitial(c.name);
+    tile.appendChild(avatar);
+
+    const body = document.createElement('div');
+    body.className = 'circle-tile__body';
     const name = document.createElement('div');
     name.className = 'circle-tile__name';
     name.textContent = c.name;
-    tile.appendChild(name);
+    body.appendChild(name);
 
     if (c.memberCount != null) {
       const meta = document.createElement('div');
       meta.className = 'circle-tile__meta';
       meta.textContent = tr('circle.members', { count: c.memberCount });
-      tile.appendChild(meta);
+      body.appendChild(meta);
     }
+    tile.appendChild(body);
 
     tile.addEventListener('click', () => {
       if (typeof onOpenCircle === 'function') onOpenCircle(c.id, c);
@@ -106,4 +115,10 @@ export function renderCircleLauncher(container, {
   container.appendChild(newBtn);
 
   return container;
+}
+
+/** First letter of a circle name for the avatar tile (board 1). */
+function circleInitial(name) {
+  const s = String(name || '').trim();
+  return s ? s[0].toUpperCase() : '·';
 }
