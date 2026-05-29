@@ -107,8 +107,15 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       en+nl. 12 new tests (82 v2 total). Mobile screen → M3.
 
 ### Phase 2 — new surfaces
-- [ ] 2.1 Cross-circle **Stream** tab — unfiltered projection over EventRouter
-      with circle-tags (board 5B)
+- [x] 2.1 Cross-circle **Stream** tab — unfiltered, time-ordered projection over
+      the shared EventLog, circle-tagged per row (board 5B). Shared
+      `buildCircleStream`/`eventCircleId` (`src/v2/circleStream.js`, derives the
+      circle from event payload audience fields — circleId≡crewId≡groupId);
+      web renderer (`web/v2/circleStream.js`) + mobile `CircleStreamScreen` over
+      the same rows. Reached from the launcher "Stream" button; tapping a tagged
+      row jumps to that circle. circleApp/App now wire an EventLog the agent's
+      publishEvent feeds. en+nl. 12 new tests (97 v2 total) + Playwright green.
+      ⚠ mobile screen Detox-only (next rebuild).
 - [ ] 2.2 **"View as…"** preview — re-run reveal/openness filter as a chosen
       viewer (board 4C)
 - [ ] 2.3 **Advisor** — rules over `eventLog` + "too busy?" counter, ≤1/month

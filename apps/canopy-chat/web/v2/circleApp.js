@@ -14,6 +14,9 @@
 
 import { initLocalisation, t, detectDeviceLang } from '../../src/index.js';
 import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
+import { EventLog } from '../../src/eventLog.js';
+import { buildCircleStream } from '../../src/v2/circleStream.js';
+import { renderCircleStream } from './circleStream.js';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircleItems } from '../../src/v2/circleContent.js';
@@ -36,6 +39,9 @@ import { renderCircleOverride } from './circleOverride.js';
 const policyStore = createCirclePolicyStore(localStoragePolicyIo());
 const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
 const availabilityStore = createAvailabilityStore(localStorageAvailabilityIo());
+// Cross-circle Stream (board 5B) reads this firehose; the agent's
+// publishEvent appends to it during boot.
+const eventLog = new EventLog({ initial: [], muted: [] });
 
 let rootEl = null;
 let circlesCache = [];
@@ -52,7 +58,16 @@ function showLauncher() {
     onOpenCircle: showDetail,
     onNewCircle: createCircle,
     onAvailability: showAvailability,
+    onStream: showStream,
   });
+}
+
+function showStream() {
+  const rows = buildCircleStream({
+    events: eventLog.query({ excludeMuted: true }),
+    circles: circlesCache,
+  });
+  renderCircleStream(rootEl, { rows, t, onBack: showLauncher, onOpenCircle: showDetail });
 }
 
 async function showAvailability() {
@@ -142,8 +157,16 @@ async function boot() {
   renderCircleLauncher(rootEl, { loading: true, t });
 
   try {
+    let eventSeq = 0;
     const agent = await createRealHouseholdAgent({
-      publishEvent: () => {},
+      publishEvent: (e) => {
+        if (!e || typeof e !== 'object') return;
+        eventLog.append({
+          ...e,
+          id: e.id ?? `cc-${Date.now()}-${(eventSeq += 1).toString(36)}`,
+          ts: e.ts ?? Date.now(),
+        });
+      },
       stoopPersistDb: { dbName: 'cc-stoop-state', storeName: 'items' },
     });
     if (typeof agent?.callSkill === 'function') {

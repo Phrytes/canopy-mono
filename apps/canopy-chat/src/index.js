@@ -54,6 +54,7 @@ export {
   createMemberOverrideStore, localStorageOverrideIo,
 } from './v2/circlePolicyStore.js';
 export { makeProposal, approveProposal, pendingApprovers } from './v2/circleConsensus.js';
+export { eventCircleId, buildCircleStream } from './v2/circleStream.js';
 export {
   DEFAULT_AVAILABILITY, normalizeAvailability, mergeAvailability, isPushSuppressed,
   createAvailabilityStore, localStorageAvailabilityIo,

@@ -7,6 +7,12 @@
     "loading": { "text": "Loading circles…", "doc": "Shown while circles are being fetched." },
     "back":    { "text": "← circles", "doc": "Back link from a circle detail view to the launcher." },
     "detail_empty": { "text": "Nothing here yet.", "doc": "Empty state inside a circle detail view." },
+    "stream": {
+      "title":    { "text": "Stream", "doc": "Heading of the cross-circle Stream tab (board 5B)." },
+      "open":     { "text": "Stream", "doc": "Launcher entry that opens the cross-circle Stream." },
+      "empty":    { "text": "Nothing across your circles yet.", "doc": "Empty state for the Stream." },
+      "untagged": { "text": "—", "doc": "Tag shown on a Stream row that isn't tied to a circle." }
+    },
     "settings": {
       "title":        { "text": "Circle settings", "doc": "Settings screen heading (board 4A)." },
       "save":         { "text": "Save", "doc": "Save the circle settings." },
