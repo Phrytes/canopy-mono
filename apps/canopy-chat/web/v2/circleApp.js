@@ -19,13 +19,18 @@ import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/cir
 import { loadCircleItems } from '../../src/v2/circleContent.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
-import { mergeCirclePolicy } from '../../src/v2/circlePolicy.js';
-import { createCirclePolicyStore, localStoragePolicyIo } from '../../src/v2/circlePolicyStore.js';
+import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
+import {
+  createCirclePolicyStore, localStoragePolicyIo,
+  createMemberOverrideStore, localStorageOverrideIo,
+} from '../../src/v2/circlePolicyStore.js';
 import { renderCircleLauncher } from './circleLauncher.js';
 import { renderCircleDetail } from './circleDetail.js';
 import { renderCircleSettings } from './circleSettings.js';
+import { renderCircleOverride } from './circleOverride.js';
 
 const policyStore = createCirclePolicyStore(localStoragePolicyIo());
+const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
 
 let rootEl = null;
 let circlesCache = [];
@@ -63,7 +68,8 @@ async function showDetail(id) {
   try { sessionStorage.setItem('cc.activeCircle', id); } catch { /* ignore */ }
   const circle = circlesCache.find((c) => c.id === id) || { id };
   const onSettings = () => showSettings(id);
-  renderCircleDetail(rootEl, { circle, items: [], t, onBack: showLauncher, onSettings });
+  const onMine = () => showOverride(id);
+  renderCircleDetail(rootEl, { circle, items: [], t, onBack: showLauncher, onSettings, onMine });
 
   if (!resolveCallSkill) return;
   let items = [];
@@ -71,8 +77,20 @@ async function showDetail(id) {
     items = await loadCircleItems({ callSkill: resolveCallSkill, circleId: id });
   } catch { /* keep empty */ }
   if (getActiveCircle() === id) {
-    renderCircleDetail(rootEl, { circle, items, t, onBack: showLauncher, onSettings });
+    renderCircleDetail(rootEl, { circle, items, t, onBack: showLauncher, onSettings, onMine });
   }
+}
+
+async function showOverride(id) {
+  let working = await overrideStore.get(id);
+  const rerender = () => renderCircleOverride(rootEl, {
+    override: working,
+    t,
+    onChange: (patch) => { working = mergeMemberOverride(working, patch); rerender(); },
+    onBack: () => showDetail(id),
+    onSave: async () => { await overrideStore.update(id, working); showDetail(id); },
+  });
+  rerender();
 }
 
 async function showSettings(id) {

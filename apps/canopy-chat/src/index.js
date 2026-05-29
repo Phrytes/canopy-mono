@@ -49,7 +49,10 @@ export {
   DEFAULT_CIRCLE_POLICY, normalizeCirclePolicy, mergeCirclePolicy,
   DEFAULT_MEMBER_OVERRIDE, normalizeMemberOverride, mergeMemberOverride,
 } from './v2/circlePolicy.js';
-export { createCirclePolicyStore, localStoragePolicyIo } from './v2/circlePolicyStore.js';
+export {
+  createCirclePolicyStore, localStoragePolicyIo,
+  createMemberOverrideStore, localStorageOverrideIo,
+} from './v2/circlePolicyStore.js';
 export { runFind } from './find.js';
 export { EventLog, createEventLog, RETENTION_MS } from './eventLog.js';
 export {

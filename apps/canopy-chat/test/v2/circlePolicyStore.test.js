@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { createCirclePolicyStore, localStoragePolicyIo } from '../../src/v2/circlePolicyStore.js';
-import { DEFAULT_CIRCLE_POLICY } from '../../src/v2/circlePolicy.js';
+import {
+  createCirclePolicyStore, localStoragePolicyIo,
+  createMemberOverrideStore, localStorageOverrideIo,
+} from '../../src/v2/circlePolicyStore.js';
+import { DEFAULT_CIRCLE_POLICY, DEFAULT_MEMBER_OVERRIDE } from '../../src/v2/circlePolicy.js';
 
 describe('createCirclePolicyStore', () => {
   it('get() returns normalised defaults when nothing is stored', async () => {
@@ -42,5 +45,34 @@ describe('localStoragePolicyIo', () => {
   it('load returns null for missing / corrupt entries', async () => {
     const storage = { getItem: () => 'not json{', setItem: () => {} };
     expect(await localStoragePolicyIo(storage).load('c1')).toBeNull();
+  });
+});
+
+describe('createMemberOverrideStore', () => {
+  it('get() returns normalised defaults when nothing is stored', async () => {
+    const store = createMemberOverrideStore({ load: async () => null });
+    expect(await store.get('c1')).toEqual(DEFAULT_MEMBER_OVERRIDE);
+  });
+
+  it('update() deep-merges flowThrough and persists', async () => {
+    const mem = {};
+    const store = createMemberOverrideStore({
+      load: async (id) => mem[id] ?? null,
+      save: async (id, o) => { mem[id] = o; },
+    });
+    await store.update('c1', { chatOff: true, flowThrough: { tasksToPersonal: true } });
+    const after = await store.update('c1', { flowThrough: { calendarToPersonal: true } });
+    expect(after.chatOff).toBe(true);
+    expect(after.flowThrough).toEqual({ tasksToPersonal: true, calendarToPersonal: true });
+    expect(mem.c1).toEqual(after);
+  });
+
+  it('localStorageOverrideIo round-trips under its own key', async () => {
+    const map = new Map();
+    const storage = { getItem: (k) => (map.has(k) ? map.get(k) : null), setItem: (k, v) => map.set(k, v) };
+    const io = localStorageOverrideIo(storage);
+    await io.save('c1', { chatOff: true });
+    expect(await io.load('c1')).toEqual({ chatOff: true });
+    expect(map.has('cc.circleOverride.c1')).toBe(true);
   });
 });
