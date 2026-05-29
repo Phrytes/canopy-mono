@@ -78,8 +78,12 @@ Check boxes as slices land; append to the **Progress log** at the bottom.
       reveal/pod radios) over the policy model, persisted via
       `circlePolicyStore` (localStorage now; pod `shared.json` later). Reached
       from the detail "⚙ settings"; en+nl labels. Store + renderer = 9 tests
-      (56 v2 total). ⏳ per-option **Consequences** info-panel = 1.2b; mobile
-      screen = M3.
+      (56 v2 total). Mobile screen = M3.
+- [x] 1.2b per-option **Consequences** info-panel (board 4A ⓘ) — each enum
+      option (llmTool/agents/reveal/pod) carries a ⓘ toggle that expands a
+      plain-language consequence panel from `circle.settings.consequence.<opt>`;
+      the ⓘ only renders when consequence copy is actually translated (t() miss
+      → no ⓘ). en+nl (12 options each). 3 new renderer tests (85 v2 total).
 - [x] 1.3 Co-admin consensus (model + web gating) — `src/v2/circleConsensus.js`
       (`makeProposal`/`approveProposal`/`pendingApprovers`: edits apply unless
       `consensusRequired` + ≥2 admins, then a pending proposal needs the other

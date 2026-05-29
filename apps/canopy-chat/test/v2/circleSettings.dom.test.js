@@ -64,4 +64,39 @@ describe('renderCircleSettings', () => {
     c.dispatchEvent(new Event('change'));
     expect(onChange).toHaveBeenCalledWith({ consensusRequired: true });
   });
+
+  it('omits ⓘ consequence toggles when no consequence copy is translated', () => {
+    const el = mount();
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t }); // t echoes the key → miss
+    expect(el.querySelectorAll('.circle-settings__info')).toHaveLength(0);
+    expect(el.querySelectorAll('.circle-settings__consequence')).toHaveLength(0);
+  });
+
+  it('renders a ⓘ + collapsed panel per enum option when consequence copy exists', () => {
+    const el = mount();
+    const tc = (k) => (k.startsWith('circle.settings.consequence.') ? `why ${k.split('.').pop()}` : k);
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t: tc });
+    // 3 llmTool + 3 agents + 2 revealPolicy + 4 pod = 12 enum options
+    expect(el.querySelectorAll('.circle-settings__info')).toHaveLength(12);
+    const panels = el.querySelectorAll('.circle-settings__consequence');
+    expect(panels).toHaveLength(12);
+    for (const p of panels) expect(p.hidden).toBe(true);
+  });
+
+  it('clicking ⓘ reveals its option panel and flips aria-expanded', () => {
+    const el = mount();
+    const tc = (k) => (k.startsWith('circle.settings.consequence.') ? `why ${k.split('.').pop()}` : k);
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t: tc });
+    const info = el.querySelector('.circle-settings__info[data-opt=cloud]');
+    const panel = el.querySelector('.circle-settings__consequence[data-opt=cloud]');
+    expect(panel.hidden).toBe(true);
+    expect(info.getAttribute('aria-expanded')).toBe('false');
+    info.click();
+    expect(panel.hidden).toBe(false);
+    expect(info.getAttribute('aria-expanded')).toBe('true');
+    expect(panel.textContent).toBe('why cloud');
+    info.click();
+    expect(panel.hidden).toBe(true);
+    expect(info.getAttribute('aria-expanded')).toBe('false');
+  });
 });
