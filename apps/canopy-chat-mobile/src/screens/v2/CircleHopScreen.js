@@ -8,6 +8,7 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, Switch, StyleSheet } from 'react-native';
+import { theme } from './theme.js';
 import { normalizeHopMode } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
@@ -46,7 +47,7 @@ export default function CircleHopScreen({ callSkill, onBack }) {
 
       <View style={styles.row}>
         <Text style={styles.rowLabel}>{t('circle.hop.global_label')}</Text>
-        <Switch value={!!hopMode.global} onValueChange={onToggle} testID="circle-hop-global" />
+        <Switch trackColor={{ true: theme.color.accent, false: theme.color.trackOff }} thumbColor={theme.color.white} value={!!hopMode.global} onValueChange={onToggle} testID="circle-hop-global" />
       </View>
       <Text style={styles.explain}>{t('circle.hop.explain')}</Text>
     </View>
@@ -54,11 +55,11 @@ export default function CircleHopScreen({ callSkill, onBack }) {
 }
 
 const styles = StyleSheet.create({
-  page:     { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
+  page:     { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:      { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
-  back:     { fontSize: 13, color: '#6a6a6a' },
-  title:    { fontSize: 20, fontWeight: '600', marginVertical: 10 },
+  back:     { fontSize: 13, color: theme.color.inkSoft },
+  title:    { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   row:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
-  rowLabel: { fontSize: 14, color: '#1a1a1a', flexShrink: 1, paddingRight: 8 },
-  explain:  { fontSize: 13, color: '#5a5a5a', lineHeight: 19, marginTop: 8 },
+  rowLabel: { fontSize: 14, color: theme.color.ink, flexShrink: 1, paddingRight: 8 },
+  explain:  { fontSize: 13, color: theme.color.inkSoft, lineHeight: 19, marginTop: 8 },
 });

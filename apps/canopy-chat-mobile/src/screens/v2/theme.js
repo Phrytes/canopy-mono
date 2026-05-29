@@ -14,8 +14,11 @@ export const theme = {
   radius: THEME.radius,
   space:  THEME.space,
   font: {
-    serif:     undefined, // → 'SourceSerif4-SemiBold' (Phase 4.2)
-    serifBody: undefined, // → 'SourceSerif4-Regular'  (Phase 4.2)
+    // Family names registered by useFonts(...) in App.js
+    // (@expo-google-fonts/source-serif-4). Before load, RN falls back to
+    // the system default, so the UI still renders.
+    serif:     'SourceSerif4_600SemiBold',
+    serifBody: 'SourceSerif4_400Regular',
     mono:      'monospace',
   },
 };

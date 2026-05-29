@@ -10,6 +10,7 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, StyleSheet } from 'react-native';
+import { theme } from './theme.js';
 import {
   CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS, mergeCirclePolicy, makeProposal,
 } from '@canopy-app/canopy-chat';
@@ -65,7 +66,7 @@ export default function CircleSettingsScreen({ store, circleId, onBack }) {
         {CIRCLE_FEATURES.map((f) => (
           <View key={f} style={styles.row}>
             <Text style={styles.rowLabel}>{t(`circle.settings.feat.${f}`)}</Text>
-            <Switch
+            <Switch trackColor={{ true: theme.color.accent, false: theme.color.trackOff }} thumbColor={theme.color.white}
               value={!!working.features?.[f]}
               onValueChange={(v) => patch({ features: { [f]: v } })}
               testID={`feat-${f}`}
@@ -120,7 +121,7 @@ export default function CircleSettingsScreen({ store, circleId, onBack }) {
         <Text style={styles.section}>{t('circle.settings.consensus')}</Text>
         <View style={styles.row}>
           <Text style={styles.rowLabel}>{t('circle.settings.consensus_label')}</Text>
-          <Switch
+          <Switch trackColor={{ true: theme.color.accent, false: theme.color.trackOff }} thumbColor={theme.color.white}
             value={!!working.consensusRequired}
             onValueChange={(v) => patch({ consensusRequired: v })}
             testID="consensusRequired"
@@ -139,23 +140,23 @@ export default function CircleSettingsScreen({ store, circleId, onBack }) {
 }
 
 const styles = StyleSheet.create({
-  page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
+  page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:         { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
-  back:        { fontSize: 13, color: '#6a6a6a' },
-  title:       { fontSize: 20, fontWeight: '600', marginVertical: 10 },
+  back:        { fontSize: 13, color: theme.color.inkSoft },
+  title:       { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   body:        { paddingBottom: 24 },
-  section:     { fontSize: 13, fontWeight: '700', color: '#8a6d1f', marginTop: 16, marginBottom: 4 },
+  section:     { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', color: theme.color.inkSoft, marginTop: 16, marginBottom: 4 },
   row:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 },
-  rowLabel:    { fontSize: 14, color: '#1a1a1a', flexShrink: 1, paddingRight: 8 },
+  rowLabel:    { fontSize: 14, color: theme.color.ink, flexShrink: 1, paddingRight: 8 },
   optRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
   optTap:      { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
-  radio:       { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: '#c9a13a', marginRight: 10, alignItems: 'center', justifyContent: 'center' },
-  radioOn:     { borderColor: '#c9a13a' },
-  radioDot:    { width: 9, height: 9, borderRadius: 5, backgroundColor: '#c9a13a' },
-  info:        { fontSize: 16, color: '#8a6d1f', paddingHorizontal: 6 },
-  consequence: { fontSize: 12, color: '#5a5a5a', backgroundColor: '#f3eeda', borderRadius: 6, padding: 8, marginBottom: 6 },
-  note:        { fontSize: 12, color: '#8a6d1f', fontStyle: 'italic', marginTop: 8 },
-  muted:       { color: '#6a6a6a', fontStyle: 'italic', paddingVertical: 10 },
-  save:        { marginTop: 8, marginBottom: 12, padding: 13, borderRadius: 8, backgroundColor: '#c9a13a', alignItems: 'center' },
-  saveText:    { color: '#fff', fontSize: 15, fontWeight: '700' },
+  radio:       { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: theme.color.accent, marginRight: 10, alignItems: 'center', justifyContent: 'center' },
+  radioOn:     { borderColor: theme.color.accent },
+  radioDot:    { width: 9, height: 9, borderRadius: 5, backgroundColor: theme.color.accent },
+  info:        { fontSize: 16, color: theme.color.inkSoft, paddingHorizontal: 6 },
+  consequence: { fontSize: 12, color: theme.color.inkSoft, backgroundColor: theme.color.paper2, borderRadius: 6, padding: 8, marginBottom: 6 },
+  note:        { fontSize: 12, color: theme.color.inkSoft, fontStyle: 'italic', marginTop: 8 },
+  muted:       { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
+  save:        { marginTop: 8, marginBottom: 12, padding: 13, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
+  saveText:    { color: theme.color.white, fontSize: 15, fontWeight: '700' },
 });

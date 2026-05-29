@@ -8,6 +8,7 @@
  */
 import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { theme } from './theme.js';
 import { RULES_QUESTIONS, normalizeRulesDoc, isRulesComplete } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
@@ -58,18 +59,18 @@ export default function CircleRulesScreen({ doc, onSave, onBack, onPreview }) {
 }
 
 const styles = StyleSheet.create({
-  page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
+  page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:         { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
-  back:        { fontSize: 13, color: '#6a6a6a' },
-  title:       { fontSize: 20, fontWeight: '600', marginVertical: 10 },
+  back:        { fontSize: 13, color: theme.color.inkSoft },
+  title:       { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   body:        { paddingBottom: 24 },
   field:       { marginBottom: 12 },
-  q:           { fontSize: 13, fontWeight: '600', color: '#3a3a3a', marginBottom: 4 },
-  input:       { minHeight: 56, padding: 10, borderWidth: 1, borderColor: '#d8d2c0', borderRadius: 8, backgroundColor: '#fff', fontSize: 14, textAlignVertical: 'top' },
-  note:        { fontSize: 12, color: '#8a6d1f', fontStyle: 'italic', marginTop: 4 },
-  preview:     { marginTop: 12, padding: 10, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', borderColor: '#d8d2c0', alignItems: 'center' },
-  previewText: { color: '#6a6a6a', fontSize: 13 },
-  save:        { marginTop: 8, marginBottom: 12, padding: 13, borderRadius: 8, backgroundColor: '#c9a13a', alignItems: 'center' },
-  saveDisabled:{ backgroundColor: '#d8cfa6' },
-  saveText:    { color: '#fff', fontSize: 15, fontWeight: '700' },
+  q:           { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginBottom: 4 },
+  input:       { minHeight: 56, padding: 10, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.white, fontSize: 14, textAlignVertical: 'top' },
+  note:        { fontSize: 12, color: theme.color.inkSoft, fontStyle: 'italic', marginTop: 4 },
+  preview:     { marginTop: 12, padding: 10, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.color.line, alignItems: 'center' },
+  previewText: { color: theme.color.inkSoft, fontSize: 13 },
+  save:        { marginTop: 8, marginBottom: 12, padding: 13, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
+  saveDisabled:{ backgroundColor: theme.color.line },
+  saveText:    { color: theme.color.white, fontSize: 15, fontWeight: '700' },
 });

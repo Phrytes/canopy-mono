@@ -9,6 +9,7 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, StyleSheet } from 'react-native';
+import { theme } from './theme.js';
 import { mergeMemberOverride } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
@@ -53,7 +54,7 @@ export default function CircleOverrideScreen({ store, circleId, onBack }) {
         {TOP_TOGGLES.map((key) => (
           <View key={key} style={styles.row}>
             <Text style={styles.rowLabel}>{t(`circle.override.${key}`)}</Text>
-            <Switch
+            <Switch trackColor={{ true: theme.color.accent, false: theme.color.trackOff }} thumbColor={theme.color.white}
               value={!!working[key]}
               onValueChange={(v) => patch({ [key]: v })}
               testID={`override-${key}`}
@@ -65,7 +66,7 @@ export default function CircleOverrideScreen({ store, circleId, onBack }) {
         {FLOW_TOGGLES.map((key) => (
           <View key={key} style={styles.row}>
             <Text style={styles.rowLabel}>{t(`circle.override.${key}`)}</Text>
-            <Switch
+            <Switch trackColor={{ true: theme.color.accent, false: theme.color.trackOff }} thumbColor={theme.color.white}
               value={!!working.flowThrough?.[key]}
               onValueChange={(v) => patch({ flowThrough: { [key]: v } })}
               testID={`override-${key}`}
@@ -82,15 +83,15 @@ export default function CircleOverrideScreen({ store, circleId, onBack }) {
 }
 
 const styles = StyleSheet.create({
-  page:     { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
+  page:     { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:      { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
-  back:     { fontSize: 13, color: '#6a6a6a' },
-  title:    { fontSize: 20, fontWeight: '600', marginVertical: 10 },
+  back:     { fontSize: 13, color: theme.color.inkSoft },
+  title:    { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   body:     { paddingBottom: 24 },
-  section:  { fontSize: 13, fontWeight: '700', color: '#8a6d1f', marginTop: 16, marginBottom: 4 },
+  section:  { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', color: theme.color.inkSoft, marginTop: 16, marginBottom: 4 },
   row:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
-  rowLabel: { fontSize: 14, color: '#1a1a1a', flexShrink: 1, paddingRight: 8 },
-  muted:    { color: '#6a6a6a', fontStyle: 'italic', paddingVertical: 10 },
-  save:     { marginTop: 8, marginBottom: 12, padding: 13, borderRadius: 8, backgroundColor: '#c9a13a', alignItems: 'center' },
-  saveText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  rowLabel: { fontSize: 14, color: theme.color.ink, flexShrink: 1, paddingRight: 8 },
+  muted:    { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
+  save:     { marginTop: 8, marginBottom: 12, padding: 13, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
+  saveText: { color: theme.color.white, fontSize: 15, fontWeight: '700' },
 });

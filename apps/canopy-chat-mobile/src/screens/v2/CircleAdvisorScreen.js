@@ -9,6 +9,7 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { theme } from './theme.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { computeAdvice, makeTooBusyEvent } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
@@ -66,15 +67,15 @@ export default function CircleAdvisorScreen({ eventLog, circleId, onBack }) {
 }
 
 const styles = StyleSheet.create({
-  page:       { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
+  page:       { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:        { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
-  back:       { fontSize: 13, color: '#6a6a6a' },
-  title:      { fontSize: 20, fontWeight: '600', marginVertical: 10 },
-  card:       { padding: 14, borderRadius: 10, borderWidth: 1, borderColor: '#e0b94a', backgroundColor: '#fbf1cf' },
-  advice:     { fontSize: 14, color: '#5a4a1a', lineHeight: 20 },
+  back:       { fontSize: 13, color: theme.color.inkSoft },
+  title:      { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
+  card:       { padding: 14, borderRadius: 10, borderWidth: 1, borderColor: theme.color.accent, backgroundColor: theme.color.card },
+  advice:     { fontSize: 14, color: theme.color.ink, lineHeight: 20 },
   dismiss:    { alignSelf: 'flex-end', marginTop: 10, paddingHorizontal: 12, paddingVertical: 6 },
-  dismissText:{ fontSize: 13, color: '#8a6d1f', fontWeight: '600' },
-  muted:      { color: '#6a6a6a', fontStyle: 'italic', paddingVertical: 10 },
-  busy:       { marginTop: 16, padding: 12, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', borderColor: '#d8d2c0', alignItems: 'center' },
-  busyText:   { color: '#6a6a6a' },
+  dismissText:{ fontSize: 13, color: theme.color.inkSoft, fontWeight: '600' },
+  muted:      { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
+  busy:       { marginTop: 16, padding: 12, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.color.line, alignItems: 'center' },
+  busyText:   { color: theme.color.inkSoft },
 });

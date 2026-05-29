@@ -10,6 +10,7 @@
  */
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { theme } from './theme.js';
 import { viewAsDirectory } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
@@ -70,18 +71,18 @@ export default function CircleViewAsScreen({ members = [], policy = 'pairwise', 
 }
 
 const styles = StyleSheet.create({
-  page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
+  page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:         { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
-  back:        { fontSize: 13, color: '#6a6a6a' },
-  title:       { fontSize: 20, fontWeight: '600', marginVertical: 10 },
+  back:        { fontSize: 13, color: theme.color.inkSoft },
+  title:       { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   picker:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-  chip:        { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: '#d8d2c0', backgroundColor: '#fbf8ed' },
-  chipActive:  { borderColor: '#c9a13a', backgroundColor: '#c9a13a' },
-  chipText:    { fontSize: 12, color: '#6a6a6a' },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
+  chip:        { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.card },
+  chipActive:  { borderColor: theme.color.accent, backgroundColor: theme.color.accent },
+  chipText:    { fontSize: 12, color: theme.color.inkSoft },
+  chipTextActive: { color: theme.color.white, fontWeight: '600' },
   list:        { gap: 6, paddingBottom: 32 },
-  row:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderWidth: 1, borderColor: '#e6e0cf', borderRadius: 8, backgroundColor: '#fbf8ed' },
-  name:        { fontSize: 14, color: '#1a1a1a' },
-  badge:       { fontSize: 11, color: '#8a6d1f' },
-  muted:       { color: '#6a6a6a', fontStyle: 'italic', paddingVertical: 10 },
+  row:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card },
+  name:        { fontSize: 14, color: theme.color.ink },
+  badge:       { fontSize: 11, color: theme.color.inkSoft },
+  muted:       { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
 });
