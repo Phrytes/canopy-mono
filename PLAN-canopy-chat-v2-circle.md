@@ -178,7 +178,16 @@ the mobile screens are thin follow-ons.
       a shared `e2e/support/nav.js` `gotoChat()` helper; the 9 chat-focused
       Detox tests now `gotoChat()` after launch. ⚠ Detox suite rebuild + run
       pending (device-only).
-- [ ] M3 port the Phase 1 web screens (settings 1.2, override 1.4) to RN.
+- [x] M3 port the Phase 1 web screens to RN — settings (1.2 + 1.2b consequence
+      panels), personal override (1.4), and availability (1.5), each over the
+      SAME shared model + store factories, persisted via new AsyncStorage-backed
+      adapters (`src/core/circleStoresRN.js`, keys match web's localStorage
+      convention). Reached from the launcher: Availability button (launcher bar)
+      + Settings / My-settings on a circle's detail. Consensus save records a
+      pending proposal (1.3b delivery still off). 4 new store-adapter vitest
+      tests (167 mobile total) + `e2e/circleScreens.test.js` (availability
+      device smoke). ⚠ Detox suite rebuild + run pending (combined M2+M3).
+      Date/time fields are plain TextInputs (native picker = polish).
 
 ## Open questions (carry from design)
 1. Agents-in-circle (2.4): spec agent-as-participant now (own WebID + scope)

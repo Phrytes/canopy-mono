@@ -14,19 +14,36 @@
  */
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   loadCircles, circleSourcesFromAgent, makeResolvingCallSkill,
   loadCircleItems, quickCreateCircle, setActiveCircle,
 } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
+import {
+  makeCirclePolicyStoreRN, makeMemberOverrideStoreRN, makeAvailabilityStoreRN,
+} from '../../core/circleStoresRN.js';
+import CircleSettingsScreen from './CircleSettingsScreen.js';
+import CircleOverrideScreen from './CircleOverrideScreen.js';
+import CircleAvailabilityScreen from './CircleAvailabilityScreen.js';
 
 export default function CircleLauncherScreen({ bundle, onBack }) {
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  // M3 — sub-view within the launcher: 'list' | 'availability' | 'detail'
+  // | 'settings' | 'override'.  `selected` carries the active circle for
+  // detail/settings/override.
+  const [view, setView] = useState('list');
   const [items, setItems] = useState([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+
+  // M3 — AsyncStorage-backed circle stores (keys match web's localStorage
+  // convention).  Created once; the sub-screens load/save through them.
+  const policyStore       = useMemo(() => makeCirclePolicyStoreRN(AsyncStorage), []);
+  const overrideStore     = useMemo(() => makeMemberOverrideStoreRN(AsyncStorage), []);
+  const availabilityStore = useMemo(() => makeAvailabilityStoreRN(AsyncStorage), []);
 
   const callSkill = useMemo(
     () => (bundle?.callSkill ? makeResolvingCallSkill(bundle.callSkill) : null),
@@ -52,6 +69,7 @@ export default function CircleLauncherScreen({ bundle, onBack }) {
   const openCircle = useCallback(async (c) => {
     setActiveCircle(c.id);
     setSelected(c);
+    setView('detail');
     setItems([]);
     if (!callSkill) return;
     try {
@@ -60,7 +78,7 @@ export default function CircleLauncherScreen({ bundle, onBack }) {
     } catch { /* keep empty */ }
   }, [callSkill]);
 
-  const closeCircle = () => { setActiveCircle(null); setSelected(null); setItems([]); };
+  const closeCircle = () => { setActiveCircle(null); setSelected(null); setItems([]); setView('list'); };
 
   const submitCreate = useCallback(async () => {
     const name = newName.trim();
@@ -73,8 +91,25 @@ export default function CircleLauncherScreen({ bundle, onBack }) {
     load();
   }, [newName, bundle, load]);
 
+  if (view === 'availability') {
+    return <CircleAvailabilityScreen store={availabilityStore} onBack={() => setView('list')} />;
+  }
+  if (selected && view === 'settings') {
+    return <CircleSettingsScreen store={policyStore} circleId={selected.id} onBack={() => setView('detail')} />;
+  }
+  if (selected && view === 'override') {
+    return <CircleOverrideScreen store={overrideStore} circleId={selected.id} onBack={() => setView('detail')} />;
+  }
   if (selected) {
-    return <CircleDetail circle={selected} items={items} onBack={closeCircle} />;
+    return (
+      <CircleDetail
+        circle={selected}
+        items={items}
+        onBack={closeCircle}
+        onSettings={() => setView('settings')}
+        onMine={() => setView('override')}
+      />
+    );
   }
 
   return (
@@ -85,6 +120,14 @@ export default function CircleLauncherScreen({ bundle, onBack }) {
             <Text style={styles.back}>← chat</Text>
           </Pressable>
         ) : null}
+        <Pressable
+          onPress={() => setView('availability')}
+          accessibilityRole="button"
+          testID="circle-availability-open"
+          style={styles.availBtn}
+        >
+          <Text style={styles.availText}>{t('circle.availability.title')}</Text>
+        </Pressable>
       </View>
       <Text style={styles.title}>{t('circle.title')}</Text>
 
@@ -140,9 +183,9 @@ export default function CircleLauncherScreen({ bundle, onBack }) {
   );
 }
 
-function CircleDetail({ circle, items, onBack }) {
+function CircleDetail({ circle, items, onBack, onSettings, onMine }) {
   return (
-    <View style={styles.page}>
+    <View style={styles.page} testID="circle-detail">
       <View style={styles.bar}>
         <Pressable onPress={onBack} accessibilityRole="button">
           <Text style={styles.back}>{t('circle.back')}</Text>
@@ -152,6 +195,14 @@ function CircleDetail({ circle, items, onBack }) {
       {circle.memberCount != null ? (
         <Text style={styles.tileMeta}>{t('circle.members', { count: circle.memberCount })}</Text>
       ) : null}
+      <View style={styles.detailActions}>
+        <Pressable onPress={onSettings} accessibilityRole="button" testID="circle-detail-settings" style={styles.detailAction}>
+          <Text style={styles.detailActionText}>{t('circle.settings.title')}</Text>
+        </Pressable>
+        <Pressable onPress={onMine} accessibilityRole="button" testID="circle-detail-mine" style={styles.detailAction}>
+          <Text style={styles.detailActionText}>{t('circle.override.title')}</Text>
+        </Pressable>
+      </View>
       <ScrollView contentContainerStyle={styles.list}>
         {(!items || items.length === 0) ? (
           <Text style={styles.muted}>{t('circle.detail_empty')}</Text>
@@ -171,8 +222,13 @@ function CircleDetail({ circle, items, onBack }) {
 
 const styles = StyleSheet.create({
   page:       { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fdfaf1' },
-  bar:        { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
+  bar:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 22 },
   back:       { fontSize: 13, color: '#6a6a6a' },
+  availBtn:   { marginLeft: 'auto' },
+  availText:  { fontSize: 13, color: '#8a6d1f', fontWeight: '600' },
+  detailActions:   { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 },
+  detailAction:    { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: '#d8d2c0', backgroundColor: '#fbf8ed' },
+  detailActionText: { fontSize: 12, color: '#6a6a6a' },
   title:      { fontSize: 20, fontWeight: '600', marginVertical: 10 },
   list:       { gap: 6, paddingBottom: 32 },
   tile:       { padding: 13, borderWidth: 1, borderColor: '#e6e0cf', borderRadius: 8, backgroundColor: '#fbf8ed' },
