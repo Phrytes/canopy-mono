@@ -36,7 +36,8 @@ import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
 import { normalizeCircleMembers } from '../../src/v2/circleMembers.js';
 import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
-import { makeProposal } from '../../src/v2/circleConsensus.js';
+import { makeProposal, pendingApprovers } from '../../src/v2/circleConsensus.js';
+import { createProposalStore, localStorageProposalIo } from '../../src/v2/circleProposalStore.js';
 import { mergeAvailability } from '../../src/v2/memberAvailability.js';
 import { createAvailabilityStore, localStorageAvailabilityIo } from '../../src/v2/memberAvailability.js';
 import { renderCircleAvailability } from './circleAvailability.js';
@@ -54,6 +55,8 @@ import { renderCircleOverride } from './circleOverride.js';
 const policyStore = createCirclePolicyStore(localStoragePolicyIo());
 const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
 const availabilityStore = createAvailabilityStore(localStorageAvailabilityIo());
+// P6.2 — persisted pending proposals (multi-admin consensus).
+const proposalStore = createProposalStore({ io: localStorageProposalIo() });
 // Cross-circle Stream (board 5B) reads this firehose; the agent's
 // publishEvent appends to it during boot.
 const eventLog = new EventLog({ initial: [], muted: [] });
@@ -329,11 +332,24 @@ async function showOverride(id) {
 async function showSettings(id) {
   let working = await policyStore.get(id);
   const consensusActive = () => !!working.consensusRequired && (working.admins?.length ?? 0) >= 2;
+  // P6.2 — load pending proposals so the banner can surface the count of
+  // outstanding "waiting on N admins" approvals on settings entry.
+  let pending = await proposalStore.listForCircle(id);
+  const pendingCount = () => pending.filter((p) => p.status !== 'ready').length;
+  const pendingNote = () => {
+    if (pendingCount() === 0) return consensusActive() ? t('circle.settings.pending') : undefined;
+    // Build a "waiting on Pieter, Sara" string from the first pending proposal.
+    const first = pending.find((p) => p.status !== 'ready');
+    const waiting = first ? pendingApprovers(first) : [];
+    return waiting.length
+      ? t('circle.settings.pending_waiting', { who: waiting.join(', ') })
+      : t('circle.settings.pending');
+  };
   const rerender = () => renderCircleSettings(rootEl, {
     policy: working,
     t,
     saveLabel: consensusActive() ? t('circle.settings.send_proposal') : undefined,
-    note: consensusActive() ? t('circle.settings.pending') : undefined,
+    note: pendingNote(),
     onChange: (patch) => { working = mergeCirclePolicy(working, patch); rerender(); },
     onBack: () => showDetail(id),
     onSave: async () => {
@@ -342,9 +358,22 @@ async function showSettings(id) {
         showDetail(id);
         return;
       }
-      // Consensus required: record a pending proposal. Cross-admin delivery
-      // (reuse the groupRedeem envelope) lands in 1.3b — not applied yet.
-      makeProposal({ circleId: id, patch: working, proposedBy: null, policy: working });
+      // P6.2 — record + persist the pending proposal.  Cross-admin
+      // delivery (NKN fan-out + receive handler) is the V1 follow-up;
+      // single-device approval works on-device today via approveProposal +
+      // proposalStore.updateOne, and unanimous-approve commits via
+      // policyStore.update + proposalStore.remove.
+      const proposal = makeProposal({
+        circleId: id, patch: working, proposedBy: null, policy: working,
+      });
+      await proposalStore.save(proposal);
+      if (proposal.status === 'ready') {
+        // Single admin / self-only consensus → commit immediately.
+        await policyStore.update(id, working);
+        await proposalStore.remove(proposal.id);
+      } else {
+        pending = await proposalStore.listForCircle(id);
+      }
       showDetail(id);
     },
   });

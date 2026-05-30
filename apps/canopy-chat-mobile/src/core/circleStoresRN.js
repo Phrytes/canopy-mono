@@ -16,6 +16,8 @@ import {
   createMemberOverrideStore,
   createAvailabilityStore,
   podPolicyIo, tieredPolicyIo,
+  // P6.2 — multi-admin proposal persistence on RN.
+  createProposalStore,
 } from '@canopy-app/canopy-chat';
 // 5.4c — pod-writer build is also imported via relative path (Metro doesn't
 // honor package.json "exports" subpaths; same pattern as podNkn.js).
@@ -71,6 +73,28 @@ export function makeMemberOverrideStoreRN(storage) {
 
 export function makeAvailabilityStoreRN(storage) {
   return createAvailabilityStore(asyncFixedIo('cc.availability', storage));
+}
+
+/**
+ * P6.2 — proposal store IO is `{ load(key), save(key, value) }` shaped
+ * (different from the per-id stores); a small adapter passes the
+ * caller-supplied key through to AsyncStorage verbatim.
+ */
+export function asyncRawIo(storage) {
+  return {
+    load: async (key) => {
+      try { const s = await storage.getItem(key); return s ? JSON.parse(s) : null; }
+      catch { return null; }
+    },
+    save: async (key, value) => {
+      try { await storage.setItem(key, JSON.stringify(value)); }
+      catch { /* ignore */ }
+    },
+  };
+}
+
+export function makeProposalStoreRN(storage) {
+  return createProposalStore({ io: asyncRawIo(storage) });
 }
 
 /**

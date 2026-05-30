@@ -29,6 +29,8 @@ import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
 import {
   makeCirclePolicyStoreRN, makeMemberOverrideStoreRN, makeAvailabilityStoreRN,
+  // P6.2 — persisted multi-admin proposals.
+  makeProposalStoreRN,
 } from '../../core/circleStoresRN.js';
 import CircleSettingsScreen from './CircleSettingsScreen.js';
 import CircleOverrideScreen from './CircleOverrideScreen.js';
@@ -116,6 +118,9 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
   const policyStore       = useMemo(() => makeCirclePolicyStoreRN(AsyncStorage), []);
   const overrideStore     = useMemo(() => makeMemberOverrideStoreRN(AsyncStorage), []);
   const availabilityStore = useMemo(() => makeAvailabilityStoreRN(AsyncStorage), []);
+  // P6.2 — multi-admin proposal store.  Settings consults this to persist
+  // pending consensus proposals + commit on unanimous approval.
+  const proposalStore     = useMemo(() => makeProposalStoreRN(AsyncStorage), []);
 
   const callSkill = useMemo(
     () => (bundle?.callSkill ? makeResolvingCallSkill(bundle.callSkill) : null),
@@ -205,7 +210,14 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
     );
   }
   if (selected && view === 'settings') {
-    return <CircleSettingsScreen store={policyStore} circleId={selected.id} onBack={() => setView('detail')} />;
+    return (
+      <CircleSettingsScreen
+        store={policyStore}
+        proposalStore={proposalStore}
+        circleId={selected.id}
+        onBack={() => setView('detail')}
+      />
+    );
   }
   if (selected && view === 'override') {
     return <CircleOverrideScreen store={overrideStore} circleId={selected.id} onBack={() => setView('detail')} />;
