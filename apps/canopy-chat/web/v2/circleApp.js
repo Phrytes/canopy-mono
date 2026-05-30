@@ -38,6 +38,7 @@ import { normalizeCircleMembers } from '../../src/v2/circleMembers.js';
 import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
 import { makeProposal, pendingApprovers } from '../../src/v2/circleConsensus.js';
 import { createProposalStore, localStorageProposalIo } from '../../src/v2/circleProposalStore.js';
+import { buildTilePreviews, bumpSeenAt } from '../../src/v2/circleTilePreviews.js';
 import { mergeAvailability } from '../../src/v2/memberAvailability.js';
 import { createAvailabilityStore, localStorageAvailabilityIo } from '../../src/v2/memberAvailability.js';
 import { renderCircleAvailability } from './circleAvailability.js';
@@ -79,11 +80,31 @@ function showTabBar(active) {
   });
 }
 
+// P6.3 — seenAt persistence: bumped on showDetail(id) so unread counts
+// reset after the user opens a circle.  One key holds {circleId → ts}.
+const SEEN_AT_KEY = 'cc.circleSeenAt';
+function readSeenAt() {
+  try { const raw = window.localStorage.getItem(SEEN_AT_KEY); return raw ? JSON.parse(raw) : {}; }
+  catch { return {}; }
+}
+function writeSeenAt(map) {
+  try { window.localStorage.setItem(SEEN_AT_KEY, JSON.stringify(map)); }
+  catch { /* quota / disabled */ }
+}
+
 function showLauncher() {
   setActiveCircle(null);
   try { sessionStorage.removeItem('cc.activeCircle'); } catch { /* ignore */ }
+  // P6.3 — project the EventLog into per-circle previews; tiles show a
+  // chat-style subtitle + unread badge when there's recent activity.
+  const previews = buildTilePreviews({
+    events:  eventLog.query({ excludeMuted: true }),
+    circles: circlesCache,
+    seenAt:  readSeenAt(),
+  });
   renderCircleLauncher(rootEl, {
     circles: circlesCache,
+    previews,
     t,
     onOpenCircle: showDetail,
     onNewCircle: createCircle,
@@ -162,6 +183,9 @@ async function showDetail(id) {
   hideCircleTabBar(tabBarEl);
   setActiveCircle(id);
   try { sessionStorage.setItem('cc.activeCircle', id); } catch { /* ignore */ }
+  // P6.3 — bump the seenAt marker so the next launcher render clears
+  // this circle's unread badge.
+  writeSeenAt(bumpSeenAt(readSeenAt(), id));
   const circle = circlesCache.find((c) => c.id === id) || { id };
   // 5.9e — when `view` is 'chat' the launcher routes straight to the
   // classic chat shell instead of opening the action-grid detail.  The

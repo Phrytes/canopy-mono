@@ -11,6 +11,10 @@ import { circleTint } from '../../src/v2/theme.js';
 
 export function renderCircleLauncher(container, {
   circles = [],
+  // P6.3 — per-circle preview map ({subtitle, ts, unread}); host computes
+  // via `buildTilePreviews` over the EventLog.  Null/absent → tiles show
+  // the member-count fallback (current behaviour).
+  previews = null,
   t,
   onOpenCircle,
   onNewCircle,
@@ -93,13 +97,32 @@ export function renderCircleLauncher(container, {
     name.textContent = c.name;
     body.appendChild(name);
 
-    if (c.memberCount != null) {
+    // P6.3 — activity subtitle replaces the member-count line when a
+    // recent event carries renderable text (board 5A).  Falls back to
+    // member-count when the preview map has no subtitle for this id.
+    const preview = previews ? previews[c.id] : null;
+    if (preview && typeof preview.subtitle === 'string' && preview.subtitle) {
+      const meta = document.createElement('div');
+      meta.className = 'circle-tile__meta';
+      meta.textContent = preview.subtitle;
+      body.appendChild(meta);
+    } else if (c.memberCount != null) {
       const meta = document.createElement('div');
       meta.className = 'circle-tile__meta';
       meta.textContent = tr('circle.members', { count: c.memberCount });
       body.appendChild(meta);
     }
     tile.appendChild(body);
+
+    // P6.3 — unread badge (red circle with the count).  Surfaces only
+    // when the preview has unread > 0.
+    if (preview && preview.unread > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'circle-tile__unread';
+      badge.setAttribute('aria-label', tr('circle.tile_unread', { count: preview.unread }));
+      badge.textContent = String(preview.unread);
+      tile.appendChild(badge);
+    }
 
     tile.addEventListener('click', () => {
       if (typeof onOpenCircle === 'function') onOpenCircle(c.id, c);

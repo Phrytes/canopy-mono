@@ -24,6 +24,8 @@ import {
   getCirclePolStatus, formatPolStatus,
   // P6.1 — per-kring feature-flag consumption.
   isFeatureEnabled,
+  // P6.3 — per-circle activity preview + unread badge.
+  buildTilePreviews, bumpSeenAt,
 } from '@canopy-app/canopy-chat';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
@@ -75,6 +77,26 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
   // P6.1 — selected circle's policy (loaded when `selected` changes); used
   // to gate detail action buttons on the Functies axis (board 4A).
   const [selectedPolicy, setSelectedPolicy] = useState(null);
+  // P6.3 — kring tile activity preview ({subtitle, ts, unread} per circle)
+  // + seenAt persistence (the per-circle "last-open" marker that drives the
+  // unread badge).  Loaded on mount; bumped on openCircle.
+  const [seenAt,   setSeenAt]   = useState({});
+  const [previews, setPreviews] = useState({});
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem('cc.circleSeenAt');
+        if (alive && raw) setSeenAt(JSON.parse(raw) || {});
+      } catch { /* fresh */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+  // Recompute the previews map whenever events / circles / seenAt change.
+  useEffect(() => {
+    const events = eventLog?.query ? eventLog.query({ excludeMuted: true }) : [];
+    setPreviews(buildTilePreviews({ events, circles, seenAt }));
+  }, [eventLog, circles, seenAt]);
 
   // P6.1 — refresh the selected circle's policy whenever `selected` changes,
   // so CircleDetail can gate its feature-bound buttons (houseRules,
@@ -145,6 +167,13 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
 
   const openCircle = useCallback(async (c) => {
     setActiveCircle(c.id);
+    // P6.3 — bump the seenAt marker so the unread badge clears on the
+    // next launcher render; persist to AsyncStorage for next boot.
+    setSeenAt((prev) => {
+      const next = bumpSeenAt(prev, c.id);
+      AsyncStorage.setItem('cc.circleSeenAt', JSON.stringify(next)).catch(() => {});
+      return next;
+    });
     // 5.9e — when the circle's `view` axis is 'chat', skip the action-grid
     // detail and route straight to the chat surface (the active-circle
     // dispatch from 5.3 already scopes posts to this circle's thread).
@@ -346,19 +375,37 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
             {circles.length === 0 ? (
               <Text style={styles.muted}>{t('circle.empty')}</Text>
             ) : (
-              circles.map((c) => (
-                <Pressable
-                  key={c.id}
-                  style={styles.tile}
-                  accessibilityRole="button"
-                  onPress={() => openCircle(c)}
-                >
-                  <Text style={styles.tileName}>{c.name}</Text>
-                  {c.memberCount != null ? (
-                    <Text style={styles.tileMeta}>{t('circle.members', { count: c.memberCount })}</Text>
-                  ) : null}
-                </Pressable>
-              ))
+              circles.map((c) => {
+                // P6.3 — preview-aware subtitle + unread badge (board 5A).
+                const pv = previews[c.id];
+                const subtitle = (pv && pv.subtitle)
+                  ? pv.subtitle
+                  : (c.memberCount != null ? t('circle.members', { count: c.memberCount }) : null);
+                const unread = pv?.unread ?? 0;
+                return (
+                  <Pressable
+                    key={c.id}
+                    style={styles.tile}
+                    accessibilityRole="button"
+                    onPress={() => openCircle(c)}
+                  >
+                    <View style={styles.tileBody}>
+                      <Text style={styles.tileName}>{c.name}</Text>
+                      {subtitle ? (
+                        <Text style={styles.tileMeta} numberOfLines={1}>{subtitle}</Text>
+                      ) : null}
+                    </View>
+                    {unread > 0 ? (
+                      <View
+                        style={styles.tileUnread}
+                        accessibilityLabel={t('circle.tile_unread', { count: unread })}
+                      >
+                        <Text style={styles.tileUnreadText}>{unread}</Text>
+                      </View>
+                    ) : null}
+                  </Pressable>
+                );
+              })
             )}
 
             {creating ? (
@@ -490,9 +537,17 @@ const styles = StyleSheet.create({
   detailActionText: { fontSize: 12, color: theme.color.inkSoft },
   title:      { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   list:       { gap: 6, paddingBottom: 32 },
-  tile:       { padding: 13, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card },
+  tile:       { padding: 13, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  tileBody:   { flex: 1, minWidth: 0 },
   tileName:   { fontSize: 14, fontWeight: '600', color: theme.color.ink },
   tileMeta:   { fontSize: 11, color: theme.color.inkSoft, marginTop: 2 },
+  // P6.3 — unread badge on the tile (board 5A).
+  tileUnread: {
+    minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11,
+    backgroundColor: theme.color.accent,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  tileUnreadText: { color: theme.color.white, fontSize: 12, fontWeight: '700' },
   muted:      { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
   newBtn:     { marginTop: 12, padding: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.color.line, borderRadius: 8, alignItems: 'center' },
   newText:    { color: theme.color.inkSoft },
