@@ -8,6 +8,7 @@
     },
     "new":     { "text": "+ nieuwe kring", "doc": "Create-a-new-circle entry on the launcher." },
     "members": { "text": "{{count}} leden", "doc": "Member count on a circle tile; {{count}} interpolated." },
+    "tile_unread": { "text": "{{count}} ongelezen", "doc": "Accessible label for the unread badge on a circle tile (P6.3)." },
     "empty":   { "text": "Nog geen kringen.", "doc": "Shown when the launcher has no circles." },
     "loading": { "text": "Kringen laden…", "doc": "Shown while circles are being fetched." },
     "back":    { "text": "← kringen", "doc": "Back link from a circle detail view to the launcher." },

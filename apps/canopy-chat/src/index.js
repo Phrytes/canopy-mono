@@ -60,6 +60,8 @@ export { makeProposal, approveProposal, pendingApprovers } from './v2/circleCons
 // P6.2 — persistence layer for multi-admin proposals.
 export { createProposalStore, localStorageProposalIo } from './v2/circleProposalStore.js';
 export { eventCircleId, buildCircleStream } from './v2/circleStream.js';
+// P6.3 — per-circle activity preview + unread count for launcher tiles.
+export { buildTilePreviews, renderSubtitle, bumpSeenAt } from './v2/circleTilePreviews.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).

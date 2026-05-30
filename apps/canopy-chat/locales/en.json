@@ -8,6 +8,7 @@
     },
     "new":     { "text": "+ new circle", "doc": "Create-a-new-circle entry on the launcher." },
     "members": { "text": "{{count}} members", "doc": "Member count on a circle tile; {{count}} interpolated." },
+    "tile_unread": { "text": "{{count}} unread", "doc": "Accessible label for the unread badge on a circle tile (P6.3)." },
     "empty":   { "text": "No circles yet.", "doc": "Shown when the launcher has no circles." },
     "loading": { "text": "Loading circles…", "doc": "Shown while circles are being fetched." },
     "back":    { "text": "← circles", "doc": "Back link from a circle detail view to the launcher." },
