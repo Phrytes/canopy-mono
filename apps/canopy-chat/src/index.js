@@ -71,6 +71,11 @@ export {
   isRecipientUnavailable, buildUnavailableNotice,
   createMessageQueue,
 } from './v2/wederkerigheid.js';
+// P6.6 — auto-hop-prompt when a skill search returns no in-circle hits.
+export {
+  shouldAutoSuggestHop, buildHopPromptCard,
+  rememberDismissed, hasDismissed,
+} from './v2/hopPrompt.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).

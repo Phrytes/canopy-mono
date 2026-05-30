@@ -169,6 +169,13 @@
       "withdraw":         { "text": "Withdraw", "doc": "Discard the typed message." },
       "no_delivery_note": { "text": "{{name}} won't be notified you tried.", "doc": "Board 5C non-event clarification." }
     },
+    "hopPrompt": {
+      "title":     { "text": "Search further?", "doc": "Board 7A auto-hop-prompt card heading (P6.6)." },
+      "body":      { "text": "No one in your circles matches \"{{skill}}\". Want me to search via your {{count}} eligible contact(s)?", "doc": "Card body." },
+      "body_anon": { "text": "No one in your circles matches that. Want me to search via your {{count}} eligible contact(s)?", "doc": "Anon body." },
+      "accept":    { "text": "Yes, one step further", "doc": "Primary CTA." },
+      "dismiss":   { "text": "Skip", "doc": "Secondary CTA." }
+    },
     "rules": {
       "title":         { "text": "House rules", "doc": "Rules editor heading (board 3B)." },
       "save":          { "text": "Save rules", "doc": "Save the rules document." },
