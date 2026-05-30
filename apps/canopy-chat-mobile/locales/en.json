@@ -81,6 +81,9 @@
       "chatOff":            { "text": "Turn chat off", "doc": "Override: silence this circle's chat for me." },
       "revealOpen":         { "text": "Show my name to all members", "doc": "Override: reveal my real name circle-wide." },
       "agentsMayContactMe": { "text": "Agents may contact me", "doc": "Override: allow LLM agents to address me." },
+      "push":               { "text": "Push notifications", "doc": "Override section (P6.M4)." },
+      "pushOnMention":      { "text": "Push when @you", "doc": "Push on mention — default on." },
+      "pushOnEveryMessage": { "text": "Push on every message", "doc": "Push on every — default off." },
       "flowThrough":        { "text": "Flow-through to My things", "doc": "Override section: route circle items into my personal circle." },
       "tasksToPersonal":    { "text": "Tasks → My things", "doc": "Override: claimed circle tasks land in my personal list." },
       "calendarToPersonal": { "text": "Calendar → my calendar", "doc": "Override: circle events also show in my calendar." }
