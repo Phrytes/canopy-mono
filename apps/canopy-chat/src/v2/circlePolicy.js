@@ -109,16 +109,26 @@ export const DEFAULT_MEMBER_OVERRIDE = {
   chatOff:            false,
   revealOpen:         false,
   agentsMayContactMe: true,
+  // P6.M4 (board 6A) — two separate push toggles.  Mentions are on by
+  // default so an admin/owner mentioning you doesn't fall silent; the
+  // "every message" toggle is off by default so a busy circle doesn't
+  // spam the notification tray.
+  push:               { onMention: true, onEveryMessage: false },
   flowThrough:        { tasksToPersonal: false, calendarToPersonal: false },
 };
 
 export function normalizeMemberOverride(stored = {}) {
   const o = stored && typeof stored === 'object' ? stored : {};
   const ft = o.flowThrough && typeof o.flowThrough === 'object' ? o.flowThrough : {};
+  const ps = o.push && typeof o.push === 'object' ? o.push : {};
   return {
     chatOff:            !!o.chatOff,
     revealOpen:         !!o.revealOpen,
     agentsMayContactMe: typeof o.agentsMayContactMe === 'boolean' ? o.agentsMayContactMe : true,
+    push: {
+      onMention:      typeof ps.onMention      === 'boolean' ? ps.onMention      : true,
+      onEveryMessage: typeof ps.onEveryMessage === 'boolean' ? ps.onEveryMessage : false,
+    },
     flowThrough: {
       tasksToPersonal:    !!ft.tasksToPersonal,
       calendarToPersonal: !!ft.calendarToPersonal,
@@ -131,6 +141,19 @@ export function mergeMemberOverride(base, patch = {}) {
   return normalizeMemberOverride({
     ...b,
     ...patch,
+    push:        { ...b.push,        ...(patch.push        || {}) },
     flowThrough: { ...b.flowThrough, ...(patch.flowThrough || {}) },
   });
+}
+
+/**
+ * P6.M4 — decide whether to push a notification given the override + the
+ * message kind ('mention' | 'message').  Pure; consumers wire this into
+ * the existing notifier flow ([[5.7b]] isSuppressed hook).
+ */
+export function shouldPushNotify(override, kind) {
+  const o = normalizeMemberOverride(override);
+  if (kind === 'mention') return o.push.onMention;
+  if (kind === 'message') return o.push.onEveryMessage;
+  return false;
 }

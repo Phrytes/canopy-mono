@@ -50,6 +50,8 @@ export {
   // P6.1 — feature-flag consumption seam.
   isFeatureEnabled, enabledFeatures,
   DEFAULT_MEMBER_OVERRIDE, normalizeMemberOverride, mergeMemberOverride,
+  // P6.M4 — split @-mention vs every-message push toggles (board 6A).
+  shouldPushNotify,
 } from './v2/circlePolicy.js';
 export {
   createCirclePolicyStore, localStoragePolicyIo,

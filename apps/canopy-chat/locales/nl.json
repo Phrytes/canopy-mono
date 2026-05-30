@@ -88,6 +88,9 @@
       "chatOff":            { "text": "Chat uitzetten", "doc": "Override: silence this circle's chat for me." },
       "revealOpen":         { "text": "Mijn naam tonen aan alle leden", "doc": "Override: reveal my real name circle-wide." },
       "agentsMayContactMe": { "text": "Agents mogen mij aanspreken", "doc": "Override: allow LLM agents to address me." },
+      "push":               { "text": "Pushmeldingen", "doc": "Override section (P6.M4)." },
+      "pushOnMention":      { "text": "Pushmelding bij @jou", "doc": "Push when mentioned — default on." },
+      "pushOnEveryMessage": { "text": "Pushmelding bij elk bericht", "doc": "Push on every message — default off." },
       "flowThrough":        { "text": "Doorstroom naar Mijn dingen", "doc": "Override section: route circle items into my personal circle." },
       "tasksToPersonal":    { "text": "Taken → Mijn dingen", "doc": "Override: claimed circle tasks land in my personal list." },
       "calendarToPersonal": { "text": "Agenda → mijn agenda", "doc": "Override: circle events also show in my calendar." }

@@ -4,6 +4,7 @@ import {
   normalizeCirclePolicy, mergeCirclePolicy,
   isFeatureEnabled, enabledFeatures,
   DEFAULT_MEMBER_OVERRIDE, normalizeMemberOverride, mergeMemberOverride,
+  shouldPushNotify,
 } from '../../src/v2/circlePolicy.js';
 
 describe('circlePolicy · normalizeCirclePolicy', () => {
@@ -113,5 +114,47 @@ describe('memberOverride', () => {
     const base = normalizeMemberOverride({ flowThrough: { tasksToPersonal: true } });
     const next = mergeMemberOverride(base, { flowThrough: { calendarToPersonal: true } });
     expect(next.flowThrough).toEqual({ tasksToPersonal: true, calendarToPersonal: true });
+  });
+
+  // P6.M4 — split push toggles.
+  it('defaults push to {onMention: true, onEveryMessage: false} (board 6A)', () => {
+    expect(DEFAULT_MEMBER_OVERRIDE.push).toEqual({ onMention: true, onEveryMessage: false });
+    expect(normalizeMemberOverride({}).push).toEqual({ onMention: true, onEveryMessage: false });
+  });
+
+  it('coerces push keys to booleans + preserves explicit values', () => {
+    const o = normalizeMemberOverride({ push: { onMention: false, onEveryMessage: 'y' /* non-bool */ } });
+    expect(o.push.onMention).toBe(false);
+    expect(o.push.onEveryMessage).toBe(false);
+    const o2 = normalizeMemberOverride({ push: { onEveryMessage: true } });
+    expect(o2.push).toEqual({ onMention: true, onEveryMessage: true });
+  });
+
+  it('deep-merges push on edit', () => {
+    const base = normalizeMemberOverride({ push: { onMention: true, onEveryMessage: false } });
+    const next = mergeMemberOverride(base, { push: { onEveryMessage: true } });
+    expect(next.push).toEqual({ onMention: true, onEveryMessage: true });
+  });
+});
+
+describe('shouldPushNotify (P6.M4)', () => {
+  it('returns push.onMention for kind=mention', () => {
+    expect(shouldPushNotify({ push: { onMention: true,  onEveryMessage: false } }, 'mention')).toBe(true);
+    expect(shouldPushNotify({ push: { onMention: false, onEveryMessage: false } }, 'mention')).toBe(false);
+  });
+
+  it('returns push.onEveryMessage for kind=message', () => {
+    expect(shouldPushNotify({ push: { onMention: true,  onEveryMessage: true  } }, 'message')).toBe(true);
+    expect(shouldPushNotify({ push: { onMention: true,  onEveryMessage: false } }, 'message')).toBe(false);
+  });
+
+  it('uses the defaults when override is empty', () => {
+    expect(shouldPushNotify({}, 'mention')).toBe(true);
+    expect(shouldPushNotify({}, 'message')).toBe(false);
+  });
+
+  it('returns false for unknown kinds', () => {
+    expect(shouldPushNotify(DEFAULT_MEMBER_OVERRIDE, 'bogus')).toBe(false);
+    expect(shouldPushNotify(DEFAULT_MEMBER_OVERRIDE)).toBe(false);
   });
 });
