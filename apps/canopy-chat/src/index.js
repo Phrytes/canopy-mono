@@ -79,6 +79,12 @@ export {
 // P6.7 — skill-match source: rank circle members / agents / hop candidates
 // against a free-text question (board 8B).  Renderer is `buildSkillMatches`.
 export { findSkillMatches, tokenize as tokenizeSkillQuery } from './v2/findSkillMatches.js';
+// P6.8 — Nearby screen model (board 8C): intersect local-network peers with my skills.
+export {
+  buildNearbyModel,
+  pickSkillText as pickNearbySkillText,
+  pickPeerLabel as pickNearbyPeerLabel,
+} from './v2/circleNearby.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
