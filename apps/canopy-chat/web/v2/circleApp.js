@@ -39,6 +39,7 @@ import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolic
 import { makeProposal, pendingApprovers } from '../../src/v2/circleConsensus.js';
 import { createProposalStore, localStorageProposalIo } from '../../src/v2/circleProposalStore.js';
 import { buildTilePreviews, bumpSeenAt } from '../../src/v2/circleTilePreviews.js';
+import { makeAfterClaimHook } from '../../src/v2/claimRouter.js';
 import { mergeAvailability } from '../../src/v2/memberAvailability.js';
 import { createAvailabilityStore, localStorageAvailabilityIo } from '../../src/v2/memberAvailability.js';
 import { renderCircleAvailability } from './circleAvailability.js';
@@ -427,6 +428,33 @@ async function boot() {
       rawCallSkill = agent.callSkill;
       resolveCallSkill = makeResolvingCallSkill(agent.callSkill);
       sources = circleSourcesFromAgent({ callSkill: resolveCallSkill, circlesStore: agent.circlesStore });
+      // P6.5 — wire the claim-router hook now that callSkill + override
+      // store are both available.  On claim with `tasksToPersonal` on,
+      // mirror the claimed task into the primary crew so it shows up in
+      // "Mijn dingen".  Uses the existing primary crew (`cc-default`);
+      // future slice (P6.5-followup) will surface the resulting mirror
+      // tasks in an "ON YOUR LIST" section on the circle detail.
+      if (typeof agent.setAfterClaimHook === 'function') {
+        agent.setAfterClaimHook(makeAfterClaimHook({
+          getOverride:       (id) => overrideStore.get(id),
+          resolveCircleName: async (id) => circlesCache.find((c) => c.id === id)?.name ?? null,
+          addToPersonalCrew: async ({ text, originCircleId, originCircleName, originTaskId, tag }) => {
+            try {
+              return await agent.callSkill('tasks-v0', 'addTask', {
+                text,
+                crewId:           'cc-default',
+                originCircleId,
+                originCircleName,
+                originTaskId,
+                tags:             [tag],
+              });
+            } catch (err) {
+              console.warn('[circleApp] mirror addTask failed:', err?.message ?? err);
+              return null;
+            }
+          },
+        }));
+      }
     }
   } catch (err) {
     console.warn('[circleApp] agent boot failed — showing empty launcher', err);
