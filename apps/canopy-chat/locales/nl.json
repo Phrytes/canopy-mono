@@ -180,6 +180,14 @@
       "own_profile":    { "text": "Wat anderen van jou zien", "doc": "Footer heading." },
       "own_profile_empty": { "text": "Je hebt nog geen skills gepubliceerd.", "doc": "Empty-skills footer." }
     },
+    "podMigration": {
+      "same":              { "text": "Geen wijziging.", "doc": "Internal." },
+      "unknown":           { "text": "Onbekende pod-keuze.", "doc": "Defensive fallback." },
+      "up_empty":          { "text": "Nog niets te migreren — de kring is leeg.", "doc": "Going up + empty." },
+      "up_with_content":   { "text": "Bestaande inhoud wordt naar de nieuwe opslag verplaatst.", "doc": "Going up + has content." },
+      "down_with_content": { "text": "Teruggaan voegt inhoud samen — items die niet meer passen worden samengevoegd of verdwijnen. Vraag de andere admin eerst.", "doc": "Going down (non-none)." },
+      "down_to_none":      { "text": "Terug naar \"geen pod\" kan niet zodra er inhoud in een pod staat. Vraag de andere admin als je echt opnieuw wil beginnen.", "doc": "Going to none (blocked)." }
+    },
     "agentRequest": {
       "title":      { "text": "{{requester}} wil een agent toevoegen", "doc": "Board 4B card heading (P6.10)." },
       "title_anon": { "text": "Een agent wacht op admin-goedkeuring", "doc": "Anon form." },
