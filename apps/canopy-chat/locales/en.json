@@ -100,11 +100,20 @@
       "holiday":       { "text": "Holiday mode", "doc": "Availability section: away until a date." },
       "holiday_on":    { "text": "Holiday mode on", "doc": "Holiday toggle label." },
       "holiday_until": { "text": "Until", "doc": "Holiday end-date label." },
+      "extend_7":      { "text": "+ 7 days", "doc": "Board 6C extension shortcut (P6.M5)." },
+      "extend_14":     { "text": "+ 14 days", "doc": "Board 6C extension shortcut (P6.M5)." },
+      "edit_end":      { "text": "Adjust end date", "doc": "Opens the date picker for an absolute end date." },
       "quietHours":    { "text": "Quiet hours", "doc": "Availability section: defer pushes in a window." },
       "quiet_on":      { "text": "Defer pushes during quiet hours", "doc": "Quiet-hours toggle label." },
       "from":          { "text": "From", "doc": "Quiet-hours start time label." },
       "to":            { "text": "To", "doc": "Quiet-hours end time label." },
       "weekends":      { "text": "Weekends all day too", "doc": "Quiet-hours weekend toggle label." }
+    },
+    "holiday": {
+      "autoReply":            { "text": "{{name}} is away until {{until}}.", "doc": "Outgoing auto-reply shown to peers who try to reach me during holiday (board 6C · P6.M5)." },
+      "autoReplyAnon":        { "text": "This person is away until {{until}}.", "doc": "Anon form when name isn't resolvable." },
+      "autoReplyNoEnd":       { "text": "{{name}} is away.", "doc": "When holiday has no end date." },
+      "autoReplyAnonNoEnd":   { "text": "This person is away.", "doc": "Anon + no end date." }
     },
     "viewAs": {
       "title":    { "text": "View as…", "doc": "Heading of the View-as reveal preview (board 4C)." },

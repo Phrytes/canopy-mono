@@ -93,11 +93,20 @@
       "holiday":       { "text": "Vakantiestand", "doc": "Availability section: away until a date." },
       "holiday_on":    { "text": "Vakantiestand aan", "doc": "Holiday toggle label." },
       "holiday_until": { "text": "Tot en met", "doc": "Holiday end-date label." },
+      "extend_7":      { "text": "+ 7 dagen", "doc": "Extension shortcut (P6.M5)." },
+      "extend_14":     { "text": "+ 14 dagen", "doc": "Extension shortcut (P6.M5)." },
+      "edit_end":      { "text": "Einddatum aanpassen", "doc": "Open date picker." },
       "quietHours":    { "text": "Stilte-uren", "doc": "Availability section: defer pushes in a window." },
       "quiet_on":      { "text": "Pushmeldingen uitstellen tijdens stilte-uren", "doc": "Quiet-hours toggle label." },
       "from":          { "text": "Van", "doc": "Quiet-hours start time label." },
       "to":            { "text": "Tot", "doc": "Quiet-hours end time label." },
       "weekends":      { "text": "In het weekend ook overdag", "doc": "Quiet-hours weekend toggle label." }
+    },
+    "holiday": {
+      "autoReply":            { "text": "{{name}} is t/m {{until}} niet bereikbaar.", "doc": "Auto-reply (P6.M5)." },
+      "autoReplyAnon":        { "text": "Deze persoon is t/m {{until}} niet bereikbaar.", "doc": "Anon form." },
+      "autoReplyNoEnd":       { "text": "{{name}} is niet bereikbaar.", "doc": "No-end." },
+      "autoReplyAnonNoEnd":   { "text": "Deze persoon is niet bereikbaar.", "doc": "Anon + no-end." }
     },
     "viewAs": {
       "title":    { "text": "Bekijk als…", "doc": "Heading of the View-as reveal preview (board 4C)." },
