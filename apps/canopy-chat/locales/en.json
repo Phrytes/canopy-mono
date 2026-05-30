@@ -207,6 +207,9 @@
       "accept":    { "text": "Yes, one step further", "doc": "Primary CTA — triggers the hop-relay request." },
       "dismiss":   { "text": "Skip", "doc": "Secondary CTA — records dismissal so we don't re-prompt the same query." }
     },
+    "skillMatches": {
+      "title": { "text": "Members with matching skills:", "doc": "Heading for the inline skill-match list (P6.7 #345) appended under /find replies." }
+    },
     "nearbyScreen": {
       "title":          { "text": "Nearby", "doc": "Board 8C — heading of the dedicated `HIER` screen (P6.8)." },
       "header":         { "text": "{{sharing}} of {{total}} share skills with you", "doc": "Header line above the row list." },
