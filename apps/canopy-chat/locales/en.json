@@ -180,6 +180,22 @@
       "own_profile":    { "text": "What others see of you", "doc": "Footer block heading; shows your own pseudonym + published-tier skills." },
       "own_profile_empty": { "text": "You haven't published any skills yet.", "doc": "Footer when no skills are published." }
     },
+    "viewAsSplit": {
+      "sees":          { "text": "What {{viewer}} sees", "doc": "Board 4C column header — visible attributes (P6.M2)." },
+      "sees_anon":     { "text": "What they see", "doc": "Anon form when viewer name is missing." },
+      "hides":         { "text": "What {{viewer}} doesn't see", "doc": "Board 4C column header — hidden attributes." },
+      "hides_anon":    { "text": "What they don't see", "doc": "Anon hidden form." },
+      "header":        { "text": "{{visible}} of {{total}} attributes visible", "doc": "Optional summary above the columns." },
+      "openness": {
+        "public":         { "text": "Public", "doc": "Openness chip — anyone." },
+        "public-locale":  { "text": "Public · in my area", "doc": "Openness chip." },
+        "members":        { "text": "Members", "doc": "Openness chip — any circle member." },
+        "circle-members": { "text": "This circle only", "doc": "Openness chip." },
+        "pairwise":       { "text": "1-on-1 reveals", "doc": "Openness chip." },
+        "family":         { "text": "Family", "doc": "Openness chip." },
+        "private":        { "text": "Private", "doc": "Openness chip — never visible." }
+      }
+    },
     "podMigration": {
       "same":              { "text": "No change.", "doc": "Internal — not surfaced (severity=none)." },
       "unknown":           { "text": "Unknown pod choice.", "doc": "Defensive fallback for unrecognised values." },

@@ -94,6 +94,10 @@ export {
 } from './v2/agentRequest.js';
 // P6.M1 — pod-migration warning on policy change (board 4A red callout).
 export { classifyPodChange, renderPodMigrationCopy } from './v2/podMigrationWarning.js';
+// P6.M2 — per-attribute view-as split (board 4C "WHAT SARA SEES / DOESN'T").
+export {
+  isVisibleTo, splitViewAsAttributes, viewAsCounts, OPENNESS_LEVELS,
+} from './v2/viewAsAttributes.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
