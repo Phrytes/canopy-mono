@@ -180,6 +180,19 @@
       "own_profile":    { "text": "Wat anderen van jou zien", "doc": "Footer heading." },
       "own_profile_empty": { "text": "Je hebt nog geen skills gepubliceerd.", "doc": "Empty-skills footer." }
     },
+    "agentRequest": {
+      "title":      { "text": "{{requester}} wil een agent toevoegen", "doc": "Board 4B card heading (P6.10)." },
+      "title_anon": { "text": "Een agent wacht op admin-goedkeuring", "doc": "Anon form." },
+      "who":        { "text": "Wie", "doc": "Label." },
+      "whoBody":    { "text": "{{name}}", "doc": "Agent identity body." },
+      "what":       { "text": "Wat doet 'ie", "doc": "Capabilities label." },
+      "access":     { "text": "Toegang", "doc": "Access-levels label." },
+      "approve":    { "text": "Goedkeur", "doc": "Primary CTA." },
+      "reject":     { "text": "Weiger", "doc": "Secondary CTA." },
+      "ask":        { "text": "Vragen…", "doc": "Tertiary CTA." },
+      "pending":    { "text": "In afwachting — wachten op {{who}}.", "doc": "Pending status." },
+      "blocked":    { "text": "Deze kring staat geen agents toe.", "doc": "Blocked state." }
+    },
     "rules": {
       "title":         { "text": "Huisregels", "doc": "Rules editor heading (board 3B)." },
       "save":          { "text": "Regels opslaan", "doc": "Save the rules document." },
