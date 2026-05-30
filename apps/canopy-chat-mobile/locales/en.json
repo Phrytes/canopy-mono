@@ -129,7 +129,12 @@
       "global_label": { "text": "Let trusted contacts relay my requests one hop", "doc": "Global hop-mode toggle (Stoop allowHopThrough)." },
       "explain":      { "text": "When you ask for something no one nearby has, a contact who allows it can pass your request one step further — to their contacts. Max one hop, and the relay is anonymized.", "doc": "Explanation of how hopping works." },
       "ask_relay":    { "text": "Ask to relay", "doc": "Button: ask the gate contact to relay the request one hop." },
-      "over_limit":   { "text": "Too many hops — requests travel at most one step.", "doc": "Shown when a chain exceeds max-one-hop." }
+      "over_limit":   { "text": "Too many hops — requests travel at most one step.", "doc": "Shown when a chain exceeds max-one-hop." },
+      "per_contact_title": { "text": "Per contact", "doc": "Board 7B section (P6.M6)." },
+      "mode_always":  { "text": "Always", "doc": "Per-contact mode." },
+      "mode_withOk":  { "text": "With my OK", "doc": "Per-contact mode." },
+      "mode_off":     { "text": "Off", "doc": "Per-contact mode." },
+      "default_label": { "text": "Default", "doc": "Global-stance fallback chip." }
     },
     "skills": {
       "editor_title":  { "text": "Skill", "doc": "Skill editor heading (board 8)." },
