@@ -76,6 +76,9 @@ export {
   shouldAutoSuggestHop, buildHopPromptCard,
   rememberDismissed, hasDismissed,
 } from './v2/hopPrompt.js';
+// P6.7 — skill-match source: rank circle members / agents / hop candidates
+// against a free-text question (board 8B).  Renderer is `buildSkillMatches`.
+export { findSkillMatches, tokenize as tokenizeSkillQuery } from './v2/findSkillMatches.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
