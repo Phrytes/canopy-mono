@@ -92,6 +92,8 @@ export {
   approveAgentRequest, rejectAgentRequest, pendingAgentApprovers,
   createAgentRequestStore,
 } from './v2/agentRequest.js';
+// P6.M1 — pod-migration warning on policy change (board 4A red callout).
+export { classifyPodChange, renderPodMigrationCopy } from './v2/podMigrationWarning.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).

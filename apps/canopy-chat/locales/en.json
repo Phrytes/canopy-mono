@@ -180,6 +180,14 @@
       "own_profile":    { "text": "What others see of you", "doc": "Footer block heading; shows your own pseudonym + published-tier skills." },
       "own_profile_empty": { "text": "You haven't published any skills yet.", "doc": "Footer when no skills are published." }
     },
+    "podMigration": {
+      "same":              { "text": "No change.", "doc": "Internal — not surfaced (severity=none)." },
+      "unknown":           { "text": "Unknown pod choice.", "doc": "Defensive fallback for unrecognised values." },
+      "up_empty":          { "text": "No migration needed yet — there's nothing to move.", "doc": "Going up + circle is empty." },
+      "up_with_content":   { "text": "Existing content will be migrated to the new storage choice.", "doc": "Going up + circle has content (severity=info)." },
+      "down_with_content": { "text": "Going back consolidates content — items that don't fit will be merged or lost. Ask the other admin first.", "doc": "Going down to a non-none level (severity=warn)." },
+      "down_to_none":      { "text": "You can't move back to \"no pod\" once content lives in a pod. Pick the other admin's flow if you really need to start over.", "doc": "Going all the way down (severity=block, allowed=false)." }
+    },
     "agentRequest": {
       "title":      { "text": "{{requester}} wants to add an agent", "doc": "Board 4B card heading on the admin's inbox (P6.10)." },
       "title_anon": { "text": "An agent is waiting for admin approval", "doc": "Anon form when the requester's name isn't resolvable." },
