@@ -62,6 +62,9 @@ export { createProposalStore, localStorageProposalIo } from './v2/circleProposal
 export { eventCircleId, buildCircleStream } from './v2/circleStream.js';
 // P6.3 — per-circle activity preview + unread count for launcher tiles.
 export { buildTilePreviews, renderSubtitle, bumpSeenAt } from './v2/circleTilePreviews.js';
+// P6.5 — claim router: mirror claimed tasks into the personal crew
+// when the per-circle override has flowThrough.tasksToPersonal.
+export { routeClaim, makeAfterClaimHook } from './v2/claimRouter.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).

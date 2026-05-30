@@ -106,6 +106,11 @@ export async function createRealHouseholdAgent(opts = {}) {
 
   const bus = new InternalBus();
 
+  // P6.5 — claim-router hook holder.  Hosts call agent.setAfterClaimHook(fn)
+  // post-construction (the hook typically needs agent.callSkill itself, so it
+  // can't be passed in opts).  Default to a no-op.
+  const claimRouterRef = { hook: typeof opts.afterClaimHook === 'function' ? opts.afterClaimHook : null };
+
   // Host agent — in-process app skills (household, tasks-v0, stoop,
   // folio, calendar).  No cross-peer; vault picks the standard browser
   // localStorage path.  Built manually because it's a pure backend.
@@ -1258,6 +1263,21 @@ export async function createRealHouseholdAgent(opts = {}) {
       // the chat-shell + user see WHY the task was rejected.
       const noteSuffix = (opId === 'rejectTask' && data.noteHint)
         ? ` — ${data.noteHint}` : '';
+      // P6.5 — claim router: when the override has
+      // flowThrough.tasksToPersonal, mirror the claimed task into the
+      // personal crew so it shows up in "Mijn dingen".  Fire-and-forget;
+      // the chat-shell envelope returns immediately.  Default hook is a
+      // no-op so existing tests keep their behaviour.
+      if (opId === 'claimTask' && typeof claimRouterRef.hook === 'function') {
+        const circleId = args?.crewId ?? args?.circleId ?? args?.groupId ?? null;
+        if (circleId) {
+          Promise.resolve(claimRouterRef.hook({ task, circleId, args }))
+            .catch((err) => publishEvent?.({
+              app: 'canopy-chat', type: 'claim-router-error',
+              payload: { circleId, taskId: task.id, error: err?.message ?? String(err) },
+            }));
+        }
+      }
       return {
         ok:      true,
         message: `✓ ${verbMap[opId]}: ${title}${noteSuffix}`,
@@ -1879,6 +1899,10 @@ export async function createRealHouseholdAgent(opts = {}) {
     manifest: mockHouseholdManifest,    // SAME declaration as v0.1.4 mock
     callSkill,
     llmProviders,
+    // P6.5 — host-injected claim router; called after every successful
+    // claimTask.  Hosts wire `makeAfterClaimHook` here once the agent +
+    // override store are both available.
+    setAfterClaimHook(fn) { claimRouterRef.hook = typeof fn === 'function' ? fn : null; },
     reset() { chores = SEED_CHORES.map((c) => ({ ...c })); },
     state() { return chores.map((c) => ({ ...c })); },
     meta: {
