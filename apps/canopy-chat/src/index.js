@@ -47,6 +47,8 @@ export { getActiveCircle, setActiveCircle, subscribeActiveCircle } from './v2/ac
 export {
   CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS,
   DEFAULT_CIRCLE_POLICY, normalizeCirclePolicy, mergeCirclePolicy,
+  // P6.1 — feature-flag consumption seam.
+  isFeatureEnabled, enabledFeatures,
   DEFAULT_MEMBER_OVERRIDE, normalizeMemberOverride, mergeMemberOverride,
 } from './v2/circlePolicy.js';
 export {

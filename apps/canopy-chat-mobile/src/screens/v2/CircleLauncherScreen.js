@@ -22,6 +22,8 @@ import {
   circleFilesFromListFiles,
   // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
   getCirclePolStatus, formatPolStatus,
+  // P6.1 — per-kring feature-flag consumption.
+  isFeatureEnabled,
 } from '@canopy-app/canopy-chat';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
@@ -68,6 +70,24 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
   const [items, setItems] = useState([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  // P6.1 — selected circle's policy (loaded when `selected` changes); used
+  // to gate detail action buttons on the Functies axis (board 4A).
+  const [selectedPolicy, setSelectedPolicy] = useState(null);
+
+  // P6.1 — refresh the selected circle's policy whenever `selected` changes,
+  // so CircleDetail can gate its feature-bound buttons (houseRules,
+  // memberDirectory).  Falls back to null on read failure → the helper
+  // applies feature defaults.
+  useEffect(() => {
+    if (!selected?.id) { setSelectedPolicy(null); return; }
+    let alive = true;
+    (async () => {
+      let p = null;
+      try { p = await policyStore.get(selected.id); } catch { /* defaults */ }
+      if (alive) setSelectedPolicy(p);
+    })();
+    return () => { alive = false; };
+  }, [selected, policyStore]);
 
   // 5.9c — passive "Nearby N device(s)" signal from MdnsTransport.  When the
   // bundle exposes mdns we mirror its connectionCount into state, subscribed
@@ -249,6 +269,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
         circle={selected}
         items={items}
         callSkill={callSkill}
+        policy={selectedPolicy}
         onBack={closeCircle}
         onSettings={() => setView('settings')}
         onMine={() => setView('override')}
@@ -359,7 +380,13 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
   );
 }
 
-function CircleDetail({ circle, items, callSkill, onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules }) {
+function CircleDetail({ circle, items, callSkill, policy, onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules }) {
+  // P6.1 — gate feature-bound action buttons.  houseRules and memberDirectory
+  // are the two design-mapped flags surfaced via this CircleDetail today;
+  // the rest (chat, noticeboard, tasks, lists, calendar, notes) gate
+  // content surfaces and are deferred to a follow-on slice.
+  const showRules    = isFeatureEnabled(policy, 'houseRules');
+  const showViewAs   = isFeatureEnabled(policy, 'memberDirectory');
   // 5.9d — Proof-of-Location placeholder. Probe `getPolStatus` on mount;
   // when unregistered (today's state) the helper returns {configured:false}
   // and the row renders "Not configured". Real attestation in [[5.9d-followup]].
@@ -392,9 +419,11 @@ function CircleDetail({ circle, items, callSkill, onBack, onSettings, onMine, on
         <Pressable onPress={onMine} accessibilityRole="button" testID="circle-detail-mine" style={styles.detailAction}>
           <Text style={styles.detailActionText}>{t('circle.override.title')}</Text>
         </Pressable>
-        <Pressable onPress={onViewAs} accessibilityRole="button" testID="circle-detail-viewas" style={styles.detailAction}>
-          <Text style={styles.detailActionText}>{t('circle.viewAs.title')}</Text>
-        </Pressable>
+        {showViewAs ? (
+          <Pressable onPress={onViewAs} accessibilityRole="button" testID="circle-detail-viewas" style={styles.detailAction}>
+            <Text style={styles.detailActionText}>{t('circle.viewAs.title')}</Text>
+          </Pressable>
+        ) : null}
         <Pressable onPress={onAdvisor} accessibilityRole="button" testID="circle-detail-advisor" style={styles.detailAction}>
           <Text style={styles.detailActionText}>{t('circle.advisor.title')}</Text>
         </Pressable>
@@ -404,9 +433,11 @@ function CircleDetail({ circle, items, callSkill, onBack, onSettings, onMine, on
         <Pressable onPress={onFiles} accessibilityRole="button" testID="circle-detail-files" style={styles.detailAction}>
           <Text style={styles.detailActionText}>{t('circle.folio.title')}</Text>
         </Pressable>
-        <Pressable onPress={onRules} accessibilityRole="button" testID="circle-detail-rules" style={styles.detailAction}>
-          <Text style={styles.detailActionText}>{t('circle.rules.title')}</Text>
-        </Pressable>
+        {showRules ? (
+          <Pressable onPress={onRules} accessibilityRole="button" testID="circle-detail-rules" style={styles.detailAction}>
+            <Text style={styles.detailActionText}>{t('circle.rules.title')}</Text>
+          </Pressable>
+        ) : null}
       </View>
       <View style={styles.polRow} testID="circle-detail-pol">
         <Text style={styles.polLabel}>{t('circle.pol.title')}</Text>

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_CIRCLE_POLICY, CIRCLE_FEATURES,
   normalizeCirclePolicy, mergeCirclePolicy,
+  isFeatureEnabled, enabledFeatures,
   DEFAULT_MEMBER_OVERRIDE, normalizeMemberOverride, mergeMemberOverride,
 } from '../../src/v2/circlePolicy.js';
 
@@ -29,6 +30,61 @@ describe('circlePolicy · normalizeCirclePolicy', () => {
 
   it('keeps only string admins', () => {
     expect(normalizeCirclePolicy({ admins: ['a', 2, null, 'b'] }).admins).toEqual(['a', 'b']);
+  });
+});
+
+describe('circlePolicy · isFeatureEnabled (P6.1)', () => {
+  it('returns the default for null / undefined / non-object policy', () => {
+    expect(isFeatureEnabled(null,      'chat')).toBe(true);   // default on
+    expect(isFeatureEnabled(undefined, 'tasks')).toBe(false); // default off
+    expect(isFeatureEnabled('garbage', 'houseRules')).toBe(true);
+    expect(isFeatureEnabled(42,        'memberDirectory')).toBe(true);
+  });
+
+  it('returns the default when policy has no .features field', () => {
+    expect(isFeatureEnabled({}, 'chat')).toBe(true);
+    expect(isFeatureEnabled({ view: 'chat' }, 'tasks')).toBe(false);
+    expect(isFeatureEnabled({ features: null }, 'houseRules')).toBe(true);
+  });
+
+  it('returns the explicit flag when set', () => {
+    const off = { features: { chat: false, houseRules: false } };
+    expect(isFeatureEnabled(off, 'chat')).toBe(false);
+    expect(isFeatureEnabled(off, 'houseRules')).toBe(false);
+    // unset → default
+    expect(isFeatureEnabled(off, 'memberDirectory')).toBe(true);
+  });
+
+  it('rejects unknown feature keys', () => {
+    expect(isFeatureEnabled({ features: { bogus: true } }, 'bogus')).toBe(false);
+    expect(isFeatureEnabled(DEFAULT_CIRCLE_POLICY,         'bogus')).toBe(false);
+  });
+
+  it('treats non-boolean flag values as the default', () => {
+    const garbage = { features: { chat: 'yes', tasks: 1 } };
+    expect(isFeatureEnabled(garbage, 'chat')).toBe(true);   // default on
+    expect(isFeatureEnabled(garbage, 'tasks')).toBe(false); // default off
+  });
+});
+
+describe('circlePolicy · enabledFeatures (P6.1)', () => {
+  it('returns the default-enabled set for a null/empty policy', () => {
+    // Defaults: chat, houseRules, memberDirectory.
+    expect(enabledFeatures(null)).toEqual(['chat', 'houseRules', 'memberDirectory']);
+    expect(enabledFeatures({})).toEqual(['chat', 'houseRules', 'memberDirectory']);
+  });
+
+  it('respects explicit on/off overrides + preserves CIRCLE_FEATURES order', () => {
+    const p = { features: {
+      chat: false, noticeboard: true, tasks: true,
+      houseRules: false, memberDirectory: true,
+    } };
+    expect(enabledFeatures(p)).toEqual(['noticeboard', 'tasks', 'memberDirectory']);
+  });
+
+  it('the full-on circle enables every CIRCLE_FEATURES key', () => {
+    const allOn = { features: Object.fromEntries(CIRCLE_FEATURES.map((k) => [k, true])) };
+    expect(enabledFeatures(allOn)).toEqual([...CIRCLE_FEATURES]);
   });
 });
 
