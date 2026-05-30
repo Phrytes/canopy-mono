@@ -136,7 +136,12 @@
       "global_label": { "text": "Laat vertrouwde contacten mijn vraag één stap doorgeven", "doc": "Global hop-mode toggle (Stoop allowHopThrough)." },
       "explain":      { "text": "Als je iets vraagt dat niemand dichtbij heeft, kan een contact die dat toestaat je vraag één stap verder doorgeven — aan hún contacten. Maximaal één hop, en de doorgifte is anoniem.", "doc": "Explanation of how hopping works." },
       "ask_relay":    { "text": "Vraag om door te geven", "doc": "Button: ask the gate contact to relay the request one hop." },
-      "over_limit":   { "text": "Te veel hops — vragen reizen maximaal één stap.", "doc": "Shown when a chain exceeds max-one-hop." }
+      "over_limit":   { "text": "Te veel hops — vragen reizen maximaal één stap.", "doc": "Shown when a chain exceeds max-one-hop." },
+      "per_contact_title": { "text": "Per contact", "doc": "Board 7B section (P6.M6)." },
+      "mode_always":  { "text": "Altijd", "doc": "Per-contact mode." },
+      "mode_withOk":  { "text": "Met mijn OK", "doc": "Per-contact mode." },
+      "mode_off":     { "text": "Uit", "doc": "Per-contact mode." },
+      "default_label": { "text": "Standaard", "doc": "Chip for global-stance fallback." }
     },
     "skills": {
       "editor_title":  { "text": "Vaardigheid", "doc": "Skill editor heading (board 8)." },

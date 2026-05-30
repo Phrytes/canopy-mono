@@ -106,6 +106,11 @@ export { actionsForStreamRow, buildStreamComposeContext } from './v2/streamActio
 export {
   extendHolidayDays, setHolidayUntil, buildHolidayAutoReply,
 } from './v2/holidayShortcuts.js';
+// P6.M6 — per-contact hop overrides (board 7B).
+export {
+  normalizeContactHopMode, effectiveHopMode, buildContactHopList,
+  HOP_PER_CONTACT_MODES,
+} from './v2/contactHopOverrides.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
