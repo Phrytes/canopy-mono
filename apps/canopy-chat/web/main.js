@@ -28,6 +28,14 @@ import {
   runBrief, createBriefCache,
   runFind,
   EventLog, RETENTION_MS,
+  // P6.4 #343 — chat-off consumer-side notice + save-for-later queue.
+  isRecipientUnavailable, buildUnavailableNotice, createMessageQueue,
+  // P6.6 #344 — auto-hop-prompt after empty in-circle skill search.
+  shouldAutoSuggestHop, buildHopPromptCard,
+  rememberDismissed, hasDismissed,
+  // P6.7 #345 — inline skill-match list under posted skill questions.
+  findSkillMatches,
+  normalizeCircleMembers,
 } from '../src/index.js';
 import { buildFormSpec, validateAndCoerce } from '../src/forms/buildFormSpec.js';
 import { renderStream }              from '../src/web/domAdapter.js';
@@ -2076,6 +2084,122 @@ function renderFormElicitation(route, thread) {
   renderActiveStream();
 }
 
+// P6.6 #344 — per-session dismissed-skill set for the auto-hop prompt
+// so back-to-back identical /find queries don't re-prompt.  Lives in
+// memory only; resets on reload (matches "skip" UX of board 7A).
+let hopPromptDismissed = new Set();
+
+// P6.4 #343 — save-for-later queue (one local store across DMs).  The
+// queue is wired today as a write-only sink; surfacing the queued
+// messages back to the sender + flushing on Bob's chat-on is the
+// deeper #343 follow-up.
+const wederkerigheidQueue = createMessageQueue({
+  io: {
+    load: async (key) => {
+      try { const raw = window.localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }
+      catch { return null; }
+    },
+    save: async (key, value) => {
+      try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* quota / disabled */ }
+    },
+  },
+});
+
+// P6.4 #343 — host-provided seam for reading the recipient's chat-off
+// for a given circle.  Today this returns null (no signal) → the
+// substrate collapses to "available", so the existing flow is intact.
+// When peer-availability sync lands (future slice), wire this to a
+// remote read (NKN ping, pod presence doc, …).
+async function defaultGetRecipientChatOff(/* { recipientId, circleId } */) { return null; }
+let getRecipientChatOff = defaultGetRecipientChatOff;
+
+// P6.6 #344 / P6.7 #345 — fetch hop info + circle members for /find
+// enrichment.  Both are best-effort: any failure collapses to "empty".
+async function fetchHopInfoForFind() {
+  try {
+    const hopMode = await callSkill('stoop', 'getHopMode', {});
+    const contacts = await callSkill('stoop', 'listContacts', {});
+    const list = Array.isArray(contacts?.items) ? contacts.items
+               : Array.isArray(contacts?.contacts) ? contacts.contacts
+               : Array.isArray(contacts) ? contacts : [];
+    const eligible = list.filter((c) => c?.hopThrough === true || c?.hopThrough === 'always' || c?.hopThrough === 'with-ok').length;
+    return {
+      hopGloballyOn:            hopMode?.global === true,
+      hopEligibleContactsCount: eligible,
+    };
+  } catch {
+    return { hopGloballyOn: false, hopEligibleContactsCount: 0 };
+  }
+}
+
+async function fetchMembersForFind(circleId) {
+  if (!circleId) return [];
+  try {
+    const raw = await callSkill('household', 'listGroupMembers', { groupId: circleId });
+    return normalizeCircleMembers(raw);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * P6.6 #344 + P6.7 #345 — after /find returns, append two extra shell
+ * bubbles when the underlying substrates say something useful:
+ *
+ *   1. Skill matches (P6.7): if the active circle has members whose
+ *      declared skills overlap the query, list the top 5 inline.
+ *   2. Hop prompt (P6.6): if /find returned zero items AND the user
+ *      has hop-eligible contacts AND hop is globally on AND we haven't
+ *      already dismissed this skill, surface the "Want me to search
+ *      one step further?" card body.
+ *
+ * Both are informational text bubbles today — the action wiring
+ * ([Ask Anne] / [Yes, hop]) is the deeper follow-up that touches
+ * skill dispatch + hop-relay-over-NKN.
+ */
+async function appendFindExtras(thread, payload) {
+  if (!payload || typeof payload.query !== 'string') return;
+  const query = payload.query.trim();
+  if (!query) return;
+  const itemCount = Array.isArray(payload.groups)
+    ? payload.groups.reduce((n, g) => n + (Array.isArray(g.items) ? g.items.length : 0), 0)
+    : 0;
+
+  const circleId = getActiveCircle();
+  const members  = await fetchMembersForFind(circleId);
+  const matches  = findSkillMatches({ query, members });
+  if (matches.length > 0) {
+    const lines = matches.slice(0, 5).map((m) => `• ${m.label} — ${m.skill}`).join('\n');
+    thread.addShellMessage(renderReply({
+      payload: `${t('circle.skillMatches.title')}\n${lines}`,
+      shape:   'text', threadId: thread.id,
+    }, { t }));
+  }
+
+  if (hasDismissed(hopPromptDismissed, query)) return;
+  if (itemCount > 0 && matches.length > 0) return; // we already showed something useful
+  const hopInfo = await fetchHopInfoForFind();
+  const decision = shouldAutoSuggestHop({
+    inCircleMatchCount:       matches.length,
+    hopEligibleContactsCount: hopInfo.hopEligibleContactsCount,
+    hopGloballyOn:            hopInfo.hopGloballyOn,
+    dismissedForSkill:        false,
+  });
+  if (!decision.prompt) return;
+  const card = buildHopPromptCard({
+    skillQuery:               query,
+    hopEligibleContactsCount: hopInfo.hopEligibleContactsCount,
+    t,
+  });
+  thread.addShellMessage(renderReply({
+    payload: `${card.title}\n${card.body}`,
+    shape:   'text', threadId: thread.id,
+  }, { t }));
+  // Record dismissal up-front so a back-to-back identical /find
+  // doesn't double up the prompt.  Real Skip CTA is the v1 wire.
+  hopPromptDismissed = rememberDismissed(hopPromptDismissed, query);
+}
+
 async function dispatchAndRender(route, thread) {
   // Slice 3 (2026-05-24) — /post audience inheritance.  When the
   // dispatching thread is buurt-scoped (filter.buurtId), inject the
@@ -2154,6 +2278,13 @@ async function dispatchAndRender(route, thread) {
     appOrigin: route.appOrigin,
     args:      route.args ?? {},
   });
+
+  // P6.6 #344 + P6.7 #345 — after /find dispatch, surface inline skill
+  // matches + auto-hop-prompt when the substrates say something useful.
+  // Best-effort: any failure inside is swallowed by appendFindExtras.
+  if (route.opId === 'find' && !reply.error) {
+    try { await appendFindExtras(thread, reply.payload); } catch { /* keep flow */ }
+  }
 
   // #176 — dispatchAndRender used to fire its own router.deliver
   // here for the OQ-4 cross-thread routing.  Removed because every
@@ -2401,6 +2532,33 @@ async function sendDmMessage(dm, body) {
     }, { t }));
     renderActiveStream();
     return;
+  }
+  // P6.4 #343 — wederkerigheid consumer-side gate.  Look up whether
+  // the recipient has chat-off for the active circle context.  When
+  // they do, render an inline notice (no "tried-to-reach-you" leak by
+  // design) + queue the typed body for later flush, and abort send.
+  // V0 default predicate returns null → seam collapses to "available"
+  // so the existing flow is intact until peer-availability sync lands.
+  const circleId = getActiveCircle();
+  if (circleId) {
+    const unavail = await isRecipientUnavailable({
+      recipientId: peerAddr, circleId, getRecipientChatOff,
+    });
+    if (!unavail.available) {
+      const recipientName = dm.peerDisplay ?? null;
+      // Circle name isn't readily available in the chat shell today;
+      // fall back to the anon notice when missing (buildUnavailableNotice
+      // handles the missing-name path).
+      dm.addShellMessage(renderReply({
+        payload: buildUnavailableNotice({ recipientName, circleName: null, t }),
+        shape:   'text', threadId: dm.id,
+      }, { t }));
+      // Best-effort enqueue — failure shouldn't block the notice.
+      try { await wederkerigheidQueue.add({ recipientId: peerAddr, circleId, text: body }); }
+      catch { /* tolerate quota / encoding issues */ }
+      renderActiveStream();
+      return;
+    }
   }
   if (agent?.peer?.status !== 'connected') {
     dm.addShellMessage(renderReply({

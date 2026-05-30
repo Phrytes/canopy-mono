@@ -200,6 +200,9 @@
       "accept":    { "text": "Yes, one step further", "doc": "Primary CTA." },
       "dismiss":   { "text": "Skip", "doc": "Secondary CTA." }
     },
+    "skillMatches": {
+      "title": { "text": "Members with matching skills:", "doc": "Heading for the inline skill-match list (P6.7 #345)." }
+    },
     "nearbyScreen": {
       "title":             { "text": "Nearby", "doc": "Board 8C — heading of the `HIER` screen (P6.8)." },
       "header":            { "text": "{{sharing}} of {{total}} share skills with you", "doc": "Header line." },
