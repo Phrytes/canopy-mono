@@ -180,6 +180,19 @@
       "own_profile":    { "text": "What others see of you", "doc": "Footer block heading; shows your own pseudonym + published-tier skills." },
       "own_profile_empty": { "text": "You haven't published any skills yet.", "doc": "Footer when no skills are published." }
     },
+    "agentRequest": {
+      "title":      { "text": "{{requester}} wants to add an agent", "doc": "Board 4B card heading on the admin's inbox (P6.10)." },
+      "title_anon": { "text": "An agent is waiting for admin approval", "doc": "Anon form when the requester's name isn't resolvable." },
+      "who":        { "text": "Who", "doc": "Label for the agent's identity row." },
+      "whoBody":    { "text": "{{name}}", "doc": "Agent name + kind in the body." },
+      "what":       { "text": "What it does", "doc": "Label for the capabilities row." },
+      "access":     { "text": "Access", "doc": "Label for the access-levels row." },
+      "approve":    { "text": "Approve", "doc": "Primary CTA." },
+      "reject":     { "text": "Reject", "doc": "Secondary CTA — flips the request to rejected on a single click." },
+      "ask":        { "text": "Ask…", "doc": "Tertiary CTA — opens a DM to the requester to clarify." },
+      "pending":    { "text": "Pending approval — waiting on {{who}}.", "doc": "Status line shown to the requester / other admins while approvals are outstanding." },
+      "blocked":    { "text": "This circle doesn't allow agents.", "doc": "Shown when the agents axis is `no`." }
+    },
     "rules": {
       "title":         { "text": "House rules", "doc": "Rules editor heading (board 3B)." },
       "save":          { "text": "Save rules", "doc": "Save the rules document." },

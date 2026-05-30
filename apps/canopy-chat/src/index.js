@@ -85,6 +85,13 @@ export {
   pickSkillText as pickNearbySkillText,
   pickPeerLabel as pickNearbyPeerLabel,
 } from './v2/circleNearby.js';
+// P6.10 — agent-add admin approval (board 4B): proposal-like flow for
+// joining an LLM agent to a circle whose `agents` axis is admin-approval.
+export {
+  shouldGateAgentJoin, buildAgentRequest,
+  approveAgentRequest, rejectAgentRequest, pendingAgentApprovers,
+  createAgentRequestStore,
+} from './v2/agentRequest.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
