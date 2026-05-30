@@ -65,6 +65,12 @@ export { buildTilePreviews, renderSubtitle, bumpSeenAt } from './v2/circleTilePr
 // P6.5 — claim router: mirror claimed tasks into the personal crew
 // when the per-circle override has flowThrough.tasksToPersonal.
 export { routeClaim, makeAfterClaimHook } from './v2/claimRouter.js';
+// P6.4 — wederkerigheid (chat-off consumer-side): pure helpers + the
+// save-for-later message queue.  Compose integration is the follow-up.
+export {
+  isRecipientUnavailable, buildUnavailableNotice,
+  createMessageQueue,
+} from './v2/wederkerigheid.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).

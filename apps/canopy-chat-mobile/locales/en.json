@@ -159,8 +159,15 @@
     },
     "pol": {
       "title":         { "text": "Proof of location", "doc": "Heading of the PoL row on the mobile circle detail (slice 5.9d)." },
-      "notConfigured": { "text": "Not configured" },
-      "attestedAt":    { "text": "Verified at {{time}}" }
+      "notConfigured": { "text": "Not configured", "doc": "Empty state for the PoL row." },
+      "attestedAt":    { "text": "Verified at {{time}}", "doc": "Populated PoL state." }
+    },
+    "wederkerigheid": {
+      "unavailable":      { "text": "{{name}} doesn't receive chat in {{circle}}.", "doc": "Board 5C notice (P6.4)." },
+      "unavailable_anon": { "text": "This person doesn't receive chat in this circle.", "doc": "Anon form of the notice." },
+      "save":             { "text": "Save message", "doc": "Queue-for-later CTA." },
+      "withdraw":         { "text": "Withdraw", "doc": "Discard the typed message." },
+      "no_delivery_note": { "text": "{{name}} won't be notified you tried.", "doc": "Board 5C non-event clarification." }
     },
     "rules": {
       "title":         { "text": "House rules", "doc": "Rules editor heading (board 3B)." },
