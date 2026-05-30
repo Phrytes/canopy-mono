@@ -179,7 +179,13 @@
       "all":        { "text": "All", "doc": "File filter: all files." },
       "favourites": { "text": "Favourites", "doc": "File filter: favourited files." },
       "recent":     { "text": "Recent", "doc": "File filter: recently changed files." },
-      "empty":      { "text": "No files in this circle yet.", "doc": "Empty state for the circle file browser." }
+      "empty":      { "text": "No files in this circle yet.", "doc": "Empty state for the circle file browser." },
+      "my_things_title":   { "text": "My things", "doc": "Board 10A heading (P6.M7) — Folio shown as the private kring." },
+      "my_things_empty":   { "text": "Nothing here yet — items you keep to yourself land here.", "doc": "Empty state on the My-things notes-list." },
+      "shared_by_me":      { "text": "Shared by me", "doc": "Board 10B filter (P6.M8) — items I own, scoped to a circle." },
+      "shared_with_me":    { "text": "Shared with me", "doc": "Board 10B filter (P6.M8) — items others shared into a circle I'm in." },
+      "shared_by_me_empty":   { "text": "You haven't shared any items yet.", "doc": "Empty state for the Shared-by-me filter." },
+      "shared_with_me_empty": { "text": "Nobody has shared an item with you yet.", "doc": "Empty state for the Shared-with-me filter." }
     },
     "pol": {
       "title":         { "text": "Proof of location", "doc": "Heading of the passive PoL row on the circle detail (board 10C, slice 5.9d)." },

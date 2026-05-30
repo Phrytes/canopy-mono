@@ -179,7 +179,13 @@
       "all":        { "text": "Alles", "doc": "File filter: all files." },
       "favourites": { "text": "Favorieten", "doc": "File filter: favourited files." },
       "recent":     { "text": "Recent", "doc": "File filter: recently changed files." },
-      "empty":      { "text": "Nog geen bestanden in deze kring.", "doc": "Empty state for the circle file browser." }
+      "empty":      { "text": "Nog geen bestanden in deze kring.", "doc": "Empty state for the circle file browser." },
+      "my_things_title":   { "text": "Mijn dingen", "doc": "Board 10A heading (P6.M7)." },
+      "my_things_empty":   { "text": "Nog niets — wat je voor jezelf houdt komt hier.", "doc": "Empty state on the My-things notes-list." },
+      "shared_by_me":      { "text": "Door mij gedeeld", "doc": "Board 10B filter (P6.M8)." },
+      "shared_with_me":    { "text": "Met mij gedeeld", "doc": "Board 10B filter (P6.M8)." },
+      "shared_by_me_empty":   { "text": "Je hebt nog niets gedeeld.", "doc": "Empty state for the Shared-by-me filter." },
+      "shared_with_me_empty": { "text": "Niemand heeft nog iets met je gedeeld.", "doc": "Empty state for the Shared-with-me filter." }
     },
     "pol": {
       "title":         { "text": "Locatiebewijs", "doc": "PoL row heading (board 10C, slice 5.9d)." },
