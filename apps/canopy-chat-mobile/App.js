@@ -29,12 +29,17 @@ import ChatScreen from './src/screens/ChatScreen.js';
 import CircleLauncherScreen from './src/screens/v2/CircleLauncherScreen.js';
 import FirstRunWelcomeScreen from './src/screens/FirstRunWelcomeScreen.js';
 import MnemonicEntryScreen from './src/screens/MnemonicEntryScreen.js';
+import MnemonicCreateScreen from './src/screens/MnemonicCreateScreen.js';
 import { initLocalisation } from './src/core/localisation.js';
 import { bootAgentBundle } from './src/core/agentBundle.js';
 import {
   shouldShowFirstRunWelcome, markWelcomeDismissed,
 } from './src/core/firstRun.js';
 import { restoreFromMnemonic } from './src/core/restoreFromMnemonic.js';
+// P6.9 #347 — first-run CREATE-side mnemonic display (board 3A).
+import {
+  shouldShowCreateMnemonic, markMnemonicAck,
+} from './src/core/mnemonicCreate.js';
 import { dlog } from './src/core/devLog.js';
 import { EventLog } from '../canopy-chat/src/eventLog.js';
 import { OidcSessionRN } from '@canopy/oidc-session-rn';
@@ -64,6 +69,14 @@ export default function App() {
   const [screen, setScreen] = useState('circles');
   const [bundle, setBundle] = useState(null);
   const [bootError, setBootError] = useState(null);
+  // P6.9 #347 — CREATE-side mnemonic display.  States:
+  //  - 'pending'   — not probed yet (or skipped while bundle still booting).
+  //  - 'show'      — ack marker missing → render MnemonicCreateScreen with
+  //                  the agent's BIP39 phrase.
+  //  - 'dismissed' — user acknowledged (or restore-path already ack'd a
+  //                  different identity) → normal app render proceeds.
+  const [mnemonicState, setMnemonicState] = useState('pending');
+  const [mnemonic, setMnemonic] = useState('');
 
   // Shared EventLog: boot-time agent events + ChatScreen's inbound peer
   // events land in one log so /logs shows everything.
@@ -185,6 +198,27 @@ export default function App() {
           opCount:    b.catalog.opsById?.size ?? 0,
         });
         setBundle(b);
+        // P6.9 #347 — probe whether we should display the CREATE-side
+        // mnemonic.  Skipped silently when the identity / mnemonic isn't
+        // available (e.g. restore-from-mnemonic path already acknowledged
+        // a different identity).  Any failure inside the probe falls
+        // through to 'dismissed' so the app boot never blocks.
+        try {
+          const show = await shouldShowCreateMnemonic(AsyncStorage);
+          if (!show) { setMnemonicState('dismissed'); return; }
+          const phrase = await b.agent?.sa?.agent?.identity?.getMnemonic?.();
+          if (typeof phrase === 'string' && phrase.trim()) {
+            if (!cancelled) {
+              setMnemonic(phrase);
+              setMnemonicState('show');
+            }
+          } else {
+            setMnemonicState('dismissed');
+          }
+        } catch (probeErr) {
+          dlog.warn('mnemonic probe failed (App)', probeErr?.message ?? probeErr);
+          setMnemonicState('dismissed');
+        }
       } catch (err) {
         dlog.warn('boot failed (App)', err?.message ?? err);
         if (!cancelled) setBootError(err?.message ?? String(err));
@@ -208,6 +242,29 @@ export default function App() {
       <SafeAreaProvider>
         <StatusBar style="auto" />
         <MnemonicEntryScreen onSubmit={submitMnemonic} onCancel={cancelRestore} />
+      </SafeAreaProvider>
+    );
+  }
+
+  // P6.9 #347 — show the CREATE-side mnemonic screen once after the
+  // identity has been seeded.  Renders ABOVE the normal app overlay so
+  // the user has to acknowledge (or pick "Later") before reaching the
+  // launcher.  The screen never reappears once "Written down" or
+  // "Photo taken" is tapped.
+  if (mnemonicState === 'show') {
+    const dismissMnemonic = async (kind) => {
+      try { await markMnemonicAck(AsyncStorage, kind); } catch { /* non-fatal */ }
+      setMnemonicState('dismissed');
+    };
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="auto" />
+        <MnemonicCreateScreen
+          mnemonic={mnemonic}
+          onWritten={() => dismissMnemonic('written')}
+          onPhoto={() => dismissMnemonic('photo')}
+          onLater={() => dismissMnemonic('later')}
+        />
       </SafeAreaProvider>
     );
   }

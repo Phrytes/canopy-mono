@@ -45,6 +45,8 @@ import { normalizeCircleMembers } from '../../src/v2/circleMembers.js';
 import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
 import { makeProposal, pendingApprovers } from '../../src/v2/circleConsensus.js';
 import { createProposalStore, localStorageProposalIo } from '../../src/v2/circleProposalStore.js';
+// P6.10 #348 — agent-add admin approval store (board 4B).
+import { createAgentRequestStore } from '../../src/v2/agentRequest.js';
 import { buildTilePreviews, bumpSeenAt } from '../../src/v2/circleTilePreviews.js';
 import { makeAfterClaimHook } from '../../src/v2/claimRouter.js';
 import { mergeAvailability } from '../../src/v2/memberAvailability.js';
@@ -66,6 +68,21 @@ const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
 const availabilityStore = createAvailabilityStore(localStorageAvailabilityIo());
 // P6.2 — persisted pending proposals (multi-admin consensus).
 const proposalStore = createProposalStore({ io: localStorageProposalIo() });
+// P6.10 #348 — persisted pending agent-add requests (board 4B).  Reuses
+// the same {load, save} adapter shape as the proposal store.
+const AGENT_REQ_STORE_KEY = 'cc.agentRequestQueue';
+const agentRequestStore = createAgentRequestStore({
+  io: {
+    load: async (key) => {
+      try { const raw = window.localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }
+      catch { return null; }
+    },
+    save: async (key, value) => {
+      try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* quota / disabled */ }
+    },
+  },
+  storeKey: AGENT_REQ_STORE_KEY,
+});
 // Cross-circle Stream (board 5B) reads this firehose; the agent's
 // publishEvent appends to it during boot.
 const eventLog = new EventLog({ initial: [], muted: [] });
@@ -127,18 +144,20 @@ function showLauncher() {
   refreshLauncherProposals().catch(() => { /* ignore */ });
 }
 
-// P6.2 #341 — per-circle pending-proposal counts.  Computed from
-// proposalStore on every launcher visit + after a settings save.
+// P6.2 #341 + P6.10 #348 — per-circle pending-admin-action counts.  The
+// launcher's voorstellen badge surfaces the SUM of pending proposals
+// (multi-admin consensus) + pending agent-add requests (board 4B):
+// both shapes wait for the same admins, so collapsing them into one
+// "needs your attention" badge keeps the launcher legible.
 let launcherProposals = {};
 async function refreshLauncherProposals() {
   const next = {};
   for (const c of circlesCache) {
-    try {
-      const n = await proposalStore.countPending(c.id);
-      if (n > 0) next[c.id] = n;
-    } catch { /* ignore per-circle read failures */ }
+    let n = 0;
+    try { n += await proposalStore.countPending(c.id); } catch { /* ignore */ }
+    try { n += await agentRequestStore.countPending(c.id); } catch { /* ignore */ }
+    if (n > 0) next[c.id] = n;
   }
-  // Re-render only if the count map actually changed.
   const sameKeys = Object.keys(next).length === Object.keys(launcherProposals).length
     && Object.keys(next).every((k) => next[k] === launcherProposals[k]);
   launcherProposals = next;
