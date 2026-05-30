@@ -162,6 +162,13 @@
       "notConfigured": { "text": "Niet geconfigureerd", "doc": "Empty state for the PoL row." },
       "attestedAt":    { "text": "Bevestigd op {{time}}", "doc": "Populated PoL state." }
     },
+    "wederkerigheid": {
+      "unavailable":      { "text": "{{name}} ontvangt geen chat-berichten in {{circle}}.", "doc": "Board 5C notice (P6.4)." },
+      "unavailable_anon": { "text": "Deze persoon ontvangt geen chat-berichten in deze kring.", "doc": "Anon form of the notice." },
+      "save":             { "text": "Bewaar bericht", "doc": "Queue-for-later CTA." },
+      "withdraw":         { "text": "Trek bericht in", "doc": "Discard the typed message." },
+      "no_delivery_note": { "text": "{{name}} krijgt geen melding dat je iets probeerde.", "doc": "Board 5C non-event clarification." }
+    },
     "rules": {
       "title":         { "text": "Huisregels", "doc": "Rules editor heading (board 3B)." },
       "save":          { "text": "Regels opslaan", "doc": "Save the rules document." },

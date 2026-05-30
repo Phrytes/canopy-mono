@@ -158,6 +158,13 @@
       "notConfigured": { "text": "Not configured", "doc": "Shown when no attestation reader is wired." },
       "attestedAt":    { "text": "Verified at {{time}}", "doc": "Shown when a reader returns a populated status." }
     },
+    "wederkerigheid": {
+      "unavailable":      { "text": "{{name}} doesn't receive chat in {{circle}}.", "doc": "Board 5C notice (P6.4) shown in the chat-compose area when the recipient has chat-off for this circle." },
+      "unavailable_anon": { "text": "This person doesn't receive chat in this circle.", "doc": "Same notice when recipient/circle names aren't resolvable; never leaks an id." },
+      "save":             { "text": "Save message", "doc": "Compose-area CTA to queue the message for when the recipient re-enables chat." },
+      "withdraw":         { "text": "Withdraw", "doc": "Compose-area CTA to discard the typed message." },
+      "no_delivery_note": { "text": "{{name}} won't be notified you tried.", "doc": "Secondary line clarifying the non-event per board 5C (no \"tried to reach you\" leak)." }
+    },
     "rules": {
       "title":         { "text": "House rules", "doc": "Rules editor heading (board 3B)." },
       "save":          { "text": "Save rules", "doc": "Save the rules document." },
