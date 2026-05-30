@@ -176,6 +176,14 @@
       "accept":    { "text": "Ja, één stap verder", "doc": "Primary CTA." },
       "dismiss":   { "text": "Laat maar", "doc": "Secondary CTA." }
     },
+    "nearbyScreen": {
+      "title":             { "text": "In de buurt", "doc": "Board 8C — heading of the `HIER` screen (P6.8)." },
+      "header":            { "text": "{{sharing}} van {{total}} delen skills met jou", "doc": "Header line." },
+      "header_empty":      { "text": "Op dit moment niemand in de buurt.", "doc": "Empty state." },
+      "anon_peer":         { "text": "iemand", "doc": "Fallback row label." },
+      "own_profile":       { "text": "Wat anderen van jou zien", "doc": "Footer heading." },
+      "own_profile_empty": { "text": "Je hebt nog geen skills gepubliceerd.", "doc": "Empty-skills footer." }
+    },
     "rules": {
       "title":         { "text": "Huisregels", "doc": "Rules editor heading (board 3B)." },
       "save":          { "text": "Regels opslaan", "doc": "Save the rules document." },

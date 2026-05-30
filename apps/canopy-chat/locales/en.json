@@ -172,6 +172,14 @@
       "accept":    { "text": "Yes, one step further", "doc": "Primary CTA — triggers the hop-relay request." },
       "dismiss":   { "text": "Skip", "doc": "Secondary CTA — records dismissal so we don't re-prompt the same query." }
     },
+    "nearbyScreen": {
+      "title":          { "text": "Nearby", "doc": "Board 8C — heading of the dedicated `HIER` screen (P6.8)." },
+      "header":         { "text": "{{sharing}} of {{total}} share skills with you", "doc": "Header line above the row list." },
+      "header_empty":   { "text": "Nobody nearby right now.", "doc": "Shown when no peers are visible on the local network." },
+      "anon_peer":      { "text": "someone", "doc": "Fallback row label when a peer has no derivable pseudonym." },
+      "own_profile":    { "text": "What others see of you", "doc": "Footer block heading; shows your own pseudonym + published-tier skills." },
+      "own_profile_empty": { "text": "You haven't published any skills yet.", "doc": "Footer when no skills are published." }
+    },
     "rules": {
       "title":         { "text": "House rules", "doc": "Rules editor heading (board 3B)." },
       "save":          { "text": "Save rules", "doc": "Save the rules document." },
