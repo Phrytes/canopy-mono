@@ -165,6 +165,13 @@
       "withdraw":         { "text": "Trek bericht in", "doc": "Discard the typed message." },
       "no_delivery_note": { "text": "{{name}} krijgt geen melding dat je iets probeerde.", "doc": "Board 5C non-event clarification." }
     },
+    "hopPrompt": {
+      "title":     { "text": "Verder zoeken?", "doc": "Board 7A auto-hop-prompt card heading (P6.6)." },
+      "body":      { "text": "Niemand in je kringen matcht \"{{skill}}\". Wil je verder zoeken via je {{count}} contact(en)?", "doc": "Card body." },
+      "body_anon": { "text": "Niemand in je kringen matcht. Wil je verder zoeken via je {{count}} contact(en)?", "doc": "Anon body." },
+      "accept":    { "text": "Ja, één stap verder", "doc": "Primary CTA." },
+      "dismiss":   { "text": "Laat maar", "doc": "Secondary CTA." }
+    },
     "rules": {
       "title":         { "text": "Huisregels", "doc": "Rules editor heading (board 3B)." },
       "save":          { "text": "Regels opslaan", "doc": "Save the rules document." },
