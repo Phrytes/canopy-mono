@@ -180,6 +180,22 @@
       "own_profile":    { "text": "Wat anderen van jou zien", "doc": "Footer heading." },
       "own_profile_empty": { "text": "Je hebt nog geen skills gepubliceerd.", "doc": "Empty-skills footer." }
     },
+    "viewAsSplit": {
+      "sees":          { "text": "Wat {{viewer}} ziet", "doc": "Board 4C column header." },
+      "sees_anon":     { "text": "Wat ze zien", "doc": "Anon form." },
+      "hides":         { "text": "Wat {{viewer}} niet ziet", "doc": "Board 4C column header." },
+      "hides_anon":    { "text": "Wat ze niet zien", "doc": "Anon hidden form." },
+      "header":        { "text": "{{visible}} van {{total}} attributen zichtbaar", "doc": "Optional summary." },
+      "openness": {
+        "public":         { "text": "Publiek", "doc": "Openness chip." },
+        "public-locale":  { "text": "Publiek · in mijn omgeving", "doc": "Openness chip." },
+        "members":        { "text": "Leden", "doc": "Openness chip." },
+        "circle-members": { "text": "Alleen deze kring", "doc": "Openness chip." },
+        "pairwise":       { "text": "1-op-1 onthuld", "doc": "Openness chip." },
+        "family":         { "text": "Familie", "doc": "Openness chip." },
+        "private":        { "text": "Privé", "doc": "Openness chip." }
+      }
+    },
     "podMigration": {
       "same":              { "text": "Geen wijziging.", "doc": "Internal." },
       "unknown":           { "text": "Onbekende pod-keuze.", "doc": "Defensive fallback." },
