@@ -25,11 +25,12 @@ import 'fake-indexeddb/auto';
 import { PodCapabilityToken } from '@canopy/core';
 
 import {
-  parseInput, mergeManifests, resolveDispatch, runDispatch,
+  parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
   createDefaultThreadStore, createEventRouter,
   EventLog, AppRegistry, filterCatalog,
   runBrief, createBriefCache, runFind,
-  canopyChatManifest,
+  canopyChatManifest, itemCircleId,
+  loadCircleItems, makeResolvingCallSkill,
 } from '../src/index.js';
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 import {
@@ -435,6 +436,135 @@ describe('CC-TK.4 — claim a task', () => {
     const r = await ws.userInput(`/claim ${openTask.id}`);
     expect(r.payload.ok).toBe(true);
     expect(r.payload.message).toMatch(/Claimed/);
+  });
+});
+
+describe('CC-TK.F1 — active-circle → app-scope binding (5.3)', () => {
+  let ws;
+  beforeEach(async () => { ws = await bootWorkspace(); });
+
+  // Dispatch the way main.js / ChatScreen do: apply scopeReadyDispatch
+  // at the runDispatch boundary so an open circle binds the write.
+  // `spy` wraps the outer callSkill, so calls[0] is the dispatched op
+  // with whatever args the scoping layer produced (the adapter's own
+  // nested callSkill uses a different closure + is not recorded).
+  async function dispatchInCircle(text, circleId) {
+    const calls = [];
+    const spy = async (origin, opId, args) => {
+      calls.push({ origin, opId, args });
+      return ws.callSkill(origin, opId, args);
+    };
+    const parsed = parseInput(text, ws.catalog(), { threadId: 'main' });
+    const route  = resolveDispatch(parsed, ws.catalog());
+    if (route.kind !== 'ready') return { route, calls };
+    const reply = await runDispatch(scopeReadyDispatch(route, circleId), spy);
+    return { route, reply, calls };
+  }
+
+  it('an item-creating dispatch (/addtask) delivers the active circle as scope to the substrate', async () => {
+    const { route, reply, calls } = await dispatchInCircle('/addtask "buy milk"', 'oosterpoort');
+    expect(route.verb).toBe('add');
+    expect(reply.error).toBeUndefined();
+    // The dispatched op carries the active circle on every scope key, so
+    // a crew/group-aware resolver routes the write into that circle.
+    const dispatched = calls[0];
+    expect(dispatched.opId).toBe(route.opId);
+    expect(dispatched.args.crewId).toBe('oosterpoort');
+    expect(dispatched.args._scope).toBe('oosterpoort');
+    expect(dispatched.args.groupId).toBe('oosterpoort');
+    expect(itemCircleId(dispatched.args)).toBe('oosterpoort');
+  });
+
+  it('a read dispatch (/mytasks) is NOT scoped to the active circle', async () => {
+    const { route, calls } = await dispatchInCircle('/mytasks', 'oosterpoort');
+    expect(route.verb).toBe('list');
+    expect(calls[0].args.crewId).toBeUndefined();
+    expect(calls[0].args._scope).toBeUndefined();
+  });
+
+  it('an explicit scope arg wins over the active circle (no override)', async () => {
+    const { calls } = await dispatchInCircle('/addtask "fix tap" --crewId=plumbing-crew', 'oosterpoort');
+    expect(calls[0].args.crewId).toBe('plumbing-crew');   // caller's choice preserved
+    expect(calls[0].args._scope).toBeUndefined();          // not layered on top
+  });
+
+  it('a task created in circle A is filtered to A and absent from B (real multi-crew separation)', async () => {
+    await dispatchInCircle('/addtask "alpha task"', 'circle-a');
+    await dispatchInCircle('/addtask "beta task"',  'circle-b');
+
+    // Read each circle the way the circle detail view does (loadCircleItems
+    // → getMyTasks → tasks-v0 listOpen, scoped to the circle's crew).
+    const resolving = makeResolvingCallSkill(ws.callSkill);
+    const aItems = await loadCircleItems({ callSkill: resolving, circleId: 'circle-a' });
+    const bItems = await loadCircleItems({ callSkill: resolving, circleId: 'circle-b' });
+    const aLabels = aItems.map((i) => i.label);
+    const bLabels = bItems.map((i) => i.label);
+
+    expect(aLabels).toContain('alpha task');
+    expect(aLabels).not.toContain('beta task');
+    expect(bLabels).toContain('beta task');
+    expect(bLabels).not.toContain('alpha task');
+  });
+
+  it('unscoped tasks stay in the primary crew, not leaked into a circle', async () => {
+    // The boot seeds 4 tasks into the primary (cc-default) crew.
+    const resolving = makeResolvingCallSkill(ws.callSkill);
+    const circleItems = await loadCircleItems({ callSkill: resolving, circleId: 'fresh-circle' });
+    const labels = circleItems.map((i) => i.label);
+    expect(labels).not.toContain('Fix the leaky tap');   // a seeded primary-crew task
+  });
+});
+
+describe('CC-ST.F1 — active-circle → stoop-scope binding (5.3d)', () => {
+  let ws;
+  beforeEach(async () => { ws = await bootWorkspace(); });
+
+  // Mirrors CC-TK.F1's dispatchInCircle helper — apply scopeReadyDispatch
+  // so an open circle binds the post-write to that circle's groupId,
+  // then run the dispatch through the full pipeline.
+  async function dispatchInCircle(text, circleId) {
+    const parsed = parseInput(text, ws.catalog(), { threadId: 'main' });
+    const route  = resolveDispatch(parsed, ws.catalog());
+    if (route.kind !== 'ready') return { route };
+    const reply = await runDispatch(scopeReadyDispatch(route, circleId), ws.callSkill);
+    return { route, reply };
+  }
+
+  it('a post created in circle A is listed for A and absent from B (real per-circle separation)', async () => {
+    // Stoop's browser bundle in canopy-chat runs single-group at the
+    // substrate; the realAgent adapter pre-builds `targets:
+    // [{kind:'group', groupId: <circleId>}]` from the scoped args, so
+    // the post item lands tagged with the active circle.  listOpen's
+    // adapter then surfaces source.targets[0].groupId at the item
+    // top level, and circleScope.itemCircleId picks it up.
+    await dispatchInCircle('/post "alpha post"', 'circle-a');
+    await dispatchInCircle('/post "beta post"',  'circle-b');
+
+    // Read each circle the way the circle detail view does
+    // (loadCircleItems → getBulletin → stoop listOpen, scoped to the
+    // circle's groupId).  Mirrors the CC-TK.F1 read pattern.
+    const resolving = makeResolvingCallSkill(ws.callSkill);
+    const aItems = await loadCircleItems({ callSkill: resolving, circleId: 'circle-a' });
+    const bItems = await loadCircleItems({ callSkill: resolving, circleId: 'circle-b' });
+    const aLabels = aItems.map((i) => i.label);
+    const bLabels = bItems.map((i) => i.label);
+
+    expect(aLabels).toContain('alpha post');
+    expect(aLabels).not.toContain('beta post');
+    expect(bLabels).toContain('beta post');
+    expect(bLabels).not.toContain('alpha post');
+  });
+
+  it('seeded buurt posts (no active circle at boot) do NOT leak into an arbitrary circle', async () => {
+    // The boot seeds 3 stoop posts (Anne/Karl/Maria) into the
+    // bundle's default group (`cc-default-buurt`); none of them
+    // should appear for a fresh circle the user just opened.
+    const resolving = makeResolvingCallSkill(ws.callSkill);
+    const circleItems = await loadCircleItems({ callSkill: resolving, circleId: 'fresh-circle' });
+    const labels = circleItems.map((i) => i.label);
+    expect(labels).not.toContain('Anne needs help moving a couch');
+    expect(labels).not.toContain('Karl offers tomato seedlings');
+    expect(labels).not.toContain('Maria looking for a bike pump');
   });
 });
 

@@ -45,6 +45,8 @@ export class Notifier extends Emitter {
   #now;
   #setTimeout;
   #clearTimeout;
+  /** @type {((recipient: string, channelId: string, payload: object, now: number) => boolean|Promise<boolean>) | null} */
+  #isSuppressed;
   /** @type {Map<string, ReturnType<typeof setTimeout>>} */
   #timers = new Map();
   /** @type {boolean} */
@@ -67,6 +69,7 @@ export class Notifier extends Emitter {
     now,
     setTimeoutFn,
     clearTimeoutFn,
+    isSuppressed,
   } = {}) {
     super();
     if (!channels || typeof channels !== 'object') {
@@ -78,6 +81,22 @@ export class Notifier extends Emitter {
     this.#now           = now            ?? (() => Date.now());
     this.#setTimeout    = setTimeoutFn   ?? globalThis.setTimeout;
     this.#clearTimeout  = clearTimeoutFn ?? globalThis.clearTimeout;
+    // 5.7b — optional quiet-hours / per-recipient suppression hook.  The
+    // host passes a predicate (typically `isPushSuppressed(availability,
+    // now)`); the deliver path consults it BEFORE channel.sendReply and
+    // emits 'suppressed' instead.  Late-binding via setSuppressionPredicate.
+    this.#isSuppressed  = typeof isSuppressed === 'function' ? isSuppressed : null;
+  }
+
+  /**
+   * 5.7b — register / replace the suppression predicate after construction
+   * (useful when the availability store loads asynchronously at boot).
+   * Pass `null` to disable.
+   *
+   * @param {((recipient: string, channelId: string, payload: object, now: number) => boolean|Promise<boolean>) | null} fn
+   */
+  setSuppressionPredicate(fn) {
+    this.#isSuppressed = typeof fn === 'function' ? fn : null;
   }
 
   // ── Lifecycle ────────────────────────────────────────────────────
@@ -321,8 +340,12 @@ export class Notifier extends Emitter {
     }
     try {
       const built = await job.builder();
-      await this.#deliverWithRetry(channel, { chatId: job.recipient, ...built });
-      this.emit('fired', { jobId: job.jobId, kind: 'once', recipient: job.recipient });
+      if (await this.#suppress(job.recipient, job.channelId, built)) {
+        this.emit('suppressed', { jobId: job.jobId, kind: 'once', recipient: job.recipient });
+      } else {
+        await this.#deliverWithRetry(channel, { chatId: job.recipient, ...built });
+        this.emit('fired', { jobId: job.jobId, kind: 'once', recipient: job.recipient });
+      }
     } catch (err) {
       this.emit('error', { jobId: job.jobId, error: err });
     }
@@ -338,11 +361,30 @@ export class Notifier extends Emitter {
     for (const recipient of recipients) {
       try {
         const built = await job.builder.call(null, recipient);
+        if (await this.#suppress(recipient, job.channelId, built)) {
+          this.emit('suppressed', { jobId: job.jobId, kind: 'recurring', recipient });
+          continue;
+        }
         await this.#deliverWithRetry(channel, { chatId: recipient, ...built });
         this.emit('fired', { jobId: job.jobId, kind: 'recurring', recipient });
       } catch (err) {
         this.emit('error', { jobId: job.jobId, error: err, recipient });
       }
+    }
+  }
+
+  /**
+   * 5.7b — consult the optional suppression predicate.  A throwing or
+   * truthy-returning predicate is taken at face value (truthy → suppress).
+   * A throwing predicate counts as "do not suppress" so a broken hook
+   * never silently swallows notifications.
+   */
+  async #suppress(recipient, channelId, payload) {
+    if (!this.#isSuppressed) return false;
+    try {
+      return !!(await this.#isSuppressed(recipient, channelId, payload, this.#now()));
+    } catch {
+      return false;
     }
   }
 

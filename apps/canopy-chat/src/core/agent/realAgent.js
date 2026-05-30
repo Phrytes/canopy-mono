@@ -28,7 +28,7 @@ import {
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 import { createSecureAgent } from '@canopy/secure-agent';
-import { createBrowserTasksAgent } from '@canopy-app/tasks-v0/browser';
+import { createBrowserMultiCrewTasksAgent } from '@canopy-app/tasks-v0/browser';
 import { createBrowserStoopAgent } from '@canopy-app/stoop/browser';
 import { createBrowserFolioAgent } from '@canopy-app/folio/browser';
 
@@ -451,10 +451,10 @@ export async function createRealHouseholdAgent(opts = {}) {
   // role; without the chatAgent's pubKey in the member list, every
   // call from canopy-chat would be treated as a stranger + denied
   // by RolePolicy.
-  const tasksCrew = await createBrowserTasksAgent({
+  const tasksCrew = await createBrowserMultiCrewTasksAgent({
     bus,
     identityVault: tasksIdentityVault,
-    crewConfig: opts.tasksCrewConfig ?? {
+    primaryCrewConfig: opts.tasksCrewConfig ?? {
       crewId:  'cc-default',
       name:    'Canopy-chat tasks',
       kind:    'household',
@@ -478,19 +478,33 @@ export async function createRealHouseholdAgent(opts = {}) {
   // existing tests + the user-facing demo expect /mytasks to show
   // these out of the box.  Skip when caller passes seedTasks:false
   // (clean-slate fixtures, e.g. for persistence tests).
+  //
+  // Perf #1 (2026-05-30): also skip seeding when the crew already
+  // has tasks (warm-boot after persisted storage).  One cheap listOpen
+  // probe avoids 4 sequential addTask round-trips that were blocking
+  // every boot on mobile.  Fail-open: if the probe errors, seed anyway.
   if (opts.seedTasks !== false) {
-    const SEED_TASKS = [
-      { text: "Set up Anne's bedroom", requiredSkill: 'household' },
-      { text: 'Fix the leaky tap',     requiredSkill: 'plumbing'  },
-      { text: 'Order groceries',       assignee: 'webid:anne'     },
-      { text: 'Take out the bins',     assignee: 'webid:karl'     },
-    ];
-    for (const seed of SEED_TASKS) {
-      try {
-        await chatAgent.invoke(tasksCrew.address, 'addTask', [DataPart(seed)]);
-      } catch (err) {
-        if (typeof console !== 'undefined') {
-          console.warn('[realAgent] seed task failed:', err.message ?? err);
+    let alreadySeeded = false;
+    try {
+      const probe  = await chatAgent.invoke(tasksCrew.address, 'listOpen', [DataPart({})]);
+      const data   = Array.isArray(probe) ? probe[0]?.data : null;
+      const items  = Array.isArray(data?.items) ? data.items : [];
+      alreadySeeded = items.length > 0;
+    } catch { /* fall through — seed anyway */ }
+    if (!alreadySeeded) {
+      const SEED_TASKS = [
+        { text: "Set up Anne's bedroom", requiredSkill: 'household' },
+        { text: 'Fix the leaky tap',     requiredSkill: 'plumbing'  },
+        { text: 'Order groceries',       assignee: 'webid:anne'     },
+        { text: 'Take out the bins',     assignee: 'webid:karl'     },
+      ];
+      for (const seed of SEED_TASKS) {
+        try {
+          await chatAgent.invoke(tasksCrew.address, 'addTask', [DataPart(seed)]);
+        } catch (err) {
+          if (typeof console !== 'undefined') {
+            console.warn('[realAgent] seed task failed:', err.message ?? err);
+          }
         }
       }
     }
@@ -559,18 +573,31 @@ export async function createRealHouseholdAgent(opts = {}) {
 
   // Pre-seed 3 demo posts so /feed has content out of the box
   // (matches the previous mock seed; opts.seedStoopPosts:false to opt out).
+  //
+  // Perf #1 (2026-05-30): skip when stoop already has open posts
+  // (warm-boot after persisted storage).  One listOpen probe avoids 3
+  // sequential postRequest round-trips that were blocking every boot.
   if (opts.seedStoopPosts !== false) {
-    const SEED_POSTS = [
-      { kind: 'ask',   text: 'Anne needs help moving a couch' },
-      { kind: 'offer', text: 'Karl offers tomato seedlings'   },
-      { kind: 'ask',   text: 'Maria looking for a bike pump'  },
-    ];
-    for (const seed of SEED_POSTS) {
-      try {
-        await chatAgent.invoke(stoopAgent.address, 'postRequest', [DataPart(seed)]);
-      } catch (err) {
-        if (typeof console !== 'undefined') {
-          console.warn('[realAgent] seed stoop post failed:', err.message ?? err);
+    let alreadySeeded = false;
+    try {
+      const probe = await chatAgent.invoke(stoopAgent.address, 'listOpen', [DataPart({})]);
+      const data  = Array.isArray(probe) ? probe[0]?.data : null;
+      const items = Array.isArray(data?.items) ? data.items : [];
+      alreadySeeded = items.length > 0;
+    } catch { /* fall through — seed anyway */ }
+    if (!alreadySeeded) {
+      const SEED_POSTS = [
+        { kind: 'ask',   text: 'Anne needs help moving a couch' },
+        { kind: 'offer', text: 'Karl offers tomato seedlings'   },
+        { kind: 'ask',   text: 'Maria looking for a bike pump'  },
+      ];
+      for (const seed of SEED_POSTS) {
+        try {
+          await chatAgent.invoke(stoopAgent.address, 'postRequest', [DataPart(seed)]);
+        } catch (err) {
+          if (typeof console !== 'undefined') {
+            console.warn('[realAgent] seed stoop post failed:', err.message ?? err);
+          }
         }
       }
     }
@@ -625,6 +652,11 @@ export async function createRealHouseholdAgent(opts = {}) {
     // /mytasks is broader — "everything actionable in my crew".  Map
     // to listOpen so the chat user sees what they expect.
     listMine: 'listOpen',
+    // F1 circle content (5.3) — `loadCircleItems` reads a circle's
+    // tasks via the unique source op `getMyTasks` (no app defines it,
+    // so `makeResolvingCallSkill` probes past stoop/household and lands
+    // here).  Map to listOpen scoped to the resolved crew (= circle).
+    getMyTasks: 'listOpen',
     // briefSummary / searchTasks: tasks-v0 doesn't expose these as
     // own skills today; canopy-chat derives them from listOpen below.
   };
@@ -654,11 +686,24 @@ export async function createRealHouseholdAgent(opts = {}) {
    *   /feed       → listOpen     (no `listFeed` in real stoop)
    *   /stoop-profile → getMyProfile
    *   /reveal     → setPeerReveal
+   *
+   * F1 circle content (5.3d) — `loadCircleItems` reads a circle's
+   * stoop posts via the source ops `getBulletin` / `getFeed`.  Stoop
+   * has neither as a real skill; both are aspirational names in
+   * `circleContent.DEFAULT_SOURCES`.  `makeResolvingCallSkill` probes
+   * stoop first (`DEFAULT_CIRCLE_ORIGINS`), so aliasing `getBulletin`
+   * here lands the call on the real `listOpen` per-circle reader.
+   * `getFeed` stays un-aliased so the resolver falls through every
+   * origin → null → no duplicate items (otherwise both source ops
+   * would resolve to the same store and each post would appear
+   * twice).  Same alias pattern tasks-v0 uses for
+   * `getMyTasks → listOpen` above.
    */
   const STOOP_OP_ALIAS = {
     listFeed:        'listOpen',
     getStoopProfile: 'getMyProfile',
     revealPeer:      'setPeerReveal',
+    getBulletin:     'listOpen',
   };
 
   // 2026-05-24 — retry-on-HI-race now lives in secure-agent's
@@ -684,6 +729,20 @@ export async function createRealHouseholdAgent(opts = {}) {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * F1 5.3d — read the post's first `kind:'group'` target groupId
+   * off the substrate item.  Stoop persists per-call targets under
+   * `source.targets[]`; canopy-chat's circle-scope filter
+   * (`circleScope.itemCircleId`) reads top-level `item.groupId`.
+   * The listOpen-reply adapter uses this to bridge the two.
+   */
+  function _groupIdFromTargets(item) {
+    const ts = item?.source?.targets;
+    if (!Array.isArray(ts)) return undefined;
+    const groupTarget = ts.find((t) => t?.kind === 'group' && typeof t.groupId === 'string');
+    return groupTarget?.groupId;
   }
 
   /** Slugify a name → safe crewId for provisionMyCrew. */
@@ -850,6 +909,14 @@ export async function createRealHouseholdAgent(opts = {}) {
           }
         }
       }
+      // F1 multi-crew (5.3) — when the dispatch carries a circle scope
+      // (crewId injected by scopeReadyDispatch, or an explicit crew),
+      // make sure that circle's crew exists before routing.  Unscoped
+      // calls leave crewId unset → resolver falls back to the primary
+      // crew (legacy single-crew behaviour).  ensureCrew is idempotent.
+      if (typeof realArgs.crewId === 'string' && realArgs.crewId) {
+        await tasksCrew.ensureCrew(realArgs.crewId);
+      }
       const parts = [DataPart(realArgs)];
       const result = await chatAgent.invoke(tasksCrew.address, realOpId, parts);
       const first = Array.isArray(result) ? result[0] : null;
@@ -945,6 +1012,24 @@ export async function createRealHouseholdAgent(opts = {}) {
         if (typeof console !== 'undefined') {
           console.log('[realAgent] getContactShareQr inject nknAddr=' + (myNkn ? myNkn.slice(0,16)+'…' : 'NONE'));
         }
+      }
+      // F1 5.3d — per-circle posts.  Stoop's browser bundle in
+      // canopy-chat runs single-group (`cc-default-buurt`); the
+      // substrate's `postRequest` falls back to that bundle groupId
+      // when `args.targets` is empty, so a per-call `groupId` (from
+      // `scopeReadyDispatch`) would otherwise be silently dropped.
+      // Pre-build `targets` here so the post lands tagged with the
+      // ACTIVE circle's id, and `listOpen` / `keepForCircle` (via
+      // `getBulletin` alias) can separate circle A from circle B
+      // without a substrate multi-group rewrite.
+      if (realOpId === 'postRequest'
+          && typeof realArgs.groupId === 'string'
+          && realArgs.groupId
+          && !Array.isArray(realArgs.targets)) {
+        realArgs = {
+          ...realArgs,
+          targets: [{ kind: 'group', groupId: realArgs.groupId }],
+        };
       }
       // #189 — buurt/group skills.  Several require groupId; the
       // chat-shell knows which buurt this agent is in (single-buurt
@@ -1188,7 +1273,8 @@ export async function createRealHouseholdAgent(opts = {}) {
     // mapped `state` alongside the original status.  #192 (B8): also
     // surface a `blockedBy` label when the task has openDeps so the
     // user sees the gate without clicking [Mark complete] first.
-    if ((opId === 'listMine' || opId === 'listOpen' || opId === 'listMyInbox' || opId === 'myInbox')
+    if ((opId === 'listMine' || opId === 'listOpen' || opId === 'listMyInbox'
+         || opId === 'myInbox' || opId === 'getMyTasks')
         && Array.isArray(data.items)) {
       return {
         ...data,
@@ -1555,10 +1641,12 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync:   simulateSync(),
       };
     }
-    // listFeed / listOpen / listMyRequests: items[] of {id, text, ...}
-    // → add a `label` alias on each row + add _sync envelope so the
-    // chat shell's renderer picks up the standard chat shapes.
-    if ((opId === 'listFeed' || opId === 'listOpen' || opId === 'listMyRequests')
+    // listFeed / listOpen / listMyRequests / getBulletin: items[] of
+    // {id, text, ...} → add a `label` alias on each row + add _sync
+    // envelope so the chat shell's renderer picks up the standard
+    // chat shapes.
+    if ((opId === 'listFeed' || opId === 'listOpen' || opId === 'listMyRequests'
+         || opId === 'getBulletin')
         && Array.isArray(data.items)) {
       return {
         ...data,
@@ -1576,6 +1664,17 @@ export async function createRealHouseholdAgent(opts = {}) {
           // are "open" while addedBy is set + not closed; "done"
           // when there's a `closedAt`.
           state: p.closedAt ? 'done' : 'open',
+          // F1 5.3d — surface the post's target groupId at the top
+          // level so `circleScope.itemCircleId` (which reads
+          // `item.groupId`, not `item.source.targets[]`) can match
+          // the active circle.  Posts created in canopy-chat carry
+          // `source.targets: [{kind:'group', groupId: '<circleId>'}]`
+          // (set in the postRequest adapter above when a circle is
+          // active).  Pre-existing posts without targets keep
+          // `groupId: undefined`, which `keepForCircle` treats as
+          // "no hint, trust upstream" — so unscoped reads still see
+          // them.
+          groupId: p.groupId ?? _groupIdFromTargets(p),
         })),
         _sync: simulateSync(),
       };
@@ -1767,9 +1866,19 @@ export async function createRealHouseholdAgent(opts = {}) {
     return data;
   }
 
+  // 5.8 — host-injected `LlmClient` providers, surfaced as-is.  Downstream
+  // consumers pair the per-circle policy with `selectLlmClient(policy, agent.
+  // llmProviders)`; the realAgent itself doesn't call .invoke() — it just
+  // makes the seam available.  Defaults to `{}` so callers can read
+  // `agent.llmProviders.local` without a null guard.
+  const llmProviders = (opts.llmProviders && typeof opts.llmProviders === 'object')
+    ? opts.llmProviders
+    : {};
+
   return {
     manifest: mockHouseholdManifest,    // SAME declaration as v0.1.4 mock
     callSkill,
+    llmProviders,
     reset() { chores = SEED_CHORES.map((c) => ({ ...c })); },
     state() { return chores.map((c) => ({ ...c })); },
     meta: {

@@ -43,6 +43,8 @@ import {
   fetchGroupRules,
   finalSubmit,
 } from '../../core/wizards/joinGroupState.js';
+import { RULES_FIELDS } from '../../v2/circleRules.js';
+import { t } from '../../localisation.js';
 
 const PRIVACY_NOTICE_NL = PRIVACY_NOTICE.nl;
 const PRIVACY_NOTICE_EN = PRIVACY_NOTICE.en;
@@ -129,12 +131,39 @@ function renderRulesStep(container, doc, state, onNext, onCancel, rerender) {
   blurb.textContent = 'Read the group\'s rules below. Accepting them is required to join.';
   wrap.appendChild(blurb);
 
-  const rulesBox = doc.createElement('pre');
-  rulesBox.className = 'cc-wizard-rules';
-  rulesBox.textContent = state.rulesError
-    ? `(could not load rules: ${state.rulesError})`
-    : state.rulesText ?? '(loading rules…)';
-  wrap.appendChild(rulesBox);
+  // 5.5b — when the invite carries a v2 structured rules doc, render
+  // each non-blank field as its own section (question + answer).  This
+  // matches the create-wizard's authoring shape, so a joiner sees the
+  // doc back in the exact format the admin filled it in.  Older invites
+  // (rulesText only) and the loading / error states fall back to the
+  // legacy <pre> blob.
+  if (state.rulesDoc) {
+    const docEl = doc.createElement('div');
+    docEl.className = 'cc-wizard-rules-doc';
+    for (const key of RULES_FIELDS) {
+      const v = state.rulesDoc[key];
+      if (!v || !v.trim()) continue;
+      const sec = doc.createElement('section');
+      sec.className = 'cc-wizard-rules-doc-field';
+      sec.dataset.field = key;
+      const h = doc.createElement('h4');
+      h.className = 'cc-wizard-rules-doc-q';
+      h.textContent = t(`circle.rules.q.${key}.text`);
+      const p = doc.createElement('p');
+      p.className = 'cc-wizard-rules-doc-a';
+      p.textContent = v;
+      sec.append(h, p);
+      docEl.appendChild(sec);
+    }
+    wrap.appendChild(docEl);
+  } else {
+    const rulesBox = doc.createElement('pre');
+    rulesBox.className = 'cc-wizard-rules';
+    rulesBox.textContent = state.rulesError
+      ? `(could not load rules: ${state.rulesError})`
+      : state.rulesText ?? '(loading rules…)';
+    wrap.appendChild(rulesBox);
+  }
 
   const checkRow = doc.createElement('label');
   checkRow.className = 'cc-wizard-check';

@@ -8,7 +8,8 @@ import { describe, it, expect } from 'vitest';
 
 import { mergeManifests }  from '../src/manifestMerge.js';
 import { parseInput }      from '../src/parser.js';
-import { resolveDispatch } from '../src/router.js';
+import { resolveDispatch, scopeReadyDispatch } from '../src/router.js';
+import { itemCircleId }    from '../src/v2/circleScope.js';
 
 /* ───── test manifests ───── */
 
@@ -84,6 +85,7 @@ describe('resolveDispatch — ready paths', () => {
       appOrigin: 'household',
       threadId:  null,
       replyShape: 'text',   // verb:'add' default
+      verb: 'add',          // 5.3 — verb surfaced for scopeReadyDispatch
     });
   });
 
@@ -218,6 +220,86 @@ describe('resolveDispatch — Q27 confirm gates', () => {
     const parse = parseInput('/danger', cat);
     const r = resolveDispatch(parse, cat);
     expect(r.kind).toBe('needsForm');
+  });
+});
+
+describe('scopeReadyDispatch — F1 active-circle binding (5.3)', () => {
+  const ready = (verb, args = {}) => ({
+    kind: 'ready', opId: 'op', appOrigin: 'app', threadId: null,
+    replyShape: 'text', verb, args,
+  });
+
+  it("injects the active circle as circleId/crewId/groupId/_scope on an 'add' verb", () => {
+    const r = scopeReadyDispatch(ready('add', { text: 'buy milk' }), 'circle-1');
+    expect(r.args).toEqual({
+      text: 'buy milk',
+      circleId: 'circle-1', crewId: 'circle-1', groupId: 'circle-1', _scope: 'circle-1',
+    });
+  });
+
+  it("scopes a 'post' verb too", () => {
+    const r = scopeReadyDispatch(ready('post', { body: 'hi' }), 'c2');
+    expect(r.args.groupId).toBe('c2');
+    expect(r.args._scope).toBe('c2');
+  });
+
+  it('the created item carries the circle tag (itemCircleId reads it back)', () => {
+    // The substrate persists the scope arg onto the item; itemCircleId
+    // resolves it via circleId/crewId/groupId — so a task created with
+    // these args belongs to the active circle.
+    const r = scopeReadyDispatch(ready('add', { text: 't' }), 'circle-X');
+    expect(itemCircleId(r.args)).toBe('circle-X');
+  });
+
+  it('does NOT scope a read verb (list)', () => {
+    const input = ready('list', { q: 'x' });
+    expect(scopeReadyDispatch(input, 'c1')).toBe(input);     // untouched (same ref)
+  });
+
+  it("does NOT scope 'create' (a new container must not inherit the open circle)", () => {
+    const input = ready('create', { name: 'New crew' });
+    expect(scopeReadyDispatch(input, 'c1')).toBe(input);
+  });
+
+  it('does NOT scope id-targeted mutations (claim/complete/remove/approve)', () => {
+    for (const v of ['claim', 'complete', 'remove', 'set', 'approve']) {
+      const input = ready(v, { id: 'task-9' });
+      expect(scopeReadyDispatch(input, 'c1')).toBe(input);
+    }
+  });
+
+  it('is a no-op when no circle is active', () => {
+    const input = ready('add', { text: 't' });
+    expect(scopeReadyDispatch(input, null)).toBe(input);
+    expect(scopeReadyDispatch(input, '')).toBe(input);
+  });
+
+  it("respects an explicit scope the caller already chose (doesn't override)", () => {
+    const input = ready('add', { text: 't', crewId: 'explicit-crew' });
+    const r = scopeReadyDispatch(input, 'active-circle');
+    expect(r).toBe(input);                  // untouched wholesale
+    expect(r.args.crewId).toBe('explicit-crew');
+  });
+
+  it('treats an empty-string scope arg as unset → injects', () => {
+    const r = scopeReadyDispatch(ready('add', { text: 't', crewId: '' }), 'c1');
+    expect(r.args.crewId).toBe('c1');
+  });
+
+  it('only touches ready dispatches (needsForm / null pass through)', () => {
+    const nf = { kind: 'needsForm', verb: 'add', args: {} };
+    expect(scopeReadyDispatch(nf, 'c1')).toBe(nf);
+    expect(scopeReadyDispatch(null, 'c1')).toBe(null);
+  });
+
+  it('end-to-end: parse → resolveDispatch → scopeReadyDispatch', () => {
+    const listRoute = resolveDispatch(parseInput('/mine', catalog), catalog);  // verb 'list'
+    expect(scopeReadyDispatch(listRoute, 'c1')).toBe(listRoute);               // read → not scoped
+
+    const addRoute = resolveDispatch(parseInput('/donow', catalog), catalog);  // verb 'add'
+    const scoped = scopeReadyDispatch(addRoute, 'circle-7');
+    expect(scoped.args.crewId).toBe('circle-7');
+    expect(itemCircleId(scoped.args)).toBe('circle-7');
   });
 });
 

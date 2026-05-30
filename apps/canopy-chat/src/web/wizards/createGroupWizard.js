@@ -25,7 +25,10 @@ import {
   STORAGE_POLICIES, KEY_ROTATION_MODES, STEP_NAMES,
   initialState, slugify, isValidSlug, labelOf,
   buildRulesObjectFromState, finalSubmit,
+  newSkillRow, SKILL_AXES,
 } from '../../core/wizards/createGroupState.js';
+import { RULES_QUESTIONS } from '../../v2/circleRules.js';
+import { t } from '../../localisation.js';
 
 /**
  * Wizard renderer for /create-group.
@@ -55,8 +58,9 @@ export function renderCreateGroupWizard(opts) {
     if (state.step === 1) renderIdentityStep(container, doc, state, advance, onClose, rerender);
     if (state.step === 2) renderGovernanceStep(container, doc, state, advance, back, onClose, rerender);
     if (state.step === 3) renderRulesStep(container, doc, state, advance, back, onClose, rerender);
-    if (state.step === 4) renderTechStep(container, doc, state, advance, back, onClose, rerender);
-    if (state.step === 5) renderReviewStep(container, doc, state, back, onClose, rerender, async () => {
+    if (state.step === 4) renderSkillsStep(container, doc, state, advance, back, onClose, rerender);
+    if (state.step === 5) renderTechStep(container, doc, state, advance, back, onClose, rerender);
+    if (state.step === 6) renderReviewStep(container, doc, state, back, onClose, rerender, async () => {
       rerender(); // show submitting state
       const { result } = await finalSubmit({ state, callSkill });
       if (result) {
@@ -77,7 +81,7 @@ export function renderCreateGroupWizard(opts) {
       rerender();
     });
   }
-  function advance() { if (state.step < 5) { state.step += 1; rerender(); } }
+  function advance() { if (state.step < STEP_NAMES.length) { state.step += 1; rerender(); } }
   function back()    { if (state.step > 1) { state.step -= 1; rerender(); } }
 }
 
@@ -185,20 +189,80 @@ function renderRulesStep(container, doc, state, onNext, onBack, onCancel, rerend
   const wrap = makeBody(doc, 'Rules & conflict resolution',
     'Members see these rules when they accept the invite + when they ask "what does this group expect of me?"');
 
-  const rulesLabel = doc.createElement('div');
-  rulesLabel.className = 'cc-wizard-field-label';
-  rulesLabel.textContent = 'Buurt rules (free text)';
-  wrap.appendChild(rulesLabel);
-  const rulesTa = doc.createElement('textarea');
-  rulesTa.className = 'cc-wizard-textarea';
-  rulesTa.rows = 6;
-  rulesTa.placeholder = '1. We treat each other respectfully.\n2. Don\'t share posts off-platform.\n3. ...';
-  rulesTa.value = state.rulesText;
-  rulesTa.addEventListener('input', () => { state.rulesText = rulesTa.value; });
-  wrap.appendChild(rulesTa);
+  // 5.5a — render the v2 structured rules doc.  Step 1 already captured
+  // `purpose` (the one-liner), so we skip that question here; the rules
+  // step asks the other five (admins / agreements / conflict / admission /
+  // leaving).  Question text is already in the locale file under
+  // `circle.rules.q.<key>.text`.
+  for (const q of RULES_QUESTIONS) {
+    if (q.key === 'purpose') continue;
+    const label = doc.createElement('div');
+    label.className = 'cc-wizard-field-label';
+    label.textContent = q.required
+      ? `${t(`circle.rules.q.${q.key}.text`)} *`
+      : t(`circle.rules.q.${q.key}.text`);
+    wrap.appendChild(label);
+    const ta = doc.createElement('textarea');
+    ta.className = 'cc-wizard-textarea';
+    ta.rows = 3;
+    ta.value = state.rulesDoc[q.key] ?? '';
+    ta.addEventListener('input', () => { state.rulesDoc[q.key] = ta.value; });
+    wrap.appendChild(ta);
+  }
 
   appendRadioField(wrap, doc, 'Conflict resolution policy', state.conflictPolicy, CONFLICT_POLICIES,
     (v) => { state.conflictPolicy = v; rerender(); });
+
+  container.appendChild(wrap);
+  renderActions(container, doc, [
+    { label: '← Back',  onClick: onBack,   kind: 'secondary' },
+    { label: 'Cancel',  onClick: onCancel, kind: 'secondary' },
+    { label: 'Next →',  onClick: onNext,   kind: 'primary' },
+  ]);
+}
+
+// 5.5c — Skills step: list `{name, openness, posture, status, radius}`
+// rows.  Each row's four axes are radio groups over `SKILL_AXES`.
+// Unnamed rows are dropped at submit (see buildRulesObjectFromState).
+function renderSkillsStep(container, doc, state, onNext, onBack, onCancel, rerender) {
+  const wrap = makeBody(doc, 'Skills (optional)',
+    'What members can do / offer in this circle.  Each skill is named + has four axes (openness / posture / status / radius).  You can skip this step or edit it later.');
+
+  state.skills.forEach((row, i) => {
+    const card = doc.createElement('div');
+    card.className = 'cc-wizard-skill-row';
+    card.style.cssText = 'border:1px solid var(--cc-line,#d8d1bc);border-radius:6px;padding:10px;margin-bottom:10px';
+
+    appendField(card, doc, 'Skill name', `skill-${i}-name`,
+      row.name, (v) => { row.name = v; }, { placeholder: 'e.g. plumbing' });
+
+    for (const axis of Object.keys(SKILL_AXES)) {
+      const opts = SKILL_AXES[axis].map((id) => ({ id, label: id }));
+      appendRadioField(card, doc, axis, row[axis], opts,
+        (v) => { row[axis] = v; rerender(); });
+    }
+
+    const del = doc.createElement('button');
+    del.type = 'button';
+    del.className = 'cc-wizard-cta-secondary';
+    del.textContent = 'Remove skill';
+    del.addEventListener('click', () => {
+      state.skills.splice(i, 1);
+      rerender();
+    });
+    card.appendChild(del);
+    wrap.appendChild(card);
+  });
+
+  const add = doc.createElement('button');
+  add.type = 'button';
+  add.className = 'cc-wizard-cta-secondary';
+  add.textContent = '+ Add skill';
+  add.addEventListener('click', () => {
+    state.skills.push(newSkillRow());
+    rerender();
+  });
+  wrap.appendChild(add);
 
   container.appendChild(wrap);
   renderActions(container, doc, [
@@ -256,8 +320,21 @@ function renderReviewStep(container, doc, state, onBack, onCancel, rerender, onS
   appendReview(dl, doc, 'Access policy',   labelOf(ACCESS_POLICIES, state.accessPolicy));
   appendReview(dl, doc, 'Leave policy',    labelOf(LEAVE_POLICIES, state.leavePolicy));
   appendReview(dl, doc, 'Invite expiry',   `${state.inviteExpiresInHours} h`);
-  if (state.rulesText) appendReview(dl, doc, 'Rules', state.rulesText, { pre: true });
+  // 5.5a — render each non-empty rules-doc field on its own row.
+  for (const q of RULES_QUESTIONS) {
+    if (q.key === 'purpose') continue;   // shown above via state.purpose
+    const v = state.rulesDoc?.[q.key];
+    if (v) appendReview(dl, doc, t(`circle.rules.q.${q.key}.text`), v, { pre: true });
+  }
   appendReview(dl, doc, 'Conflict policy', labelOf(CONFLICT_POLICIES, state.conflictPolicy));
+  // 5.5c — list named skills with their axes.
+  const namedSkills = (state.skills ?? []).filter((s) => s?.name?.trim());
+  if (namedSkills.length > 0) {
+    const skillsSummary = namedSkills
+      .map((s) => `${s.name} — ${s.openness}/${s.posture}/${s.status}/${s.radius}`)
+      .join('\n');
+    appendReview(dl, doc, 'Skills', skillsSummary, { pre: true });
+  }
   appendReview(dl, doc, 'Storage',        labelOf(STORAGE_POLICIES, state.storagePolicy));
   if (state.groupPodUri) appendReview(dl, doc, 'Group pod URI', state.groupPodUri);
   appendReview(dl, doc, 'Key rotation',   labelOf(KEY_ROTATION_MODES, state.keyRotationMode));

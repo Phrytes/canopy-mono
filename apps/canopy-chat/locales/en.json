@@ -151,6 +151,11 @@
       "recent":     { "text": "Recent", "doc": "File filter: recently changed files." },
       "empty":      { "text": "No files in this circle yet.", "doc": "Empty state for the circle file browser." }
     },
+    "pol": {
+      "title":         { "text": "Proof of location", "doc": "Heading of the passive PoL row on the circle detail (board 10C, slice 5.9d)." },
+      "notConfigured": { "text": "Not configured", "doc": "Shown when no attestation reader is wired." },
+      "attestedAt":    { "text": "Verified at {{time}}", "doc": "Shown when a reader returns a populated status." }
+    },
     "rules": {
       "title":         { "text": "House rules", "doc": "Rules editor heading (board 3B)." },
       "save":          { "text": "Save rules", "doc": "Save the rules document." },

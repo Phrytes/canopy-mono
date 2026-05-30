@@ -8,6 +8,23 @@
  * results are scoped client-side via the same rule as `scopeItems`:
  * keep items whose circle hint matches, plus items with no per-item
  * hint (assume the op already scoped them).
+ *
+ * Wiring status (as of 5.3d, 2026-05-30):
+ *   - getBulletin → stoop.listOpen (alias in realAgent.STOOP_OP_ALIAS).
+ *     Posts created in canopy-chat carry the active circle id under
+ *     `source.targets[]`; the listOpen adapter surfaces that as a
+ *     top-level `groupId` so `keepForCircle` can separate circles.
+ *   - getFeed — ASPIRATIONAL.  Deliberately NOT aliased — would route
+ *     to the same stoop.listOpen as getBulletin and duplicate every
+ *     post in the flat result.  Kept in DEFAULT_SOURCES so a future
+ *     dedicated feed substrate (separate from bulletin posts) can
+ *     wire it without a contract change.
+ *   - getMyTasks → tasks-v0.listOpen (5.3b, via TASKS_OP_ALIAS).
+ *   - listNotes — ASPIRATIONAL.  No app exposes a `listNotes` skill
+ *     today (no notes substrate in canopy-chat).  The resolver returns
+ *     null for every origin, so this contributes nothing — a future
+ *     substrate-authoring slice can wire it without changing this
+ *     contract.
  */
 import { isInCircle } from './circleScope.js';
 

@@ -289,37 +289,293 @@ GENUINELY NEW substrate (the only authoring left) — and WHY:
    pre-gate to call `isPushSuppressed` (PushPolicy is a separate wrapper apps compose).
 
 #### Re-sequenced coding plan (reuse-first)
-- [ ] 5.3 **Active-circle → app-scope sync** (WIRING; supersedes old 5.5). On
-      open-circle, bind stoop group + tasks crew to the circle by injecting
-      `_scope`/`crewId`/`groupId = circleId` into mutating skill calls (reuse
-      `multiCrewResolver._scope`) + mobile `switchActiveGroup`/`setActiveCrew`.
-      Verify a task/post created in a circle carries the circle tag (`itemCircleId`).
-- [ ] 5.4 **Pod-backed circle config** (WIRING + adapter). `podPolicyIo({write,read})`
-      over `createPodWriter`; persist circlePolicy/override/rules/skill under the
-      per-group pod path (reuse `podPathMap` / `mem://stoop/settings`); enforce the
-      `pod` axis. Drop-in replaces the localStorage/AsyncStorage IO (store is injectable).
-- [ ] 5.5 **Rules/skills into the real create/join flows** (WIRING). Map v2
-      `RULES_FIELDS` ↔ the wizard rules step (reuse `joinGroupState`/`createGroupState`
-      + `buildRulesDoc`); add a skills step to create (reuse `circleSkills` +
-      `CircleSkillEditorScreen`). Retire the standalone v2 previews into the wizards.
-- [ ] 5.6 **NEW substrate — peer→circle index + agent marker** (small; the only real
-      authoring). `groupsFor`/`membersOf` on the resolver/MemberMap + an `agent`
-      relation/claim marker. Unblocks 5.7.
-- [ ] 5.7 **Override enforcement** (WIRING, after 5.6): chat-off per-circle inbound
-      gate (reuse mute-drop + the new peer→circle index) + stored-silent store;
-      agents-filter gate (new marker); flow-through (personal crew + claim→personal
-      router reading the flag); quiet-hours → wire `isPushSuppressed` into the Notifier
-      hook. NB canopy-chat has no push path yet, so quiet-hours lands household
-      digests first; surfacing canopy-chat-mobile push (reuse `setupPush`) is a sub-task.
-- [ ] 5.8 **Pluggable LLM** (WIRING) — inject an `LlmClient` provider through the
-      `realAgent` composition (reuse `packages/llm-client`); last. [[llm-pluggability-deferred]]
-- [ ] 5.9 **Remaining design bits** (mostly WIRING; was 5.7): `view` axis (add to
-      `ENUM_AXES` + consume in launcher/detail) · first-run onboarding + mnemonic
-      (reuse `@canopy/react-native/mnemonic` + restore wizards) · local "who's here"
-      (reuse stoop-mobile `MdnsTransport`) · PoL placeholder row (reuse `presence-v0`).
+- [x] 5.3 **Active-circle → app-scope sync** (WIRING; supersedes old 5.5). DONE
+      2026-05-29. `scopeReadyDispatch(ready, activeCircleId)` (router.js) injects
+      `circleId`/`crewId`/`groupId`/`_scope = activeCircle` into **create** dispatches
+      only (verb ∈ {add,post}; NOT `create`/claim/complete/remove), and only when no
+      explicit scope was given. Applied at the web + mobile `runDispatch` boundaries
+      (peer-handler `callSkill` bypasses it → inbound posts aren't mis-scoped). Web is
+      two pages, so main.js hydrates the active circle from `sessionStorage['cc.activeCircle']`
+      (the bridge circleApp.js writes); mobile is one module instance, no bridge needed.
+      Did NOT use `switchActiveGroup`/`setActiveCrew` — per-dispatch injection is cleaner
+      (no persistent global crew-state mutation).
+- [x] 5.3b **cc tasks → multi-crew (circle = crew = label/filter)**. DONE 2026-05-29.
+      User: "tasks should have been multi-crew in the first place." cc tasks ran single-crew
+      (`cc-default`), so the injected scope was delivered but storage wasn't split per circle.
+      Now: `createBrowserMultiCrewTasksAgent` (tasks-v0/browser.js) composes a mesh agent on
+      cc's shared bus with a `crewsMap` + `multiCrewResolver`; `ensureCrew(crewId)` lazily
+      spawns a crew per circle (own `mem://tasks/crews/<id>/` store). cc resolver falls back
+      to the primary crew for unscoped calls (preserves all legacy single-crew behaviour).
+      realAgent `ensureCrew(realArgs.crewId)` before each tasks invoke. Circle view's task
+      source wired: `getMyTasks` alias → `listOpen` (the entire `loadCircleItems` DEFAULT_SOURCES
+      was aspirational — getBulletin/getFeed/getMyTasks/listNotes are in 0 manifests; getMyTasks
+      is unique so `makeResolvingCallSkill` probes past stoop→tasks-v0). Tests: 5 factory-isolation
+      (tasks-v0) + 5 CC-TK.F1 incl. REAL separation (task in circle A absent from B; unscoped stays
+      in primary). Full suites green: tasks-v0 705, canopy-chat 1063, mobile 167.
+- [x] 5.3c **Mobile multi-crew tasks parity** — DONE 2026-05-30.  Discovery: the
+      mobile bundle (`agentBundle.js`) dynamically imports the same portable
+      `createRealHouseholdAgent` that 5.3b already swapped to
+      `createBrowserMultiCrewTasksAgent` + `ensureCrew(args.crewId)`.  Multi-crew is
+      inherited transparently through that shared factory — no mobile-source swap was
+      needed.  Added `apps/canopy-chat-mobile/test/multiCrewSeparation.test.js` mirroring
+      CC-TK.F1: a task added with `crewId:'circle-a'` is visible in A and absent from B,
+      and primary-crew seeds don't leak into a fresh circle.  Mobile suite 167 → **169
+      passed (20 files)**.
+- [x] 5.3d **Posts wired (stoop), notes is a substrate gap** — DONE 2026-05-30.
+      Aliased `getBulletin → listOpen` in `STOOP_OP_ALIAS` (realAgent.js); per-circle write
+      path pre-builds `targets: [{kind:'group', groupId}]` when `postRequest` carries a
+      `groupId` (injected by `scopeReadyDispatch`); read path's `adaptStoopReply` surfaces
+      `groupId` from `item.source.targets[]` to the row top level so `itemCircleId` filters
+      correctly.  `getFeed` left unaliased (would dupe stoop posts).  `listNotes` reported
+      as a true substrate gap — no `listNotes` skill exists in any app; wiring would need
+      a notes substrate (write + list + per-circle scoping), out of scope for a wiring
+      slice.  New `CC-ST.F1` block in journeys-cross-app.test.js mirrors CC-TK.F1 (post in
+      circle-a absent from circle-b, seeded posts don't leak).  Suites: canopy-chat 1119
+      (was 1117), tasks-v0 705, stoop 632.
+- [x] 5.4a **Pod-backed circle config — substrate** (adapter + composite + host wiring).
+      DONE 2026-05-29. `podPolicyIo({getWriter, app})` (JSON IO over `createPodWriter.read/write`,
+      no-op when getWriter returns null) + `tieredPolicyIo(local, pod, {shouldMirror})`
+      composite (local canonical; pod mirror gated by `value.pod !== 'none'` — the axis
+      is actually enforced on writes). Host stores switched on both surfaces: web
+      `circleApp.js` uses `tieredPolicyIo(localStorage, pod)` against a `podWriterRef.current`
+      thunk; mobile `makeCirclePolicyStoreRN(storage, {getPodWriter})` takes an optional
+      thunk (defaults null). Thunks are null today → behaviour unchanged until 5.4b flips
+      the wire. 17 new unit/integration tests (mock podWriter proves load-falls-back-to-pod,
+      saves mirror per axis, joiner picks up policy from pod). Rules/skills don't have stores
+      yet (out of scope); member override stays local (it's personal — fits personal pod, a
+      later slice). Full suites green: canopy-chat 1080, mobile 167.
+- [x] 5.4b **Web pod session restore on v2 launcher** (activation). DONE 2026-05-29.
+      Mirrors main.js's flow on circleApp.js (index.html): fire-and-forget
+      `podAuth.handleRedirect({restorePreviousSession:true})` → `discoverPodRoot` →
+      `createPodWriter` → assign to `podWriterRef.current`.  Trimmed vs main.js (no
+      calendar/NKN hooks — those live on classic.html); the 5.4a tiered IO picks it up on
+      the next save/load.  A policy with `pod === 'shared'` now actually mirrors to the
+      group pod the moment the session resolves.
+- [x] 5.4c **Mobile pod session restore on v2 launcher** — DONE 2026-05-30.
+      `buildCirclePodWriter(session, deps?)` in `circleStoresRN.js` mirrors web's
+      `discoverPodRoot → createPodWriter` flow over an `OidcSessionRN` (null on
+      missing/unauthed/no-webid; `discoverPodRoot` + `createPodWriter` injectable for
+      tests).  App.js lifts the session ref out of `ChatScreen`, adds `circlePodWriterRef`
+      + `refreshCirclePodWriter()` + a sync `getCirclePodWriter` thunk, and threads
+      `sessionRef` + `getPodWriter` to both `ChatScreen` and `CircleLauncherScreen`.
+      ChatScreen accepts `sessionRef`/`onSessionChanged` (with back-compat fallback when
+      not provided) and fires `onSessionChanged` on sign-in / sign-out so the launcher
+      refreshes its writer.  Launcher threads `getPodWriter` into `makeCirclePolicyStoreRN`.
+      Store identity stays stable; the thunk reads `.current` live so the moment the
+      session restores the next save auto-mirrors.  8 new tests cover null/unauthed/no-webid
+      and the local-only-vs-mirror paths.  Mobile suite 169 → **177 passed**.
+- [x] 5.5a **Structured rules doc in create wizard** (WIRING). DONE 2026-05-29.
+      `createGroupState` Step 3 now carries `state.rulesDoc` (a `DEFAULT_RULES_DOC`-shaped
+      object) instead of a single `rulesText`; `buildRulesObjectFromState` spreads the v2
+      doc via `buildRulesDoc({ ...rulesDoc, purpose: state.purpose })` so Step 1's purpose
+      lands on the rules doc too.  Web + RN renderers iterate `RULES_QUESTIONS` (5 in the
+      step — purpose is captured at Step 1) with locale-driven labels
+      (`circle.rules.q.<key>.text`).  Machine-readable enum axes
+      (`accessPolicy`/`leavePolicy`/`conflictPolicy`) coexist with the doc's free-text
+      fields.  Tests updated (wizardsState2.test.js); full suites green (canopy-chat 1080,
+      mobile 167).
+- [x] 5.5b **Structured rules consent in join wizard**.  DONE 2026-05-29.
+      `joinGroupState` now exposes `state.rulesDoc` (populated by `extractRulesDoc`
+      when the invite carries v2 structured fields).  Web + RN consent screens render
+      the per-field sections under their `circle.rules.q.<key>.text` labels; older
+      `rulesText`-only invites fall back to the legacy single-blob view.  4 new
+      state-machine tests.
+- [x] 5.5c **Skills step in create wizard**.  DONE 2026-05-29.  Inserted a Skills
+      step between Rules and Tech (`STEP_NAMES` now 6 entries).  Each row carries
+      the four `SKILL_AXES` axes; unnamed rows are dropped at submit; `normalizeSkill`
+      coerces enum values.  `buildRulesObjectFromState` embeds the named list as
+      `rules.skills` (createGroupV2 spreads the blob verbatim; a dedicated substrate
+      slot is a follow-up).  Web + RN renderers + 3 new tests.
+- [x] 5.5d **Retire standalone v2 rules/skills previews into the wizards**.  DONE 2026-05-29.
+      `circleRulesConsent.js` (the standalone joiner-preview renderer) deleted now that
+      the join wizard inlines the same rendering from the same doc.  `circleRulesEditor`'s
+      `onPreview` route dropped, and the `circleApp.js` host's `showRulesConsent` retired.
+      `circleRulesEditor` itself stays — it's the post-create rules editor, a separate
+      surface from the create/join wizards.  Skill editors stay too (post-create edit).
+      Both suites green (canopy-chat 1084, mobile 167).
+- [x] 5.6 **NEW substrate — peer→circle index + agent marker**.  DONE 2026-05-30.
+      Two pieces, both fully tested:
+      (a) `MemberMap.relation` extended to accept `'agent'` alongside the existing
+          `'contact'`/`'group-member'` (default).  Backward-compatible; an unknown value
+          falls back to `'group-member'`.  1 new test in
+          `packages/identity-resolver/test/MemberMap.test.js` (76 total green).
+      (b) `GroupsIndex` (`apps/canopy-chat/src/v2/groupsIndex.js`) — pure sync data
+          structure with bidirectional `Map<webid, Set<circleId>>` +
+          `Map<circleId, Set<webid>>`, methods `add`/`remove`/`removeCircle`/`groupsFor`/
+          `membersOf`/`has`/`clear`.  `bindMemberMap(index, circleId, memberMap)` does an
+          initial `.list()` sync then subscribes to `member-added`/`-updated`/`-removed`;
+          returns an unbind that drops the circle.  Tolerates a MemberMap-shaped object
+          without `on/off` and an array shorthand.  Exported from `src/index.js`.
+          12 new tests (`test/v2/groupsIndex.test.js`).  Full canopy-chat 1096 / 1109
+          green.  Unblocks 5.7 (chat-off + agents-filter inbound gates can now route by
+          `groupsFor(peerWebid)` and check `member.relation === 'agent'`).
+- [x] 5.7a **Override enforcement — pure substrate**.  DONE 2026-05-30.
+      `apps/canopy-chat/src/v2/circleEnforcement.js` exports three host-injection-shaped
+      pure predicates: `isInboundChatOff({peerWebid, groupsIndex, getOverride})`,
+      `isInboundAgentBlocked({peerWebid, circleId, memberMap, getCirclePolicy,
+      getOverride})`, `shouldRouteClaimToPersonal({circleId, getOverride})`.  Each fails
+      closed on invalid input + swallows accessor errors as "no decision" so a broken
+      override store never silently denies inbound.  13 tests cover the truth table +
+      back-compat shapes.  Exported from `src/index.js`.
+- [x] 5.7b **Quiet-hours Notifier hook**.  DONE 2026-05-30.
+      `packages/notifier/src/Notifier.js` gained an optional `isSuppressed: (recipient,
+      channelId, payload, now) => boolean | Promise<boolean>` constructor opt +
+      `setSuppressionPredicate()` setter for late-binding.  `#fireOnce` / `#fireRecurring`
+      consult it before each delivery; suppressed deliveries emit `'suppressed'` instead
+      of `'fired'`, and a throwing predicate is treated as "do not suppress" so a broken
+      hook can't silently swallow notifications.  5 new tests (78 / 78 notifier green).
+      Predicate is host-supplied — typically the existing
+      `isPushSuppressed(availability, now)` from `src/v2/memberAvailability.js`.  Stored-
+      silent (board-5C "keep but don't notify") is intentionally NOT in this slice — it's
+      an additional storage primitive layered on top of these gates, scoped separately
+      if/when needed.
+- [x] 5.7c **Wire enforcement into hosts** — DONE 2026-05-30 (2 of 3 wired; tasks
+      claim-router deferred).
+      **secure-agent** (`packages/secure-agent/src/createSecureAgent.js`): new factory opt
+      `{groupsIndex, getOverride, getCirclePolicy, memberMap, getCircleIdForEnv?}`.  The
+      receive handler now drops envelopes after the existing mute fast-path when either
+      `isInboundChatOff` (shared-circle override.chatOff) or `isInboundAgentBlocked`
+      (peer `relation === 'agent'` + `policy.agents === 'no'` OR `override.agentsMayContactMe
+      === false`) matches.  Fails OPEN on accessor/predicate throw; logs via audit.
+      Predicate logic mirrors `apps/canopy-chat/src/v2/circleEnforcement.js` (inlined to
+      avoid a substrate→app layering violation).  Exposed as `sa.circleEnforcement.{wired,
+      isInboundBlocked}` for diagnostics; `securityStatus().circleEnforcementWired` reports
+      state.  12 new tests (secure-agent 120 → 132 green).
+      **household** (`apps/household/src/scheduler/Scheduler.js`): household doesn't
+      construct a `Notifier` (the migration is deferred per its README), so wired the
+      5.7b contract directly into the digest/nudge dispatch.  New
+      `isSuppressed: (recipient, kind, now) => bool|Promise<bool>` ctor opt +
+      `setSuppressionPredicate(fn)` setter + `fireDigestNow({force:true})` bypass.
+      Predicate consulted just before `postToChat`; a throwing predicate fails open.
+      7 new tests including `isPushSuppressed`-shape integration (household 588 / 588).
+      **DEFERRED: tasks claim-router.**  Would need (a) a personal-crew bundle resolver
+      alongside the existing `bundleResolver`, (b) plumbing the canopy-chat per-circle
+      `getOverride` accessor into the tasks adapter context, (c) re-targeting the
+      substrate mirror's publish path.  Three concrete touches across tasks + adapter +
+      canopy-chat host — past a focused edit.  The `shouldRouteClaimToPersonal` predicate
+      is already unit-tested, so a future focused slice can pick it up.
+      Suite results: secure-agent 131/132 (1 pre-existing skip), notifier 78/78,
+      household 588/588, canopy-chat 1119/1132.
+- [x] 5.8 **Pluggable LLM** (WIRING).  DONE 2026-05-30.
+      `apps/canopy-chat/src/v2/llmPicker.js` exports a pure `selectLlmClient(policy,
+      providers)` that maps the per-circle `llmTool` axis (`off`/`local`/`cloud`) onto
+      a host-supplied `{local?, cloud?}` providers map (each is an
+      `@canopy/llm-client.LlmClient` instance), failing closed to `null` for `'off'` /
+      malformed inputs / a missing provider.  `createRealHouseholdAgent` accepts
+      `opts.llmProviders` and surfaces it as `agent.llmProviders` (defaults `{}`), so
+      downstream consumers pair it with the policy: `selectLlmClient(policy, agent.
+      llmProviders)`.  6 unit + 2 integration tests (canopy-chat 1117 / 1130 green).
+      No invocation in this slice — consumers (free-text resolution, find, content
+      recs) land when the UX calls for them; the seam is in place.
+      Supersedes [[llm-pluggability-deferred]].
+- [x] 5.9a **`view` axis editable + read-hook in detail**.  DONE 2026-05-30.
+      Added `'view'` to `ENUM_AXES` on web (`web/v2/circleSettings.js`) and mobile
+      (`screens/v2/CircleSettingsScreen.js`) — admin can now pick `chat` / `screen` /
+      `cross-stream` and the choice round-trips through the existing policy IO
+      (incl. 5.4a's pod mirror).  `circleApp.showDetail` reads `policy.view` so the
+      consumption seam exists; the actual route-swap to a chat / cross-stream variant
+      is a UX follow-up (today's renderer still shows the detail screen, by design —
+      both chat and cross-stream surfaces ride classic.html until v2 absorbs them).
+      Settings DOM tests updated for the 5-axis layout (3 view + 3 llmTool + 3 agents
+      + 2 revealPolicy + 4 pod = 15 enum options).  Suites: canopy-chat 1117 / mobile 167.
+- [x] 5.9b **First-run onboarding + mnemonic** (mobile UX flow).  DONE 2026-05-30
+      *(v1 — welcome + gate only; boot-time BIP39 restore deferred to 5.9b-followup
+      / task #320)*.  Added `src/core/firstRun.js` (pure AsyncStorage probe of
+      `cc-chat-id:agent-privkey` + `cc.welcomed` marker) and
+      `src/screens/FirstRunWelcomeScreen.js` (Welcome with Start + "I have a
+      recovery phrase" CTAs).  `App.js` now holds a `firstRun: 'checking'|'show'
+      |'dismissed'` state, gates the bundle-boot useEffect on `=== 'dismissed'`
+      (so we don't synthesise an identity the user is about to overwrite), and
+      renders the welcome until `Start` is tapped.  "I have a recovery phrase"
+      surfaces a deferred-feature notice pointing at the existing
+      `/restore-from-mnemonic` wizard — true boot-time restore needs a
+      `getMnemonicOnce` skill on the canopy-chat agent (not registered) plus
+      vault re-keying support, both tracked as **#320 (5.9b-followup)**.
+      Suites: canopy-chat 1127 / mobile 185 (+8 new `firstRun.test.js`).
+- [x] **5.9b-followup** — boot-time BIP39 restore on mobile (task #320). DONE 2026-05-30.
+      Added `src/core/restoreFromMnemonic.js` (pure helper: normalises input, validates
+      BIP39 via `@canopy/core.validateMnemonic`, seeds `cc-chat-id:agent-privkey` via
+      `AgentIdentity.fromMnemonic` + a `VaultAsyncStorage` with the matching prefix).
+      Added `src/screens/MnemonicEntryScreen.js` (multi-line input + live word-count
+      + localised error mapping). `App.js` grew a `firstRun: 'restore'` state between
+      `'show'` and `'dismissed'`: tapping "I have a recovery phrase" routes to the
+      entry screen, valid submit seeds the vault BEFORE flipping to `'dismissed'`,
+      so the boot useEffect finds the seeded keypair instead of generating fresh.
+      `AgentIdentity.getMnemonic()` already exists for the future read-side
+      ("show me my words again") — no new skill registration needed for V0.
+      8 new pure tests cover every error branch (empty / wrong-length / invalid /
+      storage). en+nl locales. Suites: mobile 200 / 24 files (192 + 8 new).
+- [x] 5.9c **Local "who's here" via `MdnsTransport`** (task #316). DONE 2026-05-30.
+      Added `get connectionCount()` on `MdnsTransport`, dynamic-imported it in
+      `canopy-chat-mobile/agentBundle.js` (best-effort + time-boxed `connect()`,
+      silent when the native module isn't compiled in), exposed as `bundle.mdns`.
+      `CircleLauncherScreen` renders a passive "Nearby N device(s)" row at the top
+      of the kringen list, subscribes to `peer-discovered` + `peer-disconnected`
+      so the count updates as peers come and go.  Hides when `bundle.mdns` is null
+      (vitest / iOS / Expo Go / Wi-Fi off).  7 new tests (`nearbyRow.test.js`) cover
+      formatter + synthetic mdns contract.  en+nl locales (`circle.nearby.label` /
+      `circle.nearby.count`).  Worktree-discipline note: the dispatched sub-agent
+      claimed integration but only shipped the formatter + tests — the launcher
+      render had to be re-wired by hand against the race-corrupted file.
+- [x] 5.9d **PoL placeholder row** (task #317). DONE 2026-05-30.
+      Added `apps/canopy-chat/src/v2/circlePol.js` (`getCirclePolStatus`,
+      `formatPolStatus`, `formatAttestedAt`) + 14 unit tests.  Re-exported from
+      `apps/canopy-chat/src/index.js`.  Web `circleDetail.js` accepts a `pol`
+      prop and renders `.circle-detail__pol` between the meta row and items;
+      `circleApp.showDetail` probes `getCirclePolStatus` in parallel with
+      `loadCircleItems`.  Mobile `CircleLauncherScreen.CircleDetail` accepts
+      `callSkill` + probes on mount + renders a `polRow`.  en+nl on both
+      surfaces (`circle.pol.title` / `notConfigured` / `attestedAt`).  Real
+      attestation gate (board 10C) stays in "Later / excluded".  Worktree note:
+      sub-agent breached into main tree + reverse-engineered overwritten work
+      from failing tests; merged manually from the worktree files.
+- [x] 5.9e **`view='chat'` routes to circle-bound chat** (task #339). DONE 2026-05-30.
+      Tapping a circle whose `policy.view === 'chat'` now bypasses the action-grid
+      detail and routes to the chat surface (5.3's active-circle dispatch already
+      scopes posts to the circle's buurt-thread, so dismissing to chat is enough).
+      Mobile: launcher's `openCircle` peeks the policy and calls the new
+      `onChatRoute(circleId)` prop; App.js wires it to `setScreen('chat')`.
+      Web: `circleApp.showDetail` does the same check and navigates to
+      `/classic.html?circle=<id>`.  Both fall through to default detail when
+      `view` isn't 'chat'.  Follow-up: per-circle thread auto-selection inside
+      ChatScreen on URL/prop arrival (low-risk, the active-circle dispatch
+      already does the heavy lifting today).
+
+**Phase 5 closed 2026-05-30.** Suites: canopy-chat 1141 / 1154 (+13 todo, +14
+new circlePol), canopy-chat-mobile 200 / 24 files (+15 across 5.9b firstRun,
+5.9c nearbyRow, and 5.9b-followup restoreFromMnemonic).
 
 ### Later / excluded
 - Store packaging (board 2), co-redaction (board 11), working PoL gate (10C).
+
+### Phase 6 — design-vs-code gap audit (2026-05-30 PDF re-read)
+A re-read of `Canopy interface — interface-ontwerp · print.pdf` against current code surfaced 10 major + 8 minor gaps the plan either missed or under-tracked. All logged as P6.* tasks. **English-first locale per [[english-default-multilingual]]** — the PDF mockups are in Dutch but the app default is English; Dutch UI strings translate to nl locale entries.
+
+**Major (P6.1–P6.10):**
+- P6.1 (#321) — Functies axis (per-kring feature toggles: chat/board/tasks/lists/calendar/notes/rules/memberCard). Today's ENUM_AXES is missing this entirely.
+- P6.2 (#322) — Multi-admin consensus voorstel flow (board 4A): `Show diff` + `Send proposal →` + "N changes waiting on X" — 1.3b's deferred delivery side.
+- P6.3 (#323) — Kring tile activity-preview subtitle + unread badge (board 5A). 4.5 promised this but it never landed.
+- P6.4 (#324) — Wederkerigheid notice when peer has chat-off (board 5C): "X doesn't receive chat in Y · Save / Withdraw".
+- P6.5 (#325) — Taken doorstroom claim-router buurt → "My things" (board 6B). Finishes 5.7c's deferred 3 substrate touches.
+- P6.6 (#326) — Auto-hop-prompt when in-circle skill-match returns nothing (board 7A).
+- P6.7 (#327) — Skill-match source-side wiring (board 8B): inline match list under a posted question. 3.2's "no match source" gap.
+- P6.8 (#328) — "Nearby" dedicated screen with people + public skills + BLE/mDNS source (board 8C). 5.9c only adds a count; the screen is a separate gap.
+- P6.9 (#329) — First-run mnemonic display on CREATE side (board 3A): 12-word phrase + [Written down/Photo/Later] CTAs. Distinct from #320 (restore-side).
+- P6.10 (#330) — Agent-toevoeg admin approval flow (board 4B): admin-OK-per-agent join request card.
+
+**Minor (P6.M1–P6.M8):**
+- P6.M1 (#331) pod-migration warning · P6.M2 (#332) view-as "sees / doesn't see" split · P6.M3 (#333) Stream pinned compose + inline actions · P6.M4 (#334) split @-mention vs all-message push · P6.M5 (#335) holiday extension shortcuts + outgoing auto-reply · P6.M6 (#336) per-contact hop overrides UI · P6.M7 (#337) "My things" as Folio notes-list · P6.M8 (#338) Folio "Shared by me / with me" filters.
+
+### Cleanup (cross-cutting)
+- [ ] **Vite build leak — multiple Node-only imports reach the browser bundle.**
+      Pre-existing (predates 5.4). vitest/dev/Playwright fine, only `vite build` fails.
+      **Partial progress 2026-05-30:** `fsNode` lazy-loaded in
+      `packages/sync-engine/src/versions.js` + `apps/folio/src/autoShare.js` (the original
+      blocker chain). Next blocker is `apps/stoop/src/lib/FilePersist.js`; ~10 source
+      files across `packages/{sync-engine,pod-client,pseudo-pod,core}`, stoop, folio
+      eagerly import `node:fs`/`path`/`crypto`. **Proper fix is a Vite `resolve.alias`
+      for `node:*` to a stub-with-named-exports**, not per-file lazy-loading — that's a
+      one-config-line change in the canopy-chat Vite config, vs ~10 file edits.
 
 ## v2 becomes the main app (user-directed 2026-05-29)
 - [x] Web: the v2 circle app is the **default** at `/` (`web/index.html`); the

@@ -16,7 +16,11 @@ import {
 } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
-const ENUM_AXES = ['llmTool', 'agents', 'revealPolicy', 'pod'];
+// 5.9a — `view` is the per-circle default-pane axis ('chat' / 'screen' /
+// 'cross-stream'); making it editable here lets an admin pick which surface
+// a member lands on when they open the circle.  Listed first so it stays
+// the most prominent setting.
+const ENUM_AXES = ['view', 'llmTool', 'agents', 'revealPolicy', 'pod'];
 
 export default function CircleSettingsScreen({ store, circleId, onBack }) {
   const [working, setWorking] = useState(null);

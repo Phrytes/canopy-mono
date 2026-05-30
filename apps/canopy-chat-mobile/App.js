@@ -13,11 +13,12 @@
  * polyfills aren't loaded (the portable core in src/core/ has no RN
  * imports).
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import {
   useFonts, SourceSerif4_400Regular, SourceSerif4_600SemiBold,
 } from '@expo-google-fonts/source-serif-4';
@@ -26,13 +27,32 @@ import { theme } from './src/screens/v2/theme.js';
 
 import ChatScreen from './src/screens/ChatScreen.js';
 import CircleLauncherScreen from './src/screens/v2/CircleLauncherScreen.js';
+import FirstRunWelcomeScreen from './src/screens/FirstRunWelcomeScreen.js';
+import MnemonicEntryScreen from './src/screens/MnemonicEntryScreen.js';
 import { initLocalisation } from './src/core/localisation.js';
 import { bootAgentBundle } from './src/core/agentBundle.js';
+import {
+  shouldShowFirstRunWelcome, markWelcomeDismissed,
+} from './src/core/firstRun.js';
+import { restoreFromMnemonic } from './src/core/restoreFromMnemonic.js';
 import { dlog } from './src/core/devLog.js';
 import { EventLog } from '../canopy-chat/src/eventLog.js';
+import { OidcSessionRN } from '@canopy/oidc-session-rn';
+import { buildCirclePodWriter } from './src/core/circleStoresRN.js';
 
 export default function App() {
   const [localeReady, setLocaleReady] = useState(false);
+  // 5.9b — first-run welcome gate.  States:
+  //  - 'checking'  — haven't probed AsyncStorage yet (render nothing; boot
+  //                  useEffect waits too).
+  //  - 'show'      — no identity + no dismissal marker (render welcome).
+  //  - 'restore'   — user picked "I have a recovery phrase" (5.9b-followup);
+  //                  render MnemonicEntryScreen.  On success we seed the
+  //                  chat vault BEFORE flipping to 'dismissed', so the boot
+  //                  useEffect finds the seeded keypair instead of generating
+  //                  a fresh one.
+  //  - 'dismissed' — proceed with the normal boot path.
+  const [firstRun, setFirstRun] = useState('checking');
   // Load Source Serif 4 in the background — NOT gated on render (gating once
   // hung boot at a black screen). Headings switch from system serif to
   // Source Serif 4 once it resolves.
@@ -52,11 +72,91 @@ export default function App() {
     eventLogRef.current = new EventLog({ initial: [], muted: [] });
   }
 
+  // 5.4c (2026-05-30) — single OidcSessionRN, lifted from ChatScreen so
+  // BOTH the chat shell AND the circle launcher see the same restored
+  // session.  ChatScreen still drives sign-in / sign-out through the
+  // `useCanopyChatAuth` hook (and now reads this ref via props); the
+  // launcher reads it through a `getPodWriter` thunk that returns a
+  // ready `podWriter` once the session restores.  Until then the
+  // thunk returns null and circle policy IO stays local-only — see
+  // tieredPolicyIo + makeCirclePolicyStoreRN.
+  const sessionRef = useRef(null);
+  if (!sessionRef.current) {
+    sessionRef.current = new OidcSessionRN({ store: SecureStore, appId: 'canopychat' });
+  }
+  // 5.4c — pod writer slot the launcher's getPodWriter thunk reads on
+  // every load/save.  `null` while no session is restored → tieredPolicyIo
+  // falls through to the local AsyncStorage side.  Refreshed on mount and
+  // every time the SecureStore restore completes.
+  const circlePodWriterRef = useRef(null);
+  const refreshCirclePodWriter = useCallback(async () => {
+    const w = await buildCirclePodWriter(sessionRef.current).catch(() => null);
+    circlePodWriterRef.current = w;
+    if (w) dlog.boot('circle pod writer ready @', w.podRoot);
+  }, []);
+  const getCirclePodWriter = useCallback(() => circlePodWriterRef.current, []);
+
   useEffect(() => {
     initLocalisation({ lng: 'en' }).then(() => setLocaleReady(true));
   }, []);
 
+  // 5.9b — first-run probe.  Reads AsyncStorage to decide whether to
+  // show the welcome screen before booting the bundle.  Errors fall
+  // open as "show welcome" — better to greet an extra time than to
+  // silently skip on a real first run.
   useEffect(() => {
+    shouldShowFirstRunWelcome(AsyncStorage)
+      .then((show) => setFirstRun(show ? 'show' : 'dismissed'))
+      .catch(() => setFirstRun('show'));
+  }, []);
+
+  const dismissFirstRun = useCallback(() => {
+    markWelcomeDismissed(AsyncStorage).catch(() => { /* non-fatal */ });
+    setFirstRun('dismissed');
+  }, []);
+
+  // 5.9b-followup — user tapped "I have a recovery phrase" on the welcome
+  // screen.  Route to MnemonicEntryScreen; boot stays paused until either
+  // restore succeeds (→ 'dismissed', seeded vault) or the user cancels
+  // back to 'show'.
+  const startRestore = useCallback(() => setFirstRun('restore'), []);
+  const cancelRestore = useCallback(() => setFirstRun('show'), []);
+
+  // 5.9b-followup — invoked from MnemonicEntryScreen with the raw text.
+  // Validate + seed the chat vault, then flip to 'dismissed' so boot
+  // proceeds against the existing keypair.  Returns the helper's result
+  // so the screen can surface error codes inline.
+  const submitMnemonic = useCallback(async (phrase) => {
+    const result = await restoreFromMnemonic({
+      mnemonic:     phrase,
+      asyncStorage: AsyncStorage,
+    });
+    if (result.ok) {
+      // Mark welcome dismissed too — otherwise next launch would re-show
+      // it before the new identity is detected (probe order in firstRun.js).
+      try { await markWelcomeDismissed(AsyncStorage); } catch { /* non-fatal */ }
+      setFirstRun('dismissed');
+    }
+    return result;
+  }, []);
+
+  // 5.4c — fire-and-forget SecureStore restore.  Mirrors web's
+  // circleApp.js handleRedirect flow: when the session resolves with a
+  // real WebID, build the writer; otherwise stay local-only.  Non-blocking
+  // so the launcher renders immediately with local IO; the NEXT save
+  // automatically picks up the writer once the ref is populated (no
+  // re-render needed — the thunk reads `.current` live).
+  useEffect(() => {
+    sessionRef.current?.restoreFromVault?.()
+      .then(() => refreshCirclePodWriter())
+      .catch(() => { /* fresh install — circlePodWriterRef stays null */ });
+  }, [refreshCirclePodWriter]);
+
+  useEffect(() => {
+    // 5.9b — wait until the user has cleared the welcome (or there's no
+    // welcome to clear) before booting.  Boot generates an identity in
+    // the vault, which would race a future restore-from-mnemonic path.
+    if (firstRun !== 'dismissed') return;
     let cancelled = false;
     (async () => {
       try {
@@ -91,9 +191,26 @@ export default function App() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [firstRun]);
 
   if (!localeReady) return null;
+  if (firstRun === 'checking') return null;   // probe still in-flight
+  if (firstRun === 'show') {
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="auto" />
+        <FirstRunWelcomeScreen onStart={dismissFirstRun} onRestore={startRestore} />
+      </SafeAreaProvider>
+    );
+  }
+  if (firstRun === 'restore') {
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="auto" />
+        <MnemonicEntryScreen onSubmit={submitMnemonic} onCancel={cancelRestore} />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -102,10 +219,30 @@ export default function App() {
         {/* ChatScreen is ALWAYS mounted so its peer-wiring stays attached
             (inbound DMs / mesh land even while the circle launcher is the
             visible screen). */}
-        <ChatScreen bundle={bundle} bootError={bootError} eventLog={eventLogRef.current} />
+        <ChatScreen
+          bundle={bundle}
+          bootError={bootError}
+          eventLog={eventLogRef.current}
+          sessionRef={sessionRef}
+          onSessionChanged={refreshCirclePodWriter}
+        />
         {screen === 'circles' ? (
           <View style={styles.overlay}>
-            <CircleLauncherScreen bundle={bundle} eventLog={eventLogRef.current} onBack={() => setScreen('chat')} />
+            <CircleLauncherScreen
+              bundle={bundle}
+              eventLog={eventLogRef.current}
+              getPodWriter={getCirclePodWriter}
+              onBack={() => setScreen('chat')}
+              // 5.9e — when the tapped circle's `view` axis is 'chat',
+              // the launcher calls this instead of opening the action-grid
+              // detail.  The active-circle dispatch from 5.3 already
+              // scopes posts to the circle's thread, so dismissing the
+              // overlay to reveal the chat shell is enough — no extra
+              // thread-select prop on ChatScreen yet (each circle has a
+              // buurt-scoped thread from #204 that ChatScreen picks up
+              // via its existing thread-sidebar wiring).
+              onChatRoute={(/* circleId */) => setScreen('chat')}
+            />
           </View>
         ) : (
           <Pressable

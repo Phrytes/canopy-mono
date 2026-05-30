@@ -263,9 +263,15 @@ export class MemberMap extends Emitter {
       nknAddr:     m.nknAddr ?? null,
       // ── Stoop V2 Phase 24: contact-graph fields (additive) ──
       // relation: distinguishes group members (default for back-compat
-      //   with V1 callers) from 1:1 contacts. Apps that don't model
-      //   contacts leave this as 'group-member'.
-      relation:    m.relation === 'contact' ? 'contact' : 'group-member',
+      //   with V1 callers) from 1:1 contacts.  5.6 (canopy-chat v2) added
+      //   `'agent'` for members whose own WebID is an LLM-backed peer
+      //   over NKN — same membership stack as a human, just marked so
+      //   per-circle override gates (agents-filter, board 4) can route
+      //   them differently.  Apps that don't model contacts/agents
+      //   leave this as 'group-member'.
+      relation:    m.relation === 'contact' ? 'contact'
+                 : m.relation === 'agent'   ? 'agent'
+                 : 'group-member',
       // trustLevel: per-contact trust gradient. Two levels in Stoop V2;
       //   apps may extend.  Null when not set (e.g. for 'group-member').
       trustLevel:

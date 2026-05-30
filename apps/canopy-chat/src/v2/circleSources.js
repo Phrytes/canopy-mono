@@ -37,16 +37,38 @@ export function circleSourcesFromAgent({ callSkill, circlesStore } = {}) {
 /** App origins probed when resolving an op to its owning app (both surfaces). */
 export const DEFAULT_CIRCLE_ORIGINS = ['stoop', 'tasks-v0', 'household', 'calendar', 'folio'];
 
+// Perf #2 (2026-05-30) — does `catalog` declare `opId` on `origin`?
+// The merged catalog stores ops under either the bare `opId` (then
+// `entry.appOrigin` names the source) OR `'<origin>/<opId>'` for
+// disambiguated declarations.  Treat either form as a hit.  Returns
+// `true` when no catalog is supplied so callers without one keep the
+// legacy probe-everything behaviour.
+function catalogHasOp(catalog, origin, opId) {
+  if (!catalog || typeof catalog !== 'object' || !catalog.opsById) return true;
+  if (catalog.opsById.get(`${origin}/${opId}`)) return true;
+  const bare = catalog.opsById.get(opId);
+  return !!(bare && bare.appOrigin === origin);
+}
+
 /**
  * Wrap a host's 3-arg `callSkill(appOrigin, opId, args)` into the 2-arg
  * `callSkill(opId, args)` the circle helpers expect, by probing each app
  * origin and returning the first non-null result. Web's `agent.callSkill`
  * and mobile's `bundle.callSkill` share this signature, so both reuse it.
+ *
+ * `catalog` is optional but recommended: when supplied, the resolver
+ * skips origins whose manifests don't declare `opId`, which avoids
+ * pointless transport round-trips for aspirational ops (Perf #2,
+ * 2026-05-30).  Pass the merged catalog returned by `mergeManifests`.
  */
-export function makeResolvingCallSkill(rawCallSkill, origins = DEFAULT_CIRCLE_ORIGINS) {
+export function makeResolvingCallSkill(rawCallSkill, origins = DEFAULT_CIRCLE_ORIGINS, catalog = null) {
   return async (opId, args) => {
     if (typeof rawCallSkill !== 'function') return null;
     for (const app of origins) {
+      // Perf #2: skip the transport round-trip when the catalog says
+      // the op isn't declared on this origin (cuts ~8 wasted RPCs per
+      // circle-open for aspirational ops like getFeed / listNotes).
+      if (!catalogHasOp(catalog, app, opId)) continue;
       try {
         const r = await rawCallSkill(app, opId, args ?? {});
         if (r != null) return r;

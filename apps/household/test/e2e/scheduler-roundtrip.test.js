@@ -128,3 +128,139 @@ describe('Phase 4 e2e — Scheduler + HouseholdAgent', () => {
     await noSchedAgent.stop();
   });
 });
+
+/* ─── 5.7c — quiet-hours / availability suppression hook ───── */
+
+describe('Phase 4 e2e — Scheduler suppression hook (5.7c)', () => {
+  /** @type {InMemoryStore} */ let store;
+  /** @type {MockBridge} */    let bridge;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    store  = new InMemoryStore();
+    bridge = new MockBridge();
+  });
+  afterEach(() => { vi.useRealTimers(); });
+
+  async function harness(isSuppressed) {
+    /** @type {HouseholdAgent} */
+    let agentRef;
+    const scheduler = new Scheduler({
+      store,
+      postToChat:    (chatId, replies) => agentRef.dispatch(chatId, replies),
+      primaryChatId: 'chat-1',
+      household:     { tz: 'UTC', nudgeDelayMs: 60 * 60 * 1000, digestAtLocal: '20:00' },
+      isSuppressed,
+    });
+    const agent = new HouseholdAgent({ store, bridges: [bridge], scheduler });
+    agentRef = agent;
+    await agent.start();
+    scheduler.start();
+    return { agent, scheduler };
+  }
+
+  it('digest fires normally when no isSuppressed is wired', async () => {
+    const { scheduler } = await harness();
+    await bridge.emit(makeMsg('add shopping coffee'));
+    await scheduler.fireDigestNow();
+    expect(bridge.size()).toBe(1);
+    await scheduler.stop();
+  });
+
+  it('digest is suppressed when isSuppressed returns true (quiet window)', async () => {
+    let quiet = true;
+    const { scheduler } = await harness(
+      (recipient, kind) => kind === 'digest' && quiet,
+    );
+    await bridge.emit(makeMsg('add shopping coffee'));
+    await scheduler.fireDigestNow();
+    expect(bridge.size()).toBe(0);          // suppressed
+    // Once the quiet window ends, the same fire delivers normally.
+    quiet = false;
+    await scheduler.fireDigestNow();
+    expect(bridge.size()).toBe(1);
+    await scheduler.stop();
+  });
+
+  it('nudges are also suppressed by the same predicate', async () => {
+    let quiet = true;
+    const { scheduler } = await harness(
+      (recipient, kind) => kind === 'nudge' && quiet,
+    );
+    await bridge.emit(makeMsg('add shopping bread'));
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000 + 100);
+    expect(bridge.size()).toBe(0);          // nudge suppressed
+    // Re-fire after the window lifts via a fresh add → fresh timer.
+    quiet = false;
+    await bridge.emit(makeMsg('add shopping milk'));
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000 + 100);
+    expect(bridge.size()).toBe(1);
+    await scheduler.stop();
+  });
+
+  it('setSuppressionPredicate swaps the hook at runtime (late availability load)', async () => {
+    const { scheduler } = await harness();
+    await bridge.emit(makeMsg('add shopping coffee'));
+    scheduler.setSuppressionPredicate(() => true);
+    await scheduler.fireDigestNow();
+    expect(bridge.size()).toBe(0);
+    scheduler.setSuppressionPredicate(null);
+    await scheduler.fireDigestNow();
+    expect(bridge.size()).toBe(1);
+    await scheduler.stop();
+  });
+
+  it('fireDigestNow({force:true}) bypasses the suppression hook', async () => {
+    const { scheduler } = await harness(() => true);
+    await bridge.emit(makeMsg('add shopping coffee'));
+    await scheduler.fireDigestNow();            // suppressed
+    expect(bridge.size()).toBe(0);
+    await scheduler.fireDigestNow({ force: true });
+    expect(bridge.size()).toBe(1);
+    await scheduler.stop();
+  });
+
+  it('a throwing isSuppressed never silently swallows the post', async () => {
+    const origWarn = console.warn;
+    const warnings = [];
+    console.warn = (...a) => warnings.push(a);
+    try {
+      const { scheduler } = await harness(() => { throw new Error('quiet-store boom'); });
+      await bridge.emit(makeMsg('add shopping coffee'));
+      await scheduler.fireDigestNow();
+      expect(bridge.size()).toBe(1);            // fail-open
+      await scheduler.stop();
+    } finally {
+      console.warn = origWarn;
+    }
+  });
+
+  it('integrates with isPushSuppressed(availability, now) from canopy-chat memberAvailability substrate', async () => {
+    // Sanity-shape check — household doesn't directly import the
+    // canopy-chat substrate, but the contract is documented as
+    // "wraps `isPushSuppressed(getAvailability(recipient), now)`".
+    // Locally simulate the contract: quiet-hours 22:00 → 07:30.
+    const availability = {
+      holiday:    { active: false, until: null },
+      quietHours: { enabled: true, from: '22:00', to: '07:30', weekends: false },
+    };
+    // Pin "now" to 23:00 UTC — within the overnight window.
+    vi.setSystemTime(new Date('2026-05-30T23:00:00Z'));
+    const isQuiet = (_recipient, _kind, _now) => {
+      const t = new Date(_now);
+      const min = t.getUTCHours() * 60 + t.getUTCMinutes();
+      const f = 22 * 60;
+      const to = 7 * 60 + 30;
+      return availability.quietHours.enabled && (min >= f || min < to);
+    };
+    const { scheduler } = await harness(isQuiet);
+    await bridge.emit(makeMsg('add shopping coffee'));
+    await scheduler.fireDigestNow();
+    expect(bridge.size()).toBe(0);              // suppressed at 23:00
+    // Step to 08:00 → out of quiet window.
+    vi.setSystemTime(new Date('2026-05-31T08:00:00Z'));
+    await scheduler.fireDigestNow();
+    expect(bridge.size()).toBe(1);
+    await scheduler.stop();
+  });
+});

@@ -48,6 +48,20 @@ async function loadCreateRealHouseholdAgent() {
   return mod.createRealHouseholdAgent;
 }
 
+// MdnsTransport is dynamic-imported so vitest's node env (which can't
+// resolve `react-native`) doesn't need a top-level mock.  On Hermes the
+// native module guard inside MdnsTransport.isAvailable() short-circuits
+// to false when MdnsModule isn't compiled in (e.g. iOS, Expo Go) — so
+// failure is silent and the "Nearby" UI row simply doesn't render.
+async function loadMdnsTransport() {
+  try {
+    const mod = await import('../../../../packages/react-native/src/transport/MdnsTransport.js');
+    return mod.MdnsTransport;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Boot the agent bundle.  See module-doc for the three boot modes.
  *
@@ -184,6 +198,40 @@ export async function bootAgentBundle(opts = {}) {
     if (typeof requestCatchUp === 'function') peerWiringRef.requestCatchUp = requestCatchUp;
   };
 
+  // 5.9c — best-effort local mDNS discovery for the "Nearby" row on the
+  // circle launcher.  Mirrors stoop-mobile/agentBundle.js's wiring (look
+  // for the `MdnsTransport.isAvailable()` block).  Fire-and-forget so
+  // boot stays fast; if the native module is missing (vitest, iOS, Expo
+  // Go) or the start times out (Wi-Fi off), `bundle.mdns` simply stays
+  // unset and the UI row hides itself.
+  let mdns = null;
+  (async () => {
+    try {
+      const MdnsTransport = await loadMdnsTransport();
+      if (!MdnsTransport || !MdnsTransport.isAvailable?.()) return;
+      // The full chat AgentIdentity (with pubKey/sign/encrypt) lives
+      // inside sa.agent.identity — same one the NKN address is derived
+      // from, so peers see one consistent identifier.
+      const chatIdentity = agent?.sa?.agent?.identity;
+      if (!chatIdentity?.pubKey) return;
+      const inst = new MdnsTransport({
+        identity: chatIdentity,
+        hostname: `cc-${chatIdentity.pubKey.slice(0, 8)}`,
+      });
+      // Time-box the native start (Wi-Fi off otherwise hangs forever).
+      await Promise.race([
+        inst.connect(),
+        new Promise((_, reject) => setTimeout(
+          () => reject(new Error('mdns pre-connect timeout')),
+          6000,
+        )),
+      ]);
+      mdns = inst;
+    } catch (err) {
+      console.warn('[cc/boot] mDNS init failed (best-effort):', err?.message ?? err);
+    }
+  })();
+
   let transport = { kind: 'none' };
   if (typeof agent.connectPeerTransport === 'function') {
     transport = { kind: 'nkn', connecting: true };
@@ -192,13 +240,30 @@ export async function bootAgentBundle(opts = {}) {
         // Resolve nkn-sdk: caller-injected (tests) > runtime import.
         let nknLib = opts.nknLib;
         if (!nknLib) {
+          // Perf #5 (2026-05-30): nkn-sdk tries to load a WebAssembly
+          // module for hash/sig speedups; Hermes (RN's JS engine) has
+          // no WebAssembly so nkn falls back to pure JS — works fine
+          // but emits two scary-looking warnings on every boot.  Mute
+          // just the WASM-prep + Aborted lines during the import +
+          // initial connect, then restore the real warn.  Other warns
+          // pass through untouched.
+          const originalWarn = console.warn;
+          const isWasmNoise = (msg) => typeof msg === 'string'
+            && (msg.includes('asynchronously prepare wasm')
+                || msg.startsWith('Aborted(ReferenceError: Property \'WebAssembly\''));
+          console.warn = (...a) => { if (!isWasmNoise(a[0])) originalWarn(...a); };
           try {
             const mod = await import('nkn-sdk');
             nknLib = mod.default ?? mod;
           } catch (err) {
-            console.warn('[cc/boot] nkn-sdk import failed:', err?.message ?? err);
+            console.warn = originalWarn;
+            originalWarn('[cc/boot] nkn-sdk import failed:', err?.message ?? err);
             return;
           }
+          // Restore the real warn after a short window so the connect's
+          // own WASM-prep also gets filtered, then anything later (real
+          // warnings) surfaces normally.
+          setTimeout(() => { console.warn = originalWarn; }, 2000);
         }
         // Stable wrapper reads the mutable slot at delivery time, so a
         // router attached after connect still receives messages.
@@ -231,14 +296,20 @@ export async function bootAgentBundle(opts = {}) {
     })();
   }
 
+  // 5.9c — expose `mdns` as a live getter so the launcher reads the
+  // current instance (initially null, populated when the async
+  // connect() resolves a tick later).  Callers should not cache the
+  // returned value across renders.
   return {
     catalog,
     manifestsByOrigin,
     callSkill: agent.callSkill,
     agent,
     transport,
+    get mdns() { return mdns; },
     attachPeerWiring,
     dispose: async () => {
+      try { await mdns?.disconnect?.(); } catch { /* defensive */ }
       try { await agent?.sa?.shutdown?.(); } catch { /* defensive */ }
     },
   };

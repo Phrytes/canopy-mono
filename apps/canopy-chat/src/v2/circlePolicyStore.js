@@ -84,3 +84,101 @@ export function localStorageOverrideIo(storage = globalThis.localStorage) {
     },
   };
 }
+
+/* ────────────────────────────────────────────────────────────────────
+ * Phase 5.4a — pod-backed circle config
+ *
+ * Drop-in IO that round-trips JSON through `createPodWriter`'s
+ * `read(app, resource)` / `write(app, resource, body, contentType)`.
+ * Both the policy and override stores accept any `{load, save}`, so
+ * the pod side composes via `tieredPolicyIo` without touching callers.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/** Per-circle pod resource path: `circle.<circleId>.json`. */
+const podResource = (id) => `circle.${id}.json`;
+
+/**
+ * JSON IO over a `createPodWriter`-shaped writer.  `getWriter` is a
+ * thunk so the host can wire the store at module-top before the Solid
+ * session has restored (returns `null` while no writer is configured →
+ * load/save are no-ops, the composite falls through to the local side).
+ *
+ * @param {object} opts
+ * @param {() => object|null} opts.getWriter — thunk returning a podWriter or null
+ * @param {string} [opts.app='cc-circle']    — podWriter `app` segment
+ * @returns {{load: (id: string) => Promise<object|null>, save: (id: string, value: object) => Promise<void>}}
+ */
+export function podPolicyIo({ getWriter, app = 'cc-circle' } = {}) {
+  if (typeof getWriter !== 'function') {
+    throw new TypeError('podPolicyIo: getWriter thunk required');
+  }
+  return {
+    load: async (id) => {
+      const w = getWriter();
+      if (!w || typeof w.read !== 'function') return null;
+      try {
+        const res = await w.read(app, podResource(id));
+        if (!res?.ok || typeof res.body !== 'string') return null;
+        return JSON.parse(res.body);
+      } catch {
+        return null;
+      }
+    },
+    save: async (id, value) => {
+      const w = getWriter();
+      if (!w || typeof w.write !== 'function') return;
+      try {
+        await w.write(app, podResource(id), JSON.stringify(value), 'application/json');
+      } catch {
+        /* a pod-write failure must not break the local-canonical write */
+      }
+    },
+  };
+}
+
+/**
+ * Compose a local (canonical) IO with a pod (mirror) IO and enforce the
+ * `pod` axis on writes.
+ *
+ * Reads return the local value when present; if local is empty, falls
+ * through to pod and seeds local with whatever pod returns (so a member
+ * joining a `pod: 'shared'` circle picks up the policy on first read).
+ *
+ * Writes ALWAYS persist to local (canonical).  They ADDITIONALLY mirror
+ * to pod only when `shouldMirror(value)` returns truthy — the default
+ * mirrors any non-`'none'` `value.pod`, so a circle whose policy says
+ * "share" actually publishes, and a private circle stays local.
+ *
+ * Failures on either side are swallowed: local is best-effort
+ * (storage may be unavailable), pod is best-effort (offline, unauth,
+ * 4xx), and the caller never sees a half-written state.
+ *
+ * @param {{load, save}}    localIo
+ * @param {{load, save}}    podIo
+ * @param {object}          [opts]
+ * @param {(value: object) => boolean} [opts.shouldMirror] — default: value.pod !== 'none'
+ * @returns {{load, save}}
+ */
+export function tieredPolicyIo(localIo, podIo, opts = {}) {
+  const shouldMirror = typeof opts.shouldMirror === 'function'
+    ? opts.shouldMirror
+    : (value) => !!(value && value.pod && value.pod !== 'none');
+  return {
+    load: async (id) => {
+      const localValue = await localIo.load(id);
+      if (localValue != null) return localValue;
+      const podValue = await podIo.load(id);
+      if (podValue != null) {
+        try { await localIo.save(id, podValue); } catch { /* mirror-down best-effort */ }
+        return podValue;
+      }
+      return null;
+    },
+    save: async (id, value) => {
+      await localIo.save(id, value);
+      if (shouldMirror(value)) {
+        await podIo.save(id, value);
+      }
+    },
+  };
+}

@@ -100,6 +100,7 @@ import { loadAuditLog }       from './auditLog.js';
  * @property {Function|string|object} [helloGate] S1 — fn(envelope)=>bool, PSK string, or { token }
  * @property {object}  [webidClaim]             S2 — { webid } binds default WebID for claim.sign()
  * @property {object}  [identityResolver]       S4 — MemberMap-shape (or { memberMap }) for alias-aware mute + sa.resolver.*
+ * @property {object}  [circleEnforcement]      5.7c — host-injected `{groupsIndex, getOverride, getCirclePolicy, memberMap, getCircleIdForEnv?}` accessors.  Inbound envelopes from a peer in any circle the local user has set `override.chatOff` on, OR from a peer whose MemberMap relation is `'agent'` in a circle where agents are blocked, are dropped after the existing mute-gate.  Fails OPEN on accessor throw so a broken store never silently drops inbound.
  * @property {boolean|object} [capabilityIssuer] S5 — true | { defaultExpiresIn }  exposes sa.caps
  * @property {boolean|object} [trustRegistry]    S5 — true | { vault }  exposes sa.trust
  * @property {boolean|object} [policyEngine]     S5 — true | { groupManager, isRevoked, actorResolver }  exposes sa.policy (requires trustRegistry)
@@ -273,6 +274,107 @@ export async function createSecureAgent(opts = {}) {
     security:  agent.security,
     memberMap: resolverMemberMap,
   });
+
+  // ─── 5.7c — circle override enforcement (chat-off + agent-block) ──
+  // Host-injected accessors let the substrate (canopy-chat v2) consult
+  // its GroupsIndex + per-circle override store + per-circle policy
+  // store without secure-agent knowing about them.  Only the addr→
+  // webid resolution + the decision boundary live here.
+  //
+  // Failure model: FAIL-OPEN.  An accessor that throws — or the
+  // predicate itself — is treated as "no decision" so a broken store
+  // never silently drops user-facing inbound.  The audit log records
+  // the throw when wired so operators can see the misconfig.
+  //
+  // Order vs mute-set: the receive handler runs the mute fast-path
+  // FIRST (so muted peers never even reach the override layer); only
+  // non-muted envelopes are evaluated against the circle gates.
+  const circleEnf = pickCircleEnforcement(opts.circleEnforcement);
+
+  /**
+   * Resolve the inbound peer's webid via the identityResolver chain.
+   * Returns null when the resolver/security layer don't yet know the
+   * peer (e.g. a stranger pre-HI) — the caller treats null as "no
+   * enforcement decision possible" and lets the envelope through.
+   */
+  async function peerWebidFor(addr) {
+    if (!addr) return null;
+    try {
+      const m = await peerResolver.resolveByAddr(addr);
+      return m?.webid ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Evaluate the 5.7c chat-off + agent-block gates for an inbound
+   * envelope.  Returns `true` if the envelope must be DROPPED; `false`
+   * otherwise.  Fails open on any error.
+   */
+  async function isInboundCircleBlocked(env) {
+    if (!circleEnf) return false;
+    const addr = env?._from;
+    if (!addr) return false;
+    let peerWebid = null;
+    try {
+      peerWebid = await peerWebidFor(addr);
+    } catch (err) {
+      console.warn('[secure-agent] circleEnforcement: webid resolve failed', err?.message ?? err);
+      audit('circleEnforcement.error', addr, { stage: 'resolveWebid', error: String(err?.message ?? err) });
+      return false;
+    }
+    if (!peerWebid) return false;   // unknown peer → no enforcement signal
+
+    // 1) Chat-off — any shared-circle override silences this peer.
+    try {
+      const off = await isInboundChatOffLocal({
+        peerWebid,
+        groupsIndex: circleEnf.groupsIndex,
+        getOverride: circleEnf.getOverride,
+      });
+      if (off) {
+        audit('circleEnforcement.drop', addr, { reason: 'chatOff', peerWebid });
+        return true;
+      }
+    } catch (err) {
+      console.warn('[secure-agent] circleEnforcement: chat-off predicate threw', err?.message ?? err);
+      audit('circleEnforcement.error', addr, { stage: 'chatOff', error: String(err?.message ?? err) });
+      // fail open
+    }
+
+    // 2) Agent-block — needs a circleId scope; ask the host to pick.
+    let circleId = null;
+    try {
+      circleId = typeof circleEnf.getCircleIdForEnv === 'function'
+        ? circleEnf.getCircleIdForEnv(env, peerWebid)
+        : null;
+    } catch (err) {
+      console.warn('[secure-agent] circleEnforcement: getCircleIdForEnv threw', err?.message ?? err);
+      audit('circleEnforcement.error', addr, { stage: 'getCircleIdForEnv', error: String(err?.message ?? err) });
+      circleId = null;
+    }
+    if (typeof circleId === 'string' && circleId) {
+      try {
+        const blocked = await isInboundAgentBlockedLocal({
+          peerWebid,
+          circleId,
+          memberMap:       circleEnf.memberMap,
+          getCirclePolicy: circleEnf.getCirclePolicy,
+          getOverride:     circleEnf.getOverride,
+        });
+        if (blocked) {
+          audit('circleEnforcement.drop', addr, { reason: 'agentBlocked', peerWebid, circleId });
+          return true;
+        }
+      } catch (err) {
+        console.warn('[secure-agent] circleEnforcement: agent-block predicate threw', err?.message ?? err);
+        audit('circleEnforcement.error', addr, { stage: 'agentBlock', error: String(err?.message ?? err) });
+        // fail open
+      }
+    }
+    return false;
+  }
 
   /**
    * Mute check with resolver fanout.  An envelope from `addr` is
@@ -503,6 +605,14 @@ export async function createSecureAgent(opts = {}) {
       // bookkeeping (no reciprocal HI, no onPeerMessage fire).
       // S4 — fanout the check across resolver-known aliases.
       if (await isPeerMuted(env?._from)) return;
+      // 5.7c — circle override enforcement runs AFTER mute (so muted
+      // peers never reach the override layer) and BEFORE rate-limit /
+      // reciprocal HI / onPeerMessage.  When the local user has
+      // `override.chatOff` set for any circle the peer is in, OR the
+      // peer is marked relation:'agent' in a circle that blocks agents,
+      // the envelope is silently dropped.  Fails open if accessors
+      // throw — never silently swallow inbound on a broken store.
+      if (await isInboundCircleBlocked(env)) return;
       // S7 — rate-limit drop.  Over-quota peers are silently
       // ignored at the receive boundary (no reciprocal HI either —
       // we don't want them to make us spam them in return).
@@ -861,6 +971,8 @@ export async function createSecureAgent(opts = {}) {
       passkeyAvailable:  webauthnAvailable(),
       // S4 — resolver state
       resolverWired:    !!resolverMemberMap,
+      // 5.7c — circle override enforcement
+      circleEnforcementWired: !!circleEnf,
       // S5 — caps + trust + policy
       trustWired:       !!trustRegistry,
       capsWired,
@@ -998,6 +1110,15 @@ export async function createSecureAgent(opts = {}) {
 
     // S7 — rate limiter (the running instance, for inspection)
     rateLimit: rateLimiter,                // null when not opted in
+
+    // 5.7c — circle override enforcement.  When `circleEnforcement`
+    // wasn't opted in, `wired === false` and `isInboundBlocked` always
+    // resolves false.  Exposed for tests + diagnostics; the live
+    // receive handler invokes the same predicate.
+    circleEnforcement: {
+      get wired() { return !!circleEnf; },
+      isInboundBlocked(env) { return isInboundCircleBlocked(env); },
+    },
 
     // S8 — Perfect Forward Secrecy chains (partial Double-Ratchet)
     pfs: pfsEnabled ? {
@@ -1141,6 +1262,88 @@ function pickStubOpts(opts) {
     if (opts[key] !== undefined) out[key] = opts[key];
   }
   return out;
+}
+
+/**
+ * 5.7c — normalise the circleEnforcement opt to a `{groupsIndex,
+ * getOverride, getCirclePolicy, memberMap, getCircleIdForEnv?}` bundle,
+ * or null if the opt wasn't set / is empty.  Accepts a partial bundle
+ * (any missing accessor degrades gracefully — the predicates handle
+ * `null` / `undefined` and return false).
+ */
+function pickCircleEnforcement(opt) {
+  if (opt == null) return null;
+  if (typeof opt !== 'object') {
+    throw new TypeError(
+      'createSecureAgent: circleEnforcement must be an object with ' +
+      '{groupsIndex, getOverride, getCirclePolicy, memberMap, ' +
+      'getCircleIdForEnv?} accessors.',
+    );
+  }
+  const {
+    groupsIndex, getOverride, getCirclePolicy, memberMap, getCircleIdForEnv,
+  } = opt;
+  return {
+    groupsIndex:     groupsIndex     ?? null,
+    getOverride:     getOverride     ?? null,
+    getCirclePolicy: getCirclePolicy ?? null,
+    memberMap:       memberMap       ?? null,
+    getCircleIdForEnv: typeof getCircleIdForEnv === 'function'
+      ? getCircleIdForEnv
+      : null,
+  };
+}
+
+/**
+ * 5.7c — inlined predicate logic.  Duplicates `isInboundChatOff` from
+ * apps/canopy-chat/src/v2/circleEnforcement.js so secure-agent doesn't
+ * have to depend on canopy-chat (layering: substrates may not import
+ * apps).  Keep the two in sync; canopy-chat's substrate version is the
+ * source of truth + has the full test matrix.
+ */
+async function isInboundChatOffLocal({ peerWebid, groupsIndex, getOverride } = {}) {
+  if (typeof peerWebid !== 'string' || !peerWebid) return false;
+  if (!groupsIndex || typeof groupsIndex.groupsFor !== 'function') return false;
+  let circles;
+  try { circles = groupsIndex.groupsFor(peerWebid); }
+  catch { return false; }
+  if (!Array.isArray(circles) || circles.length === 0) return false;
+  for (const circleId of circles) {
+    let ov = null;
+    try { ov = await getOverride?.(circleId); }
+    catch { ov = null; }
+    if (ov?.chatOff === true) return true;
+  }
+  return false;
+}
+
+/**
+ * 5.7c — inlined predicate logic mirroring `isInboundAgentBlocked`
+ * from apps/canopy-chat/src/v2/circleEnforcement.js.
+ */
+async function isInboundAgentBlockedLocal({
+  peerWebid, circleId, memberMap, getCirclePolicy, getOverride,
+} = {}) {
+  if (typeof peerWebid !== 'string' || !peerWebid) return false;
+  if (typeof circleId  !== 'string' || !circleId)  return false;
+  if (!memberMap || typeof memberMap.resolveByWebid !== 'function') return false;
+
+  let member = null;
+  try { member = await memberMap.resolveByWebid(peerWebid); }
+  catch { member = null; }
+  if (!member || member.relation !== 'agent') return false;
+
+  let policy = null;
+  try { policy = await getCirclePolicy?.(circleId); }
+  catch { policy = null; }
+  if (policy?.agents === 'no') return true;
+
+  let ov = null;
+  try { ov = await getOverride?.(circleId); }
+  catch { ov = null; }
+  if (ov?.agentsMayContactMe === false) return true;
+
+  return false;
 }
 
 /**

@@ -15,7 +15,14 @@ import {
   createCirclePolicyStore,
   createMemberOverrideStore,
   createAvailabilityStore,
+  podPolicyIo, tieredPolicyIo,
 } from '@canopy-app/canopy-chat';
+// 5.4c — pod-writer build is also imported via relative path (Metro doesn't
+// honor package.json "exports" subpaths; same pattern as podNkn.js).
+import {
+  discoverPodRoot as _discoverPodRoot,
+  createPodWriter as _createPodWriter,
+} from '../../../canopy-chat/src/web/podStorage.js';
 
 /** Per-id AsyncStorage IO: key = `${prefix}${id}`. */
 export function asyncKeyedIo(prefix, storage) {
@@ -45,8 +52,17 @@ export function asyncFixedIo(key, storage) {
   };
 }
 
-export function makeCirclePolicyStoreRN(storage) {
-  return createCirclePolicyStore(asyncKeyedIo('cc.circlePolicy.', storage));
+/**
+ * 5.4a — `getPodWriter` is an optional thunk returning a podWriter (or null).
+ * Defaults to `null` so behaviour is unchanged until 5.4b wires a session.
+ */
+export function makeCirclePolicyStoreRN(storage, { getPodWriter } = {}) {
+  const localIo = asyncKeyedIo('cc.circlePolicy.', storage);
+  const podIo   = podPolicyIo({
+    getWriter: typeof getPodWriter === 'function' ? getPodWriter : () => null,
+    app: 'cc-circle',
+  });
+  return createCirclePolicyStore(tieredPolicyIo(localIo, podIo));
 }
 
 export function makeMemberOverrideStoreRN(storage) {
@@ -55,4 +71,40 @@ export function makeMemberOverrideStoreRN(storage) {
 
 export function makeAvailabilityStoreRN(storage) {
   return createAvailabilityStore(asyncFixedIo('cc.availability', storage));
+}
+
+/**
+ * 5.4c — build a `createPodWriter`-shaped writer from the launcher's
+ * shared `OidcSessionRN`, mirroring web/v2/circleApp.js's
+ * `podAuth.handleRedirect → discoverPodRoot → createPodWriter` flow.
+ *
+ * Returns `null` (never throws) when the session isn't ready/authed or
+ * any step fails — the caller stores that into `circlePodWriterRef.current`
+ * and the `getPodWriter` thunk in `makeCirclePolicyStoreRN` falls
+ * through to local-only IO.
+ *
+ * `deps` is injectable for tests: defaults to the real
+ * `discoverPodRoot`/`createPodWriter` from `apps/canopy-chat/src/web/
+ * podStorage.js`.
+ *
+ * @param {{ isAuthenticated: () => boolean, webid?: string|null, getAuthenticatedFetch: () => Function } | null} session
+ * @param {{ discoverPodRoot?: Function, createPodWriter?: Function }} [deps]
+ * @returns {Promise<object|null>}
+ */
+export async function buildCirclePodWriter(session, deps = {}) {
+  const discoverPodRootFn = deps.discoverPodRoot ?? _discoverPodRoot;
+  const createPodWriterFn = deps.createPodWriter ?? _createPodWriter;
+  if (!session || typeof session.isAuthenticated !== 'function') return null;
+  if (!session.isAuthenticated() || !session.webid) return null;
+  let fetchFn;
+  try { fetchFn = session.getAuthenticatedFetch(); }
+  catch { return null; }
+  if (typeof fetchFn !== 'function') return null;
+  const sessionShim = { fetch: fetchFn, webid: session.webid };
+  const podRoot = await discoverPodRootFn(sessionShim).catch(() => null);
+  try {
+    return createPodWriterFn(sessionShim, podRoot ? { podRoot } : {});
+  } catch {
+    return null;
+  }
 }

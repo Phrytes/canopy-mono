@@ -245,6 +245,41 @@ describe('joinGroupState', () => {
     expect(callSkill).not.toHaveBeenCalled();
   });
 
+  // 5.5b — structured doc surfacing for the consent screen.
+  it('extractRulesDoc returns null when nothing structured is set', () => {
+    expect(JG.extractRulesDoc(null)).toBeNull();
+    expect(JG.extractRulesDoc({})).toBeNull();
+    expect(JG.extractRulesDoc({ rulesText: 'plain' })).toBeNull();  // old-format invite
+    expect(JG.extractRulesDoc({ purpose: '' })).toBeNull();         // empty doesn't count
+  });
+
+  it('extractRulesDoc populates every doc field (empty → "")', () => {
+    const out = JG.extractRulesDoc({ purpose: 'P', agreements: 'A' });
+    expect(out.purpose).toBe('P');
+    expect(out.agreements).toBe('A');
+    expect(out.admins).toBe('');     // structured field present, just blank
+    expect(out.responsibility).toBe('');
+  });
+
+  it('fetchGroupRules with a v2 invite populates state.rulesDoc + state.rulesText', async () => {
+    const state = JG.initialState();
+    state.invite = { rules: { purpose: 'Test', agreements: 'Be kind.' } };
+    await JG.fetchGroupRules({ state, callSkill: vi.fn() });
+    expect(state.rulesDoc).toEqual(expect.objectContaining({
+      purpose: 'Test', agreements: 'Be kind.',
+    }));
+    // text summary still set as a fallback for old renderers.
+    expect(state.rulesText).toMatch(/Purpose: Test/);
+  });
+
+  it('fetchGroupRules with a v1-style invite (rulesText only) leaves rulesDoc null', async () => {
+    const state = JG.initialState();
+    state.invite = { rules: { rulesText: 'plain' } };
+    await JG.fetchGroupRules({ state, callSkill: vi.fn() });
+    expect(state.rulesDoc).toBeNull();
+    expect(state.rulesText).toBe('plain');
+  });
+
   it('fetchGroupRules falls back to getGroupRules substrate call', async () => {
     const state = JG.initialState();
     state.invite = { groupId: 'b1' };  // no embedded rules
@@ -324,8 +359,37 @@ describe('createGroupState', () => {
     expect(s.keyRotationMode).toBe('admin-only');
   });
 
-  it('STEP_NAMES is the canonical 5-step list', () => {
-    expect(CG.STEP_NAMES).toEqual(['Identity', 'Governance', 'Rules', 'Tech', 'Review']);
+  it('STEP_NAMES is the canonical 6-step list (5.5c — Skills slotted between Rules and Tech)', () => {
+    expect(CG.STEP_NAMES).toEqual(['Identity', 'Governance', 'Rules', 'Skills', 'Tech', 'Review']);
+  });
+
+  // 5.5c — skills wiring into the rules blob.
+  it('buildRulesObjectFromState: empty skills array → no skills key', () => {
+    const s = CG.initialState();
+    const r = CG.buildRulesObjectFromState(s);
+    expect(r.skills).toBeUndefined();
+  });
+
+  it('buildRulesObjectFromState: drops unnamed skill rows + normalises kept ones', () => {
+    const s = CG.initialState();
+    s.skills = [
+      { name: '',        openness: 'circle'   },     // dropped (no name)
+      { name: 'gardening', openness: 'public', posture: 'negotiable', status: 'active', radius: 'street' },
+      { name: 'plumbing',  openness: 'bogus'  },     // bogus axis falls back to default
+    ];
+    const r = CG.buildRulesObjectFromState(s);
+    expect(r.skills).toHaveLength(2);
+    expect(r.skills[0]).toEqual({
+      name: 'gardening', openness: 'public', posture: 'negotiable', status: 'active', radius: 'street',
+    });
+    expect(r.skills[1].name).toBe('plumbing');
+    expect(r.skills[1].openness).toBe('private');   // normalised default
+  });
+
+  it('newSkillRow seeds a row with the SKILL default axes', () => {
+    const row = CG.newSkillRow();
+    expect(row.name).toBe('');
+    expect(CG.SKILL_AXES.openness).toContain(row.openness);
   });
 
   it('slugify normalises arbitrary names', () => {
@@ -353,23 +417,29 @@ describe('createGroupState', () => {
     expect(r.purpose).toBeUndefined();
     expect(r.tags).toBeUndefined();
     expect(r.additionalAdmins).toBeUndefined();
-    expect(r.rulesText).toBeUndefined();
+    expect(r.agreements).toBeUndefined();          // 5.5a — no doc field set
     expect(r.accessPolicy).toBe('invite-only');
     expect(r.leavePolicy).toBe('anyone');
     expect(r.conflictPolicy).toBe('mediation');
   });
 
-  it('buildRulesObjectFromState parses CSV lists', () => {
+  it('buildRulesObjectFromState parses CSV lists + spreads the rules doc', () => {
     const s = CG.initialState();
     s.tags = 'tools, gardening,, ';
     s.additionalAdmins = 'webid:a, webid:b';
     s.purpose = 'Test buurt';
-    s.rulesText = 'Be kind.';
+    s.rulesDoc.agreements = 'Be kind.';
+    s.rulesDoc.conflict   = 'Mediation by two.';
+    s.rulesDoc.admission  = 'Admins must approve.';
     const r = CG.buildRulesObjectFromState(s);
     expect(r.tags).toEqual(['tools', 'gardening']);
     expect(r.additionalAdmins).toEqual(['webid:a', 'webid:b']);
-    expect(r.purpose).toBe('Test buurt');
-    expect(r.rulesText).toBe('Be kind.');
+    expect(r.purpose).toBe('Test buurt');           // Step 1 → rules doc
+    expect(r.agreements).toBe('Be kind.');           // 5.5a — structured doc
+    expect(r.conflict).toBe('Mediation by two.');
+    expect(r.admission).toBe('Admins must approve.');
+    // The machine-readable conflict ENUM coexists with the doc's free text.
+    expect(r.conflictPolicy).toBe('mediation');
   });
 
   it('finalSubmit happy-path: calls createGroupV2 with composed rules', async () => {
