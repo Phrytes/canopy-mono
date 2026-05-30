@@ -17,7 +17,18 @@
       "title":    { "text": "Stream", "doc": "Heading of the cross-circle Stream tab (board 5B)." },
       "open":     { "text": "Stream", "doc": "Launcher entry that opens the cross-circle Stream." },
       "empty":    { "text": "Nothing across your circles yet.", "doc": "Empty state for the Stream." },
-      "untagged": { "text": "—", "doc": "Tag shown on a Stream row that isn't tied to a circle." }
+      "untagged": { "text": "—", "doc": "Tag shown on a Stream row that isn't tied to a circle." },
+      "compose_placeholder_default":  { "text": "Reply in the timeline", "doc": "Pinned compose placeholder when no row is focused (P6.M3)." },
+      "compose_placeholder_targeted": { "text": "Reply in {{circle}}", "doc": "Pinned compose placeholder when a row is focused — context follows." }
+    },
+    "streamAction": {
+      "help":   { "text": "I'll help", "doc": "Stream row action — accept a question (P6.M3)." },
+      "offer":  { "text": "I have one", "doc": "Stream row action — offer to lend." },
+      "take":   { "text": "I'll take it", "doc": "Stream row action — accept an offer." },
+      "claim":  { "text": "I'll do it", "doc": "Stream row action — claim a chore." },
+      "done":   { "text": "Done", "doc": "Stream row action — mark a reminder done." },
+      "snooze": { "text": "Snooze", "doc": "Stream row action — postpone." },
+      "ignore": { "text": "Ignore", "doc": "Stream row action — dismiss without acting." }
     },
     "settings": {
       "title":        { "text": "Circle settings", "doc": "Settings screen heading (board 4A)." },
