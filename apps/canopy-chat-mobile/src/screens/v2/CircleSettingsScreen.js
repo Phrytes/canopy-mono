@@ -22,7 +22,7 @@ import { t } from '../../core/localisation.js';
 // the most prominent setting.
 const ENUM_AXES = ['view', 'llmTool', 'agents', 'revealPolicy', 'pod'];
 
-export default function CircleSettingsScreen({ store, circleId, onBack }) {
+export default function CircleSettingsScreen({ store, proposalStore, circleId, onBack }) {
   const [working, setWorking] = useState(null);
   const [expanded, setExpanded] = useState({});
 
@@ -39,14 +39,24 @@ export default function CircleSettingsScreen({ store, circleId, onBack }) {
   const onSave = useCallback(async () => {
     if (!working) return;
     if (consensusActive) {
-      // Cross-admin delivery (reuse the groupRedeem envelope) lands in
-      // 1.3b — here we record the pending proposal locally.
-      makeProposal({ circleId, patch: working, proposedBy: null, policy: working });
+      // P6.2 — record + persist the pending proposal.  When unanimous
+      // (single-admin / proposer in `requiredApprovers`), commit
+      // immediately + drop the proposal; otherwise keep it pending.
+      const proposal = makeProposal({
+        circleId, patch: working, proposedBy: null, policy: working,
+      });
+      if (proposalStore) {
+        await proposalStore.save(proposal);
+        if (proposal.status === 'ready') {
+          await store.update(circleId, working);
+          await proposalStore.remove(proposal.id);
+        }
+      }
     } else {
       await store.update(circleId, working);
     }
     onBack?.();
-  }, [working, consensusActive, store, circleId, onBack]);
+  }, [working, consensusActive, store, proposalStore, circleId, onBack]);
 
   if (!working) {
     return (

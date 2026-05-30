@@ -49,6 +49,7 @@
       },
       "send_proposal":   { "text": "Voorstel sturen →", "doc": "Save-button label when consensus is required." },
       "pending":         { "text": "Wijzigingen moeten eerst door mede-admins worden goedgekeurd.", "doc": "Footer note when consensus is active." },
+      "pending_waiting": { "text": "Wachten op {{who}}.", "doc": "Footer note when a proposal is outstanding; {{who}} is the approver list." },
       "feat": {
         "chat":            { "text": "Chat", "doc": "Feature label." },
         "noticeboard":     { "text": "Prikbord", "doc": "Feature label." },

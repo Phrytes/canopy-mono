@@ -57,6 +57,8 @@ export {
   podPolicyIo, tieredPolicyIo,
 } from './v2/circlePolicyStore.js';
 export { makeProposal, approveProposal, pendingApprovers } from './v2/circleConsensus.js';
+// P6.2 — persistence layer for multi-admin proposals.
+export { createProposalStore, localStorageProposalIo } from './v2/circleProposalStore.js';
 export { eventCircleId, buildCircleStream } from './v2/circleStream.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
