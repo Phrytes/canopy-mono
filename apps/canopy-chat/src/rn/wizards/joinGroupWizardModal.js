@@ -17,6 +17,7 @@ import {
   handleSuggestions, isValidHandle, privacyNoticeFor,
   finalSubmit,
 } from '../../core/wizards/joinGroupState.js';
+import { RULES_FIELDS } from '../../v2/circleRules.js';
 
 import {
   Steps, Body, Field, Checkbox, Chips, Actions, ErrorBanner, Submitting,
@@ -89,7 +90,26 @@ export default function JoinGroupWizardModal({
                 title={`Join buurt: ${state.invite?.groupId ?? ''}`}
                 intro="These are the rules of the buurt. Read them before joining."
               >
-                {state.rulesText ? (
+                {/* 5.5b — structured v2 doc when the invite carries it, with the
+                    question/answer shape the create-wizard authored.  Older
+                    invites (rulesText only) and the loading / error states fall
+                    back to the legacy single-blob rendering. */}
+                {state.rulesDoc ? (
+                  <View style={styles.rulesBlock}>
+                    {RULES_FIELDS.map((key) => {
+                      const v = state.rulesDoc[key];
+                      if (!v || !String(v).trim()) return null;
+                      const label = (typeof t === 'function')
+                        ? t(`circle.rules.q.${key}.text`) : key;
+                      return (
+                        <View key={key} style={{ marginBottom: 8 }}>
+                          <Text style={{ fontWeight: '600', marginBottom: 2 }}>{label}</Text>
+                          <Text style={styles.rulesText}>{v}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : state.rulesText ? (
                   <View style={styles.rulesBlock}>
                     <Text style={styles.rulesText}>{state.rulesText}</Text>
                   </View>

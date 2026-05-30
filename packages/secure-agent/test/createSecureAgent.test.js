@@ -816,6 +816,245 @@ describe('createSecureAgent — S4 identity-resolver', () => {
   });
 });
 
+/* ─── 5.7c — circle override enforcement ─────────────── */
+
+describe('createSecureAgent — 5.7c circle override enforcement', () => {
+  // Reuses the S4 MemberMap fixture; defined locally so the describe
+  // is self-contained.
+  function makeFakeMemberMap(members) {
+    return {
+      members,
+      async resolveByPubKey(pk) { return members.find((m) => m.pubKey === pk) ?? null; },
+      async resolveByWebid(w)   { return members.find((m) => m.webid  === w)  ?? null; },
+      async resolveByStableId(s){ return members.find((m) => m.stableId === s) ?? null; },
+    };
+  }
+
+  it('omit circleEnforcement → wired=false; inbound never blocked by the gate', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    expect(sa.circleEnforcement.wired).toBe(false);
+    expect(sa.securityStatus().circleEnforcementWired).toBe(false);
+    expect(await sa.circleEnforcement.isInboundBlocked({ _from: 'app.x' })).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('circleEnforcement with non-object throws at factory time', async () => {
+    await expect(createSecureAgent({
+      vault: new VaultMemory(),
+      circleEnforcement: 'not-an-object',
+    })).rejects.toThrow(/circleEnforcement must be an object/);
+  });
+
+  it('chat-off override drops inbound from a shared-circle peer', async () => {
+    const mm = makeFakeMemberMap([
+      { webid: 'https://peer.example/#me', pubKey: 'pk-peer', stableId: 'sid-peer' },
+    ]);
+    const groupsIndex = {
+      groupsFor: (webid) => webid === 'https://peer.example/#me' ? ['circle-a'] : [],
+    };
+    const getOverride = async (circleId) =>
+      circleId === 'circle-a' ? { chatOff: true } : null;
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      identityResolver: mm,
+      circleEnforcement: { groupsIndex, getOverride, memberMap: mm },
+    });
+    expect(sa.circleEnforcement.wired).toBe(true);
+    sa.agent.security.registerPeer('app.peer.111', 'pk-peer');
+    const blocked = await sa.circleEnforcement.isInboundBlocked({ _from: 'app.peer.111' });
+    expect(blocked).toBe(true);
+    await sa.shutdown();
+  });
+
+  it('chat-off does NOT drop when override is off for the shared circle', async () => {
+    const mm = makeFakeMemberMap([
+      { webid: 'https://peer.example/#me', pubKey: 'pk-peer', stableId: 'sid-peer' },
+    ]);
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      identityResolver: mm,
+      circleEnforcement: {
+        groupsIndex: { groupsFor: () => ['circle-a'] },
+        getOverride: async () => ({ chatOff: false }),
+        memberMap:   mm,
+      },
+    });
+    sa.agent.security.registerPeer('app.peer.111', 'pk-peer');
+    expect(await sa.circleEnforcement.isInboundBlocked({ _from: 'app.peer.111' })).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('unknown peer (no webid) → no enforcement decision; lets envelope through', async () => {
+    const mm = makeFakeMemberMap([]);
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      identityResolver: mm,
+      circleEnforcement: {
+        groupsIndex: { groupsFor: () => ['anything'] },
+        getOverride: async () => ({ chatOff: true }),
+        memberMap:   mm,
+      },
+    });
+    // No registerPeer call → resolver returns null webid → gate skips.
+    expect(await sa.circleEnforcement.isInboundBlocked({ _from: 'app.stranger.999' })).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('agent-block: peer marked relation=agent + circle policy agents=no → dropped', async () => {
+    const agentMember = {
+      webid:    'https://bot.example/#me',
+      pubKey:   'pk-bot',
+      stableId: 'sid-bot',
+      relation: 'agent',
+    };
+    const mm = makeFakeMemberMap([agentMember]);
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      identityResolver: mm,
+      circleEnforcement: {
+        groupsIndex:       { groupsFor: () => ['circle-z'] },
+        getOverride:       async () => null,
+        getCirclePolicy:   async (id) => id === 'circle-z' ? { agents: 'no' } : null,
+        memberMap:         mm,
+        getCircleIdForEnv: () => 'circle-z',
+      },
+    });
+    sa.agent.security.registerPeer('app.bot.111', 'pk-bot');
+    expect(await sa.circleEnforcement.isInboundBlocked({ _from: 'app.bot.111' })).toBe(true);
+    await sa.shutdown();
+  });
+
+  it('agent-block: per-user agentsMayContactMe=false also drops the agent', async () => {
+    const agentMember = {
+      webid:    'https://bot.example/#me',
+      pubKey:   'pk-bot',
+      stableId: 'sid-bot',
+      relation: 'agent',
+    };
+    const mm = makeFakeMemberMap([agentMember]);
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      identityResolver: mm,
+      circleEnforcement: {
+        groupsIndex:       { groupsFor: () => ['circle-z'] },
+        getOverride:       async () => ({ agentsMayContactMe: false }),
+        getCirclePolicy:   async () => ({ agents: 'yes' }),
+        memberMap:         mm,
+        getCircleIdForEnv: () => 'circle-z',
+      },
+    });
+    sa.agent.security.registerPeer('app.bot.111', 'pk-bot');
+    expect(await sa.circleEnforcement.isInboundBlocked({ _from: 'app.bot.111' })).toBe(true);
+    await sa.shutdown();
+  });
+
+  it('agent-block: non-agent relation is NEVER dropped by this gate', async () => {
+    const humanMember = {
+      webid:    'https://human.example/#me',
+      pubKey:   'pk-human',
+      stableId: 'sid-human',
+      relation: 'friend',
+    };
+    const mm = makeFakeMemberMap([humanMember]);
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      identityResolver: mm,
+      circleEnforcement: {
+        groupsIndex:       { groupsFor: () => ['circle-z'] },
+        getOverride:       async () => ({ agentsMayContactMe: false }),
+        getCirclePolicy:   async () => ({ agents: 'no' }),
+        memberMap:         mm,
+        getCircleIdForEnv: () => 'circle-z',
+      },
+    });
+    sa.agent.security.registerPeer('app.human.111', 'pk-human');
+    expect(await sa.circleEnforcement.isInboundBlocked({ _from: 'app.human.111' })).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('fails OPEN when getOverride throws — never silently drops user-facing inbound', async () => {
+    const mm = makeFakeMemberMap([
+      { webid: 'https://peer.example/#me', pubKey: 'pk-peer', stableId: 'sid-peer' },
+    ]);
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      identityResolver: mm,
+      circleEnforcement: {
+        groupsIndex: { groupsFor: () => ['circle-a'] },
+        getOverride: async () => { throw new Error('store explosion'); },
+        memberMap:   mm,
+      },
+    });
+    sa.agent.security.registerPeer('app.peer.111', 'pk-peer');
+    expect(await sa.circleEnforcement.isInboundBlocked({ _from: 'app.peer.111' })).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('fails OPEN when getCircleIdForEnv throws (agent-block scope unknown → no drop)', async () => {
+    const mm = makeFakeMemberMap([
+      { webid: 'https://bot.example/#me', pubKey: 'pk-bot', stableId: 'sid-bot', relation: 'agent' },
+    ]);
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      identityResolver: mm,
+      circleEnforcement: {
+        groupsIndex:       { groupsFor: () => [] },           // no chat-off match
+        getOverride:       async () => null,
+        getCirclePolicy:   async () => ({ agents: 'no' }),
+        memberMap:         mm,
+        getCircleIdForEnv: () => { throw new Error('boom'); },
+      },
+    });
+    sa.agent.security.registerPeer('app.bot.111', 'pk-bot');
+    expect(await sa.circleEnforcement.isInboundBlocked({ _from: 'app.bot.111' })).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('isInboundBlocked tolerates missing accessors (partial bundle)', async () => {
+    // Host supplied a circleEnforcement opt but only the memberMap.
+    // Without groupsIndex / getOverride / getCirclePolicy / getCircleIdForEnv
+    // both predicates must short-circuit cleanly → never block.
+    const mm = makeFakeMemberMap([
+      { webid: 'https://peer.example/#me', pubKey: 'pk-peer', stableId: 'sid-peer', relation: 'agent' },
+    ]);
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      identityResolver: mm,
+      circleEnforcement: { memberMap: mm },        // no other accessors
+    });
+    expect(sa.circleEnforcement.wired).toBe(true);
+    sa.agent.security.registerPeer('app.peer.111', 'pk-peer');
+    expect(await sa.circleEnforcement.isInboundBlocked({ _from: 'app.peer.111' })).toBe(false);
+    await sa.shutdown();
+  });
+
+  it('chat-off gate is consulted at receive (sa.circleEnforcement matches the live gate)', async () => {
+    // The receive handler invokes the SAME isInboundCircleBlocked
+    // predicate that the sa.circleEnforcement.isInboundBlocked surface
+    // exposes; that surface is the only stable observation point
+    // without reaching into the (intentionally private) peerTransport.
+    // Verifying the surface honors mute-set membership before the
+    // circle gate would require exposing peerTransport, which we
+    // deliberately don't — the order is documented at the receive site
+    // and exercised by the integration suite (canopy-chat 1117 / 1130).
+    const mm = makeFakeMemberMap([
+      { webid: 'https://peer.example/#me', pubKey: 'pk-peer', stableId: 'sid-peer' },
+    ]);
+    const sa = await createSecureAgent({
+      vault: new VaultMemory(),
+      identityResolver: mm,
+      circleEnforcement: {
+        groupsIndex: { groupsFor: () => ['circle-a'] },
+        getOverride: async () => ({ chatOff: true }),
+        memberMap:   mm,
+      },
+    });
+    sa.agent.security.registerPeer('app.peer.111', 'pk-peer');
+    expect(await sa.circleEnforcement.isInboundBlocked({ _from: 'app.peer.111' })).toBe(true);
+    await sa.shutdown();
+  });
+});
+
 /* ─── S5 — caps + roles + trust ─────────────────────── */
 
 describe('createSecureAgent — S5 trust + caps + policy', () => {

@@ -10,7 +10,7 @@
 export { canopyChatManifest } from '../manifest.js';
 export { parseInput, parseSlash }    from './parser.js';
 export { mergeManifests }            from './manifestMerge.js';
-export { resolveDispatch }           from './router.js';
+export { resolveDispatch, scopeReadyDispatch } from './router.js';
 export { runDispatch }               from './dispatch.js';
 export { renderReply, formatText }   from './renderer.js';
 export { Thread, newThread }         from './thread.js';
@@ -52,11 +52,14 @@ export {
 export {
   createCirclePolicyStore, localStoragePolicyIo,
   createMemberOverrideStore, localStorageOverrideIo,
+  podPolicyIo, tieredPolicyIo,
 } from './v2/circlePolicyStore.js';
 export { makeProposal, approveProposal, pendingApprovers } from './v2/circleConsensus.js';
 export { eventCircleId, buildCircleStream } from './v2/circleStream.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
+// 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
+export { getCirclePolStatus, formatPolStatus, formatAttestedAt } from './v2/circlePol.js';
 export {
   COMPLAINT_TYPES, ADVISOR_DEFAULTS, makeTooBusyEvent, computeAdvice,
 } from './v2/circleAdvisor.js';

@@ -38,18 +38,29 @@ export function makeRequestCatchUpFromKnownPeers({ callSkill, sendPeer, logger =
       return;
     }
     for (const groupId of buurts) {
-      let sinceMs = 0;
-      try {
-        const hi = await callSkill('stoop', 'getLatestPostAddedAt', { groupId });
-        sinceMs = hi?.latestAt ?? 0;
-      } catch { /* swallow */ }
+      // Perf #4 (2026-05-30): roster-first short-circuit.  When the
+      // group has no known peers (roster empty), there's no one to
+      // send a catch-up-request to — skip the inner work entirely.
+      // This avoids a wasted `getLatestPostAddedAt` round-trip (and on
+      // mobile, the resulting RpcTimeoutError when stoop's hi-water
+      // skill stalls on a quiet group) for every boot of a single-user
+      // dev install.
       let roster = [];
       try {
         const r = await callSkill('stoop', 'listGroupRoster', { groupId });
         roster = r?.members ?? [];
       } catch { /* swallow */ }
-      for (const m of roster) {
-        if (!m?.addr) continue;
+      const peers = roster.filter((m) => m?.addr);
+      if (peers.length === 0) {
+        logger.info?.(`[catch-up] skipped groupId=${groupId} (0 peers)`);
+        continue;
+      }
+      let sinceMs = 0;
+      try {
+        const hi = await callSkill('stoop', 'getLatestPostAddedAt', { groupId });
+        sinceMs = hi?.latestAt ?? 0;
+      } catch { /* swallow */ }
+      for (const m of peers) {
         try {
           await sendPeer(m.addr, {
             type:    'p2p-chat',
@@ -63,7 +74,7 @@ export function makeRequestCatchUpFromKnownPeers({ callSkill, sendPeer, logger =
         }
       }
       logger.info?.(`[catch-up] requested posts since ${new Date(sinceMs).toISOString()}`
-        + ` for groupId=${groupId} from ${roster.length} peer(s)`);
+        + ` for groupId=${groupId} from ${peers.length} peer(s)`);
     }
   };
 }

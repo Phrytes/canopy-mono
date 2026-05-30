@@ -7,13 +7,15 @@ const t = (k) => k;
 function mount() { const el = document.createElement('div'); document.body.appendChild(el); return el; }
 
 describe('renderCircleSettings', () => {
-  it('renders 8 feature toggles + 4 enum axes reflecting the policy', () => {
+  it('renders 8 feature toggles + 5 enum axes reflecting the policy (5.9a: + view)', () => {
     const el = mount();
     renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t });
     expect(el.querySelectorAll('.circle-settings__feature input[type=checkbox]')).toHaveLength(8);
-    expect(el.querySelectorAll('.circle-settings__axis')).toHaveLength(4);
+    expect(el.querySelectorAll('.circle-settings__axis')).toHaveLength(5);
     expect(el.querySelector('input[data-feature=chat]').checked).toBe(true);
     expect(el.querySelector('.circle-settings__axis[data-axis=pod] input[value=none]').checked).toBe(true);
+    // 5.9a — view axis is editable; default 'chat'.
+    expect(el.querySelector('.circle-settings__axis[data-axis=view] input[value=chat]').checked).toBe(true);
   });
 
   it('fires onChange with a feature patch on toggle', () => {
@@ -76,10 +78,10 @@ describe('renderCircleSettings', () => {
     const el = mount();
     const tc = (k) => (k.startsWith('circle.settings.consequence.') ? `why ${k.split('.').pop()}` : k);
     renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t: tc });
-    // 3 llmTool + 3 agents + 2 revealPolicy + 4 pod = 12 enum options
-    expect(el.querySelectorAll('.circle-settings__info')).toHaveLength(12);
+    // 5.9a — 3 view + 3 llmTool + 3 agents + 2 revealPolicy + 4 pod = 15 enum options
+    expect(el.querySelectorAll('.circle-settings__info')).toHaveLength(15);
     const panels = el.querySelectorAll('.circle-settings__consequence');
-    expect(panels).toHaveLength(12);
+    expect(panels).toHaveLength(15);
     for (const p of panels) expect(p.hidden).toBe(true);
   });
 

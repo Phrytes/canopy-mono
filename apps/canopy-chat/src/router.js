@@ -157,7 +157,71 @@ export function resolveDispatch(parseResult, catalog) {
     appOrigin,
     threadId: threadId ?? null,
     replyShape,
+    verb: op?.verb ?? null,
   };
+}
+
+/** Verbs whose dispatch creates a new item that belongs to a scope. */
+const SCOPE_VERBS = new Set(['add', 'post']);
+
+/**
+ * The scope arg keys the substrate resolvers read.  All four share the
+ * one circle/crew/group id space (CIRCLE_ID_IS_CREW_ID_ALIAS); we set
+ * them together so whichever key a given app's resolver checks resolves
+ * to the active circle.
+ */
+const SCOPE_KEYS = ['circleId', 'crewId', 'groupId', '_scope'];
+
+/**
+ * F1 active-circle → app-scope sync (Phase 5.3).
+ *
+ * When a circle is open, item-creating dispatches should land inside
+ * that circle.  The tasks / stoop resolvers already pick their crew /
+ * group from an explicit scope arg (`args.crewId → args._scope → topic`
+ * for tasks; per-call `args.groupId` for stoop), so binding the active
+ * circle is just: inject that id as the scope arg on a *create*
+ * dispatch.  The created item then carries the circle tag, readable
+ * back via `itemCircleId` (circleScope.js).
+ *
+ * Scope is injected ONLY when:
+ *   - the dispatch is `ready` (forms / confirms / errors are untouched),
+ *   - a circle is active (`activeCircleId` truthy),
+ *   - the verb is item-creating (`add` / `post`) — NOT `create` (which
+ *     makes a new container, e.g. createGroup, and must not inherit the
+ *     open circle) and NOT id-targeted mutations (claim / complete /
+ *     remove act on an existing item that already carries its scope),
+ *   - the caller hasn't already chosen a scope (an explicit `--crew=` /
+ *     picked group wins wholesale).
+ *
+ * The host applies this at the runDispatch boundary, so peer-handler
+ * `callSkill` calls (inbound remote posts) — which never pass through
+ * here — are not mis-scoped to the locally-open circle.
+ *
+ * NB: canopy-chat's tasks integration currently runs single-crew
+ * topology (one CrewState wired at boot), so for tasks the scope arg is
+ * delivered to the substrate but does not yet split storage per circle;
+ * stoop is per-call group-aware, and a future multi-crew tasks topology
+ * consumes the same arg.  The binding is the forward-compatible plumbing.
+ *
+ * Pure: the host reads `getActiveCircle()` and passes the id in.
+ *
+ * @param {ReadyDispatch} ready
+ * @param {string|null}   activeCircleId
+ * @returns {ReadyDispatch}
+ */
+export function scopeReadyDispatch(ready, activeCircleId) {
+  if (!ready || ready.kind !== 'ready' || !activeCircleId) return ready;
+  if (!SCOPE_VERBS.has(ready.verb)) return ready;
+
+  const args = ready.args ?? {};
+  const alreadyScoped = SCOPE_KEYS.some(
+    (k) => args[k] !== undefined && args[k] !== null && args[k] !== '',
+  );
+  if (alreadyScoped) return ready;
+
+  const scoped = { ...args };
+  for (const k of SCOPE_KEYS) scoped[k] = activeCircleId;
+  return { ...ready, args: scoped };
 }
 
 /**

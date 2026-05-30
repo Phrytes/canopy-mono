@@ -113,6 +113,25 @@ export function decodeInvite(invite, state) {
 /* ─── Rules text ────────────────────────────────────────────── */
 
 /**
+ * 5.5b — extract a v2 structured rules doc from an embedded rules
+ * blob, OR null when the blob carries no structured fields (older
+ * invites that only set `rulesText`).  When non-null, the renderer
+ * surfaces the doc as per-section answers (board 3C); when null, it
+ * falls back to `state.rulesText` (the summary).
+ */
+export function extractRulesDoc(rules) {
+  if (!rules || typeof rules !== 'object') return null;
+  const docFields = ['purpose', 'admins', 'agreements', 'conflict', 'admission', 'leaving', 'responsibility'];
+  const hit = docFields.some(
+    (k) => typeof rules[k] === 'string' && rules[k].trim() !== '',
+  );
+  if (!hit) return null;
+  const out = {};
+  for (const k of docFields) out[k] = typeof rules[k] === 'string' ? rules[k] : '';
+  return out;
+}
+
+/**
  * Format a rules object as readable text — same layout the
  * getGroupRules adapter uses.  Pure transform; keeps the joiner's
  * pre-join display consistent with what /group-rules shows post-join.
@@ -141,11 +160,14 @@ export function summariseEmbeddedRules(r) {
 export async function fetchGroupRules({ state, callSkill }) {
   const embedded = state.invite?.rules;
   if (embedded && typeof embedded === 'object') {
+    // 5.5b — surface the v2 structured doc when the invite carries it.
+    state.rulesDoc  = extractRulesDoc(embedded);
     state.rulesText = summariseEmbeddedRules(embedded);
     return state;
   }
   try {
     const reply = await callSkill('stoop', 'getGroupRules', { groupId: state.invite.groupId });
+    state.rulesDoc  = extractRulesDoc(reply?.rules ?? reply ?? null);
     state.rulesText = reply?.rules ?? reply?.message ?? '(no rules set for this group)';
   } catch (err) {
     state.rulesError = err?.message ?? String(err);
@@ -161,6 +183,7 @@ export function initialState() {
     invite:           null,         // decoded invite object
     inviteParseError: null,
     rulesText:        null,
+    rulesDoc:         null,      // 5.5b — structured v2 doc; null → fallback to rulesText
     rulesError:       null,
     rulesAccepted:    false,
     privacyAccepted:  false,

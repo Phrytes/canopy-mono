@@ -16,7 +16,8 @@
  */
 
 import {
-  parseInput, mergeManifests, resolveDispatch, runDispatch,
+  parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
+  getActiveCircle, setActiveCircle,
   renderReply, ThreadStore, createDefaultThreadStore, createEventRouter,
   initLocalisation, t, setLang, detectDeviceLang, currentLang,
   describeFilter, canopyChatManifest,
@@ -82,6 +83,17 @@ const headerNameEl   = document.getElementById('active-thread-name');
 const headerFilterEl = document.getElementById('active-thread-filter');
 
 /* ── state ─────────────────────────────────────────────── */
+
+// F1 (5.3) — the v2 circle launcher (index.html / circleApp.js) is a
+// separate page, so it persists the open circle to sessionStorage.
+// classic.html loads fresh on navigation; hydrate the in-memory
+// active-circle singleton from that bridge so item-creating dispatches
+// here scope to the circle the user last opened.  (Mobile is one
+// module instance, so it needs no bridge.)
+try {
+  const storedCircle = sessionStorage.getItem('cc.activeCircle');
+  if (storedCircle) setActiveCircle(storedCircle);
+} catch { /* sessionStorage unavailable — leave unscoped */ }
 
 // v0.7.7 — pass a publishEvent callback that defers to the router
 // (created further down).  Forward-ref pattern: skill mutations
@@ -2118,7 +2130,9 @@ async function dispatchAndRender(route, thread) {
   activeDispatchThreadId = thread.id;
   let reply;
   try {
-    reply = await runDispatch(route, callSkill);
+    // F1 (5.3) — bind item-creating dispatches to the open circle so a
+    // task / post created while a circle is active lands in that circle.
+    reply = await runDispatch(scopeReadyDispatch(route, getActiveCircle()), callSkill);
   } finally {
     activeDispatchThreadId = null;
   }

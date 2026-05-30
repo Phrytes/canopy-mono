@@ -5,11 +5,19 @@
  * (F1). Pure render: back action + circle header + a list of the
  * circle's (already-scoped) items. Host fetches + scopes the items
  * (via `scopeItems`); this stays unit-testable under happy-dom.
+ *
+ * 5.9d — passive Proof-of-Location row sits between the header meta
+ * and the items list. Host probes `getPolStatus` via the shared
+ * `getCirclePolStatus` helper and passes a `{configured,…}` shape in
+ * as `pol`; we just render. Placeholder seam — real attestation in
+ * [[5.9d-followup]].
  */
+import { formatPolStatus } from '../../src/v2/circlePol.js';
 
 export function renderCircleDetail(container, {
   circle = {},
   items = [],
+  pol = null,
   t,
   onBack,
   onSettings,
@@ -103,6 +111,22 @@ export function renderCircleDetail(container, {
     meta.textContent = tr('circle.members', { count: circle.memberCount });
     container.appendChild(meta);
   }
+
+  // 5.9d — Proof-of-Location placeholder row. Passive status, not tappable.
+  // Renders "Not configured" until a future slice wires a real attestation
+  // reader via the `getPolStatus` skill seam.
+  const polRow = document.createElement('div');
+  polRow.className = 'circle-detail__pol';
+  const polLabel = document.createElement('span');
+  polLabel.className = 'circle-detail__pol-label';
+  polLabel.textContent = tr('circle.pol.title');
+  const polValue = document.createElement('span');
+  polValue.className = 'circle-detail__pol-value';
+  polValue.textContent = formatPolStatus(pol, tr);
+  polRow.appendChild(polLabel);
+  polRow.appendChild(document.createTextNode(' '));
+  polRow.appendChild(polValue);
+  container.appendChild(polRow);
 
   const list = document.createElement('div');
   list.className = 'circle-detail__items';

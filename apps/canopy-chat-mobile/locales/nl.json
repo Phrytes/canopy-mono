@@ -6,6 +6,10 @@
       "stroom":  { "text": "Stroom", "doc": "Bottom-nav tab → the cross-circle stream (board 5)." },
       "mij":     { "text": "Mij", "doc": "Bottom-nav tab → personal availability/quiet-hours/hopping (board 6C)." }
     },
+    "nearby": {
+      "label": { "text": "In de buurt", "doc": "Label for the passive local-network 'who's here' row on the v2 launcher (5.9c)." },
+      "count": { "text": "{{count}} apparaten", "doc": "Device count formatted by formatNearbyLabel; {{count}} interpolated." }
+    },
     "new":     { "text": "+ nieuwe kring", "doc": "Create-a-new-circle entry on the launcher." },
     "members": { "text": "{{count}} leden", "doc": "Member count on a circle tile; {{count}} interpolated." },
     "empty":   { "text": "Nog geen kringen.", "doc": "Shown when the launcher has no circles." },
@@ -150,6 +154,11 @@
       "favourites": { "text": "Favorieten", "doc": "File filter: favourited files." },
       "recent":     { "text": "Recent", "doc": "File filter: recently changed files." },
       "empty":      { "text": "Nog geen bestanden in deze kring.", "doc": "Empty state for the circle file browser." }
+    },
+    "pol": {
+      "title":         { "text": "Locatiebewijs", "doc": "PoL row heading (board 10C, slice 5.9d)." },
+      "notConfigured": { "text": "Niet geconfigureerd", "doc": "Empty state for the PoL row." },
+      "attestedAt":    { "text": "Bevestigd op {{time}}", "doc": "Populated PoL state." }
     },
     "rules": {
       "title":         { "text": "Huisregels", "doc": "Rules editor heading (board 3B)." },
@@ -319,6 +328,22 @@
       "filed_message":          { "text": "✓ Conflict ingediend.",    "doc": "Bot-bubble na onDispatched" },
       "success_title":          { "text": "✓ Conflict ingediend",     "doc": "Success-stap titel" },
       "success_intro":          { "text": "Admins (en bemiddelaars als je bemiddeling koos) zien het in de buurt-feed.", "doc": "Success-stap intro" }
+    }
+  },
+  "mnemonic": {
+    "entry": {
+      "title":       { "text": "Herstel je herstelzin" },
+      "lede":        { "text": "Typ de 24 woorden die je hebt opgeschreven toen je de app voor het eerst gebruikte. Ze halen je identiteit en kringen weer terug." },
+      "placeholder": { "text": "linnen veld tuin …" },
+      "wordCount":   { "text": "{{count}} / {{total}} woorden" },
+      "submit":      { "text": "Herstellen" },
+      "cancel":      { "text": "Terug" },
+      "error": {
+        "empty":        { "text": "Typ je herstelzin van 24 woorden om verder te gaan." },
+        "wrong-length": { "text": "Een herstelzin telt 24 woorden. Controleer de spaties en probeer opnieuw." },
+        "invalid":      { "text": "Dit lijkt geen geldige herstelzin. Controleer de spelling van elk woord." },
+        "storage":      { "text": "Opslaan lukte niet. Probeer het nogmaals of herstart de app." }
+      }
     }
   }
 }

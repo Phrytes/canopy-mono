@@ -26,7 +26,8 @@ import {
 } from 'react-native';
 
 import {
-  parseInput, resolveDispatch, runDispatch, renderReply, isQrUri,
+  parseInput, resolveDispatch, runDispatch, scopeReadyDispatch, getActiveCircle,
+  renderReply, isQrUri,
 } from '@canopy-app/canopy-chat';
 
 import { buildNavModels }  from '../core/navModel.js';
@@ -103,7 +104,19 @@ const MSG_ID_PREFIX = Math.random().toString(36).slice(2, 8);
 let nextMessageId = 1;
 const mkId = () => `m${MSG_ID_PREFIX}${nextMessageId++}`;
 
-export default function ChatScreen({ bundle = null, bootError = null, eventLog = null }) {
+export default function ChatScreen({
+  bundle = null,
+  bootError = null,
+  eventLog = null,
+  // 5.4c (2026-05-30) — App.js owns the OidcSessionRN so the v2 circle
+  // launcher can build a podWriter from the SAME session.  If absent
+  // (standalone mounts / older tests) we fall back to creating one
+  // locally so existing wiring keeps working unchanged.
+  sessionRef: sessionRefProp = null,
+  // Fired after sign-in completes / sign-out clears, so App.js can
+  // refresh the launcher's pod-writer ref.  No-op when omitted.
+  onSessionChanged = null,
+}) {
   // M1 (2026-05-29) — the agent bundle is booted ONCE in App.js (shared
   // with the circle launcher).  `bootState` is DERIVED from the props so
   // the rest of this screen — which reads `bootState.kind` /
@@ -141,17 +154,40 @@ export default function ChatScreen({ bundle = null, bootError = null, eventLog =
   // `buildMobilePodAuth` adapts both into the podAuth shape that
   // localBuiltins (signin / signout / whoami) consumes.
   const authHook = useCanopyChatAuth();
-  const sessionRef = useRef(null);
-  if (!sessionRef.current) {
-    sessionRef.current = new OidcSessionRN({ store: SecureStore, appId: 'canopychat' });
+  // 5.4c — prefer the App-owned sessionRef so the v2 circle launcher
+  // shares this OidcSessionRN.  Standalone mounts (older tests, future
+  // harnesses) fall back to a screen-local ref.
+  const localSessionRef = useRef(null);
+  if (!sessionRefProp && !localSessionRef.current) {
+    localSessionRef.current = new OidcSessionRN({ store: SecureStore, appId: 'canopychat' });
   }
+  const sessionRef = sessionRefProp ?? localSessionRef;
   useEffect(() => {
+    // When App owns the ref it has already kicked off restore + the
+    // circle podWriter refresh; skip the duplicate restore here.
+    if (sessionRefProp) return;
     sessionRef.current?.restoreFromVault?.().catch(() => { /* fresh install */ });
-  }, []);
-  const podAuth = useMemo(
-    () => buildMobilePodAuth({ hook: authHook, session: sessionRef.current }),
-    [authHook],
-  );
+  }, [sessionRefProp, sessionRef]);
+  const podAuth = useMemo(() => {
+    const base = buildMobilePodAuth({ hook: authHook, session: sessionRef.current });
+    // 5.4c — fire onSessionChanged after operations that mutate the
+    // session, so App.js can refresh the circle launcher's podWriter
+    // ref without ChatScreen needing to know about it.
+    if (!onSessionChanged) return base;
+    return {
+      ...base,
+      async startSignIn(opts) {
+        const r = await base.startSignIn(opts);
+        try { await onSessionChanged(); } catch { /* best-effort */ }
+        return r;
+      },
+      async signOut() {
+        const r = await base.signOut();
+        try { await onSessionChanged(); } catch { /* best-effort */ }
+        return r;
+      },
+    };
+  }, [authHook, onSessionChanged]);
   const scrollRef       = useRef(null);
   // threadStateRef stays in sync so fire-and-forget async handlers
   // (button taps, follow-up completions) read the latest state
@@ -187,7 +223,10 @@ export default function ChatScreen({ bundle = null, bootError = null, eventLog =
       openQrScanner:  () => setQrScannerOpen(true),
       openFilePicker,
       podAuth,
-      onSignOut: async () => { await sessionRef.current?.clear?.(); },
+      onSignOut: async () => {
+        await sessionRef.current?.clear?.();
+        try { await onSessionChanged?.(); } catch { /* best-effort */ }
+      },
       // Bundle G3 (#265) — raw OidcSessionRN ref for /lookup-peer +
       // /publish-nkn (which need session.getAuthenticatedFetch).
       sessionRef,
@@ -378,6 +417,11 @@ export default function ChatScreen({ bundle = null, bootError = null, eventLog =
       });
       let rendered;
       if (dispatch.kind === 'ready') {
+        // F1 (5.3) — bind item-creating dispatches to the open circle
+        // so a task / post created while a circle is active lands in
+        // that circle.  No-op unless a circle is active + verb is
+        // add/post + no explicit scope was supplied.
+        const scopedDispatch = scopeReadyDispatch(dispatch, getActiveCircle());
         // #238 (2026-05-27) — calendar outbound hook fires after a
         // successful calendar dispatch + fans out invite / RSVP
         // envelopes over NKN.  Same factory web uses.  Wrap
@@ -429,7 +473,7 @@ export default function ChatScreen({ bundle = null, bootError = null, eventLog =
               if (origin === 'canopy-chat') return handler(args ?? {});
               return wrappedBundleCallSkill(origin, opId, args);
             };
-            const reply = await runDispatch(dispatch, wrappedCallSkill);
+            const reply = await runDispatch(scopedDispatch, wrappedCallSkill);
             rendered = renderReply(reply, {
               t,
               appOrigin:         dispatch.appOrigin,
@@ -439,7 +483,7 @@ export default function ChatScreen({ bundle = null, bootError = null, eventLog =
         } else {
           // #238: wrappedBundleCallSkill fires the calendar outbound
           // hook after substrate writes succeed.
-          const reply = await runDispatch(dispatch, wrappedBundleCallSkill);
+          const reply = await runDispatch(scopedDispatch, wrappedBundleCallSkill);
           rendered = renderReply(reply, {
             t,
             appOrigin:         dispatch.appOrigin,
@@ -1194,6 +1238,7 @@ export default function ChatScreen({ bundle = null, bootError = null, eventLog =
             agent={bootState.kind === 'ready' ? bootState.bundle.agent : undefined}
             onSignOut={async () => {
               try { await sessionRef.current?.clear?.(); } catch { /* best-effort */ }
+              try { await onSessionChanged?.(); } catch { /* best-effort */ }
             }}
             onClose={() => setPendingWizard(null)}
             onDispatched={(reply) => {

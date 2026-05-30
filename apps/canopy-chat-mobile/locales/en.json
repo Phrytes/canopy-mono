@@ -6,6 +6,10 @@
       "stroom":  { "text": "Stream", "doc": "Bottom-nav tab → the cross-circle stream (board 5)." },
       "mij":     { "text": "Me", "doc": "Bottom-nav tab → personal availability/quiet-hours/hopping (board 6C)." }
     },
+    "nearby": {
+      "label": { "text": "Nearby", "doc": "Label for the passive local-network 'who's here' row on the v2 launcher (5.9c)." },
+      "count": { "text": "{{count}} device(s)", "doc": "Device count formatted by formatNearbyLabel; {{count}} interpolated." }
+    },
     "new":     { "text": "+ new circle", "doc": "Create-a-new-circle entry on the launcher." },
     "members": { "text": "{{count}} members", "doc": "Member count on a circle tile; {{count}} interpolated." },
     "empty":   { "text": "No circles yet.", "doc": "Shown when the launcher has no circles." },
@@ -150,6 +154,11 @@
       "favourites": { "text": "Favourites", "doc": "File filter: favourited files." },
       "recent":     { "text": "Recent", "doc": "File filter: recently changed files." },
       "empty":      { "text": "No files in this circle yet.", "doc": "Empty state for the circle file browser." }
+    },
+    "pol": {
+      "title":         { "text": "Proof of location", "doc": "Heading of the PoL row on the mobile circle detail (slice 5.9d)." },
+      "notConfigured": { "text": "Not configured" },
+      "attestedAt":    { "text": "Verified at {{time}}" }
     },
     "rules": {
       "title":         { "text": "House rules", "doc": "Rules editor heading (board 3B)." },
@@ -319,6 +328,22 @@
       "filed_message":          { "text": "✓ Dispute filed.",         "doc": "Bot bubble shown when the dispatch returns from onDispatched" },
       "success_title":          { "text": "✓ Dispute filed",          "doc": "Success step title" },
       "success_intro":          { "text": "Admins (and mediators if you picked mediation) will see it in the buurt feed.", "doc": "Success step intro" }
+    }
+  },
+  "mnemonic": {
+    "entry": {
+      "title":       { "text": "Restore your recovery phrase", "doc": "Header on the 5.9b-followup BIP39 restore screen." },
+      "lede":        { "text": "Type the 24 words you wrote down when you first set up the app. They'll bring back your identity and circles.", "doc": "Helper text under the title." },
+      "placeholder": { "text": "linen field garden …", "doc": "Sample text in the multi-line input." },
+      "wordCount":   { "text": "{{count}} / {{total}} words", "doc": "Live word-count nudge under the input." },
+      "submit":      { "text": "Restore", "doc": "Primary CTA on the entry screen." },
+      "cancel":      { "text": "Back",    "doc": "Secondary CTA → returns to the welcome screen." },
+      "error": {
+        "empty":        { "text": "Type your 24-word recovery phrase to continue.", "doc": "Shown when input is empty/whitespace." },
+        "wrong-length": { "text": "A recovery phrase is 24 words. Check spaces and try again.", "doc": "Word count != 24." },
+        "invalid":      { "text": "That doesn't look like a valid recovery phrase. Check the spelling of each word.", "doc": "BIP39 wordlist / checksum failed." },
+        "storage":      { "text": "Couldn't save your identity. Try again, or restart the app and reopen this screen.", "doc": "AsyncStorage write threw." }
+      }
     }
   }
 }

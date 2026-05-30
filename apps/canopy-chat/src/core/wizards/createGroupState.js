@@ -8,6 +8,17 @@
  * canopy-chat-mobile's RN wizard imports these helpers verbatim.
  */
 
+// 5.5a — Step 3 captures the structured v2 rules doc instead of a
+// single free-text field.  The renderers iterate `RULES_QUESTIONS`
+// (purpose is handled by Step 1; the rules step shows the other five).
+import {
+  DEFAULT_RULES_DOC, buildRulesDoc, RULES_FIELDS,
+} from '../../v2/circleRules.js';
+// 5.5c — Step 4 captures the v2 skill list (the four axes per skill).
+// `normalizeSkill` coerces partial rows; `DEFAULT_SKILL` seeds a new row.
+import { SKILL_AXES, DEFAULT_SKILL, normalizeSkill } from '../../v2/circleSkills.js';
+export { SKILL_AXES };
+
 /* ─── Policy catalogs ───────────────────────────────────────── */
 
 export const ACCESS_POLICIES = Object.freeze([
@@ -39,7 +50,15 @@ export const KEY_ROTATION_MODES = Object.freeze([
   { id: 'peer-distributable', label: 'Peer-distributable (any active member can rotate)' },
 ]);
 
-export const STEP_NAMES = Object.freeze(['Identity', 'Governance', 'Rules', 'Tech', 'Review']);
+// 5.5c — Skills is now its own step between Rules and Tech.  Renderers
+// drive their step machinery off `STEP_NAMES.length`, so adding here
+// promotes Tech→5 and Review→6 without touching the increment logic.
+export const STEP_NAMES = Object.freeze(['Identity', 'Governance', 'Rules', 'Skills', 'Tech', 'Review']);
+
+/** A fresh blank skill row for the wizard's "+ Add skill" affordance. */
+export function newSkillRow() {
+  return { ...DEFAULT_SKILL };
+}
 
 /* ─── Helpers ───────────────────────────────────────────────── */
 
@@ -77,8 +96,12 @@ export function initialState() {
     accessPolicy:          'invite-only',
     leavePolicy:           'anyone',
     // Step 3 — rules & conflict
-    rulesText:             '',
+    // 5.5a — structured v2 rules doc (purpose syncs from Step 1 at submit).
+    rulesDoc:              { ...DEFAULT_RULES_DOC },
     conflictPolicy:        'mediation',
+    // Step 4 — skills (5.5c): a list of `{name,openness,posture,status,radius}`
+    // rows; rows without a name are dropped at submit.
+    skills:                [],
     // Step 4 — tech & storage
     keyRotationMode:       'admin-only',
     rotationDays:          30,
@@ -104,15 +127,27 @@ export function buildRulesObjectFromState(state) {
     .split(',').map((s) => s.trim()).filter(Boolean);
   const tags = String(state.tags ?? '')
     .split(',').map((s) => s.trim()).filter(Boolean);
+  // 5.5a — Step 1's `purpose` is the canonical one-liner; it lives in
+  // the rules doc too so joiners see it in the consent screen.
+  const doc = buildRulesDoc({ ...state.rulesDoc, purpose: state.purpose });
   const rules = {
-    purpose:           state.purpose || undefined,
     tags:              tags.length > 0 ? tags : undefined,
     additionalAdmins:  additionalAdmins.length > 0 ? additionalAdmins : undefined,
     accessPolicy:      state.accessPolicy,
     leavePolicy:       state.leavePolicy,
-    rulesText:         state.rulesText || undefined,
     conflictPolicy:    state.conflictPolicy,
   };
+  for (const k of RULES_FIELDS) {
+    if (doc[k]) rules[k] = doc[k];
+  }
+  // 5.5c — embed normalised skills (drop unnamed rows) in the rules
+  // blob.  createGroupV2 spreads the blob verbatim, so the substrate
+  // persists them under the group-rules item without needing its own
+  // skills arg (a dedicated substrate slot is a follow-up).
+  if (Array.isArray(state.skills) && state.skills.length > 0) {
+    const named = state.skills.map(normalizeSkill).filter((s) => s.name.trim() !== '');
+    if (named.length > 0) rules.skills = named;
+  }
   for (const k of Object.keys(rules)) {
     if (rules[k] === undefined) delete rules[k];
   }

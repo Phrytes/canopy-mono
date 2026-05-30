@@ -114,6 +114,14 @@ export class MdnsTransport extends Transport {
 
   get _pubKeyToConn() { return this.#pubKeyToConn; }
 
+  /**
+   * Number of currently identified peer connections.  Read-only signal
+   * intended for passive UI ("Nearby: N device(s)") — kept in sync with
+   * the pubKey→connId map, so it updates as peer-discovered /
+   * peer-disconnected events fire on this transport.  v2 circle 5.9c.
+   */
+  get connectionCount() { return this.#pubKeyToConn.size; }
+
   _hasPeer(pubKey) {
     return this.#pubKeyToConn.has(pubKey);
   }

@@ -36,15 +36,13 @@ describe('renderRulesEditor', () => {
     expect(onChange).toHaveBeenCalledWith({ conflict: 'talk it out' });
   });
 
-  it('Save fires onSave only when complete; preview fires onPreview', () => {
+  it('Save fires onSave when the doc is complete (5.5d — preview-as-joiner is gone; the join wizard owns the consent render)', () => {
     const el = mount();
     const onSave = vi.fn();
-    const onPreview = vi.fn();
-    renderRulesEditor(el, { doc: { purpose: 'P', agreements: 'A' }, t, onSave, onPreview });
+    renderRulesEditor(el, { doc: { purpose: 'P', agreements: 'A' }, t, onSave });
     el.querySelector('.circle-rules__save').click();
-    el.querySelector('.circle-rules__preview').click();
     expect(onSave).toHaveBeenCalledTimes(1);
-    expect(onPreview).toHaveBeenCalledTimes(1);
+    expect(el.querySelector('.circle-rules__preview')).toBeNull();
   });
 
   it('onBack fires from the back button', () => {

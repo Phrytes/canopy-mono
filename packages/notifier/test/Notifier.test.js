@@ -288,3 +288,98 @@ describe('Notifier — scheduleBefore (lend / deadline reminders)', () => {
       .rejects.toThrow(/leadMs/);
   });
 });
+
+// 5.7b — quiet-hours / per-recipient suppression hook.
+describe('Notifier — isSuppressed hook', () => {
+  it('skips delivery and emits "suppressed" when the predicate is truthy', async () => {
+    const { notifier, channel, advance, getNow } = buildNotifier({
+      isSuppressed: (recipient) => recipient === 'chat-A',
+    });
+    const suppressed = vi.fn();
+    notifier.on('suppressed', suppressed);
+    await notifier.start();
+    await notifier.scheduleOnce({
+      triggerAt: getNow() + 100, recipient: 'chat-A', channel: 'chat',
+      builder:   async () => ({ text: 'hi' }),
+    });
+    await advance(100);
+    expect(channel.outbox).toEqual([]);
+    expect(suppressed).toHaveBeenCalledTimes(1);
+    expect(suppressed.mock.calls[0][0]).toMatchObject({ recipient: 'chat-A', kind: 'once' });
+  });
+
+  it('delivers normally when the predicate is falsy', async () => {
+    const { notifier, channel, advance, getNow } = buildNotifier({
+      isSuppressed: () => false,
+    });
+    await notifier.start();
+    await notifier.scheduleOnce({
+      triggerAt: getNow() + 100, recipient: 'chat-A', channel: 'chat',
+      builder:   async () => ({ text: 'hi' }),
+    });
+    await advance(100);
+    expect(channel.outbox).toEqual([{ chatId: 'chat-A', text: 'hi' }]);
+  });
+
+  it('skips suppressed recipients individually on a recurring job', async () => {
+    const { notifier, channel, advance, getNow } = buildNotifier({
+      isSuppressed: (recipient) => recipient === 'chat-B',
+    });
+    await notifier.start();
+    await notifier.schedule({
+      id:         'digest-1',
+      cadence:    { kind: 'daily', atLocal: '09:00', tz: 'UTC' },
+      recipients: ['chat-A', 'chat-B', 'chat-C'],
+      channel:    'chat',
+      builder:    async (r) => ({ text: `to ${r}` }),
+    });
+    // Advance to the next 09:00 UTC tick.
+    const ms = 24 * 60 * 60 * 1000;
+    await advance(ms);
+    const chatIds = channel.outbox.map((m) => m.chatId).sort();
+    expect(chatIds).toEqual(['chat-A', 'chat-C']);
+  });
+
+  it('a throwing predicate is treated as "do not suppress"', async () => {
+    const { notifier, channel, advance, getNow } = buildNotifier({
+      isSuppressed: () => { throw new Error('boom'); },
+    });
+    await notifier.start();
+    await notifier.scheduleOnce({
+      triggerAt: getNow() + 100, recipient: 'chat-A', channel: 'chat',
+      builder:   async () => ({ text: 'hi' }),
+    });
+    await advance(100);
+    expect(channel.outbox).toEqual([{ chatId: 'chat-A', text: 'hi' }]);
+  });
+
+  it('setSuppressionPredicate swaps the hook at runtime', async () => {
+    const { notifier, channel, advance, getNow } = buildNotifier();
+    await notifier.start();
+    // No predicate yet → delivers.
+    await notifier.scheduleOnce({
+      triggerAt: getNow() + 100, recipient: 'chat-A', channel: 'chat',
+      builder:   async () => ({ text: 'first' }),
+    });
+    await advance(100);
+    expect(channel.outbox).toHaveLength(1);
+
+    // Install a predicate, schedule again → suppressed.
+    notifier.setSuppressionPredicate(() => true);
+    await notifier.scheduleOnce({
+      triggerAt: getNow() + 100, recipient: 'chat-A', channel: 'chat',
+      builder:   async () => ({ text: 'second' }),
+    });
+    await advance(100);
+    expect(channel.outbox).toHaveLength(1);   // unchanged
+
+    // Disable the predicate (null) → delivers again.
+    notifier.setSuppressionPredicate(null);
+    await notifier.scheduleOnce({
+      triggerAt: getNow() + 100, recipient: 'chat-A', channel: 'chat',
+      builder:   async () => ({ text: 'third' }),
+    });
+    await advance(100);
+    expect(channel.outbox).toHaveLength(2);
+  });
+});

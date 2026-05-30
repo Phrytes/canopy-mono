@@ -9,7 +9,10 @@
  */
 import { RULES_QUESTIONS, isRulesComplete } from '../../src/v2/circleRules.js';
 
-export function renderRulesEditor(container, { doc = {}, t, onChange, onBack, onSave, onPreview } = {}) {
+// 5.5d — `onPreview` removed: the join wizard now inlines the consent
+// rendering from the same doc, so a separate preview-as-joiner button
+// on the editor is redundant (admin previews by joining a test invite).
+export function renderRulesEditor(container, { doc = {}, t, onChange, onBack, onSave } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   const emit = (patch) => { if (typeof onChange === 'function') onChange(patch); };
   container.innerHTML = '';
@@ -54,15 +57,6 @@ export function renderRulesEditor(container, { doc = {}, t, onChange, onBack, on
     note.className = 'circle-rules__note';
     note.textContent = tr('circle.rules.required_note');
     container.appendChild(note);
-  }
-
-  if (typeof onPreview === 'function') {
-    const prev = document.createElement('button');
-    prev.type = 'button';
-    prev.className = 'circle-rules__preview';
-    prev.textContent = tr('circle.rules.preview');
-    prev.addEventListener('click', () => onPreview());
-    container.appendChild(prev);
   }
 
   const save = document.createElement('button');

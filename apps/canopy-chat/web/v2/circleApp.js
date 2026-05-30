@@ -31,6 +31,7 @@ import { renderRulesConsent } from './circleRulesConsent.js';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircleItems } from '../../src/v2/circleContent.js';
+import { getCirclePolStatus } from '../../src/v2/circlePol.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
 import { normalizeCircleMembers } from '../../src/v2/circleMembers.js';
@@ -159,6 +160,16 @@ async function showDetail(id) {
   setActiveCircle(id);
   try { sessionStorage.setItem('cc.activeCircle', id); } catch { /* ignore */ }
   const circle = circlesCache.find((c) => c.id === id) || { id };
+  // 5.9e — when `view` is 'chat' the launcher routes straight to the
+  // classic chat shell instead of opening the action-grid detail.  The
+  // active-circle dispatch from 5.3 already scopes posts to this circle.
+  try {
+    const policy = await policyStore.get(id);
+    if (policy?.view === 'chat') {
+      window.location.href = `/classic.html?circle=${encodeURIComponent(id)}`;
+      return;
+    }
+  } catch { /* fresh circle / read failure → fall through to detail */ }
   const onSettings = () => showSettings(id);
   const onMine = () => showOverride(id);
   const onViewAs = () => showViewAs(id);
@@ -167,15 +178,20 @@ async function showDetail(id) {
   const onFiles = () => showFolio(id);
   const onRules = () => showRules(id);
   const detailOpts = { onBack: showLauncher, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules };
-  renderCircleDetail(rootEl, { circle, items: [], t, ...detailOpts });
+  renderCircleDetail(rootEl, { circle, items: [], pol: null, t, ...detailOpts });
 
   if (!resolveCallSkill) return;
+  // 5.9d — probe PoL in parallel with items load; both feed renderCircleDetail.
   let items = [];
+  let pol   = null;
   try {
-    items = await loadCircleItems({ callSkill: resolveCallSkill, circleId: id });
+    [items, pol] = await Promise.all([
+      loadCircleItems({ callSkill: resolveCallSkill, circleId: id }),
+      getCirclePolStatus({ callSkill: resolveCallSkill, circleId: id }),
+    ]);
   } catch { /* keep empty */ }
   if (getActiveCircle() === id) {
-    renderCircleDetail(rootEl, { circle, items, t, ...detailOpts });
+    renderCircleDetail(rootEl, { circle, items, pol, t, ...detailOpts });
   }
 }
 

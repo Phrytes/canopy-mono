@@ -25,6 +25,17 @@ describe('MemberMap — basic CRUD', () => {
     expect(found.handle).toBe('anne-23');
   });
 
+  // 5.6 — agent marker (canopy-chat v2 board 4: agents-filter override).
+  it("relation accepts 'agent' alongside 'contact' + 'group-member'", async () => {
+    const m = new MemberMap();
+    await m.addMember({ webid: ANNE, relation: 'agent', displayName: 'Bot Anne' });
+    await m.addMember({ webid: BOB,  relation: 'unrecognised' });
+    const a = await m.resolveByWebid(ANNE);
+    const b = await m.resolveByWebid(BOB);
+    expect(a.relation).toBe('agent');
+    expect(b.relation).toBe('group-member');   // unknown → default
+  });
+
   it('resolveByWebid returns null for unknown webid', async () => {
     const m = new MemberMap();
     expect(await m.resolveByWebid('https://nope.example/x')).toBeNull();

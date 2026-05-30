@@ -20,7 +20,10 @@ import {
   loadCircles, circleSourcesFromAgent, makeResolvingCallSkill,
   loadCircleItems, quickCreateCircle, setActiveCircle, normalizeCircleMembers,
   circleFilesFromListFiles,
+  // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
+  getCirclePolStatus, formatPolStatus,
 } from '@canopy-app/canopy-chat';
+import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
 import {
   makeCirclePolicyStoreRN, makeMemberOverrideStoreRN, makeAvailabilityStoreRN,
@@ -48,7 +51,7 @@ function WithTabBar({ active, onSelect, children }) {
   );
 }
 
-export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
+export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatRoute }) {
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -65,6 +68,28 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   const [items, setItems] = useState([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+
+  // 5.9c — passive "Nearby N device(s)" signal from MdnsTransport.  When the
+  // bundle exposes mdns we mirror its connectionCount into state, subscribed
+  // to peer-discovered + peer-disconnected so the row updates as peers come
+  // and go.  When bundle.mdns is null (vitest, iOS, Expo Go, Wi-Fi off) the
+  // row hides via the `bundle?.mdns` gate at render time.
+  const [nearbyCount, setNearbyCount] = useState(0);
+  useEffect(() => {
+    const mdns = bundle?.mdns;
+    if (!mdns) return;
+    const sync = () => {
+      const n = mdns.connectionCount;
+      setNearbyCount(typeof n === 'number' ? n : 0);
+    };
+    sync();
+    mdns.on?.('peer-discovered',   sync);
+    mdns.on?.('peer-disconnected', sync);
+    return () => {
+      mdns.off?.('peer-discovered',   sync);
+      mdns.off?.('peer-disconnected', sync);
+    };
+  }, [bundle]);
 
   // M3 — AsyncStorage-backed circle stores (keys match web's localStorage
   // convention).  Created once; the sub-screens load/save through them.
@@ -95,6 +120,19 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
 
   const openCircle = useCallback(async (c) => {
     setActiveCircle(c.id);
+    // 5.9e — when the circle's `view` axis is 'chat', skip the action-grid
+    // detail and route straight to the chat surface (the active-circle
+    // dispatch from 5.3 already scopes posts to this circle's thread).
+    // Falls through to the default detail when no onChatRoute is wired or
+    // the policy axis isn't set.
+    if (typeof onChatRoute === 'function') {
+      let policyView = null;
+      try {
+        const p = await policyStore.get(c.id);
+        policyView = p?.view ?? null;
+      } catch { /* fresh circle / read failure → fall through */ }
+      if (policyView === 'chat') { onChatRoute(c.id); return; }
+    }
     setSelected(c);
     setView('detail');
     setItems([]);
@@ -103,7 +141,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
       const got = await loadCircleItems({ callSkill, circleId: c.id });
       setSelected((cur) => { if (cur && cur.id === c.id) setItems(got); return cur; });
     } catch { /* keep empty */ }
-  }, [callSkill]);
+  }, [callSkill, onChatRoute, policyStore]);
 
   const closeCircle = () => { setActiveCircle(null); setSelected(null); setItems([]); setView('list'); };
 
@@ -210,6 +248,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
       <CircleDetail
         circle={selected}
         items={items}
+        callSkill={callSkill}
         onBack={closeCircle}
         onSettings={() => setView('settings')}
         onMine={() => setView('override')}
@@ -264,6 +303,13 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
           <Text style={styles.muted}>{t('circle.loading')}</Text>
         ) : (
           <ScrollView contentContainerStyle={styles.list}>
+            {bundle?.mdns ? (
+              <View style={styles.nearbyRow} testID="circle-nearby">
+                <Text style={styles.nearbyText}>
+                  {formatNearbyLabel(nearbyCount, t)}
+                </Text>
+              </View>
+            ) : null}
             {circles.length === 0 ? (
               <Text style={styles.muted}>{t('circle.empty')}</Text>
             ) : (
@@ -313,7 +359,21 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack }) {
   );
 }
 
-function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules }) {
+function CircleDetail({ circle, items, callSkill, onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules }) {
+  // 5.9d — Proof-of-Location placeholder. Probe `getPolStatus` on mount;
+  // when unregistered (today's state) the helper returns {configured:false}
+  // and the row renders "Not configured". Real attestation in [[5.9d-followup]].
+  const [pol, setPol] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    if (!callSkill || !circle?.id) { setPol(null); return () => { alive = false; }; }
+    (async () => {
+      const status = await getCirclePolStatus({ callSkill, circleId: circle.id });
+      if (alive) setPol(status);
+    })();
+    return () => { alive = false; };
+  }, [callSkill, circle?.id]);
+
   return (
     <View style={styles.page} testID="circle-detail">
       <View style={styles.bar}>
@@ -348,6 +408,10 @@ function CircleDetail({ circle, items, onBack, onSettings, onMine, onViewAs, onA
           <Text style={styles.detailActionText}>{t('circle.rules.title')}</Text>
         </Pressable>
       </View>
+      <View style={styles.polRow} testID="circle-detail-pol">
+        <Text style={styles.polLabel}>{t('circle.pol.title')}</Text>
+        <Text style={styles.polValue}>{formatPolStatus(pol, t)}</Text>
+      </View>
       <ScrollView contentContainerStyle={styles.list}>
         {(!items || items.length === 0) ? (
           <Text style={styles.muted}>{t('circle.detail_empty')}</Text>
@@ -372,6 +436,13 @@ const styles = StyleSheet.create({
   barActions: { flexDirection: 'row', gap: 14, marginLeft: 'auto' },
   availText:  { fontSize: 13, color: theme.color.inkSoft, fontWeight: '600' },
   detailActions:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 6 },
+  // 5.9c — passive Nearby row at the top of the kringen list.
+  nearbyRow:       { paddingHorizontal: 2, paddingVertical: 6, marginBottom: 2 },
+  nearbyText:      { fontSize: 12, color: theme.color.inkSoft, fontStyle: 'italic' },
+  // 5.9d — passive Proof-of-Location row (placeholder; not tappable).
+  polRow:          { flexDirection: 'row', gap: 6, alignItems: 'baseline', marginTop: 4, marginBottom: 8, paddingHorizontal: 2 },
+  polLabel:        { fontSize: 12, color: theme.color.inkSoft, fontWeight: '600' },
+  polValue:        { fontSize: 12, color: theme.color.inkSoft, fontStyle: 'italic' },
   detailAction:    { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.card },
   detailActionText: { fontSize: 12, color: theme.color.inkSoft },
   title:      { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },

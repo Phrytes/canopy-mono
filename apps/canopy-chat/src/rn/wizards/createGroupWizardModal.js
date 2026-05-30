@@ -20,7 +20,9 @@ import {
   KEY_ROTATION_MODES, STEP_NAMES,
   initialState, slugify, isValidSlug, labelOf,
   buildRulesObjectFromState, finalSubmit, encodeMembershipCodeUrl,
+  newSkillRow, SKILL_AXES,
 } from '../../core/wizards/createGroupState.js';
+import { RULES_QUESTIONS } from '../../v2/circleRules.js';
 
 import {
   Steps, Body, Field, Textarea, RadioGroup,
@@ -157,13 +159,23 @@ export default function CreateGroupWizardModal({
             )}
             {state.step === 3 && (
               <Body title="Rules + conflict" intro="House rules and how to resolve conflicts.">
-                <Textarea
-                  label="Rules text (optional)"
-                  value={state.rulesText}
-                  onChangeText={(v) => setState((s) => ({ ...s, rulesText: v }))}
-                  placeholder="e.g. Be kind. No commercial spam. Respect quiet hours."
-                  rows={5}
-                />
+                {/* 5.5a — structured v2 rules doc.  Step 1 captured `purpose`
+                    already, so we ask the other five questions here.  Question
+                    text comes from the same locale block the consent screen uses. */}
+                {RULES_QUESTIONS.filter((q) => q.key !== 'purpose').map((q) => (
+                  <Textarea
+                    key={q.key}
+                    label={(typeof t === 'function'
+                      ? t(`circle.rules.q.${q.key}.text`)
+                      : q.key) + (q.required ? ' *' : '')}
+                    value={state.rulesDoc[q.key] ?? ''}
+                    onChangeText={(v) => setState((s) => ({
+                      ...s,
+                      rulesDoc: { ...s.rulesDoc, [q.key]: v },
+                    }))}
+                    rows={3}
+                  />
+                ))}
                 <RadioGroup
                   label="Conflict policy"
                   value={state.conflictPolicy}
@@ -172,7 +184,49 @@ export default function CreateGroupWizardModal({
                 />
               </Body>
             )}
+            {/* 5.5c — Skills step (slotted between Rules and Tech). */}
             {state.step === 4 && (
+              <Body title="Skills (optional)" intro="What members can do / offer in this circle.  Each skill is named + has four axes.">
+                {state.skills.map((row, i) => (
+                  <View key={i} style={{ borderWidth: 1, borderColor: '#d8d1bc', borderRadius: 6, padding: 10, marginBottom: 10 }}>
+                    <Field
+                      label="Skill name"
+                      value={row.name}
+                      onChangeText={(v) => setState((s) => {
+                        const skills = s.skills.slice();
+                        skills[i] = { ...skills[i], name: v };
+                        return { ...s, skills };
+                      })}
+                      placeholder="e.g. plumbing"
+                    />
+                    {Object.keys(SKILL_AXES).map((axis) => (
+                      <RadioGroup
+                        key={axis}
+                        label={axis}
+                        value={row[axis]}
+                        options={SKILL_AXES[axis].map((id) => ({ id, label: id }))}
+                        onChange={(v) => setState((s) => {
+                          const skills = s.skills.slice();
+                          skills[i] = { ...skills[i], [axis]: v };
+                          return { ...s, skills };
+                        })}
+                      />
+                    ))}
+                    <Pressable
+                      onPress={() => setState((s) => ({ ...s, skills: s.skills.filter((_, j) => j !== i) }))}
+                    >
+                      <Text style={{ color: '#b04a30', marginTop: 4 }}>Remove skill</Text>
+                    </Pressable>
+                  </View>
+                ))}
+                <Pressable
+                  onPress={() => setState((s) => ({ ...s, skills: [...s.skills, newSkillRow()] }))}
+                >
+                  <Text style={{ color: '#b04a30' }}>+ Add skill</Text>
+                </Pressable>
+              </Body>
+            )}
+            {state.step === 5 && (
               <Body title="Tech + storage" intro="Cryptography + storage knobs. Defaults are sane.">
                 <RadioGroup
                   label="Key rotation mode"
@@ -209,7 +263,7 @@ export default function CreateGroupWizardModal({
                 )}
               </Body>
             )}
-            {state.step === 5 && (() => {
+            {state.step === 6 && (() => {
               const rules = buildRulesObjectFromState(state);
               return (
                 <Body title="Review" intro="Confirm the settings, then create the buurt.">
@@ -221,8 +275,21 @@ export default function CreateGroupWizardModal({
                     ...(rules.additionalAdmins ? [{ label: 'Extra admins', value: rules.additionalAdmins.join(', ') }] : []),
                     { label: 'Access',      value: labelOf(ACCESS_POLICIES, state.accessPolicy) },
                     { label: 'Leave',       value: labelOf(LEAVE_POLICIES,  state.leavePolicy)  },
-                    ...(rules.rulesText    ? [{ label: 'Rules text', value: rules.rulesText, pre: true }] : []),
+                    // 5.5a — surface each non-empty rules-doc field.
+                    ...RULES_QUESTIONS.filter((q) => q.key !== 'purpose').flatMap((q) => {
+                      const v = rules[q.key];
+                      if (!v) return [];
+                      const label = (typeof t === 'function')
+                        ? t(`circle.rules.q.${q.key}.text`) : q.key;
+                      return [{ label, value: v, pre: true }];
+                    }),
                     { label: 'Conflict',    value: labelOf(CONFLICT_POLICIES, state.conflictPolicy) },
+                    // 5.5c — surface named skills (axes inline).
+                    ...((rules.skills ?? []).length > 0
+                      ? [{ label: 'Skills',
+                          value: rules.skills.map((s) => `${s.name} — ${s.openness}/${s.posture}/${s.status}/${s.radius}`).join('\n'),
+                          pre: true }]
+                      : []),
                     { label: 'Key rotation',value: labelOf(KEY_ROTATION_MODES, state.keyRotationMode) },
                     { label: 'Rotation interval (days)', value: String(state.rotationDays) },
                     { label: 'Invite expiry (hours)',    value: String(state.inviteExpiresInHours) },
@@ -240,13 +307,14 @@ export default function CreateGroupWizardModal({
               { label: t('common.cancel'), onPress: onClose, kind: 'secondary' },
               { label: t('common.next'),   onPress: () => setStep(2), kind: 'primary', disabled: !canAdvance1 },
             ];
-            if (state.step < 5) return [
+            // 5.5c — six-step wizard.  Steps 2-5 share Back/Next; step 6 is Review.
+            if (state.step < STEP_NAMES.length) return [
               { label: t('common.back'),   onPress: () => setStep(state.step - 1), kind: 'secondary' },
               { label: t('common.cancel'), onPress: onClose, kind: 'secondary' },
               { label: t('common.next'),   onPress: () => setStep(state.step + 1), kind: 'primary' },
             ];
             return [
-              { label: t('common.back'),   onPress: () => setStep(4), kind: 'secondary', disabled: state.submitting },
+              { label: t('common.back'),   onPress: () => setStep(STEP_NAMES.length - 1), kind: 'secondary', disabled: state.submitting },
               { label: t('common.cancel'), onPress: onClose, kind: 'secondary', disabled: state.submitting },
               { label: 'Create buurt',     onPress: onCreate, kind: 'primary', disabled: state.submitting },
             ];
