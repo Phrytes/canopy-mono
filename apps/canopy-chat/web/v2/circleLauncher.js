@@ -15,12 +15,18 @@ export function renderCircleLauncher(container, {
   // via `buildTilePreviews` over the EventLog.  Null/absent → tiles show
   // the member-count fallback (current behaviour).
   previews = null,
+  // P6.2 #341-followup — per-circle pending proposal counts keyed by id.
+  // Host computes via `pendingApprovers` for circles with admin-approval
+  // axes.  Tiles show a yellow voorstellen badge when > 0.
+  proposals = null,
   t,
   onOpenCircle,
   onNewCircle,
   onAvailability,
   onStream,
   onHop,
+  onNearby,
+  onMyThings,
   loading = false,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -57,6 +63,24 @@ export function renderCircleLauncher(container, {
     hop.textContent = tr('circle.hop.title');
     hop.addEventListener('click', () => onHop());
     container.appendChild(hop);
+  }
+
+  if (typeof onNearby === 'function') {
+    const nearby = document.createElement('button');
+    nearby.type = 'button';
+    nearby.className = 'circle-launcher__nearby';
+    nearby.textContent = tr('circle.nearbyScreen.title');
+    nearby.addEventListener('click', () => onNearby());
+    container.appendChild(nearby);
+  }
+
+  if (typeof onMyThings === 'function') {
+    const mine = document.createElement('button');
+    mine.type = 'button';
+    mine.className = 'circle-launcher__my-things';
+    mine.textContent = tr('circle.folio.my_things_title');
+    mine.addEventListener('click', () => onMyThings());
+    container.appendChild(mine);
   }
 
   if (loading) {
@@ -122,6 +146,17 @@ export function renderCircleLauncher(container, {
       badge.setAttribute('aria-label', tr('circle.tile_unread', { count: preview.unread }));
       badge.textContent = String(preview.unread);
       tile.appendChild(badge);
+    }
+
+    // P6.2 #341 — pending-voorstellen badge (yellow) when this circle
+    // has admin-approval proposals waiting on me.
+    const pending = proposals && Number(proposals[c.id]) > 0 ? Number(proposals[c.id]) : 0;
+    if (pending > 0) {
+      const vb = document.createElement('span');
+      vb.className = 'circle-tile__proposals';
+      vb.setAttribute('aria-label', tr('circle.tile_proposals', { count: pending }));
+      vb.textContent = String(pending);
+      tile.appendChild(vb);
     }
 
     tile.addEventListener('click', () => {
