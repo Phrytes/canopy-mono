@@ -98,6 +98,8 @@ export { classifyPodChange, renderPodMigrationCopy } from './v2/podMigrationWarn
 export {
   isVisibleTo, splitViewAsAttributes, viewAsCounts, OPENNESS_LEVELS,
 } from './v2/viewAsAttributes.js';
+// P6.M3 — Stream per-row actions + pinned compose (board 5B).
+export { actionsForStreamRow, buildStreamComposeContext } from './v2/streamActions.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
