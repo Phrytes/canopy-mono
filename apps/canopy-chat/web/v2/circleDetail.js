@@ -35,6 +35,13 @@ export function renderCircleDetail(container, {
 } = {}) {
   const showRules  = isFeatureEnabled(policy, 'houseRules');
   const showViewAs = isFeatureEnabled(policy, 'memberDirectory');
+  // P6.1 #340 — Folio surfaces the kring's shared notes + lists + files.
+  // Show the entry when EITHER feature axis is on; both default off in
+  // DEFAULT_CIRCLE_POLICY, so existing circles without an explicit
+  // policy keep their current behaviour (the field is missing → fall
+  // through to defaults, the Files entry hides until a kring policy
+  // explicitly opts in).  Boards 4A + 10B.
+  const showFiles  = isFeatureEnabled(policy, 'lists') || isFeatureEnabled(policy, 'notes');
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
   container.classList.add('circle-detail');
@@ -89,7 +96,7 @@ export function renderCircleDetail(container, {
     sk.addEventListener('click', () => onSkills());
     bar.appendChild(sk);
   }
-  if (typeof onFiles === 'function') {
+  if (typeof onFiles === 'function' && showFiles) {
     const fi = document.createElement('button');
     fi.type = 'button';
     fi.className = 'circle-detail__files';

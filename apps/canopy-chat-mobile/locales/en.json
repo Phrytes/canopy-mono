@@ -18,6 +18,7 @@
     "loading": { "text": "Loading circles…", "doc": "Shown while circles are being fetched." },
     "back":    { "text": "← circles", "doc": "Back link from a circle detail view to the launcher." },
     "detail_empty": { "text": "Nothing here yet.", "doc": "Empty state inside a circle detail view." },
+    "on_your_list": { "text": "On your list", "doc": "Heading for the claim-router mirror section on CircleDetail (P6.5 #342)." },
     "stream": {
       "title":    { "text": "Stream", "doc": "Heading of the cross-circle Stream tab (board 5B)." },
       "open":     { "text": "Stream", "doc": "Launcher entry that opens the cross-circle Stream." },

@@ -26,6 +26,8 @@ import {
   isFeatureEnabled,
   // P6.3 — per-circle activity preview + unread badge.
   buildTilePreviews, bumpSeenAt,
+  // P6.5 #342 — claim-router hook (mirror claimed tasks to my own crew).
+  makeAfterClaimHook,
   // P6.8 #346 — Nearby/HIER model + label helpers (board 8C).
   buildNearbyModel,
   // P6.M7 #349 — "My things" private notes-list (board 10A).
@@ -192,6 +194,62 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
     setProposalCounts(next);
   }, [circles, proposalStore]);
   useEffect(() => { refreshProposals(); }, [refreshProposals]);
+
+  // P6.5 #342 — wire the claim-router hook once the bundle is ready.
+  // On claimTask, the host hook reads the per-circle override; when
+  // `flowThrough.tasksToPersonal` is true the claimed task is mirrored
+  // into the user's primary crew ('cc-default') tagged `via:<circleId>`
+  // so the "ON YOUR LIST" section below can surface it.  Web wires the
+  // same hook from circleApp.js — keep this parallel.
+  useEffect(() => {
+    if (typeof bundle?.agent?.setAfterClaimHook !== 'function') return;
+    bundle.agent.setAfterClaimHook(makeAfterClaimHook({
+      getOverride:       (id) => overrideStore.get(id),
+      resolveCircleName: async (id) => circles.find((c) => c.id === id)?.name ?? null,
+      addToPersonalCrew: async ({ text, originCircleId, originCircleName, originTaskId, tag }) => {
+        if (typeof bundle.callSkill !== 'function') return null;
+        try {
+          return await bundle.callSkill('tasks-v0', 'addTask', {
+            text,
+            crewId:           'cc-default',
+            originCircleId,
+            originCircleName,
+            originTaskId,
+            tags:             [tag],
+          });
+        } catch { return null; }
+      },
+    }));
+    // Cleanup: clear the hook on unmount so a hot-reload doesn't
+    // leave a stale closure pointing at the previous circles array.
+    return () => {
+      try { bundle.agent.setAfterClaimHook(null); } catch { /* tolerate */ }
+    };
+  }, [bundle, overrideStore, circles]);
+
+  // P6.5 #342 — "ON YOUR LIST" tasks scoped to the selected circle.
+  // Read from tasks-v0 `getMyTasks` and filter to the rows tagged with
+  // `via:<circleId>` (set by the claim-router); falls back to empty on
+  // any read failure.  Refreshed when `selected` changes.
+  const [myListTasks, setMyListTasks] = useState([]);
+  useEffect(() => {
+    if (!selected?.id || !callSkill) { setMyListTasks([]); return; }
+    let alive = true;
+    (async () => {
+      try {
+        const res = await callSkill('getMyTasks', {});
+        const items = Array.isArray(res?.items) ? res.items
+          : Array.isArray(res?.tasks) ? res.tasks
+          : Array.isArray(res) ? res : [];
+        const wanted = `via:${selected.id}`;
+        const filtered = items.filter((t) => Array.isArray(t?.tags) && t.tags.includes(wanted));
+        if (alive) setMyListTasks(filtered);
+      } catch {
+        if (alive) setMyListTasks([]);
+      }
+    })();
+    return () => { alive = false; };
+  }, [selected, callSkill]);
 
   const openCircle = useCallback(async (c) => {
     setActiveCircle(c.id);
@@ -360,6 +418,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
         items={items}
         callSkill={callSkill}
         policy={selectedPolicy}
+        myListTasks={myListTasks}
         onBack={closeCircle}
         onSettings={() => setView('settings')}
         onMine={() => setView('override')}
@@ -540,13 +599,14 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
   );
 }
 
-function CircleDetail({ circle, items, callSkill, policy, onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules }) {
-  // P6.1 — gate feature-bound action buttons.  houseRules and memberDirectory
-  // are the two design-mapped flags surfaced via this CircleDetail today;
-  // the rest (chat, noticeboard, tasks, lists, calendar, notes) gate
-  // content surfaces and are deferred to a follow-on slice.
+function CircleDetail({ circle, items, callSkill, policy, myListTasks = [], onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules }) {
+  // P6.1 — gate feature-bound action buttons against the policy's
+  // Functies axis.  houseRules + memberDirectory landed first; #340
+  // closes the loop on the file browser (Folio surfaces the kring's
+  // shared lists + notes; board 10).
   const showRules    = isFeatureEnabled(policy, 'houseRules');
   const showViewAs   = isFeatureEnabled(policy, 'memberDirectory');
+  const showFiles    = isFeatureEnabled(policy, 'lists') || isFeatureEnabled(policy, 'notes');
   // 5.9d — Proof-of-Location placeholder. Probe `getPolStatus` on mount;
   // when unregistered (today's state) the helper returns {configured:false}
   // and the row renders "Not configured". Real attestation in [[5.9d-followup]].
@@ -590,9 +650,11 @@ function CircleDetail({ circle, items, callSkill, policy, onBack, onSettings, on
         <Pressable onPress={onSkills} accessibilityRole="button" testID="circle-detail-skills" style={styles.detailAction}>
           <Text style={styles.detailActionText}>{t('circle.skills.editor_title')}</Text>
         </Pressable>
-        <Pressable onPress={onFiles} accessibilityRole="button" testID="circle-detail-files" style={styles.detailAction}>
-          <Text style={styles.detailActionText}>{t('circle.folio.title')}</Text>
-        </Pressable>
+        {showFiles ? (
+          <Pressable onPress={onFiles} accessibilityRole="button" testID="circle-detail-files" style={styles.detailAction}>
+            <Text style={styles.detailActionText}>{t('circle.folio.title')}</Text>
+          </Pressable>
+        ) : null}
         {showRules ? (
           <Pressable onPress={onRules} accessibilityRole="button" testID="circle-detail-rules" style={styles.detailAction}>
             <Text style={styles.detailActionText}>{t('circle.rules.title')}</Text>
@@ -603,6 +665,18 @@ function CircleDetail({ circle, items, callSkill, policy, onBack, onSettings, on
         <Text style={styles.polLabel}>{t('circle.pol.title')}</Text>
         <Text style={styles.polValue}>{formatPolStatus(pol, t)}</Text>
       </View>
+      {myListTasks.length > 0 ? (
+        <View style={styles.onYourList} testID="circle-detail-on-your-list">
+          <Text style={styles.onYourListTitle}>{t('circle.on_your_list')}</Text>
+          {myListTasks.map((task) => (
+            <View key={task.id} style={styles.onYourListRow}>
+              <Text style={styles.onYourListText} numberOfLines={2}>
+                {task.text || task.title || task.label || String(task.id ?? '')}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
       <ScrollView contentContainerStyle={styles.list}>
         {(!items || items.length === 0) ? (
           <Text style={styles.muted}>{t('circle.detail_empty')}</Text>
@@ -747,4 +821,9 @@ const styles = StyleSheet.create({
   rowMeta:    { fontSize: 12, color: theme.color.inkSoft, marginTop: 2 },
   ownProfile: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.color.line },
   ownProfileTitle: { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginBottom: 4 },
+  // P6.5 #342 — "ON YOUR LIST" section on CircleDetail.
+  onYourList:       { marginTop: 8, paddingHorizontal: 2, paddingVertical: 8 },
+  onYourListTitle:  { fontSize: 11, letterSpacing: 1.0, color: theme.color.inkSoft, textTransform: 'uppercase', marginBottom: 6 },
+  onYourListRow:    { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  onYourListText:   { fontSize: 13, color: theme.color.ink },
 });
