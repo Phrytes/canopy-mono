@@ -111,6 +111,15 @@ export {
   normalizeContactHopMode, effectiveHopMode, buildContactHopList,
   HOP_PER_CONTACT_MODES,
 } from './v2/contactHopOverrides.js';
+// P6.M7 — Folio "My things" notes-list (private kring, board 10A).
+export {
+  itemOwner, isMyPrivateItem, buildMyThings, myThingsFromListFiles,
+} from './v2/folioMyThings.js';
+// P6.M8 — Folio "Shared by me / Shared with me" filters (board 10B).
+export {
+  FOLIO_SHARE_FILTERS, isSharedByMe, isSharedWithMe,
+  buildSharedFiles, sharedFilesFromListFiles,
+} from './v2/folioSharedFilters.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
 export { normalizeCircleMembers, circleMemberCount } from './v2/circleMembers.js';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
