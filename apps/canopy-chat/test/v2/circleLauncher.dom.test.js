@@ -70,4 +70,40 @@ describe('renderCircleLauncher', () => {
     renderCircleLauncher(el, { circles: circles.slice(0, 1), t });
     expect(el.querySelectorAll('.circle-tile')).toHaveLength(1);
   });
+
+  it('renders the Nearby + My-things buttons only when handlers are passed', () => {
+    const el = mount();
+    renderCircleLauncher(el, { circles, t });
+    expect(el.querySelector('.circle-launcher__nearby')).toBeNull();
+    expect(el.querySelector('.circle-launcher__my-things')).toBeNull();
+
+    const onNearby = vi.fn();
+    const onMyThings = vi.fn();
+    renderCircleLauncher(el, { circles, t, onNearby, onMyThings });
+    el.querySelector('.circle-launcher__nearby').click();
+    el.querySelector('.circle-launcher__my-things').click();
+    expect(onNearby).toHaveBeenCalledTimes(1);
+    expect(onMyThings).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the voorstellen badge when proposals[id] > 0', () => {
+    const el = mount();
+    renderCircleLauncher(el, { circles, t, proposals: { h1: 2 } });
+    const tiles = el.querySelectorAll('.circle-tile');
+    // g1 + p1 have no pending proposals → no badge
+    expect(tiles[0].querySelector('.circle-tile__proposals')).toBeNull();
+    expect(tiles[2].querySelector('.circle-tile__proposals')).toBeNull();
+    // h1 has 2 pending → badge shows the count
+    const badge = tiles[1].querySelector('.circle-tile__proposals');
+    expect(badge.textContent).toBe('2');
+    expect(badge.getAttribute('aria-label')).toBe('circle.tile_proposals:2');
+  });
+
+  it('ignores non-positive / non-numeric proposal counts', () => {
+    const el = mount();
+    renderCircleLauncher(el, { circles, t, proposals: { g1: 0, h1: 'nope', p1: null } });
+    for (const tile of el.querySelectorAll('.circle-tile')) {
+      expect(tile.querySelector('.circle-tile__proposals')).toBeNull();
+    }
+  });
 });

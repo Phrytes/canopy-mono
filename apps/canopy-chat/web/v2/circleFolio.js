@@ -10,6 +10,8 @@
  */
 
 const FILTERS = ['all', 'favourites', 'recent'];
+// P6.M8 #350 — share-toggle row above the filter strip.
+const SHARE_FILTERS = ['shared-by-me', 'shared-with-me'];
 
 export function renderCircleFolioBrowser(container, {
   files = [],
@@ -18,6 +20,10 @@ export function renderCircleFolioBrowser(container, {
   onOpen,
   filter = 'all',
   onFilter,
+  // P6.M8 — when set, toggling cycles the share filter; null = neither
+  // pill is active (the normal filter strip handles the list).
+  shareFilter = null,
+  onShareFilter,
   loading = false,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -35,6 +41,28 @@ export function renderCircleFolioBrowser(container, {
   head.className = 'circle-folio__title';
   head.textContent = tr('circle.folio.title');
   container.appendChild(head);
+
+  // P6.M8 #350 — share-toggle row (Shared-by-me / Shared-with-me).  Only
+  // appears when the host wires an `onShareFilter` callback.
+  if (typeof onShareFilter === 'function') {
+    const shareRow = document.createElement('div');
+    shareRow.className = 'circle-folio__share-toggle';
+    for (const key of SHARE_FILTERS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'circle-folio__share-filter';
+      btn.dataset.shareFilter = key;
+      if (key === shareFilter) btn.classList.add('is-active');
+      // Locale key uses underscore: shared_by_me / shared_with_me.
+      btn.textContent = tr(`circle.folio.${key.replace(/-/g, '_')}`);
+      // Click toggles: re-clicking an active pill clears it.
+      btn.addEventListener('click', () => {
+        onShareFilter(shareFilter === key ? null : key);
+      });
+      shareRow.appendChild(btn);
+    }
+    container.appendChild(shareRow);
+  }
 
   const strip = document.createElement('div');
   strip.className = 'circle-folio__filters';
@@ -61,7 +89,13 @@ export function renderCircleFolioBrowser(container, {
   if (!files.length) {
     const empty = document.createElement('div');
     empty.className = 'circle-folio__empty';
-    empty.textContent = tr('circle.folio.empty');
+    // P6.M8 — share-filter-specific empty copy when one is active.
+    const emptyKey = shareFilter === 'shared-by-me'
+      ? 'circle.folio.shared_by_me_empty'
+      : shareFilter === 'shared-with-me'
+        ? 'circle.folio.shared_with_me_empty'
+        : 'circle.folio.empty';
+    empty.textContent = tr(emptyKey);
     container.appendChild(empty);
     return container;
   }

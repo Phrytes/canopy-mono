@@ -26,6 +26,10 @@ import {
   isFeatureEnabled,
   // P6.3 — per-circle activity preview + unread badge.
   buildTilePreviews, bumpSeenAt,
+  // P6.8 #346 — Nearby/HIER model + label helpers (board 8C).
+  buildNearbyModel,
+  // P6.M7 #349 — "My things" private notes-list (board 10A).
+  myThingsFromListFiles,
 } from '@canopy-app/canopy-chat';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
@@ -97,6 +101,15 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
     const events = eventLog?.query ? eventLog.query({ excludeMuted: true }) : [];
     setPreviews(buildTilePreviews({ events, circles, seenAt }));
   }, [eventLog, circles, seenAt]);
+  // P6.2 #341 — per-circle voorstellen badge.  Populated lazily after
+  // circles load; refresh after a settings save (CircleSettingsScreen
+  // calls back through onPoll once it persists a new proposal).
+  const [proposalCounts, setProposalCounts] = useState({});
+  // P6.M7 #349 — Mijn dingen state lives here so the screen can render
+  // synchronously when entered; `myThingsFiles` is loaded via listFiles.
+  const [myThingsFiles, setMyThingsFiles] = useState([]);
+  // P6.M8 #350 — raw Folio list result for share-toggle re-projection.
+  const [rawFolioFiles, setRawFolioFiles] = useState(null);
 
   // P6.1 — refresh the selected circle's policy whenever `selected` changes,
   // so CircleDetail can gate its feature-bound buttons (houseRules,
@@ -164,6 +177,21 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
   }, [callSkill, bundle]);
 
   useEffect(() => { load(); }, [load]);
+
+  // P6.2 #341 — refresh per-circle pending proposal counts whenever the
+  // circle list changes.  countPending is async per circle; we tolerate
+  // partial failures (a single bad circle just shows no badge).
+  const refreshProposals = useCallback(async () => {
+    const next = {};
+    for (const c of circles) {
+      try {
+        const n = await proposalStore.countPending(c.id);
+        if (n > 0) next[c.id] = n;
+      } catch { /* skip this circle */ }
+    }
+    setProposalCounts(next);
+  }, [circles, proposalStore]);
+  useEffect(() => { refreshProposals(); }, [refreshProposals]);
 
   const openCircle = useCallback(async (c) => {
     setActiveCircle(c.id);
@@ -244,7 +272,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
         store={policyStore}
         proposalStore={proposalStore}
         circleId={selected.id}
-        onBack={() => setView('detail')}
+        onBack={() => { refreshProposals(); setView('detail'); }}
       />
     );
   }
@@ -258,6 +286,19 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
   if (view === 'hop') {
     // Hopping lives under the Mij tab (personal settings).
     return <CircleHopScreen callSkill={callSkill} onBack={() => setView('availability')} />;
+  }
+  if (view === 'nearby') {
+    // P6.8 #346 — Nearby/HIER screen.  Pulls peers from bundle.mdns when
+    // wired; otherwise renders the empty-state copy from the substrate.
+    const peers = bundle?.mdns?.peers ?? [];
+    const model = buildNearbyModel({ peers, mySkills: [], t });
+    return <NearbyScreen model={model} onBack={() => setView('list')} />;
+  }
+  if (view === 'mythings') {
+    // P6.M7 #349 — Mijn dingen (private kring as notes-list, board 10A).
+    return (
+      <MyThingsScreen files={myThingsFiles} onBack={() => setView('list')} />
+    );
   }
   if (selected && view === 'advisor') {
     return <CircleAdvisorScreen eventLog={eventLog} circleId={selected.id} onBack={() => setView('detail')} />;
@@ -277,7 +318,15 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
   }
   if (selected && view === 'folio') {
     // F-5.2 — real files loaded in onFiles via listFiles, scoped to the circle.
-    return <CircleFolioScreen files={folioFiles} onBack={() => setView('detail')} />;
+    return (
+      <CircleFolioScreen
+        files={folioFiles}
+        rawFiles={rawFolioFiles}
+        circleId={selected.id}
+        myCircles={circles}
+        onBack={() => setView('detail')}
+      />
+    );
   }
   if (selected && view === 'rules') {
     return (
@@ -333,10 +382,22 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
         }}
         onFiles={async () => {
           let fs = [];
+          let raw = null;
           if (callSkill) {
-            try { fs = circleFilesFromListFiles(await callSkill('listFiles', {}), selected.id); } catch { /* keep empty */ }
+            try {
+              raw = await callSkill('listFiles', {});
+              fs = circleFilesFromListFiles(raw, selected.id);
+            } catch { /* keep empty */ }
           }
           setFolioFiles(fs);
+          // P6.M8 #350 — keep the raw list so the share-toggle pills can
+          // re-project without a refetch.  Unwrap to a plain array if the
+          // result is wrapped (`{items}` / `{files}`).
+          const rawArr = !raw ? null
+            : Array.isArray(raw.items) ? raw.items
+            : Array.isArray(raw.files) ? raw.files
+            : Array.isArray(raw) ? raw : null;
+          setRawFolioFiles(rawArr);
           setView('folio');
         }}
         onRules={async () => {
@@ -372,6 +433,34 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
                 </Text>
               </View>
             ) : null}
+
+            {/* P6.8 #346 — Nearby (HIER) entry: full screen below. */}
+            <Pressable
+              style={styles.shortcut}
+              accessibilityRole="button"
+              testID="circle-launcher-nearby"
+              onPress={() => setView('nearby')}
+            >
+              <Text style={styles.shortcutText}>{t('circle.nearbyScreen.title')}</Text>
+            </Pressable>
+
+            {/* P6.M7 #349 — Mijn dingen entry (private kring). */}
+            <Pressable
+              style={styles.shortcut}
+              accessibilityRole="button"
+              testID="circle-launcher-mythings"
+              onPress={async () => {
+                let fs = [];
+                if (callSkill) {
+                  try { fs = myThingsFromListFiles(await callSkill('listFiles', {}), null); }
+                  catch { /* keep empty */ }
+                }
+                setMyThingsFiles(fs);
+                setView('mythings');
+              }}
+            >
+              <Text style={styles.shortcutText}>{t('circle.folio.my_things_title')}</Text>
+            </Pressable>
             {circles.length === 0 ? (
               <Text style={styles.muted}>{t('circle.empty')}</Text>
             ) : (
@@ -382,6 +471,9 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
                   ? pv.subtitle
                   : (c.memberCount != null ? t('circle.members', { count: c.memberCount }) : null);
                 const unread = pv?.unread ?? 0;
+                // P6.2 #341 — pending voorstellen badge (yellow) when
+                // this circle has admin-approval proposals waiting.
+                const pendingProposals = Number(proposalCounts[c.id]) || 0;
                 return (
                   <Pressable
                     key={c.id}
@@ -401,6 +493,15 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
                         accessibilityLabel={t('circle.tile_unread', { count: unread })}
                       >
                         <Text style={styles.tileUnreadText}>{unread}</Text>
+                      </View>
+                    ) : null}
+                    {pendingProposals > 0 ? (
+                      <View
+                        style={styles.tileProposals}
+                        accessibilityLabel={t('circle.tile_proposals', { count: pendingProposals })}
+                        testID={`circle-tile-proposals-${c.id}`}
+                      >
+                        <Text style={styles.tileProposalsText}>{pendingProposals}</Text>
                       </View>
                     ) : null}
                   </Pressable>
@@ -519,6 +620,80 @@ function CircleDetail({ circle, items, callSkill, policy, onBack, onSettings, on
   );
 }
 
+// P6.8 #346 — Nearby/HIER screen.  Renders the buildNearbyModel output:
+// peer rows with shared-skills + proximity, header line, and an own-profile
+// footer.  Self-contained so vitest can target it without RN test renderer.
+function NearbyScreen({ model, onBack }) {
+  const rows       = Array.isArray(model?.rows) ? model.rows : [];
+  const own        = model?.ownProfile ?? {};
+  const headerText = model?.headerLabel ?? '';
+  return (
+    <View style={styles.page} testID="circle-nearby-screen">
+      <View style={styles.bar}>
+        <Pressable onPress={onBack} accessibilityRole="button" testID="circle-nearby-back">
+          <Text style={styles.back}>{t('circle.back')}</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.title}>{t('circle.nearbyScreen.title')}</Text>
+      <Text style={styles.muted}>{headerText}</Text>
+      {rows.length === 0 ? (
+        <Text style={styles.muted}>{t('circle.nearbyScreen.header_empty')}</Text>
+      ) : (
+        <ScrollView contentContainerStyle={styles.list}>
+          {rows.map((row) => (
+            <View
+              key={row.id || row.pseudonym}
+              style={styles.row}
+              testID={`nearby-row-${row.id || row.pseudonym}`}
+            >
+              <Text style={styles.rowName}>{row.pseudonym}</Text>
+              {row.sharedSkills.length ? (
+                <Text style={styles.rowMeta}>{row.sharedSkills.join(', ')}</Text>
+              ) : null}
+              {row.proximity ? <Text style={styles.rowMeta}>{row.proximity}</Text> : null}
+            </View>
+          ))}
+        </ScrollView>
+      )}
+      <View style={styles.ownProfile}>
+        <Text style={styles.ownProfileTitle}>{t('circle.nearbyScreen.own_profile')}</Text>
+        <Text style={styles.muted}>
+          {Array.isArray(own.publishedSkills) && own.publishedSkills.length
+            ? own.publishedSkills.join(', ')
+            : t('circle.nearbyScreen.own_profile_empty')}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// P6.M7 #349 — Mijn dingen notes-list (board 10A): the Folio screen
+// scoped to the private kring.  Empty state by default; rows fill in
+// when callSkill('listFiles') returns mine-and-circle-less items.
+function MyThingsScreen({ files = [], onBack }) {
+  return (
+    <View style={styles.page} testID="circle-mythings">
+      <View style={styles.bar}>
+        <Pressable onPress={onBack} accessibilityRole="button" testID="circle-mythings-back">
+          <Text style={styles.back}>{t('circle.back')}</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.title}>{t('circle.folio.my_things_title')}</Text>
+      {files.length === 0 ? (
+        <Text style={styles.muted}>{t('circle.folio.my_things_empty')}</Text>
+      ) : (
+        <ScrollView contentContainerStyle={styles.list}>
+          {files.map((file) => (
+            <View key={file.id} style={styles.row} testID={`mythings-row-${file.id}`}>
+              <Text style={styles.rowName}>{file.name}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   page:       { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 22 },
@@ -548,6 +723,17 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   tileUnreadText: { color: theme.color.white, fontSize: 12, fontWeight: '700' },
+  // P6.2 #341 — pending voorstellen badge (uses a yellow-ish hint to
+  // separate it visually from the unread-red).
+  tileProposals: {
+    minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11,
+    backgroundColor: '#d8a64a',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  tileProposalsText: { color: theme.color.white, fontSize: 12, fontWeight: '700' },
+  // Launcher shortcut button row (Nearby, Mijn dingen).
+  shortcut:     { paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: theme.color.line, borderRadius: 16, backgroundColor: theme.color.card, marginBottom: 6, alignSelf: 'flex-start' },
+  shortcutText: { fontSize: 13, color: theme.color.ink },
   muted:      { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
   newBtn:     { marginTop: 12, padding: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.color.line, borderRadius: 8, alignItems: 'center' },
   newText:    { color: theme.color.inkSoft },
@@ -555,4 +741,10 @@ const styles = StyleSheet.create({
   input:      { flex: 1, padding: 11, borderWidth: 1, borderColor: theme.color.accent, borderRadius: 8, backgroundColor: theme.color.white, fontSize: 14 },
   createBtn:  { width: 42, paddingVertical: 11, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
   createBtnText: { color: theme.color.white, fontSize: 16, fontWeight: '700' },
+  // Shared row styles used by NearbyScreen + MyThingsScreen.
+  row:        { padding: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card, marginBottom: 6 },
+  rowName:    { fontSize: 14, fontWeight: '600', color: theme.color.ink },
+  rowMeta:    { fontSize: 12, color: theme.color.inkSoft, marginTop: 2 },
+  ownProfile: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.color.line },
+  ownProfileTitle: { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginBottom: 4 },
 });

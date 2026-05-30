@@ -20,7 +20,14 @@ import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '../../src/v2/circleHop.js';
 import { mergeSkill, normalizeSkill } from '../../src/v2/circleSkills.js';
 import { buildCircleFiles, circleFilesFromListFiles } from '../../src/v2/circleFolio.js';
+import { myThingsFromListFiles } from '../../src/v2/folioMyThings.js';
+import {
+  sharedFilesFromListFiles, FOLIO_SHARE_FILTERS,
+} from '../../src/v2/folioSharedFilters.js';
+import { buildNearbyModel } from '../../src/v2/circleNearby.js';
 import { renderCircleStream } from './circleStream.js';
+import { renderCircleNearby } from './circleNearby.js';
+import { renderCircleMyThings } from './circleMyThings.js';
 import { renderCircleAdvisor } from './circleAdvisor.js';
 import { renderCircleHop } from './circleHop.js';
 import { renderSkillEditor } from './circleSkillEditor.js';
@@ -106,11 +113,66 @@ function showLauncher() {
   renderCircleLauncher(rootEl, {
     circles: circlesCache,
     previews,
+    proposals: launcherProposals,
     t,
     onOpenCircle: showDetail,
     onNewCircle: createCircle,
+    onNearby: showNearby,
+    onMyThings: showMyThings,
   });
   showTabBar('kringen');
+  // Refresh proposal counts in the background so the next launcher
+  // render shows yellow badges where consensus is waiting.  Async so
+  // the first paint isn't blocked.
+  refreshLauncherProposals().catch(() => { /* ignore */ });
+}
+
+// P6.2 #341 — per-circle pending-proposal counts.  Computed from
+// proposalStore on every launcher visit + after a settings save.
+let launcherProposals = {};
+async function refreshLauncherProposals() {
+  const next = {};
+  for (const c of circlesCache) {
+    try {
+      const n = await proposalStore.countPending(c.id);
+      if (n > 0) next[c.id] = n;
+    } catch { /* ignore per-circle read failures */ }
+  }
+  // Re-render only if the count map actually changed.
+  const sameKeys = Object.keys(next).length === Object.keys(launcherProposals).length
+    && Object.keys(next).every((k) => next[k] === launcherProposals[k]);
+  launcherProposals = next;
+  if (!sameKeys && getActiveCircle() == null) showLauncher();
+}
+
+// P6.8 #346 — Nearby screen on web.  mDNS isn't live in the browser
+// (substrate path is mobile-only today), so peers stay [] and the
+// screen renders an honest empty state + the user's own published
+// skills footer so they can see what others would see.
+function showNearby() {
+  hideCircleTabBar(tabBarEl);
+  const model = buildNearbyModel({ peers: [], mySkills: [], t });
+  renderCircleNearby(rootEl, { model, t, onBack: showLauncher });
+}
+
+// P6.M7 #349 — Mijn dingen notes-list (private kring, board 10A).  Files
+// come from the Folio listFiles op filtered for mine + circle-less.  The
+// active user webid stays null on web today; the substrate falls back to
+// "anything without an owner" which matches the V0 single-user state.
+async function showMyThings() {
+  hideCircleTabBar(tabBarEl);
+  let files = [];
+  const rerender = () => renderCircleMyThings(rootEl, {
+    files, t, onBack: showLauncher,
+  });
+  rerender();
+  if (resolveCallSkill) {
+    try {
+      const res = await resolveCallSkill('listFiles', {});
+      files = myThingsFromListFiles(res, null);
+      rerender();
+    } catch { /* keep empty */ }
+  }
 }
 
 // Hopping is a DEVICE-global stance (Stoop getHopMode/setHopMode); it lives
@@ -246,21 +308,48 @@ function showSkills(id) {
 
 // Circle-scoped Folio browser (board 10B) — files come from a circle pod's
 // listFiles once wired; empty until then (the scope/normalize is tested).
+//
+// P6.M8 #350 — share-toggle row (Shared-by-me / Shared-with-me).  Picking
+// a toggle re-projects the cached raw `listFiles` result through the
+// share-filter substrate; clearing it restores the circle-scoped view.
 function showFolio(id) {
   let filter = 'all';
+  let shareFilter = null;          // null | 'shared-by-me' | 'shared-with-me'
+  let lastListResult = null;       // raw `listFiles` result for re-projection
   let files = buildCircleFiles({ files: [], circleId: id });
+
+  function project() {
+    if (shareFilter && lastListResult != null) {
+      files = sharedFilesFromListFiles(lastListResult, {
+        myId:      null,
+        myCircles: circlesCache,
+        filter:    shareFilter,
+      });
+    } else if (lastListResult != null) {
+      files = circleFilesFromListFiles(lastListResult, id);
+    } else {
+      files = buildCircleFiles({ files: [], circleId: id });
+    }
+  }
+
   const rerender = () => renderCircleFolioBrowser(rootEl, {
     files,
     filter,
+    shareFilter,
     t,
     onFilter: (f) => { filter = f; rerender(); },
+    onShareFilter: (next) => {
+      if (next && !FOLIO_SHARE_FILTERS.includes(next)) return;
+      shareFilter = next;
+      project();
+      rerender();
+    },
     onBack: () => showDetail(id),
   });
   rerender();
-  // F-5.2 — real files from the folio listFiles op, scoped to this circle.
   if (resolveCallSkill) {
     resolveCallSkill('listFiles', {})
-      .then((res) => { files = circleFilesFromListFiles(res, id); if (getActiveCircle() === id) rerender(); })
+      .then((res) => { lastListResult = res; project(); if (getActiveCircle() === id) rerender(); })
       .catch(() => { /* keep empty */ });
   }
 }
@@ -399,6 +488,9 @@ async function showSettings(id) {
       } else {
         pending = await proposalStore.listForCircle(id);
       }
+      // P6.2 #341 — refresh the launcher's voorstellen badge map so the
+      // tile reflects the new pending count on the next launcher visit.
+      refreshLauncherProposals().catch(() => { /* ignore */ });
       showDetail(id);
     },
   });
