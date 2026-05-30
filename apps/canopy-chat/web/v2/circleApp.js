@@ -163,9 +163,11 @@ async function showDetail(id) {
   // 5.9e — when `view` is 'chat' the launcher routes straight to the
   // classic chat shell instead of opening the action-grid detail.  The
   // active-circle dispatch from 5.3 already scopes posts to this circle.
+  // P6.1 — same policy peek feeds the Functies-axis gate on CircleDetail.
+  let detailPolicy = null;
   try {
-    const policy = await policyStore.get(id);
-    if (policy?.view === 'chat') {
+    detailPolicy = await policyStore.get(id);
+    if (detailPolicy?.view === 'chat') {
       window.location.href = `/classic.html?circle=${encodeURIComponent(id)}`;
       return;
     }
@@ -178,7 +180,7 @@ async function showDetail(id) {
   const onFiles = () => showFolio(id);
   const onRules = () => showRules(id);
   const detailOpts = { onBack: showLauncher, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules };
-  renderCircleDetail(rootEl, { circle, items: [], pol: null, t, ...detailOpts });
+  renderCircleDetail(rootEl, { circle, items: [], pol: null, policy: detailPolicy, t, ...detailOpts });
 
   if (!resolveCallSkill) return;
   // 5.9d — probe PoL in parallel with items load; both feed renderCircleDetail.
@@ -191,7 +193,7 @@ async function showDetail(id) {
     ]);
   } catch { /* keep empty */ }
   if (getActiveCircle() === id) {
-    renderCircleDetail(rootEl, { circle, items, pol, t, ...detailOpts });
+    renderCircleDetail(rootEl, { circle, items, pol, policy: detailPolicy, t, ...detailOpts });
   }
 }
 

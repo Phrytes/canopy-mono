@@ -21,10 +21,21 @@ export const CIRCLE_POLICY_ENUMS = {
   pod:          ['none', 'shared', 'personal', 'hybrid'],
 };
 
+// Defaults match the "full Onderling" surface (board 2 strategy B): the
+// orchestrator app lights up the features whose UI is already rendered
+// today (chat + houseRules + memberDirectory).  The focus-apps in the
+// store ('Buurt door Onderling', 'Huishouden door Onderling', 'OR-bot')
+// will override these at pin-time to lock to their narrower surface.
 export const DEFAULT_CIRCLE_POLICY = {
   features: {
-    chat: true, noticeboard: false, tasks: false, lists: false,
-    calendar: false, notes: false, houseRules: false, memberDirectory: false,
+    chat:            true,
+    noticeboard:     false,
+    tasks:           false,
+    lists:           false,
+    calendar:        false,
+    notes:           false,
+    houseRules:      true,
+    memberDirectory: true,
   },
   view:             'chat',
   llmTool:          'off',
@@ -34,6 +45,33 @@ export const DEFAULT_CIRCLE_POLICY = {
   admins:           [],
   consensusRequired: false,
 };
+
+/**
+ * P6.1 — return whether a feature is enabled on a (possibly partial)
+ * policy.  Defensive: treats missing/non-policy input as the default
+ * (so a circle whose `features` field hasn't been written yet still
+ * surfaces the default-on features).
+ *
+ * @param {object|null|undefined} policy  — raw or normalised policy
+ * @param {string} key                    — feature key (see CIRCLE_FEATURES)
+ * @returns {boolean}
+ */
+export function isFeatureEnabled(policy, key) {
+  if (!CIRCLE_FEATURES.includes(key)) return false;
+  if (!policy || typeof policy !== 'object') {
+    return DEFAULT_CIRCLE_POLICY.features[key];
+  }
+  const f = policy.features;
+  if (!f || typeof f !== 'object') {
+    return DEFAULT_CIRCLE_POLICY.features[key];
+  }
+  return typeof f[key] === 'boolean' ? f[key] : DEFAULT_CIRCLE_POLICY.features[key];
+}
+
+/** P6.1 — enumerate the enabled features on a policy, in CIRCLE_FEATURES order. */
+export function enabledFeatures(policy) {
+  return CIRCLE_FEATURES.filter((k) => isFeatureEnabled(policy, k));
+}
 
 /** Coerce any stored partial into a complete, valid policy (invalid values fall back to defaults). */
 export function normalizeCirclePolicy(stored = {}) {

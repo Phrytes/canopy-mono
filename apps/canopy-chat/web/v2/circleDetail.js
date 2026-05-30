@@ -13,11 +13,16 @@
  * [[5.9d-followup]].
  */
 import { formatPolStatus } from '../../src/v2/circlePol.js';
+import { isFeatureEnabled } from '../../src/v2/circlePolicy.js';
 
 export function renderCircleDetail(container, {
   circle = {},
   items = [],
   pol = null,
+  // P6.1 — when supplied, gate feature-bound action buttons on its
+  // Functies axis (board 4A).  Null/undefined → feature defaults apply
+  // (chat / houseRules / memberDirectory on by default).
+  policy = null,
   t,
   onBack,
   onSettings,
@@ -28,6 +33,8 @@ export function renderCircleDetail(container, {
   onFiles,
   onRules,
 } = {}) {
+  const showRules  = isFeatureEnabled(policy, 'houseRules');
+  const showViewAs = isFeatureEnabled(policy, 'memberDirectory');
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
   container.classList.add('circle-detail');
@@ -58,7 +65,7 @@ export function renderCircleDetail(container, {
     gear.addEventListener('click', () => onSettings());
     bar.appendChild(gear);
   }
-  if (typeof onViewAs === 'function') {
+  if (typeof onViewAs === 'function' && showViewAs) {
     const va = document.createElement('button');
     va.type = 'button';
     va.className = 'circle-detail__viewas';
@@ -90,7 +97,7 @@ export function renderCircleDetail(container, {
     fi.addEventListener('click', () => onFiles());
     bar.appendChild(fi);
   }
-  if (typeof onRules === 'function') {
+  if (typeof onRules === 'function' && showRules) {
     const ru = document.createElement('button');
     ru.type = 'button';
     ru.className = 'circle-detail__rules';
