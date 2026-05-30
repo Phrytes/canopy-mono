@@ -368,6 +368,15 @@
         "invalid":      { "text": "Dit lijkt geen geldige herstelzin. Controleer de spelling van elk woord." },
         "storage":      { "text": "Opslaan lukte niet. Probeer het nogmaals of herstart de app." }
       }
+    },
+    "create": {
+      "kicker":      { "text": "Sleutel bewaren" },
+      "title":       { "text": "Schrijf deze woorden op." },
+      "lede":        { "text": "Zonder deze woorden kun je niet terug bij je dingen als je telefoon kwijt raakt. Wij hebben ze niet." },
+      "unavailable": { "text": "Herstelzin nog niet beschikbaar." },
+      "written":     { "text": "Opgeschreven" },
+      "photo":       { "text": "Foto gemaakt" },
+      "later":       { "text": "Later" }
     }
   }
 }
