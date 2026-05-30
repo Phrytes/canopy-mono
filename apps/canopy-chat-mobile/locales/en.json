@@ -368,6 +368,15 @@
         "invalid":      { "text": "That doesn't look like a valid recovery phrase. Check the spelling of each word.", "doc": "BIP39 wordlist / checksum failed." },
         "storage":      { "text": "Couldn't save your identity. Try again, or restart the app and reopen this screen.", "doc": "AsyncStorage write threw." }
       }
+    },
+    "create": {
+      "kicker":      { "text": "Save your key", "doc": "Small uppercase kicker above the title (board 3A · P6.9)." },
+      "title":       { "text": "Write these words down.", "doc": "Header on the first-run mnemonic display." },
+      "lede":        { "text": "Without these words you can't get back to your things if your phone is lost. We don't have them.", "doc": "Helper text — explains why this matters." },
+      "unavailable": { "text": "Recovery phrase not yet available.", "doc": "Shown when the host hasn't been able to read the vault." },
+      "written":     { "text": "Written down", "doc": "Primary CTA — persists the ack." },
+      "photo":       { "text": "Photo taken", "doc": "Secondary CTA — persists the ack." },
+      "later":       { "text": "Later", "doc": "Tertiary CTA — leaves the ack off so a future banner can re-nudge." }
     }
   }
 }
