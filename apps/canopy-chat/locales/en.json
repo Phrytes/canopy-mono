@@ -7,6 +7,7 @@
       "mij":     { "text": "Me", "doc": "Bottom-nav tab → personal availability/quiet-hours/hopping (board 6C)." }
     },
     "new":     { "text": "+ new circle", "doc": "Create-a-new-circle entry on the launcher." },
+    "create_unavailable": { "text": "Can't create a circle yet — the app is still starting.", "doc": "SP-13.1 — surfaced when createCircle is invoked before the agent bundle has booted." },
     "members": { "text": "{{count}} members", "doc": "Member count on a circle tile; {{count}} interpolated." },
     "tile_unread": { "text": "{{count}} unread", "doc": "Accessible label for the unread badge on a circle tile (P6.3)." },
     "tile_proposals": { "text": "{{count}} pending proposal(s)", "doc": "Accessible label for the voorstellen badge on a circle tile (P6.2 #341)." },

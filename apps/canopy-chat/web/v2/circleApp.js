@@ -248,7 +248,12 @@ async function showMij() {
 }
 
 async function createCircle() {
-  if (!rawCallSkill) { location.href = './classic.html'; return; } // fallback: create in classic shell
+  if (!rawCallSkill) {
+    // SP-13.1 — no chat-shell fallback.  Without an agent the bundle
+    // hasn't booted yet; surface that as an error and bail.
+    globalThis.alert?.(t('circle.create_unavailable'));
+    return;
+  }
   const name = (globalThis.prompt?.(t('circle.new')) || '').trim();
   if (!name) return;
   try {
@@ -269,17 +274,12 @@ async function showDetail(id) {
   // this circle's unread badge.
   writeSeenAt(bumpSeenAt(readSeenAt(), id));
   const circle = circlesCache.find((c) => c.id === id) || { id };
-  // 5.9e — when `view` is 'chat' the launcher routes straight to the
-  // classic chat shell instead of opening the kring screen.  The
-  // active-circle dispatch from 5.3 already scopes posts to this circle.
+  // SP-13.1 — no chat-shell auto-route anymore.  Every kring opens the
+  // kring view; v2 §1 says chat IS the kring view (GESPREK tab).  The
+  // GESPREK render lands in SP-13.2.
   let detailPolicy = null;
-  try {
-    detailPolicy = await policyStore.get(id);
-    if (detailPolicy?.view === 'chat') {
-      window.location.href = `/classic.html?circle=${encodeURIComponent(id)}`;
-      return;
-    }
-  } catch { /* fresh circle / read failure → fall through to kring screen */ }
+  try { detailPolicy = await policyStore.get(id); }
+  catch { /* fresh circle / read failure → fall through */ }
   showKring(id, circle, detailPolicy);
 }
 
@@ -327,12 +327,12 @@ function showKring(id, circle, policy) {
   // EventLog has no subscribe seam yet; poll-on-render is fine for V0).
 }
 
-// SP-13 — compose hand-off: the chat-shell's /post wizard handles the
-// VRAAG/AANBOD/LENEN sub-picker (#244 / #205) + circle-scope already
-// (5.3 active-circle dispatch).  Until the kring screen hosts the
-// compose inline, jump to the classic shell with the circle pre-bound.
-function createPost(id) {
-  window.location.href = `/classic.html?circle=${encodeURIComponent(id)}&compose=post`;
+// SP-13.1 — compose lives inside the kring view (GESPREK tab) — no
+// route-out to a separate chat shell.  Until SP-13.2 wires the inline
+// composer, this is a no-op stub that surfaces the missing surface as
+// a one-shot alert so testers know what's queued.
+function createPost(/* id */) {
+  globalThis.alert?.('Composer komt in de kring (GESPREK-tab) — SP-13.2');
 }
 
 
