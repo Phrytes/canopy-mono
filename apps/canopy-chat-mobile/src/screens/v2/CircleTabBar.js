@@ -9,9 +9,11 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
 
+// α.3 — Schermen is the new primary tab (Q6).  Stroom is retired —
+// its behaviour now lives as the seeded "Stream" screen.
 const TABS = [
+  { id: 'screens', key: 'circle.tab.screens' },
   { id: 'kringen', key: 'circle.tab.kringen' },
-  { id: 'stroom',  key: 'circle.tab.stroom' },
   { id: 'mij',     key: 'circle.tab.mij' },
 ];
 
