@@ -27,6 +27,11 @@
       "empty":    { "text": "Nog niks uit je kringen.", "doc": "Empty state for the Stream." },
       "untagged": { "text": "—", "doc": "Tag shown on a Stream row that isn't tied to a circle." }
     },
+    "chat": {
+      "quick_reply": {
+        "fallback_label": { "text": "Antwoord", "doc": "α.5a (audit #3) — default label for an inline-keuze quick-reply pill when the reply envelope supplies a slash but no label." }
+      }
+    },
     "settings": {
       "title":        { "text": "Kring-instellingen", "doc": "Settings screen heading (board 4A)." },
       "save":         { "text": "Opslaan", "doc": "Save the circle settings." },

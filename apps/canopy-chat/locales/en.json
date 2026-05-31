@@ -25,6 +25,11 @@
       "compose_placeholder_default":  { "text": "Reply in the timeline", "doc": "Pinned compose placeholder when no row is focused (P6.M3)." },
       "compose_placeholder_targeted": { "text": "Reply in {{circle}}", "doc": "Pinned compose placeholder when a row is focused — context follows." }
     },
+    "chat": {
+      "quick_reply": {
+        "fallback_label": { "text": "Reply", "doc": "α.5a (audit #3) — default label for an inline-keuze quick-reply pill when the reply envelope supplies a slash but no label." }
+      }
+    },
     "tabs": {
       "gesprek":  { "text": "Conversation", "doc": "SP-13.3 — kring bottom-tab label (board Voorbeeld 1-3, always first)." },
       "prikbord": { "text": "Noticeboard", "doc": "SP-13.3 — bottom-tab when policy.features.noticeboard is on." },

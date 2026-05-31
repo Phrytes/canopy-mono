@@ -25,6 +25,11 @@
       "compose_placeholder_default":  { "text": "Reageer in de tijdlijn", "doc": "Pinned compose placeholder (P6.M3)." },
       "compose_placeholder_targeted": { "text": "Reageer in {{circle}}", "doc": "Pinned compose with circle context." }
     },
+    "chat": {
+      "quick_reply": {
+        "fallback_label": { "text": "Antwoord", "doc": "α.5a (audit #3) — default label for an inline-keuze quick-reply pill when the reply envelope supplies a slash but no label." }
+      }
+    },
     "tabs": {
       "gesprek":  { "text": "Gesprek", "doc": "SP-13.3 — kring bottom-tab." },
       "prikbord": { "text": "Prikbord", "doc": "SP-13.3." },

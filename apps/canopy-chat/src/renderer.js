@@ -21,6 +21,7 @@ import { renderChat } from '@canopy/app-manifest';
 
 import { formatSyncHints, formatLastSync } from './syncHints.js';
 import { QR_URI_PREFIXES }                 from './core/qrSchemes.js';
+import { normalizeQuickReplies }           from './core/quickReplies.js';
 
 /**
  * @typedef {object} RenderedReply
@@ -197,6 +198,11 @@ export function renderReply(reply, opts = {}) {
     // `collectFollowUps`), they ride along on the rendered reply.
     // DOM adapter renders them as inline buttons below the text.
     followUps: Array.isArray(reply.followUps) ? reply.followUps : undefined,
+    // α.5a (audit #3) — bot replies may carry inline-keuze quick-reply
+    // pills: `[{label, slash}, ...]`.  Pure pass-through; DOM + RN
+    // adapters render the pill row + tapping dispatches the slash
+    // through the same path Enter-submitted text uses.
+    quickReplies: normalizeQuickReplies(reply.quickReplies, { t }),
     // v0.6 — sync-hint suffix from the reply's _sync envelope.
     // Empty string when 'central' or absent; DOM adapter omits the
     // sub-line entirely in that case.

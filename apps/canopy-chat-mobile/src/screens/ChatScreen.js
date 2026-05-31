@@ -1166,6 +1166,7 @@ export default function ChatScreen({
               msg={msg}
               onButtonTap={handleButtonTap}
               onFollowUpTap={(slash) => submitInput(slash)}
+              onQuickReplyTap={(slash) => submitInput(slash)}
               manifestsByOrigin={bootState.kind === 'ready' ? bootState.bundle.manifestsByOrigin : undefined}
               onFormSubmit={(values) => onFormSubmit({
                 pending:   msg.formPending,
@@ -1383,7 +1384,7 @@ export default function ChatScreen({
 
 /* ── message bubble ─────────────────────────────────────────────── */
 
-function MessageBubble({ msg, onButtonTap, onFollowUpTap, onFormSubmit, manifestsByOrigin }) {
+function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFormSubmit, manifestsByOrigin }) {
   if (msg.role === 'user') {
     return (
       <View style={[styles.bubble, styles.bubbleUser]} testID={`bubble-user-${msg.id}`}>
@@ -1553,10 +1554,33 @@ function MessageBubble({ msg, onButtonTap, onFollowUpTap, onFormSubmit, manifest
       />
     );
   }
-  const followUps = Array.isArray(r.followUps) ? r.followUps : null;
+  const followUps   = Array.isArray(r.followUps) ? r.followUps : null;
+  // α.5a (audit #3) — inline-keuze quick-reply pills under the bubble
+  // text.  Each pill carries a full `{label, slash}`; tap dispatches
+  // the slash through `submitInput`, the same path the TextInput's
+  // Enter uses.  Suppressed when the bubble is `disabled` so a stale
+  // bot reply can't re-fire mutations.
+  const quickReplies = Array.isArray(r.quickReplies) ? r.quickReplies : null;
+  const pillsEnabled = r.lifecycleState !== 'disabled';
   return (
     <View style={[styles.bubble, styles.bubbleBot]}>
       <Text style={styles.bubbleText}>{r.text ?? ''}</Text>
+      {quickReplies && quickReplies.length > 0 && pillsEnabled && (
+        <View style={styles.quickReplyRow} testID={`bubble-bot-quick-replies-${msg.id}`}>
+          {quickReplies.map((qr, i) => (
+            <Pressable
+              key={`${qr.slash}-${i}`}
+              style={styles.quickReplyChip}
+              onPress={() => onQuickReplyTap?.(qr.slash)}
+              accessibilityRole="button"
+              accessibilityLabel={qr.label}
+              testID={`bubble-bot-quick-reply-${msg.id}-${i}`}
+            >
+              <Text style={styles.quickReplyChipText}>{qr.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       {followUps && followUps.length > 0 && (
         <View style={styles.followUpRow}>
           {followUps.map((slash, i) => (
@@ -1828,6 +1852,14 @@ const styles = StyleSheet.create({
   followUpRow:          { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6, gap: 6 },
   followUpChip:         { paddingVertical: 4, paddingHorizontal: 10, backgroundColor: '#e8f0fe', borderRadius: 12, borderWidth: 1, borderColor: '#c7dafc' },
   followUpChipText:     { fontSize: 12, color: '#1a4fa0', fontFamily: 'monospace' },
+
+  // α.5a (audit #3) — inline-keuze quick-reply pill row under text
+  // bubbles.  Mirrors followUp chip metrics (same radius/padding) so
+  // the visual grammar stays consistent; distinct backgroundColor +
+  // testID prefix keeps the two surfaces independently targetable.
+  quickReplyRow:        { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6, gap: 6 },
+  quickReplyChip:       { paddingVertical: 4, paddingHorizontal: 10, backgroundColor: '#eef7ee', borderRadius: 12, borderWidth: 1, borderColor: '#c5e3c5' },
+  quickReplyChipText:   { fontSize: 12, color: '#2a6a2a' },
 
   inputBar:        { flexDirection: 'row', padding: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#ddd', gap: 8, alignItems: 'center' },
   input:           { flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, fontSize: 14 },

@@ -123,6 +123,54 @@ describe('renderToDom — defensive paths', () => {
   });
 });
 
+describe('renderToDom — quick-reply pill row (α.5a, audit #3)', () => {
+  it('renders one pill per quickReplies entry with the supplied labels', () => {
+    const el = renderToDom({
+      kind: 'text', text: 'Coming over?', messageId: 'm-qr', lifecycleState: 'live',
+      quickReplies: [
+        { label: 'Ja',  slash: '/yes' },
+        { label: 'Nee', slash: '/no'  },
+      ],
+    }, { doc: document, onQuickReply: () => {} });
+    const pills = el.querySelectorAll('.cc-quick-reply-btn');
+    expect(pills.length).toBe(2);
+    expect(pills[0].textContent).toBe('Ja');
+    expect(pills[1].textContent).toBe('Nee');
+    expect(pills[0].dataset.slash).toBe('/yes');
+    expect(pills[1].dataset.slash).toBe('/no');
+  });
+
+  it('tapping pill 0 dispatches its slash exactly once via onQuickReply', () => {
+    const onQuickReply = vi.fn();
+    const el = renderToDom({
+      kind: 'text', text: 'Coming over?', messageId: 'm-qr', lifecycleState: 'live',
+      quickReplies: [
+        { label: 'Ja',  slash: '/yes' },
+        { label: 'Nee', slash: '/no'  },
+      ],
+    }, { doc: document, onQuickReply });
+    const pills = el.querySelectorAll('.cc-quick-reply-btn');
+    pills[0].click();
+    expect(onQuickReply).toHaveBeenCalledTimes(1);
+    expect(onQuickReply).toHaveBeenCalledWith('/yes');
+  });
+
+  it('omits the pill row when quickReplies is absent', () => {
+    const el = renderToDom({
+      kind: 'text', text: 'plain', messageId: 'm-1', lifecycleState: 'live',
+    }, { doc: document, onQuickReply: () => {} });
+    expect(el.querySelector('.cc-quick-replies')).toBeNull();
+  });
+
+  it('does not render the pill row in the disabled state', () => {
+    const el = renderToDom({
+      kind: 'text', text: 'old reply', messageId: 'm-x', lifecycleState: 'disabled',
+      quickReplies: [{ label: 'Ja', slash: '/yes' }],
+    }, { doc: document, onQuickReply: () => {} });
+    expect(el.querySelector('.cc-quick-replies')).toBeNull();
+  });
+});
+
 describe('renderStream', () => {
   it('replaces container children with rendered messages in order', () => {
     const container = document.createElement('div');
