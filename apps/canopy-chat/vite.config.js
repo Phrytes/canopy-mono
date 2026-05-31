@@ -13,6 +13,14 @@ import { fileURLToPath } from 'node:url';
 
 const empty       = fileURLToPath(new URL('./src/web/shims/empty.js',       import.meta.url));
 const oidcSession = fileURLToPath(new URL('./src/web/shims/oidcSession.js', import.meta.url));
+// `node:fs` shim with the NAMED exports the static-import call sites
+// reference (folio's autoShare → sync-engine fsNode adapter).  Rollup
+// fails the production build without them; browser code never executes
+// these because folio callers always inject opts.fs.  See shims/nodeFs.js.
+const nodeFs      = fileURLToPath(new URL('./src/web/shims/nodeFs.js',      import.meta.url));
+const nodePath    = fileURLToPath(new URL('./src/web/shims/nodePath.js',    import.meta.url));
+const wsShim      = fileURLToPath(new URL('./src/web/shims/wsShim.js',      import.meta.url));
+const relayShim   = fileURLToPath(new URL('./src/web/shims/relayShim.js',   import.meta.url));
 // Resolve the npm `events` polyfill once, by absolute path.  Transitive
 // importers (packages/webid-discovery, etc.) lose the bare-specifier
 // resolution chain when they're served as source under pnpm hoisting;
@@ -54,7 +62,11 @@ export default defineConfig({
   // take a different branch and don't hit these shims.
   resolve: {
     alias: {
-      'ws':              empty,
+      // `ws` is Node-only; the relay's WsServerTransport statically
+      // imports `WebSocketServer` from it.  Shim carries the named
+      // export so Rollup is happy; classes throw at construction if
+      // a browser caller hits the code path (today none do).
+      'ws':              wsShim,
       'mqtt':            empty,
       // v0.7.P3b 2026-05-23 — 'nkn-sdk' kept shimmed.  The real lib
       // arrives via the CDN <script> tag in index.html (window.nkn).
@@ -67,8 +79,19 @@ export default defineConfig({
       'node-datachannel': empty,
       // Node-builtin polyfills via empty module — these are reached
       // only through the Node-only A2A + PodExporter paths.
-      'node:fs/promises': empty,
-      'node:path':        empty,
+      //
+      // `node:fs` + `node:fs/promises` share one shim with both shapes
+      // of named exports (the `promises.readFile` form AND the bare
+      // `readFile` named form).  Static-import call sites in folio's
+      // sync-engine fsNode adapter + stoop's FilePersist break the
+      // Rollup build otherwise (#303).  Methods throw at runtime so
+      // accidentally executing them in a browser surfaces the bug
+      // instead of silently no-oping; today these code paths are all
+      // unreachable on the web (folio + stoop browser bundles inject
+      // their own adapters).
+      'node:fs/promises': nodeFs,
+      'node:fs':          nodeFs,
+      'node:path':        nodePath,
       'node:crypto':      empty,
       'http':             empty,
       // 'node:events' has a real browser polyfill (`events`); some
@@ -101,6 +124,16 @@ export default defineConfig({
       // breaks the build with 'X is not exported by empty.js'.  The
       // Node auth package stays shimmed (separate name).
       'openid-client':                        empty,
+      // `@canopy/relay` is a Node-only HTTP server package; stoop's
+      // Agent.js dynamic-imports WebPushSender which pulls in
+      // `PushSender` from relay.  Browser code never instantiates
+      // WebPushSender (no VAPID keys are passed in the browser
+      // bundle), so aliasing the whole relay package to empty cuts
+      // the import graph at the boundary.  Without this, Rollup
+      // walks transitively into `relay/src/server.js` which static-
+      // imports node:http, node:https, ws, better-sqlite3, … none
+      // of which belong in a browser bundle (#303).
+      '@canopy/relay':                        relayShim,
       // VaultNodeFs is Node-only by design — VaultMemory is what we
       // use in v0.1.  Stubbing keeps the @canopy/vault index re-export
       // happy.
