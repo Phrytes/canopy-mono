@@ -23,6 +23,16 @@
       "compose_placeholder_default":  { "text": "Reageer in de tijdlijn", "doc": "Pinned compose placeholder (P6.M3)." },
       "compose_placeholder_targeted": { "text": "Reageer in {{circle}}", "doc": "Pinned compose with circle context." }
     },
+    "kring": {
+      "filter_all":    { "text": "Alles", "doc": "SP-13 — kring-stream filter chip." },
+      "filter_vraag":  { "text": "Vraag", "doc": "SP-13 — filter chip." },
+      "filter_aanbod": { "text": "Aanbod", "doc": "SP-13 — filter chip." },
+      "filter_leen":   { "text": "Lenen", "doc": "SP-13 — filter chip." },
+      "post_fab":      { "text": "+ plaats vraag · aanbod · te leen", "doc": "SP-13 — compose FAB." },
+      "more":          { "text": "Meer", "doc": "SP-13 — overflow menu trigger." },
+      "empty":         { "text": "Nog niks hier.", "doc": "SP-13 — empty state." },
+      "empty_filtered":{ "text": "Niks in dit filter.", "doc": "SP-13 — empty state when filtered." }
+    },
     "streamAction": {
       "help":   { "text": "Ik help", "doc": "Stream row action." },
       "offer":  { "text": "Ik heb 'm", "doc": "Stream row action — borrow offer." },

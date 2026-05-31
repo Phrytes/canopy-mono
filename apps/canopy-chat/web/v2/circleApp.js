@@ -15,7 +15,11 @@
 import { initLocalisation, t, detectDeviceLang } from '../../src/index.js';
 import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
 import { EventLog } from '../../src/eventLog.js';
-import { buildCircleStream } from '../../src/v2/circleStream.js';
+import {
+  buildCircleStream, buildKringStream,
+} from '../../src/v2/circleStream.js';
+import { isFeatureEnabled } from '../../src/v2/circlePolicy.js';
+import { renderCircleKring } from './circleKring.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '../../src/v2/circleHop.js';
 import { mergeSkill, normalizeSkill } from '../../src/v2/circleSkills.js';
@@ -36,8 +40,6 @@ import { normalizeRulesDoc } from '../../src/v2/circleRules.js';
 import { renderRulesEditor } from './circleRulesEditor.js';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
-import { loadCircleItems } from '../../src/v2/circleContent.js';
-import { getCirclePolStatus } from '../../src/v2/circlePol.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
 import { normalizeCircleMembers } from '../../src/v2/circleMembers.js';
@@ -58,7 +60,6 @@ import {
 import { renderCircleViewAs } from './circleViewAs.js';
 import { renderCircleLauncher } from './circleLauncher.js';
 import { renderCircleTabBar, hideCircleTabBar } from './circleTabBar.js';
-import { renderCircleDetail } from './circleDetail.js';
 import { renderCircleSettings } from './circleSettings.js';
 import { renderCircleOverride } from './circleOverride.js';
 
@@ -269,9 +270,8 @@ async function showDetail(id) {
   writeSeenAt(bumpSeenAt(readSeenAt(), id));
   const circle = circlesCache.find((c) => c.id === id) || { id };
   // 5.9e — when `view` is 'chat' the launcher routes straight to the
-  // classic chat shell instead of opening the action-grid detail.  The
+  // classic chat shell instead of opening the kring screen.  The
   // active-circle dispatch from 5.3 already scopes posts to this circle.
-  // P6.1 — same policy peek feeds the Functies-axis gate on CircleDetail.
   let detailPolicy = null;
   try {
     detailPolicy = await policyStore.get(id);
@@ -279,31 +279,62 @@ async function showDetail(id) {
       window.location.href = `/classic.html?circle=${encodeURIComponent(id)}`;
       return;
     }
-  } catch { /* fresh circle / read failure → fall through to detail */ }
-  const onSettings = () => showSettings(id);
-  const onMine = () => showOverride(id);
-  const onViewAs = () => showViewAs(id);
-  const onAdvisor = () => showAdvisor(id);
-  const onSkills = () => showSkills(id);
-  const onFiles = () => showFolio(id);
-  const onRules = () => showRules(id);
-  const detailOpts = { onBack: showLauncher, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules };
-  renderCircleDetail(rootEl, { circle, items: [], pol: null, policy: detailPolicy, t, ...detailOpts });
-
-  if (!resolveCallSkill) return;
-  // 5.9d — probe PoL in parallel with items load; both feed renderCircleDetail.
-  let items = [];
-  let pol   = null;
-  try {
-    [items, pol] = await Promise.all([
-      loadCircleItems({ callSkill: resolveCallSkill, circleId: id }),
-      getCirclePolStatus({ callSkill: resolveCallSkill, circleId: id }),
-    ]);
-  } catch { /* keep empty */ }
-  if (getActiveCircle() === id) {
-    renderCircleDetail(rootEl, { circle, items, pol, policy: detailPolicy, t, ...detailOpts });
-  }
+  } catch { /* fresh circle / read failure → fall through to kring screen */ }
+  showKring(id, circle, detailPolicy);
 }
+
+// SP-13 — kring content view (board 2B/8C).  Replaces the action-grid
+// CircleDetail as the per-circle landing surface.  Admin actions
+// (Settings, Mine, ViewAs, …) move into the header `⋯` overflow menu,
+// gated on the Functies axis (same gates the old detail used).
+let kringFilter = 'all';
+function showKring(id, circle, policy) {
+  kringFilter = 'all';
+  const allowRules   = isFeatureEnabled(policy, 'houseRules');
+  const allowViewAs  = isFeatureEnabled(policy, 'memberDirectory');
+  const allowFiles   = isFeatureEnabled(policy, 'lists') || isFeatureEnabled(policy, 'notes');
+  const more = {
+    settings: () => showSettings(id),
+    mine:     () => showOverride(id),
+    advisor:  () => showAdvisor(id),
+    skills:   () => showSkills(id),
+    ...(allowViewAs ? { viewAs: () => showViewAs(id) } : {}),
+    ...(allowFiles  ? { files:  () => showFolio(id) } : {}),
+    ...(allowRules  ? { rules:  () => showRules(id) } : {}),
+  };
+  const rerender = () => {
+    const rows = buildKringStream({
+      events:    eventLog.query({ excludeMuted: true }),
+      circles:   circlesCache,
+      circleId:  id,
+      kindFilter: kringFilter,
+    });
+    renderCircleKring(rootEl, {
+      circle, rows, filter: kringFilter, t,
+      onBack:   showLauncher,
+      onFilter: (key) => { kringFilter = key; rerender(); },
+      onPost:   () => createPost(id),
+      onAction: (action /*, row */) => {
+        // V0: actions just log; routing each to its dispatch (claim /
+        // help / offer) is the SP-13-followup wiring.
+        console.info('[kring] action', action.action, 'on row', action.payload?.rowId);
+      },
+      more,
+    });
+  };
+  rerender();
+  // Re-render on new events so the kring stream refreshes live (the
+  // EventLog has no subscribe seam yet; poll-on-render is fine for V0).
+}
+
+// SP-13 — compose hand-off: the chat-shell's /post wizard handles the
+// VRAAG/AANBOD/LENEN sub-picker (#244 / #205) + circle-scope already
+// (5.3 active-circle dispatch).  Until the kring screen hosts the
+// compose inline, jump to the classic shell with the circle pre-bound.
+function createPost(id) {
+  window.location.href = `/classic.html?circle=${encodeURIComponent(id)}&compose=post`;
+}
+
 
 // Skill editor (board 8) — draft persists locally per circle (cc.circleSkill.<id>);
 // "extend the Stoop skill item" is the later real-persistence path.

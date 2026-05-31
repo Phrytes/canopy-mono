@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { eventCircleId, buildCircleStream } from '../../src/v2/circleStream.js';
+import {
+  eventCircleId, buildCircleStream,
+  buildKringStream, KRING_STREAM_KIND_FILTERS,
+} from '../../src/v2/circleStream.js';
 
 const circles = [
   { id: 'crew-1', name: 'Garden crew' },
@@ -53,5 +56,54 @@ describe('buildCircleStream', () => {
     expect(buildCircleStream()).toEqual([]);
     expect(buildCircleStream({ events: [], circles: [] })).toEqual([]);
     expect(buildCircleStream({ events: [null, undefined] })).toEqual([]);
+  });
+});
+
+describe('buildKringStream (SP-13)', () => {
+  const events = [
+    { id: 'a', ts: 300, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'grp-9',  kind: 'vraag' } },
+    { id: 'b', ts: 250, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'grp-9',  kind: 'aanbod' } },
+    { id: 'c', ts: 200, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'grp-9',  kind: 'leen' } },
+    { id: 'd', ts: 150, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'crew-1', kind: 'vraag' } },
+    { id: 'e', ts: 100, app: 'tasks-v0', type: 'task-claimed', payload: { crewId: 'crew-1' } },
+    { id: 'f', ts:  50, app: 'household',type: 'note-added',   payload: {} },
+  ];
+
+  it('exposes the canonical chip set', () => {
+    expect(KRING_STREAM_KIND_FILTERS).toEqual(['all', 'vraag', 'aanbod', 'leen']);
+  });
+
+  it('with circleId narrows to that kring (newest first)', () => {
+    const rows = buildKringStream({ events, circles, circleId: 'grp-9' });
+    expect(rows.map((r) => r.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('with no circleId returns the full cross-kring stream', () => {
+    expect(buildKringStream({ events, circles }).map((r) => r.id))
+      .toEqual(['a', 'b', 'c', 'd', 'e', 'f']);
+  });
+
+  it('with kindFilter narrows to that kind only', () => {
+    expect(buildKringStream({ events, circles, circleId: 'grp-9', kindFilter: 'vraag' })
+      .map((r) => r.id)).toEqual(['a']);
+    expect(buildKringStream({ events, circles, circleId: 'grp-9', kindFilter: 'aanbod' })
+      .map((r) => r.id)).toEqual(['b']);
+  });
+
+  it('treats kindFilter=null / "all" as no filter', () => {
+    const expected = ['a', 'b', 'c'];
+    expect(buildKringStream({ events, circles, circleId: 'grp-9', kindFilter: null })
+      .map((r) => r.id)).toEqual(expected);
+    expect(buildKringStream({ events, circles, circleId: 'grp-9', kindFilter: 'all' })
+      .map((r) => r.id)).toEqual(expected);
+  });
+
+  it('unknown kind → no rows (helper does not invent)', () => {
+    expect(buildKringStream({ events, circles, circleId: 'grp-9', kindFilter: 'nope' }))
+      .toEqual([]);
+  });
+
+  it('unknown circle → no rows', () => {
+    expect(buildKringStream({ events, circles, circleId: 'ghost' })).toEqual([]);
   });
 });
