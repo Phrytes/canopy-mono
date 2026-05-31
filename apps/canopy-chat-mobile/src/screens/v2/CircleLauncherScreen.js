@@ -41,6 +41,10 @@ import {
   // α.1d.3 — recipe-editor mutation helpers.
   addRecipe, renameRecipe, removeRecipe, setActiveRecipe,
   addBlock, removeBlock, moveBlock, updateBlock, updateRecipe,
+  // α.2 — user-owned cross-kring screens + α.3 picker.
+  createUserScreenStore, addScreen as addUserScreen,
+  renameScreen as renameUserScreen, removeScreen as removeUserScreen,
+  setActiveScreen, updateScreen, materializeScreen,
 } from '@canopy-app/canopy-chat';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
@@ -50,6 +54,8 @@ import {
   makeProposalStoreRN,
   // α.1e — scherm recipe book persistence.
   makeKringRecipeStoreRN,
+  // α.3 — per-user screens persistence.
+  makeUserScreenStoreRN,
 } from '../../core/circleStoresRN.js';
 import CircleSettingsScreen from './CircleSettingsScreen.js';
 import CircleOverrideScreen from './CircleOverrideScreen.js';
@@ -65,6 +71,7 @@ import CircleRulesConsentScreen from './CircleRulesConsentScreen.js';
 import CircleTabBar from './CircleTabBar.js';
 import CircleScreenView from './CircleScreenView.js';
 import CircleRecipeEditorScreen from './CircleRecipeEditorScreen.js';
+import CircleScreensPickerScreen from './CircleScreensPickerScreen.js';
 
 // Wrap a top-level surface (Kringen / Stroom / Mij) with the bottom tab bar.
 function WithTabBar({ active, onSelect, children }) {
@@ -83,7 +90,8 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
   // M3 — sub-view within the launcher: 'list' | 'availability' | 'detail'
   // | 'settings' | 'override'.  `selected` carries the active circle for
   // detail/settings/override.
-  const [view, setView] = useState('list');
+  // α.3 — boot lands on the Schermen tab (Q6 primary).  Was 'list' (= Kringen).
+  const [view, setView] = useState('screens');
   const [viewAsPolicy, setViewAsPolicy] = useState('pairwise');
   const [viewAsMembers, setViewAsMembers] = useState([]);
   const [folioFiles, setFolioFiles] = useState([]);
@@ -96,6 +104,13 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
   const [recipeBook, setRecipeBook] = useState({ recipes: [], activeId: null });
   const [recipeEditorMode, setRecipeEditorMode] = useState('book');
   const [recipeEditingId, setRecipeEditingId] = useState(null);
+  // α.3 — Screens-tab state.  Two sub-modes: 'picker' (CRUD list) +
+  // 'view' (render the materialized active screen).  Book + blocks
+  // live here so they survive sub-mode switches without refetching.
+  const [screensBook, setScreensBook] = useState({ screens: [], activeId: null });
+  const [screensSubMode, setScreensSubMode] = useState('picker');
+  const [viewingScreenId, setViewingScreenId] = useState(null);
+  const [screenViewBlocks, setScreenViewBlocks] = useState(null);
   const [items, setItems] = useState([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -179,6 +194,8 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
   const proposalStore     = useMemo(() => makeProposalStoreRN(AsyncStorage), []);
   // α.1e — per-kring scherm recipe book (multi-recipe; one marked active).
   const recipeStore       = useMemo(() => makeKringRecipeStoreRN(AsyncStorage), []);
+  // α.3 — per-user screens store.  One book per user.
+  const userScreenStore   = useMemo(() => makeUserScreenStoreRN(AsyncStorage), []);
   // α.1d.3 — recipe-editor helpers (defined here so recipeStore is in scope).
   const refreshRecipeBook = useCallback(async (cid) => {
     if (!cid) return;
@@ -190,6 +207,54 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
     try { setRecipeBook(await recipeStore.update(cid, mutator)); }
     catch (err) { console.warn('[recipe] mutation failed:', err?.message ?? err); }
   }, [recipeStore]);
+
+  // α.3 — Screens helpers.
+  const refreshScreensBook = useCallback(async () => {
+    let book;
+    try { book = await userScreenStore.get(); }
+    catch { book = { screens: [], activeId: null }; }
+    // First-run seed: ensure the user has a "Stream" screen with a
+    // noticeboard block.  Once one exists we never re-seed.
+    if (book.screens.length === 0) {
+      book = await userScreenStore.update((cur) => {
+        const seeded = addUserScreen(cur, t('circle.screens.seed_name'));
+        const newId = seeded.screens[seeded.screens.length - 1].id;
+        return updateScreen(seeded, newId, (s) => addBlock(s, 'noticeboard'));
+      });
+    }
+    setScreensBook(book);
+  }, [userScreenStore]);
+  const applyScreenMutation = useCallback(async (mutator) => {
+    try { setScreensBook(await userScreenStore.update(mutator)); }
+    catch (err) { console.warn('[screens] mutation failed:', err?.message ?? err); }
+  }, [userScreenStore]);
+  // Refresh + materialize whenever we land on the screens view.
+  useEffect(() => {
+    if (view !== 'screens') return;
+    refreshScreensBook();
+  }, [view, refreshScreensBook]);
+  useEffect(() => {
+    if (view !== 'screens' || screensSubMode !== 'view' || !viewingScreenId) {
+      setScreenViewBlocks(null);
+      return;
+    }
+    const screen = screensBook.screens.find((s) => s.id === viewingScreenId);
+    if (!screen) { setScreenViewBlocks([]); return; }
+    let alive = true;
+    (async () => {
+      try {
+        const blocks = await materializeScreen({
+          screen,
+          hostOps: { callSkill, eventLog, circles },
+        });
+        if (alive) setScreenViewBlocks(blocks);
+      } catch (err) {
+        console.warn('[screens] materialize failed:', err?.message ?? err);
+        if (alive) setScreenViewBlocks([]);
+      }
+    })();
+    return () => { alive = false; };
+  }, [view, screensSubMode, viewingScreenId, screensBook, callSkill, eventLog, circles]);
 
   const callSkill = useMemo(
     () => (bundle?.callSkill ? makeResolvingCallSkill(bundle.callSkill) : null),
@@ -341,10 +406,12 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
     return () => sub.remove();
   }, [view, selected, creating]);
 
-  // Bottom tab bar (Kringen / Stroom / Mij).
+  // Bottom tab bar (Screens / Kringen / Mij).  α.3 — Schermen is the
+  // new primary; Stroom is retired (now lives as the seeded "Stream"
+  // screen on the Screens tab).
   const onTab = (id) => {
-    if (id === 'kringen') { setActiveCircle(null); setSelected(null); setView('list'); }
-    else if (id === 'stroom') setView('stream');
+    if (id === 'screens') setView('screens');
+    else if (id === 'kringen') { setActiveCircle(null); setSelected(null); setView('list'); }
     else if (id === 'mij') setView('availability');
   };
 
@@ -359,6 +426,50 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
     load();
   }, [newName, bundle, load]);
 
+  if (view === 'screens') {
+    // α.3 — Screens primary tab.  Two sub-modes: 'picker' (CRUD list)
+    // and 'view' (render the active screen's materialized blocks).
+    if (screensSubMode === 'view') {
+      const screen = screensBook.screens.find((s) => s.id === viewingScreenId);
+      return (
+        <WithTabBar active="screens" onSelect={onTab}>
+          <View style={{ flex: 1, padding: 16, backgroundColor: theme.color.paper }}>
+            <Pressable
+              onPress={() => { setScreensSubMode('picker'); setViewingScreenId(null); }}
+              accessibilityRole="button"
+              testID="screens-view-back"
+            >
+              <Text style={{ color: theme.color.inkSoft, fontSize: 13, marginBottom: 8 }}>
+                ← {t('circle.screens.picker_title')}
+              </Text>
+            </Pressable>
+            <Text style={{ fontFamily: theme.font.serif, fontSize: 22, fontWeight: '600', color: theme.color.ink, marginBottom: 12 }}>
+              {screen?.name || t('circle.screens.untitled')}
+            </Text>
+            <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+              <CircleScreenView blocks={screenViewBlocks} />
+            </ScrollView>
+          </View>
+        </WithTabBar>
+      );
+    }
+    return (
+      <WithTabBar active="screens" onSelect={onTab}>
+        <CircleScreensPickerScreen
+          book={screensBook}
+          onOpenScreen={(sid) => { setViewingScreenId(sid); setScreensSubMode('view'); }}
+          onAddScreen={(name) => applyScreenMutation((cur) => {
+            const next = addUserScreen(cur, name);
+            const newId = next.screens[next.screens.length - 1].id;
+            return updateScreen(next, newId, (s) => addBlock(s, 'noticeboard'));
+          })}
+          onRenameScreen={(sid, name) => applyScreenMutation((cur) => renameUserScreen(cur, sid, name))}
+          onRemoveScreen={(sid) => applyScreenMutation((cur) => removeUserScreen(cur, sid))}
+          onSetActive={(sid) => applyScreenMutation((cur) => setActiveScreen(cur, sid))}
+        />
+      </WithTabBar>
+    );
+  }
   if (view === 'availability') {
     return (
       <WithTabBar active="mij" onSelect={onTab}>

@@ -20,6 +20,8 @@ import {
   createProposalStore,
   // α.1a — scherm recipe book store.
   createKringRecipeStore,
+  // α.2 — per-user screens store.
+  createUserScreenStore,
 } from '@canopy-app/canopy-chat';
 // 5.4c — pod-writer build is also imported via relative path (Metro doesn't
 // honor package.json "exports" subpaths; same pattern as podNkn.js).
@@ -81,6 +83,11 @@ export function makeAvailabilityStoreRN(storage) {
  *  `cc.circleRecipe.<circleId>`). */
 export function makeKringRecipeStoreRN(storage) {
   return createKringRecipeStore({ io: asyncKeyedIo('cc.circleRecipe.', storage) });
+}
+
+/** α.2 — per-user screens store (single book; key: `cc.userScreens`). */
+export function makeUserScreenStoreRN(storage) {
+  return createUserScreenStore({ io: asyncFixedIo('cc.userScreens', storage) });
 }
 
 /**
