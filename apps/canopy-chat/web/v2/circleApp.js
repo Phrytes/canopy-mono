@@ -23,7 +23,12 @@ import { buildKringTabs, DEFAULT_KRING_TAB } from '../../src/v2/kringTabs.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
 import { rehydrateKringChatsFromStoop } from '../../src/v2/kringChatRehydrate.js';
+import {
+  createKringRecipeStore, localStorageRecipeIo, getActiveRecipe,
+} from '../../src/v2/kringRecipe.js';
+import { materializeRecipe } from '../../src/v2/kringRecipeBlocks.js';
 import { renderCircleKring } from './circleKring.js';
+import { renderCircleScreen } from './circleScreen.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '../../src/v2/circleHop.js';
 import { mergeSkill, normalizeSkill } from '../../src/v2/circleSkills.js';
@@ -96,6 +101,9 @@ async function tryConnectPeerTransport(agent, peerMessageRouter) {
 }
 
 const policyStore = createCirclePolicyStore(localStoragePolicyIo());
+// α.1c — per-kring recipe book store (multi-recipe per kring, one active).
+// localStorage now; pod io can swap in later without touching callers.
+const recipeStore = createKringRecipeStore({ io: localStorageRecipeIo() });
 const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
 const availabilityStore = createAvailabilityStore(localStorageAvailabilityIo());
 // P6.2 — persisted pending proposals (multi-admin consensus).
@@ -362,6 +370,10 @@ function showKring(id, circle, policy) {
   let activeTab = DEFAULT_KRING_TAB;
   // SP-13.4 — Chat ↔ Scherm pill state, persisted per circle.
   let viewMode = readViewMode(id);
+  // α.1c — materialized scherm blocks (recipe book → blocks).  Null
+  // until the async load below resolves; replaces SP-13.4's
+  // "scherm_coming" placeholder when present.
+  let screenBlocks = null;
   let seq = 0;
   const rerender = () => {
     const rows = buildKringStream({
@@ -373,6 +385,7 @@ function showKring(id, circle, policy) {
       circle, rows, t,
       tabs, activeTab,
       viewMode,
+      screenBlocks,
       onViewMode: (mode) => {
         if (mode !== 'chat' && mode !== 'scherm') return;
         viewMode = mode;
@@ -418,6 +431,28 @@ function showKring(id, circle, policy) {
   rerender();
   // EventLog has no subscribe seam yet; SP-13.2.1 will poll-on-event so
   // inbound peer messages appear without manual re-render.
+
+  // α.1c — load + materialize the active recipe in the background.
+  // Until this resolves, scherm-mode shows the empty-state.  Failure
+  // (e.g. corrupt store) falls through to the empty-state too.
+  (async () => {
+    try {
+      const book = await recipeStore.get(id);
+      const active = getActiveRecipe(book);
+      if (!active) { screenBlocks = []; rerender(); return; }
+      const blocks = await materializeRecipe({
+        recipe:   active,
+        circleId: id,
+        hostOps:  { callSkill: resolveCallSkill ?? rawCallSkill, eventLog, circles: circlesCache },
+      });
+      screenBlocks = blocks;
+      if (getActiveCircle() === id) rerender();
+    } catch (err) {
+      console.warn('[circleApp] recipe load failed:', err?.message ?? err);
+      screenBlocks = [];
+      if (getActiveCircle() === id) rerender();
+    }
+  })();
 }
 
 

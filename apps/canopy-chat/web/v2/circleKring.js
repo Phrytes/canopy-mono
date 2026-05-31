@@ -36,6 +36,7 @@
  */
 
 import { actionsForStreamRow } from '../../src/v2/streamActions.js';
+import { renderCircleScreen } from './circleScreen.js';
 
 export function renderCircleKring(container, {
   circle = {},
@@ -55,10 +56,13 @@ export function renderCircleKring(container, {
   // SP-13.4 — Chat ↔ Scherm header pill (v2 §4 board "De Schakelaar").
   // `viewMode`   one of 'chat' | 'scherm' (default 'chat')
   // `onViewMode(mode)`  host flips between the chat-style stream and
-  //   the admin-recept'd scherm-weergave.  When 'scherm' the body is
-  //   a placeholder until the recept renderer lands.
+  //   the admin-recept'd scherm-weergave.
   viewMode = 'chat',
   onViewMode,
+  // α.1c — materialized scherm blocks (kringRecipeBlocks.materializeRecipe).
+  // null = host hasn't loaded yet (show empty-state placeholder);
+  // [] = book is empty; [...] = render each block via circleScreen.
+  screenBlocks = null,
   t,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -160,12 +164,12 @@ export function renderCircleKring(container, {
   body.dataset.activeTab = effectiveTab;
   body.dataset.viewMode  = viewMode;
   if (viewMode === 'scherm') {
-    // SP-13.4 — placeholder until the admin-recept'd scherm renderer
-    // lands.  The composer + bottom tabs are suppressed below.
-    const placeholder = document.createElement('div');
-    placeholder.className = 'circle-kring__placeholder';
-    placeholder.textContent = tr('circle.kring.scherm_coming');
-    body.appendChild(placeholder);
+    // α.1c — render the materialized recipe blocks.  `screenBlocks`
+    // is an array from kringRecipeBlocks.materializeRecipe; null
+    // means "host hasn't loaded yet" — show the empty-state for
+    // a clean first paint.  circleScreen handles per-block status
+    // (ok / empty / error) internally.
+    renderCircleScreen(body, { blocks: screenBlocks ?? [], t: tr });
   } else if (effectiveTab !== 'gesprek') {
     const placeholder = document.createElement('div');
     placeholder.className = 'circle-kring__placeholder';
