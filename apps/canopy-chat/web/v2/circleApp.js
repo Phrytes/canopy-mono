@@ -22,6 +22,7 @@ import { isFeatureEnabled } from '../../src/v2/circlePolicy.js';
 import { buildKringTabs, DEFAULT_KRING_TAB } from '../../src/v2/kringTabs.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
+import { rehydrateKringChatsFromStoop } from '../../src/v2/kringChatRehydrate.js';
 import { renderCircleKring } from './circleKring.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '../../src/v2/circleHop.js';
@@ -660,10 +661,23 @@ async function boot() {
           return { error: String(err?.message ?? err) };
         }
       };
+      // SP-13.2.2 — shared dedup between rehydrator + receiver so a
+      // chat that's already in stoop's itemStore doesn't double-append
+      // to eventLog if a new envelope arrives mid-session.
+      const kringChatDedup = new Set();
       const kringChatHandler = makeKringChatPeerHandler({
         eventLog,
-        ingest: ingestKringMessage,
+        dedup:   kringChatDedup,
+        ingest:  ingestKringMessage,
       });
+      // SP-13.2.2 — boot rehydrator: read stoop's stored chats back
+      // into the in-memory eventLog so the GESPREK tab shows history
+      // after a reload (eventLog is in-memory; itemStore persists).
+      rehydrateKringChatsFromStoop({
+        callSkill: agent.callSkill,
+        eventLog,
+        dedup:     kringChatDedup,
+      }).catch(() => { /* logged inside */ });
       const peerMessageRouter = makePeerRouter({
         handlers: { 'kring-chat-message': kringChatHandler },
       });

@@ -2756,6 +2756,40 @@ export function buildSkills({
     }),
 
     /**
+     * listKringChats({groupId?, sinceTs?, limit?})
+     *   — SP-13.2.2 — list stored kring chat-message items, ordered
+     *   oldest → newest (chat reading order).  Defaults: all circles,
+     *   no time bound, capped at 200 most recent.  Hosts (canopy-chat
+     *   web + mobile) call this at boot to rehydrate eventLog so the
+     *   GESPREK tab shows historical chats after a reload.
+     */
+    defineSkill('listKringChats', async ({ parts }) => {
+      const a = dataArgs(parts);
+      const limit = Math.max(1, Math.min(1000,
+        typeof a.limit === 'number' && Number.isFinite(a.limit) ? a.limit : 200,
+      ));
+      const open = await store.listOpen({ type: 'kring-chat-message' });
+      let filtered = open;
+      if (typeof a.groupId === 'string' && a.groupId) {
+        filtered = filtered.filter((i) => i?.source?.circleId === a.groupId);
+      }
+      if (typeof a.sinceTs === 'number' && Number.isFinite(a.sinceTs)) {
+        const cutoff = a.sinceTs;
+        filtered = filtered.filter((i) => (i?.source?.ts ?? 0) > cutoff);
+      }
+      // Chat order: oldest at top, newest at bottom.  Slice tail when
+      // over the limit so callers always get the freshest N entries.
+      const sorted = filtered.slice().sort(
+        (a, b) => (a?.source?.ts ?? 0) - (b?.source?.ts ?? 0),
+      );
+      const trimmed = sorted.length > limit ? sorted.slice(sorted.length - limit) : sorted;
+      return { items: trimmed };
+    }, {
+      description: 'List stored kring chat-message items for boot-time eventLog rehydration.  Filters: groupId, sinceTs (exclusive), limit (default 200, max 1000).',
+      visibility:  'authenticated',
+    }),
+
+    /**
      * ingestKringMessage({payload, fromPubKey, fromNknAddr})
      *   — SP-13.2.1 — receive-side mirror for an inbound kring chat
      *   envelope.  Sibling of `ingestRemotePost` for the buurt-post
