@@ -51,12 +51,30 @@ describe('kringRecipe · α.1a — single Recipe', () => {
   });
 
   it('defaultConfigForBlock returns fresh per-type defaults', () => {
-    expect(defaultConfigForBlock('announcement')).toEqual({ text: '' });
-    expect(defaultConfigForBlock('noticeboard')).toEqual({ limit: 5 });
-    expect(defaultConfigForBlock('agenda')).toEqual({ limit: 5, horizonDays: 14 });
+    // α.5c — the four list-shaped types (announcement, noticeboard,
+    // agenda, tasks) carry a `compact:false` default so the editor's
+    // Compact toggle has a defined starting state.  rules/photo/text
+    // are not list-shaped and deliberately omit the key.
+    expect(defaultConfigForBlock('announcement')).toEqual({ text: '', compact: false });
+    expect(defaultConfigForBlock('noticeboard')).toEqual({ limit: 5, compact: false });
+    expect(defaultConfigForBlock('agenda')).toEqual({ limit: 5, horizonDays: 14, compact: false });
+    expect(defaultConfigForBlock('tasks')).toEqual({ scope: 'assigned-to-me', limit: 10, compact: false });
     expect(defaultConfigForBlock('rules')).toEqual({});
     expect(defaultConfigForBlock('photo')).toEqual({ src: '', caption: '' });
     expect(defaultConfigForBlock('text')).toEqual({ text: '' });
+  });
+
+  it('α.5c — DEFAULT_CONFIGS: list-shaped types include compact:false, others omit it', () => {
+    // Mirrors the renderer/editor convention: only the four list-shaped
+    // types expose the Compact toggle.
+    for (const t of ['announcement', 'noticeboard', 'agenda', 'tasks']) {
+      const cfg = defaultConfigForBlock(t);
+      expect(cfg).toHaveProperty('compact', false);
+    }
+    for (const t of ['rules', 'photo', 'text']) {
+      const cfg = defaultConfigForBlock(t);
+      expect(Object.prototype.hasOwnProperty.call(cfg, 'compact')).toBe(false);
+    }
   });
 
   it('addBlock preserves id+name on the returned Recipe', () => {

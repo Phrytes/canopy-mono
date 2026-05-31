@@ -161,6 +161,53 @@ describe('renderCircleScreen · α.1c.1 — block shapes', () => {
   });
 });
 
+describe('renderCircleScreen · α.5c — compact rows modifier', () => {
+  function noticeboardBlock(config) {
+    return {
+      blockId: 'nb', type: 'noticeboard', status: 'ok',
+      content: { items: [
+        { id: 'r1', event: { payload: { text: 'hello', senderDisplay: 'Anne' } } },
+      ] },
+      ...(config !== undefined ? { config } : {}),
+    };
+  }
+
+  it('compact:true on a noticeboard block adds the modifier class', () => {
+    const el = mount();
+    renderCircleScreen(el, { blocks: [noticeboardBlock({ compact: true })], t });
+    const block = el.querySelector('.circle-screen__block--noticeboard');
+    expect(block).not.toBeNull();
+    expect(block.classList.contains('circle-screen__block--compact')).toBe(true);
+  });
+
+  it('compact:false or missing config does NOT add the modifier class', () => {
+    const elA = mount();
+    renderCircleScreen(elA, { blocks: [noticeboardBlock({ compact: false })], t });
+    expect(elA.querySelector('.circle-screen__block--noticeboard').classList.contains('circle-screen__block--compact')).toBe(false);
+
+    const elB = mount();
+    renderCircleScreen(elB, { blocks: [noticeboardBlock()], t });
+    expect(elB.querySelector('.circle-screen__block--noticeboard').classList.contains('circle-screen__block--compact')).toBe(false);
+  });
+
+  it('non-list-shaped types (text/photo/rules) never get the compact modifier even if compact:true is set', () => {
+    const el = mount();
+    renderCircleScreen(el, {
+      blocks: [
+        { blockId: 't', type: 'text',   status: 'ok', config: { compact: true }, content: { text: 'hi' } },
+        { blockId: 'p', type: 'photo',  status: 'ok', config: { compact: true }, content: { src: '/x.jpg', caption: '' } },
+        { blockId: 'r', type: 'rules',  status: 'ok', config: { compact: true }, content: { doc: { purpose: 'X', admins: '', agreements: '', conflict: '', admission: '', leaving: '', responsibility: '' } } },
+      ],
+      t,
+    });
+    for (const cls of ['--text', '--photo', '--rules']) {
+      const block = el.querySelector(`.circle-screen__block${cls}`);
+      expect(block).not.toBeNull();
+      expect(block.classList.contains('circle-screen__block--compact')).toBe(false);
+    }
+  });
+});
+
 describe('renderCircleScreen · α.1c.1 — status branches', () => {
   it('status:"empty" renders the per-block empty state', () => {
     const el = mount();

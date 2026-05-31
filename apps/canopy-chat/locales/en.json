@@ -115,6 +115,10 @@
         "agenda_limit_label":        { "text": "How many events?",                 "doc": "α.1d — agenda limit." },
         "agenda_horizon_label":      { "text": "Show events within (days)",        "doc": "α.1d — agenda horizon." },
         "rules_hint":           { "text": "Renders the kring's current house rules.", "doc": "α.1d — rules block has no config." }
+      },
+      "compact_label": {
+        "label": { "text": "Compact",                          "doc": "α.5c — checkbox label for the compact-rows toggle on list-shaped blocks." },
+        "hint":  { "text": "Tighter rows, smaller text",        "doc": "α.5c — hint under the Compact checkbox." }
       }
     },
     "streamAction": {

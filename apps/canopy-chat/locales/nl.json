@@ -115,6 +115,10 @@
         "agenda_limit_label":        { "text": "Hoeveel evenementen?",            "doc": "α.1d — agenda limit." },
         "agenda_horizon_label":      { "text": "Toon evenementen binnen (dagen)", "doc": "α.1d — agenda horizon." },
         "rules_hint":           { "text": "Toont de huidige huisregels van de kring.", "doc": "α.1d — rules block." }
+      },
+      "compact_label": {
+        "label": { "text": "Compact",                          "doc": "α.5c — checkbox label for the compact-rows toggle on list-shaped blocks." },
+        "hint":  { "text": "Smallere regels, kleinere tekst",  "doc": "α.5c — hint under the Compact checkbox." }
       }
     },
     "streamAction": {

@@ -102,6 +102,8 @@ function materializeAnnouncement(block) {
     blockId: block.id, type: 'announcement',
     status: text ? 'ok' : 'empty',
     content: { text },
+    // α.5c — surface the compact flag so the renderer can tighten rows.
+    config: { compact: block.config?.compact === true },
   };
 }
 
@@ -137,6 +139,8 @@ function materializeNoticeboard(block, circleId, { eventLog, circles } = {}) {
     blockId: block.id, type: 'noticeboard',
     status: rows.length > 0 ? 'ok' : 'empty',
     content: { items: rows },
+    // α.5c — surface the compact flag so the renderer can tighten rows.
+    config: { compact: block.config?.compact === true },
   };
 }
 
@@ -152,6 +156,8 @@ async function materializeAgenda(block, { callSkill } = {}) {
     blockId: block.id, type: 'agenda',
     status: items.length > 0 ? 'ok' : 'empty',
     content: { items },
+    // α.5c — surface the compact flag so the renderer can tighten rows.
+    config: { compact: block.config?.compact === true },
   };
 }
 
@@ -186,6 +192,8 @@ async function materializeTasks(block, circleId, { callSkill, myWebid } = {}) {
     blockId: block.id, type: 'tasks',
     status: items.length > 0 ? 'ok' : 'empty',
     content: { items, scope },
+    // α.5c — surface the compact flag so the renderer can tighten rows.
+    config: { compact: block.config?.compact === true },
   };
 }
 

@@ -23,7 +23,13 @@ describe('kringRecipeBlocks · α.1b — registry', () => {
 describe('kringRecipeBlocks · α.1b — materializeBlock (pure types)', () => {
   it('announcement: ok when text present, empty when blank', async () => {
     const r1 = await materializeBlock({ block: { id: 'b', type: 'announcement', config: { text: 'Buurtfeest!' } } });
-    expect(r1).toEqual({ blockId: 'b', type: 'announcement', status: 'ok', content: { text: 'Buurtfeest!' } });
+    // α.5c — announcement is list-shaped, so the materializer surfaces a
+    // `config: { compact }` flag for the renderer; falsy by default.
+    expect(r1).toEqual({
+      blockId: 'b', type: 'announcement', status: 'ok',
+      content: { text: 'Buurtfeest!' },
+      config: { compact: false },
+    });
 
     const r2 = await materializeBlock({ block: { id: 'b', type: 'announcement', config: { text: '   ' } } });
     expect(r2.status).toBe('empty');
