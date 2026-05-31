@@ -10,6 +10,17 @@
 
 const TOP_TOGGLES = ['chatOff', 'revealOpen', 'agentsMayContactMe'];
 const FLOW_TOGGLES = ['tasksToPersonal', 'calendarToPersonal'];
+// α.5b — per-kring push toggles (board 6A · audit #6).  Same shape as
+// the existing TOP_TOGGLES / FLOW_TOGGLES row pattern; the locale lives
+// under its own namespace (`circle.member.notifications.*`) so the four
+// strings are reusable by mobile + chat without sitting under the
+// override sheet.
+const PUSH_TOGGLES = [
+  { key: 'onMention',      i18n: 'on_mention' },
+  { key: 'onEveryMessage', i18n: 'on_message' },
+  { key: 'onNewItem',      i18n: 'on_new_item' },
+  { key: 'onProposal',     i18n: 'on_proposal' },
+];
 
 export function renderCircleOverride(container, { override, t, onChange, onBack, onSave } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -38,6 +49,23 @@ export function renderCircleOverride(container, { override, t, onChange, onBack,
       onToggle: (checked) => emit({ [key]: checked }),
     }));
   }
+
+  const pushSec = document.createElement('section');
+  pushSec.className = 'circle-override__push';
+  const pushTitle = document.createElement('h3');
+  pushTitle.className = 'circle-override__section-title';
+  pushTitle.textContent = tr('circle.member.notifications.section_title');
+  pushSec.appendChild(pushTitle);
+  for (const { key, i18n } of PUSH_TOGGLES) {
+    pushSec.appendChild(toggleRow({
+      cls: 'circle-override__push-toggle',
+      key,
+      checked: !!override?.push?.[key],
+      label: tr(`circle.member.notifications.${i18n}`),
+      onToggle: (checked) => emit({ push: { [key]: checked } }),
+    }));
+  }
+  container.appendChild(pushSec);
 
   const flowSec = document.createElement('section');
   flowSec.className = 'circle-override__flow';

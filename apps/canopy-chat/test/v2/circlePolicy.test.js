@@ -116,28 +116,67 @@ describe('memberOverride', () => {
     expect(next.flowThrough).toEqual({ tasksToPersonal: true, calendarToPersonal: true });
   });
 
-  // P6.M4 — split push toggles.
-  it('defaults push to {onMention: true, onEveryMessage: false} (board 6A)', () => {
-    expect(DEFAULT_MEMBER_OVERRIDE.push).toEqual({ onMention: true, onEveryMessage: false });
-    expect(normalizeMemberOverride({}).push).toEqual({ onMention: true, onEveryMessage: false });
+  // P6.M4 + α.5b — split push toggles (four kinds).
+  it('defaults push to the four-kind shape (board 6A · α.5b)', () => {
+    expect(DEFAULT_MEMBER_OVERRIDE.push).toEqual({
+      onMention:      true,
+      onEveryMessage: false,
+      onNewItem:      true,
+      onProposal:     true,
+    });
+    expect(normalizeMemberOverride({}).push).toEqual({
+      onMention:      true,
+      onEveryMessage: false,
+      onNewItem:      true,
+      onProposal:     true,
+    });
   });
 
   it('coerces push keys to booleans + preserves explicit values', () => {
     const o = normalizeMemberOverride({ push: { onMention: false, onEveryMessage: 'y' /* non-bool */ } });
     expect(o.push.onMention).toBe(false);
     expect(o.push.onEveryMessage).toBe(false);
-    const o2 = normalizeMemberOverride({ push: { onEveryMessage: true } });
-    expect(o2.push).toEqual({ onMention: true, onEveryMessage: true });
+    // unspecified keys keep their defaults (newItem/proposal default true)
+    expect(o.push.onNewItem).toBe(true);
+    expect(o.push.onProposal).toBe(true);
+    const o2 = normalizeMemberOverride({ push: { onEveryMessage: true, onNewItem: false, onProposal: false } });
+    expect(o2.push).toEqual({
+      onMention:      true,
+      onEveryMessage: true,
+      onNewItem:      false,
+      onProposal:     false,
+    });
   });
 
   it('deep-merges push on edit', () => {
     const base = normalizeMemberOverride({ push: { onMention: true, onEveryMessage: false } });
-    const next = mergeMemberOverride(base, { push: { onEveryMessage: true } });
-    expect(next.push).toEqual({ onMention: true, onEveryMessage: true });
+    const next = mergeMemberOverride(base, { push: { onEveryMessage: true, onProposal: false } });
+    expect(next.push).toEqual({
+      onMention:      true,
+      onEveryMessage: true,
+      onNewItem:      true,    // preserved default
+      onProposal:     false,   // patched
+    });
+  });
+
+  it('α.5b — round-trips a stored doc with the four push keys', () => {
+    const stored = {
+      chatOff: true,
+      revealOpen: false,
+      agentsMayContactMe: false,
+      push: { onMention: false, onEveryMessage: true, onNewItem: false, onProposal: true },
+      flowThrough: { tasksToPersonal: true, calendarToPersonal: false },
+    };
+    const round = normalizeMemberOverride(stored);
+    expect(round.push).toEqual({
+      onMention: false, onEveryMessage: true, onNewItem: false, onProposal: true,
+    });
+    // a second pass is stable (idempotent)
+    expect(normalizeMemberOverride(round)).toEqual(round);
   });
 });
 
-describe('shouldPushNotify (P6.M4)', () => {
+describe('shouldPushNotify (P6.M4 + α.5b)', () => {
   it('returns push.onMention for kind=mention', () => {
     expect(shouldPushNotify({ push: { onMention: true,  onEveryMessage: false } }, 'mention')).toBe(true);
     expect(shouldPushNotify({ push: { onMention: false, onEveryMessage: false } }, 'mention')).toBe(false);
@@ -148,12 +187,24 @@ describe('shouldPushNotify (P6.M4)', () => {
     expect(shouldPushNotify({ push: { onMention: true,  onEveryMessage: false } }, 'message')).toBe(false);
   });
 
+  it('α.5b — returns push.onNewItem for kind=newItem', () => {
+    expect(shouldPushNotify({ push: { onNewItem: true  } }, 'newItem')).toBe(true);
+    expect(shouldPushNotify({ push: { onNewItem: false } }, 'newItem')).toBe(false);
+  });
+
+  it('α.5b — returns push.onProposal for kind=proposal', () => {
+    expect(shouldPushNotify({ push: { onProposal: true  } }, 'proposal')).toBe(true);
+    expect(shouldPushNotify({ push: { onProposal: false } }, 'proposal')).toBe(false);
+  });
+
   it('uses the defaults when override is empty', () => {
     expect(shouldPushNotify({}, 'mention')).toBe(true);
     expect(shouldPushNotify({}, 'message')).toBe(false);
+    expect(shouldPushNotify({}, 'newItem')).toBe(true);
+    expect(shouldPushNotify({}, 'proposal')).toBe(true);
   });
 
-  it('returns false for unknown kinds', () => {
+  it('returns false for unknown kinds (α.5b — new kinds stay silent until wired)', () => {
     expect(shouldPushNotify(DEFAULT_MEMBER_OVERRIDE, 'bogus')).toBe(false);
     expect(shouldPushNotify(DEFAULT_MEMBER_OVERRIDE)).toBe(false);
   });
