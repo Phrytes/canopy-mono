@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   BLOCK_REGISTRY, materializeBlock, materializeRecipe,
 } from '../../src/v2/kringRecipeBlocks.js';
-import { addBlock, EMPTY_RECIPE } from '../../src/v2/kringRecipe.js';
+import { addBlock, emptyRecipe } from '../../src/v2/kringRecipe.js';
 
 function fakeEventLog(events = []) {
   return { query: () => events };
@@ -190,7 +190,7 @@ describe('kringRecipeBlocks · α.1b — materializeRecipe', () => {
   it('materialises every block in order, preserving array shape', async () => {
     const recipe = addBlock(
       addBlock(
-        addBlock(EMPTY_RECIPE, 'announcement', { text: 'Hi' }),
+        addBlock(emptyRecipe(), 'announcement', { text: 'Hi' }),
         'text', { text: 'meer hier' }),
       'photo', { src: '/a.jpg' });
     const out = await materializeRecipe({ recipe, hostOps: {} });
@@ -199,7 +199,7 @@ describe('kringRecipeBlocks · α.1b — materializeRecipe', () => {
   });
 
   it('returns empty array for an empty recipe', async () => {
-    const out = await materializeRecipe({ recipe: EMPTY_RECIPE, hostOps: {} });
+    const out = await materializeRecipe({ recipe: emptyRecipe(), hostOps: {} });
     expect(out).toEqual([]);
   });
 
