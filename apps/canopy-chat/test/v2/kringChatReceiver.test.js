@@ -107,4 +107,51 @@ describe('makeKringChatPeerHandler · SP-13.2.1 receiver', () => {
     handler('a', envelope({ msgId: 'A', text: 'replayed' }));
     expect(eventLog.events.map((e) => e.id)).toEqual(['A', 'B', 'C', 'A']);
   });
+
+  /* ── Hybrid: ingest mirror (SP-13.2.1 storage layer) ── */
+
+  it('calls ingest first, then appends to eventLog when ingest is OK', async () => {
+    const eventLog = fakeEventLog();
+    const ingest = vi.fn(async () => ({ ok: true, itemId: 'item-1' }));
+    const handler = makeKringChatPeerHandler({ eventLog, ingest, logger: silentLogger });
+    await handler('nkn-addr', envelope({ msgId: 'mA' }));
+    expect(ingest).toHaveBeenCalledTimes(1);
+    expect(ingest.mock.calls[0][0].msgId).toBe('mA');
+    expect(eventLog.events).toHaveLength(1);
+  });
+
+  it('suppresses eventLog append when ingest returns evicted', async () => {
+    const eventLog = fakeEventLog();
+    const ingest = vi.fn(async () => ({ evicted: true }));
+    const handler = makeKringChatPeerHandler({ eventLog, ingest, logger: silentLogger });
+    await handler('nkn-addr', envelope({ msgId: 'mE' }));
+    expect(eventLog.events).toHaveLength(0);
+  });
+
+  it('suppresses eventLog append when ingest returns muted', async () => {
+    const eventLog = fakeEventLog();
+    const ingest = vi.fn(async () => ({ muted: true }));
+    const handler = makeKringChatPeerHandler({ eventLog, ingest, logger: silentLogger });
+    await handler('nkn-addr', envelope({ msgId: 'mM' }));
+    expect(eventLog.events).toHaveLength(0);
+  });
+
+  it('suppresses eventLog append when ingest returns deduped (already stored)', async () => {
+    const eventLog = fakeEventLog();
+    const ingest = vi.fn(async () => ({ deduped: true }));
+    const handler = makeKringChatPeerHandler({ eventLog, ingest, logger: silentLogger });
+    await handler('nkn-addr', envelope({ msgId: 'mD' }));
+    expect(eventLog.events).toHaveLength(0);
+  });
+
+  it('falls back to eventLog-only when ingest throws', async () => {
+    const eventLog = fakeEventLog();
+    const ingest = vi.fn(async () => { throw new Error('callSkill down'); });
+    const handler = makeKringChatPeerHandler({
+      eventLog, ingest,
+      logger: { warn: () => {}, info: () => {}, debug: () => {} },
+    });
+    await handler('nkn-addr', envelope({ msgId: 'mT' }));
+    expect(eventLog.events).toHaveLength(1);
+  });
 });

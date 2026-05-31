@@ -645,9 +645,25 @@ async function boot() {
       sources = circleSourcesFromAgent({ callSkill: resolveCallSkill, circlesStore: agent.circlesStore });
       // SP-13.2.1 — register a peer-router with the kring-chat-message
       // handler + connect the NKN transport (best-effort; no-op when
-      // nkn-sdk failed to load).  Inbound envelopes append to eventLog
-      // so the kring view's buildKringStream renders the bubble.
-      const kringChatHandler = makeKringChatPeerHandler({ eventLog });
+      // nkn-sdk failed to load).  The ingest hook mirrors the envelope
+      // into stoop's itemStore so kring chat history is durable,
+      // searchable, and mute/eviction-filtered (parity with /post
+      // delivery via `ingestRemotePost`).  EventLog append still drives
+      // the live bubble render.
+      const ingestKringMessage = async (payload, fromNknAddr) => {
+        try {
+          return await agent.callSkill('stoop', 'ingestKringMessage', {
+            payload, fromNknAddr,
+          });
+        } catch (err) {
+          console.warn('[circleApp] ingestKringMessage failed:', err?.message ?? err);
+          return { error: String(err?.message ?? err) };
+        }
+      };
+      const kringChatHandler = makeKringChatPeerHandler({
+        eventLog,
+        ingest: ingestKringMessage,
+      });
       const peerMessageRouter = makePeerRouter({
         handlers: { 'kring-chat-message': kringChatHandler },
       });

@@ -2679,11 +2679,45 @@ export function buildSkills({
       if (!_groupId)             return { error: 'groupId-required' };
       if (typeof a.text !== 'string' || !a.text.trim()) return { error: 'text-required' };
       if (typeof a.msgId !== 'string' || !a.msgId)      return { error: 'msgId-required' };
-      if (!chat?.send)           return { error: 'chat-unavailable', sent: 0, errors: [] };
-      if (!members)              return { error: 'members-unavailable', sent: 0, errors: [] };
 
       const text = a.text.trim();
       const ts   = typeof a.ts === 'number' && Number.isFinite(a.ts) ? a.ts : Date.now();
+
+      // Local mirror — store the outgoing chat as an item so it
+      // survives reloads AND the kring view can read its full history
+      // from the same itemStore the receiver writes to.  The dedup-by-
+      // msgId in ingestKringMessage means a peer's echo (if any) is
+      // suppressed locally.
+      let localItemId = null;
+      try {
+        const open = await store.listOpen({ type: 'kring-chat-message' });
+        const dup  = open.find((i) => i?.source?.msgId === a.msgId);
+        if (dup) {
+          localItemId = dup.id;
+        } else {
+          const [item] = await store.addItems([{
+            type:       'kring-chat-message',
+            text,
+            visibility: 'household',
+            source: {
+              circleId:  _groupId,
+              msgId:     a.msgId,
+              ts,
+              from,
+              fromActor: a.fromActor ?? from ?? null,
+            },
+          }], { actor: from });
+          localItemId = item?.id ?? null;
+        }
+      } catch (err) {
+        // Storage failure shouldn't block fan-out — receivers still get the
+        // chat over NKN.  Log + continue.
+        console.warn('[broadcastKringMessage] local mirror failed:', err?.message ?? err);
+      }
+
+      if (!chat?.send)           return { error: 'chat-unavailable', sent: 0, errors: [], itemId: localItemId };
+      if (!members)              return { error: 'members-unavailable', sent: 0, errors: [], itemId: localItemId };
+
       const list = await members.list();
       const webids = new Set();
       for (const m of list ?? []) {
@@ -2715,9 +2749,77 @@ export function buildSkills({
         }
       }));
       metrics?.record?.('kring-chat-fanout');
-      return { sent, attempted: webids.size, errors };
+      return { sent, attempted: webids.size, errors, itemId: localItemId };
     }, {
-      description: 'Fan a plain-text kring chat message out to every other member via chat.send subtype:kring-chat-message.',
+      description: 'Fan a plain-text kring chat message out to every other member via chat.send subtype:kring-chat-message; also mirrors locally to itemStore for durable history.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * ingestKringMessage({payload, fromPubKey, fromNknAddr})
+     *   — SP-13.2.1 — receive-side mirror for an inbound kring chat
+     *   envelope.  Sibling of `ingestRemotePost` for the buurt-post
+     *   path: dedupe + eviction + mute filtering + addItems.  Hosts
+     *   (canopy-chat web + mobile) call this from their kring-chat
+     *   peer-router handler instead of writing to eventLog directly.
+     *
+     *   Returns: { ok: true, itemId } | { deduped: true } |
+     *            { evicted: true } | { muted: true } | { error }.
+     */
+    defineSkill('ingestKringMessage', async ({ parts }) => {
+      const a = dataArgs(parts);
+      const payload = a.payload;
+      const fromPubKey = typeof a.fromPubKey === 'string' ? a.fromPubKey : null;
+      const fromNknAddr = typeof a.fromNknAddr === 'string' ? a.fromNknAddr : null;
+      if (!payload || typeof payload !== 'object') return { error: 'payload required' };
+
+      const circleId = payload.circleId;
+      const msgId    = payload.msgId;
+      const text     = payload.text;
+      const ts       = typeof payload.ts === 'number' && Number.isFinite(payload.ts) ? payload.ts : Date.now();
+      if (typeof circleId !== 'string' || !circleId) return { error: 'circleId required' };
+      if (typeof msgId    !== 'string' || !msgId)    return { error: 'msgId required' };
+      if (typeof text     !== 'string' || !text)     return { error: 'text required' };
+
+      // Eviction filter — drop chats from members who left/were evicted.
+      const evictionRoster = bundle?.evictionRoster ?? null;
+      if (evictionRoster) {
+        const fromWebid = payload.fromActor ?? payload.fromWebid ?? null;
+        if (fromWebid && evictionRoster.isEvicted(fromWebid)) return { evicted: true };
+      }
+
+      // Mute filter — drop chats from peers I've muted locally
+      // (same shape as wireChat's broadcast-post branch).
+      if (muted && (
+        (payload.fromStableId && muted.has(payload.fromStableId)) ||
+        (payload.fromActor    && muted.has(payload.fromActor)) ||
+        (payload.fromWebid    && muted.has(payload.fromWebid))
+      )) return { muted: true };
+
+      // Dedupe by msgId — O(N) over open kring-chat items.
+      const open = await store.listOpen({ type: 'kring-chat-message' });
+      if (open.some((i) => i?.source?.msgId === msgId)) return { deduped: true };
+
+      const [item] = await store.addItems([{
+        type:       'kring-chat-message',
+        text,
+        visibility: 'household',
+        source: {
+          circleId,
+          msgId,
+          ts,
+          fromActor: payload.fromActor ?? null,
+          fromWebid: payload.fromWebid ?? null,
+          fromPubKey,
+          ...(fromNknAddr ? { fromNknAddr } : {}),
+        },
+      }], {
+        actor: payload.fromActor ?? payload.fromWebid ?? (fromPubKey ? `pubkey:${fromPubKey.slice(0, 12)}` : 'remote'),
+      });
+      metrics?.record?.('kring-chat-ingest');
+      return { ok: true, itemId: item.id };
+    }, {
+      description: 'Ingest an inbound kring chat-message envelope into the local itemStore (mute + eviction filtered, dedupes on msgId).',
       visibility:  'authenticated',
     }),
 
