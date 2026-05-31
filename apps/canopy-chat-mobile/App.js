@@ -15,7 +15,7 @@
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, Pressable, Text, StyleSheet } from 'react-native';
+import { View, Pressable, Text, StyleSheet, BackHandler } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
@@ -112,6 +112,23 @@ export default function App() {
   useEffect(() => {
     initLocalisation({ lng: 'en' }).then(() => setLocaleReady(true));
   }, []);
+
+  // Android back-gesture / hardware back button — pop chat → circles.
+  // The launcher screen registers its own back-handler that swallows
+  // the gesture while the user is inside a sub-view (circle detail,
+  // settings, …); this hook is the App-level fallback that returns
+  // the user from the classic chat shell back to the kringen launcher.
+  // First-run / mnemonic screens intentionally don't get a back hook
+  // — those are linear flows the user must finish (or restart from).
+  useEffect(() => {
+    if (firstRun !== 'dismissed' || mnemonicState === 'show') return undefined;
+    const handler = () => {
+      if (screen === 'chat') { setScreen('circles'); return true; }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', handler);
+    return () => sub.remove();
+  }, [screen, firstRun, mnemonicState]);
 
   // 5.9b — first-run probe.  Reads AsyncStorage to decide whether to
   // show the welcome screen before booting the bundle.  Errors fall

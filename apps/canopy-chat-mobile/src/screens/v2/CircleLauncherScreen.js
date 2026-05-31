@@ -13,7 +13,7 @@
  * Flagged for device verification.
  */
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput, StyleSheet, BackHandler } from 'react-native';
 import { theme } from './theme.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -284,6 +284,44 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
   }, [callSkill, onChatRoute, policyStore]);
 
   const closeCircle = () => { setActiveCircle(null); setSelected(null); setItems([]); setView('list'); };
+
+  // Android back-gesture / hardware back button — pop the current sub-view
+  // instead of exiting the app.  Mirrors each screen's existing onBack
+  // semantics (the in-screen back button still works the same way).
+  // Returning `true` consumes the event; `false` lets the system handle
+  // it (exits the app — only when we're at the launcher root + nothing
+  // inline to cancel).
+  useEffect(() => {
+    const handler = () => {
+      // Inline cancel: creating-circle input row.
+      if (creating) { setCreating(false); setNewName(''); return true; }
+      // Sub-views under a selected circle → back to detail.
+      if (selected && (
+        view === 'settings' || view === 'override' || view === 'viewas'
+        || view === 'advisor' || view === 'skills' || view === 'folio'
+        || view === 'rules'
+      )) { setView('detail'); return true; }
+      // Rules consent preview → back to rules editor.
+      if (selected && view === 'rulesconsent') { setView('rules'); return true; }
+      // Hop screen lives under the Mij tab.
+      if (view === 'hop') { setView('availability'); return true; }
+      // Top-level tab screens → back to launcher list.
+      if (view === 'availability' || view === 'stream'
+          || view === 'nearby' || view === 'mythings') {
+        setView('list'); return true;
+      }
+      // Circle detail → close the circle (back to launcher list).
+      if (selected) { closeCircle(); return true; }
+      // Launcher root with an onBack callback (e.g. App.js's "← chat"
+      // hand-off) consumes the gesture so the user lands back in chat
+      // instead of being kicked out of the app entirely.
+      if (typeof onBack === 'function') { onBack(); return true; }
+      // True root + no fallback: let the system handle (exit).
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', handler);
+    return () => sub.remove();
+  }, [view, selected, creating, onBack]);
 
   // Bottom tab bar (Kringen / Stroom / Mij).
   const onTab = (id) => {
