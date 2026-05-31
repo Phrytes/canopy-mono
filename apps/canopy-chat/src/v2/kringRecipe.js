@@ -82,44 +82,49 @@ export function defaultConfigForBlock(type) {
   return fn ? fn() : {};
 }
 
-/** Append a block of `type` to a Recipe; returns a NEW Recipe. */
+// The block helpers below operate on the input object's `.blocks` and
+// preserve every other top-level property via spread.  α.2 leans on
+// this: a Screen `{id, name, kringFilter, blocks}` round-trips through
+// addBlock / moveBlock / etc with kringFilter intact.
+
+/** Append a block of `type` to a Recipe-shaped object; returns a NEW object. */
 export function addBlock(recipe, type, configPatch = null) {
   if (!BLOCK_TYPES.includes(type)) {
     throw new Error(`addBlock: unknown block type "${type}"`);
   }
-  const cur = normalizeRecipe(recipe);
+  const blocks = normalizeBlocks(recipe?.blocks);
   const config = { ...defaultConfigForBlock(type), ...(configPatch ?? {}) };
-  return { ...cur, blocks: [...cur.blocks, { id: freshBlockId(), type, config }] };
+  return { ...(recipe ?? {}), blocks: [...blocks, { id: freshBlockId(), type, config }] };
 }
 
 /** Remove the block with `blockId`; no-op if absent. */
 export function removeBlock(recipe, blockId) {
-  const cur = normalizeRecipe(recipe);
-  return { ...cur, blocks: cur.blocks.filter((b) => b.id !== blockId) };
+  const blocks = normalizeBlocks(recipe?.blocks);
+  return { ...(recipe ?? {}), blocks: blocks.filter((b) => b.id !== blockId) };
 }
 
 /** Move `blockId` to `newIndex` (clamped to valid range). */
 export function moveBlock(recipe, blockId, newIndex) {
-  const cur = normalizeRecipe(recipe);
-  const from = cur.blocks.findIndex((b) => b.id === blockId);
-  if (from < 0) return cur;
-  const clamped = Math.max(0, Math.min(cur.blocks.length - 1, newIndex | 0));
-  if (from === clamped) return cur;
-  const next = cur.blocks.slice();
+  const blocks = normalizeBlocks(recipe?.blocks);
+  const from = blocks.findIndex((b) => b.id === blockId);
+  if (from < 0) return { ...(recipe ?? {}), blocks };
+  const clamped = Math.max(0, Math.min(blocks.length - 1, newIndex | 0));
+  if (from === clamped) return { ...(recipe ?? {}), blocks };
+  const next = blocks.slice();
   const [moved] = next.splice(from, 1);
   next.splice(clamped, 0, moved);
-  return { ...cur, blocks: next };
+  return { ...(recipe ?? {}), blocks: next };
 }
 
 /** Shallow-merge `configPatch` onto the block; no-op if missing. */
 export function updateBlock(recipe, blockId, configPatch = {}) {
-  const cur = normalizeRecipe(recipe);
-  const idx = cur.blocks.findIndex((b) => b.id === blockId);
-  if (idx < 0) return cur;
-  const blocks = cur.blocks.slice();
-  const block = blocks[idx];
-  blocks[idx] = { ...block, config: { ...block.config, ...configPatch } };
-  return { ...cur, blocks };
+  const blocks = normalizeBlocks(recipe?.blocks);
+  const idx = blocks.findIndex((b) => b.id === blockId);
+  if (idx < 0) return { ...(recipe ?? {}), blocks };
+  const next = blocks.slice();
+  const block = next[idx];
+  next[idx] = { ...block, config: { ...block.config, ...configPatch } };
+  return { ...(recipe ?? {}), blocks: next };
 }
 
 /* ─────────────────────────────────────────────────────────────────────── */
