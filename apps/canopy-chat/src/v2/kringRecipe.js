@@ -44,15 +44,21 @@ export const BLOCK_TYPES = Object.freeze([
   'text',             // free-form text / markdown block
 ]);
 
-/** Default config per block type — kept minimal so editors fill in. */
+/** Default config per block type — kept minimal so editors fill in.
+ *
+ * The four list-shaped types (announcement, noticeboard, agenda, tasks)
+ * carry a `compact: false` default — α.5c surfaces a "Compact" toggle
+ * in the per-block config drawer that tightens row padding + font on
+ * the rendered screen.  rules/photo/text are not list-shaped → they
+ * deliberately have no `compact` key. */
 const DEFAULT_CONFIGS = Object.freeze({
-  announcement: () => ({ text: '' }),
-  noticeboard:  () => ({ limit: 5 }),
-  agenda:       () => ({ limit: 5, horizonDays: 14 }),
+  announcement: () => ({ text: '', compact: false }),
+  noticeboard:  () => ({ limit: 5, compact: false }),
+  agenda:       () => ({ limit: 5, horizonDays: 14, compact: false }),
   // α.4 — tasks block: scope filters by assignee.  V0 supports
   // 'assigned-to-me' (the Mijn dingen aggregation); 'all' shows
   // every open task across the active kringen.
-  tasks:        () => ({ scope: 'assigned-to-me', limit: 10 }),
+  tasks:        () => ({ scope: 'assigned-to-me', limit: 10, compact: false }),
   rules:        () => ({}),
   photo:        () => ({ src: '', caption: '' }),
   text:         () => ({ text: '' }),

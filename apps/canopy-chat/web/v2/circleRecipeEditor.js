@@ -319,6 +319,10 @@ function renderBlockRow(block, index, total, {
   return li;
 }
 
+// α.5c — list-shaped block types that expose a "Compact" toggle in
+// their per-block config drawer (mirrors the renderer's COMPACTABLE_TYPES).
+const COMPACTABLE_TYPES = new Set(['announcement', 'noticeboard', 'agenda', 'tasks']);
+
 function renderBlockConfigForm(block, { recipeId, tr, onUpdateBlock }) {
   const wrap = document.createElement('div');
   wrap.className = 'circle-recipe-editor__block-config';
@@ -326,11 +330,19 @@ function renderBlockConfigForm(block, { recipeId, tr, onUpdateBlock }) {
   const emit = (patch) => onUpdateBlock?.(recipeId, block.id, patch);
 
   switch (block.type) {
-    case 'announcement':
+    case 'announcement': {
+      const area = document.createElement('textarea');
+      area.className = 'circle-recipe-editor__block-textarea';
+      area.placeholder = tr('circle.recipe.editor.announcement_placeholder');
+      area.value = block.config?.text ?? '';
+      area.addEventListener('input', () => emit({ text: area.value }));
+      wrap.appendChild(area);
+      break;
+    }
     case 'text': {
       const area = document.createElement('textarea');
       area.className = 'circle-recipe-editor__block-textarea';
-      area.placeholder = tr(`circle.recipe.editor.${block.type}_placeholder`);
+      area.placeholder = tr('circle.recipe.editor.text_placeholder');
       area.value = block.config?.text ?? '';
       area.addEventListener('input', () => emit({ text: area.value }));
       wrap.appendChild(area);
@@ -362,6 +374,11 @@ function renderBlockConfigForm(block, { recipeId, tr, onUpdateBlock }) {
       wrap.appendChild(renderLimitField(block, 'horizonDays', 'agenda_horizon_label', { tr, emit }));
       break;
     }
+    case 'tasks': {
+      // α.5c — tasks-block scope/limit editor is a follow-up; for now
+      // only the compact toggle (rendered below) lives in this drawer.
+      break;
+    }
     case 'rules': {
       // No config — rules block always renders the kring's current
       // houseRules doc.  Show a hint instead.
@@ -375,7 +392,33 @@ function renderBlockConfigForm(block, { recipeId, tr, onUpdateBlock }) {
       return null;   // unknown type — skip the config form
     }
   }
+
+  // α.5c — Compact toggle on the four list-shaped block types.  Patches
+  // {compact:boolean} onto the block's config via the same emit() path.
+  if (COMPACTABLE_TYPES.has(block.type)) {
+    wrap.appendChild(renderCompactToggle(block, { tr, emit }));
+  }
   return wrap;
+}
+
+function renderCompactToggle(block, { tr, emit }) {
+  const row = document.createElement('label');
+  row.className = 'circle-recipe-editor__compact-row';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.className = 'circle-recipe-editor__compact-checkbox';
+  cb.checked = block.config?.compact === true;
+  cb.addEventListener('change', () => emit({ compact: cb.checked }));
+  row.appendChild(cb);
+  const lbl = document.createElement('span');
+  lbl.className = 'circle-recipe-editor__compact-label';
+  lbl.textContent = tr('circle.recipe.compact_label.label');
+  row.appendChild(lbl);
+  const hint = document.createElement('span');
+  hint.className = 'circle-recipe-editor__compact-hint';
+  hint.textContent = tr('circle.recipe.compact_label.hint');
+  row.appendChild(hint);
+  return row;
 }
 
 function renderLimitField(block, configKey, labelKeySuffix, { tr, emit }) {

@@ -19,11 +19,15 @@
  */
 import React, { useState } from 'react';
 import {
-  View, Text, Pressable, ScrollView, TextInput, StyleSheet, Alert, Platform,
+  View, Text, Pressable, ScrollView, TextInput, Switch, StyleSheet, Alert, Platform,
 } from 'react-native';
 import { theme } from './theme.js';
 import { t } from '../../core/localisation.js';
 import { BLOCK_TYPES, BLOCK_REGISTRY } from '@canopy-app/canopy-chat';
+
+// α.5c — list-shaped block types that expose the Compact toggle in
+// the per-block config drawer (mirrors web's COMPACTABLE_TYPES).
+const COMPACTABLE_TYPES = new Set(['announcement', 'noticeboard', 'agenda', 'tasks']);
 
 export default function CircleRecipeEditorScreen({
   book = { recipes: [], activeId: null },
@@ -290,6 +294,21 @@ function BlockRow({ block, index, total, recipeId, onRemoveBlock, onMoveBlock, o
 
 function BlockConfig({ block, recipeId, onUpdateBlock }) {
   const emit = (patch) => onUpdateBlock?.(recipeId, block.id, patch);
+  const typeBody = renderTypeBody(block, emit);
+  const compactToggle = COMPACTABLE_TYPES.has(block.type) ? (
+    <CompactToggle block={block} emit={emit} />
+  ) : null;
+  // Unknown type → nothing to show.
+  if (typeBody === null && !compactToggle) return null;
+  return (
+    <View>
+      {typeBody}
+      {compactToggle}
+    </View>
+  );
+}
+
+function renderTypeBody(block, emit) {
   switch (block.type) {
     case 'announcement':
     case 'text':
@@ -331,11 +350,32 @@ function BlockConfig({ block, recipeId, onUpdateBlock }) {
           <LimitField block={block} configKey="horizonDays" labelKeySuffix="agenda_horizon_label" emit={emit} />
         </View>
       );
+    case 'tasks':
+      // α.5c — scope/limit editor lives elsewhere; compact toggle is the
+      // only inline control today.
+      return null;
     case 'rules':
       return <Text style={styles.blockHint}>{t('circle.recipe.editor.rules_hint')}</Text>;
     default:
       return null;
   }
+}
+
+function CompactToggle({ block, emit }) {
+  const value = block.config?.compact === true;
+  return (
+    <View style={styles.compactRow} testID={`block-config-${block.id}-compact`}>
+      <Switch
+        value={value}
+        onValueChange={(v) => emit({ compact: !!v })}
+        accessibilityLabel={t('circle.recipe.compact_label.label')}
+      />
+      <View style={styles.compactCol}>
+        <Text style={styles.compactLabel}>{t('circle.recipe.compact_label.label')}</Text>
+        <Text style={styles.compactHint}>{t('circle.recipe.compact_label.hint')}</Text>
+      </View>
+    </View>
+  );
 }
 
 function LimitField({ block, configKey, labelKeySuffix, emit }) {
@@ -411,6 +451,12 @@ const styles = StyleSheet.create({
   limitRow:         { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
   limitLabel:       { fontSize: 13, color: theme.color.ink, flex: 1 },
   limitInput:       { width: 60, paddingHorizontal: 8, paddingVertical: 6, borderWidth: 1, borderColor: theme.color.line, borderRadius: 6, backgroundColor: theme.color.white, fontSize: 14, color: theme.color.ink, textAlign: 'right' },
+
+  // α.5c — Compact toggle (Switch + label + hint) on list-shaped blocks.
+  compactRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 8 },
+  compactCol:       { flex: 1 },
+  compactLabel:     { fontSize: 13, color: theme.color.ink, fontWeight: '600' },
+  compactHint:      { fontSize: 11, color: theme.color.inkSoft, fontStyle: 'italic', marginTop: 2 },
 
   palette:          { marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.color.line },
   paletteTitle:     { fontSize: 11, fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 1.0, marginBottom: 8 },

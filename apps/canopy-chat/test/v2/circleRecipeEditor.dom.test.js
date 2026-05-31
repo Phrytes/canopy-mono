@@ -268,6 +268,46 @@ describe('renderRecipeEditor · α.1d.1 — RECIPE mode', () => {
     expect(inputs[1].dataset.configKey).toBe('horizonDays');
   });
 
+  it('α.5c — noticeboard block exposes a Compact checkbox bound to config.compact', () => {
+    const onUpdateBlock = vi.fn();
+    const r = addBlock(emptyRecipe('A'), 'noticeboard');
+    const el = mount();
+    renderRecipeEditor(el, {
+      book: { recipes: [r], activeId: r.id }, mode: 'recipe',
+      editingRecipeId: r.id, t, onUpdateBlock,
+    });
+    const cb = el.querySelector('.circle-recipe-editor__compact-checkbox');
+    expect(cb).not.toBeNull();
+    expect(cb.checked).toBe(false);              // default
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(onUpdateBlock).toHaveBeenCalledWith(r.id, r.blocks[0].id, { compact: true });
+  });
+
+  it('α.5c — Compact checkbox appears on every list-shaped block type (announcement/noticeboard/agenda/tasks)', () => {
+    for (const type of ['announcement', 'noticeboard', 'agenda', 'tasks']) {
+      const r = addBlock(emptyRecipe('A'), type);
+      const el = mount();
+      renderRecipeEditor(el, {
+        book: { recipes: [r], activeId: r.id }, mode: 'recipe',
+        editingRecipeId: r.id, t,
+      });
+      expect(el.querySelector('.circle-recipe-editor__compact-checkbox'), `missing on ${type}`).not.toBeNull();
+    }
+  });
+
+  it('α.5c — Compact checkbox does NOT appear on text or photo blocks', () => {
+    for (const type of ['text', 'photo']) {
+      const r = addBlock(emptyRecipe('A'), type);
+      const el = mount();
+      renderRecipeEditor(el, {
+        book: { recipes: [r], activeId: r.id }, mode: 'recipe',
+        editingRecipeId: r.id, t,
+      });
+      expect(el.querySelector('.circle-recipe-editor__compact-checkbox'), `unexpected on ${type}`).toBeNull();
+    }
+  });
+
   it('rules block shows a hint (no editable config)', () => {
     const r = addBlock(emptyRecipe('A'), 'rules');
     const el = mount();

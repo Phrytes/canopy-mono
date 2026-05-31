@@ -82,7 +82,12 @@ function BlockSection({ block }) {
 /* ─────────────────────────────────────────────────────────────────────── */
 
 function renderAnnouncement(block) {
-  return <Text style={styles.announcement}>{block.content?.text ?? ''}</Text>;
+  const isCompact = block.config?.compact === true;
+  return (
+    <Text style={isCompact ? styles.announcementCompact : styles.announcement}>
+      {block.content?.text ?? ''}
+    </Text>
+  );
 }
 
 function renderText(block) {
@@ -107,6 +112,10 @@ function renderPhoto(block) {
 
 function renderNoticeboard(block) {
   const items = block.content?.items ?? [];
+  const isCompact = block.config?.compact === true;
+  const rowStyle    = isCompact ? styles.noticeRowCompact    : styles.noticeRow;
+  const senderStyle = isCompact ? styles.noticeSenderCompact : styles.noticeSender;
+  const textStyle   = isCompact ? styles.noticeTextCompact   : styles.noticeText;
   return (
     <View>
       <Text style={styles.blockTitle}>{t('circle.recipe.block.noticeboard')}</Text>
@@ -114,9 +123,9 @@ function renderNoticeboard(block) {
         const sender = pickSender(row);
         const text   = pickRowText(row);
         return (
-          <View key={row.id ?? Math.random().toString(36)} style={styles.noticeRow}>
-            {sender ? <Text style={styles.noticeSender}>{sender}</Text> : null}
-            <Text style={styles.noticeText}>{text}</Text>
+          <View key={row.id ?? Math.random().toString(36)} style={rowStyle}>
+            {sender ? <Text style={senderStyle}>{sender}</Text> : null}
+            <Text style={textStyle}>{text}</Text>
           </View>
         );
       })}
@@ -126,12 +135,15 @@ function renderNoticeboard(block) {
 
 function renderAgenda(block) {
   const items = block.content?.items ?? [];
+  const isCompact = block.config?.compact === true;
+  const rowStyle   = isCompact ? styles.agendaRowCompact   : styles.agendaRow;
+  const labelStyle = isCompact ? styles.agendaLabelCompact : styles.agendaLabel;
   return (
     <View>
       <Text style={styles.blockTitle}>{t('circle.recipe.block.agenda')}</Text>
       {items.map((ev) => (
-        <View key={ev.id ?? Math.random().toString(36)} style={styles.agendaRow}>
-          <Text style={styles.agendaLabel}>{ev.label ?? ''}</Text>
+        <View key={ev.id ?? Math.random().toString(36)} style={rowStyle}>
+          <Text style={labelStyle}>{ev.label ?? ''}</Text>
         </View>
       ))}
     </View>
@@ -140,13 +152,17 @@ function renderAgenda(block) {
 
 function renderTasks(block) {
   const items = block.content?.items ?? [];
+  const isCompact = block.config?.compact === true;
+  const rowStyle    = isCompact ? styles.taskRowCompact    : styles.taskRow;
+  const circleStyle = isCompact ? styles.taskCircleCompact : styles.taskCircle;
+  const textStyle   = isCompact ? styles.taskTextCompact   : styles.taskText;
   return (
     <View>
       <Text style={styles.blockTitle}>{t('circle.recipe.block.tasks')}</Text>
       {items.map((task) => (
-        <View key={task.id ?? Math.random().toString(36)} style={styles.taskRow}>
-          {task.circleName ? <Text style={styles.taskCircle}>{task.circleName}</Text> : null}
-          <Text style={styles.taskText}>{task.text ?? ''}</Text>
+        <View key={task.id ?? Math.random().toString(36)} style={rowStyle}>
+          {task.circleName ? <Text style={circleStyle}>{task.circleName}</Text> : null}
+          <Text style={textStyle}>{task.text ?? ''}</Text>
         </View>
       ))}
     </View>
@@ -202,21 +218,31 @@ const styles = StyleSheet.create({
   blockTitle:     { fontSize: 11, fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 1.4, marginBottom: 8 },
 
   announcement:    { fontFamily: theme.font.serif, fontSize: 18, color: theme.color.ink, lineHeight: 24 },
+  // α.5c — compact variant for list-shaped blocks (toggled via block.config.compact).
+  announcementCompact: { fontFamily: theme.font.serif, fontSize: 14, color: theme.color.ink, lineHeight: 18 },
   text:            { fontSize: 14, color: theme.color.ink, lineHeight: 20 },
 
   photo:           { width: '100%', aspectRatio: 16 / 9, borderRadius: 6, backgroundColor: theme.color.paper2 },
   photoCaption:    { fontSize: 12, color: theme.color.inkSoft, marginTop: 6 },
 
-  noticeRow:       { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },
-  noticeSender:    { fontSize: 11, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
-  noticeText:      { fontSize: 14, color: theme.color.ink },
+  noticeRow:        { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  noticeRowCompact: { paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  noticeSender:        { fontSize: 11, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
+  noticeSenderCompact: { fontSize: 10, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 1 },
+  noticeText:          { fontSize: 14, color: theme.color.ink },
+  noticeTextCompact:   { fontSize: 12, color: theme.color.ink, lineHeight: 16 },
 
-  agendaRow:       { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },
-  agendaLabel:     { fontSize: 14, color: theme.color.ink },
+  agendaRow:           { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  agendaRowCompact:    { paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  agendaLabel:         { fontSize: 14, color: theme.color.ink },
+  agendaLabelCompact:  { fontSize: 12, color: theme.color.ink, lineHeight: 16 },
 
-  taskRow:         { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line, flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  taskCircle:      { fontSize: 10, fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, flexShrink: 0 },
-  taskText:        { fontSize: 14, color: theme.color.ink, flex: 1 },
+  taskRow:             { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line, flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  taskRowCompact:      { paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: theme.color.line, flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  taskCircle:          { fontSize: 10, fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, flexShrink: 0 },
+  taskCircleCompact:   { fontSize: 9,  fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 },
+  taskText:            { fontSize: 14, color: theme.color.ink, flex: 1 },
+  taskTextCompact:     { fontSize: 12, color: theme.color.ink, flex: 1, lineHeight: 16 },
 
   rulesField:      { marginBottom: 10 },
   rulesLabel:      { fontSize: 11, fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },

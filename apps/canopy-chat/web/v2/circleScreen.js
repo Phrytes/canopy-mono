@@ -52,9 +52,16 @@ export function renderCircleScreen(container, { blocks = [], t } = {}) {
 
 /* ─────────────────────────────────────────────────────────────────────── */
 
+// α.5c — list-shaped block types that honour the optional
+// `config.compact` flag (tighter rows + smaller text on the screen).
+const COMPACTABLE_TYPES = new Set(['announcement', 'noticeboard', 'agenda', 'tasks']);
+
 function renderBlock(block, { tr }) {
   const section = document.createElement('section');
   section.className = `circle-screen__block circle-screen__block--${block.type}`;
+  if (COMPACTABLE_TYPES.has(block.type) && block.config?.compact === true) {
+    section.classList.add('circle-screen__block--compact');
+  }
   section.dataset.blockId = block.blockId ?? '';
   section.dataset.blockType = block.type;
   section.dataset.status = block.status;
