@@ -45,6 +45,13 @@ export function renderCircleKring(container, {
   onAction,
   more = null,
   composerPlaceholder = null,
+  // SP-13.3 — per-kring bottom tabs (board Voorbeeld 1-3).
+  // `tabs`     `[{id, label}]` produced by `buildKringTabs(policy, t)`
+  // `activeTab` current tab id (defaults to first / 'gesprek')
+  // `onTab(id)` host switches its content render when a tab is tapped
+  tabs = null,
+  activeTab = null,
+  onTab,
   t,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -107,15 +114,31 @@ export function renderCircleKring(container, {
     container.appendChild(menu);
   }
 
-  // Message stream — chat-style bubbles + cards interleaved by time
-  // with dated dividers between days.
-  const list = document.createElement('div');
-  list.className = 'circle-kring__list';
-  if (!rows.length) {
+  // SP-13.3 — body switches by active tab.  GESPREK = the chat-style
+  // bubble stream + day-dividers; all other tabs are placeholders for
+  // now (per-tab content lands in SP-13.3-followups).  Composer stays
+  // pinned at the bottom regardless — per v2 §1 all 3 voorbeeld boards
+  // show the composer present whatever the body is.
+  // `??` would treat the `Array.isArray && tabs[0]?.id` short-circuit's
+  // false as non-nullish; fall back through plain `||` instead so the
+  // no-tabs case ends up on 'gesprek' (the GESPREK render path).
+  const firstTabId = Array.isArray(tabs) && tabs.length > 0 ? tabs[0].id : null;
+  const effectiveTab = activeTab || firstTabId || 'gesprek';
+  const body = document.createElement('div');
+  body.className = 'circle-kring__list';
+  body.dataset.activeTab = effectiveTab;
+  if (effectiveTab !== 'gesprek') {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'circle-kring__placeholder';
+    placeholder.textContent = tr('circle.kring.tab_coming', {
+      tab: tr(`circle.tabs.${effectiveTab}`),
+    });
+    body.appendChild(placeholder);
+  } else if (!rows.length) {
     const empty = document.createElement('div');
     empty.className = 'circle-kring__empty';
     empty.textContent = tr('circle.kring.empty');
-    list.appendChild(empty);
+    body.appendChild(empty);
   } else {
     // Render chronologically (oldest at top), grouped by day.  rows from
     // buildKringStream are newest-first; reverse a copy so the timeline
@@ -125,13 +148,13 @@ export function renderCircleKring(container, {
     for (const row of chronological) {
       const dayKey = dayKeyOf(row.ts);
       if (dayKey !== lastDayKey) {
-        list.appendChild(renderDayDivider(row.ts, tr));
+        body.appendChild(renderDayDivider(row.ts, tr));
         lastDayKey = dayKey;
       }
-      list.appendChild(renderBubble(row, { tr, onAction }));
+      body.appendChild(renderBubble(row, { tr, onAction }));
     }
   }
-  container.appendChild(list);
+  container.appendChild(body);
 
   // Composer — text input + send button.
   if (typeof onSend === 'function') {
@@ -163,6 +186,29 @@ export function renderCircleKring(container, {
       input.focus();
     });
     container.appendChild(form);
+  }
+
+  // SP-13.3 — per-kring bottom tab bar.  Only renders when a tabs
+  // list with ≥ 2 entries is supplied (a single-tab kring has no
+  // bar to switch on).  The launcher's global Kringen/Stroom/Mij
+  // bar sits in a different DOM root, so the two never collide.
+  if (Array.isArray(tabs) && tabs.length >= 2) {
+    const bar = document.createElement('nav');
+    bar.className = 'circle-kring__tabs';
+    bar.setAttribute('aria-label', tr('circle.kring.tabs_label'));
+    for (const tab of tabs) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'circle-kring__tab';
+      btn.dataset.tab = tab.id;
+      if (tab.id === effectiveTab) btn.classList.add('is-active');
+      btn.textContent = tab.label ?? tr(tab.labelKey);
+      btn.addEventListener('click', () => {
+        if (typeof onTab === 'function' && tab.id !== effectiveTab) onTab(tab.id);
+      });
+      bar.appendChild(btn);
+    }
+    container.appendChild(bar);
   }
 
   return container;

@@ -170,13 +170,24 @@
         "via-hop": { "text": "Via contact", "doc": "Match source badge: reached via a one-hop relay." }
       }
     },
+    "tabs": {
+      "gesprek":  { "text": "Conversation", "doc": "SP-13.3 — kring bottom-tab." },
+      "prikbord": { "text": "Noticeboard", "doc": "SP-13.3." },
+      "taken":    { "text": "Tasks", "doc": "SP-13.3." },
+      "lijsten":  { "text": "Lists", "doc": "SP-13.3." },
+      "notities": { "text": "Notes", "doc": "SP-13.3." },
+      "agenda":   { "text": "Agenda", "doc": "SP-13.3." },
+      "leden":    { "text": "Members", "doc": "SP-13.3." }
+    },
     "kring": {
       "more":          { "text": "More", "doc": "SP-13 — overflow menu trigger." },
       "empty":         { "text": "Nothing here yet — be the first to write.", "doc": "SP-13.2 — kring chat empty state." },
       "composer_placeholder": { "text": "Write to the kring…", "doc": "SP-13.2 — inline composer placeholder." },
       "send":          { "text": "Send", "doc": "SP-13.2 — composer send button a11y label." },
       "day_today":     { "text": "today", "doc": "SP-13.2 — day-divider." },
-      "day_yesterday": { "text": "yesterday", "doc": "SP-13.2 — day-divider." }
+      "day_yesterday": { "text": "yesterday", "doc": "SP-13.2 — day-divider." },
+      "tab_coming":    { "text": "{{tab}} content lands in a follow-up slice.", "doc": "SP-13.3 — placeholder body for a tab whose content surface isn't built yet." },
+      "tabs_label":    { "text": "Kring tabs", "doc": "SP-13.3 — a11y label on the per-kring bottom tab bar." }
     },
     "folio": {
       "title":      { "text": "Files", "doc": "Circle file-browser heading (board 10B)." },

@@ -19,6 +19,7 @@ import {
   buildCircleStream, buildKringStream,
 } from '../../src/v2/circleStream.js';
 import { isFeatureEnabled } from '../../src/v2/circlePolicy.js';
+import { buildKringTabs, DEFAULT_KRING_TAB } from '../../src/v2/kringTabs.js';
 import { renderCircleKring } from './circleKring.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '../../src/v2/circleHop.js';
@@ -305,6 +306,9 @@ function showKring(id, circle, policy) {
     ...(allowFiles  ? { files:  () => showFolio(id) } : {}),
     ...(allowRules  ? { rules:  () => showRules(id) } : {}),
   };
+  // SP-13.3 — per-kring bottom tabs derived from policy.features.
+  const tabs = buildKringTabs(policy, t);
+  let activeTab = DEFAULT_KRING_TAB;
   let seq = 0;
   const rerender = () => {
     const rows = buildKringStream({
@@ -314,6 +318,8 @@ function showKring(id, circle, policy) {
     });
     renderCircleKring(rootEl, {
       circle, rows, t,
+      tabs, activeTab,
+      onTab: (tabId) => { activeTab = tabId; rerender(); },
       onBack:   showLauncher,
       onSend:   (text) => {
         // V0: append a chat-message event to the local EventLog.  Peer

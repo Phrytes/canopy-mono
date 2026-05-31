@@ -24,13 +24,24 @@
       "compose_placeholder_default":  { "text": "Reply in the timeline", "doc": "Pinned compose placeholder when no row is focused (P6.M3)." },
       "compose_placeholder_targeted": { "text": "Reply in {{circle}}", "doc": "Pinned compose placeholder when a row is focused — context follows." }
     },
+    "tabs": {
+      "gesprek":  { "text": "Conversation", "doc": "SP-13.3 — kring bottom-tab label (board Voorbeeld 1-3, always first)." },
+      "prikbord": { "text": "Noticeboard", "doc": "SP-13.3 — bottom-tab when policy.features.noticeboard is on." },
+      "taken":    { "text": "Tasks", "doc": "SP-13.3 — bottom-tab when tasks is on." },
+      "lijsten":  { "text": "Lists", "doc": "SP-13.3 — bottom-tab when lists is on." },
+      "notities": { "text": "Notes", "doc": "SP-13.3 — bottom-tab when notes is on." },
+      "agenda":   { "text": "Agenda", "doc": "SP-13.3 — bottom-tab when calendar is on." },
+      "leden":    { "text": "Members", "doc": "SP-13.3 — bottom-tab when memberDirectory is on (renders last per board ordering)." }
+    },
     "kring": {
       "more":          { "text": "More", "doc": "SP-13 — kring header overflow menu trigger." },
       "empty":         { "text": "Nothing here yet — be the first to write.", "doc": "SP-13.2 — empty state for the kring's chat-style GESPREK view." },
       "composer_placeholder": { "text": "Write to the kring…", "doc": "SP-13.2 — inline composer placeholder; hosts can pass a kring-specific one (e.g. 'Schrijf naar de buurt…')." },
       "send":          { "text": "Send", "doc": "SP-13.2 — composer send button a11y label (visual is an ↑ glyph)." },
       "day_today":     { "text": "today", "doc": "SP-13.2 — chat-stream day-divider label." },
-      "day_yesterday": { "text": "yesterday", "doc": "SP-13.2 — chat-stream day-divider label." }
+      "day_yesterday": { "text": "yesterday", "doc": "SP-13.2 — chat-stream day-divider label." },
+      "tab_coming":    { "text": "{{tab}} content lands in a follow-up slice.", "doc": "SP-13.3 — placeholder body for a tab whose content surface isn't built yet (e.g. PRIKBORD / LEDEN)." },
+      "tabs_label":    { "text": "Kring tabs", "doc": "SP-13.3 — a11y label on the per-kring bottom tab bar." }
     },
     "streamAction": {
       "help":   { "text": "I'll help", "doc": "Stream row action — accept a question (P6.M3)." },
