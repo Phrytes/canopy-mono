@@ -170,13 +170,24 @@
         "via-hop": { "text": "Via contact", "doc": "Match source badge: reached via a one-hop relay." }
       }
     },
+    "tabs": {
+      "gesprek":  { "text": "Gesprek", "doc": "SP-13.3 — kring bottom-tab." },
+      "prikbord": { "text": "Prikbord", "doc": "SP-13.3." },
+      "taken":    { "text": "Taken", "doc": "SP-13.3." },
+      "lijsten":  { "text": "Lijsten", "doc": "SP-13.3." },
+      "notities": { "text": "Notities", "doc": "SP-13.3." },
+      "agenda":   { "text": "Agenda", "doc": "SP-13.3." },
+      "leden":    { "text": "Leden", "doc": "SP-13.3." }
+    },
     "kring": {
       "more":          { "text": "Meer", "doc": "SP-13 — overflow menu trigger." },
       "empty":         { "text": "Nog niks hier — schrijf als eerste.", "doc": "SP-13.2 — kring chat empty state." },
       "composer_placeholder": { "text": "Schrijf naar de kring…", "doc": "SP-13.2 — composer placeholder." },
       "send":          { "text": "Verstuur", "doc": "SP-13.2 — composer send button a11y label." },
       "day_today":     { "text": "vandaag", "doc": "SP-13.2 — day-divider." },
-      "day_yesterday": { "text": "gisteren", "doc": "SP-13.2 — day-divider." }
+      "day_yesterday": { "text": "gisteren", "doc": "SP-13.2 — day-divider." },
+      "tab_coming":    { "text": "{{tab}} komt in een vervolg-slice.", "doc": "SP-13.3 — placeholder voor tabs zonder eigen scherm yet." },
+      "tabs_label":    { "text": "Kring-tabs", "doc": "SP-13.3 — a11y label." }
     },
     "folio": {
       "title":      { "text": "Bestanden", "doc": "Circle file-browser heading (board 10B)." },

@@ -24,13 +24,24 @@
       "compose_placeholder_default":  { "text": "Reageer in de tijdlijn", "doc": "Pinned compose placeholder (P6.M3)." },
       "compose_placeholder_targeted": { "text": "Reageer in {{circle}}", "doc": "Pinned compose with circle context." }
     },
+    "tabs": {
+      "gesprek":  { "text": "Gesprek", "doc": "SP-13.3 — kring bottom-tab." },
+      "prikbord": { "text": "Prikbord", "doc": "SP-13.3." },
+      "taken":    { "text": "Taken", "doc": "SP-13.3." },
+      "lijsten":  { "text": "Lijsten", "doc": "SP-13.3." },
+      "notities": { "text": "Notities", "doc": "SP-13.3." },
+      "agenda":   { "text": "Agenda", "doc": "SP-13.3." },
+      "leden":    { "text": "Leden", "doc": "SP-13.3." }
+    },
     "kring": {
       "more":          { "text": "Meer", "doc": "SP-13 — overflow menu trigger." },
       "empty":         { "text": "Nog niks hier — schrijf als eerste.", "doc": "SP-13.2 — empty state." },
       "composer_placeholder": { "text": "Schrijf naar de kring…", "doc": "SP-13.2 — composer placeholder (hosts kunnen kring-specifieke tekst meegeven)." },
       "send":          { "text": "Verstuur", "doc": "SP-13.2 — composer send button a11y label (visueel een ↑)." },
       "day_today":     { "text": "vandaag", "doc": "SP-13.2 — day-divider." },
-      "day_yesterday": { "text": "gisteren", "doc": "SP-13.2 — day-divider." }
+      "day_yesterday": { "text": "gisteren", "doc": "SP-13.2 — day-divider." },
+      "tab_coming":    { "text": "{{tab}} komt in een vervolg-slice.", "doc": "SP-13.3 — placeholder voor tabs zonder eigen scherm (yet)." },
+      "tabs_label":    { "text": "Kring-tabs", "doc": "SP-13.3 — a11y label on de tab-balk." }
     },
     "streamAction": {
       "help":   { "text": "Ik help", "doc": "Stream row action." },

@@ -34,6 +34,8 @@ import {
   myThingsFromListFiles,
   // SP-13.2 — kring-scoped event stream + per-row action chips.
   buildKringStream, actionsForStreamRow,
+  // SP-13.3 — per-kring bottom tabs from policy.features (v2 §1).
+  buildKringTabs, DEFAULT_KRING_TAB,
 } from '@canopy-app/canopy-chat';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
@@ -645,6 +647,12 @@ function CircleDetail({
     circleId:  circle?.id ?? null,
   }), [eventLog, circles, circle?.id, streamTick]);
   const [composerText, setComposerText] = useState('');
+  // SP-13.3 — per-kring bottom tabs derived from policy.features.
+  const tabs = useMemo(() => buildKringTabs(policy, t), [policy]);
+  const [activeTab, setActiveTab] = useState(DEFAULT_KRING_TAB);
+  // Reset to GESPREK whenever we switch kringen so a non-default tab
+  // doesn't persist across opens.
+  useEffect(() => { setActiveTab(DEFAULT_KRING_TAB); }, [circle?.id]);
 
   // 5.9d — Proof-of-Location placeholder.  Kept under the kring view as
   // a passive status; real attestation lands in [[5.9d-followup]].
@@ -731,11 +739,15 @@ function CircleDetail({
         </View>
       ) : null}
 
-      {/* SP-13.2 — chat-style message stream (oldest at top).  Bubbles
-          show sender + optional kind pill + text + per-row action chips.
-          Day-dividers between days come from a reverse + scan. */}
+      {/* SP-13.3 — body switches by active tab.  GESPREK = chat-style
+          mixed stream; other tabs are placeholders until their content
+          surfaces land in follow-up slices. */}
       <ScrollView contentContainerStyle={styles.list} testID="circle-detail-stream">
-        {rows.length === 0 ? (
+        {activeTab !== 'gesprek' ? (
+          <Text style={styles.placeholder}>
+            {t('circle.kring.tab_coming', { tab: t(`circle.tabs.${activeTab}`) })}
+          </Text>
+        ) : rows.length === 0 ? (
           <Text style={styles.muted}>{t('circle.kring.empty')}</Text>
         ) : (
           renderBubblesWithDayDividers(rows, t)
@@ -792,6 +804,27 @@ function CircleDetail({
           <Text style={styles.composerSendText}>↑</Text>
         </Pressable>
       </View>
+
+      {/* SP-13.3 — per-kring bottom tab bar (derived from policy.features).
+          Only renders when there are ≥ 2 tabs (a single-tab kring has
+          nothing to switch between). */}
+      {tabs.length >= 2 ? (
+        <View style={styles.kringTabs} testID="circle-detail-tabs">
+          {tabs.map((tab) => (
+            <Pressable
+              key={tab.id}
+              accessibilityRole="button"
+              testID={`circle-detail-tab-${tab.id}`}
+              onPress={() => { if (tab.id !== activeTab) setActiveTab(tab.id); }}
+              style={[styles.kringTab, tab.id === activeTab && styles.kringTabActive]}
+            >
+              <Text style={[styles.kringTabText, tab.id === activeTab && styles.kringTabTextActive]}>
+                {tab.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1007,6 +1040,13 @@ const styles = StyleSheet.create({
   composerInput:    { flex: 1, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: theme.color.line, borderRadius: 22, backgroundColor: theme.color.white, fontSize: 14, color: theme.color.ink },
   composerSend:     { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.color.accent, alignItems: 'center', justifyContent: 'center' },
   composerSendText: { color: theme.color.white, fontSize: 18, fontWeight: '700' },
+  // SP-13.3 — per-kring bottom tab bar + tab-coming placeholder.
+  kringTabs:        { flexDirection: 'row', borderTopWidth: 1, borderTopColor: theme.color.line, marginTop: 4 },
+  kringTab:         { flex: 1, paddingVertical: 12, alignItems: 'center', borderTopWidth: 2, borderTopColor: 'transparent', marginTop: -1 },
+  kringTabActive:   { borderTopColor: theme.color.accent },
+  kringTabText:     { fontSize: 11, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 1.4 },
+  kringTabTextActive:{ color: theme.color.accentInk, fontWeight: '600' },
+  placeholder:      { color: theme.color.inkSoft, fontStyle: 'italic', textAlign: 'center', paddingVertical: 24, paddingHorizontal: 12 },
   // Per-row action buttons (Ik help / Negeer …) — used by chat bubbles.
   rowActions:     { flexDirection: 'row', gap: 6, marginTop: 8 },
   rowActionBtn:   { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.paper },

@@ -167,4 +167,64 @@ describe('renderCircleKring · SP-13.2 chat-style kring view', () => {
     expect(onAction.mock.calls[0][0].action).toBe('help');
     expect(onAction.mock.calls[0][1].id).toBe('r1');
   });
+
+  /* ─── SP-13.3 — per-kring bottom tabs ─── */
+
+  const buurtTabs = [
+    { id: 'gesprek',  label: 'GESPREK' },
+    { id: 'prikbord', label: 'PRIKBORD' },
+    { id: 'leden',    label: 'LEDEN' },
+  ];
+
+  it('tab bar hides when fewer than 2 tabs are supplied', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t, tabs: [{ id: 'gesprek', label: 'GESPREK' }] });
+    expect(el.querySelector('.circle-kring__tabs')).toBeNull();
+  });
+
+  it('renders one tab button per entry with the active one marked', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t, tabs: buurtTabs, activeTab: 'prikbord' });
+    const btns = el.querySelectorAll('.circle-kring__tab');
+    expect([...btns].map((b) => b.dataset.tab)).toEqual(['gesprek', 'prikbord', 'leden']);
+    expect(el.querySelector('.circle-kring__tab.is-active').dataset.tab).toBe('prikbord');
+  });
+
+  it('non-GESPREK tabs render the placeholder body (V0 of SP-13.3)', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t, tabs: buurtTabs, activeTab: 'prikbord' });
+    expect(el.querySelector('.circle-kring__placeholder')).not.toBeNull();
+    // Bubble list is suppressed for non-chat tabs.
+    expect(el.querySelectorAll('.circle-kring__bubble')).toHaveLength(0);
+  });
+
+  it('GESPREK tab still renders the bubble list', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t, tabs: buurtTabs, activeTab: 'gesprek' });
+    expect(el.querySelector('.circle-kring__placeholder')).toBeNull();
+    expect(el.querySelectorAll('.circle-kring__bubble')).toHaveLength(3);
+  });
+
+  it('clicking a non-active tab fires onTab(id); clicking the active one is a no-op', () => {
+    const el = mount();
+    const onTab = vi.fn();
+    renderCircleKring(el, { circle, rows, t, tabs: buurtTabs, activeTab: 'gesprek', onTab });
+    el.querySelector('.circle-kring__tab[data-tab=leden]').click();
+    expect(onTab).toHaveBeenCalledTimes(1);
+    expect(onTab.mock.calls[0][0]).toBe('leden');
+    el.querySelector('.circle-kring__tab[data-tab=gesprek]').click();
+    expect(onTab).toHaveBeenCalledTimes(1); // unchanged — re-tap on active = no-op
+  });
+
+  it('defaults activeTab to the first tab id when caller omits it', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t, tabs: buurtTabs });
+    expect(el.querySelector('.circle-kring__tab.is-active').dataset.tab).toBe('gesprek');
+  });
+
+  it('composer stays visible regardless of active tab (v2 §1 boards)', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t, tabs: buurtTabs, activeTab: 'leden', onSend: () => {} });
+    expect(el.querySelector('.circle-kring__composer')).not.toBeNull();
+  });
 });
