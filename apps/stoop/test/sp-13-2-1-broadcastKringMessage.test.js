@@ -251,3 +251,98 @@ describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
       { payload: { circleId: 'g', msgId: 'x', ts: 1 } })).toEqual({ error: 'text required' });
   });
 });
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Cross-agent journey — Anne broadcasts, Bob ingests.
+ *
+ * Verifies the wire shape stays compatible end-to-end: what broadcast-
+ * KringMessage emits via chat.send matches what ingestKringMessage
+ * accepts.  We don't exercise the canopy-chat peer-router transport
+ * (that lives in main.js / circleApp.js); we capture the envelope at
+ * the chat.send boundary and replay it into the receiver-side skill.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+describe('Stoop SP-13.2.1 — cross-agent journey: Anne → Bob', () => {
+  it('Anne broadcasts; Bob ingests the same envelope into his itemStore', async () => {
+    // Anne's bundle needs to know about BOB so the fan-out has a recipient.
+    const anneId = await AgentIdentity.generate(new VaultMemory());
+    const anneTx = new InternalTransport(new InternalBus(), anneId.pubKey);
+    const anne = await createNeighborhoodAgent({
+      identity: anneId, transport: anneTx,
+      skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+      members: [
+        { webid: ANNE, role: 'member' },
+        { webid: BOB,  role: 'member', stableId: 'sid-bob' },
+      ],
+    });
+    const bob = await buildBundle();
+    await anne.skillMatch.start();
+    await bob.skillMatch.start();
+
+    // Capture the wire payload Anne would ship to BOB.  In production
+    // chat.send routes via agent.transport.sendOneWay → Bob's wireChat
+    // (which ignores unknown subtype) AND Bob's canopy-chat peer-router
+    // (which dispatches to ingestKringMessage).  Here we just spy.
+    const captured = [];
+    anne.chat.send = vi.fn(async (args) => { captured.push(args); return { ok: true }; });
+
+    const r = await callSkill(anne.agent, 'broadcastKringMessage', {
+      groupId: 'oosterpoort',
+      text:    'Hoi buurt, iemand een ladder?',
+      msgId:   'cross-1',
+      ts:      1735_000_000_000,
+    });
+    expect(r.sent).toBe(1);
+    expect(captured).toHaveLength(1);
+
+    // Bob's wireChat would normally drop the unknown subtype.  In
+    // production the canopy-chat peer-router instead routes the
+    // envelope to ingestKringMessage.  Reconstruct the same payload
+    // canopy-chat's makeKringChatPeerHandler would pass:
+    const sent = captured[0];
+    const wirePayload = {
+      subtype:    'kring-chat-message',
+      circleId:   sent.extras.circleId,
+      msgId:      sent.extras.msgId,
+      text:       sent.body,
+      ts:         sent.extras.ts,
+      fromActor:  sent.extras.fromActor,
+    };
+    const ingest = await callSkill(bob.agent, 'ingestKringMessage', {
+      payload:    wirePayload,
+      fromPubKey: 'pk-anne-fake',
+    });
+    expect(ingest.ok).toBe(true);
+
+    // Bob's itemStore now has the chat — same text, same circle, with
+    // Bob's own source metadata stamped.
+    const bobItem = await bob.itemStore.getById(ingest.itemId);
+    expect(bobItem.type).toBe('kring-chat-message');
+    expect(bobItem.text).toBe('Hoi buurt, iemand een ladder?');
+    expect(bobItem.source.circleId).toBe('oosterpoort');
+    expect(bobItem.source.msgId).toBe('cross-1');
+    expect(bobItem.source.fromActor).toBe(ANNE);
+    expect(bobItem.source.fromPubKey).toBe('pk-anne-fake');
+
+    // Anne's local mirror also stored — same msgId, identical text.
+    const anneItem = await anne.itemStore.getById(r.itemId);
+    expect(anneItem.text).toBe('Hoi buurt, iemand een ladder?');
+    expect(anneItem.source.msgId).toBe('cross-1');
+  });
+
+  it('a duplicate envelope from a replay is idempotent on Bob (no duplicate bubble)', async () => {
+    const bob = await buildBundle();
+    await bob.skillMatch.start();
+    const payload = {
+      subtype: 'kring-chat-message',
+      circleId: 'oosterpoort', msgId: 'replay-1',
+      text: 'Hi', ts: 1, fromActor: ANNE,
+    };
+    const r1 = await callSkill(bob.agent, 'ingestKringMessage', { payload, fromPubKey: 'pk-anne' });
+    const r2 = await callSkill(bob.agent, 'ingestKringMessage', { payload, fromPubKey: 'pk-anne' });
+    expect(r1.ok).toBe(true);
+    expect(r2.deduped).toBe(true);
+    const open = await bob.itemStore.listOpen({ type: 'kring-chat-message' });
+    expect(open).toHaveLength(1);
+  });
+});
