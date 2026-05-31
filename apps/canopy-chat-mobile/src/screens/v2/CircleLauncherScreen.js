@@ -38,6 +38,9 @@ import {
   buildKringTabs, DEFAULT_KRING_TAB,
   // α.1a/b — scherm recipe model + per-block materializer.
   getActiveRecipe, materializeRecipe,
+  // α.1d.3 — recipe-editor mutation helpers.
+  addRecipe, renameRecipe, removeRecipe, setActiveRecipe,
+  addBlock, removeBlock, moveBlock, updateBlock, updateRecipe,
 } from '@canopy-app/canopy-chat';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
@@ -61,6 +64,7 @@ import CircleRulesScreen from './CircleRulesScreen.js';
 import CircleRulesConsentScreen from './CircleRulesConsentScreen.js';
 import CircleTabBar from './CircleTabBar.js';
 import CircleScreenView from './CircleScreenView.js';
+import CircleRecipeEditorScreen from './CircleRecipeEditorScreen.js';
 
 // Wrap a top-level surface (Kringen / Stroom / Mij) with the bottom tab bar.
 function WithTabBar({ active, onSelect, children }) {
@@ -86,6 +90,12 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
   const [skillDraft, setSkillDraft] = useState(null);
   const [rulesDoc, setRulesDoc] = useState(null);
   const [rulesPreview, setRulesPreview] = useState(null);
+  // α.1d.3 — recipe editor state (lives in the parent so book + mode
+  // survive the BOOK ↔ RECIPE round-trip).  Callbacks land below
+  // after recipeStore is declared.
+  const [recipeBook, setRecipeBook] = useState({ recipes: [], activeId: null });
+  const [recipeEditorMode, setRecipeEditorMode] = useState('book');
+  const [recipeEditingId, setRecipeEditingId] = useState(null);
   const [items, setItems] = useState([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -169,6 +179,17 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
   const proposalStore     = useMemo(() => makeProposalStoreRN(AsyncStorage), []);
   // α.1e — per-kring scherm recipe book (multi-recipe; one marked active).
   const recipeStore       = useMemo(() => makeKringRecipeStoreRN(AsyncStorage), []);
+  // α.1d.3 — recipe-editor helpers (defined here so recipeStore is in scope).
+  const refreshRecipeBook = useCallback(async (cid) => {
+    if (!cid) return;
+    try { setRecipeBook(await recipeStore.get(cid)); }
+    catch { setRecipeBook({ recipes: [], activeId: null }); }
+  }, [recipeStore]);
+  const applyRecipeMutation = useCallback(async (cid, mutator) => {
+    if (!cid) return;
+    try { setRecipeBook(await recipeStore.update(cid, mutator)); }
+    catch (err) { console.warn('[recipe] mutation failed:', err?.message ?? err); }
+  }, [recipeStore]);
 
   const callSkill = useMemo(
     () => (bundle?.callSkill ? makeResolvingCallSkill(bundle.callSkill) : null),
@@ -446,6 +467,28 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
       />
     );
   }
+  if (selected && view === 'recipes') {
+    // α.1d.3 — recipe editor (book ↔ recipe modes; persistence flows
+    // through recipeStore via applyRecipeMutation).
+    return (
+      <CircleRecipeEditorScreen
+        book={recipeBook}
+        mode={recipeEditorMode}
+        editingRecipeId={recipeEditingId}
+        onBack={() => setView('detail')}
+        onOpenRecipe={(rid) => { setRecipeEditingId(rid); setRecipeEditorMode('recipe'); }}
+        onBackToBook={() => { setRecipeEditorMode('book'); setRecipeEditingId(null); }}
+        onAddRecipe={(name) => applyRecipeMutation(selected.id, (cur) => addRecipe(cur, name))}
+        onRenameRecipe={(rid, name) => applyRecipeMutation(selected.id, (cur) => renameRecipe(cur, rid, name))}
+        onRemoveRecipe={(rid) => applyRecipeMutation(selected.id, (cur) => removeRecipe(cur, rid))}
+        onSetActive={(rid) => applyRecipeMutation(selected.id, (cur) => setActiveRecipe(cur, rid))}
+        onAddBlock={(rid, type) => applyRecipeMutation(selected.id, (cur) => updateRecipe(cur, rid, (r) => addBlock(r, type)))}
+        onRemoveBlock={(rid, bid) => applyRecipeMutation(selected.id, (cur) => updateRecipe(cur, rid, (r) => removeBlock(r, bid)))}
+        onMoveBlock={(rid, bid, idx) => applyRecipeMutation(selected.id, (cur) => updateRecipe(cur, rid, (r) => moveBlock(r, bid, idx)))}
+        onUpdateBlock={(rid, bid, patch) => applyRecipeMutation(selected.id, (cur) => updateRecipe(cur, rid, (r) => updateBlock(r, bid, patch)))}
+      />
+    );
+  }
   if (selected) {
     return (
       <CircleDetail
@@ -502,6 +545,12 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
           try { const s = await AsyncStorage.getItem(`cc.circleRules.${selected.id}`); if (s) raw = JSON.parse(s); } catch { /* fresh */ }
           setRulesDoc(raw);
           setView('rules');
+        }}
+        onRecipes={async () => {
+          await refreshRecipeBook(selected.id);
+          setRecipeEditorMode('book');
+          setRecipeEditingId(null);
+          setView('recipes');
         }}
       />
     );
@@ -639,7 +688,7 @@ function CircleDetail({
   circle, items, callSkill, policy, myListTasks = [],
   eventLog, circles = [],
   recipeStore = null,
-  onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules,
+  onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes,
 }) {
   // P6.1 — Functies-axis gating for the overflow menu items.
   const showRules    = isFeatureEnabled(policy, 'houseRules');
@@ -838,6 +887,10 @@ function CircleDetail({
               <Text style={styles.moreItemText}>{t('circle.rules.title')}</Text>
             </Pressable>
           ) : null}
+          {/* α.1d.3 — recipe editor entry (scherm-mode page composition). */}
+          <Pressable onPress={() => { setMenuOpen(false); onRecipes?.(); }} style={styles.moreItem} testID="circle-detail-recipes">
+            <Text style={styles.moreItemText}>{t('circle.recipe.editor.book_title')}</Text>
+          </Pressable>
         </View>
       ) : null}
 
