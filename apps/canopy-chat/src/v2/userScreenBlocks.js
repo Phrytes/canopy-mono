@@ -78,6 +78,9 @@ async function materializeOneBlock({ block, activeCircleIds, hostOps, screenIsAl
       case 'agenda':
         return await materializeAgenda(block, activeCircleIds, hostOps);
 
+      case 'tasks':
+        return await materializeTasks(block, activeCircleIds, hostOps);
+
       case 'rules':
         return await materializeRules(block, activeCircleIds, hostOps, screenIsAll);
 
@@ -135,6 +138,51 @@ async function materializeAgenda(block, activeCircleIds, { callSkill } = {}) {
     blockId: block.id, type: 'agenda',
     status: items.length > 0 ? 'ok' : 'empty',
     content: { items },
+  };
+}
+
+/**
+ * α.4 — tasks block across multiple kringen.  Query each active kring's
+ * tasks-v0 crew, filter by scope, merge + cap.  The "Mijn dingen" screen
+ * uses scope:'assigned-to-me' across kringFilter=ALL to aggregate every
+ * task assigned to the user across the kringen they're in.
+ */
+async function materializeTasks(block, activeCircleIds, { callSkill, myWebid, circles } = {}) {
+  const limit = clampInt(block.config?.limit, 1, 200, 10);
+  const scope = block.config?.scope === 'all' ? 'all' : 'assigned-to-me';
+  if (typeof callSkill !== 'function' || activeCircleIds.length === 0) {
+    return { blockId: block.id, type: 'tasks', status: 'empty', content: { items: [], scope } };
+  }
+  const circleNameMap = new Map((circles ?? []).map((c) => [c?.id, c?.name ?? '']));
+  const buckets = await Promise.all(activeCircleIds.map(async (cid) => {
+    try {
+      const res = await callSkill('tasks-v0', 'listOpen', { crewId: cid });
+      const raw = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
+      return raw.map((t) => ({
+        id:         t.id,
+        text:       t.text ?? t.title ?? t.label ?? '',
+        state:      t.state ?? t.status ?? 'open',
+        assignee:   t.assignee ?? null,
+        circleId:   cid,
+        circleName: circleNameMap.get(cid) ?? '',
+        _ts:        t.addedAt ?? t.ts ?? 0,
+      }));
+    } catch { return []; }
+  }));
+  const merged = buckets.flat();
+  const filtered = scope === 'all'
+    ? merged
+    : merged.filter((t) => {
+        if (!t.assignee) return false;
+        if (myWebid == null) return true;
+        return t.assignee === myWebid;
+      });
+  filtered.sort((a, b) => (b._ts ?? 0) - (a._ts ?? 0));
+  const items = filtered.slice(0, limit);
+  return {
+    blockId: block.id, type: 'tasks',
+    status: items.length > 0 ? 'ok' : 'empty',
+    content: { items, scope },
   };
 }
 

@@ -174,6 +174,69 @@ describe('kringRecipeBlocks · α.1b — materializeBlock (data-fetching types)'
   });
 });
 
+describe('kringRecipeBlocks · α.4 — tasks block (per-kring)', () => {
+  it('calls tasks-v0.listOpen with crewId, filters by assignee=myWebid, caps to limit', async () => {
+    const callSkill = vi.fn(async (app, op, args) => {
+      expect(app).toBe('tasks-v0');
+      expect(op).toBe('listOpen');
+      expect(args.crewId).toBe('g1');
+      return { items: [
+        { id: 't1', text: 'one', assignee: 'webid:me' },
+        { id: 't2', text: 'two', assignee: 'webid:bob' },
+        { id: 't3', text: 'three', assignee: 'webid:me' },
+        { id: 't4', text: 'four', assignee: 'webid:me' },
+      ] };
+    });
+    const r = await materializeBlock({
+      block: { id: 'b', type: 'tasks', config: { scope: 'assigned-to-me', limit: 2 } },
+      circleId: 'g1',
+      hostOps: { callSkill, myWebid: 'webid:me' },
+    });
+    expect(r.status).toBe('ok');
+    expect(r.content.items.map((t) => t.id)).toEqual(['t1', 't3']);
+    expect(r.content.scope).toBe('assigned-to-me');
+  });
+
+  it('scope:"all" returns every open task regardless of assignee', async () => {
+    const callSkill = vi.fn(async () => ({ items: [
+      { id: 't1', text: 'one', assignee: 'webid:me' },
+      { id: 't2', text: 'two' },   // unassigned
+      { id: 't3', text: 'three', assignee: 'webid:bob' },
+    ] }));
+    const r = await materializeBlock({
+      block: { id: 'b', type: 'tasks', config: { scope: 'all' } },
+      circleId: 'g1',
+      hostOps: { callSkill, myWebid: 'webid:me' },
+    });
+    expect(r.content.items.map((t) => t.id)).toEqual(['t1', 't2', 't3']);
+  });
+
+  it('assigned-to-me with no myWebid (dev mode) returns every assigned task', async () => {
+    const callSkill = vi.fn(async () => ({ items: [
+      { id: 't1', assignee: 'webid:a' },
+      { id: 't2' },   // unassigned → excluded
+      { id: 't3', assignee: 'webid:b' },
+    ] }));
+    const r = await materializeBlock({
+      block: { id: 'b', type: 'tasks', config: {} },
+      circleId: 'g1',
+      hostOps: { callSkill },
+    });
+    expect(r.content.items.map((t) => t.id)).toEqual(['t1', 't3']);
+  });
+
+  it('empty when no callSkill or no circleId', async () => {
+    const r1 = await materializeBlock({
+      block: { id: 'b', type: 'tasks' }, circleId: 'g1', hostOps: {},
+    });
+    expect(r1.status).toBe('empty');
+    const r2 = await materializeBlock({
+      block: { id: 'b', type: 'tasks' }, hostOps: { callSkill: async () => ({ items: [] }) },
+    });
+    expect(r2.status).toBe('empty');
+  });
+});
+
 describe('kringRecipeBlocks · α.1b — error tolerance', () => {
   it('materializeBlock catches per-type throws, returns status:"error"', async () => {
     const callSkill = vi.fn(async () => { throw new Error('calendar offline'); });

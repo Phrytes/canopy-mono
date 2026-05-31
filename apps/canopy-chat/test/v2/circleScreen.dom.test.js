@@ -131,6 +131,24 @@ describe('renderCircleScreen · α.1c.1 — block shapes', () => {
       .toBe('Buurtborrel zaterdag 17u');
   });
 
+  it('tasks (α.4): titled list of rows with circle tag + text', () => {
+    const el = mount();
+    renderCircleScreen(el, { blocks: [{
+      blockId: 'b', type: 'tasks', status: 'ok',
+      content: { items: [
+        { id: 't1', text: 'Plant tomatoes', circleName: 'Selwerd', state: 'open' },
+        { id: 't2', text: 'Borrow drill',   circleName: 'Helpman', state: 'claimed' },
+      ] },
+    }], t });
+    expect(el.querySelector('.circle-screen__block--tasks')).not.toBeNull();
+    const rows = el.querySelectorAll('.circle-screen__tasks-row');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].dataset.taskId).toBe('t1');
+    expect(rows[0].dataset.state).toBe('open');
+    expect(rows[0].querySelector('.circle-screen__tasks-circle').textContent).toBe('Selwerd');
+    expect(rows[0].querySelector('.circle-screen__tasks-text').textContent).toBe('Plant tomatoes');
+  });
+
   it('rules: emits a field block per non-blank field, suppresses empty fields', () => {
     const el = mount();
     renderCircleScreen(el, { blocks: [okRules], t });

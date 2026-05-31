@@ -202,6 +202,82 @@ describe('materializeScreen · α.2.b — rules', () => {
 /* Error tolerance                                                    */
 /* ─────────────────────────────────────────────────────────────────── */
 
+describe('materializeScreen · α.4 — tasks block (multi-kring)', () => {
+  it('ALL_KRINGEN: queries each circle and merges; assignee filter applies', async () => {
+    const calls = [];
+    const callSkill = vi.fn(async (app, op, args) => {
+      calls.push([app, op, args]);
+      if (args.crewId === 'g1') return { items: [
+        { id: 't-g1-mine', text: 'g1 mine', assignee: 'webid:me', addedAt: 100 },
+        { id: 't-g1-bob',  text: 'g1 bob',  assignee: 'webid:bob', addedAt: 200 },
+      ] };
+      if (args.crewId === 'g2') return { items: [
+        { id: 't-g2-mine', text: 'g2 mine', assignee: 'webid:me', addedAt: 300 },
+      ] };
+      if (args.crewId === 'g3') return { items: [] };
+      return { items: [] };
+    });
+    const screen = addBlock(emptyScreen('Mijn dingen'), 'tasks');
+    const out = await materializeScreen({
+      screen,
+      hostOps: { callSkill, circles, myWebid: 'webid:me' },
+    });
+    // Only my tasks across g1+g2, newest first.
+    expect(out[0].content.items.map((t) => t.id))
+      .toEqual(['t-g2-mine', 't-g1-mine']);
+    // Each task carries its circleId + circleName.
+    expect(out[0].content.items[0].circleName).toBe('Helpman');
+    expect(out[0].content.items[1].circleName).toBe('Selwerd');
+    // Called once per circle.
+    expect(calls.map((c) => c[2].crewId)).toEqual(['g1', 'g2', 'g3']);
+  });
+
+  it('Q5: muted circles drop entirely from the merge', async () => {
+    const callSkill = vi.fn(async (app, op, args) => {
+      if (args.crewId === 'g2') return { items: [
+        { id: 't-g2', text: 'g2 mine', assignee: 'webid:me' },
+      ] };
+      return { items: [
+        { id: `t-${args.crewId}-mine`, text: 'x', assignee: 'webid:me' },
+      ] };
+    });
+    const screen = addBlock(emptyScreen('Stream'), 'tasks');
+    const out = await materializeScreen({
+      screen,
+      hostOps: { callSkill, circles, myWebid: 'webid:me' },
+      mutedCircleIds: ['g2'],
+    });
+    // g2 dropped → only g1 + g3 contribute.
+    expect(out[0].content.items.map((t) => t.id).sort())
+      .toEqual(['t-g1-mine', 't-g3-mine'].sort());
+  });
+
+  it('scope:"all" returns every open task across active kringen', async () => {
+    const callSkill = vi.fn(async (app, op, args) => ({ items: [
+      { id: `${args.crewId}-a`, assignee: 'webid:me' },
+      { id: `${args.crewId}-b` },  // unassigned
+    ] }));
+    let screen = addBlock(emptyScreen('Stream'), 'tasks', { scope: 'all' });
+    const out = await materializeScreen({
+      screen,
+      hostOps: { callSkill, circles: [{ id: 'g1', name: 'G1' }], myWebid: 'webid:me' },
+    });
+    expect(out[0].content.items).toHaveLength(2);
+  });
+
+  it('all-muted: tasks renders empty without fetching', async () => {
+    const callSkill = vi.fn(async () => ({ items: [] }));
+    const screen = addBlock(emptyScreen('Stream'), 'tasks');
+    const out = await materializeScreen({
+      screen,
+      hostOps: { callSkill, circles, myWebid: 'webid:me' },
+      mutedCircleIds: ['g1', 'g2', 'g3'],
+    });
+    expect(out[0].status).toBe('empty');
+    expect(callSkill).not.toHaveBeenCalled();
+  });
+});
+
 describe('materializeScreen · α.2.b — error tolerance', () => {
   it('a per-type throw lands as status:"error" on that block; others succeed', async () => {
     const screen = addBlock(
