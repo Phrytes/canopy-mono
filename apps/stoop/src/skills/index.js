@@ -2661,6 +2661,67 @@ export function buildSkills({
     }),
 
     /**
+     * broadcastKringMessage({groupId, text, msgId, ts?, fromActor?})
+     *   — SP-13.2.1 — plain-text chat fan-out to every member of a
+     *   kring.  Reuses the existing `chat.send` substrate (WebID→pubKey
+     *   resolution, signing, transport routing) with subtype
+     *   `'kring-chat-message'` so receivers can wire a dedicated
+     *   peer-router handler that appends to the canopy-chat EventLog
+     *   (NOT to itemStore — kring chats aren't stoop posts).
+     *
+     *   Best-effort + fire-and-forget: per-peer failures land in the
+     *   returned `errors[]` array but never throw; the UI's local
+     *   append already gave the user the optimistic bubble.
+     */
+    defineSkill('broadcastKringMessage', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      const _groupId = a.groupId ?? groupId;
+      if (!_groupId)             return { error: 'groupId-required' };
+      if (typeof a.text !== 'string' || !a.text.trim()) return { error: 'text-required' };
+      if (typeof a.msgId !== 'string' || !a.msgId)      return { error: 'msgId-required' };
+      if (!chat?.send)           return { error: 'chat-unavailable', sent: 0, errors: [] };
+      if (!members)              return { error: 'members-unavailable', sent: 0, errors: [] };
+
+      const text = a.text.trim();
+      const ts   = typeof a.ts === 'number' && Number.isFinite(a.ts) ? a.ts : Date.now();
+      const list = await members.list();
+      const webids = new Set();
+      for (const m of list ?? []) {
+        const w = typeof m === 'string' ? m : (m?.webid ?? m?.webId ?? null);
+        if (!w || w === from) continue;
+        webids.add(w);
+      }
+
+      let sent = 0;
+      const errors = [];
+      await Promise.all([...webids].map(async (webid) => {
+        try {
+          const r = await chat.send({
+            toWebid:  webid,
+            subtype:  'kring-chat-message',
+            threadId: _groupId,
+            body:     text,
+            extras: {
+              circleId:  _groupId,
+              msgId:     a.msgId,
+              ts,
+              fromActor: a.fromActor ?? from ?? null,
+            },
+          });
+          if (r?.ok) sent += 1;
+          else errors.push({ webid, reason: r?.reason ?? 'unknown' });
+        } catch (err) {
+          errors.push({ webid, reason: String(err?.message ?? err) });
+        }
+      }));
+      metrics?.record?.('kring-chat-fanout');
+      return { sent, attempted: webids.size, errors };
+    }, {
+      description: 'Fan a plain-text kring chat message out to every other member via chat.send subtype:kring-chat-message.',
+      visibility:  'authenticated',
+    }),
+
+    /**
      * postAnnouncement({text, groupId?})
      *   — admin-only.  Persists a `kind: 'announcement'` item that
      *   the board pins at the top.  Visibility / pinning is a
