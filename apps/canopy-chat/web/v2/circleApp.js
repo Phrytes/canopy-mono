@@ -34,7 +34,6 @@ import { renderSkillEditor } from './circleSkillEditor.js';
 import { renderCircleFolioBrowser } from './circleFolio.js';
 import { normalizeRulesDoc } from '../../src/v2/circleRules.js';
 import { renderRulesEditor } from './circleRulesEditor.js';
-import { renderRulesConsent } from './circleRulesConsent.js';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircleItems } from '../../src/v2/circleContent.js';
@@ -385,24 +384,14 @@ function showRules(id) {
     t,
     onChange: (patch) => { doc = normalizeRulesDoc({ ...doc, ...patch }); rerender(); },
     onBack: () => showDetail(id),
-    onPreview: () => showRulesConsent(id, doc),
+    // The standalone Agree/Decline preview screen was retired in 5.5d —
+    // consent now happens in the create/join wizard.  No `onPreview`.
     onSave: () => {
       try { localStorage.setItem(rulesKey(id), JSON.stringify(doc)); } catch { /* ignore */ }
       showDetail(id);
     },
   });
   rerender();
-}
-
-function showRulesConsent(id, doc) {
-  // Preview from the editor — Agree/Decline just return to the editor.
-  renderRulesConsent(rootEl, {
-    doc,
-    t,
-    onBack: () => showRules(id),
-    onAgree: () => showRules(id),
-    onDecline: () => showRules(id),
-  });
 }
 
 // Advisor cooldown (≤1 card/month) persists per-circle in localStorage.
