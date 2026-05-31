@@ -25,14 +25,12 @@
       "compose_placeholder_targeted": { "text": "Reply in {{circle}}", "doc": "Pinned compose placeholder when a row is focused — context follows." }
     },
     "kring": {
-      "filter_all":    { "text": "All", "doc": "SP-13 — kring-stream filter chip: show every kind." },
-      "filter_vraag":  { "text": "Question", "doc": "SP-13 — filter chip: questions only." },
-      "filter_aanbod": { "text": "Offer", "doc": "SP-13 — filter chip: offers only." },
-      "filter_leen":   { "text": "Lend", "doc": "SP-13 — filter chip: borrow/lend only." },
-      "post_fab":      { "text": "+ post question · offer · lend", "doc": "SP-13 — kring-stream compose FAB label (mobile shows only the '+')." },
       "more":          { "text": "More", "doc": "SP-13 — kring header overflow menu trigger." },
-      "empty":         { "text": "Nothing here yet.", "doc": "SP-13 — empty state for an unfiltered kring stream." },
-      "empty_filtered":{ "text": "Nothing in this filter yet.", "doc": "SP-13 — empty state when a filter chip is active." }
+      "empty":         { "text": "Nothing here yet — be the first to write.", "doc": "SP-13.2 — empty state for the kring's chat-style GESPREK view." },
+      "composer_placeholder": { "text": "Write to the kring…", "doc": "SP-13.2 — inline composer placeholder; hosts can pass a kring-specific one (e.g. 'Schrijf naar de buurt…')." },
+      "send":          { "text": "Send", "doc": "SP-13.2 — composer send button a11y label (visual is an ↑ glyph)." },
+      "day_today":     { "text": "today", "doc": "SP-13.2 — chat-stream day-divider label." },
+      "day_yesterday": { "text": "yesterday", "doc": "SP-13.2 — chat-stream day-divider label." }
     },
     "streamAction": {
       "help":   { "text": "I'll help", "doc": "Stream row action — accept a question (P6.M3)." },

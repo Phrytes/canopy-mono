@@ -287,9 +287,12 @@ async function showDetail(id) {
 // CircleDetail as the per-circle landing surface.  Admin actions
 // (Settings, Mine, ViewAs, …) move into the header `⋯` overflow menu,
 // gated on the Functies axis (same gates the old detail used).
-let kringFilter = 'all';
+//
+// SP-13.2 — GESPREK as chat-style: drop the filter-chip row, render
+// rows as chat bubbles, wire an inline composer that publishes a
+// chat-message event scoped to this circle.  Inbound peer broadcast
+// + slash-command parsing land in SP-13.2.1.
 function showKring(id, circle, policy) {
-  kringFilter = 'all';
   const allowRules   = isFeatureEnabled(policy, 'houseRules');
   const allowViewAs  = isFeatureEnabled(policy, 'memberDirectory');
   const allowFiles   = isFeatureEnabled(policy, 'lists') || isFeatureEnabled(policy, 'notes');
@@ -302,37 +305,42 @@ function showKring(id, circle, policy) {
     ...(allowFiles  ? { files:  () => showFolio(id) } : {}),
     ...(allowRules  ? { rules:  () => showRules(id) } : {}),
   };
+  let seq = 0;
   const rerender = () => {
     const rows = buildKringStream({
       events:    eventLog.query({ excludeMuted: true }),
       circles:   circlesCache,
       circleId:  id,
-      kindFilter: kringFilter,
     });
     renderCircleKring(rootEl, {
-      circle, rows, filter: kringFilter, t,
+      circle, rows, t,
       onBack:   showLauncher,
-      onFilter: (key) => { kringFilter = key; rerender(); },
-      onPost:   () => createPost(id),
+      onSend:   (text) => {
+        // V0: append a chat-message event to the local EventLog.  Peer
+        // broadcast of the same envelope (so other devices in the
+        // kring receive it) lands in SP-13.2.1 via the existing buurt
+        // fan-out.  For now the message is visible on THIS device only.
+        eventLog.append({
+          id:    `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}`,
+          ts:    Date.now(),
+          app:   'kring',
+          type:  'chat-message',
+          actor: LOCAL_ACTOR,
+          payload: { circleId: id, text, kind: 'chat-message' },
+        });
+        rerender();
+      },
       onAction: (action /*, row */) => {
-        // V0: actions just log; routing each to its dispatch (claim /
-        // help / offer) is the SP-13-followup wiring.
+        // V0: per-row actions just log.  Wiring each (Ik help / Ik doe ze /
+        // Negeer) to its dispatch lands in SP-13.2.1.
         console.info('[kring] action', action.action, 'on row', action.payload?.rowId);
       },
       more,
     });
   };
   rerender();
-  // Re-render on new events so the kring stream refreshes live (the
-  // EventLog has no subscribe seam yet; poll-on-render is fine for V0).
-}
-
-// SP-13.1 — compose lives inside the kring view (GESPREK tab) — no
-// route-out to a separate chat shell.  Until SP-13.2 wires the inline
-// composer, this is a no-op stub that surfaces the missing surface as
-// a one-shot alert so testers know what's queued.
-function createPost(/* id */) {
-  globalThis.alert?.('Composer komt in de kring (GESPREK-tab) — SP-13.2');
+  // EventLog has no subscribe seam yet; SP-13.2.1 will poll-on-event so
+  // inbound peer messages appear without manual re-render.
 }
 
 
