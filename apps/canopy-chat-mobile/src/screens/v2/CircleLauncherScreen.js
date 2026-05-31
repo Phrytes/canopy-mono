@@ -654,6 +654,33 @@ function CircleDetail({
   // doesn't persist across opens.
   useEffect(() => { setActiveTab(DEFAULT_KRING_TAB); }, [circle?.id]);
 
+  // SP-13.4 — Chat ↔ Scherm pill state (v2 §4 "De Schakelaar").
+  // Per-circle preference persists in AsyncStorage at cc.circleViewMode.
+  const [viewMode, setViewModeState] = useState('chat');
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!circle?.id) return;
+      try {
+        const raw = await AsyncStorage.getItem('cc.circleViewMode');
+        const map = raw ? JSON.parse(raw) : {};
+        if (alive) setViewModeState(map?.[circle.id] === 'scherm' ? 'scherm' : 'chat');
+      } catch { if (alive) setViewModeState('chat'); }
+    })();
+    return () => { alive = false; };
+  }, [circle?.id]);
+  const setViewMode = useCallback(async (mode) => {
+    if (mode !== 'chat' && mode !== 'scherm') return;
+    setViewModeState(mode);
+    if (!circle?.id) return;
+    try {
+      const raw = await AsyncStorage.getItem('cc.circleViewMode');
+      const map = raw ? JSON.parse(raw) : {};
+      map[circle.id] = mode;
+      await AsyncStorage.setItem('cc.circleViewMode', JSON.stringify(map));
+    } catch { /* quota / disabled */ }
+  }, [circle?.id]);
+
   // 5.9d — Proof-of-Location placeholder.  Kept under the kring view as
   // a passive status; real attestation lands in [[5.9d-followup]].
   const [pol, setPol] = useState(null);
@@ -675,6 +702,28 @@ function CircleDetail({
         <Pressable onPress={onBack} accessibilityRole="button">
           <Text style={styles.back}>{t('circle.back')}</Text>
         </Pressable>
+        {/* SP-13.4 — Chat ↔ Scherm pill (v2 §4). */}
+        <View
+          style={styles.viewToggle}
+          accessibilityRole="group"
+          accessibilityLabel={t('circle.kring.view_toggle_label')}
+          testID="circle-detail-view-toggle"
+        >
+          {['chat', 'scherm'].map((mode) => (
+            <Pressable
+              key={mode}
+              accessibilityRole="button"
+              accessibilityState={{ selected: mode === viewMode }}
+              testID={`circle-detail-view-${mode}`}
+              onPress={() => { if (mode !== viewMode) setViewMode(mode); }}
+              style={[styles.viewToggleBtn, mode === viewMode && styles.viewToggleBtnActive]}
+            >
+              <Text style={[styles.viewToggleText, mode === viewMode && styles.viewToggleTextActive]}>
+                {t(`circle.kring.view_${mode}`)}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('circle.kring.more')}
@@ -741,9 +790,15 @@ function CircleDetail({
 
       {/* SP-13.3 — body switches by active tab.  GESPREK = chat-style
           mixed stream; other tabs are placeholders until their content
-          surfaces land in follow-up slices. */}
+          surfaces land in follow-up slices.
+          SP-13.4 — scherm-mode wins over the tab body: the whole pane
+          becomes the (placeholder) recept'd page. */}
       <ScrollView contentContainerStyle={styles.list} testID="circle-detail-stream">
-        {activeTab !== 'gesprek' ? (
+        {viewMode === 'scherm' ? (
+          <Text style={styles.placeholder} testID="circle-detail-scherm-placeholder">
+            {t('circle.kring.scherm_coming')}
+          </Text>
+        ) : activeTab !== 'gesprek' ? (
           <Text style={styles.placeholder}>
             {t('circle.kring.tab_coming', { tab: t(`circle.tabs.${activeTab}`) })}
           </Text>
@@ -757,7 +812,10 @@ function CircleDetail({
       {/* SP-13.2 — inline composer.  V0 appends a chat-message event to
           the local EventLog so the user sees their own write; peer
           broadcast lands in SP-13.2.1.  Slash commands stay as a
-          deeper follow-up (would need the chat-shell composition). */}
+          deeper follow-up (would need the chat-shell composition).
+          SP-13.4 — composer suppressed in scherm-mode (recept page is
+          not a chat surface). */}
+      {viewMode !== 'scherm' ? (
       <View style={styles.composer} testID="circle-detail-composer">
         <TextInput
           style={styles.composerInput}
@@ -804,11 +862,13 @@ function CircleDetail({
           <Text style={styles.composerSendText}>↑</Text>
         </Pressable>
       </View>
+      ) : null}
 
       {/* SP-13.3 — per-kring bottom tab bar (derived from policy.features).
           Only renders when there are ≥ 2 tabs (a single-tab kring has
-          nothing to switch between). */}
-      {tabs.length >= 2 ? (
+          nothing to switch between).
+          SP-13.4 — also suppress in scherm-mode. */}
+      {tabs.length >= 2 && viewMode !== 'scherm' ? (
         <View style={styles.kringTabs} testID="circle-detail-tabs">
           {tabs.map((tab) => (
             <Pressable
@@ -1046,6 +1106,12 @@ const styles = StyleSheet.create({
   kringTabActive:   { borderTopColor: theme.color.accent },
   kringTabText:     { fontSize: 11, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 1.4 },
   kringTabTextActive:{ color: theme.color.accentInk, fontWeight: '600' },
+  // SP-13.4 — Chat ↔ Scherm header pill.
+  viewToggle:          { flexDirection: 'row', borderWidth: 1, borderColor: theme.color.line, borderRadius: 999, overflow: 'hidden', backgroundColor: theme.color.paper, marginLeft: 'auto', marginRight: 8 },
+  viewToggleBtn:       { paddingHorizontal: 12, paddingVertical: 5 },
+  viewToggleBtnActive: { backgroundColor: theme.color.accent },
+  viewToggleText:      { fontSize: 12, color: theme.color.inkSoft },
+  viewToggleTextActive:{ color: theme.color.white, fontWeight: '600' },
   placeholder:      { color: theme.color.inkSoft, fontStyle: 'italic', textAlign: 'center', paddingVertical: 24, paddingHorizontal: 12 },
   // Per-row action buttons (Ik help / Negeer …) — used by chat bubbles.
   rowActions:     { flexDirection: 'row', gap: 6, marginTop: 8 },

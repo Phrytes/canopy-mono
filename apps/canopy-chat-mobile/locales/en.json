@@ -187,7 +187,11 @@
       "day_today":     { "text": "today", "doc": "SP-13.2 — day-divider." },
       "day_yesterday": { "text": "yesterday", "doc": "SP-13.2 — day-divider." },
       "tab_coming":    { "text": "{{tab}} content lands in a follow-up slice.", "doc": "SP-13.3 — placeholder body for a tab whose content surface isn't built yet." },
-      "tabs_label":    { "text": "Kring tabs", "doc": "SP-13.3 — a11y label on the per-kring bottom tab bar." }
+      "tabs_label":    { "text": "Kring tabs", "doc": "SP-13.3 — a11y label on the per-kring bottom tab bar." },
+      "view_chat":     { "text": "Chat", "doc": "SP-13.4 — Chat ↔ Scherm header toggle (v2 §4)." },
+      "view_scherm":   { "text": "Screen", "doc": "SP-13.4 — scherm-mode label." },
+      "view_toggle_label": { "text": "Switch between chat and screen view", "doc": "SP-13.4 — a11y group label." },
+      "scherm_coming": { "text": "Screen view (admin's recept'd page) lands in a follow-up slice.", "doc": "SP-13.4 — placeholder." }
     },
     "folio": {
       "title":      { "text": "Files", "doc": "Circle file-browser heading (board 10B)." },

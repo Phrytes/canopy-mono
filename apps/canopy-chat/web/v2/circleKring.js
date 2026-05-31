@@ -52,6 +52,13 @@ export function renderCircleKring(container, {
   tabs = null,
   activeTab = null,
   onTab,
+  // SP-13.4 — Chat ↔ Scherm header pill (v2 §4 board "De Schakelaar").
+  // `viewMode`   one of 'chat' | 'scherm' (default 'chat')
+  // `onViewMode(mode)`  host flips between the chat-style stream and
+  //   the admin-recept'd scherm-weergave.  When 'scherm' the body is
+  //   a placeholder until the recept renderer lands.
+  viewMode = 'chat',
+  onViewMode,
   t,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -73,6 +80,30 @@ export function renderCircleKring(container, {
   title.className = 'circle-kring__title';
   title.textContent = circle.name || circle.id || '';
   header.appendChild(title);
+
+  // SP-13.4 — Chat ↔ Scherm pill (v2 §4 board "De Schakelaar").
+  // Only renders when the host wires `onViewMode`; otherwise the
+  // header stays clean (some hosts may want to suppress it).
+  if (typeof onViewMode === 'function') {
+    const toggle = document.createElement('div');
+    toggle.className = 'circle-kring__view-toggle';
+    toggle.setAttribute('role', 'group');
+    toggle.setAttribute('aria-label', tr('circle.kring.view_toggle_label'));
+    for (const mode of ['chat', 'scherm']) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'circle-kring__view-toggle-btn';
+      btn.dataset.viewMode = mode;
+      if (mode === viewMode) btn.classList.add('is-active');
+      btn.setAttribute('aria-pressed', mode === viewMode ? 'true' : 'false');
+      btn.textContent = tr(`circle.kring.view_${mode}`);
+      btn.addEventListener('click', () => {
+        if (mode !== viewMode) onViewMode(mode);
+      });
+      toggle.appendChild(btn);
+    }
+    header.appendChild(toggle);
+  }
 
   const moreActions = collectMoreActions(more, tr);
   if (moreActions.length > 0) {
@@ -127,7 +158,15 @@ export function renderCircleKring(container, {
   const body = document.createElement('div');
   body.className = 'circle-kring__list';
   body.dataset.activeTab = effectiveTab;
-  if (effectiveTab !== 'gesprek') {
+  body.dataset.viewMode  = viewMode;
+  if (viewMode === 'scherm') {
+    // SP-13.4 — placeholder until the admin-recept'd scherm renderer
+    // lands.  The composer + bottom tabs are suppressed below.
+    const placeholder = document.createElement('div');
+    placeholder.className = 'circle-kring__placeholder';
+    placeholder.textContent = tr('circle.kring.scherm_coming');
+    body.appendChild(placeholder);
+  } else if (effectiveTab !== 'gesprek') {
     const placeholder = document.createElement('div');
     placeholder.className = 'circle-kring__placeholder';
     placeholder.textContent = tr('circle.kring.tab_coming', {
@@ -156,8 +195,10 @@ export function renderCircleKring(container, {
   }
   container.appendChild(body);
 
-  // Composer — text input + send button.
-  if (typeof onSend === 'function') {
+  // Composer — text input + send button.  Suppressed in scherm-mode
+  // because the recept'd page isn't a chat surface; user flips back
+  // to Chat to write something.
+  if (typeof onSend === 'function' && viewMode !== 'scherm') {
     const form = document.createElement('form');
     form.className = 'circle-kring__composer';
     form.setAttribute('autocomplete', 'off');
@@ -192,7 +233,9 @@ export function renderCircleKring(container, {
   // list with ≥ 2 entries is supplied (a single-tab kring has no
   // bar to switch on).  The launcher's global Kringen/Stroom/Mij
   // bar sits in a different DOM root, so the two never collide.
-  if (Array.isArray(tabs) && tabs.length >= 2) {
+  // SP-13.4 — also suppress in scherm-mode (scherm is one canonical
+  // page, no sub-tabs).
+  if (Array.isArray(tabs) && tabs.length >= 2 && viewMode !== 'scherm') {
     const bar = document.createElement('nav');
     bar.className = 'circle-kring__tabs';
     bar.setAttribute('aria-label', tr('circle.kring.tabs_label'));
