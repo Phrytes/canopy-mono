@@ -2,6 +2,7 @@
   "circle": {
     "title":   { "text": "Your circles", "doc": "Heading of the circle launcher (board 1B)." },
     "tab": {
+      "screens": { "text": "Screens", "doc": "α.3 — primary tab." },
       "kringen": { "text": "Circles", "doc": "Bottom-nav tab → the circle list (board 1)." },
       "stroom":  { "text": "Stream", "doc": "Bottom-nav tab → the cross-circle stream (board 5)." },
       "mij":     { "text": "Me", "doc": "Bottom-nav tab → personal availability/quiet-hours/hopping (board 6C)." }
@@ -263,6 +264,23 @@
         "leaving":        { "text": "Leaving",        "doc": "α.1c — rules block short field label." },
         "responsibility": { "text": "Responsibility", "doc": "α.1c — rules block short field label." }
       }
+    },
+    "screens": {
+      "picker_title":   { "text": "Screens",                            "doc": "α.3 — picker heading." },
+      "no_screens":     { "text": "No screens yet. Add one below.",     "doc": "α.3 — empty book." },
+      "untitled":       { "text": "(untitled)",                          "doc": "α.3 — placeholder for screens with no name." },
+      "active":         { "text": "active",                              "doc": "α.3 — badge on the active screen." },
+      "rename":         { "text": "Rename",                              "doc": "α.3 — rename a screen." },
+      "rename_prompt":  { "text": "New name for this screen:",          "doc": "α.3 — prompt." },
+      "set_active":     { "text": "Set active",                          "doc": "α.3 — switch active screen." },
+      "delete":         { "text": "Delete",                              "doc": "α.3 — delete a screen." },
+      "delete_confirm": { "text": "Delete screen \"{{name}}\"?",       "doc": "α.3 — confirm." },
+      "add":            { "text": "Add",                                 "doc": "α.3 — add-screen button." },
+      "add_placeholder":{ "text": "New screen name…",                   "doc": "α.3 — add-screen input." },
+      "filter_all":     { "text": "all circles",                         "doc": "α.3 — filter summary." },
+      "filter_one":     { "text": "1 circle",                            "doc": "α.3 — filter summary." },
+      "filter_n":       { "text": "{{count}} circles",                  "doc": "α.3 — filter summary." },
+      "seed_name":      { "text": "Stream",                              "doc": "α.3 — name of the auto-seeded default screen." }
     },
     "screen": {
       "empty":          { "text": "The admin hasn't set up a screen yet.", "doc": "α.1c — shown when the kring's recipe book is empty." },

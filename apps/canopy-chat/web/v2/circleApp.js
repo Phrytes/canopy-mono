@@ -29,9 +29,17 @@ import {
   addBlock, removeBlock, moveBlock, updateBlock, updateRecipe,
 } from '../../src/v2/kringRecipe.js';
 import { materializeRecipe } from '../../src/v2/kringRecipeBlocks.js';
+// α.2 — user-owned cross-kring screens (the Schermen tab) + α.3 picker.
+import {
+  createUserScreenStore, localStorageScreenIo,
+  addScreen as addUserScreen, renameScreen as renameUserScreen,
+  removeScreen as removeUserScreen, setActiveScreen, getActiveScreen, updateScreen,
+} from '../../src/v2/userScreens.js';
+import { materializeScreen } from '../../src/v2/userScreenBlocks.js';
 import { renderCircleKring } from './circleKring.js';
 import { renderCircleScreen } from './circleScreen.js';
 import { renderRecipeEditor } from './circleRecipeEditor.js';
+import { renderScreensPicker } from './circleScreensPicker.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '../../src/v2/circleHop.js';
 import { mergeSkill, normalizeSkill } from '../../src/v2/circleSkills.js';
@@ -107,6 +115,9 @@ const policyStore = createCirclePolicyStore(localStoragePolicyIo());
 // α.1c — per-kring recipe book store (multi-recipe per kring, one active).
 // localStorage now; pod io can swap in later without touching callers.
 const recipeStore = createKringRecipeStore({ io: localStorageRecipeIo() });
+// α.3 — per-user screens store.  One book per user (not per-kring); the
+// active screen drives the new Schermen tab.
+const userScreenStore = createUserScreenStore({ io: localStorageScreenIo() });
 const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
 const availabilityStore = createAvailabilityStore(localStorageAvailabilityIo());
 // P6.2 — persisted pending proposals (multi-admin consensus).
@@ -142,8 +153,8 @@ let rawCallSkill = null;     // (appOrigin, opId, args) — for createGroupV2
 function showTabBar(active) {
   renderCircleTabBar(tabBarEl, {
     active, t,
+    onScreens: showScreens,
     onKringen: showLauncher,
-    onStroom: showStream,
     onMij: showMij,
   });
 }
@@ -283,6 +294,121 @@ async function showHop() {
   rerender();
 }
 
+// α.3 — Schermen tab.  Two sub-modes:
+//   - 'picker' (default): list of the user's screens with CRUD affordances
+//   - 'view':              render the materialized active screen as blocks
+// First-run seed: when the book is empty, auto-create a "Stream" screen
+// (kringFilter=null + noticeboard block) so the tab is useful right away.
+//
+// Q5 (mute) honoured: materializeScreen drops muted kringen entirely.
+let _screenSubMode = 'picker';
+let _viewingScreenId = null;
+let _screensBook = null;
+let _screenViewBlocks = null;
+
+async function showScreens() {
+  showTabBar('screens');
+  let book;
+  try { book = await userScreenStore.get(); }
+  catch { book = { screens: [], activeId: null }; }
+  // First-run seed: a default Stream screen so the Schermen tab isn't
+  // empty for new users.  Once at least one screen exists we never
+  // re-seed; the user can delete it freely.
+  if (book.screens.length === 0) {
+    book = await userScreenStore.update((cur) => {
+      const seeded = addUserScreen(cur, t('circle.screens.seed_name'));
+      const seededId = seeded.screens[seeded.screens.length - 1].id;
+      return updateScreen(seeded, seededId, (s) => addBlock(s, 'noticeboard'));
+    });
+  }
+  _screensBook = book;
+  _screensRerender();
+}
+
+function _screensRerender() {
+  if (_screenSubMode === 'view') {
+    _showActiveScreen();
+    return;
+  }
+  // Picker mode: list of screens with CRUD.
+  renderScreensPicker(rootEl, {
+    book: _screensBook,
+    t,
+    onOpenScreen:   (sid) => {
+      _viewingScreenId = sid;
+      _screenSubMode = 'view';
+      _showActiveScreen();
+    },
+    onAddScreen: async (name) => {
+      _screensBook = await userScreenStore.update((cur) => {
+        const next = addUserScreen(cur, name);
+        const newId = next.screens[next.screens.length - 1].id;
+        // Seed every new screen with a default noticeboard block so
+        // it's not empty on first open.
+        return updateScreen(next, newId, (s) => addBlock(s, 'noticeboard'));
+      });
+      _screensRerender();
+    },
+    onRenameScreen: async (sid, name) => {
+      _screensBook = await userScreenStore.update((cur) => renameUserScreen(cur, sid, name));
+      _screensRerender();
+    },
+    onRemoveScreen: async (sid) => {
+      _screensBook = await userScreenStore.update((cur) => removeUserScreen(cur, sid));
+      _screensRerender();
+    },
+    onSetActive: async (sid) => {
+      _screensBook = await userScreenStore.update((cur) => setActiveScreen(cur, sid));
+      _screensRerender();
+    },
+  });
+}
+
+async function _showActiveScreen() {
+  // View-mode: render the materialized screen + a back link to picker.
+  const screen = _screensBook?.screens?.find((s) => s.id === _viewingScreenId)
+              ?? getActiveScreen(_screensBook);
+  if (!screen) {
+    _screenSubMode = 'picker'; _viewingScreenId = null;
+    _screensRerender();
+    return;
+  }
+  rootEl.innerHTML = '';
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'circle-screens-view__back';
+  back.textContent = `← ${t('circle.screens.picker_title')}`;
+  back.addEventListener('click', () => {
+    _screenSubMode = 'picker';
+    _viewingScreenId = null;
+    _screensRerender();
+  });
+  rootEl.appendChild(back);
+  const title = document.createElement('h2');
+  title.className = 'circle-screens-view__title';
+  title.textContent = screen.name || t('circle.screens.untitled');
+  rootEl.appendChild(title);
+
+  // Materialize blocks (with muted-kring filter when available later).
+  let blocks = [];
+  try {
+    blocks = await materializeScreen({
+      screen,
+      hostOps: {
+        callSkill: resolveCallSkill ?? rawCallSkill,
+        eventLog, circles: circlesCache,
+      },
+      // mutedCircleIds wires in α.5 (per-user mute UI).
+    });
+  } catch (err) {
+    console.warn('[showScreens] materializeScreen failed', err);
+  }
+  _screenViewBlocks = blocks;
+  const body = document.createElement('div');
+  rootEl.appendChild(body);
+  renderCircleScreen(body, { blocks, t });
+}
+
 function showStream() {
   const rows = buildCircleStream({
     events: eventLog.query({ excludeMuted: true }),
@@ -290,7 +416,7 @@ function showStream() {
   });
   // Top-level tab screen — no back link (the Kringen tab is the way back).
   renderCircleStream(rootEl, { rows, t, onOpenCircle: showDetail });
-  showTabBar('stroom');
+  showTabBar('screens');   // α.3 — stroom retired in favour of screens
 }
 
 // "Mij" tab — personal availability (holiday + quiet hours, board 6C) plus
@@ -807,7 +933,12 @@ async function boot() {
     console.warn('[circleApp] loadCircles failed', err);
     circlesCache = [];
   }
-  showLauncher();
+  // α.3 — Schermen is the primary landing tab.  First-run seeds the
+  // default Stream screen inside showScreens.
+  showScreens().catch((err) => {
+    console.warn('[circleApp] showScreens failed; falling back to launcher', err);
+    showLauncher();
+  });
 }
 
 boot();
