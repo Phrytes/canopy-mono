@@ -20,6 +20,8 @@ import {
 } from '../../src/v2/circleStream.js';
 import { isFeatureEnabled } from '../../src/v2/circlePolicy.js';
 import { buildKringTabs, DEFAULT_KRING_TAB } from '../../src/v2/kringTabs.js';
+import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
+import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
 import { renderCircleKring } from './circleKring.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '../../src/v2/circleHop.js';
@@ -67,6 +69,30 @@ import { renderCircleOverride } from './circleOverride.js';
 // SP-13.2 — actor label stamped on local chat-message events.  Real WebID/
 // peer-display wiring lands with peer broadcast (SP-13.2.1).
 const LOCAL_ACTOR = 'me';
+
+// SP-13.2.1 — best-effort NKN bootstrap.  Mirrors web/main.js's
+// `connectPeerImpl` but doesn't throw if the CDN failed to load —
+// the kring view still works locally (just no peer fan-out).
+async function tryConnectPeerTransport(agent, peerMessageRouter) {
+  const nknLib =
+       (typeof window !== 'undefined' && window.nkn)
+    ?? (typeof globalThis !== 'undefined' && globalThis.nkn)
+    ?? null;
+  if (!nknLib) {
+    console.info('[circleApp] nkn-sdk not loaded — kring chat is local-only this session');
+    return;
+  }
+  if (typeof agent?.connectPeerTransport !== 'function') {
+    console.info('[circleApp] agent has no connectPeerTransport — kring chat is local-only');
+    return;
+  }
+  try {
+    await agent.connectPeerTransport({ nknLib, onPeerMessage: peerMessageRouter });
+    console.info('[circleApp] NKN peer transport connected');
+  } catch (err) {
+    console.warn('[circleApp] NKN connect failed — kring chat is local-only:', err?.message ?? err);
+  }
+}
 
 const policyStore = createCirclePolicyStore(localStoragePolicyIo());
 const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
@@ -355,19 +381,30 @@ function showKring(id, circle, policy) {
       onTab: (tabId) => { activeTab = tabId; rerender(); },
       onBack:   showLauncher,
       onSend:   (text) => {
-        // V0: append a chat-message event to the local EventLog.  Peer
-        // broadcast of the same envelope (so other devices in the
-        // kring receive it) lands in SP-13.2.1 via the existing buurt
-        // fan-out.  For now the message is visible on THIS device only.
+        // SP-13.2 / SP-13.2.1 — optimistic local append + best-effort
+        // peer fan-out.  The msgId is shared so receiver-side dedup
+        // suppresses any echo if a peer's pseudo-pod re-mirrors.
+        const msgId = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}`;
+        const ts    = Date.now();
         eventLog.append({
-          id:    `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}`,
-          ts:    Date.now(),
+          id:    msgId,
+          ts,
           app:   'kring',
           type:  'chat-message',
           actor: LOCAL_ACTOR,
           payload: { circleId: id, text, kind: 'chat-message' },
         });
         rerender();
+        if (typeof rawCallSkill === 'function') {
+          rawCallSkill('stoop', 'broadcastKringMessage', {
+            groupId: id, text, msgId, ts,
+          }).then((r) => {
+            if (r?.error) console.warn('[kring-chat] fan-out skipped:', r.error);
+            else if ((r?.errors?.length ?? 0) > 0) console.info('[kring-chat] fan-out partial:', r);
+          }).catch((err) => {
+            console.warn('[kring-chat] fan-out failed:', err?.message ?? err);
+          });
+        }
       },
       onAction: (action /*, row */) => {
         // V0: per-row actions just log.  Wiring each (Ik help / Ik doe ze /
@@ -606,6 +643,15 @@ async function boot() {
       rawCallSkill = agent.callSkill;
       resolveCallSkill = makeResolvingCallSkill(agent.callSkill);
       sources = circleSourcesFromAgent({ callSkill: resolveCallSkill, circlesStore: agent.circlesStore });
+      // SP-13.2.1 — register a peer-router with the kring-chat-message
+      // handler + connect the NKN transport (best-effort; no-op when
+      // nkn-sdk failed to load).  Inbound envelopes append to eventLog
+      // so the kring view's buildKringStream renders the bubble.
+      const kringChatHandler = makeKringChatPeerHandler({ eventLog });
+      const peerMessageRouter = makePeerRouter({
+        handlers: { 'kring-chat-message': kringChatHandler },
+      });
+      tryConnectPeerTransport(agent, peerMessageRouter).catch(() => { /* logged inside */ });
       // P6.5 — wire the claim-router hook now that callSkill + override
       // store are both available.  On claim with `tasksToPersonal` on,
       // mirror the claimed task into the primary crew so it shows up in
