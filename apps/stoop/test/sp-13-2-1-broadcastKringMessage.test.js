@@ -137,4 +137,117 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
       { groupId: 'oosterpoort', text: '   Hi buurt!  ', msgId: 'm' });
     expect(calls[0].body).toBe('Hi buurt!');
   });
+
+  /* ── Hybrid: local mirror writes to itemStore so the sender's own
+   *           chat persists across reloads + appears in the same
+   *           kring-chat history the receiver reads from. ── */
+
+  it('writes the outgoing chat to itemStore as a kring-chat-message item', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    bundle.chat.send = vi.fn(async () => ({ ok: true }));
+    const r = await callSkill(bundle.agent, 'broadcastKringMessage', {
+      groupId: 'oosterpoort', text: 'Hoi buurt!', msgId: 'm-local-1', ts: 1735_000_000_000,
+    });
+    expect(r.itemId).toBeTruthy();
+    const item = await bundle.itemStore.getById(r.itemId);
+    expect(item.type).toBe('kring-chat-message');
+    expect(item.text).toBe('Hoi buurt!');
+    expect(item.source.circleId).toBe('oosterpoort');
+    expect(item.source.msgId).toBe('m-local-1');
+    expect(item.source.ts).toBe(1735_000_000_000);
+    expect(item.source.from).toBe(ANNE);
+  });
+
+  it('deduplicates the local mirror by msgId across resends', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    bundle.chat.send = vi.fn(async () => ({ ok: true }));
+    const r1 = await callSkill(bundle.agent, 'broadcastKringMessage', {
+      groupId: 'oosterpoort', text: 'first', msgId: 'dup-id',
+    });
+    const r2 = await callSkill(bundle.agent, 'broadcastKringMessage', {
+      groupId: 'oosterpoort', text: 'second', msgId: 'dup-id',
+    });
+    expect(r2.itemId).toBe(r1.itemId);
+    const open = await bundle.itemStore.listOpen({ type: 'kring-chat-message' });
+    expect(open).toHaveLength(1);
+  });
+});
+
+describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
+  it('mirrors a remote envelope to itemStore as a kring-chat-message item', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    const r = await callSkill(bundle.agent, 'ingestKringMessage', {
+      payload: {
+        subtype: 'kring-chat-message',
+        circleId: 'oosterpoort', msgId: 'rm-1',
+        text: 'Hoi buurt!', ts: 1735_000_000_000,
+        fromActor: BOB, fromWebid: BOB,
+      },
+      fromPubKey: 'pk-bob-stableid',
+      fromNknAddr: 'nkn-addr-bob',
+    });
+    expect(r.ok).toBe(true);
+    const item = await bundle.itemStore.getById(r.itemId);
+    expect(item.type).toBe('kring-chat-message');
+    expect(item.text).toBe('Hoi buurt!');
+    expect(item.source.circleId).toBe('oosterpoort');
+    expect(item.source.msgId).toBe('rm-1');
+    expect(item.source.fromActor).toBe(BOB);
+    expect(item.source.fromPubKey).toBe('pk-bob-stableid');
+    expect(item.source.fromNknAddr).toBe('nkn-addr-bob');
+  });
+
+  it('dedupes by msgId on resend (idempotent ingest)', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    const payload = {
+      subtype: 'kring-chat-message',
+      circleId: 'oosterpoort', msgId: 'dedup-1',
+      text: 'Hi', ts: 1, fromActor: BOB,
+    };
+    const r1 = await callSkill(bundle.agent, 'ingestKringMessage', { payload, fromPubKey: 'pk-bob' });
+    const r2 = await callSkill(bundle.agent, 'ingestKringMessage', { payload, fromPubKey: 'pk-bob' });
+    expect(r1.ok).toBe(true);
+    expect(r2.deduped).toBe(true);
+    const open = await bundle.itemStore.listOpen({ type: 'kring-chat-message' });
+    expect(open).toHaveLength(1);
+  });
+
+  it('drops chats from peers muted via mutePeer skill', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    // Mute BOB via the regular skill (mirrors how a user would do it
+    // from the UI; populates the same internal muted Set).
+    await callSkill(bundle.agent, 'mutePeer', { peerWebid: BOB });
+    // mutePeer resolves BOB → 'sid-bob' via MemberMap, so the muted
+    // set is keyed by stableId.  Mirror the wire shape chat.send
+    // produces: include fromStableId so the receiver's check hits.
+    const r = await callSkill(bundle.agent, 'ingestKringMessage', {
+      payload: {
+        subtype: 'kring-chat-message',
+        circleId: 'oosterpoort', msgId: 'mute-1',
+        text: 'Hi', ts: 1, fromActor: BOB, fromWebid: BOB,
+        fromStableId: 'sid-bob',
+      },
+      fromPubKey: 'pk-bob',
+    });
+    expect(r.muted).toBe(true);
+    const open = await bundle.itemStore.listOpen({ type: 'kring-chat-message' });
+    expect(open).toHaveLength(0);
+  });
+
+  it('rejects malformed payloads', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    expect(await callSkill(bundle.agent, 'ingestKringMessage', {})).toEqual({ error: 'payload required' });
+    expect(await callSkill(bundle.agent, 'ingestKringMessage',
+      { payload: { msgId: 'x', text: 't', ts: 1 } })).toEqual({ error: 'circleId required' });
+    expect(await callSkill(bundle.agent, 'ingestKringMessage',
+      { payload: { circleId: 'g', text: 't', ts: 1 } })).toEqual({ error: 'msgId required' });
+    expect(await callSkill(bundle.agent, 'ingestKringMessage',
+      { payload: { circleId: 'g', msgId: 'x', ts: 1 } })).toEqual({ error: 'text required' });
+  });
 });

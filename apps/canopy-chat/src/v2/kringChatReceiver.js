@@ -19,18 +19,27 @@ const DEFAULT_DEDUP_CAP = 256;
  * Build the kring-chat-message peer handler.
  *
  * @param {object} args
- * @param {{append: Function}} args.eventLog
- * @param {Set<string> | null} [args.dedup]   shared dedup set (msgId);
- *                                            internal LRU if omitted
+ * @param {{append: Function}} args.eventLog                    live-render append
+ * @param {Function} [args.ingest]                              async (payload, fromNknAddr) =>
+ *                                                              { ok | deduped | evicted | muted | error }
+ *                                                              Typically `(p, n) => callSkill('stoop',
+ *                                                              'ingestKringMessage', {payload: p, fromNknAddr: n})`.
+ *                                                              When provided, mute/eviction/dedup come
+ *                                                              from the durable store; eventLog append
+ *                                                              is suppressed when the ingest returns a
+ *                                                              non-`ok` result (so muted/evicted/deduped
+ *                                                              chats don't appear in the bubble stream).
+ * @param {Set<string> | null} [args.dedup]                     local-LRU dedup (used when ingest is absent)
  * @param {(payload: object, fromNknAddr: string) => string | null}
- *        [args.resolveActor]  optional projector (e.g. webid → display)
+ *        [args.resolveActor]                                   optional projector (e.g. webid → display)
  * @param {{warn?: Function, info?: Function, debug?: Function}}
  *        [args.logger]
- * @param {number} [args.dedupCap]            internal LRU cap
+ * @param {number} [args.dedupCap]                              internal LRU cap
  * @returns {(fromNknAddr: string, payload: object) => void}
  */
 export function makeKringChatPeerHandler({
   eventLog,
+  ingest      = null,
   dedup       = null,
   resolveActor = null,
   logger      = console,
@@ -39,9 +48,12 @@ export function makeKringChatPeerHandler({
   if (!eventLog || typeof eventLog.append !== 'function') {
     throw new Error('makeKringChatPeerHandler: eventLog.append required');
   }
+  // When `ingest` handles dedup durably we still keep a tiny local
+  // LRU as a fast-path so we don't double-append to eventLog when
+  // the same envelope arrives twice in the same render frame.
   const seen = dedup ?? new LruSet(dedupCap);
 
-  return function onKringChatMessage(fromNknAddr, payload) {
+  return async function onKringChatMessage(fromNknAddr, payload) {
     if (!isValidEnvelope(payload)) {
       logger.warn?.('[kring-chat] dropping malformed envelope', payload);
       return;
@@ -51,6 +63,23 @@ export function makeKringChatPeerHandler({
       return;
     }
     seen.add(payload.msgId);
+
+    // Durable mirror first (mute + eviction + dedup live there).  When
+    // the receiver-side host doesn't wire ingest (e.g. tests), the
+    // local LruSet + eventLog still keeps the live render coherent.
+    if (typeof ingest === 'function') {
+      try {
+        const r = await ingest(payload, fromNknAddr);
+        if (r?.evicted) { logger.info?.('[kring-chat] dropped (evicted)', payload.msgId); return; }
+        if (r?.muted)   { logger.info?.('[kring-chat] dropped (muted)',   payload.msgId); return; }
+        if (r?.error)   { logger.warn?.('[kring-chat] ingest error',      r.error);       return; }
+        // r?.deduped: skip the live append (msg already in eventLog
+        // from a prior arrival) so we don't duplicate bubbles.
+        if (r?.deduped) return;
+      } catch (err) {
+        logger.warn?.('[kring-chat] ingest threw — falling back to eventLog only', err?.message ?? err);
+      }
+    }
 
     const actor = (typeof resolveActor === 'function'
       ? resolveActor(payload, fromNknAddr)
