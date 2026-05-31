@@ -47,6 +47,7 @@ import {
   ensureDmThread, updatePeerDisplay,
 } from '../core/threadState.js';
 import { makePeerRouter }      from '../../../canopy-chat/src/core/handlers/peerRouter.js';
+import { makeKringChatPeerHandler } from '../../../canopy-chat/src/v2/kringChatReceiver.js';
 import { makeHandleChatMessage }
                                from '../../../canopy-chat/src/core/handlers/chatMessage.js';
 import { makeHandleBuurtPeerIntro }
@@ -344,6 +345,22 @@ export default function ChatScreen({
       }),
       'file-share':            makeHandleFileShare({
         addMainBubble, publishEvent,
+      }),
+      // SP-13.2.1 — kring chat-message: ingest into stoop's itemStore
+      // (durable + mute/eviction filtered) + append to the shared
+      // eventLog so CircleLauncherScreen's GESPREK tab renders the
+      // bubble.  Mute/eviction suppression follows ingest's verdict
+      // (same shape as /post via ingestRemotePost).
+      'kring-chat-message':    makeKringChatPeerHandler({
+        eventLog: eventLogRef.current,
+        ingest:   async (payload, fromNknAddr) => {
+          try {
+            return await callSkill('stoop', 'ingestKringMessage', { payload, fromNknAddr });
+          } catch (err) {
+            console.warn('[kring-chat] ingestKringMessage failed:', err?.message ?? err);
+            return { error: String(err?.message ?? err) };
+          }
+        },
       }),
     };
     const defaultHandler = makeHandleChatMessage({
