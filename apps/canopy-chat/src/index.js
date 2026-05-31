@@ -61,7 +61,11 @@ export {
 export { makeProposal, approveProposal, pendingApprovers } from './v2/circleConsensus.js';
 // P6.2 — persistence layer for multi-admin proposals.
 export { createProposalStore, localStorageProposalIo } from './v2/circleProposalStore.js';
-export { eventCircleId, buildCircleStream } from './v2/circleStream.js';
+export {
+  eventCircleId, buildCircleStream,
+  // SP-13 — kring-scoped stream + chip filters (board 2B / 8C).
+  buildKringStream, KRING_STREAM_KIND_FILTERS,
+} from './v2/circleStream.js';
 // P6.3 — per-circle activity preview + unread count for launcher tiles.
 export { buildTilePreviews, renderSubtitle, bumpSeenAt } from './v2/circleTilePreviews.js';
 // P6.5 — claim router: mirror claimed tasks into the personal crew

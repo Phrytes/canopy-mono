@@ -32,6 +32,8 @@ import {
   buildNearbyModel,
   // P6.M7 #349 — "My things" private notes-list (board 10A).
   myThingsFromListFiles,
+  // SP-13 — kring-scoped stream + chip filters + row actions (board 2B / 8C).
+  buildKringStream, KRING_STREAM_KIND_FILTERS, actionsForStreamRow,
 } from '@canopy-app/canopy-chat';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
@@ -457,6 +459,8 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
         callSkill={callSkill}
         policy={selectedPolicy}
         myListTasks={myListTasks}
+        eventLog={eventLog}
+        circles={circles}
         onBack={closeCircle}
         onSettings={() => setView('settings')}
         onMine={() => setView('override')}
@@ -637,17 +641,31 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
   );
 }
 
-function CircleDetail({ circle, items, callSkill, policy, myListTasks = [], onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules }) {
-  // P6.1 — gate feature-bound action buttons against the policy's
-  // Functies axis.  houseRules + memberDirectory landed first; #340
-  // closes the loop on the file browser (Folio surfaces the kring's
-  // shared lists + notes; board 10).
+// SP-13 — kring content view (board 2B / 8C).  Replaces the action-grid
+// scaffolding as the per-circle landing surface.  Admin actions
+// (Settings, Mine, ViewAs, …) collapse into a `⋯` overflow menu in the
+// header, gated on the Functies axis (same gates the old grid used).
+function CircleDetail({
+  circle, items, callSkill, policy, myListTasks = [],
+  eventLog, circles = [],
+  onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules,
+}) {
+  // P6.1 — Functies-axis gating for the overflow menu items.
   const showRules    = isFeatureEnabled(policy, 'houseRules');
   const showViewAs   = isFeatureEnabled(policy, 'memberDirectory');
   const showFiles    = isFeatureEnabled(policy, 'lists') || isFeatureEnabled(policy, 'notes');
-  // 5.9d — Proof-of-Location placeholder. Probe `getPolStatus` on mount;
-  // when unregistered (today's state) the helper returns {configured:false}
-  // and the row renders "Not configured". Real attestation in [[5.9d-followup]].
+
+  // SP-13 — kring stream rows scoped to this circle + the active chip.
+  const [kindFilter, setKindFilter] = useState('all');
+  const rows = useMemo(() => buildKringStream({
+    events:    eventLog?.query ? eventLog.query({ excludeMuted: true }) : [],
+    circles,
+    circleId:  circle?.id ?? null,
+    kindFilter,
+  }), [eventLog, circles, circle?.id, kindFilter]);
+
+  // 5.9d — Proof-of-Location placeholder.  Kept under the kring view as
+  // a passive status; real attestation lands in [[5.9d-followup]].
   const [pol, setPol] = useState(null);
   useEffect(() => {
     let alive = true;
@@ -659,46 +677,77 @@ function CircleDetail({ circle, items, callSkill, policy, myListTasks = [], onBa
     return () => { alive = false; };
   }, [callSkill, circle?.id]);
 
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <View style={styles.page} testID="circle-detail">
       <View style={styles.bar}>
         <Pressable onPress={onBack} accessibilityRole="button">
           <Text style={styles.back}>{t('circle.back')}</Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('circle.kring.more')}
+          testID="circle-detail-more"
+          onPress={() => setMenuOpen((v) => !v)}
+          style={styles.moreBtn}
+        >
+          <Text style={styles.moreBtnText}>⋯</Text>
+        </Pressable>
       </View>
       <Text style={styles.title}>{circle.name || circle.id}</Text>
       {circle.memberCount != null ? (
         <Text style={styles.tileMeta}>{t('circle.members', { count: circle.memberCount })}</Text>
       ) : null}
-      <View style={styles.detailActions}>
-        <Pressable onPress={onSettings} accessibilityRole="button" testID="circle-detail-settings" style={styles.detailAction}>
-          <Text style={styles.detailActionText}>{t('circle.settings.title')}</Text>
-        </Pressable>
-        <Pressable onPress={onMine} accessibilityRole="button" testID="circle-detail-mine" style={styles.detailAction}>
-          <Text style={styles.detailActionText}>{t('circle.override.title')}</Text>
-        </Pressable>
-        {showViewAs ? (
-          <Pressable onPress={onViewAs} accessibilityRole="button" testID="circle-detail-viewas" style={styles.detailAction}>
-            <Text style={styles.detailActionText}>{t('circle.viewAs.title')}</Text>
+
+      {menuOpen ? (
+        <View style={styles.moreMenu} testID="circle-detail-more-menu">
+          <Pressable onPress={() => { setMenuOpen(false); onSettings?.(); }} style={styles.moreItem} testID="circle-detail-settings">
+            <Text style={styles.moreItemText}>{t('circle.settings.title')}</Text>
           </Pressable>
-        ) : null}
-        <Pressable onPress={onAdvisor} accessibilityRole="button" testID="circle-detail-advisor" style={styles.detailAction}>
-          <Text style={styles.detailActionText}>{t('circle.advisor.title')}</Text>
-        </Pressable>
-        <Pressable onPress={onSkills} accessibilityRole="button" testID="circle-detail-skills" style={styles.detailAction}>
-          <Text style={styles.detailActionText}>{t('circle.skills.editor_title')}</Text>
-        </Pressable>
-        {showFiles ? (
-          <Pressable onPress={onFiles} accessibilityRole="button" testID="circle-detail-files" style={styles.detailAction}>
-            <Text style={styles.detailActionText}>{t('circle.folio.title')}</Text>
+          <Pressable onPress={() => { setMenuOpen(false); onMine?.(); }} style={styles.moreItem} testID="circle-detail-mine">
+            <Text style={styles.moreItemText}>{t('circle.override.title')}</Text>
           </Pressable>
-        ) : null}
-        {showRules ? (
-          <Pressable onPress={onRules} accessibilityRole="button" testID="circle-detail-rules" style={styles.detailAction}>
-            <Text style={styles.detailActionText}>{t('circle.rules.title')}</Text>
+          <Pressable onPress={() => { setMenuOpen(false); onAdvisor?.(); }} style={styles.moreItem} testID="circle-detail-advisor">
+            <Text style={styles.moreItemText}>{t('circle.advisor.title')}</Text>
           </Pressable>
-        ) : null}
+          <Pressable onPress={() => { setMenuOpen(false); onSkills?.(); }} style={styles.moreItem} testID="circle-detail-skills">
+            <Text style={styles.moreItemText}>{t('circle.skills.editor_title')}</Text>
+          </Pressable>
+          {showViewAs ? (
+            <Pressable onPress={() => { setMenuOpen(false); onViewAs?.(); }} style={styles.moreItem} testID="circle-detail-viewas">
+              <Text style={styles.moreItemText}>{t('circle.viewAs.title')}</Text>
+            </Pressable>
+          ) : null}
+          {showFiles ? (
+            <Pressable onPress={() => { setMenuOpen(false); onFiles?.(); }} style={styles.moreItem} testID="circle-detail-files">
+              <Text style={styles.moreItemText}>{t('circle.folio.title')}</Text>
+            </Pressable>
+          ) : null}
+          {showRules ? (
+            <Pressable onPress={() => { setMenuOpen(false); onRules?.(); }} style={styles.moreItem} testID="circle-detail-rules">
+              <Text style={styles.moreItemText}>{t('circle.rules.title')}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
+      <View style={styles.chipRow} testID="circle-detail-chips">
+        {KRING_STREAM_KIND_FILTERS.map((key) => (
+          <Pressable
+            key={key}
+            onPress={() => setKindFilter(key)}
+            style={[styles.chip, kindFilter === key && styles.chipActive]}
+            accessibilityRole="button"
+            testID={`circle-detail-chip-${key}`}
+          >
+            <Text style={[styles.chipText, kindFilter === key && styles.chipTextActive]}>
+              {t(`circle.kring.filter_${key}`)}
+            </Text>
+          </Pressable>
+        ))}
       </View>
+
       <View style={styles.polRow} testID="circle-detail-pol">
         <Text style={styles.polLabel}>{t('circle.pol.title')}</Text>
         <Text style={styles.polValue}>{formatPolStatus(pol, t)}</Text>
@@ -715,17 +764,41 @@ function CircleDetail({ circle, items, callSkill, policy, myListTasks = [], onBa
           ))}
         </View>
       ) : null}
-      <ScrollView contentContainerStyle={styles.list}>
-        {(!items || items.length === 0) ? (
-          <Text style={styles.muted}>{t('circle.detail_empty')}</Text>
+
+      <ScrollView contentContainerStyle={styles.list} testID="circle-detail-stream">
+        {rows.length === 0 ? (
+          <Text style={styles.muted}>
+            {kindFilter && kindFilter !== 'all'
+              ? t('circle.kring.empty_filtered')
+              : t('circle.kring.empty')}
+          </Text>
         ) : (
-          items.map((it, i) => (
-            <View key={it.id ?? i} style={styles.tile}>
-              <Text style={styles.tileName}>
-                {it.label || it.title || it.text || it.name || String(it.id ?? '')}
-              </Text>
-            </View>
-          ))
+          rows.map((row) => {
+            const payload = row.event?.payload ?? {};
+            const text = payload.text || payload.title || payload.body || String(row.id ?? '');
+            const actions = actionsForStreamRow(row);
+            return (
+              <View key={row.id} style={styles.row}>
+                <Text style={styles.rowName} numberOfLines={2}>{text}</Text>
+                <Text style={styles.rowMeta}>
+                  {[row.actor, row.app].filter(Boolean).join(' · ')}
+                </Text>
+                {actions.length > 0 ? (
+                  <View style={styles.rowActions}>
+                    {actions.map((a) => (
+                      <Pressable
+                        key={a.id}
+                        style={styles.rowActionBtn}
+                        onPress={() => console.info('[kring] action', a.action, row.id)}
+                      >
+                        <Text style={styles.rowActionText}>{t(a.label)}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            );
+          })
         )}
       </ScrollView>
     </View>
@@ -853,10 +926,26 @@ const styles = StyleSheet.create({
   input:      { flex: 1, padding: 11, borderWidth: 1, borderColor: theme.color.accent, borderRadius: 8, backgroundColor: theme.color.white, fontSize: 14 },
   createBtn:  { width: 42, paddingVertical: 11, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
   createBtnText: { color: theme.color.white, fontSize: 16, fontWeight: '700' },
-  // Shared row styles used by NearbyScreen + MyThingsScreen.
+  // Shared row styles used by NearbyScreen + MyThingsScreen + SP-13 kring stream.
   row:        { padding: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card, marginBottom: 6 },
   rowName:    { fontSize: 14, fontWeight: '600', color: theme.color.ink },
   rowMeta:    { fontSize: 12, color: theme.color.inkSoft, marginTop: 2 },
+  // SP-13 — header overflow `⋯` trigger + collapsible menu.
+  moreBtn:        { paddingHorizontal: 10, paddingVertical: 4 },
+  moreBtnText:    { fontSize: 22, color: theme.color.inkSoft, lineHeight: 24 },
+  moreMenu:       { borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card, padding: 4, marginTop: 4, marginBottom: 4 },
+  moreItem:       { paddingVertical: 9, paddingHorizontal: 12 },
+  moreItemText:   { fontSize: 13, color: theme.color.ink },
+  // SP-13 — board-2B kind filter chips (Alles / Vraag / Aanbod / Lenen).
+  chipRow:        { flexDirection: 'row', gap: 6, marginTop: 6, marginBottom: 4 },
+  chip:           { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.card },
+  chipActive:     { backgroundColor: theme.color.accent, borderColor: theme.color.accent },
+  chipText:       { fontSize: 12, color: theme.color.inkSoft },
+  chipTextActive: { color: theme.color.paper, fontWeight: '600' },
+  // SP-13 — per-row action buttons (Ik help / Negeer …).
+  rowActions:     { flexDirection: 'row', gap: 6, marginTop: 8 },
+  rowActionBtn:   { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.paper },
+  rowActionText:  { fontSize: 12, color: theme.color.ink },
   ownProfile: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.color.line },
   ownProfileTitle: { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginBottom: 4 },
   // P6.5 #342 — "ON YOUR LIST" section on CircleDetail.

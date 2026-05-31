@@ -169,6 +169,16 @@
         "via-hop": { "text": "Via contact", "doc": "Match source badge: reached via a one-hop relay." }
       }
     },
+    "kring": {
+      "filter_all":    { "text": "Alles", "doc": "SP-13 — kring-stream filter chip." },
+      "filter_vraag":  { "text": "Vraag", "doc": "SP-13 — filter chip." },
+      "filter_aanbod": { "text": "Aanbod", "doc": "SP-13 — filter chip." },
+      "filter_leen":   { "text": "Lenen", "doc": "SP-13 — filter chip." },
+      "post_fab":      { "text": "+", "doc": "SP-13 — compose FAB (mobile is icon-only)." },
+      "more":          { "text": "Meer", "doc": "SP-13 — overflow menu trigger." },
+      "empty":         { "text": "Nog niks hier.", "doc": "SP-13 — empty state." },
+      "empty_filtered":{ "text": "Niks in dit filter.", "doc": "SP-13 — empty state when filtered." }
+    },
     "folio": {
       "title":      { "text": "Bestanden", "doc": "Circle file-browser heading (board 10B)." },
       "all":        { "text": "Alles", "doc": "File filter: all files." },

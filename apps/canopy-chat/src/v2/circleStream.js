@@ -60,3 +60,37 @@ export function buildCircleStream({ events = [], circles = [] } = {}) {
     })
     .sort((a, b) => b.ts - a.ts);
 }
+
+/**
+ * SP-13 — kring-scoped Stream projection (board 2B right / 8C).  Tap
+ * a kring on the launcher and you land on its content surface: the
+ * cross-kring `buildCircleStream` rows narrowed to a single circle,
+ * optionally filtered by a row "kind" (vraag / aanbod / leen / chore /
+ * reminder — same enum the chips on board 2B render).
+ *
+ * `kindFilter = null` (or 'all') = no kind filter.  Unknown kinds pass
+ * through unfiltered; the helper is forward-compatible with new chips.
+ *
+ * @param {object}   [opts]
+ * @param {object[]} [opts.events=[]]
+ * @param {object[]} [opts.circles=[]]
+ * @param {?string}  [opts.circleId=null]   active circle (null = unscoped)
+ * @param {?string}  [opts.kindFilter=null] one of KIND_CHIPS keys, or null
+ * @returns {ReturnType<typeof buildCircleStream>}
+ */
+export function buildKringStream({
+  events = [], circles = [], circleId = null, kindFilter = null,
+} = {}) {
+  const rows = buildCircleStream({ events, circles });
+  const scoped = circleId == null ? rows : rows.filter((r) => r.circleId === circleId);
+  if (!kindFilter || kindFilter === 'all') return scoped;
+  const wanted = String(kindFilter).toLowerCase();
+  return scoped.filter((r) => {
+    const p = r.event?.payload && typeof r.event.payload === 'object' ? r.event.payload : {};
+    const cands = [p.kind, r.event?.type, r.type, r.event?.kind];
+    return cands.some((c) => typeof c === 'string' && c.toLowerCase() === wanted);
+  });
+}
+
+/** Kind keys the board 2B filter strip exposes, in render order. */
+export const KRING_STREAM_KIND_FILTERS = ['all', 'vraag', 'aanbod', 'leen'];
