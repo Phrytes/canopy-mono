@@ -734,10 +734,13 @@ function CircleDetail({
         <Pressable onPress={onBack} accessibilityRole="button">
           <Text style={styles.back}>{t('circle.back')}</Text>
         </Pressable>
-        {/* SP-13.4 — Chat ↔ Scherm pill (v2 §4). */}
+        {/* SP-13.4 — Chat ↔ Scherm pill (v2 §4).
+            React Native's accessibilityRole vocabulary doesn't include
+            'group' (that's a web-only ARIA role).  The buttons inside
+            carry their own role + accessibilityState; the wrapper just
+            needs a label for screen-reader context. */}
         <View
           style={styles.viewToggle}
-          accessibilityRole="group"
           accessibilityLabel={t('circle.kring.view_toggle_label')}
           testID="circle-detail-view-toggle"
         >
