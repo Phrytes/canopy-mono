@@ -97,6 +97,15 @@
       "tasksToPersonal":    { "text": "Tasks → My things", "doc": "Override: claimed circle tasks land in my personal list." },
       "calendarToPersonal": { "text": "Calendar → my calendar", "doc": "Override: circle events also show in my calendar." }
     },
+    "member": {
+      "notifications": {
+        "section_title": { "text": "Notifications", "doc": "α.5b · audit #6 — heading of the per-kring push-toggles block on the personal override screen (board 6A)." },
+        "on_mention":    { "text": "On @-mention", "doc": "α.5b — push toggle: notify me when someone @-mentions me in this circle (default on)." },
+        "on_message":    { "text": "On every message", "doc": "α.5b — push toggle: notify me for every new chat message in this circle (default off — noisy)." },
+        "on_new_item":   { "text": "On new item", "doc": "α.5b — push toggle: notify me when a new noticeboard / agenda / task / announcement item is added in this circle (default on)." },
+        "on_proposal":   { "text": "On new proposal", "doc": "α.5b — push toggle: notify me when a multi-admin voorstel (P6.2) is created in this circle (default on)." }
+      }
+    },
     "availability": {
       "title":         { "text": "Availability", "doc": "Cross-circle availability screen heading (board 6C)." },
       "holiday":       { "text": "Holiday mode", "doc": "Availability section: away until a date." },

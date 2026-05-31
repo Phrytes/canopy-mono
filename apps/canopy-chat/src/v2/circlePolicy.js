@@ -117,11 +117,19 @@ export const DEFAULT_MEMBER_OVERRIDE = {
   chatOff:            false,
   revealOpen:         false,
   agentsMayContactMe: true,
-  // P6.M4 (board 6A) — two separate push toggles.  Mentions are on by
-  // default so an admin/owner mentioning you doesn't fall silent; the
-  // "every message" toggle is off by default so a busy circle doesn't
-  // spam the notification tray.
-  push:               { onMention: true, onEveryMessage: false },
+  // P6.M4 (board 6A) — per-kring push toggles.  α.5b extends the v0
+  // mention/message pair with two more types: noticeboard/agenda/task
+  // items (`onNewItem`) and multi-admin voorstellen (`onProposal`).
+  // Mentions, new items, and proposals are on by default so an actor
+  // mentioning you / proposing something / posting a new item doesn't
+  // fall silent; the "every message" toggle stays off by default so a
+  // busy circle doesn't spam the notification tray.
+  push: {
+    onMention:      true,
+    onEveryMessage: false,
+    onNewItem:      true,
+    onProposal:     true,
+  },
   flowThrough:        { tasksToPersonal: false, calendarToPersonal: false },
 };
 
@@ -136,6 +144,8 @@ export function normalizeMemberOverride(stored = {}) {
     push: {
       onMention:      typeof ps.onMention      === 'boolean' ? ps.onMention      : true,
       onEveryMessage: typeof ps.onEveryMessage === 'boolean' ? ps.onEveryMessage : false,
+      onNewItem:      typeof ps.onNewItem      === 'boolean' ? ps.onNewItem      : true,
+      onProposal:     typeof ps.onProposal     === 'boolean' ? ps.onProposal     : true,
     },
     flowThrough: {
       tasksToPersonal:    !!ft.tasksToPersonal,
@@ -156,12 +166,23 @@ export function mergeMemberOverride(base, patch = {}) {
 
 /**
  * P6.M4 — decide whether to push a notification given the override + the
- * message kind ('mention' | 'message').  Pure; consumers wire this into
- * the existing notifier flow ([[5.7b]] isSuppressed hook).
+ * notification kind.  Pure; consumers wire this into the existing
+ * notifier flow ([[5.7b]] isSuppressed hook).
+ *
+ * Kinds (α.5b):
+ *   'mention'  — someone @-mentioned me
+ *   'message'  — any new message in the circle
+ *   'newItem'  — a new noticeboard / agenda / task / announcement item
+ *   'proposal' — a new multi-admin voorstel (P6.2)
+ *
+ * Unknown kinds return `false` conservatively — a new notification
+ * type stays silent until an override field is added for it here.
  */
 export function shouldPushNotify(override, kind) {
   const o = normalizeMemberOverride(override);
-  if (kind === 'mention') return o.push.onMention;
-  if (kind === 'message') return o.push.onEveryMessage;
+  if (kind === 'mention')  return o.push.onMention;
+  if (kind === 'message')  return o.push.onEveryMessage;
+  if (kind === 'newItem')  return o.push.onNewItem;
+  if (kind === 'proposal') return o.push.onProposal;
   return false;
 }

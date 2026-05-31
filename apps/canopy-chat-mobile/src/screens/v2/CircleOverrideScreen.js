@@ -15,6 +15,15 @@ import { t } from '../../core/localisation.js';
 
 const TOP_TOGGLES = ['chatOff', 'revealOpen', 'agentsMayContactMe'];
 const FLOW_TOGGLES = ['tasksToPersonal', 'calendarToPersonal'];
+// α.5b — per-kring push toggles (board 6A · audit #6).  Mirrors web's
+// PUSH_TOGGLES row pattern; locale namespace is
+// `circle.member.notifications.*`.
+const PUSH_TOGGLES = [
+  { key: 'onMention',      i18n: 'on_mention' },
+  { key: 'onEveryMessage', i18n: 'on_message' },
+  { key: 'onNewItem',      i18n: 'on_new_item' },
+  { key: 'onProposal',     i18n: 'on_proposal' },
+];
 
 export default function CircleOverrideScreen({ store, circleId, onBack }) {
   const [working, setWorking] = useState(null);
@@ -58,6 +67,18 @@ export default function CircleOverrideScreen({ store, circleId, onBack }) {
               value={!!working[key]}
               onValueChange={(v) => patch({ [key]: v })}
               testID={`override-${key}`}
+            />
+          </View>
+        ))}
+
+        <Text style={styles.section}>{t('circle.member.notifications.section_title')}</Text>
+        {PUSH_TOGGLES.map(({ key, i18n }) => (
+          <View key={key} style={styles.row}>
+            <Text style={styles.rowLabel}>{t(`circle.member.notifications.${i18n}`)}</Text>
+            <Switch trackColor={{ true: theme.color.accent, false: theme.color.trackOff }} thumbColor={theme.color.white}
+              value={!!working.push?.[key]}
+              onValueChange={(v) => patch({ push: { [key]: v } })}
+              testID={`override-push-${key}`}
             />
           </View>
         ))}
