@@ -25,10 +25,13 @@ import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
 import { rehydrateKringChatsFromStoop } from '../../src/v2/kringChatRehydrate.js';
 import {
   createKringRecipeStore, localStorageRecipeIo, getActiveRecipe,
+  addRecipe, renameRecipe, removeRecipe, setActiveRecipe,
+  addBlock, removeBlock, moveBlock, updateBlock, updateRecipe,
 } from '../../src/v2/kringRecipe.js';
 import { materializeRecipe } from '../../src/v2/kringRecipeBlocks.js';
 import { renderCircleKring } from './circleKring.js';
 import { renderCircleScreen } from './circleScreen.js';
+import { renderRecipeEditor } from './circleRecipeEditor.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '../../src/v2/circleHop.js';
 import { mergeSkill, normalizeSkill } from '../../src/v2/circleSkills.js';
@@ -361,6 +364,10 @@ function showKring(id, circle, policy) {
     mine:     () => showOverride(id),
     advisor:  () => showAdvisor(id),
     skills:   () => showSkills(id),
+    // α.1d — recipe editor (scherm-mode page composition).  Available
+    // to everyone for V0; admin-gating + multi-admin consensus are
+    // follow-up slices.
+    recipes:  () => showRecipeEditor(id),
     ...(allowViewAs ? { viewAs: () => showViewAs(id) } : {}),
     ...(allowFiles  ? { files:  () => showFolio(id) } : {}),
     ...(allowRules  ? { rules:  () => showRules(id) } : {}),
@@ -473,6 +480,51 @@ function showSkills(id) {
     },
   });
   rerender();
+}
+
+// α.1d — recipe editor surface.  Two modes: 'book' (list recipes) and
+// 'recipe' (edit one recipe's blocks).  Host owns book + editing-recipe
+// id; each mutation persists via recipeStore.update then refreshes the
+// in-memory copy + the scherm screenBlocks for whatever circle is open.
+function showRecipeEditor(circleId) {
+  hideCircleTabBar(tabBarEl);
+  let book = { recipes: [], activeId: null };
+  let mode = 'book';
+  let editingRecipeId = null;
+
+  const refresh = async () => {
+    try { book = await recipeStore.get(circleId); }
+    catch { book = { recipes: [], activeId: null }; }
+    if (mode === 'recipe' && !book.recipes.some((r) => r.id === editingRecipeId)) {
+      mode = 'book'; editingRecipeId = null;
+    }
+    rerender();
+  };
+
+  const apply = async (mutator) => {
+    try { book = await recipeStore.update(circleId, mutator); }
+    catch (err) { console.warn('[recipe] mutation failed:', err?.message ?? err); }
+    rerender();
+  };
+
+  const rerender = () => {
+    renderRecipeEditor(rootEl, {
+      book, mode, editingRecipeId, t,
+      onBack:         () => showDetail(circleId),
+      onOpenRecipe:   (rid) => { mode = 'recipe'; editingRecipeId = rid; rerender(); },
+      onBackToBook:   () => { mode = 'book'; editingRecipeId = null; rerender(); },
+      onAddRecipe:    (name) => apply((cur) => addRecipe(cur, name)),
+      onRenameRecipe: (rid, name) => apply((cur) => renameRecipe(cur, rid, name)),
+      onRemoveRecipe: (rid) => apply((cur) => removeRecipe(cur, rid)),
+      onSetActive:    (rid) => apply((cur) => setActiveRecipe(cur, rid)),
+      onAddBlock:     (rid, type) => apply((cur) => updateRecipe(cur, rid, (r) => addBlock(r, type))),
+      onRemoveBlock:  (rid, bid) => apply((cur) => updateRecipe(cur, rid, (r) => removeBlock(r, bid))),
+      onMoveBlock:    (rid, bid, idx) => apply((cur) => updateRecipe(cur, rid, (r) => moveBlock(r, bid, idx))),
+      onUpdateBlock:  (rid, bid, patch) => apply((cur) => updateRecipe(cur, rid, (r) => updateBlock(r, bid, patch))),
+    });
+  };
+
+  refresh();   // initial load + render
 }
 
 // Circle-scoped Folio browser (board 10B) — files come from a circle pod's

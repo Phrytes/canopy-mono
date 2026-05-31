@@ -377,6 +377,8 @@ const MORE_ITEMS = [
   { key: 'skills',   labelKey: 'circle.skills.editor_title' },
   { key: 'files',    labelKey: 'circle.folio.title' },
   { key: 'rules',    labelKey: 'circle.rules.title' },
+  // α.1d — edit per-kring scherm recipes (multiple, one marked active).
+  { key: 'recipes',  labelKey: 'circle.recipe.editor.book_title' },
 ];
 
 function collectMoreActions(more, tr) {
