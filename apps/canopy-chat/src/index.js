@@ -68,6 +68,20 @@ export {
 } from './v2/circleStream.js';
 // SP-13.3 — per-kring bottom tabs derived from policy.features (v2 §1).
 export { buildKringTabs, DEFAULT_KRING_TAB } from './v2/kringTabs.js';
+// α.1a/b — scherm "recipe book" model + per-block content materializer
+// (v2 §2 RECEPT · SCHERM-WEERGAVE INRICHTEN).
+export {
+  BLOCK_TYPES, EMPTY_RECIPE_BOOK,
+  emptyRecipe, normalizeRecipe, defaultConfigForBlock,
+  addBlock, removeBlock, moveBlock, updateBlock,
+  normalizeRecipeBook,
+  addRecipe, renameRecipe, removeRecipe,
+  setActiveRecipe, getActiveRecipe, updateRecipe,
+  createKringRecipeStore, localStorageRecipeIo,
+} from './v2/kringRecipe.js';
+export {
+  BLOCK_REGISTRY, materializeBlock, materializeRecipe,
+} from './v2/kringRecipeBlocks.js';
 // P6.3 — per-circle activity preview + unread count for launcher tiles.
 export { buildTilePreviews, renderSubtitle, bumpSeenAt } from './v2/circleTilePreviews.js';
 // P6.5 — claim router: mirror claimed tasks into the personal crew
