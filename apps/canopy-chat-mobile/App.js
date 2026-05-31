@@ -62,11 +62,12 @@ export default function App() {
   // hung boot at a black screen). Headings switch from system serif to
   // Source Serif 4 once it resolves.
   useFonts({ SourceSerif4_400Regular, SourceSerif4_600SemiBold });
-  // M2 (2026-05-29) — the circle launcher is the DEFAULT landing screen
-  // (web already lands on the circle app).  The classic chat shell stays
-  // mounted underneath (so its peer-wiring keeps routing inbound DMs /
-  // mesh even while the launcher is up) and is revealed via "← chat".
-  const [screen, setScreen] = useState('circles');
+  // SP-13.1 (2026-05-31) — there is no separate classic chat shell as a
+  // routable screen.  ChatScreen stays mounted invisibly so its peer-
+  // wiring keeps routing inbound DMs / mesh events; the launcher is the
+  // ONLY visible top-level surface.  Chat now lives inside the kring
+  // view as the GESPREK tab (SP-13.2 will fill the surface; until then
+  // there's a hole where chat used to be reachable as a standalone).
   const [bundle, setBundle] = useState(null);
   const [bootError, setBootError] = useState(null);
   // P6.9 #347 — CREATE-side mnemonic display.  States:
@@ -113,22 +114,9 @@ export default function App() {
     initLocalisation({ lng: 'en' }).then(() => setLocaleReady(true));
   }, []);
 
-  // Android back-gesture / hardware back button — pop chat → circles.
-  // The launcher screen registers its own back-handler that swallows
-  // the gesture while the user is inside a sub-view (circle detail,
-  // settings, …); this hook is the App-level fallback that returns
-  // the user from the classic chat shell back to the kringen launcher.
-  // First-run / mnemonic screens intentionally don't get a back hook
-  // — those are linear flows the user must finish (or restart from).
-  useEffect(() => {
-    if (firstRun !== 'dismissed' || mnemonicState === 'show') return undefined;
-    const handler = () => {
-      if (screen === 'chat') { setScreen('circles'); return true; }
-      return false;
-    };
-    const sub = BackHandler.addEventListener('hardwareBackPress', handler);
-    return () => sub.remove();
-  }, [screen, firstRun, mnemonicState]);
+  // SP-13.1 — the chat shell is no longer a separate routable screen, so
+  // the App-level back handler has nothing to pop.  The launcher's own
+  // back handler (CircleLauncherScreen) handles popping sub-views.
 
   // 5.9b — first-run probe.  Reads AsyncStorage to decide whether to
   // show the welcome screen before booting the bundle.  Errors fall
@@ -290,44 +278,28 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="auto" />
       <View style={styles.root}>
-        {/* ChatScreen is ALWAYS mounted so its peer-wiring stays attached
-            (inbound DMs / mesh land even while the circle launcher is the
-            visible screen). */}
-        <ChatScreen
+        {/* SP-13.1 — ChatScreen stays mounted (peer-wiring keeps routing
+            inbound DMs / mesh) but is visually hidden behind the launcher
+            overlay.  No "← chat" route reveals it; chat now lives inside
+            the kring view as the GESPREK tab (SP-13.2).
+            The styles.hiddenChat below uses absolute positioning so the
+            ChatScreen is mounted + peer-wired but never visible. */}
+        <View style={styles.hiddenChat} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <ChatScreen
+            bundle={bundle}
+            bootError={bootError}
+            eventLog={eventLogRef.current}
+            sessionRef={sessionRef}
+            onSessionChanged={refreshCirclePodWriter}
+          />
+        </View>
+        <CircleLauncherScreen
           bundle={bundle}
-          bootError={bootError}
           eventLog={eventLogRef.current}
-          sessionRef={sessionRef}
-          onSessionChanged={refreshCirclePodWriter}
+          getPodWriter={getCirclePodWriter}
+          /* SP-13.1 — no onBack (no chat shell to fall back to) +
+             no onChatRoute (the kring view IS the chat, no route). */
         />
-        {screen === 'circles' ? (
-          <View style={styles.overlay}>
-            <CircleLauncherScreen
-              bundle={bundle}
-              eventLog={eventLogRef.current}
-              getPodWriter={getCirclePodWriter}
-              onBack={() => setScreen('chat')}
-              // 5.9e — when the tapped circle's `view` axis is 'chat',
-              // the launcher calls this instead of opening the action-grid
-              // detail.  The active-circle dispatch from 5.3 already
-              // scopes posts to the circle's thread, so dismissing the
-              // overlay to reveal the chat shell is enough — no extra
-              // thread-select prop on ChatScreen yet (each circle has a
-              // buurt-scoped thread from #204 that ChatScreen picks up
-              // via its existing thread-sidebar wiring).
-              onChatRoute={(/* circleId */) => setScreen('chat')}
-            />
-          </View>
-        ) : (
-          <Pressable
-            style={styles.pill}
-            accessibilityRole="button"
-            testID="open-circles"
-            onPress={() => setScreen('circles')}
-          >
-            <Text style={styles.pillText}>Circles</Text>
-          </Pressable>
-        )}
       </View>
     </SafeAreaProvider>
   );
@@ -335,16 +307,15 @@ export default function App() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  // Opaque full-bleed overlay so the always-mounted chat shell behind it
-  // doesn't bleed through while the circle launcher is the active screen.
-  overlay: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: theme.color.paper,
+  // SP-13.1 — ChatScreen is kept mounted for its peer-wiring side-effect
+  // but parked off-screen so it never paints over the launcher.  An
+  // alternative is `display: 'none'` but RN can lose layout in that
+  // path on some platforms; absolute-zero-size + pointerEvents=none is
+  // the proven invisible-but-mounted recipe.
+  hiddenChat: {
+    position: 'absolute',
+    top: 0, left: 0,
+    width: 0, height: 0,
+    overflow: 'hidden',
   },
-  pill: {
-    position: 'absolute', top: 8, right: 12,
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: theme.color.accent,
-  },
-  pillText: { color: theme.color.white, fontSize: 12, fontWeight: '600' },
 });

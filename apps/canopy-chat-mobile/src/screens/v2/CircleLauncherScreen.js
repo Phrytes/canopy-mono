@@ -65,7 +65,7 @@ function WithTabBar({ active, onSelect, children }) {
   );
 }
 
-export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatRoute }) {
+export default function CircleLauncherScreen({ bundle, eventLog }) {
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -262,19 +262,8 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
       AsyncStorage.setItem('cc.circleSeenAt', JSON.stringify(next)).catch(() => {});
       return next;
     });
-    // 5.9e — when the circle's `view` axis is 'chat', skip the action-grid
-    // detail and route straight to the chat surface (the active-circle
-    // dispatch from 5.3 already scopes posts to this circle's thread).
-    // Falls through to the default detail when no onChatRoute is wired or
-    // the policy axis isn't set.
-    if (typeof onChatRoute === 'function') {
-      let policyView = null;
-      try {
-        const p = await policyStore.get(c.id);
-        policyView = p?.view ?? null;
-      } catch { /* fresh circle / read failure → fall through */ }
-      if (policyView === 'chat') { onChatRoute(c.id); return; }
-    }
+    // SP-13.1 — no chat-route fallback anymore.  Every tap-on-kring
+    // opens the kring view (which will host the GESPREK tab in SP-13.2).
     setSelected(c);
     setView('detail');
     setItems([]);
@@ -283,7 +272,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
       const got = await loadCircleItems({ callSkill, circleId: c.id });
       setSelected((cur) => { if (cur && cur.id === c.id) setItems(got); return cur; });
     } catch { /* keep empty */ }
-  }, [callSkill, onChatRoute, policyStore]);
+  }, [callSkill]);
 
   const closeCircle = () => { setActiveCircle(null); setSelected(null); setItems([]); setView('list'); };
 
@@ -314,16 +303,13 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
       }
       // Circle detail → close the circle (back to launcher list).
       if (selected) { closeCircle(); return true; }
-      // Launcher root with an onBack callback (e.g. App.js's "← chat"
-      // hand-off) consumes the gesture so the user lands back in chat
-      // instead of being kicked out of the app entirely.
-      if (typeof onBack === 'function') { onBack(); return true; }
-      // True root + no fallback: let the system handle (exit).
+      // SP-13.1 — no onBack fallback (no chat shell to fall back to);
+      // at the launcher root, let the system handle (exit).
       return false;
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', handler);
     return () => sub.remove();
-  }, [view, selected, creating, onBack]);
+  }, [view, selected, creating]);
 
   // Bottom tab bar (Kringen / Stroom / Mij).
   const onTab = (id) => {
@@ -514,13 +500,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, onBack, onChatR
   return (
     <WithTabBar active="kringen" onSelect={onTab}>
       <View style={styles.page} testID="circle-launcher">
-        {onBack ? (
-          <View style={styles.bar}>
-            <Pressable onPress={onBack} accessibilityRole="button" testID="circle-to-chat">
-              <Text style={styles.back}>← chat</Text>
-            </Pressable>
-          </View>
-        ) : null}
+        {/* SP-13.1 — no "← chat" button (no chat shell to navigate to). */}
         <Text style={styles.title}>{t('circle.title')}</Text>
 
         {loading ? (
