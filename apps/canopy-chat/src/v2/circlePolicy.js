@@ -37,7 +37,15 @@ export const DEFAULT_CIRCLE_POLICY = {
     houseRules:      true,
     memberDirectory: true,
   },
-  view:             'chat',
+  // Default 'screen' opens the per-circle detail surface on tap rather
+  // than auto-routing to the classic chat shell.  The chat-route still
+  // works for circles whose admin explicitly sets view='chat' (board
+  // 5.9e / huisgenoten-style "chat as the kring's front door").  Until
+  // the per-kring stream surface (board 2B right-hand side) is built,
+  // 'screen' lands the user on the action-grid detail — at least they
+  // can navigate to each feature from there instead of being kicked
+  // out to the classic shell.
+  view:             'screen',
   llmTool:          'off',
   agents:           'admin-approval',
   revealPolicy:     'pairwise',

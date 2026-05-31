@@ -14,8 +14,10 @@ describe('renderCircleSettings', () => {
     expect(el.querySelectorAll('.circle-settings__axis')).toHaveLength(5);
     expect(el.querySelector('input[data-feature=chat]').checked).toBe(true);
     expect(el.querySelector('.circle-settings__axis[data-axis=pod] input[value=none]').checked).toBe(true);
-    // 5.9a — view axis is editable; default 'chat'.
-    expect(el.querySelector('.circle-settings__axis[data-axis=view] input[value=chat]').checked).toBe(true);
+    // 5.9a — view axis is editable; default flipped to 'screen' so
+    // tap-on-kring opens the per-circle detail instead of auto-
+    // routing to the classic chat shell (see DEFAULT_CIRCLE_POLICY).
+    expect(el.querySelector('.circle-settings__axis[data-axis=view] input[value=screen]').checked).toBe(true);
   });
 
   it('fires onChange with a feature patch on toggle', () => {
