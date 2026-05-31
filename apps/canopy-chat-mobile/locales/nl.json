@@ -253,6 +253,31 @@
         "admission":      { "text": "Hoe komt iemand nieuw erbij?", "doc": "Rules question: admission." },
         "leaving":        { "text": "Als iemand vertrekt, wat gebeurt er met hun spullen en taken?", "doc": "Rules question: leaving." },
         "responsibility": { "text": "Wie is waarvoor verantwoordelijk?", "doc": "Rules field: responsibility (folded into agreements; shown if filled)." }
+      },
+      "field": {
+        "purpose":        { "text": "Doel",                "doc": "α.1c — rules block short field label." },
+        "admins":         { "text": "Beheerders",          "doc": "α.1c — rules block short field label." },
+        "agreements":     { "text": "Afspraken",           "doc": "α.1c — rules block short field label." },
+        "conflict":       { "text": "Conflict",            "doc": "α.1c — rules block short field label." },
+        "admission":      { "text": "Toetreding",          "doc": "α.1c — rules block short field label." },
+        "leaving":        { "text": "Vertrek",             "doc": "α.1c — rules block short field label." },
+        "responsibility": { "text": "Verantwoordelijkheid","doc": "α.1c — rules block short field label." }
+      }
+    },
+    "screen": {
+      "empty":          { "text": "De admin heeft nog geen scherm ingericht.", "doc": "α.1c — empty book." },
+      "block_empty":    { "text": "{{type}}: nog niets om te tonen.", "doc": "α.1c — per-block empty fallback." },
+      "block_error":    { "text": "{{type}}: laden mislukt", "doc": "α.1c — per-block error fallback." },
+      "block_unknown":  { "text": "Onbekend bloktype: {{type}}", "doc": "α.1c — forward-compat fallback." }
+    },
+    "recipe": {
+      "block": {
+        "announcement": { "text": "Aankondiging", "doc": "α.1b — block palette label." },
+        "noticeboard":  { "text": "Prikbord",     "doc": "α.1b — block palette label." },
+        "agenda":       { "text": "Agenda",       "doc": "α.1b — block palette label." },
+        "rules":        { "text": "Huisregels",   "doc": "α.1b — block palette label." },
+        "photo":        { "text": "Foto",         "doc": "α.1b — block palette label." },
+        "text":         { "text": "Tekst",        "doc": "α.1b — block palette label." }
       }
     }
   },

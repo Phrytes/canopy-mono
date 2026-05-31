@@ -257,11 +257,31 @@ describe('renderCircleKring · SP-13.2 chat-style kring view', () => {
     expect(onViewMode).toHaveBeenCalledTimes(1); // unchanged — re-tap on active = no-op
   });
 
-  it('scherm-mode renders the placeholder body and suppresses bubbles', () => {
+  it('scherm-mode renders the screen body (α.1c) and suppresses bubbles', () => {
+    // No screenBlocks wired → renderCircleScreen falls through to its
+    // own empty-state.  The body must contain a circle-screen subtree
+    // (not chat bubbles).
     const el = mount();
     renderCircleKring(el, { circle, rows, t, viewMode: 'scherm', onViewMode: () => {} });
-    expect(el.querySelector('.circle-kring__placeholder').textContent).toBe('circle.kring.scherm_coming');
+    expect(el.querySelector('.circle-screen')).not.toBeNull();
+    expect(el.querySelector('.circle-screen__empty').textContent).toBe('circle.screen.empty');
     expect(el.querySelectorAll('.circle-kring__bubble')).toHaveLength(0);
+  });
+
+  it('scherm-mode with screenBlocks renders each materialized block', () => {
+    const el = mount();
+    const blocks = [
+      { blockId: 'b1', type: 'announcement', status: 'ok', content: { text: 'Hi!' } },
+      { blockId: 'b2', type: 'text',         status: 'ok', content: { text: 'meer hier' } },
+    ];
+    renderCircleKring(el, {
+      circle, rows, t,
+      viewMode: 'scherm', onViewMode: () => {},
+      screenBlocks: blocks,
+    });
+    expect(el.querySelectorAll('.circle-screen__block')).toHaveLength(2);
+    expect(el.querySelector('.circle-screen__block--announcement')).not.toBeNull();
+    expect(el.querySelector('.circle-screen__block--text')).not.toBeNull();
   });
 
   it('scherm-mode suppresses the composer even when onSend is wired', () => {

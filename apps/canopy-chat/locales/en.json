@@ -47,6 +47,22 @@
       "view_toggle_label": { "text": "Switch between chat and screen view", "doc": "SP-13.4 — a11y group label on the Chat | Scherm pill." },
       "scherm_coming": { "text": "Screen view (admin's recept'd page) lands in a follow-up slice.", "doc": "SP-13.4 — placeholder until the recept renderer is built." }
     },
+    "screen": {
+      "empty":          { "text": "The admin hasn't set up a screen yet.", "doc": "α.1c — shown when the kring's recipe book is empty." },
+      "block_empty":    { "text": "{{type}}: nothing to show here yet.", "doc": "α.1c — per-block empty fallback when a block has no content." },
+      "block_error":    { "text": "{{type}}: couldn't load", "doc": "α.1c — per-block error fallback when materialization throws." },
+      "block_unknown":  { "text": "Unknown block type: {{type}}", "doc": "α.1c — defensive label for a block type the renderer doesn't recognize (forward-compat)." }
+    },
+    "recipe": {
+      "block": {
+        "announcement": { "text": "Announcement", "doc": "α.1b — block palette label." },
+        "noticeboard":  { "text": "Noticeboard",  "doc": "α.1b — block palette label." },
+        "agenda":       { "text": "Agenda",       "doc": "α.1b — block palette label." },
+        "rules":        { "text": "House rules",  "doc": "α.1b — block palette label." },
+        "photo":        { "text": "Photo",        "doc": "α.1b — block palette label." },
+        "text":         { "text": "Text",         "doc": "α.1b — block palette label." }
+      }
+    },
     "streamAction": {
       "help":   { "text": "I'll help", "doc": "Stream row action — accept a question (P6.M3)." },
       "offer":  { "text": "I have one", "doc": "Stream row action — offer to lend." },
@@ -297,6 +313,15 @@
         "admission":      { "text": "How does someone new get in?", "doc": "Rules question: admission." },
         "leaving":        { "text": "When someone leaves, what happens to their stuff and tasks?", "doc": "Rules question: leaving." },
         "responsibility": { "text": "Who is responsible for what?", "doc": "Rules field: responsibility (folded into agreements; shown if filled)." }
+      },
+      "field": {
+        "purpose":        { "text": "Purpose",        "doc": "α.1c — rules block short field label." },
+        "admins":         { "text": "Admins",         "doc": "α.1c — rules block short field label." },
+        "agreements":     { "text": "Agreements",    "doc": "α.1c — rules block short field label." },
+        "conflict":       { "text": "Conflict",       "doc": "α.1c — rules block short field label." },
+        "admission":      { "text": "Admission",      "doc": "α.1c — rules block short field label." },
+        "leaving":        { "text": "Leaving",        "doc": "α.1c — rules block short field label." },
+        "responsibility": { "text": "Responsibility", "doc": "α.1c — rules block short field label." }
       }
     }
   },
