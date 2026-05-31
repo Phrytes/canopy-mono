@@ -71,6 +71,7 @@ function BlockSection({ block }) {
     case 'photo':        body = renderPhoto(block); break;
     case 'noticeboard':  body = renderNoticeboard(block); break;
     case 'agenda':       body = renderAgenda(block); break;
+    case 'tasks':        body = renderTasks(block); break;
     case 'rules':        body = renderRules(block); break;
     default:
       body = <Text style={styles.blockEmptyText}>{t('circle.screen.block_unknown', { type: block.type })}</Text>;
@@ -137,6 +138,21 @@ function renderAgenda(block) {
   );
 }
 
+function renderTasks(block) {
+  const items = block.content?.items ?? [];
+  return (
+    <View>
+      <Text style={styles.blockTitle}>{t('circle.recipe.block.tasks')}</Text>
+      {items.map((task) => (
+        <View key={task.id ?? Math.random().toString(36)} style={styles.taskRow}>
+          {task.circleName ? <Text style={styles.taskCircle}>{task.circleName}</Text> : null}
+          <Text style={styles.taskText}>{task.text ?? ''}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function renderRules(block) {
   const doc = block.content?.doc ?? {};
   const fields = ['purpose', 'admins', 'agreements', 'conflict', 'admission', 'leaving', 'responsibility'];
@@ -197,6 +213,10 @@ const styles = StyleSheet.create({
 
   agendaRow:       { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },
   agendaLabel:     { fontSize: 14, color: theme.color.ink },
+
+  taskRow:         { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line, flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  taskCircle:      { fontSize: 10, fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, flexShrink: 0 },
+  taskText:        { fontSize: 14, color: theme.color.ink, flex: 1 },
 
   rulesField:      { marginBottom: 10 },
   rulesLabel:      { fontSize: 11, fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },

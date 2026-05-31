@@ -69,13 +69,16 @@
       "filter_all":     { "text": "alle kringen",                        "doc": "α.3 — filter summary." },
       "filter_one":     { "text": "1 kring",                             "doc": "α.3 — filter summary." },
       "filter_n":       { "text": "{{count}} kringen",                  "doc": "α.3 — filter summary." },
-      "seed_name":      { "text": "Stroom",                              "doc": "α.3 — name of the auto-seeded default screen." }
+      "seed_name":      { "text": "Stroom",                              "doc": "α.3 — name of the auto-seeded default screen." },
+      "seed_my_things": { "text": "Mijn dingen",                         "doc": "α.4 — seeded screen aggregating tasks." },
+      "seed_my_calendar":{ "text": "Mijn agenda",                        "doc": "α.4 — seeded screen aggregating events." }
     },
     "recipe": {
       "block": {
         "announcement": { "text": "Aankondiging", "doc": "α.1b — block palette label." },
         "noticeboard":  { "text": "Prikbord",     "doc": "α.1b — block palette label." },
         "agenda":       { "text": "Agenda",       "doc": "α.1b — block palette label." },
+        "tasks":        { "text": "Taken",        "doc": "α.4 — block palette label." },
         "rules":        { "text": "Huisregels",   "doc": "α.1b — block palette label." },
         "photo":        { "text": "Foto",         "doc": "α.1b — block palette label." },
         "text":         { "text": "Tekst",        "doc": "α.1b — block palette label." }

@@ -38,6 +38,7 @@ export const BLOCK_TYPES = Object.freeze([
   'announcement',     // pinned admin message (free text)
   'noticeboard',      // top-N recent posts (vragen/aanbod)
   'agenda',           // upcoming calendar events
+  'tasks',            // α.4 — tasks aggregated across kringen (assignee filter)
   'rules',            // rendered houseRules doc
   'photo',            // static image with optional caption (folio-backed src)
   'text',             // free-form text / markdown block
@@ -48,6 +49,10 @@ const DEFAULT_CONFIGS = Object.freeze({
   announcement: () => ({ text: '' }),
   noticeboard:  () => ({ limit: 5 }),
   agenda:       () => ({ limit: 5, horizonDays: 14 }),
+  // α.4 — tasks block: scope filters by assignee.  V0 supports
+  // 'assigned-to-me' (the Mijn dingen aggregation); 'all' shows
+  // every open task across the active kringen.
+  tasks:        () => ({ scope: 'assigned-to-me', limit: 10 }),
   rules:        () => ({}),
   photo:        () => ({ src: '', caption: '' }),
   text:         () => ({ text: '' }),

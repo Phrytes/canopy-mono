@@ -311,14 +311,23 @@ async function showScreens() {
   let book;
   try { book = await userScreenStore.get(); }
   catch { book = { screens: [], activeId: null }; }
-  // First-run seed: a default Stream screen so the Schermen tab isn't
-  // empty for new users.  Once at least one screen exists we never
-  // re-seed; the user can delete it freely.
+  // First-run seed: three default screens so the Schermen tab is
+  // immediately useful — Stream (noticeboard across all kringen),
+  // My things (tasks assigned to me, α.4), My calendar (agenda
+  // events, α.4).  Once at least one screen exists we never
+  // re-seed; the user can delete or rename any of them freely.
   if (book.screens.length === 0) {
     book = await userScreenStore.update((cur) => {
-      const seeded = addUserScreen(cur, t('circle.screens.seed_name'));
-      const seededId = seeded.screens[seeded.screens.length - 1].id;
-      return updateScreen(seeded, seededId, (s) => addBlock(s, 'noticeboard'));
+      let next = addUserScreen(cur, t('circle.screens.seed_name'));
+      let id   = next.screens[next.screens.length - 1].id;
+      next = updateScreen(next, id, (s) => addBlock(s, 'noticeboard'));
+      next = addUserScreen(next, t('circle.screens.seed_my_things'));
+      id   = next.screens[next.screens.length - 1].id;
+      next = updateScreen(next, id, (s) => addBlock(s, 'tasks'));
+      next = addUserScreen(next, t('circle.screens.seed_my_calendar'));
+      id   = next.screens[next.screens.length - 1].id;
+      next = updateScreen(next, id, (s) => addBlock(s, 'agenda'));
+      return next;
     });
   }
   _screensBook = book;

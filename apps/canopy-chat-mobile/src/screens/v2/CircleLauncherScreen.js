@@ -213,13 +213,21 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
     let book;
     try { book = await userScreenStore.get(); }
     catch { book = { screens: [], activeId: null }; }
-    // First-run seed: ensure the user has a "Stream" screen with a
-    // noticeboard block.  Once one exists we never re-seed.
+    // First-run seed: three default screens (Stream, My things,
+    // My calendar) so the Schermen tab is immediately useful.  Once
+    // any screen exists we never re-seed.
     if (book.screens.length === 0) {
       book = await userScreenStore.update((cur) => {
-        const seeded = addUserScreen(cur, t('circle.screens.seed_name'));
-        const newId = seeded.screens[seeded.screens.length - 1].id;
-        return updateScreen(seeded, newId, (s) => addBlock(s, 'noticeboard'));
+        let next = addUserScreen(cur, t('circle.screens.seed_name'));
+        let id   = next.screens[next.screens.length - 1].id;
+        next = updateScreen(next, id, (s) => addBlock(s, 'noticeboard'));
+        next = addUserScreen(next, t('circle.screens.seed_my_things'));
+        id   = next.screens[next.screens.length - 1].id;
+        next = updateScreen(next, id, (s) => addBlock(s, 'tasks'));
+        next = addUserScreen(next, t('circle.screens.seed_my_calendar'));
+        id   = next.screens[next.screens.length - 1].id;
+        next = updateScreen(next, id, (s) => addBlock(s, 'agenda'));
+        return next;
       });
     }
     setScreensBook(book);

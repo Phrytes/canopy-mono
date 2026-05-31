@@ -16,8 +16,9 @@ import {
 
 describe('kringRecipe · α.1a — single Recipe', () => {
   it('exposes the v2 §2 block palette in editor order', () => {
+    // α.4 added 'tasks' between agenda and rules.
     expect(BLOCK_TYPES).toEqual([
-      'announcement', 'noticeboard', 'agenda', 'rules', 'photo', 'text',
+      'announcement', 'noticeboard', 'agenda', 'tasks', 'rules', 'photo', 'text',
     ]);
   });
 

@@ -247,8 +247,9 @@ function normalizeKringFilter(raw) {
 
 // Lifted from kringRecipe.js (same shape, same predicate).  Kept
 // inline rather than importing to avoid a circular dependency if
-// kringRecipe ever wants a Screen reference later.
-const BLOCK_TYPES = ['announcement', 'noticeboard', 'agenda', 'rules', 'photo', 'text'];
+// kringRecipe ever wants a Screen reference later.  Keep in sync
+// with kringRecipe.BLOCK_TYPES — α.4 added 'tasks'.
+const BLOCK_TYPES = ['announcement', 'noticeboard', 'agenda', 'tasks', 'rules', 'photo', 'text'];
 
 function normalizeBlocks(raw) {
   const arr = Array.isArray(raw) ? raw : [];

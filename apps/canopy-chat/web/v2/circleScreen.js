@@ -77,6 +77,7 @@ function renderBlock(block, { tr }) {
     case 'photo':        renderPhoto(section, block, tr);        break;
     case 'noticeboard':  renderNoticeboard(section, block, tr);  break;
     case 'agenda':       renderAgenda(section, block, tr);       break;
+    case 'tasks':        renderTasks(section, block, tr);        break;
     case 'rules':        renderRules(section, block, tr);        break;
     default:
       section.textContent = tr('circle.screen.block_unknown', { type: block.type });
@@ -157,6 +158,34 @@ function renderAgenda(section, block, tr) {
     lbl.className = 'circle-screen__agenda-label';
     lbl.textContent = ev.label ?? '';
     li.appendChild(lbl);
+    list.appendChild(li);
+  }
+  section.appendChild(list);
+}
+
+function renderTasks(section, block, tr) {
+  const title = document.createElement('h3');
+  title.className = 'circle-screen__block-title';
+  title.textContent = tr('circle.recipe.block.tasks');
+  section.appendChild(title);
+
+  const list = document.createElement('ul');
+  list.className = 'circle-screen__tasks-list';
+  for (const task of block.content?.items ?? []) {
+    const li = document.createElement('li');
+    li.className = 'circle-screen__tasks-row';
+    li.dataset.taskId = task.id ?? '';
+    li.dataset.state = task.state ?? '';
+    if (task.circleName) {
+      const tag = document.createElement('span');
+      tag.className = 'circle-screen__tasks-circle';
+      tag.textContent = task.circleName;
+      li.appendChild(tag);
+    }
+    const text = document.createElement('span');
+    text.className = 'circle-screen__tasks-text';
+    text.textContent = task.text ?? '';
+    li.appendChild(text);
     list.appendChild(li);
   }
   section.appendChild(list);

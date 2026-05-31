@@ -188,7 +188,7 @@ describe('renderRecipeEditor · α.1d.1 — RECIPE mode', () => {
       editingRecipeId: r.id, t, onAddBlock,
     });
     const buttons = el.querySelectorAll('.circle-recipe-editor__palette-btn');
-    expect(buttons.length).toBe(6);  // 6 BLOCK_TYPES
+    expect(buttons.length).toBe(7);  // 7 BLOCK_TYPES (α.4 added 'tasks')
     buttons[0].click();   // first in registry order = announcement
     expect(onAddBlock).toHaveBeenCalledWith(r.id, 'announcement');
   });

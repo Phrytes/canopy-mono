@@ -42,9 +42,10 @@ export const BLOCK_REGISTRY = Object.freeze({
   announcement: { order: 1, labelKey: 'circle.recipe.block.announcement', emoji: '📣' },
   noticeboard:  { order: 2, labelKey: 'circle.recipe.block.noticeboard',  emoji: '📌' },
   agenda:       { order: 3, labelKey: 'circle.recipe.block.agenda',       emoji: '📅' },
-  rules:        { order: 4, labelKey: 'circle.recipe.block.rules',        emoji: '📜' },
-  photo:        { order: 5, labelKey: 'circle.recipe.block.photo',        emoji: '🖼️' },
-  text:         { order: 6, labelKey: 'circle.recipe.block.text',         emoji: '✏️' },
+  tasks:        { order: 4, labelKey: 'circle.recipe.block.tasks',        emoji: '✅' },
+  rules:        { order: 5, labelKey: 'circle.recipe.block.rules',        emoji: '📜' },
+  photo:        { order: 6, labelKey: 'circle.recipe.block.photo',        emoji: '🖼️' },
+  text:         { order: 7, labelKey: 'circle.recipe.block.text',         emoji: '✏️' },
 });
 
 /**
@@ -69,6 +70,7 @@ export async function materializeBlock({ block, circleId, hostOps = {} } = {}) {
       case 'photo':        return materializePhoto(block);
       case 'noticeboard':  return materializeNoticeboard(block, circleId, hostOps);
       case 'agenda':       return await materializeAgenda(block, hostOps);
+      case 'tasks':        return await materializeTasks(block, circleId, hostOps);
       case 'rules':        return await materializeRules(block, circleId, hostOps);
       default:             return errorOut(block.id, block.type, 'unhandled type');
     }
@@ -151,6 +153,47 @@ async function materializeAgenda(block, { callSkill } = {}) {
     status: items.length > 0 ? 'ok' : 'empty',
     content: { items },
   };
+}
+
+/**
+ * α.4 — tasks block.  Calls tasks-v0's listOpen scoped to the
+ * circleId (treated as the crew id by canopy-chat's resolver) +
+ * filters by scope:
+ *   'assigned-to-me' — task.assignee equals myWebid (or undefined when
+ *                      myWebid isn't known — single-user dev)
+ *   'all'            — every open task in the crew
+ * Caps to limit, returns `{items: [{id, text, state, assignee, circleId}]}`.
+ */
+async function materializeTasks(block, circleId, { callSkill, myWebid } = {}) {
+  const limit = clampInt(block.config?.limit, 1, 100, 10);
+  const scope = block.config?.scope === 'all' ? 'all' : 'assigned-to-me';
+  if (typeof callSkill !== 'function' || !circleId) {
+    return { blockId: block.id, type: 'tasks', status: 'empty', content: { items: [] } };
+  }
+  const res = await callSkill('tasks-v0', 'listOpen', { crewId: circleId });
+  const raw = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
+  const filtered = scope === 'all'
+    ? raw
+    : raw.filter((t) => assigneeMatches(t, myWebid));
+  const items = filtered.slice(0, limit).map((t) => ({
+    id:       t.id,
+    text:     t.text ?? t.title ?? t.label ?? '',
+    state:    t.state ?? t.status ?? 'open',
+    assignee: t.assignee ?? null,
+    circleId,
+  }));
+  return {
+    blockId: block.id, type: 'tasks',
+    status: items.length > 0 ? 'ok' : 'empty',
+    content: { items, scope },
+  };
+}
+
+function assigneeMatches(task, myWebid) {
+  const a = task?.assignee;
+  if (!a) return false;           // unassigned → never in "assigned-to-me"
+  if (myWebid == null) return true;  // dev mode: any assigned task counts
+  return a === myWebid;
 }
 
 async function materializeRules(block, circleId, { callSkill } = {}) {
