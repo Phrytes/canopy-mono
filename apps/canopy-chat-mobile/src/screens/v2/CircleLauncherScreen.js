@@ -681,6 +681,38 @@ function CircleDetail({
     } catch { /* quota / disabled */ }
   }, [circle?.id]);
 
+  // SP-13.2.1 — kring chat send: optimistic local eventLog append +
+  // best-effort fan-out via stoop's broadcastKringMessage (which also
+  // mirrors to itemStore for durable history).  The msgId is shared so
+  // receiver-side dedup suppresses any echo if a peer's mirror bounces.
+  const sendKringChat = useCallback(() => {
+    const text = composerText.trim();
+    if (!text || !eventLog?.append || !circle?.id) return;
+    const msgId = `kring-${circle.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const ts    = Date.now();
+    eventLog.append({
+      id:    msgId,
+      ts,
+      app:   'kring',
+      type:  'chat-message',
+      actor: 'me',
+      payload: { circleId: circle.id, text, kind: 'chat-message' },
+    });
+    setComposerText('');
+    setStreamTick((n) => n + 1);
+    if (typeof callSkill === 'function') {
+      Promise.resolve()
+        .then(() => callSkill('stoop', 'broadcastKringMessage', {
+          groupId: circle.id, text, msgId, ts,
+        }))
+        .then((r) => {
+          if (r?.error) console.warn('[kring-chat] fan-out skipped:', r.error);
+          else if ((r?.errors?.length ?? 0) > 0) console.info('[kring-chat] fan-out partial:', r);
+        })
+        .catch((err) => console.warn('[kring-chat] fan-out failed:', err?.message ?? err));
+    }
+  }, [composerText, eventLog, circle?.id, callSkill]);
+
   // 5.9d — Proof-of-Location placeholder.  Kept under the kring view as
   // a passive status; real attestation lands in [[5.9d-followup]].
   const [pol, setPol] = useState(null);
@@ -824,40 +856,14 @@ function CircleDetail({
           placeholder={t('circle.kring.composer_placeholder')}
           accessibilityLabel={t('circle.kring.composer_placeholder')}
           returnKeyType="send"
-          onSubmitEditing={() => {
-            const text = composerText.trim();
-            if (!text || !eventLog?.append || !circle?.id) return;
-            eventLog.append({
-              id:    `kring-${circle.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              ts:    Date.now(),
-              app:   'kring',
-              type:  'chat-message',
-              actor: 'me',
-              payload: { circleId: circle.id, text, kind: 'chat-message' },
-            });
-            setComposerText('');
-            setStreamTick((n) => n + 1);
-          }}
+          onSubmitEditing={sendKringChat}
         />
         <Pressable
           style={styles.composerSend}
           accessibilityRole="button"
           accessibilityLabel={t('circle.kring.send')}
           testID="circle-detail-composer-send"
-          onPress={() => {
-            const text = composerText.trim();
-            if (!text || !eventLog?.append || !circle?.id) return;
-            eventLog.append({
-              id:    `kring-${circle.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              ts:    Date.now(),
-              app:   'kring',
-              type:  'chat-message',
-              actor: 'me',
-              payload: { circleId: circle.id, text, kind: 'chat-message' },
-            });
-            setComposerText('');
-            setStreamTick((n) => n + 1);
-          }}
+          onPress={sendKringChat}
         >
           <Text style={styles.composerSendText}>↑</Text>
         </Pressable>
