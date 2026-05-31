@@ -227,4 +227,56 @@ describe('renderCircleKring · SP-13.2 chat-style kring view', () => {
     renderCircleKring(el, { circle, rows, t, tabs: buurtTabs, activeTab: 'leden', onSend: () => {} });
     expect(el.querySelector('.circle-kring__composer')).not.toBeNull();
   });
+
+  /* ─── SP-13.4 — Chat ↔ Scherm header pill (v2 §4 "De Schakelaar") ─── */
+
+  it('view-toggle pill hides unless onViewMode is wired', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t });
+    expect(el.querySelector('.circle-kring__view-toggle')).toBeNull();
+  });
+
+  it('renders both Chat and Scherm buttons with the active one marked', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t, viewMode: 'chat', onViewMode: () => {} });
+    const btns = el.querySelectorAll('.circle-kring__view-toggle-btn');
+    expect([...btns].map((b) => b.dataset.viewMode)).toEqual(['chat', 'scherm']);
+    expect(el.querySelector('.circle-kring__view-toggle-btn.is-active').dataset.viewMode).toBe('chat');
+    expect(btns[0].getAttribute('aria-pressed')).toBe('true');
+    expect(btns[1].getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('clicking the inactive view-toggle fires onViewMode; clicking the active one is a no-op', () => {
+    const el = mount();
+    const onViewMode = vi.fn();
+    renderCircleKring(el, { circle, rows, t, viewMode: 'chat', onViewMode });
+    el.querySelector('.circle-kring__view-toggle-btn[data-view-mode=scherm]').click();
+    expect(onViewMode).toHaveBeenCalledTimes(1);
+    expect(onViewMode.mock.calls[0][0]).toBe('scherm');
+    el.querySelector('.circle-kring__view-toggle-btn[data-view-mode=chat]').click();
+    expect(onViewMode).toHaveBeenCalledTimes(1); // unchanged — re-tap on active = no-op
+  });
+
+  it('scherm-mode renders the placeholder body and suppresses bubbles', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t, viewMode: 'scherm', onViewMode: () => {} });
+    expect(el.querySelector('.circle-kring__placeholder').textContent).toBe('circle.kring.scherm_coming');
+    expect(el.querySelectorAll('.circle-kring__bubble')).toHaveLength(0);
+  });
+
+  it('scherm-mode suppresses the composer even when onSend is wired', () => {
+    const el = mount();
+    renderCircleKring(el, {
+      circle, rows, t, viewMode: 'scherm', onViewMode: () => {}, onSend: () => {},
+    });
+    expect(el.querySelector('.circle-kring__composer')).toBeNull();
+  });
+
+  it('scherm-mode suppresses the bottom tab bar even when ≥ 2 tabs are wired', () => {
+    const el = mount();
+    renderCircleKring(el, {
+      circle, rows, t, viewMode: 'scherm', onViewMode: () => {}, tabs: buurtTabs,
+    });
+    expect(el.querySelector('.circle-kring__tabs')).toBeNull();
+  });
 });

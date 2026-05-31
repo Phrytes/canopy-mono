@@ -41,7 +41,11 @@
       "day_today":     { "text": "vandaag", "doc": "SP-13.2 — day-divider." },
       "day_yesterday": { "text": "gisteren", "doc": "SP-13.2 — day-divider." },
       "tab_coming":    { "text": "{{tab}} komt in een vervolg-slice.", "doc": "SP-13.3 — placeholder voor tabs zonder eigen scherm (yet)." },
-      "tabs_label":    { "text": "Kring-tabs", "doc": "SP-13.3 — a11y label on de tab-balk." }
+      "tabs_label":    { "text": "Kring-tabs", "doc": "SP-13.3 — a11y label on de tab-balk." },
+      "view_chat":     { "text": "Chat", "doc": "SP-13.4 — Chat ↔ Scherm header toggle (v2 §4)." },
+      "view_scherm":   { "text": "Scherm", "doc": "SP-13.4 — scherm-mode label." },
+      "view_toggle_label": { "text": "Wissel tussen chat en scherm", "doc": "SP-13.4 — a11y group label." },
+      "scherm_coming": { "text": "Scherm-weergave (admin-recept) komt in een vervolg-slice.", "doc": "SP-13.4 — placeholder." }
     },
     "streamAction": {
       "help":   { "text": "Ik help", "doc": "Stream row action." },

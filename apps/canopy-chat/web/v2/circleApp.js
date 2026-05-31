@@ -64,6 +64,10 @@ import { renderCircleTabBar, hideCircleTabBar } from './circleTabBar.js';
 import { renderCircleSettings } from './circleSettings.js';
 import { renderCircleOverride } from './circleOverride.js';
 
+// SP-13.2 — actor label stamped on local chat-message events.  Real WebID/
+// peer-display wiring lands with peer broadcast (SP-13.2.1).
+const LOCAL_ACTOR = 'me';
+
 const policyStore = createCirclePolicyStore(localStoragePolicyIo());
 const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
 const availabilityStore = createAvailabilityStore(localStorageAvailabilityIo());
@@ -116,6 +120,26 @@ function readSeenAt() {
 function writeSeenAt(map) {
   try { window.localStorage.setItem(SEEN_AT_KEY, JSON.stringify(map)); }
   catch { /* quota / disabled */ }
+}
+
+// SP-13.4 — Chat ↔ Scherm pill: per-circle preference persists in
+// localStorage so the user lands back in whichever mode they last used
+// for that kring.  Default = 'chat' (v2 §4 — chat is the home view).
+const VIEW_MODE_KEY = 'cc.circleViewMode';
+function readViewMode(id) {
+  try {
+    const raw = window.localStorage.getItem(VIEW_MODE_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    return map?.[id] === 'scherm' ? 'scherm' : 'chat';
+  } catch { return 'chat'; }
+}
+function writeViewMode(id, mode) {
+  try {
+    const raw = window.localStorage.getItem(VIEW_MODE_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    map[id] = mode;
+    window.localStorage.setItem(VIEW_MODE_KEY, JSON.stringify(map));
+  } catch { /* quota / disabled */ }
 }
 
 function showLauncher() {
@@ -309,6 +333,8 @@ function showKring(id, circle, policy) {
   // SP-13.3 — per-kring bottom tabs derived from policy.features.
   const tabs = buildKringTabs(policy, t);
   let activeTab = DEFAULT_KRING_TAB;
+  // SP-13.4 — Chat ↔ Scherm pill state, persisted per circle.
+  let viewMode = readViewMode(id);
   let seq = 0;
   const rerender = () => {
     const rows = buildKringStream({
@@ -319,6 +345,13 @@ function showKring(id, circle, policy) {
     renderCircleKring(rootEl, {
       circle, rows, t,
       tabs, activeTab,
+      viewMode,
+      onViewMode: (mode) => {
+        if (mode !== 'chat' && mode !== 'scherm') return;
+        viewMode = mode;
+        writeViewMode(id, mode);
+        rerender();
+      },
       onTab: (tabId) => { activeTab = tabId; rerender(); },
       onBack:   showLauncher,
       onSend:   (text) => {
