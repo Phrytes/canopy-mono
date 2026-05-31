@@ -346,3 +346,84 @@ describe('Stoop SP-13.2.1 — cross-agent journey: Anne → Bob', () => {
     expect(open).toHaveLength(1);
   });
 });
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * SP-13.2.2 — listKringChats: rehydration reader.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+async function seedChats(bundle, chats) {
+  for (const c of chats) {
+    await callSkill(bundle.agent, 'ingestKringMessage', {
+      payload: {
+        subtype:   'kring-chat-message',
+        circleId:  c.circleId,
+        msgId:     c.msgId,
+        text:      c.text,
+        ts:        c.ts,
+        fromActor: c.fromActor ?? ANNE,
+      },
+      fromPubKey: c.fromPubKey ?? 'pk-fake',
+    });
+  }
+}
+
+describe('Stoop SP-13.2.2 — listKringChats', () => {
+  it('returns all stored kring chats ordered oldest → newest', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    await seedChats(bundle, [
+      { circleId: 'g1', msgId: 'a', text: 'first',  ts: 100 },
+      { circleId: 'g1', msgId: 'b', text: 'middle', ts: 200 },
+      { circleId: 'g1', msgId: 'c', text: 'last',   ts: 300 },
+    ]);
+    const r = await callSkill(bundle.agent, 'listKringChats');
+    expect(r.items.map((i) => i.text)).toEqual(['first', 'middle', 'last']);
+    expect(r.items.map((i) => i.source.msgId)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('filters by groupId when supplied', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    await seedChats(bundle, [
+      { circleId: 'g1', msgId: 'a', text: 'hi g1', ts: 100 },
+      { circleId: 'g2', msgId: 'b', text: 'hi g2', ts: 200 },
+      { circleId: 'g1', msgId: 'c', text: 'g1 again', ts: 300 },
+    ]);
+    const r = await callSkill(bundle.agent, 'listKringChats', { groupId: 'g2' });
+    expect(r.items.map((i) => i.text)).toEqual(['hi g2']);
+  });
+
+  it('filters by sinceTs (strict, exclusive)', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    await seedChats(bundle, [
+      { circleId: 'g1', msgId: 'a', text: 'old',    ts: 100 },
+      { circleId: 'g1', msgId: 'b', text: 'cutoff', ts: 200 },
+      { circleId: 'g1', msgId: 'c', text: 'newer',  ts: 300 },
+    ]);
+    const r = await callSkill(bundle.agent, 'listKringChats', { sinceTs: 200 });
+    expect(r.items.map((i) => i.text)).toEqual(['newer']);
+  });
+
+  it('respects limit (returns the most recent N when over the cap)', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    await seedChats(bundle, [
+      { circleId: 'g1', msgId: '1', text: 'one',   ts: 100 },
+      { circleId: 'g1', msgId: '2', text: 'two',   ts: 200 },
+      { circleId: 'g1', msgId: '3', text: 'three', ts: 300 },
+      { circleId: 'g1', msgId: '4', text: 'four',  ts: 400 },
+      { circleId: 'g1', msgId: '5', text: 'five',  ts: 500 },
+    ]);
+    const r = await callSkill(bundle.agent, 'listKringChats', { limit: 3 });
+    // most-recent 3, still oldest → newest order
+    expect(r.items.map((i) => i.text)).toEqual(['three', 'four', 'five']);
+  });
+
+  it('returns empty when there are no kring chats yet', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    const r = await callSkill(bundle.agent, 'listKringChats');
+    expect(r.items).toEqual([]);
+  });
+});

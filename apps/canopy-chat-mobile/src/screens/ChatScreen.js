@@ -109,6 +109,7 @@ export default function ChatScreen({
   bundle = null,
   bootError = null,
   eventLog = null,
+  kringChatDedup = null,
   // 5.4c (2026-05-30) — App.js owns the OidcSessionRN so the v2 circle
   // launcher can build a podWriter from the SAME session.  If absent
   // (standalone mounts / older tests) we fall back to creating one
@@ -353,6 +354,7 @@ export default function ChatScreen({
       // (same shape as /post via ingestRemotePost).
       'kring-chat-message':    makeKringChatPeerHandler({
         eventLog: eventLogRef.current,
+        dedup:    kringChatDedup,
         ingest:   async (payload, fromNknAddr) => {
           try {
             return await callSkill('stoop', 'ingestKringMessage', { payload, fromNknAddr });

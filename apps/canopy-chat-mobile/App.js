@@ -42,6 +42,7 @@ import {
 } from './src/core/mnemonicCreate.js';
 import { dlog } from './src/core/devLog.js';
 import { EventLog } from '../canopy-chat/src/eventLog.js';
+import { rehydrateKringChatsFromStoop } from '../canopy-chat/src/v2/kringChatRehydrate.js';
 import { OidcSessionRN } from '@canopy/oidc-session-rn';
 import { buildCirclePodWriter } from './src/core/circleStoresRN.js';
 
@@ -84,6 +85,15 @@ export default function App() {
   const eventLogRef = useRef(null);
   if (!eventLogRef.current) {
     eventLogRef.current = new EventLog({ initial: [], muted: [] });
+  }
+  // SP-13.2.2 — shared kring-chat-message dedup between the boot
+  // rehydrator (below) and ChatScreen's peer-router handler.  Protects
+  // against the race where a peer's envelope for msgId X arrives
+  // mid-boot, ingest stores it, AND the rehydrator then re-reads it
+  // from itemStore → would otherwise duplicate the bubble.
+  const kringChatDedupRef = useRef(null);
+  if (!kringChatDedupRef.current) {
+    kringChatDedupRef.current = new Set();
   }
 
   // 5.4c (2026-05-30) — single OidcSessionRN, lifted from ChatScreen so
@@ -203,6 +213,17 @@ export default function App() {
           opCount:    b.catalog.opsById?.size ?? 0,
         });
         setBundle(b);
+        // SP-13.2.2 — boot rehydrator: backfill the in-memory eventLog
+        // with any kring chats already in stoop's itemStore from a
+        // previous session.  Best-effort; failures just leave the
+        // bubble stream empty until new chats arrive.
+        if (typeof b?.callSkill === 'function' && eventLogRef.current) {
+          rehydrateKringChatsFromStoop({
+            callSkill: b.callSkill,
+            eventLog:  eventLogRef.current,
+            dedup:     kringChatDedupRef.current,
+          }).catch(() => { /* logged inside */ });
+        }
         // P6.9 #347 — probe whether we should display the CREATE-side
         // mnemonic.  Skipped silently when the identity / mnemonic isn't
         // available (e.g. restore-from-mnemonic path already acknowledged
@@ -289,6 +310,7 @@ export default function App() {
             bundle={bundle}
             bootError={bootError}
             eventLog={eventLogRef.current}
+            kringChatDedup={kringChatDedupRef.current}
             sessionRef={sessionRef}
             onSessionChanged={refreshCirclePodWriter}
           />
