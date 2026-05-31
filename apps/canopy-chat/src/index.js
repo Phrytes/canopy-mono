@@ -82,6 +82,16 @@ export {
 export {
   BLOCK_REGISTRY, materializeBlock, materializeRecipe,
 } from './v2/kringRecipeBlocks.js';
+// α.2a/b — user-owned cross-kring screens (Stream / custom views).
+export {
+  EMPTY_SCREEN_BOOK, ALL_KRINGEN,
+  emptyScreen, normalizeScreen, isAllKringen, effectiveKringIds,
+  addKringToScreen, removeKringFromScreen, setAllKringen,
+  normalizeScreenBook,
+  addScreen, renameScreen, removeScreen, setActiveScreen, getActiveScreen, updateScreen,
+  createUserScreenStore, localStorageScreenIo,
+} from './v2/userScreens.js';
+export { materializeScreen } from './v2/userScreenBlocks.js';
 // P6.3 — per-circle activity preview + unread count for launcher tiles.
 export { buildTilePreviews, renderSubtitle, bumpSeenAt } from './v2/circleTilePreviews.js';
 // P6.5 — claim router: mirror claimed tasks into the personal crew
