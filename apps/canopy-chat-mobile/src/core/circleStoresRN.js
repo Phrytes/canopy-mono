@@ -18,6 +18,8 @@ import {
   podPolicyIo, tieredPolicyIo,
   // P6.2 — multi-admin proposal persistence on RN.
   createProposalStore,
+  // α.1a — scherm recipe book store.
+  createKringRecipeStore,
 } from '@canopy-app/canopy-chat';
 // 5.4c — pod-writer build is also imported via relative path (Metro doesn't
 // honor package.json "exports" subpaths; same pattern as podNkn.js).
@@ -73,6 +75,12 @@ export function makeMemberOverrideStoreRN(storage) {
 
 export function makeAvailabilityStoreRN(storage) {
   return createAvailabilityStore(asyncFixedIo('cc.availability', storage));
+}
+
+/** α.1a — per-kring recipe book store (one book per kring; key:
+ *  `cc.circleRecipe.<circleId>`). */
+export function makeKringRecipeStoreRN(storage) {
+  return createKringRecipeStore({ io: asyncKeyedIo('cc.circleRecipe.', storage) });
 }
 
 /**

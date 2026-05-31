@@ -36,6 +36,8 @@ import {
   buildKringStream, actionsForStreamRow,
   // SP-13.3 — per-kring bottom tabs from policy.features (v2 §1).
   buildKringTabs, DEFAULT_KRING_TAB,
+  // α.1a/b — scherm recipe model + per-block materializer.
+  getActiveRecipe, materializeRecipe,
 } from '@canopy-app/canopy-chat';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
@@ -43,6 +45,8 @@ import {
   makeCirclePolicyStoreRN, makeMemberOverrideStoreRN, makeAvailabilityStoreRN,
   // P6.2 — persisted multi-admin proposals.
   makeProposalStoreRN,
+  // α.1e — scherm recipe book persistence.
+  makeKringRecipeStoreRN,
 } from '../../core/circleStoresRN.js';
 import CircleSettingsScreen from './CircleSettingsScreen.js';
 import CircleOverrideScreen from './CircleOverrideScreen.js';
@@ -56,6 +60,7 @@ import CircleFolioScreen from './CircleFolioScreen.js';
 import CircleRulesScreen from './CircleRulesScreen.js';
 import CircleRulesConsentScreen from './CircleRulesConsentScreen.js';
 import CircleTabBar from './CircleTabBar.js';
+import CircleScreenView from './CircleScreenView.js';
 
 // Wrap a top-level surface (Kringen / Stroom / Mij) with the bottom tab bar.
 function WithTabBar({ active, onSelect, children }) {
@@ -162,6 +167,8 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
   // P6.2 — multi-admin proposal store.  Settings consults this to persist
   // pending consensus proposals + commit on unanimous approval.
   const proposalStore     = useMemo(() => makeProposalStoreRN(AsyncStorage), []);
+  // α.1e — per-kring scherm recipe book (multi-recipe; one marked active).
+  const recipeStore       = useMemo(() => makeKringRecipeStoreRN(AsyncStorage), []);
 
   const callSkill = useMemo(
     () => (bundle?.callSkill ? makeResolvingCallSkill(bundle.callSkill) : null),
@@ -449,6 +456,7 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
         myListTasks={myListTasks}
         eventLog={eventLog}
         circles={circles}
+        recipeStore={recipeStore}
         onBack={closeCircle}
         onSettings={() => setView('settings')}
         onMine={() => setView('override')}
@@ -630,6 +638,7 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
 function CircleDetail({
   circle, items, callSkill, policy, myListTasks = [],
   eventLog, circles = [],
+  recipeStore = null,
   onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules,
 }) {
   // P6.1 — Functies-axis gating for the overflow menu items.
@@ -653,6 +662,32 @@ function CircleDetail({
   // Reset to GESPREK whenever we switch kringen so a non-default tab
   // doesn't persist across opens.
   useEffect(() => { setActiveTab(DEFAULT_KRING_TAB); }, [circle?.id]);
+
+  // α.1e — materialized scherm blocks for the active recipe.  null
+  // until the load below resolves; [] when the book is empty.
+  const [screenBlocks, setScreenBlocks] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    setScreenBlocks(null);  // reset on circle change
+    if (!recipeStore || !circle?.id) { setScreenBlocks([]); return () => { alive = false; }; }
+    (async () => {
+      try {
+        const book = await recipeStore.get(circle.id);
+        const active = getActiveRecipe(book);
+        if (!active) { if (alive) setScreenBlocks([]); return; }
+        const blocks = await materializeRecipe({
+          recipe:   active,
+          circleId: circle.id,
+          hostOps:  { callSkill, eventLog, circles },
+        });
+        if (alive) setScreenBlocks(blocks);
+      } catch (err) {
+        console.warn('[CircleDetail] recipe load failed:', err?.message ?? err);
+        if (alive) setScreenBlocks([]);
+      }
+    })();
+    return () => { alive = false; };
+  }, [recipeStore, circle?.id, callSkill, eventLog, circles]);
 
   // SP-13.4 — Chat ↔ Scherm pill state (v2 §4 "De Schakelaar").
   // Per-circle preference persists in AsyncStorage at cc.circleViewMode.
@@ -830,9 +865,10 @@ function CircleDetail({
           becomes the (placeholder) recept'd page. */}
       <ScrollView contentContainerStyle={styles.list} testID="circle-detail-stream">
         {viewMode === 'scherm' ? (
-          <Text style={styles.placeholder} testID="circle-detail-scherm-placeholder">
-            {t('circle.kring.scherm_coming')}
-          </Text>
+          // α.1e — render the materialized recipe blocks.  CircleScreenView
+          // handles per-block status (ok / empty / error) + top-level
+          // empty-state when no recipe is set up yet.
+          <CircleScreenView blocks={screenBlocks} />
         ) : activeTab !== 'gesprek' ? (
           <Text style={styles.placeholder}>
             {t('circle.kring.tab_coming', { tab: t(`circle.tabs.${activeTab}`) })}
