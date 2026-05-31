@@ -27,6 +27,11 @@
       "empty":    { "text": "Nothing across your circles yet.", "doc": "Empty state for the Stream." },
       "untagged": { "text": "—", "doc": "Tag shown on a Stream row that isn't tied to a circle." }
     },
+    "chat": {
+      "quick_reply": {
+        "fallback_label": { "text": "Reply", "doc": "α.5a (audit #3) — default label for an inline-keuze quick-reply pill when the reply envelope supplies a slash but no label." }
+      }
+    },
     "settings": {
       "title":        { "text": "Circle settings", "doc": "Settings screen heading (board 4A)." },
       "save":         { "text": "Save", "doc": "Save the circle settings." },

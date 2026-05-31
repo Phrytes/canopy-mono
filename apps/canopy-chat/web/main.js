@@ -1670,6 +1670,19 @@ function makeCtx() {
       if (route.kind !== 'ready') return;
       await dispatchAndRender(route, t0);
     },
+    onQuickReply: async (slash) => {
+      // α.5a (audit #3) — clicking an inline-keuze pill dispatches
+      // the carried slash through the SAME path Enter-submitted
+      // text takes (no parser duplication; the user sees a user-
+      // bubble in the stream just as if they had typed it).
+      const t0 = activeThread();
+      if (!t0) return;
+      const text = String(slash ?? '').trim();
+      if (!text.startsWith('/')) return;
+      t0.addUserMessage(text);
+      renderActiveStream();
+      await handleUserText(text, t0);
+    },
   };
 }
 

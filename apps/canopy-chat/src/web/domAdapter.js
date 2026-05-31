@@ -95,7 +95,7 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
 }
 
 function renderTextBubble(rendered, state, ctx) {
-  const { doc, onFollowUp } = ctx;
+  const { doc, onFollowUp, onQuickReply } = ctx;
   const wrap = doc.createElement('div');
   wrap.className = `cc-message cc-shell cc-text cc-${state}`;
   if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
@@ -111,6 +111,28 @@ function renderTextBubble(rendered, state, ctx) {
     hint.className = 'cc-sync-hint';
     hint.textContent = rendered.syncHint;
     wrap.appendChild(hint);
+  }
+
+  // α.5a (audit #3) — inline-keuze quick-reply pill row.  Each pill
+  // dispatches a full slash via the same handler Enter-submitted text
+  // uses (the shell wires `onQuickReply` to `handleUserText`).  The
+  // pill row is suppressed when the bubble is `disabled` so old
+  // bubbles don't accidentally re-fire mutations.
+  if (Array.isArray(rendered.quickReplies) && rendered.quickReplies.length > 0
+      && state !== 'disabled'
+      && typeof onQuickReply === 'function') {
+    const row = doc.createElement('div');
+    row.className = 'cc-quick-replies';
+    for (const qr of rendered.quickReplies) {
+      const btn = doc.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cc-quick-reply-btn';
+      btn.textContent = qr.label;
+      btn.dataset.slash = qr.slash;
+      btn.addEventListener('click', () => onQuickReply(qr.slash));
+      row.appendChild(btn);
+    }
+    wrap.appendChild(row);
   }
 
   // v0.4 — render follow-up buttons under the text bubble.
