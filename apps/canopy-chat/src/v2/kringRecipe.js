@@ -1,29 +1,36 @@
 /**
- * canopy-chat v2 — kring scherm "recipe" model (Plan α.1a · audit gap #1).
+ * canopy-chat v2 — kring scherm "recipe book" model (Plan α.1a · audit #1).
  *
- * A recipe is the admin-defined ordered list of blocks that compose
- * the scherm-mode page for a kring (v2 PDF §2 "RECEPT · SCHERM-
- * WEERGAVE INRICHTEN").  The chat view is a separate surface; the
- * recipe is what `viewMode === 'scherm'` renders.
+ * Per Q2: a kring can have MULTIPLE named recipes (e.g. "Standaard",
+ * "Eventfocus", "Zomeruitgave").  One is marked `activeId` — that's
+ * what scherm-mode (v2 §4 pill) renders.  Admins manage the library;
+ * non-admins see the active recipe.  Per-user override (member picks
+ * a different recipe) is a later concern that can live on top of the
+ * existing memberOverride store.
  *
- * Shape:
+ * Shapes:
  *
- *   {
- *     blocks: [
- *       { id: 'b-<...>', type: 'announcement', config: { text: '…' } },
- *       { id: 'b-<...>', type: 'noticeboard',  config: { limit: 5 } },
- *       …
- *     ],
+ *   Recipe = {
+ *     id:     <string>,       // stable per-recipe (UI keying + activeId)
+ *     name:   <string>,       // admin-chosen label ("Standaard" / "Eventfocus")
+ *     blocks: [{id, type, config}],   // ordered (array index === render order)
  *   }
  *
- * Block order is the array order — block helpers (`moveBlock`,
- * `addBlock`) preserve / mutate it explicitly so there's no separate
- * `order` field to keep in sync.
+ *   RecipeBook = {
+ *     recipes: [Recipe],      // 0..N, order = library display order
+ *     activeId: <string|null>,// which recipe scherm-mode shows
+ *   }
  *
- * The substrate is pure: no DOM, no RN, no module-level state.  Per-
- * type config is opaque — validators live in the renderer (α.1b's
- * materializeBlock).  Storage mirrors `circlePolicyStore`: injectable
- * load/save so the host can swap localStorage → pod io later.
+ * Block types per v2 PDF §2 palette: announcement, noticeboard, agenda,
+ * rules, photo, text.  Per-type config is opaque to this substrate;
+ * the materializer (α.1b) interprets it.
+ *
+ * Storage mirrors `circlePolicyStore`: injectable load/save so the host
+ * swaps localStorage → pod io later.  ONE book per kring; the book
+ * holds N recipes.
+ *
+ * Forward-compat: normalize drops unknown block types silently so a v3
+ * deployment that adds a new block type doesn't break older clients.
  */
 
 /** Block types the v2 PDF §2 palette exposes (in editor display order). */
@@ -32,7 +39,7 @@ export const BLOCK_TYPES = Object.freeze([
   'noticeboard',      // top-N recent posts (vragen/aanbod)
   'agenda',           // upcoming calendar events
   'rules',            // rendered houseRules doc
-  'photo',            // static image with optional caption
+  'photo',            // static image with optional caption (folio-backed src)
   'text',             // free-form text / markdown block
 ]);
 
@@ -46,61 +53,52 @@ const DEFAULT_CONFIGS = Object.freeze({
   text:         () => ({ text: '' }),
 });
 
-/** Empty recipe shape — what an un-customised kring shows for scherm-mode. */
-export const EMPTY_RECIPE = Object.freeze({ blocks: [] });
+/** Empty recipe book — what an un-customised kring shows for scherm-mode. */
+export const EMPTY_RECIPE_BOOK = Object.freeze({ recipes: [], activeId: null });
 
-/**
- * Coerce any raw value into the canonical recipe shape.  Unknown
- * block types are silently dropped (forward-compat: a future
- * deployment that adds a block type renders correctly on older
- * clients without crashing — the block is just hidden).
- *
- * @param {*} raw
- * @returns {{blocks: Array<{id: string, type: string, config: object}>}}
- */
-export function normalizeRecipe(raw) {
-  if (!raw || typeof raw !== 'object') return { blocks: [] };
-  const arr = Array.isArray(raw.blocks) ? raw.blocks : [];
-  const blocks = [];
-  for (const b of arr) {
-    if (!b || typeof b !== 'object') continue;
-    if (typeof b.type !== 'string' || !BLOCK_TYPES.includes(b.type)) continue;
-    const id = typeof b.id === 'string' && b.id ? b.id : freshBlockId();
-    const config = b.config && typeof b.config === 'object' ? { ...b.config } : {};
-    blocks.push({ id, type: b.type, config });
-  }
-  return { blocks };
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Single-recipe helpers (operate on one Recipe at a time).               */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+/** Build a fresh empty Recipe with a generated id + optional name. */
+export function emptyRecipe(name = '') {
+  return { id: freshRecipeId(), name: typeof name === 'string' ? name : '', blocks: [] };
 }
 
-/** Default config object for a given block type (deep-copied). */
+/** Coerce raw into a canonical Recipe (mints id + name when absent). */
+export function normalizeRecipe(raw) {
+  if (!raw || typeof raw !== 'object') return emptyRecipe('');
+  const blocks = normalizeBlocks(raw.blocks);
+  return {
+    id:     typeof raw.id   === 'string' && raw.id   ? raw.id   : freshRecipeId(),
+    name:   typeof raw.name === 'string'             ? raw.name : '',
+    blocks,
+  };
+}
+
+/** Default config for a block type (deep-copied). */
 export function defaultConfigForBlock(type) {
   const fn = DEFAULT_CONFIGS[type];
   return fn ? fn() : {};
 }
 
-/**
- * Append a new block of `type` to the recipe.  Returns a NEW recipe
- * (immutable update).  Throws on unknown type.
- */
+/** Append a block of `type` to a Recipe; returns a NEW Recipe. */
 export function addBlock(recipe, type, configPatch = null) {
   if (!BLOCK_TYPES.includes(type)) {
     throw new Error(`addBlock: unknown block type "${type}"`);
   }
   const cur = normalizeRecipe(recipe);
   const config = { ...defaultConfigForBlock(type), ...(configPatch ?? {}) };
-  return { blocks: [...cur.blocks, { id: freshBlockId(), type, config }] };
+  return { ...cur, blocks: [...cur.blocks, { id: freshBlockId(), type, config }] };
 }
 
-/** Remove the block with `blockId`.  No-op if not present. */
+/** Remove the block with `blockId`; no-op if absent. */
 export function removeBlock(recipe, blockId) {
   const cur = normalizeRecipe(recipe);
-  return { blocks: cur.blocks.filter((b) => b.id !== blockId) };
+  return { ...cur, blocks: cur.blocks.filter((b) => b.id !== blockId) };
 }
 
-/**
- * Move `blockId` to `newIndex` (clamped to [0, length-1]).  No-op if
- * the block is missing or already at that index.
- */
+/** Move `blockId` to `newIndex` (clamped to valid range). */
 export function moveBlock(recipe, blockId, newIndex) {
   const cur = normalizeRecipe(recipe);
   const from = cur.blocks.findIndex((b) => b.id === blockId);
@@ -110,13 +108,10 @@ export function moveBlock(recipe, blockId, newIndex) {
   const next = cur.blocks.slice();
   const [moved] = next.splice(from, 1);
   next.splice(clamped, 0, moved);
-  return { blocks: next };
+  return { ...cur, blocks: next };
 }
 
-/**
- * Shallow-merge `configPatch` into the block with `blockId`.  No-op
- * if the block is missing.  Returns a NEW recipe.
- */
+/** Shallow-merge `configPatch` onto the block; no-op if missing. */
 export function updateBlock(recipe, blockId, configPatch = {}) {
   const cur = normalizeRecipe(recipe);
   const idx = cur.blocks.findIndex((b) => b.id === blockId);
@@ -124,7 +119,84 @@ export function updateBlock(recipe, blockId, configPatch = {}) {
   const blocks = cur.blocks.slice();
   const block = blocks[idx];
   blocks[idx] = { ...block, config: { ...block.config, ...configPatch } };
-  return { blocks };
+  return { ...cur, blocks };
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* RecipeBook helpers (operate on the per-kring library).                 */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+/** Coerce raw → canonical RecipeBook (drops malformed entries, fixes activeId). */
+export function normalizeRecipeBook(raw) {
+  if (!raw || typeof raw !== 'object') return { recipes: [], activeId: null };
+  const arr = Array.isArray(raw.recipes) ? raw.recipes : [];
+  const recipes = arr.map(normalizeRecipe);
+  // activeId must reference an existing recipe; default to first when not.
+  let activeId = typeof raw.activeId === 'string' ? raw.activeId : null;
+  if (activeId && !recipes.some((r) => r.id === activeId)) activeId = null;
+  if (!activeId && recipes.length > 0) activeId = recipes[0].id;
+  return { recipes, activeId };
+}
+
+/** Add a new (empty) recipe to the book; mark it active if first. */
+export function addRecipe(book, name = '') {
+  const cur = normalizeRecipeBook(book);
+  const recipe = emptyRecipe(name);
+  const recipes = [...cur.recipes, recipe];
+  const activeId = cur.activeId ?? recipe.id;
+  return { recipes, activeId };
+}
+
+/** Rename a recipe in the book; no-op if missing. */
+export function renameRecipe(book, recipeId, newName) {
+  const cur = normalizeRecipeBook(book);
+  const name = typeof newName === 'string' ? newName : '';
+  const recipes = cur.recipes.map((r) => (r.id === recipeId ? { ...r, name } : r));
+  return { ...cur, recipes };
+}
+
+/**
+ * Remove a recipe from the book.  When the removed recipe was the
+ * active one, pick the next existing recipe (first in the list) as
+ * the new active; falls back to null when the book empties out.
+ */
+export function removeRecipe(book, recipeId) {
+  const cur = normalizeRecipeBook(book);
+  const recipes = cur.recipes.filter((r) => r.id !== recipeId);
+  let activeId = cur.activeId;
+  if (activeId === recipeId) activeId = recipes.length > 0 ? recipes[0].id : null;
+  return { recipes, activeId };
+}
+
+/** Switch which recipe is active; no-op if recipeId isn't in the book. */
+export function setActiveRecipe(book, recipeId) {
+  const cur = normalizeRecipeBook(book);
+  if (!cur.recipes.some((r) => r.id === recipeId)) return cur;
+  return { ...cur, activeId: recipeId };
+}
+
+/** Resolve the active Recipe (or null when the book is empty). */
+export function getActiveRecipe(book) {
+  const cur = normalizeRecipeBook(book);
+  if (!cur.activeId) return null;
+  return cur.recipes.find((r) => r.id === cur.activeId) ?? null;
+}
+
+/**
+ * Apply a mutator function to one recipe in the book.  The mutator
+ * receives the current Recipe and returns a new one (use the
+ * single-recipe helpers above).  No-op if recipeId is missing.
+ *
+ *   book = updateRecipe(book, recipeId, (r) => addBlock(r, 'announcement'));
+ */
+export function updateRecipe(book, recipeId, mutator) {
+  const cur = normalizeRecipeBook(book);
+  if (typeof mutator !== 'function') return cur;
+  const idx = cur.recipes.findIndex((r) => r.id === recipeId);
+  if (idx < 0) return cur;
+  const recipes = cur.recipes.slice();
+  recipes[idx] = normalizeRecipe(mutator(recipes[idx]));
+  return { ...cur, recipes };
 }
 
 /* ─────────────────────────────────────────────────────────────────────── */
@@ -132,11 +204,12 @@ export function updateBlock(recipe, blockId, configPatch = {}) {
 /* ─────────────────────────────────────────────────────────────────────── */
 
 /**
- * Create a recipe store backed by an injectable {load, save} pair.
+ * Per-kring RecipeBook store.  One book per kring; the book holds N
+ * recipes.  Injectable {load, save} so pod io can swap in later.
  *
  *   const store = createKringRecipeStore({ io: localStorageRecipeIo() });
- *   const recipe = await store.get(circleId);
- *   await store.update(circleId, addBlock(recipe, 'announcement'));
+ *   const book = await store.get(circleId);
+ *   await store.update(circleId, (cur) => addRecipe(cur, 'Standaard'));
  */
 export function createKringRecipeStore({ io = {} } = {}) {
   const { load, save } = io;
@@ -145,26 +218,23 @@ export function createKringRecipeStore({ io = {} } = {}) {
       let raw = null;
       try { raw = typeof load === 'function' ? await load(circleId) : null; }
       catch { raw = null; }
-      return normalizeRecipe(raw);
+      return normalizeRecipeBook(raw);
     },
-    async set(circleId, recipe) {
-      const next = normalizeRecipe(recipe);
+    async set(circleId, book) {
+      const next = normalizeRecipeBook(book);
       if (typeof save === 'function') await save(circleId, next);
       return next;
     },
     async update(circleId, mutator) {
       const cur = await this.get(circleId);
-      const next = normalizeRecipe(typeof mutator === 'function' ? mutator(cur) : mutator);
+      const next = normalizeRecipeBook(typeof mutator === 'function' ? mutator(cur) : mutator);
       if (typeof save === 'function') await save(circleId, next);
       return next;
     },
   };
 }
 
-/**
- * localStorage-backed io.  Keyed by circleId — one recipe per kring.
- *   key: `cc.circleRecipe.<circleId>`
- */
+/** localStorage-backed io.  Key: `cc.circleRecipe.<circleId>`. */
 export function localStorageRecipeIo(storage = globalThis.localStorage) {
   const key = (id) => `cc.circleRecipe.${id}`;
   return {
@@ -174,16 +244,37 @@ export function localStorageRecipeIo(storage = globalThis.localStorage) {
         return s ? JSON.parse(s) : null;
       } catch { return null; }
     },
-    save: async (id, recipe) => {
-      try { storage?.setItem(key(id), JSON.stringify(recipe)); } catch { /* quota / disabled */ }
+    save: async (id, book) => {
+      try { storage?.setItem(key(id), JSON.stringify(book)); } catch { /* quota / disabled */ }
     },
   };
 }
 
 /* ─────────────────────────────────────────────────────────────────────── */
+/* Internals                                                              */
+/* ─────────────────────────────────────────────────────────────────────── */
 
-let _seq = 0;
+function normalizeBlocks(raw) {
+  const arr = Array.isArray(raw) ? raw : [];
+  const out = [];
+  for (const b of arr) {
+    if (!b || typeof b !== 'object') continue;
+    if (typeof b.type !== 'string' || !BLOCK_TYPES.includes(b.type)) continue;
+    const id = typeof b.id === 'string' && b.id ? b.id : freshBlockId();
+    const config = b.config && typeof b.config === 'object' ? { ...b.config } : {};
+    out.push({ id, type: b.type, config });
+  }
+  return out;
+}
+
+let _blockSeq = 0;
 function freshBlockId() {
-  _seq = (_seq + 1) | 0;
-  return `b-${Date.now().toString(36)}-${_seq.toString(36)}`;
+  _blockSeq = (_blockSeq + 1) | 0;
+  return `b-${Date.now().toString(36)}-${_blockSeq.toString(36)}`;
+}
+
+let _recipeSeq = 0;
+function freshRecipeId() {
+  _recipeSeq = (_recipeSeq + 1) | 0;
+  return `r-${Date.now().toString(36)}-${_recipeSeq.toString(36)}`;
 }
