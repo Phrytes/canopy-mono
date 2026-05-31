@@ -171,14 +171,12 @@
       }
     },
     "kring": {
-      "filter_all":    { "text": "Alles", "doc": "SP-13 — kring-stream filter chip." },
-      "filter_vraag":  { "text": "Vraag", "doc": "SP-13 — filter chip." },
-      "filter_aanbod": { "text": "Aanbod", "doc": "SP-13 — filter chip." },
-      "filter_leen":   { "text": "Lenen", "doc": "SP-13 — filter chip." },
-      "post_fab":      { "text": "+", "doc": "SP-13 — compose FAB (mobile is icon-only)." },
       "more":          { "text": "Meer", "doc": "SP-13 — overflow menu trigger." },
-      "empty":         { "text": "Nog niks hier.", "doc": "SP-13 — empty state." },
-      "empty_filtered":{ "text": "Niks in dit filter.", "doc": "SP-13 — empty state when filtered." }
+      "empty":         { "text": "Nog niks hier — schrijf als eerste.", "doc": "SP-13.2 — kring chat empty state." },
+      "composer_placeholder": { "text": "Schrijf naar de kring…", "doc": "SP-13.2 — composer placeholder." },
+      "send":          { "text": "Verstuur", "doc": "SP-13.2 — composer send button a11y label." },
+      "day_today":     { "text": "vandaag", "doc": "SP-13.2 — day-divider." },
+      "day_yesterday": { "text": "gisteren", "doc": "SP-13.2 — day-divider." }
     },
     "folio": {
       "title":      { "text": "Bestanden", "doc": "Circle file-browser heading (board 10B)." },

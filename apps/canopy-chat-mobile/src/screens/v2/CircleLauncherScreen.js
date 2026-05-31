@@ -32,8 +32,8 @@ import {
   buildNearbyModel,
   // P6.M7 #349 — "My things" private notes-list (board 10A).
   myThingsFromListFiles,
-  // SP-13 — kring-scoped stream + chip filters + row actions (board 2B / 8C).
-  buildKringStream, KRING_STREAM_KIND_FILTERS, actionsForStreamRow,
+  // SP-13.2 — kring-scoped event stream + per-row action chips.
+  buildKringStream, actionsForStreamRow,
 } from '@canopy-app/canopy-chat';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
@@ -635,14 +635,16 @@ function CircleDetail({
   const showViewAs   = isFeatureEnabled(policy, 'memberDirectory');
   const showFiles    = isFeatureEnabled(policy, 'lists') || isFeatureEnabled(policy, 'notes');
 
-  // SP-13 — kring stream rows scoped to this circle + the active chip.
-  const [kindFilter, setKindFilter] = useState('all');
+  // SP-13.2 — kring stream rows scoped to this circle (chat-style).
+  // EventLog has no subscribe seam yet; bumping `streamTick` after
+  // local appends forces the memo to re-pull.
+  const [streamTick, setStreamTick] = useState(0);
   const rows = useMemo(() => buildKringStream({
     events:    eventLog?.query ? eventLog.query({ excludeMuted: true }) : [],
     circles,
     circleId:  circle?.id ?? null,
-    kindFilter,
-  }), [eventLog, circles, circle?.id, kindFilter]);
+  }), [eventLog, circles, circle?.id, streamTick]);
+  const [composerText, setComposerText] = useState('');
 
   // 5.9d — Proof-of-Location placeholder.  Kept under the kring view as
   // a passive status; real attestation lands in [[5.9d-followup]].
@@ -712,22 +714,6 @@ function CircleDetail({
         </View>
       ) : null}
 
-      <View style={styles.chipRow} testID="circle-detail-chips">
-        {KRING_STREAM_KIND_FILTERS.map((key) => (
-          <Pressable
-            key={key}
-            onPress={() => setKindFilter(key)}
-            style={[styles.chip, kindFilter === key && styles.chipActive]}
-            accessibilityRole="button"
-            testID={`circle-detail-chip-${key}`}
-          >
-            <Text style={[styles.chipText, kindFilter === key && styles.chipTextActive]}>
-              {t(`circle.kring.filter_${key}`)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
       <View style={styles.polRow} testID="circle-detail-pol">
         <Text style={styles.polLabel}>{t('circle.pol.title')}</Text>
         <Text style={styles.polValue}>{formatPolStatus(pol, t)}</Text>
@@ -745,44 +731,139 @@ function CircleDetail({
         </View>
       ) : null}
 
+      {/* SP-13.2 — chat-style message stream (oldest at top).  Bubbles
+          show sender + optional kind pill + text + per-row action chips.
+          Day-dividers between days come from a reverse + scan. */}
       <ScrollView contentContainerStyle={styles.list} testID="circle-detail-stream">
         {rows.length === 0 ? (
-          <Text style={styles.muted}>
-            {kindFilter && kindFilter !== 'all'
-              ? t('circle.kring.empty_filtered')
-              : t('circle.kring.empty')}
-          </Text>
+          <Text style={styles.muted}>{t('circle.kring.empty')}</Text>
         ) : (
-          rows.map((row) => {
-            const payload = row.event?.payload ?? {};
-            const text = payload.text || payload.title || payload.body || String(row.id ?? '');
-            const actions = actionsForStreamRow(row);
-            return (
-              <View key={row.id} style={styles.row}>
-                <Text style={styles.rowName} numberOfLines={2}>{text}</Text>
-                <Text style={styles.rowMeta}>
-                  {[row.actor, row.app].filter(Boolean).join(' · ')}
-                </Text>
-                {actions.length > 0 ? (
-                  <View style={styles.rowActions}>
-                    {actions.map((a) => (
-                      <Pressable
-                        key={a.id}
-                        style={styles.rowActionBtn}
-                        onPress={() => console.info('[kring] action', a.action, row.id)}
-                      >
-                        <Text style={styles.rowActionText}>{t(a.label)}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                ) : null}
-              </View>
-            );
-          })
+          renderBubblesWithDayDividers(rows, t)
         )}
       </ScrollView>
+
+      {/* SP-13.2 — inline composer.  V0 appends a chat-message event to
+          the local EventLog so the user sees their own write; peer
+          broadcast lands in SP-13.2.1.  Slash commands stay as a
+          deeper follow-up (would need the chat-shell composition). */}
+      <View style={styles.composer} testID="circle-detail-composer">
+        <TextInput
+          style={styles.composerInput}
+          value={composerText}
+          onChangeText={setComposerText}
+          placeholder={t('circle.kring.composer_placeholder')}
+          accessibilityLabel={t('circle.kring.composer_placeholder')}
+          returnKeyType="send"
+          onSubmitEditing={() => {
+            const text = composerText.trim();
+            if (!text || !eventLog?.append || !circle?.id) return;
+            eventLog.append({
+              id:    `kring-${circle.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              ts:    Date.now(),
+              app:   'kring',
+              type:  'chat-message',
+              actor: 'me',
+              payload: { circleId: circle.id, text, kind: 'chat-message' },
+            });
+            setComposerText('');
+            setStreamTick((n) => n + 1);
+          }}
+        />
+        <Pressable
+          style={styles.composerSend}
+          accessibilityRole="button"
+          accessibilityLabel={t('circle.kring.send')}
+          testID="circle-detail-composer-send"
+          onPress={() => {
+            const text = composerText.trim();
+            if (!text || !eventLog?.append || !circle?.id) return;
+            eventLog.append({
+              id:    `kring-${circle.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              ts:    Date.now(),
+              app:   'kring',
+              type:  'chat-message',
+              actor: 'me',
+              payload: { circleId: circle.id, text, kind: 'chat-message' },
+            });
+            setComposerText('');
+            setStreamTick((n) => n + 1);
+          }}
+        >
+          <Text style={styles.composerSendText}>↑</Text>
+        </Pressable>
+      </View>
     </View>
   );
+}
+
+// SP-13.2 — render rows chronologically with day-dividers, mirroring
+// the web circleKring renderer.  Keeps the mobile parity tight.
+function renderBubblesWithDayDividers(rows, t) {
+  const chronological = [...rows].reverse();
+  const nodes = [];
+  let lastKey = null;
+  for (const row of chronological) {
+    const key = dayKeyOf(row.ts);
+    if (key !== lastKey) {
+      nodes.push(
+        <Text key={`d-${row.id}`} style={styles.dayDivider}>
+          {formatDayLabel(row.ts, t)}
+        </Text>,
+      );
+      lastKey = key;
+    }
+    nodes.push(renderBubble(row, t));
+  }
+  return nodes;
+}
+
+function renderBubble(row, t) {
+  const payload = row.event?.payload ?? {};
+  const text = payload.text || payload.title || payload.body || String(row.id ?? '');
+  const sender = payload.senderDisplay || payload.authorName || row.actor || null;
+  const kindRaw = payload.kind;
+  const kind = (typeof kindRaw === 'string' && kindRaw && kindRaw !== 'message' && kindRaw !== 'chat-message')
+    ? kindRaw.toUpperCase() : null;
+  const actions = actionsForStreamRow(row);
+  return (
+    <View key={row.id} style={styles.bubble}>
+      {sender ? <Text style={styles.bubbleSender}>{sender}</Text> : null}
+      <Text style={styles.bubbleText} numberOfLines={4}>
+        {kind ? (<Text style={styles.bubbleKind}>{kind}  </Text>) : null}
+        {text}
+      </Text>
+      {actions.length > 0 ? (
+        <View style={styles.rowActions}>
+          {actions.map((a) => (
+            <Pressable
+              key={a.id}
+              style={styles.rowActionBtn}
+              onPress={() => console.info('[kring] action', a.action, row.id)}
+            >
+              <Text style={styles.rowActionText}>{t(a.label)}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function dayKeyOf(ts) {
+  if (typeof ts !== 'number' || !Number.isFinite(ts)) return 'unknown';
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+function formatDayLabel(ts, t) {
+  if (typeof ts !== 'number' || !Number.isFinite(ts)) return '';
+  const d = new Date(ts);
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  const yest = new Date(today); yest.setDate(today.getDate() - 1);
+  const isYest = d.toDateString() === yest.toDateString();
+  if (sameDay) return t('circle.kring.day_today');
+  if (isYest)  return t('circle.kring.day_yesterday');
+  return d.toLocaleDateString();
 }
 
 // P6.8 #346 — Nearby/HIER screen.  Renders the buildNearbyModel output:
@@ -916,13 +997,17 @@ const styles = StyleSheet.create({
   moreMenu:       { borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card, padding: 4, marginTop: 4, marginBottom: 4 },
   moreItem:       { paddingVertical: 9, paddingHorizontal: 12 },
   moreItemText:   { fontSize: 13, color: theme.color.ink },
-  // SP-13 — board-2B kind filter chips (Alles / Vraag / Aanbod / Lenen).
-  chipRow:        { flexDirection: 'row', gap: 6, marginTop: 6, marginBottom: 4 },
-  chip:           { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.card },
-  chipActive:     { backgroundColor: theme.color.accent, borderColor: theme.color.accent },
-  chipText:       { fontSize: 12, color: theme.color.inkSoft },
-  chipTextActive: { color: theme.color.paper, fontWeight: '600' },
-  // SP-13 — per-row action buttons (Ik help / Negeer …).
+  // SP-13.2 — chat bubbles + composer (v2 §1+§5).
+  bubble:           { padding: 10, borderWidth: 1, borderColor: theme.color.line, borderRadius: 10, backgroundColor: theme.color.card, marginBottom: 6, maxWidth: '85%', alignSelf: 'flex-start' },
+  bubbleSender:     { fontSize: 11, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
+  bubbleText:       { fontSize: 14, color: theme.color.ink },
+  bubbleKind:       { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: theme.color.accent },
+  dayDivider:       { alignSelf: 'center', fontSize: 11, color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 8 },
+  composer:         { flexDirection: 'row', gap: 8, alignItems: 'center', paddingTop: 8, paddingBottom: 4, borderTopWidth: 1, borderTopColor: theme.color.line, marginTop: 4 },
+  composerInput:    { flex: 1, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: theme.color.line, borderRadius: 22, backgroundColor: theme.color.white, fontSize: 14, color: theme.color.ink },
+  composerSend:     { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.color.accent, alignItems: 'center', justifyContent: 'center' },
+  composerSendText: { color: theme.color.white, fontSize: 18, fontWeight: '700' },
+  // Per-row action buttons (Ik help / Negeer …) — used by chat bubbles.
   rowActions:     { flexDirection: 'row', gap: 6, marginTop: 8 },
   rowActionBtn:   { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.paper },
   rowActionText:  { fontSize: 12, color: theme.color.ink },

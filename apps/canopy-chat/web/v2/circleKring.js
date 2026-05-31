@@ -1,51 +1,57 @@
 /**
- * canopy-chat v2 — kring content view (web DOM renderer, SP-13 / board 2B + 8C).
+ * canopy-chat v2 — kring content view (web DOM renderer, SP-13.2 / v2 §1+§5).
  *
- * The screen you land on after tapping a kring tile on the launcher
- * (when `policy.view !== 'chat'`).  Pure render — host wires:
- *   - `circle`           the active kring object
- *   - `rows`             pre-filtered `buildKringStream({circleId, kindFilter})` output
- *   - `filter`           current chip key (one of KRING_STREAM_KIND_FILTERS) + `onFilter(key)`
- *   - `actions`          `actionsForStreamRow` output keyed by row id (optional)
- *   - `onBack` / `onPost` / `onAction(action, row)`
- *   - `more` actions map: `{ settings, mine, viewAs, advisor, skills, files, rules }`
- *     — each is an optional callback; rendered in the overflow menu when set.
- *     (The host gates these on the kring's Functies axis upstream.)
+ * The screen you land on after tapping a kring tile.  Chat-style mixed
+ * message stream + inline composer.  No separate chat shell exists; chat
+ * IS the kring view.
  *
- * Layout per board 2B (right-hand side adapted for the full Onderling
- * launcher context):
+ * Renders per v2 §1 board "VOORBEELD 1 · BUURT":
+ *
  *   [← back]  Kring name  [⋯ more]
- *             member-count meta
- *   [Alles] [Vraag] [Aanbod] [Lenen]
- *   ┌─ rows
- *   │  KIND · text · actor · ts
- *   │  [Ik help] [Negeer]
+ *             N LEDEN · functies meta
+ *   ─ dated divider ─
+ *   ┌─ bubble (sender)
+ *   │  text
+ *   │  [Ik help] [Negeer]   (per-row action chips)
  *   └─
- *   [+ plaats vraag · aanbod · te leen]  (FAB)
+ *   ┌─ PRIKBORD card
+ *   │  "3 nieuwe vragen vandaag."
+ *   └─
+ *   ┌─ AANKONDIGING card
+ *   │  "Buurtborrel zaterdag 17u"
+ *   └─
+ *   …
+ *   [+] [Schrijf naar de buurt…       ] [↑]
  *
- * The bottom Kringen/Stroom/Mij tab bar is rendered by the host shell,
- * not by this renderer.
+ * Pure render: the host wires:
+ *   - `rows`          buildKringStream output (already scoped to this kring)
+ *   - `onSend(text)`  composer submit handler
+ *   - `onAction(action, row)`  per-row action chip taps
+ *   - `onBack`        back-to-launcher
+ *   - `more`          overflow-menu callbacks (settings / mine / files / …)
+ *   - `composerPlaceholder`  kring-specific placeholder text (optional)
+ *
+ * Per-kring bottom tabs (GESPREK / PRIKBORD / LEDEN etc.) live in
+ * SP-13.3; this slice focuses on the GESPREK render.
  */
 
-import { KRING_STREAM_KIND_FILTERS } from '../../src/v2/circleStream.js';
-import { actionsForStreamRow }      from '../../src/v2/streamActions.js';
+import { actionsForStreamRow } from '../../src/v2/streamActions.js';
 
 export function renderCircleKring(container, {
   circle = {},
   rows = [],
-  filter = 'all',
-  onFilter,
   onBack,
-  onPost,
+  onSend,
   onAction,
   more = null,
+  composerPlaceholder = null,
   t,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
   container.classList.add('circle-kring');
 
-  // Header: back · title · more.
+  // Header — back · title · more.
   const header = document.createElement('div');
   header.className = 'circle-kring__header';
 
@@ -61,9 +67,6 @@ export function renderCircleKring(container, {
   title.textContent = circle.name || circle.id || '';
   header.appendChild(title);
 
-  // Overflow `⋯` opens an inline action list; only shown when at least
-  // one `more.*` handler is wired.  The list is appended below the
-  // header (no positioning library), toggled via an `is-open` class.
   const moreActions = collectMoreActions(more, tr);
   if (moreActions.length > 0) {
     const moreBtn = document.createElement('button');
@@ -104,86 +107,110 @@ export function renderCircleKring(container, {
     container.appendChild(menu);
   }
 
-  // Filter chip row (Alles / Vraag / Aanbod / Lenen).
-  const chips = document.createElement('div');
-  chips.className = 'circle-kring__chips';
-  for (const key of KRING_STREAM_KIND_FILTERS) {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'circle-kring__chip';
-    chip.dataset.filter = key;
-    if (key === filter) chip.classList.add('is-active');
-    chip.textContent = tr(`circle.kring.filter_${key}`);
-    chip.addEventListener('click', () => {
-      if (typeof onFilter === 'function') onFilter(key);
-    });
-    chips.appendChild(chip);
-  }
-  container.appendChild(chips);
-
-  // Rows list / empty state.
+  // Message stream — chat-style bubbles + cards interleaved by time
+  // with dated dividers between days.
   const list = document.createElement('div');
   list.className = 'circle-kring__list';
   if (!rows.length) {
     const empty = document.createElement('div');
     empty.className = 'circle-kring__empty';
-    empty.textContent = filter && filter !== 'all'
-      ? tr('circle.kring.empty_filtered')
-      : tr('circle.kring.empty');
+    empty.textContent = tr('circle.kring.empty');
     list.appendChild(empty);
   } else {
-    for (const row of rows) {
-      list.appendChild(renderRow(row, { tr, onAction }));
+    // Render chronologically (oldest at top), grouped by day.  rows from
+    // buildKringStream are newest-first; reverse a copy so the timeline
+    // reads top → bottom like a chat.
+    const chronological = [...rows].reverse();
+    let lastDayKey = null;
+    for (const row of chronological) {
+      const dayKey = dayKeyOf(row.ts);
+      if (dayKey !== lastDayKey) {
+        list.appendChild(renderDayDivider(row.ts, tr));
+        lastDayKey = dayKey;
+      }
+      list.appendChild(renderBubble(row, { tr, onAction }));
     }
   }
   container.appendChild(list);
 
-  // + plaats FAB.
-  if (typeof onPost === 'function') {
-    const fab = document.createElement('button');
-    fab.type = 'button';
-    fab.className = 'circle-kring__fab';
-    fab.textContent = tr('circle.kring.post_fab');
-    fab.addEventListener('click', () => onPost());
-    container.appendChild(fab);
+  // Composer — text input + send button.
+  if (typeof onSend === 'function') {
+    const form = document.createElement('form');
+    form.className = 'circle-kring__composer';
+    form.setAttribute('autocomplete', 'off');
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'circle-kring__composer-input';
+    input.placeholder = composerPlaceholder ?? tr('circle.kring.composer_placeholder');
+    input.setAttribute('aria-label', tr('circle.kring.composer_placeholder'));
+    form.appendChild(input);
+
+    const send = document.createElement('button');
+    send.type = 'submit';
+    send.className = 'circle-kring__composer-send';
+    send.setAttribute('aria-label', tr('circle.kring.send'));
+    send.textContent = '↑';
+    form.appendChild(send);
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      onSend(text);
+      input.value = '';
+      // Keep focus so a quick burst of messages feels native.
+      input.focus();
+    });
+    container.appendChild(form);
   }
 
   return container;
 }
 
-function renderRow(row, { tr, onAction } = {}) {
+/* ──────────────────────────────────────────────────────────────────
+ * Internals
+ * ────────────────────────────────────────────────────────────────── */
+
+function renderBubble(row, { tr, onAction } = {}) {
   const el = document.createElement('div');
-  el.className = 'circle-kring__row';
+  el.className = 'circle-kring__bubble';
   el.dataset.rowId = row.id ?? '';
 
-  const head = document.createElement('div');
-  head.className = 'circle-kring__row-head';
+  // Sender label (top-left, small).
+  const senderText = pickSender(row);
+  if (senderText) {
+    const sender = document.createElement('div');
+    sender.className = 'circle-kring__bubble-sender';
+    sender.textContent = senderText;
+    el.appendChild(sender);
+  }
+
+  // Kind pill (small, inline before text — matches the v2 PRIKBORD card
+  // shape).  For chat-only messages the kind is null and no pill renders.
   const kind = pickKindLabel(row);
   if (kind) {
     const tag = document.createElement('span');
-    tag.className = 'circle-kring__row-kind';
+    tag.className = 'circle-kring__bubble-kind';
     tag.textContent = kind;
-    head.appendChild(tag);
+    el.appendChild(tag);
   }
-  const text = document.createElement('span');
-  text.className = 'circle-kring__row-text';
+
+  const text = document.createElement('div');
+  text.className = 'circle-kring__bubble-text';
   text.textContent = pickRowText(row) ?? tr(`circle.streamAction.${row.type ?? 'unknown'}`) ?? '';
-  head.appendChild(text);
-  el.appendChild(head);
+  el.appendChild(text);
 
-  const meta = document.createElement('div');
-  meta.className = 'circle-kring__row-meta';
-  meta.textContent = [row.actor, row.app].filter(Boolean).join(' · ');
-  el.appendChild(meta);
-
+  // Per-row action chips (Ik help / Negeer / Ik doe ze …).  Substrate
+  // already picks the right set per row kind.
   const actions = actionsForStreamRow(row);
   if (actions.length) {
     const actRow = document.createElement('div');
-    actRow.className = 'circle-kring__row-actions';
+    actRow.className = 'circle-kring__bubble-actions';
     for (const a of actions) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'circle-kring__row-action';
+      btn.className = 'circle-kring__bubble-action';
       btn.dataset.action = a.action;
       btn.textContent = tr(a.label);
       btn.addEventListener('click', () => {
@@ -193,12 +220,40 @@ function renderRow(row, { tr, onAction } = {}) {
     }
     el.appendChild(actRow);
   }
+
   return el;
+}
+
+function renderDayDivider(ts, tr) {
+  const el = document.createElement('div');
+  el.className = 'circle-kring__day';
+  el.textContent = formatDayLabel(ts, tr);
+  return el;
+}
+
+function dayKeyOf(ts) {
+  if (typeof ts !== 'number' || !Number.isFinite(ts)) return 'unknown';
+  const d = new Date(ts);
+  // YYYY-MM-DD — local-time day key (avoid UTC drift across timezones).
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+function formatDayLabel(ts, tr) {
+  if (typeof ts !== 'number' || !Number.isFinite(ts)) return '';
+  const d = new Date(ts);
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  if (sameDay)     return tr('circle.kring.day_today');
+  if (isYesterday) return tr('circle.kring.day_yesterday');
+  return d.toLocaleDateString();
 }
 
 function pickRowText(row) {
   const p = row?.event?.payload && typeof row.event.payload === 'object' ? row.event.payload : {};
-  for (const k of ['text', 'title', 'body', 'name']) {
+  for (const k of ['text', 'title', 'body', 'name', 'message']) {
     if (typeof p[k] === 'string' && p[k]) return p[k];
   }
   return null;
@@ -206,8 +261,19 @@ function pickRowText(row) {
 
 function pickKindLabel(row) {
   const p = row?.event?.payload && typeof row.event.payload === 'object' ? row.event.payload : {};
-  const k = typeof p.kind === 'string' && p.kind ? p.kind : row.type;
-  return typeof k === 'string' && k ? k.toUpperCase() : null;
+  const k = typeof p.kind === 'string' && p.kind ? p.kind : null;
+  // Don't show a kind pill for plain chat messages — they're the default.
+  if (!k || k === 'message' || k === 'chat-message') return null;
+  return k.toUpperCase();
+}
+
+function pickSender(row) {
+  const p = row?.event?.payload && typeof row.event.payload === 'object' ? row.event.payload : {};
+  for (const k of ['senderDisplay', 'authorName', 'displayName', 'actor']) {
+    if (typeof p[k] === 'string' && p[k]) return p[k];
+  }
+  if (typeof row?.actor === 'string' && row.actor) return row.actor;
+  return null;
 }
 
 const MORE_ITEMS = [
