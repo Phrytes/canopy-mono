@@ -160,4 +160,39 @@ describe('renderRecipeConflictResolver · γ.3', () => {
     expect(firstLabel).toContain('circle.recipe.conflict.block_label:');
     expect(firstLabel).toContain('circle.recipe.block.text');
   });
+
+  it('γ.4 — `title` opt overrides the modal heading translation key', () => {
+    const { local, incoming, conflicts } = buildFixture();
+    const el = mount();
+    renderRecipeConflictResolver(el, {
+      conflicts, local, incoming, t,
+      title: 'circle.rules.conflict.title',
+      onResolve: () => {}, onCancel: () => {},
+    });
+    expect(el.querySelector('.circle-recipe-conflict__title').textContent)
+      .toBe('circle.rules.conflict.title');
+    // The instructions key stays under recipe namespace (γ.4 reuses
+    // every other locale key from γ.3 — only the title changes).
+    expect(el.querySelector('.circle-recipe-conflict__instructions').textContent)
+      .toBe('circle.recipe.conflict.instructions');
+  });
+
+  it('γ.4 — null / omitted `title` opt preserves γ.3 default heading', () => {
+    const { local, incoming, conflicts } = buildFixture();
+    const el1 = mount();
+    renderRecipeConflictResolver(el1, {
+      conflicts, local, incoming, t, title: null,
+      onResolve: () => {}, onCancel: () => {},
+    });
+    expect(el1.querySelector('.circle-recipe-conflict__title').textContent)
+      .toBe('circle.recipe.conflict.title');
+
+    const el2 = mount();
+    renderRecipeConflictResolver(el2, {
+      conflicts, local, incoming, t,
+      onResolve: () => {}, onCancel: () => {},
+    });
+    expect(el2.querySelector('.circle-recipe-conflict__title').textContent)
+      .toBe('circle.recipe.conflict.title');
+  });
 });

@@ -17,6 +17,14 @@
  * keep the overlay self-contained with inline styles + a single
  * `circle-recipe-conflict__*` class root so future styling can hang
  * off the css.
+ *
+ * γ.4 — the modal is reused for the rules doc and the circle policy:
+ * those shapes have no `blocks` array, so detection produces an
+ * empty `blockConflicts` and only `metaConflicts`.  The `title` opt
+ * lets the host pick a namespace-appropriate heading
+ * (`circle.rules.conflict.title` / `circle.settings.conflict.title`)
+ * while every other locale key stays under `circle.recipe.conflict.*`
+ * — the picker copy is identical across the three flows.
  */
 import { BLOCK_REGISTRY } from '../../src/v2/kringRecipeBlocks.js';
 
@@ -24,11 +32,15 @@ import { BLOCK_REGISTRY } from '../../src/v2/kringRecipeBlocks.js';
  * @param {HTMLElement} container
  * @param {object} args
  * @param {{ blockConflicts, metaConflicts, identical, toMerge }} args.conflicts
- * @param {object} args.local     — local Recipe (for "yours" previews)
- * @param {object} args.incoming  — incoming Recipe (for "theirs" previews)
+ * @param {object} args.local     — local doc (for "yours" previews)
+ * @param {object} args.incoming  — incoming doc (for "theirs" previews)
  * @param {Function} args.t
  * @param {Function} args.onResolve  (decisions) => void
  * @param {Function} args.onCancel   () => void
+ * @param {string|null} [args.title=null]  γ.4 — override the modal heading
+ *        translation key.  When null/omitted, defaults to
+ *        `circle.recipe.conflict.title` for backwards compatibility with
+ *        every γ.3 call site.
  */
 export function renderRecipeConflictResolver(container, {
   conflicts,
@@ -37,6 +49,7 @@ export function renderRecipeConflictResolver(container, {
   t,
   onResolve,
   onCancel,
+  title = null,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
@@ -62,11 +75,11 @@ export function renderRecipeConflictResolver(container, {
     boxShadow: '0 8px 28px rgba(0,0,0,.20)',
   });
 
-  const title = document.createElement('h2');
-  title.className = 'circle-recipe-conflict__title';
-  title.textContent = tr('circle.recipe.conflict.title');
-  title.style.margin = '0 0 4px';
-  sheet.appendChild(title);
+  const titleEl = document.createElement('h2');
+  titleEl.className = 'circle-recipe-conflict__title';
+  titleEl.textContent = tr(typeof title === 'string' && title ? title : 'circle.recipe.conflict.title');
+  titleEl.style.margin = '0 0 4px';
+  sheet.appendChild(titleEl);
 
   const instr = document.createElement('p');
   instr.className = 'circle-recipe-conflict__instructions';

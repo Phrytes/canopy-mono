@@ -10,6 +10,13 @@
  * Pure controlled component: host owns the conflicts shape + the local
  * and incoming recipes; this screen calls `onResolve(decisions)` /
  * `onCancel()` and lets the host run `applyResolution` + persist.
+ *
+ * γ.4 — the modal is reused for the rules doc and the circle policy:
+ * those shapes have no `blocks` array, so detection produces only
+ * `metaConflicts`.  The `title` prop lets the host override the
+ * heading translation key (`circle.rules.conflict.title` /
+ * `circle.settings.conflict.title`) while every other locale key stays
+ * under `circle.recipe.conflict.*` — the picker copy is identical.
  */
 import React, { useState, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, Modal, StyleSheet } from 'react-native';
@@ -25,6 +32,9 @@ import { BLOCK_REGISTRY } from '@canopy-app/canopy-chat';
  * @param {object} props.incoming
  * @param {(decisions: Record<string,string>) => void} props.onResolve
  * @param {() => void} props.onCancel
+ * @param {string|null} [props.title=null]  γ.4 — translation key for the
+ *        modal heading.  Defaults to `circle.recipe.conflict.title` for
+ *        backwards compatibility with every γ.3 caller.
  */
 export default function CircleRecipeConflictScreen({
   visible = true,
@@ -33,6 +43,7 @@ export default function CircleRecipeConflictScreen({
   incoming,
   onResolve,
   onCancel,
+  title = null,
 }) {
   const [blockDecisions, setBlockDecisions] = useState({});
   const [metaDecisions, setMetaDecisions]   = useState({});
@@ -67,7 +78,7 @@ export default function CircleRecipeConflictScreen({
       <Pressable style={styles.backdrop} onPress={onCancel} testID="recipe-conflict-backdrop">
         {/* Inner Pressable swallows taps so the sheet doesn't dismiss itself. */}
         <Pressable style={styles.sheet} onPress={() => {}} testID="recipe-conflict-sheet">
-          <Text style={styles.title}>{t('circle.recipe.conflict.title')}</Text>
+          <Text style={styles.title}>{t(typeof title === 'string' && title ? title : 'circle.recipe.conflict.title')}</Text>
           <Text style={styles.instructions}>{t('circle.recipe.conflict.instructions')}</Text>
 
           <ScrollView contentContainerStyle={styles.body}>

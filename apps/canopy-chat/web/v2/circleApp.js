@@ -834,6 +834,11 @@ function showFolio(id) {
 // snapshots every save.  Key shape on disk is unchanged.
 async function showRules(id) {
   let doc = await rulesStore.get(id);
+  // TODO γ-next — pass `incomingRules` (+ rulesStore, circleId) when peer
+  // broadcast / pod sync surfaces a divergent rules doc.  γ.4 ships the
+  // editor's opt + the rules-conflict substrate + a rules-namespaced
+  // heading on the existing recipe-conflict modal; the source plumbing
+  // is the next slice.  See PLAN-canopy-chat-v2-circle.md Phase 9.
   const rerender = () => renderRulesEditor(rootEl, {
     doc,
     t,
@@ -922,6 +927,12 @@ async function showSettings(id) {
       ? t('circle.settings.pending_waiting', { who: waiting.join(', ') })
       : t('circle.settings.pending');
   };
+  // TODO γ-next — pass `incomingPolicy` (+ policyStore, circleId) when
+  // peer broadcast / pod sync surfaces a divergent policy.  γ.4 ships
+  // the editor's opt + the policy-conflict substrate + a settings-
+  // namespaced heading on the existing recipe-conflict modal; the
+  // source plumbing is the next slice.  See PLAN-canopy-chat-v2-circle.md
+  // Phase 9.
   const rerender = () => renderCircleSettings(rootEl, {
     policy: working,
     t,
