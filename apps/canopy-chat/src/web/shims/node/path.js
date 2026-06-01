@@ -17,10 +17,8 @@
  * Matches the existing Linux/macOS development convention.  The Windows
  * adapter path is Node-only; the browser bundle never sees it.
  *
- * Supersedes the old `apps/canopy-chat/src/web/shims/nodePath.js` (which
- * was a throw-stub).  Switching to a real impl is safe because the
- * implementation is no-IO; if a sync-engine browser path actually relies
- * on path.join's correctness, the old throw-stub was a latent bug.
+ * Real impl (not throw-stub) is safe because it's no-IO; sync-engine
+ * legitimately calls path ops on wire-format strings in the browser.
  */
 
 export const sep        = '/';
