@@ -16,10 +16,19 @@
  * A2ATransport is registered with agent.useSecurityLayer(new A2ATLSLayer(...))
  * so that encrypt/decryptAndVerify are pass-throughs (auth lives in HTTP headers).
  */
+import { createServer }                       from 'node:http';
+import { readFile, stat }                      from 'node:fs/promises';
+import { extname, join, resolve as resolvePath } from 'node:path';
 import { Transport }        from '../transport/Transport.js';
 import { AgentCardBuilder } from './AgentCardBuilder.js';
 import { Parts }            from '../Parts.js';
 import { genId, P }         from '../Envelope.js';
+
+// `node:http` / `node:fs/promises` / `node:path` are eager imports —
+// canopy-chat's vite.config aliases each to a browser-safe stub that
+// throws if called, so importing them at module load is browser-safe
+// (the previous `await import(...)` lazy-loads were a workaround for an
+// older empty-shim setup; see #303 cleanup).
 
 const isAsyncGen = x => x && typeof x[Symbol.asyncIterator] === 'function';
 
@@ -79,8 +88,6 @@ export class A2ATransport extends Transport {
   async connect() {
     if (this.#port === null) return;
 
-    // Dynamic import keeps this module browser-safe (http is Node-only).
-    const { createServer } = await import('http');
     this.#server = createServer((req, res) => {
       this.#handleRequest(req, res).catch(err => {
         if (!res.headersSent) _jsonError(res, 500, 'internal-error', err.message);
@@ -202,9 +209,6 @@ export class A2ATransport extends Transport {
   }
 
   async #tryServeStatic(pathname, res) {
-    const { readFile, stat } = await import('node:fs/promises');
-    const { extname, join, resolve: resolvePath } = await import('node:path');
-
     let p = pathname;
     if (p === '/' || p === '') p = '/' + this.#indexFile;
     const rootAbs = resolvePath(this.#staticDir);

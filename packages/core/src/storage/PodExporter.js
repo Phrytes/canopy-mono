@@ -47,6 +47,13 @@
  * TODO(C3-followup): zip alternative + ACL re-establishment.
  */
 import nacl from 'tweetnacl';
+import { createHash } from 'node:crypto';
+
+// `node:crypto` is eager (previously lazy-loaded for the canopy-chat
+// vite bundle).  Canopy-chat's vite.config aliases `node:crypto` to a
+// browser-safe stub that throws if `createHash` is called — but
+// `digest()` (the only caller below) is itself only invoked from Node
+// PodExporter flows, never from the browser.  See #303 cleanup.
 
 import { Bootstrap } from '../identity/Bootstrap.js';
 
@@ -326,7 +333,6 @@ export class PodExporter {
    */
   async digest(opts = {}) {
     const archive = await this.export(opts);
-    const { createHash } = await import('node:crypto');
     return createHash('sha256').update(archive).digest('hex');
   }
 
