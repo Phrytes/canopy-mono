@@ -1310,6 +1310,13 @@ if (typeof window !== 'undefined' && window.nkn) {
       // the standard ingest path handles dedup + render.  Small
       // delay so NKN's HI handshake settles first (otherwise the
       // first sendPeerMessage to each new peer trips "send HI first").
+      //
+      // ε.2 — strategy-routed catch-up substrate at
+      // src/v2/catchUpStrategy.js is now available.  Wire it in once
+      // ε.1 (chatMessageInbox) lands — peer + pod paths both route
+      // inbound messages through the inbox so the strategy router
+      // doesn't multiply insertion points.  See
+      // PLAN-canopy-chat-v2-circle.md Phase 9 / ε wave.
       setTimeout(() => {
         requestCatchUpFromKnownPeers().catch((err) =>
           console.warn('[catch-up] kick-off failed', err));

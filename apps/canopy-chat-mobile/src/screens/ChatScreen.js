@@ -401,6 +401,12 @@ export default function ChatScreen({
       updatePeerDisplay: renamePeer,
       t,
     });
+    // ε.2 — strategy-routed catch-up substrate at
+    // src/v2/catchUpStrategy.js is now available.  Wire it in once
+    // ε.1 (chatMessageInbox) lands — peer + pod paths both route
+    // inbound messages through the inbox so the strategy router
+    // doesn't multiply insertion points.  See
+    // PLAN-canopy-chat-v2-circle.md Phase 9 / ε wave.
     return {
       onPeerMessage:  makePeerRouter({ handlers, defaultHandler }),
       requestCatchUp: makeRequestCatchUpFromKnownPeers({ callSkill, sendPeer }),
