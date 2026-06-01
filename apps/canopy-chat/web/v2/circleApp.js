@@ -23,6 +23,9 @@ import { buildKringTabs, DEFAULT_KRING_TAB } from '../../src/v2/kringTabs.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
 import { rehydrateKringChatsFromStoop } from '../../src/v2/kringChatRehydrate.js';
+// γ-next.recipe — receiver + pending-cache substrate for the recipe broadcast.
+import { makeKringRecipePeerHandler } from '../../src/v2/kringRecipeReceiver.js';
+import { createKringRecipePendingStoreLocal } from '../../src/v2/kringRecipePendingStorage.js';
 import {
   createKringRecipeStore, localStorageRecipeIo, getActiveRecipe,
   addRecipe, renameRecipe, removeRecipe, setActiveRecipe,
@@ -138,6 +141,12 @@ const policyStore = createCirclePolicyStore({ ...localStoragePolicyIo(), version
 const recipeStore = createKringRecipeStore({ io: localStorageRecipeIo(), versions: recipeVersions });
 // γ.2 — per-circle rules store (replaces inline localStorage in showRules()).
 const rulesStore  = createCircleRulesStore({ ...localStorageRulesIo(), versions: rulesVersions });
+// γ-next.recipe — per-kring "incoming recipe" cache.  Receiver writes
+// here on every valid kring-recipe-broadcast envelope; the recipe
+// editor reads on mount + passes the cached recipe via γ.3's
+// `incomingRecipe` opt.  localStorage now; pod-sync swap is the
+// same shape as the other stores.
+const kringRecipePendingStore = createKringRecipePendingStoreLocal();
 // α.3 — per-user screens store.  One book per user (not per-kring); the
 // active screen drives the new Schermen tab.
 const userScreenStore = createUserScreenStore({ io: localStorageScreenIo() });
@@ -738,6 +747,11 @@ function showRecipeEditor(circleId) {
   let book = { recipes: [], activeId: null };
   let mode = 'book';
   let editingRecipeId = null;
+  // γ-next.recipe — pending incoming recipe (set by peer broadcast).
+  // Loaded once on mount; cleared after the resolver applies or
+  // discards.  When null the editor renders untouched; when set, γ.3
+  // wires the per-block modal automatically.
+  let incomingRecipe = null;
 
   const refresh = async () => {
     try { book = await recipeStore.get(circleId); }
@@ -745,23 +759,41 @@ function showRecipeEditor(circleId) {
     if (mode === 'recipe' && !book.recipes.some((r) => r.id === editingRecipeId)) {
       mode = 'book'; editingRecipeId = null;
     }
+    // γ-next.recipe — pull the cached broadcast (if any).  Editor's
+    // resolver decides whether anything actually conflicts; if not,
+    // applies straight through.
+    try { incomingRecipe = await kringRecipePendingStore.get(circleId); }
+    catch { incomingRecipe = null; }
     rerender();
   };
 
   const apply = async (mutator) => {
     try { book = await recipeStore.update(circleId, mutator); }
     catch (err) { console.warn('[recipe] mutation failed:', err?.message ?? err); }
+    // γ-next.recipe — fan the fresh local recipe out to peers.  Read
+    // the just-updated active recipe back so we send the post-mutation
+    // shape.  Fire-and-forget; per-peer errors are logged inside.
+    try { broadcastActiveRecipe({ circleId, book }); }
+    catch (err) { console.warn('[kring-recipe] broadcast scheduling failed:', err?.message ?? err); }
     rerender();
   };
 
+  const clearPending = () => {
+    incomingRecipe = null;
+    kringRecipePendingStore.clear(circleId).catch(() => { /* ignore */ });
+  };
+
   const rerender = () => {
-    // TODO γ-next — pass `incomingRecipe` (+ recipeStore, circleId) when
-    // peer broadcast / pod sync surfaces a divergent recipe.  γ.3 ships
-    // the editor's opt + the conflict-resolver substrate (per-block
-    // Keep yours / Take theirs / Keep both modal); the source plumbing
-    // is the next slice.  See PLAN-canopy-chat-v2-circle.md Phase 9.
     renderRecipeEditor(rootEl, {
       book, mode, editingRecipeId, t,
+      // γ-next.recipe — broadcast cache → editor → γ.3 resolver.  The
+      // resolver is opt-in; when `incomingRecipe` is null the editor
+      // renders untouched.  Applied / discarded both clear the cache.
+      incomingRecipe,
+      recipeStore,
+      circleId,
+      onIncomingApplied: () => clearPending(),
+      onIncomingDiscarded: () => clearPending(),
       onBack:         () => showDetail(circleId),
       onOpenRecipe:   (rid) => { mode = 'recipe'; editingRecipeId = rid; rerender(); },
       onBackToBook:   () => { mode = 'book'; editingRecipeId = null; rerender(); },
@@ -777,6 +809,30 @@ function showRecipeEditor(circleId) {
   };
 
   refresh();   // initial load + render
+}
+
+/**
+ * γ-next.recipe — fan the active recipe out to every other kring
+ * member via stoop's `broadcastKringRecipe` skill.  Fire-and-forget:
+ * per-peer failures land in the result.errors array; we just log.
+ * No-op when rawCallSkill isn't bound yet (pre-agent-boot edits).
+ */
+function broadcastActiveRecipe({ circleId, book }) {
+  if (typeof rawCallSkill !== 'function') return;
+  const active = book?.recipes?.find?.((r) => r.id === book.activeId);
+  if (!active) return;
+  const msgId = `kring-recipe-${circleId}-${Date.now()}`;
+  const ts    = Date.now();
+  rawCallSkill('stoop', 'broadcastKringRecipe', {
+    groupId: circleId,
+    recipe:  active,
+    msgId,
+    ts,
+  }).then((r) => {
+    if (r?.error) console.warn('[kring-recipe] fan-out skipped:', r.error);
+  }).catch((err) => {
+    console.warn('[kring-recipe] fan-out failed:', err?.message ?? err);
+  });
 }
 
 // Circle-scoped Folio browser (board 10B) — files come from a circle pod's
@@ -1028,8 +1084,20 @@ async function boot() {
         eventLog,
         dedup:     kringChatDedup,
       }).catch(() => { /* logged inside */ });
+      // γ-next.recipe — recipe-broadcast receiver.  Stashes inbound
+      // recipes per-kring; the editor pulls on mount + passes via
+      // γ.3's `incomingRecipe` opt.
+      const kringRecipeDedup   = new Set();
+      const kringRecipeHandler = makeKringRecipePeerHandler({
+        pendingStore: kringRecipePendingStore,
+        dedup:        kringRecipeDedup,
+        logger:       console,
+      });
       const peerMessageRouter = makePeerRouter({
-        handlers: { 'kring-chat-message': kringChatHandler },
+        handlers: {
+          'kring-chat-message':      kringChatHandler,
+          'kring-recipe-broadcast':  kringRecipeHandler,
+        },
       });
       tryConnectPeerTransport(agent, peerMessageRouter).catch(() => { /* logged inside */ });
       // P6.5 — wire the claim-router hook now that callSkill + override

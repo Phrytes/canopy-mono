@@ -88,7 +88,7 @@ function WithTabBar({ active, onSelect, children }) {
   );
 }
 
-export default function CircleLauncherScreen({ bundle, eventLog }) {
+export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePendingStore = null }) {
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -109,6 +109,10 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
   const [recipeBook, setRecipeBook] = useState({ recipes: [], activeId: null });
   const [recipeEditorMode, setRecipeEditorMode] = useState('book');
   const [recipeEditingId, setRecipeEditingId] = useState(null);
+  // γ-next.recipe — pending incoming recipe (from peer broadcast).
+  // Loaded when the recipe screen opens; cleared after γ.3 resolver
+  // applies or discards.
+  const [incomingRecipe, setIncomingRecipe] = useState(null);
   // α.3 — Screens-tab state.  Two sub-modes: 'picker' (CRUD list) +
   // 'view' (render the materialized active screen).  Book + blocks
   // live here so they survive sub-mode switches without refetching.
@@ -242,9 +246,56 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
   }, [recipeStore]);
   const applyRecipeMutation = useCallback(async (cid, mutator) => {
     if (!cid) return;
-    try { setRecipeBook(await recipeStore.update(cid, mutator)); }
-    catch (err) { console.warn('[recipe] mutation failed:', err?.message ?? err); }
-  }, [recipeStore]);
+    let nextBook = null;
+    try {
+      nextBook = await recipeStore.update(cid, mutator);
+      setRecipeBook(nextBook);
+    } catch (err) { console.warn('[recipe] mutation failed:', err?.message ?? err); }
+    // γ-next.recipe — fan the just-updated active recipe out to peers.
+    // Fire-and-forget; per-peer errors land in result.errors which we
+    // log.  No-op when callSkill / no agent / no active recipe.
+    if (!nextBook || typeof bundle?.callSkill !== 'function') return;
+    const active = nextBook.recipes?.find?.((r) => r.id === nextBook.activeId);
+    if (!active) return;
+    const msgId = `kring-recipe-${cid}-${Date.now()}`;
+    const ts    = Date.now();
+    bundle.callSkill('stoop', 'broadcastKringRecipe', {
+      groupId: cid, recipe: active, msgId, ts,
+    }).then((r) => {
+      if (r?.error) console.warn('[kring-recipe] fan-out skipped:', r.error);
+    }).catch((err) => {
+      console.warn('[kring-recipe] fan-out failed:', err?.message ?? err);
+    });
+  }, [recipeStore, bundle]);
+
+  // γ-next.recipe — pull cached pending recipe whenever the recipe
+  // editor view opens for a selected circle.  γ.3's resolver runs
+  // automatically from inside the editor when incomingRecipe is
+  // non-null + diverges from local.
+  useEffect(() => {
+    if (view !== 'recipes' || !selected?.id || !kringRecipePendingStore) {
+      setIncomingRecipe(null);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const cached = await kringRecipePendingStore.get(selected.id);
+        if (alive) setIncomingRecipe(cached ?? null);
+      } catch { if (alive) setIncomingRecipe(null); }
+    })();
+    return () => { alive = false; };
+  }, [view, selected, kringRecipePendingStore]);
+
+  // γ-next.recipe — clear the cached pending recipe after the γ.3
+  // resolver applies or discards.  Both paths route through here so
+  // a fresh broadcast can land in the slot again.
+  const clearIncomingRecipe = useCallback(async () => {
+    setIncomingRecipe(null);
+    if (selected?.id && kringRecipePendingStore) {
+      try { await kringRecipePendingStore.clear(selected.id); } catch { /* ignore */ }
+    }
+  }, [selected, kringRecipePendingStore]);
 
   // α.3 — Screens helpers.
   const refreshScreensBook = useCallback(async () => {
@@ -699,6 +750,12 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
         book={recipeBook}
         mode={recipeEditorMode}
         editingRecipeId={recipeEditingId}
+        // γ-next.recipe — broadcast cache → editor → γ.3 resolver.
+        incomingRecipe={incomingRecipe}
+        recipeStore={recipeStore}
+        circleId={selected.id}
+        onIncomingApplied={clearIncomingRecipe}
+        onIncomingDiscarded={clearIncomingRecipe}
         onBack={() => setView('detail')}
         onOpenRecipe={(rid) => { setRecipeEditingId(rid); setRecipeEditorMode('recipe'); }}
         onBackToBook={() => { setRecipeEditorMode('book'); setRecipeEditingId(null); }}

@@ -91,6 +91,13 @@ export { detectRecipeConflicts, applyResolution } from './v2/recipeConflict.js';
 // γ.4 — rules-doc + circle-policy conflict detection + resolution (same flow).
 export { detectRulesConflicts,  applyRulesResolution  } from './v2/rulesConflict.js';
 export { detectPolicyConflicts, applyPolicyResolution } from './v2/policyConflict.js';
+// γ-next.recipe — receiver + pending-cache substrate for the recipe broadcast.
+export { makeKringRecipePeerHandler }              from './v2/kringRecipeReceiver.js';
+export { createKringRecipePendingStore }           from './v2/kringRecipePending.js';
+export {
+  createKringRecipePendingStoreLocal,
+  localStorageKringRecipePendingIo,
+} from './v2/kringRecipePendingStorage.js';
 // α.2a/b — user-owned cross-kring screens (Stream / custom views).
 export {
   EMPTY_SCREEN_BOOK, ALL_KRINGEN,
