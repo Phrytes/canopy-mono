@@ -396,6 +396,11 @@
         "leaving":        { "text": "Vertrek",         "doc": "α.1c — rules block short field label." },
         "responsibility": { "text": "Verantwoordelijkheid", "doc": "α.1c — rules block short field label." }
       }
+    },
+    "create": {
+      "template": {
+        "applied_hint": { "text": "Standaardwaarden ingevuld voor {{kind}}", "doc": "β.4 — confirmation shown after picking a kind in the C1 create-circle wizard; the matching kringTemplate has just pre-filled the policy axes. {{kind}} is the picked kind id (household / buurt / vriendenkring / team)." }
+      }
     }
   },
   "common": {

@@ -352,6 +352,11 @@
         "label": { "text": "Compact",                          "doc": "α.5c — checkbox label for the compact-rows toggle on list-shaped blocks." },
         "hint":  { "text": "Smallere regels, kleinere tekst",  "doc": "α.5c — hint under the Compact checkbox." }
       }
+    },
+    "create": {
+      "template": {
+        "applied_hint": { "text": "Standaardwaarden ingevuld voor {{kind}}", "doc": "β.4 — confirmation shown after picking a kind in the C1 create-circle wizard; the matching kringTemplate has just pre-filled the policy axes. {{kind}} is the picked kind id (household / buurt / vriendenkring / team)." }
+      }
     }
   },
   "app": {

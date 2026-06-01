@@ -18,6 +18,12 @@ import {
 // `normalizeSkill` coerces partial rows; `DEFAULT_SKILL` seeds a new row.
 import { SKILL_AXES, DEFAULT_SKILL, normalizeSkill } from '../../v2/circleSkills.js';
 export { SKILL_AXES };
+// β.4 — kind-aware "+ new circle" templates.  Picking a kind in Step 1
+// pre-fills the policy axes (features / revealPolicy / pod / llmTool /
+// agents / consensusRequired) with the matching template's defaults
+// for any axis the user hasn't already overridden.
+import { applyTemplate, KRING_KINDS } from '../../v2/kringTemplates.js';
+export { KRING_KINDS };
 
 /* ─── Policy catalogs ───────────────────────────────────────── */
 
@@ -81,6 +87,23 @@ export function labelOf(options, id) {
   return options.find((o) => o.id === id)?.label ?? id;
 }
 
+/**
+ * β.4 — pick a kind and pre-fill policy axes from `kringTemplates`.
+ *
+ * Returns a new state object (does NOT mutate the input).  The merge
+ * preserves every axis the user has already set — picking a kind only
+ * fills the gaps.  Switching kinds is therefore essentially a no-op
+ * for axes the previous kind already filled (see kringTemplates.js
+ * header for the design call).
+ *
+ * @param {object} state — current wizard state
+ * @param {string} kind  — kind picked (household / buurt / vriendenkring / team)
+ * @returns {object} new state with `kind` + policy axes filled
+ */
+export function setKind(state, kind) {
+  return applyTemplate(state, kind);
+}
+
 /* ─── Initial state ─────────────────────────────────────────── */
 
 export function initialState() {
@@ -91,6 +114,11 @@ export function initialState() {
     groupId:               '',
     purpose:               '',
     tags:                  '',
+    // β.4 — kind picker.  Set via `setKind(state, kind)` which also
+    // pre-fills the policy axes from the matching template.  Unset by
+    // default so the wizard renders the picker before any template
+    // applies.
+    kind:                  null,
     // Step 2 — members & governance
     additionalAdmins:      '',
     accessPolicy:          'invite-only',
