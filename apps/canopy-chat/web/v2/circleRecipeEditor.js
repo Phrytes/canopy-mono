@@ -17,6 +17,8 @@
  */
 import { BLOCK_TYPES } from '../../src/v2/kringRecipe.js';
 import { BLOCK_REGISTRY } from '../../src/v2/kringRecipeBlocks.js';
+import { detectRecipeConflicts, applyResolution } from '../../src/v2/recipeConflict.js';
+import { renderRecipeConflictResolver } from './recipeConflictResolver.js';
 
 /**
  * @param {HTMLElement} container
@@ -36,6 +38,24 @@ import { BLOCK_REGISTRY } from '../../src/v2/kringRecipeBlocks.js';
  * @param {Function} [args.onRemoveBlock]    (recipeId, blockId) → void
  * @param {Function} [args.onMoveBlock]      (recipeId, blockId, newIndex) → void
  * @param {Function} [args.onUpdateBlock]    (recipeId, blockId, configPatch) → void
+ *
+ * γ.3 — per-block conflict resolution (Phase 9, sync-engine absorption).
+ *   The opts below are PURELY ADDITIVE.  When `incomingRecipe` is null
+ *   (the default + every existing call site) the editor behaves exactly
+ *   as before γ.3.  When non-null, the editor runs a 3-way diff against
+ *   the last captured version (γ.2) and — if conflicts surface —
+ *   overlays the modal resolver on top of the regular editor.
+ *
+ * @param {object|null} [args.incomingRecipe]   Recipe arriving from a peer
+ *        broadcast / pod-sync.  Optional; null disables γ.3 entirely.
+ * @param {object} [args.recipeStore]   The kring recipe store (γ.2).  Used
+ *        for `listVersions(circleId)` and `update(...)` after resolution.
+ * @param {string} [args.circleId]      Required when `incomingRecipe` is
+ *        non-null (so we can fetch the version history slot for this kring).
+ * @param {Function} [args.onIncomingApplied]   (mergedRecipe) => void;
+ *        called after the user resolved + the merged recipe was saved.
+ * @param {Function} [args.onIncomingDiscarded] () => void; called after
+ *        the user hit Cancel.
  */
 export function renderRecipeEditor(container, {
   book = { recipes: [], activeId: null },
@@ -45,6 +65,12 @@ export function renderRecipeEditor(container, {
   onOpenRecipe, onBackToBook, onBack,
   onAddRecipe, onRenameRecipe, onRemoveRecipe, onSetActive,
   onAddBlock, onRemoveBlock, onMoveBlock, onUpdateBlock,
+  // γ.3 — incoming-recipe / conflict-resolver opts (optional).
+  incomingRecipe = null,
+  recipeStore,
+  circleId,
+  onIncomingApplied,
+  onIncomingDiscarded,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
@@ -62,7 +88,108 @@ export function renderRecipeEditor(container, {
       onBack, onOpenRecipe, onAddRecipe, onRenameRecipe, onRemoveRecipe, onSetActive,
     });
   }
+
+  // γ.3 — conflict resolver.  Opt-in via `incomingRecipe`.  We only run
+  // when there's a "local recipe" to compare against (i.e. mode==='recipe'
+  // OR the book has a single matching id); otherwise the substrate has
+  // no anchor and we silently no-op.  The detection + modal rendering are
+  // async because `recipeStore.listVersions(...)` may need IO.
+  if (incomingRecipe != null) {
+    maybeRenderConflictResolver(container, {
+      book, editingRecipeId, incomingRecipe, recipeStore, circleId, tr,
+      onIncomingApplied, onIncomingDiscarded,
+    });
+  }
   return container;
+}
+
+/**
+ * γ.3 — kick off the async dance of "fetch base → detect → maybe modal".
+ * Appends a separate overlay element so the regular editor underneath
+ * stays mounted.  When the user picks Cancel, we just remove the overlay;
+ * the local recipe stays as-is.  When the user picks Apply, we save the
+ * merged recipe via the store and notify the host.
+ */
+async function maybeRenderConflictResolver(container, {
+  book, editingRecipeId, incomingRecipe, recipeStore, circleId, tr,
+  onIncomingApplied, onIncomingDiscarded,
+}) {
+  // Find the local-side recipe to compare against.  Prefer the
+  // currently-editing recipe; fall back to the active one; finally,
+  // match by incoming.id.
+  const localRecipe =
+       (editingRecipeId && book?.recipes?.find?.((r) => r.id === editingRecipeId))
+    || (book?.activeId  && book?.recipes?.find?.((r) => r.id === book.activeId))
+    || (incomingRecipe?.id && book?.recipes?.find?.((r) => r.id === incomingRecipe.id))
+    || null;
+
+  if (!localRecipe) return;  // nothing to compare against — silently skip
+
+  // Fetch the last captured version as the 3-way merge base.  Pod sync
+  // captures the FULL book; pull the matching recipe out for the diff.
+  let base = null;
+  try {
+    if (recipeStore && typeof recipeStore.listVersions === 'function' && circleId) {
+      const versions = await recipeStore.listVersions(circleId);
+      const head = Array.isArray(versions) && versions.length > 0 ? versions[0] : null;
+      const headBook = head && typeof head === 'object' && head.value != null ? head.value : null;
+      base = headBook?.recipes?.find?.((r) => r.id === localRecipe.id) ?? null;
+    }
+  } catch { /* best-effort — fall back to null base */ }
+
+  const report = detectRecipeConflicts(localRecipe, incomingRecipe, base);
+  // Identical or only one-sided changes → no UI needed; apply the
+  // incoming recipe cleanly via `applyResolution` with no decisions
+  // (defaults preserve local, but with no conflicts the result equals
+  // the merged book either way; we still hand it back so the host can
+  // persist).
+  if (report.identical || (report.blockConflicts.length === 0 && report.metaConflicts.length === 0)) {
+    const merged = applyResolution(localRecipe, incomingRecipe, {});
+    await persistMerged({ recipeStore, circleId, book, merged });
+    if (typeof onIncomingApplied === 'function') onIncomingApplied(merged);
+    return;
+  }
+
+  // Conflicts exist — overlay the modal.
+  const overlay = document.createElement('div');
+  overlay.className = 'circle-recipe-editor__conflict-overlay';
+  container.appendChild(overlay);
+
+  renderRecipeConflictResolver(overlay, {
+    conflicts: report,
+    local: localRecipe,
+    incoming: incomingRecipe,
+    t: tr,
+    onResolve: async (decisions) => {
+      try {
+        const merged = applyResolution(localRecipe, incomingRecipe, decisions);
+        await persistMerged({ recipeStore, circleId, book, merged });
+        if (typeof onIncomingApplied === 'function') onIncomingApplied(merged);
+      } finally {
+        overlay.remove();
+      }
+    },
+    onCancel: () => {
+      overlay.remove();
+      if (typeof onIncomingDiscarded === 'function') onIncomingDiscarded();
+    },
+  });
+}
+
+/**
+ * γ.3 — persist a merged recipe back through the store.  The store is
+ * book-shaped, so splice the merged recipe into the existing book by id.
+ * When the recipe didn't exist locally (incoming-only id), append.
+ */
+async function persistMerged({ recipeStore, circleId, book, merged }) {
+  if (!recipeStore || typeof recipeStore.update !== 'function' || !circleId || !merged?.id) return;
+  await recipeStore.update(circleId, (cur) => {
+    const recipes = Array.isArray(cur?.recipes) ? cur.recipes.slice() : [];
+    const idx = recipes.findIndex((r) => r.id === merged.id);
+    if (idx >= 0) recipes[idx] = merged;
+    else recipes.push(merged);
+    return { ...cur, recipes };
+  });
 }
 
 /* ─────────────────────────────────────────────────────────────────────── */

@@ -136,6 +136,18 @@
       "compact_label": {
         "label": { "text": "Compact",                          "doc": "α.5c — checkbox label for the compact-rows toggle on list-shaped blocks." },
         "hint":  { "text": "Smallere regels, kleinere tekst",  "doc": "α.5c — hint under the Compact checkbox." }
+      },
+      "conflict": {
+        "title":         { "text": "Twee van jullie hebben dit scherm bewerkt",            "doc": "γ.3 — modal heading when an incoming recipe diverges from local." },
+        "instructions":  { "text": "Kies voor elk onderdeel welke versie behouden moet worden.", "doc": "γ.3 — modal subhead explaining the picker." },
+        "block_label":   { "text": "Blok: {{name}}",                                         "doc": "γ.3 — per-block row label." },
+        "meta_label":    { "text": "Veld: {{path}}",                                          "doc": "γ.3 — meta-conflict row label." },
+        "meta_section":  { "text": "Overige wijzigingen",                                     "doc": "γ.3 — section header above the meta-conflict list." },
+        "keep_yours":    { "text": "Houd jouw versie",                                        "doc": "γ.3 — picker choice: keep local version." },
+        "take_theirs":   { "text": "Neem hun versie",                                         "doc": "γ.3 — picker choice: take incoming version." },
+        "keep_both":     { "text": "Houd beide",                                              "doc": "γ.3 — picker choice (blocks only): keep both." },
+        "apply":         { "text": "Toepassen",                                               "doc": "γ.3 — confirm picks + save the merged recipe." },
+        "cancel":        { "text": "Annuleren",                                               "doc": "γ.3 — discard incoming; keep local as-is." }
       }
     },
     "streamAction": {

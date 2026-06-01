@@ -17,13 +17,17 @@
  * for iOS-style input; on Android we fall back to a quick inline
  * input pattern — Alert.prompt is iOS-only).
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, Pressable, ScrollView, TextInput, Switch, StyleSheet, Alert, Platform,
 } from 'react-native';
 import { theme } from './theme.js';
 import { t } from '../../core/localisation.js';
-import { BLOCK_TYPES, BLOCK_REGISTRY } from '@canopy-app/canopy-chat';
+import {
+  BLOCK_TYPES, BLOCK_REGISTRY,
+  detectRecipeConflicts, applyResolution,
+} from '@canopy-app/canopy-chat';
+import CircleRecipeConflictScreen from './CircleRecipeConflictScreen.js';
 
 // α.5c — list-shaped block types that expose the Compact toggle in
 // the per-block config drawer (mirrors web's COMPACTABLE_TYPES).
@@ -37,31 +41,136 @@ export default function CircleRecipeEditorScreen({
   onOpenRecipe, onBackToBook,
   onAddRecipe, onRenameRecipe, onRemoveRecipe, onSetActive,
   onAddBlock, onRemoveBlock, onMoveBlock, onUpdateBlock,
+  // γ.3 — opt-in conflict resolver.  When `incomingRecipe` is non-null,
+  // the host fetches the latest captured version (γ.2 versions adapter)
+  // through `recipeStore` + `circleId`, runs the 3-way diff, and — if
+  // anything diverges — overlays CircleRecipeConflictScreen.  Existing
+  // call sites that pass none of these opts keep their pre-γ.3 behavior.
+  incomingRecipe = null,
+  recipeStore,
+  circleId,
+  onIncomingApplied,
+  onIncomingDiscarded,
 }) {
+  // γ.3 — conflict resolver state.  `report === null` means "haven't
+  // detected yet".  `report.identical || (no conflicts)` means we'll
+  // silently apply (no modal needed).
+  const [conflictReport, setConflictReport] = useState(null);
+  const [localForCompare, setLocalForCompare] = useState(null);
+
+  useEffect(() => {
+    if (incomingRecipe == null) {
+      setConflictReport(null);
+      return;
+    }
+    let live = true;
+    (async () => {
+      const local =
+           (editingRecipeId && book?.recipes?.find?.((r) => r.id === editingRecipeId))
+        || (book?.activeId  && book?.recipes?.find?.((r) => r.id === book.activeId))
+        || (incomingRecipe?.id && book?.recipes?.find?.((r) => r.id === incomingRecipe.id))
+        || null;
+      if (!local) return;
+
+      let base = null;
+      try {
+        if (recipeStore && typeof recipeStore.listVersions === 'function' && circleId) {
+          const versions = await recipeStore.listVersions(circleId);
+          const head = Array.isArray(versions) && versions.length > 0 ? versions[0] : null;
+          const headBook = head && typeof head === 'object' && head.value != null ? head.value : null;
+          base = headBook?.recipes?.find?.((r) => r.id === local.id) ?? null;
+        }
+      } catch { /* best-effort */ }
+
+      const report = detectRecipeConflicts(local, incomingRecipe, base);
+      if (!live) return;
+      setLocalForCompare(local);
+
+      if (report.identical || (report.blockConflicts.length === 0 && report.metaConflicts.length === 0)) {
+        // Clean merge — no UI needed.
+        const merged = applyResolution(local, incomingRecipe, {});
+        await persistMerged({ recipeStore, circleId, merged });
+        onIncomingApplied?.(merged);
+        return;
+      }
+      setConflictReport(report);
+    })();
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingRecipe, editingRecipeId, recipeStore, circleId]);
+
+  const closeConflict = (cancelled) => {
+    setConflictReport(null);
+    if (cancelled) onIncomingDiscarded?.();
+  };
+
+  const handleResolve = async (decisions) => {
+    if (!localForCompare || !incomingRecipe) { setConflictReport(null); return; }
+    const merged = applyResolution(localForCompare, incomingRecipe, decisions);
+    await persistMerged({ recipeStore, circleId, merged });
+    setConflictReport(null);
+    onIncomingApplied?.(merged);
+  };
+
+  const conflictOverlay = conflictReport ? (
+    <CircleRecipeConflictScreen
+      visible
+      conflicts={conflictReport}
+      local={localForCompare}
+      incoming={incomingRecipe}
+      onResolve={handleResolve}
+      onCancel={() => closeConflict(true)}
+    />
+  ) : null;
+
   if (mode === 'recipe') {
     return (
-      <RecipeMode
-        book={book}
-        recipeId={editingRecipeId}
-        onBackToBook={onBackToBook}
-        onAddBlock={onAddBlock}
-        onRemoveBlock={onRemoveBlock}
-        onMoveBlock={onMoveBlock}
-        onUpdateBlock={onUpdateBlock}
-      />
+      <>
+        <RecipeMode
+          book={book}
+          recipeId={editingRecipeId}
+          onBackToBook={onBackToBook}
+          onAddBlock={onAddBlock}
+          onRemoveBlock={onRemoveBlock}
+          onMoveBlock={onMoveBlock}
+          onUpdateBlock={onUpdateBlock}
+        />
+        {conflictOverlay}
+      </>
     );
   }
   return (
-    <BookMode
-      book={book}
-      onBack={onBack}
-      onOpenRecipe={onOpenRecipe}
-      onAddRecipe={onAddRecipe}
-      onRenameRecipe={onRenameRecipe}
-      onRemoveRecipe={onRemoveRecipe}
-      onSetActive={onSetActive}
-    />
+    <>
+      <BookMode
+        book={book}
+        onBack={onBack}
+        onOpenRecipe={onOpenRecipe}
+        onAddRecipe={onAddRecipe}
+        onRenameRecipe={onRenameRecipe}
+        onRemoveRecipe={onRemoveRecipe}
+        onSetActive={onSetActive}
+      />
+      {conflictOverlay}
+    </>
   );
+}
+
+/**
+ * γ.3 — persist a merged recipe back through the store.  The store is
+ * book-shaped, so splice the merged recipe into the existing book by id.
+ * Best-effort: silently swallows store errors so the UI doesn't wedge.
+ */
+async function persistMerged({ recipeStore, circleId, merged }) {
+  if (!recipeStore || typeof recipeStore.update !== 'function' || !circleId || !merged?.id) return;
+  try {
+    await recipeStore.update(circleId, (cur) => {
+      const recipes = Array.isArray(cur?.recipes) ? cur.recipes.slice() : [];
+      const idx = recipes.findIndex((r) => r.id === merged.id);
+      if (idx >= 0) recipes[idx] = merged;
+      else recipes.push(merged);
+      return { ...cur, recipes };
+    });
+  } catch { /* best-effort */ }
 }
 
 /* ─────────────────────────────────────────────────────────────────────── */

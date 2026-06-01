@@ -86,6 +86,8 @@ export {
 export {
   BLOCK_REGISTRY, materializeBlock, materializeRecipe,
 } from './v2/kringRecipeBlocks.js';
+// γ.3 — recipe conflict detection + resolution (Phase 9 sync absorption).
+export { detectRecipeConflicts, applyResolution } from './v2/recipeConflict.js';
 // α.2a/b — user-owned cross-kring screens (Stream / custom views).
 export {
   EMPTY_SCREEN_BOOK, ALL_KRINGEN,
