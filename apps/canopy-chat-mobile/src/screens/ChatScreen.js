@@ -100,6 +100,10 @@ import { QrCodeView }     from '@canopy/react-native/qr/view';
 import QrScannerModal     from '../rn/QrScannerModal.js';
 // ε.6 — multi-offer chooser modal (opt-in via policy.catchUpChooserMode='prompt').
 import CircleCatchUpChooserScreen from './v2/CircleCatchUpChooserScreen.js';
+// ε.6 follow-up — read the same per-kring policy the launcher writes so
+// the chooser mode is honoured on mobile (web reads localStorage
+// synchronously; mobile uses a hot cache because AsyncStorage is async).
+import { makeCirclePolicyStoreRN } from '../core/circleStoresRN.js';
 
 // Synthetic message IDs.  Counter is module-level + monotonic for the
 // life of this JS bundle, but threads persist across app launches via
@@ -194,6 +198,44 @@ export default function ChatScreen({
   // Promise the catch-up receiver is awaiting on.
   const [pendingCatchUpChoice, setPendingCatchUpChoice] = useState(null);
   const pendingCatchUpResolverRef = useRef(null);
+  // ε.6 follow-up — per-kring policy hot cache.  AsyncStorage can't be
+  // read synchronously, but ε.6's `getChooserMode` hook is sync (the
+  // receiver state machine doesn't want async there).  We instantiate
+  // the SAME policyStore the launcher uses (shared AsyncStorage prefix
+  // `cc.circlePolicy.<id>`) and serve reads from an in-memory cache.
+  // On a miss, fire the async load + cache; this turn returns 'auto'
+  // (default); subsequent calls return the real value.  Also exposes
+  // an async `getCirclePolicy(id)` for the catchUpProvider's
+  // autoApprove path.
+  const policyStoreRef    = useRef(null);
+  if (!policyStoreRef.current) {
+    policyStoreRef.current = makeCirclePolicyStoreRN(AsyncStorage);
+  }
+  const policyCacheRef    = useRef(new Map());
+  const policyLoadingRef  = useRef(new Set());
+  const ensurePolicyLoaded = useCallback((circleId) => {
+    if (!circleId) return;
+    if (policyCacheRef.current.has(circleId)) return;
+    if (policyLoadingRef.current.has(circleId)) return;
+    policyLoadingRef.current.add(circleId);
+    Promise.resolve(policyStoreRef.current.get(circleId))
+      .then((p) => { policyCacheRef.current.set(circleId, p ?? {}); })
+      .catch(() => { policyCacheRef.current.set(circleId, {}); })
+      .finally(() => { policyLoadingRef.current.delete(circleId); });
+  }, []);
+  const getChooserModeMobile = useCallback((circleId) => {
+    ensurePolicyLoaded(circleId);
+    const p = policyCacheRef.current.get(circleId);
+    return p?.catchUpChooserMode === 'prompt' ? 'prompt' : 'auto';
+  }, [ensurePolicyLoaded]);
+  const getCirclePolicyMobile = useCallback(async (circleId) => {
+    if (!circleId) return null;
+    try {
+      const p = await policyStoreRef.current.get(circleId);
+      if (p) policyCacheRef.current.set(circleId, p);
+      return p ?? null;
+    } catch { return null; }
+  }, []);
   // Bundle F P6 (#262) — Solid OIDC.  Hook drives the OAuth dance;
   // OidcSessionRN holds tokens in SecureStore (restored on mount).
   // `buildMobilePodAuth` adapts both into the podAuth shape that
@@ -353,12 +395,12 @@ export default function ChatScreen({
               setTimeout(() => setCatchUpStatus((cur) => (cur === s ? null : cur)), 1500);
             }
           },
-          // ε.6 — opt-in multi-offer chooser.  Mobile doesn't read a
-          // local policy store today (kringen default to 'auto'); when
-          // the launcher forwards policy down (follow-up slice) this
-          // becomes a real lookup.  Until then 'auto' = byte-for-byte
-          // parity with ε.4.
-          getChooserMode: () => 'auto',
+          // ε.6 — opt-in multi-offer chooser.  Reads the per-kring
+          // policy via the hot cache (see policyCacheRef above).  First
+          // call for a kring returns 'auto' while the async fetch lands
+          // in cache; subsequent calls return the real value.  Default
+          // for unknown kringen / missing field = 'auto' (parity with ε.4).
+          getChooserMode: getChooserModeMobile,
           chooseOffer: (offers, { circleId }) => new Promise((resolve) => {
             pendingCatchUpResolverRef.current = (decision) => {
               try { resolve(decision); }
@@ -375,11 +417,12 @@ export default function ChatScreen({
     const catchUpProvider = makeCatchUpProviderHandler({
       callSkill,
       sendToPeer: sendPeer,
-      // Mobile doesn't read the policyStore here today — kringen
-      // default to auto-approve (V1).  When policy is forwarded down
-      // from the launcher (follow-up slice), this resolver will read
-      // `policy.catchUpAutoApprove` for the opt-out path.
-      getCirclePolicy:  null,
+      // Reads the same per-kring policy the launcher writes
+      // (`cc.circlePolicy.<id>`).  catchUpProvider awaits this, so a
+      // genuine async read is fine here — the provider state machine
+      // doesn't block boot.  Returns null on miss / error → defaults
+      // to the auto-approve V1 path.
+      getCirclePolicy:  getCirclePolicyMobile,
       isKnownContact:   () => true,
       emitNotification: (n) => {
         setCatchUpNotifications((prev) => [...prev, n]);
