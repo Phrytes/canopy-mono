@@ -475,6 +475,14 @@ export async function createRealHouseholdAgent(opts = {}) {
         { webid: 'webid:maria', displayName: 'Maria', role: 'member'      },
       ],
     },
+    // Mirrors `opts.stoopPersistDb` below.  Browser passes
+    // `{dbName:'cc-tasks-state', storeName:'items'}` (IDB); mobile
+    // gets `{dbName:'cc-tasks-cache', asyncStorage}` (AsyncStorage)
+    // synthesised by canopy-chat-mobile/agentBundle.js.  Without it,
+    // the tasks cache stays Map-only and every reload re-seeds the
+    // 4 demo tasks (the data-loss bug behind the
+    // `cc.firstBootSeeded.v1` workaround in App.js).
+    persistDb: opts.tasksPersistDb,
     label: 'TasksCrew(cc)',
   });
   await chatAgent.hello(tasksCrew.address);

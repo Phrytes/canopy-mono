@@ -42,6 +42,13 @@ import { buildMultiCrewOnboardingSkills }   from './skills/multiCrewOnboarding.j
  *                                            separate from the chat vault so
  *                                            crews don't pollute chat identity
  * @param {object}         args.crewConfig    {crewId, name, kind, members}
+ * @param {object}         [args.persistDb]   Pass-through to `buildBundle`'s
+ *                                            `persistDb` opt; mirrors stoop's
+ *                                            `createBrowserStoopAgent`.  Pass
+ *                                            `{dbName, storeName?}` (IDB
+ *                                            browser path) or `{dbName,
+ *                                            asyncStorage}` (RN).  Omit for
+ *                                            in-memory only.
  * @param {string}         [args.label='TasksCrew']
  * @returns {Promise<{
  *   crew:    ReturnType<typeof createCrewAgent>,
@@ -53,6 +60,7 @@ export async function createBrowserTasksAgent({
   bus,
   identityVault,
   crewConfig,
+  persistDb,
   label = 'TasksCrew',
 }) {
   if (!bus) throw new TypeError('createBrowserTasksAgent: bus required');
@@ -68,9 +76,13 @@ export async function createBrowserTasksAgent({
     return AgentIdentity.generate(identityVault);
   })();
 
-  // Local-first item store (Map-backed cache; restart-survival comes
-  // from the caller's vault if needed via attachTasksBundle).
-  const localStoreBundle = buildBundle();
+  // Local-first item store.  When `persistDb` is provided, the cache
+  // hydrates from prior state + auto-saves debounced (IDB on web,
+  // AsyncStorage on RN, file on Node).  Without it, the cache stays
+  // Map-only (legacy behaviour).
+  const localStoreBundle = persistDb
+    ? await buildBundle({ persistDb })
+    : buildBundle();
 
   const crew = await createCrewAgent({
     crewConfig,
@@ -115,6 +127,19 @@ export async function createBrowserTasksAgent({
  * @param {InternalBus} args.bus               shared bus (canopy-chat owns it)
  * @param {object}      args.identityVault      Vault for the mesh agent identity
  * @param {object}      args.primaryCrewConfig  {crewId, name, kind, members}
+ * @param {object}      [args.persistDb]        Pass-through to `buildBundle`'s
+ *                                              `persistDb` opt for restart-
+ *                                              survival.  All crews — primary
+ *                                              + spawned via `ensureCrew` —
+ *                                              share the SAME
+ *                                              `localStoreBundle` (the same
+ *                                              `CachingDataSource`); a single
+ *                                              persistDb covers them all.
+ *                                              Each crew namespaces its items
+ *                                              under
+ *                                              `mem://tasks/crews/<crewId>/`
+ *                                              so the shared cache stays
+ *                                              collision-free.
  * @param {string}      [args.label='TasksMeshAgent(cc)']
  * @returns {Promise<{
  *   agent:   object,            // the shared meshAgent (invoke target)
@@ -129,6 +154,7 @@ export async function createBrowserMultiCrewTasksAgent({
   bus,
   identityVault,
   primaryCrewConfig,
+  persistDb,
   label = 'TasksMeshAgent(cc)',
 }) {
   if (!bus) throw new TypeError('createBrowserMultiCrewTasksAgent: bus required');
@@ -144,7 +170,12 @@ export async function createBrowserMultiCrewTasksAgent({
     return AgentIdentity.generate(identityVault);
   })();
 
-  const localStoreBundle = buildBundle();
+  // Shared cache across primary + all spawned crews (each namespaces
+  // items under mem://tasks/crews/<crewId>/).  When `persistDb` is set,
+  // one persistence adapter covers them all.
+  const localStoreBundle = persistDb
+    ? await buildBundle({ persistDb })
+    : buildBundle();
 
   const { meshAgent } = await buildMeshAgent({
     identity,
