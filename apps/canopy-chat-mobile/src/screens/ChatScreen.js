@@ -98,6 +98,8 @@ import MultiFieldFormBubble from '../rn/MultiFieldFormBubble.js';
 // @canopy/react-native/qr/view wraps react-native-qrcode-svg.
 import { QrCodeView }     from '@canopy/react-native/qr/view';
 import QrScannerModal     from '../rn/QrScannerModal.js';
+// ε.6 — multi-offer chooser modal (opt-in via policy.catchUpChooserMode='prompt').
+import CircleCatchUpChooserScreen from './v2/CircleCatchUpChooserScreen.js';
 
 // Synthetic message IDs.  Counter is module-level + monotonic for the
 // life of this JS bundle, but threads persist across app launches via
@@ -187,6 +189,11 @@ export default function ChatScreen({
   const [catchUpStatus, setCatchUpStatus] = useState(null);
   const [catchUpNotifications, setCatchUpNotifications] = useState([]);
   const catchUpProviderRef = useRef(null);
+  // ε.6 — multi-offer chooser modal state.  `pendingChoice` holds the
+  // currently-visible chooser invocation; the resolver fn settles the
+  // Promise the catch-up receiver is awaiting on.
+  const [pendingCatchUpChoice, setPendingCatchUpChoice] = useState(null);
+  const pendingCatchUpResolverRef = useRef(null);
   // Bundle F P6 (#262) — Solid OIDC.  Hook drives the OAuth dance;
   // OidcSessionRN holds tokens in SecureStore (restored on mount).
   // `buildMobilePodAuth` adapts both into the podAuth shape that
@@ -346,6 +353,22 @@ export default function ChatScreen({
               setTimeout(() => setCatchUpStatus((cur) => (cur === s ? null : cur)), 1500);
             }
           },
+          // ε.6 — opt-in multi-offer chooser.  Mobile doesn't read a
+          // local policy store today (kringen default to 'auto'); when
+          // the launcher forwards policy down (follow-up slice) this
+          // becomes a real lookup.  Until then 'auto' = byte-for-byte
+          // parity with ε.4.
+          getChooserMode: () => 'auto',
+          chooseOffer: (offers, { circleId }) => new Promise((resolve) => {
+            pendingCatchUpResolverRef.current = (decision) => {
+              try { resolve(decision); }
+              finally {
+                pendingCatchUpResolverRef.current = null;
+                setPendingCatchUpChoice(null);
+              }
+            };
+            setPendingCatchUpChoice({ offers, circleId });
+          }),
           logger: console,
         })
       : null;
@@ -1524,6 +1547,24 @@ export default function ChatScreen({
         onResult={(res) => onQrScanResult(res)}
         t={t}
       />
+
+      {/* ε.6 — multi-offer catch-up chooser.  Only mounted while a
+          chooseOffer() invocation is in flight; the resolver is
+          stashed in pendingCatchUpResolverRef and settles the Promise
+          the receiver is awaiting. */}
+      {pendingCatchUpChoice ? (
+        <CircleCatchUpChooserScreen
+          visible
+          offers={pendingCatchUpChoice.offers}
+          circleId={pendingCatchUpChoice.circleId}
+          circleName={pendingCatchUpChoice.circleId}
+          onResolve={(decision) => {
+            const r = pendingCatchUpResolverRef.current;
+            if (typeof r === 'function') r(decision ?? { decline: true });
+            else setPendingCatchUpChoice(null);
+          }}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 

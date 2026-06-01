@@ -374,3 +374,401 @@ describe('makeCatchUpReceiver · construction', () => {
     expect(() => makeCatchUpReceiver({ sendToPeer: () => {} })).toThrow(/inbox/);
   });
 });
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* ε.6 — multi-offer chooser hook                                         */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+describe('makeCatchUpReceiver · ε.6 chooser hook', () => {
+  it('prompt mode with N=1 offer still calls chooseOffer (substrate decision)', async () => {
+    vi.useFakeTimers();
+    const sent = [];
+    const sendToPeer = vi.fn(async (addr, env) => { sent.push({ addr, env }); });
+    const inbox = fakeInbox();
+    const chooseOffer = vi.fn(async (offers, ctx) => ({
+      accept: { offerFrom: offers[0].from, mode: 'all' },
+    }));
+
+    const { requestCatchUp, onPeerMessage } = makeCatchUpReceiver({
+      sendToPeer, inbox,
+      offerWindowMs: 50, chunkTimeoutMs: 1000,
+      getChooserMode: () => 'prompt',
+      chooseOffer,
+      makeId: stableMakeId, logger: silentLogger,
+    });
+    const pending = requestCatchUp({
+      circleId: 'g1', sinceTs: 0,
+      knownPeers: ['nkn-Alice'], fromNknAddr: 'nkn-Bob',
+    });
+    await Promise.resolve();
+    const requestId = sent[0].env.requestId;
+
+    await onPeerMessage('nkn-Alice', {
+      subtype: 'catch-up-offer', msgId: 'o', ts: 1,
+      requestId, count: 2, sizeBytes: 200, lastTs: 1001,
+    });
+    vi.advanceTimersByTime(80);
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+
+    expect(chooseOffer).toHaveBeenCalledTimes(1);
+    expect(chooseOffer.mock.calls[0][0]).toHaveLength(1);
+    expect(chooseOffer.mock.calls[0][1]).toEqual({ circleId: 'g1' });
+
+    // Settle the request so the test cleans up.
+    await onPeerMessage('nkn-Alice', {
+      subtype: 'catch-up-end', msgId: 'e', ts: 2, requestId, totalSent: 0,
+    });
+    await pending;
+    vi.useRealTimers();
+  });
+
+  it('prompt mode with N=3 offers passes all 3 to chooseOffer', async () => {
+    vi.useFakeTimers();
+    const sent = [];
+    const sendToPeer = vi.fn(async (addr, env) => { sent.push({ addr, env }); });
+    const inbox = fakeInbox();
+    const chooseOffer = vi.fn(async (offers) => ({
+      accept: { offerFrom: offers[2].from, mode: 'last-50' },
+    }));
+
+    const { requestCatchUp, onPeerMessage } = makeCatchUpReceiver({
+      sendToPeer, inbox,
+      offerWindowMs: 50, chunkTimeoutMs: 1000,
+      getChooserMode: () => 'prompt',
+      chooseOffer,
+      makeId: stableMakeId, logger: silentLogger,
+    });
+    const pending = requestCatchUp({
+      circleId: 'g1', sinceTs: 0,
+      knownPeers: ['A', 'B', 'C'], fromNknAddr: 'me',
+    });
+    await Promise.resolve();
+    const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
+
+    for (const from of ['A', 'B', 'C']) {
+      await onPeerMessage(from, {
+        subtype: 'catch-up-offer', msgId: `o-${from}`, ts: 1,
+        requestId, count: 10, sizeBytes: 1000, lastTs: 2000,
+      });
+    }
+    vi.advanceTimersByTime(80);
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+
+    expect(chooseOffer).toHaveBeenCalledTimes(1);
+    const passedOffers = chooseOffer.mock.calls[0][0];
+    expect(passedOffers).toHaveLength(3);
+    expect(passedOffers.map((o) => o.from).sort()).toEqual(['A', 'B', 'C']);
+
+    // The accept envelope was sent to C with mode 'last-50'.
+    const accept = sent.find((s) => s.env.subtype === 'catch-up-accept');
+    expect(accept).toBeTruthy();
+    expect(accept.addr).toBe('C');
+    expect(accept.env.mode).toBe('last-50');
+
+    await onPeerMessage('C', {
+      subtype: 'catch-up-end', msgId: 'e', ts: 3, requestId, totalSent: 0,
+    });
+    await pending;
+    vi.useRealTimers();
+  });
+
+  it("chooseOffer returns {decline:true} — no accept sent, source='declined'", async () => {
+    vi.useFakeTimers();
+    const sent = [];
+    const sendToPeer = vi.fn(async (addr, env) => { sent.push({ addr, env }); });
+    const inbox = fakeInbox();
+    const chooseOffer = vi.fn(async () => ({ decline: true }));
+    const statuses = [];
+
+    const { requestCatchUp, onPeerMessage } = makeCatchUpReceiver({
+      sendToPeer, inbox,
+      offerWindowMs: 50, chunkTimeoutMs: 1000,
+      getChooserMode: () => 'prompt',
+      chooseOffer,
+      emitStatus: (s) => statuses.push(s),
+      makeId: stableMakeId, logger: silentLogger,
+    });
+    const pending = requestCatchUp({
+      circleId: 'g1', sinceTs: 0,
+      knownPeers: ['A', 'B'], fromNknAddr: 'me',
+    });
+    await Promise.resolve();
+    const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
+
+    await onPeerMessage('A', {
+      subtype: 'catch-up-offer', msgId: 'oA', ts: 1, requestId,
+      count: 5, sizeBytes: 500, lastTs: 1000,
+    });
+    await onPeerMessage('B', {
+      subtype: 'catch-up-offer', msgId: 'oB', ts: 2, requestId,
+      count: 3, sizeBytes: 300, lastTs: 800,
+    });
+    vi.advanceTimersByTime(80);
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+
+    const r = await pending;
+    expect(r.accepted).toBe(false);
+    expect(r.source).toBe('declined');
+    expect(r.count).toBe(0);
+    // No accept envelope sent.
+    expect(sent.find((s) => s.env.subtype === 'catch-up-accept')).toBeUndefined();
+    // 'declined' phase emitted.
+    expect(statuses.map((s) => s.phase)).toContain('declined');
+    vi.useRealTimers();
+  });
+
+  it('chooseOffer returns null → same as decline', async () => {
+    vi.useFakeTimers();
+    const sent = [];
+    const sendToPeer = vi.fn(async (addr, env) => { sent.push({ addr, env }); });
+    const chooseOffer = vi.fn(async () => null);
+
+    const { requestCatchUp, onPeerMessage } = makeCatchUpReceiver({
+      sendToPeer, inbox: fakeInbox(),
+      offerWindowMs: 50, chunkTimeoutMs: 1000,
+      getChooserMode: () => 'prompt',
+      chooseOffer,
+      makeId: stableMakeId, logger: silentLogger,
+    });
+    const pending = requestCatchUp({
+      circleId: 'g1', sinceTs: 0,
+      knownPeers: ['A'], fromNknAddr: 'me',
+    });
+    await Promise.resolve();
+    const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
+
+    await onPeerMessage('A', {
+      subtype: 'catch-up-offer', msgId: 'oA', ts: 1, requestId,
+      count: 1, sizeBytes: 50, lastTs: 100,
+    });
+    vi.advanceTimersByTime(80);
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+
+    const r = await pending;
+    expect(r.source).toBe('declined');
+    expect(sent.find((s) => s.env.subtype === 'catch-up-accept')).toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  it('chooseOffer rejection is treated as decline (clean state)', async () => {
+    vi.useFakeTimers();
+    const sent = [];
+    const sendToPeer = vi.fn(async (addr, env) => { sent.push({ addr, env }); });
+    const chooseOffer = vi.fn(async () => { throw new Error('user closed app'); });
+    const warns = [];
+    const logger = { ...silentLogger, warn: (...a) => warns.push(a) };
+
+    const { requestCatchUp, onPeerMessage } = makeCatchUpReceiver({
+      sendToPeer, inbox: fakeInbox(),
+      offerWindowMs: 50, chunkTimeoutMs: 1000,
+      getChooserMode: () => 'prompt',
+      chooseOffer,
+      makeId: stableMakeId, logger,
+    });
+    const pending = requestCatchUp({
+      circleId: 'g1', sinceTs: 0,
+      knownPeers: ['A'], fromNknAddr: 'me',
+    });
+    await Promise.resolve();
+    const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
+
+    await onPeerMessage('A', {
+      subtype: 'catch-up-offer', msgId: 'oA', ts: 1, requestId,
+      count: 1, sizeBytes: 50, lastTs: 100,
+    });
+    vi.advanceTimersByTime(80);
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+
+    const r = await pending;
+    expect(r.source).toBe('declined');
+    expect(r.accepted).toBe(false);
+    expect(sent.find((s) => s.env.subtype === 'catch-up-accept')).toBeUndefined();
+    // The rejection was logged.
+    expect(warns.some((args) => String(args[0]).includes('chooseOffer threw'))).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it("accept envelope carries the chooser's mode", async () => {
+    vi.useFakeTimers();
+    const sent = [];
+    const sendToPeer = vi.fn(async (addr, env) => { sent.push({ addr, env }); });
+    const chooseOffer = vi.fn(async (offers) => ({
+      accept: { offerFrom: offers[0].from, mode: 'last-7-days' },
+    }));
+
+    const { requestCatchUp, onPeerMessage } = makeCatchUpReceiver({
+      sendToPeer, inbox: fakeInbox(),
+      offerWindowMs: 50, chunkTimeoutMs: 1000,
+      getChooserMode: () => 'prompt',
+      chooseOffer,
+      makeId: stableMakeId, logger: silentLogger,
+    });
+    const pending = requestCatchUp({
+      circleId: 'g1', sinceTs: 0,
+      knownPeers: ['A'], fromNknAddr: 'me',
+    });
+    await Promise.resolve();
+    const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
+
+    await onPeerMessage('A', {
+      subtype: 'catch-up-offer', msgId: 'oA', ts: 1, requestId,
+      count: 1, sizeBytes: 50, lastTs: 100,
+    });
+    vi.advanceTimersByTime(80);
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+
+    const accept = sent.find((s) => s.env.subtype === 'catch-up-accept');
+    expect(accept).toBeTruthy();
+    expect(accept.env.mode).toBe('last-7-days');
+
+    await onPeerMessage('A', {
+      subtype: 'catch-up-end', msgId: 'e', ts: 3, requestId, totalSent: 0,
+    });
+    await pending;
+    vi.useRealTimers();
+  });
+
+  it('slow chooser (8s) — chunk-timeout restarts AFTER accept is sent', async () => {
+    vi.useFakeTimers();
+    const sent = [];
+    const sendToPeer = vi.fn(async (addr, env) => { sent.push({ addr, env }); });
+    const inbox = fakeInbox();
+    // Resolve after 8000 ms.  We'll drive the timer by hand.
+    const chooseOffer = vi.fn((offers) => new Promise((resolve) => {
+      setTimeout(() => resolve({ accept: { offerFrom: offers[0].from, mode: 'all' } }), 8000);
+    }));
+
+    // chunkTimeoutMs is SHORTER than the chooser delay.  In the OLD
+    // first-offer-wins code the chunk timer would have been armed at
+    // offer-window-elapsed, and 5000 ms of "thinking" would have made
+    // it fire.  Under ε.6 the timer starts at accept-send so the user
+    // has the full chunkTimeoutMs to receive chunks AFTER accepting.
+    const { requestCatchUp, onPeerMessage } = makeCatchUpReceiver({
+      sendToPeer, inbox,
+      offerWindowMs: 50, chunkTimeoutMs: 5000,
+      getChooserMode: () => 'prompt',
+      chooseOffer,
+      makeId: stableMakeId, logger: silentLogger,
+    });
+    const pending = requestCatchUp({
+      circleId: 'g1', sinceTs: 0,
+      knownPeers: ['A'], fromNknAddr: 'me',
+    });
+    await Promise.resolve();
+    const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
+
+    await onPeerMessage('A', {
+      subtype: 'catch-up-offer', msgId: 'oA', ts: 1, requestId,
+      count: 1, sizeBytes: 50, lastTs: 100,
+    });
+    vi.advanceTimersByTime(80);  // past offer window
+    for (let i = 0; i < 3; i += 1) await Promise.resolve();
+
+    // No accept yet — chooser is still pending.
+    expect(sent.find((s) => s.env.subtype === 'catch-up-accept')).toBeUndefined();
+
+    // Advance the chooser's 8s wait.  The chunk timer should NOT have
+    // fired because it wasn't armed yet.
+    vi.advanceTimersByTime(8000);
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+
+    // Accept was sent after the chooser resolved.
+    expect(sent.find((s) => s.env.subtype === 'catch-up-accept')).toBeTruthy();
+
+    // Now drive a chunk + end so the request settles cleanly.
+    await onPeerMessage('A', {
+      subtype: 'catch-up-chunk', msgId: 'c', ts: 9000, requestId,
+      seq: 0, items: [mkItem(0, 100)], finished: true,
+    });
+    await onPeerMessage('A', {
+      subtype: 'catch-up-end', msgId: 'e', ts: 9001, requestId, totalSent: 1,
+    });
+    const r = await pending;
+    expect(r.source).toBe('streamed');
+    expect(r.count).toBe(1);
+    vi.useRealTimers();
+  });
+
+  it("'auto' mode (default) never calls chooseOffer — regression-safe", async () => {
+    vi.useFakeTimers();
+    const sent = [];
+    const sendToPeer = vi.fn(async (addr, env) => { sent.push({ addr, env }); });
+    const chooseOffer = vi.fn(async () => ({ decline: true }));
+
+    // Two ways to get 'auto': omit getChooserMode entirely, OR have it
+    // return 'auto'.  Verify both behave the same.
+    const { requestCatchUp, onPeerMessage } = makeCatchUpReceiver({
+      sendToPeer, inbox: fakeInbox(),
+      offerWindowMs: 50, chunkTimeoutMs: 1000,
+      // NO getChooserMode here.
+      chooseOffer,
+      makeId: stableMakeId, logger: silentLogger,
+    });
+    const pending = requestCatchUp({
+      circleId: 'g1', sinceTs: 0,
+      knownPeers: ['A', 'B'], fromNknAddr: 'me',
+    });
+    await Promise.resolve();
+    const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
+
+    await onPeerMessage('A', {
+      subtype: 'catch-up-offer', msgId: 'oA', ts: 1, requestId,
+      count: 5, sizeBytes: 500, lastTs: 1000,
+    });
+    await onPeerMessage('B', {
+      subtype: 'catch-up-offer', msgId: 'oB', ts: 2, requestId,
+      count: 3, sizeBytes: 300, lastTs: 800,
+    });
+    vi.advanceTimersByTime(80);
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+
+    expect(chooseOffer).not.toHaveBeenCalled();
+    // First offer was accepted — to A, mode 'all'.
+    const accept = sent.find((s) => s.env.subtype === 'catch-up-accept');
+    expect(accept.addr).toBe('A');
+    expect(accept.env.mode).toBe('all');
+
+    await onPeerMessage('A', {
+      subtype: 'catch-up-end', msgId: 'e', ts: 3, requestId, totalSent: 0,
+    });
+    await pending;
+    vi.useRealTimers();
+  });
+
+  it("getChooserMode returning 'auto' explicitly also takes the legacy path", async () => {
+    vi.useFakeTimers();
+    const sent = [];
+    const sendToPeer = vi.fn(async (addr, env) => { sent.push({ addr, env }); });
+    const chooseOffer = vi.fn(async () => ({ decline: true }));
+
+    const { requestCatchUp, onPeerMessage } = makeCatchUpReceiver({
+      sendToPeer, inbox: fakeInbox(),
+      offerWindowMs: 50, chunkTimeoutMs: 1000,
+      getChooserMode: () => 'auto',
+      chooseOffer,
+      makeId: stableMakeId, logger: silentLogger,
+    });
+    const pending = requestCatchUp({
+      circleId: 'g1', sinceTs: 0,
+      knownPeers: ['A'], fromNknAddr: 'me',
+    });
+    await Promise.resolve();
+    const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
+
+    await onPeerMessage('A', {
+      subtype: 'catch-up-offer', msgId: 'oA', ts: 1, requestId,
+      count: 1, sizeBytes: 50, lastTs: 100,
+    });
+    vi.advanceTimersByTime(80);
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+
+    expect(chooseOffer).not.toHaveBeenCalled();
+    expect(sent.find((s) => s.env.subtype === 'catch-up-accept')).toBeTruthy();
+
+    await onPeerMessage('A', {
+      subtype: 'catch-up-end', msgId: 'e', ts: 3, requestId, totalSent: 0,
+    });
+    await pending;
+    vi.useRealTimers();
+  });
+});
