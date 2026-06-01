@@ -16,10 +16,6 @@
  *
  * Methods throw at runtime so accidentally executing them surfaces the
  * wiring bug instead of silently returning undefined.  See #303.
- *
- * Supersedes the old `apps/canopy-chat/src/web/shims/nodeFs.js`; same
- * shape, more named exports to cover the union of imports across the
- * codebase.
  */
 
 const browserOnlyAsync = (name) => async () => {
