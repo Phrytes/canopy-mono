@@ -566,6 +566,38 @@ A re-read of `Canopy interface — interface-ontwerp · print.pdf` against curre
 **Minor (P6.M1–P6.M8):**
 - P6.M1 (#331) pod-migration warning · P6.M2 (#332) view-as "sees / doesn't see" split · P6.M3 (#333) Stream pinned compose + inline actions · P6.M4 (#334) split @-mention vs all-message push · P6.M5 (#335) holiday extension shortcuts + outgoing auto-reply · P6.M6 (#336) per-contact hop overrides UI · P6.M7 (#337) "My things" as Folio notes-list · P6.M8 (#338) Folio "Shared by me / with me" filters.
 
+**Phase 6 closed 2026-05-30.** All P6.* (10 major + 8 minor) shipped with peer-fan-out / cross-device approve / mDNS skill broadcast wiring as follow-ups.
+
+### Phase 7 — Schermen reframe (α wave, 2026-05-31 / 2026-06-01)
+A re-read of the v2 PDF (`Canopy interface · v2 — kring als bouwsteen · print.pdf`) surfaced a separate 10-item audit (distinct from Phase 6's gap audit) that proposed a *recipe-block scherm + user-owned screens* model. Shipped in 5 stages:
+
+- [x] **α.1 — Recipe-block editor for scherm-mode** (closes audit #1 + #9). Per-kring `RecipeBook = {recipes:[{id,name,blocks:[{id,type,config,order}]}], activeId}` persisted via the same tiered pattern as `circlePolicyStore`. 7 block types: `announcement`, `noticeboard`, `agenda`, `tasks` (added α.4), `rules`, `photo`, `text`. Per-block status `'ok'|'empty'|'error'` with per-block fallback render. Tasks #365–#375. **Files:** `src/v2/kringRecipe.js`, `src/v2/kringRecipeBlocks.js`, `web/v2/circleScreen.js` + `circleRecipeEditor.js`, `mobile screens/v2/CircleScreenView.js` + `CircleRecipeEditorScreen.js`.
+- [x] **α.2 — Per-user multi-kring screens** (closes audit "screens reframe"). `ScreenBook = {screens:[{id,name,kringFilter:[cid|null],blocks}], activeId}` per user. Multi-kring materializer iterates active kringen, drops muted (Q5), caps by limit. Tasks #376–#377. **Files:** `src/v2/userScreens.js`, `src/v2/userScreenBlocks.js`.
+- [x] **α.3 — Schermen as the primary landing tab.** New top-level tab `Schermen` replaces `Kringen` as the boot landing surface. First-run seeds a "Stream" screen with one noticeboard block. Tasks #378–#381. **Files:** `web/v2/circleScreensPicker.js`, `mobile CircleScreensPickerScreen.js`, `circleApp.js:showScreens`.
+- [x] **α.4 — Migrate "Mijn dingen" + personal calendar to default screen recipes** (closes audit #7 + #8). New `tasks` block type (per-kring + multi-kring materializers, Q5 mute drop, scope `assigned-to-me`|`all`). First-run seed grows from one screen ("Stream") to three: "Stream" + "My things" (tasks block) + "My calendar" (agenda block). Commit `bfb3d3c`. Tasks #382–#385.
+- [x] **α.5 — Polish trio** (closes audit #3 + #6 + #10). Three parallel worktree sub-agents:
+  - α.5a (#386, commit `e8eb47b`) — `quickReplies:[{label,slash}]` field on reply payloads + inline-keuze pill row in bot/LLM bubbles; tapping submits the slash through the existing input path. New `src/core/quickReplies.js` portable normaliser; web `domAdapter.js` + mobile `MessageBubble`.
+  - α.5b (#387, commit `c538378`) — extends per-kring personal-override `push` from `{onMention, onEveryMessage}` to four kinds adding `onNewItem` + `onProposal`; new "Notifications" section in CircleOverride on both surfaces.
+  - α.5c (#388, commit `7f75778`) — optional `compact:boolean` on the four list-shaped block configs (announcement / noticeboard / agenda / tasks) + `.circle-screen__block--compact` CSS variant + RN `*Compact` style variants + per-block "Compact" checkbox in the recipe editor (web + mobile).
+
+**Phase 7 closed 2026-06-01.** Suites: canopy-chat 1628 / 1641 (+26 over α.4 baseline), canopy-chat-mobile 222 / 222 (+6). Worktree-base bug fixed (`worktree.baseRef: "head"` in `settings.local.json`). v2 PDF audit closed except #5 (co-redactie) and #2 + #4 (never enumerated — likely the same Schermen + Mijn-dingen items now covered).
+
+### Phase 8 — Launcher rethink (β-residual, NEXT)
+**Why now.** With Schermen as the primary landing tab (α.3) the launcher's role shrank: it's the secondary "switch to a specific kring" surface, not the home screen. But `circleLauncher.js` still carries 5 action buttons from the pre-Schermen era (Stream / Availability / Hop / Nearby / MyThings) that duplicate what's on Schermen + Mij. The kring tile list itself is in arbitrary order, has no grouping, and "+ new circle" doesn't carry kind-aware defaults despite the create wizard knowing about kinds.
+
+The α wave touched the chrome around the launcher but never re-thought the launcher itself.
+
+- [ ] **β.1 — Strip duplicate action buttons off the launcher** (S). The 5 top buttons in `circleLauncher.js` lines 41–84 (Stream / Availability / Hop / Nearby / MyThings) are now duplicated by Schermen (Stream + My things + My calendar) and Mij (availability / quiet-hours). Move Availability + Hop + Nearby into Mij; Stream + MyThings rely on the Schermen-tab defaults. Launcher becomes: title + tile list + "+ new circle". Mobile parity (`CircleLauncherScreen.js`).
+- [ ] **β.2 — Sort kringen by recent activity** (S). Today `circlesCache.forEach` order is arbitrary. `buildTilePreviews` already computes a per-circle `ts` for the unread badge — reuse it to sort the tile list descending. Optional: stable secondary sort by kring name for ties.
+- [ ] **β.3 — Group kringen by `kind`** (S/M). Section headers per kring kind (`household` / `buurt` / `vriendenkring` / fallback) with a count. Optional collapse per section (localStorage). Mobile uses a `SectionList`. Falls back gracefully if all kringen are the same kind (skip headers).
+- [ ] **β.4 — Kind-aware "+ new circle" defaults** (M). The existing C1 create-group wizard (#197) already knows about `kind` — make picking a kind pre-fill `features` / `revealPolicy` / `pod` axes with sensible defaults (e.g. `household` → all features on, `pairwise` reveal, `shared` pod; `buurt` → noticeboard + tasks, `open` reveal, `personal` pod). Templates declared in a new `src/v2/kringTemplates.js` with tests.
+- [ ] **β.5 — Per-tile affordances** (S). Long-press (mobile) / right-click (web) on a kring tile → context menu with [Pin to top] / [Mute] / [Settings] / [Leave]. Pin persisted in localStorage. Leave triggers existing `/leave-group` flow. Wires existing substrate, no new ops.
+
+**Total**: ~5 small commits, mostly S. β.4 (templates) is the largest. Same parallelism opportunity as α.5 (touch points are largely disjoint: β.1+β.2 on launcher render; β.3 on launcher + new substrate; β.4 on create wizard; β.5 on launcher + per-tile menu).
+
+### Phase 9 — Deferred (γ-residual)
+- **#5 Co-redactie** (collaborative editing of content blocks, board 11) — L, orthogonal. Needs a CRDT + per-block soft-lock + presence-merge UI. Parked until there's a concrete user need; the recipe-block substrate is ready for it (each block already has `id` + `config` + materialized status).
+
 ### Cleanup (cross-cutting)
 - [ ] **Vite build leak — multiple Node-only imports reach the browser bundle.**
       Pre-existing (predates 5.4). vitest/dev/Playwright fine, only `vite build` fails.
