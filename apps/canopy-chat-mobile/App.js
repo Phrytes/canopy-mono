@@ -206,6 +206,18 @@ export default function App() {
     (async () => {
       try {
         dlog.boot('booting agent bundle (App)');
+        // Perf — first-boot seed flag.  tasks-v0's CachingDataSource
+        // is not persistent on mobile, so the listOpen probe inside
+        // realAgent always sees an empty crew and re-seeds 4 addTasks
+        // (+ setMyHandle + setMyDisplayName for stoop profile).  Cost:
+        // ~2.5s of the cold-boot wall clock on every launch.  This
+        // flag flips after the first successful boot so subsequent
+        // boots skip the seed regardless of crew persistence.  When
+        // tasks-v0 gains AsyncStorage persistence the flag becomes
+        // redundant (the probe will return non-empty); leaving the
+        // flag in place is harmless.
+        const SEED_FLAG = 'cc.firstBootSeeded.v1';
+        const alreadySeeded = await AsyncStorage.getItem(SEED_FLAG).catch(() => null) === '1';
         let eventSeq = 0;
         const b = await bootAgentBundle({
           // Persist the agent identity (chat + host vaults + stoop
@@ -213,6 +225,10 @@ export default function App() {
           // identity keypair — stays stable across reboots (otherwise a
           // peer's cached nknAddr from a /share-my-contact QR breaks).
           asyncStorage: AsyncStorage,
+          // Skip the demo seed on warm boot.  Saves ~2.5s of boot time.
+          seedTasks:        !alreadySeeded,
+          seedStoopProfile: !alreadySeeded,
+          seedStoopPosts:   !alreadySeeded,
           publishEvent: (e) => {
             if (!e || typeof e !== 'object') return;
             const evt = {
@@ -230,6 +246,13 @@ export default function App() {
           opCount:    b.catalog.opsById?.size ?? 0,
         });
         setBundle(b);
+        // Mark the first-boot seed as done so the next launch skips it.
+        // Fire-and-forget; failures are non-fatal (next launch re-seeds,
+        // which is harmless because realAgent's listOpen probe is the
+        // outer guard).
+        if (!alreadySeeded) {
+          AsyncStorage.setItem(SEED_FLAG, '1').catch(() => { /* non-fatal */ });
+        }
         // SP-13.2.2 — boot rehydrator: backfill the in-memory eventLog
         // with any kring chats already in stoop's itemStore from a
         // previous session.  Best-effort; failures just leave the

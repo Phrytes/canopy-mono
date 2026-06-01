@@ -149,6 +149,17 @@ export async function bootAgentBundle(opts = {}) {
       stoopPersistDb,
       secureAgentOpts:  opts.secureAgentOpts,
       publishEvent:     opts.publishEvent,
+      // Perf — skip the demo seed on warm boot.  Without persistence
+      // on the tasks-v0 itemStore, realAgent's listOpen probe always
+      // returns empty and re-runs 4 addTask + setMyHandle +
+      // setMyDisplayName round-trips (~2.5s of the cold-boot wall
+      // clock).  Forward seedTasks / seedStoopProfile / seedStoopPosts
+      // from the host so it can flip them based on its own first-boot
+      // flag.  Default left undefined (truthy) so the first boot still
+      // seeds.
+      seedTasks:        opts.seedTasks,
+      seedStoopProfile: opts.seedStoopProfile,
+      seedStoopPosts:   opts.seedStoopPosts,
     });
   } catch (err) {
     // Wrap with a localised-error-friendly shape so the RN UI can
