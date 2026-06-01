@@ -17,8 +17,9 @@ import {
   listObjectVersions,
   getLatestObjectVersion,
   DEFAULT_OBJECT_VERSIONS_PER_KEY,
+  fingerprintHex,
 } from '../src/objectVersions.js';
-import { sha256Of } from '../src/versions.js';
+const sha256Of = (s) => fingerprintHex(s);
 
 /** Map-backed mock storage matching the {getList, setList} adapter shape. */
 function mockStorage() {
