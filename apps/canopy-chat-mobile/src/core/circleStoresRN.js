@@ -22,6 +22,8 @@ import {
   createKringRecipeStore,
   // α.2 — per-user screens store.
   createUserScreenStore,
+  // β.5 — per-user pin-to-top store.
+  createCirclePinStore,
 } from '@canopy-app/canopy-chat';
 // 5.4c — pod-writer build is also imported via relative path (Metro doesn't
 // honor package.json "exports" subpaths; same pattern as podNkn.js).
@@ -110,6 +112,11 @@ export function asyncRawIo(storage) {
 
 export function makeProposalStoreRN(storage) {
   return createProposalStore({ io: asyncRawIo(storage) });
+}
+
+/** β.5 — per-user "pin to top" store (single key: `cc.circlePinned`). */
+export function makeCirclePinStoreRN(storage) {
+  return createCirclePinStore(asyncFixedIo('cc.circlePinned', storage));
 }
 
 /**

@@ -24,9 +24,24 @@ export function renderCircleLauncher(container, {
   // Host computes via `pendingApprovers` for circles with admin-approval
   // axes.  Tiles show a yellow voorstellen badge when > 0.
   proposals = null,
+  // β.5 — per-circle "pin to top" map ({circleId: true}).  Pinned tiles
+  // float to the top of their kind section without escaping the β.3
+  // grouping invariant.  Host loads via circlePinStore at boot.
+  pinnedMap = {},
   t,
   onOpenCircle,
   onNewCircle,
+  // β.5 — per-tile context-menu callbacks.  When absent, right-click is
+  // a no-op (so headless usage / tests that don't pass handlers still
+  // behave).  Every handler is `(circleId) => void`.
+  onPin,
+  onMute,
+  onSettings,
+  onLeave,
+  // β.5 — per-circle mute flag map ({circleId: true}) so the menu can
+  // toggle the label between Mute / Unmute.  Host derives this from the
+  // memberOverride store (chatOff flag); absent = treat as unmuted.
+  mutedMap = {},
   loading = false,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -64,17 +79,27 @@ export function renderCircleLauncher(container, {
     return String(a.name || '').localeCompare(String(b.name || ''));
   });
 
+  // β.5 — partition pinned + unpinned (within the already-sorted list, so
+  // β.2 ordering applies among pins, then again among unpins).  The
+  // partitioning happens BEFORE β.3 grouping so a pin can't escape its
+  // kind section — pins float to the top of their own section only.
+  const pinned = sorted.filter((c) => pinnedMap?.[c.id]);
+  const unpinned = sorted.filter((c) => !pinnedMap?.[c.id]);
+  const ordered = [...pinned, ...unpinned];
+
   // β.3 — group by kring kind in KIND_ORDER, then 'other'.  When all kringen
   // share a single kind the headers are skipped (degenerate-case parity with
   // the pre-β.3 flat list look).
   const groups = new Map();
-  for (const c of sorted) {
+  for (const c of ordered) {
     const k = KIND_ORDER.includes(c.kind) ? c.kind : 'other';
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(c);
   }
   const orderedKinds = [...KIND_ORDER, 'other'].filter((k) => groups.has(k));
   const showHeaders = orderedKinds.length > 1;
+
+  const tileHandlers = { onOpenCircle, onPin, onMute, onSettings, onLeave };
 
   if (showHeaders) {
     for (const kind of orderedKinds) {
@@ -88,7 +113,9 @@ export function renderCircleLauncher(container, {
       const list = document.createElement('div');
       list.className = 'circle-launcher__list';
       for (const c of groups.get(kind)) {
-        list.appendChild(renderTile(c, { previews, proposals, tr, onOpenCircle }));
+        list.appendChild(renderTile(c, {
+          previews, proposals, pinnedMap, mutedMap, tr, handlers: tileHandlers,
+        }));
       }
       section.appendChild(list);
       container.appendChild(section);
@@ -96,8 +123,10 @@ export function renderCircleLauncher(container, {
   } else {
     const list = document.createElement('div');
     list.className = 'circle-launcher__list';
-    for (const c of sorted) {
-      list.appendChild(renderTile(c, { previews, proposals, tr, onOpenCircle }));
+    for (const c of ordered) {
+      list.appendChild(renderTile(c, {
+        previews, proposals, pinnedMap, mutedMap, tr, handlers: tileHandlers,
+      }));
     }
     container.appendChild(list);
   }
@@ -115,12 +144,14 @@ export function renderCircleLauncher(container, {
 }
 
 /** Render one circle tile.  Extracted in β.3 so grouped + flat paths share it. */
-function renderTile(c, { previews, proposals, tr, onOpenCircle }) {
+function renderTile(c, { previews, proposals, pinnedMap, mutedMap, tr, handlers }) {
   const tile = document.createElement('button');
   tile.type = 'button';
   tile.className = 'circle-tile';
   tile.dataset.circleId = c.id;
   if (c.kind) tile.dataset.kind = c.kind;
+  const isPinned = Boolean(pinnedMap?.[c.id]);
+  if (isPinned) tile.classList.add('is-pinned');
 
   const avatar = document.createElement('div');
   avatar.className = 'circle-tile__avatar';
@@ -174,10 +205,119 @@ function renderTile(c, { previews, proposals, tr, onOpenCircle }) {
     tile.appendChild(vb);
   }
 
+  // β.5 — pin indicator (small glyph in the top-right corner of pinned tiles).
+  if (isPinned) {
+    const pinIndicator = document.createElement('span');
+    pinIndicator.className = 'circle-tile__pin-indicator';
+    pinIndicator.setAttribute('aria-hidden', 'true');
+    pinIndicator.textContent = '\u{1F4CC}'; // 📌
+    tile.appendChild(pinIndicator);
+  }
+
   tile.addEventListener('click', () => {
-    if (typeof onOpenCircle === 'function') onOpenCircle(c.id, c);
+    if (typeof handlers?.onOpenCircle === 'function') handlers.onOpenCircle(c.id, c);
   });
+
+  // β.5 — right-click opens the per-tile context menu (pin / mute /
+  // settings / leave).  Suppressed when no menu handlers are wired so
+  // legacy callers (and tests not exercising this path) keep the
+  // native browser menu.
+  const hasMenuHandlers = ['onPin', 'onMute', 'onSettings', 'onLeave']
+    .some((k) => typeof handlers?.[k] === 'function');
+  if (hasMenuHandlers) {
+    tile.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openTileMenu(tile, c, { pinnedMap, mutedMap, tr, handlers });
+    });
+  }
+
   return tile;
+}
+
+/**
+ * β.5 — open the per-tile context menu next to `tile`.  Dismisses any
+ * previously-open menu first (only one menu open at a time, anywhere in
+ * the launcher).  Outside-click and Escape close the menu.
+ */
+function openTileMenu(tile, circle, { pinnedMap, mutedMap, tr, handlers }) {
+  // Remove any existing menu first (single-instance).
+  for (const old of document.querySelectorAll('.circle-launcher__tile-menu')) {
+    old.remove();
+  }
+
+  const menu = document.createElement('div');
+  menu.className = 'circle-launcher__tile-menu';
+  menu.setAttribute('role', 'menu');
+  menu.dataset.circleId = circle.id;
+  // Position next to the tile (absolute, container = body for simplicity).
+  // CSS handles the visual styling; we just stamp coords so the menu
+  // sits beside the tile rather than at (0,0).
+  const rect = tile.getBoundingClientRect();
+  const scrollX = (typeof window !== 'undefined' && window.scrollX) || 0;
+  const scrollY = (typeof window !== 'undefined' && window.scrollY) || 0;
+  menu.style.left = `${rect.right + scrollX - 4}px`;
+  menu.style.top  = `${rect.top + scrollY + 4}px`;
+
+  const close = () => {
+    menu.remove();
+    document.removeEventListener('click', onOutside, true);
+    document.removeEventListener('keydown', onKey, true);
+  };
+  function onOutside(e) {
+    if (!menu.contains(e.target)) close();
+  }
+  function onKey(e) {
+    if (e.key === 'Escape') { e.preventDefault(); close(); }
+  }
+
+  const isPinned = Boolean(pinnedMap?.[circle.id]);
+  const isMuted  = Boolean(mutedMap?.[circle.id]);
+
+  const items = [
+    {
+      action: 'pin',
+      label: tr(isPinned ? 'circle.tile.menu.unpin' : 'circle.tile.menu.pin'),
+      handler: handlers.onPin,
+    },
+    {
+      action: 'mute',
+      label: tr(isMuted ? 'circle.tile.menu.unmute' : 'circle.tile.menu.mute'),
+      handler: handlers.onMute,
+    },
+    {
+      action: 'settings',
+      label: tr('circle.tile.menu.settings'),
+      handler: handlers.onSettings,
+    },
+    {
+      action: 'leave',
+      label: tr('circle.tile.menu.leave'),
+      handler: handlers.onLeave,
+    },
+  ];
+
+  for (const item of items) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'circle-launcher__tile-menu-item';
+    btn.dataset.action = item.action;
+    btn.setAttribute('role', 'menuitem');
+    btn.textContent = item.label;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      close();
+      if (typeof item.handler === 'function') item.handler(circle.id, circle);
+    });
+    menu.appendChild(btn);
+  }
+
+  document.body.appendChild(menu);
+  // Defer outside/Escape listeners by a tick so the contextmenu event
+  // that opened the menu doesn't immediately close it.
+  setTimeout(() => {
+    document.addEventListener('click', onOutside, true);
+    document.addEventListener('keydown', onKey, true);
+  }, 0);
 }
 
 /** First letter of a circle name for the avatar tile (board 1). */

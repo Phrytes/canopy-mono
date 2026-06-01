@@ -1,6 +1,13 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderCircleLauncher } from '../../web/v2/circleLauncher.js';
+
+// β.5 — context menus mount on `document.body` (positioned absolutely),
+// so they survive between tests if a test didn't dismiss the menu it
+// opened.  Wipe both the body + the test container before each test.
+beforeEach(() => {
+  document.body.innerHTML = '';
+});
 
 // Stub t(): echo the key, and fold {{count}} so the members label is checkable.
 const t = (key, params) =>
@@ -263,6 +270,194 @@ describe('renderCircleLauncher', () => {
       const bIds = Array.from(bSection.querySelectorAll('.circle-tile')).map((tl) => tl.dataset.circleId);
       expect(hIds).toEqual(['h-new', 'h-old']);
       expect(bIds).toEqual(['b-new', 'b-old']);
+    });
+  });
+
+  // β.5 — per-tile context menu (pin / mute / settings / leave).
+  describe('β.5 — per-tile context menu', () => {
+    function rightClick(tile) {
+      const ev = new window.MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+      tile.dispatchEvent(ev);
+      return ev;
+    }
+
+    it('right-click on a tile opens a menu with the four actions', () => {
+      const el = mount();
+      renderCircleLauncher(el, {
+        circles, t,
+        onPin: vi.fn(), onMute: vi.fn(), onSettings: vi.fn(), onLeave: vi.fn(),
+      });
+      const tile = el.querySelector('.circle-tile[data-circle-id="g1"]');
+      rightClick(tile);
+      const menu = document.querySelector('.circle-launcher__tile-menu');
+      expect(menu).not.toBeNull();
+      const items = menu.querySelectorAll('.circle-launcher__tile-menu-item');
+      expect(items).toHaveLength(4);
+      const actions = Array.from(items).map((b) => b.dataset.action);
+      expect(actions).toEqual(['pin', 'mute', 'settings', 'leave']);
+    });
+
+    it('does NOT attach contextmenu when no menu handlers are provided', () => {
+      const el = mount();
+      renderCircleLauncher(el, { circles, t });
+      const tile = el.querySelector('.circle-tile[data-circle-id="g1"]');
+      const ev = rightClick(tile);
+      // No menu was rendered, and the renderer did NOT preventDefault.
+      expect(document.querySelector('.circle-launcher__tile-menu')).toBeNull();
+      expect(ev.defaultPrevented).toBe(false);
+    });
+
+    it('right-click preventDefault is called when menu handlers are wired', () => {
+      const el = mount();
+      renderCircleLauncher(el, {
+        circles, t,
+        onPin: vi.fn(), onMute: vi.fn(), onSettings: vi.fn(), onLeave: vi.fn(),
+      });
+      const tile = el.querySelector('.circle-tile[data-circle-id="g1"]');
+      const ev = rightClick(tile);
+      expect(ev.defaultPrevented).toBe(true);
+    });
+
+    it('clicking [Pin] fires onPin with the circle id', () => {
+      const el = mount();
+      const onPin = vi.fn();
+      renderCircleLauncher(el, {
+        circles, t,
+        onPin, onMute: vi.fn(), onSettings: vi.fn(), onLeave: vi.fn(),
+      });
+      const tile = el.querySelector('.circle-tile[data-circle-id="g1"]');
+      rightClick(tile);
+      const pinBtn = document.querySelector('.circle-launcher__tile-menu-item[data-action="pin"]');
+      pinBtn.click();
+      expect(onPin).toHaveBeenCalledWith('g1', circles[0]);
+      // Clicking dismisses the menu.
+      expect(document.querySelector('.circle-launcher__tile-menu')).toBeNull();
+    });
+
+    it('clicking [Settings] / [Leave] / [Mute] dispatches the right handler', () => {
+      const el = mount();
+      const onPin = vi.fn(), onMute = vi.fn(), onSettings = vi.fn(), onLeave = vi.fn();
+      renderCircleLauncher(el, { circles, t, onPin, onMute, onSettings, onLeave });
+
+      const tile = el.querySelector('.circle-tile[data-circle-id="h1"]');
+      rightClick(tile);
+      document.querySelector('[data-action="settings"]').click();
+      expect(onSettings).toHaveBeenCalledWith('h1', circles[1]);
+
+      rightClick(tile);
+      document.querySelector('[data-action="mute"]').click();
+      expect(onMute).toHaveBeenCalledWith('h1', circles[1]);
+
+      rightClick(tile);
+      document.querySelector('[data-action="leave"]').click();
+      expect(onLeave).toHaveBeenCalledWith('h1', circles[1]);
+    });
+
+    it('menu labels flip with pinnedMap / mutedMap state', () => {
+      const el = mount();
+      renderCircleLauncher(el, {
+        circles, t,
+        pinnedMap: { g1: true },
+        mutedMap:  { g1: true },
+        onPin: vi.fn(), onMute: vi.fn(), onSettings: vi.fn(), onLeave: vi.fn(),
+      });
+      const tile = el.querySelector('.circle-tile[data-circle-id="g1"]');
+      rightClick(tile);
+      expect(document.querySelector('[data-action="pin"]').textContent)
+        .toBe('circle.tile.menu.unpin');
+      expect(document.querySelector('[data-action="mute"]').textContent)
+        .toBe('circle.tile.menu.unmute');
+    });
+
+    it('only one menu is open at a time (re-right-click on a different tile)', () => {
+      const el = mount();
+      renderCircleLauncher(el, {
+        circles, t,
+        onPin: vi.fn(), onMute: vi.fn(), onSettings: vi.fn(), onLeave: vi.fn(),
+      });
+      rightClick(el.querySelector('.circle-tile[data-circle-id="g1"]'));
+      rightClick(el.querySelector('.circle-tile[data-circle-id="h1"]'));
+      const menus = document.querySelectorAll('.circle-launcher__tile-menu');
+      expect(menus).toHaveLength(1);
+      expect(menus[0].dataset.circleId).toBe('h1');
+    });
+
+    it('pinned tiles get a pin-indicator AND the is-pinned class', () => {
+      const el = mount();
+      renderCircleLauncher(el, {
+        circles, t,
+        pinnedMap: { g1: true },
+      });
+      const tile = el.querySelector('.circle-tile[data-circle-id="g1"]');
+      expect(tile.classList.contains('is-pinned')).toBe(true);
+      expect(tile.querySelector('.circle-tile__pin-indicator')).not.toBeNull();
+      // Unpinned tiles have neither.
+      const other = el.querySelector('.circle-tile[data-circle-id="h1"]');
+      expect(other.classList.contains('is-pinned')).toBe(false);
+      expect(other.querySelector('.circle-tile__pin-indicator')).toBeNull();
+    });
+
+    it('pinned tiles float to the top of their kind section (β.5 partition)', () => {
+      const el = mount();
+      // Two household circles where h-old is the most-recent (β.2 says
+      // h-old above h-new); but pinning h-new MUST flip the order so
+      // h-new appears first WITHIN the household section.
+      const same = [
+        { id: 'h-old', name: 'A-old', kind: 'household' },
+        { id: 'h-new', name: 'B-new', kind: 'household' },
+      ];
+      const previews = { 'h-old': { ts: 99 }, 'h-new': { ts: 1 } };
+      renderCircleLauncher(el, {
+        circles: same,
+        previews,
+        t,
+        pinnedMap: { 'h-new': true },
+      });
+      const ids = Array.from(el.querySelectorAll('.circle-tile'))
+        .map((tl) => tl.dataset.circleId);
+      // h-new is pinned → first, even though h-old has the newer ts.
+      expect(ids).toEqual(['h-new', 'h-old']);
+    });
+
+    it('pin partition does NOT escape kind sections', () => {
+      const el = mount();
+      // Pinning a HOUSEHOLD tile must NOT float it above the buurt tiles
+      // (buurt comes after household in KIND_ORDER, so the pinned
+      // household stays inside the household section).
+      const mixed = [
+        { id: 'h1', name: 'Home',    kind: 'household' },
+        { id: 'h2', name: 'Home2',   kind: 'household' },
+        { id: 'b1', name: 'Selwerd', kind: 'buurt' },
+      ];
+      renderCircleLauncher(el, {
+        circles: mixed,
+        t,
+        pinnedMap: { h2: true },
+      });
+      // Sections are still household → buurt; b1 is NOT first.
+      const sections = Array.from(el.querySelectorAll('.circle-launcher__section'))
+        .map((s) => s.dataset.kind);
+      expect(sections).toEqual(['household', 'buurt']);
+      // Inside household, h2 (pinned) precedes h1.
+      const hSection = el.querySelector('.circle-launcher__section[data-kind="household"]');
+      const hIds = Array.from(hSection.querySelectorAll('.circle-tile'))
+        .map((tl) => tl.dataset.circleId);
+      expect(hIds).toEqual(['h2', 'h1']);
+    });
+
+    it('Escape closes the menu', async () => {
+      const el = mount();
+      renderCircleLauncher(el, {
+        circles, t,
+        onPin: vi.fn(), onMute: vi.fn(), onSettings: vi.fn(), onLeave: vi.fn(),
+      });
+      rightClick(el.querySelector('.circle-tile[data-circle-id="g1"]'));
+      expect(document.querySelector('.circle-launcher__tile-menu')).not.toBeNull();
+      // Wait a microtask so the deferred Escape listener attaches.
+      await new Promise((r) => setTimeout(r, 5));
+      const ev = new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      document.dispatchEvent(ev);
+      expect(document.querySelector('.circle-launcher__tile-menu')).toBeNull();
     });
   });
 });

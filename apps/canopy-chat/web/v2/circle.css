@@ -239,6 +239,41 @@
 }
 .circle-launcher__new:hover { color: var(--accent-ink); border-color: var(--accent); }
 
+/* β.5 — per-tile context menu (right-click on a kring tile).
+   Positioned absolutely by the renderer at the tile's right edge. */
+.circle-launcher__tile-menu {
+  position: absolute; z-index: 100;
+  min-width: 180px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .10);
+  font: inherit;
+}
+.circle-launcher__tile-menu-item {
+  display: block; width: 100%;
+  padding: 8px 12px;
+  background: none; border: 0;
+  text-align: left; cursor: pointer; font: inherit; font-size: 13px;
+  color: var(--ink);
+  border-radius: 6px;
+}
+.circle-launcher__tile-menu-item:hover,
+.circle-launcher__tile-menu-item:focus-visible {
+  background: var(--paper-2, var(--paper));
+  color: var(--accent-ink);
+  outline: none;
+}
+/* β.5 — pin indicator (📌 glyph in the top-right of pinned tiles). */
+.circle-tile__pin-indicator {
+  position: absolute; top: 6px; right: 8px;
+  font-size: 11px; line-height: 1;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.circle-tile.is-pinned { border-color: var(--accent); }
+
 /* ───────────────────── circle detail ───────────────────── */
 .circle-detail__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
 .circle-detail__bar [class^="circle-detail__"]:not(.circle-detail__back) {

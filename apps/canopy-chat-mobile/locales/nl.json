@@ -16,6 +16,17 @@
     "members": { "text": "{{count}} leden", "doc": "Member count on a circle tile; {{count}} interpolated." },
     "tile_unread": { "text": "{{count}} ongelezen", "doc": "Accessible label for the unread badge on a circle tile (P6.3)." },
     "tile_proposals": { "text": "{{count}} openstaande voorstel(len)", "doc": "Accessible label for the voorstellen badge on a circle tile (P6.2 #341)." },
+    "tile": {
+      "menu": {
+        "pin":            { "text": "Vastzetten boven", "doc": "β.5 — context-menu item: float this kring to the top of its section." },
+        "unpin":          { "text": "Losmaken", "doc": "β.5 — context-menu item: undo pin-to-top." },
+        "mute":           { "text": "Dempen", "doc": "β.5 — context-menu item: silence this kring (toggles per-member chatOff override)." },
+        "unmute":         { "text": "Dempen opheffen", "doc": "β.5 — context-menu item: re-enable chat for this kring." },
+        "settings":       { "text": "Instellingen", "doc": "β.5 — context-menu item: open this kring's settings screen." },
+        "leave":          { "text": "Kring verlaten", "doc": "β.5 — context-menu item: leave this kring (dispatches /leave-group)." },
+        "leave_confirm":  { "text": "{{name}} verlaten? Dit kan niet ongedaan worden.", "doc": "β.5 — Alert.alert text before dispatching /leave-group." }
+      }
+    },
     "kind": {
       "household":     { "text": "Huishouden", "doc": "β.3 — launcher section header for kind='household' circles." },
       "buurt":         { "text": "Buurt", "doc": "β.3 — launcher section header for kind='buurt' circles." },

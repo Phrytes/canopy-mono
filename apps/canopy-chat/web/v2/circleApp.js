@@ -77,6 +77,8 @@ import {
   createCirclePolicyStore, localStoragePolicyIo,
   createMemberOverrideStore, localStorageOverrideIo,
 } from '../../src/v2/circlePolicyStore.js';
+// β.5 — per-user "pin to top" store + adapter.
+import { createCirclePinStore, localStoragePinIo } from '../../src/v2/circlePinStore.js';
 import { renderCircleViewAs } from './circleViewAs.js';
 import { renderCircleLauncher } from './circleLauncher.js';
 import { renderCircleTabBar, hideCircleTabBar } from './circleTabBar.js';
@@ -119,6 +121,8 @@ const recipeStore = createKringRecipeStore({ io: localStorageRecipeIo() });
 // active screen drives the new Schermen tab.
 const userScreenStore = createUserScreenStore({ io: localStorageScreenIo() });
 const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
+// β.5 — pin store (single keyless map at `cc.circlePinned`).
+const pinStore = createCirclePinStore(localStoragePinIo());
 const availabilityStore = createAvailabilityStore(localStorageAvailabilityIo());
 // P6.2 — persisted pending proposals (multi-admin consensus).
 const proposalStore = createProposalStore({ io: localStorageProposalIo() });
@@ -191,6 +195,28 @@ function writeViewMode(id, mode) {
   } catch { /* quota / disabled */ }
 }
 
+// β.5 — pinned + muted maps cached at the launcher level so the host
+// can re-render without an async round-trip when the user toggles a
+// pin/mute from the per-tile menu.  Refreshed in `refreshLauncherPins`
+// and `refreshLauncherMutes` (both fire-and-forget on launcher entry).
+let launcherPinnedMap = {};
+let launcherMutedMap  = {};
+
+async function refreshLauncherPins() {
+  try { launcherPinnedMap = await pinStore.get(); }
+  catch { launcherPinnedMap = {}; }
+}
+async function refreshLauncherMutes() {
+  const next = {};
+  for (const c of circlesCache) {
+    try {
+      const o = await overrideStore.get(c.id);
+      if (o?.chatOff) next[c.id] = true;
+    } catch { /* skip */ }
+  }
+  launcherMutedMap = next;
+}
+
 function showLauncher() {
   setActiveCircle(null);
   try { sessionStorage.removeItem('cc.activeCircle'); } catch { /* ignore */ }
@@ -204,19 +230,83 @@ function showLauncher() {
   // β.1 — Stream/Availability/Hop/Nearby/My-things buttons are gone from
   // the launcher; those surfaces are reachable via the Schermen + Mij tabs.
   // The `show*` functions stay defined below — the tab bar still calls them.
+  // β.5 — per-tile context menu handlers (pin / mute / settings / leave).
   renderCircleLauncher(rootEl, {
     circles: circlesCache,
     previews,
     proposals: launcherProposals,
+    pinnedMap: launcherPinnedMap,
+    mutedMap:  launcherMutedMap,
     t,
     onOpenCircle: showDetail,
-    onNewCircle: createCircle,
+    onNewCircle:  createCircle,
+    onPin:        onPinCircle,
+    onMute:       onMuteCircle,
+    onSettings:   (id) => showSettings(id),
+    onLeave:      onLeaveCircle,
   });
   showTabBar('kringen');
   // Refresh proposal counts in the background so the next launcher
   // render shows yellow badges where consensus is waiting.  Async so
   // the first paint isn't blocked.
   refreshLauncherProposals().catch(() => { /* ignore */ });
+  // β.5 — pull fresh pin + mute state.  Re-render once they resolve so
+  // a just-toggled state shows immediately on the next launcher entry.
+  Promise.all([refreshLauncherPins(), refreshLauncherMutes()])
+    .then(() => { if (getActiveCircle() == null) showLauncher(); })
+    .catch(() => { /* tolerate */ });
+}
+
+// β.5 — toggle pin state + refresh the launcher so the tile reflows
+// (pins float to the top of their section).
+async function onPinCircle(id) {
+  try { launcherPinnedMap = await pinStore.toggle(id); }
+  catch { /* keep cache; stale UI is fine */ }
+  if (getActiveCircle() == null) showLauncher();
+}
+
+// β.5 — toggle the per-kring chatOff override (the mute field already
+// exists in DEFAULT_MEMBER_OVERRIDE / mergeMemberOverride).  No new
+// substrate added; mute is *exposed* here, not invented.
+async function onMuteCircle(id) {
+  try {
+    const cur = await overrideStore.get(id);
+    await overrideStore.update(id, { chatOff: !cur.chatOff });
+  } catch { /* tolerate */ }
+  await refreshLauncherMutes();
+  if (getActiveCircle() == null) showLauncher();
+}
+
+// β.5 — Leave kring: confirm, then dispatch `/leave-group` via the
+// raw callSkill seam (the stoop op `leaveGroup` already exists in the
+// substrate; the slash-command name maps to that op in the chat shell).
+async function onLeaveCircle(id, circle) {
+  const name = circle?.name ?? id;
+  const ok = (typeof globalThis.confirm === 'function')
+    ? globalThis.confirm(t('circle.tile.menu.leave_confirm', { name }))
+    : true;
+  if (!ok) return;
+  const dispatch = resolveCallSkill ?? rawCallSkill;
+  if (typeof dispatch === 'function') {
+    try {
+      // The stoop substrate exposes `leaveGroup`; the slash router
+      // resolves /leave-group to this op.  Calling the resolved op
+      // directly here keeps β.5 standalone (no chat-shell dependency).
+      await dispatch('leaveGroup', { groupId: id });
+    } catch (err) {
+      console.warn('[circleApp] leaveGroup failed:', err?.message ?? err);
+    }
+  }
+  try { circlesCache = await loadCircles(sources); }
+  catch { /* keep cache */ }
+  // Drop the pin if the circle is gone — the map otherwise keeps a
+  // dangling key that the partition would happily filter out anyway,
+  // but cleanup keeps storage tidy.
+  try {
+    const cur = await pinStore.get();
+    if (cur[id]) { await pinStore.toggle(id); launcherPinnedMap = await pinStore.get(); }
+  } catch { /* tolerate */ }
+  if (getActiveCircle() == null) showLauncher();
 }
 
 // P6.2 #341 + P6.10 #348 — per-circle pending-admin-action counts.  The
