@@ -168,6 +168,7 @@ export function makePodRangeQueryForGroup({ callSkill, inbox, logger = console }
  * @param {CatchUpDeps & {
  *   inbox?: {ingestChatMessage: Function},
  *   getCirclePolicy?: (circleId: string) => Promise<object|null>|object|null,
+ *   peerCatchUpNegotiated?: ({circleId, sinceTs}) => Promise<*>,
  * }} deps
  *
  * ε.3 — when `getCirclePolicy` is supplied, each kring's catch-up
@@ -181,18 +182,32 @@ export function makePodRangeQueryForGroup({ callSkill, inbox, logger = console }
  * isn't wired and `scheduleCatchUp` returns `deferred` for shared
  * kringen — same forward-compat contract as catchUpStrategy.js
  * documents.
+ *
+ * ε.4 — when `peerCatchUpNegotiated` is supplied, the strategy
+ * router's `peerCatchUp` handler is REPLACED with it for
+ * personal/none kringen.  The legacy single-message peer-poll path
+ * (`makeRequestCatchUpForGroup`) is kept as a fallback so callers
+ * that haven't migrated keep working, AND so personal-pod kringen
+ * with no negotiated coordinator wired (e.g. a half-migrated boot)
+ * still cover the basic catch-up case.  Both paths produce results
+ * the inbox can dedupe through.
  */
 export function makeRequestCatchUpFromKnownPeers({
   callSkill,
   sendPeer,
   inbox = null,
   getCirclePolicy = null,
+  peerCatchUpNegotiated = null,
   logger = console,
 }) {
-  const perGroupPeer = makeRequestCatchUpForGroup({ callSkill, sendPeer, logger });
+  const perGroupPeerLegacy = makeRequestCatchUpForGroup({ callSkill, sendPeer, logger });
   const perGroupPod  = (inbox && typeof inbox.ingestChatMessage === 'function')
     ? makePodRangeQueryForGroup({ callSkill, inbox, logger })
     : null;
+  // ε.4 — negotiated path overrides legacy when supplied.
+  const perGroupPeer = (typeof peerCatchUpNegotiated === 'function')
+    ? peerCatchUpNegotiated
+    : perGroupPeerLegacy;
 
   return async function requestCatchUpFromKnownPeers() {
     let buurts = [];

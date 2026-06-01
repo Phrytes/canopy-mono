@@ -57,6 +57,9 @@ import { makeHandleBuurtPeerIntro }
 import {
   makeHandleCatchUpRequest, makeRequestCatchUpFromKnownPeers,
 } from '../../../canopy-chat/src/core/handlers/catchUp.js';
+// ε.4 — negotiated catch-up protocol substrate.
+import { makeCatchUpProviderHandler } from '../../../canopy-chat/src/v2/catchUpProvider.js';
+import { makeCatchUpReceiver }        from '../../../canopy-chat/src/v2/catchUpReceiver.js';
 import { makeHandleCalendarRsvp }
                                from '../../../canopy-chat/src/core/handlers/calendarRsvp.js';
 import { makeHandleBuurtPost } from '../../../canopy-chat/src/core/handlers/buurtPost.js';
@@ -178,6 +181,12 @@ export default function ChatScreen({
   }
   const [logsPanelOpen, setLogsPanelOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  // ε.5 — "Catching up…" indicator + provider-side notification cards.
+  // Status is fed by the negotiated catch-up receiver's emitStatus
+  // hook; notifications come from the provider's emitNotification.
+  const [catchUpStatus, setCatchUpStatus] = useState(null);
+  const [catchUpNotifications, setCatchUpNotifications] = useState([]);
+  const catchUpProviderRef = useRef(null);
   // Bundle F P6 (#262) — Solid OIDC.  Hook drives the OAuth dance;
   // OidcSessionRN holds tokens in SecureStore (restored on mount).
   // `buildMobilePodAuth` adapts both into the podAuth shape that
@@ -322,11 +331,61 @@ export default function ChatScreen({
     // Mirrors web's `store.getThread('main').addShellMessage`.
     const addMainBubble = (bubble) => appendBubble('main', bubble);
 
+    // ε.4 — negotiated catch-up coordinator + provider handler.
+    // Built ONLY when we have a shared inbox; the legacy peer-poll
+    // path still works without it (and stays the fallback below).
+    const inboxForNegotiated = kringChatInbox ?? null;
+    const catchUpReceiver = inboxForNegotiated
+      ? makeCatchUpReceiver({
+          sendToPeer: sendPeer,
+          inbox:      inboxForNegotiated,
+          emitStatus: (s) => {
+            setCatchUpStatus(s);
+            // Hide the pill 1.5s after a terminal phase.
+            if (s.phase === 'done' || s.phase === 'no-offers' || s.phase === 'timed-out') {
+              setTimeout(() => setCatchUpStatus((cur) => (cur === s ? null : cur)), 1500);
+            }
+          },
+          logger: console,
+        })
+      : null;
+    const catchUpProvider = makeCatchUpProviderHandler({
+      callSkill,
+      sendToPeer: sendPeer,
+      // Mobile doesn't read the policyStore here today — kringen
+      // default to auto-approve (V1).  When policy is forwarded down
+      // from the launcher (follow-up slice), this resolver will read
+      // `policy.catchUpAutoApprove` for the opt-out path.
+      getCirclePolicy:  null,
+      isKnownContact:   () => true,
+      emitNotification: (n) => {
+        setCatchUpNotifications((prev) => [...prev, n]);
+      },
+      logger: console,
+    });
+    catchUpProviderRef.current = catchUpProvider;
+
     const handlers = {
       // Substrate-only handlers — no UI bubble; just persist local
       // state + publish a notification for /logs.
       'buurt-peer-intro':      makeHandleBuurtPeerIntro({ callSkill }),
-      'catch-up-request':      makeHandleCatchUpRequest({ callSkill, sendPeer, getMyPubKey }),
+      // Legacy peer-poll path kept as fallback for callers / tests
+      // that still drive it.  The new ε.4 'catch-up-request' subtype
+      // is registered alongside via catchUpProvider.handler.
+      'catch-up-request':      catchUpProvider.handler,
+      'catch-up-accept':       catchUpProvider.onAccept,
+      ...(catchUpReceiver ? {
+        'catch-up-offer': catchUpReceiver.onPeerMessage,
+        'catch-up-chunk': catchUpReceiver.onPeerMessage,
+        'catch-up-end':   catchUpReceiver.onPeerMessage,
+      } : {}),
+      // NOTE: the legacy buurt-post peer-poll path
+      // (`makeHandleCatchUpRequest`) handled the same `catch-up-request`
+      // subtype with a different payload shape (`{sinceMs}` instead of
+      // `{requestId, sinceTs, fromNknAddr}`).  ε.4's `isValidRequest`
+      // SILENTLY drops the old shape, so legacy peers don't crash us —
+      // they just don't get a reply.  The factory is still imported in
+      // case a follow-up slice needs to opt back in per-kring.
       'calendar-rsvp':         makeHandleCalendarRsvp({ callSkill, publishEvent }),
       'buurt-post':            makeHandleBuurtPost({ callSkill, publishEvent }),
       'group-redeem-request':  makeHandleGroupRedeemRequest({ callSkill, sendPeer, publishEvent }),
@@ -414,11 +473,32 @@ export default function ChatScreen({
     // For pod:'shared' kringen the dispatcher would return 'deferred'
     // without that wiring, so the legacy peer path stays unchanged.
     const inboxForCatchUp = kringChatInbox ?? null;
+    // ε.4 — the negotiated peer handler.  When the inbox is wired (=
+    // launcher path) we route personal/none kringen through the new
+    // coordinator + roster-driven knownPeers; otherwise the legacy
+    // peer-poll path stays as fallback.
+    const peerCatchUpNegotiated = catchUpReceiver
+      ? async ({ circleId, sinceTs }) => {
+          let roster = [];
+          try {
+            const r = await callSkill('stoop', 'listGroupRoster', { groupId: circleId });
+            roster = Array.isArray(r?.members) ? r.members : [];
+          } catch { /* empty */ }
+          const knownPeers = roster.map((m) => m?.addr).filter(Boolean);
+          return catchUpReceiver.requestCatchUp({
+            circleId,
+            sinceTs:    Number.isFinite(sinceTs) ? sinceTs : 0,
+            knownPeers,
+            fromNknAddr: '',
+          });
+        }
+      : null;
     return {
       onPeerMessage:  makePeerRouter({ handlers, defaultHandler }),
       requestCatchUp: makeRequestCatchUpFromKnownPeers({
         callSkill, sendPeer,
         inbox: inboxForCatchUp,
+        peerCatchUpNegotiated,
       }),
     };
   }, []);
@@ -1196,6 +1276,73 @@ export default function ChatScreen({
             ))}
           </View>
         )}
+        {/* ε.5 — "Catching up…" pill.  Visible while a negotiated
+            catch-up is in flight; hides 1.5s after a terminal phase. */}
+        {catchUpStatus && (
+          <View testID="catch-up-indicator" style={styles.catchUpPill}>
+            <Text style={styles.catchUpPillText}>
+              {catchUpStatus.phase === 'streaming' && Number.isFinite(catchUpStatus.total) && catchUpStatus.total > 0
+                ? t('circle.chat.catch_up.streaming_progress', {
+                    count: catchUpStatus.count ?? 0,
+                    total: catchUpStatus.total,
+                  })
+                : catchUpStatus.phase === 'done'
+                  ? t('circle.chat.catch_up.done')
+                  : catchUpStatus.phase === 'no-offers'
+                    ? t('circle.chat.catch_up.no_offers')
+                    : t('circle.chat.catch_up.requesting')}
+            </Text>
+          </View>
+        )}
+        {/* ε.5 — provider-side notification cards.  One per pending
+            inbound catch-up-request from a non-known contact when
+            policy.catchUpAutoApprove=false.  V1: minimal banner with
+            mode-pick buttons; deeper UI in a follow-up slice. */}
+        {catchUpNotifications.length > 0 && (
+          <View testID="catch-up-notifications">
+            {catchUpNotifications.map((n) => (
+              <View key={n.requestId} style={styles.catchUpCard}>
+                <Text style={styles.catchUpCardTitle}>
+                  {t('circle.chat.catch_up.provider_request_title', {
+                    name: (n.fromNknAddr || '').slice(0, 12),
+                    kring: n.groupId,
+                  })}
+                </Text>
+                <Text style={styles.catchUpCardSize}>
+                  {t('circle.chat.catch_up.provider_request_size', {
+                    count: n.count,
+                    kb: Math.max(1, Math.round((n.sizeBytes ?? 0) / 1024)),
+                  })}
+                </Text>
+                <View style={styles.catchUpCardBtnRow}>
+                  {[
+                    { label: t('circle.chat.catch_up.provider_send_all'),     mode: 'all' },
+                    { label: t('circle.chat.catch_up.provider_send_last_50'), mode: 'last-50' },
+                    { label: t('circle.chat.catch_up.provider_send_last_7d'), mode: 'last-7-days' },
+                    { label: t('circle.chat.catch_up.provider_decline'),     mode: null },
+                  ].map((opt) => (
+                    <TouchableOpacity
+                      key={opt.label}
+                      style={styles.catchUpCardBtn}
+                      onPress={() => {
+                        try {
+                          catchUpProviderRef.current?.resolveCatchUpRequest?.({
+                            requestId: n.requestId, mode: opt.mode,
+                          }).catch(() => {});
+                        } finally {
+                          setCatchUpNotifications((prev) =>
+                            prev.filter((x) => x.requestId !== n.requestId));
+                        }
+                      }}
+                    >
+                      <Text style={styles.catchUpCardBtnText}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
       <ScrollView
@@ -1844,6 +1991,26 @@ const styles = StyleSheet.create({
   appBlock:   { marginTop: 8, padding: 8, backgroundColor: '#f7f7f7', borderRadius: 6 },
   appName:    { fontSize: 14, fontWeight: '600' },
   appMeta:    { fontSize: 11, color: '#666', marginTop: 2 },
+
+  // ε.5 — catch-up indicator + provider notification card.
+  catchUpPill: {
+    alignSelf: 'flex-start', marginTop: 6,
+    backgroundColor: '#222', borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  catchUpPillText: { color: '#fff', fontSize: 12 },
+  catchUpCard: {
+    marginTop: 8, padding: 10, backgroundColor: '#fff',
+    borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
+  },
+  catchUpCardTitle: { fontSize: 13, fontWeight: '600' },
+  catchUpCardSize:  { fontSize: 12, color: '#555', marginTop: 2, marginBottom: 6 },
+  catchUpCardBtnRow:{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  catchUpCardBtn: {
+    paddingHorizontal: 8, paddingVertical: 4,
+    backgroundColor: '#f4f4f4', borderWidth: 1, borderColor: '#888', borderRadius: 6,
+  },
+  catchUpCardBtnText: { fontSize: 12 },
 
   messageList:        { flex: 1 },
   messageListContent: { padding: 12, gap: 8 },

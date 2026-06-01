@@ -50,6 +50,18 @@
         "pending": { "text": "Sending…", "doc": "δ.2 — bubble icon caption while the kring fan-out (broadcastKringMessage) is in flight." },
         "sent":    { "text": "Sent", "doc": "δ.2 — bubble icon caption after a successful kring fan-out.  Currently never surfaced (the happy path renders nothing) but reserved for future use." },
         "failed":  { "text": "Send failed (tap to retry)", "doc": "δ.2 — bubble icon caption + accessible label when the kring fan-out rejected or returned errors; tapping re-fires broadcastKringMessage with the same msgId." }
+      },
+      "catch_up": {
+        "requesting":              { "text": "Catching up…",                                  "doc": "ε.5 — chat-shell pill while a negotiated catch-up is in flight (PENDING_OFFERS / collecting-offers phase)." },
+        "streaming_progress":      { "text": "Catching up… {{count}}/{{total}}",              "doc": "ε.5 — chat-shell pill during the streaming phase; count is items ingested so far, total is the offer's count." },
+        "done":                    { "text": "Up to date",                                     "doc": "ε.5 — terminal pill shown briefly after a successful catch-up; auto-hides after 1.5s." },
+        "no_offers":               { "text": "No-one online to catch up from",                "doc": "ε.5 — terminal pill when the offer window elapsed without any peer replying." },
+        "provider_request_title":  { "text": "{{name}} wants to catch up on {{kring}}",       "doc": "ε.5 — provider-side notification card title when an inbound catch-up-request needs manual approval." },
+        "provider_request_size":   { "text": "{{count}} messages · about {{kb}} KB",           "doc": "ε.5 — provider-side notification card size summary." },
+        "provider_send_all":       { "text": "Send all",                                       "doc": "ε.5 — provider-side approve-with-mode action." },
+        "provider_send_last_50":   { "text": "Send last 50",                                   "doc": "ε.5 — provider-side approve-with-mode action." },
+        "provider_send_last_7d":   { "text": "Send last 7 days",                               "doc": "ε.5 — provider-side approve-with-mode action." },
+        "provider_decline":        { "text": "Decline",                                        "doc": "ε.5 — provider-side decline action; silent on the wire (no envelope sent to the receiver)." }
       }
     },
     "tabs": {
