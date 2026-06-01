@@ -25,3 +25,4 @@ export { PathMap, joinRel } from './PathMap.js';
 export { scanLocal } from './scanLocal.js';
 export { scanPod }   from './scanPod.js';
 export { diff }      from './diff.js';
+export { objectDiff } from './objectDiff.js';

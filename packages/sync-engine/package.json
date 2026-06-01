@@ -13,7 +13,8 @@
     "./PathMap":    "./src/PathMap.js",
     "./scanLocal":  "./src/scanLocal.js",
     "./scanPod":    "./src/scanPod.js",
-    "./diff":       "./src/diff.js"
+    "./diff":       "./src/diff.js",
+    "./objectDiff": "./src/objectDiff.js"
   },
   "scripts": {
     "test": "vitest run",
