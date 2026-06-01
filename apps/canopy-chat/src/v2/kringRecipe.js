@@ -226,9 +226,19 @@ export function updateRecipe(book, recipeId, mutator) {
  *   const store = createKringRecipeStore({ io: localStorageRecipeIo() });
  *   const book = await store.get(circleId);
  *   await store.update(circleId, (cur) => addRecipe(cur, 'Standaard'));
+ *
+ * γ.2 (Phase 9) — optional top-level `versions` adapter snapshots each
+ * save into a per-circle history slot ABOVE the storage tier.  Adapter
+ * shape: `{ capture(id, value), list(id) }`.  Purely additive: callers
+ * that omit it keep the pre-γ.2 behaviour.
  */
-export function createKringRecipeStore({ io = {} } = {}) {
+export function createKringRecipeStore({ io = {}, versions } = {}) {
   const { load, save } = io;
+  async function captureIfWired(circleId, next) {
+    if (versions && typeof versions.capture === 'function') {
+      try { await versions.capture(circleId, next); } catch { /* best-effort */ }
+    }
+  }
   return {
     async get(circleId) {
       let raw = null;
@@ -238,14 +248,21 @@ export function createKringRecipeStore({ io = {} } = {}) {
     },
     async set(circleId, book) {
       const next = normalizeRecipeBook(book);
+      await captureIfWired(circleId, next);
       if (typeof save === 'function') await save(circleId, next);
       return next;
     },
     async update(circleId, mutator) {
       const cur = await this.get(circleId);
       const next = normalizeRecipeBook(typeof mutator === 'function' ? mutator(cur) : mutator);
+      await captureIfWired(circleId, next);
       if (typeof save === 'function') await save(circleId, next);
       return next;
+    },
+    /** γ.2 — newest-first history; `[]` when no adapter or no history. */
+    async listVersions(circleId) {
+      if (!versions || typeof versions.list !== 'function') return [];
+      try { return await versions.list(circleId); } catch { return []; }
     },
   };
 }

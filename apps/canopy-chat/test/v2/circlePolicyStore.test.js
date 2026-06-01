@@ -76,3 +76,77 @@ describe('createMemberOverrideStore', () => {
     expect(map.has('cc.circleOverride.c1')).toBe(true);
   });
 });
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* γ.2 — optional `versions` adapter (additive)                       */
+/* ─────────────────────────────────────────────────────────────────── */
+
+describe('createCirclePolicyStore × versions (γ.2)', () => {
+  it('omitting `versions` keeps the pre-γ.2 behaviour (backwards compat)', async () => {
+    const mem = {};
+    const store = createCirclePolicyStore({
+      load: async (id) => mem[id] ?? null,
+      save: async (id, p) => { mem[id] = p; },
+    });
+    await store.update('c1', { llmTool: 'local' });
+    expect(mem.c1.llmTool).toBe('local');
+    // listVersions exists but returns [].
+    expect(await store.listVersions('c1')).toEqual([]);
+  });
+
+  it('calls versions.capture BEFORE save, on every update', async () => {
+    const order = [];
+    const captures = [];
+    const versions = {
+      capture: async (id, value) => {
+        order.push('capture');
+        captures.push({ id, value });
+      },
+      list: async () => [],
+    };
+    const store = createCirclePolicyStore({
+      load: async () => null,
+      save: async () => { order.push('save'); },
+      versions,
+    });
+    await store.update('c1', { llmTool: 'local' });
+    expect(order).toEqual(['capture', 'save']);
+    expect(captures).toHaveLength(1);
+    expect(captures[0].id).toBe('c1');
+    expect(captures[0].value.llmTool).toBe('local');
+  });
+
+  it('listVersions delegates to the adapter', async () => {
+    const versions = {
+      capture: async () => {},
+      list: async (id) => [{ ts: 1, sha256: 'x', value: { id } }],
+    };
+    const store = createCirclePolicyStore({ versions });
+    const list = await store.listVersions('c1');
+    expect(list).toEqual([{ ts: 1, sha256: 'x', value: { id: 'c1' } }]);
+  });
+
+  it('a throwing versions.capture does not break save', async () => {
+    let saved = null;
+    const versions = {
+      capture: async () => { throw new Error('history disk gone'); },
+      list: async () => [],
+    };
+    const store = createCirclePolicyStore({
+      load: async () => null,
+      save: async (id, p) => { saved = p; },
+      versions,
+    });
+    await store.update('c1', { llmTool: 'local' });
+    expect(saved.llmTool).toBe('local');
+  });
+
+  it('a throwing versions.list returns [] (callers see no exception)', async () => {
+    const versions = {
+      capture: async () => {},
+      list: async () => { throw new Error('x'); },
+    };
+    const store = createCirclePolicyStore({ versions });
+    expect(await store.listVersions('c1')).toEqual([]);
+  });
+});

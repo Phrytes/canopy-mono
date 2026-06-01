@@ -61,3 +61,74 @@ export function isRulesEmpty(doc) {
   const d = normalizeRulesDoc(doc);
   return RULES_FIELDS.every((k) => d[k].trim() === '');
 }
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Storage adapter — γ.2 (Phase 9) introduces a store factory so version  */
+/* capture has a single hook point for the rules blob (was inline         */
+/* localStorage / AsyncStorage in the launcher up to β).                  */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Per-circle Rules document store.  Mirrors `createCirclePolicyStore`:
+ * injectable `{load, save}` adapter so the host wires the storage tier
+ * (localStorage on web, AsyncStorage on mobile, pod-io later).
+ *
+ * γ.2 — optional `versions` adapter snapshots each save into a per-
+ * circle history slot.  Additive: legacy callers (no adapter) keep the
+ * pre-γ.2 behaviour.
+ *
+ *   const store = createCircleRulesStore({ load, save });
+ *   const doc   = await store.get(circleId);
+ *   await store.update(circleId, { purpose: 'updated' });
+ */
+export function createCircleRulesStore({ load, save, versions } = {}) {
+  return {
+    async get(circleId) {
+      let raw = null;
+      try { raw = typeof load === 'function' ? await load(circleId) : null; }
+      catch { raw = null; }
+      return normalizeRulesDoc(raw);
+    },
+    async set(circleId, doc) {
+      const next = normalizeRulesDoc(doc);
+      if (versions && typeof versions.capture === 'function') {
+        try { await versions.capture(circleId, next); } catch { /* best-effort */ }
+      }
+      if (typeof save === 'function') await save(circleId, next);
+      return next;
+    },
+    /** Shallow-merge a field patch onto the current doc (every field a string). */
+    async update(circleId, patch) {
+      const current = await this.get(circleId);
+      const next = normalizeRulesDoc({ ...current, ...(patch && typeof patch === 'object' ? patch : {}) });
+      if (versions && typeof versions.capture === 'function') {
+        try { await versions.capture(circleId, next); } catch { /* best-effort */ }
+      }
+      if (typeof save === 'function') await save(circleId, next);
+      return next;
+    },
+    /** γ.2 — newest-first history; `[]` when no adapter or no history. */
+    async listVersions(circleId) {
+      if (!versions || typeof versions.list !== 'function') return [];
+      try { return await versions.list(circleId); } catch { return []; }
+    },
+  };
+}
+
+/** localStorage-backed load/save (web). Key: `cc.circleRules.<circleId>`. */
+export function localStorageRulesIo(storage = globalThis.localStorage) {
+  const key = (id) => `cc.circleRules.${id}`;
+  return {
+    load: async (id) => {
+      try {
+        const s = storage?.getItem(key(id));
+        return s ? JSON.parse(s) : null;
+      } catch {
+        return null;
+      }
+    },
+    save: async (id, doc) => {
+      try { storage?.setItem(key(id), JSON.stringify(doc)); } catch { /* quota / disabled */ }
+    },
+  };
+}

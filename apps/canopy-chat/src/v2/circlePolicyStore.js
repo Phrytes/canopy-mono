@@ -5,13 +5,24 @@
  * localStorage today; pod `shared.json` (cross-app-settings convention)
  * swaps in later without touching callers. Normalises on read, deep-
  * merges edits onto the current value before saving.
+ *
+ * γ.2 (Phase 9) — optional `versions` adapter snapshots each save into
+ * a per-circle history slot ABOVE the storage tier (so capture happens
+ * whether the eventual write lands in localStorage, AsyncStorage, or
+ * the pod).  The adapter is purely additive: callers that don't pass
+ * one keep the pre-γ.2 behaviour bit-for-bit.
+ *
+ *   versions = {
+ *     capture(circleId, value) → Promise<void>   // snapshot before save
+ *     list(circleId)           → Promise<entries[]>
+ *   }
  */
 import {
   normalizeCirclePolicy, mergeCirclePolicy,
   normalizeMemberOverride, mergeMemberOverride,
 } from './circlePolicy.js';
 
-export function createCirclePolicyStore({ load, save } = {}) {
+export function createCirclePolicyStore({ load, save, versions } = {}) {
   return {
     async get(circleId) {
       let raw = null;
@@ -21,8 +32,19 @@ export function createCirclePolicyStore({ load, save } = {}) {
     async update(circleId, patch) {
       const current = await this.get(circleId);
       const next = mergeCirclePolicy(current, patch);
+      // γ.2 — capture BEFORE save.  Capture failures must not break the
+      // write; the adapter swallows internally but defensive try here
+      // in case of a malformed external adapter.
+      if (versions && typeof versions.capture === 'function') {
+        try { await versions.capture(circleId, next); } catch { /* capture is best-effort */ }
+      }
       if (save) await save(circleId, next);
       return next;
+    },
+    /** γ.2 — newest-first history; `[]` when no adapter or no history. */
+    async listVersions(circleId) {
+      if (!versions || typeof versions.list !== 'function') return [];
+      try { return await versions.list(circleId); } catch { return []; }
     },
   };
 }

@@ -24,7 +24,14 @@ import {
   createUserScreenStore,
   // β.5 — per-user pin-to-top store.
   createCirclePinStore,
+  // γ.2 — per-circle rules store factory (new in γ.2).
+  createCircleRulesStore,
 } from '@canopy-app/canopy-chat';
+// γ.2 — concrete `versions` adapter wiring AsyncStorage.  Imported via
+// the canopy-chat-mobile-local module that itself reaches into the
+// canopy-chat package by relative path (Metro-friendly; same pattern
+// as podStorage above).
+import { asyncStorageObjectVersions } from './objectVersionsStorageRN.js';
 // 5.4c — pod-writer build is also imported via relative path (Metro doesn't
 // honor package.json "exports" subpaths; same pattern as podNkn.js).
 import {
@@ -70,7 +77,10 @@ export function makeCirclePolicyStoreRN(storage, { getPodWriter } = {}) {
     getWriter: typeof getPodWriter === 'function' ? getPodWriter : () => null,
     app: 'cc-circle',
   });
-  return createCirclePolicyStore(tieredPolicyIo(localIo, podIo));
+  // γ.2 — version capture wired ABOVE the tier so snapshots happen
+  // regardless of whether the write lands in AsyncStorage or pod.
+  const versions = asyncStorageObjectVersions('policy', storage);
+  return createCirclePolicyStore({ ...tieredPolicyIo(localIo, podIo), versions });
 }
 
 export function makeMemberOverrideStoreRN(storage) {
@@ -82,9 +92,24 @@ export function makeAvailabilityStoreRN(storage) {
 }
 
 /** α.1a — per-kring recipe book store (one book per kring; key:
- *  `cc.circleRecipe.<circleId>`). */
+ *  `cc.circleRecipe.<circleId>`).  γ.2 — version capture above storage. */
 export function makeKringRecipeStoreRN(storage) {
-  return createKringRecipeStore({ io: asyncKeyedIo('cc.circleRecipe.', storage) });
+  const versions = asyncStorageObjectVersions('recipe', storage);
+  return createKringRecipeStore({
+    io: asyncKeyedIo('cc.circleRecipe.', storage),
+    versions,
+  });
+}
+
+/** γ.2 — per-circle rules store (`cc.circleRules.<circleId>`) with
+ *  version capture.  Was inline AsyncStorage in CircleLauncherScreen up
+ *  to β; now goes through the shared store factory. */
+export function makeCircleRulesStoreRN(storage) {
+  const versions = asyncStorageObjectVersions('rules', storage);
+  return createCircleRulesStore({
+    ...asyncKeyedIo('cc.circleRules.', storage),
+    versions,
+  });
 }
 
 /** α.2 — per-user screens store (single book; key: `cc.userScreens`). */
