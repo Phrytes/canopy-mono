@@ -591,6 +591,11 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
     );
   }
   if (selected && view === 'settings') {
+    // TODO γ-next — pass `incomingPolicy` when peer broadcast / pod sync
+    // surfaces a divergent policy.  γ.4 ships the screen's opt + the
+    // policy-conflict substrate + a settings-namespaced heading on the
+    // existing recipe-conflict modal; the source plumbing is the next
+    // slice.  See PLAN-canopy-chat-v2-circle.md Phase 9.
     return (
       <CircleSettingsScreen
         store={policyStore}
@@ -653,6 +658,12 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
     );
   }
   if (selected && view === 'rules') {
+    // TODO γ-next — pass `incomingRules` (+ rulesStore, circleId) when
+    // peer broadcast / pod sync surfaces a divergent rules doc.  γ.4
+    // ships the screen's opt + the rules-conflict substrate + a rules-
+    // namespaced heading on the existing recipe-conflict modal; the
+    // source plumbing is the next slice.  See
+    // PLAN-canopy-chat-v2-circle.md Phase 9.
     return (
       <CircleRulesScreen
         doc={rulesDoc}

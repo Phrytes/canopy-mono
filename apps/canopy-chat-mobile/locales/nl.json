@@ -100,6 +100,9 @@
         "shared":         { "text": "Eén gedeelde pod", "doc": "Option label." },
         "personal":       { "text": "Persoonlijke pods + verwijzingen", "doc": "Option label." },
         "hybrid":         { "text": "Hybride", "doc": "Option label." }
+      },
+      "conflict": {
+        "title": { "text": "Twee van jullie hebben de instellingen bewerkt", "doc": "γ.4 — modal heading when an incoming policy diverges from local; every other resolver locale string is reused from circle.recipe.conflict.*." }
       }
     },
     "override": {
@@ -294,6 +297,9 @@
         "admission":      { "text": "Toetreding",          "doc": "α.1c — rules block short field label." },
         "leaving":        { "text": "Vertrek",             "doc": "α.1c — rules block short field label." },
         "responsibility": { "text": "Verantwoordelijkheid","doc": "α.1c — rules block short field label." }
+      },
+      "conflict": {
+        "title": { "text": "Twee van jullie hebben de regels bewerkt", "doc": "γ.4 — modal heading when an incoming rules doc diverges from local; every other resolver locale string is reused from circle.recipe.conflict.*." }
       }
     },
     "screens": {

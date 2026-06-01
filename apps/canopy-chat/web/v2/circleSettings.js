@@ -8,8 +8,19 @@
  * option carries a ⓘ button that toggles a "consequences" panel (board
  * 4A ⓘ, slice 1.2b) sourced from `circle.settings.consequence.<opt>`;
  * the ⓘ only appears when a consequence string is actually translated.
+ *
+ * γ.4 — conflict resolution for the circle policy.  When `incomingPolicy`
+ * is non-null (the source plumbing — peer broadcast / pod-sync — is
+ * deferred to a later slice; today every existing call site passes
+ * none of the γ.4 opts and the renderer behaves exactly as before),
+ * the editor runs a 3-way diff against the last captured version
+ * (γ.2) and — if conflicts surface — overlays the SAME modal as
+ * recipes (with a settings-namespaced heading via the resolver's
+ * `title` opt).
  */
 import { CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS } from '../../src/v2/circlePolicy.js';
+import { detectPolicyConflicts, applyPolicyResolution } from '../../src/v2/policyConflict.js';
+import { renderRecipeConflictResolver } from './recipeConflictResolver.js';
 
 // 5.9a — `view` is the per-circle default-pane axis ('chat' / 'screen' /
 // 'cross-stream'); making it editable here lets an admin pick which surface
@@ -17,8 +28,32 @@ import { CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS } from '../../src/v2/circlePolicy.
 // the most prominent setting.
 const ENUM_AXES = ['view', 'llmTool', 'agents', 'revealPolicy', 'pod'];
 
+/**
+ * @param {HTMLElement} container
+ * @param {object} args
+ * @param {object} args.policy
+ * @param {Function} args.t
+ * @param {Function} [args.onChange]
+ * @param {Function} [args.onBack]
+ * @param {Function} [args.onSave]
+ * @param {string} [args.saveLabel]
+ * @param {string} [args.note]
+ *
+ * γ.4 — additive conflict-resolver opts (see file header).  Existing
+ * call sites that pass NONE of these get pre-γ.4 behaviour bit-for-bit.
+ * @param {object|null} [args.incomingPolicy]   Incoming policy doc.
+ * @param {object} [args.policyStore]           γ.2 store — for listVersions + update.
+ * @param {string} [args.circleId]              Required when incomingPolicy is non-null.
+ * @param {Function} [args.onIncomingApplied]   (mergedPolicy) => void
+ * @param {Function} [args.onIncomingDiscarded] () => void
+ */
 export function renderCircleSettings(container, {
   policy, t, onChange, onBack, onSave, saveLabel, note,
+  incomingPolicy = null,
+  policyStore,
+  circleId,
+  onIncomingApplied,
+  onIncomingDiscarded,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   const emit = (patch) => { if (typeof onChange === 'function') onChange(patch); };
@@ -112,7 +147,77 @@ export function renderCircleSettings(container, {
   save.addEventListener('click', () => { if (typeof onSave === 'function') onSave(); });
   container.appendChild(save);
 
+  // γ.4 — conflict resolver.  Opt-in via `incomingPolicy`.  When set, we
+  // fetch the latest captured version (γ.2 versions adapter) through
+  // `policyStore` + `circleId`, run the 3-way diff, and — if anything
+  // diverges — overlay the SAME modal used by the recipe editor with a
+  // settings-namespaced heading.  Detection is async because
+  // `policyStore.listVersions(...)` may need IO.
+  if (incomingPolicy != null) {
+    maybeRenderPolicyConflict(container, {
+      policy, incomingPolicy, policyStore, circleId, tr,
+      onIncomingApplied, onIncomingDiscarded,
+    });
+  }
   return container;
+}
+
+/**
+ * γ.4 — fetch last captured version, detect, maybe modal.  Apply path
+ * persists via `policyStore.update` (which already runs version capture
+ * + the deep-merge); cancel just drops the overlay.
+ */
+async function maybeRenderPolicyConflict(container, {
+  policy, incomingPolicy, policyStore, circleId, tr,
+  onIncomingApplied, onIncomingDiscarded,
+}) {
+  let base = null;
+  try {
+    if (policyStore && typeof policyStore.listVersions === 'function' && circleId) {
+      const versions = await policyStore.listVersions(circleId);
+      const head = Array.isArray(versions) && versions.length > 0 ? versions[0] : null;
+      base = head && typeof head === 'object' && head.value != null ? head.value : null;
+    }
+  } catch { /* best-effort */ }
+
+  const report = detectPolicyConflicts(policy, incomingPolicy, base);
+  if (report.identical
+      || (report.blockConflicts.length === 0 && report.metaConflicts.length === 0)) {
+    const merged = applyPolicyResolution(policy, incomingPolicy, {});
+    await persistMergedPolicy({ policyStore, circleId, merged });
+    if (typeof onIncomingApplied === 'function') onIncomingApplied(merged);
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'circle-settings__conflict-overlay';
+  container.appendChild(overlay);
+
+  renderRecipeConflictResolver(overlay, {
+    conflicts: report,
+    local: policy,
+    incoming: incomingPolicy,
+    t: tr,
+    title: 'circle.settings.conflict.title',
+    onResolve: async (decisions) => {
+      try {
+        const merged = applyPolicyResolution(policy, incomingPolicy, decisions);
+        await persistMergedPolicy({ policyStore, circleId, merged });
+        if (typeof onIncomingApplied === 'function') onIncomingApplied(merged);
+      } finally {
+        overlay.remove();
+      }
+    },
+    onCancel: () => {
+      overlay.remove();
+      if (typeof onIncomingDiscarded === 'function') onIncomingDiscarded();
+    },
+  });
+}
+
+async function persistMergedPolicy({ policyStore, circleId, merged }) {
+  if (!policyStore || typeof policyStore.update !== 'function' || !circleId) return;
+  try { await policyStore.update(circleId, merged); } catch { /* best-effort */ }
 }
 
 /**

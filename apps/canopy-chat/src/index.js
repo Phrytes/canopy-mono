@@ -88,6 +88,9 @@ export {
 } from './v2/kringRecipeBlocks.js';
 // γ.3 — recipe conflict detection + resolution (Phase 9 sync absorption).
 export { detectRecipeConflicts, applyResolution } from './v2/recipeConflict.js';
+// γ.4 — rules-doc + circle-policy conflict detection + resolution (same flow).
+export { detectRulesConflicts,  applyRulesResolution  } from './v2/rulesConflict.js';
+export { detectPolicyConflicts, applyPolicyResolution } from './v2/policyConflict.js';
 // α.2a/b — user-owned cross-kring screens (Stream / custom views).
 export {
   EMPTY_SCREEN_BOOK, ALL_KRINGEN,

@@ -5,56 +5,144 @@
  * over a rules document; required questions (purpose + agreements) gate
  * Save. "Preview" shows the assembled doc as a joiner consents to it. Holds
  * a working copy seeded from the passed `doc`; the host persists onSave.
+ *
+ * γ.4 — conflict resolution.  When `incomingRules` is non-null (the
+ * source plumbing — peer broadcast / pod-sync — is deferred to a later
+ * slice; today every existing call site passes none of these opts and
+ * the screen behaves exactly as before), the screen runs a 3-way diff
+ * against the last captured version (γ.2) and — if conflicts surface —
+ * overlays the SAME modal (CircleRecipeConflictScreen) used by the
+ * recipe editor with a rules-namespaced heading via its `title` prop.
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
-import { RULES_QUESTIONS, normalizeRulesDoc, isRulesComplete } from '@canopy-app/canopy-chat';
+import {
+  RULES_QUESTIONS, normalizeRulesDoc, isRulesComplete,
+  detectRulesConflicts, applyRulesResolution,
+} from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
+import CircleRecipeConflictScreen from './CircleRecipeConflictScreen.js';
 
-export default function CircleRulesScreen({ doc, onSave, onBack, onPreview }) {
+export default function CircleRulesScreen({
+  doc, onSave, onBack, onPreview,
+  // γ.4 — opt-in conflict resolver.  See file header for the deferred
+  // source plumbing.  Existing callers pass none of these and get the
+  // pre-γ.4 behaviour.
+  incomingRules = null,
+  rulesStore,
+  circleId,
+  onIncomingApplied,
+  onIncomingDiscarded,
+}) {
   const [working, setWorking] = useState(() => normalizeRulesDoc(doc));
   const setField = useCallback((k, v) => setWorking((w) => ({ ...w, [k]: v })), []);
   const complete = isRulesComplete(working);
 
+  // γ.4 — conflict resolver state.  `report === null` means "not detected
+  // yet" or "no overlay needed".
+  const [conflictReport, setConflictReport] = useState(null);
+  const [localForCompare, setLocalForCompare] = useState(null);
+
+  useEffect(() => {
+    if (incomingRules == null) { setConflictReport(null); return; }
+    let live = true;
+    (async () => {
+      let base = null;
+      try {
+        if (rulesStore && typeof rulesStore.listVersions === 'function' && circleId) {
+          const versions = await rulesStore.listVersions(circleId);
+          const head = Array.isArray(versions) && versions.length > 0 ? versions[0] : null;
+          base = head && typeof head === 'object' && head.value != null ? head.value : null;
+        }
+      } catch { /* best-effort */ }
+
+      const report = detectRulesConflicts(working, incomingRules, base);
+      if (!live) return;
+      setLocalForCompare(working);
+
+      if (report.identical
+          || (report.blockConflicts.length === 0 && report.metaConflicts.length === 0)) {
+        const merged = applyRulesResolution(working, incomingRules, {});
+        try {
+          if (rulesStore && typeof rulesStore.set === 'function' && circleId) {
+            await rulesStore.set(circleId, merged);
+          }
+        } catch { /* best-effort */ }
+        onIncomingApplied?.(merged);
+        return;
+      }
+      setConflictReport(report);
+    })();
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingRules, rulesStore, circleId]);
+
+  const handleResolve = async (decisions) => {
+    if (!localForCompare || !incomingRules) { setConflictReport(null); return; }
+    const merged = applyRulesResolution(localForCompare, incomingRules, decisions);
+    try {
+      if (rulesStore && typeof rulesStore.set === 'function' && circleId) {
+        await rulesStore.set(circleId, merged);
+      }
+    } catch { /* best-effort */ }
+    setConflictReport(null);
+    onIncomingApplied?.(merged);
+  };
+
+  const conflictOverlay = conflictReport ? (
+    <CircleRecipeConflictScreen
+      visible
+      conflicts={conflictReport}
+      local={localForCompare}
+      incoming={incomingRules}
+      title="circle.rules.conflict.title"
+      onResolve={handleResolve}
+      onCancel={() => { setConflictReport(null); onIncomingDiscarded?.(); }}
+    />
+  ) : null;
+
   return (
-    <View style={styles.page} testID="circle-rules">
-      <View style={styles.bar}>
-        <Pressable onPress={onBack} accessibilityRole="button" testID="circle-rules-back">
-          <Text style={styles.back}>{t('circle.back')}</Text>
+    <>
+      <View style={styles.page} testID="circle-rules">
+        <View style={styles.bar}>
+          <Pressable onPress={onBack} accessibilityRole="button" testID="circle-rules-back">
+            <Text style={styles.back}>{t('circle.back')}</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.title}>{t('circle.rules.title')}</Text>
+
+        <ScrollView contentContainerStyle={styles.body}>
+          {RULES_QUESTIONS.map((q) => (
+            <View key={q.key} style={styles.field}>
+              <Text style={styles.q}>{t(`circle.rules.q.${q.key}`)}{q.required ? ' *' : ''}</Text>
+              <TextInput
+                style={styles.input}
+                value={working[q.key]}
+                onChangeText={(v) => setField(q.key, v)}
+                multiline
+                testID={`rules-input-${q.key}`}
+              />
+            </View>
+          ))}
+          {!complete ? <Text style={styles.note}>{t('circle.rules.required_note')}</Text> : null}
+          <Pressable onPress={() => onPreview?.(working)} accessibilityRole="button" testID="circle-rules-preview" style={styles.preview}>
+            <Text style={styles.previewText}>{t('circle.rules.preview')}</Text>
+          </Pressable>
+        </ScrollView>
+
+        <Pressable
+          onPress={() => { if (complete) onSave?.(working); }}
+          accessibilityRole="button"
+          testID="circle-rules-save"
+          style={[styles.save, !complete && styles.saveDisabled]}
+          disabled={!complete}
+        >
+          <Text style={styles.saveText}>{t('circle.rules.save')}</Text>
         </Pressable>
       </View>
-      <Text style={styles.title}>{t('circle.rules.title')}</Text>
-
-      <ScrollView contentContainerStyle={styles.body}>
-        {RULES_QUESTIONS.map((q) => (
-          <View key={q.key} style={styles.field}>
-            <Text style={styles.q}>{t(`circle.rules.q.${q.key}`)}{q.required ? ' *' : ''}</Text>
-            <TextInput
-              style={styles.input}
-              value={working[q.key]}
-              onChangeText={(v) => setField(q.key, v)}
-              multiline
-              testID={`rules-input-${q.key}`}
-            />
-          </View>
-        ))}
-        {!complete ? <Text style={styles.note}>{t('circle.rules.required_note')}</Text> : null}
-        <Pressable onPress={() => onPreview?.(working)} accessibilityRole="button" testID="circle-rules-preview" style={styles.preview}>
-          <Text style={styles.previewText}>{t('circle.rules.preview')}</Text>
-        </Pressable>
-      </ScrollView>
-
-      <Pressable
-        onPress={() => { if (complete) onSave?.(working); }}
-        accessibilityRole="button"
-        testID="circle-rules-save"
-        style={[styles.save, !complete && styles.saveDisabled]}
-        disabled={!complete}
-      >
-        <Text style={styles.saveText}>{t('circle.rules.save')}</Text>
-      </Pressable>
-    </View>
+      {conflictOverlay}
+    </>
   );
 }
 
