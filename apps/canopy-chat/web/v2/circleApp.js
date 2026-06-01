@@ -201,6 +201,9 @@ function showLauncher() {
     circles: circlesCache,
     seenAt:  readSeenAt(),
   });
+  // β.1 — Stream/Availability/Hop/Nearby/My-things buttons are gone from
+  // the launcher; those surfaces are reachable via the Schermen + Mij tabs.
+  // The `show*` functions stay defined below — the tab bar still calls them.
   renderCircleLauncher(rootEl, {
     circles: circlesCache,
     previews,
@@ -208,8 +211,6 @@ function showLauncher() {
     t,
     onOpenCircle: showDetail,
     onNewCircle: createCircle,
-    onNearby: showNearby,
-    onMyThings: showMyThings,
   });
   showTabBar('kringen');
   // Refresh proposal counts in the background so the next launcher

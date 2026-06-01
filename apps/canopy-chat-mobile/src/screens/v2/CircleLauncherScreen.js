@@ -693,79 +693,13 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
               </View>
             ) : null}
 
-            {/* P6.8 #346 — Nearby (HIER) entry: full screen below. */}
-            <Pressable
-              style={styles.shortcut}
-              accessibilityRole="button"
-              testID="circle-launcher-nearby"
-              onPress={() => setView('nearby')}
-            >
-              <Text style={styles.shortcutText}>{t('circle.nearbyScreen.title')}</Text>
-            </Pressable>
-
-            {/* P6.M7 #349 — Mijn dingen entry (private kring). */}
-            <Pressable
-              style={styles.shortcut}
-              accessibilityRole="button"
-              testID="circle-launcher-mythings"
-              onPress={async () => {
-                let fs = [];
-                if (callSkill) {
-                  try { fs = myThingsFromListFiles(await callSkill('listFiles', {}), null); }
-                  catch { /* keep empty */ }
-                }
-                setMyThingsFiles(fs);
-                setView('mythings');
-              }}
-            >
-              <Text style={styles.shortcutText}>{t('circle.folio.my_things_title')}</Text>
-            </Pressable>
+            {/* β.1 — Nearby + Mijn dingen launcher shortcuts removed.
+                Nearby lives under the Mij tab; My-things is a seeded screen
+                under the Schermen tab. */}
             {circles.length === 0 ? (
               <Text style={styles.muted}>{t('circle.empty')}</Text>
             ) : (
-              circles.map((c) => {
-                // P6.3 — preview-aware subtitle + unread badge (board 5A).
-                const pv = previews[c.id];
-                const subtitle = (pv && pv.subtitle)
-                  ? pv.subtitle
-                  : (c.memberCount != null ? t('circle.members', { count: c.memberCount }) : null);
-                const unread = pv?.unread ?? 0;
-                // P6.2 #341 — pending voorstellen badge (yellow) when
-                // this circle has admin-approval proposals waiting.
-                const pendingProposals = Number(proposalCounts[c.id]) || 0;
-                return (
-                  <Pressable
-                    key={c.id}
-                    style={styles.tile}
-                    accessibilityRole="button"
-                    onPress={() => openCircle(c)}
-                  >
-                    <View style={styles.tileBody}>
-                      <Text style={styles.tileName}>{c.name}</Text>
-                      {subtitle ? (
-                        <Text style={styles.tileMeta} numberOfLines={1}>{subtitle}</Text>
-                      ) : null}
-                    </View>
-                    {unread > 0 ? (
-                      <View
-                        style={styles.tileUnread}
-                        accessibilityLabel={t('circle.tile_unread', { count: unread })}
-                      >
-                        <Text style={styles.tileUnreadText}>{unread}</Text>
-                      </View>
-                    ) : null}
-                    {pendingProposals > 0 ? (
-                      <View
-                        style={styles.tileProposals}
-                        accessibilityLabel={t('circle.tile_proposals', { count: pendingProposals })}
-                        testID={`circle-tile-proposals-${c.id}`}
-                      >
-                        <Text style={styles.tileProposalsText}>{pendingProposals}</Text>
-                      </View>
-                    ) : null}
-                  </Pressable>
-                );
-              })
+              renderLauncherGroups(circles, { previews, proposalCounts, openCircle })
             )}
 
             {creating ? (
@@ -796,6 +730,98 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
         )}
       </View>
     </WithTabBar>
+  );
+}
+
+// β.3 — fixed display order for kring-kind section headers; anything not in
+// this list is bucketed under 'other' (last).  Mirrors web circleLauncher.js
+// and the values produced by the create wizard + circleModel.normalizeCircle.
+const KIND_ORDER = ['household', 'buurt', 'vriendenkring'];
+
+/**
+ * β.1+β.2+β.3 — render the kringen list:
+ *   - β.2 sort by recent activity (preview.ts desc; stable name tiebreak)
+ *   - β.3 group by `kind` with section headers (KIND_ORDER then 'other');
+ *     when all kringen share one kind, headers are skipped (flat list).
+ */
+function renderLauncherGroups(circles, { previews, proposalCounts, openCircle }) {
+  const sorted = [...circles].sort((a, b) => {
+    const ta = previews?.[a.id]?.ts ?? 0;
+    const tb = previews?.[b.id]?.ts ?? 0;
+    if (tb !== ta) return tb - ta;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+  const groups = new Map();
+  for (const c of sorted) {
+    const k = KIND_ORDER.includes(c.kind) ? c.kind : 'other';
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(c);
+  }
+  const orderedKinds = [...KIND_ORDER, 'other'].filter((k) => groups.has(k));
+  const showHeaders = orderedKinds.length > 1;
+  if (!showHeaders) {
+    return sorted.map((c) => (
+      <LauncherTile
+        key={c.id}
+        circle={c}
+        preview={previews?.[c.id]}
+        pending={Number(proposalCounts?.[c.id]) || 0}
+        onOpen={openCircle}
+      />
+    ));
+  }
+  return orderedKinds.map((kind) => (
+    <View key={`section-${kind}`} style={styles.section} testID={`circle-launcher-section-${kind}`}>
+      <Text style={styles.sectionTitle}>{t(`circle.kind.${kind}`)}</Text>
+      {groups.get(kind).map((c) => (
+        <LauncherTile
+          key={c.id}
+          circle={c}
+          preview={previews?.[c.id]}
+          pending={Number(proposalCounts?.[c.id]) || 0}
+          onOpen={openCircle}
+        />
+      ))}
+    </View>
+  ));
+}
+
+/** Single kring tile (extracted in β.3 so grouped + flat paths share it). */
+function LauncherTile({ circle: c, preview, pending, onOpen }) {
+  const subtitle = (preview && preview.subtitle)
+    ? preview.subtitle
+    : (c.memberCount != null ? t('circle.members', { count: c.memberCount }) : null);
+  const unread = preview?.unread ?? 0;
+  return (
+    <Pressable
+      style={styles.tile}
+      accessibilityRole="button"
+      onPress={() => onOpen(c)}
+    >
+      <View style={styles.tileBody}>
+        <Text style={styles.tileName}>{c.name}</Text>
+        {subtitle ? (
+          <Text style={styles.tileMeta} numberOfLines={1}>{subtitle}</Text>
+        ) : null}
+      </View>
+      {unread > 0 ? (
+        <View
+          style={styles.tileUnread}
+          accessibilityLabel={t('circle.tile_unread', { count: unread })}
+        >
+          <Text style={styles.tileUnreadText}>{unread}</Text>
+        </View>
+      ) : null}
+      {pending > 0 ? (
+        <View
+          style={styles.tileProposals}
+          accessibilityLabel={t('circle.tile_proposals', { count: pending })}
+          testID={`circle-tile-proposals-${c.id}`}
+        >
+          <Text style={styles.tileProposalsText}>{pending}</Text>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -1268,6 +1294,10 @@ const styles = StyleSheet.create({
   detailActionText: { fontSize: 12, color: theme.color.inkSoft },
   title:      { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   list:       { gap: 6, paddingBottom: 32 },
+  // β.3 — per-kind grouping in the launcher (small-caps muted header,
+  // matches the web `.circle-launcher__section-title` look).
+  section:        { marginTop: 10, gap: 6 },
+  sectionTitle:   { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, color: theme.color.inkSoft, marginBottom: 4, paddingHorizontal: 2 },
   tile:       { padding: 13, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card, flexDirection: 'row', alignItems: 'center', gap: 10 },
   tileBody:   { flex: 1, minWidth: 0 },
   tileName:   { fontSize: 14, fontWeight: '600', color: theme.color.ink },

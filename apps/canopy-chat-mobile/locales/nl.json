@@ -16,6 +16,12 @@
     "members": { "text": "{{count}} leden", "doc": "Member count on a circle tile; {{count}} interpolated." },
     "tile_unread": { "text": "{{count}} ongelezen", "doc": "Accessible label for the unread badge on a circle tile (P6.3)." },
     "tile_proposals": { "text": "{{count}} openstaande voorstel(len)", "doc": "Accessible label for the voorstellen badge on a circle tile (P6.2 #341)." },
+    "kind": {
+      "household":     { "text": "Huishouden", "doc": "β.3 — launcher section header for kind='household' circles." },
+      "buurt":         { "text": "Buurt", "doc": "β.3 — launcher section header for kind='buurt' circles." },
+      "vriendenkring": { "text": "Vriendenkring", "doc": "β.3 — launcher section header for kind='vriendenkring' circles." },
+      "other":         { "text": "Overig", "doc": "β.3 — launcher section header for circles whose kind isn't household/buurt/vriendenkring." }
+    },
     "empty":   { "text": "Nog geen kringen.", "doc": "Shown when the launcher has no circles." },
     "loading": { "text": "Kringen laden…", "doc": "Shown while circles are being fetched." },
     "back":    { "text": "← kringen", "doc": "Back link from a circle detail view to the launcher." },
