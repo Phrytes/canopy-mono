@@ -626,9 +626,12 @@ The gap: kring stores (`circlePolicyStore`, `kringRecipeStore`, `circleRulesStor
       e2e specs + `bootTabs` repointed to `/classic.html`.
 - [x] "+ new circle" creates for real via `quickCreateCircle` → `createGroupV2`
       (web prompt; mobile inline name input), then refreshes the launcher.
-- [ ] Mobile default → circle app: **blocked on lifting the agent bundle to
-      App level** (ChatScreen boots it internally; the launcher needs it for
-      data + create). Reachable via the "Circles" pill until then.
+- [x] Mobile default → circle app — **SHIPPED in M2** (2026-05-29).  App.js
+      lands on the circle launcher; classic chat shell stays mounted
+      invisibly so its peer-wiring keeps routing while the launcher is up.
+      The "Circles" pill remains as the explicit toggle.  This entry was
+      left as `[ ]` by mistake when the original "blocked on bundle lift"
+      stalled — the unblock + ship landed in M1 + M2 below.
 
 ## Testing cadence (user-directed 2026-05-29)
 Catch mistakes "not too early, not too late" while keeping manual testing

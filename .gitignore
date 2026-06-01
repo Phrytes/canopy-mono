@@ -52,6 +52,12 @@ test-results/
 *.tmp
 .DS_Store
 
+# Sub-agent worktree artifacts — Edit smoke-test files left behind because the
+# harness sandbox blocks rm/find -delete in agent worktrees.  Harmless but they
+# accumulate in `.claude/worktrees/agent-*/`; ignoring them here covers any
+# stray copies that escape into the main tree too.
+**/.preflight-*
+
 # Whole android/ tree under folio-mobile is generated on first run
 apps/folio-mobile/android/
 # sdk-smoke android/ is also generated on first `expo run:android`
