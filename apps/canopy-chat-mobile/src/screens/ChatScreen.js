@@ -48,6 +48,7 @@ import {
 } from '../core/threadState.js';
 import { makePeerRouter }      from '../../../canopy-chat/src/core/handlers/peerRouter.js';
 import { makeKringChatPeerHandler } from '../../../canopy-chat/src/v2/kringChatReceiver.js';
+import { makeKringRecipePeerHandler } from '../../../canopy-chat/src/v2/kringRecipeReceiver.js';
 import { makeHandleChatMessage }
                                from '../../../canopy-chat/src/core/handlers/chatMessage.js';
 import { makeHandleBuurtPeerIntro }
@@ -110,6 +111,10 @@ export default function ChatScreen({
   bootError = null,
   eventLog = null,
   kringChatDedup = null,
+  // γ-next.recipe — pending-recipe cache + dedup, plumbed from App.js
+  // so the launcher's editor sees the same store the receiver writes to.
+  kringRecipePendingStore = null,
+  kringRecipeDedup = null,
   // 5.4c (2026-05-30) — App.js owns the OidcSessionRN so the v2 circle
   // launcher can build a podWriter from the SAME session.  If absent
   // (standalone mounts / older tests) we fall back to creating one
@@ -364,6 +369,15 @@ export default function ChatScreen({
           }
         },
       }),
+      // γ-next.recipe — kring scherm recipe broadcast.  Caches the
+      // inbound recipe per-kring; the editor pulls on next open and
+      // passes via γ.3's `incomingRecipe` opt.  No bubble UI.
+      ...(kringRecipePendingStore ? {
+        'kring-recipe-broadcast': makeKringRecipePeerHandler({
+          pendingStore: kringRecipePendingStore,
+          dedup:        kringRecipeDedup,
+        }),
+      } : {}),
     };
     const defaultHandler = makeHandleChatMessage({
       ensureDmThread:    handleDmThreadOpen,
