@@ -598,10 +598,10 @@ The α wave touched the chrome around the launcher but never re-thought the laun
 
 The gap: kring stores (`circlePolicyStore`, `kringRecipeStore`, `circleRulesStore`) blindly overwrite on save — no diff, no versions, no conflict surface. They're JSON blobs, not files, so folio's byte-level diff isn't a direct fit but the diff+versions+applyConflict *shape* is.
 
-- [ ] **γ.1 — `objectDiff` substrate** (S). New `packages/sync-engine/src/objectDiff.js` mirroring `diff.js`'s shape but per-key over a JSON object: takes `(localObj, podObj, knownObjState)`, returns `{toMerge, conflicts}` where each conflict is `{path:string[], yours, theirs, base}`. Pure + tested (~10 cases: both-changed, one-side-only, base-missing, deep nesting, array-of-blocks treated as keyed by `id`). Lives in sync-engine so other JSON-blob stores can reuse it.
-- [ ] **γ.2 — Version capture wired into kring stores** (S/M). Hook `captureVersion()` (from `packages/sync-engine/src/versions.js`) into the tiered-store save path used by `circlePolicyStore` / `kringRecipeStore` / `circleRulesStore`. Each save snapshots the prior content into a versioned slot keyed by `(circleId, storeName)` so γ.3 has the "last common state" needed for 3-way merge. Reuse existing retention machinery (50 versions / 100MB budget per file → 50 versions per `(circleId,storeName)` pair). Add a `listVersions(circleId, storeName)` helper. Tests: capture on every save; retention prunes; round-trip restore.
-- [ ] **γ.3 — Per-block conflict UI in the recipe editor** (M). When loading a recipe and finding a pod-side change that conflicts with local (via γ.1's `objectDiff` over γ.2's versioned ancestry), surface a modal: "Two of you edited this. [Keep yours] / [Take theirs] / [Merge]". Per-block granularity — recipes are made of independent blocks, so a conflict touches only the affected blocks, not the whole recipe. Web + mobile.
-- [ ] **γ.4 — Same flow for rules doc + circlePolicy** (S). Trivial extension once γ.1–γ.3 land — same diff + versions + modal, different store.
+- [x] **γ.1 — `objectDiff` substrate** (S). New `packages/sync-engine/src/objectDiff.js` mirroring `diff.js`'s shape but per-key over a JSON object: takes `(localObj, podObj, knownObjState)`, returns `{toMerge, conflicts}` where each conflict is `{path:string[], yours, theirs, base}`. Pure + tested (~10 cases: both-changed, one-side-only, base-missing, deep nesting, array-of-blocks treated as keyed by `id`). Lives in sync-engine so other JSON-blob stores can reuse it.
+- [x] **γ.2 — Version capture wired into kring stores** (S/M). Hook `captureVersion()` (from `packages/sync-engine/src/versions.js`) into the tiered-store save path used by `circlePolicyStore` / `kringRecipeStore` / `circleRulesStore`. Each save snapshots the prior content into a versioned slot keyed by `(circleId, storeName)` so γ.3 has the "last common state" needed for 3-way merge. Reuse existing retention machinery (50 versions / 100MB budget per file → 50 versions per `(circleId,storeName)` pair). Add a `listVersions(circleId, storeName)` helper. Tests: capture on every save; retention prunes; round-trip restore.
+- [x] **γ.3 — Per-block conflict UI in the recipe editor** (M). When loading a recipe and finding a pod-side change that conflicts with local (via γ.1's `objectDiff` over γ.2's versioned ancestry), surface a modal: "Two of you edited this. [Keep yours] / [Take theirs] / [Merge]". Per-block granularity — recipes are made of independent blocks, so a conflict touches only the affected blocks, not the whole recipe. Web + mobile.
+- [x] **γ.4 — Same flow for rules doc + circlePolicy** (S). Trivial extension once γ.1–γ.3 land — same diff + versions + modal, different store.
 
 **Total**: ~4 small commits. γ.1 and γ.2 are independent (different files); γ.3 depends on both; γ.4 is a flow follow-on.
 
@@ -610,15 +610,13 @@ The gap: kring stores (`circlePolicyStore`, `kringRecipeStore`, `circleRulesStor
 - **Co-redactie for text/photo block content** — there are no inline editors for those today; once one exists, γ's diff applies.
 
 ### Cleanup (cross-cutting)
-- [ ] **Vite build leak — multiple Node-only imports reach the browser bundle.**
-      Pre-existing (predates 5.4). vitest/dev/Playwright fine, only `vite build` fails.
-      **Partial progress 2026-05-30:** `fsNode` lazy-loaded in
-      `packages/sync-engine/src/versions.js` + `apps/folio/src/autoShare.js` (the original
-      blocker chain). Next blocker is `apps/stoop/src/lib/FilePersist.js`; ~10 source
-      files across `packages/{sync-engine,pod-client,pseudo-pod,core}`, stoop, folio
-      eagerly import `node:fs`/`path`/`crypto`. **Proper fix is a Vite `resolve.alias`
-      for `node:*` to a stub-with-named-exports**, not per-file lazy-loading — that's a
-      one-config-line change in the canopy-chat Vite config, vs ~10 file edits.
+- [x] **Vite build leak — multiple Node-only imports reach the browser bundle.** (DONE 2026-06-02, commit `7e488084`.)
+      Was pre-existing (predates 5.4). vitest/dev/Playwright fine, only `vite build` failed.
+      **Fix landed:** Vite `resolve.alias` for `node:*` → stub-with-named-exports
+      (`apps/canopy-chat/src/web/shims/node/{crypto,fs,http,os,path}.js`), plus
+      objectVersions.js's `sha256Of` import replaced with an inline FNV-1a 32-bit hash
+      (commit `650d657`) so `node:crypto` no longer leaks at all. Orphan wrappers
+      (`nodeFs.js` / `nodePath.js`) deleted in commit `940bce06`.
 
 ## v2 becomes the main app (user-directed 2026-05-29)
 - [x] Web: the v2 circle app is the **default** at `/` (`web/index.html`); the
