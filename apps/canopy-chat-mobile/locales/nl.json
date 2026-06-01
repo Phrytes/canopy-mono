@@ -323,6 +323,7 @@
     },
     "screen": {
       "empty":          { "text": "De admin heeft nog geen scherm ingericht.", "doc": "α.1c — empty book." },
+      "loading":        { "text": "Laden…",                                   "doc": "Shown while materialize is still resolving — distinct from the empty state." },
       "block_empty":    { "text": "{{type}}: nog niets om te tonen.", "doc": "α.1c — per-block empty fallback." },
       "block_error":    { "text": "{{type}}: laden mislukt", "doc": "α.1c — per-block error fallback." },
       "block_unknown":  { "text": "Onbekend bloktype: {{type}}", "doc": "α.1c — forward-compat fallback." }

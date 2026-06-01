@@ -36,6 +36,16 @@ export function renderCircleScreen(container, { blocks = [], t } = {}) {
   container.innerHTML = '';
   container.classList.add('circle-screen');
 
+  // null/undefined = still materializing.  Distinguish from `[]` so the
+  // wait shows "Loading…" instead of the "admin hasn't set up" empty
+  // state (visually identical, made the wait feel broken).
+  if (blocks === null || blocks === undefined) {
+    const loading = document.createElement('div');
+    loading.className = 'circle-screen__loading';
+    loading.textContent = tr('circle.screen.loading');
+    container.appendChild(loading);
+    return container;
+  }
   if (!Array.isArray(blocks) || blocks.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'circle-screen__empty';

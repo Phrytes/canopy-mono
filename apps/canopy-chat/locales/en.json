@@ -72,6 +72,7 @@
     },
     "screen": {
       "empty":          { "text": "The admin hasn't set up a screen yet.", "doc": "α.1c — shown when the kring's recipe book is empty." },
+      "loading":        { "text": "Loading…",                              "doc": "Shown while materializeRecipe/materializeScreen is still resolving — distinct from the empty state which was previously misused for both." },
       "block_empty":    { "text": "{{type}}: nothing to show here yet.", "doc": "α.1c — per-block empty fallback when a block has no content." },
       "block_error":    { "text": "{{type}}: couldn't load", "doc": "α.1c — per-block error fallback when materialization throws." },
       "block_unknown":  { "text": "Unknown block type: {{type}}", "doc": "α.1c — defensive label for a block type the renderer doesn't recognize (forward-compat)." }
