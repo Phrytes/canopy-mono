@@ -448,3 +448,14 @@
 .circle-screen__block--compact .circle-screen__announcement-text {
   padding: 4px 8px; font-size: 13px; line-height: 1.3;
 }
+
+/* ─────────────── δ.1 — refresh pip (cache-first render) ─────────────── *
+ * Shown when the Schermen view renders cached blocks while a fresh
+ * materialize is in flight.  Static glyph keeps the layout calm; hover
+ * tooltip carries the full word.  Float top-right of the screen body. */
+.circle-screen__refreshing {
+  position: absolute; top: 4px; right: 8px;
+  opacity: 0.5; font-size: 11px; color: var(--ink-soft);
+  pointer-events: none;
+}
+.circle-screen { position: relative; }

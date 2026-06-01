@@ -26,12 +26,16 @@
  * Render an array of materialized blocks into a container.
  *
  * @param {HTMLElement} container
- * @param {object}   args
- * @param {object[]} args.blocks   materializeRecipe(...) output
- * @param {Function} args.t        localizer
+ * @param {object}    args
+ * @param {object[]}  args.blocks       materializeRecipe(...) output
+ * @param {Function}  args.t            localizer
+ * @param {boolean}   [args.refreshing] δ.1 — when true and `blocks` is a
+ *        non-empty array, append a subtle pip element to signal a
+ *        background materialize is in flight (cache-first render).
+ *        Ignored on the loading / empty branches.
  * @returns {HTMLElement}
  */
-export function renderCircleScreen(container, { blocks = [], t } = {}) {
+export function renderCircleScreen(container, { blocks = [], t, refreshing = false } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
   container.classList.add('circle-screen');
@@ -56,6 +60,17 @@ export function renderCircleScreen(container, { blocks = [], t } = {}) {
 
   for (const block of blocks) {
     container.appendChild(renderBlock(block, { tr }));
+  }
+  // δ.1 — subtle refresh pip when rendering cached blocks while a fresh
+  // materialize is in flight.  Static glyph (⟳) is enough; no animation
+  // needed.  Tooltip = "Refreshing…" so hover gives the full word.
+  if (refreshing === true) {
+    const pip = document.createElement('span');
+    pip.className = 'circle-screen__refreshing';
+    pip.textContent = '⟳';
+    pip.title = tr('circle.screen.refreshing');
+    pip.setAttribute('aria-label', tr('circle.screen.refreshing'));
+    container.appendChild(pip);
   }
   return container;
 }
