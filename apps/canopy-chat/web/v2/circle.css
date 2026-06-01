@@ -201,6 +201,10 @@
 }
 
 /* ───────────────────── launcher (board 1) ───────────────────── */
+/* β.3 — per-kind sections; header style inherits from the global
+   `[class$="__section-title"]` rule above (small-caps muted). */
+.circle-launcher__section { margin-top: 14px; }
+.circle-launcher__section:first-of-type { margin-top: 6px; }
 .circle-launcher__list { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 4px; }
 .circle-tile {
   display: flex; align-items: center; gap: 12px;
