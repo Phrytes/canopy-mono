@@ -51,6 +51,7 @@ import { makeKringChatPeerHandler } from '../../../canopy-chat/src/v2/kringChatR
 import { createChatMessageInbox } from '../../../canopy-chat/src/v2/chatMessageInbox.js';
 import { makeKringRecipePeerHandler } from '../../../canopy-chat/src/v2/kringRecipeReceiver.js';
 import { makeKringRulesPeerHandler }  from '../../../canopy-chat/src/v2/kringRulesReceiver.js';
+import { makeKringPolicyPeerHandler } from '../../../canopy-chat/src/v2/kringPolicyReceiver.js';
 import { makeHandleChatMessage }
                                from '../../../canopy-chat/src/core/handlers/chatMessage.js';
 import { makeHandleBuurtPeerIntro }
@@ -151,6 +152,11 @@ export default function ChatScreen({
   // Launcher's rules editor reads from this store; receiver writes here.
   kringRulesPendingStore = null,
   kringRulesDedup = null,
+  // γ-next.policy — pending-policy cache + dedup.  Launcher's settings
+  // editor reads from this store; receiver writes here.  Completes the
+  // γ-next trio (recipe / rules / policy).
+  kringPolicyPendingStore = null,
+  kringPolicyDedup = null,
   // 5.4c (2026-05-30) — App.js owns the OidcSessionRN so the v2 circle
   // launcher can build a podWriter from the SAME session.  If absent
   // (standalone mounts / older tests) we fall back to creating one
@@ -531,6 +537,16 @@ export default function ChatScreen({
         'kring-rules-broadcast': makeKringRulesPeerHandler({
           pendingStore: kringRulesPendingStore,
           dedup:        kringRulesDedup,
+        }),
+      } : {}),
+      // γ-next.policy — kring circlePolicy broadcast.  Caches the
+      // inbound policy doc per-kring; the settings editor pulls on
+      // next open and passes via γ.4's `incomingPolicy` opt.  No
+      // bubble UI.  Completes the γ-next trio (recipe / rules / policy).
+      ...(kringPolicyPendingStore ? {
+        'kring-policy-broadcast': makeKringPolicyPeerHandler({
+          pendingStore: kringPolicyPendingStore,
+          dedup:        kringPolicyDedup,
         }),
       } : {}),
     };

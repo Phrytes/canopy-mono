@@ -100,6 +100,11 @@ export default function CircleLauncherScreen({
   // owned by App.js).  Receiver writes; rules editor reads on mount +
   // clears after the γ.4 resolver applies / discards.
   kringRulesPendingStore = null,
+  // γ-next.policy — per-kring pending-policy cache (AsyncStorage-backed,
+  // owned by App.js).  Receiver writes; settings editor reads on mount +
+  // clears after the γ.4 resolver applies / discards.  Completes the
+  // γ-next trio (recipe / rules / policy).
+  kringPolicyPendingStore = null,
 }) {
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +124,10 @@ export default function CircleLauncherScreen({
   // Loaded when the rules screen opens; cleared after the γ.4 resolver
   // applies or discards.
   const [incomingRules, setIncomingRules] = useState(null);
+  // γ-next.policy — pending incoming policy doc (from peer broadcast).
+  // Loaded when the settings screen opens; cleared after the γ.4
+  // resolver applies or discards.
+  const [incomingPolicy, setIncomingPolicy] = useState(null);
   // α.1d.3 — recipe editor state (lives in the parent so book + mode
   // survive the BOOK ↔ RECIPE round-trip).  Callbacks land below
   // after recipeStore is declared.
@@ -349,6 +358,35 @@ export default function CircleLauncherScreen({
       try { await kringRulesPendingStore.clear(selected.id); } catch { /* ignore */ }
     }
   }, [selected, kringRulesPendingStore]);
+
+  // γ-next.policy — pull cached pending policy doc whenever the settings
+  // screen opens for a selected circle.  γ.4's resolver runs
+  // automatically from inside the screen when incomingPolicy is
+  // non-null + diverges from local.
+  useEffect(() => {
+    if (view !== 'settings' || !selected?.id || !kringPolicyPendingStore) {
+      setIncomingPolicy(null);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const cached = await kringPolicyPendingStore.get(selected.id);
+        if (alive) setIncomingPolicy(cached ?? null);
+      } catch { if (alive) setIncomingPolicy(null); }
+    })();
+    return () => { alive = false; };
+  }, [view, selected, kringPolicyPendingStore]);
+
+  // γ-next.policy — clear the cached pending policy after the γ.4
+  // resolver applies or discards.  Both paths route through here so
+  // a fresh broadcast can land in the slot again.
+  const clearIncomingPolicy = useCallback(async () => {
+    setIncomingPolicy(null);
+    if (selected?.id && kringPolicyPendingStore) {
+      try { await kringPolicyPendingStore.clear(selected.id); } catch { /* ignore */ }
+    }
+  }, [selected, kringPolicyPendingStore]);
 
   // α.3 — Screens helpers.
   const refreshScreensBook = useCallback(async () => {
@@ -734,16 +772,42 @@ export default function CircleLauncherScreen({
     );
   }
   if (selected && view === 'settings') {
-    // TODO γ-next — pass `incomingPolicy` when peer broadcast / pod sync
-    // surfaces a divergent policy.  γ.4 ships the screen's opt + the
-    // policy-conflict substrate + a settings-namespaced heading on the
-    // existing recipe-conflict modal; the source plumbing is the next
-    // slice.  See PLAN-canopy-chat-v2-circle.md Phase 9.
+    // γ-next.policy — broadcast cache → editor → γ.4 resolver.  The
+    // resolver is opt-in; when `incomingPolicy` is null the editor
+    // renders untouched.  Applied / discarded both clear the cache.
+    //
+    // Send-side: the settings editor owns the `store.update` call (so
+    // proposal + commit paths route through one place); we wrap the
+    // store here so a fresh update fans the post-save policy out to
+    // peers via stoop's `broadcastKringPolicy`.  Fire-and-forget;
+    // per-peer errors land in result.errors which we log.  No-op when
+    // callSkill / no agent.
+    const broadcastingStore = {
+      ...policyStore,
+      update: async (cid, next) => {
+        const r = await policyStore.update(cid, next);
+        if (next && typeof next === 'object' && typeof bundle?.callSkill === 'function') {
+          const msgId = `kring-policy-${cid}-${Date.now()}`;
+          const ts    = Date.now();
+          bundle.callSkill('stoop', 'broadcastKringPolicy', {
+            groupId: cid, policy: next, msgId, ts,
+          }).then((res) => {
+            if (res?.error) console.warn('[kring-policy] fan-out skipped:', res.error);
+          }).catch((err) => {
+            console.warn('[kring-policy] fan-out failed:', err?.message ?? err);
+          });
+        }
+        return r;
+      },
+    };
     return (
       <CircleSettingsScreen
-        store={policyStore}
+        store={broadcastingStore}
         proposalStore={proposalStore}
         circleId={selected.id}
+        incomingPolicy={incomingPolicy}
+        onIncomingApplied={clearIncomingPolicy}
+        onIncomingDiscarded={clearIncomingPolicy}
         onBack={() => { refreshProposals(); setView('detail'); }}
       />
     );
