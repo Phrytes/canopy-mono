@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   RULES_FIELDS, RULES_QUESTIONS, DEFAULT_RULES_DOC,
   normalizeRulesDoc, buildRulesDoc, isRulesComplete, isRulesEmpty,
+  // γ.2 — newly-introduced store factory + localStorage io.
+  createCircleRulesStore, localStorageRulesIo,
 } from '../../src/v2/circleRules.js';
 
 describe('circleRules model', () => {
@@ -43,5 +45,115 @@ describe('circleRules model', () => {
     expect(isRulesEmpty({})).toBe(true);
     expect(isRulesEmpty({ purpose: '  ' })).toBe(true);
     expect(isRulesEmpty({ leaving: 'x' })).toBe(false);
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* γ.2 — createCircleRulesStore + localStorageRulesIo                 */
+/* ─────────────────────────────────────────────────────────────────── */
+
+describe('createCircleRulesStore', () => {
+  it('get() returns normalised defaults when nothing is stored', async () => {
+    const store = createCircleRulesStore({ load: async () => null });
+    expect(await store.get('c1')).toEqual(DEFAULT_RULES_DOC);
+  });
+
+  it('set() persists a normalised doc', async () => {
+    let stored = null;
+    const store = createCircleRulesStore({
+      load: async () => stored,
+      save: async (_id, d) => { stored = d; },
+    });
+    await store.set('c1', { purpose: 'Garden', bogus: 'drop me' });
+    expect(stored).toMatchObject({ purpose: 'Garden', agreements: '' });
+    expect(stored.bogus).toBeUndefined();
+  });
+
+  it('update() shallow-merges a field patch onto current', async () => {
+    let stored = null;
+    const store = createCircleRulesStore({
+      load: async () => stored,
+      save: async (_id, d) => { stored = d; },
+    });
+    await store.update('c1', { purpose: 'P' });
+    const after = await store.update('c1', { agreements: 'A' });
+    expect(after.purpose).toBe('P');
+    expect(after.agreements).toBe('A');
+    expect(stored.purpose).toBe('P');
+    expect(stored.agreements).toBe('A');
+  });
+
+  it('omitting `versions` keeps the pre-γ.2 behaviour', async () => {
+    let stored = null;
+    const store = createCircleRulesStore({
+      load: async () => stored,
+      save: async (_id, d) => { stored = d; },
+    });
+    await store.update('c1', { purpose: 'P' });
+    expect(await store.listVersions('c1')).toEqual([]);
+    expect(stored.purpose).toBe('P');
+  });
+
+  it('captures BEFORE save with a versions adapter', async () => {
+    const order = [];
+    const captured = [];
+    const versions = {
+      capture: async (id, value) => { order.push('capture'); captured.push({ id, value }); },
+      list: async () => [],
+    };
+    const store = createCircleRulesStore({
+      load: async () => null,
+      save: async () => { order.push('save'); },
+      versions,
+    });
+    await store.update('c1', { purpose: 'P' });
+    await store.set('c1', { agreements: 'A' });
+    expect(order).toEqual(['capture', 'save', 'capture', 'save']);
+    expect(captured[0].value.purpose).toBe('P');
+    expect(captured[1].value.agreements).toBe('A');
+  });
+
+  it('listVersions delegates to the adapter', async () => {
+    const versions = {
+      capture: async () => {},
+      list: async (id) => [{ ts: 1, sha256: 'x', value: { id } }],
+    };
+    const store = createCircleRulesStore({ versions });
+    expect(await store.listVersions('c1')).toEqual([{ ts: 1, sha256: 'x', value: { id: 'c1' } }]);
+  });
+
+  it('throwing capture does not break save', async () => {
+    let stored = null;
+    const store = createCircleRulesStore({
+      load: async () => stored,
+      save: async (_id, d) => { stored = d; },
+      versions: {
+        capture: async () => { throw new Error('history disk gone'); },
+        list: async () => [],
+      },
+    });
+    await store.update('c1', { purpose: 'P' });
+    expect(stored.purpose).toBe('P');
+  });
+});
+
+describe('localStorageRulesIo', () => {
+  it('round-trips through a Storage-like backend', async () => {
+    const map = new Map();
+    const storage = { getItem: (k) => (map.has(k) ? map.get(k) : null), setItem: (k, v) => map.set(k, v) };
+    const io = localStorageRulesIo(storage);
+    await io.save('c1', { purpose: 'Garden' });
+    expect(await io.load('c1')).toEqual({ purpose: 'Garden' });
+    expect(map.has('cc.circleRules.c1')).toBe(true);
+  });
+
+  it('load returns null for missing / corrupt entries', async () => {
+    const storage = { getItem: () => 'not json{', setItem: () => {} };
+    expect(await localStorageRulesIo(storage).load('c1')).toBeNull();
+  });
+
+  it('save tolerates a throwing storage (quota / disabled)', async () => {
+    const storage = { getItem: () => null, setItem: () => { throw new Error('quota'); } };
+    await expect(localStorageRulesIo(storage).save('c1', { purpose: 'P' })).resolves.toBeUndefined();
   });
 });

@@ -172,6 +172,9 @@ export { normalizeFolioFile, buildCircleFiles, circleFilesFromListFiles } from '
 export {
   RULES_FIELDS, RULES_QUESTIONS, DEFAULT_RULES_DOC,
   normalizeRulesDoc, buildRulesDoc, isRulesComplete, isRulesEmpty,
+  // γ.2 — per-circle rules document store (was inline localStorage in
+  // launcher up to β).  Adds a single hook point for version capture.
+  createCircleRulesStore, localStorageRulesIo,
 } from './v2/circleRules.js';
 export {
   DEFAULT_AVAILABILITY, normalizeAvailability, mergeAvailability, isPushSuppressed,

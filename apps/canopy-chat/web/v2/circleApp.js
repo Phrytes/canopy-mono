@@ -56,8 +56,19 @@ import { renderCircleAdvisor } from './circleAdvisor.js';
 import { renderCircleHop } from './circleHop.js';
 import { renderSkillEditor } from './circleSkillEditor.js';
 import { renderCircleFolioBrowser } from './circleFolio.js';
-import { normalizeRulesDoc } from '../../src/v2/circleRules.js';
+import {
+  normalizeRulesDoc,
+  // γ.2 — per-circle rules store factory + localStorage io (was inline
+  // localStorage in showRules()).  Routes saves through a single hook
+  // point that snapshots into the versions adapter.
+  createCircleRulesStore, localStorageRulesIo,
+} from '../../src/v2/circleRules.js';
 import { renderRulesEditor } from './circleRulesEditor.js';
+// γ.2 — concrete versions adapter (localStorage-backed).  Wired ONCE
+// per kring store at construction time; snapshots every save into
+// `cc.versions.<storeName>.<circleId>`.  Invisible to the UI in γ.2;
+// γ.3 will surface the history.
+import { localStorageObjectVersions } from '../../src/v2/objectVersionsStorage.js';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
@@ -113,10 +124,20 @@ async function tryConnectPeerTransport(agent, peerMessageRouter) {
   }
 }
 
-const policyStore = createCirclePolicyStore(localStoragePolicyIo());
+// γ.2 — versions adapters per kring store.  Wired here at construction
+// so capture happens ABOVE the (localStorage / pod) tier — γ.3 will
+// read these slots for 3-way merge after a remote sync.  Each store
+// keys into its own slot prefix to keep histories isolated.
+const policyVersions = localStorageObjectVersions('policy');
+const recipeVersions = localStorageObjectVersions('recipe');
+const rulesVersions  = localStorageObjectVersions('rules');
+
+const policyStore = createCirclePolicyStore({ ...localStoragePolicyIo(), versions: policyVersions });
 // α.1c — per-kring recipe book store (multi-recipe per kring, one active).
 // localStorage now; pod io can swap in later without touching callers.
-const recipeStore = createKringRecipeStore({ io: localStorageRecipeIo() });
+const recipeStore = createKringRecipeStore({ io: localStorageRecipeIo(), versions: recipeVersions });
+// γ.2 — per-circle rules store (replaces inline localStorage in showRules()).
+const rulesStore  = createCircleRulesStore({ ...localStorageRulesIo(), versions: rulesVersions });
 // α.3 — per-user screens store.  One book per user (not per-kring); the
 // active screen drives the new Schermen tab.
 const userScreenStore = createUserScreenStore({ io: localStorageScreenIo() });
@@ -804,10 +825,10 @@ function showFolio(id) {
 // Circle rules document (boards 3B/3C) — editor persists per circle
 // (cc.circleRules.<id>); "preview" shows the Agree/Decline consent screen.
 // Threading the consent into the real join flow is the follow-on.
-const rulesKey = (id) => `cc.circleRules.${id}`;
-function showRules(id) {
-  let doc = normalizeRulesDoc(null);
-  try { const s = localStorage.getItem(rulesKey(id)); if (s) doc = normalizeRulesDoc(JSON.parse(s)); } catch { /* default */ }
+// γ.2 — routes load/save through rulesStore so the versions adapter
+// snapshots every save.  Key shape on disk is unchanged.
+async function showRules(id) {
+  let doc = await rulesStore.get(id);
   const rerender = () => renderRulesEditor(rootEl, {
     doc,
     t,
@@ -815,8 +836,8 @@ function showRules(id) {
     onBack: () => showDetail(id),
     // The standalone Agree/Decline preview screen was retired in 5.5d —
     // consent now happens in the create/join wizard.  No `onPreview`.
-    onSave: () => {
-      try { localStorage.setItem(rulesKey(id), JSON.stringify(doc)); } catch { /* ignore */ }
+    onSave: async () => {
+      try { await rulesStore.set(id, doc); } catch { /* ignore */ }
       showDetail(id);
     },
   });

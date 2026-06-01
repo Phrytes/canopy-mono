@@ -58,6 +58,9 @@ import {
   makeUserScreenStoreRN,
   // β.5 — per-user pin-to-top persistence.
   makeCirclePinStoreRN,
+  // γ.2 — per-circle rules persistence + version capture (was inline
+  // AsyncStorage at the rules entry points up to β).
+  makeCircleRulesStoreRN,
 } from '../../core/circleStoresRN.js';
 import CircleSettingsScreen from './CircleSettingsScreen.js';
 import CircleOverrideScreen from './CircleOverrideScreen.js';
@@ -204,6 +207,9 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
   // `menuCircle` is the circle whose context menu is open (null when
   // closed).
   const pinStore          = useMemo(() => makeCirclePinStoreRN(AsyncStorage), []);
+  // γ.2 — per-circle rules store (replaces inline AsyncStorage in the
+  // rules screen handlers).  Snapshots every save into a versions slot.
+  const rulesStore        = useMemo(() => makeCircleRulesStoreRN(AsyncStorage), []);
   const [pinnedMap, setPinnedMap] = useState({});
   const [mutedMap,  setMutedMap]  = useState({});
   const [menuCircle, setMenuCircle] = useState(null);
@@ -653,7 +659,10 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
         onBack={() => setView('detail')}
         onPreview={(working) => { setRulesPreview(working); setView('rulesconsent'); }}
         onSave={async (doc) => {
-          try { await AsyncStorage.setItem(`cc.circleRules.${selected.id}`, JSON.stringify(doc)); } catch { /* ignore */ }
+          // γ.2 — saves go through rulesStore so the versions adapter
+          // snapshots the doc into cc.versions.rules.<id> before the
+          // canonical write lands.
+          try { await rulesStore.set(selected.id, doc); } catch { /* ignore */ }
           setRulesDoc(doc);
           setView('detail');
         }}
@@ -745,9 +754,11 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
           setView('folio');
         }}
         onRules={async () => {
-          let raw = null;
-          try { const s = await AsyncStorage.getItem(`cc.circleRules.${selected.id}`); if (s) raw = JSON.parse(s); } catch { /* fresh */ }
-          setRulesDoc(raw);
+          // γ.2 — load via rulesStore (same on-disk key as before:
+          // `cc.circleRules.<id>`).
+          let doc = null;
+          try { doc = await rulesStore.get(selected.id); } catch { /* fresh */ }
+          setRulesDoc(doc);
           setView('rules');
         }}
         onRecipes={async () => {

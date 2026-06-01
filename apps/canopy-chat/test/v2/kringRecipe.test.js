@@ -310,3 +310,69 @@ describe('kringRecipe · α.1a — localStorageRecipeIo', () => {
     await expect(io.save('g1', EMPTY_RECIPE_BOOK)).resolves.toBeUndefined();
   });
 });
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* γ.2 — optional `versions` adapter (additive)                       */
+/* ─────────────────────────────────────────────────────────────────── */
+
+describe('kringRecipe · γ.2 — version capture', () => {
+  it('omitting `versions` keeps the pre-γ.2 behaviour (backwards compat)', async () => {
+    let stored = null;
+    const store = createKringRecipeStore({ io: {
+      load: async () => stored,
+      save: async (_id, b) => { stored = b; },
+    } });
+    await store.update('g1', (cur) => addRecipe(cur, 'A'));
+    expect(stored.recipes).toHaveLength(1);
+    expect(await store.listVersions('g1')).toEqual([]);
+  });
+
+  it('captures BEFORE save on update + set', async () => {
+    const order = [];
+    const captures = [];
+    const versions = {
+      capture: async (id, value) => { order.push('capture'); captures.push({ id, value }); },
+      list: async () => [],
+    };
+    const store = createKringRecipeStore({
+      io: {
+        load: async () => null,
+        save: async () => { order.push('save'); },
+      },
+      versions,
+    });
+    await store.update('g1', (cur) => addRecipe(cur, 'A'));
+    await store.set('g1', { recipes: [], activeId: null });
+    expect(order).toEqual(['capture', 'save', 'capture', 'save']);
+    expect(captures).toHaveLength(2);
+    expect(captures[0].id).toBe('g1');
+    expect(captures[0].value.recipes).toHaveLength(1);
+    expect(captures[1].value.recipes).toEqual([]);
+  });
+
+  it('listVersions delegates to the adapter', async () => {
+    const versions = {
+      capture: async () => {},
+      list: async (id) => [{ ts: 9, sha256: 'x', value: { id } }],
+    };
+    const store = createKringRecipeStore({ versions });
+    expect(await store.listVersions('g1')).toEqual([{ ts: 9, sha256: 'x', value: { id: 'g1' } }]);
+  });
+
+  it('throwing capture does not break save', async () => {
+    let stored = null;
+    const versions = {
+      capture: async () => { throw new Error('history disk gone'); },
+      list: async () => [],
+    };
+    const store = createKringRecipeStore({
+      io: {
+        load: async () => stored,
+        save: async (_id, b) => { stored = b; },
+      },
+      versions,
+    });
+    await store.update('g1', (cur) => addRecipe(cur, 'A'));
+    expect(stored.recipes).toHaveLength(1);
+  });
+});

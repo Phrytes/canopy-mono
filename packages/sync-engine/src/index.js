@@ -26,3 +26,14 @@ export { scanLocal } from './scanLocal.js';
 export { scanPod }   from './scanPod.js';
 export { diff }      from './diff.js';
 export { objectDiff } from './objectDiff.js';
+
+// γ.2 (Phase 9) — keyed-object version capture used by the canopy-chat
+// v2 kring stores (circlePolicy / kringRecipe / circleRules) so γ.3 can
+// run a 3-way merge against the "last common state".  See objectVersions.js
+// for the storage-adapter contract.
+export {
+  captureObjectVersion,
+  listObjectVersions,
+  getLatestObjectVersion,
+  DEFAULT_OBJECT_VERSIONS_PER_KEY,
+} from './objectVersions.js';
