@@ -50,6 +50,11 @@ import { buildCirclePodWriter } from './src/core/circleStoresRN.js';
 // One store per app; shared between ChatScreen (receiver) and
 // CircleLauncherScreen (editor pull + send-side clear).
 import { makeKringRecipePendingStoreRN } from './src/core/kringRecipePendingStorageRN.js';
+// γ-next.rules — per-kring pending-rules cache (AsyncStorage-backed).
+// Mirrors the recipe wire: ChatScreen writes via the receiver,
+// CircleLauncherScreen reads on rules-screen open + clears after the
+// γ.4 resolver applies / discards.
+import { makeKringRulesPendingStoreRN } from './src/core/kringRulesPendingStorageRN.js';
 
 export default function App() {
   const [localeReady, setLocaleReady] = useState(false);
@@ -131,6 +136,19 @@ export default function App() {
   const kringRecipeDedupRef = useRef(null);
   if (!kringRecipeDedupRef.current) {
     kringRecipeDedupRef.current = new Set();
+  }
+  // γ-next.rules — shared kring-rules-broadcast pending store.
+  // ChatScreen's peer-router writes via the receiver handler;
+  // CircleLauncherScreen's rules editor reads on mount + clears after
+  // the γ.4 resolver applies/discards.
+  const kringRulesPendingStoreRef = useRef(null);
+  if (!kringRulesPendingStoreRef.current) {
+    kringRulesPendingStoreRef.current = makeKringRulesPendingStoreRN(AsyncStorage);
+  }
+  // γ-next.rules — shared LRU dedup for the rules-broadcast handler.
+  const kringRulesDedupRef = useRef(null);
+  if (!kringRulesDedupRef.current) {
+    kringRulesDedupRef.current = new Set();
   }
 
   // 5.4c (2026-05-30) — single OidcSessionRN, lifted from ChatScreen so
@@ -376,6 +394,8 @@ export default function App() {
             kringChatInbox={kringChatInboxRef.current}
             kringRecipePendingStore={kringRecipePendingStoreRef.current}
             kringRecipeDedup={kringRecipeDedupRef.current}
+            kringRulesPendingStore={kringRulesPendingStoreRef.current}
+            kringRulesDedup={kringRulesDedupRef.current}
             sessionRef={sessionRef}
             onSessionChanged={refreshCirclePodWriter}
           />
@@ -385,6 +405,7 @@ export default function App() {
           eventLog={eventLogRef.current}
           getPodWriter={getCirclePodWriter}
           kringRecipePendingStore={kringRecipePendingStoreRef.current}
+          kringRulesPendingStore={kringRulesPendingStoreRef.current}
           /* SP-13.1 — no onBack (no chat shell to fall back to) +
              no onChatRoute (the kring view IS the chat, no route). */
         />

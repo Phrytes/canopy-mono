@@ -37,6 +37,9 @@ import {
 // γ-next.recipe — receiver + pending-cache substrate for the recipe broadcast.
 import { makeKringRecipePeerHandler } from '../../src/v2/kringRecipeReceiver.js';
 import { createKringRecipePendingStoreLocal } from '../../src/v2/kringRecipePendingStorage.js';
+// γ-next.rules — receiver + pending-cache substrate for the rules broadcast.
+import { makeKringRulesPeerHandler } from '../../src/v2/kringRulesReceiver.js';
+import { createKringRulesPendingStoreLocal } from '../../src/v2/kringRulesPendingStorage.js';
 // δ.1 — per-screen materialized-blocks cache (cache-first render + bg refresh).
 import { createScreenBlocksCacheLocal } from '../../src/v2/screenBlocksCacheStorage.js';
 import {
@@ -163,6 +166,11 @@ const rulesStore  = createCircleRulesStore({ ...localStorageRulesIo(), versions:
 // `incomingRecipe` opt.  localStorage now; pod-sync swap is the
 // same shape as the other stores.
 const kringRecipePendingStore = createKringRecipePendingStoreLocal();
+// γ-next.rules — per-kring "incoming rules" cache.  Receiver writes
+// here on every valid kring-rules-broadcast envelope; the rules
+// editor reads on mount + passes the cached doc via γ.4's
+// `incomingRules` opt.  Same shape as the recipe store.
+const kringRulesPendingStore = createKringRulesPendingStoreLocal();
 // δ.1 — per-screen materialized-blocks cache.  The Schermen view-mode
 // reads this on open to render instantly while the fresh materialize
 // runs in the background; on result the view swaps + the cache
@@ -1127,24 +1135,67 @@ function showFolio(id) {
 // snapshots every save.  Key shape on disk is unchanged.
 async function showRules(id) {
   let doc = await rulesStore.get(id);
-  // TODO γ-next — pass `incomingRules` (+ rulesStore, circleId) when peer
-  // broadcast / pod sync surfaces a divergent rules doc.  γ.4 ships the
-  // editor's opt + the rules-conflict substrate + a rules-namespaced
-  // heading on the existing recipe-conflict modal; the source plumbing
-  // is the next slice.  See PLAN-canopy-chat-v2-circle.md Phase 9.
+  // γ-next.rules — pull the cached broadcast (if any).  Editor's γ.4
+  // resolver decides whether anything actually conflicts; if not, it
+  // applies straight through.  When the slot is empty `incomingRules`
+  // stays null and the editor renders untouched.
+  let incomingRules = null;
+  try { incomingRules = await kringRulesPendingStore.get(id); }
+  catch { incomingRules = null; }
+
+  const clearPending = () => {
+    incomingRules = null;
+    kringRulesPendingStore.clear(id).catch(() => { /* ignore */ });
+  };
+
   const rerender = () => renderRulesEditor(rootEl, {
     doc,
     t,
+    // γ-next.rules — broadcast cache → editor → γ.4 resolver.  The
+    // resolver is opt-in; when `incomingRules` is null the editor
+    // renders untouched.  Applied / discarded both clear the cache.
+    incomingRules,
+    rulesStore,
+    circleId: id,
+    onIncomingApplied:   () => clearPending(),
+    onIncomingDiscarded: () => clearPending(),
     onChange: (patch) => { doc = normalizeRulesDoc({ ...doc, ...patch }); rerender(); },
     onBack: () => showDetail(id),
     // The standalone Agree/Decline preview screen was retired in 5.5d —
     // consent now happens in the create/join wizard.  No `onPreview`.
     onSave: async () => {
       try { await rulesStore.set(id, doc); } catch { /* ignore */ }
+      // γ-next.rules — fan the just-saved rules doc out to peers.
+      // Fire-and-forget; per-peer errors are logged inside.
+      try { broadcastRules({ circleId: id, doc }); }
+      catch (err) { console.warn('[kring-rules] broadcast scheduling failed:', err?.message ?? err); }
       showDetail(id);
     },
   });
   rerender();
+}
+
+/**
+ * γ-next.rules — fan the rules document out to every other kring
+ * member via stoop's `broadcastKringRules` skill.  Fire-and-forget:
+ * per-peer failures land in the result.errors array; we just log.
+ * No-op when rawCallSkill isn't bound yet (pre-agent-boot edits).
+ */
+function broadcastRules({ circleId, doc }) {
+  if (typeof rawCallSkill !== 'function') return;
+  if (!doc || typeof doc !== 'object') return;
+  const msgId = `kring-rules-${circleId}-${Date.now()}`;
+  const ts    = Date.now();
+  rawCallSkill('stoop', 'broadcastKringRules', {
+    groupId:  circleId,
+    rulesDoc: doc,
+    msgId,
+    ts,
+  }).then((r) => {
+    if (r?.error) console.warn('[kring-rules] fan-out skipped:', r.error);
+  }).catch((err) => {
+    console.warn('[kring-rules] fan-out failed:', err?.message ?? err);
+  });
 }
 
 // Advisor cooldown (≤1 card/month) persists per-circle in localStorage.
@@ -1332,6 +1383,15 @@ async function boot() {
         dedup:        kringRecipeDedup,
         logger:       console,
       });
+      // γ-next.rules — rules-broadcast receiver.  Stashes inbound rules
+      // docs per-kring; the rules editor pulls on mount + passes via
+      // γ.4's `incomingRules` opt.
+      const kringRulesDedup    = new Set();
+      const kringRulesHandler  = makeKringRulesPeerHandler({
+        pendingStore: kringRulesPendingStore,
+        dedup:        kringRulesDedup,
+        logger:       console,
+      });
       // ε.4 — negotiated catch-up protocol.  The receiver coordinator
       // fires `catch-up-request` to known peers, collects offers in a
       // 3s window, auto-accepts the first, and ingests chunks through
@@ -1404,6 +1464,7 @@ async function boot() {
         handlers: {
           'kring-chat-message':      kringChatHandler,
           'kring-recipe-broadcast':  kringRecipeHandler,
+          'kring-rules-broadcast':   kringRulesHandler,
           // ε.4 — negotiated catch-up subtypes.
           'catch-up-request':        catchUpProvider.handler,
           'catch-up-accept':         catchUpProvider.onAccept,

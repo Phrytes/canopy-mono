@@ -50,6 +50,7 @@ import { makePeerRouter }      from '../../../canopy-chat/src/core/handlers/peer
 import { makeKringChatPeerHandler } from '../../../canopy-chat/src/v2/kringChatReceiver.js';
 import { createChatMessageInbox } from '../../../canopy-chat/src/v2/chatMessageInbox.js';
 import { makeKringRecipePeerHandler } from '../../../canopy-chat/src/v2/kringRecipeReceiver.js';
+import { makeKringRulesPeerHandler }  from '../../../canopy-chat/src/v2/kringRulesReceiver.js';
 import { makeHandleChatMessage }
                                from '../../../canopy-chat/src/core/handlers/chatMessage.js';
 import { makeHandleBuurtPeerIntro }
@@ -146,6 +147,10 @@ export default function ChatScreen({
   // so the launcher's editor sees the same store the receiver writes to.
   kringRecipePendingStore = null,
   kringRecipeDedup = null,
+  // γ-next.rules — pending-rules cache + dedup, mirrors the recipe wire.
+  // Launcher's rules editor reads from this store; receiver writes here.
+  kringRulesPendingStore = null,
+  kringRulesDedup = null,
   // 5.4c (2026-05-30) — App.js owns the OidcSessionRN so the v2 circle
   // launcher can build a podWriter from the SAME session.  If absent
   // (standalone mounts / older tests) we fall back to creating one
@@ -517,6 +522,15 @@ export default function ChatScreen({
         'kring-recipe-broadcast': makeKringRecipePeerHandler({
           pendingStore: kringRecipePendingStore,
           dedup:        kringRecipeDedup,
+        }),
+      } : {}),
+      // γ-next.rules — kring rules document broadcast.  Caches the
+      // inbound rules doc per-kring; the rules editor pulls on next
+      // open and passes via γ.4's `incomingRules` opt.  No bubble UI.
+      ...(kringRulesPendingStore ? {
+        'kring-rules-broadcast': makeKringRulesPeerHandler({
+          pendingStore: kringRulesPendingStore,
+          dedup:        kringRulesDedup,
         }),
       } : {}),
     };
