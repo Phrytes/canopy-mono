@@ -401,15 +401,25 @@ export default function ChatScreen({
       updatePeerDisplay: renamePeer,
       t,
     });
-    // ε.2 — strategy-routed catch-up substrate at
-    // src/v2/catchUpStrategy.js is now available.  Wire it in once
-    // ε.1 (chatMessageInbox) lands — peer + pod paths both route
-    // inbound messages through the inbox so the strategy router
-    // doesn't multiply insertion points.  See
-    // PLAN-canopy-chat-v2-circle.md Phase 9 / ε wave.
+    // ε.3 (2026-06-01) — `makeRequestCatchUpFromKnownPeers` now routes
+    // each kring through `scheduleCatchUp(policy.pod)`.  We pass the
+    // App-owned `kringChatInbox` so the pod range-query path can route
+    // results through the SAME inbox the receiver / rehydrator use
+    // (shared LRU + ingest mirror = no double bubbles, even if a
+    // catch-up batch overlaps a live NKN delivery).  `getCirclePolicy`
+    // isn't threaded here yet — ChatScreen lives next to the launcher's
+    // policyStore but doesn't read from it directly today — so all
+    // kringen default to `{pod: 'personal'}` ⇒ 'peer' strategy until
+    // the launcher's policy lookup is forwarded down (follow-up slice).
+    // For pod:'shared' kringen the dispatcher would return 'deferred'
+    // without that wiring, so the legacy peer path stays unchanged.
+    const inboxForCatchUp = kringChatInbox ?? null;
     return {
       onPeerMessage:  makePeerRouter({ handlers, defaultHandler }),
-      requestCatchUp: makeRequestCatchUpFromKnownPeers({ callSkill, sendPeer }),
+      requestCatchUp: makeRequestCatchUpFromKnownPeers({
+        callSkill, sendPeer,
+        inbox: inboxForCatchUp,
+      }),
     };
   }, []);
 
