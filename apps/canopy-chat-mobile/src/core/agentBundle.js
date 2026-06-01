@@ -140,6 +140,18 @@ export async function bootAgentBundle(opts = {}) {
       ? { dbName: 'cc-stoop-cache', asyncStorage: opts.asyncStorage }
       : undefined);
 
+  // Parallel synthesis for tasks-v0 — without this, the tasks
+  // CachingDataSource is in-memory only and every cold boot loses any
+  // user-added tasks + re-runs the 4-seed dance (the data-loss bug
+  // behind the `cc.firstBootSeeded.v1` flag in App.js).
+  // createRealHouseholdAgent threads `opts.tasksPersistDb` into
+  // createBrowserMultiCrewTasksAgent → buildBundle → tasks-v0's own
+  // persistPicker (mirrors stoop's three-adapter shape).
+  const tasksPersistDb = opts.tasksPersistDb
+    ?? (opts.asyncStorage
+      ? { dbName: 'cc-tasks-cache', asyncStorage: opts.asyncStorage }
+      : undefined);
+
   let agent;
   try {
     const createRealHouseholdAgent = await loadCreateRealHouseholdAgent();
@@ -147,6 +159,7 @@ export async function bootAgentBundle(opts = {}) {
       chatVault,
       hostVault,
       stoopPersistDb,
+      tasksPersistDb,
       secureAgentOpts:  opts.secureAgentOpts,
       publishEvent:     opts.publishEvent,
       // Perf — skip the demo seed on warm boot.  Without persistence
