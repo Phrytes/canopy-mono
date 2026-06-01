@@ -118,4 +118,61 @@ describe('rehydrateKringChatsFromStoop · SP-13.2.2 boot rehydrator', () => {
     expect(r.rehydrated).toBe(0);
     expect(eventLog.events).toHaveLength(0);
   });
+
+  /* ── ε.1 — inbox routing ── */
+
+  it('routes through the inbox with source: rehydrator when an inbox is provided', async () => {
+    const inboxCalls = [];
+    const inbox = {
+      ingestChatMessage: vi.fn(async (env, opts) => {
+        inboxCalls.push({ env, opts });
+        return { result: 'inserted' };
+      }),
+    };
+    const callSkill = vi.fn(async () => ({ items: [
+      item({ msgId: 'mA', text: 'a', ts: 1 }),
+      item({ msgId: 'mB', text: 'b', ts: 2 }),
+    ] }));
+    const r = await rehydrateKringChatsFromStoop({ callSkill, inbox, logger: silentLogger });
+    expect(r.rehydrated).toBe(2);
+    expect(inbox.ingestChatMessage).toHaveBeenCalledTimes(2);
+    expect(inboxCalls[0].opts.source).toBe('rehydrator');
+    expect(inboxCalls[0].env).toMatchObject({
+      subtype:  'kring-chat-message',
+      circleId: 'g1',
+      msgId:    'mA',
+      text:     'a',
+      ts:       1,
+    });
+  });
+
+  it('counts inbox-deduped items as skipped (not rehydrated)', async () => {
+    const inbox = {
+      ingestChatMessage: vi.fn(async () => ({ result: 'deduped' })),
+    };
+    const callSkill = vi.fn(async () => ({ items: [
+      item({ msgId: 'mA' }), item({ msgId: 'mB' }),
+    ] }));
+    const r = await rehydrateKringChatsFromStoop({ callSkill, inbox, logger: silentLogger });
+    expect(r.rehydrated).toBe(0);
+    expect(r.skipped).toBe(2);
+  });
+
+  it('shares dedup state with the receiver through the inbox LRU', async () => {
+    // Real inbox; both rehydrator + receiver use it → second arrival is deduped.
+    const { createChatMessageInbox } = await import('../../src/v2/chatMessageInbox.js');
+    const { makeKringChatPeerHandler } = await import('../../src/v2/kringChatReceiver.js');
+    const eventLog = fakeEventLog();
+    const inbox = createChatMessageInbox({ eventLog, logger: silentLogger });
+    const callSkill = vi.fn(async () => ({ items: [ item({ msgId: 'mShared', text: 'rehydrated' }) ] }));
+    const r = await rehydrateKringChatsFromStoop({ callSkill, inbox, logger: silentLogger });
+    expect(r.rehydrated).toBe(1);
+    const handler = makeKringChatPeerHandler({ inbox, logger: silentLogger });
+    await handler('nkn-addr', {
+      subtype: 'kring-chat-message', circleId: 'g1', msgId: 'mShared',
+      text: 'live', ts: 9999, fromActor: 'webid:anne',
+    });
+    expect(eventLog.events).toHaveLength(1);
+    expect(eventLog.events[0].payload.text).toBe('rehydrated');
+  });
 });
