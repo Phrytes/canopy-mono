@@ -92,7 +92,15 @@ function WithTabBar({ active, onSelect, children }) {
   );
 }
 
-export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePendingStore = null }) {
+export default function CircleLauncherScreen({
+  bundle,
+  eventLog,
+  kringRecipePendingStore = null,
+  // γ-next.rules — per-kring pending-rules cache (AsyncStorage-backed,
+  // owned by App.js).  Receiver writes; rules editor reads on mount +
+  // clears after the γ.4 resolver applies / discards.
+  kringRulesPendingStore = null,
+}) {
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -107,6 +115,10 @@ export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePend
   const [skillDraft, setSkillDraft] = useState(null);
   const [rulesDoc, setRulesDoc] = useState(null);
   const [rulesPreview, setRulesPreview] = useState(null);
+  // γ-next.rules — pending incoming rules doc (from peer broadcast).
+  // Loaded when the rules screen opens; cleared after the γ.4 resolver
+  // applies or discards.
+  const [incomingRules, setIncomingRules] = useState(null);
   // α.1d.3 — recipe editor state (lives in the parent so book + mode
   // survive the BOOK ↔ RECIPE round-trip).  Callbacks land below
   // after recipeStore is declared.
@@ -308,6 +320,35 @@ export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePend
       try { await kringRecipePendingStore.clear(selected.id); } catch { /* ignore */ }
     }
   }, [selected, kringRecipePendingStore]);
+
+  // γ-next.rules — pull cached pending rules doc whenever the rules
+  // screen opens for a selected circle.  γ.4's resolver runs
+  // automatically from inside the screen when incomingRules is
+  // non-null + diverges from local.
+  useEffect(() => {
+    if (view !== 'rules' || !selected?.id || !kringRulesPendingStore) {
+      setIncomingRules(null);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const cached = await kringRulesPendingStore.get(selected.id);
+        if (alive) setIncomingRules(cached ?? null);
+      } catch { if (alive) setIncomingRules(null); }
+    })();
+    return () => { alive = false; };
+  }, [view, selected, kringRulesPendingStore]);
+
+  // γ-next.rules — clear the cached pending rules after the γ.4
+  // resolver applies or discards.  Both paths route through here so
+  // a fresh broadcast can land in the slot again.
+  const clearIncomingRules = useCallback(async () => {
+    setIncomingRules(null);
+    if (selected?.id && kringRulesPendingStore) {
+      try { await kringRulesPendingStore.clear(selected.id); } catch { /* ignore */ }
+    }
+  }, [selected, kringRulesPendingStore]);
 
   // α.3 — Screens helpers.
   const refreshScreensBook = useCallback(async () => {
@@ -760,15 +801,17 @@ export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePend
     );
   }
   if (selected && view === 'rules') {
-    // TODO γ-next — pass `incomingRules` (+ rulesStore, circleId) when
-    // peer broadcast / pod sync surfaces a divergent rules doc.  γ.4
-    // ships the screen's opt + the rules-conflict substrate + a rules-
-    // namespaced heading on the existing recipe-conflict modal; the
-    // source plumbing is the next slice.  See
-    // PLAN-canopy-chat-v2-circle.md Phase 9.
+    // γ-next.rules — broadcast cache → editor → γ.4 resolver.  The
+    // resolver is opt-in; when `incomingRules` is null the screen
+    // renders untouched.  Applied / discarded both clear the cache.
     return (
       <CircleRulesScreen
         doc={rulesDoc}
+        incomingRules={incomingRules}
+        rulesStore={rulesStore}
+        circleId={selected.id}
+        onIncomingApplied={clearIncomingRules}
+        onIncomingDiscarded={clearIncomingRules}
         onBack={() => setView('detail')}
         onPreview={(working) => { setRulesPreview(working); setView('rulesconsent'); }}
         onSave={async (doc) => {
@@ -777,6 +820,20 @@ export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePend
           // canonical write lands.
           try { await rulesStore.set(selected.id, doc); } catch { /* ignore */ }
           setRulesDoc(doc);
+          // γ-next.rules — fan the just-saved rules doc out to peers.
+          // Fire-and-forget; per-peer errors land in result.errors which
+          // we log.  No-op when callSkill / no agent / no doc.
+          if (doc && typeof bundle?.callSkill === 'function') {
+            const msgId = `kring-rules-${selected.id}-${Date.now()}`;
+            const ts    = Date.now();
+            bundle.callSkill('stoop', 'broadcastKringRules', {
+              groupId: selected.id, rulesDoc: doc, msgId, ts,
+            }).then((r) => {
+              if (r?.error) console.warn('[kring-rules] fan-out skipped:', r.error);
+            }).catch((err) => {
+              console.warn('[kring-rules] fan-out failed:', err?.message ?? err);
+            });
+          }
           setView('detail');
         }}
       />

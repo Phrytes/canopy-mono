@@ -2822,6 +2822,72 @@ export function buildSkills({
     }),
 
     /**
+     * broadcastKringRules({groupId, rulesDoc, msgId, ts?})
+     *   — γ-next.rules — kring rules document fan-out to every member
+     *   of a kring.  Sibling of `broadcastKringRecipe`: same fan-out
+     *   plumbing (chat.send, WebID→pubKey resolution, signing,
+     *   transport routing), different subtype + payload.
+     *
+     *   Receivers route the envelope to canopy-chat's
+     *   `makeKringRulesPeerHandler`, which stashes the rules doc in a
+     *   per-kring "pending" cache.  The rules editor reads the cache
+     *   on next open and passes it via γ.4's `incomingRules` opt; the
+     *   resolver pops if the incoming diverges from local.
+     *
+     *   Best-effort + fire-and-forget: per-peer failures land in the
+     *   returned `errors[]` array but never throw.
+     */
+    defineSkill('broadcastKringRules', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      const _groupId = a.groupId ?? groupId;
+      if (!_groupId)                                                  return { error: 'groupId-required' };
+      if (!a.rulesDoc || typeof a.rulesDoc !== 'object')              return { error: 'rulesDoc-required' };
+      if (typeof a.msgId !== 'string' || !a.msgId)                    return { error: 'msgId-required' };
+
+      const ts = typeof a.ts === 'number' && Number.isFinite(a.ts) ? a.ts : Date.now();
+
+      if (!chat?.send) return { error: 'chat-unavailable', sent: 0, attempted: 0, errors: [] };
+      if (!members)    return { error: 'members-unavailable', sent: 0, attempted: 0, errors: [] };
+
+      const list = await members.list();
+      const webids = new Set();
+      for (const m of list ?? []) {
+        const w = typeof m === 'string' ? m : (m?.webid ?? m?.webId ?? null);
+        if (!w || w === from) continue;
+        webids.add(w);
+      }
+
+      let sent = 0;
+      const errors = [];
+      await Promise.all([...webids].map(async (webid) => {
+        try {
+          const r = await chat.send({
+            toWebid:  webid,
+            subtype:  'kring-rules-broadcast',
+            threadId: _groupId,
+            body:     '',
+            extras: {
+              circleId:  _groupId,
+              msgId:     a.msgId,
+              ts,
+              rulesDoc:  a.rulesDoc,
+              fromActor: a.fromActor ?? from ?? null,
+            },
+          });
+          if (r?.ok) sent += 1;
+          else errors.push({ webid, reason: r?.reason ?? 'unknown' });
+        } catch (err) {
+          errors.push({ webid, reason: String(err?.message ?? err) });
+        }
+      }));
+      metrics?.record?.('kring-rules-fanout');
+      return { sent, attempted: webids.size, errors };
+    }, {
+      description: 'Fan a kring rules document out to every other member via chat.send subtype:kring-rules-broadcast; receivers cache as pending incomingRules for the γ.4 conflict resolver.',
+      visibility:  'authenticated',
+    }),
+
+    /**
      * listKringChats({groupId?, sinceTs?, limit?})
      *   — SP-13.2.2 — list stored kring chat-message items, ordered
      *   oldest → newest (chat reading order).  Defaults: all circles,
