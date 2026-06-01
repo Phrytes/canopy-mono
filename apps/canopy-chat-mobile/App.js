@@ -43,6 +43,7 @@ import {
 import { dlog } from './src/core/devLog.js';
 import { EventLog } from '../canopy-chat/src/eventLog.js';
 import { rehydrateKringChatsFromStoop } from '../canopy-chat/src/v2/kringChatRehydrate.js';
+import { createChatMessageInbox } from '../canopy-chat/src/v2/chatMessageInbox.js';
 import { OidcSessionRN } from '@canopy/oidc-session-rn';
 import { buildCirclePodWriter } from './src/core/circleStoresRN.js';
 // γ-next.recipe — per-kring pending-recipe cache (AsyncStorage-backed).
@@ -90,14 +91,33 @@ export default function App() {
   if (!eventLogRef.current) {
     eventLogRef.current = new EventLog({ initial: [], muted: [] });
   }
-  // SP-13.2.2 — shared kring-chat-message dedup between the boot
-  // rehydrator (below) and ChatScreen's peer-router handler.  Protects
-  // against the race where a peer's envelope for msgId X arrives
-  // mid-boot, ingest stores it, AND the rehydrator then re-reads it
-  // from itemStore → would otherwise duplicate the bubble.
-  const kringChatDedupRef = useRef(null);
-  if (!kringChatDedupRef.current) {
-    kringChatDedupRef.current = new Set();
+  // ε.1 — single normalization gate for kring-chat inserts.  The
+  // inbox owns msgId dedup + envelope validation + ingest mirror +
+  // eventLog append.  Both the boot rehydrator (below) AND
+  // ChatScreen's NKN peer-router route through this one instance, so
+  // a chat that's already in stoop's itemStore can't double-append
+  // mid-boot.  Built once per launch alongside `eventLogRef`.
+  //
+  // The `ingest` closure reads `bundleRef` lazily so we can construct
+  // the inbox before the bundle boots — ChatScreen / launcher both
+  // read `inbox` via props from boot, no second pass needed.
+  const bundleRef = useRef(null);
+  const kringChatInboxRef = useRef(null);
+  if (!kringChatInboxRef.current) {
+    kringChatInboxRef.current = createChatMessageInbox({
+      eventLog: eventLogRef.current,
+      ingest: async (payload, fromNknAddr) => {
+        const callSkill = bundleRef.current?.callSkill;
+        if (typeof callSkill !== 'function') return { ok: false };
+        try {
+          return await callSkill('stoop', 'ingestKringMessage', { payload, fromNknAddr });
+        } catch (err) {
+          console.warn('[kring-chat] ingestKringMessage failed:', err?.message ?? err);
+          return { error: String(err?.message ?? err) };
+        }
+      },
+      logger: console,
+    });
   }
   // γ-next.recipe — shared kring-recipe-broadcast pending store.
   // ChatScreen's peer-router writes via the receiver handler;
@@ -245,6 +265,10 @@ export default function App() {
           appOrigins: [...b.catalog.appOrigins],
           opCount:    b.catalog.opsById?.size ?? 0,
         });
+        // ε.1 — expose the bundle to the inbox's lazy-bound ingest
+        // closure built above.  Must happen BEFORE the rehydrator
+        // fires (next block) so the first ingest call sees callSkill.
+        bundleRef.current = b;
         setBundle(b);
         // Mark the first-boot seed as done so the next launch skips it.
         // Fire-and-forget; failures are non-fatal (next launch re-seeds,
@@ -260,8 +284,7 @@ export default function App() {
         if (typeof b?.callSkill === 'function' && eventLogRef.current) {
           rehydrateKringChatsFromStoop({
             callSkill: b.callSkill,
-            eventLog:  eventLogRef.current,
-            dedup:     kringChatDedupRef.current,
+            inbox:     kringChatInboxRef.current,
           }).catch(() => { /* logged inside */ });
         }
         // P6.9 #347 — probe whether we should display the CREATE-side
@@ -350,7 +373,7 @@ export default function App() {
             bundle={bundle}
             bootError={bootError}
             eventLog={eventLogRef.current}
-            kringChatDedup={kringChatDedupRef.current}
+            kringChatInbox={kringChatInboxRef.current}
             kringRecipePendingStore={kringRecipePendingStoreRef.current}
             kringRecipeDedup={kringRecipeDedupRef.current}
             sessionRef={sessionRef}

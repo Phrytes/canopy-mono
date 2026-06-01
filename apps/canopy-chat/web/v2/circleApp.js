@@ -27,6 +27,7 @@ import { buildKringTabs, DEFAULT_KRING_TAB } from '../../src/v2/kringTabs.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
 import { rehydrateKringChatsFromStoop } from '../../src/v2/kringChatRehydrate.js';
+import { createChatMessageInbox } from '../../src/v2/chatMessageInbox.js';
 // γ-next.recipe — receiver + pending-cache substrate for the recipe broadcast.
 import { makeKringRecipePeerHandler } from '../../src/v2/kringRecipeReceiver.js';
 import { createKringRecipePendingStoreLocal } from '../../src/v2/kringRecipePendingStorage.js';
@@ -1153,22 +1154,24 @@ async function boot() {
           return { error: String(err?.message ?? err) };
         }
       };
-      // SP-13.2.2 — shared dedup between rehydrator + receiver so a
-      // chat that's already in stoop's itemStore doesn't double-append
-      // to eventLog if a new envelope arrives mid-session.
-      const kringChatDedup = new Set();
-      const kringChatHandler = makeKringChatPeerHandler({
+      // ε.1 — single normalization gate.  Every kring-chat insert
+      // path (receiver / rehydrator / future catch-up / pod) routes
+      // through this inbox so envelope validation + msgId dedup +
+      // ingest mirror + eventLog append happen in ONE place with
+      // shared state.  Sibling of `eventLog` so the rehydrator's
+      // backfill + the live NKN handler dedupe through the same LRU.
+      const kringChatInbox = createChatMessageInbox({
         eventLog,
-        dedup:   kringChatDedup,
-        ingest:  ingestKringMessage,
+        ingest: ingestKringMessage,
+        logger: console,
       });
+      const kringChatHandler = makeKringChatPeerHandler({ inbox: kringChatInbox });
       // SP-13.2.2 — boot rehydrator: read stoop's stored chats back
       // into the in-memory eventLog so the GESPREK tab shows history
       // after a reload (eventLog is in-memory; itemStore persists).
       rehydrateKringChatsFromStoop({
         callSkill: agent.callSkill,
-        eventLog,
-        dedup:     kringChatDedup,
+        inbox:     kringChatInbox,
       }).catch(() => { /* logged inside */ });
       // γ-next.recipe — recipe-broadcast receiver.  Stashes inbound
       // recipes per-kring; the editor pulls on mount + passes via

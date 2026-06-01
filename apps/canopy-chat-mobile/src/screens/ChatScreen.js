@@ -48,6 +48,7 @@ import {
 } from '../core/threadState.js';
 import { makePeerRouter }      from '../../../canopy-chat/src/core/handlers/peerRouter.js';
 import { makeKringChatPeerHandler } from '../../../canopy-chat/src/v2/kringChatReceiver.js';
+import { createChatMessageInbox } from '../../../canopy-chat/src/v2/chatMessageInbox.js';
 import { makeKringRecipePeerHandler } from '../../../canopy-chat/src/v2/kringRecipeReceiver.js';
 import { makeHandleChatMessage }
                                from '../../../canopy-chat/src/core/handlers/chatMessage.js';
@@ -106,11 +107,32 @@ const MSG_ID_PREFIX = Math.random().toString(36).slice(2, 8);
 let nextMessageId = 1;
 const mkId = () => `m${MSG_ID_PREFIX}${nextMessageId++}`;
 
+// ε.1 — fallback inbox builder used only when App.js didn't pass one
+// (e.g. older standalone test mounts).  Production wiring goes through
+// the App-level singleton so dedup state is shared with the rehydrator.
+function makeFallbackInbox(eventLog, callSkill) {
+  return createChatMessageInbox({
+    eventLog,
+    ingest: async (payload, fromNknAddr) => {
+      if (typeof callSkill !== 'function') return { ok: false };
+      try { return await callSkill('stoop', 'ingestKringMessage', { payload, fromNknAddr }); }
+      catch (err) {
+        console.warn('[kring-chat] ingestKringMessage failed:', err?.message ?? err);
+        return { error: String(err?.message ?? err) };
+      }
+    },
+  });
+}
+
 export default function ChatScreen({
   bundle = null,
   bootError = null,
   eventLog = null,
-  kringChatDedup = null,
+  // ε.1 — shared inbox singleton (msgId dedup + ingest mirror + eventLog append).
+  // The receiver path here routes through it; rehydrator + future catch-up paths
+  // share the same instance so dedup state is unified.  Pre-ε.1 prop name
+  // `kringChatDedup` no longer exists — App.js owns the inbox now.
+  kringChatInbox = null,
   // γ-next.recipe — pending-recipe cache + dedup, plumbed from App.js
   // so the launcher's editor sees the same store the receiver writes to.
   kringRecipePendingStore = null,
@@ -352,22 +374,16 @@ export default function ChatScreen({
       'file-share':            makeHandleFileShare({
         addMainBubble, publishEvent,
       }),
-      // SP-13.2.1 — kring chat-message: ingest into stoop's itemStore
-      // (durable + mute/eviction filtered) + append to the shared
-      // eventLog so CircleLauncherScreen's GESPREK tab renders the
-      // bubble.  Mute/eviction suppression follows ingest's verdict
-      // (same shape as /post via ingestRemotePost).
+      // ε.1 — kring chat-message: routes through the shared inbox
+      // (App.js owns the singleton).  The inbox handles envelope
+      // validation, msgId dedup, ingest mirror into stoop's itemStore
+      // (mute/eviction filtered), and the eventLog append that drives
+      // the GESPREK tab bubbles.  Same dedup state as the boot
+      // rehydrator so a chat already in itemStore can't double-render.
+      // If no inbox was wired (older standalone tests) we fall back to
+      // a private one so existing wiring keeps working.
       'kring-chat-message':    makeKringChatPeerHandler({
-        eventLog: eventLogRef.current,
-        dedup:    kringChatDedup,
-        ingest:   async (payload, fromNknAddr) => {
-          try {
-            return await callSkill('stoop', 'ingestKringMessage', { payload, fromNknAddr });
-          } catch (err) {
-            console.warn('[kring-chat] ingestKringMessage failed:', err?.message ?? err);
-            return { error: String(err?.message ?? err) };
-          }
-        },
+        inbox: kringChatInbox ?? makeFallbackInbox(eventLogRef.current, callSkill),
       }),
       // γ-next.recipe — kring scherm recipe broadcast.  Caches the
       // inbound recipe per-kring; the editor pulls on next open and
