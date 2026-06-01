@@ -755,6 +755,11 @@ function showRecipeEditor(circleId) {
   };
 
   const rerender = () => {
+    // TODO γ-next — pass `incomingRecipe` (+ recipeStore, circleId) when
+    // peer broadcast / pod sync surfaces a divergent recipe.  γ.3 ships
+    // the editor's opt + the conflict-resolver substrate (per-block
+    // Keep yours / Take theirs / Keep both modal); the source plumbing
+    // is the next slice.  See PLAN-canopy-chat-v2-circle.md Phase 9.
     renderRecipeEditor(rootEl, {
       book, mode, editingRecipeId, t,
       onBack:         () => showDetail(circleId),

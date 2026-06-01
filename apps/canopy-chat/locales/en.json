@@ -136,6 +136,18 @@
       "compact_label": {
         "label": { "text": "Compact",                          "doc": "α.5c — checkbox label for the compact-rows toggle on list-shaped blocks." },
         "hint":  { "text": "Tighter rows, smaller text",        "doc": "α.5c — hint under the Compact checkbox." }
+      },
+      "conflict": {
+        "title":         { "text": "Two of you edited this recipe",                  "doc": "γ.3 — modal heading when an incoming recipe diverges from local." },
+        "instructions":  { "text": "Pick which version to keep for each item.",      "doc": "γ.3 — modal subhead explaining the picker." },
+        "block_label":   { "text": "Block: {{name}}",                                  "doc": "γ.3 — per-block row label; {{name}} is emoji + block type label." },
+        "meta_label":    { "text": "Field: {{path}}",                                  "doc": "γ.3 — meta-conflict row label; {{path}} is the dotted path." },
+        "meta_section":  { "text": "Other changes",                                    "doc": "γ.3 — section header above the meta-conflict list." },
+        "keep_yours":    { "text": "Keep yours",                                       "doc": "γ.3 — picker choice: keep local version." },
+        "take_theirs":   { "text": "Take theirs",                                      "doc": "γ.3 — picker choice: take incoming version." },
+        "keep_both":     { "text": "Keep both",                                        "doc": "γ.3 — picker choice (blocks only): keep local + add incoming with a fresh id." },
+        "apply":         { "text": "Apply",                                            "doc": "γ.3 — confirm picks + save the merged recipe." },
+        "cancel":        { "text": "Cancel",                                           "doc": "γ.3 — discard incoming; keep local as-is." }
       }
     },
     "streamAction": {
