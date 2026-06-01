@@ -13,12 +13,20 @@ import { fileURLToPath } from 'node:url';
 
 const empty       = fileURLToPath(new URL('./src/web/shims/empty.js',       import.meta.url));
 const oidcSession = fileURLToPath(new URL('./src/web/shims/oidcSession.js', import.meta.url));
-// `node:fs` shim with the NAMED exports the static-import call sites
-// reference (folio's autoShare → sync-engine fsNode adapter).  Rollup
-// fails the production build without them; browser code never executes
-// these because folio callers always inject opts.fs.  See shims/nodeFs.js.
-const nodeFs      = fileURLToPath(new URL('./src/web/shims/nodeFs.js',      import.meta.url));
-const nodePath    = fileURLToPath(new URL('./src/web/shims/nodePath.js',    import.meta.url));
+// `node:*` shims with the NAMED exports the static-import call sites
+// reference (sync-engine fsNode/hashNode/PathMap/versions, pseudo-pod
+// NodeFsBackend, core PodExporter + A2ATransport + reference-manifest,
+// pod-client FileTombstones, stoop + tasks-v0 FilePersist).  Rollup
+// fails the production build without proper named exports (the previous
+// empty-default shim for `node:crypto` was a known leak that the per-
+// file lazy-load workarounds papered over).  Methods throw at runtime
+// so a browser caller hitting the unreachable path surfaces the wiring
+// bug instead of silently no-oping.  See `node/*.js` for module docs.
+const nodeFs      = fileURLToPath(new URL('./src/web/shims/node/fs.js',     import.meta.url));
+const nodePath    = fileURLToPath(new URL('./src/web/shims/node/path.js',   import.meta.url));
+const nodeCrypto  = fileURLToPath(new URL('./src/web/shims/node/crypto.js', import.meta.url));
+const nodeOs      = fileURLToPath(new URL('./src/web/shims/node/os.js',     import.meta.url));
+const nodeHttp    = fileURLToPath(new URL('./src/web/shims/node/http.js',   import.meta.url));
 const wsShim      = fileURLToPath(new URL('./src/web/shims/wsShim.js',      import.meta.url));
 const relayShim   = fileURLToPath(new URL('./src/web/shims/relayShim.js',   import.meta.url));
 // Resolve the npm `events` polyfill once, by absolute path.  Transitive
@@ -77,23 +85,31 @@ export default defineConfig({
       'nkn-sdk':         empty,
       'js-yaml':         empty,
       'node-datachannel': empty,
-      // Node-builtin polyfills via empty module — these are reached
-      // only through the Node-only A2A + PodExporter paths.
+      // Node-builtin shims — one stub per module, all carrying the
+      // NAMED exports the static-import call sites reference.  This
+      // replaces the previous mix of:
+      //   - empty-default shim for `node:crypto` (silently broken if
+      //     Rollup ever walked into a `createHash` static import)
+      //   - per-file `await import('node:X')` lazy-loads in core
+      //     A2ATransport + PodExporter (which worked but pessimised
+      //     the bundle with one async boundary per call site)
+      //
+      // Call sites that hit these in the browser are wiring bugs —
+      // each stub throws with a clear message naming the missing
+      // adapter.  Browser-native equivalents are delegated where they
+      // exist (crypto.randomUUID / crypto.subtle via globalThis.crypto;
+      // path.* as a real POSIX implementation since it's pure-string).
       //
       // `node:fs` + `node:fs/promises` share one shim with both shapes
       // of named exports (the `promises.readFile` form AND the bare
-      // `readFile` named form).  Static-import call sites in folio's
-      // sync-engine fsNode adapter + stoop's FilePersist break the
-      // Rollup build otherwise (#303).  Methods throw at runtime so
-      // accidentally executing them in a browser surfaces the bug
-      // instead of silently no-oping; today these code paths are all
-      // unreachable on the web (folio + stoop browser bundles inject
-      // their own adapters).
+      // `readFile` named form).
       'node:fs/promises': nodeFs,
       'node:fs':          nodeFs,
       'node:path':        nodePath,
-      'node:crypto':      empty,
-      'http':             empty,
+      'node:crypto':      nodeCrypto,
+      'node:os':          nodeOs,
+      'node:http':        nodeHttp,
+      'http':             nodeHttp,
       // 'node:events' has a real browser polyfill (`events`); some
       // substrates (SolidVault, WebIdCache) statically import it.
       // We don't EXECUTE those code paths in v0.1, but they're in the
