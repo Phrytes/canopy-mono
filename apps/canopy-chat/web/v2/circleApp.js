@@ -15,6 +15,10 @@
 import { initLocalisation, t, detectDeviceLang } from '../../src/index.js';
 import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
 import { EventLog } from '../../src/eventLog.js';
+// δ.2 — per-message delivery state for optimistic kring chat sends.
+// Sibling of the EventLog (which stays append-only); read at render
+// time by circleKring to surface pending/failed icons.
+import { createDeliveryStateMap } from '../../src/v2/deliveryState.js';
 import {
   buildCircleStream, buildKringStream,
 } from '../../src/v2/circleStream.js';
@@ -182,6 +186,11 @@ const agentRequestStore = createAgentRequestStore({
 // Cross-circle Stream (board 5B) reads this firehose; the agent's
 // publishEvent appends to it during boot.
 const eventLog = new EventLog({ initial: [], muted: [] });
+// δ.2 — one delivery-state map per agent boot (lifetime matches the
+// in-memory EventLog).  showKring's onSend marks each locally-sent
+// msgId 'pending' → 'sent' | 'failed' as broadcastKringMessage
+// resolves; the kring renderer reads it at render time.
+const deliveryStateMap = createDeliveryStateMap();
 
 let rootEl = null;
 let tabBarEl = null;
@@ -678,6 +687,35 @@ function showKring(id, circle, policy) {
   // "scherm_coming" placeholder when present.
   let screenBlocks = null;
   let seq = 0;
+
+  // δ.2 — fan-out helper.  Used by both the initial send AND the
+  // tap-to-retry path from the 'failed' icon.  Re-uses the SAME
+  // msgId on retry so receiver-side dedup suppresses any duplicate
+  // delivery (the EventLog already idempotents on id).
+  function broadcastFanOut({ msgId, text, ts }) {
+    if (typeof rawCallSkill !== 'function') return;
+    deliveryStateMap.set(msgId, 'pending');
+    rerender();
+    rawCallSkill('stoop', 'broadcastKringMessage', {
+      groupId: id, text, msgId, ts,
+    }).then((r) => {
+      if (r?.error) {
+        console.warn('[kring-chat] fan-out skipped:', r.error);
+        deliveryStateMap.set(msgId, 'failed');
+      } else if ((r?.errors?.length ?? 0) > 0) {
+        console.info('[kring-chat] fan-out partial:', r);
+        deliveryStateMap.set(msgId, 'failed');
+      } else {
+        deliveryStateMap.set(msgId, 'sent');
+      }
+      rerender();
+    }).catch((err) => {
+      console.warn('[kring-chat] fan-out failed:', err?.message ?? err);
+      deliveryStateMap.set(msgId, 'failed');
+      rerender();
+    });
+  }
+
   const rerender = () => {
     const rows = buildKringStream({
       events:    eventLog.query({ excludeMuted: true }),
@@ -689,6 +727,22 @@ function showKring(id, circle, policy) {
       tabs, activeTab,
       viewMode,
       screenBlocks,
+      // δ.2 — read function so the renderer can look up state per row
+      // without us having to pass a fresh snapshot through every prop.
+      // Locally-sent bubbles read this to decide which icon to render.
+      deliveryStateFor: (msgId) => deliveryStateMap.get(msgId),
+      localActor: LOCAL_ACTOR,
+      // δ.2 — retry on the failed icon tap.  Re-fires the SAME msgId
+      // (idempotent receiver-side dedup).  Looks up the original text
+      // from the eventLog so we don't have to remember it elsewhere.
+      onRetryDelivery: (msgId) => {
+        const evt = eventLog.query({ excludeMuted: true })
+          .find((e) => e.id === msgId);
+        const text = evt?.payload?.text;
+        const ts   = evt?.ts ?? Date.now();
+        if (typeof text !== 'string' || !text) return;
+        broadcastFanOut({ msgId, text, ts });
+      },
       onViewMode: (mode) => {
         if (mode !== 'chat' && mode !== 'scherm') return;
         viewMode = mode;
@@ -701,6 +755,8 @@ function showKring(id, circle, policy) {
         // SP-13.2 / SP-13.2.1 — optimistic local append + best-effort
         // peer fan-out.  The msgId is shared so receiver-side dedup
         // suppresses any echo if a peer's pseudo-pod re-mirrors.
+        // δ.2 — also tracks delivery state (pending → sent | failed)
+        // so the bubble surfaces a clock / warning icon.
         const msgId = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}`;
         const ts    = Date.now();
         eventLog.append({
@@ -711,17 +767,7 @@ function showKring(id, circle, policy) {
           actor: LOCAL_ACTOR,
           payload: { circleId: id, text, kind: 'chat-message' },
         });
-        rerender();
-        if (typeof rawCallSkill === 'function') {
-          rawCallSkill('stoop', 'broadcastKringMessage', {
-            groupId: id, text, msgId, ts,
-          }).then((r) => {
-            if (r?.error) console.warn('[kring-chat] fan-out skipped:', r.error);
-            else if ((r?.errors?.length ?? 0) > 0) console.info('[kring-chat] fan-out partial:', r);
-          }).catch((err) => {
-            console.warn('[kring-chat] fan-out failed:', err?.message ?? err);
-          });
-        }
+        broadcastFanOut({ msgId, text, ts });
       },
       onAction: (action /*, row */) => {
         // V0: per-row actions just log.  Wiring each (Ik help / Ik doe ze /

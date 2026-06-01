@@ -72,6 +72,11 @@ export {
 } from './v2/circleStream.js';
 // SP-13.3 — per-kring bottom tabs derived from policy.features (v2 §1).
 export { buildKringTabs, DEFAULT_KRING_TAB } from './v2/kringTabs.js';
+// δ.2 — per-message delivery state (pending / sent / failed) for the
+// optimistic kring chat send.  Sibling of the in-memory EventLog;
+// read at bubble render time so users can see fan-out status + retry
+// failed sends.
+export { createDeliveryStateMap } from './v2/deliveryState.js';
 // α.1a/b — scherm "recipe book" model + per-block content materializer
 // (v2 §2 RECEPT · SCHERM-WEERGAVE INRICHTEN).
 export {

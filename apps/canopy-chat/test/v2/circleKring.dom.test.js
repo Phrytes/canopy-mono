@@ -299,4 +299,89 @@ describe('renderCircleKring · SP-13.2 chat-style kring view', () => {
     });
     expect(el.querySelector('.circle-kring__tabs')).toBeNull();
   });
+
+  /* ─── δ.2 — per-message delivery state ─── */
+
+  // Local-actor rows mimic what showKring's onSend appends: actor === LOCAL_ACTOR
+  // and type === 'chat-message'.  Buurt-post mirrors are NOT locally-sent so
+  // they never get a delivery icon, even when the actor coincidentally matches.
+  const LOCAL = 'me';
+  const localRow = {
+    id: 'mine-1', ts: now + 5_000, app: 'kring', type: 'chat-message',
+    actor: LOCAL, circleId: 'g1',
+    event: { id: 'mine-1', type: 'chat-message', payload: { text: 'Hallo!', kind: 'chat-message' } },
+  };
+
+  it('locally-sent bubble shows a clock icon when delivery state is pending', () => {
+    const el = mount();
+    renderCircleKring(el, {
+      circle, rows: [localRow], t,
+      deliveryStateFor: (id) => (id === 'mine-1' ? 'pending' : null),
+      localActor: LOCAL,
+    });
+    const bubble = el.querySelector('[data-row-id="mine-1"]');
+    const icon = bubble.querySelector('.circle-kring__bubble-delivery--pending');
+    expect(icon).not.toBeNull();
+    expect(icon.getAttribute('aria-label')).toBe('circle.chat.delivery.pending');
+  });
+
+  it('clock icon disappears once delivery state flips to sent (happy path = no icon)', () => {
+    const el = mount();
+    renderCircleKring(el, {
+      circle, rows: [localRow], t,
+      deliveryStateFor: () => 'sent',
+      localActor: LOCAL,
+    });
+    const bubble = el.querySelector('[data-row-id="mine-1"]');
+    expect(bubble.querySelector('.circle-kring__bubble-delivery')).toBeNull();
+  });
+
+  it('failed state renders a warning button + tap fires onRetryDelivery(msgId)', () => {
+    const el = mount();
+    const onRetryDelivery = vi.fn();
+    renderCircleKring(el, {
+      circle, rows: [localRow], t,
+      deliveryStateFor: () => 'failed',
+      localActor: LOCAL,
+      onRetryDelivery,
+    });
+    const btn = el.querySelector('.circle-kring__bubble-delivery--failed');
+    expect(btn).not.toBeNull();
+    expect(btn.tagName).toBe('BUTTON');
+    expect(btn.getAttribute('aria-label')).toBe('circle.chat.delivery.failed');
+    btn.click();
+    expect(onRetryDelivery).toHaveBeenCalledTimes(1);
+    expect(onRetryDelivery).toHaveBeenCalledWith('mine-1');
+  });
+
+  it('peer messages (actor ≠ local) never get a delivery icon, even with state set', () => {
+    const el = mount();
+    renderCircleKring(el, {
+      circle, rows, t,                              // rows[0] = Anne (not LOCAL)
+      deliveryStateFor: () => 'pending',
+      localActor: LOCAL,
+    });
+    expect(el.querySelector('.circle-kring__bubble-delivery')).toBeNull();
+  });
+
+  it('non-chat-message local rows (e.g. buurt-post mirror) get no delivery icon', () => {
+    const el = mount();
+    const localPost = {
+      id: 'mine-buurt', ts: now + 1_000, app: 'stoop', type: 'buurt-post',
+      actor: LOCAL, circleId: 'g1',
+      event: { id: 'mine-buurt', type: 'buurt-post', payload: { kind: 'aanbod', text: 'Hi' } },
+    };
+    renderCircleKring(el, {
+      circle, rows: [localPost], t,
+      deliveryStateFor: () => 'pending',
+      localActor: LOCAL,
+    });
+    expect(el.querySelector('.circle-kring__bubble-delivery')).toBeNull();
+  });
+
+  it('no delivery icon renders when the host omits the delivery-state plumbing', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows: [localRow], t });
+    expect(el.querySelector('.circle-kring__bubble-delivery')).toBeNull();
+  });
 });

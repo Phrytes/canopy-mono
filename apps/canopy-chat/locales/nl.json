@@ -45,6 +45,11 @@
     "chat": {
       "quick_reply": {
         "fallback_label": { "text": "Antwoord", "doc": "α.5a (audit #3) — default label for an inline-keuze quick-reply pill when the reply envelope supplies a slash but no label." }
+      },
+      "delivery": {
+        "pending": { "text": "Bezig met versturen…", "doc": "δ.2 — bubble icon caption while the kring fan-out (broadcastKringMessage) is in flight." },
+        "sent":    { "text": "Verstuurd", "doc": "δ.2 — bubble icon caption after a successful kring fan-out.  Currently never surfaced (the happy path renders nothing) but reserved for future use." },
+        "failed":  { "text": "Versturen mislukt (tik om opnieuw te proberen)", "doc": "δ.2 — bubble icon caption + accessible label when the kring fan-out rejected or returned errors; tapping re-fires broadcastKringMessage with the same msgId." }
       }
     },
     "tabs": {

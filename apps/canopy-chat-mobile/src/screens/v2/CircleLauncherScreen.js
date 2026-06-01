@@ -12,7 +12,7 @@
  * the shared helpers; otherwise the empty states show + create is a no-op.
  * Flagged for device verification.
  */
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, StyleSheet, BackHandler, Modal, Alert } from 'react-native';
 import { theme } from './theme.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -45,6 +45,8 @@ import {
   createUserScreenStore, addScreen as addUserScreen,
   renameScreen as renameUserScreen, removeScreen as removeUserScreen,
   setActiveScreen, updateScreen, materializeScreen,
+  // δ.2 — per-message delivery state for optimistic kring chat sends.
+  createDeliveryStateMap,
 } from '@canopy-app/canopy-chat';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t } from '../../core/localisation.js';
@@ -1162,6 +1164,19 @@ function CircleDetail({
     circles,
     circleId:  circle?.id ?? null,
   }), [eventLog, circles, circle?.id, streamTick]);
+
+  // δ.2 — per-message delivery state.  Lives in a ref so the map is
+  // stable across renders; we bump `deliveryTick` (a state value the
+  // bubble render reads through `deliveryStateFor`) to force re-renders
+  // when state flips.  The map itself isn't deps-tracked.
+  const deliveryStateMapRef = useRef(null);
+  if (deliveryStateMapRef.current == null) deliveryStateMapRef.current = createDeliveryStateMap();
+  const [deliveryTick, setDeliveryTick] = useState(0);
+  const deliveryStateFor = useCallback((msgId) => {
+    // eslint-disable-next-line no-unused-expressions
+    deliveryTick; // read tick so memoised consumers re-evaluate on bumps
+    return deliveryStateMapRef.current.get(msgId);
+  }, [deliveryTick]);
   const [composerText, setComposerText] = useState('');
   // SP-13.3 — per-kring bottom tabs derived from policy.features.
   const tabs = useMemo(() => buildKringTabs(policy, t), [policy]);
@@ -1223,10 +1238,41 @@ function CircleDetail({
     } catch { /* quota / disabled */ }
   }, [circle?.id]);
 
+  // δ.2 — fan-out helper used by both the initial send and the
+  // tap-to-retry handler for failed bubbles.  Re-fires with the
+  // SAME msgId so receiver-side dedup suppresses duplicates.
+  const broadcastFanOut = useCallback(({ msgId, text, ts }) => {
+    if (typeof callSkill !== 'function') return;
+    deliveryStateMapRef.current.set(msgId, 'pending');
+    setDeliveryTick((n) => n + 1);
+    Promise.resolve()
+      .then(() => callSkill('stoop', 'broadcastKringMessage', {
+        groupId: circle.id, text, msgId, ts,
+      }))
+      .then((r) => {
+        if (r?.error) {
+          console.warn('[kring-chat] fan-out skipped:', r.error);
+          deliveryStateMapRef.current.set(msgId, 'failed');
+        } else if ((r?.errors?.length ?? 0) > 0) {
+          console.info('[kring-chat] fan-out partial:', r);
+          deliveryStateMapRef.current.set(msgId, 'failed');
+        } else {
+          deliveryStateMapRef.current.set(msgId, 'sent');
+        }
+        setDeliveryTick((n) => n + 1);
+      })
+      .catch((err) => {
+        console.warn('[kring-chat] fan-out failed:', err?.message ?? err);
+        deliveryStateMapRef.current.set(msgId, 'failed');
+        setDeliveryTick((n) => n + 1);
+      });
+  }, [callSkill, circle?.id]);
+
   // SP-13.2.1 — kring chat send: optimistic local eventLog append +
   // best-effort fan-out via stoop's broadcastKringMessage (which also
   // mirrors to itemStore for durable history).  The msgId is shared so
   // receiver-side dedup suppresses any echo if a peer's mirror bounces.
+  // δ.2 — also tracks delivery state (pending → sent | failed).
   const sendKringChat = useCallback(() => {
     const text = composerText.trim();
     if (!text || !eventLog?.append || !circle?.id) return;
@@ -1242,18 +1288,19 @@ function CircleDetail({
     });
     setComposerText('');
     setStreamTick((n) => n + 1);
-    if (typeof callSkill === 'function') {
-      Promise.resolve()
-        .then(() => callSkill('stoop', 'broadcastKringMessage', {
-          groupId: circle.id, text, msgId, ts,
-        }))
-        .then((r) => {
-          if (r?.error) console.warn('[kring-chat] fan-out skipped:', r.error);
-          else if ((r?.errors?.length ?? 0) > 0) console.info('[kring-chat] fan-out partial:', r);
-        })
-        .catch((err) => console.warn('[kring-chat] fan-out failed:', err?.message ?? err));
-    }
-  }, [composerText, eventLog, circle?.id, callSkill]);
+    broadcastFanOut({ msgId, text, ts });
+  }, [composerText, eventLog, circle?.id, broadcastFanOut]);
+
+  // δ.2 — tap-to-retry on the failed icon.  Looks up the original
+  // text from the eventLog so we don't have to remember it elsewhere.
+  const onRetryDelivery = useCallback((msgId) => {
+    if (!eventLog?.query) return;
+    const evt = eventLog.query({ excludeMuted: true }).find((e) => e.id === msgId);
+    const text = evt?.payload?.text;
+    const ts   = evt?.ts ?? Date.now();
+    if (typeof text !== 'string' || !text) return;
+    broadcastFanOut({ msgId, text, ts });
+  }, [eventLog, broadcastFanOut]);
 
   // 5.9d — Proof-of-Location placeholder.  Kept under the kring view as
   // a passive status; real attestation lands in [[5.9d-followup]].
@@ -1387,7 +1434,11 @@ function CircleDetail({
         ) : rows.length === 0 ? (
           <Text style={styles.muted}>{t('circle.kring.empty')}</Text>
         ) : (
-          renderBubblesWithDayDividers(rows, t)
+          renderBubblesWithDayDividers(rows, t, {
+            deliveryStateFor,
+            localActor: 'me',
+            onRetryDelivery,
+          })
         )}
       </ScrollView>
 
@@ -1447,7 +1498,9 @@ function CircleDetail({
 
 // SP-13.2 — render rows chronologically with day-dividers, mirroring
 // the web circleKring renderer.  Keeps the mobile parity tight.
-function renderBubblesWithDayDividers(rows, t) {
+// δ.2 — `deliveryOpts` carries the per-message delivery-state hooks
+// for locally-sent bubbles (clock / warning + tap-to-retry).
+function renderBubblesWithDayDividers(rows, t, deliveryOpts = null) {
   const chronological = [...rows].reverse();
   const nodes = [];
   let lastKey = null;
@@ -1461,12 +1514,12 @@ function renderBubblesWithDayDividers(rows, t) {
       );
       lastKey = key;
     }
-    nodes.push(renderBubble(row, t));
+    nodes.push(renderBubble(row, t, deliveryOpts));
   }
   return nodes;
 }
 
-function renderBubble(row, t) {
+function renderBubble(row, t, deliveryOpts = null) {
   const payload = row.event?.payload ?? {};
   const text = payload.text || payload.title || payload.body || String(row.id ?? '');
   const sender = payload.senderDisplay || payload.authorName || row.actor || null;
@@ -1474,8 +1527,20 @@ function renderBubble(row, t) {
   const kind = (typeof kindRaw === 'string' && kindRaw && kindRaw !== 'message' && kindRaw !== 'chat-message')
     ? kindRaw.toUpperCase() : null;
   const actions = actionsForStreamRow(row);
+  // δ.2 — delivery-state icon for locally-sent chat messages only.
+  // Mirrors web circleKring renderer's gate.
+  const deliveryStateFor = typeof deliveryOpts?.deliveryStateFor === 'function'
+    ? deliveryOpts.deliveryStateFor : null;
+  const localActor      = deliveryOpts?.localActor ?? null;
+  const onRetryDelivery = typeof deliveryOpts?.onRetryDelivery === 'function'
+    ? deliveryOpts.onRetryDelivery : null;
+  const isLocalChat = deliveryStateFor != null
+    && localActor != null
+    && row?.actor === localActor
+    && (row?.type === 'chat-message' || row?.event?.type === 'chat-message');
+  const deliveryState = isLocalChat ? deliveryStateFor(row.id) : null;
   return (
-    <View key={row.id} style={styles.bubble}>
+    <View key={row.id} style={styles.bubble} testID={`kring-bubble-${row.id}`}>
       {sender ? <Text style={styles.bubbleSender}>{sender}</Text> : null}
       <Text style={styles.bubbleText} numberOfLines={4}>
         {kind ? (<Text style={styles.bubbleKind}>{kind}  </Text>) : null}
@@ -1493,6 +1558,29 @@ function renderBubble(row, t) {
             </Pressable>
           ))}
         </View>
+      ) : null}
+      {deliveryState === 'pending' ? (
+        <Text
+          style={styles.deliveryPending}
+          accessibilityLabel={t('circle.chat.delivery.pending')}
+          accessibilityRole="text"
+          testID={`kring-delivery-pending-${row.id}`}
+        >
+          ⏱ {t('circle.chat.delivery.pending')}
+        </Text>
+      ) : null}
+      {deliveryState === 'failed' ? (
+        <Pressable
+          style={styles.deliveryFailed}
+          accessibilityRole="button"
+          accessibilityLabel={t('circle.chat.delivery.failed')}
+          testID={`kring-delivery-failed-${row.id}`}
+          onPress={() => { if (onRetryDelivery) onRetryDelivery(row.id); }}
+        >
+          <Text style={styles.deliveryFailedText}>
+            ⚠ {t('circle.chat.delivery.failed')}
+          </Text>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -1681,6 +1769,11 @@ const styles = StyleSheet.create({
   rowActions:     { flexDirection: 'row', gap: 6, marginTop: 8 },
   rowActionBtn:   { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.paper },
   rowActionText:  { fontSize: 12, color: theme.color.ink },
+  // δ.2 — per-message delivery state.  Pending = subtle clock-line,
+  // Failed = warning pill (tap-to-retry).  Sent renders nothing.
+  deliveryPending:    { marginTop: 4, fontSize: 11, color: theme.color.inkSoft },
+  deliveryFailed:     { marginTop: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: '#f2c8b8', backgroundColor: '#fbe9e3' },
+  deliveryFailedText: { fontSize: 11, color: '#b8290f' },
   ownProfile: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.color.line },
   ownProfileTitle: { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginBottom: 4 },
   // P6.5 #342 — "ON YOUR LIST" section on CircleDetail.
