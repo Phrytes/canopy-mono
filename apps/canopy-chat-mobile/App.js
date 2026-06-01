@@ -55,6 +55,11 @@ import { makeKringRecipePendingStoreRN } from './src/core/kringRecipePendingStor
 // CircleLauncherScreen reads on rules-screen open + clears after the
 // γ.4 resolver applies / discards.
 import { makeKringRulesPendingStoreRN } from './src/core/kringRulesPendingStorageRN.js';
+// γ-next.policy — per-kring pending-policy cache (AsyncStorage-backed).
+// Mirrors the rules wire: ChatScreen writes via the receiver,
+// CircleLauncherScreen's settings editor reads on open + clears after
+// the γ.4 resolver applies / discards.
+import { makeKringPolicyPendingStoreRN } from './src/core/kringPolicyPendingStorageRN.js';
 
 export default function App() {
   const [localeReady, setLocaleReady] = useState(false);
@@ -149,6 +154,20 @@ export default function App() {
   const kringRulesDedupRef = useRef(null);
   if (!kringRulesDedupRef.current) {
     kringRulesDedupRef.current = new Set();
+  }
+  // γ-next.policy — shared kring-policy-broadcast pending store.
+  // ChatScreen's peer-router writes via the receiver handler;
+  // CircleLauncherScreen's settings editor reads on mount + clears after
+  // the γ.4 resolver applies/discards.  Completes the γ-next trio
+  // (recipe / rules / policy).
+  const kringPolicyPendingStoreRef = useRef(null);
+  if (!kringPolicyPendingStoreRef.current) {
+    kringPolicyPendingStoreRef.current = makeKringPolicyPendingStoreRN(AsyncStorage);
+  }
+  // γ-next.policy — shared LRU dedup for the policy-broadcast handler.
+  const kringPolicyDedupRef = useRef(null);
+  if (!kringPolicyDedupRef.current) {
+    kringPolicyDedupRef.current = new Set();
   }
 
   // 5.4c (2026-05-30) — single OidcSessionRN, lifted from ChatScreen so
@@ -396,6 +415,8 @@ export default function App() {
             kringRecipeDedup={kringRecipeDedupRef.current}
             kringRulesPendingStore={kringRulesPendingStoreRef.current}
             kringRulesDedup={kringRulesDedupRef.current}
+            kringPolicyPendingStore={kringPolicyPendingStoreRef.current}
+            kringPolicyDedup={kringPolicyDedupRef.current}
             sessionRef={sessionRef}
             onSessionChanged={refreshCirclePodWriter}
           />
@@ -406,6 +427,7 @@ export default function App() {
           getPodWriter={getCirclePodWriter}
           kringRecipePendingStore={kringRecipePendingStoreRef.current}
           kringRulesPendingStore={kringRulesPendingStoreRef.current}
+          kringPolicyPendingStore={kringPolicyPendingStoreRef.current}
           /* SP-13.1 — no onBack (no chat shell to fall back to) +
              no onChatRoute (the kring view IS the chat, no route). */
         />

@@ -40,6 +40,9 @@ import { createKringRecipePendingStoreLocal } from '../../src/v2/kringRecipePend
 // γ-next.rules — receiver + pending-cache substrate for the rules broadcast.
 import { makeKringRulesPeerHandler } from '../../src/v2/kringRulesReceiver.js';
 import { createKringRulesPendingStoreLocal } from '../../src/v2/kringRulesPendingStorage.js';
+// γ-next.policy — receiver + pending-cache substrate for the policy broadcast.
+import { makeKringPolicyPeerHandler } from '../../src/v2/kringPolicyReceiver.js';
+import { createKringPolicyPendingStoreLocal } from '../../src/v2/kringPolicyPendingStorage.js';
 // δ.1 — per-screen materialized-blocks cache (cache-first render + bg refresh).
 import { createScreenBlocksCacheLocal } from '../../src/v2/screenBlocksCacheStorage.js';
 import {
@@ -171,6 +174,11 @@ const kringRecipePendingStore = createKringRecipePendingStoreLocal();
 // editor reads on mount + passes the cached doc via γ.4's
 // `incomingRules` opt.  Same shape as the recipe store.
 const kringRulesPendingStore = createKringRulesPendingStoreLocal();
+// γ-next.policy — per-kring "incoming policy" cache.  Receiver writes
+// here on every valid kring-policy-broadcast envelope; the settings
+// editor reads on mount + passes the cached doc via γ.4's
+// `incomingPolicy` opt.  Same shape as the rules + recipe stores.
+const kringPolicyPendingStore = createKringPolicyPendingStoreLocal();
 // δ.1 — per-screen materialized-blocks cache.  The Schermen view-mode
 // reads this on open to render instantly while the fresh materialize
 // runs in the background; on result the view swaps + the cache
@@ -1271,22 +1279,41 @@ async function showSettings(id) {
       ? t('circle.settings.pending_waiting', { who: waiting.join(', ') })
       : t('circle.settings.pending');
   };
-  // TODO γ-next — pass `incomingPolicy` (+ policyStore, circleId) when
-  // peer broadcast / pod sync surfaces a divergent policy.  γ.4 ships
-  // the editor's opt + the policy-conflict substrate + a settings-
-  // namespaced heading on the existing recipe-conflict modal; the
-  // source plumbing is the next slice.  See PLAN-canopy-chat-v2-circle.md
-  // Phase 9.
+  // γ-next.policy — pull the cached broadcast (if any).  Editor's γ.4
+  // resolver decides whether anything actually conflicts; if not, it
+  // applies straight through.  When the slot is empty `incomingPolicy`
+  // stays null and the editor renders untouched.
+  let incomingPolicy = null;
+  try { incomingPolicy = await kringPolicyPendingStore.get(id); }
+  catch { incomingPolicy = null; }
+
+  const clearPending = () => {
+    incomingPolicy = null;
+    kringPolicyPendingStore.clear(id).catch(() => { /* ignore */ });
+  };
+
   const rerender = () => renderCircleSettings(rootEl, {
     policy: working,
     t,
     saveLabel: consensusActive() ? t('circle.settings.send_proposal') : undefined,
     note: pendingNote(),
+    // γ-next.policy — broadcast cache → editor → γ.4 resolver.  The
+    // resolver is opt-in; when `incomingPolicy` is null the editor
+    // renders untouched.  Applied / discarded both clear the cache.
+    incomingPolicy,
+    policyStore,
+    circleId: id,
+    onIncomingApplied:   () => clearPending(),
+    onIncomingDiscarded: () => clearPending(),
     onChange: (patch) => { working = mergeCirclePolicy(working, patch); rerender(); },
     onBack: () => showDetail(id),
     onSave: async () => {
       if (!consensusActive()) {
         await policyStore.update(id, working);
+        // γ-next.policy — fan the just-saved policy doc out to peers.
+        // Fire-and-forget; per-peer errors are logged inside.
+        try { broadcastPolicy({ circleId: id, policy: working }); }
+        catch (err) { console.warn('[kring-policy] broadcast scheduling failed:', err?.message ?? err); }
         showDetail(id);
         return;
       }
@@ -1303,6 +1330,13 @@ async function showSettings(id) {
         // Single admin / self-only consensus → commit immediately.
         await policyStore.update(id, working);
         await proposalStore.remove(proposal.id);
+        // γ-next.policy — fan the just-committed policy doc out to peers.
+        // Only fires when consensus actually resolves on-device (i.e. the
+        // proposal landed as `ready`); for outstanding multi-admin
+        // proposals the broadcast follows the unanimous-approve commit
+        // path (cross-admin proposal-delivery is a V1 follow-up).
+        try { broadcastPolicy({ circleId: id, policy: working }); }
+        catch (err) { console.warn('[kring-policy] broadcast scheduling failed:', err?.message ?? err); }
       } else {
         pending = await proposalStore.listForCircle(id);
       }
@@ -1313,6 +1347,29 @@ async function showSettings(id) {
     },
   });
   rerender();
+}
+
+/**
+ * γ-next.policy — fan the policy document out to every other kring
+ * member via stoop's `broadcastKringPolicy` skill.  Fire-and-forget:
+ * per-peer failures land in the result.errors array; we just log.
+ * No-op when rawCallSkill isn't bound yet (pre-agent-boot edits).
+ */
+function broadcastPolicy({ circleId, policy }) {
+  if (typeof rawCallSkill !== 'function') return;
+  if (!policy || typeof policy !== 'object') return;
+  const msgId = `kring-policy-${circleId}-${Date.now()}`;
+  const ts    = Date.now();
+  rawCallSkill('stoop', 'broadcastKringPolicy', {
+    groupId: circleId,
+    policy,
+    msgId,
+    ts,
+  }).then((r) => {
+    if (r?.error) console.warn('[kring-policy] fan-out skipped:', r.error);
+  }).catch((err) => {
+    console.warn('[kring-policy] fan-out failed:', err?.message ?? err);
+  });
 }
 
 async function boot() {
@@ -1392,6 +1449,16 @@ async function boot() {
         dedup:        kringRulesDedup,
         logger:       console,
       });
+      // γ-next.policy — policy-broadcast receiver.  Stashes inbound policy
+      // docs per-kring; the settings editor pulls on mount + passes via
+      // γ.4's `incomingPolicy` opt.  Completes the γ-next trio
+      // (recipe / rules / policy).
+      const kringPolicyDedup   = new Set();
+      const kringPolicyHandler = makeKringPolicyPeerHandler({
+        pendingStore: kringPolicyPendingStore,
+        dedup:        kringPolicyDedup,
+        logger:       console,
+      });
       // ε.4 — negotiated catch-up protocol.  The receiver coordinator
       // fires `catch-up-request` to known peers, collects offers in a
       // 3s window, auto-accepts the first, and ingests chunks through
@@ -1465,6 +1532,7 @@ async function boot() {
           'kring-chat-message':      kringChatHandler,
           'kring-recipe-broadcast':  kringRecipeHandler,
           'kring-rules-broadcast':   kringRulesHandler,
+          'kring-policy-broadcast':  kringPolicyHandler,
           // ε.4 — negotiated catch-up subtypes.
           'catch-up-request':        catchUpProvider.handler,
           'catch-up-accept':         catchUpProvider.onAccept,
