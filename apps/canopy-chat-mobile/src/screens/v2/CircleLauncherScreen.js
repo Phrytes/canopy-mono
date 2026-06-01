@@ -529,8 +529,18 @@ export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePend
   // inline to cancel).
   useEffect(() => {
     const handler = () => {
+      // β.5 — tile context menu open → close it.  Highest priority since
+      // any subsequent state-based pop would feel wrong while the modal
+      // is on top.
+      if (menuCircle) { setMenuCircle(null); return true; }
       // Inline cancel: creating-circle input row.
       if (creating) { setCreating(false); setNewName(''); return true; }
+      // α.3 — viewing a screen (Schermen tab "view" sub-mode) → back to
+      // the picker (the screens-tab equivalent of returning from a
+      // sub-view to the list).
+      if (view === 'screens' && screensSubMode === 'view') {
+        setScreensSubMode('picker'); setViewingScreenId(null); return true;
+      }
       // Sub-views under a selected circle → back to detail.
       if (selected && (
         view === 'settings' || view === 'override' || view === 'viewas'
@@ -554,7 +564,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePend
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', handler);
     return () => sub.remove();
-  }, [view, selected, creating]);
+  }, [view, selected, creating, menuCircle, screensSubMode]);
 
   // Bottom tab bar (Screens / Kringen / Mij).  α.3 — Schermen is the
   // new primary; Stroom is retired (now lives as the seeded "Stream"

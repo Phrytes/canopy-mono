@@ -28,6 +28,17 @@ import { theme } from './theme.js';
 import { t } from '../../core/localisation.js';
 
 export default function CircleScreenView({ blocks = null }) {
+  // null = still materializing (host hasn't resolved yet).  Distinguish
+  // from `[]` so the user sees a "Loading…" hint instead of the
+  // "admin hasn't set up a screen yet" empty state — which is
+  // visually identical and made the materialize wait feel broken.
+  if (blocks === null || blocks === undefined) {
+    return (
+      <View testID="circle-screen-loading">
+        <Text style={styles.empty}>{t('circle.screen.loading')}</Text>
+      </View>
+    );
+  }
   if (!Array.isArray(blocks) || blocks.length === 0) {
     return (
       <View testID="circle-screen-empty">

@@ -519,6 +519,14 @@ async function _showActiveScreen() {
   title.textContent = screen.name || t('circle.screens.untitled');
   rootEl.appendChild(title);
 
+  // Render a loading placeholder immediately so the user sees feedback
+  // while materializeScreen runs.  Previously the body stayed blank
+  // between title and resolved content, which made the wait feel
+  // broken.  null sentinel → renderCircleScreen shows the loading hint.
+  const body = document.createElement('div');
+  rootEl.appendChild(body);
+  renderCircleScreen(body, { blocks: null, t });
+
   // Materialize blocks (with muted-kring filter when available later).
   let blocks = [];
   try {
@@ -534,8 +542,6 @@ async function _showActiveScreen() {
     console.warn('[showScreens] materializeScreen failed', err);
   }
   _screenViewBlocks = blocks;
-  const body = document.createElement('div');
-  rootEl.appendChild(body);
   renderCircleScreen(body, { blocks, t });
 }
 
