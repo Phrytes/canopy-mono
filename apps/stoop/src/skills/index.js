@@ -2856,6 +2856,76 @@ export function buildSkills({
     }),
 
     /**
+     * getMessagesSince({groupId, sinceTs?, max?})
+     *   — ε.3 (Phase 9 ε wave) — pod range-query catch-up entry point.
+     *
+     *   Reads chat-message envelopes from the local itemStore for a
+     *   kring, filtered by `ts >= sinceTs`, optionally capped to `max`.
+     *   Sibling of `listKringChats` (the boot rehydrator's read path),
+     *   but reshaped to return the broadcast envelope shape so callers
+     *   can feed results straight through the ε.1 chatMessageInbox:
+     *
+     *     { subtype: 'kring-chat-message', circleId, msgId, ts, text, fromActor }
+     *
+     *   Used by ε.3 catch-up's `podRangeQuery` handler for `pod: 'shared'`
+     *   kringen — the receiver IS the pod that holds authoritative
+     *   history, so no peer consent is needed for a member's own read.
+     *   When shared-pod actually means cross-device pod sync, this skill
+     *   is the stable interface that fronts that.
+     *
+     *   sinceTs is INCLUSIVE here (`ts >= sinceTs`) because catch-up's
+     *   sinceTs typically comes from the inbox's last-seen LRU and we
+     *   want to refetch the boundary message in case it was dropped
+     *   (the inbox dedupes by msgId anyway, so an extra one is free).
+     *   `listKringChats`'s exclusive cutoff serves a different caller
+     *   (the rehydrator, which always reads everything fresh) — left
+     *   unchanged.
+     *
+     *   Defaults: sinceTs=0 (full history), max=200, hard cap 1000.
+     */
+    defineSkill('getMessagesSince', async ({ parts }) => {
+      const a = dataArgs(parts);
+      const groupId = typeof a.groupId === 'string' ? a.groupId : '';
+      const sinceTs = Number.isFinite(a.sinceTs) ? a.sinceTs : 0;
+      const rawMax  = Number.isFinite(a.max)     ? a.max     : 200;
+      const max     = Math.max(1, Math.min(rawMax, 1000));
+      if (!groupId) return { items: [], truncated: false };
+
+      // Mirror listKringChats's read pattern (same itemStore / same
+      // shape) so any future change to the kring-chat item layout
+      // only needs to be reflected here too.
+      const all = await store.listOpen({ type: 'kring-chat-message' });
+      const filtered = all
+        .filter((it) => it?.source?.circleId === groupId)
+        .filter((it) => {
+          const ts = it?.source?.ts;
+          return Number.isFinite(ts) && ts >= sinceTs;
+        })
+        .sort((x, y) => (x?.source?.ts ?? 0) - (y?.source?.ts ?? 0));
+
+      const truncated = filtered.length > max;
+      // When over cap, keep the freshest N — same policy as
+      // listKringChats, since the receiver's caught-up state is what
+      // matters; older messages get backfilled by a follow-up call
+      // with an earlier sinceTs if needed.
+      const trimmedItems = filtered.length > max
+        ? filtered.slice(filtered.length - max)
+        : filtered;
+      const items = trimmedItems.map((it) => ({
+        subtype:   'kring-chat-message',
+        circleId:  it?.source?.circleId ?? groupId,
+        msgId:     it?.source?.msgId ?? it.id,
+        ts:        it?.source?.ts,
+        text:      it.text ?? '',
+        fromActor: it?.source?.fromActor ?? it?.source?.fromWebid ?? null,
+      }));
+      return { items, truncated };
+    }, {
+      description: 'Read kring chat-message envelopes from itemStore filtered by ts >= sinceTs; returns broadcast envelope shape for ε.3 pod-range-query catch-up.  Args: groupId (required), sinceTs (default 0), max (default 200, cap 1000).',
+      visibility:  'authenticated',
+    }),
+
+    /**
      * ingestKringMessage({payload, fromPubKey, fromNknAddr})
      *   — SP-13.2.1 — receive-side mirror for an inbound kring chat
      *   envelope.  Sibling of `ingestRemotePost` for the buurt-post

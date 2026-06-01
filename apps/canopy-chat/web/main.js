@@ -683,6 +683,13 @@ async function propagateMeshIntros(args) {
 
 const handleBuurtPeerIntro = makeHandleBuurtPeerIntro({ callSkill: callSkillLazy });
 
+// ε.3 (2026-06-01) — the factory now routes each kring's catch-up via
+// scheduleCatchUp(policy.pod).  Without an inbox + getCirclePolicy
+// here, every kring defaults to `{pod: 'personal'}` ⇒ 'peer' strategy
+// ⇒ today's behaviour exactly.  The kring-chat inbox lives in
+// circleApp.js (the v2 launcher page), not in classic.html; pod
+// range-query catch-up wakes up there once policy gets wired in (or
+// the launcher inherits this same dispatch from a shared boot path).
 const _requestCatchUpFromKnownPeers = makeRequestCatchUpFromKnownPeers({
   callSkill: callSkillLazy,
   sendPeer:  sendPeerLazy,
@@ -1311,11 +1318,13 @@ if (typeof window !== 'undefined' && window.nkn) {
       // delay so NKN's HI handshake settles first (otherwise the
       // first sendPeerMessage to each new peer trips "send HI first").
       //
-      // ε.2 — strategy-routed catch-up substrate at
-      // src/v2/catchUpStrategy.js is now available.  Wire it in once
-      // ε.1 (chatMessageInbox) lands — peer + pod paths both route
-      // inbound messages through the inbox so the strategy router
-      // doesn't multiply insertion points.  See
+      // ε.3 (2026-06-01) — `requestCatchUpFromKnownPeers` now routes
+      // each kring through `scheduleCatchUp(policy.pod)`.  classic.html
+      // doesn't wire policy/inbox here, so every kring falls back to
+      // the 'peer' strategy (bit-for-bit identical to today's path).
+      // When the launcher (circleApp.js) inherits this trigger it will
+      // pass `getCirclePolicy` + `inbox`, lighting up the pod path for
+      // shared-pod kringen automatically.  See
       // PLAN-canopy-chat-v2-circle.md Phase 9 / ε wave.
       setTimeout(() => {
         requestCatchUpFromKnownPeers().catch((err) =>
