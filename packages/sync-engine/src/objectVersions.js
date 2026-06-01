@@ -62,7 +62,20 @@
  * (callers don't see the budget, so adding one later is non-breaking).
  */
 
-import { sha256Of } from './versions.js';
+// Pure-JS FNV-1a 32-bit hash → hex.  Used as a content fingerprint for
+// dedup ONLY (not cryptographic).  Inlined to keep objectVersions.js
+// browser-friendly — pulling sha256Of from versions.js drags in
+// `node:crypto` via the eager `hashNode` adapter, which the vite build
+// can't externalise.  Collision risk is fine for per-key dedup of
+// consecutive saves; γ.3 hash is structural, not adversarial.
+export function fingerprintHex(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
 
 /** Per-key cap.  Matches versions.js's DEFAULT_VERSIONS_PER_FILE. */
 export const DEFAULT_OBJECT_VERSIONS_PER_KEY = 50;
@@ -106,7 +119,7 @@ export async function captureObjectVersion({ storage, key, value, now, retention
   // scope — the kring stores only ever pass normalised plain-object
   // policy/recipe/rules blobs.
   const serialised = JSON.stringify(value);
-  const sha = sha256Of(serialised);
+  const sha = fingerprintHex(serialised);
   const at  = typeof now === 'number' && Number.isFinite(now) ? now : Date.now();
 
   const list = await readListSafe(storage, key);
@@ -169,7 +182,7 @@ async function readListSafe(storage, key) {
     if (!e || typeof e !== 'object') continue;
     const ts = Number(e.ts);
     if (!Number.isFinite(ts)) continue;
-    if (typeof e.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(e.sha256)) continue;
+    if (typeof e.sha256 !== 'string' || !/^[0-9a-f]+$/.test(e.sha256)) continue;
     out.push({ ts, sha256: e.sha256, value: e.value === undefined ? null : e.value });
   }
   out.sort((a, b) => b.ts - a.ts);
