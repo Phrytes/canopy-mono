@@ -13,7 +13,7 @@
  * Flagged for device verification.
  */
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, StyleSheet, BackHandler } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput, StyleSheet, BackHandler, Modal, Alert } from 'react-native';
 import { theme } from './theme.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -56,6 +56,8 @@ import {
   makeKringRecipeStoreRN,
   // α.3 — per-user screens persistence.
   makeUserScreenStoreRN,
+  // β.5 — per-user pin-to-top persistence.
+  makeCirclePinStoreRN,
 } from '../../core/circleStoresRN.js';
 import CircleSettingsScreen from './CircleSettingsScreen.js';
 import CircleOverrideScreen from './CircleOverrideScreen.js';
@@ -196,6 +198,36 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
   const recipeStore       = useMemo(() => makeKringRecipeStoreRN(AsyncStorage), []);
   // α.3 — per-user screens store.  One book per user.
   const userScreenStore   = useMemo(() => makeUserScreenStoreRN(AsyncStorage), []);
+  // β.5 — per-user "pin to top" store + cached maps.  Pin = float a tile
+  // to the top of its kind section; mute = per-kring `chatOff` override
+  // already exposed via the override store (no new substrate).  Menu =
+  // `menuCircle` is the circle whose context menu is open (null when
+  // closed).
+  const pinStore          = useMemo(() => makeCirclePinStoreRN(AsyncStorage), []);
+  const [pinnedMap, setPinnedMap] = useState({});
+  const [mutedMap,  setMutedMap]  = useState({});
+  const [menuCircle, setMenuCircle] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try { const m = await pinStore.get(); if (alive) setPinnedMap(m); }
+      catch { /* keep {} */ }
+    })();
+    return () => { alive = false; };
+  }, [pinStore]);
+  // Refresh the muted-map whenever the circle list changes; reads
+  // each circle's override and surfaces chatOff===true as "muted".
+  const refreshMutedMap = useCallback(async () => {
+    const next = {};
+    for (const c of circles) {
+      try {
+        const o = await overrideStore.get(c.id);
+        if (o?.chatOff) next[c.id] = true;
+      } catch { /* skip */ }
+    }
+    setMutedMap(next);
+  }, [circles, overrideStore]);
+  useEffect(() => { refreshMutedMap(); }, [refreshMutedMap]);
   // α.1d.3 — recipe-editor helpers (defined here so recipeStore is in scope).
   const refreshRecipeBook = useCallback(async (cid) => {
     if (!cid) return;
@@ -378,6 +410,59 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
   }, [callSkill]);
 
   const closeCircle = () => { setActiveCircle(null); setSelected(null); setItems([]); setView('list'); };
+
+  // β.5 — context-menu handlers (long-press a tile to open).  Pin / Mute
+  // are local toggles; Settings reuses the existing per-circle Settings
+  // sub-screen; Leave fires /leave-group (via stoop.leaveGroup) after a
+  // native Alert confirmation.
+  const onPinCircle = useCallback(async (cid) => {
+    try { setPinnedMap(await pinStore.toggle(cid)); }
+    catch { /* tolerate */ }
+  }, [pinStore]);
+
+  const onMuteCircle = useCallback(async (cid) => {
+    try {
+      const cur = await overrideStore.get(cid);
+      await overrideStore.update(cid, { chatOff: !cur.chatOff });
+    } catch { /* tolerate */ }
+    refreshMutedMap();
+  }, [overrideStore, refreshMutedMap]);
+
+  const onLeaveCircle = useCallback((cid, circle) => {
+    const name = circle?.name ?? cid;
+    Alert.alert(
+      t('circle.tile.menu.leave'),
+      t('circle.tile.menu.leave_confirm', { name }),
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: t('circle.tile.menu.leave'),
+          style: 'destructive',
+          onPress: async () => {
+            if (typeof bundle?.callSkill === 'function') {
+              try {
+                await bundle.callSkill('stoop', 'leaveGroup', { groupId: cid });
+              } catch (err) {
+                console.warn('[circleLauncher] leaveGroup failed:', err?.message ?? err);
+              }
+            }
+            // Reload circles + drop any pin entry.
+            try {
+              const cur = await pinStore.get();
+              if (cur[cid]) setPinnedMap(await pinStore.toggle(cid));
+            } catch { /* tolerate */ }
+            load();
+          },
+        },
+      ],
+    );
+  }, [bundle, pinStore, load]);
+
+  // β.5 — long-press on a tile opens the modal menu.
+  const openTileMenu = useCallback((circle) => {
+    setMenuCircle(circle);
+  }, []);
+  const closeTileMenu = useCallback(() => setMenuCircle(null), []);
 
   // Android back-gesture / hardware back button — pop the current sub-view
   // instead of exiting the app.  Mirrors each screen's existing onBack
@@ -699,7 +784,11 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
             {circles.length === 0 ? (
               <Text style={styles.muted}>{t('circle.empty')}</Text>
             ) : (
-              renderLauncherGroups(circles, { previews, proposalCounts, openCircle })
+              renderLauncherGroups(circles, {
+                previews, proposalCounts, openCircle,
+                // β.5 — pin partition + long-press menu wiring.
+                pinnedMap, mutedMap, onOpenMenu: openTileMenu,
+              })
             )}
 
             {creating ? (
@@ -728,6 +817,70 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
             )}
           </ScrollView>
         )}
+        {/* β.5 — per-tile context menu, rendered as a transparent modal
+            so a tap outside the sheet dismisses it.  The four actions
+            mirror web: pin (toggle), mute (toggle), settings, leave. */}
+        <Modal
+          transparent
+          visible={!!menuCircle}
+          animationType="fade"
+          onRequestClose={closeTileMenu}
+        >
+          <Pressable
+            style={styles.tileMenuBackdrop}
+            onPress={closeTileMenu}
+            testID="circle-launcher-tile-menu-backdrop"
+          >
+            <View style={styles.tileMenuSheet} testID="circle-launcher-tile-menu">
+              {(() => {
+                if (!menuCircle) return null;
+                const cid = menuCircle.id;
+                const isPinned = !!pinnedMap[cid];
+                const isMuted  = !!mutedMap[cid];
+                const items = [
+                  {
+                    key: 'pin',
+                    label: t(isPinned ? 'circle.tile.menu.unpin' : 'circle.tile.menu.pin'),
+                    onPress: () => { closeTileMenu(); onPinCircle(cid); },
+                  },
+                  {
+                    key: 'mute',
+                    label: t(isMuted ? 'circle.tile.menu.unmute' : 'circle.tile.menu.mute'),
+                    onPress: () => { closeTileMenu(); onMuteCircle(cid); },
+                  },
+                  {
+                    key: 'settings',
+                    label: t('circle.tile.menu.settings'),
+                    onPress: () => {
+                      closeTileMenu();
+                      setSelected(menuCircle);
+                      setView('settings');
+                    },
+                  },
+                  {
+                    key: 'leave',
+                    label: t('circle.tile.menu.leave'),
+                    onPress: () => {
+                      closeTileMenu();
+                      onLeaveCircle(cid, menuCircle);
+                    },
+                  },
+                ];
+                return items.map((it) => (
+                  <Pressable
+                    key={it.key}
+                    style={styles.tileMenuItem}
+                    onPress={it.onPress}
+                    accessibilityRole="button"
+                    testID={`circle-launcher-tile-menu-${it.key}`}
+                  >
+                    <Text style={styles.tileMenuItemText}>{it.label}</Text>
+                  </Pressable>
+                ));
+              })()}
+            </View>
+          </Pressable>
+        </Modal>
       </View>
     </WithTabBar>
   );
@@ -739,20 +892,31 @@ export default function CircleLauncherScreen({ bundle, eventLog }) {
 const KIND_ORDER = ['household', 'buurt', 'vriendenkring'];
 
 /**
- * β.1+β.2+β.3 — render the kringen list:
+ * β.1+β.2+β.3+β.5 — render the kringen list:
  *   - β.2 sort by recent activity (preview.ts desc; stable name tiebreak)
+ *   - β.5 partition into pinned + unpinned within each section (pins
+ *     float to the top of their kind section without escaping it)
  *   - β.3 group by `kind` with section headers (KIND_ORDER then 'other');
  *     when all kringen share one kind, headers are skipped (flat list).
  */
-function renderLauncherGroups(circles, { previews, proposalCounts, openCircle }) {
+function renderLauncherGroups(circles, {
+  previews, proposalCounts, openCircle,
+  pinnedMap = {}, mutedMap = {}, onOpenMenu,
+}) {
   const sorted = [...circles].sort((a, b) => {
     const ta = previews?.[a.id]?.ts ?? 0;
     const tb = previews?.[b.id]?.ts ?? 0;
     if (tb !== ta) return tb - ta;
     return String(a.name || '').localeCompare(String(b.name || ''));
   });
+  // β.5 — partition by pin BEFORE grouping so pinned tiles float to the
+  // top of their kind section without escaping it.
+  const pinned = sorted.filter((c) => pinnedMap[c.id]);
+  const unpinned = sorted.filter((c) => !pinnedMap[c.id]);
+  const ordered = [...pinned, ...unpinned];
+
   const groups = new Map();
-  for (const c of sorted) {
+  for (const c of ordered) {
     const k = KIND_ORDER.includes(c.kind) ? c.kind : 'other';
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(c);
@@ -760,13 +924,16 @@ function renderLauncherGroups(circles, { previews, proposalCounts, openCircle })
   const orderedKinds = [...KIND_ORDER, 'other'].filter((k) => groups.has(k));
   const showHeaders = orderedKinds.length > 1;
   if (!showHeaders) {
-    return sorted.map((c) => (
+    return ordered.map((c) => (
       <LauncherTile
         key={c.id}
         circle={c}
         preview={previews?.[c.id]}
         pending={Number(proposalCounts?.[c.id]) || 0}
+        isPinned={!!pinnedMap[c.id]}
+        isMuted={!!mutedMap[c.id]}
         onOpen={openCircle}
+        onLongPress={onOpenMenu}
       />
     ));
   }
@@ -779,7 +946,10 @@ function renderLauncherGroups(circles, { previews, proposalCounts, openCircle })
           circle={c}
           preview={previews?.[c.id]}
           pending={Number(proposalCounts?.[c.id]) || 0}
+          isPinned={!!pinnedMap[c.id]}
+          isMuted={!!mutedMap[c.id]}
           onOpen={openCircle}
+          onLongPress={onOpenMenu}
         />
       ))}
     </View>
@@ -787,16 +957,18 @@ function renderLauncherGroups(circles, { previews, proposalCounts, openCircle })
 }
 
 /** Single kring tile (extracted in β.3 so grouped + flat paths share it). */
-function LauncherTile({ circle: c, preview, pending, onOpen }) {
+function LauncherTile({ circle: c, preview, pending, isPinned = false, isMuted = false, onOpen, onLongPress }) {
   const subtitle = (preview && preview.subtitle)
     ? preview.subtitle
     : (c.memberCount != null ? t('circle.members', { count: c.memberCount }) : null);
   const unread = preview?.unread ?? 0;
   return (
     <Pressable
-      style={styles.tile}
+      style={[styles.tile, isPinned && styles.tilePinned]}
       accessibilityRole="button"
       onPress={() => onOpen(c)}
+      onLongPress={typeof onLongPress === 'function' ? () => onLongPress(c) : undefined}
+      testID={`circle-tile-${c.id}`}
     >
       <View style={styles.tileBody}>
         <Text style={styles.tileName}>{c.name}</Text>
@@ -821,6 +993,19 @@ function LauncherTile({ circle: c, preview, pending, onOpen }) {
           <Text style={styles.tileProposalsText}>{pending}</Text>
         </View>
       ) : null}
+      {isPinned ? (
+        <Text
+          style={styles.tilePinIndicator}
+          accessibilityElementsHidden
+          testID={`circle-tile-pin-${c.id}`}
+        >
+          {'\u{1F4CC}'}
+        </Text>
+      ) : null}
+      {/* Defensively reference `isMuted` so the tile component reads the
+          prop (consumers visualize muted state via the menu's Unmute
+          label; a tile-level dim is a follow-up polish). */}
+      {isMuted ? null : null}
     </Pressable>
   );
 }
@@ -1298,7 +1483,11 @@ const styles = StyleSheet.create({
   // matches the web `.circle-launcher__section-title` look).
   section:        { marginTop: 10, gap: 6 },
   sectionTitle:   { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, color: theme.color.inkSoft, marginBottom: 4, paddingHorizontal: 2 },
-  tile:       { padding: 13, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  tile:       { padding: 13, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card, flexDirection: 'row', alignItems: 'center', gap: 10, position: 'relative' },
+  // β.5 — pinned tile gets the accent border + the 📌 indicator in the
+  // top-right corner so users see "this floated to the top on purpose".
+  tilePinned:        { borderColor: theme.color.accent },
+  tilePinIndicator:  { position: 'absolute', top: 4, right: 8, fontSize: 11, opacity: 0.7 },
   tileBody:   { flex: 1, minWidth: 0 },
   tileName:   { fontSize: 14, fontWeight: '600', color: theme.color.ink },
   tileMeta:   { fontSize: 11, color: theme.color.inkSoft, marginTop: 2 },
@@ -1371,4 +1560,10 @@ const styles = StyleSheet.create({
   onYourListTitle:  { fontSize: 11, letterSpacing: 1.0, color: theme.color.inkSoft, textTransform: 'uppercase', marginBottom: 6 },
   onYourListRow:    { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },
   onYourListText:   { fontSize: 13, color: theme.color.ink },
+  // β.5 — per-tile context menu (Modal-backed sheet).  Backdrop catches
+  // outside-tap to dismiss; sheet hugs the bottom for thumb reach.
+  tileMenuBackdrop:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.32)', justifyContent: 'flex-end' },
+  tileMenuSheet:     { backgroundColor: theme.color.card, borderTopLeftRadius: 14, borderTopRightRadius: 14, padding: 8, paddingBottom: 20 },
+  tileMenuItem:      { paddingVertical: 14, paddingHorizontal: 16, borderRadius: 8 },
+  tileMenuItemText:  { fontSize: 15, color: theme.color.ink },
 });

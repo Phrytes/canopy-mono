@@ -60,6 +60,8 @@ export {
   createMemberOverrideStore, localStorageOverrideIo,
   podPolicyIo, tieredPolicyIo,
 } from './v2/circlePolicyStore.js';
+// β.5 — "pin to top" per-user preference (single keyless map of circleId → true).
+export { createCirclePinStore, localStoragePinIo } from './v2/circlePinStore.js';
 export { makeProposal, approveProposal, pendingApprovers } from './v2/circleConsensus.js';
 // P6.2 — persistence layer for multi-admin proposals.
 export { createProposalStore, localStorageProposalIo } from './v2/circleProposalStore.js';
