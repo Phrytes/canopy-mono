@@ -63,6 +63,15 @@ export function renderCircleKring(container, {
   // null = host hasn't loaded yet (show empty-state placeholder);
   // [] = book is empty; [...] = render each block via circleScreen.
   screenBlocks = null,
+  // δ.2 — optimistic-send delivery state hook.
+  //   `deliveryStateFor(msgId)` returns 'pending' | 'sent' | 'failed' | null
+  //   `localActor`              actor stamp for locally-sent messages — only
+  //                             these get a delivery icon
+  //   `onRetryDelivery(msgId)`  tap-to-retry callback for 'failed' icons
+  // All three are optional; when missing the bubbles render exactly as before.
+  deliveryStateFor = null,
+  localActor = null,
+  onRetryDelivery = null,
   t,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -194,7 +203,10 @@ export function renderCircleKring(container, {
         body.appendChild(renderDayDivider(row.ts, tr));
         lastDayKey = dayKey;
       }
-      body.appendChild(renderBubble(row, { tr, onAction }));
+      body.appendChild(renderBubble(row, {
+        tr, onAction,
+        deliveryStateFor, localActor, onRetryDelivery,
+      }));
     }
   }
   container.appendChild(body);
@@ -265,7 +277,11 @@ export function renderCircleKring(container, {
  * Internals
  * ────────────────────────────────────────────────────────────────── */
 
-function renderBubble(row, { tr, onAction } = {}) {
+function renderBubble(row, {
+  tr, onAction,
+  // δ.2 — delivery-icon plumbing; all three are optional.
+  deliveryStateFor = null, localActor = null, onRetryDelivery = null,
+} = {}) {
   const el = document.createElement('div');
   el.className = 'circle-kring__bubble';
   el.dataset.rowId = row.id ?? '';
@@ -312,6 +328,44 @@ function renderBubble(row, { tr, onAction } = {}) {
       actRow.appendChild(btn);
     }
     el.appendChild(actRow);
+  }
+
+  // δ.2 — delivery-state icon for locally-sent chat messages.  Only
+  // surfaces when (a) the host supplied a lookup, (b) the row's actor
+  // matches the local actor stamp, and (c) the bubble is a chat-message
+  // (other row kinds — buurt-post mirrors etc. — never have delivery
+  // state).  The happy path ('sent' / null) renders nothing so it
+  // doesn't clutter the timeline.
+  if (
+    typeof deliveryStateFor === 'function'
+    && localActor != null
+    && row?.actor === localActor
+    && (row?.type === 'chat-message' || row?.event?.type === 'chat-message')
+  ) {
+    const state = deliveryStateFor(row.id);
+    if (state === 'pending') {
+      const ic = document.createElement('span');
+      ic.className = 'circle-kring__bubble-delivery circle-kring__bubble-delivery--pending';
+      ic.dataset.deliveryState = 'pending';
+      ic.setAttribute('role', 'status');
+      ic.setAttribute('aria-label', tr('circle.chat.delivery.pending'));
+      ic.title = tr('circle.chat.delivery.pending');
+      ic.textContent = '⏱';
+      el.appendChild(ic);
+    } else if (state === 'failed') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'circle-kring__bubble-delivery circle-kring__bubble-delivery--failed';
+      btn.dataset.deliveryState = 'failed';
+      btn.setAttribute('aria-label', tr('circle.chat.delivery.failed'));
+      btn.title = tr('circle.chat.delivery.failed');
+      btn.textContent = '⚠';
+      btn.addEventListener('click', () => {
+        if (typeof onRetryDelivery === 'function') onRetryDelivery(row.id);
+      });
+      el.appendChild(btn);
+    }
+    // 'sent' (and null) intentionally render nothing — happy path.
   }
 
   return el;

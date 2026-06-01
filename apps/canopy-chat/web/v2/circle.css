@@ -413,6 +413,12 @@
 .circle-kring__bubble-actions { display: flex; gap: 6px; margin-top: 8px; }
 .circle-kring__bubble-action { padding: 4px 10px; font: inherit; font-size: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); cursor: pointer; }
 .circle-kring__bubble-action:hover { border-color: var(--accent); }
+/* δ.2 — per-message delivery state.  Pending = clock, Failed = warning (tap-to-retry).
+   Sent renders nothing (happy-path stays clean). */
+.circle-kring__bubble-delivery { display: inline-block; margin-top: 4px; font-size: 12px; line-height: 1; padding: 2px 6px; border-radius: 10px; }
+.circle-kring__bubble-delivery--pending { color: var(--ink-soft); background: transparent; }
+.circle-kring__bubble-delivery--failed  { color: #b8290f; background: #fbe9e3; border: 1px solid #f2c8b8; cursor: pointer; font: inherit; font-size: 12px; }
+.circle-kring__bubble-delivery--failed:hover { background: #f7d8cb; }
 .circle-kring__composer { display: flex; gap: 8px; align-items: center; padding: 10px 0 4px; border-top: 1px solid var(--line); margin-top: 4px; }
 .circle-kring__composer-input { flex: 1; padding: 10px 14px; font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: 22px; background: #fff; color: var(--ink); }
 .circle-kring__composer-input:focus { outline: none; border-color: var(--accent); }
