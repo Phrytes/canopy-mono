@@ -124,6 +124,124 @@ describe('ε.4 — Alice ⇄ Bob negotiated catch-up integration', () => {
     vi.useRealTimers();
   });
 
+  it("ε.6 — two providers (Alice + Carol) → Bob's chooseOffer picks Carol with mode='last-50'", async () => {
+    vi.useFakeTimers();
+    const router = new Map();
+    const send = async (toAddr, env) => {
+      const h = router.get(toAddr);
+      if (!h) throw new Error(`No handler for ${toAddr}`);
+      await Promise.resolve();
+      await h('from-other-side', env);
+    };
+
+    // Alice's stoop: 60 messages.  Carol's stoop: 80 messages (so
+    // last-50 truncates).
+    const aliceItems = Array.from({ length: 60 }, (_, i) => ({
+      subtype: 'kring-chat-message', circleId: 'g1', msgId: `A${i}`,
+      ts: 1000 + i, text: `alice-${i}`, fromActor: 'webid:alice',
+    }));
+    const carolItems = Array.from({ length: 80 }, (_, i) => ({
+      subtype: 'kring-chat-message', circleId: 'g1', msgId: `C${i}`,
+      ts: 2000 + i, text: `carol-${i}`, fromActor: 'webid:carol',
+    }));
+    const aliceCall = vi.fn(async (origin, op, args) => {
+      if (origin === 'stoop' && op === 'getMessagesSince') {
+        const sinceTs = Number.isFinite(args?.sinceTs) ? args.sinceTs : 0;
+        return { items: aliceItems.filter((it) => it.ts >= sinceTs), truncated: false };
+      }
+      return null;
+    });
+    const carolCall = vi.fn(async (origin, op, args) => {
+      if (origin === 'stoop' && op === 'getMessagesSince') {
+        const sinceTs = Number.isFinite(args?.sinceTs) ? args.sinceTs : 0;
+        return { items: carolItems.filter((it) => it.ts >= sinceTs), truncated: false };
+      }
+      return null;
+    });
+
+    // Tag each provider's outbound envelopes with `_origin` so Bob's
+    // router can pass the right fromAddr into onPeerMessage.  The
+    // real NKN transport carries `fromAddr` out-of-band; in this
+    // synthetic router we stamp the envelope itself.
+    const tagSend = (origin) => async (toAddr, env) => {
+      const tagged = { ...env, _origin: origin };
+      return send(toAddr, tagged);
+    };
+    const aliceProvider = makeCatchUpProviderHandler({
+      callSkill: aliceCall, sendToPeer: tagSend('nkn-Alice'),
+      chunkSize: 25, logger: silentLogger,
+    });
+    const carolProvider = makeCatchUpProviderHandler({
+      callSkill: carolCall, sendToPeer: tagSend('nkn-Carol'),
+      chunkSize: 25, logger: silentLogger,
+    });
+
+    // Bob: prompt mode; chooseOffer stub picks Carol with 'last-50'.
+    const bobInboxCalls = [];
+    const bobInbox = {
+      async ingestChatMessage(env, opts) {
+        bobInboxCalls.push({ env, opts });
+        return { result: 'inserted' };
+      },
+    };
+    const chooseOffer = vi.fn(async (offers) => {
+      const carol = offers.find((o) => o.from === 'nkn-Carol');
+      return { accept: { offerFrom: carol.from, mode: 'last-50' } };
+    });
+    const bobReceiver = makeCatchUpReceiver({
+      sendToPeer: (a, e) => send(a, e),
+      inbox: bobInbox,
+      offerWindowMs: 50,
+      chunkTimeoutMs: 2000,
+      getChooserMode: () => 'prompt',
+      chooseOffer,
+      logger: silentLogger,
+    });
+
+    router.set('nkn-Alice', async (_from, payload) => {
+      if (payload?.subtype === 'catch-up-request') return aliceProvider.handler('nkn-Bob', payload);
+      if (payload?.subtype === 'catch-up-accept')  return aliceProvider.onAccept('nkn-Bob', payload);
+    });
+    router.set('nkn-Carol', async (_from, payload) => {
+      if (payload?.subtype === 'catch-up-request') return carolProvider.handler('nkn-Bob', payload);
+      if (payload?.subtype === 'catch-up-accept')  return carolProvider.onAccept('nkn-Bob', payload);
+    });
+    router.set('nkn-Bob', async (_from, payload) => {
+      const fromAddr = payload?._origin ?? 'nkn-Alice';
+      return bobReceiver.onPeerMessage(fromAddr, payload);
+    });
+
+    const pending = bobReceiver.requestCatchUp({
+      circleId: 'g1', sinceTs: 0,
+      knownPeers: ['nkn-Alice', 'nkn-Carol'],
+      fromNknAddr: 'nkn-Bob',
+    });
+    for (let i = 0; i < 10; i += 1) await Promise.resolve();
+    vi.advanceTimersByTime(100);  // past offer window
+    for (let i = 0; i < 50; i += 1) await Promise.resolve();
+
+    const result = await pending;
+    expect(result.accepted).toBe(true);
+    expect(result.source).toBe('streamed');
+
+    // chooseOffer received both offers.
+    expect(chooseOffer).toHaveBeenCalledTimes(1);
+    const passedOffers = chooseOffer.mock.calls[0][0];
+    expect(passedOffers.map((o) => o.from).sort()).toEqual(['nkn-Alice', 'nkn-Carol']);
+
+    // Only Carol's last-50 messages reached Bob's inbox.
+    expect(bobInboxCalls).toHaveLength(50);
+    expect(bobInboxCalls.every((c) => c.opts.source === 'catchUp')).toBe(true);
+    // The 50 should be Carol's TAIL — items C30..C79.
+    const ingestedMsgIds = bobInboxCalls.map((c) => c.env.msgId);
+    expect(ingestedMsgIds[0]).toBe('C30');
+    expect(ingestedMsgIds[49]).toBe('C79');
+    // No Alice items leaked in.
+    expect(ingestedMsgIds.some((m) => m.startsWith('A'))).toBe(false);
+
+    vi.useRealTimers();
+  });
+
   it('Alice has 0 items → Bob resolves no-offers (silent decline path)', async () => {
     vi.useFakeTimers();
     const router = new Map();

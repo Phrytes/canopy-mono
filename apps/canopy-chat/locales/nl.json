@@ -61,7 +61,17 @@
         "provider_send_all":       { "text": "Stuur alles",                                    "doc": "ε.5 — provider-side approve-with-mode action." },
         "provider_send_last_50":   { "text": "Stuur laatste 50",                               "doc": "ε.5 — provider-side approve-with-mode action." },
         "provider_send_last_7d":   { "text": "Stuur laatste 7 dagen",                          "doc": "ε.5 — provider-side approve-with-mode action." },
-        "provider_decline":        { "text": "Weigeren",                                       "doc": "ε.5 — provider-side decline action." }
+        "provider_decline":        { "text": "Weigeren",                                       "doc": "ε.5 — provider-side decline action." },
+        "chooser_title":           { "text": "Bijwerken in {{kring}}",                         "doc": "ε.6 — multi-offer chooser modal heading." },
+        "chooser_subtitle":        { "text": "{{count}} bronnen willen berichten sturen",      "doc": "ε.6 — chooser modal subheading." },
+        "chooser_msg_count":       { "text": "{{count}} berichten",                            "doc": "ε.6 — per-offer card: how many messages the source is offering." },
+        "chooser_size_kb":         { "text": "~{{kb}} KB",                                     "doc": "ε.6 — per-offer card: total size estimate." },
+        "chooser_recent":          { "text": "meest recent {{when}}",                          "doc": "ε.6 — per-offer card: relative time of the newest offered message." },
+        "chooser_all":             { "text": "Alles",                                          "doc": "ε.6 — per-offer accept button: send everything." },
+        "chooser_last_50":         { "text": "Laatste 50",                                     "doc": "ε.6 — per-offer accept button: tail 50 messages." },
+        "chooser_last_7d":         { "text": "Laatste 7 dagen",                                "doc": "ε.6 — per-offer accept button: last 7 days." },
+        "chooser_cancel":          { "text": "Annuleren",                                      "doc": "ε.6 — chooser modal global cancel." },
+        "chooser_unknown_provider":{ "text": "Onbekende bron",                                 "doc": "ε.6 — fallback name." }
       }
     },
     "tabs": {

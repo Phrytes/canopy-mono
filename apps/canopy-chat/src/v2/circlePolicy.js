@@ -14,11 +14,16 @@ export const CIRCLE_FEATURES = [
 ];
 
 export const CIRCLE_POLICY_ENUMS = {
-  view:         ['chat', 'screen', 'cross-stream'],
-  llmTool:      ['off', 'local', 'cloud'],
-  agents:       ['yes', 'admin-approval', 'no'],
-  revealPolicy: ['pairwise', 'open'],
-  pod:          ['none', 'shared', 'personal', 'hybrid'],
+  view:                 ['chat', 'screen', 'cross-stream'],
+  llmTool:              ['off', 'local', 'cloud'],
+  agents:               ['yes', 'admin-approval', 'no'],
+  revealPolicy:         ['pairwise', 'open'],
+  pod:                  ['none', 'shared', 'personal', 'hybrid'],
+  // ε.6 — per-kring chooser policy for negotiated catch-up.  'auto'
+  // (default) keeps the ε.4 first-offer-wins behaviour byte-for-byte;
+  // 'prompt' surfaces the multi-offer chooser modal so the user picks
+  // which source streams + at what mode ('all'|'last-50'|'last-7-days').
+  catchUpChooserMode:   ['auto', 'prompt'],
 };
 
 // Defaults match the "full Onderling" surface (board 2 strategy B): the
@@ -50,6 +55,10 @@ export const DEFAULT_CIRCLE_POLICY = {
   agents:           'admin-approval',
   revealPolicy:     'pairwise',
   pod:              'none',
+  // ε.6 — see CIRCLE_POLICY_ENUMS.catchUpChooserMode docstring above.
+  // Default 'auto' so existing kringen catch up byte-for-byte the same
+  // way ε.4 shipped.
+  catchUpChooserMode: 'auto',
   admins:           [],
   consensusRequired: false,
 };
@@ -92,12 +101,13 @@ export function normalizeCirclePolicy(stored = {}) {
     CIRCLE_POLICY_ENUMS[key].includes(p[key]) ? p[key] : DEFAULT_CIRCLE_POLICY[key];
   return {
     features,
-    view:         pickEnum('view'),
-    llmTool:      pickEnum('llmTool'),
-    agents:       pickEnum('agents'),
-    revealPolicy: pickEnum('revealPolicy'),
-    pod:          pickEnum('pod'),
-    admins:       Array.isArray(p.admins) ? p.admins.filter((x) => typeof x === 'string') : [],
+    view:               pickEnum('view'),
+    llmTool:            pickEnum('llmTool'),
+    agents:             pickEnum('agents'),
+    revealPolicy:       pickEnum('revealPolicy'),
+    pod:                pickEnum('pod'),
+    catchUpChooserMode: pickEnum('catchUpChooserMode'),
+    admins:             Array.isArray(p.admins) ? p.admins.filter((x) => typeof x === 'string') : [],
     consensusRequired:
       typeof p.consensusRequired === 'boolean' ? p.consensusRequired : DEFAULT_CIRCLE_POLICY.consensusRequired,
   };

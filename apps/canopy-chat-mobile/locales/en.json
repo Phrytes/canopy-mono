@@ -63,7 +63,17 @@
         "provider_send_all":       { "text": "Send all",                                       "doc": "ε.5 — provider-side approve-with-mode action." },
         "provider_send_last_50":   { "text": "Send last 50",                                   "doc": "ε.5 — provider-side approve-with-mode action." },
         "provider_send_last_7d":   { "text": "Send last 7 days",                               "doc": "ε.5 — provider-side approve-with-mode action." },
-        "provider_decline":        { "text": "Decline",                                        "doc": "ε.5 — provider-side decline action." }
+        "provider_decline":        { "text": "Decline",                                        "doc": "ε.5 — provider-side decline action." },
+        "chooser_title":           { "text": "Catch up on {{kring}}",                          "doc": "ε.6 — multi-offer chooser modal heading." },
+        "chooser_subtitle":        { "text": "{{count}} sources offered to send messages",     "doc": "ε.6 — chooser modal subheading." },
+        "chooser_msg_count":       { "text": "{{count}} messages",                             "doc": "ε.6 — per-offer card stats." },
+        "chooser_size_kb":         { "text": "~{{kb}} KB",                                     "doc": "ε.6 — per-offer card stats." },
+        "chooser_recent":          { "text": "most recent {{when}}",                           "doc": "ε.6 — per-offer card stats." },
+        "chooser_all":             { "text": "All",                                             "doc": "ε.6 — per-offer accept button." },
+        "chooser_last_50":         { "text": "Last 50",                                         "doc": "ε.6 — per-offer accept button." },
+        "chooser_last_7d":         { "text": "Last 7 days",                                    "doc": "ε.6 — per-offer accept button." },
+        "chooser_cancel":          { "text": "Cancel",                                          "doc": "ε.6 — chooser modal global cancel." },
+        "chooser_unknown_provider":{ "text": "Unknown source",                                 "doc": "ε.6 — fallback name." }
       }
     },
     "settings": {

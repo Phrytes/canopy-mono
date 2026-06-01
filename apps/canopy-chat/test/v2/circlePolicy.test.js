@@ -89,6 +89,35 @@ describe('circlePolicy · enabledFeatures (P6.1)', () => {
   });
 });
 
+describe('circlePolicy · ε.6 catchUpChooserMode', () => {
+  it("defaults to 'auto'", () => {
+    expect(DEFAULT_CIRCLE_POLICY.catchUpChooserMode).toBe('auto');
+    expect(normalizeCirclePolicy().catchUpChooserMode).toBe('auto');
+    expect(normalizeCirclePolicy({}).catchUpChooserMode).toBe('auto');
+  });
+
+  it("round-trips 'prompt'", () => {
+    const p = normalizeCirclePolicy({ catchUpChooserMode: 'prompt' });
+    expect(p.catchUpChooserMode).toBe('prompt');
+    // idempotent
+    expect(normalizeCirclePolicy(p).catchUpChooserMode).toBe('prompt');
+  });
+
+  it("invalid value falls back to 'auto'", () => {
+    expect(normalizeCirclePolicy({ catchUpChooserMode: 'bogus' }).catchUpChooserMode).toBe('auto');
+    expect(normalizeCirclePolicy({ catchUpChooserMode: 42 }).catchUpChooserMode).toBe('auto');
+    expect(normalizeCirclePolicy({ catchUpChooserMode: null }).catchUpChooserMode).toBe('auto');
+  });
+
+  it('merges through mergeCirclePolicy without disturbing other axes', () => {
+    const base = normalizeCirclePolicy({ pod: 'shared', llmTool: 'local' });
+    const next = mergeCirclePolicy(base, { catchUpChooserMode: 'prompt' });
+    expect(next.catchUpChooserMode).toBe('prompt');
+    expect(next.pod).toBe('shared');
+    expect(next.llmTool).toBe('local');
+  });
+});
+
 describe('circlePolicy · mergeCirclePolicy', () => {
   it('applies a patch over a base without dropping other features', () => {
     const base = normalizeCirclePolicy({ features: { noticeboard: true }, pod: 'shared' });

@@ -15,15 +15,32 @@
  *
  * State machine per requestId:
  *
- *     PENDING_OFFERS  ─(first valid offer arrives)─▶  ACCEPTED
- *     PENDING_OFFERS  ─(offerWindowMs elapses)────▶  TIMED_OUT
- *     ACCEPTED        ─(catch-up-end arrives)─────▶  DONE
- *     ACCEPTED        ─(chunkTimeoutMs idle)─────▶  TIMED_OUT
+ *     PENDING_OFFERS  ─(offerWindowMs elapses, 'auto')──────▶  ACCEPTED  (first offer)
+ *     PENDING_OFFERS  ─(offerWindowMs elapses, 'prompt')───▶  ACCEPTED  (user-picked offer)
+ *                                                             or DONE   (declined)
+ *     PENDING_OFFERS  ─(offerWindowMs elapses, 0 offers)──▶  TIMED_OUT (no-offers)
+ *     ACCEPTED        ─(catch-up-end arrives)─────────────▶  DONE
+ *     ACCEPTED        ─(chunkTimeoutMs idle)─────────────▶  TIMED_OUT
  *
- * V1 simplifications:
+ * V1 default ('auto'):
  *
- *   - First-offer-wins (no multi-offer chooser).  Later offers from
- *     other peers in the same window are ignored.
+ *   - First-offer-wins.  Later offers from other peers in the same
+ *     window are ignored.
+ *
+ * ε.6 — opt-in 'prompt' mode (`catchUpChooserMode: 'prompt'` per kring):
+ *
+ *   - All offers in the window are passed to the injected
+ *     `chooseOffer(offers, {circleId})` hook.  Resolution shape:
+ *       {accept: {offerFrom: nknAddr, mode: 'all'|'last-50'|'last-7-days'}}
+ *       {decline: true}
+ *       null  — same as decline (UI dismiss / timeout)
+ *   - chooseOffer rejection is treated as decline.
+ *   - The chooser may take seconds — the chunk-timeout window only
+ *     starts AFTER the accept envelope is sent, so a slow-thinking user
+ *     doesn't lose the offer.
+ *
+ * V1 simplifications carried forward:
+ *
  *   - Receiver doesn't send a decline envelope to losing providers —
  *     they're silent on their end too.
  *   - Duplicate chunks (same requestId + seq) are deduped on the way
@@ -41,6 +58,7 @@
  *     { phase: 'streaming',          circleId, count: n, total: t }
  *     { phase: 'done',               circleId, count: n }
  *     { phase: 'no-offers',          circleId }
+ *     { phase: 'declined',           circleId }   (ε.6 — user-picked decline)
  *     { phase: 'timed-out',          circleId, reason: 'chunk' | 'offer' }
  */
 
@@ -65,6 +83,17 @@ const DEFAULT_CHUNK_TIMEOUT_MS = 10_000;
  * @param {number} [args.chunkTimeoutMs]                         default 10_000.
  * @param {(status: object) => void} [args.emitStatus]           "Catching up…" hook.
  * @param {() => string} [args.makeId]                           override makeRequestId (tests).
+ * @param {(circleId: string) => 'auto'|'prompt'} [args.getChooserMode]
+ *   ε.6 — opt-in per-kring chooser mode. Defaults to () => 'auto'.
+ *   When the kring is in 'prompt' mode AND chooseOffer is wired, the
+ *   coordinator awaits the user's pick instead of auto-accepting the
+ *   first offer.
+ * @param {(offers: Array<{from: string, offer: object}>, ctx: {circleId: string})
+ *   => Promise<{accept: {offerFrom: string, mode: 'all'|'last-50'|'last-7-days'}}|{decline: true}|null>}
+ *   [args.chooseOffer]
+ *   ε.6 — multi-offer chooser hook. Called when the offer window
+ *   elapses with ≥1 offer AND getChooserMode(circleId) === 'prompt'.
+ *   Returning `null` (or rejecting) is treated as a decline.
  * @param {{info?, warn?, error?, debug?}} [args.logger]
  *
  * @returns {{
@@ -81,6 +110,8 @@ export function makeCatchUpReceiver({
   chunkTimeoutMs  = DEFAULT_CHUNK_TIMEOUT_MS,
   emitStatus      = null,
   makeId          = makeRequestId,
+  getChooserMode  = null,
+  chooseOffer     = null,
   logger          = console,
 } = {}) {
   if (typeof sendToPeer !== 'function')          throw new Error('makeCatchUpReceiver: sendToPeer required');
@@ -133,9 +164,14 @@ export function makeCatchUpReceiver({
   }
 
   /**
-   * The offer window has elapsed.  If at least one valid offer was
-   * received, accept the FIRST one and transition to ACCEPTED.
-   * Otherwise resolve as no-offers.
+   * The offer window has elapsed.  Branches:
+   *
+   *   - 0 offers → resolve as no-offers (legacy path).
+   *   - ≥1 offer + 'prompt' mode + chooseOffer wired → await user pick.
+   *   - else (default 'auto') → first-offer-wins, mode 'all' (legacy path).
+   *
+   * Byte-for-byte parity for the 'auto' default — the prompt branch
+   * is purely additive.
    */
   async function onOfferWindowElapsed(requestId) {
     const entry = state.get(requestId);
@@ -153,13 +189,92 @@ export function makeCatchUpReceiver({
       });
       return;
     }
-    // First-offer-wins.
-    const winner = entry.offers[0];
+
+    // ε.6 — consult the per-kring chooser-mode policy.  Default 'auto'
+    // keeps the byte-for-byte first-offer-wins behaviour.
+    let chooserMode = 'auto';
+    try {
+      if (typeof getChooserMode === 'function') {
+        const m = getChooserMode(entry.circleId);
+        if (m === 'prompt') chooserMode = 'prompt';
+      }
+    } catch (err) {
+      logger.warn?.('[catch-up] getChooserMode threw', err?.message ?? err);
+    }
+
+    if (chooserMode === 'prompt' && typeof chooseOffer === 'function') {
+      // Hand the full offer list to the UI.  The chooser may take
+      // seconds; we DO NOT start the chunk timer yet (it begins when
+      // the accept is sent so the user isn't penalised for thinking).
+      let decision = null;
+      try {
+        decision = await chooseOffer(
+          entry.offers.map((o) => ({ from: o.from, offer: o.offer })),
+          { circleId: entry.circleId },
+        );
+      } catch (err) {
+        // Reject = decline (defensive — UI errors shouldn't dangle).
+        logger.warn?.('[catch-up] chooseOffer threw', err?.message ?? err);
+        decision = { decline: true };
+      }
+
+      // Re-check the entry: a chunkTimer or other terminal path might
+      // have cleared it while the user was thinking. Unlikely (the
+      // chunk timer only starts post-accept) but defensive.
+      const refreshed = state.get(requestId);
+      if (!refreshed || refreshed.status !== 'PENDING_OFFERS') return;
+
+      // null / { decline: true } / anything not an accept envelope → decline.
+      const acceptPick = decision && typeof decision === 'object' && decision.accept;
+      if (!acceptPick || typeof acceptPick.offerFrom !== 'string' || !acceptPick.offerFrom) {
+        refreshed.status = 'DONE';
+        safeEmit({ phase: 'declined', circleId: refreshed.circleId });
+        finalize(requestId, {
+          strategy: 'negotiated',
+          accepted: false,
+          count: 0,
+          source: 'declined',
+          requestId,
+        });
+        return;
+      }
+
+      // Look up the matching offer; reject silently if the addr the
+      // chooser returned isn't one of the collected offers.
+      const matched = refreshed.offers.find((o) => o.from === acceptPick.offerFrom);
+      if (!matched) {
+        logger.warn?.('[catch-up] chooseOffer returned unknown offerFrom', acceptPick.offerFrom);
+        refreshed.status = 'DONE';
+        safeEmit({ phase: 'declined', circleId: refreshed.circleId });
+        finalize(requestId, {
+          strategy: 'negotiated',
+          accepted: false,
+          count: 0,
+          source: 'declined',
+          requestId,
+        });
+        return;
+      }
+      const mode = typeof acceptPick.mode === 'string' ? acceptPick.mode : 'all';
+      await acceptOffer(requestId, refreshed, matched, mode);
+      return;
+    }
+
+    // 'auto' / no chooser wired → first-offer-wins, mode 'all' (legacy).
+    await acceptOffer(requestId, entry, entry.offers[0], 'all');
+  }
+
+  /**
+   * Common tail used by both branches: flip to ACCEPTED, start the
+   * chunk timer, emit streaming status, and fire the accept envelope.
+   */
+  async function acceptOffer(requestId, entry, winner, mode) {
     entry.status         = 'ACCEPTED';
     entry.acceptedFrom   = winner.from;
     entry.expectedTotal  = winner.offer.count;
 
-    // Chunk timeout: reset on every arriving chunk.
+    // Chunk timeout: reset on every arriving chunk.  Started AFTER the
+    // chooser resolves so a slow user doesn't time us out.
     entry.chunkTimer = setTimeout(() => {
       const e2 = state.get(requestId);
       if (!e2) return;
@@ -185,7 +300,7 @@ export function makeCatchUpReceiver({
     try {
       await sendToPeer(winner.from, buildAccept({
         requestId,
-        mode: 'all',
+        mode,
       }));
     } catch (err) {
       logger.warn?.('[catch-up] send accept failed', err?.message ?? err);

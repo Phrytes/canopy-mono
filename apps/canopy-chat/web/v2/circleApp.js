@@ -55,6 +55,9 @@ import { materializeScreen } from '../../src/v2/userScreenBlocks.js';
 import { renderCircleKring } from './circleKring.js';
 import { renderCircleScreen } from './circleScreen.js';
 import { renderRecipeEditor } from './circleRecipeEditor.js';
+// ε.6 — multi-offer catch-up chooser modal (opt-in via
+// policy.catchUpChooserMode === 'prompt').
+import { renderCatchUpChooser } from './catchUpChooserModal.js';
 import { renderScreensPicker } from './circleScreensPicker.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '../../src/v2/circleHop.js';
@@ -1350,6 +1353,40 @@ async function boot() {
         sendToPeer: sendToPeerForCU,
         inbox:      kringChatInbox,
         emitStatus: (status) => emitCatchUpStatus(status),
+        // ε.6 — opt-in multi-offer chooser.  Reads
+        // `policy.catchUpChooserMode` synchronously from localStorage
+        // (where `localStoragePolicyIo` writes its JSON).  The async
+        // policyStore.get() would need to be awaited inside a non-async
+        // hook signature; reading localStorage directly is cheap and
+        // matches the same source-of-truth the store reads.
+        getChooserMode: (groupId) => {
+          try {
+            const raw = (typeof window !== 'undefined' && window.localStorage)
+              ? window.localStorage.getItem(`cc.circlePolicy.${groupId}`)
+              : null;
+            if (!raw) return 'auto';
+            const parsed = JSON.parse(raw);
+            return parsed?.catchUpChooserMode === 'prompt' ? 'prompt' : 'auto';
+          } catch { return 'auto'; }
+        },
+        chooseOffer: (offers, { circleId }) => new Promise((resolve) => {
+          const circle = circlesCache.find((c) => c.id === circleId);
+          const overlay = document.createElement('div');
+          document.body.appendChild(overlay);
+          renderCatchUpChooser(overlay, {
+            offers,
+            circleId,
+            circleName: circle?.name ?? circleId,
+            // V1 contact-resolver: short-addr fallback is fine here —
+            // member-directory resolution lands in a follow-up slice.
+            resolveContact: null,
+            t,
+            onResolve: (decision) => {
+              try { overlay.remove(); } catch { /* defensive */ }
+              resolve(decision);
+            },
+          });
+        }),
         logger:     console,
       });
       const catchUpProvider = makeCatchUpProviderHandler({
