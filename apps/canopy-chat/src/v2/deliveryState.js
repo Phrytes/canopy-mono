@@ -37,6 +37,17 @@
  * @property {(msgId: string) => boolean} clear
  *   Convenience: equivalent to `set(msgId, null)`.  Returns `true`
  *   if an entry was actually removed.
+ * @property {() => number} pruneSent
+ *   Drop every `'sent'` entry from the map.  Renderers treat `'sent'`
+ *   and `null` identically (no icon either way), so this is invisible
+ *   to the UI — its purpose is to keep the in-memory map from growing
+ *   unbounded over a long session of heavy chat.  Subscribers receive
+ *   one `(msgId, null)` notification per cleared entry.  Returns the
+ *   number of entries pruned.  Callers wire this on whatever cadence
+ *   makes sense (e.g. a `setInterval`, an EventLog prune hook, or
+ *   on-demand from the chat-shell).  Not auto-wired by the substrate
+ *   because the map dies with the agent boot anyway — growth is
+ *   bounded by session length even without pruning.
  * @property {() => number} size
  *   Number of tracked entries (post-clear).
  * @property {(fn: (msgId: string, state: DeliveryState) => void) => () => void} subscribe
@@ -84,6 +95,18 @@ export function createDeliveryStateMap() {
       map.delete(msgId);
       notify(msgId, null);
       return true;
+    },
+    pruneSent() {
+      // Collect IDs first so we don't mutate the Map while iterating.
+      const toClear = [];
+      for (const [id, st] of map.entries()) {
+        if (st === 'sent') toClear.push(id);
+      }
+      for (const id of toClear) {
+        map.delete(id);
+        notify(id, null);
+      }
+      return toClear.length;
     },
     size() { return map.size; },
     subscribe(fn) {

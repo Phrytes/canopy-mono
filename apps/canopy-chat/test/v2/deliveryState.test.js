@@ -132,4 +132,52 @@ describe('createDeliveryStateMap', () => {
     expect(m.get('c')).toBe('pending');
     expect(m.size()).toBe(3);
   });
+
+  describe('pruneSent', () => {
+    it('returns 0 when the map is empty', () => {
+      const m = createDeliveryStateMap();
+      expect(m.pruneSent()).toBe(0);
+      expect(m.size()).toBe(0);
+    });
+
+    it('drops only "sent" entries; pending + failed survive', () => {
+      const m = createDeliveryStateMap();
+      m.set('a', 'pending');
+      m.set('b', 'sent');
+      m.set('c', 'failed');
+      m.set('d', 'sent');
+      expect(m.size()).toBe(4);
+      expect(m.pruneSent()).toBe(2);
+      expect(m.size()).toBe(2);
+      expect(m.get('a')).toBe('pending');
+      expect(m.get('b')).toBe(null);
+      expect(m.get('c')).toBe('failed');
+      expect(m.get('d')).toBe(null);
+    });
+
+    it('notifies subscribers with (msgId, null) for each cleared entry', () => {
+      const m = createDeliveryStateMap();
+      m.set('a', 'sent');
+      m.set('b', 'sent');
+      m.set('c', 'pending');
+      const fn = vi.fn();
+      m.subscribe(fn);
+      m.pruneSent();
+      expect(fn).toHaveBeenCalledTimes(2);
+      const calls = fn.mock.calls.map((args) => args.slice());
+      expect(calls).toContainEqual(['a', null]);
+      expect(calls).toContainEqual(['b', null]);
+    });
+
+    it('is a no-op when no entries are sent', () => {
+      const m = createDeliveryStateMap();
+      m.set('a', 'pending');
+      m.set('b', 'failed');
+      const fn = vi.fn();
+      m.subscribe(fn);
+      expect(m.pruneSent()).toBe(0);
+      expect(fn).not.toHaveBeenCalled();
+      expect(m.size()).toBe(2);
+    });
+  });
 });
