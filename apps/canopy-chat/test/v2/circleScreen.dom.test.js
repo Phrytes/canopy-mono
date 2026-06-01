@@ -208,6 +208,46 @@ describe('renderCircleScreen · α.5c — compact rows modifier', () => {
   });
 });
 
+describe('renderCircleScreen · δ.1 — refreshing pip', () => {
+  it('renders a .circle-screen__refreshing pip when refreshing:true on non-empty blocks', () => {
+    const el = mount();
+    renderCircleScreen(el, { blocks: [okText], t, refreshing: true });
+    const pip = el.querySelector('.circle-screen__refreshing');
+    expect(pip).not.toBeNull();
+    expect(pip.textContent).toBe('⟳');
+    expect(pip.title).toBe('circle.screen.refreshing');
+    expect(pip.getAttribute('aria-label')).toBe('circle.screen.refreshing');
+  });
+
+  it('omits the pip when refreshing is false (default)', () => {
+    const el = mount();
+    renderCircleScreen(el, { blocks: [okText], t });
+    expect(el.querySelector('.circle-screen__refreshing')).toBeNull();
+  });
+
+  it('omits the pip on the loading branch (blocks:null)', () => {
+    const el = mount();
+    renderCircleScreen(el, { blocks: null, t, refreshing: true });
+    expect(el.querySelector('.circle-screen__refreshing')).toBeNull();
+    expect(el.querySelector('.circle-screen__loading')).not.toBeNull();
+  });
+
+  it('omits the pip on the empty branch (blocks:[])', () => {
+    const el = mount();
+    renderCircleScreen(el, { blocks: [], t, refreshing: true });
+    expect(el.querySelector('.circle-screen__refreshing')).toBeNull();
+    expect(el.querySelector('.circle-screen__empty')).not.toBeNull();
+  });
+
+  it('re-renders idempotently: pip disappears when refreshing flips false', () => {
+    const el = mount();
+    renderCircleScreen(el, { blocks: [okText], t, refreshing: true });
+    expect(el.querySelectorAll('.circle-screen__refreshing').length).toBe(1);
+    renderCircleScreen(el, { blocks: [okText], t, refreshing: false });
+    expect(el.querySelector('.circle-screen__refreshing')).toBeNull();
+  });
+});
+
 describe('renderCircleScreen · α.1c.1 — status branches', () => {
   it('status:"empty" renders the per-block empty state', () => {
     const el = mount();

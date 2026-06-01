@@ -26,6 +26,8 @@ import { rehydrateKringChatsFromStoop } from '../../src/v2/kringChatRehydrate.js
 // γ-next.recipe — receiver + pending-cache substrate for the recipe broadcast.
 import { makeKringRecipePeerHandler } from '../../src/v2/kringRecipeReceiver.js';
 import { createKringRecipePendingStoreLocal } from '../../src/v2/kringRecipePendingStorage.js';
+// δ.1 — per-screen materialized-blocks cache (cache-first render + bg refresh).
+import { createScreenBlocksCacheLocal } from '../../src/v2/screenBlocksCacheStorage.js';
 import {
   createKringRecipeStore, localStorageRecipeIo, getActiveRecipe,
   addRecipe, renameRecipe, removeRecipe, setActiveRecipe,
@@ -147,6 +149,12 @@ const rulesStore  = createCircleRulesStore({ ...localStorageRulesIo(), versions:
 // `incomingRecipe` opt.  localStorage now; pod-sync swap is the
 // same shape as the other stores.
 const kringRecipePendingStore = createKringRecipePendingStoreLocal();
+// δ.1 — per-screen materialized-blocks cache.  The Schermen view-mode
+// reads this on open to render instantly while the fresh materialize
+// runs in the background; on result the view swaps + the cache
+// re-saves.  Survives reboots so cold-boot users see the previous
+// state immediately instead of a Loading… flash.
+const screenBlocksCache = createScreenBlocksCacheLocal();
 // α.3 — per-user screens store.  One book per user (not per-kring); the
 // active screen drives the new Schermen tab.
 const userScreenStore = createUserScreenStore({ io: localStorageScreenIo() });
@@ -426,6 +434,12 @@ let _screenSubMode = 'picker';
 let _viewingScreenId = null;
 let _screensBook = null;
 let _screenViewBlocks = null;
+// δ.1 — monotonically-increasing token for each `_showActiveScreen` call.
+// The async materialize compares its captured token against the latest
+// before mutating the DOM, so a slow materialize from screen-A can't
+// stomp the body once the user has navigated to screen-B (or back to
+// the picker).
+let _showActiveScreenToken = 0;
 
 async function showScreens() {
   showTabBar('screens');
@@ -519,13 +533,26 @@ async function _showActiveScreen() {
   title.textContent = screen.name || t('circle.screens.untitled');
   rootEl.appendChild(title);
 
-  // Render a loading placeholder immediately so the user sees feedback
-  // while materializeScreen runs.  Previously the body stayed blank
-  // between title and resolved content, which made the wait feel
-  // broken.  null sentinel → renderCircleScreen shows the loading hint.
+  // δ.1 — cache-first render: read the LAST materialized payload for this
+  // screen and paint immediately so the press feels instant.  On a cache
+  // miss we fall through to the existing Loading→fresh flow (null sentinel
+  // → renderCircleScreen shows the loading hint).  Either way the fresh
+  // materialize runs in the background; on result we swap in the result
+  // and re-save the cache.  Race-token guards against a stale materialize
+  // from a previously-open screen stomping the body once the user has
+  // navigated away.
   const body = document.createElement('div');
   rootEl.appendChild(body);
-  renderCircleScreen(body, { blocks: null, t });
+  const token = ++_showActiveScreenToken;
+  let cached = null;
+  try { cached = await screenBlocksCache.get(screen.id); } catch { /* ignore */ }
+  if (token !== _showActiveScreenToken || _viewingScreenId !== screen.id) return;
+  if (Array.isArray(cached)) {
+    _screenViewBlocks = cached;
+    renderCircleScreen(body, { blocks: cached, t, refreshing: true });
+  } else {
+    renderCircleScreen(body, { blocks: null, t });
+  }
 
   // Materialize blocks (with muted-kring filter when available later).
   let blocks = [];
@@ -541,8 +568,15 @@ async function _showActiveScreen() {
   } catch (err) {
     console.warn('[showScreens] materializeScreen failed', err);
   }
+  // Drop the result if the user navigated away (or to a different screen)
+  // while materialize was in flight — otherwise the body could be
+  // overwritten with stale content from a previously-open screen.
+  if (token !== _showActiveScreenToken || _viewingScreenId !== screen.id) return;
   _screenViewBlocks = blocks;
-  renderCircleScreen(body, { blocks, t });
+  renderCircleScreen(body, { blocks, t, refreshing: false });
+  // Save the fresh blocks back to the cache so the next open is also
+  // instant.  Best-effort: a quota / serialization failure is silent.
+  screenBlocksCache.set(screen.id, blocks).catch(() => { /* ignore */ });
 }
 
 function showStream() {

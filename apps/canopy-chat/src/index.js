@@ -108,6 +108,12 @@ export {
   createUserScreenStore, localStorageScreenIo,
 } from './v2/userScreens.js';
 export { materializeScreen } from './v2/userScreenBlocks.js';
+// δ.1 — per-screen materialized-blocks cache (cache-first render + bg refresh).
+export { createScreenBlocksCache } from './v2/screenBlocksCache.js';
+export {
+  createScreenBlocksCacheLocal,
+  localStorageScreenBlocksCacheIo,
+} from './v2/screenBlocksCacheStorage.js';
 // P6.3 — per-circle activity preview + unread count for launcher tiles.
 export { buildTilePreviews, renderSubtitle, bumpSeenAt } from './v2/circleTilePreviews.js';
 // P6.5 — claim router: mirror claimed tasks into the personal crew

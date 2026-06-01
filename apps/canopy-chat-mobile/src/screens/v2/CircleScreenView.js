@@ -27,7 +27,7 @@ import { View, Text, Image, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
 import { t } from '../../core/localisation.js';
 
-export default function CircleScreenView({ blocks = null }) {
+export default function CircleScreenView({ blocks = null, refreshing = false }) {
   // null = still materializing (host hasn't resolved yet).  Distinguish
   // from `[]` so the user sees a "Loading…" hint instead of the
   // "admin hasn't set up a screen yet" empty state — which is
@@ -48,6 +48,18 @@ export default function CircleScreenView({ blocks = null }) {
   }
   return (
     <View testID="circle-screen">
+      {/* δ.1 — refresh pip shown when rendering cached blocks while a
+         fresh materialize runs in the background.  Static glyph; muted
+         tone so it doesn't compete with the page body. */}
+      {refreshing ? (
+        <Text
+          style={styles.refreshing}
+          accessibilityLabel={t('circle.screen.refreshing')}
+          testID="circle-screen-refreshing"
+        >
+          {`⟳ ${t('circle.screen.refreshing')}`}
+        </Text>
+      ) : null}
       {blocks.map((block) => (
         <BlockSection key={block.blockId} block={block} />
       ))}
@@ -221,6 +233,8 @@ function pickRowText(row) {
 
 const styles = StyleSheet.create({
   empty:           { color: theme.color.inkSoft, fontStyle: 'italic', textAlign: 'center', paddingVertical: 24, paddingHorizontal: 12 },
+  // δ.1 — refresh pip: muted, small, right-aligned above the block list.
+  refreshing:      { color: theme.color.inkSoft, fontSize: 11, opacity: 0.6, textAlign: 'right', marginBottom: 4 },
   block:           { padding: 14, marginBottom: 10, borderWidth: 1, borderColor: theme.color.line, borderRadius: 10, backgroundColor: theme.color.card },
   blockEmpty:      { backgroundColor: theme.color.paper2, borderColor: theme.color.line },
   blockEmptyText:  { color: theme.color.inkSoft, fontStyle: 'italic', fontSize: 13 },

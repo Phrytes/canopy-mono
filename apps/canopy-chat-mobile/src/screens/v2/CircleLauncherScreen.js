@@ -62,6 +62,8 @@ import {
   // AsyncStorage at the rules entry points up to β).
   makeCircleRulesStoreRN,
 } from '../../core/circleStoresRN.js';
+// δ.1 — per-screen materialized-blocks cache (cache-first render).
+import { makeScreenBlocksCacheRN } from '../../core/screenBlocksCacheStorageRN.js';
 import CircleSettingsScreen from './CircleSettingsScreen.js';
 import CircleOverrideScreen from './CircleOverrideScreen.js';
 import CircleAvailabilityScreen from './CircleAvailabilityScreen.js';
@@ -120,6 +122,9 @@ export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePend
   const [screensSubMode, setScreensSubMode] = useState('picker');
   const [viewingScreenId, setViewingScreenId] = useState(null);
   const [screenViewBlocks, setScreenViewBlocks] = useState(null);
+  // δ.1 — true while a fresh materialize runs after a cache-hit render.
+  // Drives the subtle refresh pip in CircleScreenView.
+  const [screenViewRefreshing, setScreenViewRefreshing] = useState(false);
   const [items, setItems] = useState([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -205,6 +210,11 @@ export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePend
   const recipeStore       = useMemo(() => makeKringRecipeStoreRN(AsyncStorage), []);
   // α.3 — per-user screens store.  One book per user.
   const userScreenStore   = useMemo(() => makeUserScreenStoreRN(AsyncStorage), []);
+  // δ.1 — per-screen materialized-blocks cache (cache-first render +
+  // background refresh).  Instantiated inline rather than threaded
+  // through App.js as a ref because this cache is purely a UI optimisation
+  // owned by the Schermen tab; no peer-receiver writes to it from outside.
+  const screenBlocksCache = useMemo(() => makeScreenBlocksCacheRN(AsyncStorage), []);
   // β.5 — per-user "pin to top" store + cached maps.  Pin = float a tile
   // to the top of its kind section; mute = per-kring `chatOff` override
   // already exposed via the override store (no new substrate).  Menu =
@@ -333,25 +343,54 @@ export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePend
   useEffect(() => {
     if (view !== 'screens' || screensSubMode !== 'view' || !viewingScreenId) {
       setScreenViewBlocks(null);
+      setScreenViewRefreshing(false);
       return;
     }
     const screen = screensBook.screens.find((s) => s.id === viewingScreenId);
-    if (!screen) { setScreenViewBlocks([]); return; }
+    if (!screen) { setScreenViewBlocks([]); setScreenViewRefreshing(false); return; }
+    // δ.1 — cache-first render: paint the last materialized payload
+    // immediately so the press feels instant, then materialize fresh
+    // in the background.  On a cache miss we keep the existing null →
+    // Loading… → fresh flow.  `alive` doubles as the race-token: if
+    // the user navigates away while materialize is in flight, drop
+    // the result.
     let alive = true;
     (async () => {
+      // Cache-first read.  Any failure → fall through to the cold path.
+      let cached = null;
+      try { cached = await screenBlocksCache.get(viewingScreenId); }
+      catch { /* ignore */ }
+      if (!alive) return;
+      if (Array.isArray(cached)) {
+        setScreenViewBlocks(cached);
+        setScreenViewRefreshing(true);
+      } else {
+        setScreenViewBlocks(null);
+        setScreenViewRefreshing(false);
+      }
       try {
         const blocks = await materializeScreen({
           screen,
           hostOps: { callSkill, eventLog, circles },
         });
-        if (alive) setScreenViewBlocks(blocks);
+        if (!alive) return;
+        setScreenViewBlocks(blocks);
+        setScreenViewRefreshing(false);
+        // Best-effort: write the fresh blocks back so the next open is
+        // also instant.  Quota / serialisation failures are silent.
+        screenBlocksCache.set(viewingScreenId, blocks).catch(() => { /* ignore */ });
       } catch (err) {
         console.warn('[screens] materialize failed:', err?.message ?? err);
-        if (alive) setScreenViewBlocks([]);
+        if (!alive) return;
+        // Keep the cached payload visible on materialize failure rather
+        // than blanking the screen; just stop the pip.  If there was no
+        // cache to begin with, fall back to the empty array.
+        setScreenViewRefreshing(false);
+        if (!Array.isArray(cached)) setScreenViewBlocks([]);
       }
     })();
     return () => { alive = false; };
-  }, [view, screensSubMode, viewingScreenId, screensBook, callSkill, eventLog, circles]);
+  }, [view, screensSubMode, viewingScreenId, screensBook, callSkill, eventLog, circles, screenBlocksCache]);
 
   const callSkill = useMemo(
     () => (bundle?.callSkill ? makeResolvingCallSkill(bundle.callSkill) : null),
@@ -607,7 +646,7 @@ export default function CircleLauncherScreen({ bundle, eventLog, kringRecipePend
               {screen?.name || t('circle.screens.untitled')}
             </Text>
             <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-              <CircleScreenView blocks={screenViewBlocks} />
+              <CircleScreenView blocks={screenViewBlocks} refreshing={screenViewRefreshing} />
             </ScrollView>
           </View>
         </WithTabBar>
