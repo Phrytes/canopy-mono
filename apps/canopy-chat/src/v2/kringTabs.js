@@ -70,3 +70,36 @@ export function buildKringTabs(policy, t) {
 
 /** Always-safe default tab id (GESPREK). */
 export const DEFAULT_KRING_TAB = 'gesprek';
+
+// D1 (§5A) — feature key → locale key for the quickActions pill labels.
+// Covers all 8 CIRCLE_FEATURES; the 7 tab features reuse their tab label,
+// and the two non-tab features (houseRules, memberDirectory) borrow their
+// Settings labels.  `featureActionLabelKey(feature)` falls back to the
+// raw key so an unknown feature still renders something.
+const FEATURE_LABEL_KEYS = Object.freeze({
+  chat:            'circle.tabs.gesprek',
+  noticeboard:     'circle.tabs.prikbord',
+  tasks:           'circle.tabs.taken',
+  lists:           'circle.tabs.lijsten',
+  notes:           'circle.tabs.notities',
+  calendar:        'circle.tabs.agenda',
+  memberDirectory: 'circle.tabs.leden',
+  houseRules:      'circle.settings.feat.houseRules',
+});
+
+/** D1 — locale key for a feature's quickActions pill label (raw key if unknown). */
+export function featureActionLabelKey(feature) {
+  return FEATURE_LABEL_KEYS[feature] ?? feature;
+}
+
+// D1 — feature key → kring tab id, for hosts wiring a pill tap to a tab
+// switch.  Features without a tab (houseRules) map to `null` so the host
+// can route them elsewhere (e.g. open the rules panel).
+const FEATURE_TAB_IDS = Object.freeze(
+  Object.fromEntries(TAB_DEFS.map((d) => [d.feature, d.id])),
+);
+
+/** D1 — kring tab id for a feature, or `null` when the feature has no tab. */
+export function featureTabId(feature) {
+  return FEATURE_TAB_IDS[feature] ?? null;
+}

@@ -9,6 +9,7 @@
  * materialized-block input.
  *
  * Per-block-type render:
+ *   quickActions → "Veel-gebruikt" pill row (D1 §5A) — top-N actions
  *   announcement → serif headline card (pinned admin message)
  *   text         → plain-text paragraph card
  *   photo        → image with optional caption
@@ -22,6 +23,8 @@
  *   error   → red border + error message (per-block, page keeps rendering)
  */
 
+import { featureActionLabelKey } from '../../src/v2/kringTabs.js';
+
 /**
  * Render an array of materialized blocks into a container.
  *
@@ -33,9 +36,12 @@
  *        non-empty array, append a subtle pip element to signal a
  *        background materialize is in flight (cache-first render).
  *        Ignored on the loading / empty branches.
+ * @param {(actionKey: string) => void} [args.onAction] D1 — invoked when a
+ *        quickActions pill is tapped (host routes the feature to a tab /
+ *        action).  Omitted → pills render disabled.
  * @returns {HTMLElement}
  */
-export function renderCircleScreen(container, { blocks = [], t, refreshing = false } = {}) {
+export function renderCircleScreen(container, { blocks = [], t, refreshing = false, onAction } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
   container.classList.add('circle-screen');
@@ -59,7 +65,7 @@ export function renderCircleScreen(container, { blocks = [], t, refreshing = fal
   }
 
   for (const block of blocks) {
-    container.appendChild(renderBlock(block, { tr }));
+    container.appendChild(renderBlock(block, { tr, onAction }));
   }
   // δ.1 — subtle refresh pip when rendering cached blocks while a fresh
   // materialize is in flight.  Static glyph (⟳) is enough; no animation
@@ -81,7 +87,7 @@ export function renderCircleScreen(container, { blocks = [], t, refreshing = fal
 // `config.compact` flag (tighter rows + smaller text on the screen).
 const COMPACTABLE_TYPES = new Set(['announcement', 'noticeboard', 'agenda', 'tasks']);
 
-function renderBlock(block, { tr }) {
+function renderBlock(block, { tr, onAction }) {
   const section = document.createElement('section');
   section.className = `circle-screen__block circle-screen__block--${block.type}`;
   if (COMPACTABLE_TYPES.has(block.type) && block.config?.compact === true) {
@@ -104,6 +110,7 @@ function renderBlock(block, { tr }) {
   }
 
   switch (block.type) {
+    case 'quickActions': renderQuickActions(section, block, tr, onAction); break;
     case 'announcement': renderAnnouncement(section, block, tr); break;
     case 'text':         renderText(section, block, tr);         break;
     case 'photo':        renderPhoto(section, block, tr);        break;
@@ -115,6 +122,30 @@ function renderBlock(block, { tr }) {
       section.textContent = tr('circle.screen.block_unknown', { type: block.type });
   }
   return section;
+}
+
+// D1 (§5A) — "Veel-gebruikt" pill row.  Each action is a feature key;
+// the label comes from the shared feature→label map, and a tap calls
+// `onAction(key)` so the host can switch to that feature's tab / surface.
+function renderQuickActions(section, block, tr, onAction) {
+  const row = document.createElement('div');
+  row.className = 'circle-screen__quick-actions';
+  for (const action of block.content?.actions ?? []) {
+    const key = action?.key;
+    if (!key) continue;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'circle-screen__quick-action';
+    btn.dataset.actionKey = key;
+    btn.textContent = tr(featureActionLabelKey(key));
+    if (typeof onAction === 'function') {
+      btn.addEventListener('click', () => onAction(key));
+    } else {
+      btn.disabled = true;
+    }
+    row.appendChild(btn);
+  }
+  section.appendChild(row);
 }
 
 function renderAnnouncement(section, block, _tr) {

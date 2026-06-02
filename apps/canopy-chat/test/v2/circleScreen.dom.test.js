@@ -287,3 +287,36 @@ describe('renderCircleScreen · α.1c.1 — status branches', () => {
     expect(emp).toHaveLength(1);
   });
 });
+
+describe('renderCircleScreen · D1 (§5A) — quickActions pills', () => {
+  const okQuick = {
+    blockId: 'qa', type: 'quickActions', status: 'ok',
+    content: { source: 'frequency', actions: [{ key: 'chat' }, { key: 'tasks' }, { key: 'houseRules' }] },
+  };
+
+  it('renders one pill per action with the feature label + data-action-key', () => {
+    const el = mount();
+    renderCircleScreen(el, { blocks: [okQuick], t });
+    const pills = el.querySelectorAll('.circle-screen__quick-action');
+    expect(pills).toHaveLength(3);
+    expect([...pills].map((p) => p.dataset.actionKey)).toEqual(['chat', 'tasks', 'houseRules']);
+    // labels resolve via featureActionLabelKey → tab/settings locale keys.
+    expect(pills[0].textContent).toBe('circle.tabs.gesprek');
+    expect(pills[2].textContent).toBe('circle.settings.feat.houseRules');
+  });
+
+  it('fires onAction(key) on click', () => {
+    const el = mount();
+    const fired = [];
+    renderCircleScreen(el, { blocks: [okQuick], t, onAction: (k) => fired.push(k) });
+    el.querySelectorAll('.circle-screen__quick-action')[1].click();
+    expect(fired).toEqual(['tasks']);
+  });
+
+  it('disables pills when no onAction is provided', () => {
+    const el = mount();
+    renderCircleScreen(el, { blocks: [okQuick], t });
+    const pills = el.querySelectorAll('.circle-screen__quick-action');
+    expect([...pills].every((p) => p.disabled)).toBe(true);
+  });
+});
