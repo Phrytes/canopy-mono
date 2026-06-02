@@ -1691,6 +1691,19 @@ export default function ChatScreen({
 
 /* ── message bubble ─────────────────────────────────────────────── */
 
+// E1 — notification severity → left-accent colour.
+const NOTIFICATION_ACCENTS = { info: '#4a78b0', success: '#3f8f5b', warning: '#b08a2e', error: '#b04a4a' };
+
+// E1 — human-readable byte size (B / KB / MB / GB).
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes < 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let n = bytes / 1024, i = 0;
+  while (n >= 1024 && i < units.length - 1) { n /= 1024; i += 1; }
+  return `${n.toFixed(n < 10 ? 1 : 0)} ${units[i]}`;
+}
+
 function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFormSubmit, manifestsByOrigin }) {
   if (msg.role === 'user') {
     return (
@@ -1844,6 +1857,33 @@ function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFor
             ))}
           </View>
         ))}
+      </View>
+    );
+  }
+  // E1 (§B#5) — notification bubble.  Title (optional) + body, with a
+  // left accent bar colour-keyed by severity level.
+  if (r.kind === 'notification') {
+    const accent = NOTIFICATION_ACCENTS[r.level] ?? NOTIFICATION_ACCENTS.info;
+    return (
+      <View
+        style={[styles.bubble, styles.bubbleBot, styles.bubbleNotification, { borderLeftColor: accent }]}
+        testID={`bubble-bot-notification-${msg.id}`}
+      >
+        {r.title ? <Text style={styles.notificationTitle}>{r.title}</Text> : null}
+        <Text style={styles.bubbleText}>{r.text ?? ''}</Text>
+      </View>
+    );
+  }
+  // E1 (§B#5) — file card: name + meta line (type · size) + optional desc.
+  if (r.kind === 'file') {
+    const metaBits = [];
+    if (r.mime) metaBits.push(r.mime);
+    if (typeof r.size === 'number') metaBits.push(formatFileSize(r.size));
+    return (
+      <View style={[styles.bubble, styles.bubbleBot, styles.bubbleFile]} testID={`bubble-bot-file-${msg.id}`}>
+        <Text style={styles.fileName}>{r.name || t('chat.file.unnamed')}</Text>
+        {metaBits.length > 0 ? <Text style={styles.fileMeta}>{metaBits.join(' · ')}</Text> : null}
+        {r.description ? <Text style={styles.bubbleText}>{r.description}</Text> : null}
       </View>
     );
   }
@@ -2138,6 +2178,12 @@ const styles = StyleSheet.create({
   bubblePending:    { fontStyle: 'italic', color: '#666' },
   bubbleErrorText:  { fontSize: 14, color: '#b00' },
   bubbleList:       { paddingVertical: 6 },
+  // E1 — notification + file bubbles.
+  bubbleNotification: { borderLeftWidth: 4, paddingLeft: 10 },
+  notificationTitle:  { fontSize: 14, fontWeight: '700', color: '#333', marginBottom: 2 },
+  bubbleFile:         { borderWidth: 1, borderColor: '#d9d9d9' },
+  fileName:           { fontSize: 14, fontWeight: '600', color: '#333' },
+  fileMeta:           { fontSize: 12, color: '#777', marginTop: 2 },
 
   listRow:         { paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ddd' },
   listRowLabel:    { fontSize: 14, color: '#222' },

@@ -219,3 +219,42 @@ describe('renderReply — messageId uniqueness', () => {
     expect(new Set([a, b, c]).size).toBe(3);
   });
 });
+
+describe('renderReply — notification shape (E1)', () => {
+  it('carries title + body + a valid severity level', () => {
+    const r = renderReply({ shape: 'notification', payload: { title: 'Heads up', body: 'Anne joined', level: 'success' } });
+    expect(r.kind).toBe('notification');
+    expect(r.title).toBe('Heads up');
+    expect(r.text).toBe('Anne joined');
+    expect(r.level).toBe('success');
+    expect(r.lifecycleState).toBe('live');
+  });
+
+  it('defaults an unknown/absent level to "info" and reads text aliases', () => {
+    expect(renderReply({ shape: 'notification', payload: { text: 'x', level: 'bogus' } }).level).toBe('info');
+    expect(renderReply({ shape: 'notification', payload: { message: 'via message' } }).text).toBe('via message');
+    expect(renderReply({ shape: 'notification', payload: {} }).level).toBe('info');
+  });
+});
+
+describe('renderReply — file shape (E1)', () => {
+  it('maps name/mime/size/url/description with aliases', () => {
+    const r = renderReply({ shape: 'file', payload: {
+      filename: 'plan.pdf', contentType: 'application/pdf', size: 20480,
+      href: 'https://pod/plan.pdf', caption: 'Q1 plan',
+    } });
+    expect(r.kind).toBe('file');
+    expect(r).toMatchObject({
+      name: 'plan.pdf', mime: 'application/pdf', size: 20480,
+      url: 'https://pod/plan.pdf', description: 'Q1 plan', lifecycleState: 'live',
+    });
+  });
+
+  it('tolerates a bare/empty payload', () => {
+    const r = renderReply({ shape: 'file', payload: {} });
+    expect(r.kind).toBe('file');
+    expect(r.name).toBe('');
+    expect(r.size).toBeUndefined();
+    expect(r.url).toBeUndefined();
+  });
+});

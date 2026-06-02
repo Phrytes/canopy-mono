@@ -193,3 +193,49 @@ describe('renderStream', () => {
     expect(bubbles[0].textContent).toBe('b');
   });
 });
+
+describe('renderToDom — notification shape (E1)', () => {
+  it('renders title + body + a level data attribute', () => {
+    const el = renderToDom({
+      origin: 'shell',
+      rendered: { kind: 'notification', title: 'Heads up', text: 'Anne joined', level: 'success', messageId: 'm-n1', lifecycleState: 'live' },
+    }, ctx());
+    expect(el.classList.contains('cc-notification')).toBe(true);
+    expect(el.dataset.level).toBe('success');
+    expect(el.querySelector('.cc-notification__title').textContent).toBe('Heads up');
+    expect(el.querySelector('.cc-notification__body').textContent).toBe('Anne joined');
+  });
+
+  it('omits the title node when none is given + defaults level to info', () => {
+    const el = renderToDom({
+      origin: 'shell',
+      rendered: { kind: 'notification', text: 'plain', messageId: 'm-n2', lifecycleState: 'live' },
+    }, ctx());
+    expect(el.dataset.level).toBe('info');
+    expect(el.querySelector('.cc-notification__title')).toBeNull();
+  });
+});
+
+describe('renderToDom — file shape (E1)', () => {
+  it('renders name + meta (type · size) + an open link', () => {
+    const el = renderToDom({
+      origin: 'shell',
+      rendered: { kind: 'file', name: 'plan.pdf', mime: 'application/pdf', size: 20480, url: 'https://pod/plan.pdf', messageId: 'm-f1', lifecycleState: 'live' },
+    }, ctx());
+    expect(el.classList.contains('cc-file')).toBe(true);
+    expect(el.querySelector('.cc-file__name').textContent).toBe('plan.pdf');
+    expect(el.querySelector('.cc-file__meta').textContent).toBe('application/pdf · 20 KB');
+    const link = el.querySelector('.cc-file__open');
+    expect(link.getAttribute('href')).toBe('https://pod/plan.pdf');
+  });
+
+  it('falls back to a placeholder name + omits meta/link when bare', () => {
+    const el = renderToDom({
+      origin: 'shell',
+      rendered: { kind: 'file', name: '', messageId: 'm-f2', lifecycleState: 'live' },
+    }, ctx());
+    expect(el.querySelector('.cc-file__name').textContent).toBe('(unnamed file)');
+    expect(el.querySelector('.cc-file__meta')).toBeNull();
+    expect(el.querySelector('.cc-file__open')).toBeNull();
+  });
+});

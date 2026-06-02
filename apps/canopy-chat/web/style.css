@@ -346,6 +346,24 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   border-color: #f3b8b8;
 }
 
+/* E1 — notification bubble: left accent bar colour-keyed by severity. */
+.cc-notification .cc-bubble {
+  border-left: 4px solid var(--fg-mute);
+  padding-left: 0.6rem;
+}
+.cc-notification[data-level="success"] .cc-bubble { border-left-color: #3f8f5b; }
+.cc-notification[data-level="warning"] .cc-bubble { border-left-color: #b08a2e; }
+.cc-notification[data-level="error"]   .cc-bubble { border-left-color: #b04a4a; }
+.cc-notification[data-level="info"]     .cc-bubble { border-left-color: #4a78b0; }
+.cc-notification__title { font-weight: 700; margin-bottom: 0.15rem; }
+
+/* E1 — file card: name + meta line + optional open link. */
+.cc-file .cc-bubble { border: 1px solid var(--border, #d9d9d9); }
+.cc-file__name { font-weight: 600; }
+.cc-file__meta { font-size: 0.72rem; color: var(--fg-mute); margin-top: 0.15rem; }
+.cc-file__desc { font-size: 0.82rem; margin-top: 0.2rem; }
+.cc-file__open { display: inline-block; margin-top: 0.35rem; font-size: 0.8rem; }
+
 /* sync hints (v0.6) */
 .cc-sync-hint {
   font-size: 0.7rem;
