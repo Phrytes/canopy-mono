@@ -23,7 +23,8 @@ export { SKILL_AXES };
 // agents / consensusRequired) with the matching template's defaults
 // for any axis the user hasn't already overridden.
 import { applyTemplate, KRING_KINDS, SIZE_BANDS, recommendChat } from '../../v2/kringTemplates.js';
-export { KRING_KINDS, SIZE_BANDS };
+import { ROLE_TEMPLATE_IDS, applyRoleTemplates } from '../../v2/roleTemplates.js';
+export { KRING_KINDS, SIZE_BANDS, ROLE_TEMPLATE_IDS };
 
 /* ─── Policy catalogs ───────────────────────────────────────── */
 
@@ -149,6 +150,26 @@ export function chatAdvice(state) {
   return recommendChat({ kind: s.kind ?? null, size: s.size ?? null });
 }
 
+/* ─── N3 — extra role templates (admin opt-in) ──────────────────── */
+
+/**
+ * N3 — toggle an extra-role template on/off in the wizard state.  Only
+ * known template ids are accepted.
+ *
+ * @param {object} state
+ * @param {string} templateId
+ * @returns {object}
+ */
+export function toggleRole(state, templateId) {
+  const s = state && typeof state === 'object' ? state : {};
+  if (!ROLE_TEMPLATE_IDS.includes(templateId)) return { ...s };
+  const cur = Array.isArray(s.extraRoles) ? s.extraRoles : [];
+  const next = cur.includes(templateId)
+    ? cur.filter((id) => id !== templateId)
+    : [...cur, templateId];
+  return { ...s, extraRoles: next };
+}
+
 /**
  * N1+E8 — the circle-policy patch the create wizard persists onto the
  * new circle (features incl. the buurt chat-off default, plus the
@@ -190,6 +211,9 @@ export function initialState() {
     // N1 — true once the user explicitly toggles the chat feature, so
     // a later re-derivation respects their choice over the template.
     chatUserSet:           false,
+    // N3 — extra role templates the admin opted into (ids from
+    // ROLE_TEMPLATE_IDS).  Persisted as `rules.roles` at submit.
+    extraRoles:            [],
     // Step 2 — members & governance
     additionalAdmins:      '',
     accessPolicy:          'invite-only',
@@ -246,6 +270,12 @@ export function buildRulesObjectFromState(state) {
   if (Array.isArray(state.skills) && state.skills.length > 0) {
     const named = state.skills.map(normalizeSkill).filter((s) => s.name.trim() !== '');
     if (named.length > 0) rules.skills = named;
+  }
+  // N3 — persist the admin's opted-in extra roles (from templates) so
+  // joiners receive them in the invite + consent screen.
+  if (Array.isArray(state.extraRoles) && state.extraRoles.length > 0) {
+    const roles = applyRoleTemplates(state.extraRoles);
+    if (roles.length > 0) rules.roles = roles;
   }
   for (const k of Object.keys(rules)) {
     if (rules[k] === undefined) delete rules[k];

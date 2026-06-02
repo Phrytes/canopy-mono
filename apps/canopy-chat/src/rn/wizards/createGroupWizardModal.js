@@ -23,9 +23,12 @@ import {
   newSkillRow, SKILL_AXES,
   // N1+E8 — kind picker + buurt size/chat advice + policy patch.
   KRING_KINDS, setKind, setSize, setChatEnabled, chatAdvice, policyPatchFromState,
+  // N3 — extra role templates (admin opt-in).
+  ROLE_TEMPLATE_IDS, toggleRole,
 } from '../../core/wizards/createGroupState.js';
 import { RULES_QUESTIONS } from '../../v2/circleRules.js';
 import { attachConsequences } from '../../v2/optionConsequences.js';
+import { ROLE_TEMPLATES } from '../../v2/roleTemplates.js';
 
 import {
   Steps, Body, Field, Textarea, RadioGroup, Checkbox,
@@ -204,6 +207,24 @@ export default function CreateGroupWizardModal({
                   onChange={(v) => setState((s) => ({ ...s, leavePolicy: v }))}
                   consequenceLabel={t('common.consequences')}
                 />
+                {/* N3 — extra role templates (admin opt-in). */}
+                <Text style={styles.roleHeading}>{t('role.extraRolesLabel')}</Text>
+                <Text style={styles.roleHint}>{t('role.extraRolesHint')}</Text>
+                {ROLE_TEMPLATE_IDS.map((tid) => {
+                  const tpl = ROLE_TEMPLATES[tid];
+                  const checked = Array.isArray(state.extraRoles) && state.extraRoles.includes(tid);
+                  return (
+                    <View key={tid}>
+                      <Checkbox
+                        label={t(tpl.labelKey)}
+                        checked={checked}
+                        onToggle={() => setState((s) => toggleRole(s, tid))}
+                        testID={`create-group-role-${tid}`}
+                      />
+                      <Text style={styles.roleDesc}>{t(tpl.descKey)}</Text>
+                    </View>
+                  );
+                })}
               </Body>
             )}
             {state.step === 3 && (
@@ -385,4 +406,8 @@ const styles = StyleSheet.create({
     maxHeight: '92%', minHeight: '60%',
   },
   scroll: { flexGrow: 1 },
+  // N3 — extra-roles section.
+  roleHeading: { fontSize: 13, fontWeight: '700', color: '#444', marginTop: 14, marginBottom: 2 },
+  roleHint:    { fontSize: 12, lineHeight: 17, color: '#777', marginBottom: 6 },
+  roleDesc:    { fontSize: 12, lineHeight: 17, color: '#666', marginLeft: 28, marginBottom: 8 },
 });
