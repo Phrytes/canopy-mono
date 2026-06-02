@@ -2109,6 +2109,66 @@
         "text": "A whole neighbourhood. We advise keeping open chat off — an all-to-all chat overwhelms; reactions still start focused threads.",
         "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
       }
+    },
+    "openness": {
+      "private": {
+        "text": "Only you see this skill. Nothing is offered to anyone — useful while you decide.",
+        "doc": "N2.b — consequence note for a radio option."
+      },
+      "circle": {
+        "text": "Members of this circle can see + ask. Stays inside the circle.",
+        "doc": "N2.b — consequence note for a radio option."
+      },
+      "contacts": {
+        "text": "Your direct contacts can see it too, across circles. Wider reach, still people you know.",
+        "doc": "N2.b — consequence note for a radio option."
+      },
+      "public": {
+        "text": "Anyone who can find your profile sees it. Maximum reach, least control.",
+        "doc": "N2.b — consequence note for a radio option."
+      }
+    },
+    "posture": {
+      "always": {
+        "text": "You commit to it up front — askers can count on it without negotiating.",
+        "doc": "N2.b — consequence note for a radio option."
+      },
+      "negotiable": {
+        "text": "Each request is a conversation; you say yes/no per case. More flexible, more back-and-forth.",
+        "doc": "N2.b — consequence note for a radio option."
+      }
+    },
+    "status": {
+      "active": {
+        "text": "Live and matchable now — it shows up in searches + skill matches.",
+        "doc": "N2.b — consequence note for a radio option."
+      },
+      "paused": {
+        "text": "Hidden from matches for now, but kept. Flip back to active anytime.",
+        "doc": "N2.b — consequence note for a radio option."
+      },
+      "archived": {
+        "text": "Retired. Out of all matches; keep it as a record without deleting.",
+        "doc": "N2.b — consequence note for a radio option."
+      }
+    },
+    "radius": {
+      "home": {
+        "text": "Stays within your household. The smallest reach.",
+        "doc": "N2.b — consequence note for a radio option."
+      },
+      "street": {
+        "text": "Reaches your street / immediate neighbours.",
+        "doc": "N2.b — consequence note for a radio option."
+      },
+      "neighbourhood": {
+        "text": "Reaches the whole buurt.",
+        "doc": "N2.b — consequence note for a radio option."
+      },
+      "city": {
+        "text": "Reaches the wider city. Largest reach, least local.",
+        "doc": "N2.b — consequence note for a radio option."
+      }
     }
   }
 }

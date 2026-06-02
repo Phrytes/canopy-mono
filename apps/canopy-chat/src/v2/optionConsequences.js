@@ -29,6 +29,11 @@ export const CONSEQUENCE_OPTIONS = Object.freeze({
   // create wizard — N1 kind picker + buurt size
   kind:           ['household', 'buurt', 'vriendenkring', 'team'],
   size:           ['small', 'large'],
+  // N2.b — skill axes (create-wizard skills step + skill editor)
+  openness:       ['private', 'circle', 'contacts', 'public'],
+  posture:        ['always', 'negotiable'],
+  status:         ['active', 'paused', 'archived'],
+  radius:         ['home', 'street', 'neighbourhood', 'city'],
 });
 
 /**

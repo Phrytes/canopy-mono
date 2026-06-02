@@ -280,7 +280,7 @@ function renderSkillsStep(container, doc, state, onNext, onBack, onCancel, reren
     for (const axis of Object.keys(SKILL_AXES)) {
       const opts = SKILL_AXES[axis].map((id) => ({ id, label: id }));
       appendRadioField(card, doc, axis, row[axis], opts,
-        (v) => { row[axis] = v; rerender(); });
+        (v) => { row[axis] = v; rerender(); }, { consequenceGroup: axis });
     }
 
     const del = doc.createElement('button');

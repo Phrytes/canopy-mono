@@ -254,12 +254,14 @@ export default function CreateGroupWizardModal({
                         key={axis}
                         label={axis}
                         value={row[axis]}
-                        options={SKILL_AXES[axis].map((id) => ({ id, label: id }))}
+                        options={attachConsequences(axis,
+                          SKILL_AXES[axis].map((id) => ({ id, label: id })), t)}
                         onChange={(v) => setState((s) => {
                           const skills = s.skills.slice();
                           skills[i] = { ...skills[i], [axis]: v };
                           return { ...s, skills };
                         })}
+                        consequenceLabel={t('common.consequences')}
                       />
                     ))}
                     <Pressable
