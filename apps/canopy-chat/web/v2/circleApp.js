@@ -1161,10 +1161,17 @@ function showFolio(id) {
   let filter = 'all';
   let shareFilter = null;          // null | 'shared-by-me' | 'shared-with-me'
   let currentPath = '';            // N5 — folder being viewed ('' = root)
+  let sourceMode = 'index';        // N5 — 'index' (in-app) | 'pod' (real pod)
+  let needsPod = false;            // pod selected but no pod connected yet
   let lastListResult = null;       // raw `listFiles` result for re-projection
   let files = buildCircleFiles({ files: [], circleId: id });
 
   function project() {
+    // Pod source — rows ARE the user's pod; no circle-scoping / share lens.
+    if (sourceMode === 'pod') {
+      files = Array.isArray(lastListResult?.items) ? lastListResult.items : [];
+      return;
+    }
     if (shareFilter && lastListResult != null) {
       files = sharedFilesFromListFiles(lastListResult, {
         myId:      null,
@@ -1178,11 +1185,26 @@ function showFolio(id) {
     }
   }
 
+  function load() {
+    if (!resolveCallSkill) return;
+    const args = sourceMode === 'pod' ? { source: 'pod' } : {};
+    resolveCallSkill('listFiles', args)
+      .then((res) => {
+        lastListResult = res;
+        needsPod = sourceMode === 'pod' && !!res?.needsPod;
+        project();
+        if (getActiveCircle() === id) rerender();
+      })
+      .catch(() => { needsPod = sourceMode === 'pod'; if (getActiveCircle() === id) rerender(); });
+  }
+
   const rerender = () => renderCircleFolioBrowser(rootEl, {
     files,
     filter,
     shareFilter,
     currentPath,
+    sourceMode,
+    needsPod,
     t,
     // Changing the row set (filter / share toggle) resets folder depth.
     onFilter: (f) => { filter = f; currentPath = ''; rerender(); },
@@ -1193,16 +1215,24 @@ function showFolio(id) {
       project();
       rerender();
     },
+    // N5 — switch the file SOURCE: in-app index ↔ the user's real pod.
+    onSourceMode: (mode) => {
+      if (mode === sourceMode || (mode !== 'index' && mode !== 'pod')) return;
+      sourceMode = mode;
+      currentPath = '';
+      shareFilter = null;            // share lens is index-only
+      lastListResult = null;
+      needsPod = false;
+      files = sourceMode === 'pod' ? [] : buildCircleFiles({ files: [], circleId: id });
+      rerender();
+      load();
+    },
     // N5 — descend into / climb out of folders derived from file paths.
     onNavigate: (path) => { currentPath = path; rerender(); },
     onBack: () => showDetail(id),
   });
   rerender();
-  if (resolveCallSkill) {
-    resolveCallSkill('listFiles', {})
-      .then((res) => { lastListResult = res; project(); if (getActiveCircle() === id) rerender(); })
-      .catch(() => { /* keep empty */ });
-  }
+  load();
 }
 
 // Circle rules document (boards 3B/3C) — editor persists per circle

@@ -69,10 +69,16 @@ export function renderCircleFolioBrowser(container, {
   // folder being viewed ('' = root) and `onNavigate(path)` descends/climbs.
   currentPath = '',
   onNavigate,
+  // N5 — file SOURCE toggle: 'index' (in-app) | 'pod' (the user's real pod).
+  // `needsPod` = pod source picked but no pod connected yet.
+  sourceMode = 'index',
+  onSourceMode,
+  needsPod = false,
   loading = false,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   const navigable = typeof onNavigate === 'function';
+  const podMode = sourceMode === 'pod';
   container.innerHTML = '';
   container.classList.add('circle-folio');
 
@@ -88,9 +94,28 @@ export function renderCircleFolioBrowser(container, {
   head.textContent = tr('circle.folio.title');
   container.appendChild(head);
 
+  // N5 — source toggle (In-app / My pod).  Only appears when the host wires
+  // `onSourceMode`.  Picking "My pod" reads the user's real signed-in pod.
+  if (typeof onSourceMode === 'function') {
+    const srcRow = document.createElement('div');
+    srcRow.className = 'circle-folio__source-toggle';
+    for (const mode of ['index', 'pod']) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'circle-folio__source';
+      btn.dataset.source = mode;
+      if (mode === sourceMode) btn.classList.add('is-active');
+      btn.textContent = tr(`circle.folio.source_${mode}`);
+      btn.addEventListener('click', () => onSourceMode(mode));
+      srcRow.appendChild(btn);
+    }
+    container.appendChild(srcRow);
+  }
+
   // P6.M8 #350 — share-toggle row (Shared-by-me / Shared-with-me).  Only
-  // appears when the host wires an `onShareFilter` callback.
-  if (typeof onShareFilter === 'function') {
+  // appears when the host wires an `onShareFilter` callback.  The share
+  // lens is index-only — the pod source shows the pod's own folders.
+  if (typeof onShareFilter === 'function' && !podMode) {
     const shareRow = document.createElement('div');
     shareRow.className = 'circle-folio__share-toggle';
     for (const key of SHARE_FILTERS) {
@@ -110,25 +135,39 @@ export function renderCircleFolioBrowser(container, {
     container.appendChild(shareRow);
   }
 
-  const strip = document.createElement('div');
-  strip.className = 'circle-folio__filters';
-  for (const key of FILTERS) {
-    const fb = document.createElement('button');
-    fb.type = 'button';
-    fb.className = 'circle-folio__filter';
-    fb.dataset.filter = key;
-    if (key === filter) fb.classList.add('is-active');
-    fb.textContent = tr(`circle.folio.${key}`);
-    fb.addEventListener('click', () => { if (typeof onFilter === 'function') onFilter(key); });
-    strip.appendChild(fb);
+  // Favourites/Recent filters are index-only; the pod source browses the
+  // pod's own folder tree.
+  if (!podMode) {
+    const strip = document.createElement('div');
+    strip.className = 'circle-folio__filters';
+    for (const key of FILTERS) {
+      const fb = document.createElement('button');
+      fb.type = 'button';
+      fb.className = 'circle-folio__filter';
+      fb.dataset.filter = key;
+      if (key === filter) fb.classList.add('is-active');
+      fb.textContent = tr(`circle.folio.${key}`);
+      fb.addEventListener('click', () => { if (typeof onFilter === 'function') onFilter(key); });
+      strip.appendChild(fb);
+    }
+    container.appendChild(strip);
   }
-  container.appendChild(strip);
 
   if (loading) {
     const l = document.createElement('div');
     l.className = 'circle-folio__loading';
     l.textContent = tr('circle.loading');
     container.appendChild(l);
+    return container;
+  }
+
+  // N5 — pod source picked but no pod connected: prompt sign-in instead of
+  // an empty list (the data is on the pod, not a defect).
+  if (podMode && needsPod) {
+    const hint = document.createElement('div');
+    hint.className = 'circle-folio__connect-pod';
+    hint.textContent = tr('circle.folio.connect_pod');
+    container.appendChild(hint);
     return container;
   }
 

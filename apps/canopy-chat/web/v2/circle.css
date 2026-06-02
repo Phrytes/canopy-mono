@@ -388,6 +388,15 @@
 .circle-folio__row--folder .circle-folio__name { font-weight: 700; }
 .circle-folio__count, .circle-folio__size { margin-left: auto; color: var(--muted); font-size: 12px; }
 
+/* N5 — file-source toggle (In-app / My pod) + connect-pod prompt */
+.circle-folio__source-toggle { display: flex; gap: 8px; margin-bottom: 10px; }
+.circle-folio__source {
+  padding: 5px 11px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 12px;
+  background: var(--card); border: 1px solid var(--line);
+}
+.circle-folio__source.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.circle-folio__connect-pod { color: var(--ink-soft); font-style: italic; font-size: 13px; padding: 14px 0; }
+
 /* ───────────────────── rules (board 3B/3C) ───────────────────── */
 .circle-rules__field, .circle-rules-consent__field { margin-bottom: 14px; }
 .circle-rules__q, .circle-rules-consent__q { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
