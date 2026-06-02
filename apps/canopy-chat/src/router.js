@@ -18,6 +18,16 @@
  * Phase v0.1 sub-slice 1.6 per `/Project Files/canopy-chat/coding-plan.md`.
  */
 
+import { isBulkKeyword } from './bulkOps.js';
+
+/**
+ * Verbs that read rather than mutate — a bulk fan-out over them is
+ * meaningless, so `/list all` etc. fall through to normal resolution.
+ */
+const BULK_READ_VERBS = new Set([
+  'list', 'get', 'view', 'show', 'find', 'brief', 'snapshot', 'open', 'record',
+]);
+
 /**
  * @typedef {object} ReadyDispatch
  * @property {'ready'}         kind
@@ -112,6 +122,27 @@ export function resolveDispatch(parseResult, catalog) {
     };
   }
   const { op, appOrigin } = entry;
+
+  // E2 — bulk fan-out.  When the positional body is a bulk keyword
+  // (`/done all`) and the op targets an item id with a mutation verb,
+  // return a `bulk` dispatch instead of binding "all" as a literal id.
+  // The host resolves the candidate items (most-recent listing) and
+  // runs `runBulkOp`, whose item-changed events fan out cross-thread
+  // via the EventRouter (OQ-4).
+  const target = firstTargetParam(op);
+  if (target && isBulkKeyword(rawArgs?._match) && !BULK_READ_VERBS.has(op?.verb)) {
+    const { _match, ...baseArgs } = rawArgs ?? {};
+    return {
+      kind:       'bulk',
+      opId,
+      appOrigin,
+      argName:    target.name,
+      baseArgs,
+      threadId:   threadId ?? null,
+      replyShape: effectiveReplyShape(opId, op, catalog),
+      verb:       op?.verb ?? null,
+    };
+  }
 
   // Bind `_match` (positional body from parser) to the op's first
   // required string param.  If no such param exists, drop _match.
@@ -238,15 +269,27 @@ export function scopeReadyDispatch(ready, activeCircleId) {
  * @param {object}            op
  * @returns {object}
  */
-function bindMatchArg(args, op) {
-  if (args._match === undefined) return { ...args };
-  const target = (op.params ?? []).find(
+/**
+ * The op param a positional slash body binds to: the first required
+ * string-ish param.  Shared by `bindMatchArg` (single dispatch) and the
+ * E2 bulk-keyword branch (fan-out target).
+ *
+ * @param {object} op
+ * @returns {object|undefined}
+ */
+function firstTargetParam(op) {
+  return (op.params ?? []).find(
     // 2026-05-27 — accept `webid` as a stringy identifier kind so
     // row-button taps on contacts (and slash bodies like
     // `/remove-contact <webid>`) bind the body to the webid param
     // instead of falling through to a single-field followup.
     (p) => p?.required && (p.kind === 'string' || p.kind === 'enum' || p.kind === 'webid'),
   );
+}
+
+function bindMatchArg(args, op) {
+  if (args._match === undefined) return { ...args };
+  const target = firstTargetParam(op);
   if (!target) {
     // No required target — keep _match for the handler to split.
     return { ...args };

@@ -1551,6 +1551,10 @@
     "unknown_command": {
       "text": "Begreep „{{input}}” niet. Probeer /help voor de beschikbare commando's.",
       "doc": "Shown when parser falls through to kind:'unknown' — user input matched no slash command."
+    },
+    "bulk_no_list": {
+      "text": "Geen recente lijst om “alle” op toe te passen — voer eerst een lijst-commando uit.",
+      "doc": "E2 — shown when `/<op> all` has no recent listing to fan out over."
     }
   },
   "thread": {

@@ -19,7 +19,7 @@ import {
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
   getActiveCircle, setActiveCircle,
   renderReply, ThreadStore, createDefaultThreadStore, createEventRouter,
-  REFRESHABLE_VERBS,
+  REFRESHABLE_VERBS, executeBulkDispatch,
   initLocalisation, t, setLang, detectDeviceLang, currentLang,
   describeFilter, canopyChatManifest,
   IndexedDBStore, attachPersistence,
@@ -2099,8 +2099,46 @@ async function handleUserText(text, thread) {
     return;
   }
 
+  // E2 — bulk fan-out (`/done all`).  Resolve the candidate items from
+  // the most-recent listing (prefer the same app), then fan-out via
+  // runBulkOp; its item-changed events reach other threads through the
+  // EventRouter.
+  if (route.kind === 'bulk') {
+    await handleBulkRoute(route, thread);
+    return;
+  }
+
   // ready → dispatch + render + (maybe) emit item-changed event.
   await dispatchAndRender(route, thread);
+}
+
+/**
+ * E2 — handle a `bulk` route (`/done all`): resolve the candidate items
+ * from the most-recent listing, fan-out via runBulkOp, render a summary.
+ * The fan-out's item-changed events reach other threads via the
+ * EventRouter (OQ-4), so open panels elsewhere refresh too.
+ */
+async function handleBulkRoute(route, thread) {
+  const listing = thread.lastListing({ appOrigin: route.appOrigin }) ?? thread.lastListing();
+  const itemIds = (listing?.items ?? []).map((it) => it.id).filter(Boolean);
+  if (itemIds.length === 0) {
+    const rendered = renderReply({
+      payload: t('reply.bulk_no_list'), shape: 'text', threadId: thread.id,
+    }, { t });
+    thread.addShellMessage(rendered);
+    renderActiveStream();
+    return;
+  }
+  const { message } = await executeBulkDispatch({
+    bulk:      route,
+    itemIds,
+    callSkill,
+    emitEvent: (event) => { try { router.deliver(event); } catch { /* swallow */ } },
+    opLabel:   route.opId,
+  });
+  const rendered = renderReply({ payload: message, shape: 'text', threadId: thread.id }, { t });
+  thread.addShellMessage(rendered);
+  renderActiveStream();
 }
 
 /**

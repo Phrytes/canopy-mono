@@ -1982,5 +1982,11 @@
         "doc": "Tertiary CTA — leaves the ack off so a future banner can re-nudge."
       }
     }
+  },
+  "reply": {
+    "bulk_no_list": {
+      "text": "No recent list to apply “all” to — run a list command first.",
+      "doc": "E2 — shown when `/<op> all` has no recent listing to fan out over."
+    }
   }
 }
