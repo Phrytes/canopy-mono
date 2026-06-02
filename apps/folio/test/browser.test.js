@@ -132,4 +132,51 @@ describe('createBrowserFolioAgent — boot + skill dispatch', () => {
     const r = await peer.invoke(folio.address, 'listFiles', [DataPart({})]);
     expect(r?.[0]?.data.items).toEqual([]);
   });
+
+  // N5 — listFiles({source:'pod'}) reads the live pod once a pod source is
+  // attached; before that it flags needsPod so the UI can prompt sign-in.
+  it('listFiles source:pod — needsPod until a pod source is attached, then real rows', async () => {
+    const ROOT = 'https://bob.solidpod.nl/huishouden/';
+    const fakePodClient = {
+      async list(uri) {
+        const tree = {
+          [ROOT]: [
+            { uri: `${ROOT}schema.md`, type: 'resource', size: 100 },
+            { uri: `${ROOT}2024/`, type: 'container' },
+          ],
+          [`${ROOT}2024/`]: [
+            { uri: `${ROOT}2024/notulen.pdf`, type: 'resource', size: 2048 },
+          ],
+        };
+        if (!(uri in tree)) { const e = new Error('nf'); e.code = 'NOT_FOUND'; throw e; }
+        return { container: uri, entries: tree[uri] };
+      },
+    };
+
+    const bus = new InternalBus();
+    const folio = await createBrowserFolioAgent({ bus, identityVault: new VaultMemory() });
+    const { agent: peer } = await makePeer(bus);
+    await peer.hello(folio.address);
+
+    // Before attach: index path untouched; pod path flags needsPod.
+    const before = await peer.invoke(folio.address, 'listFiles', [DataPart({ source: 'pod' })]);
+    expect(before?.[0]?.data).toMatchObject({ source: 'pod', needsPod: true });
+    expect(before?.[0]?.data.items).toEqual([]);
+
+    // The default (index) source still works alongside.
+    const idx = await peer.invoke(folio.address, 'listFiles', [DataPart({})]);
+    expect(idx?.[0]?.data.items.length).toBe(3);
+
+    // Attach the live pod source, then the pod path returns real rows.
+    folio.setPodSource({ podClient: fakePodClient, containerUri: ROOT });
+    const after = await peer.invoke(folio.address, 'listFiles', [DataPart({ source: 'pod' })]);
+    const items = after?.[0]?.data.items;
+    expect(after?.[0]?.data.source).toBe('pod');
+    expect(items.map((f) => f.relPath).sort()).toEqual(['2024/notulen.pdf', 'schema.md']);
+
+    // Detach restores the needsPod signal.
+    folio.setPodSource(null);
+    const detached = await peer.invoke(folio.address, 'listFiles', [DataPart({ source: 'pod' })]);
+    expect(detached?.[0]?.data.needsPod).toBe(true);
+  });
 });

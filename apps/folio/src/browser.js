@@ -39,6 +39,7 @@ import {
 } from '@canopy/core';
 
 import { mintShareToken } from './autoShare.js';
+import { listPodFolio } from './folioPodList.js';
 
 // N5 — Drive tree (folder navigation + rich rows).  Pure JS, node-free,
 // RN-free; safe to pull into the browser bundle (unlike the `.` barrel,
@@ -48,6 +49,7 @@ export {
   folioLevel, breadcrumbs, parentPath, rowPath, rowName,
   formatFileSize, fileKind, glyphForFile, FILE_KIND_GLYPH,
 } from './folioTree.js';
+export { listPodFolio } from './folioPodList.js';
 
 /**
  * Pre-seeded demo files.  Mirrors the slice-1/2b convention — the
@@ -136,6 +138,14 @@ export async function createBrowserFolioAgent({
     ? seedFiles.map((f) => ({ ...f }))
     : SEED_FILES.map((f) => ({ ...f }));
 
+  // N5 — lazy real-pod source for the Drive browser.  The folio agent
+  // boots before the user signs in, so the pod source is attached later
+  // (main.js, after OIDC) via the returned `setPodSource`.  When set and
+  // a caller asks `listFiles({ source: 'pod' })`, files come from the live
+  // pod container (a lightweight `.list` walk — no file reads); otherwise
+  // the in-process index is returned as before.
+  let podSource = null;   // { podClient, containerUri } | null
+
   /* ─── readNote — fetch the contents of a known file by path/name ─── */
   agent.register('readNote', async ({ parts }) => {
     const a = parts?.[0]?.data ?? {};
@@ -203,9 +213,24 @@ export async function createBrowserFolioAgent({
     }
   });
 
-  /* ─── listFiles — return current index ─── */
-  agent.register('listFiles', async () => {
-    return [DataPart({ items: files, _sync: simulateSync() })];
+  /* ─── listFiles — in-process index, or the live pod when asked ─── */
+  agent.register('listFiles', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    // N5 — `source:'pod'` reads the user's real pod (when a pod source is
+    // attached).  Falls back to the index — with a `needsPod` flag so the
+    // UI can prompt sign-in — when no pod is connected yet.
+    if (a.source === 'pod') {
+      if (!podSource?.podClient) {
+        return [DataPart({ items: [], source: 'pod', needsPod: true })];
+      }
+      try {
+        const items = await listPodFolio(podSource.podClient, podSource.containerUri);
+        return [DataPart({ items, source: 'pod', _sync: simulateSync() })];
+      } catch (err) {
+        return [DataPart({ items: [], source: 'pod', error: `pod list failed: ${err?.message ?? err}` })];
+      }
+    }
+    return [DataPart({ items: files, source: 'index', _sync: simulateSync() })];
   });
 
   /* ─── searchFiles — name/path substring match ─── */
@@ -315,6 +340,16 @@ export async function createBrowserFolioAgent({
     identity,
     address: identity.pubKey,
     files,
+    // N5 — attach / detach the live pod source after sign-in.  Pass
+    // `{ podClient, containerUri }` to light up `listFiles({ source:'pod' })`;
+    // pass null (or nothing) to fall back to the in-process index.
+    setPodSource: (src) => {
+      podSource = src?.podClient && src?.containerUri
+        ? { podClient: src.podClient, containerUri: src.containerUri }
+        : null;
+      return podSource;
+    },
+    getPodSource: () => podSource,
     close:   () => agent.close?.(),
   };
 }
