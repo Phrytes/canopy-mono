@@ -22,6 +22,9 @@ export {
   folioLevel, breadcrumbs, parentPath, rowPath, rowName,
   formatFileSize, fileKind, glyphForFile, FILE_KIND_GLYPH,
 } from './folioTree.js';
+// N5 — list a real pod container for the Drive browser (files only, no
+// file reads — lighter than scanPod).  Source-agnostic over any PodClient.
+export { listPodFolio } from './folioPodList.js';
 export { diff }                          from './diff.js';
 export { applyConflict, hasConflictMarkers } from './applyConflict.js';
 export {
