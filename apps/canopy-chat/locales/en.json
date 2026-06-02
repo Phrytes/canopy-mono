@@ -1531,6 +1531,42 @@
           "doc": "β.4 — confirmation shown after picking a kind in the C1 create-circle wizard; the matching kringTemplate has just pre-filled the policy axes. {{kind}} is the picked kind id (household / buurt / vriendenkring / team)."
         }
       }
+    },
+    "kindPicker": {
+      "text": "Type of circle",
+      "doc": "N1+E8 — kind picker legend in the create wizard."
+    },
+    "size": {
+      "label": {
+        "text": "How big will this buurt be?",
+        "doc": "N1 — buurt size question driving the chat advice."
+      },
+      "small": {
+        "text": "Small (a few households)",
+        "doc": "N1 — small buurt size option."
+      },
+      "large": {
+        "text": "Large (a whole neighbourhood)",
+        "doc": "N1 — large buurt size option."
+      }
+    },
+    "chatToggle": {
+      "text": "Open chat in this circle",
+      "doc": "N1 — the chat-feature toggle in the create wizard."
+    },
+    "chatAdvice": {
+      "buurtLarge": {
+        "text": "For a larger buurt we recommend keeping open chat OFF — a busy all-to-all chat overwhelms people. Reactions to a notice still spin up a focused thread.",
+        "doc": "N1 — advice for a large buurt (chat off)."
+      },
+      "buurtSmall": {
+        "text": "For a small buurt you can go either way — open chat can work. By default it stays off (noticeboard-first); turn it on if your group wants it.",
+        "doc": "N1 — advice for a small buurt (ask)."
+      },
+      "buurtDefault": {
+        "text": "Buurten start noticeboard-first: open chat is off, and a thread appears only when someone reacts to a vraag or aanbod.",
+        "doc": "N1 — neutral buurt chat default note."
+      }
     }
   },
   "common": {

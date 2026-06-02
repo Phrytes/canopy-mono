@@ -26,9 +26,33 @@ import {
   initialState, slugify, isValidSlug, labelOf,
   buildRulesObjectFromState, finalSubmit,
   newSkillRow, SKILL_AXES,
+  // N1+E8 — kind picker + buurt size/chat advice.
+  KRING_KINDS, setKind, setSize, setChatEnabled, chatAdvice,
 } from '../../core/wizards/createGroupState.js';
 import { RULES_QUESTIONS } from '../../v2/circleRules.js';
+import { createCirclePolicyStore, localStoragePolicyIo } from '../../v2/circlePolicyStore.js';
 import { t } from '../../localisation.js';
+
+/**
+ * N1+E8 — persist the wizard's chosen policy axes (features incl. the
+ * buurt chat-off default, reveal/pod/llm/agents/consensus) onto the new
+ * circle's policy, so the launcher's GESPREK gating (SP-13.3) honours
+ * them.  Shares the launcher's localStorage key (`cc.circlePolicy.<id>`).
+ * Only writes axes a template actually filled.  Best-effort.
+ */
+async function persistCreatedCirclePolicy(groupId, state) {
+  if (!groupId || !state) return;
+  const patch = {};
+  if (state.features && typeof state.features === 'object') patch.features = state.features;
+  for (const ax of ['revealPolicy', 'pod', 'llmTool', 'agents', 'consensusRequired']) {
+    if (state[ax] !== undefined) patch[ax] = state[ax];
+  }
+  if (Object.keys(patch).length === 0) return;
+  try {
+    const store = createCirclePolicyStore(localStoragePolicyIo());
+    await store.update(groupId, patch);
+  } catch { /* policy write is best-effort; creation already succeeded */ }
+}
 
 /**
  * Wizard renderer for /create-group.
@@ -73,6 +97,9 @@ export function renderCreateGroupWizard(opts) {
         // joiner's wizard step 1 can show them directly (their local
         // substrate has no group-rules item until after they join).
         result.rules = buildRulesObjectFromState(state);
+        // N1+E8 — write the chosen policy (incl. buurt chat-off) so the
+        // new circle opens with the right surfaces.
+        await persistCreatedCirclePolicy(result.groupId, state);
         state.successResult = result;
         if (typeof onDispatched === 'function') {
           try { onDispatched({ ok: true, message: `✓ Buurt "${result.groupId}" created.`, ...result }); } catch { /* swallow */ }
@@ -104,6 +131,21 @@ function renderStepHeader(container, doc, step) {
 function renderIdentityStep(container, doc, state, onNext, onCancel, rerender) {
   const wrap = makeBody(doc, 'Buurt identity & purpose',
     'A buurt is a closed group with its own posts, members, and rules.');
+
+  // N1+E8 — kind picker.  Picking a kind applies the matching template
+  // (β.4) in place; for a buurt it also surfaces the size question +
+  // chat advice (buurt is noticeboard-first, open chat off by default).
+  appendRadioField(wrap, doc, t('circle.kindPicker'), state.kind ?? null,
+    KRING_KINDS.map((k) => ({ id: k, label: t(`circle.kind.${k}`) })),
+    (k) => { Object.assign(state, setKind(state, k)); rerender(); });
+
+  if (state.kind === 'buurt') {
+    appendRadioField(wrap, doc, t('circle.size.label'), state.size ?? null,
+      [{ id: 'small', label: t('circle.size.small') },
+       { id: 'large', label: t('circle.size.large') }],
+      (sz) => { Object.assign(state, setSize(state, sz)); rerender(); });
+    appendChatAdvice(wrap, doc, state, rerender);
+  }
 
   // The name input updates the auto-derived groupId field WITHOUT
   // rerendering the panel (which would lose focus).  We grab a
@@ -560,6 +602,32 @@ function appendRadioField(wrap, doc, label, value, options, onPick) {
     group.appendChild(row);
   }
   wrap.appendChild(group);
+}
+
+// N1 — buurt chat advice banner + the open-chat toggle.  The banner's
+// emphasis tracks the recommendation mode (`advise-off` is the loudest;
+// `ask` is neutral).  The toggle writes through `setChatEnabled` so a
+// user override is remembered (`chatUserSet`).
+function appendChatAdvice(wrap, doc, state, rerender) {
+  const adv = chatAdvice(state);
+  if (adv.reasonKey) {
+    const note = doc.createElement('p');
+    note.className = `cc-wizard-advice cc-wizard-advice-${adv.mode}`;
+    note.textContent = t(adv.reasonKey);
+    wrap.appendChild(note);
+  }
+  const row = doc.createElement('label');
+  row.className = 'cc-wizard-toggle';
+  const cb = doc.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = !!state.features?.chat;
+  cb.addEventListener('change', () => {
+    Object.assign(state, setChatEnabled(state, cb.checked));
+    rerender();
+  });
+  row.appendChild(cb);
+  row.appendChild(doc.createTextNode(' ' + t('circle.chatToggle')));
+  wrap.appendChild(row);
 }
 
 function appendReview(dl, doc, label, value, opts = {}) {
