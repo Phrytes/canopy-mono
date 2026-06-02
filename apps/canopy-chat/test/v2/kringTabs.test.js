@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { buildKringTabs, DEFAULT_KRING_TAB } from '../../src/v2/kringTabs.js';
+import {
+  buildKringTabs, DEFAULT_KRING_TAB,
+  featureActionLabelKey, featureTabId, featureForTabId,
+} from '../../src/v2/kringTabs.js';
 import { DEFAULT_CIRCLE_POLICY } from '../../src/v2/circlePolicy.js';
 
 const t = (k) => k;
@@ -95,5 +98,30 @@ describe('buildKringTabs · SP-13.3', () => {
     expect(buildKringTabs(null).map((t) => t.id)).toEqual(['gesprek', 'leden']);
     expect(buildKringTabs(undefined).map((t) => t.id)).toEqual(['gesprek', 'leden']);
     expect(buildKringTabs('nope').map((t) => t.id)).toEqual(['gesprek', 'leden']);
+  });
+});
+
+describe('kringTabs · D1 (§5A) feature helpers', () => {
+  it('featureActionLabelKey maps all 8 features + falls back to the raw key', () => {
+    expect(featureActionLabelKey('chat')).toBe('circle.tabs.gesprek');
+    expect(featureActionLabelKey('tasks')).toBe('circle.tabs.taken');
+    expect(featureActionLabelKey('memberDirectory')).toBe('circle.tabs.leden');
+    expect(featureActionLabelKey('houseRules')).toBe('circle.settings.feat.houseRules');
+    expect(featureActionLabelKey('bogus')).toBe('bogus');
+  });
+
+  it('featureTabId maps tab features to ids; houseRules has no tab', () => {
+    expect(featureTabId('chat')).toBe('gesprek');
+    expect(featureTabId('tasks')).toBe('taken');
+    expect(featureTabId('memberDirectory')).toBe('leden');
+    expect(featureTabId('houseRules')).toBe(null);
+    expect(featureTabId('bogus')).toBe(null);
+  });
+
+  it('featureForTabId is the inverse of featureTabId', () => {
+    for (const f of ['chat', 'noticeboard', 'tasks', 'lists', 'notes', 'calendar', 'memberDirectory']) {
+      expect(featureForTabId(featureTabId(f))).toBe(f);
+    }
+    expect(featureForTabId('bogus')).toBe(null);
   });
 });

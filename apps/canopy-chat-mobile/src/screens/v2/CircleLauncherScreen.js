@@ -38,6 +38,8 @@ import {
   buildKringStream, actionsForStreamRow,
   // SP-13.3 — per-kring bottom tabs from policy.features (v2 §1).
   buildKringTabs, DEFAULT_KRING_TAB,
+  // D1 (§5A) — quickActions row: feature↔tab mapping + frequency counter.
+  featureTabId, featureForTabId, createActionFrequencyStore,
   // α.1a/b — scherm recipe model + per-block materializer.
   getActiveRecipe, materializeRecipe,
   // α.1d.3 — recipe-editor mutation helpers.
@@ -83,6 +85,32 @@ import CircleTabBar from './CircleTabBar.js';
 import CircleScreenView from './CircleScreenView.js';
 import CircleRecipeEditorScreen from './CircleRecipeEditorScreen.js';
 import CircleScreensPickerScreen from './CircleScreensPickerScreen.js';
+
+// D1 (§5A) — per-circle action-frequency counter behind the quickActions
+// row.  Module singleton (shared across kring opens), hydrated once from
+// AsyncStorage and persisting its snapshot on every bump.  In-memory reads
+// work before hydration completes (just yield the default feature order).
+const ACTION_FREQ_KEY = 'cc.actionFrequency';
+const actionFrequency = createActionFrequencyStore({}, {
+  onChange: (snap) => { AsyncStorage.setItem(ACTION_FREQ_KEY, JSON.stringify(snap)).catch(() => {}); },
+});
+AsyncStorage.getItem(ACTION_FREQ_KEY).then((raw) => {
+  if (!raw) return;
+  try {
+    const snap = JSON.parse(raw);
+    for (const [cid, counts] of Object.entries(snap ?? {})) {
+      for (const [k, v] of Object.entries(counts ?? {})) {
+        if (typeof v === 'number' && v > 0) actionFrequency.bump(cid, k, v);
+      }
+    }
+  } catch { /* corrupt snapshot — ignore */ }
+}).catch(() => {});
+
+// D1 (§5A) — in-memory fallback recipe (just the Veel-gebruikt row) for a
+// kring with no authored scherm.  Never persisted.
+const DEFAULT_SCHERM_RECIPE = Object.freeze({
+  id: '__default__', name: '', blocks: [{ id: 'qa-default', type: 'quickActions', config: { limit: 4 } }],
+});
 
 // Wrap a top-level surface (Kringen / Stroom / Mij) with the bottom tab bar.
 function WithTabBar({ active, onSelect, children }) {
@@ -1310,7 +1338,9 @@ function CircleDetail({
 
   // α.1e — materialized scherm blocks for the active recipe.  null
   // until the load below resolves; [] when the book is empty.
+  // D1 — `screenReloadTick` bumps after a quickActions tap to re-rank.
   const [screenBlocks, setScreenBlocks] = useState(null);
+  const [screenReloadTick, setScreenReloadTick] = useState(0);
   useEffect(() => {
     let alive = true;
     setScreenBlocks(null);  // reset on circle change
@@ -1318,12 +1348,14 @@ function CircleDetail({
     (async () => {
       try {
         const book = await recipeStore.get(circle.id);
-        const active = getActiveRecipe(book);
-        if (!active) { if (alive) setScreenBlocks([]); return; }
+        // D1 (§5A) — fall back to the quickActions-only default recipe so
+        // every scherm leads with the Veel-gebruikt row.
+        const active = getActiveRecipe(book) ?? DEFAULT_SCHERM_RECIPE;
         const blocks = await materializeRecipe({
           recipe:   active,
           circleId: circle.id,
-          hostOps:  { callSkill, eventLog, circles },
+          // D1 — policy + actionFrequency feed the quickActions block.
+          hostOps:  { callSkill, eventLog, circles, policy, actionFrequency },
         });
         if (alive) setScreenBlocks(blocks);
       } catch (err) {
@@ -1332,7 +1364,7 @@ function CircleDetail({
       }
     })();
     return () => { alive = false; };
-  }, [recipeStore, circle?.id, callSkill, eventLog, circles]);
+  }, [recipeStore, circle?.id, callSkill, eventLog, circles, policy, screenReloadTick]);
 
   // SP-13.4 — Chat ↔ Scherm pill state (v2 §4 "De Schakelaar").
   // Per-circle preference persists in AsyncStorage at cc.circleViewMode.
@@ -1365,6 +1397,20 @@ function CircleDetail({
       await AsyncStorage.setItem('cc.circleViewMode', JSON.stringify(map));
     } catch { /* quota / disabled */ }
   }, [circle?.id]);
+
+  // D1 (§5A) — a "Veel-gebruikt" pill tap: bump the feature's count, route
+  // it (tab feature → switch to it in chat view; houseRules → rules panel),
+  // then re-rank the row.  Mirrors the web onScreenAction.
+  const onScreenAction = useCallback((featureKey) => {
+    if (!circle?.id) return;
+    actionFrequency.bump(circle.id, featureKey);
+    if (featureKey === 'houseRules') { onRules?.(); }
+    else {
+      const tabId = featureTabId(featureKey);
+      if (tabId) { setActiveTab(tabId); setViewMode('chat'); }
+    }
+    setScreenReloadTick((n) => n + 1);
+  }, [circle?.id, onRules, setViewMode]);
 
   // δ.2 — fan-out helper used by both the initial send and the
   // tap-to-retry handler for failed bubbles.  Re-fires with the
@@ -1554,7 +1600,7 @@ function CircleDetail({
           // α.1e — render the materialized recipe blocks.  CircleScreenView
           // handles per-block status (ok / empty / error) + top-level
           // empty-state when no recipe is set up yet.
-          <CircleScreenView blocks={screenBlocks} />
+          <CircleScreenView blocks={screenBlocks} onAction={onScreenAction} />
         ) : activeTab !== 'gesprek' ? (
           <Text style={styles.placeholder}>
             {t('circle.kring.tab_coming', { tab: t(`circle.tabs.${activeTab}`) })}
@@ -1610,7 +1656,13 @@ function CircleDetail({
               key={tab.id}
               accessibilityRole="button"
               testID={`circle-detail-tab-${tab.id}`}
-              onPress={() => { if (tab.id !== activeTab) setActiveTab(tab.id); }}
+              onPress={() => {
+                if (tab.id === activeTab) return;
+                setActiveTab(tab.id);
+                // D1 — count tab use so the Veel-gebruikt row reflects reality.
+                const f = featureForTabId(tab.id);
+                if (f && circle?.id) actionFrequency.bump(circle.id, f);
+              }}
               style={[styles.kringTab, tab.id === activeTab && styles.kringTabActive]}
             >
               <Text style={[styles.kringTabText, tab.id === activeTab && styles.kringTabTextActive]}>

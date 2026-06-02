@@ -27,7 +27,9 @@ import {
   buildCircleStream, buildKringStream,
 } from '../../src/v2/circleStream.js';
 import { isFeatureEnabled, defaultViewModeFromPolicy } from '../../src/v2/circlePolicy.js';
-import { buildKringTabs, DEFAULT_KRING_TAB } from '../../src/v2/kringTabs.js';
+import { buildKringTabs, DEFAULT_KRING_TAB, featureTabId, featureForTabId } from '../../src/v2/kringTabs.js';
+// D1 (§5A) — per-circle action-frequency counter behind the quickActions block.
+import { createActionFrequencyStore } from '../../src/v2/actionFrequency.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
 import { rehydrateKringChatsFromStoop } from '../../src/v2/kringChatRehydrate.js';
@@ -165,6 +167,26 @@ const policyStore = createCirclePolicyStore({ ...localStoragePolicyIo(), version
 // α.1c — per-kring recipe book store (multi-recipe per kring, one active).
 // localStorage now; pod io can swap in later without touching callers.
 const recipeStore = createKringRecipeStore({ io: localStorageRecipeIo(), versions: recipeVersions });
+// D1 (§5A) — per-circle action-frequency counter (the quickActions row).
+// Hydrated from localStorage at boot; persists its snapshot on every bump.
+const ACTION_FREQ_KEY = 'cc.actionFrequency';
+const actionFrequency = createActionFrequencyStore(readActionFreqSnapshot(), {
+  onChange: (snap) => {
+    try { window.localStorage.setItem(ACTION_FREQ_KEY, JSON.stringify(snap)); }
+    catch { /* quota / disabled */ }
+  },
+});
+function readActionFreqSnapshot() {
+  try {
+    const raw = window.localStorage.getItem(ACTION_FREQ_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+// D1 (§5A) — in-memory fallback recipe for a kring with no authored scherm:
+// just the "Veel-gebruikt" row.  Never persisted.
+const DEFAULT_SCHERM_RECIPE = Object.freeze({
+  id: '__default__', name: '', blocks: [{ id: 'qa-default', type: 'quickActions', config: { limit: 4 } }],
+});
 // γ.2 — per-circle rules store (replaces inline localStorage in showRules()).
 const rulesStore  = createCircleRulesStore({ ...localStorageRulesIo(), versions: rulesVersions });
 // γ-next.recipe — per-kring "incoming recipe" cache.  Receiver writes
@@ -928,7 +950,30 @@ function showKring(id, circle, policy) {
         writeViewMode(id, mode);
         rerender();
       },
-      onTab: (tabId) => { activeTab = tabId; rerender(); },
+      onTab: (tabId) => {
+        activeTab = tabId;
+        // D1 — count the tab use so the quickActions row reflects reality.
+        const f = featureForTabId(tabId);
+        if (f) actionFrequency.bump(id, f);
+        rerender();
+      },
+      // D1 (§5A) — a "Veel-gebruikt" pill tap.  Bump the feature's count,
+      // then route it: a feature with a tab switches to it (in chat view);
+      // houseRules opens the rules panel; anything else falls back to the
+      // members tab if present.
+      onScreenAction: (featureKey) => {
+        actionFrequency.bump(id, featureKey);
+        if (featureKey === 'houseRules') { more.rules?.(); return; }
+        const tabId = featureTabId(featureKey);
+        if (tabId) {
+          activeTab = tabId;
+          viewMode = 'chat';
+          writeViewMode(id, 'chat');
+        }
+        rerender();
+        // Re-materialize so the row's own ordering reflects the new count.
+        loadScherm();
+      },
       onBack:   showLauncher,
       onSend:   (text) => {
         // SP-13.2 / SP-13.2.1 — optimistic local append + best-effort
@@ -960,18 +1005,23 @@ function showKring(id, circle, policy) {
   // EventLog has no subscribe seam yet; SP-13.2.1 will poll-on-event so
   // inbound peer messages appear without manual re-render.
 
-  // α.1c — load + materialize the active recipe in the background.
-  // Until this resolves, scherm-mode shows the empty-state.  Failure
-  // (e.g. corrupt store) falls through to the empty-state too.
-  (async () => {
+  // α.1c — load + materialize the active recipe.  Until this resolves,
+  // scherm-mode shows the empty-state.  Failure (e.g. corrupt store)
+  // falls through to the empty-state too.  D1 re-runs this after a
+  // quickActions tap so the row's own ordering reflects the new count.
+  async function loadScherm() {
     try {
       const book = await recipeStore.get(id);
-      const active = getActiveRecipe(book);
-      if (!active) { screenBlocks = []; rerender(); return; }
+      // D1 (§5A) — every scherm leads with the "Veel-gebruikt" row.  When
+      // the admin hasn't authored a recipe yet, fall back to an in-memory
+      // default that's just the quickActions block (not persisted, so the
+      // admin can still start from a clean recipe in the editor).
+      const active = getActiveRecipe(book) ?? DEFAULT_SCHERM_RECIPE;
       const blocks = await materializeRecipe({
         recipe:   active,
         circleId: id,
-        hostOps:  { callSkill: resolveCallSkill ?? rawCallSkill, eventLog, circles: circlesCache },
+        // D1 — policy + actionFrequency feed the quickActions block.
+        hostOps:  { callSkill: resolveCallSkill ?? rawCallSkill, eventLog, circles: circlesCache, policy, actionFrequency },
       });
       screenBlocks = blocks;
       if (getActiveCircle() === id) rerender();
@@ -980,7 +1030,8 @@ function showKring(id, circle, policy) {
       screenBlocks = [];
       if (getActiveCircle() === id) rerender();
     }
-  })();
+  }
+  loadScherm();
 }
 
 
