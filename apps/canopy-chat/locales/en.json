@@ -1185,6 +1185,18 @@
         "text": "No files in this circle yet.",
         "doc": "Empty state for the circle file browser."
       },
+      "empty_folder": {
+        "text": "This folder is empty.",
+        "doc": "N5 — empty state when a folder has no subfolders or files."
+      },
+      "root": {
+        "text": "Files",
+        "doc": "N5 — root breadcrumb label for the Folio folder tree."
+      },
+      "folder_count": {
+        "text": "{{count}} item(s)",
+        "doc": "N5 — file count badge on a folder row; {{count}} interpolated."
+      },
       "my_things_title": {
         "text": "My things",
         "doc": "Board 10A heading (P6.M7) — Folio shown as the private kring."

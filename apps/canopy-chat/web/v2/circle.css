@@ -372,7 +372,21 @@
   border-bottom: 1px solid var(--line); font-size: 14px;
 }
 .circle-folio__row:last-child { border-bottom: none; }
+.circle-folio__row { width: 100%; text-align: left; background: none; border-left: none; border-right: none; border-top: none; cursor: pointer; font: inherit; }
 .circle-folio__name { font-weight: 600; }
+
+/* N5 — folder tree (breadcrumbs + folder rows + rich file rows) */
+.circle-folio__crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 10px; font-size: 13px; }
+.circle-folio__crumb {
+  padding: 2px 6px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 13px;
+  background: none; border: none; color: var(--accent);
+}
+.circle-folio__crumb:hover { text-decoration: underline; }
+.circle-folio__crumb.is-current { color: var(--ink); font-weight: 600; cursor: default; }
+.circle-folio__crumb-sep { color: var(--muted); }
+.circle-folio__glyph { flex: none; font-size: 16px; line-height: 1; }
+.circle-folio__row--folder .circle-folio__name { font-weight: 700; }
+.circle-folio__count, .circle-folio__size { margin-left: auto; color: var(--muted); font-size: 12px; }
 
 /* ───────────────────── rules (board 3B/3C) ───────────────────── */
 .circle-rules__field, .circle-rules-consent__field { margin-bottom: 14px; }

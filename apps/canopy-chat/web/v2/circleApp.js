@@ -1160,6 +1160,7 @@ function broadcastActiveRecipe({ circleId, book }) {
 function showFolio(id) {
   let filter = 'all';
   let shareFilter = null;          // null | 'shared-by-me' | 'shared-with-me'
+  let currentPath = '';            // N5 — folder being viewed ('' = root)
   let lastListResult = null;       // raw `listFiles` result for re-projection
   let files = buildCircleFiles({ files: [], circleId: id });
 
@@ -1181,14 +1182,19 @@ function showFolio(id) {
     files,
     filter,
     shareFilter,
+    currentPath,
     t,
-    onFilter: (f) => { filter = f; rerender(); },
+    // Changing the row set (filter / share toggle) resets folder depth.
+    onFilter: (f) => { filter = f; currentPath = ''; rerender(); },
     onShareFilter: (next) => {
       if (next && !FOLIO_SHARE_FILTERS.includes(next)) return;
       shareFilter = next;
+      currentPath = '';
       project();
       rerender();
     },
+    // N5 — descend into / climb out of folders derived from file paths.
+    onNavigate: (path) => { currentPath = path; rerender(); },
     onBack: () => showDetail(id),
   });
   rerender();

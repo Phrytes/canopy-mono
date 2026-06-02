@@ -40,6 +40,15 @@ import {
 
 import { mintShareToken } from './autoShare.js';
 
+// N5 — Drive tree (folder navigation + rich rows).  Pure JS, node-free,
+// RN-free; safe to pull into the browser bundle (unlike the `.` barrel,
+// which drags in scanLocal's `fs`/chokidar).  canopy-chat web/mobile
+// import the Drive view from here.
+export {
+  folioLevel, breadcrumbs, parentPath, rowPath, rowName,
+  formatFileSize, fileKind, glyphForFile, FILE_KIND_GLYPH,
+} from './folioTree.js';
+
 /**
  * Pre-seeded demo files.  Mirrors the slice-1/2b convention — the
  * chat-shell expects /files + /folio-status to show content out of
