@@ -1581,6 +1581,10 @@
     "error": {
       "text": "Error",
       "doc": "Generic error label when an error envelope has no message or code."
+    },
+    "consequences": {
+      "text": "Consequences of this choice",
+      "doc": "N2 — ⓘ tooltip/aria label on a radio option that reveals its consequence."
     }
   },
   "reply": {
@@ -2338,6 +2342,88 @@
       "openInFull": {
         "text": "Open in full",
         "doc": "E5 — record/mini-page panel: expand the card into the wide side panel."
+      }
+    }
+  },
+  "consequence": {
+    "accessPolicy": {
+      "invite-only": {
+        "text": "Only people an admin invites can join. Tightest control; nobody slips in via a shared link.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      },
+      "request": {
+        "text": "Anyone can ask to join, but an admin must approve each request. A middle ground.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      },
+      "open": {
+        "text": "Anyone who knows the buurt id joins instantly — no gate. Easiest to grow, hardest to keep private.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      }
+    },
+    "leavePolicy": {
+      "anyone": {
+        "text": "Members can leave whenever they want, silently. Lowest friction; you may not notice departures.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      },
+      "notify-first": {
+        "text": "Leavers post a notice before going, so the buurt sees who left and why.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      }
+    },
+    "conflictPolicy": {
+      "admin-decides": {
+        "text": "Disputes go to an admin who rules. Fast, but concentrates power.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      },
+      "mediation": {
+        "text": "Two random members mediate. More neutral, but slower and needs willing volunteers.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      },
+      "vote": {
+        "text": "The whole buurt votes. Most democratic, but heavy for small disputes.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      }
+    },
+    "storagePolicy": {
+      "no-pod": {
+        "text": "Everything lives in local app state only. Simplest to start; nothing syncs across your devices and there is no backup.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      },
+      "decentralised": {
+        "text": "Each member keeps their own pod and they sync. Resilient + private, but every member needs a pod set up.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      },
+      "centralised": {
+        "text": "One shared group pod holds everything (you provide its URI). Easy to back up, but one party hosts the data.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      }
+    },
+    "kind": {
+      "household": {
+        "text": "A home: everyone sees each other, one shared pod, light governance. Chat on by default.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      },
+      "buurt": {
+        "text": "A neighbourhood: pairwise reveal, per-member pods, co-admin consensus. Noticeboard-first — open chat off by default.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      },
+      "vriendenkring": {
+        "text": "A friend group: relaxed, open reveal, no house rules or member directory. Chat on by default.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      },
+      "team": {
+        "text": "A workspace: cloud LLM + agents on, shared pod, no noticeboard. Chat on by default.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      }
+    },
+    "size": {
+      "small": {
+        "text": "A few households. Open chat can work — the wizard leaves the choice to you (default off).",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+      },
+      "large": {
+        "text": "A whole neighbourhood. We advise keeping open chat off — an all-to-all chat overwhelms; reactions still start focused threads.",
+        "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
       }
     }
   }

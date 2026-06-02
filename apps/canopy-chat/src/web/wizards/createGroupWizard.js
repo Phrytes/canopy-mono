@@ -31,6 +31,7 @@ import {
 } from '../../core/wizards/createGroupState.js';
 import { RULES_QUESTIONS } from '../../v2/circleRules.js';
 import { createCirclePolicyStore, localStoragePolicyIo } from '../../v2/circlePolicyStore.js';
+import { consequenceKeyFor } from '../../v2/optionConsequences.js';
 import { t } from '../../localisation.js';
 
 /**
@@ -133,13 +134,15 @@ function renderIdentityStep(container, doc, state, onNext, onCancel, rerender) {
   // chat advice (buurt is noticeboard-first, open chat off by default).
   appendRadioField(wrap, doc, t('circle.kindPicker'), state.kind ?? null,
     KRING_KINDS.map((k) => ({ id: k, label: t(`circle.kind.${k}`) })),
-    (k) => { Object.assign(state, setKind(state, k)); rerender(); });
+    (k) => { Object.assign(state, setKind(state, k)); rerender(); },
+    { consequenceGroup: 'kind' });
 
   if (state.kind === 'buurt') {
     appendRadioField(wrap, doc, t('circle.size.label'), state.size ?? null,
       [{ id: 'small', label: t('circle.size.small') },
        { id: 'large', label: t('circle.size.large') }],
-      (sz) => { Object.assign(state, setSize(state, sz)); rerender(); });
+      (sz) => { Object.assign(state, setSize(state, sz)); rerender(); },
+      { consequenceGroup: 'size' });
     appendChatAdvice(wrap, doc, state, rerender);
   }
 
@@ -201,9 +204,9 @@ function renderGovernanceStep(container, doc, state, onNext, onBack, onCancel, r
     { placeholder: 'e.g. webid:anne,webid:karl',
       hint: 'You are admin by default. Add others now or invite later.' });
   appendRadioField(wrap, doc, 'Access policy', state.accessPolicy, ACCESS_POLICIES,
-    (v) => { state.accessPolicy = v; rerender(); });
+    (v) => { state.accessPolicy = v; rerender(); }, { consequenceGroup: 'accessPolicy' });
   appendRadioField(wrap, doc, 'Leave policy', state.leavePolicy, LEAVE_POLICIES,
-    (v) => { state.leavePolicy = v; rerender(); });
+    (v) => { state.leavePolicy = v; rerender(); }, { consequenceGroup: 'leavePolicy' });
 
   appendField(wrap, doc, 'Invite-code expiry (hours, 1-8760)', 'inviteExpiresInHours',
     String(state.inviteExpiresInHours),
@@ -249,7 +252,7 @@ function renderRulesStep(container, doc, state, onNext, onBack, onCancel, rerend
   }
 
   appendRadioField(wrap, doc, 'Conflict resolution policy', state.conflictPolicy, CONFLICT_POLICIES,
-    (v) => { state.conflictPolicy = v; rerender(); });
+    (v) => { state.conflictPolicy = v; rerender(); }, { consequenceGroup: 'conflictPolicy' });
 
   container.appendChild(wrap);
   renderActions(container, doc, [
@@ -315,7 +318,7 @@ function renderTechStep(container, doc, state, onNext, onBack, onCancel, rerende
     'How the buurt stores its data + how the encryption key rotates.');
 
   appendRadioField(wrap, doc, 'Storage policy', state.storagePolicy, STORAGE_POLICIES,
-    (v) => { state.storagePolicy = v; rerender(); });
+    (v) => { state.storagePolicy = v; rerender(); }, { consequenceGroup: 'storagePolicy' });
 
   // Conditional pod URI field for centralised/hybrid.
   if (state.storagePolicy === 'centralised' || state.storagePolicy === 'hybrid') {
@@ -577,7 +580,10 @@ function appendField(wrap, doc, label, name, value, onInput, extra = {}) {
   wrap.appendChild(labelEl);
 }
 
-function appendRadioField(wrap, doc, label, value, options, onPick) {
+function appendRadioField(wrap, doc, label, value, options, onPick, opts = {}) {
+  // N2 — `opts.consequenceGroup` lights up a per-option ⓘ ("Gevolgen
+  // als je dit kiest…") for any option registered in optionConsequences.
+  const consequenceGroup = opts.consequenceGroup ?? null;
   const group = doc.createElement('fieldset');
   group.className = 'cc-wizard-radio-group';
   const legend = doc.createElement('legend');
@@ -585,6 +591,8 @@ function appendRadioField(wrap, doc, label, value, options, onPick) {
   legend.textContent = label;
   group.appendChild(legend);
   for (const o of options) {
+    const optWrap = doc.createElement('div');
+    optWrap.className = 'cc-radio-option';
     const row = doc.createElement('label');
     row.className = 'cc-wizard-radio';
     const input = doc.createElement('input');
@@ -595,7 +603,34 @@ function appendRadioField(wrap, doc, label, value, options, onPick) {
     input.addEventListener('change', () => onPick(o.id));
     row.appendChild(input);
     row.appendChild(doc.createTextNode(' ' + o.label));
-    group.appendChild(row);
+
+    const key = consequenceGroup ? consequenceKeyFor(consequenceGroup, o.id) : null;
+    if (key) {
+      // ⓘ button (inside the label so it sits inline, but a <button>
+      // inside a <label> does NOT toggle the radio) + a hidden note.
+      const info = doc.createElement('button');
+      info.type = 'button';
+      info.className = 'cc-radio-info';
+      info.textContent = 'ⓘ';
+      info.title = t('common.consequences');
+      info.setAttribute('aria-label', t('common.consequences'));
+      info.setAttribute('aria-expanded', 'false');
+      const note = doc.createElement('p');
+      note.className = 'cc-radio-consequence';
+      note.textContent = t(key);
+      note.hidden = true;
+      info.addEventListener('click', (e) => {
+        e.preventDefault();
+        note.hidden = !note.hidden;
+        info.setAttribute('aria-expanded', String(!note.hidden));
+      });
+      row.appendChild(info);
+      optWrap.appendChild(row);
+      optWrap.appendChild(note);
+    } else {
+      optWrap.appendChild(row);
+    }
+    group.appendChild(optWrap);
   }
   wrap.appendChild(group);
 }

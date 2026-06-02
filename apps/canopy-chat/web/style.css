@@ -731,6 +731,27 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   margin: 0 0 0.7rem;
   cursor: pointer;
 }
+/* N2 — per-option ⓘ "consequences if you choose this". */
+.cc-radio-option { margin: 0 0 0.1rem; }
+.cc-radio-info {
+  background: transparent;
+  border: none;
+  color: var(--accent, #b5651d);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+  vertical-align: baseline;
+}
+.cc-radio-info:hover { opacity: 0.75; }
+.cc-radio-consequence {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--fg-mute, #666);
+  margin: 0.1rem 0 0.4rem 1.4rem;
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--border, #ddd);
+}
 .cc-wizard-radio {
   display: block;
   padding: 0.15rem 0;

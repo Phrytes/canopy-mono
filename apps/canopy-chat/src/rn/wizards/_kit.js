@@ -100,26 +100,48 @@ export function Textarea({ label, value, onChangeText, placeholder, rows = 4 }) 
   );
 }
 
-export function RadioGroup({ label, value, options, onChange }) {
+export function RadioGroup({ label, value, options, onChange, consequenceLabel }) {
+  // N2 — when an option carries a `consequence` string (callers attach it
+  // via `attachConsequences`), show an ⓘ that toggles the note inline.
+  const [openInfo, setOpenInfo] = React.useState(null);
   return (
     <View style={styles.fieldRow}>
       <Text style={styles.fieldLabel}>{label}</Text>
       {options.map((opt) => {
         const checked = opt.id === value;
+        const open = openInfo === opt.id;
         return (
-          <TouchableOpacity
-            key={opt.id}
-            onPress={() => onChange?.(opt.id)}
-            style={styles.radioRow}
-            accessibilityRole="radio"
-            accessibilityState={{ checked }}
-            testID={`wizard-radio-${opt.id}`}
-          >
-            <View style={[styles.radioCircle, checked && styles.radioCircleChecked]}>
-              {checked ? <View style={styles.radioInner} /> : null}
+          <View key={opt.id}>
+            <View style={styles.radioOptionRow}>
+              <TouchableOpacity
+                onPress={() => onChange?.(opt.id)}
+                style={styles.radioRow}
+                accessibilityRole="radio"
+                accessibilityState={{ checked }}
+                testID={`wizard-radio-${opt.id}`}
+              >
+                <View style={[styles.radioCircle, checked && styles.radioCircleChecked]}>
+                  {checked ? <View style={styles.radioInner} /> : null}
+                </View>
+                <Text style={styles.radioLabel}>{opt.label}</Text>
+              </TouchableOpacity>
+              {opt.consequence ? (
+                <TouchableOpacity
+                  onPress={() => setOpenInfo(open ? null : opt.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={consequenceLabel}
+                  accessibilityState={{ expanded: open }}
+                  testID={`wizard-radio-info-${opt.id}`}
+                  hitSlop={8}
+                >
+                  <Text style={styles.radioInfoIcon}>ⓘ</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
-            <Text style={styles.radioLabel}>{opt.label}</Text>
-          </TouchableOpacity>
+            {opt.consequence && open ? (
+              <Text style={styles.radioConsequence}>{opt.consequence}</Text>
+            ) : null}
+          </View>
         );
       })}
     </View>
@@ -286,7 +308,15 @@ const styles = StyleSheet.create({
   },
   fieldInputMono: { fontFamily: 'monospace' },
 
-  radioRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 8 },
+  radioRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 8, flex: 1 },
+  // N2 — option row holds the radio + the ⓘ button; the note sits below.
+  radioOptionRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  radioInfoIcon:  { fontSize: 15, color: '#b5651d', paddingHorizontal: 4 },
+  radioConsequence: {
+    fontSize: 12, lineHeight: 17, color: '#666',
+    marginLeft: 28, marginBottom: 6, paddingLeft: 8,
+    borderLeftWidth: 2, borderLeftColor: '#ddd',
+  },
   radioCircle: {
     width: 18, height: 18, borderRadius: 9,
     borderWidth: 2, borderColor: '#bbb',
