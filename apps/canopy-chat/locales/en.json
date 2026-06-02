@@ -1197,6 +1197,18 @@
         "text": "{{count}} item(s)",
         "doc": "N5 — file count badge on a folder row; {{count}} interpolated."
       },
+      "source_index": {
+        "text": "In-app",
+        "doc": "N5 — Folio source toggle: the in-app file index."
+      },
+      "source_pod": {
+        "text": "My pod",
+        "doc": "N5 — Folio source toggle: the user's real signed-in pod."
+      },
+      "connect_pod": {
+        "text": "Connect your pod to browse your files here.",
+        "doc": "N5 — shown when the pod source is picked but no pod is signed in."
+      },
       "my_things_title": {
         "text": "My things",
         "doc": "Board 10A heading (P6.M7) — Folio shown as the private kring."

@@ -127,3 +127,54 @@ describe('renderCircleFolioBrowser — folder navigation', () => {
     expect(el.querySelector('.circle-folio__empty').textContent).toBe('circle.folio.empty_folder');
   });
 });
+
+// N5 — source toggle (in-app index ↔ the user's real pod).
+describe('renderCircleFolioBrowser — source toggle', () => {
+  it('renders the two source pills and marks the active one', () => {
+    const el = mount();
+    renderCircleFolioBrowser(el, { files, t, sourceMode: 'pod', onSourceMode: vi.fn() });
+    const pills = [...el.querySelectorAll('.circle-folio__source')];
+    expect(pills.map((p) => p.dataset.source)).toEqual(['index', 'pod']);
+    expect(el.querySelector('.circle-folio__source[data-source=pod]').classList.contains('is-active')).toBe(true);
+  });
+
+  it('fires onSourceMode when a pill is clicked', () => {
+    const el = mount();
+    const onSourceMode = vi.fn();
+    renderCircleFolioBrowser(el, { files, t, sourceMode: 'index', onSourceMode });
+    el.querySelector('.circle-folio__source[data-source=pod]').click();
+    expect(onSourceMode).toHaveBeenCalledWith('pod');
+  });
+
+  it('hides the share toggle + filter strip in pod mode', () => {
+    const el = mount();
+    renderCircleFolioBrowser(el, {
+      files, t, sourceMode: 'pod', onSourceMode: vi.fn(), onShareFilter: vi.fn(), onFilter: vi.fn(),
+    });
+    expect(el.querySelector('.circle-folio__share-toggle')).toBeNull();
+    expect(el.querySelector('.circle-folio__filters')).toBeNull();
+  });
+
+  it('shows the connect-pod prompt when pod is picked but not connected', () => {
+    const el = mount();
+    renderCircleFolioBrowser(el, {
+      files: [], t, sourceMode: 'pod', onSourceMode: vi.fn(), needsPod: true, onNavigate: vi.fn(),
+    });
+    expect(el.querySelector('.circle-folio__connect-pod').textContent).toBe('circle.folio.connect_pod');
+    // No list / breadcrumbs render while prompting for sign-in.
+    expect(el.querySelector('.circle-folio__crumbs')).toBeNull();
+  });
+
+  it('renders pod folders once rows arrive (no connect prompt)', () => {
+    const el = mount();
+    const podRows = [
+      { id: 'schema.md', name: 'schema.md', relPath: 'schema.md', bytes: 100 },
+      { id: '2024/notulen.pdf', name: 'notulen.pdf', relPath: '2024/notulen.pdf', bytes: 2048 },
+    ];
+    renderCircleFolioBrowser(el, {
+      files: podRows, t, sourceMode: 'pod', onSourceMode: vi.fn(), needsPod: false, onNavigate: vi.fn(),
+    });
+    expect(el.querySelector('.circle-folio__connect-pod')).toBeNull();
+    expect(el.querySelector('.circle-folio__row--folder[data-folder-path="2024"]')).not.toBeNull();
+  });
+});
