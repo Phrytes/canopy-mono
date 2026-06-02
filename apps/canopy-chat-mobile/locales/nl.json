@@ -1379,6 +1379,42 @@
           "doc": "β.4 — confirmation shown after picking a kind in the C1 create-circle wizard; the matching kringTemplate has just pre-filled the policy axes. {{kind}} is the picked kind id (household / buurt / vriendenkring / team)."
         }
       }
+    },
+    "kindPicker": {
+      "text": "Soort kring",
+      "doc": "N1+E8 — kind picker legend in the create wizard."
+    },
+    "size": {
+      "label": {
+        "text": "Hoe groot wordt deze buurt?",
+        "doc": "N1 — buurt size question driving the chat advice."
+      },
+      "small": {
+        "text": "Klein (een paar huishoudens)",
+        "doc": "N1 — small buurt size option."
+      },
+      "large": {
+        "text": "Groot (een hele buurt)",
+        "doc": "N1 — large buurt size option."
+      }
+    },
+    "chatToggle": {
+      "text": "Open chat in deze kring",
+      "doc": "N1 — the chat-feature toggle in the create wizard."
+    },
+    "chatAdvice": {
+      "buurtLarge": {
+        "text": "Voor een grotere buurt raden we open chat AF te laten — een drukke iedereen-met-iedereen-chat overweldigt mensen. Reacties op een bericht starten alsnog een gericht gesprek.",
+        "doc": "N1 — advice for a large buurt (chat off)."
+      },
+      "buurtSmall": {
+        "text": "Voor een kleine buurt kan het allebei — open chat kan werken. Standaard staat het uit (prikbord-eerst); zet het aan als jullie dat willen.",
+        "doc": "N1 — advice for a small buurt (ask)."
+      },
+      "buurtDefault": {
+        "text": "Buurten beginnen prikbord-eerst: open chat staat uit, en een gesprek verschijnt pas als iemand op een vraag of aanbod reageert.",
+        "doc": "N1 — neutral buurt chat default note."
+      }
     }
   },
   "app": {

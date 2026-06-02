@@ -1609,6 +1609,11 @@ export default function ChatScreen({
             getMyNkn={() => bootState.kind === 'ready'
               ? (bootState.bundle.agent?.peer?.address ?? null)
               : null}
+            // N1+E8 — persist the create wizard's chosen policy (incl. the
+            // buurt chat-off default) onto the new circle, reusing the same
+            // AsyncStorage policy store the launcher reads.  Only consumed
+            // by CreateGroupWizardModal; other wizards ignore it.
+            persistPolicy={(groupId, patch) => policyStoreRef.current?.update(groupId, patch)}
             // Bundle I (2026-05-27) — settings modal pod + relay
             // sections.  Only consumed by SettingsWizardModal; other
             // wizards ignore the unknown props.
