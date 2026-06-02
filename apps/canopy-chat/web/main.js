@@ -19,6 +19,7 @@ import {
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
   getActiveCircle, setActiveCircle,
   renderReply, ThreadStore, createDefaultThreadStore, createEventRouter,
+  REFRESHABLE_VERBS,
   initLocalisation, t, setLang, detectDeviceLang, currentLang,
   describeFilter, canopyChatManifest,
   IndexedDBStore, attachPersistence,
@@ -222,13 +223,6 @@ if (persisted.length > 0) {
 
 // Persist future changes asynchronously.
 attachPersistence({ threadStore: store, idb });
-
-// E3 — verbs whose ops are safe to RE-RUN for an auto-refresh (pure
-// reads).  A record panel that was the reply to a MUTATION (e.g.
-// addTask → record of the new task) must NOT be re-run on a later
-// item-changed — that would re-execute the mutation.  Anything not in
-// this allow-list keeps the static stale badge markPanelStale set.
-const REFRESHABLE_VERBS = new Set(['list', 'get', 'view', 'show', 'record', 'open', 'snapshot', 'find', 'brief']);
 
 const router = createEventRouter({
   threadStore: store,
