@@ -71,6 +71,10 @@ export { createCirclePinStore, localStoragePinIo } from './v2/circlePinStore.js'
 export {
   CONSEQUENCE_OPTIONS, hasConsequence, consequenceKeyFor, attachConsequences,
 } from './v2/optionConsequences.js';
+// N3 — role templates (gast / observer / externe-vrijwilliger starter set).
+export {
+  ROLE_TEMPLATES, ROLE_TEMPLATE_IDS, roleTemplateById, applyRoleTemplates,
+} from './v2/roleTemplates.js';
 export { makeProposal, approveProposal, pendingApprovers } from './v2/circleConsensus.js';
 // P6.2 — persistence layer for multi-admin proposals.
 export { createProposalStore, localStorageProposalIo } from './v2/circleProposalStore.js';

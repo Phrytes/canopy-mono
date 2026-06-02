@@ -28,7 +28,10 @@ import {
   newSkillRow, SKILL_AXES,
   // N1+E8 — kind picker + buurt size/chat advice + policy patch.
   KRING_KINDS, setKind, setSize, setChatEnabled, chatAdvice, policyPatchFromState,
+  // N3 — extra role templates (admin opt-in).
+  ROLE_TEMPLATE_IDS, toggleRole,
 } from '../../core/wizards/createGroupState.js';
+import { ROLE_TEMPLATES } from '../../v2/roleTemplates.js';
 import { RULES_QUESTIONS } from '../../v2/circleRules.js';
 import { createCirclePolicyStore, localStoragePolicyIo } from '../../v2/circlePolicyStore.js';
 import { consequenceKeyFor } from '../../v2/optionConsequences.js';
@@ -217,6 +220,9 @@ function renderGovernanceStep(container, doc, state, onNext, onBack, onCancel, r
     },
     { type: 'number',
       hint: 'How long the membership-code stays redeemable. Short = safer for ad-hoc shares (1 h default). Long = good for slower onboarding (e.g. 168 = 1 week). Admin can /rotate-code later to mint a fresh one.' });
+
+  // N3 — extra role templates (admin opt-in).
+  appendRoleChecklist(wrap, doc, state, rerender);
 
   container.appendChild(wrap);
   renderActions(container, doc, [
@@ -639,6 +645,50 @@ function appendRadioField(wrap, doc, label, value, options, onPick, opts = {}) {
 // emphasis tracks the recommendation mode (`advise-off` is the loudest;
 // `ask` is neutral).  The toggle writes through `setChatEnabled` so a
 // user override is remembered (`chatUserSet`).
+// N3 — "Extra roles (optional)" checklist.  A circle defaults to
+// admin + member; the admin opts into a starter role from a template.
+// Each row shows the role name + a "what it can do" note.  Selected ids
+// persist into rules.roles at submit.
+function appendRoleChecklist(wrap, doc, state, rerender) {
+  const group = doc.createElement('fieldset');
+  group.className = 'cc-wizard-radio-group';
+  const legend = doc.createElement('legend');
+  legend.className = 'cc-wizard-field-label';
+  legend.textContent = t('role.extraRolesLabel');
+  group.appendChild(legend);
+  const hint = doc.createElement('p');
+  hint.className = 'cc-radio-consequence';
+  hint.style.cssText = 'margin-left:0;border-left:none;padding-left:0';
+  hint.textContent = t('role.extraRolesHint');
+  group.appendChild(hint);
+
+  const selected = Array.isArray(state.extraRoles) ? state.extraRoles : [];
+  for (const tid of ROLE_TEMPLATE_IDS) {
+    const tpl = ROLE_TEMPLATES[tid];
+    const optWrap = doc.createElement('div');
+    optWrap.className = 'cc-radio-option';
+    const row = doc.createElement('label');
+    row.className = 'cc-wizard-toggle';
+    const cb = doc.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = selected.includes(tid);
+    cb.dataset.role = tid;
+    cb.addEventListener('change', () => {
+      Object.assign(state, toggleRole(state, tid));
+      rerender();
+    });
+    row.appendChild(cb);
+    row.appendChild(doc.createTextNode(' ' + t(tpl.labelKey)));
+    optWrap.appendChild(row);
+    const note = doc.createElement('p');
+    note.className = 'cc-radio-consequence';
+    note.textContent = t(tpl.descKey);
+    optWrap.appendChild(note);
+    group.appendChild(optWrap);
+  }
+  wrap.appendChild(group);
+}
+
 function appendChatAdvice(wrap, doc, state, rerender) {
   const adv = chatAdvice(state);
   if (adv.reasonKey) {

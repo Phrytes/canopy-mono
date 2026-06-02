@@ -2486,5 +2486,45 @@
         "doc": "N2.b — consequence note for a radio option."
       }
     }
+  },
+  "role": {
+    "extraRolesLabel": {
+      "text": "Extra roles (optional)",
+      "doc": "N3 — role template string."
+    },
+    "extraRolesHint": {
+      "text": "A circle starts with just admins + members. Add a starter role only if you need one — you can change this later.",
+      "doc": "N3 — role template string."
+    },
+    "guest": {
+      "label": {
+        "text": "Guest",
+        "doc": "N3 — role template string."
+      },
+      "desc": {
+        "text": "A short visit — sees the circle but posts or does nothing. Good for a one-off look.",
+        "doc": "N3 — role template string."
+      }
+    },
+    "observer": {
+      "label": {
+        "text": "Observer",
+        "doc": "N3 — role template string."
+      },
+      "desc": {
+        "text": "Follows along without taking part. E.g. a new member finding their feet, or a researcher.",
+        "doc": "N3 — role template string."
+      }
+    },
+    "external": {
+      "label": {
+        "text": "External volunteer",
+        "doc": "N3 — role template string."
+      },
+      "desc": {
+        "text": "Helps from outside with specific, time-boxed tasks. Limited access; not a full member.",
+        "doc": "N3 — role template string."
+      }
+    }
   }
 }
