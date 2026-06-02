@@ -1569,6 +1569,12 @@
         "text": "Untitled file",
         "doc": "E1 — file-reply card fallback name when none is given."
       }
+    },
+    "nav": {
+      "openInFull": {
+        "text": "Open in full",
+        "doc": "E5 — record/mini-page bubble: open the card in a full-height detail modal."
+      }
     }
   },
   "responder": {
