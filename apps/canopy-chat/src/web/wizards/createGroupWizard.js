@@ -26,8 +26,8 @@ import {
   initialState, slugify, isValidSlug, labelOf,
   buildRulesObjectFromState, finalSubmit,
   newSkillRow, SKILL_AXES,
-  // N1+E8 — kind picker + buurt size/chat advice.
-  KRING_KINDS, setKind, setSize, setChatEnabled, chatAdvice,
+  // N1+E8 — kind picker + buurt size/chat advice + policy patch.
+  KRING_KINDS, setKind, setSize, setChatEnabled, chatAdvice, policyPatchFromState,
 } from '../../core/wizards/createGroupState.js';
 import { RULES_QUESTIONS } from '../../v2/circleRules.js';
 import { createCirclePolicyStore, localStoragePolicyIo } from '../../v2/circlePolicyStore.js';
@@ -42,11 +42,7 @@ import { t } from '../../localisation.js';
  */
 async function persistCreatedCirclePolicy(groupId, state) {
   if (!groupId || !state) return;
-  const patch = {};
-  if (state.features && typeof state.features === 'object') patch.features = state.features;
-  for (const ax of ['revealPolicy', 'pod', 'llmTool', 'agents', 'consensusRequired']) {
-    if (state[ax] !== undefined) patch[ax] = state[ax];
-  }
+  const patch = policyPatchFromState(state);
   if (Object.keys(patch).length === 0) return;
   try {
     const store = createCirclePolicyStore(localStoragePolicyIo());

@@ -149,6 +149,26 @@ export function chatAdvice(state) {
   return recommendChat({ kind: s.kind ?? null, size: s.size ?? null });
 }
 
+/**
+ * N1+E8 — the circle-policy patch the create wizard persists onto the
+ * new circle (features incl. the buurt chat-off default, plus the
+ * template's reveal/pod/llm/agents/consensus axes).  Only includes axes
+ * a template actually filled.  Shared by the web + RN wizards so both
+ * write the same policy.
+ *
+ * @param {object} state
+ * @returns {object} patch for circlePolicyStore.update
+ */
+export function policyPatchFromState(state) {
+  const s = state && typeof state === 'object' ? state : {};
+  const patch = {};
+  if (s.features && typeof s.features === 'object') patch.features = s.features;
+  for (const ax of ['revealPolicy', 'pod', 'llmTool', 'agents', 'consensusRequired']) {
+    if (s[ax] !== undefined) patch[ax] = s[ax];
+  }
+  return patch;
+}
+
 /* ─── Initial state ─────────────────────────────────────────── */
 
 export function initialState() {

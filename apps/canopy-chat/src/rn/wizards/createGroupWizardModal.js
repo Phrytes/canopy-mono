@@ -21,11 +21,13 @@ import {
   initialState, slugify, isValidSlug, labelOf,
   buildRulesObjectFromState, finalSubmit, encodeMembershipCodeUrl,
   newSkillRow, SKILL_AXES,
+  // N1+E8 — kind picker + buurt size/chat advice + policy patch.
+  KRING_KINDS, setKind, setSize, setChatEnabled, chatAdvice, policyPatchFromState,
 } from '../../core/wizards/createGroupState.js';
 import { RULES_QUESTIONS } from '../../v2/circleRules.js';
 
 import {
-  Steps, Body, Field, Textarea, RadioGroup,
+  Steps, Body, Field, Textarea, RadioGroup, Checkbox,
   Actions, ErrorBanner, Submitting, ReviewList, Warn,
 } from './_kit.js';
 
@@ -35,6 +37,9 @@ export default function CreateGroupWizardModal({
   // the invite URL so the joiner can peer-redeem when their substrate
   // has no local copy of the code (cross-device).
   getMyNkn,
+  // N1+E8 — optional (groupId, patch) => Promise persister; writes the
+  // wizard's chosen policy (incl. buurt chat-off) onto the new circle.
+  persistPolicy,
 }) {
   const [state, setState] = useState(() => initialState());
   const setStep = useCallback((n) => setState((s) => ({ ...s, step: n })), []);
@@ -52,6 +57,13 @@ export default function CreateGroupWizardModal({
     setState(next);
     const { result, state: after } = await finalSubmit({ state: next, callSkill });
     setState({ ...after, successResult: result ?? null });
+    // N1+E8 — persist the chosen policy (features incl. buurt chat-off,
+    // reveal/pod/llm/agents/consensus) so the new circle opens with the
+    // right surfaces.  Best-effort; creation already succeeded.
+    if (result && typeof persistPolicy === 'function') {
+      try { await persistPolicy(result.groupId, policyPatchFromState(after)); }
+      catch { /* policy write is best-effort */ }
+    }
     if (result && typeof onDispatched === 'function') {
       // 2026-05-27 (Bundle I).  Surface the invite URL + a scannable QR
       // so the admin can share the buurt right away — the web wizard's
@@ -92,7 +104,7 @@ export default function CreateGroupWizardModal({
       } catch {}
     }
     if (result) onClose?.();
-  }, [state, callSkill, onDispatched, onClose]);
+  }, [state, callSkill, onDispatched, onClose, persistPolicy]);
 
   const canAdvance1 = state.name.trim().length > 0 && isValidSlug(state.groupId);
 
@@ -108,6 +120,37 @@ export default function CreateGroupWizardModal({
           <ScrollView style={styles.scroll}>
             {state.step === 1 && (
               <Body title="Create a buurt" intro="A buurt is a self-governing neighbourhood group.">
+                {/* N1+E8 — kind picker.  Applies the matching template
+                    (β.4) in place; for a buurt it also surfaces the size
+                    question + chat advice (noticeboard-first, chat off). */}
+                <RadioGroup
+                  label={t('circle.kindPicker')}
+                  value={state.kind ?? null}
+                  options={KRING_KINDS.map((k) => ({ id: k, label: t(`circle.kind.${k}`) }))}
+                  onChange={(k) => setState((s) => setKind(s, k))}
+                />
+                {state.kind === 'buurt' && (
+                  <>
+                    <RadioGroup
+                      label={t('circle.size.label')}
+                      value={state.size ?? null}
+                      options={[
+                        { id: 'small', label: t('circle.size.small') },
+                        { id: 'large', label: t('circle.size.large') },
+                      ]}
+                      onChange={(sz) => setState((s) => setSize(s, sz))}
+                    />
+                    {chatAdvice(state).reasonKey ? (
+                      <Warn>{t(chatAdvice(state).reasonKey)}</Warn>
+                    ) : null}
+                    <Checkbox
+                      label={t('circle.chatToggle')}
+                      checked={!!state.features?.chat}
+                      onToggle={() => setState((s) => setChatEnabled(s, !s.features?.chat))}
+                      testID="create-group-chat-toggle"
+                    />
+                  </>
+                )}
                 <Field
                   label="Name"
                   value={state.name}

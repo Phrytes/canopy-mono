@@ -12,7 +12,7 @@ import {
   KRING_TEMPLATES, SIZE_BANDS, bandForCount, recommendChat,
 } from '../src/v2/kringTemplates.js';
 import {
-  initialState, setKind, setSize, setChatEnabled, chatAdvice,
+  initialState, setKind, setSize, setChatEnabled, chatAdvice, policyPatchFromState,
 } from '../src/core/wizards/createGroupState.js';
 import { createCirclePolicyStore, localStoragePolicyIo } from '../src/v2/circlePolicyStore.js';
 import { isFeatureEnabled } from '../src/v2/circlePolicy.js';
@@ -116,5 +116,14 @@ describe('persistence — wizard policy reaches the circle store (E8 link)', () 
     const store = createCirclePolicyStore(localStoragePolicyIo(memStorage()));
     await store.update('buurt-westend', { features: state.features });
     expect(isFeatureEnabled(await store.get('buurt-westend'), 'chat')).toBe(true);
+  });
+
+  it('policyPatchFromState carries features + template axes (web/RN shared)', () => {
+    const patch = policyPatchFromState(setKind(initialState(), 'buurt'));
+    expect(patch.features.chat).toBe(false);
+    expect(patch.revealPolicy).toBe('pairwise');   // from the buurt template
+    expect(patch.pod).toBe('personal');
+    // A bare state (no template) yields an empty patch.
+    expect(policyPatchFromState(initialState())).toEqual({});
   });
 });
