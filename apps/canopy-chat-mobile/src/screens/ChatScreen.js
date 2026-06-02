@@ -28,8 +28,11 @@ import {
 import {
   parseInput, resolveDispatch, runDispatch, scopeReadyDispatch, getActiveCircle,
   renderReply, isQrUri,
+  // E3 — record-panel auto-refresh after a mutation.
+  itemRefFromReply, REFRESHABLE_VERBS,
 } from '@canopy-app/canopy-chat';
 
+import { autoRefreshStalePanels } from '../core/panelAutoRefresh.js';
 import { buildNavModels }  from '../core/navModel.js';
 import { dlog }            from '../core/devLog.js';
 import { t }               from '../core/localisation.js';
@@ -657,6 +660,7 @@ export default function ChatScreen({
         args:      dispatch.args,
       });
       let rendered;
+      let replyForRefresh = null;   // E3 — captured reply → itemRef for panel refresh
       if (dispatch.kind === 'ready') {
         // F1 (5.3) — bind item-creating dispatches to the open circle
         // so a task / post created while a circle is active lands in
@@ -715,6 +719,7 @@ export default function ChatScreen({
               return wrappedBundleCallSkill(origin, opId, args);
             };
             const reply = await runDispatch(scopedDispatch, wrappedCallSkill);
+            replyForRefresh = reply;
             rendered = renderReply(reply, {
               t,
               appOrigin:         dispatch.appOrigin,
@@ -725,6 +730,7 @@ export default function ChatScreen({
           // #238: wrappedBundleCallSkill fires the calendar outbound
           // hook after substrate writes succeed.
           const reply = await runDispatch(scopedDispatch, wrappedBundleCallSkill);
+          replyForRefresh = reply;
           rendered = renderReply(reply, {
             t,
             appOrigin:         dispatch.appOrigin,
@@ -758,7 +764,12 @@ export default function ChatScreen({
           .reduce((n, it) => n + (it.buttons?.length ?? 0), 0),
       });
 
-      const trackedSource = (rendered.kind === 'list' && sourceDispatch)
+      // E3 — store the source on every refreshable-shape reply (lists +
+      // record / mini-page / embed panels) so it can be re-fetched.  The
+      // verb gate at refresh time still protects against re-running a
+      // mutation-sourced panel.
+      const REFRESHABLE_SHAPES = new Set(['list', 'record', 'mini-page', 'embed-card']);
+      const trackedSource = (REFRESHABLE_SHAPES.has(rendered.kind) && sourceDispatch)
         ? sourceDispatch
         : null;
       setThreadState((prev) => {
@@ -767,13 +778,36 @@ export default function ChatScreen({
             ? { ...m, pending: false, rendered, sourceDispatch: trackedSource }
             : m,
         ));
-        if (trackedSource) {
-          // Mirror the source on the THREAD too so future row-taps can
-          // refresh in place without scanning the message list.
+        // Mirror the source on the THREAD only for lists (unchanged) so
+        // the existing row-tap refresh path keeps its single source.
+        if (trackedSource && rendered.kind === 'list') {
           next = setSourceDispatch(next, targetThreadId, trackedSource);
         }
         return next;
       });
+
+      // E3 — when this dispatch was a MUTATION that changed an item,
+      // auto-refresh any open record/mini-page/embed panel in OTHER
+      // threads showing that item (mirrors web's onPanelStale path,
+      // which excludes the dispatching thread).  Fire-and-forget.
+      const verb = bootState.bundle.catalog?.opsById?.get(dispatch.opId)?.op?.verb;
+      if (dispatch.kind === 'ready' && verb && !REFRESHABLE_VERBS.has(verb)) {
+        const itemRef = itemRefFromReply(replyForRefresh, dispatch.appOrigin);
+        if (itemRef) {
+          autoRefreshStalePanels({
+            itemRef,
+            threads:           listThreads(threadStateRef.current),
+            excludeThreadId:   targetThreadId,
+            catalog:           bootState.bundle.catalog,
+            manifestsByOrigin: bootState.bundle.manifestsByOrigin,
+            callSkill:         bootState.bundle.callSkill,
+            t,
+            applyRefresh: (tid, mid, fresh) => setThreadState((prev) =>
+              updateMessages(prev, tid, (msgs) => msgs.map((m) =>
+                (m.id === mid ? { ...m, rendered: fresh } : m)))),
+          }).catch((err) => dlog.warn('panel auto-refresh failed', err?.message ?? err));
+        }
+      }
     } catch (err) {
       dlog.warn('dispatch threw', err?.message ?? err);
       setThreadState((prev) => updateMessages(prev, targetThreadId, (msgs) => msgs.map((m) =>

@@ -20,6 +20,10 @@
  * Phase v0.1 sub-slice 1.9 per `/Project Files/canopy-chat/coding-plan.md`.
  */
 
+// E3 — shared open-panel matching predicate (also used by the mobile
+// post-mutation refresh path), so both surfaces stay in lock-step.
+import { panelMatchesItemRef } from './panelRefresh.js';
+
 /**
  * @typedef {object} ThreadMessage
  * @property {string}                origin    'user' | 'shell' | 'app:<name>' | 'system'
@@ -268,19 +272,9 @@ export class Thread {
       if (m.lifecycleState !== 'live') continue;
       const r = m.rendered;
       if (!r) continue;
-      // record / mini-page panels — match against payload.id +
-      // payload.type when they look like items.
-      if ((r.kind === 'record' || r.kind === 'mini-page')
-          && r.payload?.id === itemRef.id
-          && (r.payload?.type ?? null) === (itemRef.type ?? null)) {
-        out.push({ messageId: m.messageId, rendered: r, sourceOp: m.sourceOp });
-        continue;
-      }
-      // embed-card — match against rendered.embed.itemRef.
-      if (r.kind === 'embed-card'
-          && r.embed?.itemRef?.id === itemRef.id
-          && r.embed?.itemRef?.app === itemRef.app
-          && r.embed?.itemRef?.type === itemRef.type) {
+      // E3 — shared predicate (record/mini-page by payload.{id,type};
+      // embed-card by embed.itemRef.{id,app,type}).
+      if (panelMatchesItemRef(r, itemRef)) {
         out.push({ messageId: m.messageId, rendered: r, sourceOp: m.sourceOp });
       }
     }
