@@ -25,6 +25,7 @@ import {
   KRING_KINDS, setKind, setSize, setChatEnabled, chatAdvice, policyPatchFromState,
 } from '../../core/wizards/createGroupState.js';
 import { RULES_QUESTIONS } from '../../v2/circleRules.js';
+import { attachConsequences } from '../../v2/optionConsequences.js';
 
 import {
   Steps, Body, Field, Textarea, RadioGroup, Checkbox,
@@ -126,19 +127,22 @@ export default function CreateGroupWizardModal({
                 <RadioGroup
                   label={t('circle.kindPicker')}
                   value={state.kind ?? null}
-                  options={KRING_KINDS.map((k) => ({ id: k, label: t(`circle.kind.${k}`) }))}
+                  options={attachConsequences('kind',
+                    KRING_KINDS.map((k) => ({ id: k, label: t(`circle.kind.${k}`) })), t)}
                   onChange={(k) => setState((s) => setKind(s, k))}
+                  consequenceLabel={t('common.consequences')}
                 />
                 {state.kind === 'buurt' && (
                   <>
                     <RadioGroup
                       label={t('circle.size.label')}
                       value={state.size ?? null}
-                      options={[
+                      options={attachConsequences('size', [
                         { id: 'small', label: t('circle.size.small') },
                         { id: 'large', label: t('circle.size.large') },
-                      ]}
+                      ], t)}
                       onChange={(sz) => setState((s) => setSize(s, sz))}
+                      consequenceLabel={t('common.consequences')}
                     />
                     {chatAdvice(state).reasonKey ? (
                       <Warn>{t(chatAdvice(state).reasonKey)}</Warn>
@@ -189,14 +193,16 @@ export default function CreateGroupWizardModal({
                 <RadioGroup
                   label="Access policy"
                   value={state.accessPolicy}
-                  options={ACCESS_POLICIES}
+                  options={attachConsequences('accessPolicy', ACCESS_POLICIES, t)}
                   onChange={(v) => setState((s) => ({ ...s, accessPolicy: v }))}
+                  consequenceLabel={t('common.consequences')}
                 />
                 <RadioGroup
                   label="Leave policy"
                   value={state.leavePolicy}
-                  options={LEAVE_POLICIES}
+                  options={attachConsequences('leavePolicy', LEAVE_POLICIES, t)}
                   onChange={(v) => setState((s) => ({ ...s, leavePolicy: v }))}
+                  consequenceLabel={t('common.consequences')}
                 />
               </Body>
             )}
@@ -222,8 +228,9 @@ export default function CreateGroupWizardModal({
                 <RadioGroup
                   label="Conflict policy"
                   value={state.conflictPolicy}
-                  options={CONFLICT_POLICIES}
+                  options={attachConsequences('conflictPolicy', CONFLICT_POLICIES, t)}
                   onChange={(v) => setState((s) => ({ ...s, conflictPolicy: v }))}
+                  consequenceLabel={t('common.consequences')}
                 />
               </Body>
             )}
@@ -292,8 +299,9 @@ export default function CreateGroupWizardModal({
                 <RadioGroup
                   label="Storage policy"
                   value={state.storagePolicy}
-                  options={STORAGE_POLICIES}
+                  options={attachConsequences('storagePolicy', STORAGE_POLICIES, t)}
                   onChange={(v) => setState((s) => ({ ...s, storagePolicy: v }))}
+                  consequenceLabel={t('common.consequences')}
                 />
                 {(state.storagePolicy === 'centralised' || state.storagePolicy === 'hybrid') && (
                   <Field
