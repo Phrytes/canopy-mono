@@ -22,8 +22,8 @@ export { SKILL_AXES };
 // pre-fills the policy axes (features / revealPolicy / pod / llmTool /
 // agents / consensusRequired) with the matching template's defaults
 // for any axis the user hasn't already overridden.
-import { applyTemplate, KRING_KINDS } from '../../v2/kringTemplates.js';
-export { KRING_KINDS };
+import { applyTemplate, KRING_KINDS, SIZE_BANDS, recommendChat } from '../../v2/kringTemplates.js';
+export { KRING_KINDS, SIZE_BANDS };
 
 /* ─── Policy catalogs ───────────────────────────────────────── */
 
@@ -104,6 +104,51 @@ export function setKind(state, kind) {
   return applyTemplate(state, kind);
 }
 
+/* ─── N1 — buurt size + chat advice ─────────────────────────────── */
+
+/**
+ * N1 — record the expected buurt size (drives the chat recommendation).
+ * Pure; does not mutate `features.chat` (the buurt template already
+ * defaults it OFF) — only the advice *strength* changes with size.
+ *
+ * @param {object} state
+ * @param {'small'|'large'|null} size
+ * @returns {object}
+ */
+export function setSize(state, size) {
+  const s = state && typeof state === 'object' ? state : {};
+  return { ...s, size: SIZE_BANDS.includes(size) ? size : null };
+}
+
+/**
+ * N1 — explicit user override of the chat feature.  Marks `chatUserSet`
+ * so any future re-derivation respects the user's choice.
+ *
+ * @param {object} state
+ * @param {boolean} on
+ * @returns {object}
+ */
+export function setChatEnabled(state, on) {
+  const s = state && typeof state === 'object' ? state : {};
+  return {
+    ...s,
+    features:    { ...(s.features && typeof s.features === 'object' ? s.features : {}), chat: !!on },
+    chatUserSet: true,
+  };
+}
+
+/**
+ * N1 — the chat recommendation for the current (kind, size) — what the
+ * wizard renders as an advice banner next to the chat toggle.
+ *
+ * @param {object} state
+ * @returns {{ value: boolean, mode: string, reasonKey: string|null }}
+ */
+export function chatAdvice(state) {
+  const s = state && typeof state === 'object' ? state : {};
+  return recommendChat({ kind: s.kind ?? null, size: s.size ?? null });
+}
+
 /* ─── Initial state ─────────────────────────────────────────── */
 
 export function initialState() {
@@ -119,6 +164,12 @@ export function initialState() {
     // default so the wizard renders the picker before any template
     // applies.
     kind:                  null,
+    // N1 — expected buurt size; drives the chat-feature advice (large
+    // buurt → advise chat off; small → ask).  null until chosen.
+    size:                  null,
+    // N1 — true once the user explicitly toggles the chat feature, so
+    // a later re-derivation respects their choice over the template.
+    chatUserSet:           false,
     // Step 2 — members & governance
     additionalAdmins:      '',
     accessPolicy:          'invite-only',

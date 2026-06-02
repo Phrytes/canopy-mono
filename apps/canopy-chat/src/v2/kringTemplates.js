@@ -53,10 +53,15 @@ export const KRING_TEMPLATES = Object.freeze({
     consensusRequired: false,
   },
   // A neighbourhood — bigger group, pairwise reveal, personal pods,
-  // governance matters (co-admin consensus on changes).
+  // governance matters (co-admin consensus on changes).  N1 (2026-06-02,
+  // Frits): a buurt is noticeboard-first with **open chat OFF by default**
+  // — a thread appears only when someone reacts to a vraag/aanbod
+  // (the `/help-with` per-post DM-spawn).  `recommendChat` below turns
+  // this into wizard advice: for bigger buurten chat-off is *advised*
+  // (with reasoning); for smaller ones the wizard just *asks*.
   buurt: {
     features: {
-      chat: true,  noticeboard: true,  tasks: true,  lists: false,
+      chat: false,  noticeboard: true,  tasks: true,  lists: false,
       calendar: false,  notes: false,  houseRules: true,  memberDirectory: true,
     },
     revealPolicy:      'pairwise',
@@ -154,6 +159,54 @@ export function applyTemplate(state, kind) {
     agents:            s.agents            !== undefined ? s.agents            : t.agents,
     consensusRequired: s.consensusRequired !== undefined ? s.consensusRequired : t.consensusRequired,
   };
+}
+
+/* ─── N1 — size-driven chat advice ─────────────────────────────── */
+
+/** Size bands a create wizard can ask for (or derive from a count). */
+export const SIZE_BANDS = Object.freeze(['small', 'large']);
+
+/**
+ * Heuristic: map an expected member/household count to a size band.
+ * The 20-member cut mirrors the design note ("bigger buurten" — past a
+ * couple dozen households open chat stops scaling).  Returns null for a
+ * non-numeric input so callers can fall back to asking explicitly.
+ *
+ * @param {number} n
+ * @returns {'small'|'large'|null}
+ */
+export function bandForCount(n) {
+  if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) return null;
+  return n >= 20 ? 'large' : 'small';
+}
+
+/**
+ * N1 — recommend the `chat` feature value for a kind, plus *how strongly*
+ * to surface that recommendation in the create wizard.
+ *
+ * Only the **buurt** is size-sensitive (Frits 2026-06-02): a buurt always
+ * defaults chat OFF, but for a *large* buurt the wizard should advise
+ * keeping it off (with reasoning), whereas for a *small* buurt it should
+ * just ask the user.  Every other kind follows its template's chat value
+ * with no special advice.
+ *
+ * `mode` values:
+ *   - `'advise-off'`  — recommend off + show the reasoning (large buurt)
+ *   - `'ask'`         — default off but prompt the user (small buurt)
+ *   - `'default-off'` — buurt with no size chosen yet (off, neutral note)
+ *   - `'default'`     — non-buurt; follow the template, no advice
+ *
+ * @param {{ kind?: string|null, size?: 'small'|'large'|null }} [opts]
+ * @returns {{ value: boolean, mode: string, reasonKey: string|null }}
+ */
+export function recommendChat({ kind = null, size = null } = {}) {
+  if (kind === 'buurt') {
+    if (size === 'large') return { value: false, mode: 'advise-off',  reasonKey: 'circle.chatAdvice.buurtLarge' };
+    if (size === 'small') return { value: false, mode: 'ask',         reasonKey: 'circle.chatAdvice.buurtSmall' };
+    return                       { value: false, mode: 'default-off', reasonKey: 'circle.chatAdvice.buurtDefault' };
+  }
+  const tpl = defaultsForKind(kind);
+  return { value: !!tpl.features?.chat, mode: 'default', reasonKey: null };
 }
 
 /**
