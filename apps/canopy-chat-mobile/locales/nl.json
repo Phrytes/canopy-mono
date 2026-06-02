@@ -358,6 +358,7 @@
     },
     "recipe": {
       "block": {
+        "quickActions": { "text": "Veel gebruikt", "doc": "D1 §5A — block palette label for the Veel-gebruikt action row." },
         "announcement": { "text": "Aankondiging", "doc": "α.1b — block palette label." },
         "noticeboard":  { "text": "Prikbord",     "doc": "α.1b — block palette label." },
         "agenda":       { "text": "Agenda",       "doc": "α.1b — block palette label." },

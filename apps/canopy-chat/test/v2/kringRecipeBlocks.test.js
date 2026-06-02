@@ -255,6 +255,48 @@ describe('kringRecipeBlocks · α.1b — error tolerance', () => {
   });
 });
 
+describe('kringRecipeBlocks · D1 (§5A) — quickActions', () => {
+  const block = { id: 'q', type: 'quickActions', config: { limit: 4 } };
+
+  it('cold start: falls back to enabledFeatures order, source=default', async () => {
+    // Default policy enables chat, houseRules, memberDirectory (in CIRCLE_FEATURES order).
+    const r = await materializeBlock({ block, circleId: 'c1', hostOps: { policy: null } });
+    expect(r.type).toBe('quickActions');
+    expect(r.status).toBe('ok');
+    expect(r.content.source).toBe('default');
+    expect(r.content.actions.map((a) => a.key)).toEqual(['chat', 'houseRules', 'memberDirectory']);
+  });
+
+  it('frequency reorders within the enabled set, source=frequency', async () => {
+    const policy = { features: { chat: true, tasks: true, calendar: true, houseRules: true } };
+    const actionFrequency = {
+      top: () => ['calendar', 'tasks'],   // most-used first
+    };
+    const r = await materializeBlock({ block, circleId: 'c1', hostOps: { policy, actionFrequency } });
+    expect(r.content.source).toBe('frequency');
+    // calendar, tasks lead (by frequency); chat, houseRules follow in default order.
+    expect(r.content.actions.map((a) => a.key)).toEqual(['calendar', 'tasks', 'chat', 'houseRules']);
+  });
+
+  it('never offers an action the kring has disabled, even if it has history', async () => {
+    const policy = { features: { chat: true, tasks: false, houseRules: true, memberDirectory: true } };
+    const actionFrequency = { top: () => ['tasks', 'chat'] }; // tasks is disabled now
+    const r = await materializeBlock({ block, circleId: 'c1', hostOps: { policy, actionFrequency } });
+    const keys = r.content.actions.map((a) => a.key);
+    expect(keys).not.toContain('tasks');
+    expect(keys[0]).toBe('chat'); // surviving frequency entry leads
+  });
+
+  it('honours the limit + clamps it (1..8, default 4)', async () => {
+    const allOn = { features: Object.fromEntries(
+      ['chat','noticeboard','tasks','lists','calendar','notes','houseRules','memberDirectory'].map((k) => [k, true])) };
+    const r2 = await materializeBlock({ block: { id: 'q', type: 'quickActions', config: { limit: 2 } }, circleId: 'c1', hostOps: { policy: allOn } });
+    expect(r2.content.actions).toHaveLength(2);
+    const rDefault = await materializeBlock({ block: { id: 'q', type: 'quickActions', config: {} }, circleId: 'c1', hostOps: { policy: allOn } });
+    expect(rDefault.content.actions).toHaveLength(4);
+  });
+});
+
 describe('kringRecipeBlocks · α.1b — materializeRecipe', () => {
   it('materialises every block in order, preserving array shape', async () => {
     const recipe = addBlock(
