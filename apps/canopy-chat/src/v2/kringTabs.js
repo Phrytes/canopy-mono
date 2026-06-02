@@ -103,3 +103,12 @@ const FEATURE_TAB_IDS = Object.freeze(
 export function featureTabId(feature) {
   return FEATURE_TAB_IDS[feature] ?? null;
 }
+
+const TAB_ID_TO_FEATURE = Object.freeze(
+  Object.fromEntries(TAB_DEFS.map((d) => [d.id, d.feature])),
+);
+
+/** D1 — feature key for a kring tab id, or `null` when unknown. */
+export function featureForTabId(tabId) {
+  return TAB_ID_TO_FEATURE[tabId] ?? null;
+}

@@ -63,6 +63,9 @@ export function renderCircleKring(container, {
   // null = host hasn't loaded yet (show empty-state placeholder);
   // [] = book is empty; [...] = render each block via circleScreen.
   screenBlocks = null,
+  // D1 (§5A) — quickActions pill tap → host routes the feature key to a
+  // kring tab / action.  Forwarded to renderCircleScreen's onAction.
+  onScreenAction = null,
   // δ.2 — optimistic-send delivery state hook.
   //   `deliveryStateFor(msgId)` returns 'pending' | 'sent' | 'failed' | null
   //   `localActor`              actor stamp for locally-sent messages — only
@@ -178,7 +181,7 @@ export function renderCircleKring(container, {
     // means "host hasn't loaded yet" — show the empty-state for
     // a clean first paint.  circleScreen handles per-block status
     // (ok / empty / error) internally.
-    renderCircleScreen(body, { blocks: screenBlocks ?? [], t: tr });
+    renderCircleScreen(body, { blocks: screenBlocks ?? [], t: tr, onAction: onScreenAction });
   } else if (effectiveTab !== 'gesprek') {
     const placeholder = document.createElement('div');
     placeholder.className = 'circle-kring__placeholder';
