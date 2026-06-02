@@ -2289,6 +2289,12 @@
         "text": "Untitled file",
         "doc": "E1 — file-reply card fallback name when none is given."
       }
+    },
+    "nav": {
+      "backToChat": {
+        "text": "← back to chat",
+        "doc": "E4 — chat-nav floating button: return to the thread a side-panel was opened from."
+      }
     }
   }
 }

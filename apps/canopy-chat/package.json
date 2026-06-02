@@ -54,6 +54,7 @@
     "@canopy-app/stoop": "workspace:*",
     "@canopy-app/tasks-v0": "workspace:*",
     "@canopy/app-manifest": "workspace:*",
+    "@canopy/chat-nav": "workspace:*",
     "@canopy/core": "workspace:*",
     "@canopy/manifest-host": "workspace:*",
     "@canopy/secure-agent": "workspace:*",
