@@ -1,11 +1,15 @@
 /**
  * canopy-chat v2 — circle app boot (DEFAULT web entry, `index.html`).
  *
- * The v2 circle app is now the landing page; the classic chat shell is
- * kept reachable at `classic.html` (linked from the header). Reuses the
- * same bundled agent factory + shared circle model. Opening a circle
- * sets the active circle (F1) and shows a scoped detail; "+ new circle"
- * creates one via the existing createGroupV2 path and refreshes.
+ * The v2 circle app is the landing page.  Per v2 §1 + §4 (and the
+ * v2-design-is-canon decision), chat IS the kring view — there is NO
+ * in-app route to the classic chat shell anymore (SP-13.1 removed the
+ * header link; `classic.html` survives only as a static Playwright
+ * fixture).  Reuses the same bundled agent factory + shared circle
+ * model. Opening a circle sets the active circle (F1) and shows the
+ * kring view; the admin's `policy.view` axis chooses whether that lands
+ * on GESPREK (chat) or the recipe'd Scherm (§4).  "+ new circle" creates
+ * one via the existing createGroupV2 path and refreshes.
  *
  * ⚠ Needs a browser check: agent boot, live circle data, and create are
  * not unit-verifiable here (renderer/model/scope/content/create logic
@@ -22,7 +26,7 @@ import { createDeliveryStateMap } from '../../src/v2/deliveryState.js';
 import {
   buildCircleStream, buildKringStream,
 } from '../../src/v2/circleStream.js';
-import { isFeatureEnabled } from '../../src/v2/circlePolicy.js';
+import { isFeatureEnabled, defaultViewModeFromPolicy } from '../../src/v2/circlePolicy.js';
 import { buildKringTabs, DEFAULT_KRING_TAB } from '../../src/v2/kringTabs.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
@@ -391,14 +395,21 @@ function writeSeenAt(map) {
 
 // SP-13.4 — Chat ↔ Scherm pill: per-circle preference persists in
 // localStorage so the user lands back in whichever mode they last used
-// for that kring.  Default = 'chat' (v2 §4 — chat is the home view).
+// for that kring.
+//
+// §4 — when the member has NO saved override for this kring yet, the
+// landing surface is the admin's `policy.view` front door
+// (defaultViewModeFromPolicy): 'screen' → scherm, 'chat'/'cross-stream'
+// → chat.  Once the user flips the pill, their choice persists and wins.
 const VIEW_MODE_KEY = 'cc.circleViewMode';
-function readViewMode(id) {
+function readViewMode(id, policy = null) {
   try {
     const raw = window.localStorage.getItem(VIEW_MODE_KEY);
     const map = raw ? JSON.parse(raw) : {};
-    return map?.[id] === 'scherm' ? 'scherm' : 'chat';
-  } catch { return 'chat'; }
+    const saved = map?.[id];
+    if (saved === 'scherm' || saved === 'chat') return saved;
+    return defaultViewModeFromPolicy(policy);
+  } catch { return defaultViewModeFromPolicy(policy); }
 }
 function writeViewMode(id, mode) {
   try {
@@ -847,8 +858,9 @@ function showKring(id, circle, policy) {
   // SP-13.3 — per-kring bottom tabs derived from policy.features.
   const tabs = buildKringTabs(policy, t);
   let activeTab = DEFAULT_KRING_TAB;
-  // SP-13.4 — Chat ↔ Scherm pill state, persisted per circle.
-  let viewMode = readViewMode(id);
+  // SP-13.4 — Chat ↔ Scherm pill state, persisted per circle.  §4 — the
+  // admin's policy.view sets the landing surface until the user overrides.
+  let viewMode = readViewMode(id, policy);
   // α.1c — materialized scherm blocks (recipe book → blocks).  Null
   // until the async load below resolves; replaces SP-13.4's
   // "scherm_coming" placeholder when present.

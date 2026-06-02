@@ -3,6 +3,7 @@ import {
   DEFAULT_CIRCLE_POLICY, CIRCLE_FEATURES,
   normalizeCirclePolicy, mergeCirclePolicy,
   isFeatureEnabled, enabledFeatures,
+  defaultViewModeFromPolicy,
   DEFAULT_MEMBER_OVERRIDE, normalizeMemberOverride, mergeMemberOverride,
   shouldPushNotify,
 } from '../../src/v2/circlePolicy.js';
@@ -86,6 +87,30 @@ describe('circlePolicy · enabledFeatures (P6.1)', () => {
   it('the full-on circle enables every CIRCLE_FEATURES key', () => {
     const allOn = { features: Object.fromEntries(CIRCLE_FEATURES.map((k) => [k, true])) };
     expect(enabledFeatures(allOn)).toEqual([...CIRCLE_FEATURES]);
+  });
+});
+
+describe('circlePolicy · defaultViewModeFromPolicy (§4)', () => {
+  it("maps each view axis value to its landing mode", () => {
+    expect(defaultViewModeFromPolicy({ view: 'chat' })).toBe('chat');
+    expect(defaultViewModeFromPolicy({ view: 'screen' })).toBe('scherm');
+    expect(defaultViewModeFromPolicy({ view: 'cross-stream' })).toBe('chat');
+  });
+
+  it("falls back to the policy default ('screen' → scherm) for missing/invalid input", () => {
+    // DEFAULT_CIRCLE_POLICY.view is 'screen' → 'scherm'.
+    expect(defaultViewModeFromPolicy(null)).toBe('scherm');
+    expect(defaultViewModeFromPolicy(undefined)).toBe('scherm');
+    expect(defaultViewModeFromPolicy('garbage')).toBe('scherm');
+    expect(defaultViewModeFromPolicy(42)).toBe('scherm');
+    expect(defaultViewModeFromPolicy({})).toBe('scherm');           // no view key
+    expect(defaultViewModeFromPolicy({ view: 'bogus' })).toBe('scherm'); // invalid enum
+  });
+
+  it("only ever returns one of the two Schakelaar values", () => {
+    for (const v of ['chat', 'screen', 'cross-stream', 'bogus', undefined]) {
+      expect(['chat', 'scherm']).toContain(defaultViewModeFromPolicy({ view: v }));
+    }
   });
 });
 
