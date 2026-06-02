@@ -7,11 +7,52 @@
  * file name.  Pure render: the host passes rows + handlers + `t`; tapping
  * a row opens that file (onOpen).  Mirrors the stream renderer so it
  * stays unit-testable under happy-dom.
+ *
+ * N5 — when the host wires `onNavigate`, the flat row list is projected
+ * through Folio's source-agnostic `folioLevel` (folio/browser) into a
+ * Drive-style level: a breadcrumb trail, the immediate subfolders (with
+ * counts), and the files directly in the current folder.  Folder rows
+ * descend; file rows still open.  Without `onNavigate` the legacy flat
+ * list renders unchanged.  File rows are rich in both modes — a kind
+ * glyph plus a human size when the row carries one.
  */
+
+import { folioLevel, glyphForFile, formatFileSize } from '@canopy-app/folio/browser';
 
 const FILTERS = ['all', 'favourites', 'recent'];
 // P6.M8 #350 — share-toggle row above the filter strip.
 const SHARE_FILTERS = ['shared-by-me', 'shared-with-me'];
+
+/** Append a rich file row (glyph · name · size) to `list`. */
+function appendFileRow(list, file, { tr, onOpen }) {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'circle-folio__row';
+  el.dataset.fileId = file.id;
+
+  const glyph = document.createElement('span');
+  glyph.className = 'circle-folio__glyph';
+  glyph.setAttribute('aria-hidden', 'true');
+  glyph.textContent = glyphForFile(file.name);
+  el.appendChild(glyph);
+
+  const name = document.createElement('span');
+  name.className = 'circle-folio__name';
+  name.textContent = file.name;
+  el.appendChild(name);
+
+  // `bytes` (folio index) or `size` (scan rows); omit when neither.
+  const size = formatFileSize(typeof file.bytes === 'number' ? file.bytes : file.size);
+  if (size) {
+    const sz = document.createElement('span');
+    sz.className = 'circle-folio__size';
+    sz.textContent = size;
+    el.appendChild(sz);
+  }
+
+  el.addEventListener('click', () => { if (typeof onOpen === 'function') onOpen(file); });
+  list.appendChild(el);
+}
 
 export function renderCircleFolioBrowser(container, {
   files = [],
@@ -24,9 +65,14 @@ export function renderCircleFolioBrowser(container, {
   // pill is active (the normal filter strip handles the list).
   shareFilter = null,
   onShareFilter,
+  // N5 — when wired, the list becomes a folder tree: `currentPath` is the
+  // folder being viewed ('' = root) and `onNavigate(path)` descends/climbs.
+  currentPath = '',
+  onNavigate,
   loading = false,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
+  const navigable = typeof onNavigate === 'function';
   container.innerHTML = '';
   container.classList.add('circle-folio');
 
@@ -86,6 +132,84 @@ export function renderCircleFolioBrowser(container, {
     return container;
   }
 
+  // ── N5: Drive-style folder navigation ──────────────────────────────
+  if (navigable) {
+    const level = folioLevel(files, currentPath);
+
+    // Breadcrumb trail.  The root crumb gets a friendly label; the
+    // current (last) crumb renders as static text, the rest as buttons.
+    const crumbs = document.createElement('nav');
+    crumbs.className = 'circle-folio__crumbs';
+    crumbs.setAttribute('aria-label', tr('circle.folio.title'));
+    level.crumbs.forEach((crumb, i) => {
+      const label = crumb.name || tr('circle.folio.root');
+      const isLast = i === level.crumbs.length - 1;
+      if (isLast) {
+        const here = document.createElement('span');
+        here.className = 'circle-folio__crumb is-current';
+        here.setAttribute('aria-current', 'true');
+        here.textContent = label;
+        crumbs.appendChild(here);
+      } else {
+        const c = document.createElement('button');
+        c.type = 'button';
+        c.className = 'circle-folio__crumb';
+        c.dataset.crumbPath = crumb.path;
+        c.textContent = label;
+        c.addEventListener('click', () => onNavigate(crumb.path));
+        crumbs.appendChild(c);
+        const sep = document.createElement('span');
+        sep.className = 'circle-folio__crumb-sep';
+        sep.setAttribute('aria-hidden', 'true');
+        sep.textContent = '/';
+        crumbs.appendChild(sep);
+      }
+    });
+    container.appendChild(crumbs);
+
+    if (!level.folders.length && !level.files.length) {
+      const empty = document.createElement('div');
+      empty.className = 'circle-folio__empty';
+      empty.textContent = tr('circle.folio.empty_folder');
+      container.appendChild(empty);
+      return container;
+    }
+
+    const list = document.createElement('div');
+    list.className = 'circle-folio__list';
+
+    for (const folder of level.folders) {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'circle-folio__row circle-folio__row--folder';
+      el.dataset.folderPath = folder.path;
+
+      const glyph = document.createElement('span');
+      glyph.className = 'circle-folio__glyph';
+      glyph.setAttribute('aria-hidden', 'true');
+      glyph.textContent = '📁';
+      el.appendChild(glyph);
+
+      const name = document.createElement('span');
+      name.className = 'circle-folio__name';
+      name.textContent = folder.name;
+      el.appendChild(name);
+
+      const count = document.createElement('span');
+      count.className = 'circle-folio__count';
+      count.textContent = tr('circle.folio.folder_count', { count: folder.count });
+      el.appendChild(count);
+
+      el.addEventListener('click', () => onNavigate(folder.path));
+      list.appendChild(el);
+    }
+
+    for (const file of level.files) appendFileRow(list, file, { tr, onOpen });
+    container.appendChild(list);
+    return container;
+  }
+
+  // ── Legacy flat list (no folder navigation wired) ──────────────────
   if (!files.length) {
     const empty = document.createElement('div');
     empty.className = 'circle-folio__empty';
@@ -102,22 +226,7 @@ export function renderCircleFolioBrowser(container, {
 
   const list = document.createElement('div');
   list.className = 'circle-folio__list';
-  for (const file of files) {
-    const el = document.createElement('button');
-    el.type = 'button';
-    el.className = 'circle-folio__row';
-    el.dataset.fileId = file.id;
-
-    const name = document.createElement('span');
-    name.className = 'circle-folio__name';
-    name.textContent = file.name;
-    el.appendChild(name);
-
-    el.addEventListener('click', () => {
-      if (typeof onOpen === 'function') onOpen(file);
-    });
-    list.appendChild(el);
-  }
+  for (const file of files) appendFileRow(list, file, { tr, onOpen });
   container.appendChild(list);
 
   return container;
