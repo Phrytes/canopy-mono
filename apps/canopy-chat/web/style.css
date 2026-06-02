@@ -1241,6 +1241,24 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   right: 0.5rem;
   top: 0.3rem;
 }
+/* E5 — "⤢ Open in full" expand button on record / mini-page panels. */
+.cc-panel-expand {
+  background: transparent;
+  border: none;
+  color: var(--fg-mute);
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+  margin-left: auto;      /* group expand + close to the right */
+}
+.cc-panel-expand:hover { color: var(--accent, #b5651d); }
+.cc-panel-expand-bare {
+  position: absolute;
+  right: 1.7rem;          /* sit just left of the bare close [×] */
+  top: 0.3rem;
+  margin-left: 0;
+}
 .cc-record, .cc-mini-page { position: relative; }
 
 .cc-panel-fields {

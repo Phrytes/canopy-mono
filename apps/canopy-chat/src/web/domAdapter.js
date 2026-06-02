@@ -21,6 +21,10 @@
  *   Called when a list-item action button is tapped.  Receives the
  *   parsed callbackData (`<opId>:<itemId>`).  Optional; absent →
  *   buttons render but do nothing on click.
+ * @property {(rendered: object) => void} [onExpandPanel]
+ *   E5 — called when the user clicks "⤢ Open in full" on a record /
+ *   mini-page panel.  Host opens the same content in the wide side
+ *   panel.  Absent → no expand affordance renders.
  */
 
 /**
@@ -330,7 +334,22 @@ function renderListMessage(rendered, state, ctx) {
  * @param {'record' | 'mini-page'} variant
  */
 function renderRecordPanel(rendered, state, ctx, variant) {
-  const { doc, onCloseMessage, onButtonTap } = ctx;
+  const { doc, onCloseMessage, onButtonTap, onExpandPanel } = ctx;
+
+  // E5 — "⤢ Open in full" button (record / mini-page → wide side panel).
+  // Returns null when no expand handler is wired so the title bar omits it.
+  const makeExpandBtn = () => {
+    if (typeof onExpandPanel !== 'function') return null;
+    const btn = doc.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cc-panel-expand';
+    btn.textContent = '⤢';
+    btn.title = ctx.t ? ctx.t('chat.nav.openInFull') : 'Open in full';
+    btn.setAttribute('aria-label', btn.title);
+    btn.addEventListener('click', () => onExpandPanel(rendered));
+    return btn;
+  };
+
   const wrap = doc.createElement('div');
   wrap.className = `cc-message cc-shell cc-${variant} cc-${state}`;
   if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
@@ -366,6 +385,9 @@ function renderRecordPanel(rendered, state, ctx, variant) {
     titleSpan.textContent = rendered.title;
     bar.appendChild(titleSpan);
 
+    const expandBtn = makeExpandBtn();
+    if (expandBtn) bar.appendChild(expandBtn);
+
     if (typeof onCloseMessage === 'function') {
       const closeBtn = doc.createElement('button');
       closeBtn.type = 'button';
@@ -376,14 +398,21 @@ function renderRecordPanel(rendered, state, ctx, variant) {
       bar.appendChild(closeBtn);
     }
     wrap.appendChild(bar);
-  } else if (typeof onCloseMessage === 'function') {
-    // No title — still expose a small floating close in the top-right.
-    const closeBtn = doc.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.className = 'cc-panel-close cc-panel-close-bare';
-    closeBtn.textContent = '×';
-    closeBtn.addEventListener('click', () => onCloseMessage(rendered.messageId));
-    wrap.appendChild(closeBtn);
+  } else {
+    // No title — still expose small floating expand + close top-right.
+    const expandBtn = makeExpandBtn();
+    if (expandBtn) {
+      expandBtn.classList.add('cc-panel-expand-bare');
+      wrap.appendChild(expandBtn);
+    }
+    if (typeof onCloseMessage === 'function') {
+      const closeBtn = doc.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'cc-panel-close cc-panel-close-bare';
+      closeBtn.textContent = '×';
+      closeBtn.addEventListener('click', () => onCloseMessage(rendered.messageId));
+      wrap.appendChild(closeBtn);
+    }
   }
 
   // Field rows

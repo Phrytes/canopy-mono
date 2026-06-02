@@ -39,11 +39,11 @@ import {
   normalizeCircleMembers,
 } from '../src/index.js';
 import { buildFormSpec, validateAndCoerce } from '../src/forms/buildFormSpec.js';
-import { renderStream }              from '../src/web/domAdapter.js';
+import { renderStream, renderToDom } from '../src/web/domAdapter.js';
 import { renderForm }                from '../src/web/domForm.js';
 import { renderSidebar }             from '../src/web/threadSidebar.js';
 import { renderLogsPanel }           from '../src/web/logsPanel.js';
-import { openPagePanel }             from '../src/web/pagePanel.js';
+import { openPagePanel, openContentPanel } from '../src/web/pagePanel.js';
 import { renderJoinGroupWizard }     from '../src/web/wizards/joinGroupWizard.js';
 import { makePropagateMeshIntros, makeHandleBuurtPeerIntro }
                                      from '../src/core/handlers/meshIntros.js';
@@ -1684,7 +1684,34 @@ function makeCtx() {
     doc: document,
     localActor: LOCAL_ACTOR,
     manifestsByOrigin,
+    t,
     onButtonTap,
+    // E5 — "⤢ Open in full": re-render the record/mini-page into the
+    // wide side panel (pagePanelEl) so the user can pin it while they
+    // keep scrolling chat.  The panel render omits onExpandPanel (no
+    // nested expand) and onCloseMessage (the frame owns the [×]).
+    onExpandPanel: (rendered) => {
+      const originThreadId = store.getActiveThread()?.id ?? null;
+      const node = renderToDom(rendered, {
+        doc: document, localActor: LOCAL_ACTOR, manifestsByOrigin,
+        onButtonTap, t,
+      });
+      openContentPanel({
+        container: pagePanelEl,
+        doc:       document,
+        content:   node,
+        title:     rendered.title,
+        t,
+        backTo: originThreadId ? {
+          returnTo:   originThreadId,
+          label:      t('chat.nav.backToChat'),
+          onNavigate: () => {
+            if (store.getThread(originThreadId)) store.setActiveThread(originThreadId);
+            renderActiveStream();
+          },
+        } : undefined,
+      });
+    },
     onCloseMessage: (messageId) => {
       const t0 = activeThread();
       if (!t0) return;

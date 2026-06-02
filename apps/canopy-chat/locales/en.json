@@ -2294,6 +2294,10 @@
       "backToChat": {
         "text": "← back to chat",
         "doc": "E4 — chat-nav floating button: return to the thread a side-panel was opened from."
+      },
+      "openInFull": {
+        "text": "Open in full",
+        "doc": "E5 — record/mini-page panel: expand the card into the wide side panel."
       }
     }
   }

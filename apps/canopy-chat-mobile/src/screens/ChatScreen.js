@@ -86,6 +86,8 @@ import { buildMobileLocalBuiltins } from '../core/hostOps.js';
 import { wizardModalFor }           from '../core/wizardRegistry.js';
 import { EventLog }                 from '../../../canopy-chat/src/eventLog.js';
 import LogsPanel                    from '../../../canopy-chat/src/rn/screens/LogsPanel.js';
+import RecordDetailModal            from '../../../canopy-chat/src/rn/screens/RecordDetailModal.js';
+import { recordCanExpand }          from '../core/recordExpand.js';
 import { openFilePicker }           from '../core/filePicker.js';
 import { saveBase64File }           from '../core/fileSave.js';
 import { useCanopyChatAuth }        from '../auth/canopyChatAuthHook.js';
@@ -201,6 +203,9 @@ export default function ChatScreen({
   }
   const [logsPanelOpen, setLogsPanelOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  // E5 — record/mini-page "⤢ Open in full": holds the reply shown in
+  // the full-height detail modal, or null when closed.
+  const [expandedRecord, setExpandedRecord] = useState(null);
   // ε.5 — "Catching up…" indicator + provider-side notification cards.
   // Status is fed by the negotiated catch-up receiver's emitStatus
   // hook; notifications come from the provider's emitNotification.
@@ -1490,6 +1495,7 @@ export default function ChatScreen({
               onButtonTap={handleButtonTap}
               onFollowUpTap={(slash) => submitInput(slash)}
               onQuickReplyTap={(slash) => submitInput(slash)}
+              onExpandRecord={(r) => setExpandedRecord(r)}
               manifestsByOrigin={bootState.kind === 'ready' ? bootState.bundle.manifestsByOrigin : undefined}
               onFormSubmit={(values) => onFormSubmit({
                 pending:   msg.formPending,
@@ -1644,6 +1650,14 @@ export default function ChatScreen({
         t={t}
       />
 
+      {/* E5 — record/mini-page "⤢ Open in full" detail modal. */}
+      <RecordDetailModal
+        visible={!!expandedRecord}
+        record={expandedRecord}
+        onClose={() => setExpandedRecord(null)}
+        t={t}
+      />
+
       {/* QR scanner (2026-05-27).  /scan-qr opens this; the modal
           classifies the scanned text and routes by kind:
           - 'contact' → callSkill('stoop','addContactFromQr',{payload})
@@ -1738,7 +1752,7 @@ function formatFileSize(bytes) {
   return `${n.toFixed(n < 10 ? 1 : 0)} ${units[i]}`;
 }
 
-function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFormSubmit, manifestsByOrigin }) {
+function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFormSubmit, onExpandRecord, manifestsByOrigin }) {
   if (msg.role === 'user') {
     return (
       <View style={[styles.bubble, styles.bubbleUser]} testID={`bubble-user-${msg.id}`}>
@@ -1831,7 +1845,23 @@ function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFor
     const recFollowUps = Array.isArray(r.followUps) ? r.followUps : null;
     return (
       <View style={[styles.bubble, styles.bubbleBot, styles.bubbleList]} testID={`bubble-bot-record-${msg.id}`}>
-        {r.title && <Text style={styles.briefSectionLabel}>{r.title}</Text>}
+        {/* E5 — header row: title + "⤢ Open in full" detail affordance. */}
+        {(r.title || recordCanExpand(r)) && (
+          <View style={styles.recordHeaderRow}>
+            {r.title ? <Text style={[styles.briefSectionLabel, styles.recordHeaderTitle]}>{r.title}</Text> : <View style={{ flex: 1 }} />}
+            {recordCanExpand(r) && typeof onExpandRecord === 'function' && (
+              <Pressable
+                onPress={() => onExpandRecord(r)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('chat.nav.openInFull')}
+                testID={`record-expand-${msg.id}`}
+              >
+                <Text style={styles.recordExpandIcon}>⤢</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
         {fields.length === 0 ? (
           <Text style={[styles.bubbleText, styles.bubblePending]}>{t('chat.record_empty')}</Text>
         ) : (
@@ -2254,6 +2284,9 @@ const styles = StyleSheet.create({
   recordField:          { fontSize: 13, color: '#222', marginTop: 2 },
   recordFieldName:      { fontWeight: '600', color: '#555' },
   recordQrFrame:        { alignItems: 'center', marginTop: 8 },
+  recordHeaderRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  recordHeaderTitle:    { flex: 1, marginBottom: 0 },
+  recordExpandIcon:     { fontSize: 16, color: '#1e88e5', paddingHorizontal: 4 },
 
   // C1 follow-up (2026-05-27) — followUp chip row under text bubbles.
   followUpRow:          { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6, gap: 6 },
