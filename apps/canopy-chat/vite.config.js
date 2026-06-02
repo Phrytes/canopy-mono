@@ -85,6 +85,12 @@ export default defineConfig({
       'nkn-sdk':         empty,
       'js-yaml':         empty,
       'node-datachannel': empty,
+      // N5 — @canopy/pod-client's barrel statically re-exports every
+      // TombstoneStore adapter, incl. the RN-only AsyncStorageTombstones
+      // (imports @react-native-async-storage/async-storage).  The web
+      // bundle never uses it — PodClient defaults to MemoryTombstones —
+      // so the bare specifier just needs to resolve.
+      '@react-native-async-storage/async-storage': empty,
       // Node-builtin shims — one stub per module, all carrying the
       // NAMED exports the static-import call sites reference.  This
       // replaces the previous mix of:

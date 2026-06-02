@@ -57,6 +57,7 @@
     "@canopy/chat-nav": "workspace:*",
     "@canopy/core": "workspace:*",
     "@canopy/manifest-host": "workspace:*",
+    "@canopy/pod-client": "workspace:*",
     "@canopy/secure-agent": "workspace:*",
     "@canopy/vault": "workspace:*",
     "@inrupt/solid-client": "^3.0.0",

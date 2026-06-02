@@ -1928,6 +1928,10 @@ export async function createRealHouseholdAgent(opts = {}) {
     // sign-out so calendar's .ics feed writes-through to the user's
     // pod under <pod>/canopy/calendar/feed.ics.
     setCalendarPodWriter,
+    // N5 — caller wires the folio Drive's real-pod source on sign-in
+    // (a PodClient + container) / clears on sign-out.  Lights up the
+    // "My pod" toggle in the circle Folio browser.  Pass null to detach.
+    setFolioPodSource: (src) => folioAgent.setPodSource?.(src) ?? null,
     // Expose identity info for /me + /pod-status.  pubKeys are stable
     // across refreshes because identity is persisted to VaultLocalStorage.
     identity: {
