@@ -465,3 +465,21 @@
   pointer-events: none;
 }
 .circle-screen { position: relative; }
+
+/* D1 (§5A) — "Veel-gebruikt" quick-actions pill row. */
+.circle-screen__quick-actions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.circle-screen__quick-action {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper2);
+  color: var(--ink);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+.circle-screen__quick-action:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.circle-screen__quick-action:disabled { opacity: 0.5; cursor: default; }

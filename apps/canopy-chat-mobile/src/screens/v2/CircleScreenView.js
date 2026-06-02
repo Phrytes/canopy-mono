@@ -23,11 +23,12 @@
  * a screen yet").
  */
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { featureActionLabelKey } from '@canopy-app/canopy-chat';
 import { theme } from './theme.js';
 import { t } from '../../core/localisation.js';
 
-export default function CircleScreenView({ blocks = null, refreshing = false }) {
+export default function CircleScreenView({ blocks = null, refreshing = false, onAction }) {
   // null = still materializing (host hasn't resolved yet).  Distinguish
   // from `[]` so the user sees a "Loading…" hint instead of the
   // "admin hasn't set up a screen yet" empty state — which is
@@ -61,13 +62,13 @@ export default function CircleScreenView({ blocks = null, refreshing = false }) 
         </Text>
       ) : null}
       {blocks.map((block) => (
-        <BlockSection key={block.blockId} block={block} />
+        <BlockSection key={block.blockId} block={block} onAction={onAction} />
       ))}
     </View>
   );
 }
 
-function BlockSection({ block }) {
+function BlockSection({ block, onAction }) {
   const baseStyle = [styles.block, styles[`block_${block.type}`] ?? null];
 
   if (block.status === 'error') {
@@ -89,6 +90,7 @@ function BlockSection({ block }) {
 
   let body = null;
   switch (block.type) {
+    case 'quickActions': body = renderQuickActions(block, onAction); break;
     case 'announcement': body = renderAnnouncement(block); break;
     case 'text':         body = renderText(block); break;
     case 'photo':        body = renderPhoto(block); break;
@@ -103,6 +105,27 @@ function BlockSection({ block }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────── */
+
+// D1 (§5A) — "Veel-gebruikt" pill row.  Each action is a feature key;
+// a tap calls `onAction(key)` so the host can switch to that surface.
+function renderQuickActions(block, onAction) {
+  const actions = (block.content?.actions ?? []).filter((a) => a?.key);
+  return (
+    <View style={styles.quickActionsRow}>
+      {actions.map((a) => (
+        <TouchableOpacity
+          key={a.key}
+          style={styles.quickAction}
+          disabled={typeof onAction !== 'function'}
+          onPress={() => onAction?.(a.key)}
+          testID={`quick-action-${a.key}`}
+        >
+          <Text style={styles.quickActionText}>{t(featureActionLabelKey(a.key))}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
 
 function renderAnnouncement(block) {
   const isCompact = block.config?.compact === true;
@@ -236,6 +259,10 @@ const styles = StyleSheet.create({
   // δ.1 — refresh pip: muted, small, right-aligned above the block list.
   refreshing:      { color: theme.color.inkSoft, fontSize: 11, opacity: 0.6, textAlign: 'right', marginBottom: 4 },
   block:           { padding: 14, marginBottom: 10, borderWidth: 1, borderColor: theme.color.line, borderRadius: 10, backgroundColor: theme.color.card },
+  // D1 (§5A) — "Veel-gebruikt" pill row.
+  quickActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  quickAction:     { paddingVertical: 8, paddingHorizontal: 14, borderWidth: 1, borderColor: theme.color.line, borderRadius: 999, backgroundColor: theme.color.paper2 },
+  quickActionText: { fontSize: 13, fontWeight: '600', color: theme.color.ink },
   blockEmpty:      { backgroundColor: theme.color.paper2, borderColor: theme.color.line },
   blockEmptyText:  { color: theme.color.inkSoft, fontStyle: 'italic', fontSize: 13 },
   blockError:      { borderColor: theme.color.accent, backgroundColor: theme.color.paper2 },
