@@ -344,3 +344,54 @@ describe('EventRouter — integration with A2 hybrid lifecycle', () => {
       .toBe('live');
   });
 });
+
+describe('EventRouter — E3 onPanelStale auto-refresh seam', () => {
+  function storeWithPanel() {
+    const s = new ThreadStore();
+    s.createThread({ id: 'main', name: 'Main', filter: {} });
+    s.getThread('main').addShellMessage(
+      { kind: 'record', messageId: 'p-1', lifecycleState: 'live',
+        payload: { id: 'task-9', type: 'task', title: 'old' } },
+      { opId: 'getTask', appOrigin: 'tasks-v0', args: { id: 'task-9' } },
+    );
+    return s;
+  }
+  const changed = (id) => ({
+    app: 'tasks-v0', type: 'item-changed', actor: 'webid:me',
+    itemRef: { app: 'tasks-v0', type: 'task', id },
+  });
+
+  it('fires onPanelStale(thread, panel, itemRef) for a matching panel + marks it stale', () => {
+    const store = storeWithPanel();
+    const onPanelStale = vi.fn();
+    new EventRouter({ threadStore: store, onPanelStale }).deliver(changed('task-9'));
+    expect(onPanelStale).toHaveBeenCalledTimes(1);
+    const [thread, panel, itemRef] = onPanelStale.mock.calls[0];
+    expect(thread.id).toBe('main');
+    expect(panel.messageId).toBe('p-1');
+    expect(panel.sourceOp).toEqual({ opId: 'getTask', appOrigin: 'tasks-v0', args: { id: 'task-9' } });
+    expect(itemRef.id).toBe('task-9');
+    expect(store.getThread('main').messages.find((m) => m.messageId === 'p-1').rendered.stale).toBe(true);
+  });
+
+  it('does not fire for a non-matching itemRef', () => {
+    const store = storeWithPanel();
+    const onPanelStale = vi.fn();
+    new EventRouter({ threadStore: store, onPanelStale }).deliver(changed('OTHER'));
+    expect(onPanelStale).not.toHaveBeenCalled();
+  });
+
+  it('a throwing onPanelStale does not break delivery to matching threads', () => {
+    const store = storeWithPanel();
+    store.createThread({ id: 'inbox', name: 'Inbox', filter: { eventTypes: ['item-changed'] } });
+    const router = new EventRouter({ threadStore: store, onPanelStale: () => { throw new Error('boom'); } });
+    expect(() => router.deliver(changed('task-9'))).not.toThrow();
+    expect(store.getThread('inbox').messages.length).toBe(1);   // notification still delivered
+  });
+
+  it('omitting onPanelStale keeps legacy behaviour (only the stale badge)', () => {
+    const store = storeWithPanel();
+    new EventRouter({ threadStore: store }).deliver(changed('task-9'));
+    expect(store.getThread('main').messages.find((m) => m.messageId === 'p-1').rendered.stale).toBe(true);
+  });
+});
