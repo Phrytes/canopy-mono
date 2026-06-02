@@ -218,6 +218,13 @@ export {
   MATCH_SOURCES, buildSkillMatches,
 } from './v2/circleSkills.js';
 export { normalizeFolioFile, buildCircleFiles, circleFilesFromListFiles } from './v2/circleFolio.js';
+// N5 — Drive tree (folder nav + rich rows).  Re-exported from folio's
+// browser-safe barrel so web + mobile share one import path (folio/browser
+// carries no node deps; realAgent already pulls it into both bundles).
+export {
+  folioLevel, breadcrumbs, parentPath, rowPath, rowName,
+  formatFileSize, fileKind, glyphForFile, FILE_KIND_GLYPH,
+} from '@canopy-app/folio/browser';
 export {
   RULES_FIELDS, RULES_QUESTIONS, DEFAULT_RULES_DOC,
   normalizeRulesDoc, buildRulesDoc, isRulesComplete, isRulesEmpty,
