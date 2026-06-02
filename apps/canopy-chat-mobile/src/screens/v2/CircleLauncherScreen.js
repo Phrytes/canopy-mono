@@ -24,6 +24,8 @@ import {
   getCirclePolStatus, formatPolStatus,
   // P6.1 — per-kring feature-flag consumption.
   isFeatureEnabled,
+  // §4 — admin's policy.view → default Chat/Scherm landing surface.
+  defaultViewModeFromPolicy,
   // P6.3 — per-circle activity preview + unread badge.
   buildTilePreviews, bumpSeenAt,
   // P6.5 #342 — claim-router hook (mirror claimed tasks to my own crew).
@@ -1334,19 +1336,24 @@ function CircleDetail({
 
   // SP-13.4 — Chat ↔ Scherm pill state (v2 §4 "De Schakelaar").
   // Per-circle preference persists in AsyncStorage at cc.circleViewMode.
-  const [viewMode, setViewModeState] = useState('chat');
+  // §4 — until the member has flipped the pill for this kring, the
+  // landing surface is the admin's policy.view front door
+  // (defaultViewModeFromPolicy): 'screen' → scherm, else → chat.
+  const [viewMode, setViewModeState] = useState(() => defaultViewModeFromPolicy(policy));
   useEffect(() => {
     let alive = true;
     (async () => {
       if (!circle?.id) return;
+      const fallback = defaultViewModeFromPolicy(policy);
       try {
         const raw = await AsyncStorage.getItem('cc.circleViewMode');
         const map = raw ? JSON.parse(raw) : {};
-        if (alive) setViewModeState(map?.[circle.id] === 'scherm' ? 'scherm' : 'chat');
-      } catch { if (alive) setViewModeState('chat'); }
+        const saved = map?.[circle.id];
+        if (alive) setViewModeState(saved === 'scherm' || saved === 'chat' ? saved : fallback);
+      } catch { if (alive) setViewModeState(fallback); }
     })();
     return () => { alive = false; };
-  }, [circle?.id]);
+  }, [circle?.id, policy]);
   const setViewMode = useCallback(async (mode) => {
     if (mode !== 'chat' && mode !== 'scherm') return;
     setViewModeState(mode);

@@ -90,6 +90,37 @@ export function enabledFeatures(policy) {
   return CIRCLE_FEATURES.filter((k) => isFeatureEnabled(policy, k));
 }
 
+// §4 — map the admin's `view` axis ('chat' | 'screen' | 'cross-stream')
+// to the kring's default Schakelaar mode ('chat' | 'scherm').  This is the
+// *front door* the admin chose: which surface a member lands on when they
+// open the kring before they've ever toggled the pill themselves.
+//
+//   'screen'       → 'scherm'  (admin recipe'd page is the landing surface)
+//   'chat'         → 'chat'    (v2 §4 default: chat IS the home view)
+//   'cross-stream' → 'chat'    (the kring's content also flows into Stroom;
+//                               inside the kring itself the conversation is
+//                               still the natural home view)
+//
+// The per-user pill (cc.circleViewMode) overrides this once the member has
+// flipped it — see readViewMode() (web) / the viewMode useEffect (mobile).
+const VIEW_AXIS_TO_MODE = { screen: 'scherm', chat: 'chat', 'cross-stream': 'chat' };
+
+/**
+ * §4 — the default Schakelaar mode ('chat' | 'scherm') for a kring whose
+ * member has no saved per-user pill preference yet.  Driven by the admin's
+ * `policy.view` axis; falls back to the policy default ('screen') for
+ * missing/invalid input so the result is always one of the two pill values.
+ *
+ * @param {object|null|undefined} policy — raw or normalised policy
+ * @returns {'chat'|'scherm'}
+ */
+export function defaultViewModeFromPolicy(policy) {
+  const axis = policy && typeof policy === 'object' && CIRCLE_POLICY_ENUMS.view.includes(policy.view)
+    ? policy.view
+    : DEFAULT_CIRCLE_POLICY.view;
+  return VIEW_AXIS_TO_MODE[axis] ?? 'chat';
+}
+
 /** Coerce any stored partial into a complete, valid policy (invalid values fall back to defaults). */
 export function normalizeCirclePolicy(stored = {}) {
   const p = stored && typeof stored === 'object' ? stored : {};
