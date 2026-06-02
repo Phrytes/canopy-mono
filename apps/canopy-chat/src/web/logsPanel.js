@@ -17,6 +17,8 @@
  * Phase v0.7 sub-slice 7.1c per `/Project Files/canopy-chat/coding-plan.md`.
  */
 
+import { renderFloatingButton } from '@canopy/chat-nav';
+
 /**
  * @typedef {object} LogsPanelContext
  * @property {Document}                            doc
@@ -25,6 +27,16 @@
  * @property {(itemRef: object) => void}           [onViewContext]
  * @property {(app: string, type: string) => void} [onMute]
  * @property {(event: object) => void}             [onOpenInChat]
+ * @property {object}                              [backTo]
+ *   chat-nav "← back to chat" affordance (E4).  When present, a
+ *   floating button returns the user to the thread they opened the
+ *   panel from — `onOpenInChat` may have switched the active thread,
+ *   so [×] alone would not restore the origin focus.
+ * @property {string}                              backTo.returnTo
+ *   Origin thread id (required for the button to render).
+ * @property {string}                              [backTo.label]
+ * @property {() => void}                          [backTo.onNavigate]
+ *   Refocus hook; the panel also calls `onClose` before this fires.
  */
 
 const TIME_WINDOWS = [
@@ -160,6 +172,20 @@ function paint(container, ctx, state, rerender) {
   footer.className = 'cc-logs-footer';
   footer.textContent = `${events.length} event${events.length === 1 ? '' : 's'}  ·  log holds ${eventLog.size} (14-day retention)`;
   container.appendChild(footer);
+
+  /* ── back-to-chat (E4, chat-nav) — returns to the origin thread ── */
+  const backTo = ctx.backTo;
+  if (backTo?.returnTo) {
+    renderFloatingButton(container, {
+      doc,
+      returnTo:   backTo.returnTo,
+      label:      backTo.label,
+      onNavigate: () => {
+        if (typeof onClose === 'function') onClose();
+        if (typeof backTo.onNavigate === 'function') backTo.onNavigate();
+      },
+    });
+  }
 }
 
 function renderEventRow(event, doc, eventLog, ctx) {

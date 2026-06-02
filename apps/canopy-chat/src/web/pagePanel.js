@@ -29,6 +29,7 @@
 
 import { buildFormSpec, validateAndCoerce } from '../forms/buildFormSpec.js';
 import { renderForm }                       from './domForm.js';
+import { renderFloatingButton }             from '@canopy/chat-nav';
 
 /**
  * @typedef {object} PagePanelOptions
@@ -53,6 +54,12 @@ import { renderForm }                       from './domForm.js';
  *   container contents.
  * @property {object}                                   [t]
  *   Localisation function (canopy-chat's `i18next.t`).
+ * @property {object}                                   [backTo]
+ *   chat-nav "← back to chat" affordance (E4).  When present, a
+ *   floating button closes the panel and refocuses the origin thread.
+ * @property {string}                                   backTo.returnTo
+ * @property {string}                                   [backTo.label]
+ * @property {() => void}                               [backTo.onNavigate]
  */
 
 /**
@@ -109,6 +116,19 @@ export function openPagePanel(opts) {
   const body = doc.createElement('div');
   body.className = 'cc-page-body';
   container.appendChild(body);
+
+  // Back-to-chat (E4, chat-nav) — closes the panel + refocuses origin.
+  if (opts.backTo?.returnTo) {
+    renderFloatingButton(container, {
+      doc,
+      returnTo:   opts.backTo.returnTo,
+      label:      opts.backTo.label,
+      onNavigate: () => {
+        teardown();
+        if (typeof opts.backTo.onNavigate === 'function') opts.backTo.onNavigate();
+      },
+    });
+  }
 
   if (typeof opts.customRenderer === 'function') {
     // Wizard mode: let the caller draw whatever it wants inside body.

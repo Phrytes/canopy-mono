@@ -23,6 +23,9 @@ importers:
       '@canopy/app-manifest':
         specifier: workspace:*
         version: link:../../packages/app-manifest
+      '@canopy/chat-nav':
+        specifier: workspace:*
+        version: link:../../packages/chat-nav
       '@canopy/core':
         specifier: workspace:*
         version: link:../../packages/core

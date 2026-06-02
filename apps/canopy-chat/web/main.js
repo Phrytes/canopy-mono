@@ -1033,9 +1033,20 @@ function openLogsPanel() {
   logsPanelEl.hidden = false;
   logsPanelEl.classList.remove('cc-logs-closed');
   logsPanelEl.classList.add('cc-logs-open');
+  // E4 — remember the thread we opened from so "← back to chat"
+  // restores it even after [Open in chat] switched the active thread.
+  const originThreadId = store.getActiveThread()?.id ?? null;
   renderLogsPanel(logsPanelEl, {
     doc: document,
     eventLog,
+    backTo: originThreadId ? {
+      returnTo:   originThreadId,
+      label:      t('chat.nav.backToChat'),
+      onNavigate: () => {
+        if (store.getThread(originThreadId)) store.setActiveThread(originThreadId);
+        renderActiveStream();
+      },
+    } : undefined,
     onClose: () => {
       logsPanelEl.hidden = true;
       logsPanelEl.classList.remove('cc-logs-open');
@@ -1219,6 +1230,8 @@ function ensureBuurtThread(buurtId, hint) {
 
 function pageSurfaceOpen({ op, appOrigin, args }) {
   const customRenderer = WIZARD_RENDERERS[op.id];
+  // E4 — origin thread for the chat-nav "← back to chat" button.
+  const originThreadId = store.getActiveThread()?.id ?? null;
   openPagePanel({
     container: pagePanelEl,
     doc:       document,
@@ -1227,6 +1240,14 @@ function pageSurfaceOpen({ op, appOrigin, args }) {
     args,
     callSkill: callSkillRef,
     t,
+    backTo: originThreadId ? {
+      returnTo:   originThreadId,
+      label:      t('chat.nav.backToChat'),
+      onNavigate: () => {
+        if (store.getThread(originThreadId)) store.setActiveThread(originThreadId);
+        renderActiveStream();
+      },
+    } : undefined,
     onClose:   () => {
       // Already cleared the DOM in pagePanel; this hook is for
       // any external bookkeeping (none today).
