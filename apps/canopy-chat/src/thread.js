@@ -256,7 +256,9 @@ export class Thread {
    * can prompt for a refresh.
    *
    * @param {{ app: string, type: string, id: string }} itemRef
-   * @returns {Array<{ messageId: string, rendered: object }>}
+   * @returns {Array<{ messageId: string, rendered: object, sourceOp?: object }>}
+   *   E3 — `sourceOp` (when present) lets the host auto-refresh the
+   *   panel by re-running the op that produced it.
    */
   openPanelsForItemRef(itemRef) {
     if (!itemRef || typeof itemRef !== 'object') return [];
@@ -271,7 +273,7 @@ export class Thread {
       if ((r.kind === 'record' || r.kind === 'mini-page')
           && r.payload?.id === itemRef.id
           && (r.payload?.type ?? null) === (itemRef.type ?? null)) {
-        out.push({ messageId: m.messageId, rendered: r });
+        out.push({ messageId: m.messageId, rendered: r, sourceOp: m.sourceOp });
         continue;
       }
       // embed-card — match against rendered.embed.itemRef.
@@ -279,7 +281,7 @@ export class Thread {
           && r.embed?.itemRef?.id === itemRef.id
           && r.embed?.itemRef?.app === itemRef.app
           && r.embed?.itemRef?.type === itemRef.type) {
-        out.push({ messageId: m.messageId, rendered: r });
+        out.push({ messageId: m.messageId, rendered: r, sourceOp: m.sourceOp });
       }
     }
     return out;

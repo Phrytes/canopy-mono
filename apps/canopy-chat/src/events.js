@@ -80,6 +80,8 @@ export class EventRouter {
   #now;
   /** @type {Array<(event: Event, threadIds: string[]) => void>} */
   #subscribers;
+  /** @type {((thread: object, panel: object, itemRef: string) => void) | null} */
+  #onPanelStale;
   /**
    * Pending in-flight registrations keyed by `correlationId`.
    * Each holds `{threadId, callback, registeredAt, timeoutMs?}`.
@@ -92,6 +94,13 @@ export class EventRouter {
    * @param {import('./threadStore.js').ThreadStore}                opts.threadStore
    * @param {(event: Event) => object}                              [opts.formatNotification]
    * @param {() => number}                                          [opts.now=Date.now]
+   * @param {(thread: object, panel: object, itemRef: string) => void} [opts.onPanelStale]
+   *   E3 (§B#10) — invoked for each open record/mini-page/embed-card
+   *   panel an `item-changed` event marks stale.  The host wires this to
+   *   re-run the panel's `sourceOp` and swap its rendered content in
+   *   place (auto-refresh), instead of leaving only the static stale
+   *   badge.  Fired AFTER `markPanelStale`, so a no-op/failed refresh
+   *   still leaves the badge as a fallback.
    */
   constructor(opts) {
     if (!opts?.threadStore) {
@@ -105,6 +114,7 @@ export class EventRouter {
     this.#now         = typeof opts.now === 'function' ? opts.now : Date.now;
     this.#subscribers = [];
     this.#inFlight    = new Map();
+    this.#onPanelStale = typeof opts.onPanelStale === 'function' ? opts.onPanelStale : null;
   }
 
   /* ─── public delivery API ──────────────────────────────────── */
@@ -149,6 +159,13 @@ export class EventRouter {
       if (!exclude.has(thread.id) && enriched.itemRef) {
         for (const panel of thread.openPanelsForItemRef(enriched.itemRef)) {
           thread.markPanelStale(panel.messageId);
+          // E3 — let the host auto-refresh (re-run sourceOp + replace in
+          // place).  Guarded so a throwing host handler can't break
+          // event delivery to the remaining threads.
+          if (this.#onPanelStale) {
+            try { this.#onPanelStale(thread, panel, enriched.itemRef); }
+            catch { /* host refresh failure → static stale badge remains */ }
+          }
         }
       }
 

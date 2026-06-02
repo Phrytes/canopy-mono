@@ -223,7 +223,28 @@ if (persisted.length > 0) {
 // Persist future changes asynchronously.
 attachPersistence({ threadStore: store, idb });
 
-const router = createEventRouter({ threadStore: store });
+// E3 — verbs whose ops are safe to RE-RUN for an auto-refresh (pure
+// reads).  A record panel that was the reply to a MUTATION (e.g.
+// addTask → record of the new task) must NOT be re-run on a later
+// item-changed — that would re-execute the mutation.  Anything not in
+// this allow-list keeps the static stale badge markPanelStale set.
+const REFRESHABLE_VERBS = new Set(['list', 'get', 'view', 'show', 'record', 'open', 'snapshot', 'find', 'brief']);
+
+const router = createEventRouter({
+  threadStore: store,
+  // E3 (§B#10) — auto-refresh a record/mini-page/embed panel the moment
+  // an item-changed event marks it stale: re-run its sourceOp + swap the
+  // rendered content in place (the same path the row-action refresh
+  // uses).  Fire-and-forget; on a no-op/failure the static stale badge
+  // that markPanelStale already set remains as the fallback.
+  onPanelStale: (thread, panel) => {
+    const opId = panel?.sourceOp?.opId;
+    if (!opId) return;                                  // no source → badge
+    const verb = catalog.opsById.get(opId)?.op?.verb;
+    if (!REFRESHABLE_VERBS.has(verb)) return;           // mutation/unknown → badge
+    refreshListMessageInPlace(thread, panel.messageId);
+  },
+});
 
 // #176 — chat-shell double-render fix.  Tracks the thread currently
 // running dispatchAndRender so the agent's publishEvent (called
