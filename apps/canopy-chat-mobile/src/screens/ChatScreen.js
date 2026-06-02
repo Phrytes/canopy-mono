@@ -30,6 +30,8 @@ import {
   renderReply, isQrUri,
   // E3 — record-panel auto-refresh after a mutation.
   itemRefFromReply, REFRESHABLE_VERBS,
+  // E2 — bulk fan-out (`/done all`).
+  executeBulkDispatch, lastListingItems,
 } from '@canopy-app/canopy-chat';
 
 import { autoRefreshStalePanels } from '../core/panelAutoRefresh.js';
@@ -741,6 +743,33 @@ export default function ChatScreen({
             appOrigin:         dispatch.appOrigin,
             manifestsByOrigin: bootState.bundle.manifestsByOrigin,
           });
+        }
+      } else if (dispatch.kind === 'bulk') {
+        // E2 — `/done all`: resolve candidate ids from the freshest
+        // list in this thread (prefer the same app), fan-out via
+        // executeBulkDispatch, render the summary.  Mobile has no
+        // filter-router, so cross-thread propagation is the action
+        // fan-out itself (mirrors web's runBulkOp) rather than an
+        // EventRouter broadcast.
+        const targetMsgs = listThreads(threadStateRef.current)
+          .find((th) => th.id === targetThreadId)?.messages ?? [];
+        const itemIds = lastListingItems(targetMsgs, { appOrigin: dispatch.appOrigin });
+        if (itemIds.length === 0) {
+          rendered = {
+            kind: 'text', messageId: botMsgId, threadId: null,
+            lifecycleState: 'closed', text: t('reply.bulk_no_list'),
+          };
+        } else {
+          const { message } = await executeBulkDispatch({
+            bulk:      dispatch,
+            itemIds,
+            callSkill: bootState.bundle.callSkill,
+            opLabel:   dispatch.opId,
+          });
+          rendered = {
+            kind: 'text', messageId: botMsgId, threadId: null,
+            lifecycleState: 'closed', text: message,
+          };
         }
       } else if (dispatch.kind === 'unknown') {
         rendered = {

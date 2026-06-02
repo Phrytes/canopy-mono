@@ -23,7 +23,10 @@ export {
 export {
   EventRouter, createEventRouter, defaultFormatNotification,
 } from './events.js';
-export { runBulkOp, summariseBulkOp } from './bulkOps.js';
+export {
+  runBulkOp, summariseBulkOp, executeBulkDispatch, isBulkKeyword, BULK_KEYWORDS,
+  lastListingItems,
+} from './bulkOps.js';
 export {
   collectFollowUps, createFollowUpResolver, DEFAULT_CROSS_APP_CHAINS,
 } from './followUps.js';

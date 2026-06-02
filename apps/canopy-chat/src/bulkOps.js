@@ -16,6 +16,25 @@
  */
 
 /**
+ * Bulk fan-out keywords.  When a slash body is one of these (and the op
+ * targets an item id), the router returns a `bulk` dispatch instead of
+ * binding the word as a literal id.  English-first, with the common
+ * Dutch forms so `/done alle` works too.
+ */
+export const BULK_KEYWORDS = new Set([
+  'all', 'everything',          // en
+  'alle', 'allemaal', 'alles',  // nl
+]);
+
+/**
+ * @param {*} s  a candidate slash-body string (the parser's `_match`)
+ * @returns {boolean} true when `s` is a bulk-fan-out keyword
+ */
+export function isBulkKeyword(s) {
+  return typeof s === 'string' && BULK_KEYWORDS.has(s.trim().toLowerCase());
+}
+
+/**
  * @typedef {object} BulkOpRequest
  * @property {string}                                  opId
  * @property {string}                                  appOrigin
@@ -119,6 +138,63 @@ export async function runBulkOp(req) {
       failed: failures.length,
     },
   };
+}
+
+/**
+ * E2 — resolve bulk candidate ids from a flat message array (the mobile
+ * threadState shape, where there is no `_listings` cache).  Scans newest
+ * → oldest for a list-shaped reply with items, preferring one from a
+ * given app (matched on `message.sourceDispatch.appOrigin`); falls back
+ * to the freshest list of any app.  Mirrors web's `Thread.lastListing`.
+ *
+ * @param {Array<{rendered?: object, sourceDispatch?: object}>} messages
+ * @param {{ appOrigin?: string }} [opts]
+ * @returns {string[]}
+ */
+export function lastListingItems(messages, opts = {}) {
+  if (!Array.isArray(messages)) return [];
+  const { appOrigin } = opts;
+  let fallback = null;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const r = messages[i]?.rendered;
+    if (r?.kind !== 'list' || !Array.isArray(r.items)) continue;
+    const ids = r.items.map((it) => it?.id).filter(Boolean);
+    if (ids.length === 0) continue;
+    const app = messages[i]?.sourceDispatch?.appOrigin;
+    if (appOrigin && app && app !== appOrigin) {
+      if (!fallback) fallback = ids;   // freshest other-app list, as fallback
+      continue;
+    }
+    return ids;                        // same-app (or unfiltered) → freshest wins
+  }
+  return fallback ?? [];
+}
+
+/**
+ * E2 — run a `bulk` dispatch (from the router) over a resolved set of
+ * item ids and produce a summarised text reply.  Shared by the web and
+ * mobile hosts so the fan-out behaves identically on both.
+ *
+ * @param {object}   args
+ * @param {{opId: string, appOrigin: string, argName: string, baseArgs?: object}} args.bulk
+ * @param {string[]} args.itemIds            candidate ids (from the listing)
+ * @param {import('./dispatch.js').CallSkill} args.callSkill
+ * @param {(event: object) => void} [args.emitEvent]  EventRouter.deliver
+ * @param {string}   [args.opLabel]          human label for the summary
+ * @returns {Promise<{ message: string, ok: boolean, result: BulkOpResult }>}
+ */
+export async function executeBulkDispatch({ bulk, itemIds, callSkill, emitEvent, opLabel }) {
+  const result = await runBulkOp({
+    opId:      bulk.opId,
+    appOrigin: bulk.appOrigin,
+    items:     (itemIds ?? []).map((id) => ({ id })),
+    argName:   bulk.argName,
+    baseArgs:  bulk.baseArgs,
+    callSkill,
+    emitEvent,
+  });
+  const summary = summariseBulkOp(result, { opLabel: opLabel ?? bulk.opId });
+  return { ...summary, result };
 }
 
 /**

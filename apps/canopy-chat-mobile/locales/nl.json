@@ -1965,5 +1965,11 @@
         "text": "Later"
       }
     }
+  },
+  "reply": {
+    "bulk_no_list": {
+      "text": "Geen recente lijst om “alle” op toe te passen — voer eerst een lijst-commando uit.",
+      "doc": "E2 — shown when `/<op> all` has no recent listing to fan out over."
+    }
   }
 }

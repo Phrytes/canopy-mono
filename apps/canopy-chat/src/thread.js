@@ -158,6 +158,7 @@ export class Thread {
     if (rendered?.kind === 'list' && meta.opId) {
       this._listings.set(meta.opId, {
         opId:       meta.opId,
+        appOrigin:  meta.appOrigin,
         capturedAt: this._now(),
         items: (rendered.items ?? []).map((it) => ({
           id:    it.id,
@@ -236,6 +237,29 @@ export class Thread {
    */
   lastListingFor(opId) {
     return this._listings.get(opId);
+  }
+
+  /**
+   * E2 — the most-recently-captured listing in this thread, optionally
+   * preferring one from a given app.  A bulk fan-out (`/done all`) reads
+   * its candidate items from here: the user typed "all" right after
+   * looking at a list, so the freshest listing is the intended set.
+   *
+   * When `appOrigin` is given, the freshest listing FROM THAT APP wins;
+   * if none exists, returns null (caller may fall back to the overall
+   * freshest by calling again with no opts).
+   *
+   * @param {{ appOrigin?: string }} [opts]
+   * @returns {ListingSnapshot | null}
+   */
+  lastListing(opts = {}) {
+    const { appOrigin } = opts;
+    let best = null;
+    for (const listing of this._listings.values()) {
+      if (appOrigin && listing.appOrigin && listing.appOrigin !== appOrigin) continue;
+      if (!best || (listing.capturedAt ?? 0) > (best.capturedAt ?? 0)) best = listing;
+    }
+    return best ?? null;
   }
 
   /**

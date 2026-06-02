@@ -1551,6 +1551,10 @@
     "unknown_command": {
       "text": "Didn't understand “{{input}}”. Try /help for the commands available here.",
       "doc": "Shown when parser falls through to kind:'unknown' — user input matched no slash command."
+    },
+    "bulk_no_list": {
+      "text": "No recent list to apply “all” to — run a list command first.",
+      "doc": "E2 — shown when `/<op> all` has no recent listing to fan out over."
     }
   },
   "thread": {
