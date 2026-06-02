@@ -16,6 +16,12 @@ export { wrapWithPseudoPod, guessContentType } from './podCache.js';
 export { PathMap, joinRel }              from './PathMap.js';
 export { scanLocal }                     from './scanLocal.js';
 export { scanPod }                       from './scanPod.js';
+// N5 — Drive tree (folder nav + rich rows), source-agnostic over
+// scanLocal / scanPod / the in-process listFiles index.
+export {
+  folioLevel, breadcrumbs, parentPath, rowPath, rowName,
+  formatFileSize, fileKind, glyphForFile, FILE_KIND_GLYPH,
+} from './folioTree.js';
 export { diff }                          from './diff.js';
 export { applyConflict, hasConflictMarkers } from './applyConflict.js';
 export {
