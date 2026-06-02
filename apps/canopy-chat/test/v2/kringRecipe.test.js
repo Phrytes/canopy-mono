@@ -17,8 +17,9 @@ import {
 describe('kringRecipe · α.1a — single Recipe', () => {
   it('exposes the v2 §2 block palette in editor order', () => {
     // α.4 added 'tasks' between agenda and rules.
+    // D1 (§5A) prepended 'quickActions' as the top "Veel-gebruikt" rail.
     expect(BLOCK_TYPES).toEqual([
-      'announcement', 'noticeboard', 'agenda', 'tasks', 'rules', 'photo', 'text',
+      'quickActions', 'announcement', 'noticeboard', 'agenda', 'tasks', 'rules', 'photo', 'text',
     ]);
   });
 

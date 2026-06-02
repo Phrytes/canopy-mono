@@ -79,6 +79,8 @@ export { buildKringTabs, DEFAULT_KRING_TAB } from './v2/kringTabs.js';
 // read at bubble render time so users can see fan-out status + retry
 // failed sends.
 export { createDeliveryStateMap } from './v2/deliveryState.js';
+// D1 (§5A) — per-circle action-frequency counter behind the quickActions block.
+export { createActionFrequencyStore } from './v2/actionFrequency.js';
 // ε.2 — per-group catch-up strategy router (substrate).  Decides
 // pod / peer / hybrid / none based on circle.policy.pod, then routes
 // through injected handlers.  Host wiring lands once ε.1 is also in.

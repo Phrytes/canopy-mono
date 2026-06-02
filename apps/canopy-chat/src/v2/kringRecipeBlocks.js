@@ -32,6 +32,7 @@
 import { BLOCK_TYPES } from './kringRecipe.js';
 import { buildKringStream } from './circleStream.js';
 import { normalizeRulesDoc, isRulesEmpty } from './circleRules.js';
+import { enabledFeatures } from './circlePolicy.js';
 
 /**
  * Editor-side metadata per block type.  Drives the palette + the
@@ -39,6 +40,7 @@ import { normalizeRulesDoc, isRulesEmpty } from './circleRules.js';
  * the standard `t()` localizer (locale keys land with α.1d).
  */
 export const BLOCK_REGISTRY = Object.freeze({
+  quickActions: { order: 0, labelKey: 'circle.recipe.block.quickActions', emoji: '⭐' },
   announcement: { order: 1, labelKey: 'circle.recipe.block.announcement', emoji: '📣' },
   noticeboard:  { order: 2, labelKey: 'circle.recipe.block.noticeboard',  emoji: '📌' },
   agenda:       { order: 3, labelKey: 'circle.recipe.block.agenda',       emoji: '📅' },
@@ -65,6 +67,7 @@ export async function materializeBlock({ block, circleId, hostOps = {} } = {}) {
   if (!BLOCK_TYPES.includes(block.type)) return errorOut(block.id, block.type, 'unknown type');
   try {
     switch (block.type) {
+      case 'quickActions': return materializeQuickActions(block, circleId, hostOps);
       case 'announcement': return materializeAnnouncement(block);
       case 'text':         return materializeText(block);
       case 'photo':        return materializePhoto(block);
@@ -95,6 +98,47 @@ export async function materializeRecipe({ recipe, circleId, hostOps } = {}) {
 /* ─────────────────────────────────────────────────────────────────────── */
 /* Per-type materializers                                                 */
 /* ─────────────────────────────────────────────────────────────────────── */
+
+/**
+ * D1 (§5A) — "Veel-gebruikt" quick-actions row.  Materializes the top-N
+ * actions for this kring, frequency-weighted per the injected
+ * `actionFrequency` store, falling back to the kring's enabled features
+ * (`enabledFeatures(policy)`) when the user has no usage history yet.
+ *
+ * The candidate set is ALWAYS the enabled features — a frequency count
+ * for a since-disabled feature is ignored, so the row never offers an
+ * action the kring has turned off.  Frequency only reorders within that
+ * set; ties + the cold-start case fall back to CIRCLE_FEATURES order.
+ *
+ * @param {{id:string, config?:{limit?:number}}} block
+ * @param {string} circleId
+ * @param {{ policy?: object, actionFrequency?: { top: Function } }} hostOps
+ * @returns {{blockId, type, status, content:{actions:Array<{key:string}>, source:'frequency'|'default'}}}
+ */
+function materializeQuickActions(block, circleId, { policy, actionFrequency } = {}) {
+  const limit = clampInt(block.config?.limit, 1, 8, 4);
+  const candidates = enabledFeatures(policy);            // CIRCLE_FEATURES order
+  const candidateSet = new Set(candidates);
+
+  // Frequency ranking restricted to currently-enabled features.
+  let ranked = [];
+  if (actionFrequency && typeof actionFrequency.top === 'function' && circleId) {
+    ranked = actionFrequency.top(circleId, candidates.length + candidateSet.size)
+      .filter((k) => candidateSet.has(k));
+  }
+  const usedFrequency = ranked.length > 0;
+
+  // Most-used first, then any remaining enabled features in default order.
+  const seen = new Set(ranked);
+  const ordered = [...ranked, ...candidates.filter((k) => !seen.has(k))];
+  const actions = ordered.slice(0, limit).map((key) => ({ key }));
+
+  return {
+    blockId: block.id, type: 'quickActions',
+    status: actions.length > 0 ? 'ok' : 'empty',
+    content: { actions, source: usedFrequency ? 'frequency' : 'default' },
+  };
+}
 
 function materializeAnnouncement(block) {
   const text = stringOr(block.config?.text, '').trim();

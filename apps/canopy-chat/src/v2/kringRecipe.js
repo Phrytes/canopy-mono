@@ -35,6 +35,7 @@
 
 /** Block types the v2 PDF §2 palette exposes (in editor display order). */
 export const BLOCK_TYPES = Object.freeze([
+  'quickActions',     // D1 (§5A) — "Veel-gebruikt" top-N most-used actions
   'announcement',     // pinned admin message (free text)
   'noticeboard',      // top-N recent posts (vragen/aanbod)
   'agenda',           // upcoming calendar events
@@ -52,6 +53,9 @@ export const BLOCK_TYPES = Object.freeze([
  * the rendered screen.  rules/photo/text are not list-shaped → they
  * deliberately have no `compact` key. */
 const DEFAULT_CONFIGS = Object.freeze({
+  // D1 (§5A) — `limit` caps how many action pills show (PDF shows 4).
+  // No `compact` key: the pill row is already compact by nature.
+  quickActions: () => ({ limit: 4 }),
   announcement: () => ({ text: '', compact: false }),
   noticeboard:  () => ({ limit: 5, compact: false }),
   agenda:       () => ({ limit: 5, horizonDays: 14, compact: false }),
