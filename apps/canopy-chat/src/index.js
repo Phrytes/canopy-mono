@@ -67,6 +67,10 @@ export {
 } from './v2/circlePolicyStore.js';
 // β.5 — "pin to top" per-user preference (single keyless map of circleId → true).
 export { createCirclePinStore, localStoragePinIo } from './v2/circlePinStore.js';
+// N2 — per-option consequence registry (ⓘ "Gevolgen als je dit kiest…").
+export {
+  CONSEQUENCE_OPTIONS, hasConsequence, consequenceKeyFor, attachConsequences,
+} from './v2/optionConsequences.js';
 export { makeProposal, approveProposal, pendingApprovers } from './v2/circleConsensus.js';
 // P6.2 — persistence layer for multi-admin proposals.
 export { createProposalStore, localStorageProposalIo } from './v2/circleProposalStore.js';
