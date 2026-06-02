@@ -1,471 +1,1551 @@
 {
   "circle": {
-    "title":   { "text": "Your circles", "doc": "Heading of the circle launcher (board 1B)." },
-    "tab": {
-      "screens": { "text": "Screens", "doc": "α.3 — primary tab: user's screens (default landing)." },
-      "kringen": { "text": "Circles", "doc": "Bottom-nav tab → the circle list (board 1)." },
-      "stroom":  { "text": "Stream", "doc": "Bottom-nav tab → the cross-circle stream (board 5)." },
-      "mij":     { "text": "Me", "doc": "Bottom-nav tab → personal availability/quiet-hours/hopping (board 6C)." }
+    "title": {
+      "text": "Your circles",
+      "doc": "Heading of the circle launcher (board 1B)."
     },
-    "new":     { "text": "+ new circle", "doc": "Create-a-new-circle entry on the launcher." },
-    "create_unavailable": { "text": "Can't create a circle yet — the app is still starting.", "doc": "SP-13.1 — surfaced when createCircle is invoked before the agent bundle has booted." },
-    "members": { "text": "{{count}} members", "doc": "Member count on a circle tile; {{count}} interpolated." },
-    "tile_unread": { "text": "{{count}} unread", "doc": "Accessible label for the unread badge on a circle tile (P6.3)." },
-    "tile_proposals": { "text": "{{count}} pending proposal(s)", "doc": "Accessible label for the voorstellen badge on a circle tile (P6.2 #341)." },
+    "tab": {
+      "screens": {
+        "text": "Screens",
+        "doc": "α.3 — primary tab: user's screens (default landing)."
+      },
+      "kringen": {
+        "text": "Circles",
+        "doc": "Bottom-nav tab → the circle list (board 1)."
+      },
+      "stroom": {
+        "text": "Stream",
+        "doc": "Bottom-nav tab → the cross-circle stream (board 5)."
+      },
+      "mij": {
+        "text": "Me",
+        "doc": "Bottom-nav tab → personal availability/quiet-hours/hopping (board 6C)."
+      }
+    },
+    "new": {
+      "text": "+ new circle",
+      "doc": "Create-a-new-circle entry on the launcher."
+    },
+    "create_unavailable": {
+      "text": "Can't create a circle yet — the app is still starting.",
+      "doc": "SP-13.1 — surfaced when createCircle is invoked before the agent bundle has booted."
+    },
+    "members": {
+      "text": "{{count}} members",
+      "doc": "Member count on a circle tile; {{count}} interpolated."
+    },
+    "tile_unread": {
+      "text": "{{count}} unread",
+      "doc": "Accessible label for the unread badge on a circle tile (P6.3)."
+    },
+    "tile_proposals": {
+      "text": "{{count}} pending proposal(s)",
+      "doc": "Accessible label for the voorstellen badge on a circle tile (P6.2 #341)."
+    },
     "tile": {
       "menu": {
-        "pin":            { "text": "Pin to top", "doc": "β.5 — context-menu item: float this kring to the top of its section." },
-        "unpin":          { "text": "Unpin", "doc": "β.5 — context-menu item: undo pin-to-top." },
-        "mute":           { "text": "Mute", "doc": "β.5 — context-menu item: silence this kring (toggles per-member chatOff override)." },
-        "unmute":         { "text": "Unmute", "doc": "β.5 — context-menu item: re-enable chat for this kring." },
-        "settings":       { "text": "Settings", "doc": "β.5 — context-menu item: open this kring's settings screen." },
-        "leave":          { "text": "Leave kring", "doc": "β.5 — context-menu item: leave this kring (dispatches /leave-group)." },
-        "leave_confirm":  { "text": "Leave {{name}}? This can't be undone.", "doc": "β.5 — confirm() text before dispatching /leave-group." }
+        "pin": {
+          "text": "Pin to top",
+          "doc": "β.5 — context-menu item: float this kring to the top of its section."
+        },
+        "unpin": {
+          "text": "Unpin",
+          "doc": "β.5 — context-menu item: undo pin-to-top."
+        },
+        "mute": {
+          "text": "Mute",
+          "doc": "β.5 — context-menu item: silence this kring (toggles per-member chatOff override)."
+        },
+        "unmute": {
+          "text": "Unmute",
+          "doc": "β.5 — context-menu item: re-enable chat for this kring."
+        },
+        "settings": {
+          "text": "Settings",
+          "doc": "β.5 — context-menu item: open this kring's settings screen."
+        },
+        "leave": {
+          "text": "Leave kring",
+          "doc": "β.5 — context-menu item: leave this kring (dispatches /leave-group)."
+        },
+        "leave_confirm": {
+          "text": "Leave {{name}}? This can't be undone.",
+          "doc": "β.5 — confirm() text before dispatching /leave-group."
+        }
       }
     },
     "kind": {
-      "household":     { "text": "Household", "doc": "β.3 — launcher section header for kind='household' circles." },
-      "buurt":         { "text": "Neighbourhood", "doc": "β.3 — launcher section header for kind='buurt' circles." },
-      "vriendenkring": { "text": "Friends", "doc": "β.3 — launcher section header for kind='vriendenkring' circles." },
-      "other":         { "text": "Other", "doc": "β.3 — launcher section header for circles whose kind isn't household/buurt/vriendenkring." }
+      "household": {
+        "text": "Household",
+        "doc": "β.3 — launcher section header for kind='household' circles."
+      },
+      "buurt": {
+        "text": "Neighbourhood",
+        "doc": "β.3 — launcher section header for kind='buurt' circles."
+      },
+      "vriendenkring": {
+        "text": "Friends",
+        "doc": "β.3 — launcher section header for kind='vriendenkring' circles."
+      },
+      "other": {
+        "text": "Other",
+        "doc": "β.3 — launcher section header for circles whose kind isn't household/buurt/vriendenkring."
+      }
     },
-    "empty":   { "text": "No circles yet.", "doc": "Shown when the launcher has no circles." },
-    "loading": { "text": "Loading circles…", "doc": "Shown while circles are being fetched." },
-    "back":    { "text": "← circles", "doc": "Back link from a circle detail view to the launcher." },
-    "detail_empty": { "text": "Nothing here yet.", "doc": "Empty state inside a circle detail view." },
-    "on_your_list": { "text": "On your list", "doc": "Heading for the claim-router mirror section on CircleDetail (P6.5 #342)." },
+    "empty": {
+      "text": "No circles yet.",
+      "doc": "Shown when the launcher has no circles."
+    },
+    "loading": {
+      "text": "Loading circles…",
+      "doc": "Shown while circles are being fetched."
+    },
+    "back": {
+      "text": "← circles",
+      "doc": "Back link from a circle detail view to the launcher."
+    },
+    "detail_empty": {
+      "text": "Nothing here yet.",
+      "doc": "Empty state inside a circle detail view."
+    },
+    "on_your_list": {
+      "text": "On your list",
+      "doc": "Heading for the claim-router mirror section on CircleDetail (P6.5 #342)."
+    },
     "stream": {
-      "title":    { "text": "Stream", "doc": "Heading of the cross-circle Stream tab (board 5B)." },
-      "open":     { "text": "Stream", "doc": "Launcher entry that opens the cross-circle Stream." },
-      "empty":    { "text": "Nothing across your circles yet.", "doc": "Empty state for the Stream." },
-      "untagged": { "text": "—", "doc": "Tag shown on a Stream row that isn't tied to a circle." },
-      "compose_placeholder_default":  { "text": "Reply in the timeline", "doc": "Pinned compose placeholder when no row is focused (P6.M3)." },
-      "compose_placeholder_targeted": { "text": "Reply in {{circle}}", "doc": "Pinned compose placeholder when a row is focused — context follows." }
+      "title": {
+        "text": "Stream",
+        "doc": "Heading of the cross-circle Stream tab (board 5B)."
+      },
+      "open": {
+        "text": "Stream",
+        "doc": "Launcher entry that opens the cross-circle Stream."
+      },
+      "empty": {
+        "text": "Nothing across your circles yet.",
+        "doc": "Empty state for the Stream."
+      },
+      "untagged": {
+        "text": "—",
+        "doc": "Tag shown on a Stream row that isn't tied to a circle."
+      },
+      "compose_placeholder_default": {
+        "text": "Reply in the timeline",
+        "doc": "Pinned compose placeholder when no row is focused (P6.M3)."
+      },
+      "compose_placeholder_targeted": {
+        "text": "Reply in {{circle}}",
+        "doc": "Pinned compose placeholder when a row is focused — context follows."
+      }
     },
     "chat": {
       "quick_reply": {
-        "fallback_label": { "text": "Reply", "doc": "α.5a (audit #3) — default label for an inline-keuze quick-reply pill when the reply envelope supplies a slash but no label." }
+        "fallback_label": {
+          "text": "Reply",
+          "doc": "α.5a (audit #3) — default label for an inline-keuze quick-reply pill when the reply envelope supplies a slash but no label."
+        }
       },
       "delivery": {
-        "pending": { "text": "Sending…", "doc": "δ.2 — bubble icon caption while the kring fan-out (broadcastKringMessage) is in flight." },
-        "sent":    { "text": "Sent", "doc": "δ.2 — bubble icon caption after a successful kring fan-out.  Currently never surfaced (the happy path renders nothing) but reserved for future use." },
-        "failed":  { "text": "Send failed (tap to retry)", "doc": "δ.2 — bubble icon caption + accessible label when the kring fan-out rejected or returned errors; tapping re-fires broadcastKringMessage with the same msgId." }
+        "pending": {
+          "text": "Sending…",
+          "doc": "δ.2 — bubble icon caption while the kring fan-out (broadcastKringMessage) is in flight."
+        },
+        "sent": {
+          "text": "Sent",
+          "doc": "δ.2 — bubble icon caption after a successful kring fan-out.  Currently never surfaced (the happy path renders nothing) but reserved for future use."
+        },
+        "failed": {
+          "text": "Send failed (tap to retry)",
+          "doc": "δ.2 — bubble icon caption + accessible label when the kring fan-out rejected or returned errors; tapping re-fires broadcastKringMessage with the same msgId."
+        }
       },
       "catch_up": {
-        "requesting":              { "text": "Catching up…",                                  "doc": "ε.5 — chat-shell pill while a negotiated catch-up is in flight (PENDING_OFFERS / collecting-offers phase)." },
-        "streaming_progress":      { "text": "Catching up… {{count}}/{{total}}",              "doc": "ε.5 — chat-shell pill during the streaming phase; count is items ingested so far, total is the offer's count." },
-        "done":                    { "text": "Up to date",                                     "doc": "ε.5 — terminal pill shown briefly after a successful catch-up; auto-hides after 1.5s." },
-        "no_offers":               { "text": "No-one online to catch up from",                "doc": "ε.5 — terminal pill when the offer window elapsed without any peer replying." },
-        "provider_request_title":  { "text": "{{name}} wants to catch up on {{kring}}",       "doc": "ε.5 — provider-side notification card title when an inbound catch-up-request needs manual approval." },
-        "provider_request_size":   { "text": "{{count}} messages · about {{kb}} KB",           "doc": "ε.5 — provider-side notification card size summary." },
-        "provider_send_all":       { "text": "Send all",                                       "doc": "ε.5 — provider-side approve-with-mode action." },
-        "provider_send_last_50":   { "text": "Send last 50",                                   "doc": "ε.5 — provider-side approve-with-mode action." },
-        "provider_send_last_7d":   { "text": "Send last 7 days",                               "doc": "ε.5 — provider-side approve-with-mode action." },
-        "provider_decline":        { "text": "Decline",                                        "doc": "ε.5 — provider-side decline action; silent on the wire (no envelope sent to the receiver)." },
-        "chooser_title":           { "text": "Catch up on {{kring}}",                          "doc": "ε.6 — multi-offer chooser modal heading (kring's catchUpChooserMode='prompt')." },
-        "chooser_subtitle":        { "text": "{{count}} sources offered to send messages",     "doc": "ε.6 — chooser modal subheading; count is offers collected." },
-        "chooser_msg_count":       { "text": "{{count}} messages",                             "doc": "ε.6 — per-offer card: how many messages the source is offering." },
-        "chooser_size_kb":         { "text": "~{{kb}} KB",                                     "doc": "ε.6 — per-offer card: total size estimate." },
-        "chooser_recent":          { "text": "most recent {{when}}",                           "doc": "ε.6 — per-offer card: relative time of the newest offered message." },
-        "chooser_all":             { "text": "All",                                             "doc": "ε.6 — per-offer accept button: send everything since sinceTs." },
-        "chooser_last_50":         { "text": "Last 50",                                         "doc": "ε.6 — per-offer accept button: tail 50 messages." },
-        "chooser_last_7d":         { "text": "Last 7 days",                                    "doc": "ε.6 — per-offer accept button: messages from the last 7 days." },
-        "chooser_cancel":          { "text": "Cancel",                                          "doc": "ε.6 — chooser modal global cancel; declines all offers (silent on the wire)." },
-        "chooser_unknown_provider":{ "text": "Unknown source",                                 "doc": "ε.6 — fallback name when resolveContact returns null AND the offerFrom addr is empty." }
+        "requesting": {
+          "text": "Catching up…",
+          "doc": "ε.5 — chat-shell pill while a negotiated catch-up is in flight (PENDING_OFFERS / collecting-offers phase)."
+        },
+        "streaming_progress": {
+          "text": "Catching up… {{count}}/{{total}}",
+          "doc": "ε.5 — chat-shell pill during the streaming phase; count is items ingested so far, total is the offer's count."
+        },
+        "done": {
+          "text": "Up to date",
+          "doc": "ε.5 — terminal pill shown briefly after a successful catch-up; auto-hides after 1.5s."
+        },
+        "no_offers": {
+          "text": "No-one online to catch up from",
+          "doc": "ε.5 — terminal pill when the offer window elapsed without any peer replying."
+        },
+        "provider_request_title": {
+          "text": "{{name}} wants to catch up on {{kring}}",
+          "doc": "ε.5 — provider-side notification card title when an inbound catch-up-request needs manual approval."
+        },
+        "provider_request_size": {
+          "text": "{{count}} messages · about {{kb}} KB",
+          "doc": "ε.5 — provider-side notification card size summary."
+        },
+        "provider_send_all": {
+          "text": "Send all",
+          "doc": "ε.5 — provider-side approve-with-mode action."
+        },
+        "provider_send_last_50": {
+          "text": "Send last 50",
+          "doc": "ε.5 — provider-side approve-with-mode action."
+        },
+        "provider_send_last_7d": {
+          "text": "Send last 7 days",
+          "doc": "ε.5 — provider-side approve-with-mode action."
+        },
+        "provider_decline": {
+          "text": "Decline",
+          "doc": "ε.5 — provider-side decline action; silent on the wire (no envelope sent to the receiver)."
+        },
+        "chooser_title": {
+          "text": "Catch up on {{kring}}",
+          "doc": "ε.6 — multi-offer chooser modal heading (kring's catchUpChooserMode='prompt')."
+        },
+        "chooser_subtitle": {
+          "text": "{{count}} sources offered to send messages",
+          "doc": "ε.6 — chooser modal subheading; count is offers collected."
+        },
+        "chooser_msg_count": {
+          "text": "{{count}} messages",
+          "doc": "ε.6 — per-offer card: how many messages the source is offering."
+        },
+        "chooser_size_kb": {
+          "text": "~{{kb}} KB",
+          "doc": "ε.6 — per-offer card: total size estimate."
+        },
+        "chooser_recent": {
+          "text": "most recent {{when}}",
+          "doc": "ε.6 — per-offer card: relative time of the newest offered message."
+        },
+        "chooser_all": {
+          "text": "All",
+          "doc": "ε.6 — per-offer accept button: send everything since sinceTs."
+        },
+        "chooser_last_50": {
+          "text": "Last 50",
+          "doc": "ε.6 — per-offer accept button: tail 50 messages."
+        },
+        "chooser_last_7d": {
+          "text": "Last 7 days",
+          "doc": "ε.6 — per-offer accept button: messages from the last 7 days."
+        },
+        "chooser_cancel": {
+          "text": "Cancel",
+          "doc": "ε.6 — chooser modal global cancel; declines all offers (silent on the wire)."
+        },
+        "chooser_unknown_provider": {
+          "text": "Unknown source",
+          "doc": "ε.6 — fallback name when resolveContact returns null AND the offerFrom addr is empty."
+        }
       }
     },
     "tabs": {
-      "gesprek":  { "text": "Conversation", "doc": "SP-13.3 — kring bottom-tab label (board Voorbeeld 1-3, always first)." },
-      "prikbord": { "text": "Noticeboard", "doc": "SP-13.3 — bottom-tab when policy.features.noticeboard is on." },
-      "taken":    { "text": "Tasks", "doc": "SP-13.3 — bottom-tab when tasks is on." },
-      "lijsten":  { "text": "Lists", "doc": "SP-13.3 — bottom-tab when lists is on." },
-      "notities": { "text": "Notes", "doc": "SP-13.3 — bottom-tab when notes is on." },
-      "agenda":   { "text": "Agenda", "doc": "SP-13.3 — bottom-tab when calendar is on." },
-      "leden":    { "text": "Members", "doc": "SP-13.3 — bottom-tab when memberDirectory is on (renders last per board ordering)." }
+      "gesprek": {
+        "text": "Conversation",
+        "doc": "SP-13.3 — kring bottom-tab label (board Voorbeeld 1-3, always first)."
+      },
+      "prikbord": {
+        "text": "Noticeboard",
+        "doc": "SP-13.3 — bottom-tab when policy.features.noticeboard is on."
+      },
+      "taken": {
+        "text": "Tasks",
+        "doc": "SP-13.3 — bottom-tab when tasks is on."
+      },
+      "lijsten": {
+        "text": "Lists",
+        "doc": "SP-13.3 — bottom-tab when lists is on."
+      },
+      "notities": {
+        "text": "Notes",
+        "doc": "SP-13.3 — bottom-tab when notes is on."
+      },
+      "agenda": {
+        "text": "Agenda",
+        "doc": "SP-13.3 — bottom-tab when calendar is on."
+      },
+      "leden": {
+        "text": "Members",
+        "doc": "SP-13.3 — bottom-tab when memberDirectory is on (renders last per board ordering)."
+      }
     },
     "kring": {
-      "more":          { "text": "More", "doc": "SP-13 — kring header overflow menu trigger." },
-      "empty":         { "text": "Nothing here yet — be the first to write.", "doc": "SP-13.2 — empty state for the kring's chat-style GESPREK view." },
-      "composer_placeholder": { "text": "Write to the kring…", "doc": "SP-13.2 — inline composer placeholder; hosts can pass a kring-specific one (e.g. 'Schrijf naar de buurt…')." },
-      "send":          { "text": "Send", "doc": "SP-13.2 — composer send button a11y label (visual is an ↑ glyph)." },
-      "day_today":     { "text": "today", "doc": "SP-13.2 — chat-stream day-divider label." },
-      "day_yesterday": { "text": "yesterday", "doc": "SP-13.2 — chat-stream day-divider label." },
-      "tab_coming":    { "text": "{{tab}} content lands in a follow-up slice.", "doc": "SP-13.3 — placeholder body for a tab whose content surface isn't built yet (e.g. PRIKBORD / LEDEN)." },
-      "tabs_label":    { "text": "Kring tabs", "doc": "SP-13.3 — a11y label on the per-kring bottom tab bar." },
-      "view_chat":     { "text": "Chat", "doc": "SP-13.4 — Chat ↔ Scherm header toggle, chat-mode label (v2 §4)." },
-      "view_scherm":   { "text": "Screen", "doc": "SP-13.4 — Chat ↔ Scherm toggle, scherm-mode label." },
-      "view_toggle_label": { "text": "Switch between chat and screen view", "doc": "SP-13.4 — a11y group label on the Chat | Scherm pill." },
-      "scherm_coming": { "text": "Screen view (admin's recept'd page) lands in a follow-up slice.", "doc": "SP-13.4 — placeholder until the recept renderer is built." }
+      "more": {
+        "text": "More",
+        "doc": "SP-13 — kring header overflow menu trigger."
+      },
+      "empty": {
+        "text": "Nothing here yet — be the first to write.",
+        "doc": "SP-13.2 — empty state for the kring's chat-style GESPREK view."
+      },
+      "composer_placeholder": {
+        "text": "Write to the kring…",
+        "doc": "SP-13.2 — inline composer placeholder; hosts can pass a kring-specific one (e.g. 'Schrijf naar de buurt…')."
+      },
+      "send": {
+        "text": "Send",
+        "doc": "SP-13.2 — composer send button a11y label (visual is an ↑ glyph)."
+      },
+      "day_today": {
+        "text": "today",
+        "doc": "SP-13.2 — chat-stream day-divider label."
+      },
+      "day_yesterday": {
+        "text": "yesterday",
+        "doc": "SP-13.2 — chat-stream day-divider label."
+      },
+      "tab_coming": {
+        "text": "{{tab}} content lands in a follow-up slice.",
+        "doc": "SP-13.3 — placeholder body for a tab whose content surface isn't built yet (e.g. PRIKBORD / LEDEN)."
+      },
+      "tabs_label": {
+        "text": "Kring tabs",
+        "doc": "SP-13.3 — a11y label on the per-kring bottom tab bar."
+      },
+      "view_chat": {
+        "text": "Chat",
+        "doc": "SP-13.4 — Chat ↔ Scherm header toggle, chat-mode label (v2 §4)."
+      },
+      "view_scherm": {
+        "text": "Screen",
+        "doc": "SP-13.4 — Chat ↔ Scherm toggle, scherm-mode label."
+      },
+      "view_toggle_label": {
+        "text": "Switch between chat and screen view",
+        "doc": "SP-13.4 — a11y group label on the Chat | Scherm pill."
+      },
+      "scherm_coming": {
+        "text": "Screen view (admin's recept'd page) lands in a follow-up slice.",
+        "doc": "SP-13.4 — placeholder until the recept renderer is built."
+      }
     },
     "screen": {
-      "empty":          { "text": "The admin hasn't set up a screen yet.", "doc": "α.1c — shown when the kring's recipe book is empty." },
-      "loading":        { "text": "Loading…",                              "doc": "Shown while materializeRecipe/materializeScreen is still resolving — distinct from the empty state which was previously misused for both." },
-      "refreshing":     { "text": "Refreshing…",                           "doc": "δ.1 — subtle pip tooltip while a cached screen is rendered and a fresh materialize runs in the background." },
-      "block_empty":    { "text": "{{type}}: nothing to show here yet.", "doc": "α.1c — per-block empty fallback when a block has no content." },
-      "block_error":    { "text": "{{type}}: couldn't load", "doc": "α.1c — per-block error fallback when materialization throws." },
-      "block_unknown":  { "text": "Unknown block type: {{type}}", "doc": "α.1c — defensive label for a block type the renderer doesn't recognize (forward-compat)." }
+      "empty": {
+        "text": "The admin hasn't set up a screen yet.",
+        "doc": "α.1c — shown when the kring's recipe book is empty."
+      },
+      "loading": {
+        "text": "Loading…",
+        "doc": "Shown while materializeRecipe/materializeScreen is still resolving — distinct from the empty state which was previously misused for both."
+      },
+      "refreshing": {
+        "text": "Refreshing…",
+        "doc": "δ.1 — subtle pip tooltip while a cached screen is rendered and a fresh materialize runs in the background."
+      },
+      "block_empty": {
+        "text": "{{type}}: nothing to show here yet.",
+        "doc": "α.1c — per-block empty fallback when a block has no content."
+      },
+      "block_error": {
+        "text": "{{type}}: couldn't load",
+        "doc": "α.1c — per-block error fallback when materialization throws."
+      },
+      "block_unknown": {
+        "text": "Unknown block type: {{type}}",
+        "doc": "α.1c — defensive label for a block type the renderer doesn't recognize (forward-compat)."
+      }
     },
     "screens": {
-      "picker_title":   { "text": "Screens",                            "doc": "α.3 — picker heading." },
-      "no_screens":     { "text": "No screens yet. Add one below.",     "doc": "α.3 — empty book." },
-      "untitled":       { "text": "(untitled)",                          "doc": "α.3 — placeholder for screens with no name." },
-      "active":         { "text": "active",                              "doc": "α.3 — badge on the active screen." },
-      "rename":         { "text": "Rename",                              "doc": "α.3 — rename a screen." },
-      "rename_prompt":  { "text": "New name for this screen:",          "doc": "α.3 — prompt." },
-      "set_active":     { "text": "Set active",                          "doc": "α.3 — switch active screen." },
-      "delete":         { "text": "Delete",                              "doc": "α.3 — delete a screen." },
-      "delete_confirm": { "text": "Delete screen \"{{name}}\"?",       "doc": "α.3 — confirm." },
-      "add":            { "text": "Add",                                 "doc": "α.3 — add-screen button." },
-      "add_placeholder":{ "text": "New screen name…",                   "doc": "α.3 — add-screen input." },
-      "filter_all":     { "text": "all circles",                         "doc": "α.3 — filter summary when ALL_KRINGEN." },
-      "filter_one":     { "text": "1 circle",                            "doc": "α.3 — filter summary for one." },
-      "filter_n":       { "text": "{{count}} circles",                  "doc": "α.3 — filter summary for many." },
-      "seed_name":      { "text": "Stream",                              "doc": "α.3 — name of the auto-seeded default screen." },
-      "seed_my_things": { "text": "My things",                           "doc": "α.4 — seeded screen aggregating tasks assigned to me across kringen." },
-      "seed_my_calendar":{ "text": "My calendar",                        "doc": "α.4 — seeded screen aggregating upcoming events across kringen." }
+      "picker_title": {
+        "text": "Screens",
+        "doc": "α.3 — picker heading."
+      },
+      "no_screens": {
+        "text": "No screens yet. Add one below.",
+        "doc": "α.3 — empty book."
+      },
+      "untitled": {
+        "text": "(untitled)",
+        "doc": "α.3 — placeholder for screens with no name."
+      },
+      "active": {
+        "text": "active",
+        "doc": "α.3 — badge on the active screen."
+      },
+      "rename": {
+        "text": "Rename",
+        "doc": "α.3 — rename a screen."
+      },
+      "rename_prompt": {
+        "text": "New name for this screen:",
+        "doc": "α.3 — prompt."
+      },
+      "set_active": {
+        "text": "Set active",
+        "doc": "α.3 — switch active screen."
+      },
+      "delete": {
+        "text": "Delete",
+        "doc": "α.3 — delete a screen."
+      },
+      "delete_confirm": {
+        "text": "Delete screen \"{{name}}\"?",
+        "doc": "α.3 — confirm."
+      },
+      "add": {
+        "text": "Add",
+        "doc": "α.3 — add-screen button."
+      },
+      "add_placeholder": {
+        "text": "New screen name…",
+        "doc": "α.3 — add-screen input."
+      },
+      "filter_all": {
+        "text": "all circles",
+        "doc": "α.3 — filter summary when ALL_KRINGEN."
+      },
+      "filter_one": {
+        "text": "1 circle",
+        "doc": "α.3 — filter summary for one."
+      },
+      "filter_n": {
+        "text": "{{count}} circles",
+        "doc": "α.3 — filter summary for many."
+      },
+      "seed_name": {
+        "text": "Stream",
+        "doc": "α.3 — name of the auto-seeded default screen."
+      },
+      "seed_my_things": {
+        "text": "My things",
+        "doc": "α.4 — seeded screen aggregating tasks assigned to me across kringen."
+      },
+      "seed_my_calendar": {
+        "text": "My calendar",
+        "doc": "α.4 — seeded screen aggregating upcoming events across kringen."
+      }
     },
     "recipe": {
       "block": {
-        "quickActions": { "text": "Frequently used", "doc": "D1 §5A — block palette label for the Veel-gebruikt action row." },
-        "announcement": { "text": "Announcement", "doc": "α.1b — block palette label." },
-        "noticeboard":  { "text": "Noticeboard",  "doc": "α.1b — block palette label." },
-        "agenda":       { "text": "Agenda",       "doc": "α.1b — block palette label." },
-        "tasks":        { "text": "Tasks",        "doc": "α.4 — block palette label." },
-        "rules":        { "text": "House rules",  "doc": "α.1b — block palette label." },
-        "photo":        { "text": "Photo",        "doc": "α.1b — block palette label." },
-        "text":         { "text": "Text",         "doc": "α.1b — block palette label." }
+        "quickActions": {
+          "text": "Frequently used",
+          "doc": "D1 §5A — block palette label for the Veel-gebruikt action row."
+        },
+        "announcement": {
+          "text": "Announcement",
+          "doc": "α.1b — block palette label."
+        },
+        "noticeboard": {
+          "text": "Noticeboard",
+          "doc": "α.1b — block palette label."
+        },
+        "agenda": {
+          "text": "Agenda",
+          "doc": "α.1b — block palette label."
+        },
+        "tasks": {
+          "text": "Tasks",
+          "doc": "α.4 — block palette label."
+        },
+        "rules": {
+          "text": "House rules",
+          "doc": "α.1b — block palette label."
+        },
+        "photo": {
+          "text": "Photo",
+          "doc": "α.1b — block palette label."
+        },
+        "text": {
+          "text": "Text",
+          "doc": "α.1b — block palette label."
+        }
       },
       "editor": {
-        "book_title":           { "text": "Screens",                                "doc": "α.1d — editor BOOK-mode heading." },
-        "no_recipes":           { "text": "No screens yet. Add one below.",        "doc": "α.1d — empty book." },
-        "untitled":             { "text": "(untitled)",                            "doc": "α.1d — placeholder when a recipe has no name." },
-        "active":               { "text": "active",                                 "doc": "α.1d — badge on the currently-active recipe." },
-        "rename":               { "text": "Rename",                                 "doc": "α.1d — rename a recipe." },
-        "rename_prompt":        { "text": "New name for this screen:",             "doc": "α.1d — prompt() text." },
-        "set_active":           { "text": "Set active",                             "doc": "α.1d — switch active recipe." },
-        "delete":               { "text": "Delete",                                 "doc": "α.1d — delete a recipe." },
-        "delete_confirm":       { "text": "Delete screen \"{{name}}\"?",          "doc": "α.1d — confirm() text." },
-        "add_recipe":           { "text": "Add",                                    "doc": "α.1d — add-recipe button." },
-        "add_recipe_placeholder": { "text": "New screen name…",                    "doc": "α.1d — add-recipe input placeholder." },
-        "back_to_book":         { "text": "← all screens",                         "doc": "α.1d — go from recipe edit to book." },
-        "recipe_missing":       { "text": "This screen no longer exists.",         "doc": "α.1d — stale editingRecipeId fallback." },
-        "no_blocks":            { "text": "No blocks yet. Pick one below.",         "doc": "α.1d — empty recipe." },
-        "add_block_title":      { "text": "Add a block",                            "doc": "α.1d — palette heading." },
-        "move_up":              { "text": "Move up",                                "doc": "α.1d — block ↑ a11y." },
-        "move_down":            { "text": "Move down",                              "doc": "α.1d — block ↓ a11y." },
-        "remove_block":         { "text": "Remove block",                           "doc": "α.1d — block × a11y." },
-        "announcement_placeholder": { "text": "Announcement text…",                "doc": "α.1d — announcement block textarea placeholder." },
-        "text_placeholder":     { "text": "Text…",                                  "doc": "α.1d — text block textarea placeholder." },
-        "photo_src_placeholder":     { "text": "Image URL or folio:// reference…", "doc": "α.1d — photo src input." },
-        "photo_caption_placeholder": { "text": "Caption (optional)…",              "doc": "α.1d — photo caption input." },
-        "noticeboard_limit_label":   { "text": "How many recent posts?",           "doc": "α.1d — noticeboard limit." },
-        "agenda_limit_label":        { "text": "How many events?",                 "doc": "α.1d — agenda limit." },
-        "agenda_horizon_label":      { "text": "Show events within (days)",        "doc": "α.1d — agenda horizon." },
-        "rules_hint":           { "text": "Renders the kring's current house rules.", "doc": "α.1d — rules block has no config." }
+        "book_title": {
+          "text": "Screens",
+          "doc": "α.1d — editor BOOK-mode heading."
+        },
+        "no_recipes": {
+          "text": "No screens yet. Add one below.",
+          "doc": "α.1d — empty book."
+        },
+        "untitled": {
+          "text": "(untitled)",
+          "doc": "α.1d — placeholder when a recipe has no name."
+        },
+        "active": {
+          "text": "active",
+          "doc": "α.1d — badge on the currently-active recipe."
+        },
+        "rename": {
+          "text": "Rename",
+          "doc": "α.1d — rename a recipe."
+        },
+        "rename_prompt": {
+          "text": "New name for this screen:",
+          "doc": "α.1d — prompt() text."
+        },
+        "set_active": {
+          "text": "Set active",
+          "doc": "α.1d — switch active recipe."
+        },
+        "delete": {
+          "text": "Delete",
+          "doc": "α.1d — delete a recipe."
+        },
+        "delete_confirm": {
+          "text": "Delete screen \"{{name}}\"?",
+          "doc": "α.1d — confirm() text."
+        },
+        "add_recipe": {
+          "text": "Add",
+          "doc": "α.1d — add-recipe button."
+        },
+        "add_recipe_placeholder": {
+          "text": "New screen name…",
+          "doc": "α.1d — add-recipe input placeholder."
+        },
+        "back_to_book": {
+          "text": "← all screens",
+          "doc": "α.1d — go from recipe edit to book."
+        },
+        "recipe_missing": {
+          "text": "This screen no longer exists.",
+          "doc": "α.1d — stale editingRecipeId fallback."
+        },
+        "no_blocks": {
+          "text": "No blocks yet. Pick one below.",
+          "doc": "α.1d — empty recipe."
+        },
+        "add_block_title": {
+          "text": "Add a block",
+          "doc": "α.1d — palette heading."
+        },
+        "move_up": {
+          "text": "Move up",
+          "doc": "α.1d — block ↑ a11y."
+        },
+        "move_down": {
+          "text": "Move down",
+          "doc": "α.1d — block ↓ a11y."
+        },
+        "remove_block": {
+          "text": "Remove block",
+          "doc": "α.1d — block × a11y."
+        },
+        "announcement_placeholder": {
+          "text": "Announcement text…",
+          "doc": "α.1d — announcement block textarea placeholder."
+        },
+        "text_placeholder": {
+          "text": "Text…",
+          "doc": "α.1d — text block textarea placeholder."
+        },
+        "photo_src_placeholder": {
+          "text": "Image URL or folio:// reference…",
+          "doc": "α.1d — photo src input."
+        },
+        "photo_caption_placeholder": {
+          "text": "Caption (optional)…",
+          "doc": "α.1d — photo caption input."
+        },
+        "noticeboard_limit_label": {
+          "text": "How many recent posts?",
+          "doc": "α.1d — noticeboard limit."
+        },
+        "agenda_limit_label": {
+          "text": "How many events?",
+          "doc": "α.1d — agenda limit."
+        },
+        "agenda_horizon_label": {
+          "text": "Show events within (days)",
+          "doc": "α.1d — agenda horizon."
+        },
+        "rules_hint": {
+          "text": "Renders the kring's current house rules.",
+          "doc": "α.1d — rules block has no config."
+        }
       },
       "compact_label": {
-        "label": { "text": "Compact",                          "doc": "α.5c — checkbox label for the compact-rows toggle on list-shaped blocks." },
-        "hint":  { "text": "Tighter rows, smaller text",        "doc": "α.5c — hint under the Compact checkbox." }
+        "label": {
+          "text": "Compact",
+          "doc": "α.5c — checkbox label for the compact-rows toggle on list-shaped blocks."
+        },
+        "hint": {
+          "text": "Tighter rows, smaller text",
+          "doc": "α.5c — hint under the Compact checkbox."
+        }
       },
       "conflict": {
-        "title":         { "text": "Two of you edited this recipe",                  "doc": "γ.3 — modal heading when an incoming recipe diverges from local." },
-        "instructions":  { "text": "Pick which version to keep for each item.",      "doc": "γ.3 — modal subhead explaining the picker." },
-        "block_label":   { "text": "Block: {{name}}",                                  "doc": "γ.3 — per-block row label; {{name}} is emoji + block type label." },
-        "meta_label":    { "text": "Field: {{path}}",                                  "doc": "γ.3 — meta-conflict row label; {{path}} is the dotted path." },
-        "meta_section":  { "text": "Other changes",                                    "doc": "γ.3 — section header above the meta-conflict list." },
-        "keep_yours":    { "text": "Keep yours",                                       "doc": "γ.3 — picker choice: keep local version." },
-        "take_theirs":   { "text": "Take theirs",                                      "doc": "γ.3 — picker choice: take incoming version." },
-        "keep_both":     { "text": "Keep both",                                        "doc": "γ.3 — picker choice (blocks only): keep local + add incoming with a fresh id." },
-        "apply":         { "text": "Apply",                                            "doc": "γ.3 — confirm picks + save the merged recipe." },
-        "cancel":        { "text": "Cancel",                                           "doc": "γ.3 — discard incoming; keep local as-is." }
+        "title": {
+          "text": "Two of you edited this recipe",
+          "doc": "γ.3 — modal heading when an incoming recipe diverges from local."
+        },
+        "instructions": {
+          "text": "Pick which version to keep for each item.",
+          "doc": "γ.3 — modal subhead explaining the picker."
+        },
+        "block_label": {
+          "text": "Block: {{name}}",
+          "doc": "γ.3 — per-block row label; {{name}} is emoji + block type label."
+        },
+        "meta_label": {
+          "text": "Field: {{path}}",
+          "doc": "γ.3 — meta-conflict row label; {{path}} is the dotted path."
+        },
+        "meta_section": {
+          "text": "Other changes",
+          "doc": "γ.3 — section header above the meta-conflict list."
+        },
+        "keep_yours": {
+          "text": "Keep yours",
+          "doc": "γ.3 — picker choice: keep local version."
+        },
+        "take_theirs": {
+          "text": "Take theirs",
+          "doc": "γ.3 — picker choice: take incoming version."
+        },
+        "keep_both": {
+          "text": "Keep both",
+          "doc": "γ.3 — picker choice (blocks only): keep local + add incoming with a fresh id."
+        },
+        "apply": {
+          "text": "Apply",
+          "doc": "γ.3 — confirm picks + save the merged recipe."
+        },
+        "cancel": {
+          "text": "Cancel",
+          "doc": "γ.3 — discard incoming; keep local as-is."
+        }
       }
     },
     "streamAction": {
-      "help":   { "text": "I'll help", "doc": "Stream row action — accept a question (P6.M3)." },
-      "offer":  { "text": "I have one", "doc": "Stream row action — offer to lend." },
-      "take":   { "text": "I'll take it", "doc": "Stream row action — accept an offer." },
-      "claim":  { "text": "I'll do it", "doc": "Stream row action — claim a chore." },
-      "done":   { "text": "Done", "doc": "Stream row action — mark a reminder done." },
-      "snooze": { "text": "Snooze", "doc": "Stream row action — postpone." },
-      "ignore": { "text": "Ignore", "doc": "Stream row action — dismiss without acting." }
+      "help": {
+        "text": "I'll help",
+        "doc": "Stream row action — accept a question (P6.M3)."
+      },
+      "offer": {
+        "text": "I have one",
+        "doc": "Stream row action — offer to lend."
+      },
+      "take": {
+        "text": "I'll take it",
+        "doc": "Stream row action — accept an offer."
+      },
+      "claim": {
+        "text": "I'll do it",
+        "doc": "Stream row action — claim a chore."
+      },
+      "done": {
+        "text": "Done",
+        "doc": "Stream row action — mark a reminder done."
+      },
+      "snooze": {
+        "text": "Snooze",
+        "doc": "Stream row action — postpone."
+      },
+      "ignore": {
+        "text": "Ignore",
+        "doc": "Stream row action — dismiss without acting."
+      }
     },
     "settings": {
-      "title":        { "text": "Circle settings", "doc": "Settings screen heading (board 4A)." },
-      "save":         { "text": "Save", "doc": "Save the circle settings." },
-      "features":     { "text": "Features", "doc": "Settings axis: which features the circle has." },
-      "llmTool":      { "text": "LLM as a tool", "doc": "Settings axis: LLM assist mode." },
-      "agents":       { "text": "Agents allowed", "doc": "Settings axis: whether LLM agents may join." },
-      "revealPolicy": { "text": "Reveal policy", "doc": "Settings axis: who sees real names." },
-      "pod":          { "text": "Where data lives", "doc": "Settings axis: pod storage policy." },
-      "consensus":       { "text": "Co-admin consensus", "doc": "Settings section: co-admin approval for changes." },
-      "consensus_label": { "text": "Require co-admin approval for changes", "doc": "consensusRequired toggle label." },
-      "consequence_aria": { "text": "What this choice means", "doc": "Accessible label for the per-option ⓘ consequence toggle." },
-      "consequence": {
-        "off":             { "text": "No AI assistance in this circle — nothing is sent to any model.", "doc": "Consequence of llmTool=off." },
-        "local":           { "text": "AI runs on a member's own machine (Ollama). Messages stay on-device; nothing goes to the cloud.", "doc": "Consequence of llmTool=local." },
-        "cloud":           { "text": "AI runs on an independent cloud model. Your messages are sent to that provider when you ask it something.", "doc": "Consequence of llmTool=cloud." },
-        "yes":             { "text": "Anyone can add an AI agent as a participant. Agents can read whatever the circle shares.", "doc": "Consequence of agents=yes." },
-        "admin-approval":  { "text": "AI agents may join only after an admin approves — a checkpoint before any agent sees circle content.", "doc": "Consequence of agents=admin-approval." },
-        "no":              { "text": "No AI agents may join. Only people take part in this circle.", "doc": "Consequence of agents=no." },
-        "pairwise":        { "text": "Real names are revealed one-to-one. Each member chooses who gets to see their identity.", "doc": "Consequence of revealPolicy=pairwise." },
-        "open":            { "text": "Every member can see each other's real names. There is no per-person hiding.", "doc": "Consequence of revealPolicy=open." },
-        "none":            { "text": "Nothing is stored to a pod. Data lives only on members' devices and is lost if they clear it.", "doc": "Consequence of pod=none." },
-        "shared":          { "text": "One shared pod holds the circle's data — every member reads and writes the same store.", "doc": "Consequence of pod=shared." },
-        "personal":        { "text": "Each member keeps their own pod and the circle links to them by reference. You keep control of your own copy.", "doc": "Consequence of pod=personal." },
-        "hybrid":          { "text": "A shared pod plus personal pods: common items are shared, private items stay with each member.", "doc": "Consequence of pod=hybrid." }
+      "title": {
+        "text": "Circle settings",
+        "doc": "Settings screen heading (board 4A)."
       },
-      "send_proposal":   { "text": "Send proposal →", "doc": "Save-button label when consensus is required." },
-      "pending":         { "text": "Changes need co-admin approval before they apply.", "doc": "Footer note when consensus is active." },
-      "pending_waiting": { "text": "Waiting on {{who}}.", "doc": "Footer note when a proposal is outstanding; {{who}} is the comma-separated approver list." },
+      "save": {
+        "text": "Save",
+        "doc": "Save the circle settings."
+      },
+      "features": {
+        "text": "Features",
+        "doc": "Settings axis: which features the circle has."
+      },
+      "llmTool": {
+        "text": "LLM as a tool",
+        "doc": "Settings axis: LLM assist mode."
+      },
+      "agents": {
+        "text": "Agents allowed",
+        "doc": "Settings axis: whether LLM agents may join."
+      },
+      "revealPolicy": {
+        "text": "Reveal policy",
+        "doc": "Settings axis: who sees real names."
+      },
+      "pod": {
+        "text": "Where data lives",
+        "doc": "Settings axis: pod storage policy."
+      },
+      "consensus": {
+        "text": "Co-admin consensus",
+        "doc": "Settings section: co-admin approval for changes."
+      },
+      "consensus_label": {
+        "text": "Require co-admin approval for changes",
+        "doc": "consensusRequired toggle label."
+      },
+      "consequence_aria": {
+        "text": "What this choice means",
+        "doc": "Accessible label for the per-option ⓘ consequence toggle."
+      },
+      "consequence": {
+        "off": {
+          "text": "No AI assistance in this circle — nothing is sent to any model.",
+          "doc": "Consequence of llmTool=off."
+        },
+        "local": {
+          "text": "AI runs on a member's own machine (Ollama). Messages stay on-device; nothing goes to the cloud.",
+          "doc": "Consequence of llmTool=local."
+        },
+        "cloud": {
+          "text": "AI runs on an independent cloud model. Your messages are sent to that provider when you ask it something.",
+          "doc": "Consequence of llmTool=cloud."
+        },
+        "yes": {
+          "text": "Anyone can add an AI agent as a participant. Agents can read whatever the circle shares.",
+          "doc": "Consequence of agents=yes."
+        },
+        "admin-approval": {
+          "text": "AI agents may join only after an admin approves — a checkpoint before any agent sees circle content.",
+          "doc": "Consequence of agents=admin-approval."
+        },
+        "no": {
+          "text": "No AI agents may join. Only people take part in this circle.",
+          "doc": "Consequence of agents=no."
+        },
+        "pairwise": {
+          "text": "Real names are revealed one-to-one. Each member chooses who gets to see their identity.",
+          "doc": "Consequence of revealPolicy=pairwise."
+        },
+        "open": {
+          "text": "Every member can see each other's real names. There is no per-person hiding.",
+          "doc": "Consequence of revealPolicy=open."
+        },
+        "none": {
+          "text": "Nothing is stored to a pod. Data lives only on members' devices and is lost if they clear it.",
+          "doc": "Consequence of pod=none."
+        },
+        "shared": {
+          "text": "One shared pod holds the circle's data — every member reads and writes the same store.",
+          "doc": "Consequence of pod=shared."
+        },
+        "personal": {
+          "text": "Each member keeps their own pod and the circle links to them by reference. You keep control of your own copy.",
+          "doc": "Consequence of pod=personal."
+        },
+        "hybrid": {
+          "text": "A shared pod plus personal pods: common items are shared, private items stay with each member.",
+          "doc": "Consequence of pod=hybrid."
+        }
+      },
+      "send_proposal": {
+        "text": "Send proposal →",
+        "doc": "Save-button label when consensus is required."
+      },
+      "pending": {
+        "text": "Changes need co-admin approval before they apply.",
+        "doc": "Footer note when consensus is active."
+      },
+      "pending_waiting": {
+        "text": "Waiting on {{who}}.",
+        "doc": "Footer note when a proposal is outstanding; {{who}} is the comma-separated approver list."
+      },
       "feat": {
-        "chat":            { "text": "Chat", "doc": "Feature label." },
-        "noticeboard":     { "text": "Noticeboard", "doc": "Feature label." },
-        "tasks":           { "text": "Tasks", "doc": "Feature label." },
-        "lists":           { "text": "Lists", "doc": "Feature label." },
-        "calendar":        { "text": "Calendar", "doc": "Feature label." },
-        "notes":           { "text": "Notes", "doc": "Feature label." },
-        "houseRules":      { "text": "House rules", "doc": "Feature label." },
-        "memberDirectory": { "text": "Member directory", "doc": "Feature label." }
+        "chat": {
+          "text": "Chat",
+          "doc": "Feature label."
+        },
+        "noticeboard": {
+          "text": "Noticeboard",
+          "doc": "Feature label."
+        },
+        "tasks": {
+          "text": "Tasks",
+          "doc": "Feature label."
+        },
+        "lists": {
+          "text": "Lists",
+          "doc": "Feature label."
+        },
+        "calendar": {
+          "text": "Calendar",
+          "doc": "Feature label."
+        },
+        "notes": {
+          "text": "Notes",
+          "doc": "Feature label."
+        },
+        "houseRules": {
+          "text": "House rules",
+          "doc": "Feature label."
+        },
+        "memberDirectory": {
+          "text": "Member directory",
+          "doc": "Feature label."
+        }
       },
       "opt": {
-        "off":            { "text": "Off", "doc": "Option label." },
-        "local":          { "text": "Local (Ollama)", "doc": "Option label." },
-        "cloud":          { "text": "Independent cloud", "doc": "Option label." },
-        "yes":            { "text": "Yes — anyone", "doc": "Option label." },
-        "admin-approval": { "text": "With admin approval", "doc": "Option label." },
-        "no":             { "text": "No agents", "doc": "Option label." },
-        "pairwise":       { "text": "Pairwise (1-on-1)", "doc": "Option label." },
-        "open":           { "text": "Open — all members", "doc": "Option label." },
-        "none":           { "text": "No pod", "doc": "Option label." },
-        "shared":         { "text": "One shared pod", "doc": "Option label." },
-        "personal":       { "text": "Personal pods + refs", "doc": "Option label." },
-        "hybrid":         { "text": "Hybrid", "doc": "Option label." }
+        "off": {
+          "text": "Off",
+          "doc": "Option label."
+        },
+        "local": {
+          "text": "Local (Ollama)",
+          "doc": "Option label."
+        },
+        "cloud": {
+          "text": "Independent cloud",
+          "doc": "Option label."
+        },
+        "yes": {
+          "text": "Yes — anyone",
+          "doc": "Option label."
+        },
+        "admin-approval": {
+          "text": "With admin approval",
+          "doc": "Option label."
+        },
+        "no": {
+          "text": "No agents",
+          "doc": "Option label."
+        },
+        "pairwise": {
+          "text": "Pairwise (1-on-1)",
+          "doc": "Option label."
+        },
+        "open": {
+          "text": "Open — all members",
+          "doc": "Option label."
+        },
+        "none": {
+          "text": "No pod",
+          "doc": "Option label."
+        },
+        "shared": {
+          "text": "One shared pod",
+          "doc": "Option label."
+        },
+        "personal": {
+          "text": "Personal pods + refs",
+          "doc": "Option label."
+        },
+        "hybrid": {
+          "text": "Hybrid",
+          "doc": "Option label."
+        }
       },
       "conflict": {
-        "title": { "text": "Two of you edited the settings", "doc": "γ.4 — modal heading when an incoming policy diverges from local; every other resolver locale string is reused from circle.recipe.conflict.*." }
+        "title": {
+          "text": "Two of you edited the settings",
+          "doc": "γ.4 — modal heading when an incoming policy diverges from local; every other resolver locale string is reused from circle.recipe.conflict.*."
+        }
       }
     },
     "override": {
-      "title":              { "text": "My settings for this circle", "doc": "Personal override sheet heading (board 6A)." },
-      "chatOff":            { "text": "Turn chat off", "doc": "Override: silence this circle's chat for me." },
-      "revealOpen":         { "text": "Show my name to all members", "doc": "Override: reveal my real name circle-wide." },
-      "agentsMayContactMe": { "text": "Agents may contact me", "doc": "Override: allow LLM agents to address me." },
-      "push":               { "text": "Push notifications", "doc": "Override section: split push toggles (P6.M4 · board 6A)." },
-      "pushOnMention":      { "text": "Push when @you", "doc": "Push when someone @mentions me — default on." },
-      "pushOnEveryMessage": { "text": "Push on every message", "doc": "Push on every message in this circle — default off." },
-      "flowThrough":        { "text": "Flow-through to My things", "doc": "Override section: route circle items into my personal circle." },
-      "tasksToPersonal":    { "text": "Tasks → My things", "doc": "Override: claimed circle tasks land in my personal list." },
-      "calendarToPersonal": { "text": "Calendar → my calendar", "doc": "Override: circle events also show in my calendar." }
+      "title": {
+        "text": "My settings for this circle",
+        "doc": "Personal override sheet heading (board 6A)."
+      },
+      "chatOff": {
+        "text": "Turn chat off",
+        "doc": "Override: silence this circle's chat for me."
+      },
+      "revealOpen": {
+        "text": "Show my name to all members",
+        "doc": "Override: reveal my real name circle-wide."
+      },
+      "agentsMayContactMe": {
+        "text": "Agents may contact me",
+        "doc": "Override: allow LLM agents to address me."
+      },
+      "push": {
+        "text": "Push notifications",
+        "doc": "Override section: split push toggles (P6.M4 · board 6A)."
+      },
+      "pushOnMention": {
+        "text": "Push when @you",
+        "doc": "Push when someone @mentions me — default on."
+      },
+      "pushOnEveryMessage": {
+        "text": "Push on every message",
+        "doc": "Push on every message in this circle — default off."
+      },
+      "flowThrough": {
+        "text": "Flow-through to My things",
+        "doc": "Override section: route circle items into my personal circle."
+      },
+      "tasksToPersonal": {
+        "text": "Tasks → My things",
+        "doc": "Override: claimed circle tasks land in my personal list."
+      },
+      "calendarToPersonal": {
+        "text": "Calendar → my calendar",
+        "doc": "Override: circle events also show in my calendar."
+      }
     },
     "member": {
       "notifications": {
-        "section_title": { "text": "Notifications", "doc": "α.5b · audit #6 — heading of the per-kring push-toggles block on the personal override sheet (board 6A)." },
-        "on_mention":    { "text": "On @-mention", "doc": "α.5b — push toggle: notify me when someone @-mentions me in this circle (default on)." },
-        "on_message":    { "text": "On every message", "doc": "α.5b — push toggle: notify me for every new chat message in this circle (default off — noisy)." },
-        "on_new_item":   { "text": "On new item", "doc": "α.5b — push toggle: notify me when a new noticeboard / agenda / task / announcement item is added in this circle (default on)." },
-        "on_proposal":   { "text": "On new proposal", "doc": "α.5b — push toggle: notify me when a multi-admin voorstel (P6.2) is created in this circle (default on)." }
+        "section_title": {
+          "text": "Notifications",
+          "doc": "α.5b · audit #6 — heading of the per-kring push-toggles block on the personal override sheet (board 6A)."
+        },
+        "on_mention": {
+          "text": "On @-mention",
+          "doc": "α.5b — push toggle: notify me when someone @-mentions me in this circle (default on)."
+        },
+        "on_message": {
+          "text": "On every message",
+          "doc": "α.5b — push toggle: notify me for every new chat message in this circle (default off — noisy)."
+        },
+        "on_new_item": {
+          "text": "On new item",
+          "doc": "α.5b — push toggle: notify me when a new noticeboard / agenda / task / announcement item is added in this circle (default on)."
+        },
+        "on_proposal": {
+          "text": "On new proposal",
+          "doc": "α.5b — push toggle: notify me when a multi-admin voorstel (P6.2) is created in this circle (default on)."
+        }
       }
     },
     "availability": {
-      "title":         { "text": "Availability", "doc": "Cross-circle availability screen heading (board 6C)." },
-      "holiday":       { "text": "Holiday mode", "doc": "Availability section: away until a date." },
-      "holiday_on":    { "text": "Holiday mode on", "doc": "Holiday toggle label." },
-      "holiday_until": { "text": "Until", "doc": "Holiday end-date label." },
-      "extend_7":      { "text": "+ 7 days", "doc": "Board 6C extension shortcut (P6.M5)." },
-      "extend_14":     { "text": "+ 14 days", "doc": "Board 6C extension shortcut (P6.M5)." },
-      "edit_end":      { "text": "Adjust end date", "doc": "Opens the date picker for an absolute end date." },
-      "quietHours":    { "text": "Quiet hours", "doc": "Availability section: defer pushes in a window." },
-      "quiet_on":      { "text": "Defer pushes during quiet hours", "doc": "Quiet-hours toggle label." },
-      "from":          { "text": "From", "doc": "Quiet-hours start time label." },
-      "to":            { "text": "To", "doc": "Quiet-hours end time label." },
-      "weekends":      { "text": "Weekends all day too", "doc": "Quiet-hours weekend toggle label." }
+      "title": {
+        "text": "Availability",
+        "doc": "Cross-circle availability screen heading (board 6C)."
+      },
+      "holiday": {
+        "text": "Holiday mode",
+        "doc": "Availability section: away until a date."
+      },
+      "holiday_on": {
+        "text": "Holiday mode on",
+        "doc": "Holiday toggle label."
+      },
+      "holiday_until": {
+        "text": "Until",
+        "doc": "Holiday end-date label."
+      },
+      "extend_7": {
+        "text": "+ 7 days",
+        "doc": "Board 6C extension shortcut (P6.M5)."
+      },
+      "extend_14": {
+        "text": "+ 14 days",
+        "doc": "Board 6C extension shortcut (P6.M5)."
+      },
+      "edit_end": {
+        "text": "Adjust end date",
+        "doc": "Opens the date picker for an absolute end date."
+      },
+      "quietHours": {
+        "text": "Quiet hours",
+        "doc": "Availability section: defer pushes in a window."
+      },
+      "quiet_on": {
+        "text": "Defer pushes during quiet hours",
+        "doc": "Quiet-hours toggle label."
+      },
+      "from": {
+        "text": "From",
+        "doc": "Quiet-hours start time label."
+      },
+      "to": {
+        "text": "To",
+        "doc": "Quiet-hours end time label."
+      },
+      "weekends": {
+        "text": "Weekends all day too",
+        "doc": "Quiet-hours weekend toggle label."
+      }
     },
     "holiday": {
-      "autoReply":            { "text": "{{name}} is away until {{until}}.", "doc": "Outgoing auto-reply shown to peers who try to reach me during holiday (board 6C · P6.M5)." },
-      "autoReplyAnon":        { "text": "This person is away until {{until}}.", "doc": "Anon form when name isn't resolvable." },
-      "autoReplyNoEnd":       { "text": "{{name}} is away.", "doc": "When holiday has no end date." },
-      "autoReplyAnonNoEnd":   { "text": "This person is away.", "doc": "Anon + no end date." }
+      "autoReply": {
+        "text": "{{name}} is away until {{until}}.",
+        "doc": "Outgoing auto-reply shown to peers who try to reach me during holiday (board 6C · P6.M5)."
+      },
+      "autoReplyAnon": {
+        "text": "This person is away until {{until}}.",
+        "doc": "Anon form when name isn't resolvable."
+      },
+      "autoReplyNoEnd": {
+        "text": "{{name}} is away.",
+        "doc": "When holiday has no end date."
+      },
+      "autoReplyAnonNoEnd": {
+        "text": "This person is away.",
+        "doc": "Anon + no end date."
+      }
     },
     "viewAs": {
-      "title":    { "text": "View as…", "doc": "Heading of the View-as reveal preview (board 4C)." },
-      "stranger": { "text": "A stranger", "doc": "View-as viewer option: a non-member." },
-      "agent":    { "text": "An agent", "doc": "View-as viewer option: an LLM agent." },
-      "empty":    { "text": "No members to preview yet.", "doc": "Empty state for View-as." },
-      "revealed": { "text": "name shown", "doc": "Badge: this member's real name is visible to the chosen viewer." },
-      "hidden":   { "text": "name hidden", "doc": "Badge: this member shows only a handle to the chosen viewer." }
+      "title": {
+        "text": "View as…",
+        "doc": "Heading of the View-as reveal preview (board 4C)."
+      },
+      "stranger": {
+        "text": "A stranger",
+        "doc": "View-as viewer option: a non-member."
+      },
+      "agent": {
+        "text": "An agent",
+        "doc": "View-as viewer option: an LLM agent."
+      },
+      "empty": {
+        "text": "No members to preview yet.",
+        "doc": "Empty state for View-as."
+      },
+      "revealed": {
+        "text": "name shown",
+        "doc": "Badge: this member's real name is visible to the chosen viewer."
+      },
+      "hidden": {
+        "text": "name hidden",
+        "doc": "Badge: this member shows only a handle to the chosen viewer."
+      }
     },
     "advisor": {
-      "title":           { "text": "Advisor", "doc": "Heading of the circle Advisor (board 3D)." },
-      "none":            { "text": "Nothing to flag right now.", "doc": "Advisor: calm state, no advice." },
-      "too_busy_btn":    { "text": "I'm too busy", "doc": "Advisor: member logs a 'too busy' strain signal." },
-      "too_busy_logged": { "text": "Noted — thanks for the signal.", "doc": "Confirmation after logging a too-busy signal." },
-      "advice_too_busy": { "text": "This circle has had {{count}} 'too busy' signals in two weeks while it's getting busier. Consider sharing the load — add a co-admin or split off a sub-circle.", "doc": "Advice card for the too-busy + growth rule; {{count}} interpolated." },
-      "dismiss":         { "text": "Dismiss", "doc": "Dismiss the advice card." }
+      "title": {
+        "text": "Advisor",
+        "doc": "Heading of the circle Advisor (board 3D)."
+      },
+      "none": {
+        "text": "Nothing to flag right now.",
+        "doc": "Advisor: calm state, no advice."
+      },
+      "too_busy_btn": {
+        "text": "I'm too busy",
+        "doc": "Advisor: member logs a 'too busy' strain signal."
+      },
+      "too_busy_logged": {
+        "text": "Noted — thanks for the signal.",
+        "doc": "Confirmation after logging a too-busy signal."
+      },
+      "advice_too_busy": {
+        "text": "This circle has had {{count}} 'too busy' signals in two weeks while it's getting busier. Consider sharing the load — add a co-admin or split off a sub-circle.",
+        "doc": "Advice card for the too-busy + growth rule; {{count}} interpolated."
+      },
+      "dismiss": {
+        "text": "Dismiss",
+        "doc": "Dismiss the advice card."
+      }
     },
     "hop": {
-      "title":        { "text": "Hopping", "doc": "Heading of the hopping screen (board 7)." },
-      "global_label": { "text": "Let trusted contacts relay my requests one hop", "doc": "Global hop-mode toggle (Stoop allowHopThrough)." },
-      "explain":      { "text": "When you ask for something no one nearby has, a contact who allows it can pass your request one step further — to their contacts. Max one hop, and the relay is anonymized.", "doc": "Explanation of how hopping works." },
-      "ask_relay":    { "text": "Ask to relay", "doc": "Button: ask the gate contact to relay the request one hop." },
-      "over_limit":   { "text": "Too many hops — requests travel at most one step.", "doc": "Shown when a chain exceeds max-one-hop." },
-      "per_contact_title": { "text": "Per contact", "doc": "Board 7B section heading (P6.M6)." },
-      "mode_always":  { "text": "Always", "doc": "Per-contact mode: always relay (P6.M6)." },
-      "mode_withOk":  { "text": "With my OK", "doc": "Per-contact mode: relay with approval." },
-      "mode_off":     { "text": "Off", "doc": "Per-contact mode: never relay." },
-      "default_label": { "text": "Default", "doc": "Chip shown when the per-contact mode falls through to the global stance." }
+      "title": {
+        "text": "Hopping",
+        "doc": "Heading of the hopping screen (board 7)."
+      },
+      "global_label": {
+        "text": "Let trusted contacts relay my requests one hop",
+        "doc": "Global hop-mode toggle (Stoop allowHopThrough)."
+      },
+      "explain": {
+        "text": "When you ask for something no one nearby has, a contact who allows it can pass your request one step further — to their contacts. Max one hop, and the relay is anonymized.",
+        "doc": "Explanation of how hopping works."
+      },
+      "ask_relay": {
+        "text": "Ask to relay",
+        "doc": "Button: ask the gate contact to relay the request one hop."
+      },
+      "over_limit": {
+        "text": "Too many hops — requests travel at most one step.",
+        "doc": "Shown when a chain exceeds max-one-hop."
+      },
+      "per_contact_title": {
+        "text": "Per contact",
+        "doc": "Board 7B section heading (P6.M6)."
+      },
+      "mode_always": {
+        "text": "Always",
+        "doc": "Per-contact mode: always relay (P6.M6)."
+      },
+      "mode_withOk": {
+        "text": "With my OK",
+        "doc": "Per-contact mode: relay with approval."
+      },
+      "mode_off": {
+        "text": "Off",
+        "doc": "Per-contact mode: never relay."
+      },
+      "default_label": {
+        "text": "Default",
+        "doc": "Chip shown when the per-contact mode falls through to the global stance."
+      }
     },
     "skills": {
-      "editor_title":  { "text": "Skill", "doc": "Skill editor heading (board 8)." },
-      "matches_title": { "text": "Matches", "doc": "Skill match-list heading." },
-      "no_matches":    { "text": "No matches yet", "doc": "Empty state for the skill match list." },
+      "editor_title": {
+        "text": "Skill",
+        "doc": "Skill editor heading (board 8)."
+      },
+      "matches_title": {
+        "text": "Matches",
+        "doc": "Skill match-list heading."
+      },
+      "no_matches": {
+        "text": "No matches yet",
+        "doc": "Empty state for the skill match list."
+      },
       "axis": {
-        "openness": { "text": "Openness", "doc": "Skill axis: how openly it is shared." },
-        "posture":  { "text": "Posture", "doc": "Skill axis: fixed vs negotiable offer." },
-        "status":   { "text": "Status", "doc": "Skill axis: lifecycle." },
-        "radius":   { "text": "Radius", "doc": "Skill axis: how far it reaches." }
+        "openness": {
+          "text": "Openness",
+          "doc": "Skill axis: how openly it is shared."
+        },
+        "posture": {
+          "text": "Posture",
+          "doc": "Skill axis: fixed vs negotiable offer."
+        },
+        "status": {
+          "text": "Status",
+          "doc": "Skill axis: lifecycle."
+        },
+        "radius": {
+          "text": "Radius",
+          "doc": "Skill axis: how far it reaches."
+        }
       },
       "opt": {
-        "private":       { "text": "Private", "doc": "Openness option." },
-        "circle":        { "text": "This circle", "doc": "Openness option." },
-        "contacts":      { "text": "Contacts", "doc": "Openness option." },
-        "public":        { "text": "Public", "doc": "Openness option." },
-        "always":        { "text": "Always", "doc": "Posture option." },
-        "negotiable":    { "text": "Negotiable", "doc": "Posture option." },
-        "active":        { "text": "Active", "doc": "Status option." },
-        "paused":        { "text": "Paused", "doc": "Status option." },
-        "archived":      { "text": "Archived", "doc": "Status option." },
-        "home":          { "text": "Home", "doc": "Radius option." },
-        "street":        { "text": "Street", "doc": "Radius option." },
-        "neighbourhood": { "text": "Neighbourhood", "doc": "Radius option." },
-        "city":          { "text": "City", "doc": "Radius option." }
+        "private": {
+          "text": "Private",
+          "doc": "Openness option."
+        },
+        "circle": {
+          "text": "This circle",
+          "doc": "Openness option."
+        },
+        "contacts": {
+          "text": "Contacts",
+          "doc": "Openness option."
+        },
+        "public": {
+          "text": "Public",
+          "doc": "Openness option."
+        },
+        "always": {
+          "text": "Always",
+          "doc": "Posture option."
+        },
+        "negotiable": {
+          "text": "Negotiable",
+          "doc": "Posture option."
+        },
+        "active": {
+          "text": "Active",
+          "doc": "Status option."
+        },
+        "paused": {
+          "text": "Paused",
+          "doc": "Status option."
+        },
+        "archived": {
+          "text": "Archived",
+          "doc": "Status option."
+        },
+        "home": {
+          "text": "Home",
+          "doc": "Radius option."
+        },
+        "street": {
+          "text": "Street",
+          "doc": "Radius option."
+        },
+        "neighbourhood": {
+          "text": "Neighbourhood",
+          "doc": "Radius option."
+        },
+        "city": {
+          "text": "City",
+          "doc": "Radius option."
+        }
       },
       "source": {
-        "human":   { "text": "Person", "doc": "Match source badge: a human." },
-        "agent":   { "text": "Agent", "doc": "Match source badge: an LLM agent." },
-        "via-hop": { "text": "Via contact", "doc": "Match source badge: reached via a one-hop relay." }
+        "human": {
+          "text": "Person",
+          "doc": "Match source badge: a human."
+        },
+        "agent": {
+          "text": "Agent",
+          "doc": "Match source badge: an LLM agent."
+        },
+        "via-hop": {
+          "text": "Via contact",
+          "doc": "Match source badge: reached via a one-hop relay."
+        }
       }
     },
     "folio": {
-      "title":      { "text": "Files", "doc": "Circle file-browser heading (board 10B)." },
-      "all":        { "text": "All", "doc": "File filter: all files." },
-      "favourites": { "text": "Favourites", "doc": "File filter: favourited files." },
-      "recent":     { "text": "Recent", "doc": "File filter: recently changed files." },
-      "empty":      { "text": "No files in this circle yet.", "doc": "Empty state for the circle file browser." },
-      "my_things_title":   { "text": "My things", "doc": "Board 10A heading (P6.M7) — Folio shown as the private kring." },
-      "my_things_empty":   { "text": "Nothing here yet — items you keep to yourself land here.", "doc": "Empty state on the My-things notes-list." },
-      "shared_by_me":      { "text": "Shared by me", "doc": "Board 10B filter (P6.M8) — items I own, scoped to a circle." },
-      "shared_with_me":    { "text": "Shared with me", "doc": "Board 10B filter (P6.M8) — items others shared into a circle I'm in." },
-      "shared_by_me_empty":   { "text": "You haven't shared any items yet.", "doc": "Empty state for the Shared-by-me filter." },
-      "shared_with_me_empty": { "text": "Nobody has shared an item with you yet.", "doc": "Empty state for the Shared-with-me filter." }
+      "title": {
+        "text": "Files",
+        "doc": "Circle file-browser heading (board 10B)."
+      },
+      "all": {
+        "text": "All",
+        "doc": "File filter: all files."
+      },
+      "favourites": {
+        "text": "Favourites",
+        "doc": "File filter: favourited files."
+      },
+      "recent": {
+        "text": "Recent",
+        "doc": "File filter: recently changed files."
+      },
+      "empty": {
+        "text": "No files in this circle yet.",
+        "doc": "Empty state for the circle file browser."
+      },
+      "my_things_title": {
+        "text": "My things",
+        "doc": "Board 10A heading (P6.M7) — Folio shown as the private kring."
+      },
+      "my_things_empty": {
+        "text": "Nothing here yet — items you keep to yourself land here.",
+        "doc": "Empty state on the My-things notes-list."
+      },
+      "shared_by_me": {
+        "text": "Shared by me",
+        "doc": "Board 10B filter (P6.M8) — items I own, scoped to a circle."
+      },
+      "shared_with_me": {
+        "text": "Shared with me",
+        "doc": "Board 10B filter (P6.M8) — items others shared into a circle I'm in."
+      },
+      "shared_by_me_empty": {
+        "text": "You haven't shared any items yet.",
+        "doc": "Empty state for the Shared-by-me filter."
+      },
+      "shared_with_me_empty": {
+        "text": "Nobody has shared an item with you yet.",
+        "doc": "Empty state for the Shared-with-me filter."
+      }
     },
     "pol": {
-      "title":         { "text": "Proof of location", "doc": "Heading of the passive PoL row on the circle detail (board 10C, slice 5.9d)." },
-      "notConfigured": { "text": "Not configured", "doc": "Shown when no attestation reader is wired." },
-      "attestedAt":    { "text": "Verified at {{time}}", "doc": "Shown when a reader returns a populated status." }
+      "title": {
+        "text": "Proof of location",
+        "doc": "Heading of the passive PoL row on the circle detail (board 10C, slice 5.9d)."
+      },
+      "notConfigured": {
+        "text": "Not configured",
+        "doc": "Shown when no attestation reader is wired."
+      },
+      "attestedAt": {
+        "text": "Verified at {{time}}",
+        "doc": "Shown when a reader returns a populated status."
+      }
     },
     "wederkerigheid": {
-      "unavailable":      { "text": "{{name}} doesn't receive chat in {{circle}}.", "doc": "Board 5C notice (P6.4) shown in the chat-compose area when the recipient has chat-off for this circle." },
-      "unavailable_anon": { "text": "This person doesn't receive chat in this circle.", "doc": "Same notice when recipient/circle names aren't resolvable; never leaks an id." },
-      "save":             { "text": "Save message", "doc": "Compose-area CTA to queue the message for when the recipient re-enables chat." },
-      "withdraw":         { "text": "Withdraw", "doc": "Compose-area CTA to discard the typed message." },
-      "no_delivery_note": { "text": "{{name}} won't be notified you tried.", "doc": "Secondary line clarifying the non-event per board 5C (no \"tried to reach you\" leak)." }
+      "unavailable": {
+        "text": "{{name}} doesn't receive chat in {{circle}}.",
+        "doc": "Board 5C notice (P6.4) shown in the chat-compose area when the recipient has chat-off for this circle."
+      },
+      "unavailable_anon": {
+        "text": "This person doesn't receive chat in this circle.",
+        "doc": "Same notice when recipient/circle names aren't resolvable; never leaks an id."
+      },
+      "save": {
+        "text": "Save message",
+        "doc": "Compose-area CTA to queue the message for when the recipient re-enables chat."
+      },
+      "withdraw": {
+        "text": "Withdraw",
+        "doc": "Compose-area CTA to discard the typed message."
+      },
+      "no_delivery_note": {
+        "text": "{{name}} won't be notified you tried.",
+        "doc": "Secondary line clarifying the non-event per board 5C (no \"tried to reach you\" leak)."
+      }
     },
     "hopPrompt": {
-      "title":     { "text": "Search further?", "doc": "Board 7A auto-hop-prompt card heading (P6.6) when an in-circle skill search returns nothing." },
-      "body":      { "text": "No one in your circles matches \"{{skill}}\". Want me to search via your {{count}} eligible contact(s)?", "doc": "Card body with the user's query interpolated." },
-      "body_anon": { "text": "No one in your circles matches that. Want me to search via your {{count}} eligible contact(s)?", "doc": "Anon body when the query string can't be safely echoed." },
-      "accept":    { "text": "Yes, one step further", "doc": "Primary CTA — triggers the hop-relay request." },
-      "dismiss":   { "text": "Skip", "doc": "Secondary CTA — records dismissal so we don't re-prompt the same query." }
+      "title": {
+        "text": "Search further?",
+        "doc": "Board 7A auto-hop-prompt card heading (P6.6) when an in-circle skill search returns nothing."
+      },
+      "body": {
+        "text": "No one in your circles matches \"{{skill}}\". Want me to search via your {{count}} eligible contact(s)?",
+        "doc": "Card body with the user's query interpolated."
+      },
+      "body_anon": {
+        "text": "No one in your circles matches that. Want me to search via your {{count}} eligible contact(s)?",
+        "doc": "Anon body when the query string can't be safely echoed."
+      },
+      "accept": {
+        "text": "Yes, one step further",
+        "doc": "Primary CTA — triggers the hop-relay request."
+      },
+      "dismiss": {
+        "text": "Skip",
+        "doc": "Secondary CTA — records dismissal so we don't re-prompt the same query."
+      }
     },
     "skillMatches": {
-      "title": { "text": "Members with matching skills:", "doc": "Heading for the inline skill-match list (P6.7 #345) appended under /find replies." }
+      "title": {
+        "text": "Members with matching skills:",
+        "doc": "Heading for the inline skill-match list (P6.7 #345) appended under /find replies."
+      }
     },
     "nearbyScreen": {
-      "title":          { "text": "Nearby", "doc": "Board 8C — heading of the dedicated `HIER` screen (P6.8)." },
-      "header":         { "text": "{{sharing}} of {{total}} share skills with you", "doc": "Header line above the row list." },
-      "header_empty":   { "text": "Nobody nearby right now.", "doc": "Shown when no peers are visible on the local network." },
-      "anon_peer":      { "text": "someone", "doc": "Fallback row label when a peer has no derivable pseudonym." },
-      "own_profile":    { "text": "What others see of you", "doc": "Footer block heading; shows your own pseudonym + published-tier skills." },
-      "own_profile_empty": { "text": "You haven't published any skills yet.", "doc": "Footer when no skills are published." }
+      "title": {
+        "text": "Nearby",
+        "doc": "Board 8C — heading of the dedicated `HIER` screen (P6.8)."
+      },
+      "header": {
+        "text": "{{sharing}} of {{total}} share skills with you",
+        "doc": "Header line above the row list."
+      },
+      "header_empty": {
+        "text": "Nobody nearby right now.",
+        "doc": "Shown when no peers are visible on the local network."
+      },
+      "anon_peer": {
+        "text": "someone",
+        "doc": "Fallback row label when a peer has no derivable pseudonym."
+      },
+      "own_profile": {
+        "text": "What others see of you",
+        "doc": "Footer block heading; shows your own pseudonym + published-tier skills."
+      },
+      "own_profile_empty": {
+        "text": "You haven't published any skills yet.",
+        "doc": "Footer when no skills are published."
+      }
     },
     "viewAsSplit": {
-      "sees":          { "text": "What {{viewer}} sees", "doc": "Board 4C column header — visible attributes (P6.M2)." },
-      "sees_anon":     { "text": "What they see", "doc": "Anon form when viewer name is missing." },
-      "hides":         { "text": "What {{viewer}} doesn't see", "doc": "Board 4C column header — hidden attributes." },
-      "hides_anon":    { "text": "What they don't see", "doc": "Anon hidden form." },
-      "header":        { "text": "{{visible}} of {{total}} attributes visible", "doc": "Optional summary above the columns." },
+      "sees": {
+        "text": "What {{viewer}} sees",
+        "doc": "Board 4C column header — visible attributes (P6.M2)."
+      },
+      "sees_anon": {
+        "text": "What they see",
+        "doc": "Anon form when viewer name is missing."
+      },
+      "hides": {
+        "text": "What {{viewer}} doesn't see",
+        "doc": "Board 4C column header — hidden attributes."
+      },
+      "hides_anon": {
+        "text": "What they don't see",
+        "doc": "Anon hidden form."
+      },
+      "header": {
+        "text": "{{visible}} of {{total}} attributes visible",
+        "doc": "Optional summary above the columns."
+      },
       "openness": {
-        "public":         { "text": "Public", "doc": "Openness chip — anyone." },
-        "public-locale":  { "text": "Public · in my area", "doc": "Openness chip." },
-        "members":        { "text": "Members", "doc": "Openness chip — any circle member." },
-        "circle-members": { "text": "This circle only", "doc": "Openness chip." },
-        "pairwise":       { "text": "1-on-1 reveals", "doc": "Openness chip." },
-        "family":         { "text": "Family", "doc": "Openness chip." },
-        "private":        { "text": "Private", "doc": "Openness chip — never visible." }
+        "public": {
+          "text": "Public",
+          "doc": "Openness chip — anyone."
+        },
+        "public-locale": {
+          "text": "Public · in my area",
+          "doc": "Openness chip."
+        },
+        "members": {
+          "text": "Members",
+          "doc": "Openness chip — any circle member."
+        },
+        "circle-members": {
+          "text": "This circle only",
+          "doc": "Openness chip."
+        },
+        "pairwise": {
+          "text": "1-on-1 reveals",
+          "doc": "Openness chip."
+        },
+        "family": {
+          "text": "Family",
+          "doc": "Openness chip."
+        },
+        "private": {
+          "text": "Private",
+          "doc": "Openness chip — never visible."
+        }
       }
     },
     "podMigration": {
-      "same":              { "text": "No change.", "doc": "Internal — not surfaced (severity=none)." },
-      "unknown":           { "text": "Unknown pod choice.", "doc": "Defensive fallback for unrecognised values." },
-      "up_empty":          { "text": "No migration needed yet — there's nothing to move.", "doc": "Going up + circle is empty." },
-      "up_with_content":   { "text": "Existing content will be migrated to the new storage choice.", "doc": "Going up + circle has content (severity=info)." },
-      "down_with_content": { "text": "Going back consolidates content — items that don't fit will be merged or lost. Ask the other admin first.", "doc": "Going down to a non-none level (severity=warn)." },
-      "down_to_none":      { "text": "You can't move back to \"no pod\" once content lives in a pod. Pick the other admin's flow if you really need to start over.", "doc": "Going all the way down (severity=block, allowed=false)." }
+      "same": {
+        "text": "No change.",
+        "doc": "Internal — not surfaced (severity=none)."
+      },
+      "unknown": {
+        "text": "Unknown pod choice.",
+        "doc": "Defensive fallback for unrecognised values."
+      },
+      "up_empty": {
+        "text": "No migration needed yet — there's nothing to move.",
+        "doc": "Going up + circle is empty."
+      },
+      "up_with_content": {
+        "text": "Existing content will be migrated to the new storage choice.",
+        "doc": "Going up + circle has content (severity=info)."
+      },
+      "down_with_content": {
+        "text": "Going back consolidates content — items that don't fit will be merged or lost. Ask the other admin first.",
+        "doc": "Going down to a non-none level (severity=warn)."
+      },
+      "down_to_none": {
+        "text": "You can't move back to \"no pod\" once content lives in a pod. Pick the other admin's flow if you really need to start over.",
+        "doc": "Going all the way down (severity=block, allowed=false)."
+      }
     },
     "agentRequest": {
-      "title":      { "text": "{{requester}} wants to add an agent", "doc": "Board 4B card heading on the admin's inbox (P6.10)." },
-      "title_anon": { "text": "An agent is waiting for admin approval", "doc": "Anon form when the requester's name isn't resolvable." },
-      "who":        { "text": "Who", "doc": "Label for the agent's identity row." },
-      "whoBody":    { "text": "{{name}}", "doc": "Agent name + kind in the body." },
-      "what":       { "text": "What it does", "doc": "Label for the capabilities row." },
-      "access":     { "text": "Access", "doc": "Label for the access-levels row." },
-      "approve":    { "text": "Approve", "doc": "Primary CTA." },
-      "reject":     { "text": "Reject", "doc": "Secondary CTA — flips the request to rejected on a single click." },
-      "ask":        { "text": "Ask…", "doc": "Tertiary CTA — opens a DM to the requester to clarify." },
-      "pending":    { "text": "Pending approval — waiting on {{who}}.", "doc": "Status line shown to the requester / other admins while approvals are outstanding." },
-      "blocked":    { "text": "This circle doesn't allow agents.", "doc": "Shown when the agents axis is `no`." }
+      "title": {
+        "text": "{{requester}} wants to add an agent",
+        "doc": "Board 4B card heading on the admin's inbox (P6.10)."
+      },
+      "title_anon": {
+        "text": "An agent is waiting for admin approval",
+        "doc": "Anon form when the requester's name isn't resolvable."
+      },
+      "who": {
+        "text": "Who",
+        "doc": "Label for the agent's identity row."
+      },
+      "whoBody": {
+        "text": "{{name}}",
+        "doc": "Agent name + kind in the body."
+      },
+      "what": {
+        "text": "What it does",
+        "doc": "Label for the capabilities row."
+      },
+      "access": {
+        "text": "Access",
+        "doc": "Label for the access-levels row."
+      },
+      "approve": {
+        "text": "Approve",
+        "doc": "Primary CTA."
+      },
+      "reject": {
+        "text": "Reject",
+        "doc": "Secondary CTA — flips the request to rejected on a single click."
+      },
+      "ask": {
+        "text": "Ask…",
+        "doc": "Tertiary CTA — opens a DM to the requester to clarify."
+      },
+      "pending": {
+        "text": "Pending approval — waiting on {{who}}.",
+        "doc": "Status line shown to the requester / other admins while approvals are outstanding."
+      },
+      "blocked": {
+        "text": "This circle doesn't allow agents.",
+        "doc": "Shown when the agents axis is `no`."
+      }
     },
     "rules": {
-      "title":         { "text": "House rules", "doc": "Rules editor heading (board 3B)." },
-      "save":          { "text": "Save rules", "doc": "Save the rules document." },
-      "preview":       { "text": "Preview (as a new member)", "doc": "Open the consent preview." },
-      "required_note": { "text": "Add a purpose and the agreements to save.", "doc": "Shown when required rules fields are blank." },
-      "consent_title": { "text": "Before you join", "doc": "Rules consent screen heading (board 3C)." },
-      "consent_empty": { "text": "This circle hasn't written its rules yet.", "doc": "Consent screen with an empty rules doc." },
-      "agree":         { "text": "I agree", "doc": "Consent: accept the rules + join." },
-      "decline":       { "text": "Not now", "doc": "Consent: decline the rules." },
+      "title": {
+        "text": "House rules",
+        "doc": "Rules editor heading (board 3B)."
+      },
+      "save": {
+        "text": "Save rules",
+        "doc": "Save the rules document."
+      },
+      "preview": {
+        "text": "Preview (as a new member)",
+        "doc": "Open the consent preview."
+      },
+      "required_note": {
+        "text": "Add a purpose and the agreements to save.",
+        "doc": "Shown when required rules fields are blank."
+      },
+      "consent_title": {
+        "text": "Before you join",
+        "doc": "Rules consent screen heading (board 3C)."
+      },
+      "consent_empty": {
+        "text": "This circle hasn't written its rules yet.",
+        "doc": "Consent screen with an empty rules doc."
+      },
+      "agree": {
+        "text": "I agree",
+        "doc": "Consent: accept the rules + join."
+      },
+      "decline": {
+        "text": "Not now",
+        "doc": "Consent: decline the rules."
+      },
       "q": {
-        "purpose":        { "text": "What is this circle for?", "doc": "Rules question: purpose." },
-        "admins":         { "text": "Who runs it, and what can they decide on their own?", "doc": "Rules question: admins." },
-        "agreements":     { "text": "What does everyone agree to?", "doc": "Rules question: agreements." },
-        "conflict":       { "text": "When people disagree, how do you sort it out?", "doc": "Rules question: conflict approach." },
-        "admission":      { "text": "How does someone new get in?", "doc": "Rules question: admission." },
-        "leaving":        { "text": "When someone leaves, what happens to their stuff and tasks?", "doc": "Rules question: leaving." },
-        "responsibility": { "text": "Who is responsible for what?", "doc": "Rules field: responsibility (folded into agreements; shown if filled)." }
+        "purpose": {
+          "text": "What is this circle for?",
+          "doc": "Rules question: purpose."
+        },
+        "admins": {
+          "text": "Who runs it, and what can they decide on their own?",
+          "doc": "Rules question: admins."
+        },
+        "agreements": {
+          "text": "What does everyone agree to?",
+          "doc": "Rules question: agreements."
+        },
+        "conflict": {
+          "text": "When people disagree, how do you sort it out?",
+          "doc": "Rules question: conflict approach."
+        },
+        "admission": {
+          "text": "How does someone new get in?",
+          "doc": "Rules question: admission."
+        },
+        "leaving": {
+          "text": "When someone leaves, what happens to their stuff and tasks?",
+          "doc": "Rules question: leaving."
+        },
+        "responsibility": {
+          "text": "Who is responsible for what?",
+          "doc": "Rules field: responsibility (folded into agreements; shown if filled)."
+        }
       },
       "field": {
-        "purpose":        { "text": "Purpose",        "doc": "α.1c — rules block short field label." },
-        "admins":         { "text": "Admins",         "doc": "α.1c — rules block short field label." },
-        "agreements":     { "text": "Agreements",    "doc": "α.1c — rules block short field label." },
-        "conflict":       { "text": "Conflict",       "doc": "α.1c — rules block short field label." },
-        "admission":      { "text": "Admission",      "doc": "α.1c — rules block short field label." },
-        "leaving":        { "text": "Leaving",        "doc": "α.1c — rules block short field label." },
-        "responsibility": { "text": "Responsibility", "doc": "α.1c — rules block short field label." }
+        "purpose": {
+          "text": "Purpose",
+          "doc": "α.1c — rules block short field label."
+        },
+        "admins": {
+          "text": "Admins",
+          "doc": "α.1c — rules block short field label."
+        },
+        "agreements": {
+          "text": "Agreements",
+          "doc": "α.1c — rules block short field label."
+        },
+        "conflict": {
+          "text": "Conflict",
+          "doc": "α.1c — rules block short field label."
+        },
+        "admission": {
+          "text": "Admission",
+          "doc": "α.1c — rules block short field label."
+        },
+        "leaving": {
+          "text": "Leaving",
+          "doc": "α.1c — rules block short field label."
+        },
+        "responsibility": {
+          "text": "Responsibility",
+          "doc": "α.1c — rules block short field label."
+        }
       },
       "conflict": {
-        "title": { "text": "Two of you edited the rules", "doc": "γ.4 — modal heading when an incoming rules doc diverges from local; every other resolver locale string is reused from circle.recipe.conflict.*." }
+        "title": {
+          "text": "Two of you edited the rules",
+          "doc": "γ.4 — modal heading when an incoming rules doc diverges from local; every other resolver locale string is reused from circle.recipe.conflict.*."
+        }
       }
     },
     "create": {
       "template": {
-        "applied_hint": { "text": "Defaults filled in for {{kind}}", "doc": "β.4 — confirmation shown after picking a kind in the C1 create-circle wizard; the matching kringTemplate has just pre-filled the policy axes. {{kind}} is the picked kind id (household / buurt / vriendenkring / team)." }
+        "applied_hint": {
+          "text": "Defaults filled in for {{kind}}",
+          "doc": "β.4 — confirmation shown after picking a kind in the C1 create-circle wizard; the matching kringTemplate has just pre-filled the policy axes. {{kind}} is the picked kind id (household / buurt / vriendenkring / team)."
+        }
       }
     }
   },
   "common": {
-    "ok":      { "text": "✓",       "doc": "Generic success indicator rendered when a skill returns { ok: true } with no message." },
-    "failed":  { "text": "Failed",  "doc": "Generic failure fallback when a skill returns { ok: false } with no error text." },
-    "error":   { "text": "Error",   "doc": "Generic error label when an error envelope has no message or code." }
+    "ok": {
+      "text": "✓",
+      "doc": "Generic success indicator rendered when a skill returns { ok: true } with no message."
+    },
+    "failed": {
+      "text": "Failed",
+      "doc": "Generic failure fallback when a skill returns { ok: false } with no error text."
+    },
+    "error": {
+      "text": "Error",
+      "doc": "Generic error label when an error envelope has no message or code."
+    }
   },
   "reply": {
     "unknown_command": {
@@ -478,14 +1558,32 @@
       "text": "This list is stale. Run the command again to refresh.",
       "doc": "Shown when the user taps a disabled action menu (per A2 hybrid lifecycle)."
     },
-    "welcome":                    { "text": "Welcome to canopy-chat (v0.2). Try /help. Create more threads via the sidebar.", "doc": "First-boot greeting in the Main thread." },
-    "permission_no_commands":     { "text": "This thread does not accept commands.", "doc": "Shown when allowCommands=false on the active thread." }
+    "welcome": {
+      "text": "Welcome to canopy-chat (v0.2). Try /help. Create more threads via the sidebar.",
+      "doc": "First-boot greeting in the Main thread."
+    },
+    "permission_no_commands": {
+      "text": "This thread does not accept commands.",
+      "doc": "Shown when allowCommands=false on the active thread."
+    }
   },
   "dm": {
-    "no_peer":              { "text": "DM thread has no paired peer address.",                       "doc": "Shown when a DM-scoped thread is missing its actor address (config bug)." },
-    "peer_offline":         { "text": "Peer transport not connected. Try /peer-connect first.",      "doc": "Shown when the user sends in a DM but NKN isn't connected." },
-    "respond_neither_ok":   { "text": "Neither local audit nor NKN delivery succeeded.",             "doc": "[Help with] flow — both substrate and NKN paths failed." },
-    "counter_prompt":       { "text": "Type your counter-offer below.",                              "doc": "Hint after [Counter] click on a responder card." }
+    "no_peer": {
+      "text": "DM thread has no paired peer address.",
+      "doc": "Shown when a DM-scoped thread is missing its actor address (config bug)."
+    },
+    "peer_offline": {
+      "text": "Peer transport not connected. Try /peer-connect first.",
+      "doc": "Shown when the user sends in a DM but NKN isn't connected."
+    },
+    "respond_neither_ok": {
+      "text": "Neither local audit nor NKN delivery succeeded.",
+      "doc": "[Help with] flow — both substrate and NKN paths failed."
+    },
+    "counter_prompt": {
+      "text": "Type your counter-offer below.",
+      "doc": "Hint after [Counter] click on a responder card."
+    }
   },
   "help": {
     "heading": {
@@ -506,253 +1604,691 @@
     }
   },
   "form": {
-    "heading":   { "text": "Fill in {{opId}}:", "doc": "Form heading; opId is the manifest op." },
-    "submit":    { "text": "Submit",            "doc": "Form submit button label." },
-    "cancel":    { "text": "Cancel",            "doc": "Form cancel button label." },
-    "cancelled": { "text": "Form cancelled.",   "doc": "Shown after the user clicks [Cancel] on a form." }
+    "heading": {
+      "text": "Fill in {{opId}}:",
+      "doc": "Form heading; opId is the manifest op."
+    },
+    "submit": {
+      "text": "Submit",
+      "doc": "Form submit button label."
+    },
+    "cancel": {
+      "text": "Cancel",
+      "doc": "Form cancel button label."
+    },
+    "cancelled": {
+      "text": "Form cancelled.",
+      "doc": "Shown after the user clicks [Cancel] on a form."
+    }
   },
   "embed": {
-    "no_id":        { "text": "Please provide an item id: /embed <itemId>", "doc": "When /embed fires with no itemId." },
-    "no_callskill": { "text": "Embed dispatch not available in this build.", "doc": "Defensive." },
-    "no_factory":   { "text": "No app declares a Q29 cardSnapshotSkill yet.", "doc": "When the merged catalog has no embed-producing op." }
+    "no_id": {
+      "text": "Please provide an item id: /embed <itemId>",
+      "doc": "When /embed fires with no itemId."
+    },
+    "no_callskill": {
+      "text": "Embed dispatch not available in this build.",
+      "doc": "Defensive."
+    },
+    "no_factory": {
+      "text": "No app declares a Q29 cardSnapshotSkill yet.",
+      "doc": "When the merged catalog has no embed-producing op."
+    }
   },
   "embed-file": {
-    "no_input":          { "text": "Please provide either --path / --pick / --name.", "doc": "When /embed-file fires with no recognisable input." },
-    "no_name":           { "text": "Please provide a file name.",                      "doc": "Back-compat with v0.7.x." },
-    "pick_unavailable":  { "text": "File picker not available in this build.",         "doc": "Defensive — openFilePicker not wired." },
-    "pick_cancelled":    { "text": "File picker cancelled.",                           "doc": "User dismissed the picker." }
+    "no_input": {
+      "text": "Please provide either --path / --pick / --name.",
+      "doc": "When /embed-file fires with no recognisable input."
+    },
+    "no_name": {
+      "text": "Please provide a file name.",
+      "doc": "Back-compat with v0.7.x."
+    },
+    "pick_unavailable": {
+      "text": "File picker not available in this build.",
+      "doc": "Defensive — openFilePicker not wired."
+    },
+    "pick_cancelled": {
+      "text": "File picker cancelled.",
+      "doc": "User dismissed the picker."
+    }
   },
   "embed-time": {
-    "no_title": { "text": "Please provide a title for the appointment.", "doc": "When /embed-time fires with no title." },
-    "no_when":  { "text": "Please provide a when date for the appointment.", "doc": "When /embed-time fires with no when." },
-    "bad_when": { "text": "Couldn't parse \"{{when}}\" as a date. Try YYYY-MM-DD or 'tomorrow 3pm'.", "doc": "When /embed-time's when can't be parsed." }
+    "no_title": {
+      "text": "Please provide a title for the appointment.",
+      "doc": "When /embed-time fires with no title."
+    },
+    "no_when": {
+      "text": "Please provide a when date for the appointment.",
+      "doc": "When /embed-time fires with no when."
+    },
+    "bad_when": {
+      "text": "Couldn't parse \"{{when}}\" as a date. Try YYYY-MM-DD or 'tomorrow 3pm'.",
+      "doc": "When /embed-time's when can't be parsed."
+    }
   },
   "demo": {
-    "stub":     { "text": "[demo] {{op}} clicked on {{item}} — backing app not built yet (tracked).", "doc": "Receiver-action stub on file/time cards before real backing apps exist." }
+    "stub": {
+      "text": "[demo] {{op}} clicked on {{item}} — backing app not built yet (tracked).",
+      "doc": "Receiver-action stub on file/time cards before real backing apps exist."
+    }
   },
   "brief": {
-    "no_runner": { "text": "Brief aggregator not available in this build.", "doc": "Defensive." }
+    "no_runner": {
+      "text": "Brief aggregator not available in this build.",
+      "doc": "Defensive."
+    }
   },
   "find": {
-    "no_query":  { "text": "Please provide a query: /find <text>",      "doc": "When /find fires with no query." },
-    "no_runner": { "text": "Search not available in this build.",        "doc": "Defensive." }
+    "no_query": {
+      "text": "Please provide a query: /find <text>",
+      "doc": "When /find fires with no query."
+    },
+    "no_runner": {
+      "text": "Search not available in this build.",
+      "doc": "Defensive."
+    }
   },
   "logs": {
-    "no_log":  { "text": "Event log not available in this build.",                     "doc": "Defensive." },
-    "heading": { "text": "Last {{count}} events:",                                      "doc": "First line of /logs output." },
-    "empty":   { "text": "No events matched (try /logs --app=household).",              "doc": "Empty state." },
-    "muted":   { "text": "✓ Muted events: {{app}}:{{type}}. /logs --mute=... toggles.", "doc": "Mute confirmation." },
-    "panel_opened": { "text": "Logs panel opened. Click [×] to close.", "doc": "Confirmation when bare /logs opens the side-panel UI." }
+    "no_log": {
+      "text": "Event log not available in this build.",
+      "doc": "Defensive."
+    },
+    "heading": {
+      "text": "Last {{count}} events:",
+      "doc": "First line of /logs output."
+    },
+    "empty": {
+      "text": "No events matched (try /logs --app=household).",
+      "doc": "Empty state."
+    },
+    "muted": {
+      "text": "✓ Muted events: {{app}}:{{type}}. /logs --mute=... toggles.",
+      "doc": "Mute confirmation."
+    },
+    "panel_opened": {
+      "text": "Logs panel opened. Click [×] to close.",
+      "doc": "Confirmation when bare /logs opens the side-panel UI."
+    }
   },
   "scan_qr": {
-    "not_available":  { "text": "QR scanner not available on this platform (mobile only today).", "doc": "Web doesn't ship a webcam scanner yet; /scan-qr returns this hint." },
-    "opening":        { "text": "Opening QR scanner…",                                           "doc": "Mobile localBuiltins triggered openQrScanner()." },
-    "scanned_contact": { "text": "✓ Added contact: {{name}}",                                    "doc": "Bot bubble after scanning a stoop-contact:// QR and addContactFromQr succeeds." },
-    "scanned_invite": { "text": "Opening join-buurt wizard with scanned invite…",               "doc": "Bot bubble after scanning a stoop-invite://; the wizard takes over." },
-    "scan_failed":    { "text": "Scan failed: {{error}}",                                       "doc": "Substrate returned error or classifier saw an unknown payload." },
-    "scan_unknown":   { "text": "Unrecognised QR code. Expected a stoop-contact:// or stoop-invite:// URL.", "doc": "classifyQrPayload returned kind:'unknown'." }
+    "not_available": {
+      "text": "QR scanner not available on this platform (mobile only today).",
+      "doc": "Web doesn't ship a webcam scanner yet; /scan-qr returns this hint."
+    },
+    "opening": {
+      "text": "Opening QR scanner…",
+      "doc": "Mobile localBuiltins triggered openQrScanner()."
+    },
+    "scanned_contact": {
+      "text": "✓ Added contact: {{name}}",
+      "doc": "Bot bubble after scanning a stoop-contact:// QR and addContactFromQr succeeds."
+    },
+    "scanned_invite": {
+      "text": "Opening join-buurt wizard with scanned invite…",
+      "doc": "Bot bubble after scanning a stoop-invite://; the wizard takes over."
+    },
+    "scan_failed": {
+      "text": "Scan failed: {{error}}",
+      "doc": "Substrate returned error or classifier saw an unknown payload."
+    },
+    "scan_unknown": {
+      "text": "Unrecognised QR code. Expected a stoop-contact:// or stoop-invite:// URL.",
+      "doc": "classifyQrPayload returned kind:'unknown'."
+    }
   },
   "signin": {
-    "no_flow":        { "text": "Sign-in flow not available in this build.", "doc": "Defensive — neither podAuth nor externalFlow wired." },
-    "opening":        { "text": "Opening sign-in (issuer: {{issuer}}) … come back when the redirect lands.", "doc": "v0.7.P1." },
-    "unknown_issuer": { "text": "Unknown issuer \"{{issuer}}\". Try 'inrupt', 'solidcommunity', 'solidweb' or a full URL.", "doc": "When resolveIssuer returns null." },
-    "completed":      { "text": "✓ Signed in as {{webid}}.", "doc": "Shown when the external callback resumes the chat." },
-    "welcome":        { "text": "✓ Signed in as {{webid}}.", "doc": "v0.7.P1 — OIDC round-trip completed on boot." },
-    "failed":         { "text": "Sign-in failed: {{reason}}.", "doc": "Callback delivered an error." }
+    "no_flow": {
+      "text": "Sign-in flow not available in this build.",
+      "doc": "Defensive — neither podAuth nor externalFlow wired."
+    },
+    "opening": {
+      "text": "Opening sign-in (issuer: {{issuer}}) … come back when the redirect lands.",
+      "doc": "v0.7.P1."
+    },
+    "unknown_issuer": {
+      "text": "Unknown issuer \"{{issuer}}\". Try 'inrupt', 'solidcommunity', 'solidweb' or a full URL.",
+      "doc": "When resolveIssuer returns null."
+    },
+    "completed": {
+      "text": "✓ Signed in as {{webid}}.",
+      "doc": "Shown when the external callback resumes the chat."
+    },
+    "welcome": {
+      "text": "✓ Signed in as {{webid}}.",
+      "doc": "v0.7.P1 — OIDC round-trip completed on boot."
+    },
+    "failed": {
+      "text": "Sign-in failed: {{reason}}.",
+      "doc": "Callback delivered an error."
+    }
   },
   "whoami": {
-    "unavailable":   { "text": "Identity check is not available in this build.", "doc": "Defensive: podAuth not wired." },
-    "not_signed_in": { "text": "Not signed in. Try /signin.",                     "doc": "User asked /whoami while signed out." },
-    "signed_in":     { "text": "Signed in as {{webid}}.",                          "doc": "/whoami result when signed in." }
+    "unavailable": {
+      "text": "Identity check is not available in this build.",
+      "doc": "Defensive: podAuth not wired."
+    },
+    "not_signed_in": {
+      "text": "Not signed in. Try /signin.",
+      "doc": "User asked /whoami while signed out."
+    },
+    "signed_in": {
+      "text": "Signed in as {{webid}}.",
+      "doc": "/whoami result when signed in."
+    }
   },
   "me": {
-    "unavailable":   { "text": "Agent identity not available.",                   "doc": "Defensive: agent boot missing identity." }
+    "unavailable": {
+      "text": "Agent identity not available.",
+      "doc": "Defensive: agent boot missing identity."
+    }
   },
   "rotate": {
-    "unavailable":  { "text": "Identity rotation not available in this build.",                "doc": "Defensive." },
-    "done":         { "text": "✓ Identity rotated.\n  old pubKey: {{oldPub}}\n  new pubKey: {{newPub}}\n  grace period: {{grace}} days\n\nYour NKN address has CHANGED.  Run /me to see it.\nKnown peers were notified via KeyRotation.broadcast.", "doc": "v0.7.P3d." },
-    "failed":       { "text": "Rotation failed: {{error}}",                                     "doc": "Defensive." }
+    "unavailable": {
+      "text": "Identity rotation not available in this build.",
+      "doc": "Defensive."
+    },
+    "done": {
+      "text": "✓ Identity rotated.\n  old pubKey: {{oldPub}}\n  new pubKey: {{newPub}}\n  grace period: {{grace}} days\n\nYour NKN address has CHANGED.  Run /me to see it.\nKnown peers were notified via KeyRotation.broadcast.",
+      "doc": "v0.7.P3d."
+    },
+    "failed": {
+      "text": "Rotation failed: {{error}}",
+      "doc": "Defensive."
+    }
   },
   "security": {
-    "unavailable":  { "text": "Crypto status not available in this build.",                     "doc": "Defensive." }
+    "unavailable": {
+      "text": "Crypto status not available in this build.",
+      "doc": "Defensive."
+    }
   },
   "mute": {
-    "no_peer":      { "text": "Please name a peer: /mute <nkn-addr-or-webid-or-pubkey>",       "doc": "/mute missing arg." },
-    "unavailable":  { "text": "Mute not available in this build.",                              "doc": "Defensive — sa.mute missing." },
-    "added":        { "text": "🔇 Muted {{peer}}.\nTheir messages will be dropped + you can't send to them.", "doc": "/mute success." },
-    "already":      { "text": "{{peer}} is already muted.",                                     "doc": "Idempotent." },
-    "removed":      { "text": "🔊 Unmuted {{peer}}.",                                           "doc": "/unmute success." },
-    "not_muted":    { "text": "{{peer}} wasn't muted.",                                         "doc": "Idempotent." },
-    "empty":        { "text": "Mute set is empty.",                                             "doc": "/muted on empty set." }
+    "no_peer": {
+      "text": "Please name a peer: /mute <nkn-addr-or-webid-or-pubkey>",
+      "doc": "/mute missing arg."
+    },
+    "unavailable": {
+      "text": "Mute not available in this build.",
+      "doc": "Defensive — sa.mute missing."
+    },
+    "added": {
+      "text": "🔇 Muted {{peer}}.\nTheir messages will be dropped + you can't send to them.",
+      "doc": "/mute success."
+    },
+    "already": {
+      "text": "{{peer}} is already muted.",
+      "doc": "Idempotent."
+    },
+    "removed": {
+      "text": "🔊 Unmuted {{peer}}.",
+      "doc": "/unmute success."
+    },
+    "not_muted": {
+      "text": "{{peer}} wasn't muted.",
+      "doc": "Idempotent."
+    },
+    "empty": {
+      "text": "Mute set is empty.",
+      "doc": "/muted on empty set."
+    }
   },
   "audit": {
-    "unavailable":  { "text": "Audit log not available in this build.",                         "doc": "Defensive — sa.audit missing." }
+    "unavailable": {
+      "text": "Audit log not available in this build.",
+      "doc": "Defensive — sa.audit missing."
+    }
   },
   "debug": {
-    "unavailable":  { "text": "Debug dump not available — secure-agent factory not wired.",     "doc": "Defensive." }
+    "unavailable": {
+      "text": "Debug dump not available — secure-agent factory not wired.",
+      "doc": "Defensive."
+    }
   },
   "helpWith": {
-    "no_post":    { "text": "Please name a post: /help-with <post-id>",                          "doc": "/help-with missing arg." },
-    "no_store":   { "text": "Thread store not available in this build.",                         "doc": "Defensive." },
-    "opened":     { "text": "🤝 Opened help thread for {{postId}} (id={{threadId}}).",            "doc": "/help-with success." }
+    "no_post": {
+      "text": "Please name a post: /help-with <post-id>",
+      "doc": "/help-with missing arg."
+    },
+    "no_store": {
+      "text": "Thread store not available in this build.",
+      "doc": "Defensive."
+    },
+    "opened": {
+      "text": "🤝 Opened help thread for {{postId}} (id={{threadId}}).",
+      "doc": "/help-with success."
+    }
   },
   "fileShare": {
-    "downloaded":     { "text": "↓ Downloaded {{name}} to your browser's default download location.", "doc": "/Download click on a received file-card." }
+    "downloaded": {
+      "text": "↓ Downloaded {{name}} to your browser's default download location.",
+      "doc": "/Download click on a received file-card."
+    }
   },
   "sendFile": {
-    "no_peer":        { "text": "Please name a peer: /send-file <nkn-addr-or-webid>", "doc": "/send-file missing peer." },
-    "no_picker":      { "text": "File picker not available in this build.",            "doc": "Defensive." },
-    "not_connected":  { "text": "NKN not connected.  /peer-connect first.",            "doc": "Defensive." },
-    "no_lookup":      { "text": "Peer-resolution unavailable; sign in to your pod.",    "doc": "Defensive." },
-    "lookup_failed":  { "text": "Couldn't resolve {{peer}} to an NKN address.",        "doc": "Lookup failure." },
-    "cancelled":      { "text": "File picker cancelled.",                                "doc": "User dismissed." },
-    "pick_failed":    { "text": "File pick failed: {{error}}",                          "doc": "Defensive." },
-    "too_large":      { "text": "File too large ({{size}} bytes; max {{max}} bytes inline).  NKN drops messages over ~64KB silently, so we cap at 32KB to guarantee delivery.  Larger files need pod-URL hand-off (next slice).", "doc": "Cap." },
-    "read_failed":    { "text": "File read failed: {{error}}",                           "doc": "FileReader error." },
-    "sent":           { "text": "📤 sent {{name}} ({{size}} bytes) → {{peer}}",          "doc": "Confirmation." },
-    "send_failed":    { "text": "Send failed: {{error}}",                                "doc": "NKN send error." }
+    "no_peer": {
+      "text": "Please name a peer: /send-file <nkn-addr-or-webid>",
+      "doc": "/send-file missing peer."
+    },
+    "no_picker": {
+      "text": "File picker not available in this build.",
+      "doc": "Defensive."
+    },
+    "not_connected": {
+      "text": "NKN not connected.  /peer-connect first.",
+      "doc": "Defensive."
+    },
+    "no_lookup": {
+      "text": "Peer-resolution unavailable; sign in to your pod.",
+      "doc": "Defensive."
+    },
+    "lookup_failed": {
+      "text": "Couldn't resolve {{peer}} to an NKN address.",
+      "doc": "Lookup failure."
+    },
+    "cancelled": {
+      "text": "File picker cancelled.",
+      "doc": "User dismissed."
+    },
+    "pick_failed": {
+      "text": "File pick failed: {{error}}",
+      "doc": "Defensive."
+    },
+    "too_large": {
+      "text": "File too large ({{size}} bytes; max {{max}} bytes inline).  NKN drops messages over ~64KB silently, so we cap at 32KB to guarantee delivery.  Larger files need pod-URL hand-off (next slice).",
+      "doc": "Cap."
+    },
+    "read_failed": {
+      "text": "File read failed: {{error}}",
+      "doc": "FileReader error."
+    },
+    "sent": {
+      "text": "📤 sent {{name}} ({{size}} bytes) → {{peer}}",
+      "doc": "Confirmation."
+    },
+    "send_failed": {
+      "text": "Send failed: {{error}}",
+      "doc": "NKN send error."
+    }
   },
   "lookup": {
-    "no_webid":     { "text": "Please provide a webid: /lookup-peer <webid>",                  "doc": "/lookup-peer missing arg." },
-    "unavailable":  { "text": "Peer lookup unavailable (sign in to your pod first).",         "doc": "Defensive." },
-    "not_found":    { "text": "No NKN address found for {{webid}}.  They may not have signed in to canopy-chat from a pod yet.", "doc": "Lookup miss." },
-    "found":        { "text": "✓ {{webid}}\n  → {{address}}\n\nUse: /test-peer {{address}} hello\n     /addappt --attendees-nkn={{address}}", "doc": "Lookup hit." },
-    "failed":       { "text": "Lookup failed: {{error}}",                                      "doc": "Lookup error." }
+    "no_webid": {
+      "text": "Please provide a webid: /lookup-peer <webid>",
+      "doc": "/lookup-peer missing arg."
+    },
+    "unavailable": {
+      "text": "Peer lookup unavailable (sign in to your pod first).",
+      "doc": "Defensive."
+    },
+    "not_found": {
+      "text": "No NKN address found for {{webid}}.  They may not have signed in to canopy-chat from a pod yet.",
+      "doc": "Lookup miss."
+    },
+    "found": {
+      "text": "✓ {{webid}}\n  → {{address}}\n\nUse: /test-peer {{address}} hello\n     /addappt --attendees-nkn={{address}}",
+      "doc": "Lookup hit."
+    },
+    "failed": {
+      "text": "Lookup failed: {{error}}",
+      "doc": "Lookup error."
+    }
   },
   "publishNkn": {
-    "unavailable":  { "text": "Pod publish unavailable (sign in first).",                     "doc": "Defensive." },
-    "done":         { "text": "✓ Published NKN address to {{url}}",                            "doc": "Confirmation." },
-    "failed":       { "text": "Pod publish failed: {{error}}{{status}}",                       "doc": "Defensive." }
+    "unavailable": {
+      "text": "Pod publish unavailable (sign in first).",
+      "doc": "Defensive."
+    },
+    "done": {
+      "text": "✓ Published NKN address to {{url}}",
+      "doc": "Confirmation."
+    },
+    "failed": {
+      "text": "Pod publish failed: {{error}}{{status}}",
+      "doc": "Defensive."
+    }
   },
   "peer": {
-    "unavailable":    { "text": "Peer transport not available in this build.",            "doc": "Defensive: window.nkn missing." },
-    "no_address":     { "text": "Please provide a peer NKN address: /test-peer <addr> [text]", "doc": "/test-peer arg missing." },
-    "not_connected":  { "text": "Not connected to NKN yet.  Try /peer-connect (and wait 5-90s).", "doc": "Defensive: NKN not connected when sending." },
-    "connect_failed": { "text": "Couldn't connect to NKN: {{error}}",                       "doc": "/peer-connect failure." },
-    "connected":      { "text": "🔗 Connected to NKN. Your address:\n  {{address}}\nShare it; peers can /test-peer <this address> text.", "doc": "/peer-connect success." },
-    "sent":           { "text": "✓ Sent to {{address}}: {{text}}",                          "doc": "/test-peer confirmation." },
-    "send_failed":    { "text": "Failed to send: {{error}}",                                 "doc": "/test-peer send failure." }
+    "unavailable": {
+      "text": "Peer transport not available in this build.",
+      "doc": "Defensive: window.nkn missing."
+    },
+    "no_address": {
+      "text": "Please provide a peer NKN address: /test-peer <addr> [text]",
+      "doc": "/test-peer arg missing."
+    },
+    "not_connected": {
+      "text": "Not connected to NKN yet.  Try /peer-connect (and wait 5-90s).",
+      "doc": "Defensive: NKN not connected when sending."
+    },
+    "connect_failed": {
+      "text": "Couldn't connect to NKN: {{error}}",
+      "doc": "/peer-connect failure."
+    },
+    "connected": {
+      "text": "🔗 Connected to NKN. Your address:\n  {{address}}\nShare it; peers can /test-peer <this address> text.",
+      "doc": "/peer-connect success."
+    },
+    "sent": {
+      "text": "✓ Sent to {{address}}: {{text}}",
+      "doc": "/test-peer confirmation."
+    },
+    "send_failed": {
+      "text": "Failed to send: {{error}}",
+      "doc": "/test-peer send failure."
+    }
   },
   "signout": {
-    "unavailable":   { "text": "Sign-out is not available in this build.",        "doc": "Defensive: podAuth not wired." },
-    "done":          { "text": "✓ Signed out.",                                    "doc": "Confirmation of /signout." }
+    "unavailable": {
+      "text": "Sign-out is not available in this build.",
+      "doc": "Defensive: podAuth not wired."
+    },
+    "done": {
+      "text": "✓ Signed out.",
+      "doc": "Confirmation of /signout."
+    }
   },
   "reset": {
-    "no_store":      { "text": "Thread store not available in this build.",        "doc": "Defensive: threadStore dependency not wired." },
-    "no_thread":     { "text": "No active thread to reset.",                       "doc": "Defensive: no active thread selected." },
-    "done":          { "text": "✓ Thread cleared (messages + list cache wiped).",  "doc": "/reset-thread confirmation." }
+    "no_store": {
+      "text": "Thread store not available in this build.",
+      "doc": "Defensive: threadStore dependency not wired."
+    },
+    "no_thread": {
+      "text": "No active thread to reset.",
+      "doc": "Defensive: no active thread selected."
+    },
+    "done": {
+      "text": "✓ Thread cleared (messages + list cache wiped).",
+      "doc": "/reset-thread confirmation."
+    }
   },
   "apps": {
-    "heading":        { "text": "Apps:",                                "doc": "First line of /apps list." },
-    "empty":          { "text": "(none)",                               "doc": "When no apps in the catalog." },
-    "no_registry":    { "text": "App registry not available in this build.", "doc": "Defensive." },
-    "no_name":        { "text": "Please name an app: /apps {{action}} <name>", "doc": "When toggle action has no app name." },
-    "unknown_action": { "text": "Unknown action \"{{action}}\". Use: on, off", "doc": "Bad toggle action." },
-    "enabled":        { "text": "✓ App \"{{app}}\" enabled.",            "doc": "Confirmation when /apps on succeeds." },
-    "disabled":       { "text": "✓ App \"{{app}}\" disabled.",           "doc": "Confirmation when /apps off succeeds." }
+    "heading": {
+      "text": "Apps:",
+      "doc": "First line of /apps list."
+    },
+    "empty": {
+      "text": "(none)",
+      "doc": "When no apps in the catalog."
+    },
+    "no_registry": {
+      "text": "App registry not available in this build.",
+      "doc": "Defensive."
+    },
+    "no_name": {
+      "text": "Please name an app: /apps {{action}} <name>",
+      "doc": "When toggle action has no app name."
+    },
+    "unknown_action": {
+      "text": "Unknown action \"{{action}}\". Use: on, off",
+      "doc": "Bad toggle action."
+    },
+    "enabled": {
+      "text": "✓ App \"{{app}}\" enabled.",
+      "doc": "Confirmation when /apps on succeeds."
+    },
+    "disabled": {
+      "text": "✓ App \"{{app}}\" disabled.",
+      "doc": "Confirmation when /apps off succeeds."
+    }
   },
   "sendto": {
-    "no_peer":      { "text": "Please name a peer: /send-to <peer> <itemId>",          "doc": "When /send-to fires with no peer." },
-    "no_id":        { "text": "Please provide an item id: /send-to <peer> <itemId>",   "doc": "When /send-to fires with no itemId." },
-    "unknown_peer": { "text": "Unknown peer \"{{peer}}\". Try: anne",                    "doc": "When the peer name isn't in simPeers." },
-    "no_thread":    { "text": "Peer's thread (id={{threadId}}) does not exist in this workspace.", "doc": "Defensive — sim peer thread missing." },
-    "sent":         { "text": "✓ Sent \"{{item}}\" to {{peer}}'s thread.",                "doc": "Confirmation in the sender's thread after /send-to." }
+    "no_peer": {
+      "text": "Please name a peer: /send-to <peer> <itemId>",
+      "doc": "When /send-to fires with no peer."
+    },
+    "no_id": {
+      "text": "Please provide an item id: /send-to <peer> <itemId>",
+      "doc": "When /send-to fires with no itemId."
+    },
+    "unknown_peer": {
+      "text": "Unknown peer \"{{peer}}\". Try: anne",
+      "doc": "When the peer name isn't in simPeers."
+    },
+    "no_thread": {
+      "text": "Peer's thread (id={{threadId}}) does not exist in this workspace.",
+      "doc": "Defensive — sim peer thread missing."
+    },
+    "sent": {
+      "text": "✓ Sent \"{{item}}\" to {{peer}}'s thread.",
+      "doc": "Confirmation in the sender's thread after /send-to."
+    }
   },
   "sync": {
-    "synced_to":     { "text": "synced to {{ok}}/{{total}} peers",
-                        "doc": "Decentralized sync hint suffix; ok=confirmed, total=peers." },
-    "pending":       { "text": "{{count}} pending",
-                        "doc": "Decentralized sync hint suffix; count of peers awaiting confirmation." },
-    "unreachable":   { "text": "{{count}} unreachable: {{list}}",
-                        "doc": "Decentralized sync hint suffix; list of unreachable peer webids." },
-    "podless":       { "text": "polled {{count}} peers · oldest {{ago}} ago",
-                        "doc": "Pod-less sync hint suffix; shows the oldest last-seen time." },
-    "podless_empty": { "text": "no peers polled",
-                        "doc": "Pod-less sync hint when no peers known." },
-    "row_ago":       { "text": "stale {{ago}} ago",
-                        "doc": "Per-row _lastSync badge on list items." },
-    "saved_locally": { "text": "Saved locally; awaiting peer sync",
-                        "doc": "Decentralized empty-state suffix (per OQ-6.A): all peers offline / no peers known yet." }
+    "synced_to": {
+      "text": "synced to {{ok}}/{{total}} peers",
+      "doc": "Decentralized sync hint suffix; ok=confirmed, total=peers."
+    },
+    "pending": {
+      "text": "{{count}} pending",
+      "doc": "Decentralized sync hint suffix; count of peers awaiting confirmation."
+    },
+    "unreachable": {
+      "text": "{{count}} unreachable: {{list}}",
+      "doc": "Decentralized sync hint suffix; list of unreachable peer webids."
+    },
+    "podless": {
+      "text": "polled {{count}} peers · oldest {{ago}} ago",
+      "doc": "Pod-less sync hint suffix; shows the oldest last-seen time."
+    },
+    "podless_empty": {
+      "text": "no peers polled",
+      "doc": "Pod-less sync hint when no peers known."
+    },
+    "row_ago": {
+      "text": "stale {{ago}} ago",
+      "doc": "Per-row _lastSync badge on list items."
+    },
+    "saved_locally": {
+      "text": "Saved locally; awaiting peer sync",
+      "doc": "Decentralized empty-state suffix (per OQ-6.A): all peers offline / no peers known yet."
+    }
   },
   "newthread": {
-    "created":  { "text": "✓ Created thread \"{{name}}\". Switched to it.", "doc": "Confirmation when /newthread succeeds." },
-    "no_name":  { "text": "Please provide a name: /newthread <name>",       "doc": "When /newthread fires with no name arg." },
-    "no_store": { "text": "Thread workspace not available in this build.",  "doc": "Defensive — should never trigger in the standard web build." }
+    "created": {
+      "text": "✓ Created thread \"{{name}}\". Switched to it.",
+      "doc": "Confirmation when /newthread succeeds."
+    },
+    "no_name": {
+      "text": "Please provide a name: /newthread <name>",
+      "doc": "When /newthread fires with no name arg."
+    },
+    "no_store": {
+      "text": "Thread workspace not available in this build.",
+      "doc": "Defensive — should never trigger in the standard web build."
+    }
   },
   "threads": {
-    "heading":  { "text": "Threads:", "doc": "First line of /threads output." },
-    "empty":    { "text": "No threads yet.", "doc": "Shown when no threads exist." },
-    "no_store": { "text": "Thread workspace not available in this build.", "doc": "Defensive." }
+    "heading": {
+      "text": "Threads:",
+      "doc": "First line of /threads output."
+    },
+    "empty": {
+      "text": "No threads yet.",
+      "doc": "Shown when no threads exist."
+    },
+    "no_store": {
+      "text": "Thread workspace not available in this build.",
+      "doc": "Defensive."
+    }
   },
   "sidebar": {
-    "heading":    { "text": "Threads",      "doc": "Sidebar heading above the thread list." },
-    "new_thread": { "text": "+ New thread", "doc": "Button that toggles the new-thread form." },
-    "delete":     { "text": "Delete",        "doc": "Per-thread delete button tooltip." },
-    "edit":       { "text": "Edit",          "doc": "Per-thread edit button tooltip — opens the new-thread form pre-filled." },
-    "form_create_heading": { "text": "New thread", "doc": "Title shown above the form in create mode." },
-    "form_edit_heading":   { "text": "Edit thread", "doc": "Title shown above the form in edit mode." },
-    "form_name":  { "text": "Name",         "doc": "New-thread form: name field label." },
-    "form_apps":  { "text": "Apps",
-                    "doc": "New-thread form: apps filter chip-group label." },
-    "form_apps_hint": { "text": "Pick which apps' events appear here. Empty = all apps.",
-                        "doc": "Help text under the apps chip group." },
-    "form_add_custom_app":  { "text": "+ custom app origin (e.g. household)",
-                              "doc": "Placeholder for the custom-app input below the chip group." },
-    "form_event_types": { "text": "Event types",
-                          "doc": "New-thread form: eventTypes chip-group label." },
-    "form_event_types_hint": { "text": "Pick which kinds of events trigger this thread. Empty = all kinds.",
-                               "doc": "Help text under the event-types chip group." },
-    "form_add_custom_type": { "text": "+ custom event type",
-                              "doc": "Placeholder for the custom-event-type input below the chip group." },
-    "form_peers":             { "text": "Peers (optional, CSV)",
-                                "doc": "Field label for the peers CSV input." },
-    "form_peers_placeholder": { "text": "e.g. webid:anne,webid:karl",
-                                "doc": "Placeholder for the peers field." },
-    "form_peers_hint":        { "text": "Restrict this thread to events from named peers. Empty = anyone.",
-                                "doc": "Help text under the peers field." },
-    "form_allow_commands": { "text": "Allow commands",
-                             "doc": "New-thread form: allowCommands checkbox label." },
-    "form_create": { "text": "Create",      "doc": "New-thread form: submit button (create mode)." },
-    "form_save":   { "text": "Save",        "doc": "New-thread form: submit button (edit mode)." },
-    "form_cancel": { "text": "Cancel",      "doc": "New-thread form: cancel button." },
-    "dm_prefix":   { "text": "DM",          "doc": "Prefix for DM-scoped thread names (Slice 6a)." },
-    "dm_unknown":  { "text": "Unknown peer", "doc": "Placeholder DM peer label shown before identity is exchanged (Slice 6a)." }
+    "heading": {
+      "text": "Threads",
+      "doc": "Sidebar heading above the thread list."
+    },
+    "new_thread": {
+      "text": "+ New thread",
+      "doc": "Button that toggles the new-thread form."
+    },
+    "delete": {
+      "text": "Delete",
+      "doc": "Per-thread delete button tooltip."
+    },
+    "edit": {
+      "text": "Edit",
+      "doc": "Per-thread edit button tooltip — opens the new-thread form pre-filled."
+    },
+    "form_create_heading": {
+      "text": "New thread",
+      "doc": "Title shown above the form in create mode."
+    },
+    "form_edit_heading": {
+      "text": "Edit thread",
+      "doc": "Title shown above the form in edit mode."
+    },
+    "form_name": {
+      "text": "Name",
+      "doc": "New-thread form: name field label."
+    },
+    "form_apps": {
+      "text": "Apps",
+      "doc": "New-thread form: apps filter chip-group label."
+    },
+    "form_apps_hint": {
+      "text": "Pick which apps' events appear here. Empty = all apps.",
+      "doc": "Help text under the apps chip group."
+    },
+    "form_add_custom_app": {
+      "text": "+ custom app origin (e.g. household)",
+      "doc": "Placeholder for the custom-app input below the chip group."
+    },
+    "form_event_types": {
+      "text": "Event types",
+      "doc": "New-thread form: eventTypes chip-group label."
+    },
+    "form_event_types_hint": {
+      "text": "Pick which kinds of events trigger this thread. Empty = all kinds.",
+      "doc": "Help text under the event-types chip group."
+    },
+    "form_add_custom_type": {
+      "text": "+ custom event type",
+      "doc": "Placeholder for the custom-event-type input below the chip group."
+    },
+    "form_peers": {
+      "text": "Peers (optional, CSV)",
+      "doc": "Field label for the peers CSV input."
+    },
+    "form_peers_placeholder": {
+      "text": "e.g. webid:anne,webid:karl",
+      "doc": "Placeholder for the peers field."
+    },
+    "form_peers_hint": {
+      "text": "Restrict this thread to events from named peers. Empty = anyone.",
+      "doc": "Help text under the peers field."
+    },
+    "form_allow_commands": {
+      "text": "Allow commands",
+      "doc": "New-thread form: allowCommands checkbox label."
+    },
+    "form_create": {
+      "text": "Create",
+      "doc": "New-thread form: submit button (create mode)."
+    },
+    "form_save": {
+      "text": "Save",
+      "doc": "New-thread form: submit button (edit mode)."
+    },
+    "form_cancel": {
+      "text": "Cancel",
+      "doc": "New-thread form: cancel button."
+    },
+    "dm_prefix": {
+      "text": "DM",
+      "doc": "Prefix for DM-scoped thread names (Slice 6a)."
+    },
+    "dm_unknown": {
+      "text": "Unknown peer",
+      "doc": "Placeholder DM peer label shown before identity is exchanged (Slice 6a)."
+    }
   },
   "contacts": {
     "trust": {
-      "known":   { "text": "known",   "doc": "Trust level for an acknowledged contact. Stoop persists this as Dutch 'bekend'; chat-shell translates EN at the boundary." },
-      "trusted": { "text": "trusted", "doc": "Trust level for a fully-trusted contact. Stoop persists this as Dutch 'vertrouwd'; chat-shell translates EN at the boundary." },
-      "none":    { "text": "none",    "doc": "No trust set (cleared)." }
+      "known": {
+        "text": "known",
+        "doc": "Trust level for an acknowledged contact. Stoop persists this as Dutch 'bekend'; chat-shell translates EN at the boundary."
+      },
+      "trusted": {
+        "text": "trusted",
+        "doc": "Trust level for a fully-trusted contact. Stoop persists this as Dutch 'vertrouwd'; chat-shell translates EN at the boundary."
+      },
+      "none": {
+        "text": "none",
+        "doc": "No trust set (cleared)."
+      }
     }
   },
   "relay": {
-    "no_substrate":   { "text": "Relay support not wired in this build.",
-                        "doc": "/set-relay called but agent.relay isn't exposed (test workspace or old build)." },
-    "url_required":   { "text": "Relay URL required. Try /set-relay ws://your-host:port or /set-relay --clear",
-                        "doc": "/set-relay called without --url or --clear." },
-    "bad_url":        { "text": "Bad relay URL. Must start with ws:// or wss://",
-                        "doc": "/set-relay called with a URL that doesn't have a websocket scheme." },
-    "cleared":        { "text": "✓ Relay cleared. NKN remains active.",
-                        "doc": "/set-relay --clear succeeded." },
-    "connected":      { "text": "✓ Relay connected: {{url}} (address: {{address}})",
-                        "doc": "/set-relay succeeded." },
-    "connect_failed": { "text": "Relay connect failed: {{reason}}",
-                        "doc": "/set-relay caught an exception from sa.relay.connect()." }
+    "no_substrate": {
+      "text": "Relay support not wired in this build.",
+      "doc": "/set-relay called but agent.relay isn't exposed (test workspace or old build)."
+    },
+    "url_required": {
+      "text": "Relay URL required. Try /set-relay ws://your-host:port or /set-relay --clear",
+      "doc": "/set-relay called without --url or --clear."
+    },
+    "bad_url": {
+      "text": "Bad relay URL. Must start with ws:// or wss://",
+      "doc": "/set-relay called with a URL that doesn't have a websocket scheme."
+    },
+    "cleared": {
+      "text": "✓ Relay cleared. NKN remains active.",
+      "doc": "/set-relay --clear succeeded."
+    },
+    "connected": {
+      "text": "✓ Relay connected: {{url}} (address: {{address}})",
+      "doc": "/set-relay succeeded."
+    },
+    "connect_failed": {
+      "text": "Relay connect failed: {{reason}}",
+      "doc": "/set-relay caught an exception from sa.relay.connect()."
+    }
   },
   "page": {
-    "submit":     { "text": "Submit", "doc": "Page-panel form submit button (#180)." },
-    "cancel":     { "text": "Cancel", "doc": "Page-panel form cancel button (#180)." },
-    "settings_title": { "text": "Settings", "doc": "Title for the /settings page panel." },
-    "settings_hint":  { "text": "Adjust your preferences. Changes apply immediately.", "doc": "Settings panel intro line." }
+    "submit": {
+      "text": "Submit",
+      "doc": "Page-panel form submit button (#180)."
+    },
+    "cancel": {
+      "text": "Cancel",
+      "doc": "Page-panel form cancel button (#180)."
+    },
+    "settings_title": {
+      "text": "Settings",
+      "doc": "Title for the /settings page panel."
+    },
+    "settings_hint": {
+      "text": "Adjust your preferences. Changes apply immediately.",
+      "doc": "Settings panel intro line."
+    }
   },
   "transport": {
-    "no_substrate":  { "text": "Transport-mode control not wired in this build.",
-                       "doc": "/transport-mode or /transports called but agent.setTransportMode isn't exposed." },
-    "bad_mode":      { "text": "Bad mode \"{{mode}}\". Pick nkn, relay, or both.",
-                       "doc": "/transport-mode called with an invalid arg." },
-    "mode_set":      { "text": "✓ Transport mode set: {{mode}}. Outbound peer sends now route this way.",
-                       "doc": "/transport-mode succeeded." },
-    "status_title":  { "text": "Transports",
-                       "doc": "Title for /transports record reply." }
+    "no_substrate": {
+      "text": "Transport-mode control not wired in this build.",
+      "doc": "/transport-mode or /transports called but agent.setTransportMode isn't exposed."
+    },
+    "bad_mode": {
+      "text": "Bad mode \"{{mode}}\". Pick nkn, relay, or both.",
+      "doc": "/transport-mode called with an invalid arg."
+    },
+    "mode_set": {
+      "text": "✓ Transport mode set: {{mode}}. Outbound peer sends now route this way.",
+      "doc": "/transport-mode succeeded."
+    },
+    "status_title": {
+      "text": "Transports",
+      "doc": "Title for /transports record reply."
+    }
+  },
+  "chat": {
+    "file": {
+      "open": {
+        "text": "Open",
+        "doc": "E1 — file-reply card: open the file URL in a new tab."
+      },
+      "unnamed": {
+        "text": "Untitled file",
+        "doc": "E1 — file-reply card fallback name when none is given."
+      }
+    }
   }
 }

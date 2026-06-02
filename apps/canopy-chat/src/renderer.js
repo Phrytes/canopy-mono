@@ -6,13 +6,16 @@
  * The DOM / RN adapter consumes this; v0.1 emits the data structure
  * so headless tests can verify rendering without a browser.
  *
- * v0.1 ships two reply shapes:
- *   - 'text'  — single message bubble.  Default for mutations.
- *   - 'list'  — list of items + per-item inline keyboard from
- *               `renderChat.inlineKeyboardFor()`.  Default for verb:'list'.
- *
- * Future phases add 'record' / 'mini-page' (v0.3), 'embed-card' /
- * 'notification' (v0.5), 'brief' (v0.7).
+ * All 9 canonical CHAT_REPLY_SHAPES (see app-manifest validate.js) now
+ * render:
+ *   - 'text'         — single message bubble.  Default for mutations.
+ *   - 'list'         — items + per-item inline keyboard.  Default for verb:'list'.
+ *   - 'record' / 'mini-page' — field panels (v0.3).
+ *   - 'find'         — /find aggregator output (v0.7.5).
+ *   - 'brief'        — Q30 morning-brief sections (v0.7).
+ *   - 'embed-card'   — embedded item card (J7, v0.5).
+ *   - 'notification' — lightweight alert bubble with a severity level (E1).
+ *   - 'file'         — single-file download/open card (E1).
  *
  * Phase v0.1 sub-slice 1.8 per `/Project Files/canopy-chat/coding-plan.md`.
  */
@@ -185,6 +188,42 @@ export function renderReply(reply, opts = {}) {
       messageId, threadId,
       lifecycleState: 'live',   // A2 hybrid — embed cards stay live until close
       embed:          reply.payload,
+    };
+  }
+
+  if (shape === 'notification') {
+    // E1 (§B#5) — lightweight alert bubble (e.g. a household notifier
+    // event, a rule-violation warning).  Payload carries an optional
+    // title + a body + a severity level the adapter colours on.
+    const p = reply.payload ?? {};
+    const level = ['info', 'success', 'warning', 'error'].includes(p.level)
+      ? p.level : 'info';
+    return {
+      kind: 'notification',
+      messageId, threadId,
+      lifecycleState: 'live',
+      title:     typeof p.title === 'string' ? p.title : undefined,
+      text:      formatText(p.text ?? p.body ?? p.message ?? p, t),
+      level,
+      timestamp: typeof p.timestamp === 'number' ? p.timestamp : undefined,
+    };
+  }
+
+  if (shape === 'file') {
+    // E1 (§B#5) — a single-file card (download / open).  Distinct from
+    // 'embed-card' (which wraps a full item envelope): this is the bare
+    // file metadata Folio / file-share replies carry.  Field aliases
+    // mirror the embed file-card snapshot shape.
+    const p = reply.payload ?? {};
+    return {
+      kind: 'file',
+      messageId, threadId,
+      lifecycleState: 'live',
+      name:        typeof (p.name ?? p.filename) === 'string' ? (p.name ?? p.filename) : '',
+      mime:        typeof (p.mime ?? p.contentType ?? p.type) === 'string' ? (p.mime ?? p.contentType ?? p.type) : undefined,
+      size:        typeof p.size === 'number' && Number.isFinite(p.size) ? p.size : undefined,
+      url:         typeof (p.url ?? p.href) === 'string' ? (p.url ?? p.href) : undefined,
+      description: typeof (p.description ?? p.caption) === 'string' ? (p.description ?? p.caption) : undefined,
     };
   }
 

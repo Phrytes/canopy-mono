@@ -83,6 +83,8 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
     case 'brief':      return renderBrief(rendered, state, ctx);
     case 'find':       return renderFind(rendered, state, ctx);
     case 'form':       return renderFormShape(rendered, state, ctx);
+    case 'notification': return renderNotification(rendered, state, ctx);  // E1
+    case 'file':         return renderFileReply(rendered, state, ctx);     // E1
     case 'embed-card': {
       // v0.5.5 — kind discriminator drives card layout.
       const variant = rendered.embed?.kind ?? 'item-card';
@@ -92,6 +94,83 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
     }
     default:           return renderUnknownShape(rendered, ctx);
   }
+}
+
+// E1 (§B#5) — notification bubble: a title (optional) + body, colour-keyed
+// by severity level via a data attribute the CSS keys on.
+function renderNotification(rendered, state, ctx) {
+  const { doc } = ctx;
+  const wrap = doc.createElement('div');
+  wrap.className = `cc-message cc-shell cc-notification cc-${state}`;
+  wrap.dataset.level = rendered.level ?? 'info';
+  if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
+  const bubble = doc.createElement('div');
+  bubble.className = 'cc-bubble cc-notification__bubble';
+  if (rendered.title) {
+    const title = doc.createElement('div');
+    title.className = 'cc-notification__title';
+    title.textContent = rendered.title;
+    bubble.appendChild(title);
+  }
+  const body = doc.createElement('div');
+  body.className = 'cc-notification__body';
+  body.textContent = rendered.text ?? '';
+  bubble.appendChild(body);
+  wrap.appendChild(bubble);
+  return wrap;
+}
+
+// E1 (§B#5) — file card: name + meta line (type · size), with an Open
+// link when the reply carries a url.
+function renderFileReply(rendered, state, ctx) {
+  const { doc } = ctx;
+  const wrap = doc.createElement('div');
+  wrap.className = `cc-message cc-shell cc-file cc-${state}`;
+  if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
+  const card = doc.createElement('div');
+  card.className = 'cc-bubble cc-file__card';
+
+  const name = doc.createElement('div');
+  name.className = 'cc-file__name';
+  name.textContent = rendered.name || '(unnamed file)';
+  card.appendChild(name);
+
+  const metaBits = [];
+  if (rendered.mime) metaBits.push(rendered.mime);
+  if (typeof rendered.size === 'number') metaBits.push(formatFileSize(rendered.size));
+  if (metaBits.length) {
+    const meta = doc.createElement('div');
+    meta.className = 'cc-file__meta';
+    meta.textContent = metaBits.join(' · ');
+    card.appendChild(meta);
+  }
+  if (rendered.description) {
+    const desc = doc.createElement('div');
+    desc.className = 'cc-file__desc';
+    desc.textContent = rendered.description;
+    card.appendChild(desc);
+  }
+  if (rendered.url) {
+    const link = doc.createElement('a');
+    link.className = 'cc-file__open';
+    link.href = rendered.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = (ctx.t ? ctx.t('chat.file.open') : 'Open');
+    card.appendChild(link);
+  }
+  wrap.appendChild(card);
+  return wrap;
+}
+
+// E1 — human-readable byte size (B / KB / MB / GB).
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes < 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let n = bytes / 1024, i = 0;
+  while (n >= 1024 && i < units.length - 1) { n /= 1024; i += 1; }
+  return `${n.toFixed(n < 10 ? 1 : 0)} ${units[i]}`;
 }
 
 function renderTextBubble(rendered, state, ctx) {
