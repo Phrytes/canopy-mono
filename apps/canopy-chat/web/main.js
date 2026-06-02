@@ -77,6 +77,9 @@ import {
   createPodWriter, discoverPodRoot,
   publishNknAddr, discoverPeerNknAddr,
 } from '../src/web/podStorage.js';
+// N5 — real-pod source for the folio Drive browser.  PodClient reads the
+// user's signed-in pod via session.fetch (no provisioned creds / #167).
+import { PodClient } from '@canopy/pod-client';
 
 /* ── DOM refs ──────────────────────────────────────────── */
 
@@ -937,6 +940,22 @@ podAuth.handleRedirect({ restorePreviousSession: true })
           }
           const writer = createPodWriter(session, podRoot ? { podRoot } : {});
           agent.setCalendarPodWriter(writer);
+
+          // N5 — light up the folio Drive's "My pod" source.  A PodClient
+          // over the session's authenticated fetch lets `listFiles({source:
+          // 'pod'})` walk the real pod container.  Best-effort; the in-app
+          // index source is unaffected if this fails.
+          if (typeof agent.setFolioPodSource === 'function' && writer.podRoot) {
+            try {
+              const podClient = new PodClient({
+                podRoot: writer.podRoot,
+                auth: { getAuthenticatedFetch: () => session.fetch },
+              });
+              agent.setFolioPodSource({ podClient, containerUri: writer.podRoot });
+            } catch (err) {
+              console.warn('[podAuth] folio pod-source wiring failed', err);
+            }
+          }
           // Surface the discovered pod root in the chat so the user
           // immediately knows where their data lives.
           publishEventRef({
@@ -1479,6 +1498,11 @@ const localBuiltins = createLocalBuiltins({
   onSignOut: () => {
     if (typeof agent.setCalendarPodWriter === 'function') {
       agent.setCalendarPodWriter(null);
+    }
+    // N5 — detach the folio Drive's real-pod source; "My pod" falls back
+    // to the connect-pod prompt until the next sign-in.
+    if (typeof agent.setFolioPodSource === 'function') {
+      agent.setFolioPodSource(null);
     }
   },
   // v0.7.P3a — expose the persistent agent identity (chat-side
