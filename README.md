@@ -220,7 +220,7 @@ npm start                                         # subsequent JS-only changes
 
 ## Status
 
-**Research preview / PoC (NLnet).**  The SDK package boundaries are stable
+**Research preview / PoC.**  The SDK package boundaries are stable
 and core is in active development.  As of the current milestone:
 
 - **canopy-chat web + `canopy-chat-mobile` shells are live**, both composing
