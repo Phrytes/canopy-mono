@@ -5,6 +5,10 @@ it, and which processes/mechanisms still need to be developed.
 Implementation status is intentionally omitted — assess against the
 repository.*
 
+*Companion docs: `feedback-pipeline-build-proposal-en.md` (the pipeline layer +
+decisions), `feedback-pipeline-user-stories-en.md` (how it is used, end to end),
+`feedback-pipeline-ethics-deferred-en.md` (parked hard questions).*
+
 **Guiding principle throughout: every promise is replaced by a
 mechanism.** Consent = a write action, confidentiality = key location,
 "we don't look" = "we can't look" (and where the latter is *not* true,

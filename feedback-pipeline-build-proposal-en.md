@@ -4,7 +4,8 @@
 on the **pipeline layer**: the LLM tasks, the deterministic floors, the signal
 track, the consent flow, and quality evaluation — and where the existing
 `apps/feedback-pipeline` code lands. Abstract on purpose: component
-responsibilities and data flow, not code. Open decisions are collected in §8.*
+responsibilities and data flow, not code. Open decisions are collected in §8.
+For how it all comes together in use, see `feedback-pipeline-user-stories-en.md`.*
 
 ---
 

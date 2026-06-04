@@ -15,6 +15,15 @@
 import { floorMessage } from './floors/index.js';
 import { cleanMessage, summarize } from './pipeline.js';
 
+/** Does an on-device (Layer-1) signal ACT as an escalation for this project?
+ *  Only if Layer-1 is enabled AND the detected category is in the project's
+ *  escalation list. Otherwise the message stays a normal point (Layer-2, the
+ *  server-side LLM pass in Task 2, remains the reliable backstop). */
+export function escalates(signal, { layer1OnDevice = true, escalationCategories = null } = {}) {
+  if (!signal || !layer1OnDevice) return false;
+  return !escalationCategories || escalationCategories.includes(signal.category);
+}
+
 /** Parse a summarised bullet list into structured, addressable points. */
 export function parsePoints(text) {
   return String(text || '')
@@ -39,6 +48,9 @@ export function parsePoints(text) {
  */
 export async function runTask1(model, rawMessages, opts = {}) {
   const userDefault = opts.userDefault || opts.lang;
+  // Layer-1 (on-device) signal handling is per-project (ProjectConfig.signal):
+  // provisional/off by default in a config, but ON by default for a direct call.
+  const gate = { layer1OnDevice: opts.layer1OnDevice ?? true, escalationCategories: opts.escalationCategories || null };
   const perMessage = [], rejected = [], signals = [];
 
   for (const raw of rawMessages) {
@@ -48,16 +60,18 @@ export async function runTask1(model, rawMessages, opts = {}) {
     const rec = {
       raw, cleaned: c.cleaned ?? `⚠ ${c.error}`, lang: c.lang || fm.lang,
       signal: fm.signal, sensitive: fm.sensitive, flags: fm.flags,
+      escalated: escalates(fm.signal, gate),
       hits: (c.hits || []).map((h) => h.type),
     };
     perMessage.push(rec);
-    if (fm.signal) signals.push(rec);   // escalation category → signal-spoor offer (opt-in, D3/D4)
+    if (rec.escalated) signals.push(rec);   // → signal-spoor offer (opt-in, D3/D4)
   }
 
-  // The point list (→ central pod, statistical track) is built from the NON-signal
-  // messages: serious individual incidents go to the signal-spoor, not the anonymous
-  // aggregate. Whether a signal ALSO enters the aggregate is a consent decision (deferred).
-  const regular = perMessage.filter((m) => !m.signal);
+  // The point list (→ central pod, statistical track) is built from the messages NOT
+  // escalated on-device: serious individual incidents go to the signal-spoor, not the
+  // anonymous aggregate. (When Layer-1 is off, nothing escalates here — Layer-2 in
+  // Task 2 catches it.) Whether a signal ALSO enters the aggregate is a deferred decision.
+  const regular = perMessage.filter((m) => !m.escalated);
   const lang = opts.lang || regular[0]?.lang || perMessage[0]?.lang || 'nl';
   let points = [];
   if (regular.length === 1) {

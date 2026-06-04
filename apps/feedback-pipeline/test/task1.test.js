@@ -4,7 +4,17 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePoints } from '../src/task1.js';
+import { parsePoints, escalates } from '../src/task1.js';
+
+test('escalates() gates on Layer-1 enabled + category in the project list', () => {
+  const sig = { category: 'crisis', via: 'crisis-lexicon' };
+  assert.equal(escalates(null), false);                                              // no signal
+  assert.equal(escalates(sig, { layer1OnDevice: false }), false);                     // Layer-1 off
+  assert.equal(escalates(sig, { layer1OnDevice: true }), true);                       // on, all categories
+  assert.equal(escalates(sig, { layer1OnDevice: true, escalationCategories: ['safety'] }), false);  // not enabled
+  assert.equal(escalates(sig, { layer1OnDevice: true, escalationCategories: ['crisis', 'safety'] }), true);
+  assert.equal(escalates(sig), true);                                                 // default: on, all
+});
 
 test('parsePoints extracts addressable points from a bullet list', () => {
   const pts = parsePoints('- GGZ wachtlijst te lang\n- Parkeren te duur\n\nsome preamble\n• Afval te weinig geleegd');
