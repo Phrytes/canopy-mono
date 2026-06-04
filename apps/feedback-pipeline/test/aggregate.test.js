@@ -3,7 +3,22 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { partitionByThreshold } from '../src/aggregate.js';
+import { partitionByThreshold, routesToSignalLabel } from '../src/aggregate.js';
+
+test('routesToSignalLabel: floor-confirmed always escalates, LLM-only is project-gated', () => {
+  // a deterministically-confirmed signal (via set) always routes, even if the
+  // project did not list the category — the guarantee.
+  assert.equal(routesToSignalLabel({ signal: 'crisis', via: 'crisis-lexicon' }, ['safety']), true);
+  // an LLM-only signal is gated by the project's escalation list.
+  assert.equal(routesToSignalLabel({ signal: 'crisis' }, ['safety']), false);   // not enabled
+  assert.equal(routesToSignalLabel({ signal: 'crisis' }, ['crisis']), true);    // enabled
+  assert.equal(routesToSignalLabel({ signal: 'crisis' }, null), true);          // no filter = all
+  // integrity is a sensitive singleton — always pulled out, not project-gated.
+  assert.equal(routesToSignalLabel({ signal: 'integrity' }, ['safety']), true);
+  // non-escalation, non-integrity → never a signal.
+  assert.equal(routesToSignalLabel({ signal: 'none' }, null), false);
+  assert.equal(routesToSignalLabel(null), false);
+});
 
 const groups = {
   parking:       { users: new Set(['p1', 'p3', 'p7', 'p10']), msgs: [1, 2, 3, 4] },
