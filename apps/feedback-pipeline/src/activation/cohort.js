@@ -86,6 +86,27 @@ export class InMemoryCohortRegistry {
   }
 
   activationCount(projectId) { return this.#req(projectId).count; }
+  getSpec(projectId) { return this.#req(projectId).spec; }
+  projectIds() { return [...this.#projects.keys()]; }
+
+  /** Serialise registry state (Sets → arrays) for a file-backed store. NOTE: the
+   *  signing secret is included for dev convenience; in production it lives in a
+   *  secret store, separate from the spent/records data. */
+  toJSON() {
+    const out = {};
+    for (const [pid, p] of this.#projects) {
+      out[pid] = { spec: p.spec, secret: p.secret, spent: [...p.spent], count: p.count, records: p.records };
+    }
+    return out;
+  }
+
+  static fromJSON(obj) {
+    const reg = new InMemoryCohortRegistry();
+    for (const [pid, p] of Object.entries(obj || {})) {
+      reg.#projects.set(pid, { spec: p.spec, secret: p.secret, spent: new Set(p.spent || []), count: p.count || 0, records: p.records || [] });
+    }
+    return reg;
+  }
 
   #req(projectId) {
     const p = this.#projects.get(projectId);

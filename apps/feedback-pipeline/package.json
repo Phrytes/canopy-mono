@@ -14,7 +14,8 @@
     "full-pipeline": "node scripts/full-pipeline-smoke.js",
     "simulate-participation": "node scripts/simulate-participation.js",
     "mcp": "node src/mcp/server.js",
-    "mcp-smoke": "node scripts/mcp-smoke.js"
+    "mcp-smoke": "node scripts/mcp-smoke.js",
+    "cohort": "node scripts/cohort-cli.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

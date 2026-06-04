@@ -46,6 +46,19 @@ test('amnesic: redeem stores only recovery-hash ↔ pod-ref; claim by recovery p
   assert.equal(reg.claimByRecovery('proj-1', 'wrong'), null);
 });
 
+test('registry survives JSON round-trip (the file-backed CLI store)', () => {
+  const reg = new InMemoryCohortRegistry();
+  reg.registerProject(SPEC, SECRET);
+  const [c1, c2] = reg.generateCodes('proj-1', 2);
+  reg.redeem('proj-1', c1, NOW, { recoveryHash: 'h1', podRef: 'pod://1' });
+
+  const reloaded = InMemoryCohortRegistry.fromJSON(JSON.parse(JSON.stringify(reg.toJSON())));
+  assert.equal(reloaded.activationCount('proj-1'), 1);
+  assert.equal(reloaded.validate('proj-1', c1, NOW).reason, 'code already used'); // spent survived
+  assert.deepEqual(reloaded.validate('proj-1', c2, NOW), { ok: true });           // unspent valid
+  assert.equal(reloaded.getSpec('proj-1').ceiling, 2);
+});
+
 test('activate() orchestration: validate → provision (substrate stub) → redeem', async () => {
   const reg = new InMemoryCohortRegistry();
   reg.registerProject(SPEC, SECRET);
