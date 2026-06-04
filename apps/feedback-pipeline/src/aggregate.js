@@ -75,8 +75,12 @@ export async function aggregateWithThreshold(model, items, opts = {}) {
       if (trace) { trace[idx].track = 'rejected'; trace[idx].reason = reason; }
       continue;
     }
-    const c = await cleanMessage(model, it.text, { userLang: it.lang, ...opts });
-    cleaned.push({ user: it.user, raw: it.text, text: c.cleaned ?? `⚠ ${c.error}`, lang: c.lang, hits: c.hits.map((h) => h.type), _idx: idx });
+    // skipClean: the items are already cleaned + CONSENTED (e.g. from the central
+    // pod) — do not re-edit them, only label + aggregate.
+    const c = opts.skipClean
+      ? { cleaned: it.text, lang: it.lang || lang, hits: [] }
+      : await cleanMessage(model, it.text, { userLang: it.lang, ...opts });
+    cleaned.push({ user: it.user, raw: it.text, text: c.cleaned ?? `⚠ ${c.error}`, lang: c.lang, hits: (c.hits || []).map((h) => h.type), _idx: idx });
   }
 
   // step 5a — label cleaned messages (LLM + deterministic crisis/safety nets).
