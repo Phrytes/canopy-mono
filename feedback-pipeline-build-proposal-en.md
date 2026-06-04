@@ -292,3 +292,33 @@ scorer) is the quality gate, re-run on every change to a model, prompt, lexicon,
 floor. Rule: unit + integration must be green to merge; the battery numbers must not
 drop. The infra phases (2–5) add their own integration tests (pod read/write against a
 mock pod, activation flow, channel adapters) as they land.
+
+---
+
+## 11. What already exists — check before building
+
+Before scaffolding anything, check **both** layers so we compose instead of duplicate.
+
+**Canopy substrate (`packages/`) — covers most of architecture §1 infra:**
+- `pod-onboarding` — pod seeding + ACP/ACL templates + restore/claim
+  (`createPodOnboarding`, `provisionDefault`, `restoreFromMnemonic`).
+- `vault` — client-side key/token storage, platform-portable
+  (`VaultIndexedDB` / `VaultLocalStorage` / `VaultNodeFs`).
+- `agent-provisioning` — one-call `provisionAgent`.
+- `oidc-session` — Solid-OIDC login.
+- `pod-client` — pod read/write/list/patch + capability + encryption + tombstones (deletion).
+- `pseudo-pod` — local Solid-shaped store.
+- `identity-resolver` — pseudonyms / identity reconciliation.
+
+So the activation service, the pods, the browser keys, and consent-as-write are mostly
+**orchestration over these** — not new code. (The injected `provisionPod` in
+`src/activation/activate.js` is exactly such a seam onto `pod-onboarding`.)
+
+**feedback-pipeline (`apps/feedback-pipeline/src/`) — the pipeline brain, already built:**
+- `floors/` (`floorMessage`), `task1` (`runTask1`), `aggregate` (k-anon + signal
+  routing + below-threshold), `run` (config-driven entry points), `config/project-config`
+  (the form), `pod/` (Phase-2 central-pod data layer), `activation/` (Phase-3 cohort
+  codes), `score-dataset` (eval), `mcp/` (the read-only MCP server).
+
+The net-new per phase is small and feedback-specific (Phase 3 = the cohort-code
+lifecycle); everything else is reused or orchestrated.
