@@ -3,7 +3,18 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateProjectConfig, exampleProjectConfig } from '../src/config/project-config.js';
+import { validateProjectConfig, configToRunOpts, exampleProjectConfig } from '../src/config/project-config.js';
+
+test('configToRunOpts maps the form to runtime opts', () => {
+  const o = configToRunOpts(exampleProjectConfig);
+  assert.equal(o.model, 'qwen2.5:7b-instruct');
+  assert.equal(o.kThreshold, 4);
+  assert.equal(o.lang, 'nl');
+  assert.equal(o.userDefault, 'nl');
+  assert.equal(o.layer1OnDevice, false);
+  assert.deepEqual(o.escalationCategories, ['crisis', 'safety']);
+  assert.equal(o.belowThreshold, 'quarantine');
+});
 
 test('the worked example validates and fills defaults', () => {
   const cfg = validateProjectConfig(exampleProjectConfig);

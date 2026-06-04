@@ -76,6 +76,24 @@ export function validateProjectConfig(raw) {
   return ProjectConfigSchema.parse(raw);
 }
 
+/** Map a (validated) ProjectConfig to the runtime opts that runTask1 / aggregate
+ *  consume — the seam between the per-project "form" and the pipeline. The LLM
+ *  route's baseURL/apiKey come from the environment (see src/ollama.js); the model
+ *  comes from the config. */
+export function configToRunOpts(config) {
+  const c = validateProjectConfig(config);
+  return {
+    model: c.llm.model,
+    lang: c.language.preferred,
+    userDefault: c.language.preferred,
+    kThreshold: c.aggregation.k,
+    belowThreshold: c.aggregation.belowThreshold,
+    layer1OnDevice: c.signal.layer1OnDevice,
+    escalationCategories: c.signal.escalationCategories,
+    reviewMode: c.review.mode,
+  };
+}
+
 /** A worked example: a civic participation project on the local route (dev). */
 export const exampleProjectConfig = {
   projectId: 'gemeente-x-wijkvernieuwing-2026',
