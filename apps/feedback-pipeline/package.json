@@ -1,0 +1,24 @@
+{
+  "name": "@canopy-app/feedback-pipeline",
+  "version": "0.0.1",
+  "description": "Local-LLM message clean/anonymize + dedup-summarize pipeline (feedback-infrastructuur step 3+5). Experiment / pre-DD.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "clean-smoke": "node scripts/clean-smoke.js",
+    "pipeline-smoke": "node scripts/pipeline-smoke.js",
+    "summarize-smoke": "node scripts/summarize-smoke.js",
+    "scenario-smoke": "node scripts/scenario-smoke.js",
+    "triage-smoke": "node scripts/triage-smoke.js",
+    "full-pipeline": "node scripts/full-pipeline-smoke.js",
+    "simulate-participation": "node scripts/simulate-participation.js",
+    "mcp": "node src/mcp/server.js",
+    "mcp-smoke": "node scripts/mcp-smoke.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "eld": "^2.0.3",
+    "zod": "^4.4.3"
+  }
+}

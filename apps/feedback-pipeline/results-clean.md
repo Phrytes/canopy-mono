@@ -1,0 +1,18 @@
+# Clean / anonymize — step1 regex + step2 LLM
+
+prompt v5, temperature 0, Ollama @ http://localhost:11434.
+Models: qwen2.5:7b-instruct
+
+
+### qwen2.5:7b-instruct
+
+| id | lang (fx→detected) | raw → redacted (regex hits) → cleaned | ms | tokens kept |
+|----|--------------------|----------------------------------------|----|-------------|
+| en-1 | en→en | **raw:** Can someone PLEASE tell Mark that his damn car is blocking the driveway again, call him on 06-1234 5678 if he doesn't move that piece of shit.<br>**redacted (phone, name):** Can someone PLEASE tell [naam] that his damn car is blocking the driveway again, call him on [telefoonnummer] if he doesn't move that piece of shit.<br>**cleaned:** Can someone please tell [naam] their car is blocking the driveway again? Call them on [telefoonnummer] if it needs to be moved. | 29488 | ✓ |
+| en-2 | en→en | **raw:** we're out of milk and bread, also Sarah still owes me 20 euros from the pizza, email her sarah.jansen@gmail.com<br>**redacted (email, name):** we're out of milk and bread, also [naam] still owes me 20 euros from the pizza, email her [e-mailadres]<br>**cleaned:** we're out of milk and bread. Also, [naam] still owes me 20 euros for the pizza. Email her at [e-mailadres]. | 8372 | ✓ |
+| nl-1 | nl→nl | **raw:** Godverdomme de wasmachine is wéér kapot, bel de monteur Jan op 0612345678 of mail jan@reparatie.nl, dit is echt klote.<br>**redacted (email, phone, name):** Godverdomme de wasmachine is wéér kapot, bel de monteur [naam] op [telefoonnummer] of mail [e-mailadres], dit is echt klote.<br>**cleaned:** De wasmachine is weer kapot. Bel de monteur [naam] op [telefoonnummer] of mail [e-mailadres]. | 56399 | ✓ |
+| nl-2 | nl→nl | **raw:** Kan iemand de huur overmaken naar IBAN NL12 RABO 0123 4567 89 voor vrijdag? En zeg tegen die luie hufter van een Peter dat hij de afwas moet doen.<br>**redacted (iban, name):** Kan iemand de huur overmaken naar IBAN [rekeningnummer] voor vrijdag? En zeg tegen die luie hufter van een [naam] dat hij de afwas moet doen.<br>**cleaned:** Kan iemand de huur overmaken naar IBAN [rekeningnummer] voor vrijdag? En zeg tegen de buurman dat hij de afwas moet doen. | 15472 | ✓ |
+| en-3 | en→en | **raw:** good morning everyone!! hope you all slept well, beautiful day today 😄<br>**redacted (—):** good morning everyone!! hope you all slept well, beautiful day today 😄<br>**cleaned:** Good morning everyone! Hope you all slept well. Beautiful day today 😄 | 30820 | ✓ |
+| nl-3 | nl→nl | **raw:** We wonen op Kerkstraat 12 in Utrecht — de pakketbezorger moet bij de buren zijn, niet bij ons, stomme idioot.<br>**redacted (address):** We wonen op [adres] in Utrecht — de pakketbezorger moet bij de buren zijn, niet bij ons, stomme idioot.<br>**cleaned:** We wonen op [adres] in Utrecht — de pakketbezorger moet bij de buren zijn, niet bij ons. | 41235 | ✓ |
+| nl-4 | nl→nl | **raw:** Lisa woont op postcode 3512 JK, vraag haar of ze de reservesleutel teruggeeft, het is echt een rotzooi daar.<br>**redacted (postcode, name):** [naam] woont op postcode [postcode], vraag haar of ze de reservesleutel teruggeeft, het is echt een rotzooi daar.<br>**cleaned:** [iemand] woont op postcode [postcode]. Vraag haar of ze de reservesleutel teruggeeft, het is echt een rotzooi daar. | 9435 | ✓ |
+| en-4 | en→en | **raw:** John shared the signup form at https://forms.example/abc123 — fill it in already you lazy idiots!<br>**redacted (url, name):** [naam] shared the signup form at [link] — fill it in already you lazy idiots!<br>**cleaned:** [naam] shared the signup form at [link] — please fill it in. | 34546 | ✓ |
