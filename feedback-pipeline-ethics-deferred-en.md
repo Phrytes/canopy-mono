@@ -55,3 +55,34 @@ above: acute crisis, justice/slachtofferhulp, child-safety, whistleblower-grade.
 Start lower-stakes — OR feedback, civic participation, general patient-experience
 without acute-crisis routing — where the standard tracks suffice and none of these
 questions block delivery.
+
+## 7. Real-life data testing is a later polishing phase — TODO
+
+For now, quality is measured offline on synthetic gold datasets + the scorer (build
+proposal §7); the build focuses on the necessary main parts. Evaluating on **real
+project data** — to polish the pipeline against phrasings and edge cases the
+synthetic sets miss — is a deliberate **later** phase, not a blocker. It is also
+harder: we cannot look freely (privacy is the point), so it needs a protocol with the
+curator/raad and explicit participant consent for any sampling.
+**TODO: design a privacy-respecting real-data evaluation protocol before scaling.**
+
+## 8. Tracked list — escalation categories (D3) and signal destinations (D4)
+
+**Escalation categories (D3) — kept here as the list grows.** Detected categories
+that (when enabled) trigger the signal-track offer:
+- `crisis` — self-harm / suicidal (passive 113 always)
+- `child-safety` — active risk to a minor
+- `medical-emergency` — acute clinical deterioration
+- `abuse` — physical/psychological violence, coercion
+- `safety` — imminent physical danger
+- `harassment` — sexual harassment / unwanted advances
+
+Sensitive-but-NOT-escalation (may aggregate or quarantine, never escalate):
+`integrity`/fraud, `discrimination`, `retaliation`. Which categories are enabled, and
+at which layer, is per project — and for the acute ones an ethics call.
+
+**Signal destinations (D4) — per project.** Who receives a routed signal depends
+entirely on the project and is set at project setup: a vertrouwenspersoon, a meldpunt,
+an OR-vertrouwenscommissie, a klokkenluider-loket, or 113 / professional help for
+crisis. No universal default — part of the project configuration, and for sensitive
+domains a governance decision.

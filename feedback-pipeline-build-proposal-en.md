@@ -102,32 +102,48 @@ never leave the participant's own pod.
 
 ---
 
-## 5. The signal track (your point 3)
+## 5. The signal track — two complementary layers
 
-Serious individual incidents must not be diluted into a statistical aggregate or
-silently dropped. Detection runs **alongside the floors** in Task 1 (our crisis /
-safety / abuse / harassment / child-safety lexicons), so it works on-device for
-canopy-chat.
+Serious individual incidents must not be diluted into the statistical aggregate or
+silently dropped. There are **two detection layers** with different strengths; they
+are not redundant.
 
-Two distinct responses, kept separate on purpose:
+**Layer 1 — on-device, deterministic, in Task 1 (provisional, test first).** The
+floor lexicons (crisis / safety / abuse / harassment / child-safety) run alongside
+the floors on the participant's device. Its unique value is being *in the moment*:
+it can surface **passive support immediately** (show 113 the instant someone types a
+crisis line) and make the **early escalation offer** before the message is ever
+uploaded. Limits: it only works for **canopy-chat** (TG has no device agent to run
+it), and lexicon recall is uncertain. So it is **provisional** — something to test
+for effectiveness, not a guaranteed step of the procedure.
 
-- **Passive support (always).** When the crisis lexicon fires, the channel always
-  surfaces help resources (e.g. 113) — showing a number is not the same as routing
-  a report, and costs nothing to always do.
-- **Active routing (opt-in).** A serious-flagged point triggers an explicit offer:
-  "this looks urgent — send it directly to *X*, outside the anonymous aggregate?"
-  If the participant agrees, the point goes to a **separate signal destination**
-  configured per project (vertrouwenspersoon, meldpunt, OR-committee), **bypassing
-  k-anonymity** and **never** entering the central statistical pod. If they
-  decline, it is handled like any other point (and quarantined for human review
-  rather than dropped, if below threshold).
+**Layer 2 — server-side, LLM, after upload (the reliable backstop).** An LLM signal
+pass over the **consented content in the central pod**. This *largely already
+exists* in the Task-2 aggregation: the LLM labels signal categories and `isSignal`
+pulls them OUT before the k-anonymity step. It is **TG-compatible** (server-side, no
+device needed) and catches what the lexicons miss. A point the LLM flags is pulled
+out of the statistical aggregate and routed to the signal destination; the
+`confirmed` flag records whether a deterministic floor also fired.
 
-The system **detects and offers**; the participant **decides**. That keeps the
-signal track inside the consent principle. The harder question — whether an *acute*
-crisis warrants more than offer-and-opt-in — is a genuine ethical one, deferred to
-`feedback-pipeline-ethics-deferred-en.md`; the first business cases avoid
-acute-crisis domains, so it does not block anything now. What stays operational here
-is *which categories* trigger the offer and *where* a routed signal goes (D3–D4).
+**Responses (both layers feed the same two):**
+- **Passive support (always).** When a crisis is detected, surface help resources
+  (113). Layer 1 does this in the moment; Layer 2 can prompt it at review.
+- **Active routing (opt-in).** Route the flagged point to a per-project destination
+  (vertrouwenspersoon / meldpunt / OR-committee), **bypassing k-anonymity** and
+  pulling it out of the central statistical pod — with the participant's consent (or
+  a pre-agreed project policy).
+
+**Timing caveat.** Layer 2 runs after upload, so for an *acute* crisis it is late
+and the content has transited the central pod. That is acceptable for the first
+business cases (which avoid acute-crisis domains — see the ethics doc) and for
+non-acute sensitive signals (integrity, discrimination) that were aggregation-
+eligible anyway. Real-time acute-crisis handling, if ever needed, leans on Layer 1
+or a pod-write-time check — a later decision.
+
+Operational: *which categories* trigger routing (D3) and *where* (D4). Whether
+Layer 1 is enabled at all per project is itself a test/decision, not a fixed step.
+The harder acute-crisis ethics question stays deferred to
+`feedback-pipeline-ethics-deferred-en.md`.
 
 ---
 
@@ -184,21 +200,39 @@ the public quality figure; the transparency report carries the live counts.
 - **D1 — Route policy per tier.** Privatemode as default; OVH for low-sensitivity;
   within-walls for premises-bound; local for dev/air-gap. Is *local-on-our-VPS*
   acceptable for any production tier, or only customer-premises + dev?
+There is no default, every project has their own needs. So we need a form I think as one of the deliverables of this coding session.
 - **D2 — Review touchpoint.** Is the per-message cleaned review always required,
   always just a notification, or per-project configurable? (I propose configurable,
   default = notification, with required-approval for sensitive tiers.)
+Yes configurable
 - **D3 — Escalation categories.** Which detected categories trigger the escalation
   offer (crisis / safety / abuse / harassment / child-safety)?
+Lets just keep track of a list while creating this. Add it to the ethical doc too
 - **D4 — Signal destinations per project.** Who receives a routed signal, set at
   project setup (vertrouwenspersoon / meldpunt / 113 / OR-committee)?
+depends on the project. Please add this to the ethical doc too!
 - **D5 — k value + below-threshold policy.** k per project (4–7?), and: drop,
   rephrase-until-untraceable, or quarantine-for-review for sub-threshold points?
+again, it depends on the project
 - **D6 — Dedup model.** Confirm two-level: per-participant dedup → point list
   (Task 1), then cross-participant cluster + threshold (Task 2).
+sounds good
 - **D7 — Eval ownership + publication.** Which figures do we publish, how often does
   the battery run, and who owns/audits the gold (us / independent / the raad)?
+depends on the project
 - **D9 — Retention in the own pod.** How long do raw + cleaned messages live in the
   participant's own pod (until they delete / project end / fixed window)?
+depends on the project
+
+> **Captured as the project-config "form" (D1).** Since almost every answer is "depends
+> on the project", these choices are now a per-project configuration schema —
+> `apps/feedback-pipeline/src/config/project-config.js` (a zod schema that validates a
+> config and can drive a UI form later). One filled-in config parameterises a whole
+> deployment: route (D1), review mode (D2), k + below-threshold (D5), escalation
+> categories + destinations (D3/D4), retention (D9), eval (D7). Defaults exist only
+> where configurable-with-default (review = notification, language = nl); the
+> per-project fields are required. D3's category list + D4's destinations are also
+> tracked in the ethics doc §8.
 
 ### Deferred — ethical / hard questions
 
