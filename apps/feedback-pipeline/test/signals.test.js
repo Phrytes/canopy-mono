@@ -110,6 +110,13 @@ test('widened crisis lexicon catches indirect zorg phrasings (the B misses)', ()
   ]) assert.equal(detectCrisis(s).isCrisis, true, `missed: "${s}"`);
 });
 
+test('crisis: "het niet meer zien zitten" with inverted word order (Task-1 smoke miss)', () => {
+  assert.equal(detectCrisis('Eerlijk gezegd zie ik het soms niet meer zitten').isCrisis, true);
+  assert.equal(detectCrisis('ik zie het niet meer zitten').isCrisis, true);
+  // literal sitting is not crisis
+  assert.equal(detectCrisis('ik kan hier niet meer zitten, mijn rug').isCrisis, false);
+});
+
 test('FALSE POSITIVE fixed: bare "ermee stoppen" (quitting anything) is NOT crisis', () => {
   // a parking complaint "ik wil ermee stoppen" was mislabelled crisis → 113.
   assert.equal(detectCrisis('ik wil ermee stoppen bij deze polikliniek').isCrisis, false);

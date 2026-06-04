@@ -34,7 +34,9 @@ const CRISIS = [
   /\bhoeveel pillen\b/i,                                   // planning
   /\bpillen\b.{0,20}\b(opgespaard|verzameld|genoeg|tegelijk|allemaal)\b/i, // overdose-specific (not "pillen aannemen")
   /\bgeen uitweg\b/i, /\b(zoek|heb)\s+een uitweg\b/i,
-  /\bik zie het (echt )?niet meer zitten\b/i,
+  // "het niet meer zien zitten" — allow inverted word order ("zie ik het …")
+  // and intervening words (Task-1 smoke missed "zie ik het soms niet meer zitten").
+  /\b(?:zie|ziet|zien|zag)\b[^.!?]{0,15}\bhet (?:echt |soms |allemaal |gewoon )?niet meer (?:zo )?zitten\b/i,
   /\bgeen zin meer in (het )?leven\b/i,
   /\bhet (leven )?niet meer aankan\b/i,
   // passive hopelessness (the civic r4 widower miss): "weet niet meer waar ik
