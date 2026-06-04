@@ -14,10 +14,13 @@
 // hook + usage metering) once the app joins the pnpm workspace — see
 // feedback-pipeline-build-proposal-en.md.
 
-const RAW_BASE = process.env.FP_LLM_BASEURL
-  || (process.env.OLLAMA_URL ? `${process.env.OLLAMA_URL.replace(/\/+$/, '')}/v1` : 'http://localhost:11434/v1');
-const BASE = RAW_BASE.replace(/\/+$/, '');
-const API_KEY = process.env.FP_LLM_APIKEY || '';
+// Resolve the route at CALL time (not import time) so the config block is dynamic
+// and tests can point it at a mock server.
+function resolveRoute() {
+  const raw = process.env.FP_LLM_BASEURL
+    || (process.env.OLLAMA_URL ? `${process.env.OLLAMA_URL.replace(/\/+$/, '')}/v1` : 'http://localhost:11434/v1');
+  return { base: raw.replace(/\/+$/, ''), apiKey: process.env.FP_LLM_APIKEY || '' };
+}
 
 /**
  * One non-streaming chat completion (OpenAI-compatible).
@@ -33,15 +36,16 @@ const API_KEY = process.env.FP_LLM_APIKEY || '';
  */
 export async function chat(model, system, user, opts = {}) {
   const { examples = [], timeoutMs = 300000, temperature = 0, numPredict = 512 } = opts;
+  const { base, apiKey } = resolveRoute();
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   const t0 = Date.now();
   try {
-    const res = await fetch(`${BASE}/chat/completions`, {
+    const res = await fetch(`${base}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {}),
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
       },
       signal: ctrl.signal,
       body: JSON.stringify({
@@ -72,6 +76,7 @@ export async function chat(model, system, user, opts = {}) {
   }
 }
 
-/** The active route's base URL (for diagnostics). */
-export const OLLAMA_BASE = BASE;
-export const LLM_BASE = BASE;
+/** The active route's base URL (resolved live, for diagnostics). */
+export const llmBase = () => resolveRoute().base;
+export const OLLAMA_BASE = llmBase();   // import-time snapshot
+export const LLM_BASE = OLLAMA_BASE;

@@ -14,10 +14,22 @@
 // their filtered messages, so the cleaned text goes straight to aggregation.
 
 import { cleanMessage, translate, summarize } from './pipeline.js';
-import { labelMessages, isSignal, canonicalDomain } from './triage.js';
+import { labelMessages, canonicalDomain } from './triage.js';
 import { isSensitiveDomain, detectReident, detectSensitiveContent, detectContactRequest, sensitivityFlags } from './signals.js';
-import { sensitiveCategory, rejectReason } from './categories.js';
+import { sensitiveCategory, rejectReason, ESCALATION_CATEGORIES } from './categories.js';
 import { PREFERRED_LANGUAGE } from './config.js';
+
+/** Layer-2 (server-side) signal routing gate. An LLM-labelled escalation routes to
+ *  the signal track only if the project enables that category; a floor-confirmed
+ *  signal (`via` set) always routes (the deterministic guarantee). `integrity` is a
+ *  sensitive singleton that is always pulled out, not subject to the project filter. */
+export function routesToSignalLabel(label, escalationCategories = null) {
+  if (!label) return false;
+  if (label.signal === 'integrity') return true;
+  if (!ESCALATION_CATEGORIES.includes(label.signal)) return false;
+  if (label.via) return true;                                       // floor-confirmed
+  return !escalationCategories || escalationCategories.includes(label.signal);
+}
 
 /**
  * Pure: split domain groups into those meeting the k-threshold and those
@@ -44,6 +56,8 @@ export function partitionByThreshold(groups, k) {
 export async function aggregateWithThreshold(model, items, opts = {}) {
   const k = opts.kThreshold ?? 3;
   const lang = opts.lang || PREFERRED_LANGUAGE;
+  const escCats = opts.escalationCategories || null;          // D3 — Layer-2 escalation filter
+  const belowThreshold = opts.belowThreshold || 'drop';       // D5 — drop | quarantine | rephrase
 
   // step 2.5 — reject prompt-injection / exfiltration attempts BEFORE cleaning
   // (they are attacks, not feedback). step 3 — clean the rest.
@@ -74,7 +88,7 @@ export async function aggregateWithThreshold(model, items, opts = {}) {
   cleaned.forEach((c, i) => {
     const l = labels[i];
     const sensitiveMsg = detectReident(c.raw).isReident || detectSensitiveContent(c.raw).isSensitive || !!sensitiveCategory(c.raw);
-    if (isSignal(l)) {
+    if (routesToSignalLabel(l, escCats)) {
       signals.push({
         user: c.user, text: c.text, signal: l.signal, severity: l.severity,
         via: l.via || 'LLM',
@@ -110,11 +124,15 @@ export async function aggregateWithThreshold(model, items, opts = {}) {
   // FIX #1 (hardened) — never delete a SENSITIVE below-threshold theme:
   // quarantine it to a human-review queue (with its messages). Sensitivity =
   // sensitive domain OR a deterministic content/re-id hit on any message.
+  // D5 below-threshold policy: a SENSITIVE below-k theme is ALWAYS quarantined (the
+  // never-silently-drop guarantee). For a NON-sensitive theme the project policy
+  // decides: 'drop' (default) discards it; 'quarantine'/'rephrase' send it to review.
+  // ('rephrase'-until-untraceable is not yet implemented — treated as quarantine. TODO.)
   const review = [], dropped = [];
   for (const d of belowK) {
     const g = groups[d.theme];
     const byDomain = isSensitiveDomain(d.theme);
-    if (byDomain || g.sensitive) {
+    if (byDomain || g.sensitive || belowThreshold === 'quarantine' || belowThreshold === 'rephrase') {
       // Refinement B — re-label by DETECTED sensitivity and attach per-message
       // flags so a soft/wrong theme label ("workload") doesn't lull the human
       // reviewer. The flags are DERIVED from the raw text, but the raw text is

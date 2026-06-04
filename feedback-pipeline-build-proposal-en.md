@@ -276,3 +276,19 @@ trigger these, so they are parked but tracked — not forgotten.
 
 Phase 0 is the only thing that needs nothing decided except D3–D4; the rest waits
 on the §8 decisions.
+
+### Testing discipline (every phase)
+
+Each phase ships with **both**:
+- **Unit tests** for pure logic (floors, lexicons, gates, the config schema, point
+  parsing) — fast, no I/O.
+- **Integration tests** that exercise the real composition (floors → clean → dedup →
+  route; the Task-2 aggregation) driven by a `ProjectConfig`, against a **mock
+  OpenAI-compatible LLM** (`test/helpers/mock-llm.js`) — so they run with **no Ollama**
+  and stay deterministic. See `test/integration.test.js`.
+
+On top of that, the **offline eval battery** (§7: synthetic gold datasets + the
+scorer) is the quality gate, re-run on every change to a model, prompt, lexicon, or
+floor. Rule: unit + integration must be green to merge; the battery numbers must not
+drop. The infra phases (2–5) add their own integration tests (pod read/write against a
+mock pod, activation flow, channel adapters) as they land.
