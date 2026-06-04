@@ -90,6 +90,7 @@ export function configToRunOpts(config) {
     belowThreshold: c.aggregation.belowThreshold,
     layer1OnDevice: c.signal.layer1OnDevice,
     escalationCategories: c.signal.escalationCategories,
+    passiveSupport: c.signal.passiveSupport,
     reviewMode: c.review.mode,
   };
 }
