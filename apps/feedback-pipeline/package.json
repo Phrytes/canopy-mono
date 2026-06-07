@@ -21,6 +21,7 @@
     "canopy-chat-smoke": "node scripts/canopy-chat-smoke.js",
     "curator-smoke": "node scripts/curator-smoke.js",
     "activation-service": "node scripts/activation-service.js",
+    "bootstrap-owner": "node scripts/bootstrap-owner.js",
     "llm-health": "node scripts/llm-health.js"
   },
   "dependencies": {

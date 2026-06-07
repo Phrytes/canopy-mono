@@ -67,13 +67,13 @@ and smokes, which don't build a ProjectConfig): `FP_LLM_BASEURL`, `FP_LLM_APIKEY
 | `BACKUP_INTERVAL` | backup sidecar period (s). |
 | `backup-targets/*.env` (`RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, provider creds) | one file per restic target (multi-cloud). |
 
-## D. canopy-chat surface constants (`web/main.js`)
+## D. canopy-chat surface (Vite env — `VITE_FEEDBACK_*`, set at build time)
 
-| constant | meaning |
+| env var | meaning |
 |---|---|
-| `FEEDBACK_LLM_BASEURL` | the browser-reachable LLM route (don't ship the key in the bundle). |
-| `FEEDBACK_ACTIVATION_URL` | the activation service URL (enables real participant pods). |
-| `FEEDBACK_PROJECT_ID` | which project a `/feedback <code>` activates. |
+| `VITE_FEEDBACK_LLM_BASEURL` | the browser-reachable LLM route (don't ship the key in the bundle). |
+| `VITE_FEEDBACK_ACTIVATION_URL` | the activation service URL (enables real participant pods). |
+| `VITE_FEEDBACK_PROJECT_ID` | which project a `/feedback <code>` activates (default `canopy-chat`). |
 
 ## E. Testing / eval knobs
 

@@ -2082,12 +2082,15 @@ function resolveTextArgsInPlace(parse, thread) {
 // on-device floor + the review/consent journey. Set FEEDBACK_LLM_BASEURL to the project's
 // OpenAI-compatible route (e.g. the privatemode-proxy /v1) — review/clean need it; the
 // control intents (klaar / verstuur alles) work without one.
-// Set these to the project's deployment to enable REAL participant pods: with an activation
+// Deployment config via Vite env (set at build time, no source edits): with an activation
 // URL + a logged-in pod session, `/feedback <code>` provisions the participant's ACP-locked
-// container and writes there with their browser keys. Left null → an in-memory demo pod.
-const FEEDBACK_LLM_BASEURL = null;
-const FEEDBACK_ACTIVATION_URL = null;
-const FEEDBACK_PROJECT_ID = 'canopy-chat';
+// container and writes there with their browser keys. Unset → an in-memory demo pod.
+//   VITE_FEEDBACK_LLM_BASEURL   the browser-reachable LLM route (don't ship the key in the bundle)
+//   VITE_FEEDBACK_ACTIVATION_URL the activation service URL
+//   VITE_FEEDBACK_PROJECT_ID    which project a `/feedback <code>` activates
+const FEEDBACK_LLM_BASEURL = import.meta.env?.VITE_FEEDBACK_LLM_BASEURL ?? null;
+const FEEDBACK_ACTIVATION_URL = import.meta.env?.VITE_FEEDBACK_ACTIVATION_URL ?? null;
+const FEEDBACK_PROJECT_ID = import.meta.env?.VITE_FEEDBACK_PROJECT_ID ?? 'canopy-chat';
 let _feedbackSurface = null;
 function feedback(podOverride) {
   if (podOverride || !_feedbackSurface) {
