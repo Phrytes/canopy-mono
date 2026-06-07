@@ -13,7 +13,7 @@ const ACP_NS = 'http://www.w3.org/ns/solid/acp#';
  * members; owner → read/control; each reader → read. (`acp:memberAccessControl` applies
  * the same control to contained resources, so a participant's contributions inherit it.)
  */
-export function containerAcp(containerUri, { participantWebId, ownerWebId, readers = [] } = {}) {
+export function containerAcp(containerUri, { participantWebId, ownerWebId, readers = [], writers = [] } = {}) {
   if (!participantWebId) throw new Error('containerAcp: participantWebId required');
   const policies = [`<#pPart> a acp:Policy; acp:allow acl:Read, acl:Write, acl:Append; acp:anyOf <#mPart>.`];
   const matchers = [`<#mPart> a acp:Matcher; acp:agent <${participantWebId}>.`];
@@ -23,6 +23,13 @@ export function containerAcp(containerUri, { participantWebId, ownerWebId, reade
     matchers.push(`<#mOwner> a acp:Matcher; acp:agent <${ownerWebId}>.`);
     applies.push('<#pOwner>');
   }
+  // writers — e.g. a Telegram bot SERVICE that writes consented contributions on behalf of
+  // a participant (the post-receipt channel; canopy-chat participants write themselves).
+  writers.forEach((w, i) => {
+    policies.push(`<#pW${i}> a acp:Policy; acp:allow acl:Read, acl:Write, acl:Append; acp:anyOf <#mW${i}>.`);
+    matchers.push(`<#mW${i}> a acp:Matcher; acp:agent <${w}>.`);
+    applies.push(`<#pW${i}>`);
+  });
   readers.forEach((w, i) => {
     policies.push(`<#pR${i}> a acp:Policy; acp:allow acl:Read; acp:anyOf <#mR${i}>.`);
     matchers.push(`<#mR${i}> a acp:Matcher; acp:agent <${w}>.`);

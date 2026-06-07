@@ -75,6 +75,9 @@ apps/feedback-pipeline/
     ├── CATEGORIES-AND-LAYERS.md ← forward design: all category/PII floors × scenarios
     ├── TODO-category-floors.md ← next build: deterministic floor per category
     ├── BEST-PRACTICES.md       ← shielding / minimal-edit / specialized passes
+    ├── pipeline-order.md       ← step order: floors + LLM (deterministic+llm gates)
+    ├── parameters.md           ← every config field + env knob (onboarding checklist)
+    ├── privatemode-models.md   ← Privatemode API model ids + prompt-profile assignment
     └── PLAN-tomorrow-tg-pod.md ← Telegram + pod wiring plan
 fixtures/scenario-tests.js      ← per-scenario multi-agent test configs (A/B/C + 1–5)
 workflows/gen-scenario.js       ← reusable generation workflow (args = a scenario config)

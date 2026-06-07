@@ -114,3 +114,14 @@ test('does not touch existing [placeholder] tokens', () => {
   const s = 'bel de monteur op [telefoonnummer] of mail [e-mailadres]';
   assert.equal(redactNames(s).text, s);
 });
+
+// ── job-title pass (scorecard P1: dokter/manager/afdelingshoofd leaked) ──
+test('job-title + name → name redacted (private roles), incl. particle surname', () => {
+  assert.match(redactNames('van dokter Smeets de medicatie').text, /dokter \[naam\]/);
+  assert.match(redactNames('Afdelingshoofd Van Dijk vervalst facturen').text, /Afdelingshoofd \[naam\]/);
+  assert.match(redactNames('Manager Karim vraagt gunsten').text, /Manager \[naam\]/);
+});
+test('job-title pass does NOT redact public officials (keep-policy) or departments', () => {
+  assert.equal(redactNames('Wethouder Karim El Idrissi drukt het door').text, 'Wethouder Karim El Idrissi drukt het door');
+  assert.equal(redactNames('De werkdruk op afdeling Logistiek is hoog').text, 'De werkdruk op afdeling Logistiek is hoog');
+});

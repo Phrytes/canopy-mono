@@ -11,6 +11,7 @@ import { redactNames } from './names.js';
 import { resolveLang } from './lang.js';
 import { chat } from './ollama.js';
 import { SUMMARIZE_SYSTEM, SUMMARIZE_EXAMPLE_POOL } from './prompts.js';
+import { profileFor, MINIMAL_CLEAN, MINIMAL_SUMMARIZE, thinkingFor } from './prompt-profiles.js';
 import { identifierPass, decursePass } from './passes.js';
 import { sample, pairsToTurns, shield, unshield } from './util.js';
 import { PREFERRED_LANGUAGE, langName } from './config.js';
@@ -26,27 +27,38 @@ import { PREFERRED_LANGUAGE, langName } from './config.js';
  * @param {{ userLang?:'nl'|'en' }} [opts]
  * @returns {Promise<{raw, redacted, hits, lang, langSource, cleaned:?string, error:?string, ms:number}>}
  */
-export async function cleanMessage(model, rawText, opts = {}) {
-  const { userLang, ...rest } = opts;
-  // PII pass + name gazetteer (deterministic floors).
+// Phase 0 — deterministic floors only: structured PII + name gazetteer → the "redacted"
+// text (safe to send to the LLM, wording/tone intact). No LLM call. `skipClean` = already
+// consented/cleaned upstream → pass through unchanged.
+export function redactMessage(rawText, { userLang, skipClean } = {}) {
+  const { lang, source } = resolveLang({ text: rawText, userDefault: userLang });
+  if (skipClean) return { raw: rawText, redacted: rawText, hits: [], lang, langSource: source };
   const structured = redact(rawText);
   const named = redactNames(structured.text);
-  const redacted = named.text;
-  const hits = [...structured.hits, ...named.hits];
-  const { lang, source } = resolveLang({ text: rawText, userDefault: userLang });
-  // Specialized LLM passes (each narrow, shielded, self-checked).
-  const id = await identifierPass(model, redacted, lang, rest);   // names + only-X + leftover PII
-  const dc = await decursePass(model, id.text, lang, rest);       // swearing only + profanity floor
-  return {
-    raw:        rawText,
-    redacted,
-    hits,
-    lang,
-    langSource: source,
-    cleaned:    dc.text,
-    error:      id.error || dc.error || null,
-    ms:         (id.ms || 0) + (dc.ms || 0),
-  };
+  return { raw: rawText, redacted: named.text, hits: [...structured.hits, ...named.hits], lang, langSource: source };
+}
+
+// Phase 5 — LLM tone-softening on the already-redacted text. Profile-aware: minimal = ONE
+// pass, verbose (local) = identifier + decurse. `skipClean` = pass through (consented).
+export async function softenClean(model, redacted, lang, opts = {}) {
+  if (opts.skipClean) return { cleaned: redacted, error: null, ms: 0 };
+  if (profileFor(model, opts) === 'minimal') {
+    const { shielded, map } = shield(redacted);
+    const system = MINIMAL_CLEAN[lang] || MINIMAL_CLEAN.nl;
+    const r = await chat(model, system, shielded, { ...opts, thinking: thinkingFor('clean', opts) });
+    return { cleaned: r.ok ? unshield(r.text.trim(), map) : null, error: r.ok ? null : r.error, ms: r.ms };
+  }
+  const id = await identifierPass(model, redacted, lang, opts);
+  const dc = await decursePass(model, id.text, lang, opts);
+  return { cleaned: dc.text, error: id.error || dc.error || null, ms: (id.ms || 0) + (dc.ms || 0) };
+}
+
+// Phase 0 + Phase 5 together — one message, redact then soften (used by runPipeline / smokes).
+export async function cleanMessage(model, rawText, opts = {}) {
+  const { userLang, ...rest } = opts;
+  const r = redactMessage(rawText, { userLang, skipClean: opts.skipClean });
+  const s = await softenClean(model, r.redacted, r.lang, rest);
+  return { raw: r.raw, redacted: r.redacted, hits: r.hits, lang: r.lang, langSource: r.langSource, cleaned: s.cleaned, error: s.error, ms: s.ms };
 }
 
 /**
@@ -55,12 +67,12 @@ export async function cleanMessage(model, rawText, opts = {}) {
  */
 export async function summarize(model, messages, opts = {}) {
   const lang = opts.lang || PREFERRED_LANGUAGE;
-  const system = `${SUMMARIZE_SYSTEM}\n\nWrite the summary in ${langName(lang)}.`;
+  const minimal = profileFor(model, opts) === 'minimal';
+  const system = `${minimal ? MINIMAL_SUMMARIZE : SUMMARIZE_SYSTEM}\n\nWrite the summary in ${langName(lang)}.`;
   const user = messages.map((m, i) => `${i + 1}. ${m}`).join('\n');
   const { shielded, map } = shield(user);                       // protect [tokens] from rewording
-  const pool = SUMMARIZE_EXAMPLE_POOL[lang] || SUMMARIZE_EXAMPLE_POOL.nl;
-  const examples = pairsToTurns(sample(pool, 1));               // rotated, in target language
-  const r = await chat(model, system, shielded, { examples, ...opts });
+  const examples = minimal ? [] : pairsToTurns(sample(SUMMARIZE_EXAMPLE_POOL[lang] || SUMMARIZE_EXAMPLE_POOL.nl, 1));
+  const r = await chat(model, system, shielded, { examples, ...opts, thinking: thinkingFor('summarize', opts) });
   const text = r.ok ? unshield(r.text, map) : null;
   return { ok: r.ok, text, error: r.ok ? null : r.error, ms: r.ms };
 }
@@ -73,7 +85,7 @@ export async function translate(model, text, targetLang, opts = {}) {
   if (!text || !text.trim()) return text;
   const { shielded, map } = shield(text);
   const system = `Translate the user's message into ${langName(targetLang)}. Keep any [[number]] markers and any numbers exactly as they are. Do not add or remove information. Output only the translation, no preamble or quotes.`;
-  const r = await chat(model, system, shielded, opts);
+  const r = await chat(model, system, shielded, { ...opts, thinking: thinkingFor('translate', opts) });
   return r.ok ? unshield(r.text.trim(), map) : text;
 }
 

@@ -13,7 +13,7 @@
 // Step 4 (co-redactie) is assumed AUTO-APPROVED here — the user agrees with
 // their filtered messages, so the cleaned text goes straight to aggregation.
 
-import { cleanMessage, translate, summarize } from './pipeline.js';
+import { redactMessage, softenClean, translate, summarize } from './pipeline.js';
 import { labelMessages, canonicalDomain } from './triage.js';
 import { isSensitiveDomain, detectReident, detectSensitiveContent, detectContactRequest, sensitivityFlags } from './signals.js';
 import { sensitiveCategory, rejectReason, ESCALATION_CATEGORIES } from './categories.js';
@@ -25,6 +25,7 @@ import { PREFERRED_LANGUAGE } from './config.js';
  *  sensitive singleton that is always pulled out, not subject to the project filter. */
 export function routesToSignalLabel(label, escalationCategories = null) {
   if (!label) return false;
+  if (label.signal === 'possible-crisis') return true;   // ambiguous crisis → always human review
   if (label.signal === 'integrity') return true;
   if (!ESCALATION_CATEGORIES.includes(label.signal)) return false;
   if (label.via) return true;                                       // floor-confirmed
@@ -59,67 +60,53 @@ export async function aggregateWithThreshold(model, items, opts = {}) {
   const escCats = opts.escalationCategories || null;          // D3 — Layer-2 escalation filter
   const belowThreshold = opts.belowThreshold || 'drop';       // D5 — drop | quarantine | rephrase
 
-  // step 2.5 — reject prompt-injection / exfiltration attempts BEFORE cleaning
-  // (they are attacks, not feedback). step 3 — clean the rest.
+  // Phase 0 — admit (reject, deterministic on RAW) + deterministic redaction. NO LLM
+  // softening yet — that runs last, only on survivors (see docs/pipeline-order.md).
   const rejected = [];
-  const cleaned = [];
-  // optional per-message routing trace (for scoring), aligned to `items`.
+  const prepared = [];   // { user, id, raw, redacted, lang, hits, _idx }
   const trace = opts.trace
     ? items.map((it) => ({ user: it.user, raw: it.text, track: null, theme: null, signal: null, cleaned: null }))
     : null;
   for (let idx = 0; idx < items.length; idx++) {
     const it = items[idx];
-    const reason = rejectReason(it.text);
+    const reason = rejectReason(it.text);              // deterministic, on RAW
     if (reason) {
       rejected.push({ user: it.user, reason });
       if (trace) { trace[idx].track = 'rejected'; trace[idx].reason = reason; }
       continue;
     }
-    // skipClean: the items are already cleaned + CONSENTED (e.g. from the central
-    // pod) — do not re-edit them, only label + aggregate.
-    const c = opts.skipClean
-      ? { cleaned: it.text, lang: it.lang || lang, hits: [] }
-      : await cleanMessage(model, it.text, { userLang: it.lang, ...opts });
-    cleaned.push({ user: it.user, raw: it.text, text: c.cleaned ?? `⚠ ${c.error}`, lang: c.lang, hits: (c.hits || []).map((h) => h.type), _idx: idx });
+    const r = redactMessage(it.text, { userLang: it.lang, skipClean: opts.skipClean });
+    prepared.push({ user: it.user, id: it.id, raw: it.text, redacted: r.redacted, lang: r.lang, hits: r.hits.map((h) => h.type), _idx: idx });
   }
 
-  // step 5a — label cleaned messages (LLM + deterministic crisis/safety nets).
-  const labels = await labelMessages(model, cleaned.map((c) => c.text), opts);
+  // Phase 1–3 — LLM label on the REDACTED (un-softened) text; deterministic floors on RAW.
+  // crisis = deterministic AND llm; other signals = deterministic OR llm; sensitive = either.
+  const labels = await labelMessages(model, prepared.map((p) => p.redacted), opts, prepared.map((p) => p.raw));
 
+  // Phase 4 — route (on the redacted text; signals/quarantine are NOT tone-softened).
   const signals = [];
   const contact = [];        // refinement A — PII-only "contact me" messages
   const groups = {};         // theme -> { users:Set, msgs:[], sensitive }
-  cleaned.forEach((c, i) => {
+  prepared.forEach((p, i) => {
     const l = labels[i];
-    const sensitiveMsg = detectReident(c.raw).isReident || detectSensitiveContent(c.raw).isSensitive || !!sensitiveCategory(c.raw);
+    const sensitiveMsg = !!l.sensitive || detectReident(p.raw).isReident || detectSensitiveContent(p.raw).isSensitive || !!sensitiveCategory(p.raw);
     if (routesToSignalLabel(l, escCats)) {
-      signals.push({
-        user: c.user, text: c.text, signal: l.signal, severity: l.severity,
-        via: l.via || 'LLM',
-        // confirmed = a deterministic lexicon floor fired (vs an LLM-only guess,
-        // which is noisier — B showed dubious medical-emergency/abuse via LLM).
-        // Both still route to the signal track; the human triages by this flag.
-        confirmed: !!l.via,
-      });
-      if (trace) { const t = trace[c._idx]; t.track = 'signal'; t.signal = l.signal; t.cleaned = c.text; }
+      signals.push({ user: p.user, text: p.redacted, signal: l.signal, severity: l.severity, via: l.via || 'LLM', confirmed: !!l.confirmed });
+      if (trace) { const t = trace[p._idx]; t.track = 'signal'; t.signal = l.signal; t.cleaned = p.redacted; }
       return;
     }
-    // Refinement A — a "contact me" message that carries PII but no real
-    // allegation: don't fold it into a statistical theme (it inflated `fraud`).
-    const hasPII = c.hits.some((t) => t === 'phone' || t === 'email' || t === 'bsn');
-    if (!sensitiveMsg && hasPII && detectContactRequest(c.raw).isContact) {
-      contact.push({ user: c.user, text: c.text });
-      if (trace) { const t = trace[c._idx]; t.track = 'contact'; t.cleaned = c.text; }
+    const hasPII = p.hits.some((t) => t === 'phone' || t === 'email' || t === 'bsn');
+    if (!sensitiveMsg && hasPII && detectContactRequest(p.raw).isContact) {
+      contact.push({ user: p.user, text: p.redacted });
+      if (trace) { const t = trace[p._idx]; t.track = 'contact'; t.cleaned = p.redacted; }
       return;
     }
-    // Otherwise group; sensitivity is decided by DETERMINISTIC detectors on the
-    // RAW text, not the LLM's (sometimes wrong) domain label.
     const dom = canonicalDomain(l.domain);
     const g = (groups[dom] ||= { users: new Set(), msgs: [], sensitive: false });
-    g.users.add(c.user);
-    g.msgs.push(c);
+    g.users.add(p.user);
+    g.msgs.push(p);
     if (sensitiveMsg) g.sensitive = true;
-    if (trace) { const t = trace[c._idx]; t.theme = dom; t.cleaned = c.text; }
+    if (trace) { const t = trace[p._idx]; t.theme = dom; t.cleaned = p.redacted; }
   });
 
   // step 5b — apply the k-anonymity threshold.
@@ -143,7 +130,7 @@ export async function aggregateWithThreshold(model, items, opts = {}) {
       // deliberately NOT included in the output — raw stays in the user's pod
       // (no central store of identifiable data); a reviewer pulls the original
       // from the source under protocol if needed (4th-audit decision).
-      const messages = g.msgs.map((m) => ({ user: m.user, text: m.text, flags: sensitivityFlags(m.raw) }));
+      const messages = g.msgs.map((m) => ({ user: m.user, id: m.id, text: m.redacted, flags: sensitivityFlags(m.raw) }));
       const detected = [...new Set(messages.flatMap((m) => m.flags))];
       review.push({ theme: d.theme, userCount: d.userCount, messageCount: d.messageCount, via: byDomain ? 'domain' : 'content/re-id', detected, messages });
       if (trace) for (const m of g.msgs) trace[m._idx].track = 'review';
@@ -153,17 +140,22 @@ export async function aggregateWithThreshold(model, items, opts = {}) {
     }
   }
 
-  // step 6 (statistical track only) — translate to `lang`, then summarize.
+  // Phase 5 — soften ONLY the statistical survivors (the LLM clean runs here, not earlier),
+  // then translate to `lang` and summarize.
   const statistical = [];
   for (const m of meeting) {
     const g = groups[m.theme];
-    if (trace) for (const msg of g.msgs) trace[msg._idx].track = 'statistical';
     const translated = [];
-    for (const msg of g.msgs) translated.push(msg.lang === lang ? msg.text : await translate(model, msg.text, lang, opts));
+    for (const msg of g.msgs) {
+      const soft = await softenClean(model, msg.redacted, msg.lang, opts);   // clean the survivor now
+      const text = soft.cleaned || msg.redacted;
+      if (trace) { trace[msg._idx].track = 'statistical'; trace[msg._idx].cleaned = text; }
+      translated.push(msg.lang === lang ? text : await translate(model, text, lang, opts));
+    }
     const summary = translated.length === 1
       ? `- ${translated[0]}`
       : ((await summarize(model, translated, { lang, ...opts })).text || '');
-    statistical.push({ ...m, summary });
+    statistical.push({ ...m, summary, contributionIds: g.msgs.map((msg) => msg.id).filter(Boolean) });
   }
 
   return {

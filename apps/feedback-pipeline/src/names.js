@@ -87,12 +87,24 @@ const HONORIFIC_NAME = new RegExp(`\\b((?:[Dd]e\\s+heer|[Dd]en\\s+heer|[Mm]eneer
 const NEIGHBOUR_NAME = new RegExp(`\\b((?:[Bb]uurman|[Bb]uurvrouw|[Bb]uurjongen|[Bb]uurmeisje|[Bb]uurtgenoot|[Hh]uisgenoot|[Nn]eighbou?r)\\s+)(${NAME_TAIL})`, 'gu');
 const RELATIVE_NAME = new RegExp(`\\b((?:mijn|m'n|m’n|onze|m[ij]n|our|my)\\s+(?:vrouw|man|echtgenoot|echtgenote|partner|zoon|dochter|moeder|vader|broer|zus|zusje|broertje|collega|vriend|vriendin|schoonmoeder|schoonvader|oma|opa|tante|oom|wife|husband|son|daughter|mother|father|brother|sister|colleague|friend|neighbou?r)\\s+)(${NAME_TAIL})`, 'gu');
 
+// JOB / PROFESSIONAL titles are another high-precision signal that a PERSON name
+// follows — the gap the scorecard exposed: "dokter Smeets", "manager Karim",
+// "afdelingshoofd Van Dijk" leaked because the honorific list is academic/social
+// titles only and the surnames aren't in the gazetteer. NAME_TAIL already covers
+// particle surnames (Van Dijk).
+// DELIBERATELY only PRIVATE workplace/care roles. Public/elected officials
+// (minister/wethouder/burgemeester/…) are EXCLUDED — the keep-policy surfaces
+// powerful public individuals by name for accountability (see test 'KEEP a named
+// official'); redacting them here would violate that.
+const JOBTITLE_NAME = new RegExp(`\\b((?:[Mm]anager|[Tt]eamleider|[Aa]fdelingshoofd|[Ll]eidinggevende|[Cc]hef|[Dd]okter|[Aa]rts|[Hh]uisarts|[Cc]hirurg|[Ss]pecialist|[Vv]erpleegkundige|[Dd]octor|[Nn]urse|[Ss]upervisor)\\s+)(${NAME_TAIL})`, 'gu');
+
 export function redactNames(text) {
   const hits = [];
   // pass 0: TITLE + capitalised name → redact the name (gazetteer-independent).
   // honorific (meneer/dr/…), neighbour (buurman/…), and possessive-family titles.
   const titlePass = (re) => (m, title, name) => { hits.push({ type: 'name', value: name }); return title + PLACEHOLDER_NAME; };
   let out = text.replace(HONORIFIC_NAME, titlePass(HONORIFIC_NAME));
+  out = out.replace(JOBTITLE_NAME, titlePass(JOBTITLE_NAME));
   out = out.replace(NEIGHBOUR_NAME, titlePass(NEIGHBOUR_NAME));
   out = out.replace(RELATIVE_NAME, titlePass(RELATIVE_NAME));
   // pass 1: first-name + (particle) + surname, when the first name is known

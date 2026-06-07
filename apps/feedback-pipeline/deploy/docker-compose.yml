@@ -1,0 +1,81 @@
+# Tier-3 deployment stack for the feedback pipeline (architecture §1, §3). Compose is the
+# infra-as-code: fill in deploy/.env (see .env.example), set your hostnames, then
+#   docker compose --env-file .env up -d
+# Pin every image by @sha256 digest in production (the tags below are the versions to vet).
+services:
+  # Community Solid Server — the project + participant pods, with the ACP config that makes
+  # "consent = the write action" enforceable (the per-participant container ACL).
+  css:
+    image: solidproject/community-server:7.1.9
+    command: ["-c", "@css:config/file-acp.json", "-f", "/data", "-b", "https://${PODS_HOST}/"]
+    volumes: ["css-data:/data"]
+    restart: unless-stopped
+    expose: ["3000"]
+
+  # Privatemode proxy (Edgeless) — the TEE LLM route. OpenAI-compatible endpoint on :8080,
+  # attestation verified per request. The app/aggregation set FP_LLM_BASEURL to
+  # http://privatemode-proxy:8080/v1 and FP_LLM_APIKEY to the project key. No app code change.
+  privatemode-proxy:
+    image: ghcr.io/edgelesssys/privatemode/privatemode-proxy:latest   # PIN @sha256 in prod
+    command: ["--apiKey", "${PRIVATEMODE_API_KEY}"]
+    restart: unless-stopped
+    expose: ["8080"]
+
+  # Activation service (Tier 3a) — cohort code → ACP-locked participant container.
+  activation:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.activation
+    environment:
+      CSS_URL: "http://css:3000"
+      FP_OWNER_CLIENT_ID: "${FP_OWNER_CLIENT_ID}"
+      FP_OWNER_CLIENT_SECRET: "${FP_OWNER_CLIENT_SECRET}"
+      FP_OWNER_WEBID: "${FP_OWNER_WEBID}"
+      FP_PROJECT_POD: "${FP_PROJECT_POD}"
+      FP_COHORT_STORE: "/data/cohort-store.json"
+      PORT: "8787"
+    volumes: ["activation-data:/data"]
+    depends_on: ["css"]
+    restart: unless-stopped
+    expose: ["8787"]
+
+  # Backup sidecar — multi-target restic (one snapshot per configured target, e.g. two
+  # providers for redundancy), on a schedule. Configure targets in ./backup-targets/*.env
+  # (copy the *.env.example). Mounts the data volumes read-only.
+  backup:
+    image: restic/restic:0.17.3   # PIN @sha256 in prod
+    entrypoint: ["/bin/sh"]
+    command: ["/backup/run-scheduled.sh"]
+    environment:
+      CSS_DATA: "/data/css"
+      ACTIVATION_DATA: "/data/activation"
+      BACKUP_TARGETS_DIR: "/backup/targets"
+      BACKUP_INTERVAL: "${BACKUP_INTERVAL:-86400}"
+    volumes:
+      - "css-data:/data/css:ro"
+      - "activation-data:/data/activation:ro"
+      - "./backup.sh:/backup/backup.sh:ro"
+      - "./run-scheduled.sh:/backup/run-scheduled.sh:ro"
+      - "./backup-targets:/backup/targets:ro"
+    depends_on: ["css", "activation"]
+    restart: unless-stopped
+
+  # Caddy — automatic TLS + reverse proxy for the public hostnames.
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment:
+      PODS_HOST: "${PODS_HOST}"
+      ACTIVATE_HOST: "${ACTIVATE_HOST}"
+    volumes:
+      - "./Caddyfile:/etc/caddy/Caddyfile:ro"
+      - "caddy-data:/data"
+      - "caddy-config:/config"
+    depends_on: ["css", "activation"]
+    restart: unless-stopped
+
+volumes:
+  css-data: {}
+  activation-data: {}
+  caddy-data: {}
+  caddy-config: {}

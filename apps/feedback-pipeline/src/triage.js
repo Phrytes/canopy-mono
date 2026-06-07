@@ -13,11 +13,12 @@
 import { escalationCategory, ESCALATION_CATEGORIES } from './categories.js';
 import { chat } from './ollama.js';
 import { LABEL_SYSTEM } from './prompts.js';
+import { profileFor, MINIMAL_LABEL, thinkingFor } from './prompt-profiles.js';
 import { summarize, cleanMessage, translate } from './pipeline.js';
 import { PREFERRED_LANGUAGE } from './config.js';
 
 function blankLabels(n) {
-  return Array.from({ length: n }, () => ({ domain: 'general', signal: 'none', severity: 'low' }));
+  return Array.from({ length: n }, () => ({ domain: 'general', signal: 'none', severity: 'low', sensitive: false }));
 }
 
 /** Tolerant parse of the label pass: full-array parse, else recover individual
@@ -33,16 +34,20 @@ function parseLabels(text, n) {
   if (!arr.length) {
     for (const o of text.match(/\{[^{}]*\}/g) || []) { try { arr.push(JSON.parse(o)); } catch { /* skip */ } }
   }
-  for (const e of arr) {
-    const i = (Number(e.i) | 0) - 1;
+  arr.forEach((e, idx) => {
+    // POSITIONAL FALLBACK: if the model omits/misnumbers "i", use the array order
+    // instead of dropping the object to the "general" default (the collapse bug).
+    const raw = Number(e?.i);
+    const i = Number.isFinite(raw) ? raw - 1 : idx;
     if (i >= 0 && i < n) {
       out[i] = {
         domain:   String(e.domain ?? 'general').trim() || 'general',
         signal:   ['crisis', 'child-safety', 'safety', 'medical-emergency', 'abuse', 'harassment', 'integrity', 'discrimination', 'retaliation', 'none'].includes(e.signal) ? e.signal : 'none',
         severity: ['high', 'medium', 'low'].includes(e.severity) ? e.severity : 'low',
+        sensitive: e.sensitive === true || e.sensitive === 'true',
       };
     }
-  }
+  });
   return out;
 }
 
@@ -59,26 +64,42 @@ export function isSignal(label) {
  *  "general", the B bug). Chunked calls each stay well under the timeout and
  *  parse cleanly; indices are local per chunk, reassembled in order. */
 const LABEL_CHUNK = 8;
-export async function labelMessages(model, messages, opts = {}) {
+// `rawMessages` (optional, aligned to `messages`) is the ORIGINAL text the deterministic
+// escalation floors must run on — cleaning (esp. the minimal "neutralise tone" pass) can
+// erase the lexical triggers a crisis/safety/fraud lexicon matches, so detecting signals on
+// the cleaned text silently drops them (a suicidal message → aggregated as feedback).
+export async function labelMessages(model, messages, opts = {}, rawMessages = null) {
+  const minimal = profileFor(model, opts) === 'minimal';
+  const system = minimal ? MINIMAL_LABEL : LABEL_SYSTEM;
   const labels = [];
   for (let start = 0; start < messages.length; start += LABEL_CHUNK) {
     const chunk = messages.slice(start, start + LABEL_CHUNK);
     const user = chunk.map((m, i) => `${i + 1}. ${m}`).join('\n');
-    const numPredict = Math.min(2048, Math.max(384, chunk.length * 80));
-    const r = await chat(model, LABEL_SYSTEM, user, { ...opts, numPredict });
+    // reasoning models burn tokens BEFORE the JSON → give minimal more headroom.
+    const numPredict = Math.min(4096, Math.max(minimal ? 768 : 384, chunk.length * (minimal ? 160 : 80)));
+    const r = await chat(model, system, user, { ...opts, numPredict, thinking: thinkingFor('label', opts) });
     labels.push(...(r.ok ? parseLabels(r.text, chunk.length) : blankLabels(chunk.length)));
   }
   // Deterministic CATEGORY floors OVERRIDE the model (precedence + crisis-
   // reservation in categories.js). A floor pins the category and routing.
+  const forFloor = rawMessages || messages;   // detect on RAW; cleaning can erase signals
   return labels.map((l, i) => {
-    const esc = escalationCategory(messages[i]);
-    if (esc) return { ...l, signal: esc.category, severity: 'high', via: esc.via };
-    // CRISIS-RESERVATION in code: the LLM alone may NOT assert "crisis" (the
-    // 113-grade category). Without a crisis-lexicon hit its guess is downgraded —
-    // parking complaints were being LLM-labelled crisis (civic precision). Other
-    // LLM-only escalations stay (a recall backstop), flagged via:'LLM'/confirmed:false.
-    if (l.signal === 'crisis') return { ...l, signal: 'none' };
-    return l;
+    const esc = escalationCategory(forFloor[i]);             // deterministic floor on RAW
+    const detCat = esc?.category || null;
+    const llmCat = l.signal && l.signal !== 'none' ? l.signal : null;
+    const detCrisis = detCat === 'crisis';
+    const llmCrisis = llmCat === 'crisis';
+
+    // CRISIS (113-grade) = deterministic AND llm. Exactly one side → "possible-crisis":
+    // routed for human review (never dropped), but not auto-categorised crisis.
+    if (detCrisis && llmCrisis) return { ...l, signal: 'crisis', severity: 'high', via: esc.via, confirmed: true };
+    if (detCrisis || llmCrisis) return { ...l, signal: 'possible-crisis', severity: 'high', via: detCrisis ? esc.via : 'LLM', confirmed: false };
+
+    // OTHER signals = deterministic OR llm (either is enough). Floor-confirmed when the
+    // deterministic lexicon fired (via set); llm-only otherwise (confirmed:false).
+    if (detCat) return { ...l, signal: detCat, severity: 'high', via: esc.via, confirmed: true };
+    if (llmCat) return { ...l, signal: llmCat, confirmed: false };
+    return { ...l, signal: 'none', confirmed: false };
   });
 }
 

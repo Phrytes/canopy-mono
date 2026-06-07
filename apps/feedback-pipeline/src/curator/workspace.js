@@ -1,0 +1,77 @@
+// Curator workspace — the Task-2 review/release side (architecture: the editor/steward is
+// the eindredacteur). Task 2 (aggregateWithThreshold) produces a DRAFT; this is where a
+// human reviews it and RELEASES a report. Release is the mechanism behind two guarantees:
+//   • "withdraw before release" — releasing marks the included contributions in the pod
+//     (blocks further withdrawal) and records them in a manifest, so it is VERIFIABLE that
+//     a contribution withdrawn earlier never appears (see pod/manifest.js).
+//   • transparency — a published account of what happened to ALL input (transparency.js).
+//
+// Default decisions: every statistical theme is INCLUDED; every quarantined (sensitive
+// below-k) theme is HELD (not released) until the human explicitly releases it. The curator
+// flips those, then release().
+
+import { buildManifest } from '../pod/manifest.js';
+import { transparencyCounters } from './transparency.js';
+
+export function createCuratorWorkspace({ aggregate, pod, reportId = 'report' }) {
+  if (!aggregate) throw new Error('createCuratorWorkspace: aggregate required');
+
+  const included = new Map(aggregate.statistical.map((t) => [t.theme, true]));    // theme -> included?
+  const released = new Map(aggregate.review.map((q) => [q.theme, false]));        // quarantined theme -> released?
+
+  const includedThemes = () => aggregate.statistical.filter((t) => included.get(t.theme));
+  const releasedQuarantine = () => aggregate.review.filter((q) => released.get(q.theme));
+  const includedContributionIds = () => [...new Set([
+    ...includedThemes().flatMap((t) => t.contributionIds || []),
+    ...releasedQuarantine().flatMap((q) => (q.messages || []).map((m) => m.id).filter(Boolean)),
+  ])];
+
+  const counters = () => transparencyCounters(aggregate, {
+    includedThemes: includedThemes(), releasedQuarantine: releasedQuarantine(), includedContributionIds: includedContributionIds(),
+  });
+
+  return {
+    /** The reviewable draft + live counters (reflects current decisions). */
+    review() {
+      return {
+        reportId,
+        themes: aggregate.statistical.map((t) => ({
+          theme: t.theme, userCount: t.userCount, messageCount: t.messageCount, summary: t.summary, included: included.get(t.theme),
+        })),
+        quarantine: aggregate.review.map((q) => ({
+          theme: q.theme, userCount: q.userCount, messageCount: q.messages?.length ?? q.messageCount,
+          via: q.via, detected: q.detected, released: released.get(q.theme),
+        })),
+        signals: aggregate.signals.map((s) => ({ signal: s.signal, severity: s.severity, confirmed: s.confirmed, via: s.via })),
+        counters: counters(),
+      };
+    },
+
+    includeTheme(theme, on = true) {
+      if (!included.has(theme)) throw new Error(`no such theme: ${theme}`);
+      included.set(theme, !!on); return this;
+    },
+    dropTheme(theme) { return this.includeTheme(theme, false); },
+    releaseQuarantine(theme, on = true) {
+      if (!released.has(theme)) throw new Error(`no such quarantined theme: ${theme}`);
+      released.set(theme, !!on); return this;
+    },
+
+    /** Finalise: mark the included contributions in the pod (blocks withdrawal), build the
+     *  withdrawal manifest + transparency counters, and return the report. `now` is the
+     *  caller-stamped ISO timestamp (the module takes no clock). */
+    async release({ now } = {}) {
+      if (!now) throw new Error('release: now (ISO timestamp) required');
+      const ids = includedContributionIds();
+      if (pod) await pod.markIncluded(ids);
+      const c = counters();
+      const report = {
+        reportId, createdAt: now, lang: aggregate.lang, kThreshold: aggregate.kThreshold,
+        themes: includedThemes().map((t) => ({ theme: t.theme, userCount: t.userCount, summary: t.summary })),
+        counters: c,
+      };
+      const manifest = buildManifest({ reportId, createdAt: now, includedContributionIds: ids });
+      return { report, manifest, counters: c };
+    },
+  };
+}

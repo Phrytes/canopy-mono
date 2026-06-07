@@ -15,7 +15,13 @@
     "simulate-participation": "node scripts/simulate-participation.js",
     "mcp": "node src/mcp/server.js",
     "mcp-smoke": "node scripts/mcp-smoke.js",
-    "cohort": "node scripts/cohort-cli.js"
+    "cohort": "node scripts/cohort-cli.js",
+    "e2e-smoke": "node scripts/e2e-smoke.js",
+    "tg-bot-smoke": "node scripts/tg-bot-smoke.js",
+    "canopy-chat-smoke": "node scripts/canopy-chat-smoke.js",
+    "curator-smoke": "node scripts/curator-smoke.js",
+    "activation-service": "node scripts/activation-service.js",
+    "llm-health": "node scripts/llm-health.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

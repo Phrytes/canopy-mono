@@ -11,20 +11,28 @@
 import { validateContribution } from './contribution.js';
 import { canWithdraw } from './central-pod.js';
 
-const PREFIX = 'fp__';   // namespaces our resources within the pod
-
 export class CssCentralPod {
-  #fetch; #base;
+  #fetch; #base; #flat;
 
-  constructor({ authedFetch, podBase }) {
+  // Two layouts over one class:
+  //  • default (`flat:false`) — `base` is the central root (<pod>central/); each participant's
+  //    contributions live in <base><participant>/. A server-side writer (the TG bot) or the
+  //    aggregation reads/writes across all sub-containers.
+  //  • `flat:true` — `base` IS one participant's own container (<pod>central/<them>/); writes
+  //    go straight into it (<base><id>.json). This is canopy-chat: the participant writes
+  //    their OWN container with their browser-key fetch (the `participant` arg is just the
+  //    pseudonym stored in the record).
+  constructor({ authedFetch, podBase, flat = false }) {
     if (typeof authedFetch !== 'function') throw new Error('CssCentralPod: authedFetch (a DPoP fetch) is required');
     if (!podBase) throw new Error('CssCentralPod: podBase is required');
     this.#fetch = authedFetch;
     this.#base = podBase.endsWith('/') ? podBase : `${podBase}/`;
+    this.#flat = flat;
   }
 
   #uri(participant, id) {
-    return `${this.#base}${PREFIX}${encodeURIComponent(participant)}__${encodeURIComponent(id)}.json`;
+    const leaf = `${encodeURIComponent(id)}.json`;
+    return this.#flat ? `${this.#base}${leaf}` : `${this.#base}${encodeURIComponent(participant)}/${leaf}`;
   }
 
   async write(participant, raw) {
@@ -39,17 +47,32 @@ export class CssCentralPod {
     return c.id;
   }
 
-  async #childUris() {
-    const res = await this.#fetch(this.#base, { headers: { accept: 'text/turtle' } });
+  // strict children of a container (sub-containers end in /, resources are leaves)
+  async #children(uri) {
+    const res = await this.#fetch(uri, { headers: { accept: 'text/turtle' } });
+    if (!res.ok) return [];
     const ttl = await res.text();
-    const uris = new Set();
-    for (const m of ttl.matchAll(/<([^>]*fp__[^>]*\.json)>/g)) uris.add(new URL(m[1], this.#base).href);
-    return [...uris];
+    const kids = new Set();
+    for (const m of ttl.matchAll(/<([^>]+)>/g)) {
+      let href; try { href = new URL(m[1], uri).href; } catch { continue; }
+      if (href.startsWith(uri) && href !== uri) kids.add(href);
+    }
+    return [...kids];
+  }
+
+  // recurse central/<participant>/ sub-containers, collecting the .json contributions
+  async #resourceUris(uri = this.#base) {
+    const out = [];
+    for (const child of await this.#children(uri)) {
+      if (child.endsWith('/')) out.push(...await this.#resourceUris(child));
+      else if (child.endsWith('.json')) out.push(child);
+    }
+    return out;
   }
 
   async #all() {
     const out = [];
-    for (const uri of await this.#childUris()) {
+    for (const uri of await this.#resourceUris()) {
       const r = await this.#fetch(uri);
       if (r.status === 200) out.push({ uri, ...(await r.json()) });
     }
@@ -80,5 +103,5 @@ export class CssCentralPod {
 
   async getStatus(id) { return (await this.#find(id))?.status || null; }
   async list() { return (await this.#all()).map((e) => ({ participant: e.participant, contribution: e.contribution })); }
-  async forAggregation() { return (await this.#all()).map((e) => ({ user: e.participant, text: e.contribution.text, lang: e.contribution.lang })); }
+  async forAggregation() { return (await this.#all()).map((e) => ({ user: e.participant, id: e.contribution.id, text: e.contribution.text, lang: e.contribution.lang })); }
 }

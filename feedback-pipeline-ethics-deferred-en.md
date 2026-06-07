@@ -18,6 +18,22 @@ conflicts with the consent/anonymity principle — that tension is the whole que
 Decided by: ethicist + raad. For now: first cases avoid acute-crisis domains; the
 passive 113 resource is always shown regardless.
 
+**Detection vs. response — deliberately split.** We are building accurate crisis
+*detection* now (a crisis is flagged only when BOTH the deterministic lexicon AND the LLM
+agree — high precision, since it is 113-grade); what should *happen* when a crisis is
+detected (the response protocol: who is notified, on what consent, with what message, how
+fast, by whom) is an OPEN question, not yet designed. Tracked in
+`feedback-pipeline-todo-en.md`. Until it is decided, a detected crisis is recorded/flagged
+for human review and the passive 113 resource is shown; no automated outreach happens.
+
+**Acute crisis vs. high-risk behaviour — likely two tracks.** Gut direction: separate
+*acute crises* (suicidal intent / imminent self-harm → channel to immediate help, e.g. 113)
+from *high-risk-behaviour signals* (fraud, harassment, safety hazards, abuse → signal the
+responsible oversight, NOT 113). They need different responses, consents and speeds, and each
+PROJECT decides how to handle each. Open: exactly where the line sits, which categories fall in
+which tier, and whether the test set + gold should encode the two tiers so models are evaluated
+per-tier (see §9).
+
 ## 2. Key loss for vulnerable audiences
 
 True browser-key encryption means a lost recovery code = unrecoverable private
@@ -86,3 +102,24 @@ entirely on the project and is set at project setup: a vertrouwenspersoon, a mel
 an OR-vertrouwenscommissie, a klokkenluider-loket, or 113 / professional help for
 crisis. No universal default — part of the project configuration, and for sensitive
 domains a governance decision.
+
+## 9. Collected evaluation questions (gold / label judgement calls)
+
+Borderline classification cases to decide deliberately — and re-evaluate as the gold/test set
+matures — rather than bake in silently. Surfaced by the Kimi / gpt-oss scorecards (the model's
+choices were defensible, our conservative gold marked them "over-escalations"):
+
+- Is a **medication error** ("verkeerde medicatie", "medicatiefouten komen te vaak voor") a
+  *safety signal* or ordinary care feedback? (scorecard #2, #3)
+- Is **belittling / intimidation by a manager** a *harassment signal* or a workplace grievance —
+  where is the line between a grievance and a reportable signal? (#6)
+- Are **needles in a playground** a *safety signal* or civic feedback? (#17)
+- **Tiering (see §1):** the gold now encodes a `tier` and the scorer reports per-tier
+  recall/tier-correct — starting split: **acute** = crisis / medical-emergency / child-safety
+  ("act now"); **high-risk** = safety / harassment / integrity / abuse / discrimination /
+  retaliation ("signal oversight"). The exact category→tier boundaries remain for the ethicist
+  to confirm (e.g. is every safety hazard merely high-risk?).
+
+For now these route as the model judges (deterministic+llm, *either* is enough); the `confirmed`
+flag (floor-confirmed vs llm-only) and `escalationCategories` let a project tune precision vs
+recall without code changes. Decided by: ethicist + raad.
