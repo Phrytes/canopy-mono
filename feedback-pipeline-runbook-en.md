@@ -37,13 +37,12 @@ PRIVATEMODE_API_KEY=<key> docker compose -f deploy/docker-compose.dev.yml up -d
 # 2. project-pod owner → paste the printed FP_OWNER_* / FP_PROJECT_POD into your shell/env
 CSS_URL=http://localhost:3000 node scripts/bootstrap-owner.js
 
-# 3. a project + cohort codes
-npm run cohort -- create-project  --project test --k 2 --store deploy/cohort-store.json
-npm run cohort -- generate-codes  --project test --n 20 --store deploy/cohort-store.json
-
-# 4. confirm the LLM route
+# 3. confirm the LLM route
 FP_LLM_BASEURL=http://localhost:8080/v1 FP_MODEL=kimi-k2.6 npm run llm-health
 ```
+
+(No cohort codes needed for the Telegram path below — the bot provisions on first contact.
+Codes are only for the canopy-chat `/feedback <code>` flow, set up at the end of this section.)
 
 > **`permission denied … /var/run/docker.sock`?** Your shell session predates your `docker`
 > group membership (you're in the group, the session hasn't picked it up). Run `newgrp docker`
@@ -64,10 +63,23 @@ DM the bot → it floors + cleans (real Privatemode model) → `/klaar` → tap 
 the contribution lands in your local pod. (Or skip surfaces entirely and just run
 `node scripts/e2e-smoke.js` against the local CSS for the backbone, or `npm run curator-smoke`.)
 
-The browser surface (canopy-chat) also works locally — `VITE_FEEDBACK_ACTIVATION_URL=http://localhost:8787`
-(run `npm run activation-service` on the host) + `VITE_FEEDBACK_LLM_BASEURL=http://localhost:8080/v1`,
-`npm run build`, serve it, log into the `http://localhost:3000` pod, `/feedback <code>` — but the
-browser pod-login (OIDC against the local CSS) is fiddlier than the TG path, so start with TG.
+The browser surface (canopy-chat) also works locally, but needs **cohort codes** + the
+**activation service** (and the browser pod-login is fiddlier than TG — start with TG):
+
+```bash
+# cohort codes (create-project reads the projectId from a config JSON; k lives there)
+cp deploy/project.example.json deploy/project.json    # edit if you like
+npm run cohort -- create-project --config deploy/project.json --expires 2026-12-31T00:00:00Z --ceiling 50 --store deploy/cohort-store.json
+npm run cohort -- generate-codes --project test --count 20 --store deploy/cohort-store.json
+
+# activation service (host, :8787) — needs the owner creds from step 2
+CSS_URL=http://localhost:3000 FP_OWNER_CLIENT_ID=… FP_OWNER_CLIENT_SECRET=… FP_OWNER_WEBID=… \
+  FP_PROJECT_POD=http://localhost:3000/project/ npm run activation-service
+```
+
+Then build canopy-chat with `VITE_FEEDBACK_ACTIVATION_URL=http://localhost:8787`
+`VITE_FEEDBACK_LLM_BASEURL=http://localhost:8080/v1` `VITE_FEEDBACK_PROJECT_ID=test npm run build`,
+serve it, log into the `http://localhost:3000` pod, and `/feedback <code>`.
 
 ## 1. Configure
 

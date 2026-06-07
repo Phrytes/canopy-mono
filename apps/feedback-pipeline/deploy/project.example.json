@@ -1,0 +1,5 @@
+{
+  "projectId": "test",
+  "llm": { "route": "privatemode", "model": "kimi-k2.6" },
+  "aggregation": { "k": 2 }
+}

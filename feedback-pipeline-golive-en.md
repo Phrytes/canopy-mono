@@ -96,8 +96,10 @@ Paste its output into `deploy/.env`. (Or do it by hand via the CSS web UI at
 
 ```bash
 cd ..                                   # apps/feedback-pipeline
-npm run cohort -- create-project --project buurt-oost --k 4 --store deploy/cohort-store.json
-npm run cohort -- generate-codes --project buurt-oost --n 100 --store deploy/cohort-store.json
+# create-project reads the projectId (and k) from a ProjectConfig JSON; copy + edit the example:
+cp deploy/project.example.json deploy/buurt-oost.json    # set projectId, k, route, model
+npm run cohort -- create-project --config deploy/buurt-oost.json --expires 2026-12-31T00:00:00Z --ceiling 200 --store deploy/cohort-store.json
+npm run cohort -- generate-codes --project buurt-oost --count 100 --store deploy/cohort-store.json
 ```
 
 The codes are what participants enter. The store is mounted into the activation container.

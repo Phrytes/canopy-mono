@@ -8,7 +8,7 @@
 //   FP_COHORT_STORE=./cohort-store.json PORT=8787 \
 //   node scripts/activation-service.js
 //
-// Generate codes for the store first with:  npm run cohort -- generate-codes --project <id> --n 50 --store ./cohort-store.json
+// Generate codes for the store first with:  npm run cohort -- generate-codes --project <id> --count 50 --store ./cohort-store.json
 // Skips cleanly (exit 0) if CSS / the auth lib / owner credentials are absent.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
