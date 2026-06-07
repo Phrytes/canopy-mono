@@ -97,6 +97,20 @@ test('crisis message triggers the in-the-moment escalation offer', async () => {
   await mock.close();
 });
 
+test('onActivate provisions once per chat (first message), before writes', async () => {
+  const mock = await startMockLlm();
+  process.env.FP_LLM_BASEURL = mock.url;
+  const bridge = new FakeBridge();
+  const activated = [];
+  const bot = new TelegramFeedbackBot({ bridge, pod: new InMemoryCentralPod(), config: config(), onActivate: (p) => { activated.push(p); } });
+  await bot.start();
+  await bridge.emit({ chatId: '55', messageId: '1', text: 'hoi' });
+  await bridge.emit({ chatId: '55', messageId: '2', text: 'nog een bericht' });   // same chat → no re-provision
+  await bridge.emit({ chatId: '66', messageId: '1', text: 'hoi' });                // new chat → provision
+  assert.deepEqual(activated, ['tg:55', 'tg:66']);
+  await mock.close();
+});
+
 test('strings are swappable by locale (no hardcoded prose)', () => {
   // same message, two locales → different prose, same structure
   const nl = renderMessage({ type: 'submitted', ids: ['a'] }, getStrings('nl'));

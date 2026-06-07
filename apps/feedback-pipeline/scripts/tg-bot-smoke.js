@@ -31,21 +31,26 @@ const config = validateProjectConfig({
 });
 const bridge = new TelegramBridge({ botToken: token, mode: 'long-polling', dropPendingUpdates: true });
 
-// Tier-3c: use a real CssCentralPod when pod credentials are present (the bot service writes
-// on participants' behalf — provision their containers with FP_WRITER_WEBIDS=<bot webId>).
-// Otherwise fall back to in-memory (a pure smoke).
+// Tier-3c: real CSS pod when owner credentials are present. The TG bot service runs as the
+// project-pod OWNER — it provisions each participant's ACP container on first contact
+// (onActivate) and writes to it (post-receipt). Otherwise in-memory (a pure smoke).
 let pod = new InMemoryCentralPod();
-if (process.env.FP_PROJECT_POD && process.env.FP_BOT_CLIENT_ID && process.env.CSS_URL) {
+let onActivate;
+if (process.env.CSS_URL && process.env.FP_OWNER_CLIENT_ID && process.env.FP_PROJECT_POD) {
   try {
-    const { makeCssCentralPod } = await import('../src/pod/css-auth.js');
-    pod = await makeCssCentralPod({
-      podBase: `${process.env.FP_PROJECT_POD.replace(/\/$/, '')}/central/`,
-      cssUrl: process.env.CSS_URL, clientId: process.env.FP_BOT_CLIENT_ID, clientSecret: process.env.FP_BOT_CLIENT_SECRET,
-    });
-    console.log('using CssCentralPod at', process.env.FP_PROJECT_POD);
+    const { clientCredentialsFetch } = await import('../src/pod/css-auth.js');
+    const { CssCentralPod } = await import('../src/pod/css-central-pod.js');
+    const { provisionCssPod } = await import('../src/activation/provision-css-pod.js');
+    const projectPodBase = process.env.FP_PROJECT_POD;
+    const ownerWebId = process.env.FP_OWNER_WEBID;
+    const ownerFetch = await clientCredentialsFetch({ cssUrl: process.env.CSS_URL, clientId: process.env.FP_OWNER_CLIENT_ID, clientSecret: process.env.FP_OWNER_CLIENT_SECRET });
+    pod = new CssCentralPod({ authedFetch: ownerFetch, podBase: `${projectPodBase.replace(/\/$/, '')}/central/` });
+    // provision central/<participant>/ once per chat; owner is the writer (participantWebId = owner).
+    onActivate = (participant) => provisionCssPod({ ownerFetch, projectPodBase, participant, participantWebId: ownerWebId, ownerWebId });
+    console.log('using CssCentralPod + per-participant provisioning at', projectPodBase);
   } catch (e) { console.log('CSS pod unavailable, using in-memory:', e.message); }
 }
-const bot = new TelegramFeedbackBot({ bridge, pod, config });
+const bot = new TelegramFeedbackBot({ bridge, pod, config, onActivate });
 
 await bot.start();
 console.log('feedback bot running (long-polling). DM it, then /klaar, then tap a consent button. Ctrl-C to stop.');

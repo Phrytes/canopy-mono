@@ -78,15 +78,17 @@ docker compose --env-file .env up -d css caddy   # CSS + TLS first
 
 ## 3. Bootstrap the project-pod owner   [run]   (once)
 
-The activation service acts as the project-pod **owner** (the steward). Create that account +
-pod on CSS, then its client credentials:
+The activation service acts as the project-pod **owner** (the steward). Easiest — run the
+bootstrap script, which creates the account + pod + client-credentials and prints the `.env`
+lines:
 
-1. Open `https://${PODS_HOST}/.account/` and register an account + a pod named `project`
-   (the CSS web UI), **or** script it via the `.account` API (the same calls the live-CSS
-   smokes use — `scripts/css-acp-smoke.js` `provision()`).
-2. Create **client credentials** for that account (the account page → "client credentials"),
-   giving the project WebID. Paste `id`/`secret` into `.env` as
-   `FP_OWNER_CLIENT_ID` / `FP_OWNER_CLIENT_SECRET`, and set `FP_OWNER_WEBID` to the pod's WebID.
+```bash
+cd apps/feedback-pipeline
+CSS_URL=https://${PODS_HOST} node scripts/bootstrap-owner.js   # → FP_OWNER_CLIENT_ID/SECRET/WEBID + FP_PROJECT_POD
+```
+
+Paste its output into `deploy/.env`. (Or do it by hand via the CSS web UI at
+`https://${PODS_HOST}/.account/` + the "client credentials" control.)
 
 ---
 
@@ -122,19 +124,20 @@ Activation is now live at `https://${ACTIVATE_HOST}/activate`.
 
 ## 6. Wire the participant surfaces
 
-### canopy-chat (in-browser, pre-send)   [decide → edit]
+### canopy-chat (in-browser, pre-send)   [set env → build]
 
-In `apps/canopy-chat/web/main.js`, set the three constants near the feedback surface:
+Config is via **Vite env** (no source edits) — set at build time:
 
-```js
-const FEEDBACK_LLM_BASEURL  = 'https://<your privatemode-proxy URL>/v1';  // or a same-origin proxy
-const FEEDBACK_ACTIVATION_URL = 'https://activate.yourdomain.org';
-const FEEDBACK_PROJECT_ID    = 'buurt-oost';
+```bash
+cd apps/canopy-chat
+VITE_FEEDBACK_LLM_BASEURL='https://<llm route>/v1' \
+VITE_FEEDBACK_ACTIVATION_URL='https://activate.yourdomain.org' \
+VITE_FEEDBACK_PROJECT_ID='buurt-oost' \
+npm run build
 ```
 
-Build + host the static app (`npm run build` in `apps/canopy-chat`). A participant then:
-logs in to their pod → types `/feedback <code>` → their ACP-locked container is provisioned
-and the bot writes there with their browser keys.
+A participant then: logs in to their pod → types `/feedback <code>` → their ACP-locked
+container is provisioned and the bot writes there with their browser keys.
 
 > Note: the browser needs to reach the LLM route. Either expose the proxy on an HTTPS origin
 > with CORS, or front it with a same-origin path. (Don't ship the Privatemode key in the
@@ -142,17 +145,20 @@ and the bot writes there with their browser keys.
 
 ### Telegram (server-side, post-receipt)   [obtain → run]
 
+The TG bot service runs **as the project-pod owner** — it provisions each participant's ACP
+container on first contact (onActivate) and writes to it:
+
 ```bash
 cd apps/feedback-pipeline
 FP_TG_BOT_TOKEN=<item 6> \
 CSS_URL=https://pods.yourdomain.org FP_PROJECT_POD=https://pods.yourdomain.org/project/ \
-FP_BOT_CLIENT_ID=<bot-service client id> FP_BOT_CLIENT_SECRET=<…> \
+FP_OWNER_CLIENT_ID=… FP_OWNER_CLIENT_SECRET=… FP_OWNER_WEBID=https://pods.yourdomain.org/project/profile/card#me \
 FP_LLM_BASEURL=http://localhost:8080/v1 FP_LLM_APIKEY=$PRIVATEMODE_API_KEY FP_LLM_MODEL=<model> \
 npm run tg-bot-smoke
 ```
 
 (Run it as a long-lived service — a small compose service or systemd unit — not a smoke, for
-production.) See **§9** for the one remaining TG wiring step.
+production.)
 
 ---
 
@@ -199,15 +205,13 @@ repos; you supply the real targets in item 5.)
 
 ---
 
-## 9. Known remaining wiring (small, before TG is fully live)
+## 9. Remaining wiring
 
-- **Per-participant provisioning for Telegram.** canopy-chat provisions a participant's
-  container at `/feedback <code>` (the activation call is wired). The TG bot does **not** yet
-  auto-provision per chat — it needs, on a chat's first message, to call the activation flow
-  (provision `central/<pseudonym>/` with the bot as a writer: `FP_WRITER_WEBIDS=<bot WebID>`).
-  Until then, provision TG participant containers up front, or add that call to the bot.
-- **canopy-chat LLM relay.** Decide how the browser reaches the LLM without holding the
-  Privatemode key (same-origin relay vs. per-session token).
+- **Per-participant provisioning for Telegram — DONE.** The TG bot now auto-provisions
+  `central/<pseudonym>/` on a chat's first message (the `onActivate` hook → `provisionCssPod`);
+  the bot service runs as the project-pod owner (provisions + writes). No manual pre-provisioning.
+- **canopy-chat LLM relay — your call (ops).** Decide how the browser reaches the LLM without
+  holding the Privatemode key (a same-origin relay that injects the key, or a per-session token).
 
 ---
 

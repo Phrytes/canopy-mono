@@ -6,7 +6,7 @@ services:
   # Community Solid Server — the project + participant pods, with the ACP config that makes
   # "consent = the write action" enforceable (the per-participant container ACL).
   css:
-    image: solidproject/community-server:7.1.9
+    image: solidproject/community-server:7.1.9@sha256:47260bc766cc11da881ca037e2ea672f853344c232577597a1fcbbceac76c3ef
     command: ["-c", "@css:config/file-acp.json", "-f", "/data", "-b", "https://${PODS_HOST}/"]
     volumes: ["css-data:/data"]
     restart: unless-stopped
@@ -16,7 +16,8 @@ services:
   # attestation verified per request. The app/aggregation set FP_LLM_BASEURL to
   # http://privatemode-proxy:8080/v1 and FP_LLM_APIKEY to the project key. No app code change.
   privatemode-proxy:
-    image: ghcr.io/edgelesssys/privatemode/privatemode-proxy:latest   # PIN @sha256 in prod
+    # `latest` drifts — the @sha256 pins it; re-vet + re-pin when you update.
+    image: ghcr.io/edgelesssys/privatemode/privatemode-proxy:latest@sha256:f4283c1cb64fbdd25f17df930ff9c2114b07cfb463c239afb1b639fb228d6988
     command: ["--apiKey", "${PRIVATEMODE_API_KEY}"]
     restart: unless-stopped
     expose: ["8080"]
@@ -43,7 +44,7 @@ services:
   # providers for redundancy), on a schedule. Configure targets in ./backup-targets/*.env
   # (copy the *.env.example). Mounts the data volumes read-only.
   backup:
-    image: restic/restic:0.17.3   # PIN @sha256 in prod
+    image: restic/restic:0.17.3@sha256:8f5a62b422a2cb1277ea0dd6e826fe1acf649e5b9f02d60e5268d5fd1976255a
     entrypoint: ["/bin/sh"]
     command: ["/backup/run-scheduled.sh"]
     environment:
@@ -62,7 +63,7 @@ services:
 
   # Caddy — automatic TLS + reverse proxy for the public hostnames.
   caddy:
-    image: caddy:2
+    image: caddy:2@sha256:cb9d71ad83182011b79355cd57692686374bd78d6fe327efe0ff8507da03ab13
     ports: ["80:80", "443:443"]
     environment:
       PODS_HOST: "${PODS_HOST}"

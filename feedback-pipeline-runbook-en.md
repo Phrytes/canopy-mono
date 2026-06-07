@@ -28,7 +28,8 @@ cd apps/feedback-pipeline/deploy
 cp .env.example .env      # fill in hostnames, PRIVATEMODE_API_KEY, owner creds (step 3)
 ```
 
-Pin every image in `docker-compose.yml` by `@sha256` digest before production.
+Images in `docker-compose.yml` are pinned by `@sha256` digest. The `privatemode-proxy`
+`:latest` digest drifts — re-vet + re-pin it when you update.
 
 ## 2. Boot CSS
 
@@ -40,13 +41,15 @@ CSS is now at `https://${PODS_HOST}/`.
 
 ## 3. Bootstrap the project-pod owner (once)
 
-The activation service acts as the **project-pod owner** (the intermediary/steward). Create
-that account + pod + client-credentials on the CSS (via its `.account` API — the same calls
-the live-CSS smokes use), then put the credentials in `.env`:
+The activation service acts as the **project-pod owner** (the intermediary/steward). Run the
+bootstrap script — it creates the account + pod + client-credentials and prints the `.env` lines:
 
-- `FP_OWNER_CLIENT_ID`, `FP_OWNER_CLIENT_SECRET` — the owner's Solid-OIDC client credentials.
-- `FP_OWNER_WEBID` — the owner's WebID.
-- `FP_PROJECT_POD` — the project pod base, e.g. `https://${PODS_HOST}/project/`.
+```bash
+cd apps/feedback-pipeline && CSS_URL=https://${PODS_HOST} node scripts/bootstrap-owner.js
+```
+
+Paste its output (`FP_OWNER_CLIENT_ID` / `FP_OWNER_CLIENT_SECRET` / `FP_OWNER_WEBID` /
+`FP_PROJECT_POD`) into `deploy/.env`.
 
 ## 4. Create the project + cohort codes
 

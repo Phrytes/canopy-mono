@@ -15,10 +15,15 @@ import { getStrings } from '../strings/index.js';
 import { parseControl, runAction } from './actions.js';
 
 export class TelegramFeedbackBot {
-  #bridge; #pod; #config; #participantFor; #strings; #sessions = new Map();
+  #bridge; #pod; #config; #participantFor; #onActivate; #strings; #sessions = new Map();
 
-  /** @param {{ bridge, pod, config, participantFor?:(chatId:string)=>string }} a */
-  constructor({ bridge, pod, config, participantFor }) {
+  /**
+   * @param {{ bridge, pod, config, participantFor?:(chatId:string)=>string,
+   *           onActivate?:(participant:string)=>Promise<void> }} a
+   *   onActivate runs ONCE per chat (first message) — for a CSS pod, provision the
+   *   participant's ACP container (with the bot service as writer) before any write.
+   */
+  constructor({ bridge, pod, config, participantFor, onActivate }) {
     if (!bridge || typeof bridge.onMessage !== 'function' || typeof bridge.sendReply !== 'function') {
       throw new Error('TelegramFeedbackBot: bridge with onMessage()/sendReply() required');
     }
@@ -27,15 +32,22 @@ export class TelegramFeedbackBot {
     this.#config = config;
     this.#strings = getStrings(config?.language?.preferred);   // locale follows the project
     this.#participantFor = participantFor || ((chatId) => `tg:${chatId}`);
+    this.#onActivate = onActivate;
   }
 
-  #session(chatId) {
+  // async: provisions the participant's pod container once, on the chat's first message.
+  async #session(chatId) {
     let s = this.#sessions.get(chatId);
     if (!s) {
+      const participant = this.#participantFor(chatId);
       const adapter = new TelegramChannelAdapter({ bridge: this.#bridge, chatId, strings: this.#strings });
-      const dispatcher = new ChannelDispatcher({ adapter, pod: this.#pod, config: this.#config, participant: this.#participantFor(chatId) });
-      s = { adapter, dispatcher, points: [] };
-      this.#sessions.set(chatId, s);
+      const dispatcher = new ChannelDispatcher({ adapter, pod: this.#pod, config: this.#config, participant });
+      s = { adapter, dispatcher, points: [], participant };
+      this.#sessions.set(chatId, s);   // set before awaiting so a 2nd message won't double-provision
+      if (this.#onActivate) {
+        try { await this.#onActivate(participant); }
+        catch (e) { console.error(`[tg] provisioning ${participant} failed: ${e.message}`); }
+      }
     }
     return s;
   }
@@ -53,7 +65,7 @@ export class TelegramFeedbackBot {
   async handle(m) {
     const chatId = String(m.chatId);
     const text = (m.text || '').trim();
-    const session = this.#session(chatId);
+    const session = await this.#session(chatId);
     session.adapter.setReplyTo(m.messageId);
 
     // Telegram's grammar is explicit slashes + button callbacks; anything else is feedback.
