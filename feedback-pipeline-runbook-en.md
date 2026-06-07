@@ -48,6 +48,10 @@ Codes are only for the canopy-chat `/feedback <code>` flow, set up at the end of
 > group membership (you're in the group, the session hasn't picked it up). Run `newgrp docker`
 > in that terminal and retry, or log out/in once to fix it everywhere (`id | grep docker` to
 > check). Or prefix the command with `sudo`.
+>
+> **`Pod creation failed: There already is a resource …`?** The CSS volume kept a previous
+> run's pod. Either reset it — `docker compose -f deploy/docker-compose.dev.yml down -v` then
+> `up -d` — or bootstrap a different name (`POD_NAME=project2 …`) and use that in `FP_PROJECT_POD`.
 
 Then test a **surface** — easiest is **Telegram** (long-polling needs no public URL):
 

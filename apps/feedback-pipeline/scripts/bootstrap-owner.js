@@ -26,7 +26,15 @@ try {
 
   await post(ctrl.password.create, cookie, { email: EMAIL, password: PASSWORD });
   const pod = await j(await post(ctrl.account.pod, cookie, { name: POD_NAME }));
-  if (!pod?.webId) throw new Error(`pod creation failed: ${JSON.stringify(pod).slice(0, 200)}`);
+  if (!pod?.webId) {
+    const msg = JSON.stringify(pod);
+    if (/already/i.test(msg)) {
+      throw new Error(`pod "${POD_NAME}" already exists on this CSS. Re-run with a different name `
+        + `(POD_NAME=project2 …), or reset the dev CSS: `
+        + `docker compose -f deploy/docker-compose.dev.yml down -v && … up -d`);
+    }
+    throw new Error(`pod creation failed: ${msg.slice(0, 200)}`);
+  }
   const cc = await j(await post(ctrl.account.clientCredentials, cookie, { name: 'fp', webId: pod.webId }));
   if (!cc?.id || !cc?.secret) throw new Error(`client-credentials failed: ${JSON.stringify(cc).slice(0, 200)}`);
 
