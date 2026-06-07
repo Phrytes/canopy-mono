@@ -58,7 +58,7 @@ export async function runTask1(model, rawMessages, opts = {}) {
     if (fm.reject) { rejected.push({ raw, reason: fm.reject }); continue; }
     const c = await cleanMessage(model, raw, { ...opts, userLang: fm.lang });
     const rec = {
-      raw, cleaned: c.cleaned ?? `⚠ ${c.error}`, lang: c.lang || fm.lang,
+      raw, redacted: c.redacted, cleaned: c.cleaned ?? `⚠ ${c.error}`, lang: c.lang || fm.lang,
       signal: fm.signal, sensitive: fm.sensitive, flags: fm.flags,
       escalated: escalates(fm.signal, gate),
       hits: (c.hits || []).map((h) => h.type),
@@ -73,12 +73,27 @@ export async function runTask1(model, rawMessages, opts = {}) {
   // Task 2 catches it.) Whether a signal ALSO enters the aggregate is a deferred decision.
   const regular = perMessage.filter((m) => !m.escalated);
   const lang = opts.lang || regular[0]?.lang || perMessage[0]?.lang || 'nl';
+  // Best usable text per message: the LLM-cleaned text, falling back to the
+  // deterministically-floored (PII/name/profanity-stripped) text, then raw — so even if the
+  // LLM soften returned empty/garbled, we still show a safe point. (raw is last resort; it's
+  // the participant's own message shown back to them, and they review before any write.)
+  const lineFor = (m) => {
+    const c = (m.cleaned || '').trim();
+    if (c && !c.startsWith('⚠')) return c;
+    return (m.redacted || '').trim() || (m.raw || '').trim();
+  };
   let points = [];
   if (regular.length === 1) {
-    points = parsePoints('- ' + regular[0].cleaned);
+    points = parsePoints('- ' + lineFor(regular[0]));
   } else if (regular.length > 1) {
     const s = await summarize(model, regular.map((m) => m.cleaned), { ...opts, lang });
-    points = parsePoints(s.ok ? s.text : regular.map((m) => '- ' + m.cleaned).join('\n'));
+    points = parsePoints(s.ok ? s.text : regular.map((m) => '- ' + lineFor(m)).join('\n'));
+  }
+  // Safety net: summarize can return ok:true with empty/non-bulleted text (e.g. a reasoning
+  // model that reasons itself blank), which parsePoints turns into []. Never silently drop a
+  // participant's messages — fall back to one point per message.
+  if (!points.length && regular.length) {
+    points = parsePoints(regular.map((m) => '- ' + lineFor(m)).join('\n'));
   }
 
   return { perMessage, points, signals, rejected, lang };

@@ -45,7 +45,7 @@ export async function softenClean(model, redacted, lang, opts = {}) {
   if (profileFor(model, opts) === 'minimal') {
     const { shielded, map } = shield(redacted);
     const system = MINIMAL_CLEAN[lang] || MINIMAL_CLEAN.nl;
-    const r = await chat(model, system, shielded, { ...opts, thinking: thinkingFor('clean', opts) });
+    const r = await chat(model, system, shielded, { ...opts, thinking: thinkingFor('clean', { ...opts, model }) });
     return { cleaned: r.ok ? unshield(r.text.trim(), map) : null, error: r.ok ? null : r.error, ms: r.ms };
   }
   const id = await identifierPass(model, redacted, lang, opts);
@@ -72,7 +72,7 @@ export async function summarize(model, messages, opts = {}) {
   const user = messages.map((m, i) => `${i + 1}. ${m}`).join('\n');
   const { shielded, map } = shield(user);                       // protect [tokens] from rewording
   const examples = minimal ? [] : pairsToTurns(sample(SUMMARIZE_EXAMPLE_POOL[lang] || SUMMARIZE_EXAMPLE_POOL.nl, 1));
-  const r = await chat(model, system, shielded, { examples, ...opts, thinking: thinkingFor('summarize', opts) });
+  const r = await chat(model, system, shielded, { examples, ...opts, thinking: thinkingFor('summarize', { ...opts, model }) });
   const text = r.ok ? unshield(r.text, map) : null;
   return { ok: r.ok, text, error: r.ok ? null : r.error, ms: r.ms };
 }
@@ -85,7 +85,7 @@ export async function translate(model, text, targetLang, opts = {}) {
   if (!text || !text.trim()) return text;
   const { shielded, map } = shield(text);
   const system = `Translate the user's message into ${langName(targetLang)}. Keep any [[number]] markers and any numbers exactly as they are. Do not add or remove information. Output only the translation, no preamble or quotes.`;
-  const r = await chat(model, system, shielded, { ...opts, thinking: thinkingFor('translate', opts) });
+  const r = await chat(model, system, shielded, { ...opts, thinking: thinkingFor('translate', { ...opts, model }) });
   return r.ok ? unshield(r.text.trim(), map) : text;
 }
 

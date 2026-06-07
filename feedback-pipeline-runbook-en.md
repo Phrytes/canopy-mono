@@ -59,9 +59,14 @@ Then test a **surface** — easiest is **Telegram** (long-polling needs no publi
 FP_TG_BOT_TOKEN=<@BotFather token> \
 CSS_URL=http://localhost:3000 \
 FP_OWNER_CLIENT_ID=… FP_OWNER_CLIENT_SECRET=… FP_OWNER_WEBID=… FP_PROJECT_POD=http://localhost:3000/project/ \
-FP_LLM_BASEURL=http://localhost:8080/v1 FP_LLM_APIKEY=<key> FP_LLM_MODEL=kimi-k2.6 FP_THINKING_LABEL=off \
+FP_LLM_BASEURL=http://localhost:8080/v1 FP_LLM_APIKEY=<key> FP_LLM_MODEL=kimi-k2.6 \
 npm run tg-bot-smoke
 ```
+
+(No `FP_THINKING_*` needed: capable "minimal-profile" models — Kimi, gpt-oss, gemma — default
+to thinking **off** for the clean/label/summarize tasks. With thinking on they reason past the
+completion-token budget and return empty content, which used to make `/klaar` show "geen punten".
+Set `FP_THINKING_<TASK>=on` to override per task.)
 
 DM the bot → it floors + cleans (real Privatemode model) → `/klaar` → tap a consent button →
 the contribution lands in your local pod. (Or skip surfaces entirely and just run
