@@ -16,7 +16,7 @@ import { getUsage } from '../src/ollama.js';
 
 const [dsPath, goldPath, kArg] = process.argv.slice(2);
 if (!dsPath || !goldPath) { console.error('usage: score-dataset.js <dataset.json> <gold.json> [k]'); process.exit(1); }
-const MODEL = process.env.FP_MODEL || 'qwen2.5:7b-instruct';
+const MODEL = process.env.FP_MODEL || process.env.FP_LLM_MODEL || 'qwen2.5:7b-instruct';
 const k = Number(kArg) || 3;
 
 const raw = JSON.parse(readFileSync(dsPath, 'utf8'));

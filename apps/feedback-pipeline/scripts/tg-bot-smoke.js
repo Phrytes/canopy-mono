@@ -25,7 +25,7 @@ catch (e) { console.log('SKIP: chat-agent substrate not available —', e.messag
 
 const config = validateProjectConfig({
   projectId: 'tg-smoke',
-  llm: { route: process.env.FP_LLM_ROUTE || 'local', model: process.env.FP_LLM_MODEL || 'qwen2.5:7b' },
+  llm: { route: process.env.FP_LLM_ROUTE || 'local', model: process.env.FP_LLM_MODEL || process.env.FP_MODEL || 'qwen2.5:7b' },
   aggregation: { k: 3 },
   signal: { layer1OnDevice: true, escalationCategories: ['crisis'] },
 });

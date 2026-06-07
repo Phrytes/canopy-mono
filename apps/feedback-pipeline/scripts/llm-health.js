@@ -7,7 +7,7 @@
 
 import { chat, llmBase } from '../src/ollama.js';
 
-const model = process.env.FP_LLM_MODEL || 'qwen2.5:7b';
+const model = process.env.FP_LLM_MODEL || process.env.FP_MODEL || 'qwen2.5:7b';
 console.log(`route:  ${llmBase()}`);
 console.log(`model:  ${model}`);
 const r = await chat(model, 'You are a health check. Reply with the single word: ok.', 'ping', { numPredict: 5, timeoutMs: 20000 });
