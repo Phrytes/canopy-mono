@@ -45,6 +45,11 @@ npm run cohort -- generate-codes  --project test --n 20 --store deploy/cohort-st
 FP_LLM_BASEURL=http://localhost:8080/v1 FP_MODEL=kimi-k2.6 npm run llm-health
 ```
 
+> **`permission denied … /var/run/docker.sock`?** Your shell session predates your `docker`
+> group membership (you're in the group, the session hasn't picked it up). Run `newgrp docker`
+> in that terminal and retry, or log out/in once to fix it everywhere (`id | grep docker` to
+> check). Or prefix the command with `sudo`.
+
 Then test a **surface** — easiest is **Telegram** (long-polling needs no public URL):
 
 ```bash

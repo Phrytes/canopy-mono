@@ -25,6 +25,7 @@
     "llm-health": "node scripts/llm-health.js"
   },
   "dependencies": {
+    "@inrupt/solid-client-authn-core": "^4.0.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "eld": "^2.0.3",
     "zod": "^4.4.3"
