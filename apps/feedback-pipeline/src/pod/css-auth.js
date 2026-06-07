@@ -10,6 +10,7 @@
 // to decouple in tests.
 
 import { CssCentralPod } from './css-central-pod.js';
+import { cryptoForProject } from './crypto-config.js';
 
 /** Solid-OIDC client-credentials → an authenticated DPoP fetch (Node side). */
 export async function clientCredentialsFetch({ cssUrl, clientId, clientSecret, authn } = {}) {
@@ -23,21 +24,33 @@ export async function clientCredentialsFetch({ cssUrl, clientId, clientSecret, a
   const oidc = await (await fetch(`${base}/.well-known/openid-configuration`)).json();
   const dpopKey = await generateDpopKeyPair();
   const basic = Buffer.from(`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`).toString('base64');
-  const tok = await (await fetch(oidc.token_endpoint, {
+  const tokRes = await fetch(oidc.token_endpoint, {
     method: 'POST',
     headers: { authorization: `Basic ${basic}`, 'content-type': 'application/x-www-form-urlencoded', dpop: await createDpopHeader(oidc.token_endpoint, 'POST', dpopKey) },
     body: 'grant_type=client_credentials&scope=webid',
-  })).json();
+  });
+  const tok = await tokRes.json().catch(() => ({}));
+  if (!tokRes.ok || !tok.access_token) {
+    throw new Error(`token request failed (HTTP ${tokRes.status}): ${JSON.stringify(tok).slice(0, 300)} `
+      + `— check FP_OWNER_CLIENT_ID/SECRET match this CSS (${base}); they're invalidated by a CSS volume reset`);
+  }
   return buildAuthenticatedFetch(tok.access_token, { dpopKey });
 }
 
 /**
  * A CssCentralPod from either an existing `authedFetch` (browser) or credentials (server).
  * Pass `flat:true` when podBase is the participant's OWN container (canopy-chat pre-send).
- * @param {{ podBase:string, flat?:boolean, authedFetch?:Function, cssUrl?:string, clientId?:string, clientSecret?:string, authn?:object }} a
+ * Crypto is derived from `config` (privacy menukaart) + whatever key material this process
+ * holds (`projectPrivateKey`, `roster`) via cryptoForProject — or passed explicitly as
+ * `seal`/`open`/`verify`, which take precedence.
+ * @param {{ podBase:string, flat?:boolean, authedFetch?:Function, cssUrl?:string, clientId?:string, clientSecret?:string, authn?:object, seal?:Function, open?:Function, verify?:Function, config?:object, projectPrivateKey?:string, roster?:object }} a
  */
-export async function makeCssCentralPod({ podBase, flat = false, authedFetch, cssUrl, clientId, clientSecret, authn } = {}) {
+export async function makeCssCentralPod({ podBase, flat = false, authedFetch, cssUrl, clientId, clientSecret, authn, seal, open, verify, config, projectPrivateKey, roster } = {}) {
   if (!podBase) throw new Error('makeCssCentralPod: podBase required');
   const fetchImpl = authedFetch || await clientCredentialsFetch({ cssUrl, clientId, clientSecret, authn });
-  return new CssCentralPod({ authedFetch: fetchImpl, podBase, flat });
+  const derived = config ? cryptoForProject({ config, projectPrivateKey, roster }) : {};
+  return new CssCentralPod({
+    authedFetch: fetchImpl, podBase, flat,
+    seal: seal ?? derived.seal, open: open ?? derived.open, verify: verify ?? derived.verify,
+  });
 }

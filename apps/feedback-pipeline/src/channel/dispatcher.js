@@ -11,20 +11,31 @@ import { assertAdapter } from './adapter.js';
 import { escalates, runTask1 } from '../task1.js';
 import { buildContribution } from '../pod/contribution.js';
 import { configToRunOpts } from '../config/project-config.js';
+import { signContribution } from '../pod/signing.js';
 
 export class ChannelDispatcher {
-  #adapter; #pod; #participant; #opts;
+  #adapter; #pod; #participant; #opts; #projectId; #identity;
   #session = { messages: [], points: [] };
 
   /**
-   * @param {{ adapter, pod, config, participant:string }} args
+   * @param {{ adapter, pod, config, participant:string, identity?:{publicKey:string,privateKey:string} }} args
    *   adapter — a ChannelAdapter; pod — the central pod (Phase 2); participant — pseudonym.
+   *   identity — the participant's OWN signing keypair, present only where the participant
+   *     controls the agent (canopy-chat on-device). When set, contributions are SIGNED so a
+   *     verify-enabled project accepts them. The host-run TG delegate has no participant key,
+   *     so it writes unsigned — which a verify-enabled project will reject (TG is the
+   *     lightweight, less-private option, by design).
    */
-  constructor({ adapter, pod, config, participant }) {
+  #requiresSignature;
+
+  constructor({ adapter, pod, config, participant, identity }) {
     this.#adapter = assertAdapter(adapter);
     this.#pod = pod;
     this.#participant = participant;
     this.#opts = configToRunOpts(config);
+    this.#projectId = config?.projectId;
+    this.#identity = identity;
+    this.#requiresSignature = Boolean(config?.privacy?.verify);
   }
 
   #gate() { return { layer1OnDevice: this.#opts.layer1OnDevice, escalationCategories: this.#opts.escalationCategories }; }
@@ -57,15 +68,40 @@ export class ChannelDispatcher {
     return t1.points;
   }
 
-  /** Consent: write the approved points to the central pod (the hand-over = the write). */
+  /** Consent: write the approved points to the central pod (the hand-over = the write). When
+   *  the participant controls a signing identity, each contribution is signed (over plaintext)
+   *  so a verify-enabled central pod accepts it.
+   *
+   *  Verification failures are surfaced GRACEFULLY, never thrown: if the project requires
+   *  signatures but this channel has no participant key (the host-run TG delegate), nothing is
+   *  attempted and the participant is told to use the canopy app; if an individual write is
+   *  refused by the pod, the batch is rolled back (the partial writes withdrawn) and reported. */
   async consent(approvedIds, { timeWindow } = {}) {
+    if (this.#requiresSignature && !this.#identity) {
+      await this.#adapter.send({ type: 'verification-required' });
+      return [];
+    }
     const ids = new Set(approvedIds);
     const written = [];
+    let failure = null;
     for (const p of this.#session.points) {
       if (!ids.has(p.id)) continue;
       const cid = `${this.#participant}:${p.id}`;
-      await this.#pod.write(this.#participant, buildContribution({ id: cid, text: p.text }, { timeWindow, lang: this.#opts.lang }));
-      written.push(cid);
+      const contribution = buildContribution({ id: cid, text: p.text }, { timeWindow, lang: this.#opts.lang });
+      const meta = this.#identity
+        ? { sig: signContribution({ projectId: this.#projectId, participant: this.#participant, contribution }, this.#identity.privateKey), pubKey: this.#identity.publicKey }
+        : {};
+      try {
+        await this.#pod.write(this.#participant, contribution, meta);
+        written.push(cid);
+      } catch (e) { failure = e; break; }   // a refused write means the batch is not trustworthy
+    }
+    if (failure) {
+      // all-or-nothing: undo any partial writes so consent is not silently half-applied
+      const attempted = written.length;
+      for (const id of written) { try { await this.#pod.withdraw(this.#participant, id); } catch { /* best-effort */ } }
+      await this.#adapter.send({ type: 'consent-failed', count: attempted || 1, reason: failure.message });
+      return [];
     }
     await this.#adapter.send({ type: 'submitted', ids: written });
     return written;

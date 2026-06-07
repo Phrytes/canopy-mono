@@ -1,13 +1,43 @@
 # Feedback pipeline — TODO / what's left to test the whole thing
 
 *Status + roadmap. Companion to the architecture / build-proposal / user-stories /
-ethics docs. Updated 2026-06-04.*
+ethics docs. Updated 2026-06-07.*
+
+## Done 2026-06-07 — privacy & security layers (PR-1 → PR-4 + Phase 1)
+
+Test suite **137 → 216**, nothing skipped; the pre-existing `pseudo-pod-integration` test
+fixed by wiring the pnpm workspace (`@canopy/*` resolves). New runnable demos (no external
+deps): `npm run secure-smoke`, `byo-tee-smoke`, `phase1-smoke`. Full design write-up in
+`apps/feedback-pipeline/docs/SECURITY-MODEL.md`.
+
+- **PR-1 — at-rest sealing** (`pod/project-seal.js`): hybrid sealed-box (AES-256-GCM +
+  ephemeral X25519 → HKDF) to the project public key. Host-blind writer (public key only);
+  only a private-key holder opens. Wired into `CssCentralPod`/`InMemoryCentralPod` via
+  `crypto-config.js`.
+- **PR-2 — portal + GUI** (`portal/`, `scripts/portal.js`): the menukaart project store +
+  cohort codes + invite links; `npm run portal`.
+- **PR-3 — authenticity + handshake + notify + signing**: Ed25519 contributions
+  (`pod/signing.js`, wire-compatible with `@canopy/core` `AgentIdentity` — proven by test);
+  the **HI handshake** folds a signed identity registration into activation (one code → one
+  verified identity, anti-sybil); per-project `IdentityRoster`; **two-way notify**
+  (`channel/notify.js`) sealed to the participant; **dispatcher signs** on consent
+  (canopy-chat on-device) with a graceful `verification-required` / rollback for the TG
+  delegate.
+- **PR-4 — pluggable backends + TEE boundary**: the `CentralPod` contract
+  (`pod/central-pod-interface.js`); **`ByoCentralPod`** (bring-your-own-pod aggregation,
+  verifies across sources); the **TEE aggregation boundary** (`tee/aggregate.js`) — open +
+  verify + aggregate inside one function, only the aggregate + attestation leaves.
+- **Phase 1 — aggregation placement** (`aggregation/placement.js`): the team's ENFORCED
+  trust choice `aggregation.location` = `host` / `controller` / `enclave`; a process declares
+  its role via `FP_RUNNER_ROLE` and cannot build an opener it isn't entitled to. Controller-
+  side entry `runProjectAggregation` + the Privatemode route bridge (`applyLlmRoute`).
+  Phase 2 (decryption inside an attested TEE) is documented as the next step.
 
 ## Done & proven (individually)
 
 - **Pipeline brain** — floors (`floorMessage`), Task 1 (`runTask1`, dispatcher), Task 2
   (`aggregate` + k-anon + signal routing + below-threshold), config-driven (`run.js`),
-  the `ProjectConfig` "form". Unit + integration tests (mock LLM). 137 tests.
+  the `ProjectConfig` "form". Unit + integration tests (mock LLM). (216 tests total now — see "Done 2026-06-07".)
 - **LLM route** — OpenAI-compatible config block (local Ollama default; any
   `{baseURL, apiKey}`). Proven against Ollama + a mock server.
 - **Central pod** — same interface on three backings: in-memory, real `@canopy/pseudo-pod`,
@@ -149,3 +179,14 @@ ethics docs. Updated 2026-06-04.*
       and the duty-to-act vs consent/anonymity tension. Until decided, a detected crisis is
       flagged for human review + the passive 113 resource is shown; no automated outreach.
       See `feedback-pipeline-ethics-deferred-en.md` §1.
+
+## To revisit — docs written 2026-06-07 (security evening)
+
+- [ ] **Re-read `apps/feedback-pipeline/docs/SECURITY-MODEL.md`** — the trust model: the two
+      keys (participant identity vs project key), the plaintext-in-RAM map, the enforced
+      aggregation **placement** choice (`host` / `controller` / `enclave`), **Phase 1**
+      (controller-side decryption + Privatemode — shipped) and **why Phase 2** (the TEE
+      endgame) is needed. Sanity-check it against the implemented code before any launch.
+- [ ] **Re-read `apps/feedback-pipeline/docs/AGENT-RUNTIME.md`** — the PARKED "runtime browser"
+      idea (key-custody wallet + egress firewall + embedded renderer; Tauri desktop, Expo
+      mobile). Decide if/when it becomes its own project; see its §7 open decisions.

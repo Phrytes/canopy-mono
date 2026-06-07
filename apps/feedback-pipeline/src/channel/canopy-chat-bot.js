@@ -14,10 +14,14 @@ import { parseControl, runAction } from './actions.js';
 import { classifyIntent } from './intent.js';
 
 export class CanopyChatBot {
-  #bridge; #pod; #config; #model; #participantFor; #strings; #sessions = new Map();
+  #bridge; #pod; #config; #model; #participantFor; #identityFor; #strings; #sessions = new Map();
 
-  /** @param {{ bridge, pod, config, participantFor?:(chatId:string)=>string }} a */
-  constructor({ bridge, pod, config, participantFor }) {
+  /** @param {{ bridge, pod, config, participantFor?:(chatId:string)=>string,
+   *           identityFor?:(chatId:string)=>{publicKey:string,privateKey:string} }} a
+   *  canopy-chat runs ON the participant's device, so `identityFor` can return the participant's
+   *  own signing keypair (from their vault) — contributions are then signed and accepted by a
+   *  verify-enabled project. */
+  constructor({ bridge, pod, config, participantFor, identityFor }) {
     if (!bridge || typeof bridge.onMessage !== 'function' || typeof bridge.sendReply !== 'function') {
       throw new Error('CanopyChatBot: bridge with onMessage()/sendReply() required');
     }
@@ -27,13 +31,17 @@ export class CanopyChatBot {
     this.#model = config?.llm?.model;
     this.#strings = getStrings(config?.language?.preferred);
     this.#participantFor = participantFor || ((chatId) => `cc:${chatId}`);
+    this.#identityFor = identityFor;
   }
 
   #session(chatId) {
     let s = this.#sessions.get(chatId);
     if (!s) {
       const adapter = new CanopyChatChannelAdapter({ bridge: this.#bridge, chatId, strings: this.#strings });
-      const dispatcher = new ChannelDispatcher({ adapter, pod: this.#pod, config: this.#config, participant: this.#participantFor(chatId) });
+      const dispatcher = new ChannelDispatcher({
+        adapter, pod: this.#pod, config: this.#config,
+        participant: this.#participantFor(chatId), identity: this.#identityFor?.(chatId),
+      });
       s = { adapter, dispatcher, points: [] };
       this.#sessions.set(chatId, s);
     }

@@ -28,6 +28,10 @@ export function renderMessage(msg, s = getStrings()) {
     }
     case 'submitted':
       return { text: msg.ids?.length ? s.submitted(msg.ids.length) : s.submittedEmpty };
+    case 'verification-required':
+      return { text: s.verificationRequired };
+    case 'consent-failed':
+      return { text: s.consentFailed(msg.count ?? 0) };
     case 'contributions':
       return msg.items?.length
         ? { text: [s.contributionsHeader, ...msg.items.map((c, i) => s.contributionLine(i + 1, c.text, c.id))].join('\n') }
