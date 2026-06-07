@@ -38,7 +38,7 @@ PRIVATEMODE_API_KEY=<key> docker compose -f deploy/docker-compose.dev.yml up -d
 CSS_URL=http://localhost:3000 node scripts/bootstrap-owner.js
 
 # 3. confirm the LLM route
-FP_LLM_BASEURL=http://localhost:8080/v1 FP_MODEL=kimi-k2.6 npm run llm-health
+FP_LLM_BASEURL=http://localhost:8080/v1 FP_LLM_MODEL=kimi-k2.6 npm run llm-health
 ```
 
 (No cohort codes needed for the Telegram path below — the bot provisions on first contact.
@@ -59,7 +59,7 @@ Then test a **surface** — easiest is **Telegram** (long-polling needs no publi
 FP_TG_BOT_TOKEN=<@BotFather token> \
 CSS_URL=http://localhost:3000 \
 FP_OWNER_CLIENT_ID=… FP_OWNER_CLIENT_SECRET=… FP_OWNER_WEBID=… FP_PROJECT_POD=http://localhost:3000/project/ \
-FP_LLM_BASEURL=http://localhost:8080/v1 FP_LLM_APIKEY=<key> FP_MODEL=kimi-k2.6 FP_THINKING_LABEL=off \
+FP_LLM_BASEURL=http://localhost:8080/v1 FP_LLM_APIKEY=<key> FP_LLM_MODEL=kimi-k2.6 FP_THINKING_LABEL=off \
 npm run tg-bot-smoke
 ```
 
