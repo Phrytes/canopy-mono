@@ -39,14 +39,21 @@ export function profileFor(model, opts = {}) {
 // Per-task reasoning ("thinking") control. Each LLM step passes thinkingFor('<task>') as
 // opts.thinking, so you can disable reasoning where the task is clear (crisis/signal
 // detection) and keep it where it helps (summarising). Tasks: 'label' (signal/crisis/domain),
-// 'clean', 'summarize', 'translate'. Set FP_THINKING_<TASK>=off|on (e.g. FP_THINKING_LABEL=off);
-// a task with no setting inherits the global FP_LLM_THINKING, then the model default (on).
+// 'clean', 'summarize', 'translate'. Set FP_THINKING_<TASK>=off|on (e.g. FP_THINKING_LABEL=off).
+//
+// Resolution order: ProjectConfig → FP_THINKING_<TASK> env → PROFILE DEFAULT → model default.
+// The profile default matters: capable reasoning models on the `minimal` profile (Kimi,
+// gpt-oss, gemma) spend their completion-token budget on reasoning and return EMPTY content
+// for these short, structured tasks — so they default to 'off' (which is also the config that
+// produced the 100% scorecards). Verbose/local models keep their own default (reason → on).
 export function thinkingFor(task, opts = {}) {
   const fromConfig = opts.reasoning?.[task];   // the ProjectConfig form (single source)
   const fromEnv = (typeof process !== 'undefined' && process.env) ? process.env[`FP_THINKING_${String(task).toUpperCase()}`] : undefined;
   const v = fromConfig ?? fromEnv;             // config first, env fallback (tests)
   if (v === 'off') return 'off';
   if (v === 'on') return 'on';
+  // no explicit setting → profile default: minimal-profile models reason themselves blank here
+  if (opts.model && profileFor(opts.model, opts) === 'minimal') return 'off';
   return undefined;   // inherit global FP_LLM_THINKING / model default
 }
 

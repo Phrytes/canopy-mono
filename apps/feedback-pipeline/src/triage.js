@@ -77,7 +77,7 @@ export async function labelMessages(model, messages, opts = {}, rawMessages = nu
     const user = chunk.map((m, i) => `${i + 1}. ${m}`).join('\n');
     // reasoning models burn tokens BEFORE the JSON → give minimal more headroom.
     const numPredict = Math.min(4096, Math.max(minimal ? 768 : 384, chunk.length * (minimal ? 160 : 80)));
-    const r = await chat(model, system, user, { ...opts, numPredict, thinking: thinkingFor('label', opts) });
+    const r = await chat(model, system, user, { ...opts, numPredict, thinking: thinkingFor('label', { ...opts, model }) });
     labels.push(...(r.ok ? parseLabels(r.text, chunk.length) : blankLabels(chunk.length)));
   }
   // Deterministic CATEGORY floors OVERRIDE the model (precedence + crisis-
