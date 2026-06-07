@@ -14,12 +14,23 @@
 // hook + usage metering) once the app joins the pnpm workspace — see
 // feedback-pipeline-build-proposal-en.md.
 
+// A host without env (the browser / canopy-chat) injects the route here. Set from the
+// project config's llm block at startup; takes precedence over env when present.
+let routeOverride = null;
+export function setLlmRoute(route) {
+  routeOverride = route?.baseURL ? { base: route.baseURL.replace(/\/+$/, ''), apiKey: route.apiKey || '' } : null;
+}
+
+// process.env only exists under Node — guard it so this module is browser-safe.
+const env = (k) => (typeof process !== 'undefined' && process.env ? process.env[k] : undefined);
+
 // Resolve the route at CALL time (not import time) so the config block is dynamic
 // and tests can point it at a mock server.
 function resolveRoute() {
-  const raw = process.env.FP_LLM_BASEURL
-    || (process.env.OLLAMA_URL ? `${process.env.OLLAMA_URL.replace(/\/+$/, '')}/v1` : 'http://localhost:11434/v1');
-  return { base: raw.replace(/\/+$/, ''), apiKey: process.env.FP_LLM_APIKEY || '' };
+  if (routeOverride) return routeOverride;
+  const raw = env('FP_LLM_BASEURL')
+    || (env('OLLAMA_URL') ? `${env('OLLAMA_URL').replace(/\/+$/, '')}/v1` : 'http://localhost:11434/v1');
+  return { base: raw.replace(/\/+$/, ''), apiKey: env('FP_LLM_APIKEY') || '' };
 }
 
 /**
@@ -34,45 +45,108 @@ function resolveRoute() {
  * @param {number} [opts.numPredict=512]   → OpenAI `max_tokens`
  * @returns {Promise<{ok:boolean, ms:number, text?:string, error?:string}>}
  */
+// API usage accounting — accumulate the token usage the route reports (OpenAI `usage`
+// field), so a run can show what it spent. Mirrors the Privatemode portal
+// (portal.privatemode.ai/usage); the portal stays authoritative for credits, this is the
+// per-run estimate. Reset between runs with resetUsage().
+let _usage = { calls: 0, promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+function recordUsage(u) {
+  if (!u) return;
+  _usage.calls += 1;
+  _usage.promptTokens += u.prompt_tokens || 0;
+  _usage.completionTokens += u.completion_tokens || 0;
+  _usage.totalTokens += u.total_tokens || ((u.prompt_tokens || 0) + (u.completion_tokens || 0));
+}
+export function getUsage() { return { ..._usage }; }
+export function resetUsage() { _usage = { calls: 0, promptTokens: 0, completionTokens: 0, totalTokens: 0 }; }
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Optional client-side throttle for rate-limited routes (e.g. Privatemode's 20 req/min):
+// FP_LLM_MIN_INTERVAL_MS spaces consecutive calls. Serialized via a promise chain so
+// concurrent callers queue. Default 0 = off (no behaviour change).
+let _chain = Promise.resolve();
+let _lastStart = 0;
+function gate(minMs) {
+  if (!minMs) return Promise.resolve();
+  const p = _chain.then(async () => {
+    const since = Date.now() - _lastStart;
+    if (since < minMs) await sleep(minMs - since);
+    _lastStart = Date.now();
+  });
+  _chain = p.catch(() => {});
+  return p;
+}
+
+// Reasoning control — model-specific (Privatemode has no unified field):
+//   Kimi  → chat_template_kwargs {thinking:false}
+//   Gemma → chat_template_kwargs {enable_thinking:false}
+//   gpt-oss → reasoning_effort (low|medium|high) — OpenAI-native; not in Privatemode's docs
+//             but the OpenAI-compatible proxy may honour it. "thinking off" maps to 'low'.
+// Returns the EXTRA request-body fields to merge (only ones the model accepts). Opt-in via
+// opts.chatTemplateKwargs / opts.reasoningEffort / opts.thinking, or FP_LLM_THINKING /
+// FP_LLM_REASONING_EFFORT. Default: model's own default (reasoning on).
+function reasoningBody(model, opts = {}) {
+  const m = (model || '').toLowerCase();
+  const isOss = m.includes('oss'), isKimi = m.includes('kimi'), isGemma = m.includes('gemma');
+  if (opts.chatTemplateKwargs) return { chat_template_kwargs: opts.chatTemplateKwargs };
+  const effort = opts.reasoningEffort ?? (isOss ? env('FP_LLM_REASONING_EFFORT') : undefined);
+  if (effort && isOss) return { reasoning_effort: effort };
+  const thinking = opts.thinking ?? env('FP_LLM_THINKING');
+  if (thinking === 'off' || thinking === false) {
+    if (isKimi) return { chat_template_kwargs: { thinking: false } };
+    if (isGemma) return { chat_template_kwargs: { enable_thinking: false } };
+    if (isOss) return { reasoning_effort: 'low' };
+  }
+  return {};
+}
+
+async function postOnce({ base, apiKey, model, system, examples, user, temperature, numPredict, timeoutMs, extraBody }) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(`${base}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        model, stream: false, temperature, max_tokens: numPredict,
+        messages: [{ role: 'system', content: system }, ...examples, { role: 'user', content: user }],
+        ...extraBody,
+      }),
+    });
+  } finally { clearTimeout(timer); }
+}
+
 export async function chat(model, system, user, opts = {}) {
   const { examples = [], timeoutMs = 300000, temperature = 0, numPredict = 512 } = opts;
   const { base, apiKey } = resolveRoute();
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const minInterval = Number(opts.minIntervalMs ?? env('FP_LLM_MIN_INTERVAL_MS') ?? 0);   // form first, env fallback
+  const maxRetries = Number(opts.maxRetries ?? env('FP_LLM_MAX_RETRIES') ?? 3);           // 429 retries only
+  const extraBody = reasoningBody(model, opts);
   const t0 = Date.now();
-  try {
-    const res = await fetch(`${base}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-      },
-      signal: ctrl.signal,
-      body: JSON.stringify({
-        model,
-        stream: false,
-        temperature,
-        max_tokens: numPredict,
-        messages: [
-          { role: 'system', content: system },
-          ...examples,
-          { role: 'user', content: user },
-        ],
-      }),
-    });
-    const ms = Date.now() - t0;
-    if (!res.ok) {
-      const body = await res.text();
-      return { ok: false, ms, error: `HTTP ${res.status}: ${body.slice(0, 200)}` };
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await gate(minInterval);
+      const res = await postOnce({ base, apiKey, model, system, examples, user, temperature, numPredict, timeoutMs, extraBody });
+      if (res.status === 429 && attempt < maxRetries) {
+        const ra = Number(res.headers.get('retry-after'));
+        await sleep(Number.isFinite(ra) && ra > 0 ? ra * 1000 : Math.min(30000, 1000 * 2 ** attempt));
+        continue;   // rate limited — back off and retry
+      }
+      const ms = Date.now() - t0;
+      if (!res.ok) {
+        const body = await res.text();
+        return { ok: false, ms, error: `HTTP ${res.status}: ${body.slice(0, 200)}` };
+      }
+      const json = await res.json();
+      recordUsage(json.usage);
+      return { ok: true, ms, text: (json.choices?.[0]?.message?.content ?? '').trim(), usage: json.usage || null };
+    } catch (e) {
+      const ms = Date.now() - t0;
+      const error = e.name === 'AbortError' ? `timeout after ${timeoutMs}ms` : String(e.message || e);
+      return { ok: false, ms, error };
     }
-    const json = await res.json();
-    return { ok: true, ms, text: (json.choices?.[0]?.message?.content ?? '').trim() };
-  } catch (e) {
-    const ms = Date.now() - t0;
-    const error = e.name === 'AbortError' ? `timeout after ${timeoutMs}ms` : String(e.message || e);
-    return { ok: false, ms, error };
-  } finally {
-    clearTimeout(timer);
   }
 }
 

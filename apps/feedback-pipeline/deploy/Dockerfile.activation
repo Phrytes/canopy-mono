@@ -1,0 +1,14 @@
+# Activation service image (Tier 3a). Build context = apps/feedback-pipeline. The service
+# is dependency-light; it needs the app deps + the Solid auth lib for the owner's DPoP fetch.
+FROM node:22-alpine
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm install --omit=dev && npm install @inrupt/solid-client-authn-core
+
+COPY src ./src
+COPY scripts ./scripts
+
+EXPOSE 8787
+USER node
+CMD ["node", "scripts/activation-service.js"]

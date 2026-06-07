@@ -60,7 +60,7 @@ export class InMemoryCentralPod {
    *  CONSENTED, and must not be re-edited. */
   forAggregation() {
     return this.list().map(({ participant, contribution }) => ({
-      user: participant, text: contribution.text, lang: contribution.lang,
+      user: participant, id: contribution.id, text: contribution.text, lang: contribution.lang,
     }));
   }
 }

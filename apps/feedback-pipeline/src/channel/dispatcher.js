@@ -64,7 +64,7 @@ export class ChannelDispatcher {
     for (const p of this.#session.points) {
       if (!ids.has(p.id)) continue;
       const cid = `${this.#participant}:${p.id}`;
-      this.#pod.write(this.#participant, buildContribution({ id: cid, text: p.text }, { timeWindow, lang: this.#opts.lang }));
+      await this.#pod.write(this.#participant, buildContribution({ id: cid, text: p.text }, { timeWindow, lang: this.#opts.lang }));
       written.push(cid);
     }
     await this.#adapter.send({ type: 'submitted', ids: written });
@@ -75,12 +75,12 @@ export class ChannelDispatcher {
   async command(action, arg) {
     switch (action) {
       case 'my-contributions': {
-        const mine = this.#pod.list().filter((x) => x.participant === this.#participant).map((x) => x.contribution);
+        const mine = (await this.#pod.list()).filter((x) => x.participant === this.#participant).map((x) => x.contribution);
         await this.#adapter.send({ type: 'contributions', items: mine });
         return mine;
       }
       case 'withdraw':
-        this.#pod.withdraw(this.#participant, arg);            // delete your own (before release)
+        await this.#pod.withdraw(this.#participant, arg);      // delete your own (before release)
         await this.#adapter.send({ type: 'withdrawn', id: arg });
         return true;
       // seams onto the own-pod / vault / exit flow (substrate, later phases):

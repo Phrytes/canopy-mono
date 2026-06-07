@@ -21,9 +21,22 @@ function domainFor(line) {
   return 'general';
 }
 
+function intentFor(user) {
+  const u = user.toLowerCase();
+  if (/\b(klaar|done|review|bekijk|laat.*zien)\b/.test(u)) return { intent: 'review' };
+  if (/\b(all|alles|allemaal|everything)\b/.test(u)) return { intent: 'consent_all' };
+  if (/\b(tweede|second)\b/.test(u)) return { intent: 'consent_one', index: 2 };
+  if (/\b(eerste|first)\b/.test(u)) return { intent: 'consent_one', index: 1 };
+  if (/(bijdrag|contribut|wat heb ik)/.test(u)) return { intent: 'my_contributions' };
+  if (/\b(cancel|niets|annuleer|nothing)\b/.test(u)) return { intent: 'cancel' };
+  if (/\b(menu|help)\b/.test(u)) return { intent: 'menu' };
+  return { intent: 'message' };
+}
+
 function respond(messages) {
   const sys = (messages.find((m) => m.role === 'system')?.content) || '';
   const user = ([...messages].reverse().find((m) => m.role === 'user')?.content) || '';
+  if (/classify a participant message|"intent"/i.test(sys)) return JSON.stringify(intentFor(user));
   if (/JSON array|"domain"|triage/i.test(sys)) {
     const lines = user.split('\n').filter((l) => /^\s*\d+\./.test(l));
     const arr = (lines.length ? lines : [user]).map((l, i) => ({ i: i + 1, domain: domainFor(l), signal: 'none', severity: 'low' }));

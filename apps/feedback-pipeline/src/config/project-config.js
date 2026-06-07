@@ -20,9 +20,23 @@ export const ProjectConfigSchema = z.object({
   // D1 — LLM route. No universal default: every project picks. (apiKey is NOT stored
   // here — it is injected from the environment / secret store at runtime.)
   llm: z.object({
+    // COMMON
     route: z.enum(['privatemode', 'ovh', 'within-walls', 'local']),
-    baseURL: z.string().url().optional(),     // omit for the local Ollama default
     model: z.string().min(1),
+    baseURL: z.string().url().optional(),     // omit for the local Ollama default
+    // ADVANCED — runtime knobs (usually auto/default; the matching env var overrides for tests)
+    promptProfile: z.enum(['verbose', 'minimal']).optional(),     // omit = auto from the model
+    reasoning: z.object({
+      label: z.enum(['on', 'off']).optional(),       // signal/crisis/domain detection
+      clean: z.enum(['on', 'off']).optional(),
+      summarize: z.enum(['on', 'off']).optional(),
+      translate: z.enum(['on', 'off']).optional(),
+      effort: z.enum(['low', 'medium', 'high']).optional(),       // gpt-oss only
+    }).default({}),
+    rateLimit: z.object({
+      minIntervalMs: z.number().int().min(0).default(0),          // space calls (Privatemode 20/min → 3200)
+      maxRetries: z.number().int().min(0).default(3),             // HTTP 429 retries
+    }).default({ minIntervalMs: 0, maxRetries: 3 }),
   }),
 
   language: z.object({
@@ -92,8 +106,27 @@ export function configToRunOpts(config) {
     escalationCategories: c.signal.escalationCategories,
     passiveSupport: c.signal.passiveSupport,
     reviewMode: c.review.mode,
+    // advanced LLM runtime knobs — carried so the FORM is the single source (env still
+    // overrides for tests). Read by profileFor / thinkingFor / chat().
+    promptProfile: c.llm.promptProfile,
+    reasoning: c.llm.reasoning,
+    reasoningEffort: c.llm.reasoning.effort,
+    minIntervalMs: c.llm.rateLimit.minIntervalMs,
+    maxRetries: c.llm.rateLimit.maxRetries,
   };
 }
+
+/** Common vs advanced split for the onboarding form (see docs/parameters.md). A UI renders
+ *  `common` by default and `advanced` behind a toggle; everything has a sensible default
+ *  except the four common must-decides (route, model, k, destinations). */
+export const CONFIG_TIERS = {
+  common: ['projectId', 'projectName', 'llm.route', 'llm.model', 'llm.baseURL',
+    'language.preferred', 'review.mode', 'aggregation.k',
+    'signal.escalationCategories', 'signal.destinations', 'signal.passiveSupport'],
+  advanced: ['aggregation.belowThreshold', 'signal.layer1OnDevice',
+    'retention.ownPod', 'eval.owner', 'eval.publish',
+    'llm.promptProfile', 'llm.reasoning', 'llm.rateLimit'],
+};
 
 /** A worked example: a civic participation project on the local route (dev). */
 export const exampleProjectConfig = {
