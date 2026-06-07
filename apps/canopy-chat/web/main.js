@@ -72,6 +72,7 @@ import { mockTasksManifest,
          mockFolioManifest }         from '../src/core/manifests/mockManifests.js';
 import { calendarManifest }          from '@canopy-app/calendar/manifest';
 import { createLocalBuiltins }       from '../src/core/localBuiltins.js';
+import { createFeedbackSurface }      from '../src/feedback/feedbackSurface.js';
 import * as podAuth                  from '../src/web/podAuth.js';
 import {
   createPodWriter, discoverPodRoot,
@@ -2075,7 +2076,64 @@ function resolveTextArgsInPlace(parse, thread) {
   }
 }
 
+// --- feedback-pipeline surface ------------------------------------------------------
+// Hosts the feedback CanopyChatBot. A thread enters feedback mode via /feedback; while
+// active, free text (otherwise an "unknown command") is routed to the bot, which runs the
+// on-device floor + the review/consent journey. Set FEEDBACK_LLM_BASEURL to the project's
+// OpenAI-compatible route (e.g. the privatemode-proxy /v1) — review/clean need it; the
+// control intents (klaar / verstuur alles) work without one.
+// Set these to the project's deployment to enable REAL participant pods: with an activation
+// URL + a logged-in pod session, `/feedback <code>` provisions the participant's ACP-locked
+// container and writes there with their browser keys. Left null → an in-memory demo pod.
+const FEEDBACK_LLM_BASEURL = null;
+const FEEDBACK_ACTIVATION_URL = null;
+const FEEDBACK_PROJECT_ID = 'canopy-chat';
+let _feedbackSurface = null;
+function feedback(podOverride) {
+  if (podOverride || !_feedbackSurface) {
+    _feedbackSurface = createFeedbackSurface({
+      pod: podOverride,
+      llmRoute: FEEDBACK_LLM_BASEURL ? { baseURL: FEEDBACK_LLM_BASEURL } : null,
+      emit: ({ chatId, text }) => {
+        const thread = store.getThread(chatId) || store.getActiveThread();
+        if (!thread) return;
+        thread.addShellMessage(renderReply({ payload: text, shape: 'text', threadId: chatId }, { t }));
+        if (store.getActiveThread()?.id === thread.id) renderActiveStream();
+      },
+    });
+  }
+  return _feedbackSurface;
+}
+function feedbackNote(thread, msg) {
+  thread.addShellMessage(renderReply({ payload: msg, shape: 'text', threadId: thread.id }, { t }));
+  renderActiveStream();
+}
+
 async function handleUserText(text, thread) {
+  const trimmed = text.trim();
+  const fb = trimmed.match(/^\/feedback(?:\s+(\S+))?$/);
+  if (fb) {
+    const code = fb[1];
+    if (code && FEEDBACK_ACTIVATION_URL) {
+      // real participant pod: activate (cohort code + the session WebID) → write with browser keys
+      const session = podAuth.getCurrentSession();
+      if (!session) { feedbackNote(thread, 'Log eerst in op je pod om mee te doen.'); return; }
+      try {
+        const { buildFeedbackPod, getOrCreateRecoveryHash } = await import('../src/feedback/feedbackPod.js');
+        const pod = await buildFeedbackPod({ session, activationUrl: FEEDBACK_ACTIVATION_URL, projectId: FEEDBACK_PROJECT_ID, code, recoveryHash: await getOrCreateRecoveryHash() });
+        await feedback(pod).start(thread.id);
+      } catch (e) { feedbackNote(thread, `Activatie mislukt: ${e.message}`); }
+      return;
+    }
+    await feedback().start(thread.id);   // in-memory demo (no code / not configured)
+    return;
+  }
+  if (trimmed === '/feedback-stop') {
+    feedback().stop(thread.id);
+    feedbackNote(thread, 'Feedbackmodus uit.');
+    return;
+  }
+
   const parse = parseInput(text, catalog, { threadId: thread.id });
   // #177 (2026-05-24) — fuzzy text→id resolution.  When the user
   // typed a human label (e.g. `/done dishwasher` instead of
@@ -2089,6 +2147,7 @@ async function handleUserText(text, thread) {
   const route = resolveDispatch(parse, catalog);
 
   if (route.kind === 'unknown') {
+    if (await feedback().handle(text, thread.id)) return;   // feedback-mode thread → the bot
     const rendered = renderReply({
       payload:  t('reply.unknown_command', { input: text }),
       shape:    'text', threadId: thread.id,
