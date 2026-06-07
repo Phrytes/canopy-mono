@@ -21,6 +21,49 @@ What this stack stands up (architecture §1, §3):
   `PODS_HOST` (pods) and `ACTIVATE_HOST` (activation).
 - A Privatemode (Edgeless) account + project key.
 
+## 0b. Local test on a laptop (no VPS / DNS / TLS)
+
+To exercise the whole flow first, run it on your machine. CSS + the proxy go in Docker on
+localhost; the activation service + bots run as host `node` processes (one hostname →
+`http://localhost:3000`, so Solid's absolute URIs line up). No Caddy.
+
+```bash
+# 0. one-time: the server-side CSS auth lib the activation service + TG bot need
+cd apps/feedback-pipeline && npm i @inrupt/solid-client-authn-core
+
+# 1. CSS (:3000) + privatemode-proxy (:8080)
+PRIVATEMODE_API_KEY=<key> docker compose -f deploy/docker-compose.dev.yml up -d
+
+# 2. project-pod owner → paste the printed FP_OWNER_* / FP_PROJECT_POD into your shell/env
+CSS_URL=http://localhost:3000 node scripts/bootstrap-owner.js
+
+# 3. a project + cohort codes
+npm run cohort -- create-project  --project test --k 2 --store deploy/cohort-store.json
+npm run cohort -- generate-codes  --project test --n 20 --store deploy/cohort-store.json
+
+# 4. confirm the LLM route
+FP_LLM_BASEURL=http://localhost:8080/v1 FP_MODEL=kimi-k2.6 npm run llm-health
+```
+
+Then test a **surface** — easiest is **Telegram** (long-polling needs no public URL):
+
+```bash
+FP_TG_BOT_TOKEN=<@BotFather token> \
+CSS_URL=http://localhost:3000 \
+FP_OWNER_CLIENT_ID=… FP_OWNER_CLIENT_SECRET=… FP_OWNER_WEBID=… FP_PROJECT_POD=http://localhost:3000/project/ \
+FP_LLM_BASEURL=http://localhost:8080/v1 FP_LLM_APIKEY=<key> FP_MODEL=kimi-k2.6 FP_THINKING_LABEL=off \
+npm run tg-bot-smoke
+```
+
+DM the bot → it floors + cleans (real Privatemode model) → `/klaar` → tap a consent button →
+the contribution lands in your local pod. (Or skip surfaces entirely and just run
+`node scripts/e2e-smoke.js` against the local CSS for the backbone, or `npm run curator-smoke`.)
+
+The browser surface (canopy-chat) also works locally — `VITE_FEEDBACK_ACTIVATION_URL=http://localhost:8787`
+(run `npm run activation-service` on the host) + `VITE_FEEDBACK_LLM_BASEURL=http://localhost:8080/v1`,
+`npm run build`, serve it, log into the `http://localhost:3000` pod, `/feedback <code>` — but the
+browser pod-login (OIDC against the local CSS) is fiddlier than the TG path, so start with TG.
+
 ## 1. Configure
 
 ```bash
