@@ -17,6 +17,9 @@ export default {
 
   submitted: (n) => `${n} contribution(s) stored ✓. Type /menu for your options.`,
   submittedEmpty: 'Nothing was sent.',
+  // this project requires a verified identity, which this channel cannot provide
+  verificationRequired: 'This project only accepts contributions from a verified identity. Please take part through the canopy app, which signs your contribution on your own device.',
+  consentFailed: (n) => `${n} contribution(s) could not be stored and were not sent. Nothing was kept.`,
 
   contributionsHeader: 'Your contributions:',
   contributionLine: (n, text, id) => `${n}. ${text}  —  /withdraw ${id}`,

@@ -12,6 +12,9 @@
     "scenario-smoke": "node scripts/scenario-smoke.js",
     "triage-smoke": "node scripts/triage-smoke.js",
     "full-pipeline": "node scripts/full-pipeline-smoke.js",
+    "secure-smoke": "node scripts/secure-pipeline-smoke.js",
+    "byo-tee-smoke": "node scripts/byo-tee-smoke.js",
+    "phase1-smoke": "node scripts/phase1-placement-smoke.js",
     "simulate-participation": "node scripts/simulate-participation.js",
     "mcp": "node src/mcp/server.js",
     "mcp-smoke": "node scripts/mcp-smoke.js",
@@ -21,6 +24,7 @@
     "canopy-chat-smoke": "node scripts/canopy-chat-smoke.js",
     "curator-smoke": "node scripts/curator-smoke.js",
     "activation-service": "node scripts/activation-service.js",
+    "portal": "node scripts/portal.js",
     "bootstrap-owner": "node scripts/bootstrap-owner.js",
     "llm-health": "node scripts/llm-health.js"
   },

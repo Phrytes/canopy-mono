@@ -13,7 +13,7 @@
 import { buildManifest } from '../pod/manifest.js';
 import { transparencyCounters } from './transparency.js';
 
-export function createCuratorWorkspace({ aggregate, pod, reportId = 'report' }) {
+export function createCuratorWorkspace({ aggregate, pod, reportId = 'report', notifier }) {
   if (!aggregate) throw new Error('createCuratorWorkspace: aggregate required');
 
   const included = new Map(aggregate.statistical.map((t) => [t.theme, true]));    // theme -> included?
@@ -64,6 +64,22 @@ export function createCuratorWorkspace({ aggregate, pod, reportId = 'report' }) 
       if (!now) throw new Error('release: now (ISO timestamp) required');
       const ids = includedContributionIds();
       if (pod) await pod.markIncluded(ids);
+      // Two-way notify: tell each participant (pseudonymously) that their contribution was
+      // released — best-effort, never blocks the release. Maps included ids → participants
+      // via the pod's own records.
+      if (notifier && pod) {
+        const idSet = new Set(ids);
+        const byParticipant = new Map();
+        for (const { participant, contribution } of await pod.list()) {
+          if (!idSet.has(contribution.id)) continue;
+          if (!byParticipant.has(participant)) byParticipant.set(participant, []);
+          byParticipant.get(participant).push(contribution.id);
+        }
+        for (const [participant, contributionIds] of byParticipant) {
+          try { await notifier.notify(participant, { type: 'report-released', payload: { reportId, contributionIds } }); }
+          catch { /* a notify failure must not fail the release */ }
+        }
+      }
       const c = counters();
       const report = {
         reportId, createdAt: now, lang: aggregate.lang, kThreshold: aggregate.kThreshold,

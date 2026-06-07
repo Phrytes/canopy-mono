@@ -24,6 +24,23 @@ export function setLlmRoute(route) {
 // process.env only exists under Node — guard it so this module is browser-safe.
 const env = (k) => (typeof process !== 'undefined' && process.env ? process.env[k] : undefined);
 
+// Resolve a project's llm block to a concrete {baseURL} and install it. Privatemode defaults to
+// the localhost privatemode-proxy (the proxy that does the TEE attestation + E2E encryption to
+// the enclave — it runs WHERE aggregation runs, i.e. the controller's box in Phase 1, never on
+// participants' phones). 'local' falls through to FP_LLM_BASEURL / the Ollama default.
+const ROUTE_DEFAULT_BASE = {
+  privatemode: () => env('PRIVATEMODE_PROXY_URL') || 'http://localhost:8080/v1',
+  local: () => undefined,
+};
+export function applyLlmRoute(llm = {}) {
+  const base = llm.baseURL || (ROUTE_DEFAULT_BASE[llm.route]?.() ?? undefined);
+  if (['ovh', 'within-walls'].includes(llm.route) && !base) {
+    throw new Error(`llm.route "${llm.route}" needs llm.baseURL (or FP_LLM_BASEURL)`);
+  }
+  setLlmRoute({ baseURL: base, apiKey: env('FP_LLM_APIKEY') });
+  return { route: llm.route, baseURL: base || resolveRoute().base };
+}
+
 // Resolve the route at CALL time (not import time) so the config block is dynamic
 // and tests can point it at a mock server.
 function resolveRoute() {

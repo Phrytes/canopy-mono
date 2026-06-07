@@ -21,6 +21,9 @@ export default {
 
   submitted: (n) => `${n} bijdrage(n) opgeslagen ✓. Typ /menu voor je opties.`,
   submittedEmpty: 'Er is niets verstuurd.',
+  // dit project vereist een geverifieerde identiteit, die dit kanaal niet kan bieden
+  verificationRequired: 'Dit project accepteert alleen bijdragen van een geverifieerde identiteit. Doe mee via de canopy-app, die je bijdrage op je eigen apparaat ondertekent.',
+  consentFailed: (n) => `${n} bijdrage(n) konden niet worden opgeslagen en zijn niet verstuurd. Er is niets bewaard.`,
 
   contributionsHeader: 'Je bijdragen:',
   contributionLine: (n, text, id) => `${n}. ${text}  —  /intrekken ${id}`,

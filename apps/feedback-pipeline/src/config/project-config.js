@@ -52,6 +52,13 @@ export const ProjectConfigSchema = z.object({
   aggregation: z.object({
     k: z.number().int().min(1),
     belowThreshold: z.enum(['drop', 'rephrase', 'quarantine']).default('quarantine'),
+    // WHERE the project private key is allowed to open contributions — the team's deliberate
+    // trust choice (enforced in aggregation/placement.js). 'host' = the shared platform host
+    // decrypts (convenient, normal-trust; the default so existing deployments are unchanged);
+    // 'controller' = only the project team's OWN servers may decrypt (the platform stays blind
+    // — Phase 1 privacy); 'enclave' = only an attested TEE may decrypt (Phase 2, not even the
+    // controller's host can read). A runner declares its role via FP_RUNNER_ROLE.
+    location: z.enum(['host', 'controller', 'enclave']).default('host'),
   }),
 
   // D3 / D4 + the two-layer signal design (§5).
@@ -72,6 +79,32 @@ export const ProjectConfigSchema = z.object({
     passiveSupport: { crisis: '113 (zelfmoordpreventie)' },
   }),
 
+  // PRIVACY (menukaart A/I) — at-rest sealing of the central pod + where the project key
+  // is born. Default OFF so existing (host-trust) deployments are unchanged; sensitive
+  // projects turn `seal` on and choose `keygen: client` so the host never holds the key.
+  //   • keygen — WHO mints the project keypair: `client` (browser/app, host-blind; default
+  //     for sensitive work), `external` (lead generates offline, uploads only the public
+  //     key), `host` (server-generated — the convenient, normal-trust option).
+  //   • projectPublicKey — b64url X25519 SPKI; the only key the always-on writer needs.
+  //     Required when `seal` is on (validated in superRefine below).
+  //   • teamRecipients — additional recipient public keys the project PRIVATE key is
+  //     wrapped to, so the whole team can run aggregation (multi-recipient; key wrapping
+  //     itself lives with the keystore, not here). NOTE: weakest team secret reads the
+  //     aggregate — use a strong KDF when wrapping (plan security gap #4).
+  //   • escrow — opt-in host-held recovery recipient. Off = lose all team secrets, lose
+  //     the data, by design (plan R2).
+  //   • verify — require a participant SIGNATURE on every contribution, bound to a verified
+  //     membership (one redeemed code → one identity). Closes plan gap #1 (authenticity /
+  //     sybil): the aggregation drops anything unsigned/forged/sybil. Off → ACL-only trust.
+  privacy: z.object({
+    seal: z.boolean().default(false),
+    verify: z.boolean().default(false),
+    keygen: z.enum(['client', 'external', 'host']).default('client'),
+    projectPublicKey: z.string().optional(),
+    teamRecipients: z.array(z.string()).default([]),
+    escrow: z.boolean().default(false),
+  }).default({ seal: false, verify: false, keygen: 'client', teamRecipients: [], escrow: false }),
+
   // D9 — retention of raw + cleaned in the participant's OWN pod. Per project.
   retention: z.object({
     ownPod: z.union([z.enum(['until-delete', 'project-end']), z.string().regex(/^days:\d+$/)]).default('until-delete'),
@@ -83,6 +116,12 @@ export const ProjectConfigSchema = z.object({
     owner: z.enum(['us', 'independent', 'raad']).default('us'),
     publish: z.array(z.string()).default([]),
   }).default({ owner: 'us', publish: [] }),
+}).superRefine((cfg, ctx) => {
+  // The always-on writer can only seal if it has a public key to seal to.
+  if (cfg.privacy?.seal && !cfg.privacy.projectPublicKey) {
+    ctx.addIssue({ code: 'custom', path: ['privacy', 'projectPublicKey'],
+      message: 'privacy.projectPublicKey is required when privacy.seal is on' });
+  }
 });
 
 /** Validate + fill defaults. Throws a zod error on an invalid config. */
@@ -122,10 +161,12 @@ export function configToRunOpts(config) {
 export const CONFIG_TIERS = {
   common: ['projectId', 'projectName', 'llm.route', 'llm.model', 'llm.baseURL',
     'language.preferred', 'review.mode', 'aggregation.k',
-    'signal.escalationCategories', 'signal.destinations', 'signal.passiveSupport'],
-  advanced: ['aggregation.belowThreshold', 'signal.layer1OnDevice',
+    'signal.escalationCategories', 'signal.destinations', 'signal.passiveSupport',
+    'privacy.seal', 'privacy.verify', 'privacy.keygen'],
+  advanced: ['aggregation.belowThreshold', 'aggregation.location', 'signal.layer1OnDevice',
     'retention.ownPod', 'eval.owner', 'eval.publish',
-    'llm.promptProfile', 'llm.reasoning', 'llm.rateLimit'],
+    'llm.promptProfile', 'llm.reasoning', 'llm.rateLimit',
+    'privacy.projectPublicKey', 'privacy.teamRecipients', 'privacy.escrow'],
 };
 
 /** A worked example: a civic participation project on the local route (dev). */

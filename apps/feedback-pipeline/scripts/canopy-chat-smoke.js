@@ -13,6 +13,9 @@
 import { CanopyChatBot } from '../src/channel/canopy-chat-bot.js';
 import { InMemoryCentralPod } from '../src/pod/central-pod.js';
 import { validateProjectConfig } from '../src/config/project-config.js';
+import { generateProjectKeypair } from '../src/pod/project-seal.js';
+import { generateParticipantIdentity, IdentityRoster } from '../src/pod/signing.js';
+import { cryptoForProject } from '../src/pod/crypto-config.js';
 
 if (!process.env.FP_LLM_BASEURL) console.log('NOTE: FP_LLM_BASEURL not set — review/clean hits the default local route; use clear phrases.');
 
@@ -20,15 +23,26 @@ let InMemoryBridge;
 try { ({ InMemoryBridge } = await import('../../../packages/chat-agent/src/bridges/InMemoryBridge.js')); }
 catch (e) { console.log('SKIP: chat-agent substrate not available —', e.message); process.exit(0); }
 
+// canopy-chat runs ON the participant's device, so it both SEALS (to the project key) and
+// SIGNS (with the participant's own key) — the full privacy posture. Keys are born here for
+// the demo; in production the project key comes from the portal and the participant key from
+// their vault.
+const projectKey = generateProjectKeypair();
 const config = validateProjectConfig({
   projectId: 'cc-smoke',
   llm: { route: process.env.FP_LLM_ROUTE || 'local', model: process.env.FP_LLM_MODEL || 'qwen2.5:7b' },
   aggregation: { k: 3 },
   signal: { layer1OnDevice: true, escalationCategories: ['crisis'] },
+  privacy: { seal: true, verify: true, keygen: 'host', projectPublicKey: projectKey.publicKey },
 });
+const me = generateParticipantIdentity();
+const roster = new IdentityRoster();
+roster.bind('cc:demo', me.publicKey, me.encPublicKey);   // bound at the HI handshake in production
+
 const bridge = new InMemoryBridge({ id: 'canopy-chat' });
-const pod = new InMemoryCentralPod();
-const bot = new CanopyChatBot({ bridge, pod, config });
+// the on-device pod holds the participant's view; here it can also open (demo aggregation).
+const pod = new InMemoryCentralPod(cryptoForProject({ config, projectPrivateKey: projectKey.privateKey, roster }));
+const bot = new CanopyChatBot({ bridge, pod, config, identityFor: () => me });
 await bot.start();
 
 const turns = [

@@ -23,6 +23,8 @@ import { ChannelDispatcher } from '../src/channel/dispatcher.js';
 import { CssCentralPod } from '../src/pod/css-central-pod.js';
 import { aggregateForProject } from '../src/run.js';
 import { validateProjectConfig } from '../src/config/project-config.js';
+import { generateProjectKeypair } from '../src/pod/project-seal.js';
+import { cryptoForProject } from '../src/pod/crypto-config.js';
 
 const BASE = (process.env.CSS_URL || 'http://localhost:3000').replace(/\/$/, '');
 const skip = (m) => { console.log(`SKIP: ${m}`); process.exit(0); };
@@ -53,7 +55,17 @@ async function provision(name) {
 // ---- 0. mock LLM + project config (k=2) ----
 const mock = await startMockLlm();
 process.env.FP_LLM_BASEURL = mock.url;
-const config = validateProjectConfig({ projectId: 'e2e', llm: { route: 'local', model: 'mock' }, aggregation: { k: 2 }, signal: { layer1OnDevice: true, escalationCategories: ['crisis'] } });
+// Seal-at-rest is on by default here (set FP_SEAL=0 to compare): the project keypair is born
+// for this run; participants seal to the public key, the owner aggregation opens with the
+// private key. The pod therefore stores only ciphertext.
+const projectKey = generateProjectKeypair();
+const sealing = process.env.FP_SEAL !== '0';
+const config = validateProjectConfig({
+  projectId: 'e2e', llm: { route: 'local', model: 'mock' }, aggregation: { k: 2 },
+  signal: { layer1OnDevice: true, escalationCategories: ['crisis'] },
+  ...(sealing ? { privacy: { seal: true, projectPublicKey: projectKey.publicKey } } : {}),
+});
+if (sealing) console.log('seal-at-rest ON: participants seal to the project key; the owner opens to aggregate.');
 
 // ---- identities: owner = intermediary/aggregation; alice + bob = participants ----
 const owner = await provision('project'), p1 = await provision('alice'), p2 = await provision('bob');
@@ -76,7 +88,7 @@ await onboard('bob', p2);
 
 // ---- 3. each participant: channel -> Task 1 -> consent -> write THEIR container ----
 async function contribute(label, ident, msg) {
-  const d = new ChannelDispatcher({ adapter: new MemoryChannelAdapter(), pod: new CssCentralPod({ authedFetch: ident.fetch, podBase: centralBase }), config, participant: label });
+  const d = new ChannelDispatcher({ adapter: new MemoryChannelAdapter(), pod: new CssCentralPod({ authedFetch: ident.fetch, podBase: centralBase, ...cryptoForProject({ config }) }), config, participant: label });
   await d.handleMessage(msg);
   const points = await d.review();
   const written = await d.consent(points.map((p) => p.id), { timeWindow: '2026-Q2' });
@@ -90,7 +102,7 @@ const intrude = await p2.fetch(`${c1}intruder.json`, { method: 'PUT', headers: {
 eq('bob writes alice container (denied)', intrude.status, 403);
 
 // ---- 5. aggregation (owner reads the central pod) -> Task 2 ----
-const items = await new CssCentralPod({ authedFetch: owner.fetch, podBase: centralBase }).forAggregation();
+const items = await new CssCentralPod({ authedFetch: owner.fetch, podBase: centralBase, ...cryptoForProject({ config, projectPrivateKey: projectKey.privateKey }) }).forAggregation();
 eq('aggregation participants', new Set(items.map((i) => i.user)).size, 2);
 const res = await aggregateForProject(items, config, { skipClean: true });
 eq('Task-2 theme at k=2', res.statistical.some((s) => s.userCount >= 2), true);
