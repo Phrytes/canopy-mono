@@ -46,30 +46,36 @@ export class ProjectStore {
 
   /** Create a project: validate its menukaart config, register a cohort (expiry + ceiling)
    *  with a fresh per-project signing secret. Returns the projectId. */
-  createProject({ config, cohort, secret } = {}) {
+  createProject({ config, cohort, secret, inviteBase } = {}) {
     const c = validateProjectConfig(config);                 // throws on an invalid menukaart
     if (this.#configs.has(c.projectId)) throw new Error(`project already exists: ${c.projectId}`);
     if (!cohort?.expiresAt || !cohort?.ceiling) throw new Error('cohort { expiresAt, ceiling } is required');
+    if (inviteBase) { try { new URL(inviteBase); } catch { throw new Error(`invalid inviteBase URL: ${inviteBase}`); } }
     const sec = secret || crypto.randomBytes(32).toString('hex');
     this.#cohort.registerProject({ projectId: c.projectId, expiresAt: cohort.expiresAt, ceiling: cohort.ceiling }, sec);
-    this.#configs.set(c.projectId, { config: c, createdAt: new Date().toISOString() });
+    this.#configs.set(c.projectId, { config: c, createdAt: new Date().toISOString(), inviteBase: inviteBase || undefined });
     return c.projectId;
   }
 
   /** Mint N single-use invite codes (the registry does NOT store them). */
   generateCodes(projectId, n) { this.#req(projectId); return this.#cohort.generateCodes(projectId, Number(n)); }
 
+  /** A project's own invite-base URL, or undefined → the caller falls back to the portal
+   *  default (FP_INVITE_BASE). Set per project so each cohort lands on its own surface. */
+  inviteBaseFor(projectId) { return this.#req(projectId).inviteBase; }
+
   getConfig(projectId) { return this.#req(projectId).config; }
 
   /** Public status for the GUI dashboard — counts + the privacy posture, never secrets. */
   status(projectId) {
-    const { config, createdAt } = this.#req(projectId);
+    const { config, createdAt, inviteBase } = this.#req(projectId);
     const spec = this.#cohort.getSpec(projectId);
     return {
       projectId, projectName: config.projectName, createdAt,
       activations: this.#cohort.activationCount(projectId), ceiling: spec.ceiling, expiresAt: spec.expiresAt,
       seal: config.privacy.seal, keygen: config.privacy.keygen,
       hasProjectKey: Boolean(config.privacy.projectPublicKey),
+      inviteBase: inviteBase || null,
     };
   }
 

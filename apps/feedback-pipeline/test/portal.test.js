@@ -120,3 +120,39 @@ test('inviteLink encodes projectId + code', () => {
   assert.equal(inviteLink('https://a.example/', 'p 1', 'abc-def'),
     'https://a.example/?projectId=p+1&code=abc-def');
 });
+
+test('per-project inviteBase overrides the portal default; absent → falls back', () => {
+  const store = new ProjectStore();
+  // project WITH its own base
+  post(store, '/api/projects', { config: baseConfig('own'), cohort: { expiresAt: future, ceiling: 5 }, inviteBase: 'https://own.example/' });
+  assert.equal(store.inviteBaseFor('own'), 'https://own.example/');
+  assert.equal(store.status('own').inviteBase, 'https://own.example/');
+  // its own base wins even when a different portal default is passed
+  const a = post(store, '/api/projects/own/codes', { count: 2 }, 'https://portal-default.example/');
+  assert.equal(a.json.links.length, 2);
+  assert.match(a.json.links[0], /^https:\/\/own\.example\/\?projectId=own&code=/);
+
+  // project WITHOUT its own base → uses the portal default
+  post(store, '/api/projects', { config: baseConfig('plain'), cohort: { expiresAt: future, ceiling: 5 } });
+  assert.equal(store.status('plain').inviteBase, null);
+  const b = post(store, '/api/projects/plain/codes', { count: 1 }, 'https://portal-default.example/');
+  assert.match(b.json.links[0], /^https:\/\/portal-default\.example\/\?projectId=plain&code=/);
+  // and with neither a project base nor a portal default → codes, no links
+  const c = post(store, '/api/projects/plain/codes', { count: 1 });
+  assert.equal(c.json.codes.length, 1);
+  assert.equal(c.json.links.length, 0);
+});
+
+test('an invalid per-project inviteBase is rejected at create (400)', () => {
+  const store = new ProjectStore();
+  const bad = post(store, '/api/projects', { config: baseConfig('badurl'), cohort: { expiresAt: future, ceiling: 5 }, inviteBase: 'not a url' });
+  assert.equal(bad.status, 400);
+  assert.match(bad.json.reason, /invalid inviteBase/);
+});
+
+test('inviteBase round-trips through persistence', () => {
+  const store = new ProjectStore();
+  store.createProject({ config: baseConfig('persisted'), cohort: { expiresAt: future, ceiling: 5 }, inviteBase: 'https://keep.example/' });
+  const reloaded = ProjectStore.fromJSON(JSON.parse(JSON.stringify(store.toJSON())));
+  assert.equal(reloaded.inviteBaseFor('persisted'), 'https://keep.example/');
+});

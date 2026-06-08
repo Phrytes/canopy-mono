@@ -4,8 +4,8 @@
 
 export function portalHtml({ inviteBase } = {}) {
   const inviteHint = inviteBase
-    ? `Invite links point at <code>${esc(inviteBase)}</code>.`
-    : `No invite base configured — codes are shown without links (set <code>FP_INVITE_BASE</code>).`;
+    ? `Standaard uitnodigings-URL: <code>${esc(inviteBase)}</code> — per project te overschrijven.`
+    : `Geen standaard ingesteld — geef een uitnodigings-URL per project, of zet <code>FP_INVITE_BASE</code> als algemene standaard.`;
   return `<!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Feedback-infrastructuur — projectportaal</title>
@@ -73,6 +73,8 @@ export function portalHtml({ inviteBase } = {}) {
         <div><label>Cohort verloopt op</label><input name="expiresAt" type="date" required></div>
         <div><label>Plafond (max activaties)</label><input name="ceiling" type="number" min="1" value="100" required></div>
       </div>
+      <label>Uitnodigings-URL <span class="muted">(waar deelnemers landen; leeg = portaalstandaard)</span></label>
+      <input name="inviteBase" placeholder="${esc(inviteBase || 'https://chat.voorbeeld.nl/')}">
       <button type="submit">Project aanmaken</button>
       <div id="ferr" class="err"></div>
       <div id="keybox" class="notice hide"></div>
@@ -131,7 +133,8 @@ document.getElementById('f').addEventListener('submit', async (e) => {
     privacy: seal ? { seal:true, keygen:g('keygen'), projectPublicKey: g('projectPublicKey') || undefined } : { seal:false },
   };
   const cohort = { expiresAt: new Date(g('expiresAt')).toISOString(), ceiling: Number(g('ceiling')) };
-  const res = await api('POST','/api/projects',{ config, cohort });
+  const inviteBase = g('inviteBase') || undefined;
+  const res = await api('POST','/api/projects',{ config, cohort, inviteBase });
   if (!res.ok) { err.textContent = res.reason || 'aanmaken mislukt'; return; }
   e.target.reset(); document.getElementById('sealopts').classList.add('hide');
   if (res.projectPrivateKey) {
