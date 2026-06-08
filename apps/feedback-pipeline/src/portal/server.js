@@ -26,7 +26,7 @@ export function handlePortal({ method, path, body, store, inviteBase }) {
       oneTimePrivateKey = kp.privateKey;
     }
     let projectId;
-    try { projectId = store.createProject({ config, cohort: body?.cohort, secret: body?.secret }); }
+    try { projectId = store.createProject({ config, cohort: body?.cohort, secret: body?.secret, inviteBase: body?.inviteBase }); }
     catch (e) { return { status: 400, json: { ok: false, reason: e.message } }; }
     const out = { ok: true, projectId, status: store.status(projectId) };
     if (oneTimePrivateKey) {
@@ -49,7 +49,8 @@ export function handlePortal({ method, path, body, store, inviteBase }) {
       if (method === 'POST' && m[2] === '/codes') {
         const count = Math.max(1, Math.min(1000, Number(body?.count) || 1));
         const codes = store.generateCodes(projectId, count);
-        const links = inviteBase ? codes.map((code) => inviteLink(inviteBase, projectId, code)) : [];
+        const base = store.inviteBaseFor(projectId) || inviteBase;   // per-project, else portal default
+        const links = base ? codes.map((code) => inviteLink(base, projectId, code)) : [];
         return { status: 200, json: { ok: true, projectId, codes, links } };
       }
       // GET /api/projects/:id — config + status
