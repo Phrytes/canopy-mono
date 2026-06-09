@@ -135,6 +135,17 @@ describe('renderReply — list shape', () => {
     expect(r.items[1].kind).toBeUndefined();
   });
 
+  it("honours an item's own buttons (agent contact) when no manifest keyboard", () => {
+    const r = renderReply({
+      payload: { items: [
+        { id: 'fp-bot', label: 'Feedback assistant', kind: 'agent',
+          buttons: [{ label: 'Open chat', callbackData: 'openFeedback:fp-bot' }] },
+      ] },
+      shape: 'list',
+    });   // no manifestsByOrigin → without the fix, buttons would be []
+    expect(r.items[0].buttons).toEqual([{ label: 'Open chat', callbackData: 'openFeedback:fp-bot' }]);
+  });
+
   it('accepts a bare array as payload (tolerant)', () => {
     const r = renderReply({
       payload: [{ id: 'a', name: 'Anne' }, { id: 'b', name: 'Bob' }],
