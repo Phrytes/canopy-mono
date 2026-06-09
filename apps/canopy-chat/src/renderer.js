@@ -432,6 +432,12 @@ function renderListItems(payload, opts, t) {
     if (item && typeof item === 'object' && typeof item.peerAddr === 'string' && item.peerAddr) {
       out.peerAddr = item.peerAddr;
     }
+    // Non-peer rows (e.g. a local 'agent' assistant) carry an `icon` + `kind` so the DOM adapter
+    // can render them visually distinct from mesh-contact rows.  Pure pass-through.
+    if (item && typeof item === 'object') {
+      if (typeof item.icon === 'string' && item.icon) out.icon = item.icon;
+      if (typeof item.kind === 'string' && item.kind) out.kind = item.kind;
+    }
     return out;
   });
 }

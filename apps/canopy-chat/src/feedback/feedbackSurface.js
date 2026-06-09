@@ -99,3 +99,23 @@ export function parseFeedbackInvite(input) {
   const code = params.get('code');
   return projectId && code ? { projectId, code } : null;
 }
+
+/**
+ * The feedback bot as a distinct **agent** contact item (M2). NOT a stoop mesh peer — a local
+ * co-hosted assistant, surfaced in the contacts list with its own `kind:'agent'` + icon and an
+ * action (`openFeedback`) that enters feedback mode rather than opening a peer DM. The chat shell
+ * prepends this to the `/contacts` list and routes its button to feedback mode. Its `id` matches
+ * the co-hosted bot address (`fp-bot`).
+ *
+ * @param {{label?:string, openLabel?:string}} [a]
+ */
+export function feedbackContactItem({ label = 'Feedback assistant', openLabel = 'Open chat' } = {}) {
+  return {
+    id:      'fp-bot',
+    type:    'agent',
+    kind:    'agent',
+    icon:    '🤖',
+    label,
+    buttons: [{ label: openLabel, callbackData: 'openFeedback:fp-bot' }],
+  };
+}
