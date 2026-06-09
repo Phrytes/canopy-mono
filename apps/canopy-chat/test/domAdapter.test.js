@@ -70,6 +70,25 @@ describe('renderToDom — list shape', () => {
     expect(items[1].dataset.itemId).toBe('c-2');
   });
 
+  it('renders an agent row with a kind class + leading icon', () => {
+    const el = renderToDom({
+      kind: 'list', messageId: 'm-1', lifecycleState: 'live',
+      items: [
+        { id: 'fp-bot', label: 'Feedback assistant', kind: 'agent', icon: '🤖', buttons: [] },
+        { id: 'c-2', label: 'Plain peer', buttons: [] },
+      ],
+    }, ctx());
+    const agent = el.querySelector('.cc-list-item--agent');
+    expect(agent).not.toBeNull();
+    expect(agent.dataset.itemId).toBe('fp-bot');
+    expect(agent.querySelector('.cc-item-icon').textContent).toBe('🤖');
+    expect(agent.querySelector('.cc-item-label').textContent).toBe('Feedback assistant');
+    // a plain peer row has neither the agent class nor an icon
+    const rows = el.querySelectorAll('.cc-list-item');
+    expect(rows[1].className).not.toContain('cc-list-item--');
+    expect(rows[1].querySelector('.cc-item-icon')).toBeNull();
+  });
+
   it('renders inline keyboard buttons + onButtonTap wires click', () => {
     const onTap = vi.fn();
     const el = renderToDom({

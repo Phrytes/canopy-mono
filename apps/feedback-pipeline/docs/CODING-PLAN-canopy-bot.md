@@ -105,6 +105,11 @@ done; the write side is the new piece, in M1.)
   button pass-through) is headless `vitest`-testable — the DOM render/QR layer already exists and is wired. The
   only visual confirmation (contact appears, QR scans, buttons look right) **batches into one manual web
   checkpoint after M5**.
+- ✅ **Done.** The bot contact is a **distinct `agent` item type** (`feedbackContactItem`, `kind:'agent'` + icon),
+  NOT a fake stoop peer — prepended to `/contacts` in the chat shell, rendered visually distinct (generic
+  `icon`/`kind` support added to `renderer.js`/`domAdapter.js`), and its `openFeedback` action enters feedback
+  mode rather than a peer DM. Invite/QR auto-activation + button pass-through already shipped in the bundle.
+  Visual eyeball still pending the post-M5 manual checkpoint.
 
 ### M3 — complete the participant journey *(folds item 1)*
 Make the journey end-to-end so a mockup scenario is whole, not stubbed.

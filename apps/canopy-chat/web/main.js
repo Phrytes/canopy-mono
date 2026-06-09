@@ -72,7 +72,7 @@ import { mockTasksManifest,
          mockFolioManifest }         from '../src/core/manifests/mockManifests.js';
 import { calendarManifest }          from '@canopy-app/calendar/manifest';
 import { createLocalBuiltins }       from '../src/core/localBuiltins.js';
-import { createFeedbackSurface, parseFeedbackInvite } from '../src/feedback/feedbackSurface.js';
+import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem } from '../src/feedback/feedbackSurface.js';
 import * as podAuth                  from '../src/web/podAuth.js';
 import {
   createPodWriter, discoverPodRoot,
@@ -2489,6 +2489,20 @@ async function dispatchAndRender(route, thread) {
     const followUps = collectFollowUps(route.opId, route.appOrigin, reply.payload, catalog);
     if (followUps.length > 0) reply.followUps = followUps;
   }
+  // M2 — surface the feedback assistant as a distinct 'agent' contact at the top of /contacts.
+  // Not a stoop mesh peer (it's a local co-hosted bot); rendered with its own icon + kind, and
+  // its button enters feedback mode (handled in onButtonTap).  Shape-tolerant injection.
+  if (route.opId === 'listContacts' && !reply.error) {
+    const fbItem = feedbackContactItem({
+      label:     t('feedback.contactLabel', { defaultValue: 'Feedback assistant' }),
+      openLabel: t('feedback.openChat',     { defaultValue: 'Open chat' }),
+    });
+    if (Array.isArray(reply.items)) {
+      reply = { ...reply, items: [fbItem, ...reply.items] };
+    } else if (Array.isArray(reply.payload?.items)) {
+      reply = { ...reply, payload: { ...reply.payload, items: [fbItem, ...reply.payload.items] } };
+    }
+  }
   const rendered = renderReply(reply, {
     t,
     appOrigin:         route.appOrigin,
@@ -2543,6 +2557,22 @@ async function onButtonTap(opId, itemId, extra) {
     if (handled) return;
     // Fall through to generic dispatch if we couldn't resolve the
     // post (defensive — should be rare).
+  }
+
+  // M2 — the feedback 'agent' contact's action: open its own thread and enter feedback mode
+  // (not a peer DM).  The thread is keyed by the co-hosted bot address ('fp-bot').
+  if (opId === 'openFeedback') {
+    const dm = ensureDmThread('fp-bot', {
+      label: t('feedback.contactLabel', { defaultValue: 'Feedback assistant' }),
+    });
+    if (dm) {
+      store.setActiveThread(dm.id);
+      await feedback().start(dm.id);
+      renderSidebarHere();
+      renderActiveHeader();
+      renderActiveStream();
+    }
+    return;
   }
 
   // Slice 6d (2026-05-24) — [DM] button on contact / member rows.

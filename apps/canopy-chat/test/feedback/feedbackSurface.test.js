@@ -9,7 +9,7 @@ import { startMockLlm } from '../../../feedback-pipeline/test/helpers/mock-llm.j
 import { InMemoryCentralPod } from '../../../feedback-pipeline/src/pod/central-pod.js';
 import { InternalBus } from '../../../../packages/core/src/transport/InternalTransport.js';
 import { generateParticipantIdentity, IdentityRoster, makeContributionVerifier } from '../../../feedback-pipeline/src/pod/signing.js';
-import { createFeedbackSurface, parseFeedbackInvite } from '../../src/feedback/feedbackSurface.js';
+import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem } from '../../src/feedback/feedbackSurface.js';
 
 let mock;
 beforeAll(async () => { mock = await startMockLlm(); });
@@ -80,4 +80,14 @@ test('feedback threads stay isolated', async () => {
     await surface.handle('verstuur alles', tid);
   }
   expect(new Set(pod.list().map((c) => c.participant))).toEqual(new Set(['cc:x', 'cc:y']));
+});
+
+test('feedbackContactItem — distinct agent contact (id matches bot address, openFeedback action)', () => {
+  const item = feedbackContactItem({ label: 'Feedback assistant', openLabel: 'Open chat' });
+  expect(item.id).toBe('fp-bot');          // matches the co-hosted bot address
+  expect(item.type).toBe('agent');
+  expect(item.kind).toBe('agent');
+  expect(item.icon).toBeTruthy();
+  expect(item.label).toBe('Feedback assistant');
+  expect(item.buttons).toEqual([{ label: 'Open chat', callbackData: 'openFeedback:fp-bot' }]);
 });

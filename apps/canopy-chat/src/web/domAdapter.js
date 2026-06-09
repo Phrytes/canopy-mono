@@ -276,8 +276,17 @@ function renderListMessage(rendered, state, ctx) {
 
   for (const item of items) {
     const li = doc.createElement('li');
-    li.className = 'cc-list-item';
+    li.className = 'cc-list-item'
+      + (typeof item.kind === 'string' && item.kind ? ` cc-list-item--${item.kind}` : '');
     li.dataset.itemId = item.id;
+
+    // Distinct visual for non-peer rows (e.g. an 'agent' assistant): a leading icon.
+    if (typeof item.icon === 'string' && item.icon) {
+      const ic = doc.createElement('span');
+      ic.className = 'cc-item-icon';
+      ic.textContent = item.icon;
+      li.appendChild(ic);
+    }
 
     const label = doc.createElement('span');
     label.className = 'cc-item-label';

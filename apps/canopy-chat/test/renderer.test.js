@@ -121,6 +121,20 @@ describe('renderReply — list shape', () => {
     ]);
   });
 
+  it('passes through icon + kind for agent rows', () => {
+    const r = renderReply({
+      payload: { items: [
+        { id: 'fp-bot', label: 'Feedback assistant', kind: 'agent', icon: '🤖' },
+        { id: 'c-2', label: 'Plain' },
+      ] },
+      shape: 'list',
+    });
+    expect(r.items[0].icon).toBe('🤖');
+    expect(r.items[0].kind).toBe('agent');
+    expect(r.items[1].icon).toBeUndefined();   // plain rows unchanged
+    expect(r.items[1].kind).toBeUndefined();
+  });
+
   it('accepts a bare array as payload (tolerant)', () => {
     const r = renderReply({
       payload: [{ id: 'a', name: 'Anne' }, { id: 'b', name: 'Bob' }],
