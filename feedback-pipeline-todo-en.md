@@ -190,3 +190,5 @@ deps): `npm run secure-smoke`, `byo-tee-smoke`, `phase1-smoke`. Full design writ
 - [ ] **Re-read `apps/feedback-pipeline/docs/AGENT-RUNTIME.md`** — the PARKED "runtime browser"
       idea (key-custody wallet + egress firewall + embedded renderer; Tauri desktop, Expo
       mobile). Decide if/when it becomes its own project; see its §7 open decisions.
+
+_(2026-06-09: starting the canopy-bot build plan — `apps/feedback-pipeline/docs/CODING-PLAN-canopy-bot.md`; M0 done, M1 next.)_
