@@ -140,14 +140,23 @@ What already exists (the foundation is ~80% there; gaps are WIRING, not new arch
 | **Pod ACL grant/revoke API** (ACP **and** WAC) | `pod-client/src/sharing/index.js` `grant():259`, `revoke():322` | ✅ **built but never called** |
 | Join → grant access | `identity-resolver/onboardingSkills.js redeemInvite` + `addMember` | 🔶 roster updated, **`grant()` not called** (~10-line add) |
 | Leave → revoke access | — | ⬜ **missing** — new small `leaveGroup`/`removeMember` skill → `revoke()` |
+| Role/admin model (authoritative) | `identity-resolver` `GroupManager.getRole` + `issueInvite({role})` (admin-only); MemberMap roles are snapshots | ✅ exists |
+| **Revocation authority** — role → pod ACL (`admin→control`, `member→read+write`) | `pod-client/src/sharing` modes incl. `control` | ⬜ new wiring — any **admin** (control-holder) revokes; **multiple admins each hold `control`** (no single point) |
+| **Household control-agent** — auto grant-on-join / revoke-on-leave | — | ⬜ new — holds `control`, enforces ACL without waiting on a human admin; keep **≥1-admin invariant**; pod-owner = break-glass (hosted = our CSS account) |
 | Sender-writes model | `stoop/src/skills/index.js postRequest:384` (actor writes) | 🔶 writes pseudo-pod; point at the real shared pod |
 | Offline catch-up by polling the pod | `stoop/src/skills/index.js getMessagesSince:3018` (designed as the pod range-query entry) | 🔶 reads local cache; swap for a pod read |
 | File → pod + link (dual-write, file side) | `folio/src/autoShare.js:210` (file to pod + capability token/link) | ✅ reusable |
 | Text → p2p + pod (dual-write, text side) | — | ⬜ new (the file side is the template) |
+| NL→slash interpreter + `@tag` router (the shared core) | seam: `v2/llmPicker.js` `selectLlmClient` (Phase 5.8); see `V2-LLM-IN-CIRCLE.md` | ⬜ new — household + feedback share it |
+| Token gate (rules → embedding → LLM) + RAG | local gate (private+free); RAG vector DB **in the proxy enclave**, sealed (`tee/`, M7) for the hosted tier | ⬜ new — gate stays local; server DB only for hosted RAG |
 
-**Household-circle build = wiring:** call `grant()` on join + a small `revoke()`-on-leave skill;
-route member writes to the real shared pod; swap catch-up to read it; add the text dual-write
-(mirroring folio's file path). Not a new subsystem.
+**Household-circle build = wiring (not a new subsystem):** call `grant()` on join + a small
+`revoke()`-on-leave skill; **map the admin role → pod `control`** (revocation authority) and let a
+**household control-agent** auto-apply grant/revoke (with a ≥1-admin invariant + pod-owner
+break-glass); route member writes to the real shared pod; swap catch-up to a pod read; add the text
+dual-write (mirroring folio's file path); add the **NL→slash interpreter + `@tag` router** (shared
+with feedback) with the **token gate local** and the **RAG vector DB in the proxy enclave** for the
+hosted tier.
 
 ## Gate, smarter — an embedded vector DB (Tier-3++ + RAG)
 
