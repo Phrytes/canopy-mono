@@ -149,6 +149,12 @@ Make a scenario production-*safe*, not just functional.
   `agentBundle.js`'s shared `InternalBus`; build a mobile feedback screen around `ChannelDispatcher`/`CanopyChatBot`;
   vault = `VaultAsyncStorage`/`KeychainVault`; pod auth = `OidcSessionRN`.
 - **External peer bot** waits on NKN-RN (#223). Bridges + dispatcher + bot are platform-neutral and ship unchanged.
+- 🟡 **Local bot wired (needs device verification).** The mount logic is extracted to a shared, headless-tested
+  helper `src/feedback/feedbackMount.js` (`feedbackMount.test.js`, 7/7) used by web + mobile (rule of two);
+  `ChatScreen.js` wires it into `submitInput` with RN bubble sinks (`EXPO_PUBLIC_FEEDBACK_LLM_BASEURL` for the
+  device's LLM route, since a phone can't run Ollama). Mobile vitest 264/264 + `node --check` pass. **Device
+  checkpoint owed (Detox/manual):** the RN screen behaviour (enter `/feedback`, free-text round-trip, the agent
+  contact row) — can't be verified headlessly. The mobile `/contacts` agent-row inject is a small follow-on.
 
 ### M7 — confidential transport, Option B (enclave gateway) *(item 4)*
 Unlocks a **heavy remote** model for the per-participant clean with the host blind. **Not a blocker** — M0 forces
