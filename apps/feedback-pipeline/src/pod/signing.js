@@ -51,6 +51,22 @@ export function signContribution({ projectId, participant, contribution }, priva
   return b64u(edSign(null, canonicalContribution({ projectId, participant, contribution }), privFromRaw(pub, seed)));
 }
 
+/**
+ * Build the `{sig, pubKey}` write-meta for a contribution from a participant identity (M1.3).
+ * The identity may be EITHER a feedback-pipeline keypair (`{publicKey, privateKey:"<pub>.<seed>"}`)
+ * OR any signer exposing `sign(bytes)->Uint8Array` + a pubKey (e.g. @canopy/core `AgentIdentity`
+ * held in the canopy-chat vault) — so the dispatcher can sign with the participant's real key
+ * without knowing its storage format. Returns `{}` when identity is absent (unsigned).
+ */
+export function contributionMeta(identity, { projectId, participant, contribution }) {
+  if (!identity) return {};
+  if (typeof identity.sign === 'function') {
+    const sig = b64u(identity.sign(canonicalContribution({ projectId, participant, contribution })));
+    return { sig, pubKey: identity.pubKey ?? identity.publicKey };
+  }
+  return { sig: signContribution({ projectId, participant, contribution }, identity.privateKey), pubKey: identity.publicKey };
+}
+
 /** Verify a signature against a public key. Pure crypto check (no membership binding). */
 export function verifyContribution({ projectId, participant, contribution }, signatureB64u, publicKey) {
   try {
