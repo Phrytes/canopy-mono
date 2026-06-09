@@ -31,6 +31,11 @@ export default {
   withdrawn: (id) => `Ingetrokken: ${id}.`,
 
   comingSoon: 'Deze optie komt binnenkort.',
+  downloadReady: (n) => `Je ${n} bijdrage(n) — jouw eigen kopie:`,
+  deleted: (n) => `${n} bijdrage(n) van jou verwijderd.`,
+  pauseDone: 'Je deelname is gepauzeerd. Stuur wanneer je wilt een bericht om verder te gaan.',
+  claimDone: 'Deze pod staat nu op jouw identiteit.',
+  notSupported: 'Deze optie is niet beschikbaar voor jouw pod.',
 
   // bot-level (menu / help / acknowledgements)
   menuWelcome: 'Welkom. Stuur je bericht, of kies hieronder.',

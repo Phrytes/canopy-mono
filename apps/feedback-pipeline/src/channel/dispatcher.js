@@ -119,10 +119,26 @@ export class ChannelDispatcher {
         await this.#pod.withdraw(this.#participant, arg);      // delete your own (before release)
         await this.#adapter.send({ type: 'withdrawn', id: arg });
         return true;
-      // seams onto the own-pod / vault / exit flow (substrate, later phases):
-      case 'download': case 'claim': case 'pause': case 'delete':
-        await this.#adapter.send({ type: action, status: 'todo' });
+      case 'download': {                                       // export your own data (own-pod op)
+        const mine = (await this.#pod.list()).filter((x) => x.participant === this.#participant).map((x) => x.contribution);
+        await this.#adapter.send({ type: 'download', items: mine });
+        return mine;
+      }
+      case 'delete': {                                          // erase all your own contributions
+        const ids = (await this.#pod.list()).filter((x) => x.participant === this.#participant).map((x) => x.contribution.id);
+        for (const id of ids) { try { await this.#pod.withdraw(this.#participant, id); } catch { /* best-effort */ } }
+        await this.#adapter.send({ type: 'delete', count: ids.length });
+        return ids.length;
+      }
+      // pause/claim are pod-lifecycle ops (pause participation; claim a project-provisioned pod
+      // to your identity). Available only when the participant pod implements them — otherwise a
+      // graceful "not supported by this pod" rather than a dead 'todo'.
+      case 'pause': case 'claim': {
+        const fn = this.#pod[action];
+        if (typeof fn === 'function') { const r = await fn.call(this.#pod, this.#participant, this.#identity); await this.#adapter.send({ type: action, ok: true }); return r; }
+        await this.#adapter.send({ type: action, status: 'unsupported' });
         return false;
+      }
       default:
         throw new Error(`unknown action: ${action}`);
     }
