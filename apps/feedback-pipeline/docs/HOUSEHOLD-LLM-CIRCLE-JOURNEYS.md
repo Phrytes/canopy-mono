@@ -167,6 +167,37 @@ intent set) a simple in-memory cosine suffices; an embedded DB (sqlite-vec / Lan
 one on the household pod) scales it + persists the learned examples. Gate index can be per-device;
 RAG over shared history lives on the household pod.
 
+## Where the vector DB lives (gate stays local; RAG can be server-side)
+
+Co-locate the RAG vector DB **with the proxy ENCLAVE, not just the host** — embeddings aren't
+plaintext but aren't safe (inversion recovers a lot). The clean design: the raw text is already
+E2E-encrypted *to the enclave* for the LLM call, so the **embedder + vector DB live in the same
+attested enclave with sealed-at-rest storage** (host can't read it); nearest-neighbor runs inside
+the TEE; it returns relevant refs/text E2E (or the client re-fetches by ID from the household pod).
+The **gate stays LOCAL** regardless (embed + decide locally — private + free); the server-side DB is
+for **RAG-at-scale + the hosted tier** (households without a capable local machine; one shared index
+across Telegram/mobile/web). **Local-LLM households keep gate + RAG + DB fully local — no server.**
+
+## Membership authority — who grants/revokes pod access
+
+Granting/revoking is an **ACL op requiring `control`** — `pod-client/src/sharing` already models the
+four modes (`read | append | write | control`). The circle already has a real role model:
+`issueInvite({role})` is admin-only and `GroupManager.getRole(pubKey, groupId)` is the AUTHORITATIVE
+role source (MemberMap roles are snapshots). So:
+
+- **Map circle role → pod ACL:** **admin → `control`** (can manage the ACL), **member → `read`+`write`**.
+- **Who revokes:** any **admin** (anyone holding `control`). **Multiple admins each hold `control`** →
+  any can revoke any member; ACP/WAC support multiple control-holders (no single point).
+- **Keep role ↔ ACL in lockstep:** promote→grant `control`; demote→revoke `control`; leave→an admin
+  `revoke()`s. (Same "wire the existing API to membership events" gap as grant/revoke.)
+- **Invariants / edge cases:** maintain a **≥1-admin invariant** (don't let the last admin leave
+  without handing off `control`); an admin leaving → another admin revokes; **break-glass = the pod's
+  root owner** (self-hosted: the household-owned WebID; **hosted: our managed CSS account**).
+- **Don't depend on a human admin being online:** a **household control-agent** (a household-owned
+  identity — possibly the bot) holds `control` and **auto-applies grant-on-join / revoke-on-leave**,
+  so a departing member loses access immediately. Admins govern the agent; the agent does the
+  mechanical ACL work.
+
 ## Business-model fit (noted)
 The architecture is naturally a **hosted-services** play, and the privacy story is the selling point:
 - **Managed Solid pods** — household pod hosting (the shared store).
