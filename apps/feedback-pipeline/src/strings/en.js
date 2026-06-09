@@ -27,6 +27,11 @@ export default {
   withdrawn: (id) => `Withdrawn: ${id}.`,
 
   comingSoon: 'This option is coming soon.',
+  downloadReady: (n) => `Your ${n} contribution(s) — your copy to keep:`,
+  deleted: (n) => `Deleted ${n} contribution(s) of yours.`,
+  pauseDone: 'Your participation is paused. Send a message any time to resume.',
+  claimDone: 'This pod is now claimed to your identity.',
+  notSupported: 'This option is not available for your pod.',
 
   menuWelcome: 'Welcome. Send your message, or choose below.',
   menuReview: 'Review my points',

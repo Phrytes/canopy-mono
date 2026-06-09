@@ -38,8 +38,14 @@ export function renderMessage(msg, s = getStrings()) {
         : { text: s.contributionsEmpty };
     case 'withdrawn':
       return { text: s.withdrawn(msg.id) };
-    case 'download': case 'claim': case 'pause': case 'delete':
-      return { text: s.comingSoon };
+    case 'download':
+      return msg.items?.length
+        ? { text: [s.downloadReady(msg.items.length), ...msg.items.map((c, i) => s.contributionLine(i + 1, c.text, c.id))].join('\n') }
+        : { text: s.contributionsEmpty };
+    case 'delete':
+      return { text: s.deleted(msg.count ?? 0) };
+    case 'pause': case 'claim':
+      return { text: msg.ok ? s[`${msg.type}Done`] : s.notSupported };
     default:
       return { text: '' };
   }

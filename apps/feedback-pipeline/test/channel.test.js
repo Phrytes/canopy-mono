@@ -59,8 +59,8 @@ test('menu: my-contributions + withdraw run identically via the adapter', async 
   assert.equal(pod.getStatus('p-1:p1'), 'withdrawn');
   assert.ok(adapter.sent.some((m) => m.type === 'withdrawn'));
 
-  await d.command('download');                                   // seam → todo, but must respond
-  assert.ok(adapter.sent.some((m) => m.type === 'download' && m.status === 'todo'));
+  await d.command('download');                                   // exports your own data
+  assert.ok(adapter.sent.some((m) => m.type === 'download' && Array.isArray(m.items)));
   await assert.rejects(d.command('frobnicate'), /unknown action/);
 });
 
