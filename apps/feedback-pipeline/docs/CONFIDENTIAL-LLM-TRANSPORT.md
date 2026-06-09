@@ -85,6 +85,8 @@ What it requires (the new work):
   inside a CVM — AMD SEV-SNP / NVIDIA H100 CC).
 - **Client-side attestation verification + key pinning** on the phone (the phone must check the
   gateway's quote itself — if the server told the phone "trust this key," the server could MITM).
+  The verification gate exists: `src/tee/attestation.js#verifyGatewayAttestation` (pins
+  `llm.attestation.expectedMeasurement`); what's hardware-gated is the quote-FETCH handshake below.
 - An **E2E session** phone → gateway-enclave (a TLS-in-TEE / RA-TLS handshake).
 
 ---

@@ -148,13 +148,16 @@ Make a scenario production-*safe*, not just functional.
 - **Local InternalBus bot first — needs NO network transport, so it does NOT wait on NKN-RN (#223).** Reuse
   `agentBundle.js`'s shared `InternalBus`; build a mobile feedback screen around `ChannelDispatcher`/`CanopyChatBot`;
   vault = `VaultAsyncStorage`/`KeychainVault`; pod auth = `OidcSessionRN`.
-- **External peer bot** waits on NKN-RN (#223). Bridges + dispatcher + bot are platform-neutral and ship unchanged.
+- **External peer bot** runs over the secure-agent peer transport — `transportMode` is `nkn | relay | both`,
+  so it can go via **relay/WebRTC** (works on RN today) **or** NKN (NKN-on-RN is #223, but not required).
+  Bridges + dispatcher + bot are platform-neutral and ship unchanged.
 - 🟡 **Local bot wired (needs device verification).** The mount logic is extracted to a shared, headless-tested
   helper `src/feedback/feedbackMount.js` (`feedbackMount.test.js`, 7/7) used by web + mobile (rule of two);
   `ChatScreen.js` wires it into `submitInput` with RN bubble sinks (`EXPO_PUBLIC_FEEDBACK_LLM_BASEURL` for the
   device's LLM route, since a phone can't run Ollama). Mobile vitest 264/264 + `node --check` pass. **Device
   checkpoint owed (Detox/manual):** the RN screen behaviour (enter `/feedback`, free-text round-trip, the agent
   contact row) — can't be verified headlessly. The mobile `/contacts` agent-row inject is a small follow-on.
+  The external peer bot needs no NKN-RN — it can run over **relay/WebRTC** (`transportMode`).
 
 ### M7 — confidential transport, Option B (enclave gateway) *(item 4)*
 Unlocks a **heavy remote** model for the per-participant clean with the host blind. **Not a blocker** — M0 forces
@@ -169,6 +172,12 @@ at it. `CONFIDENTIAL-LLM-TRANSPORT.md` + strategy plan Phase 2.
 ### M8 — enclave aggregation (Phase 2 placement) *(item 4)*
 `aggregation.location:'enclave'` — key custody moves into an attested CVM; `tee/aggregate.js#runSealedAggregation`
 is already shaped for it. **Shares attestation plumbing with M7 — sequence together.** Strategy plan Phase 3.
+- 🟡 **Verification seam built (hardware-gated remainder).** `src/tee/attestation.js` adds the caller-side gate
+  the boundary always called for — `verifyAttestation` (verify + pin measurement), `assertEnclaveAttested`
+  (gate `location:'enclave'` on a verified quote, closing placement.js's self-declared-role gap), and
+  `verifyGatewayAttestation` (M7). Config: `aggregation.attestation` / `llm.attestation` (`{expectedMeasurement}`).
+  `test/attestation.test.js` 4/4 (incl. end-to-end through `runSealedAggregation`); suite 246/246. **Hardware
+  checkpoint:** swap `localAttestation()` + the quote fetch for a real SEV-SNP/Contrast CVM (the gates stay).
 
 ### M9 — client-side agent runtime *(item 4; heavyweight, separable, own track)*
 The *other half* of on-device trust: key custody + egress firewall so a malicious app can't exfiltrate the

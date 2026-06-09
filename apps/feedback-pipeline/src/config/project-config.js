@@ -37,6 +37,11 @@ export const ProjectConfigSchema = z.object({
       minIntervalMs: z.number().int().min(0).default(0),          // space calls (Privatemode 20/min → 3200)
       maxRetries: z.number().int().min(0).default(3),             // HTTP 429 retries
     }).default({ minIntervalMs: 0, maxRetries: 3 }),
+    // M7 — confidential LLM transport (Option B, enclave gateway). When set, a non-loopback
+    // privatemode endpoint is allowed (the M0 guardrail) AND the client pins the gateway's code
+    // measurement (tee/attestation.js#verifyGatewayAttestation). The quote-fetch handshake is
+    // hardware-gated; see docs/CONFIDENTIAL-LLM-TRANSPORT.md.
+    attestation: z.object({ expectedMeasurement: z.string().optional() }).passthrough().optional(),
   }),
 
   language: z.object({
@@ -59,6 +64,10 @@ export const ProjectConfigSchema = z.object({
     // — Phase 1 privacy); 'enclave' = only an attested TEE may decrypt (Phase 2, not even the
     // controller's host can read). A runner declares its role via FP_RUNNER_ROLE.
     location: z.enum(['host', 'controller', 'enclave']).default('host'),
+    // M8 — Phase-2 enclave attestation. When location is 'enclave', the aggregation's attestation
+    // quote MUST verify (not a self-declared FP_RUNNER_ROLE); pin the enclave's code measurement
+    // here (tee/attestation.js#assertEnclaveAttested). Real CVM + key-release is hardware-gated.
+    attestation: z.object({ expectedMeasurement: z.string().optional() }).passthrough().optional(),
   }),
 
   // D3 / D4 + the two-layer signal design (§5).
