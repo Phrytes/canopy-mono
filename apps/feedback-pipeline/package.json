@@ -6,6 +6,7 @@
   "private": true,
   "scripts": {
     "test": "node --test",
+    "mockup-smoke": "node scripts/mockup-project-smoke.js",
     "clean-smoke": "node scripts/clean-smoke.js",
     "pipeline-smoke": "node scripts/pipeline-smoke.js",
     "summarize-smoke": "node scripts/summarize-smoke.js",

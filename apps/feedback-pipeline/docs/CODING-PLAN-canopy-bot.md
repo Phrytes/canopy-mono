@@ -186,6 +186,11 @@ a mid-sequence checkpoint.
 - **`scripts/mockup-project-smoke.js`** asserts: contributions signed + parked (central holds no raw), k-threshold
   enforced, a theme surfaces, below-threshold quarantined, release notifies.
 - **Manual checkpoint:** a person runs the full journey on the mockup project (web; mobile if M6 done).
+- ✅ **Done.** `test/mockup-project.test.js` (in the suite, 242/242) + `scripts/mockup-project-smoke.js`
+  (`npm run mockup-smoke`, narrated). 5 participants drive the co-hosted bot → consent parks signed+sealed on
+  each own pod (BYO, no raw central) → `ByoCentralPod` k-anon: "waiting times (4 users)" surfaces, "food (1)"
+  quarantined → curator release → 4 participants notified. `ByoCentralPod` gained a release registry
+  (`markIncluded`/`getStatus`) so curator release+notify works on BYO without holding raw.
 
 ## Sequencing
 Build the milestones **M0 → M1 → M2 → M3 → M4 → M5 (external) → M6 (mobile) → M7 + M8 (TEE, together)**, with
