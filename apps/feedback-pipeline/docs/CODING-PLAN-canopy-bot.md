@@ -159,6 +159,20 @@ Make a scenario production-*safe*, not just functional.
   `dispatchAndAppend`) whose `openFeedback` tap enters feedback mode (button-tap handler). Mobile vitest 264/264
   + `node --check` pass. **Device checkpoint owed (Detox/manual):** the RN screen behaviour (enter `/feedback`,
   free-text round-trip, the agent contact row appearing + opening) — can't be verified headlessly.
+  **Build finding (only the device build catches it):** the mobile bot wasn't RN-bundleable —
+  `metro.config.js` needed `apps/feedback-pipeline` in `watchFolders` + an `eld/<size>` subpath
+  resolver (`lang.js` imports `eld/medium`; Metro disables package-exports). Fixed; bundle = 6330
+  modules. Also fixed a real cross-platform bug: `renderListItems` dropped an item's own `buttons`
+  (the agent contact's `openFeedback`), so the fp-bot row would have shown stoop's `[DM]` — now an
+  item's own buttons take precedence (web M2 + mobile M6).
+  **⚠️ REACHABILITY GAP (device run, 2026-06-09):** the wiring went into `ChatScreen.js`, which the
+  v2 redesign (SP-13.1) made an **invisible background peer-router** (`App.js:82`; CircleLauncher has
+  "no '← chat' button — no chat shell to navigate to"). The live UX is the circle launcher + circle
+  conversation screens (`CircleStreamScreen`/`CircleScreenView`), which post to the kring and **don't
+  run slash dispatch** — so the bot is NOT reachable on mobile as wired (`/contacts` posts as text).
+  The logic + bundling are fine; the integration point is orphaned. **Real follow-up:** wire feedback
+  into the v2 circle conversation surface — needs a UX call (how feedback fits the kring) + that
+  screen's input handling. The Detox `gotoChat` helper is also stale (targets the removed chat shell).
 
 ### M7 — confidential transport, Option B (enclave gateway) *(item 4)*
 Unlocks a **heavy remote** model for the per-participant clean with the host blind. **Not a blocker** — M0 forces

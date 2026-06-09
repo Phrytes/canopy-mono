@@ -195,11 +195,16 @@ _(2026-06-09: starting the canopy-bot build plan — `apps/feedback-pipeline/doc
 
 ## Checkpoints owed (can't be verified headlessly) — canopy-bot build
 
-- [ ] **M6 — Detox / manual device run of the mobile feedback bot.** The mount logic is
-      headless-tested (`feedbackMount.test.js`) and `ChatScreen.js` is wired, but the RN screen
-      behaviour needs a device/simulator: type `/feedback`, confirm the free-text round-trip
-      renders the bot's replies, `/feedback-stop` exits, and (follow-on) the agent contact row.
-      Set `EXPO_PUBLIC_FEEDBACK_LLM_BASEURL` to a reachable route first.
+- [ ] **M6 — REWIRE the mobile feedback bot into the v2 circle surface** (device run 2026-06-09
+      found the gap). The wiring is in `ChatScreen.js`, which v2/SP-13.1 made an invisible
+      background peer-router — the live UX is the circle launcher + `CircleStreamScreen`/
+      `CircleScreenView`, which post to the kring and DON'T run slash dispatch, so the bot is
+      unreachable as wired (`/contacts` posts as text on the phone). Needs: (a) a UX call — how
+      feedback fits the kring (a `/feedback` in the kring input? a dedicated entry? agent contact in
+      a v2 contacts view?), (b) that screen's input handling. Logic + Metro bundling are done;
+      integration point is orphaned. The Detox `gotoChat` helper is also stale (targets the removed
+      chat shell) — fix or retarget it. Then verify on device. Set `EXPO_PUBLIC_FEEDBACK_LLM_BASEURL`
+      to a reachable route for the full clean/review round-trip.
 - [ ] **M7/M8 — TEE hardware bring-up.** The attestation-VERIFICATION seam is built + tested
       (`src/tee/attestation.js`: `verifyAttestation` / `assertEnclaveAttested` /
       `verifyGatewayAttestation`); what remains needs confidential-computing hardware: a real CVM
