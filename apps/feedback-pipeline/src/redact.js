@@ -66,8 +66,9 @@ const RULES = [
   { type: 'postcode', re: /\b\d{4}[ ]?[A-Z]{2}\b/g },
   // numeric date (dd-mm-yyyy / yyyy-mm-dd) — DOB + appointment dates → [datum].
   { type: 'date', re: /\b\d{1,2}[-/.]\d{1,2}[-/.](?:19|20)\d{2}\b|\b(?:19|20)\d{2}[-/.]\d{1,2}[-/.]\d{1,2}\b/g },
-  // labelled case/dossier number ("dossiernummer is 84422190").
-  { type: 'dossier', re: /\b(?:dossiernummer|zaaknummer|klachtnummer|pati[eë]ntnummer|kenmerk|referentienummer)\b(?:\s*(?:is|:|nummer|=))?\s*\d{5,12}\b/gi },
+  // labelled case/dossier/student number ("dossiernummer is 84422190", "student number 1234567",
+  // "case no. 84422"). The keyword prefix keeps the false-positive rate low. (M4 scenario floors.)
+  { type: 'dossier', re: /\b(?:dossiernummer|zaaknummer|klachtnummer|pati[eë]ntnummer|studentnummer|leerlingnummer|kenmerk|referentienummer|case\s*(?:number|no\.?|#)|reference\s*(?:number|no\.?|#)|student\s*(?:number|id|no\.?)|file\s*(?:number|no\.?))(?:\s*(?:is|:|nummer|number|=|#))?\s*\d{4,12}\b/gi },
   // Capitalised street name ending in a known suffix, followed by a number.
   { type: 'address',  re: new RegExp(`\\b[A-ZÀ-Ý][a-zà-ÿ]*?(?:${STREET})\\s+\\d+[a-zA-Z]?\\b`, 'g') },
 ];
