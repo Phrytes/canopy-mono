@@ -192,3 +192,17 @@ deps): `npm run secure-smoke`, `byo-tee-smoke`, `phase1-smoke`. Full design writ
       mobile). Decide if/when it becomes its own project; see its §7 open decisions.
 
 _(2026-06-09: starting the canopy-bot build plan — `apps/feedback-pipeline/docs/CODING-PLAN-canopy-bot.md`; M0 done, M1 next.)_
+
+## Checkpoints owed (can't be verified headlessly) — canopy-bot build
+
+- [ ] **M6 — Detox / manual device run of the mobile feedback bot.** The mount logic is
+      headless-tested (`feedbackMount.test.js`) and `ChatScreen.js` is wired, but the RN screen
+      behaviour needs a device/simulator: type `/feedback`, confirm the free-text round-trip
+      renders the bot's replies, `/feedback-stop` exits, and (follow-on) the agent contact row.
+      Set `EXPO_PUBLIC_FEEDBACK_LLM_BASEURL` to a reachable route first.
+- [ ] **M7/M8 — TEE hardware bring-up.** The attestation-VERIFICATION seam is built + tested
+      (`src/tee/attestation.js`: `verifyAttestation` / `assertEnclaveAttested` /
+      `verifyGatewayAttestation`); what remains needs confidential-computing hardware: a real CVM
+      (AMD SEV-SNP / NVIDIA H100), the SEV-SNP/Contrast quote producer + key-release, and (M7) the
+      gateway enclave image + the client RA-TLS quote-fetch handshake. Swap `localAttestation()` +
+      the quote fetch for the real ones; the gates stay. See `docs/CONFIDENTIAL-LLM-TRANSPORT.md`.

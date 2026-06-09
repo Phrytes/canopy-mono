@@ -23,6 +23,11 @@ export function localAttestation() {
   return {
     kind: runner === 'enclave' ? 'enclave' : 'phase1-no-tee',
     runner, verified: runner === 'enclave',
+    // The code measurement a caller pins via verifyAttestation (tee/attestation.js). The stub
+    // reads FP_ENCLAVE_MEASUREMENT; a real enclave fills it from the SEV-SNP / Contrast report.
+    measurement: runner === 'enclave'
+      ? ((typeof process !== 'undefined' && process.env && process.env.FP_ENCLAVE_MEASUREMENT) || undefined)
+      : undefined,
     note: runner === 'enclave'
       ? 'replace with a real remote-attestation quote the caller verifies'
       : `plaintext was assembled in the "${runner}" machine's ordinary RAM — confidential only at rest and from other parties, not from this host (Phase 2 = enclave)`,
