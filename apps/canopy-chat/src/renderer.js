@@ -413,9 +413,14 @@ function renderListItems(payload, opts, t) {
   return raw.map((item, i) => {
     const id    = String(item?.id ?? item?._id ?? `i-${i}`);
     const label = String(itemLabel(item) ?? id);
-    const buttons = inlineKeyboardFor
-      ? inlineKeyboardFor({ id, ...(typeof item === 'object' ? item : {}) })
-      : [];
+    // An item that carries its OWN `buttons` (e.g. a synthetic 'agent' contact's openFeedback
+    // action) takes precedence; otherwise the manifest's per-row inline keyboard applies.
+    const ownButtons = (item && typeof item === 'object' && Array.isArray(item.buttons))
+      ? item.buttons.filter((b) => b && b.label && b.callbackData).map((b) => ({ label: String(b.label), callbackData: String(b.callbackData) }))
+      : null;
+    const buttons = (ownButtons && ownButtons.length)
+      ? ownButtons
+      : (inlineKeyboardFor ? inlineKeyboardFor({ id, ...(typeof item === 'object' ? item : {}) }) : []);
     // v0.6 — per-row staleness label from item._lastSync.
     const staleHint = formatLastSync(item?._lastSync, t);
     // Bundle F P4-followup-1 (#266) — surface item.embed so a
