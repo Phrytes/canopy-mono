@@ -72,7 +72,7 @@ import { mockTasksManifest,
          mockFolioManifest }         from '../src/core/manifests/mockManifests.js';
 import { calendarManifest }          from '@canopy-app/calendar/manifest';
 import { createLocalBuiltins }       from '../src/core/localBuiltins.js';
-import { createFeedbackSurface }      from '../src/feedback/feedbackSurface.js';
+import { createFeedbackSurface, parseFeedbackInvite } from '../src/feedback/feedbackSurface.js';
 import * as podAuth                  from '../src/web/podAuth.js';
 import {
   createPodWriter, discoverPodRoot,
@@ -2096,11 +2096,16 @@ function feedback(podOverride) {
   if (podOverride || !_feedbackSurface) {
     _feedbackSurface = createFeedbackSurface({
       pod: podOverride,
-      llmRoute: FEEDBACK_LLM_BASEURL ? { baseURL: FEEDBACK_LLM_BASEURL } : null,
-      emit: ({ chatId, text }) => {
+      // route ownership → the bot (M1.4): the browser has no env, so point config.llm at the
+      // (local/loopback) endpoint via llmBaseURL. No setLlmRoute here.
+      llmBaseURL: FEEDBACK_LLM_BASEURL || undefined,
+      emit: ({ chatId, text, buttons }) => {
         const thread = store.getThread(chatId) || store.getActiveThread();
         if (!thread) return;
-        thread.addShellMessage(renderReply({ payload: text, shape: 'text', threadId: chatId }, { t }));
+        // show the reply + any quick-reply buttons (interactive button rendering + onButtonTap
+        // → feedbackSurface.tapButton is the remaining M2 shell wiring).
+        const body = buttons?.length ? `${text}\n${buttons.map((b) => `• ${b.label}`).join('\n')}` : text;
+        thread.addShellMessage(renderReply({ payload: body, shape: 'text', threadId: chatId }, { t }));
         if (store.getActiveThread()?.id === thread.id) renderActiveStream();
       },
     });
@@ -3068,5 +3073,21 @@ async function refreshListMessageInPlace(thread, messageId) {
     }
   } catch (err) {
     console.warn('canopy-chat: deep-link receiver failed', err);
+  }
+})();
+
+// M2 — project-invite auto-activation. If the app was opened on an invite / QR link
+// (?projectId=…&code=…, the shape inviteLink() produces), drop the active thread straight into
+// feedback mode by running `/feedback <code>`, then clean the URL so a reload doesn't re-fire.
+(async function bootFeedbackInvite() {
+  try {
+    const invite = parseFeedbackInvite(globalThis.location?.search ?? '');
+    if (!invite) return;
+    const thread = store.getActiveThread() || store.getThread('main');
+    if (!thread) return;
+    await handleUserText(`/feedback ${invite.code}`, thread);
+    try { globalThis.history?.replaceState?.({}, '', globalThis.location.pathname); } catch { /* swallow */ }
+  } catch (err) {
+    console.warn('canopy-chat: feedback invite auto-activation failed', err);
   }
 })();
