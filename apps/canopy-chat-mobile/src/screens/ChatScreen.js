@@ -35,6 +35,7 @@ import {
 } from '@canopy-app/canopy-chat';
 
 import { createFeedbackMount } from '../../../canopy-chat/src/feedback/feedbackMount.js';
+import { feedbackContactItem } from '../../../canopy-chat/src/feedback/feedbackSurface.js';
 import { autoRefreshStalePanels } from '../core/panelAutoRefresh.js';
 import { buildNavModels }  from '../core/navModel.js';
 import { dlog }            from '../core/devLog.js';
@@ -745,7 +746,14 @@ export default function ChatScreen({
           // hook after substrate writes succeed.
           const reply = await runDispatch(scopedDispatch, wrappedBundleCallSkill);
           replyForRefresh = reply;
-          rendered = renderReply(reply, {
+          // M6 — surface the feedback assistant as a distinct 'agent' contact atop /contacts (mirrors web).
+          const forRender = (dispatch.opId === 'listContacts' && !reply.error && Array.isArray(reply.items))
+            ? { ...reply, items: [feedbackContactItem({
+                label:     t('feedback.contactLabel', { defaultValue: 'Feedback assistant' }),
+                openLabel: t('feedback.openChat',     { defaultValue: 'Open chat' }),
+              }), ...reply.items] }
+            : reply;
+          rendered = renderReply(forRender, {
             t,
             appOrigin:         dispatch.appOrigin,
             manifestsByOrigin: bootState.bundle.manifestsByOrigin,
@@ -1022,6 +1030,19 @@ export default function ChatScreen({
     // friendly "not wired" bubble).  Mirrors web's onButtonTap short-
     // circuits in apps/canopy-chat/web/main.js.  P4-followup-1 (#266)
     // forwards item.embed so saveBase64File can run on phone.
+    // M6 — the feedback 'agent' contact's action: enter feedback mode (not a peer DM).
+    if (opId === 'openFeedback') {
+      if (!feedbackMountRef.current) {
+        feedbackMountRef.current = createFeedbackMount({
+          llmBaseURL: FEEDBACK_LLM_BASEURL,
+          appendUserBubble: (tid, x) => setThreadState((prev) => updateMessages(prev, tid, (msgs) => [...msgs, { id: mkId(), role: 'user', text: x }])),
+          appendBotBubble:  (tid, x) => setThreadState((prev) => updateMessages(prev, tid, (msgs) => [...msgs, { id: mkId(), role: 'bot', pending: false, rendered: { kind: 'text', messageId: null, threadId: tid, lifecycleState: 'closed', text: x } }])),
+        });
+      }
+      await feedbackMountRef.current.open(currentThreadId);
+      return;
+    }
+
     const intercept = interceptButtonTap({ opId, itemId, buttonLabel, t, embed, peerAddr });
     if (intercept.handled) {
       applyButtonSpecial(intercept, { originMessageId, sourceThreadId: currentThreadId });
