@@ -123,6 +123,50 @@ Net: **Tier 0 ships now**; Tiers 1–3 are progressively smarter auto-action, bu
 
 ---
 
+## Shared-pod architecture — reuse findings (2026-06-09 investigation)
+
+Design (confirmed): **the sender writes their own messages to the ONE shared household pod**;
+members **poll the pod to catch up** (no persistent p2p required — pod = durable truth, p2p = fast
+path); **text** goes peer-to-peer *and* is stored on the pod (local-first), **larger files** go to
+the pod with others getting a text + a link/ref. **Join → immediate pod access; leave → access
+revoked.** A household is a **trust unit**, so one shared container (members read/write each other's
+entries) is correct — contrast feedback's per-participant pods.
+
+What already exists (the foundation is ~80% there; gaps are WIRING, not new architecture):
+
+| Behavior | Where | Status |
+|---|---|---|
+| Shared group-pod model | `household/src/pods/HouseholdPod.js`; `pod-routing` `'centralised'` policy → `group/<crewId>` → `groupPodUri` | ✅ exists |
+| **Pod ACL grant/revoke API** (ACP **and** WAC) | `pod-client/src/sharing/index.js` `grant():259`, `revoke():322` | ✅ **built but never called** |
+| Join → grant access | `identity-resolver/onboardingSkills.js redeemInvite` + `addMember` | 🔶 roster updated, **`grant()` not called** (~10-line add) |
+| Leave → revoke access | — | ⬜ **missing** — new small `leaveGroup`/`removeMember` skill → `revoke()` |
+| Sender-writes model | `stoop/src/skills/index.js postRequest:384` (actor writes) | 🔶 writes pseudo-pod; point at the real shared pod |
+| Offline catch-up by polling the pod | `stoop/src/skills/index.js getMessagesSince:3018` (designed as the pod range-query entry) | 🔶 reads local cache; swap for a pod read |
+| File → pod + link (dual-write, file side) | `folio/src/autoShare.js:210` (file to pod + capability token/link) | ✅ reusable |
+| Text → p2p + pod (dual-write, text side) | — | ⬜ new (the file side is the template) |
+
+**Household-circle build = wiring:** call `grant()` on join + a small `revoke()`-on-leave skill;
+route member writes to the real shared pod; swap catch-up to read it; add the text dual-write
+(mirroring folio's file path). Not a new subsystem.
+
+## Gate, smarter — an embedded vector DB (Tier-3++ + RAG)
+
+A local/embedded vector DB does **double duty** for token control:
+1. **The learned relevance gate** — embed each turn, nearest-neighbor against a small set of
+   "actionable-intent" prototype embeddings; only above a threshold does it reach the LLM. Lets the
+   gate **learn** (add examples over time). This is the Tier-3 embedding gate, made efficient.
+2. **RAG context selection** (the bigger win) — when the bot DOES act, retrieve only the
+   **semantically relevant** past turns as context instead of the raw last-N. Keeps context tokens
+   small.
+
+Honest framing: it's **cheap, not free** (you still embed every turn) — but embedding is a *small,
+fast* model; **run it locally** so the gate stays private + free even when the heavy LLM is the
+remote proxy. It **complements** the deterministic gate → a **3-tier cascade: cheap rules (free) →
+embedding similarity (cheap, local) → LLM (expensive, gated).** For a household (low volume, small
+intent set) a simple in-memory cosine suffices; an embedded DB (sqlite-vec / LanceDB / hnswlib, or
+one on the household pod) scales it + persists the learned examples. Gate index can be per-device;
+RAG over shared history lives on the household pod.
+
 ## Business-model fit (noted)
 The architecture is naturally a **hosted-services** play, and the privacy story is the selling point:
 - **Managed Solid pods** — household pod hosting (the shared store).
