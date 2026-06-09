@@ -11,7 +11,7 @@ import { assertAdapter } from './adapter.js';
 import { escalates, runTask1 } from '../task1.js';
 import { buildContribution } from '../pod/contribution.js';
 import { configToRunOpts } from '../config/project-config.js';
-import { signContribution } from '../pod/signing.js';
+import { contributionMeta } from '../pod/signing.js';
 
 export class ChannelDispatcher {
   #adapter; #pod; #participant; #opts; #projectId; #identity;
@@ -88,9 +88,7 @@ export class ChannelDispatcher {
       if (!ids.has(p.id)) continue;
       const cid = `${this.#participant}:${p.id}`;
       const contribution = buildContribution({ id: cid, text: p.text }, { timeWindow, lang: this.#opts.lang });
-      const meta = this.#identity
-        ? { sig: signContribution({ projectId: this.#projectId, participant: this.#participant, contribution }, this.#identity.privateKey), pubKey: this.#identity.publicKey }
-        : {};
+      const meta = contributionMeta(this.#identity, { projectId: this.#projectId, participant: this.#participant, contribution });
       try {
         await this.#pod.write(this.#participant, contribution, meta);
         written.push(cid);
