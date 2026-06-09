@@ -9,7 +9,10 @@
 //     a scripted participant journey, with a SIGINT drain. Gated on an LLM route (review/intent
 //     need one — set FP_LLM_BASEURL or run a local Ollama / loopback Privatemode proxy).
 //
-// External (peer/unsigned) mode lands in M5 (scripts gains a `--external` path over PeerBridge).
+// External (peer/unsigned) mode: startExternalCanopyBot() below (M5). It is TRANSPORT-AGNOSTIC —
+// the host injects any secure-agent `peer` (sendTo + onPeerMessage), so it runs over NKN, relay,
+// WebRTC, or `transportMode:'both'` interchangeably; the bridge never names a transport. Proven by
+// test/peer-bridge.test.js over an injected peer.
 
 import { InternalBusBridge, connectFeedbackParticipant } from '../src/channel/internal-bus-bridge.js';
 import { PeerBridge } from '../src/channel/peer-bridge.js';

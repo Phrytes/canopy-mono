@@ -148,16 +148,17 @@ Make a scenario production-*safe*, not just functional.
 - **Local InternalBus bot first — needs NO network transport, so it does NOT wait on NKN-RN (#223).** Reuse
   `agentBundle.js`'s shared `InternalBus`; build a mobile feedback screen around `ChannelDispatcher`/`CanopyChatBot`;
   vault = `VaultAsyncStorage`/`KeychainVault`; pod auth = `OidcSessionRN`.
-- **External peer bot** runs over the secure-agent peer transport — `transportMode` is `nkn | relay | both`,
-  so it can go via **relay/WebRTC** (works on RN today) **or** NKN (NKN-on-RN is #223, but not required).
-  Bridges + dispatcher + bot are platform-neutral and ship unchanged.
-- 🟡 **Local bot wired (needs device verification).** The mount logic is extracted to a shared, headless-tested
+- **External peer bot is TRANSPORT-AGNOSTIC** (✅ done, M5). `PeerBridge`/`startExternalCanopyBot` take any
+  injected secure-agent `peer`, so the bot runs over **NKN, relay, WebRTC, or `transportMode:'both'`
+  interchangeably** — the bridge never names a transport (`peer-bridge.test.js` proves the journey over an
+  injected peer). No NKN-RN dependency; nothing transport-specific to build.
+- 🟡 **Local bot + `/contacts` row wired (needs device verification).** Mount logic is a shared, headless-tested
   helper `src/feedback/feedbackMount.js` (`feedbackMount.test.js`, 7/7) used by web + mobile (rule of two);
-  `ChatScreen.js` wires it into `submitInput` with RN bubble sinks (`EXPO_PUBLIC_FEEDBACK_LLM_BASEURL` for the
-  device's LLM route, since a phone can't run Ollama). Mobile vitest 264/264 + `node --check` pass. **Device
-  checkpoint owed (Detox/manual):** the RN screen behaviour (enter `/feedback`, free-text round-trip, the agent
-  contact row) — can't be verified headlessly. The mobile `/contacts` agent-row inject is a small follow-on.
-  The external peer bot needs no NKN-RN — it can run over **relay/WebRTC** (`transportMode`).
+  `ChatScreen.js` wires it into `submitInput` (RN bubble sinks; `EXPO_PUBLIC_FEEDBACK_LLM_BASEURL` for the
+  device's LLM route) **and** the mobile `/contacts` now prepends the distinct **`agent` contact** (inject in
+  `dispatchAndAppend`) whose `openFeedback` tap enters feedback mode (button-tap handler). Mobile vitest 264/264
+  + `node --check` pass. **Device checkpoint owed (Detox/manual):** the RN screen behaviour (enter `/feedback`,
+  free-text round-trip, the agent contact row appearing + opening) — can't be verified headlessly.
 
 ### M7 — confidential transport, Option B (enclave gateway) *(item 4)*
 Unlocks a **heavy remote** model for the per-participant clean with the host blind. **Not a blocker** — M0 forces
