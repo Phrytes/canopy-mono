@@ -41,6 +41,9 @@ module.exports = withCanopyPreset({
     path.resolve(repoRoot, 'apps/stoop'),
     path.resolve(repoRoot, 'apps/folio'),
     path.resolve(repoRoot, 'apps/calendar'),
+    // M6 — the feedback bot: canopy-chat's feedbackSurface/feedbackMount reach into
+    // apps/feedback-pipeline (channel bridges + dispatcher + pod + config + ollama).
+    path.resolve(repoRoot, 'apps/feedback-pipeline'),
     // Workspace packages the composed apps + secure-agent reach for.
     path.resolve(repoRoot, 'packages/vault'),
     path.resolve(repoRoot, 'packages/chat-p2p'),
@@ -150,6 +153,16 @@ module.exports = withCanopyPreset({
         const sub = moduleName.slice('@canopy-app/stoop/locales/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/stoop/locales', sub + '.json'),
+          type:     'sourceFile',
+        };
+      }
+
+      // 4. M6 — eld language detector (feedback pipeline's lang.js). Package `exports` subpaths
+      //    (eld/medium etc.); Metro has package-exports disabled, so map to the static entry.
+      const eldMatch = moduleName.match(/^eld\/(medium|small|large|extrasmall)$/);
+      if (eldMatch) {
+        return {
+          filePath: path.resolve(repoRoot, 'apps/feedback-pipeline/node_modules/eld/src/entries', `static.${eldMatch[1]}.js`),
           type:     'sourceFile',
         };
       }
