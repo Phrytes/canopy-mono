@@ -26,7 +26,8 @@
     "activation-service": "node scripts/activation-service.js",
     "portal": "node scripts/portal.js",
     "bootstrap-owner": "node scripts/bootstrap-owner.js",
-    "llm-health": "node scripts/llm-health.js"
+    "llm-health": "node scripts/llm-health.js",
+    "canopy-bot": "node scripts/canopy-bot.js"
   },
   "dependencies": {
     "@inrupt/solid-client-authn-core": "^4.0.0",
