@@ -18,6 +18,9 @@ import { assertCentralPod } from './central-pod-interface.js';
 export class ByoCentralPod {
   #sources = new Map();   // participant -> read()
   #open; #verify;
+  #included = new Set();  // release registry — ids marked included at curator release. Central-
+                          // side bookkeeping ONLY (no raw): records WHICH contributions were
+                          // released, so the curator can mark + notify without holding a copy.
 
   /** @param {{ sources?: Array<{participant:string, read:Function}>, open?:Function, verify?:Function }} a
    *   open — opener for sealed text (the keyless aggregation job holds it); verify — the
@@ -72,6 +75,11 @@ export class ByoCentralPod {
       .map((r) => { const c = this.#revealVerified(r); return c && { user: r.participant, id: c.id, text: c.text, lang: c.lang }; })
       .filter(Boolean);
   }
+
+  /** Curator release bookkeeping — mark contributions included. The raw stays on the participant
+   *  pods; this only records the released ids centrally (for status + notify). */
+  markIncluded(ids) { for (const id of ids || []) this.#included.add(String(id)); }
+  getStatus(id) { return this.#included.has(String(id)) ? 'included' : 'pending'; }
 }
 
 // ByoCentralPod satisfies the read subset of the CentralPod contract.
