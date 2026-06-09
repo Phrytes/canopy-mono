@@ -12,6 +12,7 @@
 // External (peer/unsigned) mode lands in M5 (scripts gains a `--external` path over PeerBridge).
 
 import { InternalBusBridge, connectFeedbackParticipant } from '../src/channel/internal-bus-bridge.js';
+import { PeerBridge } from '../src/channel/peer-bridge.js';
 import { CanopyChatBot } from '../src/channel/canopy-chat-bot.js';
 import { applyLlmRoute, assertCleanRouteSafe } from '../src/ollama.js';
 
@@ -28,6 +29,24 @@ export async function startLocalCanopyBot({ bus, pod, config, identityFor, parti
   assertCleanRouteSafe(config.llm || {});
   const bridge = new InternalBusBridge({ bus, address: botAddress });
   const bot = new CanopyChatBot({ bridge, pod, config, identityFor, participantFor });
+  await bot.start();
+  return { bridge, bot, stop: () => bot.stop() };
+}
+
+/**
+ * Wire + start an EXTERNAL (peer) feedback bot (M5). The bot runs as its own agent; participants
+ * reach it over the injected secure-agent peer. No `identityFor` ⇒ writes are UNSIGNED, so a
+ * verify-enabled project refuses them gracefully (and a project-provisioned pod is used). The
+ * host routes inbound peer messages to `bridge.onPeerMessage` (or `peer.connect({onPeerMessage})`).
+ * @param {{ peer, pod, config, participantFor?:Function }} a  peer = sa.peer (sendTo)
+ * @returns {Promise<{ bridge:PeerBridge, bot:CanopyChatBot, stop:()=>Promise<void> }>}
+ */
+export async function startExternalCanopyBot({ peer, pod, config, participantFor }) {
+  if (!peer || typeof peer.sendTo !== 'function') throw new Error('startExternalCanopyBot: a peer with sendTo() is required');
+  applyLlmRoute(config.llm || {});
+  assertCleanRouteSafe(config.llm || {});
+  const bridge = new PeerBridge({ peer });
+  const bot = new CanopyChatBot({ bridge, pod, config, participantFor });   // no identityFor → unsigned
   await bot.start();
   return { bridge, bot, stop: () => bot.stop() };
 }
