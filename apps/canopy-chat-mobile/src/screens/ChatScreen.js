@@ -34,6 +34,7 @@ import {
   executeBulkDispatch, lastListingItems,
 } from '@canopy-app/canopy-chat';
 
+import { createFeedbackMount } from '../../../canopy-chat/src/feedback/feedbackMount.js';
 import { autoRefreshStalePanels } from '../core/panelAutoRefresh.js';
 import { buildNavModels }  from '../core/navModel.js';
 import { dlog }            from '../core/devLog.js';
@@ -125,6 +126,11 @@ const MSG_ID_PREFIX = Math.random().toString(36).slice(2, 8);
 let nextMessageId = 1;
 const mkId = () => `m${MSG_ID_PREFIX}${nextMessageId++}`;
 
+// M6 — the feedback bot's LLM endpoint on mobile (Expo public env; the device can't run Ollama).
+// Unset → the bot still enters mode + the deterministic intent fast-path works, but the LLM
+// clean/review step needs a reachable route. Mirrors web's VITE_FEEDBACK_LLM_BASEURL.
+const FEEDBACK_LLM_BASEURL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_BASEURL || undefined;
+
 // ε.1 — fallback inbox builder used only when App.js didn't pass one
 // (e.g. older standalone test mounts).  Production wiring goes through
 // the App-level singleton so dedup state is shared with the rehydrator.
@@ -197,6 +203,7 @@ export default function ChatScreen({
   // toggles `logsPanelOpen` via the `openLogsPanel` callback when
   // the user types a bare /logs.
   const eventLogRef = useRef(null);
+  const feedbackMountRef = useRef(null);   // M6 — lazy feedback mount (created on first /feedback)
   if (!eventLogRef.current) {
     // M1 — App.js owns the EventLog (so boot-time agent events + this
     // screen's inbound peer events share one log).  Fall back to a fresh
@@ -915,6 +922,24 @@ export default function ChatScreen({
       }
       return;
     }
+
+    // M6 — feedback bot (parity with web main.js). `/feedback` enters mode; free text while a
+    // thread is active routes to the co-hosted bot; the mount echoes the user + renders the bot's
+    // reply through the SAME setThreadState/updateMessages path the DM branch above uses.
+    if (!feedbackMountRef.current) {
+      feedbackMountRef.current = createFeedbackMount({
+        llmBaseURL: FEEDBACK_LLM_BASEURL,
+        appendUserBubble: (tid, x) => setThreadState((prev) => updateMessages(prev, tid, (msgs) => [
+          ...msgs, { id: mkId(), role: 'user', text: x },
+        ])),
+        appendBotBubble: (tid, x) => setThreadState((prev) => updateMessages(prev, tid, (msgs) => [
+          ...msgs, { id: mkId(), role: 'bot', pending: false, rendered: {
+            kind: 'text', messageId: null, threadId: tid, lifecycleState: 'closed', text: x,
+          } },
+        ])),
+      });
+    }
+    if (await feedbackMountRef.current.tryHandle(text, currentThreadId)) return;
 
     // Multi-field follow-ups complete through the inline form bubble's
     // Submit button, NOT the text input.  If the user typed into the
