@@ -24,21 +24,64 @@ export function setLlmRoute(route) {
 // process.env only exists under Node — guard it so this module is browser-safe.
 const env = (k) => (typeof process !== 'undefined' && process.env ? process.env[k] : undefined);
 
-// Resolve a project's llm block to a concrete {baseURL} and install it. Privatemode defaults to
-// the localhost privatemode-proxy (the proxy that does the TEE attestation + E2E encryption to
-// the enclave — it runs WHERE aggregation runs, i.e. the controller's box in Phase 1, never on
-// participants' phones). 'local' falls through to FP_LLM_BASEURL / the Ollama default.
+// Resolve a project's llm block to a concrete {baseURL} and install it.
+//
+// TWO LLM CALL SITES, two route policies (docs/MENUKAART.md §4D):
+//   • AGGREGATION (Task 2) runs where the controller/enclave already holds plaintext, so the
+//     privatemode proxy may be co-located there (the controller's box in Phase 1). No restriction.
+//   • PER-PARTICIPANT CLEAN (Task 1) runs on RAW, pre-consent text on the participant's device —
+//     it may only use a local model or privatemode to a LOOPBACK proxy / attested enclave gateway,
+//     never a plain remote host. Enforced by assertCleanRouteSafe() below; the bot calls it before
+//     the clean step (docs/CONFIDENTIAL-LLM-TRANSPORT.md).
 const ROUTE_DEFAULT_BASE = {
   privatemode: () => env('PRIVATEMODE_PROXY_URL') || 'http://localhost:8080/v1',
   local: () => undefined,
 };
+
+// A loopback base means the privatemode proxy is co-located with the client (safe — the host the
+// proxy runs on IS the participant's machine). Until the M7 enclave gateway ships, a non-loopback
+// privatemode endpoint is only allowed when attestation is configured (PRIVATEMODE_ATTESTATION).
+function isLoopbackBase(base) {
+  if (!base) return false;
+  try {
+    const h = new URL(base).hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1';
+  } catch { return false; }
+}
+function attestationConfigured(llm = {}) {
+  return Boolean(llm.attestation || env('PRIVATEMODE_ATTESTATION'));
+}
+
 export function applyLlmRoute(llm = {}) {
   const base = llm.baseURL || (ROUTE_DEFAULT_BASE[llm.route]?.() ?? undefined);
   if (['ovh', 'within-walls'].includes(llm.route) && !base) {
     throw new Error(`llm.route "${llm.route}" needs llm.baseURL (or FP_LLM_BASEURL)`);
   }
+  // Footgun guard: privatemode pointed at a non-loopback host with no attestation would leak
+  // raw plaintext to that host. See docs/CONFIDENTIAL-LLM-TRANSPORT.md.
+  if (llm.route === 'privatemode' && base && !isLoopbackBase(base) && !attestationConfigured(llm)) {
+    throw new Error(
+      `llm.route "privatemode" points at a non-loopback host (${base}) with no attestation configured — ` +
+      `plaintext would reach that host. Use a loopback proxy, or an attested enclave gateway ` +
+      `(set PRIVATEMODE_ATTESTATION). See docs/CONFIDENTIAL-LLM-TRANSPORT.md.`);
+  }
   setLlmRoute({ baseURL: base, apiKey: env('FP_LLM_APIKEY') });
   return { route: llm.route, baseURL: base || resolveRoute().base };
+}
+
+// Guard the PER-PARTICIPANT CLEAN call site: raw pre-consent text may only go to a local model or
+// privatemode-to-a-safe-endpoint (loopback or attested) — never a plain remote host. Aggregation
+// is NOT subject to this. The bot calls this before running Task 1 (docs/MENUKAART.md §4D).
+export function assertCleanRouteSafe(llm = {}) {
+  if (llm.route === 'local') return;
+  if (llm.route === 'privatemode') {
+    const base = llm.baseURL || ROUTE_DEFAULT_BASE.privatemode();
+    if (isLoopbackBase(base) || attestationConfigured(llm)) return;
+    throw new Error(`clean route "privatemode" is not safe for raw input: ${base} is non-loopback and unattested`);
+  }
+  throw new Error(
+    `clean route "${llm.route}" would send raw pre-consent text to a remote host; ` +
+    `use 'local' or attested 'privatemode' (docs/MENUKAART.md §4D)`);
 }
 
 // Resolve the route at CALL time (not import time) so the config block is dynamic
