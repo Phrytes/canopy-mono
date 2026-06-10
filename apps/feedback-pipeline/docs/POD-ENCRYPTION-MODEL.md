@@ -1,8 +1,9 @@
 # Pod at-rest encryption model (content vs structure, substrate, layered index, shared key)
 
-Answers + design decisions from the 2026-06-10 questions. Reference for the household shared-pod
-build. Companion to `SECURITY-MODEL.md` (the feedback trust model) and
-`HOUSEHOLD-LLM-CIRCLE-JOURNEYS.md` (the shared-pod circle).
+Answers + design decisions from the 2026-06-10 questions. The **mechanics** layer; the **decision**
+layer (which posture per situation) is **`STORAGE-SECURITY-MENUKAART.md`** — *encryption is one
+posture among several, not a forced default.* Companion to `SECURITY-MODEL.md` (the feedback trust
+model) and `HOUSEHOLD-LLM-CIRCLE-JOURNEYS.md` (the shared-pod circle).
 
 ## What's sealed today — CONTENT only (verified)
 - `pod/project-seal.js` `seal(plaintext, recipients)` AES-256-GCM-encrypts the **value**; CEK
