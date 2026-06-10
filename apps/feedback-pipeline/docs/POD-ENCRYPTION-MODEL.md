@@ -47,6 +47,36 @@ A shared household pod needs a **shared group key** (= the existing `HouseholdCo
 - Choice: a **shared group key** (encrypt with it; distribute sealed-per-member; rotate on leave) is
   cleaner than per-resource multi-recipient (re-wrapping every resource to N members each change).
 
+## Re-wrapping, key distribution, and pseudonym decoding (mechanics)
+
+**Envelope:** each resource = `content-under-CEK` + `CEK wrapped once per recipient` (`{rid, wrappedCEK}`).
+
+**Granting access to EXISTING content = an active re-wrap** (not a pure ACL flip): a current
+key-holder (the grantor, or the **control-agent**) fetches the envelope → unwraps the CEK with their
+private key → wraps it to the new recipient's public key → writes it back. So a current recipient
+must act → **the control-agent holds the group key** and does grants/rotations, so it works without
+a human online.
+- **Group-key shortcut (household):** don't re-wrap every resource — the group key is wrapped
+  per-member in one key resource; grant = **one** wrap (group key → new member). O(1), not O(resources).
+
+**Offline clients learn new keys by reading the POD — the pod is the key-distribution channel.**
+The wrapped keys live on the pod: a **versioned key resource** (e.g. `/.keys/group-v3.json`) holds
+the group key **wrapped to each current member**. Offline client reconnects → reads the current key
+resource → unwraps with its **local private key** → done. No out-of-band push; no new code (envelope
+format is stable — only the key material changes).
+- **Rotation = a new version** wrapped to the new member set; content records which key version
+  sealed it; clients fetch the versions they need. A revoked member isn't in `v3` → can't read new
+  content (keeps cached `v2`). Forward-private, not retroactive.
+
+**Pseudonym decoding = the sealed index.** Opaque resource ids (host sees `01HXY…`) are decoded by
+the **sealed index**, which maps pseudonym → meaning (+ holds the queryable metadata). Decrypt the
+index → decode pseudonyms **and** query in one step. The index does triple duty: query +
+pseudonym-decode + RAG. The sealing layer owns it (update-on-write, sealed, sharded).
+
+**So a grant touches keys (re-wrap) + ACL + index — all on the pod, done by the agent; offline
+clients just re-read.** The `sealing` substrate must therefore: write versioned key resources to the
+pod; support the control-agent as key-holder for grant/rotate; and own the sealed index.
+
 ## The coherent household model
 **Content sealed with a shared group key** + **structure cleartext (opaque ids)** + a **sealed
 index layer** for query/RAG + the **control-agent owning key+ACL** on join/leave — all behind a
