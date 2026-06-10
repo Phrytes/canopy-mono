@@ -158,6 +158,23 @@ dual-write (mirroring folio's file path); add the **NL→slash interpreter + `@t
 with feedback) with the **token gate local** and the **RAG vector DB in the proxy enclave** for the
 hosted tier.
 
+## Encryption posture — household = **P2** (opt-in, not forced)
+Per the **`STORAGE-SECURITY-MENUKAART.md`** (posture is a per-deployment policy, not a default), the
+household's recommended posture is **P2 — client-side E2E (Proton/Signal model)**: the **household
+trusts no server**, content is sealed, **search is local**. Concretely (mechanics in
+`POD-ENCRYPTION-MODEL.md`):
+- **Sealing is OPT-IN** via the `@canopy/pod-client` `sealing/` substrate — chosen for the household,
+  not imposed globally. (Other circles may pick P0/P1/P3.)
+- **Per-resource envelope** (live app → fetch one message/task, per-resource ACL, partial sync) — NOT
+  whole-blob. Structure stays cleartext (opaque pseudonyms); a **sealed index** decodes pseudonyms +
+  serves local search/RAG.
+- **Shared group key** (`groupKeyId`): sealed-to-member on join via **versioned key resources on the
+  pod** (`/.keys/group-vN.json`); **rotated on leave** (forward-private). The **control-agent holds
+  the key** and applies grant/re-wrap/rotate alongside the ACL — so membership changes touch
+  **keys + ACL + index**, all pod-side, no human admin needed online.
+- **Search = local sealed index** (P2). The **hosted tier** can upgrade to P1 (in-enclave search/RAG,
+  host-blind) — but that's a per-household choice, not the default.
+
 ## Gate, smarter — an embedded vector DB (Tier-3++ + RAG)
 
 A local/embedded vector DB does **double duty** for token control:
