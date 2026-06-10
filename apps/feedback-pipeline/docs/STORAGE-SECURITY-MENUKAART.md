@@ -20,8 +20,8 @@ pseudonym/index, key custody, CSS reality): see `POD-ENCRYPTION-MODEL.md`.*
 | Posture | Who can read content | Search / processing | Recommended for |
 |---|---|---|---|
 | **P0 — Trusted host, plaintext** | the host | full **server-side** index/search | a trusted local machine / fully-trusted managed host |
-| **P1 — TEE / enclave** | only the attested enclave (host blind) | full search + LLM **in-enclave**, host-blind | hosted-but-private; need rich server help *(the "canopy answer")* |
-| **P2 — Client-side E2E (sealed)** | only clients holding the key (server blind) | **local** index/search | **household** — Proton/Signal model |
+| **P1 — TEE / enclave** | only the attested enclave (host blind) | full search + LLM **in-enclave**, host-blind | hosted-but-private; needs rich server-side help |
+| **P2 — Client-side E2E (sealed)** | only clients holding the key (server blind) | **local** index/search | **household** — client-side keys, no server trust |
 | **P3 — Sealed at rest, opened for processing** | sealed; opened transiently by the key-holder | **no keyword search** — the **LLM works on opened data** | **feedback app** |
 | **+ Encrypted (indexed) backups** | overlay on any posture (whole-blob OK) | — | durability/safety for P0/P1 |
 
@@ -38,11 +38,13 @@ encrypted backups**; "hosted but private" → **P1**.
 - **Lookup vs search:** lookup-by-id is *always* efficient — the (cleartext, pseudonymous) path *is*
   the route, like an IPFS CID; encryption doesn't touch it. **Search-by-keyword** is what encryption
   affects. The pod already has IPFS-style lookup; search is the separate hard problem.
-- **P0 (host reads):** server-side full-text index — like Google. *(Google CSE proves the tradeoff:
-  when the customer holds the keys, Google can't read → content search dies on those files.)*
-- **P1 (enclave):** full search/index/LLM **inside the attested enclave**, host-blind — **beats
-  Google (provider reads) AND Proton (local-only)**: server-assisted search where the server can't read.
-- **P2 (client-E2E):** **local sealed index** (Proton/Signal). Optional **SSE** (server matches blind
+- **P0 (host reads):** server-side full-text index (the host holds keys + reads content). The
+  tradeoff is fundamental: when the *client* holds the keys, server-side content search is no longer
+  possible — you can search metadata/paths, not content.
+- **P1 (enclave):** full search/index/LLM **inside the attested enclave**, host-blind —
+  server-assisted search where the **server cannot read the content** (vs. host-reads-plaintext, or
+  client-only local search).
+- **P2 (client-E2E):** **local sealed index** (search runs on the client). Optional **SSE** (server matches blind
   `PRF(keyword)` tokens → encrypted ids, sublinear) — at the cost of access-pattern leakage + only
   indexed queries.
 - **P3 (sealed + opened):** no keyword search at all — the **LLM works on opened data** (feedback);
