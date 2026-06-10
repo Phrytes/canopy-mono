@@ -160,7 +160,7 @@ hosted tier.
 
 ## Encryption posture — household = **P2** (opt-in, not forced)
 Per the **`STORAGE-SECURITY-MENUKAART.md`** (posture is a per-deployment policy, not a default), the
-household's recommended posture is **P2 — client-side E2E (Proton/Signal model)**: the **household
+household's recommended posture is **P2 — client-side E2E**: the **household
 trusts no server**, content is sealed, **search is local**. Concretely (mechanics in
 `POD-ENCRYPTION-MODEL.md`):
 - **Sealing is OPT-IN** via the `@canopy/pod-client` `sealing/` substrate — chosen for the household,

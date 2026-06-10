@@ -211,3 +211,46 @@ _(2026-06-09: starting the canopy-bot build plan — `apps/feedback-pipeline/doc
       (AMD SEV-SNP / NVIDIA H100), the SEV-SNP/Contrast quote producer + key-release, and (M7) the
       gateway enclave image + the client RA-TLS quote-fetch handshake. Swap `localAttestation()` +
       the quote fetch for the real ones; the gates stay. See `docs/CONFIDENTIAL-LLM-TRANSPORT.md`.
+
+## Household circle + storage/encryption substrate (2026-06-10 design → build)
+
+Design docs: `docs/STORAGE-SECURITY-MENUKAART.md` (posture decision layer) ·
+`docs/POD-ENCRYPTION-MODEL.md` (mechanics) · `docs/HOUSEHOLD-LLM-CIRCLE-JOURNEYS.md` (the circle) ·
+`docs/V2-LLM-IN-CIRCLE.md` (the shared NL→slash capability + the feedback v2 rewire).
+
+### Sealing substrate — `@canopy/pod-client/sealing` (OPT-IN primitive, NOT a forced default)
+- [ ] **Lift + generalize `src/pod/project-seal.js` → `packages/pod-client/src/sealing/`** — envelope
+      encryption (per-resource CEK + recipient/group-key wrap; `seal`/`open`/`recipientId`), with
+      tests. Additive; feedback's `project-seal` becomes a thin re-export (no behaviour change).
+- [ ] **`SealedPodClient` wrapper** — transparent seal-on-write / open-on-read over `PodClient`, with
+      a recipient strategy (group-key or per-recipient) + `@canopy/vault` key custody. Tests.
+- [ ] **Coordinate with `pod-client/sharing`** — `grant()` re-wraps the CEK (or wraps the group key
+      once); `revoke()` rotates. Driven by a key-holder (the household control-agent).
+- [ ] **Versioned key resources on the pod** (`/.keys/group-vN.json`, wrapped per current member) —
+      offline-safe distribution (reconnect → read → unwrap with local private key); rotate on leave.
+- [ ] **Sealed index** (per container) — pseudonym→meaning + queryable metadata; shardable; decrypted
+      client-side for local search (P2). Doubles as pseudonym decoder + query + RAG.
+- [ ] **In-enclave hooks** (P1) + **encrypted-backup** (whole-blob overlay) — later tiers.
+
+### Storage-security postures (menukaart) — per-circle policy
+- [x] Documented — `docs/STORAGE-SECURITY-MENUKAART.md` (P0/P1/P2/P3 + backups; posture + granularity
+      axes; decision heuristic; search-per-posture).
+- [ ] **Wire posture as a per-circle config** (default OFF unless chosen). Household default = P2.
+
+### Household circle build (the journey)
+- [ ] **Pod ↔ circle binding** — a circle whose shared store is a household pod (members write via
+      the circle). Reuse `HouseholdPod` + `pod-routing` `'centralised'`.
+- [ ] **Membership → pod access** — `sharing.grant()` on join (~10 lines after `addMember`) + a small
+      `leaveGroup`/`removeMember` skill → `revoke()`. Map admin role → pod `control`; a **control-agent**
+      auto-applies grant/revoke + group-key (≥1-admin invariant; pod-owner break-glass).
+- [ ] **Sender-writes to the REAL shared pod** (today stoop writes pseudo-pod) + **offline catch-up by
+      polling the pod** (swap `getMessagesSince` local read → a pod read).
+- [ ] **Text dual-write** (peer + pod; folio's file→pod→link is the file-side template).
+- [ ] **Bot as an agent MEMBER** of the circle (mDNS/loopback, relay/NKN, or Telegram bridge).
+- [ ] **NL→slash interpreter + `@tag` router** (the shared core with the feedback v2 rewire) — the
+      circle's slash catalog is the tool list; `selectLlmClient(policy, providers)` picks the route.
+- [ ] **Per-circle LLM route config** (starter sets local / proxy / cloud + endpoint).
+- [ ] **Token gate** (rules → local embedding → LLM) + **RAG** (local sealed index for P2; in-enclave
+      for the hosted tier). Run the gate locally even when the LLM is remote.
+- [ ] **Interfaces (web-first):** ship ONE end-to-end (Telegram or mobile) on the local route, then add
+      the proxy route, then the others.
