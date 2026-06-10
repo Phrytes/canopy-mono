@@ -77,6 +77,33 @@ pseudonym-decode + RAG. The sealing layer owns it (update-on-write, sealed, shar
 clients just re-read.** The `sealing` substrate must therefore: write versioned key resources to the
 pod; support the control-agent as key-holder for grant/rotate; and own the sealed index.
 
+## Key custody, granularity, and what CSS actually does (clarifications)
+
+**Who holds the key (P3 / sealed-at-rest):** NOT the pod host. The **pod server (CSS) holds only
+ciphertext + no key** — it can't decrypt. The **writer holds only the public key** (host-blind
+seal). The **opener (private key)** is the data **controller** (Phase 1 — opens transiently in its
+own RAM) or an **enclave** (Phase 2 — key released only into the attested TEE; even the controller's
+host can't read). P3 separates the **dumb ciphertext pod-host** from the **processor that holds the
+key + opens briefly** — usually different machines. That's why feedback can run on any (untrusted)
+CSS host.
+
+**Granularity is a second axis on every posture — per-resource vs whole-blob:**
+- **Per-resource envelope + cleartext-pseudonym structure + sealed index** — preserves Solid
+  semantics (fetch one resource, per-resource ACL, partial sync). **Live apps (P2 + P3) want this.**
+- **Whole-container/pod encryption (one opaque blob)** — hides structure maximally but loses the
+  structured store (no per-resource serve/ACL; all-or-nothing read). Suits **archive/backup/vault**,
+  not live apps. (So the "encrypted backups" overlay can be a single blob even when the live pod is
+  enveloped.)
+- Rule: **live → per-resource envelope; backup/archive → whole-blob OK.**
+
+**What a CSS server actually does:** the default **file backend** stores each resource as a **file
+on disk** (containers = dirs); it **reads/writes per request** (a web/file server), it does NOT hold
+the whole pod in RAM. Transient RAM holds only what it's serving — for sealed resources that's
+**ciphertext only** (host has no key). The **in-memory** backend (everything in RAM) is test-only.
+**CSS stores resources as plaintext on disk by default** (ACL-protected, not encrypted at rest) — so
+**at-rest encryption is OUR sealing layer** (seal before PUT), not a CSS feature. CSS never needs the
+plaintext to serve bytes + enforce ACL on cleartext paths.
+
 ## The coherent household model
 **Content sealed with a shared group key** + **structure cleartext (opaque ids)** + a **sealed
 index layer** for query/RAG + the **control-agent owning key+ACL** on join/leave — all behind a
