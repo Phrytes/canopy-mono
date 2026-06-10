@@ -1,7 +1,36 @@
 # Feedback pipeline — TODO / what's left to test the whole thing
 
 *Status + roadmap. Companion to the architecture / build-proposal / user-stories /
-ethics docs. Updated 2026-06-07.*
+ethics docs. Updated 2026-06-10.*
+
+## Feedback app — what's left (2026-06-10 review)
+
+Core is BUILT + tested (Tier 1–3 `[x]`; 246 tests + M10 mockup smoke green). What remains:
+
+**Design call (blocks a real launch):**
+- [ ] **Crisis-response protocol** — see Open Questions below. Detection is built; the *response*
+      (who's notified, on what consent, how fast, duty-to-act vs anonymity) is undesigned.
+
+**Polish / wiring (not blocking) — pulled out of the `[x]` follow-up notes:**
+- [ ] **Curator UI surface** + wire `release` to **publish/persist the report artifact** + **route
+      the signals** to their configured destinations.
+- [ ] **Review buttons as click-to-inject chips** in canopy-chat (today it uses the NL path).
+- [ ] **Surface `/feedback` in the command menu / manifest.**
+
+**Deployment readiness (secrets/config, not code):**
+- [ ] Edgeless/Privatemode **account + key**; set `FP_LLM_BASEURL`/`FP_LLM_APIKEY`,
+      `FEEDBACK_ACTIVATION_URL`; **pin images by `@sha256`**; fill real **restic target creds**.
+
+**Checkpoints owed (canopy-bot M phases) — see "Checkpoints owed" section:** M6 (mobile bot v2-rewire
++ retarget Detox helper), M7/M8 (TEE hardware). M9 (agent runtime) is a separate track.
+
+**Menukaart breadth (⬜ in `docs/MENUKAART.md` — per-client / scenario-readiness, optional):**
+per-scenario safety tuning + scenario tests · voice intake (STT) · other channels (WhatsApp/Signal/
+web) · fuller feedback-to-participant loop (block H) · Klai integration (2b/2a/1) · Lingua/LiteLLM
+borrows · real-data evaluation · participant editable portal.
+
+> For a SINGLE production scenario the gating items are: crisis-response + curator-UI/report/signals
+> + the deployment secrets. Everything else is breadth or the mobile/TEE checkpoints.
 
 ## Done 2026-06-07 — privacy & security layers (PR-1 → PR-4 + Phase 1)
 
