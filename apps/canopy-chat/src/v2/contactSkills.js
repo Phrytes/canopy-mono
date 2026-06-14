@@ -43,7 +43,11 @@ export const CONTACT_THREAD_SCOPE = 'contact-thread';
  * @returns {string}
  */
 export function contactManifestApp(contactId) {
-  return `contact:${contactId}`;
+  // appId must not contain "." or ":" (ManifestHost.assertAppId — collides with
+  // tool-id / callbackData namespacing). ContactIds are WebIDs/DIDs (e.g.
+  // `did:web:bot.example`), so sanitize for the namespace; the REAL contactId is
+  // preserved in each op's `bindRef.contactId` for routing.
+  return `contact_${String(contactId).replace(/[.:/]+/g, '_')}`;
 }
 
 /**
