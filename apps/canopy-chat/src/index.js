@@ -19,6 +19,8 @@ export { runCompositeOp, verifyComposite, resolvePath } from './composite.js';
 export { verifyMapping, verifyMappings, mappingToManifest, mappingsToSources } from './mappings.js';
 // P2c-3 — extension install: plain consent-card model + install/uninstall.
 export { buildConsentModel, installMapping, uninstallMapping } from './v2/extensionInstall.js';
+// P3 (feedback-extension) — curation compare (reuses objectDiff) + the before/after curation renderer.
+export { compareForCuration, renderCuration } from './v2/curation.js';
 export { renderReply, formatText }   from './renderer.js';
 export { Thread, newThread }         from './thread.js';
 export {
