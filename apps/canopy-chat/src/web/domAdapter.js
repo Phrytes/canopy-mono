@@ -86,6 +86,7 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
     case 'mini-page':  return renderRecordPanel(rendered, state, ctx, 'mini-page');
     case 'brief':      return renderBrief(rendered, state, ctx);
     case 'find':       return renderFind(rendered, state, ctx);
+    case 'curation':   return renderCurationBubble(rendered, state, ctx);   // P3 — before/after
     case 'form':       return renderFormShape(rendered, state, ctx);
     case 'notification': return renderNotification(rendered, state, ctx);  // E1
     case 'file':         return renderFileReply(rendered, state, ctx);     // E1
@@ -102,6 +103,56 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
 
 // E1 (§B#5) — notification bubble: a title (optional) + body, colour-keyed
 // by severity level via a data attribute the CSS keys on.
+// P3 (feedback-extension) — before/after curation bubble. Renders the shared
+// `kind:'curation'` view model (changed · sides{before,after} · changedPaths).
+function renderCurationBubble(rendered, state, ctx) {
+  const { doc } = ctx;
+  const tt = (k, fb) => (ctx.t ? ctx.t(k) : fb);
+  const wrap = doc.createElement('div');
+  wrap.className = `cc-message cc-shell cc-curation cc-${state}`;
+  if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
+  wrap.dataset.changed = rendered.changed ? '1' : '0';
+
+  const bubble = doc.createElement('div');
+  bubble.className = 'cc-bubble cc-curation__bubble';
+
+  const pill = doc.createElement('span');
+  pill.className = `cc-curation__pill cc-curation__pill--${rendered.changed ? 'changed' : 'unchanged'}`;
+  pill.textContent = rendered.changed
+    ? tt('circle.curation.changed', 'changed')
+    : tt('circle.curation.unchanged', 'unchanged');
+  bubble.appendChild(pill);
+
+  const sides = doc.createElement('div');
+  sides.className = 'cc-curation__sides';
+  for (const side of ['before', 'after']) {
+    const col = doc.createElement('div');
+    col.className = `cc-curation__side cc-curation__side--${side}`;
+    col.dataset.side = side;
+    const label = doc.createElement('div');
+    label.className = 'cc-curation__label';
+    label.textContent = tt(`circle.curation.${side}`, side === 'before' ? 'Before' : 'After');
+    const content = doc.createElement('pre');
+    content.className = 'cc-curation__content';
+    const v = rendered.sides?.[side];
+    content.textContent = (v == null) ? '' : (typeof v === 'string' ? v : JSON.stringify(v, null, 2));
+    col.appendChild(label);
+    col.appendChild(content);
+    sides.appendChild(col);
+  }
+  bubble.appendChild(sides);
+
+  if (Array.isArray(rendered.changedPaths) && rendered.changedPaths.length) {
+    const paths = doc.createElement('div');
+    paths.className = 'cc-curation__paths';
+    paths.textContent = rendered.changedPaths.join(', ');
+    bubble.appendChild(paths);
+  }
+
+  wrap.appendChild(bubble);
+  return wrap;
+}
+
 function renderNotification(rendered, state, ctx) {
   const { doc } = ctx;
   const wrap = doc.createElement('div');

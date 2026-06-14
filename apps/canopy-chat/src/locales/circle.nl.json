@@ -1697,5 +1697,11 @@
     "decline":      { "text": "Weigeren", "doc": "Consent card — cancel button." },
     "added":        { "text": "“{{title}}” toegevoegd.", "doc": "Toast after an extension is installed." },
     "refused":      { "text": "Deze extensie heeft mogelijkheden nodig die hier niet beschikbaar zijn: {{missing}}", "doc": "Shown when the sandbox verifier refuses a mapping (references unknown opIds)." }
+  },
+  "curation": {
+    "changed":   { "text": "gewijzigd", "doc": "Curation bubble (P3) — pill shown when the after version differs from before." },
+    "unchanged": { "text": "ongewijzigd", "doc": "Curation bubble (P3) — pill shown when before and after are identical." },
+    "before":    { "text": "Voor", "doc": "Curation bubble (P3) — label for the original/before side." },
+    "after":     { "text": "Na", "doc": "Curation bubble (P3) — label for the curated/after side." }
   }
 }

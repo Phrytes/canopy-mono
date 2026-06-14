@@ -258,3 +258,46 @@ describe('renderToDom — file shape (E1)', () => {
     expect(el.querySelector('.cc-file__open')).toBeNull();
   });
 });
+
+describe('renderToDom — curation shape (P3 feedback-extension)', () => {
+  it('renders changed pill + before/after panels from the curation view model', () => {
+    const el = renderToDom({
+      origin: 'shell',
+      rendered: {
+        kind: 'curation', messageId: 'm-c1', lifecycleState: 'live',
+        changed: true,
+        sides: { before: { text: 'raw msg with Jan' }, after: { text: 'cleaned [naam]' } },
+        changedPaths: ['text'],
+      },
+    }, ctx());
+    expect(el.classList.contains('cc-curation')).toBe(true);
+    expect(el.dataset.changed).toBe('1');
+    expect(el.querySelector('.cc-curation__pill--changed')).not.toBeNull();
+    const before = el.querySelector('.cc-curation__side--before .cc-curation__content');
+    const after = el.querySelector('.cc-curation__side--after .cc-curation__content');
+    expect(before.textContent).toContain('Jan');
+    expect(after.textContent).toContain('[naam]');
+    expect(el.querySelector('.cc-curation__paths').textContent).toBe('text');
+  });
+
+  it('renders the unchanged pill + omits the paths row when identical', () => {
+    const el = renderToDom({
+      kind: 'curation', messageId: 'm-c2', lifecycleState: 'live',
+      changed: false, sides: { before: 'same', after: 'same' }, changedPaths: [],
+    }, ctx());
+    expect(el.dataset.changed).toBe('0');
+    expect(el.querySelector('.cc-curation__pill--unchanged')).not.toBeNull();
+    expect(el.querySelector('.cc-curation__paths')).toBeNull();
+  });
+
+  it('uses ctx.t labels when a translator is supplied', () => {
+    const t = (k) => ({ 'circle.curation.changed': 'gewijzigd', 'circle.curation.before': 'Voor', 'circle.curation.after': 'Na' }[k] || k);
+    const el = renderToDom({
+      kind: 'curation', messageId: 'm-c3', lifecycleState: 'live',
+      changed: true, sides: { before: 'a', after: 'b' }, changedPaths: ['(content)'],
+    }, { doc: document, t });
+    expect(el.querySelector('.cc-curation__pill--changed').textContent).toBe('gewijzigd');
+    expect(el.querySelector('.cc-curation__side--before .cc-curation__label').textContent).toBe('Voor');
+    expect(el.querySelector('.cc-curation__side--after .cc-curation__label').textContent).toBe('Na');
+  });
+});
