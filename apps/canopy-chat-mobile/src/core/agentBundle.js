@@ -30,6 +30,9 @@
 import { composeManifests, buildManifestsByOrigin } from './composeManifests.js';
 // Shared extension-mapping loader (feedback-extension P2) — web≡mobile core.
 import { loadVerifyMappings } from '../../../canopy-chat/src/v2/mappingsLoader.js';
+// Shared contact/bot exposed-skill registry (feedback-extension P4) — web≡mobile core.
+import { createContactSkillRegistry } from '../../../canopy-chat/src/v2/contactSkillsLive.js';
+import { sendA2ATask } from '../../../../packages/core/src/a2a/a2aTaskSend.js';
 
 // `createRealHouseholdAgent` is loaded LAZILY (dynamic import below)
 // so importing agentBundle.js doesn't transitively pull in
@@ -335,6 +338,22 @@ export async function bootAgentBundle(opts = {}) {
     })();
   }
 
+  // P4 (feedback-extension) — contact/bot exposed skills, LIVE (web≡mobile, same
+  // shared registry). A bot discovered via `agent.discoverA2A` lands in
+  // `agent.peers` with its skills as SkillCards; the registry subscribes and, per
+  // bot, synthesises a contact-thread catalog + a router that hands a dispatch to
+  // the bot over A2A (`sendA2ATask` → await the Task result). Kept SEPARATE from
+  // the circle/app catalog (contact-thread scope). The contact-thread VIEW is
+  // P5/P6; this makes the bridge live now, exposed on the bundle as
+  // `contactSkills` for that view + Detox.
+  const sendContactTask = async (peerUrl, skillId, args) => {
+    const task = sendA2ATask(agent, peerUrl, skillId, args);
+    const { parts } = await task.done();
+    return { parts };
+  };
+  const contactSkills = createContactSkillRegistry({ peerGraph: agent.peers, sendTask: sendContactTask });
+  contactSkills.start().catch(() => { /* discovery is best-effort — never blocks boot */ });
+
   // 5.9c — expose `mdns` as a live getter so the launcher reads the
   // current instance (initially null, populated when the async
   // connect() resolves a tick later).  Callers should not cache the
@@ -345,9 +364,11 @@ export async function bootAgentBundle(opts = {}) {
     callSkill: agent.callSkill,
     agent,
     transport,
+    contactSkills,
     get mdns() { return mdns; },
     attachPeerWiring,
     dispose: async () => {
+      try { contactSkills.dispose(); } catch { /* defensive */ }
       try { await mdns?.disconnect?.(); } catch { /* defensive */ }
       try { await agent?.sa?.shutdown?.(); } catch { /* defensive */ }
     },
