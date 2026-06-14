@@ -40,6 +40,8 @@ import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '../../src/v2/map
 import { verifyMappings, mappingsToSources } from '../../src/mappings.js';
 import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';
 import { buildConsentModel, installMapping } from '../../src/v2/extensionInstall.js';
+import { createContactSkillRegistry } from '../../src/v2/contactSkillsLive.js';
+import { sendA2ATask } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
 import { createFeedbackSurface } from '../../src/feedback/feedbackSurface.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
@@ -437,6 +439,7 @@ let circleFeedbackMount = null;  // createFeedbackMount (tryHandle(text, threadI
 let circleClarify = null;        // createClarifyingDispatch (for candidate-button picks, later)
 let circleCatalog = null;        // the merged dispatch catalog (built in buildCircleBot) — feeds the composer slash-suggest
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
+let circleContactSkills = null;  // P4 — live contact/bot exposed-skill registry (subscribed to agent.peers)
 let circlePendingFollowUp = null;// a single-field needsForm awaiting the user's next message (conversational elicitation)
 let circlePendingFormFollowUp = null; // a 2+-field needsForm → inline multi-field form (mobile parity); cleared on submit
 let _kringRender = null;         // { circleId, botBubble(text), fanOut(msgId,text,ts) } — set by showKring
@@ -515,6 +518,24 @@ function buildCircleBot(agent) {
       if (enc) installExtensionFromLink(enc);                   // ?install=<base64 mapping JSON>
     } catch { /* no install param */ }
   }
+
+  // P4 (feedback-extension) — contact/bot exposed skills, LIVE. A bot discovered
+  // via `agent.discoverA2A` lands in `agent.peers` with its skills already as
+  // SkillCards; the registry subscribes to that PeerGraph and, per bot, synthesises
+  // a contact-thread catalog + a router that hands a dispatch to the bot over A2A
+  // (`sendA2ATask` → await the Task's result). It is kept SEPARATE from the circle
+  // catalog (contact ops are contact-thread-scoped, not app-scoped), so it never
+  // pollutes the circle bot's command pool. The contact-thread VIEW that renders a
+  // bot's commands in its own DM thread is P5/P6; this wiring makes the bridge live
+  // + drivable now (`window.canopyContactSkills` for the view + e2e).
+  const sendContactTask = async (peerUrl, skillId, args) => {
+    const task = sendA2ATask(agent, peerUrl, skillId, args);
+    const { parts } = await task.done();
+    return { parts };
+  };
+  circleContactSkills = createContactSkillRegistry({ peerGraph: agent.peers, sendTask: sendContactTask });
+  circleContactSkills.start().catch(() => { /* discovery is best-effort — never blocks the kring */ });
+  if (typeof window !== 'undefined') window.canopyContactSkills = circleContactSkills;
 
   const llmProviders = buildCircleLlmProviders({ localBaseUrl: CIRCLE_LLM_BASEURL, model: CIRCLE_LLM_MODEL });
   const policyIo = localStoragePolicyIo();

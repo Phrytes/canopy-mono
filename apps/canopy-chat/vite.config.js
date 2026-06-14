@@ -76,7 +76,17 @@ export default defineConfig({
   // workspace deps don't use the same export form + pre-bundle fine.
   // See slice-4 smoke fix (2026-05-23).
   optimizeDeps: {
-    exclude: ['@canopy/core'],
+    // `@canopy/app-manifest` + `@canopy/skill-match` are EXCLUDED (served as
+    // source) because they carry the reply-shape/op VALIDATOR, and this repo's
+    // broken install means @canopy/* resolve as COPIES that we hand-sync after a
+    // shared-source edit (see memory `feedback-no-pnpm-install-here`). A pre-
+    // bundle of the validator freezes the OLD allow-list, so a freshly-added
+    // reply shape (P3 `curation`) is rejected at mount time until the .vite cache
+    // is rebuilt — the dev server throws `surfaces.chat.reply must be one of …`
+    // and the circle bot fails to build. Serving them as source makes a source/
+    // copy edit always live (no stale prebundle). Both are pure ESM, so there's
+    // no esbuild-only export form to lose by skipping the prebundle.
+    exclude: ['@canopy/core', '@canopy/app-manifest', '@canopy/skill-match'],
     // `@canopy/core` is served as SOURCE (excluded above), so Vite resolves its
     // transitive CJS crypto deps (tweetnacl/ed2curve, imported by AgentIdentity)
     // at request time. When they resolve to a workspace copy OUTSIDE the app root

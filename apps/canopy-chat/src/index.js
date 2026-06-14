@@ -21,6 +21,13 @@ export { verifyMapping, verifyMappings, mappingToManifest, mappingsToSources } f
 export { buildConsentModel, installMapping, uninstallMapping } from './v2/extensionInstall.js';
 // P3 (feedback-extension) — curation compare (reuses objectDiff) + the before/after curation renderer.
 export { compareForCuration, renderCuration } from './v2/curation.js';
+// P4 (feedback-extension) — contact/bot exposed skills. The PURE synth+route core …
+export {
+  skillCardsToManifest, skillCardToOp, contactSkillSources, makeRemoteCallSkill,
+  contactManifestApp, REMOTE_SKILL_BINDING, CONTACT_THREAD_SCOPE,
+} from './v2/contactSkills.js';
+// … and the LIVE wiring (PeerGraph-subscribed registry + the dispatch chain).
+export { createContactSkillRegistry, chainContactCallSkill } from './v2/contactSkillsLive.js';
 export { renderReply, formatText }   from './renderer.js';
 export { Thread, newThread }         from './thread.js';
 export {
