@@ -165,3 +165,24 @@ describe('#253 step 2 — per-row staleness hint via t()', () => {
     }
   });
 });
+
+describe('P3 — curation reply renders + locale resolves on mobile', () => {
+  it("renderReply emits kind:'curation' with before/after sides", () => {
+    const r = renderReply(
+      { payload: { before: { text: 'raw with Jan' }, after: { text: 'cleaned [naam]' } }, shape: 'curation' },
+      {},
+    );
+    expect(r.kind).toBe('curation');
+    expect(r.changed).toBe(true);
+    expect(r.sides).toEqual({ before: { text: 'raw with Jan' }, after: { text: 'cleaned [naam]' } });
+    expect(r.changedPaths).toContain('text');
+  });
+
+  it('circle.curation.* keys resolve to real strings (not the raw key)', () => {
+    for (const k of ['changed', 'unchanged', 'before', 'after']) {
+      const v = t(`circle.curation.${k}`);
+      expect(v).toBeTruthy();
+      expect(v).not.toBe(`circle.curation.${k}`);
+    }
+  });
+});

@@ -2061,6 +2061,47 @@ function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFor
       />
     );
   }
+  // P3 (feedback-extension) — curation before/after bubble.  Mirrors the
+  // web `kind:'curation'` render from the SAME shared view model (renderer
+  // emits { changed, sides:{before,after}, changedPaths }).  Presentational
+  // only: a changed/unchanged tag, the two versions stacked (objects are
+  // JSON-stringified, strings shown as-is), and the changed paths as a
+  // caption.  testIDs let Detox target the bubble + each side.
+  if (r.kind === 'curation') {
+    const sides = r.sides ?? {};
+    const stringify = (v) =>
+      typeof v === 'string' ? v
+      : v == null ? ''
+      : JSON.stringify(v, null, 2);
+    const paths = Array.isArray(r.changedPaths) ? r.changedPaths : [];
+    return (
+      <View
+        style={[styles.bubble, styles.bubbleBot, styles.bubbleList, styles.bubbleCuration]}
+        testID="curation-bubble"
+      >
+        <View style={[styles.curationTag, r.changed ? styles.curationTagChanged : styles.curationTagUnchanged]}>
+          <Text style={[styles.curationTagText, r.changed ? styles.curationTagTextChanged : styles.curationTagTextUnchanged]}>
+            {r.changed ? t('circle.curation.changed') : t('circle.curation.unchanged')}
+          </Text>
+        </View>
+        <View style={styles.curationSide}>
+          <Text style={styles.briefSectionLabel}>{t('circle.curation.before')}</Text>
+          <Text style={styles.curationSideText} selectable={true} testID="curation-before">
+            {stringify(sides.before)}
+          </Text>
+        </View>
+        <View style={[styles.curationSide, styles.curationSideAfter]}>
+          <Text style={styles.briefSectionLabel}>{t('circle.curation.after')}</Text>
+          <Text style={styles.curationSideText} selectable={true} testID="curation-after">
+            {stringify(sides.after)}
+          </Text>
+        </View>
+        {paths.length > 0 && (
+          <Text style={styles.curationPaths}>{paths.join(', ')}</Text>
+        )}
+      </View>
+    );
+  }
   const followUps   = Array.isArray(r.followUps) ? r.followUps : null;
   // α.5a (audit #3) — inline-keuze quick-reply pills under the bubble
   // text.  Each pill carries a full `{label, slash}`; tap dispatches
@@ -2383,6 +2424,22 @@ const styles = StyleSheet.create({
   recordHeaderRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   recordHeaderTitle:    { flex: 1, marginBottom: 0 },
   recordExpandIcon:     { fontSize: 16, color: '#1e88e5', paddingHorizontal: 4 },
+
+  // P3 (feedback-extension) — curation before/after bubble.  Tag row +
+  // two stacked side panels (the after panel left-accented to read as the
+  // resolved version) + a muted changed-paths caption.  Monospace side
+  // text so JSON-stringified objects stay legible.
+  bubbleCuration:       { paddingHorizontal: 10 },
+  curationTag:          { alignSelf: 'flex-start', paddingVertical: 2, paddingHorizontal: 8, borderRadius: 10, marginBottom: 6 },
+  curationTagChanged:   { backgroundColor: '#fdeede' },
+  curationTagUnchanged: { backgroundColor: '#eef0f2' },
+  curationTagText:      { fontSize: 11, fontWeight: '700' },
+  curationTagTextChanged:   { color: '#a86322' },
+  curationTagTextUnchanged: { color: '#6a7177' },
+  curationSide:         { marginBottom: 8 },
+  curationSideAfter:    { borderLeftWidth: 3, borderLeftColor: '#3f8f5b', paddingLeft: 8 },
+  curationSideText:     { fontSize: 13, color: '#222', marginTop: 2, fontFamily: 'monospace' },
+  curationPaths:        { fontSize: 11, color: '#888', marginTop: 2, fontStyle: 'italic' },
 
   // C1 follow-up (2026-05-27) — followUp chip row under text bubbles.
   followUpRow:          { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6, gap: 6 },
