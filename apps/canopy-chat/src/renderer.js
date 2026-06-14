@@ -25,6 +25,7 @@ import { renderChat } from '@canopy/app-manifest';
 import { formatSyncHints, formatLastSync } from './syncHints.js';
 import { QR_URI_PREFIXES }                 from './core/qrSchemes.js';
 import { normalizeQuickReplies }           from './core/quickReplies.js';
+import { compareForCuration, renderCuration } from './v2/curation.js';   // P3 — before/after curation
 
 /**
  * @typedef {object} RenderedReply
@@ -188,6 +189,24 @@ export function renderReply(reply, opts = {}) {
       messageId, threadId,
       lifecycleState: 'live',   // A2 hybrid — embed cards stay live until close
       embed:          reply.payload,
+    };
+  }
+
+  if (shape === 'curation') {
+    // P3 (feedback-extension) — before/after curation view. The payload is a
+    // `compareForCuration` result ({before, after, changed, diff}) OR a raw
+    // { before, after } (then we compute it). `renderCuration` is the SAME view
+    // model used on web + mobile; the platform adapter renders `kind:'curation'`.
+    const p = reply.payload ?? {};
+    const comparison = ('changed' in p) ? p : compareForCuration(p.before, p.after);
+    const view = renderCuration(comparison);
+    return {
+      kind: 'curation',
+      messageId, threadId,
+      lifecycleState: 'live',
+      changed:      view.changed,
+      sides:        view.sides,
+      changedPaths: view.changedPaths,
     };
   }
 

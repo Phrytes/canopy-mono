@@ -312,6 +312,21 @@ export const canopyChatManifest = {
     },
 
     /**
+     * `compare` — P3 (feedback-extension). Before/after curation of two content
+     * versions (e.g. an original message vs its curated form). Reuses folio's
+     * `objectDiff` compute and renders via the `curation` reply shape (a
+     * before/after view, distinct from folio's file-merge look). A composable op
+     * (a mapping/composite step) — no slash surface; args `{ before, after }`.
+     */
+    {
+      id:    'compare',
+      verb:  'list',
+      surfaces: {
+        chat:  { reply: 'curation', hint: 'before/after curation of two versions' },
+      },
+    },
+
+    /**
      * `/signin` — v0.6.2 external-flow demo (J6 framework).
      *
      * Opens a mock external page that simulates an OIDC sign-in

@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { compareForCuration, renderCuration } from '../src/v2/curation.js';
+import { renderReply } from '../src/renderer.js';
 
 describe('compareForCuration', () => {
   it('text before/after — flags changed, no object diff', () => {
@@ -50,5 +51,21 @@ describe('renderCuration', () => {
     const mergeSummary = { changes: comparison.diff.toMerge.length, identical: comparison.diff.identical }; // look #2: folio-style
     expect(curation.changedPaths).toEqual(['a']);
     expect(mergeSummary).toEqual({ changes: 1, identical: false });
+  });
+});
+
+describe('renderReply — curation shape (P3 wiring)', () => {
+  it("renders a raw { before, after } payload as kind:'curation'", () => {
+    const r = renderReply({ payload: { before: { text: 'hi' }, after: { text: 'bye' } }, shape: 'curation' }, {});
+    expect(r.kind).toBe('curation');
+    expect(r.changed).toBe(true);
+    expect(r.changedPaths).toContain('text');
+    expect(r.sides).toEqual({ before: { text: 'hi' }, after: { text: 'bye' } });
+  });
+
+  it('accepts an already-computed comparison payload', () => {
+    const r = renderReply({ payload: compareForCuration('a', 'b'), shape: 'curation' }, {});
+    expect(r.kind).toBe('curation');
+    expect(r.changedPaths).toEqual(['(content)']);
   });
 });

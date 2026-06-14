@@ -20,6 +20,7 @@
 import { describeFilter }    from '../filter.js';
 import { buildEmbed }        from '../embed.js';
 import { openExternalFlow }  from '../externalFlow.js';
+import { compareForCuration } from '../v2/curation.js';   // P3 — `compare` op handler
 
 // Bundle F P5 (#261) — lazy chrono import for createTimeEmbed's
 // natural-language fallback.  Lazy because the parseDate module
@@ -124,6 +125,9 @@ export function createLocalBuiltins({
     logs:      async (args) => runLogsBuiltin(args, { eventLog, t, openLogsPanel }),
     find:      async (args) => runFindBuiltin(args, { findRunner, t }),
     scanQr:    async ()     => runScanQrBuiltin({ openQrScanner, t }),
+    // P3 — before/after curation; returns a compareForCuration payload, rendered
+    // via the manifest's `curation` reply shape.
+    compare:   async (args) => compareForCuration(args?.before, args?.after),
   };
 }
 

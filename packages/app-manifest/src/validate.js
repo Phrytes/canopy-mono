@@ -56,6 +56,7 @@ export const CHAT_REPLY_SHAPES = Object.freeze([
   'notification',
   'brief',
   'find',          // v0.7.5 — /find aggregator output
+  'curation',      // P3 — before/after curation view (feedback-extension)
 ]);
 
 /**
