@@ -18,6 +18,7 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `scanQr` | list | ✅ | ✅ | · | · | · |  |
 |  | `find` | list | ✅ | ✅ | · | · | · |  |
 |  | `brief` | list | ✅ | ✅ | · | · | · |  |
+|  | `compare` | list | ✅ | · | · | · | · |  |
 |  | `signin` | add | ✅ | ✅ | · | ✅ | · |  |
 |  | `reset-thread` | remove | ✅ | ✅ | · | · | · |  |
 |  | `whoami` | list | ✅ | ✅ | · | · | · |  |
@@ -42,6 +43,7 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `apps` | list | ✅ | ✅ | · | · | · |  |
 |  | `sendto` | add | ✅ | ✅ | · | ✅ | · |  |
 | **household** | `listOpen` | list | ✅ | ✅ | ✅ | · | · | list, show, mine, lijst, toon |
+|  | `addItem` | add | ✅ | ✅ | · | ✅ | · |  |
 |  | `markComplete` | complete | ✅ | ✅ | ✅ | ✅ | ✅ | klaar met, done, complete, did, finished, bought, klaar, gedaan, gekocht |
 |  | `getProfile` | list | ✅ | ✅ | · | · | · |  |
 |  | `addMember` | add | ✅ | ✅ | ✅ | ✅ | · | register, add member, registreer, naam, lid toevoegen |
@@ -111,10 +113,15 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `signOutOfPod` | remove | ✅ | ✅ | · | ✅ | ✅ |  |
 |  | `reportPost` | report | ✅ | ✅ | ✅ | ✅ | ✅ | report, rapporteer, flag |
 |  | `listOpen` | list | ✅ | ✅ | · | · | · |  |
-| **folio** | `readNote` | list | ✅ | ✅ | · | · | · |  |
+| **folio** | `deleteFromPod` | remove | · | · | · | ✅ | ✅ |  |
+|  | `deleteLocally` | remove | · | · | · | ✅ | ✅ |  |
+|  | `forceRepush` | sync | · | · | · | ✅ | ✅ |  |
+|  | `syncOnce` | sync | ✅ | ✅ | ✅ | ✅ | ✅ | sync, synchroniseer, synchroniseren |
+|  | `watchStart` | watch | ✅ | ✅ | ✅ | ✅ | ✅ | watch, watch folder, let op, bewaak, bewaak map |
+|  | `watchStop` | watch | ✅ | · | · | ✅ | ✅ |  |
+|  | `verifyPodState` | read | ✅ | · | · | ✅ | ✅ |  |
+|  | `readNote` | list | ✅ | ✅ | · | · | · |  |
 |  | `shareFolder` | add | ✅ | ✅ | ✅ | ✅ | · | share, deel |
-|  | `syncOnce` | add | ✅ | ✅ | ✅ | ✅ | · | sync, synchroniseer, synchroniseren |
-|  | `watchStart` | add | ✅ | ✅ | ✅ | ✅ | · | watch, watch folder, let op, bewaak, bewaak map |
 |  | `getFileSnapshot` | list | ✅ | · | · | · | · |  |
 |  | `downloadFile` | list | ✅ | · | ✅ | ✅ | ✅ | download, haal, haal op, download bestand |
 |  | `saveToMyPod` | add | ✅ | · | ✅ | ✅ | ✅ | save, bewaar, save to my pod, opslaan, bewaar in mijn pod |
@@ -132,10 +139,10 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `podStatus` | list | ✅ | ✅ | · | · | · |  |
 |  | `getIcsFeed` | list | ✅ | ✅ | · | · | · |  |
 |---|---|---|---|---|---|---|---|---|
-| **totals** | 127 ops | | 127 | 117 | 25 | 62 | 27 | |
+| **totals** | 134 ops | | 131 | 118 | 25 | 68 | 34 | |
 
 ## Gaps for the gate/LLM + inline-menu work
 
-- **missing gate** (102/127): canopy-chat:help, canopy-chat:feedback, canopy-chat:feedback-stop, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-nkn, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:getProfile, household:nudgePeer, household:getChoreSnapshot …
-- **missing inline** (100/127): canopy-chat:help, canopy-chat:feedback, canopy-chat:feedback-stop, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-nkn, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:listOpen, household:getProfile, household:addMember …
-- **missing chat** (0/127): 
+- **missing gate** (109/134): canopy-chat:help, canopy-chat:feedback, canopy-chat:feedback-stop, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:compare, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-nkn, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:addItem, household:getProfile …
+- **missing inline** (100/134): canopy-chat:help, canopy-chat:feedback, canopy-chat:feedback-stop, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:compare, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-nkn, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:listOpen, household:addItem …
+- **missing chat** (3/134): folio:deleteFromPod, folio:deleteLocally, folio:forceRepush
