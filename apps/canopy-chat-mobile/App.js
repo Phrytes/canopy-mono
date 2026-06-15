@@ -52,6 +52,7 @@ import { buildCirclePodWriter } from './src/core/circleStoresRN.js';
 // CircleLauncherScreen (editor pull + send-side clear).
 import { makeKringRecipePendingStoreRN } from './src/core/kringRecipePendingStorageRN.js';
 import { initCirclePods, circleControlAgentRouter, setCirclePodSession } from './src/core/circlePods.js';
+import { discoverPodRoot } from '../canopy-chat/src/web/podStorage.js';
 // γ-next.rules — per-kring pending-rules cache (AsyncStorage-backed).
 // Mirrors the recipe wire: ChatScreen writes via the receiver,
 // CircleLauncherScreen reads on rules-screen open + clears after the
@@ -195,11 +196,23 @@ export default function App() {
   // falls through to the local AsyncStorage side.  Refreshed on mount and
   // every time the SecureStore restore completes.
   const circlePodWriterRef = useRef(null);
+  // S4 — when signed in, route stoop's items to the user's REAL pod (web parity with
+  // circleApp). Same attachPod seam; the RN authenticated fetch is the OidcSessionRN bearer.
+  // Best-effort; fires on session restore + once the bundle is up (whichever lands later).
+  const maybeAttachStoopPod = useCallback(async () => {
+    const session = sessionRef.current;
+    const agent = bundleRef.current?.agent;
+    if (!agent?.attachStoopPod || !session?.isAuthenticated?.() || !session.webid) return;
+    const sessionShim = { fetch: session.getAuthenticatedFetch(), webid: session.webid };
+    const podRoot = await discoverPodRoot(sessionShim).catch(() => null);
+    if (podRoot) agent.attachStoopPod({ podRoot, webid: session.webid, fetch: sessionShim.fetch }).catch(() => {});
+  }, []);
   const refreshCirclePodWriter = useCallback(async () => {
     const w = await buildCirclePodWriter(sessionRef.current).catch(() => null);
     circlePodWriterRef.current = w;
     if (w) dlog.boot('circle pod writer ready @', w.podRoot);
-  }, []);
+    maybeAttachStoopPod();   // restore completed → attach stoop's item store too
+  }, [maybeAttachStoopPod]);
   const getCirclePodWriter = useCallback(() => circlePodWriterRef.current, []);
 
   useEffect(() => {
@@ -321,6 +334,7 @@ export default function App() {
         // fires (next block) so the first ingest call sees callSkill.
         bundleRef.current = b;
         setBundle(b);
+        maybeAttachStoopPod();   // S4 — bundle up → attach stoop's item store if already signed in
         // Mark the first-boot seed as done so the next launch skips it.
         // Fire-and-forget; failures are non-fatal (next launch re-seeds,
         // which is harmless because realAgent's listOpen probe is the
