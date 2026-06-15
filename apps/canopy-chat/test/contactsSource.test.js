@@ -6,7 +6,9 @@
 import { describe, it, expect } from 'vitest';
 
 import { PeerGraph } from '@canopy/core';
-import { listContacts, peerToContactRow } from '../src/v2/contactsSource.js';
+import {
+  listContacts, peerToContactRow, stoopContactToRow, mergeContacts,
+} from '../src/v2/contactsSource.js';
 
 describe('peerToContactRow', () => {
   it('maps an a2a bot peer → a bot row with skill count + A2A url', () => {
@@ -53,5 +55,46 @@ describe('listContacts', () => {
   it('null/!graph → empty (inert without a peer graph)', async () => {
     expect(await listContacts(null)).toEqual([]);
     expect(await listContacts({})).toEqual([]);
+  });
+});
+
+describe('stoopContactToRow (S1 #2 — member directory)', () => {
+  it('maps a ContactBook person → a non-bot row with trust + tags + peerAddr', () => {
+    const row = stoopContactToRow({
+      webid: 'https://alice.example/me', pubKey: 'PKALICE', displayName: 'Alice',
+      trustLevel: 'vertrouwd', tags: ['buur', 'klusser'],
+    });
+    expect(row).toMatchObject({
+      contactId: 'https://alice.example/me', name: 'Alice', isBot: false,
+      peerAddr: 'PKALICE', source: 'contact', trustLevel: 'vertrouwd', tags: ['buur', 'klusser'],
+    });
+  });
+
+  it('falls back name → handle → webid; drops an entry with no id', () => {
+    expect(stoopContactToRow({ webid: 'w', handle: 'bob' }).name).toBe('bob');
+    expect(stoopContactToRow({ pubKey: 'k' }).name).toBe('k');
+    expect(stoopContactToRow({})).toBeNull();
+  });
+});
+
+describe('mergeContacts (S1 #2)', () => {
+  it('merges peer + stoop rows, de-dupes by contactId (peer wins), bots first', () => {
+    const peerRows = [
+      { contactId: 'bot1', name: 'Bot One', isBot: true },
+      { contactId: 'shared', name: 'Peer view', isBot: false, peerAddr: 'PK' },
+    ];
+    const stoopRows = [
+      { contactId: 'shared', name: 'Contact view', isBot: false, source: 'contact' },
+      { contactId: 'alice', name: 'Alice', isBot: false, source: 'contact' },
+    ];
+    const merged = mergeContacts(peerRows, stoopRows);
+    expect(merged.map((r) => r.contactId)).toEqual(['bot1', 'alice', 'shared']); // bot first, then people A-Z
+    // the peer entry wins on collision (keeps a bot's skills / live peer data)
+    expect(merged.find((r) => r.contactId === 'shared').name).toBe('Peer view');
+  });
+
+  it('handles empty inputs', () => {
+    expect(mergeContacts()).toEqual([]);
+    expect(mergeContacts([{ contactId: 'a', name: 'A', isBot: false }], [])).toHaveLength(1);
   });
 });

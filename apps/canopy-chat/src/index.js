@@ -32,7 +32,7 @@ export { createContactSkillRegistry, chainContactCallSkill } from './v2/contactS
 // transport-agnostic conversational channel; rides sa.peer → mdns/relay/nkn),
 // the Contacten roster source, and adding a bot to the app PeerGraph.
 export { createContactThreadChannel, DEFAULT_CONTACT_SUBTYPES } from './v2/contactThreadChannel.js';
-export { listContacts, peerToContactRow } from './v2/contactsSource.js';
+export { listContacts, peerToContactRow, stoopContactToRow, mergeContacts } from './v2/contactsSource.js';
 export { addBotToGraph } from './v2/addBot.js';
 export { renderReply, formatText }   from './renderer.js';
 export { Thread, newThread }         from './thread.js';

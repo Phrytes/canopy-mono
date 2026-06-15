@@ -38,6 +38,16 @@ describe('renderContactsRoster', () => {
     expect(onOpen).toHaveBeenCalledWith('PK');
   });
 
+  it('shows a ContactBook person’s trust level + tags in the meta (S1 #2)', () => {
+    const el = renderContactsRoster(document.createElement('div'), {
+      contacts: [{ contactId: 'w', name: 'Alice', isBot: false, reachable: true, trustLevel: 'vertrouwd', tags: ['buur', 'klusser'] }],
+      t: (k) => k,
+    });
+    const meta = el.querySelector('.cc-contacts__meta').textContent;
+    expect(meta).toContain('circle.contacts.trust.vertrouwd');
+    expect(meta).toContain('buur, klusser');
+  });
+
   it('marks an unreachable contact offline', () => {
     const el = renderContactsRoster(document.createElement('div'), {
       contacts: [{ contactId: 'PK', name: 'Bob', isBot: false, reachable: false }], ...ctx(),

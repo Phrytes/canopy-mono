@@ -1716,6 +1716,10 @@
     "add_failed":  { "text": "Kon die bot niet toevoegen — controleer de URL/het adres.", "doc": "P5 — shown when discoverA2A / add fails." },
     "added":       { "text": "{{name}} toegevoegd.", "doc": "P5 — toast after a bot is added to the roster." },
     "bot":         { "text": "bot", "doc": "P5 — tag on a roster row that is an agent/bot (vs a person)." },
+    "trust":       {
+      "bekend":    { "text": "bekend",    "doc": "S1 #2 — ContactBook trust level 'bekend'." },
+      "vertrouwd": { "text": "vertrouwd", "doc": "S1 #2 — ContactBook trust level 'vertrouwd'." }
+    },
     "skills":      { "text": "{{count}} vaardigheden", "doc": "P5 — per-row count of a bot's exposed skills." },
     "offline":     { "text": "offline", "doc": "P5 — roster row badge when the contact is unreachable." },
     "open":        { "text": "Open chat", "doc": "P5 — open a contact's 1:1 DM thread." },

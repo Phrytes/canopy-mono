@@ -42,7 +42,7 @@ import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';
 import { buildConsentModel, installMapping } from '../../src/v2/extensionInstall.js';
 import { createContactSkillRegistry } from '../../src/v2/contactSkillsLive.js';
 import { createContactThreadChannel } from '../../src/v2/contactThreadChannel.js';
-import { listContacts } from '../../src/v2/contactsSource.js';
+import { listContacts, mergeContacts, stoopContactToRow } from '../../src/v2/contactsSource.js';
 import { addBotToGraph } from '../../src/v2/addBot.js';
 import { renderContactsRoster } from './contactsRoster.js';
 import { renderContactThread } from './contactThread.js';
@@ -707,7 +707,7 @@ function showTabBar(active) {
 async function showContacts() {
   showTabBar('contacten');
   let contacts = [];
-  try { contacts = await listContacts(circlePeerGraph); } catch { contacts = []; }
+  try { contacts = await loadAllContacts(); } catch { contacts = []; }
   renderContactsRoster(rootEl, {
     contacts, t,
     onOpen: showContactThread,
@@ -716,6 +716,22 @@ async function showContacts() {
       if (input) addBotFromInput(input);
     },
   });
+}
+
+// S1 #2 — the unified Contacten roster: PeerGraph bots/peers MERGED with the
+// stoop ContactBook (people the user added, with trust/tags). One directory.
+async function loadStoopContacts() {
+  try {
+    const res = await rawCallSkill('stoop', 'listContacts', {});
+    return (Array.isArray(res?.contacts) ? res.contacts : []).map(stoopContactToRow).filter(Boolean);
+  } catch { return []; }
+}
+async function loadAllContacts() {
+  const [peerRows, stoopRows] = await Promise.all([
+    listContacts(circlePeerGraph).catch(() => []),
+    loadStoopContacts(),
+  ]);
+  return mergeContacts(peerRows, stoopRows);
 }
 
 // P5 — add a bot to the app PeerGraph (an https agent-card URL → discoverA2A;
@@ -740,7 +756,7 @@ async function addBotFromInput(input) {
 async function showContactThread(contactId) {
   hideCircleTabBar(tabBarEl);
   let row = null;
-  try { row = (await listContacts(circlePeerGraph)).find((c) => c.contactId === contactId) ?? null; }
+  try { row = (await loadAllContacts()).find((c) => c.contactId === contactId) ?? null; }
   catch { /* fall back to any cached thread below */ }
   const name = row?.name ?? contactThreads.get(contactId)?.name ?? contactId;
   const peerAddr = row?.peerAddr ?? contactThreads.get(contactId)?.peerAddr ?? contactId;

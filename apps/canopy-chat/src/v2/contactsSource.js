@@ -37,6 +37,58 @@ export function peerToContactRow(peer) {
 }
 
 /**
+ * One roster row from a stoop ContactBook entry (S1 #2 — member directory).
+ * Stoop's `listContacts` returns MemberMap entries (`relation:'contact'`) with a
+ * webid + pubKey + displayName/handle + trustLevel + tags. These are PEOPLE the
+ * user added; they merge into the same Contacten roster as the PeerGraph bots.
+ *
+ * @param {object} c  a stoop ContactBook member entry
+ * @returns {object|null}
+ */
+export function stoopContactToRow(c) {
+  if (!c) return null;
+  const contactId = c.webid ?? c.pubKey;
+  if (!contactId) return null;
+  return {
+    contactId,
+    name:       c.displayName ?? c.handle ?? c.webid ?? contactId,
+    isBot:      false,
+    skillCount: 0,
+    reachable:  c.reachable !== false,
+    peerAddr:   c.pubKey ?? c.nknAddr ?? null,   // native address → DM channel
+    url:        null,
+    source:     'contact',                       // marks a ContactBook person (vs a discovered peer)
+    trustLevel: c.trustLevel ?? null,            // 'bekend' | 'vertrouwd' | null
+    tags:       Array.isArray(c.tags) ? c.tags : [],
+  };
+}
+
+/** Bots first, then people; alphabetical within each. Deterministic ordering. */
+function sortContactRows(rows) {
+  rows.sort((a, b) => {
+    if (a.isBot !== b.isBot) return a.isBot ? -1 : 1;     // bots first
+    return String(a.name).localeCompare(String(b.name));
+  });
+  return rows;
+}
+
+/**
+ * Merge the PeerGraph roster (bots + discovered peers) with the stoop ContactBook
+ * (added people), de-duped by `contactId` (the PeerGraph entry wins so a bot's
+ * skills survive). One unified Contacten roster — the S1 #2 reconciliation.
+ *
+ * @param {Array<object>} peerRows   from `listContacts(peerGraph)`
+ * @param {Array<object>} stoopRows  from stoop `listContacts` → `stoopContactToRow`
+ * @returns {Array<object>}
+ */
+export function mergeContacts(peerRows = [], stoopRows = []) {
+  const byId = new Map();
+  for (const r of stoopRows) if (r?.contactId) byId.set(r.contactId, r);
+  for (const r of peerRows)  if (r?.contactId) byId.set(r.contactId, r);   // peer wins
+  return sortContactRows([...byId.values()]);
+}
+
+/**
  * List the contact roster from a PeerGraph. Bots first (the actionable ones for
  * journey A), then by name; deterministic so the screen doesn't reshuffle on
  * every refresh.
@@ -49,9 +101,5 @@ export async function listContacts(peerGraph) {
   let peers = [];
   try { peers = await peerGraph.all(); } catch { return []; }
   const rows = peers.map(peerToContactRow).filter(Boolean);
-  rows.sort((a, b) => {
-    if (a.isBot !== b.isBot) return a.isBot ? -1 : 1;     // bots first
-    return String(a.name).localeCompare(String(b.name));
-  });
-  return rows;
+  return sortContactRows(rows);
 }
