@@ -13,10 +13,12 @@
  */
 import { VaultAsyncStorage } from '../../../../packages/react-native/src/identity/VaultAsyncStorage.js';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { PodClient, generateKeypair as podGenerateKeypair } from '@canopy/pod-client';
+import { PodClient, generateKeypair as podGenerateKeypair, SolidOidcAuth } from '@canopy/pod-client';
 import { createCirclePodProducer, createCircleControlAgentRouter } from '../../../canopy-chat/src/v2/circlePodProducer.js';
+import { realPodRouting } from '../../../canopy-chat/src/v2/circleRealPod.js';
 
 let circleVault = null;                       // VaultAsyncStorage (durable) — set by initCirclePods
+let podSessionRef = null;                     // App-owned OidcSessionRN ref — set by setCirclePodSession
 const circlePods = new Map();                 // circleId → producer
 const circleSealStrategies = new Map();       // circleId → {seal,open} | null
 
@@ -25,6 +27,25 @@ export function initCirclePods(asyncStorage) {
   if (asyncStorage && !circleVault) {
     circleVault = new VaultAsyncStorage({ prefix: 'cc-circle-pod:', asyncStorage });
   }
+}
+
+/** Share the App-owned OidcSessionRN (a ref or the session). When signed in, sealed circles
+ *  route to the user's REAL pod via the session's authenticated fetch (else the pseudo-pod). */
+export function setCirclePodSession(sessionOrRef) { podSessionRef = sessionOrRef; }
+
+/** Adapt an OidcSessionRN → the {webid, isLoggedIn, fetch} shape realPodRouting expects. */
+function sessionShape() {
+  const s = podSessionRef?.current ?? podSessionRef;
+  if (!s || typeof s.isAuthenticated !== 'function' || !s.isAuthenticated() || !s.webid) return null;
+  let fetch;
+  try { fetch = s.getAuthenticatedFetch(); } catch { return null; }
+  return { webid: s.webid, isLoggedIn: true, fetch };
+}
+
+/** The active real-pod routing from the signed-in session (or null → pseudo-pod). */
+export function getActiveRealPodRouting() {
+  const shaped = sessionShape();
+  return shaped ? realPodRouting(shaped, { PodClient, SolidOidcAuth }) : null;
 }
 
 /** An in-memory pseudo-pod client for one circle (no OIDC; group key persisted via the vault). */
@@ -38,10 +59,15 @@ function makeCirclePodClient(circleId) {
 export async function ensureCirclePod(circleId, policy) {
   if (!circleId || !circleVault || circlePods.has(circleId)) return circlePods.get(circleId) ?? null;
   let producer = null;
+  // Circle OIDC: when signed in, route a sealed circle to the user's REAL pod via the RN
+  // session's authenticated fetch (the fetch is no longer hidden); else the pseudo-pod.
+  const routing = getActiveRealPodRouting();
   try {
     producer = await createCirclePodProducer({
       circleId, storagePosture: policy?.storagePosture ?? 'p0', vault: circleVault,
-      generateKeypair: podGenerateKeypair, makePodClient: makeCirclePodClient,
+      generateKeypair: podGenerateKeypair,
+      makePodClient: routing ? routing.makePodClient : makeCirclePodClient,
+      circleRootUri: routing ? routing.circleRootUri(circleId) : undefined,
     });
   } catch (err) {
     if (typeof console !== 'undefined') console.warn('[circlePods] ensureCirclePod failed:', err?.message ?? err);

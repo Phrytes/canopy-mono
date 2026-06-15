@@ -51,7 +51,7 @@ import { buildCirclePodWriter } from './src/core/circleStoresRN.js';
 // One store per app; shared between ChatScreen (receiver) and
 // CircleLauncherScreen (editor pull + send-side clear).
 import { makeKringRecipePendingStoreRN } from './src/core/kringRecipePendingStorageRN.js';
-import { initCirclePods, circleControlAgentRouter } from './src/core/circlePods.js';
+import { initCirclePods, circleControlAgentRouter, setCirclePodSession } from './src/core/circlePods.js';
 // γ-next.rules — per-kring pending-rules cache (AsyncStorage-backed).
 // Mirrors the recipe wire: ChatScreen writes via the receiver,
 // CircleLauncherScreen reads on rules-screen open + clears after the
@@ -187,6 +187,9 @@ export default function App() {
   if (!sessionRef.current) {
     sessionRef.current = new OidcSessionRN({ store: SecureStore, appId: 'canopychat' });
   }
+  // S4 — share the session with circlePods so a signed-in user's sealed circles route to
+  // their REAL pod (via the session's authenticated fetch).
+  setCirclePodSession(sessionRef);
   // 5.4c — pod writer slot the launcher's getPodWriter thunk reads on
   // every load/save.  `null` while no session is restored → tieredPolicyIo
   // falls through to the local AsyncStorage side.  Refreshed on mount and
