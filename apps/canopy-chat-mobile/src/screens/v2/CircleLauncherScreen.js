@@ -109,6 +109,8 @@ import CircleTabBar from './CircleTabBar.js';
 import CircleScreenView from './CircleScreenView.js';
 import CircleRecipeEditorScreen from './CircleRecipeEditorScreen.js';
 import CircleScreensPickerScreen from './CircleScreensPickerScreen.js';
+import ContactsScreen from './ContactsScreen.js';
+import ContactThreadScreen from './ContactThreadScreen.js';
 
 // B (circle bot) — host LLM route for NL→command in the kring. Mirrors web's VITE_CIRCLE_LLM_BASEURL
 // + the feedback mobile EXPO_PUBLIC_FEEDBACK_LLM_BASEURL pattern. Unset → no provider → the LLM branch
@@ -179,6 +181,8 @@ export default function CircleLauncherScreen({
   // detail/settings/override.
   // α.3 — boot lands on the Schermen tab (Q6 primary).  Was 'list' (= Kringen).
   const [view, setView] = useState('screens');
+  // P5 — the contact (bot/peer) whose DM thread is open under the Contacten tab.
+  const [contactThread, setContactThread] = useState(null);
   const [viewAsPolicy, setViewAsPolicy] = useState('pairwise');
   const [viewAsMembers, setViewAsMembers] = useState([]);
   const [folioFiles, setFolioFiles] = useState([]);
@@ -757,6 +761,7 @@ export default function CircleLauncherScreen({
   const onTab = (id) => {
     if (id === 'screens') setView('screens');
     else if (id === 'kringen') { setActiveCircle(null); setSelected(null); setView('list'); }
+    else if (id === 'contacten') { setContactThread(null); setView('contacten'); }
     else if (id === 'mij') setView('availability');
   };
 
@@ -822,6 +827,25 @@ export default function CircleLauncherScreen({
           store={availabilityStore}
           onHop={() => setView('hop')}
         />
+      </WithTabBar>
+    );
+  }
+  // P5 — Contacten: the bot/peer roster + a 1:1 DM thread (mobile parity with web).
+  if (view === 'contacten') {
+    if (contactThread) {
+      return (
+        <WithTabBar active="contacten" onSelect={onTab}>
+          <ContactThreadScreen
+            bundle={bundle}
+            contact={contactThread}
+            onBack={() => setContactThread(null)}
+          />
+        </WithTabBar>
+      );
+    }
+    return (
+      <WithTabBar active="contacten" onSelect={onTab}>
+        <ContactsScreen bundle={bundle} onOpen={(contact) => setContactThread(contact)} />
       </WithTabBar>
     );
   }

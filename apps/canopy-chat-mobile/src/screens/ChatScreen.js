@@ -54,6 +54,7 @@ import {
   ensureDmThread, updatePeerDisplay,
 } from '../core/threadState.js';
 import { makePeerRouter }      from '../../../canopy-chat/src/core/handlers/peerRouter.js';
+import { pushContactReply }    from '../core/contactReplyInbox.js';
 import { makeKringChatPeerHandler } from '../../../canopy-chat/src/v2/kringChatReceiver.js';
 import { createChatMessageInbox } from '../../../canopy-chat/src/v2/chatMessageInbox.js';
 import { makeKringRecipePeerHandler } from '../../../canopy-chat/src/v2/kringRecipeReceiver.js';
@@ -374,7 +375,7 @@ export default function ChatScreen({
   // Bundle H (#268) — inbound peer-router (port of web/main.js:346) +
   // catch-up trigger (port of main.js:1338), built over the live agent
   // + callSkill.
-  const buildPeerWiring = useCallback(({ agent, callSkill }) => {
+  const buildPeerWiring = useCallback(({ agent, callSkill, contactChannel }) => {
     const sendPeer = (addr, payload) => agent.sendPeerMessage(addr, payload);
     const getMyPubKey = () =>
       agent?.identity?.chat?.pubKey ?? agent?.identity?.host?.webid ?? null;
@@ -486,6 +487,12 @@ export default function ChatScreen({
         'catch-up-offer': catchUpReceiver.onPeerMessage,
         'catch-up-chunk': catchUpReceiver.onPeerMessage,
         'catch-up-end':   catchUpReceiver.onPeerMessage,
+      } : {}),
+      // P5 — a contact-bot's reply in its Contacten DM thread → the shared inbox
+      // the open ContactThreadScreen subscribes to (cross-screen, like the kring
+      // chat wire).  Guarded: the channel is absent in stub-mode boots.
+      ...(contactChannel ? {
+        [contactChannel.subtypes.in]: contactChannel.replyHandler((reply) => pushContactReply(reply)),
       } : {}),
       // NOTE: the legacy buurt-post peer-poll path
       // (`makeHandleCatchUpRequest`) handled the same `catch-up-request`
@@ -639,7 +646,7 @@ export default function ChatScreen({
       appOrigins: [...bootState.bundle.catalog.appOrigins],
       opCount:    bootState.bundle.catalog.opsById?.size ?? 0,
     });
-    bootState.bundle.attachPeerWiring?.(buildPeerWiring({ agent, callSkill }));
+    bootState.bundle.attachPeerWiring?.(buildPeerWiring({ agent, callSkill, contactChannel: bootState.bundle.contactChannel }));
   }, [bootState, buildPeerWiring]);
 
   // Auto-scroll on every new message in the active thread.

@@ -11,6 +11,9 @@
 import { describe, it, expect, vi } from 'vitest';
 
 import { createContactSkillRegistry } from '../../canopy-chat/src/v2/contactSkillsLive.js';
+import { createContactThreadChannel } from '../../canopy-chat/src/v2/contactThreadChannel.js';
+import { listContacts } from '../../canopy-chat/src/v2/contactsSource.js';
+import { addBotToGraph } from '../../canopy-chat/src/v2/addBot.js';
 import { sendA2ATask } from '../../../packages/core/src/a2a/a2aTaskSend.js';
 import { PeerGraph } from '../../../packages/core/src/discovery/PeerGraph.js';
 
@@ -28,6 +31,26 @@ describe('contact-skill registry — mobile parity', () => {
     expect(typeof createContactSkillRegistry).toBe('function');
     expect(typeof sendA2ATask).toBe('function');      // the bundle binds this
     expect(typeof PeerGraph).toBe('function');
+  });
+
+  it('the Contacten roster + add-bot + channel deps resolve through the RN screen import paths', async () => {
+    // The RN screens (ContactsScreen / ContactThreadScreen) import these from the
+    // shared canopy-chat src; assert they resolve + work under the mobile graph.
+    expect(typeof listContacts).toBe('function');
+    expect(typeof addBotToGraph).toBe('function');
+    expect(typeof createContactThreadChannel).toBe('function');
+
+    const peers = new PeerGraph();
+    // add-a-bot by raw address (no network) → roster shows the bot.
+    await addBotToGraph({ input: 'NKNADDR|Feedback bot', peerGraph: peers });
+    const rows = await listContacts(peers);
+    expect(rows[0]).toMatchObject({ name: 'Feedback bot', isBot: true, peerAddr: 'NKNADDR' });
+
+    // the channel sends a turn over an injected peer (what the bundle binds to sendPeerMessage).
+    const sent = [];
+    const ch = createContactThreadChannel({ sendToPeer: (addr, p) => sent.push({ addr, p }) });
+    ch.sendTurn({ peerAddr: 'NKNADDR', threadId: rows[0].contactId, text: 'hoi' });
+    expect(sent[0]).toMatchObject({ addr: 'NKNADDR', p: { subtype: 'contact-msg', text: 'hoi' } });
   });
 
   it('a discovered bot routes a dispatch to it; removing it removes the skills', async () => {

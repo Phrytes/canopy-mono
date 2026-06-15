@@ -12,9 +12,11 @@ import { theme } from './theme.js';
 // α.3 — Schermen is the new primary tab (Q6).  Stroom is retired —
 // its behaviour now lives as the seeded "Stream" screen.
 const TABS = [
-  { id: 'screens', key: 'circle.tab.screens' },
-  { id: 'kringen', key: 'circle.tab.kringen' },
-  { id: 'mij',     key: 'circle.tab.mij' },
+  { id: 'screens',   key: 'circle.tab.screens' },
+  { id: 'kringen',   key: 'circle.tab.kringen' },
+  // P5 — Contacten: the bot/peer roster + their 1:1 DM threads.
+  { id: 'contacten', key: 'circle.tab.contacten' },
+  { id: 'mij',       key: 'circle.tab.mij' },
 ];
 
 export default function CircleTabBar({ active, onSelect }) {

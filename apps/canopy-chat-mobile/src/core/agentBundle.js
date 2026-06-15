@@ -32,7 +32,10 @@ import { composeManifests, buildManifestsByOrigin } from './composeManifests.js'
 import { loadVerifyMappings } from '../../../canopy-chat/src/v2/mappingsLoader.js';
 // Shared contact/bot exposed-skill registry (feedback-extension P4) — web≡mobile core.
 import { createContactSkillRegistry } from '../../../canopy-chat/src/v2/contactSkillsLive.js';
+import { createContactThreadChannel } from '../../../canopy-chat/src/v2/contactThreadChannel.js';
 import { sendA2ATask } from '../../../../packages/core/src/a2a/a2aTaskSend.js';
+import { PeerGraph } from '../../../../packages/core/src/discovery/PeerGraph.js';
+import { discoverA2A } from '../../../../packages/core/src/a2a/a2aDiscover.js';
 
 // `createRealHouseholdAgent` is loaded LAZILY (dynamic import below)
 // so importing agentBundle.js doesn't transitively pull in
@@ -338,21 +341,30 @@ export async function bootAgentBundle(opts = {}) {
     })();
   }
 
-  // P4 (feedback-extension) — contact/bot exposed skills, LIVE (web≡mobile, same
-  // shared registry). A bot discovered via `agent.discoverA2A` lands in
-  // `agent.peers` with its skills as SkillCards; the registry subscribes and, per
-  // bot, synthesises a contact-thread catalog + a router that hands a dispatch to
-  // the bot over A2A (`sendA2ATask` → await the Task result). Kept SEPARATE from
-  // the circle/app catalog (contact-thread scope). The contact-thread VIEW is
-  // P5/P6; this makes the bridge live now, exposed on the bundle as
-  // `contactSkills` for that view + Detox.
+  // P4/P5 (feedback-extension) — contact/bot exposed skills + the DM channel, LIVE
+  // (web≡mobile, same shared modules). canopy-chat's secure-agent keeps NO core
+  // PeerGraph (agent.peers is undefined / agent.sa.agent.peers null), so contacts
+  // are APP-OWNED: one PeerGraph the P4 skill registry + the P5 Contacten roster
+  // read, populated as bots are discovered/added. The agent stays the transport
+  // (sendPeerMessage → core RoutingStrategy: mdns > rendezvous > relay > nkn). The
+  // P4 registry synthesises a contact-thread catalog + a router (sendA2ATask for
+  // a2a bots); the P5 channel carries the conversation over sa.peer. Exposed on
+  // the bundle for the Contacten screens + Detox.
+  const peerGraph = new PeerGraph();
   const sendContactTask = async (peerUrl, skillId, args) => {
     const task = sendA2ATask(agent, peerUrl, skillId, args);
     const { parts } = await task.done();
     return { parts };
   };
-  const contactSkills = createContactSkillRegistry({ peerGraph: agent.peers, sendTask: sendContactTask });
+  const contactSkills = createContactSkillRegistry({ peerGraph, sendTask: sendContactTask });
   contactSkills.start().catch(() => { /* discovery is best-effort — never blocks boot */ });
+  const contactChannel = createContactThreadChannel({
+    sendToPeer: (addr, payload) =>
+      (typeof agent.sendPeerMessage === 'function'
+        ? agent.sendPeerMessage(addr, payload)
+        : Promise.reject(new Error('agent.sendPeerMessage unavailable'))),
+  });
+  const coreAgent = agent.sa?.agent ?? null;   // discoverA2A's hello/native-upgrade target
 
   // 5.9c — expose `mdns` as a live getter so the launcher reads the
   // current instance (initially null, populated when the async
@@ -365,6 +377,10 @@ export async function bootAgentBundle(opts = {}) {
     agent,
     transport,
     contactSkills,
+    peerGraph,
+    contactChannel,
+    coreAgent,
+    discoverA2A,
     get mdns() { return mdns; },
     attachPeerWiring,
     dispose: async () => {
