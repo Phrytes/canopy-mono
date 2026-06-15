@@ -51,6 +51,7 @@ export async function createCirclePodProducer({
   roster = [],
   generateKeypair,
   makePodClient,
+  circleRootUri,
   sharing,
   bootstrap = true,
   controllerKeyPrefix = 'cc.circle-controller-key',
@@ -94,8 +95,10 @@ export async function createCirclePodProducer({
   }
 
   const podClient = await makePodClient(circleId);
-  const circleRootUri = `pseudo-pod://circle-${circleId}/circle`;
-  const keyResourceUri = `${circleRootUri}/.keys/group.json`;
+  // The circle's container: an in-memory pseudo-pod by default, or a REAL Solid-pod container
+  // URI (e.g. `<podRoot>/circles/<id>`) when the host passes one with a real-pod makePodClient.
+  const root = (circleRootUri ?? `pseudo-pod://circle-${circleId}/circle`).replace(/\/$/, '');
+  const keyResourceUri = `${root}/.keys/group.json`;
   const groupKeyVaultKey = `${groupKeyPrefix}:${circleId}`;
 
   // DURABILITY — the per-circle pod is an EPHEMERAL pseudo-pod (its group-key resource
@@ -118,7 +121,7 @@ export async function createCirclePodProducer({
   const controlAgent = createCircleControlAgent({
     circleId, storagePosture, podClient,
     sharing: sharing ?? memorySharing(),
-    controllerKey, circleRootUri, roster: fullRoster,
+    controllerKey, circleRootUri: root, roster: fullRoster,
   });
 
   /** Save the pod's current group-key resource to the vault (call after bootstrap + each membership change). */
@@ -132,7 +135,7 @@ export async function createCirclePodProducer({
 
   if (bootstrap && controlAgent) { await controlAgent.bootstrap(); await persistGroupKey(); }
 
-  return { circleId, storagePosture, sealingIdentity, controlAgent, podClient, circleRootUri, persist: persistGroupKey };
+  return { circleId, storagePosture, sealingIdentity, controlAgent, podClient, circleRootUri: root, persist: persistGroupKey };
 }
 
 /**

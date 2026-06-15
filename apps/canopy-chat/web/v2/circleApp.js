@@ -18,14 +18,17 @@
 
 import { initLocalisation, t, detectDeviceLang, currentLang,
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
-  scopeStoopCallSkill, createCirclePodProducer, createCircleControlAgentRouter,
+  scopeStoopCallSkill, createCirclePodProducer, createCircleControlAgentRouter, realPodRouting,
   canopyChatManifest, AppRegistry, filterCatalog } from '../../src/index.js';
 // S4 pod foundation — per-circle sealed storage producer. The pod-client + in-memory
 // pseudo-pod machinery is web-layer (kept out of the shared src so it stays portable);
 // the producer just consumes the injected makePodClient/generateKeypair.
-import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient } from '@canopy/pod-client';
+import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient, SolidOidcAuth } from '@canopy/pod-client';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { VaultIndexedDB, VaultMemory } from '@canopy/vault';
+// S4 circle OIDC — reuse the existing browser Solid-OIDC wrapper (no rebuild). A signed-in
+// session routes a sealed circle to the user's REAL pod; otherwise the in-memory pseudo-pod.
+import * as podAuth from '../../src/web/podAuth.js';
 // Phase 5 — bot + feedback in the kring composer (mirrors mobile CircleLauncherScreen, on the shared
 // engine). The circle bot stack:
 import { mockTasksManifest, mockStoopManifest, mockFolioManifest } from '../../src/core/manifests/mockManifests.js';
@@ -472,6 +475,7 @@ const circleVault = (() => {
   catch { return new VaultMemory(); }
 })();
 const circlePods = new Map();    // S4 — circleId → per-circle pod producer (sealing identity + control agent)
+let circleRealPodRouting = null; // S4 circle OIDC — set when signed in; routes sealed circles to the real pod
 const circleSealStrategies = new Map();   // S4 — circleId → resolved {seal,open} content strategy (or null for p0/p1)
 // S4 — routes stoop membership events (redeem/leave) to the joined circle's producer, so
 // a new member's sealing key is wrapped into that circle's group key (multi-member sealing).
@@ -514,10 +518,14 @@ function makeCirclePodClient(circleId) {
 async function ensureCirclePod(circleId, policy) {
   if (!circleId || !circleVault || circlePods.has(circleId)) return circlePods.get(circleId) ?? null;
   const storagePosture = policy?.storagePosture ?? 'p0';
+  // Circle OIDC: when signed in, route a sealed circle to the user's REAL pod; else the
+  // in-memory pseudo-pod (offline / not signed in). Verified end-to-end in circlePodProducer.css.test.js.
+  const routing = circleRealPodRouting;
   try {
     const producer = await createCirclePodProducer({
-      circleId, storagePosture, vault: circleVault,
-      generateKeypair: podGenerateKeypair, makePodClient: makeCirclePodClient,
+      circleId, storagePosture, vault: circleVault, generateKeypair: podGenerateKeypair,
+      makePodClient: routing ? routing.makePodClient : makeCirclePodClient,
+      circleRootUri: routing ? routing.circleRootUri(circleId) : undefined,
     });
     circlePods.set(circleId, producer);
     return producer;
@@ -2283,6 +2291,17 @@ async function boot() {
   tabBarEl = document.getElementById('circle-tabbar');
   await initLocalisation({ lng: detectDeviceLang() });
   renderCircleLauncher(rootEl, { loading: true, t });
+
+  // S4 circle OIDC — complete an incoming Solid sign-in redirect / restore a saved session
+  // (reuses src/web/podAuth.js). When signed in, sealed circles route to the user's real pod.
+  try {
+    const session = (await podAuth.handleRedirect().catch(() => null)) || podAuth.getCurrentSession?.();
+    circleRealPodRouting = realPodRouting(session, { PodClient, SolidOidcAuth });
+    if (typeof window !== 'undefined') {
+      window.canopyPodSession = session ?? null;                  // debug / e2e seam
+      window.canopyPodSignIn = (issuer) => podAuth.startSignIn({ issuer, redirectUrl: window.location.href });
+    }
+  } catch { /* not signed in → pseudo-pod */ }
 
   try {
     let eventSeq = 0;
