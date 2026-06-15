@@ -1422,7 +1422,11 @@ async function showMij() {
 async function showMyData() {
   hideCircleTabBar(tabBarEl);
   let dataLocation = {}; let podStatus = {}; let privacy = []; let metrics = {};
-  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij });
+  // S4 — the actual pod sign-in state (reuses podAuth), + a sign-in button when local-only.
+  const onSignIn = () => Promise.resolve(
+    podAuth.startSignIn({ issuer: podAuth.DEFAULT_ISSUER_ID, redirectUrl: window.location.href }),
+  ).catch((e) => globalThis.alert?.(e?.message ?? 'sign-in failed'));
+  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn });
   rerender();
   const [loc, status, priv, met] = await Promise.all([
     rawCallSkill('stoop', 'getDataLocation', {}).catch(() => null),
@@ -1432,6 +1436,12 @@ async function showMyData() {
   ]);
   dataLocation = loc ?? {};
   podStatus = status ?? {};
+  // Prefer the real Solid session over the (aspirational) stoop op.
+  const sess = podAuth.getCurrentSession?.();
+  if (sess?.isLoggedIn && sess.webid) {
+    podStatus = { signedIn: true, webid: sess.webid };
+    if (circleRealPodRouting?.podRoot) dataLocation = { ...dataLocation, podRoot: circleRealPodRouting.podRoot };
+  }
   privacy = Array.isArray(priv?.sections) ? priv.sections : [];
   metrics = (met?.snapshot && typeof met.snapshot === 'object') ? met.snapshot : {};
   rerender();

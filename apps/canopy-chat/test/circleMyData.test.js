@@ -17,6 +17,23 @@ describe('renderCircleMyData', () => {
     expect(kvs.some((v) => v.includes('Onderling') && v.includes('wss://relay.example'))).toBe(true);
   });
 
+  it('shows a sign-in button when local-only + wires it to onSignIn', () => {
+    const onSignIn = vi.fn();
+    const el = renderCircleMyData(document.createElement('div'), { t, podStatus: { signedIn: false }, onSignIn });
+    const btn = el.querySelector('.cc-mydata__signin');
+    expect(btn).toBeTruthy();
+    expect(btn.textContent).toBe('circle.mydata.pod_sign_in');
+    btn.click();
+    expect(onSignIn).toHaveBeenCalled();
+  });
+
+  it('no sign-in button once signed in', () => {
+    const el = renderCircleMyData(document.createElement('div'), {
+      t, podStatus: { signedIn: true, webid: 'https://me.pod/profile' }, onSignIn: () => {},
+    });
+    expect(el.querySelector('.cc-mydata__signin')).toBeNull();
+  });
+
   it('shows pod root + signed-in status when on a pod', () => {
     const el = renderCircleMyData(document.createElement('div'), {
       t, podStatus: { signedIn: true, webid: 'https://me.pod/profile' },

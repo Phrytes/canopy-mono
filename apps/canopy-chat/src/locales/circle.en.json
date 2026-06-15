@@ -1787,6 +1787,7 @@
     "pod":           { "text": "Pod", "doc": "S5 — pod status label." },
     "pod_signed_in": { "text": "Signed in — {{webid}}", "doc": "S5 — pod signed-in status." },
     "pod_local":     { "text": "Local only (no pod)", "doc": "S5 — no pod attached." },
+    "pod_sign_in":   { "text": "Sign in to a pod", "doc": "S4 — start Solid sign-in so sealed circles store to your pod." },
     "pod_root":      { "text": "Pod root", "doc": "S5 — pod root URI." },
     "relay":         { "text": "Relay", "doc": "S5 — relay operator/url." },
     "privacy":       { "text": "Privacy", "doc": "S5 — privacy disclosure section." },

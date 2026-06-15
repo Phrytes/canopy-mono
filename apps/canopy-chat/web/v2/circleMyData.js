@@ -16,6 +16,7 @@ export function renderCircleMyData(container, {
   metrics = {},
   t,
   onBack,
+  onSignIn,
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -44,6 +45,15 @@ export function renderCircleMyData(container, {
     ? tr('circle.mydata.pod_signed_in', { webid: podStatus.webid ?? '' })
     : tr('circle.mydata.pod_local');
   storage.appendChild(kv(tr('circle.mydata.pod'), status));
+  // Sign in to a real Solid pod (reuses src/web/podAuth.js) — sealed circles then store there.
+  if (!podStatus.signedIn && typeof onSignIn === 'function') {
+    const signIn = document.createElement('button');
+    signIn.type = 'button';
+    signIn.className = 'cc-mydata__signin';
+    signIn.textContent = tr('circle.mydata.pod_sign_in');
+    signIn.addEventListener('click', () => onSignIn());
+    storage.appendChild(signIn);
+  }
   if (dataLocation.podRoot) storage.appendChild(kv(tr('circle.mydata.pod_root'), dataLocation.podRoot));
   if (dataLocation.relayOperator || dataLocation.relayUrl) {
     storage.appendChild(kv(tr('circle.mydata.relay'), [dataLocation.relayOperator, dataLocation.relayUrl].filter(Boolean).join(' · ')));
