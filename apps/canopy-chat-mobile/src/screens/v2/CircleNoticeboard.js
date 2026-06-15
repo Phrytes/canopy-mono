@@ -9,9 +9,10 @@
  * (one stoop agent today); per-circle scoping arrives with the pod foundation.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
+import { View, Text, Pressable, TextInput, StyleSheet, Image, Modal } from 'react-native';
 import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
+import { pickAndEncodeImage } from '../../v2/attachmentPicker.js';
 
 const INTENTS = ['ask', 'offer', 'lend'];
 
@@ -27,6 +28,8 @@ export default function CircleNoticeboard({ callSkill }) {
   const [dueText, setDueText] = useState('');   // S3 #4 — lend return-by date (YYYY-MM-DD)
   const [assigningTo, setAssigningTo] = useState(null);   // S3 #4 — lender assigns a borrower
   const [assignText, setAssignText] = useState('');
+  const [attachment, setAttachment] = useState(null);   // S5 — pending image attachment
+  const [viewing, setViewing] = useState(null);         // S5 — { uri, pending } full-image viewer
 
   const reload = useCallback(async () => {
     if (typeof callSkill !== 'function') return;
@@ -38,22 +41,51 @@ export default function CircleNoticeboard({ callSkill }) {
       setPosts(items.map((it) => ({
         id: it.id, text: it.text ?? it.label ?? '', type: it.type ?? it.intent ?? 'ask',
         addedBy: it.addedBy, mine: !!(who && it.addedBy === who),
+        // S5 — inline-image metadata (thumbnail travels; full bytes on demand).
+        attachments: Array.isArray(it.attachments) ? it.attachments
+          : (Array.isArray(it.source?.attachments) ? it.source.attachments : []),
       })));
     } catch { setPosts([]); }
   }, [callSkill, myWebid]);
 
   useEffect(() => { reload(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
+  // S5 — pick + encode an image into the inbound-attachment shape, held pending.
+  const attachImage = useCallback(async () => {
+    try {
+      const att = await pickAndEncodeImage();
+      if (att) setAttachment(att);
+    } catch { setError(true); }
+  }, []);
+
   const submitPost = useCallback(async () => {
     const body = text.trim();
-    if (!body || typeof callSkill !== 'function') return;
+    if ((!body && !attachment) || typeof callSkill !== 'function') return;
     const dueAt = intent === 'lend' && dueText ? Date.parse(dueText) : undefined;
+    const pending = attachment;
     setText(''); setDueText(''); setError(false); setBusy(true);
-    try { await callSkill('stoop', 'postRequest', { intent, text: body, ...(Number.isFinite(dueAt) ? { dueAt } : {}) }); }
+    try {
+      await callSkill('stoop', 'postRequest', {
+        intent, text: body,
+        ...(Number.isFinite(dueAt) ? { dueAt } : {}),
+        ...(pending ? { attachments: [pending] } : {}),
+      });
+      setAttachment(null);
+    }
     catch { setError(true); }
     setBusy(false);
     reload();
-  }, [text, intent, dueText, callSkill, reload]);
+  }, [text, intent, dueText, attachment, callSkill, reload]);
+
+  // S5 — open an attachment full-size: author has the bytes (getAttachmentDataUrl);
+  // a recipient triggers requestAttachment + sees the thumbnail meanwhile.
+  const viewAttachment = useCallback(async (post, att) => {
+    let res = null;
+    try { res = await callSkill('stoop', 'getAttachmentDataUrl', { itemId: post.id, attId: att.id }); } catch { res = null; }
+    if (res?.dataUrl) { setViewing({ uri: res.dataUrl, pending: false }); return; }
+    try { await callSkill('stoop', 'requestAttachment', { itemId: post.id, attId: att.id }); } catch { /* */ }
+    setViewing({ uri: att.thumbnail, pending: true });
+  }, [callSkill]);
 
   const runAction = useCallback(async (action, post) => {
     try {
@@ -98,8 +130,17 @@ export default function CircleNoticeboard({ callSkill }) {
           placeholder={t(`circle.noticeboard.placeholder.${intent}`)} placeholderTextColor={theme.color.inkSoft}
           onSubmitEditing={submitPost} testID="nb-input"
         />
+        <Pressable style={styles.attach} onPress={attachImage} testID="nb-attach"><Text style={styles.attachText}>📎</Text></Pressable>
         <Pressable style={styles.post} onPress={submitPost} testID="nb-post"><Text style={styles.postText}>{t('circle.noticeboard.post')}</Text></Pressable>
       </View>
+      {attachment && (
+        <View style={styles.attachPreview} testID="nb-attach-preview">
+          <Image source={{ uri: attachment.thumbnail }} style={styles.attachThumb} />
+          <Pressable style={styles.attachRemove} onPress={() => setAttachment(null)} testID="nb-attach-remove">
+            <Text style={styles.attachRemoveText}>✕</Text>
+          </Pressable>
+        </View>
+      )}
       {intent === 'lend' && (
         <View style={styles.dueRow}>
           <Text style={styles.dueLabel}>{t('circle.noticeboard.due')}</Text>
@@ -117,6 +158,15 @@ export default function CircleNoticeboard({ callSkill }) {
             <Text style={styles.badgeText}>{t(`circle.noticeboard.intent.${p.type || 'ask'}`)}</Text>
           </View>
           <Text style={styles.postText2}>{p.text}</Text>
+          {Array.isArray(p.attachments) && p.attachments.length > 0 && (
+            <View style={styles.attachments}>
+              {p.attachments.filter((a) => a?.thumbnail).map((att) => (
+                <Pressable key={att.id} onPress={() => viewAttachment(p, att)} testID={`nb-att-${att.id}`}>
+                  <Image source={{ uri: att.thumbnail }} style={styles.postAtt} />
+                </Pressable>
+              ))}
+            </View>
+          )}
           <View style={styles.actions}>
             {!p.mine && <Chip label={t('circle.noticeboard.action.respond')} onPress={() => runAction('respond', p)} />}
             {p.type === 'lend' && p.mine && <Chip label={t('circle.noticeboard.action.assign')} onPress={() => runAction('assign', p)} />}
@@ -139,6 +189,14 @@ export default function CircleNoticeboard({ callSkill }) {
           )}
         </View>
       ))}
+
+      {/* S5 — full-size image viewer. */}
+      <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
+        <Pressable style={styles.viewerBackdrop} onPress={() => setViewing(null)} testID="nb-att-viewer">
+          {viewing?.uri ? <Image source={{ uri: viewing.uri }} style={styles.viewerImage} resizeMode="contain" /> : null}
+          {viewing?.pending ? <Text style={styles.viewerNote}>{t('circle.noticeboard.attach_fetching')}</Text> : null}
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -172,6 +230,17 @@ const styles = StyleSheet.create({
   badge_lend: { backgroundColor: '#e8eef6' },
   badgeText: { fontSize: 11, fontWeight: '700', color: theme.color.ink, textTransform: 'uppercase' },
   postText2: { fontSize: 14, color: theme.color.ink, lineHeight: 20 },
+  attach: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.line, justifyContent: 'center' },
+  attachText: { fontSize: 16 },
+  attachPreview: { alignSelf: 'flex-start', marginTop: 4 },
+  attachThumb: { width: 96, height: 96, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.line },
+  attachRemove: { position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: 11, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.white, alignItems: 'center', justifyContent: 'center' },
+  attachRemoveText: { fontSize: 12, color: theme.color.ink },
+  attachments: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 2 },
+  postAtt: { width: 120, height: 120, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.line },
+  viewerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', padding: 16, gap: 10 },
+  viewerImage: { width: '100%', height: '85%' },
+  viewerNote: { color: theme.color.white, fontSize: 13, opacity: 0.85 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   chip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.color.accent },
   chipMuted: { borderColor: theme.color.line },
