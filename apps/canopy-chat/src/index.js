@@ -28,6 +28,9 @@ export {
 } from './v2/contactSkills.js';
 // … and the LIVE wiring (PeerGraph-subscribed registry + the dispatch chain).
 export { createContactSkillRegistry, chainContactCallSkill } from './v2/contactSkillsLive.js';
+// P5 (feedback-extension) — the client end of a contact/bot peer link (the
+// transport-agnostic conversational channel; rides sa.peer → mdns/relay/nkn).
+export { createContactThreadChannel, DEFAULT_CONTACT_SUBTYPES } from './v2/contactThreadChannel.js';
 export { renderReply, formatText }   from './renderer.js';
 export { Thread, newThread }         from './thread.js';
 export {
