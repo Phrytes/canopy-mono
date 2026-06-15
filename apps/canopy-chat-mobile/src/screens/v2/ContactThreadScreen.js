@@ -15,9 +15,13 @@ import { subscribeContactReplies } from '../../core/contactReplyInbox.js';
 
 export default function ContactThreadScreen({ bundle, contact, onBack }) {
   const channel = bundle?.contactChannel ?? null;
+  const registry = bundle?.contactSkills ?? null;
   const contactId = contact?.contactId;
   const peerAddr = contact?.peerAddr ?? contactId;
   const name = contact?.name ?? contactId ?? '';
+  // #13 — the bot's P4 skills, shown as in-thread quick actions (dispatched to
+  // the bot via the registry, distinct from a conversational turn).
+  const skills = registry?.skillsFor?.(contactId) ?? [];
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -34,10 +38,35 @@ export default function ContactThreadScreen({ bundle, contact, onBack }) {
     });
   }, [contactId, peerAddr]);
 
+  // Dispatch a named skill to the bot (P4 registry → sendA2ATask) + append the reply.
+  const runSkill = useCallback(async (skillId, args = {}) => {
+    if (!registry) return;
+    setError(false);
+    setMessages((prev) => [...prev, { id: mkId(), origin: 'user', text: `/${skillId}` }]);
+    setBusy(true);
+    try {
+      const res = await registry.callSkill(contactId, skillId, args);
+      const text = replyTextFromResult(res);
+      if (text) setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', text }]);
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
+  }, [registry, contactId]);
+
   const onSend = useCallback(async () => {
     const text = input.trim();
     if (!text || !channel) return;
-    setInput(''); setError(false);
+    setInput('');
+    // `/skill args` → dispatch as a skill; otherwise a conversational turn.
+    if (text.startsWith('/')) {
+      const sp = text.slice(1).indexOf(' ');
+      const skillId = sp === -1 ? text.slice(1) : text.slice(1, sp + 1);
+      const rest = sp === -1 ? '' : text.slice(sp + 2).trim();
+      if (skills.some((s) => s.id === skillId)) { await runSkill(skillId, rest ? { text: rest } : {}); return; }
+    }
+    setError(false);
     setMessages((prev) => [...prev, { id: mkId(), origin: 'user', text }]);
     setBusy(true);
     try {
@@ -48,7 +77,7 @@ export default function ContactThreadScreen({ bundle, contact, onBack }) {
     } finally {
       setBusy(false);
     }
-  }, [input, channel, peerAddr, contactId]);
+  }, [input, channel, peerAddr, contactId, skills, runSkill]);
 
   return (
     <View style={styles.wrap} testID="contact-thread-screen">
@@ -79,6 +108,22 @@ export default function ContactThreadScreen({ bundle, contact, onBack }) {
 
       {error && <Text style={styles.error}>{t('circle.contacts.send_failed', { name })}</Text>}
 
+      {skills.length > 0 && (
+        <View style={styles.skills}>
+          {skills.map((sk) => (
+            <Pressable
+              key={sk.id}
+              style={styles.skill}
+              onPress={() => runSkill(sk.id)}
+              accessibilityRole="button"
+              testID={`contact-skill-${sk.id}`}
+            >
+              <Text style={styles.skillText}>{`/${sk.id}`}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       <View style={styles.composer}>
         <TextInput
           style={styles.input}
@@ -100,6 +145,19 @@ export default function ContactThreadScreen({ bundle, contact, onBack }) {
 let _id = 0;
 function mkId() { _id += 1; return `ctm-${_id}`; }
 
+// #13 — human-readable text out of a remote-skill result ({ parts } | { text } | string).
+function replyTextFromResult(res) {
+  if (res == null) return '';
+  if (typeof res === 'string') return res;
+  if (typeof res.text === 'string') return res.text;
+  const parts = Array.isArray(res.parts) ? res.parts : null;
+  if (parts) {
+    const text = parts.map((p) => (typeof p === 'string' ? p : p?.text ?? '')).filter(Boolean).join('\n');
+    if (text) return text;
+  }
+  try { return JSON.stringify(res); } catch { return ''; }
+}
+
 const styles = StyleSheet.create({
   wrap: { flex: 1, padding: 16, backgroundColor: theme.color.paper },
   header: { flexDirection: 'row', alignItems: 'baseline', gap: 12, marginBottom: 8 },
@@ -115,6 +173,9 @@ const styles = StyleSheet.create({
   bubbleUserText: { color: theme.color.white, fontSize: 14, lineHeight: 20 },
   bubbleBotText: { color: theme.color.ink, fontSize: 14, lineHeight: 20 },
   sending: { fontSize: 12, color: theme.color.inkSoft, fontStyle: 'italic', paddingHorizontal: 4 },
+  skills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  skill: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.color.accent },
+  skillText: { fontSize: 12, fontWeight: '600', color: theme.color.accent },
   error: { fontSize: 13, color: '#b3261e', paddingVertical: 6 },
   composer: { flexDirection: 'row', gap: 8, marginTop: 8 },
   input: { flex: 1, fontSize: 14, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, color: theme.color.ink, backgroundColor: theme.color.white },
