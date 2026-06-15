@@ -112,6 +112,8 @@ import CircleScreensPickerScreen from './CircleScreensPickerScreen.js';
 import ContactsScreen from './ContactsScreen.js';
 import ContactThreadScreen from './ContactThreadScreen.js';
 import CircleNoticeboard from './CircleNoticeboard.js';
+import CircleProfileScreen from './CircleProfileScreen.js';
+import CircleAdminPanelScreen from './CircleAdminPanelScreen.js';
 
 // B (circle bot) — host LLM route for NL→command in the kring. Mirrors web's VITE_CIRCLE_LLM_BASEURL
 // + the feedback mobile EXPO_PUBLIC_FEEDBACK_LLM_BASEURL pattern. Unset → no provider → the LLM branch
@@ -763,7 +765,7 @@ export default function CircleLauncherScreen({
     if (id === 'screens') setView('screens');
     else if (id === 'kringen') { setActiveCircle(null); setSelected(null); setView('list'); }
     else if (id === 'contacten') { setContactThread(null); setView('contacten'); }
-    else if (id === 'mij') setView('availability');
+    else if (id === 'mij') setView('profile');   // S2 — Mij is now the profile
   };
 
   const submitCreate = useCallback(async () => {
@@ -821,6 +823,14 @@ export default function CircleLauncherScreen({
       </WithTabBar>
     );
   }
+  // S2 — Mij = your profile (identity + skills + location); availability is a sub-view.
+  if (view === 'profile') {
+    return (
+      <WithTabBar active="mij" onSelect={onTab}>
+        <CircleProfileScreen callSkill={bundle?.callSkill} onAvailability={() => setView('availability')} />
+      </WithTabBar>
+    );
+  }
   if (view === 'availability') {
     return (
       <WithTabBar active="mij" onSelect={onTab}>
@@ -859,6 +869,16 @@ export default function CircleLauncherScreen({
           onOpenCircle={(id) => openCircle(circles.find((c) => c.id === id) || { id })}
         />
       </WithTabBar>
+    );
+  }
+  // S3 — group admin panel (member roster + remove + announcements + moderation).
+  if (selected && view === 'admin') {
+    return (
+      <CircleAdminPanelScreen
+        callSkill={bundle?.callSkill}
+        groupId={selected.id}
+        onBack={() => setView('detail')}
+      />
     );
   }
   if (selected && view === 'settings') {
@@ -1047,6 +1067,7 @@ export default function CircleLauncherScreen({
         recipeStore={recipeStore}
         onBack={closeCircle}
         onSettings={() => setView('settings')}
+        onAdmin={() => setView('admin')}
         onMine={() => setView('override')}
         onViewAs={async () => {
           const p = await policyStore.get(selected.id);
@@ -1364,7 +1385,7 @@ function CircleDetail({
   circle, items, callSkill, rawCallSkill, catalog: rawCatalog, policy, myListTasks = [],
   eventLog, circles = [],
   recipeStore = null,
-  onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes,
+  onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin,
 }) {
   // Part D — scope the bot/suggest catalog to the circle's apps: drops canopy-chat's infra ops (/me etc.)
   // that the circle bot can't run (they threw `circle.bot.failed`) and keeps them out of the suggest list.
@@ -1798,6 +1819,12 @@ function CircleDetail({
           <Pressable onPress={() => { setMenuOpen(false); onRecipes?.(); }} style={styles.moreItem} testID="circle-detail-recipes">
             <Text style={styles.moreItemText}>{t('circle.recipe.editor.book_title')}</Text>
           </Pressable>
+          {/* S3 — group admin (member roster + remove + announcements + moderation). */}
+          {typeof onAdmin === 'function' && (
+            <Pressable onPress={() => { setMenuOpen(false); onAdmin(); }} style={styles.moreItem} testID="circle-detail-admin">
+              <Text style={styles.moreItemText}>{t('circle.admin.title')}</Text>
+            </Pressable>
+          )}
         </View>
       ) : null}
 

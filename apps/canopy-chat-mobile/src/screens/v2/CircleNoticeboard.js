@@ -24,6 +24,7 @@ export default function CircleNoticeboard({ callSkill }) {
   const [myWebid, setMyWebid] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
+  const [dueText, setDueText] = useState('');   // S3 #4 — lend return-by date (YYYY-MM-DD)
 
   const reload = useCallback(async () => {
     if (typeof callSkill !== 'function') return;
@@ -44,12 +45,13 @@ export default function CircleNoticeboard({ callSkill }) {
   const submitPost = useCallback(async () => {
     const body = text.trim();
     if (!body || typeof callSkill !== 'function') return;
-    setText(''); setError(false); setBusy(true);
-    try { await callSkill('stoop', 'postRequest', { intent, text: body }); }
+    const dueAt = intent === 'lend' && dueText ? Date.parse(dueText) : undefined;
+    setText(''); setDueText(''); setError(false); setBusy(true);
+    try { await callSkill('stoop', 'postRequest', { intent, text: body, ...(Number.isFinite(dueAt) ? { dueAt } : {}) }); }
     catch { setError(true); }
     setBusy(false);
     reload();
-  }, [text, intent, callSkill, reload]);
+  }, [text, intent, dueText, callSkill, reload]);
 
   const runAction = useCallback(async (action, post) => {
     try {
@@ -57,6 +59,7 @@ export default function CircleNoticeboard({ callSkill }) {
       if (action === 'cancel') await callSkill('stoop', 'cancelRequest', { requestId: post.id });
       else if (action === 'report') await callSkill('stoop', 'reportPost', { itemId: post.id });
       else if (action === 'markReturned') await callSkill('stoop', 'markReturned', { requestId: post.id });
+      else if (action === 'mute' && post.addedBy) await callSkill('stoop', 'mutePeer', { peerWebid: post.addedBy });
     } catch { /* reload reflects the real state */ }
     reload();
   }, [callSkill, reload]);
@@ -86,6 +89,12 @@ export default function CircleNoticeboard({ callSkill }) {
         />
         <Pressable style={styles.post} onPress={submitPost} testID="nb-post"><Text style={styles.postText}>{t('circle.noticeboard.post')}</Text></Pressable>
       </View>
+      {intent === 'lend' && (
+        <View style={styles.dueRow}>
+          <Text style={styles.dueLabel}>{t('circle.noticeboard.due')}</Text>
+          <TextInput style={styles.dueInput} value={dueText} onChangeText={setDueText} placeholder="YYYY-MM-DD" placeholderTextColor={theme.color.inkSoft} autoCapitalize="none" testID="nb-due" />
+        </View>
+      )}
       {busy && <Text style={styles.busy}>{t('circle.noticeboard.posting')}</Text>}
       {error && <Text style={styles.error}>{t('circle.noticeboard.post_failed')}</Text>}
 
@@ -102,6 +111,7 @@ export default function CircleNoticeboard({ callSkill }) {
             {p.type === 'lend' && p.mine && <Chip label={t('circle.noticeboard.action.returned')} onPress={() => runAction('markReturned', p)} />}
             {p.mine && <Chip label={t('circle.noticeboard.action.cancel')} onPress={() => runAction('cancel', p)} />}
             {!p.mine && <Chip label={t('circle.noticeboard.action.report')} muted onPress={() => runAction('report', p)} />}
+            {!p.mine && <Chip label={t('circle.noticeboard.action.mute')} muted onPress={() => runAction('mute', p)} />}
           </View>
           {replyingTo === p.id && (
             <View style={styles.replyRow}>
@@ -151,4 +161,7 @@ const styles = StyleSheet.create({
   chipTextMuted: { color: theme.color.inkSoft },
   replyRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
   replyInput: { flex: 1, fontSize: 14, paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, color: theme.color.ink, backgroundColor: theme.color.white },
+  dueRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dueLabel: { fontSize: 13, color: theme.color.inkSoft },
+  dueInput: { flex: 1, fontSize: 14, paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, color: theme.color.ink, backgroundColor: theme.color.white },
 });
