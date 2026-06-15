@@ -14,7 +14,7 @@
 import { VaultAsyncStorage } from '../../../../packages/react-native/src/identity/VaultAsyncStorage.js';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { PodClient, generateKeypair as podGenerateKeypair, SolidOidcAuth } from '@canopy/pod-client';
-import { createCirclePodProducer, createCircleControlAgentRouter } from '../../../canopy-chat/src/v2/circlePodProducer.js';
+import { createCirclePodProducer, createCircleControlAgentRouter, seedCircleRoster } from '../../../canopy-chat/src/v2/circlePodProducer.js';
 import { realPodRouting } from '../../../canopy-chat/src/v2/circleRealPod.js';
 
 let circleVault = null;                       // VaultAsyncStorage (durable) — set by initCirclePods
@@ -80,6 +80,13 @@ export async function ensureCirclePod(circleId, policy) {
 // multi-member sealing (the joiner's sealing key is wrapped into the group key). Pass to
 // bootAgentBundle as `stoopControlAgent`. V0: routes to a live (opened) circle's producer.
 export const circleControlAgentRouter = createCircleControlAgentRouter((id) => circlePods.get(id) ?? null);
+
+/** Ensure a circle's producer, then seed its group-key roster with prior members (web parity). */
+export async function seedCircleRosterFor({ circleId, policy, callSkill }) {
+  const prod = await ensureCirclePod(circleId, policy);
+  if (!prod?.controlAgent) return 0;
+  return seedCircleRoster({ callSkill, circleId, router: circleControlAgentRouter });
+}
 
 /** Resolve (+ cache) a circle's content seal/open strategy via the device's own sealing identity. */
 export async function getCircleSealStrategy(circleId, policy) {

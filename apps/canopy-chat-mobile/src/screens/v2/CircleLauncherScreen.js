@@ -71,7 +71,7 @@ import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
 import { interpretToCommand } from '../../../../canopy-chat/src/v2/interpretCommand.js';
 import { scopeStoopCallSkill } from '../../../../canopy-chat/src/v2/circleStoopScope.js';
-import { getCircleSealStrategy } from '../../core/circlePods.js';
+import { getCircleSealStrategy, seedCircleRosterFor } from '../../core/circlePods.js';
 // M6 — the feedback bot rides the SHARED mount (web uses the same one). tryHandle routes /feedback +
 // /feedback-stop + free text while active, before the circle bot; bubbles render via appendKringMessage.
 import { createFeedbackMount } from '../../../../canopy-chat/src/feedback/feedbackMount.js';
@@ -1424,6 +1424,13 @@ function CircleDetail({
     () => scopeStoopCallSkill(rawCallSkill, circle?.id, () => getCircleSealStrategy(circle?.id, policy)),
     [rawCallSkill, circle?.id, policy],
   );
+  // S4 — seed a sealed circle's group-key roster with members who joined before the producer
+  // was live (web parity with showKring). Best-effort; no-op for unsealed circles.
+  useEffect(() => {
+    if (circle?.id && typeof rawCallSkill === 'function') {
+      seedCircleRosterFor({ circleId: circle.id, policy, callSkill: rawCallSkill }).catch(() => {});
+    }
+  }, [circle?.id, rawCallSkill, policy]);
   // P6.1 — Functies-axis gating for the overflow menu items.
   const showRules    = isFeatureEnabled(policy, 'houseRules');
   const showViewAs   = isFeatureEnabled(policy, 'memberDirectory');
