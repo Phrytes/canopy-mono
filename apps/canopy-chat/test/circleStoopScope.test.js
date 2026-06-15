@@ -1,0 +1,84 @@
+/**
+ * Per-circle stoop scoping (S4 GUI slice) — scopeStoopCallSkill injects the active
+ * circle id as the stoop scope key on writes and filters list reads to the circle,
+ * so each circle's prikbord is isolated through the ONE shared stoop agent (not N
+ * agents). Mirrors the dispatch-path scopeReadyDispatch for the direct-callSkill path.
+ */
+import { describe, it, expect, vi } from 'vitest';
+import {
+  scopeStoopCallSkill, keepForCircle, SCOPED_WRITE_OPS, SCOPED_LIST_OPS,
+} from '../src/v2/circleStoopScope.js';
+
+describe('keepForCircle', () => {
+  it('keeps everything when no active circle', () => {
+    expect(keepForCircle({ groupId: 'b' }, null)).toBe(true);
+  });
+  it('keeps an item with no circle hint (op already scoped it)', () => {
+    expect(keepForCircle({ id: 'x' }, 'circle-a')).toBe(true);
+  });
+  it('keeps a matching hint, drops a non-matching one', () => {
+    expect(keepForCircle({ groupId: 'circle-a' }, 'circle-a')).toBe(true);
+    expect(keepForCircle({ groupId: 'circle-b' }, 'circle-a')).toBe(false);
+    expect(keepForCircle({ crewId: 'circle-a' }, 'circle-a')).toBe(true);  // crewId alias
+  });
+});
+
+describe('scopeStoopCallSkill', () => {
+  it('returns the original callSkill when circleId is null', () => {
+    const cs = vi.fn();
+    expect(scopeStoopCallSkill(cs, null)).toBe(cs);
+  });
+
+  it('injects groupId on a write op (postRequest)', async () => {
+    const cs = vi.fn().mockResolvedValue({ ok: true });
+    const scoped = scopeStoopCallSkill(cs, 'circle-a');
+    await scoped('stoop', 'postRequest', { intent: 'ask', text: 'hoi' });
+    expect(cs).toHaveBeenCalledWith('stoop', 'postRequest', { intent: 'ask', text: 'hoi', groupId: 'circle-a' });
+  });
+
+  it('injects groupId on every scoped mutate op', async () => {
+    const cs = vi.fn().mockResolvedValue({ ok: true });
+    const scoped = scopeStoopCallSkill(cs, 'circle-a');
+    for (const op of ['respondToItem', 'cancelRequest', 'markReturned', 'assignLend', 'reportPost']) {
+      await scoped('stoop', op, { itemId: 'p1' });
+    }
+    for (const call of cs.mock.calls) expect(call[2].groupId).toBe('circle-a');
+    expect(SCOPED_WRITE_OPS.has('postRequest')).toBe(true);
+  });
+
+  it('does NOT clobber an explicit scope the caller set', async () => {
+    const cs = vi.fn().mockResolvedValue({});
+    const scoped = scopeStoopCallSkill(cs, 'circle-a');
+    await scoped('stoop', 'postRequest', { text: 'x', groupId: 'circle-explicit' });
+    expect(cs.mock.calls[0][2].groupId).toBe('circle-explicit');
+  });
+
+  it('filters a list read to the active circle (keeps null-hint items)', async () => {
+    const cs = vi.fn().mockResolvedValue({ items: [
+      { id: '1', groupId: 'circle-a' },
+      { id: '2', groupId: 'circle-b' },
+      { id: '3' },                         // no hint → kept (already scoped upstream)
+    ] });
+    const scoped = scopeStoopCallSkill(cs, 'circle-a');
+    const res = await scoped('stoop', 'listOpen', {});
+    expect(res.items.map((i) => i.id)).toEqual(['1', '3']);
+    expect(SCOPED_LIST_OPS.has('listOpen')).toBe(true);
+  });
+
+  it('does not inject/filter for a non-stoop app, and passes mutePeer through unscoped', async () => {
+    const cs = vi.fn().mockResolvedValue({ items: [{ id: '1', groupId: 'circle-b' }] });
+    const scoped = scopeStoopCallSkill(cs, 'circle-a');
+    await scoped('tasks-v0', 'listOpen', { x: 1 });
+    expect(cs).toHaveBeenLastCalledWith('tasks-v0', 'listOpen', { x: 1 });   // untouched
+    await scoped('stoop', 'mutePeer', { peerWebid: 'did:bob' });
+    expect(cs.mock.calls.at(-1)[2]).toEqual({ peerWebid: 'did:bob' });       // not a scoped op → no groupId
+  });
+
+  it('passes a non-list stoop read through (whoAmI) unscoped + unfiltered', async () => {
+    const cs = vi.fn().mockResolvedValue({ webid: 'did:me' });
+    const scoped = scopeStoopCallSkill(cs, 'circle-a');
+    const res = await scoped('stoop', 'whoAmI', {});
+    expect(res).toEqual({ webid: 'did:me' });
+    expect(cs.mock.calls[0][2]).toEqual({});
+  });
+});

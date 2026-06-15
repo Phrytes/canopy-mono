@@ -18,6 +18,7 @@
 
 import { initLocalisation, t, detectDeviceLang, currentLang,
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
+  scopeStoopCallSkill,
   canopyChatManifest, AppRegistry, filterCatalog } from '../../src/index.js';
 // Phase 5 — bot + feedback in the kring composer (mirrors mobile CircleLauncherScreen, on the shared
 // engine). The circle bot stack:
@@ -1444,9 +1445,11 @@ function showKring(id, circle, policy) {
   let screenBlocks = null;
   let seq = 0;
 
-  // S1 #1 — noticeboard (prikbord tab). Lazy-loaded when the tab opens; backed by
-  // the shared stoop buurt's `listOpen` (per-circle scoping arrives with the pod
-  // foundation, §4 E2). `mine` drives the author-only [Withdraw] chip.
+  // S1 #1 — noticeboard (prikbord tab). Lazy-loaded when the tab opens. Backed by
+  // stoop's `listOpen`/`postRequest`, but SCOPED to THIS circle: `stoopCall` injects
+  // the circle id as the stoop scope key on writes and filters list reads to the
+  // circle (S4 per-circle restructure — one shared agent, per-circle scope key).
+  const stoopCall = scopeStoopCallSkill(rawCallSkill, id);
   let noticeboardPosts = [];
   let noticeboardIntent = 'ask';
   let noticeboardBusy = false;
@@ -1463,7 +1466,7 @@ function showKring(id, circle, policy) {
   async function loadNoticeboard() {
     try {
       await ensureMyWebid();
-      const res = await rawCallSkill('stoop', 'listOpen', {});
+      const res = await stoopCall('stoop', 'listOpen', {});
       const items = Array.isArray(res?.items) ? res.items : [];
       noticeboardPosts = items.map((it) => ({
         id:           it.id,
@@ -1479,7 +1482,7 @@ function showKring(id, circle, policy) {
 
   async function noticeboardPost({ intent, text, dueAt }) {
     noticeboardBusy = true; rerender();
-    try { await rawCallSkill('stoop', 'postRequest', { intent, text, ...(dueAt ? { dueAt } : {}) }); }
+    try { await stoopCall('stoop', 'postRequest', { intent, text, ...(dueAt ? { dueAt } : {}) }); }
     catch { globalThis.alert?.(t('circle.noticeboard.post_failed')); }
     noticeboardBusy = false;
     await loadNoticeboard();
@@ -1490,13 +1493,13 @@ function showKring(id, circle, policy) {
       if (action === 'respond') {
         const body = (globalThis.prompt?.(t('circle.noticeboard.respond_prompt')) || '').trim();
         if (!body) return;
-        await rawCallSkill('stoop', 'respondToItem', { itemId: post.id, body });
+        await stoopCall('stoop', 'respondToItem', { itemId: post.id, body });
       } else if (action === 'cancel') {
-        await rawCallSkill('stoop', 'cancelRequest', { requestId: post.id });
+        await stoopCall('stoop', 'cancelRequest', { requestId: post.id });
       } else if (action === 'report') {
-        await rawCallSkill('stoop', 'reportPost', { itemId: post.id });
+        await stoopCall('stoop', 'reportPost', { itemId: post.id });
       } else if (action === 'markReturned') {
-        await rawCallSkill('stoop', 'markReturned', { requestId: post.id });
+        await stoopCall('stoop', 'markReturned', { requestId: post.id });
       } else if (action === 'mute') {
         // S3 #9 — mute the post's author (local-only; filters the kring stream).
         if (post.addedBy) await rawCallSkill('stoop', 'mutePeer', { peerWebid: post.addedBy });
@@ -1504,7 +1507,7 @@ function showKring(id, circle, policy) {
         // S3 #4 — lender assigns a borrower to a lend post.
         const borrowerWebid = (globalThis.prompt?.(t('circle.noticeboard.assign_prompt')) || '').trim();
         if (!borrowerWebid) return;
-        await rawCallSkill('stoop', 'assignLend', { itemId: post.id, borrowerWebid });
+        await stoopCall('stoop', 'assignLend', { itemId: post.id, borrowerWebid });
       }
     } catch { /* best-effort; the reload reflects the real state */ }
     await loadNoticeboard();
@@ -1692,8 +1695,10 @@ function showKring(id, circle, policy) {
         // materializers call `callSkill(appOrigin, opId, args)` (3-arg), so this
         // MUST be the raw 3-arg dispatch — the 2-arg `resolveCallSkill` resolver
         // would mis-read the appOrigin as the opId (#16: this also un-breaks the
-        // tasks/agenda scherm blocks, which had the same latent bug).
-        hostOps:  { callSkill: rawCallSkill, eventLog, circles: circlesCache, policy, actionFrequency },
+        // tasks/agenda scherm blocks, which had the same latent bug). `stoopCall`
+        // keeps the 3-arg contract and scopes the noticeboard block to THIS circle
+        // (non-stoop ops pass through unchanged).
+        hostOps:  { callSkill: stoopCall, eventLog, circles: circlesCache, policy, actionFrequency },
       });
       screenBlocks = blocks;
       if (getActiveCircle() === id) rerender();
