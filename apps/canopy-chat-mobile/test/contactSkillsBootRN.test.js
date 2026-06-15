@@ -12,7 +12,8 @@ import { describe, it, expect, vi } from 'vitest';
 
 import { createContactSkillRegistry } from '../../canopy-chat/src/v2/contactSkillsLive.js';
 import { createContactThreadChannel } from '../../canopy-chat/src/v2/contactThreadChannel.js';
-import { listContacts } from '../../canopy-chat/src/v2/contactsSource.js';
+import { makePeerRouter } from '../../canopy-chat/src/core/handlers/peerRouter.js';
+import { listContacts, mergeContacts, stoopContactToRow } from '../../canopy-chat/src/v2/contactsSource.js';
 import { addBotToGraph } from '../../canopy-chat/src/v2/addBot.js';
 import { sendA2ATask } from '../../../packages/core/src/a2a/a2aTaskSend.js';
 import { PeerGraph } from '../../../packages/core/src/discovery/PeerGraph.js';
@@ -51,6 +52,23 @@ describe('contact-skill registry — mobile parity', () => {
     const ch = createContactThreadChannel({ sendToPeer: (addr, p) => sent.push({ addr, p }) });
     ch.sendTurn({ peerAddr: 'NKNADDR', threadId: rows[0].contactId, text: 'hoi' });
     expect(sent[0]).toMatchObject({ addr: 'NKNADDR', p: { subtype: 'contact-msg', text: 'hoi' } });
+  });
+
+  it('S1 #2/#3 deps resolve: merge stoop contacts + inbound peer DM (mobile import paths)', async () => {
+    // #2 — the directory merge the RN ContactsScreen uses.
+    expect(typeof mergeContacts).toBe('function');
+    const peerRows = [{ contactId: 'bot', name: 'Bot', isBot: true }];
+    const stoopRows = [{ webid: 'w-alice', displayName: 'Alice', trustLevel: 'vertrouwd', tags: ['buur'] }].map(stoopContactToRow);
+    const merged = mergeContacts(peerRows, stoopRows);
+    expect(merged.map((r) => r.name)).toEqual(['Bot', 'Alice']);   // bot first, then person
+    expect(merged[1]).toMatchObject({ isBot: false, trustLevel: 'vertrouwd', tags: ['buur'] });
+
+    // #3 — inbound peer DM (contact-msg) routes via the channel's messageHandler.
+    const inbox = [];
+    const ch = createContactThreadChannel({ sendToPeer: () => {} });
+    const router = makePeerRouter({ handlers: { [ch.subtypes.out]: ch.messageHandler((m) => inbox.push(m)) } });
+    router({ from: 'alice', payload: { subtype: 'contact-msg', text: 'hoi buurman' } });
+    expect(inbox[0]).toMatchObject({ fromAddr: 'alice', text: 'hoi buurman' });
   });
 
   it('a discovered bot routes a dispatch to it; removing it removes the skills', async () => {

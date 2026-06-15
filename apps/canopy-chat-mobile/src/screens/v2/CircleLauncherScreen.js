@@ -111,6 +111,7 @@ import CircleRecipeEditorScreen from './CircleRecipeEditorScreen.js';
 import CircleScreensPickerScreen from './CircleScreensPickerScreen.js';
 import ContactsScreen from './ContactsScreen.js';
 import ContactThreadScreen from './ContactThreadScreen.js';
+import CircleNoticeboard from './CircleNoticeboard.js';
 
 // B (circle bot) — host LLM route for NL→command in the kring. Mirrors web's VITE_CIRCLE_LLM_BASEURL
 // + the feedback mobile EXPO_PUBLIC_FEEDBACK_LLM_BASEURL pattern. Unset → no provider → the LLM branch
@@ -1828,6 +1829,9 @@ function CircleDetail({
           // handles per-block status (ok / empty / error) + top-level
           // empty-state when no recipe is set up yet.
           <CircleScreenView blocks={screenBlocks} onAction={onScreenAction} />
+        ) : activeTab === 'prikbord' ? (
+          // S1 #1 — the buurt noticeboard (its own composer + post list).
+          <CircleNoticeboard callSkill={bundle?.callSkill} />
         ) : activeTab !== 'gesprek' ? (
           <Text style={styles.placeholder}>
             {t('circle.kring.tab_coming', { tab: t(`circle.tabs.${activeTab}`) })}
@@ -1850,7 +1854,9 @@ function CircleDetail({
           deeper follow-up (would need the chat-shell composition).
           SP-13.4 — composer suppressed in scherm-mode (recept page is
           not a chat surface). */}
-      {viewMode !== 'scherm' && !canPost ? (
+      {/* S1 #1 — the noticeboard (prikbord) tab owns its own composer. */}
+      {viewMode !== 'scherm' && activeTab === 'prikbord' ? null
+      : viewMode !== 'scherm' && !canPost ? (
         /* Permission gate — chat disabled for this circle; read-only note in place of the composer. */
         <Text style={styles.composerDisabled} testID="circle-detail-composer-disabled">
           {t('circle.kring.chat_disabled')}

@@ -491,8 +491,11 @@ export default function ChatScreen({
       // P5 — a contact-bot's reply in its Contacten DM thread → the shared inbox
       // the open ContactThreadScreen subscribes to (cross-screen, like the kring
       // chat wire).  Guarded: the channel is absent in stub-mode boots.
+      // S1 #3 — also an inbound PEER DM (contact-msg): a person's message lands in
+      // the same inbox (the thread screen routes it by sender address).
       ...(contactChannel ? {
-        [contactChannel.subtypes.in]: contactChannel.replyHandler((reply) => pushContactReply(reply)),
+        [contactChannel.subtypes.in]:  contactChannel.replyHandler((reply) => pushContactReply(reply)),
+        [contactChannel.subtypes.out]: contactChannel.messageHandler((msg) => pushContactReply(msg)),
       } : {}),
       // NOTE: the legacy buurt-post peer-poll path
       // (`makeHandleCatchUpRequest`) handled the same `catch-up-request`

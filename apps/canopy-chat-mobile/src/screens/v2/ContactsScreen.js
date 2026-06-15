@@ -11,19 +11,29 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
-import { listContacts } from '../../../../canopy-chat/src/v2/contactsSource.js';
+import { listContacts, mergeContacts, stoopContactToRow } from '../../../../canopy-chat/src/v2/contactsSource.js';
 import { addBotToGraph } from '../../../../canopy-chat/src/v2/addBot.js';
 
 export default function ContactsScreen({ bundle, onOpen }) {
   const peerGraph = bundle?.peerGraph ?? null;
+  const callSkill = bundle?.callSkill ?? null;
   const [contacts, setContacts] = useState([]);
   const [addOpen, setAddOpen] = useState(false);
   const [addText, setAddText] = useState('');
   const [error, setError] = useState(false);
 
+  // S1 #2 — the unified directory: PeerGraph bots/peers merged with the stoop
+  // ContactBook (people the user added, with trust/tags). Same shared helpers as web.
   const reload = useCallback(async () => {
-    try { setContacts(await listContacts(peerGraph)); } catch { setContacts([]); }
-  }, [peerGraph]);
+    try {
+      const [peerRows, stoopRes] = await Promise.all([
+        listContacts(peerGraph).catch(() => []),
+        (typeof callSkill === 'function' ? callSkill('stoop', 'listContacts', {}) : Promise.resolve(null)).catch(() => null),
+      ]);
+      const stoopRows = (Array.isArray(stoopRes?.contacts) ? stoopRes.contacts : []).map(stoopContactToRow).filter(Boolean);
+      setContacts(mergeContacts(peerRows, stoopRows));
+    } catch { setContacts([]); }
+  }, [peerGraph, callSkill]);
 
   // Load on mount + whenever the graph changes (a bot added/discovered/removed).
   useEffect(() => {
@@ -106,6 +116,9 @@ function rosterMeta(c) {
   const bits = [];
   if (c.isBot) bits.push(t('circle.contacts.bot'));
   if (c.isBot && c.skillCount > 0) bits.push(t('circle.contacts.skills', { count: c.skillCount }));
+  // S1 #2 — a ContactBook person's trust level + tags.
+  if (!c.isBot && c.trustLevel) bits.push(t(`circle.contacts.trust.${c.trustLevel}`));
+  if (!c.isBot && Array.isArray(c.tags) && c.tags.length) bits.push(c.tags.join(', '));
   if (!c.reachable) bits.push(t('circle.contacts.offline'));
   return bits.join(' · ');
 }
