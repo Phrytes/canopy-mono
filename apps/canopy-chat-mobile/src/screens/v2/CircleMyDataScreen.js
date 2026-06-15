@@ -1,21 +1,35 @@
 /**
  * canopy-chat-mobile v2 — "My data" screen (RN, S5 parity).
  *
- * RN mirror of web's circleMyData: a read-only surface (where your data lives via
- * getDataLocation + podSignInStatus, the getPrivacyNotice disclosure, and a
- * getMetrics usage snapshot). Self-contained: loads the stoop ops via the injected
- * `callSkill`. No mutations (backup/mnemonic + the OIDC sign-in flow are separate).
+ * RN mirror of web's circleMyData: where your data lives (getDataLocation +
+ * podSignInStatus), the getPrivacyNotice disclosure, a getMetrics usage snapshot,
+ * and the S5 key-management actions (back up · reveal recovery phrase · restore).
+ * Self-contained: loads + mutates via the injected stoop-capable `callSkill`.
+ * The backup/restore flows reuse the existing RN wizard modals — no reimpl.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Modal } from 'react-native';
 import { t, currentLang } from '../../core/localisation.js';
 import { theme } from './theme.js';
+import EncryptedBackupWizardModal from '../../../../canopy-chat/src/rn/wizards/encryptedBackupWizardModal.js';
+import RestoreFromMnemonicWizardModal from '../../../../canopy-chat/src/rn/wizards/restoreFromMnemonicWizardModal.js';
 
 export default function CircleMyDataScreen({ callSkill, onBack }) {
   const [dataLocation, setDataLocation] = useState({});
   const [podStatus, setPodStatus] = useState({});
   const [privacy, setPrivacy] = useState([]);
   const [metrics, setMetrics] = useState({});
+  const [wizard, setWizard] = useState(null);          // 'backup' | 'restore' | null
+  const [mnemonic, setMnemonic] = useState(null);      // { words } | null when closed
+
+  const revealMnemonic = useCallback(async () => {
+    let words = '';
+    try {
+      const res = await callSkill('stoop', 'getMnemonicOnce', {});
+      if (res && !res.error) words = res.mnemonic ?? res.phrase ?? res.words ?? '';
+    } catch { words = ''; }
+    setMnemonic({ words: Array.isArray(words) ? words.join(' ') : String(words || '') });
+  }, [callSkill]);
 
   const load = useCallback(async () => {
     if (typeof callSkill !== 'function') return;
@@ -49,6 +63,18 @@ export default function CircleMyDataScreen({ callSkill, onBack }) {
         {relay ? <KV k={t('circle.mydata.relay')} v={relay} /> : null}
       </Section>
 
+      <Section title={t('circle.mydata.keys')}>
+        <Pressable style={styles.action} onPress={() => setWizard('backup')} testID="mydata-backup">
+          <Text style={styles.actionLabel}>{t('circle.mydata.backup')}</Text>
+        </Pressable>
+        <Pressable style={styles.action} onPress={revealMnemonic} testID="mydata-mnemonic">
+          <Text style={styles.actionLabel}>{t('circle.mydata.view_mnemonic')}</Text>
+        </Pressable>
+        <Pressable style={[styles.action, styles.actionMuted]} onPress={() => setWizard('restore')} testID="mydata-restore">
+          <Text style={styles.actionMutedLabel}>{t('circle.mydata.restore')}</Text>
+        </Pressable>
+      </Section>
+
       {privacy.length > 0 && (
         <Section title={t('circle.mydata.privacy')}>
           {privacy.map((s, i) => (
@@ -65,6 +91,27 @@ export default function CircleMyDataScreen({ callSkill, onBack }) {
           {usage.map(([k, v]) => <KV key={k} k={k} v={typeof v === 'object' ? JSON.stringify(v) : String(v)} />)}
         </Section>
       )}
+
+      <EncryptedBackupWizardModal visible={wizard === 'backup'} callSkill={callSkill} t={t} onClose={() => setWizard(null)} onDispatched={() => {}} />
+      <RestoreFromMnemonicWizardModal visible={wizard === 'restore'} callSkill={callSkill} t={t} onClose={() => setWizard(null)} onDispatched={() => {}} />
+
+      {/* S5 — one-time recovery-phrase reveal (stoop getMnemonicOnce). */}
+      <Modal visible={!!mnemonic} animationType="fade" transparent onRequestClose={() => setMnemonic(null)}>
+        <Pressable style={styles.mBackdrop} onPress={() => setMnemonic(null)}>
+          <Pressable style={styles.mCard} onPress={(e) => e.stopPropagation()} testID="mydata-mnemonic-reveal">
+            <Text style={styles.mTitle}>{t('circle.mydata.mnemonic_title')}</Text>
+            {mnemonic?.words
+              ? (<>
+                  <Text style={styles.mWarn}>{t('circle.mydata.mnemonic_warn')}</Text>
+                  <Text style={styles.mWords} selectable>{mnemonic.words}</Text>
+                </>)
+              : (<Text style={styles.mWarn}>{t('circle.mydata.mnemonic_none')}</Text>)}
+            <Pressable style={styles.action} onPress={() => setMnemonic(null)}>
+              <Text style={styles.actionLabel}>{t('circle.mydata.close')}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -100,4 +147,13 @@ const styles = StyleSheet.create({
   privacy: { gap: 2 },
   privacyTitle: { fontSize: 13, fontWeight: '600', color: theme.color.ink },
   privacyBody: { fontSize: 13, color: theme.color.inkSoft, lineHeight: 18 },
+  action: { alignSelf: 'flex-start', borderWidth: 1, borderColor: theme.color.accent, borderRadius: theme.radius.md, paddingVertical: 8, paddingHorizontal: 14 },
+  actionLabel: { fontSize: 13, fontWeight: '600', color: theme.color.accent },
+  actionMuted: { borderColor: theme.color.line },
+  actionMutedLabel: { fontSize: 13, fontWeight: '600', color: theme.color.inkSoft },
+  mBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 20 },
+  mCard: { backgroundColor: theme.color.paper, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.line, padding: 18, gap: 12 },
+  mTitle: { fontFamily: theme.font.serif, fontSize: 18, fontWeight: '600', color: theme.color.ink },
+  mWarn: { fontSize: 13, color: theme.color.inkSoft, lineHeight: 18 },
+  mWords: { fontSize: 15, lineHeight: 24, color: theme.color.ink, borderWidth: 1, borderColor: theme.color.line, borderStyle: 'dashed', borderRadius: theme.radius.md, padding: 12 },
 });
