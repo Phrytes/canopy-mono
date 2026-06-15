@@ -130,6 +130,7 @@ export function createContactSkillRegistry({ peerGraph, sendTask, onChange, isCo
       router,
       peerUrl,
       name: peer.name ?? peer.label ?? contactId,
+      cards,
       skillIds: new Set(cards.map((c) => c.id)),
     };
   }
@@ -193,6 +194,17 @@ export function createContactSkillRegistry({ peerGraph, sendTask, onChange, isCo
     return byContact.get(contactId)?.sources ?? [];
   }
 
+  /**
+   * The skill cards a contact exposes (`[{ id, description?, tags? }]`) — for a
+   * DM thread to render the bot's skills as in-thread quick actions. Empty when
+   * the contact has no discovered skills (a plain conversational bot/peer).
+   */
+  function skillsFor(contactId) {
+    return (byContact.get(contactId)?.cards ?? []).map((c) => ({
+      id: c.id, description: c.description ?? '', tags: Array.isArray(c.tags) ? c.tags : [],
+    }));
+  }
+
   /** Roster of contacts that currently expose skills (for a contact picker). */
   function contacts() {
     return [...byContact.entries()].map(([contactId, e]) => ({
@@ -214,7 +226,7 @@ export function createContactSkillRegistry({ peerGraph, sendTask, onChange, isCo
     byContact.clear();
   }
 
-  return { callSkill, sources, sourcesFor, contacts, has, refresh, start, dispose };
+  return { callSkill, sources, sourcesFor, skillsFor, contacts, has, refresh, start, dispose };
 }
 
 /**

@@ -66,6 +66,24 @@ describe('createContactSkillRegistry — discovery → sources', () => {
     reg.dispose();
   });
 
+  it('skillsFor(contactId) returns the bot’s skill cards for in-thread quick actions', async () => {
+    const peers = new PeerGraph();
+    const reg = createContactSkillRegistry({ peerGraph: peers, sendTask: vi.fn() });
+    await reg.start();
+    await peers.upsert(botPeer('https://bot.example', [
+      { id: 'summarise', description: 'Summarise the thread', tags: ['nlp'] },
+      'sentiment',
+    ]));
+    await reg.refresh();
+    const skills = reg.skillsFor('https://bot.example');
+    expect(skills).toEqual([
+      { id: 'summarise', description: 'Summarise the thread', tags: ['nlp'] },
+      { id: 'sentiment', description: '', tags: [] },
+    ]);
+    expect(reg.skillsFor('https://nope.example')).toEqual([]);   // unknown contact
+    reg.dispose();
+  });
+
   it("an op no contact owns falls through (callSkill → undefined)", async () => {
     const peers = new PeerGraph();
     const reg = createContactSkillRegistry({ peerGraph: peers, sendTask: vi.fn() });

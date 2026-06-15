@@ -748,11 +748,41 @@ async function showContactThread(contactId) {
   const thread = contactThreads.get(contactId);
   thread.name = name; thread.peerAddr = peerAddr;
 
+  // #13 — the bot's P4 skills, shown as in-thread quick actions. Tapping one (or
+  // typing `/<skill> args`) DISPATCHES it to the bot via the P4 registry
+  // (sendA2ATask), distinct from a free-text conversational turn over the channel.
+  const skills = circleContactSkills?.skillsFor?.(contactId) ?? [];
+
   let busy = false; let error = false;
+
+  // Dispatch a named skill to this bot and append its reply.
+  async function runSkill(skillId, args = {}) {
+    error = false;
+    thread.messages.push({ origin: 'user', text: `/${skillId}` });
+    busy = true; rerender();
+    try {
+      const res = await circleContactSkills.callSkill(contactId, skillId, args);
+      const text = replyTextFromResult(res);
+      if (text) thread.messages.push({ origin: 'bot', text });
+    } catch {
+      error = true;
+    } finally {
+      busy = false; rerender();
+    }
+  }
+
   const rerender = () => renderContactThread(rootEl, {
-    name, messages: thread.messages, busy, error, t,
+    name, messages: thread.messages, skills, busy, error, t,
     onBack: showContacts,
+    onSkillTap: (sk) => runSkill(sk.id),
     onSend: async (text) => {
+      // `/skill args` → dispatch as a skill; otherwise a conversational turn.
+      if (text.startsWith('/')) {
+        const sp = text.slice(1).indexOf(' ');
+        const skillId = sp === -1 ? text.slice(1) : text.slice(1, sp + 1);
+        const rest = sp === -1 ? '' : text.slice(sp + 2).trim();
+        if (skills.some((s) => s.id === skillId)) { await runSkill(skillId, rest ? { text: rest } : {}); return; }
+      }
       error = false;
       thread.messages.push({ origin: 'user', text });
       busy = true; rerender();
@@ -770,6 +800,21 @@ async function showContactThread(contactId) {
   });
   _activeContactThread = { contactId, rerender };
   rerender();
+}
+
+// #13 — pull human-readable text out of a remote-skill result (the channel's
+// sendTask resolves to the A2A Task's `{ parts }`; a part is `{ text }` or a
+// string). Falls back to a JSON string so nothing is silently dropped.
+function replyTextFromResult(res) {
+  if (res == null) return '';
+  if (typeof res === 'string') return res;
+  if (typeof res.text === 'string') return res.text;
+  const parts = Array.isArray(res.parts) ? res.parts : null;
+  if (parts) {
+    const text = parts.map((p) => (typeof p === 'string' ? p : p?.text ?? '')).filter(Boolean).join('\n');
+    if (text) return text;
+  }
+  try { return JSON.stringify(res); } catch { return ''; }
 }
 
 // P5 — inbound bot reply handler (registered under the channel's IN subtype in

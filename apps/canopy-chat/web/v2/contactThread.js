@@ -13,12 +13,14 @@
 export function renderContactThread(container, {
   name = '',
   messages = [],
+  skills = [],
   busy = false,
   error = null,
   t,
   onSend,
   onBack,
   onButtonTap,
+  onSkillTap,
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -80,6 +82,23 @@ export function renderContactThread(container, {
     err.className = 'cc-cthread__error';
     err.textContent = tr('circle.contacts.send_failed', { name });
     container.appendChild(err);
+  }
+
+  // ── skill quick-actions (P5/#13) — the bot's exposed P4 skills as chips ──────
+  if (Array.isArray(skills) && skills.length) {
+    const skillRow = document.createElement('div');
+    skillRow.className = 'cc-cthread__skills';
+    for (const sk of skills) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'cc-cthread__skill';
+      chip.dataset.skillId = sk.id;
+      chip.textContent = `/${sk.id}`;
+      if (sk.description) chip.title = sk.description;
+      chip.addEventListener('click', () => { if (typeof onSkillTap === 'function') onSkillTap(sk); });
+      skillRow.appendChild(chip);
+    }
+    container.appendChild(skillRow);
   }
 
   // ── composer ──────────────────────────────────────────────────────────────

@@ -63,4 +63,22 @@ describe('renderContactThread', () => {
     el.querySelector('.cc-cthread__back').click();
     expect(onBack).toHaveBeenCalled();
   });
+
+  it('renders the bot’s skills as /chips + a tap fires onSkillTap (P4 in-thread)', () => {
+    const onSkillTap = vi.fn();
+    const el = renderContactThread(document.createElement('div'), {
+      name: 'Bot', t, onSkillTap,
+      skills: [{ id: 'summarise', description: 'Summarise' }, { id: 'sentiment' }],
+    });
+    const chips = el.querySelectorAll('.cc-cthread__skill');
+    expect([...chips].map((c) => c.textContent)).toEqual(['/summarise', '/sentiment']);
+    expect(chips[0].title).toBe('Summarise');
+    chips[0].click();
+    expect(onSkillTap).toHaveBeenCalledWith({ id: 'summarise', description: 'Summarise' });
+  });
+
+  it('omits the skills row when the contact exposes none', () => {
+    const el = renderContactThread(document.createElement('div'), { name: 'Bot', t, skills: [] });
+    expect(el.querySelector('.cc-cthread__skills')).toBeNull();
+  });
 });
