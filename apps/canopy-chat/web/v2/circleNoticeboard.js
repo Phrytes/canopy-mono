@@ -23,6 +23,10 @@ export function renderCircleNoticeboard(container, {
   onPost,
   onAction,
   onIntent,
+  attachment = null,        // S5 — the pending image attachment ({thumbnail, name}) or null
+  onAttach,                 // (file) => void — host encodes + sets the pending attachment
+  onClearAttach,            // () => void
+  onViewAttachment,         // ({post, att}) => void — open the full image
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -53,12 +57,55 @@ export function renderCircleNoticeboard(container, {
   input.className = 'cc-prikbord__input';
   input.placeholder = tr(`circle.noticeboard.placeholder.${intent}`);
   row.appendChild(input);
+  // S5 — attach an inline image (gated on the host wiring the encoder).
+  let fileInput = null;
+  if (typeof onAttach === 'function') {
+    const attachBtn = document.createElement('button');
+    attachBtn.type = 'button';
+    attachBtn.className = 'cc-prikbord__attach';
+    attachBtn.title = tr('circle.noticeboard.attach');
+    attachBtn.textContent = '📎';
+    fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/png,image/jpeg,image/webp';
+    fileInput.className = 'cc-prikbord__file';
+    fileInput.style.display = 'none';
+    fileInput.addEventListener('change', () => {
+      const f = fileInput.files && fileInput.files[0];
+      if (f) onAttach(f);
+      fileInput.value = '';
+    });
+    attachBtn.addEventListener('click', () => fileInput.click());
+    row.appendChild(attachBtn);
+    row.appendChild(fileInput);
+  }
   const post = document.createElement('button');
   post.type = 'submit';
   post.className = 'cc-prikbord__post';
   post.textContent = tr('circle.noticeboard.post');
   row.appendChild(post);
   composer.appendChild(row);
+
+  // S5 — pending-attachment preview (thumbnail + remove).
+  if (attachment && attachment.thumbnail) {
+    const preview = document.createElement('div');
+    preview.className = 'cc-prikbord__attach-preview';
+    const img = document.createElement('img');
+    img.className = 'cc-prikbord__attach-thumb';
+    img.src = attachment.thumbnail;
+    img.alt = attachment.name || tr('circle.noticeboard.attach');
+    preview.appendChild(img);
+    if (typeof onClearAttach === 'function') {
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'cc-prikbord__attach-remove';
+      rm.textContent = '✕';
+      rm.setAttribute('aria-label', tr('circle.noticeboard.attach_remove'));
+      rm.addEventListener('click', () => onClearAttach());
+      preview.appendChild(rm);
+    }
+    composer.appendChild(preview);
+  }
 
   // S3 #4 — a lend post can carry a return-by date (drives the notifier reminder).
   let due = null;
@@ -78,7 +125,7 @@ export function renderCircleNoticeboard(container, {
   composer.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = input.value.trim();
-    if (!text) return;
+    if (!text && !attachment) return;   // S5 — an image-only post is valid
     input.value = '';
     const dueAt = due?.value ? Date.parse(due.value) : undefined;
     if (typeof onPost === 'function') onPost({ intent, text, ...(Number.isFinite(dueAt) ? { dueAt } : {}) });
@@ -117,6 +164,28 @@ export function renderCircleNoticeboard(container, {
     text.className = 'cc-prikbord__text';
     text.textContent = p.text ?? p.label ?? '';
     li.appendChild(text);
+
+    // S5 — inline image attachments: render the thumbnail; tap opens the full image.
+    const atts = Array.isArray(p.attachments) ? p.attachments : [];
+    if (atts.length) {
+      const gallery = document.createElement('div');
+      gallery.className = 'cc-prikbord__attachments';
+      for (const att of atts) {
+        if (!att?.thumbnail) continue;
+        const img = document.createElement('img');
+        img.className = 'cc-prikbord__att';
+        img.src = att.thumbnail;
+        img.alt = tr('circle.noticeboard.attach');
+        img.loading = 'lazy';
+        if (att.width && att.height) img.style.aspectRatio = `${att.width} / ${att.height}`;
+        if (typeof onViewAttachment === 'function') {
+          img.style.cursor = 'zoom-in';
+          img.addEventListener('click', () => onViewAttachment({ post: p, att }));
+        }
+        gallery.appendChild(img);
+      }
+      if (gallery.childNodes.length) li.appendChild(gallery);
+    }
 
     const meta = document.createElement('div');
     meta.className = 'cc-prikbord__meta';

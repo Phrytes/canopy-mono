@@ -1756,7 +1756,11 @@
     "assign_prompt": { "text": "Borrower WebID:", "doc": "S3 — prompt for the borrower when assigning a lend." },
     "posted":      { "text": "Posted.", "doc": "S1 — toast after a post is created." },
     "post_failed": { "text": "Couldn’t post — try again.", "doc": "S1 — shown when postRequest fails." },
-    "respond_prompt": { "text": "Your reply to this post:", "doc": "S1 — prompt when responding to a post (respondToItem)." }
+    "respond_prompt": { "text": "Your reply to this post:", "doc": "S1 — prompt when responding to a post (respondToItem)." },
+    "attach":          { "text": "Attach image", "doc": "S5 — composer attach-image button." },
+    "attach_remove":   { "text": "Remove image", "doc": "S5 — remove the pending attachment." },
+    "attach_failed":   { "text": "Couldn’t attach that image.", "doc": "S5 — image encode failed." },
+    "attach_fetching": { "text": "Fetching the full image…", "doc": "S5 — recipient is fetching full bytes." }
   },
   "profile": {
     "title":       { "text": "Me", "doc": "S2 — heading of the profile (Mij) screen." },

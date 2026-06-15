@@ -84,4 +84,52 @@ describe('renderCircleNoticeboard', () => {
     const el = renderCircleNoticeboard(document.createElement('div'), { posts: [], t, busy: true });
     expect(el.querySelector('.cc-prikbord__busy').textContent).toBe('circle.noticeboard.posting');
   });
+
+  // ── S5 attachments ──────────────────────────────────────────────────────────
+  it('shows the attach button only when onAttach is wired; a file pick fires onAttach', () => {
+    const bare = renderCircleNoticeboard(document.createElement('div'), { posts: [], t });
+    expect(bare.querySelector('.cc-prikbord__attach')).toBeNull();
+
+    const onAttach = vi.fn();
+    const el = renderCircleNoticeboard(document.createElement('div'), { posts: [], t, onAttach });
+    const file = new File(['x'], 'pic.jpg', { type: 'image/jpeg' });
+    const input = el.querySelector('.cc-prikbord__file');
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    expect(onAttach).toHaveBeenCalledWith(file);
+  });
+
+  it('previews a pending attachment + remove fires onClearAttach', () => {
+    const onClearAttach = vi.fn();
+    const el = renderCircleNoticeboard(document.createElement('div'), {
+      posts: [], t, onAttach: () => {}, onClearAttach,
+      attachment: { thumbnail: 'data:image/jpeg;base64,AAA', name: 'pic.jpg' },
+    });
+    expect(el.querySelector('.cc-prikbord__attach-thumb').src).toContain('data:image/jpeg;base64,AAA');
+    el.querySelector('.cc-prikbord__attach-remove').click();
+    expect(onClearAttach).toHaveBeenCalled();
+  });
+
+  it('lets an image-only post submit (no text) when an attachment is pending', () => {
+    const onPost = vi.fn();
+    const el = renderCircleNoticeboard(document.createElement('div'), {
+      posts: [], t, intent: 'offer', onPost, onAttach: () => {},
+      attachment: { thumbnail: 'data:image/jpeg;base64,AAA' },
+    });
+    el.querySelector('.cc-prikbord__composer').dispatchEvent(new Event('submit'));
+    expect(onPost).toHaveBeenCalledWith({ intent: 'offer', text: '' });
+  });
+
+  it('renders post thumbnails; a tap fires onViewAttachment', () => {
+    const onViewAttachment = vi.fn();
+    const el = renderCircleNoticeboard(document.createElement('div'), {
+      t, onViewAttachment,
+      posts: [{ id: 'p9', type: 'offer', text: 'free chair', mine: false,
+        attachments: [{ id: 'a1', thumbnail: 'data:image/jpeg;base64,TTT', width: 100, height: 80 }] }],
+    });
+    const img = el.querySelector('.cc-prikbord__att');
+    expect(img.src).toContain('data:image/jpeg;base64,TTT');
+    img.click();
+    expect(onViewAttachment).toHaveBeenCalledWith({ post: expect.objectContaining({ id: 'p9' }), att: expect.objectContaining({ id: 'a1' }) });
+  });
 });

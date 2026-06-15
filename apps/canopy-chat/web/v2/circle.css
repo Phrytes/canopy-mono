@@ -623,6 +623,21 @@
   padding: 10px 16px; border-radius: var(--radius);
   background: var(--accent); border: 1px solid var(--accent); color: #fff;
 }
+.cc-prikbord__attach {
+  cursor: pointer; font-size: 16px; line-height: 1; padding: 0 12px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink-soft);
+}
+.cc-prikbord__attach-preview { position: relative; display: inline-flex; margin-top: 8px; }
+.cc-prikbord__attach-thumb { max-width: 96px; max-height: 96px; border-radius: var(--radius); border: 1px solid var(--line); display: block; }
+.cc-prikbord__attach-remove {
+  position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; cursor: pointer;
+  border-radius: 50%; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 12px; line-height: 1;
+}
+.cc-prikbord__attachments { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0; }
+.cc-prikbord__att { max-width: 160px; max-height: 160px; border-radius: var(--radius); border: 1px solid var(--line); object-fit: cover; }
+.cc-image-modal { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; background: rgba(0,0,0,.8); cursor: zoom-out; }
+.cc-image-modal__img { max-width: 100%; max-height: 90vh; border-radius: var(--radius); box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+.cc-image-modal__note { color: #fff; font-size: 13px; opacity: .85; }
 .cc-prikbord__busy { font-size: 12px; color: var(--ink-soft); font-style: italic; }
 .cc-prikbord__empty { color: var(--ink-soft); font-size: 14px; padding: 12px 4px; }
 .cc-prikbord__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }

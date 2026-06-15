@@ -1756,7 +1756,11 @@
     "assign_prompt": { "text": "WebID van de lener:", "doc": "S3 — prompt for the borrower when assigning a lend." },
     "posted":      { "text": "Geplaatst.", "doc": "S1 — toast after a post is created." },
     "post_failed": { "text": "Kon niet plaatsen — probeer opnieuw.", "doc": "S1 — shown when postRequest fails." },
-    "respond_prompt": { "text": "Je reactie op dit bericht:", "doc": "S1 — prompt when responding to a post (respondToItem)." }
+    "respond_prompt": { "text": "Je reactie op dit bericht:", "doc": "S1 — prompt when responding to a post (respondToItem)." },
+    "attach":          { "text": "Afbeelding toevoegen", "doc": "S5 — composer attach-image button." },
+    "attach_remove":   { "text": "Afbeelding verwijderen", "doc": "S5 — remove the pending attachment." },
+    "attach_failed":   { "text": "Kon die afbeelding niet toevoegen.", "doc": "S5 — image encode failed." },
+    "attach_fetching": { "text": "Volledige afbeelding ophalen…", "doc": "S5 — recipient is fetching full bytes." }
   },
   "profile": {
     "title":       { "text": "Mij", "doc": "S2 — heading of the profile (Mij) screen." },

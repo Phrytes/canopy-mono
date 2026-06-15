@@ -66,6 +66,9 @@ import { renderRestoreFromMnemonicWizard } from '../../src/web/wizards/restoreFr
 // S5 — web-push subscription orchestration (client half; server delivery is a
 // Node-hosted stoop with VAPID keys). The SW receiver lives at web/sw.js.
 import { enableWebPush, disableWebPush, getWebPushState } from '../../src/web/webPushClient.js';
+// S5 — client-side image-attachment encoder (Canvas resize + thumbnail → the
+// inbound shape stoop.postRequest expects).
+import { encodeImageFile } from '../../src/v2/attachmentEncoder.js';
 import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
@@ -1529,6 +1532,25 @@ async function showMnemonicReveal() {
   document.body.appendChild(overlay);
 }
 
+// S5 — full-size image viewer for a prikbord attachment, in a dismissable overlay.
+function showImageModal(src, { pending = false } = {}) {
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-image-modal';
+  const img = document.createElement('img');
+  img.className = 'cc-image-modal__img';
+  img.src = src;
+  img.alt = t('circle.noticeboard.attach');
+  overlay.appendChild(img);
+  if (pending) {
+    const note = document.createElement('div');
+    note.className = 'cc-image-modal__note';
+    note.textContent = t('circle.noticeboard.attach_fetching');
+    overlay.appendChild(note);
+  }
+  overlay.addEventListener('click', () => { try { overlay.remove(); } catch { /* */ } });
+  document.body.appendChild(overlay);
+}
+
 // S2 — availability/quiet-hours/hopping (the former Mij body), now a sub-screen of Mij.
 async function showAvailability() {
   let working = await availabilityStore.get();
@@ -1637,6 +1659,7 @@ function showKring(id, circle, policy) {
   let noticeboardPosts = [];
   let noticeboardIntent = 'ask';
   let noticeboardBusy = false;
+  let noticeboardPendingAttachment = null;   // S5 — { encoded, thumbnail, name } before posting
   let myWebid = null;   // fetched once, best-effort (whoAmI is a stoop skill, not chat-manifested)
 
   async function ensureMyWebid() {
@@ -1659,17 +1682,54 @@ function showKring(id, circle, policy) {
         addedBy:      it.addedBy,
         addedByLabel: shortWebid(it.addedBy),
         mine:         !!(myWebid && it.addedBy === myWebid),
+        // S5 — carry inline-image metadata (thumbnail travels; full bytes on demand).
+        attachments:  Array.isArray(it.attachments) ? it.attachments
+                      : (Array.isArray(it.source?.attachments) ? it.source.attachments : []),
       }));
     } catch { noticeboardPosts = []; }
     rerender();
   }
 
+  // S5 — encode a picked image into the inbound-attachment shape + hold it pending.
+  async function noticeboardAttach(file) {
+    try {
+      const encoded = await encodeImageFile(file);
+      if (!encoded) return;
+      noticeboardPendingAttachment = { encoded, thumbnail: encoded.thumbnail, name: file?.name || '' };
+    } catch (err) {
+      globalThis.alert?.(t('circle.noticeboard.attach_failed', { defaultValue: err?.message ?? 'attach failed' }));
+      noticeboardPendingAttachment = null;
+    }
+    rerender();
+  }
+
   async function noticeboardPost({ intent, text, dueAt }) {
     noticeboardBusy = true; rerender();
-    try { await stoopCall('stoop', 'postRequest', { intent, text, ...(dueAt ? { dueAt } : {}) }); }
+    const pending = noticeboardPendingAttachment;
+    try {
+      await stoopCall('stoop', 'postRequest', {
+        intent, text,
+        ...(dueAt ? { dueAt } : {}),
+        ...(pending ? { attachments: [pending.encoded] } : {}),
+      });
+      noticeboardPendingAttachment = null;   // consumed on success; keep it on failure so the user can retry
+    }
     catch { globalThis.alert?.(t('circle.noticeboard.post_failed')); }
     noticeboardBusy = false;
     await loadNoticeboard();
+  }
+
+  // S5 — open an attachment full-size. The author has the bytes locally
+  // (getAttachmentDataUrl); a recipient triggers a fetch (requestAttachment) and
+  // the 'stoop:attachment-fetched' listener re-renders when the bytes arrive.
+  async function noticeboardViewAttachment({ post, att }) {
+    let res = null;
+    try { res = await rawCallSkill('stoop', 'getAttachmentDataUrl', { itemId: post.id, attId: att.id }); }
+    catch { res = null; }
+    if (res?.dataUrl) { showImageModal(res.dataUrl); return; }
+    // No local bytes yet — ask the author for them, show the thumbnail meanwhile.
+    try { await rawCallSkill('stoop', 'requestAttachment', { itemId: post.id, attId: att.id }); } catch { /* */ }
+    showImageModal(att.thumbnail, { pending: true });
   }
 
   async function noticeboardAction({ action, post }) {
@@ -1730,6 +1790,11 @@ function showKring(id, circle, policy) {
         onPost:   noticeboardPost,
         onAction: noticeboardAction,
         onIntent: (it) => { noticeboardIntent = it; rerender(); },
+        // S5 — inline image attachments.
+        attachment:       noticeboardPendingAttachment,
+        onAttach:         noticeboardAttach,
+        onClearAttach:    () => { noticeboardPendingAttachment = null; rerender(); },
+        onViewAttachment: noticeboardViewAttachment,
       },
       // Multi-field inline form (mobile parity). When a kring dispatch trips needsForm with 2+ missing
       // fields, `circlePendingFormFollowUp` holds the shared `PendingFormFollowUp`; the view renders an
