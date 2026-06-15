@@ -94,10 +94,29 @@ export function createContactThreadChannel({
    * @returns {(fromAddr: string, payload: object) => void}
    */
   function replyHandler(onReply) {
-    return function onContactReply(fromAddr, payload) {
-      if (!payload || payload.subtype !== subtypes.in) return;   // not ours
-      if (typeof onReply !== 'function') return;
-      onReply({
+    return makeInboundHandler(subtypes.in, onReply);
+  }
+
+  /**
+   * Build a `makePeerRouter`-compatible handler for an INBOUND PEER TURN (S1 #3 —
+   * peer↔peer DM). A bot answers with `subtypes.in` (`contact-reply`); a PERSON
+   * DMs you with the SAME `subtypes.out` (`contact-msg`) they'd send anywhere —
+   * peer DM is symmetric. Register this under `subtypes.out` so a peer's message
+   * lands in your thread with them (routed by sender address, since their
+   * `threadId` is their own view, not yours). Same normalised shape as a reply.
+   *
+   * @param {(msg: { fromAddr: string, threadId?: string, text: string, buttons?: object[], replyTo?: string, messageId?: string }) => void} onMessage
+   * @returns {(fromAddr: string, payload: object) => void}
+   */
+  function messageHandler(onMessage) {
+    return makeInboundHandler(subtypes.out, onMessage);
+  }
+
+  function makeInboundHandler(subtype, cb) {
+    return function onContactInbound(fromAddr, payload) {
+      if (!payload || payload.subtype !== subtype) return;   // not ours
+      if (typeof cb !== 'function') return;
+      cb({
         fromAddr,
         threadId:  payload.threadId,
         text:      payload.text ?? '',
@@ -108,5 +127,5 @@ export function createContactThreadChannel({
     };
   }
 
-  return { sendTurn, replyHandler, subtypes };
+  return { sendTurn, replyHandler, messageHandler, subtypes };
 }

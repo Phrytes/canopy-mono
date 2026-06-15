@@ -833,16 +833,30 @@ function replyTextFromResult(res) {
   try { return JSON.stringify(res); } catch { return ''; }
 }
 
-// P5 — inbound bot reply handler (registered under the channel's IN subtype in
-// the peer router).  Routes by threadId when the bot echoes it, else by the
-// sender address (== the contactId for a native peer); appends a bot bubble and
-// re-renders if that thread is on screen.
+// P5/S1 #3 — inbound handler for a bot reply (contact-reply) AND a peer DM
+// (contact-msg). Routes by threadId when echoed, else by the sender address (==
+// the contactId for a native peer); appends the other party's bubble and
+// re-renders if that thread is on screen. For a brand-new thread (someone DMs you
+// first), resolves their display name from the merged directory, best-effort.
 function onContactReply({ fromAddr, threadId, text, buttons }) {
   const contactId = (threadId && contactThreads.has(threadId)) ? threadId : fromAddr;
   let thread = contactThreads.get(contactId);
-  if (!thread) { thread = { name: contactId, peerAddr: fromAddr, messages: [] }; contactThreads.set(contactId, thread); }
+  const isNew = !thread;
+  if (isNew) { thread = { name: contactId, peerAddr: fromAddr, messages: [] }; contactThreads.set(contactId, thread); }
   thread.messages.push({ origin: 'bot', text, buttons });
   if (_activeContactThread?.contactId === contactId) _activeContactThread.rerender();
+  // Resolve a friendlier name for an unsolicited inbound thread (fire-and-forget).
+  if (isNew) {
+    loadAllContacts()
+      .then((rows) => {
+        const row = rows.find((c) => c.contactId === contactId);
+        if (row?.name && row.name !== contactId) {
+          thread.name = row.name;
+          if (_activeContactThread?.contactId === contactId) _activeContactThread.rerender();
+        }
+      })
+      .catch(() => {});
+  }
 }
 
 // P6.3 — seenAt persistence: bumped on showDetail(id) so unread counts
@@ -2195,8 +2209,13 @@ async function boot() {
           'catch-up-end':            catchUpReceiver.onPeerMessage,
           // P5 — a contact-bot's reply in its 1:1 DM thread (guarded: the channel
           // is null if buildCircleBot threw, and must not break the peer router).
+          // S1 #3 — also handle an inbound PEER DM (contact-msg): a person's message
+          // lands in the thread with them (onContactReply routes by sender addr).
           ...(circleContactChannel
-            ? { [circleContactChannel.subtypes.in]: circleContactChannel.replyHandler(onContactReply) }
+            ? {
+                [circleContactChannel.subtypes.in]:  circleContactChannel.replyHandler(onContactReply),
+                [circleContactChannel.subtypes.out]: circleContactChannel.messageHandler(onContactReply),
+              }
             : {}),
         },
       });

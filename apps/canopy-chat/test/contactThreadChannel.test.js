@@ -108,3 +108,40 @@ describe('createContactThreadChannel — subtype injection (repo-boundary decoup
     expect(DEFAULT_CONTACT_SUBTYPES).toEqual({ out: 'contact-msg', in: 'contact-reply' });
   });
 });
+
+describe('createContactThreadChannel — messageHandler (S1 #3 peer DM)', () => {
+  it('routes an inbound contact-msg (a peer DMing you) to onMessage', () => {
+    const onMessage = vi.fn();
+    const ch = createContactThreadChannel({ sendToPeer: () => {} });
+    const router = makePeerRouter({ handlers: { [ch.subtypes.out]: ch.messageHandler(onMessage) } });
+    router({ from: 'alice', payload: { subtype: 'contact-msg', text: 'hoi buurman', messageId: 'a-1' } });
+    expect(onMessage).toHaveBeenCalledWith(expect.objectContaining({ fromAddr: 'alice', text: 'hoi buurman' }));
+    // a contact-reply does NOT trigger the message handler
+    onMessage.mockClear();
+    router({ from: 'bob', payload: { subtype: 'contact-reply', text: 'x' } });
+    expect(onMessage).not.toHaveBeenCalled();
+  });
+
+  it('peer↔peer round-trip: Alice ↔ Bob over a fake mesh (both speak contact-msg)', async () => {
+    // in-process mesh: sendTo(addr,payload) → addr's router({from, payload})
+    const handlers = new Map();
+    const peerFor = (self) => ({ sendTo: async (to, payload) => handlers.get(to)?.({ from: self, payload }) });
+
+    const aliceInbox = [];
+    const bobInbox = [];
+    const aliceCh = createContactThreadChannel({ sendToPeer: (addr, p) => peerFor('alice').sendTo(addr, p) });
+    const bobCh   = createContactThreadChannel({ sendToPeer: (addr, p) => peerFor('bob').sendTo(addr, p) });
+    handlers.set('alice', makePeerRouter({ handlers: { [aliceCh.subtypes.out]: aliceCh.messageHandler((m) => aliceInbox.push(m)) } }));
+    handlers.set('bob',   makePeerRouter({ handlers: { [bobCh.subtypes.out]:   bobCh.messageHandler((m) => bobInbox.push(m)) } }));
+
+    // Alice → Bob
+    await aliceCh.sendTurn({ peerAddr: 'bob', threadId: 'bob', text: 'heb jij een boormachine?' }).sent;
+    expect(bobInbox).toHaveLength(1);
+    expect(bobInbox[0]).toMatchObject({ fromAddr: 'alice', text: 'heb jij een boormachine?' });
+
+    // Bob → Alice (reply, also a contact-msg — symmetric)
+    await bobCh.sendTurn({ peerAddr: 'alice', threadId: 'alice', text: 'ja hoor, kom maar langs' }).sent;
+    expect(aliceInbox).toHaveLength(1);
+    expect(aliceInbox[0]).toMatchObject({ fromAddr: 'bob', text: 'ja hoor, kom maar langs' });
+  });
+});
