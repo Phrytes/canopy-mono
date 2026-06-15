@@ -167,3 +167,30 @@ export function createCircleControlAgentRouter(getProducer) {
     },
   };
 }
+
+/**
+ * Seed a sealed circle's group-key roster with members who joined BEFORE its producer was
+ * live: list the circle's members (`listGroupMembers` now surfaces each joiner's
+ * `sealingPublicKey` from the redemption trail) and route each through the control-agent
+ * router so the group key is wrapped to them too. Idempotent-ish (re-wrapping an existing
+ * recipient is harmless). Best-effort; needs a live producer for `circleId` in the router.
+ *
+ * @param {{ callSkill:Function, circleId:string, router:{addMember:Function} }} a
+ * @returns {Promise<number>} how many members were (re)wrapped.
+ */
+export async function seedCircleRoster({ callSkill, circleId, router } = {}) {
+  if (typeof callSkill !== 'function' || !circleId || typeof router?.addMember !== 'function') return 0;
+  let members = [];
+  try {
+    const res = await callSkill('stoop', 'listGroupMembers', { groupId: circleId });
+    members = Array.isArray(res?.members) ? res.members : [];
+  } catch { return 0; }
+  let n = 0;
+  for (const m of members) {
+    if (m?.webid && m?.sealingPublicKey) {
+      try { await router.addMember({ webId: m.webid, publicKey: m.sealingPublicKey, role: m.role, groupId: circleId }); n += 1; }
+      catch { /* best-effort per member */ }
+    }
+  }
+  return n;
+}

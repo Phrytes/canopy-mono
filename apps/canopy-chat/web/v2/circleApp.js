@@ -18,7 +18,7 @@
 
 import { initLocalisation, t, detectDeviceLang, currentLang,
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
-  scopeStoopCallSkill, createCirclePodProducer, createCircleControlAgentRouter, realPodRouting,
+  scopeStoopCallSkill, createCirclePodProducer, createCircleControlAgentRouter, realPodRouting, seedCircleRoster,
   canopyChatManifest, AppRegistry, filterCatalog } from '../../src/index.js';
 // S4 pod foundation — per-circle sealed storage producer. The pod-client + in-memory
 // pseudo-pod machinery is web-layer (kept out of the shared src so it stays portable);
@@ -1547,8 +1547,11 @@ function showKring(id, circle, policy) {
   // seal post bodies at rest / open them on read via the per-circle content strategy.
   const stoopCall = scopeStoopCallSkill(rawCallSkill, id, () => getCircleSealStrategy(id, policy));
   // Stand up this circle's pod producer (sealing identity + control agent for a sealed
-  // posture). Best-effort + fire-and-forget; never blocks the kring.
-  ensureCirclePod(id, policy).catch(() => { /* best-effort; plain shared path on failure */ });
+  // posture), then seed its group-key roster with members who joined before it was live.
+  // Best-effort + fire-and-forget; never blocks the kring.
+  ensureCirclePod(id, policy)
+    .then((prod) => { if (prod?.controlAgent) return seedCircleRoster({ callSkill: rawCallSkill, circleId: id, router: circleControlAgentRouter }); })
+    .catch(() => { /* best-effort; plain shared path on failure */ });
   let noticeboardPosts = [];
   let noticeboardIntent = 'ask';
   let noticeboardBusy = false;

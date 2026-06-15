@@ -74,6 +74,16 @@ describe('Stoop V1 Phase 16 — listGroupMembers', () => {
     expect(b.members.map(m => m.webid).sort()).toEqual([ANNE, CARLA].sort());
   });
 
+  it('surfaces each joiner\'s sealingPublicKey from the redemption trail (for roster seeding)', async () => {
+    const bundle = await buildAgentAs('admin');
+    await bundle.itemStore.addItems([
+      { type: 'membership-redemption', text: 'r', source: { groupId: 'circle-a', redeemedBy: BOB, sealingPublicKey: 'SEAL-BOB' }, visibility: 'household' },
+    ], { actor: ANNE });
+    const r = await callSkill(bundle.agent, 'listGroupMembers', { groupId: 'circle-a' });
+    expect(r.members.find((m) => m.webid === BOB)?.sealingPublicKey).toBe('SEAL-BOB');
+    expect(r.members.find((m) => m.webid === ANNE)?.sealingPublicKey).toBeUndefined();   // founder, no redemption
+  });
+
   it('falls back to the full roster when a group has no redemption data (legacy single-buurt)', async () => {
     const bundle = await buildAgentAs('admin');
     await bundle.itemStore.addItems([

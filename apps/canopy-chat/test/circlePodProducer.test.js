@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { PodClient, createSealedPodClient, generateKeypair } from '@canopy/pod-client';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { createCirclePodProducer, createCircleControlAgentRouter } from '../src/v2/circlePodProducer.js';
+import { createCirclePodProducer, createCircleControlAgentRouter, seedCircleRoster } from '../src/v2/circlePodProducer.js';
 
 class MemVault {
   #m = new Map();
@@ -108,6 +108,31 @@ describe('createCirclePodProducer', () => {
     // leave → revoke + rotate; bob can no longer unwrap (forward secrecy)
     await router.removeMember({ webId: 'did:bob', groupId: 'rg' });
     await expect(prod.controlAgent.sealingStrategy(bob.privateKey)).rejects.toThrow();
+  });
+
+  it('seedCircleRoster wraps the group key to members who joined before the producer was live', async () => {
+    const vault = new MemVault();
+    const bob = generateKeypair();
+    const prod = await createCirclePodProducer({ circleId: 'seed', storagePosture: 'p2', vault, generateKeypair, makePodClient });
+    const pods = new Map([['seed', prod]]);
+    const router = createCircleControlAgentRouter((id) => pods.get(id) ?? null);
+    await expect(prod.controlAgent.sealingStrategy(bob.privateKey)).rejects.toThrow();   // not a recipient yet
+
+    // listGroupMembers surfaces bob with his sealing public key (from the redemption trail)
+    const callSkill = async (app, op) => (op === 'listGroupMembers'
+      ? { members: [{ webid: 'did:bob', sealingPublicKey: bob.publicKey, role: 'member' }, { webid: 'did:anne', role: 'admin' }] }
+      : {});
+    const n = await seedCircleRoster({ callSkill, circleId: 'seed', router });
+    expect(n).toBe(1);   // only bob had a sealing key
+
+    const self = await prod.sealingIdentity.ensure();
+    const sealed = (await prod.controlAgent.sealingStrategy(self.privateKey)).seal('voor iedereen');
+    expect((await prod.controlAgent.sealingStrategy(bob.privateKey)).open(sealed)).toBe('voor iedereen');
+  });
+
+  it('seedCircleRoster no-ops without callSkill / router / members', async () => {
+    expect(await seedCircleRoster({})).toBe(0);
+    expect(await seedCircleRoster({ callSkill: async () => ({ members: [] }), circleId: 'x', router: { addMember: async () => {} } })).toBe(0);
   });
 
   it('router no-ops for an unknown / unsealed circle', async () => {

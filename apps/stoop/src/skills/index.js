@@ -2700,10 +2700,19 @@ export function buildSkills({
       const forGroup = redemptions.filter((i) => i?.source?.groupId === _groupId);
       if (forGroup.length === 0) return { groupId: _groupId, members: list };
       const joined = new Set(forGroup.map((i) => i?.source?.redeemedBy).filter(Boolean));
-      const scoped = list.filter((m) => joined.has(m.webid) || m.role === 'admin' || m.role === 'coordinator');
+      // webid → the sealing PUBLIC key the joiner published on redeem — lets a sealed circle's
+      // producer seed its group-key roster with members who joined before it was live.
+      const sealKeys = new Map();
+      for (const r of forGroup) {
+        const { redeemedBy, sealingPublicKey } = r?.source ?? {};
+        if (redeemedBy && sealingPublicKey && !sealKeys.has(redeemedBy)) sealKeys.set(redeemedBy, sealingPublicKey);
+      }
+      const scoped = list
+        .filter((m) => joined.has(m.webid) || m.role === 'admin' || m.role === 'coordinator')
+        .map((m) => (sealKeys.has(m.webid) ? { ...m, sealingPublicKey: sealKeys.get(m.webid) } : m));
       return { groupId: _groupId, members: scoped };
     }, {
-      description: 'List the members of a group (handles, displayName per Reveals, role).',
+      description: 'List the members of a group (handles, displayName per Reveals, role; sealingPublicKey when known).',
       visibility:  'authenticated',
     }),
 
