@@ -71,6 +71,7 @@ import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
 import { interpretToCommand } from '../../../../canopy-chat/src/v2/interpretCommand.js';
 import { scopeStoopCallSkill } from '../../../../canopy-chat/src/v2/circleStoopScope.js';
+import { getCircleSealStrategy } from '../../core/circlePods.js';
 // M6 — the feedback bot rides the SHARED mount (web uses the same one). tryHandle routes /feedback +
 // /feedback-stop + free text while active, before the circle bot; bubbles render via appendKringMessage.
 import { createFeedbackMount } from '../../../../canopy-chat/src/feedback/feedbackMount.js';
@@ -1420,8 +1421,8 @@ function CircleDetail({
   // dispatch is the `rawCallSkill` PROP (the parent's `bundle.callSkill`) — `bundle`
   // is not in scope in this component.
   const stoopCall = useMemo(
-    () => scopeStoopCallSkill(rawCallSkill, circle?.id),
-    [rawCallSkill, circle?.id],
+    () => scopeStoopCallSkill(rawCallSkill, circle?.id, () => getCircleSealStrategy(circle?.id, policy)),
+    [rawCallSkill, circle?.id, policy],
   );
   // P6.1 — Functies-axis gating for the overflow menu items.
   const showRules    = isFeatureEnabled(policy, 'houseRules');

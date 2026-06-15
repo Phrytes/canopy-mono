@@ -51,6 +51,7 @@ import { buildCirclePodWriter } from './src/core/circleStoresRN.js';
 // One store per app; shared between ChatScreen (receiver) and
 // CircleLauncherScreen (editor pull + send-side clear).
 import { makeKringRecipePendingStoreRN } from './src/core/kringRecipePendingStorageRN.js';
+import { initCirclePods } from './src/core/circlePods.js';
 // γ-next.rules — per-kring pending-rules cache (AsyncStorage-backed).
 // Mirrors the recipe wire: ChatScreen writes via the receiver,
 // CircleLauncherScreen reads on rules-screen open + clears after the
@@ -138,6 +139,9 @@ export default function App() {
   if (!kringRecipePendingStoreRef.current) {
     kringRecipePendingStoreRef.current = makeKringRecipePendingStoreRN(AsyncStorage);
   }
+  // S4 — wire the durable AsyncStorage vault for per-circle pod producers (sealing
+  // identities + group keys); enables content sealing on a p2/p3 circle (web parity).
+  initCirclePods(AsyncStorage);
   // γ-next.recipe — shared LRU dedup for the recipe-broadcast handler.
   const kringRecipeDedupRef = useRef(null);
   if (!kringRecipeDedupRef.current) {
