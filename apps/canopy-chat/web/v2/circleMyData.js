@@ -21,6 +21,8 @@ export function renderCircleMyData(container, {
   onBackup,
   onViewMnemonic,
   onRestore,
+  notifications,
+  onToggleNotifications,
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -83,6 +85,27 @@ export function renderCircleMyData(container, {
       keys.appendChild(b);
     }
     container.appendChild(keys);
+  }
+
+  // ── notifications (S5 web-push) ─────────────────────────────────────────────
+  if (typeof onToggleNotifications === 'function') {
+    const n = notifications || {};
+    const notif = section(tr('circle.mydata.notifications'));
+    const sub = document.createElement('p');
+    sub.className = 'cc-mydata__notif-status';
+    sub.textContent = !n.supported
+      ? tr('circle.mydata.notif_unsupported')
+      : n.subscribed ? tr('circle.mydata.notif_on') : tr('circle.mydata.notif_off');
+    notif.appendChild(sub);
+    if (n.supported) {
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'cc-mydata__action cc-mydata__notif-toggle';
+      toggle.textContent = n.subscribed ? tr('circle.mydata.notif_disable') : tr('circle.mydata.notif_enable');
+      toggle.addEventListener('click', () => onToggleNotifications());
+      notif.appendChild(toggle);
+    }
+    container.appendChild(notif);
   }
 
   // ── privacy ────────────────────────────────────────────────────────────────

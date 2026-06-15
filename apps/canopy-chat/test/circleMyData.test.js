@@ -73,6 +73,34 @@ describe('renderCircleMyData', () => {
     expect(onRestore).toHaveBeenCalled();
   });
 
+  it('renders the push-notification toggle reflecting subscription state', () => {
+    const onToggleNotifications = vi.fn();
+    const off = renderCircleMyData(document.createElement('div'), {
+      t, notifications: { supported: true, subscribed: false }, onToggleNotifications,
+    });
+    const enable = off.querySelector('.cc-mydata__notif-toggle');
+    expect(enable.textContent).toBe('circle.mydata.notif_enable');
+    enable.click();
+    expect(onToggleNotifications).toHaveBeenCalled();
+
+    const on = renderCircleMyData(document.createElement('div'), {
+      t, notifications: { supported: true, subscribed: true }, onToggleNotifications,
+    });
+    expect(on.querySelector('.cc-mydata__notif-toggle').textContent).toBe('circle.mydata.notif_disable');
+
+    // unsupported: status shown, no toggle button
+    const no = renderCircleMyData(document.createElement('div'), {
+      t, notifications: { supported: false }, onToggleNotifications,
+    });
+    expect(no.querySelector('.cc-mydata__notif-toggle')).toBeNull();
+    expect(no.textContent).toContain('circle.mydata.notif_unsupported');
+  });
+
+  it('omits the notifications section when no toggle handler is wired', () => {
+    const el = renderCircleMyData(document.createElement('div'), { t, notifications: { supported: true } });
+    expect(el.querySelector('.cc-mydata__notif-status')).toBeNull();
+  });
+
   it('fires onBack', () => {
     const onBack = vi.fn();
     const el = renderCircleMyData(document.createElement('div'), { t, onBack });

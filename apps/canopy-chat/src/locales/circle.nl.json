@@ -1799,7 +1799,13 @@
     "mnemonic_title":{ "text": "Herstelzin", "doc": "S5 — heading of the reveal-mnemonic dialog." },
     "mnemonic_warn": { "text": "Schrijf deze woorden op en bewaar ze ergens veilig. Iedereen met deze zin kan jouw identiteit herstellen. Hij wordt maar één keer getoond.", "doc": "S5 — reveal-mnemonic warning." },
     "mnemonic_none": { "text": "Op dit apparaat is geen herstelzin beschikbaar.", "doc": "S5 — reveal-mnemonic empty state." },
-    "close":         { "text": "Sluiten", "doc": "S5 — close a my-data dialog." }
+    "close":         { "text": "Sluiten", "doc": "S5 — close a my-data dialog." },
+    "notifications":   { "text": "Meldingen", "doc": "S5 — web-push section heading." },
+    "notif_on":        { "text": "Push-meldingen staan aan op dit apparaat.", "doc": "S5 — push subscribed state." },
+    "notif_off":       { "text": "Krijg een melding bij reacties en kringactiviteit, ook als dit tabblad dicht is.", "doc": "S5 — push not-subscribed state." },
+    "notif_unsupported": { "text": "Deze browser ondersteunt geen push-meldingen.", "doc": "S5 — push unsupported." },
+    "notif_enable":    { "text": "Meldingen aanzetten", "doc": "S5 — subscribe to web push." },
+    "notif_disable":   { "text": "Meldingen uitzetten", "doc": "S5 — unsubscribe from web push." }
   },
   "admin": {
     "title":      { "text": "Beheer", "doc": "S3 — group admin panel title + ⋯ menu entry." },

@@ -63,6 +63,9 @@ import { renderCircleMyData } from './circleMyData.js';
 // (the slash/page renderers) inside My-data, mounted in a lightweight overlay.
 import { renderEncryptedBackupWizard } from '../../src/web/wizards/encryptedBackupWizard.js';
 import { renderRestoreFromMnemonicWizard } from '../../src/web/wizards/restoreFromMnemonicWizard.js';
+// S5 — web-push subscription orchestration (client half; server delivery is a
+// Node-hosted stoop with VAPID keys). The SW receiver lives at web/sw.js.
+import { enableWebPush, disableWebPush, getWebPushState } from '../../src/web/webPushClient.js';
 import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
@@ -1436,7 +1439,21 @@ async function showMyData() {
   const onBackup = () => mountMyDataWizard(renderEncryptedBackupWizard);
   const onRestore = () => mountMyDataWizard(renderRestoreFromMnemonicWizard);
   const onViewMnemonic = () => showMnemonicReveal();
-  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore });
+  // S5 — web-push toggle. State is read from the live PushManager so the screen
+  // reflects reality; toggling subscribes/unsubscribes + tells stoop.
+  let notifications = { supported: false, permission: 'default', subscribed: false };
+  const onToggleNotifications = async () => {
+    const res = notifications.subscribed
+      ? await disableWebPush({ callSkill: rawCallSkill })
+      : await enableWebPush({ callSkill: rawCallSkill });
+    if (!res.ok && res.reason && res.reason !== 'denied') {
+      globalThis.alert?.(t(`circle.mydata.notif_err_${res.reason.replace(/-/g, '_')}`, { defaultValue: res.reason }));
+    }
+    notifications = await getWebPushState();
+    rerender();
+  };
+  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications });
+  getWebPushState().then((s) => { notifications = s; rerender(); }).catch(() => {});
   rerender();
   const [loc, status, priv, met] = await Promise.all([
     rawCallSkill('stoop', 'getDataLocation', {}).catch(() => null),
@@ -2369,6 +2386,11 @@ async function boot() {
   tabBarEl = document.getElementById('circle-tabbar');
   await initLocalisation({ lng: detectDeviceLang() });
   renderCircleLauncher(rootEl, { loading: true, t });
+
+  // S5 — register the web-push service worker (root-scoped /sw.js). Best-effort:
+  // it makes `serviceWorker.ready` resolve so the My-data push toggle can read
+  // live subscription state; actual subscription happens on user opt-in.
+  try { navigator.serviceWorker?.register('/sw.js').catch(() => {}); } catch { /* unsupported */ }
 
   // S4 circle OIDC — complete an incoming Solid sign-in redirect / restore a saved session
   // (reuses src/web/podAuth.js). When signed in, sealed circles + stoop's items route to the

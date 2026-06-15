@@ -728,3 +728,4 @@
 .cc-mydata-mnemonic h3 { margin: 0 0 8px; }
 .cc-mydata-mnemonic__warn { font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
 .cc-mydata-mnemonic__words { margin: 10px 0 14px; padding: 12px; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--paper-soft, transparent); font-size: 15px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; user-select: all; }
+.cc-mydata__notif-status { font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.4; }

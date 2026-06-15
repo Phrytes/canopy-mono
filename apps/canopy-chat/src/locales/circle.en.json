@@ -1799,7 +1799,13 @@
     "mnemonic_title":{ "text": "Recovery phrase", "doc": "S5 — heading of the reveal-mnemonic dialog." },
     "mnemonic_warn": { "text": "Write these words down and keep them somewhere safe. Anyone with this phrase can restore your identity. It is shown only once.", "doc": "S5 — reveal-mnemonic warning." },
     "mnemonic_none": { "text": "No recovery phrase is available on this device.", "doc": "S5 — reveal-mnemonic empty state." },
-    "close":         { "text": "Close", "doc": "S5 — close a my-data dialog." }
+    "close":         { "text": "Close", "doc": "S5 — close a my-data dialog." },
+    "notifications":   { "text": "Notifications", "doc": "S5 — web-push section heading." },
+    "notif_on":        { "text": "Push notifications are on for this device.", "doc": "S5 — push subscribed state." },
+    "notif_off":       { "text": "Get notified about replies and circle activity even when this tab is closed.", "doc": "S5 — push not-subscribed state." },
+    "notif_unsupported": { "text": "This browser does not support push notifications.", "doc": "S5 — push unsupported." },
+    "notif_enable":    { "text": "Enable notifications", "doc": "S5 — subscribe to web push." },
+    "notif_disable":   { "text": "Turn off notifications", "doc": "S5 — unsubscribe from web push." }
   },
   "admin": {
     "title":      { "text": "Admin", "doc": "S3 — group admin panel title + ⋯ menu entry." },
