@@ -37,6 +37,7 @@
 
 import { actionsForStreamRow } from '../../src/v2/streamActions.js';
 import { renderCircleScreen } from './circleScreen.js';
+import { renderCircleNoticeboard } from './circleNoticeboard.js';
 import { suggestCommands } from '../../src/v2/commandSuggest.js';
 
 export function renderCircleKring(container, {
@@ -93,6 +94,12 @@ export function renderCircleKring(container, {
   // needsForm still elicits conversationally (one bubble + the next message); this is the 2+ case only.
   pendingForm = null,
   onFormSubmit = null,
+  // S1 #1 — noticeboard (prikbord tab). When the active tab is `prikbord`, the body
+  // renders the buurt noticeboard (post composer + open posts) instead of the
+  // tab-coming placeholder, and the chat composer is suppressed (the noticeboard has
+  // its own). `null` = host hasn't loaded it → falls back to the placeholder.
+  //   `{ posts, intent, busy, onPost, onAction, onIntent }`
+  noticeboard = null,
   t,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -189,6 +196,9 @@ export function renderCircleKring(container, {
   // no-tabs case ends up on 'gesprek' (the GESPREK render path).
   const firstTabId = Array.isArray(tabs) && tabs.length > 0 ? tabs[0].id : null;
   const effectiveTab = activeTab || firstTabId || 'gesprek';
+  // S1 #1 — in the noticeboard tab the body owns its own composer, so the chat
+  // composer + inline form below are suppressed.
+  const inPrikbord = effectiveTab === 'prikbord' && !!noticeboard;
   const body = document.createElement('div');
   body.className = 'circle-kring__list';
   body.dataset.activeTab = effectiveTab;
@@ -200,6 +210,17 @@ export function renderCircleKring(container, {
     // a clean first paint.  circleScreen handles per-block status
     // (ok / empty / error) internally.
     renderCircleScreen(body, { blocks: screenBlocks ?? [], t: tr, onAction: onScreenAction });
+  } else if (effectiveTab === 'prikbord' && noticeboard) {
+    // S1 #1 — the buurt noticeboard (its own composer + post list).
+    renderCircleNoticeboard(body, {
+      posts:    noticeboard.posts ?? [],
+      intent:   noticeboard.intent ?? 'ask',
+      busy:     noticeboard.busy ?? false,
+      t:        tr,
+      onPost:   noticeboard.onPost,
+      onAction: noticeboard.onAction,
+      onIntent: noticeboard.onIntent,
+    });
   } else if (effectiveTab !== 'gesprek') {
     const placeholder = document.createElement('div');
     placeholder.className = 'circle-kring__placeholder';
@@ -235,14 +256,17 @@ export function renderCircleKring(container, {
   // Multi-field inline form (mobile parity). Rendered between the stream and the composer when the host
   // has a `pendingForm` (a 2+-missing-field needsForm). Pure render: the host owns the pending state and
   // the submit handler. Suppressed in scherm-mode (not a chat surface). See `renderPendingForm`.
-  if (pendingForm && viewMode !== 'scherm' && typeof onFormSubmit === 'function') {
+  if (pendingForm && viewMode !== 'scherm' && !inPrikbord && typeof onFormSubmit === 'function') {
     container.appendChild(renderPendingForm(pendingForm, { tr, onFormSubmit }));
   }
 
   // Composer — text input + send button.  Suppressed in scherm-mode
   // because the recept'd page isn't a chat surface; user flips back
-  // to Chat to write something.
-  if (typeof onSend === 'function' && viewMode !== 'scherm' && !canPost) {
+  // to Chat to write something.  Also suppressed in the prikbord tab (it
+  // renders its own post composer).
+  if (inPrikbord) {
+    // no chat composer — the noticeboard body owns posting
+  } else if (typeof onSend === 'function' && viewMode !== 'scherm' && !canPost) {
     // Permission gate — chat is disabled for this circle; show a read-only note in place of the composer.
     const note = document.createElement('div');
     note.className = 'circle-kring__composer-disabled';

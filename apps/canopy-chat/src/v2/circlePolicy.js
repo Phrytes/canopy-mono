@@ -36,13 +36,14 @@ export const CIRCLE_POLICY_ENUMS = {
 
 // Defaults match the "full Onderling" surface (board 2 strategy B): the
 // orchestrator app lights up the features whose UI is already rendered
-// today (chat + houseRules + memberDirectory).  The focus-apps in the
-// store ('Buurt door Onderling', 'Huishouden door Onderling', 'OR-bot')
+// today (chat + noticeboard + houseRules + memberDirectory).  The focus-apps
+// in the store ('Buurt door Onderling', 'Huishouden door Onderling', 'OR-bot')
 // will override these at pin-time to lock to their narrower surface.
+// (S1 #1, 2026-06-15: noticeboard flipped on now that its prikbord surface exists.)
 export const DEFAULT_CIRCLE_POLICY = {
   features: {
     chat:            true,
-    noticeboard:     false,
+    noticeboard:     true,
     tasks:           false,
     lists:           false,
     calendar:        false,

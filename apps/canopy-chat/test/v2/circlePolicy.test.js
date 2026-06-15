@@ -71,9 +71,9 @@ describe('circlePolicy · isFeatureEnabled (P6.1)', () => {
 
 describe('circlePolicy · enabledFeatures (P6.1)', () => {
   it('returns the default-enabled set for a null/empty policy', () => {
-    // Defaults: chat, houseRules, memberDirectory.
-    expect(enabledFeatures(null)).toEqual(['chat', 'houseRules', 'memberDirectory']);
-    expect(enabledFeatures({})).toEqual(['chat', 'houseRules', 'memberDirectory']);
+    // Defaults: chat, noticeboard, houseRules, memberDirectory (S1 #1 flipped noticeboard on).
+    expect(enabledFeatures(null)).toEqual(['chat', 'noticeboard', 'houseRules', 'memberDirectory']);
+    expect(enabledFeatures({})).toEqual(['chat', 'noticeboard', 'houseRules', 'memberDirectory']);
   });
 
   it('respects explicit on/off overrides + preserves CIRCLE_FEATURES order', () => {

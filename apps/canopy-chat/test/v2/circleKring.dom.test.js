@@ -527,3 +527,33 @@ describe('renderCircleKring · multi-field inline form (mobile MultiFieldFormBub
     expect(el.querySelector('.circle-kring__form')).toBeNull();
   });
 });
+
+describe('renderCircleKring · prikbord tab → noticeboard (S1 #1)', () => {
+  const tabs = [
+    { id: 'gesprek', feature: 'chat', labelKey: 'circle.tabs.gesprek' },
+    { id: 'prikbord', feature: 'noticeboard', labelKey: 'circle.tabs.prikbord' },
+  ];
+
+  it('renders the noticeboard (not the tab-coming placeholder) when prikbord is active', () => {
+    const onPost = vi.fn();
+    const el = mount();
+    renderCircleKring(el, {
+      circle, rows, t, onSend: vi.fn(),
+      tabs, activeTab: 'prikbord',
+      noticeboard: { posts: [{ id: 'p1', type: 'ask', text: 'boormachine?', mine: false }], intent: 'ask', onPost },
+    });
+    // noticeboard body present, placeholder absent
+    expect(el.querySelector('.cc-prikbord')).not.toBeNull();
+    expect(el.querySelector('.circle-kring__placeholder')).toBeNull();
+    expect(el.querySelector('.cc-prikbord__post-row')).not.toBeNull();
+    // the chat composer is suppressed (the noticeboard owns its own)
+    expect(el.querySelector('.circle-kring__composer')).toBeNull();
+  });
+
+  it('falls back to the tab-coming placeholder when no noticeboard prop is supplied', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t, onSend: vi.fn(), tabs, activeTab: 'prikbord' });
+    expect(el.querySelector('.cc-prikbord')).toBeNull();
+    expect(el.querySelector('.circle-kring__placeholder')).not.toBeNull();
+  });
+});

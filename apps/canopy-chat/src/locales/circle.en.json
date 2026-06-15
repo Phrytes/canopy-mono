@@ -1725,5 +1725,29 @@
     "back":        { "text": "← Contacts", "doc": "P5 — back link from a DM thread to the roster." },
     "sending":     { "text": "sending…", "doc": "P5 — transient state while a turn is in flight to the bot." },
     "send_failed": { "text": "Couldn’t reach {{name}} — they may be offline.", "doc": "P5 — shown when a turn fails to send over the peer transport." }
+  },
+  "noticeboard": {
+    "intent": {
+      "ask":   { "text": "Ask",   "doc": "S1 — noticeboard post type: a request for help/an item." },
+      "offer": { "text": "Offer", "doc": "S1 — noticeboard post type: something on offer." },
+      "lend":  { "text": "Lend",  "doc": "S1 — noticeboard post type: lending an item (has a return)." }
+    },
+    "placeholder": {
+      "ask":   { "text": "Ask the circle for something…", "doc": "S1 — composer placeholder, ask intent." },
+      "offer": { "text": "Offer something to the circle…", "doc": "S1 — composer placeholder, offer intent." },
+      "lend":  { "text": "Lend something to the circle…", "doc": "S1 — composer placeholder, lend intent." }
+    },
+    "post":    { "text": "Post", "doc": "S1 — noticeboard composer submit button." },
+    "posting": { "text": "posting…", "doc": "S1 — transient state while a post is in flight." },
+    "empty":   { "text": "No open posts yet. Be the first to ask, offer, or lend.", "doc": "S1 — noticeboard empty state." },
+    "action": {
+      "respond":  { "text": "Help with", "doc": "S1 — per-post action: respond/offer help (respondToItem)." },
+      "returned": { "text": "Returned",  "doc": "S1 — per-post action on a lend: mark returned (markReturned)." },
+      "cancel":   { "text": "Withdraw",  "doc": "S1 — per-post action (author): cancel the post (cancelRequest)." },
+      "report":   { "text": "Report",    "doc": "S1 — per-post action: report abuse (reportPost)." }
+    },
+    "posted":      { "text": "Posted.", "doc": "S1 — toast after a post is created." },
+    "post_failed": { "text": "Couldn’t post — try again.", "doc": "S1 — shown when postRequest fails." },
+    "respond_prompt": { "text": "Your reply to this post:", "doc": "S1 — prompt when responding to a post (respondToItem)." }
   }
 }

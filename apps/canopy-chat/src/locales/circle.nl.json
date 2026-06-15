@@ -1725,5 +1725,29 @@
     "back":        { "text": "← Contacten", "doc": "P5 — back link from a DM thread to the roster." },
     "sending":     { "text": "versturen…", "doc": "P5 — transient state while a turn is in flight to the bot." },
     "send_failed": { "text": "Kon {{name}} niet bereiken — mogelijk offline.", "doc": "P5 — shown when a turn fails to send over the peer transport." }
+  },
+  "noticeboard": {
+    "intent": {
+      "ask":   { "text": "Vraag",  "doc": "S1 — noticeboard post type: a request for help/an item." },
+      "offer": { "text": "Aanbod", "doc": "S1 — noticeboard post type: something on offer." },
+      "lend":  { "text": "Lenen",  "doc": "S1 — noticeboard post type: lending an item (has a return)." }
+    },
+    "placeholder": {
+      "ask":   { "text": "Vraag de kring om iets…", "doc": "S1 — composer placeholder, ask intent." },
+      "offer": { "text": "Bied de kring iets aan…", "doc": "S1 — composer placeholder, offer intent." },
+      "lend":  { "text": "Leen de kring iets uit…", "doc": "S1 — composer placeholder, lend intent." }
+    },
+    "post":    { "text": "Plaatsen", "doc": "S1 — noticeboard composer submit button." },
+    "posting": { "text": "plaatsen…", "doc": "S1 — transient state while a post is in flight." },
+    "empty":   { "text": "Nog geen open berichten. Wees de eerste die iets vraagt, aanbiedt of uitleent.", "doc": "S1 — noticeboard empty state." },
+    "action": {
+      "respond":  { "text": "Help mee",     "doc": "S1 — per-post action: respond/offer help (respondToItem)." },
+      "returned": { "text": "Teruggebracht", "doc": "S1 — per-post action on a lend: mark returned (markReturned)." },
+      "cancel":   { "text": "Intrekken",     "doc": "S1 — per-post action (author): cancel the post (cancelRequest)." },
+      "report":   { "text": "Rapporteren",   "doc": "S1 — per-post action: report abuse (reportPost)." }
+    },
+    "posted":      { "text": "Geplaatst.", "doc": "S1 — toast after a post is created." },
+    "post_failed": { "text": "Kon niet plaatsen — probeer opnieuw.", "doc": "S1 — shown when postRequest fails." },
+    "respond_prompt": { "text": "Je reactie op dit bericht:", "doc": "S1 — prompt when responding to a post (respondToItem)." }
   }
 }

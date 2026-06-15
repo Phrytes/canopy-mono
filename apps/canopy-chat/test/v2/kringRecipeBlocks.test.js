@@ -259,16 +259,16 @@ describe('kringRecipeBlocks · D1 (§5A) — quickActions', () => {
   const block = { id: 'q', type: 'quickActions', config: { limit: 4 } };
 
   it('cold start: falls back to enabledFeatures order, source=default', async () => {
-    // Default policy enables chat, houseRules, memberDirectory (in CIRCLE_FEATURES order).
+    // Default policy enables chat, noticeboard, houseRules, memberDirectory (CIRCLE_FEATURES order; S1 #1).
     const r = await materializeBlock({ block, circleId: 'c1', hostOps: { policy: null } });
     expect(r.type).toBe('quickActions');
     expect(r.status).toBe('ok');
     expect(r.content.source).toBe('default');
-    expect(r.content.actions.map((a) => a.key)).toEqual(['chat', 'houseRules', 'memberDirectory']);
+    expect(r.content.actions.map((a) => a.key)).toEqual(['chat', 'noticeboard', 'houseRules', 'memberDirectory']);
   });
 
   it('frequency reorders within the enabled set, source=frequency', async () => {
-    const policy = { features: { chat: true, tasks: true, calendar: true, houseRules: true } };
+    const policy = { features: { chat: true, noticeboard: false, tasks: true, calendar: true, houseRules: true } };
     const actionFrequency = {
       top: () => ['calendar', 'tasks'],   // most-used first
     };

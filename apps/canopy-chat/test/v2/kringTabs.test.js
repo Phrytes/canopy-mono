@@ -12,9 +12,10 @@ describe('buildKringTabs · SP-13.3', () => {
     expect(DEFAULT_KRING_TAB).toBe('gesprek');
   });
 
-  it('default policy → GESPREK + LEDEN (chat + memberDirectory are default on)', () => {
+  it('default policy → GESPREK + PRIKBORD + LEDEN (chat + noticeboard + memberDirectory are default on)', () => {
+    // S1 #1 (2026-06-15): noticeboard flipped on by default now that its prikbord surface exists.
     const tabs = buildKringTabs(DEFAULT_CIRCLE_POLICY).map((t) => t.id);
-    expect(tabs).toEqual(['gesprek', 'leden']);
+    expect(tabs).toEqual(['gesprek', 'prikbord', 'leden']);
   });
 
   it('buurt-shape policy → GESPREK / PRIKBORD / LEDEN (board Voorbeeld 1)', () => {
@@ -27,7 +28,8 @@ describe('buildKringTabs · SP-13.3', () => {
 
   it('huishouden-shape policy → GESPREK / TAKEN / LIJSTEN (board Voorbeeld 2)', () => {
     const policy = {
-      features: { chat: true, tasks: true, lists: true, memberDirectory: false },
+      // noticeboard explicitly off — a huishouden kring uses tasks/lists, not the buurt prikbord.
+      features: { chat: true, noticeboard: false, tasks: true, lists: true, memberDirectory: false },
     };
     expect(buildKringTabs(policy).map((t) => t.id))
       .toEqual(['gesprek', 'taken', 'lijsten']);
@@ -35,7 +37,7 @@ describe('buildKringTabs · SP-13.3', () => {
 
   it('privé-shape policy → GESPREK / NOTITIES / TAKEN (board Voorbeeld 3)', () => {
     const policy = {
-      features: { chat: true, notes: true, tasks: true, memberDirectory: false },
+      features: { chat: true, noticeboard: false, notes: true, tasks: true, memberDirectory: false },
     };
     expect(buildKringTabs(policy).map((t) => t.id))
       .toEqual(['gesprek', 'taken', 'notities']);
@@ -78,7 +80,7 @@ describe('buildKringTabs · SP-13.3', () => {
   it('houseRules does not produce a tab', () => {
     // Explicitly turn memberDirectory off so the only on-by-default
     // feature besides chat doesn't show up in the assertion.
-    const policy = { features: { chat: true, houseRules: true, memberDirectory: false } };
+    const policy = { features: { chat: true, noticeboard: false, houseRules: true, memberDirectory: false } };
     expect(buildKringTabs(policy).map((t) => t.id)).toEqual(['gesprek']);
   });
 
@@ -95,9 +97,9 @@ describe('buildKringTabs · SP-13.3', () => {
   });
 
   it('handles null / empty / garbage policy gracefully (treats as defaults)', () => {
-    expect(buildKringTabs(null).map((t) => t.id)).toEqual(['gesprek', 'leden']);
-    expect(buildKringTabs(undefined).map((t) => t.id)).toEqual(['gesprek', 'leden']);
-    expect(buildKringTabs('nope').map((t) => t.id)).toEqual(['gesprek', 'leden']);
+    expect(buildKringTabs(null).map((t) => t.id)).toEqual(['gesprek', 'prikbord', 'leden']);
+    expect(buildKringTabs(undefined).map((t) => t.id)).toEqual(['gesprek', 'prikbord', 'leden']);
+    expect(buildKringTabs('nope').map((t) => t.id)).toEqual(['gesprek', 'prikbord', 'leden']);
   });
 });
 

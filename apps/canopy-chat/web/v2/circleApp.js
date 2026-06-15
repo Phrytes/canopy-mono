@@ -1321,6 +1321,64 @@ function showKring(id, circle, policy) {
   let screenBlocks = null;
   let seq = 0;
 
+  // S1 #1 — noticeboard (prikbord tab). Lazy-loaded when the tab opens; backed by
+  // the shared stoop buurt's `listOpen` (per-circle scoping arrives with the pod
+  // foundation, §4 E2). `mine` drives the author-only [Withdraw] chip.
+  let noticeboardPosts = [];
+  let noticeboardIntent = 'ask';
+  let noticeboardBusy = false;
+  let myWebid = null;   // fetched once, best-effort (whoAmI is a stoop skill, not chat-manifested)
+
+  async function ensureMyWebid() {
+    if (myWebid !== null) return myWebid;
+    try { const r = await rawCallSkill('stoop', 'whoAmI', {}); myWebid = r?.webid ?? r?.webId ?? ''; }
+    catch { myWebid = ''; }
+    return myWebid;
+  }
+  const shortWebid = (w) => (typeof w === 'string' && w ? (w.split(/[/#]/).filter(Boolean).pop() || w).slice(0, 18) : '');
+
+  async function loadNoticeboard() {
+    try {
+      await ensureMyWebid();
+      const res = await rawCallSkill('stoop', 'listOpen', {});
+      const items = Array.isArray(res?.items) ? res.items : [];
+      noticeboardPosts = items.map((it) => ({
+        id:           it.id,
+        text:         it.text ?? it.label ?? '',
+        type:         it.type ?? it.intent ?? 'ask',
+        addedBy:      it.addedBy,
+        addedByLabel: shortWebid(it.addedBy),
+        mine:         !!(myWebid && it.addedBy === myWebid),
+      }));
+    } catch { noticeboardPosts = []; }
+    rerender();
+  }
+
+  async function noticeboardPost({ intent, text }) {
+    noticeboardBusy = true; rerender();
+    try { await rawCallSkill('stoop', 'postRequest', { intent, text }); }
+    catch { globalThis.alert?.(t('circle.noticeboard.post_failed')); }
+    noticeboardBusy = false;
+    await loadNoticeboard();
+  }
+
+  async function noticeboardAction({ action, post }) {
+    try {
+      if (action === 'respond') {
+        const body = (globalThis.prompt?.(t('circle.noticeboard.respond_prompt')) || '').trim();
+        if (!body) return;
+        await rawCallSkill('stoop', 'respondToItem', { itemId: post.id, body });
+      } else if (action === 'cancel') {
+        await rawCallSkill('stoop', 'cancelRequest', { requestId: post.id });
+      } else if (action === 'report') {
+        await rawCallSkill('stoop', 'reportPost', { itemId: post.id });
+      } else if (action === 'markReturned') {
+        await rawCallSkill('stoop', 'markReturned', { requestId: post.id });
+      }
+    } catch { /* best-effort; the reload reflects the real state */ }
+    await loadNoticeboard();
+  }
+
   // δ.2 — fan-out helper.  Used by both the initial send AND the
   // tap-to-retry path from the 'failed' icon.  Re-uses the SAME
   // msgId on retry so receiver-side dedup suppresses any duplicate
@@ -1346,6 +1404,15 @@ function showKring(id, circle, policy) {
       history: kringInputHistory,
       // Permission gate — chat disabled for this circle ⇒ read-only composer (classic `allowCommands` analog).
       canPost: isFeatureEnabled(policy, 'chat'),
+      // S1 #1 — noticeboard surface for the prikbord tab (the view only uses it when active).
+      noticeboard: {
+        posts:    noticeboardPosts,
+        intent:   noticeboardIntent,
+        busy:     noticeboardBusy,
+        onPost:   noticeboardPost,
+        onAction: noticeboardAction,
+        onIntent: (it) => { noticeboardIntent = it; rerender(); },
+      },
       // Multi-field inline form (mobile parity). When a kring dispatch trips needsForm with 2+ missing
       // fields, `circlePendingFormFollowUp` holds the shared `PendingFormFollowUp`; the view renders an
       // inline labelled form. onFormSubmit completes + runs the dispatch, then clears the pending form.
@@ -1391,6 +1458,7 @@ function showKring(id, circle, policy) {
         // D1 — count the tab use so the quickActions row reflects reality.
         const f = featureForTabId(tabId);
         if (f) actionFrequency.bump(id, f);
+        if (tabId === 'prikbord') loadNoticeboard();   // S1 — lazy-load the buurt posts
         rerender();
       },
       // D1 (§5A) — a "Veel-gebruikt" pill tap.  Bump the feature's count,
@@ -1405,6 +1473,7 @@ function showKring(id, circle, policy) {
           activeTab = tabId;
           viewMode = 'chat';
           writeViewMode(id, 'chat');
+          if (tabId === 'prikbord') loadNoticeboard();   // S1
         }
         rerender();
         // Re-materialize so the row's own ordering reflects the new count.
