@@ -43,9 +43,10 @@ import { buildConsentModel, installMapping } from '../../src/v2/extensionInstall
 import { createContactSkillRegistry } from '../../src/v2/contactSkillsLive.js';
 import { createContactThreadChannel } from '../../src/v2/contactThreadChannel.js';
 import { listContacts } from '../../src/v2/contactsSource.js';
+import { addBotToGraph } from '../../src/v2/addBot.js';
 import { renderContactsRoster } from './contactsRoster.js';
 import { renderContactThread } from './contactThread.js';
-import { sendA2ATask, PeerGraph } from '@canopy/core';
+import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
 import { createFeedbackSurface } from '../../src/feedback/feedbackSurface.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
@@ -444,7 +445,8 @@ let circleClarify = null;        // createClarifyingDispatch (for candidate-butt
 let circleCatalog = null;        // the merged dispatch catalog (built in buildCircleBot) — feeds the composer slash-suggest
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
 let circleContactSkills = null;  // P4 — live contact/bot exposed-skill registry (subscribed to agent.peers)
-let circlePeerGraph = null;      // P5 — agent.peers, for the Contacten roster
+let circlePeerGraph = null;      // P5 — app-owned PeerGraph (contacts roster + P4 registry source)
+let circleCoreAgent = null;      // P5 — the core chat agent (agent.sa.agent), for discoverA2A
 let circleContactChannel = null; // P5 — contact-thread peer channel (conversational link over sa.peer)
 // P5 — per-contact DM thread state: contactId → { name, peerAddr, messages:[{origin,text,buttons?,pending?}] }.
 const contactThreads = new Map();
@@ -550,6 +552,7 @@ function buildCircleBot(agent) {
   // discovery feed it directly — a follow-up; app-owned is correct + sufficient
   // here since canopy-chat drives population explicitly.)
   circlePeerGraph = new PeerGraph();
+  circleCoreAgent = agent.sa?.agent ?? null;   // the core chat agent — discoverA2A's hello/native-upgrade target
   circleContactSkills = createContactSkillRegistry({ peerGraph: circlePeerGraph, sendTask: sendContactTask });
   circleContactSkills.start().catch(() => { /* discovery is best-effort — never blocks the kring */ });
   if (typeof window !== 'undefined') window.canopyContactSkills = circleContactSkills;
@@ -568,6 +571,11 @@ function buildCircleBot(agent) {
   if (typeof window !== 'undefined') {
     window.canopyContactChannel = circleContactChannel;
     window.canopyPeers = circlePeerGraph;   // debug / e2e seam (roster + journey-A tests seed/inspect peers)
+    window.canopyAddBot = addBotFromInput;  // manual / programmatic add
+    try {
+      const addbot = new URLSearchParams(window.location.search).get('addbot');
+      if (addbot) addBotFromInput(addbot);  // ?addbot=<https url | peer address>
+    } catch { /* no addbot param */ }
   }
 
   const llmProviders = buildCircleLlmProviders({ localBaseUrl: CIRCLE_LLM_BASEURL, model: CIRCLE_LLM_MODEL });
@@ -693,13 +701,37 @@ function showTabBar(active) {
   });
 }
 
-// P5 — Contacten tab: the bot/peer roster.  Reads agent.peers via the shared
-// `listContacts`; tapping a row opens its 1:1 DM thread.
+// P5 — Contacten tab: the bot/peer roster.  Reads the app PeerGraph via the
+// shared `listContacts`; tapping a row opens its 1:1 DM thread; "+ Add a bot"
+// discovers/adds a bot into the graph.
 async function showContacts() {
   showTabBar('contacten');
   let contacts = [];
   try { contacts = await listContacts(circlePeerGraph); } catch { contacts = []; }
-  renderContactsRoster(rootEl, { contacts, t, onOpen: showContactThread });
+  renderContactsRoster(rootEl, {
+    contacts, t,
+    onOpen: showContactThread,
+    onAdd: () => {
+      const input = (globalThis.prompt?.(t('circle.contacts.add_prompt')) || '').trim();
+      if (input) addBotFromInput(input);
+    },
+  });
+}
+
+// P5 — add a bot to the app PeerGraph (an https agent-card URL → discoverA2A;
+// else a raw peer address → manual upsert), then re-render the roster.  Reuses
+// the shared `addBotToGraph` (web≡mobile).  Best-effort: a bad URL/address shows
+// a localised alert, never throws into the UI.
+async function addBotFromInput(input) {
+  if (!circlePeerGraph) return;
+  try {
+    const rec = await addBotToGraph({ input, peerGraph: circlePeerGraph, coreAgent: circleCoreAgent, discover: discoverA2A });
+    globalThis.alert?.(t('circle.contacts.added', { name: rec?.name ?? rec?.url ?? rec?.pubKey ?? '' }));
+  } catch (err) {
+    console.warn('[circleApp] add bot failed:', err?.message ?? err);
+    globalThis.alert?.(t('circle.contacts.add_failed'));
+  }
+  showContacts();
 }
 
 // P5 — a 1:1 DM thread with a contact-bot.  The conversational turn goes over

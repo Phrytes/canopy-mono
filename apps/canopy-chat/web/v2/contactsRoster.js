@@ -8,16 +8,27 @@
  * in that thread); tapping a row opens its 1:1 DM thread.
  */
 
-export function renderContactsRoster(container, { contacts = [], t, onOpen } = {}) {
+export function renderContactsRoster(container, { contacts = [], t, onOpen, onAdd } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
   container.className = 'cc-contacts';
 
+  const head = document.createElement('div');
+  head.className = 'cc-contacts__head';
   const heading = document.createElement('h2');
   heading.className = 'cc-contacts__title';
   heading.textContent = tr('circle.contacts.title');
-  container.appendChild(heading);
+  head.appendChild(heading);
+  if (typeof onAdd === 'function') {
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'cc-contacts__add';
+    add.textContent = tr('circle.contacts.add');
+    add.addEventListener('click', () => onAdd());
+    head.appendChild(add);
+  }
+  container.appendChild(head);
 
   if (!contacts.length) {
     const empty = document.createElement('p');

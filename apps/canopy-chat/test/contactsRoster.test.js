@@ -52,4 +52,16 @@ describe('renderContactsRoster', () => {
     expect(el.querySelector('.cc-contacts__empty').textContent).toBe('circle.contacts.empty');
     expect(el.querySelector('.cc-contacts__list')).toBeNull();
   });
+
+  it('renders an "Add a bot" button only when onAdd is supplied, and fires it', () => {
+    const onAdd = vi.fn();
+    const without = renderContactsRoster(document.createElement('div'), { contacts: [], ...ctx() });
+    expect(without.querySelector('.cc-contacts__add')).toBeNull();
+
+    const withAdd = renderContactsRoster(document.createElement('div'), { contacts: [], ...ctx(), onAdd });
+    const btn = withAdd.querySelector('.cc-contacts__add');
+    expect(btn.textContent).toBe('circle.contacts.add');
+    btn.click();
+    expect(onAdd).toHaveBeenCalled();
+  });
 });

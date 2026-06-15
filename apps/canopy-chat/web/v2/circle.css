@@ -532,7 +532,14 @@
 
 /* ── P5 — Contacten roster + 1:1 DM thread ──────────────────────────────── */
 .cc-contacts { padding: 4px 2px 80px; }
-.cc-contacts__title { font-size: 18px; font-weight: 700; margin: 6px 2px 12px; color: var(--ink); }
+.cc-contacts__head { display: flex; align-items: center; justify-content: space-between; margin: 6px 2px 12px; gap: 12px; }
+.cc-contacts__title { font-size: 18px; font-weight: 700; margin: 0; color: var(--ink); }
+.cc-contacts__add {
+  cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
+  padding: 7px 12px; border-radius: var(--radius);
+  background: transparent; border: 1px solid var(--accent); color: var(--accent-ink);
+}
+.cc-contacts__add:hover { background: var(--accent); color: #fff; }
 .cc-contacts__empty { color: var(--ink-soft); font-size: 14px; padding: 12px 4px; }
 .cc-contacts__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .cc-contacts__row {

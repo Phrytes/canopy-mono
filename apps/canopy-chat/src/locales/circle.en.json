@@ -1710,7 +1710,11 @@
   },
   "contacts": {
     "title":       { "text": "Contacts", "doc": "P5 — heading of the contacts/bots roster screen." },
-    "empty":       { "text": "No contacts yet. A bot or peer you meet over the mesh appears here.", "doc": "P5 — empty state of the contacts roster." },
+    "empty":       { "text": "No contacts yet. Add a bot, or a peer you meet over the mesh appears here.", "doc": "P5 — empty state of the contacts roster." },
+    "add":         { "text": "+ Add a bot", "doc": "P5 — button on the contacts roster to add a bot by URL/address." },
+    "add_prompt":  { "text": "Bot address — an https URL (agent card) or a peer address", "doc": "P5 — prompt when adding a bot." },
+    "add_failed":  { "text": "Couldn’t add that bot — check the URL/address.", "doc": "P5 — shown when discoverA2A / add fails." },
+    "added":       { "text": "Added {{name}}.", "doc": "P5 — toast after a bot is added to the roster." },
     "bot":         { "text": "bot", "doc": "P5 — tag on a roster row that is an agent/bot (vs a person)." },
     "skills":      { "text": "{{count}} skills", "doc": "P5 — per-row count of a bot's exposed skills." },
     "offline":     { "text": "offline", "doc": "P5 — roster row badge when the contact is unreachable." },
