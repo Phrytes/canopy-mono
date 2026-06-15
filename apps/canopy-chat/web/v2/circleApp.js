@@ -47,6 +47,7 @@ import { addBotToGraph } from '../../src/v2/addBot.js';
 import { renderContactsRoster } from './contactsRoster.js';
 import { renderCircleProfile } from './circleProfile.js';
 import { renderCircleAdminPanel } from './circleAdminPanel.js';
+import { renderCircleMyData } from './circleMyData.js';
 import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
@@ -1319,9 +1320,30 @@ async function showMij() {
       await load();
     },
     onAvailability: showAvailability,
+    onMyData: showMyData,
   });
   rerender();
   load();
+}
+
+// S5 — "My data": where your data lives (pod/relay) + privacy + usage. Read-only;
+// a sub-screen of Mij. The OIDC sign-in flow + backup are separate env-gated slices.
+async function showMyData() {
+  hideCircleTabBar(tabBarEl);
+  let dataLocation = {}; let podStatus = {}; let privacy = []; let metrics = {};
+  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij });
+  rerender();
+  const [loc, status, priv, met] = await Promise.all([
+    rawCallSkill('stoop', 'getDataLocation', {}).catch(() => null),
+    rawCallSkill('stoop', 'podSignInStatus', {}).catch(() => null),
+    rawCallSkill('stoop', 'getPrivacyNotice', { lang: currentLang() }).catch(() => null),
+    rawCallSkill('stoop', 'getMetrics', {}).catch(() => null),
+  ]);
+  dataLocation = loc ?? {};
+  podStatus = status ?? {};
+  privacy = Array.isArray(priv?.sections) ? priv.sections : [];
+  metrics = (met?.snapshot && typeof met.snapshot === 'object') ? met.snapshot : {};
+  rerender();
 }
 
 // S2 — availability/quiet-hours/hopping (the former Mij body), now a sub-screen of Mij.

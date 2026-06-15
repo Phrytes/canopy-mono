@@ -1777,7 +1777,20 @@
     "geo_search":  { "text": "Search", "doc": "S2 — geocode search button." },
     "geo_use":     { "text": "Use this", "doc": "S2 — save the geocoded location." },
     "loc_clear":   { "text": "Clear location", "doc": "S2 — clear the saved location." },
-    "availability":{ "text": "Availability →", "doc": "S2 — open the availability/quiet-hours screen." }
+    "availability":{ "text": "Availability →", "doc": "S2 — open the availability/quiet-hours screen." },
+    "mydata":      { "text": "My data →", "doc": "S5 — open the data-location/privacy/usage screen." }
+  },
+  "mydata": {
+    "title":         { "text": "My data", "doc": "S5 — heading of the my-data screen." },
+    "back":          { "text": "← Me", "doc": "S5 — back to the profile." },
+    "storage":       { "text": "Where it lives", "doc": "S5 — storage/data-location section." },
+    "pod":           { "text": "Pod", "doc": "S5 — pod status label." },
+    "pod_signed_in": { "text": "Signed in — {{webid}}", "doc": "S5 — pod signed-in status." },
+    "pod_local":     { "text": "Local only (no pod)", "doc": "S5 — no pod attached." },
+    "pod_root":      { "text": "Pod root", "doc": "S5 — pod root URI." },
+    "relay":         { "text": "Relay", "doc": "S5 — relay operator/url." },
+    "privacy":       { "text": "Privacy", "doc": "S5 — privacy disclosure section." },
+    "usage":         { "text": "Usage", "doc": "S5 — usage metrics section." }
   },
   "admin": {
     "title":      { "text": "Admin", "doc": "S3 — group admin panel title + ⋯ menu entry." },

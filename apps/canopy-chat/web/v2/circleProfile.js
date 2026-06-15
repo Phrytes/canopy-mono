@@ -21,6 +21,7 @@ export function renderCircleProfile(container, {
   onSaveLocation,
   onClearLocation,
   onAvailability,
+  onMyData,
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -126,10 +127,14 @@ export function renderCircleProfile(container, {
   }
   container.appendChild(locSection);
 
-  // ── availability link ───────────────────────────────────────────────────
+  // ── availability + my-data links ──────────────────────────────────────────
   if (typeof onAvailability === 'function') {
     const avail = button(tr('circle.profile.availability'), 'cc-profile__availability', onAvailability);
     container.appendChild(avail);
+  }
+  if (typeof onMyData === 'function') {
+    const myData = button(tr('circle.profile.mydata'), 'cc-profile__mydata', onMyData);
+    container.appendChild(myData);
   }
 
   if (busy) {
