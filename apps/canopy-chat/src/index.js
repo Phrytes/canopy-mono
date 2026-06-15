@@ -75,7 +75,7 @@ export { loadCircleItems, normalizeContentItem }      from './v2/circleContent.j
 export { quickCreateCircle }                          from './v2/circleCreate.js';
 export { itemCircleId, isInCircle, scopeItems }       from './v2/circleScope.js';
 export { scopeStoopCallSkill, keepForCircle, SCOPED_WRITE_OPS, SCOPED_LIST_OPS } from './v2/circleStoopScope.js';
-export { createCirclePodProducer }                    from './v2/circlePodProducer.js';
+export { createCirclePodProducer, createCircleControlAgentRouter } from './v2/circlePodProducer.js';
 export { getActiveCircle, setActiveCircle, subscribeActiveCircle } from './v2/activeCircle.js';
 export {
   CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS,

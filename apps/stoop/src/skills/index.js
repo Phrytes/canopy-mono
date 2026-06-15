@@ -331,14 +331,17 @@ async function hydrateItems(items, ctx) {
 // Household sealed-pod membership hooks. Best-effort + gated: no-op without a control-agent (instances
 // that don't run a sealed pod) or without the joiner's sealing public key. A failure here never breaks
 // the membership audit — key management is recoverable, the redemption record is the source of truth.
-async function grantPodAccess(controlAgent, { webId, sealingPublicKey, role = 'member', metrics }) {
+async function grantPodAccess(controlAgent, { webId, sealingPublicKey, role = 'member', groupId, metrics }) {
   if (!controlAgent || !sealingPublicKey || !webId) return;
-  try { await controlAgent.addMember({ webId, publicKey: sealingPublicKey, role }); }
+  // Forward groupId so a per-circle control-agent ROUTER can route the grant to the right
+  // circle's producer (canopy-chat runs one stoop agent + N per-circle control agents). A
+  // single (non-routing) control agent simply ignores the extra field.
+  try { await controlAgent.addMember({ webId, publicKey: sealingPublicKey, role, groupId }); }
   catch { metrics?.record?.('control-agent-grant-failed'); }
 }
-async function revokePodAccess(controlAgent, { webId, force = false, metrics }) {
+async function revokePodAccess(controlAgent, { webId, force = false, groupId, metrics }) {
   if (!controlAgent || !webId) return;
-  try { await controlAgent.removeMember({ webId, force }); }
+  try { await controlAgent.removeMember({ webId, force, groupId }); }
   catch { metrics?.record?.('control-agent-revoke-failed'); }
 }
 
@@ -1644,7 +1647,7 @@ export function buildSkills({
         visibility: 'household',
       }], { actor: from });
       metrics?.record?.('group-code-redeemed');
-      await grantPodAccess(controlAgent, { webId: from, sealingPublicKey: a.sealingPublicKey, metrics });
+      await grantPodAccess(controlAgent, { webId: from, sealingPublicKey: a.sealingPublicKey, groupId: a.groupId, metrics });
       return {
         redemptionId: item.id,
         groupId:      a.groupId,
@@ -1719,7 +1722,7 @@ export function buildSkills({
         visibility: 'household',
       }], { actor: from });
       metrics?.record?.('group-code-redeemed-peer');
-      await grantPodAccess(controlAgent, { webId: a.requesterWebid, sealingPublicKey: a.sealingPublicKey, metrics });
+      await grantPodAccess(controlAgent, { webId: a.requesterWebid, sealingPublicKey: a.sealingPublicKey, groupId: a.groupId, metrics });
       return {
         redemptionId: item.id,
         codeId:       valid.id,
@@ -2416,7 +2419,7 @@ export function buildSkills({
       );
 
       // Sealed household pod: revoke the leaver's ACL + rotate the group key (forward secrecy). Gated.
-      await revokePodAccess(controlAgent, { webId: from, metrics });
+      await revokePodAccess(controlAgent, { webId: from, groupId: a.groupId, metrics });
 
       let deleted = 0;
       if (a.deletePosts) {

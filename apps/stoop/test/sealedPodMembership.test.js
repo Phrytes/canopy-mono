@@ -46,7 +46,7 @@ describe('sealed-pod membership — join', () => {
       { groupId: GROUP, code: r.code, sealingPublicKey: SEAL_PUB }, BOB);
 
     expect(redeem.redemptionId).toBeTruthy();
-    expect(ca.addMember).toHaveBeenCalledWith({ webId: BOB, publicKey: SEAL_PUB, role: 'member' });
+    expect(ca.addMember).toHaveBeenCalledWith({ webId: BOB, publicKey: SEAL_PUB, role: 'member', groupId: GROUP });
   });
 
   it('redeem WITHOUT a sealing key does not call the control-agent (gated)', async () => {
@@ -84,7 +84,7 @@ describe('sealed-pod membership — peer (admin-side) join', () => {
     const r = await callSkill(bundle.agent, 'createGroupV2', { groupId: GROUP, name: 'X', rules: RULES });
     await callSkill(bundle.agent, 'verifyMembershipCodeForPeer',
       { groupId: GROUP, code: r.code, requesterWebid: BOB, sealingPublicKey: SEAL_PUB }, ADMIN);
-    expect(ca.addMember).toHaveBeenCalledWith({ webId: BOB, publicKey: SEAL_PUB, role: 'member' });
+    expect(ca.addMember).toHaveBeenCalledWith({ webId: BOB, publicKey: SEAL_PUB, role: 'member', groupId: GROUP });
   });
 });
 
@@ -95,7 +95,7 @@ describe('sealed-pod membership — leave', () => {
     await callSkill(bundle.agent, 'createGroupV2', { groupId: GROUP, name: 'X', rules: RULES });
     const r = await callSkill(bundle.agent, 'leaveGroup', { groupId: GROUP }, BOB);
     expect(r.leaveMarkerId).toBeTruthy();
-    expect(ca.removeMember).toHaveBeenCalledWith({ webId: BOB, force: false });
+    expect(ca.removeMember).toHaveBeenCalledWith({ webId: BOB, force: false, groupId: GROUP });
   });
 
   it('leaveGroup with no control-agent still works', async () => {

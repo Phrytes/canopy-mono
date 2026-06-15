@@ -591,6 +591,10 @@ export async function createRealHouseholdAgent(opts = {}) {
       { webid: 'webid:maria',     displayName: 'Maria', role: 'member'      },
     ],
     persistDb:  opts.stoopPersistDb,   // browser IDB; opt-in via caller
+    // S4 — per-circle control-agent router: redeem→addMember / leave→removeMember route
+    // to the joined circle's sealed-pod producer (multi-member sealing). Opt-in; absent
+    // → membership hooks no-op (the pre-S4 behaviour).
+    controlAgent: opts.stoopControlAgent,
     label:      'StoopAgent(cc)',
   });
   await chatAgent.hello(stoopAgent.address);

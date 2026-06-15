@@ -134,3 +134,33 @@ export async function createCirclePodProducer({
 
   return { circleId, storagePosture, sealingIdentity, controlAgent, podClient, circleRootUri, persist: persistGroupKey };
 }
+
+/**
+ * A control-agent ROUTER for the single stoop agent: stoop fires one `controlAgent`'s
+ * `addMember`/`removeMember` on every membership event (carrying `groupId`), and this
+ * routes each to the matching per-circle producer's control agent + persists the rotated
+ * group key. This is how MULTI-member sealed circles grow: redeem → the joiner's sealing
+ * public key is wrapped into that circle's group key; leave → revoked + rotated. One stoop
+ * agent, N per-circle control agents (CLAUDE.md invariant #6).
+ *
+ * @param {(circleId:string) => (object|Promise<object|null>)} getProducer  resolve a circle's producer.
+ * @returns {{ addMember: Function, removeMember: Function }}
+ */
+export function createCircleControlAgentRouter(getProducer) {
+  const route = async (groupId, fn) => {
+    if (!groupId || typeof getProducer !== 'function') return;
+    const prod = await getProducer(groupId);
+    if (!prod?.controlAgent) return;                 // circle not sealed / producer not live → no-op
+    try { await fn(prod.controlAgent); await prod.persist?.(); } catch { /* best-effort; sealing degrades gracefully */ }
+  };
+  return {
+    async addMember({ webId, publicKey, role, groupId }) {
+      if (!webId || !publicKey) return;
+      await route(groupId, (ca) => ca.addMember({ webId, publicKey, role }));
+    },
+    async removeMember({ webId, force, groupId }) {
+      if (!webId) return;
+      await route(groupId, (ca) => ca.removeMember({ webId, force }));
+    },
+  };
+}

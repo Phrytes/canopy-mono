@@ -50,7 +50,7 @@ describe('createBrowserStoopAgent — control-agent seam (canopy-chat circle mem
       { groupId: GROUP, code: created.code, sealingPublicKey: SEAL_PUB }, BOB);
 
     expect(redeem.redemptionId).toBeTruthy();
-    expect(ca.addMember).toHaveBeenCalledWith({ webId: BOB, publicKey: SEAL_PUB, role: 'member' });
+    expect(ca.addMember).toHaveBeenCalledWith({ webId: BOB, publicKey: SEAL_PUB, role: 'member', groupId: GROUP });
   });
 
   it('forwards the control-agent: leaveGroup → removeMember', async () => {
@@ -59,7 +59,7 @@ describe('createBrowserStoopAgent — control-agent seam (canopy-chat circle mem
     await callSkill(bundle.agent, 'createGroupV2', { groupId: GROUP, name: 'X', rules: RULES });
     await callSkill(bundle.agent, 'leaveGroup', { groupId: GROUP }, BOB);
 
-    expect(ca.removeMember).toHaveBeenCalledWith({ webId: BOB, force: false });
+    expect(ca.removeMember).toHaveBeenCalledWith({ webId: BOB, force: false, groupId: GROUP });
   });
 
   it('gated: redeem WITHOUT a sealing key does not call the control-agent', async () => {

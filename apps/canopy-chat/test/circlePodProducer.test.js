@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { PodClient, createSealedPodClient, generateKeypair } from '@canopy/pod-client';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { createCirclePodProducer } from '../src/v2/circlePodProducer.js';
+import { createCirclePodProducer, createCircleControlAgentRouter } from '../src/v2/circlePodProducer.js';
 
 class MemVault {
   #m = new Map();
@@ -87,6 +87,33 @@ describe('createCirclePodProducer', () => {
     expect(id2.publicKey).toBe(id1.publicKey);                        // same persisted sealing identity
     const s2 = await p2.controlAgent.sealingStrategy(id2.privateKey);
     expect(s2.open(sealed)).toBe(text);                              // restored group key opens session-1 ciphertext
+  });
+
+  it('control-agent router grows the roster: a redeemed member becomes able to decrypt the circle', async () => {
+    const vault = new MemVault();
+    const bob = generateKeypair();
+    const prod = await createCirclePodProducer({ circleId: 'rg', storagePosture: 'p2', vault, generateKeypair, makePodClient });
+    const pods = new Map([['rg', prod]]);
+    const router = createCircleControlAgentRouter((id) => pods.get(id) ?? null);
+
+    // before redeem: bob is NOT a recipient of the group key
+    await expect(prod.controlAgent.sealingStrategy(bob.privateKey)).rejects.toThrow();
+    // redeem → stoop routes addMember(bob, groupId:rg) to this circle's producer
+    await router.addMember({ webId: 'did:bob', publicKey: bob.publicKey, role: 'member', groupId: 'rg' });
+    // now bob can open content sealed by the circle (the local self identity)
+    const self = await prod.sealingIdentity.ensure();
+    const sealed = (await prod.controlAgent.sealingStrategy(self.privateKey)).seal('voor de hele kring');
+    expect((await prod.controlAgent.sealingStrategy(bob.privateKey)).open(sealed)).toBe('voor de hele kring');
+
+    // leave → revoke + rotate; bob can no longer unwrap (forward secrecy)
+    await router.removeMember({ webId: 'did:bob', groupId: 'rg' });
+    await expect(prod.controlAgent.sealingStrategy(bob.privateKey)).rejects.toThrow();
+  });
+
+  it('router no-ops for an unknown / unsealed circle', async () => {
+    const router = createCircleControlAgentRouter(() => null);
+    await expect(router.addMember({ webId: 'x', publicKey: 'k', groupId: 'none' })).resolves.toBeUndefined();
+    await expect(router.removeMember({ webId: 'x', groupId: 'none' })).resolves.toBeUndefined();
   });
 
   it('scopes by circle: two sealed circles get different sealing identities', async () => {

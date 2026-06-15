@@ -18,7 +18,7 @@
 
 import { initLocalisation, t, detectDeviceLang, currentLang,
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
-  scopeStoopCallSkill, createCirclePodProducer,
+  scopeStoopCallSkill, createCirclePodProducer, createCircleControlAgentRouter,
   canopyChatManifest, AppRegistry, filterCatalog } from '../../src/index.js';
 // S4 pod foundation — per-circle sealed storage producer. The pod-client + in-memory
 // pseudo-pod machinery is web-layer (kept out of the shared src so it stays portable);
@@ -473,6 +473,11 @@ const circleVault = (() => {
 })();
 const circlePods = new Map();    // S4 — circleId → per-circle pod producer (sealing identity + control agent)
 const circleSealStrategies = new Map();   // S4 — circleId → resolved {seal,open} content strategy (or null for p0/p1)
+// S4 — routes stoop membership events (redeem/leave) to the joined circle's producer, so
+// a new member's sealing key is wrapped into that circle's group key (multi-member sealing).
+// V0: routes to a LIVE producer (circle opened on this device); seeding from prior redemptions
+// is a follow-up. Passed to the single stoop agent as its `controlAgent`.
+const circleControlAgentRouter = createCircleControlAgentRouter((id) => circlePods.get(id) ?? null);
 
 /**
  * S4 — resolve (and cache) a circle's CONTENT seal/open strategy. For a sealed (p2/p3)
@@ -2291,6 +2296,7 @@ async function boot() {
         });
       },
       stoopPersistDb: { dbName: 'cc-stoop-state', storeName: 'items' },
+      stoopControlAgent: circleControlAgentRouter,   // S4 — multi-member sealing on redeem/leave
     });
     if (typeof agent?.callSkill === 'function') {
       rawCallSkill = agent.callSkill;
