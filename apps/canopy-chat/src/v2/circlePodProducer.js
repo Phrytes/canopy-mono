@@ -54,6 +54,7 @@ export async function createCirclePodProducer({
   sharing,
   bootstrap = true,
   controllerKeyPrefix = 'cc.circle-controller-key',
+  groupKeyPrefix = 'cc.circle-groupkey',
 } = {}) {
   if (!circleId) throw new Error('createCirclePodProducer: circleId is required');
   if (!vault || typeof vault.get !== 'function' || typeof vault.set !== 'function') {
@@ -65,7 +66,7 @@ export async function createCirclePodProducer({
   // runs in the browser where the sealing primitives (x25519/HKDF) are deliberately
   // stubbed — see the sealed branch below.
   if (!SEALED_POSTURES.has(storagePosture)) {
-    return { circleId, storagePosture, sealingIdentity: null, controlAgent: null, podClient: null, circleRootUri: null };
+    return { circleId, storagePosture, sealingIdentity: null, controlAgent: null, podClient: null, circleRootUri: null, persist: async () => {} };
   }
 
   // Sealed (p2/p3): a per-circle sealing identity (two circles never share one).
@@ -92,8 +93,23 @@ export async function createCirclePodProducer({
     await vault.set(ckKey, JSON.stringify(controllerKey));
   }
 
-  const podClient = makePodClient(circleId);
+  const podClient = await makePodClient(circleId);
   const circleRootUri = `pseudo-pod://circle-${circleId}/circle`;
+  const keyResourceUri = `${circleRootUri}/.keys/group.json`;
+  const groupKeyVaultKey = `${groupKeyPrefix}:${circleId}`;
+
+  // DURABILITY — the per-circle pod is an EPHEMERAL pseudo-pod (its group-key resource
+  // dies on reload), but the controller key + sealing identity persist in the vault. So
+  // persist the group-key resource to the vault too: RESTORE it into the fresh pod BEFORE
+  // bootstrap (which then finds it + no-ops, keeping the SAME group key), and SAVE it after.
+  // Result: a sealed circle's group key survives a reload, so previously-sealed content
+  // (the posts live in the durable stoop store) stays decryptable. Use a durable vault
+  // (VaultIndexedDB on web, VaultAsyncStorage on mobile) for cross-session durability.
+  const savedRes = await vault.get(groupKeyVaultKey);
+  if (savedRes) {
+    try { await podClient.write(keyResourceUri, savedRes, { contentType: 'application/json' }); } catch { /* fresh-bootstrap below */ }
+  }
+
   // Include THIS device's own per-circle sealing identity in the bootstrap roster, so the
   // local member is a recipient of the group key and can seal/open the circle's content
   // (otherwise only the abstract controller key could). Dedupe by publicKey.
@@ -104,7 +120,17 @@ export async function createCirclePodProducer({
     sharing: sharing ?? memorySharing(),
     controllerKey, circleRootUri, roster: fullRoster,
   });
-  if (bootstrap && controlAgent) await controlAgent.bootstrap();
 
-  return { circleId, storagePosture, sealingIdentity, controlAgent, podClient, circleRootUri };
+  /** Save the pod's current group-key resource to the vault (call after bootstrap + each membership change). */
+  async function persistGroupKey() {
+    try {
+      const r = await podClient.read(keyResourceUri, { decode: 'text' });
+      const body = typeof r === 'string' ? r : r?.content;
+      if (body != null) await vault.set(groupKeyVaultKey, typeof body === 'object' ? JSON.stringify(body) : String(body));
+    } catch { /* best-effort */ }
+  }
+
+  if (bootstrap && controlAgent) { await controlAgent.bootstrap(); await persistGroupKey(); }
+
+  return { circleId, storagePosture, sealingIdentity, controlAgent, podClient, circleRootUri, persist: persistGroupKey };
 }

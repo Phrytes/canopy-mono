@@ -73,6 +73,22 @@ describe('createCirclePodProducer', () => {
     expect(JSON.parse(k1)).toHaveProperty('privateKey');
   });
 
+  it('persists the group key across reloads: a fresh producer (new pod, same vault) restores it + opens prior content', async () => {
+    const vault = new MemVault();
+    const text = 'overleeft een reload';
+    // session 1 — seal a string under the circle's group key
+    const p1 = await createCirclePodProducer({ circleId: 'dur', storagePosture: 'p2', vault, generateKeypair, makePodClient });
+    const id1 = await p1.sealingIdentity.ensure();
+    const sealed = (await p1.controlAgent.sealingStrategy(id1.privateKey)).seal(text);
+    expect(await vault.get('cc.circle-groupkey:dur')).toBeTruthy();   // group key persisted to the vault
+    // session 2 — SAME vault, FRESH pseudo-pod (makePodClient mints a new in-memory backend)
+    const p2 = await createCirclePodProducer({ circleId: 'dur', storagePosture: 'p2', vault, generateKeypair, makePodClient });
+    const id2 = await p2.sealingIdentity.ensure();
+    expect(id2.publicKey).toBe(id1.publicKey);                        // same persisted sealing identity
+    const s2 = await p2.controlAgent.sealingStrategy(id2.privateKey);
+    expect(s2.open(sealed)).toBe(text);                              // restored group key opens session-1 ciphertext
+  });
+
   it('scopes by circle: two sealed circles get different sealing identities', async () => {
     const vault = new MemVault();
     const mk = (circleId) => createCirclePodProducer({ circleId, storagePosture: 'p2', vault, generateKeypair, makePodClient });

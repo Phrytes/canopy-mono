@@ -25,7 +25,7 @@ import { initLocalisation, t, detectDeviceLang, currentLang,
 // the producer just consumes the injected makePodClient/generateKeypair.
 import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient } from '@canopy/pod-client';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { VaultLocalStorage, VaultMemory } from '@canopy/vault';
+import { VaultIndexedDB, VaultMemory } from '@canopy/vault';
 // Phase 5 — bot + feedback in the kring composer (mirrors mobile CircleLauncherScreen, on the shared
 // engine). The circle bot stack:
 import { mockTasksManifest, mockStoopManifest, mockFolioManifest } from '../../src/core/manifests/mockManifests.js';
@@ -464,11 +464,11 @@ let circleContactSkills = null;  // P4 — live contact/bot exposed-skill regist
 let circlePeerGraph = null;      // P5 — app-owned PeerGraph (contacts roster + P4 registry source)
 let circleCoreAgent = null;      // P5 — the core chat agent (agent.sa.agent), for discoverA2A
 let circleContactChannel = null; // P5 — contact-thread peer channel (conversational link over sa.peer)
-// S4 — a dedicated vault namespace for per-circle sealing identities + controller keys
-// (decoupled from the secure-agent's internal chat vault; localStorage-backed, falls
-// back to in-memory where storage is unavailable).
+// S4 — a dedicated vault for per-circle sealing identities + controller keys + the
+// persisted group-key resource (durability). IndexedDB-backed so a sealed circle's keys
+// survive reloads; falls back to in-memory where IndexedDB is unavailable.
 const circleVault = (() => {
-  try { return new VaultLocalStorage({ prefix: 'cc-circle-pod:' }); }
+  try { return new VaultIndexedDB({ dbName: 'cc-circle-pod' }); }
   catch { return new VaultMemory(); }
 })();
 const circlePods = new Map();    // S4 — circleId → per-circle pod producer (sealing identity + control agent)
