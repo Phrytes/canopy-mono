@@ -18,8 +18,14 @@
 
 import { initLocalisation, t, detectDeviceLang, currentLang,
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
-  scopeStoopCallSkill,
+  scopeStoopCallSkill, createCirclePodProducer,
   canopyChatManifest, AppRegistry, filterCatalog } from '../../src/index.js';
+// S4 pod foundation — per-circle sealed storage producer. The pod-client + in-memory
+// pseudo-pod machinery is web-layer (kept out of the shared src so it stays portable);
+// the producer just consumes the injected makePodClient/generateKeypair.
+import { PodClient, generateKeypair as podGenerateKeypair } from '@canopy/pod-client';
+import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { VaultLocalStorage, VaultMemory } from '@canopy/vault';
 // Phase 5 — bot + feedback in the kring composer (mirrors mobile CircleLauncherScreen, on the shared
 // engine). The circle bot stack:
 import { mockTasksManifest, mockStoopManifest, mockFolioManifest } from '../../src/core/manifests/mockManifests.js';
@@ -458,6 +464,43 @@ let circleContactSkills = null;  // P4 — live contact/bot exposed-skill regist
 let circlePeerGraph = null;      // P5 — app-owned PeerGraph (contacts roster + P4 registry source)
 let circleCoreAgent = null;      // P5 — the core chat agent (agent.sa.agent), for discoverA2A
 let circleContactChannel = null; // P5 — contact-thread peer channel (conversational link over sa.peer)
+// S4 — a dedicated vault namespace for per-circle sealing identities + controller keys
+// (decoupled from the secure-agent's internal chat vault; localStorage-backed, falls
+// back to in-memory where storage is unavailable).
+const circleVault = (() => {
+  try { return new VaultLocalStorage({ prefix: 'cc-circle-pod:' }); }
+  catch { return new VaultMemory(); }
+})();
+const circlePods = new Map();    // S4 — circleId → per-circle pod producer (sealing identity + control agent)
+
+/** S4 — an in-memory pseudo-pod client for one circle (real per-circle sealed storage, no OIDC/CSS). */
+function makeCirclePodClient(circleId) {
+  const deviceId = `circle-${circleId}`;
+  const pseudoPod = createPseudoPod({ backend: createMemoryBackend(), mode: 'standalone', deviceId });
+  return new PodClient({ podRoot: `pseudo-pod://${deviceId}/`, auth: { getAuthHeaders: async () => ({}) }, pseudoPod });
+}
+
+/**
+ * S4 — ensure a per-circle pod producer exists (idempotent, keyed by circle id). For a
+ * sealed posture (p2/p3) this stands up a real per-circle control agent over the circle's
+ * own in-memory pod; p0/p1 get just a sealing identity. Best-effort: never blocks circle
+ * load (a missing vault / pod machinery just skips, leaving the plain shared path).
+ */
+async function ensureCirclePod(circleId, policy) {
+  if (!circleId || !circleVault || circlePods.has(circleId)) return circlePods.get(circleId) ?? null;
+  const storagePosture = policy?.storagePosture ?? 'p0';
+  try {
+    const producer = await createCirclePodProducer({
+      circleId, storagePosture, vault: circleVault,
+      generateKeypair: podGenerateKeypair, makePodClient: makeCirclePodClient,
+    });
+    circlePods.set(circleId, producer);
+    return producer;
+  } catch (err) {
+    if (typeof console !== 'undefined') console.warn('[circleApp] ensureCirclePod failed:', err?.message ?? err);
+    return null;
+  }
+}
 // P5 — per-contact DM thread state: contactId → { name, peerAddr, messages:[{origin,text,buttons?,pending?}] }.
 const contactThreads = new Map();
 let _activeContactThread = null; // { contactId, rerender } — set while a DM thread is on screen
@@ -563,6 +606,7 @@ function buildCircleBot(agent) {
   // here since canopy-chat drives population explicitly.)
   circlePeerGraph = new PeerGraph();
   circleCoreAgent = agent.sa?.agent ?? null;   // the core chat agent — discoverA2A's hello/native-upgrade target
+  if (typeof window !== 'undefined') window.canopyCirclePods = circlePods;   // S4 debug / e2e seam
   circleContactSkills = createContactSkillRegistry({ peerGraph: circlePeerGraph, sendTask: sendContactTask });
   circleContactSkills.start().catch(() => { /* discovery is best-effort — never blocks the kring */ });
   if (typeof window !== 'undefined') window.canopyContactSkills = circleContactSkills;
@@ -1450,6 +1494,9 @@ function showKring(id, circle, policy) {
   // the circle id as the stoop scope key on writes and filters list reads to the
   // circle (S4 per-circle restructure — one shared agent, per-circle scope key).
   const stoopCall = scopeStoopCallSkill(rawCallSkill, id);
+  // S4 — stand up this circle's pod producer (per-circle sealing identity + control
+  // agent for a sealed posture). Best-effort + fire-and-forget; never blocks the kring.
+  ensureCirclePod(id, policy).catch(() => { /* best-effort; plain shared path on failure */ });
   let noticeboardPosts = [];
   let noticeboardIntent = 'ask';
   let noticeboardBusy = false;
