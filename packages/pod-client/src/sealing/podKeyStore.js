@@ -28,9 +28,15 @@ export function createPodKeyStore({ podClient, uri } = {}) {
         if (err && (err.code === 'NOT_FOUND' || err.status === 404)) return null;   // not bootstrapped yet
         throw err;
       }
-      const text = typeof res === 'string' ? res : res?.content;
-      if (!text) return null;
-      try { return JSON.parse(text); } catch { return null; }
+      const body = typeof res === 'string' ? res : res?.content;
+      if (body == null) return null;
+      // A PodClient auto-decodes an application/json resource to an OBJECT (its
+      // `auto`/unknown decode path JSON-parses for us), while an in-memory client
+      // hands back the raw JSON string. Accept either — JSON.parse on an object
+      // would yield "[object Object]" → SyntaxError → a spurious null, which would
+      // make the control agent rebuild the group key and silently drop members.
+      if (typeof body === 'object') return body;
+      try { return JSON.parse(body); } catch { return null; }
     },
     async write(resource) {
       await podClient.write(uri, JSON.stringify(resource), { contentType: 'application/json' });

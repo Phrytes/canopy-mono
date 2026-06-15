@@ -34,7 +34,12 @@ export function createSealedPodClient(inner, strategy) {
     },
     /** Read raw (the sealed envelope is text), then open. Plaintext passes through. */
     async read(uri, opts = {}) {
-      const res = await inner.read(uri, { ...opts, decode: 'text' });
+      // `decode: 'string'` (NOT 'text', which isn't a real PodClient decode mode —
+      // it falls through to `auto` and hands back raw BYTES for a non-text/* body,
+      // so `open()` would never see the `fp1:` envelope string). 'string' forces a
+      // TextDecoder pass regardless of the stored content-type. An in-memory client
+      // that ignores `decode` and returns the raw string still works.
+      const res = await inner.read(uri, { ...opts, decode: 'string' });
       return { ...res, content: open(res?.content) };
     },
     /** Seal each appended line (one envelope per line). */

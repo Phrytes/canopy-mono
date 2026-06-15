@@ -36,7 +36,7 @@ describe('SealedPodClient — recipient strategy', () => {
     const res = await sealed.read('/note');
     expect(res.content).toBe('top secret');            // opened transparently
     expect(res.etag).toBe('W/1');                      // metadata preserved
-    expect(res._opts.decode).toBe('text');             // read raw, not auto-decoded
+    expect(res._opts.decode).toBe('string');           // force raw text decode (not 'auto', which can yield bytes/objects)
   });
 
   it('a writer with only public keys can seal; opening needs the private key', async () => {
