@@ -1,131 +1,187 @@
 // sealing/envelope.js — at-rest envelope encryption for pod resources (OPT-IN; not a default).
 //
 // Lifted + generalized from feedback-pipeline's `pod/project-seal.js` (rule-of-two: feedback's
-// seal-to-project-key + household's shared-pod group key). The plan's "sealing substrate". node:crypto
-// only — no new deps; the same family the rest of the stack standardises on (AES-256-GCM like
-// @canopy/vault's VaultNodeFs; X25519 like the core SecurityLayer). Node-side module (like
-// `tombstones/FileTombstones.js`); a browser WebCrypto impl is a later tier.
+// seal-to-project-key + household's shared-pod group key). The plan's "sealing substrate".
 //
-// Two wrap modes share ONE content cipher (a fresh per-resource CEK encrypts the body, AES-256-GCM):
+// PORTABLE (2026-06-15): ported off `node:crypto` to a pure-JS, SYNCHRONOUS stack that runs in
+// Node, the browser, AND React-Native — the same primitives the core SecurityLayer already
+// standardises on, so NO new deps:
+//   • X25519 (key-exchange) + XSalsa20-Poly1305 (body cipher)  → `tweetnacl`
+//   • HKDF-SHA256 (key derivation) + SHA-256 (recipient ids)   → `@noble/hashes`
+// Keys stay X25519 SPKI/PKCS8 **DER** (byte-identical to the previous node:crypto encoding), so
+// `recipientId`s and any already-persisted sealing identities remain valid, and tweetnacl's X25519
+// ECDH is byte-identical to node's `diffieHellman('x25519')` (verified). Everything is sync, so
+// SealedPodClient / controlAgent / groupKeyResource and their tests are UNCHANGED.
+//
+// Envelope versions:
+//   • v2 (DEFAULT, written by seal/sealWithGroupKey) — portable: secretbox body + secretbox-wrapped CEK.
+//   • v1 (LEGACY, read-only) — the original AES-256-GCM format. Opened via `node:crypto` (Node only —
+//     the browser never holds v1 data; v1 was only ever written server-side / in Node). New data is
+//     never written as v1.
+//
+// Two wrap modes share ONE content cipher (a fresh per-resource CEK encrypts the body):
 //   • RECIPIENT mode — the CEK is wrapped to each recipient PUBLIC key (ephemeral X25519 ECDH → HKDF →
-//     AES). The writer needs only public keys (host-blind); only a recipient private key opens. Wrapping
-//     to N recipients stores the CEK N times. (Feedback uses this: seal each contribution to the project
-//     key; wrap the project private key to a team.)
+//     symmetric wrap). The writer needs only public keys (host-blind); only a recipient private key opens.
 //   • GROUP-KEY mode — the body is encrypted directly with a shared symmetric GROUP KEY; the group key
 //     itself is distributed by wrapping it to members with RECIPIENT mode (one key resource, O(1) per
-//     resource — see the household shared-pod model). grant = one wrap; rotate = a new group key version.
+//     resource). grant = one wrap; rotate = a new group key version.
 
-import {
-  generateKeyPairSync, createPublicKey, createPrivateKey,
-  diffieHellman, hkdfSync, randomBytes, createCipheriv, createDecipheriv,
-  createHash,
-} from 'node:crypto';
+import nacl from 'tweetnacl';
+import { hkdf } from '@noble/hashes/hkdf.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 
 const SENTINEL = 'fp1:';               // kept stable: feedback's existing on-pod envelopes start with it
-const ALG = 'aes-256-gcm';
-// HKDF context. A Uint8Array (not Buffer.from) so this MODULE evaluates without `Buffer` in a browser —
-// it's statically pulled into the browser graph via the feedback pod, and a top-level `Buffer.from`
-// crashed the web shell at boot (2026-06-11). hkdfSync accepts a TypedArray for `info`. The sealing
-// FUNCTIONS below are still Node-only (node:crypto + Buffer) — a browser WebCrypto tier is future work;
-// this only stops the load-time crash so browser code that never calls sealing (the feedback demo) boots.
+// HKDF context (a TypedArray — keeps this module Buffer-free at load time for the browser graph).
 const INFO = new TextEncoder().encode('fp1-kek');
+const te = new TextEncoder();
+const td = new TextDecoder();
 
-const b64u = (buf) => Buffer.from(buf).toString('base64url');
-const unb64u = (s) => Buffer.from(s, 'base64url');
+// X25519 DER headers (fixed ASN.1 prefixes) — wrap tweetnacl's raw 32-byte keys back into the SPKI/PKCS8
+// DER the rest of the format expects, so the on-wire key bytes (and thus recipientId) are byte-identical
+// to the previous node:crypto encoding.
+const SPKI_PREFIX  = unhex('302a300506032b656e032100');        // → 12 bytes + 32 raw public
+const PKCS8_PREFIX = unhex('302e020100300506032b656e04220420'); // → 16 bytes + 32 raw private
 
-const pubDer = (publicKey) => publicKey.export({ type: 'spki', format: 'der' });
-const importPub = (b64) => createPublicKey({ key: unb64u(b64), format: 'der', type: 'spki' });
-const importPriv = (b64) => createPrivateKey({ key: unb64u(b64), format: 'der', type: 'pkcs8' });
+// ── portable byte helpers (no Buffer; btoa/atob exist in Node 16+ and every browser) ────────────────
+function unhex(h) { const u = new Uint8Array(h.length / 2); for (let i = 0; i < u.length; i++) u[i] = parseInt(h.substr(i * 2, 2), 16); return u; }
+function concat(a, b) { const out = new Uint8Array(a.length + b.length); out.set(a, 0); out.set(b, a.length); return out; }
+function b64u(bytes) {
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let bin = '';
+  for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function unb64u(s) {
+  const bin = atob(String(s).replace(/-/g, '+').replace(/_/g, '/'));
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
 
-/** Stable short id for a recipient public key (b64url SPKI) — the slot label in an envelope. */
+const wrapPub  = (raw32) => concat(SPKI_PREFIX, raw32);
+const wrapPriv = (raw32) => concat(PKCS8_PREFIX, raw32);
+const rawKey   = (der) => der.subarray(der.length - 32);   // last 32 bytes of an X25519 SPKI/PKCS8 DER
+
+/** Stable short id for a recipient public key (b64url SPKI DER) — the slot label in an envelope. */
 export function recipientId(publicKeyB64) {
-  return b64u(createHash('sha256').update(unb64u(publicKeyB64)).digest().subarray(0, 8));
+  return b64u(sha256(unb64u(publicKeyB64)).subarray(0, 8));
 }
 
 /** Generate an X25519 keypair as b64url DER strings. The keygen LOCATION (client/external/host) is a
  *  policy choice about WHO holds `privateKey`; the function is identical. */
 export function generateKeypair() {
-  const { publicKey, privateKey } = generateKeyPairSync('x25519');
-  const pub = b64u(pubDer(publicKey));
+  const kp = nacl.box.keyPair();                 // {publicKey: raw32 X25519, secretKey: raw32}
+  const pub = b64u(wrapPub(kp.publicKey));
   return {
     publicKey: pub,
-    privateKey: b64u(privateKey.export({ type: 'pkcs8', format: 'der' })),
+    privateKey: b64u(wrapPriv(kp.secretKey)),
     recipientId: recipientId(pub),
   };
 }
 
 /** A fresh 256-bit symmetric group key (b64url). Distribute it by sealing it to members (RECIPIENT mode). */
 export function generateGroupKey() {
-  return b64u(randomBytes(32));
+  return b64u(nacl.randomBytes(32));
 }
 
-/** True if a stored text is a sealed envelope (either mode). */
+/** True if a stored text is a sealed envelope (either mode/version). */
 export function isSealed(text) { return typeof text === 'string' && text.startsWith(SENTINEL); }
 
-function aesEncrypt(key, plaintext) {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv(ALG, key, iv);
-  const ct = Buffer.concat([cipher.update(plaintext), cipher.final()]);
-  return { iv: b64u(iv), ct: b64u(ct), tag: b64u(cipher.getAuthTag()) };
+// ── v2 symmetric primitive: XSalsa20-Poly1305 (tweetnacl secretbox) ─────────────────────────────────
+function sbSeal(keyU8, plaintextU8) {
+  const n = nacl.randomBytes(nacl.secretbox.nonceLength);
+  return { n: b64u(n), c: b64u(nacl.secretbox(plaintextU8, n, keyU8)) };
+}
+function sbOpen(keyU8, slot) {
+  const out = nacl.secretbox.open(unb64u(slot.c), unb64u(slot.n), keyU8);
+  if (!out) throw new Error('sealing: secretbox open failed (wrong key or corrupt envelope)');
+  return out;
 }
 
-function aesDecrypt(key, { iv, ct, tag }) {
-  const decipher = createDecipheriv(ALG, key, unb64u(iv));
-  decipher.setAuthTag(unb64u(tag));
-  return Buffer.concat([decipher.update(unb64u(ct)), decipher.final()]);
-}
+function pack(env) { return SENTINEL + b64u(te.encode(JSON.stringify(env))); }
+function unpack(sealedText) { return JSON.parse(td.decode(unb64u(sealedText.slice(SENTINEL.length)))); }
 
-function pack(env) { return SENTINEL + b64u(Buffer.from(JSON.stringify(env), 'utf8')); }
-function unpack(sealedText) { return JSON.parse(unb64u(sealedText.slice(SENTINEL.length)).toString('utf8')); }
-
-/** RECIPIENT mode — seal a string to one or more recipient public keys (b64url SPKI). Needs ONLY public keys. */
+/** RECIPIENT mode — seal a string to one or more recipient public keys (b64url SPKI DER). Needs ONLY public keys. */
 export function seal(plaintext, recipients) {
   const recips = (Array.isArray(recipients) ? recipients : [recipients]).filter(Boolean);
   if (recips.length === 0) throw new Error('seal: at least one recipient public key required');
-  const cek = randomBytes(32);
-  const body = aesEncrypt(cek, Buffer.from(String(plaintext), 'utf8'));
-  const eph = generateKeyPairSync('x25519');
-  const epkRaw = pubDer(eph.publicKey);
+  const cek = nacl.randomBytes(32);
+  const body = sbSeal(cek, te.encode(String(plaintext)));
+  const eph = nacl.box.keyPair();
+  const epkDer = wrapPub(eph.publicKey);
   const wrapped = recips.map((pubB64) => {
-    const shared = diffieHellman({ privateKey: eph.privateKey, publicKey: importPub(pubB64) });
-    const kek = Buffer.from(hkdfSync('sha256', shared, epkRaw, INFO, 32));
-    return { rid: recipientId(pubB64), ...aesEncrypt(kek, cek) };
+    const shared = nacl.scalarMult(eph.secretKey, rawKey(unb64u(pubB64)));
+    const kek = hkdf(sha256, shared, epkDer, INFO, 32);
+    return { rid: recipientId(pubB64), ...sbSeal(kek, cek) };
   });
-  return pack({ v: 1, epk: b64u(epkRaw), body, recips: wrapped });
+  return pack({ v: 2, epk: b64u(epkDer), body, recips: wrapped });
 }
 
-/** RECIPIENT mode — open with a recipient private key (b64url PKCS8). Plaintext / non-recipient handling
+/** RECIPIENT mode — open with a recipient private key (b64url PKCS8 DER). Plaintext / non-recipient handling
  *  unchanged: passes plaintext through; throws if this key is not a recipient (so the host genuinely can't read). */
 export function open(sealedText, privateKeyB64) {
   if (!isSealed(sealedText)) return sealedText;
   const env = unpack(sealedText);
-  if (env.v !== 1) throw new Error(`sealing: unknown envelope version ${env.v}`);
+  if (env.v === 1) return openV1(env, privateKeyB64);          // legacy AES-GCM (Node only)
+  if (env.v !== 2) throw new Error(`sealing: unknown envelope version ${env.v}`);
   if (env.gk) throw new Error('sealing: group-key envelope — use openWithGroupKey');
-  const priv = importPriv(privateKeyB64);
-  const myRid = recipientId(b64u(pubDer(createPublicKey(priv))));
+  const privRaw = rawKey(unb64u(privateKeyB64));
+  const myRid = recipientId(b64u(wrapPub(nacl.scalarMult.base(privRaw))));
   const slot = env.recips.find((r) => r.rid === myRid);
   if (!slot) throw new Error('sealing: not a recipient of this sealed resource');
-  const shared = diffieHellman({ privateKey: priv, publicKey: importPub(env.epk) });
-  const kek = Buffer.from(hkdfSync('sha256', shared, unb64u(env.epk), INFO, 32));
-  const cek = aesDecrypt(kek, slot);
-  return aesDecrypt(cek, env.body).toString('utf8');
+  const epkDer = unb64u(env.epk);
+  const shared = nacl.scalarMult(privRaw, rawKey(epkDer));
+  const kek = hkdf(sha256, shared, epkDer, INFO, 32);
+  const cek = sbOpen(kek, slot);
+  return td.decode(sbOpen(cek, env.body));
 }
 
 /** GROUP-KEY mode — seal a string under a shared symmetric group key (b64url). Anyone holding the group
  *  key can open it; the group key is distributed separately via `seal(groupKey, memberPublicKeys)`. */
 export function sealWithGroupKey(plaintext, groupKeyB64) {
   if (!groupKeyB64) throw new Error('sealWithGroupKey: group key required');
-  const body = aesEncrypt(unb64u(groupKeyB64), Buffer.from(String(plaintext), 'utf8'));
-  return pack({ v: 1, gk: 1, body });
+  return pack({ v: 2, gk: 1, body: sbSeal(unb64u(groupKeyB64), te.encode(String(plaintext))) });
 }
 
 /** GROUP-KEY mode — open a group-key envelope with the shared group key. Plaintext passes through. */
 export function openWithGroupKey(sealedText, groupKeyB64) {
   if (!isSealed(sealedText)) return sealedText;
   const env = unpack(sealedText);
-  if (env.v !== 1) throw new Error(`sealing: unknown envelope version ${env.v}`);
+  if (env.v === 1) return openV1Group(env, groupKeyB64);       // legacy AES-GCM (Node only)
+  if (env.v !== 2) throw new Error(`sealing: unknown envelope version ${env.v}`);
   if (!env.gk) throw new Error('sealing: recipient envelope — use open(text, privateKey)');
-  return aesDecrypt(unb64u(groupKeyB64), env.body).toString('utf8');
+  return td.decode(sbOpen(unb64u(groupKeyB64), env.body));
+}
+
+// ── v1 LEGACY readers (AES-256-GCM, node:crypto) — Node-only, read-only ─────────────────────────────
+// New data is never written as v1. The browser never holds v1 data (v1 was only ever written
+// server-side / in Node), so this path is unreachable there; reaching it in the browser throws via the
+// node:crypto shim, which is the correct "should be unreachable" signal. node:crypto is loaded lazily
+// (require) so the browser bundle never statically pulls it for the sealing module.
+function nodeCrypto() {
+  const req = (typeof module !== 'undefined' && module.require) ? module.require.bind(module)
+    : (typeof require === 'function' ? require : null);
+  if (!req) throw new Error('sealing: a v1 (legacy AES-GCM) envelope can only be opened in a Node context');
+  return req('node:crypto');
+}
+function aesDecryptV1({ createDecipheriv }, keyU8, { iv, ct, tag }) {
+  const d = createDecipheriv('aes-256-gcm', keyU8, unb64u(iv));
+  d.setAuthTag(unb64u(tag));
+  return new Uint8Array(Buffer.concat([d.update(unb64u(ct)), d.final()]));
+}
+function openV1(env, privateKeyB64) {
+  const c = nodeCrypto();
+  const priv = c.createPrivateKey({ key: Buffer.from(unb64u(privateKeyB64)), format: 'der', type: 'pkcs8' });
+  const myDerPub = new Uint8Array(c.createPublicKey(priv).export({ type: 'spki', format: 'der' }));
+  const slot = env.recips.find((r) => r.rid === recipientId(b64u(myDerPub)));
+  if (!slot) throw new Error('sealing: not a recipient of this sealed resource');
+  const shared = c.diffieHellman({ privateKey: priv, publicKey: c.createPublicKey({ key: Buffer.from(unb64u(env.epk)), format: 'der', type: 'spki' }) });
+  const kek = new Uint8Array(c.hkdfSync('sha256', shared, unb64u(env.epk), INFO, 32));
+  const cek = aesDecryptV1(c, kek, slot);
+  return td.decode(aesDecryptV1(c, cek, env.body));
+}
+function openV1Group(env, groupKeyB64) {
+  return td.decode(aesDecryptV1(nodeCrypto(), unb64u(groupKeyB64), env.body));
 }
 
 /** Closures a writer/reader injects. The sealer holds only public keys (or the group key); the opener

@@ -23,7 +23,7 @@ import { initLocalisation, t, detectDeviceLang, currentLang,
 // S4 pod foundation — per-circle sealed storage producer. The pod-client + in-memory
 // pseudo-pod machinery is web-layer (kept out of the shared src so it stays portable);
 // the producer just consumes the injected makePodClient/generateKeypair.
-import { PodClient, generateKeypair as podGenerateKeypair } from '@canopy/pod-client';
+import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient } from '@canopy/pod-client';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { VaultLocalStorage, VaultMemory } from '@canopy/vault';
 // Phase 5 — bot + feedback in the kring composer (mirrors mobile CircleLauncherScreen, on the shared
@@ -606,7 +606,14 @@ function buildCircleBot(agent) {
   // here since canopy-chat drives population explicitly.)
   circlePeerGraph = new PeerGraph();
   circleCoreAgent = agent.sa?.agent ?? null;   // the core chat agent — discoverA2A's hello/native-upgrade target
-  if (typeof window !== 'undefined') window.canopyCirclePods = circlePods;   // S4 debug / e2e seam
+  if (typeof window !== 'undefined') {
+    window.canopyCirclePods = circlePods;   // S4 debug / e2e seam
+    // e2e: drive a producer for any posture (verifies browser-safe sealing crypto end-to-end).
+    window.canopyMakeCirclePod = (circleId, storagePosture = 'p2', roster = []) =>
+      createCirclePodProducer({ circleId, storagePosture, vault: circleVault, roster,
+        generateKeypair: podGenerateKeypair, makePodClient: makeCirclePodClient });
+    window.canopySealingKit = { generateKeypair: podGenerateKeypair, createSealedPodClient };
+  }
   circleContactSkills = createContactSkillRegistry({ peerGraph: circlePeerGraph, sendTask: sendContactTask });
   circleContactSkills.start().catch(() => { /* discovery is best-effort — never blocks the kring */ });
   if (typeof window !== 'undefined') window.canopyContactSkills = circleContactSkills;
