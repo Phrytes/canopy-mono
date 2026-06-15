@@ -57,6 +57,22 @@ describe('renderCircleMyData', () => {
     expect(usage).toContain('4');
   });
 
+  it('renders the key-management actions only when their callbacks are wired', () => {
+    const bare = renderCircleMyData(document.createElement('div'), { t, podStatus: { signedIn: true } });
+    expect(bare.querySelector('.cc-mydata__action')).toBeNull();
+
+    const onBackup = vi.fn(); const onViewMnemonic = vi.fn(); const onRestore = vi.fn();
+    const el = renderCircleMyData(document.createElement('div'), {
+      t, podStatus: { signedIn: true }, onBackup, onViewMnemonic, onRestore,
+    });
+    el.querySelector('.cc-mydata__backup').click();
+    el.querySelector('.cc-mydata__mnemonic').click();
+    el.querySelector('.cc-mydata__restore').click();
+    expect(onBackup).toHaveBeenCalled();
+    expect(onViewMnemonic).toHaveBeenCalled();
+    expect(onRestore).toHaveBeenCalled();
+  });
+
   it('fires onBack', () => {
     const onBack = vi.fn();
     const el = renderCircleMyData(document.createElement('div'), { t, onBack });

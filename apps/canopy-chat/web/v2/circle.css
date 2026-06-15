@@ -720,3 +720,11 @@
 .cc-mydata__privacy-title { font-size: 13px; font-weight: 600; color: var(--ink); }
 .cc-mydata__privacy-body { font-size: 13px; color: var(--ink-soft); margin: 2px 0 0; line-height: 1.4; }
 .cc-profile__mydata { align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
+.cc-mydata__signin, .cc-mydata__action { align-self: flex-start; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
+.cc-mydata__action.cc-mydata__restore { border-color: var(--line); color: var(--ink-soft); }
+/* S5 — modal overlay hosting the backup/restore wizards + the recovery-phrase reveal. */
+.cc-mydata-modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.45); }
+.cc-mydata-modal__card { width: min(440px, 100%); max-height: 90vh; overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+.cc-mydata-mnemonic h3 { margin: 0 0 8px; }
+.cc-mydata-mnemonic__warn { font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
+.cc-mydata-mnemonic__words { margin: 10px 0 14px; padding: 12px; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--paper-soft, transparent); font-size: 15px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; user-select: all; }

@@ -1791,7 +1791,15 @@
     "pod_root":      { "text": "Pod root", "doc": "S5 — pod root URI." },
     "relay":         { "text": "Relay", "doc": "S5 — relay operator/url." },
     "privacy":       { "text": "Privacy", "doc": "S5 — privacy disclosure section." },
-    "usage":         { "text": "Usage", "doc": "S5 — usage metrics section." }
+    "usage":         { "text": "Usage", "doc": "S5 — usage metrics section." },
+    "keys":          { "text": "Keys & backup", "doc": "S5 — key-management section heading." },
+    "backup":        { "text": "Back up my keys", "doc": "S5 — launch the encrypted-backup wizard." },
+    "view_mnemonic": { "text": "View recovery phrase", "doc": "S5 — reveal the recovery phrase once." },
+    "restore":       { "text": "Restore from recovery phrase", "doc": "S5 — launch the restore-from-mnemonic wizard." },
+    "mnemonic_title":{ "text": "Recovery phrase", "doc": "S5 — heading of the reveal-mnemonic dialog." },
+    "mnemonic_warn": { "text": "Write these words down and keep them somewhere safe. Anyone with this phrase can restore your identity. It is shown only once.", "doc": "S5 — reveal-mnemonic warning." },
+    "mnemonic_none": { "text": "No recovery phrase is available on this device.", "doc": "S5 — reveal-mnemonic empty state." },
+    "close":         { "text": "Close", "doc": "S5 — close a my-data dialog." }
   },
   "admin": {
     "title":      { "text": "Admin", "doc": "S3 — group admin panel title + ⋯ menu entry." },

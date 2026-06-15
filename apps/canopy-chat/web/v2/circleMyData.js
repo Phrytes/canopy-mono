@@ -5,8 +5,9 @@
  * pages: WHERE your data lives (pod root / relay, `getDataLocation` +
  * `podSignInStatus`), the privacy disclosure (`getPrivacyNotice`), and a usage
  * snapshot (`getMetrics`). Pure render — the host (`circleApp.js` showMyData)
- * loads the stoop ops and passes the results. No mutations (the sensitive
- * backup/mnemonic + the OIDC sign-in flow are separate, env-gated slices).
+ * loads the stoop ops and passes the results. The key-management actions
+ * (S5 — back up · view recovery phrase · restore) are rendered when the host
+ * injects the matching callbacks; each launches an existing wizard/skill.
  */
 
 export function renderCircleMyData(container, {
@@ -17,6 +18,9 @@ export function renderCircleMyData(container, {
   t,
   onBack,
   onSignIn,
+  onBackup,
+  onViewMnemonic,
+  onRestore,
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -59,6 +63,27 @@ export function renderCircleMyData(container, {
     storage.appendChild(kv(tr('circle.mydata.relay'), [dataLocation.relayOperator, dataLocation.relayUrl].filter(Boolean).join(' · ')));
   }
   container.appendChild(storage);
+
+  // ── key management (S5) ─────────────────────────────────────────────────────
+  // Back up / reveal recovery phrase / restore. Each is gated on its callback so
+  // the section only appears where the host wired the (existing) wizard/skill.
+  const acts = [
+    ['cc-mydata__backup',   'circle.mydata.backup',         onBackup],
+    ['cc-mydata__mnemonic', 'circle.mydata.view_mnemonic',  onViewMnemonic],
+    ['cc-mydata__restore',  'circle.mydata.restore',        onRestore],
+  ].filter(([, , fn]) => typeof fn === 'function');
+  if (acts.length) {
+    const keys = section(tr('circle.mydata.keys'));
+    for (const [cls, key, fn] of acts) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `cc-mydata__action ${cls}`;
+      b.textContent = tr(key);
+      b.addEventListener('click', () => fn());
+      keys.appendChild(b);
+    }
+    container.appendChild(keys);
+  }
 
   // ── privacy ────────────────────────────────────────────────────────────────
   if (Array.isArray(privacy) && privacy.length) {

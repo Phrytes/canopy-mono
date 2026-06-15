@@ -1791,7 +1791,15 @@
     "pod_root":      { "text": "Pod-root", "doc": "S5 — pod root URI." },
     "relay":         { "text": "Relay", "doc": "S5 — relay operator/url." },
     "privacy":       { "text": "Privacy", "doc": "S5 — privacy disclosure section." },
-    "usage":         { "text": "Gebruik", "doc": "S5 — usage metrics section." }
+    "usage":         { "text": "Gebruik", "doc": "S5 — usage metrics section." },
+    "keys":          { "text": "Sleutels & back-up", "doc": "S5 — key-management section heading." },
+    "backup":        { "text": "Back-up van mijn sleutels", "doc": "S5 — launch the encrypted-backup wizard." },
+    "view_mnemonic": { "text": "Herstelzin tonen", "doc": "S5 — reveal the recovery phrase once." },
+    "restore":       { "text": "Herstellen met herstelzin", "doc": "S5 — launch the restore-from-mnemonic wizard." },
+    "mnemonic_title":{ "text": "Herstelzin", "doc": "S5 — heading of the reveal-mnemonic dialog." },
+    "mnemonic_warn": { "text": "Schrijf deze woorden op en bewaar ze ergens veilig. Iedereen met deze zin kan jouw identiteit herstellen. Hij wordt maar één keer getoond.", "doc": "S5 — reveal-mnemonic warning." },
+    "mnemonic_none": { "text": "Op dit apparaat is geen herstelzin beschikbaar.", "doc": "S5 — reveal-mnemonic empty state." },
+    "close":         { "text": "Sluiten", "doc": "S5 — close a my-data dialog." }
   },
   "admin": {
     "title":      { "text": "Beheer", "doc": "S3 — group admin panel title + ⋯ menu entry." },

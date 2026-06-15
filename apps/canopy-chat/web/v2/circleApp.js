@@ -59,6 +59,10 @@ import { renderContactsRoster } from './contactsRoster.js';
 import { renderCircleProfile } from './circleProfile.js';
 import { renderCircleAdminPanel } from './circleAdminPanel.js';
 import { renderCircleMyData } from './circleMyData.js';
+// S5 — key management: reuse the existing encrypted-backup + restore wizards
+// (the slash/page renderers) inside My-data, mounted in a lightweight overlay.
+import { renderEncryptedBackupWizard } from '../../src/web/wizards/encryptedBackupWizard.js';
+import { renderRestoreFromMnemonicWizard } from '../../src/web/wizards/restoreFromMnemonicWizard.js';
 import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
@@ -1418,8 +1422,8 @@ async function showMij() {
   load();
 }
 
-// S5 — "My data": where your data lives (pod/relay) + privacy + usage. Read-only;
-// a sub-screen of Mij. The OIDC sign-in flow + backup are separate env-gated slices.
+// S5 — "My data": where your data lives (pod/relay) + privacy + usage + key
+// management (back up · reveal recovery phrase · restore). A sub-screen of Mij.
 async function showMyData() {
   hideCircleTabBar(tabBarEl);
   let dataLocation = {}; let podStatus = {}; let privacy = []; let metrics = {};
@@ -1427,7 +1431,12 @@ async function showMyData() {
   const onSignIn = () => Promise.resolve(
     podAuth.startSignIn({ issuer: podAuth.DEFAULT_ISSUER_ID, redirectUrl: window.location.href }),
   ).catch((e) => globalThis.alert?.(e?.message ?? 'sign-in failed'));
-  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn });
+  // S5 — launch the existing backup/restore wizards in a modal overlay; reveal
+  // the recovery phrase via the stoop `getMnemonicOnce` skill (shown once).
+  const onBackup = () => mountMyDataWizard(renderEncryptedBackupWizard);
+  const onRestore = () => mountMyDataWizard(renderRestoreFromMnemonicWizard);
+  const onViewMnemonic = () => showMnemonicReveal();
+  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore });
   rerender();
   const [loc, status, priv, met] = await Promise.all([
     rawCallSkill('stoop', 'getDataLocation', {}).catch(() => null),
@@ -1446,6 +1455,61 @@ async function showMyData() {
   privacy = Array.isArray(priv?.sections) ? priv.sections : [];
   metrics = (met?.snapshot && typeof met.snapshot === 'object') ? met.snapshot : {};
   rerender();
+}
+
+// S5 — mount one of the existing wizard renderers (encrypted-backup / restore)
+// inside a dismissable modal overlay. The wizard owns its own DOM; we supply the
+// container + the shared `rawCallSkill` (the wizards call `callSkill('stoop', …)`).
+function mountMyDataWizard(renderWizard) {
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-mydata-modal';
+  const card = document.createElement('div');
+  card.className = 'cc-mydata-modal__card';
+  overlay.appendChild(card);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  document.body.appendChild(overlay);
+  function close() { try { overlay.remove(); } catch { /* defensive */ } }
+  try {
+    renderWizard({ container: card, doc: document, callSkill: rawCallSkill, onClose: close, onDispatched: () => {} });
+  } catch (err) { close(); globalThis.alert?.(err?.message ?? String(err)); }
+}
+
+// S5 — reveal the recovery phrase once (stoop `getMnemonicOnce`). Shown in the
+// same modal overlay with a destructive warning; the words are never re-fetched.
+async function showMnemonicReveal() {
+  let res = null;
+  try { res = await rawCallSkill('stoop', 'getMnemonicOnce', {}); } catch { res = null; }
+  const words = (res && !res.error && (res.mnemonic ?? res.phrase ?? res.words)) || '';
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-mydata-modal';
+  const card = document.createElement('div');
+  card.className = 'cc-mydata-modal__card cc-mydata-mnemonic';
+  const h = document.createElement('h3');
+  h.textContent = t('circle.mydata.mnemonic_title');
+  card.appendChild(h);
+  if (words) {
+    const warn = document.createElement('p');
+    warn.className = 'cc-mydata-mnemonic__warn';
+    warn.textContent = t('circle.mydata.mnemonic_warn');
+    const pre = document.createElement('pre');
+    pre.className = 'cc-mydata-mnemonic__words';
+    pre.textContent = Array.isArray(words) ? words.join(' ') : String(words);
+    card.appendChild(warn);
+    card.appendChild(pre);
+  } else {
+    const empty = document.createElement('p');
+    empty.textContent = t('circle.mydata.mnemonic_none');
+    card.appendChild(empty);
+  }
+  const done = document.createElement('button');
+  done.type = 'button';
+  done.className = 'cc-wizard-btn cc-wizard-btn-primary';
+  done.textContent = t('circle.mydata.close');
+  done.addEventListener('click', () => { try { overlay.remove(); } catch { /* */ } });
+  card.appendChild(done);
+  overlay.appendChild(card);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 // S2 — availability/quiet-hours/hopping (the former Mij body), now a sub-screen of Mij.
