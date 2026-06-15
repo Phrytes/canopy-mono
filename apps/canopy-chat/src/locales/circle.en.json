@@ -1774,5 +1774,22 @@
     "geo_use":     { "text": "Use this", "doc": "S2 — save the geocoded location." },
     "loc_clear":   { "text": "Clear location", "doc": "S2 — clear the saved location." },
     "availability":{ "text": "Availability →", "doc": "S2 — open the availability/quiet-hours screen." }
+  },
+  "admin": {
+    "title":      { "text": "Admin", "doc": "S3 — group admin panel title + ⋯ menu entry." },
+    "back":       { "text": "← Back", "doc": "S3 — back from the admin panel." },
+    "members":    { "text": "Members", "doc": "S3 — member roster section." },
+    "no_members": { "text": "No members yet.", "doc": "S3 — empty roster." },
+    "remove":     { "text": "Remove", "doc": "S3 — remove a member (admin-only)." },
+    "role":       {
+      "admin":       { "text": "admin", "doc": "S3 — admin role badge." },
+      "coordinator": { "text": "coordinator", "doc": "S3 — coordinator role badge." }
+    },
+    "announce":             { "text": "Announcement", "doc": "S3 — post-announcement section." },
+    "announce_placeholder": { "text": "Announce something to the circle…", "doc": "S3 — announcement input." },
+    "announce_post":        { "text": "Post", "doc": "S3 — post the announcement." },
+    "announced":            { "text": "Announcement posted.", "doc": "S3 — confirmation." },
+    "refused":              { "text": "That action is admin-only.", "doc": "S3 — shown when a non-admin op is refused." },
+    "saving":               { "text": "saving…", "doc": "S3 — transient state." }
   }
 }

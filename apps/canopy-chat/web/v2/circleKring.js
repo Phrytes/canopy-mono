@@ -639,6 +639,8 @@ const MORE_ITEMS = [
   { key: 'rules',    labelKey: 'circle.rules.title' },
   // α.1d — edit per-kring scherm recipes (multiple, one marked active).
   { key: 'recipes',  labelKey: 'circle.recipe.editor.book_title' },
+  // S3 — group admin: member roster + remove + announcements (admin-gated ops).
+  { key: 'admin',    labelKey: 'circle.admin.title' },
 ];
 
 function collectMoreActions(more, tr) {

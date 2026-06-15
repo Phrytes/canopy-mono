@@ -46,6 +46,7 @@ import { listContacts, mergeContacts, stoopContactToRow } from '../../src/v2/con
 import { addBotToGraph } from '../../src/v2/addBot.js';
 import { renderContactsRoster } from './contactsRoster.js';
 import { renderCircleProfile } from './circleProfile.js';
+import { renderCircleAdminPanel } from './circleAdminPanel.js';
 import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
@@ -1395,6 +1396,10 @@ function showKring(id, circle, policy) {
     // to everyone for V0; admin-gating + multi-admin consensus are
     // follow-up slices.
     recipes:  () => showRecipeEditor(id),
+    // S3 — group admin (member roster + remove + announcements). The ops are
+    // admin-gated server-side; shown to everyone for V0 (a non-admin's action is
+    // refused with a notice). Role-gating the menu entry is a follow-up.
+    admin:    () => showAdmin(id),
     ...(allowViewAs ? { viewAs: () => showViewAs(id) } : {}),
     ...(allowFiles  ? { files:  () => showFolio(id) } : {}),
     ...(allowRules  ? { rules:  () => showRules(id) } : {}),
@@ -1987,6 +1992,43 @@ async function showOverride(id) {
     onSave: async () => { await overrideStore.update(id, working); showDetail(id); },
   });
   rerender();
+}
+
+// S3 — group admin panel (member roster + remove + announcements). Reached from
+// the kring `⋯` menu. Ops are admin-gated server-side; a refusal surfaces a notice.
+async function showAdmin(id) {
+  hideCircleTabBar(tabBarEl);
+  let members = [];
+  let busy = false;
+  let notice = null;
+
+  async function load() {
+    try { const r = await rawCallSkill('stoop', 'listGroupMembers', { groupId: id }); members = Array.isArray(r?.members) ? r.members : []; }
+    catch { members = []; }
+    rerender();
+  }
+  const rerender = () => renderCircleAdminPanel(rootEl, {
+    members, busy, notice, t,
+    onBack: () => showDetail(id),
+    onRemove: async (m) => {
+      notice = null; busy = true; rerender();
+      try {
+        const r = await rawCallSkill('stoop', 'removeMember', { groupId: id, memberWebid: m.webid, memberStableId: m.stableId });
+        if (r?.error) notice = t('circle.admin.refused');
+      } catch { notice = t('circle.admin.refused'); }
+      busy = false; await load();
+    },
+    onAnnounce: async (text) => {
+      notice = null; busy = true; rerender();
+      try {
+        const r = await rawCallSkill('stoop', 'postAnnouncement', { groupId: id, text });
+        notice = r?.error ? t('circle.admin.refused') : t('circle.admin.announced');
+      } catch { notice = t('circle.admin.refused'); }
+      busy = false; rerender();
+    },
+  });
+  rerender();
+  load();
 }
 
 async function showSettings(id) {

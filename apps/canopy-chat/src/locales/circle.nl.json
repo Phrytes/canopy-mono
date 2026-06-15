@@ -1774,5 +1774,22 @@
     "geo_use":     { "text": "Gebruik deze", "doc": "S2 — save the geocoded location." },
     "loc_clear":   { "text": "Locatie wissen", "doc": "S2 — clear the saved location." },
     "availability":{ "text": "Beschikbaarheid →", "doc": "S2 — open the availability/quiet-hours screen." }
+  },
+  "admin": {
+    "title":      { "text": "Beheer", "doc": "S3 — group admin panel title + ⋯ menu entry." },
+    "back":       { "text": "← Terug", "doc": "S3 — back from the admin panel." },
+    "members":    { "text": "Leden", "doc": "S3 — member roster section." },
+    "no_members": { "text": "Nog geen leden.", "doc": "S3 — empty roster." },
+    "remove":     { "text": "Verwijderen", "doc": "S3 — remove a member (admin-only)." },
+    "role":       {
+      "admin":       { "text": "beheerder", "doc": "S3 — admin role badge." },
+      "coordinator": { "text": "coördinator", "doc": "S3 — coordinator role badge." }
+    },
+    "announce":             { "text": "Aankondiging", "doc": "S3 — post-announcement section." },
+    "announce_placeholder": { "text": "Kondig iets aan in de kring…", "doc": "S3 — announcement input." },
+    "announce_post":        { "text": "Plaatsen", "doc": "S3 — post the announcement." },
+    "announced":            { "text": "Aankondiging geplaatst.", "doc": "S3 — confirmation." },
+    "refused":              { "text": "Die actie is alleen voor beheerders.", "doc": "S3 — shown when a non-admin op is refused." },
+    "saving":               { "text": "opslaan…", "doc": "S3 — transient state." }
   }
 }
