@@ -33,6 +33,10 @@ export { createContactSkillRegistry, chainContactCallSkill } from './v2/contactS
 // the Contacten roster source, and adding a bot to the app PeerGraph.
 export { createContactThreadChannel, DEFAULT_CONTACT_SUBTYPES } from './v2/contactThreadChannel.js';
 export { listContacts, peerToContactRow, stoopContactToRow, mergeContacts } from './v2/contactsSource.js';
+// S4 (stoop dissolution — pod foundation, SAFE offline slice): per-circle sealing
+// identity + control-agent composition over the @canopy/pod-client sealing substrate.
+export { createCircleSealingIdentity } from './v2/circleSealingIdentity.js';
+export { createCircleControlAgent } from './v2/circleControlAgent.js';
 export { addBotToGraph } from './v2/addBot.js';
 export { renderReply, formatText }   from './renderer.js';
 export { Thread, newThread }         from './thread.js';
