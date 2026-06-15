@@ -114,6 +114,7 @@ import ContactThreadScreen from './ContactThreadScreen.js';
 import CircleNoticeboard from './CircleNoticeboard.js';
 import CircleProfileScreen from './CircleProfileScreen.js';
 import CircleAdminPanelScreen from './CircleAdminPanelScreen.js';
+import CircleMyDataScreen from './CircleMyDataScreen.js';
 
 // B (circle bot) — host LLM route for NL→command in the kring. Mirrors web's VITE_CIRCLE_LLM_BASEURL
 // + the feedback mobile EXPO_PUBLIC_FEEDBACK_LLM_BASEURL pattern. Unset → no provider → the LLM branch
@@ -743,8 +744,12 @@ export default function CircleLauncherScreen({
       if (selected && view === 'rulesconsent') { setView('rules'); return true; }
       // Hop screen lives under the Mij tab.
       if (view === 'hop') { setView('availability'); return true; }
+      // S2/S5 — Mij sub-views.
+      if (view === 'mydata') { setView('profile'); return true; }
+      // S3 — admin panel is a sub-view of the circle detail.
+      if (selected && view === 'admin') { setView('detail'); return true; }
       // Top-level tab screens → back to launcher list.
-      if (view === 'availability' || view === 'stream'
+      if (view === 'availability' || view === 'stream' || view === 'profile'
           || view === 'nearby' || view === 'mythings') {
         setView('list'); return true;
       }
@@ -827,7 +832,15 @@ export default function CircleLauncherScreen({
   if (view === 'profile') {
     return (
       <WithTabBar active="mij" onSelect={onTab}>
-        <CircleProfileScreen callSkill={bundle?.callSkill} onAvailability={() => setView('availability')} />
+        <CircleProfileScreen callSkill={bundle?.callSkill} onAvailability={() => setView('availability')} onMyData={() => setView('mydata')} />
+      </WithTabBar>
+    );
+  }
+  // S5 — "My data": data-location + privacy + usage (read-only); sub-view of Mij.
+  if (view === 'mydata') {
+    return (
+      <WithTabBar active="mij" onSelect={onTab}>
+        <CircleMyDataScreen callSkill={bundle?.callSkill} onBack={() => setView('profile')} />
       </WithTabBar>
     );
   }

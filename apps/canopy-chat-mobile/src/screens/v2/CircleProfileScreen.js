@@ -12,7 +12,7 @@ import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-
 import { t, currentLang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 
-export default function CircleProfileScreen({ callSkill, onAvailability }) {
+export default function CircleProfileScreen({ callSkill, onAvailability, onMyData }) {
   const [profile, setProfile] = useState({});
   const [categories, setCategories] = useState([]);
   const [handle, setHandle] = useState('');
@@ -109,6 +109,9 @@ export default function CircleProfileScreen({ callSkill, onAvailability }) {
 
       {typeof onAvailability === 'function' && (
         <Pressable style={styles.secondary} onPress={onAvailability} testID="profile-availability"><Text style={styles.secondaryText}>{t('circle.profile.availability')}</Text></Pressable>
+      )}
+      {typeof onMyData === 'function' && (
+        <Pressable style={styles.secondary} onPress={onMyData} testID="profile-mydata"><Text style={styles.secondaryText}>{t('circle.profile.mydata')}</Text></Pressable>
       )}
       {busy && <Text style={styles.muted}>{t('circle.profile.saving')}</Text>}
     </ScrollView>
