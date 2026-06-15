@@ -64,6 +64,18 @@ describe('kringRecipeBlocks · α.1b — materializeBlock (pure types)', () => {
     const r = await materializeBlock({});
     expect(r.status).toBe('error');
   });
+
+  it('noticeboard block pulls stoop listOpen (#16 — scherm shows the prikbord)', async () => {
+    const callSkill = async (app, op) => (app === 'stoop' && op === 'listOpen'
+      ? { items: [{ id: 'p1', text: 'wie heeft een boormachine?', addedBy: 'https://alice.example/me' }] }
+      : null);
+    const r = await materializeBlock({ block: { id: 'b', type: 'noticeboard' }, circleId: 'c1', hostOps: { callSkill } });
+    expect(r.type).toBe('noticeboard');
+    expect(r.status).toBe('ok');
+    expect(r.content.items).toHaveLength(1);
+    expect(r.content.items[0].event.payload.text).toContain('boormachine');
+    expect(r.content.items[0].actor).toBe('me');   // shortWebid of the addedBy
+  });
 });
 
 describe('kringRecipeBlocks · α.1b — materializeBlock (data-fetching types)', () => {

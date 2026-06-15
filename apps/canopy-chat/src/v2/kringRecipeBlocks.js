@@ -71,7 +71,7 @@ export async function materializeBlock({ block, circleId, hostOps = {} } = {}) {
       case 'announcement': return materializeAnnouncement(block);
       case 'text':         return materializeText(block);
       case 'photo':        return materializePhoto(block);
-      case 'noticeboard':  return materializeNoticeboard(block, circleId, hostOps);
+      case 'noticeboard':  return await materializeNoticeboard(block, circleId, hostOps);
       case 'agenda':       return await materializeAgenda(block, hostOps);
       case 'tasks':        return await materializeTasks(block, circleId, hostOps);
       case 'rules':        return await materializeRules(block, circleId, hostOps);
@@ -170,10 +170,25 @@ function materializePhoto(block) {
   };
 }
 
-function materializeNoticeboard(block, circleId, { eventLog, circles } = {}) {
+async function materializeNoticeboard(block, circleId, { callSkill, eventLog, circles } = {}) {
   const limit = clampInt(block.config?.limit, 1, 50, 5);
   let rows = [];
-  if (eventLog?.query && circleId) {
+  // #16 — prefer the REAL open posts (stoop `listOpen`) so the scherm noticeboard
+  // surfaces the prikbord even when the chat tab (where the prikbord lives) is
+  // hidden. Map each post into the StreamRow shape the renderer's pickSender/
+  // pickRowText read. Falls back to the eventLog stream when no callSkill.
+  if (typeof callSkill === 'function') {
+    try {
+      const res = await callSkill('stoop', 'listOpen', {});
+      const items = Array.isArray(res?.items) ? res.items : [];
+      rows = items.slice(0, limit).map((it) => ({
+        id: it.id,
+        actor: shortWebid(it.addedBy),
+        event: { payload: { text: it.text ?? it.label ?? '' } },
+      }));
+    } catch { rows = []; }
+  }
+  if (rows.length === 0 && eventLog?.query && circleId) {
     const events = eventLog.query({ excludeMuted: true });
     const stream = buildKringStream({ events, circles: circles ?? [], circleId });
     // buildKringStream returns newest-first; cap to `limit`.
@@ -186,6 +201,11 @@ function materializeNoticeboard(block, circleId, { eventLog, circles } = {}) {
     // α.5c — surface the compact flag so the renderer can tighten rows.
     config: { compact: block.config?.compact === true },
   };
+}
+
+/** Short, readable form of a webid for a noticeboard sender. */
+function shortWebid(w) {
+  return typeof w === 'string' && w ? (w.split(/[/#]/).filter(Boolean).pop() || w).slice(0, 18) : '';
 }
 
 async function materializeAgenda(block, { callSkill } = {}) {

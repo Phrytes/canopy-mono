@@ -225,7 +225,13 @@ function readActionFreqSnapshot() {
 // D1 (§5A) — in-memory fallback recipe for a kring with no authored scherm:
 // just the "Veel-gebruikt" row.  Never persisted.
 const DEFAULT_SCHERM_RECIPE = Object.freeze({
-  id: '__default__', name: '', blocks: [{ id: 'qa-default', type: 'quickActions', config: { limit: 4 } }],
+  // #16 — the default scherm leads with quick-actions, then the noticeboard (the
+  // buurt prikbord via stoop listOpen), so a scherm-landing circle still surfaces
+  // the open posts even though the prikbord tab lives in the (hidden) chat view.
+  id: '__default__', name: '', blocks: [
+    { id: 'qa-default', type: 'quickActions', config: { limit: 4 } },
+    { id: 'nb-default', type: 'noticeboard',  config: { limit: 8 } },
+  ],
 });
 // γ.2 — per-circle rules store (replaces inline localStorage in showRules()).
 const rulesStore  = createCircleRulesStore({ ...localStorageRulesIo(), versions: rulesVersions });
@@ -1682,8 +1688,12 @@ function showKring(id, circle, policy) {
       const blocks = await materializeRecipe({
         recipe:   active,
         circleId: id,
-        // D1 — policy + actionFrequency feed the quickActions block.
-        hostOps:  { callSkill: resolveCallSkill ?? rawCallSkill, eventLog, circles: circlesCache, policy, actionFrequency },
+        // D1 — policy + actionFrequency feed the quickActions block. The block
+        // materializers call `callSkill(appOrigin, opId, args)` (3-arg), so this
+        // MUST be the raw 3-arg dispatch — the 2-arg `resolveCallSkill` resolver
+        // would mis-read the appOrigin as the opId (#16: this also un-breaks the
+        // tasks/agenda scherm blocks, which had the same latent bug).
+        hostOps:  { callSkill: rawCallSkill, eventLog, circles: circlesCache, policy, actionFrequency },
       });
       screenBlocks = blocks;
       if (getActiveCircle() === id) rerender();

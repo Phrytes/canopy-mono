@@ -150,7 +150,12 @@ AsyncStorage.getItem(ACTION_FREQ_KEY).then((raw) => {
 // D1 (§5A) — in-memory fallback recipe (just the Veel-gebruikt row) for a
 // kring with no authored scherm.  Never persisted.
 const DEFAULT_SCHERM_RECIPE = Object.freeze({
-  id: '__default__', name: '', blocks: [{ id: 'qa-default', type: 'quickActions', config: { limit: 4 } }],
+  // #16 — quick-actions + the noticeboard (buurt prikbord via stoop listOpen), so a
+  // scherm-landing circle surfaces the open posts even with the chat tab hidden.
+  id: '__default__', name: '', blocks: [
+    { id: 'qa-default', type: 'quickActions', config: { limit: 4 } },
+    { id: 'nb-default', type: 'noticeboard',  config: { limit: 8 } },
+  ],
 });
 
 // Wrap a top-level surface (Kringen / Stroom / Mij) with the bottom tab bar.
@@ -1472,8 +1477,11 @@ function CircleDetail({
         const blocks = await materializeRecipe({
           recipe:   active,
           circleId: circle.id,
-          // D1 — policy + actionFrequency feed the quickActions block.
-          hostOps:  { callSkill, eventLog, circles, policy, actionFrequency },
+          // D1 — policy + actionFrequency feed the quickActions block. The block
+          // materializers call `callSkill(appOrigin, opId, args)` (3-arg), so pass
+          // the RAW 3-arg dispatch, not the 2-arg `callSkill` resolver (#16; also
+          // un-breaks the tasks/agenda scherm blocks that shared the latent bug).
+          hostOps:  { callSkill: bundle?.callSkill, eventLog, circles, policy, actionFrequency },
         });
         if (alive) setScreenBlocks(blocks);
       } catch (err) {

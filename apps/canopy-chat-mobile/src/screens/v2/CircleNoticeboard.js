@@ -25,6 +25,8 @@ export default function CircleNoticeboard({ callSkill }) {
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [dueText, setDueText] = useState('');   // S3 #4 — lend return-by date (YYYY-MM-DD)
+  const [assigningTo, setAssigningTo] = useState(null);   // S3 #4 — lender assigns a borrower
+  const [assignText, setAssignText] = useState('');
 
   const reload = useCallback(async () => {
     if (typeof callSkill !== 'function') return;
@@ -56,6 +58,7 @@ export default function CircleNoticeboard({ callSkill }) {
   const runAction = useCallback(async (action, post) => {
     try {
       if (action === 'respond') { setReplyingTo(post.id); setReplyText(''); return; }
+      if (action === 'assign') { setAssigningTo(post.id); setAssignText(''); return; }
       if (action === 'cancel') await callSkill('stoop', 'cancelRequest', { requestId: post.id });
       else if (action === 'report') await callSkill('stoop', 'reportPost', { itemId: post.id });
       else if (action === 'markReturned') await callSkill('stoop', 'markReturned', { requestId: post.id });
@@ -71,6 +74,14 @@ export default function CircleNoticeboard({ callSkill }) {
     setReplyingTo(null); setReplyText('');
     reload();
   }, [replyText, callSkill, reload]);
+
+  const submitAssign = useCallback(async (post) => {
+    const borrowerWebid = assignText.trim();
+    if (!borrowerWebid) { setAssigningTo(null); return; }
+    try { await callSkill('stoop', 'assignLend', { itemId: post.id, borrowerWebid }); } catch { /* */ }
+    setAssigningTo(null); setAssignText('');
+    reload();
+  }, [assignText, callSkill, reload]);
 
   return (
     <View style={styles.wrap} testID="circle-noticeboard">
@@ -108,6 +119,7 @@ export default function CircleNoticeboard({ callSkill }) {
           <Text style={styles.postText2}>{p.text}</Text>
           <View style={styles.actions}>
             {!p.mine && <Chip label={t('circle.noticeboard.action.respond')} onPress={() => runAction('respond', p)} />}
+            {p.type === 'lend' && p.mine && <Chip label={t('circle.noticeboard.action.assign')} onPress={() => runAction('assign', p)} />}
             {p.type === 'lend' && p.mine && <Chip label={t('circle.noticeboard.action.returned')} onPress={() => runAction('markReturned', p)} />}
             {p.mine && <Chip label={t('circle.noticeboard.action.cancel')} onPress={() => runAction('cancel', p)} />}
             {!p.mine && <Chip label={t('circle.noticeboard.action.report')} muted onPress={() => runAction('report', p)} />}
@@ -117,6 +129,12 @@ export default function CircleNoticeboard({ callSkill }) {
             <View style={styles.replyRow}>
               <TextInput style={styles.replyInput} value={replyText} onChangeText={setReplyText} placeholder={t('circle.noticeboard.respond_prompt')} placeholderTextColor={theme.color.inkSoft} onSubmitEditing={() => submitReply(p)} testID={`nb-reply-${p.id}`} autoFocus />
               <Pressable style={styles.post} onPress={() => submitReply(p)}><Text style={styles.postText}>{t('circle.contacts.send')}</Text></Pressable>
+            </View>
+          )}
+          {assigningTo === p.id && (
+            <View style={styles.replyRow}>
+              <TextInput style={styles.replyInput} value={assignText} onChangeText={setAssignText} placeholder={t('circle.noticeboard.assign_prompt')} placeholderTextColor={theme.color.inkSoft} autoCapitalize="none" onSubmitEditing={() => submitAssign(p)} testID={`nb-assign-${p.id}`} autoFocus />
+              <Pressable style={styles.post} onPress={() => submitAssign(p)}><Text style={styles.postText}>{t('circle.noticeboard.action.assign')}</Text></Pressable>
             </View>
           )}
         </View>
