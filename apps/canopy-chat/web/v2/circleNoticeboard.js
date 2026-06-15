@@ -60,12 +60,28 @@ export function renderCircleNoticeboard(container, {
   row.appendChild(post);
   composer.appendChild(row);
 
+  // S3 #4 — a lend post can carry a return-by date (drives the notifier reminder).
+  let due = null;
+  if (intent === 'lend') {
+    const dueRow = document.createElement('label');
+    dueRow.className = 'cc-prikbord__due';
+    const dueLabel = document.createElement('span');
+    dueLabel.textContent = tr('circle.noticeboard.due');
+    due = document.createElement('input');
+    due.type = 'date';
+    due.className = 'cc-prikbord__due-input';
+    dueRow.appendChild(dueLabel);
+    dueRow.appendChild(due);
+    composer.appendChild(dueRow);
+  }
+
   composer.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
-    if (typeof onPost === 'function') onPost({ intent, text });
+    const dueAt = due?.value ? Date.parse(due.value) : undefined;
+    if (typeof onPost === 'function') onPost({ intent, text, ...(Number.isFinite(dueAt) ? { dueAt } : {}) });
   });
   container.appendChild(composer);
 
@@ -119,9 +135,11 @@ export function renderCircleNoticeboard(container, {
       actions.appendChild(b);
     };
     if (!p.mine) chip('respond', 'circle.noticeboard.action.respond');
+    if (p.type === 'lend' && p.mine) chip('assign', 'circle.noticeboard.action.assign');
     if (p.type === 'lend' && p.mine) chip('markReturned', 'circle.noticeboard.action.returned');
     if (p.mine) chip('cancel', 'circle.noticeboard.action.cancel');
     if (!p.mine) chip('report', 'circle.noticeboard.action.report', ' cc-prikbord__chip--muted');
+    if (!p.mine) chip('mute', 'circle.noticeboard.action.mute', ' cc-prikbord__chip--muted');
     li.appendChild(actions);
 
     list.appendChild(li);

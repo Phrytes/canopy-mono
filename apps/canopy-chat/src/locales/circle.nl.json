@@ -1748,8 +1748,12 @@
       "respond":  { "text": "Help mee",     "doc": "S1 — per-post action: respond/offer help (respondToItem)." },
       "returned": { "text": "Teruggebracht", "doc": "S1 — per-post action on a lend: mark returned (markReturned)." },
       "cancel":   { "text": "Intrekken",     "doc": "S1 — per-post action (author): cancel the post (cancelRequest)." },
-      "report":   { "text": "Rapporteren",   "doc": "S1 — per-post action: report abuse (reportPost)." }
+      "report":   { "text": "Rapporteren",   "doc": "S1 — per-post action: report abuse (reportPost)." },
+      "mute":     { "text": "Dempen",        "doc": "S3 — per-post action: mute the author (mutePeer)." },
+      "assign":   { "text": "Toewijzen",     "doc": "S3 — per-post action on a lend (author): assign a borrower (assignLend)." }
     },
+    "due":           { "text": "Terug op", "doc": "S3 — lend due-date field label." },
+    "assign_prompt": { "text": "WebID van de lener:", "doc": "S3 — prompt for the borrower when assigning a lend." },
     "posted":      { "text": "Geplaatst.", "doc": "S1 — toast after a post is created." },
     "post_failed": { "text": "Kon niet plaatsen — probeer opnieuw.", "doc": "S1 — shown when postRequest fails." },
     "respond_prompt": { "text": "Je reactie op dit bericht:", "doc": "S1 — prompt when responding to a post (respondToItem)." }
@@ -1790,6 +1794,13 @@
     "announce_post":        { "text": "Plaatsen", "doc": "S3 — post the announcement." },
     "announced":            { "text": "Aankondiging geplaatst.", "doc": "S3 — confirmation." },
     "refused":              { "text": "Die actie is alleen voor beheerders.", "doc": "S3 — shown when a non-admin op is refused." },
-    "saving":               { "text": "opslaan…", "doc": "S3 — transient state." }
+    "saving":               { "text": "opslaan…", "doc": "S3 — transient state." },
+    "reports":    { "text": "Meldingen", "doc": "S3 — moderation reports section." },
+    "no_reports": { "text": "Geen meldingen.", "doc": "S3 — empty reports." },
+    "report_row": { "text": "Melding over {{target}} — {{reason}}", "doc": "S3 — a report row." },
+    "no_reason":  { "text": "geen reden opgegeven", "doc": "S3 — fallback when a report has no reason." },
+    "muted":      { "text": "Gedempte peers", "doc": "S3 — muted-peers section." },
+    "no_muted":   { "text": "Geen gedempte peers.", "doc": "S3 — empty muted list." },
+    "unmute":     { "text": "Dempen opheffen", "doc": "S3 — unmute a peer." }
   }
 }

@@ -1449,9 +1449,9 @@ function showKring(id, circle, policy) {
     rerender();
   }
 
-  async function noticeboardPost({ intent, text }) {
+  async function noticeboardPost({ intent, text, dueAt }) {
     noticeboardBusy = true; rerender();
-    try { await rawCallSkill('stoop', 'postRequest', { intent, text }); }
+    try { await rawCallSkill('stoop', 'postRequest', { intent, text, ...(dueAt ? { dueAt } : {}) }); }
     catch { globalThis.alert?.(t('circle.noticeboard.post_failed')); }
     noticeboardBusy = false;
     await loadNoticeboard();
@@ -1469,6 +1469,14 @@ function showKring(id, circle, policy) {
         await rawCallSkill('stoop', 'reportPost', { itemId: post.id });
       } else if (action === 'markReturned') {
         await rawCallSkill('stoop', 'markReturned', { requestId: post.id });
+      } else if (action === 'mute') {
+        // S3 #9 — mute the post's author (local-only; filters the kring stream).
+        if (post.addedBy) await rawCallSkill('stoop', 'mutePeer', { peerWebid: post.addedBy });
+      } else if (action === 'assign') {
+        // S3 #4 — lender assigns a borrower to a lend post.
+        const borrowerWebid = (globalThis.prompt?.(t('circle.noticeboard.assign_prompt')) || '').trim();
+        if (!borrowerWebid) return;
+        await rawCallSkill('stoop', 'assignLend', { itemId: post.id, borrowerWebid });
       }
     } catch { /* best-effort; the reload reflects the real state */ }
     await loadNoticeboard();
@@ -1999,17 +2007,29 @@ async function showOverride(id) {
 async function showAdmin(id) {
   hideCircleTabBar(tabBarEl);
   let members = [];
+  let reports = [];
+  let muted = [];
   let busy = false;
   let notice = null;
 
   async function load() {
-    try { const r = await rawCallSkill('stoop', 'listGroupMembers', { groupId: id }); members = Array.isArray(r?.members) ? r.members : []; }
-    catch { members = []; }
+    const [mem, rep, mut] = await Promise.all([
+      rawCallSkill('stoop', 'listGroupMembers', { groupId: id }).catch(() => null),
+      rawCallSkill('stoop', 'listReports', { groupId: id }).catch(() => null),
+      rawCallSkill('stoop', 'listMutedPeers', {}).catch(() => null),
+    ]);
+    members = Array.isArray(mem?.members) ? mem.members : [];
+    reports = Array.isArray(rep?.reports) ? rep.reports : [];   // admin-only; {error} → []
+    muted = Array.isArray(mut?.peers) ? mut.peers : [];
     rerender();
   }
   const rerender = () => renderCircleAdminPanel(rootEl, {
-    members, busy, notice, t,
+    members, reports, muted, busy, notice, t,
     onBack: () => showDetail(id),
+    onUnmute: async (key) => {
+      try { await rawCallSkill('stoop', 'unmutePeer', key.startsWith('webid:') ? { peerWebid: key.slice(6) } : { peerStableId: key }); } catch { /* */ }
+      await load();
+    },
     onRemove: async (m) => {
       notice = null; busy = true; rerender();
       try {

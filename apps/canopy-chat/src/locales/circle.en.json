@@ -1748,8 +1748,12 @@
       "respond":  { "text": "Help with", "doc": "S1 — per-post action: respond/offer help (respondToItem)." },
       "returned": { "text": "Returned",  "doc": "S1 — per-post action on a lend: mark returned (markReturned)." },
       "cancel":   { "text": "Withdraw",  "doc": "S1 — per-post action (author): cancel the post (cancelRequest)." },
-      "report":   { "text": "Report",    "doc": "S1 — per-post action: report abuse (reportPost)." }
+      "report":   { "text": "Report",    "doc": "S1 — per-post action: report abuse (reportPost)." },
+      "mute":     { "text": "Mute",      "doc": "S3 — per-post action: mute the author (mutePeer)." },
+      "assign":   { "text": "Assign",    "doc": "S3 — per-post action on a lend (author): assign a borrower (assignLend)." }
     },
+    "due":           { "text": "Return by", "doc": "S3 — lend due-date field label." },
+    "assign_prompt": { "text": "Borrower WebID:", "doc": "S3 — prompt for the borrower when assigning a lend." },
     "posted":      { "text": "Posted.", "doc": "S1 — toast after a post is created." },
     "post_failed": { "text": "Couldn’t post — try again.", "doc": "S1 — shown when postRequest fails." },
     "respond_prompt": { "text": "Your reply to this post:", "doc": "S1 — prompt when responding to a post (respondToItem)." }
@@ -1790,6 +1794,13 @@
     "announce_post":        { "text": "Post", "doc": "S3 — post the announcement." },
     "announced":            { "text": "Announcement posted.", "doc": "S3 — confirmation." },
     "refused":              { "text": "That action is admin-only.", "doc": "S3 — shown when a non-admin op is refused." },
-    "saving":               { "text": "saving…", "doc": "S3 — transient state." }
+    "saving":               { "text": "saving…", "doc": "S3 — transient state." },
+    "reports":    { "text": "Reports", "doc": "S3 — moderation reports section." },
+    "no_reports": { "text": "No reports.", "doc": "S3 — empty reports." },
+    "report_row": { "text": "Report on {{target}} — {{reason}}", "doc": "S3 — a report row." },
+    "no_reason":  { "text": "no reason given", "doc": "S3 — fallback when a report has no reason." },
+    "muted":      { "text": "Muted peers", "doc": "S3 — muted-peers section." },
+    "no_muted":   { "text": "No muted peers.", "doc": "S3 — empty muted list." },
+    "unmute":     { "text": "Unmute", "doc": "S3 — unmute a peer." }
   }
 }

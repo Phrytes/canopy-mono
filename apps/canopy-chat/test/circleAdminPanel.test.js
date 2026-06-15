@@ -47,4 +47,19 @@ describe('renderCircleAdminPanel', () => {
     el.querySelector('.cc-admin__back').click();
     expect(onBack).toHaveBeenCalled();
   });
+
+  it('lists reports + muted peers; unmute fires onUnmute (S3 moderation)', () => {
+    const onUnmute = vi.fn();
+    const el = renderCircleAdminPanel(document.createElement('div'), {
+      t, members: [], onUnmute,
+      reports: [{ id: 'r1', source: { reportTarget: 'post-9', reason: 'spam' } }],
+      muted: ['webid:https://bob.example/me', 'stable-7'],
+    });
+    expect(el.querySelector('.cc-admin__report').textContent).toContain('circle.admin.report_row');
+    const muted = el.querySelectorAll('.cc-admin__muted');
+    expect(muted).toHaveLength(2);
+    expect(muted[0].querySelector('.cc-admin__muted-key').textContent).toBe('https://bob.example/me'); // webid: stripped
+    muted[1].querySelector('.cc-admin__unmute').click();
+    expect(onUnmute).toHaveBeenCalledWith('stable-7');
+  });
 });

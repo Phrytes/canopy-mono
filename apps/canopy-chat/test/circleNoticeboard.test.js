@@ -39,17 +39,39 @@ describe('renderCircleNoticeboard', () => {
     expect(row.querySelector('.cc-prikbord__badge--ask')).not.toBeNull();
     expect(row.querySelector('.cc-prikbord__text').textContent).toContain('boormachine');
     const actions = [...row.querySelectorAll('.cc-prikbord__chip')].map((c) => c.dataset.action);
-    expect(actions).toEqual(['respond', 'report']);   // not mine → help + report; no cancel
+    expect(actions).toEqual(['respond', 'report', 'mute']);   // not mine → help + report + mute; no cancel
     row.querySelector('[data-action="respond"]').click();
     expect(onAction).toHaveBeenCalledWith({ action: 'respond', post: expect.objectContaining({ id: 'p1' }) });
   });
 
-  it('my own lend post shows returned + withdraw (not respond/report)', () => {
+  it('a post by someone else shows mute alongside respond/report (S3)', () => {
+    const onAction = vi.fn();
+    const el = renderCircleNoticeboard(document.createElement('div'), {
+      t, onAction, posts: [{ id: 'p3', type: 'ask', text: 'x', addedBy: 'w-bob', mine: false }],
+    });
+    const actions = [...el.querySelectorAll('.cc-prikbord__chip')].map((c) => c.dataset.action);
+    expect(actions).toEqual(['respond', 'report', 'mute']);
+    el.querySelector('[data-action="mute"]').click();
+    expect(onAction).toHaveBeenCalledWith({ action: 'mute', post: expect.objectContaining({ id: 'p3' }) });
+  });
+
+  it('my own lend post shows assign + returned + withdraw (S1/S3)', () => {
     const el = renderCircleNoticeboard(document.createElement('div'), {
       t, posts: [{ id: 'p2', type: 'lend', text: 'mijn ladder', mine: true }],
     });
     const actions = [...el.querySelectorAll('.cc-prikbord__chip')].map((c) => c.dataset.action);
-    expect(actions).toEqual(['markReturned', 'cancel']);
+    expect(actions).toEqual(['assign', 'markReturned', 'cancel']);
+  });
+
+  it('a lend post carries a due-date through onPost (S3 #4)', () => {
+    const onPost = vi.fn();
+    const el = renderCircleNoticeboard(document.createElement('div'), { t, posts: [], intent: 'lend', onPost });
+    const dueInput = el.querySelector('.cc-prikbord__due-input');
+    expect(dueInput).not.toBeNull();
+    dueInput.value = '2026-07-01';
+    el.querySelector('.cc-prikbord__input').value = 'ladder te leen';
+    el.querySelector('.cc-prikbord__composer').dispatchEvent(new Event('submit'));
+    expect(onPost).toHaveBeenCalledWith(expect.objectContaining({ intent: 'lend', text: 'ladder te leen', dueAt: Date.parse('2026-07-01') }));
   });
 
   it('shows the empty state with no posts', () => {

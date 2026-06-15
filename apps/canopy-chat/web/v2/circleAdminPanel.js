@@ -10,11 +10,14 @@
 
 export function renderCircleAdminPanel(container, {
   members = [],
+  reports = [],
+  muted = [],
   busy = false,
   notice = null,
   t,
   onRemove,
   onAnnounce,
+  onUnmute,
   onBack,
 } = {}) {
   if (!container) return container;
@@ -115,6 +118,68 @@ export function renderCircleAdminPanel(container, {
   });
   annSection.appendChild(form);
   container.appendChild(annSection);
+
+  // ── reports (moderation, read-only) ───────────────────────────────────────
+  const repSection = document.createElement('section');
+  repSection.className = 'cc-admin__section';
+  const repTitle = document.createElement('h3');
+  repTitle.className = 'cc-admin__section-title';
+  repTitle.textContent = tr('circle.admin.reports');
+  repSection.appendChild(repTitle);
+  if (!reports.length) {
+    const empty = document.createElement('p');
+    empty.className = 'cc-admin__empty';
+    empty.textContent = tr('circle.admin.no_reports');
+    repSection.appendChild(empty);
+  } else {
+    const list = document.createElement('ul');
+    list.className = 'cc-admin__report-list';
+    for (const r of reports) {
+      const li = document.createElement('li');
+      li.className = 'cc-admin__report';
+      const target = r.source?.reportTarget ?? r.itemId ?? '';
+      const reason = r.source?.reason ?? r.reason ?? '';
+      li.textContent = tr('circle.admin.report_row', { target, reason: reason || tr('circle.admin.no_reason') });
+      list.appendChild(li);
+    }
+    repSection.appendChild(list);
+  }
+  container.appendChild(repSection);
+
+  // ── muted peers ───────────────────────────────────────────────────────────
+  const mutSection = document.createElement('section');
+  mutSection.className = 'cc-admin__section';
+  const mutTitle = document.createElement('h3');
+  mutTitle.className = 'cc-admin__section-title';
+  mutTitle.textContent = tr('circle.admin.muted');
+  mutSection.appendChild(mutTitle);
+  if (!muted.length) {
+    const empty = document.createElement('p');
+    empty.className = 'cc-admin__empty';
+    empty.textContent = tr('circle.admin.no_muted');
+    mutSection.appendChild(empty);
+  } else {
+    const list = document.createElement('ul');
+    list.className = 'cc-admin__muted-list';
+    for (const key of muted) {
+      const li = document.createElement('li');
+      li.className = 'cc-admin__muted';
+      li.dataset.key = key;
+      const name = document.createElement('span');
+      name.className = 'cc-admin__muted-key';
+      name.textContent = String(key).replace(/^webid:/, '');
+      li.appendChild(name);
+      const un = document.createElement('button');
+      un.type = 'button';
+      un.className = 'cc-admin__unmute';
+      un.textContent = tr('circle.admin.unmute');
+      un.addEventListener('click', () => { if (typeof onUnmute === 'function') onUnmute(key); });
+      li.appendChild(un);
+      list.appendChild(li);
+    }
+    mutSection.appendChild(list);
+  }
+  container.appendChild(mutSection);
 
   if (busy) {
     const b = document.createElement('div');
