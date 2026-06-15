@@ -960,7 +960,8 @@ export function buildSkills({
         [{
           type:        'report',
           text:        a.reason ? `Report on ${a.itemId}: ${a.reason}` : `Report on ${a.itemId}`,
-          source:      { reportTarget: a.itemId, reason: a.reason ?? null },
+          // Tag the report with its circle (per-circle moderation; `listReports` scopes on it).
+          source:      { reportTarget: a.itemId, reason: a.reason ?? null, ...(a.groupId ? { groupId: a.groupId } : {}) },
           visibility:  'household',
         }],
         { actor: from },
@@ -3520,9 +3521,12 @@ export function buildSkills({
         if (!isAdmin) return { error: 'admin-only' };
       }
       const all = await store.listOpen({ type: 'report' });
-      return { reports: all.sort((p, q) => (p.addedAt ?? 0) - (q.addedAt ?? 0)) };
+      // Per-circle scoping: keep reports tagged for THIS group, plus untagged legacy
+      // reports (visible to all admins — they predate per-circle tagging).
+      const scoped = all.filter((r) => { const g = r?.source?.groupId; return g == null || g === _groupId; });
+      return { reports: scoped.sort((p, q) => (p.addedAt ?? 0) - (q.addedAt ?? 0)) };
     }, {
-      description: 'Admin-only: list all open reports for a group.',
+      description: 'Admin-only: list the open reports for a group.',
       visibility:  'authenticated',
     }),
 

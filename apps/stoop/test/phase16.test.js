@@ -199,6 +199,18 @@ describe('Stoop V1 Phase 16 — listReports', () => {
     expect(r.reports[0].type).toBe('report');
   });
 
+  it('scopes reports to their circle (a tagged report only shows in its group)', async () => {
+    const bundle = await buildAgentAs('admin');
+    await callSkill(bundle.agent, 'postRequest', { text: 'p-a', kind: 'ask', expectClaims: 0, timeoutMs: 1 });
+    const post = (await bundle.itemStore.listOpen({})).find((i) => i.text === 'p-a');
+    await callSkill(bundle.agent, 'reportPost', { itemId: post.id, reason: 'spam', groupId: 'circle-a' });
+
+    const a = await callSkill(bundle.agent, 'listReports', { groupId: 'circle-a' });
+    expect(a.reports.some((r) => r.source?.groupId === 'circle-a')).toBe(true);
+    const b = await callSkill(bundle.agent, 'listReports', { groupId: 'circle-b' });
+    expect(b.reports.some((r) => r.source?.groupId === 'circle-a')).toBe(false);   // not in another circle
+  });
+
   it('non-admin gets admin-only error', async () => {
     const bundle = await buildAgentAs('member');
     expect(await callSkill(bundle.agent, 'listReports')).toEqual({ error: 'admin-only' });
