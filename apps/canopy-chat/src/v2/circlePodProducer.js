@@ -75,7 +75,7 @@ export async function createCirclePodProducer({
   // branch therefore runs today in Node/CI (proven by circlePodProducer.test.js) and
   // over a real Node pod, but NOT yet in the browser; the host calls this best-effort.
   const sealingIdentity = createCircleSealingIdentity({ circleId, store: vault });
-  await sealingIdentity.ensure();
+  const selfKey = await sealingIdentity.ensure();   // {publicKey, privateKey}
   if (typeof generateKeypair !== 'function' || typeof makePodClient !== 'function') {
     throw new Error('createCirclePodProducer: a sealed (p2/p3) circle needs generateKeypair + makePodClient');
   }
@@ -94,10 +94,15 @@ export async function createCirclePodProducer({
 
   const podClient = makePodClient(circleId);
   const circleRootUri = `pseudo-pod://circle-${circleId}/circle`;
+  // Include THIS device's own per-circle sealing identity in the bootstrap roster, so the
+  // local member is a recipient of the group key and can seal/open the circle's content
+  // (otherwise only the abstract controller key could). Dedupe by publicKey.
+  const selfEntry = { webId: `circle:${circleId}:self`, publicKey: selfKey.publicKey, role: 'member' };
+  const fullRoster = roster.some((m) => m?.publicKey === selfKey.publicKey) ? roster : [...roster, selfEntry];
   const controlAgent = createCircleControlAgent({
     circleId, storagePosture, podClient,
     sharing: sharing ?? memorySharing(),
-    controllerKey, circleRootUri, roster,
+    controllerKey, circleRootUri, roster: fullRoster,
   });
   if (bootstrap && controlAgent) await controlAgent.bootstrap();
 

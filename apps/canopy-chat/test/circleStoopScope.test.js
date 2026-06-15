@@ -81,4 +81,36 @@ describe('scopeStoopCallSkill', () => {
     expect(res).toEqual({ webid: 'did:me' });
     expect(cs.mock.calls[0][2]).toEqual({});
   });
+
+  // ── sealed (p2/p3) circle: seal post bodies at rest, open on read ───────────────────
+  const fakeStrategy = {
+    seal: (t) => `SEALED(${t})`,
+    open: (t) => (typeof t === 'string' && t.startsWith('SEALED(') ? t.slice(7, -1) : t),
+  };
+
+  it('seals a postRequest body before it reaches the pod (sealed circle)', async () => {
+    const cs = vi.fn().mockResolvedValue({ ok: true });
+    const scoped = scopeStoopCallSkill(cs, 'circle-a', async () => fakeStrategy);
+    await scoped('stoop', 'postRequest', { intent: 'ask', text: 'hoi buurt' });
+    expect(cs.mock.calls[0][2]).toMatchObject({ text: 'SEALED(hoi buurt)', groupId: 'circle-a' });
+  });
+
+  it('opens sealed list items on read, leaves non-recipient/plaintext bodies as-is', async () => {
+    const cs = vi.fn().mockResolvedValue({ items: [
+      { id: '1', text: 'SEALED(geheim)', groupId: 'circle-a' },
+      { id: '2', text: 'plain', groupId: 'circle-a' },
+      { id: '3', text: 'SEALED(weg)', groupId: 'circle-b' },   // other circle → filtered out
+    ] });
+    const scoped = scopeStoopCallSkill(cs, 'circle-a', async () => fakeStrategy);
+    const res = await scoped('stoop', 'listOpen', {});
+    expect(res.items.map((i) => [i.id, i.text])).toEqual([['1', 'geheim'], ['2', 'plain']]);
+    expect(res.items[0].label).toBe('geheim');
+  });
+
+  it('no strategy (p0 circle) → bodies pass through in cleartext', async () => {
+    const cs = vi.fn().mockResolvedValue({ ok: true });
+    const scoped = scopeStoopCallSkill(cs, 'circle-a', async () => null);
+    await scoped('stoop', 'postRequest', { text: 'hoi' });
+    expect(cs.mock.calls[0][2].text).toBe('hoi');
+  });
 });

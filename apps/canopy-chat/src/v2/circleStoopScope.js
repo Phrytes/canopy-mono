@@ -45,26 +45,53 @@ export function keepForCircle(item, circleId) {
   return isInCircle(it, circleId);
 }
 
+/** Open a list item's sealed `text`/`label` for a current recipient. A non-sealed body
+ *  passes straight through (envelope.open is a no-op on plaintext); a body we can't open
+ *  (not a recipient / stale key) is left as-is rather than dropped. */
+function openItemText(it, strategy) {
+  if (!it || typeof it.text !== 'string' || !it.text) return it;
+  try {
+    const opened = strategy.open(it.text);
+    return opened === it.text ? it : { ...it, text: opened, label: opened };
+  } catch { return it; }
+}
+
 /**
  * Wrap a 3-arg host `callSkill(appOrigin, opId, args)` so stoop ops are scoped to
  * `circleId`. Non-stoop ops and a null circleId pass through untouched.
  *
+ * For a SEALED (p2/p3) circle, pass `getSealStrategy` — an async getter resolving the
+ * circle's `{seal, open}` content strategy (cached by the caller). When present, a
+ * `postRequest` body is SEALED before it reaches the pod (the host stores ciphertext)
+ * and list items are OPENED after read — so every GUI reader/writer that routes through
+ * this wrapper (prikbord + scherm noticeboard block) is transparently E2E-sealed. A p0/p1
+ * circle resolves no strategy → plaintext, unchanged.
+ *
  * @param {(appOrigin:string, opId:string, args?:object)=>Promise<any>} callSkill
  * @param {string|null} circleId
+ * @param {(() => Promise<{seal:Function, open:Function}|null>)} [getSealStrategy]
  * @returns {(appOrigin:string, opId:string, args?:object)=>Promise<any>}
  */
-export function scopeStoopCallSkill(callSkill, circleId) {
+export function scopeStoopCallSkill(callSkill, circleId, getSealStrategy) {
   if (typeof callSkill !== 'function' || !circleId) return callSkill;
   return async (appOrigin, opId, args = {}) => {
     if (appOrigin !== 'stoop') return callSkill(appOrigin, opId, args);
+    const strategy = (typeof getSealStrategy === 'function'
+      && (SCOPED_WRITE_OPS.has(opId) || SCOPED_LIST_OPS.has(opId)))
+      ? await getSealStrategy().catch(() => null) : null;
     if (SCOPED_WRITE_OPS.has(opId)) {
       const scoped = { ...args };
       if (scoped.groupId == null) scoped.groupId = circleId;   // don't clobber an explicit scope
+      if (strategy && opId === 'postRequest' && typeof scoped.text === 'string' && scoped.text) {
+        scoped.text = strategy.seal(scoped.text);             // seal the body at rest
+      }
       return callSkill(appOrigin, opId, scoped);
     }
     const res = await callSkill(appOrigin, opId, args);
     if (SCOPED_LIST_OPS.has(opId) && res && Array.isArray(res.items)) {
-      return { ...res, items: res.items.filter((it) => keepForCircle(it, circleId)) };
+      let items = res.items.filter((it) => keepForCircle(it, circleId));
+      if (strategy) items = items.map((it) => openItemText(it, strategy));
+      return { ...res, items };
     }
     return res;
   };

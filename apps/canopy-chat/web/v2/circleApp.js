@@ -472,6 +472,26 @@ const circleVault = (() => {
   catch { return new VaultMemory(); }
 })();
 const circlePods = new Map();    // S4 — circleId → per-circle pod producer (sealing identity + control agent)
+const circleSealStrategies = new Map();   // S4 — circleId → resolved {seal,open} content strategy (or null for p0/p1)
+
+/**
+ * S4 — resolve (and cache) a circle's CONTENT seal/open strategy. For a sealed (p2/p3)
+ * circle this is the producer's control-agent strategy unwrapped with the local device's
+ * own per-circle sealing identity (a recipient of the group key). p0/p1 → null (plaintext).
+ */
+async function getCircleSealStrategy(circleId, policy) {
+  if (circleSealStrategies.has(circleId)) return circleSealStrategies.get(circleId);
+  let strat = null;
+  try {
+    const prod = await ensureCirclePod(circleId, policy);
+    if (prod?.controlAgent && prod.sealingIdentity) {
+      const idKey = await prod.sealingIdentity.ensure();
+      strat = await prod.controlAgent.sealingStrategy(idKey.privateKey);
+    }
+  } catch { strat = null; }
+  circleSealStrategies.set(circleId, strat);
+  return strat;
+}
 
 /** S4 — an in-memory pseudo-pod client for one circle (real per-circle sealed storage, no OIDC/CSS). */
 function makeCirclePodClient(circleId) {
@@ -612,7 +632,7 @@ function buildCircleBot(agent) {
     window.canopyMakeCirclePod = (circleId, storagePosture = 'p2', roster = []) =>
       createCirclePodProducer({ circleId, storagePosture, vault: circleVault, roster,
         generateKeypair: podGenerateKeypair, makePodClient: makeCirclePodClient });
-    window.canopySealingKit = { generateKeypair: podGenerateKeypair, createSealedPodClient };
+    window.canopySealingKit = { generateKeypair: podGenerateKeypair, createSealedPodClient, scopeStoopCallSkill };
   }
   circleContactSkills = createContactSkillRegistry({ peerGraph: circlePeerGraph, sendTask: sendContactTask });
   circleContactSkills.start().catch(() => { /* discovery is best-effort — never blocks the kring */ });
@@ -1500,9 +1520,11 @@ function showKring(id, circle, policy) {
   // stoop's `listOpen`/`postRequest`, but SCOPED to THIS circle: `stoopCall` injects
   // the circle id as the stoop scope key on writes and filters list reads to the
   // circle (S4 per-circle restructure — one shared agent, per-circle scope key).
-  const stoopCall = scopeStoopCallSkill(rawCallSkill, id);
-  // S4 — stand up this circle's pod producer (per-circle sealing identity + control
-  // agent for a sealed posture). Best-effort + fire-and-forget; never blocks the kring.
+  // S4 — scope stoop ops to this circle AND, for a sealed (p2/p3) circle, transparently
+  // seal post bodies at rest / open them on read via the per-circle content strategy.
+  const stoopCall = scopeStoopCallSkill(rawCallSkill, id, () => getCircleSealStrategy(id, policy));
+  // Stand up this circle's pod producer (sealing identity + control agent for a sealed
+  // posture). Best-effort + fire-and-forget; never blocks the kring.
   ensureCirclePod(id, policy).catch(() => { /* best-effort; plain shared path on failure */ });
   let noticeboardPosts = [];
   let noticeboardIntent = 'ask';
