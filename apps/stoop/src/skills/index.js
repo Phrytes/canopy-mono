@@ -2685,7 +2685,19 @@ export function buildSkills({
       const _groupId = a.groupId ?? groupId;
       if (!members) return { members: [] };
       const list = await members.list();
-      return { groupId: _groupId, members: list };
+      // Per-circle scoping: derive THIS group's membership from the redemption audit
+      // trail — `membership-redemption` items carry `source.groupId` + `redeemedBy`
+      // (the same source EvictionRoster reduces). Founders (admin/coordinator) are
+      // always kept (they CREATE a group, never redeem its own code). Fall back to the
+      // full roster when the group has no redemption data yet (legacy single-buurt /
+      // seeded members) so existing single-group setups are unchanged.
+      let redemptions = [];
+      try { redemptions = await store.listOpen({ type: 'membership-redemption' }); } catch { redemptions = []; }
+      const forGroup = redemptions.filter((i) => i?.source?.groupId === _groupId);
+      if (forGroup.length === 0) return { groupId: _groupId, members: list };
+      const joined = new Set(forGroup.map((i) => i?.source?.redeemedBy).filter(Boolean));
+      const scoped = list.filter((m) => joined.has(m.webid) || m.role === 'admin' || m.role === 'coordinator');
+      return { groupId: _groupId, members: scoped };
     }, {
       description: 'List the members of a group (handles, displayName per Reveals, role).',
       visibility:  'authenticated',

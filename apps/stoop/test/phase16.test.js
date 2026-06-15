@@ -58,6 +58,30 @@ describe('Stoop V1 Phase 16 — listGroupMembers', () => {
     expect(r.members.map(m => m.webid).sort()).toEqual([ANNE, BOB, CARLA].sort());
     expect(r.groupId).toBe('oosterpoort');
   });
+
+  // Per-circle scoping (S4): when a group has membership-redemption data, the roster
+  // is scoped to that group's redeemers + founders (admin/coordinator).
+  it('scopes to a group\'s redeemers + founders when redemption data exists', async () => {
+    const bundle = await buildAgentAs('admin');   // ANNE admin (founder), BOB + CARLA members
+    await bundle.itemStore.addItems([
+      { type: 'membership-redemption', text: 'r', source: { groupId: 'circle-a', redeemedBy: BOB },   visibility: 'household' },
+      { type: 'membership-redemption', text: 'r', source: { groupId: 'circle-b', redeemedBy: CARLA }, visibility: 'household' },
+    ], { actor: ANNE });
+
+    const a = await callSkill(bundle.agent, 'listGroupMembers', { groupId: 'circle-a' });
+    expect(a.members.map(m => m.webid).sort()).toEqual([ANNE, BOB].sort());   // BOB redeemed + ANNE founder; NOT CARLA
+    const b = await callSkill(bundle.agent, 'listGroupMembers', { groupId: 'circle-b' });
+    expect(b.members.map(m => m.webid).sort()).toEqual([ANNE, CARLA].sort());
+  });
+
+  it('falls back to the full roster when a group has no redemption data (legacy single-buurt)', async () => {
+    const bundle = await buildAgentAs('admin');
+    await bundle.itemStore.addItems([
+      { type: 'membership-redemption', text: 'r', source: { groupId: 'circle-a', redeemedBy: BOB }, visibility: 'household' },
+    ], { actor: ANNE });
+    const r = await callSkill(bundle.agent, 'listGroupMembers', { groupId: 'some-other-group' });
+    expect(r.members.map(m => m.webid).sort()).toEqual([ANNE, BOB, CARLA].sort());   // no data for that group → unscoped
+  });
 });
 
 // ── postAnnouncement ─────────────────────────────────────────────────────
