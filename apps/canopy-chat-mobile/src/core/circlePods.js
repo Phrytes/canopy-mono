@@ -14,7 +14,7 @@
 import { VaultAsyncStorage } from '../../../../packages/react-native/src/identity/VaultAsyncStorage.js';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { PodClient, generateKeypair as podGenerateKeypair } from '@canopy/pod-client';
-import { createCirclePodProducer } from '../../../canopy-chat/src/v2/circlePodProducer.js';
+import { createCirclePodProducer, createCircleControlAgentRouter } from '../../../canopy-chat/src/v2/circlePodProducer.js';
 
 let circleVault = null;                       // VaultAsyncStorage (durable) — set by initCirclePods
 const circlePods = new Map();                 // circleId → producer
@@ -49,6 +49,11 @@ export async function ensureCirclePod(circleId, policy) {
   circlePods.set(circleId, producer);
   return producer;
 }
+
+// S4 — routes stoop membership events (redeem/leave) to the joined circle's producer for
+// multi-member sealing (the joiner's sealing key is wrapped into the group key). Pass to
+// bootAgentBundle as `stoopControlAgent`. V0: routes to a live (opened) circle's producer.
+export const circleControlAgentRouter = createCircleControlAgentRouter((id) => circlePods.get(id) ?? null);
 
 /** Resolve (+ cache) a circle's content seal/open strategy via the device's own sealing identity. */
 export async function getCircleSealStrategy(circleId, policy) {

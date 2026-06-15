@@ -51,7 +51,7 @@ import { buildCirclePodWriter } from './src/core/circleStoresRN.js';
 // One store per app; shared between ChatScreen (receiver) and
 // CircleLauncherScreen (editor pull + send-side clear).
 import { makeKringRecipePendingStoreRN } from './src/core/kringRecipePendingStorageRN.js';
-import { initCirclePods } from './src/core/circlePods.js';
+import { initCirclePods, circleControlAgentRouter } from './src/core/circlePods.js';
 // γ-next.rules — per-kring pending-rules cache (AsyncStorage-backed).
 // Mirrors the recipe wire: ChatScreen writes via the receiver,
 // CircleLauncherScreen reads on rules-screen open + clears after the
@@ -287,6 +287,8 @@ export default function App() {
           // identity keypair — stays stable across reboots (otherwise a
           // peer's cached nknAddr from a /share-my-contact QR breaks).
           asyncStorage: AsyncStorage,
+          // S4 — multi-member sealing: route stoop redeem/leave to the circle's producer.
+          stoopControlAgent: circleControlAgentRouter,
           // Extension mappings (feedback-extension P2) — load installed extensions from AsyncStorage at boot,
           // verify them against the base catalog, and merge the accepted ones into the dispatch catalog.
           mappingsStore:    asyncStorageMappingsStore(AsyncStorage),

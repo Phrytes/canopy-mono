@@ -181,6 +181,7 @@ export async function bootAgentBundle(opts = {}) {
       hostVault,
       stoopPersistDb,
       tasksPersistDb,
+      stoopControlAgent: opts.stoopControlAgent,   // S4 — multi-member sealing router (redeem/leave)
       secureAgentOpts:  opts.secureAgentOpts,
       publishEvent:     opts.publishEvent,
       // Perf — skip the demo seed on warm boot.  Without persistence
