@@ -647,3 +647,33 @@
 }
 .cc-prikbord__chip:hover { background: var(--accent); color: #fff; }
 .cc-prikbord__chip--muted { border-color: var(--line); color: var(--ink-soft); }
+
+/* ── S2 — profile (Mij) editor ──────────────────────────────────────────── */
+.cc-profile { padding: 4px 2px 80px; display: flex; flex-direction: column; gap: 16px; }
+.cc-profile__title { font-size: 20px; font-weight: 700; color: var(--ink); margin: 6px 2px 0; }
+.cc-profile__section { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; background: var(--paper); display: flex; flex-direction: column; gap: 10px; }
+.cc-profile__section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 0; }
+.cc-profile__field { display: flex; flex-direction: column; gap: 4px; }
+.cc-profile__field-label { font-size: 13px; color: var(--ink-soft); }
+.cc-profile__field input, .cc-profile__geo-input, .cc-profile__skill-select {
+  font: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--paper); color: var(--ink);
+}
+.cc-profile__save, .cc-profile__skill-add-btn, .cc-profile__geo-search, .cc-profile__geo-use {
+  align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600;
+  padding: 9px 16px; border-radius: var(--radius); background: var(--accent); border: 1px solid var(--accent); color: #fff;
+}
+.cc-profile__none { color: var(--ink-soft); font-size: 14px; margin: 0; }
+.cc-profile__skill-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-profile__skill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border: 1px solid var(--line); border-radius: 14px; font-size: 13px; color: var(--ink); }
+.cc-profile__skill-remove { cursor: pointer; font: inherit; font-size: 14px; line-height: 1; background: transparent; border: none; color: var(--ink-soft); padding: 0 4px; }
+.cc-profile__skill-remove:hover { color: #b3261e; }
+.cc-profile__skill-add { display: flex; gap: 8px; align-items: center; }
+.cc-profile__skill-select { flex: 1 1 auto; }
+.cc-profile__geo { display: flex; gap: 8px; }
+.cc-profile__geo-input { flex: 1 1 auto; }
+.cc-profile__geo-result { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 14px; color: var(--ink); }
+.cc-profile__loc-current { font-size: 14px; color: var(--ink); margin: 0; }
+.cc-profile__loc-clear { align-self: flex-start; cursor: pointer; font: inherit; font-size: 13px; padding: 6px 12px; border-radius: var(--radius); background: transparent; border: 1px solid var(--line); color: var(--ink-soft); }
+.cc-profile__availability { align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
+.cc-profile__busy { font-size: 12px; color: var(--ink-soft); font-style: italic; }

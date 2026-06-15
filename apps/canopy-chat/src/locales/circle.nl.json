@@ -1753,5 +1753,26 @@
     "posted":      { "text": "Geplaatst.", "doc": "S1 — toast after a post is created." },
     "post_failed": { "text": "Kon niet plaatsen — probeer opnieuw.", "doc": "S1 — shown when postRequest fails." },
     "respond_prompt": { "text": "Je reactie op dit bericht:", "doc": "S1 — prompt when responding to a post (respondToItem)." }
+  },
+  "profile": {
+    "title":       { "text": "Mij", "doc": "S2 — heading of the profile (Mij) screen." },
+    "identity":    { "text": "Identiteit", "doc": "S2 — profile identity section." },
+    "handle":      { "text": "Gebruikersnaam", "doc": "S2 — handle field label." },
+    "displayName": { "text": "Weergavenaam", "doc": "S2 — display-name field label." },
+    "save":        { "text": "Opslaan", "doc": "S2 — save the profile identity." },
+    "saving":      { "text": "opslaan…", "doc": "S2 — transient save state." },
+    "skills":      { "text": "Vaardigheden", "doc": "S2 — personal skills section." },
+    "no_skills":   { "text": "Nog geen vaardigheden.", "doc": "S2 — empty skills state." },
+    "pick_skill":  { "text": "Kies een vaardigheid…", "doc": "S2 — skill-category select placeholder." },
+    "add_skill":   { "text": "Toevoegen", "doc": "S2 — add a skill button." },
+    "remove_skill":{ "text": "Vaardigheid verwijderen", "doc": "S2 — a11y label for the per-skill remove button." },
+    "location":    { "text": "Locatie", "doc": "S2 — location section." },
+    "loc_current": { "text": "Huidig: {{label}}", "doc": "S2 — shows the saved location." },
+    "loc_none":    { "text": "Geen locatie ingesteld.", "doc": "S2 — no location yet." },
+    "geo_placeholder": { "text": "Zoek een plaats…", "doc": "S2 — geocode search input." },
+    "geo_search":  { "text": "Zoeken", "doc": "S2 — geocode search button." },
+    "geo_use":     { "text": "Gebruik deze", "doc": "S2 — save the geocoded location." },
+    "loc_clear":   { "text": "Locatie wissen", "doc": "S2 — clear the saved location." },
+    "availability":{ "text": "Beschikbaarheid →", "doc": "S2 — open the availability/quiet-hours screen." }
   }
 }

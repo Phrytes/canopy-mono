@@ -1753,5 +1753,26 @@
     "posted":      { "text": "Posted.", "doc": "S1 — toast after a post is created." },
     "post_failed": { "text": "Couldn’t post — try again.", "doc": "S1 — shown when postRequest fails." },
     "respond_prompt": { "text": "Your reply to this post:", "doc": "S1 — prompt when responding to a post (respondToItem)." }
+  },
+  "profile": {
+    "title":       { "text": "Me", "doc": "S2 — heading of the profile (Mij) screen." },
+    "identity":    { "text": "Identity", "doc": "S2 — profile identity section." },
+    "handle":      { "text": "Handle", "doc": "S2 — handle field label." },
+    "displayName": { "text": "Display name", "doc": "S2 — display-name field label." },
+    "save":        { "text": "Save", "doc": "S2 — save the profile identity." },
+    "saving":      { "text": "saving…", "doc": "S2 — transient save state." },
+    "skills":      { "text": "Skills", "doc": "S2 — personal skills section." },
+    "no_skills":   { "text": "No skills yet.", "doc": "S2 — empty skills state." },
+    "pick_skill":  { "text": "Pick a skill…", "doc": "S2 — skill-category select placeholder." },
+    "add_skill":   { "text": "Add", "doc": "S2 — add a skill button." },
+    "remove_skill":{ "text": "Remove skill", "doc": "S2 — a11y label for the per-skill remove button." },
+    "location":    { "text": "Location", "doc": "S2 — location section." },
+    "loc_current": { "text": "Current: {{label}}", "doc": "S2 — shows the saved location." },
+    "loc_none":    { "text": "No location set.", "doc": "S2 — no location yet." },
+    "geo_placeholder": { "text": "Search a place…", "doc": "S2 — geocode search input." },
+    "geo_search":  { "text": "Search", "doc": "S2 — geocode search button." },
+    "geo_use":     { "text": "Use this", "doc": "S2 — save the geocoded location." },
+    "loc_clear":   { "text": "Clear location", "doc": "S2 — clear the saved location." },
+    "availability":{ "text": "Availability →", "doc": "S2 — open the availability/quiet-hours screen." }
   }
 }

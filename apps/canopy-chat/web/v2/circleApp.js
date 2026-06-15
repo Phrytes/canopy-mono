@@ -45,6 +45,7 @@ import { createContactThreadChannel } from '../../src/v2/contactThreadChannel.js
 import { listContacts, mergeContacts, stoopContactToRow } from '../../src/v2/contactsSource.js';
 import { addBotToGraph } from '../../src/v2/addBot.js';
 import { renderContactsRoster } from './contactsRoster.js';
+import { renderCircleProfile } from './circleProfile.js';
 import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
@@ -1262,15 +1263,74 @@ function showStream() {
 
 // "Mij" tab — personal availability (holiday + quiet hours, board 6C) plus
 // the device-global Hopping stance.
+// S2 — the Mij tab is now your PROFILE (handle + display name + personal skills +
+// location), backed by stoop's profile ops. Availability/quiet-hours moves to a
+// sub-screen reached from here.
 async function showMij() {
+  showTabBar('mij');
+  let profile = {};
+  let categories = [];
+  let geocodeResult = null;
+  let busy = false;
+
+  async function load() {
+    try {
+      const [prof, cats] = await Promise.all([
+        rawCallSkill('stoop', 'getMyProfile', {}).catch(() => null),
+        rawCallSkill('stoop', 'listSkillCategories', { lang: currentLang() }).catch(() => null),
+      ]);
+      profile = prof?.entry ?? {};
+      categories = Array.isArray(cats?.categories) ? cats.categories : [];
+    } catch { /* keep defaults */ }
+    rerender();
+  }
+
+  const rerender = () => renderCircleProfile(rootEl, {
+    profile, categories, geocodeResult, busy, t,
+    onSaveProfile: async ({ handle, displayName }) => {
+      busy = true; rerender();
+      try {
+        if (handle && handle !== profile.handle) await rawCallSkill('stoop', 'setMyHandle', { handle });
+        if (displayName !== (profile.displayName ?? '')) await rawCallSkill('stoop', 'setMyDisplayName', { displayName });
+      } catch { /* surfaced on reload */ }
+      busy = false; await load();
+    },
+    onAddSkill: async (categoryId) => {
+      try { await rawCallSkill('stoop', 'addMySkill', { categoryId }); } catch { /* */ }
+      await load();
+    },
+    onRemoveSkill: async (categoryId) => {
+      try { await rawCallSkill('stoop', 'removeMySkill', { categoryId }); } catch { /* */ }
+      await load();
+    },
+    onGeocode: async (query) => {
+      try { const r = await rawCallSkill('stoop', 'geocode', { query }); geocodeResult = r?.error ? null : r; }
+      catch { geocodeResult = null; }
+      rerender();
+    },
+    onSaveLocation: async () => {
+      if (!geocodeResult) return;
+      try { await rawCallSkill('stoop', 'setMyLocation', { cell: geocodeResult.cell, label: geocodeResult.label, source: 'geocode' }); } catch { /* */ }
+      geocodeResult = null; await load();
+    },
+    onClearLocation: async () => {
+      try { await rawCallSkill('stoop', 'clearMyLocation', {}); } catch { /* */ }
+      await load();
+    },
+    onAvailability: showAvailability,
+  });
+  rerender();
+  load();
+}
+
+// S2 — availability/quiet-hours/hopping (the former Mij body), now a sub-screen of Mij.
+async function showAvailability() {
   let working = await availabilityStore.get();
-  // Top-level tab screen — no back link (the Kringen tab is the way back);
-  // Save still returns to the launcher.
   const rerender = () => renderCircleAvailability(rootEl, {
     availability: working,
     t,
     onChange: (patch) => { working = mergeAvailability(working, patch); rerender(); },
-    onSave: async () => { await availabilityStore.update(working); showLauncher(); },
+    onSave: async () => { await availabilityStore.update(working); showMij(); },
     onHop: showHop,
   });
   rerender();
