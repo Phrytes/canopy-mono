@@ -8,15 +8,24 @@
 // wiring its onPeerMessage to ours), so this module imports no @canopy/* and the transport
 // (NKN, etc.) is never named here — `transportMode` lives with the secure-agent, not the bridge.
 //
-// Wire shape (a thin subtype on the peer payload, routed like canopy-chat's peerRouter):
-//   { subtype: 'fp-msg',   text, messageId, displayName?, webid?, replyTo? }   participant → bot
-//   { subtype: 'fp-reply', text, buttons?, replyTo? }                          bot → participant
+// Wire shape (a thin subtype on the peer payload, routed like canopy-chat's peerRouter).
+// The bot accepts its NATIVE shape AND canopy-chat's GENERIC contact-thread channel
+// (the platform ships the generic channel; this bot — the dogfood — adapts to it,
+// rather than the platform learning `fp-*`). It replies in whichever subtype it was
+// addressed in, echoing the channel's `threadId` so the client routes the reply back:
+//   participant → bot:  { subtype: 'fp-msg'   | 'contact-msg',  text, messageId, threadId?, displayName?, webid?, replyTo? }
+//   bot → participant:  { subtype: 'fp-reply' | 'contact-reply', text, buttons?, threadId?, replyTo? }
 
-const SUBTYPE_MSG = 'fp-msg';
-const SUBTYPE_REPLY = 'fp-reply';
+// Inbound subtype → the reply subtype to answer it with.
+const REPLY_FOR = { 'fp-msg': 'fp-reply', 'contact-msg': 'contact-reply' };
+const ACCEPTED = Object.keys(REPLY_FOR);
+const DEFAULT_REPLY = 'fp-reply';   // proactive sends with no prior inbound
 
 export class PeerBridge {
   #peer; #handler = null; #started = false;
+  // chatId → { replySubtype, threadId } learned from the last inbound, so a reply
+  // answers in the same dialect + thread it arrived on.
+  #replyMeta = new Map();
 
   /** @param {{ peer:{ sendTo:(addr:string,payload:any)=>Promise<void> }, id?:string }} a */
   constructor({ peer, id = 'peer' } = {}) {
@@ -32,14 +41,22 @@ export class PeerBridge {
 
   /** Outbound reply → the participant peer (chatId = the participant's peer address). */
   async sendReply({ chatId, replyTo, text, buttons } = {}) {
-    await this.#peer.sendTo(chatId, { subtype: SUBTYPE_REPLY, replyTo, text, buttons });
+    const meta = this.#replyMeta.get(chatId);
+    const payload = { subtype: meta?.replySubtype ?? DEFAULT_REPLY, replyTo, text, buttons };
+    if (meta?.threadId != null) payload.threadId = meta.threadId;   // echo so the client routes it back
+    await this.#peer.sendTo(chatId, payload);
   }
 
-  /** The host wires sa.peer's onPeerMessage to THIS (or routes the `fp-msg` subtype here, like
-   *  canopy-chat's peerRouter). Bound so it can be handed straight to `connect({onPeerMessage})`. */
+  /** The host wires sa.peer's onPeerMessage to THIS (or routes the `fp-msg`/`contact-msg`
+   *  subtypes here, like canopy-chat's peerRouter). Bound so it can be handed straight to
+   *  `connect({onPeerMessage})`. */
   onPeerMessage = async (env) => {
     const { from, payload } = env ?? {};
-    if (!this.#started || !this.#handler || payload?.subtype !== SUBTYPE_MSG) return;
+    if (!this.#started || !this.#handler) return;
+    const sub = payload?.subtype;
+    if (!ACCEPTED.includes(sub)) return;
+    // Remember how to answer this peer (dialect + thread).
+    this.#replyMeta.set(from, { replySubtype: REPLY_FOR[sub], threadId: payload.threadId });
     await this.#handler({
       bridgeId: this.id,
       chatId: from,

@@ -42,6 +42,36 @@ test('PeerBridge requires a peer with sendTo()', () => {
   assert.equal(new PeerBridge({ peer: { sendTo: async () => {} } }).id, 'peer');
 });
 
+test('accepts canopy-chat\'s generic contact-msg + replies contact-reply, echoing threadId', async () => {
+  // The platform Contacten DM thread speaks the GENERIC channel (contact-msg /
+  // contact-reply, carrying threadId). The bot must answer it in kind so a default
+  // canopy-chat contact thread reaches the feedback bot with no platform coupling.
+  const sentTo = [];
+  const bridge = new PeerBridge({ peer: { sendTo: async (to, payload) => sentTo.push({ to, payload }) } });
+  const received = [];
+  bridge.onMessage(async (m) => { received.push(m); });
+  await bridge.start();
+
+  await bridge.onPeerMessage({ from: 'alice', payload: {
+    subtype: 'contact-msg', text: 'de wachtlijst is te lang', messageId: 'm-1', threadId: 'thread-7',
+  } });
+  assert.equal(received.length, 1);
+  assert.equal(received[0].text, 'de wachtlijst is te lang');
+  assert.equal(received[0].chatId, 'alice');
+
+  await bridge.sendReply({ chatId: 'alice', replyTo: 'm-1', text: 'bedankt' });
+  assert.equal(sentTo.length, 1);
+  assert.deepEqual(sentTo[0], { to: 'alice', payload: {
+    subtype: 'contact-reply', replyTo: 'm-1', text: 'bedankt', buttons: undefined, threadId: 'thread-7',
+  } });
+
+  // A native fp-msg still answers fp-reply (back-compat).
+  await bridge.onPeerMessage({ from: 'bob', payload: { subtype: 'fp-msg', text: 'hoi', messageId: 'b-1' } });
+  await bridge.sendReply({ chatId: 'bob', text: 'ok' });
+  assert.equal(sentTo[1].payload.subtype, 'fp-reply');
+  assert.equal('threadId' in sentTo[1].payload, false);
+});
+
 test('external bot over a peer link: full journey, unsigned write accepted (no verify)', async (t) => {
   await withMockLlm(t);
   const mesh = fakePeerMesh();
