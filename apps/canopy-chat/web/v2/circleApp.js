@@ -41,7 +41,11 @@ import { verifyMappings, mappingsToSources } from '../../src/mappings.js';
 import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';
 import { buildConsentModel, installMapping } from '../../src/v2/extensionInstall.js';
 import { createContactSkillRegistry } from '../../src/v2/contactSkillsLive.js';
-import { sendA2ATask } from '@canopy/core';
+import { createContactThreadChannel } from '../../src/v2/contactThreadChannel.js';
+import { listContacts } from '../../src/v2/contactsSource.js';
+import { renderContactsRoster } from './contactsRoster.js';
+import { renderContactThread } from './contactThread.js';
+import { sendA2ATask, PeerGraph } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
 import { createFeedbackSurface } from '../../src/feedback/feedbackSurface.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
@@ -440,6 +444,11 @@ let circleClarify = null;        // createClarifyingDispatch (for candidate-butt
 let circleCatalog = null;        // the merged dispatch catalog (built in buildCircleBot) — feeds the composer slash-suggest
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
 let circleContactSkills = null;  // P4 — live contact/bot exposed-skill registry (subscribed to agent.peers)
+let circlePeerGraph = null;      // P5 — agent.peers, for the Contacten roster
+let circleContactChannel = null; // P5 — contact-thread peer channel (conversational link over sa.peer)
+// P5 — per-contact DM thread state: contactId → { name, peerAddr, messages:[{origin,text,buttons?,pending?}] }.
+const contactThreads = new Map();
+let _activeContactThread = null; // { contactId, rerender } — set while a DM thread is on screen
 let circlePendingFollowUp = null;// a single-field needsForm awaiting the user's next message (conversational elicitation)
 let circlePendingFormFollowUp = null; // a 2+-field needsForm → inline multi-field form (mobile parity); cleared on submit
 let _kringRender = null;         // { circleId, botBubble(text), fanOut(msgId,text,ts) } — set by showKring
@@ -533,9 +542,33 @@ function buildCircleBot(agent) {
     const { parts } = await task.done();
     return { parts };
   };
-  circleContactSkills = createContactSkillRegistry({ peerGraph: agent.peers, sendTask: sendContactTask });
+  // canopy-chat's secure-agent doesn't maintain a core PeerGraph (peers are
+  // tracked in stoop membership, not core discovery), so the contacts registry
+  // is APP-OWNED: one PeerGraph the roster + the P4 skill registry read, populated
+  // as bots/peers are discovered (discoverA2A) or added. The agent stays the
+  // transport (sendPeerMessage). (Ideally the secure-agent owns this so gossip/
+  // discovery feed it directly — a follow-up; app-owned is correct + sufficient
+  // here since canopy-chat drives population explicitly.)
+  circlePeerGraph = new PeerGraph();
+  circleContactSkills = createContactSkillRegistry({ peerGraph: circlePeerGraph, sendTask: sendContactTask });
   circleContactSkills.start().catch(() => { /* discovery is best-effort — never blocks the kring */ });
   if (typeof window !== 'undefined') window.canopyContactSkills = circleContactSkills;
+
+  // P5 — the conversational channel (the client end of the bot peer link). The
+  // channel sends over agent.sendPeerMessage, which routes through core
+  // RoutingStrategy (mdns > rendezvous > relay > nkn), so a DM turn reaches the
+  // bot over whichever transport is live. Inbound replies are routed by
+  // `channel.replyHandler` registered in the peer router (below).
+  circleContactChannel = createContactThreadChannel({
+    sendToPeer: (addr, payload) =>
+      (typeof agent.sendPeerMessage === 'function'
+        ? agent.sendPeerMessage(addr, payload)
+        : Promise.reject(new Error('agent.sendPeerMessage unavailable'))),
+  });
+  if (typeof window !== 'undefined') {
+    window.canopyContactChannel = circleContactChannel;
+    window.canopyPeers = circlePeerGraph;   // debug / e2e seam (roster + journey-A tests seed/inspect peers)
+  }
 
   const llmProviders = buildCircleLlmProviders({ localBaseUrl: CIRCLE_LLM_BASEURL, model: CIRCLE_LLM_MODEL });
   const policyIo = localStoragePolicyIo();
@@ -655,8 +688,68 @@ function showTabBar(active) {
     active, t,
     onScreens: showScreens,
     onKringen: showLauncher,
+    onContacts: showContacts,
     onMij: showMij,
   });
+}
+
+// P5 — Contacten tab: the bot/peer roster.  Reads agent.peers via the shared
+// `listContacts`; tapping a row opens its 1:1 DM thread.
+async function showContacts() {
+  showTabBar('contacten');
+  let contacts = [];
+  try { contacts = await listContacts(circlePeerGraph); } catch { contacts = []; }
+  renderContactsRoster(rootEl, { contacts, t, onOpen: showContactThread });
+}
+
+// P5 — a 1:1 DM thread with a contact-bot.  The conversational turn goes over
+// the contact-thread channel (sa.peer → mdns/relay/nkn); the async reply lands
+// via `onContactReply` (registered in the peer router) and re-renders here.
+async function showContactThread(contactId) {
+  hideCircleTabBar(tabBarEl);
+  let row = null;
+  try { row = (await listContacts(circlePeerGraph)).find((c) => c.contactId === contactId) ?? null; }
+  catch { /* fall back to any cached thread below */ }
+  const name = row?.name ?? contactThreads.get(contactId)?.name ?? contactId;
+  const peerAddr = row?.peerAddr ?? contactThreads.get(contactId)?.peerAddr ?? contactId;
+  if (!contactThreads.has(contactId)) contactThreads.set(contactId, { name, peerAddr, messages: [] });
+  const thread = contactThreads.get(contactId);
+  thread.name = name; thread.peerAddr = peerAddr;
+
+  let busy = false; let error = false;
+  const rerender = () => renderContactThread(rootEl, {
+    name, messages: thread.messages, busy, error, t,
+    onBack: showContacts,
+    onSend: async (text) => {
+      error = false;
+      thread.messages.push({ origin: 'user', text });
+      busy = true; rerender();
+      try {
+        const { sent } = circleContactChannel.sendTurn({
+          peerAddr: thread.peerAddr, threadId: contactId, text,
+        });
+        await sent;
+      } catch {
+        error = true;
+      } finally {
+        busy = false; rerender();
+      }
+    },
+  });
+  _activeContactThread = { contactId, rerender };
+  rerender();
+}
+
+// P5 — inbound bot reply handler (registered under the channel's IN subtype in
+// the peer router).  Routes by threadId when the bot echoes it, else by the
+// sender address (== the contactId for a native peer); appends a bot bubble and
+// re-renders if that thread is on screen.
+function onContactReply({ fromAddr, threadId, text, buttons }) {
+  const contactId = (threadId && contactThreads.has(threadId)) ? threadId : fromAddr;
+  let thread = contactThreads.get(contactId);
+  if (!thread) { thread = { name: contactId, peerAddr: fromAddr, messages: [] }; contactThreads.set(contactId, thread); }
+  thread.messages.push({ origin: 'bot', text, buttons });
+  if (_activeContactThread?.contactId === contactId) _activeContactThread.rerender();
 }
 
 // P6.3 — seenAt persistence: bumped on showDetail(id) so unread counts
@@ -1938,6 +2031,11 @@ async function boot() {
           'catch-up-offer':          catchUpReceiver.onPeerMessage,
           'catch-up-chunk':          catchUpReceiver.onPeerMessage,
           'catch-up-end':            catchUpReceiver.onPeerMessage,
+          // P5 — a contact-bot's reply in its 1:1 DM thread (guarded: the channel
+          // is null if buildCircleBot threw, and must not break the peer router).
+          ...(circleContactChannel
+            ? { [circleContactChannel.subtypes.in]: circleContactChannel.replyHandler(onContactReply) }
+            : {}),
         },
       });
       tryConnectPeerTransport(agent, peerMessageRouter).catch(() => { /* logged inside */ });

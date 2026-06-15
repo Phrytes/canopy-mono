@@ -10,15 +10,17 @@
 // then Kringen (the data layer), then Mij.  Stroom is gone — its
 // behaviour now lives as the seeded "Stream" screen on the Screens tab.
 const TABS = [
-  { id: 'screens', key: 'circle.tab.screens' },
-  { id: 'kringen', key: 'circle.tab.kringen' },
-  { id: 'mij',     key: 'circle.tab.mij' },
+  { id: 'screens',   key: 'circle.tab.screens' },
+  { id: 'kringen',   key: 'circle.tab.kringen' },
+  // P5 — Contacten: the bot/peer roster + their 1:1 DM threads.
+  { id: 'contacten', key: 'circle.tab.contacten' },
+  { id: 'mij',       key: 'circle.tab.mij' },
 ];
 
-export function renderCircleTabBar(container, { active, t, onScreens, onKringen, onMij } = {}) {
+export function renderCircleTabBar(container, { active, t, onScreens, onKringen, onContacts, onMij } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
-  const handlers = { screens: onScreens, kringen: onKringen, mij: onMij };
+  const handlers = { screens: onScreens, kringen: onKringen, contacten: onContacts, mij: onMij };
   container.innerHTML = '';
   container.className = 'circle-tabbar';
   for (const tab of TABS) {
