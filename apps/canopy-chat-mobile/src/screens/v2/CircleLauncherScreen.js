@@ -70,6 +70,7 @@ import { createCircleDispatch } from '../../../../canopy-chat/src/v2/circleDispa
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
 import { interpretToCommand } from '../../../../canopy-chat/src/v2/interpretCommand.js';
+import { scopeStoopCallSkill } from '../../../../canopy-chat/src/v2/circleStoopScope.js';
 // M6 — the feedback bot rides the SHARED mount (web uses the same one). tryHandle routes /feedback +
 // /feedback-stop + free text while active, before the circle bot; bubbles render via appendKringMessage.
 import { createFeedbackMount } from '../../../../canopy-chat/src/feedback/feedbackMount.js';
@@ -1411,6 +1412,17 @@ function CircleDetail({
     () => (rawCatalog ? scopeCatalogToApps(rawCatalog, policy?.apps) : rawCatalog),
     [rawCatalog, policy],
   );
+  // Per-circle stoop restructure (parity with web circleApp.js `stoopCall`): the
+  // prikbord + scherm noticeboard block call the raw 3-arg `callSkill('stoop', …)`
+  // directly, bypassing scopeReadyDispatch — so scope them to THIS circle here.
+  // Writes get the circle id as the stoop scope key; list reads are filtered to the
+  // circle. One shared agent, per-circle scope key (NOT N agents). NB: the 3-arg raw
+  // dispatch is the `rawCallSkill` PROP (the parent's `bundle.callSkill`) — `bundle`
+  // is not in scope in this component.
+  const stoopCall = useMemo(
+    () => scopeStoopCallSkill(rawCallSkill, circle?.id),
+    [rawCallSkill, circle?.id],
+  );
   // P6.1 — Functies-axis gating for the overflow menu items.
   const showRules    = isFeatureEnabled(policy, 'houseRules');
   const showViewAs   = isFeatureEnabled(policy, 'memberDirectory');
@@ -1481,7 +1493,9 @@ function CircleDetail({
           // materializers call `callSkill(appOrigin, opId, args)` (3-arg), so pass
           // the RAW 3-arg dispatch, not the 2-arg `callSkill` resolver (#16; also
           // un-breaks the tasks/agenda scherm blocks that shared the latent bug).
-          hostOps:  { callSkill: bundle?.callSkill, eventLog, circles, policy, actionFrequency },
+          // `stoopCall` = the raw 3-arg `rawCallSkill` scoped to this circle (the
+          // earlier `bundle?.callSkill` was undefined here — `bundle` isn't a prop).
+          hostOps:  { callSkill: stoopCall, eventLog, circles, policy, actionFrequency },
         });
         if (alive) setScreenBlocks(blocks);
       } catch (err) {
@@ -1878,8 +1892,9 @@ function CircleDetail({
           // empty-state when no recipe is set up yet.
           <CircleScreenView blocks={screenBlocks} onAction={onScreenAction} />
         ) : activeTab === 'prikbord' ? (
-          // S1 #1 — the buurt noticeboard (its own composer + post list).
-          <CircleNoticeboard callSkill={bundle?.callSkill} />
+          // S1 #1 — the buurt noticeboard (its own composer + post list), scoped to
+          // the open circle (S4 per-circle restructure — see stoopCall above).
+          <CircleNoticeboard callSkill={stoopCall} />
         ) : activeTab !== 'gesprek' ? (
           <Text style={styles.placeholder}>
             {t('circle.kring.tab_coming', { tab: t(`circle.tabs.${activeTab}`) })}
