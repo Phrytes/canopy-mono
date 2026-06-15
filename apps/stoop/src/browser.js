@@ -16,9 +16,10 @@
  * scripts, no node-only adapters, no testbed launcher.
  */
 
-import { AgentIdentity, InternalTransport } from '@canopy/core';
+import { AgentIdentity, InternalTransport, SolidPodSource } from '@canopy/core';
 
 import { createNeighborhoodAgent } from './Agent.js';
+import { attachPodToBundle, detachPodFromBundle } from './lib/attachPodToBundle.js';
 
 /**
  * Build a Stoop NeighborhoodAgent on the shared bus.
@@ -100,5 +101,21 @@ export async function createBrowserStoopAgent({
     bundle,
     address: identity.pubKey,
     close:   () => bundle.close?.(),
+    /**
+     * Route this stoop agent's items to a REAL Solid pod, using a host-supplied
+     * authenticated `fetch` (e.g. canopy-chat's signed-in session) + the discovered
+     * `podRoot`. Builds a `SolidPodSource` + activates the (already-built) pod-routing
+     * write-through. Idempotent-ish; best-effort provisioning. Pass `podRoot: null` (or
+     * call `detachPod`) to revert to local-only. No-op on a bundle without a cache.
+     */
+    async attachPod({ podRoot, webid, fetch: authedFetch } = {}) {
+      if (!podRoot || typeof authedFetch !== 'function' || !bundle?.cache?.attachInner) return { ok: false };
+      try {
+        const source = new SolidPodSource({ podUrl: podRoot, fetch: authedFetch });
+        await attachPodToBundle({ bundle, source, podRoot, webid, fetch: authedFetch });
+        return { ok: true, podRoot };
+      } catch (err) { return { ok: false, error: err?.message ?? String(err) }; }
+    },
+    detachPod() { try { detachPodFromBundle({ bundle }); } catch { /* swallow */ } },
   };
 }

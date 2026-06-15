@@ -12,7 +12,9 @@
  * back to the pseudo-pod (offline / not-signed-in), so this is purely additive.
  */
 
-/** Derive a pod ROOT from a WebID (`https://me.pod/profile/card#me` → `https://me.pod/`). */
+/** Derive a pod ROOT from a WebID (`https://me.pod/profile/card#me` → `https://me.pod/`).
+ *  Heuristic FALLBACK only — prefer the host passing a `podRoot` resolved via the canonical
+ *  `discoverPodRoot(session)` (src/web/podStorage.js — reads the WebID's `pim:storage`). */
 export function podRootFromWebid(webid) {
   if (typeof webid !== 'string' || !webid) return null;
   const i = webid.indexOf('/profile/');
@@ -23,14 +25,16 @@ export function podRootFromWebid(webid) {
 
 /**
  * @param {{ webid:string, isLoggedIn:boolean, fetch:Function }|null} session
- * @param {{ PodClient:Function, SolidOidcAuth:Function, circlesPath?:string }} deps
+ * @param {{ PodClient:Function, SolidOidcAuth:Function, circlesPath?:string, podRoot?:string }} deps
+ *   `podRoot` (optional): the discovered pod root (from `discoverPodRoot`); falls back to the heuristic.
  * @returns {{ podRoot:string, makePodClient:(circleId:string)=>object, circleRootUri:(circleId:string)=>string } | null}
  */
-export function realPodRouting(session, { PodClient, SolidOidcAuth, circlesPath = 'circles' } = {}) {
+export function realPodRouting(session, { PodClient, SolidOidcAuth, circlesPath = 'circles', podRoot: podRootArg } = {}) {
   if (!session || !session.isLoggedIn || typeof session.fetch !== 'function' || !session.webid) return null;
   if (typeof PodClient !== 'function' || typeof SolidOidcAuth !== 'function') return null;
-  const podRoot = podRootFromWebid(session.webid);
+  let podRoot = podRootArg || podRootFromWebid(session.webid);
   if (!podRoot) return null;
+  if (!podRoot.endsWith('/')) podRoot += '/';
 
   // Wrap the session's DPoP fetch as the auth-vault SolidOidcAuth expects.
   const authVault = {

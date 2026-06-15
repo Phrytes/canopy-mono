@@ -29,6 +29,7 @@ import { VaultIndexedDB, VaultMemory } from '@canopy/vault';
 // S4 circle OIDC — reuse the existing browser Solid-OIDC wrapper (no rebuild). A signed-in
 // session routes a sealed circle to the user's REAL pod; otherwise the in-memory pseudo-pod.
 import * as podAuth from '../../src/web/podAuth.js';
+import { discoverPodRoot } from '../../src/web/podStorage.js';
 // Phase 5 — bot + feedback in the kring composer (mirrors mobile CircleLauncherScreen, on the shared
 // engine). The circle bot stack:
 import { mockTasksManifest, mockStoopManifest, mockFolioManifest } from '../../src/core/manifests/mockManifests.js';
@@ -2306,12 +2307,15 @@ async function boot() {
   renderCircleLauncher(rootEl, { loading: true, t });
 
   // S4 circle OIDC — complete an incoming Solid sign-in redirect / restore a saved session
-  // (reuses src/web/podAuth.js). When signed in, sealed circles route to the user's real pod.
+  // (reuses src/web/podAuth.js). When signed in, sealed circles + stoop's items route to the
+  // user's real pod (the pod root via the canonical discoverPodRoot).
+  let podSession = null;
   try {
-    const session = (await podAuth.handleRedirect().catch(() => null)) || podAuth.getCurrentSession?.();
-    circleRealPodRouting = realPodRouting(session, { PodClient, SolidOidcAuth });
+    podSession = (await podAuth.handleRedirect().catch(() => null)) || podAuth.getCurrentSession?.();
+    const podRoot = podSession ? await discoverPodRoot(podSession).catch(() => null) : null;
+    circleRealPodRouting = realPodRouting(podSession, { PodClient, SolidOidcAuth, podRoot });
     if (typeof window !== 'undefined') {
-      window.canopyPodSession = session ?? null;                  // debug / e2e seam
+      window.canopyPodSession = podSession ?? null;               // debug / e2e seam
       window.canopyPodSignIn = (issuer) => podAuth.startSignIn({ issuer, redirectUrl: window.location.href });
     }
   } catch { /* not signed in → pseudo-pod */ }
@@ -2330,6 +2334,13 @@ async function boot() {
       stoopPersistDb: { dbName: 'cc-stoop-state', storeName: 'items' },
       stoopControlAgent: circleControlAgentRouter,   // S4 — multi-member sealing on redeem/leave
     });
+    // S4 — when signed in, route stoop's items to the user's REAL pod (parity with
+    // folio/calendar; reuses stoop's already-built pod-routing write-through). Best-effort.
+    if (podSession?.isLoggedIn && circleRealPodRouting?.podRoot && typeof agent.attachStoopPod === 'function') {
+      agent.attachStoopPod({ podRoot: circleRealPodRouting.podRoot, webid: podSession.webid, fetch: podSession.fetch })
+        .then((r) => { if (!r?.ok && r?.error) console.warn('[circleApp] attachStoopPod:', r.error); })
+        .catch(() => { /* best-effort; stays local-first */ });
+    }
     if (typeof agent?.callSkill === 'function') {
       rawCallSkill = agent.callSkill;
       resolveCallSkill = makeResolvingCallSkill(agent.callSkill);

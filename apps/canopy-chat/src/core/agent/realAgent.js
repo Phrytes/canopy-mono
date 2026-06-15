@@ -1966,6 +1966,11 @@ export async function createRealHouseholdAgent(opts = {}) {
     // (a PodClient + container) / clears on sign-out.  Lights up the
     // "My pod" toggle in the circle Folio browser.  Pass null to detach.
     setFolioPodSource: (src) => folioAgent.setPodSource?.(src) ?? null,
+    // S4 — route stoop's items to the user's REAL pod on sign-in (parity with folio/
+    // calendar). Delegates to the stoop agent's attachPod (builds a SolidPodSource +
+    // activates the already-built pod-routing write-through). Pass {podRoot, webid, fetch}.
+    attachStoopPod: (opts) => (typeof stoopAgent?.attachPod === 'function' ? stoopAgent.attachPod(opts) : Promise.resolve({ ok: false })),
+    detachStoopPod: () => stoopAgent?.detachPod?.(),
     // Expose identity info for /me + /pod-status.  pubKeys are stable
     // across refreshes because identity is persisted to VaultLocalStorage.
     identity: {
