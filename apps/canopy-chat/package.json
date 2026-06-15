@@ -42,6 +42,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "fitness": "vitest run test/fitness/",
     "test:browser": "playwright test",
     "test:browser:headed": "playwright test --headed",
     "dev": "vite",
