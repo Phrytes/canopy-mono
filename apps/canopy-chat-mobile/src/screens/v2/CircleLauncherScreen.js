@@ -81,6 +81,8 @@ import { resolveChatAi } from '../../../../canopy-chat/src/v2/chatAi.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import MultiFieldFormBubble from '../../rn/MultiFieldFormBubble.js';   // 2+-field inline form (parity with web)
 import { createCircleDispatch } from '../../../../canopy-chat/src/v2/circleDispatch.js';
+// Conversation memory — recent kring turns woven into the bot's interpret context.
+import { recentKringTurns } from '../../../../canopy-chat/src/v2/kringMemory.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
 import { interpretToCommand } from '../../../../canopy-chat/src/v2/interpretCommand.js';
@@ -1479,6 +1481,9 @@ function CircleDetail({
     circles,
     circleId:  circle?.id ?? null,
   }), [eventLog, circles, circle?.id, streamTick]);
+  // Conversation memory — a ref so the bot reads the LATEST rows without re-creating.
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
 
   // δ.2 — per-message delivery state.  Lives in a ref so the map is
   // stable across renders; we bump `deliveryTick` (a state value the
@@ -1790,6 +1795,8 @@ function CircleDetail({
     userDefault: userLlmDefault,
     llmProviders: buildCircleLlmProviders({ localBaseUrl: CIRCLE_LLM_BASEURL, model: CIRCLE_LLM_MODEL }),
     interpret: interpretToCommand,
+    // Conversation memory — the recent kring turns (latest via rowsRef), web parity.
+    recentTurns: () => recentKringTurns({ rows: rowsRef.current, limit: 6 }),
     botName: CIRCLE_BOT_NAME,
     // Deterministic pre-LLM gate (manifest-derived via renderGate): "add X" / "done X" / "claim X"
     // route to the task op WITHOUT the (unreliable) small-model tool pick; else falls to interpret.
