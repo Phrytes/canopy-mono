@@ -2,7 +2,7 @@
  * embedChips — normalize an item's cross-object embeds into display chips.
  */
 import { describe, it, expect } from 'vitest';
-import { embedChipsOf, shortRef, embedTypeLabelKey, EMBED_TYPE_ICON } from '../../src/v2/embedChips.js';
+import { embedChipsOf, shortRef, embedTypeLabelKey, EMBED_TYPE_ICON, screenForEmbedType } from '../../src/v2/embedChips.js';
 
 describe('embedChipsOf', () => {
   it('reads top-level embeds + maps type → icon, keeps a label', () => {
@@ -58,5 +58,14 @@ describe('embedTypeLabelKey', () => {
   it('has icons for the canonical types', () => {
     expect(Object.keys(EMBED_TYPE_ICON)).toContain('task');
     expect(Object.keys(EMBED_TYPE_ICON)).toContain('calendar-event');
+  });
+});
+
+describe('screenForEmbedType', () => {
+  it('maps the screen-backed types, null otherwise', () => {
+    expect(screenForEmbedType('task')).toBe('tasks');
+    expect(screenForEmbedType('calendar-event')).toBe('agenda');
+    expect(screenForEmbedType('note')).toBeNull();
+    expect(screenForEmbedType('request')).toBeNull();
   });
 });
