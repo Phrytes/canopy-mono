@@ -41,7 +41,7 @@ import {
   // D1 (§5A) — quickActions row: feature↔tab mapping + frequency counter.
   featureTabId, featureForTabId, createActionFrequencyStore,
   // α.1a/b — scherm recipe model + per-block materializer.
-  getActiveRecipe, materializeRecipe,
+  getActiveRecipe, materializeRecipe, materializeBlock,
   // α.1d.3 — recipe-editor mutation helpers.
   addRecipe, renameRecipe, removeRecipe, setActiveRecipe,
   addBlock, removeBlock, moveBlock, updateBlock, updateRecipe,
@@ -69,6 +69,8 @@ import {
 // S6.A — manifest-driven inline buttons on bot replies (the resurrected inline menu), shared with web.
 import { embedButtonsForReply } from '../../../../canopy-chat/src/v2/replyEmbeds.js';
 import { buildManifestsByOrigin } from '../../core/composeManifests.js';
+// S6.B/C — open-screen surface + per-circle gate (shared with web).
+import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.js';
 import { createCircleDispatch } from '../../../../canopy-chat/src/v2/circleDispatch.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
@@ -1624,9 +1626,15 @@ function CircleDetail({
     const entry = catalog?.opsById?.get(dispatch.opId);
     const verb = entry?.op?.verb;
     // S6.A — manifest-driven inline buttons for the reply's item(s), gated by appliesTo (web parity).
-    const buttons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin });
-    appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons });
-  }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin]);
+    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin });
+    // S6.B/C — a screen surface (surfaces.ui.screen) becomes an "Open …" button,
+    // gated by the circle's policy.features for that app (web parity).
+    const screen = entry?.op?.surfaces?.ui?.screen;
+    const screenButton = (screen && isAppSurfaceEnabled(entry?.appOrigin, policy, isFeatureEnabled))
+      ? [{ id: `screen:${screen}`, screen, label: t(`circle.screen.open.${screen}`, { defaultValue: t('circle.screen.open_generic') }) }]
+      : [];
+    appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons: [...screenButton, ...inlineButtons] });
+  }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy]);
 
   // B (clarification) — candidate source for an id-like param. Base = the circle's already-loaded
   // items (tasks + stoop posts, circle-scoped). Part C cross-app: ALSO pull the op's OWN list via the
@@ -1668,9 +1676,25 @@ function CircleDetail({
     },
   }), [catalog, circleLookup, runCircleCommandResolved, appendKringMessage, circle?.id]);
 
-  // A tapped bubble button: S6.A inline manifest button (has opId) → dispatch its op against the item;
+  // S6.B — chat-triggered screen panel ({screen} | null) + its materialized blocks.
+  const [screenPanel, setScreenPanel] = useState(null);
+  const [panelBlocks, setPanelBlocks] = useState(null);
+  useEffect(() => {
+    if (!screenPanel) { setPanelBlocks(null); return undefined; }
+    let alive = true;
+    setPanelBlocks(null);   // loading
+    const block = { id: `panel-${screenPanel.screen}`, type: screenPanel.screen, config: { scope: 'all' } };
+    materializeBlock({ block, circleId: circle?.id, hostOps: { callSkill: rawCallSkill, eventLog, circles } })
+      .then((m) => { if (alive) setPanelBlocks([m]); })
+      .catch(() => { if (alive) setPanelBlocks([]); });
+    return () => { alive = false; };
+  }, [screenPanel, circle?.id, rawCallSkill, eventLog, circles]);
+
+  // A tapped bubble button: S6.B screen button (has screen) → open the panel;
+  // S6.A inline manifest button (has opId) → dispatch its op against the item;
   // otherwise (B clarification candidate) → bind the id + re-run.
   const onBubbleButton = useCallback((button) => {
+    if (button?.screen) { setScreenPanel({ screen: button.screen }); return; }
     if (button?.opId) {
       const op = catalog?.opsById?.get(button.opId)?.op;
       const arg = op?.surfaces?.slash?.match?.arg
@@ -1935,6 +1959,25 @@ function CircleDetail({
           })
         )}
       </ScrollView>
+
+      {/* S6.B — chat-triggered screen panel (tasks/agenda overview) in a modal. */}
+      <Modal visible={!!screenPanel} animationType="slide" transparent onRequestClose={() => setScreenPanel(null)}>
+        <View style={styles.panelBackdrop}>
+          <View style={styles.panelCard} testID="circle-screen-panel">
+            <View style={styles.panelHead}>
+              <Text style={styles.panelTitle}>
+                {screenPanel ? t(`circle.screen.open.${screenPanel.screen}`, { defaultValue: t('circle.screen.open_generic') }) : ''}
+              </Text>
+              <Pressable onPress={() => setScreenPanel(null)} testID="circle-screen-panel-close">
+                <Text style={styles.panelClose}>✕</Text>
+              </Pressable>
+            </View>
+            <ScrollView>
+              <CircleScreenView blocks={panelBlocks} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* SP-13.2 — inline composer.  V0 appends a chat-message event to
           the local EventLog so the user sees their own write; peer
@@ -2224,6 +2267,12 @@ function MyThingsScreen({ files = [], onBack }) {
 }
 
 const styles = StyleSheet.create({
+  // S6.B — chat-triggered screen panel.
+  panelBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  panelCard:  { backgroundColor: theme.color.paper, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85%', minHeight: '50%', padding: 16 },
+  panelHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  panelTitle: { fontFamily: theme.font.serif, fontSize: 18, fontWeight: '600', color: theme.color.ink },
+  panelClose: { fontSize: 16, color: theme.color.inkSoft, paddingHorizontal: 6 },
   page:       { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 22 },
   back:       { fontSize: 13, color: theme.color.inkSoft },

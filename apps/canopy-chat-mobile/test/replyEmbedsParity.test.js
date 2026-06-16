@@ -8,6 +8,8 @@
 import { describe, it, expect } from 'vitest';
 import { buildManifestsByOrigin } from '../src/core/composeManifests.js';
 import { embedButtonsForReply } from '../../canopy-chat/src/v2/replyEmbeds.js';
+import { isAppSurfaceEnabled } from '../../canopy-chat/src/v2/appFeature.js';
+import { isFeatureEnabled } from '../../canopy-chat/src/v2/circlePolicy.js';
 
 describe('mobile inline-button substrate (shared with web)', () => {
   const manifestsByOrigin = buildManifestsByOrigin();
@@ -32,5 +34,15 @@ describe('mobile inline-button substrate (shared with web)', () => {
     }).map((b) => b.opId);
     expect(ops).toContain('completeTask');
     expect(ops).not.toContain('claimTask');
+  });
+
+  it('S6.B — the tasks overview op declares a screen surface in the shared manifest', () => {
+    const listMine = manifestsByOrigin['tasks-v0'].operations.find((o) => o.id === 'listMine');
+    expect(listMine?.surfaces?.ui?.screen).toBe('tasks');
+  });
+
+  it('S6.C — the tasks screen surface is gated by the circle policy.features (mobile parity)', () => {
+    expect(isAppSurfaceEnabled('tasks-v0', { features: { tasks: false } }, isFeatureEnabled)).toBe(false);
+    expect(isAppSurfaceEnabled('tasks-v0', { features: { tasks: true } }, isFeatureEnabled)).toBe(true);
   });
 });
