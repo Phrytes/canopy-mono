@@ -68,7 +68,8 @@ import {
 // B (circle bot) — v2 free-text→LLM→command surface (shared with web). Deep-imported like the other
 // v2 modules (kringChatReceiver etc.) since they're not on the canopy-chat barrel.
 // S6.A — manifest-driven inline buttons on bot replies (the resurrected inline menu), shared with web.
-import { embedButtonsForReply } from '../../../../canopy-chat/src/v2/replyEmbeds.js';
+import { embedButtonsForReply, embedsFromReply } from '../../../../canopy-chat/src/v2/replyEmbeds.js';
+import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../../../canopy-chat/src/v2/embedChips.js';
 import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 // S6.B/C — open-screen surface + per-circle gate (shared with web).
 import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.js';
@@ -1617,11 +1618,11 @@ function CircleDetail({
 
   // SP-13.2.1 — append a kring chat bubble to the local eventLog (optimistic). Returns {msgId, ts}
   // so the caller can fan out the same id (receiver-side dedup suppresses any mirrored echo).
-  const appendKringMessage = useCallback(({ actor, text, buttons, scope }) => {
+  const appendKringMessage = useCallback(({ actor, text, buttons, scope, embeds }) => {
     if (!eventLog?.append || !circle?.id) return null;
     const msgId = `kring-${circle.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const ts    = Date.now();
-    eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: circle.id, actor, text, buttons, scope }));
+    eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: circle.id, actor, text, buttons, scope, embeds }));
     setStreamTick((n) => n + 1);
     return { msgId, ts };
   }, [eventLog, circle?.id]);
@@ -1673,7 +1674,9 @@ function CircleDetail({
     const buttons = selectSurfaceButtons({ inlineButtons, screenButton, pref: surfacePrefStore.get() });
     // Scope: a mutating op's reply reaches the whole kring; a read/info/error reply is private (web parity).
     const scope = scopeForReply({ verb, error: !!reply?.error });
-    appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons, scope });
+    // embeds[] — the bot reply references the item it acted on (web parity); title pre-filled.
+    const embeds = embedsFromReply(reply, { appOrigin: entry?.appOrigin });
+    appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons, scope, embeds });
   }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy]);
 
   // 2+-field inline form submit: echo the filled values, complete the dispatch, run it (parity with web).
@@ -2188,6 +2191,20 @@ function renderBubble(row, t, deliveryOpts = null) {
         {kind ? (<Text style={styles.bubbleKind}>{kind}  </Text>) : null}
         {text}
       </Text>
+      {embedChipsOf(payload).length > 0 ? (
+        <View style={styles.bubbleEmbeds}>
+          {embedChipsOf(payload).map((e) => {
+            const typeKey = embedTypeLabelKey(e.type);
+            const typeLabel = t(typeKey);
+            const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
+            return (
+              <View key={e.ref} style={styles.bubbleEmbed} testID={`kring-embed-${e.ref}`}>
+                <Text style={styles.bubbleEmbedText}>{`${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`}</Text>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
       {actions.length > 0 ? (
         <View style={styles.rowActions}>
           {actions.map((a) => (
@@ -2413,6 +2430,10 @@ const styles = StyleSheet.create({
   bubbleScopeKring: { backgroundColor: '#e8eef6', color: '#3b6ea5' },
   bubbleText:       { fontSize: 14, color: theme.color.ink },
   bubbleKind:       { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: theme.color.accent },
+  // embeds[] — cross-object "See also" chips on a kring message.
+  bubbleEmbeds:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  bubbleEmbed:      { borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.card, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 9 },
+  bubbleEmbedText:  { fontSize: 12, color: theme.color.ink },
   dayDivider:       { alignSelf: 'center', fontSize: 11, color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 8 },
   composer:         { flexDirection: 'row', gap: 8, alignItems: 'center', paddingTop: 8, paddingBottom: 4, borderTopWidth: 1, borderTopColor: theme.color.line, marginTop: 4 },
   composerInput:    { flex: 1, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: theme.color.line, borderRadius: 22, backgroundColor: theme.color.white, fontSize: 14, color: theme.color.ink },
