@@ -33,6 +33,7 @@ import { BLOCK_TYPES } from './kringRecipe.js';
 import { buildKringStream } from './circleStream.js';
 import { normalizeRulesDoc, isRulesEmpty } from './circleRules.js';
 import { enabledFeatures } from './circlePolicy.js';
+import { enrichEmbedsWithTitles } from './embedResolve.js';
 
 /**
  * Editor-side metadata per block type.  Drives the palette + the
@@ -245,13 +246,23 @@ async function materializeTasks(block, circleId, { callSkill, myWebid } = {}) {
   const filtered = scope === 'all'
     ? raw
     : raw.filter((t) => assigneeMatches(t, myWebid));
-  const items = filtered.slice(0, limit).map((t) => ({
+  let items = filtered.slice(0, limit).map((t) => ({
     id:       t.id,
     text:     t.text ?? t.title ?? t.label ?? '',
     state:    t.state ?? t.status ?? 'open',
     assignee: t.assignee ?? null,
     circleId,
+    // embeds[] — cross-object references a task carries (→ another task / event /
+    // post). Surfaced as "See also" chips on the task card (resolved below).
+    embeds:   Array.isArray(t.embeds) ? t.embeds
+              : (Array.isArray(t.source?.embeds) ? t.source.embeds : []),
   }));
+  // Resolve embed refs to live titles (crewId = circle id). Best-effort.
+  items = await Promise.all(items.map(async (it) => (
+    it.embeds.length
+      ? { ...it, embeds: await enrichEmbedsWithTitles({ callSkill, embeds: it.embeds, crewId: circleId }) }
+      : it
+  )));
   return {
     blockId: block.id, type: 'tasks',
     status: items.length > 0 ? 'ok' : 'empty',

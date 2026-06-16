@@ -24,6 +24,7 @@
  */
 
 import { featureActionLabelKey } from '../../src/v2/kringTabs.js';
+import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../src/v2/embedChips.js';
 
 /**
  * Render an array of materialized blocks into a container.
@@ -249,6 +250,23 @@ function renderTasks(section, block, tr) {
     text.className = 'circle-screen__tasks-text';
     text.textContent = task.text ?? '';
     li.appendChild(text);
+    // embeds[] — "See also" chips for the task's cross-object references.
+    const embeds = embedChipsOf(task);
+    if (embeds.length) {
+      const wrap = document.createElement('span');
+      wrap.className = 'circle-screen__embeds';
+      for (const e of embeds) {
+        const chip = document.createElement('span');
+        chip.className = `circle-screen__embed circle-screen__embed--${e.type}`;
+        chip.dataset.ref = e.ref;
+        const typeKey = embedTypeLabelKey(e.type);
+        const typeLabel = tr(typeKey);
+        const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
+        chip.textContent = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
+        wrap.appendChild(chip);
+      }
+      li.appendChild(wrap);
+    }
     list.appendChild(li);
   }
   section.appendChild(list);

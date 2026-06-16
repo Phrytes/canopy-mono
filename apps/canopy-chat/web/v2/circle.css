@@ -520,6 +520,9 @@
   padding-top: 3px; padding-bottom: 3px;
   font-size: 12px; line-height: 1.25;
 }
+/* embeds[] — "See also" chips on a task card. */
+.circle-screen__embeds { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 8px; vertical-align: middle; }
+.circle-screen__embed { font-size: 11px; color: var(--ink); background: var(--paper2, #f4efe7); border: 1px solid var(--line, #e2d9cb); border-radius: 999px; padding: 1px 8px; }
 .circle-screen__block--compact .circle-screen__noticeboard-text,
 .circle-screen__block--compact .circle-screen__agenda-label,
 .circle-screen__block--compact .circle-screen__tasks-text {

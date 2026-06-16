@@ -154,6 +154,26 @@ describe('kringRecipeBlocks · α.1b — materializeBlock (data-fetching types)'
     expect(r.content.items).toEqual([]);
   });
 
+  it('tasks: carries embeds[] + resolves them to live titles (crewId = circle id)', async () => {
+    const callSkill = vi.fn(async (app, op, args) => {
+      if (app === 'tasks-v0' && op === 'listOpen') {
+        return { items: [{ id: 't1', text: 'Fix the gate', assignee: 'webid:me',
+          embeds: [{ type: 'calendar-event', ref: 'evt-1' }] }] };
+      }
+      if (app === 'calendar' && op === 'getEventSnapshot' && args.id === 'evt-1') {
+        return { title: 'Repair visit' };
+      }
+      return { error: 'unexpected' };
+    });
+    const r = await materializeBlock({
+      block: { id: 'b', type: 'tasks', config: { scope: 'all' } },
+      circleId: 'g1',
+      hostOps: { callSkill, myWebid: 'webid:me' },
+    });
+    const embeds = r.content.items[0].embeds;
+    expect(embeds[0]).toEqual({ type: 'calendar-event', ref: 'evt-1', title: 'Repair visit' });
+  });
+
   it('rules: pulls latest rules via getGroupRules, normalises doc', async () => {
     const callSkill = vi.fn(async () => ({
       rules: {
