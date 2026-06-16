@@ -17,7 +17,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildLookupPeerAddrByWebid,
   buildPublishPeerAddrToPod,
-} from '../src/core/podNkn.js';
+} from '../src/core/podPeerAddr.js';
 
 /**
  * Build a fake OidcSessionRN.  `routes` is a `Map<urlPrefix, handler>`

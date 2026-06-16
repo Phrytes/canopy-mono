@@ -52,7 +52,7 @@ import { AppRegistry }                from '../../../canopy-chat/src/appRegistry
 import {
   buildLookupPeerAddrByWebid,
   buildPublishPeerAddrToPod,
-}                                     from './podNkn.js';
+}                                     from './podPeerAddr.js';
 
 /**
  * Build the mobile threadStore adapter.  Returns an object exposing
@@ -131,7 +131,7 @@ export function buildMobileLocalBuiltins({
   eventLog, openLogsPanel, openQrScanner,
   openFilePicker,
   podAuth, onSignOut,
-  // Bundle G3 (#265) — raw OidcSessionRN ref for podNkn wrappers.
+  // Bundle G3 (#265) — raw OidcSessionRN ref for podPeerAddr wrappers.
   // podAuth intentionally hides session.fetch (only exposes {webid}),
   // so the NKN-on-pod helpers take the underlying session directly
   // to access getAuthenticatedFetch().

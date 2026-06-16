@@ -177,7 +177,7 @@ describe('Bundle F P1 — buildMobileLocalBuiltins', () => {
 });
 
 describe('Bundle G3 (#265) — /lookup-peer + /publish-peer with sessionRef wired', () => {
-  it('routes /lookup-peer through podNkn wrapper', async () => {
+  it('routes /lookup-peer through podPeerAddr wrapper', async () => {
     __resetThreadIdSeq();
     let threadState = createInitialThreadState();
     const threadStateRef = { current: threadState };
@@ -195,7 +195,7 @@ describe('Bundle G3 (#265) — /lookup-peer + /publish-peer with sessionRef wire
       appsById: new Map([['canopy-chat', { id: 'canopy-chat', ops: [] }]]),
       briefAggregations: () => [], searchAggregations: () => [],
     };
-    // Fake OidcSessionRN — minimum surface podNkn touches.
+    // Fake OidcSessionRN — minimum surface podPeerAddr touches.
     const sessionRef = {
       current: {
         isAuthenticated: () => true,
