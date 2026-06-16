@@ -58,7 +58,8 @@ import {
   // Composer parity — the classic shell's slash-command suggest, shared so mobile renders the same set.
   suggestCommands,
   // Conversational follow-up for needsForm (shared) — ask for a missing field, next message answers.
-  beginFollowUp, completeFollowUp,
+  // beginFormFollowUp/completeMultiFieldFollowUp drive the 2+-field inline form (parity with web).
+  beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp,
   // Shared one-line bot reply (verb-aware Added:/Completed:) + Part D catalog scoping (drops /me etc.).
   kringReplyText, scopeCatalogToApps,
   // B (circle bot) — dispatch primitives to run an interpreted command in the kring.
@@ -74,6 +75,7 @@ import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.j
 // S6.C — per-user surface preference (inline / screen / minimal), shared selector + the mobile store.
 import { selectSurfaceButtons } from '../../../../canopy-chat/src/v2/surfacePref.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
+import MultiFieldFormBubble from '../../rn/MultiFieldFormBubble.js';   // 2+-field inline form (parity with web)
 import { createCircleDispatch } from '../../../../canopy-chat/src/v2/circleDispatch.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
@@ -1472,6 +1474,7 @@ function CircleDetail({
   const [composerText, setComposerText] = useState('');
   // Conversational follow-up: a single-field needsForm awaiting the user's next message (shared followUp).
   const [pendingFollowUp, setPendingFollowUp] = useState(null);
+  const [pendingForm, setPendingForm] = useState(null);   // 2+-field needsForm → inline form (parity with web)
   // Composer parity — slash-command auto-suggest off the merged catalog (shared `suggestCommands`,
   // same logic + set as web's dropdown). Tapping a row fills the command; the bash-style ArrowUp/Down
   // history that web also has is a keyboard affordance with no touch-gesture equivalent, so it's
@@ -1606,10 +1609,12 @@ function CircleDetail({
     } catch { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); return; }
     if (dispatch.kind === 'needsForm') {
       // Conversational elicitation (parity with web): single missing field → ask in the kring + capture
-      // the user's next message (sendKringChat's pending branch). Multi-field keeps the "needs info" bubble.
+      // the user's next message (sendKringChat's pending branch); 2+ missing fields → an inline form bubble.
       const pending = beginFollowUp({ dispatch, t });
-      if (pending) { setPendingFollowUp(pending); appendKringMessage({ actor: 'bot', text: pending.promptText }); }
-      else { appendKringMessage({ actor: 'bot', text: t('circle.bot.needsInfo') }); }
+      if (pending) { setPendingFollowUp(pending); appendKringMessage({ actor: 'bot', text: pending.promptText }); return; }
+      const form = beginFormFollowUp({ dispatch, t });
+      if (form) { setPendingForm(form); return; }   // renderer draws MultiFieldFormBubble
+      appendKringMessage({ actor: 'bot', text: t('circle.bot.needsInfo') });   // no missing param names
       return;
     }
     if (dispatch.kind !== 'ready')     { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); return; }
@@ -1640,6 +1645,17 @@ function CircleDetail({
     const buttons = selectSurfaceButtons({ inlineButtons, screenButton, pref: surfacePrefStore.get() });
     appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons });
   }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy]);
+
+  // 2+-field inline form submit: echo the filled values, complete the dispatch, run it (parity with web).
+  const onFormSubmit = useCallback((values) => {
+    const pending = pendingForm;
+    if (!pending) return;
+    setPendingForm(null);
+    const summary = (pending.fields || []).map((f) => `${f.label || f.name}: ${values?.[f.name] ?? ''}`).join(' · ');
+    if (summary) appendKringMessage({ actor: 'me', text: summary });
+    const ready = completeMultiFieldFollowUp({ pending, values });
+    runCircleCommandResolved({ opId: ready.opId, args: ready.args });
+  }, [pendingForm, appendKringMessage, runCircleCommandResolved]);
 
   // B (clarification) — candidate source for an id-like param. Base = the circle's already-loaded
   // items (tasks + stoop posts, circle-scoped). Part C cross-app: ALSO pull the op's OWN list via the
@@ -1983,6 +1999,11 @@ function CircleDetail({
           </View>
         </View>
       </Modal>
+
+      {/* 2+-field needsForm → an inline labelled form above the composer (parity with web). */}
+      {pendingForm && viewMode !== 'scherm' && activeTab === 'gesprek' ? (
+        <MultiFieldFormBubble pending={pendingForm} onSubmit={onFormSubmit} />
+      ) : null}
 
       {/* SP-13.2 — inline composer.  V0 appends a chat-message event to
           the local EventLog so the user sees their own write; peer
