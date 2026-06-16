@@ -20,7 +20,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
 import {
-  CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS, mergeCirclePolicy, makeProposal,
+  CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS, mergeCirclePolicy, makeProposal, DEFAULT_CIRCLE_ORIGINS,
   detectPolicyConflicts, applyPolicyResolution,
 } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
@@ -175,6 +175,26 @@ export default function CircleSettingsScreen({
             />
           </View>
         ))}
+
+        {/* S6.C deep — which whole apps this circle composes (catalog scope). */}
+        <Text style={styles.section}>{t('circle.settings.apps')}</Text>
+        {DEFAULT_CIRCLE_ORIGINS.map((app) => {
+          const current = Array.isArray(working.apps) ? working.apps : DEFAULT_CIRCLE_ORIGINS;
+          return (
+            <View key={app} style={styles.row}>
+              <Text style={styles.rowLabel}>{t(`circle.settings.app.${app}`)}</Text>
+              <Switch trackColor={{ true: theme.color.accent, false: theme.color.trackOff }} thumbColor={theme.color.white}
+                value={current.includes(app)}
+                onValueChange={(on) => {
+                  const set = new Set(current);
+                  if (on) set.add(app); else set.delete(app);
+                  patch({ apps: DEFAULT_CIRCLE_ORIGINS.filter((a) => set.has(a)) });
+                }}
+                testID={`app-${app}`}
+              />
+            </View>
+          );
+        })}
 
         {ENUM_AXES.map((axis) => (
           <View key={axis}>
