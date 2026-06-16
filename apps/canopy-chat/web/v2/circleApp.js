@@ -39,6 +39,8 @@ import { createTokenGate } from '../../src/v2/tokenGate.js';
 import { circleGateRules } from '../../src/v2/circleGate.js';
 import { interpretToCommand } from '../../src/v2/interpretCommand.js';
 import { createCircleDispatch } from '../../src/v2/circleDispatch.js';
+// Conversation memory — recent kring turns woven into the bot's interpret context.
+import { recentKringTurns } from '../../src/v2/kringMemory.js';
 import { createClarifyingDispatch } from '../../src/v2/clarifyingDispatch.js';
 import { makeCircleLookup } from '../../src/v2/circleLookup.js';
 import { createInputHistory } from '../../src/v2/commandSuggest.js';
@@ -862,6 +864,11 @@ function buildCircleBot(agent) {
     userDefault: () => userDefault,
     llmProviders,
     interpret: interpretToCommand,
+    // Conversation memory — the recent kring turns, so follow-ups resolve against context.
+    recentTurns: () => recentKringTurns({
+      rows: buildKringStream({ events: eventLog.query({ excludeMuted: true }), circles: circlesCache, circleId: getActiveCircle() }),
+      limit: 6,
+    }),
     // A slash STRING → parse to {opId,args}; the LLM yields {opId,args}. Both flow through the
     // clarifying dispatch (unique → run; ambiguous → ask).
     dispatch: (input, ctx) => {

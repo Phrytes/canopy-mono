@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createCircleDispatch, addressesBot } from '../../src/v2/circleDispatch.js';
 
 // A minimal harness: records what the shell would have done.
-function harness({ policy = { llmTool: 'off' }, providers = {}, interpret, botName, userDefault, gate } = {}) {
+function harness({ policy = { llmTool: 'off' }, providers = {}, interpret, botName, userDefault, gate, recentTurns } = {}) {
   const dispatched = [];
   const posted = [];
   const cd = createCircleDispatch({
@@ -12,6 +12,7 @@ function harness({ policy = { llmTool: 'off' }, providers = {}, interpret, botNa
     interpret,
     botName,
     gate,
+    recentTurns,
     dispatch: (slash) => { dispatched.push(slash); },
     postToKring: (text) => { posted.push(text); },
   });
@@ -61,6 +62,29 @@ describe('createCircleDispatch — routing', () => {
     // the LLM path dispatches by {opId,args} (like a button tap), not a fabricated slash string
     expect(dispatched).toEqual([{ opId: 'addTask', args: { title: 'milk' } }]);
     expect(posted).toEqual([]);
+  });
+
+  it('threads recentTurns into the interpret context (conversation memory)', async () => {
+    const interpret = vi.fn(async () => ({ opId: 'addTask', args: { title: 'bread' } }));
+    const { cd, dispatched } = harness({
+      policy: { llmTool: 'local' }, providers: { local: { invoke: vi.fn() } }, interpret, botName: 'helper',
+      recentTurns: () => ['you: add milk', 'assistant: Added milk to the list'],
+    });
+    await cd.handle('@helper and bread too');
+    expect(interpret).toHaveBeenCalledTimes(1);
+    expect(interpret.mock.calls[0][1].context).toEqual(['you: add milk', 'assistant: Added milk to the list']);
+    expect(dispatched).toEqual([{ opId: 'addTask', args: { title: 'bread' } }]);
+  });
+
+  it('prepends recentTurns IN FRONT of any gate context', async () => {
+    const interpret = vi.fn(async () => null);
+    const { cd } = harness({
+      policy: { llmTool: 'local' }, providers: { local: { invoke: vi.fn() } }, interpret, botName: 'helper',
+      gate: { evaluate: async () => ({ via: 'context', context: ['rag: list has eggs'] }) },
+      recentTurns: () => ['you: add milk'],
+    });
+    await cd.handle('@helper and bread');
+    expect(interpret.mock.calls[0][1].context).toEqual(['you: add milk', 'rag: list has eggs']);
   });
 
   it('falls back to a kring post when the interpreter returns null', async () => {

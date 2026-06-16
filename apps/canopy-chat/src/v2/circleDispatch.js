@@ -29,7 +29,7 @@ import { scopeCatalogToApps } from './circleCatalogScope.js';
  * @param {object} [a.gate]   optional token gate ({ evaluate })
  * @param {string} [a.botName='assistant']
  */
-export function createCircleDispatch({ catalog, policy, userDefault, llmProviders, interpret, dispatch, postToKring, onUnhandled, onNoMatch, dispatchSlash = true, gate, botName = 'assistant' }) {
+export function createCircleDispatch({ catalog, policy, userDefault, llmProviders, interpret, dispatch, postToKring, onUnhandled, onNoMatch, dispatchSlash = true, gate, botName = 'assistant', recentTurns }) {
   if (typeof dispatch !== 'function') {
     throw new Error('createCircleDispatch: dispatch is required');
   }
@@ -75,6 +75,11 @@ export function createCircleDispatch({ catalog, policy, userDefault, llmProvider
           if (g.via === 'skip') return { via: await sink(trimmed, ctx) };
           context = g.context;
         }
+        // Conversation memory — prepend the recent kring turns so follow-ups
+        // ("en schoenen ook", "remove the milk", "that one") resolve against what
+        // was just said. Self-describing lines; interpret weaves them into the prompt.
+        const turns = typeof recentTurns === 'function' ? (recentTurns() || []) : [];
+        if (turns.length) context = [...turns, ...(Array.isArray(context) ? context : [])];
         // Part D — scope the LLM's tool list to the circle's apps (default: the circle apps;
         // `policy.apps` narrows further). Gate/dispatch unaffected.
         const scopedCatalog = scopeCatalogToApps(getCatalog(), circlePolicy?.apps);
