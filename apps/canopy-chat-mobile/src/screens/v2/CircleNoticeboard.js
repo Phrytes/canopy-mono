@@ -16,6 +16,7 @@ import { pickAndEncodeImage } from '../../v2/attachmentPicker.js';
 // embeds[] — cross-object reference chips ("See also"), shared with web.
 import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../../../canopy-chat/src/v2/embedChips.js';
 import { enrichEmbedsWithTitles } from '../../../../canopy-chat/src/v2/embedResolve.js';
+import { getCirclePodFetch } from '../../core/circlePods.js';
 
 const INTENTS = ['ask', 'offer', 'lend'];
 
@@ -40,7 +41,7 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen
     try {
       const out = await Promise.all(posts.map(async (p) => {
         if (!Array.isArray(p.embeds) || !p.embeds.length) return p;
-        const enriched = await enrichEmbedsWithTitles({ callSkill, embeds: p.embeds });
+        const enriched = await enrichEmbedsWithTitles({ callSkill, embeds: p.embeds, fetchImpl: getCirclePodFetch() || undefined });
         return enriched.some((e) => e && e.title) ? { ...p, embeds: enriched } : p;
       }));
       setPosts(out);
@@ -195,7 +196,7 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen
                 const typeLabel = t(typeKey);
                 const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
                 const screen = screenForEmbedType(e.type);
-                const tappable = !!(screen && typeof onEmbedOpen === 'function');
+                const tappable = !!(screen && !e.locked && typeof onEmbedOpen === 'function');
                 const label = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
                 return tappable ? (
                   <Pressable key={e.ref} style={styles.embed} testID={`nb-embed-${e.ref}`}

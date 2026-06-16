@@ -237,7 +237,7 @@ function renderTasks(block, onEmbedOpen, highlightRef) {
                   const typeLabel = t(typeKey);
                   const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
                   const screen = screenForEmbedType(e.type);
-                  const tappable = !!(screen && typeof onEmbedOpen === 'function');
+                  const tappable = !!(screen && !e.locked && typeof onEmbedOpen === 'function');
                   const label = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
                   return tappable ? (
                     <Pressable key={e.ref} style={styles.embed} testID={`task-embed-${e.ref}`}

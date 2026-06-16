@@ -33,6 +33,19 @@ export function initCirclePods(asyncStorage) {
  *  route to the user's REAL pod via the session's authenticated fetch (else the pseudo-pod). */
 export function setCirclePodSession(sessionOrRef) { podSessionRef = sessionOrRef; }
 
+/** The signed-in user's AUTHED fetch (OidcSessionRN bearer), or null when signed
+ *  out. embed-ref resolution uses it to read the user's OWN private-pod items. */
+export function getCirclePodFetch() {
+  const s = podSessionRef?.current ?? podSessionRef;
+  try {
+    if (s && typeof s.isAuthenticated === 'function' && s.isAuthenticated()
+        && typeof s.getAuthenticatedFetch === 'function') {
+      return s.getAuthenticatedFetch();
+    }
+  } catch { /* best-effort */ }
+  return null;
+}
+
 /** Adapt an OidcSessionRN → the {webid, isLoggedIn, fetch} shape realPodRouting expects. */
 function sessionShape() {
   const s = podSessionRef?.current ?? podSessionRef;

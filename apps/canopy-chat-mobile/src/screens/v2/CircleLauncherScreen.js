@@ -88,7 +88,7 @@ import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
 import { interpretToCommand } from '../../../../canopy-chat/src/v2/interpretCommand.js';
 import { scopeStoopCallSkill } from '../../../../canopy-chat/src/v2/circleStoopScope.js';
-import { getCircleSealStrategy, seedCircleRosterFor } from '../../core/circlePods.js';
+import { getCircleSealStrategy, seedCircleRosterFor, getCirclePodFetch } from '../../core/circlePods.js';
 // M6 — the feedback bot rides the SHARED mount (web uses the same one). tryHandle routes /feedback +
 // /feedback-stop + free text while active, before the circle bot; bubbles render via appendKringMessage.
 import { createFeedbackMount } from '../../../../canopy-chat/src/feedback/feedbackMount.js';
@@ -567,7 +567,7 @@ export default function CircleLauncherScreen({
       try {
         const blocks = await materializeScreen({
           screen,
-          hostOps: { callSkill, eventLog, circles },
+          hostOps: { callSkill, eventLog, circles, fetchImpl: getCirclePodFetch() || undefined },
         });
         if (!alive) return;
         setScreenViewBlocks(blocks);
@@ -1545,7 +1545,7 @@ function CircleDetail({
           // un-breaks the tasks/agenda scherm blocks that shared the latent bug).
           // `stoopCall` = the raw 3-arg `rawCallSkill` scoped to this circle (the
           // earlier `bundle?.callSkill` was undefined here — `bundle` isn't a prop).
-          hostOps:  { callSkill: stoopCall, eventLog, circles, policy, actionFrequency },
+          hostOps:  { callSkill: stoopCall, eventLog, circles, policy, actionFrequency, fetchImpl: getCirclePodFetch() || undefined },
         });
         if (alive) setScreenBlocks(blocks);
       } catch (err) {
@@ -1738,7 +1738,7 @@ function CircleDetail({
     let alive = true;
     setPanelBlocks(null);   // loading
     const block = { id: `panel-${screenPanel.screen}`, type: screenPanel.screen, config: { scope: 'all' } };
-    materializeBlock({ block, circleId: circle?.id, hostOps: { callSkill: rawCallSkill, eventLog, circles } })
+    materializeBlock({ block, circleId: circle?.id, hostOps: { callSkill: rawCallSkill, eventLog, circles, fetchImpl: getCirclePodFetch() || undefined } })
       .then((m) => { if (alive) setPanelBlocks([m]); })
       .catch(() => { if (alive) setPanelBlocks([]); });
     return () => { alive = false; };
@@ -2204,7 +2204,7 @@ function renderBubble(row, t, deliveryOpts = null) {
             const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
             const screen = screenForEmbedType(e.type);
             const onEmbedOpen = deliveryOpts?.onEmbedOpen;
-            const tappable = !!(screen && typeof onEmbedOpen === 'function');
+            const tappable = !!(screen && !e.locked && typeof onEmbedOpen === 'function');
             const label = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
             return tappable ? (
               <Pressable key={e.ref} style={styles.bubbleEmbed} testID={`kring-embed-${e.ref}`}
