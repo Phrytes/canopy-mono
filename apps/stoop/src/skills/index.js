@@ -1837,7 +1837,7 @@ export function buildSkills({
           text:           it.text ?? '',
           from:           it.source?.from ?? it.addedBy ?? null,
           fromPubKey:     it.source?.fromPubKey ?? null,
-          fromNknAddr:    it.source?.fromNknAddr ?? null,
+          fromPeerAddr:    it.source?.fromPeerAddr ?? null,
           type:           it.type ?? 'request',
           kind:           it.kind ?? null,
           dueAt:          it.dueAt ?? null,
@@ -2111,9 +2111,9 @@ export function buildSkills({
       const fromPubKey = typeof a.fromPubKey === 'string' ? a.fromPubKey : null;
       // 2026-05-24 — separate NKN address tracking.  fromPubKey is
       // the sender's substrate chat-agent identity (not NKN-routable
-      // in the browser bundle); fromNknAddr is the actual transport
+      // in the browser bundle); fromPeerAddr is the actual transport
       // address [Help with] uses to send DMs back to the post author.
-      const fromNknAddr = typeof a.fromNknAddr === 'string' ? a.fromNknAddr : null;
+      const fromPeerAddr = typeof a.fromPeerAddr === 'string' ? a.fromPeerAddr : null;
       if (!payload || typeof payload !== 'object') return { error: 'payload required' };
       const requestId = payload.requestId;
       if (typeof requestId !== 'string' || !requestId) return { error: 'payload.requestId required' };
@@ -2143,7 +2143,7 @@ export function buildSkills({
           fromPubKey,
           // 2026-05-24 — wire-level NKN address for back-channel DM
           // delivery (Slice 6b's [Help with] routes via this).
-          ...(fromNknAddr ? { fromNknAddr } : {}),
+          ...(fromPeerAddr ? { fromPeerAddr } : {}),
           claimsTopic:  payload.claimsTopic ?? null,
           categoryId:   payload.categoryId ?? null,
           skillTags:    Array.isArray(payload.skillTags) ? payload.skillTags : [],
@@ -3114,7 +3114,7 @@ export function buildSkills({
     }),
 
     /**
-     * ingestKringMessage({payload, fromPubKey, fromNknAddr})
+     * ingestKringMessage({payload, fromPubKey, fromPeerAddr})
      *   — SP-13.2.1 — receive-side mirror for an inbound kring chat
      *   envelope.  Sibling of `ingestRemotePost` for the buurt-post
      *   path: dedupe + eviction + mute filtering + addItems.  Hosts
@@ -3128,7 +3128,7 @@ export function buildSkills({
       const a = dataArgs(parts);
       const payload = a.payload;
       const fromPubKey = typeof a.fromPubKey === 'string' ? a.fromPubKey : null;
-      const fromNknAddr = typeof a.fromNknAddr === 'string' ? a.fromNknAddr : null;
+      const fromPeerAddr = typeof a.fromPeerAddr === 'string' ? a.fromPeerAddr : null;
       if (!payload || typeof payload !== 'object') return { error: 'payload required' };
 
       const circleId = payload.circleId;
@@ -3169,7 +3169,7 @@ export function buildSkills({
           fromActor: payload.fromActor ?? null,
           fromWebid: payload.fromWebid ?? null,
           fromPubKey,
-          ...(fromNknAddr ? { fromNknAddr } : {}),
+          ...(fromPeerAddr ? { fromPeerAddr } : {}),
         },
       }], {
         actor: payload.fromActor ?? payload.fromWebid ?? (fromPubKey ? `pubkey:${fromPubKey.slice(0, 12)}` : 'remote'),

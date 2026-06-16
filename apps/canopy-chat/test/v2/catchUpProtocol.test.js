@@ -26,7 +26,7 @@ import {
 const baseRequest = {
   subtype: 'catch-up-request',
   msgId: 'r1', ts: 1,
-  groupId: 'g1', sinceTs: 0, requestId: 'cu-1', fromNknAddr: 'nkn-A',
+  groupId: 'g1', sinceTs: 0, requestId: 'cu-1', fromPeerAddr: 'nkn-A',
 };
 const baseOffer = {
   subtype: 'catch-up-offer',
@@ -88,7 +88,7 @@ describe('isValidRequest', () => {
     expect(isValidRequest({ ...baseRequest, subtype: 'nope' })).toBeFalsy();
     expect(isValidRequest({ ...baseRequest, groupId: '' })).toBeFalsy();
     expect(isValidRequest({ ...baseRequest, requestId: '' })).toBeFalsy();
-    expect(isValidRequest({ ...baseRequest, fromNknAddr: '' })).toBeFalsy();
+    expect(isValidRequest({ ...baseRequest, fromPeerAddr: '' })).toBeFalsy();
     expect(isValidRequest({ ...baseRequest, sinceTs: 'x' })).toBeFalsy();
     expect(isValidRequest({ ...baseRequest, sinceTs: NaN })).toBeFalsy();
   });
@@ -272,7 +272,7 @@ describe('chunkItems', () => {
 
 describe('buildRequest / buildOffer / buildAccept / buildChunk / buildEnd', () => {
   it('buildRequest produces a valid envelope', () => {
-    const env = buildRequest({ groupId: 'g', sinceTs: 0, requestId: 'cu-x', fromNknAddr: 'a', ts: 5 });
+    const env = buildRequest({ groupId: 'g', sinceTs: 0, requestId: 'cu-x', fromPeerAddr: 'a', ts: 5 });
     expect(isValidRequest(env)).toBeTruthy();
     expect(env.msgId).toBe('cu-x');
     expect(env.ts).toBe(5);

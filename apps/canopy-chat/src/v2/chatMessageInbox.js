@@ -45,9 +45,9 @@ const DEFAULT_DEDUP_CAP = 256;
  *
  * @param {object} args
  * @param {{append: Function}} args.eventLog
- * @param {Function} [args.ingest]                 async (payload, fromNknAddr) →
+ * @param {Function} [args.ingest]                 async (payload, fromPeerAddr) →
  *                                                 { ok | deduped | evicted | muted | error }
- * @param {(payload, fromNknAddr) => string|null} [args.resolveActor]
+ * @param {(payload, fromPeerAddr) => string|null} [args.resolveActor]
  *                                                 default actor projector (per-call
  *                                                 override available on `ingestChatMessage`)
  * @param {number} [args.dedupCap]                 LRU cap (default 256)
@@ -72,13 +72,13 @@ export function createChatMessageInbox({
    * @param {object} envelope  same shape `kringChatReceiver` accepts.
    * @param {object} opts
    * @param {string} opts.source         required: 'receiver' | 'rehydrator' | 'catchUp' | 'pod' | ...
-   * @param {string} [opts.fromNknAddr]  required for the `receiver` source.
+   * @param {string} [opts.fromPeerAddr]  required for the `receiver` source.
    * @param {Function} [opts.resolveActor] per-call override (receiver passes the host's resolver).
    * @returns {Promise<{ result: 'inserted' | 'deduped' | 'rejected' | 'muted' | 'evicted', reason?: string }>}
    */
   async function ingestChatMessage(envelope, opts = {}) {
     const source       = opts.source ?? 'unknown';
-    const fromNknAddr  = opts.fromNknAddr ?? null;
+    const fromPeerAddr  = opts.fromPeerAddr ?? null;
     const resolveActorFn = opts.resolveActor ?? resolveActor ?? null;
 
     if (!isValidChatEnvelope(envelope)) {
@@ -97,7 +97,7 @@ export function createChatMessageInbox({
 
     if (typeof ingest === 'function') {
       try {
-        const r = await ingest(envelope, fromNknAddr);
+        const r = await ingest(envelope, fromPeerAddr);
         if (r?.evicted) {
           logger.info?.('[kring-chat] dropped (evicted)', envelope.msgId, source);
           return { result: 'evicted' };
@@ -122,8 +122,8 @@ export function createChatMessageInbox({
     }
 
     const actor = (typeof resolveActorFn === 'function'
-      ? resolveActorFn(envelope, fromNknAddr)
-      : envelope.fromActor) ?? fromNknAddr ?? null;
+      ? resolveActorFn(envelope, fromPeerAddr)
+      : envelope.fromActor) ?? fromPeerAddr ?? null;
 
     eventLog.append({
       id:    envelope.msgId,

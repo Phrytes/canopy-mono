@@ -1,7 +1,7 @@
 /**
  * canopy-chat v2 — ε.4: negotiated catch-up provider handler.
  *
- * Builds a `(fromNknAddr, payload) => Promise<void>` handler that
+ * Builds a `(fromPeerAddr, payload) => Promise<void>` handler that
  * registers in the peer-router under the `catch-up-request` subtype.
  *
  * Flow per inbound request:
@@ -70,10 +70,10 @@ const DEFAULT_ACCEPT_TIMEOUT_MS   = 15_000;
  *   When omitted, every request is auto-approved (V1 default).  When
  *   supplied, the handler reads `policy.catchUpAutoApprove` (default
  *   `true`).
- * @param {(fromNknAddr: string) => boolean} [args.isKnownContact]
+ * @param {(fromPeerAddr: string) => boolean} [args.isKnownContact]
  *   Defaults to `() => true` — V1's permissive policy.  When false +
  *   `autoApprove` is false, the request waits for the host UI.
- * @param {(n: {requestId, fromNknAddr, groupId, sinceTs, count, sizeBytes, lastTs, modeOptions}) => void} [args.emitNotification]
+ * @param {(n: {requestId, fromPeerAddr, groupId, sinceTs, count, sizeBytes, lastTs, modeOptions}) => void} [args.emitNotification]
  *   Optional notification hook.  Fired when the host UI should
  *   surface the [Send all / Last 50 / Last 7 days / Decline] card.
  *   Carries the offer preview so the card shows "{{count}} messages
@@ -84,7 +84,7 @@ const DEFAULT_ACCEPT_TIMEOUT_MS   = 15_000;
  * @param {{info?, warn?, error?, debug?}} [args.logger]
  *
  * @returns {{
- *   handler:                (fromNknAddr: string, payload: object) => Promise<void>,
+ *   handler:                (fromPeerAddr: string, payload: object) => Promise<void>,
  *   resolveCatchUpRequest:  (decision: {requestId: string, mode: string|null}) => Promise<void>,
  *   _pending:               Map<string, object>,   // exposed for tests
  * }}
@@ -128,7 +128,7 @@ export function makeCatchUpProviderHandler({
    * default mode + stream straight through, but lockstep with the
    * receiver state machine is simpler to reason about.
    */
-  async function sendOfferAndAwait({ fromNknAddr, groupId, sinceTs, requestId }) {
+  async function sendOfferAndAwait({ fromPeerAddr, groupId, sinceTs, requestId }) {
     let items = [];
     try {
       const res = await callSkill('stoop', 'getMessagesSince', {
@@ -158,11 +158,11 @@ export function makeCatchUpProviderHandler({
     if (typeof expireTimer?.unref === 'function') expireTimer.unref();
 
     awaitingAccept.set(requestId, {
-      fromNknAddr, groupId, sinceTs, items, expireTimer,
+      fromPeerAddr, groupId, sinceTs, items, expireTimer,
     });
 
     try {
-      await sendToPeer(fromNknAddr, buildOffer({
+      await sendToPeer(fromPeerAddr, buildOffer({
         requestId,
         count:     offer.count,
         sizeBytes: offer.sizeBytes,
@@ -178,14 +178,14 @@ export function makeCatchUpProviderHandler({
   /**
    * The receiver accepted: apply mode filter, chunk, stream, end.
    */
-  async function streamChunks({ fromNknAddr, items, requestId, mode }) {
+  async function streamChunks({ fromPeerAddr, items, requestId, mode }) {
     const filtered = applyModeFilter(items, mode);
     const chunks = chunkItems(filtered, chunkSize);
     let totalSent = 0;
     for (let i = 0; i < chunks.length; i += 1) {
       const isLast = i === chunks.length - 1;
       try {
-        await sendToPeer(fromNknAddr, buildChunk({
+        await sendToPeer(fromPeerAddr, buildChunk({
           requestId,
           seq:      i,
           items:    chunks[i],
@@ -200,7 +200,7 @@ export function makeCatchUpProviderHandler({
 
     // catch-up-end (always, even on partial — receiver settles)
     try {
-      await sendToPeer(fromNknAddr, buildEnd({ requestId, totalSent }));
+      await sendToPeer(fromPeerAddr, buildEnd({ requestId, totalSent }));
     } catch (err) {
       logger.warn?.('[catch-up] end send failed', err?.message ?? err);
     }
@@ -220,13 +220,13 @@ export function makeCatchUpProviderHandler({
     }
     clearTimeout(entry.expireTimer);
     awaitingAccept.delete(payload.requestId);
-    if (fromAddr && entry.fromNknAddr && fromAddr !== entry.fromNknAddr) {
+    if (fromAddr && entry.fromPeerAddr && fromAddr !== entry.fromPeerAddr) {
       // Accept from someone other than the original requester — drop.
       logger.debug?.('[catch-up] accept from wrong peer; ignoring');
       return;
     }
     return streamChunks({
-      fromNknAddr: entry.fromNknAddr,
+      fromPeerAddr: entry.fromPeerAddr,
       items:       entry.items,
       requestId:   payload.requestId,
       mode:        payload.mode,
@@ -236,13 +236,13 @@ export function makeCatchUpProviderHandler({
   /**
    * Inbound `catch-up-request` handler.
    */
-  async function handler(fromNknAddr, payload) {
+  async function handler(fromPeerAddr, payload) {
     if (!isValidRequest(payload)) {
       logger.debug?.('[catch-up] dropping malformed request', payload?.subtype);
       return;
     }
     const { groupId, sinceTs, requestId } = payload;
-    const senderAddr = payload.fromNknAddr || fromNknAddr;
+    const senderAddr = payload.fromPeerAddr || fromPeerAddr;
 
     // Decide: auto-approve OR wait for host UI?
     let autoApprove = true;
@@ -289,7 +289,7 @@ export function makeCatchUpProviderHandler({
       if (typeof timer?.unref === 'function') timer.unref();
 
       pending.set(requestId, {
-        fromNknAddr: senderAddr,
+        fromPeerAddr: senderAddr,
         groupId, sinceTs, requestId,
         previewItems,
         timer,
@@ -299,7 +299,7 @@ export function makeCatchUpProviderHandler({
         try {
           emitNotification({
             requestId,
-            fromNknAddr: senderAddr,
+            fromPeerAddr: senderAddr,
             groupId, sinceTs,
             count:       preview.count,
             sizeBytes:   preview.sizeBytes,
@@ -315,7 +315,7 @@ export function makeCatchUpProviderHandler({
 
     // Auto-approve path: send offer + await receiver's accept.
     return sendOfferAndAwait({
-      fromNknAddr: senderAddr,
+      fromPeerAddr: senderAddr,
       groupId, sinceTs, requestId,
     });
   }
@@ -368,7 +368,7 @@ export function makeCatchUpProviderHandler({
     if (offer.count === 0) return;
 
     try {
-      await sendToPeer(entry.fromNknAddr, buildOffer({
+      await sendToPeer(entry.fromPeerAddr, buildOffer({
         requestId,
         count:     offer.count,
         sizeBytes: offer.sizeBytes,
@@ -380,7 +380,7 @@ export function makeCatchUpProviderHandler({
     }
 
     return streamChunks({
-      fromNknAddr: entry.fromNknAddr,
+      fromPeerAddr: entry.fromPeerAddr,
       items:       filtered,   // already host-filtered
       requestId,
       mode:        'all',      // already filtered → don't re-filter

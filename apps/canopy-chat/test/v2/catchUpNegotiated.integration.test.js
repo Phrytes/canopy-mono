@@ -100,7 +100,7 @@ describe('ε.4 — Alice ⇄ Bob negotiated catch-up integration', () => {
       circleId: 'g1',
       sinceTs: 0,
       knownPeers: ['nkn-Alice'],
-      fromNknAddr: 'nkn-Bob',
+      fromPeerAddr: 'nkn-Bob',
     });
 
     // Pump microtasks + timers.  Several Promise.resolve() to let
@@ -214,7 +214,7 @@ describe('ε.4 — Alice ⇄ Bob negotiated catch-up integration', () => {
     const pending = bobReceiver.requestCatchUp({
       circleId: 'g1', sinceTs: 0,
       knownPeers: ['nkn-Alice', 'nkn-Carol'],
-      fromNknAddr: 'nkn-Bob',
+      fromPeerAddr: 'nkn-Bob',
     });
     for (let i = 0; i < 10; i += 1) await Promise.resolve();
     vi.advanceTimersByTime(100);  // past offer window
@@ -274,7 +274,7 @@ describe('ε.4 — Alice ⇄ Bob negotiated catch-up integration', () => {
 
     const pending = bobReceiver.requestCatchUp({
       circleId: 'g1', sinceTs: 0,
-      knownPeers: ['nkn-Alice'], fromNknAddr: 'nkn-Bob',
+      knownPeers: ['nkn-Alice'], fromPeerAddr: 'nkn-Bob',
     });
     for (let i = 0; i < 10; i += 1) await Promise.resolve();
     vi.advanceTimersByTime(100);

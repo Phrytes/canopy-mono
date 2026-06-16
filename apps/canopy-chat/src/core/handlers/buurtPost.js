@@ -34,7 +34,7 @@ export function makeHandleBuurtPost({
       result = await callSkill('stoop', 'ingestRemotePost', {
         payload,
         fromPubKey:  fromPubKey ?? fromAddr,
-        fromNknAddr: fromAddr,
+        fromPeerAddr: fromAddr,
       });
     } catch (err) {
       logger.error?.('[peer] handleBuurtPost failed', err);

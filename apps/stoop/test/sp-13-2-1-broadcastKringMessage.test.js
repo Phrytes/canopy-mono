@@ -187,7 +187,7 @@ describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
         fromActor: BOB, fromWebid: BOB,
       },
       fromPubKey: 'pk-bob-stableid',
-      fromNknAddr: 'nkn-addr-bob',
+      fromPeerAddr: 'nkn-addr-bob',
     });
     expect(r.ok).toBe(true);
     const item = await bundle.itemStore.getById(r.itemId);
@@ -197,7 +197,7 @@ describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
     expect(item.source.msgId).toBe('rm-1');
     expect(item.source.fromActor).toBe(BOB);
     expect(item.source.fromPubKey).toBe('pk-bob-stableid');
-    expect(item.source.fromNknAddr).toBe('nkn-addr-bob');
+    expect(item.source.fromPeerAddr).toBe('nkn-addr-bob');
   });
 
   it('dedupes by msgId on resend (idempotent ingest)', async () => {

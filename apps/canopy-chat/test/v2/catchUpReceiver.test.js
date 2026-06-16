@@ -63,7 +63,7 @@ describe('makeCatchUpReceiver · happy path', () => {
     const pending = requestCatchUp({
       circleId: 'g1', sinceTs: 0,
       knownPeers: [{ addr: 'nkn-Alice' }],
-      fromNknAddr: 'nkn-Bob',
+      fromPeerAddr: 'nkn-Bob',
     });
 
     // Wait microtask so the broadcast fires.
@@ -128,7 +128,7 @@ describe('makeCatchUpReceiver · happy path', () => {
     const pending = requestCatchUp({
       circleId: 'g1', sinceTs: 0,
       knownPeers: ['nkn-Alice', 'nkn-Carol'],
-      fromNknAddr: 'nkn-Bob',
+      fromPeerAddr: 'nkn-Bob',
     });
 
     await Promise.resolve();
@@ -398,7 +398,7 @@ describe('makeCatchUpReceiver · ε.6 chooser hook', () => {
     });
     const pending = requestCatchUp({
       circleId: 'g1', sinceTs: 0,
-      knownPeers: ['nkn-Alice'], fromNknAddr: 'nkn-Bob',
+      knownPeers: ['nkn-Alice'], fromPeerAddr: 'nkn-Bob',
     });
     await Promise.resolve();
     const requestId = sent[0].env.requestId;
@@ -440,7 +440,7 @@ describe('makeCatchUpReceiver · ε.6 chooser hook', () => {
     });
     const pending = requestCatchUp({
       circleId: 'g1', sinceTs: 0,
-      knownPeers: ['A', 'B', 'C'], fromNknAddr: 'me',
+      knownPeers: ['A', 'B', 'C'], fromPeerAddr: 'me',
     });
     await Promise.resolve();
     const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
@@ -490,7 +490,7 @@ describe('makeCatchUpReceiver · ε.6 chooser hook', () => {
     });
     const pending = requestCatchUp({
       circleId: 'g1', sinceTs: 0,
-      knownPeers: ['A', 'B'], fromNknAddr: 'me',
+      knownPeers: ['A', 'B'], fromPeerAddr: 'me',
     });
     await Promise.resolve();
     const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
@@ -532,7 +532,7 @@ describe('makeCatchUpReceiver · ε.6 chooser hook', () => {
     });
     const pending = requestCatchUp({
       circleId: 'g1', sinceTs: 0,
-      knownPeers: ['A'], fromNknAddr: 'me',
+      knownPeers: ['A'], fromPeerAddr: 'me',
     });
     await Promise.resolve();
     const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
@@ -567,7 +567,7 @@ describe('makeCatchUpReceiver · ε.6 chooser hook', () => {
     });
     const pending = requestCatchUp({
       circleId: 'g1', sinceTs: 0,
-      knownPeers: ['A'], fromNknAddr: 'me',
+      knownPeers: ['A'], fromPeerAddr: 'me',
     });
     await Promise.resolve();
     const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
@@ -605,7 +605,7 @@ describe('makeCatchUpReceiver · ε.6 chooser hook', () => {
     });
     const pending = requestCatchUp({
       circleId: 'g1', sinceTs: 0,
-      knownPeers: ['A'], fromNknAddr: 'me',
+      knownPeers: ['A'], fromPeerAddr: 'me',
     });
     await Promise.resolve();
     const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
@@ -652,7 +652,7 @@ describe('makeCatchUpReceiver · ε.6 chooser hook', () => {
     });
     const pending = requestCatchUp({
       circleId: 'g1', sinceTs: 0,
-      knownPeers: ['A'], fromNknAddr: 'me',
+      knownPeers: ['A'], fromPeerAddr: 'me',
     });
     await Promise.resolve();
     const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
@@ -706,7 +706,7 @@ describe('makeCatchUpReceiver · ε.6 chooser hook', () => {
     });
     const pending = requestCatchUp({
       circleId: 'g1', sinceTs: 0,
-      knownPeers: ['A', 'B'], fromNknAddr: 'me',
+      knownPeers: ['A', 'B'], fromPeerAddr: 'me',
     });
     await Promise.resolve();
     const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;
@@ -750,7 +750,7 @@ describe('makeCatchUpReceiver · ε.6 chooser hook', () => {
     });
     const pending = requestCatchUp({
       circleId: 'g1', sinceTs: 0,
-      knownPeers: ['A'], fromNknAddr: 'me',
+      knownPeers: ['A'], fromPeerAddr: 'me',
     });
     await Promise.resolve();
     const requestId = sent.find((s) => s.env.subtype === 'catch-up-request').env.requestId;

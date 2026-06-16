@@ -119,11 +119,11 @@ export default function App() {
   if (!kringChatInboxRef.current) {
     kringChatInboxRef.current = createChatMessageInbox({
       eventLog: eventLogRef.current,
-      ingest: async (payload, fromNknAddr) => {
+      ingest: async (payload, fromPeerAddr) => {
         const callSkill = bundleRef.current?.callSkill;
         if (typeof callSkill !== 'function') return { ok: false };
         try {
-          return await callSkill('stoop', 'ingestKringMessage', { payload, fromNknAddr });
+          return await callSkill('stoop', 'ingestKringMessage', { payload, fromPeerAddr });
         } catch (err) {
           console.warn('[kring-chat] ingestKringMessage failed:', err?.message ?? err);
           return { error: String(err?.message ?? err) };

@@ -23,7 +23,7 @@ function mkRequest(over = {}) {
   return {
     subtype: 'catch-up-request',
     msgId: 'r1', ts: 1,
-    groupId: 'g1', sinceTs: 0, requestId: 'cu-1', fromNknAddr: 'nkn-Alice',
+    groupId: 'g1', sinceTs: 0, requestId: 'cu-1', fromPeerAddr: 'nkn-Alice',
     ...over,
   };
 }
@@ -78,14 +78,14 @@ describe('makeCatchUpProviderHandler · auto-approve path', () => {
     expect(sent[2].env.totalSent).toBe(3);
   });
 
-  it('falls back to payload.fromNknAddr if router from is missing', async () => {
+  it('falls back to payload.fromPeerAddr if router from is missing', async () => {
     const items = [mkChatItem(0, 100)];
     const callSkill = vi.fn(async () => ({ items }));
     const sent = [];
     const sendToPeer = vi.fn(async (addr, env) => { sent.push({ addr, env }); });
     const { handler } = makeCatchUpProviderHandler({ callSkill, sendToPeer, logger: silentLogger });
 
-    await handler(null, mkRequest({ fromNknAddr: 'nkn-Bob' }));
+    await handler(null, mkRequest({ fromPeerAddr: 'nkn-Bob' }));
 
     // Offer goes to nkn-Bob (from payload, since router 'from' was null).
     expect(sent[0].addr).toBe('nkn-Bob');
@@ -224,7 +224,7 @@ describe('makeCatchUpProviderHandler · manual approval', () => {
     // Notification carries the preview.
     const n = notif.mock.calls[0][0];
     expect(n.requestId).toBe('cu-1');
-    expect(n.fromNknAddr).toBe('nkn-Alice');
+    expect(n.fromPeerAddr).toBe('nkn-Alice');
     expect(n.count).toBe(3);
     expect(n.modeOptions).toContain('all');
     expect(n.modeOptions).toContain(null);

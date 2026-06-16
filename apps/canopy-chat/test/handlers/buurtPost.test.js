@@ -36,7 +36,7 @@ describe('makeHandleBuurtPost', () => {
     const handle = makeHandleBuurtPost(d);
     await handle('peer-A', env());
     expect(d.callSkill).toHaveBeenCalledWith('stoop', 'ingestRemotePost',
-      expect.objectContaining({ fromPubKey: 'pk-A', fromNknAddr: 'peer-A' }));
+      expect.objectContaining({ fromPubKey: 'pk-A', fromPeerAddr: 'peer-A' }));
     expect(d.publishEvent).toHaveBeenCalledWith(expect.objectContaining({
       app: 'stoop', type: 'notification',
     }));

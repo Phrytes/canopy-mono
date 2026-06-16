@@ -33,7 +33,7 @@ describe('createChatMessageInbox · ε.1 single normalization gate', () => {
   it('returns inserted + appends event on a valid envelope', async () => {
     const eventLog = fakeEventLog();
     const inbox = createChatMessageInbox({ eventLog, logger: silentLogger });
-    const r = await inbox.ingestChatMessage(envelope(), { source: 'receiver', fromNknAddr: 'nkn-anne' });
+    const r = await inbox.ingestChatMessage(envelope(), { source: 'receiver', fromPeerAddr: 'nkn-anne' });
     expect(r).toEqual({ result: 'inserted' });
     expect(eventLog.events).toHaveLength(1);
     const ev = eventLog.events[0];
@@ -102,7 +102,7 @@ describe('createChatMessageInbox · ε.1 single normalization gate', () => {
     const eventLog = fakeEventLog();
     const inbox = createChatMessageInbox({ eventLog, logger: silentLogger });
     const r1 = await inbox.ingestChatMessage(envelope({ msgId: 'mZ' }), { source: 'rehydrator' });
-    const r2 = await inbox.ingestChatMessage(envelope({ msgId: 'mZ' }), { source: 'receiver', fromNknAddr: 'nkn' });
+    const r2 = await inbox.ingestChatMessage(envelope({ msgId: 'mZ' }), { source: 'receiver', fromPeerAddr: 'nkn' });
     expect(r1.result).toBe('inserted');
     expect(r2.result).toBe('deduped');
     expect(eventLog.events).toHaveLength(1);
@@ -121,12 +121,12 @@ describe('createChatMessageInbox · ε.1 single normalization gate', () => {
 
   /* ── actor resolution ── */
 
-  it('falls back to fromNknAddr when payload.fromActor is missing', async () => {
+  it('falls back to fromPeerAddr when payload.fromActor is missing', async () => {
     const eventLog = fakeEventLog();
     const inbox = createChatMessageInbox({ eventLog, logger: silentLogger });
     await inbox.ingestChatMessage(
       envelope({ msgId: 'mF', fromActor: null }),
-      { source: 'receiver', fromNknAddr: 'nkn-fallback' },
+      { source: 'receiver', fromPeerAddr: 'nkn-fallback' },
     );
     expect(eventLog.events[0].actor).toBe('nkn-fallback');
     expect(eventLog.events[0].payload.senderDisplay).toBe('nkn-fallback');
@@ -136,7 +136,7 @@ describe('createChatMessageInbox · ε.1 single normalization gate', () => {
     const eventLog = fakeEventLog();
     const resolveActor = vi.fn(() => 'Anne');
     const inbox = createChatMessageInbox({ eventLog, resolveActor, logger: silentLogger });
-    await inbox.ingestChatMessage(envelope({ msgId: 'mR' }), { source: 'receiver', fromNknAddr: 'nkn' });
+    await inbox.ingestChatMessage(envelope({ msgId: 'mR' }), { source: 'receiver', fromPeerAddr: 'nkn' });
     expect(resolveActor).toHaveBeenCalledTimes(1);
     expect(eventLog.events[0].actor).toBe('Anne');
     expect(eventLog.events[0].payload.senderDisplay).toBe('Anne');
@@ -149,7 +149,7 @@ describe('createChatMessageInbox · ε.1 single normalization gate', () => {
     const inbox = createChatMessageInbox({ eventLog, resolveActor: ctorActor, logger: silentLogger });
     await inbox.ingestChatMessage(
       envelope({ msgId: 'mP' }),
-      { source: 'receiver', fromNknAddr: 'nkn', resolveActor: callActor },
+      { source: 'receiver', fromPeerAddr: 'nkn', resolveActor: callActor },
     );
     expect(ctorActor).not.toHaveBeenCalled();
     expect(callActor).toHaveBeenCalledTimes(1);
@@ -162,7 +162,7 @@ describe('createChatMessageInbox · ε.1 single normalization gate', () => {
     const eventLog = fakeEventLog();
     const ingest = vi.fn(async () => ({ ok: true, itemId: 'item-1' }));
     const inbox = createChatMessageInbox({ eventLog, ingest, logger: silentLogger });
-    const r = await inbox.ingestChatMessage(envelope({ msgId: 'mA' }), { source: 'receiver', fromNknAddr: 'nkn' });
+    const r = await inbox.ingestChatMessage(envelope({ msgId: 'mA' }), { source: 'receiver', fromPeerAddr: 'nkn' });
     expect(ingest).toHaveBeenCalledTimes(1);
     expect(ingest.mock.calls[0][0].msgId).toBe('mA');
     expect(ingest.mock.calls[0][1]).toBe('nkn');
@@ -225,7 +225,7 @@ describe('createChatMessageInbox · ε.1 single normalization gate', () => {
       eventLog,
       logger: { warn: () => {}, info, debug: () => {} },
     });
-    await inbox.ingestChatMessage(envelope({ msgId: 'mS1' }), { source: 'receiver', fromNknAddr: 'nkn' });
+    await inbox.ingestChatMessage(envelope({ msgId: 'mS1' }), { source: 'receiver', fromPeerAddr: 'nkn' });
     await inbox.ingestChatMessage(envelope({ msgId: 'mS2' }), { source: 'rehydrator' });
     const sources = info.mock.calls.map((c) => c.find((s) => typeof s === 'string' && s.startsWith('source=')));
     expect(sources).toEqual(['source=receiver', 'source=rehydrator']);

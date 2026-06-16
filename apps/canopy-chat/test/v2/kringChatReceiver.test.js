@@ -45,7 +45,7 @@ describe('makeKringChatPeerHandler · SP-13.2.1 receiver', () => {
     expect(ev.payload.senderDisplay).toBe('webid:anne');
   });
 
-  it('falls back to fromNknAddr when payload.fromActor is missing', () => {
+  it('falls back to fromPeerAddr when payload.fromActor is missing', () => {
     const eventLog = fakeEventLog();
     const handler = makeKringChatPeerHandler({ eventLog, logger: silentLogger });
     handler('nkn-addr', envelope({ fromActor: null }));

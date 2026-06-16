@@ -43,7 +43,7 @@ const DEFAULT_DEDUP_CAP = 256;
  * @param {{warn?: Function, info?: Function, debug?: Function}}
  *        [args.logger]
  * @param {number} [args.dedupCap]                              internal LRU cap
- * @returns {(fromNknAddr: string, payload: object) => Promise<void>}
+ * @returns {(fromPeerAddr: string, payload: object) => Promise<void>}
  */
 export function makeKringPolicyPeerHandler({
   pendingStore,
@@ -56,7 +56,7 @@ export function makeKringPolicyPeerHandler({
   }
   const seen = dedup ?? new LruSet(dedupCap);
 
-  return async function onKringPolicyBroadcast(fromNknAddr, payload) {
+  return async function onKringPolicyBroadcast(fromPeerAddr, payload) {
     if (!isValidEnvelope(payload)) {
       logger.warn?.('[kring-policy] dropping malformed envelope', payload);
       return;

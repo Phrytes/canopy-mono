@@ -145,9 +145,9 @@ const FEEDBACK_LLM_BASEURL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_BASEURL || und
 function makeFallbackInbox(eventLog, callSkill) {
   return createChatMessageInbox({
     eventLog,
-    ingest: async (payload, fromNknAddr) => {
+    ingest: async (payload, fromPeerAddr) => {
       if (typeof callSkill !== 'function') return { ok: false };
-      try { return await callSkill('stoop', 'ingestKringMessage', { payload, fromNknAddr }); }
+      try { return await callSkill('stoop', 'ingestKringMessage', { payload, fromPeerAddr }); }
       catch (err) {
         console.warn('[kring-chat] ingestKringMessage failed:', err?.message ?? err);
         return { error: String(err?.message ?? err) };
@@ -502,7 +502,7 @@ export default function ChatScreen({
       // NOTE: the legacy buurt-post peer-poll path
       // (`makeHandleCatchUpRequest`) handled the same `catch-up-request`
       // subtype with a different payload shape (`{sinceMs}` instead of
-      // `{requestId, sinceTs, fromNknAddr}`).  ε.4's `isValidRequest`
+      // `{requestId, sinceTs, fromPeerAddr}`).  ε.4's `isValidRequest`
       // SILENTLY drops the old shape, so legacy peers don't crash us —
       // they just don't get a reply.  The factory is still imported in
       // case a follow-up slice needs to opt back in per-kring.
@@ -629,7 +629,7 @@ export default function ChatScreen({
             circleId,
             sinceTs:    Number.isFinite(sinceTs) ? sinceTs : 0,
             knownPeers,
-            fromNknAddr: '',
+            fromPeerAddr: '',
           });
         }
       : null;
@@ -1540,7 +1540,7 @@ export default function ChatScreen({
               <View key={n.requestId} style={styles.catchUpCard}>
                 <Text style={styles.catchUpCardTitle}>
                   {t('circle.chat.catch_up.provider_request_title', {
-                    name: (n.fromNknAddr || '').slice(0, 12),
+                    name: (n.fromPeerAddr || '').slice(0, 12),
                     kring: n.groupId,
                   })}
                 </Text>

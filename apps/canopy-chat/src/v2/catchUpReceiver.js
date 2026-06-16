@@ -98,7 +98,7 @@ const DEFAULT_CHUNK_TIMEOUT_MS = 10_000;
  *
  * @returns {{
  *   onPeerMessage: (fromAddr: string, payload: object) => Promise<void>,
- *   requestCatchUp: ({circleId, sinceTs, knownPeers, fromNknAddr}: object)
+ *   requestCatchUp: ({circleId, sinceTs, knownPeers, fromPeerAddr}: object)
  *     => Promise<{strategy: 'negotiated', accepted: boolean, count: number, source: string, requestId?: string}>,
  *   _state: Map<string, object>,    // exposed for tests
  * }}
@@ -123,7 +123,7 @@ export function makeCatchUpReceiver({
    * In-flight requests, keyed by requestId.  Entry shape:
    *
    *   {
-   *     circleId, sinceTs, fromNknAddr,
+   *     circleId, sinceTs, fromPeerAddr,
    *     status: 'PENDING_OFFERS' | 'ACCEPTED' | 'DONE' | 'TIMED_OUT',
    *     offers: Array<{from, offer}>,
    *     acceptedFrom: string|null,
@@ -439,10 +439,10 @@ export function makeCatchUpReceiver({
    * @param {string} args.circleId
    * @param {number} [args.sinceTs]
    * @param {Array<{addr: string}|string>} [args.knownPeers]
-   * @param {string} [args.fromNknAddr]                  this agent's NKN addr
+   * @param {string} [args.fromPeerAddr]                  this agent's NKN addr
    * @returns {Promise<{strategy: 'negotiated', accepted: boolean, count: number, source: string, requestId?: string}>}
    */
-  function requestCatchUp({ circleId, sinceTs, knownPeers = [], fromNknAddr = '' } = {}) {
+  function requestCatchUp({ circleId, sinceTs, knownPeers = [], fromPeerAddr = '' } = {}) {
     if (!circleId) {
       return Promise.resolve({
         strategy: 'negotiated', accepted: false, count: 0, source: 'no-circleId',
@@ -482,7 +482,7 @@ export function makeCatchUpReceiver({
     const settled = new Promise((res) => { resolveFn = res; });
 
     const entry = {
-      circleId, sinceTs: since, fromNknAddr,
+      circleId, sinceTs: since, fromPeerAddr,
       status: 'PENDING_OFFERS',
       offers: [],
       acceptedFrom: null,
@@ -505,7 +505,7 @@ export function makeCatchUpReceiver({
       groupId:     circleId,
       sinceTs:     since,
       requestId,
-      fromNknAddr,
+      fromPeerAddr,
     });
     for (const addr of peers) {
       sendToPeer(addr, requestEnv).catch((err) =>

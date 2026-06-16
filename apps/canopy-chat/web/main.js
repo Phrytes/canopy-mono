@@ -428,7 +428,7 @@ async function connectPeerImpl() {
  * where to reply).  Then synthesises a time-card embed in Main so
  * the user sees [Accept]/[Decline]/[Tentative] buttons.
  */
-async function handleCalendarInvite(fromNknAddr, payload) {
+async function handleCalendarInvite(fromPeerAddr, payload) {
   const event = payload.event;
   if (!event?.id || !event?.title || !event?.startsAt) {
     console.warn('[peer] calendar-invite missing fields', payload);
@@ -445,8 +445,8 @@ async function handleCalendarInvite(fromNknAddr, payload) {
       until:        event.endsAt,
       location:     event.location,
       attendees:    event.attendees ?? [],
-      organiser:    event.organiser ?? fromNknAddr,
-      _organiserAddr: fromNknAddr,
+      organiser:    event.organiser ?? fromPeerAddr,
+      _organiserAddr: fromPeerAddr,
     });
   } catch (err) {
     console.error('[peer] failed to ingest invite locally', err);
@@ -474,18 +474,18 @@ async function handleCalendarInvite(fromNknAddr, payload) {
         state:    'open',
         fields:   {
           state:     'open',
-          organiser: event.organiser ?? fromNknAddr,
+          organiser: event.organiser ?? fromPeerAddr,
           ...(event.attendees?.length ? { attendees: event.attendees.join(', ') } : {}),
         },
       },
-      issuedBy:  fromNknAddr,
+      issuedBy:  fromPeerAddr,
     },
   });
   if (store.getActiveThread()?.id === main.id) renderActiveStream();
   publishEventRef({
     app:     'calendar',
     type:    'notification',
-    actor:   fromNknAddr,
+    actor:   fromPeerAddr,
     payload: { message: `📅 calendar invite: ${event.title}` },
   });
 }
@@ -498,7 +498,7 @@ async function handleCalendarInvite(fromNknAddr, payload) {
  * so [Download] can produce a Blob.  [Save to my pod] dispatches
  * the existing folio.saveToMyPod skill.
  */
-async function handleFileShare(fromNkn, payload) {
+async function handleFileShare(fromPeerAddr, payload) {
   const f = payload.file;
   if (!f?.id || !f?.name || !f?.dataB64) {
     console.warn('[peer] file-share missing fields', payload);
@@ -524,14 +524,14 @@ async function handleFileShare(fromNkn, payload) {
         dataB64: f.dataB64,
         local:   false,
       },
-      issuedBy:  fromNkn,
+      issuedBy:  fromPeerAddr,
     },
   });
   if (store.getActiveThread()?.id === main.id) renderActiveStream();
   publishEventRef({
     app:     'folio',
     type:    'notification',
-    actor:   fromNkn,
+    actor:   fromPeerAddr,
     payload: { message: `📎 file shared: ${f.name} (${formatBytes(f.size)})` },
   });
 }
@@ -630,7 +630,7 @@ async function sendGroupRedeemRequest({ adminNkn, groupId, code, shareCard, peer
  * channel with either an ok-payload (codeId + validUntil) or an
  * error string.
  */
-async function handleGroupRedeemRequest(fromNknAddr, payload) {
+async function handleGroupRedeemRequest(fromPeerAddr, payload) {
   const { requestId, groupId, code, shareCard, peerDisplay } = payload ?? {};
   if (!requestId || !groupId || !code) {
     console.warn('[peer] group-redeem-request missing fields', payload);
@@ -643,7 +643,7 @@ async function handleGroupRedeemRequest(fromNknAddr, payload) {
       // The substrate logs `requesterWebid` against the redemption so
       // the admin's roster sees who joined.  NKN address is our best
       // available joiner-identifier at this layer.
-      requesterWebid: fromNknAddr,
+      requesterWebid: fromPeerAddr,
       // Slice 4 — store joiner's mesh-consent + display name on the
       // redemption so propagation logic + listConsentingPeers can read.
       ...(shareCard ? { shareCard: true } : {}),
@@ -662,7 +662,7 @@ async function handleGroupRedeemRequest(fromNknAddr, payload) {
     reply = { error: err?.message ?? String(err) };
   }
   try {
-    await agent.sendPeerMessage(fromNknAddr, {
+    await agent.sendPeerMessage(fromPeerAddr, {
       type:    'p2p-chat',
       subtype: 'group-redeem-response',
       requestId,
@@ -673,7 +673,7 @@ async function handleGroupRedeemRequest(fromNknAddr, payload) {
       app: 'stoop', type: 'notification',
       payload: {
         message: reply.ok
-          ? `📥 ${fromNknAddr.slice(0, 16)}… joined ${groupId} (peer-confirmed)`
+          ? `📥 ${fromPeerAddr.slice(0, 16)}… joined ${groupId} (peer-confirmed)`
           : `⚠ rejected join attempt for ${groupId}: ${reply.error}`,
       },
     });
@@ -682,7 +682,7 @@ async function handleGroupRedeemRequest(fromNknAddr, payload) {
     // affect the redeem itself.
     if (reply.ok) {
       propagateMeshIntros({
-        groupId, newPeerAddr: fromNknAddr, newPeerDisplay: peerDisplay,
+        groupId, newPeerAddr: fromPeerAddr, newPeerDisplay: peerDisplay,
         newPeerShared: !!shareCard,
       }).catch((err) => console.warn('[mesh-intro] propagation failed', err));
     }
@@ -814,7 +814,7 @@ const peerMessageRouter = makePeerRouter({
  * Joiner-side: incoming group-redeem-response from the admin.  Look
  * up the pending request by id + resolve its promise.
  */
-function handleGroupRedeemResponse(fromNknAddr, payload) {
+function handleGroupRedeemResponse(fromPeerAddr, payload) {
   const entry = pendingPeerRedeems.get(payload?.requestId);
   if (!entry) {
     console.warn('[peer] group-redeem-response with no pending entry', payload?.requestId);
@@ -832,10 +832,10 @@ function handleGroupRedeemResponse(fromNknAddr, payload) {
  * draft).  After ingest, publish a notification so the matching
  * thread + /logs see the inbound post.
  */
-async function handleBuurtPost(fromNknAddr, envelope) {
+async function handleBuurtPost(fromPeerAddr, envelope) {
   const { groupId, fromPubKey, payload } = envelope ?? {};
   console.info('[peer] buurt-post received: groupId=' + groupId
-    + ' from=' + fromNknAddr?.slice(0, 16) + '… requestId=' + payload?.requestId);
+    + ' from=' + fromPeerAddr?.slice(0, 16) + '… requestId=' + payload?.requestId);
   if (!payload?.requestId) {
     console.warn('[peer] buurt-post missing payload.requestId', envelope);
     return;
@@ -843,12 +843,12 @@ async function handleBuurtPost(fromNknAddr, envelope) {
   try {
     const result = await callSkill('stoop', 'ingestRemotePost', {
       payload,
-      fromPubKey: fromPubKey ?? fromNknAddr,
+      fromPubKey: fromPubKey ?? fromPeerAddr,
       // 2026-05-24 — record the NKN address separately so [Help with]
       // can route over the wire later.  fromPubKey is the substrate
-      // chat-agent identity (not routable on NKN); fromNknAddr is
+      // chat-agent identity (not routable on NKN); fromPeerAddr is
       // what sa.peer.sendTo needs.
-      fromNknAddr,
+      fromPeerAddr,
     });
     if (result?.error) {
       console.warn('[peer] ingestRemotePost rejected', result.error, payload.requestId);
@@ -867,7 +867,7 @@ async function handleBuurtPost(fromNknAddr, envelope) {
     publishEventRef({
       app:   'stoop',
       type:  'notification',
-      actor: payload.from ?? fromNknAddr,
+      actor: payload.from ?? fromPeerAddr,
       payload: {
         message: `📥 ${payload.kind ?? payload.type ?? 'post'} in ${groupId ?? 'buurt'}: ${payload.text ?? '(no text)'}`,
         ...(payload.requestId ? { postId: payload.requestId } : {}),
@@ -886,7 +886,7 @@ async function handleBuurtPost(fromNknAddr, envelope) {
  * existing rsvp* skills.  Publishes a notification so /logs +
  * matching threads see the RSVP.
  */
-async function handleCalendarRsvp(fromNknAddr, payload) {
+async function handleCalendarRsvp(fromPeerAddr, payload) {
   const { eventId, response } = payload;
   if (!eventId || !['accepted', 'declined', 'tentative'].includes(response)) {
     console.warn('[peer] calendar-rsvp invalid', payload);
@@ -900,7 +900,7 @@ async function handleCalendarRsvp(fromNknAddr, payload) {
   // Use the peer's NKN address as the actor key so the rsvp map
   // distinguishes attendees.
   try {
-    await callSkill('calendar', skillName, { id: eventId, actor: fromNknAddr });
+    await callSkill('calendar', skillName, { id: eventId, actor: fromPeerAddr });
   } catch (err) {
     console.error('[peer] failed to apply RSVP locally', err);
     return;
@@ -908,8 +908,8 @@ async function handleCalendarRsvp(fromNknAddr, payload) {
   publishEventRef({
     app:     'calendar',
     type:    'notification',
-    actor:   fromNknAddr,
-    payload: { message: `📅 RSVP ${response} from ${fromNknAddr.slice(0, 16)}…` },
+    actor:   fromPeerAddr,
+    payload: { message: `📅 RSVP ${response} from ${fromPeerAddr.slice(0, 16)}…` },
   });
 }
 
@@ -2841,11 +2841,11 @@ async function openHelpWithDm(originThread, itemId, originMessageId) {
   const labelHit = rawItems.find(it => it.id === itemId);
   const postText = post?.text ?? labelHit?.label ?? itemId;
   // 2026-05-24 — NKN address has to be the wire-level transport
-  // identifier (fromNknAddr, recorded by ingestRemotePost) so DM
+  // identifier (fromPeerAddr, recorded by ingestRemotePost) so DM
   // delivery can route.  fromPubKey is a substrate-internal identity
   // that the browser InternalTransport doesn't know about.  Fall back
-  // to legacy fields for items written before fromNknAddr existed.
-  const authorAddr = post?.source?.fromNknAddr
+  // to legacy fields for items written before fromPeerAddr existed.
+  const authorAddr = post?.source?.fromPeerAddr
     ?? post?.source?.fromPubKey
     ?? post?.source?.from
     ?? post?.addedBy

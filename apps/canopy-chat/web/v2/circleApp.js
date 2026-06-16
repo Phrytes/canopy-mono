@@ -410,7 +410,7 @@ function emitCatchUpNotification(n, providerHandle) {
       type: 'notification',
       payload: {
         message: t('circle.chat.catch_up.provider_request_title', {
-          name: n.fromNknAddr.slice(0, 12), kring: n.groupId,
+          name: n.fromPeerAddr.slice(0, 12), kring: n.groupId,
         }) + ' · ' + t('circle.chat.catch_up.provider_request_size', {
           count: n.count, kb: Math.round(n.sizeBytes / 1024) || 1,
         }),
@@ -447,7 +447,7 @@ function renderCatchUpNotifications() {
     const title = document.createElement('div');
     title.style.fontWeight = '600';
     title.textContent = t('circle.chat.catch_up.provider_request_title', {
-      name: n.fromNknAddr.slice(0, 12), kring: n.groupId,
+      name: n.fromPeerAddr.slice(0, 12), kring: n.groupId,
     });
     const size = document.createElement('div');
     size.style.color = '#555';
@@ -2788,10 +2788,10 @@ async function boot() {
       // searchable, and mute/eviction-filtered (parity with /post
       // delivery via `ingestRemotePost`).  EventLog append still drives
       // the live bubble render.
-      const ingestKringMessage = async (payload, fromNknAddr) => {
+      const ingestKringMessage = async (payload, fromPeerAddr) => {
         try {
           return await agent.callSkill('stoop', 'ingestKringMessage', {
-            payload, fromNknAddr,
+            payload, fromPeerAddr,
           });
         } catch (err) {
           console.warn('[circleApp] ingestKringMessage failed:', err?.message ?? err);
@@ -2969,7 +2969,7 @@ async function boot() {
           circleId,
           sinceTs:    Number.isFinite(sinceTs) ? sinceTs : 0,
           knownPeers,
-          fromNknAddr: agent?.peer?.address ?? '',
+          fromPeerAddr: agent?.peer?.address ?? '',
         });
       };
       // The kick-off itself is scheduled once peer transport reports

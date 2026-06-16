@@ -95,7 +95,7 @@ export function isValidRequest(p) {
     && typeof p.groupId     === 'string' && p.groupId
     && typeof p.requestId   === 'string' && p.requestId
     && typeof p.sinceTs     === 'number' && Number.isFinite(p.sinceTs)
-    && typeof p.fromNknAddr === 'string' && p.fromNknAddr
+    && typeof p.fromPeerAddr === 'string' && p.fromPeerAddr
   );
 }
 
@@ -280,7 +280,7 @@ export function chunkItems(items, chunkSize = DEFAULT_CHUNK_SIZE) {
  * Build a `catch-up-request` envelope.  Convenience helper so
  * callers don't have to spell the subtype string.
  */
-export function buildRequest({ groupId, sinceTs, requestId, fromNknAddr, msgId, ts }) {
+export function buildRequest({ groupId, sinceTs, requestId, fromPeerAddr, msgId, ts }) {
   return {
     subtype:   CATCH_UP_SUBTYPES.REQUEST,
     msgId:     msgId ?? requestId,
@@ -288,7 +288,7 @@ export function buildRequest({ groupId, sinceTs, requestId, fromNknAddr, msgId, 
     groupId,
     sinceTs:   Number.isFinite(sinceTs) ? sinceTs : 0,
     requestId,
-    fromNknAddr,
+    fromPeerAddr,
   };
 }
 

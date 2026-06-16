@@ -1,7 +1,7 @@
 /**
  * canopy-chat v2 — kring chat-message receiver substrate (SP-13.2.1).
  *
- * Builds a `(fromNknAddr, payload) => void` handler that matches the
+ * Builds a `(fromPeerAddr, payload) => void` handler that matches the
  * shape registered on the existing peer-router.  Since ε.1 the actual
  * normalization (envelope validation, msgId dedup, durable mirror via
  * `ingest`, eventLog append) lives in `chatMessageInbox` — a SINGLE
@@ -10,7 +10,7 @@
  * thin source-tagging wrapper that:
  *
  *   • forwards the NKN envelope to `inbox.ingestChatMessage` with
- *     `source: 'receiver'` + the `fromNknAddr`
+ *     `source: 'receiver'` + the `fromPeerAddr`
  *   • keeps the legacy `{ eventLog, ingest, dedup, resolveActor, ... }`
  *     call shape working via a back-compat shim so existing tests
  *     and call sites that haven't migrated still build a usable
@@ -36,7 +36,7 @@ import { createChatMessageInbox, isValidChatEnvelope } from './chatMessageInbox.
  *                here (so existing tests that share a `Set` across two
  *                handlers keep passing).
  *
- * @returns {(fromNknAddr: string, payload: object) => Promise<void>}
+ * @returns {(fromPeerAddr: string, payload: object) => Promise<void>}
  */
 export function makeKringChatPeerHandler(args = {}) {
   const {
@@ -57,10 +57,10 @@ export function makeKringChatPeerHandler(args = {}) {
     inbox = makeLegacyInbox({ eventLog, ingest, dedup, logger, dedupCap });
   }
 
-  return async function onKringChatMessage(fromNknAddr, payload) {
+  return async function onKringChatMessage(fromPeerAddr, payload) {
     await inbox.ingestChatMessage(payload, {
       source: 'receiver',
-      fromNknAddr,
+      fromPeerAddr,
       resolveActor,
     });
   };

@@ -36,7 +36,7 @@ const DEFAULT_DEDUP_CAP = 256;
  * @param {{warn?: Function, info?: Function, debug?: Function}}
  *        [args.logger]
  * @param {number} [args.dedupCap]                              internal LRU cap
- * @returns {(fromNknAddr: string, payload: object) => Promise<void>}
+ * @returns {(fromPeerAddr: string, payload: object) => Promise<void>}
  */
 export function makeKringRecipePeerHandler({
   pendingStore,
@@ -49,7 +49,7 @@ export function makeKringRecipePeerHandler({
   }
   const seen = dedup ?? new LruSet(dedupCap);
 
-  return async function onKringRecipeBroadcast(fromNknAddr, payload) {
+  return async function onKringRecipeBroadcast(fromPeerAddr, payload) {
     if (!isValidEnvelope(payload)) {
       logger.warn?.('[kring-recipe] dropping malformed envelope', payload);
       return;

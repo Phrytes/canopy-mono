@@ -151,7 +151,7 @@ export function makeCalendarOutboundHook({
     //     address → send calendar-rsvp envelope back.  The organiser
     //     NKN is stashed in snapshot.fields.organiser by the receiver's
     //     `calendar-invite` ingest (handleCalendarInvite sets
-    //     `organiser: event.organiser ?? fromNknAddr`).
+    //     `organiser: event.organiser ?? fromPeerAddr`).
     const rsvpResponse = RSVP_OP_TO_RESPONSE[opId];
     if (rsvpResponse && dispatchArgs?.id) {
       if (!peerUp()) {
