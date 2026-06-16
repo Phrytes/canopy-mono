@@ -46,6 +46,7 @@ export function renderCircleKring(container, {
   onBack,
   onSend,
   onAction,
+  onEmbedButton = null,   // S6.A — tap an inline manifest button on a bot reply
   more = null,
   composerPlaceholder = null,
   // SP-13.3 — per-kring bottom tabs (board Voorbeeld 1-3).
@@ -253,6 +254,7 @@ export function renderCircleKring(container, {
       body.appendChild(renderBubble(row, {
         tr, onAction,
         deliveryStateFor, localActor, onRetryDelivery,
+        onEmbedButton,
       }));
     }
   }
@@ -423,6 +425,8 @@ function renderBubble(row, {
   tr, onAction,
   // δ.2 — delivery-icon plumbing; all three are optional.
   deliveryStateFor = null, localActor = null, onRetryDelivery = null,
+  // S6.A — manifest-driven inline buttons carried on the bot event (payload.buttons).
+  onEmbedButton = null,
 } = {}) {
   const el = document.createElement('div');
   el.className = 'circle-kring__bubble';
@@ -470,6 +474,27 @@ function renderBubble(row, {
       actRow.appendChild(btn);
     }
     el.appendChild(actRow);
+  }
+
+  // S6.A — manifest-driven inline buttons (the resurrected "inline menu"): an op
+  // per item the bot's reply carried (Claim / Mark complete / RSVP …), gated by
+  // appliesTo upstream. Tap dispatches the op against the item.
+  const embedButtons = Array.isArray(row.event?.payload?.buttons) ? row.event.payload.buttons : [];
+  if (embedButtons.length && typeof onEmbedButton === 'function') {
+    const bRow = document.createElement('div');
+    bRow.className = 'circle-kring__bubble-actions circle-kring__embed-buttons';
+    for (const b of embedButtons) {
+      if (!b?.opId) continue;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'circle-kring__bubble-action circle-kring__embed-button';
+      btn.dataset.opId = b.opId;
+      if (b.itemId != null) btn.dataset.itemId = String(b.itemId);
+      btn.textContent = b.label ?? b.opId;
+      btn.addEventListener('click', () => onEmbedButton({ opId: b.opId, itemId: b.itemId }));
+      bRow.appendChild(btn);
+    }
+    if (bRow.childNodes.length) el.appendChild(bRow);
   }
 
   // δ.2 — delivery-state icon for locally-sent chat messages.  Only

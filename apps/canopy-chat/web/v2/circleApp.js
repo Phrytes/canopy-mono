@@ -69,6 +69,8 @@ import { enableWebPush, disableWebPush, getWebPushState } from '../../src/web/we
 // S5 — client-side image-attachment encoder (Canvas resize + thumbnail → the
 // inbound shape stoop.postRequest expects).
 import { encodeImageFile } from '../../src/v2/attachmentEncoder.js';
+// S6.A — manifest-driven inline buttons on bot replies (the resurrected "inline menu").
+import { embedButtonsForReply } from '../../src/v2/replyEmbeds.js';
 import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
@@ -477,6 +479,7 @@ let circleFeedbackMount = null;  // createFeedbackMount (tryHandle(text, threadI
 let circleClarify = null;        // createClarifyingDispatch (for candidate-button picks, later)
 let circleCatalog = null;        // the merged dispatch catalog (built in buildCircleBot) — feeds the composer slash-suggest
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
+let circleEmbedButtonTap = null; // S6.A — dispatch an inline embed button {opId,itemId} from a bot reply
 let circleContactSkills = null;  // P4 — live contact/bot exposed-skill registry (subscribed to agent.peers)
 let circlePeerGraph = null;      // P5 — app-owned PeerGraph (contacts roster + P4 registry source)
 let circleCoreAgent = null;      // P5 — the core chat agent (agent.sa.agent), for discoverA2A
@@ -572,6 +575,14 @@ function buildCircleBot(agent) {
     { manifest: calendarManifest },
   ];
   let rawCatalog = mergeManifests(baseSources, { runtime: 'browser' });
+  // S6.A — manifests keyed by appOrigin, for computing inline embed buttons on
+  // bot replies (computeEmbedButtons looks ops up here by the op's appOrigin).
+  const manifestsByOrigin = {};
+  for (const s of baseSources) {
+    const m = s.manifest; if (!m) continue;
+    if (m.app)   manifestsByOrigin[m.app] = m;
+    if (m.appId) manifestsByOrigin[m.appId] = m;
+  }
   const appRegistry = new AppRegistry();
   appRegistry.syncWithCatalog(rawCatalog.appOrigins);
   // Scope to the circle apps (Part D) — drops canopy-chat's account/transport INFRA ops (`/me` etc.) that
@@ -742,10 +753,25 @@ function buildCircleBot(agent) {
     try { reply = await runDispatch(scopeReadyDispatch(route, getActiveCircle()), rawCallSkill); }
     catch (e) { _kringRender?.botBubble(t('circle.bot.failed', { msg: e?.message ?? String(e) })); return; }
     // The op's verb drives Added:/Completed: phrasing (a bare "✓ X" was identical for add + complete).
-    const verb = catalog?.opsById?.get(route.opId)?.op?.verb;
-    _kringRender?.botBubble(kringReplyText(reply, { verb, t }));
+    const entry = catalog?.opsById?.get(route.opId);
+    const verb = entry?.op?.verb;
+    // S6.A — manifest-driven inline buttons for the item(s) this reply carries
+    // (Claim / Mark complete / RSVP …), gated by appliesTo. Ride payload.buttons.
+    const buttons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin });
+    _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons });
   }
   circleDispatchReady = dispatchReady;   // expose so onSend can run a completed follow-up
+
+  // S6.A — a tapped inline button dispatches its op against the item. Resolve the
+  // op's target param (the gate's `arg`, or a picker param, else `id`) then run it.
+  circleEmbedButtonTap = ({ opId, itemId }) => {
+    if (!opId) return;
+    const op = catalog?.opsById?.get(opId)?.op;
+    const arg = op?.surfaces?.slash?.match?.arg
+      ?? (op?.params || []).find((p) => p?.pickerSource)?.name
+      ?? 'id';
+    dispatchReady({ opId, args: itemId != null ? { [arg]: itemId } : {} });
+  };
 
   circleClarify = createClarifyingDispatch({
     catalog: () => catalog,
@@ -1783,6 +1809,8 @@ function showKring(id, circle, policy) {
       tabs, activeTab,
       viewMode,
       screenBlocks,
+      // S6.A — tap an inline manifest button on a bot reply → dispatch its op.
+      onEmbedButton: (b) => circleEmbedButtonTap?.(b),
       // Composer affordances (classic-shell parity): slash-suggest off the merged catalog + bash history.
       catalog: circleCatalog,
       history: kringInputHistory,
@@ -1910,9 +1938,10 @@ function showKring(id, circle, policy) {
   // replies render here. Reset each time showKring opens a circle.
   _kringRender = {
     circleId: id,
-    botBubble: (text) => {
+    botBubble: (text, opts) => {
       const mid = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}-bot`;
-      eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text }));
+      // S6.A — opts.buttons (inline manifest buttons) ride payload.buttons.
+      eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text, buttons: opts?.buttons }));
       rerender();
     },
     // Local echo of the user's own line (used by the feedback mount, which consumes the message before the

@@ -436,6 +436,9 @@
 .circle-kring__bubble-actions { display: flex; gap: 6px; margin-top: 8px; }
 .circle-kring__bubble-action { padding: 4px 10px; font: inherit; font-size: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); cursor: pointer; }
 .circle-kring__bubble-action:hover { border-color: var(--accent); }
+/* S6.A — manifest-driven inline buttons on a bot reply (the resurrected inline menu). */
+.circle-kring__embed-buttons { flex-wrap: wrap; }
+.circle-kring__embed-button { border-color: var(--accent); color: var(--accent-ink, var(--accent)); font-weight: 600; }
 /* δ.2 — per-message delivery state.  Pending = clock, Failed = warning (tap-to-retry).
    Sent renders nothing (happy-path stays clean). */
 .circle-kring__bubble-delivery { display: inline-block; margin-top: 4px; font-size: 12px; line-height: 1; padding: 2px 6px; border-radius: 10px; }
