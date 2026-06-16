@@ -81,8 +81,12 @@ import { resolveChatAi } from '../../src/v2/chatAi.js';
 // four-tier crew storage policy (admin-gated, one-way) instead of going nowhere.
 import { pushCircleStoragePolicy } from '../../src/v2/circleStoragePolicy.js';
 // Calendar cross-peer fan-out — wrap the dispatch callSkill so a successful
-// calendar op fans its invite/RSVP envelopes out over NKN (classic-shell parity).
+// calendar op fans its invite/RSVP envelopes out over the peer transport.
 import { withCalendarOutbound } from '../../src/core/handlers/calendarOutbound.js';
+// Calendar INBOUND ingest — receive invite/RSVP/cancel envelopes from peers.
+import { makeHandleCalendarInvite } from '../../src/core/handlers/calendarInvite.js';
+import { makeHandleCalendarRsvp }   from '../../src/core/handlers/calendarRsvp.js';
+import { makeHandleCalendarCancel } from '../../src/core/handlers/calendarCancel.js';
 // Theme B — the settings chatbot: template-driven guided setup (remote-loadable, bundled fallback).
 import { renderGuidedSetup } from './guidedSetupPanel.js';
 import { startGuidedSetup, submitGuidedStep, guidedPolicyPatch, loadSettingsTemplate, DEFAULT_SETTINGS_TEMPLATE } from '../../src/v2/guidedSetup.js';
@@ -2887,6 +2891,20 @@ async function boot() {
           'catch-up-offer':          catchUpReceiver.onPeerMessage,
           'catch-up-chunk':          catchUpReceiver.onPeerMessage,
           'catch-up-end':            catchUpReceiver.onPeerMessage,
+          // Calendar INBOUND — receive what the fan-out sends. invite persists
+          // the event locally (→ shows on the calendar surface) + a kring
+          // heads-up; rsvp/cancel apply to local calendar state. (A richer
+          // time-card-with-RSVP-buttons bubble in the kring is a follow-up.)
+          'calendar-invite':         makeHandleCalendarInvite({
+            callSkill:     rawCallSkill,
+            addMainBubble: (bubble) => {
+              const title = bubble?.embed?.snapshot?.title;
+              if (title) _kringRender?.botBubble(t('circle.calendar.invited', { title }));
+            },
+            publishEvent:  publishEventToLog,
+          }),
+          'calendar-rsvp':           makeHandleCalendarRsvp({ callSkill: rawCallSkill, publishEvent: publishEventToLog }),
+          'calendar-cancel':         makeHandleCalendarCancel({ callSkill: rawCallSkill, publishEvent: publishEventToLog }),
           // P5 — a contact-bot's reply in its 1:1 DM thread (guarded: the channel
           // is null if buildCircleBot threw, and must not break the peer router).
           // S1 #3 — also handle an inbound PEER DM (contact-msg): a person's message
