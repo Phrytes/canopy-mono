@@ -71,6 +71,9 @@ import { embedButtonsForReply } from '../../../../canopy-chat/src/v2/replyEmbeds
 import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 // S6.B/C — open-screen surface + per-circle gate (shared with web).
 import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.js';
+// S6.C — per-user surface preference (inline / screen / minimal), shared selector + the mobile store.
+import { selectSurfaceButtons } from '../../../../canopy-chat/src/v2/surfacePref.js';
+import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import { createCircleDispatch } from '../../../../canopy-chat/src/v2/circleDispatch.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
@@ -1633,7 +1636,9 @@ function CircleDetail({
     const screenButton = (screen && isAppSurfaceEnabled(entry?.appOrigin, policy, isFeatureEnabled))
       ? [{ id: `screen:${screen}`, screen, label: t(`circle.screen.open.${screen}`, { defaultValue: t('circle.screen.open_generic') }) }]
       : [];
-    appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons: [...screenButton, ...inlineButtons] });
+    // S6.C — the user's preference picks the projection (inline / screen / minimal). web parity.
+    const buttons = selectSurfaceButtons({ inlineButtons, screenButton, pref: surfacePrefStore.get() });
+    appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons });
   }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy]);
 
   // B (clarification) — candidate source for an id-like param. Base = the circle's already-loaded

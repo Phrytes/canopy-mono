@@ -4,6 +4,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   selectSurfaceButtons, normalizeSurfacePref, createSurfacePrefStore, DEFAULT_SURFACE_PREF,
+  asyncStorageSurfacePrefIo,
 } from '../src/v2/surfacePref.js';
 
 const inline = [{ id: 'claimTask:t1', opId: 'claimTask', itemId: 't1' }];
@@ -49,5 +50,15 @@ describe('createSurfacePrefStore', () => {
     expect(io.set).toHaveBeenCalledWith('minimal');
     await store.set('garbage');                        // normalized
     expect(store.get()).toBe('inline');
+  });
+
+  it('works over the RN AsyncStorage io (mobile parity)', async () => {
+    const backing = {};
+    const AsyncStorage = { getItem: async (k) => backing[k] ?? null, setItem: async (k, v) => { backing[k] = v; } };
+    const store = createSurfacePrefStore(asyncStorageSurfacePrefIo(AsyncStorage));
+    await store.set('screen');
+    expect(backing['cc.surfacePref']).toBe('screen');
+    const reloaded = createSurfacePrefStore(asyncStorageSurfacePrefIo(AsyncStorage));
+    expect(await reloaded.hydrate()).toBe('screen');
   });
 });

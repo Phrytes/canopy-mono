@@ -11,6 +11,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Modal } from 'react-native';
 import { t, currentLang } from '../../core/localisation.js';
 import { theme } from './theme.js';
+import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import EncryptedBackupWizardModal from '../../../../canopy-chat/src/rn/wizards/encryptedBackupWizardModal.js';
 import RestoreFromMnemonicWizardModal from '../../../../canopy-chat/src/rn/wizards/restoreFromMnemonicWizardModal.js';
 import { enableNativePush, disableNativePush, getNativePushState } from '../../v2/nativePush.js';
@@ -23,6 +24,8 @@ export default function CircleMyDataScreen({ callSkill, onBack }) {
   const [wizard, setWizard] = useState(null);          // 'backup' | 'restore' | null
   const [mnemonic, setMnemonic] = useState(null);      // { words } | null when closed
   const [push, setPush] = useState({ supported: false, granted: false });   // S6.6 native push
+  const [surfacePref, setSurfacePref] = useState(surfacePrefStore.get());    // S6.C surface preference
+  const setPref = useCallback((v) => { surfacePrefStore.set(v).then(() => setSurfacePref(v)).catch(() => {}); }, []);
 
   useEffect(() => { getNativePushState().then(setPush).catch(() => {}); }, []);
   const toggleNativePush = useCallback(async () => {
@@ -94,6 +97,21 @@ export default function CircleMyDataScreen({ callSkill, onBack }) {
             <Text style={styles.actionLabel}>{push.granted ? t('circle.mydata.notif_disable') : t('circle.mydata.notif_enable')}</Text>
           </Pressable>
         ) : null}
+      </Section>
+
+      <Section title={t('circle.mydata.surface_pref')}>
+        {['inline', 'screen', 'minimal'].map((opt) => (
+          <Pressable
+            key={opt}
+            style={[styles.action, opt === surfacePref && styles.actionActive]}
+            onPress={() => setPref(opt)}
+            testID={`mydata-pref-${opt}`}
+          >
+            <Text style={[styles.actionLabel, opt === surfacePref && styles.actionActiveLabel]}>
+              {t(`circle.mydata.surface_pref_${opt}`)}
+            </Text>
+          </Pressable>
+        ))}
       </Section>
 
       {privacy.length > 0 && (
@@ -170,6 +188,8 @@ const styles = StyleSheet.create({
   privacyBody: { fontSize: 13, color: theme.color.inkSoft, lineHeight: 18 },
   action: { alignSelf: 'flex-start', borderWidth: 1, borderColor: theme.color.accent, borderRadius: theme.radius.md, paddingVertical: 8, paddingHorizontal: 14 },
   actionLabel: { fontSize: 13, fontWeight: '600', color: theme.color.accent },
+  actionActive: { backgroundColor: theme.color.accent, borderColor: theme.color.accent },
+  actionActiveLabel: { color: theme.color.white },
   actionMuted: { borderColor: theme.color.line },
   actionMutedLabel: { fontSize: 13, fontWeight: '600', color: theme.color.inkSoft },
   mBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 20 },

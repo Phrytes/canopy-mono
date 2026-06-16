@@ -71,3 +71,11 @@ export function localStorageSurfacePrefIo(key = 'cc.surfacePref') {
     set: (v) => { try { globalThis.localStorage?.setItem(key, v); } catch { /* */ } },
   };
 }
+
+/** RN AsyncStorage io for the surface preference (same value shape as web). */
+export function asyncStorageSurfacePrefIo(AsyncStorage, key = 'cc.surfacePref') {
+  return {
+    get: async () => { try { return await AsyncStorage?.getItem(key); } catch { return null; } },
+    set: async (v) => { try { await AsyncStorage?.setItem(key, v); } catch { /* */ } },
+  };
+}
