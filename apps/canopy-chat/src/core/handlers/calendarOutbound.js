@@ -6,7 +6,7 @@
  *
  * Web's calendar branch in callSkill does two things AFTER the
  * substrate write:
- *   (a) addEvent with `attendees-nkn` arg → fans out `calendar-invite`
+ *   (a) addEvent with `attendees-addr` arg → fans out `calendar-invite`
  *       envelopes to each NKN address (via `sendPeer`).
  *   (b) rsvp* (Accept / Decline / Tentative) on an event whose
  *       organiser is an NKN address → sends a `calendar-rsvp` envelope
@@ -96,9 +96,9 @@ export function makeCalendarOutboundHook({
     if (appOrigin !== 'calendar') return;
     if (!result?.ok) return;
 
-    // (a) addEvent with attendees-nkn → send calendar-invite envelopes.
-    if (opId === 'addEvent' && dispatchArgs?.['attendees-nkn']) {
-      const targets = String(dispatchArgs['attendees-nkn']).split(/[,\s]+/)
+    // (a) addEvent with attendees-addr → send calendar-invite envelopes.
+    if (opId === 'addEvent' && dispatchArgs?.['attendees-addr']) {
+      const targets = String(dispatchArgs['attendees-addr']).split(/[,\s]+/)
         .map((s) => s.trim()).filter(Boolean);
       if (targets.length === 0)  return;
       if (!peerUp()) {
@@ -190,8 +190,8 @@ export function makeCalendarOutboundHook({
     //     invitees so the cancellation propagates.  cancel is a SOFT delete
     //     (state → 'cancelled', record kept), so the snapshot is still
     //     readable post-cancel; the attendees' NKN addresses were persisted at
-    //     addEvent time (CalendarStore `attendeesNkn`) and surface in
-    //     snapshot.fields.attendeesNkn.  No attendeesNkn (e.g. a solo event, or
+    //     addEvent time (CalendarStore `attendeeAddrs`) and surface in
+    //     snapshot.fields.attendeeAddrs.  No attendeeAddrs (e.g. a solo event, or
     //     one created before this shipped) → nothing to notify.
     if (opId === 'cancelEvent' && dispatchArgs?.id) {
       let snapshot = null;
@@ -201,8 +201,8 @@ export function makeCalendarOutboundHook({
         logger.error?.('[calendar-outbound] getEventSnapshot for cancel fan-out failed', err);
         return;
       }
-      const targets = snapshot?.fields?.attendeesNkn
-        ? String(snapshot.fields.attendeesNkn).split(/[,\s]+/).map((s) => s.trim()).filter(Boolean)
+      const targets = snapshot?.fields?.attendeeAddrs
+        ? String(snapshot.fields.attendeeAddrs).split(/[,\s]+/).map((s) => s.trim()).filter(Boolean)
         : [];
       if (targets.length === 0) {
         publishEvent?.({

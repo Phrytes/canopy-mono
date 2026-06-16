@@ -44,7 +44,7 @@ export const calendarManifest = {
         // chat-p2p envelopes.  Each gets a 'calendar-invite'
         // envelope; their canopy-chat surfaces a time-card embed
         // with [Accept]/[Decline]/[Tentative] that RSVPs back.
-        { name: 'attendees-nkn', kind: 'string', required: false },
+        { name: 'attendees-addr', kind: 'string', required: false },
       ],
       surfaces: {
         // Part C gate — "schedule X" / "afspraak X" → addEvent{title}. PARTIAL: binds title; the

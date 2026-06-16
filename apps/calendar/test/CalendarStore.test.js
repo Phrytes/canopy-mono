@@ -43,20 +43,20 @@ describe('addEvent', () => {
     expect(b.attendees).toEqual(['x', 'y']);
   });
 
-  it('persists attendees-nkn for cross-peer cancel propagation (survives a soft cancel)', async () => {
+  it('persists attendees-addr for cross-peer cancel propagation (survives a soft cancel)', async () => {
     const e = await store.addEvent({
-      title: 'A', startsAt: '2026-06-01T10:00:00Z', 'attendees-nkn': 'addrA, addrB',
+      title: 'A', startsAt: '2026-06-01T10:00:00Z', 'attendees-addr': 'addrA, addrB',
     });
-    expect(e.attendeesNkn).toEqual(['addrA', 'addrB']);
+    expect(e.attendeeAddrs).toEqual(['addrA', 'addrB']);
     await store.cancel({ eventId: e.id });
     const after = await store.getById(e.id);          // soft delete keeps the record + the addresses
     expect(after.state).toBe('cancelled');
-    expect(after.attendeesNkn).toEqual(['addrA', 'addrB']);
+    expect(after.attendeeAddrs).toEqual(['addrA', 'addrB']);
   });
 
-  it('omits attendeesNkn when none supplied', async () => {
+  it('omits attendeeAddrs when none supplied', async () => {
     const e = await store.addEvent({ title: 'A', startsAt: '2026-06-01T10:00:00Z' });
-    expect(e.attendeesNkn).toBeUndefined();
+    expect(e.attendeeAddrs).toBeUndefined();
   });
 
   it("rejects missing title", async () => {

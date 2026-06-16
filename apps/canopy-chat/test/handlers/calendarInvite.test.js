@@ -38,7 +38,7 @@ describe('makeHandleCalendarInvite', () => {
     });
     expect(d.callSkill).toHaveBeenCalledWith('calendar', 'addEvent', expect.objectContaining({
       id: 'e1', title: 'Dinner', when: '2026-06-01T19:00:00Z',
-      _organiserNkn: 'peer-A',
+      _organiserAddr: 'peer-A',
     }));
     expect(d.addMainBubble).toHaveBeenCalledTimes(1);
     const bubble = d.addMainBubble.mock.calls[0][0];

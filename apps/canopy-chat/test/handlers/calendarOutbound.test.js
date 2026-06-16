@@ -48,11 +48,11 @@ describe('makeCalendarOutboundHook — pass-through', () => {
   it('no-ops when result is not ok', async () => {
     const d = deps();
     const hook = makeCalendarOutboundHook(d);
-    await hook('calendar', 'addEvent', { 'attendees-nkn': 'app.abc' }, { ok: false });
+    await hook('calendar', 'addEvent', { 'attendees-addr': 'app.abc' }, { ok: false });
     expect(d.sendPeer).not.toHaveBeenCalled();
   });
 
-  it('addEvent without attendees-nkn → no fan-out', async () => {
+  it('addEvent without attendees-addr → no fan-out', async () => {
     const d = deps();
     const hook = makeCalendarOutboundHook(d);
     await hook('calendar', 'addEvent', { title: 'x' }, { ok: true, itemId: 'e1' });
@@ -65,7 +65,7 @@ describe('makeCalendarOutboundHook — addEvent invite fan-out', () => {
     const d = deps();
     const hook = makeCalendarOutboundHook(d);
     await hook('calendar', 'addEvent',
-      { 'attendees-nkn': 'app.alice, app.bob' },
+      { 'attendees-addr': 'app.alice, app.bob' },
       { ok: true, itemId: 'e1' });
     expect(d.sendPeer).toHaveBeenCalledTimes(2);
     expect(d.sendPeer).toHaveBeenNthCalledWith(1, 'app.alice', expect.objectContaining({
@@ -79,7 +79,7 @@ describe('makeCalendarOutboundHook — addEvent invite fan-out', () => {
     const d = deps();
     const hook = makeCalendarOutboundHook(d);
     await hook('calendar', 'addEvent',
-      { 'attendees-nkn': 'app.alice app.bob' },
+      { 'attendees-addr': 'app.alice app.bob' },
       { ok: true, itemId: 'e1' });
     expect(d.publishEvent).toHaveBeenCalledTimes(2);
     expect(d.publishEvent.mock.calls[0][0].payload.message).toMatch(/📤 invite sent/);
@@ -91,7 +91,7 @@ describe('makeCalendarOutboundHook — addEvent invite fan-out', () => {
     });
     const hook = makeCalendarOutboundHook(d);
     await hook('calendar', 'addEvent',
-      { 'attendees-nkn': 'app.alice' },
+      { 'attendees-addr': 'app.alice' },
       { ok: true, itemId: 'e1' });
     expect(d.publishEvent).toHaveBeenCalledWith(expect.objectContaining({
       payload: expect.objectContaining({
@@ -104,7 +104,7 @@ describe('makeCalendarOutboundHook — addEvent invite fan-out', () => {
     const d = deps({ isPeerConnected: () => false });
     const hook = makeCalendarOutboundHook(d);
     await hook('calendar', 'addEvent',
-      { 'attendees-nkn': 'app.alice' },
+      { 'attendees-addr': 'app.alice' },
       { ok: true, itemId: 'e1' });
     expect(d.sendPeer).not.toHaveBeenCalled();
   });
@@ -115,7 +115,7 @@ describe('makeCalendarOutboundHook — addEvent invite fan-out', () => {
     });
     const hook = makeCalendarOutboundHook(d);
     await hook('calendar', 'addEvent',
-      { 'attendees-nkn': 'app.alice' },
+      { 'attendees-addr': 'app.alice' },
       { ok: true, itemId: 'e1' });
     expect(d.sendPeer).not.toHaveBeenCalled();
   });

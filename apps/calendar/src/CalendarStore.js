@@ -187,15 +187,15 @@ export class CalendarStore {
     const organiser = args.organiser ?? actor;
     // Persist the attendees' NKN addresses (the cross-peer fan-out routing
     // arg) so a later cancelEvent can recover whom to notify — the event is
-    // soft-deleted on cancel, but `attendees-nkn` is otherwise never stored.
-    // Mirrors the `_organiserNkn` stash above it.
-    const attendeesNkn = String(args['attendees-nkn'] ?? '')
+    // soft-deleted on cancel, but `attendees-addr` is otherwise never stored.
+    // Mirrors the `_organiserAddr` stash above it.
+    const attendeeAddrs = String(args['attendees-addr'] ?? '')
       .split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
 
     // v0.7.P3c — accept an explicit id (used by receiver-side when
     // ingesting an invite envelope; same id as organiser keeps the
     // RSVP round-trip referentially consistent).  Also accept
-    // _organiserNkn so the receiver knows where to send the RSVP
+    // _organiserAddr so the receiver knows where to send the RSVP
     // back via NKN.
     const event = {
       id:        typeof args.id === 'string' && args.id ? args.id : generateId(),
@@ -210,8 +210,8 @@ export class CalendarStore {
       state:   'open',
       addedAt: Date.now(),
       addedBy: actor,
-      ...(args._organiserNkn ? { _organiserNkn: String(args._organiserNkn) } : {}),
-      ...(attendeesNkn.length ? { attendeesNkn } : {}),
+      ...(args._organiserAddr ? { _organiserAddr: String(args._organiserAddr) } : {}),
+      ...(attendeeAddrs.length ? { attendeeAddrs } : {}),
     };
 
     await this.#write(event);

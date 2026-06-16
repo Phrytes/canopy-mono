@@ -424,7 +424,7 @@ async function connectPeerImpl() {
  * v0.7.P3c — handle incoming 'calendar-invite' envelope.
  *
  * Adds the event to the LOCAL calendar (same id as organiser; stores
- * organiser's NKN address in _organiserNkn so a later RSVP knows
+ * organiser's NKN address in _organiserAddr so a later RSVP knows
  * where to reply).  Then synthesises a time-card embed in Main so
  * the user sees [Accept]/[Decline]/[Tentative] buttons.
  */
@@ -435,7 +435,7 @@ async function handleCalendarInvite(fromNknAddr, payload) {
     return;
   }
   // Persist locally via calendar.addEvent.  Pass the explicit id +
-  // _organiserNkn so the receiver's calendar stays in sync with the
+  // _organiserAddr so the receiver's calendar stays in sync with the
   // organiser's view + the RSVP knows where to dispatch.
   try {
     await callSkill('calendar', 'addEvent', {
@@ -446,7 +446,7 @@ async function handleCalendarInvite(fromNknAddr, payload) {
       location:     event.location,
       attendees:    event.attendees ?? [],
       organiser:    event.organiser ?? fromNknAddr,
-      _organiserNkn: fromNknAddr,
+      _organiserAddr: fromNknAddr,
     });
   } catch (err) {
     console.error('[peer] failed to ingest invite locally', err);

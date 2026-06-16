@@ -3,7 +3,7 @@
  * from `apps/canopy-chat/web/main.js:477`.
  *
  * On a peer's `calendar-invite` envelope: persists the event locally
- * via `calendar.addEvent` (with `_organiserNkn` so the RSVP knows
+ * via `calendar.addEvent` (with `_organiserAddr` so the RSVP knows
  * where to send), then renders a time-card embed in the chat shell's
  * "main" thread.  Publishes a notification event so /logs + matching
  * threads also surface the invite.
@@ -44,7 +44,7 @@ export function makeHandleCalendarInvite({
         location:      event.location,
         attendees:     event.attendees ?? [],
         organiser:     event.organiser ?? fromAddr,
-        _organiserNkn: fromAddr,
+        _organiserAddr: fromAddr,
       });
     } catch (err) {
       logger.error?.('[peer] failed to ingest invite locally', err);

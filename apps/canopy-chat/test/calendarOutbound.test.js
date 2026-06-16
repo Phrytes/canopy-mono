@@ -17,13 +17,13 @@ function fakeCallSkill(snapshot) {
 }
 
 describe('withCalendarOutbound', () => {
-  it('fans out a calendar-invite to each attendees-nkn after addEvent', async () => {
+  it('fans out a calendar-invite to each attendees-addr after addEvent', async () => {
     const sendPeer = vi.fn(async () => {});
     const cs = withCalendarOutbound(
       fakeCallSkill({ id: 'e-1', title: 'Lunch', startAt: 1, endAt: 2, fields: {} }),
       { sendPeer, isPeerConnected: () => true },
     );
-    const r = await cs('calendar', 'addEvent', { title: 'Lunch', 'attendees-nkn': 'addrA, addrB' });
+    const r = await cs('calendar', 'addEvent', { title: 'Lunch', 'attendees-addr': 'addrA, addrB' });
     expect(r).toEqual({ ok: true, itemId: 'e-1' });
     expect(sendPeer).toHaveBeenCalledTimes(2);
     expect(sendPeer.mock.calls[0][0]).toBe('addrA');
@@ -49,15 +49,15 @@ describe('withCalendarOutbound', () => {
       fakeCallSkill({ id: 'e-1', fields: {} }),
       { sendPeer, isPeerConnected: () => false },
     );
-    const r = await cs('calendar', 'addEvent', { 'attendees-nkn': 'addrA' });
+    const r = await cs('calendar', 'addEvent', { 'attendees-addr': 'addrA' });
     expect(r.ok).toBe(true);
     expect(sendPeer).not.toHaveBeenCalled();
   });
 
-  it('fans out a calendar-cancel to the persisted attendeesNkn after cancelEvent', async () => {
+  it('fans out a calendar-cancel to the persisted attendeeAddrs after cancelEvent', async () => {
     const sendPeer = vi.fn(async () => {});
     const cs = withCalendarOutbound(
-      fakeCallSkill({ id: 'e-1', title: 'Lunch', fields: { attendeesNkn: 'addrA, addrB' } }),
+      fakeCallSkill({ id: 'e-1', title: 'Lunch', fields: { attendeeAddrs: 'addrA, addrB' } }),
       { sendPeer, isPeerConnected: () => true },
     );
     await cs('calendar', 'cancelEvent', { id: 'e-1' });
@@ -66,7 +66,7 @@ describe('withCalendarOutbound', () => {
     expect(sendPeer.mock.calls.map((c) => c[0])).toEqual(['addrA', 'addrB']);
   });
 
-  it('cancelEvent with no persisted attendeesNkn notifies nobody (no send)', async () => {
+  it('cancelEvent with no persisted attendeeAddrs notifies nobody (no send)', async () => {
     const sendPeer = vi.fn(async () => {});
     const cs = withCalendarOutbound(
       fakeCallSkill({ id: 'e-1', title: 'Solo', fields: {} }),
@@ -92,7 +92,7 @@ describe('withCalendarOutbound', () => {
       fakeCallSkill({ id: 'e-1', fields: {} }),
       { sendPeer, isPeerConnected: () => true, logger: { warn: vi.fn(), error: vi.fn() } },
     );
-    const r = await cs('calendar', 'addEvent', { 'attendees-nkn': 'addrA' });
+    const r = await cs('calendar', 'addEvent', { 'attendees-addr': 'addrA' });
     expect(r).toEqual({ ok: true, itemId: 'e-1' });   // dispatch result survives the send failure
   });
 

@@ -452,7 +452,7 @@ async function sendFile(args, {
 /**
  * `/lookup-peer <webid>` — v0.7.P3d.  Resolves WebID → NKN address
  * via the peer's pod profile.  Returns the address so the user can
- * `/test-peer` or `/addappt --attendees-nkn=` with it.
+ * `/test-peer` or `/addappt --attendees-addr=` with it.
  */
 async function lookupPeer(args, { lookupPeerNknByWebid, t }) {
   const webid = String(args?.webid ?? '').trim();
