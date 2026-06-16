@@ -76,6 +76,8 @@ import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.j
 import { selectSurfaceButtons } from '../../../../canopy-chat/src/v2/surfacePref.js';
 // "only you" vs "whole kring" — message scope (data property; the badge renders it).
 import { scopeForReply } from '../../../../canopy-chat/src/v2/messageScope.js';
+// S6.D — is the conversational "chat" projection LLM-enriched here? (user LLM + circle permits)
+import { resolveChatAi } from '../../../../canopy-chat/src/v2/chatAi.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import MultiFieldFormBubble from '../../rn/MultiFieldFormBubble.js';   // 2+-field inline form (parity with web)
 import { createCircleDispatch } from '../../../../canopy-chat/src/v2/circleDispatch.js';
@@ -246,6 +248,7 @@ export default function CircleLauncherScreen({
   // P6.1 — selected circle's policy (loaded when `selected` changes); used
   // to gate detail action buttons on the Functies axis (board 4A).
   const [selectedPolicy, setSelectedPolicy] = useState(null);
+  const [chatAi, setChatAi] = useState({ enriched: false, reason: 'no-provider' });   // S6.D — chat LLM enrichment for My-data
   // P6.3 — kring tile activity preview ({subtitle, ts, unread} per circle)
   // + seenAt persistence (the per-circle "last-open" marker that drives the
   // unread badge).  Loaded on mount; bumped on openCircle.
@@ -290,6 +293,23 @@ export default function CircleLauncherScreen({
     })();
     return () => { alive = false; };
   }, [selected, policyStore]);
+
+  // S6.D — is the conversational "chat" projection LLM-enriched in the active circle?
+  // (the circle's policy.llmTool + the member's loaded LLM + a configured provider).
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      let userLlm = { mode: CIRCLE_LLM_BASEURL ? 'local' : 'off' };
+      try { const v = await createUserLlmDefaultStore(asyncStorageUserLlmIo(AsyncStorage)).get(); if (v) userLlm = v; } catch { /* default */ }
+      const r = resolveChatAi({
+        circleLlmTool: selectedPolicy?.llmTool ?? CIRCLE_LLM_POLICY,
+        userLlmMode: userLlm?.mode,
+        hasProvider: !!CIRCLE_LLM_BASEURL,
+      });
+      if (alive) setChatAi(r);
+    })();
+    return () => { alive = false; };
+  }, [selectedPolicy]);
 
   // 5.9c — passive "Nearby N device(s)" signal from MdnsTransport.  When the
   // bundle exposes mdns we mirror its connectionCount into state, subscribed
@@ -859,7 +879,7 @@ export default function CircleLauncherScreen({
   if (view === 'mydata') {
     return (
       <WithTabBar active="mij" onSelect={onTab}>
-        <CircleMyDataScreen callSkill={bundle?.callSkill} onBack={() => setView('profile')} />
+        <CircleMyDataScreen callSkill={bundle?.callSkill} onBack={() => setView('profile')} chatAi={chatAi} />
       </WithTabBar>
     );
   }

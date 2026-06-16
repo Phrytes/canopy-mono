@@ -16,7 +16,9 @@ import EncryptedBackupWizardModal from '../../../../canopy-chat/src/rn/wizards/e
 import RestoreFromMnemonicWizardModal from '../../../../canopy-chat/src/rn/wizards/restoreFromMnemonicWizardModal.js';
 import { enableNativePush, disableNativePush, getNativePushState } from '../../v2/nativePush.js';
 
-export default function CircleMyDataScreen({ callSkill, onBack }) {
+const CHAT_AI_KEY = { on: 'chat_ai_on', 'circle-off': 'chat_ai_circle_off', 'no-llm': 'chat_ai_no_llm', 'no-provider': 'chat_ai_no_provider' };
+
+export default function CircleMyDataScreen({ callSkill, onBack, chatAi }) {
   const [dataLocation, setDataLocation] = useState({});
   const [podStatus, setPodStatus] = useState({});
   const [privacy, setPrivacy] = useState([]);
@@ -100,7 +102,7 @@ export default function CircleMyDataScreen({ callSkill, onBack }) {
       </Section>
 
       <Section title={t('circle.mydata.surface_pref')}>
-        {['inline', 'screen', 'minimal'].map((opt) => (
+        {['inline', 'screen', 'chat'].map((opt) => (
           <Pressable
             key={opt}
             style={[styles.action, opt === surfacePref && styles.actionActive]}
@@ -112,6 +114,12 @@ export default function CircleMyDataScreen({ callSkill, onBack }) {
             </Text>
           </Pressable>
         ))}
+        {/* S6.D — when "chat" is chosen, show whether AI is enriching it here. */}
+        {surfacePref === 'chat' && chatAi?.reason ? (
+          <Text style={styles.privacyBody}>
+            {chatAi.enriched ? '✨ ' : ''}{t(`circle.mydata.${CHAT_AI_KEY[chatAi.reason] ?? 'chat_ai_no_provider'}`)}
+          </Text>
+        ) : null}
       </Section>
 
       {privacy.length > 0 && (
