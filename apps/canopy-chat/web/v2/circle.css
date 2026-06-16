@@ -140,6 +140,7 @@
 
 /* toggle rows (label wrapping a checkbox + text) */
 .circle-page .circle-settings__feature,
+.circle-page .circle-settings__app,
 .circle-page .circle-settings__consensus-toggle,
 .circle-page .circle-override__toggle,
 .circle-page .circle-override__flow-toggle,

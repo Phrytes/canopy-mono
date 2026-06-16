@@ -87,3 +87,31 @@ test('S6.C gate + S6.B — the tasks screen is gated per-circle; enabling tasks 
   await expect(page.locator('.cc-screen-panel .circle-screen__block--tasks')).toBeVisible();
   await expect(page.locator('.cc-screen-panel')).toContainText('s6bpanel');
 });
+
+test('S6.C deep — scoping an app out of the circle (policy.apps) drops its commands from the catalog', async ({ page }) => {
+  await openKringComposer(page);
+
+  // Tasks is composed by default (policy.apps = all) → /addtask dispatches + confirms.
+  await send(page, '/addtask scopeon');
+  let bubbles = (await page.locator('.circle-kring__bubble').allTextContents()).join(' | ');
+  expect(bubbles).toContain('scopeon');
+
+  // Uncheck the Tasks app in settings → it leaves THIS circle's catalog.
+  await page.locator('.circle-kring__more').click();
+  await page.locator('.circle-kring__more-item[data-action="settings"]').click();
+  await page.waitForTimeout(800);
+  const taskApp = page.locator('input[data-app="tasks-v0"]');
+  await expect(taskApp).toBeVisible({ timeout: 5000 });
+  await taskApp.uncheck();
+  await page.locator('.circle-settings__save').click();
+  await page.waitForTimeout(800);
+  const back = page.locator('.circle-settings__back');
+  if (await back.count()) { await back.click(); await page.waitForTimeout(800); }
+  const chat = page.locator('.circle-kring__view-toggle-btn', { hasText: 'Chat' });
+  if (await chat.count()) { await chat.click(); await page.waitForTimeout(800); }
+
+  // Now /addtask is not in the scoped catalog → the bot can't resolve it.
+  await send(page, '/addtask scopeoff');
+  bubbles = (await page.locator('.circle-kring__bubble').allTextContents()).join(' | ').toLowerCase();
+  expect(bubbles).toContain('turn that into an action');   // circle.bot.unknown — addTask is gone
+});

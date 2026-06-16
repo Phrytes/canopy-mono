@@ -757,6 +757,14 @@
       "text": "Waiting on {{who}}.",
       "doc": "Footer note when a proposal is outstanding; {{who}} is the comma-separated approver list."
     },
+    "apps": { "text": "Apps in this circle", "doc": "S6.C — which whole apps the circle composes (catalog scope)." },
+    "app": {
+      "stoop":     { "text": "Neighborhood", "doc": "S6.C — app label (stoop)." },
+      "tasks-v0":  { "text": "Tasks", "doc": "S6.C — app label (tasks-v0)." },
+      "household": { "text": "Household", "doc": "S6.C — app label (household)." },
+      "calendar":  { "text": "Calendar", "doc": "S6.C — app label (calendar)." },
+      "folio":     { "text": "Files", "doc": "S6.C — app label (folio)." }
+    },
     "feat": {
       "chat": {
         "text": "Chat",

@@ -71,6 +71,8 @@ export const DEFAULT_CIRCLE_POLICY = {
   catchUpChooserMode: 'auto',
   admins:           [],
   consensusRequired: false,
+  // S6.C deep — which whole apps the circle composes; null = all DEFAULT_CIRCLE_ORIGINS.
+  apps:             null,
 };
 
 /**
@@ -152,6 +154,11 @@ export function normalizeCirclePolicy(stored = {}) {
     admins:             Array.isArray(p.admins) ? p.admins.filter((x) => typeof x === 'string') : [],
     consensusRequired:
       typeof p.consensusRequired === 'boolean' ? p.consensusRequired : DEFAULT_CIRCLE_POLICY.consensusRequired,
+    // S6.C deep — which whole apps this circle composes into its catalog (the bot's
+    // tools + slash-suggest). null/absent = all DEFAULT_CIRCLE_ORIGINS; a list
+    // narrows (e.g. ['stoop'] for a buurt-only circle). Validation is loose here —
+    // the catalog scoping intersects with the apps that actually have ops.
+    apps:               Array.isArray(p.apps) ? p.apps.filter((x) => typeof x === 'string') : null,
   };
 }
 

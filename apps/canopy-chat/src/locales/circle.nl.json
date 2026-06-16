@@ -757,6 +757,14 @@
       "text": "Wachten op {{who}}.",
       "doc": "Footer note when a proposal is outstanding; {{who}} is the approver list."
     },
+    "apps": { "text": "Apps in deze kring", "doc": "S6.C — which whole apps the circle composes (catalog scope)." },
+    "app": {
+      "stoop":     { "text": "Buurt", "doc": "S6.C — app label (stoop)." },
+      "tasks-v0":  { "text": "Taken", "doc": "S6.C — app label (tasks-v0)." },
+      "household": { "text": "Huishouden", "doc": "S6.C — app label (household)." },
+      "calendar":  { "text": "Agenda", "doc": "S6.C — app label (calendar)." },
+      "folio":     { "text": "Bestanden", "doc": "S6.C — app label (folio)." }
+    },
     "feat": {
       "chat": {
         "text": "Chat",

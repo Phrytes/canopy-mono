@@ -19,6 +19,7 @@
  * `title` opt).
  */
 import { CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS } from '../../src/v2/circlePolicy.js';
+import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';   // S6.C — composable apps
 import { detectPolicyConflicts, applyPolicyResolution } from '../../src/v2/policyConflict.js';
 import { renderRecipeConflictResolver } from './recipeConflictResolver.js';
 
@@ -88,6 +89,29 @@ export function renderCircleSettings(container, {
     featSection.appendChild(row);
   }
   container.appendChild(featSection);
+
+  // S6.C deep — Apps: which whole apps this circle composes into the bot's tools +
+  // slash-suggest. Unset (all checked) = all 5; unchecking narrows the catalog.
+  const appsSection = section(tr('circle.settings.apps'));
+  const enabledApps = Array.isArray(policy?.apps) && policy.apps.length ? new Set(policy.apps) : null;
+  for (const app of DEFAULT_CIRCLE_ORIGINS) {
+    const row = document.createElement('label');
+    row.className = 'circle-settings__app';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = enabledApps ? enabledApps.has(app) : true;   // unset → all composed
+    box.dataset.app = app;
+    box.addEventListener('change', () => {
+      const apps = [...appsSection.querySelectorAll('input[data-app]')]
+        .filter((b) => b.checked).map((b) => b.dataset.app);
+      emit({ apps });
+    });
+    const span = document.createElement('span');
+    span.textContent = tr(`circle.settings.app.${app}`);
+    row.append(box, span);
+    appsSection.appendChild(row);
+  }
+  container.appendChild(appsSection);
 
   // Axes 2-5 — single-choice radio groups
   for (const axis of ENUM_AXES) {

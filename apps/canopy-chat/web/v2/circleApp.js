@@ -482,6 +482,8 @@ let circleBot = null;            // createCircleDispatch instance (handle(text, 
 let circleFeedbackMount = null;  // createFeedbackMount (tryHandle(text, threadId))
 let circleClarify = null;        // createClarifyingDispatch (for candidate-button picks, later)
 let circleCatalog = null;        // the merged dispatch catalog (built in buildCircleBot) — feeds the composer slash-suggest
+let circleActiveApps = null;     // S6.C deep — the active circle's policy.apps (null = all); narrows the catalog
+let circleRescopeCatalog = null; // re-scope the catalog to circleActiveApps (set in buildCircleBot, called by showKring)
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
 let circleEmbedButtonTap = null; // S6.A — dispatch an inline embed button {opId,itemId} from a bot reply
 // S6.C — per-user surface preference (inline / screen / minimal); hydrated at boot.
@@ -599,10 +601,22 @@ function buildCircleBot(agent) {
   // per-circle scope is a later refinement.)
   let mappingOrigins = [];
   const mappingsStore = localStorageMappingsStore();   // V0 web store; swap for a pseudo-pod at P3 3.3c
-  const allowedApps = () => (mappingOrigins.length ? [...DEFAULT_CIRCLE_ORIGINS, ...mappingOrigins] : undefined);
+  // S6.C deep — base scope = the 5 circle apps (+ accepted extension mappings); the
+  // active circle's policy.apps narrows it further (intersection), so a circle can
+  // compose only the apps it uses. null/empty policy.apps → all (no dead circles).
+  const allowedApps = () => {
+    const base = [...DEFAULT_CIRCLE_ORIGINS, ...mappingOrigins];
+    if (Array.isArray(circleActiveApps) && circleActiveApps.length) {
+      const want = new Set(circleActiveApps);
+      const scoped = base.filter((a) => want.has(a));
+      if (scoped.length) return scoped;
+    }
+    return mappingOrigins.length ? base : undefined;   // undefined → scopeCatalogToApps uses DEFAULT_CIRCLE_ORIGINS
+  };
   let catalog = scopeCatalogToApps(filterCatalog(rawCatalog, appRegistry), allowedApps());
   circleCatalog = catalog;        // expose to showKring's composer (slash-suggest)
   const rescopeCatalog = () => { catalog = scopeCatalogToApps(filterCatalog(rawCatalog, appRegistry), allowedApps()); circleCatalog = catalog; };
+  circleRescopeCatalog = rescopeCatalog;   // S6.C — showKring calls this on circle-open to apply policy.apps
   appRegistry.subscribe(rescopeCatalog);
   // Extension mappings (feedback-extension P2c) — scanned from the V0 localStorage store, verified against the
   // base catalog (sandbox-by-construction: a mapping referencing an unknown opId is refused), then merged in +
@@ -1708,6 +1722,10 @@ async function showDetail(id) {
 // chat-message event scoped to this circle.  Inbound peer broadcast
 // + slash-command parsing land in SP-13.2.1.
 function showKring(id, circle, policy) {
+  // S6.C deep — scope the bot catalog (tools + slash-suggest) to the apps THIS
+  // circle composes (policy.apps); null = all. Re-scopes on every circle-open.
+  circleActiveApps = Array.isArray(policy?.apps) ? policy.apps : null;
+  try { circleRescopeCatalog?.(); } catch { /* catalog stays at the previous scope */ }
   const allowRules   = isFeatureEnabled(policy, 'houseRules');
   const allowViewAs  = isFeatureEnabled(policy, 'memberDirectory');
   const allowFiles   = isFeatureEnabled(policy, 'lists') || isFeatureEnabled(policy, 'notes');

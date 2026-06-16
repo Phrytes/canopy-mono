@@ -33,6 +33,18 @@ describe('circlePolicy · normalizeCirclePolicy', () => {
   it('keeps only string admins', () => {
     expect(normalizeCirclePolicy({ admins: ['a', 2, null, 'b'] }).admins).toEqual(['a', 'b']);
   });
+
+  it('S6.C — policy.apps defaults to null (all apps) + keeps a string list', () => {
+    expect(normalizeCirclePolicy().apps).toBeNull();
+    expect(normalizeCirclePolicy({ apps: ['stoop', 'tasks-v0'] }).apps).toEqual(['stoop', 'tasks-v0']);
+    expect(normalizeCirclePolicy({ apps: ['stoop', 7, null] }).apps).toEqual(['stoop']);   // strings only
+    expect(normalizeCirclePolicy({ apps: 'nope' }).apps).toBeNull();                        // non-array → all
+  });
+
+  it('S6.C — a policy.apps edit replaces the list (not per-key merge like features)', () => {
+    const merged = mergeCirclePolicy({ apps: ['stoop', 'tasks-v0'] }, { apps: ['stoop'] });
+    expect(merged.apps).toEqual(['stoop']);
+  });
 });
 
 describe('circlePolicy · isFeatureEnabled (P6.1)', () => {
