@@ -23,7 +23,8 @@ export function renderCircleMyData(container, {
   onRestore,
   notifications,
   onToggleNotifications,
-  surfacePref,            // S6.C — current 'inline' | 'screen' | 'minimal'
+  surfacePref,            // S6.C — current 'inline' | 'screen' | 'chat'
+  chatAi,                 // S6.D — { enriched, reason } for the active circle (shown under "chat")
   onSetSurfacePref,       // (value) => void
 } = {}) {
   if (!container) return container;
@@ -114,7 +115,7 @@ export function renderCircleMyData(container, {
   if (typeof onSetSurfacePref === 'function') {
     const sec = section(tr('circle.mydata.surface_pref'));
     const current = surfacePref || 'inline';
-    for (const opt of ['inline', 'screen', 'minimal']) {
+    for (const opt of ['inline', 'screen', 'chat']) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = `cc-mydata__pref${opt === current ? ' is-active' : ''}`;
@@ -122,6 +123,15 @@ export function renderCircleMyData(container, {
       b.textContent = tr(`circle.mydata.surface_pref_${opt}`);
       b.addEventListener('click', () => onSetSurfacePref(opt));
       sec.appendChild(b);
+    }
+    // S6.D — when "chat" is chosen, show whether AI is enriching it here (chat works
+    // without AI; this just tells you if your LLM is helping, or why not).
+    if (current === 'chat' && chatAi && chatAi.reason) {
+      const note = document.createElement('p');
+      note.className = 'cc-mydata__chat-ai';
+      const keyByReason = { on: 'chat_ai_on', 'circle-off': 'chat_ai_circle_off', 'no-llm': 'chat_ai_no_llm', 'no-provider': 'chat_ai_no_provider' };
+      note.textContent = `${chatAi.enriched ? '✨ ' : ''}${tr(`circle.mydata.${keyByReason[chatAi.reason] ?? 'chat_ai_no_provider'}`)}`;
+      sec.appendChild(note);
     }
     container.appendChild(sec);
   }

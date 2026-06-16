@@ -73,6 +73,8 @@ import { encodeImageFile } from '../../src/v2/attachmentEncoder.js';
 import { embedButtonsForReply } from '../../src/v2/replyEmbeds.js';
 // S6.C — per-user preference selecting which projection (inline / screen / minimal) renders.
 import { selectSurfaceButtons, createSurfacePrefStore, localStorageSurfacePrefIo, SURFACE_PREFS } from '../../src/v2/surfacePref.js';
+// S6.D — is the conversational "chat" projection enriched by an LLM here? (user-loaded LLM + circle permits)
+import { resolveChatAi } from '../../src/v2/chatAi.js';
 // S6.C (per-circle) — gate an app's surfaces by the circle's policy.features.
 import { isAppSurfaceEnabled } from '../../src/v2/appFeature.js';
 import { renderContactThread } from './contactThread.js';
@@ -1536,7 +1538,22 @@ async function showMyData() {
   };
   // S6.C — surface preference (how the bot shows actions); set updates the store + repaints.
   const onSetSurfacePref = (v) => { circleSurfacePref.set(v).then(rerender).catch(() => {}); };
-  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref });
+  // S6.D — is the conversational "chat" projection AI-enriched in THIS circle?
+  // (user-loaded LLM + circle policy.llmTool + a configured provider).
+  let chatAi = { enriched: false, reason: 'no-provider' };
+  (async () => {
+    try {
+      const pol = await policyStore.get(getActiveCircle());
+      const userLlm = await createUserLlmDefaultStore(localStorageUserLlmIo()).get();
+      chatAi = resolveChatAi({
+        circleLlmTool: pol?.llmTool ?? CIRCLE_LLM_POLICY,
+        userLlmMode: userLlm?.mode,
+        hasProvider: !!CIRCLE_LLM_BASEURL,
+      });
+      rerender();
+    } catch { /* keep the safe default */ }
+  })();
+  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref, chatAi });
   getWebPushState().then((s) => { notifications = s; rerender(); }).catch(() => {});
   rerender();
   const [loc, status, priv, met] = await Promise.all([

@@ -16,7 +16,11 @@
  * Pure + a tiny pluggable store, so it's unit-testable + shared web↔mobile.
  */
 
-export const SURFACE_PREFS = Object.freeze(['inline', 'screen', 'minimal']);
+// 'chat' is the conversational projection: no fixed buttons — you talk to the bot,
+// which is *potentially enriched by an LLM* (the user can load one that powers all
+// in-app chat; a circle may forbid it — see chatAi.js). It subsumes the old bare
+// "minimal" (chat with no LLM available degrades to plain text replies).
+export const SURFACE_PREFS = Object.freeze(['inline', 'screen', 'chat']);
 export const DEFAULT_SURFACE_PREF = 'inline';
 
 /** Normalize an arbitrary value to a known preference. */
@@ -30,12 +34,12 @@ export function normalizeSurfacePref(value) {
  * @param {object} args
  * @param {Array}  [args.inlineButtons]  per-item dispatch buttons (S6.A)
  * @param {Array}  [args.screenButton]   0..1 open-screen button (S6.B)
- * @param {string} [args.pref]           'inline' | 'screen' | 'minimal'
+ * @param {string} [args.pref]           'inline' | 'screen' | 'chat'
  * @returns {Array} the buttons to put on payload.buttons
  */
 export function selectSurfaceButtons({ inlineButtons = [], screenButton = [], pref } = {}) {
   const p = normalizeSurfacePref(pref);
-  if (p === 'minimal') return [];
+  if (p === 'chat') return [];   // conversational — no fixed buttons; the bot guides you (LLM-enriched when available)
   if (p === 'screen') return screenButton.length ? [...screenButton] : [...inlineButtons];
   return [...screenButton, ...inlineButtons];   // inline (default)
 }

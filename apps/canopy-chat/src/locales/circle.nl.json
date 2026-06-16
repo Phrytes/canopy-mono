@@ -1830,7 +1830,11 @@
     "surface_pref":         { "text": "Hoe de bot acties toont", "doc": "S6.C — surface-preference section heading." },
     "surface_pref_inline":  { "text": "Knoppen in de chat", "doc": "S6.C — inline buttons on replies." },
     "surface_pref_screen":  { "text": "Een scherm openen", "doc": "S6.C — prefer an overview panel." },
-    "surface_pref_minimal": { "text": "Alleen tekst", "doc": "S6.C — no buttons; type or ask." }
+    "surface_pref_chat":    { "text": "In gesprek", "doc": "S6.D — no buttons; talk to the bot (LLM-enriched when available)." },
+    "chat_ai_on":      { "text": "AI helpt je chat in deze kring.", "doc": "S6.D — chat LLM enrichment is on." },
+    "chat_ai_circle_off": { "text": "Deze kring staat geen AI in de chat toe.", "doc": "S6.D — circle policy.llmTool = off." },
+    "chat_ai_no_llm":  { "text": "Laad een LLM in instellingen om AI je chat te laten helpen.", "doc": "S6.D — user hasn't loaded an LLM." },
+    "chat_ai_no_provider": { "text": "Er is geen AI-model ingesteld.", "doc": "S6.D — no provider endpoint." }
   },
   "admin": {
     "title":      { "text": "Beheer", "doc": "S3 — group admin panel title + ⋯ menu entry." },

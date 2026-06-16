@@ -24,8 +24,8 @@ describe('selectSurfaceButtons', () => {
   it('screen with no screen surface falls back to inline buttons', () => {
     expect(selectSurfaceButtons({ inlineButtons: inline, screenButton: [], pref: 'screen' })).toEqual(inline);
   });
-  it('minimal: no buttons (text/AI only)', () => {
-    expect(selectSurfaceButtons({ inlineButtons: inline, screenButton: screen, pref: 'minimal' })).toEqual([]);
+  it('chat: no buttons (text/AI only)', () => {
+    expect(selectSurfaceButtons({ inlineButtons: inline, screenButton: screen, pref: 'chat' })).toEqual([]);
   });
 });
 
@@ -45,9 +45,9 @@ describe('createSurfacePrefStore', () => {
     expect(store.get()).toBe('inline');               // pre-hydrate default
     expect(await store.hydrate()).toBe('screen');
     expect(store.get()).toBe('screen');
-    await store.set('minimal');
-    expect(store.get()).toBe('minimal');
-    expect(io.set).toHaveBeenCalledWith('minimal');
+    await store.set('chat');
+    expect(store.get()).toBe('chat');
+    expect(io.set).toHaveBeenCalledWith('chat');
     await store.set('garbage');                        // normalized
     expect(store.get()).toBe('inline');
   });

@@ -107,10 +107,28 @@ describe('renderCircleMyData', () => {
       t, surfacePref: 'screen', onSetSurfacePref,
     });
     const prefs = [...el.querySelectorAll('.cc-mydata__pref')].map((b) => b.dataset.pref);
-    expect(prefs).toEqual(['inline', 'screen', 'minimal']);
+    expect(prefs).toEqual(['inline', 'screen', 'chat']);
     expect(el.querySelector('.cc-mydata__pref.is-active').dataset.pref).toBe('screen');
-    el.querySelector('[data-pref="minimal"]').click();
-    expect(onSetSurfacePref).toHaveBeenCalledWith('minimal');
+    el.querySelector('[data-pref="chat"]').click();
+    expect(onSetSurfacePref).toHaveBeenCalledWith('chat');
+  });
+
+  it('S6.D — under "chat", shows whether AI is enriching the conversation', () => {
+    const onChat = renderCircleMyData(document.createElement('div'), {
+      t, surfacePref: 'chat', onSetSurfacePref: () => {}, chatAi: { enriched: true, reason: 'on' },
+    });
+    expect(onChat.querySelector('.cc-mydata__chat-ai').textContent).toContain('circle.mydata.chat_ai_on');
+
+    const offCircle = renderCircleMyData(document.createElement('div'), {
+      t, surfacePref: 'chat', onSetSurfacePref: () => {}, chatAi: { enriched: false, reason: 'circle-off' },
+    });
+    expect(offCircle.querySelector('.cc-mydata__chat-ai').textContent).toContain('circle.mydata.chat_ai_circle_off');
+
+    // not shown when chat isn't the selected projection
+    const onInline = renderCircleMyData(document.createElement('div'), {
+      t, surfacePref: 'inline', onSetSurfacePref: () => {}, chatAi: { enriched: true, reason: 'on' },
+    });
+    expect(onInline.querySelector('.cc-mydata__chat-ai')).toBeNull();
   });
 
   it('omits the surface-preference selector when no setter is wired', () => {
