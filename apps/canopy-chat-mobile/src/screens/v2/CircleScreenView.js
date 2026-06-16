@@ -23,13 +23,13 @@
  * a screen yet").
  */
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { featureActionLabelKey } from '@canopy-app/canopy-chat';
-import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../../../canopy-chat/src/v2/embedChips.js';
+import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../../../canopy-chat/src/v2/embedChips.js';
 import { theme } from './theme.js';
 import { t } from '../../core/localisation.js';
 
-export default function CircleScreenView({ blocks = null, refreshing = false, onAction }) {
+export default function CircleScreenView({ blocks = null, refreshing = false, onAction, onEmbedOpen }) {
   // null = still materializing (host hasn't resolved yet).  Distinguish
   // from `[]` so the user sees a "Loading…" hint instead of the
   // "admin hasn't set up a screen yet" empty state — which is
@@ -63,13 +63,13 @@ export default function CircleScreenView({ blocks = null, refreshing = false, on
         </Text>
       ) : null}
       {blocks.map((block) => (
-        <BlockSection key={block.blockId} block={block} onAction={onAction} />
+        <BlockSection key={block.blockId} block={block} onAction={onAction} onEmbedOpen={onEmbedOpen} />
       ))}
     </View>
   );
 }
 
-function BlockSection({ block, onAction }) {
+function BlockSection({ block, onAction, onEmbedOpen }) {
   const baseStyle = [styles.block, styles[`block_${block.type}`] ?? null];
 
   if (block.status === 'error') {
@@ -97,7 +97,7 @@ function BlockSection({ block, onAction }) {
     case 'photo':        body = renderPhoto(block); break;
     case 'noticeboard':  body = renderNoticeboard(block); break;
     case 'agenda':       body = renderAgenda(block); break;
-    case 'tasks':        body = renderTasks(block); break;
+    case 'tasks':        body = renderTasks(block, onEmbedOpen); break;
     case 'rules':        body = renderRules(block); break;
     default:
       body = <Text style={styles.blockEmptyText}>{t('circle.screen.block_unknown', { type: block.type })}</Text>;
@@ -197,7 +197,7 @@ function renderAgenda(block) {
   );
 }
 
-function renderTasks(block) {
+function renderTasks(block, onEmbedOpen) {
   const items = block.content?.items ?? [];
   const isCompact = block.config?.compact === true;
   const rowStyle    = isCompact ? styles.taskRowCompact    : styles.taskRow;
@@ -218,9 +218,17 @@ function renderTasks(block) {
                   const typeKey = embedTypeLabelKey(e.type);
                   const typeLabel = t(typeKey);
                   const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
-                  return (
+                  const screen = screenForEmbedType(e.type);
+                  const tappable = !!(screen && typeof onEmbedOpen === 'function');
+                  const label = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
+                  return tappable ? (
+                    <Pressable key={e.ref} style={styles.embed} testID={`task-embed-${e.ref}`}
+                      onPress={() => onEmbedOpen({ type: e.type, ref: e.ref, screen })}>
+                      <Text style={styles.embedText}>{label}</Text>
+                    </Pressable>
+                  ) : (
                     <View key={e.ref} style={styles.embed} testID={`task-embed-${e.ref}`}>
-                      <Text style={styles.embedText}>{`${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`}</Text>
+                      <Text style={styles.embedText}>{label}</Text>
                     </View>
                   );
                 })}

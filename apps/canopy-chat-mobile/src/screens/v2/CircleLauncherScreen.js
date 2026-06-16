@@ -69,7 +69,7 @@ import {
 // v2 modules (kringChatReceiver etc.) since they're not on the canopy-chat barrel.
 // S6.A — manifest-driven inline buttons on bot replies (the resurrected inline menu), shared with web.
 import { embedButtonsForReply, embedsFromReply } from '../../../../canopy-chat/src/v2/replyEmbeds.js';
-import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../../../canopy-chat/src/v2/embedChips.js';
+import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../../../canopy-chat/src/v2/embedChips.js';
 import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 // S6.B/C — open-screen surface + per-circle gate (shared with web).
 import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.js';
@@ -1996,11 +1996,13 @@ function CircleDetail({
           // α.1e — render the materialized recipe blocks.  CircleScreenView
           // handles per-block status (ok / empty / error) + top-level
           // empty-state when no recipe is set up yet.
-          <CircleScreenView blocks={screenBlocks} onAction={onScreenAction} />
+          <CircleScreenView blocks={screenBlocks} onAction={onScreenAction}
+            onEmbedOpen={({ screen }) => { if (screen) setScreenPanel({ screen }); }} />
         ) : activeTab === 'prikbord' ? (
           // S1 #1 — the buurt noticeboard (its own composer + post list), scoped to
           // the open circle (S4 per-circle restructure — see stoopCall above).
-          <CircleNoticeboard callSkill={stoopCall} onStoopEvent={bundle?.onStoopEvent} />
+          <CircleNoticeboard callSkill={stoopCall} onStoopEvent={bundle?.onStoopEvent}
+            onEmbedOpen={({ screen }) => { if (screen) setScreenPanel({ screen }); }} />
         ) : activeTab !== 'gesprek' ? (
           <Text style={styles.placeholder}>
             {t('circle.kring.tab_coming', { tab: t(`circle.tabs.${activeTab}`) })}
@@ -2013,6 +2015,8 @@ function CircleDetail({
             localActor: 'me',
             onRetryDelivery,
             onBubbleButton,
+            // tap a "See also" embed chip → open the item's screen panel (S6.B).
+            onEmbedOpen: ({ screen }) => { if (screen) setScreenPanel({ screen }); },
           })
         )}
       </ScrollView>
@@ -2030,7 +2034,8 @@ function CircleDetail({
               </Pressable>
             </View>
             <ScrollView>
-              <CircleScreenView blocks={panelBlocks} />
+              <CircleScreenView blocks={panelBlocks}
+                onEmbedOpen={({ screen }) => { if (screen) setScreenPanel({ screen }); }} />
             </ScrollView>
           </View>
         </View>
@@ -2197,9 +2202,18 @@ function renderBubble(row, t, deliveryOpts = null) {
             const typeKey = embedTypeLabelKey(e.type);
             const typeLabel = t(typeKey);
             const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
-            return (
+            const screen = screenForEmbedType(e.type);
+            const onEmbedOpen = deliveryOpts?.onEmbedOpen;
+            const tappable = !!(screen && typeof onEmbedOpen === 'function');
+            const label = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
+            return tappable ? (
+              <Pressable key={e.ref} style={styles.bubbleEmbed} testID={`kring-embed-${e.ref}`}
+                onPress={() => onEmbedOpen({ type: e.type, ref: e.ref, screen })}>
+                <Text style={styles.bubbleEmbedText}>{label}</Text>
+              </Pressable>
+            ) : (
               <View key={e.ref} style={styles.bubbleEmbed} testID={`kring-embed-${e.ref}`}>
-                <Text style={styles.bubbleEmbedText}>{`${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`}</Text>
+                <Text style={styles.bubbleEmbedText}>{label}</Text>
               </View>
             );
           })}

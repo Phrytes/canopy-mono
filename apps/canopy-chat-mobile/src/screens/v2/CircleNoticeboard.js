@@ -14,12 +14,12 @@ import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { pickAndEncodeImage } from '../../v2/attachmentPicker.js';
 // embeds[] — cross-object reference chips ("See also"), shared with web.
-import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../../../canopy-chat/src/v2/embedChips.js';
+import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../../../canopy-chat/src/v2/embedChips.js';
 import { enrichEmbedsWithTitles } from '../../../../canopy-chat/src/v2/embedResolve.js';
 
 const INTENTS = ['ask', 'offer', 'lend'];
 
-export default function CircleNoticeboard({ callSkill, onStoopEvent }) {
+export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen }) {
   const [posts, setPosts] = useState([]);
   const [intent, setIntent] = useState('ask');
   const [text, setText] = useState('');
@@ -194,9 +194,17 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent }) {
                 const typeKey = embedTypeLabelKey(e.type);
                 const typeLabel = t(typeKey);
                 const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
-                return (
+                const screen = screenForEmbedType(e.type);
+                const tappable = !!(screen && typeof onEmbedOpen === 'function');
+                const label = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
+                return tappable ? (
+                  <Pressable key={e.ref} style={styles.embed} testID={`nb-embed-${e.ref}`}
+                    onPress={() => onEmbedOpen({ type: e.type, ref: e.ref, screen })}>
+                    <Text style={styles.embedText}>{label}</Text>
+                  </Pressable>
+                ) : (
                   <View key={e.ref} style={styles.embed} testID={`nb-embed-${e.ref}`}>
-                    <Text style={styles.embedText}>{`${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`}</Text>
+                    <Text style={styles.embedText}>{label}</Text>
                   </View>
                 );
               })}
