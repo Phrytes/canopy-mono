@@ -235,7 +235,7 @@ async function materializeAgenda(block, { callSkill } = {}) {
  *   'all'            — every open task in the crew
  * Caps to limit, returns `{items: [{id, text, state, assignee, circleId}]}`.
  */
-async function materializeTasks(block, circleId, { callSkill, myWebid } = {}) {
+async function materializeTasks(block, circleId, { callSkill, myWebid, fetchImpl } = {}) {
   const limit = clampInt(block.config?.limit, 1, 100, 10);
   const scope = block.config?.scope === 'all' ? 'all' : 'assigned-to-me';
   if (typeof callSkill !== 'function' || !circleId) {
@@ -257,10 +257,11 @@ async function materializeTasks(block, circleId, { callSkill, myWebid } = {}) {
     embeds:   Array.isArray(t.embeds) ? t.embeds
               : (Array.isArray(t.source?.embeds) ? t.source.embeds : []),
   }));
-  // Resolve embed refs to live titles (crewId = circle id). Best-effort.
+  // Resolve embed refs to live titles (crewId = circle id; fetchImpl = the pod
+  // session's authed fetch, for the user's own private cross-pod refs). Best-effort.
   items = await Promise.all(items.map(async (it) => (
     it.embeds.length
-      ? { ...it, embeds: await enrichEmbedsWithTitles({ callSkill, embeds: it.embeds, crewId: circleId }) }
+      ? { ...it, embeds: await enrichEmbedsWithTitles({ callSkill, embeds: it.embeds, crewId: circleId, fetchImpl }) }
       : it
   )));
   return {

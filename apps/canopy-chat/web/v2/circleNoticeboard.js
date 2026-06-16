@@ -181,7 +181,7 @@ export function renderCircleNoticeboard(container, {
       wrap.appendChild(heading);
       for (const e of embeds) {
         const screen = screenForEmbedType(e.type);
-        const tappable = !!(screen && typeof onEmbedOpen === 'function');
+        const tappable = !!(screen && !e.locked && typeof onEmbedOpen === 'function');
         const chip = document.createElement(tappable ? 'button' : 'span');
         if (tappable) chip.type = 'button';
         chip.className = `cc-prikbord__embed cc-prikbord__embed--${e.type}${tappable ? ' cc-prikbord__embed--tappable' : ''}`;

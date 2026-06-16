@@ -115,6 +115,24 @@ describe('enrichEmbedsWithTitles', () => {
     expect(out[1]).toEqual({ type: 'note', ref: 'n' });   // untouched
   });
 
+  it('attaches denied:true for an ACP-protected (403) cross-pod ref', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: false, status: 403 }));
+    const out = await enrichEmbedsWithTitles({
+      callSkill: vi.fn(), fetchImpl,
+      embeds: [{ type: 'task', ref: 'https://alice.pod/secret.json' }],
+    });
+    expect(out[0]).toEqual({ type: 'task', ref: 'https://alice.pod/secret.json', denied: true });
+  });
+
+  it('with an AUTHED fetch, a protected ref resolves to its title (no denial)', async () => {
+    const authedFetch = vi.fn(async () => ({ ok: true, json: async () => ({ text: 'My private task' }) }));
+    const out = await enrichEmbedsWithTitles({
+      callSkill: vi.fn(), fetchImpl: authedFetch,
+      embeds: [{ type: 'task', ref: 'https://me.pod/items/T.json' }],
+    });
+    expect(out[0]).toEqual({ type: 'task', ref: 'https://me.pod/items/T.json', title: 'My private task' });
+  });
+
   it('passes an empty/blank list straight through', async () => {
     expect(await enrichEmbedsWithTitles({ callSkill: vi.fn(), embeds: [] })).toEqual([]);
     expect(await enrichEmbedsWithTitles({ callSkill: vi.fn(), embeds: null })).toEqual([]);

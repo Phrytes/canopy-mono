@@ -283,7 +283,7 @@ function renderTasks(section, block, tr, onEmbedOpen, highlightRef) {
       wrap.className = 'circle-screen__embeds';
       for (const e of embeds) {
         const screen = screenForEmbedType(e.type);
-        const tappable = !!(screen && typeof onEmbedOpen === 'function');
+        const tappable = !!(screen && !e.locked && typeof onEmbedOpen === 'function');
         const chip = document.createElement(tappable ? 'button' : 'span');
         if (tappable) chip.type = 'button';
         chip.className = `circle-screen__embed circle-screen__embed--${e.type}${tappable ? ' circle-screen__embed--tappable' : ''}`;

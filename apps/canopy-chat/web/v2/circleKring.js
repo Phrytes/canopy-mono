@@ -504,7 +504,7 @@ function renderBubble(row, {
     wrap.appendChild(heading);
     for (const e of msgEmbeds) {
       const screen = screenForEmbedType(e.type);
-      const tappable = !!(screen && typeof onEmbedOpen === 'function');
+      const tappable = !!(screen && !e.locked && typeof onEmbedOpen === 'function');
       const chip = document.createElement(tappable ? 'button' : 'span');
       if (tappable) chip.type = 'button';
       chip.className = `circle-kring__embed circle-kring__embed--${e.type}${tappable ? ' circle-kring__embed--tappable' : ''}`;

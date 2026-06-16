@@ -62,16 +62,23 @@ export function embedChipsOf(item) {
     : (Array.isArray(item?.source?.embeds) ? item.source.embeds : []);
   return raw
     .filter((e) => e && typeof e === 'object' && e.type && e.ref)
-    .map((e) => ({
-      type:  String(e.type),
-      ref:   String(e.ref),
-      icon:  EMBED_TYPE_ICON[e.type] ?? '🔗',
-      // Display label, best → worst: a RESOLVED live title (embedResolve) → the
-      // embed's own stored label → null (renderer falls back to a short ref).
-      label: pickLabel(e),
-      // whether `label` is a resolved live title (vs a stored label / null).
-      resolved: !!(e.title && String(e.title).trim()),
-    }));
+    .map((e) => {
+      // `denied` (embedResolve): an ACP-protected cross-pod ref you can't read →
+      // a 🔒 placeholder chip, non-tappable (nothing to open).
+      const locked = !!e.denied;
+      return {
+        type:  String(e.type),
+        ref:   String(e.ref),
+        icon:  locked ? '🔒' : (EMBED_TYPE_ICON[e.type] ?? '🔗'),
+        // Display label, best → worst: a RESOLVED live title (embedResolve) → the
+        // embed's own stored label → null (renderer falls back to a short ref).
+        label: pickLabel(e),
+        // whether `label` is a resolved live title (vs a stored label / null).
+        resolved: !!(e.title && String(e.title).trim()),
+        // a locked chip is informational only — the renderers don't make it tappable.
+        locked,
+      };
+    });
 }
 
 function pickLabel(e) {

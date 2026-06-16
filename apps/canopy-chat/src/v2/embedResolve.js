@@ -54,36 +54,35 @@ function titleFromItemBody(body) {
 }
 
 /**
- * Resolve a public cross-pod HTTP ref to a title by fetching its JSON body.
- * Best-effort + graceful: any non-ok response or throw → null (the chip keeps
- * its ref). NOTE: a PERMISSION_DENIED (401/403 ACP-protected) placeholder (🔒)
- * is DEFERRED to a follow-up; today such refs resolve to null like any miss.
- * @returns {Promise<string|null>}
+ * Resolve a cross-pod HTTP ref to a result by fetching its JSON body.
+ * Best-effort + graceful. Returns `{ title }` on success, `{ denied: true }` for
+ * an ACP-protected ref (401/403 — you can't read it; the chip shows a 🔒
+ * placeholder), or `null` for any other miss / throw (chip keeps its ref).
+ * @returns {Promise<{title:string}|{denied:true}|null>}
  */
-async function resolveCrossPodTitle(ref, fetchImpl) {
+async function resolveCrossPodResult(ref, fetchImpl) {
   if (typeof fetchImpl !== 'function') return null;   // no fetch available → skip, never throw
   try {
     const res = await fetchImpl(ref, { headers: { Accept: 'application/json' } });
-    if (!res || !res.ok) return null;                 // 401/403 ACP, 404, … → 🔒 placeholder deferred
-    const body = await res.json();
-    return titleFromItemBody(body);
+    if (res && (res.status === 401 || res.status === 403)) return { denied: true };   // 🔒 ACP-protected
+    if (!res || !res.ok) return null;                 // 404, etc. → keep the ref
+    const title = titleFromItemBody(await res.json());
+    return title ? { title } : null;
   } catch { /* network error / bad JSON → graceful null */ return null; }
 }
 
 /**
- * Resolve one embed to its live title, or null when unresolvable.
- * @param {object} a
- * @param {(app:string, op:string, args:object)=>Promise<any>} a.callSkill
- * @param {{type:string, ref:string}} a.embed
- * @param {string} [a.crewId]  the circle id (needed for task snapshots)
- * @param {(url:string, init?:object)=>Promise<any>} [a.fetchImpl]  injected fetch (defaults to globalThis.fetch)
- * @returns {Promise<string|null>}
+ * Resolve one embed → `{ title }` | `{ denied: true }` | `null`.
+ * Local task/calendar refs go through callSkill (→ {title}|null); cross-pod HTTP
+ * refs are fetched (→ {title}|{denied}|null). With the pod-session's AUTHED
+ * fetch passed in, the user's OWN private-pod refs resolve too; without it, only
+ * public refs resolve and protected ones come back `{denied}` (the 🔒 chip).
+ * @returns {Promise<{title:string}|{denied:true}|null>}
  */
-export async function resolveEmbedTitle({ callSkill, embed, crewId, fetchImpl = globalThis.fetch } = {}) {
+async function resolveEmbedResult({ callSkill, embed, crewId, fetchImpl = globalThis.fetch } = {}) {
   if (!embed || !embed.type || !embed.ref) return null;
-  // Cross-pod (public HTTP) refs resolve by fetching the item, regardless of type.
   if (/^https?:\/\//i.test(String(embed.ref))) {
-    return resolveCrossPodTitle(String(embed.ref), fetchImpl);
+    return resolveCrossPodResult(String(embed.ref), fetchImpl);
   }
   if (typeof callSkill !== 'function') return null;
   const r = RESOLVERS[embed.type];
@@ -94,7 +93,7 @@ export async function resolveEmbedTitle({ callSkill, embed, crewId, fetchImpl = 
       const snap = await callSkill(r.app, r.op, { id, ...(crewId ? { crewId } : {}) });
       if (snap && !snap.error) {
         const title = snap.title ?? snap.label ?? null;
-        if (title) return String(title);
+        if (title) return { title: String(title) };
       }
     } catch { /* try the next id form, else fall through to null */ }
   }
@@ -102,14 +101,27 @@ export async function resolveEmbedTitle({ callSkill, embed, crewId, fetchImpl = 
 }
 
 /**
- * Return a copy of `embeds` with a resolved `title` attached where possible.
- * Unresolved embeds pass through unchanged. Resolves concurrently.
+ * Resolve one embed to its live title, or null when unresolvable. (Title-only
+ * convenience; for the 🔒 denied signal use enrichEmbedsWithTitles.)
+ * @returns {Promise<string|null>}
+ */
+export async function resolveEmbedTitle(args = {}) {
+  const r = await resolveEmbedResult(args);
+  return r?.title ?? null;
+}
+
+/**
+ * Return a copy of `embeds` with a resolved `title` attached where possible, or
+ * `denied: true` for an ACP-protected cross-pod ref (→ a 🔒 chip). Unresolved
+ * embeds pass through unchanged. Resolves concurrently.
  * @returns {Promise<object[]>}
  */
 export async function enrichEmbedsWithTitles({ callSkill, embeds, crewId, fetchImpl = globalThis.fetch } = {}) {
   if (!Array.isArray(embeds) || embeds.length === 0) return Array.isArray(embeds) ? embeds : [];
   return Promise.all(embeds.map(async (e) => {
-    const title = await resolveEmbedTitle({ callSkill, embed: e, crewId, fetchImpl });
-    return title ? { ...e, title } : e;
+    const r = await resolveEmbedResult({ callSkill, embed: e, crewId, fetchImpl });
+    if (r?.title) return { ...e, title: r.title };
+    if (r?.denied) return { ...e, denied: true };
+    return e;
   }));
 }

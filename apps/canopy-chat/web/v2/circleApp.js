@@ -485,6 +485,10 @@ let circlesCache = [];
 let sources = {};
 let resolveCallSkill = null; // (opId, args) => Promise<object|null>
 let rawCallSkill = null;     // (appOrigin, opId, args) — for createGroupV2
+// The pod-session's AUTHED fetch (set on sign-in) — lets embed-ref resolution
+// read the user's OWN private-pod items; null when signed out → resolution falls
+// back to a public fetch (only public cross-pod refs resolve; protected → 🔒).
+let circleAuthedFetch = null;
 // S6.4 — the active circle's noticeboard reloader, so a stoop:attachment-fetched
 // event (recipient's full bytes arrived) can refresh whatever board is on screen.
 let noticeboardRefreshHook = null;
@@ -1691,7 +1695,7 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
   renderCircleScreen(body, { blocks: null, t });   // loading
   try {
     const block = { id: `panel-${screenId}`, type: screenId, config: { scope: 'all' } };
-    const mat = await materializeBlock({ block, circleId, hostOps: { callSkill: rawCallSkill, eventLog, circles: circlesCache } });
+    const mat = await materializeBlock({ block, circleId, hostOps: { callSkill: rawCallSkill, eventLog, circles: circlesCache, fetchImpl: circleAuthedFetch || undefined } });
     // highlightRef — when this panel was opened from a "See also" chip, scroll
     // to + flash the referenced item once its block has materialized.
     renderCircleScreen(body, { blocks: [mat], t, highlightRef });
@@ -1906,7 +1910,7 @@ function showKring(id, circle, policy) {
     let changed = false;
     await Promise.all(noticeboardPosts.map(async (p) => {
       if (!Array.isArray(p.embeds) || !p.embeds.length) return;
-      const enriched = await enrichEmbedsWithTitles({ callSkill: rawCallSkill, embeds: p.embeds, crewId });
+      const enriched = await enrichEmbedsWithTitles({ callSkill: rawCallSkill, embeds: p.embeds, crewId, fetchImpl: circleAuthedFetch || undefined });
       if (enriched.some((e) => e && e.title)) { p.embeds = enriched; changed = true; }
     }));
     if (changed) rerender();
@@ -2178,7 +2182,7 @@ function showKring(id, circle, policy) {
         // tasks/agenda scherm blocks, which had the same latent bug). `stoopCall`
         // keeps the 3-arg contract and scopes the noticeboard block to THIS circle
         // (non-stoop ops pass through unchanged).
-        hostOps:  { callSkill: stoopCall, eventLog, circles: circlesCache, policy, actionFrequency },
+        hostOps:  { callSkill: stoopCall, eventLog, circles: circlesCache, policy, actionFrequency, fetchImpl: circleAuthedFetch || undefined },
       });
       screenBlocks = blocks;
       if (getActiveCircle() === id) rerender();
@@ -2725,6 +2729,8 @@ async function boot() {
     podSession = (await podAuth.handleRedirect().catch(() => null)) || podAuth.getCurrentSession?.();
     const podRoot = podSession ? await discoverPodRoot(podSession).catch(() => null) : null;
     circleRealPodRouting = realPodRouting(podSession, { PodClient, SolidOidcAuth, podRoot });
+    // embed-ref resolution reads the user's own private-pod items with this fetch.
+    circleAuthedFetch = (podSession && typeof podSession.fetch === 'function') ? podSession.fetch : null;
     if (typeof window !== 'undefined') {
       window.canopyPodSession = podSession ?? null;               // debug / e2e seam
       window.canopyPodSignIn = (issuer) => podAuth.startSignIn({ issuer, redirectUrl: window.location.href });

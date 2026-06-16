@@ -11,14 +11,14 @@ describe('embedChipsOf', () => {
       { type: 'calendar-event', ref: 'evt-1' },
     ] });
     expect(chips).toEqual([
-      { type: 'task', ref: 'urn:dec:item:T2', icon: '✅', label: 'Anne onboarding', resolved: false },
-      { type: 'calendar-event', ref: 'evt-1', icon: '📅', label: null, resolved: false },
+      { type: 'task', ref: 'urn:dec:item:T2', icon: '✅', label: 'Anne onboarding', resolved: false, locked: false },
+      { type: 'calendar-event', ref: 'evt-1', icon: '📅', label: null, resolved: false, locked: false },
     ]);
   });
 
   it('reads stoop-legacy source.embeds when there is no top-level embeds', () => {
     const chips = embedChipsOf({ source: { embeds: [{ type: 'request', ref: 'P-solar' }] } });
-    expect(chips).toEqual([{ type: 'request', ref: 'P-solar', icon: '🙋', label: null, resolved: false }]);
+    expect(chips).toEqual([{ type: 'request', ref: 'P-solar', icon: '🙋', label: null, resolved: false, locked: false }]);
   });
 
   it('falls back to 🔗 for an unknown type (forward-compatible)', () => {
@@ -39,6 +39,12 @@ describe('embedChipsOf', () => {
     const chip = embedChipsOf({ embeds: [{ type: 'task', ref: 'T2', label: 'old', title: 'Fix the gate' }] })[0];
     expect(chip.label).toBe('Fix the gate');
     expect(chip.resolved).toBe(true);
+  });
+
+  it('a DENIED (ACP-protected) cross-pod embed → 🔒 icon + locked:true', () => {
+    const chip = embedChipsOf({ embeds: [{ type: 'task', ref: 'https://alice.pod/x.json', denied: true }] })[0];
+    expect(chip.icon).toBe('🔒');
+    expect(chip.locked).toBe(true);
   });
 });
 
