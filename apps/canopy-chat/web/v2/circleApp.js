@@ -80,6 +80,9 @@ import { resolveChatAi } from '../../src/v2/chatAi.js';
 // §4 storage-policy bridge — the circle `pod` axis drives stoop's authoritative
 // four-tier crew storage policy (admin-gated, one-way) instead of going nowhere.
 import { pushCircleStoragePolicy } from '../../src/v2/circleStoragePolicy.js';
+// Calendar cross-peer fan-out — wrap the dispatch callSkill so a successful
+// calendar op fans its invite/RSVP envelopes out over NKN (classic-shell parity).
+import { withCalendarOutbound } from '../../src/core/handlers/calendarOutbound.js';
 // Theme B — the settings chatbot: template-driven guided setup (remote-loadable, bundled fallback).
 import { renderGuidedSetup } from './guidedSetupPanel.js';
 import { startGuidedSetup, submitGuidedStep, guidedPolicyPatch, loadSettingsTemplate, DEFAULT_SETTINGS_TEMPLATE } from '../../src/v2/guidedSetup.js';
@@ -2698,15 +2701,16 @@ async function boot() {
 
   try {
     let eventSeq = 0;
+    const publishEventToLog = (e) => {
+      if (!e || typeof e !== 'object') return;
+      eventLog.append({
+        ...e,
+        id: e.id ?? `cc-${Date.now()}-${(eventSeq += 1).toString(36)}`,
+        ts: e.ts ?? Date.now(),
+      });
+    };
     const agent = await createRealHouseholdAgent({
-      publishEvent: (e) => {
-        if (!e || typeof e !== 'object') return;
-        eventLog.append({
-          ...e,
-          id: e.id ?? `cc-${Date.now()}-${(eventSeq += 1).toString(36)}`,
-          ts: e.ts ?? Date.now(),
-        });
-      },
+      publishEvent: publishEventToLog,
       stoopPersistDb: { dbName: 'cc-stoop-state', storeName: 'items' },
       stoopControlAgent: circleControlAgentRouter,   // S4 — multi-member sealing on redeem/leave
     });
@@ -2722,8 +2726,18 @@ async function boot() {
     // points at the active circle's loader.
     try { agent.onStoopEvent?.('stoop:attachment-fetched', () => { try { noticeboardRefreshHook?.(); } catch { /* */ } }); } catch { /* */ }
     if (typeof agent?.callSkill === 'function') {
-      rawCallSkill = agent.callSkill;
-      resolveCallSkill = makeResolvingCallSkill(agent.callSkill);
+      // Calendar cross-peer fan-out — wrap the bare callSkill so a successful
+      // calendar dispatch (schedule/RSVP) fans its invite/RSVP envelopes out
+      // over NKN, parity with the classic web shell. Gated on the peer
+      // transport being connected; a no-op otherwise.
+      rawCallSkill = withCalendarOutbound(agent.callSkill, {
+        sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload),
+        isPeerConnected: () => agent.peer?.status === 'connected',
+        publishEvent: publishEventToLog,
+      });
+      // Route the auto-resolving callSkill through the calendar-wrapped one too,
+      // so button-driven calendar dispatches fan out as well as the bot path.
+      resolveCallSkill = makeResolvingCallSkill(rawCallSkill);
       sources = circleSourcesFromAgent({ callSkill: resolveCallSkill, circlesStore: agent.circlesStore });
       // Phase 5 — build the kring composer's bot + feedback now that the agent (and its manifest) is up.
       try { buildCircleBot(agent); } catch (err) { console.warn('[circleApp] circle bot setup failed:', err?.message ?? err); }

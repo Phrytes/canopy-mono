@@ -45,6 +45,35 @@ const RSVP_OP_TO_RESPONSE = Object.freeze({
 });
 
 /**
+ * Wrap a platform `callSkill` so a SUCCESSFUL calendar dispatch fans its
+ * invite/RSVP envelopes out over the peer transport — the shared seam the v2
+ * web launcher AND mobile use (the classic web shell wires the same hook inline
+ * around its own callSkill wrapper). Non-calendar ops pass straight through.
+ *
+ * The hook's own `getEventSnapshot` lookups use the RAW (unwrapped) `callSkill`
+ * passed here, so there's no re-entrancy. Fan-out is gated on `isPeerConnected`
+ * — when the transport is down it's a logged no-op (you can still create events
+ * locally), exactly like the classic shell.
+ *
+ * @param {(appOrigin:string, opId:string, args?:object)=>Promise<*>} callSkill  the platform callSkill (raw)
+ * @param {object} deps  forwarded to makeCalendarOutboundHook (sendPeer, isPeerConnected, publishEvent, logger)
+ * @returns {(appOrigin:string, opId:string, args?:object)=>Promise<*>} a drop-in callSkill
+ */
+export function withCalendarOutbound(callSkill, deps = {}) {
+  if (typeof callSkill !== 'function') throw new Error('withCalendarOutbound: callSkill required');
+  const logger = deps.logger ?? console;
+  const hook = makeCalendarOutboundHook({ callSkill, ...deps, logger });
+  return async function callSkillWithCalendarOutbound(appOrigin, opId, args) {
+    const result = await callSkill(appOrigin, opId, args);
+    if (appOrigin === 'calendar') {
+      try { await hook(appOrigin, opId, args ?? {}, result); }
+      catch (err) { logger.warn?.('[calendar-outbound] hook failed', err); }
+    }
+    return result;
+  };
+}
+
+/**
  * @param {object} args
  * @param {(appOrigin: string, opId: string, args?: object) => Promise<*>} args.callSkill
  * @param {(addr: string, payload: object) => Promise<*>}                   args.sendPeer
