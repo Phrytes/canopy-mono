@@ -4324,20 +4324,60 @@ export function buildSkills({
      */
     defineSkill('triggerSelfPush', async ({ parts, from }) => {
       const a = dataArgs(parts);
-      if (!bundle.pushSender) return { error: 'push-disabled (no VAPID keys / sender)' };
+      // S6.6 — route each subscription to its sender: Expo tokens → expoPushSender,
+      // Web Push subscriptions → pushSender. Either may be absent.
+      if (!bundle.pushSender && !bundle.expoPushSender) return { error: 'push-disabled (no sender)' };
       const subs = bundle.pushRegistry.list(from);
       if (subs.length === 0) return { error: 'no-subscriptions' };
       const payload = {
-        title: a.title ?? 'Stoop',
+        title: a.title ?? 'Onderling',
         body:  a.body  ?? 'Test push',
       };
-      const results = await Promise.all(subs.map(s => bundle.pushSender.send(s, payload)));
+      const results = await Promise.all(subs.map((s) => {
+        const sender = s?.kind === 'expo' ? bundle.expoPushSender : bundle.pushSender;
+        if (!sender) return { ok: false, error: `no-sender-for-kind:${s?.kind ?? 'web'}` };
+        return sender.send(s, payload);
+      }));
       const ok    = results.filter(r => r?.ok).length;
       const fail  = results.length - ok;
       metrics?.record?.('push-self-triggered');
       return { delivered: ok, failed: fail };
     }, {
-      description: 'Send a test Web Push to all of my own subscriptions.',
+      description: 'Send a test push to all of my own subscriptions (Web Push + Expo).',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * subscribeExpoPush({ token })  — S6.6 (mobile-native push).
+     *   Register an Expo push token (`ExponentPushToken[…]`) against the
+     *   calling actor. Stored in the same PushRegistry as Web Push
+     *   subscriptions, tagged `kind: 'expo'` + keyed by a synthetic
+     *   `endpoint: 'expo:<token>'` so dedup/remove work uniformly.
+     */
+    defineSkill('subscribeExpoPush', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      const token = typeof a.token === 'string' ? a.token.trim() : '';
+      if (!token) return { error: 'expo push token required' };
+      const r = bundle.pushRegistry.add(from, { endpoint: `expo:${token}`, kind: 'expo', token });
+      metrics?.record?.('expo-push-subscribed');
+      return { ok: true, ...r };
+    }, {
+      description: 'Register an Expo push token for the calling actor (mobile-native push).',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * unsubscribeExpoPush({ token? })  — drop one Expo token, or all of
+     * mine when omitted.
+     */
+    defineSkill('unsubscribeExpoPush', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      const token = typeof a.token === 'string' ? a.token.trim() : '';
+      const r = bundle.pushRegistry.remove(from, token ? `expo:${token}` : undefined);
+      metrics?.record?.('expo-push-unsubscribed');
+      return { ok: true, ...r };
+    }, {
+      description: 'Drop one Expo push token (or all of mine).',
       visibility:  'authenticated',
     }),
 

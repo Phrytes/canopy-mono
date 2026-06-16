@@ -145,6 +145,11 @@ export async function createNeighborhoodAgent({
    */
   webPush,
   pushSender:    providedPushSender,
+  // S6.6 — mobile-native push. `expoPush` ({accessToken?}) builds an
+  // ExpoPushSender for delivering to Expo push tokens; tests may inject
+  // `expoPushSender` directly. Lazy (server-side only) like WebPushSender.
+  expoPush,
+  expoPushSender: providedExpoPushSender,
   dataLocationConfig,
   identity,
   transport,
@@ -388,6 +393,15 @@ export async function createNeighborhoodAgent({
     pushSender = new WebPushSender(webPush);
   }
 
+  // S6.6 — Expo push sender (mobile-native). Lazy + server-side only: built
+  // when `expoPush` is supplied so the in-browser/in-RN stoop (which never
+  // delivers) doesn't pull @canopy/relay. ExpoPushSender needs no keys.
+  let expoPushSender = providedExpoPushSender ?? null;
+  if (!expoPushSender && expoPush) {
+    const { ExpoPushSender } = await import('./lib/ExpoPushSender.js');
+    expoPushSender = new ExpoPushSender(expoPush === true ? {} : expoPush);
+  }
+
   // Stoop V2.5 Phase 35 (2026-05-06): build the eviction roster
   // BEFORE wiring chat (chat consumes it) and BEFORE skills register
   // (so the bundle exposes it).  Hydrate from any existing
@@ -439,6 +453,7 @@ export async function createNeighborhoodAgent({
     pushRegistry,                   // Phase 21 — Web-Push subscriptions per webid
     pushRegistryDetach,             // Phase 29.3 — call on shutdown to stop write-through
     pushSender,                     // Phase 21 — relay.PushSender (WebPushSender by default when webPush keys supplied)
+    expoPushSender,                 // S6.6 — relay.PushSender for Expo tokens (mobile-native), when expoPush supplied
     webPushPublicKey: webPush?.publicKey ?? null,
     interestProfile:       cache    // Phase 22 + 29.2 — TF-IDF profile (loaded + write-through when cache present)
       ? await InterestProfileCache.load({ dataSource: cache })

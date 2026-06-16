@@ -161,7 +161,7 @@ describe('Stoop V1.5 Phase 21 — push skills', () => {
   it('triggerSelfPush errors when push is disabled', async () => {
     const bundle = await buildBundle();
     expect(await callSkill(bundle.agent, 'triggerSelfPush', { body: 'x' }))
-      .toEqual({ error: 'push-disabled (no VAPID keys / sender)' });
+      .toEqual({ error: 'push-disabled (no sender)' });   // S6.6 — message now covers web + expo
   });
 
   it('triggerSelfPush errors when no subscriptions', async () => {
