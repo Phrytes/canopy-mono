@@ -33,6 +33,9 @@ import { loadVerifyMappings } from '../../../canopy-chat/src/v2/mappingsLoader.j
 // Shared contact/bot exposed-skill registry (feedback-extension P4) — web≡mobile core.
 import { createContactSkillRegistry } from '../../../canopy-chat/src/v2/contactSkillsLive.js';
 import { createContactThreadChannel } from '../../../canopy-chat/src/v2/contactThreadChannel.js';
+// Calendar cross-peer fan-out — wrap the bundle callSkill so a successful calendar
+// op fans its invite/RSVP envelopes out over the peer transport (web parity).
+import { withCalendarOutbound } from '../../../canopy-chat/src/core/handlers/calendarOutbound.js';
 import { sendA2ATask } from '../../../../packages/core/src/a2a/a2aTaskSend.js';
 import { PeerGraph } from '../../../../packages/core/src/discovery/PeerGraph.js';
 import { discoverA2A } from '../../../../packages/core/src/a2a/a2aDiscover.js';
@@ -367,6 +370,19 @@ export async function bootAgentBundle(opts = {}) {
   });
   const coreAgent = agent.sa?.agent ?? null;   // discoverA2A's hello/native-upgrade target
 
+  // Calendar cross-peer fan-out (web parity) — a successful calendar dispatch
+  // fans its invite/RSVP envelopes out over the peer transport. Gated on the
+  // transport being connected; a no-op otherwise. The hook's snapshot lookups
+  // use the raw agent.callSkill (no re-entrancy).
+  const callSkill = withCalendarOutbound(agent.callSkill, {
+    sendPeer: (addr, payload) =>
+      (typeof agent.sendPeerMessage === 'function'
+        ? agent.sendPeerMessage(addr, payload)
+        : Promise.reject(new Error('agent.sendPeerMessage unavailable'))),
+    isPeerConnected: () => agent.peer?.status === 'connected',
+    publishEvent: opts.publishEvent,
+  });
+
   // 5.9c — expose `mdns` as a live getter so the launcher reads the
   // current instance (initially null, populated when the async
   // connect() resolves a tick later).  Callers should not cache the
@@ -374,7 +390,7 @@ export async function bootAgentBundle(opts = {}) {
   return {
     catalog,
     manifestsByOrigin,
-    callSkill: agent.callSkill,
+    callSkill,
     agent,
     transport,
     contactSkills,
