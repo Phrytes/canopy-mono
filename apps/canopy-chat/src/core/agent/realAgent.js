@@ -1971,6 +1971,16 @@ export async function createRealHouseholdAgent(opts = {}) {
     // activates the already-built pod-routing write-through). Pass {podRoot, webid, fetch}.
     attachStoopPod: (opts) => (typeof stoopAgent?.attachPod === 'function' ? stoopAgent.attachPod(opts) : Promise.resolve({ ok: false })),
     detachStoopPod: () => stoopAgent?.detachPod?.(),
+    // S6.4 — subscribe to events the inner stoop agent emits (e.g.
+    // 'stoop:attachment-fetched' when a recipient's requested attachment bytes
+    // arrive over the 1:1 channel). The stoop agent extends core.Emitter
+    // (on/off). Returns an unsubscribe fn; a no-op when stoop isn't composed.
+    onStoopEvent: (event, handler) => {
+      const a = stoopAgent?.bundle?.agent;
+      if (!a || typeof a.on !== 'function' || typeof handler !== 'function') return () => {};
+      a.on(event, handler);
+      return () => { try { a.off?.(event, handler); } catch { /* defensive */ } };
+    },
     // Expose identity info for /me + /pod-status.  pubKeys are stable
     // across refreshes because identity is persisted to VaultLocalStorage.
     identity: {

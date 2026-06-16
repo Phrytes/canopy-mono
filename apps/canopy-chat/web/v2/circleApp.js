@@ -458,6 +458,9 @@ let circlesCache = [];
 let sources = {};
 let resolveCallSkill = null; // (opId, args) => Promise<object|null>
 let rawCallSkill = null;     // (appOrigin, opId, args) — for createGroupV2
+// S6.4 — the active circle's noticeboard reloader, so a stoop:attachment-fetched
+// event (recipient's full bytes arrived) can refresh whatever board is on screen.
+let noticeboardRefreshHook = null;
 
 // ── Phase 5 — circle bot + feedback in the kring composer ───────────────────────────────────────
 // Mirrors mobile CircleLauncherScreen on the SHARED engine: createCircleDispatch (gate→interpret→
@@ -1670,6 +1673,9 @@ function showKring(id, circle, policy) {
   }
   const shortWebid = (w) => (typeof w === 'string' && w ? (w.split(/[/#]/).filter(Boolean).pop() || w).slice(0, 18) : '');
 
+  // S6.4 — point the global attachment-fetched hook at THIS circle's reloader.
+  noticeboardRefreshHook = loadNoticeboard;
+
   async function loadNoticeboard() {
     try {
       await ensureMyWebid();
@@ -2492,6 +2498,10 @@ async function boot() {
         .then((r) => { if (!r?.ok && r?.error) console.warn('[circleApp] attachStoopPod:', r.error); })
         .catch(() => { /* best-effort; stays local-first */ });
     }
+    // S6.4 — refresh the on-screen noticeboard when a recipient's requested
+    // attachment bytes land (stoop:attachment-fetched). Subscribed once; the hook
+    // points at the active circle's loader.
+    try { agent.onStoopEvent?.('stoop:attachment-fetched', () => { try { noticeboardRefreshHook?.(); } catch { /* */ } }); } catch { /* */ }
     if (typeof agent?.callSkill === 'function') {
       rawCallSkill = agent.callSkill;
       resolveCallSkill = makeResolvingCallSkill(agent.callSkill);
