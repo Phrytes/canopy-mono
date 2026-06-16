@@ -3661,7 +3661,7 @@ export function buildSkills({
      *   local (we authored the post, or already fetched), returns
      *   `{ok: true, ref}` immediately.
      */
-    defineSkill('requestAttachment', async ({ parts }) => {
+    defineSkill('requestAttachment', async ({ parts, from, agent }) => {
       const a = dataArgs(parts);
       if (typeof a.itemId !== 'string' || !a.itemId) return { error: 'itemId required' };
       if (typeof a.attId  !== 'string' || !a.attId)  return { error: 'attId required' };
