@@ -2732,7 +2732,9 @@ async function boot() {
       // transport being connected; a no-op otherwise.
       rawCallSkill = withCalendarOutbound(agent.callSkill, {
         sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload),
-        isPeerConnected: () => agent.peer?.status === 'connected',
+        // transport-NEUTRAL: true if NKN OR relay is up (sendPeerMessage routes
+        // over whichever; keying on peer.status alone wrongly skips on relay).
+        isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
         publishEvent: publishEventToLog,
       });
       // Route the auto-resolving callSkill through the calendar-wrapped one too,

@@ -2012,6 +2012,16 @@ export async function createRealHouseholdAgent(opts = {}) {
     // A1 (2026-05-23) — second cross-peer transport: WebSocket relay.
     // Symmetric to .peer; main.js + the /set-relay slash use these.
     relay: sa.relay,
+
+    // Transport-NEUTRAL reachability — true when ANY peer transport can carry a
+    // message (NKN `.peer` OR the WebSocket `.relay`; sendPeerMessage already
+    // picks whichever is up via the core RoutingStrategy). Callers that gate a
+    // fan-out MUST use this, NOT `peer.status` alone — keying on `.peer` is an
+    // NKN-only check that wrongly skips when relay is up but NKN is down.
+    // (The whole peer layer is transport-agnostic; the `nkn`-flavoured naming
+    // around it is a known cleanup — see REMAINING-WORK / the transport-naming note.)
+    isPeerReachable: () => sa.peer?.status === 'connected' || sa.relay?.status === 'connected',
+
     get transportMode() { return sa.transportMode; },
     setTransportMode:    sa.setTransportMode,
 

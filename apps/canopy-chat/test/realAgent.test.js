@@ -47,6 +47,15 @@ describe('createRealHouseholdAgent — Agent boot + skill dispatch', () => {
     expect(r.error).toMatch(/No chore with id/);
   });
 
+  it("exposes a transport-NEUTRAL isPeerReachable() (false when no transport connected)", async () => {
+    const a = await createRealHouseholdAgent();
+    // Regression for the NKN-only gate bug: the fan-out reachability check must
+    // reflect ANY peer transport (NKN or relay), not just `peer.status`. With no
+    // transport connected it's false; the point is it's a single neutral check.
+    expect(typeof a.isPeerReachable).toBe('function');
+    expect(a.isPeerReachable()).toBe(false);
+  });
+
   it("meta exposes host + chat agent addresses + transport name", async () => {
     const a = await createRealHouseholdAgent();
     expect(typeof a.meta.hostAddress).toBe('string');

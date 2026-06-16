@@ -1641,7 +1641,8 @@ callSkillRef = callSkill;
 _calendarOutboundHook = makeCalendarOutboundHook({
   callSkill,
   sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
-  isPeerConnected: () => agent.peer?.status === 'connected',
+  // transport-NEUTRAL reachability (NKN OR relay) — not peer.status alone.
+  isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
   publishEvent:    (event) => publishEventRef(event),
 });
 
