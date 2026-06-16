@@ -13,6 +13,8 @@
  * foundation (REMAINING-WORK §4 E2 / S4).
  */
 
+import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../src/v2/embedChips.js';
+
 const INTENTS = ['ask', 'offer', 'lend'];
 
 export function renderCircleNoticeboard(container, {
@@ -164,6 +166,30 @@ export function renderCircleNoticeboard(container, {
     text.className = 'cc-prikbord__text';
     text.textContent = p.text ?? p.label ?? '';
     li.appendChild(text);
+
+    // embeds[] — cross-object references this post carries (a task / event /
+    // other post). Surfaced as "See also" chips; the embed's own label, else a
+    // shortened ref. (Resolving the ref to a live card is a follow-up.)
+    const embeds = embedChipsOf(p);
+    if (embeds.length) {
+      const wrap = document.createElement('div');
+      wrap.className = 'cc-prikbord__embeds';
+      const heading = document.createElement('span');
+      heading.className = 'cc-prikbord__embeds-label';
+      heading.textContent = tr('circle.embed.see_also');
+      wrap.appendChild(heading);
+      for (const e of embeds) {
+        const chip = document.createElement('span');
+        chip.className = `cc-prikbord__embed cc-prikbord__embed--${e.type}`;
+        chip.dataset.ref = e.ref;
+        const typeKey = embedTypeLabelKey(e.type);
+        const typeLabel = tr(typeKey);
+        const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
+        chip.textContent = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
+        wrap.appendChild(chip);
+      }
+      li.appendChild(wrap);
+    }
 
     // S5 — inline image attachments: render the thumbnail; tap opens the full image.
     const atts = Array.isArray(p.attachments) ? p.attachments : [];

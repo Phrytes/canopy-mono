@@ -1881,6 +1881,10 @@ function showKring(id, circle, policy) {
         // S5 — carry inline-image metadata (thumbnail travels; full bytes on demand).
         attachments:  Array.isArray(it.attachments) ? it.attachments
                       : (Array.isArray(it.source?.attachments) ? it.source.attachments : []),
+        // embeds[] — the canonical cross-object references (a post → a task /
+        // event / other post). Top-level OR stoop-legacy source.embeds.
+        embeds:       Array.isArray(it.embeds) ? it.embeds
+                      : (Array.isArray(it.source?.embeds) ? it.source.embeds : []),
       }));
     } catch { noticeboardPosts = []; }
     rerender();

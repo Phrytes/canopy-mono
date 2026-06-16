@@ -282,6 +282,17 @@
   "calendar": {
     "invited": { "text": "📅 Je bent uitgenodigd: {title} — het staat in je agenda.", "doc": "Inbound calendar-invite kring heads-up; {title} is the event title." }
   },
+  "embed": {
+    "see_also": { "text": "Zie ook", "doc": "Heading above a card's embeds[] cross-reference chips." },
+    "type": {
+      "task":           { "text": "Taak",  "doc": "embeds[] chip type label — task." },
+      "calendar-event": { "text": "Afspraak", "doc": "embeds[] chip type label — calendar event." },
+      "request":        { "text": "Vraag", "doc": "embeds[] chip type label — stoop request." },
+      "offer":          { "text": "Aanbod", "doc": "embeds[] chip type label — stoop offer." },
+      "note":           { "text": "Notitie", "doc": "embeds[] chip type label — folio note." },
+      "chat-message":   { "text": "Bericht", "doc": "embeds[] chip type label — chat message." }
+    }
+  },
   "guided": {
     "button":        { "text": "✨ Begeleide setup", "doc": "Theme B — open the settings chatbot from circle settings." },
     "title":         { "text": "Begeleide setup", "doc": "Theme B — guided-setup panel heading." },

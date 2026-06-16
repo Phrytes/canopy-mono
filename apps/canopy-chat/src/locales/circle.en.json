@@ -282,6 +282,17 @@
   "calendar": {
     "invited": { "text": "📅 You're invited: {title} — it's on your calendar.", "doc": "Inbound calendar-invite kring heads-up; {title} is the event title." }
   },
+  "embed": {
+    "see_also": { "text": "See also", "doc": "Heading above a card's embeds[] cross-reference chips." },
+    "type": {
+      "task":           { "text": "Task",  "doc": "embeds[] chip type label — task." },
+      "calendar-event": { "text": "Event", "doc": "embeds[] chip type label — calendar event." },
+      "request":        { "text": "Request", "doc": "embeds[] chip type label — stoop request." },
+      "offer":          { "text": "Offer", "doc": "embeds[] chip type label — stoop offer." },
+      "note":           { "text": "Note",  "doc": "embeds[] chip type label — folio note." },
+      "chat-message":   { "text": "Message", "doc": "embeds[] chip type label — chat message." }
+    }
+  },
   "guided": {
     "button":        { "text": "✨ Guided setup", "doc": "Theme B — open the settings chatbot from circle settings." },
     "title":         { "text": "Guided setup", "doc": "Theme B — guided-setup panel heading." },
