@@ -42,7 +42,7 @@ import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '.
  *        action).  Omitted → pills render disabled.
  * @returns {HTMLElement}
  */
-export function renderCircleScreen(container, { blocks = [], t, refreshing = false, onAction, onEmbedOpen } = {}) {
+export function renderCircleScreen(container, { blocks = [], t, refreshing = false, onAction, onEmbedOpen, highlightRef } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
   container.classList.add('circle-screen');
@@ -66,7 +66,7 @@ export function renderCircleScreen(container, { blocks = [], t, refreshing = fal
   }
 
   for (const block of blocks) {
-    container.appendChild(renderBlock(block, { tr, onAction, onEmbedOpen }));
+    container.appendChild(renderBlock(block, { tr, onAction, onEmbedOpen, highlightRef }));
   }
   // δ.1 — subtle refresh pip when rendering cached blocks while a fresh
   // materialize is in flight.  Static glyph (⟳) is enough; no animation
@@ -88,7 +88,23 @@ export function renderCircleScreen(container, { blocks = [], t, refreshing = fal
 // `config.compact` flag (tighter rows + smaller text on the screen).
 const COMPACTABLE_TYPES = new Set(['announcement', 'noticeboard', 'agenda', 'tasks']);
 
-function renderBlock(block, { tr, onAction, onEmbedOpen }) {
+// An embed `ref` may be a full URN (urn:dec:item:T2) while a rendered row
+// carries only the local id (T2).  Match the raw ref OR its local-id tail so a
+// chip tap can find its row regardless of which form each side holds.
+function matchesHighlight(rowId, highlightRef) {
+  if (!rowId || !highlightRef) return false;
+  return rowId === highlightRef || String(highlightRef).endsWith(String(rowId));
+}
+
+// Scroll a freshly-highlighted row into view.  Guarded: happy-dom / older
+// browsers may not implement scrollIntoView, and the test DOM has no layout.
+function scrollRowIntoView(el) {
+  if (el && typeof el.scrollIntoView === 'function') {
+    try { el.scrollIntoView({ block: 'center' }); } catch { /* layout-less DOM */ }
+  }
+}
+
+function renderBlock(block, { tr, onAction, onEmbedOpen, highlightRef }) {
   const section = document.createElement('section');
   section.className = `circle-screen__block circle-screen__block--${block.type}`;
   if (COMPACTABLE_TYPES.has(block.type) && block.config?.compact === true) {
@@ -116,8 +132,8 @@ function renderBlock(block, { tr, onAction, onEmbedOpen }) {
     case 'text':         renderText(section, block, tr);         break;
     case 'photo':        renderPhoto(section, block, tr);        break;
     case 'noticeboard':  renderNoticeboard(section, block, tr);  break;
-    case 'agenda':       renderAgenda(section, block, tr);       break;
-    case 'tasks':        renderTasks(section, block, tr, onEmbedOpen); break;
+    case 'agenda':       renderAgenda(section, block, tr, highlightRef);       break;
+    case 'tasks':        renderTasks(section, block, tr, onEmbedOpen, highlightRef); break;
     case 'rules':        renderRules(section, block, tr);        break;
     default:
       section.textContent = tr('circle.screen.block_unknown', { type: block.type });
@@ -206,7 +222,7 @@ function renderNoticeboard(section, block, tr) {
   section.appendChild(list);
 }
 
-function renderAgenda(section, block, tr) {
+function renderAgenda(section, block, tr, highlightRef) {
   const title = document.createElement('h3');
   title.className = 'circle-screen__block-title';
   title.textContent = tr('circle.recipe.block.agenda');
@@ -222,12 +238,17 @@ function renderAgenda(section, block, tr) {
     lbl.className = 'circle-screen__agenda-label';
     lbl.textContent = ev.label ?? '';
     li.appendChild(lbl);
+    // S6.B — a chip-tap that referenced this event flashes its row + scrolls to it.
+    if (matchesHighlight(ev.id, highlightRef)) {
+      li.classList.add('circle-screen__agenda-row--highlight');
+      scrollRowIntoView(li);
+    }
     list.appendChild(li);
   }
   section.appendChild(list);
 }
 
-function renderTasks(section, block, tr, onEmbedOpen) {
+function renderTasks(section, block, tr, onEmbedOpen, highlightRef) {
   const title = document.createElement('h3');
   title.className = 'circle-screen__block-title';
   title.textContent = tr('circle.recipe.block.tasks');
@@ -240,6 +261,11 @@ function renderTasks(section, block, tr, onEmbedOpen) {
     li.className = 'circle-screen__tasks-row';
     li.dataset.taskId = task.id ?? '';
     li.dataset.state = task.state ?? '';
+    // S6.B — a chip-tap that referenced this task flashes its row + scrolls to it.
+    if (matchesHighlight(task.id, highlightRef)) {
+      li.classList.add('circle-screen__tasks-row--highlight');
+      scrollRowIntoView(li);
+    }
     if (task.circleName) {
       const tag = document.createElement('span');
       tag.className = 'circle-screen__tasks-circle';

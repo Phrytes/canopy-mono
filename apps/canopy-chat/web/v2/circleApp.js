@@ -1664,7 +1664,7 @@ async function showMnemonicReveal() {
 // S6.B — open a dedicated screen (tasks / agenda) as a dismissable panel, the
 // chat-triggered "overview" projection. Reuses the Schermen block materializer +
 // renderer (one block, scope:'all'), scoped to the active circle.
-async function openCircleScreenPanel(screenId) {
+async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
   const circleId = getActiveCircle();
   const overlay = document.createElement('div');
   overlay.className = 'cc-screen-panel';
@@ -1692,7 +1692,9 @@ async function openCircleScreenPanel(screenId) {
   try {
     const block = { id: `panel-${screenId}`, type: screenId, config: { scope: 'all' } };
     const mat = await materializeBlock({ block, circleId, hostOps: { callSkill: rawCallSkill, eventLog, circles: circlesCache } });
-    renderCircleScreen(body, { blocks: [mat], t });
+    // highlightRef — when this panel was opened from a "See also" chip, scroll
+    // to + flash the referenced item once its block has materialized.
+    renderCircleScreen(body, { blocks: [mat], t, highlightRef });
   } catch { renderCircleScreen(body, { blocks: [], t }); }
 }
 
@@ -2000,7 +2002,7 @@ function showKring(id, circle, policy) {
       // S6.A — tap an inline manifest button on a bot reply → dispatch its op.
       onEmbedButton: (b) => circleEmbedButtonTap?.(b),
       // tap a "See also" embed chip → open the screen where the item lives (S6.B panel).
-      onEmbedOpen: ({ screen }) => { if (screen) openCircleScreenPanel(screen); },
+      onEmbedOpen: ({ screen, ref }) => { if (screen) openCircleScreenPanel(screen, { highlightRef: ref }); },
       // Composer affordances (classic-shell parity): slash-suggest off the merged catalog + bash history.
       catalog: circleCatalog,
       history: kringInputHistory,
