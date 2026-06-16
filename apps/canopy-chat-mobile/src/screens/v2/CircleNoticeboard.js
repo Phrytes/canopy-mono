@@ -13,6 +13,8 @@ import { View, Text, Pressable, TextInput, StyleSheet, Image, Modal } from 'reac
 import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { pickAndEncodeImage } from '../../v2/attachmentPicker.js';
+// embeds[] — cross-object reference chips ("See also"), shared with web.
+import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../../../canopy-chat/src/v2/embedChips.js';
 
 const INTENTS = ['ask', 'offer', 'lend'];
 
@@ -44,6 +46,9 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent }) {
         // S5 — inline-image metadata (thumbnail travels; full bytes on demand).
         attachments: Array.isArray(it.attachments) ? it.attachments
           : (Array.isArray(it.source?.attachments) ? it.source.attachments : []),
+        // embeds[] — cross-object references (a post → a task / event / post).
+        embeds: Array.isArray(it.embeds) ? it.embeds
+          : (Array.isArray(it.source?.embeds) ? it.source.embeds : []),
       })));
     } catch { setPosts([]); }
   }, [callSkill, myWebid]);
@@ -164,6 +169,21 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent }) {
             <Text style={styles.badgeText}>{t(`circle.noticeboard.intent.${p.type || 'ask'}`)}</Text>
           </View>
           <Text style={styles.postText2}>{p.text}</Text>
+          {embedChipsOf(p).length > 0 && (
+            <View style={styles.embeds}>
+              <Text style={styles.embedsLabel}>{t('circle.embed.see_also')}</Text>
+              {embedChipsOf(p).map((e) => {
+                const typeKey = embedTypeLabelKey(e.type);
+                const typeLabel = t(typeKey);
+                const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
+                return (
+                  <View key={e.ref} style={styles.embed} testID={`nb-embed-${e.ref}`}>
+                    <Text style={styles.embedText}>{`${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
           {Array.isArray(p.attachments) && p.attachments.length > 0 && (
             <View style={styles.attachments}>
               {p.attachments.filter((a) => a?.thumbnail).map((att) => (
@@ -236,6 +256,11 @@ const styles = StyleSheet.create({
   badge_lend: { backgroundColor: '#e8eef6' },
   badgeText: { fontSize: 11, fontWeight: '700', color: theme.color.ink, textTransform: 'uppercase' },
   postText2: { fontSize: 14, color: theme.color.ink, lineHeight: 20 },
+  // embeds[] — cross-object reference chips.
+  embeds: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 },
+  embedsLabel: { fontSize: 10, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.4 },
+  embed: { borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.card, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 9 },
+  embedText: { fontSize: 12, color: theme.color.ink },
   attach: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.line, justifyContent: 'center' },
   attachText: { fontSize: 16 },
   attachPreview: { alignSelf: 'flex-start', marginTop: 4 },
