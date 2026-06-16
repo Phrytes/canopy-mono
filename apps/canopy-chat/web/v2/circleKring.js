@@ -484,14 +484,17 @@ function renderBubble(row, {
     const bRow = document.createElement('div');
     bRow.className = 'circle-kring__bubble-actions circle-kring__embed-buttons';
     for (const b of embedButtons) {
-      if (!b?.opId) continue;
+      if (!b?.opId && !b?.screen) continue;
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'circle-kring__bubble-action circle-kring__embed-button';
-      btn.dataset.opId = b.opId;
+      // S6.B — a screen button opens a panel; an inline button dispatches an op.
+      const isScreen = !!b.screen;
+      btn.className = `circle-kring__bubble-action circle-kring__embed-button${isScreen ? ' circle-kring__screen-button' : ''}`;
+      if (b.opId) btn.dataset.opId = b.opId;
       if (b.itemId != null) btn.dataset.itemId = String(b.itemId);
-      btn.textContent = b.label ?? b.opId;
-      btn.addEventListener('click', () => onEmbedButton({ opId: b.opId, itemId: b.itemId }));
+      if (b.screen) btn.dataset.screen = b.screen;
+      btn.textContent = b.label ?? b.opId ?? b.screen;
+      btn.addEventListener('click', () => onEmbedButton({ opId: b.opId, itemId: b.itemId, screen: b.screen }));
       bRow.appendChild(btn);
     }
     if (bRow.childNodes.length) el.appendChild(bRow);

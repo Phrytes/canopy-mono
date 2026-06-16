@@ -330,6 +330,11 @@
     }
   },
   "screen": {
+    "open_generic": { "text": "Open overview →", "doc": "S6.B — generic label for a chat-triggered screen panel." },
+    "open": {
+      "tasks":  { "text": "All tasks →", "doc": "S6.B — open the tasks panel from a bot reply." },
+      "agenda": { "text": "Full agenda →", "doc": "S6.B — open the agenda panel from a bot reply." }
+    },
     "empty": {
       "text": "The admin hasn't set up a screen yet.",
       "doc": "α.1c — shown when the kring's recipe book is empty."

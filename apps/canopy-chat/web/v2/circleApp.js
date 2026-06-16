@@ -119,7 +119,7 @@ import {
   addRecipe, renameRecipe, removeRecipe, setActiveRecipe,
   addBlock, removeBlock, moveBlock, updateBlock, updateRecipe,
 } from '../../src/v2/kringRecipe.js';
-import { materializeRecipe } from '../../src/v2/kringRecipeBlocks.js';
+import { materializeRecipe, materializeBlock } from '../../src/v2/kringRecipeBlocks.js';
 // α.2 — user-owned cross-kring screens (the Schermen tab) + α.3 picker.
 import {
   createUserScreenStore, localStorageScreenIo,
@@ -757,14 +757,22 @@ function buildCircleBot(agent) {
     const verb = entry?.op?.verb;
     // S6.A — manifest-driven inline buttons for the item(s) this reply carries
     // (Claim / Mark complete / RSVP …), gated by appliesTo. Ride payload.buttons.
-    const buttons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin });
-    _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons });
+    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin });
+    // S6.B — if the dispatched op declares a screen surface (surfaces.ui.screen),
+    // prepend an "Open …" button that opens a panel instead of dispatching.
+    const screen = entry?.op?.surfaces?.ui?.screen;
+    const screenButton = screen
+      ? [{ id: `screen:${screen}`, screen, label: t(`circle.screen.open.${screen}`, { defaultValue: t('circle.screen.open_generic') }) }]
+      : [];
+    _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons: [...screenButton, ...inlineButtons] });
   }
   circleDispatchReady = dispatchReady;   // expose so onSend can run a completed follow-up
 
-  // S6.A — a tapped inline button dispatches its op against the item. Resolve the
-  // op's target param (the gate's `arg`, or a picker param, else `id`) then run it.
-  circleEmbedButtonTap = ({ opId, itemId }) => {
+  // A tapped bubble button: S6.B screen button (has `screen`) → open the panel;
+  // S6.A inline button (has `opId`) → dispatch its op against the item (resolve the
+  // gate's `arg` / a picker param / else `id`).
+  circleEmbedButtonTap = ({ opId, itemId, screen }) => {
+    if (screen) { openCircleScreenPanel(screen); return; }
     if (!opId) return;
     const op = catalog?.opsById?.get(opId)?.op;
     const arg = op?.surfaces?.slash?.match?.arg
@@ -1559,6 +1567,41 @@ async function showMnemonicReveal() {
   overlay.appendChild(card);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
+}
+
+// S6.B — open a dedicated screen (tasks / agenda) as a dismissable panel, the
+// chat-triggered "overview" projection. Reuses the Schermen block materializer +
+// renderer (one block, scope:'all'), scoped to the active circle.
+async function openCircleScreenPanel(screenId) {
+  const circleId = getActiveCircle();
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-screen-panel';
+  const card = document.createElement('div');
+  card.className = 'cc-screen-panel__card';
+  const head = document.createElement('div');
+  head.className = 'cc-screen-panel__head';
+  const title = document.createElement('h3');
+  title.textContent = t(`circle.screen.open.${screenId}`, { defaultValue: t('circle.screen.open_generic') });
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'cc-screen-panel__close';
+  close.setAttribute('aria-label', t('circle.mydata.close'));
+  close.textContent = '✕';
+  close.addEventListener('click', () => { try { overlay.remove(); } catch { /* */ } });
+  head.appendChild(title); head.appendChild(close);
+  card.appendChild(head);
+  const body = document.createElement('div');
+  card.appendChild(body);
+  overlay.appendChild(card);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  renderCircleScreen(body, { blocks: null, t });   // loading
+  try {
+    const block = { id: `panel-${screenId}`, type: screenId, config: { scope: 'all' } };
+    const mat = await materializeBlock({ block, circleId, hostOps: { callSkill: rawCallSkill, eventLog, circles: circlesCache } });
+    renderCircleScreen(body, { blocks: [mat], t });
+  } catch { renderCircleScreen(body, { blocks: [], t }); }
 }
 
 // S5 — full-size image viewer for a prikbord attachment, in a dismissable overlay.

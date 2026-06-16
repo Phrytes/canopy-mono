@@ -330,6 +330,11 @@
     }
   },
   "screen": {
+    "open_generic": { "text": "Overzicht openen →", "doc": "S6.B — generic label for a chat-triggered screen panel." },
+    "open": {
+      "tasks":  { "text": "Alle taken →", "doc": "S6.B — open the tasks panel from a bot reply." },
+      "agenda": { "text": "Volledige agenda →", "doc": "S6.B — open the agenda panel from a bot reply." }
+    },
     "empty": {
       "text": "De admin heeft nog geen scherm ingericht.",
       "doc": "α.1c — empty book."

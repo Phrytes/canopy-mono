@@ -70,6 +70,10 @@ export const mockTasksManifest = {
           brief:  { summarySkill: 'briefSummary', order: 5, label: 'Tasks' },
           search: { searchSkill:  'searchTasks' },
         },
+        // S6.B — this overview op can open a dedicated screen (the Schermen
+        // `tasks` block) instead of only listing inline. The host renders an
+        // "Open …" affordance + a panel; the label is locale-resolved.
+        ui: { screen: 'tasks' },
       },
     },
     {

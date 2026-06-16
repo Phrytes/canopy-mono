@@ -49,3 +49,21 @@ test('adding a task renders an inline Claim button on the bot reply, and it disp
   expect(blob).not.toContain('item not found');
   expect(blob).not.toContain('couldn');
 });
+
+test('S6.B — the tasks overview reply offers an "All tasks →" screen button that opens a panel', async ({ page }) => {
+  await openKringComposer(page);
+  await send(page, '@assistant add s6bpanel');
+  await send(page, '/mytasks');
+
+  // The overview op (listMine) declares surfaces.ui.screen → a screen button.
+  const screenBtn = page.locator('.circle-kring__screen-button');
+  await expect(screenBtn.first()).toBeVisible({ timeout: 8000 });
+  await expect(screenBtn.first()).toHaveAttribute('data-screen', 'tasks');
+
+  // Tapping it opens the tasks panel (the Schermen tasks block in an overlay).
+  await screenBtn.first().click();
+  await expect(page.locator('.cc-screen-panel')).toBeVisible({ timeout: 5000 });
+  // the panel rendered the materialized tasks block, carrying the task we added
+  await expect(page.locator('.cc-screen-panel .circle-screen__block--tasks')).toBeVisible();
+  await expect(page.locator('.cc-screen-panel')).toContainText('s6bpanel');
+});

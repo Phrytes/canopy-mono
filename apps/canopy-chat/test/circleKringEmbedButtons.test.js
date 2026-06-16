@@ -36,6 +36,21 @@ describe('renderCircleKring — S6.A inline embed buttons', () => {
     expect(onEmbedButton).toHaveBeenCalledWith({ opId: 'claimTask', itemId: 't1' });
   });
 
+  it('S6.B — renders a screen button (opens a panel) + a tap fires onEmbedButton with {screen}', () => {
+    const onEmbedButton = vi.fn();
+    const el = renderCircleKring(document.createElement('div'), {
+      circle: { id: 'c1' }, t, activeTab: 'gesprek',
+      rows: [botRowWithButtons([{ id: 'screen:tasks', label: 'All tasks →', screen: 'tasks' }])],
+      onEmbedButton,
+    });
+    const btn = el.querySelector('.circle-kring__screen-button');
+    expect(btn).toBeTruthy();
+    expect(btn.dataset.screen).toBe('tasks');
+    expect(btn.dataset.opId).toBeUndefined();
+    btn.click();
+    expect(onEmbedButton).toHaveBeenCalledWith({ opId: undefined, itemId: undefined, screen: 'tasks' });
+  });
+
   it('renders no embed buttons when the row carries none', () => {
     const el = renderCircleKring(document.createElement('div'), {
       circle: { id: 'c1' }, t, activeTab: 'gesprek',

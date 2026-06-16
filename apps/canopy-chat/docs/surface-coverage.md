@@ -52,7 +52,7 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `removeChore` | remove | ✅ | ✅ | ✅ | · | · | remove, delete, nope, verwijder, weg |
 |  | `getChoreSnapshot` | list | ✅ | · | · | · | · |  |
 | **tasks** | `addTask` | add | ✅ | ✅ | ✅ | ✅ | · | add, todo, new task, voeg, zet, maak taak, nieuwe taak |
-|  | `listMine` | list | ✅ | ✅ | · | · | · |  |
+|  | `listMine` | list | ✅ | ✅ | · | ✅ | · |  |
 |  | `claimTask` | claim | ✅ | ✅ | ✅ | ✅ | ✅ | claim, pak, neem, i'll take, i'll do, ik pak, ik doe, ik neem |
 |  | `completeTask` | complete | ✅ | ✅ | ✅ | ✅ | ✅ | klaar met, done with, done, complete, completed, finished, klaar, voltooid, gedaan |
 |  | `editTask` | edit | ✅ | ✅ | · | ✅ | ✅ |  |
@@ -139,7 +139,7 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `podStatus` | list | ✅ | ✅ | · | · | · |  |
 |  | `getIcsFeed` | list | ✅ | ✅ | · | · | · |  |
 |---|---|---|---|---|---|---|---|---|
-| **totals** | 134 ops | | 131 | 118 | 25 | 68 | 34 | |
+| **totals** | 134 ops | | 131 | 118 | 25 | 69 | 34 | |
 
 ## Gaps for the gate/LLM + inline-menu work
 
