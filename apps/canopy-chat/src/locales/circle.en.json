@@ -1814,7 +1814,11 @@
     "notif_off":       { "text": "Get notified about replies and circle activity even when this tab is closed.", "doc": "S5 — push not-subscribed state." },
     "notif_unsupported": { "text": "This browser does not support push notifications.", "doc": "S5 — push unsupported." },
     "notif_enable":    { "text": "Enable notifications", "doc": "S5 — subscribe to web push." },
-    "notif_disable":   { "text": "Turn off notifications", "doc": "S5 — unsubscribe from web push." }
+    "notif_disable":   { "text": "Turn off notifications", "doc": "S5 — unsubscribe from web push." },
+    "surface_pref":         { "text": "How the bot shows actions", "doc": "S6.C — surface-preference section heading." },
+    "surface_pref_inline":  { "text": "Buttons in chat", "doc": "S6.C — inline buttons on replies." },
+    "surface_pref_screen":  { "text": "Open a screen", "doc": "S6.C — prefer an overview panel." },
+    "surface_pref_minimal": { "text": "Just text", "doc": "S6.C — no buttons; type or ask." }
   },
   "admin": {
     "title":      { "text": "Admin", "doc": "S3 — group admin panel title + ⋯ menu entry." },

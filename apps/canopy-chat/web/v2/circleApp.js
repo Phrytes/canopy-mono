@@ -71,6 +71,8 @@ import { enableWebPush, disableWebPush, getWebPushState } from '../../src/web/we
 import { encodeImageFile } from '../../src/v2/attachmentEncoder.js';
 // S6.A — manifest-driven inline buttons on bot replies (the resurrected "inline menu").
 import { embedButtonsForReply } from '../../src/v2/replyEmbeds.js';
+// S6.C — per-user preference selecting which projection (inline / screen / minimal) renders.
+import { selectSurfaceButtons, createSurfacePrefStore, localStorageSurfacePrefIo, SURFACE_PREFS } from '../../src/v2/surfacePref.js';
 import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
@@ -480,6 +482,8 @@ let circleClarify = null;        // createClarifyingDispatch (for candidate-butt
 let circleCatalog = null;        // the merged dispatch catalog (built in buildCircleBot) — feeds the composer slash-suggest
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
 let circleEmbedButtonTap = null; // S6.A — dispatch an inline embed button {opId,itemId} from a bot reply
+// S6.C — per-user surface preference (inline / screen / minimal); hydrated at boot.
+const circleSurfacePref = createSurfacePrefStore(localStorageSurfacePrefIo());
 let circleContactSkills = null;  // P4 — live contact/bot exposed-skill registry (subscribed to agent.peers)
 let circlePeerGraph = null;      // P5 — app-owned PeerGraph (contacts roster + P4 registry source)
 let circleCoreAgent = null;      // P5 — the core chat agent (agent.sa.agent), for discoverA2A
@@ -764,7 +768,9 @@ function buildCircleBot(agent) {
     const screenButton = screen
       ? [{ id: `screen:${screen}`, screen, label: t(`circle.screen.open.${screen}`, { defaultValue: t('circle.screen.open_generic') }) }]
       : [];
-    _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons: [...screenButton, ...inlineButtons] });
+    // S6.C — the user's preference picks the projection (inline buttons / screen / minimal).
+    const buttons = selectSurfaceButtons({ inlineButtons, screenButton, pref: circleSurfacePref.get() });
+    _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons });
   }
   circleDispatchReady = dispatchReady;   // expose so onSend can run a completed follow-up
 
@@ -1492,7 +1498,9 @@ async function showMyData() {
     notifications = await getWebPushState();
     rerender();
   };
-  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications });
+  // S6.C — surface preference (how the bot shows actions); set updates the store + repaints.
+  const onSetSurfacePref = (v) => { circleSurfacePref.set(v).then(rerender).catch(() => {}); };
+  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref });
   getWebPushState().then((s) => { notifications = s; rerender(); }).catch(() => {});
   rerender();
   const [loc, status, priv, met] = await Promise.all([
@@ -2534,6 +2542,9 @@ async function boot() {
   // it makes `serviceWorker.ready` resolve so the My-data push toggle can read
   // live subscription state; actual subscription happens on user opt-in.
   try { navigator.serviceWorker?.register('/sw.js').catch(() => {}); } catch { /* unsupported */ }
+
+  // S6.C — load the per-user surface preference (how the bot shows actions).
+  circleSurfacePref.hydrate().catch(() => {});
 
   // S4 circle OIDC — complete an incoming Solid sign-in redirect / restore a saved session
   // (reuses src/web/podAuth.js). When signed in, sealed circles + stoop's items route to the

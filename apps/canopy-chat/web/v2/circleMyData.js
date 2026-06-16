@@ -23,6 +23,8 @@ export function renderCircleMyData(container, {
   onRestore,
   notifications,
   onToggleNotifications,
+  surfacePref,            // S6.C — current 'inline' | 'screen' | 'minimal'
+  onSetSurfacePref,       // (value) => void
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -106,6 +108,22 @@ export function renderCircleMyData(container, {
       notif.appendChild(toggle);
     }
     container.appendChild(notif);
+  }
+
+  // ── how the bot shows actions (S6.C surface preference) ─────────────────────
+  if (typeof onSetSurfacePref === 'function') {
+    const sec = section(tr('circle.mydata.surface_pref'));
+    const current = surfacePref || 'inline';
+    for (const opt of ['inline', 'screen', 'minimal']) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `cc-mydata__pref${opt === current ? ' is-active' : ''}`;
+      b.dataset.pref = opt;
+      b.textContent = tr(`circle.mydata.surface_pref_${opt}`);
+      b.addEventListener('click', () => onSetSurfacePref(opt));
+      sec.appendChild(b);
+    }
+    container.appendChild(sec);
   }
 
   // ── privacy ────────────────────────────────────────────────────────────────

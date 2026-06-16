@@ -1814,7 +1814,11 @@
     "notif_off":       { "text": "Krijg een melding bij reacties en kringactiviteit, ook als dit tabblad dicht is.", "doc": "S5 — push not-subscribed state." },
     "notif_unsupported": { "text": "Deze browser ondersteunt geen push-meldingen.", "doc": "S5 — push unsupported." },
     "notif_enable":    { "text": "Meldingen aanzetten", "doc": "S5 — subscribe to web push." },
-    "notif_disable":   { "text": "Meldingen uitzetten", "doc": "S5 — unsubscribe from web push." }
+    "notif_disable":   { "text": "Meldingen uitzetten", "doc": "S5 — unsubscribe from web push." },
+    "surface_pref":         { "text": "Hoe de bot acties toont", "doc": "S6.C — surface-preference section heading." },
+    "surface_pref_inline":  { "text": "Knoppen in de chat", "doc": "S6.C — inline buttons on replies." },
+    "surface_pref_screen":  { "text": "Een scherm openen", "doc": "S6.C — prefer an overview panel." },
+    "surface_pref_minimal": { "text": "Alleen tekst", "doc": "S6.C — no buttons; type or ask." }
   },
   "admin": {
     "title":      { "text": "Beheer", "doc": "S3 — group admin panel title + ⋯ menu entry." },

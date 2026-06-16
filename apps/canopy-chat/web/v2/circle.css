@@ -754,3 +754,6 @@
 .cc-mydata-mnemonic__warn { font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
 .cc-mydata-mnemonic__words { margin: 10px 0 14px; padding: 12px; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--paper-soft, transparent); font-size: 15px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; user-select: all; }
 .cc-mydata__notif-status { font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.4; }
+/* S6.C — surface-preference selector (inline / screen / minimal). */
+.cc-mydata__pref { align-self: flex-start; cursor: pointer; font: inherit; font-size: 13px; padding: 7px 12px; border-radius: var(--radius); background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+.cc-mydata__pref.is-active { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 600; }

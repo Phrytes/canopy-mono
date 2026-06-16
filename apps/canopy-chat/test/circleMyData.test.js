@@ -101,6 +101,23 @@ describe('renderCircleMyData', () => {
     expect(el.querySelector('.cc-mydata__notif-status')).toBeNull();
   });
 
+  it('S6.C — renders the surface-preference selector with the active option marked + a tap sets it', () => {
+    const onSetSurfacePref = vi.fn();
+    const el = renderCircleMyData(document.createElement('div'), {
+      t, surfacePref: 'screen', onSetSurfacePref,
+    });
+    const prefs = [...el.querySelectorAll('.cc-mydata__pref')].map((b) => b.dataset.pref);
+    expect(prefs).toEqual(['inline', 'screen', 'minimal']);
+    expect(el.querySelector('.cc-mydata__pref.is-active').dataset.pref).toBe('screen');
+    el.querySelector('[data-pref="minimal"]').click();
+    expect(onSetSurfacePref).toHaveBeenCalledWith('minimal');
+  });
+
+  it('omits the surface-preference selector when no setter is wired', () => {
+    const el = renderCircleMyData(document.createElement('div'), { t, surfacePref: 'inline' });
+    expect(el.querySelector('.cc-mydata__pref')).toBeNull();
+  });
+
   it('fires onBack', () => {
     const onBack = vi.fn();
     const el = renderCircleMyData(document.createElement('div'), { t, onBack });
