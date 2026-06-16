@@ -50,20 +50,40 @@ test('adding a task renders an inline Claim button on the bot reply, and it disp
   expect(blob).not.toContain('couldn');
 });
 
-test('S6.B — the tasks overview reply offers an "All tasks →" screen button that opens a panel', async ({ page }) => {
+async function enableTasksFeature(page) {
+  await page.locator('.circle-kring__more').click();
+  await page.locator('.circle-kring__more-item[data-action="settings"]').click();
+  await page.waitForTimeout(800);
+  const box = page.locator('input[data-feature="tasks"]');
+  await expect(box).toBeVisible({ timeout: 5000 });
+  if (!(await box.isChecked())) await box.check();
+  await page.locator('.circle-settings__save').click();   // persist (toggle alone only edits local state)
+  await page.waitForTimeout(800);
+  const back = page.locator('.circle-settings__back');
+  if (await back.count()) { await back.click(); await page.waitForTimeout(800); }
+  const chat = page.locator('.circle-kring__view-toggle-btn', { hasText: 'Chat' });
+  if (await chat.count()) { await chat.click(); await page.waitForTimeout(800); }
+}
+
+test('S6.C gate + S6.B — the tasks screen is gated per-circle; enabling tasks reveals the panel', async ({ page }) => {
   await openKringComposer(page);
   await send(page, '@assistant add s6bpanel');
-  await send(page, '/mytasks');
 
-  // The overview op (listMine) declares surfaces.ui.screen → a screen button.
+  // S6.C — tasks default OFF for a circle ⇒ the dedicated screen surface is gated:
+  // listMine still lists, but offers NO "All tasks →" screen button.
+  await send(page, '/mytasks');
+  await expect(page.locator('.circle-kring__screen-button')).toHaveCount(0);
+
+  // Enable tasks for THIS circle (the per-circle on/off), then it appears.
+  await enableTasksFeature(page);
+  await send(page, '/mytasks');
   const screenBtn = page.locator('.circle-kring__screen-button');
   await expect(screenBtn.first()).toBeVisible({ timeout: 8000 });
   await expect(screenBtn.first()).toHaveAttribute('data-screen', 'tasks');
 
-  // Tapping it opens the tasks panel (the Schermen tasks block in an overlay).
+  // S6.B — tapping it opens the tasks panel (the Schermen tasks block in an overlay).
   await screenBtn.first().click();
   await expect(page.locator('.cc-screen-panel')).toBeVisible({ timeout: 5000 });
-  // the panel rendered the materialized tasks block, carrying the task we added
   await expect(page.locator('.cc-screen-panel .circle-screen__block--tasks')).toBeVisible();
   await expect(page.locator('.cc-screen-panel')).toContainText('s6bpanel');
 });

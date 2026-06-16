@@ -73,6 +73,8 @@ import { encodeImageFile } from '../../src/v2/attachmentEncoder.js';
 import { embedButtonsForReply } from '../../src/v2/replyEmbeds.js';
 // S6.C — per-user preference selecting which projection (inline / screen / minimal) renders.
 import { selectSurfaceButtons, createSurfacePrefStore, localStorageSurfacePrefIo, SURFACE_PREFS } from '../../src/v2/surfacePref.js';
+// S6.C (per-circle) — gate an app's surfaces by the circle's policy.features.
+import { isAppSurfaceEnabled } from '../../src/v2/appFeature.js';
 import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
@@ -768,11 +770,26 @@ function buildCircleBot(agent) {
     const screenButton = screen
       ? [{ id: `screen:${screen}`, screen, label: t(`circle.screen.open.${screen}`, { defaultValue: t('circle.screen.open_generic') }) }]
       : [];
-    // S6.C — the user's preference picks the projection (inline buttons / screen / minimal).
-    const buttons = selectSurfaceButtons({ inlineButtons, screenButton, pref: circleSurfacePref.get() });
+    // S6.C (per-circle) — gate the dedicated SCREEN surface by the circle's
+    // policy.features (the existing tab gate, now also covering the chat "open a
+    // screen" affordance): a circle with tasks/calendar OFF offers no task/agenda
+    // panel. Inline action buttons stay — they're a contextual response to an op
+    // the user explicitly invoked. Core apps (stoop/household) are ungated.
+    const appEnabled = await isOpAppEnabledForActiveCircle(entry?.appOrigin);
+    const gatedScreen = appEnabled ? screenButton : [];
+    // S6.C (per-user) — the user's preference picks the projection (inline / screen / minimal).
+    const buttons = selectSurfaceButtons({ inlineButtons, screenButton: gatedScreen, pref: circleSurfacePref.get() });
     _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons });
   }
   circleDispatchReady = dispatchReady;   // expose so onSend can run a completed follow-up
+
+  // S6.C (per-circle) — is the op's app turned on for the active circle? Reads the
+  // circle's policy.features (the same store the settings + tab gate use).
+  async function isOpAppEnabledForActiveCircle(appOrigin) {
+    let policy = {};
+    try { policy = (await policyStore.get(getActiveCircle())) ?? {}; } catch { /* default policy */ }
+    return isAppSurfaceEnabled(appOrigin, policy, isFeatureEnabled);
+  }
 
   // A tapped bubble button: S6.B screen button (has `screen`) → open the panel;
   // S6.A inline button (has `opId`) → dispatch its op against the item (resolve the
