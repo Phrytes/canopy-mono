@@ -77,6 +77,9 @@ import { embedButtonsForReply } from '../../src/v2/replyEmbeds.js';
 import { selectSurfaceButtons, createSurfacePrefStore, localStorageSurfacePrefIo, SURFACE_PREFS } from '../../src/v2/surfacePref.js';
 // S6.D — is the conversational "chat" projection enriched by an LLM here? (user-loaded LLM + circle permits)
 import { resolveChatAi } from '../../src/v2/chatAi.js';
+// §4 storage-policy bridge — the circle `pod` axis drives stoop's authoritative
+// four-tier crew storage policy (admin-gated, one-way) instead of going nowhere.
+import { pushCircleStoragePolicy } from '../../src/v2/circleStoragePolicy.js';
 // Theme B — the settings chatbot: template-driven guided setup (remote-loadable, bundled fallback).
 import { renderGuidedSetup } from './guidedSetupPanel.js';
 import { startGuidedSetup, submitGuidedStep, guidedPolicyPatch, loadSettingsTemplate, DEFAULT_SETTINGS_TEMPLATE } from '../../src/v2/guidedSetup.js';
@@ -2532,6 +2535,12 @@ async function showAdmin(id) {
 
 async function showSettings(id) {
   let working = await policyStore.get(id);
+  // §4 storage-policy bridge — remember the pod tier at entry so Save only pushes
+  // to stoop when the admin actually changed it; a failed push (admin-only / the
+  // one-way downgrade guard / a centralised tier missing its groupPodUri) is
+  // surfaced as a note but never blocks the local policy save.
+  const baselinePod = working?.pod;
+  let storageNote;
   const consensusActive = () => !!working.consensusRequired && (working.admins?.length ?? 0) >= 2;
   // P6.2 — load pending proposals so the banner can surface the count of
   // outstanding "waiting on N admins" approvals on settings entry.
@@ -2563,7 +2572,7 @@ async function showSettings(id) {
     policy: working,
     t,
     saveLabel: consensusActive() ? t('circle.settings.send_proposal') : undefined,
-    note: pendingNote(),
+    note: [pendingNote(), storageNote].filter(Boolean).join(' · ') || undefined,
     // γ-next.policy — broadcast cache → editor → γ.4 resolver.  The
     // resolver is opt-in; when `incomingPolicy` is null the editor
     // renders untouched.  Applied / discarded both clear the cache.
@@ -2586,6 +2595,21 @@ async function showSettings(id) {
         // Fire-and-forget; per-peer errors are logged inside.
         try { broadcastPolicy({ circleId: id, policy: working }); }
         catch (err) { console.warn('[kring-policy] broadcast scheduling failed:', err?.message ?? err); }
+        // §4 storage-policy bridge — when the pod tier changed, drive stoop's
+        // authoritative crew storage policy. The skill owns admin-gating + the
+        // one-way guard; on failure we keep the local save and show a note.
+        if (working?.pod !== baselinePod && typeof rawCallSkill === 'function') {
+          const res = await pushCircleStoragePolicy({
+            callSkill: rawCallSkill, circleId: id, pod: working.pod, groupPodUri: working.groupPodUri,
+          });
+          if (!res.ok) {
+            const key = `circle.settings.storage_err.${res.error}`;
+            const msg = t(key);
+            storageNote = (msg && msg !== key) ? msg : t('circle.settings.storage_err.generic');
+            rerender();
+            return;   // stay on settings so the admin sees why the tier didn't take
+          }
+        }
         showDetail(id);
         return;
       }

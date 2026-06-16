@@ -778,6 +778,11 @@
       "calendar":  { "text": "Agenda", "doc": "S6.C — app label (calendar)." },
       "folio":     { "text": "Bestanden", "doc": "S6.C — app label (folio)." }
     },
+    "storage_err": {
+      "generic":                                 { "text": "Kon de opslaglocatie van de kring niet bijwerken — je lokale instellingen zijn wel bewaard.", "doc": "§4 — storage-policy bridge: fallback when stoop rejects setCrewStoragePolicy." },
+      "admin-only":                              { "text": "Alleen een kringbeheerder kan de opslaglocatie wijzigen.", "doc": "§4 — storage-policy bridge: stoop admin-only rejection." },
+      "storage-policy-downgrade-not-supported":  { "text": "Opslag kan niet meer worden uitgezet zodra die aanstaat (dit is bewust eenrichtingsverkeer).", "doc": "§4 — storage-policy bridge: stoop one-way downgrade guard." }
+    },
     "feat": {
       "chat": {
         "text": "Chat",

@@ -778,6 +778,11 @@
       "calendar":  { "text": "Calendar", "doc": "S6.C — app label (calendar)." },
       "folio":     { "text": "Files", "doc": "S6.C — app label (folio)." }
     },
+    "storage_err": {
+      "generic":                                 { "text": "Couldn't update the circle's storage location — your local settings were still saved.", "doc": "§4 — storage-policy bridge: fallback when stoop rejects setCrewStoragePolicy." },
+      "admin-only":                              { "text": "Only a circle admin can change the storage location.", "doc": "§4 — storage-policy bridge: stoop admin-only rejection." },
+      "storage-policy-downgrade-not-supported":  { "text": "Storage can't be turned back off once it's on (this is one-way by design).", "doc": "§4 — storage-policy bridge: stoop one-way downgrade guard." }
+    },
     "feat": {
       "chat": {
         "text": "Chat",
