@@ -16,7 +16,7 @@ import { pickAndEncodeImage } from '../../v2/attachmentPicker.js';
 
 const INTENTS = ['ask', 'offer', 'lend'];
 
-export default function CircleNoticeboard({ callSkill }) {
+export default function CircleNoticeboard({ callSkill, onStoopEvent }) {
   const [posts, setPosts] = useState([]);
   const [intent, setIntent] = useState('ask');
   const [text, setText] = useState('');
@@ -49,6 +49,12 @@ export default function CircleNoticeboard({ callSkill }) {
   }, [callSkill, myWebid]);
 
   useEffect(() => { reload(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // S6.4 — refresh when a recipient's requested attachment bytes arrive.
+  useEffect(() => {
+    if (typeof onStoopEvent !== 'function') return undefined;
+    return onStoopEvent('stoop:attachment-fetched', () => { reload(); });
+  }, [onStoopEvent, reload]);
 
   // S5 — pick + encode an image into the inbound-attachment shape, held pending.
   const attachImage = useCallback(async () => {

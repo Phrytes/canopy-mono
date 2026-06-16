@@ -1902,7 +1902,7 @@ function CircleDetail({
         ) : activeTab === 'prikbord' ? (
           // S1 #1 — the buurt noticeboard (its own composer + post list), scoped to
           // the open circle (S4 per-circle restructure — see stoopCall above).
-          <CircleNoticeboard callSkill={stoopCall} />
+          <CircleNoticeboard callSkill={stoopCall} onStoopEvent={bundle?.onStoopEvent} />
         ) : activeTab !== 'gesprek' ? (
           <Text style={styles.placeholder}>
             {t('circle.kring.tab_coming', { tab: t(`circle.tabs.${activeTab}`) })}
