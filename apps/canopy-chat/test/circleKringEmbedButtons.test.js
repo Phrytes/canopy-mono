@@ -107,4 +107,28 @@ describe('renderCircleKring — embeds[] "See also" chips on a bot row', () => {
     });
     expect(el.querySelector('.circle-kring__embeds')).toBeNull();
   });
+
+  it('a task chip is TAPPABLE (a button) + a tap opens the tasks screen', () => {
+    const onEmbedOpen = vi.fn();
+    const el = renderCircleKring(document.createElement('div'), {
+      circle: { id: 'c1' }, t, activeTab: 'gesprek',
+      rows: [botRowWithEmbeds([{ type: 'task', ref: 't2', title: 'Fix the gate' }])],
+      onEmbedOpen,
+    });
+    const chip = el.querySelector('.circle-kring__embed--tappable');
+    expect(chip).toBeTruthy();
+    expect(chip.tagName).toBe('BUTTON');
+    chip.click();
+    expect(onEmbedOpen).toHaveBeenCalledWith({ type: 'task', ref: 't2', screen: 'tasks' });
+  });
+
+  it('a chip with no screen (note) stays a non-tappable span even with onEmbedOpen', () => {
+    const el = renderCircleKring(document.createElement('div'), {
+      circle: { id: 'c1' }, t, activeTab: 'gesprek',
+      rows: [botRowWithEmbeds([{ type: 'note', ref: 'n1', title: 'A note' }])],
+      onEmbedOpen: vi.fn(),
+    });
+    expect(el.querySelector('.circle-kring__embed--tappable')).toBeNull();
+    expect(el.querySelector('.circle-kring__embed').tagName).toBe('SPAN');
+  });
 });

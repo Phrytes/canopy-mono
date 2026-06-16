@@ -1999,6 +1999,8 @@ function showKring(id, circle, policy) {
       screenBlocks,
       // S6.A — tap an inline manifest button on a bot reply → dispatch its op.
       onEmbedButton: (b) => circleEmbedButtonTap?.(b),
+      // tap a "See also" embed chip → open the screen where the item lives (S6.B panel).
+      onEmbedOpen: ({ screen }) => { if (screen) openCircleScreenPanel(screen); },
       // Composer affordances (classic-shell parity): slash-suggest off the merged catalog + bash history.
       catalog: circleCatalog,
       history: kringInputHistory,

@@ -28,6 +28,19 @@ export function embedTypeLabelKey(type) {
   return `circle.embed.type.${type}`;
 }
 
+// embed `type` → the screen surface that hosts that item (S6.B panel). Tapping a
+// chip opens this panel — "go to where the item lives". Types without a screen
+// (request/offer/note today) render a non-tappable chip.
+const EMBED_TYPE_SCREEN = Object.freeze({
+  'task':           'tasks',
+  'calendar-event': 'agenda',
+});
+
+/** The screen a chip of this type opens, or null (→ non-tappable chip). */
+export function screenForEmbedType(type) {
+  return EMBED_TYPE_SCREEN[type] ?? null;
+}
+
 /** Last meaningful segment of a ref (urn:dec:item:T2 · https://pod/…/X.json · pseudo-pod://…), truncated. */
 export function shortRef(ref) {
   const s = String(ref ?? '');

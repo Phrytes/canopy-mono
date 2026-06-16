@@ -24,7 +24,7 @@
  */
 
 import { featureActionLabelKey } from '../../src/v2/kringTabs.js';
-import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../src/v2/embedChips.js';
+import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../src/v2/embedChips.js';
 
 /**
  * Render an array of materialized blocks into a container.
@@ -42,7 +42,7 @@ import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../src/v2/embedChi
  *        action).  Omitted → pills render disabled.
  * @returns {HTMLElement}
  */
-export function renderCircleScreen(container, { blocks = [], t, refreshing = false, onAction } = {}) {
+export function renderCircleScreen(container, { blocks = [], t, refreshing = false, onAction, onEmbedOpen } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
   container.classList.add('circle-screen');
@@ -66,7 +66,7 @@ export function renderCircleScreen(container, { blocks = [], t, refreshing = fal
   }
 
   for (const block of blocks) {
-    container.appendChild(renderBlock(block, { tr, onAction }));
+    container.appendChild(renderBlock(block, { tr, onAction, onEmbedOpen }));
   }
   // δ.1 — subtle refresh pip when rendering cached blocks while a fresh
   // materialize is in flight.  Static glyph (⟳) is enough; no animation
@@ -88,7 +88,7 @@ export function renderCircleScreen(container, { blocks = [], t, refreshing = fal
 // `config.compact` flag (tighter rows + smaller text on the screen).
 const COMPACTABLE_TYPES = new Set(['announcement', 'noticeboard', 'agenda', 'tasks']);
 
-function renderBlock(block, { tr, onAction }) {
+function renderBlock(block, { tr, onAction, onEmbedOpen }) {
   const section = document.createElement('section');
   section.className = `circle-screen__block circle-screen__block--${block.type}`;
   if (COMPACTABLE_TYPES.has(block.type) && block.config?.compact === true) {
@@ -117,7 +117,7 @@ function renderBlock(block, { tr, onAction }) {
     case 'photo':        renderPhoto(section, block, tr);        break;
     case 'noticeboard':  renderNoticeboard(section, block, tr);  break;
     case 'agenda':       renderAgenda(section, block, tr);       break;
-    case 'tasks':        renderTasks(section, block, tr);        break;
+    case 'tasks':        renderTasks(section, block, tr, onEmbedOpen); break;
     case 'rules':        renderRules(section, block, tr);        break;
     default:
       section.textContent = tr('circle.screen.block_unknown', { type: block.type });
@@ -227,7 +227,7 @@ function renderAgenda(section, block, tr) {
   section.appendChild(list);
 }
 
-function renderTasks(section, block, tr) {
+function renderTasks(section, block, tr, onEmbedOpen) {
   const title = document.createElement('h3');
   title.className = 'circle-screen__block-title';
   title.textContent = tr('circle.recipe.block.tasks');
@@ -256,13 +256,17 @@ function renderTasks(section, block, tr) {
       const wrap = document.createElement('span');
       wrap.className = 'circle-screen__embeds';
       for (const e of embeds) {
-        const chip = document.createElement('span');
-        chip.className = `circle-screen__embed circle-screen__embed--${e.type}`;
+        const screen = screenForEmbedType(e.type);
+        const tappable = !!(screen && typeof onEmbedOpen === 'function');
+        const chip = document.createElement(tappable ? 'button' : 'span');
+        if (tappable) chip.type = 'button';
+        chip.className = `circle-screen__embed circle-screen__embed--${e.type}${tappable ? ' circle-screen__embed--tappable' : ''}`;
         chip.dataset.ref = e.ref;
         const typeKey = embedTypeLabelKey(e.type);
         const typeLabel = tr(typeKey);
         const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
         chip.textContent = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
+        if (tappable) chip.addEventListener('click', () => onEmbedOpen({ type: e.type, ref: e.ref, screen }));
         wrap.appendChild(chip);
       }
       li.appendChild(wrap);

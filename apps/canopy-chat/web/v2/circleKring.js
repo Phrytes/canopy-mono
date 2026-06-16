@@ -39,7 +39,7 @@ import { actionsForStreamRow } from '../../src/v2/streamActions.js';
 import { renderCircleScreen } from './circleScreen.js';
 import { renderCircleNoticeboard } from './circleNoticeboard.js';
 import { suggestCommands } from '../../src/v2/commandSuggest.js';
-import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../src/v2/embedChips.js';
+import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../src/v2/embedChips.js';
 
 export function renderCircleKring(container, {
   circle = {},
@@ -48,6 +48,7 @@ export function renderCircleKring(container, {
   onSend,
   onAction,
   onEmbedButton = null,   // S6.A — tap an inline manifest button on a bot reply
+  onEmbedOpen = null,     // tap a "See also" embed chip → open the item's screen
   more = null,
   composerPlaceholder = null,
   // SP-13.3 — per-kring bottom tabs (board Voorbeeld 1-3).
@@ -211,7 +212,7 @@ export function renderCircleKring(container, {
     // means "host hasn't loaded yet" — show the empty-state for
     // a clean first paint.  circleScreen handles per-block status
     // (ok / empty / error) internally.
-    renderCircleScreen(body, { blocks: screenBlocks ?? [], t: tr, onAction: onScreenAction });
+    renderCircleScreen(body, { blocks: screenBlocks ?? [], t: tr, onAction: onScreenAction, onEmbedOpen });
   } else if (effectiveTab === 'prikbord' && noticeboard) {
     // S1 #1 — the buurt noticeboard (its own composer + post list).
     renderCircleNoticeboard(body, {
@@ -227,6 +228,7 @@ export function renderCircleKring(container, {
       onAttach:         noticeboard.onAttach,
       onClearAttach:    noticeboard.onClearAttach,
       onViewAttachment: noticeboard.onViewAttachment,
+      onEmbedOpen,
     });
   } else if (effectiveTab !== 'gesprek') {
     const placeholder = document.createElement('div');
@@ -255,7 +257,7 @@ export function renderCircleKring(container, {
       body.appendChild(renderBubble(row, {
         tr, onAction,
         deliveryStateFor, localActor, onRetryDelivery,
-        onEmbedButton,
+        onEmbedButton, onEmbedOpen,
       }));
     }
   }
@@ -428,6 +430,8 @@ function renderBubble(row, {
   deliveryStateFor = null, localActor = null, onRetryDelivery = null,
   // S6.A — manifest-driven inline buttons carried on the bot event (payload.buttons).
   onEmbedButton = null,
+  // tap a "See also" embed chip → open the referenced item's screen.
+  onEmbedOpen = null,
 } = {}) {
   const el = document.createElement('div');
   el.className = 'circle-kring__bubble';
@@ -499,13 +503,17 @@ function renderBubble(row, {
     heading.textContent = tr('circle.embed.see_also');
     wrap.appendChild(heading);
     for (const e of msgEmbeds) {
-      const chip = document.createElement('span');
-      chip.className = `circle-kring__embed circle-kring__embed--${e.type}`;
+      const screen = screenForEmbedType(e.type);
+      const tappable = !!(screen && typeof onEmbedOpen === 'function');
+      const chip = document.createElement(tappable ? 'button' : 'span');
+      if (tappable) chip.type = 'button';
+      chip.className = `circle-kring__embed circle-kring__embed--${e.type}${tappable ? ' circle-kring__embed--tappable' : ''}`;
       chip.dataset.ref = e.ref;
       const typeKey = embedTypeLabelKey(e.type);
       const typeLabel = tr(typeKey);
       const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
       chip.textContent = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
+      if (tappable) chip.addEventListener('click', () => onEmbedOpen({ type: e.type, ref: e.ref, screen }));
       wrap.appendChild(chip);
     }
     el.appendChild(wrap);

@@ -13,7 +13,7 @@
  * foundation (REMAINING-WORK §4 E2 / S4).
  */
 
-import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../src/v2/embedChips.js';
+import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../src/v2/embedChips.js';
 
 const INTENTS = ['ask', 'offer', 'lend'];
 
@@ -29,6 +29,7 @@ export function renderCircleNoticeboard(container, {
   onAttach,                 // (file) => void — host encodes + sets the pending attachment
   onClearAttach,            // () => void
   onViewAttachment,         // ({post, att}) => void — open the full image
+  onEmbedOpen,              // ({type, ref, screen}) => void — tap a "See also" chip to open the item
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -179,13 +180,17 @@ export function renderCircleNoticeboard(container, {
       heading.textContent = tr('circle.embed.see_also');
       wrap.appendChild(heading);
       for (const e of embeds) {
-        const chip = document.createElement('span');
-        chip.className = `cc-prikbord__embed cc-prikbord__embed--${e.type}`;
+        const screen = screenForEmbedType(e.type);
+        const tappable = !!(screen && typeof onEmbedOpen === 'function');
+        const chip = document.createElement(tappable ? 'button' : 'span');
+        if (tappable) chip.type = 'button';
+        chip.className = `cc-prikbord__embed cc-prikbord__embed--${e.type}${tappable ? ' cc-prikbord__embed--tappable' : ''}`;
         chip.dataset.ref = e.ref;
         const typeKey = embedTypeLabelKey(e.type);
         const typeLabel = tr(typeKey);
         const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
         chip.textContent = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
+        if (tappable) chip.addEventListener('click', () => onEmbedOpen({ type: e.type, ref: e.ref, screen }));
         wrap.appendChild(chip);
       }
       li.appendChild(wrap);

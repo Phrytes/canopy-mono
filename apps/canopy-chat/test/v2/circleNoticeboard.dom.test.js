@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderCircleNoticeboard } from '../../web/v2/circleNoticeboard.js';
 
 const t = (k) => k;   // identity → keys are the assertable text
@@ -38,5 +38,17 @@ describe('renderCircleNoticeboard — embeds[] surfacing', () => {
     const el = mount();
     renderCircleNoticeboard(el, { t, posts: [{ id: 'p3', type: 'ask', text: 'plain' }] });
     expect(el.querySelector('.cc-prikbord__embeds')).toBeNull();
+  });
+
+  it('a task chip is tappable + a tap fires onEmbedOpen with the screen', () => {
+    const el = mount();
+    const onEmbedOpen = vi.fn();
+    renderCircleNoticeboard(el, { t, onEmbedOpen, posts: [{
+      id: 'p4', type: 'ask', text: 'help', embeds: [{ type: 'task', ref: 't9', label: 'Wire it' }],
+    }] });
+    const chip = el.querySelector('.cc-prikbord__embed--tappable');
+    expect(chip.tagName).toBe('BUTTON');
+    chip.click();
+    expect(onEmbedOpen).toHaveBeenCalledWith({ type: 'task', ref: 't9', screen: 'tasks' });
   });
 });
